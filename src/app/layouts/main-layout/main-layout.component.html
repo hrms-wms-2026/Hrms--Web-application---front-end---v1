@@ -1,0 +1,35 @@
+<a class="skip-to-main" href="#main-content">
+  Skip to main content
+</a>
+
+<div class="main-layout">
+  <aside class="sidebar" aria-label="Primary navigation">
+    <div class="sidebar__brand">ONEVO</div>
+
+    <nav aria-label="Main navigation">
+      <p class="shell-placeholder">Navigation will be configured later.</p>
+    </nav>
+  </aside>
+
+  <section class="application-shell">
+    <header class="navbar">
+      <span class="navbar__title">ONEVO Workspace</span>
+    </header>
+
+    <main id="main-content" class="main-content" tabindex="-1">
+      <router-outlet />
+    </main>
+  </section>
+</div>
+
+<div
+  id="global-notification-container"
+  class="global-notification-container"
+  aria-label="Application notifications"
+></div>
+
+<div id="global-dialog-container" class="global-dialog-container"></div>
+
+<div class="sr-only" aria-live="polite" aria-atomic="true">
+  {{ announcementMessage() }}
+</div>
