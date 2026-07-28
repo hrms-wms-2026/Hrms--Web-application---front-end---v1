@@ -16,51 +16,33 @@
 - `/auth/login` and `/auth/me` are exempt from the global 401→redirect interceptor behaviour (login shows its own inline error; the guard handles its own 401 by redirecting).
 - All HTTP requests use `withCredentials: true`.
 - Full request/response DTOs use `snake_case` field names to match the backend JSON exactly (no camelCase remapping at the HTTP boundary) — the DTO IS the wire shape. Camel-casing happens only in the view model.
-- Path aliases: `@core/*`, `@shared/*`, `@modules/*`, `@layouts/*`, `@environments/*` all resolve to `src/<dir>/*`.
+- **Path aliases (revised — see "Plan Revision Note" below): `@core/*`, `@shared/*`, `@modules/*`, `@layouts/*` all resolve to `src/app/<dir>/*` (not `src/<dir>/*` as originally drafted). `@environments/*` resolves to `src/environments/*`.** Every task's **Files** section and shell commands below have already been corrected to use the `src/app/...` prefix.
 - Out of scope for this plan (do not build): the 10 other business modules, MFA/forced-password-change UI, service worker, WebSocket service, circuit breaker, `shared/ui/table`, `shared/ui/modal`.
 - Every component/service task includes a passing test using `TestBed` + vitest, run via `npm test`.
 
+## Plan Revision Note (added before execution)
+
+This plan was written before discovering that branch `Architecture-Step-4` (already merged to `origin/main` via 4 PRs) had scaffolded real project structure ahead of this plan. Reconciled with the user before executing any task:
+
+1. **`core/`, `shared/`, `modules/`, `layouts/` live under `src/app/`**, not directly under `src/` as ARCHITECTURE.md's tree literally shows — confirmed as the deliberate, already-established convention (4 merged PRs). All path aliases and file-creation paths in this plan are read with that prefix; see Global Constraints above.
+2. **Task 1 is already done.** `src/app/app.html`/`app.ts` were cleaned up to a bare `<router-outlet />` shell as part of "Architecture Step 3". Skip Task 1 entirely — verified below.
+3. **`src/environments/environment.ts` already exists**, built around a `RuntimeConfig` type (`production`, `environmentName`, `apiUrl`, `wsUrl`, `enableDebugLogs`, `appName`) injected via `APP_RUNTIME_CONFIG` in `src/app/core/config/app.config.ts`. Task 2 now **fixes** this file (its `apiUrl` pointed at a placeholder `localhost:5000`) instead of creating a new flat one. The `environment.apiUrl` field this plan's services read is unaffected — it's present in both shapes.
+4. **`src/app/core/config/api-endpoints.ts` already exists** with an `API_ENDPOINTS` constant. It listed `auth.refresh` and `auth.context`, neither of which exist on the real backend (confirmed against the actual `AuthSessionController` source: only `GET /auth/me` and `POST /auth/logout`, both behind `[Authorize(Policy = "TenantPolicy")]`; logout returns `204 No Content` and clears `onevo_csrf`/`onevo_mfa`/`onevo_legal_pending`/`onevo_legal_csrf` cookies — `onevo_session` itself is cleared by `SignOutAsync`, not an explicit cookie delete). Task 13 now updates this file: removes `refresh`/`context`, adds a `legal.completeLogin` entry, and `AuthApiService` consumes `API_ENDPOINTS` instead of hand-building URL strings.
+5. **`AuthLayoutComponent` and `MainLayoutComponent` already exist** as real shells (separate `.html`/`.css`, `OnPush`, a brand header, and — for `MainLayoutComponent` — a sidebar, navbar, notification/dialog container divs, and an `aria-live` announcer signal). Task 19 no longer creates these from scratch; it only adds a minimal placeholder page that proves the guarded session flow end-to-end, routed as a child of the existing `MainLayoutComponent`. `LoginComponent`/`LegalConsentComponent` become children of the existing `AuthLayoutComponent` at the existing `path: 'auth'`, not a new top-level `''` path as originally planned. See revised Task 22.
+
 ---
 
-### Task 1: Clean up the default Angular CLI scaffold
+### Task 1: Fix stale `app.spec.ts` (rest of the scaffold cleanup already done)
 
-The generated `app.html`/`app.ts`/`app.spec.ts` contain Angular's marketing placeholder. Replace with a minimal shell that just renders the router outlet, so routed pages aren't drawn underneath leftover boilerplate.
+**Revised at execution time.** `app.html` is already `<router-outlet />` only, `app.ts` already has no `title` signal, and `app.css` is already empty — all done in "Architecture Step 3". But `app.spec.ts` was never updated to match: it still asserts on an `<h1>` "Hello, ..." that no longer exists in the template, so the baseline suite currently fails 1/2 tests (confirmed via `npm test` before starting). This task is now just fixing that one file.
 
 **Files:**
-- Modify: `src/app/app.ts`
-- Modify: `src/app/app.html`
 - Modify: `src/app/app.spec.ts`
-- Delete: `src/app/app.css` (empty it — no app-shell-level styles needed once Tailwind is in)
 
 **Interfaces:**
-- Produces: `App` component (selector `app-root`) rendering `<router-outlet />` only.
+- Produces: passing spec for the existing `App` component (selector `app-root`, renders `<router-outlet />` only — unchanged).
 
-- [ ] **Step 1: Replace `app.html`**
-
-```html
-<router-outlet />
-```
-
-- [ ] **Step 2: Replace `app.ts`**
-
-```typescript
-import { Component } from '@angular/core';
-import { RouterOutlet } from '@angular/router';
-
-@Component({
-  selector: 'app-root',
-  imports: [RouterOutlet],
-  templateUrl: './app.html',
-  styleUrl: './app.css'
-})
-export class App {}
-```
-
-- [ ] **Step 3: Empty `app.css`**
-
-Replace file contents with nothing (zero bytes).
-
-- [ ] **Step 4: Replace `app.spec.ts`**
+- [ ] **Step 1: Replace `app.spec.ts`**
 
 ```typescript
 import { TestBed } from '@angular/core/testing';
@@ -90,36 +72,38 @@ describe('App', () => {
 });
 ```
 
-- [ ] **Step 5: Run tests and verify they pass**
+- [ ] **Step 2: Run tests and verify they pass**
 
 Run: `npm test`
 Expected: `Test Files 1 passed`, `Tests 2 passed`
 
-- [ ] **Step 6: Commit**
+- [ ] **Step 3: Commit**
 
 ```bash
-git add src/app/app.ts src/app/app.html src/app/app.css src/app/app.spec.ts
-git commit -m "chore: strip default Angular CLI placeholder from app shell"
+git add src/app/app.spec.ts
+git commit -m "test: fix app.spec.ts assertion after Architecture Step 3 removed the h1 placeholder"
 ```
 
 ---
 
-### Task 2: Path aliases, environment config, Tailwind CSS, @ngrx/signals
+### Task 2: Path aliases, fix environment config, Tailwind CSS, @ngrx/signals
+
+**Revised at execution time.** `src/environments/environment.ts` already exists (from "Architecture Step 4"), built around a `RuntimeConfig` type consumed via `APP_RUNTIME_CONFIG` in `src/app/core/config/app.config.ts`. Don't replace it — just fix its `apiUrl`, which points at a placeholder `localhost:5000` instead of the real dev backend on `5139`. Path aliases resolve to `src/app/<dir>/*`, not `src/<dir>/*` — see Global Constraints.
 
 **Files:**
 - Modify: `tsconfig.json`
-- Create: `src/environments/environment.ts`
+- Modify: `src/environments/environment.ts` (fix `apiUrl` only — do not change its shape)
 - Create: `postcss.config.json`
 - Modify: `src/styles.css`
 - Modify: `package.json` (via npm install)
 
 **Interfaces:**
-- Produces: `environment.apiUrl: string` importable as `@environments/environment`.
-- Produces: TS path aliases `@core/*`, `@shared/*`, `@modules/*`, `@layouts/*`, `@environments/*`.
+- Produces: `environment.apiUrl: string` importable as `@environments/environment` (already true today, just pointed at the wrong port).
+- Produces: TS path aliases `@core/*` → `src/app/core/*`, `@shared/*` → `src/app/shared/*`, `@modules/*` → `src/app/modules/*`, `@layouts/*` → `src/app/layouts/*`, `@environments/*` → `src/environments/*`.
 
 - [ ] **Step 1: Add path aliases to `tsconfig.json`**
 
-Add `"baseUrl": "."` and `"paths"` inside `compilerOptions`:
+Add `"baseUrl": "."` and `"paths"` inside `compilerOptions`, pointing at `src/app/<dir>` (not `src/<dir>` — that was this plan's original, now-corrected assumption):
 
 ```json
 {
@@ -127,10 +111,10 @@ Add `"baseUrl": "."` and `"paths"` inside `compilerOptions`:
   "compilerOptions": {
     "baseUrl": ".",
     "paths": {
-      "@core/*": ["src/core/*"],
-      "@shared/*": ["src/shared/*"],
-      "@modules/*": ["src/modules/*"],
-      "@layouts/*": ["src/layouts/*"],
+      "@core/*": ["src/app/core/*"],
+      "@shared/*": ["src/app/shared/*"],
+      "@modules/*": ["src/app/modules/*"],
+      "@layouts/*": ["src/app/layouts/*"],
       "@environments/*": ["src/environments/*"]
     },
     "strict": true,
@@ -159,14 +143,24 @@ Add `"baseUrl": "."` and `"paths"` inside `compilerOptions`:
 }
 ```
 
-- [ ] **Step 2: Create `src/environments/environment.ts`**
+- [ ] **Step 2: Fix `apiUrl` in the existing `src/environments/environment.ts`**
+
+Change only the `apiUrl` line — keep the `RuntimeConfig` shape (`environmentName`, `wsUrl`, `enableDebugLogs`, `appName`) exactly as-is:
 
 ```typescript
+import { RuntimeConfig } from '../app/core/config/runtime-config.model';
+
 export const environment = {
   production: false,
-  apiUrl: 'http://localhost:5139/api/v1'
-};
+  environmentName: 'development',
+  apiUrl: 'http://localhost:5139/api/v1',
+  wsUrl: 'ws://localhost:5139/ws',
+  enableDebugLogs: true,
+  appName: 'ONEVO HRMS',
+} as const satisfies RuntimeConfig;
 ```
+
+(Only `apiUrl`'s port and `wsUrl`'s port actually change, from `5000` to `5139` — everything else in the file is unchanged from what "Architecture Step 4" already committed.)
 
 - [ ] **Step 3: Install `@ngrx/signals`**
 
@@ -217,7 +211,7 @@ The dev backend returns RFC7807 `application/problem+json` bodies on errors (ver
 ```
 
 **Files:**
-- Create: `src/shared/models/problem-details.model.ts`
+- Create: `src/app/shared/models/problem-details.model.ts`
 
 **Interfaces:**
 - Produces: `ProblemDetails` interface, consumed by `ErrorHandlerService` (Task 10) and `AuthStore` (Task 14).
@@ -243,7 +237,7 @@ Expected: no errors.
 - [ ] **Step 3: Commit**
 
 ```bash
-git add src/shared/models/problem-details.model.ts
+git add src/app/shared/models/problem-details.model.ts
 git commit -m "feat(shared): add ProblemDetails model matching backend error envelope"
 ```
 
@@ -252,8 +246,8 @@ git commit -m "feat(shared): add ProblemDetails model matching backend error env
 ### Task 4: Shared — email validation helper
 
 **Files:**
-- Create: `src/shared/utils/validation.helpers.ts`
-- Test: `src/shared/utils/validation.helpers.spec.ts`
+- Create: `src/app/shared/utils/validation.helpers.ts`
+- Test: `src/app/shared/utils/validation.helpers.spec.ts`
 
 **Interfaces:**
 - Produces: `isValidEmail(email: string): boolean`, consumed by `LoginComponent` (Task 20, via Angular's built-in `Validators.email` actually — see note in Task 20). Used directly in its own test only for this pass.
@@ -305,7 +299,7 @@ Expected: all test files pass, including the new one.
 - [ ] **Step 5: Commit**
 
 ```bash
-git add src/shared/utils/validation.helpers.ts src/shared/utils/validation.helpers.spec.ts
+git add src/app/shared/utils/validation.helpers.ts src/app/shared/utils/validation.helpers.spec.ts
 git commit -m "feat(shared): add isValidEmail helper"
 ```
 
@@ -314,8 +308,8 @@ git commit -m "feat(shared): add isValidEmail helper"
 ### Task 5: Shared UI — LoaderComponent
 
 **Files:**
-- Create: `src/shared/ui/loader/loader.component.ts`
-- Test: `src/shared/ui/loader/loader.component.spec.ts`
+- Create: `src/app/shared/ui/loader/loader.component.ts`
+- Test: `src/app/shared/ui/loader/loader.component.spec.ts`
 
 **Interfaces:**
 - Produces: `LoaderComponent`, selector `app-loader`, input `label: string` (default `''`). Consumed by `LoginComponent`/`LegalConsentComponent` indirectly via `ButtonComponent`'s own spinner — `LoaderComponent` itself is used standalone wherever a full-block loading state is needed (not required by Task 20/21, but part of the shared kit per the approved design).
@@ -383,7 +377,7 @@ Expected: all tests pass.
 - [ ] **Step 5: Commit**
 
 ```bash
-git add src/shared/ui/loader
+git add src/app/shared/ui/loader
 git commit -m "feat(shared): add LoaderComponent"
 ```
 
@@ -392,8 +386,8 @@ git commit -m "feat(shared): add LoaderComponent"
 ### Task 6: Shared UI — ButtonComponent
 
 **Files:**
-- Create: `src/shared/ui/button/button.component.ts`
-- Test: `src/shared/ui/button/button.component.spec.ts`
+- Create: `src/app/shared/ui/button/button.component.ts`
+- Test: `src/app/shared/ui/button/button.component.spec.ts`
 
 **Interfaces:**
 - Produces: `ButtonComponent`, selector `app-button`, type export `ButtonVariant = 'primary' | 'secondary'`, inputs `variant` (default `'primary'`), `type` (default `'button'`), `disabled` (default `false`), `loading` (default `false`), output `pressed: OutputEmitterRef<MouseEvent>`. Consumed by `LoginComponent` (Task 20), `LegalConsentComponent` (Task 21), `MainLayoutComponent` (Task 19).
@@ -506,7 +500,7 @@ Expected: all tests pass.
 - [ ] **Step 5: Commit**
 
 ```bash
-git add src/shared/ui/button
+git add src/app/shared/ui/button
 git commit -m "feat(shared): add ButtonComponent"
 ```
 
@@ -515,8 +509,8 @@ git commit -m "feat(shared): add ButtonComponent"
 ### Task 7: Shared UI — CardComponent
 
 **Files:**
-- Create: `src/shared/ui/card/card.component.ts`
-- Test: `src/shared/ui/card/card.component.spec.ts`
+- Create: `src/app/shared/ui/card/card.component.ts`
+- Test: `src/app/shared/ui/card/card.component.spec.ts`
 
 **Interfaces:**
 - Produces: `CardComponent`, selector `app-card`, input `title: string` (default `''`), content projection via `<ng-content />`. Consumed by `LoginComponent` (Task 20), `LegalConsentComponent` (Task 21).
@@ -590,7 +584,7 @@ Expected: all tests pass.
 - [ ] **Step 5: Commit**
 
 ```bash
-git add src/shared/ui/card
+git add src/app/shared/ui/card
 git commit -m "feat(shared): add CardComponent"
 ```
 
@@ -599,8 +593,8 @@ git commit -m "feat(shared): add CardComponent"
 ### Task 8: Core — LoggerService
 
 **Files:**
-- Create: `src/core/services/logger.service.ts`
-- Test: `src/core/services/logger.service.spec.ts`
+- Create: `src/app/core/services/logger.service.ts`
+- Test: `src/app/core/services/logger.service.spec.ts`
 
 **Interfaces:**
 - Produces: `LoggerService` (`providedIn: 'root'`) with `error(message: string, context?: Record<string, unknown>): void` and `warn(message: string, context?: Record<string, unknown>): void`. Consumed by `ErrorHandlerService` (Task 10).
@@ -664,7 +658,7 @@ Expected: all tests pass.
 - [ ] **Step 5: Commit**
 
 ```bash
-git add src/core/services/logger.service.ts src/core/services/logger.service.spec.ts
+git add src/app/core/services/logger.service.ts src/app/core/services/logger.service.spec.ts
 git commit -m "feat(core): add LoggerService"
 ```
 
@@ -673,8 +667,8 @@ git commit -m "feat(core): add LoggerService"
 ### Task 9: Core — NotificationService
 
 **Files:**
-- Create: `src/core/services/notification.service.ts`
-- Test: `src/core/services/notification.service.spec.ts`
+- Create: `src/app/core/services/notification.service.ts`
+- Test: `src/app/core/services/notification.service.spec.ts`
 
 **Interfaces:**
 - Produces: `NotificationService` (`providedIn: 'root'`), `Notification` interface `{ id: number; kind: 'error' | 'success' | 'info'; message: string }`, `notifications: Signal<Notification[]>`, `error(message: string): void`, `success(message: string): void`, `dismiss(id: number): void`. Consumed by `ErrorHandlerService` (Task 10).
@@ -768,7 +762,7 @@ Expected: all tests pass.
 - [ ] **Step 5: Commit**
 
 ```bash
-git add src/core/services/notification.service.ts src/core/services/notification.service.spec.ts
+git add src/app/core/services/notification.service.ts src/app/core/services/notification.service.spec.ts
 git commit -m "feat(core): add NotificationService"
 ```
 
@@ -777,8 +771,8 @@ git commit -m "feat(core): add NotificationService"
 ### Task 10: Core — ErrorHandlerService (error taxonomy)
 
 **Files:**
-- Create: `src/core/services/error-handler.service.ts`
-- Test: `src/core/services/error-handler.service.spec.ts`
+- Create: `src/app/core/services/error-handler.service.ts`
+- Test: `src/app/core/services/error-handler.service.spec.ts`
 
 **Interfaces:**
 - Consumes: `NotificationService.error()` (Task 9), `LoggerService.error()` (Task 8).
@@ -923,7 +917,7 @@ Expected: all tests pass.
 - [ ] **Step 5: Commit**
 
 ```bash
-git add src/core/services/error-handler.service.ts src/core/services/error-handler.service.spec.ts
+git add src/app/core/services/error-handler.service.ts src/app/core/services/error-handler.service.spec.ts
 git commit -m "feat(core): add ErrorHandlerService with HTTP error taxonomy"
 ```
 
@@ -932,8 +926,8 @@ git commit -m "feat(core): add ErrorHandlerService with HTTP error taxonomy"
 ### Task 11: Core — correlation.interceptor
 
 **Files:**
-- Create: `src/core/interceptors/correlation.interceptor.ts`
-- Test: `src/core/interceptors/correlation.interceptor.spec.ts`
+- Create: `src/app/core/interceptors/correlation.interceptor.ts`
+- Test: `src/app/core/interceptors/correlation.interceptor.spec.ts`
 
 **Interfaces:**
 - Produces: `correlationInterceptor: HttpInterceptorFn`. Registered in `app.config.ts` (Task 18).
@@ -1010,7 +1004,7 @@ Expected: all tests pass.
 - [ ] **Step 5: Commit**
 
 ```bash
-git add src/core/interceptors/correlation.interceptor.ts src/core/interceptors/correlation.interceptor.spec.ts
+git add src/app/core/interceptors/correlation.interceptor.ts src/app/core/interceptors/correlation.interceptor.spec.ts
 git commit -m "feat(core): add correlation ID interceptor"
 ```
 
@@ -1019,20 +1013,20 @@ git commit -m "feat(core): add correlation ID interceptor"
 ### Task 12: Core — auth DTOs, view model, and mapper
 
 **Files:**
-- Create: `src/core/auth/models/dto/login-request.dto.ts`
-- Create: `src/core/auth/models/dto/legal-document.dto.ts`
-- Create: `src/core/auth/models/dto/auth-response.dto.ts`
-- Create: `src/core/auth/models/dto/legal-acceptance-request.dto.ts`
-- Create: `src/core/auth/models/view/current-user.view-model.ts`
-- Create: `src/core/auth/utils/auth.mapper.ts`
-- Test: `src/core/auth/utils/auth.mapper.spec.ts`
+- Create: `src/app/core/auth/models/dto/login-request.dto.ts`
+- Create: `src/app/core/auth/models/dto/legal-document.dto.ts`
+- Create: `src/app/core/auth/models/dto/auth-response.dto.ts`
+- Create: `src/app/core/auth/models/dto/legal-acceptance-request.dto.ts`
+- Create: `src/app/core/auth/models/view/current-user.view-model.ts`
+- Create: `src/app/core/auth/utils/auth.mapper.ts`
+- Test: `src/app/core/auth/utils/auth.mapper.spec.ts`
 
 **Interfaces:**
 - Produces: `LoginRequestDto`, `LegalDocumentDto`, `AuthResponseDto`, `LegalAcceptanceRequestDto`, `LegalAcceptanceDecisionDto`, `CurrentUserViewModel`, `toCurrentUserViewModel(dto: AuthResponseDto): CurrentUserViewModel`. Consumed by `AuthApiService` (Task 13) and `AuthStore` (Task 14).
 
 - [ ] **Step 1: Create the request/response DTOs**
 
-`src/core/auth/models/dto/login-request.dto.ts`:
+`src/app/core/auth/models/dto/login-request.dto.ts`:
 ```typescript
 export interface LoginRequestDto {
   email: string;
@@ -1040,7 +1034,7 @@ export interface LoginRequestDto {
 }
 ```
 
-`src/core/auth/models/dto/legal-document.dto.ts`:
+`src/app/core/auth/models/dto/legal-document.dto.ts`:
 ```typescript
 export interface LegalDocumentDto {
   document_type: string;
@@ -1051,7 +1045,7 @@ export interface LegalDocumentDto {
 }
 ```
 
-`src/core/auth/models/dto/auth-response.dto.ts`:
+`src/app/core/auth/models/dto/auth-response.dto.ts`:
 ```typescript
 import { LegalDocumentDto } from './legal-document.dto';
 
@@ -1069,7 +1063,7 @@ export interface AuthResponseDto {
 }
 ```
 
-`src/core/auth/models/dto/legal-acceptance-request.dto.ts`:
+`src/app/core/auth/models/dto/legal-acceptance-request.dto.ts`:
 ```typescript
 export interface LegalAcceptanceDecisionDto {
   document_type: string;
@@ -1084,7 +1078,7 @@ export interface LegalAcceptanceRequestDto {
 
 - [ ] **Step 2: Create the view model**
 
-`src/core/auth/models/view/current-user.view-model.ts`:
+`src/app/core/auth/models/view/current-user.view-model.ts`:
 ```typescript
 import { LegalDocumentDto } from '../dto/legal-document.dto';
 
@@ -1179,7 +1173,7 @@ Expected: FAIL — `Cannot find module './auth.mapper'`
 
 - [ ] **Step 5: Write the mapper implementation**
 
-`src/core/auth/utils/auth.mapper.ts`:
+`src/app/core/auth/utils/auth.mapper.ts`:
 ```typescript
 import { AuthResponseDto } from '../models/dto/auth-response.dto';
 import { CurrentUserViewModel } from '../models/view/current-user.view-model';
@@ -1204,23 +1198,81 @@ Expected: all tests pass.
 - [ ] **Step 7: Commit**
 
 ```bash
-git add src/core/auth/models src/core/auth/utils
+git add src/app/core/auth/models src/app/core/auth/utils
 git commit -m "feat(core/auth): add auth DTOs, view model, and mapper"
 ```
 
 ---
 
-### Task 13: Core — AuthApiService
+### Task 13: Update api-endpoints.ts, then core — AuthApiService
+
+**Revised at execution time.** `src/app/core/config/api-endpoints.ts` already exists with an `API_ENDPOINTS` constant, but it lists `auth.refresh` and `auth.context` — neither exists on the real backend. Confirmed directly against the backend's `AuthSessionController` source (provided by the user):
+
+```csharp
+[Route("api/v1/auth")]
+public class AuthSessionController : ControllerBase
+{
+    [HttpGet("me")]
+    [Authorize(Policy = "TenantPolicy")]
+    public async Task<IActionResult> Me(...)  // GetCurrentSessionQuery -> Ok(result.Value), or Problem(..., 401)
+
+    [HttpPost("logout")]
+    [Authorize(Policy = "TenantPolicy")]
+    public async Task<IActionResult> Logout(...)
+    {
+        await HttpContext.SignOutAsync("TenantScheme");
+        // deletes onevo_csrf, onevo_mfa, onevo_legal_pending, onevo_legal_csrf cookies;
+        // onevo_session itself is cleared by SignOutAsync, not an explicit delete
+        return NoContent(); // 204, no body
+    }
+}
+```
+
+No `/auth/refresh` endpoint exists (confirms the plan's Global Constraints assumption). No `/auth/context` endpoint exists either — it was speculative, not backed by any confirmed controller, so it's removed rather than guessed at. `/auth/logout` is confirmed `POST`, requires an authenticated session, returns `204 No Content` — matches this plan's `Observable<void>` already. The legal-acceptance endpoint (`/legal/acceptances/complete-login`, confirmed via the real login flow in Task 12) is not under `/auth` at all — it gets its own top-level group in `API_ENDPOINTS`.
+
+`AuthApiService` now builds its URLs from `API_ENDPOINTS` instead of hand-written template strings, matching how `employee-api.service.ts` and future services will do it.
 
 **Files:**
-- Create: `src/core/auth/data-access/auth-api.service.ts`
-- Test: `src/core/auth/data-access/auth-api.service.spec.ts`
+- Modify: `src/app/core/config/api-endpoints.ts`
+- Create: `src/app/core/auth/data-access/auth-api.service.ts`
+- Test: `src/app/core/auth/data-access/auth-api.service.spec.ts`
 
 **Interfaces:**
-- Consumes: `LoginRequestDto`, `AuthResponseDto`, `LegalAcceptanceRequestDto` (Task 12), `environment.apiUrl` (Task 2).
-- Produces: `AuthApiService` (`providedIn: 'root'`) with `login(payload: LoginRequestDto): Observable<AuthResponseDto>`, `acceptLegalDocuments(payload: LegalAcceptanceRequestDto): Observable<AuthResponseDto>`, `me(): Observable<AuthResponseDto>`, `logout(): Observable<void>`. Consumed by `AuthStore` (Task 14).
+- Consumes: `LoginRequestDto`, `AuthResponseDto`, `LegalAcceptanceRequestDto` (Task 12), `environment.apiUrl` (Task 2), `API_ENDPOINTS` (this task).
+- Produces: updated `API_ENDPOINTS` (drops `auth.refresh`/`auth.context`, adds `legal.completeLogin`); `AuthApiService` (`providedIn: 'root'`) with `login(payload: LoginRequestDto): Observable<AuthResponseDto>`, `acceptLegalDocuments(payload: LegalAcceptanceRequestDto): Observable<AuthResponseDto>`, `me(): Observable<AuthResponseDto>`, `logout(): Observable<void>`. Consumed by `AuthStore` (Task 14).
 
-- [ ] **Step 1: Write the failing test**
+- [ ] **Step 1: Update `api-endpoints.ts`**
+
+```typescript
+const encodePathValue = (value: string): string =>
+  encodeURIComponent(value.trim());
+
+export const API_ENDPOINTS = {
+  auth: {
+    login: '/auth/login',
+    logout: '/auth/logout',
+    me: '/auth/me',
+  },
+
+  legal: {
+    completeLogin: '/legal/acceptances/complete-login',
+  },
+
+  employees: {
+    list: '/employees',
+    detail: (id: string): string =>
+      `/employees/${encodePathValue(id)}`,
+  },
+
+  projects: {
+    list: '/projects',
+    detail: (id: string): string =>
+      `/projects/${encodePathValue(id)}`,
+  },
+} as const;
+```
+
+- [ ] **Step 2: Write the failing AuthApiService test**
 
 ```typescript
 import { TestBed } from '@angular/core/testing';
@@ -1290,18 +1342,19 @@ describe('AuthApiService', () => {
 });
 ```
 
-- [ ] **Step 2: Run test to verify it fails**
+- [ ] **Step 3: Run test to verify it fails**
 
 Run: `npm test`
 Expected: FAIL — `Cannot find module './auth-api.service'`
 
-- [ ] **Step 3: Write the implementation**
+- [ ] **Step 4: Write the implementation**
 
 ```typescript
 import { Injectable, inject } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { Observable } from 'rxjs';
 import { environment } from '@environments/environment';
+import { API_ENDPOINTS } from '../../config/api-endpoints';
 import { LoginRequestDto } from '../models/dto/login-request.dto';
 import { AuthResponseDto } from '../models/dto/auth-response.dto';
 import { LegalAcceptanceRequestDto } from '../models/dto/legal-acceptance-request.dto';
@@ -1309,42 +1362,45 @@ import { LegalAcceptanceRequestDto } from '../models/dto/legal-acceptance-reques
 @Injectable({ providedIn: 'root' })
 export class AuthApiService {
   private http = inject(HttpClient);
-  private authBase = `${environment.apiUrl}/auth`;
 
   login(payload: LoginRequestDto): Observable<AuthResponseDto> {
-    return this.http.post<AuthResponseDto>(`${this.authBase}/login`, payload);
+    return this.http.post<AuthResponseDto>(`${environment.apiUrl}${API_ENDPOINTS.auth.login}`, payload);
   }
 
   acceptLegalDocuments(payload: LegalAcceptanceRequestDto): Observable<AuthResponseDto> {
-    return this.http.post<AuthResponseDto>(`${environment.apiUrl}/legal/acceptances/complete-login`, payload);
+    return this.http.post<AuthResponseDto>(`${environment.apiUrl}${API_ENDPOINTS.legal.completeLogin}`, payload);
   }
 
   /**
-   * Provisional: the real /auth/me success-response contract hasn't been confirmed beyond
-   * the 401-when-unauthenticated behaviour verified against the dev backend. Adjust the
-   * response type here if the authenticated shape differs from AuthResponseDto.
+   * Confirmed against AuthSessionController: GET /auth/me, [Authorize(TenantPolicy)],
+   * backed by GetCurrentSessionQuery. Response shape on success not yet confirmed beyond
+   * the 401-when-unauthenticated ProblemDetails body verified against the dev backend.
+   * Adjust AuthResponseDto here if the authenticated shape differs once confirmed.
    */
   me(): Observable<AuthResponseDto> {
-    return this.http.get<AuthResponseDto>(`${this.authBase}/me`);
+    return this.http.get<AuthResponseDto>(`${environment.apiUrl}${API_ENDPOINTS.auth.me}`);
   }
 
-  /** Provisional: real /auth/logout contract not yet confirmed. Adjust once known. */
+  /**
+   * Confirmed against AuthSessionController: POST /auth/logout, [Authorize(TenantPolicy)],
+   * calls SignOutAsync and returns 204 No Content — no response body, matching Observable<void>.
+   */
   logout(): Observable<void> {
-    return this.http.post<void>(`${this.authBase}/logout`, {});
+    return this.http.post<void>(`${environment.apiUrl}${API_ENDPOINTS.auth.logout}`, {});
   }
 }
 ```
 
-- [ ] **Step 4: Run tests to verify they pass**
+- [ ] **Step 5: Run tests to verify they pass**
 
 Run: `npm test`
 Expected: all tests pass.
 
-- [ ] **Step 5: Commit**
+- [ ] **Step 6: Commit**
 
 ```bash
-git add src/core/auth/data-access
-git commit -m "feat(core/auth): add AuthApiService"
+git add src/app/core/config/api-endpoints.ts src/app/core/auth/data-access
+git commit -m "feat(core/auth): add AuthApiService, align api-endpoints.ts with real backend contract"
 ```
 
 ---
@@ -1352,8 +1408,8 @@ git commit -m "feat(core/auth): add AuthApiService"
 ### Task 14: Core — AuthStore (signal store)
 
 **Files:**
-- Create: `src/core/auth/state/auth.store.ts`
-- Test: `src/core/auth/state/auth.store.spec.ts`
+- Create: `src/app/core/auth/state/auth.store.ts`
+- Test: `src/app/core/auth/state/auth.store.spec.ts`
 
 **Interfaces:**
 - Consumes: `AuthApiService` (Task 13), `toCurrentUserViewModel` (Task 12).
@@ -1619,7 +1675,7 @@ Expected: all tests pass.
 - [ ] **Step 5: Commit**
 
 ```bash
-git add src/core/auth/state
+git add src/app/core/auth/state
 git commit -m "feat(core/auth): add AuthStore signal store"
 ```
 
@@ -1628,10 +1684,10 @@ git commit -m "feat(core/auth): add AuthStore signal store"
 ### Task 15: Core — auth.interceptor and csrf.interceptor
 
 **Files:**
-- Create: `src/core/interceptors/auth.interceptor.ts`
-- Create: `src/core/interceptors/csrf.interceptor.ts`
-- Test: `src/core/interceptors/auth.interceptor.spec.ts`
-- Test: `src/core/interceptors/csrf.interceptor.spec.ts`
+- Create: `src/app/core/interceptors/auth.interceptor.ts`
+- Create: `src/app/core/interceptors/csrf.interceptor.ts`
+- Test: `src/app/core/interceptors/auth.interceptor.spec.ts`
+- Test: `src/app/core/interceptors/csrf.interceptor.spec.ts`
 
 **Interfaces:**
 - Produces: `authInterceptor: HttpInterceptorFn`, `csrfInterceptor: HttpInterceptorFn`. Registered in `app.config.ts` (Task 18).
@@ -1802,7 +1858,7 @@ Expected: all tests pass.
 - [ ] **Step 9: Commit**
 
 ```bash
-git add src/core/interceptors/auth.interceptor.ts src/core/interceptors/auth.interceptor.spec.ts src/core/interceptors/csrf.interceptor.ts src/core/interceptors/csrf.interceptor.spec.ts
+git add src/app/core/interceptors/auth.interceptor.ts src/app/core/interceptors/auth.interceptor.spec.ts src/app/core/interceptors/csrf.interceptor.ts src/app/core/interceptors/csrf.interceptor.spec.ts
 git commit -m "feat(core): add auth and CSRF interceptors"
 ```
 
@@ -1811,8 +1867,8 @@ git commit -m "feat(core): add auth and CSRF interceptors"
 ### Task 16: Core — error.interceptor (retry/backoff + 401 handling)
 
 **Files:**
-- Create: `src/core/interceptors/error.interceptor.ts`
-- Test: `src/core/interceptors/error.interceptor.spec.ts`
+- Create: `src/app/core/interceptors/error.interceptor.ts`
+- Test: `src/app/core/interceptors/error.interceptor.spec.ts`
 
 **Interfaces:**
 - Consumes: `AuthStore.clearSession()` (Task 14), `ErrorHandlerService.handle()` (Task 10), Angular `Router`.
@@ -1874,7 +1930,7 @@ describe('errorInterceptor', () => {
     expect(errored).toBe(true);
   });
 
-  it('clears the session and redirects to /login on a 401 from a protected endpoint', () => {
+  it('clears the session and redirects to /auth/login on a 401 from a protected endpoint', () => {
     const clearSpy = vi.spyOn(authStore, 'clearSession');
     const navigateSpy = vi.spyOn(router, 'navigate');
 
@@ -1883,7 +1939,7 @@ describe('errorInterceptor', () => {
     req.flush({}, { status: 401, statusText: 'Unauthorized' });
 
     expect(clearSpy).toHaveBeenCalled();
-    expect(navigateSpy).toHaveBeenCalledWith(['/login']);
+    expect(navigateSpy).toHaveBeenCalledWith(['/auth/login']);
   });
 
   it('does not redirect on a 401 from /auth/login (invalid credentials)', () => {
@@ -1958,7 +2014,7 @@ export const errorInterceptor: HttpInterceptorFn = (req, next) => {
     catchError((error: HttpErrorResponse) => {
       if (error.status === 401 && !isSessionExempt(req.url)) {
         authStore.clearSession();
-        router.navigate(['/login']);
+        router.navigate(['/auth/login']);
         return throwError(() => error);
       }
 
@@ -1977,7 +2033,7 @@ Expected: all tests pass.
 - [ ] **Step 5: Commit**
 
 ```bash
-git add src/core/interceptors/error.interceptor.ts src/core/interceptors/error.interceptor.spec.ts
+git add src/app/core/interceptors/error.interceptor.ts src/app/core/interceptors/error.interceptor.spec.ts
 git commit -m "feat(core): add error interceptor with retry/backoff and scoped 401 handling"
 ```
 
@@ -1986,8 +2042,8 @@ git commit -m "feat(core): add error interceptor with retry/backoff and scoped 4
 ### Task 17: Core — auth.guard
 
 **Files:**
-- Create: `src/core/guards/auth.guard.ts`
-- Test: `src/core/guards/auth.guard.spec.ts`
+- Create: `src/app/core/guards/auth.guard.ts`
+- Test: `src/app/core/guards/auth.guard.spec.ts`
 
 **Interfaces:**
 - Consumes: `AuthStore.checkSession()` (Task 14).
@@ -2016,7 +2072,7 @@ describe('authGuard', () => {
     expect(result).toBe(true);
   });
 
-  it('redirects to /login and denies navigation when checkSession resolves false', async () => {
+  it('redirects to /auth/login and denies navigation when checkSession resolves false', async () => {
     TestBed.configureTestingModule({
       providers: [provideRouter([]), { provide: AuthStore, useValue: { checkSession: () => Promise.resolve(false) } }]
     });
@@ -2026,7 +2082,7 @@ describe('authGuard', () => {
     const result = await runGuard();
 
     expect(result).toBe(false);
-    expect(navigateSpy).toHaveBeenCalledWith(['/login']);
+    expect(navigateSpy).toHaveBeenCalledWith(['/auth/login']);
   });
 });
 ```
@@ -2052,7 +2108,7 @@ export const authGuard: CanActivateFn = async () => {
     return true;
   }
 
-  router.navigate(['/login']);
+  router.navigate(['/auth/login']);
   return false;
 };
 ```
@@ -2065,7 +2121,7 @@ Expected: all tests pass.
 - [ ] **Step 5: Commit**
 
 ```bash
-git add src/core/guards
+git add src/app/core/guards
 git commit -m "feat(core): add authGuard"
 ```
 
@@ -2122,103 +2178,50 @@ git commit -m "feat: register auth/correlation/csrf/error interceptors in app co
 
 ---
 
-### Task 19: Layouts — AuthLayoutComponent and MainLayoutComponent
+### Task 19: A minimal placeholder page to prove the guarded session flow end-to-end
+
+**Revised at execution time.** `AuthLayoutComponent` and `MainLayoutComponent` already exist (from "Architecture Step 3") as real shells — `AuthLayoutComponent` has a brand header + `<router-outlet />`; `MainLayoutComponent` has a sidebar, navbar, notification/dialog container divs, an `aria-live` announcer, and its own `<router-outlet />` for `main-content`. Neither needs to be created or modified — `LoginComponent`/`LegalConsentComponent` (Tasks 20-21) become routed children of the existing `AuthLayoutComponent`, and this task adds one small placeholder component routed as a child of the existing `MainLayoutComponent`, just to prove `authGuard` + `AuthStore` work end-to-end. The full dashboard module itself is out of scope (see Global Constraints) — this is explicitly a stand-in, not the real thing.
 
 **Files:**
-- Create: `src/layouts/auth-layout/auth-layout.component.ts`
-- Create: `src/layouts/main-layout/main-layout.component.ts`
-- Test: `src/layouts/auth-layout/auth-layout.component.spec.ts`
-- Test: `src/layouts/main-layout/main-layout.component.spec.ts`
+- Create: `src/app/modules/dashboard/feature/dashboard-home/dashboard-home.component.ts`
+- Test: `src/app/modules/dashboard/feature/dashboard-home/dashboard-home.component.spec.ts`
 
 **Interfaces:**
 - Consumes: `AuthStore` (Task 14), `ButtonComponent` (Task 6).
-- Produces: `AuthLayoutComponent` (selector `app-auth-layout`), `MainLayoutComponent` (selector `app-main-layout`). Used in `app.routes.ts` (Task 22).
+- Produces: `DashboardHomeComponent` (selector `app-dashboard-home`). Routed as a child of the existing `MainLayoutComponent` in `app.routes.ts` (Task 22).
 
-- [ ] **Step 1: Write the failing AuthLayoutComponent test**
-
-```typescript
-import { TestBed } from '@angular/core/testing';
-import { provideRouter } from '@angular/router';
-import { AuthLayoutComponent } from './auth-layout.component';
-
-describe('AuthLayoutComponent', () => {
-  it('renders a router outlet inside a centered shell', async () => {
-    await TestBed.configureTestingModule({
-      imports: [AuthLayoutComponent],
-      providers: [provideRouter([])]
-    }).compileComponents();
-
-    const fixture = TestBed.createComponent(AuthLayoutComponent);
-    fixture.detectChanges();
-
-    expect(fixture.nativeElement.querySelector('router-outlet')).toBeTruthy();
-  });
-});
-```
-
-- [ ] **Step 2: Run test to verify it fails**
-
-Run: `npm test`
-Expected: FAIL — `Cannot find module './auth-layout.component'`
-
-- [ ] **Step 3: Write AuthLayoutComponent implementation**
-
-```typescript
-import { Component } from '@angular/core';
-import { RouterOutlet } from '@angular/router';
-
-@Component({
-  selector: 'app-auth-layout',
-  standalone: true,
-  imports: [RouterOutlet],
-  template: `
-    <div class="flex min-h-screen items-center justify-center bg-slate-50 px-4">
-      <div class="w-full max-w-md">
-        <router-outlet />
-      </div>
-    </div>
-  `
-})
-export class AuthLayoutComponent {}
-```
-
-- [ ] **Step 4: Run test to verify it passes**
-
-Run: `npm test`
-Expected: PASS
-
-- [ ] **Step 5: Write the failing MainLayoutComponent test**
+- [ ] **Step 1: Write the failing test**
 
 ```typescript
 import { TestBed } from '@angular/core/testing';
 import { Router, provideRouter } from '@angular/router';
-import { MainLayoutComponent } from './main-layout.component';
-import { AuthStore } from '@core/auth/state/auth.store';
+import { DashboardHomeComponent } from './dashboard-home.component';
+import { AuthStore } from '../../../../core/auth/state/auth.store';
 
-describe('MainLayoutComponent', () => {
+describe('DashboardHomeComponent', () => {
   it('shows the signed-in user email', async () => {
     await TestBed.configureTestingModule({
-      imports: [MainLayoutComponent],
+      imports: [DashboardHomeComponent],
       providers: [
         provideRouter([]),
         { provide: AuthStore, useValue: { email: () => 'a@b.com', logout: () => Promise.resolve() } }
       ]
     }).compileComponents();
 
-    const fixture = TestBed.createComponent(MainLayoutComponent);
+    const fixture = TestBed.createComponent(DashboardHomeComponent);
     fixture.detectChanges();
 
     expect(fixture.nativeElement.textContent).toContain('a@b.com');
   });
 
-  it('calls AuthStore.logout and navigates to /login on sign out', async () => {
+  it('calls AuthStore.logout and navigates to /auth/login on sign out', async () => {
     const logoutSpy = vi.fn().mockResolvedValue(undefined);
     await TestBed.configureTestingModule({
-      imports: [MainLayoutComponent],
+      imports: [DashboardHomeComponent],
       providers: [provideRouter([]), { provide: AuthStore, useValue: { email: () => 'a@b.com', logout: logoutSpy } }]
     }).compileComponents();
 
-    const fixture = TestBed.createComponent(MainLayoutComponent);
+    const fixture = TestBed.createComponent(DashboardHomeComponent);
     fixture.detectChanges();
     const router = TestBed.inject(Router);
     const navigateSpy = vi.spyOn(router, 'navigate');
@@ -2226,26 +2229,31 @@ describe('MainLayoutComponent', () => {
     await fixture.componentInstance.signOut();
 
     expect(logoutSpy).toHaveBeenCalled();
-    expect(navigateSpy).toHaveBeenCalledWith(['/login']);
+    expect(navigateSpy).toHaveBeenCalledWith(['/auth/login']);
   });
 });
 ```
 
-- [ ] **Step 6: Run test to verify it fails**
+- [ ] **Step 2: Run test to verify it fails**
 
 Run: `npm test`
-Expected: FAIL — `Cannot find module './main-layout.component'`
+Expected: FAIL — `Cannot find module './dashboard-home.component'`
 
-- [ ] **Step 7: Write MainLayoutComponent implementation**
+- [ ] **Step 3: Write the implementation**
 
 ```typescript
 import { Component, inject } from '@angular/core';
 import { Router } from '@angular/router';
-import { AuthStore } from '@core/auth/state/auth.store';
-import { ButtonComponent } from '@shared/ui/button/button.component';
+import { AuthStore } from '../../../../core/auth/state/auth.store';
+import { ButtonComponent } from '../../../../shared/ui/button/button.component';
 
+/**
+ * Placeholder landing page for the authenticated area. Proves authGuard + AuthStore work
+ * end-to-end (login -> legal consent -> here -> sign out). The real dashboard module
+ * (ARCHITECTURE.md's modules/dashboard/) is out of scope for this plan and replaces this.
+ */
 @Component({
-  selector: 'app-main-layout',
+  selector: 'app-dashboard-home',
   standalone: true,
   imports: [ButtonComponent],
   template: `
@@ -2258,27 +2266,27 @@ import { ButtonComponent } from '@shared/ui/button/button.component';
     </div>
   `
 })
-export class MainLayoutComponent {
+export class DashboardHomeComponent {
   store = inject(AuthStore);
   private router = inject(Router);
 
   async signOut(): Promise<void> {
     await this.store.logout();
-    this.router.navigate(['/login']);
+    this.router.navigate(['/auth/login']);
   }
 }
 ```
 
-- [ ] **Step 8: Run tests to verify they pass**
+- [ ] **Step 4: Run tests to verify they pass**
 
 Run: `npm test`
 Expected: all tests pass.
 
-- [ ] **Step 9: Commit**
+- [ ] **Step 5: Commit**
 
 ```bash
-git add src/layouts
-git commit -m "feat(layouts): add AuthLayoutComponent and MainLayoutComponent"
+git add src/app/modules/dashboard
+git commit -m "feat(dashboard): add placeholder DashboardHomeComponent to prove the guarded session flow"
 ```
 
 ---
@@ -2286,9 +2294,9 @@ git commit -m "feat(layouts): add AuthLayoutComponent and MainLayoutComponent"
 ### Task 20: Core auth feature — LoginComponent
 
 **Files:**
-- Create: `src/core/auth/feature/login/login.component.ts`
-- Create: `src/core/auth/feature/login/login.component.html`
-- Test: `src/core/auth/feature/login/login.component.spec.ts`
+- Create: `src/app/core/auth/feature/login/login.component.ts`
+- Create: `src/app/core/auth/feature/login/login.component.html`
+- Test: `src/app/core/auth/feature/login/login.component.spec.ts`
 
 **Interfaces:**
 - Consumes: `AuthStore` (Task 14), `ButtonComponent`, `CardComponent` (Tasks 6, 7).
@@ -2344,7 +2352,7 @@ describe('LoginComponent', () => {
     expect(loginSpy).toHaveBeenCalledWith({ email: 'a@b.com', password: 'secret' });
   });
 
-  it('navigates to /legal-consent when login succeeds but legal acceptance is required', async () => {
+  it('navigates to /auth/legal-consent when login succeeds but legal acceptance is required', async () => {
     const fixture = setup({
       login: vi.fn().mockResolvedValue(undefined),
       legalAcceptanceRequired: () => true,
@@ -2358,7 +2366,7 @@ describe('LoginComponent', () => {
     fixture.componentInstance.form.setValue({ email: 'a@b.com', password: 'secret' });
     await fixture.componentInstance.submit();
 
-    expect(navigateSpy).toHaveBeenCalledWith(['/legal-consent']);
+    expect(navigateSpy).toHaveBeenCalledWith(['/auth/legal-consent']);
   });
 
   it('navigates to /dashboard when login succeeds and is fully authenticated', async () => {
@@ -2493,7 +2501,7 @@ export class LoginComponent {
     }
 
     if (this.store.legalAcceptanceRequired()) {
-      this.router.navigate(['/legal-consent']);
+      this.router.navigate(['/auth/legal-consent']);
     } else if (this.store.authenticated()) {
       this.router.navigate(['/dashboard']);
     }
@@ -2509,7 +2517,7 @@ Expected: all tests pass.
 - [ ] **Step 6: Commit**
 
 ```bash
-git add src/core/auth/feature/login
+git add src/app/core/auth/feature/login
 git commit -m "feat(core/auth): add LoginComponent"
 ```
 
@@ -2518,9 +2526,9 @@ git commit -m "feat(core/auth): add LoginComponent"
 ### Task 21: Core auth feature — LegalConsentComponent
 
 **Files:**
-- Create: `src/core/auth/feature/legal-consent/legal-consent.component.ts`
-- Create: `src/core/auth/feature/legal-consent/legal-consent.component.html`
-- Test: `src/core/auth/feature/legal-consent/legal-consent.component.spec.ts`
+- Create: `src/app/core/auth/feature/legal-consent/legal-consent.component.ts`
+- Create: `src/app/core/auth/feature/legal-consent/legal-consent.component.html`
+- Test: `src/app/core/auth/feature/legal-consent/legal-consent.component.spec.ts`
 
 **Interfaces:**
 - Consumes: `AuthStore` (Task 14), `ButtonComponent`, `CardComponent` (Tasks 6, 7).
@@ -2681,7 +2689,7 @@ Expected: all tests pass.
 - [ ] **Step 6: Commit**
 
 ```bash
-git add src/core/auth/feature/legal-consent
+git add src/app/core/auth/feature/legal-consent
 git commit -m "feat(core/auth): add LegalConsentComponent"
 ```
 
@@ -2689,11 +2697,13 @@ git commit -m "feat(core/auth): add LegalConsentComponent"
 
 ### Task 22: Wire app.routes.ts and smoke-test against the real backend
 
+**Revised at execution time.** `app.routes.ts` already exists with `path: ''` → `MainLayoutComponent` and `path: 'auth'` → `AuthLayoutComponent`, both currently with empty `children: []`. Don't replace the route tree — fill in those two `children` arrays: `LoginComponent`/`LegalConsentComponent` become children of the existing `auth` path (so they're reachable at `/auth/login`, `/auth/legal-consent`), and `DashboardHomeComponent` (Task 19) becomes a guarded child of the existing `''` path (reachable at `/dashboard`). This changes every `/login`, `/legal-consent`, `/dashboard` reference from earlier tasks' components to `/auth/login`, `/auth/legal-consent`, `/dashboard` respectively — `LoginComponent.submit()` (Task 20) and `LegalConsentComponent.accept()` (Task 21) navigate to `/auth/legal-consent` and `/dashboard` accordingly; re-check those tasks' navigation targets against this route tree once both are implemented.
+
 **Files:**
 - Modify: `src/app/app.routes.ts`
 
 **Interfaces:**
-- Consumes: `AuthLayoutComponent`, `MainLayoutComponent` (Task 19), `LoginComponent` (Task 20), `LegalConsentComponent` (Task 21), `authGuard` (Task 17).
+- Consumes: existing `AuthLayoutComponent`, `MainLayoutComponent`, `LoginComponent` (Task 20), `LegalConsentComponent` (Task 21), `DashboardHomeComponent` (Task 19), `authGuard` (Task 17).
 
 - [ ] **Step 1: Write `app.routes.ts`**
 
@@ -2704,53 +2714,76 @@ import { authGuard } from '@core/guards/auth.guard';
 export const routes: Routes = [
   {
     path: '',
-    loadComponent: () => import('@layouts/auth-layout/auth-layout.component').then((m) => m.AuthLayoutComponent),
+    loadComponent: () =>
+      import('./layouts/main-layout/main-layout.component').then((module) => module.MainLayoutComponent),
+    canActivate: [authGuard],
+    children: [
+      {
+        path: 'dashboard',
+        loadComponent: () =>
+          import('./modules/dashboard/feature/dashboard-home/dashboard-home.component').then(
+            (module) => module.DashboardHomeComponent
+          )
+      },
+      { path: '', pathMatch: 'full', redirectTo: 'dashboard' }
+    ]
+  },
+  {
+    path: 'auth',
+    loadComponent: () =>
+      import('./layouts/auth-layout/auth-layout.component').then((module) => module.AuthLayoutComponent),
     children: [
       {
         path: 'login',
-        loadComponent: () => import('@core/auth/feature/login/login.component').then((m) => m.LoginComponent)
+        loadComponent: () => import('./core/auth/feature/login/login.component').then((module) => module.LoginComponent)
       },
       {
         path: 'legal-consent',
         loadComponent: () =>
-          import('@core/auth/feature/legal-consent/legal-consent.component').then((m) => m.LegalConsentComponent)
+          import('./core/auth/feature/legal-consent/legal-consent.component').then(
+            (module) => module.LegalConsentComponent
+          )
       },
       { path: '', pathMatch: 'full', redirectTo: 'login' }
     ]
   },
-  {
-    path: 'dashboard',
-    canActivate: [authGuard],
-    loadComponent: () => import('@layouts/main-layout/main-layout.component').then((m) => m.MainLayoutComponent)
-  },
-  { path: '**', redirectTo: 'login' }
+  { path: '**', redirectTo: 'auth/login' }
 ];
 ```
 
-- [ ] **Step 2: Run the full test suite**
+Note `canActivate: [authGuard]` sits on the parent `''` route rather than on the `dashboard` child — with only one child today this is equivalent, but if more guarded pages are added as siblings of `dashboard` later, keeping the guard on the parent means they inherit it automatically. Import paths here use relative paths (`./layouts/...`, `./core/...`), matching the existing route file's own convention (see the pre-Task-22 version of this file) rather than the `@core`/`@layouts`/`@modules` aliases used elsewhere in this plan — both resolve to the same files.
+
+- [ ] **Step 2: Verify Task 20/21 navigation targets already match this route tree**
+
+Already corrected in this plan (not left as a TODO): `LoginComponent.submit()` (Task 20) navigates to `/auth/legal-consent` and `/dashboard`; `DashboardHomeComponent.signOut()` and `authGuard`/`error.interceptor`'s 401 handling (Tasks 16, 17, 19) navigate to `/auth/login`; `LegalConsentComponent.accept()` (Task 21) navigates to `/dashboard`. Their test assertions were updated to match. Just grep for any stray `/login'` or `/legal-consent'` (without the `/auth` prefix) across the files this plan created, to confirm nothing was missed:
+
+Run: `grep -rn "navigate(\['/login'\]\|navigate(\['/legal-consent'\]" src/app/core/auth src/app/modules/dashboard src/app/core/guards src/app/core/interceptors`
+Expected: no output.
+
+- [ ] **Step 3: Run the full test suite**
 
 Run: `npm test`
 Expected: all tests across every task pass.
 
-- [ ] **Step 3: Run the production build**
+- [ ] **Step 4: Run the production build**
 
 Run: `npm run build`
 Expected: build succeeds with no errors.
 
-- [ ] **Step 4: Manual smoke test against the real dev backend**
+- [ ] **Step 5: Manual smoke test against the real dev backend**
 
 With the ASP.NET backend running on `http://localhost:5139`:
 1. Run `npm start`, open the app in a browser at the dev server URL.
-2. Confirm it redirects to `/login`.
-3. Submit an invalid password. Confirm the inline error "Invalid email or password." appears and the URL stays on `/login` (open DevTools → Network to confirm the `/auth/login` 401 did NOT trigger a redirect).
-4. Submit valid credentials for an account that has not yet accepted the legal documents. Confirm navigation to `/legal-consent` and that the privacy notice + terms titles render.
+2. Confirm it redirects to `/auth/login`.
+3. Submit an invalid password. Confirm the inline error "Invalid email or password." appears and the URL stays on `/auth/login` (open DevTools → Network to confirm the `/auth/login` API call's 401 did NOT trigger a redirect).
+4. Submit valid credentials for an account that has not yet accepted the legal documents. Confirm navigation to `/auth/legal-consent` and that the privacy notice + terms titles render.
 5. Click "Accept and continue". Confirm navigation to `/dashboard`, and that the page shows "Welcome, <email>". In DevTools → Application → Cookies, confirm `onevo_legal_csrf`/`onevo_legal_pending` are gone and `onevo_csrf`/`onevo_session` are present.
-6. Click "Sign out". Confirm navigation back to `/login`.
-7. Navigate directly to `/dashboard` in the address bar while signed out. Confirm the guard redirects to `/login` rather than showing the page.
+6. Click "Sign out". Confirm navigation back to `/auth/login`.
+7. Navigate directly to `/dashboard` in the address bar while signed out. Confirm the guard redirects to `/auth/login` rather than showing the page.
 
 Expected: every step behaves as described. If step 3's inline error doesn't appear (e.g., because the interceptor's `isSessionExempt` check doesn't match the login request's actual URL shape once real dev-server proxying is involved), fix `SESSION_EXEMPT_PATH_FRAGMENTS` in `error.interceptor.ts` before continuing — do not proceed to Task-adjacent work with this unverified.
 
-- [ ] **Step 5: Commit**
+- [ ] **Step 6: Commit**
 
 ```bash
 git add src/app/app.routes.ts
