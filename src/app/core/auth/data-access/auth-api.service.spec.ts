@@ -19,7 +19,8 @@ describe('AuthApiService', () => {
     legal_acceptance_required: false,
     pending_legal_documents: null,
     expires_at: null,
-    continue_url: null
+    continue_url: null,
+    workspace: { slug: 'acme', display_name: 'Acme' }
   };
 
   beforeEach(() => {
@@ -54,6 +55,14 @@ describe('AuthApiService', () => {
     const req = httpMock.expectOne(`${environment.apiUrl}/auth/me`);
     expect(req.request.method).toBe('GET');
     req.flush(sampleResponse);
+  });
+
+  it('POSTs the code to /auth/session-exchange', () => {
+    service.sessionExchange('raw-exchange-code').subscribe();
+    const req = httpMock.expectOne(`${environment.apiUrl}/auth/session-exchange`);
+    expect(req.request.method).toBe('POST');
+    expect(req.request.body).toEqual({ code: 'raw-exchange-code' });
+    req.flush({ ...sampleResponse, authenticated: true });
   });
 
   it('POSTs to /auth/logout', () => {

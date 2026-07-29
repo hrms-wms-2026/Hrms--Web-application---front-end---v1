@@ -6,6 +6,7 @@ export const API_ENDPOINTS = {
     login: '/auth/login',
     logout: '/auth/logout',
     me: '/auth/me',
+    sessionExchange: '/auth/session-exchange',
   },
 
   legal: {

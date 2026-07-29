@@ -12,6 +12,7 @@ interface ErrorAction {
 }
 
 const ERROR_TAXONOMY: Record<number, ErrorAction> = {
+  400: { userMessage: 'Invalid request.', behaviour: 'inline', telemetryEvent: 'bad_request' },
   401: { userMessage: '', behaviour: 'silent', telemetryEvent: 'auth_session_expired' },
   403: { userMessage: "You don't have access to this.", behaviour: 'banner', telemetryEvent: 'auth_forbidden' },
   404: { userMessage: 'This record no longer exists.', behaviour: 'inline', telemetryEvent: 'resource_not_found' },

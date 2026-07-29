@@ -14,6 +14,9 @@ type AuthState = {
   activeModules: string[];
   legalAcceptanceRequired: boolean;
   pendingLegalDocuments: LegalDocumentDto[];
+  workspaceSlug: string | null;
+  redirectRequired: boolean;
+  continueUrl: string | null;
   loading: boolean;
   error: string | null;
 };
@@ -25,14 +28,26 @@ const initialState: AuthState = {
   activeModules: [],
   legalAcceptanceRequired: false,
   pendingLegalDocuments: [],
+  workspaceSlug: null,
+  redirectRequired: false,
+  continueUrl: null,
   loading: false,
   error: null
 };
 
 function extractErrorMessage(err: unknown, fallback: string): string {
   if (err && typeof err === 'object' && 'error' in err) {
-    const body = (err as { error?: { detail?: string } }).error;
+    const body = (err as { error?: { detail?: string; title?: string; message?: string; errors?: Record<string, string[] | string> } }).error;
     if (body?.detail) return body.detail;
+    if (body?.message) return body.message;
+    if (body?.title && body.title !== 'One or more validation errors occurred.') return body.title;
+    if (body?.errors) {
+      const firstKey = Object.keys(body.errors)[0];
+      if (firstKey && body.errors[firstKey]) {
+        const val = body.errors[firstKey];
+        return Array.isArray(val) ? val[0] : val;
+      }
+    }
   }
   return fallback;
 }
@@ -53,6 +68,9 @@ export const AuthStore = signalStore(
           activeModules: view.activeModules,
           legalAcceptanceRequired: view.legalAcceptanceRequired,
           pendingLegalDocuments: view.pendingLegalDocuments,
+          workspaceSlug: view.workspaceSlug,
+          redirectRequired: view.redirectRequired,
+          continueUrl: view.continueUrl,
           loading: false
         });
       } catch (err) {
@@ -73,6 +91,9 @@ export const AuthStore = signalStore(
           activeModules: view.activeModules,
           legalAcceptanceRequired: view.legalAcceptanceRequired,
           pendingLegalDocuments: view.pendingLegalDocuments,
+          workspaceSlug: view.workspaceSlug,
+          redirectRequired: view.redirectRequired,
+          continueUrl: view.continueUrl,
           loading: false
         });
       } catch (err) {
@@ -96,12 +117,46 @@ export const AuthStore = signalStore(
           activeModules: view.activeModules,
           legalAcceptanceRequired: view.legalAcceptanceRequired,
           pendingLegalDocuments: view.pendingLegalDocuments,
+          workspaceSlug: view.workspaceSlug,
+          redirectRequired: view.redirectRequired,
+          continueUrl: view.continueUrl,
           loading: false
         });
         return view.authenticated;
       } catch {
         patchState(store, { ...initialState, loading: false });
         return false;
+      }
+    },
+
+    /**
+     * Tenant-host-only: consumes the one-time code from continue_url and, on success, is the call
+     * that actually establishes onevo_session/onevo_csrf - login()/acceptLegalDocuments() never do
+     * this themselves anymore once redirectRequired is true.
+     */
+    async exchangeSession(code: string): Promise<void> {
+      patchState(store, { loading: true, error: null });
+      try {
+        const dto = await firstValueFrom(api.sessionExchange(code));
+        const view = toCurrentUserViewModel(dto);
+        patchState(store, {
+          authenticated: view.authenticated,
+          email: view.email,
+          permissions: view.permissions,
+          activeModules: view.activeModules,
+          legalAcceptanceRequired: view.legalAcceptanceRequired,
+          pendingLegalDocuments: view.pendingLegalDocuments,
+          workspaceSlug: view.workspaceSlug,
+          redirectRequired: view.redirectRequired,
+          continueUrl: view.continueUrl,
+          loading: false
+        });
+      } catch (err) {
+        patchState(store, {
+          loading: false,
+          error: extractErrorMessage(err, 'This sign-in link is invalid or has expired. Please sign in again.')
+        });
+        throw err;
       }
     },
 

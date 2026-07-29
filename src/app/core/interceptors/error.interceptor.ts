@@ -28,7 +28,11 @@ export const errorInterceptor: HttpInterceptorFn = (req, next) => {
       }
     }),
     catchError((error: HttpErrorResponse) => {
-      if (error.status === 401 && !isSessionExempt(req.url)) {
+      if (error.status === 401 && isSessionExempt(req.url)) {
+        return throwError(() => error);
+      }
+
+      if (error.status === 401) {
         authStore.clearSession();
         router.navigate(['/auth/login']);
         return throwError(() => error);

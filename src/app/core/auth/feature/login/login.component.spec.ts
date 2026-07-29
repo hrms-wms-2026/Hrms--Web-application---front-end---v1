@@ -29,7 +29,8 @@ describe('LoginComponent', () => {
     const fixture = setup({
       login: loginSpy,
       legalAcceptanceRequired: () => false,
-      authenticated: () => false,
+      redirectRequired: () => false,
+      continueUrl: () => null,
       loading: () => false,
       error: () => null
     });
@@ -44,7 +45,8 @@ describe('LoginComponent', () => {
     const fixture = setup({
       login: loginSpy,
       legalAcceptanceRequired: () => false,
-      authenticated: () => true,
+      redirectRequired: () => false,
+      continueUrl: () => null,
       loading: () => false,
       error: () => null
     });
@@ -59,7 +61,8 @@ describe('LoginComponent', () => {
     const fixture = setup({
       login: vi.fn().mockResolvedValue(undefined),
       legalAcceptanceRequired: () => true,
-      authenticated: () => false,
+      redirectRequired: () => false,
+      continueUrl: () => null,
       loading: () => false,
       error: () => null
     });
@@ -72,11 +75,17 @@ describe('LoginComponent', () => {
     expect(navigateSpy).toHaveBeenCalledWith(['/auth/legal-consent']);
   });
 
-  it('navigates to /dashboard when login succeeds and is fully authenticated', async () => {
+  it('redirects the browser to continue_url when every gate clears (base-domain login hands off to the tenant host)', async () => {
+    const originalLocation = window.location;
+    // @ts-expect-error -- replacing window.location with a controllable stand-in for this test
+    delete window.location;
+    window.location = { ...originalLocation, href: '' } as unknown as string & Location;
+
     const fixture = setup({
       login: vi.fn().mockResolvedValue(undefined),
       legalAcceptanceRequired: () => false,
-      authenticated: () => true,
+      redirectRequired: () => true,
+      continueUrl: () => 'http://acme.localhost:4200/auth/continue?code=raw-exchange-code',
       loading: () => false,
       error: () => null
     });
@@ -86,14 +95,18 @@ describe('LoginComponent', () => {
     fixture.componentInstance.form.setValue({ email: 'a@b.com', password: 'secret' });
     await fixture.componentInstance.submit();
 
-    expect(navigateSpy).toHaveBeenCalledWith(['/dashboard']);
+    expect(window.location.href).toBe('http://acme.localhost:4200/auth/continue?code=raw-exchange-code');
+    expect(navigateSpy).not.toHaveBeenCalled();
+
+    window.location = originalLocation as unknown as string & Location;
   });
 
   it('does not navigate when login rejects', async () => {
     const fixture = setup({
       login: vi.fn().mockRejectedValue(new Error('bad credentials')),
       legalAcceptanceRequired: () => false,
-      authenticated: () => false,
+      redirectRequired: () => false,
+      continueUrl: () => null,
       loading: () => false,
       error: () => 'Invalid email or password.'
     });
@@ -110,7 +123,8 @@ describe('LoginComponent', () => {
     const fixture = setup({
       login: vi.fn(),
       legalAcceptanceRequired: () => false,
-      authenticated: () => false,
+      redirectRequired: () => false,
+      continueUrl: () => null,
       loading: () => false,
       error: () => 'Invalid email or password.'
     });

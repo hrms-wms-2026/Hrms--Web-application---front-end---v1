@@ -15,7 +15,8 @@ describe('AuthStore', () => {
     legal_acceptance_required: false,
     pending_legal_documents: null,
     expires_at: '2026-07-28T09:36:39Z',
-    continue_url: null
+    continue_url: null,
+    workspace: { slug: 'acme', display_name: 'Acme' }
   };
 
   const pendingLegalDto: AuthResponseDto = {
@@ -44,6 +45,7 @@ describe('AuthStore', () => {
     expect(store.authenticated()).toBe(true);
     expect(store.email()).toBe('a@b.com');
     expect(store.permissions()).toEqual(['integrations:manage']);
+    expect(store.workspaceSlug()).toBe('acme');
     expect(store.loading()).toBe(false);
   });
 
@@ -74,6 +76,41 @@ describe('AuthStore', () => {
 
     expect(store.authenticated()).toBe(true);
     expect(store.legalAcceptanceRequired()).toBe(false);
+  });
+
+  it('surfaces redirectRequired and continueUrl when the base host hands off to the tenant host', async () => {
+    const exchangeRequiredDto: AuthResponseDto = {
+      ...authenticatedDto,
+      authenticated: false,
+      redirect_required: true,
+      continue_url: 'http://acme.localhost:4200/auth/continue?code=raw'
+    };
+    const store = setup({ login: () => of(exchangeRequiredDto) } as Partial<AuthApiService>);
+
+    await store.login({ email: 'a@b.com', password: 'secret' });
+
+    expect(store.authenticated()).toBe(false);
+    expect(store.redirectRequired()).toBe(true);
+    expect(store.continueUrl()).toBe('http://acme.localhost:4200/auth/continue?code=raw');
+  });
+
+  it('exchangeSession populates state on success', async () => {
+    const store = setup({ sessionExchange: () => of(authenticatedDto) } as Partial<AuthApiService>);
+
+    await store.exchangeSession('raw-exchange-code');
+
+    expect(store.authenticated()).toBe(true);
+    expect(store.email()).toBe('a@b.com');
+    expect(store.redirectRequired()).toBe(false);
+  });
+
+  it('exchangeSession sets a friendly error and rethrows on failure', async () => {
+    const store = setup({ sessionExchange: () => throwError(() => new Error('401')) } as Partial<AuthApiService>);
+
+    await expect(store.exchangeSession('bad-code')).rejects.toBeTruthy();
+
+    expect(store.error()).toBe('This sign-in link is invalid or has expired. Please sign in again.');
+    expect(store.loading()).toBe(false);
   });
 
   it('checkSession returns true and hydrates state when /auth/me succeeds', async () => {

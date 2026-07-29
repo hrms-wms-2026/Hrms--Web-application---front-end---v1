@@ -1,12 +1,7 @@
-import { Component } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
-import { Router, provideRouter } from '@angular/router';
 import { LegalConsentComponent } from './legal-consent.component';
 import { AuthStore } from '../../state/auth.store';
 import { LegalDocumentDto } from '../../models/dto/legal-document.dto';
-
-@Component({ standalone: true, template: '' })
-class RouteTargetStubComponent {}
 
 describe('LegalConsentComponent', () => {
   const docs: LegalDocumentDto[] = [
@@ -17,10 +12,7 @@ describe('LegalConsentComponent', () => {
   function setup(authStoreOverrides: Record<string, unknown>) {
     TestBed.configureTestingModule({
       imports: [LegalConsentComponent],
-      providers: [
-        provideRouter([{ path: 'dashboard', component: RouteTargetStubComponent }]),
-        { provide: AuthStore, useValue: authStoreOverrides }
-      ]
+      providers: [{ provide: AuthStore, useValue: authStoreOverrides }]
     });
     const fixture = TestBed.createComponent(LegalConsentComponent);
     fixture.detectChanges();
@@ -31,7 +23,8 @@ describe('LegalConsentComponent', () => {
     const fixture = setup({
       pendingLegalDocuments: () => docs,
       acceptLegalDocuments: vi.fn(),
-      authenticated: () => false,
+      redirectRequired: () => false,
+      continueUrl: () => null,
       loading: () => false,
       error: () => null
     });
@@ -41,17 +34,21 @@ describe('LegalConsentComponent', () => {
     expect(text).toContain('ONEVO Terms & Conditions');
   });
 
-  it('accepts with a decision per pending document and navigates on success', async () => {
+  it('accepts with a decision per pending document, then redirects to continue_url when every gate clears', async () => {
+    const originalLocation = window.location;
+    // @ts-expect-error -- replacing window.location with a controllable stand-in for this test
+    delete window.location;
+    window.location = { ...originalLocation, href: '' } as unknown as string & Location;
+
     const acceptSpy = vi.fn().mockResolvedValue(undefined);
     const fixture = setup({
       pendingLegalDocuments: () => docs,
       acceptLegalDocuments: acceptSpy,
-      authenticated: () => true,
+      redirectRequired: () => true,
+      continueUrl: () => 'http://acme.localhost:4200/auth/continue?code=raw-exchange-code',
       loading: () => false,
       error: () => null
     });
-    const router = TestBed.inject(Router);
-    const navigateSpy = vi.spyOn(router, 'navigate');
 
     await fixture.componentInstance.accept();
 
@@ -61,22 +58,24 @@ describe('LegalConsentComponent', () => {
         { document_type: 'terms', version: '1.0', decision: 'accepted' }
       ]
     });
-    expect(navigateSpy).toHaveBeenCalledWith(['/dashboard']);
+    expect(window.location.href).toBe('http://acme.localhost:4200/auth/continue?code=raw-exchange-code');
+
+    window.location = originalLocation as unknown as string & Location;
   });
 
-  it('does not navigate when acceptance fails', async () => {
+  it('does not redirect when acceptance fails', async () => {
+    const originalHref = window.location.href;
     const fixture = setup({
       pendingLegalDocuments: () => docs,
       acceptLegalDocuments: vi.fn().mockRejectedValue(new Error('network')),
-      authenticated: () => false,
+      redirectRequired: () => false,
+      continueUrl: () => null,
       loading: () => false,
       error: () => 'Could not save your acceptance. Please try again.'
     });
-    const router = TestBed.inject(Router);
-    const navigateSpy = vi.spyOn(router, 'navigate');
 
     await fixture.componentInstance.accept();
 
-    expect(navigateSpy).not.toHaveBeenCalled();
+    expect(window.location.href).toBe(originalHref);
   });
 });

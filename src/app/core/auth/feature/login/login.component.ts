@@ -35,8 +35,13 @@ export class LoginComponent {
 
     if (this.store.legalAcceptanceRequired()) {
       this.router.navigate(['/auth/legal-consent']);
-    } else if (this.store.authenticated()) {
-      this.router.navigate(['/dashboard']);
+    } else if (this.store.redirectRequired()) {
+      // Every gate cleared, but this is still the base host: hand off to the tenant host's
+      // /auth/continue, which consumes the one-time code and creates the real session there.
+      const url = this.store.continueUrl();
+      if (url) {
+        window.location.href = url;
+      }
     }
   }
 }

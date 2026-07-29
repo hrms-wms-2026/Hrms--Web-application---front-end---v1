@@ -1,5 +1,4 @@
 import { Component, inject } from '@angular/core';
-import { Router } from '@angular/router';
 import { AuthStore } from '../../state/auth.store';
 import { ButtonComponent } from '../../../../shared/ui/button/button.component';
 import { CardComponent } from '../../../../shared/ui/card/card.component';
@@ -11,7 +10,6 @@ import { CardComponent } from '../../../../shared/ui/card/card.component';
   templateUrl: './legal-consent.component.html'
 })
 export class LegalConsentComponent {
-  private router = inject(Router);
   store = inject(AuthStore);
 
   async accept(): Promise<void> {
@@ -27,8 +25,11 @@ export class LegalConsentComponent {
       return;
     }
 
-    if (this.store.authenticated()) {
-      this.router.navigate(['/dashboard']);
+    // Every gate cleared, but this is still the base host: hand off to the tenant host's
+    // /auth/continue, which consumes the one-time code and creates the real session there.
+    const url = this.store.continueUrl();
+    if (this.store.redirectRequired() && url) {
+      window.location.href = url;
     }
   }
 }
