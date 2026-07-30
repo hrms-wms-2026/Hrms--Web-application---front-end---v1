@@ -1,3 +1,14 @@
 @import "tailwindcss";
 
+:root {
+  --dashboard-surface-color: #E5E7EB;
+  --dashboard-background-color: #FFFFFF;
+  --dashboard-text-primary: #111111;
+  --dashboard-text-secondary: #6B7280;
+  --dashboard-border-color: #D1D5DB;
+  --dashboard-profile-background: #D1D5DB;
+  --dashboard-profile-text: #111111;
+  --dashboard-content-radius: 15px;
+}
+
 /* You can add global styles to this file, and also import other style files */
