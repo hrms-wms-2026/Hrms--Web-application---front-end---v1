@@ -160,3 +160,34 @@ structure that would let it slot in later without touching component files).
 - Widening the sidebar or otherwise changing its grid width.
 - Any alternate sign-out entry point (e.g. a future settings/profile menu) — out of
   scope; noted only as a follow-up possibility, not built here.
+
+## Implementation corrections (2026-07-30, pre-build)
+
+Four corrections identified before implementation, applied on top of the design above:
+
+1. **Signal-input typing**: inputs are `input<string | null>()` (not `string`), with
+   `readonly` modifiers, and the fallback chain trims each candidate:
+   `this.userName()?.trim() || this.email()?.trim() || 'User'`.
+2. **Corner visibility bug**: the original plan set `.application-shell` (the wrapper
+   around navbar + main-content) to `var(--dashboard-background-color)` (white) — with a
+   white wrapper directly behind a white rounded main-content box, the curve would be
+   invisible. Corrected: the grid container itself carries
+   `background: var(--dashboard-surface-color)` (gray), so the rounded corner's revealed
+   triangle shows gray behind the white content box. `.main-content` also gets
+   `overflow: hidden` so routed page content can never render past its own rounded corner.
+3. **Explicit grid areas**: the nested two-level grid (outer sidebar/shell, inner
+   navbar/main) is replaced with one flat grid on `.main-layout` using named
+   `grid-template-areas` (`"sidebar navbar" / "sidebar main"` desktop,
+   `"navbar" / "sidebar" / "main"` mobile). This removes the `.application-shell` wrapper
+   entirely — `app-side-navbar`, `app-top-navbar`, and `.main-content` become direct grid
+   children of `.main-layout`.
+4. **Long-email safety**: the profile capsule gets `max-width: 18rem`,
+   `text-overflow: ellipsis`, `white-space: nowrap`, `overflow: hidden`, plus
+   `[title]="displayText()"` so the full value is still available on hover/assistive tech
+   even when visually truncated.
+
+`.scss` was requested again for the capsule/global stylesheet in the correction request;
+kept as `.css` per the already-established finding that this repo has no Sass tooling
+installed (no `sass` devDependency, no `.scss` file anywhere) — introducing `.scss` now
+would silently fail to compile. This is a repeated, deliberate deviation, not an
+oversight.

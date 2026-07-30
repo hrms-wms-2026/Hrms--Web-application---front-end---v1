@@ -11,12 +11,14 @@
 ## Global Constraints
 
 - Every dashboard color/radius value is a CSS custom property on `:root` in `src/styles.css`: `--dashboard-surface-color: #E5E7EB`, `--dashboard-background-color: #FFFFFF`, `--dashboard-text-primary: #111111`, `--dashboard-text-secondary: #6B7280`, `--dashboard-border-color: #D1D5DB`, `--dashboard-profile-background: #D1D5DB`, `--dashboard-profile-text: #111111`, `--dashboard-content-radius: 15px`.
-- No component `.css` file hardcodes a hex value for any of the above — always reference `var(--dashboard-*)`.
+- No component `.css` file hardcodes a hex value for any of the above — always reference `var(--dashboard-*)`. (Kept as `.css`, not `.scss` — this repo has no Sass tooling installed anywhere; confirmed no `sass` devDependency and no existing `.scss` file.)
 - Top navbar and sidebar use the exact same background variable (`--dashboard-surface-color`).
-- Main content background is `--dashboard-background-color`.
-- `border-top-left-radius: var(--dashboard-content-radius)` applies only to `.main-content`, only above the existing 768px breakpoint; reset to `0` at `max-width: 768px`.
+- Main content background is `--dashboard-background-color`; the grid container behind it (`.main-layout`) is `--dashboard-surface-color` so the rounded corner is visually a white card floating on gray, not white-on-white.
+- `border-top-left-radius: var(--dashboard-content-radius)` applies only to `.main-content`, only above the existing 768px breakpoint; reset to `0` at `max-width: 768px`. `.main-content` also has `overflow: hidden` so routed page content can never visually cover the curve.
+- Layout uses one flat CSS grid on `.main-layout` with explicit `grid-template-areas` (`"sidebar navbar" / "sidebar main"` desktop, `"navbar" / "sidebar" / "main"` mobile) — no nested `.application-shell` grid wrapper.
 - Sidebar keeps its existing `5rem` grid width — no layout width change.
-- `HomePageProfileCapsuleComponent` shows only display text (`userName → email → 'User'` fallback); no dropdown, no logout button, no logo, no extra profile info.
+- `HomePageProfileCapsuleComponent` shows only display text (`userName?.trim() → email?.trim() → 'User'` fallback); no dropdown, no logout button, no logo, no extra profile info. Long values are truncated visually (`max-width: 18rem`, ellipsis) but the full value stays available via `[title]`.
+- All new/changed signal inputs are typed `input<string | null>()` with a `readonly` modifier (not plain `input<string>()`), for consistency between `HomePageProfileCapsuleComponent` and `TopNavbarComponent`.
 - `HomePageProfileCapsuleComponent.userName` stays an optional, unbound input — never explicitly bound to `undefined` in a template. Only `email` is bound from `MainLayoutComponent` downward today.
 - No changes to `AuthStore`, `AuthApiService`, guards, or interceptors — `AuthStore.logout()` stays intact; only its call site in `DashboardHomeComponent` is removed.
 - No new HTTP calls — `MainLayoutComponent` reuses the existing injected `AuthStore`.
@@ -79,7 +81,7 @@ git commit -m "feat(dashboard): add dashboard CSS custom properties"
 - Test: `src/app/shared/ui/home-page-profile-capsule/home-page-profile-capsule.component.spec.ts`
 
 **Interfaces:**
-- Produces: `HomePageProfileCapsuleComponent` (selector `app-home-page-profile-capsule`), inputs `userName = input<string>()`, `email = input<string>()` (both optional, no default), rendering `userName() || email() || 'User'`.
+- Produces: `HomePageProfileCapsuleComponent` (selector `app-home-page-profile-capsule`), inputs `readonly userName = input<string | null>()`, `readonly email = input<string | null>()` (both optional, no default), rendering `userName()?.trim() || email()?.trim() || 'User'`, exposed via `[title]` for the full value.
 - Consumes: `--dashboard-profile-background`, `--dashboard-profile-text`, `--dashboard-border-color` (from Task 1).
 
 - [ ] **Step 1: Write the failing tests**
@@ -110,12 +112,44 @@ describe('HomePageProfileCapsuleComponent', () => {
     expect(fixture.nativeElement.textContent.trim()).toBe('asha@onevo.test');
   });
 
+  it('falls back to email when userName is blank (whitespace only)', async () => {
+    await TestBed.configureTestingModule({ imports: [HomePageProfileCapsuleComponent] }).compileComponents();
+    const fixture = TestBed.createComponent(HomePageProfileCapsuleComponent);
+    fixture.componentRef.setInput('userName', '   ');
+    fixture.componentRef.setInput('email', 'asha@onevo.test');
+    fixture.detectChanges();
+
+    expect(fixture.nativeElement.textContent.trim()).toBe('asha@onevo.test');
+  });
+
   it('shows "User" when neither userName nor email is provided', async () => {
     await TestBed.configureTestingModule({ imports: [HomePageProfileCapsuleComponent] }).compileComponents();
     const fixture = TestBed.createComponent(HomePageProfileCapsuleComponent);
     fixture.detectChanges();
 
     expect(fixture.nativeElement.textContent.trim()).toBe('User');
+  });
+
+  it('shows "User" when both inputs are explicitly null', async () => {
+    await TestBed.configureTestingModule({ imports: [HomePageProfileCapsuleComponent] }).compileComponents();
+    const fixture = TestBed.createComponent(HomePageProfileCapsuleComponent);
+    fixture.componentRef.setInput('userName', null);
+    fixture.componentRef.setInput('email', null);
+    fixture.detectChanges();
+
+    expect(fixture.nativeElement.textContent.trim()).toBe('User');
+  });
+
+  it('renders a long identity value fully in the DOM and exposes it via title (visual truncation is CSS-only)', async () => {
+    await TestBed.configureTestingModule({ imports: [HomePageProfileCapsuleComponent] }).compileComponents();
+    const fixture = TestBed.createComponent(HomePageProfileCapsuleComponent);
+    const longEmail = 'a.very.long.employee.email.address.for.testing@onevo-enterprise-workspace.example.com';
+    fixture.componentRef.setInput('email', longEmail);
+    fixture.detectChanges();
+
+    const span = fixture.nativeElement.querySelector('.profile-capsule') as HTMLElement;
+    expect(span.textContent?.trim()).toBe(longEmail);
+    expect(span.getAttribute('title')).toBe(longEmail);
   });
 });
 ```
@@ -139,17 +173,17 @@ import { Component, computed, input } from '@angular/core';
   styleUrl: './home-page-profile-capsule.component.css'
 })
 export class HomePageProfileCapsuleComponent {
-  userName = input<string>();
-  email = input<string>();
+  readonly userName = input<string | null>();
+  readonly email = input<string | null>();
 
-  displayText = computed(() => this.userName() || this.email() || 'User');
+  readonly displayText = computed(() => this.userName()?.trim() || this.email()?.trim() || 'User');
 }
 ```
 
 Create `src/app/shared/ui/home-page-profile-capsule/home-page-profile-capsule.component.html`:
 
 ```html
-<span class="profile-capsule">{{ displayText() }}</span>
+<span class="profile-capsule" [title]="displayText()">{{ displayText() }}</span>
 ```
 
 Create `src/app/shared/ui/home-page-profile-capsule/home-page-profile-capsule.component.css`:
@@ -158,6 +192,7 @@ Create `src/app/shared/ui/home-page-profile-capsule/home-page-profile-capsule.co
 .profile-capsule {
   display: inline-flex;
   align-items: center;
+  max-width: 18rem;
   padding: 0.375rem 1rem;
   border-radius: 999px;
   background: var(--dashboard-profile-background);
@@ -167,13 +202,15 @@ Create `src/app/shared/ui/home-page-profile-capsule/home-page-profile-capsule.co
   font-weight: 500;
   line-height: 1;
   white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 ```
 
 - [ ] **Step 4: Run tests to verify they pass**
 
 Run: `npx ng test --watch=false`
-Expected: PASS — all 3 new tests plus the existing 84 pass (87 total).
+Expected: PASS — all 6 new tests plus the existing 84 pass (90 total).
 
 - [ ] **Step 5: Commit**
 
@@ -270,7 +307,7 @@ nav {
 - [ ] **Step 4: Run test to verify it passes**
 
 Run: `npx ng test --watch=false`
-Expected: PASS — new test plus all prior tests (88 total).
+Expected: PASS — new test plus all prior tests (91 total).
 
 - [ ] **Step 5: Commit**
 
@@ -291,7 +328,7 @@ git commit -m "feat(dashboard): add SideNavbarComponent"
 
 **Interfaces:**
 - Consumes: `HomePageProfileCapsuleComponent` (selector `app-home-page-profile-capsule`, inputs `userName`/`email`) from Task 2.
-- Produces: `TopNavbarComponent` (selector `app-top-navbar`), inputs `userName = input<string>()`, `email = input<string>()`, both passed straight through to the capsule.
+- Produces: `TopNavbarComponent` (selector `app-top-navbar`), inputs `readonly userName = input<string | null>()`, `readonly email = input<string | null>()`, both passed straight through to the capsule.
 
 - [ ] **Step 1: Write the failing test**
 
@@ -344,8 +381,8 @@ import { HomePageProfileCapsuleComponent } from '../../../shared/ui/home-page-pr
   changeDetection: ChangeDetectionStrategy.OnPush
 })
 export class TopNavbarComponent {
-  userName = input<string>();
-  email = input<string>();
+  readonly userName = input<string | null>();
+  readonly email = input<string | null>();
 }
 ```
 
@@ -379,7 +416,7 @@ Create `src/app/layouts/main-layout/top-navbar/top-navbar.component.css`:
 - [ ] **Step 4: Run tests to verify they pass**
 
 Run: `npx ng test --watch=false`
-Expected: PASS — 2 new tests plus all prior tests (90 total).
+Expected: PASS — 2 new tests plus all prior tests (93 total).
 
 - [ ] **Step 5: Commit**
 
@@ -489,14 +526,11 @@ Replace `src/app/layouts/main-layout/main-layout.component.html` with:
 
 <div class="main-layout">
   <app-side-navbar />
+  <app-top-navbar [email]="email()" />
 
-  <section class="application-shell">
-    <app-top-navbar [email]="email()" />
-
-    <main id="main-content" class="main-content" tabindex="-1">
-      <router-outlet />
-    </main>
-  </section>
+  <main id="main-content" class="main-content" tabindex="-1">
+    <router-outlet />
+  </main>
 </div>
 
 <div
@@ -511,6 +545,8 @@ Replace `src/app/layouts/main-layout/main-layout.component.html` with:
   {{ announcementMessage() }}
 </div>
 ```
+
+Note: the `<section class="application-shell">` wrapper from the original design is removed — `app-side-navbar`, `app-top-navbar`, and `<main>` are now direct children of `.main-layout`, placed by explicit named grid areas (correction #3) rather than a nested grid.
 
 Replace `src/app/layouts/main-layout/main-layout.component.css` with:
 
@@ -541,22 +577,33 @@ Replace `src/app/layouts/main-layout/main-layout.component.css` with:
 .main-layout {
   display: grid;
   grid-template-columns: 5rem minmax(0, 1fr);
+  grid-template-rows: auto minmax(0, 1fr);
+  grid-template-areas:
+    "sidebar navbar"
+    "sidebar main";
   min-height: 100dvh;
+  background: var(--dashboard-surface-color);
 }
 
-.application-shell {
-  display: grid;
-  grid-template-rows: auto minmax(0, 1fr);
+app-side-navbar {
+  grid-area: sidebar;
+  min-height: 0;
+}
+
+app-top-navbar {
+  grid-area: navbar;
   min-width: 0;
-  background: var(--dashboard-background-color);
 }
 
 .main-content {
+  grid-area: main;
   min-width: 0;
+  min-height: 0;
   padding: 1.5rem;
   outline: none;
   background: var(--dashboard-background-color);
   border-top-left-radius: var(--dashboard-content-radius);
+  overflow: hidden;
 }
 
 .main-content:focus-visible {
@@ -591,6 +638,11 @@ Replace `src/app/layouts/main-layout/main-layout.component.css` with:
 @media (max-width: 768px) {
   .main-layout {
     grid-template-columns: 1fr;
+    grid-template-rows: auto auto minmax(0, 1fr);
+    grid-template-areas:
+      "navbar"
+      "sidebar"
+      "main";
   }
 
   .main-content {
@@ -600,12 +652,16 @@ Replace `src/app/layouts/main-layout/main-layout.component.css` with:
 }
 ```
 
-Note: the sidebar/navbar surface color and border are owned by `SideNavbarComponent`/`TopNavbarComponent`'s own `:host` styles (Tasks 3-4), not repeated here — `MainLayoutComponent`'s stylesheet only owns the grid shell, the white content background, and the corner radius, per single-responsibility.
+Notes:
+- The sidebar/navbar surface color and border are owned by `SideNavbarComponent`/`TopNavbarComponent`'s own `:host` styles (Tasks 3-4), not repeated here.
+- `.main-layout` itself carries `background: var(--dashboard-surface-color)` (correction #2) — this is what shows through the small triangle revealed by `.main-content`'s rounded top-left corner. If this were white (as in the original, pre-correction design), the white rounded box would blend into a white background and the curve would be invisible.
+- `overflow: hidden` on `.main-content` (correction #2) ensures routed page content can never render past its own rounded corner and visually hide the curve.
+- `min-width: 0` / `min-height: 0` on the flexible grid items (correction #3) prevent the grid tracks from growing to fit oversized content and causing page overflow.
 
 - [ ] **Step 4: Run tests to verify they pass**
 
 Run: `npx ng test --watch=false`
-Expected: PASS — 2 new tests plus all prior tests (92 total).
+Expected: PASS — 2 new tests plus all prior tests (95 total).
 
 - [ ] **Step 5: Commit**
 
@@ -678,7 +734,7 @@ export class DashboardHomeComponent {}
 - [ ] **Step 4: Run test to verify it passes**
 
 Run: `npx ng test --watch=false`
-Expected: PASS — new test plus all prior tests (92 total; two old tests were replaced by one new one, net -1, so 92 stays consistent with Task 5's count).
+Expected: PASS — new test replaces the previous file's two tests (net -1 from Task 5's 95, so 94 total).
 
 - [ ] **Step 5: Commit**
 
@@ -698,7 +754,7 @@ git commit -m "feat(dashboard): remove welcome/email/sign-out placeholder from D
 - [ ] **Step 1: Run the full test suite**
 
 Run: `npx ng test --watch=false`
-Expected: PASS — all tests green (92 total per the running count above; treat the exact number as informational, not a hard assertion — what matters is zero failures).
+Expected: PASS — all tests green (94 total per the running count above; treat the exact number as informational, not a hard assertion — what matters is zero failures).
 
 - [ ] **Step 2: Run a production build**
 
@@ -724,5 +780,6 @@ If the manual check in Step 3 required no code changes, there is nothing to comm
 ## Self-Review Notes
 
 - **Spec coverage:** every `layout_requirements`/`new_component`/`color_system`/`styling_rules`/`acceptance_criteria` item from the approved design spec maps to Task 1 (colors), Task 2 (capsule), Task 3 (sidebar), Task 4 (top navbar), Task 5 (shell wiring + corner radius + yellow-background removal), Task 6 (dashboard-home cleanup). `future_color_configuration` is intentionally not a task — the spec's Deltas §out-of-scope excludes it, only the CSS-variable structure from Task 1 satisfies "ready for it."
-- **File extension correction:** the original request's `suggested_files` used `.scss` for the capsule component; this repo has no `.scss` anywhere (confirmed via search) and uses plain `.css` throughout, so all new stylesheets in this plan are `.css` to match existing convention.
-- **Type/signature consistency checked:** `HomePageProfileCapsuleComponent.userName`/`email` (Task 2) match the inputs `TopNavbarComponent` declares and forwards (Task 4) match what `MainLayoutComponent` binds only `email` to (Task 5), leaving `userName` correctly unbound end-to-end per the Global Constraints.
+- **File extension correction:** the original request's `suggested_files` used `.scss` for the capsule component (and repeated this again in a later correction request); this repo has no `.scss` anywhere (confirmed via search, no `sass` devDependency) and uses plain `.css` throughout, so all new stylesheets in this plan are `.css` to match existing convention and avoid a silent, unbuilt-Sass compile failure.
+- **Type/signature consistency checked:** `HomePageProfileCapsuleComponent.userName`/`email` (Task 2) are `input<string | null>()`, matching `TopNavbarComponent`'s identically-typed inputs (Task 4) and what `MainLayoutComponent` binds only `email` to (Task 5), leaving `userName` correctly unbound end-to-end per the Global Constraints.
+- **Four post-approval corrections folded in** (see the design spec's "Implementation corrections" section for full rationale): (1) consistent `input<string | null>()` + `readonly` + `.trim()` fallback typing across Tasks 2 and 4; (2) `.main-layout` grid background changed to `--dashboard-surface-color` (was incorrectly `--dashboard-background-color` on the old `.application-shell` wrapper, which would have made the rounded corner invisible against a white-on-white background) plus `overflow: hidden` on `.main-content`, both in Task 5; (3) the nested two-level grid replaced with one flat grid using named `grid-template-areas` on `.main-layout`, removing the `.application-shell` wrapper entirely, in Task 5; (4) `max-width`/ellipsis/`title` attribute added to the capsule in Task 2 so long emails truncate safely without losing the full value for hover/assistive tech. Test counts in Tasks 3-7 were recalculated to account for Task 2 growing from 3 to 6 tests.
