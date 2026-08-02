@@ -1,0 +1,18 @@
+<app-card title="Signing you in">
+  @if (failed()) {
+    <div class="space-y-4">
+      <p class="text-sm text-red-600" role="alert">
+        {{ store.error() || 'This sign-in link is invalid or has expired. Please sign in again.' }}
+      </p>
+      <button
+        type="button"
+        class="text-sm font-medium text-slate-700 underline"
+        (click)="backToLogin()"
+      >
+        Back to sign in
+      </button>
+    </div>
+  } @else {
+    <app-loader label="Completing sign-in..." />
+  }
+</app-card>

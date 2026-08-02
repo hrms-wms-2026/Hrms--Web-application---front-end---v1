@@ -1,0 +1,37 @@
+import { buildTenantUrl, getRootHostname } from './tenant-redirect';
+
+describe('buildTenantUrl', () => {
+  it('prepends the slug to the current hostname, keeping protocol and port', () => {
+    const { protocol, hostname, port } = window.location;
+    const portSuffix = port ? `:${port}` : '';
+
+    expect(buildTenantUrl('acme', '/dashboard')).toBe(`${protocol}//acme.${hostname}${portSuffix}/dashboard`);
+  });
+});
+
+describe('getRootHostname', () => {
+  it('collapses any *.localhost subdomain to localhost', () => {
+    expect(getRootHostname('acme.localhost')).toBe('localhost');
+    expect(getRootHostname('acme.tenant.localhost')).toBe('localhost');
+  });
+
+  it('returns bare localhost unchanged', () => {
+    expect(getRootHostname('localhost')).toBe('localhost');
+  });
+
+  it('returns an IPv4 address unchanged', () => {
+    expect(getRootHostname('192.168.1.1')).toBe('192.168.1.1');
+  });
+
+  it('strips the leftmost label from a multi-label domain', () => {
+    expect(getRootHostname('acme.onevo.com')).toBe('onevo.com');
+  });
+
+  it('strips only the tenant label when the root domain itself has multiple labels', () => {
+    expect(getRootHostname('acme.staging.onevo.com')).toBe('staging.onevo.com');
+  });
+
+  it('returns a bare two-label domain unchanged', () => {
+    expect(getRootHostname('onevo.com')).toBe('onevo.com');
+  });
+});
