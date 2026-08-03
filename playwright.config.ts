@@ -7,7 +7,10 @@ export default defineConfig({
   retries: process.env.CI ? 2 : 0,
   reporter: 'html',
   use: {
-    baseURL: 'http://localhost:4200',
+    // Local dev (`npm start`) is HTTPS-only (ng serve --ssl true); the self-signed cert requires
+    // ignoreHTTPSErrors since Chromium doesn't trust it by default.
+    baseURL: 'https://localhost:4200',
+    ignoreHTTPSErrors: true,
     trace: 'on-first-retry',
   },
   projects: [
@@ -18,7 +21,8 @@ export default defineConfig({
   ],
   webServer: {
     command: 'npm start',
-    url: 'http://localhost:4200',
+    url: 'https://localhost:4200',
+    ignoreHTTPSErrors: true,
     reuseExistingServer: !process.env.CI,
     timeout: 120_000,
   },

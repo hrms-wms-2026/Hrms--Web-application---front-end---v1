@@ -1,5 +1,6 @@
 import { signalStore, withState, withMethods, patchState } from '@ngrx/signals';
 import { inject } from '@angular/core';
+import { HttpErrorResponse } from '@angular/common/http';
 import { firstValueFrom } from 'rxjs';
 import { AuthApiService } from '../data-access/auth-api.service';
 import { LoginRequestDto } from '../models/dto/login-request.dto';
@@ -152,9 +153,16 @@ export const AuthStore = signalStore(
           loading: false
         });
       } catch (err) {
+        // status 0 means the request never reached the server (network/TLS/CORS failure on the
+        // tenant host), which is a distinct problem from a rejected/expired exchange code and
+        // needs a different fix on the user's end - see error.interceptor.ts's retry condition
+        // and ErrorHandlerService's ERROR_TAXONOMY[0] for the same status-0 convention.
+        const isUnreachable = err instanceof HttpErrorResponse && err.status === 0;
         patchState(store, {
           loading: false,
-          error: extractErrorMessage(err, 'This sign-in link is invalid or has expired. Please sign in again.')
+          error: isUnreachable
+            ? 'Could not reach the tenant workspace. Check your local HTTPS certificate and try again.'
+            : extractErrorMessage(err, 'This sign-in link is invalid or has expired. Please sign in again.')
         });
         throw err;
       }

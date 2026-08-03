@@ -1,9 +1,23 @@
 import { TestBed } from '@angular/core/testing';
 import { provideHttpClient } from '@angular/common/http';
 import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
-import { AuthApiService } from './auth-api.service';
+import { AuthApiService, getSystemApiUrl } from './auth-api.service';
 import { environment } from '@environments/environment';
 import { AuthResponseDto } from '../models/dto/auth-response.dto';
+
+describe('getSystemApiUrl', () => {
+  it('retargets a tenant-subdomain apiUrl to the root hostname, for login() from a tenant host', () => {
+    expect(getSystemApiUrl('https://acme.localhost:7229/api/v1')).toBe('https://localhost:7229/api/v1');
+  });
+
+  it('retargets a production tenant apiUrl to the root domain', () => {
+    expect(getSystemApiUrl('https://acme.onevo.com/api/v1')).toBe('https://onevo.com/api/v1');
+  });
+
+  it('leaves an already-root apiUrl unchanged', () => {
+    expect(getSystemApiUrl('https://localhost:7229/api/v1')).toBe('https://localhost:7229/api/v1');
+  });
+});
 
 describe('AuthApiService', () => {
   let service: AuthApiService;

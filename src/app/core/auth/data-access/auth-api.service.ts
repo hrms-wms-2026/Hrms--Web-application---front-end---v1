@@ -10,7 +10,7 @@ import { SessionExchangeRequestDto } from '../models/dto/session-exchange-reques
 
 import { getRootHostname } from '../utils/tenant-redirect';
 
-function getSystemApiUrl(apiUrl: string): string {
+export function getSystemApiUrl(apiUrl: string): string {
   try {
     const url = new URL(apiUrl);
     url.hostname = getRootHostname(url.hostname);
