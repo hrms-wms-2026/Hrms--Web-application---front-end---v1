@@ -1,0 +1,18 @@
+<app-card title="Before you continue">
+  <div class="space-y-4">
+    @for (doc of store.pendingLegalDocuments(); track doc.document_type) {
+      <div class="rounded-md border border-slate-200 p-4">
+        <h3 class="font-medium text-slate-900">{{ doc.title }}</h3>
+        <p class="text-sm text-slate-500">Version {{ doc.version }}</p>
+      </div>
+    }
+
+    @if (store.error()) {
+      <p class="text-sm text-red-600" role="alert">{{ store.error() }}</p>
+    }
+
+    <app-button [loading]="store.loading()" [disabled]="store.loading()" (pressed)="accept()">
+      Accept and continue
+    </app-button>
+  </div>
+</app-card>

@@ -6,8 +6,11 @@ export const API_ENDPOINTS = {
     login: '/auth/login',
     logout: '/auth/logout',
     me: '/auth/me',
-    refresh: '/auth/refresh',
-    context: '/auth/context',
+    sessionExchange: '/auth/session-exchange',
+  },
+
+  legal: {
+    completeLogin: '/legal/acceptances/complete-login',
   },
 
   employees: {
