@@ -1,5 +1,11 @@
 import { RuntimeConfig } from '../app/core/config/runtime-config.model';
+import { buildLocalApiUrl, buildLocalWsUrl } from './environment-url.helper';
 
+// Local development is HTTPS-only: `dotnet run` uses ONEVO.Api/Properties/launchSettings.json's
+// single "https" profile (https://localhost:7229) and `npm start` runs `ng serve --ssl true`
+// (https://localhost:4200). There is no local HTTP fallback and nothing here reads
+// window.location.protocol to branch between HTTP/HTTPS or between backend ports.
+//
 // The backend resolves tenant context purely from the request Host header
 // (HostTenantResolutionMiddleware): bare "localhost" is System context (only POST /auth/login
 // works there - tenant-host password login is explicitly rejected), while "{slug}.localhost" is
@@ -9,13 +15,13 @@ import { RuntimeConfig } from '../app/core/config/runtime-config.model';
 // (correct for POST /auth/login), and after AuthStore redirects the browser to
 // "{workspace.slug}.<root>" following a fully-authenticated response, this file re-evaluates on
 // that fresh page load with the tenant subdomain already in window.location.hostname.
-const backendPort = 5139;
+const { hostname } = window.location;
 
 export const environment = {
   production: false,
   environmentName: 'development',
-  apiUrl: `http://${window.location.hostname}:${backendPort}/api/v1`,
-  wsUrl: `ws://${window.location.hostname}:${backendPort}/ws`,
+  apiUrl: buildLocalApiUrl(hostname),
+  wsUrl: buildLocalWsUrl(hostname),
   enableDebugLogs: true,
   appName: 'ONEVO HRMS',
 } as const satisfies RuntimeConfig;

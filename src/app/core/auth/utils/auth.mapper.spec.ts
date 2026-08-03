@@ -42,7 +42,7 @@ describe('toCurrentUserViewModel', () => {
       legal_acceptance_required: false,
       pending_legal_documents: null,
       expires_at: '2026-07-29T11:01:11.5082372+00:00',
-      continue_url: 'http://acme.localhost:4200/auth/continue?code=raw',
+      continue_url: 'https://acme.localhost:4200/auth/continue?code=raw',
       workspace: { slug: 'acme', display_name: 'Acme' }
     };
 
@@ -50,7 +50,7 @@ describe('toCurrentUserViewModel', () => {
 
     expect(view.authenticated).toBe(false);
     expect(view.redirectRequired).toBe(true);
-    expect(view.continueUrl).toBe('http://acme.localhost:4200/auth/continue?code=raw');
+    expect(view.continueUrl).toBe('https://acme.localhost:4200/auth/continue?code=raw');
   });
 
   it('maps a pending-legal-acceptance response', () => {
@@ -72,7 +72,7 @@ describe('toCurrentUserViewModel', () => {
         }
       ],
       expires_at: null,
-      continue_url: 'http://localhost:5139/api/v1/legal/acceptances/complete-login',
+      continue_url: 'https://localhost:7229/api/v1/legal/acceptances/complete-login',
       workspace: { slug: 'acme', display_name: 'Acme' }
     };
 

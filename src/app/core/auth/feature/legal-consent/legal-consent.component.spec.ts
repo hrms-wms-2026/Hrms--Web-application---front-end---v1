@@ -45,7 +45,7 @@ describe('LegalConsentComponent', () => {
       pendingLegalDocuments: () => docs,
       acceptLegalDocuments: acceptSpy,
       redirectRequired: () => true,
-      continueUrl: () => 'http://acme.localhost:4200/auth/continue?code=raw-exchange-code',
+      continueUrl: () => 'https://acme.localhost:4200/auth/continue?code=raw-exchange-code',
       loading: () => false,
       error: () => null
     });
@@ -58,7 +58,7 @@ describe('LegalConsentComponent', () => {
         { document_type: 'terms', version: '1.0', decision: 'accepted' }
       ]
     });
-    expect(window.location.href).toBe('http://acme.localhost:4200/auth/continue?code=raw-exchange-code');
+    expect(window.location.href).toBe('https://acme.localhost:4200/auth/continue?code=raw-exchange-code');
 
     window.location = originalLocation as unknown as string & Location;
   });

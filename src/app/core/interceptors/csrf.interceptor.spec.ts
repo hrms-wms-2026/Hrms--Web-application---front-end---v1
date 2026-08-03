@@ -31,6 +31,7 @@ describe('csrfInterceptor', () => {
 
     const req = httpMock.expectOne('/api/v1/employees');
     expect(req.request.headers.get('X-CSRF-Token')).toBe('full-session-token');
+    expect(req.request.body).toEqual({});
     req.flush({});
   });
 

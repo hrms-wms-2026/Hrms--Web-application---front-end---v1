@@ -1,4 +1,5 @@
 import { TestBed } from '@angular/core/testing';
+import { HttpErrorResponse } from '@angular/common/http';
 import { of, throwError } from 'rxjs';
 import { AuthStore } from './auth.store';
 import { AuthApiService } from '../data-access/auth-api.service';
@@ -83,7 +84,7 @@ describe('AuthStore', () => {
       ...authenticatedDto,
       authenticated: false,
       redirect_required: true,
-      continue_url: 'http://acme.localhost:4200/auth/continue?code=raw'
+      continue_url: 'https://acme.localhost:4200/auth/continue?code=raw'
     };
     const store = setup({ login: () => of(exchangeRequiredDto) } as Partial<AuthApiService>);
 
@@ -91,7 +92,7 @@ describe('AuthStore', () => {
 
     expect(store.authenticated()).toBe(false);
     expect(store.redirectRequired()).toBe(true);
-    expect(store.continueUrl()).toBe('http://acme.localhost:4200/auth/continue?code=raw');
+    expect(store.continueUrl()).toBe('https://acme.localhost:4200/auth/continue?code=raw');
   });
 
   it('exchangeSession populates state on success', async () => {
@@ -110,6 +111,17 @@ describe('AuthStore', () => {
     await expect(store.exchangeSession('bad-code')).rejects.toBeTruthy();
 
     expect(store.error()).toBe('This sign-in link is invalid or has expired. Please sign in again.');
+    expect(store.loading()).toBe(false);
+  });
+
+  it('exchangeSession reports an unreachable-host error on network/TLS/CORS failure (status 0)', async () => {
+    const store = setup({
+      sessionExchange: () => throwError(() => new HttpErrorResponse({ status: 0 }))
+    } as Partial<AuthApiService>);
+
+    await expect(store.exchangeSession('some-code')).rejects.toBeTruthy();
+
+    expect(store.error()).toBe('Could not reach the tenant workspace. Check your local HTTPS certificate and try again.');
     expect(store.loading()).toBe(false);
   });
 

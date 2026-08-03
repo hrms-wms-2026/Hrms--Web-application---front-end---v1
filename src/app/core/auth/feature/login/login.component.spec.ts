@@ -85,7 +85,7 @@ describe('LoginComponent', () => {
       login: vi.fn().mockResolvedValue(undefined),
       legalAcceptanceRequired: () => false,
       redirectRequired: () => true,
-      continueUrl: () => 'http://acme.localhost:4200/auth/continue?code=raw-exchange-code',
+      continueUrl: () => 'https://acme.localhost:4200/auth/continue?code=raw-exchange-code',
       loading: () => false,
       error: () => null
     });
@@ -95,7 +95,7 @@ describe('LoginComponent', () => {
     fixture.componentInstance.form.setValue({ email: 'a@b.com', password: 'secret' });
     await fixture.componentInstance.submit();
 
-    expect(window.location.href).toBe('http://acme.localhost:4200/auth/continue?code=raw-exchange-code');
+    expect(window.location.href).toBe('https://acme.localhost:4200/auth/continue?code=raw-exchange-code');
     expect(navigateSpy).not.toHaveBeenCalled();
 
     window.location = originalLocation as unknown as string & Location;
