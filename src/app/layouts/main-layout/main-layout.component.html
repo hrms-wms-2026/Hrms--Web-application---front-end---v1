@@ -3,23 +3,12 @@
 </a>
 
 <div class="main-layout">
-  <aside class="sidebar" aria-label="Primary navigation">
-    <div class="sidebar__brand">ONEVO</div>
+  <app-side-navbar />
+  <app-top-navbar [email]="email()" />
 
-    <nav aria-label="Main navigation">
-      <p class="shell-placeholder">Navigation will be configured later.</p>
-    </nav>
-  </aside>
-
-  <section class="application-shell">
-    <header class="navbar">
-      <span class="navbar__title">ONEVO Workspace</span>
-    </header>
-
-    <main id="main-content" class="main-content" tabindex="-1">
-      <router-outlet />
-    </main>
-  </section>
+  <main id="main-content" class="main-content" tabindex="-1">
+    <router-outlet />
+  </main>
 </div>
 
 <div

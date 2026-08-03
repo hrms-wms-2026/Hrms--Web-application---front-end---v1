@@ -1,14 +1,19 @@
-import { ChangeDetectionStrategy, Component, signal } from '@angular/core';
+import { ChangeDetectionStrategy, Component, inject, signal } from '@angular/core';
 import { RouterOutlet } from '@angular/router';
+import { AuthStore } from '../../core/auth/state/auth.store';
+import { SideNavbarComponent } from './side-navbar/side-navbar.component';
+import { TopNavbarComponent } from './top-navbar/top-navbar.component';
 
 @Component({
   selector: 'app-main-layout',
   standalone: true,
-  imports: [RouterOutlet],
+  imports: [RouterOutlet, SideNavbarComponent, TopNavbarComponent],
   templateUrl: './main-layout.component.html',
   styleUrl: './main-layout.component.css',
-  changeDetection: ChangeDetectionStrategy.OnPush,
+  changeDetection: ChangeDetectionStrategy.OnPush
 })
 export class MainLayoutComponent {
+  private readonly authStore = inject(AuthStore);
+  readonly email = this.authStore.email;
   readonly announcementMessage = signal('');
 }
