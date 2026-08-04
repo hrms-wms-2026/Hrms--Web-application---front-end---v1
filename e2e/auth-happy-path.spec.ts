@@ -98,5 +98,7 @@ test('login -> legal consent -> tenant redirect -> dashboard', async ({ page, ba
   // Real cross-origin reload + lazy chunk load + session-exchange + /auth/me chain needs more
   // headroom than the default 5s assertion timeout.
   await expect(page).toHaveURL(/\/dashboard$/, { timeout: 15_000 });
-  await expect(page.getByRole('heading', { name: `Welcome, ${USER_EMAIL}` })).toBeVisible();
+  // Dashboard skeleton redesign (2026-07-30) moved the identity display from a page heading
+  // into the top navbar's profile capsule - see HomePageProfileCapsuleComponent.
+  await expect(page.locator('.profile-capsule')).toHaveText(USER_EMAIL, { timeout: 15_000 });
 });
