@@ -13,7 +13,7 @@ export type ButtonVariant = 'primary' | 'secondary';
       (click)="pressed.emit($event)"
     >
       @if (loading()) {
-        <span class="mr-2 inline-block h-4 w-4 animate-spin rounded-full border-2 border-white/40 border-t-white"></span>
+        <span class="mr-2 inline-block h-4 w-4 animate-spin rounded-full border-2 border-[var(--color-accent-contrast)]/40 border-t-[var(--color-accent-contrast)]"></span>
       }
       <ng-content />
     </button>
@@ -28,10 +28,11 @@ export class ButtonComponent {
 
   classes(): string {
     const base =
-      'inline-flex w-full items-center justify-center rounded-md px-4 py-2 text-sm font-medium transition-colors disabled:cursor-not-allowed disabled:opacity-60';
+      'inline-flex w-full items-center justify-center rounded-md px-4 py-2 text-sm font-medium transition-colors disabled:cursor-not-allowed disabled:opacity-60 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-focus-ring)]';
     const variants: Record<ButtonVariant, string> = {
-      primary: 'bg-slate-900 text-white hover:bg-slate-700',
-      secondary: 'bg-white text-slate-900 border border-slate-300 hover:bg-slate-50'
+      primary: 'bg-[var(--color-accent)] text-[var(--color-accent-contrast)] hover:bg-[var(--color-accent-hover)]',
+      secondary:
+        'bg-[var(--color-surface)] text-[var(--color-text-primary)] border border-[var(--color-border)] hover:bg-[var(--color-surface-secondary)]'
     };
     return `${base} ${variants[this.variant()]}`;
   }

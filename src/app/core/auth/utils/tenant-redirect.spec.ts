@@ -1,4 +1,4 @@
-import { buildTenantUrl, getRootHostname } from './tenant-redirect';
+import { buildRootUrl, buildTenantUrl, getRootHostname, isTenantHostname } from './tenant-redirect';
 
 describe('buildTenantUrl', () => {
   it('prepends the slug to the current hostname, keeping protocol and port', () => {
@@ -33,5 +33,34 @@ describe('getRootHostname', () => {
 
   it('returns a bare two-label domain unchanged', () => {
     expect(getRootHostname('onevo.com')).toBe('onevo.com');
+  });
+});
+
+describe('isTenantHostname', () => {
+  it('is true for a *.localhost tenant subdomain', () => {
+    expect(isTenantHostname('acme.localhost')).toBe(true);
+    expect(isTenantHostname('dapi.localhost')).toBe(true);
+  });
+
+  it('is true for a production tenant subdomain', () => {
+    expect(isTenantHostname('acme.onevo.com')).toBe(true);
+  });
+
+  it('is false for the bare root host', () => {
+    expect(isTenantHostname('localhost')).toBe(false);
+    expect(isTenantHostname('onevo.com')).toBe(false);
+  });
+
+  it('is false for an IPv4 address', () => {
+    expect(isTenantHostname('192.168.1.1')).toBe(false);
+  });
+});
+
+describe('buildRootUrl', () => {
+  it('keeps protocol/port unchanged when already on the root host', () => {
+    const { protocol, hostname, port } = window.location;
+    const portSuffix = port ? `:${port}` : '';
+
+    expect(buildRootUrl('/auth/login')).toBe(`${protocol}//${hostname}${portSuffix}/auth/login`);
   });
 });

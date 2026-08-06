@@ -57,6 +57,9 @@ describe('SessionExchangeComponent', () => {
     expect(fixture.componentInstance.failed()).toBe(true);
     expect(navigateSpy).not.toHaveBeenCalled();
     expect(fixture.nativeElement.textContent).toContain('This sign-in link is invalid or has expired.');
+    // A failed/expired session-exchange is a distinct problem from a missing legal-acceptance
+    // cookie (the root cause of this bug) and must never be reported as one.
+    expect(fixture.nativeElement.textContent).not.toContain('Legal acceptance session');
   });
 
   it('shows the failure state without calling exchangeSession when no code is present', async () => {

@@ -19,6 +19,10 @@ export class NotificationService {
     this.push('success', message);
   }
 
+  info(message: string): void {
+    this.push('info', message);
+  }
+
   dismiss(id: number): void {
     this.notifications.update((list) => list.filter((n) => n.id !== id));
   }

@@ -1,12 +1,19 @@
 :host {
   display: flex;
   align-items: center;
-  justify-content: flex-end;
+  justify-content: space-between;
   min-height: 2.75rem;
   width: 100%;
   padding: 0 1rem;
-  background: var(--dashboard-surface-color);
-  border-bottom: 1px solid var(--dashboard-border-color);
+  background: var(--color-app-bg);
+  border-bottom: 1px solid var(--color-border);
+}
+
+.top-navbar__left,
+.top-navbar__right {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
 }
 
 @media (max-width: 768px) {

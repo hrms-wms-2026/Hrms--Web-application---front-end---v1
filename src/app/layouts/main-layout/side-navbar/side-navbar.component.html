@@ -1,1 +1,17 @@
-<nav aria-label="Main navigation"></nav>
+<nav aria-label="Main navigation" class="nav-rail">
+  @for (item of visibleItems(); track item.id) {
+    <a
+      [routerLink]="item.path"
+      class="nav-rail-item"
+      [class.nav-rail-item--active]="activeItem()?.id === item.id"
+      [attr.aria-current]="activeItem()?.id === item.id ? 'page' : null"
+    >
+      <app-nav-icon [name]="item.icon!" />
+      <span>{{ item.label }}</span>
+    </a>
+  }
+</nav>
+
+@if (activeChildren().length > 0) {
+  <app-sub-sidebar [sectionLabel]="activeItem()!.label" [items]="activeChildren()" />
+}

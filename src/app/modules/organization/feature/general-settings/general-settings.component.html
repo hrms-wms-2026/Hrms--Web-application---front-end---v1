@@ -1,0 +1,126 @@
+@if (!hasAccess()) {
+  <app-page-header title="General Settings" />
+  <app-empty-state
+    title="You don't have access to this."
+    description="Viewing and editing General Settings requires the legal_entity:update permission."
+  />
+} @else if (!selectedLegalEntity()) {
+  <app-page-header title="General Settings" />
+  <app-empty-state title="Select a company to edit General Settings." />
+} @else {
+  <app-page-header [title]="selectedLegalEntity()!.name" subtitle="General Settings" />
+
+  <!-- Settings sub-navigation: General Settings is this page; Roles & Permissions and Notification
+       Settings are separately gated, real routes already rendered by the global sub-sidebar (see
+       side-navbar.component.html + nav-items.config.ts). Policy Configuration, Devices & Connections,
+       and Audit Log have no backend permission string yet, so they are inert placeholders here rather
+       than gated NAV_ITEMS entries. -->
+  <ul class="settings-inline-nav" aria-label="More settings (coming soon)">
+    <li aria-disabled="true">Policy Configuration <span class="settings-inline-nav__badge">Coming soon</span></li>
+    <li aria-disabled="true">Devices &amp; Connections <span class="settings-inline-nav__badge">Coming soon</span></li>
+    <li aria-disabled="true">Audit Log <span class="settings-inline-nav__badge">Coming soon</span></li>
+  </ul>
+
+  @if (settingsStore.loading()) {
+    <div class="skeleton-block" aria-busy="true" aria-label="Loading General Settings"></div>
+  } @else if (settingsStore.loadError()) {
+    <app-error-state [message]="settingsStore.loadError()!" [retryable]="true" (retry)="settingsStore.load(selectedLegalEntity()!.id)" />
+  } @else if (settingsStore.settings()) {
+    <form [formGroup]="form" (ngSubmit)="onSubmit()" class="general-settings-form">
+
+      <section class="settings-section">
+        <h2>Company Identity</h2>
+        <app-input label="Company name" [value]="form.controls.name.value" (valueChange)="form.controls.name.setValue($event)"
+          (blurred)="form.controls.name.markAsTouched()"
+          [error]="form.controls.name.touched && form.controls.name.invalid ? 'Company name is required (max 200 characters).' : ''" />
+        <app-input label="Company code" [value]="form.controls.companyCode.value" (valueChange)="form.controls.companyCode.setValue($event)"
+          (blurred)="form.controls.companyCode.markAsTouched()"
+          [error]="form.controls.companyCode.touched && form.controls.companyCode.invalid ? 'Company code is required (max 20 characters).' : ''" />
+        <app-input label="Company registration number" [value]="form.controls.registrationNumber.value" (valueChange)="form.controls.registrationNumber.setValue($event)"
+          (blurred)="form.controls.registrationNumber.markAsTouched()"
+          [error]="form.controls.registrationNumber.touched && form.controls.registrationNumber.invalid ? 'Registration number is required (max 50 characters).' : ''" />
+        <app-input label="Tax registration number" [value]="form.controls.taxRegistrationNumber.value" (valueChange)="form.controls.taxRegistrationNumber.setValue($event)"
+          [error]="form.controls.taxRegistrationNumber.invalid ? 'Max 80 characters.' : ''" />
+        <app-input label="VAT/GST number" [value]="form.controls.vatGstNumber.value" (valueChange)="form.controls.vatGstNumber.setValue($event)"
+          [error]="form.controls.vatGstNumber.invalid ? 'Max 50 characters.' : ''" />
+        <app-select label="Status" [options]="STATUS_OPTIONS" [value]="form.controls.status.value" (valueChange)="form.controls.status.setValue($any($event))" />
+      </section>
+
+      <section class="settings-section">
+        <h2>Contact</h2>
+        <app-input label="Company email" type="email" [value]="form.controls.email.value" (valueChange)="form.controls.email.setValue($event)"
+          (blurred)="form.controls.email.markAsTouched()"
+          [error]="form.controls.email.touched && form.controls.email.invalid ? 'Enter a valid email address.' : ''" />
+        <app-input label="Phone number" [value]="form.controls.phoneNumber.value" (valueChange)="form.controls.phoneNumber.setValue($event)"
+          [error]="form.controls.phoneNumber.invalid ? 'Max 20 characters.' : ''" />
+        <app-input label="Website" type="url" [value]="form.controls.website.value" (valueChange)="form.controls.website.setValue($event)"
+          (blurred)="form.controls.website.markAsTouched()"
+          [error]="form.controls.website.touched && form.controls.website.invalid ? 'Enter a full URL, e.g. https://example.com.' : ''" />
+
+        <fieldset class="settings-address">
+          <legend>Registered business address</legend>
+          <app-input label="Address line 1" [value]="form.controls.addressLine1.value" (valueChange)="form.controls.addressLine1.setValue($event)" />
+          <app-input label="Address line 2" [value]="form.controls.addressLine2.value" (valueChange)="form.controls.addressLine2.setValue($event)" />
+          <app-input label="City" [value]="form.controls.addressCity.value" (valueChange)="form.controls.addressCity.setValue($event)" />
+          <app-input label="State/Province" [value]="form.controls.addressState.value" (valueChange)="form.controls.addressState.setValue($event)" />
+          <app-input label="Postal code" [value]="form.controls.addressPostalCode.value" (valueChange)="form.controls.addressPostalCode.setValue($event)" />
+          <app-input label="Country" [value]="form.controls.addressCountry.value" (valueChange)="form.controls.addressCountry.setValue($event)" />
+        </fieldset>
+      </section>
+
+      <section class="settings-section">
+        <h2>Company Details</h2>
+        <app-input label="Country code (ISO alpha-3)" [value]="form.controls.countryCode.value" (valueChange)="form.controls.countryCode.setValue($event)"
+          (blurred)="form.controls.countryCode.markAsTouched()"
+          [error]="form.controls.countryCode.touched && form.controls.countryCode.invalid ? 'Country code is required (max 3 characters).' : ''" />
+        <app-input label="Currency code (ISO 4217)" [value]="form.controls.currencyCode.value" (valueChange)="form.controls.currencyCode.setValue($event)"
+          (blurred)="form.controls.currencyCode.markAsTouched()"
+          [error]="form.controls.currencyCode.touched && form.controls.currencyCode.invalid ? 'Currency code is required (max 3 characters).' : ''" />
+        <app-input label="Timezone" [value]="form.controls.timezone.value" (valueChange)="form.controls.timezone.setValue($event)"
+          (blurred)="form.controls.timezone.markAsTouched()"
+          [error]="form.controls.timezone.touched && form.controls.timezone.invalid ? 'Timezone is required.' : ''" />
+        <app-select label="Financial year starts in" [options]="FINANCIAL_YEAR_MONTH_OPTIONS"
+          [value]="form.controls.financialYearStartMonth.value + ''" (valueChange)="form.controls.financialYearStartMonth.setValue(+$event)" />
+      </section>
+
+      <section class="settings-section">
+        <h2>Regional Preferences</h2>
+        <app-select label="First day of week" [options]="FIRST_DAY_OF_WEEK_OPTIONS"
+          [value]="form.controls.firstDayOfWeek.value + ''" (valueChange)="form.controls.firstDayOfWeek.setValue(+$event)" />
+
+        <fieldset class="settings-weekdays">
+          <legend>Standard working days</legend>
+          @for (day of WEEKDAY_OPTIONS; track day.value) {
+            <label class="settings-weekday-option">
+              <input type="checkbox" [checked]="isDaySelected(day.value)" (change)="toggleDay(day.value, $any($event.target).checked)" />
+              {{ day.label }}
+            </label>
+          }
+          @if (form.controls.standardWorkingDays.touched && form.controls.standardWorkingDays.invalid) {
+            <p class="settings-field-error">Select at least one working day.</p>
+          }
+        </fieldset>
+
+        <app-input label="Default language" [value]="form.controls.defaultLanguage.value" (valueChange)="form.controls.defaultLanguage.setValue($event)"
+          (blurred)="form.controls.defaultLanguage.markAsTouched()"
+          [error]="form.controls.defaultLanguage.touched && form.controls.defaultLanguage.invalid ? 'Default language is required (max 10 characters).' : ''" />
+        <app-select label="Date format" [options]="DATE_FORMAT_OPTIONS" [value]="form.controls.dateFormat.value" (valueChange)="form.controls.dateFormat.setValue($event)" />
+        <app-select label="Time format" [options]="TIME_FORMAT_OPTIONS" [value]="form.controls.timeFormat.value" (valueChange)="form.controls.timeFormat.setValue($any($event))" />
+      </section>
+
+      <section class="settings-section">
+        <h2>Logo</h2>
+        <p class="settings-field-hint">Logo upload isn't available yet.</p>
+        <button type="button" class="settings-logo-placeholder" disabled aria-disabled="true">Change logo</button>
+      </section>
+
+      @if (settingsStore.saveError()) {
+        <app-error-state [message]="settingsStore.saveError()!" />
+      }
+
+      <div class="settings-form-actions">
+        <app-button type="submit" [loading]="submitting()" [disabled]="submitting()">Save changes</app-button>
+      </div>
+    </form>
+  }
+}

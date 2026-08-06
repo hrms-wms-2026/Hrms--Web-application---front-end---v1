@@ -19,10 +19,84 @@ describe('LegalConsentComponent', () => {
     return fixture;
   }
 
+  function stubLocation(hostname: string) {
+    const originalLocation = window.location;
+    // @ts-expect-error -- replacing window.location with a controllable stand-in for this test
+    delete window.location;
+    window.location = {
+      protocol: originalLocation.protocol,
+      hostname,
+      port: originalLocation.port,
+      href: ''
+    } as unknown as string & Location;
+    return () => {
+      window.location = originalLocation as unknown as string & Location;
+    };
+  }
+
+  describe('tenant-host redirect', () => {
+    it('redirects to root-host /auth/legal-consent when opened on a tenant host with acceptance pending', () => {
+      const { protocol, port } = window.location;
+      const portSuffix = port ? `:${port}` : '';
+      const restore = stubLocation('acme.localhost');
+
+      const fixture = setup({
+        pendingLegalDocuments: () => docs,
+        acceptLegalDocuments: vi.fn(),
+        legalAcceptanceRequired: () => true,
+        redirectRequired: () => false,
+        continueUrl: () => null,
+        loading: () => false,
+        error: () => null
+      });
+      void fixture;
+
+      expect(window.location.href).toBe(`${protocol}//localhost${portSuffix}/auth/legal-consent`);
+      restore();
+    });
+
+    it('does not redirect on a tenant host when legal acceptance is not required', () => {
+      const restore = stubLocation('acme.localhost');
+
+      const fixture = setup({
+        pendingLegalDocuments: () => docs,
+        acceptLegalDocuments: vi.fn(),
+        legalAcceptanceRequired: () => false,
+        redirectRequired: () => false,
+        continueUrl: () => null,
+        loading: () => false,
+        error: () => null
+      });
+      void fixture;
+
+      expect(window.location.href).toBe('');
+      restore();
+    });
+
+    it('does not redirect on the root host even when legal acceptance is required', () => {
+      const restore = stubLocation('localhost');
+
+      const fixture = setup({
+        pendingLegalDocuments: () => docs,
+        acceptLegalDocuments: vi.fn(),
+        legalAcceptanceRequired: () => true,
+        redirectRequired: () => false,
+        continueUrl: () => null,
+        loading: () => false,
+        error: () => null
+      });
+      void fixture;
+
+      expect(window.location.href).toBe('');
+      restore();
+    });
+  });
+
   it('renders each pending legal document title', () => {
     const fixture = setup({
       pendingLegalDocuments: () => docs,
       acceptLegalDocuments: vi.fn(),
+      legalAcceptanceRequired: () => true,
       redirectRequired: () => false,
       continueUrl: () => null,
       loading: () => false,
@@ -44,6 +118,7 @@ describe('LegalConsentComponent', () => {
     const fixture = setup({
       pendingLegalDocuments: () => docs,
       acceptLegalDocuments: acceptSpy,
+      legalAcceptanceRequired: () => true,
       redirectRequired: () => true,
       continueUrl: () => 'https://acme.localhost:4200/auth/continue?code=raw-exchange-code',
       loading: () => false,
@@ -68,6 +143,7 @@ describe('LegalConsentComponent', () => {
     const fixture = setup({
       pendingLegalDocuments: () => docs,
       acceptLegalDocuments: vi.fn().mockRejectedValue(new Error('network')),
+      legalAcceptanceRequired: () => true,
       redirectRequired: () => false,
       continueUrl: () => null,
       loading: () => false,

@@ -24,6 +24,79 @@ describe('LoginComponent', () => {
     return fixture;
   }
 
+  function stubLocation(hostname: string) {
+    const originalLocation = window.location;
+    // @ts-expect-error -- replacing window.location with a controllable stand-in for this test
+    delete window.location;
+    window.location = {
+      protocol: originalLocation.protocol,
+      hostname,
+      port: originalLocation.port,
+      href: ''
+    } as unknown as string & Location;
+    return () => {
+      window.location = originalLocation as unknown as string & Location;
+    };
+  }
+
+  describe('tenant-host redirect', () => {
+    it('redirects the browser to root-host /auth/login when opened on a tenant subdomain', () => {
+      const { protocol, port } = window.location;
+      const portSuffix = port ? `:${port}` : '';
+      const restore = stubLocation('acme.localhost');
+
+      const fixture = setup({
+        login: vi.fn(),
+        legalAcceptanceRequired: () => false,
+        redirectRequired: () => false,
+        continueUrl: () => null,
+        loading: () => false,
+        error: () => null
+      });
+      void fixture;
+
+      expect(window.location.href).toBe(`${protocol}//localhost${portSuffix}/auth/login`);
+      restore();
+    });
+
+    it('does not redirect when already on the root host', () => {
+      const restore = stubLocation('localhost');
+
+      const fixture = setup({
+        login: vi.fn(),
+        legalAcceptanceRequired: () => false,
+        redirectRequired: () => false,
+        continueUrl: () => null,
+        loading: () => false,
+        error: () => null
+      });
+      void fixture;
+
+      expect(window.location.href).toBe('');
+      restore();
+    });
+
+    it('does not submit login when called from a tenant host', async () => {
+      const restore = stubLocation('acme.localhost');
+      const loginSpy = vi.fn();
+
+      const fixture = setup({
+        login: loginSpy,
+        legalAcceptanceRequired: () => false,
+        redirectRequired: () => false,
+        continueUrl: () => null,
+        loading: () => false,
+        error: () => null
+      });
+
+      fixture.componentInstance.form.setValue({ email: 'a@b.com', password: 'secret' });
+      await fixture.componentInstance.submit();
+
+      expect(loginSpy).not.toHaveBeenCalled();
+      restore();
+    });
+  });
+
   it('does not call login when the form is invalid', async () => {
     const loginSpy = vi.fn();
     const fixture = setup({
