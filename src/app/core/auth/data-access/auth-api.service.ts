@@ -29,8 +29,14 @@ export class AuthApiService {
     return this.http.post<AuthResponseDto>(`${baseUrl}${API_ENDPOINTS.auth.login}`, payload);
   }
 
+  /**
+   * Root-host-only, like login(): the onevo_legal_pending/onevo_legal_csrf cookies backing this
+   * request are issued by the root/system host during login(), so this must retarget the same way
+   * or a request made from a tenant host will 401 against a session the tenant host never had.
+   */
   acceptLegalDocuments(payload: LegalAcceptanceRequestDto): Observable<AuthResponseDto> {
-    return this.http.post<AuthResponseDto>(`${environment.apiUrl}${API_ENDPOINTS.legal.completeLogin}`, payload);
+    const baseUrl = getSystemApiUrl(environment.apiUrl);
+    return this.http.post<AuthResponseDto>(`${baseUrl}${API_ENDPOINTS.legal.completeLogin}`, payload);
   }
 
   /**

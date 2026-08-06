@@ -1,9 +1,10 @@
-import { Component, inject } from '@angular/core';
+import { Component, OnInit, inject } from '@angular/core';
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { Router } from '@angular/router';
 import { AuthStore } from '../../state/auth.store';
 import { ButtonComponent } from '../../../../shared/ui/button/button.component';
 import { CardComponent } from '../../../../shared/ui/card/card.component';
+import { buildRootUrl, isTenantHostname } from '../../utils/tenant-redirect';
 
 @Component({
   selector: 'app-login',
@@ -11,7 +12,7 @@ import { CardComponent } from '../../../../shared/ui/card/card.component';
   imports: [ReactiveFormsModule, ButtonComponent, CardComponent],
   templateUrl: './login.component.html'
 })
-export class LoginComponent {
+export class LoginComponent implements OnInit {
   private fb = inject(FormBuilder);
   private router = inject(Router);
   store = inject(AuthStore);
@@ -21,7 +22,20 @@ export class LoginComponent {
     password: ['', [Validators.required]]
   });
 
+  ngOnInit(): void {
+    // POST /auth/login only works against the root/system host (see getSystemApiUrl); a tenant
+    // subdomain must never submit credentials itself, so bounce it to the root host's /auth/login
+    // before the form can be used.
+    if (isTenantHostname(window.location.hostname)) {
+      window.location.href = buildRootUrl('/auth/login');
+    }
+  }
+
   async submit(): Promise<void> {
+    if (isTenantHostname(window.location.hostname)) {
+      return;
+    }
+
     if (this.form.invalid) {
       this.form.markAllAsTouched();
       return;

@@ -1,0 +1,10 @@
+<nav class="sub-sidebar" [attr.aria-label]="sectionLabel() + ' navigation'">
+  <h2 class="sub-sidebar__heading">{{ sectionLabel() }}</h2>
+  <ul class="sub-sidebar__list">
+    @for (item of items(); track item.id) {
+      <li>
+        <a [routerLink]="item.path" routerLinkActive="sub-sidebar__link--active" class="sub-sidebar__link">{{ item.label }}</a>
+      </li>
+    }
+  </ul>
+</nav>

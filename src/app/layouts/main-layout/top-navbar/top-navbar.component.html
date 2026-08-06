@@ -1,1 +1,7 @@
-<app-home-page-profile-capsule [userName]="userName()" [email]="email()" />
+<div class="top-navbar__left">
+  <app-company-selector />
+</div>
+
+<div class="top-navbar__right">
+  <app-profile-menu [avatarUrl]="avatarUrl()" [userName]="userName()" [email]="email()" />
+</div>

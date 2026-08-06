@@ -8,7 +8,7 @@
   min-height: 100dvh;
   place-items: center;
   padding: 1.5rem;
-  background: #e80c0c;
+  background: var(--color-app-bg);
 }
 
 .auth-layout__content {

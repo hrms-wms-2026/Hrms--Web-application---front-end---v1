@@ -1,12 +1,14 @@
 import { Component, computed, input } from '@angular/core';
+import { AvatarComponent } from '../avatar/avatar.component';
 
 @Component({
   selector: 'app-home-page-profile-capsule',
   standalone: true,
-  templateUrl: './home-page-profile-capsule.component.html',
-  styleUrl: './home-page-profile-capsule.component.css'
+  imports: [AvatarComponent],
+  template: `<app-avatar [avatarUrl]="avatarUrl()" [userName]="userName()" [email]="email()" size="md" />`
 })
 export class HomePageProfileCapsuleComponent {
+  readonly avatarUrl = input<string | null>();
   readonly userName = input<string | null>();
   readonly email = input<string | null>();
 
