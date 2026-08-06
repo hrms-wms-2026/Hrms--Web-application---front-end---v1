@@ -1,0 +1,51 @@
+<header class="landing-header" [class.landing-header--hidden]="!headerVisible()">
+  <nav class="landing-header__bar" aria-label="Primary">
+    <a routerLink="/" class="landing-header__brand" aria-label="ONEXSO, go to homepage">
+      <img
+        ngSrc="assets/brand/onexso-mark.png"
+        alt="ONEXSO"
+        width="134"
+        height="132"
+        priority
+        class="landing-header__mark"
+      />
+      <span class="landing-header__brand-name">ONEXSO</span>
+    </a>
+
+    <ul class="landing-header__links">
+      <li><a href="#platform">Platform</a></li>
+      <li><a href="#solutions">Solutions</a></li>
+      <li><a href="#resources">Resources</a></li>
+    </ul>
+
+    <div class="landing-header__actions">
+      <a routerLink="/auth/login" class="landing-header__signin">Sign in</a>
+
+      <button
+        type="button"
+        class="landing-header__menu-btn"
+        [attr.aria-expanded]="menuOpen()"
+        aria-controls="landing-mobile-nav"
+        (click)="toggleMenu()"
+      >
+        <span class="sr-only">{{ menuOpen() ? 'Close menu' : 'Open menu' }}</span>
+        @if (!menuOpen()) {
+          <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true">
+            <path d="M4 6h16M4 12h16M4 18h16" />
+          </svg>
+        } @else {
+          <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true">
+            <path d="M6 6l12 12M18 6L6 18" />
+          </svg>
+        }
+      </button>
+    </div>
+  </nav>
+
+  <div id="landing-mobile-nav" class="landing-header__mobile" [hidden]="!menuOpen()">
+    <a href="#platform" (click)="closeMenu()">Platform</a>
+    <a href="#solutions" (click)="closeMenu()">Solutions</a>
+    <a href="#resources" (click)="closeMenu()">Resources</a>
+    <a routerLink="/auth/login" class="landing-header__signin landing-header__signin--mobile" (click)="closeMenu()">Sign in</a>
+  </div>
+</header>

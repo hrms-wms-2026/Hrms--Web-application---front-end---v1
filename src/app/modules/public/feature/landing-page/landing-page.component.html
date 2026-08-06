@@ -1,0 +1,55 @@
+<a class="landing-skip-link" href="#main-content">Skip to main content</a>
+
+<div class="landing-page">
+  <div class="landing-shell landing-page__header-shell">
+    <app-landing-header />
+  </div>
+
+  <main id="main-content" class="landing-page__main" tabindex="-1">
+    <section id="platform" class="hero">
+      <div class="hero__glow" aria-hidden="true"></div>
+      <div class="landing-shell hero__shell">
+        <div class="hero__content">
+          <p class="hero__eyebrow">One platform for your workforce</p>
+          <h1 class="hero__heading">Everything your people need. Clear visibility for your business.</h1>
+          <p class="hero__subtext">
+            ONEXSO brings employee information, attendance, time off, work and approvals together in one clear
+            workspace.
+          </p>
+
+          <div class="hero__cta-row">
+            <a routerLink="/auth/login" class="hero__btn hero__btn--primary">
+              Sign in
+              <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                <path d="M5 12h14M13 6l6 6-6 6" />
+              </svg>
+            </a>
+            <a routerLink="/book-a-demo" class="hero__btn hero__btn--secondary">Book a demo</a>
+          </div>
+
+          <p class="hero__reassurance">
+            <span class="hero__reassurance-dot" aria-hidden="true"></span>
+            Secure, reliable and ready for everyday work.
+          </p>
+        </div>
+
+        <div class="hero__preview">
+          <app-landing-dashboard-preview />
+        </div>
+      </div>
+    </section>
+
+    <section id="solutions" class="landing-shell pillars-section" aria-label="Platform capabilities">
+      <app-landing-value-pillars />
+    </section>
+  </main>
+
+  <footer id="resources" class="landing-footer">
+    <div class="landing-shell landing-footer__shell">
+      <nav aria-label="Legal">
+        <a routerLink="/legal/terms">Terms &amp; Conditions</a>
+        <a routerLink="/legal/privacy">Privacy Notice</a>
+      </nav>
+    </div>
+  </footer>
+</div>
