@@ -1,11 +1,36 @@
 import { Routes } from '@angular/router';
 import { authGuard } from './core/guards/auth.guard';
 import { permissionGuard } from './core/guards/permission.guard';
+import { redirectIfAuthenticatedGuard } from './core/guards/redirect-if-authenticated.guard';
 
 const loadPlaceholder = () =>
   import('./shared/feature/placeholder-page/placeholder-page.component').then((module) => module.PlaceholderPageComponent);
 
 export const routes: Routes = [
+  {
+    path: '',
+    pathMatch: 'full',
+    loadComponent: () =>
+      import('./modules/public/feature/landing-page/landing-page.component').then(
+        (module) => module.LandingPageComponent
+      ),
+    canActivate: [redirectIfAuthenticatedGuard]
+  },
+  {
+    path: 'book-a-demo',
+    loadComponent: loadPlaceholder,
+    data: { title: 'Book a demo' }
+  },
+  {
+    path: 'legal/terms',
+    loadComponent: loadPlaceholder,
+    data: { title: 'Terms & Conditions' }
+  },
+  {
+    path: 'legal/privacy',
+    loadComponent: loadPlaceholder,
+    data: { title: 'Privacy Notice' }
+  },
   {
     path: '',
     loadComponent: () =>
