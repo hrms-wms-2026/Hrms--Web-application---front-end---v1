@@ -9,6 +9,8 @@ export interface GeneralSettingsState {
   readonly settings: LegalEntityGeneralSettings | null;
   readonly loading: boolean;
   readonly saving: boolean;
+  readonly uploadingLogo: boolean;
+  readonly removingLogo: boolean;
   readonly loadError: string | null;
   readonly saveError: string | null;
 }
@@ -18,6 +20,8 @@ const initialState: GeneralSettingsState = {
   settings: null,
   loading: false,
   saving: false,
+  uploadingLogo: false,
+  removingLogo: false,
   loadError: null,
   saveError: null
 };
@@ -83,6 +87,40 @@ export const GeneralSettingsStore = signalStore(
       } catch (err) {
         patchState(store, { saving: false, saveError: extractErrorMessage(err, 'Failed to save General Settings.') });
         return null;
+      }
+    },
+
+    async uploadLogo(legalEntityId: string, file: File): Promise<boolean> {
+      patchState(store, { uploadingLogo: true, saveError: null });
+      try {
+        const result = await firstValueFrom(api.uploadLogo(legalEntityId, file));
+        const current = store.settings();
+        if (current && store.legalEntityId() === legalEntityId) {
+          patchState(store, { settings: { ...current, logoFileId: result.logoFileId }, uploadingLogo: false });
+        } else {
+          patchState(store, { uploadingLogo: false });
+        }
+        return true;
+      } catch (err) {
+        patchState(store, { uploadingLogo: false, saveError: extractErrorMessage(err, 'Failed to upload logo.') });
+        return false;
+      }
+    },
+
+    async removeLogo(legalEntityId: string): Promise<boolean> {
+      patchState(store, { removingLogo: true, saveError: null });
+      try {
+        await firstValueFrom(api.removeLogo(legalEntityId));
+        const current = store.settings();
+        if (current && store.legalEntityId() === legalEntityId) {
+          patchState(store, { settings: { ...current, logoFileId: null }, removingLogo: false });
+        } else {
+          patchState(store, { removingLogo: false });
+        }
+        return true;
+      } catch (err) {
+        patchState(store, { removingLogo: false, saveError: extractErrorMessage(err, 'Failed to remove logo.') });
+        return false;
       }
     }
   }))
