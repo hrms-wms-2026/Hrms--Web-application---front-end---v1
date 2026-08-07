@@ -9,7 +9,7 @@ export type InputType = 'text' | 'email' | 'password' | 'number' | 'search' | 't
   template: `
     <div class="flex flex-col gap-1">
       @if (label()) {
-        <label [for]="inputId" class="text-sm font-medium text-[var(--color-text-primary)]">{{ label() }}</label>
+        <label [for]="inputId" class="text-xs font-medium text-[var(--color-text-secondary)]">{{ label() }}</label>
       }
       <input
         [id]="inputId"
@@ -21,7 +21,7 @@ export type InputType = 'text' | 'email' | 'password' | 'number' | 'search' | 't
         (blur)="blurred.emit()"
         [attr.aria-invalid]="error() ? true : null"
         [attr.aria-describedby]="error() ? errorId() : hint() ? hintId() : null"
-        class="rounded-md border border-[var(--color-border)] bg-[var(--color-surface)] px-3 py-2 text-sm text-[var(--color-text-primary)] transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-focus-ring)] disabled:cursor-not-allowed disabled:opacity-60"
+        class="w-full rounded-md border border-[var(--color-border)] bg-[var(--color-surface)] px-3 py-1.5 text-sm text-[var(--color-text-primary)] transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-focus-ring)] disabled:cursor-not-allowed disabled:opacity-60"
       />
       @if (error()) {
         <span [id]="errorId()" class="text-xs text-[var(--color-danger-text)]">{{ error() }}</span>

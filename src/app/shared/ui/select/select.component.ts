@@ -12,7 +12,7 @@ export interface SelectOption {
   template: `
     <div class="flex flex-col gap-1">
       @if (label()) {
-        <label [for]="selectId" class="text-sm font-medium text-[var(--color-text-primary)]">{{ label() }}</label>
+        <label [for]="selectId" class="text-xs font-medium text-[var(--color-text-secondary)]">{{ label() }}</label>
       }
       <select
         [id]="selectId"
@@ -20,7 +20,7 @@ export interface SelectOption {
         (change)="onChange($event)"
         [attr.aria-invalid]="error() ? true : null"
         [attr.aria-describedby]="error() ? errorId() : null"
-        class="rounded-md border border-[var(--color-border)] bg-[var(--color-surface)] px-3 py-2 text-sm text-[var(--color-text-primary)] transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-focus-ring)] disabled:cursor-not-allowed disabled:opacity-60"
+        class="w-full rounded-md border border-[var(--color-border)] bg-[var(--color-surface)] px-3 py-1.5 text-sm text-[var(--color-text-primary)] transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-focus-ring)] disabled:cursor-not-allowed disabled:opacity-60"
       >
         @if (placeholder()) {
           <option value="" disabled [selected]="!value()" hidden>{{ placeholder() }}</option>

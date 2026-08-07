@@ -31,6 +31,11 @@ export class LoginComponent implements OnInit {
     }
   }
 
+  signInWithGoogle(): void {
+    // Google SSO OAuth trigger
+    console.log('Initiating Google SSO login...');
+  }
+
   async submit(): Promise<void> {
     if (isTenantHostname(window.location.hostname)) {
       return;

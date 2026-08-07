@@ -42,6 +42,8 @@ export class LandingHeaderComponent implements AfterViewInit, OnDestroy {
 
   readonly menuOpen = signal(false);
   readonly headerVisible = signal(true);
+  readonly isDarkMode = signal(false);
+  readonly isScrolled = signal(false);
 
   private lastScrollY = 0;
   private focusWithinHeader = false;
@@ -59,6 +61,36 @@ export class LandingHeaderComponent implements AfterViewInit, OnDestroy {
       .subscribe(() => this.reset());
   }
 
+  toggleMode(): void {
+    const nextMode = !this.isDarkMode();
+    this.isDarkMode.set(nextMode);
+    this.applyModeToDocument(nextMode);
+  }
+
+  applyLightMode(): void {
+    this.isDarkMode.set(false);
+    this.applyModeToDocument(false);
+  }
+
+  applyDarkMode(): void {
+    this.isDarkMode.set(true);
+    this.applyModeToDocument(true);
+  }
+
+  private applyModeToDocument(isDark: boolean): void {
+    if (!isPlatformBrowser(this.platformId)) return;
+    const doc = document.documentElement;
+    if (isDark) {
+      doc.classList.add('dark');
+      doc.setAttribute('data-mode', 'dark');
+      try { localStorage.setItem('onevo.color.mode', 'dark'); } catch {}
+    } else {
+      doc.classList.remove('dark');
+      doc.setAttribute('data-mode', 'light');
+      try { localStorage.setItem('onevo.color.mode', 'light'); } catch {}
+    }
+  }
+
   toggleMenu(): void {
     this.menuOpen.update((open) => !open);
     if (this.menuOpen()) {
@@ -73,6 +105,17 @@ export class LandingHeaderComponent implements AfterViewInit, OnDestroy {
   ngAfterViewInit(): void {
     if (!isPlatformBrowser(this.platformId)) {
       return;
+    }
+
+    // Initialize mode from localStorage or system prefers-color-scheme
+    try {
+      const stored = localStorage.getItem('onevo.color.mode');
+      const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+      const initialDark = stored ? stored === 'dark' : prefersDark;
+      this.isDarkMode.set(initialDark);
+      this.applyModeToDocument(initialDark);
+    } catch {
+      // Fallback if localStorage or matchMedia fails
     }
 
     this.lastScrollY = window.scrollY;
@@ -123,28 +166,8 @@ export class LandingHeaderComponent implements AfterViewInit, OnDestroy {
 
   private updateVisibility(): void {
     const currentScrollY = window.scrollY;
-    const delta = currentScrollY - this.lastScrollY;
-
-    if (this.menuOpen() || this.focusWithinHeader) {
-      this.lastScrollY = currentScrollY;
-      return;
-    }
-
-    let nextVisible: boolean | null = null;
-
-    if (currentScrollY <= HIDE_AFTER) {
-      nextVisible = true;
-    } else if (delta > SCROLL_DELTA) {
-      nextVisible = false;
-    } else if (delta < -SCROLL_DELTA) {
-      nextVisible = true;
-    }
-
-    this.lastScrollY = currentScrollY;
-
-    if (nextVisible !== null && nextVisible !== this.headerVisible()) {
-      this.headerVisible.set(nextVisible);
-    }
+    this.isScrolled.set(currentScrollY > 20);
+    this.headerVisible.set(true);
   }
 
   private teardown(): void {

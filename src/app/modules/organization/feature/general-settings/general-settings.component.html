@@ -1,126 +1,163 @@
+<!-- Breadcrumb -->
+<nav class="gs-breadcrumb" aria-label="Breadcrumb">
+  <span class="gs-breadcrumb__item gs-breadcrumb__item--parent">
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.9l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.9-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1-1.6 1.7 1.7 0 0 0-1.9.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.9 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.6-1 1.7 1.7 0 0 0-.3-1.9l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.9.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.9-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.9V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/></svg>
+    Settings
+  </span>
+  <svg class="gs-breadcrumb__sep" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="9 18 15 12 9 6"/></svg>
+  <span class="gs-breadcrumb__item gs-breadcrumb__item--current" aria-current="page">General Settings</span>
+</nav>
+
 @if (!hasAccess()) {
-  <app-page-header title="General Settings" />
   <app-empty-state
     title="You don't have access to this."
     description="Viewing and editing General Settings requires the legal_entity:update permission."
   />
 } @else if (!selectedLegalEntity()) {
-  <app-page-header title="General Settings" />
   <app-empty-state title="Select a company to edit General Settings." />
 } @else {
-  <app-page-header [title]="selectedLegalEntity()!.name" subtitle="General Settings" />
-
-  <!-- Settings sub-navigation: General Settings is this page; Roles & Permissions and Notification
-       Settings are separately gated, real routes already rendered by the global sub-sidebar (see
-       side-navbar.component.html + nav-items.config.ts). Policy Configuration, Devices & Connections,
-       and Audit Log have no backend permission string yet, so they are inert placeholders here rather
-       than gated NAV_ITEMS entries. -->
-  <ul class="settings-inline-nav" aria-label="More settings (coming soon)">
-    <li aria-disabled="true">Policy Configuration <span class="settings-inline-nav__badge">Coming soon</span></li>
-    <li aria-disabled="true">Devices &amp; Connections <span class="settings-inline-nav__badge">Coming soon</span></li>
-    <li aria-disabled="true">Audit Log <span class="settings-inline-nav__badge">Coming soon</span></li>
-  </ul>
 
   @if (settingsStore.loading()) {
     <div class="skeleton-block" aria-busy="true" aria-label="Loading General Settings"></div>
   } @else if (settingsStore.loadError()) {
     <app-error-state [message]="settingsStore.loadError()!" [retryable]="true" (retry)="settingsStore.load(selectedLegalEntity()!.id)" />
   } @else if (settingsStore.settings()) {
-    <form [formGroup]="form" (ngSubmit)="onSubmit()" class="general-settings-form">
 
-      <section class="settings-section">
-        <h2>Company Identity</h2>
-        <app-input label="Company name" [value]="form.controls.name.value" (valueChange)="form.controls.name.setValue($event)"
-          (blurred)="form.controls.name.markAsTouched()"
-          [error]="form.controls.name.touched && form.controls.name.invalid ? 'Company name is required (max 200 characters).' : ''" />
-        <app-input label="Company code" [value]="form.controls.companyCode.value" (valueChange)="form.controls.companyCode.setValue($event)"
-          (blurred)="form.controls.companyCode.markAsTouched()"
-          [error]="form.controls.companyCode.touched && form.controls.companyCode.invalid ? 'Company code is required (max 20 characters).' : ''" />
-        <app-input label="Company registration number" [value]="form.controls.registrationNumber.value" (valueChange)="form.controls.registrationNumber.setValue($event)"
-          (blurred)="form.controls.registrationNumber.markAsTouched()"
-          [error]="form.controls.registrationNumber.touched && form.controls.registrationNumber.invalid ? 'Registration number is required (max 50 characters).' : ''" />
-        <app-input label="Tax registration number" [value]="form.controls.taxRegistrationNumber.value" (valueChange)="form.controls.taxRegistrationNumber.setValue($event)"
-          [error]="form.controls.taxRegistrationNumber.invalid ? 'Max 80 characters.' : ''" />
-        <app-input label="VAT/GST number" [value]="form.controls.vatGstNumber.value" (valueChange)="form.controls.vatGstNumber.setValue($event)"
-          [error]="form.controls.vatGstNumber.invalid ? 'Max 50 characters.' : ''" />
-        <app-select label="Status" [options]="STATUS_OPTIONS" [value]="form.controls.status.value" (valueChange)="form.controls.status.setValue($any($event))" />
+    <form [formGroup]="form" (ngSubmit)="onSubmit()" class="gs-form">
+
+      <!-- Logo — first -->
+      <section class="gs-section">
+        <h2 class="gs-section__title">Company Logo</h2>
+        <div class="gs-logo-upload-area">
+          <div class="gs-logo-preview" aria-label="Company logo placeholder">
+            <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect width="18" height="18" x="3" y="3" rx="2" ry="2"/><circle cx="9" cy="9" r="2"/><path d="m21 15-3.086-3.086a2 2 0 0 0-2.828 0L6 21"/></svg>
+          </div>
+          <div class="gs-logo-info">
+            <p class="gs-logo-info__title">Upload your company logo</p>
+            <p class="gs-logo-info__hint">PNG, JPG or SVG · Max 2 MB · Recommended 256×256 px</p>
+            <button type="button" class="gs-logo-btn" disabled aria-disabled="true">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" x2="12" y1="3" y2="15"/></svg>
+              Upload logo <span class="gs-logo-btn__badge">Coming soon</span>
+            </button>
+          </div>
+        </div>
       </section>
 
-      <section class="settings-section">
-        <h2>Contact</h2>
-        <app-input label="Company email" type="email" [value]="form.controls.email.value" (valueChange)="form.controls.email.setValue($event)"
-          (blurred)="form.controls.email.markAsTouched()"
-          [error]="form.controls.email.touched && form.controls.email.invalid ? 'Enter a valid email address.' : ''" />
-        <app-input label="Phone number" [value]="form.controls.phoneNumber.value" (valueChange)="form.controls.phoneNumber.setValue($event)"
-          [error]="form.controls.phoneNumber.invalid ? 'Max 20 characters.' : ''" />
-        <app-input label="Website" type="url" [value]="form.controls.website.value" (valueChange)="form.controls.website.setValue($event)"
-          (blurred)="form.controls.website.markAsTouched()"
-          [error]="form.controls.website.touched && form.controls.website.invalid ? 'Enter a full URL, e.g. https://example.com.' : ''" />
+      <!-- Company Identity -->
+      <section class="gs-section">
+        <h2 class="gs-section__title">Company Identity</h2>
+        <div class="gs-field-grid gs-field-grid--3">
+          <app-input label="Company name" [value]="form.controls.name.value" (valueChange)="form.controls.name.setValue($event)"
+            (blurred)="form.controls.name.markAsTouched()"
+            [error]="form.controls.name.touched && form.controls.name.invalid ? 'Required (max 200 chars).' : ''" />
+          <app-input label="Company code" [value]="form.controls.companyCode.value" (valueChange)="form.controls.companyCode.setValue($event)"
+            (blurred)="form.controls.companyCode.markAsTouched()"
+            [error]="form.controls.companyCode.touched && form.controls.companyCode.invalid ? 'Required (max 20 chars).' : ''" />
+          <app-input label="Registration number" [value]="form.controls.registrationNumber.value" (valueChange)="form.controls.registrationNumber.setValue($event)"
+            (blurred)="form.controls.registrationNumber.markAsTouched()"
+            [error]="form.controls.registrationNumber.touched && form.controls.registrationNumber.invalid ? 'Required (max 50 chars).' : ''" />
+          <app-input label="Tax registration number" [value]="form.controls.taxRegistrationNumber.value" (valueChange)="form.controls.taxRegistrationNumber.setValue($event)"
+            [error]="form.controls.taxRegistrationNumber.invalid ? 'Max 80 characters.' : ''" />
+          <app-input label="VAT/GST number" [value]="form.controls.vatGstNumber.value" (valueChange)="form.controls.vatGstNumber.setValue($event)"
+            [error]="form.controls.vatGstNumber.invalid ? 'Max 50 characters.' : ''" />
+          <app-select label="Status" [options]="STATUS_OPTIONS" [value]="form.controls.status.value" (valueChange)="form.controls.status.setValue($any($event))" />
+        </div>
+      </section>
 
-        <fieldset class="settings-address">
-          <legend>Registered business address</legend>
-          <app-input label="Address line 1" [value]="form.controls.addressLine1.value" (valueChange)="form.controls.addressLine1.setValue($event)" />
-          <app-input label="Address line 2" [value]="form.controls.addressLine2.value" (valueChange)="form.controls.addressLine2.setValue($event)" />
-          <app-input label="City" [value]="form.controls.addressCity.value" (valueChange)="form.controls.addressCity.setValue($event)" />
-          <app-input label="State/Province" [value]="form.controls.addressState.value" (valueChange)="form.controls.addressState.setValue($event)" />
-          <app-input label="Postal code" [value]="form.controls.addressPostalCode.value" (valueChange)="form.controls.addressPostalCode.setValue($event)" />
-          <app-input label="Country" [value]="form.controls.addressCountry.value" (valueChange)="form.controls.addressCountry.setValue($event)" />
+      <!-- Contact -->
+      <section class="gs-section">
+        <h2 class="gs-section__title">Contact</h2>
+        <div class="gs-field-grid gs-field-grid--3">
+          <app-input label="Company email" type="email" [value]="form.controls.email.value" (valueChange)="form.controls.email.setValue($event)"
+            (blurred)="form.controls.email.markAsTouched()"
+            [error]="form.controls.email.touched && form.controls.email.invalid ? 'Enter a valid email address.' : ''" />
+          <app-input label="Phone number" [value]="form.controls.phoneNumber.value" (valueChange)="form.controls.phoneNumber.setValue($event)"
+            [error]="form.controls.phoneNumber.invalid ? 'Max 20 characters.' : ''" />
+          <app-input label="Website" type="url" [value]="form.controls.website.value" (valueChange)="form.controls.website.setValue($event)"
+            (blurred)="form.controls.website.markAsTouched()"
+            [error]="form.controls.website.touched && form.controls.website.invalid ? 'Enter a full URL, e.g. https://example.com.' : ''" />
+        </div>
+        <fieldset class="gs-fieldset">
+          <legend class="gs-fieldset__legend">Registered business address</legend>
+          <div class="gs-field-grid gs-field-grid--2">
+            <app-input label="Address line 1" [value]="form.controls.addressLine1.value" (valueChange)="form.controls.addressLine1.setValue($event)" />
+            <app-input label="Address line 2" [value]="form.controls.addressLine2.value" (valueChange)="form.controls.addressLine2.setValue($event)" />
+            <app-input label="City" [value]="form.controls.addressCity.value" (valueChange)="form.controls.addressCity.setValue($event)" />
+            <app-input label="State / Province" [value]="form.controls.addressState.value" (valueChange)="form.controls.addressState.setValue($event)" />
+            <app-input label="Postal code" [value]="form.controls.addressPostalCode.value" (valueChange)="form.controls.addressPostalCode.setValue($event)" />
+            <app-select label="Country" [options]="COUNTRY_NAME_OPTIONS" placeholder="Select a country"
+              [value]="form.controls.addressCountry.value" (valueChange)="form.controls.addressCountry.setValue($event)" />
+          </div>
         </fieldset>
       </section>
 
-      <section class="settings-section">
-        <h2>Company Details</h2>
-        <app-input label="Country code (ISO alpha-3)" [value]="form.controls.countryCode.value" (valueChange)="form.controls.countryCode.setValue($event)"
-          (blurred)="form.controls.countryCode.markAsTouched()"
-          [error]="form.controls.countryCode.touched && form.controls.countryCode.invalid ? 'Country code is required (max 3 characters).' : ''" />
-        <app-input label="Currency code (ISO 4217)" [value]="form.controls.currencyCode.value" (valueChange)="form.controls.currencyCode.setValue($event)"
-          (blurred)="form.controls.currencyCode.markAsTouched()"
-          [error]="form.controls.currencyCode.touched && form.controls.currencyCode.invalid ? 'Currency code is required (max 3 characters).' : ''" />
-        <app-input label="Timezone" [value]="form.controls.timezone.value" (valueChange)="form.controls.timezone.setValue($event)"
-          (blurred)="form.controls.timezone.markAsTouched()"
-          [error]="form.controls.timezone.touched && form.controls.timezone.invalid ? 'Timezone is required.' : ''" />
-        <app-select label="Financial year starts in" [options]="FINANCIAL_YEAR_MONTH_OPTIONS"
-          [value]="form.controls.financialYearStartMonth.value + ''" (valueChange)="form.controls.financialYearStartMonth.setValue(+$event)" />
+      <!-- Company Details -->
+      <section class="gs-section">
+        <h2 class="gs-section__title">Company Details</h2>
+        <div class="gs-field-grid gs-field-grid--3">
+          <app-select label="Country code (ISO alpha-3)" [options]="COUNTRY_CODE_OPTIONS" placeholder="Select a country"
+            [value]="form.controls.countryCode.value"
+            (valueChange)="form.controls.countryCode.setValue($event); form.controls.countryCode.markAsTouched()"
+            [error]="form.controls.countryCode.touched && form.controls.countryCode.invalid ? 'Required.' : ''" />
+          <app-select label="Currency code (ISO 4217)" [options]="CURRENCY_CODE_OPTIONS" placeholder="Select a currency"
+            [value]="form.controls.currencyCode.value"
+            (valueChange)="form.controls.currencyCode.setValue($event); form.controls.currencyCode.markAsTouched()"
+            [error]="form.controls.currencyCode.touched && form.controls.currencyCode.invalid ? 'Required.' : ''" />
+          <app-select label="Timezone" [options]="TIMEZONE_OPTIONS" placeholder="Select a timezone"
+            [value]="form.controls.timezone.value"
+            (valueChange)="form.controls.timezone.setValue($event); form.controls.timezone.markAsTouched()"
+            [error]="form.controls.timezone.touched && form.controls.timezone.invalid ? 'Required.' : ''" />
+          <app-select label="Financial year starts in" [options]="FINANCIAL_YEAR_MONTH_OPTIONS"
+            [value]="form.controls.financialYearStartMonth.value + ''" (valueChange)="form.controls.financialYearStartMonth.setValue(+$event)" />
+        </div>
       </section>
 
-      <section class="settings-section">
-        <h2>Regional Preferences</h2>
-        <app-select label="First day of week" [options]="FIRST_DAY_OF_WEEK_OPTIONS"
-          [value]="form.controls.firstDayOfWeek.value + ''" (valueChange)="form.controls.firstDayOfWeek.setValue(+$event)" />
+      <!-- Regional Preferences -->
+      <section class="gs-section">
+        <h2 class="gs-section__title">Regional Preferences</h2>
+        <div class="gs-field-grid gs-field-grid--3">
+          <app-input label="Default language" [value]="form.controls.defaultLanguage.value" (valueChange)="form.controls.defaultLanguage.setValue($event)"
+            (blurred)="form.controls.defaultLanguage.markAsTouched()"
+            [error]="form.controls.defaultLanguage.touched && form.controls.defaultLanguage.invalid ? 'Required (max 10 chars).' : ''" />
+          <app-select label="Date format" [options]="DATE_FORMAT_OPTIONS" [value]="form.controls.dateFormat.value" (valueChange)="form.controls.dateFormat.setValue($event)" />
+          <app-select label="Time format" [options]="TIME_FORMAT_OPTIONS" [value]="form.controls.timeFormat.value" (valueChange)="form.controls.timeFormat.setValue($any($event))" />
+          <app-select label="First day of week" [options]="FIRST_DAY_OF_WEEK_OPTIONS"
+            [value]="form.controls.firstDayOfWeek.value + ''" (valueChange)="form.controls.firstDayOfWeek.setValue(+$event)" />
+        </div>
 
-        <fieldset class="settings-weekdays">
-          <legend>Standard working days</legend>
-          @for (day of WEEKDAY_OPTIONS; track day.value) {
-            <label class="settings-weekday-option">
-              <input type="checkbox" [checked]="isDaySelected(day.value)" (change)="toggleDay(day.value, $any($event.target).checked)" />
-              {{ day.label }}
-            </label>
-          }
+        <fieldset class="gs-fieldset">
+          <legend class="gs-fieldset__legend">Standard working days</legend>
+          <div class="gs-weekdays">
+            @for (day of WEEKDAY_OPTIONS; track day.value) {
+              <label class="gs-weekday-chip" [class.gs-weekday-chip--selected]="isDaySelected(day.value)">
+                <input type="checkbox" [checked]="isDaySelected(day.value)" (change)="toggleDay(day.value, $any($event.target).checked)" />
+                {{ day.label }}
+              </label>
+            }
+          </div>
           @if (form.controls.standardWorkingDays.touched && form.controls.standardWorkingDays.invalid) {
-            <p class="settings-field-error">Select at least one working day.</p>
+            <p class="gs-field-error">Select at least one working day.</p>
           }
         </fieldset>
-
-        <app-input label="Default language" [value]="form.controls.defaultLanguage.value" (valueChange)="form.controls.defaultLanguage.setValue($event)"
-          (blurred)="form.controls.defaultLanguage.markAsTouched()"
-          [error]="form.controls.defaultLanguage.touched && form.controls.defaultLanguage.invalid ? 'Default language is required (max 10 characters).' : ''" />
-        <app-select label="Date format" [options]="DATE_FORMAT_OPTIONS" [value]="form.controls.dateFormat.value" (valueChange)="form.controls.dateFormat.setValue($event)" />
-        <app-select label="Time format" [options]="TIME_FORMAT_OPTIONS" [value]="form.controls.timeFormat.value" (valueChange)="form.controls.timeFormat.setValue($any($event))" />
       </section>
 
-      <section class="settings-section">
-        <h2>Logo</h2>
-        <p class="settings-field-hint">Logo upload isn't available yet.</p>
-        <button type="button" class="settings-logo-placeholder" disabled aria-disabled="true">Change logo</button>
-      </section>
+      <!-- extra bottom padding so content clears the sticky save bar -->
+      <div class="gs-form-bottom-spacer"></div>
 
       @if (settingsStore.saveError()) {
         <app-error-state [message]="settingsStore.saveError()!" />
       }
 
-      <div class="settings-form-actions">
-        <app-button type="submit" [loading]="submitting()" [disabled]="submitting()">Save changes</app-button>
-      </div>
     </form>
   }
+
+  <!-- Sticky Save bar — always visible -->
+  <div class="gs-sticky-save" role="region" aria-label="Save settings">
+    <p class="gs-sticky-save__hint">
+      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4M12 8h.01"/></svg>
+      Changes apply to new employees and future records by default.
+    </p>
+    <app-button type="button" (click)="onSubmit()" [loading]="submitting()" [disabled]="submitting()">Save changes</app-button>
+  </div>
+
 }

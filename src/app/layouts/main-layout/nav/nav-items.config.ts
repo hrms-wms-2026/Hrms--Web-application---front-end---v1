@@ -49,14 +49,14 @@ export const NAV_ITEMS: readonly NavItem[] = [
   },
   {
     id: 'time-attendance',
-    label: 'Time & Attendance',
+    label: 'Attendance',
     icon: 'time-attendance',
     path: '/time-attendance',
     requiredModules: ['time_attendance']
   },
   {
     id: 'organization',
-    label: 'Organization',
+    label: 'Org',
     icon: 'organization',
     path: '/organization',
     requiredModules: ['org_structure'],
