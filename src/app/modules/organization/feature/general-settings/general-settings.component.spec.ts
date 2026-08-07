@@ -1,6 +1,7 @@
 import { provideHttpClient } from '@angular/common/http';
 import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
+import { vi } from 'vitest';
 import { PermissionService } from '../../../../core/auth/state/permission.service';
 import { NotificationService } from '../../../../core/services/notification.service';
 import { environment } from '../../../../../environments/environment';
@@ -233,5 +234,68 @@ describe('GeneralSettingsComponent', () => {
     await submitPromise;
 
     expect(legalEntityStore.companies().find((c) => c.id === 'company-a')?.name).toBe('Company A Renamed');
+  });
+
+  it('shows the placeholder icon and disabled-looking hint when no logo is set, and uploads a selected file', async () => {
+    const fixture = await setupWithLoadedSettings();
+
+    const fileInput: HTMLInputElement = fixture.nativeElement.querySelector('input[type="file"]');
+    expect(fileInput).toBeTruthy();
+    expect(fixture.nativeElement.querySelector('.gs-logo-preview img')).toBeFalsy();
+
+    const file = new File(['bytes'], 'logo.png', { type: 'image/png' });
+    Object.defineProperty(fileInput, 'files', { value: [file] });
+    fileInput.dispatchEvent(new Event('change'));
+    fixture.detectChanges();
+
+    const req = httpMock.expectOne(`${environment.apiUrl}/org/legal-entities/company-a/logo`);
+    expect(req.request.method).toBe('PUT');
+    req.flush({ legalEntityId: 'company-a', logoFileId: 'file-1' });
+    await fixture.whenStable();
+    fixture.detectChanges();
+
+    const img: HTMLImageElement = fixture.nativeElement.querySelector('.gs-logo-preview img');
+    expect(img).toBeTruthy();
+    expect(img.src).toContain(`${environment.apiUrl}/org/legal-entities/company-a/logo?v=file-1`);
+    expect(fixture.nativeElement.querySelector('.gs-logo-remove-btn')).toBeTruthy();
+  });
+
+  it('rejects an oversized file client-side without calling the API', async () => {
+    const fixture = await setupWithLoadedSettings();
+    const notification = TestBed.inject(NotificationService);
+    vi.spyOn(notification, 'error');
+
+    const fileInput: HTMLInputElement = fixture.nativeElement.querySelector('input[type="file"]');
+    const oversized = new File([new Uint8Array(6 * 1024 * 1024)], 'big.png', { type: 'image/png' });
+    Object.defineProperty(fileInput, 'files', { value: [oversized] });
+    fileInput.dispatchEvent(new Event('change'));
+    fixture.detectChanges();
+
+    expect(notification.error).toHaveBeenCalled();
+    httpMock.expectNone(`${environment.apiUrl}/org/legal-entities/company-a/logo`);
+  });
+
+  it('removes the logo when the Remove button is clicked', async () => {
+    const fixture = await setupWithLoadedSettings();
+    const fileInput: HTMLInputElement = fixture.nativeElement.querySelector('input[type="file"]');
+    const file = new File(['bytes'], 'logo.png', { type: 'image/png' });
+    Object.defineProperty(fileInput, 'files', { value: [file] });
+    fileInput.dispatchEvent(new Event('change'));
+    fixture.detectChanges();
+    httpMock.expectOne(`${environment.apiUrl}/org/legal-entities/company-a/logo`).flush({ legalEntityId: 'company-a', logoFileId: 'file-1' });
+    await fixture.whenStable();
+    fixture.detectChanges();
+
+    const removeBtn: HTMLButtonElement = fixture.nativeElement.querySelector('.gs-logo-remove-btn');
+    removeBtn.click();
+    fixture.detectChanges();
+
+    const req = httpMock.expectOne(`${environment.apiUrl}/org/legal-entities/company-a/logo`);
+    expect(req.request.method).toBe('DELETE');
+    req.flush(null, { status: 204, statusText: 'No Content' });
+    await fixture.whenStable();
+    fixture.detectChanges();
+
+    expect(fixture.nativeElement.querySelector('.gs-logo-preview img')).toBeFalsy();
   });
 });
