@@ -131,4 +131,32 @@ describe('LegalEntityApiService', () => {
     expect(req.request.body).toEqual(payload);
     req.flush(mockGeneralSettings);
   });
+
+  it('uploads a logo as multipart form data', () => {
+    const file = new File(['fake image bytes'], 'logo.png', { type: 'image/png' });
+
+    service.uploadLogo('company-1', file).subscribe((result) => {
+      expect(result).toEqual({ legalEntityId: 'company-1', logoFileId: 'file-1' });
+    });
+
+    const req = httpMock.expectOne(`${environment.apiUrl}/org/legal-entities/company-1/logo`);
+    expect(req.request.method).toBe('PUT');
+    expect(req.request.body instanceof FormData).toBe(true);
+    expect((req.request.body as FormData).get('logo')).toBe(file);
+    req.flush({ legalEntityId: 'company-1', logoFileId: 'file-1' });
+  });
+
+  it('removes a logo with a DELETE', () => {
+    service.removeLogo('company-1').subscribe();
+
+    const req = httpMock.expectOne(`${environment.apiUrl}/org/legal-entities/company-1/logo`);
+    expect(req.request.method).toBe('DELETE');
+    req.flush(null, { status: 204, statusText: 'No Content' });
+  });
+
+  it('builds the logo display URL with a cache-busting query param', () => {
+    const url = service.getLogoUrl('company-1', 'file-1');
+
+    expect(url).toBe(`${environment.apiUrl}/org/legal-entities/company-1/logo?v=file-1`);
+  });
 });

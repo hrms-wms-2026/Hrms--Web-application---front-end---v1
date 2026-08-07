@@ -37,4 +37,22 @@ export class LegalEntityApiService {
       payload
     );
   }
+
+  uploadLogo(legalEntityId: string, file: File): Observable<{ legalEntityId: string; logoFileId: string | null }> {
+    const formData = new FormData();
+    formData.append('logo', file);
+    return this.http.put<{ legalEntityId: string; logoFileId: string | null }>(
+      `${environment.apiUrl}/org/legal-entities/${legalEntityId}/logo`,
+      formData
+    );
+  }
+
+  removeLogo(legalEntityId: string): Observable<void> {
+    return this.http.delete<void>(`${environment.apiUrl}/org/legal-entities/${legalEntityId}/logo`);
+  }
+
+  /** Pure helper - no request. `?v=` busts the browser's image cache after a re-upload. */
+  getLogoUrl(legalEntityId: string, logoFileId: string): string {
+    return `${environment.apiUrl}/org/legal-entities/${legalEntityId}/logo?v=${logoFileId}`;
+  }
 }
