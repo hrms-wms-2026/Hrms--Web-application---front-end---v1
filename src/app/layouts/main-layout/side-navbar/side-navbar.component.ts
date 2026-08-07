@@ -1,45 +1,31 @@
 import { ChangeDetectionStrategy, Component, computed, inject } from '@angular/core';
-import { toSignal } from '@angular/core/rxjs-interop';
-import { NavigationEnd, Router, RouterLink } from '@angular/router';
-import { filter, map } from 'rxjs/operators';
-import { PermissionService } from '../../../core/auth/state/permission.service';
-import { canAccessNavItem } from '../nav/nav-access';
-import { NAV_ITEMS } from '../nav/nav-items.config';
-import { SubSidebarComponent } from '../sub-sidebar/sub-sidebar.component';
+import { RouterLink } from '@angular/router';
+import { LegalEntityStore } from '../../../modules/organization/state/legal-entity.store';
+import { NavigationStateService } from '../nav/navigation-state.service';
 import { NavIconComponent } from './nav-icon.component';
 
 @Component({
   selector: 'app-side-navbar',
   standalone: true,
-  imports: [RouterLink, NavIconComponent, SubSidebarComponent],
+  imports: [RouterLink, NavIconComponent],
   templateUrl: './side-navbar.component.html',
   styleUrl: './side-navbar.component.css',
   changeDetection: ChangeDetectionStrategy.OnPush
 })
 export class SideNavbarComponent {
-  private readonly router = inject(Router);
-  private readonly permissionService = inject(PermissionService);
+  private readonly navState = inject(NavigationStateService);
+  private readonly legalEntityStore = inject(LegalEntityStore);
 
-  private readonly currentUrl = toSignal(
-    this.router.events.pipe(
-      filter((event): event is NavigationEnd => event instanceof NavigationEnd),
-      map(() => this.router.url)
-    ),
-    { initialValue: this.router.url }
-  );
+  readonly visibleItems = this.navState.visibleItems;
+  readonly activeItem = this.navState.activeItem;
 
-  readonly visibleItems = computed(() => NAV_ITEMS.filter((item) => canAccessNavItem(item, this.permissionService)));
+  readonly selectedCompany = this.legalEntityStore.selectedLegalEntity;
 
-  readonly activeItem = computed(() => {
-    const url = this.currentUrl();
-    return this.visibleItems().find((item) => url === item.path || url.startsWith(`${item.path}/`));
-  });
-
-  readonly activeChildren = computed(() => {
-    const active = this.activeItem();
-    if (!active?.children || active.children.length === 0) {
-      return [];
+  readonly companyInitial = computed(() => {
+    const company = this.selectedCompany();
+    if (company && company.name) {
+      return company.name.trim().charAt(0).toUpperCase();
     }
-    return active.children.filter((child) => canAccessNavItem(child, this.permissionService));
+    return 'O';
   });
 }

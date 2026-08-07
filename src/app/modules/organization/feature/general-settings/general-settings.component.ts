@@ -6,17 +6,22 @@ import { ButtonComponent } from '../../../../shared/ui/button/button.component';
 import { EmptyStateComponent } from '../../../../shared/ui/empty-state/empty-state.component';
 import { ErrorStateComponent } from '../../../../shared/ui/error-state/error-state.component';
 import { InputComponent } from '../../../../shared/ui/input/input.component';
-import { PageHeaderComponent } from '../../../../shared/ui/page-header/page-header.component';
 import { SelectComponent } from '../../../../shared/ui/select/select.component';
 import { LegalEntityGeneralSettings, UpdateLegalEntityGeneralSettingsRequest } from '../../models/legal-entity.model';
 import { GeneralSettingsStore } from '../../state/general-settings.store';
 import { LegalEntityStore } from '../../state/legal-entity.store';
 import {
+  COUNTRY_CODE_OPTIONS,
+  COUNTRY_NAME_OPTIONS,
+  CURRENCY_CODE_OPTIONS,
   DATE_FORMAT_OPTIONS,
   FINANCIAL_YEAR_MONTH_OPTIONS,
   FIRST_DAY_OF_WEEK_OPTIONS,
+  normalizeCountryCode,
+  normalizeCountryName,
   STATUS_OPTIONS,
   TIME_FORMAT_OPTIONS,
+  TIMEZONE_OPTIONS,
   WEEKDAY_OPTIONS
 } from '../../utils/general-settings-options';
 import { absoluteUrlValidator, nonEmptyArrayValidator, oneOfValidator } from '../../utils/general-settings-validators';
@@ -37,7 +42,6 @@ import { absoluteUrlValidator, nonEmptyArrayValidator, oneOfValidator } from '..
     EmptyStateComponent,
     ErrorStateComponent,
     InputComponent,
-    PageHeaderComponent,
     SelectComponent
   ],
   templateUrl: './general-settings.component.html',
@@ -58,6 +62,10 @@ export class GeneralSettingsComponent {
   readonly TIME_FORMAT_OPTIONS = TIME_FORMAT_OPTIONS;
   readonly STATUS_OPTIONS = STATUS_OPTIONS;
   readonly DATE_FORMAT_OPTIONS = DATE_FORMAT_OPTIONS;
+  readonly COUNTRY_NAME_OPTIONS = COUNTRY_NAME_OPTIONS;
+  readonly COUNTRY_CODE_OPTIONS = COUNTRY_CODE_OPTIONS;
+  readonly CURRENCY_CODE_OPTIONS = CURRENCY_CODE_OPTIONS;
+  readonly TIMEZONE_OPTIONS = TIMEZONE_OPTIONS;
 
   readonly hasAccess = computed(() => this.permissionService.hasPermission('legal_entity:update'));
   readonly selectedLegalEntity = this.legalEntityStore.selectedLegalEntity;
@@ -191,7 +199,7 @@ export class GeneralSettingsComponent {
       email: settings.email ?? '',
       phoneNumber: settings.phoneNumber ?? '',
       website: settings.website ?? '',
-      countryCode: settings.countryCode,
+      countryCode: normalizeCountryCode(settings.countryCode),
       currencyCode: settings.currencyCode,
       timezone: settings.timezone ?? '',
       financialYearStartMonth: settings.financialYearStartMonth,
@@ -206,7 +214,7 @@ export class GeneralSettingsComponent {
       addressCity: settings.registeredBusinessAddress?.city ?? '',
       addressState: settings.registeredBusinessAddress?.state ?? '',
       addressPostalCode: settings.registeredBusinessAddress?.postalCode ?? '',
-      addressCountry: settings.registeredBusinessAddress?.country ?? ''
+      addressCountry: normalizeCountryName(settings.registeredBusinessAddress?.country ?? '')
     };
   }
 

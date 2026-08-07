@@ -1,4 +1,17 @@
 <nav aria-label="Main navigation" class="nav-rail">
+  <!-- Slack-style Company Workspace Logo / Initial Tile -->
+  <div class="nav-rail__company-tile" [title]="selectedCompany()?.name || 'Workspace'">
+    @if (selectedCompany()?.logoFileId) {
+      <img [src]="'/api/v1/files/' + selectedCompany()!.logoFileId" [alt]="selectedCompany()?.name" class="nav-rail__company-logo" />
+    } @else {
+      <div class="nav-rail__company-avatar">
+        {{ companyInitial() }}
+      </div>
+    }
+  </div>
+
+  <div class="nav-rail__divider"></div>
+
   @for (item of visibleItems(); track item.id) {
     <a
       [routerLink]="item.path"
@@ -6,12 +19,10 @@
       [class.nav-rail-item--active]="activeItem()?.id === item.id"
       [attr.aria-current]="activeItem()?.id === item.id ? 'page' : null"
     >
-      <app-nav-icon [name]="item.icon!" />
+      <div class="nav-rail-item__icon-wrapper">
+        <app-nav-icon [name]="item.icon!" />
+      </div>
       <span>{{ item.label }}</span>
     </a>
   }
 </nav>
-
-@if (activeChildren().length > 0) {
-  <app-sub-sidebar [sectionLabel]="activeItem()!.label" [items]="activeChildren()" />
-}

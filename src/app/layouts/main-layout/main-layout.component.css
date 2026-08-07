@@ -1,6 +1,8 @@
 :host {
   display: block;
-  min-height: 100dvh;
+  height: 100vh;
+  max-height: 100vh;
+  overflow: hidden;
 }
 
 .skip-to-main {
@@ -26,31 +28,56 @@
   grid-template-columns: auto minmax(0, 1fr);
   grid-template-rows: auto minmax(0, 1fr);
   grid-template-areas:
-    "sidebar navbar"
-    "sidebar main";
-  min-height: 100dvh;
+    "rail navbar"
+    "rail main";
+  height: 100vh;
+  max-height: 100vh;
+  overflow: hidden;
   background: var(--color-app-bg);
 }
 
-app-side-navbar {
-  grid-area: sidebar;
-  min-height: 0;
+.main-layout--has-sub-sidebar {
+  grid-template-columns: auto auto minmax(0, 1fr);
+  grid-template-areas:
+    "rail navbar navbar"
+    "rail sub-sidebar main";
 }
 
-app-top-navbar {
+.main-layout__rail {
+  grid-area: rail;
+  height: 100vh;
+  max-height: 100vh;
+  overflow: hidden;
+}
+
+.main-layout__topbar {
   grid-area: navbar;
   min-width: 0;
+}
+
+.main-layout__sub-sidebar {
+  grid-area: sub-sidebar;
+  height: 100%;
+  overflow: hidden;
 }
 
 .main-content {
   grid-area: main;
   min-width: 0;
   min-height: 0;
-  padding: 1.5rem;
+  height: calc(100% - 0.5rem);
+  margin: 0 0.5rem 0.5rem 0.25rem;
+  padding: 1.75rem 2rem;
   outline: none;
   background: var(--color-surface);
-  border-top-left-radius: var(--radius-content);
-  overflow: hidden;
+  border: 1px solid var(--color-border);
+  border-radius: 0 0 16px 0;
+  overflow-y: auto;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.03);
+}
+
+.main-layout--has-sub-sidebar .main-content {
+  margin-left: 0;
 }
 
 .main-content:focus-visible {
@@ -94,6 +121,5 @@ app-top-navbar {
 
   .main-content {
     padding: 1rem;
-    border-top-left-radius: 0;
   }
 }

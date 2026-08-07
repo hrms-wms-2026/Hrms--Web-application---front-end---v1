@@ -103,7 +103,10 @@ describe('GeneralSettingsComponent', () => {
     const fixture = await setupWithLoadedSettings();
 
     expect(fixture.componentInstance.form.controls.name.value).toBe('Company A');
-    expect(fixture.nativeElement.textContent).toContain('Company A');
+    // The company name is a form field value (native <input> property), not static text -
+    // the breadcrumb-based redesign no longer displays it as a page heading.
+    const inputs: NodeListOf<HTMLInputElement> = fixture.nativeElement.querySelectorAll('input');
+    expect(Array.from(inputs).some((el) => el.value === 'Company A')).toBe(true);
   });
 
   it('reloads the form (no leaked values) when the selected company changes', async () => {
