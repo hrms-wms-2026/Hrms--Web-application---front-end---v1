@@ -42,8 +42,7 @@ describe('GeneralSettingsComponent', () => {
     defaultLanguage: 'en',
     dateFormat: 'DD/MM/YYYY',
     timeFormat: '24h',
-    status: 'active',
-    registeredBusinessAddress: null
+    status: 'active'
   });
 
   async function setup(hasPermission: boolean) {
@@ -139,8 +138,7 @@ describe('GeneralSettingsComponent', () => {
       [
         'name', 'companyCode', 'registrationNumber', 'taxRegistrationNumber', 'vatGstNumber', 'email',
         'phoneNumber', 'website', 'countryCode', 'currencyCode', 'timezone', 'financialYearStartMonth',
-        'firstDayOfWeek', 'standardWorkingDays', 'defaultLanguage', 'dateFormat', 'timeFormat', 'status',
-        'registeredBusinessAddress'
+        'firstDayOfWeek', 'standardWorkingDays', 'defaultLanguage', 'dateFormat', 'timeFormat', 'status'
       ].sort()
     );
     putReq.flush(settingsFor('company-a', 'Company A'));

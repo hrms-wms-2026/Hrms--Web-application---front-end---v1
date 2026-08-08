@@ -72,9 +72,12 @@ export const routes: Routes = [
           },
           {
             path: 'roles',
-            loadComponent: loadPlaceholder,
+            loadComponent: () =>
+              import('./modules/organization/feature/roles-management/roles-management.component').then(
+                (m) => m.RolesManagementComponent
+              ),
             canActivate: [permissionGuard],
-            data: { title: 'Roles & Permissions', permissions: ['roles:manage'] }
+            data: { title: 'Roles & Permissions', permissions: ['roles:read'] }
           },
           {
             path: 'notifications',

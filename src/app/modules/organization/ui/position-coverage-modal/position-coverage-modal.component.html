@@ -1,0 +1,199 @@
+<div class="pcm-backdrop" (click)="close.emit()">
+  <div class="pcm-modal" (click)="$event.stopPropagation()" role="dialog" aria-modal="true">
+
+    <!-- Header -->
+    <div class="pcm-header">
+      <div>
+        <div class="pcm-title-row">
+          <h2 class="pcm-title">Management Coverage</h2>
+          <span class="pcm-position-chip">{{ position.name }}</span>
+        </div>
+        <p class="pcm-subtitle">
+          Controls what this position can manage for visibility and approval routing.
+        </p>
+      </div>
+      <button type="button" class="pcm-close-btn" (click)="close.emit()" aria-label="Close">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <line x1="18" y1="6" x2="6" y2="18" />
+          <line x1="6" y1="6" x2="18" y2="18" />
+        </svg>
+      </button>
+    </div>
+
+    <!-- Body -->
+    <div class="pcm-body">
+
+      @if (error) {
+        <div class="pcm-error-alert" role="alert">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+          <span>{{ error }}</span>
+        </div>
+      }
+
+      @if (loading) {
+        <div class="pcm-loading-state">
+          <svg class="pcm-spinner" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10" stroke-opacity="0.25"/><path d="M12 2a10 10 0 0 1 10 10"/></svg>
+          <span>Loading management coverage records...</span>
+        </div>
+      } @else {
+
+        <!-- Automatic reporting coverage -->
+        <div class="pcm-section">
+          <h3 class="pcm-section-title">Automatic reporting coverage</h3>
+          <div class="pcm-card-list">
+            @for (cov of automaticRecords; track cov.id) {
+              <div class="pcm-card pcm-card--automatic">
+                <div class="pcm-card-main">
+                  <span class="pcm-badge pcm-badge--automatic">Automatic</span>
+                  <span class="pcm-card-target">{{ targetName(cov) }}</span>
+                  <span class="pcm-card-target-type">{{ cov.coveredTargetType }}</span>
+                </div>
+                <span class="pcm-responsibility-chip" [class.pcm-responsibility-chip--primary]="cov.ownerOrder === 1">
+                  {{ formatResponsibilityLabel(cov.ownerOrder) }}
+                </span>
+              </div>
+            } @empty {
+              <div class="pcm-empty-state">No automatic reporting coverage for this position.</div>
+            }
+          </div>
+        </div>
+
+        <!-- Manual coverage -->
+        <div class="pcm-section">
+          <h3 class="pcm-section-title">Manual coverage</h3>
+          <div class="pcm-card-list">
+            @for (cov of manualRecords; track cov.id) {
+              <div class="pcm-card">
+                <div class="pcm-card-main">
+                  <span class="pcm-badge pcm-badge--manual">Manual</span>
+                  <span class="pcm-card-target">{{ targetName(cov) }}</span>
+                  <span class="pcm-card-target-type">{{ cov.coveredTargetType }}</span>
+                  @if (isSelfCoverage(cov)) {
+                    <span class="pcm-self-warning" title="This position is covering itself. This came from older data and cannot be recreated.">
+                      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M10.29 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+                      Self-coverage
+                    </span>
+                  }
+                </div>
+
+                @if (editingCoverageId() === cov.id) {
+                  <div class="pcm-edit-row">
+                    <app-select
+                      [options]="editOwnerOrderOptions(cov)"
+                      [value]="editOwnerOrderValue().toString()"
+                      (valueChange)="onEditOwnerOrderChange($event)"
+                    />
+                    <app-button type="button" (click)="saveEdit(cov)" [disabled]="saving">Save</app-button>
+                    <app-button type="button" variant="secondary" (click)="cancelEdit()" [disabled]="saving">Cancel</app-button>
+                  </div>
+                } @else {
+                  <div class="pcm-card-actions">
+                    <span class="pcm-responsibility-chip" [class.pcm-responsibility-chip--primary]="cov.ownerOrder === 1">
+                      {{ formatResponsibilityLabel(cov.ownerOrder) }}
+                    </span>
+                    @if (canManage && !isSelfCoverage(cov)) {
+                      <button type="button" class="pcm-text-btn" (click)="startEdit(cov)" [disabled]="saving">Edit level</button>
+                      <button type="button" class="pcm-delete-btn" (click)="onDelete(cov)" [disabled]="saving" title="Remove manual coverage rule">
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
+                      </button>
+                    }
+                  </div>
+                }
+              </div>
+            } @empty {
+              <div class="pcm-empty-state">No manual coverage rules added.</div>
+            }
+          </div>
+        </div>
+
+        <!-- Add Manual Coverage -->
+        @if (canManage) {
+          <div class="pcm-add-section">
+            @if (!showAddForm.value) {
+              <button type="button" class="pcm-toggle-add-btn" (click)="toggleAddForm()">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+                Add manual coverage
+              </button>
+            } @else {
+              <form [formGroup]="addForm" (ngSubmit)="onAddSubmit()" class="pcm-add-form">
+                <div class="pcm-form-title">New Manual Coverage Rule</div>
+
+                <div class="pcm-form-grid">
+                  <div class="pcm-field">
+                    <label class="pcm-label">Covered Target Type</label>
+                    <div class="pcm-radio-group">
+                      <label class="pcm-radio-lbl">
+                        <input
+                          type="radio"
+                          name="coveredTargetType"
+                          value="Position"
+                          [checked]="addForm.controls.coveredTargetType.value === 'Position'"
+                          (change)="onTargetTypeChange('Position')"
+                        />
+                        Position
+                      </label>
+                      <label class="pcm-radio-lbl">
+                        <input
+                          type="radio"
+                          name="coveredTargetType"
+                          value="Department"
+                          [checked]="addForm.controls.coveredTargetType.value === 'Department'"
+                          (change)="onTargetTypeChange('Department')"
+                        />
+                        Department
+                      </label>
+                    </div>
+                  </div>
+
+                  @if (addForm.controls.coveredTargetType.value === 'Position') {
+                    <div class="pcm-field">
+                      <app-select
+                        label="Covered Position *"
+                        [options]="positionOptions"
+                        [value]="addForm.controls.coveredPositionId.value || ''"
+                        (valueChange)="onCoveredPositionChange($event)"
+                        [error]="addForm.controls.coveredPositionId.touched && !addForm.controls.coveredPositionId.value ? 'Position selection is required.' : ''"
+                      />
+                    </div>
+                  } @else {
+                    <div class="pcm-field">
+                      <app-select
+                        label="Covered Department *"
+                        [options]="departmentOptions"
+                        [value]="addForm.controls.coveredDepartmentId.value || ''"
+                        (valueChange)="onCoveredDepartmentChange($event)"
+                        [error]="addForm.controls.coveredDepartmentId.touched && !addForm.controls.coveredDepartmentId.value ? 'Department selection is required.' : ''"
+                      />
+                    </div>
+                  }
+
+                  <div class="pcm-field">
+                    <app-select
+                      label="Responsibility Level *"
+                      [options]="ownerOrderOptions"
+                      [value]="addForm.controls.ownerOrder.value?.toString() || '1'"
+                      (valueChange)="addForm.controls.ownerOrder.setValue(+($event || 1))"
+                    />
+                  </div>
+                </div>
+
+                <div class="pcm-form-actions">
+                  <app-button type="button" variant="secondary" (click)="toggleAddForm()" [disabled]="saving">Cancel</app-button>
+                  <app-button type="submit" [loading]="saving" [disabled]="saving">Add Rule</app-button>
+                </div>
+              </form>
+            }
+          </div>
+        }
+
+      }
+
+    </div>
+
+    <!-- Footer -->
+    <div class="pcm-footer">
+      <app-button type="button" variant="secondary" (click)="close.emit()">Close</app-button>
+    </div>
+
+  </div>
+</div>

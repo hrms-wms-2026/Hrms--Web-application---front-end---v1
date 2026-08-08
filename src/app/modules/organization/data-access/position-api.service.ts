@@ -1,0 +1,144 @@
+import { HttpClient, HttpParams } from '@angular/common/http';
+import { Injectable, inject } from '@angular/core';
+import { Observable } from 'rxjs';
+import { environment } from '../../../../environments/environment';
+import {
+  AddCoverageRecordRequest,
+  CreatePositionRequest,
+  ListPositionsQueryParams,
+  ManagementCoverageRecordResponse,
+  PositionArchiveBlockers,
+  PositionPageResponse,
+  PositionResponse,
+  PositionTreeNodeResponse,
+  UpdateCoverageRecordRequest,
+  UpdatePositionRequest
+} from '../models/position.model';
+
+@Injectable({ providedIn: 'root' })
+export class PositionApiService {
+  private readonly http = inject(HttpClient);
+
+  listFlat(
+    legalEntityId: string,
+    params?: ListPositionsQueryParams
+  ): Observable<PositionPageResponse> {
+    let httpParams = new HttpParams();
+    if (params) {
+      if (params.departmentId) httpParams = httpParams.set('departmentId', params.departmentId);
+      if (params.search) httpParams = httpParams.set('search', params.search);
+      if (params.includeInactive !== undefined) httpParams = httpParams.set('includeInactive', params.includeInactive);
+      if (params.page) httpParams = httpParams.set('page', params.page);
+      if (params.pageSize) httpParams = httpParams.set('pageSize', params.pageSize);
+      if (params.sortBy) httpParams = httpParams.set('sortBy', params.sortBy);
+      if (params.sortDirection) httpParams = httpParams.set('sortDirection', params.sortDirection);
+    }
+    return this.http.get<PositionPageResponse>(
+      `${environment.apiUrl}/org/legal-entities/${legalEntityId}/positions`,
+      { params: httpParams }
+    );
+  }
+
+  listTree(
+    legalEntityId: string,
+    includeInactive = false
+  ): Observable<readonly PositionTreeNodeResponse[]> {
+    const params = new HttpParams().set('includeInactive', includeInactive);
+    return this.http.get<readonly PositionTreeNodeResponse[]>(
+      `${environment.apiUrl}/org/legal-entities/${legalEntityId}/positions/tree`,
+      { params }
+    );
+  }
+
+  getPosition(legalEntityId: string, positionId: string): Observable<PositionResponse> {
+    return this.http.get<PositionResponse>(
+      `${environment.apiUrl}/org/legal-entities/${legalEntityId}/positions/${positionId}`
+    );
+  }
+
+  createPosition(
+    legalEntityId: string,
+    payload: CreatePositionRequest
+  ): Observable<PositionResponse> {
+    return this.http.post<PositionResponse>(
+      `${environment.apiUrl}/org/legal-entities/${legalEntityId}/positions`,
+      payload
+    );
+  }
+
+  updatePosition(
+    legalEntityId: string,
+    positionId: string,
+    payload: UpdatePositionRequest
+  ): Observable<PositionResponse> {
+    return this.http.put<PositionResponse>(
+      `${environment.apiUrl}/org/legal-entities/${legalEntityId}/positions/${positionId}`,
+      payload
+    );
+  }
+
+  checkArchive(legalEntityId: string, positionId: string): Observable<PositionArchiveBlockers> {
+    return this.http.post<PositionArchiveBlockers>(
+      `${environment.apiUrl}/org/legal-entities/${legalEntityId}/positions/${positionId}/archive-check`,
+      {}
+    );
+  }
+
+  archivePosition(legalEntityId: string, positionId: string): Observable<void> {
+    return this.http.post<void>(
+      `${environment.apiUrl}/org/legal-entities/${legalEntityId}/positions/${positionId}/archive`,
+      {}
+    );
+  }
+
+  restorePosition(legalEntityId: string, positionId: string): Observable<void> {
+    return this.http.post<void>(
+      `${environment.apiUrl}/org/legal-entities/${legalEntityId}/positions/${positionId}/restore`,
+      {}
+    );
+  }
+
+  listCoverage(
+    legalEntityId: string,
+    positionId: string
+  ): Observable<readonly ManagementCoverageRecordResponse[]> {
+    return this.http.get<readonly ManagementCoverageRecordResponse[]>(
+      `${environment.apiUrl}/org/legal-entities/${legalEntityId}/positions/${positionId}/coverage`
+    );
+  }
+
+  addCoverage(
+    legalEntityId: string,
+    positionId: string,
+    payload: AddCoverageRecordRequest
+  ): Observable<ManagementCoverageRecordResponse> {
+    return this.http.post<ManagementCoverageRecordResponse>(
+      `${environment.apiUrl}/org/legal-entities/${legalEntityId}/positions/${positionId}/coverage`,
+      payload
+    );
+  }
+
+  updateCoverage(
+    legalEntityId: string,
+    positionId: string,
+    coverageId: string,
+    payload: UpdateCoverageRecordRequest
+  ): Observable<ManagementCoverageRecordResponse> {
+    return this.http.put<ManagementCoverageRecordResponse>(
+      `${environment.apiUrl}/org/legal-entities/${legalEntityId}/positions/${positionId}/coverage/${coverageId}`,
+      payload
+    );
+  }
+
+  removeCoverage(
+    legalEntityId: string,
+    positionId: string,
+    coverageId: string
+  ): Observable<void> {
+    return this.http.post<void>(
+      `${environment.apiUrl}/org/legal-entities/${legalEntityId}/positions/${positionId}/coverage/${coverageId}/remove`,
+      {}
+    );
+  }
+}
+

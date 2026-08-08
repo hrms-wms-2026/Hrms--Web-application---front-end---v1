@@ -1,6 +1,6 @@
 import { Component, input, output } from '@angular/core';
 
-export type ButtonVariant = 'primary' | 'secondary';
+export type ButtonVariant = 'primary' | 'secondary' | 'danger';
 
 @Component({
   selector: 'app-button',
@@ -32,7 +32,9 @@ export class ButtonComponent {
     const variants: Record<ButtonVariant, string> = {
       primary: 'bg-[var(--color-accent)] text-[var(--color-accent-contrast)] hover:bg-[var(--color-accent-hover)]',
       secondary:
-        'bg-[var(--color-surface)] text-[var(--color-text-primary)] border border-[var(--color-border)] hover:bg-[var(--color-surface-secondary)]'
+        'bg-[var(--color-surface)] text-[var(--color-text-primary)] border border-[var(--color-border)] hover:bg-[var(--color-surface-secondary)]',
+      danger:
+        'bg-[#dc2626] text-white hover:bg-[#b91c1c]'
     };
     return `${base} ${variants[this.variant()]}`;
   }

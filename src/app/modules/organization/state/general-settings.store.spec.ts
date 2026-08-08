@@ -29,8 +29,7 @@ describe('GeneralSettingsStore', () => {
     defaultLanguage: 'en',
     dateFormat: 'DD/MM/YYYY',
     timeFormat: '24h',
-    status: 'active',
-    registeredBusinessAddress: null
+    status: 'active'
   };
 
   const settingsB: LegalEntityGeneralSettings = { ...settingsA, id: 'company-b', name: 'Company B', companyCode: 'B' };
@@ -128,8 +127,7 @@ describe('GeneralSettingsStore', () => {
       defaultLanguage: 'en',
       dateFormat: 'DD/MM/YYYY',
       timeFormat: '24h',
-      status: 'active',
-      registeredBusinessAddress: null
+      status: 'active'
     });
 
     const putReq = httpMock.expectOne(`${environment.apiUrl}/org/legal-entities/company-a/general-settings`);
@@ -165,8 +163,7 @@ describe('GeneralSettingsStore', () => {
       defaultLanguage: 'en',
       dateFormat: 'DD/MM/YYYY',
       timeFormat: '24h',
-      status: 'active',
-      registeredBusinessAddress: null
+      status: 'active'
     });
 
     httpMock

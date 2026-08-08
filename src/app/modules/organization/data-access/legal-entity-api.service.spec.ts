@@ -85,8 +85,7 @@ describe('LegalEntityApiService', () => {
     defaultLanguage: 'en',
     dateFormat: 'DD/MM/YYYY',
     timeFormat: '24h',
-    status: 'active',
-    registeredBusinessAddress: null
+    status: 'active'
   };
 
   it('fetches general settings for a legal entity', () => {
@@ -118,8 +117,7 @@ describe('LegalEntityApiService', () => {
       defaultLanguage: 'en',
       dateFormat: 'DD/MM/YYYY',
       timeFormat: '24h',
-      status: 'active',
-      registeredBusinessAddress: null
+      status: 'active'
     };
 
     service.updateGeneralSettings('company-1', payload).subscribe((result) => {
