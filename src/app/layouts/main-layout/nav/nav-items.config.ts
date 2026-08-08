@@ -24,7 +24,8 @@ export const NAV_ITEMS: readonly NavItem[] = [
     label: 'Work',
     icon: 'work',
     path: '/work',
-    requiredModules: ['worksync_foundation', 'projects', 'objectives_milestones', 'tasks', 'boards', 'planning_sprints']
+    requiredModules: ['worksync_foundation', 'projects', 'objectives_milestones', 'tasks', 'boards', 'planning_sprints'],
+    requiredPermissions: ['projects:access']
   },
   {
     id: 'people',

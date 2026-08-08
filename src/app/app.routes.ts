@@ -46,7 +46,12 @@ export const routes: Routes = [
             (module) => module.DashboardHomeComponent
           )
       },
-      { path: 'work', loadComponent: loadPlaceholder, data: { title: 'Work' } },
+      {
+        path: 'work',
+        canActivate: [permissionGuard],
+        data: { permissions: ['projects:access'] },
+        loadChildren: () => import('./modules/work/work.routes').then((module) => module.WORK_ROUTES)
+      },
       { path: 'people', loadComponent: loadPlaceholder, data: { title: 'People' } },
       { path: 'calendar', loadComponent: loadPlaceholder, data: { title: 'Calendar' } },
       { path: 'time-off', loadComponent: loadPlaceholder, data: { title: 'Time Off' } },
