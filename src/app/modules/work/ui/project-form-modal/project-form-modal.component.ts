@@ -5,7 +5,7 @@ import { SelectComponent, SelectOption } from '../../../../shared/ui/select/sele
 import { ButtonComponent } from '../../../../shared/ui/button/button.component';
 import { ProjectCategoryStore } from '../../state/project-category.store';
 import { validateProjectForm, ProjectFormFields } from '../../utils/project-form.validator';
-import { CreateProjectPayload, EditProjectPayload, ProjectDetail } from '../../models/project.model';
+import { CreateProjectPayload, EditProjectPayload, Project } from '../../models/project.model';
 
 @Component({
   selector: 'app-project-form-modal',
@@ -73,7 +73,8 @@ export class ProjectFormModalComponent implements OnInit {
 
   open = input(false);
   mode = input.required<'create' | 'edit'>();
-  initialValue = input<ProjectDetail | null>(null);
+  /** Accepts either a list-page `Project` (no `description`) or a full `ProjectDetail` — whichever the caller has on hand. */
+  initialValue = input<(Project & { description?: string | null }) | null>(null);
   submitting = input(false);
   errorMessage = input<string>('');
 
