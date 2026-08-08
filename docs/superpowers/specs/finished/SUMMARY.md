@@ -7,3 +7,6 @@ One subfolder per completion date. Master status table: `../SUMMARY.md`.
 
 ## 2026-07-30/
 - `2026-07-30-dashboard-skeleton-redesign-design.md` — design for the black/white/gray dashboard shell. Status: Approved. Corresponding plan finished the same day.
+
+## 2026-08-09/
+- `2026-08-08-work-management-projects-milestones-design.md` — design for Work Management Projects list, Project Detail, and read-only Milestone/Objective view, gated on `projects:access`. Status: Implemented. Corresponding plan: `../../plans/finished/2026-08-09/2026-08-09-work-management-projects-milestones.md`, finished 2026-08-09 (day after the design).

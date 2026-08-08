@@ -24,3 +24,6 @@ One subfolder per completion date. Master status table: `../SUMMARY.md`.
 - `FRONTEND_PART2C_LEGAL_ENTITY_GENERAL_SETTINGS_REPORT.md` — implementation report matching the `2026-08-06-legal-entity-general-settings.md` plan.
 
 All 2026-08-06 dates inferred from git history except the one plan file that already carries the date in its filename.
+
+## 2026-08-09/
+- `2026-08-09-work-management-projects-milestones.md` — Work Management Projects List, Create/Edit/Delete/Achieve/Unachieve popups, Project Detail page, and read-only Milestone view, gated on `projects:access`. Design: `specs/finished/2026-08-09/2026-08-08-work-management-projects-milestones-design.md`. All 17 tasks executed 2026-08-09, one commit per task, full suite green throughout (347/364 — the 17 failures are the same pre-existing, unrelated set from before this work started). See the plan file's own "Execution report" section for deviations (all backend-blocker-related, all resolved before Task 1 started).
