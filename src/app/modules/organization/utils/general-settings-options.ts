@@ -10,15 +10,6 @@ isoCountries.registerLocale(isoCountriesEnLocale);
 
 const COUNTRY_NAMES_BY_ALPHA2 = isoCountries.getNames('en', { select: 'official' });
 
-/** Registered Business Address "Country" - backend only enforces MaximumLength(100),
- * no ISO enum (RegisteredBusinessAddress.Country in
- * UpdateLegalEntityGeneralSettingsCommandValidator.cs). Curated as a dropdown of
- * ISO-3166-1 country names for UX/data-quality only - free text still round-trips
- * fine since the backend stores whatever string is sent. */
-export const COUNTRY_NAME_OPTIONS: readonly SelectOption[] = Object.values(COUNTRY_NAMES_BY_ALPHA2)
-  .map((name) => ({ value: name, label: name }))
-  .sort((a, b) => a.label.localeCompare(b.label));
-
 /** Company Details "Country code (ISO alpha-3)" - backend only enforces NotEmpty +
  * MaximumLength(3), no ISO enum (CountryCode in the same validator). Curated here so
  * users pick a real ISO-3166-1 alpha-3 code instead of typing one (e.g. the alpha-2
@@ -40,18 +31,6 @@ export function normalizeCountryCode(raw: string): string {
   return isoCountries.toAlpha3(raw) ?? raw;
 }
 
-/** Normalizes a legacy free-typed country name to the exact casing the
- * COUNTRY_NAME_OPTIONS dropdown expects (case-insensitive match), so existing
- * records saved before this field became a dropdown still show as selected on load.
- * Cannot fix genuine misspellings (e.g. "sri lanaka") - those still render blank
- * until the user re-selects the correct option. */
-export function normalizeCountryName(raw: string): string {
-  if (!raw) return raw;
-  const trimmed = raw.trim().toLowerCase();
-  const match = COUNTRY_NAME_OPTIONS.find((option) => option.value.toLowerCase() === trimmed);
-  return match ? match.value : raw;
-}
-
 /** Company Details "Currency code (ISO 4217)" via Intl.supportedValuesOf - no static
  * list to maintain, always matches the runtime's currency data. Backend only enforces
  * NotEmpty + MaximumLength(3) (CurrencyCode in the same validator). */
@@ -71,14 +50,14 @@ export const TIMEZONE_OPTIONS: readonly SelectOption[] = Intl.supportedValuesOf(
  * firstDayOfWeek/standardWorkingDays InclusiveBetween(1,7) range. The backend
  * does not itself document which integer maps to which day - this is the
  * ISO-8601 convention, called out in the Part 2C report as an assumption. */
-export const WEEKDAY_OPTIONS: ReadonlyArray<{ value: number; label: string }> = [
-  { value: 1, label: 'Monday' },
-  { value: 2, label: 'Tuesday' },
-  { value: 3, label: 'Wednesday' },
-  { value: 4, label: 'Thursday' },
-  { value: 5, label: 'Friday' },
-  { value: 6, label: 'Saturday' },
-  { value: 7, label: 'Sunday' }
+export const WEEKDAY_OPTIONS: ReadonlyArray<{ value: number; label: string; shortLabel: string }> = [
+  { value: 1, label: 'Monday', shortLabel: 'Mon' },
+  { value: 2, label: 'Tuesday', shortLabel: 'Tue' },
+  { value: 3, label: 'Wednesday', shortLabel: 'Wed' },
+  { value: 4, label: 'Thursday', shortLabel: 'Thu' },
+  { value: 5, label: 'Friday', shortLabel: 'Fri' },
+  { value: 6, label: 'Saturday', shortLabel: 'Sat' },
+  { value: 7, label: 'Sunday', shortLabel: 'Sun' }
 ];
 
 export const FIRST_DAY_OF_WEEK_OPTIONS: readonly SelectOption[] = WEEKDAY_OPTIONS.map((d) => ({
@@ -94,8 +73,8 @@ export const FINANCIAL_YEAR_MONTH_OPTIONS: readonly SelectOption[] = [
 /** Backend enforces exactly these two values (AllowedTimeFormats in
  * UpdateLegalEntityGeneralSettingsCommandValidator.cs). */
 export const TIME_FORMAT_OPTIONS: readonly SelectOption[] = [
-  { value: '12h', label: '12-hour' },
-  { value: '24h', label: '24-hour' }
+  { value: '12h', label: '12 Hour (AM/PM)' },
+  { value: '24h', label: '24 Hour' }
 ];
 
 /** Backend enforces exactly these two values (AllowedStatuses in
@@ -110,5 +89,10 @@ export const STATUS_OPTIONS: readonly SelectOption[] = [
 export const DATE_FORMAT_OPTIONS: readonly SelectOption[] = [
   { value: 'DD/MM/YYYY', label: 'DD/MM/YYYY' },
   { value: 'MM/DD/YYYY', label: 'MM/DD/YYYY' },
-  { value: 'YYYY-MM-DD', label: 'YYYY-MM-DD' }
+  { value: 'YYYY-MM-DD', label: 'YYYY-MM-DD' },
+  { value: 'DD MMM YYYY', label: 'DD MMM YYYY' }
+];
+
+export const DEFAULT_LANGUAGE_OPTIONS: readonly SelectOption[] = [
+  { value: 'en-US', label: 'English (US)' }
 ];

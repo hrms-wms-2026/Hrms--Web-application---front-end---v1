@@ -1,0 +1,197 @@
+.plt-table-container {
+  width: 100%;
+  border-radius: 10px;
+  border: 1px solid color-mix(in srgb, var(--color-border) 65%, transparent);
+  background: var(--color-surface);
+  overflow: visible;
+  position: relative;
+}
+
+@media (max-width: 768px) {
+  .plt-table-container {
+    overflow-x: auto;
+  }
+}
+
+.plt-table {
+  width: 100%;
+  border-collapse: collapse;
+  text-align: left;
+  font-size: 0.8125rem;
+}
+
+.plt-table th {
+  padding: 0.75rem 1rem;
+  font-size: 0.75rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  color: var(--color-text-secondary);
+  background: var(--color-surface-secondary);
+  border-bottom: 1px solid var(--color-border);
+}
+
+.plt-table td {
+  padding: 0.875rem 1rem;
+  border-bottom: 1px solid color-mix(in srgb, var(--color-border) 50%, transparent);
+  color: var(--color-text-primary);
+}
+
+.plt-table tbody tr:last-child td {
+  border-bottom: none;
+}
+
+.plt-table tbody tr:hover {
+  background: color-mix(in srgb, var(--color-surface-secondary) 40%, transparent);
+}
+
+.plt-tr--inactive {
+  opacity: 0.65;
+}
+
+.plt-name {
+  font-weight: 600;
+}
+
+.plt-code-chip {
+  display: inline-block;
+  font-size: 0.75rem;
+  font-weight: 500;
+  color: var(--color-text-secondary);
+  padding: 0.125rem 0.375rem;
+  border-radius: 4px;
+  background: var(--color-surface-secondary);
+}
+
+.plt-text-secondary {
+  color: var(--color-text-secondary);
+}
+
+.plt-type-badge {
+  font-size: 0.71875rem;
+  font-weight: 500;
+  padding: 0.1875rem 0.5rem;
+  border-radius: 4px;
+  background: color-mix(in srgb, var(--color-sidebar-active-bg, #2563eb) 10%, transparent);
+  color: var(--color-sidebar-active-bg, #2563eb);
+}
+
+.plt-type-badge--pooled {
+  background: color-mix(in srgb, #8b5cf6 12%, transparent);
+  color: #7c3aed;
+}
+
+.plt-capacity-val {
+  font-weight: 600;
+}
+
+.plt-badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 0.2rem 0.5rem;
+  border-radius: 999px;
+  font-size: 0.71875rem;
+  font-weight: 500;
+}
+
+.plt-badge--occupied {
+  background: color-mix(in srgb, #10b981 12%, transparent);
+  color: #059669;
+}
+
+.plt-badge--vacant {
+  background: color-mix(in srgb, #f59e0b 12%, transparent);
+  color: #d97706;
+}
+
+.plt-badge--available {
+  background: color-mix(in srgb, var(--color-sidebar-active-bg, #2563eb) 12%, transparent);
+  color: var(--color-sidebar-active-bg, #2563eb);
+}
+
+.plt-badge--inactive {
+  background: color-mix(in srgb, var(--color-text-secondary) 15%, transparent);
+  color: var(--color-text-secondary);
+}
+
+.plt-th-actions,
+.plt-td-actions {
+  text-align: right;
+  width: 60px;
+}
+
+.plt-action-wrapper {
+  position: relative;
+  display: inline-block;
+}
+
+.plt-action-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  border-radius: 6px;
+  border: 1px solid transparent;
+  background: transparent;
+  color: var(--color-text-secondary);
+  cursor: pointer;
+}
+
+.plt-action-btn:hover {
+  background: var(--color-surface-secondary);
+  border-color: var(--color-border);
+  color: var(--color-text-primary);
+}
+
+.plt-menu {
+  position: absolute;
+  right: 0;
+  top: 100%;
+  margin-top: 0.25rem;
+  width: max-content;
+  min-width: 140px;
+  border-radius: 8px;
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.12);
+  z-index: 50;
+  display: flex;
+  flex-direction: column;
+  padding: 0.375rem;
+  white-space: nowrap;
+}
+
+.plt-menu-item {
+  display: flex;
+  align-items: center;
+  gap: 0.625rem;
+  padding: 0.5rem 0.75rem;
+  border: none;
+  background: transparent;
+  font-size: 0.8125rem;
+  font-weight: 500;
+  color: var(--color-text-primary);
+  border-radius: 6px;
+  cursor: pointer;
+  text-align: left;
+  white-space: nowrap;
+}
+
+.plt-menu-item:hover {
+  background: var(--color-surface-secondary);
+}
+
+.plt-menu-item--danger {
+  color: var(--color-danger-text, #ef4444);
+}
+
+.plt-menu-item--danger:hover {
+  background: color-mix(in srgb, var(--color-danger-text, #ef4444) 10%, transparent);
+}
+
+.plt-empty-td {
+  text-align: center;
+  padding: 2.5rem 1rem;
+  color: var(--color-text-secondary);
+}

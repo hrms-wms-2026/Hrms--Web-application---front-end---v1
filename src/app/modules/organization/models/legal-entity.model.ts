@@ -12,21 +12,6 @@ export interface LegalEntityListItem {
 }
 
 /**
- * Registered business address shape matching backend LegalEntityAddressDto
- * verbatim (LegalEntityAddressDto.cs). Reused by both the GET response and
- * the PUT request - not flattened, and not merged with the top-level
- * countryCode, which is a separate field.
- */
-export interface LegalEntityAddress {
-  readonly line1: string | null;
-  readonly line2: string | null;
-  readonly city: string | null;
-  readonly state: string | null;
-  readonly postalCode: string | null;
-  readonly country: string | null;
-}
-
-/**
  * Matches backend LegalEntityGeneralSettingsResponse DTO verbatim
  * (LegalEntityGeneralSettingsResponse.cs).
  */
@@ -51,7 +36,6 @@ export interface LegalEntityGeneralSettings {
   readonly dateFormat: string;
   readonly timeFormat: '12h' | '24h';
   readonly status: 'active' | 'inactive';
-  readonly registeredBusinessAddress: LegalEntityAddress | null;
 }
 
 /**
@@ -79,5 +63,4 @@ export interface UpdateLegalEntityGeneralSettingsRequest {
   dateFormat: string;
   timeFormat: '12h' | '24h';
   status: 'active' | 'inactive';
-  registeredBusinessAddress: LegalEntityAddress | null;
 }

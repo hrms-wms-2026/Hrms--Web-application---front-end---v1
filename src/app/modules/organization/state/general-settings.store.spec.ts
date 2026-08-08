@@ -29,8 +29,7 @@ describe('GeneralSettingsStore', () => {
     defaultLanguage: 'en',
     dateFormat: 'DD/MM/YYYY',
     timeFormat: '24h',
-    status: 'active',
-    registeredBusinessAddress: null
+    status: 'active'
   };
 
   const settingsB: LegalEntityGeneralSettings = { ...settingsA, id: 'company-b', name: 'Company B', companyCode: 'B' };
@@ -128,8 +127,7 @@ describe('GeneralSettingsStore', () => {
       defaultLanguage: 'en',
       dateFormat: 'DD/MM/YYYY',
       timeFormat: '24h',
-      status: 'active',
-      registeredBusinessAddress: null
+      status: 'active'
     });
 
     const putReq = httpMock.expectOne(`${environment.apiUrl}/org/legal-entities/company-a/general-settings`);
@@ -165,8 +163,7 @@ describe('GeneralSettingsStore', () => {
       defaultLanguage: 'en',
       dateFormat: 'DD/MM/YYYY',
       timeFormat: '24h',
-      status: 'active',
-      registeredBusinessAddress: null
+      status: 'active'
     });
 
     httpMock
@@ -177,5 +174,61 @@ describe('GeneralSettingsStore', () => {
     expect(result).toBeNull();
     expect(store.saveError()).toBe('Company name is required.');
     expect(store.settings()).toEqual(settingsA); // failed values kept in form by the component, not the store
+  });
+
+  it('uploadLogo() PUTs multipart and patches logoFileId on success', async () => {
+    const loadPromise = store.load('company-a');
+    httpMock.expectOne(`${environment.apiUrl}/org/legal-entities/company-a/general-settings`).flush(settingsA);
+    await loadPromise;
+
+    const file = new File(['bytes'], 'logo.png', { type: 'image/png' });
+    const uploadPromise = store.uploadLogo('company-a', file);
+
+    const req = httpMock.expectOne(`${environment.apiUrl}/org/legal-entities/company-a/logo`);
+    expect(req.request.method).toBe('PUT');
+    req.flush({ legalEntityId: 'company-a', logoFileId: 'file-1' });
+
+    const ok = await uploadPromise;
+    expect(ok).toBe(true);
+    expect(store.settings()?.logoFileId).toBe('file-1');
+    expect(store.uploadingLogo()).toBe(false);
+  });
+
+  it('uploadLogo() sets saveError and keeps prior settings on failure', async () => {
+    const loadPromise = store.load('company-a');
+    httpMock.expectOne(`${environment.apiUrl}/org/legal-entities/company-a/general-settings`).flush(settingsA);
+    await loadPromise;
+
+    const file = new File(['bytes'], 'logo.png', { type: 'image/png' });
+    const uploadPromise = store.uploadLogo('company-a', file);
+
+    httpMock
+      .expectOne(`${environment.apiUrl}/org/legal-entities/company-a/logo`)
+      .flush({ detail: 'File exceeds the 5 MB limit.' }, { status: 400, statusText: 'Bad Request' });
+
+    const ok = await uploadPromise;
+    expect(ok).toBe(false);
+    expect(store.saveError()).toBe('File exceeds the 5 MB limit.');
+    expect(store.settings()).toEqual(settingsA);
+    expect(store.uploadingLogo()).toBe(false);
+  });
+
+  it('removeLogo() DELETEs and clears logoFileId on success', async () => {
+    const loadPromise = store.load('company-a');
+    httpMock
+      .expectOne(`${environment.apiUrl}/org/legal-entities/company-a/general-settings`)
+      .flush({ ...settingsA, logoFileId: 'file-1' });
+    await loadPromise;
+
+    const removePromise = store.removeLogo('company-a');
+
+    const req = httpMock.expectOne(`${environment.apiUrl}/org/legal-entities/company-a/logo`);
+    expect(req.request.method).toBe('DELETE');
+    req.flush(null, { status: 204, statusText: 'No Content' });
+
+    const ok = await removePromise;
+    expect(ok).toBe(true);
+    expect(store.settings()?.logoFileId).toBeNull();
+    expect(store.removingLogo()).toBe(false);
   });
 });

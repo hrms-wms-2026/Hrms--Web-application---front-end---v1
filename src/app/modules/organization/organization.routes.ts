@@ -1,4 +1,5 @@
 import { Routes } from '@angular/router';
+import { permissionGuard } from '../../core/guards/permission.guard';
 
 export const ORGANIZATION_ROUTES: Routes = [
   {
@@ -9,17 +10,19 @@ export const ORGANIZATION_ROUTES: Routes = [
   {
     path: 'departments',
     loadComponent: () =>
-      import('./feature/departments-placeholder/departments-placeholder.component').then(
-        (m) => m.DepartmentsPlaceholderComponent
+      import('./feature/department-management/department-management.component').then(
+        (m) => m.DepartmentManagementComponent
       ),
-    data: { title: 'Departments' }
+    canActivate: [permissionGuard],
+    data: { title: 'Departments', permissions: ['org:read'] }
   },
   {
     path: 'positions',
     loadComponent: () =>
-      import('./feature/positions-placeholder/positions-placeholder.component').then(
-        (m) => m.PositionsPlaceholderComponent
+      import('./feature/position-management/position-management.component').then(
+        (m) => m.PositionManagementComponent
       ),
-    data: { title: 'Positions' }
+    canActivate: [permissionGuard],
+    data: { title: 'Positions', permissions: ['org:read'] }
   }
 ];

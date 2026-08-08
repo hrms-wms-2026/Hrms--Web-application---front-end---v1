@@ -1,0 +1,230 @@
+<!-- Header Bar with Breadcrumb -->
+<header class="pm-header-bar">
+  <nav class="pm-breadcrumb" aria-label="Breadcrumb">
+    <span class="pm-breadcrumb__item pm-breadcrumb__item--parent">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" />
+        <circle cx="12" cy="7" r="4" />
+      </svg>
+      Organization
+    </span>
+    <svg class="pm-breadcrumb__sep" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="9 18 15 12 9 6"/></svg>
+    <span class="pm-breadcrumb__item pm-breadcrumb__item--current" aria-current="page">Positions</span>
+  </nav>
+</header>
+
+@if (!hasReadAccess()) {
+  <app-empty-state
+    title="You don't have access to this."
+    description="Viewing positions and reporting lines requires the org:read permission."
+  />
+} @else if (!selectedLegalEntity()) {
+  <app-empty-state title="Select a company to view positions." />
+} @else {
+
+  <!-- Action Bar -->
+  <div class="pm-top-section">
+    <div class="pm-controls">
+      
+      <!-- Left Filters -->
+      <div class="pm-controls-left">
+        <!-- Search Input -->
+        <div class="pm-search-wrap">
+          <svg class="pm-search-icon" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/>
+          </svg>
+          <input
+            type="text"
+            class="pm-search-input"
+            placeholder="Search positions…"
+            [value]="positionStore.searchQuery()"
+            (input)="onSearchChange($any($event.target).value)"
+          />
+        </div>
+
+        <!-- Department Select Filter -->
+        <div class="pm-dept-select-wrap">
+          <app-select
+            [options]="departmentOptions()"
+            [value]="positionStore.departmentFilterId() || ''"
+            (valueChange)="onDepartmentFilterChange($event)"
+          />
+        </div>
+      </div>
+
+      <!-- Right Controls Group -->
+      <div class="pm-controls-right">
+        
+        <!-- View Switcher Toggle -->
+        <div class="pm-view-toggle">
+          <button
+            type="button"
+            class="pm-toggle-btn"
+            [class.pm-toggle-btn--active]="positionStore.viewMode() === 'tree'"
+            (click)="onViewModeToggle('tree')"
+          >
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/></svg>
+            Tree
+          </button>
+          <button
+            type="button"
+            class="pm-toggle-btn"
+            [class.pm-toggle-btn--active]="positionStore.viewMode() === 'list'"
+            (click)="onViewModeToggle('list')"
+          >
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/><line x1="3" y1="6" x2="3.01" y2="6"/><line x1="3" y1="12" x2="3.01" y2="12"/><line x1="3" y1="18" x2="3.01" y2="18"/></svg>
+            List
+          </button>
+        </div>
+
+        <!-- Filter Dropdown Button -->
+        <div class="pm-filter-dropdown-wrap">
+          <button
+            type="button"
+            class="pm-filter-btn"
+            [class.pm-filter-btn--active]="positionStore.includeInactive()"
+            (click)="onFilterToggle($event)"
+          >
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3"/></svg>
+            <span>Filter</span>
+            @if (positionStore.includeInactive()) {
+              <span class="pm-filter-dot"></span>
+            }
+          </button>
+
+          @if (filterMenuOpen()) {
+            <div class="pm-filter-menu" (click)="$event.stopPropagation()">
+              <label class="pm-filter-menu-item">
+                <input
+                  type="checkbox"
+                  [checked]="positionStore.includeInactive()"
+                  (change)="onIncludeInactiveToggle($event)"
+                />
+                <span>Show archived positions</span>
+              </label>
+            </div>
+          }
+        </div>
+
+        <!-- Create Position Button -->
+        @if (hasManageAccess()) {
+          <app-button type="button" (click)="openCreateModal()">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+            Create position
+          </app-button>
+        }
+
+      </div>
+
+    </div>
+  </div>
+
+  <!-- Content Loading / Error / Data View -->
+  @if (positionStore.loading()) {
+    <div class="pm-skeleton-block" aria-busy="true" aria-label="Loading positions"></div>
+  } @else if (positionStore.loadError()) {
+    <app-error-state
+      [message]="positionStore.loadError()!"
+      [retryable]="true"
+      (retry)="positionStore.load(selectedLegalEntity()!.id)"
+    />
+  } @else {
+
+    <!-- TREE VIEW -->
+    @if (positionStore.viewMode() === 'tree') {
+      
+      <div class="pm-tree-container">
+        
+        <div class="pm-tree-header">
+          <span class="pm-tree-title">Position hierarchy</span>
+        </div>
+
+        @if (positionStore.treeData().length > 0) {
+          <div class="pm-tree-list">
+            @for (node of positionStore.treeData(); track node.id) {
+              <app-position-tree-node
+                [node]="node"
+                [level]="0"
+                [isRoot]="true"
+                [canManage]="hasManageAccess()"
+                [departmentNameMap]="departmentNameMap()"
+                (addSubPosition)="openCreateModal($event)"
+                (editPosition)="openEditModal($event)"
+                (viewCoverage)="openCoverageModal($event)"
+                (archivePosition)="openArchiveModal($event)"
+                (reparentPosition)="onReparentPosition($event)"
+              />
+            }
+          </div>
+        } @else {
+          <app-empty-state
+            title="No positions found"
+            description="Create your first position to start building reporting lines."
+          />
+        }
+
+      </div>
+
+    } @else {
+
+      <!-- LIST VIEW -->
+      <app-position-list-table
+        [positions]="positionStore.flatItems()"
+        [canManage]="hasManageAccess()"
+        [departmentNameMap]="departmentNameMap()"
+        [positionNameMap]="positionNameMap()"
+        (editPosition)="openEditModal($event)"
+        (viewCoverage)="openCoverageModal($event)"
+        (archivePosition)="openArchiveModal($event)"
+        (restorePosition)="onRestorePosition($event)"
+      />
+
+    }
+
+  }
+
+}
+
+<!-- Modals -->
+@if (formModalOpen()) {
+  <app-position-form-modal
+    [position]="editingPosition()"
+    [reportsToPreset]="reportsToPreset()"
+    [availableDepartments]="departmentStore.allFlatList()"
+    [availablePositions]="positionStore.allPositionsList()"
+    [companyName]="selectedLegalEntity()?.name || ''"
+    [loading]="positionStore.saving()"
+    [actionError]="positionStore.actionError()"
+    (save)="onSavePosition($event)"
+    (cancel)="closeFormModal()"
+  />
+}
+
+@if (archiveModalOpen() && archivingPosition()) {
+  <app-position-archive-modal
+    [position]="archivingPosition()!"
+    [blockers]="positionStore.archiveBlockers()"
+    [checking]="positionStore.archiveChecking()"
+    [saving]="positionStore.saving()"
+    (confirmArchive)="onConfirmArchive()"
+    (cancel)="closeArchiveModal()"
+  />
+}
+
+@if (coverageModalOpen() && positionStore.selectedCoveragePosition()) {
+  <app-position-coverage-modal
+    [position]="positionStore.selectedCoveragePosition()!"
+    [coverageRecords]="positionStore.coverageRecords()"
+    [availablePositions]="positionStore.allPositionsList()"
+    [availableDepartments]="departmentStore.allFlatList()"
+    [loading]="positionStore.coverageLoading()"
+    [saving]="positionStore.coverageSaving()"
+    [error]="positionStore.coverageError()"
+    [canManage]="hasManageAccess()"
+    (addCoverage)="onAddCoverage($event)"
+    (updateCoverage)="onUpdateCoverage($event)"
+    (removeCoverage)="onRemoveCoverage($event)"
+    (close)="closeCoverageModal()"
+  />
+}
+

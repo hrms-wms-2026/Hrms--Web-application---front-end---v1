@@ -7,18 +7,18 @@ import { EmptyStateComponent } from '../../../../shared/ui/empty-state/empty-sta
 import { ErrorStateComponent } from '../../../../shared/ui/error-state/error-state.component';
 import { InputComponent } from '../../../../shared/ui/input/input.component';
 import { SelectComponent } from '../../../../shared/ui/select/select.component';
+import { LegalEntityApiService } from '../../data-access/legal-entity-api.service';
 import { LegalEntityGeneralSettings, UpdateLegalEntityGeneralSettingsRequest } from '../../models/legal-entity.model';
 import { GeneralSettingsStore } from '../../state/general-settings.store';
 import { LegalEntityStore } from '../../state/legal-entity.store';
 import {
   COUNTRY_CODE_OPTIONS,
-  COUNTRY_NAME_OPTIONS,
   CURRENCY_CODE_OPTIONS,
   DATE_FORMAT_OPTIONS,
+  DEFAULT_LANGUAGE_OPTIONS,
   FINANCIAL_YEAR_MONTH_OPTIONS,
   FIRST_DAY_OF_WEEK_OPTIONS,
   normalizeCountryCode,
-  normalizeCountryName,
   STATUS_OPTIONS,
   TIME_FORMAT_OPTIONS,
   TIMEZONE_OPTIONS,
@@ -52,6 +52,7 @@ export class GeneralSettingsComponent {
   private readonly fb = inject(FormBuilder);
   private readonly permissionService = inject(PermissionService);
   private readonly notificationService = inject(NotificationService);
+  private readonly legalEntityApi = inject(LegalEntityApiService);
 
   readonly legalEntityStore = inject(LegalEntityStore);
   readonly settingsStore = inject(GeneralSettingsStore);
@@ -62,7 +63,7 @@ export class GeneralSettingsComponent {
   readonly TIME_FORMAT_OPTIONS = TIME_FORMAT_OPTIONS;
   readonly STATUS_OPTIONS = STATUS_OPTIONS;
   readonly DATE_FORMAT_OPTIONS = DATE_FORMAT_OPTIONS;
-  readonly COUNTRY_NAME_OPTIONS = COUNTRY_NAME_OPTIONS;
+  readonly DEFAULT_LANGUAGE_OPTIONS = DEFAULT_LANGUAGE_OPTIONS;
   readonly COUNTRY_CODE_OPTIONS = COUNTRY_CODE_OPTIONS;
   readonly CURRENCY_CODE_OPTIONS = CURRENCY_CODE_OPTIONS;
   readonly TIMEZONE_OPTIONS = TIMEZONE_OPTIONS;
@@ -70,6 +71,11 @@ export class GeneralSettingsComponent {
   readonly hasAccess = computed(() => this.permissionService.hasPermission('legal_entity:update'));
   readonly selectedLegalEntity = this.legalEntityStore.selectedLegalEntity;
   readonly submitting = signal(false);
+  readonly uploadingLogo = this.settingsStore.uploadingLogo;
+  readonly removingLogo = this.settingsStore.removingLogo;
+
+  private static readonly ALLOWED_LOGO_TYPES = ['image/png', 'image/jpeg', 'image/webp'];
+  private static readonly MAX_LOGO_BYTES = 5 * 1024 * 1024;
 
   readonly form = this.fb.nonNullable.group({
     name: ['', [Validators.required, Validators.maxLength(200)]],
@@ -86,16 +92,12 @@ export class GeneralSettingsComponent {
     financialYearStartMonth: [1, [Validators.required, Validators.min(1), Validators.max(12)]],
     firstDayOfWeek: [1, [Validators.required, Validators.min(1), Validators.max(7)]],
     standardWorkingDays: this.fb.nonNullable.control<number[]>([], [nonEmptyArrayValidator()]),
-    defaultLanguage: ['', [Validators.required, Validators.maxLength(10)]],
+    // Phase 1 supports English only - locked, not user-editable (CreateLegalEntityCommandHandler.cs
+    // always sets DefaultLanguage = "en-US" for new legal entities).
+    defaultLanguage: [{ value: 'en-US', disabled: true }, [Validators.required, Validators.maxLength(10)]],
     dateFormat: ['', [Validators.required, Validators.maxLength(20)]],
     timeFormat: ['24h' as '12h' | '24h', [Validators.required, oneOfValidator(['12h', '24h'])]],
-    status: ['active' as 'active' | 'inactive', [Validators.required, oneOfValidator(['active', 'inactive'])]],
-    addressLine1: ['', [Validators.maxLength(255)]],
-    addressLine2: ['', [Validators.maxLength(255)]],
-    addressCity: ['', [Validators.maxLength(100)]],
-    addressState: ['', [Validators.maxLength(100)]],
-    addressPostalCode: ['', [Validators.maxLength(20)]],
-    addressCountry: ['', [Validators.maxLength(100)]]
+    status: ['active' as 'active' | 'inactive', [Validators.required, oneOfValidator(['active', 'inactive'])]]
   });
 
   constructor() {
@@ -160,6 +162,59 @@ export class GeneralSettingsComponent {
     }
   }
 
+  logoUrl(): string | null {
+    const company = this.selectedLegalEntity();
+    const logoFileId = this.settingsStore.settings()?.logoFileId;
+    if (!company || !logoFileId) {
+      return null;
+    }
+    return this.legalEntityApi.getLogoUrl(company.id, logoFileId);
+  }
+
+  async onLogoFileSelected(event: Event): Promise<void> {
+    const input = event.target as HTMLInputElement;
+    const file = input.files?.[0];
+    input.value = '';
+    if (!file) {
+      return;
+    }
+
+    if (!GeneralSettingsComponent.ALLOWED_LOGO_TYPES.includes(file.type)) {
+      this.notificationService.error('Logo must be a PNG, JPG, or WebP image.');
+      return;
+    }
+    if (file.size > GeneralSettingsComponent.MAX_LOGO_BYTES) {
+      this.notificationService.error('Logo must be 5 MB or smaller.');
+      return;
+    }
+
+    const company = this.selectedLegalEntity();
+    if (!company) {
+      return;
+    }
+
+    const ok = await this.settingsStore.uploadLogo(company.id, file);
+    if (ok) {
+      this.notificationService.success('Logo uploaded.');
+    } else {
+      this.notificationService.error(this.settingsStore.saveError() ?? 'Failed to upload logo.');
+    }
+  }
+
+  async onRemoveLogo(): Promise<void> {
+    const company = this.selectedLegalEntity();
+    if (!company) {
+      return;
+    }
+
+    const ok = await this.settingsStore.removeLogo(company.id);
+    if (ok) {
+      this.notificationService.success('Logo removed.');
+    } else {
+      this.notificationService.error(this.settingsStore.saveError() ?? 'Failed to remove logo.');
+    }
+  }
+
   private emptyFormValue() {
     return {
       name: '',
@@ -176,16 +231,10 @@ export class GeneralSettingsComponent {
       financialYearStartMonth: 1,
       firstDayOfWeek: 1,
       standardWorkingDays: [] as number[],
-      defaultLanguage: '',
+      defaultLanguage: 'en-US',
       dateFormat: '',
       timeFormat: '24h' as const,
-      status: 'active' as const,
-      addressLine1: '',
-      addressLine2: '',
-      addressCity: '',
-      addressState: '',
-      addressPostalCode: '',
-      addressCountry: ''
+      status: 'active' as const
     };
   }
 
@@ -208,23 +257,13 @@ export class GeneralSettingsComponent {
       defaultLanguage: settings.defaultLanguage,
       dateFormat: settings.dateFormat,
       timeFormat: settings.timeFormat,
-      status: settings.status,
-      addressLine1: settings.registeredBusinessAddress?.line1 ?? '',
-      addressLine2: settings.registeredBusinessAddress?.line2 ?? '',
-      addressCity: settings.registeredBusinessAddress?.city ?? '',
-      addressState: settings.registeredBusinessAddress?.state ?? '',
-      addressPostalCode: settings.registeredBusinessAddress?.postalCode ?? '',
-      addressCountry: normalizeCountryName(settings.registeredBusinessAddress?.country ?? '')
+      status: settings.status
     };
   }
 
   private toRequestPayload(): UpdateLegalEntityGeneralSettingsRequest {
     const v = this.form.getRawValue();
     const nullIfBlank = (value: string): string | null => (value.trim() === '' ? null : value);
-
-    const hasAddress = [v.addressLine1, v.addressLine2, v.addressCity, v.addressState, v.addressPostalCode, v.addressCountry].some(
-      (f) => f.trim() !== ''
-    );
 
     return {
       name: v.name,
@@ -244,17 +283,7 @@ export class GeneralSettingsComponent {
       defaultLanguage: v.defaultLanguage,
       dateFormat: v.dateFormat,
       timeFormat: v.timeFormat,
-      status: v.status,
-      registeredBusinessAddress: hasAddress
-        ? {
-            line1: nullIfBlank(v.addressLine1),
-            line2: nullIfBlank(v.addressLine2),
-            city: nullIfBlank(v.addressCity),
-            state: nullIfBlank(v.addressState),
-            postalCode: nullIfBlank(v.addressPostalCode),
-            country: nullIfBlank(v.addressCountry)
-          }
-        : null
+      status: v.status
     };
   }
 }

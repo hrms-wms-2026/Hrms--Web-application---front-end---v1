@@ -20,7 +20,7 @@
       [attr.aria-current]="activeItem()?.id === item.id ? 'page' : null"
     >
       <div class="nav-rail-item__icon-wrapper">
-        <app-nav-icon [name]="item.icon!" />
+        <app-nav-icon [name]="item.icon!" [active]="activeItem()?.id === item.id" />
       </div>
       <span>{{ item.label }}</span>
     </a>

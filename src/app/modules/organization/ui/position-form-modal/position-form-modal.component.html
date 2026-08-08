@@ -1,0 +1,97 @@
+<div class="pfm-backdrop" (click)="cancel.emit()">
+  <div class="pfm-modal" (click)="$event.stopPropagation()" role="dialog" aria-modal="true">
+    
+    <!-- Header -->
+    <div class="pfm-header">
+      <div>
+        <h2 class="pfm-title">{{ isEdit ? 'Edit position' : 'Create position' }}</h2>
+        <p class="pfm-subtitle">
+          {{ isEdit ? 'Update position details and reporting lines.' : 'Add a position to the organisation structure.' }}
+        </p>
+      </div>
+      <button type="button" class="pfm-close-btn" (click)="cancel.emit()" aria-label="Close">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <line x1="18" y1="6" x2="6" y2="18" />
+          <line x1="6" y1="6" x2="18" y2="18" />
+        </svg>
+      </button>
+    </div>
+
+    <!-- Form -->
+    <form [formGroup]="form" (ngSubmit)="onSubmit()" class="pfm-form">
+      
+      @if (actionError) {
+        <div class="pfm-error-alert" role="alert">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+          <span>{{ actionError }}</span>
+        </div>
+      }
+
+      <div class="pfm-grid">
+        
+        <div class="pfm-col">
+          <app-input
+            label="Position name *"
+            [value]="form.controls.name.value || ''"
+            (valueChange)="form.controls.name.setValue($event)"
+            (blurred)="form.controls.name.markAsTouched()"
+            [error]="form.controls.name.touched && form.controls.name.invalid ? 'Position name is required (max 100 characters).' : ''"
+          />
+
+          <app-input
+            label="Position code (optional)"
+            [value]="form.controls.code.value || ''"
+            (valueChange)="form.controls.code.setValue($event)"
+            (blurred)="form.controls.code.markAsTouched()"
+            [error]="form.controls.code.touched && form.controls.code.invalid ? (form.controls.code.errors?.['pattern'] ? 'Code may only contain letters, numbers, hyphens, and underscores.' : 'Code cannot exceed 40 characters.') : ''"
+          />
+
+          <app-select
+            label="Department *"
+            [options]="departmentOptions"
+            [value]="form.controls.departmentId.value || ''"
+            (valueChange)="form.controls.departmentId.setValue($event)"
+            (blurred)="form.controls.departmentId.markAsTouched()"
+            [error]="form.controls.departmentId.touched && form.controls.departmentId.invalid ? 'Department selection is required.' : ''"
+          />
+        </div>
+
+        <div class="pfm-col">
+          <app-select
+            label="Reports to position"
+            [options]="reportsToOptions"
+            [value]="form.controls.reportsToPositionId.value || ''"
+            (valueChange)="form.controls.reportsToPositionId.setValue($event)"
+          />
+
+          <app-select
+            label="Position type *"
+            [options]="typeOptions"
+            [value]="form.controls.positionType.value || 'unique'"
+            (valueChange)="onTypeChange($any($event))"
+          />
+
+          @if (form.controls.positionType.value === 'pooled') {
+            <app-input
+              label="Maximum capacity *"
+              type="number"
+              [value]="form.controls.maxOccupancy.value?.toString() || '1'"
+              (valueChange)="form.controls.maxOccupancy.setValue(+$event)"
+              [error]="form.controls.maxOccupancy.touched && form.controls.maxOccupancy.invalid ? 'Capacity must be at least 1.' : ''"
+            />
+          }
+        </div>
+
+      </div>
+
+      <!-- Footer Buttons -->
+      <div class="pfm-footer">
+        <app-button type="button" variant="secondary" (click)="cancel.emit()" [disabled]="loading">Cancel</app-button>
+        <app-button type="submit" [loading]="loading" [disabled]="loading">
+          {{ isEdit ? 'Save changes' : 'Create position' }}
+        </app-button>
+      </div>
+    </form>
+
+  </div>
+</div>
