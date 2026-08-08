@@ -1,0 +1,57 @@
+@if (store.projectLoading()) {
+  <app-loader label="Loading project…" />
+} @else if (store.projectError()) {
+  <app-error-state [message]="store.projectError()!" [retryable]="true" (retry)="retryProject()" />
+} @else if (store.project(); as project) {
+  <app-page-header [title]="project.name" [subtitle]="project.description ?? ''" />
+  <dl class="mb-6 grid grid-cols-2 gap-2 text-sm sm:grid-cols-4">
+    <dt class="text-[var(--color-text-secondary)]">Identifier</dt>
+    <dd>{{ project.identifier }}</dd>
+    <dt class="text-[var(--color-text-secondary)]">Start</dt>
+    <dd>{{ project.startDate }}</dd>
+    <dt class="text-[var(--color-text-secondary)]">Target</dt>
+    <dd>{{ project.targetDate }}</dd>
+    <dt class="text-[var(--color-text-secondary)]">Hours</dt>
+    <dd>{{ project.completedHours }} / {{ project.allocatedHours }}</dd>
+  </dl>
+}
+
+<h2 class="mb-3 text-lg font-semibold text-[var(--color-text-primary)]">Milestones</h2>
+
+@if (store.milestonesLoading()) {
+  <app-loader label="Loading milestones…" />
+} @else if (store.milestonesError()) {
+  <app-error-state [message]="store.milestonesError()!" [retryable]="true" (retry)="retryMilestones()" />
+} @else if (store.milestones().length === 0) {
+  <app-empty-state title="No milestones yet" />
+} @else {
+  <ul class="flex flex-col gap-2">
+    @for (milestone of store.milestones(); track milestone.objectiveId) {
+      <li
+        class="cursor-pointer rounded-md border border-[var(--color-border)] p-3 hover:bg-[var(--color-surface-secondary)]"
+        [class.opacity-60]="!milestone.membershipIsActive"
+        (click)="onMilestoneClicked(milestone)"
+      >
+        <div class="flex items-center justify-between">
+          <span class="text-sm font-medium">{{ milestone.title }}</span>
+          @if (!milestone.membershipIsActive) {
+            <span class="text-xs text-[var(--color-text-secondary)]">no longer a member</span>
+          }
+        </div>
+        <p class="text-xs text-[var(--color-text-secondary)]">
+          {{ milestone.ownerName }} · {{ milestone.startDate }} – {{ milestone.endDate }}
+        </p>
+      </li>
+    }
+  </ul>
+}
+
+@if (store.subtreeLoading()) {
+  <app-loader label="Loading milestone…" />
+} @else if (store.subtreeError()) {
+  <app-error-state [message]="store.subtreeError()!" />
+} @else if (store.selectedSubtree(); as subtree) {
+  <div class="mt-4">
+    <app-milestone-tree-node [node]="subtree" />
+  </div>
+}
