@@ -96,4 +96,41 @@ describe('errorInterceptor', () => {
 
     expect(notify.notifications()[0].message).toBe("You don't have access to this.");
   });
+
+  it('clears the session and redirects to /auth/login on a CSRF-shaped 403 (stale/expired session)', () => {
+    const clearSpy = vi.spyOn(authStore, 'clearSession');
+    const navigateSpy = vi.spyOn(router, 'navigate');
+    const notify = TestBed.inject(NotificationService);
+
+    http.put('/api/v1/work/projects/p1', {}).subscribe({ error: () => {} });
+    const req = httpMock.expectOne('/api/v1/work/projects/p1');
+    req.flush(
+      {
+        type: 'https://onevo.com/errors/csrf',
+        title: 'Forbidden',
+        status: 403,
+        detail: 'A valid CSRF token is required for this request.'
+      },
+      { status: 403, statusText: 'Forbidden' }
+    );
+
+    expect(clearSpy).toHaveBeenCalled();
+    expect(navigateSpy).toHaveBeenCalledWith(['/auth/login']);
+    expect(notify.notifications()).toHaveLength(0);
+  });
+
+  it('does not treat an ordinary permission-denied 403 as a CSRF/session error', () => {
+    const clearSpy = vi.spyOn(authStore, 'clearSession');
+    const navigateSpy = vi.spyOn(router, 'navigate');
+
+    http.put('/api/v1/work/projects/p1', {}).subscribe({ error: () => {} });
+    const req = httpMock.expectOne('/api/v1/work/projects/p1');
+    req.flush(
+      { type: 'about:blank', title: 'Forbidden', status: 403, detail: 'Caller is not the project lead.' },
+      { status: 403, statusText: 'Forbidden' }
+    );
+
+    expect(clearSpy).not.toHaveBeenCalled();
+    expect(navigateSpy).not.toHaveBeenCalled();
+  });
 });
