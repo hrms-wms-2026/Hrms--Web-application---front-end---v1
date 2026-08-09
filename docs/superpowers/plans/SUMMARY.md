@@ -18,5 +18,6 @@ Layout and rules: see `../rules/FILE_CREATION_RULES.md`.
 | Frontend Part 2B Report — Organization Shell, Sub-Sidebar, Company Selector | finished | `finished/2026-08-06/FRONTEND_PART2B_ORGANIZATION_SHELL_COMPANY_SELECTOR_REPORT.md` | 2026-08-06 (inferred from git history) |
 | Frontend Part 2C — Legal Entity / Company General Settings Page — Report | finished | `finished/2026-08-06/FRONTEND_PART2C_LEGAL_ENTITY_GENERAL_SETTINGS_REPORT.md` | 2026-08-06 (inferred from git history) |
 | Project Management — raw future-feature context (not yet brainstormed/spec'd) | pending | `next/Project Management.md` | captured 2026-08-04 |
+| Work Management — Projects List, Project Detail, Milestone Read View | finished (17/17 tasks) | `finished/2026-08-09/2026-08-09-work-management-projects-milestones.md` | 2026-08-09 |
 
 **Note on "finished" here:** all of the above are implementation reports or already-executed plans as of the 2026-08-06 restructure — cross-checked against `src/app/` (auth, dashboard-home, organization/general-settings are all present in code). None were currently in-progress/pending at restructure time except the Project Management context file.
