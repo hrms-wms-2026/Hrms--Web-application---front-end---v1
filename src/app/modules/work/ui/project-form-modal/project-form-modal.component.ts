@@ -103,7 +103,20 @@ export class ProjectFormModalComponent implements OnInit {
         this.startDate.set(value.startDate);
         this.targetDate.set(value.targetDate);
         this.allocatedHours.set(value.allocatedHours);
+      } else {
+        // initialValue went back to null - e.g. Create opened right after an Edit closed.
+        // Without this branch the previous Edit's field values keep showing in the blank
+        // Create form, since the block above only ever patches, never clears.
+        this.name.set('');
+        this.identifier.set('');
+        this.categoryId.set('');
+        this.description.set('');
+        this.startDate.set('');
+        this.targetDate.set('');
+        this.releaseDate.set('');
+        this.allocatedHours.set(0);
       }
+      this.errors.set({});
     });
   }
 

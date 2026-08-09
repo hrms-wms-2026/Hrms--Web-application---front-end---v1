@@ -49,6 +49,29 @@ describe('ProjectFormModalComponent', () => {
     expect(nameInput.value).toBe('Website Revamp');
   });
 
+  it('clears prefilled fields when initialValue goes back to null (Edit closed, then Create opened)', () => {
+    const initialValue: ProjectDetail = {
+      id: 'p1', name: 'Website Revamp', identifier: 'WEB', categoryId: 'cat1', leadId: 'u1',
+      startDate: '2026-08-01', targetDate: '2026-12-01', color: null, isActive: true,
+      allocatedHours: 40, completedHours: 0, isLead: true, isAchieved: false, achievedAt: null,
+      description: 'Rebuild', actualHours: 0, createdAt: '2026-08-01T00:00:00Z', updatedAt: null
+    };
+    fixture.componentRef.setInput('mode', 'edit');
+    fixture.componentRef.setInput('initialValue', initialValue);
+    fixture.detectChanges();
+
+    fixture.componentRef.setInput('mode', 'create');
+    fixture.componentRef.setInput('initialValue', null);
+    fixture.detectChanges();
+
+    const nameInput: HTMLInputElement = fixture.nativeElement.querySelector('[data-testid="name-field"] input');
+    const categorySelect: HTMLSelectElement = fixture.nativeElement.querySelector('[data-testid="category-field"] select');
+    const hoursInput: HTMLInputElement = fixture.nativeElement.querySelector('[data-testid="allocated-hours-field"] input');
+    expect(nameInput.value).toBe('');
+    expect(categorySelect.value).toBe('');
+    expect(hoursInput.value).toBe('0');
+  });
+
   it('blocks submit and shows validation errors when required fields are missing', () => {
     fixture.detectChanges();
     (fixture.nativeElement.querySelector('[data-testid="submit-button"] button') as HTMLButtonElement).click();
