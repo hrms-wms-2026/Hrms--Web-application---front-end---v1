@@ -13,34 +13,52 @@ describe('MilestoneCardComponent', () => {
     membershipIsActive: true, membershipRemovedAt: null, isOwner: false
   };
 
-  function setup(milestone: Milestone): void {
+  function setup(milestone: Milestone, selected = false): void {
     TestBed.configureTestingModule({ imports: [MilestoneCardComponent] });
     fixture = TestBed.createComponent(MilestoneCardComponent);
     fixture.componentRef.setInput('milestone', milestone);
+    fixture.componentRef.setInput('selected', selected);
     fixture.detectChanges();
   }
 
-  it('shows View but not Settings when the caller is not the owner', () => {
+  it('has no View button', () => {
     setup(baseMilestone);
-    expect(fixture.nativeElement.querySelector('[data-testid="view-button"]')).not.toBeNull();
-    expect(fixture.nativeElement.querySelector('[data-testid="settings-button"]')).toBeNull();
+    expect(fixture.nativeElement.querySelector('[data-testid="view-button"]')).toBeNull();
   });
 
-  it('shows the Settings button when the caller is the owner', () => {
-    setup({ ...baseMilestone, isOwner: true });
-    expect(fixture.nativeElement.querySelector('[data-testid="settings-button"]')).not.toBeNull();
+  it('does not render Start/End date rows', () => {
+    setup(baseMilestone);
+    expect(fixture.nativeElement.textContent).not.toContain('2026-01-01');
   });
 
-  it('emits viewed/settingsRequested on button press', () => {
+  it('emits viewed when the card itself is clicked', () => {
+    setup(baseMilestone);
+    let viewed = false;
+    fixture.componentInstance.viewed.subscribe(() => (viewed = true));
+    (fixture.nativeElement.querySelector('[data-testid="milestone-card"]') as HTMLElement).click();
+    expect(viewed).toBe(true);
+  });
+
+  it('shows the Settings button when the caller is the owner, and clicking it does not also emit viewed', () => {
     setup({ ...baseMilestone, isOwner: true });
     let viewed = false, settings = false;
     fixture.componentInstance.viewed.subscribe(() => (viewed = true));
     fixture.componentInstance.settingsRequested.subscribe(() => (settings = true));
 
-    (fixture.nativeElement.querySelector('[data-testid="view-button"] button') as HTMLButtonElement).click();
     (fixture.nativeElement.querySelector('[data-testid="settings-button"] button') as HTMLButtonElement).click();
 
-    expect(viewed).toBe(true);
     expect(settings).toBe(true);
+    expect(viewed).toBe(false);
+  });
+
+  it('hides the Settings button when the caller is not the owner', () => {
+    setup(baseMilestone);
+    expect(fixture.nativeElement.querySelector('[data-testid="settings-button"]')).toBeNull();
+  });
+
+  it('applies a highlight class when selected', () => {
+    setup(baseMilestone, true);
+    const card: HTMLElement = fixture.nativeElement.querySelector('[data-testid="milestone-card"]');
+    expect(card.className).toContain('ring-2');
   });
 });

@@ -1,21 +1,26 @@
 import { Component, input, output } from '@angular/core';
 import { CardComponent } from '../../../../shared/ui/card/card.component';
-import { ButtonComponent } from '../../../../shared/ui/button/button.component';
 import { Milestone } from '../../models/milestone.model';
 
 @Component({
   selector: 'app-milestone-card',
   standalone: true,
-  imports: [CardComponent, ButtonComponent],
+  imports: [CardComponent],
   template: `
-    <div class="relative">
+    <div
+      data-testid="milestone-card"
+      class="relative cursor-pointer rounded-lg transition-shadow"
+      [class.ring-2]="selected()"
+      [class.ring-[var(--color-focus-ring)]]="selected()"
+      (click)="viewed.emit()"
+    >
       @if (milestone().isOwner) {
         <span data-testid="settings-button" class="absolute right-2 top-2 z-10">
           <button
             type="button"
             class="rounded-md p-1.5 text-[var(--color-text-secondary)] hover:bg-[var(--color-surface-secondary)]"
             aria-label="Milestone settings"
-            (click)="settingsRequested.emit()"
+            (click)="onSettingsClick($event)"
           >⚙</button>
         </span>
       }
@@ -28,25 +33,21 @@ import { Milestone } from '../../models/milestone.model';
             </span>
           }
         </div>
-        <dl class="mt-3 grid grid-cols-2 gap-2 text-sm">
-          <dt class="text-[var(--color-text-secondary)]">Start</dt>
-          <dd>{{ milestone().startDate }}</dd>
-          <dt class="text-[var(--color-text-secondary)]">End</dt>
-          <dd>{{ milestone().endDate }}</dd>
-          <dt class="text-[var(--color-text-secondary)]">Hours</dt>
-          <dd>{{ milestone().completedHours }} / {{ milestone().allocatedHours }}</dd>
-        </dl>
-        <div class="mt-4 flex gap-2">
-          <span data-testid="view-button">
-            <app-button variant="secondary" (pressed)="viewed.emit()">View</app-button>
-          </span>
-        </div>
+        <p class="mt-2 text-sm text-[var(--color-text-secondary)]">
+          {{ milestone().completedHours }} / {{ milestone().allocatedHours }}h
+        </p>
       </app-card>
     </div>
   `
 })
 export class MilestoneCardComponent {
   milestone = input.required<Milestone>();
+  selected = input(false);
   viewed = output<void>();
   settingsRequested = output<void>();
+
+  onSettingsClick(event: Event): void {
+    event.stopPropagation();
+    this.settingsRequested.emit();
+  }
 }
