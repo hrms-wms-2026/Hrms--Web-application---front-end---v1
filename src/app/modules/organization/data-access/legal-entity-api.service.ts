@@ -3,6 +3,7 @@ import { Injectable, inject } from '@angular/core';
 import { Observable } from 'rxjs';
 import { environment } from '../../../../environments/environment';
 import {
+  CreateLegalEntityRequest,
   LegalEntityGeneralSettings,
   LegalEntityListItem,
   UpdateLegalEntityGeneralSettingsRequest
@@ -20,6 +21,10 @@ export class LegalEntityApiService {
   getLegalEntities(includeInactive = false): Observable<readonly LegalEntityListItem[]> {
     const params = new HttpParams().set('includeInactive', includeInactive);
     return this.http.get<readonly LegalEntityListItem[]>(`${environment.apiUrl}/org/legal-entities`, { params });
+  }
+
+  createLegalEntity(payload: CreateLegalEntityRequest): Observable<LegalEntityGeneralSettings> {
+    return this.http.post<LegalEntityGeneralSettings>(`${environment.apiUrl}/org/legal-entities`, payload);
   }
 
   getGeneralSettings(legalEntityId: string): Observable<LegalEntityGeneralSettings> {
