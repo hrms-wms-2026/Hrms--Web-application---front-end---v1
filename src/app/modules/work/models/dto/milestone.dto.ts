@@ -49,3 +49,11 @@ export interface ObjectiveSubtreeResponseDto {
   parentObjective: ObjectiveDetailDto | null;
   objective: ObjectiveSubtreeNodeDto;
 }
+
+export interface EditObjectiveRequestDto {
+  title: string;
+  description: string;
+  startDate: string;
+  endDate: string;
+  allocatedHours: number;
+}

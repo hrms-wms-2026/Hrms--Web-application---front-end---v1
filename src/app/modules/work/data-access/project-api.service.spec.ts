@@ -4,7 +4,7 @@ import { TestBed } from '@angular/core/testing';
 import { environment } from '../../../../environments/environment';
 import { ProjectApiService } from './project-api.service';
 import { ProjectDetailDto, ProjectListItemDto, PagedResultDto } from '../models/dto/project.dto';
-import { MyProjectMilestoneDto, ObjectiveDetailDto, ObjectiveSubtreeResponseDto } from '../models/dto/milestone.dto';
+import { MyProjectMilestoneDto, ObjectiveDetailDto, ObjectiveSubtreeResponseDto, EditObjectiveRequestDto } from '../models/dto/milestone.dto';
 
 describe('ProjectApiService', () => {
   let service: ProjectApiService;
@@ -119,6 +119,46 @@ describe('ProjectApiService', () => {
     const req = httpMock.expectOne(`${environment.apiUrl}/work/objectives/o1`);
     expect(req.request.method).toBe('GET');
     req.flush(dto);
+  });
+
+  it('edits an objective and reports the applied-immediately status', () => {
+    const dto = { id: 'o1', title: 'Design Phase v2' } as ObjectiveDetailDto;
+    const payload: EditObjectiveRequestDto = {
+      title: 'Design Phase v2', description: 'Updated scope', startDate: '2026-01-01', endDate: '2026-03-01', allocatedHours: 25
+    };
+    service.editObjective('o1', payload).subscribe((res) => {
+      expect(res.status).toBe(200);
+      expect(res.body).toEqual(dto);
+    });
+
+    const req = httpMock.expectOne(`${environment.apiUrl}/work/objectives/o1`);
+    expect(req.request.method).toBe('PUT');
+    expect(req.request.body).toEqual(payload);
+    req.flush(dto, { status: 200, statusText: 'OK' });
+  });
+
+  it('edits an objective and reports the pending-approval status', () => {
+    const payload: EditObjectiveRequestDto = {
+      title: 'Design Phase v2', description: 'Updated scope', startDate: '2026-01-01', endDate: '2026-03-01', allocatedHours: 25
+    };
+    service.editObjective('o1', payload).subscribe((res) => expect(res.status).toBe(202));
+
+    const req = httpMock.expectOne(`${environment.apiUrl}/work/objectives/o1`);
+    req.flush({ id: 'cr1', status: 'pending' }, { status: 202, statusText: 'Accepted' });
+  });
+
+  it('achieves an objective', () => {
+    service.achieveObjective('o1').subscribe((res) => expect(res.status).toBe(204));
+    const req = httpMock.expectOne(`${environment.apiUrl}/work/objectives/o1/achieve`);
+    expect(req.request.method).toBe('POST');
+    req.flush(null, { status: 204, statusText: 'No Content' });
+  });
+
+  it('unachieves an objective', () => {
+    service.unachieveObjective('o1').subscribe((res) => expect(res.status).toBe(204));
+    const req = httpMock.expectOne(`${environment.apiUrl}/work/objectives/o1/unachieve`);
+    expect(req.request.method).toBe('POST');
+    req.flush(null, { status: 204, statusText: 'No Content' });
   });
 
   it('gets a milestone subtree', () => {

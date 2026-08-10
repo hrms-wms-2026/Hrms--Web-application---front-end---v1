@@ -1,4 +1,4 @@
-import { HttpClient, HttpParams } from '@angular/common/http';
+import { HttpClient, HttpParams, HttpResponse } from '@angular/common/http';
 import { Injectable, inject } from '@angular/core';
 import { Observable } from 'rxjs';
 import { environment } from '../../../../environments/environment';
@@ -6,7 +6,7 @@ import {
   CreateProjectRequestDto, CreateProjectResponseDto, EditProjectRequestDto,
   PagedResultDto, ProjectDetailDto, ProjectListItemDto
 } from '../models/dto/project.dto';
-import { MyProjectMilestoneDto, ObjectiveDetailDto, ObjectiveSubtreeResponseDto } from '../models/dto/milestone.dto';
+import { MyProjectMilestoneDto, ObjectiveDetailDto, ObjectiveSubtreeResponseDto, EditObjectiveRequestDto } from '../models/dto/milestone.dto';
 
 @Injectable({ providedIn: 'root' })
 export class ProjectApiService {
@@ -62,6 +62,18 @@ export class ProjectApiService {
 
   getObjectiveById(id: string): Observable<ObjectiveDetailDto> {
     return this.http.get<ObjectiveDetailDto>(`${environment.apiUrl}/work/objectives/${id}`);
+  }
+
+  editObjective(id: string, payload: EditObjectiveRequestDto): Observable<HttpResponse<ObjectiveDetailDto>> {
+    return this.http.put<ObjectiveDetailDto>(`${environment.apiUrl}/work/objectives/${id}`, payload, { observe: 'response' });
+  }
+
+  achieveObjective(id: string): Observable<HttpResponse<void>> {
+    return this.http.post<void>(`${environment.apiUrl}/work/objectives/${id}/achieve`, {}, { observe: 'response' });
+  }
+
+  unachieveObjective(id: string): Observable<HttpResponse<void>> {
+    return this.http.post<void>(`${environment.apiUrl}/work/objectives/${id}/unachieve`, {}, { observe: 'response' });
   }
 
   getMilestoneSubtree(objectiveId: string): Observable<ObjectiveSubtreeResponseDto> {
