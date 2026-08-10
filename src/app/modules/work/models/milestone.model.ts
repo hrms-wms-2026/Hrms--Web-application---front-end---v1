@@ -17,6 +17,7 @@ export interface Milestone {
   achievedAt: string | null;
   membershipIsActive: boolean;
   membershipRemovedAt: string | null;
+  isOwner: boolean;
 }
 
 export interface MilestoneTreeNode {

@@ -36,9 +36,23 @@ describe('project.mapper', () => {
       ownerId: 'u1', ownerName: 'Jane Doe', reportingManagerId: null, reportingManagerName: null,
       startDate: '2026-08-01', endDate: '2026-12-01', allocatedHours: 40, completedHours: 0,
       objectiveIsActive: true, isAchieved: false, achievedAt: null,
-      membershipIsActive: true, membershipRemovedAt: null
+      membershipIsActive: true, membershipRemovedAt: null, isOwner: false
     };
     expect(toMilestone(dto).ownerName).toBe('Jane Doe');
+  });
+
+  it('maps isOwner through unchanged', () => {
+    const dto: MyProjectMilestoneDto = {
+      objectiveId: 'o1', projectId: 'p1', parentObjectiveId: null, isDefault: true, title: 'Default',
+      ownerId: 'u1', ownerName: 'Jane Doe', reportingManagerId: null, reportingManagerName: null,
+      startDate: '2026-08-01', endDate: '2026-12-01', allocatedHours: 40, completedHours: 0,
+      objectiveIsActive: true, isAchieved: false, achievedAt: null,
+      membershipIsActive: true, membershipRemovedAt: null, isOwner: true
+    };
+
+    const result = toMilestone(dto);
+
+    expect(result.isOwner).toBe(true);
   });
 
   it('maps an ObjectiveSubtreeNodeDto to a MilestoneTreeNode, recursively', () => {

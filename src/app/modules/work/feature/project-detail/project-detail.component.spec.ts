@@ -21,7 +21,8 @@ describe('ProjectDetailComponent', () => {
     objectiveId: 'o1', projectId: 'p1', parentObjectiveId: null, isDefault: true, title: 'Default',
     ownerId: 'u1', ownerName: 'Jane Doe', reportingManagerId: null, reportingManagerName: null,
     startDate: '2026-08-01', endDate: '2026-12-01', allocatedHours: 40, completedHours: 0,
-    objectiveIsActive: true, isAchieved: false, achievedAt: null, membershipIsActive: true, membershipRemovedAt: null
+    objectiveIsActive: true, isAchieved: false, achievedAt: null, membershipIsActive: true, membershipRemovedAt: null,
+    isOwner: false
   };
 
   beforeEach(async () => {

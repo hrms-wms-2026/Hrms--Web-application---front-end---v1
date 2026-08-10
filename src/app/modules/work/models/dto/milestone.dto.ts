@@ -17,6 +17,7 @@ export interface MyProjectMilestoneDto {
   achievedAt: string | null;
   membershipIsActive: boolean;
   membershipRemovedAt: string | null;
+  isOwner: boolean;
 }
 
 export interface ObjectiveDetailDto {

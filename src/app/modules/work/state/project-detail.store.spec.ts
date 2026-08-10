@@ -37,7 +37,8 @@ describe('ProjectDetailStore', () => {
       objectiveId: 'o1', projectId: 'p1', parentObjectiveId: null, isDefault: true, title: 'Default',
       ownerId: 'u1', ownerName: 'Jane', reportingManagerId: null, reportingManagerName: null,
       startDate: '2026-08-01', endDate: '2026-12-01', allocatedHours: 40, completedHours: 0,
-      objectiveIsActive: true, isAchieved: false, achievedAt: null, membershipIsActive: true, membershipRemovedAt: null
+      objectiveIsActive: true, isAchieved: false, achievedAt: null, membershipIsActive: true, membershipRemovedAt: null,
+      isOwner: false
     }];
     const store = setup({ getMyMilestones: () => of(milestones) } as Partial<ProjectApiService>);
     await store.loadMyMilestones('p1');
