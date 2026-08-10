@@ -22,7 +22,7 @@ describe('ProjectDetailComponent', () => {
     ownerId: 'u1', ownerName: 'Jane Doe', reportingManagerId: null, reportingManagerName: null,
     startDate: '2026-08-01', endDate: '2026-12-01', allocatedHours: 40, completedHours: 0,
     objectiveIsActive: true, isAchieved: false, achievedAt: null, membershipIsActive: true, membershipRemovedAt: null,
-    isOwner: false
+    isOwner: true
   };
 
   beforeEach(async () => {
@@ -39,7 +39,12 @@ describe('ProjectDetailComponent', () => {
       loadProject: vi.fn().mockResolvedValue(undefined),
       loadMyMilestones: vi.fn().mockResolvedValue(undefined),
       loadMilestoneSubtree: vi.fn().mockResolvedValue(undefined),
-      clearSelectedSubtree: vi.fn()
+      clearSelectedSubtree: vi.fn(),
+      getMilestoneDetail: vi.fn().mockResolvedValue(null),
+      editMilestone: vi.fn().mockResolvedValue({ success: true, pending: false }),
+      achieveMilestone: vi.fn().mockResolvedValue({ success: true, pending: false }),
+      unachieveMilestone: vi.fn().mockResolvedValue({ success: true, pending: false }),
+      milestoneActionError: () => null
     };
 
     await TestBed.configureTestingModule({
@@ -60,7 +65,7 @@ describe('ProjectDetailComponent', () => {
     expect(storeStub.loadMyMilestones).toHaveBeenCalledWith('p1');
   });
 
-  it('renders project name and milestone rows', async () => {
+  it('renders project name and milestone cards', async () => {
     fixture.detectChanges();
     await fixture.whenStable();
     fixture.detectChanges();
@@ -68,25 +73,51 @@ describe('ProjectDetailComponent', () => {
     expect(fixture.nativeElement.textContent).toContain('Default');
   });
 
-  it('loads a milestone subtree on click', () => {
+  it('opens the milestone edit modal and patches in the full detail once fetched', async () => {
+    const detail = { id: 'o1', title: 'Default', description: 'Full scope', startDate: '2026-08-01', endDate: '2026-12-01', allocatedHours: 40 };
+    storeStub.getMilestoneDetail = vi.fn().mockResolvedValue(detail);
     fixture.detectChanges();
-    fixture.componentInstance.onMilestoneClicked(milestone);
-    expect(storeStub.loadMilestoneSubtree).toHaveBeenCalledWith('o1');
+
+    fixture.componentInstance.onMilestoneEditRequested(milestone);
+
+    expect(fixture.componentInstance.milestoneFormOpen()).toBe(true);
+    expect(storeStub.getMilestoneDetail).toHaveBeenCalledWith('o1');
+
+    await Promise.resolve();
+    await Promise.resolve();
+
+    expect((fixture.componentInstance.milestoneFormInitialValue() as any)?.description).toBe('Full scope');
   });
 
-  it('renders the milestone tree when a subtree is selected', async () => {
-    storeStub.selectedSubtree = () => ({ id: 'o1', title: 'Default', startDate: '2026-08-01', endDate: '2026-12-01', progress: 0, allocatedHours: 40, completedHours: 0, isActive: true, children: [] });
+  it('submits a milestone edit and closes the modal on success', async () => {
     fixture.detectChanges();
-    await fixture.whenStable();
-    fixture.detectChanges();
-    expect(fixture.nativeElement.querySelector('app-milestone-tree-node')).not.toBeNull();
+    fixture.componentInstance.onMilestoneEditRequested(milestone);
+
+    await fixture.componentInstance.onMilestoneEditSubmit({
+      title: 'Default v2', description: 'Full scope', startDate: '2026-08-01', endDate: '2026-12-01', allocatedHours: 40
+    });
+
+    expect(storeStub.editMilestone).toHaveBeenCalledWith('o1', {
+      title: 'Default v2', description: 'Full scope', startDate: '2026-08-01', endDate: '2026-12-01', allocatedHours: 40
+    });
+    expect(fixture.componentInstance.milestoneFormOpen()).toBe(false);
   });
 
-  it('shows a muted tag for a milestone the caller is no longer a member of', async () => {
-    storeStub.milestones = () => [{ ...milestone, membershipIsActive: false }];
+  it('opens the achieve confirm modal and calls achieveMilestone on confirm', async () => {
     fixture.detectChanges();
-    await fixture.whenStable();
+    fixture.componentInstance.onMilestoneAchieveToggled(milestone);
+    expect(fixture.componentInstance.achieveConfirmOpen()).toBe(true);
+
+    await fixture.componentInstance.onMilestoneAchieveConfirmed();
+
+    expect(storeStub.achieveMilestone).toHaveBeenCalledWith('o1');
+    expect(fixture.componentInstance.achieveConfirmOpen()).toBe(false);
+  });
+
+  it('calls unachieveMilestone when the milestone is already achieved', async () => {
     fixture.detectChanges();
-    expect(fixture.nativeElement.textContent).toContain('no longer a member');
+    fixture.componentInstance.onMilestoneAchieveToggled({ ...milestone, isAchieved: true });
+    await fixture.componentInstance.onMilestoneAchieveConfirmed();
+    expect(storeStub.unachieveMilestone).toHaveBeenCalledWith('o1');
   });
 });

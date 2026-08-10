@@ -25,33 +25,34 @@
 } @else if (store.milestones().length === 0) {
   <app-empty-state title="No milestones yet" />
 } @else {
-  <ul class="flex flex-col gap-2">
+  <div class="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
     @for (milestone of store.milestones(); track milestone.objectiveId) {
-      <li
-        class="cursor-pointer rounded-md border border-[var(--color-border)] p-3 hover:bg-[var(--color-surface-secondary)]"
-        [class.opacity-60]="!milestone.membershipIsActive"
-        (click)="onMilestoneClicked(milestone)"
-      >
-        <div class="flex items-center justify-between">
-          <span class="text-sm font-medium">{{ milestone.title }}</span>
-          @if (!milestone.membershipIsActive) {
-            <span class="text-xs text-[var(--color-text-secondary)]">no longer a member</span>
-          }
-        </div>
-        <p class="text-xs text-[var(--color-text-secondary)]">
-          {{ milestone.ownerName }} · {{ milestone.startDate }} – {{ milestone.endDate }}
-        </p>
-      </li>
+      <app-milestone-card
+        [milestone]="milestone"
+        (viewed)="onMilestoneViewed(milestone)"
+        (editRequested)="onMilestoneEditRequested(milestone)"
+        (achieveToggled)="onMilestoneAchieveToggled(milestone)"
+      />
     }
-  </ul>
-}
-
-@if (store.subtreeLoading()) {
-  <app-loader label="Loading milestone…" />
-} @else if (store.subtreeError()) {
-  <app-error-state [message]="store.subtreeError()!" />
-} @else if (store.selectedSubtree(); as subtree) {
-  <div class="mt-4">
-    <app-milestone-tree-node [node]="subtree" />
   </div>
 }
+
+<app-milestone-form-modal
+  [open]="milestoneFormOpen()"
+  [initialValue]="milestoneFormInitialValue()"
+  [submitting]="milestoneFormSubmitting()"
+  [errorMessage]="store.milestoneActionError() ?? ''"
+  (submitted)="onMilestoneEditSubmit($event)"
+  (closed)="milestoneFormOpen.set(false)"
+/>
+
+<app-confirm-modal
+  [open]="achieveConfirmOpen()"
+  title="Achieve milestone"
+  message="Mark this milestone as achieved? Every direct sub-milestone must already be achieved first."
+  confirmLabel="Confirm"
+  [loading]="achieveConfirmSubmitting()"
+  [errorMessage]="store.milestoneActionError() ?? ''"
+  (confirmed)="onMilestoneAchieveConfirmed()"
+  (cancelled)="achieveConfirmOpen.set(false)"
+/>
