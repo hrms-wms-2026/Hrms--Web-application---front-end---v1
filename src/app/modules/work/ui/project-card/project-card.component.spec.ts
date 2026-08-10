@@ -23,18 +23,17 @@ describe('ProjectCardComponent', () => {
     expect(fixture.nativeElement.textContent).toContain('WEB');
   });
 
-  it('hides Edit/Achieve buttons when the caller is not the lead', () => {
+  it('shows View but not Settings when the caller is not the lead', () => {
     fixture.componentRef.setInput('project', baseProject);
     fixture.detectChanges();
-    expect(fixture.nativeElement.querySelector('[data-testid="edit-button"]')).toBeNull();
-    expect(fixture.nativeElement.querySelector('[data-testid="achieve-button"]')).toBeNull();
+    expect(fixture.nativeElement.querySelector('[data-testid="view-button"]')).not.toBeNull();
+    expect(fixture.nativeElement.querySelector('[data-testid="settings-button"]')).toBeNull();
   });
 
-  it('shows Edit/Achieve buttons when the caller is the lead', () => {
+  it('shows the Settings button when the caller is the lead', () => {
     fixture.componentRef.setInput('project', { ...baseProject, isLead: true });
     fixture.detectChanges();
-    expect(fixture.nativeElement.querySelector('[data-testid="edit-button"]')).not.toBeNull();
-    expect(fixture.nativeElement.querySelector('[data-testid="achieve-button"]')).not.toBeNull();
+    expect(fixture.nativeElement.querySelector('[data-testid="settings-button"]')).not.toBeNull();
   });
 
   it('emits viewed when View is pressed', () => {
@@ -46,19 +45,18 @@ describe('ProjectCardComponent', () => {
     expect(viewed).toBe(true);
   });
 
-  it('emits edited and achieveToggled for the lead-only actions', () => {
+  it('emits viewed/settingsRequested on button press', () => {
     fixture.componentRef.setInput('project', { ...baseProject, isLead: true });
     fixture.detectChanges();
-    let edited = false;
-    let achieveToggled = false;
-    fixture.componentInstance.edited.subscribe(() => (edited = true));
-    fixture.componentInstance.achieveToggled.subscribe(() => (achieveToggled = true));
+    let viewed = false, settings = false;
+    fixture.componentInstance.viewed.subscribe(() => (viewed = true));
+    fixture.componentInstance.settingsRequested.subscribe(() => (settings = true));
 
-    (fixture.nativeElement.querySelector('[data-testid="edit-button"] button') as HTMLButtonElement).click();
-    (fixture.nativeElement.querySelector('[data-testid="achieve-button"] button') as HTMLButtonElement).click();
+    (fixture.nativeElement.querySelector('[data-testid="view-button"] button') as HTMLButtonElement).click();
+    (fixture.nativeElement.querySelector('[data-testid="settings-button"] button') as HTMLButtonElement).click();
 
-    expect(edited).toBe(true);
-    expect(achieveToggled).toBe(true);
+    expect(viewed).toBe(true);
+    expect(settings).toBe(true);
   });
 
   it('shows an Achieved badge when the project is achieved', () => {
