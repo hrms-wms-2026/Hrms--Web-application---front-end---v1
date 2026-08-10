@@ -5,24 +5,22 @@ import { SelectComponent, SelectOption } from '../../../../shared/ui/select/sele
 import { ButtonComponent } from '../../../../shared/ui/button/button.component';
 import { ProjectCategoryStore } from '../../state/project-category.store';
 import { validateProjectForm, ProjectFormFields } from '../../utils/project-form.validator';
-import { CreateProjectPayload, EditProjectPayload, Project } from '../../models/project.model';
+import { CreateProjectPayload } from '../../models/project.model';
 
 @Component({
   selector: 'app-project-form-modal',
   standalone: true,
   imports: [ModalComponent, InputComponent, SelectComponent, ButtonComponent],
   template: `
-    <app-modal [open]="open()" [title]="mode() === 'create' ? 'Create project' : 'Edit project'" (closed)="closed.emit()">
+    <app-modal [open]="open()" title="Create project" (closed)="closed.emit()">
       <div class="flex flex-col gap-3">
         <span data-testid="name-field">
           <app-input label="Name" [value]="name()" [error]="errors()['name'] ?? ''" (valueChange)="name.set($event)" />
         </span>
 
-        @if (mode() === 'create') {
-          <span data-testid="identifier-field">
-            <app-input label="Identifier" [value]="identifier()" [error]="errors()['identifier'] ?? ''" (valueChange)="identifier.set($event)" />
-          </span>
-        }
+        <span data-testid="identifier-field">
+          <app-input label="Identifier" [value]="identifier()" [error]="errors()['identifier'] ?? ''" (valueChange)="identifier.set($event)" />
+        </span>
 
         <span data-testid="category-field">
           <app-select label="Category" placeholder="Select a category" [options]="categoryOptions()" [value]="categoryId()" [error]="errors()['categoryId'] ?? ''" (valueChange)="categoryId.set($event)" />
@@ -40,11 +38,9 @@ import { CreateProjectPayload, EditProjectPayload, Project } from '../../models/
           <app-input label="Target date" type="date" [value]="targetDate()" [error]="errors()['targetDate'] ?? ''" (valueChange)="targetDate.set($event)" />
         </span>
 
-        @if (mode() === 'create') {
-          <span data-testid="release-date-field">
-            <app-input label="Release date" type="date" [value]="releaseDate()" [error]="errors()['releaseDate'] ?? ''" (valueChange)="releaseDate.set($event)" />
-          </span>
-        }
+        <span data-testid="release-date-field">
+          <app-input label="Release date" type="date" [value]="releaseDate()" [error]="errors()['releaseDate'] ?? ''" (valueChange)="releaseDate.set($event)" />
+        </span>
 
         <span data-testid="allocated-hours-field">
           <app-input label="Allocated hours" type="number" [value]="allocatedHoursDisplay()" [error]="errors()['allocatedHours'] ?? ''" (valueChange)="onAllocatedHoursChange($event)" />
@@ -54,15 +50,13 @@ import { CreateProjectPayload, EditProjectPayload, Project } from '../../models/
           <app-input label="Color" placeholder="#2563EB" [value]="color()" (valueChange)="color.set($event)" />
         </span>
 
-        @if (mode() === 'create') {
-          <span data-testid="logo-field" class="flex flex-col gap-1">
-            <label class="text-xs font-medium text-[var(--color-text-secondary)]">Logo</label>
-            <input type="file" accept="image/png,image/jpeg,image/webp" (change)="onLogoFileSelected($event)" />
-            @if (logoFile(); as file) {
-              <span class="text-xs text-[var(--color-text-secondary)]">{{ file.name }}</span>
-            }
-          </span>
-        }
+        <span data-testid="logo-field" class="flex flex-col gap-1">
+          <label class="text-xs font-medium text-[var(--color-text-secondary)]">Logo</label>
+          <input type="file" accept="image/png,image/jpeg,image/webp" (change)="onLogoFileSelected($event)" />
+          @if (logoFile(); as file) {
+            <span class="text-xs text-[var(--color-text-secondary)]">{{ file.name }}</span>
+          }
+        </span>
 
         @if (errorMessage()) {
           <p class="text-sm text-[var(--color-danger-text)]" role="alert">{{ errorMessage() }}</p>
@@ -73,9 +67,7 @@ import { CreateProjectPayload, EditProjectPayload, Project } from '../../models/
             <app-button variant="secondary" [disabled]="submitting()" (pressed)="closed.emit()">Cancel</app-button>
           </span>
           <span data-testid="submit-button">
-            <app-button variant="primary" [loading]="submitting()" (pressed)="submit()">
-              {{ mode() === 'create' ? 'Create' : 'Save changes' }}
-            </app-button>
+            <app-button variant="primary" [loading]="submitting()" (pressed)="submit()">Create</app-button>
           </span>
         </div>
       </div>
@@ -86,14 +78,10 @@ export class ProjectFormModalComponent implements OnInit {
   private readonly categoryStore = inject(ProjectCategoryStore);
 
   open = input(false);
-  mode = input.required<'create' | 'edit'>();
-  /** Accepts either a list-page `Project` (no `description`) or a full `ProjectDetail` — whichever the caller has on hand. */
-  initialValue = input<(Project & { description?: string | null }) | null>(null);
   submitting = input(false);
   errorMessage = input<string>('');
 
   createSubmitted = output<CreateProjectPayload>();
-  editSubmitted = output<EditProjectPayload>();
   closed = output<void>();
 
   name = signal('');
@@ -110,20 +98,7 @@ export class ProjectFormModalComponent implements OnInit {
 
   constructor() {
     effect(() => {
-      const value = this.initialValue();
-      if (value) {
-        this.name.set(value.name);
-        this.identifier.set(value.identifier);
-        this.categoryId.set(value.categoryId);
-        this.description.set(value.description ?? '');
-        this.startDate.set(value.startDate);
-        this.targetDate.set(value.targetDate);
-        this.allocatedHours.set(value.allocatedHours);
-        this.color.set(value.color ?? '');
-      } else {
-        // initialValue went back to null - e.g. Create opened right after an Edit closed.
-        // Without this branch the previous Edit's field values keep showing in the blank
-        // Create form, since the block above only ever patches, never clears.
+      if (this.open()) {
         this.name.set('');
         this.identifier.set('');
         this.categoryId.set('');
@@ -134,8 +109,8 @@ export class ProjectFormModalComponent implements OnInit {
         this.allocatedHours.set(0);
         this.color.set('');
         this.logoFile.set(null);
+        this.errors.set({});
       }
-      this.errors.set({});
     });
   }
 
@@ -170,24 +145,17 @@ export class ProjectFormModalComponent implements OnInit {
 
   submit(): void {
     const fields = this.buildFields();
-    const errors = validateProjectForm(fields, this.mode());
+    const errors = validateProjectForm(fields, 'create');
     this.errors.set(errors);
     if (Object.keys(errors).length > 0) {
       return;
     }
 
-    if (this.mode() === 'create') {
-      this.createSubmitted.emit({
-        categoryId: fields.categoryId, name: fields.name, identifier: fields.identifier,
-        description: this.description(), startDate: fields.startDate, targetDate: fields.targetDate,
-        releaseDate: fields.releaseDate, color: this.color(), actualHours: 0,
-        defaultObjectiveAllocatedHours: fields.allocatedHours, logoFile: this.logoFile()
-      });
-    } else {
-      this.editSubmitted.emit({
-        name: fields.name, description: this.description(), categoryId: fields.categoryId,
-        startDate: fields.startDate, targetDate: fields.targetDate, color: this.color(), actualHours: 0
-      });
-    }
+    this.createSubmitted.emit({
+      categoryId: fields.categoryId, name: fields.name, identifier: fields.identifier,
+      description: this.description(), startDate: fields.startDate, targetDate: fields.targetDate,
+      releaseDate: fields.releaseDate, color: this.color(), actualHours: 0,
+      defaultObjectiveAllocatedHours: fields.allocatedHours, logoFile: this.logoFile()
+    });
   }
 }
