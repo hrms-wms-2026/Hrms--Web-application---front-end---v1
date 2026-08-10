@@ -47,7 +47,12 @@ export const routes: Routes = [
           )
       },
       { path: 'work', loadComponent: loadPlaceholder, data: { title: 'Work' } },
-      { path: 'people', loadComponent: loadPlaceholder, data: { title: 'People' } },
+      {
+        path: 'people',
+        canActivate: [permissionGuard],
+        data: { permissions: ['employees:read', 'employees:write'], modules: ['core_hr'] },
+        loadChildren: () => import('./modules/people/people.routes').then((module) => module.PEOPLE_ROUTES)
+      },
       { path: 'calendar', loadComponent: loadPlaceholder, data: { title: 'Calendar' } },
       { path: 'time-off', loadComponent: loadPlaceholder, data: { title: 'Time Off' } },
       { path: 'time-attendance', loadComponent: loadPlaceholder, data: { title: 'Time & Attendance' } },
