@@ -1,0 +1,14 @@
+<div class="mb-4">
+  <app-button variant="secondary" (pressed)="backToProject()">← Back to project</app-button>
+</div>
+
+@if (store.subtreeLoading()) {
+  <app-loader label="Loading milestone…" />
+} @else if (store.subtreeError()) {
+  <app-error-state [message]="store.subtreeError()!" [retryable]="true" (retry)="retry()" />
+} @else if (store.selectedSubtree(); as subtree) {
+  <h1 class="mb-4 text-lg font-semibold text-[var(--color-text-primary)]">{{ subtree.title }}</h1>
+  <app-milestone-tree-node [node]="subtree" />
+} @else {
+  <app-empty-state title="Milestone not found" />
+}
