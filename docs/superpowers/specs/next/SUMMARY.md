@@ -1,3 +1,3 @@
 # specs/next/ — Summary
 
-No pending designs as of 2026-08-09. This folder exists ready for the next not-yet-implemented design, per the finished/next convention in `../../rules/FILE_CREATION_RULES.md`.
+- `2026-08-10-project-identifier-autosuggest-design.md` — status: approved 2026-08-10, no plan written yet. Auto-derives the Create Project form's Identifier field from the Name field (first word + 8-digit random suffix), stops once the user manually edits Identifier.
