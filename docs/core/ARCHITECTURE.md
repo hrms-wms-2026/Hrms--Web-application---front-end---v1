@@ -67,6 +67,8 @@ Lower layers must **never** import from upper layers. This prevents circular dep
 
 ## 2. Folder Structure
 
+> **Note (2026-08-10):** `work/` below is kept in sync with the actual built module (see rule 6 in `docs/superpowers/rules/PROCESS_RULES.md`) — same for `auth/`, `dashboard/`, `core/`, and `shared/`. `organization/` and `public/` also exist in the real codebase today but aren't reflected in this tree yet. `employees/`, `leave/`, `attendance/`, `payroll/`, `recruitment/`, `performance/`, `reports/`, `tenant-admin/`, and `settings/` below are the **original planning-time module skeletons** — none of them exist under `src/app/modules/` yet; treat them as a proposed shape for future modules, not a current-state description. Don't assume a listing here means the code exists — check `src/app/modules/` directly for what's actually built.
+
 ```
 src/
 ├── core/
@@ -174,6 +176,38 @@ src/
 │   │   ├── utils/
 │   │   │   └── dashboard.formatter.ts
 │   │   └── dashboard.routes.ts
+│   │
+│   ├── work/                                         # Work Management (Projects, Milestones/Objectives) — built 2026-08-03+
+│   │   ├── feature/
+│   │   │   ├── project-list/
+│   │   │   │   └── project-list.component.ts
+│   │   │   └── project-detail/
+│   │   │       └── project-detail.component.ts
+│   │   ├── ui/
+│   │   │   ├── project-card/
+│   │   │   │   └── project-card.component.ts
+│   │   │   ├── project-filter-bar/
+│   │   │   │   └── project-filter-bar.component.ts
+│   │   │   ├── project-form-modal/
+│   │   │   │   └── project-form-modal.component.ts
+│   │   │   └── milestone-tree-node/
+│   │   │       └── milestone-tree-node.component.ts
+│   │   ├── data-access/
+│   │   │   ├── project-api.service.ts
+│   │   │   └── project-category-api.service.ts
+│   │   ├── state/
+│   │   │   ├── project-list.store.ts
+│   │   │   ├── project-detail.store.ts
+│   │   │   └── project-category.store.ts
+│   │   ├── models/
+│   │   │   ├── project.model.ts
+│   │   │   ├── milestone.model.ts
+│   │   │   ├── project-category.model.ts
+│   │   │   └── dto/ (project.dto.ts, milestone.dto.ts, project-category.dto.ts)
+│   │   ├── utils/
+│   │   │   ├── project-form.validator.ts
+│   │   │   └── project.mapper.ts
+│   │   └── work.routes.ts
 │   │
 │   ├── employees/                                   # Employee Management
 │   │   ├── feature/
