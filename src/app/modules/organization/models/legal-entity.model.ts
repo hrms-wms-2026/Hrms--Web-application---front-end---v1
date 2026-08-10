@@ -64,3 +64,23 @@ export interface UpdateLegalEntityGeneralSettingsRequest {
   timeFormat: '12h' | '24h';
   status: 'active' | 'inactive';
 }
+
+/**
+ * Matches backend CreateLegalEntityRequest verbatim (CreateLegalEntityRequest.cs /
+ * LegalEntitiesController.cs POST /api/v1/org/legal-entities). Deliberately excludes
+ * tenantId, userId, logoFileId, isPrimary, isActive, and every General Settings-only
+ * field (timezone, financialYearStartMonth, firstDayOfWeek, standardWorkingDays,
+ * defaultLanguage, dateFormat, timeFormat, status) - none of those are accepted by the
+ * create endpoint; the backend applies its own fixed defaults for them. companyCode is
+ * typed nullable to mirror the C# DTO's string?, but the backend validator requires it
+ * (NotEmpty + max 20) - the create form must treat it as required.
+ */
+export interface CreateLegalEntityRequest {
+  name: string;
+  companyCode: string | null;
+  registrationNumber: string;
+  countryCode: string;
+  currencyCode: string;
+  taxRegistrationNumber: string | null;
+  parentLegalEntityId: string | null;
+}

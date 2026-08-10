@@ -1,6 +1,7 @@
 import { provideHttpClient } from '@angular/common/http';
 import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
 import { TestBed } from '@angular/core/testing';
+import { vi } from 'vitest';
 import { environment } from '../../../../environments/environment';
 import { LegalEntityListItem } from '../models/legal-entity.model';
 import { LegalEntityStore, SELECTED_LEGAL_ENTITY_STORAGE_KEY } from './legal-entity.store';
@@ -116,5 +117,86 @@ describe('LegalEntityStore', () => {
     const updated = store.companies().find((c) => c.id === 'comp-1');
     expect(updated).toEqual({ ...mockCompanies[0], name: 'Alpha Corp Renamed', companyCode: 'ALPHA2', isActive: false });
     expect(store.companies().find((c) => c.id === 'comp-2')).toEqual(mockCompanies[1]);
+  });
+
+  const mockCreatedGeneralSettings = {
+    id: 'comp-3',
+    name: 'Gamma Inc',
+    companyCode: 'GAMMA',
+    logoFileId: null,
+    registrationNumber: 'REG-3',
+    taxRegistrationNumber: null,
+    vatGstNumber: null,
+    email: null,
+    phoneNumber: null,
+    website: null,
+    countryCode: 'LKA',
+    currencyCode: 'LKR',
+    timezone: 'UTC',
+    financialYearStartMonth: 1,
+    firstDayOfWeek: 1,
+    standardWorkingDays: [1, 2, 3, 4, 5],
+    defaultLanguage: 'en-US',
+    dateFormat: 'DD MMM YYYY',
+    timeFormat: '12h' as const,
+    status: 'active' as const
+  };
+
+  const createPayload = {
+    name: 'Gamma Inc',
+    companyCode: 'GAMMA',
+    registrationNumber: 'REG-3',
+    countryCode: 'LKA',
+    currencyCode: 'LKR',
+    taxRegistrationNumber: null,
+    parentLegalEntityId: null
+  };
+
+  it('creates a company, exposes saving state, and refreshes the list on success', async () => {
+    const createPromise = store.createCompany(createPayload);
+    expect(store.saving()).toBe(true);
+
+    const postReq = httpMock.expectOne((r) => r.url === `${environment.apiUrl}/org/legal-entities` && r.method === 'POST');
+    postReq.flush(mockCreatedGeneralSettings);
+
+    const refreshReq = await vi.waitFor(() =>
+      httpMock.expectOne(`${environment.apiUrl}/org/legal-entities?includeInactive=false`)
+    );
+    refreshReq.flush([...mockCompanies, { id: 'comp-3', name: 'Gamma Inc', companyCode: 'GAMMA', logoFileId: null, isActive: true, isPrimary: false }]);
+
+    const success = await createPromise;
+
+    expect(success).toBe(true);
+    expect(store.saving()).toBe(false);
+    expect(store.createError()).toBeNull();
+    expect(store.companies().length).toBe(3);
+  });
+
+  it('sets createError and does not refresh the list when creation fails', async () => {
+    const createPromise = store.createCompany(createPayload);
+
+    const postReq = httpMock.expectOne((r) => r.url === `${environment.apiUrl}/org/legal-entities` && r.method === 'POST');
+    postReq.flush({ detail: 'Company name already exists.' }, { status: 409, statusText: 'Conflict' });
+
+    const success = await createPromise;
+
+    expect(success).toBe(false);
+    expect(store.saving()).toBe(false);
+    expect(store.createError()).toBe('Company name already exists.');
+  });
+
+  it('ignores a second createCompany call while one is already saving', async () => {
+    const firstPromise = store.createCompany(createPayload);
+
+    const second = await store.createCompany({ ...createPayload, name: 'Should Be Ignored' });
+    expect(second).toBe(false);
+
+    const postReq = httpMock.expectOne((r) => r.url === `${environment.apiUrl}/org/legal-entities` && r.method === 'POST');
+    postReq.flush(mockCreatedGeneralSettings);
+    const refreshReq = await vi.waitFor(() =>
+      httpMock.expectOne(`${environment.apiUrl}/org/legal-entities?includeInactive=false`)
+    );
+    refreshReq.flush(mockCompanies);
+    await firstPromise;
   });
 });

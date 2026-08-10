@@ -18,7 +18,8 @@ export interface PositionListItemResponse {
   readonly updatedAt: string | null;
   readonly departmentName?: string | null;
   readonly reportsToPositionName?: string | null;
-  readonly currentOccupancy?: number;
+  readonly currentOccupancy?: number | null;
+  readonly currentOccupancyCheckSupported?: boolean;
 }
 
 export interface PositionTreeNodeResponse {
@@ -35,7 +36,7 @@ export interface PositionTreeNodeResponse {
   readonly children: readonly PositionTreeNodeResponse[];
   readonly departmentName?: string | null;
   readonly reportsToPositionName?: string | null;
-  readonly currentOccupancy?: number;
+  readonly currentOccupancy?: number | null;
 }
 
 export interface PositionPageResponse {

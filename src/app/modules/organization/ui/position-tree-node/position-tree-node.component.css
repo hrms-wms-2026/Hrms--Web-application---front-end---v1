@@ -140,7 +140,8 @@
 .ptn-bottom-row {
   display: flex;
   align-items: center;
-  gap: 0.5rem;
+  flex-wrap: wrap;
+  gap: 0.25rem 0.5rem;
   margin-top: 0.125rem;
 }
 
@@ -148,6 +149,7 @@
   font-size: 0.75rem;
   font-weight: 700;
   color: var(--color-text-primary);
+  flex-shrink: 0;
 }
 
 .ptn-status-pill {
@@ -155,6 +157,8 @@
   font-weight: 600;
   padding: 0.125rem 0.45rem;
   border-radius: 999px;
+  white-space: normal;
+  text-align: center;
 }
 
 .ptn-status-pill--occupied {
@@ -170,6 +174,16 @@
 .ptn-status-pill--available {
   background: color-mix(in srgb, var(--color-sidebar-active-bg, #2563eb) 12%, transparent);
   color: var(--color-sidebar-active-bg, #2563eb);
+}
+
+.ptn-status-pill--full {
+  background: color-mix(in srgb, #10b981 12%, transparent);
+  color: #059669;
+}
+
+.ptn-status-pill--unknown {
+  background: color-mix(in srgb, var(--color-text-secondary) 12%, transparent);
+  color: var(--color-text-secondary);
 }
 
 /* Action Dropdown (Top Right) */

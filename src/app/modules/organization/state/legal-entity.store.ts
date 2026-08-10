@@ -2,7 +2,7 @@ import { computed, inject } from '@angular/core';
 import { patchState, signalStore, withComputed, withMethods, withState } from '@ngrx/signals';
 import { firstValueFrom } from 'rxjs';
 import { LegalEntityApiService } from '../data-access/legal-entity-api.service';
-import { LegalEntityListItem } from '../models/legal-entity.model';
+import { CreateLegalEntityRequest, LegalEntityListItem } from '../models/legal-entity.model';
 
 export const SELECTED_LEGAL_ENTITY_STORAGE_KEY = 'onevo.selected_legal_entity_id';
 
@@ -12,7 +12,11 @@ export interface LegalEntityState {
   readonly loading: boolean;
   readonly error: string | null;
   readonly loaded: boolean;
+  readonly saving: boolean;
+  readonly createError: string | null;
 }
+
+import { toSafeErrorMessage } from '../../../core/services/error-handler.service';
 
 export const LegalEntityStore = signalStore(
   { providedIn: 'root' },
@@ -21,7 +25,9 @@ export const LegalEntityStore = signalStore(
     selectedLegalEntityId: null,
     loading: false,
     error: null,
-    loaded: false
+    loaded: false,
+    saving: false,
+    createError: null
   }),
   withComputed(({ companies, selectedLegalEntityId }) => ({
     selectedLegalEntity: computed(() => {
@@ -65,11 +71,9 @@ export const LegalEntityStore = signalStore(
           loading: false,
           loaded: true
         });
-      } catch (err: any) {
-        const errorMessage =
-          err?.error?.detail || err?.error?.message || err?.message || 'Failed to load companies list.';
+      } catch (err: unknown) {
         patchState(store, {
-          error: errorMessage,
+          error: toSafeErrorMessage(err, 'Failed to load companies list.'),
           loading: false,
           loaded: true
         });
@@ -93,6 +97,22 @@ export const LegalEntityStore = signalStore(
       patchState(store, {
         companies: store.companies().map((c) => (c.id === legalEntityId ? { ...c, ...changes } : c))
       });
+    },
+
+    async createCompany(payload: CreateLegalEntityRequest): Promise<boolean> {
+      if (store.saving()) {
+        return false;
+      }
+      patchState(store, { saving: true, createError: null });
+      try {
+        await firstValueFrom(api.createLegalEntity(payload));
+        patchState(store, { saving: false });
+        await this.loadCompanies();
+        return true;
+      } catch (err) {
+        patchState(store, { saving: false, createError: toSafeErrorMessage(err, 'Failed to create company.') });
+        return false;
+      }
     }
   }))
 );

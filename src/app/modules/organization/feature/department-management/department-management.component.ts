@@ -132,8 +132,8 @@ export class DepartmentManagementComponent {
 
     if (success) {
       this.closeFormModal();
-    } else if (this.departmentStore.actionError()) {
-      this.notificationService.error(this.departmentStore.actionError()!);
+    } else {
+      this.notificationService.error(this.departmentStore.actionError() ?? 'Failed to save department.');
     }
   }
 
@@ -164,8 +164,8 @@ export class DepartmentManagementComponent {
     if (success) {
       this.notificationService.success(`Department '${dept.name}' archived successfully.`);
       this.closeArchiveModal();
-    } else if (this.departmentStore.actionError()) {
-      this.notificationService.error(this.departmentStore.actionError()!);
+    } else {
+      this.notificationService.error(this.departmentStore.actionError() ?? 'Failed to archive department.');
     }
   }
 
@@ -180,8 +180,8 @@ export class DepartmentManagementComponent {
     const success = await this.departmentStore.restoreDepartment(le.id, dept.id);
     if (success) {
       this.notificationService.success(`Department '${dept.name}' restored successfully.`);
-    } else if (this.departmentStore.actionError()) {
-      this.notificationService.error(this.departmentStore.actionError()!);
+    } else {
+      this.notificationService.error(this.departmentStore.actionError() ?? 'Failed to restore department.');
     }
   }
 }

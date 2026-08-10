@@ -38,22 +38,7 @@ const initialState: RoleState = {
   actionError: null
 };
 
-function extractErrorMessage(err: unknown, fallback: string): string {
-  if (err && typeof err === 'object' && 'error' in err) {
-    const body = (err as { error?: { detail?: string; title?: string; message?: string; errors?: Record<string, string[] | string> } }).error;
-    if (body?.detail) return body.detail;
-    if (body?.message) return body.message;
-    if (body?.title && body.title !== 'One or more validation errors occurred.') return body.title;
-    if (body?.errors) {
-      const firstKey = Object.keys(body.errors)[0];
-      if (firstKey && body.errors[firstKey]) {
-        const val = body.errors[firstKey];
-        return Array.isArray(val) ? val[0] : val;
-      }
-    }
-  }
-  return fallback;
-}
+import { toSafeErrorMessage } from '../../../core/services/error-handler.service';
 
 function formatModuleTitle(moduleKey: string): string {
   if (!moduleKey) return 'General';
@@ -107,7 +92,7 @@ export const RoleStore = signalStore(
         patchState(store, {
           loading: false,
           catalogLoading: false,
-          loadError: extractErrorMessage(err, 'Failed to load roles and permissions.')
+          loadError: toSafeErrorMessage(err, 'Failed to load roles and permissions.')
         });
       }
     },
@@ -121,7 +106,7 @@ export const RoleStore = signalStore(
       } catch (err) {
         patchState(store, {
           detailLoading: false,
-          actionError: extractErrorMessage(err, 'Failed to load role details.')
+          actionError: toSafeErrorMessage(err, 'Failed to load role details.')
         });
         return null;
       }
@@ -135,7 +120,7 @@ export const RoleStore = signalStore(
         await this.loadAll();
         return true;
       } catch (err) {
-        patchState(store, { saving: false, actionError: extractErrorMessage(err, 'Failed to create role.') });
+        patchState(store, { saving: false, actionError: toSafeErrorMessage(err, 'Failed to create role.') });
         return false;
       }
     },
@@ -148,7 +133,7 @@ export const RoleStore = signalStore(
         await this.loadAll();
         return true;
       } catch (err) {
-        patchState(store, { saving: false, actionError: extractErrorMessage(err, 'Failed to update role details.') });
+        patchState(store, { saving: false, actionError: toSafeErrorMessage(err, 'Failed to update role details.') });
         return false;
       }
     },
@@ -161,7 +146,7 @@ export const RoleStore = signalStore(
         await this.loadAll();
         return true;
       } catch (err) {
-        patchState(store, { saving: false, actionError: extractErrorMessage(err, 'Failed to update role permissions.') });
+        patchState(store, { saving: false, actionError: toSafeErrorMessage(err, 'Failed to update role permissions.') });
         return false;
       }
     },
@@ -174,7 +159,7 @@ export const RoleStore = signalStore(
         await this.loadAll();
         return true;
       } catch (err) {
-        patchState(store, { saving: false, actionError: extractErrorMessage(err, 'Failed to archive role.') });
+        patchState(store, { saving: false, actionError: toSafeErrorMessage(err, 'Failed to archive role.') });
         return false;
       }
     }

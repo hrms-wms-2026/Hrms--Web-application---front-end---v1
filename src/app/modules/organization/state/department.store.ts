@@ -50,22 +50,7 @@ const initialState: DepartmentState = {
   archiveDependency: null
 };
 
-function extractErrorMessage(err: unknown, fallback: string): string {
-  if (err && typeof err === 'object' && 'error' in err) {
-    const body = (err as { error?: { detail?: string; title?: string; message?: string; errors?: Record<string, string[] | string> } }).error;
-    if (body?.detail) return body.detail;
-    if (body?.message) return body.message;
-    if (body?.title && body.title !== 'One or more validation errors occurred.') return body.title;
-    if (body?.errors) {
-      const firstKey = Object.keys(body.errors)[0];
-      if (firstKey && body.errors[firstKey]) {
-        const val = body.errors[firstKey];
-        return Array.isArray(val) ? val[0] : val;
-      }
-    }
-  }
-  return fallback;
-}
+import { toSafeErrorMessage } from '../../../core/services/error-handler.service';
 
 export const DepartmentStore = signalStore(
   { providedIn: 'root' },
@@ -159,7 +144,7 @@ export const DepartmentStore = signalStore(
         }
       } catch (err) {
         if (store.legalEntityId() !== legalEntityId) return;
-        patchState(store, { loading: false, loadError: extractErrorMessage(err, 'Failed to load departments.') });
+        patchState(store, { loading: false, loadError: toSafeErrorMessage(err, 'Failed to load departments.') });
       }
     },
 
@@ -171,7 +156,7 @@ export const DepartmentStore = signalStore(
         await this.load(legalEntityId);
         return true;
       } catch (err) {
-        patchState(store, { saving: false, actionError: extractErrorMessage(err, 'Failed to create department.') });
+        patchState(store, { saving: false, actionError: toSafeErrorMessage(err, 'Failed to create department.') });
         return false;
       }
     },
@@ -184,7 +169,7 @@ export const DepartmentStore = signalStore(
         await this.load(legalEntityId);
         return true;
       } catch (err) {
-        patchState(store, { saving: false, actionError: extractErrorMessage(err, 'Failed to update department.') });
+        patchState(store, { saving: false, actionError: toSafeErrorMessage(err, 'Failed to update department.') });
         return false;
       }
     },
@@ -196,7 +181,7 @@ export const DepartmentStore = signalStore(
         patchState(store, { archiveChecking: false, archiveDependency: res });
         return res;
       } catch (err) {
-        patchState(store, { archiveChecking: false, actionError: extractErrorMessage(err, 'Failed to check archive blockers.') });
+        patchState(store, { archiveChecking: false, actionError: toSafeErrorMessage(err, 'Failed to check archive blockers.') });
         return null;
       }
     },
@@ -209,7 +194,7 @@ export const DepartmentStore = signalStore(
         await this.load(legalEntityId);
         return true;
       } catch (err) {
-        patchState(store, { saving: false, actionError: extractErrorMessage(err, 'Failed to archive department.') });
+        patchState(store, { saving: false, actionError: toSafeErrorMessage(err, 'Failed to archive department.') });
         return false;
       }
     },
@@ -222,7 +207,7 @@ export const DepartmentStore = signalStore(
         await this.load(legalEntityId);
         return true;
       } catch (err) {
-        patchState(store, { saving: false, actionError: extractErrorMessage(err, 'Failed to restore department.') });
+        patchState(store, { saving: false, actionError: toSafeErrorMessage(err, 'Failed to restore department.') });
         return false;
       }
     }

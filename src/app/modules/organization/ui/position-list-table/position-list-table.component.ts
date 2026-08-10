@@ -1,6 +1,7 @@
 import { ChangeDetectionStrategy, Component, EventEmitter, HostListener, Input, Output, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { PositionListItemResponse } from '../../models/position.model';
+import { PositionOccupancyDisplay, resolvePositionOccupancy } from '../../utils/position-occupancy';
 
 @Component({
   selector: 'app-position-list-table',
@@ -38,15 +39,14 @@ export class PositionListTableComponent {
     return this.positionNameMap[reportsToId] || 'Root Position';
   }
 
-  getStatusBadge(pos: PositionListItemResponse): { label: string; type: 'occupied' | 'vacant' | 'available' } {
-    const isUnique = (pos.positionType || '').toLowerCase() === 'unique';
-    if (isUnique) {
-      return pos.maxOccupancy === 1
-        ? { label: 'Occupied', type: 'occupied' }
-        : { label: 'Vacant', type: 'vacant' };
-    } else {
-      return { label: 'Available capacity', type: 'available' };
-    }
+  getOccupancy(pos: PositionListItemResponse): PositionOccupancyDisplay {
+    return resolvePositionOccupancy({
+      positionType: pos.positionType,
+      maxOccupancy: pos.maxOccupancy,
+      currentOccupancy: pos.currentOccupancy,
+      currentOccupancyCheckSupported: pos.currentOccupancyCheckSupported,
+      isActive: pos.isActive
+    });
   }
 
   toggleMenu(id: string, event: Event): void {

@@ -210,6 +210,8 @@ describe('GeneralSettingsComponent', () => {
 
   it('shows a failure state and keeps typed values on API error', async () => {
     const fixture = await setupWithLoadedSettings();
+    const notificationService = TestBed.inject(NotificationService);
+    const spy = vi.spyOn(notificationService, 'error');
 
     fixture.componentInstance.form.controls.name.setValue('Renamed Co');
     const submitPromise = fixture.componentInstance.onSubmit();
@@ -219,7 +221,7 @@ describe('GeneralSettingsComponent', () => {
     await submitPromise;
     fixture.detectChanges();
 
-    expect(fixture.nativeElement.textContent).toContain('Company name conflict.');
+    expect(spy).toHaveBeenCalledWith('Company name conflict.');
     expect(fixture.componentInstance.form.controls.name.value).toBe('Renamed Co');
   });
 

@@ -119,3 +119,12 @@
     </div>
   </app-popover>
 }
+
+@if (showCreateModal()) {
+  <app-create-company-modal
+    [availableParents]="store.companies()"
+    [saving]="store.saving()"
+    (save)="onCreateCompany($event)"
+    (cancel)="closeCreateModal()"
+  />
+}

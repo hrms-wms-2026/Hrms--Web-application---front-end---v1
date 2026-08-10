@@ -179,8 +179,8 @@ export class PositionManagementComponent {
 
     if (success) {
       this.closeFormModal();
-    } else if (this.positionStore.actionError()) {
-      this.notificationService.error(this.positionStore.actionError()!);
+    } else {
+      this.notificationService.error(this.positionStore.actionError() ?? 'Failed to save position.');
     }
   }
 
@@ -210,8 +210,8 @@ export class PositionManagementComponent {
     if (success) {
       const parentName = this.positionNameMap()[event.newReportsToPositionId || ''] || 'Root Position';
       this.notificationService.success(`Reporting line for '${fullPos.name}' updated to '${parentName}'.`);
-    } else if (this.positionStore.actionError()) {
-      this.notificationService.error(this.positionStore.actionError()!);
+    } else {
+      this.notificationService.error(this.positionStore.actionError() ?? 'Failed to move position.');
     }
   }
 
@@ -242,8 +242,8 @@ export class PositionManagementComponent {
     if (success) {
       this.notificationService.success(`Position '${pos.name}' archived successfully.`);
       this.closeArchiveModal();
-    } else if (this.positionStore.actionError()) {
-      this.notificationService.error(this.positionStore.actionError()!);
+    } else {
+      this.notificationService.error(this.positionStore.actionError() ?? 'Failed to archive position.');
     }
   }
 
@@ -258,8 +258,8 @@ export class PositionManagementComponent {
     const success = await this.positionStore.restorePosition(le.id, pos.id);
     if (success) {
       this.notificationService.success(`Position '${pos.name}' restored successfully.`);
-    } else if (this.positionStore.actionError()) {
-      this.notificationService.error(this.positionStore.actionError()!);
+    } else {
+      this.notificationService.error(this.positionStore.actionError() ?? 'Failed to restore position.');
     }
   }
 
@@ -284,8 +284,8 @@ export class PositionManagementComponent {
     const success = await this.positionStore.addCoverage(le.id, pos.id, req);
     if (success) {
       this.notificationService.success('Management coverage rule added successfully.');
-    } else if (this.positionStore.coverageError()) {
-      this.notificationService.error(this.positionStore.coverageError()!);
+    } else {
+      this.notificationService.error(this.positionStore.coverageError() ?? 'Failed to add management coverage rule.');
     }
   }
 
@@ -297,8 +297,8 @@ export class PositionManagementComponent {
     const success = await this.positionStore.updateCoverage(le.id, pos.id, event.coverageId, event.payload);
     if (success) {
       this.notificationService.success('Management coverage level updated successfully.');
-    } else if (this.positionStore.coverageError()) {
-      this.notificationService.error(this.positionStore.coverageError()!);
+    } else {
+      this.notificationService.error(this.positionStore.coverageError() ?? 'Failed to update management coverage level.');
     }
   }
 
@@ -310,8 +310,8 @@ export class PositionManagementComponent {
     const success = await this.positionStore.removeCoverage(le.id, pos.id, coverageId);
     if (success) {
       this.notificationService.success('Management coverage rule removed successfully.');
-    } else if (this.positionStore.coverageError()) {
-      this.notificationService.error(this.positionStore.coverageError()!);
+    } else {
+      this.notificationService.error(this.positionStore.coverageError() ?? 'Failed to remove management coverage rule.');
     }
   }
 }

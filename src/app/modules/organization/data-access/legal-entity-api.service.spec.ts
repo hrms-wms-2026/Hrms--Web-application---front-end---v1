@@ -4,6 +4,7 @@ import { TestBed } from '@angular/core/testing';
 import { environment } from '../../../../environments/environment';
 import { LegalEntityApiService } from './legal-entity-api.service';
 import {
+  CreateLegalEntityRequest,
   LegalEntityGeneralSettings,
   LegalEntityListItem,
   UpdateLegalEntityGeneralSettingsRequest
@@ -127,6 +128,31 @@ describe('LegalEntityApiService', () => {
     const req = httpMock.expectOne(`${environment.apiUrl}/org/legal-entities/company-1/general-settings`);
     expect(req.request.method).toBe('PUT');
     expect(req.request.body).toEqual(payload);
+    req.flush(mockGeneralSettings);
+  });
+
+  it('creates a legal entity with a POST to the collection route, sending only the create contract fields', () => {
+    const payload: CreateLegalEntityRequest = {
+      name: 'New Co',
+      companyCode: 'NEWCO',
+      registrationNumber: 'REG-NEWCO',
+      countryCode: 'LKA',
+      currencyCode: 'LKR',
+      taxRegistrationNumber: null,
+      parentLegalEntityId: null
+    };
+
+    service.createLegalEntity(payload).subscribe((result) => {
+      expect(result).toEqual(mockGeneralSettings);
+    });
+
+    const req = httpMock.expectOne(`${environment.apiUrl}/org/legal-entities`);
+    expect(req.request.method).toBe('POST');
+    expect(req.request.body).toEqual(payload);
+    expect(Object.keys(req.request.body)).toEqual([
+      'name', 'companyCode', 'registrationNumber', 'countryCode', 'currencyCode',
+      'taxRegistrationNumber', 'parentLegalEntityId'
+    ]);
     req.flush(mockGeneralSettings);
   });
 
