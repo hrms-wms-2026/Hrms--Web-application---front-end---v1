@@ -6,7 +6,7 @@ import {
   CreateProjectRequestDto, CreateProjectResponseDto, EditProjectRequestDto,
   PagedResultDto, ProjectDetailDto, ProjectListItemDto
 } from '../models/dto/project.dto';
-import { MyProjectMilestoneDto, ObjectiveSubtreeResponseDto } from '../models/dto/milestone.dto';
+import { MyProjectMilestoneDto, ObjectiveDetailDto, ObjectiveSubtreeResponseDto } from '../models/dto/milestone.dto';
 
 @Injectable({ providedIn: 'root' })
 export class ProjectApiService {
@@ -34,6 +34,9 @@ export class ProjectApiService {
     formData.set('color', payload.color);
     formData.set('actualHours', String(payload.actualHours));
     formData.set('defaultObjectiveAllocatedHours', String(payload.defaultObjectiveAllocatedHours));
+    if (payload.logoFile) {
+      formData.set('logo', payload.logoFile);
+    }
     return this.http.post<CreateProjectResponseDto>(this.base, formData);
   }
 
@@ -55,6 +58,10 @@ export class ProjectApiService {
 
   getMyMilestones(projectId: string): Observable<MyProjectMilestoneDto[]> {
     return this.http.get<MyProjectMilestoneDto[]>(`${this.base}/${projectId}/objectives/mine`);
+  }
+
+  getObjectiveById(id: string): Observable<ObjectiveDetailDto> {
+    return this.http.get<ObjectiveDetailDto>(`${environment.apiUrl}/work/objectives/${id}`);
   }
 
   getMilestoneSubtree(objectiveId: string): Observable<ObjectiveSubtreeResponseDto> {

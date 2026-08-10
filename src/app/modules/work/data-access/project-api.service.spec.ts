@@ -4,7 +4,7 @@ import { TestBed } from '@angular/core/testing';
 import { environment } from '../../../../environments/environment';
 import { ProjectApiService } from './project-api.service';
 import { ProjectDetailDto, ProjectListItemDto, PagedResultDto } from '../models/dto/project.dto';
-import { MyProjectMilestoneDto, ObjectiveSubtreeResponseDto } from '../models/dto/milestone.dto';
+import { MyProjectMilestoneDto, ObjectiveDetailDto, ObjectiveSubtreeResponseDto } from '../models/dto/milestone.dto';
 
 describe('ProjectApiService', () => {
   let service: ProjectApiService;
@@ -45,13 +45,28 @@ describe('ProjectApiService', () => {
     service.create({
       categoryId: 'cat1', name: 'Website Revamp', identifier: 'WEB', description: 'Rebuild',
       startDate: '2026-08-01', targetDate: '2026-12-01', releaseDate: '2026-11-15', color: '#2563EB',
-      actualHours: 0, defaultObjectiveAllocatedHours: 40
+      actualHours: 0, defaultObjectiveAllocatedHours: 40, logoFile: null
     }).subscribe((res) => expect(res).toEqual(response));
 
     const req = httpMock.expectOne(`${environment.apiUrl}/work/projects`);
     expect(req.request.method).toBe('POST');
     expect(req.request.body instanceof FormData).toBe(true);
     expect((req.request.body as FormData).get('name')).toBe('Website Revamp');
+    expect((req.request.body as FormData).get('logo')).toBeNull();
+    req.flush(response);
+  });
+
+  it('includes the logo file in the multipart request when provided', () => {
+    const response = { project: { id: 'p1', name: 'Website Revamp' } };
+    const logoFile = new File(['fake'], 'logo.png', { type: 'image/png' });
+    service.create({
+      categoryId: 'cat1', name: 'Website Revamp', identifier: 'WEB', description: 'Rebuild',
+      startDate: '2026-08-01', targetDate: '2026-12-01', releaseDate: '2026-11-15', color: '#2563EB',
+      actualHours: 0, defaultObjectiveAllocatedHours: 40, logoFile
+    }).subscribe((res) => expect(res).toEqual(response));
+
+    const req = httpMock.expectOne(`${environment.apiUrl}/work/projects`);
+    expect((req.request.body as FormData).get('logo')).toBe(logoFile);
     req.flush(response);
   });
 
@@ -96,6 +111,14 @@ describe('ProjectApiService', () => {
     const req = httpMock.expectOne(`${environment.apiUrl}/work/projects/p1/objectives/mine`);
     expect(req.request.method).toBe('GET');
     req.flush(milestones);
+  });
+
+  it('gets an objective by id', () => {
+    const dto = { id: 'o1', title: 'Design Phase' } as ObjectiveDetailDto;
+    service.getObjectiveById('o1').subscribe((res) => expect(res).toEqual(dto));
+    const req = httpMock.expectOne(`${environment.apiUrl}/work/objectives/o1`);
+    expect(req.request.method).toBe('GET');
+    req.flush(dto);
   });
 
   it('gets a milestone subtree', () => {
