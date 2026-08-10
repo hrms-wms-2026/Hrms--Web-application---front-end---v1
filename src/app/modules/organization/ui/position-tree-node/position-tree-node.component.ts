@@ -1,6 +1,7 @@
 import { ChangeDetectionStrategy, Component, EventEmitter, HostListener, Input, Output, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { PositionTreeNodeResponse } from '../../models/position.model';
+import { PositionOccupancyDisplay, resolvePositionOccupancy } from '../../utils/position-occupancy';
 
 export interface ReparentPositionEvent {
   position: PositionTreeNodeResponse;
@@ -44,15 +45,13 @@ export class PositionTreeNodeComponent {
     return 'General';
   }
 
-  get statusBadge(): { label: string; type: 'occupied' | 'vacant' | 'available' } {
-    const isUnique = (this.node.positionType || '').toLowerCase() === 'unique';
-    if (isUnique) {
-      return this.node.maxOccupancy === 1
-        ? { label: 'Occupied', type: 'occupied' }
-        : { label: 'Vacant', type: 'vacant' };
-    } else {
-      return { label: 'Available capacity', type: 'available' };
-    }
+  get occupancy(): PositionOccupancyDisplay {
+    return resolvePositionOccupancy({
+      positionType: this.node.positionType,
+      maxOccupancy: this.node.maxOccupancy,
+      currentOccupancy: this.node.currentOccupancy,
+      isActive: this.node.isActive
+    });
   }
 
   get iconCategory(): 'ceo' | 'finance' | 'hr' | 'ops' | 'general' {

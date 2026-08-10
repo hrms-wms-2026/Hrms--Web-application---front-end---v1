@@ -16,6 +16,7 @@
     </thead>
     <tbody>
       @for (pos of positions; track pos.id) {
+        @let occupancy = getOccupancy(pos);
         <tr [class.plt-tr--inactive]="!pos.isActive">
           <td>
             <span class="plt-name">{{ pos.name }}</span>
@@ -39,23 +40,22 @@
             </span>
           </td>
           <td>
-            <span class="plt-capacity-val">
-              {{ pos.currentOccupancy ?? (getStatusBadge(pos).type === 'occupied' ? 1 : 0) }}/{{ pos.maxOccupancy }}
+            <span class="plt-capacity-val" [attr.aria-label]="occupancy.capacityAriaLabel">
+              {{ occupancy.capacityText }}
             </span>
           </td>
           <td>
-            @if (!pos.isActive) {
-              <span class="plt-badge plt-badge--inactive">Archived</span>
-            } @else {
-              <span
-                class="plt-badge"
-                [class.plt-badge--occupied]="getStatusBadge(pos).type === 'occupied'"
-                [class.plt-badge--vacant]="getStatusBadge(pos).type === 'vacant'"
-                [class.plt-badge--available]="getStatusBadge(pos).type === 'available'"
-              >
-                {{ getStatusBadge(pos).label }}
-              </span>
-            }
+            <span
+              class="plt-badge"
+              [class.plt-badge--occupied]="occupancy.statusType === 'occupied'"
+              [class.plt-badge--vacant]="occupancy.statusType === 'vacant'"
+              [class.plt-badge--available]="occupancy.statusType === 'available'"
+              [class.plt-badge--full]="occupancy.statusType === 'full'"
+              [class.plt-badge--unknown]="occupancy.statusType === 'unassigned' || occupancy.statusType === 'unknown'"
+              [class.plt-badge--inactive]="occupancy.statusType === 'archived'"
+            >
+              {{ occupancy.statusLabel }}
+            </span>
           </td>
           @if (canManage) {
             <td class="plt-td-actions">

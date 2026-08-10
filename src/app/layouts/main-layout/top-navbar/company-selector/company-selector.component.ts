@@ -83,8 +83,8 @@ export class CompanySelectorComponent implements OnInit {
     if (success) {
       this.notificationService.success(`Company '${payload.name}' created successfully.`);
       this.closeCreateModal();
-    } else if (this.store.createError()) {
-      this.notificationService.error(this.store.createError()!);
+    } else {
+      this.notificationService.error(this.store.createError() ?? 'Failed to create company.');
     }
   }
 }

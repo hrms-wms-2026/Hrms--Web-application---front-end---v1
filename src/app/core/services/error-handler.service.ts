@@ -11,25 +11,167 @@ interface ErrorAction {
   telemetryEvent: string;
 }
 
+const KNOWN_CODE_MAPPINGS: Record<string, string> = {
+  storage_not_entitled: 'This feature is not included in your current plan.',
+  not_entitled: 'This feature is not included in your current plan.',
+  quota_exceeded: 'Storage limit reached. Please upgrade your plan or free up space.',
+  storage_quota_exceeded: 'Storage limit reached. Please upgrade your plan or free up space.',
+  tenant_context_missing: 'Session context missing. Please try signing in again.',
+  invalid_file_size: 'The selected file exceeds the maximum allowed size.'
+};
+
+const HTTP_STATUS_MAPPINGS: Record<number, string> = {
+  400: 'Please check the highlighted fields.',
+  401: 'Your session has expired. Please sign in again.',
+  403: 'You do not have access to perform this action.',
+  404: 'The requested record could not be found.',
+  409: 'This change conflicts with existing data. Please review and try again.',
+  422: 'Please check the highlighted fields.',
+  429: 'Too many requests. Please wait a moment.',
+  500: 'Something went wrong while saving your changes.',
+  503: 'The service is temporarily unavailable. Please try again.',
+  0: 'We could not reach the server. Check your connection and try again.'
+};
+
+const DEFAULT_SAFE_MESSAGE = 'Something went wrong. Please try again.';
+
+export function isMachineValue(str: string): boolean {
+  if (!str) return false;
+  const trimmed = str.trim();
+
+  // Known machine code check
+  if (KNOWN_CODE_MAPPINGS[trimmed.toLowerCase()]) {
+    return true;
+  }
+
+  // Starts with {, [, <, or " (raw JSON, XML, HTML, quoted string)
+  if (/^\s*[{[<"]/.test(trimmed)) {
+    return true;
+  }
+
+  // Snake case code (e.g., storage_not_entitled, invalid_file_type)
+  if (/^[a-z0-9]+(_[a-z0-9]+)+$/i.test(trimmed)) {
+    return true;
+  }
+
+  // CamelCase single internal code (e.g., storageNotEntitled, tenantContextMissing)
+  if (/^[a-z]+[A-Z0-9][a-zA-Z0-9]*$/.test(trimmed)) {
+    return true;
+  }
+
+  // GUIDs
+  if (/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}/i.test(trimmed)) {
+    return true;
+  }
+
+  // URLs or API endpoints
+  if (/https?:\/\/|\/api\/v\d+/i.test(trimmed)) {
+    return true;
+  }
+
+  // Exception names or stack traces
+  if (
+    /\b(Exception|Error|Fault|System\.|Microsoft\.|Npgsql\.|EFCore|StackTrace|Traceback)\b/i.test(trimmed) ||
+    /\bat\s+[a-zA-Z0-9_\.]+\(/i.test(trimmed)
+  ) {
+    return true;
+  }
+
+  // Raw SQL / database table / column names
+  if (/\b(SELECT|INSERT|UPDATE|DELETE|FROM|WHERE|JOIN|dbo\.|FK_|IX_)\b/i.test(trimmed)) {
+    return true;
+  }
+
+  // Permission implementation details (e.g. legal_entity:update, org:manage)
+  if (/\b[a-z_]+:[a-z_]+\b/i.test(trimmed)) {
+    return true;
+  }
+
+  return false;
+}
+
+export function toSafeErrorMessage(err: unknown, fallbackMessage?: string): string {
+  let rawCandidate: string | null = null;
+  let statusCode: number | null = null;
+
+  if (err instanceof HttpErrorResponse) {
+    statusCode = err.status;
+    const body = err.error;
+
+    if (typeof body === 'string') {
+      rawCandidate = body;
+    } else if (body && typeof body === 'object') {
+      if (body.detail && typeof body.detail === 'string') {
+        rawCandidate = body.detail;
+      } else if (body.message && typeof body.message === 'string') {
+        rawCandidate = body.message;
+      } else if (body.title && typeof body.title === 'string' && body.title !== 'One or more validation errors occurred.') {
+        rawCandidate = body.title;
+      } else if (body.errors && typeof body.errors === 'object') {
+        const firstKey = Object.keys(body.errors)[0];
+        if (firstKey && body.errors[firstKey]) {
+          const val = body.errors[firstKey];
+          rawCandidate = Array.isArray(val) ? val[0] : String(val);
+        }
+      }
+    }
+    if (!rawCandidate && err.message) {
+      rawCandidate = err.message;
+    }
+  } else if (err && typeof err === 'object') {
+    const obj = err as Record<string, unknown>;
+    if ('status' in obj && typeof obj['status'] === 'number') {
+      statusCode = obj['status'];
+    }
+    if ('error' in obj && obj['error']) {
+      return toSafeErrorMessage(obj['error'], fallbackMessage);
+    }
+    if ('detail' in obj && typeof obj['detail'] === 'string') {
+      rawCandidate = obj['detail'];
+    } else if ('message' in obj && typeof obj['message'] === 'string') {
+      rawCandidate = obj['message'];
+    }
+  } else if (typeof err === 'string') {
+    rawCandidate = err;
+  }
+
+  if (rawCandidate) {
+    const trimmed = rawCandidate.trim();
+    const knownSafe = KNOWN_CODE_MAPPINGS[trimmed.toLowerCase()];
+    if (knownSafe) {
+      return knownSafe;
+    }
+    if (!isMachineValue(trimmed) && trimmed.length > 0 && trimmed.length < 300) {
+      return trimmed;
+    }
+  }
+
+  if (statusCode !== null && HTTP_STATUS_MAPPINGS[statusCode]) {
+    return HTTP_STATUS_MAPPINGS[statusCode];
+  }
+
+  return fallbackMessage || DEFAULT_SAFE_MESSAGE;
+}
+
 const ERROR_TAXONOMY: Record<number, ErrorAction> = {
-  400: { userMessage: 'Invalid request.', behaviour: 'inline', telemetryEvent: 'bad_request' },
-  401: { userMessage: '', behaviour: 'silent', telemetryEvent: 'auth_session_expired' },
-  403: { userMessage: "You don't have access to this.", behaviour: 'banner', telemetryEvent: 'auth_forbidden' },
-  404: { userMessage: 'This record no longer exists.', behaviour: 'inline', telemetryEvent: 'resource_not_found' },
+  400: { userMessage: 'Please check the highlighted fields.', behaviour: 'inline', telemetryEvent: 'bad_request' },
+  401: { userMessage: 'Your session has expired. Please sign in again.', behaviour: 'silent', telemetryEvent: 'auth_session_expired' },
+  403: { userMessage: 'You do not have access to perform this action.', behaviour: 'banner', telemetryEvent: 'auth_forbidden' },
+  404: { userMessage: 'The requested record could not be found.', behaviour: 'inline', telemetryEvent: 'resource_not_found' },
   409: {
-    userMessage: 'This record was just updated by someone else. Please refresh.',
+    userMessage: 'This change conflicts with existing data. Please review and try again.',
     behaviour: 'inline',
     telemetryEvent: 'data_conflict'
   },
   422: { userMessage: 'Please check the highlighted fields.', behaviour: 'inline', telemetryEvent: 'validation_error' },
   429: { userMessage: 'Too many requests. Please wait a moment.', behaviour: 'banner', telemetryEvent: 'rate_limited' },
-  500: { userMessage: 'Something went wrong. Please try again.', behaviour: 'banner', telemetryEvent: 'server_error' },
-  503: { userMessage: 'Service temporarily unavailable.', behaviour: 'banner', telemetryEvent: 'service_unavailable' },
-  0: { userMessage: 'You appear to be offline.', behaviour: 'banner', telemetryEvent: 'network_offline' }
+  500: { userMessage: 'Something went wrong while saving your changes.', behaviour: 'banner', telemetryEvent: 'server_error' },
+  503: { userMessage: 'The service is temporarily unavailable. Please try again.', behaviour: 'banner', telemetryEvent: 'service_unavailable' },
+  0: { userMessage: 'We could not reach the server. Check your connection and try again.', behaviour: 'banner', telemetryEvent: 'network_offline' }
 };
 
 const DEFAULT_ACTION: ErrorAction = {
-  userMessage: 'An unexpected error occurred.',
+  userMessage: 'Something went wrong. Please try again.',
   behaviour: 'banner',
   telemetryEvent: 'unknown_error'
 };
@@ -39,13 +181,23 @@ export class ErrorHandlerService {
   private notify = inject(NotificationService);
   private logger = inject(LoggerService);
 
-  handle(error: HttpErrorResponse): void {
-    const action = ERROR_TAXONOMY[error.status] ?? DEFAULT_ACTION;
+  toSafeMessage(err: unknown, fallbackMessage?: string): string {
+    return toSafeErrorMessage(err, fallbackMessage);
+  }
 
-    this.logger.error(`[HTTP ${error.status}]`, { url: error.url ?? undefined, event: action.telemetryEvent });
+  handle(error: HttpErrorResponse): void {
+    const key = error.status === 0 ? 0 : error.status;
+    const action = ERROR_TAXONOMY[key] ?? DEFAULT_ACTION;
+
+    this.logger.error(`[HTTP ${error.status}]`, {
+      url: error.url ?? undefined,
+      event: action.telemetryEvent,
+      detail: typeof error.error === 'object' ? error.error?.detail : error.message
+    });
 
     if (action.behaviour === 'banner') {
-      this.notify.error(action.userMessage);
+      const safeMsg = toSafeErrorMessage(error, action.userMessage);
+      this.notify.error(safeMsg);
     }
   }
 }

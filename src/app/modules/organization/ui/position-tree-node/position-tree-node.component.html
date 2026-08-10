@@ -61,17 +61,21 @@
       </div>
 
       <div class="ptn-bottom-row">
-        <span class="ptn-capacity">
-          {{ node.currentOccupancy ?? (statusBadge.type === 'occupied' ? 1 : 0) }}/{{ node.maxOccupancy }}
+        <span class="ptn-capacity" [attr.aria-label]="occupancy.capacityAriaLabel">
+          {{ occupancy.capacityText }}
         </span>
-        <span
-          class="ptn-status-pill"
-          [class.ptn-status-pill--occupied]="statusBadge.type === 'occupied'"
-          [class.ptn-status-pill--vacant]="statusBadge.type === 'vacant'"
-          [class.ptn-status-pill--available]="statusBadge.type === 'available'"
-        >
-          {{ statusBadge.label }}
-        </span>
+        @if (occupancy.statusType !== 'archived') {
+          <span
+            class="ptn-status-pill"
+            [class.ptn-status-pill--occupied]="occupancy.statusType === 'occupied'"
+            [class.ptn-status-pill--vacant]="occupancy.statusType === 'vacant'"
+            [class.ptn-status-pill--available]="occupancy.statusType === 'available'"
+            [class.ptn-status-pill--full]="occupancy.statusType === 'full'"
+            [class.ptn-status-pill--unknown]="occupancy.statusType === 'unassigned' || occupancy.statusType === 'unknown'"
+          >
+            {{ occupancy.statusLabel }}
+          </span>
+        }
       </div>
     </div>
 

@@ -28,7 +28,16 @@ export class NotificationService {
   }
 
   private push(kind: Notification['kind'], message: string): void {
-    const notification: Notification = { id: this.nextId++, kind, message };
+    const trimmed = message?.trim();
+    if (!trimmed) return;
+
+    const current = this.notifications();
+    const last = current[current.length - 1];
+    if (last && last.kind === kind && last.message === trimmed) {
+      return;
+    }
+
+    const notification: Notification = { id: this.nextId++, kind, message: trimmed };
     this.notifications.update((list) => [...list, notification]);
   }
 }

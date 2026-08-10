@@ -1,13 +1,23 @@
 import { TestBed } from '@angular/core/testing';
 import { Router, provideRouter } from '@angular/router';
 import { ORGANIZATION_ROUTES } from './organization.routes';
+import { PermissionService } from '../../core/auth/state/permission.service';
+
+const permissivePermissionService = {
+  hasAnyPermission: () => true,
+  hasAnyModule: () => true,
+  hasPermission: () => true
+};
 
 describe('ORGANIZATION_ROUTES', () => {
   let router: Router;
 
   beforeEach(async () => {
     await TestBed.configureTestingModule({
-      providers: [provideRouter(ORGANIZATION_ROUTES)]
+      providers: [
+        provideRouter(ORGANIZATION_ROUTES),
+        { provide: PermissionService, useValue: permissivePermissionService }
+      ]
     }).compileComponents();
 
     router = TestBed.inject(Router);
@@ -36,7 +46,10 @@ describe('ORGANIZATION_ROUTES composed under /organization (matches app.routes.t
 
   beforeEach(async () => {
     await TestBed.configureTestingModule({
-      providers: [provideRouter([{ path: 'organization', children: ORGANIZATION_ROUTES }])]
+      providers: [
+        provideRouter([{ path: 'organization', children: ORGANIZATION_ROUTES }]),
+        { provide: PermissionService, useValue: permissivePermissionService }
+      ]
     }).compileComponents();
 
     router = TestBed.inject(Router);

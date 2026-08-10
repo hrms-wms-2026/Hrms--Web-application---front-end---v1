@@ -26,22 +26,7 @@ const initialState: GeneralSettingsState = {
   saveError: null
 };
 
-function extractErrorMessage(err: unknown, fallback: string): string {
-  if (err && typeof err === 'object' && 'error' in err) {
-    const body = (err as { error?: { detail?: string; title?: string; message?: string; errors?: Record<string, string[] | string> } }).error;
-    if (body?.detail) return body.detail;
-    if (body?.message) return body.message;
-    if (body?.title && body.title !== 'One or more validation errors occurred.') return body.title;
-    if (body?.errors) {
-      const firstKey = Object.keys(body.errors)[0];
-      if (firstKey && body.errors[firstKey]) {
-        const val = body.errors[firstKey];
-        return Array.isArray(val) ? val[0] : val;
-      }
-    }
-  }
-  return fallback;
-}
+import { toSafeErrorMessage } from '../../../core/services/error-handler.service';
 
 /**
  * Holds the loaded General Settings detail for one company at a time, kept
@@ -65,7 +50,7 @@ export const GeneralSettingsStore = signalStore(
         if (store.legalEntityId() !== legalEntityId) {
           return;
         }
-        patchState(store, { loading: false, loadError: extractErrorMessage(err, 'Failed to load General Settings.') });
+        patchState(store, { loading: false, loadError: toSafeErrorMessage(err, 'Failed to load General Settings.') });
       }
     },
 
@@ -85,7 +70,7 @@ export const GeneralSettingsStore = signalStore(
         }
         return settings;
       } catch (err) {
-        patchState(store, { saving: false, saveError: extractErrorMessage(err, 'Failed to save General Settings.') });
+        patchState(store, { saving: false, saveError: toSafeErrorMessage(err, 'Failed to save General Settings.') });
         return null;
       }
     },
@@ -102,7 +87,7 @@ export const GeneralSettingsStore = signalStore(
         }
         return true;
       } catch (err) {
-        patchState(store, { uploadingLogo: false, saveError: extractErrorMessage(err, 'Failed to upload logo.') });
+        patchState(store, { uploadingLogo: false, saveError: toSafeErrorMessage(err, 'Failed to upload logo.') });
         return false;
       }
     },
@@ -119,7 +104,7 @@ export const GeneralSettingsStore = signalStore(
         }
         return true;
       } catch (err) {
-        patchState(store, { removingLogo: false, saveError: extractErrorMessage(err, 'Failed to remove logo.') });
+        patchState(store, { removingLogo: false, saveError: toSafeErrorMessage(err, 'Failed to remove logo.') });
         return false;
       }
     }

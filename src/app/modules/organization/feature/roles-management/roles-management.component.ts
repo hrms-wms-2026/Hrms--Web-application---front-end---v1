@@ -124,8 +124,8 @@ export class RolesManagementComponent {
 
     if (success) {
       this.closeFormModal();
-    } else if (this.roleStore.actionError()) {
-      this.notificationService.error(this.roleStore.actionError()!);
+    } else {
+      this.notificationService.error(this.roleStore.actionError() ?? 'Failed to save role.');
     }
   }
 
@@ -157,8 +157,8 @@ export class RolesManagementComponent {
     if (success) {
       this.notificationService.success(`Permissions for role '${role.name}' updated successfully.`);
       this.closePermissionsModal();
-    } else if (this.roleStore.actionError()) {
-      this.notificationService.error(this.roleStore.actionError()!);
+    } else {
+      this.notificationService.error(this.roleStore.actionError() ?? 'Failed to update role permissions.');
     }
   }
 
@@ -188,8 +188,8 @@ export class RolesManagementComponent {
     if (success) {
       this.notificationService.success(`Role '${role.name}' archived successfully.`);
       this.closeArchiveModal();
-    } else if (this.roleStore.actionError()) {
-      this.notificationService.error(this.roleStore.actionError()!);
+    } else {
+      this.notificationService.error(this.roleStore.actionError() ?? 'Failed to archive role.');
     }
   }
 }

@@ -16,22 +16,7 @@ export interface LegalEntityState {
   readonly createError: string | null;
 }
 
-function extractErrorMessage(err: unknown, fallback: string): string {
-  if (err && typeof err === 'object' && 'error' in err) {
-    const body = (err as { error?: { detail?: string; title?: string; message?: string; errors?: Record<string, string[] | string> } }).error;
-    if (body?.detail) return body.detail;
-    if (body?.message) return body.message;
-    if (body?.title && body.title !== 'One or more validation errors occurred.') return body.title;
-    if (body?.errors) {
-      const firstKey = Object.keys(body.errors)[0];
-      if (firstKey && body.errors[firstKey]) {
-        const val = body.errors[firstKey];
-        return Array.isArray(val) ? val[0] : val;
-      }
-    }
-  }
-  return fallback;
-}
+import { toSafeErrorMessage } from '../../../core/services/error-handler.service';
 
 export const LegalEntityStore = signalStore(
   { providedIn: 'root' },
@@ -86,11 +71,9 @@ export const LegalEntityStore = signalStore(
           loading: false,
           loaded: true
         });
-      } catch (err: any) {
-        const errorMessage =
-          err?.error?.detail || err?.error?.message || err?.message || 'Failed to load companies list.';
+      } catch (err: unknown) {
         patchState(store, {
-          error: errorMessage,
+          error: toSafeErrorMessage(err, 'Failed to load companies list.'),
           loading: false,
           loaded: true
         });
@@ -127,7 +110,7 @@ export const LegalEntityStore = signalStore(
         await this.loadCompanies();
         return true;
       } catch (err) {
-        patchState(store, { saving: false, createError: extractErrorMessage(err, 'Failed to create company.') });
+        patchState(store, { saving: false, createError: toSafeErrorMessage(err, 'Failed to create company.') });
         return false;
       }
     }

@@ -17,39 +17,40 @@ describe('LandingPageComponent', () => {
   it('renders the main heading', async () => {
     const fixture = await createComponent();
     const heading = fixture.debugElement.query(By.css('h1')).nativeElement as HTMLElement;
-    expect(heading.textContent).toContain('Everything your people need');
+    expect(heading.textContent).toContain('Turning Workforce');
+    expect(heading.textContent).toContain('Visibility Into Performance');
   });
 
-  it('points the hero sign-in CTA at the existing login route', async () => {
+  it('points the hero primary CTA at the /book-a-demo route', async () => {
     const fixture = await createComponent();
-    const signIn = fixture.debugElement.query(By.css('.hero__btn--primary')).nativeElement as HTMLAnchorElement;
-    expect(signIn.getAttribute('routerLink') ?? signIn.getAttribute('href')).toContain('/auth/login');
+    const primary = fixture.debugElement.query(By.css('.hero__btn--primary')).nativeElement as HTMLAnchorElement;
+    expect(primary.getAttribute('routerLink') ?? primary.getAttribute('href')).toContain('/book-a-demo');
   });
 
-  it('points the book-a-demo CTA at the /book-a-demo route', async () => {
+  it('points the hero secondary CTA at the pillars section anchor', async () => {
     const fixture = await createComponent();
-    const demo = fixture.debugElement.query(By.css('.hero__btn--secondary')).nativeElement as HTMLAnchorElement;
-    expect(demo.getAttribute('routerLink') ?? demo.getAttribute('href')).toContain('/book-a-demo');
+    const secondary = fixture.debugElement.query(By.css('.hero__btn--secondary')).nativeElement as HTMLAnchorElement;
+    expect(secondary.getAttribute('routerLink') ?? secondary.getAttribute('href')).toContain('#pillars');
   });
 
   it('renders the header primary navigation', async () => {
     const fixture = await createComponent();
     const links = fixture.debugElement.queryAll(By.css('.landing-header__links a')).map((el) => el.nativeElement.textContent.trim());
-    expect(links).toEqual(['Platform', 'Solutions', 'Resources']);
+    expect(links).toEqual(['Features', 'Solution', 'How it Works', 'About']);
   });
 
-  it('renders four value pillars', async () => {
+  it('renders five unique selling point cards', async () => {
     const fixture = await createComponent();
-    const labels = fixture.debugElement.queryAll(By.css('.pillars__label'));
-    expect(labels.length).toBe(4);
+    const cards = fixture.debugElement.queryAll(By.css('.bento__card-title'));
+    expect(cards.length).toBe(5);
   });
 
-  it('renders ONEXSO branding and no legacy OneVo Workspace branding', async () => {
+  it('renders ONEXSO branding and no legacy OneVo branding', async () => {
     const fixture = await createComponent();
     const text = (fixture.nativeElement as HTMLElement).textContent ?? '';
     expect(text).toContain('ONEXSO');
     expect(text).not.toContain('OneVo');
-    expect(text).not.toContain('Workspace');
+    expect(text).not.toContain('OneVo Workspace');
   });
 
   it('does not render the system status indicator', async () => {

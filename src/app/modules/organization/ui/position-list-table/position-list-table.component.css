@@ -114,6 +114,16 @@
   color: var(--color-text-secondary);
 }
 
+.plt-badge--full {
+  background: color-mix(in srgb, #10b981 12%, transparent);
+  color: #059669;
+}
+
+.plt-badge--unknown {
+  background: color-mix(in srgb, var(--color-text-secondary) 12%, transparent);
+  color: var(--color-text-secondary);
+}
+
 .plt-th-actions,
 .plt-td-actions {
   text-align: right;
