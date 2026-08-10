@@ -51,3 +51,6 @@ Thumbs.db
 
 # mkcert local dev certificates
 .certs/
+
+# Superpowers brainstorming visual-companion mockups (session-local, not project artifacts)
+.superpowers/

@@ -1,6 +1,7 @@
 # specs/next/ — Summary
 
 - `2026-08-10-project-identifier-autosuggest-design.md` — status: approved 2026-08-10, no plan written yet. Auto-derives the Create Project form's Identifier field from the Name field (first word + 8-digit random suffix), stops once the user manually edits Identifier.
+- `2026-08-10-project-detail-inline-milestone-layout-design.md` — status: approved 2026-08-10 (visual mockup), no plan written yet. Compact project header card, horizontal-scroll milestone cards (no View button, whole card clickable), inline detail panel below reusing `ProjectDetailStore`'s pre-existing (unused since the routed version shipped) `loadMilestoneSubtree`/`selectedSubtree` state. Removes the standalone `/work/:projectId/milestones/:objectiveId` route and `MilestoneDetailComponent`.
 
 ## Open items
 
