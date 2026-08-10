@@ -2,7 +2,7 @@ import { computed, inject } from '@angular/core';
 import { patchState, signalStore, withComputed, withMethods, withState } from '@ngrx/signals';
 import { firstValueFrom } from 'rxjs';
 import { LegalEntityApiService } from '../data-access/legal-entity-api.service';
-import { LegalEntityListItem } from '../models/legal-entity.model';
+import { CreateLegalEntityRequest, LegalEntityListItem } from '../models/legal-entity.model';
 
 export const SELECTED_LEGAL_ENTITY_STORAGE_KEY = 'onevo.selected_legal_entity_id';
 
@@ -12,6 +12,25 @@ export interface LegalEntityState {
   readonly loading: boolean;
   readonly error: string | null;
   readonly loaded: boolean;
+  readonly saving: boolean;
+  readonly createError: string | null;
+}
+
+function extractErrorMessage(err: unknown, fallback: string): string {
+  if (err && typeof err === 'object' && 'error' in err) {
+    const body = (err as { error?: { detail?: string; title?: string; message?: string; errors?: Record<string, string[] | string> } }).error;
+    if (body?.detail) return body.detail;
+    if (body?.message) return body.message;
+    if (body?.title && body.title !== 'One or more validation errors occurred.') return body.title;
+    if (body?.errors) {
+      const firstKey = Object.keys(body.errors)[0];
+      if (firstKey && body.errors[firstKey]) {
+        const val = body.errors[firstKey];
+        return Array.isArray(val) ? val[0] : val;
+      }
+    }
+  }
+  return fallback;
 }
 
 export const LegalEntityStore = signalStore(
@@ -21,7 +40,9 @@ export const LegalEntityStore = signalStore(
     selectedLegalEntityId: null,
     loading: false,
     error: null,
-    loaded: false
+    loaded: false,
+    saving: false,
+    createError: null
   }),
   withComputed(({ companies, selectedLegalEntityId }) => ({
     selectedLegalEntity: computed(() => {
@@ -93,6 +114,22 @@ export const LegalEntityStore = signalStore(
       patchState(store, {
         companies: store.companies().map((c) => (c.id === legalEntityId ? { ...c, ...changes } : c))
       });
+    },
+
+    async createCompany(payload: CreateLegalEntityRequest): Promise<boolean> {
+      if (store.saving()) {
+        return false;
+      }
+      patchState(store, { saving: true, createError: null });
+      try {
+        await firstValueFrom(api.createLegalEntity(payload));
+        patchState(store, { saving: false });
+        await this.loadCompanies();
+        return true;
+      } catch (err) {
+        patchState(store, { saving: false, createError: extractErrorMessage(err, 'Failed to create company.') });
+        return false;
+      }
     }
   }))
 );
