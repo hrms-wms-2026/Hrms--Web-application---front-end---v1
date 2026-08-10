@@ -1,9 +1,10 @@
 import { TestBed } from '@angular/core/testing';
+import { HttpResponse } from '@angular/common/http';
 import { of, throwError } from 'rxjs';
 import { ProjectDetailStore } from './project-detail.store';
 import { ProjectApiService } from '../data-access/project-api.service';
 import { ProjectDetailDto } from '../models/dto/project.dto';
-import { MyProjectMilestoneDto, ObjectiveSubtreeResponseDto } from '../models/dto/milestone.dto';
+import { MyProjectMilestoneDto, ObjectiveDetailDto, ObjectiveSubtreeResponseDto } from '../models/dto/milestone.dto';
 
 describe('ProjectDetailStore', () => {
   function setup(apiOverrides: Partial<ProjectApiService> = {}) {
@@ -62,5 +63,76 @@ describe('ProjectDetailStore', () => {
     expect(store.selectedSubtree()?.title).toBe('Root');
     store.clearSelectedSubtree();
     expect(store.selectedSubtree()).toBeNull();
+  });
+
+  it('getMilestoneDetail returns the mapped detail on success', async () => {
+    const dto: ObjectiveDetailDto = {
+      id: 'o1', projectId: 'p1', parentObjectiveId: null, isDefault: false, title: 'Design Phase',
+      description: 'Scope the design work', ownerId: 'u1', reportingManagerId: null, createdById: 'u1',
+      startDate: '2026-01-01', endDate: '2026-03-01', progress: 0, actualHours: null,
+      allocatedHours: 20, completedHours: 0, isActive: true, createdAt: '2026-01-01T00:00:00Z', updatedAt: null
+    };
+    const store = setup({ getObjectiveById: () => of(dto) } as Partial<ProjectApiService>);
+
+    const result = await store.getMilestoneDetail('o1');
+
+    expect(result).toEqual(dto);
+  });
+
+  it('getMilestoneDetail returns null and sets milestoneActionError on failure', async () => {
+    const store = setup({
+      getObjectiveById: () => throwError(() => ({ error: { detail: 'not found' } }))
+    } as Partial<ProjectApiService>);
+
+    const result = await store.getMilestoneDetail('o1');
+
+    expect(result).toBeNull();
+    expect(store.milestoneActionError()).toBe('not found');
+  });
+
+  it('editMilestone reports pending:false when applied immediately (200)', async () => {
+    const dto = { id: 'o1' } as ObjectiveDetailDto;
+    const store = setup({
+      editObjective: () => of(new HttpResponse({ body: dto, status: 200 }))
+    } as Partial<ProjectApiService>);
+
+    const result = await store.editMilestone('o1', {
+      title: 'Design Phase v2', description: 'Updated', startDate: '2026-01-01', endDate: '2026-03-01', allocatedHours: 25
+    });
+
+    expect(result).toEqual({ success: true, pending: false });
+  });
+
+  it('editMilestone reports pending:true on 202', async () => {
+    const store = setup({
+      editObjective: () => of(new HttpResponse<ObjectiveDetailDto>({ body: null, status: 202 }))
+    } as Partial<ProjectApiService>);
+
+    const result = await store.editMilestone('o1', {
+      title: 'Design Phase v2', description: 'Updated', startDate: '2026-01-01', endDate: '2026-03-01', allocatedHours: 25
+    });
+
+    expect(result).toEqual({ success: true, pending: true });
+  });
+
+  it('achieveMilestone reports pending:false on 204', async () => {
+    const store = setup({
+      achieveObjective: () => of(new HttpResponse<void>({ status: 204 }))
+    } as Partial<ProjectApiService>);
+
+    const result = await store.achieveMilestone('o1');
+
+    expect(result).toEqual({ success: true, pending: false });
+  });
+
+  it('unachieveMilestone reports success:false and sets milestoneActionError on failure', async () => {
+    const store = setup({
+      unachieveObjective: () => throwError(() => ({ error: { detail: 'not achieved' } }))
+    } as Partial<ProjectApiService>);
+
+    const result = await store.unachieveMilestone('o1');
+
+    expect(result).toEqual({ success: false, pending: false });
+    expect(store.milestoneActionError()).toBe('not achieved');
   });
 });

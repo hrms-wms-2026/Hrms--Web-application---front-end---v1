@@ -4,7 +4,8 @@ import { firstValueFrom } from 'rxjs';
 import { ProjectApiService } from '../data-access/project-api.service';
 import { toMilestone, toMilestoneTreeNode, toProjectDetail } from '../utils/project.mapper';
 import { ProjectDetail } from '../models/project.model';
-import { Milestone, MilestoneTreeNode } from '../models/milestone.model';
+import { Milestone, MilestoneTreeNode, ObjectiveDetail } from '../models/milestone.model';
+import { EditObjectiveRequestDto } from '../models/dto/milestone.dto';
 
 interface ProjectDetailState {
   readonly project: ProjectDetail | null;
@@ -16,12 +17,14 @@ interface ProjectDetailState {
   readonly selectedSubtree: MilestoneTreeNode | null;
   readonly subtreeLoading: boolean;
   readonly subtreeError: string | null;
+  readonly milestoneActionError: string | null;
 }
 
 const initialState: ProjectDetailState = {
   project: null, projectLoading: false, projectError: null,
   milestones: [], milestonesLoading: false, milestonesError: null,
-  selectedSubtree: null, subtreeLoading: false, subtreeError: null
+  selectedSubtree: null, subtreeLoading: false, subtreeError: null,
+  milestoneActionError: null
 };
 
 function extractError(err: any, fallback: string): string {
@@ -64,6 +67,50 @@ export const ProjectDetailStore = signalStore(
 
     clearSelectedSubtree(): void {
       patchState(store, { selectedSubtree: null, subtreeError: null });
+    },
+
+    async getMilestoneDetail(id: string): Promise<ObjectiveDetail | null> {
+      try {
+        const detail = await firstValueFrom(api.getObjectiveById(id));
+        patchState(store, { milestoneActionError: null });
+        return detail;
+      } catch (err) {
+        patchState(store, { milestoneActionError: extractError(err, 'Failed to load milestone.') });
+        return null;
+      }
+    },
+
+    async editMilestone(id: string, payload: EditObjectiveRequestDto): Promise<{ success: boolean; pending: boolean }> {
+      try {
+        const res = await firstValueFrom(api.editObjective(id, payload));
+        patchState(store, { milestoneActionError: null });
+        return { success: true, pending: res.status === 202 };
+      } catch (err) {
+        patchState(store, { milestoneActionError: extractError(err, 'Failed to save changes.') });
+        return { success: false, pending: false };
+      }
+    },
+
+    async achieveMilestone(id: string): Promise<{ success: boolean; pending: boolean }> {
+      try {
+        const res = await firstValueFrom(api.achieveObjective(id));
+        patchState(store, { milestoneActionError: null });
+        return { success: true, pending: res.status === 202 };
+      } catch (err) {
+        patchState(store, { milestoneActionError: extractError(err, 'Failed to achieve milestone.') });
+        return { success: false, pending: false };
+      }
+    },
+
+    async unachieveMilestone(id: string): Promise<{ success: boolean; pending: boolean }> {
+      try {
+        const res = await firstValueFrom(api.unachieveObjective(id));
+        patchState(store, { milestoneActionError: null });
+        return { success: true, pending: res.status === 202 };
+      } catch (err) {
+        patchState(store, { milestoneActionError: extractError(err, 'Failed to unachieve milestone.') });
+        return { success: false, pending: false };
+      }
     }
   }))
 );

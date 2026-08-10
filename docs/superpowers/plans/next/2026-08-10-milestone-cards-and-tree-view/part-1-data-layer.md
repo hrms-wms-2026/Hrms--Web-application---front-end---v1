@@ -351,7 +351,7 @@ Open `project-detail.store.spec.ts` and find its `setup(...)` helper (used by th
 
   it('editMilestone reports pending:true on 202', async () => {
     const store = setup({
-      editObjective: () => of(new HttpResponse({ body: null, status: 202 }))
+      editObjective: () => of(new HttpResponse<ObjectiveDetailDto>({ body: null, status: 202 }))
     } as Partial<ProjectApiService>);
 
     const result = await store.editMilestone('o1', {

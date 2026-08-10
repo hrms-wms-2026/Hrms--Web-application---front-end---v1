@@ -31,3 +31,5 @@ export interface MilestoneTreeNode {
   isActive: boolean;
   children: MilestoneTreeNode[];
 }
+
+export type ObjectiveDetail = import('./dto/milestone.dto').ObjectiveDetailDto;
