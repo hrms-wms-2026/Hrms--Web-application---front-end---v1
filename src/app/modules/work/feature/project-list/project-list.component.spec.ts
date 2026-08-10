@@ -83,7 +83,7 @@ describe('ProjectListComponent', () => {
     fixture.detectChanges();
     fixture.componentInstance.openCreateModal();
     fixture.detectChanges();
-    expect(fixture.componentInstance.formModalOpen()).toBe(true);
+    expect(fixture.componentInstance.createModalOpen()).toBe(true);
 
     await fixture.componentInstance.onCreateSubmit({
       categoryId: 'cat1', name: 'Website Revamp', identifier: 'WEB', description: '',
@@ -92,23 +92,80 @@ describe('ProjectListComponent', () => {
     });
 
     expect(storeStub.createProject).toHaveBeenCalled();
-    expect(fixture.componentInstance.formModalOpen()).toBe(false);
+    expect(fixture.componentInstance.createModalOpen()).toBe(false);
   });
 
-  it('opens the edit modal and patches in the full project detail (including description) once fetched', async () => {
+  it('opens the settings modal and patches in the full detail once fetched', async () => {
     const detail = { ...project, description: 'Rebuild the marketing site.', actualHours: 0, createdAt: '2026-08-01T00:00:00Z', updatedAt: null };
     storeStub.getProjectDetail = vi.fn().mockResolvedValue(detail);
     fixture.detectChanges();
 
-    fixture.componentInstance.openEditModal(project);
+    fixture.componentInstance.onProjectSettingsRequested(project);
 
-    expect(fixture.componentInstance.formModalOpen()).toBe(true);
+    expect(fixture.componentInstance.settingsModalOpen()).toBe(true);
     expect(storeStub.getProjectDetail).toHaveBeenCalledWith('p1');
 
     await Promise.resolve();
     await Promise.resolve();
 
-    expect((fixture.componentInstance.formModalInitialValue() as any)?.description).toBe('Rebuild the marketing site.');
+    expect((fixture.componentInstance.settingsModalInitialValue() as any)?.description).toBe('Rebuild the marketing site.');
+  });
+
+  it('saves fields only when the Achieved toggle is untouched', async () => {
+    fixture.detectChanges();
+    fixture.componentInstance.onProjectSettingsRequested(project);
+
+    await fixture.componentInstance.onProjectSettingsSaved({
+      fields: { name: 'Website Revamp v2', description: '', categoryId: 'cat1', startDate: '2026-08-01', targetDate: '2026-12-01', color: '', actualHours: 0 },
+      achievedChanged: false, achieved: false
+    });
+
+    expect(storeStub.editProject).toHaveBeenCalledWith('p1', {
+      name: 'Website Revamp v2', description: '', categoryId: 'cat1', startDate: '2026-08-01', targetDate: '2026-12-01', color: '', actualHours: 0
+    });
+    expect(storeStub.achieveProject).not.toHaveBeenCalled();
+    expect(storeStub.unachieveProject).not.toHaveBeenCalled();
+    expect(fixture.componentInstance.settingsModalOpen()).toBe(false);
+  });
+
+  it('edits then achieves when the toggle is turned on', async () => {
+    fixture.detectChanges();
+    fixture.componentInstance.onProjectSettingsRequested(project);
+
+    await fixture.componentInstance.onProjectSettingsSaved({
+      fields: { name: 'Website Revamp', description: '', categoryId: 'cat1', startDate: '2026-08-01', targetDate: '2026-12-01', color: '', actualHours: 0 },
+      achievedChanged: true, achieved: true
+    });
+
+    expect(storeStub.editProject).toHaveBeenCalled();
+    expect(storeStub.achieveProject).toHaveBeenCalledWith('p1');
+    expect(storeStub.unachieveProject).not.toHaveBeenCalled();
+  });
+
+  it('edits then unachieves when the toggle is turned off', async () => {
+    fixture.detectChanges();
+    fixture.componentInstance.onProjectSettingsRequested({ ...project, isAchieved: true });
+
+    await fixture.componentInstance.onProjectSettingsSaved({
+      fields: { name: 'Website Revamp', description: '', categoryId: 'cat1', startDate: '2026-08-01', targetDate: '2026-12-01', color: '', actualHours: 0 },
+      achievedChanged: true, achieved: false
+    });
+
+    expect(storeStub.unachieveProject).toHaveBeenCalledWith('p1');
+  });
+
+  it('stops and keeps the modal open if editProject fails', async () => {
+    storeStub.editProject = vi.fn().mockResolvedValue(false);
+    fixture.detectChanges();
+    fixture.componentInstance.onProjectSettingsRequested(project);
+
+    await fixture.componentInstance.onProjectSettingsSaved({
+      fields: { name: 'Website Revamp', description: '', categoryId: 'cat1', startDate: '2026-08-01', targetDate: '2026-12-01', color: '', actualHours: 0 },
+      achievedChanged: true, achieved: true
+    });
+
+    expect(storeStub.achieveProject).not.toHaveBeenCalled();
+    expect(fixture.componentInstance.settingsModalOpen()).toBe(true);
   });
 
   it('opens the delete confirm modal and calls deleteProject on confirm', async () => {
@@ -120,13 +177,6 @@ describe('ProjectListComponent', () => {
 
     expect(storeStub.deleteProject).toHaveBeenCalledWith('p1');
     expect(fixture.componentInstance.deleteConfirmOpen()).toBe(false);
-  });
-
-  it('opens the achieve confirm modal and calls achieveProject on confirm', async () => {
-    fixture.detectChanges();
-    fixture.componentInstance.openAchieveConfirm(project);
-    await fixture.componentInstance.onAchieveConfirmed();
-    expect(storeStub.achieveProject).toHaveBeenCalledWith('p1');
   });
 
   it('forwards category and achieved filter changes to the store', () => {

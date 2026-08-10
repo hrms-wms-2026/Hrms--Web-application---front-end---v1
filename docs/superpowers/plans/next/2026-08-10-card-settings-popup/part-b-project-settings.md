@@ -768,7 +768,7 @@ export class ProjectListComponent implements OnInit {
 
   createModalOpen = signal(false);
   settingsModalOpen = signal(false);
-  settingsModalInitialValue = signal<Project | ProjectDetail | null>(null);
+  settingsModalInitialValue = signal<ProjectDetail | null>(null);
   deleteConfirmOpen = signal(false);
   private targetProject = signal<Project | null>(null);
   actionSubmitting = signal(false);
@@ -796,7 +796,6 @@ export class ProjectListComponent implements OnInit {
 
   onProjectSettingsRequested(project: Project): void {
     this.targetProject.set(project);
-    this.settingsModalInitialValue.set(project);
     this.settingsModalOpen.set(true);
     this.loadFullDetailForSettings(project.id);
   }
@@ -858,6 +857,8 @@ export class ProjectListComponent implements OnInit {
   }
 }
 ```
+
+**Note found during execution:** `onProjectSettingsRequested` does not prefill `settingsModalInitialValue` with the plain `Project` row before the async fetch resolves (unlike the pre-refactor `openEditModal`, which did). `ProjectSettingsModalComponent.initialValue` is typed `ProjectDetail | null` only — setting it to a plain `Project` first produced a real type error (`Project` is missing `description`/`actualHours`/`createdAt`/`updatedAt`). Matches Part A's `MilestoneSettingsModalComponent` wiring, which has the same narrower-typed `initialValue` and the same "opens with null, patches in once fetched" behavior — consistent across both parts rather than re-introducing the wider union type the pre-refactor `ProjectFormModalComponent` used to need.
 
 - [ ] **Step 4: Update the template**
 

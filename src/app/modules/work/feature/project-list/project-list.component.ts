@@ -4,6 +4,7 @@ import { ProjectListStore, AchievedFilter } from '../../state/project-list.store
 import { ProjectCardComponent } from '../../ui/project-card/project-card.component';
 import { ProjectFilterBarComponent } from '../../ui/project-filter-bar/project-filter-bar.component';
 import { ProjectFormModalComponent } from '../../ui/project-form-modal/project-form-modal.component';
+import { ProjectSettingsModalComponent } from '../../ui/project-settings-modal/project-settings-modal.component';
 import { ConfirmModalComponent } from '../../../../shared/ui/confirm-modal/confirm-modal.component';
 import { PageHeaderComponent } from '../../../../shared/ui/page-header/page-header.component';
 import { ButtonComponent } from '../../../../shared/ui/button/button.component';
@@ -16,7 +17,7 @@ import { CreateProjectPayload, EditProjectPayload, Project, ProjectDetail } from
   selector: 'app-project-list',
   standalone: true,
   imports: [
-    ProjectCardComponent, ProjectFilterBarComponent, ProjectFormModalComponent, ConfirmModalComponent,
+    ProjectCardComponent, ProjectFilterBarComponent, ProjectFormModalComponent, ProjectSettingsModalComponent, ConfirmModalComponent,
     PageHeaderComponent, ButtonComponent, LoaderComponent, ErrorStateComponent, EmptyStateComponent
   ],
   templateUrl: './project-list.component.html'
@@ -25,11 +26,10 @@ export class ProjectListComponent implements OnInit {
   readonly store = inject(ProjectListStore);
   private readonly router = inject(Router);
 
-  formModalOpen = signal(false);
-  formModalMode = signal<'create' | 'edit'>('create');
-  formModalInitialValue = signal<Project | ProjectDetail | null>(null);
+  createModalOpen = signal(false);
+  settingsModalOpen = signal(false);
+  settingsModalInitialValue = signal<ProjectDetail | null>(null);
   deleteConfirmOpen = signal(false);
-  achieveConfirmOpen = signal(false);
   private targetProject = signal<Project | null>(null);
   actionSubmitting = signal(false);
 
@@ -42,24 +42,7 @@ export class ProjectListComponent implements OnInit {
   }
 
   openCreateModal(): void {
-    this.formModalMode.set('create');
-    this.formModalInitialValue.set(null);
-    this.formModalOpen.set(true);
-  }
-
-  openEditModal(project: Project): void {
-    this.targetProject.set(project);
-    this.formModalMode.set('edit');
-    this.formModalInitialValue.set(project);
-    this.formModalOpen.set(true);
-    this.loadFullDetailForEdit(project.id);
-  }
-
-  private async loadFullDetailForEdit(id: string): Promise<void> {
-    const detail = await this.store.getProjectDetail(id);
-    if (detail && this.targetProject()?.id === id) {
-      this.formModalInitialValue.set(detail);
-    }
+    this.createModalOpen.set(true);
   }
 
   async onCreateSubmit(payload: CreateProjectPayload): Promise<void> {
@@ -67,19 +50,46 @@ export class ProjectListComponent implements OnInit {
     const success = await this.store.createProject(payload);
     this.actionSubmitting.set(false);
     if (success) {
-      this.formModalOpen.set(false);
+      this.createModalOpen.set(false);
     }
   }
 
-  async onEditSubmit(payload: EditProjectPayload): Promise<void> {
+  onProjectSettingsRequested(project: Project): void {
+    this.targetProject.set(project);
+    this.settingsModalOpen.set(true);
+    this.loadFullDetailForSettings(project.id);
+  }
+
+  private async loadFullDetailForSettings(id: string): Promise<void> {
+    const detail = await this.store.getProjectDetail(id);
+    if (detail && this.targetProject()?.id === id) {
+      this.settingsModalInitialValue.set(detail);
+    }
+  }
+
+  async onProjectSettingsSaved(event: { fields: EditProjectPayload; achievedChanged: boolean; achieved: boolean }): Promise<void> {
     const project = this.targetProject();
     if (!project) return;
     this.actionSubmitting.set(true);
-    const success = await this.store.editProject(project.id, payload);
-    this.actionSubmitting.set(false);
-    if (success) {
-      this.formModalOpen.set(false);
+
+    const editSuccess = await this.store.editProject(project.id, event.fields);
+    if (!editSuccess) {
+      this.actionSubmitting.set(false);
+      return;
     }
+
+    if (event.achievedChanged) {
+      const achieveSuccess = event.achieved
+        ? await this.store.achieveProject(project.id)
+        : await this.store.unachieveProject(project.id);
+      if (!achieveSuccess) {
+        this.actionSubmitting.set(false);
+        return;
+      }
+    }
+
+    this.actionSubmitting.set(false);
+    this.settingsModalOpen.set(false);
   }
 
   openDeleteConfirm(project: Project): void {
@@ -95,24 +105,6 @@ export class ProjectListComponent implements OnInit {
     this.actionSubmitting.set(false);
     if (success) {
       this.deleteConfirmOpen.set(false);
-    }
-  }
-
-  openAchieveConfirm(project: Project): void {
-    this.targetProject.set(project);
-    this.achieveConfirmOpen.set(true);
-  }
-
-  async onAchieveConfirmed(): Promise<void> {
-    const project = this.targetProject();
-    if (!project) return;
-    this.actionSubmitting.set(true);
-    const success = project.isAchieved
-      ? await this.store.unachieveProject(project.id)
-      : await this.store.achieveProject(project.id);
-    this.actionSubmitting.set(false);
-    if (success) {
-      this.achieveConfirmOpen.set(false);
     }
   }
 

@@ -22,8 +22,7 @@
         <app-project-card
           [project]="project"
           (viewed)="onView(project)"
-          (edited)="openEditModal(project)"
-          (achieveToggled)="openAchieveConfirm(project)"
+          (settingsRequested)="onProjectSettingsRequested(project)"
         />
       }
     </div>
@@ -31,14 +30,20 @@
 </div>
 
 <app-project-form-modal
-  [open]="formModalOpen()"
-  [mode]="formModalMode()"
-  [initialValue]="formModalInitialValue()"
+  [open]="createModalOpen()"
   [submitting]="actionSubmitting()"
   [errorMessage]="store.error() ?? ''"
   (createSubmitted)="onCreateSubmit($event)"
-  (editSubmitted)="onEditSubmit($event)"
-  (closed)="formModalOpen.set(false)"
+  (closed)="createModalOpen.set(false)"
+/>
+
+<app-project-settings-modal
+  [open]="settingsModalOpen()"
+  [initialValue]="settingsModalInitialValue()"
+  [submitting]="actionSubmitting()"
+  [errorMessage]="store.error() ?? ''"
+  (saved)="onProjectSettingsSaved($event)"
+  (closed)="settingsModalOpen.set(false)"
 />
 
 <app-confirm-modal
@@ -50,15 +55,4 @@
   [errorMessage]="store.error() ?? ''"
   (confirmed)="onDeleteConfirmed()"
   (cancelled)="deleteConfirmOpen.set(false)"
-/>
-
-<app-confirm-modal
-  [open]="achieveConfirmOpen()"
-  title="Achieve project"
-  message="Mark this project as achieved? Every top-level milestone must already be achieved first."
-  confirmLabel="Achieve"
-  [loading]="actionSubmitting()"
-  [errorMessage]="store.error() ?? ''"
-  (confirmed)="onAchieveConfirmed()"
-  (cancelled)="achieveConfirmOpen.set(false)"
 />
