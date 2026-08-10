@@ -181,10 +181,8 @@ src/
 │   │   ├── feature/
 │   │   │   ├── project-list/
 │   │   │   │   └── project-list.component.ts
-│   │   │   ├── project-detail/
-│   │   │   │   └── project-detail.component.ts
-│   │   │   └── milestone-detail/
-│   │   │       └── milestone-detail.component.ts
+│   │   │   └── project-detail/
+│   │   │       └── project-detail.component.ts  # milestone detail renders inline, no separate route
 │   │   ├── ui/
 │   │   │   ├── project-card/
 │   │   │   │   └── project-card.component.ts
