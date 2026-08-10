@@ -127,6 +127,8 @@ Add this test to `project-detail.component.spec.ts`, after the existing `'resets
   it('auto-selects the first milestone once milestones load', async () => {
     fixture.detectChanges();
     await fixture.whenStable();
+    await Promise.resolve();
+    await Promise.resolve();
 
     expect(fixture.componentInstance.selectedMilestoneId()).toBe('o1');
     expect(storeStub.loadMilestoneSubtree).toHaveBeenCalledWith('o1');
@@ -136,11 +138,15 @@ Add this test to `project-detail.component.spec.ts`, after the existing `'resets
     storeStub.milestones = () => [];
     fixture.detectChanges();
     await fixture.whenStable();
+    await Promise.resolve();
+    await Promise.resolve();
 
     expect(fixture.componentInstance.selectedMilestoneId()).toBeNull();
     expect(storeStub.loadMilestoneSubtree).not.toHaveBeenCalled();
   });
 ```
+
+The extra `await Promise.resolve()` pair matters here (found during execution): `ngOnInit` chains two awaits (`firstValueFrom(paramMap)`, then `loadMyMilestones`) before selecting, and a single `fixture.whenStable()` only reliably pumps through the first one — the same pattern already used elsewhere in this file/session for other two-hop async chains.
 
 - [ ] **Step 2: Run tests to verify they fail**
 

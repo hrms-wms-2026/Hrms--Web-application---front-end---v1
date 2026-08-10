@@ -40,7 +40,11 @@ export class ProjectDetailComponent implements OnInit {
     this.selectedMilestoneId.set(null);
     this.store.clearSelectedSubtree();
     this.store.loadProject(this.projectId);
-    this.store.loadMyMilestones(this.projectId);
+    await this.store.loadMyMilestones(this.projectId);
+    const milestones = this.store.milestones();
+    if (milestones.length > 0) {
+      this.onMilestoneSelected(milestones[0]);
+    }
   }
 
   onMilestoneSelected(milestone: Milestone): void {

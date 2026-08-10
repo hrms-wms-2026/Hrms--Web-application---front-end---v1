@@ -177,4 +177,25 @@ describe('ProjectDetailComponent', () => {
     await fixture.whenStable();
     expect(storeStub.clearSelectedSubtree).toHaveBeenCalled();
   });
+
+  it('auto-selects the first milestone once milestones load', async () => {
+    fixture.detectChanges();
+    await fixture.whenStable();
+    await Promise.resolve();
+    await Promise.resolve();
+
+    expect(fixture.componentInstance.selectedMilestoneId()).toBe('o1');
+    expect(storeStub.loadMilestoneSubtree).toHaveBeenCalledWith('o1');
+  });
+
+  it('does not attempt to select anything when there are no milestones', async () => {
+    storeStub.milestones = () => [];
+    fixture.detectChanges();
+    await fixture.whenStable();
+    await Promise.resolve();
+    await Promise.resolve();
+
+    expect(fixture.componentInstance.selectedMilestoneId()).toBeNull();
+    expect(storeStub.loadMilestoneSubtree).not.toHaveBeenCalled();
+  });
 });
