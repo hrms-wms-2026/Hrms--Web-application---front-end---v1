@@ -303,7 +303,7 @@ export class MilestoneSettingsModalComponent {
         this.startDate.set(value.startDate);
         this.endDate.set(value.endDate);
         this.allocatedHours.set(value.allocatedHours);
-        this.achieved.set(value.isAchieved);
+        this.achieved.set(value.isAchieved ?? false);
         this.isDefault.set(value.isDefault);
       } else {
         this.title.set('');
@@ -342,7 +342,7 @@ export class MilestoneSettingsModalComponent {
     if (Object.keys(errors).length > 0) return;
 
     const initial = this.initialValue();
-    const achievedChanged = initial !== null && this.achieved() !== initial.isAchieved;
+    const achievedChanged = initial !== null && this.achieved() !== (initial.isAchieved ?? false);
 
     this.saved.emit({
       fields: {
@@ -361,17 +361,13 @@ export class MilestoneSettingsModalComponent {
 Run: `npx ng test --include src/app/modules/work/ui/milestone-settings-modal/milestone-settings-modal.component.spec.ts --watch=false`
 Expected: PASS.
 
-- [ ] **Step 5: Delete the replaced component**
+**Do not delete `milestone-form-modal.component.ts`/`.spec.ts` here** — `ProjectDetailComponent` still imports and uses it until Task 4 rewires it. Deleting now breaks the build (found during execution: `git rm` here produces an unresolvable-import compile error in `project-detail.component.ts`). The deletion moved to Task 4's Step 5 instead, right after that component stops referencing it.
 
-```bash
-git rm src/app/modules/work/ui/milestone-form-modal/milestone-form-modal.component.ts src/app/modules/work/ui/milestone-form-modal/milestone-form-modal.component.spec.ts
-```
-
-- [ ] **Step 6: Commit**
+- [ ] **Step 5: Commit**
 
 ```bash
 git add src/app/modules/work/ui/milestone-settings-modal/
-git commit -m "feat(work): add MilestoneSettingsModalComponent, remove MilestoneFormModalComponent"
+git commit -m "feat(work): add MilestoneSettingsModalComponent"
 ```
 
 ---
@@ -732,14 +728,22 @@ Replace the `<app-milestone-form-modal>` and `<app-confirm-modal>` (achieve) blo
 Run: `npx ng test --include src/app/modules/work/feature/project-detail/project-detail.component.spec.ts --watch=false`
 Expected: PASS.
 
-- [ ] **Step 6: Run the full work module suite**
+- [ ] **Step 6: Delete the now-unreferenced `MilestoneFormModalComponent`**
+
+`ProjectDetailComponent` no longer imports it as of Step 3 above — safe to delete now (Task 2 deliberately deferred this here):
+
+```bash
+git rm src/app/modules/work/ui/milestone-form-modal/milestone-form-modal.component.ts src/app/modules/work/ui/milestone-form-modal/milestone-form-modal.component.spec.ts
+```
+
+- [ ] **Step 7: Run the full work module suite**
 
 Run: `npx ng test --include "src/app/modules/work/**/*.spec.ts" --watch=false`
 Expected: PASS, no regressions.
 
-- [ ] **Step 7: Commit**
+- [ ] **Step 8: Commit**
 
 ```bash
-git add src/app/modules/work/feature/project-detail/project-detail.component.ts src/app/modules/work/feature/project-detail/project-detail.component.html src/app/modules/work/feature/project-detail/project-detail.component.spec.ts
-git commit -m "feat(work): wire MilestoneSettingsModalComponent with achieve-state-dependent save ordering"
+git add src/app/modules/work/feature/project-detail/project-detail.component.ts src/app/modules/work/feature/project-detail/project-detail.component.html src/app/modules/work/feature/project-detail/project-detail.component.spec.ts src/app/modules/work/ui/milestone-form-modal
+git commit -m "feat(work): wire MilestoneSettingsModalComponent with achieve-state-dependent save ordering, remove MilestoneFormModalComponent"
 ```
