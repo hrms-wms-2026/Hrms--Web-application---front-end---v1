@@ -24,5 +24,6 @@ Layout and rules: see `../rules/FILE_CREATION_RULES.md`.
 | Card Settings Popup — Milestone + Project (2 parts) | finished (all tasks) | `finished/2026-08-10/2026-08-10-card-settings-popup/` | 2026-08-10 |
 | Project Detail — Compact Cards, Horizontal Scroll, Inline Milestone Detail | finished (all tasks) | `finished/2026-08-10/2026-08-10-project-detail-inline-milestone-layout.md` | 2026-08-10 |
 | Milestone Card Uniform Height + Default-Selected First Milestone | finished (all tasks) | `finished/2026-08-10/2026-08-10-milestone-card-uniform-height-and-default-select.md` | 2026-08-10 |
+| Project Detail Milestone Tree View (8 tasks) | finished (all tasks) | `finished/2026-08-10/2026-08-10-project-detail-milestone-tree-view.md` | 2026-08-10 |
 
 **Note on "finished" here:** all of the above are implementation reports or already-executed plans as of the 2026-08-06 restructure — cross-checked against `src/app/` (auth, dashboard-home, organization/general-settings are all present in code). None were currently in-progress/pending at restructure time except the Project Management context file.
