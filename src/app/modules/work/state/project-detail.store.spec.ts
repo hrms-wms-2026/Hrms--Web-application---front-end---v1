@@ -70,13 +70,15 @@ describe('ProjectDetailStore', () => {
       id: 'o1', projectId: 'p1', parentObjectiveId: null, isDefault: false, title: 'Design Phase',
       description: 'Scope the design work', ownerId: 'u1', reportingManagerId: null, createdById: 'u1',
       startDate: '2026-01-01', endDate: '2026-03-01', progress: 0, actualHours: null,
-      allocatedHours: 20, completedHours: 0, isActive: true, createdAt: '2026-01-01T00:00:00Z', updatedAt: null
+      allocatedHours: 20, completedHours: 0, isActive: true, createdAt: '2026-01-01T00:00:00Z', updatedAt: null,
+      isAchieved: false
     };
     const store = setup({ getObjectiveById: () => of(dto) } as Partial<ProjectApiService>);
 
     const result = await store.getMilestoneDetail('o1');
 
     expect(result).toEqual(dto);
+    expect(result?.isAchieved).toBe(false);
   });
 
   it('getMilestoneDetail returns null and sets milestoneActionError on failure', async () => {

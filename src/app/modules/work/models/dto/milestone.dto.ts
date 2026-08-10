@@ -37,6 +37,8 @@ export interface ObjectiveDetailDto {
   allocatedHours: number;
   completedHours: number;
   isActive: boolean;
+  /** Only present on the plain Get Objective response — the Subtree endpoint's nodes (which share this shape via ObjectiveSubtreeNodeDto) never return it. */
+  isAchieved?: boolean;
   createdAt: string;
   updatedAt: string | null;
 }

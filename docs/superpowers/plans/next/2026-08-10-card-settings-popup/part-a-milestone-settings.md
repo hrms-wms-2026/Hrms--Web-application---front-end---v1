@@ -50,7 +50,7 @@ Expected: FAIL — TypeScript compile error, `isAchieved` does not exist on `Obj
 
 - [ ] **Step 3: Add the field**
 
-In `milestone.dto.ts`, `ObjectiveDetailDto` currently ends with `isActive: boolean; createdAt: string; updatedAt: string | null;`. Add `isAchieved: boolean;` right after `isActive: boolean;`:
+In `milestone.dto.ts`, `ObjectiveDetailDto` currently ends with `isActive: boolean; createdAt: string; updatedAt: string | null;`. Add `isAchieved?: boolean;` (optional — see note below) right after `isActive: boolean;`:
 
 ```typescript
 export interface ObjectiveDetailDto {
@@ -70,11 +70,14 @@ export interface ObjectiveDetailDto {
   allocatedHours: number;
   completedHours: number;
   isActive: boolean;
-  isAchieved: boolean;
+  /** Only present on the plain Get Objective response — the Subtree endpoint's nodes (which share this shape via ObjectiveSubtreeNodeDto) never return it. */
+  isAchieved?: boolean;
   createdAt: string;
   updatedAt: string | null;
 }
 ```
+
+**Why optional, not required:** `ObjectiveSubtreeNodeDto extends ObjectiveDetailDto` (same file) — the Subtree endpoint's actual backend response never includes `isAchieved` on its nodes (confirmed against `Get Objective Subtree.md`). Making the field required broke `project.mapper.spec.ts`'s existing `ObjectiveSubtreeNodeDto` test fixture (missing-property compile error) — found and fixed during execution, not anticipated when this plan was written. Optional keeps the type honest about what each endpoint actually returns instead of forcing subtree fixtures to fabricate a field that was never there.
 
 - [ ] **Step 4: Run test to verify it passes**
 
