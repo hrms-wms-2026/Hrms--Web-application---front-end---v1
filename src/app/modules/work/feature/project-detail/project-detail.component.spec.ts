@@ -73,51 +73,82 @@ describe('ProjectDetailComponent', () => {
     expect(fixture.nativeElement.textContent).toContain('Default');
   });
 
-  it('opens the milestone edit modal and patches in the full detail once fetched', async () => {
-    const detail = { id: 'o1', title: 'Default', description: 'Full scope', startDate: '2026-08-01', endDate: '2026-12-01', allocatedHours: 40 };
+  it('opens the settings modal and patches in the full detail once fetched', async () => {
+    const detail = { id: 'o1', title: 'Default', description: 'Full scope', startDate: '2026-08-01', endDate: '2026-12-01', allocatedHours: 40, isAchieved: false, isDefault: true };
     storeStub.getMilestoneDetail = vi.fn().mockResolvedValue(detail);
     fixture.detectChanges();
 
-    fixture.componentInstance.onMilestoneEditRequested(milestone);
+    fixture.componentInstance.onMilestoneSettingsRequested(milestone);
 
-    expect(fixture.componentInstance.milestoneFormOpen()).toBe(true);
+    expect(fixture.componentInstance.milestoneSettingsOpen()).toBe(true);
     expect(storeStub.getMilestoneDetail).toHaveBeenCalledWith('o1');
 
     await Promise.resolve();
     await Promise.resolve();
 
-    expect((fixture.componentInstance.milestoneFormInitialValue() as any)?.description).toBe('Full scope');
+    expect((fixture.componentInstance.milestoneSettingsInitialValue() as any)?.description).toBe('Full scope');
   });
 
-  it('submits a milestone edit and closes the modal on success', async () => {
+  it('saves fields only when the Achieved toggle is untouched', async () => {
     fixture.detectChanges();
-    fixture.componentInstance.onMilestoneEditRequested(milestone);
+    fixture.componentInstance.onMilestoneSettingsRequested(milestone);
 
-    await fixture.componentInstance.onMilestoneEditSubmit({
-      title: 'Default v2', description: 'Full scope', startDate: '2026-08-01', endDate: '2026-12-01', allocatedHours: 40
+    await fixture.componentInstance.onMilestoneSettingsSaved({
+      fields: { title: 'Default v2', description: 'Full scope', startDate: '2026-08-01', endDate: '2026-12-01', allocatedHours: 40 },
+      achievedChanged: false, achieved: false
     });
 
     expect(storeStub.editMilestone).toHaveBeenCalledWith('o1', {
       title: 'Default v2', description: 'Full scope', startDate: '2026-08-01', endDate: '2026-12-01', allocatedHours: 40
     });
-    expect(fixture.componentInstance.milestoneFormOpen()).toBe(false);
+    expect(storeStub.achieveMilestone).not.toHaveBeenCalled();
+    expect(storeStub.unachieveMilestone).not.toHaveBeenCalled();
+    expect(fixture.componentInstance.milestoneSettingsOpen()).toBe(false);
   });
 
-  it('opens the achieve confirm modal and calls achieveMilestone on confirm', async () => {
+  it('edits then achieves, in that order, when the toggle is turned on', async () => {
+    const calls: string[] = [];
+    storeStub.editMilestone = vi.fn().mockImplementation(async () => { calls.push('edit'); return { success: true, pending: false }; });
+    storeStub.achieveMilestone = vi.fn().mockImplementation(async () => { calls.push('achieve'); return { success: true, pending: false }; });
     fixture.detectChanges();
-    fixture.componentInstance.onMilestoneAchieveToggled(milestone);
-    expect(fixture.componentInstance.achieveConfirmOpen()).toBe(true);
+    fixture.componentInstance.onMilestoneSettingsRequested(milestone);
 
-    await fixture.componentInstance.onMilestoneAchieveConfirmed();
+    await fixture.componentInstance.onMilestoneSettingsSaved({
+      fields: { title: 'Default', description: '', startDate: '2026-08-01', endDate: '2026-12-01', allocatedHours: 40 },
+      achievedChanged: true, achieved: true
+    });
 
-    expect(storeStub.achieveMilestone).toHaveBeenCalledWith('o1');
-    expect(fixture.componentInstance.achieveConfirmOpen()).toBe(false);
+    expect(calls).toEqual(['edit', 'achieve']);
   });
 
-  it('calls unachieveMilestone when the milestone is already achieved', async () => {
+  it('unachieves then edits, in that order, when the toggle is turned off', async () => {
+    const calls: string[] = [];
+    storeStub.unachieveMilestone = vi.fn().mockImplementation(async () => { calls.push('unachieve'); return { success: true, pending: false }; });
+    storeStub.editMilestone = vi.fn().mockImplementation(async () => { calls.push('edit'); return { success: true, pending: false }; });
     fixture.detectChanges();
-    fixture.componentInstance.onMilestoneAchieveToggled({ ...milestone, isAchieved: true });
-    await fixture.componentInstance.onMilestoneAchieveConfirmed();
-    expect(storeStub.unachieveMilestone).toHaveBeenCalledWith('o1');
+    fixture.componentInstance.onMilestoneSettingsRequested(milestone);
+
+    await fixture.componentInstance.onMilestoneSettingsSaved({
+      fields: { title: 'Default', description: '', startDate: '2026-08-01', endDate: '2026-12-01', allocatedHours: 40 },
+      achievedChanged: true, achieved: false
+    });
+
+    expect(calls).toEqual(['unachieve', 'edit']);
+  });
+
+  it('stops the sequence and keeps the modal open if the first step fails', async () => {
+    storeStub.unachieveMilestone = vi.fn().mockResolvedValue({ success: false, pending: false });
+    const editSpy = vi.fn();
+    storeStub.editMilestone = editSpy;
+    fixture.detectChanges();
+    fixture.componentInstance.onMilestoneSettingsRequested(milestone);
+
+    await fixture.componentInstance.onMilestoneSettingsSaved({
+      fields: { title: 'Default', description: '', startDate: '2026-08-01', endDate: '2026-12-01', allocatedHours: 40 },
+      achievedChanged: true, achieved: false
+    });
+
+    expect(editSpy).not.toHaveBeenCalled();
+    expect(fixture.componentInstance.milestoneSettingsOpen()).toBe(true);
   });
 });

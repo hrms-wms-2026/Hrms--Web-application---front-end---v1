@@ -30,29 +30,17 @@
       <app-milestone-card
         [milestone]="milestone"
         (viewed)="onMilestoneViewed(milestone)"
-        (editRequested)="onMilestoneEditRequested(milestone)"
-        (achieveToggled)="onMilestoneAchieveToggled(milestone)"
+        (settingsRequested)="onMilestoneSettingsRequested(milestone)"
       />
     }
   </div>
 }
 
-<app-milestone-form-modal
-  [open]="milestoneFormOpen()"
-  [initialValue]="milestoneFormInitialValue()"
-  [submitting]="milestoneFormSubmitting()"
+<app-milestone-settings-modal
+  [open]="milestoneSettingsOpen()"
+  [initialValue]="milestoneSettingsInitialValue()"
+  [submitting]="milestoneSettingsSubmitting()"
   [errorMessage]="store.milestoneActionError() ?? ''"
-  (submitted)="onMilestoneEditSubmit($event)"
-  (closed)="milestoneFormOpen.set(false)"
-/>
-
-<app-confirm-modal
-  [open]="achieveConfirmOpen()"
-  title="Achieve milestone"
-  message="Mark this milestone as achieved? Every direct sub-milestone must already be achieved first."
-  confirmLabel="Confirm"
-  [loading]="achieveConfirmSubmitting()"
-  [errorMessage]="store.milestoneActionError() ?? ''"
-  (confirmed)="onMilestoneAchieveConfirmed()"
-  (cancelled)="achieveConfirmOpen.set(false)"
+  (saved)="onMilestoneSettingsSaved($event)"
+  (closed)="milestoneSettingsOpen.set(false)"
 />
