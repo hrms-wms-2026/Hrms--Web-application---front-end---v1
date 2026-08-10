@@ -151,4 +151,30 @@ describe('ProjectDetailComponent', () => {
     expect(editSpy).not.toHaveBeenCalled();
     expect(fixture.componentInstance.milestoneSettingsOpen()).toBe(true);
   });
+
+  it('loads the milestone subtree and marks the card selected when a milestone is clicked', async () => {
+    fixture.detectChanges();
+    fixture.componentInstance.onMilestoneSelected(milestone);
+    expect(storeStub.loadMilestoneSubtree).toHaveBeenCalledWith('o1');
+    expect(fixture.componentInstance.selectedMilestoneId()).toBe('o1');
+  });
+
+  it('renders the tree once selectedSubtree resolves', async () => {
+    storeStub.selectedSubtree = () => ({ id: 'o1', title: 'Default', startDate: '2026-08-01', endDate: '2026-12-01', progress: 0, allocatedHours: 40, completedHours: 0, isActive: true, children: [] });
+    fixture.detectChanges();
+    await fixture.whenStable();
+    fixture.detectChanges();
+    expect(fixture.nativeElement.querySelector('app-milestone-tree-node')).not.toBeNull();
+  });
+
+  it('shows a prompt when no milestone is selected yet', () => {
+    fixture.detectChanges();
+    expect(fixture.nativeElement.textContent).toContain('Select a milestone');
+  });
+
+  it('resets stale subtree state on init', async () => {
+    fixture.detectChanges();
+    await fixture.whenStable();
+    expect(storeStub.clearSelectedSubtree).toHaveBeenCalled();
+  });
 });

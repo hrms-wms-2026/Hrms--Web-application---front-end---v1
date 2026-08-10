@@ -3,17 +3,30 @@
 } @else if (store.projectError()) {
   <app-error-state [message]="store.projectError()!" [retryable]="true" (retry)="retryProject()" />
 } @else if (store.project(); as project) {
-  <app-page-header [title]="project.name" [subtitle]="project.description ?? ''" />
-  <dl class="mb-6 grid grid-cols-2 gap-2 text-sm sm:grid-cols-4">
-    <dt class="text-[var(--color-text-secondary)]">Identifier</dt>
-    <dd>{{ project.identifier }}</dd>
-    <dt class="text-[var(--color-text-secondary)]">Start</dt>
-    <dd>{{ project.startDate }}</dd>
-    <dt class="text-[var(--color-text-secondary)]">Target</dt>
-    <dd>{{ project.targetDate }}</dd>
-    <dt class="text-[var(--color-text-secondary)]">Hours</dt>
-    <dd>{{ project.completedHours }} / {{ project.allocatedHours }}</dd>
-  </dl>
+  <div class="mb-6">
+  <app-card>
+    <div class="flex flex-wrap items-center justify-between gap-4">
+      <div>
+        <h1 class="text-base font-semibold text-[var(--color-text-primary)]">{{ project.name }}</h1>
+        <p class="text-xs text-[var(--color-text-secondary)]">{{ project.identifier }} · {{ project.description ?? '' }}</p>
+      </div>
+      <dl class="flex gap-6 text-sm">
+        <div>
+          <dt class="text-xs text-[var(--color-text-secondary)]">Start</dt>
+          <dd>{{ project.startDate }}</dd>
+        </div>
+        <div>
+          <dt class="text-xs text-[var(--color-text-secondary)]">Target</dt>
+          <dd>{{ project.targetDate }}</dd>
+        </div>
+        <div>
+          <dt class="text-xs text-[var(--color-text-secondary)]">Hours</dt>
+          <dd>{{ project.completedHours }} / {{ project.allocatedHours }}</dd>
+        </div>
+      </dl>
+    </div>
+  </app-card>
+  </div>
 }
 
 <h2 class="mb-3 text-lg font-semibold text-[var(--color-text-primary)]">Milestones</h2>
@@ -25,16 +38,31 @@
 } @else if (store.milestones().length === 0) {
   <app-empty-state title="No milestones yet" />
 } @else {
-  <div class="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+  <div class="flex gap-4 overflow-x-auto pb-2">
     @for (milestone of store.milestones(); track milestone.objectiveId) {
-      <app-milestone-card
-        [milestone]="milestone"
-        (viewed)="onMilestoneViewed(milestone)"
-        (settingsRequested)="onMilestoneSettingsRequested(milestone)"
-      />
+      <div class="w-48 flex-shrink-0">
+        <app-milestone-card
+          [milestone]="milestone"
+          [selected]="selectedMilestoneId() === milestone.objectiveId"
+          (viewed)="onMilestoneSelected(milestone)"
+          (settingsRequested)="onMilestoneSettingsRequested(milestone)"
+        />
+      </div>
     }
   </div>
 }
+
+<div class="mt-6">
+  @if (store.subtreeLoading()) {
+    <app-loader label="Loading milestone…" />
+  } @else if (store.subtreeError()) {
+    <app-error-state [message]="store.subtreeError()!" [retryable]="true" (retry)="retrySubtree()" />
+  } @else if (store.selectedSubtree(); as subtree) {
+    <app-milestone-tree-node [node]="subtree" />
+  } @else if (store.milestones().length > 0) {
+    <p class="text-sm text-[var(--color-text-secondary)]">Select a milestone above to see its detail.</p>
+  }
+</div>
 
 <app-milestone-settings-modal
   [open]="milestoneSettingsOpen()"

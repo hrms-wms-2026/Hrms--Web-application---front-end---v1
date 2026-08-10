@@ -1,5 +1,5 @@
 import { Component, OnInit, inject, signal } from '@angular/core';
-import { ActivatedRoute, Router } from '@angular/router';
+import { ActivatedRoute } from '@angular/router';
 import { firstValueFrom } from 'rxjs';
 import { ProjectDetailStore } from '../../state/project-detail.store';
 import { MilestoneCardComponent } from '../../ui/milestone-card/milestone-card.component';
@@ -9,6 +9,7 @@ import { PageHeaderComponent } from '../../../../shared/ui/page-header/page-head
 import { LoaderComponent } from '../../../../shared/ui/loader/loader.component';
 import { ErrorStateComponent } from '../../../../shared/ui/error-state/error-state.component';
 import { EmptyStateComponent } from '../../../../shared/ui/empty-state/empty-state.component';
+import { CardComponent } from '../../../../shared/ui/card/card.component';
 import { Milestone, ObjectiveDetail } from '../../models/milestone.model';
 import { EditObjectiveRequestDto } from '../../models/dto/milestone.dto';
 
@@ -16,7 +17,7 @@ import { EditObjectiveRequestDto } from '../../models/dto/milestone.dto';
   selector: 'app-project-detail',
   standalone: true,
   imports: [
-    MilestoneCardComponent, MilestoneSettingsModalComponent, MilestoneTreeNodeComponent,
+    MilestoneCardComponent, MilestoneSettingsModalComponent, MilestoneTreeNodeComponent, CardComponent,
     PageHeaderComponent, LoaderComponent, ErrorStateComponent, EmptyStateComponent
   ],
   templateUrl: './project-detail.component.html'
@@ -24,8 +25,9 @@ import { EditObjectiveRequestDto } from '../../models/dto/milestone.dto';
 export class ProjectDetailComponent implements OnInit {
   readonly store = inject(ProjectDetailStore);
   private readonly route = inject(ActivatedRoute);
-  private readonly router = inject(Router);
   private projectId = '';
+
+  selectedMilestoneId = signal<string | null>(null);
 
   milestoneSettingsOpen = signal(false);
   milestoneSettingsInitialValue = signal<ObjectiveDetail | null>(null);
@@ -35,12 +37,15 @@ export class ProjectDetailComponent implements OnInit {
   async ngOnInit(): Promise<void> {
     const paramMap = await firstValueFrom(this.route.paramMap);
     this.projectId = paramMap.get('id')!;
+    this.selectedMilestoneId.set(null);
+    this.store.clearSelectedSubtree();
     this.store.loadProject(this.projectId);
     this.store.loadMyMilestones(this.projectId);
   }
 
-  onMilestoneViewed(milestone: Milestone): void {
-    this.router.navigate(['/work', this.projectId, 'milestones', milestone.objectiveId]);
+  onMilestoneSelected(milestone: Milestone): void {
+    this.selectedMilestoneId.set(milestone.objectiveId);
+    this.store.loadMilestoneSubtree(milestone.objectiveId);
   }
 
   onMilestoneSettingsRequested(milestone: Milestone): void {
@@ -94,5 +99,10 @@ export class ProjectDetailComponent implements OnInit {
 
   retryMilestones(): void {
     this.store.loadMyMilestones(this.projectId);
+  }
+
+  retrySubtree(): void {
+    const id = this.selectedMilestoneId();
+    if (id) this.store.loadMilestoneSubtree(id);
   }
 }
