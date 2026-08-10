@@ -190,14 +190,16 @@ src/
 │   │   │   │   └── project-card.component.ts
 │   │   │   ├── project-filter-bar/
 │   │   │   │   └── project-filter-bar.component.ts
-│   │   │   ├── project-form-modal/
+│   │   │   ├── project-form-modal/            # Create only
 │   │   │   │   └── project-form-modal.component.ts
+│   │   │   ├── project-settings-modal/        # Edit + Achieved toggle
+│   │   │   │   └── project-settings-modal.component.ts
 │   │   │   ├── milestone-tree-node/
 │   │   │   │   └── milestone-tree-node.component.ts
 │   │   │   ├── milestone-card/
 │   │   │   │   └── milestone-card.component.ts
-│   │   │   └── milestone-form-modal/
-│   │   │       └── milestone-form-modal.component.ts
+│   │   │   └── milestone-settings-modal/       # Edit + Achieved toggle
+│   │   │       └── milestone-settings-modal.component.ts
 │   │   ├── data-access/
 │   │   │   ├── project-api.service.ts
 │   │   │   └── project-category-api.service.ts

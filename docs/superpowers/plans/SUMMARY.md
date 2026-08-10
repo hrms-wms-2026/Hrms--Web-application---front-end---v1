@@ -21,5 +21,6 @@ Layout and rules: see `../rules/FILE_CREATION_RULES.md`.
 | Work Management — Projects List, Project Detail, Milestone Read View | finished (17/17 tasks) | `finished/2026-08-09/2026-08-09-work-management-projects-milestones.md` | 2026-08-09 |
 | Project Identifier Auto-suggest — approved design, no plan written yet | pending (not planned) | design in `specs/next/2026-08-10-project-identifier-autosuggest-design.md` | 2026-08-10 |
 | Milestone Cards, Tree View Page, Edit/Achieve (3 parts) | finished (all tasks) | `finished/2026-08-10/2026-08-10-milestone-cards-and-tree-view/` | 2026-08-10 |
+| Card Settings Popup — Milestone + Project (2 parts) | finished (all tasks) | `finished/2026-08-10/2026-08-10-card-settings-popup/` | 2026-08-10 |
 
 **Note on "finished" here:** all of the above are implementation reports or already-executed plans as of the 2026-08-06 restructure — cross-checked against `src/app/` (auth, dashboard-home, organization/general-settings are all present in code). None were currently in-progress/pending at restructure time except the Project Management context file.

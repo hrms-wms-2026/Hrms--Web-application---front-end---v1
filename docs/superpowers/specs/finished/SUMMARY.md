@@ -13,3 +13,4 @@ One subfolder per completion date. Master status table: `../SUMMARY.md`.
 
 ## 2026-08-10/
 - `2026-08-10-milestone-cards-and-tree-view-design.md` — design for the Milestone card grid, ownership-gated Edit/Achieve, and dedicated tree-view page. Status: Implemented. Corresponding plan: `../../plans/finished/2026-08-10/2026-08-10-milestone-cards-and-tree-view/` (3 parts), finished the same day. Cross-repo — backend addendum in `HRMS-Backend-v1/docs/superpowers/specs/finished/2026-08-10/`.
+- `2026-08-10-card-settings-popup-design.md` — design consolidating each card's Edit + Achieve/Unachieve into a single gear-icon Settings popup with an Achieved toggle. Status: Implemented. Corresponding plan: `../../plans/finished/2026-08-10/2026-08-10-card-settings-popup/` (2 parts), finished the same day.
