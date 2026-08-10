@@ -28,7 +28,8 @@ describe('ProjectListComponent', () => {
       editProject: vi.fn().mockResolvedValue(true),
       deleteProject: vi.fn().mockResolvedValue(true),
       achieveProject: vi.fn().mockResolvedValue(true),
-      unachieveProject: vi.fn().mockResolvedValue(true)
+      unachieveProject: vi.fn().mockResolvedValue(true),
+      getProjectDetail: vi.fn().mockResolvedValue(null)
     };
 
     await TestBed.configureTestingModule({
@@ -87,11 +88,27 @@ describe('ProjectListComponent', () => {
     await fixture.componentInstance.onCreateSubmit({
       categoryId: 'cat1', name: 'Website Revamp', identifier: 'WEB', description: '',
       startDate: '2026-08-01', targetDate: '2026-12-01', releaseDate: '2026-11-15', color: '',
-      actualHours: 0, defaultObjectiveAllocatedHours: 40
+      actualHours: 0, defaultObjectiveAllocatedHours: 40, logoFile: null
     });
 
     expect(storeStub.createProject).toHaveBeenCalled();
     expect(fixture.componentInstance.formModalOpen()).toBe(false);
+  });
+
+  it('opens the edit modal and patches in the full project detail (including description) once fetched', async () => {
+    const detail = { ...project, description: 'Rebuild the marketing site.', actualHours: 0, createdAt: '2026-08-01T00:00:00Z', updatedAt: null };
+    storeStub.getProjectDetail = vi.fn().mockResolvedValue(detail);
+    fixture.detectChanges();
+
+    fixture.componentInstance.openEditModal(project);
+
+    expect(fixture.componentInstance.formModalOpen()).toBe(true);
+    expect(storeStub.getProjectDetail).toHaveBeenCalledWith('p1');
+
+    await Promise.resolve();
+    await Promise.resolve();
+
+    expect((fixture.componentInstance.formModalInitialValue() as any)?.description).toBe('Rebuild the marketing site.');
   });
 
   it('opens the delete confirm modal and calls deleteProject on confirm', async () => {

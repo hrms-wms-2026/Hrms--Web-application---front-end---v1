@@ -33,6 +33,7 @@ export interface CreateProjectPayload {
   color: string;
   actualHours: number;
   defaultObjectiveAllocatedHours: number;
+  logoFile: File | null;
 }
 
 export interface EditProjectPayload {

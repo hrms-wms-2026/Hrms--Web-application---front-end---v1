@@ -50,6 +50,20 @@ import { CreateProjectPayload, EditProjectPayload, Project } from '../../models/
           <app-input label="Allocated hours" type="number" [value]="allocatedHoursDisplay()" [error]="errors()['allocatedHours'] ?? ''" (valueChange)="onAllocatedHoursChange($event)" />
         </span>
 
+        <span data-testid="color-field">
+          <app-input label="Color" placeholder="#2563EB" [value]="color()" (valueChange)="color.set($event)" />
+        </span>
+
+        @if (mode() === 'create') {
+          <span data-testid="logo-field" class="flex flex-col gap-1">
+            <label class="text-xs font-medium text-[var(--color-text-secondary)]">Logo</label>
+            <input type="file" accept="image/png,image/jpeg,image/webp" (change)="onLogoFileSelected($event)" />
+            @if (logoFile(); as file) {
+              <span class="text-xs text-[var(--color-text-secondary)]">{{ file.name }}</span>
+            }
+          </span>
+        }
+
         @if (errorMessage()) {
           <p class="text-sm text-[var(--color-danger-text)]" role="alert">{{ errorMessage() }}</p>
         }
@@ -90,6 +104,8 @@ export class ProjectFormModalComponent implements OnInit {
   targetDate = signal('');
   releaseDate = signal('');
   allocatedHours = signal(0);
+  color = signal('');
+  logoFile = signal<File | null>(null);
   errors = signal<Record<string, string>>({});
 
   constructor() {
@@ -103,6 +119,7 @@ export class ProjectFormModalComponent implements OnInit {
         this.startDate.set(value.startDate);
         this.targetDate.set(value.targetDate);
         this.allocatedHours.set(value.allocatedHours);
+        this.color.set(value.color ?? '');
       } else {
         // initialValue went back to null - e.g. Create opened right after an Edit closed.
         // Without this branch the previous Edit's field values keep showing in the blank
@@ -115,6 +132,8 @@ export class ProjectFormModalComponent implements OnInit {
         this.targetDate.set('');
         this.releaseDate.set('');
         this.allocatedHours.set(0);
+        this.color.set('');
+        this.logoFile.set(null);
       }
       this.errors.set({});
     });
@@ -134,6 +153,11 @@ export class ProjectFormModalComponent implements OnInit {
 
   onAllocatedHoursChange(value: string): void {
     this.allocatedHours.set(value === '' ? 0 : Number(value));
+  }
+
+  onLogoFileSelected(event: Event): void {
+    const input = event.target as HTMLInputElement;
+    this.logoFile.set(input.files?.[0] ?? null);
   }
 
   private buildFields(): ProjectFormFields {
@@ -156,13 +180,13 @@ export class ProjectFormModalComponent implements OnInit {
       this.createSubmitted.emit({
         categoryId: fields.categoryId, name: fields.name, identifier: fields.identifier,
         description: this.description(), startDate: fields.startDate, targetDate: fields.targetDate,
-        releaseDate: fields.releaseDate, color: '', actualHours: 0,
-        defaultObjectiveAllocatedHours: fields.allocatedHours
+        releaseDate: fields.releaseDate, color: this.color(), actualHours: 0,
+        defaultObjectiveAllocatedHours: fields.allocatedHours, logoFile: this.logoFile()
       });
     } else {
       this.editSubmitted.emit({
         name: fields.name, description: this.description(), categoryId: fields.categoryId,
-        startDate: fields.startDate, targetDate: fields.targetDate, color: '', actualHours: 0
+        startDate: fields.startDate, targetDate: fields.targetDate, color: this.color(), actualHours: 0
       });
     }
   }

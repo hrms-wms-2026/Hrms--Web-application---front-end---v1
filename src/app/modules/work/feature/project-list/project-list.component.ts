@@ -10,7 +10,7 @@ import { ButtonComponent } from '../../../../shared/ui/button/button.component';
 import { LoaderComponent } from '../../../../shared/ui/loader/loader.component';
 import { ErrorStateComponent } from '../../../../shared/ui/error-state/error-state.component';
 import { EmptyStateComponent } from '../../../../shared/ui/empty-state/empty-state.component';
-import { CreateProjectPayload, EditProjectPayload, Project } from '../../models/project.model';
+import { CreateProjectPayload, EditProjectPayload, Project, ProjectDetail } from '../../models/project.model';
 
 @Component({
   selector: 'app-project-list',
@@ -27,7 +27,7 @@ export class ProjectListComponent implements OnInit {
 
   formModalOpen = signal(false);
   formModalMode = signal<'create' | 'edit'>('create');
-  formModalInitialValue = signal<Project | null>(null);
+  formModalInitialValue = signal<Project | ProjectDetail | null>(null);
   deleteConfirmOpen = signal(false);
   achieveConfirmOpen = signal(false);
   private targetProject = signal<Project | null>(null);
@@ -52,6 +52,14 @@ export class ProjectListComponent implements OnInit {
     this.formModalMode.set('edit');
     this.formModalInitialValue.set(project);
     this.formModalOpen.set(true);
+    this.loadFullDetailForEdit(project.id);
+  }
+
+  private async loadFullDetailForEdit(id: string): Promise<void> {
+    const detail = await this.store.getProjectDetail(id);
+    if (detail && this.targetProject()?.id === id) {
+      this.formModalInitialValue.set(detail);
+    }
   }
 
   async onCreateSubmit(payload: CreateProjectPayload): Promise<void> {

@@ -61,6 +61,7 @@ export interface CreateProjectRequestDto {
   color: string;
   actualHours: number;
   defaultObjectiveAllocatedHours: number;
+  logoFile: File | null;
 }
 
 export interface EditProjectRequestDto {
