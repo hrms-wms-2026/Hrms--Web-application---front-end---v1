@@ -47,31 +47,62 @@ describe('ProjectDetailStore', () => {
     expect(store.milestonesLoading()).toBe(false);
   });
 
-  it('loads and clears a milestone subtree', async () => {
+  it('loads a milestone subtree and populates the tree, parent context, and detail signals together', async () => {
     const response: ObjectiveSubtreeResponseDto = {
-      parentObjective: null,
+      parentObjective: {
+        id: 'root', projectId: 'p1', parentObjectiveId: null, isDefault: true, title: 'Root Milestone',
+        description: null, ownerId: 'u1', ownerName: 'Jane Doe', reportingManagerId: null, reportingManagerName: null,
+        createdById: 'u1', startDate: '2026-08-01', endDate: '2026-12-01', progress: 0, actualHours: null,
+        allocatedHours: 40, completedHours: 0, isActive: true, isAchieved: false, achievedAt: null,
+        isOwner: false, createdAt: '2026-08-01T00:00:00Z', updatedAt: null
+      },
       objective: {
-        id: 'o1', projectId: 'p1', parentObjectiveId: null, isDefault: true, title: 'Root',
-        description: null, ownerId: 'u1', reportingManagerId: null, createdById: 'u1',
-        startDate: '2026-08-01', endDate: '2026-12-01', progress: 0, actualHours: null,
-        allocatedHours: 40, completedHours: 0, isActive: true, createdAt: '2026-08-01T00:00:00Z',
-        updatedAt: null, children: []
+        id: 'o1', projectId: 'p1', parentObjectiveId: 'root', isDefault: false, title: 'Design Phase',
+        description: 'Scope the design work', ownerId: 'u1', ownerName: 'Jane Doe', reportingManagerId: 'u2', reportingManagerName: 'John Smith',
+        createdById: 'u1', startDate: '2026-08-01', endDate: '2026-12-01', progress: 0, actualHours: null,
+        allocatedHours: 40, completedHours: 0, isActive: true, isAchieved: false, achievedAt: null,
+        isOwner: true, createdAt: '2026-08-01T00:00:00Z', updatedAt: null, children: []
       }
     };
     const store = setup({ getMilestoneSubtree: () => of(response) } as Partial<ProjectApiService>);
     await store.loadMilestoneSubtree('o1');
-    expect(store.selectedSubtree()?.title).toBe('Root');
+
+    expect(store.selectedSubtree()?.title).toBe('Design Phase');
+    expect(store.selectedSubtreeParent()).toEqual({ id: 'root', title: 'Root Milestone' });
+    expect(store.selectedMilestoneDetail()?.ownerName).toBe('Jane Doe');
+    expect(store.selectedMilestoneDetail()?.reportingManagerName).toBe('John Smith');
+    expect(store.selectedMilestoneDetail()?.isOwner).toBe(true);
+
     store.clearSelectedSubtree();
     expect(store.selectedSubtree()).toBeNull();
+    expect(store.selectedSubtreeParent()).toBeNull();
+    expect(store.selectedMilestoneDetail()).toBeNull();
+  });
+
+  it('sets selectedSubtreeParent to null for the default (root) objective', async () => {
+    const response: ObjectiveSubtreeResponseDto = {
+      parentObjective: null,
+      objective: {
+        id: 'root', projectId: 'p1', parentObjectiveId: null, isDefault: true, title: 'Root Milestone',
+        description: null, ownerId: 'u1', ownerName: 'Jane Doe', reportingManagerId: null, reportingManagerName: null,
+        createdById: 'u1', startDate: '2026-08-01', endDate: '2026-12-01', progress: 0, actualHours: null,
+        allocatedHours: 40, completedHours: 0, isActive: true, isAchieved: false, achievedAt: null,
+        isOwner: false, createdAt: '2026-08-01T00:00:00Z', updatedAt: null, children: []
+      }
+    };
+    const store = setup({ getMilestoneSubtree: () => of(response) } as Partial<ProjectApiService>);
+    await store.loadMilestoneSubtree('root');
+
+    expect(store.selectedSubtreeParent()).toBeNull();
   });
 
   it('getMilestoneDetail returns the mapped detail on success', async () => {
     const dto: ObjectiveDetailDto = {
       id: 'o1', projectId: 'p1', parentObjectiveId: null, isDefault: false, title: 'Design Phase',
-      description: 'Scope the design work', ownerId: 'u1', reportingManagerId: null, createdById: 'u1',
-      startDate: '2026-01-01', endDate: '2026-03-01', progress: 0, actualHours: null,
-      allocatedHours: 20, completedHours: 0, isActive: true, createdAt: '2026-01-01T00:00:00Z', updatedAt: null,
-      isAchieved: false
+      description: 'Scope the design work', ownerId: 'u1', ownerName: 'Jane Doe', reportingManagerId: null, reportingManagerName: null,
+      createdById: 'u1', startDate: '2026-01-01', endDate: '2026-03-01', progress: 0, actualHours: null,
+      allocatedHours: 20, completedHours: 0, isActive: true, isAchieved: false, achievedAt: null,
+      isOwner: true, createdAt: '2026-01-01T00:00:00Z', updatedAt: null
     };
     const store = setup({ getObjectiveById: () => of(dto) } as Partial<ProjectApiService>);
 

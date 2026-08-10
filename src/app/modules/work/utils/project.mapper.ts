@@ -1,7 +1,7 @@
 import { ProjectListItemDto, ProjectDetailDto } from '../models/dto/project.dto';
 import { MyProjectMilestoneDto, ObjectiveSubtreeNodeDto } from '../models/dto/milestone.dto';
 import { Project, ProjectDetail } from '../models/project.model';
-import { Milestone, MilestoneTreeNode } from '../models/milestone.model';
+import { Milestone, MilestoneTreeNode, ObjectiveDetail } from '../models/milestone.model';
 
 export function toProject(dto: ProjectListItemDto): Project {
   return {
@@ -33,4 +33,9 @@ export function toMilestoneTreeNode(dto: ObjectiveSubtreeNodeDto): MilestoneTree
     progress: dto.progress, allocatedHours: dto.allocatedHours, completedHours: dto.completedHours,
     isActive: dto.isActive, children: dto.children.map(toMilestoneTreeNode)
   };
+}
+
+export function toObjectiveDetail(dto: ObjectiveSubtreeNodeDto): ObjectiveDetail {
+  const { children, ...detail } = dto;
+  return detail;
 }

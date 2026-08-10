@@ -2,7 +2,7 @@ import { inject } from '@angular/core';
 import { patchState, signalStore, withMethods, withState } from '@ngrx/signals';
 import { firstValueFrom } from 'rxjs';
 import { ProjectApiService } from '../data-access/project-api.service';
-import { toMilestone, toMilestoneTreeNode, toProjectDetail } from '../utils/project.mapper';
+import { toMilestone, toMilestoneTreeNode, toObjectiveDetail, toProjectDetail } from '../utils/project.mapper';
 import { ProjectDetail } from '../models/project.model';
 import { Milestone, MilestoneTreeNode, ObjectiveDetail } from '../models/milestone.model';
 import { EditObjectiveRequestDto } from '../models/dto/milestone.dto';
@@ -15,6 +15,8 @@ interface ProjectDetailState {
   readonly milestonesLoading: boolean;
   readonly milestonesError: string | null;
   readonly selectedSubtree: MilestoneTreeNode | null;
+  readonly selectedSubtreeParent: { id: string; title: string } | null;
+  readonly selectedMilestoneDetail: ObjectiveDetail | null;
   readonly subtreeLoading: boolean;
   readonly subtreeError: string | null;
   readonly milestoneActionError: string | null;
@@ -23,7 +25,8 @@ interface ProjectDetailState {
 const initialState: ProjectDetailState = {
   project: null, projectLoading: false, projectError: null,
   milestones: [], milestonesLoading: false, milestonesError: null,
-  selectedSubtree: null, subtreeLoading: false, subtreeError: null,
+  selectedSubtree: null, selectedSubtreeParent: null, selectedMilestoneDetail: null,
+  subtreeLoading: false, subtreeError: null,
   milestoneActionError: null
 };
 
@@ -59,14 +62,21 @@ export const ProjectDetailStore = signalStore(
       patchState(store, { subtreeLoading: true, subtreeError: null });
       try {
         const response = await firstValueFrom(api.getMilestoneSubtree(objectiveId));
-        patchState(store, { selectedSubtree: toMilestoneTreeNode(response.objective), subtreeLoading: false });
+        patchState(store, {
+          selectedSubtree: toMilestoneTreeNode(response.objective),
+          selectedSubtreeParent: response.parentObjective
+            ? { id: response.parentObjective.id, title: response.parentObjective.title }
+            : null,
+          selectedMilestoneDetail: toObjectiveDetail(response.objective),
+          subtreeLoading: false
+        });
       } catch (err) {
         patchState(store, { subtreeError: extractError(err, 'Failed to load milestone.'), subtreeLoading: false });
       }
     },
 
     clearSelectedSubtree(): void {
-      patchState(store, { selectedSubtree: null, subtreeError: null });
+      patchState(store, { selectedSubtree: null, selectedSubtreeParent: null, selectedMilestoneDetail: null, subtreeError: null });
     },
 
     async getMilestoneDetail(id: string): Promise<ObjectiveDetail | null> {
