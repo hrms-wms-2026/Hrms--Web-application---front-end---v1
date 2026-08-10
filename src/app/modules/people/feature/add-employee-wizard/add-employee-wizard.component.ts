@@ -1,4 +1,4 @@
-import { ChangeDetectionStrategy, Component, computed, inject, signal } from '@angular/core';
+import { ChangeDetectionStrategy, Component, computed, effect, inject, signal } from '@angular/core';
 import { FormBuilder, Validators } from '@angular/forms';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { NotificationService } from '../../../../core/services/notification.service';
@@ -84,12 +84,23 @@ export class AddEmployeeWizardComponent {
   });
 
   constructor() {
-    const company = this.legalEntityStore.selectedLegalEntity();
-    if (company) {
-      this.store.setCompany(company.id);
-    }
-
     const draftId = this.route.snapshot.queryParamMap.get('draftId');
+
+    // legalEntityStore.selectedLegalEntity() populates asynchronously (loadCompanies() resolves
+    // after this component is constructed), so a one-time read here would miss it on a fresh
+    // page load - this must stay reactive. Skipped entirely while resuming a draft, since
+    // resumeExistingDraft() below sets the wizard's companyId from the draft's own
+    // legalEntityId, which must not be clobbered by whatever company happens to be selected now.
+    effect(() => {
+      if (draftId) {
+        return;
+      }
+      const company = this.legalEntityStore.selectedLegalEntity();
+      if (company && this.store.companyId() !== company.id) {
+        this.store.setCompany(company.id);
+      }
+    });
+
     if (draftId) {
       void this.resumeExistingDraft(draftId);
     }
