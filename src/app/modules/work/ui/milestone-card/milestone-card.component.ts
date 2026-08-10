@@ -5,11 +5,12 @@ import { Milestone } from '../../models/milestone.model';
 @Component({
   selector: 'app-milestone-card',
   standalone: true,
+  host: { class: 'block h-full' },
   imports: [CardComponent],
   template: `
     <div
       data-testid="milestone-card"
-      class="relative cursor-pointer rounded-lg transition-shadow"
+      class="relative h-full cursor-pointer rounded-lg transition-shadow"
       [class.ring-2]="selected()"
       [class.ring-[var(--color-focus-ring)]]="selected()"
       (click)="viewed.emit()"
