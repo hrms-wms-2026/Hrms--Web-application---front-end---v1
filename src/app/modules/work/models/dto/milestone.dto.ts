@@ -28,9 +28,7 @@ export interface ObjectiveDetailDto {
   title: string;
   description: string | null;
   ownerId: string;
-  ownerName: string | null;
   reportingManagerId: string | null;
-  reportingManagerName: string | null;
   createdById: string;
   startDate: string;
   endDate: string;
@@ -39,9 +37,8 @@ export interface ObjectiveDetailDto {
   allocatedHours: number;
   completedHours: number;
   isActive: boolean;
-  isAchieved: boolean;
-  achievedAt: string | null;
-  isOwner: boolean;
+  /** Only present on the plain Get Objective response — the Subtree endpoint's nodes (which share this shape via ObjectiveSubtreeNodeDto) never return it. */
+  isAchieved?: boolean;
   createdAt: string;
   updatedAt: string | null;
 }

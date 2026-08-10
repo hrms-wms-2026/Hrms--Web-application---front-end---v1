@@ -8,4 +8,3 @@
 - `2026-08-10-card-settings-popup-design.md` moved to `specs/finished/2026-08-10/` on 2026-08-10 — its plan (9 tasks across 2 parts) finished the same day. See `specs/SUMMARY.md`.
 - `2026-08-10-project-detail-inline-milestone-layout-design.md` moved to `specs/finished/2026-08-10/` on 2026-08-10 — its plan (4 tasks) finished the same day. See `specs/SUMMARY.md`.
 - `2026-08-10-milestone-card-uniform-height-and-default-select-design.md` moved to `specs/finished/2026-08-10/` on 2026-08-10 — its plan (3 tasks) finished the same day. See `specs/SUMMARY.md`.
-- `2026-08-10-project-detail-milestone-tree-view-design.md` moved to `specs/finished/2026-08-10/` on 2026-08-10 — its plan (8 tasks) and the companion backend plan (`HRMS-Backend-v1`) both finished the same day. See `specs/SUMMARY.md`.

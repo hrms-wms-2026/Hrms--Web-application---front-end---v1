@@ -67,7 +67,7 @@ Lower layers must **never** import from upper layers. This prevents circular dep
 
 ## 2. Folder Structure
 
-> **Note (2026-08-10):** `work/` below is kept in sync with the actual built module (see rule 6 in `docs/superpowers/rules/PROCESS_RULES.md`) — same for `auth/`, `dashboard/`, `core/`, and `shared/`. `organization/` and `public/` also exist in the real codebase today but aren't reflected in this tree yet. `employees/`, `leave/`, `attendance/`, `payroll/`, `recruitment/`, `performance/`, `reports/`, `tenant-admin/`, and `settings/` below are the **original planning-time module skeletons** — none of them exist under `src/app/modules/` yet; treat them as a proposed shape for future modules, not a current-state description. Don't assume a listing here means the code exists — check `src/app/modules/` directly for what's actually built. Project Detail (`feature/project-detail/`) is now a 4-card layout (compact header, tab-bar, milestone tree, detail panel) — see `docs/superpowers/specs/next/2026-08-10-project-detail-milestone-tree-view-design.md`; the former horizontal milestone-card row and `MilestoneCardComponent` were removed the same day.
+> **Note (2026-08-10):** `work/` below is kept in sync with the actual built module (see rule 6 in `docs/superpowers/rules/PROCESS_RULES.md`) — same for `auth/`, `dashboard/`, `core/`, and `shared/`. `organization/` and `public/` also exist in the real codebase today but aren't reflected in this tree yet. `employees/`, `leave/`, `attendance/`, `payroll/`, `recruitment/`, `performance/`, `reports/`, `tenant-admin/`, and `settings/` below are the **original planning-time module skeletons** — none of them exist under `src/app/modules/` yet; treat them as a proposed shape for future modules, not a current-state description. Don't assume a listing here means the code exists — check `src/app/modules/` directly for what's actually built.
 
 ```
 src/
@@ -104,8 +104,7 @@ src/
 │   │   ├── table/
 │   │   ├── modal/
 │   │   ├── card/
-│   │   ├── loader/
-│   │   └── tabs/                              ← generic horizontal tab-bar, added 2026-08-10 for Project Detail
+│   │   └── loader/
 │   ├── directives/
 │   │   ├── permission.directive.ts
 │   │   └── debounce.directive.ts
@@ -193,12 +192,10 @@ src/
 │   │   │   │   └── project-form-modal.component.ts
 │   │   │   ├── project-settings-modal/        # Edit + Achieved toggle
 │   │   │   │   └── project-settings-modal.component.ts
-│   │   │   ├── milestone-tree/                # parent-context row + recursive tree, added 2026-08-10
-│   │   │   │   └── milestone-tree.component.ts
-│   │   │   ├── milestone-tree-node/            # explorer-style recursive row, reworked 2026-08-10
+│   │   │   ├── milestone-tree-node/
 │   │   │   │   └── milestone-tree-node.component.ts
-│   │   │   ├── milestone-detail-panel/         # added 2026-08-10, replaces milestone-card's settings entry point
-│   │   │   │   └── milestone-detail-panel.component.ts
+│   │   │   ├── milestone-card/
+│   │   │   │   └── milestone-card.component.ts
 │   │   │   └── milestone-settings-modal/       # Edit + Achieved toggle
 │   │   │       └── milestone-settings-modal.component.ts
 │   │   ├── data-access/

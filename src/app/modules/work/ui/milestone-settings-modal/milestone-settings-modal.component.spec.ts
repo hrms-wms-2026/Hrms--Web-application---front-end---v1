@@ -7,10 +7,9 @@ describe('MilestoneSettingsModalComponent', () => {
 
   const detail: ObjectiveDetail = {
     id: 'o1', projectId: 'p1', parentObjectiveId: null, isDefault: false, title: 'Design Phase',
-    description: 'Scope the design work', ownerId: 'u1', ownerName: 'Jane Doe', reportingManagerId: null, reportingManagerName: null, createdById: 'u1',
+    description: 'Scope the design work', ownerId: 'u1', reportingManagerId: null, createdById: 'u1',
     startDate: '2026-01-01', endDate: '2026-03-01', progress: 0, actualHours: null,
-    allocatedHours: 20, completedHours: 0, isActive: true, isAchieved: false, achievedAt: null, isOwner: true,
-    createdAt: '2026-01-01T00:00:00Z', updatedAt: null
+    allocatedHours: 20, completedHours: 0, isActive: true, isAchieved: false, createdAt: '2026-01-01T00:00:00Z', updatedAt: null
   };
 
   beforeEach(() => {
