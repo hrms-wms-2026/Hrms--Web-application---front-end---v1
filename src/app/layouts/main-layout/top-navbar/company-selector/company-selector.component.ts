@@ -2,12 +2,14 @@ import { ChangeDetectionStrategy, Component, computed, inject, OnInit, signal } 
 import { PermissionService } from '../../../../core/auth/state/permission.service';
 import { NotificationService } from '../../../../core/services/notification.service';
 import { LegalEntityStore } from '../../../../modules/organization/state/legal-entity.store';
+import { CreateLegalEntityRequest } from '../../../../modules/organization/models/legal-entity.model';
+import { CreateCompanyModalComponent } from '../../../../modules/organization/ui/create-company-modal/create-company-modal.component';
 import { PopoverComponent } from '../../../../shared/ui/popover/popover.component';
 
 @Component({
   selector: 'app-company-selector',
   standalone: true,
-  imports: [PopoverComponent],
+  imports: [PopoverComponent, CreateCompanyModalComponent],
   templateUrl: './company-selector.component.html',
   styleUrl: './company-selector.component.css',
   changeDetection: ChangeDetectionStrategy.OnPush
@@ -18,6 +20,7 @@ export class CompanySelectorComponent implements OnInit {
   private readonly notificationService = inject(NotificationService);
 
   readonly isOpen = signal(false);
+  readonly showCreateModal = signal(false);
 
   readonly hasOrgAccess = computed(() => {
     return (
@@ -68,6 +71,20 @@ export class CompanySelectorComponent implements OnInit {
 
   onAddCompany(): void {
     this.close();
-    this.notificationService.info('Add Company flow will be available in Part 2D.');
+    this.showCreateModal.set(true);
+  }
+
+  closeCreateModal(): void {
+    this.showCreateModal.set(false);
+  }
+
+  async onCreateCompany(payload: CreateLegalEntityRequest): Promise<void> {
+    const success = await this.store.createCompany(payload);
+    if (success) {
+      this.notificationService.success(`Company '${payload.name}' created successfully.`);
+      this.closeCreateModal();
+    } else if (this.store.createError()) {
+      this.notificationService.error(this.store.createError()!);
+    }
   }
 }
