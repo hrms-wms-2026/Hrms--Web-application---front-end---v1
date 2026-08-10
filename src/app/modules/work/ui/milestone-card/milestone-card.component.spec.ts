@@ -20,38 +20,27 @@ describe('MilestoneCardComponent', () => {
     fixture.detectChanges();
   }
 
-  it('shows View but not Edit/Achieve when the caller is not the owner', () => {
+  it('shows View but not Settings when the caller is not the owner', () => {
     setup(baseMilestone);
     expect(fixture.nativeElement.querySelector('[data-testid="view-button"]')).not.toBeNull();
-    expect(fixture.nativeElement.querySelector('[data-testid="edit-button"]')).toBeNull();
-    expect(fixture.nativeElement.querySelector('[data-testid="achieve-button"]')).toBeNull();
+    expect(fixture.nativeElement.querySelector('[data-testid="settings-button"]')).toBeNull();
   });
 
-  it('shows Edit and Achieve when the caller is the owner', () => {
+  it('shows the Settings button when the caller is the owner', () => {
     setup({ ...baseMilestone, isOwner: true });
-    expect(fixture.nativeElement.querySelector('[data-testid="edit-button"]')).not.toBeNull();
-    expect(fixture.nativeElement.querySelector('[data-testid="achieve-button"]')).not.toBeNull();
-    expect(fixture.nativeElement.textContent).toContain('Achieve');
+    expect(fixture.nativeElement.querySelector('[data-testid="settings-button"]')).not.toBeNull();
   });
 
-  it('shows Unachieve instead of Achieve when already achieved', () => {
-    setup({ ...baseMilestone, isOwner: true, isAchieved: true });
-    expect(fixture.nativeElement.textContent).toContain('Unachieve');
-  });
-
-  it('emits viewed/editRequested/achieveToggled on button press', () => {
+  it('emits viewed/settingsRequested on button press', () => {
     setup({ ...baseMilestone, isOwner: true });
-    let viewed = false, edited = false, achieved = false;
+    let viewed = false, settings = false;
     fixture.componentInstance.viewed.subscribe(() => (viewed = true));
-    fixture.componentInstance.editRequested.subscribe(() => (edited = true));
-    fixture.componentInstance.achieveToggled.subscribe(() => (achieved = true));
+    fixture.componentInstance.settingsRequested.subscribe(() => (settings = true));
 
     (fixture.nativeElement.querySelector('[data-testid="view-button"] button') as HTMLButtonElement).click();
-    (fixture.nativeElement.querySelector('[data-testid="edit-button"] button') as HTMLButtonElement).click();
-    (fixture.nativeElement.querySelector('[data-testid="achieve-button"] button') as HTMLButtonElement).click();
+    (fixture.nativeElement.querySelector('[data-testid="settings-button"] button') as HTMLButtonElement).click();
 
     expect(viewed).toBe(true);
-    expect(edited).toBe(true);
-    expect(achieved).toBe(true);
+    expect(settings).toBe(true);
   });
 });
