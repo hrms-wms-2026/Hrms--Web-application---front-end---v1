@@ -181,8 +181,10 @@ src/
 │   │   ├── feature/
 │   │   │   ├── project-list/
 │   │   │   │   └── project-list.component.ts
-│   │   │   └── project-detail/
-│   │   │       └── project-detail.component.ts
+│   │   │   ├── project-detail/
+│   │   │   │   └── project-detail.component.ts
+│   │   │   └── milestone-detail/
+│   │   │       └── milestone-detail.component.ts
 │   │   ├── ui/
 │   │   │   ├── project-card/
 │   │   │   │   └── project-card.component.ts
@@ -190,8 +192,12 @@ src/
 │   │   │   │   └── project-filter-bar.component.ts
 │   │   │   ├── project-form-modal/
 │   │   │   │   └── project-form-modal.component.ts
-│   │   │   └── milestone-tree-node/
-│   │   │       └── milestone-tree-node.component.ts
+│   │   │   ├── milestone-tree-node/
+│   │   │   │   └── milestone-tree-node.component.ts
+│   │   │   ├── milestone-card/
+│   │   │   │   └── milestone-card.component.ts
+│   │   │   └── milestone-form-modal/
+│   │   │       └── milestone-form-modal.component.ts
 │   │   ├── data-access/
 │   │   │   ├── project-api.service.ts
 │   │   │   └── project-category-api.service.ts

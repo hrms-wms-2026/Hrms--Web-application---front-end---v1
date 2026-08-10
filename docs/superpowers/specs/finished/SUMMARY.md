@@ -10,3 +10,6 @@ One subfolder per completion date. Master status table: `../SUMMARY.md`.
 
 ## 2026-08-09/
 - `2026-08-08-work-management-projects-milestones-design.md` — design for Work Management Projects list, Project Detail, and read-only Milestone/Objective view, gated on `projects:access`. Status: Implemented. Corresponding plan: `../../plans/finished/2026-08-09/2026-08-09-work-management-projects-milestones.md`, finished 2026-08-09 (day after the design).
+
+## 2026-08-10/
+- `2026-08-10-milestone-cards-and-tree-view-design.md` — design for the Milestone card grid, ownership-gated Edit/Achieve, and dedicated tree-view page. Status: Implemented. Corresponding plan: `../../plans/finished/2026-08-10/2026-08-10-milestone-cards-and-tree-view/` (3 parts), finished the same day. Cross-repo — backend addendum in `HRMS-Backend-v1/docs/superpowers/specs/finished/2026-08-10/`.
