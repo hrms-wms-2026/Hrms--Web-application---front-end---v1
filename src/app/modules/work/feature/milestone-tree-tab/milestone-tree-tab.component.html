@@ -1,0 +1,24 @@
+<div class="flex gap-4">
+  <div class="flex-[0_0_62%] rounded-lg border border-[var(--color-border)] p-3">
+    @if (store.subtreeLoading()) {
+      <app-loader label="Loading tree…" />
+    } @else if (store.subtreeError()) {
+      <app-error-state [message]="store.subtreeError()!" [retryable]="true" (retry)="retryTree()" />
+    } @else if (store.selectedSubtree(); as subtree) {
+      <app-milestone-tree-node
+        [node]="subtree"
+        [selectedId]="selectedNodeId()"
+        [expandedByDefault]="true"
+        (selected)="onNodeSelected($event)"
+      />
+    }
+  </div>
+  <div class="flex-1">
+    <app-milestone-detail-panel
+      [detail]="store.nodeDetail()"
+      [loading]="store.nodeDetailLoading()"
+      [error]="store.nodeDetailError()"
+      (retry)="retryDetail()"
+    />
+  </div>
+</div>
