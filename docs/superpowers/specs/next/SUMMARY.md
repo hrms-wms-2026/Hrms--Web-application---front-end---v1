@@ -1,6 +1,7 @@
 # specs/next/ — Summary
 
 - `2026-08-10-project-identifier-autosuggest-design.md` — status: approved 2026-08-10, no plan written yet. Auto-derives the Create Project form's Identifier field from the Name field (first word + 8-digit random suffix), stops once the user manually edits Identifier.
+- `2026-08-11-project-detail-milestone-tree-explorer-design.md` — status: approved 2026-08-11 (visual mockup), no plan written yet. Adds a milestone sub-menu (Tree/Board/Backlog/My Task/List, nested routes under `/work/:id/milestones/:milestoneId`), reworks the milestone tree into an explorer/folder style (expand/collapse, root expanded/children collapsed by default) with a side-by-side detail panel fetched via the existing `getObjectiveById`, stub pages for the other 4 tabs, and a 1-line `app.config.ts` scroll-restoration fix. Reconciles with — does not reverse — the 2026-08-10 decision to remove the standalone milestone route (see the design doc's "Prior-decision reconciliation" section).
 
 ## Open items
 
