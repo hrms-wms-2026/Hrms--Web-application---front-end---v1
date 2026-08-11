@@ -1,6 +1,6 @@
 import { ComponentFixture, TestBed } from '@angular/core/testing';
-import { ActivatedRoute } from '@angular/router';
-import { of } from 'rxjs';
+import { ActivatedRoute, NavigationEnd, Router } from '@angular/router';
+import { of, Subject } from 'rxjs';
 import { ProjectDetailComponent } from './project-detail.component';
 import { ProjectDetailStore } from '../../state/project-detail.store';
 import { ProjectDetail } from '../../models/project.model';
@@ -9,6 +9,9 @@ import { Milestone } from '../../models/milestone.model';
 describe('ProjectDetailComponent', () => {
   let fixture: ComponentFixture<ProjectDetailComponent>;
   let storeStub: any;
+  let routerStub: any;
+  let routeStub: any;
+  let routerEvents: Subject<unknown>;
 
   const project: ProjectDetail = {
     id: 'p1', name: 'Website Revamp', identifier: 'WEB', categoryId: 'cat1', leadId: 'u1',
@@ -25,40 +28,52 @@ describe('ProjectDetailComponent', () => {
     isOwner: true
   };
 
-  beforeEach(async () => {
+  const milestone2: Milestone = { ...milestone, objectiveId: 'o2', title: 'Second', isDefault: false };
+
+  function setup(firstChildMilestoneId: string | null): void {
+    routerEvents = new Subject();
+    routerStub = { navigate: vi.fn(), events: routerEvents.asObservable() };
+    routeStub = {
+      paramMap: of({ get: (key: string) => (key === 'id' ? 'p1' : null) }),
+      snapshot: {
+        firstChild: firstChildMilestoneId
+          ? { paramMap: { get: (key: string) => (key === 'milestoneId' ? firstChildMilestoneId : null) } }
+          : null
+      }
+    };
+
+    TestBed.configureTestingModule({
+      imports: [ProjectDetailComponent],
+      providers: [
+        { provide: ProjectDetailStore, useValue: storeStub },
+        { provide: ActivatedRoute, useValue: routeStub },
+        { provide: Router, useValue: routerStub }
+      ]
+    }).compileComponents();
+
+    fixture = TestBed.createComponent(ProjectDetailComponent);
+  }
+
+  beforeEach(() => {
     storeStub = {
       project: () => project,
       projectLoading: () => false,
       projectError: () => null,
-      milestones: () => [milestone],
+      milestones: () => [milestone, milestone2],
       milestonesLoading: () => false,
       milestonesError: () => null,
-      selectedSubtree: () => null,
-      subtreeLoading: () => false,
-      subtreeError: () => null,
       loadProject: vi.fn().mockResolvedValue(undefined),
       loadMyMilestones: vi.fn().mockResolvedValue(undefined),
-      loadMilestoneSubtree: vi.fn().mockResolvedValue(undefined),
-      clearSelectedSubtree: vi.fn(),
       getMilestoneDetail: vi.fn().mockResolvedValue(null),
       editMilestone: vi.fn().mockResolvedValue({ success: true, pending: false }),
       achieveMilestone: vi.fn().mockResolvedValue({ success: true, pending: false }),
       unachieveMilestone: vi.fn().mockResolvedValue({ success: true, pending: false }),
       milestoneActionError: () => null
     };
-
-    await TestBed.configureTestingModule({
-      imports: [ProjectDetailComponent],
-      providers: [
-        { provide: ProjectDetailStore, useValue: storeStub },
-        { provide: ActivatedRoute, useValue: { paramMap: of({ get: (key: string) => (key === 'id' ? 'p1' : null) }) } }
-      ]
-    }).compileComponents();
-
-    fixture = TestBed.createComponent(ProjectDetailComponent);
   });
 
   it('loads the project and its milestones for the routed id', async () => {
+    setup(null);
     fixture.detectChanges();
     await fixture.whenStable();
     expect(storeStub.loadProject).toHaveBeenCalledWith('p1');
@@ -66,6 +81,7 @@ describe('ProjectDetailComponent', () => {
   });
 
   it('renders project name and milestone cards', async () => {
+    setup('o1');
     fixture.detectChanges();
     await fixture.whenStable();
     fixture.detectChanges();
@@ -73,9 +89,77 @@ describe('ProjectDetailComponent', () => {
     expect(fixture.nativeElement.textContent).toContain('Default');
   });
 
+  it("navigates to the first milestone's tree route when landing with no milestone in the URL", async () => {
+    setup(null);
+    fixture.detectChanges();
+    await fixture.whenStable();
+    await Promise.resolve();
+    await Promise.resolve();
+    expect(routerStub.navigate).toHaveBeenCalledWith(
+      ['milestones', 'o1', 'tree'],
+      expect.objectContaining({ replaceUrl: true })
+    );
+  });
+
+  it('does not override an already-deep-linked milestone', async () => {
+    setup('o2');
+    fixture.detectChanges();
+    await fixture.whenStable();
+    await Promise.resolve();
+    await Promise.resolve();
+    expect(routerStub.navigate).not.toHaveBeenCalled();
+  });
+
+  it('does not attempt to navigate when there are no milestones', async () => {
+    storeStub.milestones = () => [];
+    setup(null);
+    fixture.detectChanges();
+    await fixture.whenStable();
+    await Promise.resolve();
+    await Promise.resolve();
+    expect(routerStub.navigate).not.toHaveBeenCalled();
+  });
+
+  it("navigates to the clicked milestone's tree route, resetting the sub-tab", () => {
+    setup('o1');
+    fixture.detectChanges();
+
+    fixture.componentInstance.onMilestoneSelected(milestone2);
+
+    expect(routerStub.navigate).toHaveBeenCalledWith(
+      ['milestones', 'o2', 'tree'],
+      expect.objectContaining({ relativeTo: expect.anything() })
+    );
+  });
+
+  it('reflects the active milestone id from the route on init, and updates it on NavigationEnd', () => {
+    setup('o1');
+    fixture.detectChanges();
+    expect(fixture.componentInstance.activeMilestoneId()).toBe('o1');
+
+    routeStub.snapshot.firstChild = { paramMap: { get: (key: string) => (key === 'milestoneId' ? 'o2' : null) } };
+    routerEvents.next(new NavigationEnd(1, '/work/p1/milestones/o2/tree', '/work/p1/milestones/o2/tree'));
+
+    expect(fixture.componentInstance.activeMilestoneId()).toBe('o2');
+  });
+
+  it('renders the sub-menu once a milestone is active', () => {
+    setup('o1');
+    fixture.detectChanges();
+    expect(fixture.nativeElement.querySelector('app-milestone-sub-menu')).not.toBeNull();
+  });
+
+  it('does not render the sub-menu when there is no active milestone', () => {
+    storeStub.milestones = () => [];
+    setup(null);
+    fixture.detectChanges();
+    expect(fixture.nativeElement.querySelector('app-milestone-sub-menu')).toBeNull();
+  });
+
   it('opens the settings modal and patches in the full detail once fetched', async () => {
     const detail = { id: 'o1', title: 'Default', description: 'Full scope', startDate: '2026-08-01', endDate: '2026-12-01', allocatedHours: 40, isAchieved: false, isDefault: true };
     storeStub.getMilestoneDetail = vi.fn().mockResolvedValue(detail);
+    setup('o1');
     fixture.detectChanges();
 
     fixture.componentInstance.onMilestoneSettingsRequested(milestone);
@@ -90,6 +174,7 @@ describe('ProjectDetailComponent', () => {
   });
 
   it('saves fields only when the Achieved toggle is untouched', async () => {
+    setup('o1');
     fixture.detectChanges();
     fixture.componentInstance.onMilestoneSettingsRequested(milestone);
 
@@ -110,6 +195,7 @@ describe('ProjectDetailComponent', () => {
     const calls: string[] = [];
     storeStub.editMilestone = vi.fn().mockImplementation(async () => { calls.push('edit'); return { success: true, pending: false }; });
     storeStub.achieveMilestone = vi.fn().mockImplementation(async () => { calls.push('achieve'); return { success: true, pending: false }; });
+    setup('o1');
     fixture.detectChanges();
     fixture.componentInstance.onMilestoneSettingsRequested(milestone);
 
@@ -125,6 +211,7 @@ describe('ProjectDetailComponent', () => {
     const calls: string[] = [];
     storeStub.unachieveMilestone = vi.fn().mockImplementation(async () => { calls.push('unachieve'); return { success: true, pending: false }; });
     storeStub.editMilestone = vi.fn().mockImplementation(async () => { calls.push('edit'); return { success: true, pending: false }; });
+    setup('o1');
     fixture.detectChanges();
     fixture.componentInstance.onMilestoneSettingsRequested(milestone);
 
@@ -140,6 +227,7 @@ describe('ProjectDetailComponent', () => {
     storeStub.unachieveMilestone = vi.fn().mockResolvedValue({ success: false, pending: false });
     const editSpy = vi.fn();
     storeStub.editMilestone = editSpy;
+    setup('o1');
     fixture.detectChanges();
     fixture.componentInstance.onMilestoneSettingsRequested(milestone);
 
@@ -150,52 +238,5 @@ describe('ProjectDetailComponent', () => {
 
     expect(editSpy).not.toHaveBeenCalled();
     expect(fixture.componentInstance.milestoneSettingsOpen()).toBe(true);
-  });
-
-  it('loads the milestone subtree and marks the card selected when a milestone is clicked', async () => {
-    fixture.detectChanges();
-    fixture.componentInstance.onMilestoneSelected(milestone);
-    expect(storeStub.loadMilestoneSubtree).toHaveBeenCalledWith('o1');
-    expect(fixture.componentInstance.selectedMilestoneId()).toBe('o1');
-  });
-
-  it('renders the tree once selectedSubtree resolves', async () => {
-    storeStub.selectedSubtree = () => ({ id: 'o1', title: 'Default', startDate: '2026-08-01', endDate: '2026-12-01', progress: 0, allocatedHours: 40, completedHours: 0, isActive: true, children: [] });
-    fixture.detectChanges();
-    await fixture.whenStable();
-    fixture.detectChanges();
-    expect(fixture.nativeElement.querySelector('app-milestone-tree-node')).not.toBeNull();
-  });
-
-  it('shows a prompt when no milestone is selected yet', () => {
-    fixture.detectChanges();
-    expect(fixture.nativeElement.textContent).toContain('Select a milestone');
-  });
-
-  it('resets stale subtree state on init', async () => {
-    fixture.detectChanges();
-    await fixture.whenStable();
-    expect(storeStub.clearSelectedSubtree).toHaveBeenCalled();
-  });
-
-  it('auto-selects the first milestone once milestones load', async () => {
-    fixture.detectChanges();
-    await fixture.whenStable();
-    await Promise.resolve();
-    await Promise.resolve();
-
-    expect(fixture.componentInstance.selectedMilestoneId()).toBe('o1');
-    expect(storeStub.loadMilestoneSubtree).toHaveBeenCalledWith('o1');
-  });
-
-  it('does not attempt to select anything when there are no milestones', async () => {
-    storeStub.milestones = () => [];
-    fixture.detectChanges();
-    await fixture.whenStable();
-    await Promise.resolve();
-    await Promise.resolve();
-
-    expect(fixture.componentInstance.selectedMilestoneId()).toBeNull();
-    expect(storeStub.loadMilestoneSubtree).not.toHaveBeenCalled();
   });
 });

@@ -43,26 +43,21 @@
       <div class="w-48 flex-shrink-0">
         <app-milestone-card
           [milestone]="milestone"
-          [selected]="selectedMilestoneId() === milestone.objectiveId"
+          [selected]="activeMilestoneId() === milestone.objectiveId"
           (viewed)="onMilestoneSelected(milestone)"
           (settingsRequested)="onMilestoneSettingsRequested(milestone)"
         />
       </div>
     }
   </div>
-}
 
-<div class="mt-6">
-  @if (store.subtreeLoading()) {
-    <app-loader label="Loading milestone…" />
-  } @else if (store.subtreeError()) {
-    <app-error-state [message]="store.subtreeError()!" [retryable]="true" (retry)="retrySubtree()" />
-  } @else if (store.selectedSubtree(); as subtree) {
-    <app-milestone-tree-node [node]="subtree" />
-  } @else if (store.milestones().length > 0) {
-    <p class="text-sm text-[var(--color-text-secondary)]">Select a milestone above to see its detail.</p>
+  @if (activeMilestoneId(); as milestoneId) {
+    <div class="mt-6">
+      <app-milestone-sub-menu [milestoneId]="milestoneId" [milestoneTitle]="activeMilestoneTitle()" />
+      <router-outlet />
+    </div>
   }
-</div>
+}
 
 <app-milestone-settings-modal
   [open]="milestoneSettingsOpen()"
