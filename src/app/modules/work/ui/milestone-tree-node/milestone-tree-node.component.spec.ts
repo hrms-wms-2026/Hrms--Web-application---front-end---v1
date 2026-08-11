@@ -5,31 +5,76 @@ import { MilestoneTreeNode } from '../../models/milestone.model';
 describe('MilestoneTreeNodeComponent', () => {
   let fixture: ComponentFixture<MilestoneTreeNodeComponent>;
 
-  it('renders a node with no children', () => {
-    const node: MilestoneTreeNode = {
-      id: 'o1', title: 'Design Phase', startDate: '2026-01-15', endDate: '2026-03-01',
-      progress: 40, allocatedHours: 20, completedHours: 8, isActive: true, children: []
-    };
+  const leaf: MilestoneTreeNode = {
+    id: 'o2', title: 'Child', startDate: '2026-01-20', endDate: '2026-02-01',
+    progress: 40, allocatedHours: 5, completedHours: 2, isActive: true, children: []
+  };
+
+  const root: MilestoneTreeNode = {
+    id: 'o1', title: 'Root', startDate: '2026-01-15', endDate: '2026-03-01', progress: 0,
+    allocatedHours: 20, completedHours: 0, isActive: true, children: [leaf]
+  };
+
+  function setup(node: MilestoneTreeNode, selectedId: string | null = null, expandedByDefault = true): void {
     fixture = TestBed.createComponent(MilestoneTreeNodeComponent);
     fixture.componentRef.setInput('node', node);
+    fixture.componentRef.setInput('selectedId', selectedId);
+    fixture.componentRef.setInput('expandedByDefault', expandedByDefault);
     fixture.detectChanges();
-    expect(fixture.nativeElement.textContent).toContain('Design Phase');
-    expect(fixture.nativeElement.textContent).toContain('40');
+  }
+
+  it('renders the node title and progress, without dates or hours', () => {
+    setup(leaf);
+    expect(fixture.nativeElement.textContent).toContain('Child');
+    expect(fixture.nativeElement.textContent).toContain('40%');
+    expect(fixture.nativeElement.textContent).not.toContain('2026-01-20');
   });
 
-  it('renders nested children recursively', () => {
-    const node: MilestoneTreeNode = {
-      id: 'o1', title: 'Root', startDate: '2026-01-15', endDate: '2026-03-01', progress: 0,
-      allocatedHours: 20, completedHours: 0, isActive: true,
-      children: [{
-        id: 'o2', title: 'Child', startDate: '2026-01-20', endDate: '2026-02-01', progress: 0,
-        allocatedHours: 5, completedHours: 0, isActive: true, children: []
-      }]
-    };
-    fixture = TestBed.createComponent(MilestoneTreeNodeComponent);
-    fixture.componentRef.setInput('node', node);
-    fixture.detectChanges();
-    expect(fixture.nativeElement.textContent).toContain('Root');
+  it('shows children when expandedByDefault is true (root default)', () => {
+    setup(root, null, true);
     expect(fixture.nativeElement.textContent).toContain('Child');
+    expect(fixture.nativeElement.querySelectorAll('[data-testid="tree-row"]').length).toBe(2);
+  });
+
+  it('hides children when expandedByDefault is false (deeper-level default)', () => {
+    setup(root, null, false);
+    const rows = fixture.nativeElement.querySelectorAll('[data-testid="tree-row"]');
+    expect(rows.length).toBe(1);
+    expect(fixture.nativeElement.textContent).not.toContain('Child');
+  });
+
+  it('does not render a chevron for a leaf node', () => {
+    setup(leaf);
+    expect(fixture.nativeElement.querySelector('[data-testid="chevron"]')).toBeNull();
+  });
+
+  it('chevron click toggles expansion without emitting selected', () => {
+    setup(root, null, true);
+    let selectedCount = 0;
+    fixture.componentInstance.selected.subscribe(() => selectedCount++);
+
+    (fixture.nativeElement.querySelector('[data-testid="chevron"]') as HTMLElement).click();
+    fixture.detectChanges();
+
+    expect(fixture.nativeElement.querySelectorAll('[data-testid="tree-row"]').length).toBe(1);
+    expect(selectedCount).toBe(0);
+  });
+
+  it('row click emits selected with the clicked node, without toggling expansion', () => {
+    setup(root, null, true);
+    const emitted: MilestoneTreeNode[] = [];
+    fixture.componentInstance.selected.subscribe((n) => emitted.push(n));
+
+    const rows = fixture.nativeElement.querySelectorAll('[data-testid="tree-row"]');
+    (rows[1] as HTMLElement).click();
+
+    expect(emitted).toEqual([leaf]);
+  });
+
+  it('applies a highlight to the row matching selectedId', () => {
+    setup(root, 'o1', true);
+    const rows = fixture.nativeElement.querySelectorAll('[data-testid="tree-row"]');
+    expect((rows[0] as HTMLElement).className).toContain('ring-2');
+    expect((rows[1] as HTMLElement).className).not.toContain('ring-2');
   });
 });
