@@ -18,13 +18,17 @@ interface ProjectDetailState {
   readonly subtreeLoading: boolean;
   readonly subtreeError: string | null;
   readonly milestoneActionError: string | null;
+  readonly nodeDetail: ObjectiveDetail | null;
+  readonly nodeDetailLoading: boolean;
+  readonly nodeDetailError: string | null;
 }
 
 const initialState: ProjectDetailState = {
   project: null, projectLoading: false, projectError: null,
   milestones: [], milestonesLoading: false, milestonesError: null,
   selectedSubtree: null, subtreeLoading: false, subtreeError: null,
-  milestoneActionError: null
+  milestoneActionError: null,
+  nodeDetail: null, nodeDetailLoading: false, nodeDetailError: null
 };
 
 function extractError(err: any, fallback: string): string {
@@ -111,6 +115,20 @@ export const ProjectDetailStore = signalStore(
         patchState(store, { milestoneActionError: extractError(err, 'Failed to unachieve milestone.') });
         return { success: false, pending: false };
       }
+    },
+
+    async loadNodeDetail(id: string): Promise<void> {
+      patchState(store, { nodeDetailLoading: true, nodeDetailError: null });
+      try {
+        const dto = await firstValueFrom(api.getObjectiveById(id));
+        patchState(store, { nodeDetail: dto, nodeDetailLoading: false });
+      } catch (err) {
+        patchState(store, { nodeDetailError: extractError(err, 'Failed to load milestone detail.'), nodeDetailLoading: false, nodeDetail: null });
+      }
+    },
+
+    clearNodeDetail(): void {
+      patchState(store, { nodeDetail: null, nodeDetailError: null });
     }
   }))
 );

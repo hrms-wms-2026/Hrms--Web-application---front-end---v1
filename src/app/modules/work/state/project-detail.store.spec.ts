@@ -137,4 +137,51 @@ describe('ProjectDetailStore', () => {
     expect(result).toEqual({ success: false, pending: false });
     expect(store.milestoneActionError()).toBe('not achieved');
   });
+
+  it('loadNodeDetail loads the mapped detail on success', async () => {
+    const dto: ObjectiveDetailDto = {
+      id: 'o2', projectId: 'p1', parentObjectiveId: 'o1', isDefault: false, title: 'Child',
+      description: 'Child scope', ownerId: 'u1', reportingManagerId: null, createdById: 'u1',
+      startDate: '2026-01-01', endDate: '2026-02-01', progress: 10, actualHours: null,
+      allocatedHours: 10, completedHours: 1, isActive: true, createdAt: '2026-01-01T00:00:00Z', updatedAt: null,
+      isAchieved: false
+    };
+    const store = setup({ getObjectiveById: () => of(dto) } as Partial<ProjectApiService>);
+
+    await store.loadNodeDetail('o2');
+
+    expect(store.nodeDetail()?.title).toBe('Child');
+    expect(store.nodeDetailLoading()).toBe(false);
+    expect(store.nodeDetailError()).toBeNull();
+  });
+
+  it('loadNodeDetail sets nodeDetailError and clears nodeDetail on failure', async () => {
+    const store = setup({
+      getObjectiveById: () => throwError(() => ({ error: { detail: 'gone' } }))
+    } as Partial<ProjectApiService>);
+
+    await store.loadNodeDetail('o2');
+
+    expect(store.nodeDetailError()).toBe('gone');
+    expect(store.nodeDetail()).toBeNull();
+  });
+
+  it('clearNodeDetail resets node detail state', async () => {
+    const dto = { id: 'o2' } as ObjectiveDetailDto;
+    const store = setup({ getObjectiveById: () => of(dto) } as Partial<ProjectApiService>);
+    await store.loadNodeDetail('o2');
+
+    store.clearNodeDetail();
+
+    expect(store.nodeDetail()).toBeNull();
+    expect(store.nodeDetailError()).toBeNull();
+  });
+
+  it('loadNodeDetail does not affect the settings-modal-only milestoneActionError state', async () => {
+    const store = setup({ getObjectiveById: () => of({ id: 'o2' } as ObjectiveDetailDto) } as Partial<ProjectApiService>);
+
+    await store.loadNodeDetail('o2');
+
+    expect(store.milestoneActionError()).toBeNull();
+  });
 });
