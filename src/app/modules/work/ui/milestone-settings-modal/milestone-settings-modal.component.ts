@@ -10,7 +10,7 @@ import { EditObjectiveRequestDto } from '../../models/dto/milestone.dto';
   standalone: true,
   imports: [ModalComponent, InputComponent, ButtonComponent],
   template: `
-    <app-modal [open]="open()" title="Milestone settings" (closed)="closed.emit()">
+    <app-modal [open]="open()" title="Module settings" (closed)="closed.emit()">
       <div class="flex flex-col gap-3">
         <span data-testid="title-field">
           <app-input label="Title" [value]="title()" [error]="errors()['title'] ?? ''" (valueChange)="title.set($event)" />
@@ -32,7 +32,7 @@ import { EditObjectiveRequestDto } from '../../models/dto/milestone.dto';
           <input type="checkbox" id="milestone-achieved-toggle" [checked]="achieved()" [disabled]="isDefault()" (change)="onAchievedChange($event)" />
           <label for="milestone-achieved-toggle" class="text-sm text-[var(--color-text-primary)]">Achieved</label>
           @if (isDefault()) {
-            <span class="text-xs text-[var(--color-text-secondary)]">(Achieve the project instead — the Default Milestone follows the project's own achieved state)</span>
+            <span class="text-xs text-[var(--color-text-secondary)]">(Achieve the project instead — the Default Module follows the project's own achieved state)</span>
           }
         </span>
 

@@ -97,4 +97,16 @@ describe('MilestoneSettingsModalComponent', () => {
     (fixture.nativeElement.querySelector('[data-testid="cancel-button"] button') as HTMLButtonElement).click();
     expect(closed).toBe(true);
   });
+
+  it('shows "Module settings" as the modal title', () => {
+    fixture.componentRef.setInput('initialValue', detail);
+    fixture.detectChanges();
+    expect(fixture.nativeElement.textContent).toContain('Module settings');
+  });
+
+  it('shows the Default-Module explanation for the default objective', () => {
+    fixture.componentRef.setInput('initialValue', { ...detail, isDefault: true });
+    fixture.detectChanges();
+    expect(fixture.nativeElement.textContent).toContain('the Default Module follows');
+  });
 });
