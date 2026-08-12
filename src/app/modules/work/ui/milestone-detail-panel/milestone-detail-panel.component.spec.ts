@@ -1,19 +1,17 @@
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { MilestoneDetailPanelComponent } from './milestone-detail-panel.component';
-import { ObjectiveDetail } from '../../models/milestone.model';
+import { MilestoneTreeNode } from '../../models/milestone.model';
 
 describe('MilestoneDetailPanelComponent', () => {
   let fixture: ComponentFixture<MilestoneDetailPanelComponent>;
 
-  const detail: ObjectiveDetail = {
-    id: 'o2', projectId: 'p1', parentObjectiveId: 'o1', isDefault: false, title: 'Child',
-    description: 'Child scope', ownerId: 'u1', reportingManagerId: null, createdById: 'u1',
-    startDate: '2026-01-20', endDate: '2026-02-01', progress: 40, actualHours: null,
-    allocatedHours: 5, completedHours: 2, isActive: true, isAchieved: true,
-    createdAt: '2026-01-01T00:00:00Z', updatedAt: null
+  const detail: MilestoneTreeNode = {
+    id: 'o2', title: 'Child', description: 'Child scope', startDate: '2026-01-20', endDate: '2026-02-01',
+    progress: 40, allocatedHours: 5, completedHours: 2, isActive: true, isAchieved: true,
+    ownerName: 'Arun Kumar', isOwner: true, children: []
   };
 
-  function setup(overrides: Partial<{ detail: ObjectiveDetail | null; loading: boolean; error: string | null }> = {}): void {
+  function setup(overrides: Partial<{ detail: MilestoneTreeNode | null; loading: boolean; error: string | null }> = {}): void {
     fixture = TestBed.createComponent(MilestoneDetailPanelComponent);
     fixture.componentRef.setInput('detail', overrides.detail ?? null);
     fixture.componentRef.setInput('loading', overrides.loading ?? false);
@@ -41,7 +39,7 @@ describe('MilestoneDetailPanelComponent', () => {
     expect(fixture.nativeElement.textContent).toContain('Select a milestone');
   });
 
-  it('renders full detail: title, description, dates, progress, hours, Achieved badge', () => {
+  it('renders full detail: title, description, dates, progress, hours, owner avatar, Achieved badge', () => {
     setup({ detail });
     const text = fixture.nativeElement.textContent;
     expect(text).toContain('Child');
@@ -51,6 +49,7 @@ describe('MilestoneDetailPanelComponent', () => {
     expect(text).toContain('40%');
     expect(text).toContain('2 / 5');
     expect(text).toContain('Achieved');
+    expect(fixture.nativeElement.querySelector('app-avatar')).not.toBeNull();
   });
 
   it('omits the Achieved badge when the milestone is not achieved', () => {
@@ -58,9 +57,34 @@ describe('MilestoneDetailPanelComponent', () => {
     expect(fixture.nativeElement.textContent).not.toContain('Achieved');
   });
 
-  it('does not render Owner or Reporting Manager fields (not available from the API)', () => {
+  it('never renders a View details button', () => {
     setup({ detail });
-    expect(fixture.nativeElement.textContent).not.toContain('Owner');
-    expect(fixture.nativeElement.textContent).not.toContain('Reporting Manager');
+    expect(fixture.nativeElement.textContent).not.toContain('View details');
+  });
+
+  it('shows Edit and Create sub Module actions when isOwner is true', () => {
+    setup({ detail });
+    expect(fixture.nativeElement.querySelector('[data-testid="edit-button"]')).not.toBeNull();
+    expect(fixture.nativeElement.querySelector('[data-testid="create-sub-button"]')).not.toBeNull();
+  });
+
+  it('hides Edit and Create sub Module actions when isOwner is false', () => {
+    setup({ detail: { ...detail, isOwner: false } });
+    expect(fixture.nativeElement.querySelector('[data-testid="edit-button"]')).toBeNull();
+    expect(fixture.nativeElement.querySelector('[data-testid="create-sub-button"]')).toBeNull();
+  });
+
+  it('emits editRequested and createSubRequested on their respective clicks', () => {
+    setup({ detail });
+    let edited = false;
+    let createdSub = false;
+    fixture.componentInstance.editRequested.subscribe(() => (edited = true));
+    fixture.componentInstance.createSubRequested.subscribe(() => (createdSub = true));
+
+    (fixture.nativeElement.querySelector('[data-testid="edit-button"]') as HTMLElement).click();
+    (fixture.nativeElement.querySelector('[data-testid="create-sub-button"]') as HTMLElement).click();
+
+    expect(edited).toBe(true);
+    expect(createdSub).toBe(true);
   });
 });
