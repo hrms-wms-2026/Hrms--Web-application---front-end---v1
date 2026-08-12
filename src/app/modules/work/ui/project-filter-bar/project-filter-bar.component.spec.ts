@@ -20,26 +20,34 @@ describe('ProjectFilterBarComponent', () => {
     expect(loadCategoriesSpy).toHaveBeenCalled();
   });
 
-  it('emits categoryChanged when the category select changes', () => {
+  it('emits categoryChanged when a category option is selected', async () => {
     fixture.detectChanges();
     let emitted: string | null | undefined;
     fixture.componentInstance.categoryChanged.subscribe((v: string | null) => (emitted = v));
 
-    const select: HTMLSelectElement = fixture.nativeElement.querySelectorAll('select')[0];
-    select.value = 'cat1';
-    select.dispatchEvent(new Event('change'));
+    // Open category dropdown
+    fixture.componentInstance.toggleCategoryDropdown();
+    fixture.detectChanges();
+
+    // Select 'cat1'
+    fixture.componentInstance.selectCategory('cat1');
+    fixture.detectChanges();
 
     expect(emitted).toBe('cat1');
   });
 
-  it('emits achievedFilterChanged when the status select changes', () => {
+  it('emits achievedFilterChanged when a status option is selected', async () => {
     fixture.detectChanges();
     let emitted: string | undefined;
     fixture.componentInstance.achievedFilterChanged.subscribe((v: string) => (emitted = v));
 
-    const select: HTMLSelectElement = fixture.nativeElement.querySelectorAll('select')[1];
-    select.value = 'archived';
-    select.dispatchEvent(new Event('change'));
+    // Open status dropdown
+    fixture.componentInstance.toggleStatusDropdown();
+    fixture.detectChanges();
+
+    // Select 'archived'
+    fixture.componentInstance.selectStatus('archived');
+    fixture.detectChanges();
 
     expect(emitted).toBe('archived');
   });

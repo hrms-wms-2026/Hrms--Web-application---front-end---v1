@@ -1,5 +1,7 @@
-import { Component, ElementRef, effect, input, output, viewChild } from '@angular/core';
+import { Component, ElementRef, computed, effect, input, output, viewChild } from '@angular/core';
 import { nextUniqueId } from '../../utils/unique-id';
+
+export type ModalSize = 'md' | 'lg' | 'xl';
 
 @Component({
   selector: 'app-modal',
@@ -10,7 +12,8 @@ import { nextUniqueId } from '../../utils/unique-id';
         <div class="absolute inset-0 bg-black/50" (click)="onBackdropClick()"></div>
         <div
           #dialog
-          class="relative z-10 w-full max-w-md rounded-lg bg-[var(--color-surface)] p-6 shadow-lg outline-none"
+          class="relative z-10 w-full rounded-lg bg-[var(--color-surface)] p-6 shadow-lg outline-none"
+          [class]="dialogClass()"
           role="dialog"
           aria-modal="true"
           tabindex="-1"
@@ -39,8 +42,18 @@ import { nextUniqueId } from '../../utils/unique-id';
 export class ModalComponent {
   open = input(false);
   title = input<string>('');
+  size = input<ModalSize>('md');
   closeOnBackdropClick = input(true);
   closed = output<void>();
+
+  readonly dialogClass = computed(() => {
+    const sizeMap: Record<ModalSize, string> = {
+      md: 'relative z-10 w-full max-w-md rounded-lg bg-[var(--color-surface)] p-6 shadow-lg outline-none',
+      lg: 'relative z-10 w-full max-w-xl rounded-lg bg-[var(--color-surface)] p-6 shadow-lg outline-none',
+      xl: 'relative z-10 w-full max-w-2xl rounded-lg bg-[var(--color-surface)] p-6 shadow-lg outline-none',
+    };
+    return sizeMap[this.size()];
+  });
 
   private readonly dialogRef = viewChild<ElementRef<HTMLElement>>('dialog');
   readonly titleId = nextUniqueId('app-modal-title');

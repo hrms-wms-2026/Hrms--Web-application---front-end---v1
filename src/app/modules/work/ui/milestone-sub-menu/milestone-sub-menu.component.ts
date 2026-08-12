@@ -19,9 +19,9 @@ const TABS: SubMenuTab[] = [
   standalone: true,
   imports: [RouterLink, RouterLinkActive],
   template: `
-    <div class="mb-4">
+    <div class="mb-2">
       <p
-        class="mb-2 text-sm font-medium text-[var(--color-text-primary)]"
+        class="mb-1 text-sm font-medium text-[var(--color-text-primary)]"
         data-testid="sub-menu-milestone-title"
       >
         {{ milestoneTitle() }}

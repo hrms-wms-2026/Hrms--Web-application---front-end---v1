@@ -1,13 +1,21 @@
-<app-page-header title="Projects" subtitle="Plan and manage your projects.">
-  <app-button variant="primary" (pressed)="openCreateModal()">+ Create project</app-button>
-</app-page-header>
+<div class="flex items-center justify-between gap-4 pb-3.5 mb-5 border-b border-[var(--color-border)]">
+  <!-- Left: Title -->
+  <div class="shrink-0">
+    <h1 class="text-base font-semibold text-[var(--color-text-primary)] tracking-tight">Projects</h1>
+    <p class="text-xs text-[var(--color-text-secondary)]">Plan and manage your projects.</p>
+  </div>
 
-<app-project-filter-bar
-  (categoryChanged)="onCategoryFilterChanged($event)"
-  (achievedFilterChanged)="onAchievedFilterChanged($event)"
-/>
+  <!-- Right: Filters + Create button — always on one row -->
+  <div class="flex items-center gap-3">
+    <app-project-filter-bar
+      (categoryChanged)="onCategoryFilterChanged($event)"
+      (achievedFilterChanged)="onAchievedFilterChanged($event)"
+    />
+    <app-button variant="primary" (pressed)="openCreateModal()">+ Create project</app-button>
+  </div>
+</div>
 
-<div class="mt-4">
+<div class="mt-6">
   @if (store.loading()) {
     <app-loader label="Loading projects…" />
   } @else if (store.error()) {
@@ -17,7 +25,7 @@
       <app-button variant="primary" (pressed)="openCreateModal()">+ Create project</app-button>
     </app-empty-state>
   } @else {
-    <div class="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+    <div class="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-3">
       @for (project of store.filteredProjects(); track project.id) {
         <app-project-card
           [project]="project"
@@ -56,3 +64,4 @@
   (confirmed)="onDeleteConfirmed()"
   (cancelled)="deleteConfirmOpen.set(false)"
 />
+
