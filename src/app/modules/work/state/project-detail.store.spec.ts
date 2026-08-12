@@ -47,6 +47,18 @@ describe('ProjectDetailStore', () => {
     expect(store.milestonesLoading()).toBe(false);
   });
 
+  it('sets milestonesError on failure', async () => {
+    const store = setup({ getMyMilestones: () => throwError(() => ({ error: { detail: 'Server error' } })) } as Partial<ProjectApiService>);
+    await store.loadMyMilestones('p1');
+    expect(store.milestonesError()).toBe('Server error');
+  });
+
+  it('falls back to "Failed to load modules." when the server gives no error detail', async () => {
+    const store = setup({ getMyMilestones: () => throwError(() => ({})) } as Partial<ProjectApiService>);
+    await store.loadMyMilestones('p1');
+    expect(store.milestonesError()).toBe('Failed to load modules.');
+  });
+
   it('loads and clears a milestone subtree', async () => {
     const response: ObjectiveSubtreeResponseDto = {
       parentObjective: null,

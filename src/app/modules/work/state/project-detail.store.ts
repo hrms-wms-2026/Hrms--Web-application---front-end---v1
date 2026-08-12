@@ -55,7 +55,7 @@ export const ProjectDetailStore = signalStore(
         const dtos = await firstValueFrom(api.getMyMilestones(projectId));
         patchState(store, { milestones: dtos.map(toMilestone), milestonesLoading: false });
       } catch (err) {
-        patchState(store, { milestonesError: extractError(err, 'Failed to load milestones.'), milestonesLoading: false });
+        patchState(store, { milestonesError: extractError(err, 'Failed to load modules.'), milestonesLoading: false });
       }
     },
 
