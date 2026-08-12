@@ -103,6 +103,35 @@ describe('MilestoneTreeTabComponent', () => {
     expect(storeStub.loadMilestoneSubtree).toHaveBeenCalledTimes(2);
   });
 
+  it('calls achieveMilestone when the selected node is not yet achieved, then reloads the tree', async () => {
+    setup('o1');
+    fixture.detectChanges();
+    const rows = fixture.nativeElement.querySelectorAll('[data-testid="tree-row"]');
+    (rows[0] as HTMLElement).click();
+    fixture.detectChanges();
+
+    await fixture.componentInstance.onAchieveToggleRequested();
+
+    expect(storeStub.achieveMilestone).toHaveBeenCalledWith('o1');
+    expect(storeStub.unachieveMilestone).not.toHaveBeenCalled();
+    expect(storeStub.loadMilestoneSubtree).toHaveBeenCalledTimes(2);
+  });
+
+  it('calls unachieveMilestone when the selected node is already achieved', async () => {
+    const achievedTree = { ...tree, isAchieved: true };
+    storeStub.selectedSubtree = () => achievedTree;
+    setup('o1');
+    fixture.detectChanges();
+    const rows = fixture.nativeElement.querySelectorAll('[data-testid="tree-row"]');
+    (rows[0] as HTMLElement).click();
+    fixture.detectChanges();
+
+    await fixture.componentInstance.onAchieveToggleRequested();
+
+    expect(storeStub.unachieveMilestone).toHaveBeenCalledWith('o1');
+    expect(storeStub.achieveMilestone).not.toHaveBeenCalled();
+  });
+
   it('opens the settings modal and fetches full detail when Edit is requested', async () => {
     const detail = { id: 'o1', title: 'Root', description: 'Full scope', startDate: '2026-01-01', endDate: '2026-12-01', allocatedHours: 40, isAchieved: false, isDefault: true };
     storeStub.getMilestoneDetail = vi.fn().mockResolvedValue(detail);

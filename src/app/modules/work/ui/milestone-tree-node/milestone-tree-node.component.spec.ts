@@ -33,6 +33,23 @@ describe('MilestoneTreeNodeComponent', () => {
     expect(fixture.nativeElement.querySelector('app-avatar')).not.toBeNull();
   });
 
+  it('renders a folder icon before the title on every row, root and child alike', () => {
+    setup(root, null, true);
+    expect(fixture.nativeElement.querySelectorAll('[data-testid="folder-icon"]').length).toBe(2);
+  });
+
+  it('all rows share the same grid column template, only the title cell indents by depth', () => {
+    setup(root, null, true);
+    const rows = fixture.nativeElement.querySelectorAll('[data-testid="tree-row"]');
+    expect((rows[0] as HTMLElement).className).toContain('grid-cols-[1fr_auto_auto_auto_auto]');
+    expect((rows[1] as HTMLElement).className).toContain('grid-cols-[1fr_auto_auto_auto_auto]');
+
+    const rootTitleCell = rows[0].querySelector('span') as HTMLElement;
+    const childTitleCell = rows[1].querySelector('span') as HTMLElement;
+    expect(rootTitleCell.style.paddingLeft).toBe('0px');
+    expect(childTitleCell.style.paddingLeft).toBe('20px');
+  });
+
   it('shows children when expandedByDefault is true (root default)', () => {
     setup(root, null, true);
     expect(fixture.nativeElement.textContent).toContain('Child');

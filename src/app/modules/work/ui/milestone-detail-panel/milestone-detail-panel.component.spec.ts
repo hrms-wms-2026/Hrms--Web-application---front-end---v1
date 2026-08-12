@@ -62,29 +62,50 @@ describe('MilestoneDetailPanelComponent', () => {
     expect(fixture.nativeElement.textContent).not.toContain('View details');
   });
 
-  it('shows Edit and Create sub Module actions when isOwner is true', () => {
+  it('shows Edit, Achieve, and Create sub Module actions when isOwner is true', () => {
     setup({ detail });
     expect(fixture.nativeElement.querySelector('[data-testid="edit-button"]')).not.toBeNull();
+    expect(fixture.nativeElement.querySelector('[data-testid="achieve-button"]')).not.toBeNull();
     expect(fixture.nativeElement.querySelector('[data-testid="create-sub-button"]')).not.toBeNull();
   });
 
-  it('hides Edit and Create sub Module actions when isOwner is false', () => {
+  it('hides Edit, Achieve, and Create sub Module actions when isOwner is false', () => {
     setup({ detail: { ...detail, isOwner: false } });
     expect(fixture.nativeElement.querySelector('[data-testid="edit-button"]')).toBeNull();
+    expect(fixture.nativeElement.querySelector('[data-testid="achieve-button"]')).toBeNull();
     expect(fixture.nativeElement.querySelector('[data-testid="create-sub-button"]')).toBeNull();
   });
 
-  it('emits editRequested and createSubRequested on their respective clicks', () => {
+  it('emits editRequested, achieveToggleRequested, and createSubRequested on their respective clicks', () => {
     setup({ detail });
     let edited = false;
+    let achieveToggled = false;
     let createdSub = false;
     fixture.componentInstance.editRequested.subscribe(() => (edited = true));
+    fixture.componentInstance.achieveToggleRequested.subscribe(() => (achieveToggled = true));
     fixture.componentInstance.createSubRequested.subscribe(() => (createdSub = true));
 
     (fixture.nativeElement.querySelector('[data-testid="edit-button"] button') as HTMLElement).click();
+    (fixture.nativeElement.querySelector('[data-testid="achieve-button"] button') as HTMLElement).click();
     (fixture.nativeElement.querySelector('[data-testid="create-sub-button"] button') as HTMLElement).click();
 
     expect(edited).toBe(true);
+    expect(achieveToggled).toBe(true);
     expect(createdSub).toBe(true);
+  });
+
+  it('labels the achieve button "Achieve Module" when not achieved, "Unachieve Module" when achieved', () => {
+    setup({ detail: { ...detail, isAchieved: false } });
+    expect(fixture.nativeElement.querySelector('[data-testid="achieve-button"]').textContent).toContain('Achieve Module');
+
+    setup({ detail: { ...detail, isAchieved: true } });
+    expect(fixture.nativeElement.querySelector('[data-testid="achieve-button"]').textContent).toContain('Unachieve Module');
+  });
+
+  it('renders a progress chart reflecting the progress value', () => {
+    setup({ detail: { ...detail, progress: 40 } });
+    const chart = fixture.nativeElement.querySelector('[data-testid="progress-chart"]');
+    expect(chart).not.toBeNull();
+    expect(chart.textContent).toContain('40%');
   });
 });

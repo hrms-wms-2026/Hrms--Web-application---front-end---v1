@@ -15,7 +15,7 @@ import { AvatarComponent } from '../../../../shared/ui/avatar/avatar.component';
         data-testid="tree-row"
         (click)="selected.emit(node())"
       >
-        <span class="flex items-center gap-1.5 min-w-0">
+        <span class="flex items-center gap-1.5 min-w-0" [style.paddingLeft.px]="depth() * 20">
           @if (node().children.length > 0) {
             <button
               type="button"
@@ -32,6 +32,9 @@ import { AvatarComponent } from '../../../../shared/ui/avatar/avatar.component';
           } @else {
             <span class="h-4 w-4 shrink-0"></span>
           }
+          <svg data-testid="folder-icon" class="h-4 w-4 shrink-0 text-[var(--color-accent)]" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <path d="M3 6a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V6Z" />
+          </svg>
           <span class="truncate text-sm text-[var(--color-text-primary)]">{{ node().title }}</span>
           @if (node().isAchieved) {
             <span class="shrink-0 rounded-full bg-[var(--color-surface-secondary)] px-2 py-0.5 text-xs font-medium text-[var(--color-text-secondary)]">Achieved</span>
@@ -45,7 +48,7 @@ import { AvatarComponent } from '../../../../shared/ui/avatar/avatar.component';
           {{ node().progress }}%
         </span>
 
-        <span data-testid="owner-cell">
+        <span data-testid="owner-cell" style="--color-profile-bg: var(--color-accent); --color-text-primary: white;">
           <app-avatar [userName]="node().ownerName" size="sm" />
         </span>
 
@@ -68,12 +71,13 @@ import { AvatarComponent } from '../../../../shared/ui/avatar/avatar.component';
       </div>
 
       @if (node().children.length > 0 && expanded()) {
-        <div class="ml-4 flex flex-col gap-0.5 border-l border-[var(--color-border)] pl-3">
+        <div class="flex flex-col gap-0.5">
           @for (child of node().children; track child.id) {
             <app-milestone-tree-node
               [node]="child"
               [selectedId]="selectedId()"
               [expandedByDefault]="false"
+              [depth]="depth() + 1"
               (selected)="selected.emit($event)"
               (createRequested)="createRequested.emit($event)"
             />
@@ -87,6 +91,7 @@ export class MilestoneTreeNodeComponent implements OnInit {
   node = input.required<MilestoneTreeNode>();
   selectedId = input<string | null>(null);
   expandedByDefault = input(true);
+  depth = input(0);
   selected = output<MilestoneTreeNode>();
   createRequested = output<MilestoneTreeNode>();
 

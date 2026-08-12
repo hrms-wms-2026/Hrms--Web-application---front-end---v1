@@ -27,6 +27,11 @@ describe('MilestoneSubMenuComponent', () => {
     expect(labels).toEqual(['Tree', 'Board', 'Backlog', 'My Task', 'List']);
   });
 
+  it('renders an icon inside every tab link', () => {
+    const icons = fixture.nativeElement.querySelectorAll('[data-testid="sub-menu-tab"] svg');
+    expect(icons.length).toBe(5);
+  });
+
   it('builds the correct link target for each tab', () => {
     const hrefs = Array.from(fixture.nativeElement.querySelectorAll('[data-testid="sub-menu-tab"]'))
       .map((el: any) => el.getAttribute('href'));

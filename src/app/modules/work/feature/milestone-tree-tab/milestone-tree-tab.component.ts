@@ -75,6 +75,17 @@ export class MilestoneTreeTabComponent {
     }
   }
 
+  async onAchieveToggleRequested(): Promise<void> {
+    const node = this.selectedNode();
+    if (!node) return;
+    const result = node.isAchieved
+      ? await this.store.unachieveMilestone(node.id)
+      : await this.store.achieveMilestone(node.id);
+    if (result.success) {
+      await this.store.loadMilestoneSubtree(this.currentMilestoneId);
+    }
+  }
+
   async onEditRequested(): Promise<void> {
     const node = this.selectedNode();
     if (!node) return;
