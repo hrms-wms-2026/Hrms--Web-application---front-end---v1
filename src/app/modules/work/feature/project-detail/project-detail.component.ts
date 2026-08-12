@@ -1,112 +1,110 @@
 import { Component, OnInit, computed, inject, signal } from '@angular/core';
-import { ActivatedRoute } from '@angular/router';
+import { ActivatedRoute, NavigationEnd, Router, RouterOutlet } from '@angular/router';
+import { filter } from 'rxjs/operators';
 import { firstValueFrom } from 'rxjs';
+import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { ProjectDetailStore } from '../../state/project-detail.store';
-import { MilestoneTreeNodeComponent } from '../../ui/milestone-tree-node/milestone-tree-node.component';
-import { MilestoneDetailPanelComponent } from '../../ui/milestone-detail-panel/milestone-detail-panel.component';
+import { MilestoneCardComponent } from '../../ui/milestone-card/milestone-card.component';
 import { MilestoneSettingsModalComponent } from '../../ui/milestone-settings-modal/milestone-settings-modal.component';
-import { CreateSubModuleModalComponent } from '../../ui/create-sub-module-modal/create-sub-module-modal.component';
+import { MilestoneSubMenuComponent } from '../../ui/milestone-sub-menu/milestone-sub-menu.component';
+import { PageHeaderComponent } from '../../../../shared/ui/page-header/page-header.component';
 import { LoaderComponent } from '../../../../shared/ui/loader/loader.component';
 import { ErrorStateComponent } from '../../../../shared/ui/error-state/error-state.component';
-import { MilestoneTreeNode, ObjectiveDetail } from '../../models/milestone.model';
-import { EditObjectiveRequestDto, CreateObjectiveRequestDto } from '../../models/dto/milestone.dto';
-import { findTreeNode } from '../../utils/project.mapper';
+import { EmptyStateComponent } from '../../../../shared/ui/empty-state/empty-state.component';
+import { CardComponent } from '../../../../shared/ui/card/card.component';
+import { Milestone, ObjectiveDetail } from '../../models/milestone.model';
+import { EditObjectiveRequestDto } from '../../models/dto/milestone.dto';
 
 @Component({
   selector: 'app-project-detail',
   standalone: true,
   imports: [
-    MilestoneTreeNodeComponent, MilestoneDetailPanelComponent, MilestoneSettingsModalComponent,
-    CreateSubModuleModalComponent, LoaderComponent, ErrorStateComponent
+    MilestoneCardComponent, MilestoneSettingsModalComponent, MilestoneSubMenuComponent, CardComponent,
+    PageHeaderComponent, LoaderComponent, ErrorStateComponent, EmptyStateComponent, RouterOutlet
   ],
   templateUrl: './project-detail.component.html'
 })
 export class ProjectDetailComponent implements OnInit {
   readonly store = inject(ProjectDetailStore);
   private readonly route = inject(ActivatedRoute);
+  private readonly router = inject(Router);
   private projectId = '';
 
-  selectedNodeId = signal<string | null>(null);
-  selectedNode = computed<MilestoneTreeNode | null>(() => {
-    const tree = this.store.selectedSubtree();
-    const id = this.selectedNodeId();
-    if (!tree || !id) return null;
-    return findTreeNode(tree, id);
+  activeMilestoneId = signal<string | null>(null);
+  activeMilestoneTitle = computed(() => {
+    const id = this.activeMilestoneId();
+    return this.store.milestones().find((m) => m.objectiveId === id)?.title ?? '';
   });
 
   milestoneSettingsOpen = signal(false);
   milestoneSettingsInitialValue = signal<ObjectiveDetail | null>(null);
   milestoneSettingsSubmitting = signal(false);
+  private targetMilestone = signal<Milestone | null>(null);
 
-  createModalOpen = signal(false);
-  createModalParentId = signal('');
-  createModalSubmitting = signal(false);
+  constructor() {
+    this.activeMilestoneId.set(this.route.snapshot.firstChild?.paramMap.get('milestoneId') ?? null);
+    this.router.events
+      .pipe(
+        filter((event) => event instanceof NavigationEnd),
+        takeUntilDestroyed()
+      )
+      .subscribe(() => {
+        this.activeMilestoneId.set(this.route.snapshot.firstChild?.paramMap.get('milestoneId') ?? null);
+      });
+  }
 
   async ngOnInit(): Promise<void> {
     const paramMap = await firstValueFrom(this.route.paramMap);
     this.projectId = paramMap.get('id')!;
     this.store.loadProject(this.projectId);
-    await this.store.loadProjectTree(this.projectId);
-  }
+    await this.store.loadMyMilestones(this.projectId);
 
-  retryProject(): void {
-    this.store.loadProject(this.projectId);
-  }
-
-  retryTree(): void {
-    this.store.loadProjectTree(this.projectId);
-  }
-
-  onNodeSelected(node: MilestoneTreeNode): void {
-    this.selectedNodeId.set(node.id);
-  }
-
-  onCreateSubRequested(node: MilestoneTreeNode): void {
-    this.createModalParentId.set(node.id);
-    this.createModalOpen.set(true);
-  }
-
-  async onCreateModalCreated(payload: CreateObjectiveRequestDto): Promise<void> {
-    this.createModalSubmitting.set(true);
-    const result = await this.store.createSubModule(payload);
-    this.createModalSubmitting.set(false);
-    if (result.success) {
-      this.createModalOpen.set(false);
-      await this.store.loadProjectTree(this.projectId);
+    if (!this.route.snapshot.firstChild) {
+      const milestones = this.store.milestones();
+      if (milestones.length > 0) {
+        this.router.navigate(['milestones', milestones[0].objectiveId, 'tree'], { relativeTo: this.route, replaceUrl: true });
+      }
     }
   }
 
-  async onEditRequested(): Promise<void> {
-    const node = this.selectedNode();
-    if (!node) return;
+  onMilestoneSelected(milestone: Milestone): void {
+    this.router.navigate(['milestones', milestone.objectiveId, 'tree'], { relativeTo: this.route });
+  }
+
+  onMilestoneSettingsRequested(milestone: Milestone): void {
+    this.targetMilestone.set(milestone);
     this.milestoneSettingsOpen.set(true);
-    const detail = await this.store.getMilestoneDetail(node.id);
-    if (detail && this.selectedNode()?.id === node.id) {
+    this.loadFullMilestoneDetail(milestone.objectiveId);
+  }
+
+  private async loadFullMilestoneDetail(id: string): Promise<void> {
+    const detail = await this.store.getMilestoneDetail(id);
+    if (detail && this.targetMilestone()?.objectiveId === id) {
       this.milestoneSettingsInitialValue.set(detail);
     }
   }
 
   async onMilestoneSettingsSaved(event: { fields: EditObjectiveRequestDto; achievedChanged: boolean; achieved: boolean }): Promise<void> {
-    const node = this.selectedNode();
-    if (!node) return;
+    const milestone = this.targetMilestone();
+    if (!milestone) return;
     this.milestoneSettingsSubmitting.set(true);
 
     if (event.achievedChanged && !event.achieved) {
-      const unachieveResult = await this.store.unachieveMilestone(node.id);
+      const unachieveResult = await this.store.unachieveMilestone(milestone.objectiveId);
       if (!unachieveResult.success) {
         this.milestoneSettingsSubmitting.set(false);
         return;
       }
     }
 
-    const editResult = await this.store.editMilestone(node.id, event.fields);
+    const editResult = await this.store.editMilestone(milestone.objectiveId, event.fields);
     if (!editResult.success) {
       this.milestoneSettingsSubmitting.set(false);
       return;
     }
 
     if (event.achievedChanged && event.achieved) {
-      const achieveResult = await this.store.achieveMilestone(node.id);
+      const achieveResult = await this.store.achieveMilestone(milestone.objectiveId);
       if (!achieveResult.success) {
         this.milestoneSettingsSubmitting.set(false);
         return;
@@ -115,6 +113,14 @@ export class ProjectDetailComponent implements OnInit {
 
     this.milestoneSettingsSubmitting.set(false);
     this.milestoneSettingsOpen.set(false);
-    await this.store.loadProjectTree(this.projectId);
+    await this.store.loadMyMilestones(this.projectId);
+  }
+
+  retryProject(): void {
+    this.store.loadProject(this.projectId);
+  }
+
+  retryMilestones(): void {
+    this.store.loadMyMilestones(this.projectId);
   }
 }

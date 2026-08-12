@@ -55,19 +55,13 @@ export const ProjectDetailStore = signalStore(
       }
     },
 
-    async loadProjectTree(projectId: string): Promise<void> {
+    async loadMilestoneSubtree(objectiveId: string): Promise<void> {
       patchState(store, { subtreeLoading: true, subtreeError: null });
       try {
-        const flat = await firstValueFrom(api.getObjectiveTreeFlat(projectId));
-        const root = flat.find((o) => o.isDefault);
-        if (!root) {
-          patchState(store, { subtreeError: 'This project has no root module.', subtreeLoading: false });
-          return;
-        }
-        const response = await firstValueFrom(api.getMilestoneSubtree(root.id));
+        const response = await firstValueFrom(api.getMilestoneSubtree(objectiveId));
         patchState(store, { selectedSubtree: toMilestoneTreeNode(response.objective), subtreeLoading: false });
       } catch (err) {
-        patchState(store, { subtreeError: extractError(err, 'Failed to load project tree.'), subtreeLoading: false });
+        patchState(store, { subtreeError: extractError(err, 'Failed to load milestone.'), subtreeLoading: false });
       }
     },
 

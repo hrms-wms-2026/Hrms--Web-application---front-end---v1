@@ -55,20 +55,6 @@ export interface ObjectiveSubtreeResponseDto {
   objective: ObjectiveSubtreeNodeDto;
 }
 
-export interface ObjectiveTreeItemDto {
-  id: string;
-  parentObjectiveId: string | null;
-  isDefault: boolean;
-  title: string;
-  ownerId: string;
-  startDate: string;
-  endDate: string;
-  allocatedHours: number;
-  completedHours: number;
-  isActive: boolean;
-  isAchieved: boolean;
-}
-
 export interface CreateObjectiveRequestDto {
   parentObjectiveId: string;
   title: string;

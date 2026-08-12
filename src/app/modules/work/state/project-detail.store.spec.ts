@@ -4,7 +4,7 @@ import { of, throwError } from 'rxjs';
 import { ProjectDetailStore } from './project-detail.store';
 import { ProjectApiService } from '../data-access/project-api.service';
 import { ProjectDetailDto } from '../models/dto/project.dto';
-import { MyProjectMilestoneDto, ObjectiveDetailDto, ObjectiveSubtreeResponseDto, ObjectiveTreeItemDto, CreateObjectiveRequestDto } from '../models/dto/milestone.dto';
+import { MyProjectMilestoneDto, ObjectiveDetailDto, ObjectiveSubtreeResponseDto, CreateObjectiveRequestDto } from '../models/dto/milestone.dto';
 
 describe('ProjectDetailStore', () => {
   function setup(apiOverrides: Partial<ProjectApiService> = {}) {
@@ -71,7 +71,20 @@ describe('ProjectDetailStore', () => {
       }
     };
     const store = setup({ getMilestoneSubtree: () => of(response) } as Partial<ProjectApiService>);
-    await store.loadProjectTree('p1');
+    await store.loadMilestoneSubtree('o1');
+    expect(store.selectedSubtree()?.title).toBe('Root');
+    store.clearSelectedSubtree();
+    expect(store.selectedSubtree()).toBeNull();
+  });
+
+  it('sets subtreeError when loadMilestoneSubtree fails', async () => {
+    const store = setup({
+      getMilestoneSubtree: () => throwError(() => ({ error: { detail: 'Server error' } }))
+    } as Partial<ProjectApiService>);
+
+    await store.loadMilestoneSubtree('o1');
+
+    expect(store.subtreeError()).toBe('Server error');
   });
 
   it('getMilestoneDetail returns the mapped detail on success', async () => {
@@ -145,50 +158,6 @@ describe('ProjectDetailStore', () => {
 
     expect(result).toEqual({ success: false, pending: false });
     expect(store.milestoneActionError()).toBe('not achieved');
-  });
-
-  it('loadProjectTree finds the default objective from the flat list, then loads its subtree', async () => {
-    const flat: ObjectiveTreeItemDto[] = [
-      { id: 'o1', parentObjectiveId: null, isDefault: true, title: 'Root', ownerId: 'u1', startDate: '2026-01-01', endDate: '2026-12-01', allocatedHours: 40, completedHours: 0, isActive: true, isAchieved: false }
-    ];
-    const subtreeResponse: ObjectiveSubtreeResponseDto = {
-      parentObjective: null,
-      objective: {
-        id: 'o1', projectId: 'p1', parentObjectiveId: null, isDefault: true, title: 'Root',
-        description: null, ownerId: 'u1', ownerName: 'Arun', reportingManagerId: null, reportingManagerName: null,
-        createdById: 'u1', startDate: '2026-01-01', endDate: '2026-12-01', progress: 0, actualHours: null,
-        allocatedHours: 40, completedHours: 0, isActive: true, isOwner: true, isAchieved: false, achievedAt: null,
-        createdAt: '2026-01-01T00:00:00Z', updatedAt: null, children: []
-      }
-    };
-    const store = setup({
-      getObjectiveTreeFlat: () => of(flat),
-      getMilestoneSubtree: (id: string) => { expect(id).toBe('o1'); return of(subtreeResponse); }
-    } as Partial<ProjectApiService>);
-
-    await store.loadProjectTree('p1');
-
-    expect(store.selectedSubtree()?.title).toBe('Root');
-    expect(store.subtreeLoading()).toBe(false);
-  });
-
-  it('loadProjectTree sets subtreeError when the project has no default objective', async () => {
-    const store = setup({ getObjectiveTreeFlat: () => of([]) } as Partial<ProjectApiService>);
-
-    await store.loadProjectTree('p1');
-
-    expect(store.subtreeError()).toBe('This project has no root module.');
-    expect(store.subtreeLoading()).toBe(false);
-  });
-
-  it('loadProjectTree sets subtreeError on a network failure', async () => {
-    const store = setup({
-      getObjectiveTreeFlat: () => throwError(() => ({ error: { detail: 'Server error' } }))
-    } as Partial<ProjectApiService>);
-
-    await store.loadProjectTree('p1');
-
-    expect(store.subtreeError()).toBe('Server error');
   });
 
   it('createSubModule returns success:true and clears milestoneActionError on success', async () => {

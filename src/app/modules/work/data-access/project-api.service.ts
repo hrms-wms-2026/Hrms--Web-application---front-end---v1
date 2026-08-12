@@ -6,7 +6,7 @@ import {
   CreateProjectRequestDto, CreateProjectResponseDto, EditProjectRequestDto,
   PagedResultDto, ProjectDetailDto, ProjectListItemDto
 } from '../models/dto/project.dto';
-import { MyProjectMilestoneDto, ObjectiveDetailDto, ObjectiveSubtreeResponseDto, EditObjectiveRequestDto, ObjectiveTreeItemDto, CreateObjectiveRequestDto } from '../models/dto/milestone.dto';
+import { MyProjectMilestoneDto, ObjectiveDetailDto, ObjectiveSubtreeResponseDto, EditObjectiveRequestDto, CreateObjectiveRequestDto } from '../models/dto/milestone.dto';
 
 @Injectable({ providedIn: 'root' })
 export class ProjectApiService {
@@ -78,10 +78,6 @@ export class ProjectApiService {
 
   getMilestoneSubtree(objectiveId: string): Observable<ObjectiveSubtreeResponseDto> {
     return this.http.get<ObjectiveSubtreeResponseDto>(`${environment.apiUrl}/work/objectives/${objectiveId}/tree`);
-  }
-
-  getObjectiveTreeFlat(projectId: string): Observable<ObjectiveTreeItemDto[]> {
-    return this.http.get<ObjectiveTreeItemDto[]>(`${environment.apiUrl}/work/projects/${projectId}/objectives`);
   }
 
   createObjective(payload: CreateObjectiveRequestDto): Observable<ObjectiveDetailDto> {
