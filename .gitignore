@@ -54,3 +54,6 @@ Thumbs.db
 
 # Superpowers brainstorming visual-companion mockups (session-local, not project artifacts)
 .superpowers/
+
+# Local git worktrees for isolated plan execution
+.worktrees/
