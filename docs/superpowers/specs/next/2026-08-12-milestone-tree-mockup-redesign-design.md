@@ -1,6 +1,6 @@
 # Project Detail — Unified Tree-Table Redesign (Manager Mockup) — Design
 
-**Status:** Approved 2026-08-12 (brainstormed same day against a manager-supplied mockup screenshot; scope narrowed via direct Q&A — "visual restyle only, real data", unified tree replaces cards+per-module-tab). No plan written yet.
+**Status:** Approved 2026-08-12 (brainstormed same day against a manager-supplied mockup screenshot; scope narrowed via direct Q&A — "visual restyle only, real data", unified tree replaces cards+per-module-tab). Implemented 2026-08-12, then **partially reverted the same day**: scope decision #2 below ("unified tree, not cards + per-module tab") was wrong — a project can have multiple independent top-level modules (a `project_members`-visible forest, not a single-rooted tree), so collapsing everything into one project-root tree via the flat `isDefault` lookup silently hid every module except the default one. Corrected same day: the card grid and Tree/Board/Backlog/My Task/List sub-menu are restored exactly as `2026-08-11-project-detail-milestone-tree-explorer-design.md` had them; only the *contents* of the per-module Tree tab keep this design's table-row styling, owner avatar, due-date column, and Create sub Module flow. Scope decision #2 and the "Unified tree" framing throughout this document are superseded by that correction — read the rest of this doc as describing the Tree tab's internals only, not the page-level navigation.
 
 ## Problem
 
