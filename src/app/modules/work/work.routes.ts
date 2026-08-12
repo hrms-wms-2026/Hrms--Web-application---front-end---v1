@@ -9,43 +9,6 @@ export const WORK_ROUTES: Routes = [
   {
     path: ':id',
     loadComponent: () =>
-      import('./feature/project-detail/project-detail.component').then((m) => m.ProjectDetailComponent),
-    children: [
-      {
-        path: 'milestones/:milestoneId',
-        children: [
-          { path: '', redirectTo: 'tree', pathMatch: 'full' },
-          {
-            path: 'tree',
-            loadComponent: () =>
-              import('./feature/milestone-tree-tab/milestone-tree-tab.component').then((m) => m.MilestoneTreeTabComponent)
-          },
-          {
-            path: 'board',
-            loadComponent: () =>
-              import('./feature/milestone-coming-soon-tab/milestone-coming-soon-tab.component').then((m) => m.MilestoneComingSoonTabComponent),
-            data: { title: 'Board' }
-          },
-          {
-            path: 'backlog',
-            loadComponent: () =>
-              import('./feature/milestone-coming-soon-tab/milestone-coming-soon-tab.component').then((m) => m.MilestoneComingSoonTabComponent),
-            data: { title: 'Backlog' }
-          },
-          {
-            path: 'my-task',
-            loadComponent: () =>
-              import('./feature/milestone-coming-soon-tab/milestone-coming-soon-tab.component').then((m) => m.MilestoneComingSoonTabComponent),
-            data: { title: 'My Task' }
-          },
-          {
-            path: 'list',
-            loadComponent: () =>
-              import('./feature/milestone-coming-soon-tab/milestone-coming-soon-tab.component').then((m) => m.MilestoneComingSoonTabComponent),
-            data: { title: 'List' }
-          }
-        ]
-      }
-    ]
+      import('./feature/project-detail/project-detail.component').then((m) => m.ProjectDetailComponent)
   }
 ];

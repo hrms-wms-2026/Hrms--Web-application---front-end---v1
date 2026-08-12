@@ -26,6 +26,7 @@ describe('CreateSubModuleModalComponent', () => {
     fixture.componentInstance.created.subscribe(() => (emitted = true));
 
     (fixture.nativeElement.querySelector('[data-testid="submit-button"] button') as HTMLButtonElement).click();
+    fixture.detectChanges();
 
     expect(emitted).toBe(false);
     expect(fixture.nativeElement.textContent).toContain('Title is required.');
@@ -38,6 +39,7 @@ describe('CreateSubModuleModalComponent', () => {
     setFieldValue('end-date-field', '2026-01-01');
 
     (fixture.nativeElement.querySelector('[data-testid="submit-button"] button') as HTMLButtonElement).click();
+    fixture.detectChanges();
 
     expect(fixture.nativeElement.textContent).toContain('End date cannot be before the start date.');
   });

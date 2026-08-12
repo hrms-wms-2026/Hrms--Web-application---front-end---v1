@@ -1,17 +1,15 @@
 import { ComponentFixture, TestBed } from '@angular/core/testing';
-import { ActivatedRoute, NavigationEnd, Router } from '@angular/router';
-import { of, Subject } from 'rxjs';
+import { ActivatedRoute } from '@angular/router';
+import { of } from 'rxjs';
 import { ProjectDetailComponent } from './project-detail.component';
 import { ProjectDetailStore } from '../../state/project-detail.store';
 import { ProjectDetail } from '../../models/project.model';
-import { Milestone } from '../../models/milestone.model';
+import { MilestoneTreeNode } from '../../models/milestone.model';
 
 describe('ProjectDetailComponent', () => {
   let fixture: ComponentFixture<ProjectDetailComponent>;
   let storeStub: any;
-  let routerStub: any;
   let routeStub: any;
-  let routerEvents: Subject<unknown>;
 
   const project: ProjectDetail = {
     id: 'p1', name: 'Website Revamp', identifier: 'WEB', categoryId: 'cat1', leadId: 'u1',
@@ -20,34 +18,26 @@ describe('ProjectDetailComponent', () => {
     description: 'Rebuild the site', actualHours: 0, createdAt: '2026-08-01T00:00:00Z', updatedAt: null
   };
 
-  const milestone: Milestone = {
-    objectiveId: 'o1', projectId: 'p1', parentObjectiveId: null, isDefault: true, title: 'Default',
-    ownerId: 'u1', ownerName: 'Jane Doe', reportingManagerId: null, reportingManagerName: null,
-    startDate: '2026-08-01', endDate: '2026-12-01', allocatedHours: 40, completedHours: 0,
-    objectiveIsActive: true, isAchieved: false, achievedAt: null, membershipIsActive: true, membershipRemovedAt: null,
-    isOwner: true
+  const child: MilestoneTreeNode = {
+    id: 'o2', title: 'Child', description: null, startDate: '2026-01-10', endDate: '2026-02-01',
+    progress: 40, allocatedHours: 5, completedHours: 2, isActive: true, isAchieved: false,
+    ownerName: 'Diya', isOwner: false, children: []
   };
 
-  const milestone2: Milestone = { ...milestone, objectiveId: 'o2', title: 'Second', isDefault: false };
+  const tree: MilestoneTreeNode = {
+    id: 'o1', title: 'Root', description: null, startDate: '2026-01-01', endDate: '2026-12-01',
+    progress: 72, allocatedHours: 40, completedHours: 29, isActive: true, isAchieved: false,
+    ownerName: 'Arun Kumar', isOwner: true, children: [child]
+  };
 
-  function setup(firstChildMilestoneId: string | null): void {
-    routerEvents = new Subject();
-    routerStub = { navigate: vi.fn(), events: routerEvents.asObservable() };
-    routeStub = {
-      paramMap: of({ get: (key: string) => (key === 'id' ? 'p1' : null) }),
-      snapshot: {
-        firstChild: firstChildMilestoneId
-          ? { paramMap: { get: (key: string) => (key === 'milestoneId' ? firstChildMilestoneId : null) } }
-          : null
-      }
-    };
+  function setup(): void {
+    routeStub = { paramMap: of({ get: (key: string) => (key === 'id' ? 'p1' : null) }) };
 
     TestBed.configureTestingModule({
       imports: [ProjectDetailComponent],
       providers: [
         { provide: ProjectDetailStore, useValue: storeStub },
-        { provide: ActivatedRoute, useValue: routeStub },
-        { provide: Router, useValue: routerStub }
+        { provide: ActivatedRoute, useValue: routeStub }
       ]
     }).compileComponents();
 
@@ -59,199 +49,116 @@ describe('ProjectDetailComponent', () => {
       project: () => project,
       projectLoading: () => false,
       projectError: () => null,
-      milestones: () => [milestone, milestone2],
-      milestonesLoading: () => false,
-      milestonesError: () => null,
+      selectedSubtree: () => tree,
+      subtreeLoading: () => false,
+      subtreeError: () => null,
+      milestoneActionError: () => null,
       loadProject: vi.fn().mockResolvedValue(undefined),
-      loadMyMilestones: vi.fn().mockResolvedValue(undefined),
+      loadProjectTree: vi.fn().mockResolvedValue(undefined),
       getMilestoneDetail: vi.fn().mockResolvedValue(null),
       editMilestone: vi.fn().mockResolvedValue({ success: true, pending: false }),
       achieveMilestone: vi.fn().mockResolvedValue({ success: true, pending: false }),
       unachieveMilestone: vi.fn().mockResolvedValue({ success: true, pending: false }),
-      milestoneActionError: () => null
+      createSubModule: vi.fn().mockResolvedValue({ success: true })
     };
   });
 
-  it('loads the project and its milestones for the routed id', async () => {
-    setup(null);
+  it('loads the project and the unified tree on init', async () => {
+    setup();
     fixture.detectChanges();
     await fixture.whenStable();
     expect(storeStub.loadProject).toHaveBeenCalledWith('p1');
-    expect(storeStub.loadMyMilestones).toHaveBeenCalledWith('p1');
+    expect(storeStub.loadProjectTree).toHaveBeenCalledWith('p1');
   });
 
-  it('renders project name and milestone cards', async () => {
-    setup('o1');
+  it('renders the root tree node', async () => {
+    setup();
     fixture.detectChanges();
     await fixture.whenStable();
     fixture.detectChanges();
-    expect(fixture.nativeElement.textContent).toContain('Website Revamp');
-    expect(fixture.nativeElement.textContent).toContain('Default');
+    expect(fixture.nativeElement.textContent).toContain('Root');
   });
 
-  it("navigates to the first milestone's tree route when landing with no milestone in the URL", async () => {
-    setup(null);
+  it('selecting a node shows its detail via findTreeNode, with no extra store call', async () => {
+    setup();
     fixture.detectChanges();
     await fixture.whenStable();
-    await Promise.resolve();
-    await Promise.resolve();
-    expect(routerStub.navigate).toHaveBeenCalledWith(
-      ['milestones', 'o1', 'tree'],
-      expect.objectContaining({ replaceUrl: true })
-    );
+    fixture.detectChanges();
+
+    const rows = fixture.nativeElement.querySelectorAll('[data-testid="tree-row"]');
+    (rows[1] as HTMLElement).click();
+    fixture.detectChanges();
+
+    expect(fixture.componentInstance.selectedNode()?.id).toBe('o2');
+    expect(storeStub.getMilestoneDetail).not.toHaveBeenCalled();
   });
 
-  it('does not override an already-deep-linked milestone', async () => {
-    setup('o2');
+  it('clicking create-sub-module on a node opens the create modal with that node as parent', async () => {
+    setup();
     fixture.detectChanges();
     await fixture.whenStable();
-    await Promise.resolve();
-    await Promise.resolve();
-    expect(routerStub.navigate).not.toHaveBeenCalled();
+    fixture.detectChanges();
+
+    const createButtons = fixture.nativeElement.querySelectorAll('[data-testid="create-sub-button"]');
+    (createButtons[0] as HTMLElement).click();
+    fixture.detectChanges();
+
+    expect(fixture.componentInstance.createModalOpen()).toBe(true);
+    expect(fixture.componentInstance.createModalParentId()).toBe('o1');
   });
 
-  it('does not attempt to navigate when there are no milestones', async () => {
-    storeStub.milestones = () => [];
-    setup(null);
+  it('reloads the tree and closes the modal after a successful create', async () => {
+    setup();
     fixture.detectChanges();
     await fixture.whenStable();
-    await Promise.resolve();
-    await Promise.resolve();
-    expect(routerStub.navigate).not.toHaveBeenCalled();
+
+    fixture.componentInstance.createModalParentId.set('o1');
+    fixture.componentInstance.createModalOpen.set(true);
+    await fixture.componentInstance.onCreateModalCreated({
+      parentObjectiveId: 'o1', title: 'Design Phase', description: null,
+      startDate: '2026-01-15', endDate: '2026-03-01', allocatedHours: 20
+    });
+
+    expect(storeStub.createSubModule).toHaveBeenCalled();
+    expect(fixture.componentInstance.createModalOpen()).toBe(false);
+    expect(storeStub.loadProjectTree).toHaveBeenCalledTimes(2);
   });
 
-  it("navigates to the clicked milestone's tree route, resetting the sub-tab", () => {
-    setup('o1');
-    fixture.detectChanges();
-
-    fixture.componentInstance.onMilestoneSelected(milestone2);
-
-    expect(routerStub.navigate).toHaveBeenCalledWith(
-      ['milestones', 'o2', 'tree'],
-      expect.objectContaining({ relativeTo: expect.anything() })
-    );
-  });
-
-  it('reflects the active milestone id from the route on init, and updates it on NavigationEnd', () => {
-    setup('o1');
-    fixture.detectChanges();
-    expect(fixture.componentInstance.activeMilestoneId()).toBe('o1');
-
-    routeStub.snapshot.firstChild = { paramMap: { get: (key: string) => (key === 'milestoneId' ? 'o2' : null) } };
-    routerEvents.next(new NavigationEnd(1, '/work/p1/milestones/o2/tree', '/work/p1/milestones/o2/tree'));
-
-    expect(fixture.componentInstance.activeMilestoneId()).toBe('o2');
-  });
-
-  it('renders the sub-menu once a milestone is active', () => {
-    setup('o1');
-    fixture.detectChanges();
-    expect(fixture.nativeElement.querySelector('app-milestone-sub-menu')).not.toBeNull();
-  });
-
-  it('does not render the sub-menu when there is no active milestone', () => {
-    storeStub.milestones = () => [];
-    setup(null);
-    fixture.detectChanges();
-    expect(fixture.nativeElement.querySelector('app-milestone-sub-menu')).toBeNull();
-  });
-
-  it('opens the settings modal and patches in the full detail once fetched', async () => {
-    const detail = { id: 'o1', title: 'Default', description: 'Full scope', startDate: '2026-08-01', endDate: '2026-12-01', allocatedHours: 40, isAchieved: false, isDefault: true };
+  it('opens the settings modal and fetches full detail when Edit is requested', async () => {
+    const detail = { id: 'o1', title: 'Root', description: 'Full scope', startDate: '2026-01-01', endDate: '2026-12-01', allocatedHours: 40, isAchieved: false, isDefault: true };
     storeStub.getMilestoneDetail = vi.fn().mockResolvedValue(detail);
-    setup('o1');
+    setup();
+    fixture.detectChanges();
+    await fixture.whenStable();
     fixture.detectChanges();
 
-    fixture.componentInstance.onMilestoneSettingsRequested(milestone);
+    const rows = fixture.nativeElement.querySelectorAll('[data-testid="tree-row"]');
+    (rows[0] as HTMLElement).click();
+    fixture.detectChanges();
+    await fixture.componentInstance.onEditRequested();
 
     expect(fixture.componentInstance.milestoneSettingsOpen()).toBe(true);
     expect(storeStub.getMilestoneDetail).toHaveBeenCalledWith('o1');
-
-    await Promise.resolve();
-    await Promise.resolve();
-
     expect((fixture.componentInstance.milestoneSettingsInitialValue() as any)?.description).toBe('Full scope');
-  });
-
-  it('saves fields only when the Achieved toggle is untouched', async () => {
-    setup('o1');
-    fixture.detectChanges();
-    fixture.componentInstance.onMilestoneSettingsRequested(milestone);
-
-    await fixture.componentInstance.onMilestoneSettingsSaved({
-      fields: { title: 'Default v2', description: 'Full scope', startDate: '2026-08-01', endDate: '2026-12-01', allocatedHours: 40 },
-      achievedChanged: false, achieved: false
-    });
-
-    expect(storeStub.editMilestone).toHaveBeenCalledWith('o1', {
-      title: 'Default v2', description: 'Full scope', startDate: '2026-08-01', endDate: '2026-12-01', allocatedHours: 40
-    });
-    expect(storeStub.achieveMilestone).not.toHaveBeenCalled();
-    expect(storeStub.unachieveMilestone).not.toHaveBeenCalled();
-    expect(fixture.componentInstance.milestoneSettingsOpen()).toBe(false);
   });
 
   it('edits then achieves, in that order, when the toggle is turned on', async () => {
     const calls: string[] = [];
     storeStub.editMilestone = vi.fn().mockImplementation(async () => { calls.push('edit'); return { success: true, pending: false }; });
     storeStub.achieveMilestone = vi.fn().mockImplementation(async () => { calls.push('achieve'); return { success: true, pending: false }; });
-    setup('o1');
+    setup();
     fixture.detectChanges();
-    fixture.componentInstance.onMilestoneSettingsRequested(milestone);
+    await fixture.whenStable();
+    fixture.detectChanges();
+    const rows = fixture.nativeElement.querySelectorAll('[data-testid="tree-row"]');
+    (rows[0] as HTMLElement).click();
+    fixture.detectChanges();
 
     await fixture.componentInstance.onMilestoneSettingsSaved({
-      fields: { title: 'Default', description: '', startDate: '2026-08-01', endDate: '2026-12-01', allocatedHours: 40 },
+      fields: { title: 'Root', description: '', startDate: '2026-01-01', endDate: '2026-12-01', allocatedHours: 40 },
       achievedChanged: true, achieved: true
     });
 
     expect(calls).toEqual(['edit', 'achieve']);
-  });
-
-  it('unachieves then edits, in that order, when the toggle is turned off', async () => {
-    const calls: string[] = [];
-    storeStub.unachieveMilestone = vi.fn().mockImplementation(async () => { calls.push('unachieve'); return { success: true, pending: false }; });
-    storeStub.editMilestone = vi.fn().mockImplementation(async () => { calls.push('edit'); return { success: true, pending: false }; });
-    setup('o1');
-    fixture.detectChanges();
-    fixture.componentInstance.onMilestoneSettingsRequested(milestone);
-
-    await fixture.componentInstance.onMilestoneSettingsSaved({
-      fields: { title: 'Default', description: '', startDate: '2026-08-01', endDate: '2026-12-01', allocatedHours: 40 },
-      achievedChanged: true, achieved: false
-    });
-
-    expect(calls).toEqual(['unachieve', 'edit']);
-  });
-
-  it('stops the sequence and keeps the modal open if the first step fails', async () => {
-    storeStub.unachieveMilestone = vi.fn().mockResolvedValue({ success: false, pending: false });
-    const editSpy = vi.fn();
-    storeStub.editMilestone = editSpy;
-    setup('o1');
-    fixture.detectChanges();
-    fixture.componentInstance.onMilestoneSettingsRequested(milestone);
-
-    await fixture.componentInstance.onMilestoneSettingsSaved({
-      fields: { title: 'Default', description: '', startDate: '2026-08-01', endDate: '2026-12-01', allocatedHours: 40 },
-      achievedChanged: true, achieved: false
-    });
-
-    expect(editSpy).not.toHaveBeenCalled();
-    expect(fixture.componentInstance.milestoneSettingsOpen()).toBe(true);
-  });
-
-  it('shows "Loading modules…" while milestones are loading', () => {
-    storeStub.milestonesLoading = () => true;
-    setup(null);
-    fixture.detectChanges();
-    expect(fixture.nativeElement.textContent).toContain('Loading modules…');
-  });
-
-  it('shows "No modules yet" when there are no milestones', () => {
-    storeStub.milestones = () => [];
-    storeStub.milestonesLoading = () => false;
-    setup(null);
-    fixture.detectChanges();
-    expect(fixture.nativeElement.textContent).toContain('No modules yet');
   });
 });

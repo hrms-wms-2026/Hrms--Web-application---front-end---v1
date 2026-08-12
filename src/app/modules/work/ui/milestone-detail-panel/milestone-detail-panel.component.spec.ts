@@ -81,8 +81,8 @@ describe('MilestoneDetailPanelComponent', () => {
     fixture.componentInstance.editRequested.subscribe(() => (edited = true));
     fixture.componentInstance.createSubRequested.subscribe(() => (createdSub = true));
 
-    (fixture.nativeElement.querySelector('[data-testid="edit-button"]') as HTMLElement).click();
-    (fixture.nativeElement.querySelector('[data-testid="create-sub-button"]') as HTMLElement).click();
+    (fixture.nativeElement.querySelector('[data-testid="edit-button"] button') as HTMLElement).click();
+    (fixture.nativeElement.querySelector('[data-testid="create-sub-button"] button') as HTMLElement).click();
 
     expect(edited).toBe(true);
     expect(createdSub).toBe(true);
