@@ -20,7 +20,7 @@ import { Milestone } from '../../models/milestone.model';
           <button
             type="button"
             class="rounded-md p-1.5 text-[var(--color-text-secondary)] hover:bg-[var(--color-surface-secondary)]"
-            aria-label="Milestone settings"
+            aria-label="Module settings"
             (click)="onSettingsClick($event)"
           >⚙</button>
         </span>

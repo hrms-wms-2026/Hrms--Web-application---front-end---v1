@@ -69,4 +69,10 @@ describe('MilestoneCardComponent', () => {
     const section = fixture.nativeElement.querySelector('app-card section');
     expect(section?.className).toContain('h-full');
   });
+
+  it('labels the settings button "Module settings"', () => {
+    setup({ ...baseMilestone, isOwner: true });
+    const button: HTMLButtonElement = fixture.nativeElement.querySelector('[data-testid="settings-button"] button');
+    expect(button.getAttribute('aria-label')).toBe('Module settings');
+  });
 });
