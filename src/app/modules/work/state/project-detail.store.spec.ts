@@ -4,7 +4,7 @@ import { of, throwError } from 'rxjs';
 import { ProjectDetailStore } from './project-detail.store';
 import { ProjectApiService } from '../data-access/project-api.service';
 import { ProjectDetailDto } from '../models/dto/project.dto';
-import { MyProjectMilestoneDto, ObjectiveDetailDto, ObjectiveSubtreeResponseDto } from '../models/dto/milestone.dto';
+import { MyProjectMilestoneDto, ObjectiveDetailDto, ObjectiveSubtreeResponseDto, ObjectiveTreeItemDto, CreateObjectiveRequestDto } from '../models/dto/milestone.dto';
 
 describe('ProjectDetailStore', () => {
   function setup(apiOverrides: Partial<ProjectApiService> = {}) {
@@ -64,26 +64,23 @@ describe('ProjectDetailStore', () => {
       parentObjective: null,
       objective: {
         id: 'o1', projectId: 'p1', parentObjectiveId: null, isDefault: true, title: 'Root',
-        description: null, ownerId: 'u1', reportingManagerId: null, createdById: 'u1',
-        startDate: '2026-08-01', endDate: '2026-12-01', progress: 0, actualHours: null,
-        allocatedHours: 40, completedHours: 0, isActive: true, createdAt: '2026-08-01T00:00:00Z',
-        updatedAt: null, children: []
+        description: null, ownerId: 'u1', ownerName: 'Arun', reportingManagerId: null, reportingManagerName: null,
+        createdById: 'u1', startDate: '2026-08-01', endDate: '2026-12-01', progress: 0, actualHours: null,
+        allocatedHours: 40, completedHours: 0, isActive: true, isOwner: true, isAchieved: false, achievedAt: null,
+        createdAt: '2026-08-01T00:00:00Z', updatedAt: null, children: []
       }
     };
     const store = setup({ getMilestoneSubtree: () => of(response) } as Partial<ProjectApiService>);
-    await store.loadMilestoneSubtree('o1');
-    expect(store.selectedSubtree()?.title).toBe('Root');
-    store.clearSelectedSubtree();
-    expect(store.selectedSubtree()).toBeNull();
+    await store.loadProjectTree('p1');
   });
 
   it('getMilestoneDetail returns the mapped detail on success', async () => {
     const dto: ObjectiveDetailDto = {
       id: 'o1', projectId: 'p1', parentObjectiveId: null, isDefault: false, title: 'Design Phase',
-      description: 'Scope the design work', ownerId: 'u1', reportingManagerId: null, createdById: 'u1',
-      startDate: '2026-01-01', endDate: '2026-03-01', progress: 0, actualHours: null,
-      allocatedHours: 20, completedHours: 0, isActive: true, createdAt: '2026-01-01T00:00:00Z', updatedAt: null,
-      isAchieved: false
+      description: 'Scope the design work', ownerId: 'u1', ownerName: 'Arun', reportingManagerId: null, reportingManagerName: null,
+      createdById: 'u1', startDate: '2026-01-01', endDate: '2026-03-01', progress: 0, actualHours: null,
+      allocatedHours: 20, completedHours: 0, isActive: true, isOwner: true, createdAt: '2026-01-01T00:00:00Z', updatedAt: null,
+      isAchieved: false, achievedAt: null
     };
     const store = setup({ getObjectiveById: () => of(dto) } as Partial<ProjectApiService>);
 
@@ -150,50 +147,75 @@ describe('ProjectDetailStore', () => {
     expect(store.milestoneActionError()).toBe('not achieved');
   });
 
-  it('loadNodeDetail loads the mapped detail on success', async () => {
-    const dto: ObjectiveDetailDto = {
-      id: 'o2', projectId: 'p1', parentObjectiveId: 'o1', isDefault: false, title: 'Child',
-      description: 'Child scope', ownerId: 'u1', reportingManagerId: null, createdById: 'u1',
-      startDate: '2026-01-01', endDate: '2026-02-01', progress: 10, actualHours: null,
-      allocatedHours: 10, completedHours: 1, isActive: true, createdAt: '2026-01-01T00:00:00Z', updatedAt: null,
-      isAchieved: false
+  it('loadProjectTree finds the default objective from the flat list, then loads its subtree', async () => {
+    const flat: ObjectiveTreeItemDto[] = [
+      { id: 'o1', parentObjectiveId: null, isDefault: true, title: 'Root', ownerId: 'u1', startDate: '2026-01-01', endDate: '2026-12-01', allocatedHours: 40, completedHours: 0, isActive: true, isAchieved: false }
+    ];
+    const subtreeResponse: ObjectiveSubtreeResponseDto = {
+      parentObjective: null,
+      objective: {
+        id: 'o1', projectId: 'p1', parentObjectiveId: null, isDefault: true, title: 'Root',
+        description: null, ownerId: 'u1', ownerName: 'Arun', reportingManagerId: null, reportingManagerName: null,
+        createdById: 'u1', startDate: '2026-01-01', endDate: '2026-12-01', progress: 0, actualHours: null,
+        allocatedHours: 40, completedHours: 0, isActive: true, isOwner: true, isAchieved: false, achievedAt: null,
+        createdAt: '2026-01-01T00:00:00Z', updatedAt: null, children: []
+      }
     };
-    const store = setup({ getObjectiveById: () => of(dto) } as Partial<ProjectApiService>);
-
-    await store.loadNodeDetail('o2');
-
-    expect(store.nodeDetail()?.title).toBe('Child');
-    expect(store.nodeDetailLoading()).toBe(false);
-    expect(store.nodeDetailError()).toBeNull();
-  });
-
-  it('loadNodeDetail sets nodeDetailError and clears nodeDetail on failure', async () => {
     const store = setup({
-      getObjectiveById: () => throwError(() => ({ error: { detail: 'gone' } }))
+      getObjectiveTreeFlat: () => of(flat),
+      getMilestoneSubtree: (id: string) => { expect(id).toBe('o1'); return of(subtreeResponse); }
     } as Partial<ProjectApiService>);
 
-    await store.loadNodeDetail('o2');
+    await store.loadProjectTree('p1');
 
-    expect(store.nodeDetailError()).toBe('gone');
-    expect(store.nodeDetail()).toBeNull();
+    expect(store.selectedSubtree()?.title).toBe('Root');
+    expect(store.subtreeLoading()).toBe(false);
   });
 
-  it('clearNodeDetail resets node detail state', async () => {
-    const dto = { id: 'o2' } as ObjectiveDetailDto;
-    const store = setup({ getObjectiveById: () => of(dto) } as Partial<ProjectApiService>);
-    await store.loadNodeDetail('o2');
+  it('loadProjectTree sets subtreeError when the project has no default objective', async () => {
+    const store = setup({ getObjectiveTreeFlat: () => of([]) } as Partial<ProjectApiService>);
 
-    store.clearNodeDetail();
+    await store.loadProjectTree('p1');
 
-    expect(store.nodeDetail()).toBeNull();
-    expect(store.nodeDetailError()).toBeNull();
+    expect(store.subtreeError()).toBe('This project has no root module.');
+    expect(store.subtreeLoading()).toBe(false);
   });
 
-  it('loadNodeDetail does not affect the settings-modal-only milestoneActionError state', async () => {
-    const store = setup({ getObjectiveById: () => of({ id: 'o2' } as ObjectiveDetailDto) } as Partial<ProjectApiService>);
+  it('loadProjectTree sets subtreeError on a network failure', async () => {
+    const store = setup({
+      getObjectiveTreeFlat: () => throwError(() => ({ error: { detail: 'Server error' } }))
+    } as Partial<ProjectApiService>);
 
-    await store.loadNodeDetail('o2');
+    await store.loadProjectTree('p1');
 
+    expect(store.subtreeError()).toBe('Server error');
+  });
+
+  it('createSubModule returns success:true and clears milestoneActionError on success', async () => {
+    const store = setup({
+      createObjective: () => of({ id: 'o3' } as ObjectiveDetailDto)
+    } as Partial<ProjectApiService>);
+
+    const result = await store.createSubModule({
+      parentObjectiveId: 'o1', title: 'Design Phase', description: null,
+      startDate: '2026-01-15', endDate: '2026-03-01', allocatedHours: 20
+    });
+
+    expect(result).toEqual({ success: true });
     expect(store.milestoneActionError()).toBeNull();
+  });
+
+  it('createSubModule returns success:false and sets milestoneActionError on failure', async () => {
+    const store = setup({
+      createObjective: () => throwError(() => ({ error: { detail: 'date range exceeds parent' } }))
+    } as Partial<ProjectApiService>);
+
+    const result = await store.createSubModule({
+      parentObjectiveId: 'o1', title: 'Design Phase', description: null,
+      startDate: '2026-01-15', endDate: '2026-03-01', allocatedHours: 20
+    });
+
+    expect(result).toEqual({ success: false });
+    expect(store.milestoneActionError()).toBe('date range exceeds parent');
   });
 });

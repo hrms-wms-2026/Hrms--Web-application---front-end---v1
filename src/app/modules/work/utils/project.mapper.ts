@@ -29,8 +29,18 @@ export function toMilestone(dto: MyProjectMilestoneDto): Milestone {
 
 export function toMilestoneTreeNode(dto: ObjectiveSubtreeNodeDto): MilestoneTreeNode {
   return {
-    id: dto.id, title: dto.title, startDate: dto.startDate, endDate: dto.endDate,
+    id: dto.id, title: dto.title, description: dto.description, startDate: dto.startDate, endDate: dto.endDate,
     progress: dto.progress, allocatedHours: dto.allocatedHours, completedHours: dto.completedHours,
-    isActive: dto.isActive, children: dto.children.map(toMilestoneTreeNode)
+    isActive: dto.isActive, isAchieved: dto.isAchieved, ownerName: dto.ownerName, isOwner: dto.isOwner,
+    children: dto.children.map(toMilestoneTreeNode)
   };
+}
+
+export function findTreeNode(root: MilestoneTreeNode, id: string): MilestoneTreeNode | null {
+  if (root.id === id) return root;
+  for (const child of root.children) {
+    const found = findTreeNode(child, id);
+    if (found) return found;
+  }
+  return null;
 }

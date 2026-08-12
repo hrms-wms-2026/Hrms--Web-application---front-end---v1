@@ -23,12 +23,16 @@ export interface Milestone {
 export interface MilestoneTreeNode {
   id: string;
   title: string;
+  description: string | null;
   startDate: string;
   endDate: string;
   progress: number;
   allocatedHours: number;
   completedHours: number;
   isActive: boolean;
+  isAchieved: boolean;
+  ownerName: string | null;
+  isOwner: boolean;
   children: MilestoneTreeNode[];
 }
 

@@ -5,7 +5,7 @@ import { ProjectApiService } from '../data-access/project-api.service';
 import { toMilestone, toMilestoneTreeNode, toProjectDetail } from '../utils/project.mapper';
 import { ProjectDetail } from '../models/project.model';
 import { Milestone, MilestoneTreeNode, ObjectiveDetail } from '../models/milestone.model';
-import { EditObjectiveRequestDto } from '../models/dto/milestone.dto';
+import { EditObjectiveRequestDto, CreateObjectiveRequestDto } from '../models/dto/milestone.dto';
 
 interface ProjectDetailState {
   readonly project: ProjectDetail | null;
@@ -18,17 +18,13 @@ interface ProjectDetailState {
   readonly subtreeLoading: boolean;
   readonly subtreeError: string | null;
   readonly milestoneActionError: string | null;
-  readonly nodeDetail: ObjectiveDetail | null;
-  readonly nodeDetailLoading: boolean;
-  readonly nodeDetailError: string | null;
 }
 
 const initialState: ProjectDetailState = {
   project: null, projectLoading: false, projectError: null,
   milestones: [], milestonesLoading: false, milestonesError: null,
   selectedSubtree: null, subtreeLoading: false, subtreeError: null,
-  milestoneActionError: null,
-  nodeDetail: null, nodeDetailLoading: false, nodeDetailError: null
+  milestoneActionError: null
 };
 
 function extractError(err: any, fallback: string): string {
@@ -59,13 +55,19 @@ export const ProjectDetailStore = signalStore(
       }
     },
 
-    async loadMilestoneSubtree(objectiveId: string): Promise<void> {
+    async loadProjectTree(projectId: string): Promise<void> {
       patchState(store, { subtreeLoading: true, subtreeError: null });
       try {
-        const response = await firstValueFrom(api.getMilestoneSubtree(objectiveId));
+        const flat = await firstValueFrom(api.getObjectiveTreeFlat(projectId));
+        const root = flat.find((o) => o.isDefault);
+        if (!root) {
+          patchState(store, { subtreeError: 'This project has no root module.', subtreeLoading: false });
+          return;
+        }
+        const response = await firstValueFrom(api.getMilestoneSubtree(root.id));
         patchState(store, { selectedSubtree: toMilestoneTreeNode(response.objective), subtreeLoading: false });
       } catch (err) {
-        patchState(store, { subtreeError: extractError(err, 'Failed to load milestone.'), subtreeLoading: false });
+        patchState(store, { subtreeError: extractError(err, 'Failed to load project tree.'), subtreeLoading: false });
       }
     },
 
@@ -117,18 +119,15 @@ export const ProjectDetailStore = signalStore(
       }
     },
 
-    async loadNodeDetail(id: string): Promise<void> {
-      patchState(store, { nodeDetailLoading: true, nodeDetailError: null });
+    async createSubModule(payload: CreateObjectiveRequestDto): Promise<{ success: boolean }> {
       try {
-        const dto = await firstValueFrom(api.getObjectiveById(id));
-        patchState(store, { nodeDetail: dto, nodeDetailLoading: false });
+        await firstValueFrom(api.createObjective(payload));
+        patchState(store, { milestoneActionError: null });
+        return { success: true };
       } catch (err) {
-        patchState(store, { nodeDetailError: extractError(err, 'Failed to load milestone detail.'), nodeDetailLoading: false, nodeDetail: null });
+        patchState(store, { milestoneActionError: extractError(err, 'Failed to create sub-module.') });
+        return { success: false };
       }
-    },
-
-    clearNodeDetail(): void {
-      patchState(store, { nodeDetail: null, nodeDetailError: null });
     }
   }))
 );

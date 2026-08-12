@@ -4,7 +4,7 @@ import { TestBed } from '@angular/core/testing';
 import { environment } from '../../../../environments/environment';
 import { ProjectApiService } from './project-api.service';
 import { ProjectDetailDto, ProjectListItemDto, PagedResultDto } from '../models/dto/project.dto';
-import { MyProjectMilestoneDto, ObjectiveDetailDto, ObjectiveSubtreeResponseDto, EditObjectiveRequestDto } from '../models/dto/milestone.dto';
+import { MyProjectMilestoneDto, ObjectiveDetailDto, ObjectiveSubtreeResponseDto, EditObjectiveRequestDto, ObjectiveTreeItemDto, CreateObjectiveRequestDto } from '../models/dto/milestone.dto';
 
 describe('ProjectApiService', () => {
   let service: ProjectApiService;
@@ -167,5 +167,32 @@ describe('ProjectApiService', () => {
     const req = httpMock.expectOne(`${environment.apiUrl}/work/objectives/o1/tree`);
     expect(req.request.method).toBe('GET');
     req.flush(response);
+  });
+
+  it('getObjectiveTreeFlat GETs the flat project tree', () => {
+    let result: ObjectiveTreeItemDto[] | undefined;
+    service.getObjectiveTreeFlat('p1').subscribe((r) => (result = r));
+
+    const req = httpMock.expectOne(`${environment.apiUrl}/work/projects/p1/objectives`);
+    expect(req.request.method).toBe('GET');
+    req.flush([{ id: 'o1', parentObjectiveId: null, isDefault: true, title: 'Root', ownerId: 'u1', startDate: '2026-01-01', endDate: '2026-12-01', allocatedHours: 40, completedHours: 0, isActive: true, isAchieved: false }]);
+
+    expect(result?.[0].isDefault).toBe(true);
+  });
+
+  it('createObjective POSTs to /work/objectives', () => {
+    const payload: CreateObjectiveRequestDto = {
+      parentObjectiveId: 'o1', title: 'Design Phase', description: null,
+      startDate: '2026-01-15', endDate: '2026-03-01', allocatedHours: 20
+    };
+    let result: ObjectiveDetailDto | undefined;
+    service.createObjective(payload).subscribe((r) => (result = r));
+
+    const req = httpMock.expectOne(`${environment.apiUrl}/work/objectives`);
+    expect(req.request.method).toBe('POST');
+    expect(req.request.body).toEqual(payload);
+    req.flush({ id: 'o2', title: 'Design Phase' } as ObjectiveDetailDto);
+
+    expect(result?.id).toBe('o2');
   });
 });
