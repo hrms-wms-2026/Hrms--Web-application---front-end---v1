@@ -6,13 +6,15 @@ describe('MilestoneTreeNodeComponent', () => {
   let fixture: ComponentFixture<MilestoneTreeNodeComponent>;
 
   const leaf: MilestoneTreeNode = {
-    id: 'o2', title: 'Child', startDate: '2026-01-20', endDate: '2026-02-01',
-    progress: 40, allocatedHours: 5, completedHours: 2, isActive: true, children: []
+    id: 'o2', title: 'Child', description: null, startDate: '2026-01-20', endDate: '2026-02-01',
+    progress: 40, allocatedHours: 5, completedHours: 2, isActive: true, isAchieved: false,
+    ownerName: 'Diya Perera', isOwner: false, children: []
   };
 
   const root: MilestoneTreeNode = {
-    id: 'o1', title: 'Root', startDate: '2026-01-15', endDate: '2026-03-01', progress: 0,
-    allocatedHours: 20, completedHours: 0, isActive: true, children: [leaf]
+    id: 'o1', title: 'Root', description: null, startDate: '2026-01-15', endDate: '2026-03-01', progress: 0,
+    allocatedHours: 20, completedHours: 0, isActive: true, isAchieved: false,
+    ownerName: 'Arun Kumar', isOwner: true, children: [leaf]
   };
 
   function setup(node: MilestoneTreeNode, selectedId: string | null = null, expandedByDefault = true): void {
@@ -23,11 +25,12 @@ describe('MilestoneTreeNodeComponent', () => {
     fixture.detectChanges();
   }
 
-  it('renders the node title and progress, without dates or hours', () => {
+  it('renders the node title, progress, owner initials, and due date', () => {
     setup(leaf);
     expect(fixture.nativeElement.textContent).toContain('Child');
     expect(fixture.nativeElement.textContent).toContain('40%');
-    expect(fixture.nativeElement.textContent).not.toContain('2026-01-20');
+    expect(fixture.nativeElement.textContent).toContain('2026-02-01');
+    expect(fixture.nativeElement.querySelector('app-avatar')).not.toBeNull();
   });
 
   it('shows children when expandedByDefault is true (root default)', () => {
@@ -76,5 +79,28 @@ describe('MilestoneTreeNodeComponent', () => {
     const rows = fixture.nativeElement.querySelectorAll('[data-testid="tree-row"]');
     expect((rows[0] as HTMLElement).className).toContain('ring-2');
     expect((rows[1] as HTMLElement).className).not.toContain('ring-2');
+  });
+
+  it('shows a create-sub-module button only when the node is owned by the caller', () => {
+    setup(root);
+    expect(fixture.nativeElement.querySelector('[data-testid="create-sub-button"]')).not.toBeNull();
+  });
+
+  it('does not show a create-sub-module button when the node is not owned by the caller', () => {
+    setup(leaf);
+    expect(fixture.nativeElement.querySelector('[data-testid="create-sub-button"]')).toBeNull();
+  });
+
+  it('create-sub-module button click emits createRequested with the node, without emitting selected', () => {
+    setup(root);
+    const created: MilestoneTreeNode[] = [];
+    let selectedCount = 0;
+    fixture.componentInstance.createRequested.subscribe((n) => created.push(n));
+    fixture.componentInstance.selected.subscribe(() => selectedCount++);
+
+    (fixture.nativeElement.querySelector('[data-testid="create-sub-button"]') as HTMLElement).click();
+
+    expect(created).toEqual([root]);
+    expect(selectedCount).toBe(0);
   });
 });

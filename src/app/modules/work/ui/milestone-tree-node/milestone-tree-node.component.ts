@@ -1,37 +1,70 @@
 import { Component, OnInit, input, output, signal } from '@angular/core';
 import { MilestoneTreeNode } from '../../models/milestone.model';
+import { AvatarComponent } from '../../../../shared/ui/avatar/avatar.component';
 
 @Component({
   selector: 'app-milestone-tree-node',
   standalone: true,
-  imports: [MilestoneTreeNodeComponent],
+  imports: [MilestoneTreeNodeComponent, AvatarComponent],
   template: `
     <div>
       <div
-        class="flex items-center gap-1.5 rounded-md px-2 py-1.5 cursor-pointer hover:bg-[var(--color-surface-secondary)]"
+        class="grid grid-cols-[1fr_auto_auto_auto_auto] items-center gap-3 rounded-md px-2 py-1.5 cursor-pointer hover:bg-[var(--color-surface-secondary)]"
         [class.ring-2]="node().id === selectedId()"
         [class.ring-[var(--color-focus-ring)]]="node().id === selectedId()"
         data-testid="tree-row"
         (click)="selected.emit(node())"
       >
-        @if (node().children.length > 0) {
+        <span class="flex items-center gap-1.5 min-w-0">
+          @if (node().children.length > 0) {
+            <button
+              type="button"
+              class="flex h-4 w-4 shrink-0 items-center justify-center text-[var(--color-text-secondary)] transition-transform"
+              [style.transform]="expanded() ? 'rotate(90deg)' : 'rotate(0deg)'"
+              data-testid="chevron"
+              [attr.aria-label]="expanded() ? 'Collapse' : 'Expand'"
+              (click)="toggleExpanded($event)"
+            >
+              <svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                <polyline points="9 18 15 12 9 6" />
+              </svg>
+            </button>
+          } @else {
+            <span class="h-4 w-4 shrink-0"></span>
+          }
+          <span class="truncate text-sm text-[var(--color-text-primary)]">{{ node().title }}</span>
+          @if (node().isAchieved) {
+            <span class="shrink-0 rounded-full bg-[var(--color-surface-secondary)] px-2 py-0.5 text-xs font-medium text-[var(--color-text-secondary)]">Achieved</span>
+          }
+        </span>
+
+        <span class="flex items-center gap-2 text-xs text-[var(--color-text-secondary)]" data-testid="progress-cell">
+          <span class="h-1.5 w-16 overflow-hidden rounded-full bg-[var(--color-surface-secondary)]">
+            <span class="block h-full rounded-full bg-[var(--color-accent)]" [style.width.%]="node().progress"></span>
+          </span>
+          {{ node().progress }}%
+        </span>
+
+        <span data-testid="owner-cell">
+          <app-avatar [userName]="node().ownerName" size="sm" />
+        </span>
+
+        <span class="text-xs text-[var(--color-text-secondary)]" data-testid="due-date-cell">{{ node().endDate }}</span>
+
+        @if (node().isOwner) {
           <button
             type="button"
-            class="flex h-4 w-4 shrink-0 items-center justify-center text-[var(--color-text-secondary)] transition-transform"
-            [style.transform]="expanded() ? 'rotate(90deg)' : 'rotate(0deg)'"
-            data-testid="chevron"
-            [attr.aria-label]="expanded() ? 'Collapse' : 'Expand'"
-            (click)="toggleExpanded($event)"
+            class="flex h-6 w-6 shrink-0 items-center justify-center rounded-md text-[var(--color-text-secondary)] hover:bg-[var(--color-surface-secondary)] hover:text-[var(--color-text-primary)]"
+            data-testid="create-sub-button"
+            aria-label="Create sub Module"
+            (click)="onCreateClick($event)"
           >
-            <svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-              <polyline points="9 18 15 12 9 6" />
+            <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" aria-hidden="true">
+              <line x1="12" y1="5" x2="12" y2="19" />
+              <line x1="5" y1="12" x2="19" y2="12" />
             </svg>
           </button>
-        } @else {
-          <span class="h-4 w-4 shrink-0"></span>
         }
-        <span class="flex-1 truncate text-sm text-[var(--color-text-primary)]">{{ node().title }}</span>
-        <span class="text-xs text-[var(--color-text-secondary)]">{{ node().progress }}%</span>
       </div>
 
       @if (node().children.length > 0 && expanded()) {
@@ -42,6 +75,7 @@ import { MilestoneTreeNode } from '../../models/milestone.model';
               [selectedId]="selectedId()"
               [expandedByDefault]="false"
               (selected)="selected.emit($event)"
+              (createRequested)="createRequested.emit($event)"
             />
           }
         </div>
@@ -54,6 +88,7 @@ export class MilestoneTreeNodeComponent implements OnInit {
   selectedId = input<string | null>(null);
   expandedByDefault = input(true);
   selected = output<MilestoneTreeNode>();
+  createRequested = output<MilestoneTreeNode>();
 
   expanded = signal(true);
 
@@ -64,5 +99,10 @@ export class MilestoneTreeNodeComponent implements OnInit {
   toggleExpanded(event: Event): void {
     event.stopPropagation();
     this.expanded.set(!this.expanded());
+  }
+
+  onCreateClick(event: Event): void {
+    event.stopPropagation();
+    this.createRequested.emit(this.node());
   }
 }
