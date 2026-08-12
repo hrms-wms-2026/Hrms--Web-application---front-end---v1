@@ -239,4 +239,19 @@ describe('ProjectDetailComponent', () => {
     expect(editSpy).not.toHaveBeenCalled();
     expect(fixture.componentInstance.milestoneSettingsOpen()).toBe(true);
   });
+
+  it('shows "Loading modules…" while milestones are loading', () => {
+    storeStub.milestonesLoading = () => true;
+    setup(null);
+    fixture.detectChanges();
+    expect(fixture.nativeElement.textContent).toContain('Loading modules…');
+  });
+
+  it('shows "No modules yet" when there are no milestones', () => {
+    storeStub.milestones = () => [];
+    storeStub.milestonesLoading = () => false;
+    setup(null);
+    fixture.detectChanges();
+    expect(fixture.nativeElement.textContent).toContain('No modules yet');
+  });
 });
