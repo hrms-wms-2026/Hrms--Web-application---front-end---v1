@@ -1,16 +1,7 @@
-<!-- Header Bar with Breadcrumb -->
-<header class="gs-header-bar">
-  <nav class="gs-breadcrumb" aria-label="Breadcrumb">
-    <span class="gs-breadcrumb__item gs-breadcrumb__item--parent">
-      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-        <path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"/>
-        <circle cx="12" cy="12" r="3"/>
-      </svg>
-      Settings
-    </span>
-    <svg class="gs-breadcrumb__sep" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="9 18 15 12 9 6"/></svg>
-    <span class="gs-breadcrumb__item gs-breadcrumb__item--current" aria-current="page">General Settings</span>
-  </nav>
+<header class="gs-page-header">
+  <div class="gs-header-row">
+    <app-breadcrumb-header parentLabel="Settings" currentLabel="General Settings" icon="settings" />
+  </div>
 </header>
 
 @if (!hasAccess()) {
@@ -121,7 +112,35 @@
         </div>
       </section>
 
-      <!-- Section 3: Regional preferences -->
+      <!-- Section 3: Default work hours -->
+      <section class="gs-section">
+        <h2 class="gs-section__title">Default work hours</h2>
+        <div class="gs-field-grid gs-field-grid--2">
+          <app-input
+            type="time"
+            label="Work start time"
+            [value]="form.controls.workStartTime.value"
+            (valueChange)="form.controls.workStartTime.setValue($event); form.controls.workStartTime.markAsDirty()"
+            (blurred)="form.controls.workStartTime.markAsTouched()"
+            [error]="form.controls.workStartTime.touched && form.controls.workStartTime.invalid ? 'Enter a valid time (HH:mm).' : ''"
+          />
+          <app-input
+            type="time"
+            label="Work end time"
+            [value]="form.controls.workEndTime.value"
+            (valueChange)="form.controls.workEndTime.setValue($event); form.controls.workEndTime.markAsDirty()"
+            (blurred)="form.controls.workEndTime.markAsTouched()"
+            [error]="form.controls.workEndTime.touched && form.controls.workEndTime.invalid ? 'Enter a valid time (HH:mm).' : ''"
+          />
+        </div>
+        @if (form.errors?.['workTimePair'] === 'both_required') {
+          <p class="gs-field-error" role="alert">Both start and end time must be set together, or leave both blank.</p>
+        } @else if (form.errors?.['workTimePair'] === 'start_not_before_end') {
+          <p class="gs-field-error" role="alert">Work start time must be earlier than end time (same-day only).</p>
+        }
+      </section>
+
+      <!-- Section 4: Regional preferences -->
       <section class="gs-section">
         <h2 class="gs-section__title">Regional preferences</h2>
         <div class="gs-field-grid gs-field-grid--3">

@@ -7,11 +7,12 @@ import { SubSidebarComponent } from './sub-sidebar/sub-sidebar.component';
 import { TopNavbarComponent } from './top-navbar/top-navbar.component';
 
 import { ToastHostComponent } from '../../shared/ui/toast/toast-host.component';
+import { MobileBottomNavComponent } from './mobile-bottom-nav/mobile-bottom-nav.component';
 
 @Component({
   selector: 'app-main-layout',
   standalone: true,
-  imports: [RouterOutlet, SideNavbarComponent, TopNavbarComponent, SubSidebarComponent, ToastHostComponent],
+  imports: [RouterOutlet, SideNavbarComponent, TopNavbarComponent, SubSidebarComponent, ToastHostComponent, MobileBottomNavComponent],
   templateUrl: './main-layout.component.html',
   styleUrl: './main-layout.component.css',
   changeDetection: ChangeDetectionStrategy.OnPush

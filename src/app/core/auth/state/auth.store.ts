@@ -168,11 +168,13 @@ export const AuthStore = signalStore(
       }
     },
 
-    async logout(): Promise<void> {
+    async logout(): Promise<boolean> {
       try {
         await firstValueFrom(api.logout());
+        return true;
       } catch {
         // Session is treated as gone client-side regardless of logout call outcome.
+        return false;
       } finally {
         patchState(store, initialState);
       }

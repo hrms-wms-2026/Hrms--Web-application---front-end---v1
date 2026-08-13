@@ -28,7 +28,7 @@
       }
 
       <div class="pfm-grid">
-        
+
         <div class="pfm-col">
           <app-input
             label="Position name *"
@@ -43,7 +43,8 @@
             [value]="form.controls.code.value || ''"
             (valueChange)="form.controls.code.setValue($event)"
             (blurred)="form.controls.code.markAsTouched()"
-            [error]="form.controls.code.touched && form.controls.code.invalid ? (form.controls.code.errors?.['pattern'] ? 'Code may only contain letters, numbers, hyphens, and underscores.' : 'Code cannot exceed 40 characters.') : ''"
+            [maxlength]="5"
+            [error]="form.controls.code.touched && form.controls.code.invalid ? (form.controls.code.errors?.['pattern'] ? 'Code may only contain letters, numbers, hyphens, and underscores.' : 'Code cannot exceed 5 characters.') : ''"
           />
 
           <app-select
@@ -54,6 +55,12 @@
             (blurred)="form.controls.departmentId.markAsTouched()"
             [error]="form.controls.departmentId.touched && form.controls.departmentId.invalid ? 'Department selection is required.' : ''"
           />
+
+          @if (templatePreset?.suggestedDepartmentName && !form.controls.departmentId.value) {
+            <p class="pfm-dept-suggest-helper pfm-template-dept-helper" role="status">
+              Template suggests department: <strong>{{ templatePreset?.suggestedDepartmentName }}</strong>. Select an existing department before creating this position.
+            </p>
+          }
         </div>
 
         <div class="pfm-col">
@@ -64,25 +71,51 @@
             (valueChange)="form.controls.reportsToPositionId.setValue($event)"
           />
 
-          <app-select
-            label="Position type *"
-            [options]="typeOptions"
-            [value]="form.controls.positionType.value || 'unique'"
-            (valueChange)="onTypeChange($any($event))"
+          <app-input
+            label="Capacity *"
+            type="number"
+            hint="Capacity 1 creates a single-seat position. More than 1 creates a pooled position."
+            [value]="form.controls.maxOccupancy.value?.toString() || '1'"
+            (valueChange)="form.controls.maxOccupancy.setValue(+$event)"
+            (blurred)="form.controls.maxOccupancy.markAsTouched()"
+            [error]="form.controls.maxOccupancy.touched && form.controls.maxOccupancy.invalid ? (form.controls.maxOccupancy.errors?.['integer'] ? 'Capacity must be an integer.' : 'Capacity must be at least 1.') : ''"
           />
-
-          @if (form.controls.positionType.value === 'pooled') {
-            <app-input
-              label="Maximum capacity *"
-              type="number"
-              [value]="form.controls.maxOccupancy.value?.toString() || '1'"
-              (valueChange)="form.controls.maxOccupancy.setValue(+$event)"
-              [error]="form.controls.maxOccupancy.touched && form.controls.maxOccupancy.invalid ? 'Capacity must be at least 1.' : ''"
-            />
-          }
         </div>
 
       </div>
+
+      <!-- System Access Section (Create Mode Only) -->
+      @if (!isEdit) {
+        <div class="pfm-access-section">
+          <h3 class="pfm-section-title">System access</h3>
+
+          @if (hasRoleReadAccess) {
+            <div class="pfm-access-grid">
+              <app-select
+                label="Default system role"
+                [options]="roleOptions"
+                [value]="form.controls.selectedAccessRoleId.value || ''"
+                (valueChange)="form.controls.selectedAccessRoleId.setValue($event)"
+              />
+
+              <label class="pfm-checkbox-label">
+                <input
+                  type="checkbox"
+                  class="pfm-checkbox"
+                  [checked]="form.controls.accessRequiresApproval.value"
+                  (change)="form.controls.accessRequiresApproval.setValue($any($event.target).checked)"
+                />
+                <span>Require approval before granting system access</span>
+              </label>
+            </div>
+          } @else {
+            <div class="pfm-access-notice" role="status">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+              <span>You need role access to configure system access.</span>
+            </div>
+          }
+        </div>
+      }
 
       <!-- Footer Buttons -->
       <div class="pfm-footer">

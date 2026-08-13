@@ -14,6 +14,13 @@ describe('NotificationService', () => {
     expect(service.notifications()[0].kind).toBe('success');
   });
 
+  it('adds a warning notification', () => {
+    const service = TestBed.inject(NotificationService);
+    service.warning('Warning test');
+    expect(service.notifications()[0].kind).toBe('warning');
+    expect(service.notifications()[0].message).toBe('Warning test');
+  });
+
   it('dismisses a notification by id', () => {
     const service = TestBed.inject(NotificationService);
     service.error('First');

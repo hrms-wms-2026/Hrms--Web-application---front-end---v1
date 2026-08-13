@@ -8,9 +8,12 @@ import {
   ListPositionsQueryParams,
   ManagementCoverageRecordResponse,
   PositionArchiveBlockers,
+  PositionAccessTemplateResponse,
   PositionPageResponse,
   PositionResponse,
+  PositionTemplatePackListResponse,
   PositionTreeNodeResponse,
+  SetPositionAccessRequest,
   UpdateCoverageRecordRequest,
   UpdatePositionRequest
 } from '../models/position.model';
@@ -18,6 +21,13 @@ import {
 @Injectable({ providedIn: 'root' })
 export class PositionApiService {
   private readonly http = inject(HttpClient);
+
+  listPositionTemplatePacks(): Observable<PositionTemplatePackListResponse> {
+    return this.http.get<PositionTemplatePackListResponse>(
+      `${environment.apiUrl}/org/position-template-packs`
+    );
+  }
+
 
   listFlat(
     legalEntityId: string,
@@ -140,5 +150,24 @@ export class PositionApiService {
       {}
     );
   }
-}
 
+  getPositionAccess(
+    legalEntityId: string,
+    positionId: string
+  ): Observable<PositionAccessTemplateResponse> {
+    return this.http.get<PositionAccessTemplateResponse>(
+      `${environment.apiUrl}/org/legal-entities/${legalEntityId}/positions/${positionId}/access`
+    );
+  }
+
+  setPositionAccess(
+    legalEntityId: string,
+    positionId: string,
+    payload: SetPositionAccessRequest
+  ): Observable<PositionAccessTemplateResponse> {
+    return this.http.put<PositionAccessTemplateResponse>(
+      `${environment.apiUrl}/org/legal-entities/${legalEntityId}/positions/${positionId}/access`,
+      payload
+    );
+  }
+}

@@ -69,22 +69,31 @@ describe('PositionStore - updateCoverage', () => {
     expect(store.coverageError()).toBeNull();
   });
 
-  it('surfaces the server 409 message and leaves records unchanged on conflict', async () => {
+  it('surfaces server 409 message and refreshes coverage records from API on conflict', async () => {
     void store.loadCoverage('le-1', ownerPosition);
     httpMock.expectOne(coverageUrl).flush([initialRecord]);
 
     const updatePromise = store.updateCoverage('le-1', 'owner-1', 'coverage-1', { ownerOrder: 2 });
-    httpMock.expectOne(`${coverageUrl}/coverage-1`).flush(
-      { detail: 'An active coverage record already exists for this covered target at this responsibility level.' },
+
+    const req = httpMock.expectOne(`${coverageUrl}/coverage-1`);
+    req.flush(
+      { detail: 'This target already has Backup Manager 1.' },
       { status: 409, statusText: 'Conflict' }
     );
+
+    await Promise.resolve();
+
+    const refreshedRecord: ManagementCoverageRecordResponse = {
+      ...initialRecord,
+      ownerOrder: 2
+    };
+    const refreshReq = httpMock.expectOne(coverageUrl);
+    refreshReq.flush([initialRecord, refreshedRecord]);
 
     const success = await updatePromise;
 
     expect(success).toBe(false);
-    expect(store.coverageError()).toBe(
-      'An active coverage record already exists for this covered target at this responsibility level.'
-    );
-    expect(store.coverageRecords()).toEqual([initialRecord]);
+    expect(store.coverageError()).toBe('This target already has Backup Manager 1.');
+    expect(store.coverageRecords()).toEqual([initialRecord, refreshedRecord]);
   });
 });

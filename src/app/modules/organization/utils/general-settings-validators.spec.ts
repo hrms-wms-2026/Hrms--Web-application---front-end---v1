@@ -1,5 +1,5 @@
-import { FormControl } from '@angular/forms';
-import { absoluteUrlValidator, nonEmptyArrayValidator, oneOfValidator } from './general-settings-validators';
+import { FormControl, FormGroup } from '@angular/forms';
+import { absoluteUrlValidator, nonEmptyArrayValidator, oneOfValidator, workTimePairValidator } from './general-settings-validators';
 
 describe('nonEmptyArrayValidator', () => {
   it('fails on an empty array', () => {
@@ -49,5 +49,50 @@ describe('oneOfValidator', () => {
   it('passes on an allowed value', () => {
     const control = new FormControl<string | null>('24h', { validators: [validator] });
     expect(control.valid).toBe(true);
+  });
+});
+
+describe('workTimePairValidator', () => {
+  /** Helper — creates a minimal FormGroup with only the two time controls. */
+  function makeGroup(start: string, end: string): FormGroup {
+    return new FormGroup(
+      {
+        workStartTime: new FormControl<string>(start, { nonNullable: true }),
+        workEndTime: new FormControl<string>(end, { nonNullable: true })
+      },
+      { validators: [workTimePairValidator()] }
+    );
+  }
+
+  it('is valid when both fields are blank (no schedule set)', () => {
+    const group = makeGroup('', '');
+    expect(group.valid).toBe(true);
+    expect(group.errors).toBeNull();
+  });
+
+  it('is valid when both fields carry a valid HH:mm pair (start < end)', () => {
+    const group = makeGroup('09:00', '17:30');
+    expect(group.valid).toBe(true);
+    expect(group.errors).toBeNull();
+  });
+
+  it('returns both_required when only workStartTime is set', () => {
+    const group = makeGroup('09:00', '');
+    expect(group.errors).toEqual({ workTimePair: 'both_required' });
+  });
+
+  it('returns both_required when only workEndTime is set', () => {
+    const group = makeGroup('', '17:30');
+    expect(group.errors).toEqual({ workTimePair: 'both_required' });
+  });
+
+  it('returns start_not_before_end when start === end', () => {
+    const group = makeGroup('09:00', '09:00');
+    expect(group.errors).toEqual({ workTimePair: 'start_not_before_end' });
+  });
+
+  it('returns start_not_before_end when start is after end', () => {
+    const group = makeGroup('18:00', '09:00');
+    expect(group.errors).toEqual({ workTimePair: 'start_not_before_end' });
   });
 });

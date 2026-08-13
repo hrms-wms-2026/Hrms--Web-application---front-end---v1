@@ -1,0 +1,205 @@
+<app-page-header title="Add Employee" subtitle="Create a new onboarding draft for your organization.">
+  <a routerLink="/people/employees">
+    <app-button variant="secondary">Back to Employees</app-button>
+  </a>
+</app-page-header>
+
+@if (!hasCompany()) {
+  <app-empty-state
+    title="No company selected"
+    description="Select a company from the top navigation before adding an employee."
+  />
+} @else if (store.resuming()) {
+  <app-loader label="Loading draft…" />
+} @else {
+  <div>
+    @switch (store.step()) {
+      @case ('employee_details') {
+        <div class="grid max-w-2xl gap-4">
+          <app-input label="Company" [value]="legalEntityStore.selectedLegalEntity()?.name ?? ''" [disabled]="true" />
+
+          <app-input
+            label="First name"
+            [value]="form.controls.firstName.value || ''"
+            (valueChange)="form.controls.firstName.setValue($event)"
+            [error]="submitAttempted() && form.controls.firstName.invalid ? 'First name is required.' : ''"
+          />
+
+          <app-input
+            label="Last name"
+            [value]="form.controls.lastName.value || ''"
+            (valueChange)="form.controls.lastName.setValue($event)"
+            [error]="submitAttempted() && form.controls.lastName.invalid ? 'Last name is required.' : ''"
+          />
+
+          <app-input
+            label="Work email"
+            type="email"
+            [value]="form.controls.workEmail.value || ''"
+            (valueChange)="form.controls.workEmail.setValue($event)"
+            [error]="submitAttempted() && form.controls.workEmail.invalid ? 'A valid work email is required (max 254 chars).' : ''"
+          />
+
+          @if (store.loadingWorkModes()) {
+            <app-loader label="Loading work modes…" />
+          } @else if (store.workModesError()) {
+            <div class="rounded-lg border border-[var(--color-border)] p-4 text-sm text-[var(--color-text-primary)] flex items-center justify-between">
+              <span>{{ store.workModesError() }}</span>
+              <app-button variant="secondary" size="sm" (pressed)="store.loadWorkModes()">Retry</app-button>
+            </div>
+          } @else if (store.workModes().length === 0) {
+            <app-empty-state
+              title="No work modes configured"
+              description="Work modes are not configured. Contact an administrator."
+            />
+          } @else {
+            <app-select
+              label="Work mode"
+              placeholder="Select work mode"
+              [options]="workModeOptions()"
+              [value]="form.controls.workModeId.value"
+              [error]="submitAttempted() && form.controls.workModeId.invalid ? 'Work mode is required.' : ''"
+              (valueChange)="onWorkModeChange($event)"
+            />
+          }
+
+          @if (store.loadingDepartments()) {
+            <app-loader label="Loading departments…" />
+          } @else if (store.departments().length === 0) {
+            <app-empty-state
+              title="No departments configured"
+              description="This company has no departments yet. Set up departments under Organization before adding employees."
+            />
+          } @else {
+            <app-select
+              label="Department"
+              placeholder="Select a department"
+              [options]="store.departments()"
+              [value]="form.controls.departmentId.value"
+              [error]="submitAttempted() && form.controls.departmentId.invalid ? 'Department is required.' : ''"
+              (valueChange)="onDepartmentChange($event)"
+            />
+          }
+
+          @if (form.controls.departmentId.value) {
+            @if (store.loadingPositions()) {
+              <app-loader label="Loading positions…" />
+            } @else if (store.positions().length === 0) {
+              <app-empty-state
+                title="No positions configured"
+                description="This department has no active positions yet. Set up a position under Organization before adding employees."
+              />
+            } @else {
+              <app-select
+                label="Position"
+                placeholder="Select a position"
+                [options]="store.positions()"
+                [value]="form.controls.positionId.value"
+                [error]="submitAttempted() && form.controls.positionId.invalid ? 'Position is required.' : ''"
+                (valueChange)="onPositionChange($event)"
+              />
+            }
+          }
+
+          <app-select
+            label="Employment type"
+            placeholder="Select employment type"
+            [options]="employmentTypeOptions"
+            [value]="form.controls.employmentType.value || ''"
+            (valueChange)="form.controls.employmentType.setValue($event)"
+            [error]="submitAttempted() && form.controls.employmentType.invalid ? 'Employment type is required.' : ''"
+          />
+
+          <app-input
+            label="Start date"
+            type="text"
+            placeholder="YYYY-MM-DD"
+            [value]="form.controls.startDate.value || ''"
+            (valueChange)="form.controls.startDate.setValue($event)"
+            [error]="submitAttempted() && form.controls.startDate.invalid ? 'Start date is required.' : ''"
+          />
+
+          <app-input
+            label="Employee number"
+            [value]="form.controls.employeeNumber.value || ''"
+            (valueChange)="form.controls.employeeNumber.setValue($event)"
+          />
+        </div>
+      }
+      @case ('checklist_template') {
+        <app-empty-state
+          title="Checklist templates are not yet available"
+          description="No onboarding checklist templates are configured for your organization yet. You can continue and save this as a draft."
+        />
+      }
+      @case ('checklist_review') {
+        <app-empty-state
+          title="Nothing to review yet"
+          description="No checklist template is selected, so there are no tasks to review. You can continue and save this as a draft."
+        />
+      }
+      @case ('review_and_submit') {
+        <div class="max-w-2xl space-y-4">
+          <div class="rounded-lg border border-[var(--color-border)] p-4 text-sm">
+            <dl class="grid grid-cols-2 gap-y-2">
+              <dt class="text-[var(--color-text-secondary)]">First name</dt>
+              <dd>{{ form.controls.firstName.value || '—' }}</dd>
+              <dt class="text-[var(--color-text-secondary)]">Last name</dt>
+              <dd>{{ form.controls.lastName.value || '—' }}</dd>
+              <dt class="text-[var(--color-text-secondary)]">Work email</dt>
+              <dd>{{ form.controls.workEmail.value || '—' }}</dd>
+              <dt class="text-[var(--color-text-secondary)]">Work mode</dt>
+              <dd>{{ selectedWorkModeLabel() }}</dd>
+              <dt class="text-[var(--color-text-secondary)]">Department</dt>
+              <dd>{{ selectedDepartmentLabel() }}</dd>
+              <dt class="text-[var(--color-text-secondary)]">Position</dt>
+              <dd>{{ selectedPositionLabel() }}</dd>
+              <dt class="text-[var(--color-text-secondary)]">Employment type</dt>
+              <dd>{{ selectedEmploymentTypeLabel() }}</dd>
+              <dt class="text-[var(--color-text-secondary)]">Start date</dt>
+              <dd>{{ form.controls.startDate.value || '—' }}</dd>
+              @if (form.controls.employeeNumber.value) {
+                <dt class="text-[var(--color-text-secondary)]">Employee number</dt>
+                <dd>{{ form.controls.employeeNumber.value }}</dd>
+              }
+            </dl>
+          </div>
+
+          @if (saveReasonMessage()) {
+            <div class="rounded-lg border border-[var(--color-border)] bg-[var(--color-surface-secondary)] p-4 text-sm">
+              {{ saveReasonMessage() }}
+            </div>
+          } @else {
+            <p class="text-xs text-[var(--color-text-secondary)]">
+              Seat and approval status will be shown here after you save.
+            </p>
+          }
+        </div>
+      }
+    }
+
+    <div class="mt-8 flex flex-wrap gap-3">
+      @if (stepIndex() > 0) {
+        <app-button variant="secondary" type="button" (pressed)="goToPreviousStep()">Back</app-button>
+      }
+      <app-button variant="secondary" type="button" (pressed)="onCancel()">Cancel</app-button>
+      @if (stepIndex() < stepOrder.length - 1) {
+        <app-button variant="primary" type="button" (pressed)="goToNextStep()">Continue</app-button>
+      }
+      <app-button variant="secondary" type="button" [loading]="store.saving()" (pressed)="onSaveDraft()">
+        Save Draft
+      </app-button>
+      @if (stepIndex() === stepOrder.length - 1) {
+        <app-button
+          *appHasPermission="'employees:write'"
+          variant="primary"
+          type="button"
+          [loading]="store.finalizing() || store.saving()"
+          (pressed)="onFinalize()"
+        >
+          Finalize and send invite
+        </app-button>
+      }
+    </div>
+  </div>
+}

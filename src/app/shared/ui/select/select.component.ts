@@ -4,6 +4,7 @@ import { nextUniqueId } from '../../utils/unique-id';
 export interface SelectOption {
   value: string;
   label: string;
+  disabled?: boolean;
 }
 
 @Component({
@@ -26,7 +27,7 @@ export interface SelectOption {
           <option value="" disabled [selected]="!value()" hidden>{{ placeholder() }}</option>
         }
         @for (option of options(); track option.value) {
-          <option [value]="option.value" [selected]="option.value === value()">{{ option.label }}</option>
+          <option [value]="option.value" [selected]="option.value === value()" [disabled]="option.disabled || false">{{ option.label }}</option>
         }
       </select>
       @if (error()) {

@@ -97,6 +97,19 @@ export const RoleStore = signalStore(
       }
     },
 
+    async loadRolesOnly(): Promise<void> {
+      patchState(store, { loading: true, loadError: null });
+      try {
+        const roles = await firstValueFrom(api.getRoles());
+        patchState(store, { roles, loading: false });
+      } catch (err) {
+        patchState(store, {
+          loading: false,
+          loadError: toSafeErrorMessage(err, 'Failed to load roles.')
+        });
+      }
+    },
+
     async loadRoleDetail(id: string): Promise<RoleDetailResponse | null> {
       patchState(store, { detailLoading: true, actionError: null });
       try {

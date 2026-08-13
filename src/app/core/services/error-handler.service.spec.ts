@@ -59,9 +59,30 @@ describe('ErrorHandlerService & Safe Error Mapper', () => {
     expect(toSafeErrorMessage(errPerm)).toBe('You do not have access to perform this action.');
   });
 
-  it('preserves known safe business messages', () => {
+  it('maps CSRF, XSRF, anti-forgery, and security token/header/cookie details to safe session security message', () => {
+    const safeSecurityMessage = 'Your session security check failed. Refresh the page and try again.';
+
+    expect(toSafeErrorMessage(makeError(400, { detail: 'A valid CSRF token is required for this request.' }))).toBe(safeSecurityMessage);
+    expect(toSafeErrorMessage(makeError(403, { detail: 'XSRF token validation failed.' }))).toBe(safeSecurityMessage);
+    expect(toSafeErrorMessage(makeError(400, { detail: 'Anti-forgery token is missing.' }))).toBe(safeSecurityMessage);
+    expect(toSafeErrorMessage(makeError(400, { detail: 'Antiforgery cookie missing.' }))).toBe(safeSecurityMessage);
+    expect(toSafeErrorMessage(makeError(400, { detail: 'Invalid token header provided.' }))).toBe(safeSecurityMessage);
+    expect(toSafeErrorMessage(makeError(401, { detail: 'Missing security token in request.' }))).toBe(safeSecurityMessage);
+    expect(toSafeErrorMessage(makeError(401, { detail: 'Expired token.' }))).toBe(safeSecurityMessage);
+    expect(toSafeErrorMessage(makeError(400, { detail: 'Header X-CSRF-Token is invalid.' }))).toBe(safeSecurityMessage);
+    expect(toSafeErrorMessage(makeError(400, { detail: 'Header X-XSRF-TOKEN is missing.' }))).toBe(safeSecurityMessage);
+  });
+
+  it('preserves known safe business messages and does not over-sanitize', () => {
     const errSafe = makeError(400, { detail: 'Company name is already in use.' });
     expect(toSafeErrorMessage(errSafe)).toBe('Company name is already in use.');
+
+    const errInvitation = makeError(400, { detail: 'This invitation link is invalid or has expired.' });
+    expect(toSafeErrorMessage(errInvitation)).toBe('This invitation link is invalid or has expired.');
+    expect(toSafeErrorMessage('This invitation link is invalid or has expired.')).toBe('This invitation link is invalid or has expired.');
+
+    const errEmail = makeError(400, { detail: 'This work email is already in use.' });
+    expect(toSafeErrorMessage(errEmail)).toBe('This work email is already in use.');
   });
 
   it('uses status fallbacks for 400, 401, 403, 404, 409, 422, 429, 500, 503, 0', () => {

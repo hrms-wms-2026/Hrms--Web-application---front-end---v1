@@ -1,15 +1,61 @@
-<!-- Header Bar with Breadcrumb -->
-<header class="rm-header-bar">
-  <nav class="rm-breadcrumb" aria-label="Breadcrumb">
-    <span class="rm-breadcrumb__item rm-breadcrumb__item--parent">
-      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-        <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
-      </svg>
-      Settings
-    </span>
-    <svg class="rm-breadcrumb__sep" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="9 18 15 12 9 6"/></svg>
-    <span class="rm-breadcrumb__item rm-breadcrumb__item--current" aria-current="page">Roles & Permissions</span>
-  </nav>
+<header class="rm-page-header">
+  <div class="rm-header-row">
+    <app-breadcrumb-header parentLabel="Settings" currentLabel="Roles & Permissions" icon="settings" />
+
+    @if (hasReadAccess()) {
+      <div class="rm-controls">
+        <!-- Expandable Search (Icon Click Toggle) -->
+        <div class="rm-search-container">
+          @if (searchExpanded()) {
+            <div class="rm-search-expandable">
+              <svg class="rm-search-icon" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/>
+              </svg>
+              <input
+                type="text"
+                class="rm-search-input"
+                placeholder="Search roles…"
+                [value]="searchQuery()"
+                (input)="onSearchChange($any($event.target).value)"
+              />
+              <button
+                type="button"
+                class="rm-search-clear-btn"
+                (click)="toggleSearch()"
+                title="Close search"
+                aria-label="Close search"
+              >
+                &times;
+              </button>
+            </div>
+          } @else {
+            <button
+              type="button"
+              class="rm-icon-btn"
+              [class.rm-icon-btn--active]="searchQuery()"
+              (click)="toggleSearch()"
+              title="Search roles"
+              aria-label="Search roles"
+            >
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/>
+              </svg>
+            </button>
+          }
+        </div>
+
+        <!-- Right Controls Group -->
+        <div class="rm-controls-right">
+          @if (hasManageAccess()) {
+            <app-button type="button" (click)="openCreateModal()">
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+              Create role
+            </app-button>
+          }
+        </div>
+      </div>
+    }
+  </div>
 </header>
 
 @if (!hasReadAccess()) {
@@ -18,38 +64,6 @@
     description="Viewing roles and permissions requires the roles:read permission."
   />
 } @else {
-
-  <!-- Action Bar -->
-  <div class="rm-top-section">
-
-    <div class="rm-controls">
-      
-      <!-- Search Input (Left) -->
-      <div class="rm-search-wrap">
-        <svg class="rm-search-icon" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-          <circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/>
-        </svg>
-        <input
-          type="text"
-          class="rm-search-input"
-          placeholder="Search roles…"
-          [value]="searchQuery()"
-          (input)="onSearchChange($any($event.target).value)"
-        />
-      </div>
-
-      <!-- Right Controls Group -->
-      <div class="rm-controls-right">
-        @if (hasManageAccess()) {
-          <app-button type="button" (click)="openCreateModal()">
-            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
-            Create role
-          </app-button>
-        }
-      </div>
-
-    </div>
-  </div>
 
   <!-- Content Loading / Error / Table View -->
   @if (roleStore.loading()) {
