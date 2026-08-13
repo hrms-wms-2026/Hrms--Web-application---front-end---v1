@@ -4,20 +4,30 @@ import { Observable } from 'rxjs';
 import { environment } from '../../../../environments/environment';
 import { EmployeeListItemResponse, EmployeeListPageResponse, EmployeeListParams } from '../models/employee.model';
 import {
+  ApproveAccessGrantRequestResponse,
   DraftListPageResponse,
   DraftListParams,
+  FinalizeOnboardingDraftResponse,
   OnboardingDraftResponse,
-  SaveOnboardingDraftPayload
+  RejectAccessGrantRequestRequest,
+  RejectAccessGrantRequestResponse,
+  SaveOnboardingDraftPayload,
+  WorkModeOption
 } from '../models/onboarding-draft.model';
 
 /**
- * Targets HRMS-Backend-v1 EmployeesController (GET /api/v1/employees, GET /api/v1/employees/{id})
- * and OnboardingDraftsController (GET/POST/PUT /api/v1/onboarding/drafts). Requires
- * employees:read for the GETs, employees:write for POST/PUT.
+ * Targets HRMS-Backend-v1 EmployeesController (GET /api/v1/employees, GET /api/v1/employees/{id}),
+ * OnboardingDraftsController (GET/POST/PUT /api/v1/onboarding/drafts, POST /api/v1/onboarding/drafts/{id}/finalize),
+ * WorkModesController (GET /api/v1/work-modes), and AccessGrantRequestsController
+ * (POST /api/v1/onboarding/access-grant-requests/{id}/approve-and-send-invite, POST /api/v1/onboarding/access-grant-requests/{id}/reject).
  */
 @Injectable({ providedIn: 'root' })
 export class PeopleApiService {
   private readonly http = inject(HttpClient);
+
+  getWorkModes(): Observable<readonly WorkModeOption[]> {
+    return this.http.get<readonly WorkModeOption[]>(`${environment.apiUrl}/work-modes`);
+  }
 
   listEmployees(params: EmployeeListParams): Observable<EmployeeListPageResponse> {
     return this.http.get<EmployeeListPageResponse>(`${environment.apiUrl}/employees`, {
@@ -54,6 +64,27 @@ export class PeopleApiService {
     }
 
     return this.http.post<OnboardingDraftResponse>(`${environment.apiUrl}/onboarding/drafts`, body, { headers });
+  }
+
+  finalizeDraft(id: string): Observable<FinalizeOnboardingDraftResponse> {
+    return this.http.post<FinalizeOnboardingDraftResponse>(`${environment.apiUrl}/onboarding/drafts/${id}/finalize`, {});
+  }
+
+  approveAccessGrantRequest(id: string): Observable<ApproveAccessGrantRequestResponse> {
+    return this.http.post<ApproveAccessGrantRequestResponse>(
+      `${environment.apiUrl}/onboarding/access-grant-requests/${id}/approve-and-send-invite`,
+      {}
+    );
+  }
+
+  rejectAccessGrantRequest(
+    id: string,
+    payload?: RejectAccessGrantRequestRequest
+  ): Observable<RejectAccessGrantRequestResponse> {
+    return this.http.post<RejectAccessGrantRequestResponse>(
+      `${environment.apiUrl}/onboarding/access-grant-requests/${id}/reject`,
+      payload ?? {}
+    );
   }
 
   private toHttpParams(params: object): HttpParams {

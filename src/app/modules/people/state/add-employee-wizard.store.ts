@@ -6,14 +6,23 @@ import { SelectOption } from '../../../shared/ui/select/select.component';
 import { DepartmentApiService } from '../../organization/data-access/department-api.service';
 import { PositionApiService } from '../../organization/data-access/position-api.service';
 import { PeopleApiService } from '../data-access/people-api.service';
-import { OnboardingDraftResponse, SaveOnboardingDraftPayload, WizardStep } from '../models/onboarding-draft.model';
+import {
+  FinalizeOnboardingDraftResponse,
+  OnboardingDraftResponse,
+  SaveOnboardingDraftPayload,
+  WizardStep,
+  WorkModeOption
+} from '../models/onboarding-draft.model';
+
 
 export interface AddEmployeeFormValue {
-  employeeName: string;
+  firstName: string;
+  lastName: string;
   workEmail: string;
   employmentType: string;
   startDate: string;
   employeeNumber: string;
+  workModeId: number | null;
 }
 
 export interface AddEmployeeWizardState {
@@ -26,11 +35,11 @@ export interface AddEmployeeWizardState {
   readonly loadingDepartments: boolean;
   readonly loadingPositions: boolean;
 
-  // No work_schedules/checklist_templates backend source exists in this slice - these stay
-  // permanently empty with an explicit "unavailable" flag, never a fabricated option list.
-  readonly schedules: readonly SelectOption[];
+  readonly workModes: readonly WorkModeOption[];
+  readonly loadingWorkModes: boolean;
+  readonly workModesError: string | null;
+
   readonly checklistTemplates: readonly SelectOption[];
-  readonly schedulesUnavailable: boolean;
   readonly checklistTemplatesUnavailable: boolean;
 
   readonly formValue: AddEmployeeFormValue;
@@ -44,14 +53,20 @@ export interface AddEmployeeWizardState {
   readonly saveError: string | null;
   readonly resuming: boolean;
   readonly resumeError: string | null;
+
+  readonly finalizing: boolean;
+  readonly finalizeError: string | null;
+  readonly finalizeResult: FinalizeOnboardingDraftResponse | null;
 }
 
 const initialFormValue: AddEmployeeFormValue = {
-  employeeName: '',
+  firstName: '',
+  lastName: '',
   workEmail: '',
   employmentType: '',
   startDate: '',
-  employeeNumber: ''
+  employeeNumber: '',
+  workModeId: null
 };
 
 const initialState: AddEmployeeWizardState = {
@@ -64,9 +79,11 @@ const initialState: AddEmployeeWizardState = {
   loadingDepartments: false,
   loadingPositions: false,
 
-  schedules: [],
+  workModes: [],
+  loadingWorkModes: false,
+  workModesError: null,
+
   checklistTemplates: [],
-  schedulesUnavailable: true,
   checklistTemplatesUnavailable: true,
 
   formValue: initialFormValue,
@@ -79,7 +96,11 @@ const initialState: AddEmployeeWizardState = {
   saving: false,
   saveError: null,
   resuming: false,
-  resumeError: null
+  resumeError: null,
+
+  finalizing: false,
+  finalizeError: null,
+  finalizeResult: null
 };
 
 export const AddEmployeeWizardStore = signalStore(
@@ -105,6 +126,20 @@ export const AddEmployeeWizardStore = signalStore(
           positions: []
         });
         void this.loadDepartmentsForCompany(companyId);
+      },
+
+      async loadWorkModes(): Promise<void> {
+        patchState(store, { loadingWorkModes: true, workModesError: null });
+        try {
+          const modes = await firstValueFrom(peopleApi.getWorkModes());
+          patchState(store, { workModes: modes, loadingWorkModes: false });
+        } catch (err: unknown) {
+          patchState(store, {
+            workModes: [],
+            loadingWorkModes: false,
+            workModesError: toSafeErrorMessage(err, 'Failed to load work modes.')
+          });
+        }
       },
 
       async loadDepartmentsForCompany(companyId: string): Promise<void> {
@@ -173,9 +208,15 @@ export const AddEmployeeWizardStore = signalStore(
         }
 
         const form = store.formValue();
+        if (!form.workModeId || form.workModeId <= 0) {
+          patchState(store, { saveError: 'Work mode is required.' });
+          return null;
+        }
+
         const payload: SaveOnboardingDraftPayload = {
           draftId: store.draftId() ?? undefined,
-          employeeName: form.employeeName,
+          firstName: form.firstName,
+          lastName: form.lastName,
           workEmail: form.workEmail,
           legalEntityId: store.companyId() ?? '',
           departmentId: store.departmentId(),
@@ -183,7 +224,7 @@ export const AddEmployeeWizardStore = signalStore(
           employmentType: form.employmentType,
           startDate: form.startDate,
           employeeNumber: form.employeeNumber || null,
-          scheduleId: null,
+          workModeId: form.workModeId,
           selectedTemplateId: null,
           editedTasksJson: null,
           lastSavedStep
@@ -222,11 +263,13 @@ export const AddEmployeeWizardStore = signalStore(
             lastSaveStatus: draft.status,
             lastSaveReason: draft.draftReason,
             formValue: {
-              employeeName: draft.employeeName,
+              firstName: draft.firstName,
+              lastName: draft.lastName,
               workEmail: draft.workEmail,
               employmentType: draft.employmentType,
               startDate: draft.startDate,
-              employeeNumber: draft.employeeNumber ?? ''
+              employeeNumber: draft.employeeNumber ?? '',
+              workModeId: draft.workModeId
             }
           });
 
@@ -239,6 +282,29 @@ export const AddEmployeeWizardStore = signalStore(
             resuming: false,
             resumeError: toSafeErrorMessage(err, 'The draft or selected organization record could not be found.')
           });
+        }
+      },
+
+      async finalizeDraft(id: string): Promise<FinalizeOnboardingDraftResponse | null> {
+        if (store.finalizing()) {
+          return null;
+        }
+        patchState(store, { finalizing: true, finalizeError: null });
+        try {
+          const response = await firstValueFrom(peopleApi.finalizeDraft(id));
+          patchState(store, {
+            finalizing: false,
+            finalizeResult: response,
+            lastSaveStatus: response.status as OnboardingDraftResponse['status'],
+            lastSaveReason: response.draftReason as OnboardingDraftResponse['draftReason']
+          });
+          return response;
+        } catch (err: unknown) {
+          patchState(store, {
+            finalizing: false,
+            finalizeError: toSafeErrorMessage(err, 'Failed to finalize onboarding draft.')
+          });
+          return null;
         }
       }
     })

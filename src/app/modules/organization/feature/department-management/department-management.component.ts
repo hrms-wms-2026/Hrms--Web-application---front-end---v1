@@ -12,12 +12,14 @@ import { DepartmentTreeNodeComponent } from '../../ui/department-tree-node/depar
 import { DepartmentListTableComponent } from '../../ui/department-list-table/department-list-table.component';
 import { DepartmentFormModalComponent, DepartmentFormValue } from '../../ui/department-form-modal/department-form-modal.component';
 import { DepartmentArchiveModalComponent } from '../../ui/department-archive-modal/department-archive-modal.component';
+import { BreadcrumbHeaderComponent } from '../../../../shared/ui/breadcrumb-header/breadcrumb-header.component';
 
 @Component({
   selector: 'app-department-management',
   standalone: true,
   imports: [
     CommonModule,
+    BreadcrumbHeaderComponent,
     ButtonComponent,
     EmptyStateComponent,
     ErrorStateComponent,
@@ -49,6 +51,14 @@ export class DepartmentManagementComponent {
   readonly archiveModalOpen = signal(false);
   readonly archivingDepartment = signal<DepartmentListItemResponse | DepartmentTreeNodeResponse | null>(null);
   readonly filterMenuOpen = signal(false);
+  readonly searchExpanded = signal(false);
+
+  toggleSearch(): void {
+    this.searchExpanded.update((v) => !v);
+    if (!this.searchExpanded()) {
+      this.departmentStore.setSearch('');
+    }
+  }
 
   onFilterToggle(): void {
     this.filterMenuOpen.update((v) => !v);

@@ -9,18 +9,33 @@ import { SelectComponent } from '../../../../shared/ui/select/select.component';
 import { LegalEntityStore } from '../../state/legal-entity.store';
 import { PositionStore } from '../../state/position.store';
 import { DepartmentStore } from '../../state/department.store';
-import { AddCoverageRecordRequest, PositionListItemResponse, PositionTreeNodeResponse } from '../../models/position.model';
-import { PositionTreeNodeComponent, ReparentPositionEvent } from '../../ui/position-tree-node/position-tree-node.component';
+import { RoleStore } from '../../state/role.store';
+import {
+  AddCoverageRecordRequest,
+  CreatePositionRequest,
+  POSITION_TEMPLATE_DRAG_MIME_TYPE,
+  PositionListItemResponse,
+  PositionTemplatePackPositionResponse,
+  PositionTemplatePreset,
+  PositionTreeNodeResponse,
+  SetPositionAccessRequest
+} from '../../models/position.model';
+import { PositionTreeNodeComponent, ReparentPositionEvent, TemplateDropOnPositionEvent } from '../../ui/position-tree-node/position-tree-node.component';
 import { PositionListTableComponent } from '../../ui/position-list-table/position-list-table.component';
 import { PositionFormModalComponent, PositionFormSubmitValue } from '../../ui/position-form-modal/position-form-modal.component';
 import { PositionArchiveModalComponent } from '../../ui/position-archive-modal/position-archive-modal.component';
 import { PositionCoverageModalComponent, UpdateCoverageEvent } from '../../ui/position-coverage-modal/position-coverage-modal.component';
+import { PositionAccessModalComponent } from '../../ui/position-access-modal/position-access-modal.component';
+import { PositionTemplateDrawerComponent, TemplatePositionSelectedEvent } from '../../ui/position-template-drawer/position-template-drawer.component';
+
+import { BreadcrumbHeaderComponent } from '../../../../shared/ui/breadcrumb-header/breadcrumb-header.component';
 
 @Component({
   selector: 'app-position-management',
   standalone: true,
   imports: [
     CommonModule,
+    BreadcrumbHeaderComponent,
     ButtonComponent,
     SelectComponent,
     EmptyStateComponent,
@@ -29,7 +44,9 @@ import { PositionCoverageModalComponent, UpdateCoverageEvent } from '../../ui/po
     PositionListTableComponent,
     PositionFormModalComponent,
     PositionArchiveModalComponent,
-    PositionCoverageModalComponent
+    PositionCoverageModalComponent,
+    PositionAccessModalComponent,
+    PositionTemplateDrawerComponent
   ],
   templateUrl: './position-management.component.html',
   styleUrl: './position-management.component.css',
@@ -42,22 +59,37 @@ export class PositionManagementComponent {
   readonly legalEntityStore = inject(LegalEntityStore);
   readonly positionStore = inject(PositionStore);
   readonly departmentStore = inject(DepartmentStore);
+  readonly roleStore = inject(RoleStore);
 
   readonly hasReadAccess = computed(() => this.permissionService.hasPermission('org:read'));
   readonly hasManageAccess = computed(() => this.permissionService.hasPermission('org:manage'));
+  readonly hasRoleReadAccess = computed(() => this.permissionService.hasPermission('roles:read'));
+  readonly canConfigureAccess = computed(() => this.hasManageAccess() && this.hasRoleReadAccess());
   readonly selectedLegalEntity = this.legalEntityStore.selectedLegalEntity;
 
   readonly filterMenuOpen = signal(false);
+
+  // Template Drawer
+  readonly templateDrawerOpen = signal(false);
+  readonly templatePreset = signal<PositionTemplatePreset | null>(null);
+  readonly canvasDragOver = signal(false);
 
   // Modals
   readonly formModalOpen = signal(false);
   readonly editingPosition = signal<PositionListItemResponse | PositionTreeNodeResponse | null>(null);
   readonly reportsToPreset = signal<PositionTreeNodeResponse | null>(null);
 
+
   readonly archiveModalOpen = signal(false);
   readonly archivingPosition = signal<PositionListItemResponse | PositionTreeNodeResponse | null>(null);
-
   readonly coverageModalOpen = signal(false);
+  readonly accessModalOpen = signal(false);
+
+  readonly searchExpanded = signal(false);
+
+  toggleSearch(): void {
+    this.searchExpanded.update((v) => !v);
+  }
 
   readonly departmentOptions = computed(() => {
     const list = this.departmentStore.allFlatList();
@@ -85,6 +117,119 @@ export class PositionManagementComponent {
     }
     return map;
   });
+
+  readonly treeZoom = signal(0.7);
+  readonly treePanX = signal(0);
+  readonly treePanY = signal(0);
+  readonly isPanning = signal(false);
+
+  private startPointerX = 0;
+  private startPointerY = 0;
+  private initialPanX = 0;
+  private initialPanY = 0;
+  private activePointerId: number | null = null;
+
+  readonly zoomPercentage = computed(() => Math.round(this.treeZoom() * 100));
+  readonly treeTransform = computed(
+    () => `translate(${this.treePanX()}px, ${this.treePanY()}px) scale(${this.treeZoom()})`
+  );
+
+  zoomIn(): void {
+    this.treeZoom.update((z) => Math.min(1.5, Math.round((z + 0.1) * 10) / 10));
+  }
+
+  zoomOut(): void {
+    this.treeZoom.update((z) => Math.max(0.4, Math.round((z - 0.1) * 10) / 10));
+  }
+
+  resetZoom(): void {
+    this.treeZoom.set(0.7);
+    this.treePanX.set(0);
+    this.treePanY.set(0);
+  }
+
+  // Smaller than the +/- button step (0.1) so a single wheel fling doesn't blow through the whole zoom range at once.
+  private static readonly WHEEL_ZOOM_STEP = 0.02;
+
+  onTreeWheel(event: WheelEvent): void {
+    event.preventDefault();
+    if (event.deltaY < 0) {
+      this.treeZoom.update((z) => Math.min(1.5, Math.round((z + PositionManagementComponent.WHEEL_ZOOM_STEP) * 100) / 100));
+    } else if (event.deltaY > 0) {
+      this.treeZoom.update((z) => Math.max(0.4, Math.round((z - PositionManagementComponent.WHEEL_ZOOM_STEP) * 100) / 100));
+    }
+  }
+
+  onCanvasPointerDown(event: PointerEvent): void {
+    if (event.button !== 0) return;
+
+    const target = event.target as HTMLElement | null;
+    if (
+      !target ||
+      target.closest('.ptn-node-card') ||
+      target.closest('.ptn-drop-target-box') ||
+      target.closest('.pm-zoom-controls') ||
+      target.closest('button') ||
+      target.closest('input') ||
+      target.closest('select')
+    ) {
+      return;
+    }
+
+    this.isPanning.set(true);
+    this.startPointerX = event.clientX;
+    this.startPointerY = event.clientY;
+    this.initialPanX = this.treePanX();
+    this.initialPanY = this.treePanY();
+    this.activePointerId = event.pointerId;
+
+    const container = event.currentTarget as HTMLElement;
+    if (container && typeof container.setPointerCapture === 'function') {
+      try {
+        container.setPointerCapture(event.pointerId);
+      } catch {
+        // Safe catch for synthetic test events
+      }
+    }
+  }
+
+  onCanvasPointerMove(event: PointerEvent): void {
+    if (!this.isPanning() || (this.activePointerId !== null && this.activePointerId !== event.pointerId)) {
+      return;
+    }
+
+    const dx = event.clientX - this.startPointerX;
+    const dy = event.clientY - this.startPointerY;
+    this.treePanX.set(this.initialPanX + dx);
+    this.treePanY.set(this.initialPanY + dy);
+  }
+
+  onCanvasPointerUp(event: PointerEvent): void {
+    this.endPanning(event);
+  }
+
+  onCanvasPointerCancel(event: PointerEvent): void {
+    this.endPanning(event);
+  }
+
+  private endPanning(event: PointerEvent): void {
+    if (!this.isPanning()) return;
+
+    this.isPanning.set(false);
+
+    const container = event.currentTarget as HTMLElement;
+    if (container && typeof container.releasePointerCapture === 'function') {
+      try {
+        if (this.activePointerId !== null && container.hasPointerCapture?.(this.activePointerId)) {
+          container.releasePointerCapture(this.activePointerId);
+        }
+      } catch {
+        // Safe catch for synthetic test events
+      }
+    }
+    this.activePointerId = null;
+  }
+
 
   constructor() {
     effect(() => {
@@ -118,12 +263,157 @@ export class PositionManagementComponent {
     this.positionStore.setIncludeInactive(checked);
   }
 
+  openTemplateDrawer(): void {
+    if (!this.hasReadAccess()) return;
+    this.templateDrawerOpen.set(true);
+    if (this.positionStore.templatePacks().length === 0 && !this.positionStore.templatePacksLoading()) {
+      void this.positionStore.loadTemplatePacks();
+    }
+  }
+
+  closeTemplateDrawer(): void {
+    this.templateDrawerOpen.set(false);
+  }
+
+  private findMatchingDepartment(departmentName: string): { id: string } | undefined {
+    return this.departmentStore.allFlatList().find(
+      (d) => d.name.trim().toLowerCase() === departmentName.trim().toLowerCase()
+    );
+  }
+
+  private openTemplatePreset(
+    position: PositionTemplatePackPositionResponse,
+    source: PositionTemplatePreset['source'],
+    reportsToPositionId: string | null,
+    reportsToPositionName: string | null,
+    departmentId: string | null,
+    suggestedDepartmentName: string | null,
+    departmentMessage: string | null
+  ): void {
+    if (this.hasRoleReadAccess()) {
+      void this.roleStore.loadRolesOnly();
+    }
+
+    this.editingPosition.set(null);
+    this.reportsToPreset.set(null);
+    this.templatePreset.set({
+      source,
+      positionName: position.positionName,
+      positionKey: position.positionKey,
+      departmentId,
+      reportsToPositionId,
+      reportsToPositionName,
+      suggestedDepartmentName,
+      departmentMessage
+    });
+    this.formModalOpen.set(true);
+  }
+
+  onSelectTemplatePosition(event: TemplatePositionSelectedEvent): void {
+    if (!this.hasManageAccess()) {
+      this.notificationService.error('You need organization management access to create positions from templates.');
+      return;
+    }
+
+    const deptMatch = this.findMatchingDepartment(event.position.departmentName);
+
+    let posMatch: PositionListItemResponse | PositionTreeNodeResponse | undefined;
+    if (event.position.reportsToPositionKey) {
+      const targetKey = event.position.reportsToPositionKey.trim().toLowerCase();
+      posMatch = this.positionStore.allPositionsList().find(
+        (p) => (p.code && p.code.trim().toLowerCase() === targetKey) || p.name.trim().toLowerCase() === targetKey
+      );
+    }
+
+    this.openTemplatePreset(
+      event.position,
+      'template-click',
+      posMatch ? posMatch.id : null,
+      posMatch ? posMatch.name : null,
+      deptMatch ? deptMatch.id : null,
+      deptMatch ? null : event.position.departmentName,
+      null
+    );
+  }
+
+  onCanvasDragOver(event: DragEvent): void {
+    if (!event.dataTransfer?.types.includes(POSITION_TEMPLATE_DRAG_MIME_TYPE)) return;
+    event.preventDefault();
+    event.dataTransfer.dropEffect = this.hasManageAccess() ? 'copy' : 'none';
+    if (this.hasManageAccess()) {
+      this.canvasDragOver.set(true);
+    }
+  }
+
+  onCanvasDragLeave(): void {
+    this.canvasDragOver.set(false);
+  }
+
+  onCanvasDrop(event: DragEvent): void {
+    const raw = event.dataTransfer?.getData(POSITION_TEMPLATE_DRAG_MIME_TYPE);
+    this.canvasDragOver.set(false);
+    if (!raw) return;
+    event.preventDefault();
+
+    if (!this.hasManageAccess()) {
+      this.notificationService.error('You need organization management access to create positions from templates.');
+      return;
+    }
+
+    try {
+      const data = JSON.parse(raw);
+      if (!data || !data.position) return;
+      const position: PositionTemplatePackPositionResponse = data.position;
+      const deptMatch = this.findMatchingDepartment(position.departmentName);
+
+      this.openTemplatePreset(
+        position,
+        'template-drop-root',
+        null,
+        null,
+        deptMatch ? deptMatch.id : null,
+        deptMatch ? null : position.departmentName,
+        null
+      );
+    } catch {
+      // ignore invalid payload
+    }
+  }
+
+  onTemplateDroppedOnPosition(event: TemplateDropOnPositionEvent): void {
+    if (!this.hasManageAccess()) {
+      this.notificationService.error('You need organization management access to create positions from templates.');
+      return;
+    }
+
+    const target = event.targetPosition;
+    const departmentId = target.departmentId || null;
+    const departmentName = departmentId
+      ? target.departmentName || this.departmentNameMap()[departmentId] || null
+      : null;
+
+    this.openTemplatePreset(
+      event.templatePosition,
+      'template-drop-under-position',
+      target.id,
+      target.name,
+      departmentId,
+      null,
+      departmentId ? `Inherited department "${departmentName}" from '${target.name}'.` : null
+    );
+  }
+
+
   openCreateModal(reportsToPreset?: PositionTreeNodeResponse): void {
     if (!this.hasManageAccess()) {
       this.notificationService.error("You don't have permission to create positions.");
       return;
     }
+    if (this.hasRoleReadAccess()) {
+      void this.roleStore.loadRolesOnly();
+    }
     this.editingPosition.set(null);
+    this.templatePreset.set(null);
     this.reportsToPreset.set(reportsToPreset || null);
     this.formModalOpen.set(true);
   }
@@ -135,6 +425,7 @@ export class PositionManagementComponent {
     }
     this.editingPosition.set(pos);
     this.reportsToPreset.set(null);
+    this.templatePreset.set(null);
     this.formModalOpen.set(true);
   }
 
@@ -142,6 +433,7 @@ export class PositionManagementComponent {
     this.formModalOpen.set(false);
     this.editingPosition.set(null);
     this.reportsToPreset.set(null);
+    this.templatePreset.set(null);
   }
 
   async onSavePosition(val: PositionFormSubmitValue): Promise<void> {
@@ -149,38 +441,99 @@ export class PositionManagementComponent {
     if (!le) return;
 
     const editing = this.editingPosition();
-    let success = false;
+    const isFromTemplate = !!this.templatePreset();
 
     if (editing) {
-      success = await this.positionStore.updatePosition(le.id, editing.id, {
+      const success = await this.positionStore.updatePosition(le.id, editing.id, {
         departmentId: val.departmentId,
         name: val.name,
         code: val.code,
-        positionType: val.positionType,
         maxOccupancy: val.maxOccupancy,
         reportsToPositionId: val.reportsToPositionId
       });
       if (success) {
         this.notificationService.success(`Position '${val.name}' updated successfully.`);
+        this.closeFormModal();
+      } else {
+        this.notificationService.error(this.positionStore.actionError() ?? 'Failed to update position.');
       }
-    } else {
-      success = await this.positionStore.createPosition(le.id, {
-        departmentId: val.departmentId,
-        name: val.name,
-        code: val.code,
-        positionType: val.positionType,
-        maxOccupancy: val.maxOccupancy,
-        reportsToPositionId: val.reportsToPositionId
-      });
-      if (success) {
-        this.notificationService.success(`Position '${val.name}' created successfully.`);
-      }
+      return;
     }
 
-    if (success) {
-      this.closeFormModal();
+    // Step 1: Call Create Position with ONLY position fields
+    const createPayload: CreatePositionRequest = {
+      departmentId: val.departmentId,
+      name: val.name,
+      code: val.code,
+      maxOccupancy: val.maxOccupancy,
+      reportsToPositionId: val.reportsToPositionId
+    };
+
+    const createdPos = await this.positionStore.createPosition(le.id, createPayload);
+
+    if (!createdPos) {
+      this.notificationService.error(this.positionStore.actionError() ?? 'Failed to create position.');
+      return;
+    }
+
+    // Step 2: Set Position Access if user selected system access role
+    if (val.selectedAccessRoleId) {
+      const accessSuccess = await this.positionStore.setPositionAccess(le.id, createdPos.id, {
+        roleId: val.selectedAccessRoleId,
+        requiresApproval: !!val.accessRequiresApproval
+      });
+
+      if (accessSuccess) {
+        this.notificationService.success(
+          isFromTemplate ? 'Position created from template.' : 'Position created with system access.'
+        );
+      } else {
+        this.notificationService.warning(
+          'Position was created, but system access was not saved. You can update access from Position Access.'
+        );
+      }
     } else {
-      this.notificationService.error(this.positionStore.actionError() ?? 'Failed to save position.');
+      this.notificationService.success(isFromTemplate ? 'Position created from template.' : 'Position created.');
+    }
+
+    this.closeFormModal();
+  }
+
+
+  async openAccessModal(pos: PositionListItemResponse | PositionTreeNodeResponse): Promise<void> {
+    if (!this.canConfigureAccess()) {
+      this.notificationService.error("You don't have permission to configure position system access.");
+      return;
+    }
+    const le = this.selectedLegalEntity();
+    if (!le) return;
+
+    void this.roleStore.loadRolesOnly();
+
+    this.accessModalOpen.set(true);
+    await this.positionStore.loadAccess(le.id, pos);
+  }
+
+  closeAccessModal(): void {
+    this.accessModalOpen.set(false);
+    this.positionStore.clearAccess();
+  }
+
+  async onSaveAccess(req: SetPositionAccessRequest): Promise<void> {
+    if (!this.canConfigureAccess()) {
+      this.notificationService.error("You don't have permission to configure position system access.");
+      return;
+    }
+    const le = this.selectedLegalEntity();
+    const pos = this.positionStore.selectedAccessPosition();
+    if (!le || !pos) return;
+
+    const success = await this.positionStore.setPositionAccess(le.id, pos.id, req);
+    if (success) {
+      this.notificationService.success(`System access template for '${pos.name}' updated successfully.`);
+      this.closeAccessModal();
+    } else {
+      this.notificationService.error(this.positionStore.accessError() ?? 'Failed to update system access template.');
     }
   }
 
@@ -196,13 +549,10 @@ export class PositionManagementComponent {
     const fullPos = this.positionStore.allPositionsList().find((p) => p.id === event.position.id);
     if (!fullPos) return;
 
-    const typeNorm: 'unique' | 'pooled' = (fullPos.positionType || '').toLowerCase() === 'pooled' ? 'pooled' : 'unique';
-
     const success = await this.positionStore.updatePosition(le.id, fullPos.id, {
       departmentId: fullPos.departmentId || '',
       name: fullPos.name,
       code: fullPos.code || '',
-      positionType: typeNorm,
       maxOccupancy: fullPos.maxOccupancy,
       reportsToPositionId: event.newReportsToPositionId
     });

@@ -1,0 +1,143 @@
+.draft-table-container {
+  width: 100%;
+  border-radius: 12px;
+  border: 1px solid var(--color-border);
+  background: var(--color-surface);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.03);
+  overflow: hidden;
+}
+
+.draft-table {
+  width: 100%;
+  table-layout: fixed;
+  border-collapse: collapse;
+  font-size: 0.8125rem;
+  text-align: left;
+}
+
+.draft-table th {
+  padding: 0.75rem 1rem;
+  background: var(--color-surface-secondary);
+  color: var(--color-text-secondary);
+  font-size: 0.75rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  border-bottom: 1px solid var(--color-border);
+  user-select: none;
+}
+
+.col-name {
+  width: 24%;
+}
+
+.col-position {
+  width: 22%;
+}
+
+.col-status {
+  width: 16%;
+}
+
+.col-reason {
+  width: 16%;
+}
+
+.col-step {
+  width: 10%;
+}
+
+.col-started {
+  width: 8%;
+}
+
+.col-actions {
+  width: 4%;
+  text-align: right;
+}
+
+.draft-row {
+  transition: background-color 150ms ease;
+  border-bottom: 1px solid color-mix(in srgb, var(--color-border) 60%, transparent);
+}
+
+.draft-row:last-child {
+  border-bottom: none;
+}
+
+.draft-row:hover {
+  background: var(--color-surface-secondary);
+}
+
+.draft-table td {
+  padding: 0.75rem 1rem;
+  vertical-align: middle;
+}
+
+.draft-name {
+  font-weight: 600;
+  color: var(--color-text-primary);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  display: block;
+}
+
+.draft-role {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.draft-pos {
+  font-weight: 500;
+  color: var(--color-text-primary);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.draft-dept {
+  font-size: 0.75rem;
+  color: var(--color-text-secondary);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.draft-status-badge {
+  display: inline-block;
+  padding: 0.15rem 0.55rem;
+  border-radius: 999px;
+  font-size: 0.71875rem;
+  font-weight: 600;
+  background: #fef3c7;
+  color: #92400e;
+}
+
+.draft-reason-text,
+.draft-step-text,
+.draft-started-text {
+  color: var(--color-text-secondary);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  display: block;
+}
+
+.draft-action-btn {
+  font-weight: 600;
+  color: var(--color-sidebar-active-bg, #2563eb);
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  padding: 0;
+  font-size: 0.8125rem;
+  white-space: nowrap;
+  transition: opacity 150ms ease;
+}
+
+.draft-action-btn:hover {
+  opacity: 0.8;
+  text-decoration: underline;
+}

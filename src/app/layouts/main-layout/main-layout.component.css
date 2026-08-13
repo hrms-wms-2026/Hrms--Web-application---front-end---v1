@@ -111,15 +111,34 @@
 
 @media (max-width: 768px) {
   .main-layout {
-    grid-template-columns: 1fr;
-    grid-template-rows: auto auto minmax(0, 1fr);
-    grid-template-areas:
-      "navbar"
-      "sidebar"
-      "main";
+    display: flex;
+    flex-direction: column;
+    height: 100vh;
+    max-height: 100vh;
+    overflow: hidden;
+  }
+
+  .main-layout__rail,
+  .main-layout__sub-sidebar {
+    display: none !important;
+  }
+
+  .main-layout__topbar {
+    width: 100%;
+    margin: 0;
+    border-radius: 0;
+    border-left: none;
+    border-right: none;
+    border-top: none;
   }
 
   .main-content {
-    padding: 1rem;
+    flex: 1;
+    margin: 0;
+    border-radius: 0;
+    border: none;
+    padding: 1rem 1rem 5.5rem 1rem;
+    height: auto;
+    overflow-y: auto;
   }
 }

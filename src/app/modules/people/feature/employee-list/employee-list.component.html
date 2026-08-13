@@ -1,0 +1,134 @@
+<header class="emp-page-header">
+  <div class="emp-header-row">
+    <app-breadcrumb-header parentLabel="People" currentLabel="Employees" icon="people" />
+
+    <div class="emp-controls">
+      <!-- Expandable Search (Icon Click Toggle) -->
+      <div class="emp-search-container">
+        @if (searchExpanded()) {
+          <div class="emp-search-expandable">
+            <svg class="emp-search-icon" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/>
+            </svg>
+            <input
+              type="text"
+              class="emp-search-input"
+              placeholder="Search by name, email, or employee number..."
+              [value]="searchTerm()"
+              (input)="onSearchInput($any($event.target).value)"
+            />
+            <button
+              type="button"
+              class="emp-search-clear-btn"
+              (click)="toggleSearch()"
+              title="Close search"
+              aria-label="Close search"
+            >
+              &times;
+            </button>
+          </div>
+        } @else {
+          <button
+            type="button"
+            class="emp-icon-btn"
+            [class.emp-icon-btn--active]="searchTerm()"
+            (click)="toggleSearch()"
+            title="Search employees"
+            aria-label="Search employees"
+          >
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/>
+            </svg>
+          </button>
+        }
+      </div>
+
+      <!-- Right: Segmented Tabs & Add Button -->
+      <div class="emp-controls-right">
+        <div class="emp-segmented-tabs" role="tablist" aria-label="People views">
+          <button
+            type="button"
+            class="emp-tab-btn"
+            [class.emp-tab-btn--active]="activeTab() === 'employees'"
+            (click)="setTab('employees')"
+            role="tab"
+            [attr.aria-selected]="activeTab() === 'employees'"
+          >
+            <span>Employees</span>
+            <span class="emp-count-badge">{{ store.employeesTotalCount() }}</span>
+          </button>
+
+          <button
+            type="button"
+            class="emp-tab-btn"
+            [class.emp-tab-btn--active]="activeTab() === 'drafts'"
+            (click)="setTab('drafts')"
+            role="tab"
+            [attr.aria-selected]="activeTab() === 'drafts'"
+          >
+            <span>Onboarding Drafts</span>
+            @if (store.drafts().length > 0) {
+              <span class="emp-count-badge emp-count-badge--amber">{{ store.drafts().length }}</span>
+            }
+          </button>
+        </div>
+
+        @if (canAddEmployee()) {
+          <a routerLink="/people/employees/new" class="no-underline">
+            <app-button variant="primary">+ Add Employee</app-button>
+          </a>
+        }
+      </div>
+    </div>
+  </div>
+</header>
+
+<!-- Tab 1: Active Employees -->
+@if (activeTab() === 'employees') {
+  <section class="emp-section">
+    @if (store.employeesLoading()) {
+      <app-loader label="Loading employees…" />
+    } @else if (store.employeesError()) {
+      <app-error-state [message]="store.employeesError()!" [retryable]="true" (retry)="loadEmployees()" />
+    } @else {
+      <app-employee-table [employees]="store.employees()" />
+      @if (store.employeesTotalCount() > store.employeesPageSize()) {
+        <div class="emp-pagination">
+          <span class="emp-pagination-info">
+            Page {{ store.employeesPage() }} of
+            {{ Math.ceil(store.employeesTotalCount() / store.employeesPageSize()) }}
+          </span>
+          <div class="emp-pagination-buttons">
+            <app-button
+              variant="secondary"
+              [disabled]="store.employeesPage() <= 1"
+              (pressed)="goToEmployeesPage(store.employeesPage() - 1)"
+            >
+              Previous
+            </app-button>
+            <app-button
+              variant="secondary"
+              [disabled]="store.employeesPage() * store.employeesPageSize() >= store.employeesTotalCount()"
+              (pressed)="goToEmployeesPage(store.employeesPage() + 1)"
+            >
+              Next
+            </app-button>
+          </div>
+        </div>
+      }
+    }
+  </section>
+}
+
+<!-- Tab 2: Onboarding Drafts -->
+@if (activeTab() === 'drafts') {
+  <section class="emp-section">
+    @if (store.draftsLoading()) {
+      <app-loader label="Loading drafts…" />
+    } @else if (store.draftsError()) {
+      <app-error-state [message]="store.draftsError()!" [retryable]="true" (retry)="loadDrafts()" />
+    } @else {
+      <app-draft-table [drafts]="store.drafts()" (continueDraft)="onContinueDraft($event)" />
+    }
+  </section>
+}

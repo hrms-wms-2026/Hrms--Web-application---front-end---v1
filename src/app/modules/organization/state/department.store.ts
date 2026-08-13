@@ -61,6 +61,7 @@ export const DepartmentStore = signalStore(
       if (viewMode() === 'list') return flatItems();
       const result: DepartmentListItemResponse[] = [];
       function flatten(nodes: readonly DepartmentTreeNodeResponse[]) {
+        if (!nodes || !Array.isArray(nodes)) return;
         for (const n of nodes) {
           result.push({
             id: n.id,

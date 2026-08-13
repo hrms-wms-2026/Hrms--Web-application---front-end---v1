@@ -36,6 +36,10 @@ export interface LegalEntityGeneralSettings {
   readonly dateFormat: string;
   readonly timeFormat: '12h' | '24h';
   readonly status: 'active' | 'inactive';
+  /** Default company work start time in HH:mm 24-hour format. Null when unset. */
+  readonly workStartTime: string | null;
+  /** Default company work end time in HH:mm 24-hour format. Null when unset. */
+  readonly workEndTime: string | null;
 }
 
 /**
@@ -63,6 +67,10 @@ export interface UpdateLegalEntityGeneralSettingsRequest {
   dateFormat: string;
   timeFormat: '12h' | '24h';
   status: 'active' | 'inactive';
+  /** Default company work start time in HH:mm 24-hour format. Null to clear. */
+  workStartTime: string | null;
+  /** Default company work end time in HH:mm 24-hour format. Null to clear. */
+  workEndTime: string | null;
 }
 
 /**

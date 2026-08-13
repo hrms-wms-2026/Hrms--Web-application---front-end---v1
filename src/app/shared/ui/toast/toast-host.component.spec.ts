@@ -29,14 +29,15 @@ describe('ToastHostComponent', () => {
     expect(toastItems.length).toBe(0);
   });
 
-  it('renders success, error, and info toast variants visibly with proper accessibility attributes', () => {
+  it('renders success, error, info, and warning toast variants visibly with proper accessibility attributes', () => {
     notificationService.success('Success message');
     notificationService.error('Error message');
     notificationService.info('Info message');
+    notificationService.warning('Warning message');
     fixture.detectChanges();
 
     const toastItems = fixture.debugElement.queryAll(By.css('.toast-item'));
-    expect(toastItems.length).toBe(3);
+    expect(toastItems.length).toBe(4);
 
     const successToast = toastItems[0].nativeElement as HTMLElement;
     expect(successToast.classList.contains('toast-item--success')).toBe(true);
@@ -55,6 +56,12 @@ describe('ToastHostComponent', () => {
     expect(infoToast.getAttribute('role')).toBe('status');
     expect(infoToast.getAttribute('aria-live')).toBe('polite');
     expect(infoToast.textContent).toContain('Info message');
+
+    const warningToast = toastItems[3].nativeElement as HTMLElement;
+    expect(warningToast.classList.contains('toast-item--warning')).toBe(true);
+    expect(warningToast.getAttribute('role')).toBe('status');
+    expect(warningToast.getAttribute('aria-live')).toBe('polite');
+    expect(warningToast.textContent).toContain('Warning message');
   });
 
   it('dismisses a toast when clicking the close button', () => {

@@ -8,7 +8,7 @@ describe('DraftTableComponent', () => {
 
   const draft: DraftListItemResponse = {
     id: 'draft-1',
-    employeeName: 'Ada Lovelace',
+    displayName: 'Ada Lovelace',
     positionName: 'Software Engineer',
     departmentName: 'Engineering',
     status: 'waiting_for_seat',
@@ -33,12 +33,61 @@ describe('DraftTableComponent', () => {
     expect(fixture.nativeElement.textContent).toContain('No drafts');
   });
 
-  it('translates draft status and reason codes to display text, never rendering the raw snake_case code', async () => {
+  it('displays displayName and does not use employeeName', async () => {
     await setup([draft], true);
+    expect(fixture.nativeElement.textContent).toContain('Ada Lovelace');
+  });
+
+  it('translates draft status and new reason codes to display text, never rendering the raw snake_case code', async () => {
+    const approvalPendingDraft: DraftListItemResponse = {
+      ...draft,
+      id: 'draft-pending',
+      status: 'waiting_for_position_approval',
+      draftReason: 'waiting_for_position_approval'
+    };
+    const rejectedDraft: DraftListItemResponse = { ...draft, id: 'draft-2', status: 'draft', draftReason: 'position_approval_rejected' };
+    const seatConfigDraft: DraftListItemResponse = { ...draft, id: 'draft-3', draftReason: 'seat_configuration_required' };
+    const inviteSentDraft: DraftListItemResponse = { ...draft, id: 'draft-4', draftReason: 'invitation_sent' };
+
+    await setup([draft, approvalPendingDraft, rejectedDraft, seatConfigDraft, inviteSentDraft], true);
     const text = fixture.nativeElement.textContent as string;
 
+    expect(text).toContain('Draft – waiting for approval');
+    expect(text).toContain('Waiting for position approval');
+    expect(text).toContain('Position approval rejected');
     expect(text).toContain('Waiting for seat');
+    expect(text).toContain('Seat configuration required');
+    expect(text).toContain('Invitation sent');
     expect(text).not.toContain('waiting_for_seat');
+    expect(text).not.toContain('waiting_for_position_approval');
+    expect(text).not.toContain('position_approval_rejected');
+    expect(text).not.toContain('seat_configuration_required');
+    expect(text).not.toContain('invitation_sent');
+  });
+
+  it('does not render fake Approve or Reject buttons without accessGrantRequestId for approval-pending or rejected drafts', async () => {
+    const approvalPendingDraft: DraftListItemResponse = {
+      ...draft,
+      id: 'draft-pending',
+      status: 'waiting_for_position_approval',
+      draftReason: 'waiting_for_position_approval'
+    };
+    const rejectedDraft: DraftListItemResponse = {
+      ...draft,
+      id: 'draft-rejected',
+      status: 'draft',
+      draftReason: 'position_approval_rejected'
+    };
+
+    await setup([approvalPendingDraft, rejectedDraft], true);
+
+    const buttons = Array.from(fixture.nativeElement.querySelectorAll('button')) as HTMLButtonElement[];
+    const buttonTexts = buttons.map((b) => b.textContent?.trim());
+
+    expect(buttonTexts).not.toContain('Approve');
+    expect(buttonTexts).not.toContain('Approve & Send Invite');
+    expect(buttonTexts).not.toContain('Reject');
+    expect(buttonTexts.every((t) => t === 'Continue Draft')).toBe(true);
   });
 
   it('shows the Continue Draft action when the caller holds employees:write', async () => {

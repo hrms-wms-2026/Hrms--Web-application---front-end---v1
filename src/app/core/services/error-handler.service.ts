@@ -34,6 +34,12 @@ const HTTP_STATUS_MAPPINGS: Record<number, string> = {
 };
 
 const DEFAULT_SAFE_MESSAGE = 'Something went wrong. Please try again.';
+const SESSION_SECURITY_SAFE_MESSAGE = 'Your session security check failed. Refresh the page and try again.';
+
+export function isSecurityError(str: string): boolean {
+  if (!str) return false;
+  return /(csrf|xsrf|anti-forgery|antiforgery|security\s+token|token\s+header|missing\s+token|invalid\s+token|expired\s+token|cookie|x-csrf-token|x-xsrf-token)/i.test(str);
+}
 
 export function isMachineValue(str: string): boolean {
   if (!str) return false;
@@ -41,6 +47,11 @@ export function isMachineValue(str: string): boolean {
 
   // Known machine code check
   if (KNOWN_CODE_MAPPINGS[trimmed.toLowerCase()]) {
+    return true;
+  }
+
+  // Technical security terms
+  if (isSecurityError(trimmed)) {
     return true;
   }
 
@@ -140,6 +151,9 @@ export function toSafeErrorMessage(err: unknown, fallbackMessage?: string): stri
     const knownSafe = KNOWN_CODE_MAPPINGS[trimmed.toLowerCase()];
     if (knownSafe) {
       return knownSafe;
+    }
+    if (isSecurityError(trimmed)) {
+      return SESSION_SECURITY_SAFE_MESSAGE;
     }
     if (!isMachineValue(trimmed) && trimmed.length > 0 && trimmed.length < 300) {
       return trimmed;

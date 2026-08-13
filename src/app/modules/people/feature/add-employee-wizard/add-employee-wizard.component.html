@@ -12,14 +12,6 @@
 } @else if (store.resuming()) {
   <app-loader label="Loading draft…" />
 } @else {
-  <nav class="mb-6 flex flex-wrap gap-2 text-xs" aria-label="Wizard steps">
-    @for (step of stepOrder; track step; let i = $index) {
-      <span class="rounded-full px-3 py-1" [class]="stepChipClass(i)">
-        {{ i + 1 }}. {{ stepLabels[step] }}
-      </span>
-    }
-  </nav>
-
   <div>
     @switch (store.step()) {
       @case ('employee_details') {
@@ -27,10 +19,17 @@
           <app-input label="Company" [value]="legalEntityStore.selectedLegalEntity()?.name ?? ''" [disabled]="true" />
 
           <app-input
-            label="Full name"
-            [value]="form.controls.employeeName.value || ''"
-            (valueChange)="form.controls.employeeName.setValue($event)"
-            [error]="submitAttempted() && form.controls.employeeName.invalid ? 'Full name is required.' : ''"
+            label="First name"
+            [value]="form.controls.firstName.value || ''"
+            (valueChange)="form.controls.firstName.setValue($event)"
+            [error]="submitAttempted() && form.controls.firstName.invalid ? 'First name is required.' : ''"
+          />
+
+          <app-input
+            label="Last name"
+            [value]="form.controls.lastName.value || ''"
+            (valueChange)="form.controls.lastName.setValue($event)"
+            [error]="submitAttempted() && form.controls.lastName.invalid ? 'Last name is required.' : ''"
           />
 
           <app-input
@@ -38,8 +37,31 @@
             type="email"
             [value]="form.controls.workEmail.value || ''"
             (valueChange)="form.controls.workEmail.setValue($event)"
-            [error]="submitAttempted() && form.controls.workEmail.invalid ? 'A valid work email is required.' : ''"
+            [error]="submitAttempted() && form.controls.workEmail.invalid ? 'A valid work email is required (max 254 chars).' : ''"
           />
+
+          @if (store.loadingWorkModes()) {
+            <app-loader label="Loading work modes…" />
+          } @else if (store.workModesError()) {
+            <div class="rounded-lg border border-[var(--color-border)] p-4 text-sm text-[var(--color-text-primary)] flex items-center justify-between">
+              <span>{{ store.workModesError() }}</span>
+              <app-button variant="secondary" size="sm" (pressed)="store.loadWorkModes()">Retry</app-button>
+            </div>
+          } @else if (store.workModes().length === 0) {
+            <app-empty-state
+              title="No work modes configured"
+              description="Work modes are not configured. Contact an administrator."
+            />
+          } @else {
+            <app-select
+              label="Work mode"
+              placeholder="Select work mode"
+              [options]="workModeOptions()"
+              [value]="form.controls.workModeId.value"
+              [error]="submitAttempted() && form.controls.workModeId.invalid ? 'Work mode is required.' : ''"
+              (valueChange)="onWorkModeChange($event)"
+            />
+          }
 
           @if (store.loadingDepartments()) {
             <app-loader label="Loading departments…" />
@@ -101,15 +123,7 @@
             label="Employee number"
             [value]="form.controls.employeeNumber.value || ''"
             (valueChange)="form.controls.employeeNumber.setValue($event)"
-            hint="Leave blank if auto-generated."
           />
-
-          @if (store.schedulesUnavailable()) {
-            <p class="text-xs text-[var(--color-text-secondary)]">
-              Schedule/Shift is not yet configured for your organization. This step will be available once schedules
-              are set up.
-            </p>
-          }
         </div>
       }
       @case ('checklist_template') {
@@ -128,14 +142,26 @@
         <div class="max-w-2xl space-y-4">
           <div class="rounded-lg border border-[var(--color-border)] p-4 text-sm">
             <dl class="grid grid-cols-2 gap-y-2">
-              <dt class="text-[var(--color-text-secondary)]">Full name</dt>
-              <dd>{{ form.controls.employeeName.value || '—' }}</dd>
+              <dt class="text-[var(--color-text-secondary)]">First name</dt>
+              <dd>{{ form.controls.firstName.value || '—' }}</dd>
+              <dt class="text-[var(--color-text-secondary)]">Last name</dt>
+              <dd>{{ form.controls.lastName.value || '—' }}</dd>
               <dt class="text-[var(--color-text-secondary)]">Work email</dt>
               <dd>{{ form.controls.workEmail.value || '—' }}</dd>
+              <dt class="text-[var(--color-text-secondary)]">Work mode</dt>
+              <dd>{{ selectedWorkModeLabel() }}</dd>
+              <dt class="text-[var(--color-text-secondary)]">Department</dt>
+              <dd>{{ selectedDepartmentLabel() }}</dd>
+              <dt class="text-[var(--color-text-secondary)]">Position</dt>
+              <dd>{{ selectedPositionLabel() }}</dd>
               <dt class="text-[var(--color-text-secondary)]">Employment type</dt>
-              <dd>{{ form.controls.employmentType.value || '—' }}</dd>
+              <dd>{{ selectedEmploymentTypeLabel() }}</dd>
               <dt class="text-[var(--color-text-secondary)]">Start date</dt>
               <dd>{{ form.controls.startDate.value || '—' }}</dd>
+              @if (form.controls.employeeNumber.value) {
+                <dt class="text-[var(--color-text-secondary)]">Employee number</dt>
+                <dd>{{ form.controls.employeeNumber.value }}</dd>
+              }
             </dl>
           </div>
 
@@ -148,11 +174,6 @@
               Seat and approval status will be shown here after you save.
             </p>
           }
-
-          <p class="text-xs text-[var(--color-text-secondary)]">
-            This employee cannot be finalized in this version of the product - saving keeps them as a draft you can
-            return to.
-          </p>
         </div>
       }
     }
@@ -165,9 +186,20 @@
       @if (stepIndex() < stepOrder.length - 1) {
         <app-button variant="primary" type="button" (pressed)="goToNextStep()">Continue</app-button>
       }
-      <app-button variant="primary" type="button" [loading]="store.saving()" (pressed)="onSaveDraft()">
+      <app-button variant="secondary" type="button" [loading]="store.saving()" (pressed)="onSaveDraft()">
         Save Draft
       </app-button>
+      @if (stepIndex() === stepOrder.length - 1) {
+        <app-button
+          *appHasPermission="'employees:write'"
+          variant="primary"
+          type="button"
+          [loading]="store.finalizing() || store.saving()"
+          (pressed)="onFinalize()"
+        >
+          Finalize and send invite
+        </app-button>
+      }
     </div>
   </div>
 }

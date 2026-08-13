@@ -1,0 +1,38 @@
+@if (visibleItems().length > 0) {
+  <nav class="mobile-bottom-nav" aria-label="Mobile navigation">
+
+    @if (activeChildren().length > 0) {
+      <div class="mobile-sub-nav">
+        @for (child of activeChildren(); track child.id) {
+          <a
+            [routerLink]="child.path"
+            class="mobile-sub-nav__item"
+            [class.mobile-sub-nav__item--active]="isChildActive(child.path)"
+          >
+            {{ child.label }}
+          </a>
+        }
+      </div>
+    }
+
+    <div class="mobile-bottom-nav__bar">
+      @for (item of visibleItems(); track item.id) {
+        <a
+          [routerLink]="item.path"
+          class="mobile-nav-item"
+          [class.mobile-nav-item--active]="activeItem()?.id === item.id"
+          [attr.aria-label]="item.label"
+          [attr.aria-current]="activeItem()?.id === item.id ? 'page' : null"
+        >
+          <div class="mobile-nav-item__icon">
+            <app-nav-icon [name]="item.icon!" [active]="activeItem()?.id === item.id" />
+          </div>
+          @if (activeItem()?.id === item.id) {
+            <span class="mobile-nav-item__label">{{ item.label }}</span>
+          }
+        </a>
+      }
+    </div>
+
+  </nav>
+}

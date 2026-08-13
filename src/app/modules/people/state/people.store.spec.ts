@@ -98,6 +98,7 @@ describe('PeopleStore', () => {
       items: [
         {
           id: 'draft-1',
+          displayName: 'Ada Lovelace',
           employeeName: 'Ada Lovelace',
           positionName: null,
           departmentName: null,

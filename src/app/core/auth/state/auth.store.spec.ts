@@ -153,12 +153,23 @@ describe('AuthStore', () => {
     expect(store.email()).toBeNull();
   });
 
-  it('logout calls the API then clears session even if the API call rejects', async () => {
+  it('logout returns true and clears session when API succeeds', async () => {
+    const store = setup({ login: () => of(authenticatedDto), logout: () => of(undefined) } as Partial<AuthApiService>);
+    await store.login({ email: 'a@b.com', password: 'secret' });
+
+    const result = await store.logout();
+
+    expect(result).toBe(true);
+    expect(store.authenticated()).toBe(false);
+  });
+
+  it('logout returns false and clears session even if the API call rejects', async () => {
     const store = setup({ login: () => of(authenticatedDto), logout: () => throwError(() => new Error('network')) } as Partial<AuthApiService>);
     await store.login({ email: 'a@b.com', password: 'secret' });
 
-    await store.logout();
+    const result = await store.logout();
 
+    expect(result).toBe(false);
     expect(store.authenticated()).toBe(false);
   });
 });

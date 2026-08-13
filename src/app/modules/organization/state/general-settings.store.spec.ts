@@ -29,7 +29,9 @@ describe('GeneralSettingsStore', () => {
     defaultLanguage: 'en',
     dateFormat: 'DD/MM/YYYY',
     timeFormat: '24h',
-    status: 'active'
+    status: 'active',
+    workStartTime: '09:00',
+    workEndTime: '17:30'
   };
 
   const settingsB: LegalEntityGeneralSettings = { ...settingsA, id: 'company-b', name: 'Company B', companyCode: 'B' };
@@ -127,7 +129,9 @@ describe('GeneralSettingsStore', () => {
       defaultLanguage: 'en',
       dateFormat: 'DD/MM/YYYY',
       timeFormat: '24h',
-      status: 'active'
+      status: 'active',
+      workStartTime: '09:00',
+      workEndTime: '17:30'
     });
 
     const putReq = httpMock.expectOne(`${environment.apiUrl}/org/legal-entities/company-a/general-settings`);
@@ -163,7 +167,9 @@ describe('GeneralSettingsStore', () => {
       defaultLanguage: 'en',
       dateFormat: 'DD/MM/YYYY',
       timeFormat: '24h',
-      status: 'active'
+      status: 'active',
+      workStartTime: null,
+      workEndTime: null
     });
 
     httpMock
@@ -174,6 +180,82 @@ describe('GeneralSettingsStore', () => {
     expect(result).toBeNull();
     expect(store.saveError()).toBe('Company name is required.');
     expect(store.settings()).toEqual(settingsA); // failed values kept in form by the component, not the store
+  });
+
+  it('save() round-trips workStartTime and workEndTime through the store', async () => {
+    const loadPromise = store.load('company-a');
+    httpMock.expectOne(`${environment.apiUrl}/org/legal-entities/company-a/general-settings`).flush(settingsA);
+    await loadPromise;
+
+    const savePromise = store.save('company-a', {
+      name: 'Company A',
+      companyCode: 'A',
+      registrationNumber: 'REG-A',
+      taxRegistrationNumber: null,
+      vatGstNumber: null,
+      email: null,
+      phoneNumber: null,
+      website: null,
+      countryCode: 'LKA',
+      currencyCode: 'LKR',
+      timezone: 'Asia/Colombo',
+      financialYearStartMonth: 1,
+      firstDayOfWeek: 1,
+      standardWorkingDays: [1, 2, 3, 4, 5],
+      defaultLanguage: 'en',
+      dateFormat: 'DD/MM/YYYY',
+      timeFormat: '24h',
+      status: 'active',
+      workStartTime: '08:00',
+      workEndTime: '16:30'
+    });
+
+    const putReq = httpMock.expectOne(`${environment.apiUrl}/org/legal-entities/company-a/general-settings`);
+    putReq.flush({ ...settingsA, workStartTime: '08:00', workEndTime: '16:30' });
+    const result = await savePromise;
+
+    expect(result?.workStartTime).toBe('08:00');
+    expect(result?.workEndTime).toBe('16:30');
+    expect(store.settings()?.workStartTime).toBe('08:00');
+    expect(store.settings()?.workEndTime).toBe('16:30');
+  });
+
+  it('save() clears workStartTime and workEndTime when null/null is sent', async () => {
+    const loadPromise = store.load('company-a');
+    httpMock.expectOne(`${environment.apiUrl}/org/legal-entities/company-a/general-settings`).flush(settingsA);
+    await loadPromise;
+
+    const savePromise = store.save('company-a', {
+      name: 'Company A',
+      companyCode: 'A',
+      registrationNumber: 'REG-A',
+      taxRegistrationNumber: null,
+      vatGstNumber: null,
+      email: null,
+      phoneNumber: null,
+      website: null,
+      countryCode: 'LKA',
+      currencyCode: 'LKR',
+      timezone: 'Asia/Colombo',
+      financialYearStartMonth: 1,
+      firstDayOfWeek: 1,
+      standardWorkingDays: [1, 2, 3, 4, 5],
+      defaultLanguage: 'en',
+      dateFormat: 'DD/MM/YYYY',
+      timeFormat: '24h',
+      status: 'active',
+      workStartTime: null,
+      workEndTime: null
+    });
+
+    const putReq = httpMock.expectOne(`${environment.apiUrl}/org/legal-entities/company-a/general-settings`);
+    putReq.flush({ ...settingsA, workStartTime: null, workEndTime: null });
+    const result = await savePromise;
+
+    expect(result?.workStartTime).toBeNull();
+    expect(result?.workEndTime).toBeNull();
+    expect(store.settings()?.workStartTime).toBeNull();
+    expect(store.settings()?.workEndTime).toBeNull();
   });
 
   it('uploadLogo() PUTs multipart and patches logoFileId on success', async () => {

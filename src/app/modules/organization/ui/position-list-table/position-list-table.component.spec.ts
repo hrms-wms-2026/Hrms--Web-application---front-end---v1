@@ -1,7 +1,7 @@
 import { TestBed } from '@angular/core/testing';
 import { By } from '@angular/platform-browser';
 import { PositionListTableComponent } from './position-list-table.component';
-import { PositionListItemResponse } from '../../models/position.model';
+import { OccupantPreviewItem, PositionListItemResponse } from '../../models/position.model';
 
 describe('PositionListTableComponent', () => {
   function makePosition(overrides: Partial<PositionListItemResponse>): PositionListItemResponse {
@@ -21,6 +21,21 @@ describe('PositionListTableComponent', () => {
     };
   }
 
+  function makeEmployee(overrides: Partial<OccupantPreviewItem> = {}): OccupantPreviewItem {
+    return {
+      employeeId: 'emp-1',
+      displayName: 'Jane Smith',
+      initials: 'JS',
+      avatarFileId: null,
+      avatarUrl: null,
+      ...overrides
+    };
+  }
+
+  afterEach(() => {
+    TestBed.resetTestingModule();
+  });
+
   async function createComponent(positions: readonly PositionListItemResponse[]) {
     await TestBed.configureTestingModule({ imports: [PositionListTableComponent] }).compileComponents();
     const fixture = TestBed.createComponent(PositionListTableComponent);
@@ -33,92 +48,88 @@ describe('PositionListTableComponent', () => {
     return fixture.debugElement.query(By.css('tbody tr')).nativeElement.textContent as string;
   }
 
-  it('shows an unassigned/unknown state, not 1/1 Occupied, when currentOccupancy is null on a unique position', async () => {
-    const fixture = await createComponent([makePosition({ currentOccupancy: null })]);
-    const text = rowText(fixture);
+  // ── Seat-preview rendering ──────────────────────────────────
 
-    expect(text).not.toContain('1/1');
-    expect(text).not.toContain('Occupied');
-    expect(text).toContain('—/1');
-    expect(text).toMatch(/Unassigned/i);
+  it('renders app-position-seat-preview in the capacity cell (not old text)', async () => {
+    const fixture = await createComponent([makePosition({})]);
+    expect(fixture.nativeElement.querySelector('app-position-seat-preview')).not.toBeNull();
+    // Old raw capacity text must not be present
+    expect(rowText(fixture)).not.toContain('—/1');
+    expect(rowText(fixture)).not.toContain('1/1');
+    expect(rowText(fixture)).not.toContain('0/1');
   });
 
-  it('shows 0/1 Vacant for a unique position with known zero occupancy', async () => {
-    const fixture = await createComponent([makePosition({ currentOccupancy: 0, currentOccupancyCheckSupported: true })]);
-    const text = rowText(fixture);
-
-    expect(text).toContain('0/1');
-    expect(text).toContain('Vacant');
+  it('renders one empty circle when no assignedCount / occupantPreview supplied (stale backend)', async () => {
+    const fixture = await createComponent([makePosition({ maxOccupancy: 1 })]);
+    const emptyCircles = fixture.nativeElement.querySelectorAll('.psp-circle--empty');
+    expect(emptyCircles.length).toBe(1);
+    expect(fixture.nativeElement.querySelector('.psp-circle--employee')).toBeNull();
   });
 
-  it('shows 1/1 Occupied for a unique position with known occupancy at capacity', async () => {
-    const fixture = await createComponent([makePosition({ currentOccupancy: 1, currentOccupancyCheckSupported: true })]);
-    const text = rowText(fixture);
-
-    expect(text).toContain('1/1');
-    expect(text).toContain('Occupied');
-  });
-
-  it('does not claim "Available capacity" for a pooled position with unknown occupancy', async () => {
+  it('renders employee initials circle when occupantPreview provided', async () => {
+    const emp = makeEmployee({ initials: 'JS', avatarUrl: null });
     const fixture = await createComponent([
-      makePosition({ positionType: 'pooled', maxOccupancy: 5, currentOccupancy: null })
+      makePosition({ maxOccupancy: 1, assignedCount: 1, occupantPreview: [emp], remainingAssignedCount: 0 })
     ]);
-    const text = rowText(fixture);
-
-    expect(text).not.toContain('Available capacity');
-    expect(text).not.toContain('0/5');
-    expect(text).not.toContain('1/5');
-    expect(text).toContain('—/5');
-    expect(text).toMatch(/tracking unavailable/i);
+    expect(fixture.nativeElement.querySelector('.psp-circle--employee')).not.toBeNull();
+    expect(fixture.nativeElement.querySelector('.psp-initials')?.textContent?.trim()).toBe('JS');
+    expect(fixture.nativeElement.querySelector('img')).toBeNull();
   });
 
-  it('shows current/max Available capacity for a pooled position below known capacity', async () => {
-    const fixture = await createComponent([
-      makePosition({ positionType: 'pooled', maxOccupancy: 5, currentOccupancy: 3, currentOccupancyCheckSupported: true })
-    ]);
-    const text = rowText(fixture);
-
-    expect(text).toContain('3/5');
-    expect(text).toContain('Available capacity');
+  it('does NOT render old —/1 text for any occupancy scenario', async () => {
+    for (const occ of [null, 0, 1]) {
+      const pos = makePosition({ currentOccupancy: occ as number | null });
+      const fixture = await createComponent([pos]);
+      expect(rowText(fixture)).not.toContain('—/1');
+      expect(rowText(fixture)).not.toContain('0/1');
+      expect(rowText(fixture)).not.toContain('1/1');
+      await TestBed.resetTestingModule();
+    }
   });
 
-  it('shows current/max Full for a pooled position at known capacity', async () => {
-    const fixture = await createComponent([
-      makePosition({ positionType: 'pooled', maxOccupancy: 5, currentOccupancy: 5, currentOccupancyCheckSupported: true })
-    ]);
-    const text = rowText(fixture);
-
-    expect(text).toContain('5/5');
-    expect(text).toContain('Full');
+  it('renders overflow +n circle for large capacity positions', async () => {
+    const fixture = await createComponent([makePosition({ maxOccupancy: 10, assignedCount: 0 })]);
+    const overflowEl = fixture.nativeElement.querySelector('.psp-circle--overflow') as HTMLElement;
+    expect(overflowEl).not.toBeNull();
+    expect(overflowEl.textContent).toContain('+7');
   });
 
-  it('gives Archived precedence over any occupancy status for an inactive position', async () => {
-    const fixture = await createComponent([
-      makePosition({ isActive: false, currentOccupancy: 1, currentOccupancyCheckSupported: true })
-    ]);
-    const text = rowText(fixture);
+  // ── Status badge still present ──────────────────────────────
 
+  it('still shows the Archived status badge for inactive positions', async () => {
+    const fixture = await createComponent([makePosition({ isActive: false })]);
+    const text = rowText(fixture);
     expect(text).toContain('Archived');
-    expect(text).not.toContain('Occupied');
     expect(text).not.toContain('Unassigned');
   });
 
-  it('treats currentOccupancyCheckSupported = false as unknown even with a malformed count present', async () => {
-    const fixture = await createComponent([
-      makePosition({ currentOccupancy: 1, currentOccupancyCheckSupported: false })
-    ]);
+  it('still shows status badge for active positions (Unassigned when no occupant data)', async () => {
+    const fixture = await createComponent([makePosition({ isActive: true })]);
     const text = rowText(fixture);
-
-    expect(text).not.toContain('1/1');
-    expect(text).not.toContain('Occupied');
-    expect(text).toContain('—/1');
+    expect(text).toMatch(/Unassigned/i);
   });
 
   it('does not render backend field names in the rendered row', async () => {
     const fixture = await createComponent([makePosition({ currentOccupancy: null })]);
     const text = rowText(fixture);
-
     expect(text.toLowerCase()).not.toContain('currentoccupancy');
     expect(text.toLowerCase()).not.toContain('checksupported');
+    expect(text.toLowerCase()).not.toContain('avatarfileid');
+    expect(text.toLowerCase()).not.toContain('remainingassignedcount');
+  });
+
+  // ── List/tree toggle regression ─────────────────────────────
+
+  it('renders all positions when given multiple rows', async () => {
+    const positions = [
+      makePosition({ id: 'pos-1', name: 'CEO' }),
+      makePosition({ id: 'pos-2', name: 'CFO', maxOccupancy: 2 })
+    ];
+    const fixture = await createComponent(positions);
+    const rows = fixture.debugElement.queryAll(By.css('tbody tr'));
+    expect(rows.length).toBe(2);
+    // Each row has its own seat-preview
+    const previews = fixture.nativeElement.querySelectorAll('app-position-seat-preview');
+    expect(previews.length).toBe(2);
   });
 });

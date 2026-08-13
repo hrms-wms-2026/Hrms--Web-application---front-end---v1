@@ -2,7 +2,7 @@ import { Injectable, signal } from '@angular/core';
 
 export interface Notification {
   id: number;
-  kind: 'error' | 'success' | 'info';
+  kind: 'error' | 'success' | 'info' | 'warning';
   message: string;
 }
 
@@ -13,6 +13,10 @@ export class NotificationService {
 
   error(message: string): void {
     this.push('error', message);
+  }
+
+  warning(message: string): void {
+    this.push('warning', message);
   }
 
   success(message: string): void {

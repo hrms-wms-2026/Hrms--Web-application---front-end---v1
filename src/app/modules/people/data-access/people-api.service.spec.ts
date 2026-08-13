@@ -36,7 +36,8 @@ describe('PeopleApiService', () => {
 
   const mockDraft: OnboardingDraftResponse = {
     id: 'draft-1',
-    employeeName: 'Ada Lovelace',
+    firstName: 'Ada',
+    lastName: 'Lovelace',
     workEmail: 'ada@test.dev',
     legalEntityId: 'le-1',
     departmentId: null,
@@ -44,7 +45,7 @@ describe('PeopleApiService', () => {
     employmentType: 'full_time',
     startDate: '2026-08-10',
     employeeNumber: null,
-    scheduleId: null,
+    workModeId: 1,
     selectedTemplateId: null,
     editedTasksJson: null,
     status: 'waiting_for_seat',
@@ -65,6 +66,17 @@ describe('PeopleApiService', () => {
 
   afterEach(() => {
     httpMock.verify();
+  });
+
+  it('fetches work modes from /work-modes', () => {
+    service.getWorkModes().subscribe((modes) => {
+      expect(modes.length).toBe(1);
+      expect(modes[0].code).toBe('on_site');
+    });
+
+    const req = httpMock.expectOne(`${environment.apiUrl}/work-modes`);
+    expect(req.request.method).toBe('GET');
+    req.flush([{ id: 1, code: 'on_site', label: 'On-Site' }]);
   });
 
   it('lists employees with query params', () => {
@@ -117,9 +129,10 @@ describe('PeopleApiService', () => {
     req.flush(mockDraft);
   });
 
-  it('POSTs to create a new draft when draftId is absent, with an Idempotency-Key header', () => {
+  it('POSTs to create a new draft with firstName, lastName, workModeId and omits employeeName & scheduleId', () => {
     const payload: SaveOnboardingDraftPayload = {
-      employeeName: 'Ada Lovelace',
+      firstName: 'Ada',
+      lastName: 'Lovelace',
       workEmail: 'ada@test.dev',
       legalEntityId: 'le-1',
       departmentId: null,
@@ -127,7 +140,7 @@ describe('PeopleApiService', () => {
       employmentType: 'full_time',
       startDate: '2026-08-10',
       employeeNumber: null,
-      scheduleId: null,
+      workModeId: 1,
       selectedTemplateId: null,
       editedTasksJson: null,
       lastSavedStep: 'employee_details'
@@ -138,14 +151,19 @@ describe('PeopleApiService', () => {
     const req = httpMock.expectOne(`${environment.apiUrl}/onboarding/drafts`);
     expect(req.request.method).toBe('POST');
     expect(req.request.headers.has('Idempotency-Key')).toBe(true);
-    expect(req.request.body.draftId).toBeUndefined();
+    expect(req.request.body.firstName).toBe('Ada');
+    expect(req.request.body.lastName).toBe('Lovelace');
+    expect(req.request.body.workModeId).toBe(1);
+    expect(req.request.body.employeeName).toBeUndefined();
+    expect(req.request.body.scheduleId).toBeUndefined();
     req.flush(mockDraft);
   });
 
-  it('PUTs with If-Match when draftId and an expected version are present', () => {
+  it('PUTs with If-Match when draftId and expected version are present', () => {
     const payload: SaveOnboardingDraftPayload = {
       draftId: 'draft-1',
-      employeeName: 'Ada Lovelace',
+      firstName: 'Ada',
+      lastName: 'Lovelace',
       workEmail: 'ada@test.dev',
       legalEntityId: 'le-1',
       departmentId: null,
@@ -153,7 +171,7 @@ describe('PeopleApiService', () => {
       employmentType: 'full_time',
       startDate: '2026-08-10',
       employeeNumber: null,
-      scheduleId: null,
+      workModeId: 1,
       selectedTemplateId: null,
       editedTasksJson: null,
       lastSavedStep: 'checklist_template'
@@ -164,6 +182,67 @@ describe('PeopleApiService', () => {
     const req = httpMock.expectOne(`${environment.apiUrl}/onboarding/drafts/draft-1`);
     expect(req.request.method).toBe('PUT');
     expect(req.request.headers.get('If-Match')).toBe('1');
+    expect(req.request.body.firstName).toBe('Ada');
+    expect(req.request.body.lastName).toBe('Lovelace');
+    expect(req.request.body.workModeId).toBe(1);
+    expect(req.request.body.employeeName).toBeUndefined();
+    expect(req.request.body.scheduleId).toBeUndefined();
     req.flush(mockDraft);
+  });
+
+  it('POSTs to finalize draft endpoint', () => {
+    service.finalizeDraft('draft-1').subscribe((res) => {
+      expect(res.draftId).toBe('draft-1');
+    });
+
+    const req = httpMock.expectOne(`${environment.apiUrl}/onboarding/drafts/draft-1/finalize`);
+    expect(req.request.method).toBe('POST');
+    req.flush({
+      draftId: 'draft-1',
+      employeeId: 'emp-1',
+      status: 'finalized',
+      draftReason: 'invitation_sent',
+      invitationQueued: true,
+      positionApprovalPending: false,
+      checklistTasksCreated: true,
+      messageKey: 'finalized'
+    });
+  });
+
+  it('POSTs to approve access grant request endpoint', () => {
+    service.approveAccessGrantRequest('req-1').subscribe((res) => {
+      expect(res.accessGrantRequestId).toBe('req-1');
+    });
+
+    const req = httpMock.expectOne(`${environment.apiUrl}/onboarding/access-grant-requests/req-1/approve-and-send-invite`);
+    expect(req.request.method).toBe('POST');
+    req.flush({
+      accessGrantRequestId: 'req-1',
+      onboardingDraftId: 'draft-1',
+      employeeId: 'emp-1',
+      finalizationStatus: 'finalized',
+      invitationQueued: true,
+      checklistTaskCount: 3,
+      positionApprovalStatus: 'Approved',
+      messageKey: 'approved'
+    });
+  });
+
+  it('POSTs to reject access grant request endpoint with decisionNote', () => {
+    service.rejectAccessGrantRequest('req-1', { decisionNote: 'Position budget reduced' }).subscribe((res) => {
+      expect(res.requestStatus).toBe('Rejected');
+    });
+
+    const req = httpMock.expectOne(`${environment.apiUrl}/onboarding/access-grant-requests/req-1/reject`);
+    expect(req.request.method).toBe('POST');
+    expect(req.request.body.decisionNote).toBe('Position budget reduced');
+    req.flush({
+      accessGrantRequestId: 'req-1',
+      onboardingDraftId: 'draft-1',
+      requestStatus: 'Rejected',
+      draftStatus: 'draft',
+      draftReason: 'position_approval_rejected',
+      messageKey: 'rejected'
+    });
   });
 });

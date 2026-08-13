@@ -30,7 +30,7 @@ export class ToastHostComponent implements OnDestroy {
       // Schedule timers for newly added notifications
       for (const toast of list) {
         if (!this.activeTimers.has(toast.id)) {
-          const duration = toast.kind === 'error' ? 8000 : 5000;
+          const duration = toast.kind === 'error' || toast.kind === 'warning' ? 8000 : 5000;
           const timer = setTimeout(() => {
             this.dismiss(toast.id);
           }, duration);

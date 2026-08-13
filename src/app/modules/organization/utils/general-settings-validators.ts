@@ -37,3 +37,36 @@ export function oneOfValidator(allowed: readonly string[]): ValidatorFn {
     return allowed.includes(value) ? null : { oneOf: true };
   };
 }
+
+/**
+ * Group-level validator for the workStartTime / workEndTime pair.
+ *
+ * Mirrors the backend's UpdateLegalEntityGeneralSettingsCommandValidator:
+ *   - Both blank/null → valid (no schedule set).
+ *   - Exactly one blank → { workTimePair: 'both_required' }.
+ *   - Both set and start >= end (HH:mm string comparison, same-day only) →
+ *     { workTimePair: 'start_not_before_end' }.
+ *
+ * Applied to the FormGroup, not individual controls. Read errors via
+ * `form.errors?.['workTimePair']`.
+ */
+export function workTimePairValidator(): ValidatorFn {
+  return (group: AbstractControl): ValidationErrors | null => {
+    const start = (group.get('workStartTime')?.value as string | null | undefined) ?? '';
+    const end = (group.get('workEndTime')?.value as string | null | undefined) ?? '';
+    const hasStart = start.trim() !== '';
+    const hasEnd = end.trim() !== '';
+
+    if (!hasStart && !hasEnd) {
+      return null; // both absent — valid
+    }
+    if (hasStart !== hasEnd) {
+      return { workTimePair: 'both_required' };
+    }
+    // Both provided — enforce start < end (strict same-day HH:mm comparison).
+    if (start >= end) {
+      return { workTimePair: 'start_not_before_end' };
+    }
+    return null;
+  };
+}

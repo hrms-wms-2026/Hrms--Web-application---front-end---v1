@@ -1,4 +1,7 @@
-import { ChangeDetectionStrategy, Component, computed, input, signal } from '@angular/core';
+import { ChangeDetectionStrategy, Component, computed, inject, input, signal } from '@angular/core';
+import { Router } from '@angular/router';
+import { AuthStore } from '../../../../core/auth/state/auth.store';
+import { NotificationService } from '../../../../core/services/notification.service';
 import { PopoverComponent } from '../../../../shared/ui/popover/popover.component';
 import { AvatarComponent } from '../../../../shared/ui/avatar/avatar.component';
 import { PreferencesModalComponent } from '../../../../shared/ui/preferences-modal/preferences-modal.component';
@@ -12,6 +15,10 @@ import { PreferencesModalComponent } from '../../../../shared/ui/preferences-mod
   changeDetection: ChangeDetectionStrategy.OnPush
 })
 export class ProfileMenuComponent {
+  private readonly authStore = inject(AuthStore);
+  private readonly router = inject(Router);
+  private readonly notificationService = inject(NotificationService);
+
   readonly avatarUrl = input<string | null | undefined>(undefined);
   readonly userName = input<string | null | undefined>(undefined);
   readonly email = input<string | null | undefined>(undefined);
@@ -49,5 +56,15 @@ export class ProfileMenuComponent {
 
   closePreferences(): void {
     this.isPreferencesOpen.set(false);
+  }
+
+  async onLogout(): Promise<void> {
+    this.close();
+    const success = await this.authStore.logout();
+    if (success) {
+      await this.router.navigate(['/auth/login']);
+    } else {
+      this.notificationService.error('Could not log out. Try again.');
+    }
   }
 }

@@ -2,6 +2,7 @@ import { ChangeDetectionStrategy, Component, computed, effect, inject, signal } 
 import { FormBuilder, Validators } from '@angular/forms';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { NotificationService } from '../../../../core/services/notification.service';
+import { HasPermissionDirective } from '../../../../shared/directives/has-permission.directive';
 import { ButtonComponent } from '../../../../shared/ui/button/button.component';
 import { EmptyStateComponent } from '../../../../shared/ui/empty-state/empty-state.component';
 import { InputComponent } from '../../../../shared/ui/input/input.component';
@@ -32,6 +33,7 @@ const STEP_LABELS: Record<WizardStep, string> = {
   standalone: true,
   imports: [
     RouterLink,
+    HasPermissionDirective,
     ButtonComponent,
     EmptyStateComponent,
     InputComponent,
@@ -57,17 +59,51 @@ export class AddEmployeeWizardComponent {
   readonly submitAttempted = signal(false);
 
   readonly form = this.fb.nonNullable.group({
-    employeeName: ['', Validators.required],
-    workEmail: ['', [Validators.required, Validators.email]],
+    firstName: ['', [Validators.required, Validators.maxLength(100)]],
+    lastName: ['', [Validators.required, Validators.maxLength(100)]],
+    workEmail: ['', [Validators.required, Validators.email, Validators.maxLength(254)]],
     departmentId: ['', Validators.required],
     positionId: ['', Validators.required],
     employmentType: ['', Validators.required],
     startDate: ['', Validators.required],
-    employeeNumber: ['']
+    employeeNumber: [''],
+    workModeId: ['', Validators.required]
   });
 
   readonly hasCompany = computed(() => !!this.legalEntityStore.selectedLegalEntity());
   readonly stepIndex = computed(() => this.stepOrder.indexOf(this.store.step()));
+
+  readonly workModeOptions = computed<readonly SelectOption[]>(() =>
+    this.store.workModes().map((wm) => ({ value: String(wm.id), label: wm.label }))
+  );
+
+  readonly selectedWorkModeLabel = computed(() => {
+    const val = this.form.controls.workModeId.value;
+    if (!val) return '—';
+    const opt = this.workModeOptions().find((o) => o.value === val);
+    return opt ? opt.label : val;
+  });
+
+  readonly selectedDepartmentLabel = computed(() => {
+    const val = this.form.controls.departmentId.value;
+    if (!val) return '—';
+    const opt = this.store.departments().find((o) => o.value === val);
+    return opt ? opt.label : val;
+  });
+
+  readonly selectedPositionLabel = computed(() => {
+    const val = this.form.controls.positionId.value;
+    if (!val) return '—';
+    const opt = this.store.positions().find((o) => o.value === val);
+    return opt ? opt.label : val;
+  });
+
+  readonly selectedEmploymentTypeLabel = computed(() => {
+    const val = this.form.controls.employmentType.value;
+    if (!val) return '—';
+    const opt = this.employmentTypeOptions.find((o) => o.value === val);
+    return opt ? opt.label : val;
+  });
 
   readonly saveReasonMessage = computed(() => {
     const reason = this.store.lastSaveReason();
@@ -77,13 +113,23 @@ export class AddEmployeeWizardComponent {
     if (reason === 'waiting_for_seat') {
       return 'Saved as a draft: no seat is currently available. You can request a seat increase from your billing manager, and this draft will be rechecked once one is approved.';
     }
+    if (reason === 'seat_configuration_required') {
+      return 'Seat policy is not configured. The draft was saved, but invitation cannot be sent yet.';
+    }
     if (reason === 'waiting_for_position_approval') {
       return 'Saved as a draft: the selected position requires approval before this employee can be finalized. It has been submitted for review.';
+    }
+    if (reason === 'position_approval_rejected') {
+      return 'Position approval was rejected. You can edit the details or select a different position to resubmit.';
+    }
+    if (reason === 'invitation_sent') {
+      return 'Finalized and invitation queued.';
     }
     return 'Saved as a draft.';
   });
 
   constructor() {
+    void this.store.loadWorkModes();
     const draftId = this.route.snapshot.queryParamMap.get('draftId');
 
     // legalEntityStore.selectedLegalEntity() populates asynchronously (loadCompanies() resolves
@@ -107,11 +153,13 @@ export class AddEmployeeWizardComponent {
 
     this.form.valueChanges.subscribe((value) => {
       this.store.updateFormValue({
-        employeeName: value.employeeName ?? '',
+        firstName: value.firstName ?? '',
+        lastName: value.lastName ?? '',
         workEmail: value.workEmail ?? '',
         employmentType: value.employmentType ?? '',
         startDate: value.startDate ?? '',
-        employeeNumber: value.employeeNumber ?? ''
+        employeeNumber: value.employeeNumber ?? '',
+        workModeId: value.workModeId ? Number(value.workModeId) : null
       });
     });
   }
@@ -124,14 +172,20 @@ export class AddEmployeeWizardComponent {
     }
     const formValue = this.store.formValue();
     this.form.patchValue({
-      employeeName: formValue.employeeName,
+      firstName: formValue.firstName,
+      lastName: formValue.lastName,
       workEmail: formValue.workEmail,
       departmentId: this.store.departmentId() ?? '',
       positionId: this.store.positionId() ?? '',
       employmentType: formValue.employmentType,
       startDate: formValue.startDate,
-      employeeNumber: formValue.employeeNumber
+      employeeNumber: formValue.employeeNumber,
+      workModeId: formValue.workModeId ? String(formValue.workModeId) : ''
     });
+  }
+
+  onWorkModeChange(workModeIdStr: string): void {
+    this.form.controls.workModeId.setValue(workModeIdStr);
   }
 
   onDepartmentChange(departmentId: string): void {
@@ -169,11 +223,58 @@ export class AddEmployeeWizardComponent {
     if (this.store.saving()) {
       return;
     }
+    this.submitAttempted.set(true);
+    if (this.form.invalid) {
+      return;
+    }
+
     const result = await this.store.saveDraft(this.store.step());
     if (result) {
       this.notificationService.success('Draft saved.');
     } else {
       this.notificationService.error(this.store.saveError() ?? 'Something went wrong while saving the employee.');
+    }
+  }
+
+  async onFinalize(): Promise<void> {
+    if (this.store.finalizing() || this.store.saving()) {
+      return;
+    }
+    this.submitAttempted.set(true);
+    if (this.form.invalid) {
+      return;
+    }
+
+    let draftId = this.store.draftId();
+    if (!draftId) {
+      const saved = await this.store.saveDraft(this.store.step());
+      if (!saved) {
+        this.notificationService.error(this.store.saveError() ?? 'Failed to save draft before finalization.');
+        return;
+      }
+      draftId = saved.id;
+    }
+
+    const response = await this.store.finalizeDraft(draftId);
+    if (response) {
+      if (response.invitationQueued && !response.positionApprovalPending) {
+        this.notificationService.success('Employee onboarding invitation was queued.');
+        this.router.navigate(['/people/employees']);
+      } else if (response.positionApprovalPending) {
+        this.notificationService.info('Position approval was requested before the invitation can be sent.');
+        this.router.navigate(['/people/employees']);
+      } else if (response.status === 'waiting_for_seat' || response.draftReason === 'waiting_for_seat') {
+        this.notificationService.info('No seat is available. The draft was saved for follow-up.');
+      } else if (response.draftReason === 'seat_configuration_required') {
+        this.notificationService.warning('Seat policy is not configured. The draft was saved, but invitation cannot be sent yet.');
+      } else if (response.draftReason === 'position_approval_rejected') {
+        this.notificationService.error('Position approval was rejected.');
+      } else {
+        this.notificationService.success('Employee onboarding draft updated.');
+        this.router.navigate(['/people/employees']);
+      }
+    } else {
+      this.notificationService.error(this.store.finalizeError() ?? 'Failed to finalize employee.');
     }
   }
 

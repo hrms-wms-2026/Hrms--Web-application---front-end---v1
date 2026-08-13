@@ -3,11 +3,10 @@ import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { RouterLink, ActivatedRoute, Router } from '@angular/router';
 import { NotificationService } from '../../../../core/services/notification.service';
 import { PermissionService } from '../../../../core/auth/state/permission.service';
+import { BreadcrumbHeaderComponent } from '../../../../shared/ui/breadcrumb-header/breadcrumb-header.component';
 import { ButtonComponent } from '../../../../shared/ui/button/button.component';
 import { ErrorStateComponent } from '../../../../shared/ui/error-state/error-state.component';
-import { InputComponent } from '../../../../shared/ui/input/input.component';
 import { LoaderComponent } from '../../../../shared/ui/loader/loader.component';
-import { PageHeaderComponent } from '../../../../shared/ui/page-header/page-header.component';
 import { PeopleStore } from '../../state/people.store';
 import { DraftTableComponent } from '../../ui/draft-table/draft-table.component';
 import { EmployeeTableComponent } from '../../ui/employee-table/employee-table.component';
@@ -19,77 +18,15 @@ const SEARCH_DEBOUNCE_MS = 300;
   standalone: true,
   imports: [
     RouterLink,
+    BreadcrumbHeaderComponent,
     ButtonComponent,
     ErrorStateComponent,
-    InputComponent,
     LoaderComponent,
-    PageHeaderComponent,
     DraftTableComponent,
     EmployeeTableComponent
   ],
-  template: `
-    <app-page-header title="Employees" subtitle="People in your organization and pending onboarding drafts.">
-      @if (canAddEmployee()) {
-        <a routerLink="/people/employees/new">
-          <app-button variant="primary">+ Add Employee</app-button>
-        </a>
-      }
-    </app-page-header>
-
-    <div class="mb-4 max-w-sm">
-      <app-input
-        placeholder="Search by name, email, or employee number"
-        [value]="searchTerm()"
-        (valueChange)="onSearchInput($event)"
-      />
-    </div>
-
-    <section class="mb-8">
-      <h2 class="mb-3 text-sm font-semibold text-[var(--color-text-primary)]">Employees</h2>
-      @if (store.employeesLoading()) {
-        <app-loader label="Loading employees…" />
-      } @else if (store.employeesError()) {
-        <app-error-state [message]="store.employeesError()!" [retryable]="true" (retry)="loadEmployees()" />
-      } @else {
-        <app-employee-table [employees]="store.employees()" />
-        @if (store.employeesTotalCount() > store.employeesPageSize()) {
-          <div class="mt-3 flex items-center justify-between text-sm text-[var(--color-text-secondary)]">
-            <span>
-              Page {{ store.employeesPage() }} of
-              {{ Math.ceil(store.employeesTotalCount() / store.employeesPageSize()) }}
-            </span>
-            <div class="flex gap-2">
-              <app-button
-                variant="secondary"
-                [disabled]="store.employeesPage() <= 1"
-                (pressed)="goToEmployeesPage(store.employeesPage() - 1)"
-              >
-                Previous
-              </app-button>
-              <app-button
-                variant="secondary"
-                [disabled]="store.employeesPage() * store.employeesPageSize() >= store.employeesTotalCount()"
-                (pressed)="goToEmployeesPage(store.employeesPage() + 1)"
-              >
-                Next
-              </app-button>
-            </div>
-          </div>
-        }
-      }
-    </section>
-
-    <section>
-      <h2 class="mb-3 text-sm font-semibold text-[var(--color-text-primary)]">Onboarding drafts</h2>
-      @if (store.draftsLoading()) {
-        <app-loader label="Loading drafts…" />
-      } @else if (store.draftsError()) {
-        <app-error-state [message]="store.draftsError()!" [retryable]="true" (retry)="loadDrafts()" />
-      } @else {
-        <app-draft-table [drafts]="store.drafts()" (continueDraft)="onContinueDraft($event)" />
-      }
-    </section>
-  `,
+  templateUrl: './employee-list.component.html',
+  styleUrl: './employee-list.component.css',
   changeDetection: ChangeDetectionStrategy.OnPush
 })
 export class EmployeeListComponent {
@@ -102,6 +39,15 @@ export class EmployeeListComponent {
   readonly store = inject(PeopleStore);
   readonly canAddEmployee = computed(() => this.permissionService.hasPermission('employees:write'));
   readonly searchTerm = signal('');
+  readonly searchExpanded = signal(false);
+
+  toggleSearch(): void {
+    this.searchExpanded.update((v) => !v);
+    if (!this.searchExpanded()) {
+      this.onSearchInput('');
+    }
+  }
+  readonly activeTab = signal<'employees' | 'drafts'>('employees');
   readonly Math = Math;
 
   private searchDebounceHandle: ReturnType<typeof setTimeout> | null = null;
@@ -116,6 +62,10 @@ export class EmployeeListComponent {
     });
 
     this.loadDrafts();
+  }
+
+  setTab(tab: 'employees' | 'drafts'): void {
+    this.activeTab.set(tab);
   }
 
   onSearchInput(value: string): void {
