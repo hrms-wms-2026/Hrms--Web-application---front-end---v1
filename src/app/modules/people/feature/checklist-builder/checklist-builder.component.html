@@ -1,0 +1,308 @@
+<div class="cb-container max-w-4xl mx-auto p-4 md:p-6 space-y-6">
+  <app-breadcrumb-header
+    parentLabel="Checklists"
+    [currentLabel]="isEdit() ? 'Edit checklist' : 'Create checklist'"
+    parentUrl="/people/checklists"
+    icon="people"
+  />
+
+  <div class="flex flex-col md:flex-row md:items-center justify-between gap-4 pb-2">
+    <div>
+      <h1 class="text-xl font-bold text-[var(--color-text-primary)]">
+        {{ isEdit() ? 'Edit checklist' : 'Create checklist' }}
+      </h1>
+      <p class="text-xs text-[var(--color-text-secondary)] mt-0.5">
+        Create reusable tasks for employee onboarding or offboarding.
+      </p>
+    </div>
+    <div class="flex items-center gap-3">
+      <app-button variant="secondary" type="button" (pressed)="cancel()">
+        Cancel
+      </app-button>
+      <app-button variant="primary" type="button" [loading]="store.saving()" (pressed)="onSubmit()">
+        {{ isEdit() ? 'Save checklist' : 'Create checklist' }}
+      </app-button>
+    </div>
+  </div>
+
+  @if (initialLoading()) {
+    <div class="p-8 flex justify-center items-center">
+      <app-loader label="Loading checklist template..." />
+    </div>
+  } @else if (loadError()) {
+    <div class="p-6 bg-[var(--color-surface-secondary)] border border-[var(--color-border)] rounded-lg text-center space-y-4">
+      <p class="text-sm text-[var(--color-danger-text)]">{{ loadError() }}</p>
+      <app-button variant="secondary" (pressed)="cancel()">
+        Back to Checklists
+      </app-button>
+    </div>
+  } @else {
+    <form [formGroup]="form" (ngSubmit)="onSubmit()" class="space-y-6">
+      <!-- Section A: Checklist details -->
+      <section class="cb-card bg-[var(--color-surface)] border border-[var(--color-border)] rounded-xl p-5 md:p-6 space-y-4 shadow-sm">
+        <h2 class="text-base font-semibold text-[var(--color-text-primary)] border-b border-[var(--color-border)] pb-3">
+          Checklist details
+        </h2>
+
+        <div class="space-y-4">
+          <app-input
+            label="Checklist name *"
+            placeholder="e.g. Engineering Onboarding Checklist"
+            [value]="form.controls.name.value || ''"
+            (valueChange)="form.controls.name.setValue($event)"
+            [error]="submitAttempted() && form.controls.name.invalid ? 'Checklist name is required (max 150 characters).' : ''"
+          />
+
+          <div class="flex flex-col gap-1.5">
+            <label class="text-xs font-semibold text-[var(--color-text-secondary)]">Checklist type *</label>
+            <div class="flex gap-2">
+              <button
+                type="button"
+                class="cb-chip"
+                [class.cb-chip--active]="form.controls.templateType.value === 'onboarding'"
+                [disabled]="isEdit()"
+                (click)="setTemplateType('onboarding')"
+              >
+                <span>Onboarding</span>
+              </button>
+              <button
+                type="button"
+                class="cb-chip"
+                [class.cb-chip--active]="form.controls.templateType.value === 'offboarding'"
+                [disabled]="isEdit()"
+                (click)="setTemplateType('offboarding')"
+              >
+                <span>Offboarding</span>
+              </button>
+            </div>
+            @if (isEdit()) {
+              <p class="text-xs text-[var(--color-text-secondary)]">Checklist type cannot be changed after creation.</p>
+            }
+          </div>
+        </div>
+      </section>
+
+      <!-- Section B: Use this checklist for -->
+      <section class="cb-card bg-[var(--color-surface)] border border-[var(--color-border)] rounded-xl p-5 md:p-6 space-y-4 shadow-sm">
+        <h2 class="text-base font-semibold text-[var(--color-text-primary)] border-b border-[var(--color-border)] pb-3">
+          Use this checklist for
+        </h2>
+
+        <div class="space-y-4">
+          <div class="flex flex-wrap gap-2">
+            <button
+              type="button"
+              class="cb-chip"
+              [class.cb-chip--active]="scopeLevel() === 'company'"
+              (click)="setScopeLevel('company')"
+            >
+              <span>Company default</span>
+            </button>
+            <button
+              type="button"
+              class="cb-chip"
+              [class.cb-chip--active]="scopeLevel() === 'department'"
+              (click)="setScopeLevel('department')"
+            >
+              <span>Department</span>
+            </button>
+            <button
+              type="button"
+              class="cb-chip"
+              [class.cb-chip--active]="scopeLevel() === 'position'"
+              (click)="setScopeLevel('position')"
+            >
+              <span>Position</span>
+            </button>
+          </div>
+
+          @if (scopeLevel() === 'department' || scopeLevel() === 'position') {
+            @if (loadingDepartments()) {
+              <app-loader label="Loading departments..." />
+            } @else {
+              <app-select
+                label="Department *"
+                placeholder="Select a department"
+                [options]="departments()"
+                [value]="form.controls.departmentId.value || ''"
+                [error]="submitAttempted() && (scopeLevel() === 'department' || scopeLevel() === 'position') && !form.controls.departmentId.value ? 'Department is required.' : ''"
+                (valueChange)="onDepartmentChange($event)"
+              />
+            }
+          }
+
+          @if (scopeLevel() === 'position') {
+            @if (!form.controls.departmentId.value) {
+              <app-select
+                label="Position *"
+                placeholder="Select a department first"
+                [options]="[]"
+                [disabled]="true"
+              />
+            } @else if (loadingPositions()) {
+              <app-loader label="Loading positions..." />
+            } @else {
+              <app-select
+                label="Position *"
+                placeholder="Select a position"
+                [options]="positions()"
+                [value]="form.controls.positionId.value || ''"
+                [error]="submitAttempted() && scopeLevel() === 'position' && !form.controls.positionId.value ? 'Position is required.' : ''"
+                (valueChange)="form.controls.positionId.setValue($event)"
+              />
+            }
+          }
+        </div>
+      </section>
+
+      <!-- Section C: Tasks -->
+      <section class="cb-card bg-[var(--color-surface)] border border-[var(--color-border)] rounded-xl p-5 md:p-6 space-y-4 shadow-sm">
+        <div class="flex items-center justify-between border-b border-[var(--color-border)] pb-3">
+          <h2 class="text-base font-semibold text-[var(--color-text-primary)]">
+            Tasks
+          </h2>
+          <app-button variant="secondary" size="sm" type="button" (pressed)="addTask()">
+            + Add Task
+          </app-button>
+        </div>
+
+        @if (submitAttempted() && tasksArray.length === 0) {
+          <p class="text-xs text-[var(--color-danger-text)]">At least one task is required in the checklist.</p>
+        }
+
+        <div class="cb-task-list">
+          <div class="cb-task-list__header" aria-hidden="true">
+            <span class="cb-task-list__col-order"></span>
+            <span class="cb-task-list__col-title">Task</span>
+            <span class="cb-task-list__col-assigned">Assigned to</span>
+            <span class="cb-task-list__col-due">Due</span>
+            <span class="cb-task-list__col-actions">Actions</span>
+          </div>
+
+          @for (taskGroup of tasksArray.controls; track $index; let idx = $index) {
+            <div class="cb-task-row" [formGroup]="$any(taskGroup)">
+              <span class="cb-task-list__col-order cb-task-row__order" aria-hidden="true">
+                {{ idx + 1 }}
+              </span>
+
+              <div class="cb-task-list__col-title">
+                <span class="cb-task-row__mobile-label">Task</span>
+                <app-input
+                  [placeholder]="'e.g. ' + getTaskPlaceholder(idx)"
+                  [value]="taskGroup.value.title || ''"
+                  (valueChange)="taskGroup.get('title')?.setValue($event)"
+                  [error]="submitAttempted() && taskGroup.get('title')?.invalid ? 'Task title is required.' : ''"
+                />
+              </div>
+
+              <div class="cb-task-list__col-assigned">
+                <span class="cb-task-row__mobile-label">Assigned to</span>
+                <div class="cb-assigned-field">
+                  <select
+                    class="cb-assigned-field__select"
+                    [attr.aria-label]="'Assigned to for task ' + (idx + 1)"
+                    [value]="taskGroup.value.assignmentType"
+                    (change)="onAssignmentTypeChange(idx, $any($event.target).value)"
+                  >
+                    @for (option of assignmentOptions; track option.value) {
+                      <option [value]="option.value" [selected]="option.value === taskGroup.value.assignmentType">
+                        {{ option.label }}
+                      </option>
+                    }
+                  </select>
+
+                  @if (isCompanyPositionAssignment(taskGroup)) {
+                    @if (loadingAssigneePositions()) {
+                      <span class="cb-assigned-field__loading">Loading positions…</span>
+                    } @else {
+                      <select
+                        class="cb-assigned-field__select cb-assigned-field__select--position"
+                        [attr.aria-label]="'Assignee position for task ' + (idx + 1)"
+                        [value]="taskGroup.value.assigneePositionId || ''"
+                        (change)="taskGroup.get('assigneePositionId')?.setValue($any($event.target).value); taskGroup.get('assigneePositionId')?.setErrors(null)"
+                      >
+                        <option value="" disabled hidden selected>Assignee position</option>
+                        @for (pos of assigneePositions(); track pos.value) {
+                          <option [value]="pos.value" [selected]="pos.value === taskGroup.value.assigneePositionId">
+                            {{ pos.label }}
+                          </option>
+                        }
+                      </select>
+                    }
+                    @if (submitAttempted() && taskGroup.get('assigneePositionId')?.invalid) {
+                      <span class="cb-task-row__error">Assignee position is required.</span>
+                    }
+                  }
+                </div>
+              </div>
+
+              <div class="cb-task-list__col-due">
+                <span class="cb-task-row__mobile-label">Due</span>
+                <div class="cb-due-field">
+                  <input
+                    type="number"
+                    min="0"
+                    step="1"
+                    class="cb-due-field__input"
+                    [attr.aria-label]="'Due for task ' + (idx + 1)"
+                    [value]="taskGroup.value.dueOffsetDays"
+                    (input)="taskGroup.get('dueOffsetDays')?.setValue($any($event.target).value)"
+                  />
+                </div>
+                @if (submitAttempted() && taskGroup.get('dueOffsetDays')?.invalid) {
+                  <span class="cb-task-row__error">Enter a whole number of 0 or more.</span>
+                }
+              </div>
+
+              <div class="cb-task-list__col-actions">
+                <span class="cb-task-row__mobile-label">Actions</span>
+                <div class="cb-task-row__actions">
+                  <button
+                    type="button"
+                    class="cb-icon-btn"
+                    [disabled]="idx === 0"
+                    (click)="moveTaskUp(idx)"
+                    title="Move up"
+                    aria-label="Move task up"
+                  >
+                    ↑
+                  </button>
+                  <button
+                    type="button"
+                    class="cb-icon-btn"
+                    [disabled]="idx === tasksArray.length - 1"
+                    (click)="moveTaskDown(idx)"
+                    title="Move down"
+                    aria-label="Move task down"
+                  >
+                    ↓
+                  </button>
+                  <button
+                    type="button"
+                    class="cb-icon-btn cb-icon-btn--danger"
+                    [disabled]="tasksArray.length === 1"
+                    (click)="removeTask(idx)"
+                    title="Remove task"
+                    aria-label="Remove task"
+                  >
+                    ✕
+                  </button>
+                </div>
+              </div>
+            </div>
+          }
+        </div>
+      </section>
+
+      <!-- Page Actions -->
+      <div class="flex items-center justify-end gap-3 pt-4 border-t border-[var(--color-border)]">
+        <app-button variant="secondary" type="button" (pressed)="cancel()">
+          Cancel
+        </app-button>
+        <app-button variant="primary" type="submit" [loading]="store.saving()">
+          {{ isEdit() ? 'Save checklist' : 'Create checklist' }}
+        </app-button>
+      </div>
+    </form>
+  }
+</div>

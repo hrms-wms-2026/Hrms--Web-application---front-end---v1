@@ -1,8 +1,8 @@
-<app-page-header title="Add Employee" subtitle="Create a new onboarding draft for your organization.">
-  <a routerLink="/people/employees">
-    <app-button variant="secondary">Back to Employees</app-button>
-  </a>
-</app-page-header>
+<header class="add-emp-header">
+  <div class="add-emp-header-row">
+    <app-breadcrumb-header parentLabel="Employees" currentLabel="Add Employee" icon="people" parentUrl="/people/employees" />
+  </div>
+</header>
 
 @if (!hasCompany()) {
   <app-empty-state
@@ -11,13 +11,20 @@
   />
 } @else if (store.resuming()) {
   <app-loader label="Loading draft…" />
+} @else if (resumedDraftIsFinalized()) {
+  <app-empty-state
+    title="This onboarding has already been finalized."
+    description="No further changes can be made from this screen."
+  >
+    <a routerLink="/people/employees" class="no-underline">
+      <app-button variant="secondary">Back to Employees</app-button>
+    </a>
+  </app-empty-state>
 } @else {
   <div>
     @switch (store.step()) {
       @case ('employee_details') {
-        <div class="grid max-w-2xl gap-4">
-          <app-input label="Company" [value]="legalEntityStore.selectedLegalEntity()?.name ?? ''" [disabled]="true" />
-
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-4 max-w-4xl">
           <app-input
             label="First name"
             [value]="form.controls.firstName.value || ''"
@@ -41,35 +48,57 @@
           />
 
           @if (store.loadingWorkModes()) {
-            <app-loader label="Loading work modes…" />
+            <div class="md:col-span-1">
+              <app-loader label="Loading work modes…" />
+            </div>
           } @else if (store.workModesError()) {
-            <div class="rounded-lg border border-[var(--color-border)] p-4 text-sm text-[var(--color-text-primary)] flex items-center justify-between">
+            <div class="md:col-span-1 rounded-lg border border-[var(--color-border)] p-4 text-sm text-[var(--color-text-primary)] flex items-center justify-between">
               <span>{{ store.workModesError() }}</span>
               <app-button variant="secondary" size="sm" (pressed)="store.loadWorkModes()">Retry</app-button>
             </div>
           } @else if (store.workModes().length === 0) {
-            <app-empty-state
-              title="No work modes configured"
-              description="Work modes are not configured. Contact an administrator."
-            />
+            <div class="md:col-span-1">
+              <app-empty-state
+                title="No work modes configured"
+                description="Work modes are not configured. Contact an administrator."
+              />
+            </div>
           } @else {
-            <app-select
-              label="Work mode"
-              placeholder="Select work mode"
-              [options]="workModeOptions()"
-              [value]="form.controls.workModeId.value"
-              [error]="submitAttempted() && form.controls.workModeId.invalid ? 'Work mode is required.' : ''"
-              (valueChange)="onWorkModeChange($event)"
-            />
+            <div class="flex flex-col gap-1.5">
+              <label class="text-xs font-semibold text-[var(--color-text-secondary)]">
+                Work mode <span class="text-red-500">*</span>
+              </label>
+              <div class="flex flex-wrap gap-2" role="radiogroup" aria-label="Work mode selection">
+                @for (mode of workModeOptions(); track mode.value) {
+                  <button
+                    type="button"
+                    role="radio"
+                    [attr.aria-checked]="form.controls.workModeId.value === mode.value"
+                    class="work-mode-chip"
+                    [class.work-mode-chip--active]="form.controls.workModeId.value === mode.value"
+                    (click)="onWorkModeChange(mode.value)"
+                  >
+                    <span>{{ mode.label }}</span>
+                  </button>
+                }
+              </div>
+              @if (submitAttempted() && form.controls.workModeId.invalid) {
+                <p class="text-xs text-red-500 mt-0.5">Work mode is required.</p>
+              }
+            </div>
           }
 
           @if (store.loadingDepartments()) {
-            <app-loader label="Loading departments…" />
+            <div class="md:col-span-1">
+              <app-loader label="Loading departments…" />
+            </div>
           } @else if (store.departments().length === 0) {
-            <app-empty-state
-              title="No departments configured"
-              description="This company has no departments yet. Set up departments under Organization before adding employees."
-            />
+            <div class="md:col-span-2">
+              <app-empty-state
+                title="No departments configured"
+                description="This company has no departments yet. Set up departments under Organization before adding employees."
+              />
+            </div>
           } @else {
             <app-select
               label="Department"
@@ -81,38 +110,61 @@
             />
           }
 
-          @if (form.controls.departmentId.value) {
-            @if (store.loadingPositions()) {
+          @if (!form.controls.departmentId.value) {
+            <app-select
+              label="Position"
+              placeholder="Select a department first"
+              [options]="[]"
+              [disabled]="true"
+            />
+          } @else if (store.loadingPositions()) {
+            <div class="md:col-span-1">
               <app-loader label="Loading positions…" />
-            } @else if (store.positions().length === 0) {
-              <app-empty-state
-                title="No positions configured"
-                description="This department has no active positions yet. Set up a position under Organization before adding employees."
-              />
-            } @else {
-              <app-select
-                label="Position"
-                placeholder="Select a position"
-                [options]="store.positions()"
-                [value]="form.controls.positionId.value"
-                [error]="submitAttempted() && form.controls.positionId.invalid ? 'Position is required.' : ''"
-                (valueChange)="onPositionChange($event)"
-              />
-            }
+            </div>
+          } @else if (store.positions().length === 0) {
+            <app-select
+              label="Position"
+              placeholder="No active positions in department"
+              [options]="[]"
+              [disabled]="true"
+              [error]="submitAttempted() ? 'Position is required (none available in selected department).' : ''"
+            />
+          } @else {
+            <app-select
+              label="Position"
+              placeholder="Select a position"
+              [options]="store.positions()"
+              [value]="form.controls.positionId.value"
+              [error]="submitAttempted() && form.controls.positionId.invalid ? 'Position is required.' : ''"
+              (valueChange)="onPositionChange($event)"
+            />
           }
 
-          <app-select
-            label="Employment type"
-            placeholder="Select employment type"
-            [options]="employmentTypeOptions"
-            [value]="form.controls.employmentType.value || ''"
-            (valueChange)="form.controls.employmentType.setValue($event)"
-            [error]="submitAttempted() && form.controls.employmentType.invalid ? 'Employment type is required.' : ''"
-          />
+          <div class="flex flex-col gap-1.5">
+            <label class="text-xs font-semibold text-[var(--color-text-secondary)]">
+              Employment type <span class="text-red-500">*</span>
+            </label>
+            <div class="flex flex-wrap gap-2" role="radiogroup" aria-label="Employment type selection">
+              @for (type of employmentTypeOptions; track type.value) {
+                <button
+                  type="button"
+                  role="radio"
+                  [attr.aria-checked]="form.controls.employmentType.value === type.value"
+                  class="work-mode-chip"
+                  [class.work-mode-chip--active]="form.controls.employmentType.value === type.value"
+                  (click)="form.controls.employmentType.setValue(type.value)"
+                >
+                  <span>{{ type.label }}</span>
+                </button>
+              }
+            </div>
+            @if (submitAttempted() && form.controls.employmentType.invalid) {
+              <p class="text-xs text-red-500 mt-0.5">Employment type is required.</p>
+            }
+          </div>
 
-          <app-input
+          <app-date-picker
             label="Start date"
-            type="text"
             placeholder="YYYY-MM-DD"
             [value]="form.controls.startDate.value || ''"
             (valueChange)="form.controls.startDate.setValue($event)"
@@ -132,14 +184,8 @@
           description="No onboarding checklist templates are configured for your organization yet. You can continue and save this as a draft."
         />
       }
-      @case ('checklist_review') {
-        <app-empty-state
-          title="Nothing to review yet"
-          description="No checklist template is selected, so there are no tasks to review. You can continue and save this as a draft."
-        />
-      }
       @case ('review_and_submit') {
-        <div class="max-w-2xl space-y-4">
+        <div class="max-w-4xl space-y-4">
           <div class="rounded-lg border border-[var(--color-border)] p-4 text-sm">
             <dl class="grid grid-cols-2 gap-y-2">
               <dt class="text-[var(--color-text-secondary)]">First name</dt>

@@ -1,0 +1,53 @@
+.ct-page-header {
+  margin-top: -1.25rem;
+  margin-bottom: 1.5rem;
+  padding-bottom: 0.625rem;
+  border-bottom: 1px solid var(--color-border);
+}
+
+.ct-header-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  width: 100%;
+  height: 30px;
+  min-height: 30px;
+}
+
+.ct-container {
+  width: 100%;
+}
+
+.ct-segmented-tabs {
+  padding: 0.1875rem;
+  border-radius: 8px;
+  background: var(--color-surface-secondary);
+  border: 1px solid color-mix(in srgb, var(--color-border) 60%, transparent);
+}
+
+.ct-tab-btn {
+  display: flex;
+  align-items: center;
+  padding: 0.375rem 0.875rem;
+  border-radius: 6px;
+  border: none;
+  background: transparent;
+  font-size: 0.8125rem;
+  font-weight: 500;
+  color: var(--color-text-secondary);
+  cursor: pointer;
+  transition: background 150ms ease, color 150ms ease;
+  user-select: none;
+}
+
+.ct-tab-btn:hover {
+  color: var(--color-text-primary);
+}
+
+.ct-tab-btn--active {
+  background: var(--color-surface);
+  color: var(--color-accent);
+  font-weight: 600;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
+}

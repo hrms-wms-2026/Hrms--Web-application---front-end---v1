@@ -21,6 +21,20 @@
   color: var(--color-text-secondary);
 }
 
+.bh-breadcrumb__link {
+  text-decoration: none;
+  cursor: pointer;
+  transition: color 150ms ease;
+}
+
+.bh-breadcrumb__link:hover {
+  color: var(--color-text-primary);
+}
+
+.bh-breadcrumb__link:hover .bh-breadcrumb__icon {
+  color: var(--color-text-primary);
+}
+
 .bh-breadcrumb__icon {
   display: flex;
   align-items: center;

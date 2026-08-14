@@ -2,6 +2,7 @@ import { Component, input, output } from '@angular/core';
 import { HasPermissionDirective } from '../../../../shared/directives/has-permission.directive';
 import { EmptyStateComponent } from '../../../../shared/ui/empty-state/empty-state.component';
 import { DRAFT_REASON_LABELS, DRAFT_STATUS_LABELS, DraftListItemResponse } from '../../models/onboarding-draft.model';
+import { isTerminalDraft } from '../../utils/draft-status.utils';
 
 @Component({
   selector: 'app-draft-table',
@@ -22,5 +23,9 @@ export class DraftTableComponent {
       .split('_')
       .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
       .join(' ');
+  }
+
+  isTerminal(draft: DraftListItemResponse): boolean {
+    return isTerminalDraft(draft.status, draft.draftReason);
   }
 }

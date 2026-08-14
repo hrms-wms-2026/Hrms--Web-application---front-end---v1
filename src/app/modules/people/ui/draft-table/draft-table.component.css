@@ -141,3 +141,11 @@
   opacity: 0.8;
   text-decoration: underline;
 }
+
+.draft-action-btn--disabled,
+.draft-action-btn--disabled:hover {
+  color: var(--color-text-secondary);
+  cursor: default;
+  opacity: 1;
+  text-decoration: none;
+}

@@ -3,15 +3,17 @@ import { FormBuilder, Validators } from '@angular/forms';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { NotificationService } from '../../../../core/services/notification.service';
 import { HasPermissionDirective } from '../../../../shared/directives/has-permission.directive';
+import { BreadcrumbHeaderComponent } from '../../../../shared/ui/breadcrumb-header/breadcrumb-header.component';
 import { ButtonComponent } from '../../../../shared/ui/button/button.component';
+import { DatePickerComponent } from '../../../../shared/ui/date-picker/date-picker.component';
 import { EmptyStateComponent } from '../../../../shared/ui/empty-state/empty-state.component';
 import { InputComponent } from '../../../../shared/ui/input/input.component';
 import { LoaderComponent } from '../../../../shared/ui/loader/loader.component';
-import { PageHeaderComponent } from '../../../../shared/ui/page-header/page-header.component';
 import { SelectComponent, SelectOption } from '../../../../shared/ui/select/select.component';
 import { LegalEntityStore } from '../../../organization/state/legal-entity.store';
 import { AddEmployeeWizardStore } from '../../state/add-employee-wizard.store';
 import { DRAFT_REASON_LABELS, WizardStep } from '../../models/onboarding-draft.model';
+import { isTerminalDraft } from '../../utils/draft-status.utils';
 
 const EMPLOYMENT_TYPE_OPTIONS: readonly SelectOption[] = [
   { value: 'full_time', label: 'Full-time' },
@@ -20,7 +22,7 @@ const EMPLOYMENT_TYPE_OPTIONS: readonly SelectOption[] = [
   { value: 'intern', label: 'Intern' }
 ];
 
-const STEP_ORDER: readonly WizardStep[] = ['employee_details', 'checklist_template', 'checklist_review', 'review_and_submit'];
+const STEP_ORDER: readonly WizardStep[] = ['employee_details', 'checklist_template', 'review_and_submit'];
 const STEP_LABELS: Record<WizardStep, string> = {
   employee_details: 'Employee details',
   checklist_template: 'Checklist template',
@@ -32,16 +34,18 @@ const STEP_LABELS: Record<WizardStep, string> = {
   selector: 'app-add-employee-wizard',
   standalone: true,
   imports: [
-    RouterLink,
     HasPermissionDirective,
+    RouterLink,
+    BreadcrumbHeaderComponent,
     ButtonComponent,
+    DatePickerComponent,
     EmptyStateComponent,
     InputComponent,
     LoaderComponent,
-    PageHeaderComponent,
     SelectComponent
   ],
   templateUrl: './add-employee-wizard.component.html',
+  styleUrl: './add-employee-wizard.component.css',
   changeDetection: ChangeDetectionStrategy.OnPush
 })
 export class AddEmployeeWizardComponent {
@@ -72,6 +76,9 @@ export class AddEmployeeWizardComponent {
 
   readonly hasCompany = computed(() => !!this.legalEntityStore.selectedLegalEntity());
   readonly stepIndex = computed(() => this.stepOrder.indexOf(this.store.step()));
+
+  /** True once a resumed draft turns out to be terminal - the backend rejects any further save/finalize call against it. */
+  readonly resumedDraftIsFinalized = computed(() => isTerminalDraft(this.store.lastSaveStatus(), this.store.lastSaveReason()));
 
   readonly workModeOptions = computed<readonly SelectOption[]>(() =>
     this.store.workModes().map((wm) => ({ value: String(wm.id), label: wm.label }))
@@ -129,8 +136,16 @@ export class AddEmployeeWizardComponent {
   });
 
   constructor() {
-    void this.store.loadWorkModes();
     const draftId = this.route.snapshot.queryParamMap.get('draftId');
+
+    // The store is providedIn: 'root' and survives route navigation, so a fresh "+ Add Employee"
+    // visit (no draftId) must clear out whatever an earlier finalized/in-progress draft left
+    // behind - otherwise stale finalizeResult/lastSaveReason/draftId leak into the new wizard.
+    if (!draftId) {
+      this.store.reset();
+    }
+
+    void this.store.loadWorkModes();
 
     // legalEntityStore.selectedLegalEntity() populates asynchronously (loadCompanies() resolves
     // after this component is constructed), so a one-time read here would miss it on a fresh
@@ -259,7 +274,12 @@ export class AddEmployeeWizardComponent {
     if (response) {
       if (response.invitationQueued && !response.positionApprovalPending) {
         this.notificationService.success('Employee onboarding invitation was queued.');
-        this.router.navigate(['/people/employees']);
+        // Navigate first, then reset - this component (and its company-selection effect) is
+        // still live until navigation completes, and reset() nulling companyId would otherwise
+        // make that effect re-fire setCompany()/loadDepartmentsForCompany() on a component
+        // that's mid-teardown.
+        await this.router.navigate(['/people/employees']);
+        this.store.reset();
       } else if (response.positionApprovalPending) {
         this.notificationService.info('Position approval was requested before the invitation can be sent.');
         this.router.navigate(['/people/employees']);

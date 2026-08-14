@@ -23,15 +23,11 @@
 
       <!-- Section 1: Company identity -->
       <section class="gs-section">
-        <h2 class="gs-section__title">Company name and logo</h2>
+        <h2 class="gs-section__title">Company identity</h2>
         <div class="gs-identity-row">
           <div class="gs-logo-upload-block">
             <div class="gs-logo-preview" aria-label="Company logo preview">
-              @if (logoUrl(); as src) {
-                <img [src]="src" alt="Company logo" class="gs-logo-preview__img" />
-              } @else {
-                <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect width="18" height="18" x="3" y="3" rx="2" ry="2"/><circle cx="9" cy="9" r="2"/><path d="m21 15-3.086-3.086a2 2 0 0 0-2.828 0L6 21"/></svg>
-              }
+              <app-company-logo-tile [name]="selectedLegalEntity()!.name" [logoUrl]="logoUrl()" size="lg" />
             </div>
             <div class="gs-logo-actions">
               <label class="gs-logo-btn" [class.gs-logo-btn--busy]="uploadingLogo()">
@@ -54,29 +50,36 @@
             <app-input label="Company code" [value]="form.controls.companyCode.value" (valueChange)="form.controls.companyCode.setValue($event)"
               (blurred)="form.controls.companyCode.markAsTouched()"
               [error]="form.controls.companyCode.touched && form.controls.companyCode.invalid ? 'Required (max 20 chars).' : ''" />
-            <app-input label="Company registration number" [value]="form.controls.registrationNumber.value" (valueChange)="form.controls.registrationNumber.setValue($event)"
-              (blurred)="form.controls.registrationNumber.markAsTouched()"
-              [error]="form.controls.registrationNumber.touched && form.controls.registrationNumber.invalid ? 'Required (max 50 chars).' : ''" />
-            <app-input label="Tax registration number" [value]="form.controls.taxRegistrationNumber.value" (valueChange)="form.controls.taxRegistrationNumber.setValue($event)"
-              [error]="form.controls.taxRegistrationNumber.invalid ? 'Max 80 characters.' : ''" />
-            <app-input label="VAT/GST number (optional)" [value]="form.controls.vatGstNumber.value" (valueChange)="form.controls.vatGstNumber.setValue($event)"
-              [error]="form.controls.vatGstNumber.invalid ? 'Max 50 characters.' : ''" />
-            <app-select label="Status" [options]="STATUS_OPTIONS" [value]="form.controls.status.value" (valueChange)="form.controls.status.setValue($any($event))" />
-            <app-input label="Company email" type="email" [value]="form.controls.email.value" (valueChange)="form.controls.email.setValue($event)"
-              (blurred)="form.controls.email.markAsTouched()"
-              [error]="form.controls.email.touched && form.controls.email.invalid ? 'Enter a valid email address.' : ''" />
-            <app-input label="Phone number" [value]="form.controls.phoneNumber.value" (valueChange)="form.controls.phoneNumber.setValue($event)"
-              [error]="form.controls.phoneNumber.invalid ? 'Max 20 characters.' : ''" />
-            <app-input label="Website (optional)" type="url" [value]="form.controls.website.value" (valueChange)="form.controls.website.setValue($event)"
-              (blurred)="form.controls.website.markAsTouched()"
-              [error]="form.controls.website.touched && form.controls.website.invalid ? 'Enter a full URL, e.g. https://example.com.' : ''" />
           </div>
         </div>
       </section>
 
-      <!-- Section 2: Company details -->
+      <!-- Section 2: Registration & contact -->
       <section class="gs-section">
-        <h2 class="gs-section__title">Company details</h2>
+        <h2 class="gs-section__title">Registration &amp; contact</h2>
+        <div class="gs-field-grid gs-field-grid--3">
+          <app-input label="Company registration number" [value]="form.controls.registrationNumber.value" (valueChange)="form.controls.registrationNumber.setValue($event)"
+            (blurred)="form.controls.registrationNumber.markAsTouched()"
+            [error]="form.controls.registrationNumber.touched && form.controls.registrationNumber.invalid ? 'Required (max 50 chars).' : ''" />
+          <app-input label="Tax registration number" [value]="form.controls.taxRegistrationNumber.value" (valueChange)="form.controls.taxRegistrationNumber.setValue($event)"
+            [error]="form.controls.taxRegistrationNumber.invalid ? 'Max 80 characters.' : ''" />
+          <app-input label="VAT/GST number (optional)" [value]="form.controls.vatGstNumber.value" (valueChange)="form.controls.vatGstNumber.setValue($event)"
+            [error]="form.controls.vatGstNumber.invalid ? 'Max 50 characters.' : ''" />
+          <app-select label="Status" [options]="STATUS_OPTIONS" [value]="form.controls.status.value" (valueChange)="form.controls.status.setValue($any($event))" />
+          <app-input label="Company email" type="email" [value]="form.controls.email.value" (valueChange)="form.controls.email.setValue($event)"
+            (blurred)="form.controls.email.markAsTouched()"
+            [error]="form.controls.email.touched && form.controls.email.invalid ? 'Enter a valid email address.' : ''" />
+          <app-input label="Phone number" [value]="form.controls.phoneNumber.value" (valueChange)="form.controls.phoneNumber.setValue($event)"
+            [error]="form.controls.phoneNumber.invalid ? 'Max 20 characters.' : ''" />
+          <app-input label="Website (optional)" type="url" [value]="form.controls.website.value" (valueChange)="form.controls.website.setValue($event)"
+            (blurred)="form.controls.website.markAsTouched()"
+            [error]="form.controls.website.touched && form.controls.website.invalid ? 'Enter a full URL, e.g. https://example.com.' : ''" />
+        </div>
+      </section>
+
+      <!-- Section 3: Regional defaults -->
+      <section class="gs-section">
+        <h2 class="gs-section__title">Regional defaults</h2>
         <div class="gs-field-grid gs-field-grid--3">
           <app-select label="Country" [options]="COUNTRY_CODE_OPTIONS" placeholder="Select a country"
             [value]="form.controls.countryCode.value"
@@ -109,10 +112,14 @@
               <p class="gs-field-error">Select at least one working day.</p>
             }
           </fieldset>
+
+          <app-select label="Default language" [options]="DEFAULT_LANGUAGE_OPTIONS" [value]="form.controls.defaultLanguage.value" [disabled]="true" />
+          <app-select label="Date format" [options]="DATE_FORMAT_OPTIONS" [value]="form.controls.dateFormat.value" (valueChange)="form.controls.dateFormat.setValue($event)" />
+          <app-select label="Time format" [options]="TIME_FORMAT_OPTIONS" [value]="form.controls.timeFormat.value" (valueChange)="form.controls.timeFormat.setValue($any($event))" />
         </div>
       </section>
 
-      <!-- Section 3: Default work hours -->
+      <!-- Section 4: Default work hours -->
       <section class="gs-section">
         <h2 class="gs-section__title">Default work hours</h2>
         <div class="gs-field-grid gs-field-grid--2">
@@ -139,17 +146,6 @@
           <p class="gs-field-error" role="alert">Work start time must be earlier than end time (same-day only).</p>
         }
       </section>
-
-      <!-- Section 4: Regional preferences -->
-      <section class="gs-section">
-        <h2 class="gs-section__title">Regional preferences</h2>
-        <div class="gs-field-grid gs-field-grid--3">
-          <app-select label="Default language" [options]="DEFAULT_LANGUAGE_OPTIONS" [value]="form.controls.defaultLanguage.value" [disabled]="true" />
-          <app-select label="Date format" [options]="DATE_FORMAT_OPTIONS" [value]="form.controls.dateFormat.value" (valueChange)="form.controls.dateFormat.setValue($event)" />
-          <app-select label="Time format" [options]="TIME_FORMAT_OPTIONS" [value]="form.controls.timeFormat.value" (valueChange)="form.controls.timeFormat.setValue($any($event))" />
-        </div>
-      </section>
-
 
     </form>
   }

@@ -31,7 +31,22 @@ export const NAV_ITEMS: readonly NavItem[] = [
     label: 'People',
     icon: 'people',
     path: '/people',
-    requiredModules: ['core_hr']
+    requiredModules: ['core_hr'],
+    children: [
+      {
+        id: 'people-employees',
+        label: 'Employees',
+        path: '/people/employees',
+        requiredModules: ['core_hr']
+      },
+      {
+        id: 'people-checklists',
+        label: 'Checklists',
+        path: '/people/checklists',
+        requiredModules: ['core_hr'],
+        requiredPermissions: ['employees:read']
+      }
+    ]
   },
   {
     id: 'calendar',

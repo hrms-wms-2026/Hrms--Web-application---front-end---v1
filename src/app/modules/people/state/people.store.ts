@@ -1,10 +1,11 @@
-import { inject } from '@angular/core';
-import { patchState, signalStore, withMethods, withState } from '@ngrx/signals';
+import { computed, inject } from '@angular/core';
+import { patchState, signalStore, withComputed, withMethods, withState } from '@ngrx/signals';
 import { firstValueFrom } from 'rxjs';
 import { toSafeErrorMessage } from '../../../core/services/error-handler.service';
 import { PeopleApiService } from '../data-access/people-api.service';
 import { EmployeeListItemResponse, EmployeeListParams } from '../models/employee.model';
 import { DraftListItemResponse, DraftListParams } from '../models/onboarding-draft.model';
+import { isTerminalDraft } from '../utils/draft-status.utils';
 
 export interface PeopleState {
   readonly employees: readonly EmployeeListItemResponse[];
@@ -41,6 +42,10 @@ const initialState: PeopleState = {
 export const PeopleStore = signalStore(
   { providedIn: 'root' },
   withState<PeopleState>(initialState),
+  withComputed(({ drafts }) => ({
+    /** Excludes terminal (finalized / invitation-sent) drafts - see isTerminalDraft. */
+    actionableDrafts: computed(() => drafts().filter((d) => !isTerminalDraft(d.status, d.draftReason)))
+  })),
   withMethods((store, api = inject(PeopleApiService)) => {
     let employeesRequestId = 0;
     let draftsRequestId = 0;

@@ -43,14 +43,18 @@
               <span class="draft-started-text" [title]="draft.startedByName">{{ draft.startedByName }}</span>
             </td>
             <td class="col-actions">
-              <button
-                *appHasPermission="'employees:write'"
-                type="button"
-                class="draft-action-btn"
-                (click)="continueDraft.emit(draft.id)"
-              >
-                Continue Draft
-              </button>
+              @if (isTerminal(draft)) {
+                <button type="button" class="draft-action-btn draft-action-btn--disabled" disabled>Finalized</button>
+              } @else {
+                <button
+                  *appHasPermission="'employees:write'"
+                  type="button"
+                  class="draft-action-btn"
+                  (click)="continueDraft.emit(draft.id)"
+                >
+                  Continue Draft
+                </button>
+              }
             </td>
           </tr>
         }

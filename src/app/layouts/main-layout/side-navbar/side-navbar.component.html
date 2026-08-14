@@ -1,13 +1,7 @@
 <nav aria-label="Main navigation" class="nav-rail">
   <!-- Slack-style Company Workspace Logo / Initial Tile -->
-  <div class="nav-rail__company-tile" [title]="selectedCompany()?.name || 'Workspace'">
-    @if (selectedCompany()?.logoFileId) {
-      <img [src]="'/api/v1/files/' + selectedCompany()!.logoFileId" [alt]="selectedCompany()?.name" class="nav-rail__company-logo" />
-    } @else {
-      <div class="nav-rail__company-avatar">
-        {{ companyInitial() }}
-      </div>
-    }
+  <div class="nav-rail__company-tile">
+    <app-company-logo-tile [name]="selectedCompany()?.name" [logoUrl]="companyLogoUrl()" size="sm" />
   </div>
 
   <div class="nav-rail__divider"></div>

@@ -1,8 +1,13 @@
+import { provideHttpClient } from '@angular/common/http';
+import { provideHttpClientTesting } from '@angular/common/http/testing';
 import { Component } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
 import { Router, provideRouter } from '@angular/router';
 import { SideNavbarComponent } from './side-navbar.component';
 import { AuthStore } from '../../../core/auth/state/auth.store';
+import { environment } from '../../../../environments/environment';
+import { LegalEntityApiService } from '../../../modules/organization/data-access/legal-entity-api.service';
+import { LegalEntityStore } from '../../../modules/organization/state/legal-entity.store';
 
 @Component({ standalone: true, template: '' })
 class BlankComponent {}
@@ -101,5 +106,81 @@ describe('SideNavbarComponent', () => {
 
     const activeLink = fixture.nativeElement.querySelector('.nav-rail-item--active');
     expect(activeLink?.textContent).toContain('Org');
+  });
+
+  it('shows the sidebar-style initial tile when no company is selected', () => {
+    const fixture = setup([], []);
+    const initial = fixture.nativeElement.querySelector('.company-logo-tile__initial');
+    expect(initial?.textContent?.trim()).toBe('O');
+  });
+
+  it('keeps the workspace-name tooltip on the company tile (now set by the shared component)', () => {
+    const fixture = setup([], []);
+    const tile = fixture.nativeElement.querySelector('.company-logo-tile');
+    expect(tile.getAttribute('title')).toBe('Workspace');
+  });
+
+  it('renders the company logo image via the shared tile when a company with a logo is selected', () => {
+    TestBed.configureTestingModule({
+      imports: [SideNavbarComponent],
+      providers: [
+        provideHttpClient(),
+        provideHttpClientTesting(),
+        provideRouter([{ path: '**', component: BlankComponent }]),
+        { provide: AuthStore, useValue: { permissions: () => [], activeModules: () => [] } },
+        {
+          provide: LegalEntityStore,
+          useValue: {
+            selectedLegalEntity: () => ({
+              id: 'co-1',
+              name: 'Acme Corp',
+              companyCode: 'ACME',
+              logoFileId: 'file-9',
+              isActive: true,
+              isPrimary: true
+            })
+          }
+        }
+      ]
+    });
+    const fixture = TestBed.createComponent(SideNavbarComponent);
+    fixture.detectChanges();
+
+    const img: HTMLImageElement = fixture.nativeElement.querySelector('.company-logo-tile__img');
+    expect(img).toBeTruthy();
+    expect(img.src).toBe(`${environment.apiUrl}/org/legal-entities/co-1/logo?v=file-9`);
+  });
+
+  it('resolves the same logo URL as General Settings (LegalEntityApiService.getLogoUrl) for the same company/logo id', () => {
+    TestBed.configureTestingModule({
+      imports: [SideNavbarComponent],
+      providers: [
+        provideHttpClient(),
+        provideHttpClientTesting(),
+        provideRouter([{ path: '**', component: BlankComponent }]),
+        { provide: AuthStore, useValue: { permissions: () => [], activeModules: () => [] } },
+        {
+          provide: LegalEntityStore,
+          useValue: {
+            selectedLegalEntity: () => ({
+              id: 'co-1',
+              name: 'Acme Corp',
+              companyCode: 'ACME',
+              logoFileId: 'file-9',
+              isActive: true,
+              isPrimary: true
+            })
+          }
+        }
+      ]
+    });
+    const fixture = TestBed.createComponent(SideNavbarComponent);
+    fixture.detectChanges();
+
+    const legalEntityApi = TestBed.inject(LegalEntityApiService);
+    const expectedUrl = legalEntityApi.getLogoUrl('co-1', 'file-9');
+
+    const img: HTMLImageElement = fixture.nativeElement.querySelector('.company-logo-tile__img');
+    expect(img.src).toBe(expectedUrl);
   });
 });

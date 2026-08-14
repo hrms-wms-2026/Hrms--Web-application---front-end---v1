@@ -1,11 +1,12 @@
 import { ChangeDetectionStrategy, Component, input } from '@angular/core';
+import { RouterLink } from '@angular/router';
 import { NavIconComponent } from '../../../layouts/main-layout/side-navbar/nav-icon.component';
 import { NavIconName } from '../../../layouts/main-layout/nav/nav-item.model';
 
 @Component({
   selector: 'app-breadcrumb-header',
   standalone: true,
-  imports: [NavIconComponent],
+  imports: [NavIconComponent, RouterLink],
   templateUrl: './breadcrumb-header.component.html',
   styleUrl: './breadcrumb-header.component.css',
   changeDetection: ChangeDetectionStrategy.OnPush
@@ -13,5 +14,6 @@ import { NavIconName } from '../../../layouts/main-layout/nav/nav-item.model';
 export class BreadcrumbHeaderComponent {
   parentLabel = input.required<string>();
   currentLabel = input.required<string>();
+  parentUrl = input<string | undefined>(undefined);
   icon = input<NavIconName | undefined>(undefined);
 }

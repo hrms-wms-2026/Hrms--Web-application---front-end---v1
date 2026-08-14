@@ -106,7 +106,7 @@ describe('GeneralSettingsComponent', () => {
 
     expect(fixture.componentInstance.form.controls.name.value).toBe('Company A');
     // The company name is a form field value (native <input> property), not static text -
-    // the breadcrumb-based redesign no longer displays it as a page heading.
+    // there is no separate page heading for it.
     const inputs: NodeListOf<HTMLInputElement> = fixture.nativeElement.querySelectorAll('input');
     expect(Array.from(inputs).some((el) => el.value === 'Company A')).toBe(true);
   });

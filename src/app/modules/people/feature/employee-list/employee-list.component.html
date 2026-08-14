@@ -67,8 +67,8 @@
             [attr.aria-selected]="activeTab() === 'drafts'"
           >
             <span>Onboarding Drafts</span>
-            @if (store.drafts().length > 0) {
-              <span class="emp-count-badge emp-count-badge--amber">{{ store.drafts().length }}</span>
+            @if (store.actionableDrafts().length > 0) {
+              <span class="emp-count-badge emp-count-badge--amber">{{ store.actionableDrafts().length }}</span>
             }
           </button>
         </div>
@@ -128,7 +128,7 @@
     } @else if (store.draftsError()) {
       <app-error-state [message]="store.draftsError()!" [retryable]="true" (retry)="loadDrafts()" />
     } @else {
-      <app-draft-table [drafts]="store.drafts()" (continueDraft)="onContinueDraft($event)" />
+      <app-draft-table [drafts]="store.actionableDrafts()" (continueDraft)="onContinueDraft($event)" />
     }
   </section>
 }
