@@ -1,11 +1,13 @@
 import { provideHttpClient } from '@angular/common/http';
 import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
-import { ActivatedRoute, convertToParamMap, provideRouter } from '@angular/router';
+import { ActivatedRoute, convertToParamMap, provideRouter, Router } from '@angular/router';
+import { vi } from 'vitest';
 import { environment } from '../../../../../environments/environment';
 import { PermissionService } from '../../../../core/auth/state/permission.service';
 import { NotificationService } from '../../../../core/services/notification.service';
 import { LegalEntityStore } from '../../../organization/state/legal-entity.store';
+import { AddEmployeeWizardStore } from '../../state/add-employee-wizard.store';
 import { AddEmployeeWizardComponent } from './add-employee-wizard.component';
 
 describe('AddEmployeeWizardComponent', () => {
@@ -83,6 +85,21 @@ describe('AddEmployeeWizardComponent', () => {
   it('shows a precondition empty state when the selected company has zero departments', async () => {
     await setupWithCompany();
     expect(fixture.nativeElement.textContent).toContain('No departments configured');
+  });
+
+  it('renders work mode and employment type options as visible selectable chips', async () => {
+    await setupWithCompany();
+    const chips: HTMLButtonElement[] = Array.from(fixture.nativeElement.querySelectorAll('.work-mode-chip'));
+    expect(chips.length).toBeGreaterThan(0);
+
+    const fullTimeChip = chips.find((c) => c.textContent?.includes('Full-time'));
+    expect(fullTimeChip).toBeTruthy();
+
+    fullTimeChip?.click();
+    fixture.detectChanges();
+
+    expect(fixture.componentInstance.form.controls.employmentType.value).toBe('full_time');
+    expect(fullTimeChip?.classList).toContain('work-mode-chip--active');
   });
 
   it('does not render a manager or job title field anywhere in the form', async () => {
@@ -343,5 +360,175 @@ describe('AddEmployeeWizardComponent', () => {
     });
 
     await finPromise;
+  });
+
+  it('resets stale finalized wizard state when Add Employee opens without a draftId', async () => {
+    TestBed.resetTestingModule();
+    notificationService = { success: () => {}, error: () => {}, info: () => {}, warning: () => {} };
+
+    await TestBed.configureTestingModule({
+      imports: [AddEmployeeWizardComponent],
+      providers: [
+        provideHttpClient(),
+        provideHttpClientTesting(),
+        provideRouter([{ path: '**', component: AddEmployeeWizardComponent }]),
+        { provide: PermissionService, useValue: { hasPermission: () => true, hasAnyPermission: () => true } },
+        { provide: NotificationService, useValue: notificationService },
+        { provide: ActivatedRoute, useValue: { snapshot: { queryParamMap: convertToParamMap({}) } } }
+      ]
+    }).compileComponents();
+
+    httpMock = TestBed.inject(HttpTestingController);
+    const store = TestBed.inject(AddEmployeeWizardStore);
+
+    // Simulate leftover state from a previously finalized draft earlier in this session -
+    // the store is providedIn: 'root' and survives route navigations.
+    const finalizePromise = store.finalizeDraft('draft-old');
+    httpMock.expectOne(`${environment.apiUrl}/onboarding/drafts/draft-old/finalize`).flush({
+      draftId: 'draft-old',
+      employeeId: 'emp-1',
+      status: 'finalized',
+      draftReason: 'invitation_sent',
+      invitationQueued: true,
+      positionApprovalPending: false,
+      checklistTasksCreated: true,
+      messageKey: 'finalized'
+    });
+    await finalizePromise;
+    expect(store.finalizeResult()).not.toBeNull();
+    expect(store.lastSaveReason()).toBe('invitation_sent');
+
+    fixture = TestBed.createComponent(AddEmployeeWizardComponent);
+    fixture.detectChanges();
+    httpMock.expectOne(`${environment.apiUrl}/work-modes`).flush([]);
+
+    expect(store.finalizeResult()).toBeNull();
+    expect(store.lastSaveReason()).toBeNull();
+    expect(store.draftId()).toBeNull();
+  });
+
+  it('blocks Save Draft / Finalize and shows a safe message when the resumed draft is already finalized', async () => {
+    await setupWithCompany({ draftId: 'draft-finalized' });
+
+    httpMock.expectOne(`${environment.apiUrl}/onboarding/drafts/draft-finalized`).flush({
+      id: 'draft-finalized',
+      firstName: 'Ada',
+      lastName: 'Lovelace',
+      workEmail: 'ada@test.dev',
+      legalEntityId: 'le-1',
+      departmentId: 'dept-1',
+      positionId: 'pos-1',
+      employmentType: 'full_time',
+      startDate: '2026-08-10',
+      employeeNumber: null,
+      workModeId: 1,
+      selectedTemplateId: null,
+      editedTasksJson: null,
+      status: 'finalized',
+      draftReason: 'invitation_sent',
+      lastSavedStep: 'review_and_submit',
+      startedById: 'user-1',
+      version: '1'
+    });
+    await fixture.whenStable();
+    httpMock.expectOne((r) => r.url.includes('/departments')).flush({ items: [], page: 1, pageSize: 25, totalCount: 0, totalPages: 0 });
+    await fixture.whenStable();
+    httpMock.expectOne((r) => r.url.includes('/positions')).flush({ items: [], page: 1, pageSize: 25, totalCount: 0, totalPages: 0 });
+    await fixture.whenStable();
+    fixture.detectChanges();
+
+    expect(fixture.nativeElement.textContent).toContain('This onboarding has already been finalized.');
+
+    const buttons: HTMLButtonElement[] = Array.from(fixture.nativeElement.querySelectorAll('button'));
+    expect(buttons.some((b) => b.textContent?.includes('Save Draft'))).toBe(false);
+    expect(buttons.some((b) => b.textContent?.includes('Finalize and send invite'))).toBe(false);
+
+    const backLink: HTMLAnchorElement | null = fixture.nativeElement.querySelector('a[href="/people/employees"]');
+    expect(backLink).toBeTruthy();
+  });
+
+  it('clears wizard state and navigates to Employees after a successful finalize with invitation queued', async () => {
+    await setupWithCompany();
+    fixture.componentInstance.form.patchValue({
+      firstName: 'Ada',
+      lastName: 'Lovelace',
+      workEmail: 'ada@test.dev',
+      departmentId: 'dept-1',
+      positionId: 'pos-1',
+      employmentType: 'full_time',
+      startDate: '2026-08-10',
+      workModeId: '1'
+    });
+    fixture.componentInstance.store.goToStep('review_and_submit');
+    fixture.detectChanges();
+
+    const router = TestBed.inject(Router);
+    // reset() nulls companyId, which the constructor's still-live company-selection effect would
+    // react to by re-fetching departments if it ran before this component is torn down by
+    // navigation. router.navigate resolves on a microtask (like the real Router) so that
+    // "reset() called before navigate() settles" is actually observable, not just "called after
+    // the navigate() line textually" - a plain vi.fn().mockResolvedValue would make both a
+    // fire-and-forget and an awaited navigate() look identical in call order.
+    const callOrder: string[] = [];
+    const navigateSpy = vi.spyOn(router, 'navigate').mockImplementation(() =>
+      Promise.resolve().then(() => {
+        callOrder.push('navigate-settled');
+        return true;
+      })
+    );
+    const store = fixture.componentInstance.store;
+    const realReset = store.reset.bind(store);
+    const resetSpy = vi.spyOn(store, 'reset').mockImplementation(() => {
+      callOrder.push('reset');
+      realReset();
+    });
+
+    const finPromise = fixture.componentInstance.onFinalize();
+
+    const saveReq = httpMock.expectOne(`${environment.apiUrl}/onboarding/drafts`);
+    saveReq.flush({
+      id: 'draft-new',
+      firstName: 'Ada',
+      lastName: 'Lovelace',
+      workEmail: 'ada@test.dev',
+      legalEntityId: 'le-1',
+      departmentId: 'dept-1',
+      positionId: 'pos-1',
+      employmentType: 'full_time',
+      startDate: '2026-08-10',
+      employeeNumber: null,
+      workModeId: 1,
+      selectedTemplateId: null,
+      editedTasksJson: null,
+      status: 'draft',
+      draftReason: 'saved_manually',
+      lastSavedStep: 'review_and_submit',
+      startedById: 'user-1',
+      version: '1'
+    });
+
+    await Promise.resolve();
+    await Promise.resolve();
+
+    const finReq = httpMock.expectOne(`${environment.apiUrl}/onboarding/drafts/draft-new/finalize`);
+    finReq.flush({
+      draftId: 'draft-new',
+      employeeId: 'emp-1',
+      status: 'finalized',
+      draftReason: 'invitation_sent',
+      invitationQueued: true,
+      positionApprovalPending: false,
+      checklistTasksCreated: true,
+      messageKey: 'finalized'
+    });
+
+    await finPromise;
+
+    expect(navigateSpy).toHaveBeenCalledWith(['/people/employees']);
+    expect(resetSpy).toHaveBeenCalled();
+    expect(callOrder).toEqual(['navigate-settled', 'reset']);
+    expect(store.finalizeResult()).toBeNull();
+    expect(store.draftId()).toBeNull();
+    expect(store.lastSaveReason()).toBeNull();
   });
 });

@@ -118,6 +118,51 @@ describe('PeopleStore', () => {
     expect(store.draftsError()).toBeNull();
   });
 
+  it('actionableDrafts excludes finalized drafts and drafts whose reason is invitation_sent', async () => {
+    const loadPromise = store.loadDrafts({ page: 1, pageSize: 25 });
+    httpMock.expectOne(`${environment.apiUrl}/onboarding/drafts?page=1&pageSize=25`).flush({
+      items: [
+        {
+          id: 'd1',
+          displayName: 'Active One',
+          positionName: null,
+          departmentName: null,
+          status: 'draft',
+          draftReason: 'saved_manually',
+          lastSavedStep: 'employee_details',
+          startedByName: 'HR Starter'
+        },
+        {
+          id: 'd2',
+          displayName: 'Finalized Two',
+          positionName: null,
+          departmentName: null,
+          status: 'finalized',
+          draftReason: 'invitation_sent',
+          lastSavedStep: 'review_and_submit',
+          startedByName: 'HR Starter'
+        },
+        {
+          id: 'd3',
+          displayName: 'Invited Three',
+          positionName: null,
+          departmentName: null,
+          status: 'draft',
+          draftReason: 'invitation_sent',
+          lastSavedStep: 'review_and_submit',
+          startedByName: 'HR Starter'
+        }
+      ],
+      totalCount: 3,
+      page: 1,
+      pageSize: 25
+    });
+    await loadPromise;
+
+    expect(store.drafts().length).toBe(3);
+    expect(store.actionableDrafts().map((d) => d.id)).toEqual(['d1']);
+  });
+
   it('clear() resets both employees and drafts state', async () => {
     const loadPromise = store.loadEmployees({});
     httpMock.expectOne(`${environment.apiUrl}/employees`).flush(mockPage);

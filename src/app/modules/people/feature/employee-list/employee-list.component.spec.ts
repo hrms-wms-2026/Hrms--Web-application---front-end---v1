@@ -125,6 +125,71 @@ describe('EmployeeListComponent', () => {
     }
   });
 
+  it('excludes finalized and invitation-sent drafts from the Onboarding Drafts count and table', async () => {
+    await setup(true);
+    httpMock.expectOne((r) => r.url.includes('/employees')).flush({ items: [], totalCount: 0, page: 1, pageSize: 25 });
+    httpMock.expectOne((r) => r.url.includes('/onboarding/drafts')).flush({
+      items: [
+        {
+          id: 'd1',
+          displayName: 'Active One',
+          positionName: null,
+          departmentName: null,
+          status: 'draft',
+          draftReason: 'saved_manually',
+          lastSavedStep: 'employee_details',
+          startedByName: 'HR Starter'
+        },
+        {
+          id: 'd2',
+          displayName: 'Finalized Two',
+          positionName: null,
+          departmentName: null,
+          status: 'finalized',
+          draftReason: 'invitation_sent',
+          lastSavedStep: 'review_and_submit',
+          startedByName: 'HR Starter'
+        },
+        {
+          id: 'd3',
+          displayName: 'Invited Three',
+          positionName: null,
+          departmentName: null,
+          status: 'draft',
+          draftReason: 'invitation_sent',
+          lastSavedStep: 'review_and_submit',
+          startedByName: 'HR Starter'
+        }
+      ],
+      totalCount: 3,
+      page: 1,
+      pageSize: 25
+    });
+    await fixture.whenStable();
+    fixture.detectChanges();
+
+    const badge = fixture.nativeElement.querySelector('.emp-count-badge--amber');
+    expect(badge?.textContent?.trim()).toBe('1');
+
+    fixture.componentInstance.setTab('drafts');
+    fixture.detectChanges();
+
+    expect(fixture.nativeElement.textContent).toContain('Active One');
+    expect(fixture.nativeElement.textContent).not.toContain('Finalized Two');
+    expect(fixture.nativeElement.textContent).not.toContain('Invited Three');
+  });
+
+  it('the Add Employee link never carries a draftId query param', async () => {
+    await setup(true);
+    flushEmployeesAndDrafts();
+    await fixture.whenStable();
+    fixture.detectChanges();
+
+    const addLink: HTMLAnchorElement | null = fixture.nativeElement.querySelector('a.no-underline');
+    expect(addLink).toBeTruthy();
+    expect(addLink?.getAttribute('href')).toBe('/people/employees/new');
+  });
+
   it('reloads employees when the query param changes', async () => {
     await setup(true, { search: 'grace' });
     const req = httpMock.expectOne((r) => r.url.includes('/employees') && r.params.get('search') === 'grace');

@@ -4,6 +4,7 @@ import { PermissionService } from '../../../../core/auth/state/permission.servic
 import { NotificationService } from '../../../../core/services/notification.service';
 import { BreadcrumbHeaderComponent } from '../../../../shared/ui/breadcrumb-header/breadcrumb-header.component';
 import { ButtonComponent } from '../../../../shared/ui/button/button.component';
+import { CompanyLogoTileComponent } from '../../../../shared/ui/company-logo-tile/company-logo-tile.component';
 import { EmptyStateComponent } from '../../../../shared/ui/empty-state/empty-state.component';
 import { ErrorStateComponent } from '../../../../shared/ui/error-state/error-state.component';
 import { InputComponent } from '../../../../shared/ui/input/input.component';
@@ -41,6 +42,7 @@ import { absoluteUrlValidator, nonEmptyArrayValidator, oneOfValidator, workTimeP
     ReactiveFormsModule,
     BreadcrumbHeaderComponent,
     ButtonComponent,
+    CompanyLogoTileComponent,
     EmptyStateComponent,
     ErrorStateComponent,
     InputComponent,

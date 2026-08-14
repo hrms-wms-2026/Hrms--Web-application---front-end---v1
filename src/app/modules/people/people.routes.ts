@@ -34,5 +34,37 @@ export const PEOPLE_ROUTES: Routes = [
         data: { title: 'Employee Detail', permissions: ['employees:read'] }
       }
     ]
+  },
+  {
+    path: 'checklists',
+    children: [
+      {
+        path: '',
+        loadComponent: () =>
+          import('./feature/checklist-templates/checklist-templates.component').then(
+            (m) => m.ChecklistTemplatesComponent
+          ),
+        canActivate: [permissionGuard],
+        data: { title: 'Checklists', permissions: ['employees:read'] }
+      },
+      {
+        path: 'new',
+        loadComponent: () =>
+          import('./feature/checklist-builder/checklist-builder.component').then(
+            (m) => m.ChecklistBuilderComponent
+          ),
+        canActivate: [permissionGuard],
+        data: { title: 'Create Checklist', permissions: ['employees:write'] }
+      },
+      {
+        path: ':id/edit',
+        loadComponent: () =>
+          import('./feature/checklist-builder/checklist-builder.component').then(
+            (m) => m.ChecklistBuilderComponent
+          ),
+        canActivate: [permissionGuard],
+        data: { title: 'Edit Checklist', permissions: ['employees:write'] }
+      }
+    ]
   }
 ];

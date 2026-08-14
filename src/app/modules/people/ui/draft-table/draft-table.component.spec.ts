@@ -110,4 +110,37 @@ describe('DraftTableComponent', () => {
 
     expect(emitted).toEqual(['draft-1']);
   });
+
+  it('does not render Continue Draft for a finalized draft, and shows a disabled Finalized label instead', async () => {
+    const finalizedDraft: DraftListItemResponse = { ...draft, id: 'draft-finalized', status: 'finalized', draftReason: 'invitation_sent' };
+    await setup([finalizedDraft], true);
+
+    const buttons: HTMLButtonElement[] = Array.from(fixture.nativeElement.querySelectorAll('button'));
+    expect(buttons.some((b) => b.textContent?.includes('Continue Draft'))).toBe(false);
+    expect(fixture.nativeElement.textContent).toContain('Finalized');
+  });
+
+  it('does not render Continue Draft for a draft whose reason is invitation_sent, even if status has not flipped yet', async () => {
+    const inviteSentDraft: DraftListItemResponse = { ...draft, id: 'draft-invited', status: 'draft', draftReason: 'invitation_sent' };
+    await setup([inviteSentDraft], true);
+
+    const buttons: HTMLButtonElement[] = Array.from(fixture.nativeElement.querySelectorAll('button'));
+    expect(buttons.some((b) => b.textContent?.includes('Continue Draft'))).toBe(false);
+  });
+
+  it('still renders Continue Draft for draft/waiting_for_seat/waiting_for_position_approval statuses when the caller holds employees:write', async () => {
+    const draftStatus: DraftListItemResponse = { ...draft, id: 'draft-a', status: 'draft', draftReason: 'saved_manually' };
+    const waitingForSeat: DraftListItemResponse = { ...draft, id: 'draft-b', status: 'waiting_for_seat', draftReason: 'waiting_for_seat' };
+    const waitingForApproval: DraftListItemResponse = {
+      ...draft,
+      id: 'draft-c',
+      status: 'waiting_for_position_approval',
+      draftReason: 'waiting_for_position_approval'
+    };
+    await setup([draftStatus, waitingForSeat, waitingForApproval], true);
+
+    const buttons: HTMLButtonElement[] = Array.from(fixture.nativeElement.querySelectorAll('button'));
+    const continueButtons = buttons.filter((b) => b.textContent?.includes('Continue Draft'));
+    expect(continueButtons.length).toBe(3);
+  });
 });
