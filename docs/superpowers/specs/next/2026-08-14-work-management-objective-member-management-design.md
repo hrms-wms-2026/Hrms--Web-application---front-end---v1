@@ -4,6 +4,8 @@
 
 **Scope guardrail:** `src/app/modules/work/**` only. Do not touch `organization`, `layouts/main-layout`, `public`, or any admin/platform module — a teammate owns those. The existing `GET /api/v1/employees` (Core HR) is consumed read-only as the people-picker source; no Core HR file is touched.
 
+**Amendment (2026-08-14, post-plan):** `PeopleApiService.listEmployees()` — the only available people-search source — returns Employee ids, not `userId`, which every invite endpoint originally expected. Resolved on the backend side: those endpoints now accept `employeeId` directly, so the picker built in this plan sends `employee.id` straight through with no resolution step on the frontend at all. See the backend spec's own amendment and the implementation plan for the exact request-shape changes.
+
 **Origin:** brainstormed live with the user 2026-08-14 via `superpowers:brainstorming`.
 
 ---

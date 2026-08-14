@@ -1083,9 +1083,411 @@ git commit -m "feat(work): add My Invitations panel to the project list page"
 
 ---
 
+# Phase 2: UserId → Employee-Based Identity (supersedes `userId` throughout Tasks 1–3, 5, 6, 8; unblocks Task 7)
+
+**Added 2026-08-14.** The backend plan (`HRMS-Backend-v1/docs/superpowers/plans/next/2026-08-14-work-management-objective-member-management.md`, Tasks 13–25) replaced `UserId` with `EmployeeId` as the identity for every ownership/membership field in Work Management — one User can be linked to multiple Employee records (one per legal entity, since a tenant can control several), so `UserId` can no longer identify a person unambiguously. Every Work Management invite/member/transfer endpoint now takes `employeeId` on the wire, not `userId`.
+
+**This resolves Task 7's blocker.** Task 7 above was left unwritten because `PeopleApiService.listEmployees()` only ever returned `employee.id`, never a `userId`, and the invite endpoints at the time needed `userId` — a real mismatch with no owner-in-scope fix. That mismatch is gone: every endpoint this plan calls now takes `employeeId` directly, which is exactly what the picker already has. **Task 7 is rewritten in full below, no longer blocked.**
+
+**Rename, mechanical, throughout every file Tasks 1–3/5/6/8 already describe:** `userId` → `employeeId` (variable names, DTO fields, method parameters, `data-user-id` attributes, route segments). Specific field/method renames:
+
+| Old (Tasks 1–6, 8 as written above) | New (Phase 2) |
+|---|---|
+| `ObjectiveMemberItemDto.userId` | `ObjectiveMemberItemDto.employeeId` |
+| `ObjectiveInvitationDto.invitedUserId` | `ObjectiveInvitationDto.invitedEmployeeId` |
+| `CreateObjectiveMemberInvitationRequestDto.userId` | `CreateObjectiveMemberInvitationRequestDto.employeeId` |
+| `CreateObjectiveRequestDto.headUserId` | `CreateObjectiveRequestDto.headEmployeeId` |
+| `ObjectiveMemberApiService.addMember(objectiveId, userId)` | `addMember(objectiveId, employeeId)` — POST body `{ employeeId }` |
+| `ObjectiveMemberApiService.removeMember(objectiveId, userId)` | `removeMember(objectiveId, employeeId)` — route `/members/${employeeId}` |
+| `ObjectiveMemberApiService.transferHead(objectiveId, newHeadUserId)` | `transferHead(objectiveId, newHeadEmployeeId)` — POST body `{ newHeadEmployeeId }` |
+| `ProjectDetailStore.addObjectiveMember(objectiveId, userId)` | `addObjectiveMember(objectiveId, employeeId)` |
+| `ProjectDetailStore.removeObjectiveMember(objectiveId, userId)` | `removeObjectiveMember(objectiveId, employeeId)` |
+| `ProjectDetailStore.transferObjectiveHead(objectiveId, newHeadUserId)` | `transferObjectiveHead(objectiveId, newHeadEmployeeId)` |
+| `ObjectiveMembersPopupComponent`'s `addRequested`/`removeRequested`/`transferRequested` outputs, `member.userId` template bindings, `[attr.data-user-id]` | emit/bind `employeeId` throughout; attribute becomes `[attr.data-employee-id]` |
+| `ProjectDetailComponent.onAddMemberRequested/onRemoveMemberRequested/onTransferRequested(userId: string)` | same methods, parameter renamed `employeeId: string` |
+
+**Fields that do NOT rename** (per the backend plan's Task 25 decision — JSON field names on `ObjectiveDetailResponse`/`ObjectiveSubtreeResponse`/`ProjectDetailResponse`/etc. stay the same, only their meaning changes): `ownerId`, `reportingManagerId`, `leadId`, `requestedById`, `decidedById` on any milestone/project/objective-change-request DTO **not** already covered above — if this frontend's `milestone.model.ts`/`project.model.ts` (outside this plan's own new files) has doc comments describing these as "the user id of...", update the comment to "the employee id of..." wherever you touch that file for this feature, but the field name and TypeScript type (`string`) are unchanged, so no compile-breaking change there.
+
+---
+
+## Task 1 (revised): DTOs
+
+Replace Task 1 Step 1's `ObjectiveMemberItemDto`/`ObjectiveInvitationDto` with:
+
+```typescript
+// src/app/modules/work/models/dto/objective-invitation.dto.ts
+export interface ObjectiveMemberItemDto {
+  employeeId: string;
+  isHead: boolean;
+  pending: boolean;
+  inviteType: 'member' | 'leader' | null;
+  invitationId: string | null;
+  sinceOrInvitedAt: string;
+}
+
+export interface ObjectiveMemberListDto {
+  items: ObjectiveMemberItemDto[];
+}
+
+export interface ObjectiveInvitationDto {
+  id: string;
+  projectId: string;
+  objectiveId: string;
+  invitedEmployeeId: string;
+  inviteType: 'member' | 'leader';
+  status: 'pending' | 'accepted' | 'declined' | 'expired' | 'cancelled';
+  invitedById: string;
+  decidedAt: string | null;
+  createdAt: string;
+}
+```
+
+Replace Task 1 Step 2's `CreateObjectiveMemberInvitationRequestDto`/`CreateObjectiveRequestDto` with:
+
+```typescript
+// src/app/modules/work/models/dto/milestone.dto.ts
+export interface CreateObjectiveMemberInvitationRequestDto {
+  employeeId: string;
+  type: 'member' | 'leader';
+}
+
+export interface CreateObjectiveRequestDto {
+  parentObjectiveId: string;
+  title: string;
+  description: string | null;
+  startDate: string;
+  endDate: string;
+  allocatedHours: number;
+  headEmployeeId?: string | null;
+  memberInvitations?: CreateObjectiveMemberInvitationRequestDto[];
+}
+```
+
+The rest of Task 1 (Steps 3–4, build/commit) is unchanged.
+
+---
+
+## Task 2 (revised): `ObjectiveMemberApiService`
+
+Replace every `userId: string` parameter with `employeeId: string`, and every `newHeadUserId`/`{ userId }`/`{ newHeadUserId }` occurrence in both the spec and the implementation:
+
+```typescript
+// objective-member-api.service.spec.ts — the 3 affected tests
+  it('adds a member and returns the outcome with response status', () => {
+    const outcome: AddObjectiveMemberOutcomeDto = { alreadyMember: false, invitation: { id: 'i1' } as ObjectiveInvitationDto };
+    service.addMember('o1', 'e1').subscribe((res) => {
+      expect(res.status).toBe(202);
+      expect(res.body).toEqual(outcome);
+    });
+
+    const req = httpMock.expectOne(`${base}/o1/members`);
+    expect(req.request.method).toBe('POST');
+    expect(req.request.body).toEqual({ employeeId: 'e1' });
+    req.flush(outcome, { status: 202, statusText: 'Accepted' });
+  });
+
+  it('removes a member (or cancels their pending invite - backend disambiguates)', () => {
+    service.removeMember('o1', 'e1').subscribe((res) => expect(res.status).toBe(204));
+
+    const req = httpMock.expectOne(`${base}/o1/members/e1`);
+    expect(req.request.method).toBe('DELETE');
+    req.flush(null, { status: 204, statusText: 'No Content' });
+  });
+
+  it('transfers head and returns the outcome with response status', () => {
+    const outcome: TransferObjectiveHeadOutcomeDto = { applied: false, pendingChangeRequest: null, pendingInvitation: { id: 'i2' } as ObjectiveInvitationDto };
+    service.transferHead('o1', 'e2').subscribe((res) => {
+      expect(res.status).toBe(202);
+      expect(res.body).toEqual(outcome);
+    });
+
+    const req = httpMock.expectOne(`${base}/o1/transfer`);
+    expect(req.request.method).toBe('POST');
+    expect(req.request.body).toEqual({ newHeadEmployeeId: 'e2' });
+    req.flush(outcome, { status: 202, statusText: 'Accepted' });
+  });
+```
+
+```typescript
+// objective-member-api.service.ts — the 3 affected methods
+  addMember(objectiveId: string, employeeId: string): Observable<HttpResponse<AddObjectiveMemberOutcomeDto>> {
+    return this.http.post<AddObjectiveMemberOutcomeDto>(
+      `${this.base}/${objectiveId}/members`, { employeeId }, { observe: 'response' });
+  }
+
+  removeMember(objectiveId: string, employeeId: string): Observable<HttpResponse<void>> {
+    return this.http.delete<void>(`${this.base}/${objectiveId}/members/${employeeId}`, { observe: 'response' });
+  }
+
+  transferHead(objectiveId: string, newHeadEmployeeId: string): Observable<HttpResponse<TransferObjectiveHeadOutcomeDto>> {
+    return this.http.post<TransferObjectiveHeadOutcomeDto>(
+      `${this.base}/${objectiveId}/transfer`, { newHeadEmployeeId }, { observe: 'response' });
+  }
+```
+
+The rest of Task 2 (getMembers/getMyInvitations/acceptInvitation/rejectInvitation, and Steps 2/4/5) is unchanged — none of those touched a person-identifying id.
+
+---
+
+## Task 3 (revised): Store
+
+Apply the same `userId`→`employeeId` rename to every occurrence:
+
+- Test fixtures: `{ userId: 'u1', ... }` → `{ employeeId: 'e1', ... }` (both `loadObjectiveMembers` test's mock return and its assertion).
+- `addObjectiveMember(objectiveId: string, userId: string)` → `addObjectiveMember(objectiveId: string, employeeId: string)`, body `await firstValueFrom(memberApi.addMember(objectiveId, employeeId))`.
+- `removeObjectiveMember(objectiveId: string, userId: string)` → same rename, `memberApi.removeMember(objectiveId, employeeId)`.
+- `transferObjectiveHead(objectiveId: string, newHeadUserId: string)` → `transferObjectiveHead(objectiveId: string, newHeadEmployeeId: string)`, `memberApi.transferHead(objectiveId, newHeadEmployeeId)`.
+
+Everything else in Task 3 (`loadMyInvitations`/`acceptInvitation`/`rejectInvitation` — none of these take a person id as a parameter) is unchanged.
+
+---
+
+## Task 5 (revised): `objective-members-popup` component
+
+Apply the rename throughout the spec fixtures, template, and class:
+
+- Test fixtures: `{ userId: 'head1', ... }` → `{ employeeId: 'head1', ... }` (keep the same string values — only the property key changes) for all three fixture rows; every `r.dataset.userId === '...'` → `r.dataset.employeeId === '...'`; the `removeRequested` assertion `toHaveBeenCalledWith('mem1')` is unchanged (the value was never `userId`-shaped, just a bare id string).
+- Template: `[attr.data-user-id]="member.userId"` → `[attr.data-employee-id]="member.employeeId"`; `[userName]="member.userId"` → `[userName]="member.employeeId"`; `{{ member.userId }}` → `{{ member.employeeId }}` (both occurrences); `removeRequested.emit(member.userId)` / `transferRequested.emit(member.userId)` (3 occurrences total across the active-member row, the leader-transfer button, and the pending-invite cancel row) → `.emit(member.employeeId)`.
+- Class: `removeRequested = output<string>();` / `transferRequested = output<string>();` — no signature change, only what's emitted at the call site changes.
+- Update the task's own **Interfaces** line: outputs are `addRequested(employeeId: string)`, `removeRequested(employeeId: string)`, `transferRequested(employeeId: string)`.
+
+**Also resolve the "renders raw GUIDs" note left in Task 5's original Step 3** — now that Task 7 (below) supplies a real picker with names, cross-check whether the backend's `GetObjectiveMembers` response (backend Task 6) includes a resolved display name per member (it should, following the same `ObjectiveMapper`/`ResolveDisplayNamesByEmployeeIdAsync` pattern the backend's Task 21 established for `GetObjectiveById`) — if `ObjectiveMemberItemDto` gains a `name: string` field on the backend side, add it here too and render `{{ member.name }}` instead of the raw `employeeId`. Confirm this against the actual backend response shape before implementing, not from this plan's assumption.
+
+---
+
+## Task 6 (revised): Wire the popup into `ProjectDetailComponent`
+
+Rename every `userId: string` parameter to `employeeId: string`: `onAddMemberRequested(employeeId: string)`, `onRemoveMemberRequested(employeeId: string)`, `onTransferRequested(employeeId: string)`, and their store calls (`this.store.addObjectiveMember(milestone.objectiveId, employeeId)`, etc.). Test fixtures `'u9'` can stay as literal strings (e.g. rename to `'e9'` for clarity, not required) — only the parameter names and the `storeStub` method call assertions' variable meaning change, the string literal values themselves are arbitrary either way.
+
+The **"Known gap, deliberately not fixed"** note is now resolved by Task 7 below — `addRequested` gains a real `employeeId` payload once Task 7's picker is wired into Task 5's popup, so update `onAddMemberRequested`'s doc note to point at Task 7 as "done", not "pending."
+
+---
+
+## Task 7 (revised, no longer blocked): People-picker for Add Member / leader assignment
+
+**Files:**
+- Create: `src/app/modules/work/ui/employee-picker/employee-picker.component.ts`
+- Create: `src/app/modules/work/ui/employee-picker/employee-picker.component.spec.ts`
+- Modify: `src/app/modules/work/ui/objective-members-popup/objective-members-popup.component.ts` (Task 5, revised above) — wire the picker in for both "+ Add member" and "Make leader"
+- Modify: `src/app/modules/work/ui/objective-members-popup/objective-members-popup.component.spec.ts`
+
+**Interfaces:**
+- Consumes: `PeopleApiService.listEmployees(params: EmployeeListParams)` (`src/app/modules/people/data-access/people-api.service.ts` — read-only, per this plan's scope guardrail; never modify anything under `modules/people`), `EmployeeListItemResponse` (`id`, `fullName`, `email`, `departmentName`, `legalEntityId`, `legalEntityName`).
+- Produces: `EmployeePickerComponent` with `open` input and `selected(employeeId: string)`/`closed` outputs — a small search-and-pick modal, no member-management knowledge of its own (mirrors `ObjectiveMembersPopupComponent`'s existing separation-of-concerns note: this component's only job is "search employees, emit the chosen one's id").
+
+- [ ] **Step 1: Write the failing tests**
+
+```typescript
+// src/app/modules/work/ui/employee-picker/employee-picker.component.spec.ts
+import { ComponentFixture, TestBed } from '@angular/core/testing';
+import { of } from 'rxjs';
+import { EmployeePickerComponent } from './employee-picker.component';
+import { PeopleApiService } from '../../../people/data-access/people-api.service'; // confirm exact path/export name by reading the file first
+import { EmployeeListItemResponse } from '../../../people/models/employee.model';
+
+describe('EmployeePickerComponent', () => {
+  let fixture: ComponentFixture<EmployeePickerComponent>;
+  let peopleApi: { listEmployees: ReturnType<typeof vi.fn> };
+
+  const employees: EmployeeListItemResponse[] = [
+    { id: 'e1', employeeNumber: 'EMP001', fullName: 'Asha Rao', email: 'asha@acme.test', departmentId: null, departmentName: 'Engineering', positionId: null, positionName: null, legalEntityId: 'le1', legalEntityName: 'Acme Inc', employmentTypeLabel: 'Full-time', status: 'active', reportingManagerId: null, reportingManagerName: null }
+  ];
+
+  beforeEach(async () => {
+    peopleApi = { listEmployees: vi.fn().mockReturnValue(of({ items: employees, totalCount: 1, page: 1, pageSize: 20 })) };
+    await TestBed.configureTestingModule({
+      imports: [EmployeePickerComponent],
+      providers: [{ provide: PeopleApiService, useValue: peopleApi }]
+    }).compileComponents();
+    fixture = TestBed.createComponent(EmployeePickerComponent);
+    fixture.componentRef.setInput('open', true);
+    fixture.detectChanges();
+  });
+
+  it('loads and renders employees on open', () => {
+    expect(peopleApi.listEmployees).toHaveBeenCalled();
+    const rows = fixture.nativeElement.querySelectorAll('[data-testid="employee-picker-row"]');
+    expect(rows.length).toBe(1);
+    expect(rows[0].textContent).toContain('Asha Rao');
+  });
+
+  it('re-queries with the search term when typed', () => {
+    const input = fixture.nativeElement.querySelector('[data-testid="employee-picker-search"]') as HTMLInputElement;
+    input.value = 'asha';
+    input.dispatchEvent(new Event('input'));
+    fixture.detectChanges();
+
+    expect(peopleApi.listEmployees).toHaveBeenLastCalledWith(expect.objectContaining({ search: 'asha' }));
+  });
+
+  it('emits selected with the employee id when a row is clicked', () => {
+    const spy = vi.fn();
+    fixture.componentInstance.selected.subscribe(spy);
+
+    (fixture.nativeElement.querySelector('[data-testid="employee-picker-row"]') as HTMLElement).click();
+
+    expect(spy).toHaveBeenCalledWith('e1');
+  });
+
+  it('emits closed when the close control is activated', () => {
+    const spy = vi.fn();
+    fixture.componentInstance.closed.subscribe(spy);
+
+    (fixture.nativeElement.querySelector('[data-testid="employee-picker-close"]') as HTMLElement).click();
+
+    expect(spy).toHaveBeenCalled();
+  });
+});
+```
+
+- [ ] **Step 2: Run tests to verify they fail**
+
+Run the test command scoped to this spec file.
+Expected: FAIL — the component doesn't exist yet.
+
+- [ ] **Step 3: Read `PeopleApiService` and `ModalComponent` before implementing**
+
+Confirm `PeopleApiService`'s injection token/class name and `listEmployees`'s exact signature/return shape by reading `src/app/modules/people/data-access/people-api.service.ts` directly — do not assume the import path above is exact, it wasn't verified against the live file in this session (only `employee.model.ts` was read directly; the service file's path is inferred from this module's established `data-access/` convention, confirm before writing the real import).
+
+- [ ] **Step 4: Implement the component**
+
+```typescript
+// src/app/modules/work/ui/employee-picker/employee-picker.component.ts
+import { Component, effect, inject, input, output, signal } from '@angular/core';
+import { ModalComponent } from '../../../../shared/ui/modal/modal.component';
+import { PeopleApiService } from '../../../people/data-access/people-api.service';
+import { EmployeeListItemResponse } from '../../../people/models/employee.model';
+
+@Component({
+  selector: 'app-employee-picker',
+  standalone: true,
+  imports: [ModalComponent],
+  template: `
+    <app-modal [open]="open()" title="Choose a person" (closed)="onClose()">
+      <input
+        data-testid="employee-picker-search"
+        type="text"
+        placeholder="Search by name or email"
+        class="mb-2 w-full rounded-md border border-[var(--color-border)] bg-[var(--color-surface)] px-2.5 py-1.5 text-xs text-[var(--color-text-primary)]"
+        (input)="onSearchInput($event)"
+      />
+      <div class="flex max-h-64 flex-col gap-1 overflow-y-auto">
+        @for (employee of results(); track employee.id) {
+          <button
+            type="button"
+            data-testid="employee-picker-row"
+            class="flex flex-col items-start rounded-md px-2 py-1.5 text-left text-xs hover:bg-[var(--color-surface-secondary)]"
+            (click)="selected.emit(employee.id)"
+          >
+            <span class="font-medium text-[var(--color-text-primary)]">{{ employee.fullName }}</span>
+            <span class="text-[10px] text-[var(--color-text-secondary)]">{{ employee.email }} · {{ employee.departmentName }}</span>
+          </button>
+        }
+      </div>
+      <span data-testid="employee-picker-close" (click)="onClose()"></span>
+    </app-modal>
+  `
+})
+export class EmployeePickerComponent {
+  private readonly peopleApi = inject(PeopleApiService);
+
+  open = input(false);
+  selected = output<string>();
+  closed = output<void>();
+
+  results = signal<EmployeeListItemResponse[]>([]);
+
+  constructor() {
+    effect(() => {
+      if (this.open()) {
+        this.query('');
+      }
+    });
+  }
+
+  onSearchInput(event: Event): void {
+    this.query((event.target as HTMLInputElement).value);
+  }
+
+  onClose(): void {
+    this.closed.emit();
+  }
+
+  private query(search: string): void {
+    this.peopleApi.listEmployees({ search, page: 1, pageSize: 20 }).subscribe((page) => {
+      this.results.set(page.items);
+    });
+  }
+}
+```
+
+(Confirm `listEmployees`'s actual return shape — `{ items, totalCount, page, pageSize }` per `EmployeeListPageResponse` in `employee.model.ts` already read this session — matches what `.subscribe((page) => ...)` above expects; adjust if the live service wraps it differently, e.g. an interceptor unwrapping to a bare array.)
+
+- [ ] **Step 5: Run tests to verify they pass**
+
+Run the same command as Step 2.
+Expected: all 4 tests PASS.
+
+- [ ] **Step 6: Wire the picker into `ObjectiveMembersPopupComponent` (Task 5, revised)**
+
+Add `EmployeePickerComponent` to the popup's `imports`, add a local `pickerOpen = signal<'member' | 'leader' | null>(null)` and:
+
+```typescript
+// Replace the "+ Add member" button's (pressed) handler:
+            <app-button variant="secondary" size="sm" (pressed)="pickerOpen.set('member')">+ Add member</app-button>
+// Replace the "Make leader" button's (pressed) handler:
+                    <app-button variant="secondary" size="sm" (pressed)="pickerOpen.set('leader')">Make leader</app-button>
+```
+
+Add near the end of the template, alongside the existing `</app-modal>`:
+
+```html
+<app-employee-picker
+  [open]="pickerOpen() !== null"
+  (selected)="onEmployeePicked($event)"
+  (closed)="pickerOpen.set(null)"
+/>
+```
+
+```typescript
+  onEmployeePicked(employeeId: string): void {
+    const mode = this.pickerOpen();
+    this.pickerOpen.set(null);
+    if (mode === 'member') this.addRequested.emit(employeeId);
+    else if (mode === 'leader') this.transferRequested.emit(employeeId);
+  }
+```
+
+`addRequested`'s output type changes from `output<void>()` to `output<string>()` (it was already documented as taking an eventual `employeeId` per Task 5's original interface note — this is that eventual payload arriving). Update `ProjectDetailComponent`'s template (Task 6, revised) binding from `(addRequested)="onAddMemberRequested($event)"` — already written that way in Task 6, no further change needed there, it was already anticipating this.
+
+- [ ] **Step 7: Update the popup's own spec for the new wiring**
+
+Add tests to `objective-members-popup.component.spec.ts` asserting: clicking "+ Add member" opens the picker (`app-employee-picker`'s `open` input becomes `true`), the picker's `selected` event with mode `'member'` re-emits as the popup's own `addRequested` with that `employeeId`, and the same for `'leader'` → `transferRequested`. Stub `PeopleApiService` in this spec's `TestBed` providers the same way Task 7 Step 1 above does, since the popup now transitively depends on it via `EmployeePickerComponent`.
+
+- [ ] **Step 8: Run all affected specs**
+
+Run the test command scoped to `employee-picker.component.spec.ts` and `objective-members-popup.component.spec.ts`.
+Expected: all PASS.
+
+- [ ] **Step 9: Commit**
+
+```bash
+git add src/app/modules/work/ui/employee-picker/ src/app/modules/work/ui/objective-members-popup/
+git commit -m "feat(work): add employee-picker and wire it into the members popup - Task 7 unblocked by the EmployeeId identity rework"
+```
+
+---
+
+## Task 8 (revised): My Invitations panel
+
+Rename `ObjectiveInvitationDto`'s test fixture field `invitedUserId: 'u1'` → `invitedEmployeeId: 'u1'` (Task 8 Step 1's fixture) — nothing else in Task 8 references a person id directly (the panel only ever renders `invitation.inviteType`/`invitation.id`), so no further change needed there.
+
+---
+
 ## Final check before handoff
 
 - [ ] Run the project's full test command (unscoped) — expect 0 new failures beyond any pre-existing failures already noted as out-of-scope in prior sessions (per project memory: pre-existing failures in `organization/`, `layouts/main-layout`, `public/` are not this plan's responsibility).
 - [ ] Run the project's type-check/build command — expect 0 new errors.
-- [ ] Confirm no file outside `src/app/modules/work/**` was touched, except the read-only `PeopleApiService`/`EmployeeListItemResponse` imports noted in Task 7's blocker (imports only, no edits to `modules/people/**` itself).
-- [ ] Task 7 is not implementable until its blocking decision is resolved — flag this explicitly when reporting plan completion, don't silently skip it.
+- [ ] Confirm no file outside `src/app/modules/work/**` was touched, except the read-only `PeopleApiService`/`EmployeeListItemResponse` imports (imports only, no edits to `modules/people/**` itself).
+- [ ] **Phase 2 only:** `grep -rn "\.userId\b" src/app/modules/work` scoped to this feature's own new files (DTOs, `objective-member-api.service.ts`, the members popup, employee picker, store methods added by Task 3) — expect 0 matches; any hit means a Task 1–8 rename was missed.
+- [ ] **Phase 2 only:** confirm the backend plan (Tasks 13–25) has shipped or is shipping alongside this frontend work — every endpoint this plan calls now expects `employeeId`, not `userId`; deploying this frontend against an un-migrated backend will break every add/remove/transfer/invite action.
