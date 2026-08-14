@@ -1,0 +1,68 @@
+import { Component, input, output } from '@angular/core';
+import { ModalComponent } from '../../../../shared/ui/modal/modal.component';
+import { AvatarComponent } from '../../../../shared/ui/avatar/avatar.component';
+import { ButtonComponent } from '../../../../shared/ui/button/button.component';
+import { ObjectiveMemberItemDto } from '../../models/dto/objective-invitation.dto';
+
+@Component({
+  selector: 'app-objective-members-popup',
+  standalone: true,
+  imports: [ModalComponent, AvatarComponent, ButtonComponent],
+  template: `
+    <app-modal [open]="open()" title="Members" (closed)="closed.emit()">
+      <div class="flex flex-col gap-2">
+        @if (canManage()) {
+          <span data-testid="add-member-button" (click)="addRequested.emit()">
+            <app-button variant="secondary" size="sm">+ Add member</app-button>
+          </span>
+        }
+        @for (member of members(); track member.employeeId) {
+          <div
+            data-testid="member-row"
+            [attr.data-employee-id]="member.employeeId"
+            class="flex items-center justify-between gap-2 rounded-lg border border-[var(--color-border)] px-2.5 py-2"
+          >
+            <div class="flex items-center gap-2">
+              <app-avatar [userName]="member.employeeId" size="sm" />
+              <span class="text-xs font-medium text-[var(--color-text-primary)]">{{ member.employeeId }}</span>
+              @if (member.isHead) {
+                <span data-testid="leader-badge" class="rounded-full bg-[var(--color-accent)]/10 px-2 py-0.5 text-[10px] font-semibold text-[var(--color-accent)]">Leader</span>
+              }
+              @if (member.pending) {
+                <span data-testid="pending-tag" class="rounded-full bg-amber-50 px-2 py-0.5 text-[10px] font-semibold text-amber-700 dark:bg-amber-950/40 dark:text-amber-300">Request pending</span>
+              }
+            </div>
+            @if (canManage() && !member.pending) {
+              <div class="flex items-center gap-1">
+                @if (!member.isHead) {
+                  <span data-testid="remove-button" (click)="removeRequested.emit(member.employeeId)">
+                    <app-button variant="secondary" size="sm">Remove</app-button>
+                  </span>
+                  <span data-testid="transfer-button" (click)="transferRequested.emit(member.employeeId)">
+                    <app-button variant="secondary" size="sm">Make leader</app-button>
+                  </span>
+                }
+              </div>
+            }
+            @if (canManage() && member.pending) {
+              <span data-testid="remove-button" (click)="removeRequested.emit(member.employeeId)">
+                <app-button variant="secondary" size="sm">Cancel</app-button>
+              </span>
+            }
+          </div>
+        }
+      </div>
+    </app-modal>
+  `
+})
+export class ObjectiveMembersPopupComponent {
+  open = input(false);
+  members = input<ObjectiveMemberItemDto[]>([]);
+  loading = input(false);
+  canManage = input(false);
+
+  addRequested = output<void>();
+  removeRequested = output<string>();
+  transferRequested = output<string>();
+  closed = output<void>();
+}
