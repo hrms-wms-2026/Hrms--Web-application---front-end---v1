@@ -96,6 +96,16 @@ describe('MilestoneDetailPanelComponent', () => {
     expect(createdSub).toBe(true);
   });
 
+  it('emits membersRequested when the member button is clicked', () => {
+    setup({ detail });
+    const spy = vi.fn();
+    fixture.componentInstance.membersRequested.subscribe(spy);
+
+    (fixture.nativeElement.querySelector('[data-testid="member-button"]') as HTMLButtonElement).click();
+
+    expect(spy).toHaveBeenCalled();
+  });
+
   it('labels the achieve button "Achieve" when not achieved, "Unachieve" when achieved', () => {
     setup({ detail: { ...detail, isAchieved: false } });
     expect(fixture.nativeElement.querySelector('[data-testid="achieve-button"]').textContent).toContain('Achieve');

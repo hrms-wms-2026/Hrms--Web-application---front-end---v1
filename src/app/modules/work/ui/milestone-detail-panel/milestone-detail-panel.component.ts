@@ -8,6 +8,7 @@ import { AvatarComponent } from '../../../../shared/ui/avatar/avatar.component';
 import { ProgressRingComponent } from '../../../../shared/ui/progress-ring/progress-ring.component';
 import { MilestoneTreeNode } from '../../models/milestone.model';
 import { getDeadlineStatus } from '../../utils/deadline.util';
+import { MemberButtonComponent } from '../member-button/member-button.component';
 
 @Component({
   selector: 'app-milestone-detail-panel',
@@ -15,7 +16,7 @@ import { getDeadlineStatus } from '../../utils/deadline.util';
   host: { class: 'block h-full flex flex-col' },
   imports: [
     CardComponent, LoaderComponent, ErrorStateComponent, EmptyStateComponent,
-    ButtonComponent, AvatarComponent, ProgressRingComponent
+    ButtonComponent, AvatarComponent, ProgressRingComponent, MemberButtonComponent
   ],
   template: `
     @if (loading()) {
@@ -28,14 +29,17 @@ import { getDeadlineStatus } from '../../utils/deadline.util';
           <!-- Title & Achieved Badge -->
           <div class="flex flex-wrap items-center justify-between gap-2 border-b border-[var(--color-border)] pb-3">
             <h2 class="text-lg font-bold tracking-tight text-[var(--color-text-primary)]">{{ d.title }}</h2>
-            @if (d.isAchieved) {
-              <span class="inline-flex items-center gap-1 rounded-full bg-emerald-50 px-2.5 py-0.5 text-xs font-semibold text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-300 ring-1 ring-emerald-600/20">
-                <svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-                  <polyline points="20 6 9 17 4 12"/>
-                </svg>
-                Achieved
-              </span>
-            }
+            <div class="flex items-center gap-2">
+              @if (d.isAchieved) {
+                <span class="inline-flex items-center gap-1 rounded-full bg-emerald-50 px-2.5 py-0.5 text-xs font-semibold text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-300 ring-1 ring-emerald-600/20">
+                  <svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                    <polyline points="20 6 9 17 4 12"/>
+                  </svg>
+                  Achieved
+                </span>
+              }
+              <app-member-button [memberCount]="memberCount()" (pressed)="membersRequested.emit()" />
+            </div>
           </div>
 
           <!-- Owner Capsule -->
@@ -126,10 +130,12 @@ export class MilestoneDetailPanelComponent {
   detail = input<MilestoneTreeNode | null>(null);
   loading = input(false);
   error = input<string | null>(null);
+  memberCount = input(0);
   retry = output<void>();
   editRequested = output<void>();
   createSubRequested = output<void>();
   achieveToggleRequested = output<void>();
+  membersRequested = output<void>();
 
   deadline(endDate: string) {
     return getDeadlineStatus(endDate);
