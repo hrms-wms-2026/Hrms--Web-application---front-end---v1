@@ -41,35 +41,6 @@
   padding: 0.125rem 0;
 }
 
-.nav-rail__company-avatar {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 34px;
-  height: 34px;
-  border-radius: 8px;
-  background: var(--color-surface);
-  color: var(--color-text-primary);
-  font-size: 0.9375rem;
-  font-weight: 800;
-  line-height: 1;
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.25);
-  transition: transform 150ms ease;
-  cursor: pointer;
-}
-
-.nav-rail__company-avatar:hover {
-  transform: scale(1.06);
-}
-
-.nav-rail__company-logo {
-  width: 34px;
-  height: 34px;
-  border-radius: 8px;
-  object-fit: cover;
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.25);
-}
-
 .nav-rail__divider {
   height: 1px;
   width: 65%;

@@ -32,6 +32,6 @@ describe('TopNavbarComponent', () => {
 
     const avatarButton = fixture.nativeElement.querySelector('.profile-menu-trigger');
     expect(avatarButton).toBeTruthy();
-    expect(fixture.nativeElement.textContent.trim()).toBe('');
+    expect(fixture.nativeElement.textContent).not.toContain('@');
   });
 });

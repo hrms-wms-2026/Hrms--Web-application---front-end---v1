@@ -2,7 +2,9 @@ import { ChangeDetectionStrategy, Component, computed, effect, inject, signal } 
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { PermissionService } from '../../../../core/auth/state/permission.service';
 import { NotificationService } from '../../../../core/services/notification.service';
+import { BreadcrumbHeaderComponent } from '../../../../shared/ui/breadcrumb-header/breadcrumb-header.component';
 import { ButtonComponent } from '../../../../shared/ui/button/button.component';
+import { CompanyLogoTileComponent } from '../../../../shared/ui/company-logo-tile/company-logo-tile.component';
 import { EmptyStateComponent } from '../../../../shared/ui/empty-state/empty-state.component';
 import { ErrorStateComponent } from '../../../../shared/ui/error-state/error-state.component';
 import { InputComponent } from '../../../../shared/ui/input/input.component';
@@ -24,7 +26,7 @@ import {
   TIMEZONE_OPTIONS,
   WEEKDAY_OPTIONS
 } from '../../utils/general-settings-options';
-import { absoluteUrlValidator, nonEmptyArrayValidator, oneOfValidator } from '../../utils/general-settings-validators';
+import { absoluteUrlValidator, nonEmptyArrayValidator, oneOfValidator, workTimePairValidator } from '../../utils/general-settings-validators';
 
 /**
  * Settings -> General Settings page for the currently selected Legal Entity.
@@ -38,7 +40,9 @@ import { absoluteUrlValidator, nonEmptyArrayValidator, oneOfValidator } from '..
   standalone: true,
   imports: [
     ReactiveFormsModule,
+    BreadcrumbHeaderComponent,
     ButtonComponent,
+    CompanyLogoTileComponent,
     EmptyStateComponent,
     ErrorStateComponent,
     InputComponent,
@@ -97,8 +101,11 @@ export class GeneralSettingsComponent {
     defaultLanguage: [{ value: 'en-US', disabled: true }, [Validators.required, Validators.maxLength(10)]],
     dateFormat: ['', [Validators.required, Validators.maxLength(20)]],
     timeFormat: ['24h' as '12h' | '24h', [Validators.required, oneOfValidator(['12h', '24h'])]],
-    status: ['active' as 'active' | 'inactive', [Validators.required, oneOfValidator(['active', 'inactive'])]]
-  });
+    status: ['active' as 'active' | 'inactive', [Validators.required, oneOfValidator(['active', 'inactive'])]],
+    // Work hours — optional pair, validated as a group (both-or-neither, start < end).
+    workStartTime: ['', [Validators.pattern(/^([01]\d|2[0-3]):[0-5]\d$/)]],
+    workEndTime: ['', [Validators.pattern(/^([01]\d|2[0-3]):[0-5]\d$/)]]
+  }, { validators: [workTimePairValidator()] });
 
   constructor() {
     // Reload (or clear) whenever the selected company changes - never patch across companies.
@@ -234,7 +241,9 @@ export class GeneralSettingsComponent {
       defaultLanguage: 'en-US',
       dateFormat: '',
       timeFormat: '24h' as const,
-      status: 'active' as const
+      status: 'active' as const,
+      workStartTime: '',
+      workEndTime: ''
     };
   }
 
@@ -257,7 +266,9 @@ export class GeneralSettingsComponent {
       defaultLanguage: settings.defaultLanguage,
       dateFormat: settings.dateFormat,
       timeFormat: settings.timeFormat,
-      status: settings.status
+      status: settings.status,
+      workStartTime: settings.workStartTime ?? '',
+      workEndTime: settings.workEndTime ?? ''
     };
   }
 
@@ -283,7 +294,9 @@ export class GeneralSettingsComponent {
       defaultLanguage: v.defaultLanguage,
       dateFormat: v.dateFormat,
       timeFormat: v.timeFormat,
-      status: v.status
+      status: v.status,
+      workStartTime: v.workStartTime.trim() !== '' ? v.workStartTime : null,
+      workEndTime: v.workEndTime.trim() !== '' ? v.workEndTime : null
     };
   }
 }

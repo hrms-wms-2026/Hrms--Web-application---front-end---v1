@@ -42,7 +42,9 @@ describe('GeneralSettingsComponent', () => {
     defaultLanguage: 'en',
     dateFormat: 'DD/MM/YYYY',
     timeFormat: '24h',
-    status: 'active'
+    status: 'active',
+    workStartTime: null,
+    workEndTime: null
   });
 
   async function setup(hasPermission: boolean) {
@@ -104,7 +106,7 @@ describe('GeneralSettingsComponent', () => {
 
     expect(fixture.componentInstance.form.controls.name.value).toBe('Company A');
     // The company name is a form field value (native <input> property), not static text -
-    // the breadcrumb-based redesign no longer displays it as a page heading.
+    // there is no separate page heading for it.
     const inputs: NodeListOf<HTMLInputElement> = fixture.nativeElement.querySelectorAll('input');
     expect(Array.from(inputs).some((el) => el.value === 'Company A')).toBe(true);
   });
@@ -138,7 +140,8 @@ describe('GeneralSettingsComponent', () => {
       [
         'name', 'companyCode', 'registrationNumber', 'taxRegistrationNumber', 'vatGstNumber', 'email',
         'phoneNumber', 'website', 'countryCode', 'currencyCode', 'timezone', 'financialYearStartMonth',
-        'firstDayOfWeek', 'standardWorkingDays', 'defaultLanguage', 'dateFormat', 'timeFormat', 'status'
+        'firstDayOfWeek', 'standardWorkingDays', 'defaultLanguage', 'dateFormat', 'timeFormat', 'status',
+        'workStartTime', 'workEndTime'
       ].sort()
     );
     putReq.flush(settingsFor('company-a', 'Company A'));
@@ -210,6 +213,8 @@ describe('GeneralSettingsComponent', () => {
 
   it('shows a failure state and keeps typed values on API error', async () => {
     const fixture = await setupWithLoadedSettings();
+    const notificationService = TestBed.inject(NotificationService);
+    const spy = vi.spyOn(notificationService, 'error');
 
     fixture.componentInstance.form.controls.name.setValue('Renamed Co');
     const submitPromise = fixture.componentInstance.onSubmit();
@@ -219,7 +224,7 @@ describe('GeneralSettingsComponent', () => {
     await submitPromise;
     fixture.detectChanges();
 
-    expect(fixture.nativeElement.textContent).toContain('Company name conflict.');
+    expect(spy).toHaveBeenCalledWith('Company name conflict.');
     expect(fixture.componentInstance.form.controls.name.value).toBe('Renamed Co');
   });
 
@@ -295,5 +300,87 @@ describe('GeneralSettingsComponent', () => {
     fixture.detectChanges();
 
     expect(fixture.nativeElement.querySelector('.gs-logo-preview img')).toBeFalsy();
+  });
+
+  it('populates workStartTime and workEndTime from settings into the form', async () => {
+    await setup(true);
+    const loadCompaniesPromise = legalEntityStore.loadCompanies();
+    httpMock.expectOne(`${environment.apiUrl}/org/legal-entities?includeInactive=false`).flush(companies);
+    await loadCompaniesPromise;
+
+    const fixture = TestBed.createComponent(GeneralSettingsComponent);
+    fixture.detectChanges();
+
+    httpMock.expectOne(`${environment.apiUrl}/org/legal-entities/company-a/general-settings`).flush({
+      ...settingsFor('company-a', 'Company A'),
+      workStartTime: '09:00',
+      workEndTime: '17:30'
+    });
+    await fixture.whenStable();
+    fixture.detectChanges();
+
+    expect(fixture.componentInstance.form.controls.workStartTime.value).toBe('09:00');
+    expect(fixture.componentInstance.form.controls.workEndTime.value).toBe('17:30');
+    expect(fixture.componentInstance.form.valid).toBe(true);
+  });
+
+  it('leaves workStartTime and workEndTime blank when settings has null times', async () => {
+    const fixture = await setupWithLoadedSettings(); // settingsFor returns null/null
+    expect(fixture.componentInstance.form.controls.workStartTime.value).toBe('');
+    expect(fixture.componentInstance.form.controls.workEndTime.value).toBe('');
+  });
+
+  it('toRequestPayload sends null for both work time fields when both are blank', async () => {
+    const fixture = await setupWithLoadedSettings();
+    const submitPromise = fixture.componentInstance.onSubmit();
+    const putReq = httpMock.expectOne(`${environment.apiUrl}/org/legal-entities/company-a/general-settings`);
+    expect(putReq.request.body.workStartTime).toBeNull();
+    expect(putReq.request.body.workEndTime).toBeNull();
+    putReq.flush(settingsFor('company-a', 'Company A'));
+    await submitPromise;
+  });
+
+  it('toRequestPayload sends HH:mm strings for a valid work time pair', async () => {
+    const fixture = await setupWithLoadedSettings();
+    fixture.componentInstance.form.controls.workStartTime.setValue('08:00');
+    fixture.componentInstance.form.controls.workEndTime.setValue('16:30');
+    const submitPromise = fixture.componentInstance.onSubmit();
+    const putReq = httpMock.expectOne(`${environment.apiUrl}/org/legal-entities/company-a/general-settings`);
+    expect(putReq.request.body.workStartTime).toBe('08:00');
+    expect(putReq.request.body.workEndTime).toBe('16:30');
+    putReq.flush(settingsFor('company-a', 'Company A'));
+    await submitPromise;
+  });
+
+  it('form is invalid when only workStartTime is set', async () => {
+    const fixture = await setupWithLoadedSettings();
+    fixture.componentInstance.form.controls.workStartTime.setValue('09:00');
+    expect(fixture.componentInstance.form.invalid).toBe(true);
+    expect(fixture.componentInstance.form.errors?.['workTimePair']).toBe('both_required');
+  });
+
+  it('form is invalid when only workEndTime is set', async () => {
+    const fixture = await setupWithLoadedSettings();
+    fixture.componentInstance.form.controls.workEndTime.setValue('17:30');
+    expect(fixture.componentInstance.form.invalid).toBe(true);
+    expect(fixture.componentInstance.form.errors?.['workTimePair']).toBe('both_required');
+  });
+
+  it('form is invalid when workStartTime >= workEndTime', async () => {
+    const fixture = await setupWithLoadedSettings();
+    fixture.componentInstance.form.controls.workStartTime.setValue('17:30');
+    fixture.componentInstance.form.controls.workEndTime.setValue('09:00');
+    expect(fixture.componentInstance.form.invalid).toBe(true);
+    expect(fixture.componentInstance.form.errors?.['workTimePair']).toBe('start_not_before_end');
+  });
+
+  it('form is valid when work times are cleared after being set', async () => {
+    const fixture = await setupWithLoadedSettings();
+    fixture.componentInstance.form.controls.workStartTime.setValue('09:00');
+    fixture.componentInstance.form.controls.workEndTime.setValue('17:30');
+    expect(fixture.componentInstance.form.valid).toBe(true);
+    fixture.componentInstance.form.controls.workStartTime.setValue('');
+    fixture.componentInstance.form.controls.workEndTime.setValue('');
+    expect(fixture.componentInstance.form.valid).toBe(true);
   });
 });

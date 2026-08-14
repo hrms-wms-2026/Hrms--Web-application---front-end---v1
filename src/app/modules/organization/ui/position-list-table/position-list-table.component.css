@@ -3,14 +3,7 @@
   border-radius: 10px;
   border: 1px solid color-mix(in srgb, var(--color-border) 65%, transparent);
   background: var(--color-surface);
-  overflow: visible;
   position: relative;
-}
-
-@media (max-width: 768px) {
-  .plt-table-container {
-    overflow-x: auto;
-  }
 }
 
 .plt-table {
@@ -32,7 +25,7 @@
 }
 
 .plt-table td {
-  padding: 0.875rem 1rem;
+  padding: 0.75rem 1rem;
   border-bottom: 1px solid color-mix(in srgb, var(--color-border) 50%, transparent);
   color: var(--color-text-primary);
 }
@@ -111,6 +104,16 @@
 
 .plt-badge--inactive {
   background: color-mix(in srgb, var(--color-text-secondary) 15%, transparent);
+  color: var(--color-text-secondary);
+}
+
+.plt-badge--full {
+  background: color-mix(in srgb, #10b981 12%, transparent);
+  color: #059669;
+}
+
+.plt-badge--unknown {
+  background: color-mix(in srgb, var(--color-text-secondary) 12%, transparent);
   color: var(--color-text-secondary);
 }
 

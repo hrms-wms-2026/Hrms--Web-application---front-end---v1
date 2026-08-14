@@ -1,11 +1,13 @@
 import { ChangeDetectionStrategy, Component, EventEmitter, HostListener, Input, Output, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { PositionListItemResponse } from '../../models/position.model';
+import { PositionOccupancyDisplay, resolvePositionOccupancy } from '../../utils/position-occupancy';
+import { PositionSeatPreviewComponent } from '../position-seat-preview/position-seat-preview.component';
 
 @Component({
   selector: 'app-position-list-table',
   standalone: true,
-  imports: [CommonModule],
+  imports: [CommonModule, PositionSeatPreviewComponent],
   templateUrl: './position-list-table.component.html',
   styleUrl: './position-list-table.component.css',
   changeDetection: ChangeDetectionStrategy.OnPush
@@ -13,10 +15,12 @@ import { PositionListItemResponse } from '../../models/position.model';
 export class PositionListTableComponent {
   @Input({ required: true }) positions: readonly PositionListItemResponse[] = [];
   @Input() canManage = false;
+  @Input() canConfigureAccess = false;
   @Input() departmentNameMap: Record<string, string> = {};
   @Input() positionNameMap: Record<string, string> = {};
 
   @Output() editPosition = new EventEmitter<PositionListItemResponse>();
+  @Output() viewAccess = new EventEmitter<PositionListItemResponse>();
   @Output() viewCoverage = new EventEmitter<PositionListItemResponse>();
   @Output() archivePosition = new EventEmitter<PositionListItemResponse>();
   @Output() restorePosition = new EventEmitter<PositionListItemResponse>();
@@ -38,15 +42,14 @@ export class PositionListTableComponent {
     return this.positionNameMap[reportsToId] || 'Root Position';
   }
 
-  getStatusBadge(pos: PositionListItemResponse): { label: string; type: 'occupied' | 'vacant' | 'available' } {
-    const isUnique = (pos.positionType || '').toLowerCase() === 'unique';
-    if (isUnique) {
-      return pos.maxOccupancy === 1
-        ? { label: 'Occupied', type: 'occupied' }
-        : { label: 'Vacant', type: 'vacant' };
-    } else {
-      return { label: 'Available capacity', type: 'available' };
-    }
+  getOccupancy(pos: PositionListItemResponse): PositionOccupancyDisplay {
+    return resolvePositionOccupancy({
+      positionType: pos.positionType,
+      maxOccupancy: pos.maxOccupancy,
+      currentOccupancy: pos.currentOccupancy,
+      currentOccupancyCheckSupported: pos.currentOccupancyCheckSupported,
+      isActive: pos.isActive
+    });
   }
 
   toggleMenu(id: string, event: Event): void {
@@ -62,6 +65,12 @@ export class PositionListTableComponent {
     event.stopPropagation();
     this.closeMenu();
     this.editPosition.emit(pos);
+  }
+
+  onAccess(pos: PositionListItemResponse, event: Event): void {
+    event.stopPropagation();
+    this.closeMenu();
+    this.viewAccess.emit(pos);
   }
 
   onCoverage(pos: PositionListItemResponse, event: Event): void {

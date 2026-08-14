@@ -1,7 +1,16 @@
 import { Component, computed, input, output } from '@angular/core';
 import { nextUniqueId } from '../../utils/unique-id';
 
-export type InputType = 'text' | 'email' | 'password' | 'number' | 'search' | 'tel' | 'url' | 'date';
+export type InputType =
+  'text'
+  | 'email'
+  | 'password'
+  | 'number'
+  | 'search'
+  | 'tel'
+  | 'url'
+  | 'date'
+  | 'time';
 
 @Component({
   selector: 'app-input',
@@ -19,6 +28,7 @@ export type InputType = 'text' | 'email' | 'password' | 'number' | 'search' | 't
         [value]="value()"
         (input)="onInput($event)"
         (blur)="blurred.emit()"
+        [attr.maxlength]="maxlength()"
         [attr.aria-invalid]="error() ? true : null"
         [attr.aria-describedby]="error() ? errorId() : hint() ? hintId() : null"
         class="w-full rounded-md border border-[var(--color-border)] bg-[var(--color-surface)] px-3 py-1.5 text-sm text-[var(--color-text-primary)] transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-focus-ring)] disabled:cursor-not-allowed disabled:opacity-60"
@@ -39,6 +49,7 @@ export class InputComponent {
   value = input<string>('');
   error = input<string>('');
   hint = input<string>('');
+  maxlength = input<number | null>(null);
 
   valueChange = output<string>();
   blurred = output<void>();

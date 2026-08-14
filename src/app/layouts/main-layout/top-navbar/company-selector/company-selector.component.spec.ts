@@ -162,16 +162,14 @@ describe('CompanySelectorComponent', () => {
     httpMock.verify();
   });
 
-  it('emits notification and does not open real create company flow when Add Company is clicked', async () => {
-    const { fixture, notificationService, httpMock } = await setup(['org_structure'], ['org:manage', 'legal_entity:create']);
+  it('opens the create company modal when Add Company is clicked', async () => {
+    const { fixture, httpMock } = await setup(['org_structure'], ['org:manage', 'legal_entity:create']);
     fixture.detectChanges();
 
     const req = httpMock.expectOne((r) => r.url.includes('/org/legal-entities'));
     req.flush(mockCompanies);
     await fixture.whenStable();
     fixture.detectChanges();
-
-    vi.spyOn(notificationService, 'info');
 
     const trigger: HTMLButtonElement = fixture.nativeElement.querySelector('.company-selector__trigger');
     trigger.click();
@@ -181,8 +179,84 @@ describe('CompanySelectorComponent', () => {
     addItem.click();
     fixture.detectChanges();
 
-    expect(notificationService.info).toHaveBeenCalledWith('Add Company flow will be available in Part 2D.');
     expect(fixture.componentInstance.isOpen()).toBe(false);
+    expect(fixture.componentInstance.showCreateModal()).toBe(true);
+    expect(fixture.nativeElement.querySelector('[role="dialog"]')).not.toBeNull();
+    httpMock.verify();
+  });
+
+  it('creates a company, closes the modal, shows success, and preserves the current selection', async () => {
+    const { fixture, httpMock, notificationService, legalEntityStore } = await setup(['org_structure'], ['org:read', 'legal_entity:create']);
+    fixture.detectChanges();
+
+    httpMock.expectOne((r) => r.url.includes('/org/legal-entities') && r.method === 'GET').flush(mockCompanies);
+    await fixture.whenStable();
+    fixture.detectChanges();
+
+    legalEntityStore.selectCompany('comp-2');
+    fixture.componentInstance.onAddCompany();
+    fixture.detectChanges();
+
+    vi.spyOn(notificationService, 'success');
+
+    const createPromise = fixture.componentInstance.onCreateCompany({
+      name: 'Gamma Inc',
+      companyCode: 'GAMMA',
+      registrationNumber: 'REG-3',
+      countryCode: 'LKA',
+      currencyCode: 'LKR',
+      taxRegistrationNumber: null,
+      parentLegalEntityId: null
+    });
+
+    const postReq = httpMock.expectOne((r) => r.url.includes('/org/legal-entities') && r.method === 'POST');
+    postReq.flush({ id: 'comp-3', name: 'Gamma Inc' });
+
+    const refreshReq = await vi.waitFor(() =>
+      httpMock.expectOne((r) => r.url.includes('/org/legal-entities') && r.method === 'GET')
+    );
+    refreshReq.flush([...mockCompanies, { id: 'comp-3', name: 'Gamma Inc', companyCode: 'GAMMA', logoFileId: null, isActive: true, isPrimary: false }]);
+
+    await createPromise;
+    fixture.detectChanges();
+
+    expect(notificationService.success).toHaveBeenCalledWith("Company 'Gamma Inc' created successfully.");
+    expect(fixture.componentInstance.showCreateModal()).toBe(false);
+    expect(legalEntityStore.selectedLegalEntityId()).toBe('comp-2');
+    httpMock.verify();
+  });
+
+  it('shows an error notification and keeps the modal open when create fails with a conflict', async () => {
+    const { fixture, httpMock, notificationService } = await setup(['org_structure'], ['org:read', 'legal_entity:create']);
+    fixture.detectChanges();
+
+    httpMock.expectOne((r) => r.url.includes('/org/legal-entities') && r.method === 'GET').flush(mockCompanies);
+    await fixture.whenStable();
+    fixture.detectChanges();
+
+    fixture.componentInstance.onAddCompany();
+    fixture.detectChanges();
+
+    vi.spyOn(notificationService, 'error');
+
+    const createPromise = fixture.componentInstance.onCreateCompany({
+      name: 'OneVo Technologies',
+      companyCode: 'OVT',
+      registrationNumber: 'REG-001',
+      countryCode: 'LKA',
+      currencyCode: 'LKR',
+      taxRegistrationNumber: null,
+      parentLegalEntityId: null
+    });
+
+    const postReq = httpMock.expectOne((r) => r.url.includes('/org/legal-entities') && r.method === 'POST');
+    postReq.flush({ detail: 'Company name already exists.' }, { status: 409, statusText: 'Conflict' });
+
+    await createPromise;
+    fixture.detectChanges();
+
+    expect(notificationService.error).toHaveBeenCalledWith('Company name already exists.');
+    expect(fixture.componentInstance.showCreateModal()).toBe(true);
     httpMock.verify();
   });
 

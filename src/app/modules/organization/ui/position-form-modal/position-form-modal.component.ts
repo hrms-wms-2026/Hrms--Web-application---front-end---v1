@@ -1,7 +1,8 @@
-import { ChangeDetectionStrategy, Component, EventEmitter, Input, OnInit, Output, inject, signal } from '@angular/core';
+import { ChangeDetectionStrategy, Component, EventEmitter, Input, OnInit, Output, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
-import { PositionListItemResponse, PositionTreeNodeResponse } from '../../models/position.model';
+import { AbstractControl, FormBuilder, ReactiveFormsModule, ValidationErrors, Validators } from '@angular/forms';
+import { PositionListItemResponse, PositionTemplatePreset, PositionTreeNodeResponse } from '../../models/position.model';
+import { RoleSummaryResponse } from '../../models/role.model';
 import { ButtonComponent } from '../../../../shared/ui/button/button.component';
 import { InputComponent } from '../../../../shared/ui/input/input.component';
 import { SelectComponent } from '../../../../shared/ui/select/select.component';
@@ -10,9 +11,35 @@ export interface PositionFormSubmitValue {
   departmentId: string;
   name: string;
   code: string;
-  positionType: 'unique' | 'pooled';
   maxOccupancy: number;
   reportsToPositionId: string | null;
+  selectedAccessRoleId?: string | null;
+  accessRequiresApproval?: boolean;
+}
+
+export function generateShortCode(titleOrKey?: string | null): string {
+  if (!titleOrKey) return '';
+  const cleaned = titleOrKey.trim();
+  if (!cleaned) return '';
+
+  const words = cleaned.split(/[\s\-_/]+/).filter((w) => w.length > 0);
+  if (words.length > 1) {
+    const initials = words.map((w) => w[0].toUpperCase()).join('');
+    return initials.slice(0, 5);
+  }
+
+  return words[0].replace(/[^A-Za-z0-9]/g, '').toUpperCase().slice(0, 5);
+}
+
+function integerValidator(control: AbstractControl): ValidationErrors | null {
+  if (control.value === null || control.value === undefined || control.value === '') {
+    return null;
+  }
+  const num = Number(control.value);
+  if (isNaN(num) || !Number.isInteger(num)) {
+    return { integer: true };
+  }
+  return null;
 }
 
 @Component({
@@ -28,8 +55,12 @@ export class PositionFormModalComponent implements OnInit {
 
   @Input() position: PositionListItemResponse | PositionTreeNodeResponse | null = null;
   @Input() reportsToPreset: PositionTreeNodeResponse | null = null;
+  @Input() templatePreset: PositionTemplatePreset | null = null;
   @Input({ required: true }) availableDepartments: readonly { id: string; name: string }[] = [];
   @Input({ required: true }) availablePositions: readonly { id: string; name: string }[] = [];
+  @Input() availableRoles: readonly RoleSummaryResponse[] = [];
+  @Input() hasRoleReadAccess = false;
+  @Input() canConfigureAccess = false;
   @Input({ required: true }) companyName!: string;
   @Input() loading = false;
   @Input() actionError: string | null = null;
@@ -40,10 +71,11 @@ export class PositionFormModalComponent implements OnInit {
   readonly form = this.fb.group({
     departmentId: ['', [Validators.required]],
     name: ['', [Validators.required, Validators.maxLength(100)]],
-    code: ['', [Validators.maxLength(40), Validators.pattern(/^[A-Za-z0-9_-]+$/)]],
-    positionType: ['unique' as 'unique' | 'pooled', [Validators.required]],
-    maxOccupancy: [1, [Validators.required, Validators.min(1)]],
-    reportsToPositionId: ['' as string | null]
+    code: ['', [Validators.maxLength(5), Validators.pattern(/^[A-Za-z0-9_-]{1,5}$/)]],
+    maxOccupancy: [1, [Validators.required, Validators.min(1), integerValidator]],
+    reportsToPositionId: ['' as string | null],
+    selectedAccessRoleId: [''],
+    accessRequiresApproval: [false]
   });
 
   get isEdit(): boolean {
@@ -62,7 +94,7 @@ export class PositionFormModalComponent implements OnInit {
 
   get reportsToOptions(): readonly { value: string; label: string }[] {
     const opts: { value: string; label: string }[] = [
-      { value: '', label: 'No Manager — Root Position' }
+      { value: '', label: 'Root Position' }
     ];
     for (const p of this.availablePositions) {
       if (this.isEdit && p.id === this.position?.id) {
@@ -73,36 +105,40 @@ export class PositionFormModalComponent implements OnInit {
     return opts;
   }
 
-  get typeOptions(): readonly { value: 'unique' | 'pooled'; label: string }[] {
-    return [
-      { value: 'unique', label: 'Unique' },
-      { value: 'pooled', label: 'Pooled' }
+  get roleOptions(): readonly { value: string; label: string }[] {
+    const opts: { value: string; label: string }[] = [
+      { value: '', label: 'No system role' }
     ];
+    for (const r of this.availableRoles) {
+      opts.push({ value: r.id, label: r.name });
+    }
+    return opts;
   }
 
   ngOnInit(): void {
     if (this.position) {
-      const typeNorm = (this.position.positionType || '').toLowerCase() === 'pooled' ? 'pooled' : 'unique';
       this.form.patchValue({
         departmentId: this.position.departmentId || '',
         name: this.position.name,
         code: this.position.code || '',
-        positionType: typeNorm,
         maxOccupancy: this.position.maxOccupancy,
         reportsToPositionId: this.position.reportsToPositionId || ''
+      });
+    } else if (this.templatePreset) {
+      const safeCode = generateShortCode(this.templatePreset.positionName || this.templatePreset.positionKey);
+      this.form.patchValue({
+        name: this.templatePreset.positionName,
+        code: safeCode,
+        departmentId: this.templatePreset.departmentId || '',
+        reportsToPositionId: this.templatePreset.reportsToPositionId || '',
+        maxOccupancy: 1
       });
     } else if (this.reportsToPreset) {
       this.form.patchValue({
         reportsToPositionId: this.reportsToPreset.id,
-        departmentId: this.reportsToPreset.departmentId || ''
+        departmentId: this.reportsToPreset.departmentId || '',
+        maxOccupancy: 1
       });
-    }
-  }
-
-  onTypeChange(type: 'unique' | 'pooled'): void {
-    this.form.controls.positionType.setValue(type);
-    if (type === 'unique') {
-      this.form.controls.maxOccupancy.setValue(1);
     }
   }
 
@@ -112,14 +148,14 @@ export class PositionFormModalComponent implements OnInit {
       return;
     }
     const val = this.form.getRawValue();
-    const typeVal: 'unique' | 'pooled' = val.positionType === 'pooled' ? 'pooled' : 'unique';
     this.save.emit({
       departmentId: val.departmentId!,
       name: (val.name || '').trim(),
       code: (val.code || '').trim().toUpperCase(),
-      positionType: typeVal,
-      maxOccupancy: typeVal === 'unique' ? 1 : Number(val.maxOccupancy) || 1,
-      reportsToPositionId: val.reportsToPositionId ? val.reportsToPositionId : null
+      maxOccupancy: Number(val.maxOccupancy) || 1,
+      reportsToPositionId: val.reportsToPositionId ? val.reportsToPositionId : null,
+      selectedAccessRoleId: val.selectedAccessRoleId ? val.selectedAccessRoleId : null,
+      accessRequiresApproval: !!val.accessRequiresApproval
     });
   }
 }

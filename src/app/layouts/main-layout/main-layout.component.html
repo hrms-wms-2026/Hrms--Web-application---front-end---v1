@@ -17,13 +17,17 @@
   <main id="main-content" class="main-content" tabindex="-1">
     <router-outlet />
   </main>
+
+  <app-mobile-bottom-nav />
 </div>
 
 <div
   id="global-notification-container"
   class="global-notification-container"
   aria-label="Application notifications"
-></div>
+>
+  <app-toast-host />
+</div>
 
 <div id="global-dialog-container" class="global-dialog-container"></div>
 

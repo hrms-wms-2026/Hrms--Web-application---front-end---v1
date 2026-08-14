@@ -9,7 +9,7 @@ import {
   UpdateCoverageRecordRequest
 } from '../../models/position.model';
 import { ButtonComponent } from '../../../../shared/ui/button/button.component';
-import { SelectComponent } from '../../../../shared/ui/select/select.component';
+import { SelectComponent, SelectOption } from '../../../../shared/ui/select/select.component';
 
 export interface UpdateCoverageEvent {
   coverageId: string;
@@ -54,9 +54,22 @@ export class PositionCoverageModalComponent {
   readonly editingCoverageId = signal<string | null>(null);
   readonly editOwnerOrderValue = signal(1);
 
-  formatResponsibilityLabel(ownerOrder: number): string {
-    if (ownerOrder === 1) return 'Primary Manager';
-    return `Backup Manager ${ownerOrder - 1}`;
+  formatResponsibilityLabel(ownerOrder: number, isOccupied = false): string {
+    const baseLabel = ownerOrder === 1 ? 'Primary Manager' : `Backup Manager ${ownerOrder - 1}`;
+    return isOccupied ? `${baseLabel} — already assigned` : baseLabel;
+  }
+
+  readonly activeTab = signal<'all' | 'automatic' | 'manual'>('all');
+
+  get filteredRecords(): readonly ManagementCoverageRecordResponse[] {
+    const tab = this.activeTab();
+    if (tab === 'automatic') return this.automaticRecords;
+    if (tab === 'manual') return this.manualRecords;
+    return this.coverageRecords;
+  }
+
+  getInitial(name: string): string {
+    return name ? name.charAt(0).toUpperCase() : 'P';
   }
 
   /** Read-only, system-generated coverage from the position reporting line - cannot be edited or removed. */
@@ -86,12 +99,10 @@ export class PositionCoverageModalComponent {
 
   /**
    * Responsibility-level options for a given covered target, built from the coverage records
-   * already loaded for this owner rather than a fixed 1/2/3 list. Order values already claimed for
-   * that exact target are excluded so the same level cannot be picked twice; the next unclaimed
-   * order is always offered so backups beyond the historical Primary/Backup 1/Backup 2 trio remain
-   * reachable. excludeRecordId lets the edit flow keep offering a record's own current order.
-   * Duplicate submissions from a different owner position are still caught authoritatively by the
-   * backend's 409.
+   * already loaded for this owner rather than a fixed list. Occupied levels for that target are
+   * included as disabled options clearly labeled "— already assigned". Unclaimed levels are offered,
+   * extending dynamically up to max(1 + minimumBackupLevels, highestUsedOrder + 1) so Backup N
+   * beyond 1/2/3 remains accessible.
    */
   private usedOrdersForTarget(
     type: 'Position' | 'Department',
@@ -110,18 +121,22 @@ export class PositionCoverageModalComponent {
       .map((record) => record.ownerOrder);
   }
 
-  private ownerOrderOptionsFor(usedOrders: readonly number[], floor = 0): readonly { value: string; label: string }[] {
-    const maxUsed = usedOrders.length > 0 ? Math.max(...usedOrders, floor) : floor;
-    const options: { value: string; label: string }[] = [];
-    for (let order = 1; order <= maxUsed + 1; order++) {
-      if (!usedOrders.includes(order)) {
-        options.push({ value: String(order), label: this.formatResponsibilityLabel(order) });
-      }
+  private ownerOrderOptionsFor(usedOrders: readonly number[], minimumBackupLevels = 3): readonly SelectOption[] {
+    const highestUsed = usedOrders.length > 0 ? Math.max(...usedOrders) : 0;
+    const maxOrder = Math.max(1 + minimumBackupLevels, highestUsed + 1);
+    const options: SelectOption[] = [];
+    for (let order = 1; order <= maxOrder; order++) {
+      const isOccupied = usedOrders.includes(order);
+      options.push({
+        value: String(order),
+        label: this.formatResponsibilityLabel(order, isOccupied),
+        disabled: isOccupied
+      });
     }
     return options;
   }
 
-  get ownerOrderOptions(): readonly { value: string; label: string }[] {
+  get ownerOrderOptions(): readonly SelectOption[] {
     return this.ownerOrderOptionsFor(this.usedOrdersForSelectedTarget());
   }
 
@@ -133,23 +148,55 @@ export class PositionCoverageModalComponent {
     return this.usedOrdersForTarget(type, positionId || null, departmentId || null);
   }
 
-  /** Options for the inline edit form of an existing manual record; always includes its own current order. */
-  editOwnerOrderOptions(record: ManagementCoverageRecordResponse): readonly { value: string; label: string }[] {
+  /** Friendly helper text hints for occupied levels of the currently selected target. */
+  get occupiedLevelHints(): readonly string[] {
+    const usedOrders = this.usedOrdersForSelectedTarget();
+    return usedOrders
+      .slice()
+      .sort((a, b) => a - b)
+      .map((order) => {
+        if (order === 1) return 'Primary Manager is already assigned.';
+        return `Backup Manager ${order - 1} is already assigned.`;
+      });
+  }
+
+  /** Options for the inline edit form of an existing manual record; keeps its own current order enabled. */
+  editOwnerOrderOptions(record: ManagementCoverageRecordResponse): readonly SelectOption[] {
     const usedOrders = this.usedOrdersForTarget(
       record.coveredTargetType,
       record.coveredPositionId,
       record.coveredDepartmentId,
       record.id
     );
-    return this.ownerOrderOptionsFor(usedOrders, record.ownerOrder);
+    return this.ownerOrderOptionsFor(usedOrders);
+  }
+
+  /** Friendly helper text hints for occupied levels when editing a record (excluding own record). */
+  editOccupiedLevelHints(record: ManagementCoverageRecordResponse): readonly string[] {
+    const usedOrders = this.usedOrdersForTarget(
+      record.coveredTargetType,
+      record.coveredPositionId,
+      record.coveredDepartmentId,
+      record.id
+    );
+    return usedOrders
+      .slice()
+      .sort((a, b) => a - b)
+      .map((order) => {
+        if (order === 1) return 'Primary Manager is already assigned.';
+        return `Backup Manager ${order - 1} is already assigned.`;
+      });
   }
 
   private resetOwnerOrderToFirstAvailable(): void {
     const options = this.ownerOrderOptions;
     const currentValue = this.addForm.controls.ownerOrder.value?.toString() ?? '';
-    const isCurrentValueStillOffered = options.some((option) => option.value === currentValue);
-    if (!isCurrentValueStillOffered && options.length > 0) {
-      this.addForm.controls.ownerOrder.setValue(+options[0].value);
+    const currentOption = options.find((option) => option.value === currentValue);
+    if (!currentOption || currentOption.disabled) {
+      const firstEnabled = options.find((option) => !option.disabled);
+      if (firstEnabled) {
+        this.addForm.controls.ownerOrder.setValue(+firstEnabled.value);
+      }
     }
   }
 
@@ -176,7 +223,11 @@ export class PositionCoverageModalComponent {
   }
 
   toggleAddForm(): void {
-    this.showAddForm.setValue(!this.showAddForm.value);
+    const nextVal = !this.showAddForm.value;
+    this.showAddForm.setValue(nextVal);
+    if (nextVal) {
+      this.resetOwnerOrderToFirstAvailable();
+    }
   }
 
   onTargetTypeChange(type: 'Position' | 'Department'): void {
@@ -211,6 +262,11 @@ export class PositionCoverageModalComponent {
       return;
     }
 
+    const usedOrders = this.usedOrdersForSelectedTarget();
+    if (usedOrders.includes(ownerOrder)) {
+      return;
+    }
+
     this.addCoverage.emit({
       coveredTargetType: type === 'Department' ? 'Department' : 'Position',
       coveredPositionId: type === 'Position' ? posId : null,
@@ -241,7 +297,18 @@ export class PositionCoverageModalComponent {
   }
 
   saveEdit(record: ManagementCoverageRecordResponse): void {
-    this.updateCoverage.emit({ coverageId: record.id, payload: { ownerOrder: this.editOwnerOrderValue() } });
+    const newOrder = this.editOwnerOrderValue();
+    const usedOrders = this.usedOrdersForTarget(
+      record.coveredTargetType,
+      record.coveredPositionId,
+      record.coveredDepartmentId,
+      record.id
+    );
+    if (usedOrders.includes(newOrder)) {
+      return;
+    }
+
+    this.updateCoverage.emit({ coverageId: record.id, payload: { ownerOrder: newOrder } });
     this.editingCoverageId.set(null);
   }
 

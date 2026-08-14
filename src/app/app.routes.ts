@@ -3,8 +3,10 @@ import { authGuard } from './core/guards/auth.guard';
 import { permissionGuard } from './core/guards/permission.guard';
 import { redirectIfAuthenticatedGuard } from './core/guards/redirect-if-authenticated.guard';
 
+
 const loadPlaceholder = () =>
   import('./shared/feature/placeholder-page/placeholder-page.component').then((module) => module.PlaceholderPageComponent);
+
 
 export const routes: Routes = [
   {
@@ -52,7 +54,12 @@ export const routes: Routes = [
         data: { permissions: ['projects:access'] },
         loadChildren: () => import('./modules/work/work.routes').then((module) => module.WORK_ROUTES)
       },
-      { path: 'people', loadComponent: loadPlaceholder, data: { title: 'People' } },
+      {
+        path: 'people',
+        canActivate: [permissionGuard],
+        data: { permissions: ['employees:read', 'employees:write'], modules: ['core_hr'] },
+        loadChildren: () => import('./modules/people/people.routes').then((module) => module.PEOPLE_ROUTES)
+      },
       { path: 'calendar', loadComponent: loadPlaceholder, data: { title: 'Calendar' } },
       { path: 'time-off', loadComponent: loadPlaceholder, data: { title: 'Time Off' } },
       { path: 'time-attendance', loadComponent: loadPlaceholder, data: { title: 'Time & Attendance' } },

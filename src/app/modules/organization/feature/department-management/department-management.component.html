@@ -1,15 +1,115 @@
-<!-- Header Bar with Breadcrumb -->
-<header class="dm-header-bar">
-  <nav class="dm-breadcrumb" aria-label="Breadcrumb">
-    <span class="dm-breadcrumb__item dm-breadcrumb__item--parent">
-      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-        <path d="M12 21v-8.25M15.75 21v-8.25M8.25 21v-8.25M3 9l9-6 9 6m-1.5 12V10.332A48.36 48.36 0 0 0 12 9.75c-2.551 0-5.056.2-7.5.582V21M3 21h18M12 6.75h.008v.008H12V6.75Z" />
-      </svg>
-      Organization
-    </span>
-    <svg class="dm-breadcrumb__sep" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="9 18 15 12 9 6"/></svg>
-    <span class="dm-breadcrumb__item dm-breadcrumb__item--current" aria-current="page">Departments</span>
-  </nav>
+<header class="dm-page-header">
+  <div class="dm-header-row">
+    <app-breadcrumb-header parentLabel="Organization" currentLabel="Departments" icon="organization" />
+
+    @if (hasReadAccess() && selectedLegalEntity()) {
+      <div class="dm-controls">
+        <!-- Expandable Search (Icon Click Toggle) -->
+        <div class="dm-search-container">
+          @if (searchExpanded()) {
+            <div class="dm-search-expandable">
+              <svg class="dm-search-icon" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/>
+              </svg>
+              <input
+                type="text"
+                class="dm-search-input"
+                placeholder="Search departments…"
+                [value]="departmentStore.searchQuery()"
+                (input)="onSearchChange($any($event.target).value)"
+              />
+              <button
+                type="button"
+                class="dm-search-clear-btn"
+                (click)="toggleSearch()"
+                title="Close search"
+                aria-label="Close search"
+              >
+                &times;
+              </button>
+            </div>
+          } @else {
+            <button
+              type="button"
+              class="dm-icon-btn"
+              [class.dm-icon-btn--active]="departmentStore.searchQuery()"
+              (click)="toggleSearch()"
+              title="Search departments"
+              aria-label="Search departments"
+            >
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/>
+              </svg>
+            </button>
+          }
+        </div>
+
+        <!-- Right Controls Group -->
+        <div class="dm-controls-right">
+          <!-- View Switcher Toggle (Icons only) -->
+          <div class="dm-view-toggle">
+            <button
+              type="button"
+              class="dm-toggle-btn"
+              [class.dm-toggle-btn--active]="departmentStore.viewMode() === 'tree'"
+              (click)="onViewModeToggle('tree')"
+              title="Tree view"
+              aria-label="Tree view"
+            >
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/></svg>
+            </button>
+            <button
+              type="button"
+              class="dm-toggle-btn"
+              [class.dm-toggle-btn--active]="departmentStore.viewMode() === 'list'"
+              (click)="onViewModeToggle('list')"
+              title="List view"
+              aria-label="List view"
+            >
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/><line x1="3" y1="6" x2="3.01" y2="6"/><line x1="3" y1="12" x2="3.01" y2="12"/><line x1="3" y1="18" x2="3.01" y2="18"/></svg>
+            </button>
+          </div>
+
+          <!-- Filter Dropdown Button -->
+          <div class="dm-filter-dropdown-wrap">
+            <button
+              type="button"
+              class="dm-filter-btn"
+              [class.dm-filter-btn--active]="departmentStore.includeInactive()"
+              (click)="onFilterToggle()"
+            >
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3"/></svg>
+              <span>Filter</span>
+              @if (departmentStore.includeInactive()) {
+                <span class="dm-filter-dot"></span>
+              }
+            </button>
+
+            @if (filterMenuOpen()) {
+              <div class="dm-filter-menu" (click)="$event.stopPropagation()">
+                <label class="dm-filter-menu-item">
+                  <input
+                    type="checkbox"
+                    [checked]="departmentStore.includeInactive()"
+                    (change)="onIncludeInactiveToggle($event)"
+                  />
+                  <span>Show archived departments</span>
+                </label>
+              </div>
+            }
+          </div>
+
+          <!-- Create Department Button -->
+          @if (hasManageAccess()) {
+            <app-button type="button" (click)="openCreateModal()">
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+              Create department
+            </app-button>
+          }
+        </div>
+      </div>
+    }
+  </div>
 </header>
 
 @if (!hasReadAccess()) {
@@ -20,93 +120,6 @@
 } @else if (!selectedLegalEntity()) {
   <app-empty-state title="Select a company to view departments." />
 } @else {
-
-  <!-- Action Bar -->
-  <div class="dm-top-section">
-
-    <!-- Action Control Bar -->
-    <div class="dm-controls">
-      
-      <!-- Search Input (Left) -->
-      <div class="dm-search-wrap">
-        <svg class="dm-search-icon" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-          <circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/>
-        </svg>
-        <input
-          type="text"
-          class="dm-search-input"
-          placeholder="Search departments…"
-          [value]="departmentStore.searchQuery()"
-          (input)="onSearchChange($any($event.target).value)"
-        />
-      </div>
-
-      <!-- Right Controls Group -->
-      <div class="dm-controls-right">
-        
-        <!-- View Switcher Toggle -->
-        <div class="dm-view-toggle">
-          <button
-            type="button"
-            class="dm-toggle-btn"
-            [class.dm-toggle-btn--active]="departmentStore.viewMode() === 'tree'"
-            (click)="onViewModeToggle('tree')"
-          >
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/></svg>
-            Tree
-          </button>
-          <button
-            type="button"
-            class="dm-toggle-btn"
-            [class.dm-toggle-btn--active]="departmentStore.viewMode() === 'list'"
-            (click)="onViewModeToggle('list')"
-          >
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/><line x1="3" y1="6" x2="3.01" y2="6"/><line x1="3" y1="12" x2="3.01" y2="12"/><line x1="3" y1="18" x2="3.01" y2="18"/></svg>
-            List
-          </button>
-        </div>
-
-        <!-- Filter Dropdown Button -->
-        <div class="dm-filter-dropdown-wrap">
-          <button
-            type="button"
-            class="dm-filter-btn"
-            [class.dm-filter-btn--active]="departmentStore.includeInactive()"
-            (click)="onFilterToggle()"
-          >
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3"/></svg>
-            <span>Filter</span>
-            @if (departmentStore.includeInactive()) {
-              <span class="dm-filter-dot"></span>
-            }
-          </button>
-
-          @if (filterMenuOpen()) {
-            <div class="dm-filter-menu" (click)="$event.stopPropagation()">
-              <label class="dm-filter-menu-item">
-                <input
-                  type="checkbox"
-                  [checked]="departmentStore.includeInactive()"
-                  (change)="onIncludeInactiveToggle($event)"
-                />
-                <span>Show archived departments</span>
-              </label>
-            </div>
-          }
-        </div>
-
-        <!-- Create Department Button -->
-        @if (hasManageAccess()) {
-          <app-button type="button" (click)="openCreateModal()">
-            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
-            Create department
-          </app-button>
-        }
-
-      </div>
-
-    </div>
-  </div>
 
   <!-- Content Loading / Error / Data View -->
   @if (departmentStore.loading()) {

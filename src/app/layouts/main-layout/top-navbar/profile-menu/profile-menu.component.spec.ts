@@ -1,24 +1,37 @@
 import { TestBed } from '@angular/core/testing';
 import { By } from '@angular/platform-browser';
 import { signal } from '@angular/core';
+import { Router } from '@angular/router';
 import { ProfileMenuComponent } from './profile-menu.component';
 import { ThemeStore } from '../../../../core/theme/state/theme.store';
 import { ThemePresetId } from '../../../../core/theme/models/theme-preset.model';
+import { AuthStore } from '../../../../core/auth/state/auth.store';
+import { NotificationService } from '../../../../core/services/notification.service';
 
-function setup() {
+function setup(overrides: { logoutResult?: boolean } = {}) {
   const presetSignal = signal<ThemePresetId>('default');
   const setPreset = vi.fn((preset: ThemePresetId) => presetSignal.set(preset));
 
+  const logoutMock = vi.fn().mockResolvedValue(overrides.logoutResult ?? true);
+  const navigateMock = vi.fn().mockResolvedValue(true);
+  const notificationErrorMock = vi.fn();
+
   TestBed.configureTestingModule({
     imports: [ProfileMenuComponent],
-    providers: [{ provide: ThemeStore, useValue: { preset: presetSignal, setPreset } }]
+    providers: [
+      { provide: ThemeStore, useValue: { preset: presetSignal, setPreset } },
+      { provide: AuthStore, useValue: { logout: logoutMock } },
+      { provide: Router, useValue: { navigate: navigateMock } },
+      { provide: NotificationService, useValue: { error: notificationErrorMock } }
+    ]
   });
 
   const fixture = TestBed.createComponent(ProfileMenuComponent);
   fixture.componentRef.setInput('userName', 'Asha Kumar');
   fixture.componentRef.setInput('email', 'asha@onevo.test');
   fixture.detectChanges();
-  return { fixture, setPreset, presetSignal };
+
+  return { fixture, setPreset, presetSignal, logoutMock, navigateMock, notificationErrorMock };
 }
 
 describe('ProfileMenuComponent', () => {
@@ -66,6 +79,24 @@ describe('ProfileMenuComponent', () => {
     expect(userEmail.textContent?.trim()).toBe('asha@onevo.test');
   });
 
+  it('renders "Log out" button with icon below Appearance separated by a divider', () => {
+    const { fixture } = setup();
+    fixture.debugElement.query(By.css('.profile-menu-trigger')).nativeElement.click();
+    fixture.detectChanges();
+
+    const actionBtns = fixture.nativeElement.querySelectorAll('.profile-action-btn');
+    expect(actionBtns.length).toBe(2);
+
+    expect(actionBtns[0].textContent).toContain('Appearance');
+    expect(actionBtns[1].textContent).toContain('Log out');
+
+    const logoutIcon = actionBtns[1].querySelector('.action-icon');
+    expect(logoutIcon).toBeTruthy();
+
+    const divider = fixture.nativeElement.querySelector('.profile-actions-section .profile-popover-divider');
+    expect(divider).toBeTruthy();
+  });
+
   it('opens preferences modal when Appearance action is clicked from popover', () => {
     const { fixture } = setup();
 
@@ -103,5 +134,47 @@ describe('ProfileMenuComponent', () => {
     emeraldOption.click();
 
     expect(setPreset).toHaveBeenCalledWith('emerald');
+  });
+
+  it('calls AuthStore.logout and navigates to /auth/login on successful logout', async () => {
+    const { fixture, logoutMock, navigateMock, notificationErrorMock } = setup({ logoutResult: true });
+
+    fixture.debugElement.query(By.css('.profile-menu-trigger')).nativeElement.click();
+    fixture.detectChanges();
+
+    const logoutBtn = fixture.nativeElement.querySelector('.profile-action-btn--logout') as HTMLButtonElement;
+    expect(logoutBtn).toBeTruthy();
+
+    logoutBtn.click();
+    fixture.detectChanges();
+
+    expect(logoutMock).toHaveBeenCalled();
+    // Popover panel should close
+    expect(fixture.nativeElement.querySelector('.profile-popover-panel')).toBeFalsy();
+
+    // Wait for async logout promise resolution
+    await fixture.whenStable();
+
+    expect(navigateMock).toHaveBeenCalledWith(['/auth/login']);
+    expect(notificationErrorMock).not.toHaveBeenCalled();
+  });
+
+  it('displays safe notification toast "Could not log out. Try again." and does not navigate when logout fails', async () => {
+    const { fixture, logoutMock, navigateMock, notificationErrorMock } = setup({ logoutResult: false });
+
+    fixture.debugElement.query(By.css('.profile-menu-trigger')).nativeElement.click();
+    fixture.detectChanges();
+
+    const logoutBtn = fixture.nativeElement.querySelector('.profile-action-btn--logout') as HTMLButtonElement;
+    logoutBtn.click();
+    fixture.detectChanges();
+
+    expect(logoutMock).toHaveBeenCalled();
+    expect(fixture.nativeElement.querySelector('.profile-popover-panel')).toBeFalsy();
+
+    await fixture.whenStable();
+
+    expect(navigateMock).not.toHaveBeenCalled();
+    expect(notificationErrorMock).toHaveBeenCalledWith('Could not log out. Try again.');
   });
 });

@@ -12,11 +12,14 @@ import { RoleFormModalComponent, RoleFormSubmitValue } from '../../ui/role-form-
 import { RolePermissionsModalComponent } from '../../ui/role-permissions-modal/role-permissions-modal.component';
 import { RoleArchiveModalComponent } from '../../ui/role-archive-modal/role-archive-modal.component';
 
+import { BreadcrumbHeaderComponent } from '../../../../shared/ui/breadcrumb-header/breadcrumb-header.component';
+
 @Component({
   selector: 'app-roles-management',
   standalone: true,
   imports: [
     CommonModule,
+    BreadcrumbHeaderComponent,
     ButtonComponent,
     EmptyStateComponent,
     ErrorStateComponent,
@@ -39,6 +42,14 @@ export class RolesManagementComponent {
   readonly hasManageAccess = computed(() => this.permissionService.hasPermission('roles:manage'));
 
   readonly searchQuery = signal('');
+  readonly searchExpanded = signal(false);
+
+  toggleSearch(): void {
+    this.searchExpanded.update((v) => !v);
+    if (!this.searchExpanded()) {
+      this.searchQuery.set('');
+    }
+  }
 
   // Modals
   readonly formModalOpen = signal(false);
@@ -124,8 +135,8 @@ export class RolesManagementComponent {
 
     if (success) {
       this.closeFormModal();
-    } else if (this.roleStore.actionError()) {
-      this.notificationService.error(this.roleStore.actionError()!);
+    } else {
+      this.notificationService.error(this.roleStore.actionError() ?? 'Failed to save role.');
     }
   }
 
@@ -157,8 +168,8 @@ export class RolesManagementComponent {
     if (success) {
       this.notificationService.success(`Permissions for role '${role.name}' updated successfully.`);
       this.closePermissionsModal();
-    } else if (this.roleStore.actionError()) {
-      this.notificationService.error(this.roleStore.actionError()!);
+    } else {
+      this.notificationService.error(this.roleStore.actionError() ?? 'Failed to update role permissions.');
     }
   }
 
@@ -188,8 +199,8 @@ export class RolesManagementComponent {
     if (success) {
       this.notificationService.success(`Role '${role.name}' archived successfully.`);
       this.closeArchiveModal();
-    } else if (this.roleStore.actionError()) {
-      this.notificationService.error(this.roleStore.actionError()!);
+    } else {
+      this.notificationService.error(this.roleStore.actionError() ?? 'Failed to archive role.');
     }
   }
 }

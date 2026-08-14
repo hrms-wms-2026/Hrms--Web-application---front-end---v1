@@ -167,7 +167,25 @@ export class LandingHeaderComponent implements AfterViewInit, OnDestroy {
   private updateVisibility(): void {
     const currentScrollY = window.scrollY;
     this.isScrolled.set(currentScrollY > 20);
-    this.headerVisible.set(true);
+
+    if (this.menuOpen() || this.focusWithinHeader) {
+      this.headerVisible.set(true);
+      this.lastScrollY = currentScrollY;
+      return;
+    }
+
+    if (currentScrollY <= HIDE_AFTER) {
+      this.headerVisible.set(true);
+    } else {
+      const delta = currentScrollY - this.lastScrollY;
+      if (delta > SCROLL_DELTA) {
+        this.headerVisible.set(false);
+      } else if (delta < -SCROLL_DELTA) {
+        this.headerVisible.set(true);
+      }
+    }
+
+    this.lastScrollY = currentScrollY;
   }
 
   private teardown(): void {

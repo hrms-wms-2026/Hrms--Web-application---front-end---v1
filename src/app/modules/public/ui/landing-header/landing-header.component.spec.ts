@@ -37,7 +37,7 @@ describe('LandingHeaderComponent', () => {
   it('renders the primary navigation links', async () => {
     const fixture = await createComponent();
     const links = fixture.debugElement.queryAll(By.css('.landing-header__links a')).map((el) => el.nativeElement.textContent.trim());
-    expect(links).toEqual(['Platform', 'Solutions', 'Resources']);
+    expect(links).toEqual(['Features', 'Solution', 'How it Works', 'About']);
   });
 
   it('points the sign-in CTA at the existing login route', async () => {
