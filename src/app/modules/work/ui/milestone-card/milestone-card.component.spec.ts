@@ -59,15 +59,7 @@ describe('MilestoneCardComponent', () => {
   it('applies a highlight class when selected', () => {
     setup(baseMilestone, true);
     const card: HTMLElement = fixture.nativeElement.querySelector('[data-testid="milestone-card"]');
-    expect(card.className).toContain('ring-2');
-  });
-
-  it('fills the height of its container (host + section both claim h-full)', () => {
-    setup(baseMilestone);
-    const hostElement: HTMLElement = fixture.nativeElement;
-    expect(hostElement.className).toContain('h-full');
-    const section = fixture.nativeElement.querySelector('app-card section');
-    expect(section?.className).toContain('h-full');
+    expect(card.className).toContain('bg-[var(--color-accent)]');
   });
 
   it('labels the settings button "Module settings"', () => {

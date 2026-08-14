@@ -22,6 +22,10 @@ export class ProjectApiService {
     return this.http.get<ProjectDetailDto>(`${this.base}/${id}`);
   }
 
+  getLogoUrl(projectId: string, logoFileId: string): string {
+    return `${this.base}/${projectId}/logo?v=${logoFileId}`;
+  }
+
   create(payload: CreateProjectRequestDto): Observable<CreateProjectResponseDto> {
     const formData = new FormData();
     formData.set('categoryId', payload.categoryId);

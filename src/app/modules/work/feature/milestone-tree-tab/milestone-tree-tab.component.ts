@@ -48,7 +48,7 @@ export class MilestoneTreeTabComponent {
       if (!milestoneId) return;
       this.currentMilestoneId = milestoneId;
       this.selectedNodeId.set(null);
-      this.store.loadMilestoneSubtree(milestoneId);
+      this.loadSubtreeAndSelectRoot(milestoneId);
     });
   }
 
@@ -56,8 +56,14 @@ export class MilestoneTreeTabComponent {
     this.selectedNodeId.set(node.id);
   }
 
-  retryTree(): void {
-    if (this.currentMilestoneId) this.store.loadMilestoneSubtree(this.currentMilestoneId);
+  async retryTree(): Promise<void> {
+    if (this.currentMilestoneId) await this.loadSubtreeAndSelectRoot(this.currentMilestoneId);
+  }
+
+  private async loadSubtreeAndSelectRoot(milestoneId: string): Promise<void> {
+    await this.store.loadMilestoneSubtree(milestoneId);
+    const tree = this.store.selectedSubtree();
+    if (tree) this.selectedNodeId.set(tree.id);
   }
 
   onCreateSubRequested(node: MilestoneTreeNode): void {

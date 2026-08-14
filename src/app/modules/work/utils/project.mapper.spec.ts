@@ -7,15 +7,45 @@ import { MilestoneTreeNode } from '../models/milestone.model';
 describe('project.mapper', () => {
   it('maps a ProjectListItemDto to a Project', () => {
     const dto: ProjectListItemDto = {
-      id: 'p1', name: 'Website Revamp', identifier: 'WEB', categoryId: 'cat1', leadId: 'u1',
+      id: 'p1', name: 'Website Revamp', identifier: 'WEB', categoryId: 'cat1', description: null, leadId: 'u1',
       startDate: '2026-08-01', targetDate: '2026-12-01', color: '#2563EB', isActive: true,
-      allocatedHours: 40, completedHours: 0, isLead: true, isAchieved: false, achievedAt: null
+      allocatedHours: 40, completedHours: 0, isLead: true, isAchieved: false, achievedAt: null,
+      updatedAt: null, logoFileId: null, labels: [], members: [], memberCount: 0
     };
     expect(toProject(dto)).toEqual({
-      id: 'p1', name: 'Website Revamp', identifier: 'WEB', categoryId: 'cat1', leadId: 'u1',
+      id: 'p1', name: 'Website Revamp', identifier: 'WEB', categoryId: 'cat1', description: null, leadId: 'u1',
       startDate: '2026-08-01', targetDate: '2026-12-01', color: '#2563EB', isActive: true,
-      allocatedHours: 40, completedHours: 0, isLead: true, isAchieved: false, achievedAt: null
+      allocatedHours: 40, completedHours: 0, isLead: true, isAchieved: false, achievedAt: null,
+      updatedAt: null, logoFileId: null, labels: [], members: [], memberCount: 0
     });
+  });
+
+  it('forwards a non-null logoFileId from ProjectListItemDto to Project', () => {
+    const dto: ProjectListItemDto = {
+      id: 'p1', name: 'Website Revamp', identifier: 'WEB', categoryId: 'cat1', description: null, leadId: 'u1',
+      startDate: '2026-08-01', targetDate: '2026-12-01', color: '#2563EB', isActive: true,
+      allocatedHours: 40, completedHours: 0, isLead: true, isAchieved: false, achievedAt: null,
+      updatedAt: null, logoFileId: 'file-123', labels: [], members: [], memberCount: 0
+    };
+    expect(toProject(dto).logoFileId).toBe('file-123');
+  });
+
+  it('forwards description, updatedAt, labels, members, and memberCount from ProjectListItemDto to Project', () => {
+    const dto: ProjectListItemDto = {
+      id: 'p1', name: 'Website Revamp', identifier: 'WEB', categoryId: 'cat1', description: 'Rebuild the site', leadId: 'u1',
+      startDate: '2026-08-01', targetDate: '2026-12-01', color: '#2563EB', isActive: true,
+      allocatedHours: 40, completedHours: 0, isLead: true, isAchieved: false, achievedAt: null,
+      updatedAt: '2026-08-10T00:00:00Z', logoFileId: null,
+      labels: [{ id: 'l1', name: 'Marketing', color: '#F59E0B' }],
+      members: [{ userId: 'u2', displayName: 'Arun Kumar' }],
+      memberCount: 5
+    };
+    const result = toProject(dto);
+    expect(result.description).toBe('Rebuild the site');
+    expect(result.updatedAt).toBe('2026-08-10T00:00:00Z');
+    expect(result.labels).toEqual([{ id: 'l1', name: 'Marketing', color: '#F59E0B' }]);
+    expect(result.members).toEqual([{ userId: 'u2', displayName: 'Arun Kumar' }]);
+    expect(result.memberCount).toBe(5);
   });
 
   it('maps a ProjectDetailDto to a ProjectDetail', () => {
@@ -23,12 +53,14 @@ describe('project.mapper', () => {
       id: 'p1', name: 'Website Revamp', identifier: 'WEB', categoryId: 'cat1', description: 'Rebuild',
       leadId: 'u1', startDate: '2026-08-01', targetDate: '2026-12-01', color: '#2563EB',
       actualHours: 12, allocatedHours: 40, completedHours: 0, isActive: true, isAchieved: false,
-      achievedAt: null, createdAt: '2026-08-01T00:00:00Z', updatedAt: null, isLead: true
+      achievedAt: null, createdAt: '2026-08-01T00:00:00Z', updatedAt: null, isLead: true, logoFileId: 'file-456',
+      labels: [], members: [], memberCount: 0
     };
     const result = toProjectDetail(dto);
     expect(result.description).toBe('Rebuild');
     expect(result.isAchieved).toBe(false);
     expect(result.createdAt).toBe('2026-08-01T00:00:00Z');
+    expect(result.logoFileId).toBe('file-456');
   });
 
   it('maps a MyProjectMilestoneDto to a Milestone', () => {

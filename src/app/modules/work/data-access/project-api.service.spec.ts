@@ -31,6 +31,10 @@ describe('ProjectApiService', () => {
     req.flush(page);
   });
 
+  it('builds a cache-busted logo URL from the project id and logo file id', () => {
+    expect(service.getLogoUrl('p1', 'file-123')).toBe(`${environment.apiUrl}/work/projects/p1/logo?v=file-123`);
+  });
+
   it('gets a project by id', () => {
     const dto = { id: 'p1' } as ProjectDetailDto;
     service.getById('p1').subscribe((res) => expect(res).toEqual(dto));

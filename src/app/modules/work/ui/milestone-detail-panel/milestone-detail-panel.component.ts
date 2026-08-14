@@ -5,77 +5,113 @@ import { ErrorStateComponent } from '../../../../shared/ui/error-state/error-sta
 import { EmptyStateComponent } from '../../../../shared/ui/empty-state/empty-state.component';
 import { ButtonComponent } from '../../../../shared/ui/button/button.component';
 import { AvatarComponent } from '../../../../shared/ui/avatar/avatar.component';
+import { ProgressRingComponent } from '../../../../shared/ui/progress-ring/progress-ring.component';
 import { MilestoneTreeNode } from '../../models/milestone.model';
-
-const PROGRESS_RADIUS = 28;
-const PROGRESS_CIRCUMFERENCE = 2 * Math.PI * PROGRESS_RADIUS;
+import { getDeadlineStatus } from '../../utils/deadline.util';
 
 @Component({
   selector: 'app-milestone-detail-panel',
   standalone: true,
   host: { class: 'block h-full flex flex-col' },
-  imports: [CardComponent, LoaderComponent, ErrorStateComponent, EmptyStateComponent, ButtonComponent, AvatarComponent],
+  imports: [
+    CardComponent, LoaderComponent, ErrorStateComponent, EmptyStateComponent,
+    ButtonComponent, AvatarComponent, ProgressRingComponent
+  ],
   template: `
     @if (loading()) {
       <app-loader label="Loading milestone…" />
     } @else if (error()) {
       <app-error-state [message]="error()!" [retryable]="true" (retry)="retry.emit()" />
     } @else if (detail(); as d) {
-      <app-card [title]="d.title">
-        <div class="flex flex-col gap-3 text-sm">
-          <div class="flex items-center gap-2">
-            <span style="--color-profile-bg: var(--color-accent); --color-text-primary: white;">
-              <app-avatar [userName]="d.ownerName" size="md" />
-            </span>
-            <span class="text-[var(--color-text-secondary)]">{{ d.ownerName ?? 'Unassigned' }}</span>
+      <app-card>
+        <div class="flex flex-col gap-4 text-sm p-1">
+          <!-- Title & Achieved Badge -->
+          <div class="flex flex-wrap items-center justify-between gap-2 border-b border-[var(--color-border)] pb-3">
+            <h2 class="text-lg font-bold tracking-tight text-[var(--color-text-primary)]">{{ d.title }}</h2>
+            @if (d.isAchieved) {
+              <span class="inline-flex items-center gap-1 rounded-full bg-emerald-50 px-2.5 py-0.5 text-xs font-semibold text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-300 ring-1 ring-emerald-600/20">
+                <svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                  <polyline points="20 6 9 17 4 12"/>
+                </svg>
+                Achieved
+              </span>
+            }
           </div>
+
+          <!-- Owner Capsule -->
+          <div class="flex items-center gap-2.5">
+            <span style="--color-profile-bg: var(--color-accent); --color-text-primary: white;" class="inline-flex rounded-lg ring-1 ring-white/90">
+              <app-avatar [userName]="d.ownerName" size="sm" />
+            </span>
+            <span class="text-xs font-medium text-[var(--color-text-primary)]">{{ d.ownerName ?? 'Unassigned' }}</span>
+          </div>
+
           @if (d.description) {
-            <p class="text-[var(--color-text-secondary)]">{{ d.description }}</p>
+            <p class="text-xs leading-relaxed text-[var(--color-text-secondary)]">{{ d.description }}</p>
           }
 
-          <div class="flex items-center gap-4">
-            <div class="relative flex h-16 w-16 shrink-0 items-center justify-center" data-testid="progress-chart">
-              <svg viewBox="0 0 64 64" width="64" height="64" class="-rotate-90" aria-hidden="true">
-                <circle cx="32" cy="32" r="28" fill="none" stroke="var(--color-surface-secondary)" stroke-width="6" />
-                <circle
-                  cx="32" cy="32" r="28" fill="none" stroke="var(--color-accent)" stroke-width="6" stroke-linecap="round"
-                  [attr.stroke-dasharray]="circumference"
-                  [attr.stroke-dashoffset]="progressDashOffset(d.progress)"
-                />
-              </svg>
-              <span class="absolute text-xs font-semibold text-[var(--color-text-primary)]">{{ d.progress }}%</span>
+          <!-- Progress Ring & Details Cards -->
+          <div class="flex items-center gap-5 pt-1">
+            <div data-testid="progress-chart" class="shrink-0 flex items-center justify-center">
+              <app-progress-ring [progress]="d.progress" [size]="96" [strokeWidth]="9" [gradient]="true" />
             </div>
-            <dl class="grid flex-1 grid-cols-2 gap-3">
-              <div>
-                <dt class="text-xs text-[var(--color-text-secondary)]">Start</dt>
-                <dd>{{ d.startDate }}</dd>
+            <dl class="grid flex-1 grid-cols-2 gap-2.5">
+              <div class="rounded-lg border border-[var(--color-border)] bg-[var(--color-surface-secondary)]/40 p-2.5">
+                <dt class="flex items-center gap-1 text-[11px] font-medium text-[var(--color-text-secondary)]">
+                  <svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                    <rect x="3" y="4" width="18" height="18" rx="2" />
+                    <line x1="16" y1="2" x2="16" y2="6" />
+                    <line x1="8" y1="2" x2="8" y2="6" />
+                    <line x1="3" y1="10" x2="21" y2="10" />
+                  </svg>
+                  Start
+                </dt>
+                <dd class="mt-0.5 text-xs font-semibold text-[var(--color-text-primary)]">{{ d.startDate }}</dd>
               </div>
-              <div>
-                <dt class="text-xs text-[var(--color-text-secondary)]">End</dt>
-                <dd>{{ d.endDate }}</dd>
+              <div class="rounded-lg border border-[var(--color-border)] bg-[var(--color-surface-secondary)]/40 p-2.5">
+                <dt class="flex items-center gap-1 text-[11px] font-medium text-[var(--color-text-secondary)]">
+                  <svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                    <rect x="3" y="4" width="18" height="18" rx="2" />
+                    <line x1="16" y1="2" x2="16" y2="6" />
+                    <line x1="8" y1="2" x2="8" y2="6" />
+                    <line x1="3" y1="10" x2="21" y2="10" />
+                  </svg>
+                  End
+                </dt>
+                <dd class="mt-0.5 text-xs font-semibold text-[var(--color-text-primary)]">{{ d.endDate }}</dd>
+                @if (!d.isAchieved && deadline(d.endDate); as dl) {
+                  <dd
+                    data-testid="deadline"
+                    class="mt-0.5 text-[10px] font-medium"
+                    [class.text-[var(--color-danger-text)]]="dl.overdue"
+                    [class.text-[var(--color-text-secondary)]]="!dl.overdue"
+                  >{{ dl.label }}</dd>
+                }
               </div>
-              <div class="col-span-2">
-                <dt class="text-xs text-[var(--color-text-secondary)]">Hours</dt>
-                <dd>{{ d.completedHours }} / {{ d.allocatedHours }}</dd>
+              <div class="col-span-2 rounded-lg border border-[var(--color-border)] bg-[var(--color-surface-secondary)]/40 p-2.5">
+                <dt class="flex items-center gap-1 text-[11px] font-medium text-[var(--color-text-secondary)]">
+                  <svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                    <circle cx="12" cy="12" r="9" />
+                    <polyline points="12 7 12 12 15 14" />
+                  </svg>
+                  Hours
+                </dt>
+                <dd class="mt-0.5 text-xs font-semibold text-[var(--color-text-primary)]">{{ d.completedHours }} / {{ d.allocatedHours }}</dd>
               </div>
             </dl>
           </div>
 
-          @if (d.isAchieved) {
-            <span class="w-fit rounded-full bg-[var(--color-surface-secondary)] px-2 py-0.5 text-xs font-medium text-[var(--color-text-secondary)]">
-              Achieved
-            </span>
-          }
+          <!-- Actions Row (Clean & Modern: Edit | Achieve | + Create sub) -->
           @if (d.isOwner) {
-            <div class="mt-2 flex flex-wrap gap-2">
-              <span data-testid="edit-button">
-                <app-button variant="secondary" (pressed)="editRequested.emit()">Edit Module</app-button>
+            <div data-testid="action-row" class="mt-2 flex flex-nowrap items-center justify-between gap-2 pt-2 border-t border-[var(--color-border)]">
+              <span data-testid="edit-button" class="flex-1">
+                <app-button variant="secondary" size="sm" class="w-full" (pressed)="editRequested.emit()">Edit</app-button>
               </span>
-              <span data-testid="achieve-button">
-                <app-button variant="secondary" (pressed)="achieveToggleRequested.emit()">{{ d.isAchieved ? 'Unachieve Module' : 'Achieve Module' }}</app-button>
+              <span data-testid="achieve-button" class="flex-1">
+                <app-button variant="secondary" size="sm" class="w-full" (pressed)="achieveToggleRequested.emit()">{{ d.isAchieved ? 'Unachieve' : 'Achieve' }}</app-button>
               </span>
-              <span data-testid="create-sub-button">
-                <app-button variant="primary" (pressed)="createSubRequested.emit()">+ Create sub Module</app-button>
+              <span data-testid="create-sub-button" class="flex-1">
+                <app-button variant="primary" size="sm" class="w-full" (pressed)="createSubRequested.emit()">+ Create sub</app-button>
               </span>
             </div>
           }
@@ -95,10 +131,7 @@ export class MilestoneDetailPanelComponent {
   createSubRequested = output<void>();
   achieveToggleRequested = output<void>();
 
-  readonly circumference = PROGRESS_CIRCUMFERENCE;
-
-  progressDashOffset(progress: number): number {
-    const clamped = Math.max(0, Math.min(100, progress));
-    return this.circumference * (1 - clamped / 100);
+  deadline(endDate: string) {
+    return getDeadlineStatus(endDate);
   }
 }

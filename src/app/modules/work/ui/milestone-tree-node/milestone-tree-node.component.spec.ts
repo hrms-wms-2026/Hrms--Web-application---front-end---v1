@@ -41,8 +41,8 @@ describe('MilestoneTreeNodeComponent', () => {
   it('all rows share the same grid column template, only the title cell indents by depth', () => {
     setup(root, null, true);
     const rows = fixture.nativeElement.querySelectorAll('[data-testid="tree-row"]');
-    expect((rows[0] as HTMLElement).className).toContain('grid-cols-[1fr_auto_auto_auto_auto]');
-    expect((rows[1] as HTMLElement).className).toContain('grid-cols-[1fr_auto_auto_auto_auto]');
+    expect((rows[0] as HTMLElement).className).toContain('grid-cols-[1fr_112px_40px_88px_32px]');
+    expect((rows[1] as HTMLElement).className).toContain('grid-cols-[1fr_112px_40px_88px_32px]');
 
     const rootTitleCell = rows[0].querySelector('span') as HTMLElement;
     const childTitleCell = rows[1].querySelector('span') as HTMLElement;
@@ -91,11 +91,64 @@ describe('MilestoneTreeNodeComponent', () => {
     expect(emitted).toEqual([leaf]);
   });
 
-  it('applies a highlight to the row matching selectedId', () => {
+  it('fills the selected row with the accent background instead of a ring', () => {
     setup(root, 'o1', true);
     const rows = fixture.nativeElement.querySelectorAll('[data-testid="tree-row"]');
-    expect((rows[0] as HTMLElement).className).toContain('ring-2');
-    expect((rows[1] as HTMLElement).className).not.toContain('ring-2');
+    expect((rows[0] as HTMLElement).className).toContain('bg-[var(--color-accent)]');
+    expect((rows[0] as HTMLElement).className).not.toContain('ring-2');
+    expect((rows[1] as HTMLElement).className).not.toContain('bg-[var(--color-accent)]');
+  });
+
+  it('turns the title white when selected, keeps the default color otherwise', () => {
+    setup(root, 'o1', true);
+    const rows = fixture.nativeElement.querySelectorAll('[data-testid="tree-row"]');
+    const selectedTitle = rows[0].querySelector('[data-testid="title-text"]') as HTMLElement;
+    const unselectedTitle = rows[1].querySelector('[data-testid="title-text"]') as HTMLElement;
+    expect(selectedTitle.className).toContain('text-white');
+    expect(unselectedTitle.className).toContain('text-[var(--color-text-primary)]');
+  });
+
+  it('turns the folder icon white when selected, keeps accent color otherwise', () => {
+    setup(root, 'o1', true);
+    const rows = fixture.nativeElement.querySelectorAll('[data-testid="tree-row"]');
+    const selectedIcon = rows[0].querySelector('[data-testid="folder-icon"]') as HTMLElement;
+    const unselectedIcon = rows[1].querySelector('[data-testid="folder-icon"]') as HTMLElement;
+    expect(selectedIcon.getAttribute('class')).toContain('text-white');
+    expect(unselectedIcon.getAttribute('class')).toContain('text-[var(--color-accent)]');
+  });
+
+  it('turns the progress bar fill white when selected, accent otherwise', () => {
+    setup(root, 'o1', true);
+    const rows = fixture.nativeElement.querySelectorAll('[data-testid="tree-row"]');
+    const selectedFill = rows[0].querySelector('[data-testid="progress-fill"]') as HTMLElement;
+    const unselectedFill = rows[1].querySelector('[data-testid="progress-fill"]') as HTMLElement;
+    expect(selectedFill.className).toContain('bg-white');
+    expect(unselectedFill.className).toContain('bg-[var(--color-accent)]');
+  });
+
+  it('turns the due date text white when selected', () => {
+    setup(root, 'o1', true);
+    const rows = fixture.nativeElement.querySelectorAll('[data-testid="tree-row"]');
+    const selectedDate = rows[0].querySelector('[data-testid="due-date-cell"]') as HTMLElement;
+    expect(selectedDate.className).toContain('text-white');
+  });
+
+  it('renders owner avatar with theme background, white text, and white border outline', () => {
+    setup(root, 'o1', true);
+    const rows = fixture.nativeElement.querySelectorAll('[data-testid="tree-row"]');
+    const ownerCell = rows[0].querySelector('[data-testid="owner-cell"]') as HTMLElement;
+    expect(ownerCell.getAttribute('style')).toContain('--color-profile-bg: var(--color-accent)');
+    expect(ownerCell.getAttribute('style')).toContain('--color-profile-text: #ffffff');
+    expect(ownerCell.getAttribute('style')).toContain('--color-border: #ffffff');
+  });
+
+  it('shows the Achieved badge in white-on-translucent styling when its row is selected', () => {
+    const achievedRoot: MilestoneTreeNode = { ...root, isAchieved: true };
+    setup(achievedRoot, 'o1', true);
+    const rows = fixture.nativeElement.querySelectorAll('[data-testid="tree-row"]');
+    const badge = rows[0].querySelector('[data-testid="achieved-badge"]') as HTMLElement;
+    expect(badge.className).toContain('text-white');
+    expect(badge.className).toContain('bg-white/15');
   });
 
   it('shows a create-sub-module button only when the node is owned by the caller', () => {

@@ -36,7 +36,7 @@
 } @else {
   <div class="flex gap-4 overflow-x-auto p-1 pb-2">
     @for (milestone of store.milestones(); track milestone.objectiveId) {
-      <div class="w-56 flex-shrink-0">
+      <div class="w-68 flex-shrink-0">
         <app-milestone-card
           [milestone]="milestone"
           [selected]="activeMilestoneId() === milestone.objectiveId"

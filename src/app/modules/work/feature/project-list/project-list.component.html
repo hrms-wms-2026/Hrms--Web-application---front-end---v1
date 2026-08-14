@@ -25,12 +25,14 @@
       <app-button variant="primary" (pressed)="openCreateModal()">+ Create project</app-button>
     </app-empty-state>
   } @else {
-    <div class="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-3">
+    <div class="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-3" #projectGrid>
       @for (project of store.filteredProjects(); track project.id) {
         <app-project-card
           [project]="project"
+          [expanded]="expandedProjectId() === project.id"
           (viewed)="onView(project)"
           (settingsRequested)="onProjectSettingsRequested(project)"
+          (toggleExpandRequested)="onToggleExpand(project.id)"
         />
       }
     </div>

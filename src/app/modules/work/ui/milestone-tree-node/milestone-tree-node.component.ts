@@ -9,9 +9,7 @@ import { AvatarComponent } from '../../../../shared/ui/avatar/avatar.component';
   template: `
     <div>
       <div
-        class="grid grid-cols-[1fr_auto_auto_auto_auto] items-center gap-3 rounded-md px-2 py-1.5 cursor-pointer hover:bg-[var(--color-surface-secondary)]"
-        [class.ring-2]="node().id === selectedId()"
-        [class.ring-[var(--color-focus-ring)]]="node().id === selectedId()"
+        class="grid grid-cols-[1fr_112px_40px_88px_32px] items-center gap-3 rounded-md px-2 py-1.5 cursor-pointer {{ isSelected() ? 'bg-[var(--color-accent)]' : 'hover:bg-[var(--color-surface-secondary)]' }}"
         data-testid="tree-row"
         (click)="selected.emit(node())"
       >
@@ -19,7 +17,7 @@ import { AvatarComponent } from '../../../../shared/ui/avatar/avatar.component';
           @if (node().children.length > 0) {
             <button
               type="button"
-              class="flex h-4 w-4 shrink-0 items-center justify-center text-[var(--color-text-secondary)] transition-transform"
+              class="flex h-4 w-4 shrink-0 items-center justify-center transition-transform {{ isSelected() ? 'text-white' : 'text-[var(--color-text-secondary)]' }}"
               [style.transform]="expanded() ? 'rotate(90deg)' : 'rotate(0deg)'"
               data-testid="chevron"
               [attr.aria-label]="expanded() ? 'Collapse' : 'Expand'"
@@ -32,32 +30,36 @@ import { AvatarComponent } from '../../../../shared/ui/avatar/avatar.component';
           } @else {
             <span class="h-4 w-4 shrink-0"></span>
           }
-          <svg data-testid="folder-icon" class="h-4 w-4 shrink-0 text-[var(--color-accent)]" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+          <svg data-testid="folder-icon" class="h-4 w-4 shrink-0 {{ isSelected() ? 'text-white' : 'text-[var(--color-accent)]' }}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
             <path d="M3 6a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V6Z" />
           </svg>
-          <span class="truncate text-sm text-[var(--color-text-primary)]">{{ node().title }}</span>
+          <span data-testid="title-text" class="truncate text-sm {{ isSelected() ? 'text-white' : 'text-[var(--color-text-primary)]' }}">{{ node().title }}</span>
           @if (node().isAchieved) {
-            <span class="shrink-0 rounded-full bg-[var(--color-surface-secondary)] px-2 py-0.5 text-xs font-medium text-[var(--color-text-secondary)]">Achieved</span>
+            <span data-testid="achieved-badge" class="shrink-0 rounded-full px-2 py-0.5 text-xs font-medium {{ isSelected() ? 'bg-white/15 text-white' : 'bg-[var(--color-surface-secondary)] text-[var(--color-text-secondary)]' }}">Achieved</span>
           }
         </span>
 
-        <span class="flex items-center gap-2 text-xs text-[var(--color-text-secondary)]" data-testid="progress-cell">
-          <span class="h-1.5 w-16 overflow-hidden rounded-full bg-[var(--color-surface-secondary)]">
-            <span class="block h-full rounded-full bg-[var(--color-accent)]" [style.width.%]="node().progress"></span>
+        <span class="flex items-center gap-2 text-xs {{ isSelected() ? 'text-white' : 'text-[var(--color-text-secondary)]' }}" data-testid="progress-cell">
+          <span data-testid="progress-track" class="h-1.5 w-16 overflow-hidden rounded-full {{ isSelected() ? 'bg-white/25' : 'bg-[var(--color-surface-secondary)]' }}">
+            <span data-testid="progress-fill" class="block h-full rounded-full {{ isSelected() ? 'bg-white' : 'bg-[var(--color-accent)]' }}" [style.width.%]="node().progress"></span>
           </span>
           {{ node().progress }}%
         </span>
 
-        <span data-testid="owner-cell" style="--color-profile-bg: var(--color-accent); --color-text-primary: white;">
+        <span
+          data-testid="owner-cell"
+          class="inline-flex shrink-0"
+          style="--color-profile-bg: var(--color-accent); --color-profile-text: #ffffff; --color-text-primary: #ffffff; --color-border: #ffffff;"
+        >
           <app-avatar [userName]="node().ownerName" size="sm" />
         </span>
 
-        <span class="text-xs text-[var(--color-text-secondary)]" data-testid="due-date-cell">{{ node().endDate }}</span>
+        <span class="text-xs {{ isSelected() ? 'text-white' : 'text-[var(--color-text-secondary)]' }}" data-testid="due-date-cell">{{ node().endDate }}</span>
 
         @if (node().isOwner) {
           <button
             type="button"
-            class="flex h-6 w-6 shrink-0 items-center justify-center rounded-md text-[var(--color-text-secondary)] hover:bg-[var(--color-surface-secondary)] hover:text-[var(--color-text-primary)]"
+            class="flex h-6 w-6 shrink-0 items-center justify-center rounded-md transition-colors {{ isSelected() ? 'text-white hover:bg-white/20' : 'text-[var(--color-text-secondary)] hover:bg-[var(--color-surface-secondary)] hover:text-[var(--color-text-primary)]' }}"
             data-testid="create-sub-button"
             aria-label="Create sub Module"
             (click)="onCreateClick($event)"
@@ -99,6 +101,10 @@ export class MilestoneTreeNodeComponent implements OnInit {
 
   ngOnInit(): void {
     this.expanded.set(this.expandedByDefault());
+  }
+
+  isSelected(): boolean {
+    return this.node().id === this.selectedId();
   }
 
   toggleExpanded(event: Event): void {

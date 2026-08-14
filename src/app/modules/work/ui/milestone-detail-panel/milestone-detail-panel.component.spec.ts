@@ -1,6 +1,8 @@
 import { ComponentFixture, TestBed } from '@angular/core/testing';
+import { By } from '@angular/platform-browser';
 import { MilestoneDetailPanelComponent } from './milestone-detail-panel.component';
 import { MilestoneTreeNode } from '../../models/milestone.model';
+import { ProgressRingComponent } from '../../../../shared/ui/progress-ring/progress-ring.component';
 
 describe('MilestoneDetailPanelComponent', () => {
   let fixture: ComponentFixture<MilestoneDetailPanelComponent>;
@@ -94,12 +96,12 @@ describe('MilestoneDetailPanelComponent', () => {
     expect(createdSub).toBe(true);
   });
 
-  it('labels the achieve button "Achieve Module" when not achieved, "Unachieve Module" when achieved', () => {
+  it('labels the achieve button "Achieve" when not achieved, "Unachieve" when achieved', () => {
     setup({ detail: { ...detail, isAchieved: false } });
-    expect(fixture.nativeElement.querySelector('[data-testid="achieve-button"]').textContent).toContain('Achieve Module');
+    expect(fixture.nativeElement.querySelector('[data-testid="achieve-button"]').textContent).toContain('Achieve');
 
     setup({ detail: { ...detail, isAchieved: true } });
-    expect(fixture.nativeElement.querySelector('[data-testid="achieve-button"]').textContent).toContain('Unachieve Module');
+    expect(fixture.nativeElement.querySelector('[data-testid="achieve-button"]').textContent).toContain('Unachieve');
   });
 
   it('renders a progress chart reflecting the progress value', () => {
@@ -107,5 +109,57 @@ describe('MilestoneDetailPanelComponent', () => {
     const chart = fixture.nativeElement.querySelector('[data-testid="progress-chart"]');
     expect(chart).not.toBeNull();
     expect(chart.textContent).toContain('40%');
+  });
+
+  it('uses a 96px gradient progress ring', () => {
+    setup({ detail });
+    const ring = fixture.debugElement.query(By.directive(ProgressRingComponent));
+    expect(ring).not.toBeNull();
+    const instance = ring.componentInstance as ProgressRingComponent;
+    expect(instance.size()).toBe(96);
+    expect(instance.gradient()).toBe(true);
+  });
+
+  it('shows a days-left deadline under the End date when not achieved and not overdue', () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date('2026-01-25T00:00:00Z'));
+    try {
+      setup({ detail: { ...detail, isAchieved: false, endDate: '2026-02-01' } });
+      const deadline = fixture.nativeElement.querySelector('[data-testid="deadline"]');
+      expect(deadline).not.toBeNull();
+      expect(deadline.textContent).toContain('7 days left');
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it('shows an overdue deadline in the danger color when the end date has passed', () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date('2026-02-10T00:00:00Z'));
+    try {
+      setup({ detail: { ...detail, isAchieved: false, endDate: '2026-02-01' } });
+      const deadline = fixture.nativeElement.querySelector('[data-testid="deadline"]') as HTMLElement;
+      expect(deadline).not.toBeNull();
+      expect(deadline.textContent).toContain('9 days overdue');
+      expect(deadline.className).toContain('color-danger-text');
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it('hides the deadline entirely when the milestone is achieved', () => {
+    setup({ detail: { ...detail, isAchieved: true } });
+    expect(fixture.nativeElement.querySelector('[data-testid="deadline"]')).toBeNull();
+  });
+
+  it('keeps the action button row on a single line with compact buttons', () => {
+    setup({ detail });
+    const row = fixture.nativeElement.querySelector('[data-testid="action-row"]') as HTMLElement;
+    expect(row).not.toBeNull();
+    expect(row.className).toContain('flex-nowrap');
+    expect(row.className).not.toContain('flex-wrap');
+
+    const editButton = fixture.nativeElement.querySelector('[data-testid="edit-button"] button') as HTMLElement;
+    expect(editButton.className).toContain('text-xs');
   });
 });

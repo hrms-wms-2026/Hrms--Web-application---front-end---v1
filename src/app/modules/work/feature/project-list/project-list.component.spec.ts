@@ -11,9 +11,10 @@ describe('ProjectListComponent', () => {
   let router: Router;
 
   const project: Project = {
-    id: 'p1', name: 'Website Revamp', identifier: 'WEB', categoryId: 'cat1', leadId: 'u1',
+    id: 'p1', name: 'Website Revamp', identifier: 'WEB', categoryId: 'cat1', description: null, leadId: 'u1',
     startDate: '2026-08-01', targetDate: '2026-12-01', color: null, isActive: true,
-    allocatedHours: 40, completedHours: 0, isLead: true, isAchieved: false, achievedAt: null
+    allocatedHours: 40, completedHours: 0, isLead: true, isAchieved: false, achievedAt: null, updatedAt: null,
+    logoFileId: null, labels: [], members: [], memberCount: 0
   };
 
   beforeEach(async () => {
@@ -177,6 +178,27 @@ describe('ProjectListComponent', () => {
 
     expect(storeStub.deleteProject).toHaveBeenCalledWith('p1');
     expect(fixture.componentInstance.deleteConfirmOpen()).toBe(false);
+  });
+
+  it('sets expandedProjectId on toggle, then clears it when the same project is toggled again', async () => {
+    fixture.detectChanges();
+    expect(fixture.componentInstance.expandedProjectId()).toBeNull();
+
+    await fixture.componentInstance.onToggleExpand('p1');
+    expect(fixture.componentInstance.expandedProjectId()).toBe('p1');
+
+    await fixture.componentInstance.onToggleExpand('p1');
+    expect(fixture.componentInstance.expandedProjectId()).toBeNull();
+  });
+
+  it('switches expandedProjectId when a different project is toggled', async () => {
+    fixture.detectChanges();
+
+    await fixture.componentInstance.onToggleExpand('p1');
+    expect(fixture.componentInstance.expandedProjectId()).toBe('p1');
+
+    await fixture.componentInstance.onToggleExpand('p2');
+    expect(fixture.componentInstance.expandedProjectId()).toBe('p2');
   });
 
   it('forwards category and achieved filter changes to the store', () => {

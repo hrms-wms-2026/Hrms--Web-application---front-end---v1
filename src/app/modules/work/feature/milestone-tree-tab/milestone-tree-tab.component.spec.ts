@@ -63,6 +63,26 @@ describe('MilestoneTreeTabComponent', () => {
     expect(fixture.nativeElement.textContent).toContain('Root');
   });
 
+  it('defaults to selecting the root node once the tree loads', async () => {
+    setup('o1');
+    fixture.detectChanges();
+    await fixture.whenStable();
+    fixture.detectChanges();
+
+    expect(fixture.componentInstance.selectedNode()?.id).toBe('o1');
+  });
+
+  it('re-defaults to the new root when retryTree reloads after a failure', async () => {
+    setup('o1');
+    fixture.detectChanges();
+    await fixture.whenStable();
+    fixture.componentInstance.selectedNodeId.set(null);
+
+    await fixture.componentInstance.retryTree();
+
+    expect(fixture.componentInstance.selectedNode()?.id).toBe('o1');
+  });
+
   it('selecting a node shows its detail via findTreeNode, with no extra store call', () => {
     setup('o1');
     fixture.detectChanges();

@@ -1,8 +1,20 @@
+export interface ProjectLabel {
+  id: string;
+  name: string;
+  color: string;
+}
+
+export interface ProjectMemberAvatar {
+  userId: string;
+  displayName: string;
+}
+
 export interface Project {
   id: string;
   name: string;
   identifier: string;
   categoryId: string;
+  description: string | null;
   leadId: string;
   startDate: string;
   targetDate: string;
@@ -13,13 +25,16 @@ export interface Project {
   isLead: boolean;
   isAchieved: boolean;
   achievedAt: string | null;
+  updatedAt: string | null;
+  logoFileId: string | null;
+  labels: ProjectLabel[];
+  members: ProjectMemberAvatar[];
+  memberCount: number;
 }
 
 export interface ProjectDetail extends Project {
-  description: string | null;
   actualHours: number | null;
   createdAt: string;
-  updatedAt: string | null;
 }
 
 export interface CreateProjectPayload {

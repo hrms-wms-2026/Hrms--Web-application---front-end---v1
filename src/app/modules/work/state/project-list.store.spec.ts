@@ -6,9 +6,10 @@ import { ProjectListItemDto, PagedResultDto } from '../models/dto/project.dto';
 
 describe('ProjectListStore', () => {
   const dto: ProjectListItemDto = {
-    id: 'p1', name: 'Website Revamp', identifier: 'WEB', categoryId: 'cat1', leadId: 'u1',
+    id: 'p1', name: 'Website Revamp', identifier: 'WEB', categoryId: 'cat1', description: null, leadId: 'u1',
     startDate: '2026-08-01', targetDate: '2026-12-01', color: null, isActive: true,
-    allocatedHours: 40, completedHours: 0, isLead: true, isAchieved: false, achievedAt: null
+    allocatedHours: 40, completedHours: 0, isLead: true, isAchieved: false, achievedAt: null, updatedAt: null,
+    logoFileId: null, labels: [], members: [], memberCount: 0
   };
   const page: PagedResultDto<ProjectListItemDto> = {
     items: [dto], pageNumber: 1, pageSize: 20, totalCount: 1, totalPages: 1, hasNext: false, hasPrevious: false
@@ -23,9 +24,10 @@ describe('ProjectListStore', () => {
     const store = setup({ listMine: () => of(page) } as Partial<ProjectApiService>);
     await store.loadProjects();
     expect(store.projects()).toEqual([{
-      id: 'p1', name: 'Website Revamp', identifier: 'WEB', categoryId: 'cat1', leadId: 'u1',
+      id: 'p1', name: 'Website Revamp', identifier: 'WEB', categoryId: 'cat1', description: null, leadId: 'u1',
       startDate: '2026-08-01', targetDate: '2026-12-01', color: null, isActive: true,
-      allocatedHours: 40, completedHours: 0, isLead: true, isAchieved: false, achievedAt: null
+      allocatedHours: 40, completedHours: 0, isLead: true, isAchieved: false, achievedAt: null, updatedAt: null,
+      logoFileId: null, labels: [], members: [], memberCount: 0
     }]);
     expect(store.totalCount()).toBe(1);
     expect(store.loading()).toBe(false);

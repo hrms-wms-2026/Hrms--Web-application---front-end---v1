@@ -1,4 +1,4 @@
-import { Component, OnInit, inject, signal } from '@angular/core';
+import { Component, OnInit, inject, signal, viewChild, ElementRef } from '@angular/core';
 import { Router } from '@angular/router';
 import { ProjectListStore, AchievedFilter } from '../../state/project-list.store';
 import { ProjectCardComponent } from '../../ui/project-card/project-card.component';
@@ -12,6 +12,11 @@ import { LoaderComponent } from '../../../../shared/ui/loader/loader.component';
 import { ErrorStateComponent } from '../../../../shared/ui/error-state/error-state.component';
 import { EmptyStateComponent } from '../../../../shared/ui/empty-state/empty-state.component';
 import { CreateProjectPayload, EditProjectPayload, Project, ProjectDetail } from '../../models/project.model';
+import { captureFlipRects, playFlipAnimation, FlipSnapshot } from '../../../../shared/utils/flip-animate';
+
+function waitForNextRender(): Promise<void> {
+  return new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(() => resolve())));
+}
 
 @Component({
   selector: 'app-project-list',
@@ -25,7 +30,9 @@ import { CreateProjectPayload, EditProjectPayload, Project, ProjectDetail } from
 export class ProjectListComponent implements OnInit {
   readonly store = inject(ProjectListStore);
   private readonly router = inject(Router);
+  private readonly projectGrid = viewChild<ElementRef<HTMLElement>>('projectGrid');
 
+  expandedProjectId = signal<string | null>(null);
   createModalOpen = signal(false);
   settingsModalOpen = signal(false);
   settingsModalInitialValue = signal<ProjectDetail | null>(null);
@@ -39,6 +46,17 @@ export class ProjectListComponent implements OnInit {
 
   onView(project: Project): void {
     this.router.navigate(['/work', project.id]);
+  }
+
+  async onToggleExpand(projectId: string): Promise<void> {
+    const container = this.projectGrid()?.nativeElement;
+    const before: FlipSnapshot = container ? captureFlipRects(container) : {};
+
+    this.expandedProjectId.set(this.expandedProjectId() === projectId ? null : projectId);
+
+    if (!container) return;
+    await waitForNextRender();
+    playFlipAnimation(container, before);
   }
 
   openCreateModal(): void {

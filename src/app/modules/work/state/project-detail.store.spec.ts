@@ -16,7 +16,8 @@ describe('ProjectDetailStore', () => {
     id: 'p1', name: 'Website Revamp', identifier: 'WEB', categoryId: 'cat1', description: null,
     leadId: 'u1', startDate: '2026-08-01', targetDate: '2026-12-01', color: null, actualHours: null,
     allocatedHours: 40, completedHours: 0, isActive: true, isAchieved: false, achievedAt: null,
-    createdAt: '2026-08-01T00:00:00Z', updatedAt: null, isLead: true
+    createdAt: '2026-08-01T00:00:00Z', updatedAt: null, isLead: true, logoFileId: null,
+    labels: [], members: [], memberCount: 0
   };
 
   it('loads a project successfully', async () => {

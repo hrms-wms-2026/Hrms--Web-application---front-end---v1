@@ -10,7 +10,8 @@ describe('ProjectSettingsModalComponent', () => {
     id: 'p1', name: 'Website Revamp', identifier: 'WEB', categoryId: 'cat1', leadId: 'u1',
     startDate: '2026-08-01', targetDate: '2026-12-01', color: '#2563EB', isActive: true,
     allocatedHours: 40, completedHours: 0, isLead: true, isAchieved: false, achievedAt: null,
-    description: 'Rebuild the site', actualHours: 0, createdAt: '2026-08-01T00:00:00Z', updatedAt: null
+    description: 'Rebuild the site', actualHours: 0, createdAt: '2026-08-01T00:00:00Z', updatedAt: null,
+    logoFileId: null, labels: [], members: [], memberCount: 0
   };
 
   beforeEach(() => {
