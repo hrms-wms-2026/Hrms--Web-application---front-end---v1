@@ -55,6 +55,11 @@ export interface ObjectiveSubtreeResponseDto {
   objective: ObjectiveSubtreeNodeDto;
 }
 
+export interface CreateObjectiveMemberInvitationRequestDto {
+  employeeId: string;
+  type: 'member' | 'leader';
+}
+
 export interface CreateObjectiveRequestDto {
   parentObjectiveId: string;
   title: string;
@@ -62,6 +67,19 @@ export interface CreateObjectiveRequestDto {
   startDate: string;
   endDate: string;
   allocatedHours: number;
+  headEmployeeId?: string | null;
+  memberInvitations?: CreateObjectiveMemberInvitationRequestDto[];
+}
+
+export interface AddObjectiveMemberOutcomeDto {
+  alreadyMember: boolean;
+  invitation: import('./objective-invitation.dto').ObjectiveInvitationDto | null;
+}
+
+export interface TransferObjectiveHeadOutcomeDto {
+  applied: boolean;
+  pendingChangeRequest: unknown | null;
+  pendingInvitation: import('./objective-invitation.dto').ObjectiveInvitationDto | null;
 }
 
 export interface EditObjectiveRequestDto {
