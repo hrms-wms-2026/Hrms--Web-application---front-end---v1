@@ -3,12 +3,24 @@ import { HttpResponse } from '@angular/common/http';
 import { of, throwError } from 'rxjs';
 import { ProjectDetailStore } from './project-detail.store';
 import { ProjectApiService } from '../data-access/project-api.service';
+import { ObjectiveMemberApiService } from '../data-access/objective-member-api.service';
 import { ProjectDetailDto } from '../models/dto/project.dto';
-import { MyProjectMilestoneDto, ObjectiveDetailDto, ObjectiveSubtreeResponseDto, CreateObjectiveRequestDto } from '../models/dto/milestone.dto';
+import { MyProjectMilestoneDto, ObjectiveDetailDto, ObjectiveSubtreeResponseDto, CreateObjectiveRequestDto, AddObjectiveMemberOutcomeDto, TransferObjectiveHeadOutcomeDto } from '../models/dto/milestone.dto';
+import { ObjectiveInvitationDto } from '../models/dto/objective-invitation.dto';
 
 describe('ProjectDetailStore', () => {
   function setup(apiOverrides: Partial<ProjectApiService> = {}) {
     TestBed.configureTestingModule({ providers: [{ provide: ProjectApiService, useValue: apiOverrides }] });
+    return TestBed.inject(ProjectDetailStore);
+  }
+
+  function createStoreWithMemberApi(memberApiOverrides: Partial<ObjectiveMemberApiService> = {}) {
+    TestBed.configureTestingModule({
+      providers: [
+        { provide: ProjectApiService, useValue: {} },
+        { provide: ObjectiveMemberApiService, useValue: memberApiOverrides }
+      ]
+    });
     return TestBed.inject(ProjectDetailStore);
   }
 
@@ -187,5 +199,65 @@ describe('ProjectDetailStore', () => {
 
     expect(result).toEqual({ success: false });
     expect(store.milestoneActionError()).toBe('date range exceeds parent');
+  });
+
+  it('loadObjectiveMembers populates objectiveMembers on success', async () => {
+    const memberApi = { getMembers: vi.fn().mockReturnValue(of({ items: [{ employeeId: 'e1', isHead: true, pending: false, inviteType: null, invitationId: null, sinceOrInvitedAt: '2026-01-01' }] })) };
+    const store = createStoreWithMemberApi(memberApi);
+
+    await store.loadObjectiveMembers('o1');
+
+    expect(store.objectiveMembers()).toEqual([{ employeeId: 'e1', isHead: true, pending: false, inviteType: null, invitationId: null, sinceOrInvitedAt: '2026-01-01' }]);
+    expect(store.objectiveMembersError()).toBeNull();
+  });
+
+  it('addObjectiveMember reports pending:false when already an active member (204)', async () => {
+    const memberApi = { addMember: vi.fn().mockReturnValue(of(new HttpResponse<AddObjectiveMemberOutcomeDto>({ body: { alreadyMember: true, invitation: null }, status: 204 }))) };
+    const store = createStoreWithMemberApi(memberApi);
+
+    const result = await store.addObjectiveMember('o1', 'e2');
+
+    expect(result).toEqual({ success: true, alreadyMember: true });
+  });
+
+  it('addObjectiveMember reports pending:true (invitation created) on 202', async () => {
+    const memberApi = { addMember: vi.fn().mockReturnValue(of(new HttpResponse<AddObjectiveMemberOutcomeDto>({ body: { alreadyMember: false, invitation: { id: 'i1' } as ObjectiveInvitationDto }, status: 202 }))) };
+    const store = createStoreWithMemberApi(memberApi);
+
+    const result = await store.addObjectiveMember('o1', 'e2');
+
+    expect(result).toEqual({ success: true, alreadyMember: false });
+  });
+
+  it('transferObjectiveHead reports applied:false with a pendingInvitation on 202', async () => {
+    const memberApi = { transferHead: vi.fn().mockReturnValue(of(new HttpResponse<TransferObjectiveHeadOutcomeDto>({ body: { applied: false, pendingChangeRequest: null, pendingInvitation: { id: 'i2' } as ObjectiveInvitationDto }, status: 202 }))) };
+    const store = createStoreWithMemberApi(memberApi);
+
+    const result = await store.transferObjectiveHead('o1', 'e3');
+
+    expect(result).toEqual({ success: true, applied: false, viaInvitation: true });
+  });
+
+  it('loadMyInvitations populates myInvitations', async () => {
+    const memberApi = { getMyInvitations: vi.fn().mockReturnValue(of([{ id: 'i1' } as ObjectiveInvitationDto])) };
+    const store = createStoreWithMemberApi(memberApi);
+
+    await store.loadMyInvitations();
+
+    expect(store.myInvitations()).toEqual([{ id: 'i1' }]);
+  });
+
+  it('acceptInvitation returns success:true and clears the accepted invitation from myInvitations', async () => {
+    const memberApi = {
+      getMyInvitations: vi.fn().mockReturnValue(of([{ id: 'i1' } as ObjectiveInvitationDto])),
+      acceptInvitation: vi.fn().mockReturnValue(of(new HttpResponse<void>({ status: 204 })))
+    };
+    const store = createStoreWithMemberApi(memberApi);
+    await store.loadMyInvitations();
+
+    const result = await store.acceptInvitation('i1');
+
+    expect(result).toEqual({ success: true });
+    expect(store.myInvitations()).toEqual([]);
   });
 });

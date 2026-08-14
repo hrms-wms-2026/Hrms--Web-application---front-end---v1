@@ -2,10 +2,12 @@ import { inject } from '@angular/core';
 import { patchState, signalStore, withMethods, withState } from '@ngrx/signals';
 import { firstValueFrom } from 'rxjs';
 import { ProjectApiService } from '../data-access/project-api.service';
+import { ObjectiveMemberApiService } from '../data-access/objective-member-api.service';
 import { toMilestone, toMilestoneTreeNode, toProjectDetail } from '../utils/project.mapper';
 import { ProjectDetail } from '../models/project.model';
 import { Milestone, MilestoneTreeNode, ObjectiveDetail } from '../models/milestone.model';
 import { EditObjectiveRequestDto, CreateObjectiveRequestDto } from '../models/dto/milestone.dto';
+import { ObjectiveMemberItemDto, ObjectiveInvitationDto } from '../models/dto/objective-invitation.dto';
 
 interface ProjectDetailState {
   readonly project: ProjectDetail | null;
@@ -18,13 +20,19 @@ interface ProjectDetailState {
   readonly subtreeLoading: boolean;
   readonly subtreeError: string | null;
   readonly milestoneActionError: string | null;
+  readonly objectiveMembers: readonly ObjectiveMemberItemDto[];
+  readonly objectiveMembersLoading: boolean;
+  readonly objectiveMembersError: string | null;
+  readonly myInvitations: readonly ObjectiveInvitationDto[];
 }
 
 const initialState: ProjectDetailState = {
   project: null, projectLoading: false, projectError: null,
   milestones: [], milestonesLoading: false, milestonesError: null,
   selectedSubtree: null, subtreeLoading: false, subtreeError: null,
-  milestoneActionError: null
+  milestoneActionError: null,
+  objectiveMembers: [], objectiveMembersLoading: false, objectiveMembersError: null,
+  myInvitations: []
 };
 
 function extractError(err: any, fallback: string): string {
@@ -34,7 +42,7 @@ function extractError(err: any, fallback: string): string {
 export const ProjectDetailStore = signalStore(
   { providedIn: 'root' },
   withState<ProjectDetailState>(initialState),
-  withMethods((store, api = inject(ProjectApiService)) => ({
+  withMethods((store, api = inject(ProjectApiService), memberApi = inject(ObjectiveMemberApiService)) => ({
     async loadProject(id: string): Promise<void> {
       patchState(store, { projectLoading: true, projectError: null });
       try {
@@ -120,6 +128,80 @@ export const ProjectDetailStore = signalStore(
         return { success: true };
       } catch (err) {
         patchState(store, { milestoneActionError: extractError(err, 'Failed to create sub-module.') });
+        return { success: false };
+      }
+    },
+
+    async loadObjectiveMembers(objectiveId: string): Promise<void> {
+      patchState(store, { objectiveMembersLoading: true, objectiveMembersError: null });
+      try {
+        const dto = await firstValueFrom(memberApi.getMembers(objectiveId));
+        patchState(store, { objectiveMembers: dto.items, objectiveMembersLoading: false });
+      } catch (err) {
+        patchState(store, { objectiveMembersError: extractError(err, 'Failed to load members.'), objectiveMembersLoading: false });
+      }
+    },
+
+    async addObjectiveMember(objectiveId: string, employeeId: string): Promise<{ success: boolean; alreadyMember: boolean }> {
+      try {
+        const res = await firstValueFrom(memberApi.addMember(objectiveId, employeeId));
+        patchState(store, { milestoneActionError: null });
+        return { success: true, alreadyMember: res.body!.alreadyMember };
+      } catch (err) {
+        patchState(store, { milestoneActionError: extractError(err, 'Failed to add member.') });
+        return { success: false, alreadyMember: false };
+      }
+    },
+
+    async removeObjectiveMember(objectiveId: string, employeeId: string): Promise<{ success: boolean }> {
+      try {
+        await firstValueFrom(memberApi.removeMember(objectiveId, employeeId));
+        patchState(store, { milestoneActionError: null });
+        return { success: true };
+      } catch (err) {
+        patchState(store, { milestoneActionError: extractError(err, 'Failed to remove member.') });
+        return { success: false };
+      }
+    },
+
+    async transferObjectiveHead(objectiveId: string, newHeadEmployeeId: string): Promise<{ success: boolean; applied: boolean; viaInvitation: boolean }> {
+      try {
+        const res = await firstValueFrom(memberApi.transferHead(objectiveId, newHeadEmployeeId));
+        patchState(store, { milestoneActionError: null });
+        return { success: true, applied: res.body!.applied, viaInvitation: res.body!.pendingInvitation !== null };
+      } catch (err) {
+        patchState(store, { milestoneActionError: extractError(err, 'Failed to transfer leadership.') });
+        return { success: false, applied: false, viaInvitation: false };
+      }
+    },
+
+    async loadMyInvitations(): Promise<void> {
+      try {
+        const dtos = await firstValueFrom(memberApi.getMyInvitations());
+        patchState(store, { myInvitations: dtos });
+      } catch (err) {
+        patchState(store, { milestoneActionError: extractError(err, 'Failed to load invitations.') });
+      }
+    },
+
+    async acceptInvitation(invitationId: string): Promise<{ success: boolean }> {
+      try {
+        await firstValueFrom(memberApi.acceptInvitation(invitationId));
+        patchState(store, { myInvitations: store.myInvitations().filter((i) => i.id !== invitationId), milestoneActionError: null });
+        return { success: true };
+      } catch (err) {
+        patchState(store, { milestoneActionError: extractError(err, 'Failed to accept invitation.') });
+        return { success: false };
+      }
+    },
+
+    async rejectInvitation(invitationId: string): Promise<{ success: boolean }> {
+      try {
+        await firstValueFrom(memberApi.rejectInvitation(invitationId));
+        patchState(store, { myInvitations: store.myInvitations().filter((i) => i.id !== invitationId), milestoneActionError: null });
+        return { success: true };
+      } catch (err) {
+        patchState(store, { milestoneActionError: extractError(err, 'Failed to reject invitation.') });
         return { success: false };
       }
     }
