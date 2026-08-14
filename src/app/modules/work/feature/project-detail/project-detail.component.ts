@@ -7,7 +7,6 @@ import { ProjectDetailStore } from '../../state/project-detail.store';
 import { MilestoneCardComponent } from '../../ui/milestone-card/milestone-card.component';
 import { MilestoneSettingsModalComponent } from '../../ui/milestone-settings-modal/milestone-settings-modal.component';
 import { MilestoneSubMenuComponent } from '../../ui/milestone-sub-menu/milestone-sub-menu.component';
-import { ObjectiveMembersPopupComponent } from '../../ui/objective-members-popup/objective-members-popup.component';
 import { PageHeaderComponent } from '../../../../shared/ui/page-header/page-header.component';
 import { LoaderComponent } from '../../../../shared/ui/loader/loader.component';
 import { ErrorStateComponent } from '../../../../shared/ui/error-state/error-state.component';
@@ -21,8 +20,7 @@ import { EditObjectiveRequestDto } from '../../models/dto/milestone.dto';
   standalone: true,
   imports: [
     MilestoneCardComponent, MilestoneSettingsModalComponent, MilestoneSubMenuComponent, CardComponent,
-    PageHeaderComponent, LoaderComponent, ErrorStateComponent, EmptyStateComponent, RouterOutlet,
-    ObjectiveMembersPopupComponent
+    PageHeaderComponent, LoaderComponent, ErrorStateComponent, EmptyStateComponent, RouterOutlet
   ],
   templateUrl: './project-detail.component.html'
 })
@@ -41,9 +39,7 @@ export class ProjectDetailComponent implements OnInit {
   milestoneSettingsOpen = signal(false);
   milestoneSettingsInitialValue = signal<ObjectiveDetail | null>(null);
   milestoneSettingsSubmitting = signal(false);
-  targetMilestone = signal<Milestone | null>(null);
-
-  membersPopupOpen = signal(false);
+  private targetMilestone = signal<Milestone | null>(null);
 
   constructor() {
     this.activeMilestoneId.set(this.route.snapshot.firstChild?.paramMap.get('milestoneId') ?? null);
@@ -118,40 +114,6 @@ export class ProjectDetailComponent implements OnInit {
     this.milestoneSettingsSubmitting.set(false);
     this.milestoneSettingsOpen.set(false);
     await this.store.loadMyMilestones(this.projectId);
-  }
-
-  onMembersRequested(): void {
-    const milestone = this.targetMilestone();
-    if (!milestone) return;
-    this.membersPopupOpen.set(true);
-    this.store.loadObjectiveMembers(milestone.objectiveId);
-  }
-
-  onMembersPopupClosed(): void {
-    this.membersPopupOpen.set(false);
-  }
-
-  // Task 7 (people-picker) wires a real employeeId selection into ObjectiveMembersPopupComponent's
-  // addRequested output; the signature here already accepts the eventual real payload.
-  async onAddMemberRequested(employeeId: string): Promise<void> {
-    const milestone = this.targetMilestone();
-    if (!milestone) return;
-    await this.store.addObjectiveMember(milestone.objectiveId, employeeId);
-    await this.store.loadObjectiveMembers(milestone.objectiveId);
-  }
-
-  async onRemoveMemberRequested(employeeId: string): Promise<void> {
-    const milestone = this.targetMilestone();
-    if (!milestone) return;
-    await this.store.removeObjectiveMember(milestone.objectiveId, employeeId);
-    await this.store.loadObjectiveMembers(milestone.objectiveId);
-  }
-
-  async onTransferRequested(employeeId: string): Promise<void> {
-    const milestone = this.targetMilestone();
-    if (!milestone) return;
-    await this.store.transferObjectiveHead(milestone.objectiveId, employeeId);
-    await this.store.loadObjectiveMembers(milestone.objectiveId);
   }
 
   retryProject(): void {

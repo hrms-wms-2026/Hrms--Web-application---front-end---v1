@@ -47,7 +47,13 @@ describe('MilestoneTreeTabComponent', () => {
       editMilestone: vi.fn().mockResolvedValue({ success: true, pending: false }),
       achieveMilestone: vi.fn().mockResolvedValue({ success: true, pending: false }),
       unachieveMilestone: vi.fn().mockResolvedValue({ success: true, pending: false }),
-      createSubModule: vi.fn().mockResolvedValue({ success: true })
+      createSubModule: vi.fn().mockResolvedValue({ success: true }),
+      loadObjectiveMembers: vi.fn().mockResolvedValue(undefined),
+      addObjectiveMember: vi.fn().mockResolvedValue({ success: true, alreadyMember: false }),
+      removeObjectiveMember: vi.fn().mockResolvedValue({ success: true }),
+      transferObjectiveHead: vi.fn().mockResolvedValue({ success: true, applied: false, viaInvitation: true }),
+      objectiveMembers: () => [],
+      objectiveMembersLoading: () => false
     };
   });
 
@@ -166,5 +172,66 @@ describe('MilestoneTreeTabComponent', () => {
     expect(fixture.componentInstance.settingsOpen()).toBe(true);
     expect(storeStub.getMilestoneDetail).toHaveBeenCalledWith('o1');
     expect((fixture.componentInstance.settingsInitialValue() as any)?.description).toBe('Full scope');
+  });
+
+  it('opens the members popup when the detail panel requests it', () => {
+    setup('o1');
+    fixture.detectChanges();
+    const rows = fixture.nativeElement.querySelectorAll('[data-testid="tree-row"]');
+    (rows[0] as HTMLElement).click();
+    fixture.detectChanges();
+
+    fixture.componentInstance.onMembersRequested();
+    fixture.detectChanges();
+
+    expect(fixture.componentInstance.membersPopupOpen()).toBe(true);
+  });
+
+  it('loads objective members when the popup opens', () => {
+    setup('o1');
+    fixture.detectChanges();
+    const rows = fixture.nativeElement.querySelectorAll('[data-testid="tree-row"]');
+    (rows[0] as HTMLElement).click();
+    fixture.detectChanges();
+
+    fixture.componentInstance.onMembersRequested();
+
+    expect(storeStub.loadObjectiveMembers).toHaveBeenCalledWith('o1');
+  });
+
+  it('calls store.addObjectiveMember when the popup requests adding a member', async () => {
+    setup('o1');
+    fixture.detectChanges();
+    const rows = fixture.nativeElement.querySelectorAll('[data-testid="tree-row"]');
+    (rows[0] as HTMLElement).click();
+    fixture.detectChanges();
+
+    await fixture.componentInstance.onAddMemberRequested('e9');
+
+    expect(storeStub.addObjectiveMember).toHaveBeenCalledWith('o1', 'e9');
+  });
+
+  it('calls store.removeObjectiveMember when the popup requests removing a member', async () => {
+    setup('o1');
+    fixture.detectChanges();
+    const rows = fixture.nativeElement.querySelectorAll('[data-testid="tree-row"]');
+    (rows[0] as HTMLElement).click();
+    fixture.detectChanges();
+
+    await fixture.componentInstance.onRemoveMemberRequested('e9');
+
+    expect(storeStub.removeObjectiveMember).toHaveBeenCalledWith('o1', 'e9');
+  });
+
+  it('calls store.transferObjectiveHead when the popup requests a leader transfer', async () => {
+    setup('o1');
+    fixture.detectChanges();
+    const rows = fixture.nativeElement.querySelectorAll('[data-testid="tree-row"]');
+    (rows[0] as HTMLElement).click();
+    fixture.detectChanges();
+
+    await fixture.componentInstance.onTransferRequested('e9');
+
+    expect(storeStub.transferObjectiveHead).toHaveBeenCalledWith('o1', 'e9');
   });
 });

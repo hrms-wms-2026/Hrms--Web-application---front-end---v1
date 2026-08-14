@@ -30,6 +30,7 @@
       (editRequested)="onEditRequested()"
       (achieveToggleRequested)="onAchieveToggleRequested()"
       (createSubRequested)="selectedNode() && onCreateSubRequested(selectedNode()!)"
+      (membersRequested)="onMembersRequested()"
     />
   </div>
 </div>
@@ -50,4 +51,15 @@
   [errorMessage]="store.milestoneActionError() ?? ''"
   (created)="onCreateModalCreated($event)"
   (closed)="createModalOpen.set(false)"
+/>
+
+<app-objective-members-popup
+  [open]="membersPopupOpen()"
+  [members]="store.objectiveMembers()"
+  [loading]="store.objectiveMembersLoading()"
+  [canManage]="selectedNode()?.isOwner ?? false"
+  (addRequested)="onAddMemberRequested($any($event))"
+  (removeRequested)="onRemoveMemberRequested($event)"
+  (transferRequested)="onTransferRequested($event)"
+  (closed)="onMembersPopupClosed()"
 />

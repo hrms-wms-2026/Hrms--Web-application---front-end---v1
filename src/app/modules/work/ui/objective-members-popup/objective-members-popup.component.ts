@@ -57,7 +57,7 @@ import { ObjectiveMemberItemDto } from '../../models/dto/objective-invitation.dt
 })
 export class ObjectiveMembersPopupComponent {
   open = input(false);
-  members = input<ObjectiveMemberItemDto[]>([]);
+  members = input<readonly ObjectiveMemberItemDto[]>([]);
   loading = input(false);
   canManage = input(false);
 

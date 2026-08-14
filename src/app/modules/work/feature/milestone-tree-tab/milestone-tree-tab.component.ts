@@ -6,6 +6,7 @@ import { MilestoneTreeNodeComponent } from '../../ui/milestone-tree-node/milesto
 import { MilestoneDetailPanelComponent } from '../../ui/milestone-detail-panel/milestone-detail-panel.component';
 import { MilestoneSettingsModalComponent } from '../../ui/milestone-settings-modal/milestone-settings-modal.component';
 import { CreateSubModuleModalComponent } from '../../ui/create-sub-module-modal/create-sub-module-modal.component';
+import { ObjectiveMembersPopupComponent } from '../../ui/objective-members-popup/objective-members-popup.component';
 import { LoaderComponent } from '../../../../shared/ui/loader/loader.component';
 import { ErrorStateComponent } from '../../../../shared/ui/error-state/error-state.component';
 import { MilestoneTreeNode, ObjectiveDetail } from '../../models/milestone.model';
@@ -17,7 +18,7 @@ import { findTreeNode } from '../../utils/project.mapper';
   standalone: true,
   imports: [
     MilestoneTreeNodeComponent, MilestoneDetailPanelComponent, MilestoneSettingsModalComponent,
-    CreateSubModuleModalComponent, LoaderComponent, ErrorStateComponent
+    CreateSubModuleModalComponent, ObjectiveMembersPopupComponent, LoaderComponent, ErrorStateComponent
   ],
   templateUrl: './milestone-tree-tab.component.html'
 })
@@ -41,6 +42,8 @@ export class MilestoneTreeTabComponent {
   createModalOpen = signal(false);
   createModalParentId = signal('');
   createModalSubmitting = signal(false);
+
+  membersPopupOpen = signal(false);
 
   constructor() {
     this.route.paramMap.pipe(takeUntilDestroyed()).subscribe((paramMap) => {
@@ -132,5 +135,39 @@ export class MilestoneTreeTabComponent {
     this.settingsSubmitting.set(false);
     this.settingsOpen.set(false);
     await this.store.loadMilestoneSubtree(this.currentMilestoneId);
+  }
+
+  onMembersRequested(): void {
+    const node = this.selectedNode();
+    if (!node) return;
+    this.membersPopupOpen.set(true);
+    this.store.loadObjectiveMembers(node.id);
+  }
+
+  onMembersPopupClosed(): void {
+    this.membersPopupOpen.set(false);
+  }
+
+  // Task 7 (people-picker) wires a real employeeId selection into ObjectiveMembersPopupComponent's
+  // addRequested output; the signature here already accepts the eventual real payload.
+  async onAddMemberRequested(employeeId: string): Promise<void> {
+    const node = this.selectedNode();
+    if (!node) return;
+    await this.store.addObjectiveMember(node.id, employeeId);
+    await this.store.loadObjectiveMembers(node.id);
+  }
+
+  async onRemoveMemberRequested(employeeId: string): Promise<void> {
+    const node = this.selectedNode();
+    if (!node) return;
+    await this.store.removeObjectiveMember(node.id, employeeId);
+    await this.store.loadObjectiveMembers(node.id);
+  }
+
+  async onTransferRequested(employeeId: string): Promise<void> {
+    const node = this.selectedNode();
+    if (!node) return;
+    await this.store.transferObjectiveHead(node.id, employeeId);
+    await this.store.loadObjectiveMembers(node.id);
   }
 }

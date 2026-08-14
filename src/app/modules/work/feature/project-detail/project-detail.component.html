@@ -63,14 +63,3 @@
   (saved)="onMilestoneSettingsSaved($event)"
   (closed)="milestoneSettingsOpen.set(false)"
 />
-
-<app-objective-members-popup
-  [open]="membersPopupOpen()"
-  [members]="$any(store.objectiveMembers())"
-  [loading]="store.objectiveMembersLoading()"
-  [canManage]="targetMilestone()?.isOwner ?? false"
-  (addRequested)="onAddMemberRequested($any($event))"
-  (removeRequested)="onRemoveMemberRequested($event)"
-  (transferRequested)="onTransferRequested($event)"
-  (closed)="onMembersPopupClosed()"
-/>
