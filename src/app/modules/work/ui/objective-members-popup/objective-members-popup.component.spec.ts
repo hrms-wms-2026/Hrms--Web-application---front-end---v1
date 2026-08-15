@@ -1,6 +1,10 @@
 import { ComponentFixture, TestBed } from '@angular/core/testing';
+import { By } from '@angular/platform-browser';
+import { of } from 'rxjs';
 import { ObjectiveMembersPopupComponent } from './objective-members-popup.component';
 import { ObjectiveMemberItemDto } from '../../models/dto/objective-invitation.dto';
+import { EmployeePickerComponent } from '../employee-picker/employee-picker.component';
+import { PeopleApiService } from '../../../people/data-access/people-api.service';
 
 describe('ObjectiveMembersPopupComponent', () => {
   let fixture: ComponentFixture<ObjectiveMembersPopupComponent>;
@@ -12,7 +16,13 @@ describe('ObjectiveMembersPopupComponent', () => {
   ];
 
   beforeEach(async () => {
-    await TestBed.configureTestingModule({ imports: [ObjectiveMembersPopupComponent] }).compileComponents();
+    await TestBed.configureTestingModule({
+      imports: [ObjectiveMembersPopupComponent],
+      providers: [{
+        provide: PeopleApiService,
+        useValue: { listEmployees: vi.fn().mockReturnValue(of({ items: [], totalCount: 0, page: 1, pageSize: 20 })) }
+      }]
+    }).compileComponents();
     fixture = TestBed.createComponent(ObjectiveMembersPopupComponent);
     fixture.componentRef.setInput('open', true);
     fixture.componentRef.setInput('members', members);
@@ -56,5 +66,45 @@ describe('ObjectiveMembersPopupComponent', () => {
     const rows = fixture.nativeElement.querySelectorAll('[data-testid="member-row"]');
     const headRow = Array.from(rows).find((r: any) => r.dataset.employeeId === 'head1') as HTMLElement;
     expect(headRow.querySelector('[data-testid="remove-button"]')).toBeNull();
+  });
+
+  it('opens the employee picker when + Add member is clicked', () => {
+    (fixture.nativeElement.querySelector('[data-testid="add-member-button"]') as HTMLElement).click();
+    fixture.detectChanges();
+
+    const picker = fixture.debugElement.query(By.directive(EmployeePickerComponent));
+    expect(picker.componentInstance.open()).toBe(true);
+    expect(fixture.componentInstance.pickerOpen()).toBe('member');
+  });
+
+  it('re-emits the picker selection as addRequested in member mode', () => {
+    const spy = vi.fn();
+    fixture.componentInstance.addRequested.subscribe(spy);
+
+    (fixture.nativeElement.querySelector('[data-testid="add-member-button"]') as HTMLElement).click();
+    fixture.detectChanges();
+
+    const picker = fixture.debugElement.query(By.directive(EmployeePickerComponent));
+    picker.componentInstance.selected.emit('e9');
+
+    expect(spy).toHaveBeenCalledWith('e9');
+    expect(fixture.componentInstance.pickerOpen()).toBeNull();
+  });
+
+  it('re-emits the picker selection as transferRequested in leader mode', () => {
+    const spy = vi.fn();
+    fixture.componentInstance.transferRequested.subscribe(spy);
+
+    const rows = fixture.nativeElement.querySelectorAll('[data-testid="member-row"]');
+    const memberRow = Array.from(rows).find((r: any) => r.dataset.employeeId === 'mem1') as HTMLElement;
+    (memberRow.querySelector('[data-testid="transfer-button"]') as HTMLElement).click();
+    fixture.detectChanges();
+
+    const picker = fixture.debugElement.query(By.directive(EmployeePickerComponent));
+    expect(picker.componentInstance.open()).toBe(true);
+    picker.componentInstance.selected.emit('e8');
+
+    expect(spy).toHaveBeenCalledWith('e8');
+    expect(fixture.componentInstance.pickerOpen()).toBeNull();
   });
 });

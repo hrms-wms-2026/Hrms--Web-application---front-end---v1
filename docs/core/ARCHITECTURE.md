@@ -181,8 +181,10 @@ src/
 │   │   ├── feature/
 │   │   │   ├── project-list/
 │   │   │   │   └── project-list.component.ts
-│   │   │   └── project-detail/
-│   │   │       └── project-detail.component.ts  # milestone detail renders inline, no separate route
+│   │   │   ├── project-detail/
+│   │   │   │   └── project-detail.component.ts  # shell + router-outlet for milestone tabs
+│   │   │   └── milestone-tree-tab/
+│   │   │       └── milestone-tree-tab.component.ts  # owns tree + detail panel + members popup
 │   │   ├── ui/
 │   │   │   ├── project-card/
 │   │   │   │   └── project-card.component.ts
@@ -196,11 +198,20 @@ src/
 │   │   │   │   └── milestone-tree-node.component.ts
 │   │   │   ├── milestone-card/
 │   │   │   │   └── milestone-card.component.ts
-│   │   │   └── milestone-settings-modal/       # Edit + Achieved toggle
-│   │   │       └── milestone-settings-modal.component.ts
+│   │   │   ├── milestone-settings-modal/       # Edit + Achieved toggle
+│   │   │   │   └── milestone-settings-modal.component.ts
+│   │   │   ├── milestone-detail-panel/
+│   │   │   │   └── milestone-detail-panel.component.ts
+│   │   │   ├── member-button/
+│   │   │   │   └── member-button.component.ts
+│   │   │   ├── objective-members-popup/
+│   │   │   │   └── objective-members-popup.component.ts
+│   │   │   └── employee-picker/
+│   │   │       └── employee-picker.component.ts  # search-and-pick modal; injects PeopleApiService (plan exception to ui/ no-API rule)
 │   │   ├── data-access/
 │   │   │   ├── project-api.service.ts
-│   │   │   └── project-category-api.service.ts
+│   │   │   ├── project-category-api.service.ts
+│   │   │   └── objective-member-api.service.ts
 │   │   ├── state/
 │   │   │   ├── project-list.store.ts
 │   │   │   ├── project-detail.store.ts
@@ -209,7 +220,7 @@ src/
 │   │   │   ├── project.model.ts
 │   │   │   ├── milestone.model.ts
 │   │   │   ├── project-category.model.ts
-│   │   │   └── dto/ (project.dto.ts, milestone.dto.ts, project-category.dto.ts)
+│   │   │   └── dto/ (project.dto.ts, milestone.dto.ts, project-category.dto.ts, objective-invitation.dto.ts)
 │   │   ├── utils/
 │   │   │   ├── project-form.validator.ts
 │   │   │   └── project.mapper.ts

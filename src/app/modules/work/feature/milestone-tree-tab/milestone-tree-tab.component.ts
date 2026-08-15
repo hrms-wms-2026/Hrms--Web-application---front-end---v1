@@ -148,8 +148,7 @@ export class MilestoneTreeTabComponent {
     this.membersPopupOpen.set(false);
   }
 
-  // Task 7 (people-picker) wires a real employeeId selection into ObjectiveMembersPopupComponent's
-  // addRequested output; the signature here already accepts the eventual real payload.
+  // addRequested now emits a real employeeId from EmployeePickerComponent (Task 7).
   async onAddMemberRequested(employeeId: string): Promise<void> {
     const node = this.selectedNode();
     if (!node) return;

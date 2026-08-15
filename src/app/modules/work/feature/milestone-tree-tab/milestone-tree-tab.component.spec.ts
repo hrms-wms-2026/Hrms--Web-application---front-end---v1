@@ -4,6 +4,7 @@ import { of } from 'rxjs';
 import { MilestoneTreeTabComponent } from './milestone-tree-tab.component';
 import { ProjectDetailStore } from '../../state/project-detail.store';
 import { MilestoneTreeNode } from '../../models/milestone.model';
+import { PeopleApiService } from '../../../people/data-access/people-api.service';
 
 describe('MilestoneTreeTabComponent', () => {
   let fixture: ComponentFixture<MilestoneTreeTabComponent>;
@@ -29,7 +30,8 @@ describe('MilestoneTreeTabComponent', () => {
       imports: [MilestoneTreeTabComponent],
       providers: [
         { provide: ProjectDetailStore, useValue: storeStub },
-        { provide: ActivatedRoute, useValue: routeStub }
+        { provide: ActivatedRoute, useValue: routeStub },
+        { provide: PeopleApiService, useValue: { listEmployees: vi.fn().mockReturnValue(of({ items: [], totalCount: 0, page: 1, pageSize: 20 })) } }
       ]
     }).compileComponents();
 

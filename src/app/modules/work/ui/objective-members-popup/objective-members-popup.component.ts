@@ -1,18 +1,19 @@
-import { Component, input, output } from '@angular/core';
+import { Component, input, output, signal } from '@angular/core';
 import { ModalComponent } from '../../../../shared/ui/modal/modal.component';
 import { AvatarComponent } from '../../../../shared/ui/avatar/avatar.component';
 import { ButtonComponent } from '../../../../shared/ui/button/button.component';
+import { EmployeePickerComponent } from '../employee-picker/employee-picker.component';
 import { ObjectiveMemberItemDto } from '../../models/dto/objective-invitation.dto';
 
 @Component({
   selector: 'app-objective-members-popup',
   standalone: true,
-  imports: [ModalComponent, AvatarComponent, ButtonComponent],
+  imports: [ModalComponent, AvatarComponent, ButtonComponent, EmployeePickerComponent],
   template: `
     <app-modal [open]="open()" title="Members" (closed)="closed.emit()">
       <div class="flex flex-col gap-2">
         @if (canManage()) {
-          <span data-testid="add-member-button" (click)="addRequested.emit()">
+          <span data-testid="add-member-button" (click)="pickerOpen.set('member')">
             <app-button variant="secondary" size="sm">+ Add member</app-button>
           </span>
         }
@@ -38,7 +39,7 @@ import { ObjectiveMemberItemDto } from '../../models/dto/objective-invitation.dt
                   <span data-testid="remove-button" (click)="removeRequested.emit(member.employeeId)">
                     <app-button variant="secondary" size="sm">Remove</app-button>
                   </span>
-                  <span data-testid="transfer-button" (click)="transferRequested.emit(member.employeeId)">
+                  <span data-testid="transfer-button" (click)="pickerOpen.set('leader')">
                     <app-button variant="secondary" size="sm">Make leader</app-button>
                   </span>
                 }
@@ -53,6 +54,11 @@ import { ObjectiveMemberItemDto } from '../../models/dto/objective-invitation.dt
         }
       </div>
     </app-modal>
+    <app-employee-picker
+      [open]="pickerOpen() !== null"
+      (selected)="onEmployeePicked($event)"
+      (closed)="pickerOpen.set(null)"
+    />
   `
 })
 export class ObjectiveMembersPopupComponent {
@@ -61,8 +67,17 @@ export class ObjectiveMembersPopupComponent {
   loading = input(false);
   canManage = input(false);
 
-  addRequested = output<void>();
+  addRequested = output<string>();
   removeRequested = output<string>();
   transferRequested = output<string>();
   closed = output<void>();
+
+  pickerOpen = signal<'member' | 'leader' | null>(null);
+
+  onEmployeePicked(employeeId: string): void {
+    const mode = this.pickerOpen();
+    this.pickerOpen.set(null);
+    if (mode === 'member') this.addRequested.emit(employeeId);
+    else if (mode === 'leader') this.transferRequested.emit(employeeId);
+  }
 }

@@ -58,7 +58,7 @@
   [members]="store.objectiveMembers()"
   [loading]="store.objectiveMembersLoading()"
   [canManage]="selectedNode()?.isOwner ?? false"
-  (addRequested)="onAddMemberRequested($any($event))"
+  (addRequested)="onAddMemberRequested($event)"
   (removeRequested)="onRemoveMemberRequested($event)"
   (transferRequested)="onTransferRequested($event)"
   (closed)="onMembersPopupClosed()"
