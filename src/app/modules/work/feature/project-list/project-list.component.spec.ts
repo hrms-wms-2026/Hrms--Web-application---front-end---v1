@@ -2,12 +2,14 @@ import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { Router } from '@angular/router';
 import { ProjectListComponent } from './project-list.component';
 import { ProjectListStore } from '../../state/project-list.store';
+import { ProjectDetailStore } from '../../state/project-detail.store';
 import { ProjectCategoryStore } from '../../state/project-category.store';
 import { Project } from '../../models/project.model';
 
 describe('ProjectListComponent', () => {
   let fixture: ComponentFixture<ProjectListComponent>;
   let storeStub: any;
+  let detailStoreStub: any;
   let router: Router;
 
   const project: Project = {
@@ -33,10 +35,18 @@ describe('ProjectListComponent', () => {
       getProjectDetail: vi.fn().mockResolvedValue(null)
     };
 
+    detailStoreStub = {
+      myInvitations: () => [],
+      loadMyInvitations: vi.fn().mockResolvedValue(undefined),
+      acceptInvitation: vi.fn().mockResolvedValue({ success: true }),
+      rejectInvitation: vi.fn().mockResolvedValue({ success: true })
+    };
+
     await TestBed.configureTestingModule({
       imports: [ProjectListComponent],
       providers: [
         { provide: ProjectListStore, useValue: storeStub },
+        { provide: ProjectDetailStore, useValue: detailStoreStub },
         { provide: ProjectCategoryStore, useValue: { categories: () => [], loadCategories: vi.fn().mockResolvedValue(undefined) } },
         { provide: Router, useValue: { navigate: vi.fn() } }
       ]
@@ -207,5 +217,27 @@ describe('ProjectListComponent', () => {
     expect(storeStub.setCategoryFilter).toHaveBeenCalledWith('cat1');
     fixture.componentInstance.onAchievedFilterChanged('archived');
     expect(storeStub.setAchievedFilter).toHaveBeenCalledWith('archived');
+  });
+
+  it('loads my invitations on init', () => {
+    fixture.detectChanges();
+    expect(detailStoreStub.loadMyInvitations).toHaveBeenCalled();
+  });
+
+  it('accepts an invitation then reloads invitations and the project list', async () => {
+    fixture.detectChanges();
+    await fixture.componentInstance.onAcceptInvitation('i1');
+
+    expect(detailStoreStub.acceptInvitation).toHaveBeenCalledWith('i1');
+    expect(detailStoreStub.loadMyInvitations).toHaveBeenCalledTimes(2);
+    expect(storeStub.loadProjects).toHaveBeenCalledTimes(2);
+  });
+
+  it('rejects an invitation then reloads the invitation list', async () => {
+    fixture.detectChanges();
+    await fixture.componentInstance.onRejectInvitation('i1');
+
+    expect(detailStoreStub.rejectInvitation).toHaveBeenCalledWith('i1');
+    expect(detailStoreStub.loadMyInvitations).toHaveBeenCalledTimes(2);
   });
 });

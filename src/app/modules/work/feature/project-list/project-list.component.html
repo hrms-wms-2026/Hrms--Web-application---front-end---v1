@@ -15,6 +15,12 @@
   </div>
 </div>
 
+<app-my-invitations-panel
+  [invitations]="detailStore.myInvitations()"
+  (acceptRequested)="onAcceptInvitation($event)"
+  (rejectRequested)="onRejectInvitation($event)"
+/>
+
 <div class="mt-6">
   @if (store.loading()) {
     <app-loader label="Loading projects…" />

@@ -206,8 +206,10 @@ src/
 │   │   │   │   └── member-button.component.ts
 │   │   │   ├── objective-members-popup/
 │   │   │   │   └── objective-members-popup.component.ts
-│   │   │   └── employee-picker/
-│   │   │       └── employee-picker.component.ts  # search-and-pick modal; injects PeopleApiService (plan exception to ui/ no-API rule)
+│   │   │   ├── employee-picker/
+│   │   │   │   └── employee-picker.component.ts  # search-and-pick modal; injects PeopleApiService (plan exception to ui/ no-API rule)
+│   │   │   └── my-invitations-panel/
+│   │   │       └── my-invitations-panel.component.ts
 │   │   ├── data-access/
 │   │   │   ├── project-api.service.ts
 │   │   │   ├── project-category-api.service.ts
