@@ -58,7 +58,7 @@ describe('SideNavbarComponent', () => {
 
   it('renders all 8 sidebar items in canonical order for a tenant owner with every Phase 1 module and org/roles permissions', () => {
     const fixture = setup(
-      ['org:read', 'roles:manage'],
+      ['org:read', 'roles:manage', 'projects:access'],
       ['worksync_foundation', 'core_hr', 'calendar', 'leave', 'time_attendance', 'org_structure']
     );
     const labels = Array.from(fixture.nativeElement.querySelectorAll('.nav-rail-item span')).map((el) => (el as HTMLElement).textContent);
