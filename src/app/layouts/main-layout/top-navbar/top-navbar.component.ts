@@ -1,11 +1,12 @@
 import { ChangeDetectionStrategy, Component, input } from '@angular/core';
 import { CompanySelectorComponent } from './company-selector/company-selector.component';
 import { ProfileMenuComponent } from './profile-menu/profile-menu.component';
+import { NotificationBellComponent } from './notification-bell/notification-bell.component';
 
 @Component({
   selector: 'app-top-navbar',
   standalone: true,
-  imports: [CompanySelectorComponent, ProfileMenuComponent],
+  imports: [CompanySelectorComponent, ProfileMenuComponent, NotificationBellComponent],
   templateUrl: './top-navbar.component.html',
   styleUrl: './top-navbar.component.css',
   changeDetection: ChangeDetectionStrategy.OnPush
