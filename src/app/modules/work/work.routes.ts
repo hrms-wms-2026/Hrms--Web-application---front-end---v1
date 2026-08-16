@@ -23,8 +23,7 @@ export const WORK_ROUTES: Routes = [
           {
             path: 'board',
             loadComponent: () =>
-              import('./feature/milestone-coming-soon-tab/milestone-coming-soon-tab.component').then((m) => m.MilestoneComingSoonTabComponent),
-            data: { title: 'Board' }
+              import('./feature/task-board/task-board.component').then((m) => m.TaskBoardComponent)
           },
           {
             path: 'backlog',
