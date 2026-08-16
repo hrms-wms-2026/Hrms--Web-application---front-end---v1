@@ -41,4 +41,8 @@ export class TaskApiService {
   unassignTask(taskId: string, employeeId: string): Observable<void> {
     return this.http.delete<void>(`${this.baseUrl}/tasks/${taskId}/assignments/${employeeId}`);
   }
+
+  createTaskCreationRequest(objectiveId: string, request: CreateTaskRequestDto): Observable<unknown> {
+    return this.http.post(`${this.baseUrl}/objectives/${objectiveId}/task-creation-requests`, request);
+  }
 }

@@ -5,6 +5,8 @@ import { ButtonComponent } from '../../../../shared/ui/button/button.component';
 import { CreateTaskRequestDto, InsufficientAllocationErrorDto, WorkTaskDto } from '../../models/dto/task.dto';
 import { WorkTask } from '../../models/task.model';
 import { TaskBoardStore } from '../../state/task-board.store';
+import { TaskApiService } from '../../data-access/task-api.service';
+import { firstValueFrom } from 'rxjs';
 
 @Component({
   selector: 'app-task-create-modal',
@@ -78,6 +80,7 @@ import { TaskBoardStore } from '../../state/task-board.store';
 })
 export class TaskCreateModalComponent {
   private readonly store = inject(TaskBoardStore);
+  private readonly taskApi = inject(TaskApiService);
 
   open = input(false);
   objectiveId = input.required<string>();
@@ -131,8 +134,9 @@ export class TaskCreateModalComponent {
 
     try {
       if (!this.isObjectiveOwner()) {
-        // TODO(Part 2): non-owner path calls TaskCreationRequestApiService.create
+        await firstValueFrom(this.taskApi.createTaskCreationRequest(this.objectiveId(), request));
         this.requestedInsteadOfCreated.emit();
+        this.closed.emit();
         return;
       }
 
