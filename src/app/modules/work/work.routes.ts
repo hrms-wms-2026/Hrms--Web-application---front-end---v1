@@ -31,6 +31,11 @@ export const WORK_ROUTES: Routes = [
               import('./feature/task-backlog/task-backlog.component').then((m) => m.TaskBacklogComponent)
           },
           {
+            path: 'approvals',
+            loadComponent: () =>
+              import('./feature/work-approvals/work-approvals.component').then((m) => m.WorkApprovalsComponent)
+          },
+          {
             path: 'my-task',
             loadComponent: () =>
               import('./feature/milestone-coming-soon-tab/milestone-coming-soon-tab.component').then((m) => m.MilestoneComingSoonTabComponent),

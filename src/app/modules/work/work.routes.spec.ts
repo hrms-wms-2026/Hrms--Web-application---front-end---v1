@@ -16,21 +16,22 @@ describe('WORK_ROUTES', () => {
     expect(emptyChild.pathMatch).toBe('full');
   });
 
-  it('registers all five tab routes, in order', () => {
+  it('registers all six tab routes, in order', () => {
     const idRoute = WORK_ROUTES.find((r) => r.path === ':id')!;
     const milestoneRoute = idRoute.children!.find((r) => r.path === 'milestones/:milestoneId')!;
     const paths = milestoneRoute.children!.map((r) => r.path);
-    expect(paths).toEqual(['', 'tree', 'board', 'backlog', 'my-task', 'list']);
+    expect(paths).toEqual(['', 'tree', 'board', 'backlog', 'approvals', 'my-task', 'list']);
   });
 
-  it('tags each stub tab route with its own title in route data', () => {
+  it('tags remaining stub tab routes with titles in route data', () => {
     const idRoute = WORK_ROUTES.find((r) => r.path === ':id')!;
     const milestoneRoute = idRoute.children!.find((r) => r.path === 'milestones/:milestoneId')!;
     const byPath = (path: string) => milestoneRoute.children!.find((r) => r.path === path)!;
 
-    expect(byPath('board').data).toEqual({ title: 'Board' });
-    expect(byPath('backlog').data).toEqual({ title: 'Backlog' });
     expect(byPath('my-task').data).toEqual({ title: 'My Task' });
     expect(byPath('list').data).toEqual({ title: 'List' });
+    expect(byPath('board').loadComponent).toBeTruthy();
+    expect(byPath('backlog').loadComponent).toBeTruthy();
+    expect(byPath('approvals').loadComponent).toBeTruthy();
   });
 });

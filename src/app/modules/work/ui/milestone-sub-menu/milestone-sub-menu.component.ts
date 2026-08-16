@@ -11,7 +11,8 @@ const TABS: SubMenuTab[] = [
   { label: 'Board', segment: 'board' },
   { label: 'Backlog', segment: 'backlog' },
   { label: 'My Task', segment: 'my-task' },
-  { label: 'List', segment: 'list' }
+  { label: 'List', segment: 'list' },
+  { label: 'Approvals', segment: 'approvals' }
 ];
 
 @Component({
@@ -58,6 +59,10 @@ const TABS: SubMenuTab[] = [
                   <circle cx="4.5" cy="12" r="1" />
                   <circle cx="4.5" cy="18" r="1" />
                   <path d="M9 6h11M9 12h11M9 18h11" />
+                }
+                @case ('approvals') {
+                  <circle cx="12" cy="12" r="9" />
+                  <path d="M8 12l2.5 2.5L16 9" />
                 }
               }
             </svg>

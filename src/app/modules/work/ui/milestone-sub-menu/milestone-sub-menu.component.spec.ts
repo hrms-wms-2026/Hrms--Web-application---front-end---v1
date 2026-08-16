@@ -21,15 +21,15 @@ describe('MilestoneSubMenuComponent', () => {
     expect(title.textContent).toContain('Milestone 1');
   });
 
-  it('renders all five tabs in order', () => {
+  it('renders all six tabs in order', () => {
     const labels = Array.from(fixture.nativeElement.querySelectorAll('[data-testid="sub-menu-tab"]'))
       .map((el: any) => el.textContent.trim());
-    expect(labels).toEqual(['Tree', 'Board', 'Backlog', 'My Task', 'List']);
+    expect(labels).toEqual(['Tree', 'Board', 'Backlog', 'My Task', 'List', 'Approvals']);
   });
 
   it('renders an icon inside every tab link', () => {
     const icons = fixture.nativeElement.querySelectorAll('[data-testid="sub-menu-tab"] svg');
-    expect(icons.length).toBe(5);
+    expect(icons.length).toBe(6);
   });
 
   it('builds the correct link target for each tab', () => {
@@ -40,7 +40,8 @@ describe('MilestoneSubMenuComponent', () => {
       '/milestones/o1/board',
       '/milestones/o1/backlog',
       '/milestones/o1/my-task',
-      '/milestones/o1/list'
+      '/milestones/o1/list',
+      '/milestones/o1/approvals'
     ]);
   });
 });
