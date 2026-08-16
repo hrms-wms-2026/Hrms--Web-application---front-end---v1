@@ -1,0 +1,30 @@
+import { TaskStatusDto, WorkTaskDto } from '../models/dto/task.dto';
+import { TaskStatusColumn, WorkTask } from '../models/task.model';
+
+export function toTaskStatusColumn(dto: TaskStatusDto): TaskStatusColumn {
+  return {
+    id: dto.id,
+    name: dto.name,
+    displayOrder: dto.displayOrder,
+    requiresApproval: dto.requiresApproval,
+    marksTaskComplete: dto.marksTaskComplete
+  };
+}
+
+export function toWorkTask(dto: WorkTaskDto): WorkTask {
+  return {
+    id: dto.id,
+    objectiveId: dto.objectiveId,
+    shortId: dto.shortId,
+    title: dto.title,
+    description: dto.description,
+    taskType: dto.taskType,
+    statusId: dto.statusId,
+    priority: dto.priority,
+    storyPoints: dto.storyPoints,
+    dueDate: dto.dueDate ? new Date(dto.dueDate) : null,
+    estimatedHours: dto.estimatedHours,
+    completedHours: dto.completedHours,
+    progressPercent: dto.progressPercent
+  };
+}
