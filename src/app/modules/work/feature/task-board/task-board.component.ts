@@ -1,4 +1,4 @@
-import { Component, OnInit, inject, signal } from '@angular/core';
+import { AfterViewChecked, Component, OnInit, inject, signal } from '@angular/core';
 import { ActivatedRoute } from '@angular/router';
 import { TaskBoardStore } from '../../state/task-board.store';
 import { ProjectDetailStore } from '../../state/project-detail.store';
@@ -46,9 +46,13 @@ import { ButtonComponent } from '../../../../shared/ui/button/button.component';
     .task-board__toolbar { display: flex; justify-content: flex-end; margin-bottom: 12px; }
     .task-board { display: flex; gap: 12px; overflow-x: auto; padding-bottom: 8px; }
     .task-board__error { color: var(--color-danger); }
+    :host ::ng-deep .task-card--highlighted {
+      outline: 2px solid var(--color-focus-ring, var(--color-danger));
+      outline-offset: 2px;
+    }
   `]
 })
-export class TaskBoardComponent implements OnInit {
+export class TaskBoardComponent implements OnInit, AfterViewChecked {
   protected readonly store = inject(TaskBoardStore);
   private readonly projectStore = inject(ProjectDetailStore);
   private readonly route = inject(ActivatedRoute);
@@ -56,6 +60,8 @@ export class TaskBoardComponent implements OnInit {
   protected readonly createOpen = signal(false);
   protected readonly milestoneId = signal<string | null>(null);
   protected readonly isObjectiveOwner = signal(false);
+  private highlightTaskId: string | null = null;
+  private didScrollToHighlight = false;
 
   columnIds(): string[] {
     return this.store.columnsWithTasks().map((c) => c.status.id);
@@ -64,6 +70,7 @@ export class TaskBoardComponent implements OnInit {
   ngOnInit(): void {
     const id = this.route.parent?.snapshot.paramMap.get('milestoneId') ?? null;
     this.milestoneId.set(id);
+    this.highlightTaskId = this.route.snapshot.queryParamMap.get('highlightTaskId');
     if (!id) return;
 
     const fromList = this.projectStore.milestones().find((m) => m.objectiveId === id);
@@ -75,6 +82,15 @@ export class TaskBoardComponent implements OnInit {
         if (detail) this.isObjectiveOwner.set(detail.isOwner);
       });
     }
+  }
+
+  ngAfterViewChecked(): void {
+    if (!this.highlightTaskId || this.didScrollToHighlight || this.store.loading()) return;
+    const el = document.querySelector(`[data-testid="task-card-${this.highlightTaskId}"]`) as HTMLElement | null;
+    if (!el) return;
+    this.didScrollToHighlight = true;
+    el.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'center' });
+    el.classList.add('task-card--highlighted');
   }
 
   onTaskDropped(event: { taskId: string; newStatusId: string }): void {

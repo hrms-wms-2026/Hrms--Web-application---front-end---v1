@@ -27,7 +27,10 @@ describe('TaskBoardComponent', () => {
         { provide: ProjectDetailStore, useValue: projectStoreStub },
         {
           provide: ActivatedRoute,
-          useValue: { parent: { snapshot: { paramMap: { get: () => 'milestone-1' } } } }
+          useValue: {
+            parent: { snapshot: { paramMap: { get: () => 'milestone-1' } } },
+            snapshot: { queryParamMap: { get: () => null } }
+          }
         }
       ]
     });

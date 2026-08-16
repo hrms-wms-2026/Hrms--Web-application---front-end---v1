@@ -1,4 +1,4 @@
-import { HttpClient } from '@angular/common/http';
+import { HttpClient, HttpParams } from '@angular/common/http';
 import { Injectable, inject } from '@angular/core';
 import { Observable } from 'rxjs';
 import { environment } from '../../../../environments/environment';
@@ -44,5 +44,18 @@ export class TaskApiService {
 
   createTaskCreationRequest(objectiveId: string, request: CreateTaskRequestDto): Observable<unknown> {
     return this.http.post(`${this.baseUrl}/objectives/${objectiveId}/task-creation-requests`, request);
+  }
+
+  getNotificationNavigation(
+    relatedEntityType: string,
+    relatedEntityId: string
+  ): Observable<{ projectId: string; objectiveId: string; taskId: string | null; targetTab: 'board' | 'approvals' }> {
+    const params = new HttpParams()
+      .set('relatedEntityType', relatedEntityType)
+      .set('relatedEntityId', relatedEntityId);
+    return this.http.get<{ projectId: string; objectiveId: string; taskId: string | null; targetTab: 'board' | 'approvals' }>(
+      `${this.baseUrl}/notification-navigation`,
+      { params }
+    );
   }
 }

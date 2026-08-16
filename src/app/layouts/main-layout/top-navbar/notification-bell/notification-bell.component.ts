@@ -1,9 +1,18 @@
 import { Component, OnDestroy, OnInit, inject, signal } from '@angular/core';
 import { Router } from '@angular/router';
+import { firstValueFrom } from 'rxjs';
 import { NotificationsStore } from '../../../../core/state/notifications.store';
 import { NotificationItem } from '../../../../core/services/notification-api.service';
 import { PopoverComponent } from '../../../../shared/ui/popover/popover.component';
+import { TaskApiService } from '../../../../modules/work/data-access/task-api.service';
 import { NotificationDropdownComponent } from './notification-dropdown/notification-dropdown.component';
+
+const WORK_RELATED_TYPES = new Set([
+  'task',
+  'task_creation_request',
+  'objective_change_request',
+  'allocation_extend'
+]);
 
 @Component({
   selector: 'app-notification-bell',
@@ -78,6 +87,7 @@ import { NotificationDropdownComponent } from './notification-dropdown/notificat
 export class NotificationBellComponent implements OnInit, OnDestroy {
   protected readonly store = inject(NotificationsStore);
   private readonly router = inject(Router);
+  private readonly taskApi = inject(TaskApiService);
 
   protected readonly isOpen = signal(false);
   private pollId: ReturnType<typeof setInterval> | null = null;
@@ -104,28 +114,31 @@ export class NotificationBellComponent implements OnInit, OnDestroy {
   async onItemClicked(item: NotificationItem): Promise<void> {
     await this.store.markRead(item.id);
     this.close();
-    const path = this.resolveNavigation(item);
-    if (path) await this.router.navigate(path);
+    await this.navigateFromNotification(item);
   }
 
   async onMarkAllRead(): Promise<void> {
     await this.store.markAllRead();
   }
 
-  private resolveNavigation(item: NotificationItem): string[] | null {
+  private async navigateFromNotification(item: NotificationItem): Promise<void> {
     const type = item.relatedEntityType;
-    if (
-      type === 'objective_change_request'
-      || type === 'allocation_extend'
-      || type === 'task_creation_request'
-    ) {
-      // Approvals is nested under a milestone; without project context land on Work list.
-      // Callers with deep links can refine later once relatedEntity carries project/objective ids.
-      return ['/work'];
+    const id = item.relatedEntityId;
+    if (!type || !id || !WORK_RELATED_TYPES.has(type)) {
+      await this.router.navigate(['/work']);
+      return;
     }
-    if (type === 'task') {
-      return ['/work'];
+
+    try {
+      const nav = await firstValueFrom(this.taskApi.getNotificationNavigation(type, id));
+      const commands = ['/work', nav.projectId, 'milestones', nav.objectiveId, nav.targetTab];
+      const extras =
+        nav.targetTab === 'board' && nav.taskId
+          ? { queryParams: { highlightTaskId: nav.taskId } }
+          : {};
+      await this.router.navigate(commands, extras);
+    } catch {
+      await this.router.navigate(['/work']);
     }
-    return ['/work'];
   }
 }
