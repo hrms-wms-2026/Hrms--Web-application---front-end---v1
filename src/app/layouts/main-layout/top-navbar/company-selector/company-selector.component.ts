@@ -64,8 +64,8 @@ export class CompanySelectorComponent implements OnInit {
     this.isOpen.set(false);
   }
 
-  selectCompany(legalEntityId: string): void {
-    this.store.selectCompany(legalEntityId);
+  async selectCompany(legalEntityId: string): Promise<void> {
+    await this.store.selectCompany(legalEntityId);
     this.close();
   }
 

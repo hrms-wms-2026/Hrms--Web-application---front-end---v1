@@ -3,6 +3,7 @@ import { HttpTestingController, provideHttpClientTesting } from '@angular/common
 import { TestBed } from '@angular/core/testing';
 import { vi } from 'vitest';
 import { environment } from '../../../../environments/environment';
+import { AuthStore } from '../../../core/auth/state/auth.store';
 import { LegalEntityListItem } from '../models/legal-entity.model';
 import { LegalEntityStore, SELECTED_LEGAL_ENTITY_STORAGE_KEY } from './legal-entity.store';
 
@@ -33,7 +34,12 @@ describe('LegalEntityStore', () => {
     localStorage.removeItem(SELECTED_LEGAL_ENTITY_STORAGE_KEY);
 
     TestBed.configureTestingModule({
-      providers: [LegalEntityStore, provideHttpClient(), provideHttpClientTesting()]
+      providers: [
+        LegalEntityStore,
+        provideHttpClient(),
+        provideHttpClientTesting(),
+        { provide: AuthStore, useValue: { checkSession: vi.fn().mockResolvedValue(true) } }
+      ]
     });
 
     store = TestBed.inject(LegalEntityStore);
@@ -88,7 +94,12 @@ describe('LegalEntityStore', () => {
     req.flush(mockCompanies);
     await loadPromise;
 
-    store.selectCompany('comp-2');
+    const selectPromise = store.selectCompany('comp-2');
+    const switchReq = httpMock.expectOne(`${environment.apiUrl}/session/active-company`);
+    expect(switchReq.request.method).toBe('POST');
+    expect(switchReq.request.body).toEqual({ employeeId: 'comp-2' });
+    switchReq.flush(null);
+    await selectPromise;
 
     expect(store.selectedLegalEntityId()).toBe('comp-2');
     expect(store.selectedLegalEntity()?.name).toBe('Beta LLC');

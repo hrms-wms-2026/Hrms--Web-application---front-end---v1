@@ -3,6 +3,7 @@ import { HttpTestingController, provideHttpClientTesting } from '@angular/common
 import { TestBed } from '@angular/core/testing';
 import { vi } from 'vitest';
 import { PermissionService } from '../../../../core/auth/state/permission.service';
+import { AuthStore } from '../../../../core/auth/state/auth.store';
 import { NotificationService } from '../../../../core/services/notification.service';
 import { LegalEntityListItem } from '../../../../modules/organization/models/legal-entity.model';
 import { LegalEntityStore, SELECTED_LEGAL_ENTITY_STORAGE_KEY } from '../../../../modules/organization/state/legal-entity.store';
@@ -40,6 +41,7 @@ describe('CompanySelectorComponent', () => {
         NotificationService,
         provideHttpClient(),
         provideHttpClientTesting(),
+        { provide: AuthStore, useValue: { checkSession: vi.fn().mockResolvedValue(true) } },
         {
           provide: PermissionService,
           useValue: {
@@ -103,6 +105,10 @@ describe('CompanySelectorComponent', () => {
     expect(betaItem).toBeDefined();
 
     betaItem?.click();
+    const switchReq = httpMock.expectOne((r) => r.url.includes('/session/active-company'));
+    expect(switchReq.request.body).toEqual({ employeeId: 'comp-2' });
+    switchReq.flush(null);
+    await fixture.whenStable();
     fixture.detectChanges();
 
     expect(legalEntityStore.selectedLegalEntityId()).toBe('comp-2');
@@ -193,7 +199,9 @@ describe('CompanySelectorComponent', () => {
     await fixture.whenStable();
     fixture.detectChanges();
 
-    legalEntityStore.selectCompany('comp-2');
+    const selectPromise = legalEntityStore.selectCompany('comp-2');
+    httpMock.expectOne((r) => r.url.includes('/session/active-company')).flush(null);
+    await selectPromise;
     fixture.componentInstance.onAddCompany();
     fixture.detectChanges();
 
