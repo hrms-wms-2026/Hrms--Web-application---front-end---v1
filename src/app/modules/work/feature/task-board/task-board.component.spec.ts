@@ -3,6 +3,7 @@ import { ActivatedRoute } from '@angular/router';
 import { vi } from 'vitest';
 import { TaskBoardComponent } from './task-board.component';
 import { TaskBoardStore } from '../../state/task-board.store';
+import { ProjectDetailStore } from '../../state/project-detail.store';
 
 describe('TaskBoardComponent', () => {
   it('loads the board for the current milestoneId on init', async () => {
@@ -14,11 +15,16 @@ describe('TaskBoardComponent', () => {
       error: () => null,
       moveTask: vi.fn()
     };
+    const projectStoreStub = {
+      milestones: () => [{ objectiveId: 'milestone-1', isOwner: true }],
+      getMilestoneDetail: vi.fn().mockResolvedValue(null)
+    };
 
     TestBed.configureTestingModule({
       imports: [TaskBoardComponent],
       providers: [
         { provide: TaskBoardStore, useValue: storeStub },
+        { provide: ProjectDetailStore, useValue: projectStoreStub },
         {
           provide: ActivatedRoute,
           useValue: { parent: { snapshot: { paramMap: { get: () => 'milestone-1' } } } }

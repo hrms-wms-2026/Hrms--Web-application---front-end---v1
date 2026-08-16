@@ -4,7 +4,7 @@ import { firstValueFrom } from 'rxjs';
 import { TaskApiService } from '../data-access/task-api.service';
 import { toTaskStatusColumn, toWorkTask } from '../utils/task.mapper';
 import { TaskStatusColumn, WorkTask } from '../models/task.model';
-import { CreateTaskRequestDto, EditTaskRequestDto } from '../models/dto/task.dto';
+import { CreateTaskRequestDto, EditTaskRequestDto, InsufficientAllocationErrorDto } from '../models/dto/task.dto';
 
 interface TaskBoardState {
   readonly statuses: readonly TaskStatusColumn[];
@@ -17,6 +17,24 @@ const initialState: TaskBoardState = { statuses: [], tasks: [], loading: false, 
 
 function extractError(err: any, fallback: string): string {
   return err?.error?.detail || err?.error?.message || err?.message || fallback;
+}
+
+function tryParseInsufficientAllocation(err: any): InsufficientAllocationErrorDto | null {
+  const body = err?.error;
+  if (body && typeof body === 'object' && body.suggestedAction === 'extend_allocation' && typeof body.availableSlackHours === 'number') {
+    return { availableSlackHours: body.availableSlackHours, suggestedAction: 'extend_allocation' };
+  }
+  const detail = typeof body?.detail === 'string' ? body.detail : null;
+  if (!detail) return null;
+  try {
+    const parsed = JSON.parse(detail);
+    if (parsed?.suggestedAction === 'extend_allocation' && typeof parsed.availableSlackHours === 'number') {
+      return { availableSlackHours: parsed.availableSlackHours, suggestedAction: 'extend_allocation' };
+    }
+  } catch {
+    /* not JSON */
+  }
+  return null;
 }
 
 export const TaskBoardStore = signalStore(
@@ -47,7 +65,10 @@ export const TaskBoardStore = signalStore(
       }
     },
 
-    async createTask(objectiveId: string, request: CreateTaskRequestDto): Promise<WorkTask | null> {
+    async createTask(
+      objectiveId: string,
+      request: CreateTaskRequestDto
+    ): Promise<WorkTask | InsufficientAllocationErrorDto | null> {
       patchState(store, { error: null });
       try {
         const dto = await firstValueFrom(api.createTask(objectiveId, request));
@@ -55,6 +76,11 @@ export const TaskBoardStore = signalStore(
         patchState(store, { tasks: [...store.tasks(), task] });
         return task;
       } catch (err) {
+        const insufficient = tryParseInsufficientAllocation(err);
+        if (insufficient) {
+          patchState(store, { error: null });
+          return insufficient;
+        }
         patchState(store, { error: extractError(err, 'Failed to create the task.') });
         return null;
       }
