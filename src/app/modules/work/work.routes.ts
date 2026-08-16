@@ -28,8 +28,7 @@ export const WORK_ROUTES: Routes = [
           {
             path: 'backlog',
             loadComponent: () =>
-              import('./feature/milestone-coming-soon-tab/milestone-coming-soon-tab.component').then((m) => m.MilestoneComingSoonTabComponent),
-            data: { title: 'Backlog' }
+              import('./feature/task-backlog/task-backlog.component').then((m) => m.TaskBacklogComponent)
           },
           {
             path: 'my-task',
