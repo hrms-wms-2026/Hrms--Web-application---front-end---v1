@@ -65,4 +65,36 @@ describe('ChangePositionModalComponent', () => {
     expect(notificationsStub.error).toHaveBeenCalledWith('This position has reached its capacity.');
     expect(component.submitting()).toBe(false);
   });
+
+  it('calls listFlat with an explicit pageSize and includeInactive:false', () => {
+    expect(positionApi.listFlat).toHaveBeenCalledWith('le-1', { pageSize: 200, includeInactive: false });
+  });
+
+  it('does not submit and disables Save when the effective date is cleared', () => {
+    component.selectedPositionId.set('pos-2');
+    component.effectiveFrom.set('');
+    fixture.detectChanges();
+
+    component.submit();
+
+    expect(peopleApi.changePosition).not.toHaveBeenCalled();
+
+    // Find the Save button specifically among rendered buttons.
+    const buttons: HTMLButtonElement[] = Array.from(fixture.nativeElement.querySelectorAll('button'));
+    const save = buttons.find((b) => b.textContent?.includes('Save'));
+    expect(save?.disabled).toBe(true);
+  });
+
+  it('shows an error message and does not throw when listFlat fails', () => {
+    positionApi.listFlat.mockReturnValue(throwError(() => ({ status: 403, error: { detail: 'Forbidden' } })));
+
+    // Re-trigger loadPositions by re-opening (effect reacts to open() transitions).
+    fixture.componentRef.setInput('open', false);
+    fixture.detectChanges();
+    fixture.componentRef.setInput('open', true);
+    fixture.detectChanges();
+
+    expect(component.loadError()).toBe('Forbidden');
+    expect(fixture.nativeElement.textContent).toContain('Forbidden');
+  });
 });

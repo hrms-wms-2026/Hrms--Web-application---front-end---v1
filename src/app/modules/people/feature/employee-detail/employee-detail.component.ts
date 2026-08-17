@@ -1,7 +1,8 @@
-import { ChangeDetectionStrategy, Component, inject, signal } from '@angular/core';
+import { ChangeDetectionStrategy, Component, computed, inject, signal } from '@angular/core';
 import { ActivatedRoute, RouterLink } from '@angular/router';
 import { toSafeErrorMessage } from '../../../../core/services/error-handler.service';
 import { NotificationService } from '../../../../core/services/notification.service';
+import { PermissionService } from '../../../../core/auth/state/permission.service';
 import { ButtonComponent } from '../../../../shared/ui/button/button.component';
 import { ErrorStateComponent } from '../../../../shared/ui/error-state/error-state.component';
 import { LoaderComponent } from '../../../../shared/ui/loader/loader.component';
@@ -55,7 +56,7 @@ import { ChangePositionModalComponent } from '../../ui/change-position-modal/cha
         <div>
           <div class="mb-2 flex items-center justify-between">
             <h3 class="text-sm font-semibold text-[var(--color-text-primary)]">Job Information</h3>
-            @if (employee.jobInformation.legalEntityId) {
+            @if (canChangePosition() && employee.jobInformation.legalEntityId) {
               <app-button (pressed)="changePositionOpen.set(true)">Change Position</app-button>
             }
           </div>
@@ -109,12 +110,14 @@ export class EmployeeDetailComponent {
   private readonly route = inject(ActivatedRoute);
   private readonly api = inject(PeopleApiService);
   private readonly notifications = inject(NotificationService);
+  private readonly permissionService = inject(PermissionService);
 
   readonly employee = signal<EmployeeDetailResponse | null>(null);
   readonly loading = signal(false);
   readonly error = signal<string | null>(null);
   readonly resending = signal(false);
   readonly changePositionOpen = signal(false);
+  readonly canChangePosition = computed(() => this.permissionService.hasPermission('employees:write'));
 
   constructor() {
     this.load();

@@ -25,6 +25,9 @@ import { PositionListItemResponse } from '../../../organization/models/position.
               <option [value]="position.id" [selected]="position.id === selectedPositionId()">{{ position.name }}</option>
             }
           </select>
+          @if (loadError(); as loadErrorMessage) {
+            <p class="text-xs text-[var(--color-danger-text)]">{{ loadErrorMessage }}</p>
+          }
         </label>
         <label class="flex flex-col gap-1 text-sm">
           <span class="text-[var(--color-text-secondary)]">Effective from</span>
@@ -37,7 +40,11 @@ import { PositionListItemResponse } from '../../../organization/models/position.
         </label>
         <div class="flex justify-end gap-2">
           <app-button variant="secondary" (pressed)="onClose()">Cancel</app-button>
-          <app-button [loading]="submitting()" [disabled]="!selectedPositionId() || submitting()" (pressed)="submit()">
+          <app-button
+            [loading]="submitting()"
+            [disabled]="!selectedPositionId() || !effectiveFrom() || submitting()"
+            (pressed)="submit()"
+          >
             Save
           </app-button>
         </div>
@@ -62,6 +69,7 @@ export class ChangePositionModalComponent {
   readonly selectedPositionId = signal('');
   readonly effectiveFrom = signal(new Date().toISOString().slice(0, 10));
   readonly submitting = signal(false);
+  readonly loadError = signal<string | null>(null);
 
   constructor() {
     effect(() => {
@@ -72,13 +80,19 @@ export class ChangePositionModalComponent {
   }
 
   private loadPositions(): void {
-    this.positionApi.listFlat(this.legalEntityId()).subscribe((page) => {
-      this.positions.set(page.items.filter((p) => p.id !== this.currentPositionId()));
+    this.loadError.set(null);
+    this.positionApi.listFlat(this.legalEntityId(), { pageSize: 200, includeInactive: false }).subscribe({
+      next: (page) => {
+        this.positions.set(page.items.filter((p) => p.id !== this.currentPositionId()));
+      },
+      error: (err) => {
+        this.loadError.set(toSafeErrorMessage(err, 'Could not load positions.'));
+      }
     });
   }
 
   submit(): void {
-    if (!this.selectedPositionId()) {
+    if (!this.selectedPositionId() || !this.effectiveFrom()) {
       return;
     }
     this.submitting.set(true);

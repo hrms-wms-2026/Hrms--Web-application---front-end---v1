@@ -6,6 +6,7 @@ import { PeopleApiService } from '../../data-access/people-api.service';
 import { NotificationService } from '../../../../core/services/notification.service';
 import { EmployeeDetailResponse } from '../../models/employee.model';
 import { PositionApiService } from '../../../organization/data-access/position-api.service';
+import { PermissionService } from '../../../../core/auth/state/permission.service';
 
 describe('EmployeeDetailComponent', () => {
   const detailFixture: EmployeeDetailResponse = {
@@ -39,7 +40,11 @@ describe('EmployeeDetailComponent', () => {
     invitationExpiresAt: null
   };
 
-  function setup(employee: EmployeeDetailResponse, apiOverrides: Partial<PeopleApiService> = {}) {
+  function setup(
+    employee: EmployeeDetailResponse,
+    apiOverrides: Partial<PeopleApiService> = {},
+    hasWritePermission = true
+  ) {
     const apiStub = {
       getEmployeeDetail: vi.fn().mockReturnValue(of(employee)),
       resendInvitation: vi.fn().mockReturnValue(of({ expiresAt: '2026-08-25T00:00:00Z' })),
@@ -50,6 +55,7 @@ describe('EmployeeDetailComponent', () => {
     // The Change Position modal (Task 4) fetches positions for the legal entity as soon as it
     // opens; stub it out so opening the modal in these tests never issues a real HTTP request.
     const positionApiStub = { listFlat: vi.fn().mockReturnValue(of({ items: [], page: 1, pageSize: 25, totalCount: 0, totalPages: 0 })) };
+    const permissionServiceStub = { hasPermission: (p: string) => (p === 'employees:write' ? hasWritePermission : true) };
 
     TestBed.configureTestingModule({
       imports: [EmployeeDetailComponent],
@@ -58,6 +64,7 @@ describe('EmployeeDetailComponent', () => {
         { provide: PeopleApiService, useValue: apiStub },
         { provide: NotificationService, useValue: notificationsStub },
         { provide: PositionApiService, useValue: positionApiStub },
+        { provide: PermissionService, useValue: permissionServiceStub },
         { provide: ActivatedRoute, useValue: { snapshot: { paramMap: { get: () => 'emp-1' } } } }
       ]
     });
@@ -136,6 +143,16 @@ describe('EmployeeDetailComponent', () => {
 
     expect(fixture.componentInstance.changePositionOpen()).toBe(true);
     expect(fixture.nativeElement.querySelector('app-change-position-modal')).toBeTruthy();
+  });
+
+  it('does not render a Change Position button when the user lacks employees:write', () => {
+    const { fixture } = setup(detailFixture, {}, false);
+    fixture.detectChanges();
+
+    const buttons: HTMLElement[] = Array.from(fixture.nativeElement.querySelectorAll('button'));
+    const changePositionButton = buttons.find((b) => b.textContent?.includes('Change Position'));
+    expect(changePositionButton).toBeFalsy();
+    expect(fixture.componentInstance.canChangePosition()).toBe(false);
   });
 
   it('does not render a Change Position control when the employee has no legal entity', () => {
