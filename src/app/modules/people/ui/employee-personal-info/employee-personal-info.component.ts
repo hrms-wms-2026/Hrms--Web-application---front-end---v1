@@ -1,6 +1,24 @@
 import { ChangeDetectionStrategy, Component, input } from '@angular/core';
 import { EmployeeDetailPersonalInformation } from '../../models/employee.model';
 
+function formatAddress(addressJson: string): string {
+  try {
+    const parsed: unknown = JSON.parse(addressJson);
+    if (parsed && typeof parsed === 'object') {
+      const parts = Object.values(parsed as Record<string, unknown>)
+        .filter((value): value is string | number => typeof value === 'string' || typeof value === 'number')
+        .map((value) => String(value).trim())
+        .filter((value) => value.length > 0);
+      if (parts.length > 0) {
+        return parts.join(', ');
+      }
+    }
+  } catch {
+    // Not valid JSON — fall through to the raw string.
+  }
+  return addressJson;
+}
+
 @Component({
   selector: 'app-employee-personal-info',
   standalone: true,
@@ -34,7 +52,7 @@ import { EmployeeDetailPersonalInformation } from '../../models/employee.model';
                   <span class="text-xs text-[var(--color-text-secondary)]">(Primary)</span>
                 }
               </div>
-              <span class="text-[var(--color-text-secondary)]">{{ address.addressJson }}</span>
+              <span class="text-[var(--color-text-secondary)]">{{ formatAddress(address.addressJson) }}</span>
             </li>
           }
         </ul>
@@ -45,4 +63,6 @@ import { EmployeeDetailPersonalInformation } from '../../models/employee.model';
 })
 export class EmployeePersonalInfoComponent {
   readonly personalInformation = input.required<EmployeeDetailPersonalInformation>();
+
+  readonly formatAddress = formatAddress;
 }

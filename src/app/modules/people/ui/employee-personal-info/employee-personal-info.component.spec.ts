@@ -41,6 +41,21 @@ describe('EmployeePersonalInfoComponent', () => {
     expect(text).toContain('123 Main St');
   });
 
+  it('renders the addressJson as readable text, not raw JSON', async () => {
+    await setup(personalInfo);
+    const text = fixture.nativeElement.textContent as string;
+    expect(text).not.toContain('{"line1"');
+  });
+
+  it('falls back to the raw string when addressJson is not valid JSON', async () => {
+    await setup({
+      ...personalInfo,
+      addresses: [{ id: 'addr-2', addressType: 'Work', addressJson: 'not-json', isPrimary: false }]
+    });
+    const text = fixture.nativeElement.textContent as string;
+    expect(text).toContain('not-json');
+  });
+
   it('shows a fallback for missing optional fields', async () => {
     await setup({ ...personalInfo, phone: null, dateOfBirth: null, gender: null, addresses: [] });
     const text = fixture.nativeElement.textContent as string;
