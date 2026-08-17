@@ -27,9 +27,16 @@ describe('EmployeePayrollComponent', () => {
     expect(text).toContain('Checking');
   });
 
-  it('shows a fallback when individual fields are missing', async () => {
-    await setup({ hasBankDetailsOnFile: false, bankName: null, maskedAccountNumber: null, accountType: null });
+  it('shows a fallback when hasBankDetailsOnFile is true but individual fields are missing', async () => {
+    await setup({ hasBankDetailsOnFile: true, bankName: null, maskedAccountNumber: null, accountType: null });
     const text = fixture.nativeElement.textContent as string;
     expect(text).toContain('—');
+  });
+
+  it('shows a distinct empty state when hasBankDetailsOnFile is false, not blank dashes', async () => {
+    await setup({ hasBankDetailsOnFile: false, bankName: null, maskedAccountNumber: null, accountType: null });
+    const text = fixture.nativeElement.textContent as string;
+    expect(text).toContain('No bank details on file.');
+    expect(text).not.toContain('Bank Name');
   });
 });
