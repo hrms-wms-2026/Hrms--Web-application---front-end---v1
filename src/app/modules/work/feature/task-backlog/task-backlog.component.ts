@@ -7,6 +7,7 @@ import { TaskBoardStore } from '../../state/task-board.store';
 import { TaskCreateModalComponent } from '../../ui/task-create-modal/task-create-modal.component';
 import { TaskDetailModalComponent } from '../../ui/task-detail-modal/task-detail-modal.component';
 import { TaskTableComponent } from '../../ui/task-table/task-table.component';
+import { SprintListComponent } from '../../ui/sprint-list/sprint-list.component';
 import { SprintApiService } from '../../data-access/sprint-api.service';
 import { ObjectiveMemberApiService } from '../../data-access/objective-member-api.service';
 import { toSprint } from '../../utils/sprint.mapper';
@@ -16,18 +17,26 @@ import { WorkTask } from '../../models/task.model';
 @Component({
   selector: 'app-task-backlog',
   standalone: true,
-  imports: [TaskTableComponent, TaskCreateModalComponent, TaskDetailModalComponent, ButtonComponent],
+  imports: [TaskTableComponent, TaskCreateModalComponent, TaskDetailModalComponent, SprintListComponent, ButtonComponent],
   template: `
     <div class="task-backlog__toolbar">
       <app-button variant="primary" (pressed)="createOpen.set(true)">Create task</app-button>
     </div>
+
+    @if (milestoneId()) {
+      <app-sprint-list
+        [objectiveId]="milestoneId()!"
+        [isObjectiveOwner]="isObjectiveOwner()"
+        (sprintSelected)="filterSprint.set($event)"
+      />
+    }
 
     @if (store.loading()) {
       <p>Loading backlog…</p>
     } @else if (store.error()) {
       <p class="task-backlog__error">{{ store.error() }}</p>
     } @else {
-      <app-task-table [tasks]="store.tasks()" [statusNames]="statusNames()" (viewed)="onTaskViewed($event)" />
+      <app-task-table [tasks]="visibleTasks()" [statusNames]="statusNames()" (viewed)="onTaskViewed($event)" />
     }
 
     @if (milestoneId()) {
@@ -67,10 +76,16 @@ export class TaskBacklogComponent implements OnInit {
   protected readonly isObjectiveOwner = signal(false);
   protected readonly activeSprints = signal<Sprint[]>([]);
   protected readonly assignableMembers = signal<{ employeeId: string; name: string }[]>([]);
+  protected readonly filterSprint = signal<Sprint | null>(null);
 
   protected readonly statusNames = computed(() =>
     Object.fromEntries(this.store.statuses().map((s) => [s.id, s.name]))
   );
+
+  protected readonly visibleTasks = computed(() => {
+    const filter = this.filterSprint();
+    return filter ? this.store.tasks().filter((t) => t.sprintId === filter.id) : this.store.tasks();
+  });
 
   ngOnInit(): void {
     const id = this.route.parent?.snapshot.paramMap.get('milestoneId') ?? null;

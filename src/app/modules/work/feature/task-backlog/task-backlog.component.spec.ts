@@ -8,6 +8,8 @@ import { ProjectDetailStore } from '../../state/project-detail.store';
 import { SprintApiService } from '../../data-access/sprint-api.service';
 import { ObjectiveMemberApiService } from '../../data-access/objective-member-api.service';
 import { TaskApiService } from '../../data-access/task-api.service';
+import { SprintListStore } from '../../state/sprint-list.store';
+import { signal } from '@angular/core';
 
 describe('TaskBacklogComponent', () => {
   it('loads the board for the current milestoneId on init', async () => {
@@ -32,6 +34,19 @@ describe('TaskBacklogComponent', () => {
         { provide: SprintApiService, useValue: { getByObjective: vi.fn().mockReturnValue(of([])) } },
         { provide: ObjectiveMemberApiService, useValue: { getMembers: vi.fn().mockReturnValue(of({ items: [] })) } },
         { provide: TaskApiService, useValue: { createTaskCreationRequest: vi.fn(), assignTask: vi.fn() } },
+        {
+          provide: SprintListStore,
+          useValue: {
+            sprints: signal([]),
+            error: signal(null),
+            loading: signal(false),
+            load: vi.fn().mockResolvedValue(undefined),
+            create: vi.fn(),
+            edit: vi.fn(),
+            complete: vi.fn(),
+            achieve: vi.fn()
+          }
+        },
         {
           provide: ActivatedRoute,
           useValue: { parent: { snapshot: { paramMap: { get: () => 'milestone-1' } } } }
