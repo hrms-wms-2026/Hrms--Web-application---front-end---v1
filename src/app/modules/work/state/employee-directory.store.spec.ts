@@ -43,4 +43,14 @@ describe('EmployeeDirectoryStore', () => {
   it('get() returns undefined for an id never loaded', () => {
     expect(store.get('never-loaded')).toBeUndefined();
   });
+
+  it('dedupes concurrent ensureLoaded calls for the same uncached id into a single fetch', async () => {
+    const p1 = store.ensureLoaded(['emp-1']);
+    const p2 = store.ensureLoaded(['emp-1']);
+
+    await Promise.all([p1, p2]);
+
+    expect(getEmployeeSpy).toHaveBeenCalledTimes(1);
+    expect(store.get('emp-1')?.name).toBe('Nevi Peiris');
+  });
 });
