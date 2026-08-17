@@ -102,7 +102,7 @@ export class TaskBacklogComponent implements OnInit {
       const active = list.items.filter((m) => !m.pending);
       await this.directory.ensureLoaded(active.map((m) => m.employeeId));
       this.assignableMembers.set(
-        active.map((m) => ({ employeeId: m.employeeId, name: this.directory.get(m.employeeId)?.name ?? m.employeeId }))
+        active.map((m) => ({ employeeId: m.employeeId, name: this.directory.get(m.employeeId)?.name ?? 'Unknown employee' }))
       );
     });
 

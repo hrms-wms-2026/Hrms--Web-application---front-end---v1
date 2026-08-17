@@ -101,7 +101,12 @@ describe('TaskBacklogComponent', () => {
         {
           provide: ObjectiveMemberApiService,
           useValue: {
-            getMembers: vi.fn().mockReturnValue(of({ items: [{ employeeId: 'emp-1', pending: false, isHead: false }] }))
+            getMembers: vi.fn().mockReturnValue(of({
+              items: [
+                { employeeId: 'emp-1', pending: false, isHead: false },
+                { employeeId: 'emp-2', pending: false, isHead: false }
+              ]
+            }))
           }
         },
         { provide: TaskApiService, useValue: { createTaskCreationRequest: vi.fn(), assignTask: vi.fn() } },
@@ -131,9 +136,13 @@ describe('TaskBacklogComponent', () => {
     await fixture.whenStable();
     await fixture.whenStable();
 
-    expect(directoryEnsureLoaded).toHaveBeenCalledWith(['emp-1']);
+    expect(directoryEnsureLoaded).toHaveBeenCalledWith(['emp-1', 'emp-2']);
     const members = (fixture.componentInstance as unknown as { assignableMembers: () => { employeeId: string; name: string }[] }).assignableMembers();
-    expect(members).toEqual([{ employeeId: 'emp-1', name: 'Nevi Peiris' }]);
+    expect(members).toEqual([
+      { employeeId: 'emp-1', name: 'Nevi Peiris' },
+      { employeeId: 'emp-2', name: 'Unknown employee' }
+    ]);
     expect(members.find((m) => m.employeeId === 'emp-1')?.name).not.toBe('emp-1');
+    expect(members.find((m) => m.employeeId === 'emp-2')?.name).not.toBe('emp-2');
   });
 });

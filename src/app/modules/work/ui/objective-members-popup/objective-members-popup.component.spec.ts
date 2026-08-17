@@ -135,9 +135,10 @@ describe('ObjectiveMembersPopupComponent', () => {
     expect(avatars.length).toBe(3);
   });
 
-  it('falls back to the raw employeeId only when the directory has no entry for it', () => {
+  it('never falls back to the raw employeeId when the directory has no entry for it, showing "Unknown employee" instead', () => {
     const rows = fixture.nativeElement.querySelectorAll('[data-testid="member-row"]');
     const pendingRow = Array.from(rows).find((r: any) => r.dataset.employeeId === 'pend1') as HTMLElement;
-    expect(pendingRow.textContent).toContain('pend1');
+    expect(pendingRow.textContent).not.toContain('pend1');
+    expect(pendingRow.textContent).toContain('Unknown employee');
   });
 });
