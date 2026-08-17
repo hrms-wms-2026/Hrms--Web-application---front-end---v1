@@ -10,6 +10,7 @@ import { TaskTableComponent } from '../../ui/task-table/task-table.component';
 import { SprintListComponent } from '../../ui/sprint-list/sprint-list.component';
 import { SprintApiService } from '../../data-access/sprint-api.service';
 import { ObjectiveMemberApiService } from '../../data-access/objective-member-api.service';
+import { EmployeeDirectoryStore } from '../../state/employee-directory.store';
 import { toSprint } from '../../utils/sprint.mapper';
 import { Sprint } from '../../models/sprint.model';
 import { WorkTask } from '../../models/task.model';
@@ -28,6 +29,7 @@ import { WorkTask } from '../../models/task.model';
         [objectiveId]="milestoneId()!"
         [isObjectiveOwner]="isObjectiveOwner()"
         (sprintSelected)="filterSprint.set($event)"
+        (sprintsChanged)="reloadActiveSprints()"
       />
     }
 
@@ -68,6 +70,7 @@ export class TaskBacklogComponent implements OnInit {
   private readonly route = inject(ActivatedRoute);
   private readonly sprintApi = inject(SprintApiService);
   private readonly memberApi = inject(ObjectiveMemberApiService);
+  private readonly directory = inject(EmployeeDirectoryStore);
 
   protected readonly createOpen = signal(false);
   protected readonly detailOpen = signal(false);
@@ -95,12 +98,14 @@ export class TaskBacklogComponent implements OnInit {
     const fromList = this.projectStore.milestones().find((m) => m.objectiveId === id);
     this.isObjectiveOwner.set(fromList?.isOwner ?? false);
     void this.store.loadBoard(id);
-    void firstValueFrom(this.sprintApi.getByObjective(id, true)).then((dtos) => this.activeSprints.set(dtos.map(toSprint)));
-    void firstValueFrom(this.memberApi.getMembers(id)).then((list) =>
+    this.reloadActiveSprints();
+    void firstValueFrom(this.memberApi.getMembers(id)).then(async (list) => {
+      const active = list.items.filter((m) => !m.pending);
+      await this.directory.ensureLoaded(active.map((m) => m.employeeId));
       this.assignableMembers.set(
-        list.items.filter((m) => !m.pending).map((m) => ({ employeeId: m.employeeId, name: m.employeeId }))
-      )
-    );
+        active.map((m) => ({ employeeId: m.employeeId, name: this.directory.get(m.employeeId)?.name ?? m.employeeId }))
+      );
+    });
 
     if (!fromList) {
       void this.projectStore.getMilestoneDetail(id).then((detail) => {
@@ -112,5 +117,11 @@ export class TaskBacklogComponent implements OnInit {
   onTaskViewed(task: WorkTask): void {
     this.selectedTask.set(task);
     this.detailOpen.set(true);
+  }
+
+  protected reloadActiveSprints(): void {
+    const id = this.milestoneId();
+    if (!id) return;
+    void firstValueFrom(this.sprintApi.getByObjective(id, true)).then((dtos) => this.activeSprints.set(dtos.map(toSprint)));
   }
 }
