@@ -68,6 +68,32 @@ describe('BoardStructureEditorComponent', () => {
     ]);
   });
 
+  it('onDrop reorders the rows and save posts the new order, not the original sorted order', async () => {
+    const { fixture, reorderTaskStatuses } = setup();
+    fixture.detectChanges();
+
+    // Move the row at index 0 ('To Do', s1) to index 2, landing after 'Review' (s3):
+    // starting order [s1, s2, s3, s4] -> [s2, s3, s1, s4]
+    fixture.componentInstance.onDrop({ previousIndex: 0, currentIndex: 2 } as Parameters<typeof fixture.componentInstance.onDrop>[0]);
+    fixture.detectChanges();
+
+    const rows = fixture.nativeElement.querySelectorAll('.board-structure__row');
+    const names = Array.from(rows as NodeListOf<HTMLElement>).map((row) => row.querySelector('.board-structure__name')?.textContent?.trim());
+    expect(names).toEqual(['In Process', 'Review', 'To Do', 'Done']);
+
+    const saveButton = fixture.nativeElement.querySelector('button') as HTMLButtonElement;
+    saveButton.click();
+    await fixture.whenStable();
+
+    expect(reorderTaskStatuses).toHaveBeenCalledTimes(1);
+    expect(reorderTaskStatuses).toHaveBeenCalledWith('obj-1', [
+      { statusId: 's2', displayOrder: 0, visibility: 'public', marksTaskComplete: false },
+      { statusId: 's3', displayOrder: 1, visibility: 'private', marksTaskComplete: false },
+      { statusId: 's1', displayOrder: 2, visibility: 'public', marksTaskComplete: false },
+      { statusId: 's4', displayOrder: 3, visibility: 'public', marksTaskComplete: true }
+    ]);
+  });
+
   it('changing which radio is checked moves MarksTaskComplete to exactly the new selection', () => {
     const { fixture } = setup();
     fixture.detectChanges();

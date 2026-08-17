@@ -1,5 +1,5 @@
 import { Component, OnInit, inject, input, output, signal } from '@angular/core';
-import { CdkDrag, CdkDragDrop, CdkDropList, moveItemInArray } from '@angular/cdk/drag-drop';
+import { CdkDrag, CdkDragDrop, CdkDragHandle, CdkDropList, moveItemInArray } from '@angular/cdk/drag-drop';
 import { firstValueFrom } from 'rxjs';
 import { TaskApiService } from '../../data-access/task-api.service';
 import { ButtonComponent } from '../../../../shared/ui/button/button.component';
@@ -15,7 +15,7 @@ interface DraftRow {
 @Component({
   selector: 'app-board-structure-editor',
   standalone: true,
-  imports: [CdkDropList, CdkDrag, ButtonComponent],
+  imports: [CdkDropList, CdkDrag, CdkDragHandle, ButtonComponent],
   template: `
     <div cdkDropList (cdkDropListDropped)="onDrop($event)" class="board-structure__list">
       @for (row of rows(); track row.id) {
