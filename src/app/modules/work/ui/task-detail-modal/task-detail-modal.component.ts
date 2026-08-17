@@ -1,9 +1,9 @@
-import { Component, effect, inject, input, output, signal } from '@angular/core';
+import { Component, computed, effect, inject, input, output, signal } from '@angular/core';
 import { firstValueFrom } from 'rxjs';
 import { ModalComponent } from '../../../../shared/ui/modal/modal.component';
 import { InputComponent } from '../../../../shared/ui/input/input.component';
 import { ButtonComponent } from '../../../../shared/ui/button/button.component';
-import { WorkTask } from '../../models/task.model';
+import { TaskStatusColumn, WorkTask } from '../../models/task.model';
 import { TaskApiService } from '../../data-access/task-api.service';
 import { toWorkTask } from '../../utils/task.mapper';
 
@@ -16,6 +16,14 @@ import { toWorkTask } from '../../utils/task.mapper';
       @if (task(); as t) {
         <div class="flex flex-col gap-3">
           <app-input label="Title" [value]="title()" [error]="errors()['title'] || ''" (valueChange)="title.set($event)" />
+          <label class="flex flex-col gap-1 text-sm text-[var(--color-text-primary)]">
+            Status
+            <select class="task-detail__select" [value]="statusId()" (change)="statusId.set($any($event.target).value)">
+              @for (status of availableStatuses(); track status.id) {
+                <option [value]="status.id">{{ status.name }}</option>
+              }
+            </select>
+          </label>
           <app-input label="Description" [value]="description()" (valueChange)="description.set($event)" />
           <label class="flex flex-col gap-1 text-sm text-[var(--color-text-primary)]">
             Priority
@@ -63,9 +71,11 @@ export class TaskDetailModalComponent {
   open = input(false);
   task = input<WorkTask | null>(null);
   isObjectiveOwner = input.required<boolean>();
+  statuses = input.required<readonly TaskStatusColumn[]>();
   closed = output<void>();
   saved = output<WorkTask>();
   requested = output<void>();
+  statusChangeRequested = output<string>();
 
   title = signal('');
   description = signal('');
@@ -73,9 +83,14 @@ export class TaskDetailModalComponent {
   dueDate = signal('');
   estimatedHours = signal<number | null>(null);
   storyPoints = signal<number | null>(null);
+  statusId = signal('');
   submitting = signal(false);
   errors = signal<Record<string, string>>({});
   errorMessage = signal<string | null>(null);
+
+  availableStatuses = computed(() =>
+    this.statuses().filter((s) => s.visibility === 'public' || this.isObjectiveOwner())
+  );
 
   constructor() {
     effect(() => {
@@ -91,6 +106,7 @@ export class TaskDetailModalComponent {
         this.dueDate.set(t.dueDate ? t.dueDate.toISOString().slice(0, 10) : '');
         this.estimatedHours.set(t.estimatedHours);
         this.storyPoints.set(t.storyPoints);
+        this.statusId.set(t.statusId);
       } else {
         this.title.set('');
         this.description.set('');
@@ -98,6 +114,7 @@ export class TaskDetailModalComponent {
         this.dueDate.set('');
         this.estimatedHours.set(null);
         this.storyPoints.set(null);
+        this.statusId.set('');
       }
       this.errorMessage.set(null);
       this.errors.set({});
@@ -125,6 +142,11 @@ export class TaskDetailModalComponent {
     if (!this.title().trim()) fieldErrors['title'] = 'Title is required.';
     this.errors.set(fieldErrors);
     if (Object.keys(fieldErrors).length > 0) return;
+
+    const newStatusId = this.statusId();
+    if (newStatusId && newStatusId !== this.task()?.statusId) {
+      this.statusChangeRequested.emit(newStatusId);
+    }
 
     this.submitting.set(true);
     this.errorMessage.set(null);

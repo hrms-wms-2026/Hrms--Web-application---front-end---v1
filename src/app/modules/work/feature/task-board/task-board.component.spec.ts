@@ -18,7 +18,8 @@ describe('TaskBoardComponent', () => {
       columnsWithTasks: () => [],
       loading: () => false,
       error: () => null,
-      moveTask: vi.fn()
+      moveTask: vi.fn(),
+      statuses: () => []
     };
     const projectStoreStub = {
       milestones: () => [{ objectiveId: 'milestone-1', isOwner: true }],
@@ -70,7 +71,8 @@ describe('TaskBoardComponent', () => {
       columnsWithTasks: () => [{ status, tasks: [inSprint, outSprint] }],
       loading: () => false,
       error: () => null,
-      moveTask: vi.fn()
+      moveTask: vi.fn(),
+      statuses: () => []
     };
 
     TestBed.configureTestingModule({
@@ -134,7 +136,8 @@ describe('TaskBoardComponent', () => {
       columnsWithTasks: () => [],
       loading: () => false,
       error: () => null,
-      moveTask: vi.fn()
+      moveTask: vi.fn(),
+      statuses: () => []
     };
     const directoryGet = vi.fn((id: string) => (id === 'emp-1' ? { id, name: 'Nevi Peiris', initials: 'NP', avatarUrl: null } : undefined));
     const directoryEnsureLoaded = vi.fn().mockResolvedValue(undefined);

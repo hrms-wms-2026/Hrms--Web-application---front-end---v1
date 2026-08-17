@@ -56,7 +56,10 @@ import { WorkTask } from '../../models/task.model';
       [open]="detailOpen()"
       [task]="selectedTask()"
       [isObjectiveOwner]="isObjectiveOwner()"
+      [statuses]="store.statuses()"
       (closed)="detailOpen.set(false)"
+      (saved)="onTaskSaved()"
+      (statusChangeRequested)="onStatusChangeRequested($event)"
     />
   `,
   styles: [`
@@ -117,5 +120,14 @@ export class TaskBacklogComponent implements OnInit {
   onTaskViewed(task: WorkTask): void {
     this.selectedTask.set(task);
     this.detailOpen.set(true);
+  }
+
+  protected onStatusChangeRequested(newStatusId: string): void {
+    const taskId = this.selectedTask()?.id;
+    if (taskId) void this.store.moveTask(taskId, newStatusId);
+  }
+
+  protected onTaskSaved(): void {
+    if (this.milestoneId()) void this.store.loadBoard(this.milestoneId()!);
   }
 }

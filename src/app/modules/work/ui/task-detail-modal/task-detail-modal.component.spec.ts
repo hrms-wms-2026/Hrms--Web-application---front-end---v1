@@ -3,7 +3,7 @@ import { vi } from 'vitest';
 import { of } from 'rxjs';
 import { TaskDetailModalComponent } from './task-detail-modal.component';
 import { TaskApiService } from '../../data-access/task-api.service';
-import { WorkTask } from '../../models/task.model';
+import { TaskStatusColumn, WorkTask } from '../../models/task.model';
 import { WorkTaskDto } from '../../models/dto/task.dto';
 
 describe('TaskDetailModalComponent', () => {
@@ -17,8 +17,13 @@ describe('TaskDetailModalComponent', () => {
     taskType: 'task', statusId: 's1', priority: 'high', storyPoints: 3, dueDate: '2026-09-20',
     estimatedHours: 8, completedHours: 0, progressPercent: 0, sprintId: null
   };
+  const statuses: TaskStatusColumn[] = [
+    { id: 's1', name: 'To Do', displayOrder: 0, requiresApproval: false, marksTaskComplete: false, visibility: 'public' },
+    { id: 's2', name: 'In Progress', displayOrder: 1, requiresApproval: false, marksTaskComplete: false, visibility: 'public' },
+    { id: 's3', name: 'Internal Review', displayOrder: 2, requiresApproval: false, marksTaskComplete: false, visibility: 'private' }
+  ];
 
-  function setup(isObjectiveOwner: boolean) {
+  function setup(isObjectiveOwner: boolean, statusList: TaskStatusColumn[] = statuses) {
     const editTask = vi.fn().mockReturnValue(of(updatedDto));
     const createTaskEditRequest = vi.fn().mockReturnValue(of({}));
     TestBed.configureTestingModule({
@@ -31,6 +36,7 @@ describe('TaskDetailModalComponent', () => {
     fixture.componentRef.setInput('open', true);
     fixture.componentRef.setInput('task', task);
     fixture.componentRef.setInput('isObjectiveOwner', isObjectiveOwner);
+    fixture.componentRef.setInput('statuses', statusList);
     return { fixture, editTask, createTaskEditRequest };
   }
 
@@ -188,5 +194,53 @@ describe('TaskDetailModalComponent', () => {
     expect(fixture.componentInstance.errors()['title']).toBe('Title is required.');
     expect(editTask).not.toHaveBeenCalled();
     expect(createTaskEditRequest).not.toHaveBeenCalled();
+  });
+
+  it('status dropdown excludes private statuses for a non-owner member', () => {
+    const { fixture } = setup(false);
+    fixture.detectChanges();
+
+    expect(fixture.componentInstance.availableStatuses().map((s) => s.id)).toEqual(['s1', 's2']);
+
+    const select = fixture.nativeElement.querySelector('.task-detail__select') as HTMLSelectElement;
+    const optionTexts = Array.from(select.querySelectorAll('option')).map((o) => o.textContent?.trim());
+    expect(optionTexts).toEqual(['To Do', 'In Progress']);
+  });
+
+  it('status dropdown includes both public and private statuses for the objective owner', () => {
+    const { fixture } = setup(true);
+    fixture.detectChanges();
+
+    expect(fixture.componentInstance.availableStatuses().map((s) => s.id)).toEqual(['s1', 's2', 's3']);
+
+    const select = fixture.nativeElement.querySelector('.task-detail__select') as HTMLSelectElement;
+    const optionTexts = Array.from(select.querySelectorAll('option')).map((o) => o.textContent?.trim());
+    expect(optionTexts).toEqual(['To Do', 'In Progress', 'Internal Review']);
+  });
+
+  it('emits statusChangeRequested with the new status id when submitting with a changed status', async () => {
+    const { fixture } = setup(true);
+    fixture.detectChanges();
+
+    const spy = vi.fn();
+    fixture.componentInstance.statusChangeRequested.subscribe(spy);
+    fixture.componentInstance.statusId.set('s2');
+
+    await fixture.componentInstance.submit('t1');
+
+    expect(spy).toHaveBeenCalledWith('s2');
+  });
+
+  it('does not emit statusChangeRequested when submitting with the status unchanged', async () => {
+    const { fixture } = setup(true);
+    fixture.detectChanges();
+
+    const spy = vi.fn();
+    fixture.componentInstance.statusChangeRequested.subscribe(spy);
+    // statusId is seeded to the task's own statusId ('s1') by the constructor effect; leave it as-is.
+
+    await fixture.componentInstance.submit('t1');
+
+    expect(spy).not.toHaveBeenCalled();
   });
 });
