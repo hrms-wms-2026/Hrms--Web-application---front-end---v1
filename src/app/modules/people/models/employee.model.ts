@@ -35,3 +35,66 @@ export interface EmployeeListParams {
   page?: number;
   pageSize?: number;
 }
+
+export interface EmployeeDetailResponse {
+  readonly id: string;
+  readonly jobInformation: EmployeeDetailJobInformation;
+  readonly personalInformation: EmployeeDetailPersonalInformation;
+  readonly emergencyContacts: readonly EmployeeDetailEmergencyContact[];
+  readonly payroll: EmployeeDetailPayroll | null;
+  readonly invitationStatus: string | null;
+  readonly invitationExpiresAt: string | null;
+}
+
+export interface EmployeeDetailJobInformation {
+  readonly employeeNumber: string;
+  readonly legalEntityId: string | null;
+  readonly legalEntityName: string | null;
+  readonly departmentName: string | null;
+  readonly positionName: string | null;
+  readonly positionId: string | null;
+  readonly reportingManagerName: string | null;
+  readonly employmentTypeLabel: string;
+  readonly status: string;
+  readonly hireDate: string;
+  readonly probationEndDate: string | null;
+}
+
+export interface EmployeeDetailPersonalInformation {
+  readonly firstName: string;
+  readonly lastName: string;
+  readonly email: string;
+  readonly phone: string | null;
+  readonly dateOfBirth: string | null;
+  readonly gender: string | null;
+  readonly nationalityId: string | null;
+  readonly addresses: readonly EmployeeDetailAddress[];
+}
+
+export interface EmployeeDetailAddress {
+  readonly id: string;
+  readonly addressType: string;
+  readonly addressJson: string;
+  readonly isPrimary: boolean;
+}
+
+export interface EmployeeDetailEmergencyContact {
+  readonly id: string;
+  readonly name: string;
+  readonly relationship: string;
+  readonly phone: string;
+  readonly email: string | null;
+  readonly isPrimary: boolean;
+}
+
+export interface EmployeeDetailPayroll {
+  readonly hasBankDetailsOnFile: boolean;
+  readonly bankName: string | null;
+  readonly maskedAccountNumber: string | null;
+  readonly accountType: string | null;
+}
+
+export interface ChangePositionPayload {
+  readonly positionId: string;
+  readonly effectiveFrom: string;
+}

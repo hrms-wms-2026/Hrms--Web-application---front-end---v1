@@ -3,7 +3,7 @@ import { HttpTestingController, provideHttpClientTesting } from '@angular/common
 import { TestBed } from '@angular/core/testing';
 import { environment } from '../../../../environments/environment';
 import { PeopleApiService } from './people-api.service';
-import { EmployeeListItemResponse, EmployeeListPageResponse } from '../models/employee.model';
+import { EmployeeDetailResponse, EmployeeListItemResponse, EmployeeListPageResponse } from '../models/employee.model';
 import { OnboardingDraftResponse, SaveOnboardingDraftPayload } from '../models/onboarding-draft.model';
 
 describe('PeopleApiService', () => {
@@ -244,5 +244,20 @@ describe('PeopleApiService', () => {
       draftReason: 'position_approval_rejected',
       messageKey: 'rejected'
     });
+  });
+
+  it('getEmployeeDetail sends GET to /employees/{id}/detail', () => {
+    service.getEmployeeDetail('emp-1').subscribe();
+    const req = httpMock.expectOne(`${environment.apiUrl}/employees/emp-1/detail`);
+    expect(req.request.method).toBe('GET');
+    req.flush({} as EmployeeDetailResponse);
+  });
+
+  it('changePosition sends POST to /employees/{id}/change-position with the payload', () => {
+    service.changePosition('emp-1', { positionId: 'pos-1', effectiveFrom: '2026-09-01' }).subscribe();
+    const req = httpMock.expectOne(`${environment.apiUrl}/employees/emp-1/change-position`);
+    expect(req.request.method).toBe('POST');
+    expect(req.request.body).toEqual({ positionId: 'pos-1', effectiveFrom: '2026-09-01' });
+    req.flush(null);
   });
 });

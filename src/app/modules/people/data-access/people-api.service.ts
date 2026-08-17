@@ -2,7 +2,13 @@ import { HttpClient, HttpParams } from '@angular/common/http';
 import { Injectable, inject } from '@angular/core';
 import { Observable } from 'rxjs';
 import { environment } from '../../../../environments/environment';
-import { EmployeeListItemResponse, EmployeeListPageResponse, EmployeeListParams } from '../models/employee.model';
+import {
+  ChangePositionPayload,
+  EmployeeDetailResponse,
+  EmployeeListItemResponse,
+  EmployeeListPageResponse,
+  EmployeeListParams
+} from '../models/employee.model';
 import {
   ApproveAccessGrantRequestResponse,
   DraftListPageResponse,
@@ -37,6 +43,14 @@ export class PeopleApiService {
 
   getEmployee(id: string): Observable<EmployeeListItemResponse> {
     return this.http.get<EmployeeListItemResponse>(`${environment.apiUrl}/employees/${id}`);
+  }
+
+  getEmployeeDetail(id: string): Observable<EmployeeDetailResponse> {
+    return this.http.get<EmployeeDetailResponse>(`${environment.apiUrl}/employees/${id}/detail`);
+  }
+
+  changePosition(id: string, payload: ChangePositionPayload): Observable<void> {
+    return this.http.post<void>(`${environment.apiUrl}/employees/${id}/change-position`, payload);
   }
 
   listDrafts(params: DraftListParams): Observable<DraftListPageResponse> {
