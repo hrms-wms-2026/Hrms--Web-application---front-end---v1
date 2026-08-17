@@ -1,36 +1,135 @@
-import { ComponentFixture, TestBed } from '@angular/core/testing';
+import { TestBed } from '@angular/core/testing';
 import { vi } from 'vitest';
+import { of } from 'rxjs';
 import { TaskDetailModalComponent } from './task-detail-modal.component';
+import { TaskApiService } from '../../data-access/task-api.service';
 import { WorkTask } from '../../models/task.model';
+import { WorkTaskDto } from '../../models/dto/task.dto';
 
 describe('TaskDetailModalComponent', () => {
-  let fixture: ComponentFixture<TaskDetailModalComponent>;
   const task: WorkTask = {
     id: 't1', objectiveId: 'o1', shortId: 'EPOS-1', title: 'Do the thing', description: 'Details here',
     taskType: 'task', statusId: 's1', priority: 'high', storyPoints: 3, dueDate: new Date('2026-09-20'),
     estimatedHours: 8, completedHours: 0, progressPercent: 0, sprintId: null
   };
+  const updatedDto: WorkTaskDto = {
+    id: 't1', objectiveId: 'o1', shortId: 'EPOS-1', title: 'Updated title', description: 'Details here',
+    taskType: 'task', statusId: 's1', priority: 'high', storyPoints: 3, dueDate: '2026-09-20',
+    estimatedHours: 8, completedHours: 0, progressPercent: 0, sprintId: null
+  };
 
-  beforeEach(async () => {
-    await TestBed.configureTestingModule({ imports: [TaskDetailModalComponent] }).compileComponents();
-    fixture = TestBed.createComponent(TaskDetailModalComponent);
+  function setup(isObjectiveOwner: boolean) {
+    const editTask = vi.fn().mockReturnValue(of(updatedDto));
+    const createTaskEditRequest = vi.fn().mockReturnValue(of({}));
+    TestBed.configureTestingModule({
+      imports: [TaskDetailModalComponent],
+      providers: [
+        { provide: TaskApiService, useValue: { editTask, createTaskEditRequest } }
+      ]
+    });
+    const fixture = TestBed.createComponent(TaskDetailModalComponent);
     fixture.componentRef.setInput('open', true);
     fixture.componentRef.setInput('task', task);
-    fixture.detectChanges();
-  });
+    fixture.componentRef.setInput('isObjectiveOwner', isObjectiveOwner);
+    return { fixture, editTask, createTaskEditRequest };
+  }
 
-  it('shows the task shortId, title, description, and priority', () => {
+  it('shows the task shortId in the modal title and populates the form fields from the bound task', () => {
+    const { fixture } = setup(true);
+    fixture.detectChanges();
+
     const text = fixture.nativeElement.textContent as string;
     expect(text).toContain('EPOS-1');
-    expect(text).toContain('Do the thing');
-    expect(text).toContain('Details here');
-    expect(text).toContain('high');
+
+    const instance = fixture.componentInstance;
+    expect(instance.title()).toBe('Do the thing');
+    expect(instance.description()).toBe('Details here');
+    expect(instance.priority()).toBe('high');
+    expect(instance.dueDate()).toBe('2026-09-20');
+    expect(instance.estimatedHours()).toBe(8);
+    expect(instance.storyPoints()).toBe(3);
+  });
+
+  it('resets the form when the task input is cleared', () => {
+    const { fixture } = setup(true);
+    fixture.detectChanges();
+
+    fixture.componentRef.setInput('task', null);
+    fixture.detectChanges();
+
+    const instance = fixture.componentInstance;
+    expect(instance.title()).toBe('');
+    expect(instance.description()).toBe('');
+    expect(instance.dueDate()).toBe('');
+    expect(instance.estimatedHours()).toBeNull();
+    expect(instance.storyPoints()).toBeNull();
   });
 
   it('emits closed when the modal closes', () => {
+    const { fixture } = setup(true);
+    fixture.detectChanges();
+
     const spy = vi.fn();
     fixture.componentInstance.closed.subscribe(spy);
     fixture.componentInstance.onClose();
     expect(spy).toHaveBeenCalled();
+  });
+
+  it('owner sees a "Save changes" button that calls editTask directly', async () => {
+    const { fixture, editTask, createTaskEditRequest } = setup(true);
+    fixture.detectChanges();
+
+    const buttonText = (fixture.nativeElement.textContent as string);
+    expect(buttonText).toContain('Save changes');
+    expect(buttonText).not.toContain('Request');
+
+    fixture.componentInstance.title.set('Updated title');
+    const savedSpy = vi.fn();
+    fixture.componentInstance.saved.subscribe(savedSpy);
+
+    await fixture.componentInstance.submit('t1');
+
+    expect(editTask).toHaveBeenCalledWith('t1', expect.objectContaining({ title: 'Updated title', priority: 'high' }));
+    expect(createTaskEditRequest).not.toHaveBeenCalled();
+    expect(savedSpy).toHaveBeenCalledWith(expect.objectContaining({ id: 't1', title: 'Updated title' }));
+  });
+
+  it('non-owner member sees a "Request" button that calls createTaskEditRequest instead', async () => {
+    const { fixture, editTask, createTaskEditRequest } = setup(false);
+    fixture.detectChanges();
+
+    const buttonText = (fixture.nativeElement.textContent as string);
+    expect(buttonText).toContain('Request');
+    expect(buttonText).not.toContain('Save changes');
+
+    fixture.componentInstance.title.set('Updated title');
+    const requestedSpy = vi.fn();
+    fixture.componentInstance.requested.subscribe(requestedSpy);
+
+    await fixture.componentInstance.submit('t1');
+
+    expect(createTaskEditRequest).toHaveBeenCalledWith('t1', expect.objectContaining({ title: 'Updated title', priority: 'high' }));
+    expect(editTask).not.toHaveBeenCalled();
+    expect(requestedSpy).toHaveBeenCalled();
+  });
+
+  it('builds the submit payload matching EditTaskRequestDto shape', async () => {
+    const { fixture, editTask } = setup(true);
+    fixture.detectChanges();
+    fixture.componentInstance.description.set('');
+    fixture.componentInstance.estimatedHours.set(null);
+    fixture.componentInstance.storyPoints.set(null);
+    fixture.componentInstance.dueDate.set('');
+
+    await fixture.componentInstance.submit('t1');
+
+    expect(editTask).toHaveBeenCalledWith('t1', {
+      title: 'Do the thing',
+      description: undefined,
+      priority: 'high',
+      dueDate: undefined,
+      estimatedHours: undefined,
+      storyPoints: undefined
+    });
   });
 });

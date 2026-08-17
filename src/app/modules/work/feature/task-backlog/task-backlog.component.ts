@@ -55,6 +55,7 @@ import { WorkTask } from '../../models/task.model';
     <app-task-detail-modal
       [open]="detailOpen()"
       [task]="selectedTask()"
+      [isObjectiveOwner]="isObjectiveOwner()"
       (closed)="detailOpen.set(false)"
     />
   `,
