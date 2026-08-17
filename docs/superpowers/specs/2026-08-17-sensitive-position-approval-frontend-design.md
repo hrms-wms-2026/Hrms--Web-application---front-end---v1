@@ -41,12 +41,17 @@ Calls `GET /api/v1/onboarding/access-grant-requests/pending-for-me` (backend com
 
 Nav entry: add "Approvals" under the existing People section, gated the same as the route (`roles:manage`) — no separate visibility heuristic needed since the permission itself is now the complete gate.
 
-## 6. Testing
+## 6. Job Journey tab on Employee Detail
 
-Component specs for: the action-menu dropdown (each item opens the modal with the right locked `changeReason`, Offboarding stays disabled, menu is absent entirely when viewing own record), the modal's sensitivity reminder (shows/hides based on `requiresApproval`, Save label changes, pending-response leads to the distinct toast), and `approvals-list.component.ts` (loading/empty/loaded, approve/reject call the right endpoint with the right id, own-submitted-request rows render disabled rather than actionable).
+`employee-detail.component.ts` already has a manual-signal tab pattern (`activeTab = signal<'job'|'personal'|'emergency'|'payroll'>('job')`) — gains a fifth tab, `'journey'`. New presentational component, `employee-job-journey.component.ts`, following the existing section components' shape (`employee-job-info.component.ts` etc. — `input.required<...>()`, `OnPush`, no direct API access). Calls a new `PeopleApiService.getJobJourney(employeeId)` (backend companion §10) and renders a vertical timeline, oldest first: position name, department, date range (or "Present" when `effectiveTo` is null), the change reason as a small badge (nothing shown for the hire entry), and "Changed by {InitiatedByName}" plus, when present, "Approved by {ApprovedByName}".
 
-## 7. Self-review
+## 7. Testing
+
+Component specs for: the action-menu dropdown (each item opens the modal with the right locked `changeReason`, Offboarding stays disabled, menu is absent entirely when viewing own record), the modal's sensitivity reminder (shows/hides based on `requiresApproval`, Save label changes, pending-response leads to the distinct toast), `approvals-list.component.ts` (loading/empty/loaded, approve/reject call the right endpoint with the right id, own-submitted-request rows render disabled rather than actionable), and `employee-job-journey.component.ts` (renders entries oldest-first, hire entry has no reason badge, approved-by only shown when present).
+
+## 8. Self-review
 
 - No placeholders — every piece traces to either an existing component being extended or a named new one with a clear responsibility.
 - v1's Approving-Position picker section is fully removed, not left dangling alongside the new model.
 - Scope: the self-position-change block here is UX-only by design (§3 says so explicitly) — the real enforcement lives in the backend companion, called out so this isn't mistaken for the actual security boundary.
+- §6 (Job Journey) was added after the user asked directly whether `ChangeReason` was actually visible anywhere — it was being captured but never shown; closed in this revision rather than deferred.
