@@ -151,6 +151,11 @@ export class TaskCreateModalComponent {
       if (sprint) {
         this.sprintId.set(sprint.id);
       } else if (this.sprintId() && !this.activeSprints().some((s) => s.id === this.sprintId())) {
+        // Only clears a stale selection - a valid selection surviving the transition out of
+        // single-sprint mode is left as-is rather than force-cleared. Safe today because every
+        // consumer of this component reopens it with a freshly-scoped activeSprints array rather
+        // than reusing one instance across scoped/unscoped invocations; a future consumer that does
+        // reuse an instance that way should reset sprintId itself on open, not rely on this effect.
         this.sprintId.set('');
       }
     });
