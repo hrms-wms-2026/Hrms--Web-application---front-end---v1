@@ -8,6 +8,7 @@ import { ProjectDetailStore } from '../../state/project-detail.store';
 import { SprintApiService } from '../../data-access/sprint-api.service';
 import { ObjectiveMemberApiService } from '../../data-access/objective-member-api.service';
 import { TaskApiService } from '../../data-access/task-api.service';
+import { EmployeeDirectoryStore } from '../../state/employee-directory.store';
 
 describe('TaskBoardComponent', () => {
   it('loads the board for the current milestoneId on init', async () => {
@@ -32,6 +33,10 @@ describe('TaskBoardComponent', () => {
         { provide: SprintApiService, useValue: { getByObjective: vi.fn().mockReturnValue(of([])) } },
         { provide: ObjectiveMemberApiService, useValue: { getMembers: vi.fn().mockReturnValue(of({ items: [] })) } },
         { provide: TaskApiService, useValue: { createTaskCreationRequest: vi.fn(), assignTask: vi.fn() } },
+        {
+          provide: EmployeeDirectoryStore,
+          useValue: { get: vi.fn().mockReturnValue(undefined), ensureLoaded: vi.fn().mockResolvedValue(undefined) }
+        },
         {
           provide: ActivatedRoute,
           useValue: {
@@ -97,6 +102,10 @@ describe('TaskBoardComponent', () => {
         { provide: ObjectiveMemberApiService, useValue: { getMembers: vi.fn().mockReturnValue(of({ items: [] })) } },
         { provide: TaskApiService, useValue: { createTaskCreationRequest: vi.fn(), assignTask: vi.fn() } },
         {
+          provide: EmployeeDirectoryStore,
+          useValue: { get: vi.fn().mockReturnValue(undefined), ensureLoaded: vi.fn().mockResolvedValue(undefined) }
+        },
+        {
           provide: ActivatedRoute,
           useValue: {
             parent: { snapshot: { paramMap: { get: () => 'milestone-1' } } },
@@ -116,5 +125,58 @@ describe('TaskBoardComponent', () => {
     ).columnsWithTasks();
     const taskIds = columns.flatMap((c) => c.tasks.map((t) => t.id));
     expect(taskIds).toEqual(['t-in']);
+  });
+
+  it('resolves assignableMembers names from the employee directory instead of the raw employeeId', async () => {
+    const loadBoard = vi.fn().mockResolvedValue(undefined);
+    const storeStub = {
+      loadBoard,
+      columnsWithTasks: () => [],
+      loading: () => false,
+      error: () => null,
+      moveTask: vi.fn()
+    };
+    const directoryGet = vi.fn((id: string) => (id === 'emp-1' ? { id, name: 'Nevi Peiris', initials: 'NP', avatarUrl: null } : undefined));
+    const directoryEnsureLoaded = vi.fn().mockResolvedValue(undefined);
+
+    TestBed.configureTestingModule({
+      imports: [TaskBoardComponent],
+      providers: [
+        { provide: TaskBoardStore, useValue: storeStub },
+        {
+          provide: ProjectDetailStore,
+          useValue: {
+            milestones: () => [{ objectiveId: 'milestone-1', isOwner: true }],
+            getMilestoneDetail: vi.fn().mockResolvedValue(null)
+          }
+        },
+        { provide: SprintApiService, useValue: { getByObjective: vi.fn().mockReturnValue(of([])) } },
+        {
+          provide: ObjectiveMemberApiService,
+          useValue: {
+            getMembers: vi.fn().mockReturnValue(of({ items: [{ employeeId: 'emp-1', pending: false, isHead: false }] }))
+          }
+        },
+        { provide: TaskApiService, useValue: { createTaskCreationRequest: vi.fn(), assignTask: vi.fn() } },
+        { provide: EmployeeDirectoryStore, useValue: { get: directoryGet, ensureLoaded: directoryEnsureLoaded } },
+        {
+          provide: ActivatedRoute,
+          useValue: {
+            parent: { snapshot: { paramMap: { get: () => 'milestone-1' } } },
+            snapshot: { queryParamMap: { get: () => null } }
+          }
+        }
+      ]
+    });
+
+    const fixture = TestBed.createComponent(TaskBoardComponent);
+    fixture.detectChanges();
+    await fixture.whenStable();
+    await fixture.whenStable();
+
+    expect(directoryEnsureLoaded).toHaveBeenCalledWith(['emp-1']);
+    const members = (fixture.componentInstance as unknown as { assignableMembers: () => { employeeId: string; name: string }[] }).assignableMembers();
+    expect(members).toEqual([{ employeeId: 'emp-1', name: 'Nevi Peiris' }]);
+    expect(members.find((m) => m.employeeId === 'emp-1')?.name).not.toBe('emp-1');
   });
 });
