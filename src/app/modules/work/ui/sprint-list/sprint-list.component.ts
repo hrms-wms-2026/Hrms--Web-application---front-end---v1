@@ -77,6 +77,7 @@ export class SprintListComponent implements OnInit {
   objectiveId = input.required<string>();
   isObjectiveOwner = input.required<boolean>();
   sprintSelected = output<Sprint | null>();
+  sprintsChanged = output<void>();
 
   protected readonly creating = signal(false);
   protected readonly newName = signal('');
@@ -105,14 +106,17 @@ export class SprintListComponent implements OnInit {
       this.newName.set('');
       this.newStart.set('');
       this.newEnd.set('');
+      this.sprintsChanged.emit();
     }
   }
 
   async complete(sprintId: string): Promise<void> {
-    await this.store.complete(sprintId, this.objectiveId(), !this.isObjectiveOwner());
+    const ok = await this.store.complete(sprintId, this.objectiveId(), !this.isObjectiveOwner());
+    if (ok) this.sprintsChanged.emit();
   }
 
   async achieve(sprintId: string): Promise<void> {
-    await this.store.achieve(sprintId, this.objectiveId(), !this.isObjectiveOwner());
+    const ok = await this.store.achieve(sprintId, this.objectiveId(), !this.isObjectiveOwner());
+    if (ok) this.sprintsChanged.emit();
   }
 }

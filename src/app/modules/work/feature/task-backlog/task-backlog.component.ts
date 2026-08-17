@@ -29,6 +29,7 @@ import { WorkTask } from '../../models/task.model';
         [objectiveId]="milestoneId()!"
         [isObjectiveOwner]="isObjectiveOwner()"
         (sprintSelected)="filterSprint.set($event)"
+        (sprintsChanged)="reloadActiveSprints()"
       />
     }
 
@@ -101,7 +102,7 @@ export class TaskBacklogComponent implements OnInit {
     const fromList = this.projectStore.milestones().find((m) => m.objectiveId === id);
     this.isObjectiveOwner.set(fromList?.isOwner ?? false);
     void this.store.loadBoard(id);
-    void firstValueFrom(this.sprintApi.getByObjective(id, true)).then((dtos) => this.activeSprints.set(dtos.map(toSprint)));
+    this.reloadActiveSprints();
     void firstValueFrom(this.memberApi.getMembers(id)).then(async (list) => {
       const active = list.items.filter((m) => !m.pending);
       await this.directory.ensureLoaded(active.map((m) => m.employeeId));
@@ -129,5 +130,11 @@ export class TaskBacklogComponent implements OnInit {
 
   protected onTaskSaved(): void {
     if (this.milestoneId()) void this.store.loadBoard(this.milestoneId()!);
+  }
+
+  protected reloadActiveSprints(): void {
+    const id = this.milestoneId();
+    if (!id) return;
+    void firstValueFrom(this.sprintApi.getByObjective(id, true)).then((dtos) => this.activeSprints.set(dtos.map(toSprint)));
   }
 }
