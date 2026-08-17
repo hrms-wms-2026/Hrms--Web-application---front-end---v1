@@ -66,5 +66,12 @@ export const PEOPLE_ROUTES: Routes = [
         data: { title: 'Edit Checklist', permissions: ['employees:write'] }
       }
     ]
+  },
+  {
+    path: 'approvals',
+    loadComponent: () =>
+      import('./feature/approvals-list/approvals-list.component').then((m) => m.ApprovalsListComponent),
+    canActivate: [permissionGuard],
+    data: { title: 'Approvals', permissions: ['roles:manage'] }
   }
 ];

@@ -45,6 +45,13 @@ export const NAV_ITEMS: readonly NavItem[] = [
         path: '/people/checklists',
         requiredModules: ['core_hr'],
         requiredPermissions: ['employees:read']
+      },
+      {
+        id: 'people-approvals',
+        label: 'Approvals',
+        path: '/people/approvals',
+        requiredModules: ['core_hr'],
+        requiredPermissions: ['roles:manage']
       }
     ]
   },

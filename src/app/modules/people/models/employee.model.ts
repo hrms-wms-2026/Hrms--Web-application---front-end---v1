@@ -19,6 +19,13 @@ export interface EmployeeListItemResponse {
   readonly status: string;
   readonly reportingManagerId: string | null;
   readonly reportingManagerName: string | null;
+  /** "pending" | "accepted" | "expired" | "revoked" | null (no invitation ever issued, or list read). */
+  readonly invitationStatus?: string | null;
+  readonly invitationExpiresAt?: string | null;
+}
+
+export interface ResendInvitationResponse {
+  readonly expiresAt: string;
 }
 
 export interface EmployeeListPageResponse {
@@ -97,4 +104,9 @@ export interface EmployeeDetailPayroll {
 export interface ChangePositionPayload {
   readonly positionId: string;
   readonly effectiveFrom: string;
+  readonly changeReason: 'Promotion' | 'Transfer' | 'LateralMove';
+}
+
+export interface ChangePositionResponse {
+  readonly pendingApproval: boolean;
 }

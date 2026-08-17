@@ -41,6 +41,8 @@ export interface PositionListItemResponse {
   readonly occupantPreview?: readonly OccupantPreviewItem[];
   /** assignedCount - occupantPreview.length (employees beyond preview). */
   readonly remainingAssignedCount?: number;
+  /** When true, changing into this position requires an access-grant approval. */
+  readonly requiresApproval?: boolean;
 }
 
 export interface PositionTreeNodeResponse {

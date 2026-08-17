@@ -7,6 +7,7 @@ import { NotificationService } from '../../../../core/services/notification.serv
 import { EmployeeDetailResponse } from '../../models/employee.model';
 import { PositionApiService } from '../../../organization/data-access/position-api.service';
 import { PermissionService } from '../../../../core/auth/state/permission.service';
+import { AuthStore } from '../../../../core/auth/state/auth.store';
 
 describe('EmployeeDetailComponent', () => {
   const detailFixture: EmployeeDetailResponse = {
@@ -43,12 +44,14 @@ describe('EmployeeDetailComponent', () => {
   function setup(
     employee: EmployeeDetailResponse,
     apiOverrides: Partial<PeopleApiService> = {},
-    hasWritePermission = true
+    hasWritePermission = true,
+    currentEmployeeId: string | null = 'emp-99'
   ) {
     const apiStub = {
       getEmployeeDetail: vi.fn().mockReturnValue(of(employee)),
       resendInvitation: vi.fn().mockReturnValue(of({ expiresAt: '2026-08-25T00:00:00Z' })),
-      changePosition: vi.fn().mockReturnValue(of(undefined)),
+      changePosition: vi.fn().mockReturnValue(of({ pendingApproval: false })),
+      getJobJourney: vi.fn().mockReturnValue(of([])),
       ...apiOverrides
     };
     const notificationsStub = { success: vi.fn(), error: vi.fn() };
@@ -65,6 +68,7 @@ describe('EmployeeDetailComponent', () => {
         { provide: NotificationService, useValue: notificationsStub },
         { provide: PositionApiService, useValue: positionApiStub },
         { provide: PermissionService, useValue: permissionServiceStub },
+        { provide: AuthStore, useValue: { employeeId: () => currentEmployeeId } },
         { provide: ActivatedRoute, useValue: { snapshot: { paramMap: { get: () => 'emp-1' } } } }
       ]
     });
@@ -103,20 +107,29 @@ describe('EmployeeDetailComponent', () => {
     expect(fixture.nativeElement.textContent).toContain('Ada Lovelace');
   });
 
-  it('renders the Job Information, Personal Information, and Emergency Contacts sections once loaded', () => {
+  it('renders the Job Information component on initial load, and switches tabs when clicked', () => {
     const { fixture } = setup(detailFixture);
     fixture.detectChanges();
 
     expect(fixture.nativeElement.querySelector('app-employee-job-info')).toBeTruthy();
+
+    fixture.componentInstance.activeTab.set('personal');
+    fixture.detectChanges();
     expect(fixture.nativeElement.querySelector('app-employee-personal-info')).toBeTruthy();
+
+    fixture.componentInstance.activeTab.set('emergency');
+    fixture.detectChanges();
     expect(fixture.nativeElement.querySelector('app-employee-emergency-contacts')).toBeTruthy();
   });
 
-  it('renders the Payroll section when the response includes it', () => {
+  it('renders the Payroll section when selected tab is payroll and response includes it', () => {
     const { fixture } = setup({
       ...detailFixture,
       payroll: { hasBankDetailsOnFile: true, bankName: 'Test Bank', maskedAccountNumber: '****1234', accountType: 'checking' }
     });
+    fixture.detectChanges();
+
+    fixture.componentInstance.activeTab.set('payroll');
     fixture.detectChanges();
 
     expect(fixture.nativeElement.querySelector('app-employee-payroll')).toBeTruthy();
@@ -141,8 +154,40 @@ describe('EmployeeDetailComponent', () => {
     changePositionButton?.click();
     fixture.detectChanges();
 
-    expect(fixture.componentInstance.changePositionOpen()).toBe(true);
+    expect(fixture.componentInstance.changePositionMenuOpen()).toBe(true);
     expect(fixture.nativeElement.querySelector('app-change-position-modal')).toBeTruthy();
+  });
+
+  it('hides the Change Position menu entirely when viewing your own record', () => {
+    const { fixture } = setup(detailFixture, {}, true, 'emp-1');
+    fixture.componentInstance.load();
+    fixture.detectChanges();
+    expect(fixture.nativeElement.querySelector('[data-testid="change-position-trigger"]')).toBeFalsy();
+  });
+
+  it('shows the action menu with Promotion, Transfer, and a disabled Offboarding for another employee', () => {
+    const { fixture } = setup(detailFixture, {}, true, 'emp-99');
+    fixture.componentInstance.load();
+    fixture.detectChanges();
+    fixture.componentInstance.changePositionMenuOpen.set(true);
+    fixture.detectChanges();
+
+    const text = fixture.nativeElement.textContent as string;
+    expect(text).toContain('Promotion');
+    expect(text).toContain('Transfer');
+    const offboardingButton = fixture.nativeElement.querySelector('[data-testid="offboarding-menu-item"]') as HTMLButtonElement | null;
+    expect(offboardingButton?.disabled).toBe(true);
+  });
+
+  it('opens the modal with changeReason=Promotion when Promotion is clicked', () => {
+    const { fixture } = setup(detailFixture, {}, true, 'emp-99');
+    fixture.componentInstance.load();
+    fixture.detectChanges();
+
+    fixture.componentInstance.openChangePosition('Promotion');
+
+    expect(fixture.componentInstance.changePositionOpen()).toBe(true);
+    expect(fixture.componentInstance.changePositionReason()).toBe('Promotion');
   });
 
   it('does not render a Change Position button when the user lacks employees:write', () => {
@@ -233,5 +278,13 @@ describe('EmployeeDetailComponent', () => {
 
     expect(notificationsStub.error).toHaveBeenCalled();
     expect(fixture.componentInstance.resending()).toBe(false);
+  });
+
+  it('renders breadcrumb header and does not render Back to Employees link', () => {
+    const { fixture } = setup(detailFixture);
+    fixture.detectChanges();
+
+    expect(fixture.nativeElement.querySelector('app-breadcrumb-header')).toBeTruthy();
+    expect(fixture.nativeElement.textContent).not.toContain('Back to Employees');
   });
 });

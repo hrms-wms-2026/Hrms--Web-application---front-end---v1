@@ -36,11 +36,12 @@ describe('ChangePositionModalComponent', () => {
     fixture.componentRef.setInput('employeeId', 'emp-1');
     fixture.componentRef.setInput('legalEntityId', 'le-1');
     fixture.componentRef.setInput('currentPositionId', 'pos-1');
+    fixture.componentRef.setInput('changeReason', 'Promotion');
     fixture.detectChanges();
   });
 
   it('emits changed and calls changePosition on submit', () => {
-    peopleApi.changePosition.mockReturnValue(of(undefined));
+    peopleApi.changePosition.mockReturnValue(of({ pendingApproval: false }));
     const changedSpy = vi.fn();
     component.changed.subscribe(changedSpy);
 
@@ -67,7 +68,7 @@ describe('ChangePositionModalComponent', () => {
   });
 
   it('calls listFlat with an explicit pageSize and includeInactive:false', () => {
-    expect(positionApi.listFlat).toHaveBeenCalledWith('le-1', { pageSize: 200, includeInactive: false });
+    expect(positionApi.listFlat).toHaveBeenCalledWith('le-1', { pageSize: 100, includeInactive: false });
   });
 
   it('does not submit and disables Save when the effective date is cleared', () => {
@@ -96,5 +97,41 @@ describe('ChangePositionModalComponent', () => {
 
     expect(component.loadError()).toBe('Forbidden');
     expect(fixture.nativeElement.textContent).toContain('Forbidden');
+  });
+
+  it('shows the sensitivity reminder and changes the Save label when the selected position requires approval', () => {
+    positionApi.listFlat.mockReturnValue(of({
+      items: [{ id: 'pos-2', name: 'Head of Security', requiresApproval: true }],
+      totalCount: 1,
+      page: 1,
+      pageSize: 100
+    } as never));
+    fixture.componentRef.setInput('open', false);
+    fixture.detectChanges();
+    fixture.componentRef.setInput('open', true);
+    fixture.detectChanges();
+    component.selectedPositionId.set('pos-2');
+    fixture.detectChanges();
+
+    const text = fixture.nativeElement.textContent as string;
+    expect(text).toContain('requires approval');
+    const buttons: HTMLButtonElement[] = Array.from(fixture.nativeElement.querySelectorAll('button'));
+    const submit = buttons.find((b) => b.textContent?.includes('Send for approval') || b.textContent?.includes('Save'));
+    expect(submit?.textContent).toContain('Send for approval');
+  });
+
+  it('emits pendingApproval instead of changed when the backend returns pendingApproval: true', () => {
+    peopleApi.changePosition.mockReturnValue(of({ pendingApproval: true }));
+    const pendingSpy = vi.fn();
+    const changedSpy = vi.fn();
+    component.pendingApproval.subscribe(pendingSpy);
+    component.changed.subscribe(changedSpy);
+    component.selectedPositionId.set('pos-2');
+    fixture.componentRef.setInput('changeReason', 'Promotion');
+
+    component.submit();
+
+    expect(pendingSpy).toHaveBeenCalled();
+    expect(changedSpy).not.toHaveBeenCalled();
   });
 });

@@ -1,19 +1,23 @@
 import { ChangeDetectionStrategy, Component, computed, inject, signal } from '@angular/core';
-import { ActivatedRoute, RouterLink } from '@angular/router';
+import { ActivatedRoute } from '@angular/router';
 import { toSafeErrorMessage } from '../../../../core/services/error-handler.service';
 import { NotificationService } from '../../../../core/services/notification.service';
+import { AuthStore } from '../../../../core/auth/state/auth.store';
 import { PermissionService } from '../../../../core/auth/state/permission.service';
 import { ButtonComponent } from '../../../../shared/ui/button/button.component';
 import { ErrorStateComponent } from '../../../../shared/ui/error-state/error-state.component';
 import { LoaderComponent } from '../../../../shared/ui/loader/loader.component';
-import { PageHeaderComponent } from '../../../../shared/ui/page-header/page-header.component';
+import { BreadcrumbHeaderComponent } from '../../../../shared/ui/breadcrumb-header/breadcrumb-header.component';
+import { PopoverComponent } from '../../../../shared/ui/popover/popover.component';
 import { PeopleApiService } from '../../data-access/people-api.service';
-import { EmployeeDetailResponse } from '../../models/employee.model';
+import { EmployeeDetailAddress, EmployeeDetailResponse } from '../../models/employee.model';
 import { EmployeeJobInfoComponent } from '../../ui/employee-job-info/employee-job-info.component';
 import { EmployeePersonalInfoComponent } from '../../ui/employee-personal-info/employee-personal-info.component';
 import { EmployeeEmergencyContactsComponent } from '../../ui/employee-emergency-contacts/employee-emergency-contacts.component';
 import { EmployeePayrollComponent } from '../../ui/employee-payroll/employee-payroll.component';
 import { ChangePositionModalComponent } from '../../ui/change-position-modal/change-position-modal.component';
+import { EmployeeJobJourneyComponent } from '../../ui/employee-job-journey/employee-job-journey.component';
+import { PositionHistoryEntryResponse } from '../../models/position-history.model';
 
 /**
  * Full section-by-section employee detail view backed by GET /api/v1/employees/{id}/detail.
@@ -26,16 +30,17 @@ import { ChangePositionModalComponent } from '../../ui/change-position-modal/cha
   selector: 'app-employee-detail',
   standalone: true,
   imports: [
-    RouterLink,
+    BreadcrumbHeaderComponent,
     ButtonComponent,
     ErrorStateComponent,
     LoaderComponent,
-    PageHeaderComponent,
     EmployeeJobInfoComponent,
     EmployeePersonalInfoComponent,
     EmployeeEmergencyContactsComponent,
     EmployeePayrollComponent,
-    ChangePositionModalComponent
+    ChangePositionModalComponent,
+    PopoverComponent,
+    EmployeeJobJourneyComponent
   ],
   template: `
     @if (loading()) {
@@ -43,53 +48,188 @@ import { ChangePositionModalComponent } from '../../ui/change-position-modal/cha
     } @else if (error()) {
       <app-error-state [message]="error()!" [retryable]="true" (retry)="load()" />
     } @else if (employee(); as employee) {
-      <app-page-header
-        [title]="employee.personalInformation.firstName + ' ' + employee.personalInformation.lastName"
-        [subtitle]="employee.personalInformation.email"
-      >
-        <a routerLink="/people/employees">
-          <span class="text-sm font-medium text-[var(--color-accent)] hover:underline">Back to Employees</span>
-        </a>
-      </app-page-header>
+      <header class="emp-detail-header">
+        <app-breadcrumb-header
+          parentLabel="Employees"
+          currentLabel="Employee Detail"
+          parentUrl="/people/employees"
+          icon="people"
+        />
+      </header>
 
-      <div class="mt-4 flex flex-col gap-6">
-        <div>
-          <div class="mb-2 flex items-center justify-between">
-            <h3 class="text-sm font-semibold text-[var(--color-text-primary)]">Job Information</h3>
-            @if (canChangePosition() && employee.jobInformation.legalEntityId) {
-              <app-button (pressed)="changePositionOpen.set(true)">Change Position</app-button>
+      <!-- Hero Profile Banner -->
+      <div class="rounded-2xl border border-[var(--color-border)] bg-[var(--color-surface)] p-6 mb-6">
+        <div class="flex flex-col md:flex-row md:items-center justify-between gap-6">
+          <div class="flex items-center gap-5">
+            <div class="relative flex-shrink-0">
+              <div class="w-16 h-16 rounded-full bg-blue-100 text-blue-700 flex items-center justify-center font-bold text-xl shadow-inner border border-blue-200">
+                {{ getInitials(employee.personalInformation.firstName, employee.personalInformation.lastName) }}
+              </div>
+              <span class="absolute bottom-0 right-0 w-4 h-4 rounded-full border-2 border-white"
+                    [class.bg-green-500]="employee.jobInformation.status.toLowerCase() === 'active'"
+                    [class.bg-red-500]="employee.jobInformation.status.toLowerCase() === 'inactive'"></span>
+            </div>
+
+            <div>
+              <div class="flex items-center gap-3 flex-wrap">
+                <h1 class="text-2xl font-bold text-[var(--color-text-primary)]">
+                  {{ employee.personalInformation.firstName }} {{ employee.personalInformation.lastName }}
+                </h1>
+                <span class="inline-flex items-center font-mono text-xs font-semibold px-2.5 py-0.5 rounded-full bg-[var(--color-surface-secondary)] text-[var(--color-text-secondary)] border border-[var(--color-border)]">
+                  {{ employee.jobInformation.employeeNumber }}
+                </span>
+              </div>
+              <p class="text-sm text-[var(--color-text-secondary)] mt-1 flex items-center gap-2 flex-wrap">
+                <span>{{ employee.personalInformation.email }}</span>
+                <span>•</span>
+                <span class="font-medium text-[var(--color-text-primary)]">{{ employee.jobInformation.positionName || 'Unassigned Position' }}</span>
+                <span>•</span>
+                <span>{{ employee.jobInformation.legalEntityName || 'Company' }}</span>
+              </p>
+            </div>
+          </div>
+
+          <div class="flex items-center gap-3">
+            @if (canChangePosition() && !isOwnRecord() && employee.jobInformation.legalEntityId) {
+              <app-popover [open]="changePositionMenuOpen()" ariaLabel="Change position actions" align="right" (closed)="changePositionMenuOpen.set(false)">
+                <app-button popover-trigger data-testid="change-position-trigger" (pressed)="changePositionMenuOpen.set(!changePositionMenuOpen())">
+                  Change Position
+                </app-button>
+                <div popover-panel class="change-position-menu">
+                  <button type="button" class="profile-action-btn" (click)="openChangePosition('Promotion')">Promotion</button>
+                  <button type="button" class="profile-action-btn" (click)="openChangePosition('Transfer')">Transfer</button>
+                  <button type="button" class="profile-action-btn" data-testid="offboarding-menu-item" disabled title="Not yet available">Offboarding</button>
+                </div>
+              </app-popover>
+            }
+            @if (employee.invitationStatus === 'expired') {
+              <app-button variant="secondary" [loading]="resending()" [disabled]="resending()" (pressed)="resendInvitation(employee.id)">
+                Resend invitation
+              </app-button>
             }
           </div>
-          <app-employee-job-info [jobInformation]="employee.jobInformation" />
         </div>
-
-        <div>
-          <h3 class="mb-2 text-sm font-semibold text-[var(--color-text-primary)]">Personal Information</h3>
-          <app-employee-personal-info [personalInformation]="employee.personalInformation" />
-        </div>
-
-        <div>
-          <h3 class="mb-2 text-sm font-semibold text-[var(--color-text-primary)]">Emergency Contacts</h3>
-          <app-employee-emergency-contacts [emergencyContacts]="employee.emergencyContacts" />
-        </div>
-
-        @if (employee.payroll; as payroll) {
-          <div>
-            <h3 class="mb-2 text-sm font-semibold text-[var(--color-text-primary)]">Payroll & Statutory</h3>
-            <app-employee-payroll [payroll]="payroll" />
-          </div>
-        }
       </div>
 
-      @if (employee.invitationStatus === 'expired') {
-        <div class="mt-4 max-w-2xl rounded-lg border border-[var(--color-border)] p-4 text-sm">
-          <p class="mb-3 text-[var(--color-text-secondary)]">
-            This employee's onboarding invitation expired before they set up their account.
-          </p>
-          <app-button [loading]="resending()" [disabled]="resending()" (pressed)="resendInvitation(employee.id)">
-            Resend invitation
-          </app-button>
+      <!-- Non-Duplicate Insights Metric Cards Grid -->
+      <div class="grid grid-cols-2 sm:grid-cols-4 gap-4 mb-6">
+        <div class="rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] p-4">
+          <span class="text-xs font-medium text-[var(--color-text-secondary)] block mb-1">Tenure</span>
+          <span class="text-sm font-semibold text-[var(--color-text-primary)] block">
+            {{ calculateTenure(employee.jobInformation.hireDate) }}
+          </span>
         </div>
+
+        <div class="rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] p-4">
+          <span class="text-xs font-medium text-[var(--color-text-secondary)] block mb-1">Reporting Manager</span>
+          <span class="text-sm font-semibold text-[var(--color-text-primary)] block truncate">
+            {{ employee.jobInformation.reportingManagerName || 'Unassigned' }}
+          </span>
+        </div>
+
+        <div class="rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] p-4">
+          <span class="text-xs font-medium text-[var(--color-text-secondary)] block mb-1">Primary Location</span>
+          <span class="text-sm font-semibold text-[var(--color-text-primary)] block truncate">
+            {{ getPrimaryLocation(employee.personalInformation.addresses) }}
+          </span>
+        </div>
+
+        <div class="rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] p-4">
+          <span class="text-xs font-medium text-[var(--color-text-secondary)] block mb-1">Account Status</span>
+          <span class="inline-flex items-center gap-1.5 text-sm font-semibold"
+                [class.text-green-600]="getAccountStatusInfo(employee.invitationStatus, employee.jobInformation.status).color === 'green'"
+                [class.text-amber-600]="getAccountStatusInfo(employee.invitationStatus, employee.jobInformation.status).color === 'amber'"
+                [class.text-blue-600]="getAccountStatusInfo(employee.invitationStatus, employee.jobInformation.status).color === 'blue'"
+                [class.text-red-600]="getAccountStatusInfo(employee.invitationStatus, employee.jobInformation.status).color === 'red'">
+            <span class="w-2 h-2 rounded-full"
+                  [class.bg-green-500]="getAccountStatusInfo(employee.invitationStatus, employee.jobInformation.status).color === 'green'"
+                  [class.bg-amber-500]="getAccountStatusInfo(employee.invitationStatus, employee.jobInformation.status).color === 'amber'"
+                  [class.bg-blue-500]="getAccountStatusInfo(employee.invitationStatus, employee.jobInformation.status).color === 'blue'"
+                  [class.bg-red-500]="getAccountStatusInfo(employee.invitationStatus, employee.jobInformation.status).color === 'red'"></span>
+            {{ getAccountStatusInfo(employee.invitationStatus, employee.jobInformation.status).label }}
+          </span>
+        </div>
+      </div>
+
+      <!-- Navigation Tabs -->
+      <div class="border-b border-[var(--color-border)] mb-6">
+        <nav class="flex gap-2" aria-label="Employee Detail Sections">
+          <button
+            type="button"
+            class="px-4 py-2.5 text-sm font-medium border-b-2 transition-colors -mb-px whitespace-nowrap cursor-pointer"
+            [class.border-[var(--color-accent)]]="activeTab() === 'job'"
+            [class.text-[var(--color-accent)]]="activeTab() === 'job'"
+            [class.font-semibold]="activeTab() === 'job'"
+            [class.border-transparent]="activeTab() !== 'job'"
+            [class.text-[var(--color-text-secondary)]]="activeTab() !== 'job'"
+            (click)="activeTab.set('job')"
+          >
+            Job Information
+          </button>
+          <button
+            type="button"
+            class="px-4 py-2.5 text-sm font-medium border-b-2 transition-colors -mb-px whitespace-nowrap cursor-pointer"
+            [class.border-[var(--color-accent)]]="activeTab() === 'personal'"
+            [class.text-[var(--color-accent)]]="activeTab() === 'personal'"
+            [class.font-semibold]="activeTab() === 'personal'"
+            [class.border-transparent]="activeTab() !== 'personal'"
+            [class.text-[var(--color-text-secondary)]]="activeTab() !== 'personal'"
+            (click)="activeTab.set('personal')"
+          >
+            Personal Information
+          </button>
+          <button
+            type="button"
+            class="px-4 py-2.5 text-sm font-medium border-b-2 transition-colors -mb-px whitespace-nowrap cursor-pointer"
+            [class.border-[var(--color-accent)]]="activeTab() === 'emergency'"
+            [class.text-[var(--color-accent)]]="activeTab() === 'emergency'"
+            [class.font-semibold]="activeTab() === 'emergency'"
+            [class.border-transparent]="activeTab() !== 'emergency'"
+            [class.text-[var(--color-text-secondary)]]="activeTab() !== 'emergency'"
+            (click)="activeTab.set('emergency')"
+          >
+            Emergency Contacts
+          </button>
+          @if (employee.payroll) {
+            <button
+              type="button"
+              class="px-4 py-2.5 text-sm font-medium border-b-2 transition-colors -mb-px whitespace-nowrap cursor-pointer"
+              [class.border-[var(--color-accent)]]="activeTab() === 'payroll'"
+              [class.text-[var(--color-accent)]]="activeTab() === 'payroll'"
+              [class.font-semibold]="activeTab() === 'payroll'"
+              [class.border-transparent]="activeTab() !== 'payroll'"
+              [class.text-[var(--color-text-secondary)]]="activeTab() !== 'payroll'"
+              (click)="activeTab.set('payroll')"
+            >
+              Payroll & Statutory
+            </button>
+          }
+          <button
+            type="button"
+            class="px-4 py-2.5 text-sm font-medium border-b-2 transition-colors -mb-px whitespace-nowrap cursor-pointer"
+            [class.border-[var(--color-accent)]]="activeTab() === 'journey'"
+            [class.text-[var(--color-accent)]]="activeTab() === 'journey'"
+            [class.font-semibold]="activeTab() === 'journey'"
+            [class.border-transparent]="activeTab() !== 'journey'"
+            [class.text-[var(--color-text-secondary)]]="activeTab() !== 'journey'"
+            (click)="activeTab.set('journey')"
+          >
+            Job Journey
+          </button>
+        </nav>
+      </div>
+
+      <!-- Tab Content Section -->
+      @if (activeTab() === 'job') {
+        <app-employee-job-info [jobInformation]="employee.jobInformation" />
+      } @else if (activeTab() === 'personal') {
+        <app-employee-personal-info [personalInformation]="employee.personalInformation" />
+      } @else if (activeTab() === 'emergency') {
+        <app-employee-emergency-contacts [emergencyContacts]="employee.emergencyContacts" />
+      } @else if (activeTab() === 'payroll' && employee.payroll; as payroll) {
+        <app-employee-payroll [payroll]="payroll" />
+      } @else if (activeTab() === 'journey') {
+        <app-employee-job-journey [entries]="jobJourney()" />
       }
 
       @if (employee.jobInformation.legalEntityId; as legalEntityId) {
@@ -98,12 +238,55 @@ import { ChangePositionModalComponent } from '../../ui/change-position-modal/cha
           [employeeId]="employee.id"
           [legalEntityId]="legalEntityId"
           [currentPositionId]="employee.jobInformation.positionId"
+          [changeReason]="changePositionReason()"
           (closed)="changePositionOpen.set(false)"
           (changed)="onPositionChanged()"
+          (pendingApproval)="onPositionPendingApproval()"
         />
       }
     }
   `,
+  styles: [`
+    .emp-detail-header {
+      margin-top: -1.25rem;
+      margin-bottom: 1.25rem;
+      padding-bottom: 0.625rem;
+      border-bottom: 1px solid var(--color-border);
+    }
+
+    .change-position-menu {
+      display: flex;
+      flex-direction: column;
+      min-width: 12rem;
+      padding: 0.25rem;
+    }
+
+    .profile-action-btn {
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+      width: 100%;
+      padding: 0.625rem 0.75rem;
+      border: none;
+      border-radius: 0.375rem;
+      background: transparent;
+      color: var(--color-text-primary);
+      font-size: 0.875rem;
+      font-weight: 500;
+      cursor: pointer;
+      text-align: left;
+    }
+
+    .profile-action-btn:hover:not(:disabled) {
+      background-color: var(--color-surface-secondary);
+      color: var(--color-accent);
+    }
+
+    .profile-action-btn:disabled {
+      cursor: not-allowed;
+      opacity: 0.5;
+    }
+  `],
   changeDetection: ChangeDetectionStrategy.OnPush
 })
 export class EmployeeDetailComponent {
@@ -111,16 +294,29 @@ export class EmployeeDetailComponent {
   private readonly api = inject(PeopleApiService);
   private readonly notifications = inject(NotificationService);
   private readonly permissionService = inject(PermissionService);
+  private readonly authStore = inject(AuthStore);
 
   readonly employee = signal<EmployeeDetailResponse | null>(null);
   readonly loading = signal(false);
   readonly error = signal<string | null>(null);
   readonly resending = signal(false);
+  readonly changePositionMenuOpen = signal(false);
   readonly changePositionOpen = signal(false);
+  readonly changePositionReason = signal<'Promotion' | 'Transfer'>('Promotion');
+  readonly activeTab = signal<'job' | 'personal' | 'emergency' | 'payroll' | 'journey'>('job');
+  readonly jobJourney = signal<readonly PositionHistoryEntryResponse[]>([]);
+
   readonly canChangePosition = computed(() => this.permissionService.hasPermission('employees:write'));
+  readonly isOwnRecord = computed(() => this.employee()?.id === this.authStore.employeeId());
 
   constructor() {
     this.load();
+  }
+
+  getInitials(firstName?: string, lastName?: string): string {
+    const f = firstName?.trim().charAt(0) || '';
+    const l = lastName?.trim().charAt(0) || '';
+    return (f + l).toUpperCase() || 'EM';
   }
 
   load(): void {
@@ -140,6 +336,10 @@ export class EmployeeDetailComponent {
         this.loading.set(false);
         this.error.set(toSafeErrorMessage(err, 'The employee or selected organization record could not be found.'));
       }
+    });
+    this.api.getJobJourney(id).subscribe({
+      next: (entries) => this.jobJourney.set(entries),
+      error: () => this.jobJourney.set([])
     });
   }
 
@@ -162,5 +362,78 @@ export class EmployeeDetailComponent {
     this.changePositionOpen.set(false);
     this.notifications.success('Position updated.');
     this.load();
+  }
+
+  openChangePosition(reason: 'Promotion' | 'Transfer'): void {
+    this.changePositionReason.set(reason);
+    this.changePositionMenuOpen.set(false);
+    this.changePositionOpen.set(true);
+  }
+
+  onPositionPendingApproval(): void {
+    this.changePositionOpen.set(false);
+    this.notifications.success('Sent for approval.');
+    this.load();
+  }
+
+  calculateTenure(hireDateStr?: string): string {
+    if (!hireDateStr) return '—';
+    const hireDate = new Date(hireDateStr);
+    if (isNaN(hireDate.getTime())) return '—';
+
+    const now = new Date();
+    let years = now.getFullYear() - hireDate.getFullYear();
+    let months = now.getMonth() - hireDate.getMonth();
+
+    if (months < 0) {
+      years -= 1;
+      months += 12;
+    }
+
+    if (years <= 0 && months <= 0) {
+      return 'New Joiner';
+    }
+
+    const yearPart = years > 0 ? `${years} yr${years > 1 ? 's' : ''}` : '';
+    const monthPart = months > 0 ? `${months} mo${months > 1 ? 's' : ''}` : '';
+
+    if (yearPart && monthPart) return `${yearPart} ${monthPart}`;
+    return yearPart || monthPart || 'New Joiner';
+  }
+
+  getPrimaryLocation(addresses?: readonly EmployeeDetailAddress[]): string {
+    if (!addresses || addresses.length === 0) return 'Not specified';
+    const primary = addresses.find(a => a.isPrimary) || addresses[0];
+    if (!primary || !primary.addressJson) return 'Not specified';
+
+    try {
+      const parsed: unknown = JSON.parse(primary.addressJson);
+      if (parsed && typeof parsed === 'object') {
+        const p = parsed as Record<string, unknown>;
+        const city = p['city'] || p['town'];
+        const country = p['country'] || p['countryCode'];
+        if (city && country) return `${city}, ${country}`;
+        if (city) return String(city);
+        if (country) return String(country);
+        const firstVal = Object.values(p).find(v => typeof v === 'string' && v.trim().length > 0);
+        if (firstVal) return String(firstVal);
+      }
+    } catch {
+      return primary.addressJson.substring(0, 30);
+    }
+    return 'Not specified';
+  }
+
+  getAccountStatusInfo(invitationStatus: string | null | undefined, jobStatus: string): { label: string; color: 'green' | 'amber' | 'blue' | 'red' } {
+    if (invitationStatus === 'expired') {
+      return { label: 'Invitation Expired', color: 'amber' };
+    }
+    if (invitationStatus === 'pending') {
+      return { label: 'Invitation Pending', color: 'blue' };
+    }
+    if (jobStatus?.toLowerCase() === 'active') {
+      return { label: 'Account Active', color: 'green' };
+    }
+    return { label: 'Inactive', color: 'red' };
   }
 }

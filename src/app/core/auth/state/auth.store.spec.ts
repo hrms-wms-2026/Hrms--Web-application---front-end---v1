@@ -45,9 +45,20 @@ describe('AuthStore', () => {
 
     expect(store.authenticated()).toBe(true);
     expect(store.email()).toBe('a@b.com');
+    expect(store.employeeId()).toBeNull();
     expect(store.permissions()).toEqual(['integrations:manage']);
     expect(store.workspaceSlug()).toBe('acme');
     expect(store.loading()).toBe(false);
+  });
+
+  it('threads employeeId from the me response into session state', async () => {
+    const store = setup({
+      me: () => of({ ...authenticatedDto, user: { email: 'a@b.com', employeeId: 'emp-123' } })
+    } as Partial<AuthApiService>);
+
+    await store.checkSession();
+
+    expect(store.employeeId()).toBe('emp-123');
   });
 
   it('surfaces legalAcceptanceRequired and pendingLegalDocuments when login is gated', async () => {
@@ -122,6 +133,32 @@ describe('AuthStore', () => {
     await expect(store.exchangeSession('some-code')).rejects.toBeTruthy();
 
     expect(store.error()).toBe('Could not reach the tenant workspace. Check your local HTTPS certificate and try again.');
+    expect(store.loading()).toBe(false);
+  });
+
+  it('acceptEmployeeInvitation populates state on success', async () => {
+    const store = setup({ acceptEmployeeInvitation: () => of(authenticatedDto) } as unknown as Partial<AuthApiService>);
+
+    await store.acceptEmployeeInvitation('raw-token', {
+      password: 'Password123!',
+      confirm_password: 'Password123!',
+      acceptances: []
+    });
+
+    expect(store.authenticated()).toBe(true);
+    expect(store.email()).toBe('a@b.com');
+    expect(store.loading()).toBe(false);
+  });
+
+  it('acceptEmployeeInvitation sets a friendly error and rethrows on failure', async () => {
+    const httpError = { error: { detail: 'This invitation has expired.' } };
+    const store = setup({ acceptEmployeeInvitation: () => throwError(() => httpError) } as unknown as Partial<AuthApiService>);
+
+    await expect(
+      store.acceptEmployeeInvitation('raw-token', { password: 'x', confirm_password: 'x', acceptances: [] })
+    ).rejects.toBeTruthy();
+
+    expect(store.error()).toBe('This invitation has expired.');
     expect(store.loading()).toBe(false);
   });
 

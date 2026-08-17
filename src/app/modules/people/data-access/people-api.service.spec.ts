@@ -254,10 +254,18 @@ describe('PeopleApiService', () => {
   });
 
   it('changePosition sends POST to /employees/{id}/change-position with the payload', () => {
-    service.changePosition('emp-1', { positionId: 'pos-1', effectiveFrom: '2026-09-01' }).subscribe();
+    service.changePosition('emp-1', { positionId: 'pos-1', effectiveFrom: '2026-09-01', changeReason: 'Transfer' }).subscribe();
     const req = httpMock.expectOne(`${environment.apiUrl}/employees/emp-1/change-position`);
     expect(req.request.method).toBe('POST');
-    expect(req.request.body).toEqual({ positionId: 'pos-1', effectiveFrom: '2026-09-01' });
-    req.flush(null);
+    expect(req.request.body).toEqual({ positionId: 'pos-1', effectiveFrom: '2026-09-01', changeReason: 'Transfer' });
+    req.flush({ pendingApproval: false });
+  });
+
+  it('changePosition sends changeReason and returns pendingApproval', () => {
+    service.changePosition('emp-1', { positionId: 'pos-1', effectiveFrom: '2026-09-01', changeReason: 'Promotion' })
+      .subscribe((response) => expect(response.pendingApproval).toBe(true));
+    const req = httpMock.expectOne(`${environment.apiUrl}/employees/emp-1/change-position`);
+    expect(req.request.body).toEqual({ positionId: 'pos-1', effectiveFrom: '2026-09-01', changeReason: 'Promotion' });
+    req.flush({ pendingApproval: true });
   });
 });
