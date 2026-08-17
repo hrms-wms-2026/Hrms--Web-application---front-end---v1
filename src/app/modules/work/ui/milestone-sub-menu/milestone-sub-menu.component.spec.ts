@@ -21,10 +21,18 @@ describe('MilestoneSubMenuComponent', () => {
     expect(title.textContent).toContain('Milestone 1');
   });
 
-  it('renders all six tabs in order', () => {
+  it('renders all six base tabs in order for non-owners', () => {
     const labels = Array.from(fixture.nativeElement.querySelectorAll('[data-testid="sub-menu-tab"]'))
-      .map((el: any) => el.textContent.trim());
+      .map((el) => (el as HTMLElement).textContent?.trim() ?? '');
     expect(labels).toEqual(['Tree', 'Board', 'Backlog', 'My Task', 'List', 'Approvals']);
+  });
+
+  it('includes Settings tab for owners', () => {
+    fixture.componentRef.setInput('isOwner', true);
+    fixture.detectChanges();
+    const labels = Array.from(fixture.nativeElement.querySelectorAll('[data-testid="sub-menu-tab"]'))
+      .map((el) => (el as HTMLElement).textContent?.trim() ?? '');
+    expect(labels).toEqual(['Tree', 'Board', 'Backlog', 'My Task', 'List', 'Approvals', 'Settings']);
   });
 
   it('renders an icon inside every tab link', () => {

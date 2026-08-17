@@ -35,6 +35,11 @@ export class ProjectDetailComponent implements OnInit {
     const id = this.activeMilestoneId();
     return this.store.milestones().find((m) => m.objectiveId === id)?.title ?? '';
   });
+  activeMilestoneIsOwner = computed(() => {
+    const id = this.activeMilestoneId();
+    if (!id) return false;
+    return this.store.milestones().find((m) => m.objectiveId === id)?.isOwner ?? false;
+  });
 
   milestoneSettingsOpen = signal(false);
   milestoneSettingsInitialValue = signal<ObjectiveDetail | null>(null);

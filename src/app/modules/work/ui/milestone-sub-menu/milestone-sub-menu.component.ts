@@ -1,4 +1,4 @@
-import { Component, input } from '@angular/core';
+import { Component, computed, input } from '@angular/core';
 import { RouterLink, RouterLinkActive } from '@angular/router';
 
 interface SubMenuTab {
@@ -6,7 +6,7 @@ interface SubMenuTab {
   segment: string;
 }
 
-const TABS: SubMenuTab[] = [
+const BASE_TABS: SubMenuTab[] = [
   { label: 'Tree', segment: 'tree' },
   { label: 'Board', segment: 'board' },
   { label: 'Backlog', segment: 'backlog' },
@@ -14,6 +14,8 @@ const TABS: SubMenuTab[] = [
   { label: 'List', segment: 'list' },
   { label: 'Approvals', segment: 'approvals' }
 ];
+
+const SETTINGS_TAB: SubMenuTab = { label: 'Settings', segment: 'settings' };
 
 @Component({
   selector: 'app-milestone-sub-menu',
@@ -28,7 +30,7 @@ const TABS: SubMenuTab[] = [
         {{ milestoneTitle() }}
       </p>
       <nav class="flex gap-1 border-b border-[var(--color-border)]" data-testid="sub-menu-tabs">
-        @for (tab of tabs; track tab.segment) {
+        @for (tab of tabs(); track tab.segment) {
           <a
             [routerLink]="['milestones', milestoneId(), tab.segment]"
             routerLinkActive="border-b-2 border-[var(--color-focus-ring)] font-semibold text-[var(--color-text-primary)]"
@@ -64,6 +66,10 @@ const TABS: SubMenuTab[] = [
                   <circle cx="12" cy="12" r="9" />
                   <path d="M8 12l2.5 2.5L16 9" />
                 }
+                @case ('settings') {
+                  <circle cx="12" cy="12" r="3" />
+                  <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z" />
+                }
               }
             </svg>
             {{ tab.label }}
@@ -76,5 +82,7 @@ const TABS: SubMenuTab[] = [
 export class MilestoneSubMenuComponent {
   milestoneId = input.required<string>();
   milestoneTitle = input.required<string>();
-  readonly tabs = TABS;
+  isOwner = input(false);
+
+  readonly tabs = computed(() => (this.isOwner() ? [...BASE_TABS, SETTINGS_TAB] : BASE_TABS));
 }

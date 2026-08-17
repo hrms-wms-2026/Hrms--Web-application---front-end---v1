@@ -46,6 +46,11 @@ export const WORK_ROUTES: Routes = [
             loadComponent: () =>
               import('./feature/milestone-coming-soon-tab/milestone-coming-soon-tab.component').then((m) => m.MilestoneComingSoonTabComponent),
             data: { title: 'List' }
+          },
+          {
+            path: 'settings',
+            loadComponent: () =>
+              import('./feature/objective-settings/objective-settings.component').then((m) => m.ObjectiveSettingsComponent)
           }
         ]
       }

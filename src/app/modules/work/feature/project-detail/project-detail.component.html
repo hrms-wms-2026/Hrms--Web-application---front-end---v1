@@ -49,7 +49,7 @@
 
   @if (activeMilestoneId(); as milestoneId) {
     <div class="mt-2.5">
-      <app-milestone-sub-menu [milestoneId]="milestoneId" [milestoneTitle]="activeMilestoneTitle()" />
+      <app-milestone-sub-menu [milestoneId]="milestoneId" [milestoneTitle]="activeMilestoneTitle()" [isOwner]="activeMilestoneIsOwner()" />
       <router-outlet />
     </div>
   }
