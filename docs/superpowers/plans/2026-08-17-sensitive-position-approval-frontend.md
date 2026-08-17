@@ -576,7 +576,128 @@ git commit -m "feat: add Approvals inbox for roles:manage holders"
 
 ---
 
-### Task 7: Manual verification
+### Task 7: Job Journey tab on Employee Detail
+
+**Files:**
+- Modify: `src/app/modules/people/data-access/people-api.service.ts` (add `getJobJourney`)
+- Create: `src/app/modules/people/models/position-history.model.ts`
+- Create: `src/app/modules/people/ui/employee-job-journey/employee-job-journey.component.ts` (+ `.spec.ts`)
+- Modify: `src/app/modules/people/feature/employee-detail/employee-detail.component.ts`
+
+**Interfaces:**
+- Consumes: `GET /api/v1/employees/{id}/position-history` (backend companion plan Task 10).
+
+- [ ] **Step 1: Add the model and API call**
+
+```typescript
+export interface PositionHistoryEntryResponse {
+  readonly positionName: string;
+  readonly departmentName: string | null;
+  readonly effectiveFrom: string;
+  readonly effectiveTo: string | null;
+  readonly changeReason: 'Promotion' | 'Transfer' | 'LateralMove' | null;
+  readonly initiatedByName: string;
+  readonly approvedByName: string | null;
+}
+```
+
+```typescript
+getJobJourney(employeeId: string): Observable<PositionHistoryEntryResponse[]> {
+  return this.http.get<PositionHistoryEntryResponse[]>(`${environment.apiUrl}/employees/${employeeId}/position-history`);
+}
+```
+
+- [ ] **Step 2: Write the failing component test**
+
+```typescript
+it('renders entries oldest first, with no reason badge on the hire entry', () => {
+  fixture.componentRef.setInput('entries', [
+    { positionName: 'Senior Engineer', departmentName: 'Engineering', effectiveFrom: '2024-02-01', effectiveTo: '2026-08-16', changeReason: null, initiatedByName: 'System', approvedByName: null },
+    { positionName: 'Head of Security', departmentName: 'Security', effectiveFrom: '2026-08-17', effectiveTo: null, changeReason: 'Promotion', initiatedByName: 'Jane Doe', approvedByName: 'John Smith' }
+  ]);
+  fixture.detectChanges();
+
+  const rows = fixture.nativeElement.querySelectorAll('[data-testid="journey-entry"]');
+  expect(rows[0].textContent).toContain('Senior Engineer');
+  expect(rows[0].textContent).not.toContain('Promotion');
+  expect(rows[1].textContent).toContain('Promotion');
+  expect(rows[1].textContent).toContain('Approved by John Smith');
+});
+
+it('shows Present instead of an end date for the current entry', () => {
+  fixture.componentRef.setInput('entries', [
+    { positionName: 'Head of Security', departmentName: 'Security', effectiveFrom: '2026-08-17', effectiveTo: null, changeReason: 'Promotion', initiatedByName: 'Jane Doe', approvedByName: null }
+  ]);
+  fixture.detectChanges();
+  expect((fixture.nativeElement.textContent as string)).toContain('Present');
+});
+```
+
+- [ ] **Step 3: Run tests to verify they fail**
+
+Run: `ng test --watch=false --include='**/employee-job-journey.component.spec.ts'`
+Expected: FAIL
+
+- [ ] **Step 4: Build the component**
+
+```typescript
+import { ChangeDetectionStrategy, Component, input } from '@angular/core';
+import { PositionHistoryEntryResponse } from '../../models/position-history.model';
+
+@Component({
+  selector: 'app-employee-job-journey',
+  standalone: true,
+  template: `
+    <ol class="flex flex-col gap-3">
+      @for (entry of entries(); track $index) {
+        <li data-testid="journey-entry" class="rounded-lg border border-[var(--color-border)] p-3 text-sm">
+          <div class="flex items-center justify-between">
+            <span class="font-medium">{{ entry.positionName }}</span>
+            @if (entry.changeReason) {
+              <span class="rounded-full bg-[var(--color-accent-surface)] px-2 py-0.5 text-xs">{{ entry.changeReason }}</span>
+            }
+          </div>
+          <p class="text-[var(--color-text-secondary)]">{{ entry.departmentName || '—' }}</p>
+          <p class="text-xs text-[var(--color-text-secondary)]">{{ entry.effectiveFrom }} – {{ entry.effectiveTo || 'Present' }}</p>
+          <p class="text-xs text-[var(--color-text-secondary)]">
+            Changed by {{ entry.initiatedByName }}
+            @if (entry.approvedByName) { · Approved by {{ entry.approvedByName }} }
+          </p>
+        </li>
+      }
+    </ol>
+  `,
+  changeDetection: ChangeDetectionStrategy.OnPush
+})
+export class EmployeeJobJourneyComponent {
+  readonly entries = input.required<readonly PositionHistoryEntryResponse[]>();
+}
+```
+
+- [ ] **Step 5: Run the tests to verify they pass**
+
+Run: `ng test --watch=false --include='**/employee-job-journey.component.spec.ts'`
+Expected: PASS
+
+- [ ] **Step 6: Wire it into `employee-detail.component.ts`**
+
+Add `'journey'` to the `activeTab` signal's type union and a tab button for it (matching however the existing four tabs are already rendered — copy that pattern). Add a `jobJourney = signal<readonly PositionHistoryEntryResponse[]>([])` and load it in `load()` alongside the existing `getEmployeeDetail` call: `this.api.getJobJourney(id).subscribe((entries) => this.jobJourney.set(entries));` (fire-and-forget alongside the main load — don't block the page on it, and don't fail the whole page if it errors, just log/ignore, since Job Journey is supplementary to the main detail view). Render `<app-employee-job-journey [entries]="jobJourney()" />` when `activeTab() === 'journey'`.
+
+- [ ] **Step 7: Run the full frontend suite**
+
+Run: `ng test --watch=false`
+Expected: PASS
+
+- [ ] **Step 8: Commit**
+
+```bash
+git add src/app/modules/people/data-access/people-api.service.ts src/app/modules/people/models/position-history.model.ts src/app/modules/people/ui/employee-job-journey/ src/app/modules/people/feature/employee-detail/
+git commit -m "feat: add Job Journey tab to Employee Detail"
+```
+
+---
+
+### Task 8: Manual verification
 
 - [ ] **Step 1: Build**
 
@@ -585,7 +706,7 @@ Expected: clean production build.
 
 - [ ] **Step 2: Manual browser check**
 
-Start both the frontend dev server and the backend API (with the backend companion plan's changes already applied). As a `roles:manage` holder viewing your own employee detail page, confirm the Change Position menu is absent. Viewing another employee, click Promotion into a position you've marked `RequiresApproval` in the position access modal — confirm the reminder appears and Save reads "Send for approval." Submit — confirm the target's current position is unchanged and a "Sent for approval" toast appears. Navigate to `/people/approvals` — confirm the request appears. Log in as the requester and confirm they cannot approve their own request (verify the backend rejects it if the UI doesn't already prevent the click). Log in as a different `roles:manage` holder and approve — confirm the employee's position actually changes.
+Start both the frontend dev server and the backend API (with the backend companion plan's changes already applied). As a `roles:manage` holder viewing your own employee detail page, confirm the Change Position menu is absent. Viewing another employee, click Promotion into a position you've marked `RequiresApproval` in the position access modal — confirm the reminder appears and Save reads "Send for approval." Submit — confirm the target's current position is unchanged and a "Sent for approval" toast appears. Navigate to `/people/approvals` — confirm the request appears. Log in as the requester and confirm they cannot approve their own request (verify the backend rejects it if the UI doesn't already prevent the click). Log in as a different `roles:manage` holder and approve — confirm the employee's position actually changes, and confirm the Job Journey tab now shows the new entry with both "Changed by" and "Approved by" populated correctly.
 
 - [ ] **Step 3: Commit any fixes found during manual verification**
 
