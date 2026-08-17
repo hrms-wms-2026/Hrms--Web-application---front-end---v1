@@ -15,7 +15,7 @@ import { toWorkTask } from '../../utils/task.mapper';
     <app-modal [open]="open()" [title]="task()?.shortId ?? ''" size="lg" (closed)="onClose()">
       @if (task(); as t) {
         <div class="flex flex-col gap-3">
-          <app-input label="Title" [value]="title()" (valueChange)="title.set($event)" />
+          <app-input label="Title" [value]="title()" [error]="errors()['title'] || ''" (valueChange)="title.set($event)" />
           <app-input label="Description" [value]="description()" (valueChange)="description.set($event)" />
           <label class="flex flex-col gap-1 text-sm text-[var(--color-text-primary)]">
             Priority
@@ -74,10 +74,15 @@ export class TaskDetailModalComponent {
   estimatedHours = signal<number | null>(null);
   storyPoints = signal<number | null>(null);
   submitting = signal(false);
+  errors = signal<Record<string, string>>({});
   errorMessage = signal<string | null>(null);
 
   constructor() {
     effect(() => {
+      // Track `open()` alongside `task()` so the form re-seeds every time the modal transitions
+      // to open, even when the same task object reference is reopened (Object.is would otherwise
+      // suppress the effect and leave an abandoned edit sitting in the form).
+      this.open();
       const t = this.task();
       if (t) {
         this.title.set(t.title);
@@ -95,6 +100,7 @@ export class TaskDetailModalComponent {
         this.storyPoints.set(null);
       }
       this.errorMessage.set(null);
+      this.errors.set({});
     });
   }
 
@@ -115,6 +121,11 @@ export class TaskDetailModalComponent {
   }
 
   async submit(taskId: string): Promise<void> {
+    const fieldErrors: Record<string, string> = {};
+    if (!this.title().trim()) fieldErrors['title'] = 'Title is required.';
+    this.errors.set(fieldErrors);
+    if (Object.keys(fieldErrors).length > 0) return;
+
     this.submitting.set(true);
     this.errorMessage.set(null);
     const fields = {

@@ -50,6 +50,34 @@ describe('TaskDetailModalComponent', () => {
     expect(instance.storyPoints()).toBe(3);
   });
 
+  it('re-seeds the form from the real task values when reopened, discarding an abandoned edit (reopen with same task object)', () => {
+    const { fixture } = setup(true);
+    fixture.detectChanges();
+
+    const instance = fixture.componentInstance;
+    expect(instance.title()).toBe('Do the thing');
+
+    // User edits the title but never saves.
+    instance.title.set('An abandoned edit');
+    expect(instance.title()).toBe('An abandoned edit');
+
+    // User closes the modal without saving.
+    fixture.componentRef.setInput('open', false);
+    fixture.detectChanges();
+
+    // User reopens the SAME task (same object reference, as the store would provide).
+    fixture.componentRef.setInput('open', true);
+    fixture.componentRef.setInput('task', task);
+    fixture.detectChanges();
+
+    expect(instance.title()).toBe('Do the thing');
+    expect(instance.description()).toBe('Details here');
+    expect(instance.priority()).toBe('high');
+    expect(instance.dueDate()).toBe('2026-09-20');
+    expect(instance.estimatedHours()).toBe(8);
+    expect(instance.storyPoints()).toBe(3);
+  });
+
   it('resets the form when the task input is cleared', () => {
     const { fixture } = setup(true);
     fixture.detectChanges();
@@ -131,5 +159,34 @@ describe('TaskDetailModalComponent', () => {
       estimatedHours: undefined,
       storyPoints: undefined
     });
+  });
+
+  it('blocks submit with an empty title, surfaces a field error, and calls neither editTask nor createTaskEditRequest', async () => {
+    const { fixture, editTask, createTaskEditRequest } = setup(true);
+    fixture.detectChanges();
+
+    fixture.componentInstance.title.set('');
+    await fixture.componentInstance.submit('t1');
+    fixture.detectChanges();
+
+    expect(fixture.componentInstance.errors()['title']).toBe('Title is required.');
+    expect(editTask).not.toHaveBeenCalled();
+    expect(createTaskEditRequest).not.toHaveBeenCalled();
+
+    const titleInput = fixture.nativeElement.querySelector('app-input input') as HTMLInputElement;
+    expect(titleInput.getAttribute('aria-invalid')).toBe('true');
+    expect((fixture.nativeElement.textContent as string)).toContain('Title is required.');
+  });
+
+  it('blocks submit with a whitespace-only title', async () => {
+    const { fixture, editTask, createTaskEditRequest } = setup(true);
+    fixture.detectChanges();
+
+    fixture.componentInstance.title.set('   ');
+    await fixture.componentInstance.submit('t1');
+
+    expect(fixture.componentInstance.errors()['title']).toBe('Title is required.');
+    expect(editTask).not.toHaveBeenCalled();
+    expect(createTaskEditRequest).not.toHaveBeenCalled();
   });
 });
