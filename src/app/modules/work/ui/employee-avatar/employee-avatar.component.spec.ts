@@ -1,5 +1,7 @@
 import { ComponentFixture, TestBed } from '@angular/core/testing';
+import { By } from '@angular/platform-browser';
 import { EmployeeAvatarComponent } from './employee-avatar.component';
+import { AvatarComponent } from '../../../../shared/ui/avatar/avatar.component';
 import { EmployeeDirectoryStore } from '../../state/employee-directory.store';
 import { vi } from 'vitest';
 
@@ -33,5 +35,17 @@ describe('EmployeeAvatarComponent', () => {
   it('never renders the raw employeeId as text', () => {
     const text = fixture.nativeElement.textContent as string;
     expect(text).not.toContain('emp-1');
+  });
+
+  it('delegates rendering to the shared AvatarComponent with the resolved summary', () => {
+    const avatar = fixture.debugElement.query(By.directive(AvatarComponent));
+    expect(avatar).not.toBeNull();
+    expect(avatar.componentInstance.userName()).toBe('Nevi Peiris');
+    expect(avatar.componentInstance.avatarUrl()).toBeNull();
+    expect(avatar.componentInstance.size()).toBe('sm');
+  });
+
+  it('renders no avatar-or-initials markup of its own outside app-avatar', () => {
+    expect(fixture.nativeElement.querySelector('.employee-avatar')).toBeNull();
   });
 });
