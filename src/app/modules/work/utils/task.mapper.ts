@@ -7,7 +7,8 @@ export function toTaskStatusColumn(dto: TaskStatusDto): TaskStatusColumn {
     name: dto.name,
     displayOrder: dto.displayOrder,
     requiresApproval: dto.requiresApproval,
-    marksTaskComplete: dto.marksTaskComplete
+    marksTaskComplete: dto.marksTaskComplete,
+    visibility: dto.visibility
   };
 }
 

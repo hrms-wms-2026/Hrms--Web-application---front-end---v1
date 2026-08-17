@@ -6,7 +6,7 @@ import { TaskApiService } from '../data-access/task-api.service';
 describe('TaskBoardStore', () => {
   function setup(apiOverrides: Partial<TaskApiService> = {}) {
     const api = {
-      getStatuses: () => of([{ id: 's-1', name: 'To Do', displayOrder: 0, requiresApproval: false, approverId: null, marksTaskComplete: false }]),
+      getStatuses: () => of([{ id: 's-1', name: 'To Do', displayOrder: 0, requiresApproval: false, approverId: null, marksTaskComplete: false, visibility: 'public' }]),
       getTasks: () => of([{
         id: 't-1', objectiveId: 'obj-1', shortId: 'PRJ-1', title: 'Do it', description: null,
         taskType: 'task', statusId: 's-1', priority: 'medium', storyPoints: null,

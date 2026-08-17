@@ -4,7 +4,9 @@ import { Observable } from 'rxjs';
 import { environment } from '../../../../environments/environment';
 import {
   CreateTaskRequestDto,
+  CreateTaskStatusRequestDto,
   EditTaskRequestDto,
+  EditTaskStatusRequestDto,
   TaskStatusDto,
   WorkTaskDto
 } from '../models/dto/task.dto';
@@ -16,6 +18,18 @@ export class TaskApiService {
 
   getStatuses(objectiveId: string): Observable<TaskStatusDto[]> {
     return this.http.get<TaskStatusDto[]>(`${this.baseUrl}/objectives/${objectiveId}/task-statuses`);
+  }
+
+  createStatus(objectiveId: string, request: CreateTaskStatusRequestDto): Observable<TaskStatusDto> {
+    return this.http.post<TaskStatusDto>(`${this.baseUrl}/objectives/${objectiveId}/task-statuses`, request);
+  }
+
+  editStatus(objectiveId: string, id: string, request: EditTaskStatusRequestDto): Observable<void> {
+    return this.http.patch<void>(`${this.baseUrl}/objectives/${objectiveId}/task-statuses/${id}`, request);
+  }
+
+  deleteStatus(id: string): Observable<void> {
+    return this.http.delete<void>(`${this.baseUrl}/task-statuses/${id}`);
   }
 
   getTasks(objectiveId: string): Observable<WorkTaskDto[]> {

@@ -39,7 +39,7 @@ describe('TaskApiService', () => {
   it('getStatuses fetches task statuses for an objective', () => {
     const objectiveId = 'obj-1';
     const mockStatuses: TaskStatusDto[] = [{
-      id: 's-1', name: 'To Do', displayOrder: 0, requiresApproval: false, approverId: null, marksTaskComplete: false
+      id: 's-1', name: 'To Do', displayOrder: 0, requiresApproval: false, approverId: null, marksTaskComplete: false, visibility: 'public'
     }];
 
     service.getStatuses(objectiveId).subscribe((statuses) => {
@@ -49,5 +49,25 @@ describe('TaskApiService', () => {
     const req = httpMock.expectOne(`${environment.apiUrl}/work/objectives/${objectiveId}/task-statuses`);
     expect(req.request.method).toBe('GET');
     req.flush(mockStatuses);
+  });
+
+  it('createStatus posts to the task-statuses endpoint', () => {
+    service.createStatus('obj-1', {
+      name: 'Blocked',
+      displayOrder: 4,
+      visibility: 'private',
+      marksTaskComplete: false,
+      requiresApproval: false
+    }).subscribe();
+    const req = httpMock.expectOne(`${environment.apiUrl}/work/objectives/obj-1/task-statuses`);
+    expect(req.request.method).toBe('POST');
+    req.flush({});
+  });
+
+  it('deleteStatus sends DELETE to task-statuses/{id}', () => {
+    service.deleteStatus('s-1').subscribe();
+    const req = httpMock.expectOne(`${environment.apiUrl}/work/task-statuses/s-1`);
+    expect(req.request.method).toBe('DELETE');
+    req.flush(null);
   });
 });

@@ -5,6 +5,7 @@ export interface TaskStatusDto {
   requiresApproval: boolean;
   approverId: string | null;
   marksTaskComplete: boolean;
+  visibility: 'public' | 'private';
 }
 
 export interface WorkTaskDto {
@@ -47,4 +48,21 @@ export interface EditTaskRequestDto {
 export interface InsufficientAllocationErrorDto {
   availableSlackHours: number;
   suggestedAction: 'extend_allocation';
+}
+
+export interface CreateTaskStatusRequestDto {
+  name: string;
+  displayOrder: number;
+  visibility: 'public' | 'private';
+  marksTaskComplete: boolean;
+  requiresApproval: boolean;
+  approverId?: string;
+}
+
+export interface EditTaskStatusRequestDto {
+  name: string;
+  displayOrder: number;
+  requiresApproval: boolean;
+  approverId?: string;
+  visibility: 'public' | 'private';
 }

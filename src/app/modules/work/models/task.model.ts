@@ -4,6 +4,7 @@ export interface TaskStatusColumn {
   displayOrder: number;
   requiresApproval: boolean;
   marksTaskComplete: boolean;
+  visibility: 'public' | 'private';
 }
 
 export interface WorkTask {
