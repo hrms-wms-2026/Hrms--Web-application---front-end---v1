@@ -89,7 +89,9 @@ export class TaskDetailModalComponent {
   errorMessage = signal<string | null>(null);
 
   availableStatuses = computed(() =>
-    this.statuses().filter((s) => s.visibility === 'public' || this.isObjectiveOwner())
+    [...this.statuses()]
+      .filter((s) => s.visibility === 'public' || this.isObjectiveOwner())
+      .sort((a, b) => a.displayOrder - b.displayOrder)
   );
 
   constructor() {
