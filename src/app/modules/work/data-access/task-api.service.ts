@@ -10,6 +10,10 @@ import {
   TaskStatusDto,
   WorkTaskDto
 } from '../models/dto/task.dto';
+import {
+  CreateTaskEditRequestDto,
+  TaskEditRequestDto
+} from '../models/dto/task-edit-request.dto';
 
 @Injectable({ providedIn: 'root' })
 export class TaskApiService {
@@ -71,5 +75,29 @@ export class TaskApiService {
       `${this.baseUrl}/notification-navigation`,
       { params }
     );
+  }
+
+  createTaskEditRequest(taskId: string, request: CreateTaskEditRequestDto): Observable<TaskEditRequestDto> {
+    return this.http.post<TaskEditRequestDto>(`${this.baseUrl}/tasks/${taskId}/edit-requests`, request);
+  }
+
+  approveTaskEditRequest(id: string): Observable<WorkTaskDto> {
+    return this.http.post<WorkTaskDto>(`${this.baseUrl}/task-edit-requests/${id}/approve`, {});
+  }
+
+  rejectTaskEditRequest(id: string, comment: string): Observable<void> {
+    return this.http.post<void>(`${this.baseUrl}/task-edit-requests/${id}/reject`, { comment });
+  }
+
+  cancelTaskEditRequest(id: string): Observable<void> {
+    return this.http.post<void>(`${this.baseUrl}/task-edit-requests/${id}/cancel`, {});
+  }
+
+  getMyTaskEditRequests(): Observable<TaskEditRequestDto[]> {
+    return this.http.get<TaskEditRequestDto[]>(`${this.baseUrl}/task-edit-requests/mine`);
+  }
+
+  reorderTaskStatuses(objectiveId: string, updates: { statusId: string; displayOrder: number; visibility: string; marksTaskComplete: boolean }[]): Observable<TaskStatusDto[]> {
+    return this.http.post<TaskStatusDto[]>(`${this.baseUrl}/objectives/${objectiveId}/task-statuses/reorder`, { updates });
   }
 }
