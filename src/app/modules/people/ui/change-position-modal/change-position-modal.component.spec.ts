@@ -10,6 +10,7 @@ describe('ChangePositionModalComponent', () => {
   let component: ChangePositionModalComponent;
   let peopleApi: { changePosition: ReturnType<typeof vi.fn> };
   let positionApi: { listFlat: ReturnType<typeof vi.fn> };
+  let notificationsStub: { success: ReturnType<typeof vi.fn>; error: ReturnType<typeof vi.fn> };
 
   beforeEach(async () => {
     peopleApi = { changePosition: vi.fn() };
@@ -18,13 +19,14 @@ describe('ChangePositionModalComponent', () => {
         of({ items: [{ id: 'pos-2', name: 'Manager' }], totalCount: 1, page: 1, pageSize: 25 } as never)
       )
     };
+    notificationsStub = { success: vi.fn(), error: vi.fn() };
 
     await TestBed.configureTestingModule({
       imports: [ChangePositionModalComponent],
       providers: [
         { provide: PeopleApiService, useValue: peopleApi },
         { provide: PositionApiService, useValue: positionApi },
-        { provide: NotificationService, useValue: { success: vi.fn(), error: vi.fn() } }
+        { provide: NotificationService, useValue: notificationsStub }
       ]
     }).compileComponents();
 
@@ -60,5 +62,7 @@ describe('ChangePositionModalComponent', () => {
     component.submit();
 
     expect(changedSpy).not.toHaveBeenCalled();
+    expect(notificationsStub.error).toHaveBeenCalledWith('This position has reached its capacity.');
+    expect(component.submitting()).toBe(false);
   });
 });
