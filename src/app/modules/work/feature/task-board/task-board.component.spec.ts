@@ -1,9 +1,13 @@
 import { TestBed } from '@angular/core/testing';
 import { ActivatedRoute } from '@angular/router';
 import { vi } from 'vitest';
+import { of } from 'rxjs';
 import { TaskBoardComponent } from './task-board.component';
 import { TaskBoardStore } from '../../state/task-board.store';
 import { ProjectDetailStore } from '../../state/project-detail.store';
+import { SprintApiService } from '../../data-access/sprint-api.service';
+import { ObjectiveMemberApiService } from '../../data-access/objective-member-api.service';
+import { TaskApiService } from '../../data-access/task-api.service';
 
 describe('TaskBoardComponent', () => {
   it('loads the board for the current milestoneId on init', async () => {
@@ -25,6 +29,9 @@ describe('TaskBoardComponent', () => {
       providers: [
         { provide: TaskBoardStore, useValue: storeStub },
         { provide: ProjectDetailStore, useValue: projectStoreStub },
+        { provide: SprintApiService, useValue: { getByObjective: vi.fn().mockReturnValue(of([])) } },
+        { provide: ObjectiveMemberApiService, useValue: { getMembers: vi.fn().mockReturnValue(of({ items: [] })) } },
+        { provide: TaskApiService, useValue: { createTaskCreationRequest: vi.fn(), assignTask: vi.fn() } },
         {
           provide: ActivatedRoute,
           useValue: {

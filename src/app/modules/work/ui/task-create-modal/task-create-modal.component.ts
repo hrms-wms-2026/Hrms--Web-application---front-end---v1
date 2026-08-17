@@ -4,6 +4,7 @@ import { InputComponent } from '../../../../shared/ui/input/input.component';
 import { ButtonComponent } from '../../../../shared/ui/button/button.component';
 import { CreateTaskRequestDto, InsufficientAllocationErrorDto, WorkTaskDto } from '../../models/dto/task.dto';
 import { WorkTask } from '../../models/task.model';
+import { Sprint } from '../../models/sprint.model';
 import { TaskBoardStore } from '../../state/task-board.store';
 import { TaskApiService } from '../../data-access/task-api.service';
 import { firstValueFrom } from 'rxjs';
@@ -16,6 +17,27 @@ import { firstValueFrom } from 'rxjs';
     <app-modal [open]="open()" title="Create task" (closed)="closed.emit()">
       <div class="flex flex-col gap-3">
         <app-input label="Title" [value]="title()" [error]="errors()['title'] || ''" (valueChange)="title.set($event)" />
+        <label class="flex flex-col gap-1 text-sm text-[var(--color-text-primary)]">
+          Sprint
+          <select class="task-create-modal__select" [value]="sprintId()" (change)="sprintId.set($any($event.target).value)">
+            <option value="" disabled selected>Select a sprint</option>
+            @for (sprint of activeSprints(); track sprint.id) {
+              <option [value]="sprint.id">{{ sprint.name }}</option>
+            }
+          </select>
+          @if (errors()['sprintId']) {
+            <span class="text-xs text-[var(--color-danger-text)]">{{ errors()['sprintId'] }}</span>
+          }
+        </label>
+        <label class="flex flex-col gap-1 text-sm text-[var(--color-text-primary)]">
+          Assign to (optional)
+          <select class="task-create-modal__select" [value]="assigneeEmployeeId()" (change)="assigneeEmployeeId.set($any($event.target).value)">
+            <option value="">Unassigned</option>
+            @for (member of assignableMembers(); track member.employeeId) {
+              <option [value]="member.employeeId">{{ member.name }}</option>
+            }
+          </select>
+        </label>
         <label class="flex flex-col gap-1 text-sm text-[var(--color-text-primary)]">
           Type
           <select class="task-create-modal__select" [value]="taskType()" (change)="taskType.set($any($event.target).value)">
@@ -85,6 +107,8 @@ export class TaskCreateModalComponent {
   open = input(false);
   objectiveId = input.required<string>();
   isObjectiveOwner = input.required<boolean>();
+  activeSprints = input<readonly Sprint[]>([]);
+  assignableMembers = input<readonly { employeeId: string; name: string }[]>([]);
 
   created = output<WorkTask>();
   requestedInsteadOfCreated = output<void>();
@@ -98,6 +122,8 @@ export class TaskCreateModalComponent {
   dueDate = signal('');
   estimatedHours = signal<number | null>(null);
   storyPoints = signal<number | null>(null);
+  sprintId = signal('');
+  assigneeEmployeeId = signal('');
   submitting = signal(false);
   errors = signal<Record<string, string>>({});
   errorMessage = signal<string | null>(null);
@@ -124,6 +150,7 @@ export class TaskCreateModalComponent {
     if (!override) {
       const fieldErrors: Record<string, string> = {};
       if (!request.title.trim()) fieldErrors['title'] = 'Title is required.';
+      if (!request.sprintId) fieldErrors['sprintId'] = 'Sprint is required.';
       this.errors.set(fieldErrors);
       if (Object.keys(fieldErrors).length > 0) return;
     }
@@ -146,6 +173,10 @@ export class TaskCreateModalComponent {
         return;
       }
       if (result) {
+        const assigneeId = this.assigneeEmployeeId();
+        if (assigneeId) {
+          await firstValueFrom(this.taskApi.assignTask(result.id, assigneeId));
+        }
         this.created.emit(result);
         this.closed.emit();
         return;
@@ -165,7 +196,8 @@ export class TaskCreateModalComponent {
       priority: this.priority(),
       dueDate: this.dueDate() || undefined,
       estimatedHours: this.estimatedHours() ?? undefined,
-      storyPoints: this.storyPoints() ?? undefined
+      storyPoints: this.storyPoints() ?? undefined,
+      sprintId: this.sprintId()
     };
   }
 }

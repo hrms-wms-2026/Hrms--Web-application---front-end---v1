@@ -31,6 +31,7 @@ export interface CreateTaskRequestDto {
   dueDate?: string;
   estimatedHours?: number;
   storyPoints?: number;
+  sprintId: string;
 }
 
 export interface EditTaskRequestDto {
