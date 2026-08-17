@@ -18,6 +18,17 @@ describe('TaskCreateModalComponent', () => {
     achievedAt: null
   };
 
+  const sprint2: Sprint = {
+    id: 'sp-2',
+    objectiveId: 'obj-1',
+    name: 'Sprint 2',
+    startDate: new Date('2026-09-15'),
+    endDate: new Date('2026-09-28'),
+    status: 'future',
+    completedAt: null,
+    achievedAt: null
+  };
+
   function setup(isObjectiveOwner: boolean, createTaskResult: unknown) {
     const createTask = vi.fn().mockResolvedValue(createTaskResult);
     const assignTask = vi.fn().mockReturnValue(of(undefined));
@@ -58,7 +69,10 @@ describe('TaskCreateModalComponent', () => {
   });
 
   it('does not submit until a sprint is selected', async () => {
+    // Use two active sprints so the single-sprint auto-fill doesn't pre-select one for us -
+    // this test is specifically about the visible-dropdown, nothing-chosen-yet case.
     const { fixture, createTask } = setup(true, { id: 't-1', shortId: 'T-1', title: 'New task' });
+    fixture.componentRef.setInput('activeSprints', [sprint, sprint2]);
     fixture.detectChanges();
     fixture.componentInstance.title.set('New task');
 
@@ -99,5 +113,32 @@ describe('TaskCreateModalComponent', () => {
 
     expect(createTask).toHaveBeenCalled();
     expect(assignTask).not.toHaveBeenCalled();
+  });
+
+  it('with exactly one active sprint, hides the dropdown and pre-fills sprintId', () => {
+    const { fixture } = setup(true, null);
+    fixture.detectChanges();
+
+    const select = fixture.nativeElement.querySelector('select.task-create-modal__sprint-select');
+    const fixedText = fixture.nativeElement.querySelector('[data-testid="sprint-fixed"]');
+
+    expect(select).toBeNull();
+    expect(fixedText).not.toBeNull();
+    expect(fixedText.textContent).toContain('Sprint 1');
+    expect(fixture.componentInstance.sprintId()).toBe('sp-1');
+  });
+
+  it('with multiple active sprints, shows the dropdown and does not pre-fill sprintId', () => {
+    const { fixture } = setup(true, null);
+    fixture.componentRef.setInput('activeSprints', [sprint, sprint2]);
+    fixture.detectChanges();
+
+    const fixedText = fixture.nativeElement.querySelector('[data-testid="sprint-fixed"]');
+    const options = Array.from(fixture.nativeElement.querySelectorAll('select.task-create-modal__sprint-select option') as HTMLOptionElement[])
+      .map((o) => o.textContent?.trim());
+
+    expect(fixedText).toBeNull();
+    expect(options).toEqual(['Select a sprint', 'Sprint 1', 'Sprint 2']);
+    expect(fixture.componentInstance.sprintId()).toBe('');
   });
 });

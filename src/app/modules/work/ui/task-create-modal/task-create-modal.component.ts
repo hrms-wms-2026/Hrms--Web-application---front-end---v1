@@ -1,4 +1,4 @@
-import { Component, inject, input, output, signal } from '@angular/core';
+import { Component, computed, effect, inject, input, output, signal } from '@angular/core';
 import { ModalComponent } from '../../../../shared/ui/modal/modal.component';
 import { InputComponent } from '../../../../shared/ui/input/input.component';
 import { ButtonComponent } from '../../../../shared/ui/button/button.component';
@@ -19,12 +19,16 @@ import { firstValueFrom } from 'rxjs';
         <app-input label="Title" [value]="title()" [error]="errors()['title'] || ''" (valueChange)="title.set($event)" />
         <label class="flex flex-col gap-1 text-sm text-[var(--color-text-primary)]">
           Sprint
-          <select class="task-create-modal__select" [value]="sprintId()" (change)="sprintId.set($any($event.target).value)">
-            <option value="" disabled selected>Select a sprint</option>
-            @for (sprint of activeSprints(); track sprint.id) {
-              <option [value]="sprint.id">{{ sprint.name }}</option>
-            }
-          </select>
+          @if (singleSprint(); as sprint) {
+            <span class="task-create-modal__sprint-fixed" data-testid="sprint-fixed">{{ sprint.name }}</span>
+          } @else {
+            <select class="task-create-modal__select task-create-modal__sprint-select" [value]="sprintId()" (change)="sprintId.set($any($event.target).value)">
+              <option value="" disabled selected>Select a sprint</option>
+              @for (sprint of activeSprints(); track sprint.id) {
+                <option [value]="sprint.id">{{ sprint.name }}</option>
+              }
+            </select>
+          }
           @if (errors()['sprintId']) {
             <span class="text-xs text-[var(--color-danger-text)]">{{ errors()['sprintId'] }}</span>
           }
@@ -98,6 +102,10 @@ import { firstValueFrom } from 'rxjs';
       padding: 0;
       margin-left: 4px;
     }
+    .task-create-modal__sprint-fixed {
+      padding: 8px 10px;
+      color: var(--color-text-primary);
+    }
   `]
 })
 export class TaskCreateModalComponent {
@@ -128,6 +136,25 @@ export class TaskCreateModalComponent {
   errors = signal<Record<string, string>>({});
   errorMessage = signal<string | null>(null);
   allocationHint = signal<InsufficientAllocationErrorDto | null>(null);
+
+  // When there is exactly one candidate sprint (e.g. the sprint tab's own "+" button narrows
+  // activeSprints to just itself), pre-fill sprintId and hide the dropdown - there is nothing to
+  // choose. Any other count (0 or many) keeps the normal visible <select> behavior.
+  singleSprint = computed(() => {
+    const sprints = this.activeSprints();
+    return sprints.length === 1 ? sprints[0] : null;
+  });
+
+  constructor() {
+    effect(() => {
+      const sprint = this.singleSprint();
+      if (sprint) {
+        this.sprintId.set(sprint.id);
+      } else if (this.sprintId() && !this.activeSprints().some((s) => s.id === this.sprintId())) {
+        this.sprintId.set('');
+      }
+    });
+  }
 
   estimatedHoursDisplay(): string {
     return this.estimatedHours() == null ? '' : String(this.estimatedHours());
