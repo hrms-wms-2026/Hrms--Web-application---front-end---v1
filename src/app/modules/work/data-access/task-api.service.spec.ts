@@ -24,7 +24,7 @@ describe('TaskApiService', () => {
     const mockTasks: WorkTaskDto[] = [{
       id: 't-1', objectiveId, shortId: 'PRJ-1', title: 'Do it', description: null,
       taskType: 'task', statusId: 's-1', priority: 'medium', storyPoints: null,
-      dueDate: null, estimatedHours: 5, completedHours: 0, progressPercent: 0
+      dueDate: null, estimatedHours: 5, completedHours: 0, progressPercent: 0, sprintId: null
     }];
 
     service.getTasks(objectiveId).subscribe((tasks) => {

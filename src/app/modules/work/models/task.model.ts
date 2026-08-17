@@ -21,4 +21,5 @@ export interface WorkTask {
   estimatedHours: number | null;
   completedHours: number;
   progressPercent: number;
+  sprintId: string | null;
 }

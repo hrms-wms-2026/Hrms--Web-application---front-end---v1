@@ -8,7 +8,7 @@ describe('TaskDetailModalComponent', () => {
   const task: WorkTask = {
     id: 't1', objectiveId: 'o1', shortId: 'EPOS-1', title: 'Do the thing', description: 'Details here',
     taskType: 'task', statusId: 's1', priority: 'high', storyPoints: 3, dueDate: new Date('2026-09-20'),
-    estimatedHours: 8, completedHours: 0, progressPercent: 0
+    estimatedHours: 8, completedHours: 0, progressPercent: 0, sprintId: null
   };
 
   beforeEach(async () => {

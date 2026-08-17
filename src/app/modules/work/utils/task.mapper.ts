@@ -26,6 +26,7 @@ export function toWorkTask(dto: WorkTaskDto): WorkTask {
     dueDate: dto.dueDate ? new Date(dto.dueDate) : null,
     estimatedHours: dto.estimatedHours,
     completedHours: dto.completedHours,
-    progressPercent: dto.progressPercent
+    progressPercent: dto.progressPercent,
+    sprintId: dto.sprintId
   };
 }

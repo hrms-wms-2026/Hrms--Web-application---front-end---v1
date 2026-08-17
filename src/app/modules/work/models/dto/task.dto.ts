@@ -22,6 +22,7 @@ export interface WorkTaskDto {
   estimatedHours: number | null;
   completedHours: number;
   progressPercent: number;
+  sprintId: string | null;
 }
 
 export interface CreateTaskRequestDto {

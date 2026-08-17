@@ -1,4 +1,4 @@
-import { AfterViewChecked, Component, OnInit, inject, signal } from '@angular/core';
+import { AfterViewChecked, Component, OnInit, computed, inject, signal } from '@angular/core';
 import { ActivatedRoute } from '@angular/router';
 import { firstValueFrom } from 'rxjs';
 import { TaskBoardStore } from '../../state/task-board.store';
@@ -28,7 +28,7 @@ import { WorkTask } from '../../models/task.model';
       <p class="task-board__error">{{ store.error() }}</p>
     } @else {
       <div class="task-board">
-        @for (column of store.columnsWithTasks(); track column.status.id) {
+        @for (column of columnsWithTasks(); track column.status.id) {
           <app-task-board-column
             [status]="column.status"
             [tasks]="column.tasks"
@@ -85,8 +85,16 @@ export class TaskBoardComponent implements OnInit, AfterViewChecked {
   private highlightTaskId: string | null = null;
   private didScrollToHighlight = false;
 
+  protected readonly columnsWithTasks = computed(() => {
+    const activeSprintIds = new Set(this.activeSprints().map((s) => s.id));
+    return this.store.columnsWithTasks().map((column) => ({
+      status: column.status,
+      tasks: column.tasks.filter((t) => activeSprintIds.has(t.sprintId ?? ''))
+    }));
+  });
+
   columnIds(): string[] {
-    return this.store.columnsWithTasks().map((c) => c.status.id);
+    return this.columnsWithTasks().map((c) => c.status.id);
   }
 
   ngOnInit(): void {
