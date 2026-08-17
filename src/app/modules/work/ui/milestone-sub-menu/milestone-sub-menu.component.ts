@@ -12,7 +12,8 @@ const BASE_TABS: SubMenuTab[] = [
   { label: 'Backlog', segment: 'backlog' },
   { label: 'My Task', segment: 'my-task' },
   { label: 'List', segment: 'list' },
-  { label: 'Approvals', segment: 'approvals' }
+  { label: 'Approvals', segment: 'approvals' },
+  { label: 'Calendar', segment: 'calendar' }
 ];
 
 const SETTINGS_TAB: SubMenuTab = { label: 'Settings', segment: 'settings' };
@@ -65,6 +66,11 @@ const SETTINGS_TAB: SubMenuTab = { label: 'Settings', segment: 'settings' };
                 @case ('approvals') {
                   <circle cx="12" cy="12" r="9" />
                   <path d="M8 12l2.5 2.5L16 9" />
+                }
+                @case ('calendar') {
+                  <rect x="3" y="4" width="18" height="16" rx="2" />
+                  <path d="M3 10h18" />
+                  <path d="M8 4v-2M16 4v-2" />
                 }
                 @case ('settings') {
                   <circle cx="12" cy="12" r="3" />

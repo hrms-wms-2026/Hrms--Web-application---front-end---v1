@@ -48,6 +48,12 @@ export const WORK_ROUTES: Routes = [
             data: { title: 'List' }
           },
           {
+            path: 'calendar',
+            loadComponent: () =>
+              import('./feature/milestone-coming-soon-tab/milestone-coming-soon-tab.component').then((m) => m.MilestoneComingSoonTabComponent),
+            data: { title: 'Calendar' }
+          },
+          {
             path: 'settings',
             loadComponent: () =>
               import('./feature/objective-settings/objective-settings.component').then((m) => m.ObjectiveSettingsComponent)

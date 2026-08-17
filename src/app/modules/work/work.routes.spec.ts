@@ -20,7 +20,7 @@ describe('WORK_ROUTES', () => {
     const idRoute = WORK_ROUTES.find((r) => r.path === ':id')!;
     const milestoneRoute = idRoute.children!.find((r) => r.path === 'milestones/:milestoneId')!;
     const paths = milestoneRoute.children!.map((r) => r.path);
-    expect(paths).toEqual(['', 'tree', 'board', 'backlog', 'approvals', 'my-task', 'list', 'settings']);
+    expect(paths).toEqual(['', 'tree', 'board', 'backlog', 'approvals', 'my-task', 'list', 'calendar', 'settings']);
   });
 
   it('tags remaining stub tab routes with titles in route data', () => {
@@ -30,6 +30,7 @@ describe('WORK_ROUTES', () => {
 
     expect(byPath('my-task').data).toEqual({ title: 'My Task' });
     expect(byPath('list').data).toEqual({ title: 'List' });
+    expect(byPath('calendar').data).toEqual({ title: 'Calendar' });
     expect(byPath('board').loadComponent).toBeTruthy();
     expect(byPath('backlog').loadComponent).toBeTruthy();
     expect(byPath('approvals').loadComponent).toBeTruthy();
