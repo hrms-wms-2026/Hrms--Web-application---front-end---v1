@@ -5,16 +5,18 @@ import { TaskBoardStore } from '../../state/task-board.store';
 import { ProjectDetailStore } from '../../state/project-detail.store';
 import { TaskBoardColumnComponent } from '../../ui/task-board-column/task-board-column.component';
 import { TaskCreateModalComponent } from '../../ui/task-create-modal/task-create-modal.component';
+import { TaskDetailModalComponent } from '../../ui/task-detail-modal/task-detail-modal.component';
 import { ButtonComponent } from '../../../../shared/ui/button/button.component';
 import { SprintApiService } from '../../data-access/sprint-api.service';
 import { ObjectiveMemberApiService } from '../../data-access/objective-member-api.service';
 import { toSprint } from '../../utils/sprint.mapper';
 import { Sprint } from '../../models/sprint.model';
+import { WorkTask } from '../../models/task.model';
 
 @Component({
   selector: 'app-task-board',
   standalone: true,
-  imports: [TaskBoardColumnComponent, TaskCreateModalComponent, ButtonComponent],
+  imports: [TaskBoardColumnComponent, TaskCreateModalComponent, TaskDetailModalComponent, ButtonComponent],
   template: `
     <div class="task-board__toolbar">
       <app-button variant="primary" (pressed)="createOpen.set(true)">Create task</app-button>
@@ -32,6 +34,7 @@ import { Sprint } from '../../models/sprint.model';
             [tasks]="column.tasks"
             [connectedListIds]="columnIds()"
             (taskDropped)="onTaskDropped($event)"
+            (taskViewed)="onTaskViewed($event)"
           />
         }
       </div>
@@ -48,6 +51,12 @@ import { Sprint } from '../../models/sprint.model';
         (created)="createOpen.set(false)"
       />
     }
+
+    <app-task-detail-modal
+      [open]="detailOpen()"
+      [task]="selectedTask()"
+      (closed)="detailOpen.set(false)"
+    />
   `,
   styles: [`
     .task-board__toolbar { display: flex; justify-content: flex-end; margin-bottom: 12px; }
@@ -67,6 +76,8 @@ export class TaskBoardComponent implements OnInit, AfterViewChecked {
   private readonly memberApi = inject(ObjectiveMemberApiService);
 
   protected readonly createOpen = signal(false);
+  protected readonly detailOpen = signal(false);
+  protected readonly selectedTask = signal<WorkTask | null>(null);
   protected readonly milestoneId = signal<string | null>(null);
   protected readonly isObjectiveOwner = signal(false);
   protected readonly activeSprints = signal<Sprint[]>([]);
@@ -112,5 +123,10 @@ export class TaskBoardComponent implements OnInit, AfterViewChecked {
 
   onTaskDropped(event: { taskId: string; newStatusId: string }): void {
     void this.store.moveTask(event.taskId, event.newStatusId);
+  }
+
+  onTaskViewed(task: WorkTask): void {
+    this.selectedTask.set(task);
+    this.detailOpen.set(true);
   }
 }

@@ -1,5 +1,5 @@
 import { DatePipe } from '@angular/common';
-import { Component, input } from '@angular/core';
+import { Component, input, output } from '@angular/core';
 import { WorkTask } from '../../models/task.model';
 
 @Component({
@@ -8,7 +8,10 @@ import { WorkTask } from '../../models/task.model';
   imports: [DatePipe],
   template: `
     <div class="task-card" [attr.data-testid]="'task-card-' + task().id">
-      <span class="task-card__short-id">{{ task().shortId }}</span>
+      <div class="task-card__header">
+        <span class="task-card__short-id">{{ task().shortId }}</span>
+        <button type="button" class="task-card__view-btn" aria-label="View task" (click)="viewed.emit(task()); $event.stopPropagation()">👁</button>
+      </div>
       <p class="task-card__title">{{ task().title }}</p>
       <div class="task-card__meta">
         <span class="task-card__priority" [attr.data-priority]="task().priority">{{ task().priority }}</span>
@@ -29,6 +32,19 @@ import { WorkTask } from '../../models/task.model';
       padding: 10px 12px;
       cursor: grab;
     }
+    .task-card__header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 8px;
+    }
+    .task-card__view-btn {
+      background: none;
+      border: none;
+      cursor: pointer;
+      padding: 0;
+      line-height: 1;
+    }
     .task-card__short-id { font-size: 11px; color: var(--color-text-secondary); }
     .task-card__title { margin: 4px 0; font-size: 13px; color: var(--color-text-primary); }
     .task-card__meta { display: flex; gap: 8px; font-size: 11px; color: var(--color-text-secondary); }
@@ -38,4 +54,5 @@ import { WorkTask } from '../../models/task.model';
 })
 export class TaskCardComponent {
   task = input.required<WorkTask>();
+  viewed = output<WorkTask>();
 }

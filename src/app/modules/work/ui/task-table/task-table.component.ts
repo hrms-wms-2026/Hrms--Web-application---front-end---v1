@@ -1,5 +1,5 @@
 import { DatePipe } from '@angular/common';
-import { Component, computed, input, signal } from '@angular/core';
+import { Component, computed, input, output, signal } from '@angular/core';
 import { WorkTask } from '../../models/task.model';
 
 type SortKey = 'title' | 'statusId' | 'dueDate' | 'estimatedHours';
@@ -18,6 +18,7 @@ type SortKey = 'title' | 'statusId' | 'dueDate' | 'estimatedHours';
           <th (click)="toggleSort('dueDate')">Due</th>
           <th (click)="toggleSort('estimatedHours')">Est. hours</th>
           <th>Priority</th>
+          <th>View</th>
         </tr>
       </thead>
       <tbody>
@@ -29,6 +30,7 @@ type SortKey = 'title' | 'statusId' | 'dueDate' | 'estimatedHours';
             <td>{{ task.dueDate ? (task.dueDate | date: 'MMM d, y') : '—' }}</td>
             <td>{{ task.estimatedHours ?? '—' }}</td>
             <td>{{ task.priority }}</td>
+            <td><button type="button" class="task-table__view-btn" (click)="viewed.emit(task)">View</button></td>
           </tr>
         }
       </tbody>
@@ -55,11 +57,20 @@ type SortKey = 'title' | 'statusId' | 'dueDate' | 'estimatedHours';
     .task-table tbody tr:hover {
       background: var(--color-surface-secondary);
     }
+    .task-table__view-btn {
+      background: none;
+      border: 1px solid var(--color-border);
+      border-radius: 6px;
+      padding: 4px 8px;
+      cursor: pointer;
+      color: var(--color-text-primary);
+    }
   `]
 })
 export class TaskTableComponent {
   tasks = input.required<readonly WorkTask[]>();
   statusNames = input<Record<string, string>>({});
+  viewed = output<WorkTask>();
 
   private readonly sortBy = signal<SortKey>('title');
   private readonly sortDirection = signal<'asc' | 'desc'>('asc');

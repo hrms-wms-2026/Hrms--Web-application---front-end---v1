@@ -16,11 +16,11 @@ describe('WORK_ROUTES', () => {
     expect(emptyChild.pathMatch).toBe('full');
   });
 
-  it('registers all six tab routes, in order', () => {
+  it('registers all tab routes, in order', () => {
     const idRoute = WORK_ROUTES.find((r) => r.path === ':id')!;
     const milestoneRoute = idRoute.children!.find((r) => r.path === 'milestones/:milestoneId')!;
     const paths = milestoneRoute.children!.map((r) => r.path);
-    expect(paths).toEqual(['', 'tree', 'board', 'backlog', 'approvals', 'my-task', 'list']);
+    expect(paths).toEqual(['', 'tree', 'board', 'backlog', 'approvals', 'my-task', 'list', 'settings']);
   });
 
   it('tags remaining stub tab routes with titles in route data', () => {
@@ -33,5 +33,6 @@ describe('WORK_ROUTES', () => {
     expect(byPath('board').loadComponent).toBeTruthy();
     expect(byPath('backlog').loadComponent).toBeTruthy();
     expect(byPath('approvals').loadComponent).toBeTruthy();
+    expect(byPath('settings').loadComponent).toBeTruthy();
   });
 });

@@ -20,7 +20,7 @@ import { TaskCardComponent } from '../task-card/task-card.component';
       >
         @for (task of tasks(); track task.id) {
           <div cdkDrag [cdkDragData]="task">
-            <app-task-card [task]="task" />
+            <app-task-card [task]="task" (viewed)="taskViewed.emit($event)" />
           </div>
         }
       </div>
@@ -52,6 +52,7 @@ export class TaskBoardColumnComponent {
   tasks = input.required<WorkTask[]>();
   connectedListIds = input<string[]>([]);
   taskDropped = output<{ taskId: string; newStatusId: string }>();
+  taskViewed = output<WorkTask>();
 
   onDrop(event: CdkDragDrop<WorkTask[]>): void {
     if (event.previousContainer === event.container) return;
