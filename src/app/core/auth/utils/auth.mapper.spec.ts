@@ -19,6 +19,7 @@ describe('toCurrentUserViewModel', () => {
 
     expect(toCurrentUserViewModel(dto)).toEqual({
       email: 'siyasiyamala932@gmail.com',
+      employeeId: null,
       permissions: ['integrations:manage'],
       activeModules: ['integrations', 'work_management'],
       authenticated: true,
@@ -119,5 +120,41 @@ describe('toCurrentUserViewModel', () => {
     };
 
     expect(toCurrentUserViewModel(dto).workspaceSlug).toBeNull();
+  });
+
+  it('maps employeeId from the me response', () => {
+    const dto: AuthResponseDto = {
+      authenticated: true,
+      user: { email: 'a@b.com', employeeId: 'emp-123' },
+      permissions: [],
+      active_modules: [],
+      must_change_password: false,
+      mfa_required: false,
+      legal_acceptance_required: false,
+      pending_legal_documents: null,
+      expires_at: null,
+      continue_url: null,
+      workspace: { slug: 'acme', display_name: 'Acme' }
+    };
+
+    expect(toCurrentUserViewModel(dto).employeeId).toBe('emp-123');
+  });
+
+  it('maps a null employeeId when the account has no employee record', () => {
+    const dto: AuthResponseDto = {
+      authenticated: true,
+      user: { email: 'a@b.com', employeeId: null },
+      permissions: [],
+      active_modules: [],
+      must_change_password: false,
+      mfa_required: false,
+      legal_acceptance_required: false,
+      pending_legal_documents: null,
+      expires_at: null,
+      continue_url: null,
+      workspace: { slug: 'acme', display_name: 'Acme' }
+    };
+
+    expect(toCurrentUserViewModel(dto).employeeId).toBeNull();
   });
 });
