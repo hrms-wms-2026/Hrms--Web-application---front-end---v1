@@ -18,7 +18,7 @@ describe('ObjectiveSettingsComponent', () => {
     await TestBed.configureTestingModule({
       imports: [ObjectiveSettingsComponent],
       providers: [
-        { provide: TaskApiService, useValue: { getStatuses, createStatus: vi.fn(), deleteStatus: vi.fn() } },
+        { provide: TaskApiService, useValue: { getStatuses, createStatus: vi.fn(), deleteStatus: vi.fn(), reorderTaskStatuses: vi.fn().mockReturnValue(of([])) } },
         { provide: ActivatedRoute, useValue: { parent: { snapshot: { paramMap: { get: () => 'obj-1' } } }, snapshot: { paramMap: { get: () => null } } } }
       ]
     }).compileComponents();
@@ -34,5 +34,24 @@ describe('ObjectiveSettingsComponent', () => {
     const text = fixture.nativeElement.textContent as string;
     expect(text).toContain('To Do');
     expect(text).toContain('Done');
+  });
+
+  it('defaults to the Task statuses tab and switches to Board structure on click', () => {
+    expect(fixture.nativeElement.querySelector('.objective-settings__table')).toBeTruthy();
+    expect(fixture.nativeElement.querySelector('app-board-structure-editor')).toBeFalsy();
+
+    const boardTab = fixture.nativeElement.querySelector('[data-testid="objective-settings-tab-board-structure"]') as HTMLButtonElement;
+    boardTab.click();
+    fixture.detectChanges();
+
+    expect(fixture.nativeElement.querySelector('app-board-structure-editor')).toBeTruthy();
+    expect(fixture.nativeElement.querySelector('.objective-settings__table')).toBeFalsy();
+
+    const statusesTab = fixture.nativeElement.querySelector('[data-testid="objective-settings-tab-task-statuses"]') as HTMLButtonElement;
+    statusesTab.click();
+    fixture.detectChanges();
+
+    expect(fixture.nativeElement.querySelector('.objective-settings__table')).toBeTruthy();
+    expect(fixture.nativeElement.querySelector('app-board-structure-editor')).toBeFalsy();
   });
 });

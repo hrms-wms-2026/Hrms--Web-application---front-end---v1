@@ -4,18 +4,46 @@ import { firstValueFrom } from 'rxjs';
 import { TaskApiService } from '../../data-access/task-api.service';
 import { InputComponent } from '../../../../shared/ui/input/input.component';
 import { ButtonComponent } from '../../../../shared/ui/button/button.component';
+import { BoardStructureEditorComponent } from '../../ui/board-structure-editor/board-structure-editor.component';
 import { TaskStatusColumn } from '../../models/task.model';
 import { toTaskStatusColumn } from '../../utils/task.mapper';
 
 @Component({
   selector: 'app-objective-settings',
   standalone: true,
-  imports: [InputComponent, ButtonComponent],
+  imports: [InputComponent, ButtonComponent, BoardStructureEditorComponent],
   template: `
-    <h2 class="mb-3 text-base font-semibold text-[var(--color-text-primary)]">Task statuses</h2>
+    <nav class="mb-3 flex gap-1 border-b border-[var(--color-border)]" data-testid="objective-settings-tabs">
+      <button
+        type="button"
+        class="flex items-center gap-1.5 px-3 py-2 text-sm text-[var(--color-text-secondary)] transition-colors hover:text-[var(--color-text-primary)]"
+        [class.border-b-2]="activeTab() === 'task-statuses'"
+        [class.border-[var(--color-focus-ring)]]="activeTab() === 'task-statuses'"
+        [class.font-semibold]="activeTab() === 'task-statuses'"
+        [class.text-[var(--color-text-primary)]]="activeTab() === 'task-statuses'"
+        data-testid="objective-settings-tab-task-statuses"
+        (click)="activeTab.set('task-statuses')"
+      >
+        Task statuses
+      </button>
+      <button
+        type="button"
+        class="flex items-center gap-1.5 px-3 py-2 text-sm text-[var(--color-text-secondary)] transition-colors hover:text-[var(--color-text-primary)]"
+        [class.border-b-2]="activeTab() === 'board-structure'"
+        [class.border-[var(--color-focus-ring)]]="activeTab() === 'board-structure'"
+        [class.font-semibold]="activeTab() === 'board-structure'"
+        [class.text-[var(--color-text-primary)]]="activeTab() === 'board-structure'"
+        data-testid="objective-settings-tab-board-structure"
+        (click)="activeTab.set('board-structure')"
+      >
+        Board structure
+      </button>
+    </nav>
 
     @if (loading()) {
       <p>Loading…</p>
+    } @else if (activeTab() === 'board-structure') {
+      <app-board-structure-editor [objectiveId]="objectiveId" [statuses]="statuses()" (saved)="reload()" />
     } @else {
       <table class="objective-settings__table">
         <thead>
@@ -61,20 +89,21 @@ export class ObjectiveSettingsComponent implements OnInit {
   private readonly route = inject(ActivatedRoute);
   private readonly taskApi = inject(TaskApiService);
 
+  protected readonly activeTab = signal<'task-statuses' | 'board-structure'>('task-statuses');
   protected readonly loading = signal(true);
   protected readonly statuses = signal<TaskStatusColumn[]>([]);
   protected readonly newName = signal('');
   protected readonly newIsPrivate = signal(false);
   protected readonly newMarksComplete = signal(false);
   protected readonly errorMessage = signal<string | null>(null);
-  private objectiveId = '';
+  protected objectiveId = '';
 
   async ngOnInit(): Promise<void> {
     this.objectiveId = this.route.parent?.snapshot.paramMap.get('milestoneId') ?? '';
     await this.reload();
   }
 
-  private async reload(): Promise<void> {
+  protected async reload(): Promise<void> {
     this.loading.set(true);
     const dtos = await firstValueFrom(this.taskApi.getStatuses(this.objectiveId));
     this.statuses.set(dtos.map(toTaskStatusColumn));
