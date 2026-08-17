@@ -1,14 +1,15 @@
-import { Component, input, output, signal } from '@angular/core';
+import { Component, effect, inject, input, output, signal } from '@angular/core';
 import { ModalComponent } from '../../../../shared/ui/modal/modal.component';
-import { AvatarComponent } from '../../../../shared/ui/avatar/avatar.component';
 import { ButtonComponent } from '../../../../shared/ui/button/button.component';
 import { EmployeePickerComponent } from '../employee-picker/employee-picker.component';
+import { EmployeeAvatarComponent } from '../employee-avatar/employee-avatar.component';
+import { EmployeeDirectoryStore } from '../../state/employee-directory.store';
 import { ObjectiveMemberItemDto } from '../../models/dto/objective-invitation.dto';
 
 @Component({
   selector: 'app-objective-members-popup',
   standalone: true,
-  imports: [ModalComponent, AvatarComponent, ButtonComponent, EmployeePickerComponent],
+  imports: [ModalComponent, ButtonComponent, EmployeePickerComponent, EmployeeAvatarComponent],
   template: `
     <app-modal [open]="open()" title="Members" (closed)="closed.emit()">
       <div class="flex flex-col gap-2">
@@ -24,8 +25,8 @@ import { ObjectiveMemberItemDto } from '../../models/dto/objective-invitation.dt
             class="flex items-center justify-between gap-2 rounded-lg border border-[var(--color-border)] px-2.5 py-2"
           >
             <div class="flex items-center gap-2">
-              <app-avatar [userName]="member.employeeId" size="sm" />
-              <span class="text-xs font-medium text-[var(--color-text-primary)]">{{ member.employeeId }}</span>
+              <app-employee-avatar [employeeId]="member.employeeId" />
+              <span class="text-xs font-medium text-[var(--color-text-primary)]">{{ directory.get(member.employeeId)?.name ?? member.employeeId }}</span>
               @if (member.isHead) {
                 <span data-testid="leader-badge" class="rounded-full bg-[var(--color-accent)]/10 px-2 py-0.5 text-[10px] font-semibold text-[var(--color-accent)]">Leader</span>
               }
@@ -62,6 +63,8 @@ import { ObjectiveMemberItemDto } from '../../models/dto/objective-invitation.dt
   `
 })
 export class ObjectiveMembersPopupComponent {
+  protected readonly directory = inject(EmployeeDirectoryStore);
+
   open = input(false);
   members = input<readonly ObjectiveMemberItemDto[]>([]);
   loading = input(false);
@@ -73,6 +76,13 @@ export class ObjectiveMembersPopupComponent {
   closed = output<void>();
 
   pickerOpen = signal<'member' | 'leader' | null>(null);
+
+  constructor() {
+    effect(() => {
+      const ids = this.members().map((m) => m.employeeId);
+      void this.directory.ensureLoaded(ids);
+    });
+  }
 
   onEmployeePicked(employeeId: string): void {
     const mode = this.pickerOpen();

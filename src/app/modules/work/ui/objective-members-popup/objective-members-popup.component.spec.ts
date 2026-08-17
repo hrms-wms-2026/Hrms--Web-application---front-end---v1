@@ -1,13 +1,16 @@
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { By } from '@angular/platform-browser';
 import { of } from 'rxjs';
+import { vi } from 'vitest';
 import { ObjectiveMembersPopupComponent } from './objective-members-popup.component';
 import { ObjectiveMemberItemDto } from '../../models/dto/objective-invitation.dto';
 import { EmployeePickerComponent } from '../employee-picker/employee-picker.component';
 import { PeopleApiService } from '../../../people/data-access/people-api.service';
+import { EmployeeDirectoryStore } from '../../state/employee-directory.store';
 
 describe('ObjectiveMembersPopupComponent', () => {
   let fixture: ComponentFixture<ObjectiveMembersPopupComponent>;
+  let directoryStub: { get: ReturnType<typeof vi.fn>; ensureLoaded: ReturnType<typeof vi.fn> };
 
   const members: ObjectiveMemberItemDto[] = [
     { employeeId: 'head1', isHead: true, pending: false, inviteType: null, invitationId: null, sinceOrInvitedAt: '2026-01-01' },
@@ -15,13 +18,24 @@ describe('ObjectiveMembersPopupComponent', () => {
     { employeeId: 'pend1', isHead: false, pending: true, inviteType: 'member', invitationId: 'inv1', sinceOrInvitedAt: '2026-01-03' }
   ];
 
+  const names: Record<string, string> = { head1: 'Alice Head', mem1: 'Bob Member' };
+
   beforeEach(async () => {
+    directoryStub = {
+      get: vi.fn((id: string) =>
+        names[id] ? { id, name: names[id], initials: 'XX', avatarUrl: null } : undefined
+      ),
+      ensureLoaded: vi.fn().mockResolvedValue(undefined)
+    };
     await TestBed.configureTestingModule({
       imports: [ObjectiveMembersPopupComponent],
-      providers: [{
-        provide: PeopleApiService,
-        useValue: { listEmployees: vi.fn().mockReturnValue(of({ items: [], totalCount: 0, page: 1, pageSize: 20 })) }
-      }]
+      providers: [
+        {
+          provide: PeopleApiService,
+          useValue: { listEmployees: vi.fn().mockReturnValue(of({ items: [], totalCount: 0, page: 1, pageSize: 20 })) }
+        },
+        { provide: EmployeeDirectoryStore, useValue: directoryStub }
+      ]
     }).compileComponents();
     fixture = TestBed.createComponent(ObjectiveMembersPopupComponent);
     fixture.componentRef.setInput('open', true);
@@ -106,5 +120,24 @@ describe('ObjectiveMembersPopupComponent', () => {
 
     expect(spy).toHaveBeenCalledWith('e8');
     expect(fixture.componentInstance.pickerOpen()).toBeNull();
+  });
+
+  it('resolves member names from the employee directory and renders an avatar instead of the raw employeeId', () => {
+    expect(directoryStub.ensureLoaded).toHaveBeenCalledWith(['head1', 'mem1', 'pend1']);
+
+    const text = fixture.nativeElement.textContent as string;
+    expect(text).toContain('Alice Head');
+    expect(text).toContain('Bob Member');
+    expect(text).not.toContain('head1');
+    expect(text).not.toContain('mem1');
+
+    const avatars = fixture.nativeElement.querySelectorAll('app-employee-avatar');
+    expect(avatars.length).toBe(3);
+  });
+
+  it('falls back to the raw employeeId only when the directory has no entry for it', () => {
+    const rows = fixture.nativeElement.querySelectorAll('[data-testid="member-row"]');
+    const pendingRow = Array.from(rows).find((r: any) => r.dataset.employeeId === 'pend1') as HTMLElement;
+    expect(pendingRow.textContent).toContain('pend1');
   });
 });
