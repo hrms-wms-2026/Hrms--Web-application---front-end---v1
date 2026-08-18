@@ -49,8 +49,8 @@ import { SprintStatus } from '../../models/sprint.model';
       }
     }
 
-    @if (sprintStore.error() || sprintActionMessage()) {
-      <p class="task-backlog__sprint-message" role="alert">{{ sprintStore.error() ?? sprintActionMessage() }}</p>
+    @if (sprintStore.error()) {
+      <p class="task-backlog__sprint-message" role="alert">{{ sprintStore.error() }}</p>
     }
 
     @if (store.loading() || sprintStore.loading()) {
@@ -127,7 +127,6 @@ export class TaskBacklogComponent implements OnInit {
   protected readonly expandedSprintId = signal<string | null>(null);
   protected readonly createForSprintId = signal<string | null>(null);
   protected readonly assignableMembers = signal<{ employeeId: string; name: string }[]>([]);
-  protected readonly sprintActionMessage = signal<string | null>(null);
   protected readonly sprintStatusFilter = signal<'all' | SprintStatus>('all');
 
   protected readonly statusNames = computed(() => Object.fromEntries(this.store.statuses().map((s) => [s.id, s.name])));
@@ -200,19 +199,11 @@ export class TaskBacklogComponent implements OnInit {
 
   async onSprintStatusChangeRequested(sprintId: string, newStatus: string): Promise<void> {
     const id = this.milestoneId();
-    if (!id) return;
-    // Only Complete and Achieve are owner-settable actions - Future/Active/Incomplete are date-driven
-    // by SprintLifecycleJob (see the note in Part 7's plan doc). Picking anything else here is a
-    // no-op with a message, not a call to a non-existent endpoint.
-    if (newStatus === 'complete') {
-      this.sprintActionMessage.set(null);
-      await this.sprintStore.complete(sprintId, id, !this.isObjectiveOwner());
-    } else if (newStatus === 'achieved') {
-      this.sprintActionMessage.set(null);
-      await this.sprintStore.achieve(sprintId, id, !this.isObjectiveOwner());
-    } else {
-      this.sprintActionMessage.set("This status changes automatically and can't be set manually.");
-    }
+    // The dropdown that emits this is only rendered for the objective owner (see the @if
+    // (isObjectiveOwner()) guard around app-sprint-tab's status select) - SetSprintStatusCommand
+    // also re-checks ownership server-side, this is just an extra guard against a stale UI state.
+    if (!id || !this.isObjectiveOwner()) return;
+    await this.sprintStore.setStatus(sprintId, newStatus as SprintStatus, id, false);
   }
 
   onTaskStatusChangeRequested(newStatusId: string): void {

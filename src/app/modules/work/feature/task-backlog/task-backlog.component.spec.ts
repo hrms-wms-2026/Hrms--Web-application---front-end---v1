@@ -69,6 +69,7 @@ describe('TaskBacklogComponent', () => {
     sprintErrorSignal?: ReturnType<typeof signal<string | null>>;
     sprintComplete?: ReturnType<typeof vi.fn>;
     sprintAchieve?: ReturnType<typeof vi.fn>;
+    sprintSetStatus?: ReturnType<typeof vi.fn>;
     taskErrorSignal?: ReturnType<typeof signal<string | null>>;
   } = {}) {
     const isOwner = options.isOwner ?? true;
@@ -81,6 +82,7 @@ describe('TaskBacklogComponent', () => {
     const sprintCreate = options.sprintCreate ?? vi.fn().mockResolvedValue(true);
     const sprintComplete = options.sprintComplete ?? vi.fn().mockResolvedValue(true);
     const sprintAchieve = options.sprintAchieve ?? vi.fn().mockResolvedValue(true);
+    const sprintSetStatus = options.sprintSetStatus ?? vi.fn().mockResolvedValue(true);
 
     TestBed.resetTestingModule();
     TestBed.configureTestingModule({
@@ -128,7 +130,8 @@ describe('TaskBacklogComponent', () => {
             create: sprintCreate,
             edit: vi.fn(),
             complete: sprintComplete,
-            achieve: sprintAchieve
+            achieve: sprintAchieve,
+            setStatus: sprintSetStatus
           }
         },
         {
@@ -140,7 +143,7 @@ describe('TaskBacklogComponent', () => {
 
     const fixture = TestBed.createComponent(TaskBacklogComponent);
     fixture.detectChanges();
-    return { fixture, loadBoard, moveTask, sprintLoad, sprintCreate, sprintsSignal, sprintErrorSignal, taskErrorSignal, sprintComplete, sprintAchieve };
+    return { fixture, loadBoard, moveTask, sprintLoad, sprintCreate, sprintsSignal, sprintErrorSignal, taskErrorSignal, sprintComplete, sprintAchieve, sprintSetStatus };
   }
 
   it('renders one SprintTabComponent per sprint, owner sees all statuses, member sees active-only', async () => {
@@ -329,17 +332,26 @@ describe('TaskBacklogComponent', () => {
     expect(moveTask).toHaveBeenCalledWith('t-1', 'status-2');
   });
 
-  it('routes sprint-status "complete" from the sprint tab to sprintStore.complete, and "achieved" to sprintStore.achieve', async () => {
-    const { fixture } = setup();
+  it('routes any sprint-status pick from the sprint tab to sprintStore.setStatus - the owner override always wins', async () => {
+    const { fixture, sprintSetStatus } = setup();
     await fixture.whenStable();
     fixture.detectChanges();
-    const sprintStore = fixture.componentInstance['sprintStore'] as unknown as { complete: ReturnType<typeof vi.fn>; achieve: ReturnType<typeof vi.fn> };
 
     await fixture.componentInstance['onSprintStatusChangeRequested']('sp-1', 'complete');
-    expect(sprintStore.complete).toHaveBeenCalledWith('sp-1', 'milestone-1', false);
+    expect(sprintSetStatus).toHaveBeenCalledWith('sp-1', 'complete', 'milestone-1', false);
 
-    await fixture.componentInstance['onSprintStatusChangeRequested']('sp-1', 'achieved');
-    expect(sprintStore.achieve).toHaveBeenCalledWith('sp-1', 'milestone-1', false);
+    await fixture.componentInstance['onSprintStatusChangeRequested']('sp-1', 'active');
+    expect(sprintSetStatus).toHaveBeenCalledWith('sp-1', 'active', 'milestone-1', false);
+  });
+
+  it('does not call setStatus for a non-owner even if the handler is invoked directly', async () => {
+    const { fixture, sprintSetStatus } = setup({ isOwner: false });
+    await fixture.whenStable();
+    fixture.detectChanges();
+
+    await fixture.componentInstance['onSprintStatusChangeRequested']('sp-1', 'active');
+
+    expect(sprintSetStatus).not.toHaveBeenCalled();
   });
 
   // Finding 1: a non-owner has no working "create sprint" path (SprintApiService.create has no
@@ -402,21 +414,16 @@ describe('TaskBacklogComponent', () => {
     expect(alert.textContent).toContain('Every task in this sprint must be complete first.');
   });
 
-  // Finding 2: picking a not-owner-settable status (future/active/incomplete) must not be a silent
-  // no-op - it should surface an explanatory message via the same display mechanism.
-  it('shows an explanatory message (not a silent no-op) when a not-owner-settable status is picked', async () => {
-    const { fixture, sprintComplete, sprintAchieve } = setup();
+  // Owner override always wins: every status, including ones the date-driven SprintLifecycleJob
+  // would otherwise own (future/active/incomplete), is a real call - not a silent no-op.
+  it('routes future/active/incomplete picks through to setStatus too, not just complete/achieved', async () => {
+    const { fixture, sprintSetStatus } = setup();
     await fixture.whenStable();
     fixture.detectChanges();
 
     await fixture.componentInstance['onSprintStatusChangeRequested']('sp-1', 'future');
-    fixture.detectChanges();
 
-    expect(sprintComplete).not.toHaveBeenCalled();
-    expect(sprintAchieve).not.toHaveBeenCalled();
-    const alert = fixture.nativeElement.querySelector('[role="alert"]');
-    expect(alert).not.toBeNull();
-    expect(alert.textContent.length).toBeGreaterThan(0);
+    expect(sprintSetStatus).toHaveBeenCalledWith('sp-1', 'future', 'milestone-1', false);
   });
 
   // Finding 4: a failed task load must be shown to the user, matching TaskBoardComponent's
