@@ -27,6 +27,7 @@ export function toWorkTask(dto: WorkTaskDto): WorkTask {
     estimatedHours: dto.estimatedHours,
     completedHours: dto.completedHours,
     progressPercent: dto.progressPercent,
-    sprintId: dto.sprintId
+    sprintId: dto.sprintId,
+    assigneeEmployeeIds: dto.assigneeEmployeeIds ?? []
   };
 }

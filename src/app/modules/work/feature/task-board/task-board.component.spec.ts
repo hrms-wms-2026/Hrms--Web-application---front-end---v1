@@ -16,6 +16,7 @@ describe('TaskBoardComponent', () => {
     const storeStub = {
       loadBoard,
       columnsWithTasks: () => [],
+      tasks: () => [],
       loading: () => false,
       error: () => null,
       moveTask: vi.fn(),
@@ -62,13 +63,14 @@ describe('TaskBoardComponent', () => {
     const inSprint = {
       id: 't-in', objectiveId: 'milestone-1', shortId: 'PRJ-1', title: 'In sprint', description: null,
       taskType: 'task' as const, statusId: 's-1', priority: 'medium' as const, storyPoints: null,
-      dueDate: null, estimatedHours: 5, completedHours: 0, progressPercent: 0, sprintId: 'sp-active'
+      dueDate: null, estimatedHours: 5, completedHours: 0, progressPercent: 0, sprintId: 'sp-active', assigneeEmployeeIds: []
     };
     const outSprint = { ...inSprint, id: 't-out', title: 'Out of sprint', sprintId: 'sp-other' };
     const loadBoard = vi.fn().mockResolvedValue(undefined);
     const storeStub = {
       loadBoard,
       columnsWithTasks: () => [{ status, tasks: [inSprint, outSprint] }],
+      tasks: () => [inSprint, outSprint],
       loading: () => false,
       error: () => null,
       moveTask: vi.fn(),
@@ -134,6 +136,7 @@ describe('TaskBoardComponent', () => {
     const storeStub = {
       loadBoard,
       columnsWithTasks: () => [],
+      tasks: () => [],
       loading: () => false,
       error: () => null,
       moveTask: vi.fn(),

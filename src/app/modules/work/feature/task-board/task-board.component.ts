@@ -34,6 +34,9 @@ import { WorkTask } from '../../models/task.model';
             [status]="column.status"
             [tasks]="column.tasks"
             [connectedListIds]="columnIds()"
+            [allStatuses]="store.statuses()"
+            [isObjectiveOwner]="isObjectiveOwner()"
+            [employeeNames]="employeeNames()"
             (taskDropped)="onTaskDropped($event)"
             (taskViewed)="onTaskViewed($event)"
           />
@@ -99,6 +102,17 @@ export class TaskBoardComponent implements OnInit, AfterViewChecked {
     }));
   });
 
+  // Employee names for the task cards' assignee display - keyed by employeeId so
+  // TaskCardComponent can resolve each of its task's assigneeEmployeeIds independently.
+  protected readonly employeeNames = computed(() =>
+    Object.fromEntries(
+      this.store.tasks()
+        .flatMap((t) => t.assigneeEmployeeIds)
+        .filter((id, index, all) => all.indexOf(id) === index)
+        .map((id) => [id, this.directory.get(id)?.name ?? 'Unknown employee'])
+    )
+  );
+
   columnIds(): string[] {
     return this.columnsWithTasks().map((c) => c.status.id);
   }
@@ -111,7 +125,10 @@ export class TaskBoardComponent implements OnInit, AfterViewChecked {
 
     const fromList = this.projectStore.milestones().find((m) => m.objectiveId === id);
     this.isObjectiveOwner.set(fromList?.isOwner ?? false);
-    void this.store.loadBoard(id);
+    void this.store.loadBoard(id).then(() => {
+      const assigneeIds = this.store.tasks().flatMap((t) => t.assigneeEmployeeIds);
+      if (assigneeIds.length > 0) void this.directory.ensureLoaded(assigneeIds);
+    });
     void firstValueFrom(this.sprintApi.getByObjective(id, true)).then((dtos) => this.activeSprints.set(dtos.map(toSprint)));
     void firstValueFrom(this.memberApi.getMembers(id)).then(async (list) => {
       const active = list.items.filter((m) => !m.pending);

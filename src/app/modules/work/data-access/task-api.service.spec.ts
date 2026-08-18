@@ -25,7 +25,7 @@ describe('TaskApiService', () => {
     const mockTasks: WorkTaskDto[] = [{
       id: 't-1', objectiveId, shortId: 'PRJ-1', title: 'Do it', description: null,
       taskType: 'task', statusId: 's-1', priority: 'medium', storyPoints: null,
-      dueDate: null, estimatedHours: 5, completedHours: 0, progressPercent: 0, sprintId: null
+      dueDate: null, estimatedHours: 5, completedHours: 0, progressPercent: 0, sprintId: null, assigneeEmployeeIds: []
     }];
 
     service.getTasks(objectiveId).subscribe((tasks) => {
@@ -113,7 +113,7 @@ describe('TaskApiService', () => {
     const mockTask: WorkTaskDto = {
       id: 't-1', objectiveId: 'obj-1', shortId: 'PRJ-1', title: 'Updated Title', description: 'Updated Description',
       taskType: 'task', statusId: 's-1', priority: 'high', storyPoints: 5,
-      dueDate: '2024-12-31', estimatedHours: 10, completedHours: 0, progressPercent: 0, sprintId: null
+      dueDate: '2024-12-31', estimatedHours: 10, completedHours: 0, progressPercent: 0, sprintId: null, assigneeEmployeeIds: []
     };
 
     service.approveTaskEditRequest(editRequestId).subscribe((response) => {

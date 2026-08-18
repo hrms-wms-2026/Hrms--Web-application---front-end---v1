@@ -23,6 +23,7 @@ export interface WorkTaskDto {
   completedHours: number;
   progressPercent: number;
   sprintId: string | null;
+  assigneeEmployeeIds: string[];
 }
 
 export interface CreateTaskRequestDto {

@@ -10,12 +10,12 @@ describe('TaskDetailModalComponent', () => {
   const task: WorkTask = {
     id: 't1', objectiveId: 'o1', shortId: 'EPOS-1', title: 'Do the thing', description: 'Details here',
     taskType: 'task', statusId: 's1', priority: 'high', storyPoints: 3, dueDate: new Date('2026-09-20'),
-    estimatedHours: 8, completedHours: 0, progressPercent: 0, sprintId: null
+    estimatedHours: 8, completedHours: 0, progressPercent: 0, sprintId: null, assigneeEmployeeIds: []
   };
   const updatedDto: WorkTaskDto = {
     id: 't1', objectiveId: 'o1', shortId: 'EPOS-1', title: 'Updated title', description: 'Details here',
     taskType: 'task', statusId: 's1', priority: 'high', storyPoints: 3, dueDate: '2026-09-20',
-    estimatedHours: 8, completedHours: 0, progressPercent: 0, sprintId: null
+    estimatedHours: 8, completedHours: 0, progressPercent: 0, sprintId: null, assigneeEmployeeIds: []
   };
   const statuses: TaskStatusColumn[] = [
     { id: 's1', name: 'To Do', displayOrder: 0, requiresApproval: false, marksTaskComplete: false, visibility: 'public' },

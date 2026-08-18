@@ -55,7 +55,8 @@ describe('TaskBacklogComponent', () => {
       estimatedHours: null,
       completedHours: 0,
       progressPercent: 0,
-      sprintId
+      sprintId,
+      assigneeEmployeeIds: []
     };
   }
 

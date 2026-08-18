@@ -20,7 +20,14 @@ import { TaskCardComponent } from '../task-card/task-card.component';
       >
         @for (task of tasks(); track task.id) {
           <div cdkDrag [cdkDragData]="task">
-            <app-task-card [task]="task" (viewed)="taskViewed.emit($event)" />
+            <app-task-card
+              [task]="task"
+              [statuses]="allStatuses()"
+              [isObjectiveOwner]="isObjectiveOwner()"
+              [employeeNames]="employeeNames()"
+              (viewed)="taskViewed.emit($event)"
+              (statusChangeRequested)="taskDropped.emit({ taskId: task.id, newStatusId: $event })"
+            />
           </div>
         }
       </div>
@@ -51,6 +58,9 @@ export class TaskBoardColumnComponent {
   status = input.required<TaskStatusColumn>();
   tasks = input.required<WorkTask[]>();
   connectedListIds = input<string[]>([]);
+  allStatuses = input<readonly TaskStatusColumn[]>([]);
+  isObjectiveOwner = input(false);
+  employeeNames = input<Record<string, string>>({});
   taskDropped = output<{ taskId: string; newStatusId: string }>();
   taskViewed = output<WorkTask>();
 
