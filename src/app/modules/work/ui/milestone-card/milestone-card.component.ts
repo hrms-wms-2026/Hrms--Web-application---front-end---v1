@@ -22,7 +22,7 @@ import { Milestone } from '../../models/milestone.model';
       <!-- Top row: title + settings icon -->
       <div class="flex items-center justify-between gap-1">
         <h3
-          class="text-sm font-semibold leading-snug pr-1 transition-colors truncate"
+          class="text-xs font-semibold leading-tight pr-1 transition-colors truncate"
           [class.text-white]="selected()"
           [class.text-[var(--color-text-primary)]]="!selected()"
           [title]="milestone().title"
