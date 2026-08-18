@@ -1,0 +1,132 @@
+<header class="bo-page-header">
+  <div class="bo-header-row">
+    <app-breadcrumb-header parentLabel="Settings" currentLabel="Bulk Onboarding" icon="settings" />
+  </div>
+</header>
+
+<ol class="bo-stepper" aria-label="Bulk onboarding steps">
+  @for (step of steps; track step.id; let index = $index) {
+    <li
+      class="bo-stepper__item"
+      [class.bo-stepper__item--current]="currentStep() === step.id"
+      [attr.aria-current]="currentStep() === step.id ? 'step' : null"
+    >
+      <span class="bo-stepper__index">{{ index + 1 }}</span>
+      <span class="bo-stepper__label">{{ step.label }}</span>
+    </li>
+  }
+</ol>
+
+@if (store.error()) {
+  <div class="bo-banner bo-banner--error" role="alert">{{ store.error() }}</div>
+}
+@if (fileError()) {
+  <div class="bo-banner bo-banner--error" role="alert">{{ fileError() }}</div>
+}
+
+@switch (currentStep()) {
+  @case ('upload') {
+    <section class="bo-section">
+      <div class="bo-section__intro">
+        <h2 class="bo-section__title">Upload the roster</h2>
+        <p class="bo-section__copy">
+          CSV only. Set company-wide defaults first; a mapped column on a row overrides the default for that person.
+        </p>
+      </div>
+
+      <div class="bo-defaults">
+        <app-select
+          label="Legal entity"
+          placeholder="Select a company"
+          [options]="companyOptions()"
+          [value]="legalEntityId()"
+          (valueChange)="onCompanyChange($event)"
+          [error]="!legalEntityId() ? 'Required' : ''"
+        />
+        <app-select
+          label="Default work mode"
+          placeholder="Optional"
+          [options]="workModeOptions()"
+          [value]="workModeSelectValue()"
+          (valueChange)="onWorkModeChange($event)"
+        />
+        <app-select
+          label="Default employment type"
+          placeholder="Optional"
+          [options]="employmentTypeOptions"
+          [value]="defaultEmploymentType() ?? ''"
+          (valueChange)="onEmploymentTypeChange($event)"
+        />
+        <app-select
+          label="Default checklist template"
+          placeholder="Optional"
+          [options]="checklistOptions()"
+          [value]="defaultChecklistTemplateId() ?? ''"
+          (valueChange)="onChecklistTemplateChange($event)"
+          [disabled]="!legalEntityId()"
+        />
+      </div>
+
+      <label class="bo-dropzone" [class.bo-dropzone--busy]="store.loading()">
+        <input
+          type="file"
+          accept=".csv,text/csv"
+          (change)="onCsvInput($event)"
+          [disabled]="store.loading() || !legalEntityId()"
+        />
+        <span class="bo-dropzone__rule" aria-hidden="true"></span>
+        <span class="bo-dropzone__title">{{ selectedFileName() ?? 'Drop a CSV roster here' }}</span>
+        <span class="bo-dropzone__hint">Or click to choose a .csv file. Maximum size follows the API limit.</span>
+      </label>
+    </section>
+  }
+  @case ('map-columns') {
+    <section class="bo-section">
+      <div class="bo-section__intro">
+        <h2 class="bo-section__title">Map columns</h2>
+        <p class="bo-section__copy">
+          Match each system field to a CSV header. Row 1 preview updates as you change a mapping so a wrong header is visible immediately.
+        </p>
+      </div>
+
+      <div class="bo-map-layout">
+        <div class="bo-map-grid">
+          @for (field of fieldIds; track field) {
+            <div class="bo-map-row">
+              <label class="bo-map-row__label" [for]="'map-' + field">
+                {{ fieldLabels[field] }}
+                @if (requiredMappingFields.has(field)) {
+                  <span class="bo-required">Required</span>
+                }
+              </label>
+              <app-select
+                [options]="mappingColumnOptions()"
+                [value]="store.mapping()[field] ?? ''"
+                (valueChange)="onMappingSelectChange(field, $event)"
+              />
+            </div>
+          }
+        </div>
+
+        <aside class="bo-preview" aria-live="polite">
+          <h3 class="bo-preview__title">Row 1 preview</h3>
+          @if (store.preview(); as preview) {
+            <dl class="bo-preview__list">
+              <div><dt>Name</dt><dd>{{ preview.firstName ?? '—' }} {{ preview.lastName ?? '' }}</dd></div>
+              <div><dt>Work email</dt><dd>{{ preview.workEmail ?? 'not resolved' }}</dd></div>
+              <div><dt>Start date</dt><dd>{{ preview.startDate ?? 'not resolved' }}</dd></div>
+              <div><dt>Employment type</dt><dd>{{ preview.employmentType ?? 'not resolved' }}</dd></div>
+              <div><dt>Work mode</dt><dd>{{ preview.workModeName ?? 'not resolved' }}</dd></div>
+              <div><dt>Department</dt><dd>{{ preview.departmentName ?? 'not resolved' }}</dd></div>
+              <div><dt>Position</dt><dd>{{ preview.positionName ?? 'not resolved' }}</dd></div>
+              <div><dt>Checklist</dt><dd>{{ preview.checklistTemplateName ?? 'not resolved' }}</dd></div>
+              <div><dt>Employee number</dt><dd>{{ preview.employeeNumber ?? 'not resolved' }}</dd></div>
+            </dl>
+          } @else {
+            <p class="bo-preview__empty">Change a mapping to load the first data row.</p>
+          }
+        </aside>
+      </div>
+    </section>
+  }
+}
