@@ -127,6 +127,131 @@
           }
         </aside>
       </div>
+
+      <div class="bo-actions">
+        <app-button type="button" [disabled]="store.loading()" (pressed)="onValidate()">
+          Continue to validate
+        </app-button>
+      </div>
+    </section>
+  }
+  @case ('validate') {
+    <section class="bo-section">
+      <div class="bo-section__intro">
+        <h2 class="bo-section__title">Validation summary</h2>
+        <p class="bo-section__copy">
+          Valid rows can continue even when some rows fail. Copy the invalid rows, fix the CSV, and re-upload just those people.
+        </p>
+      </div>
+      <p class="bo-summary">
+        {{ store.validationResult()?.validRows }} valid / {{ store.validationResult()?.invalidRows }} invalid of {{ store.batch()?.totalRows }} rows
+      </p>
+      <table class="bo-table">
+        <caption class="sr-only">Invalid rows</caption>
+        <thead>
+          <tr>
+            <th>Row</th>
+            <th>Error</th>
+          </tr>
+        </thead>
+        <tbody>
+          @for (row of store.validationResult()?.rows; track row.rowNumber) {
+            @if (row.status === 'invalid') {
+              <tr>
+                <td>Row {{ row.rowNumber }}</td>
+                <td>{{ row.errorMessage }}</td>
+              </tr>
+            }
+          }
+        </tbody>
+      </table>
+      <div class="bo-actions">
+        <app-button type="button" [disabled]="store.loading() || store.polling() || !store.validationResult()?.validRows" (pressed)="onCreateDrafts()">
+          Create {{ store.validationResult()?.validRows }} drafts
+        </app-button>
+      </div>
+    </section>
+  }
+  @case ('review') {
+    <section class="bo-section">
+      <div class="bo-section__intro">
+        <h2 class="bo-section__title">Review drafts</h2>
+        <p class="bo-section__copy">
+          These drafts also appear in
+          <a routerLink="/people/employees">Employees → Onboarding drafts</a>.
+          Select the ones that should be finalized now.
+        </p>
+      </div>
+      @if (store.polling()) {
+        <p class="bo-progress" aria-busy="true">Creating drafts…</p>
+      } @else {
+        <table class="bo-table">
+          <thead>
+            <tr>
+              <th>
+                <span class="sr-only">Select</span>
+              </th>
+              <th>Row</th>
+              <th>Status</th>
+              <th>Detail</th>
+            </tr>
+          </thead>
+          <tbody>
+            @for (row of store.detail()?.rows; track row.rowNumber) {
+              @if (row.onboardingDraftId) {
+                <tr>
+                  <td>
+                    <input
+                      type="checkbox"
+                      [checked]="isRowSelected(row.onboardingDraftId)"
+                      (change)="onToggleRow(row.onboardingDraftId)"
+                      [attr.aria-label]="'Select row ' + row.rowNumber"
+                    />
+                  </td>
+                  <td>Row {{ row.rowNumber }}</td>
+                  <td>{{ rowStatusLabels[row.status] }}</td>
+                  <td>{{ row.errorMessage ?? '—' }}</td>
+                </tr>
+              }
+            }
+          </tbody>
+        </table>
+        <div class="bo-actions">
+          <app-button type="button" [disabled]="store.loading() || store.selectedDraftIds().length === 0" (pressed)="onFinalizeSelected()">
+            Finalize {{ store.selectedDraftIds().length }} selected
+          </app-button>
+        </div>
+      }
+    </section>
+  }
+  @case ('finalize') {
+    <section class="bo-section">
+      <div class="bo-section__intro">
+        <h2 class="bo-section__title">Finalize</h2>
+        <p class="bo-section__copy">Each selected row ends as finalized, waiting for a seat, waiting for position approval, or failed.</p>
+      </div>
+      @if (store.polling()) {
+        <p class="bo-progress" aria-busy="true">Finalizing…</p>
+      } @else {
+        <table class="bo-table">
+          <thead>
+            <tr>
+              <th>Row</th>
+              <th>Outcome</th>
+              <th>Detail</th>
+            </tr>
+          </thead>
+          <tbody>
+            @for (row of store.detail()?.rows; track row.rowNumber) {
+              <tr>
+                <td>Row {{ row.rowNumber }}</td>
+                <td>{{ rowStatusLabels[row.status] }}</td>
+                <td>{{ row.errorMessage ?? '—' }}</td>
+              </tr>
+            }
+          </tbody>
+        </table>
+      }
     </section>
   }
 }

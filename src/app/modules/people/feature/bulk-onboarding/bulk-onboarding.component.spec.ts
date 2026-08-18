@@ -21,7 +21,15 @@ describe('BulkOnboardingComponent', () => {
       error: vi.fn().mockReturnValue(null) as any,
       upload: vi.fn(),
       updateMapping: vi.fn(),
-      reset: vi.fn()
+      reset: vi.fn(),
+      toggleRowSelection: vi.fn(),
+      finalizeSelected: vi.fn(),
+      createDrafts: vi.fn(),
+      validate: vi.fn(),
+      validationResult: vi.fn().mockReturnValue(null) as any,
+      detail: vi.fn().mockReturnValue(null) as any,
+      selectedDraftIds: vi.fn().mockReturnValue([]) as any,
+      polling: vi.fn().mockReturnValue(false) as any
     };
 
     await TestBed.configureTestingModule({
@@ -68,5 +76,35 @@ describe('BulkOnboardingComponent', () => {
     fixture.componentInstance.onMappingFieldChange('workEmail', 'Email');
 
     expect(storeMock.updateMapping).toHaveBeenCalledWith('workEmail', 'Email');
+  });
+
+  it('validate step shows partial-success summary and per-row errors', () => {
+    (storeMock.validationResult as any) = vi.fn().mockReturnValue({
+      validRows: 1, invalidRows: 1,
+      rows: [
+        { rowNumber: 1, status: 'valid', errorMessage: null },
+        { rowNumber: 2, status: 'invalid', errorMessage: 'Last name is required.' }
+      ]
+    });
+    (storeMock.batch as any).mockReturnValue({ id: 'batch-1', status: 'validated', totalRows: 2, validRows: 1, invalidRows: 1, detectedColumns: [], suggestedMapping: {} });
+    fixture.componentInstance.goToStep('validate');
+    fixture.detectChanges();
+
+    const text = fixture.nativeElement.textContent as string;
+    expect(text).toContain('Last name is required.');
+  });
+
+  it('toggling a review row calls store.toggleRowSelection with the draft id', () => {
+    fixture.detectChanges();
+    fixture.componentInstance.onToggleRow('draft-1');
+
+    expect(storeMock.toggleRowSelection).toHaveBeenCalledWith('draft-1');
+  });
+
+  it('clicking finalize calls store.finalizeSelected', async () => {
+    fixture.detectChanges();
+    await fixture.componentInstance.onFinalizeSelected();
+
+    expect(storeMock.finalizeSelected).toHaveBeenCalled();
   });
 });

@@ -1,14 +1,18 @@
 import { Component, OnDestroy, OnInit, computed, inject, signal } from '@angular/core';
+import { RouterLink } from '@angular/router';
 import { firstValueFrom } from 'rxjs';
 import { BreadcrumbHeaderComponent } from '../../../../shared/ui/breadcrumb-header/breadcrumb-header.component';
+import { ButtonComponent } from '../../../../shared/ui/button/button.component';
 import { SelectComponent, SelectOption } from '../../../../shared/ui/select/select.component';
 import { LegalEntityStore } from '../../../organization/state/legal-entity.store';
 import { ChecklistApiService } from '../../data-access/checklist-api.service';
 import { PeopleApiService } from '../../data-access/people-api.service';
 import {
   BULK_ONBOARDING_SYSTEM_FIELD_LABELS,
+  BulkOnboardingRowStatus,
   BulkOnboardingSystemField
 } from '../../models/bulk-onboarding.model';
+import { DRAFT_STATUS_LABELS } from '../../models/onboarding-draft.model';
 import { BulkOnboardingStore } from '../../state/bulk-onboarding.store';
 
 export type BulkOnboardingStep = 'upload' | 'map-columns' | 'validate' | 'review' | 'finalize';
@@ -22,10 +26,22 @@ const EMPLOYMENT_TYPE_OPTIONS: readonly SelectOption[] = [
 
 const REQUIRED_MAPPING_FIELDS = new Set<BulkOnboardingSystemField>(['workEmail', 'startDate']);
 
+const BULK_ROW_STATUS_LABELS: Record<BulkOnboardingRowStatus, string> = {
+  pending_mapping: 'Pending mapping',
+  valid: 'Valid',
+  invalid: 'Invalid',
+  draft_created: DRAFT_STATUS_LABELS.draft,
+  draft_failed: 'Draft failed',
+  finalized: DRAFT_STATUS_LABELS.finalized,
+  waiting_for_seat: DRAFT_STATUS_LABELS.waiting_for_seat,
+  waiting_for_position_approval: DRAFT_STATUS_LABELS.waiting_for_position_approval,
+  finalize_failed: 'Finalize failed'
+};
+
 @Component({
   selector: 'app-bulk-onboarding',
   standalone: true,
-  imports: [BreadcrumbHeaderComponent, SelectComponent],
+  imports: [BreadcrumbHeaderComponent, ButtonComponent, SelectComponent, RouterLink],
   templateUrl: './bulk-onboarding.component.html',
   styleUrl: './bulk-onboarding.component.css'
 })
@@ -39,6 +55,7 @@ export class BulkOnboardingComponent implements OnInit, OnDestroy {
   readonly fieldIds = Object.keys(BULK_ONBOARDING_SYSTEM_FIELD_LABELS) as BulkOnboardingSystemField[];
   readonly employmentTypeOptions = EMPLOYMENT_TYPE_OPTIONS;
   readonly requiredMappingFields = REQUIRED_MAPPING_FIELDS;
+  readonly rowStatusLabels = BULK_ROW_STATUS_LABELS;
 
   readonly legalEntityId = signal('');
   readonly defaultWorkModeId = signal<number | null>(null);
@@ -164,6 +181,29 @@ export class BulkOnboardingComponent implements OnInit, OnDestroy {
 
   goToStep(step: BulkOnboardingStep): void {
     this.manualStep.set(step);
+  }
+
+  onToggleRow(onboardingDraftId: string): void {
+    this.store.toggleRowSelection(onboardingDraftId);
+  }
+
+  isRowSelected(onboardingDraftId: string): boolean {
+    return this.store.selectedDraftIds().includes(onboardingDraftId);
+  }
+
+  async onValidate(): Promise<void> {
+    await this.store.validate();
+    this.goToStep('validate');
+  }
+
+  async onCreateDrafts(): Promise<void> {
+    await this.store.createDrafts();
+    this.goToStep('review');
+  }
+
+  async onFinalizeSelected(): Promise<void> {
+    await this.store.finalizeSelected();
+    this.goToStep('finalize');
   }
 
   mappingColumnOptions(): readonly SelectOption[] {
