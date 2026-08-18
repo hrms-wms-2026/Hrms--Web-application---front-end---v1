@@ -18,15 +18,19 @@ describe('BoardStructureEditorComponent', () => {
 
   function setup() {
     const reorderTaskStatuses = vi.fn().mockReturnValue(of([] as TaskStatusDto[]));
+    const createStatus = vi.fn().mockReturnValue(of({
+      id: 's5', name: 'Blocked', displayOrder: 4, requiresApproval: false, approverId: null, marksTaskComplete: false, visibility: 'public'
+    } as TaskStatusDto));
+    const deleteStatus = vi.fn().mockReturnValue(of(undefined));
     TestBed.configureTestingModule({
       imports: [BoardStructureEditorComponent],
-      providers: [{ provide: TaskApiService, useValue: { reorderTaskStatuses } }]
+      providers: [{ provide: TaskApiService, useValue: { reorderTaskStatuses, createStatus, deleteStatus } }]
     });
     const fixture = TestBed.createComponent(BoardStructureEditorComponent);
     fixture.componentRef.setInput('open', true);
     fixture.componentRef.setInput('objectiveId', 'obj-1');
     fixture.componentRef.setInput('statuses', statuses);
-    return { fixture, reorderTaskStatuses };
+    return { fixture, reorderTaskStatuses, createStatus, deleteStatus };
   }
 
   it('renders one row per status, in DisplayOrder, with a checkbox for private and a radio for complete', () => {
@@ -109,5 +113,63 @@ describe('BoardStructureEditorComponent', () => {
     const radios = Array.from(rows as NodeListOf<HTMLElement>).map((row) => (row.querySelector('input[type="radio"]') as HTMLInputElement).checked);
     expect(radios).toEqual([true, false, false, false]);
     expect(radios.filter(Boolean).length).toBe(1);
+  });
+
+  it('the + icon reveals a name field, and confirming creates the status and appends a row', async () => {
+    const { fixture, createStatus } = setup();
+    fixture.detectChanges();
+
+    const addIcon = fixture.nativeElement.querySelector('.board-structure__add-icon') as HTMLButtonElement;
+    addIcon.click();
+    fixture.detectChanges();
+
+    const input = fixture.nativeElement.querySelector('.board-structure__new-input') as HTMLInputElement;
+    input.value = 'Blocked';
+    input.dispatchEvent(new Event('input'));
+    fixture.detectChanges();
+
+    const addButton = Array.from(fixture.nativeElement.querySelectorAll('button') as NodeListOf<HTMLButtonElement>)
+      .find((b) => b.textContent?.trim() === 'Add')!;
+    addButton.click();
+    await fixture.whenStable();
+    fixture.detectChanges();
+
+    expect(createStatus).toHaveBeenCalledWith('obj-1', {
+      name: 'Blocked', displayOrder: 4, visibility: 'public', marksTaskComplete: false, requiresApproval: false
+    });
+    const names = Array.from(fixture.nativeElement.querySelectorAll('.board-structure__name') as NodeListOf<HTMLElement>)
+      .map((el) => el.textContent?.trim());
+    expect(names).toContain('Blocked');
+    // The inline add form collapses back to the + icon after a successful add.
+    expect(fixture.nativeElement.querySelector('.board-structure__new-input')).toBeNull();
+  });
+
+  it('the delete icon on a row deletes that status and removes its row', async () => {
+    const { fixture, deleteStatus } = setup();
+    fixture.detectChanges();
+
+    const rows = fixture.nativeElement.querySelectorAll('.board-structure__row');
+    const reviewDelete = rows[2].querySelector('.board-structure__delete-icon') as HTMLButtonElement;
+    reviewDelete.click();
+    await fixture.whenStable();
+    fixture.detectChanges();
+
+    expect(deleteStatus).toHaveBeenCalledWith('s3');
+    const names = Array.from(fixture.nativeElement.querySelectorAll('.board-structure__name') as NodeListOf<HTMLElement>)
+      .map((el) => el.textContent?.trim());
+    expect(names).toEqual(['To Do', 'In Process', 'Done']);
+  });
+
+  it('emits saved after a create or delete, so the parent reloads its own statuses list', async () => {
+    const { fixture } = setup();
+    fixture.detectChanges();
+    const saved = vi.fn();
+    fixture.componentInstance.saved.subscribe(saved);
+
+    const rows = fixture.nativeElement.querySelectorAll('.board-structure__row');
+    (rows[0].querySelector('.board-structure__delete-icon') as HTMLButtonElement).click();
+    await fixture.whenStable();
+
+    expect(saved).toHaveBeenCalledTimes(1);
   });
 });

@@ -2,7 +2,6 @@ import { Component, OnInit, inject, signal } from '@angular/core';
 import { ActivatedRoute } from '@angular/router';
 import { firstValueFrom } from 'rxjs';
 import { TaskApiService } from '../../data-access/task-api.service';
-import { InputComponent } from '../../../../shared/ui/input/input.component';
 import { ButtonComponent } from '../../../../shared/ui/button/button.component';
 import { BoardStructureEditorComponent } from '../../ui/board-structure-editor/board-structure-editor.component';
 import { TaskStatusColumn } from '../../models/task.model';
@@ -11,7 +10,7 @@ import { toTaskStatusColumn } from '../../utils/task.mapper';
 @Component({
   selector: 'app-objective-settings',
   standalone: true,
-  imports: [InputComponent, ButtonComponent, BoardStructureEditorComponent],
+  imports: [ButtonComponent, BoardStructureEditorComponent],
   template: `
     <div class="objective-settings__header" data-testid="objective-settings-tab-task-statuses">
       <h2 class="objective-settings__title">Task statuses</h2>
@@ -37,19 +36,6 @@ import { toTaskStatusColumn } from '../../utils/task.mapper';
           }
         </tbody>
       </table>
-
-      <div class="mt-4 flex flex-col gap-2">
-        <app-input label="New status name" [value]="newName()" (valueChange)="newName.set($event)" />
-        <label class="flex items-center gap-2 text-sm text-[var(--color-text-primary)]">
-          <input type="checkbox" [checked]="newIsPrivate()" (change)="newIsPrivate.set($any($event.target).checked)" />
-          Private (only I can move a task into this status)
-        </label>
-        <label class="flex items-center gap-2 text-sm text-[var(--color-text-primary)]">
-          <input type="checkbox" [checked]="newMarksComplete()" (change)="newMarksComplete.set($any($event.target).checked)" />
-          Marks a task as complete
-        </label>
-        <app-button variant="primary" (pressed)="add()">Add status</app-button>
-      </div>
 
       @if (errorMessage()) {
         <p class="mt-2 text-sm text-[var(--color-danger-text)]" role="alert">{{ errorMessage() }}</p>
@@ -78,9 +64,6 @@ export class ObjectiveSettingsComponent implements OnInit {
   protected readonly editOpen = signal(false);
   protected readonly loading = signal(true);
   protected readonly statuses = signal<TaskStatusColumn[]>([]);
-  protected readonly newName = signal('');
-  protected readonly newIsPrivate = signal(false);
-  protected readonly newMarksComplete = signal(false);
   protected readonly errorMessage = signal<string | null>(null);
   protected objectiveId = '';
 
@@ -94,28 +77,6 @@ export class ObjectiveSettingsComponent implements OnInit {
     const dtos = await firstValueFrom(this.taskApi.getStatuses(this.objectiveId));
     this.statuses.set(dtos.map(toTaskStatusColumn));
     this.loading.set(false);
-  }
-
-  async add(): Promise<void> {
-    const name = this.newName().trim();
-    if (!name) return;
-    this.errorMessage.set(null);
-    try {
-      await firstValueFrom(this.taskApi.createStatus(this.objectiveId, {
-        name,
-        displayOrder: this.statuses().length,
-        visibility: this.newIsPrivate() ? 'private' : 'public',
-        marksTaskComplete: this.newMarksComplete(),
-        requiresApproval: false
-      }));
-      this.newName.set('');
-      this.newIsPrivate.set(false);
-      this.newMarksComplete.set(false);
-      await this.reload();
-    } catch (err: unknown) {
-      const detail = (err as { error?: { detail?: string } })?.error?.detail;
-      this.errorMessage.set(detail || 'Failed to add the status.');
-    }
   }
 
   async remove(statusId: string): Promise<void> {
