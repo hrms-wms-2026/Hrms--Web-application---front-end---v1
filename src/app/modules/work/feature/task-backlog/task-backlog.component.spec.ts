@@ -12,6 +12,7 @@ import { TaskApiService } from '../../data-access/task-api.service';
 import { SprintListStore } from '../../state/sprint-list.store';
 import { SprintTabComponent } from '../../ui/sprint-tab/sprint-tab.component';
 import { TaskCreateModalComponent } from '../../ui/task-create-modal/task-create-modal.component';
+import { TaskDetailModalComponent } from '../../ui/task-detail-modal/task-detail-modal.component';
 import { EmployeeDirectoryStore } from '../../state/employee-directory.store';
 import { Sprint } from '../../models/sprint.model';
 import { WorkTask } from '../../models/task.model';
@@ -65,13 +66,21 @@ describe('TaskBacklogComponent', () => {
     sprintLoad?: ReturnType<typeof vi.fn>;
     sprintCreate?: ReturnType<typeof vi.fn>;
     sprintsSignal?: ReturnType<typeof signal<Sprint[]>>;
+    sprintErrorSignal?: ReturnType<typeof signal<string | null>>;
+    sprintComplete?: ReturnType<typeof vi.fn>;
+    sprintAchieve?: ReturnType<typeof vi.fn>;
+    taskErrorSignal?: ReturnType<typeof signal<string | null>>;
   } = {}) {
     const isOwner = options.isOwner ?? true;
     const sprintsSignal = options.sprintsSignal ?? signal<Sprint[]>(options.sprints ?? [sprint1, sprint2]);
+    const sprintErrorSignal = options.sprintErrorSignal ?? signal<string | null>(null);
+    const taskErrorSignal = options.taskErrorSignal ?? signal<string | null>(null);
     const loadBoard = vi.fn().mockResolvedValue(undefined);
     const moveTask = vi.fn().mockResolvedValue(undefined);
     const sprintLoad = options.sprintLoad ?? vi.fn().mockResolvedValue(undefined);
     const sprintCreate = options.sprintCreate ?? vi.fn().mockResolvedValue(true);
+    const sprintComplete = options.sprintComplete ?? vi.fn().mockResolvedValue(true);
+    const sprintAchieve = options.sprintAchieve ?? vi.fn().mockResolvedValue(true);
 
     TestBed.resetTestingModule();
     TestBed.configureTestingModule({
@@ -85,7 +94,7 @@ describe('TaskBacklogComponent', () => {
             tasks: () => options.tasks ?? [],
             statuses: () => [],
             loading: () => false,
-            error: () => null
+            error: taskErrorSignal
           }
         },
         {
@@ -113,13 +122,13 @@ describe('TaskBacklogComponent', () => {
           provide: SprintListStore,
           useValue: {
             sprints: sprintsSignal,
-            error: signal(null),
+            error: sprintErrorSignal,
             loading: signal(false),
             load: sprintLoad,
             create: sprintCreate,
             edit: vi.fn(),
-            complete: vi.fn().mockResolvedValue(true),
-            achieve: vi.fn().mockResolvedValue(true)
+            complete: sprintComplete,
+            achieve: sprintAchieve
           }
         },
         {
@@ -131,7 +140,7 @@ describe('TaskBacklogComponent', () => {
 
     const fixture = TestBed.createComponent(TaskBacklogComponent);
     fixture.detectChanges();
-    return { fixture, loadBoard, moveTask, sprintLoad, sprintCreate, sprintsSignal };
+    return { fixture, loadBoard, moveTask, sprintLoad, sprintCreate, sprintsSignal, sprintErrorSignal, taskErrorSignal, sprintComplete, sprintAchieve };
   }
 
   it('renders one SprintTabComponent per sprint, owner sees all statuses, member sees active-only', async () => {
@@ -331,5 +340,119 @@ describe('TaskBacklogComponent', () => {
 
     await fixture.componentInstance['onSprintStatusChangeRequested']('sp-1', 'achieved');
     expect(sprintStore.achieve).toHaveBeenCalledWith('sp-1', 'milestone-1', false);
+  });
+
+  // Finding 1: a non-owner has no working "create sprint" path (SprintApiService.create has no
+  // member-request variant), so the button - and the form it opens - must not be shown to them.
+  it('does not show the Create Sprint button (or form) to a non-owner', async () => {
+    const { fixture } = setup({ isOwner: false });
+    await fixture.whenStable();
+    fixture.detectChanges();
+
+    const text = fixture.nativeElement.textContent as string;
+    expect(text).not.toContain('Create Sprint');
+
+    fixture.componentInstance['createSprintOpen'].set(true);
+    fixture.detectChanges();
+    expect(fixture.nativeElement.querySelector('app-sprint-create-form')).toBeNull();
+  });
+
+  it('shows the Create Sprint button to an owner', async () => {
+    const { fixture } = setup({ isOwner: true });
+    await fixture.whenStable();
+    fixture.detectChanges();
+
+    const text = fixture.nativeElement.textContent as string;
+    expect(text).toContain('Create Sprint');
+  });
+
+  // Finding 2: a failed Complete/Achieve sets sprintStore.error(), which must be rendered
+  // somewhere always-visible (not just inside the create form, which may not be open).
+  it("renders sprintStore.error() in the component's own template, always-visible", async () => {
+    const sprintErrorSignal = signal<string | null>(null);
+    const { fixture } = setup({ sprintErrorSignal });
+    await fixture.whenStable();
+    fixture.detectChanges();
+
+    expect(fixture.nativeElement.querySelector('[role="alert"]')).toBeNull();
+
+    sprintErrorSignal.set('Every task in this sprint must be complete first.');
+    fixture.detectChanges();
+
+    const alert = fixture.nativeElement.querySelector('[role="alert"]');
+    expect(alert).not.toBeNull();
+    expect(alert.textContent).toContain('Every task in this sprint must be complete first.');
+  });
+
+  // Finding 2: picking a not-owner-settable status (future/active/incomplete) must not be a silent
+  // no-op - it should surface an explanatory message via the same display mechanism.
+  it('shows an explanatory message (not a silent no-op) when a not-owner-settable status is picked', async () => {
+    const { fixture, sprintComplete, sprintAchieve } = setup();
+    await fixture.whenStable();
+    fixture.detectChanges();
+
+    await fixture.componentInstance['onSprintStatusChangeRequested']('sp-1', 'future');
+    fixture.detectChanges();
+
+    expect(sprintComplete).not.toHaveBeenCalled();
+    expect(sprintAchieve).not.toHaveBeenCalled();
+    const alert = fixture.nativeElement.querySelector('[role="alert"]');
+    expect(alert).not.toBeNull();
+    expect(alert.textContent.length).toBeGreaterThan(0);
+  });
+
+  // Finding 4: a failed task load must be shown to the user, matching TaskBoardComponent's
+  // behavior, instead of silently rendering sprint tabs with empty task lists.
+  it('shows store.error() when the task load fails, instead of silently rendering empty sprint tabs', async () => {
+    const taskErrorSignal = signal<string | null>(null);
+    const { fixture } = setup({ taskErrorSignal });
+    await fixture.whenStable();
+    fixture.detectChanges();
+
+    expect(fixture.nativeElement.querySelector('.task-backlog__error')).toBeNull();
+
+    taskErrorSignal.set('Failed to load tasks.');
+    fixture.detectChanges();
+
+    const errorEl = fixture.nativeElement.querySelector('.task-backlog__error');
+    expect(errorEl).not.toBeNull();
+    expect(errorEl.textContent).toContain('Failed to load tasks.');
+    // Sprint tabs should not render alongside the error.
+    expect(fixture.debugElement.queryAll(By.directive(SprintTabComponent)).length).toBe(0);
+  });
+
+  // Finding 5: a task with sprintId === null has nowhere to render inside the per-sprint tabs -
+  // it must appear in an always-visible "Unsorted" section, and remain clickable there.
+  it('renders tasks with sprintId: null in an "Unsorted" section, clickable via the same onTaskViewed path', async () => {
+    const tasks = [makeTask('t-1', 'sp-1'), makeTask('t-unsorted', null)];
+    const { fixture } = setup({ tasks });
+    await fixture.whenStable();
+    fixture.detectChanges();
+
+    const unsortedSection = fixture.nativeElement.querySelector('.task-backlog__unsorted');
+    expect(unsortedSection).not.toBeNull();
+    expect(unsortedSection.textContent).toContain('Unsorted');
+
+    const row = fixture.nativeElement.querySelector('[data-testid="task-row-t-unsorted"]');
+    expect(row).not.toBeNull();
+    // The task should NOT also show up inside a sprint tab.
+    expect(fixture.nativeElement.querySelector('[data-testid="task-row-t-1"]')).toBeNull();
+
+    const viewButton = row.querySelector('.task-table__view-btn') as HTMLButtonElement;
+    viewButton.click();
+    fixture.detectChanges();
+
+    const modal = fixture.debugElement.query(By.directive(TaskDetailModalComponent)).componentInstance as TaskDetailModalComponent;
+    expect(modal.open()).toBe(true);
+    expect(modal.task()).toEqual(tasks[1]);
+  });
+
+  it('does not render the Unsorted section when there are no unsorted tasks', async () => {
+    const tasks = [makeTask('t-1', 'sp-1')];
+    const { fixture } = setup({ tasks });
+    await fixture.whenStable();
+    fixture.detectChanges();
+
+    expect(fixture.nativeElement.querySelector('.task-backlog__unsorted')).toBeNull();
   });
 });

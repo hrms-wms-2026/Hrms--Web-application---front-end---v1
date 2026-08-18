@@ -11,32 +11,41 @@ import { TaskCreateModalComponent } from '../../ui/task-create-modal/task-create
 import { TaskDetailModalComponent } from '../../ui/task-detail-modal/task-detail-modal.component';
 import { SprintTabComponent } from '../../ui/sprint-tab/sprint-tab.component';
 import { SprintCreateFormComponent } from '../../ui/sprint-create-form/sprint-create-form.component';
+import { TaskTableComponent } from '../../ui/task-table/task-table.component';
 import { WorkTask } from '../../models/task.model';
 
 @Component({
   selector: 'app-task-backlog',
   standalone: true,
-  imports: [TaskCreateModalComponent, TaskDetailModalComponent, SprintTabComponent, SprintCreateFormComponent, ButtonComponent],
+  imports: [TaskCreateModalComponent, TaskDetailModalComponent, SprintTabComponent, SprintCreateFormComponent, TaskTableComponent, ButtonComponent],
   template: `
     @if (milestoneId(); as mId) {
-      <div class="task-backlog__toolbar">
-        @if (!createSprintOpen()) {
-          <app-button variant="primary" (pressed)="createSprintOpen.set(true)">Create Sprint</app-button>
-        }
-      </div>
+      @if (isObjectiveOwner()) {
+        <div class="task-backlog__toolbar">
+          @if (!createSprintOpen()) {
+            <app-button variant="primary" (pressed)="createSprintOpen.set(true)">Create Sprint</app-button>
+          }
+        </div>
 
-      @if (createSprintOpen()) {
-        <app-sprint-create-form
-          [objectiveId]="mId"
-          [isObjectiveOwner]="isObjectiveOwner()"
-          (created)="createSprintOpen.set(false)"
-          (cancelled)="createSprintOpen.set(false)"
-        />
+        @if (createSprintOpen()) {
+          <app-sprint-create-form
+            [objectiveId]="mId"
+            [isObjectiveOwner]="isObjectiveOwner()"
+            (created)="createSprintOpen.set(false)"
+            (cancelled)="createSprintOpen.set(false)"
+          />
+        }
       }
+    }
+
+    @if (sprintStore.error() || sprintActionMessage()) {
+      <p class="task-backlog__sprint-message" role="alert">{{ sprintStore.error() ?? sprintActionMessage() }}</p>
     }
 
     @if (store.loading() || sprintStore.loading()) {
       <p>Loading…</p>
+    } @else if (store.error()) {
+      <p class="task-backlog__error">{{ store.error() }}</p>
     } @else {
       @for (sprint of sprintStore.sprints(); track sprint.id) {
         <app-sprint-tab
@@ -50,6 +59,13 @@ import { WorkTask } from '../../models/task.model';
           (createTaskRequested)="onCreateTaskForSprint(sprint.id)"
           (taskViewed)="onTaskViewed($event)"
         />
+      }
+
+      @if (unsortedTasks().length > 0) {
+        <div class="task-backlog__unsorted">
+          <h3 class="task-backlog__unsorted-title">Unsorted</h3>
+          <app-task-table [tasks]="unsortedTasks()" [statusNames]="statusNames()" (viewed)="onTaskViewed($event)" />
+        </div>
       }
     }
 
@@ -76,6 +92,10 @@ import { WorkTask } from '../../models/task.model';
   `,
   styles: [`
     .task-backlog__toolbar { display: flex; justify-content: flex-end; margin-bottom: 12px; }
+    .task-backlog__error { color: var(--color-danger); }
+    .task-backlog__sprint-message { color: var(--color-danger-text, var(--color-danger)); font-size: 12px; margin-bottom: 8px; }
+    .task-backlog__unsorted { margin-top: 16px; }
+    .task-backlog__unsorted-title { font-size: 13px; font-weight: 600; color: var(--color-text-primary); margin: 0 0 8px; }
   `]
 })
 export class TaskBacklogComponent implements OnInit {
@@ -95,11 +115,18 @@ export class TaskBacklogComponent implements OnInit {
   protected readonly expandedSprintId = signal<string | null>(null);
   protected readonly createForSprintId = signal<string | null>(null);
   protected readonly assignableMembers = signal<{ employeeId: string; name: string }[]>([]);
+  protected readonly sprintActionMessage = signal<string | null>(null);
 
   protected readonly statusNames = computed(() => Object.fromEntries(this.store.statuses().map((s) => [s.id, s.name])));
   protected readonly createModalSprints = computed(() =>
     this.createForSprintId() ? this.sprintStore.sprints().filter((s) => s.id === this.createForSprintId()) : this.sprintStore.sprints()
   );
+  // Tasks with no sprint, or whose sprint isn't among the currently-loaded sprints (e.g. an
+  // orphaned reference to a deleted sprint), have nowhere to render inside the per-sprint tabs.
+  protected readonly unsortedTasks = computed(() => {
+    const knownSprintIds = new Set(this.sprintStore.sprints().map((s) => s.id));
+    return this.store.tasks().filter((t) => t.sprintId == null || !knownSprintIds.has(t.sprintId));
+  });
 
   ngOnInit(): void {
     const id = this.route.parent?.snapshot.paramMap.get('milestoneId') ?? null;
@@ -161,9 +188,13 @@ export class TaskBacklogComponent implements OnInit {
     // by SprintLifecycleJob (see the note in Part 7's plan doc). Picking anything else here is a
     // no-op with a message, not a call to a non-existent endpoint.
     if (newStatus === 'complete') {
+      this.sprintActionMessage.set(null);
       await this.sprintStore.complete(sprintId, id, !this.isObjectiveOwner());
     } else if (newStatus === 'achieved') {
+      this.sprintActionMessage.set(null);
       await this.sprintStore.achieve(sprintId, id, !this.isObjectiveOwner());
+    } else {
+      this.sprintActionMessage.set("This status changes automatically and can't be set manually.");
     }
   }
 
