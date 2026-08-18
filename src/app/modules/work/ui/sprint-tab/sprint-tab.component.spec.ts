@@ -34,12 +34,20 @@ describe('SprintTabComponent', () => {
     fixture.detectChanges();
   });
 
-  it('does not render an Edit button (no edit-sprint UI exists yet)', () => {
-    // Owner should not see any Edit control, since there is nowhere for it to lead.
+  it('shows an Edit button to the owner (and only the owner), emitting editRequested when clicked', () => {
+    expect(fixture.nativeElement.querySelector('.sprint-tab__edit')).toBeNull();
+
     fixture.componentRef.setInput('isObjectiveOwner', true);
     fixture.detectChanges();
-    expect(fixture.nativeElement.querySelector('app-button')).toBeNull();
-    expect(fixture.nativeElement.textContent).not.toContain('Edit');
+
+    const editButton = fixture.nativeElement.querySelector('.sprint-tab__edit') as HTMLButtonElement;
+    expect(editButton).not.toBeNull();
+
+    const editSpy = vi.fn();
+    fixture.componentInstance.editRequested.subscribe(editSpy);
+    editButton.click();
+
+    expect(editSpy).toHaveBeenCalledTimes(1);
   });
 
   it('status is a dropdown for the owner, plain text for a member', () => {

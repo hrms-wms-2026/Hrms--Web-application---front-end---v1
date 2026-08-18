@@ -11,14 +11,15 @@ import { TaskCreateModalComponent } from '../../ui/task-create-modal/task-create
 import { TaskDetailModalComponent } from '../../ui/task-detail-modal/task-detail-modal.component';
 import { SprintTabComponent } from '../../ui/sprint-tab/sprint-tab.component';
 import { SprintCreateFormComponent } from '../../ui/sprint-create-form/sprint-create-form.component';
+import { SprintEditFormComponent } from '../../ui/sprint-edit-form/sprint-edit-form.component';
 import { TaskTableComponent } from '../../ui/task-table/task-table.component';
 import { WorkTask } from '../../models/task.model';
-import { SprintStatus } from '../../models/sprint.model';
+import { Sprint, SprintStatus } from '../../models/sprint.model';
 
 @Component({
   selector: 'app-task-backlog',
   standalone: true,
-  imports: [TaskCreateModalComponent, TaskDetailModalComponent, SprintTabComponent, SprintCreateFormComponent, TaskTableComponent, ButtonComponent],
+  imports: [TaskCreateModalComponent, TaskDetailModalComponent, SprintTabComponent, SprintCreateFormComponent, SprintEditFormComponent, TaskTableComponent, ButtonComponent],
   template: `
     @if (milestoneId(); as mId) {
       @if (isObjectiveOwner()) {
@@ -46,6 +47,13 @@ import { SprintStatus } from '../../models/sprint.model';
           (created)="createSprintOpen.set(false)"
           (cancelled)="createSprintOpen.set(false)"
         />
+        <app-sprint-edit-form
+          [open]="editingSprint() !== null"
+          [objectiveId]="mId"
+          [sprint]="editingSprint()"
+          (saved)="editingSprint.set(null)"
+          (cancelled)="editingSprint.set(null)"
+        />
       }
     }
 
@@ -66,6 +74,7 @@ import { SprintStatus } from '../../models/sprint.model';
           [statusNames]="statusNames()"
           [expanded]="expandedSprintId() === sprint.id"
           (toggled)="toggleExpanded(sprint.id)"
+          (editRequested)="editingSprint.set(sprint)"
           (statusChangeRequested)="onSprintStatusChangeRequested(sprint.id, $event)"
           (createTaskRequested)="onCreateTaskForSprint(sprint.id)"
           (taskViewed)="onTaskViewed($event)"
@@ -120,6 +129,7 @@ export class TaskBacklogComponent implements OnInit {
 
   protected readonly createOpen = signal(false);
   protected readonly createSprintOpen = signal(false);
+  protected readonly editingSprint = signal<Sprint | null>(null);
   protected readonly detailOpen = signal(false);
   protected readonly selectedTask = signal<WorkTask | null>(null);
   protected readonly milestoneId = signal<string | null>(null);
