@@ -23,40 +23,63 @@ function formatAddress(addressJson: string): string {
   selector: 'app-employee-personal-info',
   standalone: true,
   template: `
-    <dl class="grid max-w-2xl grid-cols-2 gap-y-3 rounded-lg border border-[var(--color-border)] p-4 text-sm">
-      <dt class="text-[var(--color-text-secondary)]">First Name</dt>
-      <dd>{{ personalInformation().firstName }}</dd>
-      <dt class="text-[var(--color-text-secondary)]">Last Name</dt>
-      <dd>{{ personalInformation().lastName }}</dd>
-      <dt class="text-[var(--color-text-secondary)]">Email</dt>
-      <dd>{{ personalInformation().email }}</dd>
-      <dt class="text-[var(--color-text-secondary)]">Phone</dt>
-      <dd>{{ personalInformation().phone || '—' }}</dd>
-      <dt class="text-[var(--color-text-secondary)]">Date of Birth</dt>
-      <dd>{{ personalInformation().dateOfBirth || '—' }}</dd>
-      <dt class="text-[var(--color-text-secondary)]">Gender</dt>
-      <dd class="capitalize">{{ personalInformation().gender || '—' }}</dd>
-    </dl>
+    <div class="rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] p-6 space-y-6">
+      <!-- Section 1: Personal Information -->
+      <div>
+        <h3 class="text-sm font-semibold text-[var(--color-text-primary)] pb-3 mb-4 border-b border-[var(--color-border)]">
+          Personal Information
+        </h3>
+        <dl class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-6 text-sm">
+          <div>
+            <dt class="text-xs font-medium text-[var(--color-text-secondary)] mb-1">First Name</dt>
+            <dd class="font-semibold text-[var(--color-text-primary)]">{{ personalInformation().firstName }}</dd>
+          </div>
+          <div>
+            <dt class="text-xs font-medium text-[var(--color-text-secondary)] mb-1">Last Name</dt>
+            <dd class="font-semibold text-[var(--color-text-primary)]">{{ personalInformation().lastName }}</dd>
+          </div>
+          <div>
+            <dt class="text-xs font-medium text-[var(--color-text-secondary)] mb-1">Email</dt>
+            <dd class="font-semibold text-[var(--color-text-primary)]">{{ personalInformation().email }}</dd>
+          </div>
+          <div>
+            <dt class="text-xs font-medium text-[var(--color-text-secondary)] mb-1">Phone</dt>
+            <dd class="font-semibold text-[var(--color-text-primary)]">{{ personalInformation().phone || '—' }}</dd>
+          </div>
+          <div>
+            <dt class="text-xs font-medium text-[var(--color-text-secondary)] mb-1">Date of Birth</dt>
+            <dd class="font-semibold text-[var(--color-text-primary)]">{{ personalInformation().dateOfBirth || '—' }}</dd>
+          </div>
+          <div>
+            <dt class="text-xs font-medium text-[var(--color-text-secondary)] mb-1">Gender</dt>
+            <dd class="font-semibold text-[var(--color-text-primary)] capitalize">{{ personalInformation().gender || '—' }}</dd>
+          </div>
+        </dl>
+      </div>
 
-    <div class="mt-4 max-w-2xl rounded-lg border border-[var(--color-border)] p-4 text-sm">
-      <h3 class="mb-3 font-medium">Addresses</h3>
-      @if (personalInformation().addresses.length === 0) {
-        <p class="text-[var(--color-text-secondary)]">—</p>
-      } @else {
-        <ul class="flex flex-col gap-3">
-          @for (address of personalInformation().addresses; track address.id) {
-            <li class="flex flex-col gap-1 border-b border-[var(--color-border)] pb-3 last:border-b-0 last:pb-0">
-              <div class="flex items-center gap-2">
-                <span class="font-medium">{{ address.addressType }}</span>
-                @if (address.isPrimary) {
-                  <span class="text-xs text-[var(--color-text-secondary)]">(Primary)</span>
-                }
-              </div>
-              <span class="text-[var(--color-text-secondary)]">{{ formatAddress(address.addressJson) }}</span>
-            </li>
-          }
-        </ul>
-      }
+      <!-- Section 2: Address Information -->
+      <div class="pt-6 border-t border-[var(--color-border)]">
+        <h3 class="text-sm font-semibold text-[var(--color-text-primary)] pb-3 mb-4 border-b border-[var(--color-border)]">
+          Address Information
+        </h3>
+        @if (personalInformation().addresses.length === 0) {
+          <p class="text-xs text-[var(--color-text-secondary)] italic">No addresses on file.</p>
+        } @else {
+          <ul class="grid grid-cols-1 md:grid-cols-2 gap-4">
+            @for (address of personalInformation().addresses; track address.id) {
+              <li class="rounded-lg border border-[var(--color-border)] bg-[var(--color-surface-secondary)] p-4 text-sm">
+                <div class="flex items-center justify-between mb-2">
+                  <span class="font-semibold text-[var(--color-text-primary)] text-xs">{{ address.addressType }}</span>
+                  @if (address.isPrimary) {
+                    <span class="text-[10px] font-semibold uppercase px-2 py-0.5 rounded-full bg-blue-100 text-blue-800">Primary</span>
+                  }
+                </div>
+                <p class="text-xs text-[var(--color-text-secondary)] leading-relaxed">{{ formatAddress(address.addressJson) }}</p>
+              </li>
+            }
+          </ul>
+        }
+      </div>
     </div>
   `,
   changeDetection: ChangeDetectionStrategy.OnPush

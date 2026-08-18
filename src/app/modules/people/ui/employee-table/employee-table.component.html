@@ -8,19 +8,25 @@
           <th class="col-employee">Employee</th>
           <th class="col-position">Position & Department</th>
           <th class="col-type">Employment & Company</th>
-          <th class="col-status">Status</th>
           <th class="col-manager">Reporting Manager</th>
-          <th class="col-actions">Actions</th>
         </tr>
       </thead>
       <tbody>
         @for (employee of employees(); track employee.id) {
-          <tr class="emp-row">
-            <!-- Employee (Avatar + Name & Email) -->
+          <tr class="emp-row" [routerLink]="['/people/employees', employee.id]">
+            <!-- Employee (Avatar + Status Dot + Name & Email) -->
             <td class="col-employee">
               <div class="emp-identity">
-                <div class="emp-avatar">
-                  {{ avatarInitials(employee.fullName) }}
+                <div class="emp-avatar-wrapper">
+                  <div class="emp-avatar">
+                    {{ avatarInitials(employee.fullName) }}
+                  </div>
+                  <span
+                    class="emp-status-dot-avatar"
+                    [class.emp-status-dot-avatar--active]="employee.status.toLowerCase() === 'active'"
+                    [class.emp-status-dot-avatar--inactive]="employee.status.toLowerCase() !== 'active'"
+                    [title]="'Status: ' + employee.status"
+                  ></span>
                 </div>
                 <div class="emp-info">
                   <span class="emp-name" [title]="employee.fullName">{{ employee.fullName }}</span>
@@ -45,26 +51,11 @@
               </div>
             </td>
 
-            <!-- Status -->
-            <td class="col-status">
-              <span class="emp-status-badge" [class.emp-status-badge--active]="employee.status === 'active'">
-                <span class="emp-status-dot"></span>
-                <span class="capitalize">{{ employee.status }}</span>
-              </span>
-            </td>
-
             <!-- Reporting Manager -->
             <td class="col-manager">
               <span class="emp-manager-text" [title]="employee.reportingManagerName || 'Unassigned'">
                 {{ employee.reportingManagerName || 'Unassigned' }}
               </span>
-            </td>
-
-            <!-- Actions -->
-            <td class="col-actions">
-              <a [routerLink]="['/people/employees', employee.id]" class="emp-view-link" title="View details">
-                View
-              </a>
             </td>
           </tr>
         }

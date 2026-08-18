@@ -397,6 +397,12 @@
   width: 100%;
 }
 
+.pcm-add-level-btn {
+  display: block;
+  margin-top: 0.5rem;
+  padding: 0;
+}
+
 .pcm-level-hint {
   display: flex;
   align-items: center;

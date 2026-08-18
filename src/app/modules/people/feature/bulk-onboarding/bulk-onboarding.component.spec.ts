@@ -3,7 +3,6 @@ import { provideRouter } from '@angular/router';
 import { of } from 'rxjs';
 import { vi } from 'vitest';
 import { LegalEntityStore } from '../../../organization/state/legal-entity.store';
-import { ChecklistApiService } from '../../data-access/checklist-api.service';
 import { PeopleApiService } from '../../data-access/people-api.service';
 import { BulkOnboardingStore } from '../../state/bulk-onboarding.store';
 import { BulkOnboardingComponent } from './bulk-onboarding.component';
@@ -41,15 +40,11 @@ describe('BulkOnboardingComponent', () => {
           provide: LegalEntityStore,
           useValue: {
             companies: () => [],
-            selectedLegalEntity: () => null,
+            selectedLegalEntity: () => ({ id: 'le-1', name: 'Acme Co' }),
             loadCompanies: vi.fn().mockResolvedValue(undefined)
           }
         },
-        { provide: PeopleApiService, useValue: { getWorkModes: () => of([]) } },
-        {
-          provide: ChecklistApiService,
-          useValue: { listChecklistTemplates: () => of({ items: [], totalCount: 0, page: 1, pageSize: 25 }) }
-        }
+        { provide: PeopleApiService, useValue: { getWorkModes: () => of([]) } }
       ]
     }).compileComponents();
 
@@ -59,6 +54,10 @@ describe('BulkOnboardingComponent', () => {
   it('starts on the upload step', () => {
     fixture.detectChanges();
     expect(fixture.componentInstance.currentStep()).toBe('upload');
+    const text = fixture.nativeElement.textContent as string;
+    expect(text).not.toContain('Default checklist template');
+    expect(text).not.toContain('Legal entity');
+    expect(fixture.nativeElement.querySelector('.bo-stepper')).toBeNull();
   });
 
   it('advances to the mapping step once a batch exists', () => {

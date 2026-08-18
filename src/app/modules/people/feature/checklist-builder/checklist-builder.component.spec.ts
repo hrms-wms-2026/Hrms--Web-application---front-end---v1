@@ -120,15 +120,15 @@ describe('ChecklistBuilderComponent', () => {
     expect(task.isRequired).toBe(true);
   });
 
-  it('renders Assigned to, Employee, and Company position labels', () => {
+  it('renders Assigned to, New employee, and Existing employee labels', () => {
     const text = fixture.nativeElement.textContent;
     expect(text).toContain('Assigned to');
-    expect(text).toContain('Employee');
-    expect(text).toContain('Company position');
+    expect(text).toContain('New employee');
+    expect(text).toContain('Existing employee');
 
     const assignedSelect = fixture.nativeElement.querySelector('.cb-assigned-field__select') as HTMLSelectElement;
     expect(assignedSelect).not.toBeNull();
-    expect(Array.from(assignedSelect.options).map((o) => o.text)).toEqual(['Employee', 'Company position']);
+    expect(Array.from(assignedSelect.options).map((o) => o.text)).toEqual(['New employee', 'Existing employee']);
   });
 
   it('does NOT render forbidden bad labels anywhere in the builder UI', () => {
@@ -137,8 +137,6 @@ describe('ChecklistBuilderComponent', () => {
     expect(text).not.toContain('relative due offset');
     expect(text).not.toContain('Days relative to start date');
     expect(text).not.toContain('Responsible party');
-    expect(text).not.toContain('New employee');
-    expect(text).not.toContain('Existing employee');
     expect(text).not.toContain('Someone else');
     expect(text).not.toContain('Scope level');
     expect(text).not.toContain('All employees in this company');

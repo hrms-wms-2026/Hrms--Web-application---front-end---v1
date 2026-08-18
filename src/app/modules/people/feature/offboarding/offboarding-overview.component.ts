@@ -3,6 +3,7 @@ import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { Router } from '@angular/router';
 import { PermissionService } from '../../../../core/auth/state/permission.service';
 import { toSafeErrorMessage } from '../../../../core/services/error-handler.service';
+import { BreadcrumbHeaderComponent } from '../../../../shared/ui/breadcrumb-header/breadcrumb-header.component';
 import { ButtonComponent } from '../../../../shared/ui/button/button.component';
 import { InputComponent } from '../../../../shared/ui/input/input.component';
 import { LoaderComponent } from '../../../../shared/ui/loader/loader.component';
@@ -14,16 +15,22 @@ import { OffboardingWizardStore } from '../../state/offboarding-wizard.store';
 @Component({
   selector: 'app-offboarding-overview',
   standalone: true,
-  imports: [ReactiveFormsModule, ButtonComponent, InputComponent, LoaderComponent, SelectComponent],
+  imports: [ReactiveFormsModule, BreadcrumbHeaderComponent, ButtonComponent, InputComponent, LoaderComponent, SelectComponent],
   template: `
-    <div class="flex items-center justify-between mb-4">
-      <h1 class="text-xl font-bold">Offboarding</h1>
-      @if (canOffboard() && !formOpen()) {
-        <app-button variant="primary" [disabled]="startableEmployees().length === 0" (pressed)="openForm()">
-          + Start Offboarding
-        </app-button>
-      }
-    </div>
+    <header class="ob-page-header">
+      <div class="ob-header-row">
+        <app-breadcrumb-header
+          parentLabel="People"
+          currentLabel="Offboarding"
+          icon="people"
+        />
+        @if (canOffboard() && !formOpen()) {
+          <app-button variant="primary" [disabled]="startableEmployees().length === 0" (pressed)="openForm()">
+            + Start Offboarding
+          </app-button>
+        }
+      </div>
+    </header>
 
     @if (formOpen()) {
       <section class="cb-card bg-[var(--color-surface)] border border-[var(--color-border)] rounded-xl p-5 mb-6 space-y-4 max-w-xl">
@@ -112,6 +119,23 @@ import { OffboardingWizardStore } from '../../state/offboarding-wizard.store';
       </div>
     }
   `,
+  styles: [`
+    .ob-page-header {
+      margin-top: -1.25rem;
+      margin-bottom: 1.25rem;
+      padding-bottom: 0.625rem;
+      border-bottom: 1px solid var(--color-border);
+    }
+    .ob-header-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 0.75rem;
+      width: 100%;
+      height: 36px;
+      min-height: 36px;
+    }
+  `],
   changeDetection: ChangeDetectionStrategy.OnPush
 })
 export class OffboardingOverviewComponent implements OnInit {

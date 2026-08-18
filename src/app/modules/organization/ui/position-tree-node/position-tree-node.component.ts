@@ -57,10 +57,16 @@ export class PositionTreeNodeComponent {
   }
 
   get occupancy(): PositionOccupancyDisplay {
+    // assignedCount/occupantPreview are the real, populated fields (backed by
+    // position_assignments); currentOccupancy is a deprecated placeholder the
+    // backend still sends as (null, false) on some endpoints. Prefer assignedCount
+    // whenever the backend has provided it.
+    const hasAssignedCount = this.node.assignedCount !== undefined;
     return resolvePositionOccupancy({
       positionType: this.node.positionType,
       maxOccupancy: this.node.maxOccupancy,
-      currentOccupancy: this.node.currentOccupancy,
+      currentOccupancy: hasAssignedCount ? this.node.assignedCount : this.node.currentOccupancy,
+      currentOccupancyCheckSupported: hasAssignedCount ? true : undefined,
       isActive: this.node.isActive
     });
   }

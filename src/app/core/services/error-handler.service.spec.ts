@@ -98,6 +98,23 @@ describe('ErrorHandlerService & Safe Error Mapper', () => {
     expect(toSafeErrorMessage(makeError(0))).toBe('We could not reach the server. Check your connection and try again.');
   });
 
+  it('prefers a field-specific validation error over the generic ValidationProblemDetails wording', () => {
+    // Matches ExceptionHandlerMiddleware's actual shape for a FluentValidation failure:
+    // title is "Validation Error", the generic sentence lives in detail, and the real
+    // per-field message lives in errors - all three are present at once.
+    const err = makeError(400, {
+      type: 'https://onevo.com/errors/validation-error',
+      title: 'Validation Error',
+      status: 400,
+      detail: 'One or more validation errors occurred.',
+      instance: '/api/v1/onboarding/drafts',
+      errors: { EmployeeNumber: ["The length of 'Employee Number' must be 20 characters or fewer. You entered 23 characters."] },
+      correlationId: 'corr-1'
+    });
+
+    expect(toSafeErrorMessage(err)).toBe("The length of 'Employee Number' must be 20 characters or fewer. You entered 23 characters.");
+  });
+
   it('falls back to generic friendly message for unmapped unknown status', () => {
     expect(toSafeErrorMessage(makeError(418))).toBe('Something went wrong. Please try again.');
   });

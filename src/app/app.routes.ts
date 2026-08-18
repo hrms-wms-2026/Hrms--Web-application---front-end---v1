@@ -131,6 +131,13 @@ export const routes: Routes = [
             (module) => module.SessionExchangeComponent
           )
       },
+      {
+        path: 'invitations/:token',
+        loadComponent: () =>
+          import('./core/auth/feature/accept-invitation/accept-invitation.component').then(
+            (module) => module.AcceptInvitationComponent
+          )
+      },
       { path: '', pathMatch: 'full', redirectTo: 'login' }
     ]
   },

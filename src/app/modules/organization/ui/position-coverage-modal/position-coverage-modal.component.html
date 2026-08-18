@@ -111,6 +111,9 @@
                         }
                       </div>
                     }
+                    <button type="button" class="pcm-text-btn pcm-add-level-btn" (click)="addAnotherLevel()">
+                      + Add another level
+                    </button>
                   </div>
                 </div>
 
@@ -182,6 +185,9 @@
                       }
                     </div>
                   }
+                  <button type="button" class="pcm-text-btn pcm-add-level-btn" (click)="addAnotherLevel()">
+                    + Add another level
+                  </button>
                 } @else {
                   <div class="pcm-card-actions">
                     <span class="pcm-responsibility-chip" [class.pcm-responsibility-chip--primary]="cov.ownerOrder === 1">

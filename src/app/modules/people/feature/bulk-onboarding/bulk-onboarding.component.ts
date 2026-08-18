@@ -3,9 +3,9 @@ import { RouterLink } from '@angular/router';
 import { firstValueFrom } from 'rxjs';
 import { BreadcrumbHeaderComponent } from '../../../../shared/ui/breadcrumb-header/breadcrumb-header.component';
 import { ButtonComponent } from '../../../../shared/ui/button/button.component';
+import { EmptyStateComponent } from '../../../../shared/ui/empty-state/empty-state.component';
 import { SelectComponent, SelectOption } from '../../../../shared/ui/select/select.component';
 import { LegalEntityStore } from '../../../organization/state/legal-entity.store';
-import { ChecklistApiService } from '../../data-access/checklist-api.service';
 import { PeopleApiService } from '../../data-access/people-api.service';
 import {
   BULK_ONBOARDING_SYSTEM_FIELD_LABELS,
@@ -41,7 +41,7 @@ const BULK_ROW_STATUS_LABELS: Record<BulkOnboardingRowStatus, string> = {
 @Component({
   selector: 'app-bulk-onboarding',
   standalone: true,
-  imports: [BreadcrumbHeaderComponent, ButtonComponent, SelectComponent, RouterLink],
+  imports: [BreadcrumbHeaderComponent, ButtonComponent, EmptyStateComponent, SelectComponent, RouterLink],
   templateUrl: './bulk-onboarding.component.html',
   styleUrl: './bulk-onboarding.component.css'
 })
@@ -49,7 +49,6 @@ export class BulkOnboardingComponent implements OnInit, OnDestroy {
   store = inject(BulkOnboardingStore);
   private readonly legalEntityStore = inject(LegalEntityStore);
   private readonly peopleApi = inject(PeopleApiService);
-  private readonly checklistApi = inject(ChecklistApiService);
 
   readonly fieldLabels = BULK_ONBOARDING_SYSTEM_FIELD_LABELS;
   readonly fieldIds = Object.keys(BULK_ONBOARDING_SYSTEM_FIELD_LABELS) as BulkOnboardingSystemField[];
@@ -57,32 +56,20 @@ export class BulkOnboardingComponent implements OnInit, OnDestroy {
   readonly requiredMappingFields = REQUIRED_MAPPING_FIELDS;
   readonly rowStatusLabels = BULK_ROW_STATUS_LABELS;
 
-  readonly legalEntityId = signal('');
   readonly defaultWorkModeId = signal<number | null>(null);
   readonly defaultEmploymentType = signal<string | null>(null);
-  readonly defaultChecklistTemplateId = signal<string | null>(null);
   readonly selectedFileName = signal<string | null>(null);
   readonly fileError = signal<string | null>(null);
 
-  readonly companyOptions = computed<readonly SelectOption[]>(() =>
-    this.legalEntityStore.companies().map((company) => ({ value: company.id, label: company.name }))
-  );
+  readonly selectedLegalEntityId = computed(() => this.legalEntityStore.selectedLegalEntity()?.id ?? '');
+  readonly hasCompany = computed(() => !!this.selectedLegalEntityId());
   readonly workModeSelectValue = computed(() => {
     const id = this.defaultWorkModeId();
     return id === null ? '' : String(id);
   });
   readonly workModeOptions = signal<readonly SelectOption[]>([]);
-  readonly checklistOptions = signal<readonly SelectOption[]>([]);
 
   private readonly manualStep = signal<BulkOnboardingStep | null>(null);
-
-  readonly steps: readonly { id: BulkOnboardingStep; label: string }[] = [
-    { id: 'upload', label: 'Upload' },
-    { id: 'map-columns', label: 'Map columns' },
-    { id: 'validate', label: 'Validate' },
-    { id: 'review', label: 'Review' },
-    { id: 'finalize', label: 'Finalize' }
-  ];
 
   currentStep = computed<BulkOnboardingStep>(() => {
     if (this.manualStep()) return this.manualStep()!;
@@ -92,11 +79,6 @@ export class BulkOnboardingComponent implements OnInit, OnDestroy {
 
   async ngOnInit(): Promise<void> {
     await this.legalEntityStore.loadCompanies();
-    const selected = this.legalEntityStore.selectedLegalEntity();
-    if (selected) {
-      this.legalEntityId.set(selected.id);
-      await this.loadLookupsForCompany(selected.id);
-    }
 
     try {
       const modes = await firstValueFrom(this.peopleApi.getWorkModes());
@@ -110,22 +92,12 @@ export class BulkOnboardingComponent implements OnInit, OnDestroy {
     this.store.reset();
   }
 
-  async onCompanyChange(legalEntityId: string): Promise<void> {
-    this.legalEntityId.set(legalEntityId);
-    this.defaultChecklistTemplateId.set(null);
-    await this.loadLookupsForCompany(legalEntityId);
-  }
-
   onWorkModeChange(value: string): void {
     this.defaultWorkModeId.set(value ? Number(value) : null);
   }
 
   onEmploymentTypeChange(value: string): void {
     this.defaultEmploymentType.set(value || null);
-  }
-
-  onChecklistTemplateChange(value: string): void {
-    this.defaultChecklistTemplateId.set(value || null);
   }
 
   async onFileSelected(
@@ -147,7 +119,7 @@ export class BulkOnboardingComponent implements OnInit, OnDestroy {
     }
 
     if (!legalEntityId) {
-      this.fileError.set('Select a legal entity before uploading.');
+      this.fileError.set('Select a company from the top navigation before uploading.');
       return;
     }
 
@@ -158,14 +130,14 @@ export class BulkOnboardingComponent implements OnInit, OnDestroy {
       legalEntityId,
       defaultWorkModeId,
       defaultEmploymentType,
-      defaultChecklistTemplateId: this.defaultChecklistTemplateId()
+      defaultChecklistTemplateId: null
     });
   }
 
   onCsvInput(event: Event): void {
     void this.onFileSelected(
       event,
-      this.legalEntityId(),
+      this.selectedLegalEntityId(),
       this.defaultWorkModeId(),
       this.defaultEmploymentType()
     );
@@ -209,22 +181,5 @@ export class BulkOnboardingComponent implements OnInit, OnDestroy {
   mappingColumnOptions(): readonly SelectOption[] {
     const columns = this.store.batch()?.detectedColumns ?? [];
     return [{ value: '', label: 'Not mapped' }, ...columns.map((column) => ({ value: column, label: column }))];
-  }
-
-  private async loadLookupsForCompany(legalEntityId: string): Promise<void> {
-    try {
-      const page = await firstValueFrom(
-        this.checklistApi.listChecklistTemplates({
-          legalEntityId,
-          templateType: 'onboarding',
-          includeInactive: false,
-          page: 1,
-          pageSize: 100
-        })
-      );
-      this.checklistOptions.set(page.items.map((item) => ({ value: item.id, label: item.name })));
-    } catch {
-      this.checklistOptions.set([]);
-    }
   }
 }

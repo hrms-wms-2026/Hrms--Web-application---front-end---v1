@@ -54,8 +54,8 @@ const TASK_PLACEHOLDERS: readonly string[] = [
 const POSITION_ASSIGNEE_OWNER_TYPE: ChecklistTaskOwnerType = 'custom_user';
 
 const ASSIGNMENT_OPTIONS: readonly SelectOption[] = [
-  { value: 'employee', label: 'Employee' },
-  { value: 'company_position', label: 'Company position' }
+  { value: 'employee', label: 'New employee' },
+  { value: 'company_position', label: 'Existing employee' }
 ];
 
 function nonNegativeIntegerValidator(control: AbstractControl): ValidationErrors | null {

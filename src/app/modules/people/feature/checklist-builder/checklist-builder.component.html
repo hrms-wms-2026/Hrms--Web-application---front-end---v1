@@ -6,20 +6,6 @@
       parentUrl="/people/checklists"
       icon="people"
     />
-  </div>
-</header>
-
-<div class="cb-container max-w-4xl mx-auto py-4 md:py-6 space-y-6">
-
-  <div class="flex flex-col md:flex-row md:items-center justify-between gap-4 pb-2">
-    <div>
-      <h1 class="text-xl font-bold text-[var(--color-text-primary)]">
-        {{ isEdit() ? 'Edit checklist' : 'Create checklist' }}
-      </h1>
-      <p class="text-xs text-[var(--color-text-secondary)] mt-0.5">
-        Create reusable tasks for employee onboarding or offboarding.
-      </p>
-    </div>
     <div class="flex items-center gap-3">
       <app-button variant="secondary" type="button" (pressed)="cancel()">
         Cancel
@@ -29,6 +15,9 @@
       </app-button>
     </div>
   </div>
+</header>
+
+<div class="cb-container max-w-4xl mx-auto py-2 md:py-4">
 
   @if (initialLoading()) {
     <div class="p-8 flex justify-center items-center">
@@ -42,22 +31,31 @@
       </app-button>
     </div>
   } @else {
-    <form [formGroup]="form" (ngSubmit)="onSubmit()" class="space-y-6">
-      <!-- Section A: Checklist details -->
-      <section class="cb-card bg-[var(--color-surface)] border border-[var(--color-border)] rounded-xl p-5 md:p-6 space-y-4 shadow-sm">
-        <h2 class="text-base font-semibold text-[var(--color-text-primary)] border-b border-[var(--color-border)] pb-3">
-          Checklist details
-        </h2>
+    <form [formGroup]="form" (ngSubmit)="onSubmit()" class="bg-[var(--color-surface)] border border-[var(--color-border)] rounded-xl p-6 space-y-8">
+      <!-- Section 1: Checklist Configuration -->
+      <div class="space-y-6">
+        <div>
+          <h2 class="text-base font-semibold text-[var(--color-text-primary)]">
+            Checklist details
+          </h2>
+          <p class="text-xs text-[var(--color-text-secondary)] mt-0.5">
+            Create reusable tasks for employee onboarding or offboarding.
+          </p>
+        </div>
 
-        <div class="space-y-4">
-          <app-input
-            label="Checklist name *"
-            placeholder="e.g. Engineering Onboarding Checklist"
-            [value]="form.controls.name.value || ''"
-            (valueChange)="form.controls.name.setValue($event)"
-            [error]="submitAttempted() && form.controls.name.invalid ? 'Checklist name is required (max 150 characters).' : ''"
-          />
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-6 items-start">
+          <!-- Checklist Name -->
+          <div class="space-y-1.5">
+            <app-input
+              label="Checklist name *"
+              placeholder="e.g. Engineering Onboarding Checklist"
+              [value]="form.controls.name.value || ''"
+              (valueChange)="form.controls.name.setValue($event)"
+              [error]="submitAttempted() && form.controls.name.invalid ? 'Checklist name is required (max 150 characters).' : ''"
+            />
+          </div>
 
+          <!-- Checklist Type -->
           <div class="flex flex-col gap-1.5">
             <label class="text-xs font-semibold text-[var(--color-text-secondary)]">Checklist type *</label>
             <div class="flex gap-2">
@@ -85,15 +83,15 @@
             }
           </div>
         </div>
-      </section>
 
-      <!-- Section B: Use this checklist for -->
-      <section class="cb-card bg-[var(--color-surface)] border border-[var(--color-border)] rounded-xl p-5 md:p-6 space-y-4 shadow-sm">
-        <h2 class="text-base font-semibold text-[var(--color-text-primary)] border-b border-[var(--color-border)] pb-3">
-          Use this checklist for
-        </h2>
+        <!-- Applicability Scope -->
+        <div class="pt-4 border-t border-[var(--color-border)] space-y-4">
+          <div>
+            <h3 class="text-sm font-semibold text-[var(--color-text-primary)]">
+              Use this checklist for
+            </h3>
+          </div>
 
-        <div class="space-y-4">
           <div class="flex flex-wrap gap-2">
             <button
               type="button"
@@ -122,50 +120,54 @@
           </div>
 
           @if (scopeLevel() === 'department' || scopeLevel() === 'position') {
-            @if (loadingDepartments()) {
-              <app-loader label="Loading departments..." />
-            } @else {
-              <app-select
-                label="Department *"
-                placeholder="Select a department"
-                [options]="departments()"
-                [value]="form.controls.departmentId.value || ''"
-                [error]="submitAttempted() && (scopeLevel() === 'department' || scopeLevel() === 'position') && !form.controls.departmentId.value ? 'Department is required.' : ''"
-                (valueChange)="onDepartmentChange($event)"
-              />
-            }
-          }
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-6 pt-2">
+              @if (loadingDepartments()) {
+                <app-loader label="Loading departments..." />
+              } @else {
+                <app-select
+                  label="Department *"
+                  placeholder="Select a department"
+                  [options]="departments()"
+                  [value]="form.controls.departmentId.value || ''"
+                  [error]="submitAttempted() && (scopeLevel() === 'department' || scopeLevel() === 'position') && !form.controls.departmentId.value ? 'Department is required.' : ''"
+                  (valueChange)="onDepartmentChange($event)"
+                />
+              }
 
-          @if (scopeLevel() === 'position') {
-            @if (!form.controls.departmentId.value) {
-              <app-select
-                label="Position *"
-                placeholder="Select a department first"
-                [options]="[]"
-                [disabled]="true"
-              />
-            } @else if (loadingPositions()) {
-              <app-loader label="Loading positions..." />
-            } @else {
-              <app-select
-                label="Position *"
-                placeholder="Select a position"
-                [options]="positions()"
-                [value]="form.controls.positionId.value || ''"
-                [error]="submitAttempted() && scopeLevel() === 'position' && !form.controls.positionId.value ? 'Position is required.' : ''"
-                (valueChange)="form.controls.positionId.setValue($event)"
-              />
-            }
+              @if (scopeLevel() === 'position') {
+                @if (!form.controls.departmentId.value) {
+                  <app-select
+                    label="Position *"
+                    placeholder="Select a department first"
+                    [options]="[]"
+                    [disabled]="true"
+                  />
+                } @else if (loadingPositions()) {
+                  <app-loader label="Loading positions..." />
+                } @else {
+                  <app-select
+                    label="Position *"
+                    placeholder="Select a position"
+                    [options]="positions()"
+                    [value]="form.controls.positionId.value || ''"
+                    [error]="submitAttempted() && scopeLevel() === 'position' && !form.controls.positionId.value ? 'Position is required.' : ''"
+                    (valueChange)="form.controls.positionId.setValue($event)"
+                  />
+                }
+              }
+            </div>
           }
         </div>
-      </section>
+      </div>
 
-      <!-- Section C: Tasks -->
-      <section class="cb-card bg-[var(--color-surface)] border border-[var(--color-border)] rounded-xl p-5 md:p-6 space-y-4 shadow-sm">
-        <div class="flex items-center justify-between border-b border-[var(--color-border)] pb-3">
-          <h2 class="text-base font-semibold text-[var(--color-text-primary)]">
-            Tasks
-          </h2>
+      <!-- Section 2: Task List -->
+      <div class="pt-6 border-t border-[var(--color-border)] space-y-4">
+        <div class="flex items-center justify-between">
+          <div>
+            <h2 class="text-base font-semibold text-[var(--color-text-primary)]">
+              Tasks
+            </h2>
+          </div>
           <app-button variant="secondary" size="sm" type="button" (pressed)="addTask()">
             + Add Task
           </app-button>
@@ -265,7 +267,7 @@
               @if (isOffboardingTemplate()) {
                 <div class="cb-task-list__col-bypass">
                   <span class="cb-task-row__mobile-label">Bypass</span>
-                  <label class="cb-bypass-toggle">
+                  <label class="cb-bypass-toggle" title="Allow task to be bypassed during offboarding">
                     <input
                       type="checkbox"
                       [attr.data-testid]="'task-' + idx + '-bypassable'"
@@ -274,27 +276,6 @@
                     />
                     <span>Bypassable</span>
                   </label>
-                  @if (taskGroup.value.isBypassable) {
-                    <app-input
-                      placeholder="Penalty if bypassed (optional)"
-                      [value]="taskGroup.value.bypassPenaltyDescription || ''"
-                      (valueChange)="taskGroup.get('bypassPenaltyDescription')?.setValue($event)"
-                    />
-                    <select
-                      class="cb-assigned-field__select"
-                      [attr.aria-label]="'Category for task ' + (idx + 1)"
-                      [value]="taskGroup.value.category || ''"
-                      (change)="taskGroup.get('category')?.setValue($any($event.target).value)"
-                    >
-                      <option value="">No category</option>
-                      <option value="asset_return">Asset Return</option>
-                      <option value="access_removal">Access Removal</option>
-                      <option value="document_handover">Document Handover</option>
-                      <option value="final_settlement">Final Settlement</option>
-                      <option value="knowledge_handover">Knowledge Handover</option>
-                      <option value="other">Other</option>
-                    </select>
-                  }
                 </div>
               }
 
@@ -334,18 +315,37 @@
                 </div>
               </div>
             </div>
+
+            @if (isOffboardingTemplate() && taskGroup.value.isBypassable) {
+              <div class="flex flex-col sm:flex-row items-start sm:items-center gap-3 px-4 py-2.5 bg-[var(--color-surface-secondary)] border-b border-[var(--color-border)] text-xs" [formGroup]="$any(taskGroup)">
+                <span class="font-semibold text-[var(--color-text-secondary)] whitespace-nowrap">Bypass Options:</span>
+                <div class="flex-1 w-full">
+                  <app-input
+                    placeholder="Penalty if bypassed (optional e.g. $50 equipment fee)"
+                    [value]="taskGroup.value.bypassPenaltyDescription || ''"
+                    (valueChange)="taskGroup.get('bypassPenaltyDescription')?.setValue($event)"
+                  />
+                </div>
+                <div class="w-full sm:w-56">
+                  <select
+                    class="cb-assigned-field__select"
+                    [attr.aria-label]="'Category for task ' + (idx + 1)"
+                    [value]="taskGroup.value.category || ''"
+                    (change)="taskGroup.get('category')?.setValue($any($event.target).value)"
+                  >
+                    <option value="">No category</option>
+                    <option value="asset_return">Asset Return</option>
+                    <option value="access_removal">Access Removal</option>
+                    <option value="document_handover">Document Handover</option>
+                    <option value="final_settlement">Final Settlement</option>
+                    <option value="knowledge_handover">Knowledge Handover</option>
+                    <option value="other">Other</option>
+                  </select>
+                </div>
+              </div>
+            }
           }
         </div>
-      </section>
-
-      <!-- Page Actions -->
-      <div class="flex items-center justify-end gap-3 pt-4 border-t border-[var(--color-border)]">
-        <app-button variant="secondary" type="button" (pressed)="cancel()">
-          Cancel
-        </app-button>
-        <app-button variant="primary" type="submit" [loading]="store.saving()">
-          {{ isEdit() ? 'Save checklist' : 'Create checklist' }}
-        </app-button>
       </div>
     </form>
   }

@@ -144,12 +144,12 @@ describe('EmployeeDetailComponent', () => {
     expect(fixture.nativeElement.querySelector('app-employee-payroll')).toBeFalsy();
   });
 
-  it('shows a Change Position button and opens the modal when the employee has a legal entity', () => {
+  it('shows a Transfer / Promote button and opens the modal when the employee has a legal entity', () => {
     const { fixture } = setup(detailFixture);
     fixture.detectChanges();
 
     const buttons: HTMLElement[] = Array.from(fixture.nativeElement.querySelectorAll('button'));
-    const changePositionButton = buttons.find((b) => b.textContent?.includes('Change Position'));
+    const changePositionButton = buttons.find((b) => b.textContent?.includes('Transfer / Promote'));
     expect(changePositionButton).toBeTruthy();
 
     expect(fixture.componentInstance.changePositionOpen()).toBe(false);
@@ -158,6 +158,18 @@ describe('EmployeeDetailComponent', () => {
 
     expect(fixture.componentInstance.changePositionMenuOpen()).toBe(true);
     expect(fixture.nativeElement.querySelector('app-change-position-modal')).toBeTruthy();
+  });
+
+  it('hides the Transfer / Promote button when employee invitationStatus is pending or expired', () => {
+    const { fixture } = setup({
+      ...detailFixture,
+      invitationStatus: 'pending'
+    });
+    fixture.detectChanges();
+
+    const buttons: HTMLElement[] = Array.from(fixture.nativeElement.querySelectorAll('button'));
+    const changePositionButton = buttons.find((b) => b.textContent?.includes('Transfer / Promote'));
+    expect(changePositionButton).toBeFalsy();
   });
 
   it('hides the Change Position menu entirely when viewing your own record', () => {
@@ -209,17 +221,17 @@ describe('EmployeeDetailComponent', () => {
     expect(fixture.componentInstance.changePositionReason()).toBe('Promotion');
   });
 
-  it('does not render a Change Position button when the user lacks employees:write', () => {
+  it('does not render a Transfer / Promote button when the user lacks employees:write', () => {
     const { fixture } = setup(detailFixture, {}, false);
     fixture.detectChanges();
 
     const buttons: HTMLElement[] = Array.from(fixture.nativeElement.querySelectorAll('button'));
-    const changePositionButton = buttons.find((b) => b.textContent?.includes('Change Position'));
+    const changePositionButton = buttons.find((b) => b.textContent?.includes('Transfer / Promote'));
     expect(changePositionButton).toBeFalsy();
     expect(fixture.componentInstance.canChangePosition()).toBe(false);
   });
 
-  it('does not render a Change Position control when the employee has no legal entity', () => {
+  it('does not render a Transfer / Promote control when the employee has no legal entity', () => {
     const { fixture } = setup({
       ...detailFixture,
       jobInformation: { ...detailFixture.jobInformation, legalEntityId: null }
@@ -227,7 +239,7 @@ describe('EmployeeDetailComponent', () => {
     fixture.detectChanges();
 
     const buttons: HTMLElement[] = Array.from(fixture.nativeElement.querySelectorAll('button'));
-    const changePositionButton = buttons.find((b) => b.textContent?.includes('Change Position'));
+    const changePositionButton = buttons.find((b) => b.textContent?.includes('Transfer / Promote'));
     expect(changePositionButton).toBeFalsy();
   });
 

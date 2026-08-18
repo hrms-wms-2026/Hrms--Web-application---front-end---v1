@@ -91,10 +91,10 @@ import { OffboardingWizardStore } from '../../state/offboarding-wizard.store';
           </div>
 
           <div class="flex items-center gap-3">
-            @if (canChangePosition() && !isOwnRecord() && employee.jobInformation.legalEntityId && !isReadOnly()) {
+            @if (canChangePosition() && !isOwnRecord() && employee.jobInformation.legalEntityId && !isReadOnly() && employee.invitationStatus !== 'pending' && employee.invitationStatus !== 'expired') {
               <app-popover [open]="changePositionMenuOpen()" ariaLabel="Change position actions" align="right" (closed)="changePositionMenuOpen.set(false)">
                 <app-button popover-trigger data-testid="change-position-trigger" (pressed)="changePositionMenuOpen.set(!changePositionMenuOpen())">
-                  Change Position
+                  Transfer / Promote
                 </app-button>
                 <div popover-panel class="change-position-menu">
                   <button type="button" class="profile-action-btn" (click)="openChangePosition('Promotion')">Promotion</button>
@@ -207,32 +207,21 @@ import { OffboardingWizardStore } from '../../state/offboarding-wizard.store';
               Payroll & Statutory
             </button>
           }
-          <button
-            type="button"
-            class="px-4 py-2.5 text-sm font-medium border-b-2 transition-colors -mb-px whitespace-nowrap cursor-pointer"
-            [class.border-[var(--color-accent)]]="activeTab() === 'journey'"
-            [class.text-[var(--color-accent)]]="activeTab() === 'journey'"
-            [class.font-semibold]="activeTab() === 'journey'"
-            [class.border-transparent]="activeTab() !== 'journey'"
-            [class.text-[var(--color-text-secondary)]]="activeTab() !== 'journey'"
-            (click)="activeTab.set('journey')"
-          >
-            Job Journey
-          </button>
         </nav>
       </div>
 
       <!-- Tab Content Section -->
       @if (activeTab() === 'job') {
-        <app-employee-job-info [jobInformation]="employee.jobInformation" />
+        <div class="rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] p-6 space-y-6">
+          <app-employee-job-info [jobInformation]="employee.jobInformation" />
+          <app-employee-job-journey [entries]="jobJourney()" />
+        </div>
       } @else if (activeTab() === 'personal') {
         <app-employee-personal-info [personalInformation]="employee.personalInformation" />
       } @else if (activeTab() === 'emergency') {
         <app-employee-emergency-contacts [emergencyContacts]="employee.emergencyContacts" />
       } @else if (activeTab() === 'payroll' && employee.payroll; as payroll) {
         <app-employee-payroll [payroll]="payroll" />
-      } @else if (activeTab() === 'journey') {
-        <app-employee-job-journey [entries]="jobJourney()" />
       }
 
       @if (employee.jobInformation.legalEntityId; as legalEntityId) {
@@ -308,7 +297,7 @@ export class EmployeeDetailComponent {
   readonly changePositionMenuOpen = signal(false);
   readonly changePositionOpen = signal(false);
   readonly changePositionReason = signal<'Promotion' | 'Transfer'>('Promotion');
-  readonly activeTab = signal<'job' | 'personal' | 'emergency' | 'payroll' | 'journey'>('job');
+  readonly activeTab = signal<'job' | 'personal' | 'emergency' | 'payroll'>('job');
   readonly jobJourney = signal<readonly PositionHistoryEntryResponse[]>([]);
 
   readonly canChangePosition = computed(() => this.permissionService.hasPermission('employees:write'));

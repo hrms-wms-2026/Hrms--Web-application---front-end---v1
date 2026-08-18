@@ -1,6 +1,8 @@
 import { Component, ElementRef, effect, input, output, viewChild } from '@angular/core';
 import { nextUniqueId } from '../../utils/unique-id';
 
+export type ModalSize = 'md' | 'xl' | '2xl';
+
 @Component({
   selector: 'app-modal',
   standalone: true,
@@ -10,7 +12,13 @@ import { nextUniqueId } from '../../utils/unique-id';
         <div class="absolute inset-0 bg-black/50" (click)="onBackdropClick()"></div>
         <div
           #dialog
-          class="relative z-10 w-full max-w-md rounded-lg bg-[var(--color-surface)] p-6 shadow-lg outline-none"
+          class="relative z-10 w-full rounded-xl bg-[var(--color-surface)] shadow-lg outline-none"
+          [class.p-6]="size() === 'md'"
+          [class.p-8]="size() === 'xl' || size() === '2xl'"
+          [class.max-w-md]="size() === 'md'"
+          [class.max-w-5xl]="size() === 'xl'"
+          [class.max-w-6xl]="size() === '2xl'"
+          [class.modal-dialog--xl]="size() === 'xl' || size() === '2xl'"
           role="dialog"
           aria-modal="true"
           tabindex="-1"
@@ -34,12 +42,19 @@ import { nextUniqueId } from '../../utils/unique-id';
         </div>
       </div>
     }
+  `,
+  styles: `
+    .modal-dialog--xl {
+      max-height: 85vh;
+      overflow: hidden;
+    }
   `
 })
 export class ModalComponent {
   open = input(false);
   title = input<string>('');
   closeOnBackdropClick = input(true);
+  size = input<ModalSize>('md');
   closed = output<void>();
 
   private readonly dialogRef = viewChild<ElementRef<HTMLElement>>('dialog');

@@ -117,6 +117,30 @@ export class PositionApiService {
     );
   }
 
+  /**
+   * Every active coverage record for a specific covered target, regardless of which position owns
+   * each rule. Used to compute the true occupied-responsibility-level set before the user submits,
+   * instead of only finding out via a 409 from addCoverage/updateCoverage - listCoverage() above
+   * only returns records owned by one position and can't see this on its own.
+   */
+  listCoverageByTarget(
+    legalEntityId: string,
+    coveredTargetType: 'Position' | 'Department',
+    coveredPositionId: string | null,
+    coveredDepartmentId: string | null,
+    excludingRecordId?: string | null
+  ): Observable<readonly ManagementCoverageRecordResponse[]> {
+    let params = new HttpParams().set('coveredTargetType', coveredTargetType);
+    if (coveredPositionId) params = params.set('coveredPositionId', coveredPositionId);
+    if (coveredDepartmentId) params = params.set('coveredDepartmentId', coveredDepartmentId);
+    if (excludingRecordId) params = params.set('excludingRecordId', excludingRecordId);
+
+    return this.http.get<readonly ManagementCoverageRecordResponse[]>(
+      `${environment.apiUrl}/org/legal-entities/${legalEntityId}/positions/coverage/by-target`,
+      { params }
+    );
+  }
+
   addCoverage(
     legalEntityId: string,
     positionId: string,

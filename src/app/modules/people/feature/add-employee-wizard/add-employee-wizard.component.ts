@@ -13,7 +13,20 @@ import { SelectComponent, SelectOption } from '../../../../shared/ui/select/sele
 import { LegalEntityStore } from '../../../organization/state/legal-entity.store';
 import { AddEmployeeWizardStore } from '../../state/add-employee-wizard.store';
 import { DRAFT_REASON_LABELS, WizardStep } from '../../models/onboarding-draft.model';
+import { ChecklistTemplateMatchLevel, ChecklistTemplateType, DraftChecklistTask } from '../../models/checklist-template.model';
 import { isTerminalDraft } from '../../utils/draft-status.utils';
+import { validateDraftTasks } from '../../utils/draft-checklist-task.utils';
+
+const MATCH_LEVEL_LABELS: Record<ChecklistTemplateMatchLevel, string> = {
+  company: 'Company default',
+  department: 'Department match',
+  position: 'Position match'
+};
+
+const TEMPLATE_TYPE_LABELS: Record<ChecklistTemplateType, string> = {
+  onboarding: 'Onboarding',
+  offboarding: 'Offboarding'
+};
 
 const EMPLOYMENT_TYPE_OPTIONS: readonly SelectOption[] = [
   { value: 'full_time', label: 'Full-time' },
@@ -61,6 +74,16 @@ export class AddEmployeeWizardComponent {
   readonly stepOrder = STEP_ORDER;
   readonly stepLabels = STEP_LABELS;
   readonly submitAttempted = signal(false);
+  /** Mirrors submitAttempted, but scoped to the checklist task editor - set on the first blocked
+   *  Continue/Save Draft attempt while a checklist is selected, so per-row errors only appear
+   *  after the user has tried to move on, not while they're still filling tasks in. */
+  readonly taskSubmitAttempted = signal(false);
+  /** Per-row "rejected input" messages for the due-days field, keyed by task clientId - kept out
+   *  of the store because it's transient keystroke feedback, not domain state. */
+  readonly dueDaysRowErrors = signal<Readonly<Record<string, string>>>({});
+
+  /** Dedup key for the last-issued checklist-matches request, so re-rendering Step 2 doesn't re-fire it. */
+  private checklistMatchesRequestKey: string | null = null;
 
   readonly form = this.fb.nonNullable.group({
     firstName: ['', [Validators.required, Validators.maxLength(100)]],
@@ -70,7 +93,7 @@ export class AddEmployeeWizardComponent {
     positionId: ['', Validators.required],
     employmentType: ['', Validators.required],
     startDate: ['', Validators.required],
-    employeeNumber: [''],
+    employeeNumber: ['', Validators.maxLength(20)],
     workModeId: ['', Validators.required]
   });
 
@@ -206,12 +229,139 @@ export class AddEmployeeWizardComponent {
   onDepartmentChange(departmentId: string): void {
     this.form.controls.departmentId.setValue(departmentId);
     this.form.controls.positionId.setValue('');
+    // The store itself clears selectedTemplateId/selectedTemplateDetail as part of setDepartment().
     this.store.setDepartment(departmentId);
+    if (this.store.step() === 'checklist_template') {
+      this.maybeLoadChecklistMatches();
+    }
   }
 
   onPositionChange(positionId: string): void {
     this.form.controls.positionId.setValue(positionId);
+    // The store itself clears selectedTemplateId/selectedTemplateDetail as part of setPosition().
     this.store.setPosition(positionId);
+    if (this.store.step() === 'checklist_template') {
+      this.maybeLoadChecklistMatches();
+    }
+  }
+
+  matchLevelLabel(level: ChecklistTemplateMatchLevel): string {
+    return MATCH_LEVEL_LABELS[level] ?? level;
+  }
+
+  selectChecklistTemplate(templateId: string): void {
+    this.store.selectChecklistTemplate(templateId);
+  }
+
+  retrySelectedTemplateDetail(): void {
+    const templateId = this.store.selectedTemplateId();
+    if (templateId) {
+      void this.store.loadSelectedTemplateDetail(templateId);
+    }
+  }
+
+  readonly previewTemplateTypeLabel = computed(() => {
+    const detail = this.store.selectedTemplateDetail();
+    return detail ? (TEMPLATE_TYPE_LABELS[detail.templateType] ?? detail.templateType) : '';
+  });
+
+  readonly previewApplicabilityLabel = computed(() => {
+    const detail = this.store.selectedTemplateDetail();
+    if (!detail) {
+      return '';
+    }
+    if (detail.positionId) {
+      return `Position — ${detail.positionName ?? 'Unnamed position'}`;
+    }
+    if (detail.departmentId) {
+      return `Department — ${detail.departmentName ?? 'Unnamed department'}`;
+    }
+    return 'Company default';
+  });
+
+  onTaskTitleChange(clientId: string, value: string): void {
+    this.store.updateDraftTask(clientId, { title: value });
+  }
+
+  onTaskRequiredChange(clientId: string, checked: boolean): void {
+    this.store.updateDraftTask(clientId, { isRequired: checked });
+  }
+
+  /** "Another person" has no picker behind it (see store/utils), so this is the only assignee
+   *  transition the UI ever offers - switching a preserved non-employee task back to the employee. */
+  setTaskAssigneeToEmployee(clientId: string): void {
+    this.store.updateDraftTask(clientId, { assignee: 'employee' });
+  }
+
+  onTaskDueDaysChange(clientId: string, rawValue: string): void {
+    const trimmed = rawValue.trim();
+    const numeric = Number(trimmed);
+    if (trimmed === '' || !Number.isInteger(numeric) || numeric < 0) {
+      this.dueDaysRowErrors.update((errors) => ({ ...errors, [clientId]: 'Enter a whole number of days, 0 or more.' }));
+      return;
+    }
+    this.dueDaysRowErrors.update((errors) => {
+      const next = { ...errors };
+      delete next[clientId];
+      return next;
+    });
+    this.store.updateDraftTask(clientId, { dueDays: numeric });
+  }
+
+  addTask(): void {
+    this.store.addDraftTask();
+  }
+
+  removeTask(clientId: string): void {
+    this.store.removeDraftTask(clientId);
+    this.dueDaysRowErrors.update((errors) => {
+      const next = { ...errors };
+      delete next[clientId];
+      return next;
+    });
+  }
+
+  moveTaskUp(clientId: string): void {
+    this.store.moveDraftTaskUp(clientId);
+  }
+
+  moveTaskDown(clientId: string): void {
+    this.store.moveDraftTaskDown(clientId);
+  }
+
+  taskTitleError(task: DraftChecklistTask): string {
+    return this.taskSubmitAttempted() && !task.title.trim() ? 'A title is required.' : '';
+  }
+
+  taskDueDaysError(task: DraftChecklistTask): string {
+    const rejected = this.dueDaysRowErrors()[task.clientId];
+    if (rejected) {
+      return rejected;
+    }
+    if (this.taskSubmitAttempted() && (!Number.isInteger(task.dueDays) || task.dueDays < 0)) {
+      return 'Enter a whole number of days, 0 or more.';
+    }
+    return '';
+  }
+
+  /** Gates Continue/Save Draft/Finalize: true when a checklist is selected and its draft-local
+   *  tasks currently fail validation (mirrors the store's own saveDraft() check). */
+  private hasBlockingTaskErrors(): boolean {
+    return !!this.store.selectedTemplateId() && validateDraftTasks(this.store.draftTasks()).length > 0;
+  }
+
+  /** Issues a checklist-matches request only when the (company, department, position) triple actually changed - prevents re-firing on every re-render of Step 2. */
+  private maybeLoadChecklistMatches(): void {
+    const companyId = this.store.companyId();
+    if (!companyId) {
+      return;
+    }
+    const key = `${companyId}|${this.store.departmentId() ?? ''}|${this.store.positionId() ?? ''}`;
+    if (key === this.checklistMatchesRequestKey) {
+      return;
+    }
+    this.checklistMatchesRequestKey = key;
+    void this.store.loadChecklistTemplateMatches();
   }
 
   goToNextStep(): void {
@@ -221,9 +371,18 @@ export class AddEmployeeWizardComponent {
         return;
       }
     }
+    if (this.store.step() === 'checklist_template' && this.store.selectedTemplateId()) {
+      this.taskSubmitAttempted.set(true);
+      if (this.hasBlockingTaskErrors()) {
+        return;
+      }
+    }
     const next = this.stepOrder[this.stepIndex() + 1];
     if (next) {
       this.store.goToStep(next);
+      if (next === 'checklist_template') {
+        this.maybeLoadChecklistMatches();
+      }
     }
   }
 
@@ -242,6 +401,9 @@ export class AddEmployeeWizardComponent {
     if (this.form.invalid) {
       return;
     }
+    if (this.store.selectedTemplateId()) {
+      this.taskSubmitAttempted.set(true);
+    }
 
     const result = await this.store.saveDraft(this.store.step());
     if (result) {
@@ -259,9 +421,16 @@ export class AddEmployeeWizardComponent {
     if (this.form.invalid) {
       return;
     }
+    if (this.store.selectedTemplateId()) {
+      this.taskSubmitAttempted.set(true);
+    }
 
     let draftId = this.store.draftId();
-    if (!draftId) {
+    // A checklist selection must always be flushed via saveDraft() first, even when a draftId
+    // already exists (a resumed draft) - otherwise task edits made on this screen this session
+    // (or a freshly-made selection) would never reach selectedTemplateId/editedTasksJson on the
+    // backend before finalize reads them.
+    if (!draftId || this.store.selectedTemplateId()) {
       const saved = await this.store.saveDraft(this.store.step());
       if (!saved) {
         this.notificationService.error(this.store.saveError() ?? 'Failed to save draft before finalization.');

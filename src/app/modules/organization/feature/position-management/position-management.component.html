@@ -302,9 +302,11 @@
     [saving]="positionStore.coverageSaving()"
     [error]="positionStore.coverageError()"
     [canManage]="hasManageAccess()"
+    [targetOccupancy]="positionStore.targetOccupancy()"
     (addCoverage)="onAddCoverage($event)"
     (updateCoverage)="onUpdateCoverage($event)"
     (removeCoverage)="onRemoveCoverage($event)"
+    (targetOccupancyRequested)="onTargetOccupancyRequested($event)"
     (close)="closeCoverageModal()"
   />
 }

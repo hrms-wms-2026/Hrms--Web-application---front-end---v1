@@ -5,7 +5,9 @@ import { toSafeErrorMessage } from '../../../core/services/error-handler.service
 import { SelectOption } from '../../../shared/ui/select/select.component';
 import { DepartmentApiService } from '../../organization/data-access/department-api.service';
 import { PositionApiService } from '../../organization/data-access/position-api.service';
+import { ChecklistApiService } from '../data-access/checklist-api.service';
 import { PeopleApiService } from '../data-access/people-api.service';
+import { ChecklistTemplateDetailResponse, DraftChecklistTask, OnboardingChecklistTemplateMatchResponse } from '../models/checklist-template.model';
 import {
   FinalizeOnboardingDraftResponse,
   OnboardingDraftResponse,
@@ -13,6 +15,13 @@ import {
   WizardStep,
   WorkModeOption
 } from '../models/onboarding-draft.model';
+import {
+  createDraftTasksFromTemplate,
+  createEmptyDraftTask,
+  parseEditedTasksJsonToDraftTasks,
+  serializeDraftTasksToEditedTasksJson,
+  validateDraftTasks
+} from '../utils/draft-checklist-task.utils';
 
 
 export interface AddEmployeeFormValue {
@@ -41,6 +50,23 @@ export interface AddEmployeeWizardState {
 
   readonly checklistTemplates: readonly SelectOption[];
   readonly checklistTemplatesUnavailable: boolean;
+  readonly checklistTemplateMatches: readonly OnboardingChecklistTemplateMatchResponse[];
+  readonly selectedTemplateId: string | null;
+  readonly loadingChecklistTemplates: boolean;
+  readonly checklistTemplatesError: string | null;
+
+  readonly selectedTemplateDetail: ChecklistTemplateDetailResponse | null;
+  readonly loadingSelectedTemplateDetail: boolean;
+  readonly selectedTemplateDetailError: string | null;
+  readonly templateDetailCache: Readonly<Record<string, ChecklistTemplateDetailResponse>>;
+
+  /** Employee-specific, editable copy of the selected checklist's tasks - never written back to
+   *  the template. Only meaningful while selectedTemplateId is set. */
+  readonly draftTasks: readonly DraftChecklistTask[];
+  /** The template id draftTasks was last seeded from (or restored against, for a resumed draft
+   *  with editedTasksJson). Lets seeding be skipped so a resumed draft's saved edits are never
+   *  clobbered by a subsequent template-detail load for the same template. */
+  readonly draftTasksSourceTemplateId: string | null;
 
   readonly formValue: AddEmployeeFormValue;
 
@@ -85,6 +111,18 @@ const initialState: AddEmployeeWizardState = {
 
   checklistTemplates: [],
   checklistTemplatesUnavailable: true,
+  checklistTemplateMatches: [],
+  selectedTemplateId: null,
+  loadingChecklistTemplates: false,
+  checklistTemplatesError: null,
+
+  selectedTemplateDetail: null,
+  loadingSelectedTemplateDetail: false,
+  selectedTemplateDetailError: null,
+  templateDetailCache: {},
+
+  draftTasks: [],
+  draftTasksSourceTemplateId: null,
 
   formValue: initialFormValue,
 
@@ -111,8 +149,27 @@ export const AddEmployeeWizardStore = signalStore(
       store,
       peopleApi = inject(PeopleApiService),
       departmentApi = inject(DepartmentApiService),
-      positionApi = inject(PositionApiService)
-    ) => ({
+      positionApi = inject(PositionApiService),
+      checklistApi = inject(ChecklistApiService)
+    ) => {
+      /** Guards against firing a second HTTP request for a template detail fetch that's already in flight. */
+      let inFlightTemplateDetailId: string | null = null;
+
+      /** Seeds draftTasks from a loaded template's tasks, unless draftTasks already reflects this
+       *  same template - which covers both a resumed draft's restored editedTasksJson (hydrated
+       *  directly onto draftTasksSourceTemplateId in resumeDraft, before this ever runs) and a
+       *  cache-hit re-selection of a template the user already edited and switched away from. */
+      function seedDraftTasksIfNeeded(templateId: string, detail: ChecklistTemplateDetailResponse): void {
+        if (store.draftTasksSourceTemplateId() === templateId) {
+          return;
+        }
+        patchState(store, {
+          draftTasks: createDraftTasksFromTemplate(detail.tasks),
+          draftTasksSourceTemplateId: templateId
+        });
+      }
+
+      return {
       reset(): void {
         patchState(store, initialState);
       },
@@ -123,7 +180,13 @@ export const AddEmployeeWizardStore = signalStore(
           departmentId: null,
           positionId: null,
           departments: [],
-          positions: []
+          positions: [],
+          selectedTemplateId: null,
+          selectedTemplateDetail: null,
+          selectedTemplateDetailError: null,
+          loadingSelectedTemplateDetail: false,
+          draftTasks: [],
+          draftTasksSourceTemplateId: null
         });
         void this.loadDepartmentsForCompany(companyId);
       },
@@ -162,7 +225,17 @@ export const AddEmployeeWizardStore = signalStore(
       },
 
       setDepartment(departmentId: string): void {
-        patchState(store, { departmentId, positionId: null, positions: [] });
+        patchState(store, {
+          departmentId,
+          positionId: null,
+          positions: [],
+          selectedTemplateId: null,
+          selectedTemplateDetail: null,
+          selectedTemplateDetailError: null,
+          loadingSelectedTemplateDetail: false,
+          draftTasks: [],
+          draftTasksSourceTemplateId: null
+        });
         const companyId = store.companyId();
         if (companyId) {
           void this.loadPositionsForDepartment(companyId, departmentId);
@@ -191,7 +264,178 @@ export const AddEmployeeWizardStore = signalStore(
       },
 
       setPosition(positionId: string): void {
-        patchState(store, { positionId });
+        patchState(store, {
+          positionId,
+          selectedTemplateId: null,
+          selectedTemplateDetail: null,
+          selectedTemplateDetailError: null,
+          loadingSelectedTemplateDetail: false,
+          draftTasks: [],
+          draftTasksSourceTemplateId: null
+        });
+      },
+
+      selectChecklistTemplate(templateId: string): void {
+        if (store.selectedTemplateId() === templateId) {
+          return;
+        }
+        patchState(store, {
+          selectedTemplateId: templateId,
+          selectedTemplateDetail: null,
+          selectedTemplateDetailError: null,
+          draftTasks: [],
+          draftTasksSourceTemplateId: null
+        });
+        void this.loadSelectedTemplateDetail(templateId);
+      },
+
+      clearSelectedChecklistTemplate(): void {
+        patchState(store, {
+          selectedTemplateId: null,
+          selectedTemplateDetail: null,
+          selectedTemplateDetailError: null,
+          loadingSelectedTemplateDetail: false,
+          draftTasks: [],
+          draftTasksSourceTemplateId: null
+        });
+      },
+
+      /** Loads checklist template detail for the review preview - cache and in-flight checks keep this from re-firing for a template already fetched or currently loading. */
+      async loadSelectedTemplateDetail(templateId: string): Promise<void> {
+        const cached = store.templateDetailCache()[templateId];
+        if (cached) {
+          if (store.selectedTemplateId() === templateId) {
+            patchState(store, { selectedTemplateDetail: cached, loadingSelectedTemplateDetail: false, selectedTemplateDetailError: null });
+            seedDraftTasksIfNeeded(templateId, cached);
+          }
+          return;
+        }
+        if (inFlightTemplateDetailId === templateId) {
+          return;
+        }
+        inFlightTemplateDetailId = templateId;
+        patchState(store, { loadingSelectedTemplateDetail: true, selectedTemplateDetailError: null });
+        try {
+          const detail = await firstValueFrom(checklistApi.getChecklistTemplate(templateId));
+          patchState(store, (s) => ({ templateDetailCache: { ...s.templateDetailCache, [templateId]: detail } }));
+          if (store.selectedTemplateId() === templateId) {
+            patchState(store, { selectedTemplateDetail: detail, loadingSelectedTemplateDetail: false });
+            seedDraftTasksIfNeeded(templateId, detail);
+          }
+        } catch (err: unknown) {
+          if (store.selectedTemplateId() === templateId) {
+            patchState(store, {
+              loadingSelectedTemplateDetail: false,
+              selectedTemplateDetailError: toSafeErrorMessage(err, 'Failed to load checklist details.')
+            });
+          }
+        } finally {
+          if (inFlightTemplateDetailId === templateId) {
+            inFlightTemplateDetailId = null;
+          }
+        }
+      },
+
+      updateDraftTask(clientId: string, patch: Partial<Pick<DraftChecklistTask, 'title' | 'dueDays' | 'isRequired' | 'assignee'>>): void {
+        patchState(store, {
+          draftTasks: store.draftTasks().map((task) => {
+            if (task.clientId !== clientId) {
+              return task;
+            }
+            if (patch.assignee === 'employee') {
+              return { ...task, ...patch, preservedOwnerType: null, preservedAssignedToId: null };
+            }
+            return { ...task, ...patch };
+          })
+        });
+      },
+
+      addDraftTask(): void {
+        patchState(store, { draftTasks: [...store.draftTasks(), createEmptyDraftTask()] });
+      },
+
+      removeDraftTask(clientId: string): void {
+        patchState(store, { draftTasks: store.draftTasks().filter((task) => task.clientId !== clientId) });
+      },
+
+      moveDraftTaskUp(clientId: string): void {
+        const tasks = [...store.draftTasks()];
+        const index = tasks.findIndex((task) => task.clientId === clientId);
+        if (index > 0) {
+          [tasks[index - 1], tasks[index]] = [tasks[index], tasks[index - 1]];
+          patchState(store, { draftTasks: tasks });
+        }
+      },
+
+      moveDraftTaskDown(clientId: string): void {
+        const tasks = [...store.draftTasks()];
+        const index = tasks.findIndex((task) => task.clientId === clientId);
+        if (index >= 0 && index < tasks.length - 1) {
+          [tasks[index + 1], tasks[index]] = [tasks[index], tasks[index + 1]];
+          patchState(store, { draftTasks: tasks });
+        }
+      },
+
+      async loadChecklistTemplateMatches(): Promise<void> {
+        const legalEntityId = store.companyId();
+        if (!legalEntityId) {
+          patchState(store, {
+            checklistTemplateMatches: [],
+            checklistTemplates: [],
+            checklistTemplatesUnavailable: true,
+            loadingChecklistTemplates: false,
+            checklistTemplatesError: null
+          });
+          return;
+        }
+
+        const departmentId = store.departmentId();
+        const positionId = store.positionId();
+
+        patchState(store, { loadingChecklistTemplates: true, checklistTemplatesError: null });
+        try {
+          const matches = await firstValueFrom(
+            checklistApi.getOnboardingMatches({
+              legalEntityId,
+              departmentId: departmentId ?? undefined,
+              positionId: positionId ?? undefined
+            })
+          );
+
+          // Never auto-selects: a previously-selected id (restored from a resumed draft, or kept
+          // across a re-render) survives only if it's still present in the fresh matches list.
+          // A brand-new draft always lands on no selection, even when exactly one match exists.
+          const previouslySelected = store.selectedTemplateId();
+          const stillValid = !!previouslySelected && matches.some((m) => m.id === previouslySelected);
+          const nextSelectedId = stillValid ? previouslySelected : null;
+
+          patchState(store, {
+            checklistTemplateMatches: matches,
+            checklistTemplates: matches.map((m) => ({ value: m.id, label: m.name })),
+            checklistTemplatesUnavailable: matches.length === 0,
+            loadingChecklistTemplates: false,
+            selectedTemplateId: nextSelectedId
+          });
+
+          if (nextSelectedId) {
+            void this.loadSelectedTemplateDetail(nextSelectedId);
+          } else {
+            patchState(store, {
+              selectedTemplateDetail: null,
+              selectedTemplateDetailError: null,
+              loadingSelectedTemplateDetail: false,
+              draftTasks: [],
+              draftTasksSourceTemplateId: null
+            });
+          }
+        } catch (err: unknown) {
+          patchState(store, {
+            checklistTemplateMatches: [],
+            checklistTemplates: [],
+            loadingChecklistTemplates: false,
+            checklistTemplatesError: toSafeErrorMessage(err, 'Something went wrong while saving your changes.')
+          });
+        }
       },
 
       updateFormValue(patch: Partial<AddEmployeeFormValue>): void {
@@ -213,6 +457,21 @@ export const AddEmployeeWizardStore = signalStore(
           return null;
         }
 
+        const selectedTemplateId = store.selectedTemplateId();
+        let editedTasksJson: string | null = null;
+        if (selectedTemplateId) {
+          if (store.loadingSelectedTemplateDetail() || store.draftTasksSourceTemplateId() !== selectedTemplateId) {
+            patchState(store, { saveError: 'Please wait for the checklist to finish loading before saving.' });
+            return null;
+          }
+          const validationErrors = validateDraftTasks(store.draftTasks());
+          if (validationErrors.length > 0) {
+            patchState(store, { saveError: validationErrors[0] });
+            return null;
+          }
+          editedTasksJson = serializeDraftTasksToEditedTasksJson(store.draftTasks(), form.startDate);
+        }
+
         const payload: SaveOnboardingDraftPayload = {
           draftId: store.draftId() ?? undefined,
           firstName: form.firstName,
@@ -225,8 +484,8 @@ export const AddEmployeeWizardStore = signalStore(
           startDate: form.startDate,
           employeeNumber: form.employeeNumber || null,
           workModeId: form.workModeId,
-          selectedTemplateId: null,
-          editedTasksJson: null,
+          selectedTemplateId,
+          editedTasksJson,
           lastSavedStep
         };
 
@@ -252,6 +511,15 @@ export const AddEmployeeWizardStore = signalStore(
         patchState(store, { resuming: true, resumeError: null });
         try {
           const draft = await firstValueFrom(peopleApi.getDraft(draftId));
+
+          // Restoring editedTasksJson (when present) must win over the template-detail load that
+          // loadChecklistTemplateMatches() below is about to trigger for the same selected id -
+          // stamping draftTasksSourceTemplateId here up front is what makes seedDraftTasksIfNeeded
+          // treat that later detail load as a no-op instead of clobbering the restored edits.
+          const parsedTasks = draft.editedTasksJson
+            ? parseEditedTasksJsonToDraftTasks(draft.editedTasksJson, draft.startDate)
+            : null;
+
           patchState(store, {
             resuming: false,
             draftId: draft.id,
@@ -260,6 +528,9 @@ export const AddEmployeeWizardStore = signalStore(
             companyId: draft.legalEntityId,
             departmentId: draft.departmentId,
             positionId: draft.positionId,
+            selectedTemplateId: draft.selectedTemplateId,
+            draftTasks: parsedTasks ?? [],
+            draftTasksSourceTemplateId: parsedTasks ? draft.selectedTemplateId : null,
             lastSaveStatus: draft.status,
             lastSaveReason: draft.draftReason,
             formValue: {
@@ -277,6 +548,7 @@ export const AddEmployeeWizardStore = signalStore(
           if (draft.departmentId) {
             await this.loadPositionsForDepartment(draft.legalEntityId, draft.departmentId);
           }
+          await this.loadChecklistTemplateMatches();
         } catch (err) {
           patchState(store, {
             resuming: false,
@@ -307,6 +579,7 @@ export const AddEmployeeWizardStore = signalStore(
           return null;
         }
       }
-    })
+      };
+    }
   )
 );

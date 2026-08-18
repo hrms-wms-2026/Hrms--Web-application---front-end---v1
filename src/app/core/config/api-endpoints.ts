@@ -7,10 +7,15 @@ export const API_ENDPOINTS = {
     logout: '/auth/logout',
     me: '/auth/me',
     sessionExchange: '/auth/session-exchange',
+    invitationPreview: (token: string): string =>
+      `/auth/invitations/${encodePathValue(token)}`,
+    acceptEmployeeInvitation: (token: string): string =>
+      `/auth/invitations/${encodePathValue(token)}/accept-employee`,
   },
 
   legal: {
     completeLogin: '/legal/acceptances/complete-login',
+    currentDocuments: '/legal/documents/current',
   },
 
   employees: {

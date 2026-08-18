@@ -38,7 +38,7 @@ export const PEOPLE_ROUTES: Routes = [
         loadComponent: () =>
           import('./feature/offboarding/offboarding-wizard.component').then((m) => m.OffboardingWizardComponent),
         canActivate: [permissionGuard],
-        data: { title: 'Offboard Employee', permissions: ['employees:write'] }
+        data: { title: 'Offboard Employee', permissions: ['employees:offboard'] }
       }
     ]
   },

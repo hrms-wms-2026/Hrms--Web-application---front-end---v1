@@ -1,4 +1,5 @@
 import { ChangeDetectionStrategy, Component, inject, OnInit, signal } from '@angular/core';
+import { BreadcrumbHeaderComponent } from '../../../../shared/ui/breadcrumb-header/breadcrumb-header.component';
 import { ButtonComponent } from '../../../../shared/ui/button/button.component';
 import { InputComponent } from '../../../../shared/ui/input/input.component';
 import { LoaderComponent } from '../../../../shared/ui/loader/loader.component';
@@ -7,9 +8,18 @@ import { OffboardingWizardStore } from '../../state/offboarding-wizard.store';
 @Component({
   selector: 'app-offboarding-approvals',
   standalone: true,
-  imports: [ButtonComponent, InputComponent, LoaderComponent],
+  imports: [BreadcrumbHeaderComponent, ButtonComponent, InputComponent, LoaderComponent],
   template: `
-    <h1 class="text-xl font-bold mb-4">My Pending Approvals</h1>
+    <header class="ap-page-header">
+      <div class="ap-header-row">
+        <app-breadcrumb-header
+          parentLabel="People"
+          currentLabel="Approvals"
+          icon="people"
+        />
+      </div>
+    </header>
+
     @if (store.loading()) {
       <app-loader label="Loading pending approvals…" />
     } @else if (store.myPendingBypassRequests().length === 0) {
@@ -35,6 +45,23 @@ import { OffboardingWizardStore } from '../../state/offboarding-wizard.store';
       </div>
     }
   `,
+  styles: [`
+    .ap-page-header {
+      margin-top: -1.25rem;
+      margin-bottom: 1.25rem;
+      padding-bottom: 0.625rem;
+      border-bottom: 1px solid var(--color-border);
+    }
+    .ap-header-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 0.75rem;
+      width: 100%;
+      height: 36px;
+      min-height: 36px;
+    }
+  `],
   changeDetection: ChangeDetectionStrategy.OnPush
 })
 export class OffboardingApprovalsComponent implements OnInit {
