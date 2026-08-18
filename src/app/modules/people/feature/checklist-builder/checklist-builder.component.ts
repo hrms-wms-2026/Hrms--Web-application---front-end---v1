@@ -18,6 +18,7 @@ import {
   Validators
 } from '@angular/forms';
 import { ActivatedRoute, Router } from '@angular/router';
+import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { firstValueFrom } from 'rxjs';
 
 import { PermissionService } from '../../../../core/auth/state/permission.service';
@@ -38,6 +39,7 @@ import {
   CreateChecklistTemplateRequest,
   UpdateChecklistTemplateRequest
 } from '../../models/checklist-template.model';
+import { ChecklistTaskCategory } from '../../models/offboarding.model';
 import { ChecklistTemplateStore } from '../../state/checklist-template.store';
 
 const TASK_PLACEHOLDERS: readonly string[] = [
@@ -68,8 +70,16 @@ export interface ChecklistTaskFormValue {
   title: string;
   assignmentType: ChecklistTaskAssignmentType;
   assigneePositionId: string;
+  /** Assignee user id carried through unchanged from a loaded template task whose
+   *  ownerType was resolved server-side from a position. Backend never returns the
+   *  original assigneePositionId, so re-saving an untouched row must resend this
+   *  instead of forcing HR to re-pick a position. */
+  originalAssignedToId?: string;
   dueOffsetDays: number;
   isRequired: boolean;
+  isBypassable: boolean;
+  bypassPenaltyDescription: string;
+  category: ChecklistTaskCategory | '';
 }
 
 @Component({
@@ -133,6 +143,10 @@ export class ChecklistBuilderComponent implements OnInit {
   }
 
   constructor() {
+    this.form.controls.templateType.valueChanges.pipe(takeUntilDestroyed()).subscribe(() => {
+      this.cdr.markForCheck();
+    });
+
     effect(() => {
       const company = this.selectedCompany();
       if (company) {
@@ -196,7 +210,10 @@ export class ChecklistBuilderComponent implements OnInit {
             ownerType: t.ownerType as ChecklistTaskOwnerType,
             assignedToId: t.assignedToId,
             dueOffsetDays: t.dueOffsetDays,
-            isRequired: t.isRequired
+            isRequired: t.isRequired,
+            isBypassable: t.isBypassable,
+            bypassPenaltyDescription: t.bypassPenaltyDescription ?? '',
+            category: t.category ?? ''
           })
         );
       } else {
@@ -264,6 +281,10 @@ export class ChecklistBuilderComponent implements OnInit {
     return taskGroup.get('assignmentType')?.value === 'company_position';
   }
 
+  isOffboardingTemplate(): boolean {
+    return this.form.controls.templateType.value === 'offboarding';
+  }
+
   onAssignmentTypeChange(index: number, assignmentType: ChecklistTaskAssignmentType): void {
     const taskGroup = this.tasksArray.at(index);
     taskGroup.get('assignmentType')?.setValue(assignmentType);
@@ -274,24 +295,35 @@ export class ChecklistBuilderComponent implements OnInit {
     this.cdr.markForCheck();
   }
 
-  addTask(existing?: Partial<ChecklistTemplateTaskRequest> & { ownerType?: ChecklistTaskOwnerType }): void {
+  addTask(
+    existing?: Omit<Partial<ChecklistTemplateTaskRequest>, 'category'> & {
+      ownerType?: ChecklistTaskOwnerType;
+      category?: ChecklistTaskCategory | '' | null;
+    }
+  ): void {
     let assignmentType: ChecklistTaskAssignmentType = 'employee';
     let assigneePositionId = '';
+    let originalAssignedToId = '';
 
     if (existing?.ownerType && existing.ownerType !== 'employee') {
       assignmentType = 'company_position';
       assigneePositionId = existing.assigneePositionId ?? '';
+      originalAssignedToId = existing.assignedToId ?? '';
     }
 
     const taskForm = this.fb.group({
       title: [existing?.title ?? '', [Validators.required, Validators.maxLength(200)]],
       assignmentType: [assignmentType, Validators.required],
       assigneePositionId: [assigneePositionId],
+      originalAssignedToId: [originalAssignedToId],
       dueOffsetDays: [
         existing?.dueOffsetDays ?? 0,
         [Validators.required, nonNegativeIntegerValidator]
       ],
-      isRequired: [existing?.isRequired ?? true]
+      isRequired: [existing?.isRequired ?? true],
+      isBypassable: [existing?.isBypassable ?? false],
+      bypassPenaltyDescription: [existing?.bypassPenaltyDescription ?? ''],
+      category: [existing?.category ?? '']
     });
 
     this.tasksArray.push(taskForm);
@@ -384,18 +416,43 @@ export class ChecklistBuilderComponent implements OnInit {
         assigneePositionId: null,
         dueOffsetDays: Number(value.dueOffsetDays) || 0,
         sequence: index + 1,
-        isRequired: !!value.isRequired
+        isRequired: !!value.isRequired,
+        isBypassable: !!value.isBypassable,
+        bypassPenaltyDescription: value.bypassPenaltyDescription || null,
+        category: (value.category || null) as ChecklistTaskCategory | null,
+      };
+    }
+
+    // A freshly picked position takes priority. Otherwise fall back to the assignee
+    // already resolved by the backend when this task was loaded for edit, so saving
+    // an untouched row doesn't force HR to re-pick a position (see resolver-collapse
+    // note on ChecklistTaskFormValue.originalAssignedToId).
+    if (value.assigneePositionId) {
+      return {
+        title: value.title,
+        ownerType: POSITION_ASSIGNEE_OWNER_TYPE,
+        assignedToId: null,
+        assigneePositionId: value.assigneePositionId,
+        dueOffsetDays: Number(value.dueOffsetDays) || 0,
+        sequence: index + 1,
+        isRequired: !!value.isRequired,
+        isBypassable: !!value.isBypassable,
+        bypassPenaltyDescription: value.bypassPenaltyDescription || null,
+        category: (value.category || null) as ChecklistTaskCategory | null,
       };
     }
 
     return {
       title: value.title,
       ownerType: POSITION_ASSIGNEE_OWNER_TYPE,
-      assignedToId: null,
-      assigneePositionId: value.assigneePositionId || null,
+      assignedToId: value.originalAssignedToId || null,
+      assigneePositionId: null,
       dueOffsetDays: Number(value.dueOffsetDays) || 0,
       sequence: index + 1,
-      isRequired: !!value.isRequired
+      isRequired: !!value.isRequired,
+      isBypassable: !!value.isBypassable,
+      bypassPenaltyDescription: value.bypassPenaltyDescription || null,
+      category: (value.category || null) as ChecklistTaskCategory | null,
     };
   }
 
@@ -403,9 +460,13 @@ export class ChecklistBuilderComponent implements OnInit {
     for (const grp of this.tasksArray.controls) {
       const assignmentType = grp.get('assignmentType')?.value;
       const assigneePositionId = grp.get('assigneePositionId');
-      if (assignmentType === 'company_position' && !assigneePositionId?.value) {
+      const originalAssignedToId = grp.get('originalAssignedToId')?.value;
+      const missingAssignee =
+        assignmentType === 'company_position' && !assigneePositionId?.value && !originalAssignedToId;
+
+      if (missingAssignee) {
         assigneePositionId?.setErrors({ required: true });
-      } else if (assigneePositionId?.hasError('required') && assignmentType === 'employee') {
+      } else if (assigneePositionId?.hasError('required')) {
         assigneePositionId.setErrors(null);
       }
     }

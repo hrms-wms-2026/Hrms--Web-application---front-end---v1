@@ -1,10 +1,15 @@
-<div class="cb-container max-w-4xl mx-auto p-4 md:p-6 space-y-6">
-  <app-breadcrumb-header
-    parentLabel="Checklists"
-    [currentLabel]="isEdit() ? 'Edit checklist' : 'Create checklist'"
-    parentUrl="/people/checklists"
-    icon="people"
-  />
+<header class="cb-page-header">
+  <div class="cb-header-row">
+    <app-breadcrumb-header
+      parentLabel="Checklists"
+      [currentLabel]="isEdit() ? 'Edit checklist' : 'Create checklist'"
+      parentUrl="/people/checklists"
+      icon="people"
+    />
+  </div>
+</header>
+
+<div class="cb-container max-w-4xl mx-auto py-4 md:py-6 space-y-6">
 
   <div class="flex flex-col md:flex-row md:items-center justify-between gap-4 pb-2">
     <div>
@@ -171,16 +176,19 @@
         }
 
         <div class="cb-task-list">
-          <div class="cb-task-list__header" aria-hidden="true">
+          <div class="cb-task-list__header" [class.cb-task-list__header--with-bypass]="isOffboardingTemplate()" aria-hidden="true">
             <span class="cb-task-list__col-order"></span>
             <span class="cb-task-list__col-title">Task</span>
             <span class="cb-task-list__col-assigned">Assigned to</span>
             <span class="cb-task-list__col-due">Due</span>
+            @if (isOffboardingTemplate()) {
+              <span class="cb-task-list__col-bypass">Bypass</span>
+            }
             <span class="cb-task-list__col-actions">Actions</span>
           </div>
 
           @for (taskGroup of tasksArray.controls; track $index; let idx = $index) {
-            <div class="cb-task-row" [formGroup]="$any(taskGroup)">
+            <div class="cb-task-row" [class.cb-task-row--with-bypass]="isOffboardingTemplate()" [formGroup]="$any(taskGroup)">
               <span class="cb-task-list__col-order cb-task-row__order" aria-hidden="true">
                 {{ idx + 1 }}
               </span>
@@ -253,6 +261,42 @@
                   <span class="cb-task-row__error">Enter a whole number of 0 or more.</span>
                 }
               </div>
+
+              @if (isOffboardingTemplate()) {
+                <div class="cb-task-list__col-bypass">
+                  <span class="cb-task-row__mobile-label">Bypass</span>
+                  <label class="cb-bypass-toggle">
+                    <input
+                      type="checkbox"
+                      [attr.data-testid]="'task-' + idx + '-bypassable'"
+                      [checked]="taskGroup.value.isBypassable"
+                      (change)="taskGroup.get('isBypassable')?.setValue($any($event.target).checked)"
+                    />
+                    <span>Bypassable</span>
+                  </label>
+                  @if (taskGroup.value.isBypassable) {
+                    <app-input
+                      placeholder="Penalty if bypassed (optional)"
+                      [value]="taskGroup.value.bypassPenaltyDescription || ''"
+                      (valueChange)="taskGroup.get('bypassPenaltyDescription')?.setValue($event)"
+                    />
+                    <select
+                      class="cb-assigned-field__select"
+                      [attr.aria-label]="'Category for task ' + (idx + 1)"
+                      [value]="taskGroup.value.category || ''"
+                      (change)="taskGroup.get('category')?.setValue($any($event.target).value)"
+                    >
+                      <option value="">No category</option>
+                      <option value="asset_return">Asset Return</option>
+                      <option value="access_removal">Access Removal</option>
+                      <option value="document_handover">Document Handover</option>
+                      <option value="final_settlement">Final Settlement</option>
+                      <option value="knowledge_handover">Knowledge Handover</option>
+                      <option value="other">Other</option>
+                    </select>
+                  }
+                </div>
+              }
 
               <div class="cb-task-list__col-actions">
                 <span class="cb-task-row__mobile-label">Actions</span>

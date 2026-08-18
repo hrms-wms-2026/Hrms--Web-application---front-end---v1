@@ -1,3 +1,5 @@
+import { ChecklistTaskCategory } from './offboarding.model';
+
 export type ChecklistTemplateType = 'onboarding' | 'offboarding';
 
 export type ChecklistTaskOwnerType = 'employee' | 'manager' | 'hr' | 'it' | 'custom_user';
@@ -15,6 +17,9 @@ export interface ChecklistTemplateTaskRequest {
   dueOffsetDays: number;
   sequence?: number | null;
   isRequired: boolean;
+  isBypassable: boolean;
+  bypassPenaltyDescription: string | null;
+  category: ChecklistTaskCategory | null;
 }
 
 export interface ChecklistTemplateTaskResponse {
@@ -24,6 +29,9 @@ export interface ChecklistTemplateTaskResponse {
   dueOffsetDays: number;
   sequence: number;
   isRequired: boolean;
+  isBypassable: boolean;
+  bypassPenaltyDescription: string | null;
+  category: ChecklistTaskCategory | null;
 }
 
 export interface ChecklistTemplateListItemResponse {
@@ -87,4 +95,35 @@ export interface ChecklistTemplateListParams {
   includeInactive?: boolean;
   page?: number;
   pageSize?: number;
+}
+
+export type ChecklistTemplateMatchLevel = 'company' | 'department' | 'position';
+
+export interface OnboardingChecklistTemplateMatchResponse {
+  id: string;
+  name: string;
+  matchLevel: ChecklistTemplateMatchLevel;
+  departmentId: string | null;
+  positionId: string | null;
+}
+
+/** UI-only assignee choice for a draft-local task row in the Add Employee wizard. */
+export type DraftTaskAssignee = 'employee' | 'another';
+
+/**
+ * Employee-specific, editable copy of a checklist task living only in the onboarding draft
+ * (never written back to the checklist template). Serialized to the backend's EditedTasksJson
+ * contract (see ChecklistTaskJsonContract.Parse, AbsoluteDate mode) on save.
+ */
+export interface DraftChecklistTask {
+  readonly clientId: string;
+  readonly title: string;
+  readonly assignee: DraftTaskAssignee;
+  /** Raw ownerType/assignedToId preserved from a template task already assigned to someone
+   *  other than the employee. There is no picker to choose a new "another person" assignee, so
+   *  this can only ever be carried over unchanged from the source template - never set fresh. */
+  readonly preservedOwnerType: string | null;
+  readonly preservedAssignedToId: string | null;
+  readonly dueDays: number;
+  readonly isRequired: boolean;
 }
