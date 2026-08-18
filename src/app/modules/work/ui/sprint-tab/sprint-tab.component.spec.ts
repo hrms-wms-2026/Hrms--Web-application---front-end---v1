@@ -34,16 +34,12 @@ describe('SprintTabComponent', () => {
     fixture.detectChanges();
   });
 
-  it('shows Edit button only for the owner', () => {
-    // Test with isObjectiveOwner = false
-    let editButton = fixture.nativeElement.querySelector('app-button');
-    expect(editButton).toBeNull();
-
-    // Test with isObjectiveOwner = true
+  it('does not render an Edit button (no edit-sprint UI exists yet)', () => {
+    // Owner should not see any Edit control, since there is nowhere for it to lead.
     fixture.componentRef.setInput('isObjectiveOwner', true);
     fixture.detectChanges();
-    editButton = fixture.nativeElement.querySelector('app-button');
-    expect(editButton).not.toBeNull();
+    expect(fixture.nativeElement.querySelector('app-button')).toBeNull();
+    expect(fixture.nativeElement.textContent).not.toContain('Edit');
   });
 
   it('status is a dropdown for the owner, plain text for a member', () => {
@@ -80,6 +76,34 @@ describe('SprintTabComponent', () => {
     fixture.detectChanges();
     taskList = fixture.nativeElement.querySelector('.sprint-tab__body');
     expect(taskList).not.toBeNull();
+  });
+
+  it('resyncs the <select> back to the real sprint status after a rejected/no-op pick', async () => {
+    fixture.componentRef.setInput('isObjectiveOwner', true);
+    fixture.detectChanges();
+
+    const statusChangeSpy = vi.fn();
+    fixture.componentInstance.statusChangeRequested.subscribe(statusChangeSpy);
+
+    const select: HTMLSelectElement = fixture.nativeElement.querySelector('.sprint-tab__status-select');
+    // Simulate the user picking "Incomplete" - the browser updates its own DOM value immediately,
+    // even before Angular's change handler runs.
+    select.value = 'incomplete';
+    select.dispatchEvent(new Event('change'));
+    fixture.detectChanges();
+
+    expect(statusChangeSpy).toHaveBeenCalledWith('incomplete');
+    // Immediately after the change event, the native element still shows the picked value...
+    expect(select.value).toBe('incomplete');
+
+    // ...but since the parent never accepted the pick, sprint().status ('active') never changed,
+    // so the [value] binding alone would never rewrite the DOM. The queued microtask must do it.
+    await Promise.resolve();
+    await Promise.resolve();
+    fixture.detectChanges();
+
+    expect(select.value).toBe('active');
+    expect(fixture.componentInstance.sprint().status).toBe('active');
   });
 
   it('the + button emits createTaskRequested only when expanded', () => {

@@ -1,6 +1,5 @@
 import { DatePipe } from '@angular/common';
 import { Component, input, output } from '@angular/core';
-import { ButtonComponent } from '../../../../shared/ui/button/button.component';
 import { TaskTableComponent } from '../task-table/task-table.component';
 import { Sprint } from '../../models/sprint.model';
 import { WorkTask } from '../../models/task.model';
@@ -8,7 +7,7 @@ import { WorkTask } from '../../models/task.model';
 @Component({
   selector: 'app-sprint-tab',
   standalone: true,
-  imports: [DatePipe, ButtonComponent, TaskTableComponent],
+  imports: [DatePipe, TaskTableComponent],
   template: `
     <div class="sprint-tab">
       <div class="sprint-tab__header">
@@ -18,14 +17,13 @@ import { WorkTask } from '../../models/task.model';
         <span class="sprint-tab__dates">{{ sprint().startDate | date: 'MMM d' }} – {{ sprint().endDate | date: 'MMM d' }}</span>
 
         @if (isObjectiveOwner()) {
-          <select class="sprint-tab__status-select" [value]="sprint().status" (change)="statusChangeRequested.emit($any($event.target).value)">
+          <select #statusSelect class="sprint-tab__status-select" [value]="sprint().status" (change)="onStatusPicked(statusSelect)">
             <option value="future">Future</option>
             <option value="active">Active</option>
             <option value="complete">Complete</option>
             <option value="incomplete">Incomplete</option>
             <option value="achieved">Achieved</option>
           </select>
-          <app-button variant="secondary" (pressed)="editRequested.emit()">Edit</app-button>
         } @else {
           <span class="sprint-tab__status-text" [attr.data-status]="sprint().status">{{ sprint().status }}</span>
         }
@@ -61,8 +59,18 @@ export class SprintTabComponent {
   expanded = input(false);
 
   toggled = output<void>();
-  editRequested = output<void>();
   statusChangeRequested = output<string>();
   createTaskRequested = output<void>();
   taskViewed = output<WorkTask>();
+
+  protected onStatusPicked(selectEl: HTMLSelectElement): void {
+    const picked = selectEl.value;
+    this.statusChangeRequested.emit(picked);
+    // Always resync to the real status - Angular's [value] binding won't rewrite the DOM if the
+    // bound value happens to be unchanged (e.g. the picked status was rejected or is a no-op), but
+    // the browser's own native <select> state already changed the instant the user picked it.
+    queueMicrotask(() => {
+      selectEl.value = this.sprint().status;
+    });
+  }
 }
