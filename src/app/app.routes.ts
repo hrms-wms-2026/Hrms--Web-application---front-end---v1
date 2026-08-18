@@ -3,8 +3,10 @@ import { authGuard } from './core/guards/auth.guard';
 import { permissionGuard } from './core/guards/permission.guard';
 import { redirectIfAuthenticatedGuard } from './core/guards/redirect-if-authenticated.guard';
 
+
 const loadPlaceholder = () =>
   import('./shared/feature/placeholder-page/placeholder-page.component').then((module) => module.PlaceholderPageComponent);
+
 
 export const routes: Routes = [
   {
@@ -46,7 +48,12 @@ export const routes: Routes = [
             (module) => module.DashboardHomeComponent
           )
       },
-      { path: 'work', loadComponent: loadPlaceholder, data: { title: 'Work' } },
+      {
+        path: 'work',
+        canActivate: [permissionGuard],
+        data: { permissions: ['projects:access'] },
+        loadChildren: () => import('./modules/work/work.routes').then((module) => module.WORK_ROUTES)
+      },
       {
         path: 'people',
         canActivate: [permissionGuard],
