@@ -32,6 +32,13 @@ export const PEOPLE_ROUTES: Routes = [
           import('./feature/employee-detail/employee-detail.component').then((m) => m.EmployeeDetailComponent),
         canActivate: [permissionGuard],
         data: { title: 'Employee Detail', permissions: ['employees:read'] }
+      },
+      {
+        path: ':id/offboarding',
+        loadComponent: () =>
+          import('./feature/offboarding/offboarding-wizard.component').then((m) => m.OffboardingWizardComponent),
+        canActivate: [permissionGuard],
+        data: { title: 'Offboard Employee', permissions: ['employees:write'] }
       }
     ]
   },
@@ -73,5 +80,12 @@ export const PEOPLE_ROUTES: Routes = [
       import('./feature/approvals-list/approvals-list.component').then((m) => m.ApprovalsListComponent),
     canActivate: [permissionGuard],
     data: { title: 'Approvals', permissions: ['roles:manage'] }
+  },
+  {
+    path: 'offboarding-approvals',
+    loadComponent: () =>
+      import('./feature/offboarding/offboarding-approvals.component').then((m) => m.OffboardingApprovalsComponent),
+    canActivate: [permissionGuard],
+    data: { title: 'Offboarding Approvals', permissions: ['employees:read'] }
   }
 ];
