@@ -1959,10 +1959,248 @@ git add src/app/modules/people/feature/offboarding/offboarding-approvals.compone
 git commit -m "feat: add offboarding bypass approval inbox"
 ```
 
+---
+
+### Task 13: Coverage-scoped Offboarding sidebar screen
+
+**Files:**
+- Modify: `src/app/modules/people/models/offboarding.model.ts`
+- Modify: `src/app/modules/people/data-access/offboarding-api.service.ts`
+- Modify: `src/app/layouts/main-layout/nav/nav-items.config.ts`
+- Modify: `src/app/modules/people/people.routes.ts`
+- Create: `src/app/modules/people/feature/offboarding/offboarding-overview.component.ts`
+- Test: `src/app/modules/people/data-access/offboarding-api.service.spec.ts` (extend)
+- Test: `src/app/modules/people/feature/offboarding/offboarding-overview.component.spec.ts`
+
+**Interfaces:**
+- Consumes: `GET /api/v1/employees/offboarding-overview` (backend plan Task 20), `PermissionService.hasPermission` (existing).
+- Produces: `OffboardingOverviewItemResponse`, `OffboardingApiService.getOffboardingOverview()`, the `/people/offboarding` route, and the `people-offboarding` nav entry — the sole new consumer-facing surface this task adds; every other piece (wizard, checklist builder, approval inbox) is unchanged from Tasks 1-12.
+
+- [ ] **Step 1: Model addition**
+
+In `offboarding.model.ts`, add:
+
+```typescript
+export interface OffboardingOverviewItemResponse {
+  employeeId: string;
+  employeeName: string;
+  departmentName: string | null;
+  positionName: string | null;
+  currentOffboardingStatus: OffboardingRecordStatus | null;
+  canStartOffboarding: boolean;
+}
+```
+
+- [ ] **Step 2: API service method**
+
+In `offboarding-api.service.ts`, add:
+
+```typescript
+  getOffboardingOverview(): Observable<readonly OffboardingOverviewItemResponse[]> {
+    return this.http.get<readonly OffboardingOverviewItemResponse[]>(`${environment.apiUrl}/employees/offboarding-overview`);
+  }
+```
+
+Add `OffboardingOverviewItemResponse` to the existing import from `../models/offboarding.model`.
+
+Extend `offboarding-api.service.spec.ts` (Task 1) with:
+
+```typescript
+  it('getOffboardingOverview gets /employees/offboarding-overview', () => {
+    service.getOffboardingOverview().subscribe();
+    const req = httpMock.expectOne(`${environment.apiUrl}/employees/offboarding-overview`);
+    expect(req.request.method).toBe('GET');
+    req.flush([]);
+  });
+```
+
+Run: `npm test -- offboarding-api.service.spec.ts`
+Expected: PASS.
+
+- [ ] **Step 3: Sidebar entry**
+
+In `nav-items.config.ts`, in the `people` item's `children` array, add after `people-checklists`:
+
+```typescript
+      {
+        id: 'people-offboarding',
+        label: 'Offboarding',
+        path: '/people/offboarding',
+        requiredModules: ['core_hr'],
+        requiredPermissions: ['employees:read']
+      },
+```
+
+- [ ] **Step 4: Route**
+
+In `people.routes.ts`, add a new top-level entry (sibling to `employees`/`checklists`/`approvals`):
+
+```typescript
+  {
+    path: 'offboarding',
+    loadComponent: () =>
+      import('./feature/offboarding/offboarding-overview.component').then((m) => m.OffboardingOverviewComponent),
+    canActivate: [permissionGuard],
+    data: { title: 'Offboarding', permissions: ['employees:read'] }
+  },
+```
+
+- [ ] **Step 5: Screen component**
+
+Create `offboarding-overview.component.ts`:
+
+```typescript
+import { ChangeDetectionStrategy, Component, OnInit, computed, inject, signal } from '@angular/core';
+import { Router } from '@angular/router';
+import { PermissionService } from '../../../../core/auth/state/permission.service';
+import { toSafeErrorMessage } from '../../../../core/services/error-handler.service';
+import { ButtonComponent } from '../../../../shared/ui/button/button.component';
+import { LoaderComponent } from '../../../../shared/ui/loader/loader.component';
+import { OffboardingApiService } from '../../data-access/offboarding-api.service';
+import { OffboardingOverviewItemResponse } from '../../models/offboarding.model';
+
+@Component({
+  selector: 'app-offboarding-overview',
+  standalone: true,
+  imports: [ButtonComponent, LoaderComponent],
+  template: `
+    <h1 class="text-xl font-bold mb-4">Offboarding</h1>
+    @if (loading()) {
+      <app-loader label="Loading your covered employees…" />
+    } @else if (error()) {
+      <p class="text-sm text-[var(--color-danger-text)]">{{ error() }}</p>
+    } @else if (items().length === 0) {
+      <p class="text-sm text-[var(--color-text-secondary)]">No employees are currently within your management coverage.</p>
+    } @else {
+      <div class="space-y-2">
+        @for (item of items(); track item.employeeId) {
+          <div class="flex items-center justify-between p-3 border border-[var(--color-border)] rounded-lg">
+            <div>
+              <p class="text-sm font-medium">{{ item.employeeName }}</p>
+              <p class="text-xs text-[var(--color-text-secondary)]">
+                {{ item.positionName || 'Unassigned position' }} · {{ item.departmentName || 'No department' }}
+                @if (item.currentOffboardingStatus) { · {{ item.currentOffboardingStatus }} }
+              </p>
+            </div>
+            @if (item.canStartOffboarding && canOffboard()) {
+              <app-button variant="secondary" size="sm" (pressed)="startOffboarding(item.employeeId)">Start Offboarding</app-button>
+            } @else if (!item.canStartOffboarding) {
+              <app-button variant="secondary" size="sm" (pressed)="viewOffboarding(item.employeeId)">
+                {{ item.currentOffboardingStatus === 'completed' ? 'View' : 'Continue' }}
+              </app-button>
+            }
+          </div>
+        }
+      </div>
+    }
+  `,
+  changeDetection: ChangeDetectionStrategy.OnPush
+})
+export class OffboardingOverviewComponent implements OnInit {
+  private readonly api = inject(OffboardingApiService);
+  private readonly router = inject(Router);
+  private readonly permissionService = inject(PermissionService);
+
+  readonly items = signal<readonly OffboardingOverviewItemResponse[]>([]);
+  readonly loading = signal(false);
+  readonly error = signal<string | null>(null);
+  readonly canOffboard = computed(() => this.permissionService.hasPermission('employees:offboard'));
+
+  ngOnInit(): void {
+    this.loading.set(true);
+    this.error.set(null);
+    this.api.getOffboardingOverview().subscribe({
+      next: (items) => {
+        this.items.set(items);
+        this.loading.set(false);
+      },
+      error: (err) => {
+        this.loading.set(false);
+        this.error.set(toSafeErrorMessage(err, 'Failed to load your covered employees.'));
+      }
+    });
+  }
+
+  startOffboarding(employeeId: string): void {
+    void this.router.navigate(['/people/employees', employeeId, 'offboarding']);
+  }
+
+  viewOffboarding(employeeId: string): void {
+    void this.router.navigate(['/people/employees', employeeId, 'offboarding']);
+  }
+}
+```
+
+- [ ] **Step 6: Test**
+
+Create `offboarding-overview.component.spec.ts`, following `employee-detail.component.spec.ts`'s lightweight stubbed-provider style:
+
+```typescript
+import { ComponentFixture, TestBed } from '@angular/core/testing';
+import { provideRouter, Router } from '@angular/router';
+import { of } from 'rxjs';
+import { PermissionService } from '../../../../core/auth/state/permission.service';
+import { OffboardingApiService } from '../../data-access/offboarding-api.service';
+import { OffboardingOverviewComponent } from './offboarding-overview.component';
+
+describe('OffboardingOverviewComponent', () => {
+  async function setup(canOffboard: boolean): Promise<{ fixture: ComponentFixture<OffboardingOverviewComponent>; router: Router }> {
+    await TestBed.configureTestingModule({
+      imports: [OffboardingOverviewComponent],
+      providers: [
+        provideRouter([]),
+        {
+          provide: OffboardingApiService,
+          useValue: {
+            getOffboardingOverview: () => of([
+              { employeeId: 'emp-1', employeeName: 'Ada Lovelace', departmentName: 'Engineering', positionName: 'Engineer', currentOffboardingStatus: null, canStartOffboarding: true }
+            ])
+          }
+        },
+        { provide: PermissionService, useValue: { hasPermission: (p: string) => canOffboard && p === 'employees:offboard' } }
+      ]
+    }).compileComponents();
+    const fixture = TestBed.createComponent(OffboardingOverviewComponent);
+    const router = TestBed.inject(Router);
+    fixture.detectChanges();
+    return { fixture, router };
+  }
+
+  it('shows Start Offboarding when the caller holds employees:offboard', async () => {
+    const { fixture } = await setup(true);
+    const compiled: HTMLElement = fixture.nativeElement;
+    expect(compiled.textContent).toContain('Start Offboarding');
+  });
+
+  it('hides Start Offboarding when the caller lacks employees:offboard', async () => {
+    const { fixture } = await setup(false);
+    const compiled: HTMLElement = fixture.nativeElement;
+    expect(compiled.textContent).not.toContain('Start Offboarding');
+  });
+
+  it('startOffboarding navigates to the wizard route for that employee', async () => {
+    const { fixture, router } = await setup(true);
+    const navigateSpy = vi.spyOn(router, 'navigate').mockResolvedValue(true);
+    fixture.componentInstance.startOffboarding('emp-1');
+    expect(navigateSpy).toHaveBeenCalledWith(['/people/employees', 'emp-1', 'offboarding']);
+  });
+});
+```
+
+Run: `npm test -- offboarding-overview.component.spec.ts`
+Expected: all three pass.
+
+- [ ] **Step 7: Commit**
+
+```bash
+git add src/app/modules/people/models/offboarding.model.ts src/app/modules/people/data-access/offboarding-api.service.ts src/app/modules/people/data-access/offboarding-api.service.spec.ts src/app/layouts/main-layout/nav/nav-items.config.ts src/app/modules/people/people.routes.ts src/app/modules/people/feature/offboarding/offboarding-overview.component.ts src/app/modules/people/feature/offboarding/offboarding-overview.component.spec.ts
+git commit -m "feat: add coverage-scoped Offboarding sidebar screen"
+```
+
 ## Self-Review
 
-**Spec coverage:** Frontend design spec §4 (checklist builder extension) → Task 2. §5 (6-step wizard) → Tasks 5-11, one task per step plus the shell. §6 (employee-detail changes) → Task 4. §7 (Approval Inbox, corrected to query-only) → Task 12. Every model/service call in every step component traces to a real `OffboardingApiService` method from Task 1 and a real `OffboardingWizardStore` method from Task 3 — no step invents an endpoint the backend plan doesn't define.
+**Spec coverage:** Frontend design spec §4 (checklist builder extension) → Task 2. §5 (6-step wizard) → Tasks 5-11, one task per step plus the shell. §6 (employee-detail changes) → Task 4. §7 (Approval Inbox, corrected to query-only, own top-level route) → Task 12. §9 (coverage-scoped Offboarding sidebar screen, added 2026-08-18) → Task 13. Every model/service call in every step component traces to a real `OffboardingApiService` method from Task 1 and a real `OffboardingWizardStore` method from Task 3 — no step invents an endpoint the backend plan doesn't define.
 
 **Placeholder scan:** Every task contains complete, real component/service/store code and real test code. Two explicit, justified exceptions: Task 1 Step 3 and Task 3 Step 2 both say "locate and match [an existing spec file]'s exact harness" rather than guessing that harness's current shape — consistent with the backend plan's own standard of not hardcoding a guess where reading the live file first is cheap and the guess could silently be wrong (test harness conventions in this codebase visibly vary file-to-file, per the frontend research — `checklist-builder.component.spec.ts` uses real HTTP testing, `employee-detail.component.spec.ts` uses stubbed providers).
 
-**Type consistency:** `OffboardingWizardStep`, every `OffboardingWizardState` field, and every `OffboardingApiService` method signature from Tasks 1 and 3 are used identically by name across Tasks 4-12 — cross-checked that no step component calls a store method or reads a state field that Task 3 didn't actually define.
+**Type consistency:** `OffboardingWizardStep`, every `OffboardingWizardState` field, and every `OffboardingApiService` method signature from Tasks 1 and 3 are used identically by name across Tasks 4-13 — cross-checked that no step component calls a store method or reads a state field that Task 3 didn't actually define. Task 13's `getOffboardingOverview`/`OffboardingOverviewItemResponse` are additive to Task 1's service/model files, not a redefinition, and its `employees:offboard` permission check via `PermissionService.hasPermission` matches the backend plan Task 19's exact permission string — a client-side UX gate only, never the authority (the backend endpoint enforces it independently).
