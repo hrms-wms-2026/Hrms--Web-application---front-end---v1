@@ -1,5 +1,5 @@
 import { ChangeDetectionStrategy, Component, computed, inject, signal } from '@angular/core';
-import { ActivatedRoute } from '@angular/router';
+import { ActivatedRoute, Router } from '@angular/router';
 import { toSafeErrorMessage } from '../../../../core/services/error-handler.service';
 import { NotificationService } from '../../../../core/services/notification.service';
 import { AuthStore } from '../../../../core/auth/state/auth.store';
@@ -18,6 +18,7 @@ import { EmployeePayrollComponent } from '../../ui/employee-payroll/employee-pay
 import { ChangePositionModalComponent } from '../../ui/change-position-modal/change-position-modal.component';
 import { EmployeeJobJourneyComponent } from '../../ui/employee-job-journey/employee-job-journey.component';
 import { PositionHistoryEntryResponse } from '../../models/position-history.model';
+import { OffboardingWizardStore } from '../../state/offboarding-wizard.store';
 
 /**
  * Full section-by-section employee detail view backed by GET /api/v1/employees/{id}/detail.
@@ -90,7 +91,7 @@ import { PositionHistoryEntryResponse } from '../../models/position-history.mode
           </div>
 
           <div class="flex items-center gap-3">
-            @if (canChangePosition() && !isOwnRecord() && employee.jobInformation.legalEntityId) {
+            @if (canChangePosition() && !isOwnRecord() && employee.jobInformation.legalEntityId && !isReadOnly()) {
               <app-popover [open]="changePositionMenuOpen()" ariaLabel="Change position actions" align="right" (closed)="changePositionMenuOpen.set(false)">
                 <app-button popover-trigger data-testid="change-position-trigger" (pressed)="changePositionMenuOpen.set(!changePositionMenuOpen())">
                   Change Position
@@ -98,7 +99,9 @@ import { PositionHistoryEntryResponse } from '../../models/position-history.mode
                 <div popover-panel class="change-position-menu">
                   <button type="button" class="profile-action-btn" (click)="openChangePosition('Promotion')">Promotion</button>
                   <button type="button" class="profile-action-btn" (click)="openChangePosition('Transfer')">Transfer</button>
-                  <button type="button" class="profile-action-btn" data-testid="offboarding-menu-item" disabled title="Not yet available">Offboarding</button>
+                  <button type="button" class="profile-action-btn" data-testid="offboarding-menu-item" (click)="navigateToOffboarding(employee.id)">
+                    {{ offboardingStatus() && offboardingStatus() !== 'cancelled' ? (isReadOnly() ? 'View Offboarding' : 'Continue Offboarding') : 'Offboarding' }}
+                  </button>
                 </div>
               </app-popover>
             }
@@ -291,10 +294,12 @@ import { PositionHistoryEntryResponse } from '../../models/position-history.mode
 })
 export class EmployeeDetailComponent {
   private readonly route = inject(ActivatedRoute);
+  private readonly router = inject(Router);
   private readonly api = inject(PeopleApiService);
   private readonly notifications = inject(NotificationService);
   private readonly permissionService = inject(PermissionService);
   private readonly authStore = inject(AuthStore);
+  private readonly offboardingStore = inject(OffboardingWizardStore);
 
   readonly employee = signal<EmployeeDetailResponse | null>(null);
   readonly loading = signal(false);
@@ -308,6 +313,8 @@ export class EmployeeDetailComponent {
 
   readonly canChangePosition = computed(() => this.permissionService.hasPermission('employees:write'));
   readonly isOwnRecord = computed(() => this.employee()?.id === this.authStore.employeeId());
+  readonly offboardingStatus = computed(() => this.offboardingStore.record()?.status ?? null);
+  readonly isReadOnly = computed(() => this.offboardingStatus() === 'completed');
 
   constructor() {
     this.load();
@@ -341,6 +348,7 @@ export class EmployeeDetailComponent {
       next: (entries) => this.jobJourney.set(entries),
       error: () => this.jobJourney.set([])
     });
+    void this.offboardingStore.loadOffboarding(id);
   }
 
   resendInvitation(employeeId: string): void {
@@ -368,6 +376,11 @@ export class EmployeeDetailComponent {
     this.changePositionReason.set(reason);
     this.changePositionMenuOpen.set(false);
     this.changePositionOpen.set(true);
+  }
+
+  navigateToOffboarding(employeeId: string): void {
+    this.changePositionMenuOpen.set(false);
+    void this.router.navigate(['/people/employees', employeeId, 'offboarding']);
   }
 
   onPositionPendingApproval(): void {

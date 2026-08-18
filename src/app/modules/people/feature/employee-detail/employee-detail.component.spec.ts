@@ -1,5 +1,5 @@
 import { TestBed } from '@angular/core/testing';
-import { ActivatedRoute, provideRouter } from '@angular/router';
+import { ActivatedRoute, Router, provideRouter } from '@angular/router';
 import { of, throwError, Subject } from 'rxjs';
 import { EmployeeDetailComponent } from './employee-detail.component';
 import { PeopleApiService } from '../../data-access/people-api.service';
@@ -8,6 +8,7 @@ import { EmployeeDetailResponse } from '../../models/employee.model';
 import { PositionApiService } from '../../../organization/data-access/position-api.service';
 import { PermissionService } from '../../../../core/auth/state/permission.service';
 import { AuthStore } from '../../../../core/auth/state/auth.store';
+import { OffboardingApiService } from '../../data-access/offboarding-api.service';
 
 describe('EmployeeDetailComponent', () => {
   const detailFixture: EmployeeDetailResponse = {
@@ -69,7 +70,8 @@ describe('EmployeeDetailComponent', () => {
         { provide: PositionApiService, useValue: positionApiStub },
         { provide: PermissionService, useValue: permissionServiceStub },
         { provide: AuthStore, useValue: { employeeId: () => currentEmployeeId } },
-        { provide: ActivatedRoute, useValue: { snapshot: { paramMap: { get: () => 'emp-1' } } } }
+        { provide: ActivatedRoute, useValue: { snapshot: { paramMap: { get: () => 'emp-1' } } } },
+        { provide: OffboardingApiService, useValue: { getOffboarding: () => of(null) } }
       ]
     });
 
@@ -165,7 +167,7 @@ describe('EmployeeDetailComponent', () => {
     expect(fixture.nativeElement.querySelector('[data-testid="change-position-trigger"]')).toBeFalsy();
   });
 
-  it('shows the action menu with Promotion, Transfer, and a disabled Offboarding for another employee', () => {
+  it('shows the action menu with Promotion, Transfer, and Offboarding for another employee', () => {
     const { fixture } = setup(detailFixture, {}, true, 'emp-99');
     fixture.componentInstance.load();
     fixture.detectChanges();
@@ -176,7 +178,24 @@ describe('EmployeeDetailComponent', () => {
     expect(text).toContain('Promotion');
     expect(text).toContain('Transfer');
     const offboardingButton = fixture.nativeElement.querySelector('[data-testid="offboarding-menu-item"]') as HTMLButtonElement | null;
-    expect(offboardingButton?.disabled).toBe(true);
+    expect(offboardingButton?.disabled).toBe(false);
+  });
+
+  it('enables the Offboarding menu item and navigates to the wizard on click', () => {
+    const { fixture } = setup(detailFixture, {}, true, 'emp-99');
+    fixture.detectChanges();
+    fixture.componentInstance.changePositionMenuOpen.set(true);
+    fixture.detectChanges();
+
+    const router = TestBed.inject(Router);
+    const navigateSpy = vi.spyOn(router, 'navigate').mockResolvedValue(true);
+
+    const button = fixture.nativeElement.querySelector('[data-testid="offboarding-menu-item"]') as HTMLButtonElement;
+    expect(button.disabled).toBe(false);
+    button.click();
+    fixture.detectChanges();
+
+    expect(navigateSpy).toHaveBeenCalledWith(['/people/employees', expect.any(String), 'offboarding']);
   });
 
   it('opens the modal with changeReason=Promotion when Promotion is clicked', () => {
