@@ -22,19 +22,16 @@ import { WorkTask } from '../../models/task.model';
     @if (milestoneId(); as mId) {
       @if (isObjectiveOwner()) {
         <div class="task-backlog__toolbar">
-          @if (!createSprintOpen()) {
-            <app-button variant="primary" (pressed)="createSprintOpen.set(true)">Create Sprint</app-button>
-          }
+          <app-button variant="primary" (pressed)="createSprintOpen.set(true)">Create Sprint</app-button>
         </div>
 
-        @if (createSprintOpen()) {
-          <app-sprint-create-form
-            [objectiveId]="mId"
-            [isObjectiveOwner]="isObjectiveOwner()"
-            (created)="createSprintOpen.set(false)"
-            (cancelled)="createSprintOpen.set(false)"
-          />
-        }
+        <app-sprint-create-form
+          [open]="createSprintOpen()"
+          [objectiveId]="mId"
+          [isObjectiveOwner]="isObjectiveOwner()"
+          (created)="createSprintOpen.set(false)"
+          (cancelled)="createSprintOpen.set(false)"
+        />
       }
     }
 
