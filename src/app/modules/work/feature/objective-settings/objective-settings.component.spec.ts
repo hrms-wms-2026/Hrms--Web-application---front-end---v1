@@ -29,16 +29,14 @@ describe('ObjectiveSettingsComponent', () => {
     fixture.detectChanges();
   });
 
-  it('loads and displays the objective statuses with their visibility', () => {
+  it('loads the objective statuses on init, feeding them into the (closed) board-structure-editor', () => {
     expect(getStatuses).toHaveBeenCalledWith('obj-1');
-    const text = fixture.nativeElement.textContent as string;
-    expect(text).toContain('To Do');
-    expect(text).toContain('Done');
+    expect(fixture.componentInstance['statuses']().map((s: { name: string }) => s.name)).toEqual(['To Do', 'Done']);
   });
 
-  it('shows the statuses table and opens the board-structure-editor modal via the Edit button', () => {
-    expect(fixture.nativeElement.querySelector('.objective-settings__table')).toBeTruthy();
+  it('opens the board-structure-editor modal via the Edit button, which then shows the loaded statuses', () => {
     expect(fixture.componentInstance['editOpen']()).toBe(false);
+    expect(fixture.nativeElement.querySelector('.board-structure__row')).toBeNull();
 
     const editButton = Array.from(fixture.nativeElement.querySelectorAll('button') as NodeListOf<HTMLButtonElement>)
       .find((b) => b.textContent?.trim() === 'Edit')!;
@@ -46,7 +44,8 @@ describe('ObjectiveSettingsComponent', () => {
     fixture.detectChanges();
 
     expect(fixture.componentInstance['editOpen']()).toBe(true);
-    // Statuses table stays mounted underneath the modal - it's an overlay, not a tab swap.
-    expect(fixture.nativeElement.querySelector('.objective-settings__table')).toBeTruthy();
+    const names = Array.from(fixture.nativeElement.querySelectorAll('.board-structure__name') as NodeListOf<HTMLElement>)
+      .map((el) => el.textContent?.trim());
+    expect(names).toEqual(['To Do', 'Done']);
   });
 });

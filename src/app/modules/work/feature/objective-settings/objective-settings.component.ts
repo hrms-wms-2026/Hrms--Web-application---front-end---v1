@@ -17,31 +17,6 @@ import { toTaskStatusColumn } from '../../utils/task.mapper';
       <app-button variant="secondary" (pressed)="editOpen.set(true)">Edit</app-button>
     </div>
 
-    @if (loading()) {
-      <p>Loading…</p>
-    } @else {
-      <table class="objective-settings__table">
-        <thead>
-          <tr><th>Name</th><th>Order</th><th>Visibility</th><th>Marks complete</th><th></th></tr>
-        </thead>
-        <tbody>
-          @for (status of statuses(); track status.id) {
-            <tr>
-              <td>{{ status.name }}</td>
-              <td>{{ status.displayOrder }}</td>
-              <td>{{ status.visibility }}</td>
-              <td>{{ status.marksTaskComplete ? 'Yes' : 'No' }}</td>
-              <td><app-button variant="secondary" (pressed)="remove(status.id)">Delete</app-button></td>
-            </tr>
-          }
-        </tbody>
-      </table>
-
-      @if (errorMessage()) {
-        <p class="mt-2 text-sm text-[var(--color-danger-text)]" role="alert">{{ errorMessage() }}</p>
-      }
-    }
-
     <app-board-structure-editor
       [open]="editOpen()"
       [objectiveId]="objectiveId"
@@ -53,8 +28,6 @@ import { toTaskStatusColumn } from '../../utils/task.mapper';
   styles: [`
     .objective-settings__header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px; }
     .objective-settings__title { font-size: 15px; font-weight: 600; color: var(--color-text-primary); margin: 0; }
-    .objective-settings__table { width: 100%; border-collapse: collapse; }
-    .objective-settings__table th, .objective-settings__table td { text-align: left; padding: 8px 10px; border-bottom: 1px solid var(--color-border); font-size: 13px; }
   `]
 })
 export class ObjectiveSettingsComponent implements OnInit {
@@ -62,9 +35,7 @@ export class ObjectiveSettingsComponent implements OnInit {
   private readonly taskApi = inject(TaskApiService);
 
   protected readonly editOpen = signal(false);
-  protected readonly loading = signal(true);
   protected readonly statuses = signal<TaskStatusColumn[]>([]);
-  protected readonly errorMessage = signal<string | null>(null);
   protected objectiveId = '';
 
   async ngOnInit(): Promise<void> {
@@ -73,20 +44,7 @@ export class ObjectiveSettingsComponent implements OnInit {
   }
 
   protected async reload(): Promise<void> {
-    this.loading.set(true);
     const dtos = await firstValueFrom(this.taskApi.getStatuses(this.objectiveId));
     this.statuses.set(dtos.map(toTaskStatusColumn));
-    this.loading.set(false);
-  }
-
-  async remove(statusId: string): Promise<void> {
-    this.errorMessage.set(null);
-    try {
-      await firstValueFrom(this.taskApi.deleteStatus(statusId));
-      await this.reload();
-    } catch (err: unknown) {
-      const detail = (err as { error?: { detail?: string } })?.error?.detail;
-      this.errorMessage.set(detail || 'Move all tasks out of this status before deleting it.');
-    }
   }
 }
