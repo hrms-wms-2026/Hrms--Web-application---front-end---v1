@@ -23,6 +23,7 @@ describe('BoardStructureEditorComponent', () => {
       providers: [{ provide: TaskApiService, useValue: { reorderTaskStatuses } }]
     });
     const fixture = TestBed.createComponent(BoardStructureEditorComponent);
+    fixture.componentRef.setInput('open', true);
     fixture.componentRef.setInput('objectiveId', 'obj-1');
     fixture.componentRef.setInput('statuses', statuses);
     return { fixture, reorderTaskStatuses };
@@ -55,7 +56,8 @@ describe('BoardStructureEditorComponent', () => {
     reviewCheckbox.click();
     fixture.detectChanges();
 
-    const saveButton = fixture.nativeElement.querySelector('button') as HTMLButtonElement;
+    const saveButton = Array.from(fixture.nativeElement.querySelectorAll('button') as NodeListOf<HTMLButtonElement>)
+      .find((b) => b.textContent?.includes('Update'))!;
     saveButton.click();
     await fixture.whenStable();
 
@@ -81,7 +83,8 @@ describe('BoardStructureEditorComponent', () => {
     const names = Array.from(rows as NodeListOf<HTMLElement>).map((row) => row.querySelector('.board-structure__name')?.textContent?.trim());
     expect(names).toEqual(['In Process', 'Review', 'To Do', 'Done']);
 
-    const saveButton = fixture.nativeElement.querySelector('button') as HTMLButtonElement;
+    const saveButton = Array.from(fixture.nativeElement.querySelectorAll('button') as NodeListOf<HTMLButtonElement>)
+      .find((b) => b.textContent?.includes('Update'))!;
     saveButton.click();
     await fixture.whenStable();
 

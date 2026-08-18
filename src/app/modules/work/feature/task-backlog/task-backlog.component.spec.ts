@@ -366,6 +366,24 @@ describe('TaskBacklogComponent', () => {
     expect(text).toContain('Create Sprint');
   });
 
+  it('sprint status filter defaults to All and narrows the rendered sprint tabs by status', async () => {
+    const { fixture } = setup({ isOwner: true, sprints: [sprint1, sprint2] });
+    await fixture.whenStable();
+    fixture.detectChanges();
+
+    const select = fixture.nativeElement.querySelector('[data-testid="sprint-status-filter"]') as HTMLSelectElement;
+    expect(select.value).toBe('all');
+    expect(fixture.debugElement.queryAll(By.directive(SprintTabComponent)).length).toBe(2);
+
+    select.value = 'future';
+    select.dispatchEvent(new Event('change'));
+    fixture.detectChanges();
+
+    const tabs = fixture.debugElement.queryAll(By.directive(SprintTabComponent));
+    expect(tabs.length).toBe(1);
+    expect((tabs[0].componentInstance as SprintTabComponent).sprint().id).toBe('sp-2');
+  });
+
   // Finding 2: a failed Complete/Achieve sets sprintStore.error(), which must be rendered
   // somewhere always-visible (not just inside the create form, which may not be open).
   it("renders sprintStore.error() in the component's own template, always-visible", async () => {

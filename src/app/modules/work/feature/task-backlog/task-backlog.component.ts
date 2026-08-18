@@ -13,6 +13,7 @@ import { SprintTabComponent } from '../../ui/sprint-tab/sprint-tab.component';
 import { SprintCreateFormComponent } from '../../ui/sprint-create-form/sprint-create-form.component';
 import { TaskTableComponent } from '../../ui/task-table/task-table.component';
 import { WorkTask } from '../../models/task.model';
+import { SprintStatus } from '../../models/sprint.model';
 
 @Component({
   selector: 'app-task-backlog',
@@ -22,6 +23,19 @@ import { WorkTask } from '../../models/task.model';
     @if (milestoneId(); as mId) {
       @if (isObjectiveOwner()) {
         <div class="task-backlog__toolbar">
+          <select
+            class="task-backlog__status-filter"
+            data-testid="sprint-status-filter"
+            [value]="sprintStatusFilter()"
+            (change)="sprintStatusFilter.set($any($event.target).value)"
+          >
+            <option value="all">All</option>
+            <option value="future">Future</option>
+            <option value="active">Active</option>
+            <option value="complete">Complete</option>
+            <option value="incomplete">Incomplete</option>
+            <option value="achieved">Achieved</option>
+          </select>
           <app-button variant="primary" (pressed)="createSprintOpen.set(true)">Create Sprint</app-button>
         </div>
 
@@ -44,7 +58,7 @@ import { WorkTask } from '../../models/task.model';
     } @else if (store.error()) {
       <p class="task-backlog__error">{{ store.error() }}</p>
     } @else {
-      @for (sprint of sprintStore.sprints(); track sprint.id) {
+      @for (sprint of filteredSprints(); track sprint.id) {
         <app-sprint-tab
           [sprint]="sprint"
           [isObjectiveOwner]="isObjectiveOwner()"
@@ -88,7 +102,8 @@ import { WorkTask } from '../../models/task.model';
     }
   `,
   styles: [`
-    .task-backlog__toolbar { display: flex; justify-content: flex-end; margin-bottom: 12px; }
+    .task-backlog__toolbar { display: flex; justify-content: flex-end; align-items: center; gap: 8px; margin-bottom: 12px; }
+    .task-backlog__status-filter { border: 1px solid var(--color-border); border-radius: 8px; padding: 8px 10px; background: var(--color-surface); color: var(--color-text-primary); }
     .task-backlog__error { color: var(--color-danger); }
     .task-backlog__sprint-message { color: var(--color-danger-text, var(--color-danger)); font-size: 12px; margin-bottom: 8px; }
     .task-backlog__unsorted { margin-top: 16px; }
@@ -113,11 +128,16 @@ export class TaskBacklogComponent implements OnInit {
   protected readonly createForSprintId = signal<string | null>(null);
   protected readonly assignableMembers = signal<{ employeeId: string; name: string }[]>([]);
   protected readonly sprintActionMessage = signal<string | null>(null);
+  protected readonly sprintStatusFilter = signal<'all' | SprintStatus>('all');
 
   protected readonly statusNames = computed(() => Object.fromEntries(this.store.statuses().map((s) => [s.id, s.name])));
   protected readonly createModalSprints = computed(() =>
     this.createForSprintId() ? this.sprintStore.sprints().filter((s) => s.id === this.createForSprintId()) : this.sprintStore.sprints()
   );
+  protected readonly filteredSprints = computed(() => {
+    const filter = this.sprintStatusFilter();
+    return filter === 'all' ? this.sprintStore.sprints() : this.sprintStore.sprints().filter((s) => s.status === filter);
+  });
   // Tasks with no sprint, or whose sprint isn't among the currently-loaded sprints (e.g. an
   // orphaned reference to a deleted sprint), have nowhere to render inside the per-sprint tabs.
   protected readonly unsortedTasks = computed(() => {

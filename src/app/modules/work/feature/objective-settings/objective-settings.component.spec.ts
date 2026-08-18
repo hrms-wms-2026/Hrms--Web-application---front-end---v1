@@ -36,22 +36,17 @@ describe('ObjectiveSettingsComponent', () => {
     expect(text).toContain('Done');
   });
 
-  it('defaults to the Task statuses tab and switches to Board structure on click', () => {
+  it('shows the statuses table and opens the board-structure-editor modal via the Edit button', () => {
     expect(fixture.nativeElement.querySelector('.objective-settings__table')).toBeTruthy();
-    expect(fixture.nativeElement.querySelector('app-board-structure-editor')).toBeFalsy();
+    expect(fixture.componentInstance['editOpen']()).toBe(false);
 
-    const boardTab = fixture.nativeElement.querySelector('[data-testid="objective-settings-tab-board-structure"]') as HTMLButtonElement;
-    boardTab.click();
+    const editButton = Array.from(fixture.nativeElement.querySelectorAll('button') as NodeListOf<HTMLButtonElement>)
+      .find((b) => b.textContent?.trim() === 'Edit')!;
+    editButton.click();
     fixture.detectChanges();
 
-    expect(fixture.nativeElement.querySelector('app-board-structure-editor')).toBeTruthy();
-    expect(fixture.nativeElement.querySelector('.objective-settings__table')).toBeFalsy();
-
-    const statusesTab = fixture.nativeElement.querySelector('[data-testid="objective-settings-tab-task-statuses"]') as HTMLButtonElement;
-    statusesTab.click();
-    fixture.detectChanges();
-
+    expect(fixture.componentInstance['editOpen']()).toBe(true);
+    // Statuses table stays mounted underneath the modal - it's an overlay, not a tab swap.
     expect(fixture.nativeElement.querySelector('.objective-settings__table')).toBeTruthy();
-    expect(fixture.nativeElement.querySelector('app-board-structure-editor')).toBeFalsy();
   });
 });

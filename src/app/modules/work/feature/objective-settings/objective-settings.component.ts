@@ -13,37 +13,13 @@ import { toTaskStatusColumn } from '../../utils/task.mapper';
   standalone: true,
   imports: [InputComponent, ButtonComponent, BoardStructureEditorComponent],
   template: `
-    <nav class="mb-3 flex gap-1 border-b border-[var(--color-border)]" data-testid="objective-settings-tabs">
-      <button
-        type="button"
-        class="flex items-center gap-1.5 px-3 py-2 text-sm text-[var(--color-text-secondary)] transition-colors hover:text-[var(--color-text-primary)]"
-        [class.border-b-2]="activeTab() === 'task-statuses'"
-        [class.border-[var(--color-focus-ring)]]="activeTab() === 'task-statuses'"
-        [class.font-semibold]="activeTab() === 'task-statuses'"
-        [class.text-[var(--color-text-primary)]]="activeTab() === 'task-statuses'"
-        data-testid="objective-settings-tab-task-statuses"
-        (click)="activeTab.set('task-statuses')"
-      >
-        Task statuses
-      </button>
-      <button
-        type="button"
-        class="flex items-center gap-1.5 px-3 py-2 text-sm text-[var(--color-text-secondary)] transition-colors hover:text-[var(--color-text-primary)]"
-        [class.border-b-2]="activeTab() === 'board-structure'"
-        [class.border-[var(--color-focus-ring)]]="activeTab() === 'board-structure'"
-        [class.font-semibold]="activeTab() === 'board-structure'"
-        [class.text-[var(--color-text-primary)]]="activeTab() === 'board-structure'"
-        data-testid="objective-settings-tab-board-structure"
-        (click)="activeTab.set('board-structure')"
-      >
-        Board structure
-      </button>
-    </nav>
+    <div class="objective-settings__header" data-testid="objective-settings-tab-task-statuses">
+      <h2 class="objective-settings__title">Task statuses</h2>
+      <app-button variant="secondary" (pressed)="editOpen.set(true)">Edit</app-button>
+    </div>
 
     @if (loading()) {
       <p>Loading…</p>
-    } @else if (activeTab() === 'board-structure') {
-      <app-board-structure-editor [objectiveId]="objectiveId" [statuses]="statuses()" (saved)="reload()" />
     } @else {
       <table class="objective-settings__table">
         <thead>
@@ -79,8 +55,18 @@ import { toTaskStatusColumn } from '../../utils/task.mapper';
         <p class="mt-2 text-sm text-[var(--color-danger-text)]" role="alert">{{ errorMessage() }}</p>
       }
     }
+
+    <app-board-structure-editor
+      [open]="editOpen()"
+      [objectiveId]="objectiveId"
+      [statuses]="statuses()"
+      (closed)="editOpen.set(false)"
+      (saved)="reload()"
+    />
   `,
   styles: [`
+    .objective-settings__header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px; }
+    .objective-settings__title { font-size: 15px; font-weight: 600; color: var(--color-text-primary); margin: 0; }
     .objective-settings__table { width: 100%; border-collapse: collapse; }
     .objective-settings__table th, .objective-settings__table td { text-align: left; padding: 8px 10px; border-bottom: 1px solid var(--color-border); font-size: 13px; }
   `]
@@ -89,7 +75,7 @@ export class ObjectiveSettingsComponent implements OnInit {
   private readonly route = inject(ActivatedRoute);
   private readonly taskApi = inject(TaskApiService);
 
-  protected readonly activeTab = signal<'task-statuses' | 'board-structure'>('task-statuses');
+  protected readonly editOpen = signal(false);
   protected readonly loading = signal(true);
   protected readonly statuses = signal<TaskStatusColumn[]>([]);
   protected readonly newName = signal('');
