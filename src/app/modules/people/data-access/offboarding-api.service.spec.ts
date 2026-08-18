@@ -41,4 +41,11 @@ describe('OffboardingApiService', () => {
     expect(req.request.method).toBe('GET');
     req.flush([]);
   });
+
+  it('getOffboardingOverview gets /employees/offboarding-overview', () => {
+    service.getOffboardingOverview().subscribe();
+    const req = httpMock.expectOne(`${environment.apiUrl}/employees/offboarding-overview`);
+    expect(req.request.method).toBe('GET');
+    req.flush([]);
+  });
 });

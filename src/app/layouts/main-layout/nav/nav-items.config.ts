@@ -47,6 +47,13 @@ export const NAV_ITEMS: readonly NavItem[] = [
         requiredPermissions: ['employees:read']
       },
       {
+        id: 'people-offboarding',
+        label: 'Offboarding',
+        path: '/people/offboarding',
+        requiredModules: ['core_hr'],
+        requiredPermissions: ['employees:read']
+      },
+      {
         id: 'people-approvals',
         label: 'Approvals',
         path: '/people/approvals',

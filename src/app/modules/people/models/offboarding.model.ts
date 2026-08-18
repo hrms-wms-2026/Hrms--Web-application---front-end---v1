@@ -73,3 +73,12 @@ export interface BypassRequestResponse {
   status: BypassRequestStatus;
   requestedAt: string;
 }
+
+export interface OffboardingOverviewItemResponse {
+  employeeId: string;
+  employeeName: string;
+  departmentName: string | null;
+  positionName: string | null;
+  currentOffboardingStatus: OffboardingRecordStatus | null;
+  canStartOffboarding: boolean;
+}

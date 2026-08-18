@@ -7,6 +7,7 @@ import {
   ChecklistTemplateMatchResponse,
   CreateBypassRequestRequest,
   EmployeeChecklistTaskResponse,
+  OffboardingOverviewItemResponse,
   OffboardingRecordResponse,
   StartOffboardingRequest,
   UpdateEmployeeChecklistTaskRequest
@@ -27,6 +28,10 @@ export class OffboardingApiService {
 
   getOffboarding(employeeId: string): Observable<OffboardingRecordResponse | null> {
     return this.http.get<OffboardingRecordResponse | null>(`${environment.apiUrl}/employees/${employeeId}/offboarding`);
+  }
+
+  getOffboardingOverview(): Observable<readonly OffboardingOverviewItemResponse[]> {
+    return this.http.get<readonly OffboardingOverviewItemResponse[]>(`${environment.apiUrl}/employees/offboarding-overview`);
   }
 
   getChecklistMatches(employeeId: string): Observable<readonly ChecklistTemplateMatchResponse[]> {

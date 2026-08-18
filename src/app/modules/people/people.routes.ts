@@ -43,6 +43,13 @@ export const PEOPLE_ROUTES: Routes = [
     ]
   },
   {
+    path: 'offboarding',
+    loadComponent: () =>
+      import('./feature/offboarding/offboarding-overview.component').then((m) => m.OffboardingOverviewComponent),
+    canActivate: [permissionGuard],
+    data: { title: 'Offboarding', permissions: ['employees:read'] }
+  },
+  {
     path: 'checklists',
     children: [
       {
