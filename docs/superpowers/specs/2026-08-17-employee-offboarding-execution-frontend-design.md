@@ -4,13 +4,13 @@
 
 **Companion spec:** `HRMS-Backend-v1/docs/superpowers/specs/next/2026-08-17-employee-offboarding-execution-backend-design.md` (backend half — this document is the frontend consumer of that API, §6 there is the shared contract).
 
-**Origin:** brainstormed live with the user 2026-08-17 via `superpowers:brainstorming`, from a 6-step offboarding flow image, with the explicit requirement that entry is via an action button on the employee-detail screen (not sidebar-only). Cross-checked against the actual current codebase — see §2.
+**Origin:** brainstormed live with the user 2026-08-17 via `superpowers:brainstorming`, from a 6-step offboarding flow image, with the explicit requirement that entry is via an action button on the employee-detail screen (not sidebar-only). Cross-checked against the actual current codebase — see §2. **Addendum 2026-08-18:** the user pointed out a second entry point was missing — a dedicated People-sidebar screen scoped to the caller's management coverage, gated by a new distinct permission, with strict per-employee coverage enforcement (even for otherwise-unrestricted roles). See §9.
 
 ---
 
 ## 1. Goal
 
-A routed, 6-step offboarding wizard (Start Offboarding → Choose Exit Checklist → Review Tasks → Track Exit Work → Complete or Bypass Tasks → Complete Employee Exit), reached from the employee-detail screen, plus the offboarding-specific extensions to the existing checklist-template builder that the flow depends on.
+A routed, 6-step offboarding wizard (Start Offboarding → Choose Exit Checklist → Review Tasks → Track Exit Work → Complete or Bypass Tasks → Complete Employee Exit), reachable from two entry points — the employee-detail action button, and a new People-sidebar "Offboarding" screen scoped to the caller's management coverage (§9) — plus the offboarding-specific extensions to the existing checklist-template builder that the flow depends on.
 
 ## 2. Current-state facts this design depends on
 
@@ -23,7 +23,7 @@ A routed, 6-step offboarding wizard (Start Offboarding → Choose Exit Checklist
 
 ## 3. Scope
 
-**In scope:** the offboarding wizard (6 routed steps), enabling the employee-detail stub, extending `checklist-builder.component.ts`/`.html` with offboarding-only task fields, a small "My Approvals" surface for bypass decisions.
+**In scope:** the offboarding wizard (6 routed steps), enabling the employee-detail stub, extending `checklist-builder.component.ts`/`.html` with offboarding-only task fields, a small "My Approvals" surface for bypass decisions, a new coverage-scoped "Offboarding" sidebar screen (§9).
 
 **Out of scope:** any onboarding-side frontend work (no onboarding wizard exists and none is built here), a new template-authoring shell (extends the existing one only), file upload on tasks, computed settlement amounts (backend spec §2 — Payroll is Phase 2).
 
@@ -55,8 +55,30 @@ Route: `/people/employees/:id/offboarding` (new feature module `src/app/modules/
 
 ## 7. Approval Inbox
 
-**No in-app `notifications` system exists in this codebase to ride** (verified against the backend — see backend spec §2/§3: `notifications`/`notification_channels`/`notification_templates` are documented in phase1-table-inventory but never built). The Approval Inbox is therefore a plain query screen: one "My Pending Approvals" list, calling `GET /api/v1/offboarding-bypass-requests?status=pending` (scoped server-side to the current user as approver), with Approve/Reject actions. No bell/badge/push element — the approver has to visit the page. Route/nav placement (a new top-level route vs. a panel reachable from the existing `people/approvals` route, which today handles a different Roles-permission-gated approval surface — see §2/route research) is an implementation-plan decision.
+**No in-app `notifications` system exists in this codebase to ride** (verified against the backend — see backend spec §2/§3: `notifications`/`notification_channels`/`notification_templates` are documented in phase1-table-inventory but never built). The Approval Inbox is therefore a plain query screen: one "My Pending Approvals" list, calling `GET /api/v1/offboarding-bypass-requests?status=pending` (scoped server-side to the current user as approver), with Approve/Reject actions. No bell/badge/push element — the approver has to visit the page. **Route placement, resolved:** its own top-level route (`/people/offboarding-approvals`), not folded into the existing `people/approvals` route — that route is gated `roles:manage` and serves a different, Roles-permission-scoped approval surface entirely; bypass decisions are gated by being the request's named approver, an unrelated authorization model, so sharing the route would conflate two different "who can act here" rules.
 
 ## 8. Testing
 
 Component tests for the three new `checklist-builder` controls (conditional visibility on `templateType`), the wizard's step-gating logic (Step 6 disabled until required tasks are done), and the read-only banner condition. E2E/manual: full Start→Complete happy path against a running backend, cancel-and-restart, bypass request → approve → task shows `bypassed`, reject → task returns to `pending`.
+
+## 9. Coverage-scoped Offboarding sidebar screen (added 2026-08-18, post-plan user request)
+
+The original design only wired entry via the employee-detail action button. The user asked for a second entry point: a dedicated "Offboarding" screen under the People sidebar section, listing employees the caller has management coverage over (`management_coverage_records`, resolved server-side — see backend spec §11), from which the caller can also start offboarding directly, gated by a new `employees:offboard` permission and strict per-employee coverage (enforced backend-side even for otherwise-unrestricted roles — the user explicitly chose the stricter option here, so this screen's list is never "everyone," even for an admin).
+
+**Sidebar entry.** `nav-items.config.ts`'s `NAV_ITEMS` already has a `people` section with `children: [people-employees, people-checklists, people-approvals]` (`src/app/layouts/main-layout/nav/nav-items.config.ts`) — each child an object with `id`/`label`/`path`/`requiredModules`/`requiredPermissions`, following a documented convention (module keys are `active_modules` entries from the subscription JSON, not the separate admin module-catalog keys; permission strings are backend permission codes). Add a new child in that exact shape:
+
+```typescript
+{
+  id: 'people-offboarding',
+  label: 'Offboarding',
+  path: '/people/offboarding',
+  requiredModules: ['core_hr'],
+  requiredPermissions: ['employees:read']
+}
+```
+
+Gated on `employees:read` (viewing the list), matching how `people-checklists` is nav-gated on `employees:read` while its own write actions are separately permission-checked — the per-row "Start Offboarding" action is gated on `employees:offboard` inside the screen itself, not at the nav level, so a caller with `employees:read` but not `employees:offboard` can still see coverage status without being able to act.
+
+**Screen.** New route `/people/offboarding` (sibling to `/people/employees`, `/people/checklists`, `/people/approvals` in `people.routes.ts`, gated `canActivate: [permissionGuard]`, `data: { permissions: ['employees:read'] }`), backed by `GET /api/v1/employees/offboarding-overview` (backend spec §11 / backend plan Task 20). Table: employee name, department, position, current offboarding status (or "—" if none), and a "Start Offboarding" button per row — visible only when `canStartOffboarding` is `true` in the response **and** the caller holds `employees:offboard` (checked client-side via `PermissionService.hasPermission('employees:offboard')`, same pattern as `employee-detail.component.ts`'s `canChangePosition` computed, and re-enforced server-side regardless since client-side permission checks are UX only, never the authority). Clicking "Start Offboarding" navigates to the same wizard route the employee-detail button uses (`/people/employees/:id/offboarding`) — one wizard, two entry points, no duplicated flow. A row already showing a non-null status instead shows "View" / "Continue", navigating to the same route, matching the employee-detail screen's own resume logic (§6).
+
+**Not in scope for this screen:** filtering/sorting beyond what the coverage-scoped list naturally returns, and any admin override to see employees outside coverage — the user explicitly rejected that (§ header note, "Addendum 2026-08-18").
