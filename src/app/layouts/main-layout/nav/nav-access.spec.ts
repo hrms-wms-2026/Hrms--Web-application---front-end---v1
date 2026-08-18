@@ -91,4 +91,15 @@ describe('canAccessNavItem', () => {
       expect(canAccessNavItem(organization, checker(['org:read'], ['org']))).toBe(false);
     });
   });
+
+  it('settings-bulk-onboarding requires both core_hr module and employees:write permission', () => {
+    const item: NavItem = {
+      id: 'settings-bulk-onboarding', label: 'Bulk Onboarding', path: '/settings/bulk-onboarding',
+      requiredModules: ['core_hr'], requiredPermissions: ['employees:write']
+    };
+
+    expect(canAccessNavItem(item, checker(['employees:write'], ['core_hr']))).toBe(true);
+    expect(canAccessNavItem(item, checker(['employees:write'], []))).toBe(false);
+    expect(canAccessNavItem(item, checker([], ['core_hr']))).toBe(false);
+  });
 });

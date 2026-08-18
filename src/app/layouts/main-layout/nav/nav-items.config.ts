@@ -134,6 +134,13 @@ export const NAV_ITEMS: readonly NavItem[] = [
         label: 'Notification Settings',
         path: '/settings/notifications',
         requiredPermissions: ['notifications:manage']
+      },
+      {
+        id: 'settings-bulk-onboarding',
+        label: 'Bulk Onboarding',
+        path: '/settings/bulk-onboarding',
+        requiredModules: ['core_hr'],
+        requiredPermissions: ['employees:write']
       }
       // Policy configuration, Devices & connections, and Audit log are intentionally
       // not listed yet - no backend permission string exists for them (see report).

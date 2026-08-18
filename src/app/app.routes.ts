@@ -90,6 +90,15 @@ export const routes: Routes = [
             canActivate: [permissionGuard],
             data: { title: 'Notification Settings', permissions: ['notifications:manage'] }
           },
+          {
+            path: 'bulk-onboarding',
+            loadComponent: () =>
+              import('./modules/people/feature/bulk-onboarding/bulk-onboarding.component').then(
+                (m) => m.BulkOnboardingComponent
+              ),
+            canActivate: [permissionGuard],
+            data: { title: 'Bulk Onboarding', permissions: ['employees:write'] }
+          },
           { path: '', pathMatch: 'full', redirectTo: 'general' }
         ]
       },
