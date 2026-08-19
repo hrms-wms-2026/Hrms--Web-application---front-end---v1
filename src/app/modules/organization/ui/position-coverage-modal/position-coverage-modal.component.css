@@ -397,6 +397,12 @@
   width: 100%;
 }
 
+.pcm-add-level-btn {
+  display: block;
+  margin-top: 0.5rem;
+  padding: 0;
+}
+
 .pcm-level-hint {
   display: flex;
   align-items: center;
@@ -408,6 +414,18 @@
 .pcm-level-hint svg {
   color: #94a3b8;
   flex-shrink: 0;
+}
+
+.pcm-responsible-person {
+  font-size: 0.8125rem;
+  color: #475569;
+  font-weight: 500;
+}
+
+.pcm-field-hint {
+  margin-top: 0.25rem;
+  font-size: 0.75rem;
+  color: #64748b;
 }
 
 .pcm-footer {

@@ -32,18 +32,26 @@ describe('PositionCoverageModalComponent', () => {
       source: 'Manual',
       isLocked: false,
       status: 'active',
+      responsibleEmployeeId: null,
+      responsibleEmployeeName: null,
       ...overrides
     };
   }
 
   async function createComponent(
     coverageRecords: readonly ManagementCoverageRecordResponse[] = [],
-    canManage = false
+    canManage = false,
+    // targetOccupancy is the parent-fetched, all-owners view of coverage for whichever target is
+    // selected/edited - it's what actually drives occupied-level disabling now (see the
+    // "sees coverage owned by a DIFFERENT position" regression test below). Defaulting it to equal
+    // coverageRecords keeps every existing single-owner test scenario's semantics unchanged.
+    targetOccupancy: readonly ManagementCoverageRecordResponse[] = coverageRecords
   ): Promise<{ component: PositionCoverageModalComponent; fixture: ReturnType<typeof TestBed.createComponent> }> {
     await TestBed.configureTestingModule({ imports: [PositionCoverageModalComponent] }).compileComponents();
     const fixture = TestBed.createComponent(PositionCoverageModalComponent);
     fixture.componentRef.setInput('position', ownerPosition);
     fixture.componentRef.setInput('coverageRecords', coverageRecords);
+    fixture.componentRef.setInput('targetOccupancy', targetOccupancy);
     fixture.componentRef.setInput('availablePositions', [
       { id: 'owner-1', name: 'Owner Manager' },
       { id: 'target-1', name: 'Target Position' },
@@ -273,9 +281,9 @@ describe('PositionCoverageModalComponent', () => {
     expect(otherOpt).toEqual({ value: '1', label: 'Primary Manager — already assigned', disabled: true });
   });
 
-  it('emits updateCoverage with the selected ownerOrder when saving an edit', async () => {
+  it('emits updateCoverage with the selected ownerOrder, and closes the edit row once saving succeeds', async () => {
     const record = makeRecord({ id: 'manual-1', ownerOrder: 1 });
-    const { component } = await createComponent([record], true);
+    const { component, fixture } = await createComponent([record], true);
 
     const emitted: unknown[] = [];
     component.updateCoverage.subscribe((event) => emitted.push(event));
@@ -285,7 +293,69 @@ describe('PositionCoverageModalComponent', () => {
     component.saveEdit(record);
 
     expect(emitted).toEqual([{ coverageId: 'manual-1', payload: { ownerOrder: 3 } }]);
+    // Not closed yet - saveEdit only emits; the parent's save is still in flight.
+    expect(component.editingCoverageId()).toBe('manual-1');
+
+    // Parent's store sets saving true then false (success: no error) around the async call.
+    fixture.componentRef.setInput('saving', true);
+    fixture.detectChanges();
+    fixture.componentRef.setInput('saving', false);
+    fixture.detectChanges();
+
     expect(component.editingCoverageId()).toBeNull();
+  });
+
+  it('leaves the edit row open (selection intact) when saving fails, instead of closing and discarding it', async () => {
+    const record = makeRecord({ id: 'manual-1', ownerOrder: 1 });
+    const { component, fixture } = await createComponent([record], true);
+
+    component.startEdit(record);
+    component.onEditOwnerOrderChange('3');
+    component.saveEdit(record);
+
+    fixture.componentRef.setInput('saving', true);
+    fixture.detectChanges();
+    fixture.componentRef.setInput('saving', false);
+    fixture.componentRef.setInput('error', 'This target already has a Backup Manager 2.');
+    fixture.detectChanges();
+
+    expect(component.editingCoverageId()).toBe('manual-1');
+    expect(component.editOwnerOrderValue()).toBe(3);
+  });
+
+  it('regression: does NOT wipe the add form and its target selection when the add submit fails (was: closed+reset unconditionally, leaving a stale error banner disconnected from a blank form)', async () => {
+    const { component, fixture } = await createComponent([], true, []);
+
+    component.toggleAddForm();
+    component.onTargetTypeChange('Department');
+    component.onCoveredDepartmentChange('dept-1');
+    component.onAddSubmit();
+
+    fixture.componentRef.setInput('saving', true);
+    fixture.detectChanges();
+    fixture.componentRef.setInput('saving', false);
+    fixture.componentRef.setInput('error', 'This target already has a Primary Manager.');
+    fixture.detectChanges();
+
+    expect(component.showAddForm.value).toBe(true);
+    expect(component.addForm.controls.coveredDepartmentId.value).toBe('dept-1');
+  });
+
+  it('closes and resets the add form once a successful submit is confirmed via the saving transition', async () => {
+    const { component, fixture } = await createComponent([], true, []);
+
+    component.toggleAddForm();
+    component.onTargetTypeChange('Department');
+    component.onCoveredDepartmentChange('dept-1');
+    component.onAddSubmit();
+
+    fixture.componentRef.setInput('saving', true);
+    fixture.detectChanges();
+    fixture.componentRef.setInput('saving', false);
+    fixture.detectChanges();
+
+    expect(component.showAddForm.value).toBe(false);
+    expect(component.addForm.controls.coveredDepartmentId.value).toBe('');
   });
 
   it('treats a self-coverage manual record as read-only with a warning, not editable/removable', async () => {
@@ -331,5 +401,93 @@ describe('PositionCoverageModalComponent', () => {
     component.onDelete(record);
 
     expect(emitted).toEqual(['manual-1']);
+  });
+
+  describe('cross-owner occupancy (targetOccupancy)', () => {
+    // Regression: a second position's coverage modal let the user pick "Primary Manager" for a
+    // department another position already covers as Primary, because occupancy was computed from
+    // coverageRecords (this owner's own rules only). It must be computed from targetOccupancy
+    // (fetched by the parent for the selected target, across ALL owners) instead.
+    it('disables Primary Manager when it is already assigned to a DIFFERENT owner position for the covered department', async () => {
+      const otherOwnersPrimary = makeRecord({
+        id: 'other-owner-record',
+        ownerPositionId: 'some-other-position', // not this modal's owner ('owner-1')
+        ownerPositionName: 'HR Manager-I',
+        coveredTargetType: 'Department',
+        coveredPositionId: null,
+        coveredDepartmentId: 'dept-1',
+        ownerOrder: 1
+      });
+      // coverageRecords (this owner's own rules) is empty - matches production reality where the
+      // modal's own listCoverage() call would never include another owner's row.
+      const { component } = await createComponent([], true, [otherOwnersPrimary]);
+
+      component.onTargetTypeChange('Department');
+      component.onCoveredDepartmentChange('dept-1');
+
+      const primaryOpt = component.ownerOrderOptions.find((o) => o.value === '1');
+      expect(primaryOpt).toEqual({ value: '1', label: 'Primary Manager — already assigned', disabled: true });
+    });
+
+    it('emits targetOccupancyRequested with the covered department when a department target is selected', async () => {
+      const { component } = await createComponent([], true, []);
+      const emitted: unknown[] = [];
+      component.targetOccupancyRequested.subscribe((req) => emitted.push(req));
+
+      component.onTargetTypeChange('Department');
+      component.onCoveredDepartmentChange('dept-1');
+
+      expect(emitted).toEqual([
+        { coveredTargetType: 'Department', coveredPositionId: null, coveredDepartmentId: 'dept-1' }
+      ]);
+    });
+
+    it('emits targetOccupancyRequested with excludingRecordId when starting an edit', async () => {
+      const record = makeRecord({ id: 'manual-1', ownerOrder: 2, coveredTargetType: 'Department', coveredPositionId: null, coveredDepartmentId: 'dept-1' });
+      const { component } = await createComponent([record], true, [record]);
+      const emitted: unknown[] = [];
+      component.targetOccupancyRequested.subscribe((req) => emitted.push(req));
+
+      component.startEdit(record);
+
+      expect(emitted).toEqual([
+        { coveredTargetType: 'Department', coveredPositionId: null, coveredDepartmentId: 'dept-1', excludingRecordId: 'manual-1' }
+      ]);
+    });
+  });
+
+  describe('"+ Add another level" (no hardcoded backup-level ceiling)', () => {
+    it('offers only Primary + 3 backups by default, with no way to reach Backup Manager 4', async () => {
+      const { component } = await createComponent([], true, []);
+      component.onTargetTypeChange('Department');
+      component.onCoveredDepartmentChange('dept-1');
+
+      expect(component.ownerOrderOptions.map((o) => o.value)).toEqual(['1', '2', '3', '4']);
+    });
+
+    it('adds one more level each time addAnotherLevel is called, with no ceiling', async () => {
+      const { component } = await createComponent([], true, []);
+      component.onTargetTypeChange('Department');
+      component.onCoveredDepartmentChange('dept-1');
+
+      component.addAnotherLevel();
+      expect(component.ownerOrderOptions.map((o) => o.value)).toEqual(['1', '2', '3', '4', '5']);
+
+      component.addAnotherLevel();
+      component.addAnotherLevel();
+      expect(component.ownerOrderOptions.map((o) => o.value)).toEqual(['1', '2', '3', '4', '5', '6', '7']);
+    });
+
+    it('resets the extra-levels count when the selected target changes', async () => {
+      const { component } = await createComponent([], true, []);
+      component.onTargetTypeChange('Department');
+      component.onCoveredDepartmentChange('dept-1');
+      component.addAnotherLevel();
+      expect(component.ownerOrderOptions.length).toBe(5);
+
+      component.onCoveredPositionChange('target-1');
+
+      expect(component.ownerOrderOptions.length).toBe(4);
+    });
   });
 });

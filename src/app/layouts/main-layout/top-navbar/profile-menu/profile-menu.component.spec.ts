@@ -7,8 +7,9 @@ import { ThemeStore } from '../../../../core/theme/state/theme.store';
 import { ThemePresetId } from '../../../../core/theme/models/theme-preset.model';
 import { AuthStore } from '../../../../core/auth/state/auth.store';
 import { NotificationService } from '../../../../core/services/notification.service';
+import { ProfileStore } from '@modules/profile/state/profile.store';
 
-function setup(overrides: { logoutResult?: boolean } = {}) {
+async function setup(overrides: { logoutResult?: boolean } = {}) {
   const presetSignal = signal<ThemePresetId>('default');
   const setPreset = vi.fn((preset: ThemePresetId) => presetSignal.set(preset));
 
@@ -16,15 +17,26 @@ function setup(overrides: { logoutResult?: boolean } = {}) {
   const navigateMock = vi.fn().mockResolvedValue(true);
   const notificationErrorMock = vi.fn();
 
-  TestBed.configureTestingModule({
+  await TestBed.configureTestingModule({
     imports: [ProfileMenuComponent],
     providers: [
       { provide: ThemeStore, useValue: { preset: presetSignal, setPreset } },
       { provide: AuthStore, useValue: { logout: logoutMock } },
       { provide: Router, useValue: { navigate: navigateMock } },
-      { provide: NotificationService, useValue: { error: notificationErrorMock } }
+      { provide: NotificationService, useValue: { error: notificationErrorMock } },
+      {
+        provide: ProfileStore,
+        useValue: {
+          profile: signal(null),
+          loading: signal(false),
+          error: signal(null),
+          saving: signal(false),
+          saveError: signal(null),
+          loadProfile: vi.fn()
+        }
+      }
     ]
-  });
+  }).compileComponents();
 
   const fixture = TestBed.createComponent(ProfileMenuComponent);
   fixture.componentRef.setInput('userName', 'Asha Kumar');
@@ -35,8 +47,8 @@ function setup(overrides: { logoutResult?: boolean } = {}) {
 }
 
 describe('ProfileMenuComponent', () => {
-  it('renders the avatar button as a closed, accessible menu trigger', () => {
-    const { fixture } = setup();
+  it('renders the avatar button as a closed, accessible menu trigger', async () => {
+    const { fixture } = await setup();
     const trigger = fixture.nativeElement.querySelector('.profile-menu-trigger') as HTMLButtonElement;
 
     expect(trigger).toBeTruthy();
@@ -45,15 +57,15 @@ describe('ProfileMenuComponent', () => {
     expect(fixture.nativeElement.querySelector('[role="menu"]')).toBeFalsy();
   });
 
-  it('renders a generic circular avatar fallback when no avatarUrl is provided', () => {
-    const { fixture } = setup();
+  it('renders a generic circular avatar fallback when no avatarUrl is provided', async () => {
+    const { fixture } = await setup();
     const svg = fixture.nativeElement.querySelector('.avatar__icon, .avatar__fallback');
     expect(svg).toBeTruthy();
     expect(fixture.nativeElement.querySelector('.avatar__image')).toBeFalsy();
   });
 
-  it('renders profile image when avatarUrl is provided', () => {
-    const { fixture } = setup();
+  it('renders profile image when avatarUrl is provided', async () => {
+    const { fixture } = await setup();
     fixture.componentRef.setInput('avatarUrl', 'https://example.com/user.png');
     fixture.detectChanges();
 
@@ -62,8 +74,8 @@ describe('ProfileMenuComponent', () => {
     expect(img.src).toBe('https://example.com/user.png');
   });
 
-  it('opens profile popover on trigger click and displays user name and email inside the popover', () => {
-    const { fixture } = setup();
+  it('opens profile popover on trigger click and displays user name and email inside the popover', async () => {
+    const { fixture } = await setup();
     const trigger = fixture.debugElement.query(By.css('.profile-menu-trigger'));
 
     trigger.nativeElement.click();
@@ -79,50 +91,73 @@ describe('ProfileMenuComponent', () => {
     expect(userEmail.textContent?.trim()).toBe('asha@onevo.test');
   });
 
-  it('renders "Log out" button with icon below Appearance separated by a divider', () => {
-    const { fixture } = setup();
+  it('renders My Profile, Appearance, and Log out action buttons with a divider before logout', async () => {
+    const { fixture } = await setup();
     fixture.debugElement.query(By.css('.profile-menu-trigger')).nativeElement.click();
     fixture.detectChanges();
 
     const actionBtns = fixture.nativeElement.querySelectorAll('.profile-action-btn');
-    expect(actionBtns.length).toBe(2);
+    expect(actionBtns.length).toBe(3);
 
-    expect(actionBtns[0].textContent).toContain('Appearance');
-    expect(actionBtns[1].textContent).toContain('Log out');
+    expect(actionBtns[0].textContent).toContain('My Profile');
+    expect(actionBtns[1].textContent).toContain('Appearance');
+    expect(actionBtns[2].textContent).toContain('Log out');
 
-    const logoutIcon = actionBtns[1].querySelector('.action-icon');
+    const logoutIcon = actionBtns[2].querySelector('.action-icon');
     expect(logoutIcon).toBeTruthy();
 
     const divider = fixture.nativeElement.querySelector('.profile-actions-section .profile-popover-divider');
     expect(divider).toBeTruthy();
   });
 
-  it('opens preferences modal when Appearance action is clicked from popover', () => {
-    const { fixture } = setup();
+  it('opens the Preferences modal on the Appearance tab by default', async () => {
+    const { fixture } = await setup();
+    const component = fixture.componentInstance;
+    component.openPreferences();
+    fixture.detectChanges();
 
-    // Open popover
+    expect(component.activeTabId()).toBe('appearance');
+  });
+
+  it('opens the Profile tab with Personal Information selected when My Profile is clicked', async () => {
+    const { fixture } = await setup();
+    const component = fixture.componentInstance;
+    component.openPreferences('profile');
+    fixture.detectChanges();
+
+    expect(component.activeTabId()).toBe('profile');
+    expect(component.activeProfileSubTab()).toBe('personal');
+  });
+
+  it('opens preferences modal when Appearance action is clicked from popover', async () => {
+    const { fixture } = await setup();
+
     fixture.debugElement.query(By.css('.profile-menu-trigger')).nativeElement.click();
     fixture.detectChanges();
 
-    // Click Appearance
-    const appearanceBtn = fixture.debugElement.query(By.css('.profile-action-btn'));
-    expect(appearanceBtn.nativeElement.textContent).toContain('Appearance');
-    appearanceBtn.nativeElement.click();
+    const actionBtns = fixture.nativeElement.querySelectorAll('.profile-action-btn');
+    const appearanceBtn = Array.from(actionBtns).find((btn) =>
+      (btn as HTMLElement).textContent?.includes('Appearance')
+    ) as HTMLElement;
+    appearanceBtn.click();
     fixture.detectChanges();
 
-    // Preferences modal should be open and popover should close
     expect(fixture.nativeElement.querySelector('.profile-popover-panel')).toBeFalsy();
     expect(fixture.nativeElement.querySelector('app-preferences-modal')).toBeTruthy();
     expect(fixture.nativeElement.querySelector('.preferences-container')).toBeTruthy();
   });
 
-  it('allows selecting a theme preset from preferences modal which calls ThemeStore.setPreset', () => {
-    const { fixture, setPreset } = setup();
+  it('allows selecting a theme preset from preferences modal which calls ThemeStore.setPreset', async () => {
+    const { fixture, setPreset } = await setup();
 
-    // Open popover then preferences modal
     fixture.debugElement.query(By.css('.profile-menu-trigger')).nativeElement.click();
     fixture.detectChanges();
-    fixture.debugElement.query(By.css('.profile-action-btn')).nativeElement.click();
+
+    const actionBtns = fixture.nativeElement.querySelectorAll('.profile-action-btn');
+    const appearanceBtn = Array.from(actionBtns).find((btn) =>
+      (btn as HTMLElement).textContent?.includes('Appearance')
+    ) as HTMLElement;
+    appearanceBtn.click();
     fixture.detectChanges();
 
     const options = fixture.nativeElement.querySelectorAll('[role="radio"]');
@@ -137,7 +172,7 @@ describe('ProfileMenuComponent', () => {
   });
 
   it('calls AuthStore.logout and navigates to /auth/login on successful logout', async () => {
-    const { fixture, logoutMock, navigateMock, notificationErrorMock } = setup({ logoutResult: true });
+    const { fixture, logoutMock, navigateMock, notificationErrorMock } = await setup({ logoutResult: true });
 
     fixture.debugElement.query(By.css('.profile-menu-trigger')).nativeElement.click();
     fixture.detectChanges();
@@ -149,10 +184,8 @@ describe('ProfileMenuComponent', () => {
     fixture.detectChanges();
 
     expect(logoutMock).toHaveBeenCalled();
-    // Popover panel should close
     expect(fixture.nativeElement.querySelector('.profile-popover-panel')).toBeFalsy();
 
-    // Wait for async logout promise resolution
     await fixture.whenStable();
 
     expect(navigateMock).toHaveBeenCalledWith(['/auth/login']);
@@ -160,7 +193,7 @@ describe('ProfileMenuComponent', () => {
   });
 
   it('displays safe notification toast "Could not log out. Try again." and does not navigate when logout fails', async () => {
-    const { fixture, logoutMock, navigateMock, notificationErrorMock } = setup({ logoutResult: false });
+    const { fixture, logoutMock, navigateMock, notificationErrorMock } = await setup({ logoutResult: false });
 
     fixture.debugElement.query(By.css('.profile-menu-trigger')).nativeElement.click();
     fixture.detectChanges();

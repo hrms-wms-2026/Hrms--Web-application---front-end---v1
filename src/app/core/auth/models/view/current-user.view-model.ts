@@ -2,6 +2,7 @@ import { LegalDocumentDto } from '../dto/legal-document.dto';
 
 export interface CurrentUserViewModel {
   email: string;
+  employeeId: string | null;
   permissions: string[];
   activeModules: string[];
   authenticated: boolean;

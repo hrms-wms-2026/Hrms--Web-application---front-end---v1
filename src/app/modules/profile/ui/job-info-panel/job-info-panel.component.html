@@ -1,0 +1,19 @@
+<section class="pf-section">
+  <h3 class="pf-section__title">Job information</h3>
+  <p class="pf-section__description">These fields are managed by HR. Contact your administrator to request a change.</p>
+
+  <dl class="pf-info-grid">
+    <div><dt>Employee number</dt><dd>{{ jobInformation().employeeNumber }}</dd></div>
+    <div><dt>Company</dt><dd>{{ jobInformation().legalEntityName ?? '—' }}</dd></div>
+    <div><dt>Department</dt><dd>{{ jobInformation().departmentName ?? '—' }}</dd></div>
+    <div><dt>Position</dt><dd>{{ jobInformation().positionName ?? '—' }}</dd></div>
+    <div><dt>Reports to</dt><dd>{{ jobInformation().reportingManagerName ?? '—' }}</dd></div>
+    <div><dt>Employment type</dt><dd>{{ jobInformation().employmentTypeLabel }}</dd></div>
+    <div><dt>Employment status</dt><dd>{{ jobInformation().employmentStatus }}</dd></div>
+    <div><dt>Start date</dt><dd>{{ jobInformation().hireDate }}</dd></div>
+    @if (jobInformation().probationEndDate) {
+      <div><dt>Probation end date</dt><dd>{{ jobInformation().probationEndDate }}</dd></div>
+    }
+    <div><dt>Work mode</dt><dd>{{ jobInformation().workMode }}</dd></div>
+  </dl>
+</section>

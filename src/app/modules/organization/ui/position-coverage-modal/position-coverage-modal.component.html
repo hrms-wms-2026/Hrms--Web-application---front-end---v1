@@ -111,7 +111,23 @@
                         }
                       </div>
                     }
+                    <button type="button" class="pcm-text-btn pcm-add-level-btn" (click)="addAnotherLevel()">
+                      + Add another level
+                    </button>
                   </div>
+
+                  @if (needsResponsiblePersonPick) {
+                    <div class="pcm-field pcm-field--full" data-testid="responsible-person-picker">
+                      <app-select
+                        label="Responsible person *"
+                        [options]="responsiblePersonOptions"
+                        [value]="addForm.controls.responsibleEmployeeId.value || ''"
+                        (valueChange)="onResponsiblePersonChange($event)"
+                        [error]="addForm.controls.responsibleEmployeeId.touched && !addForm.controls.responsibleEmployeeId.value ? 'Please select who is responsible.' : ''"
+                      />
+                      <p class="pcm-field-hint">Multiple people hold this position — choose who is responsible for this coverage.</p>
+                    </div>
+                  }
                 </div>
 
                 <div class="pcm-form-actions">
@@ -182,11 +198,21 @@
                       }
                     </div>
                   }
+                  <button type="button" class="pcm-text-btn pcm-add-level-btn" (click)="addAnotherLevel()">
+                    + Add another level
+                  </button>
                 } @else {
                   <div class="pcm-card-actions">
                     <span class="pcm-responsibility-chip" [class.pcm-responsibility-chip--primary]="cov.ownerOrder === 1">
                       {{ formatResponsibilityLabel(cov.ownerOrder) }}
                     </span>
+                    @if (cov.responsibleEmployeeName) {
+                      <span class="pcm-responsible-person">{{ cov.responsibleEmployeeName }}</span>
+                    } @else if (isAmbiguousOwner(cov)) {
+                      <span class="pcm-self-warning" title="Multiple people hold this position and no responsible person is set.">
+                        Needs a responsible person
+                      </span>
+                    }
                     @if (canManage && !isSelfCoverage(cov)) {
                       <button type="button" class="pcm-text-btn" (click)="startEdit(cov)" [disabled]="saving">Edit level</button>
                       <button type="button" class="pcm-delete-btn" (click)="onDelete(cov)" [disabled]="saving" title="Remove manual coverage rule">

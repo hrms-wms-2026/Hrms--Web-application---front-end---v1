@@ -1,7 +1,7 @@
 import { Component, ElementRef, computed, effect, input, output, viewChild } from '@angular/core';
 import { nextUniqueId } from '../../utils/unique-id';
 
-export type ModalSize = 'md' | 'lg' | 'xl';
+export type ModalSize = 'md' | 'lg' | 'xl' | '2xl';
 
 @Component({
   selector: 'app-modal',
@@ -12,7 +12,6 @@ export type ModalSize = 'md' | 'lg' | 'xl';
         <div class="absolute inset-0 bg-black/50" (click)="onBackdropClick()"></div>
         <div
           #dialog
-          class="relative z-10 w-full rounded-lg bg-[var(--color-surface)] p-6 shadow-lg outline-none"
           [class]="dialogClass()"
           role="dialog"
           aria-modal="true"
@@ -37,6 +36,12 @@ export type ModalSize = 'md' | 'lg' | 'xl';
         </div>
       </div>
     }
+  `,
+  styles: `
+    .modal-dialog--xl {
+      max-height: 85vh;
+      overflow: hidden;
+    }
   `
 })
 export class ModalComponent {
@@ -48,9 +53,10 @@ export class ModalComponent {
 
   readonly dialogClass = computed(() => {
     const sizeMap: Record<ModalSize, string> = {
-      md: 'relative z-10 w-full max-w-md rounded-lg bg-[var(--color-surface)] p-6 shadow-lg outline-none',
-      lg: 'relative z-10 w-full max-w-xl rounded-lg bg-[var(--color-surface)] p-6 shadow-lg outline-none',
-      xl: 'relative z-10 w-full max-w-2xl rounded-lg bg-[var(--color-surface)] p-6 shadow-lg outline-none',
+      md: 'relative z-10 w-full max-w-md rounded-xl bg-[var(--color-surface)] p-6 shadow-lg outline-none',
+      lg: 'relative z-10 w-full max-w-xl rounded-xl bg-[var(--color-surface)] p-6 shadow-lg outline-none',
+      xl: 'relative z-10 w-full max-w-5xl rounded-xl bg-[var(--color-surface)] p-8 shadow-lg outline-none modal-dialog--xl',
+      '2xl': 'relative z-10 w-full max-w-6xl rounded-xl bg-[var(--color-surface)] p-8 shadow-lg outline-none modal-dialog--xl',
     };
     return sizeMap[this.size()];
   });

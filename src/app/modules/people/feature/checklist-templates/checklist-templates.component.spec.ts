@@ -70,9 +70,10 @@ describe('ChecklistTemplatesComponent', () => {
     httpMock.verify({ ignoreCancelled: true });
   });
 
-  it('renders title and sub-sidebar route breadcrumbs', () => {
-    expect(fixture.nativeElement.textContent).toContain('Checklist Templates');
+  it('renders sub-sidebar route breadcrumbs and does not render redundant Checklist Templates heading/subtitle', () => {
+    expect(fixture.nativeElement.textContent).not.toContain('Checklist Templates');
     expect(fixture.nativeElement.textContent).toContain('Checklists');
+    expect(fixture.nativeElement.textContent).not.toContain('Create and manage reusable onboarding and offboarding task templates');
   });
 
   it('does not render "Show archived templates" checkbox or label', () => {

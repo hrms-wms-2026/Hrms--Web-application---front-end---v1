@@ -1,6 +1,6 @@
 .ct-page-header {
   margin-top: -1.25rem;
-  margin-bottom: 1.5rem;
+  margin-bottom: 1.25rem;
   padding-bottom: 0.625rem;
   border-bottom: 1px solid var(--color-border);
 }
@@ -11,12 +11,19 @@
   justify-content: space-between;
   gap: 0.75rem;
   width: 100%;
-  height: 30px;
-  min-height: 30px;
+  height: 36px;
+  min-height: 36px;
 }
 
 .ct-container {
   width: 100%;
+}
+
+.ct-controls-right {
+  display: flex;
+  align-items: center;
+  gap: 0.875rem;
+  margin-left: auto;
 }
 
 .ct-segmented-tabs {
@@ -50,4 +57,30 @@
   color: var(--color-accent);
   font-weight: 600;
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
+}
+
+.ct-action-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  border-radius: 6px;
+  border: 1px solid var(--color-border);
+  background-color: var(--color-surface);
+  color: var(--color-text-secondary);
+  cursor: pointer;
+  transition: background-color 0.15s ease, border-color 0.15s ease, color 0.15s ease;
+}
+
+.ct-action-btn:hover {
+  background-color: var(--color-surface-secondary);
+  color: var(--color-accent);
+  border-color: var(--color-accent);
+}
+
+.ct-action-btn--danger:hover {
+  background-color: #fef2f2;
+  color: #ef4444;
+  border-color: #fca5a5;
 }

@@ -24,7 +24,7 @@ import { PositionTreeNodeComponent, ReparentPositionEvent, TemplateDropOnPositio
 import { PositionListTableComponent } from '../../ui/position-list-table/position-list-table.component';
 import { PositionFormModalComponent, PositionFormSubmitValue } from '../../ui/position-form-modal/position-form-modal.component';
 import { PositionArchiveModalComponent } from '../../ui/position-archive-modal/position-archive-modal.component';
-import { PositionCoverageModalComponent, UpdateCoverageEvent } from '../../ui/position-coverage-modal/position-coverage-modal.component';
+import { PositionCoverageModalComponent, TargetOccupancyRequest, UpdateCoverageEvent } from '../../ui/position-coverage-modal/position-coverage-modal.component';
 import { PositionAccessModalComponent } from '../../ui/position-access-modal/position-access-modal.component';
 import { PositionTemplateDrawerComponent, TemplatePositionSelectedEvent } from '../../ui/position-template-drawer/position-template-drawer.component';
 
@@ -618,7 +618,10 @@ export class PositionManagementComponent {
     if (!le) return;
 
     this.coverageModalOpen.set(true);
-    await this.positionStore.loadCoverage(le.id, pos);
+    await Promise.all([
+      this.positionStore.loadCoverage(le.id, pos),
+      this.positionStore.loadCoverageOwnerHolders(le.id, pos.id)
+    ]);
   }
 
   closeCoverageModal(): void {
@@ -663,5 +666,18 @@ export class PositionManagementComponent {
     } else {
       this.notificationService.error(this.positionStore.coverageError() ?? 'Failed to remove management coverage rule.');
     }
+  }
+
+  async onTargetOccupancyRequested(req: TargetOccupancyRequest): Promise<void> {
+    const le = this.selectedLegalEntity();
+    if (!le) return;
+
+    await this.positionStore.loadTargetOccupancy(
+      le.id,
+      req.coveredTargetType,
+      req.coveredPositionId,
+      req.coveredDepartmentId,
+      req.excludingRecordId
+    );
   }
 }

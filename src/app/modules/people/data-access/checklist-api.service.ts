@@ -8,6 +8,7 @@ import {
   ChecklistTemplateListPageResponse,
   ChecklistTemplateListParams,
   CreateChecklistTemplateRequest,
+  OnboardingChecklistTemplateMatchResponse,
   UpdateChecklistTemplateRequest
 } from '../models/checklist-template.model';
 
@@ -52,8 +53,8 @@ export class ChecklistApiService {
     legalEntityId: string;
     departmentId?: string;
     positionId?: string;
-  }): Observable<readonly ChecklistTemplateListItemResponse[]> {
-    return this.http.get<readonly ChecklistTemplateListItemResponse[]>(
+  }): Observable<readonly OnboardingChecklistTemplateMatchResponse[]> {
+    return this.http.get<readonly OnboardingChecklistTemplateMatchResponse[]>(
       `${environment.apiUrl}/onboarding/checklist-templates/matches`,
       { params: this.toHttpParams(params) }
     );

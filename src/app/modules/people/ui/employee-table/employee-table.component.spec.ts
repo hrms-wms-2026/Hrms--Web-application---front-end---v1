@@ -1,4 +1,5 @@
-import { provideRouter } from '@angular/router';
+import { By } from '@angular/platform-browser';
+import { provideRouter, RouterLink } from '@angular/router';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { EmployeeListItemResponse } from '../../models/employee.model';
 import { EmployeeTableComponent } from './employee-table.component';
@@ -55,5 +56,26 @@ describe('EmployeeTableComponent', () => {
   it('shows "Unassigned" rather than a blank cell when there is no reporting manager', async () => {
     await setup([{ ...employee, reportingManagerId: null, reportingManagerName: null }]);
     expect(fixture.nativeElement.textContent).toContain('Unassigned');
+  });
+
+  it('attaches routerLink to employee row and does not render Actions column or View link', async () => {
+    await setup([employee]);
+    const linkDe = fixture.debugElement.query(By.directive(RouterLink));
+    expect(linkDe).not.toBeNull();
+    expect(linkDe.nativeElement.classList.contains('emp-row')).toBe(true);
+    expect(fixture.nativeElement.textContent).not.toContain('Actions');
+    expect(fixture.nativeElement.querySelector('.emp-view-link')).toBeNull();
+  });
+
+  it('renders green status dot for active employee and red status dot for inactive employee on profile avatar', async () => {
+    await setup([employee, { ...employee, id: 'emp-2', status: 'inactive' }]);
+
+    const activeDot = fixture.nativeElement.querySelector('.emp-status-dot-avatar--active');
+    expect(activeDot).not.toBeNull();
+
+    const inactiveDot = fixture.nativeElement.querySelector('.emp-status-dot-avatar--inactive');
+    expect(inactiveDot).not.toBeNull();
+
+    expect(fixture.nativeElement.querySelector('.col-status')).toBeNull();
   });
 });

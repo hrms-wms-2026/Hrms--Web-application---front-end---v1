@@ -11,19 +11,34 @@ export interface OnboardingDraftResponse {
   readonly workEmail: string;
   readonly legalEntityId: string;
   readonly departmentId: string | null;
+  readonly departmentName?: string | null;
   readonly positionId: string | null;
+  readonly positionName?: string | null;
   readonly employmentType: string;
   readonly startDate: string;
   readonly employeeNumber: string | null;
   readonly workModeId: number;
+  readonly workModeLabel?: string | null;
   readonly selectedTemplateId: string | null;
   readonly editedTasksJson: string | null;
   readonly status: DraftStatus;
   readonly draftReason: DraftReason | null;
   readonly lastSavedStep: WizardStep;
   readonly startedById: string;
+  readonly reportsToEmployeeId: string | null;
+  readonly reportingManagerName?: string | null;
+  readonly reportingManagerPositionName?: string | null;
   /** Opaque xmin-derived version string. Send back as If-Match on update. */
   readonly version: string;
+}
+
+/** Active PrimaryEmployment holder of a position's reporting target — used by the reports-to picker. */
+export interface ActiveHolder {
+  readonly employeeId: string;
+  readonly firstName: string;
+  readonly lastName: string;
+  readonly workEmail: string;
+  readonly avatarFileId: string | null;
 }
 
 /**
@@ -78,8 +93,8 @@ export const DRAFT_REASON_LABELS: Record<DraftReason, string> = {
 
 export const DRAFT_STATUS_LABELS: Record<DraftStatus, string> = {
   draft: 'Draft',
-  waiting_for_seat: 'Draft – waiting for seat',
-  waiting_for_position_approval: 'Draft – waiting for approval',
+  waiting_for_seat: 'Draft',
+  waiting_for_position_approval: 'Draft',
   cancelled: 'Cancelled',
   finalized: 'Finalized'
 };
@@ -99,6 +114,7 @@ export interface SaveOnboardingDraftPayload {
   selectedTemplateId: string | null;
   editedTasksJson: string | null;
   lastSavedStep: WizardStep;
+  reportsToEmployeeId?: string | null;
 }
 
 export interface WorkModeOption {

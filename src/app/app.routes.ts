@@ -97,6 +97,15 @@ export const routes: Routes = [
             canActivate: [permissionGuard],
             data: { title: 'Notification Settings', permissions: ['notifications:manage'] }
           },
+          {
+            path: 'bulk-onboarding',
+            loadComponent: () =>
+              import('./modules/people/feature/bulk-onboarding/bulk-onboarding.component').then(
+                (m) => m.BulkOnboardingComponent
+              ),
+            canActivate: [permissionGuard],
+            data: { title: 'Bulk Onboarding', permissions: ['employees:write'] }
+          },
           { path: '', pathMatch: 'full', redirectTo: 'general' }
         ]
       },
@@ -127,6 +136,13 @@ export const routes: Routes = [
         loadComponent: () =>
           import('./core/auth/feature/session-exchange/session-exchange.component').then(
             (module) => module.SessionExchangeComponent
+          )
+      },
+      {
+        path: 'invitations/:token',
+        loadComponent: () =>
+          import('./core/auth/feature/accept-invitation/accept-invitation.component').then(
+            (module) => module.AcceptInvitationComponent
           )
       },
       { path: '', pathMatch: 'full', redirectTo: 'login' }
