@@ -1,0 +1,263 @@
+import { TestBed } from '@angular/core/testing';
+import { HttpResponse } from '@angular/common/http';
+import { of, throwError } from 'rxjs';
+import { ProjectDetailStore } from './project-detail.store';
+import { ProjectApiService } from '../data-access/project-api.service';
+import { ObjectiveMemberApiService } from '../data-access/objective-member-api.service';
+import { ProjectDetailDto } from '../models/dto/project.dto';
+import { MyProjectMilestoneDto, ObjectiveDetailDto, ObjectiveSubtreeResponseDto, CreateObjectiveRequestDto, AddObjectiveMemberOutcomeDto, TransferObjectiveHeadOutcomeDto } from '../models/dto/milestone.dto';
+import { ObjectiveInvitationDto } from '../models/dto/objective-invitation.dto';
+
+describe('ProjectDetailStore', () => {
+  function setup(apiOverrides: Partial<ProjectApiService> = {}) {
+    TestBed.configureTestingModule({ providers: [{ provide: ProjectApiService, useValue: apiOverrides }] });
+    return TestBed.inject(ProjectDetailStore);
+  }
+
+  function createStoreWithMemberApi(memberApiOverrides: Partial<ObjectiveMemberApiService> = {}) {
+    TestBed.configureTestingModule({
+      providers: [
+        { provide: ProjectApiService, useValue: {} },
+        { provide: ObjectiveMemberApiService, useValue: memberApiOverrides }
+      ]
+    });
+    return TestBed.inject(ProjectDetailStore);
+  }
+
+  const projectDto: ProjectDetailDto = {
+    id: 'p1', name: 'Website Revamp', identifier: 'WEB', categoryId: 'cat1', description: null,
+    leadId: 'u1', startDate: '2026-08-01', targetDate: '2026-12-01', color: null, actualHours: null,
+    allocatedHours: 40, completedHours: 0, isActive: true, isAchieved: false, achievedAt: null,
+    createdAt: '2026-08-01T00:00:00Z', updatedAt: null, isLead: true, logoFileId: null,
+    labels: [], members: [], memberCount: 0
+  };
+
+  it('loads a project successfully', async () => {
+    const store = setup({ getById: () => of(projectDto) } as Partial<ProjectApiService>);
+    await store.loadProject('p1');
+    expect(store.project()?.name).toBe('Website Revamp');
+    expect(store.projectLoading()).toBe(false);
+  });
+
+  it('sets projectError on failure', async () => {
+    const store = setup({ getById: () => throwError(() => ({ error: { detail: 'Not found' } })) } as Partial<ProjectApiService>);
+    await store.loadProject('p1');
+    expect(store.projectError()).toBe('Not found');
+    expect(store.project()).toBeNull();
+  });
+
+  it('loads milestones independently of the project', async () => {
+    const milestones: MyProjectMilestoneDto[] = [{
+      objectiveId: 'o1', projectId: 'p1', parentObjectiveId: null, isDefault: true, title: 'Default',
+      ownerId: 'u1', ownerName: 'Jane', reportingManagerId: null, reportingManagerName: null,
+      startDate: '2026-08-01', endDate: '2026-12-01', allocatedHours: 40, completedHours: 0,
+      objectiveIsActive: true, isAchieved: false, achievedAt: null, membershipIsActive: true, membershipRemovedAt: null,
+      isOwner: false
+    }];
+    const store = setup({ getMyMilestones: () => of(milestones) } as Partial<ProjectApiService>);
+    await store.loadMyMilestones('p1');
+    expect(store.milestones()).toHaveLength(1);
+    expect(store.milestonesLoading()).toBe(false);
+  });
+
+  it('sets milestonesError on failure', async () => {
+    const store = setup({ getMyMilestones: () => throwError(() => ({ error: { detail: 'Server error' } })) } as Partial<ProjectApiService>);
+    await store.loadMyMilestones('p1');
+    expect(store.milestonesError()).toBe('Server error');
+  });
+
+  it('falls back to "Failed to load modules." when the server gives no error detail', async () => {
+    const store = setup({ getMyMilestones: () => throwError(() => ({})) } as Partial<ProjectApiService>);
+    await store.loadMyMilestones('p1');
+    expect(store.milestonesError()).toBe('Failed to load modules.');
+  });
+
+  it('loads and clears a milestone subtree', async () => {
+    const response: ObjectiveSubtreeResponseDto = {
+      parentObjective: null,
+      objective: {
+        id: 'o1', projectId: 'p1', parentObjectiveId: null, isDefault: true, title: 'Root',
+        description: null, ownerId: 'u1', ownerName: 'Arun', reportingManagerId: null, reportingManagerName: null,
+        createdById: 'u1', startDate: '2026-08-01', endDate: '2026-12-01', progress: 0, actualHours: null,
+        allocatedHours: 40, completedHours: 0, isActive: true, isOwner: true, isAchieved: false, achievedAt: null,
+        createdAt: '2026-08-01T00:00:00Z', updatedAt: null, children: []
+      }
+    };
+    const store = setup({ getMilestoneSubtree: () => of(response) } as Partial<ProjectApiService>);
+    await store.loadMilestoneSubtree('o1');
+    expect(store.selectedSubtree()?.title).toBe('Root');
+    store.clearSelectedSubtree();
+    expect(store.selectedSubtree()).toBeNull();
+  });
+
+  it('sets subtreeError when loadMilestoneSubtree fails', async () => {
+    const store = setup({
+      getMilestoneSubtree: () => throwError(() => ({ error: { detail: 'Server error' } }))
+    } as Partial<ProjectApiService>);
+
+    await store.loadMilestoneSubtree('o1');
+
+    expect(store.subtreeError()).toBe('Server error');
+  });
+
+  it('getMilestoneDetail returns the mapped detail on success', async () => {
+    const dto: ObjectiveDetailDto = {
+      id: 'o1', projectId: 'p1', parentObjectiveId: null, isDefault: false, title: 'Design Phase',
+      description: 'Scope the design work', ownerId: 'u1', ownerName: 'Arun', reportingManagerId: null, reportingManagerName: null,
+      createdById: 'u1', startDate: '2026-01-01', endDate: '2026-03-01', progress: 0, actualHours: null,
+      allocatedHours: 20, completedHours: 0, isActive: true, isOwner: true, createdAt: '2026-01-01T00:00:00Z', updatedAt: null,
+      isAchieved: false, achievedAt: null
+    };
+    const store = setup({ getObjectiveById: () => of(dto) } as Partial<ProjectApiService>);
+
+    const result = await store.getMilestoneDetail('o1');
+
+    expect(result).toEqual(dto);
+    expect(result?.isAchieved).toBe(false);
+  });
+
+  it('getMilestoneDetail returns null and sets milestoneActionError on failure', async () => {
+    const store = setup({
+      getObjectiveById: () => throwError(() => ({ error: { detail: 'not found' } }))
+    } as Partial<ProjectApiService>);
+
+    const result = await store.getMilestoneDetail('o1');
+
+    expect(result).toBeNull();
+    expect(store.milestoneActionError()).toBe('not found');
+  });
+
+  it('editMilestone reports pending:false when applied immediately (200)', async () => {
+    const dto = { id: 'o1' } as ObjectiveDetailDto;
+    const store = setup({
+      editObjective: () => of(new HttpResponse({ body: dto, status: 200 }))
+    } as Partial<ProjectApiService>);
+
+    const result = await store.editMilestone('o1', {
+      title: 'Design Phase v2', description: 'Updated', startDate: '2026-01-01', endDate: '2026-03-01', allocatedHours: 25
+    });
+
+    expect(result).toEqual({ success: true, pending: false });
+  });
+
+  it('editMilestone reports pending:true on 202', async () => {
+    const store = setup({
+      editObjective: () => of(new HttpResponse<ObjectiveDetailDto>({ body: null, status: 202 }))
+    } as Partial<ProjectApiService>);
+
+    const result = await store.editMilestone('o1', {
+      title: 'Design Phase v2', description: 'Updated', startDate: '2026-01-01', endDate: '2026-03-01', allocatedHours: 25
+    });
+
+    expect(result).toEqual({ success: true, pending: true });
+  });
+
+  it('achieveMilestone reports pending:false on 204', async () => {
+    const store = setup({
+      achieveObjective: () => of(new HttpResponse<void>({ status: 204 }))
+    } as Partial<ProjectApiService>);
+
+    const result = await store.achieveMilestone('o1');
+
+    expect(result).toEqual({ success: true, pending: false });
+  });
+
+  it('unachieveMilestone reports success:false and sets milestoneActionError on failure', async () => {
+    const store = setup({
+      unachieveObjective: () => throwError(() => ({ error: { detail: 'not achieved' } }))
+    } as Partial<ProjectApiService>);
+
+    const result = await store.unachieveMilestone('o1');
+
+    expect(result).toEqual({ success: false, pending: false });
+    expect(store.milestoneActionError()).toBe('not achieved');
+  });
+
+  it('createSubModule returns success:true and clears milestoneActionError on success', async () => {
+    const store = setup({
+      createObjective: () => of({ id: 'o3' } as ObjectiveDetailDto)
+    } as Partial<ProjectApiService>);
+
+    const result = await store.createSubModule({
+      parentObjectiveId: 'o1', title: 'Design Phase', description: null,
+      startDate: '2026-01-15', endDate: '2026-03-01', allocatedHours: 20
+    });
+
+    expect(result).toEqual({ success: true });
+    expect(store.milestoneActionError()).toBeNull();
+  });
+
+  it('createSubModule returns success:false and sets milestoneActionError on failure', async () => {
+    const store = setup({
+      createObjective: () => throwError(() => ({ error: { detail: 'date range exceeds parent' } }))
+    } as Partial<ProjectApiService>);
+
+    const result = await store.createSubModule({
+      parentObjectiveId: 'o1', title: 'Design Phase', description: null,
+      startDate: '2026-01-15', endDate: '2026-03-01', allocatedHours: 20
+    });
+
+    expect(result).toEqual({ success: false });
+    expect(store.milestoneActionError()).toBe('date range exceeds parent');
+  });
+
+  it('loadObjectiveMembers populates objectiveMembers on success', async () => {
+    const memberApi = { getMembers: vi.fn().mockReturnValue(of({ items: [{ employeeId: 'e1', isHead: true, pending: false, inviteType: null, invitationId: null, sinceOrInvitedAt: '2026-01-01' }] })) };
+    const store = createStoreWithMemberApi(memberApi);
+
+    await store.loadObjectiveMembers('o1');
+
+    expect(store.objectiveMembers()).toEqual([{ employeeId: 'e1', isHead: true, pending: false, inviteType: null, invitationId: null, sinceOrInvitedAt: '2026-01-01' }]);
+    expect(store.objectiveMembersError()).toBeNull();
+  });
+
+  it('addObjectiveMember reports pending:false when already an active member (204)', async () => {
+    const memberApi = { addMember: vi.fn().mockReturnValue(of(new HttpResponse<AddObjectiveMemberOutcomeDto>({ body: { alreadyMember: true, invitation: null }, status: 204 }))) };
+    const store = createStoreWithMemberApi(memberApi);
+
+    const result = await store.addObjectiveMember('o1', 'e2');
+
+    expect(result).toEqual({ success: true, alreadyMember: true });
+  });
+
+  it('addObjectiveMember reports pending:true (invitation created) on 202', async () => {
+    const memberApi = { addMember: vi.fn().mockReturnValue(of(new HttpResponse<AddObjectiveMemberOutcomeDto>({ body: { alreadyMember: false, invitation: { id: 'i1' } as ObjectiveInvitationDto }, status: 202 }))) };
+    const store = createStoreWithMemberApi(memberApi);
+
+    const result = await store.addObjectiveMember('o1', 'e2');
+
+    expect(result).toEqual({ success: true, alreadyMember: false });
+  });
+
+  it('transferObjectiveHead reports applied:false with a pendingInvitation on 202', async () => {
+    const memberApi = { transferHead: vi.fn().mockReturnValue(of(new HttpResponse<TransferObjectiveHeadOutcomeDto>({ body: { applied: false, pendingChangeRequest: null, pendingInvitation: { id: 'i2' } as ObjectiveInvitationDto }, status: 202 }))) };
+    const store = createStoreWithMemberApi(memberApi);
+
+    const result = await store.transferObjectiveHead('o1', 'e3');
+
+    expect(result).toEqual({ success: true, applied: false, viaInvitation: true });
+  });
+
+  it('loadMyInvitations populates myInvitations', async () => {
+    const memberApi = { getMyInvitations: vi.fn().mockReturnValue(of([{ id: 'i1' } as ObjectiveInvitationDto])) };
+    const store = createStoreWithMemberApi(memberApi);
+
+    await store.loadMyInvitations();
+
+    expect(store.myInvitations()).toEqual([{ id: 'i1' }]);
+  });
+
+  it('acceptInvitation returns success:true and clears the accepted invitation from myInvitations', async () => {
+    const memberApi = {
+      getMyInvitations: vi.fn().mockReturnValue(of([{ id: 'i1' } as ObjectiveInvitationDto])),
+      acceptInvitation: vi.fn().mockReturnValue(of(new HttpResponse<void>({ status: 204 })))
+    };
+    const store = createStoreWithMemberApi(memberApi);
+    await store.loadMyInvitations();
+
+    const result = await store.acceptInvitation('i1');
+
+    expect(result).toEqual({ success: true });
+    expect(store.myInvitations()).toEqual([]);
+  });
+});

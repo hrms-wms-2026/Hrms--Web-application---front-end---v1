@@ -1,0 +1,75 @@
+<div class="flex items-center justify-between gap-4 pb-3.5 mb-5 border-b border-[var(--color-border)]">
+  <!-- Left: Title -->
+  <div class="shrink-0">
+    <h1 class="text-base font-semibold text-[var(--color-text-primary)] tracking-tight">Projects</h1>
+    <p class="text-xs text-[var(--color-text-secondary)]">Plan and manage your projects.</p>
+  </div>
+
+  <!-- Right: Filters + Create button — always on one row -->
+  <div class="flex items-center gap-3">
+    <app-project-filter-bar
+      (categoryChanged)="onCategoryFilterChanged($event)"
+      (achievedFilterChanged)="onAchievedFilterChanged($event)"
+    />
+    <app-button variant="primary" (pressed)="openCreateModal()">+ Create project</app-button>
+  </div>
+</div>
+
+<app-my-invitations-panel
+  [invitations]="detailStore.myInvitations()"
+  (acceptRequested)="onAcceptInvitation($event)"
+  (rejectRequested)="onRejectInvitation($event)"
+/>
+
+<div class="mt-6">
+  @if (store.loading()) {
+    <app-loader label="Loading projects…" />
+  } @else if (store.error()) {
+    <app-error-state [message]="store.error()!" [retryable]="true" (retry)="store.loadProjects()" />
+  } @else if (store.filteredProjects().length === 0) {
+    <app-empty-state title="No projects yet" description="Create your first project to get started.">
+      <app-button variant="primary" (pressed)="openCreateModal()">+ Create project</app-button>
+    </app-empty-state>
+  } @else {
+    <div class="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-3" #projectGrid>
+      @for (project of store.filteredProjects(); track project.id) {
+        <app-project-card
+          [project]="project"
+          [expanded]="expandedProjectId() === project.id"
+          (viewed)="onView(project)"
+          (settingsRequested)="onProjectSettingsRequested(project)"
+          (toggleExpandRequested)="onToggleExpand(project.id)"
+        />
+      }
+    </div>
+  }
+</div>
+
+<app-project-form-modal
+  [open]="createModalOpen()"
+  [submitting]="actionSubmitting()"
+  [errorMessage]="store.error() ?? ''"
+  (createSubmitted)="onCreateSubmit($event)"
+  (closed)="createModalOpen.set(false)"
+/>
+
+<app-project-settings-modal
+  [open]="settingsModalOpen()"
+  [initialValue]="settingsModalInitialValue()"
+  [submitting]="actionSubmitting()"
+  [errorMessage]="store.error() ?? ''"
+  (saved)="onProjectSettingsSaved($event)"
+  (closed)="settingsModalOpen.set(false)"
+/>
+
+<app-confirm-modal
+  [open]="deleteConfirmOpen()"
+  title="Delete project"
+  message="Delete this project? This cannot be undone."
+  confirmLabel="Delete"
+  [loading]="actionSubmitting()"
+  [errorMessage]="store.error() ?? ''"
+  (confirmed)="onDeleteConfirmed()"
+  (cancelled)="deleteConfirmOpen.set(false)"
+/>
+

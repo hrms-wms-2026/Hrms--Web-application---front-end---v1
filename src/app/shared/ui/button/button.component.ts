@@ -1,6 +1,7 @@
 import { Component, input, output } from '@angular/core';
 
 export type ButtonVariant = 'primary' | 'secondary' | 'danger';
+export type ButtonSize = 'sm' | 'md';
 
 @Component({
   selector: 'app-button',
@@ -21,6 +22,7 @@ export type ButtonVariant = 'primary' | 'secondary' | 'danger';
 })
 export class ButtonComponent {
   variant = input<ButtonVariant>('primary');
+  size = input<ButtonSize>('md');
   type = input<'button' | 'submit'>('button');
   disabled = input(false);
   loading = input(false);
@@ -28,7 +30,11 @@ export class ButtonComponent {
 
   classes(): string {
     const base =
-      'inline-flex w-full items-center justify-center rounded-md px-4 py-2 text-sm font-medium transition-colors disabled:cursor-not-allowed disabled:opacity-60 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-focus-ring)]';
+      'inline-flex w-full items-center justify-center rounded-md font-medium transition-colors disabled:cursor-not-allowed disabled:opacity-60 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-focus-ring)]';
+    const sizes: Record<ButtonSize, string> = {
+      md: 'px-4 py-2 text-sm',
+      sm: 'px-2.5 py-1.5 text-xs'
+    };
     const variants: Record<ButtonVariant, string> = {
       primary: 'bg-[var(--color-accent)] text-[var(--color-accent-contrast)] hover:bg-[var(--color-accent-hover)]',
       secondary:
@@ -36,6 +42,6 @@ export class ButtonComponent {
       danger:
         'bg-[#dc2626] text-white hover:bg-[#b91c1c]'
     };
-    return `${base} ${variants[this.variant()]}`;
+    return `${base} ${sizes[this.size()]} ${variants[this.variant()]}`;
   }
 }

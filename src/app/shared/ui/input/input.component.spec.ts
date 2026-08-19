@@ -47,4 +47,13 @@ describe('InputComponent', () => {
     const input = fixture.nativeElement.querySelector('input') as HTMLInputElement;
     expect(input.disabled).toBe(true);
   });
+
+  it('renders a native date input when type is "date"', () => {
+    const fixture = TestBed.createComponent(InputComponent);
+    fixture.componentRef.setInput('type', 'date');
+    fixture.detectChanges();
+
+    const input = fixture.nativeElement.querySelector('input') as HTMLInputElement;
+    expect(input.type).toBe('date');
+  });
 });
