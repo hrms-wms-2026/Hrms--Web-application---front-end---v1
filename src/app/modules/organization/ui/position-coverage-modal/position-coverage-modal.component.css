@@ -416,6 +416,18 @@
   flex-shrink: 0;
 }
 
+.pcm-responsible-person {
+  font-size: 0.8125rem;
+  color: #475569;
+  font-weight: 500;
+}
+
+.pcm-field-hint {
+  margin-top: 0.25rem;
+  font-size: 0.75rem;
+  color: #64748b;
+}
+
 .pcm-footer {
   padding: 1rem 1.5rem;
   border-top: 1px solid #e2e8f0;

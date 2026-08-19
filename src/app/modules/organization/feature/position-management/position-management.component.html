@@ -303,6 +303,7 @@
     [error]="positionStore.coverageError()"
     [canManage]="hasManageAccess()"
     [targetOccupancy]="positionStore.targetOccupancy()"
+    [ownerHolders]="positionStore.coverageOwnerHolders()"
     (addCoverage)="onAddCoverage($event)"
     (updateCoverage)="onUpdateCoverage($event)"
     (removeCoverage)="onRemoveCoverage($event)"

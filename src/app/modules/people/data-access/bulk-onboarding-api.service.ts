@@ -1,4 +1,4 @@
-import { HttpClient } from '@angular/common/http';
+import { HttpClient, HttpParams } from '@angular/common/http';
 import { Injectable, inject } from '@angular/core';
 import { Observable } from 'rxjs';
 import { environment } from '../../../../environments/environment';
@@ -50,5 +50,12 @@ export class BulkOnboardingApiService {
 
   requestFinalize(batchId: string, onboardingDraftIds: readonly string[]): Observable<BulkOnboardingBatchResponse> {
     return this.http.post<BulkOnboardingBatchResponse>(`${this.baseUrl}/${batchId}/finalize`, { onboardingDraftIds });
+  }
+
+  downloadTemplate(format: 'csv' | 'xlsx'): Observable<Blob> {
+    return this.http.get(`${this.baseUrl}/template`, {
+      params: new HttpParams().set('format', format),
+      responseType: 'blob'
+    });
   }
 }

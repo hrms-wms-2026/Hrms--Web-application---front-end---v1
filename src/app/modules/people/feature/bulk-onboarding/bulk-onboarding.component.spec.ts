@@ -106,4 +106,24 @@ describe('BulkOnboardingComponent', () => {
 
     expect(storeMock.finalizeSelected).toHaveBeenCalled();
   });
+
+  it('renders a Reporting Manager row in the column-mapping step', () => {
+    (storeMock.batch as any).mockReturnValue({
+      id: 'batch-1',
+      status: 'mapping_pending',
+      totalRows: 1,
+      validRows: null,
+      invalidRows: null,
+      detectedColumns: ['Email'],
+      suggestedMapping: {}
+    });
+    fixture.detectChanges();
+    fixture.componentInstance.goToStep('map-columns');
+    fixture.detectChanges();
+
+    const labels = Array.from(fixture.nativeElement.querySelectorAll('.bo-map-row__label')).map(
+      (el) => (el as HTMLElement).textContent?.trim()
+    );
+    expect(labels.some((l) => l?.includes('Reporting Manager'))).toBe(true);
+  });
 });

@@ -32,6 +32,8 @@ describe('PositionCoverageModalComponent', () => {
       source: 'Manual',
       isLocked: false,
       status: 'active',
+      responsibleEmployeeId: null,
+      responsibleEmployeeName: null,
       ...overrides
     };
   }

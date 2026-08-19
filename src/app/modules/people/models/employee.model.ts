@@ -105,6 +105,7 @@ export interface ChangePositionPayload {
   readonly positionId: string;
   readonly effectiveFrom: string;
   readonly changeReason: 'Promotion' | 'Transfer' | 'LateralMove';
+  readonly reportsToEmployeeId?: string | null;
 }
 
 export interface ChangePositionResponse {

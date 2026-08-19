@@ -1,16 +1,18 @@
-import { ChangeDetectionStrategy, Component, inject, input, output, signal, effect, computed } from '@angular/core';
+import { ChangeDetectionStrategy, Component, computed, effect, inject, input, output, signal } from '@angular/core';
 import { toSafeErrorMessage } from '../../../../core/services/error-handler.service';
 import { NotificationService } from '../../../../core/services/notification.service';
 import { ButtonComponent } from '../../../../shared/ui/button/button.component';
 import { ModalComponent } from '../../../../shared/ui/modal/modal.component';
-import { PeopleApiService } from '../../data-access/people-api.service';
 import { PositionApiService } from '../../../organization/data-access/position-api.service';
 import { PositionListItemResponse } from '../../../organization/models/position.model';
+import { PeopleApiService } from '../../data-access/people-api.service';
+import { ActiveHolder } from '../../models/onboarding-draft.model';
+import { ReportsToPickerComponent } from '../reports-to-picker/reports-to-picker.component';
 
 @Component({
   selector: 'app-change-position-modal',
   standalone: true,
-  imports: [ModalComponent, ButtonComponent],
+  imports: [ModalComponent, ButtonComponent, ReportsToPickerComponent],
   template: `
     <app-modal [open]="open()" [title]="modalTitle()" (closed)="onClose()">
       <div class="flex flex-col gap-4">
@@ -18,7 +20,7 @@ import { PositionListItemResponse } from '../../../organization/models/position.
           <span class="text-[var(--color-text-secondary)]">New position</span>
           <select
             class="rounded-md border border-[var(--color-border)] p-2"
-            (change)="selectedPositionId.set($any($event.target).value)"
+            (change)="onPositionSelected($any($event.target).value)"
           >
             <option value="">Select a position…</option>
             @for (position of positions(); track position.id) {
@@ -34,6 +36,19 @@ import { PositionListItemResponse } from '../../../organization/models/position.
             This position requires approval. Your request will be sent to an approver and won't take effect until approved.
           </p>
         }
+        @if (selectedPositionRequiresManagerPick()) {
+          <div class="flex flex-col gap-1 text-sm">
+            <span class="text-[var(--color-text-secondary)]">Reports to</span>
+            <p class="text-xs text-[var(--color-text-secondary)]">
+              More than one person holds the reporting position — choose who this employee reports to.
+            </p>
+            <app-reports-to-picker
+              [holders]="activeHolders()"
+              [selectedEmployeeId]="selectedReportsToEmployeeId()"
+              (selectedEmployeeIdChange)="selectedReportsToEmployeeId.set($event)"
+            />
+          </div>
+        }
         <label class="flex flex-col gap-1 text-sm">
           <span class="text-[var(--color-text-secondary)]">Effective from</span>
           <input
@@ -47,8 +62,9 @@ import { PositionListItemResponse } from '../../../organization/models/position.
           <app-button variant="secondary" (pressed)="onClose()">Cancel</app-button>
           <app-button
             type="submit"
+            data-testid="change-position-submit"
             [loading]="submitting()"
-            [disabled]="!selectedPositionId() || !effectiveFrom() || submitting()"
+            [disabled]="!selectedPositionId() || !effectiveFrom() || submitting() || (selectedPositionRequiresManagerPick() && !selectedReportsToEmployeeId())"
             (pressed)="submit()"
           >
             {{ selectedPositionRequiresApproval() ? 'Send for approval' : 'Save' }}
@@ -79,10 +95,14 @@ export class ChangePositionModalComponent {
   readonly effectiveFrom = signal(new Date().toISOString().slice(0, 10));
   readonly submitting = signal(false);
   readonly loadError = signal<string | null>(null);
+  readonly activeHolders = signal<readonly ActiveHolder[]>([]);
+  readonly selectedReportsToEmployeeId = signal<string | null>(null);
 
   readonly selectedPositionRequiresApproval = computed(
     () => this.positions().find((p) => p.id === this.selectedPositionId())?.requiresApproval ?? false
   );
+
+  readonly selectedPositionRequiresManagerPick = computed(() => this.activeHolders().length > 1);
 
   constructor() {
     effect(() => {
@@ -104,8 +124,41 @@ export class ChangePositionModalComponent {
     });
   }
 
+  onPositionSelected(positionId: string): void {
+    this.selectedPositionId.set(positionId);
+    this.selectedReportsToEmployeeId.set(null);
+    this.activeHolders.set([]);
+
+    if (!positionId) {
+      return;
+    }
+
+    const reportsToPositionId = this.positions().find((p) => p.id === positionId)?.reportsToPositionId ?? null;
+    if (!reportsToPositionId) {
+      return;
+    }
+
+    this.peopleApi.getActiveHolders(this.legalEntityId(), reportsToPositionId).subscribe({
+      next: (holders) => {
+        if (this.selectedPositionId() !== positionId) {
+          return;
+        }
+        this.activeHolders.set(holders);
+      },
+      error: () => {
+        if (this.selectedPositionId() !== positionId) {
+          return;
+        }
+        this.activeHolders.set([]);
+      }
+    });
+  }
+
   submit(): void {
     if (!this.selectedPositionId() || !this.effectiveFrom()) {
+      return;
+    }
+    if (this.selectedPositionRequiresManagerPick() && !this.selectedReportsToEmployeeId()) {
       return;
     }
     this.submitting.set(true);
@@ -113,7 +166,8 @@ export class ChangePositionModalComponent {
       .changePosition(this.employeeId(), {
         positionId: this.selectedPositionId(),
         effectiveFrom: this.effectiveFrom(),
-        changeReason: this.changeReason()
+        changeReason: this.changeReason(),
+        reportsToEmployeeId: this.selectedReportsToEmployeeId()
       })
       .subscribe({
         next: (response) => {
@@ -133,6 +187,8 @@ export class ChangePositionModalComponent {
 
   onClose(): void {
     this.selectedPositionId.set('');
+    this.selectedReportsToEmployeeId.set(null);
+    this.activeHolders.set([]);
     this.closed.emit();
   }
 }

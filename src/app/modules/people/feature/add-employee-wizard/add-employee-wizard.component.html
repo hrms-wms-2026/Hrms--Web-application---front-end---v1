@@ -140,6 +140,29 @@
             />
           }
 
+          @if (store.loadingActiveHolders()) {
+            <div class="md:col-span-2">
+              <app-loader label="Loading reporting options…" />
+            </div>
+          } @else if (store.needsReportsToPick()) {
+            <div class="md:col-span-2 flex flex-col gap-1.5">
+              <label class="text-xs font-semibold text-[var(--color-text-secondary)]">
+                Reports to <span class="text-red-500">*</span>
+              </label>
+              <p class="text-xs text-[var(--color-text-secondary)]">
+                More than one person holds the reporting position — choose who this employee reports to.
+              </p>
+              <app-reports-to-picker
+                [holders]="store.activeHolders()"
+                [selectedEmployeeId]="store.selectedReportsToEmployeeId()"
+                (selectedEmployeeIdChange)="store.setReportsToEmployeeId($event)"
+              />
+              @if (submitAttempted() && !store.selectedReportsToEmployeeId()) {
+                <p class="text-xs text-red-500 mt-0.5">Select who this employee reports to.</p>
+              }
+            </div>
+          }
+
           <div class="flex flex-col gap-1.5">
             <label class="text-xs font-semibold text-[var(--color-text-secondary)]">
               Employment type <span class="text-red-500">*</span>
@@ -337,24 +360,28 @@
           <div class="rounded-lg border border-[var(--color-border)] p-4 text-sm">
             <dl class="grid grid-cols-2 gap-y-2">
               <dt class="text-[var(--color-text-secondary)]">First name</dt>
-              <dd>{{ form.controls.firstName.value || '—' }}</dd>
+              <dd>{{ reviewFirstName() }}</dd>
               <dt class="text-[var(--color-text-secondary)]">Last name</dt>
-              <dd>{{ form.controls.lastName.value || '—' }}</dd>
+              <dd>{{ reviewLastName() }}</dd>
               <dt class="text-[var(--color-text-secondary)]">Work email</dt>
-              <dd>{{ form.controls.workEmail.value || '—' }}</dd>
+              <dd>{{ reviewWorkEmail() }}</dd>
               <dt class="text-[var(--color-text-secondary)]">Work mode</dt>
               <dd>{{ selectedWorkModeLabel() }}</dd>
               <dt class="text-[var(--color-text-secondary)]">Department</dt>
               <dd>{{ selectedDepartmentLabel() }}</dd>
               <dt class="text-[var(--color-text-secondary)]">Position</dt>
               <dd>{{ selectedPositionLabel() }}</dd>
+              <dt class="text-[var(--color-text-secondary)]">Reporting manager</dt>
+              <dd>{{ selectedReportingManagerName() }}</dd>
+              <dt class="text-[var(--color-text-secondary)]">Reporting manager position</dt>
+              <dd>{{ selectedReportingManagerPositionName() }}</dd>
               <dt class="text-[var(--color-text-secondary)]">Employment type</dt>
               <dd>{{ selectedEmploymentTypeLabel() }}</dd>
               <dt class="text-[var(--color-text-secondary)]">Start date</dt>
-              <dd>{{ form.controls.startDate.value || '—' }}</dd>
-              @if (form.controls.employeeNumber.value) {
+              <dd>{{ reviewStartDate() }}</dd>
+              @if (reviewEmployeeNumber()) {
                 <dt class="text-[var(--color-text-secondary)]">Employee number</dt>
-                <dd>{{ form.controls.employeeNumber.value }}</dd>
+                <dd>{{ reviewEmployeeNumber() }}</dd>
               }
             </dl>
           </div>

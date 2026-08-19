@@ -33,7 +33,8 @@ export type BulkOnboardingSystemField =
   | 'department'
   | 'position'
   | 'checklistTemplate'
-  | 'employeeNumber';
+  | 'employeeNumber'
+  | 'reportingManager';
 
 export type BulkOnboardingColumnMapping = Partial<Record<BulkOnboardingSystemField, string | null>>;
 
@@ -106,5 +107,6 @@ export const BULK_ONBOARDING_SYSTEM_FIELD_LABELS: Record<BulkOnboardingSystemFie
   department: 'Department',
   position: 'Position',
   checklistTemplate: 'Checklist Template',
-  employeeNumber: 'Employee Number'
+  employeeNumber: 'Employee Number',
+  reportingManager: 'Reporting Manager'
 };

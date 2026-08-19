@@ -111,6 +111,8 @@ export interface ManagementCoverageRecordResponse {
   readonly source: 'ReportingStructure' | 'Manual';
   readonly isLocked: boolean;
   readonly status: 'active' | 'inactive';
+  readonly responsibleEmployeeId: string | null;
+  readonly responsibleEmployeeName: string | null;
 }
 
 export interface AddCoverageRecordRequest {
@@ -118,10 +120,29 @@ export interface AddCoverageRecordRequest {
   coveredPositionId?: string | null;
   coveredDepartmentId?: string | null;
   ownerOrder: number;
+  responsibleEmployeeId?: string | null;
 }
 
 export interface UpdateCoverageRecordRequest {
   ownerOrder: number;
+  responsibleEmployeeId?: string | null;
+}
+
+export interface ActiveHolder {
+  employeeId: string;
+  firstName: string;
+  lastName: string;
+  workEmail: string;
+  avatarFileId: string | null;
+}
+
+export interface CoverageResolutionLevel {
+  ownerOrder: number;
+  ownerPositionId: string;
+  ownerPositionName: string | null;
+  status: 'Resolved' | 'Incomplete';
+  employeeId: string | null;
+  employeeName: string | null;
 }
 
 export interface CreatePositionRequest {

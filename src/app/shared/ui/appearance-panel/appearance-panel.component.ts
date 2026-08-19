@@ -8,7 +8,6 @@ import { THEME_PRESETS, ThemePresetId } from '../../../core/theme/models/theme-p
   template: `
     <section class="preference-section" aria-labelledby="appearance-heading">
       <div class="section-header">
-        <h3 id="appearance-heading" class="section-title">Appearance</h3>
         <p class="section-description">
           Customize the look and feel of your application workspace.
         </p>

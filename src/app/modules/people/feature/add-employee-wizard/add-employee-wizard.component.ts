@@ -12,6 +12,7 @@ import { LoaderComponent } from '../../../../shared/ui/loader/loader.component';
 import { SelectComponent, SelectOption } from '../../../../shared/ui/select/select.component';
 import { LegalEntityStore } from '../../../organization/state/legal-entity.store';
 import { AddEmployeeWizardStore } from '../../state/add-employee-wizard.store';
+import { ReportsToPickerComponent } from '../../ui/reports-to-picker/reports-to-picker.component';
 import { DRAFT_REASON_LABELS, WizardStep } from '../../models/onboarding-draft.model';
 import { ChecklistTemplateMatchLevel, ChecklistTemplateType, DraftChecklistTask } from '../../models/checklist-template.model';
 import { isTerminalDraft } from '../../utils/draft-status.utils';
@@ -55,7 +56,8 @@ const STEP_LABELS: Record<WizardStep, string> = {
     EmptyStateComponent,
     InputComponent,
     LoaderComponent,
-    SelectComponent
+    SelectComponent,
+    ReportsToPickerComponent
   ],
   templateUrl: './add-employee-wizard.component.html',
   styleUrl: './add-employee-wizard.component.css',
@@ -109,31 +111,66 @@ export class AddEmployeeWizardComponent {
 
   readonly selectedWorkModeLabel = computed(() => {
     const val = this.form.controls.workModeId.value;
-    if (!val) return '—';
+    if (!val) return this.store.savedWorkModeLabel() ?? '—';
     const opt = this.workModeOptions().find((o) => o.value === val);
-    return opt ? opt.label : val;
+    return opt?.label ?? this.store.savedWorkModeLabel() ?? val;
   });
 
   readonly selectedDepartmentLabel = computed(() => {
     const val = this.form.controls.departmentId.value;
-    if (!val) return '—';
+    if (!val) return this.store.savedDepartmentName() ?? '—';
     const opt = this.store.departments().find((o) => o.value === val);
-    return opt ? opt.label : val;
+    return opt?.label ?? this.store.savedDepartmentName() ?? val;
   });
 
   readonly selectedPositionLabel = computed(() => {
     const val = this.form.controls.positionId.value;
-    if (!val) return '—';
+    if (!val) return this.store.savedPositionName() ?? '—';
     const opt = this.store.positions().find((o) => o.value === val);
-    return opt ? opt.label : val;
+    return opt?.label ?? this.store.savedPositionName() ?? val;
   });
 
   readonly selectedEmploymentTypeLabel = computed(() => {
-    const val = this.form.controls.employmentType.value;
+    const val = this.form.controls.employmentType.value || this.store.formValue().employmentType;
     if (!val) return '—';
     const opt = this.employmentTypeOptions.find((o) => o.value === val);
     return opt ? opt.label : val;
   });
+
+  readonly reviewFirstName = computed(() =>
+    this.form.controls.firstName.value || this.store.formValue().firstName || '—'
+  );
+
+  readonly reviewLastName = computed(() =>
+    this.form.controls.lastName.value || this.store.formValue().lastName || '—'
+  );
+
+  readonly reviewWorkEmail = computed(() =>
+    this.form.controls.workEmail.value || this.store.formValue().workEmail || '—'
+  );
+
+  readonly reviewStartDate = computed(() =>
+    this.form.controls.startDate.value || this.store.formValue().startDate || '—'
+  );
+
+  readonly reviewEmployeeNumber = computed(() =>
+    this.form.controls.employeeNumber.value || this.store.formValue().employeeNumber || ''
+  );
+
+  readonly selectedReportingManagerName = computed(() => {
+    const selectedId = this.store.selectedReportsToEmployeeId();
+    if (selectedId) {
+      const match = this.store.activeHolders().find((holder) => holder.employeeId === selectedId);
+      if (match) {
+        return `${match.firstName} ${match.lastName}`;
+      }
+    }
+    return this.store.savedReportingManagerName() ?? '—';
+  });
+
+  readonly selectedReportingManagerPositionName = computed(() =>
+    this.store.savedReportingManagerPositionName() ?? '—'
+  );
 
   readonly saveReasonMessage = computed(() => {
     const reason = this.store.lastSaveReason();
@@ -152,10 +189,10 @@ export class AddEmployeeWizardComponent {
     if (reason === 'position_approval_rejected') {
       return 'Position approval was rejected. You can edit the details or select a different position to resubmit.';
     }
-    if (reason === 'invitation_sent') {
-      return 'Finalized and invitation queued.';
+    if (reason === 'saved_manually') {
+      return null;
     }
-    return 'Saved as a draft.';
+    return null;
   });
 
   constructor() {
@@ -238,8 +275,8 @@ export class AddEmployeeWizardComponent {
 
   onPositionChange(positionId: string): void {
     this.form.controls.positionId.setValue(positionId);
-    // The store itself clears selectedTemplateId/selectedTemplateDetail as part of setPosition().
-    this.store.setPosition(positionId);
+    const reportsToPositionId = this.store.positionItems().find((p) => p.id === positionId)?.reportsToPositionId ?? null;
+    void this.store.setPosition(positionId, reportsToPositionId);
     if (this.store.step() === 'checklist_template') {
       this.maybeLoadChecklistMatches();
     }
@@ -344,6 +381,10 @@ export class AddEmployeeWizardComponent {
     return '';
   }
 
+  private hasBlockingReportsToPick(): boolean {
+    return this.store.needsReportsToPick() && !this.store.selectedReportsToEmployeeId();
+  }
+
   /** Gates Continue/Save Draft/Finalize: true when a checklist is selected and its draft-local
    *  tasks currently fail validation (mirrors the store's own saveDraft() check). */
   private hasBlockingTaskErrors(): boolean {
@@ -367,7 +408,7 @@ export class AddEmployeeWizardComponent {
   goToNextStep(): void {
     if (this.stepIndex() === 0) {
       this.submitAttempted.set(true);
-      if (this.form.invalid) {
+      if (this.form.invalid || this.hasBlockingReportsToPick()) {
         return;
       }
     }
@@ -398,7 +439,7 @@ export class AddEmployeeWizardComponent {
       return;
     }
     this.submitAttempted.set(true);
-    if (this.form.invalid) {
+    if (this.form.invalid || this.hasBlockingReportsToPick()) {
       return;
     }
     if (this.store.selectedTemplateId()) {
@@ -418,7 +459,7 @@ export class AddEmployeeWizardComponent {
       return;
     }
     this.submitAttempted.set(true);
-    if (this.form.invalid) {
+    if (this.form.invalid || this.hasBlockingReportsToPick()) {
       return;
     }
     if (this.store.selectedTemplateId()) {

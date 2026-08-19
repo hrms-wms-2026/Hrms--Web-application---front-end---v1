@@ -35,7 +35,9 @@ describe('PositionStore - updateCoverage', () => {
     ownerOrder: 1,
     source: 'Manual',
     isLocked: false,
-    status: 'active'
+    status: 'active',
+    responsibleEmployeeId: null,
+    responsibleEmployeeName: null
   };
 
   const coverageUrl = `${environment.apiUrl}/org/legal-entities/le-1/positions/owner-1/coverage`;

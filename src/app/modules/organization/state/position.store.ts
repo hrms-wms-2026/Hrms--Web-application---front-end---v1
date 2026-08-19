@@ -4,6 +4,7 @@ import { patchState, signalStore, withComputed, withMethods, withState } from '@
 import { firstValueFrom } from 'rxjs';
 import { PositionApiService } from '../data-access/position-api.service';
 import {
+  ActiveHolder,
   AddCoverageRecordRequest,
   CreatePositionRequest,
   ListPositionsQueryParams,
@@ -56,6 +57,7 @@ export interface PositionState {
   readonly templatePacksError: string | null;
   readonly selectedTemplatePackKey: string | null;
   readonly templateSearchQuery: string;
+  readonly coverageOwnerHolders: readonly ActiveHolder[];
 }
 
 const initialState: PositionState = {
@@ -92,7 +94,8 @@ const initialState: PositionState = {
   templatePacksLoading: false,
   templatePacksError: null,
   selectedTemplatePackKey: null,
-  templateSearchQuery: ''
+  templateSearchQuery: '',
+  coverageOwnerHolders: []
 };
 
 import { toSafeErrorMessage } from '../../../core/services/error-handler.service';
@@ -408,6 +411,15 @@ export const PositionStore = signalStore(
       }
     },
 
+    async loadCoverageOwnerHolders(legalEntityId: string, positionId: string): Promise<void> {
+      try {
+        const holders = await firstValueFrom(api.getActiveHolders(legalEntityId, positionId));
+        patchState(store, { coverageOwnerHolders: holders });
+      } catch {
+        patchState(store, { coverageOwnerHolders: [] });
+      }
+    },
+
     clearCoverage(): void {
       patchState(store, {
         selectedCoveragePosition: null,
@@ -416,7 +428,8 @@ export const PositionStore = signalStore(
         coverageSaving: false,
         coverageError: null,
         targetOccupancy: [],
-        targetOccupancyLoading: false
+        targetOccupancyLoading: false,
+        coverageOwnerHolders: []
       });
     },
 

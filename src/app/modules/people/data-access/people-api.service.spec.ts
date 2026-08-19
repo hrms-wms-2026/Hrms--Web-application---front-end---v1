@@ -52,6 +52,7 @@ describe('PeopleApiService', () => {
     draftReason: 'waiting_for_seat',
     lastSavedStep: 'employee_details',
     startedById: 'user-1',
+    reportsToEmployeeId: null,
     version: '1'
   };
 
@@ -267,5 +268,15 @@ describe('PeopleApiService', () => {
     const req = httpMock.expectOne(`${environment.apiUrl}/employees/emp-1/change-position`);
     expect(req.request.body).toEqual({ positionId: 'pos-1', effectiveFrom: '2026-09-01', changeReason: 'Promotion' });
     req.flush({ pendingApproval: true });
+  });
+
+  it('getActiveHolders requests the position active-holders endpoint', () => {
+    service.getActiveHolders('legal-entity-1', 'position-1').subscribe();
+
+    const req = httpMock.expectOne(
+      `${environment.apiUrl}/org/legal-entities/legal-entity-1/positions/position-1/active-holders`
+    );
+    expect(req.request.method).toBe('GET');
+    req.flush([]);
   });
 });

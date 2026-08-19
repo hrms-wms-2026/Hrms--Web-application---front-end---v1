@@ -618,7 +618,10 @@ export class PositionManagementComponent {
     if (!le) return;
 
     this.coverageModalOpen.set(true);
-    await this.positionStore.loadCoverage(le.id, pos);
+    await Promise.all([
+      this.positionStore.loadCoverage(le.id, pos),
+      this.positionStore.loadCoverageOwnerHolders(le.id, pos.id)
+    ]);
   }
 
   closeCoverageModal(): void {

@@ -2,6 +2,7 @@ import { ChangeDetectionStrategy, Component, EventEmitter, Input, OnChanges, Out
 import { CommonModule } from '@angular/common';
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import {
+  ActiveHolder,
   AddCoverageRecordRequest,
   ManagementCoverageRecordResponse,
   PositionListItemResponse,
@@ -49,6 +50,7 @@ export class PositionCoverageModalComponent implements OnChanges {
    * that e.g. a different position already claimed "Primary Manager" for the same target.
    */
   @Input() targetOccupancy: readonly ManagementCoverageRecordResponse[] = [];
+  @Input() ownerHolders: readonly ActiveHolder[] = [];
 
   @Output() addCoverage = new EventEmitter<AddCoverageRecordRequest>();
   @Output() updateCoverage = new EventEmitter<UpdateCoverageEvent>();
@@ -63,7 +65,8 @@ export class PositionCoverageModalComponent implements OnChanges {
     coveredTargetType: ['Position' as 'Position' | 'Department', [Validators.required]],
     coveredPositionId: [''],
     coveredDepartmentId: [''],
-    ownerOrder: [1, [Validators.required]]
+    ownerOrder: [1, [Validators.required]],
+    responsibleEmployeeId: ['']
   });
 
   /** Coverage record id currently showing its inline "Edit level" form, or null when none is. */
@@ -117,7 +120,8 @@ export class PositionCoverageModalComponent implements OnChanges {
             coveredTargetType: 'Position',
             coveredPositionId: '',
             coveredDepartmentId: '',
-            ownerOrder: 1
+            ownerOrder: 1,
+            responsibleEmployeeId: ''
           });
           this.showAddForm.setValue(false);
           this.extraLevelsRequested.set(0);
@@ -357,6 +361,11 @@ export class PositionCoverageModalComponent implements OnChanges {
       return;
     }
 
+    if (this.needsResponsiblePersonPick && !this.addForm.controls.responsibleEmployeeId.value) {
+      this.addForm.controls.responsibleEmployeeId.markAsTouched();
+      return;
+    }
+
     const usedOrders = this.usedOrdersForSelectedTarget();
     if (usedOrders.includes(ownerOrder)) {
       return;
@@ -371,7 +380,8 @@ export class PositionCoverageModalComponent implements OnChanges {
       coveredTargetType: type === 'Department' ? 'Department' : 'Position',
       coveredPositionId: type === 'Position' ? posId : null,
       coveredDepartmentId: type === 'Department' ? deptId : null,
-      ownerOrder
+      ownerOrder,
+      responsibleEmployeeId: this.needsResponsiblePersonPick ? this.addForm.controls.responsibleEmployeeId.value : null
     });
   }
 
@@ -411,6 +421,25 @@ export class PositionCoverageModalComponent implements OnChanges {
     // transition in ngOnChanges so a failed save leaves the row (and the error) visible together.
     this.pendingSubmit = 'edit';
     this.updateCoverage.emit({ coverageId: record.id, payload: { ownerOrder: newOrder } });
+  }
+
+  get needsResponsiblePersonPick(): boolean {
+    return this.ownerHolders.length > 1;
+  }
+
+  get responsiblePersonOptions(): readonly SelectOption[] {
+    return this.ownerHolders.map(h => ({
+      value: h.employeeId,
+      label: `${h.firstName} ${h.lastName}`
+    }));
+  }
+
+  onResponsiblePersonChange(employeeId: string): void {
+    this.addForm.controls.responsibleEmployeeId.setValue(employeeId);
+  }
+
+  isAmbiguousOwner(record: ManagementCoverageRecordResponse): boolean {
+    return !record.responsibleEmployeeName && this.ownerHolders.length > 1 && record.ownerPositionId === this.position.id;
   }
 
   onDelete(cov: ManagementCoverageRecordResponse): void {

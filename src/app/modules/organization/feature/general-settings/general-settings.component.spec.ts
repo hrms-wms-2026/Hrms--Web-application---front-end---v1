@@ -48,6 +48,7 @@ describe('GeneralSettingsComponent', () => {
   });
 
   async function setup(hasPermission: boolean) {
+    TestBed.resetTestingModule();
     permissionService = { hasPermission: () => hasPermission };
 
     await TestBed.configureTestingModule({
@@ -115,10 +116,14 @@ describe('GeneralSettingsComponent', () => {
     const fixture = await setupWithLoadedSettings();
 
     fixture.componentInstance.form.controls.name.setValue('Dirty unsaved edit');
-    legalEntityStore.selectCompany('company-b');
-    fixture.detectChanges();
+    const selectPromise = legalEntityStore.selectCompany('company-b');
 
-    expect(fixture.componentInstance.form.controls.name.value).not.toBe('Dirty unsaved edit');
+    httpMock.expectOne(`${environment.apiUrl}/session/active-company`).flush({});
+    await fixture.whenStable();
+    httpMock.expectOne(`${environment.apiUrl}/auth/me`).flush({});
+    await selectPromise;
+
+    fixture.detectChanges();
 
     httpMock.expectOne(`${environment.apiUrl}/org/legal-entities/company-b/general-settings`).flush(settingsFor('company-b', 'Company B'));
     await fixture.whenStable();

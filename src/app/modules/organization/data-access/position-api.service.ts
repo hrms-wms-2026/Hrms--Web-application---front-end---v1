@@ -3,7 +3,9 @@ import { Injectable, inject } from '@angular/core';
 import { Observable } from 'rxjs';
 import { environment } from '../../../../environments/environment';
 import {
+  ActiveHolder,
   AddCoverageRecordRequest,
+  CoverageResolutionLevel,
   CreatePositionRequest,
   ListPositionsQueryParams,
   ManagementCoverageRecordResponse,
@@ -137,6 +139,28 @@ export class PositionApiService {
 
     return this.http.get<readonly ManagementCoverageRecordResponse[]>(
       `${environment.apiUrl}/org/legal-entities/${legalEntityId}/positions/coverage/by-target`,
+      { params }
+    );
+  }
+
+  getActiveHolders(legalEntityId: string, positionId: string): Observable<readonly ActiveHolder[]> {
+    return this.http.get<readonly ActiveHolder[]>(
+      `${environment.apiUrl}/org/legal-entities/${legalEntityId}/positions/${positionId}/active-holders`
+    );
+  }
+
+  resolveCoverage(
+    legalEntityId: string,
+    coveredTargetType: 'Position' | 'Department',
+    coveredPositionId: string | null,
+    coveredDepartmentId: string | null
+  ): Observable<readonly CoverageResolutionLevel[]> {
+    let params = new HttpParams().set('coveredTargetType', coveredTargetType);
+    if (coveredPositionId) params = params.set('coveredPositionId', coveredPositionId);
+    if (coveredDepartmentId) params = params.set('coveredDepartmentId', coveredDepartmentId);
+
+    return this.http.get<readonly CoverageResolutionLevel[]>(
+      `${environment.apiUrl}/org/legal-entities/${legalEntityId}/positions/coverage/resolve`,
       { params }
     );
   }

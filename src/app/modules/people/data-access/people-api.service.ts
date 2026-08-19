@@ -18,6 +18,7 @@ import {
   DraftListPageResponse,
   DraftListParams,
   FinalizeOnboardingDraftResponse,
+  ActiveHolder,
   OnboardingDraftResponse,
   RejectAccessGrantRequestRequest,
   RejectAccessGrantRequestResponse,
@@ -119,6 +120,12 @@ export class PeopleApiService {
   getJobJourney(employeeId: string): Observable<PositionHistoryEntryResponse[]> {
     return this.http.get<PositionHistoryEntryResponse[]>(
       `${environment.apiUrl}/employees/${employeeId}/position-history`
+    );
+  }
+
+  getActiveHolders(legalEntityId: string, positionId: string): Observable<readonly ActiveHolder[]> {
+    return this.http.get<readonly ActiveHolder[]>(
+      `${environment.apiUrl}/org/legal-entities/${legalEntityId}/positions/${positionId}/active-holders`
     );
   }
 

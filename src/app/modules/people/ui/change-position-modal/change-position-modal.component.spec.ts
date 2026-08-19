@@ -8,15 +8,37 @@ import { NotificationService } from '../../../../core/services/notification.serv
 describe('ChangePositionModalComponent', () => {
   let fixture: ComponentFixture<ChangePositionModalComponent>;
   let component: ChangePositionModalComponent;
-  let peopleApi: { changePosition: ReturnType<typeof vi.fn> };
+  let peopleApi: { changePosition: ReturnType<typeof vi.fn>; getActiveHolders: ReturnType<typeof vi.fn> };
   let positionApi: { listFlat: ReturnType<typeof vi.fn> };
   let notificationsStub: { success: ReturnType<typeof vi.fn>; error: ReturnType<typeof vi.fn> };
 
   beforeEach(async () => {
-    peopleApi = { changePosition: vi.fn() };
+    peopleApi = {
+      changePosition: vi.fn(),
+      getActiveHolders: vi.fn().mockReturnValue(of([]))
+    };
     positionApi = {
       listFlat: vi.fn().mockReturnValue(
-        of({ items: [{ id: 'pos-2', name: 'Manager' }], totalCount: 1, page: 1, pageSize: 25 } as never)
+        of({
+          items: [
+            {
+              id: 'pos-2',
+              name: 'Manager',
+              legalEntityId: 'le-1',
+              departmentId: 'dept-1',
+              code: null,
+              positionType: 'unique',
+              maxOccupancy: 1,
+              reportsToPositionId: null,
+              isActive: true,
+              createdAt: '',
+              updatedAt: null
+            }
+          ],
+          totalCount: 1,
+          page: 1,
+          pageSize: 25
+        } as never)
       )
     };
     notificationsStub = { success: vi.fn(), error: vi.fn() };
@@ -126,12 +148,54 @@ describe('ChangePositionModalComponent', () => {
     const changedSpy = vi.fn();
     component.pendingApproval.subscribe(pendingSpy);
     component.changed.subscribe(changedSpy);
-    component.selectedPositionId.set('pos-2');
-    fixture.componentRef.setInput('changeReason', 'Promotion');
+    component.onPositionSelected('pos-2');
+    fixture.detectChanges();
 
     component.submit();
 
     expect(pendingSpy).toHaveBeenCalled();
     expect(changedSpy).not.toHaveBeenCalled();
+  });
+
+  it('disables the submit action until a manager is picked when the position target is pooled', () => {
+    peopleApi.getActiveHolders.mockReturnValue(
+      of([
+        { employeeId: 'a', firstName: 'A', lastName: 'One', workEmail: 'a@acme.test', avatarFileId: null },
+        { employeeId: 'b', firstName: 'B', lastName: 'Two', workEmail: 'b@acme.test', avatarFileId: null }
+      ])
+    );
+    positionApi.listFlat.mockReturnValue(
+      of({
+        items: [
+          {
+            id: 'position-with-pooled-target',
+            name: 'Engineer',
+            legalEntityId: 'le-1',
+            departmentId: 'dept-1',
+            code: null,
+            positionType: 'unique',
+            maxOccupancy: 1,
+            reportsToPositionId: 'pooled-target-pos',
+            isActive: true,
+            createdAt: '',
+            updatedAt: null
+          }
+        ],
+        totalCount: 1,
+        page: 1,
+        pageSize: 100
+      } as never)
+    );
+    fixture.componentRef.setInput('open', false);
+    fixture.detectChanges();
+    fixture.componentRef.setInput('open', true);
+    fixture.detectChanges();
+
+    component.onPositionSelected('position-with-pooled-target');
+    fixture.detectChanges();
+
+    const buttons: HTMLButtonElement[] = Array.from(fixture.nativeElement.querySelectorAll('button'));
+    const submitButton = buttons.find((b) => b.textContent?.includes('Save'));
+    expect(submitButton?.disabled).toBe(true);
   });
 });

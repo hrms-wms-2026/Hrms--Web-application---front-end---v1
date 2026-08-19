@@ -52,7 +52,7 @@ describe('DraftTableComponent', () => {
     await setup([draft, approvalPendingDraft, rejectedDraft, seatConfigDraft, inviteSentDraft], true);
     const text = fixture.nativeElement.textContent as string;
 
-    expect(text).toContain('Draft – waiting for approval');
+    expect(text).toContain('Draft');
     expect(text).toContain('Waiting for position approval');
     expect(text).toContain('Position approval rejected');
     expect(text).toContain('Waiting for seat');

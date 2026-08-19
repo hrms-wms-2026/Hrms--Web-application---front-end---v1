@@ -28,6 +28,7 @@ describe('AddEmployeeWizardStore', () => {
     draftReason: 'waiting_for_seat',
     lastSavedStep: 'checklist_template',
     startedById: 'user-1',
+    reportsToEmployeeId: null,
     version: '1'
   };
 
@@ -53,6 +54,7 @@ describe('AddEmployeeWizardStore', () => {
 
     store = TestBed.inject(AddEmployeeWizardStore);
     httpMock = TestBed.inject(HttpTestingController);
+    store.reset();
   });
 
   afterEach(() => httpMock.verify());
@@ -630,5 +632,39 @@ describe('AddEmployeeWizardStore', () => {
 
     expect(store.selectedTemplateId()).toBeNull();
     expect(store.selectedTemplateDetail()).toBeNull();
+  });
+
+  it('setPosition loads active holders and needsReportsToPick reflects holder count', async () => {
+    store.setCompany('le-1');
+    httpMock.expectOne((r) => r.url.includes('/departments')).flush({ items: [], page: 1, pageSize: 25, totalCount: 0, totalPages: 0 });
+    await Promise.resolve();
+
+    const setPositionPromise = store.setPosition('position-1', 'reports-to-position-1');
+    const req = httpMock.expectOne(
+      `${environment.apiUrl}/org/legal-entities/le-1/positions/reports-to-position-1/active-holders`
+    );
+    req.flush([
+      { employeeId: 'a', firstName: 'A', lastName: 'One', workEmail: 'a@acme.test', avatarFileId: null },
+      { employeeId: 'b', firstName: 'B', lastName: 'Two', workEmail: 'b@acme.test', avatarFileId: null }
+    ]);
+    await setPositionPromise;
+
+    expect(store.needsReportsToPick()).toBe(true);
+    expect(store.activeHolders().length).toBe(2);
+  });
+
+  it('needsReportsToPick is false when the target position has a single holder', async () => {
+    store.setCompany('le-1');
+    httpMock.expectOne((r) => r.url.includes('/departments')).flush({ items: [], page: 1, pageSize: 25, totalCount: 0, totalPages: 0 });
+    await Promise.resolve();
+
+    const setPositionPromise = store.setPosition('position-1', 'reports-to-position-1');
+    const req = httpMock.expectOne(
+      `${environment.apiUrl}/org/legal-entities/le-1/positions/reports-to-position-1/active-holders`
+    );
+    req.flush([{ employeeId: 'a', firstName: 'A', lastName: 'One', workEmail: 'a@acme.test', avatarFileId: null }]);
+    await setPositionPromise;
+
+    expect(store.needsReportsToPick()).toBe(false);
   });
 });

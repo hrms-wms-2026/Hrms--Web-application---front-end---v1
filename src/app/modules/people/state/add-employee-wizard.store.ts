@@ -1,14 +1,16 @@
 import { inject } from '@angular/core';
-import { patchState, signalStore, withMethods, withState } from '@ngrx/signals';
+import { patchState, signalStore, withComputed, withMethods, withState } from '@ngrx/signals';
 import { firstValueFrom } from 'rxjs';
 import { toSafeErrorMessage } from '../../../core/services/error-handler.service';
 import { SelectOption } from '../../../shared/ui/select/select.component';
 import { DepartmentApiService } from '../../organization/data-access/department-api.service';
 import { PositionApiService } from '../../organization/data-access/position-api.service';
+import { PositionListItemResponse } from '../../organization/models/position.model';
 import { ChecklistApiService } from '../data-access/checklist-api.service';
 import { PeopleApiService } from '../data-access/people-api.service';
 import { ChecklistTemplateDetailResponse, DraftChecklistTask, OnboardingChecklistTemplateMatchResponse } from '../models/checklist-template.model';
 import {
+  ActiveHolder,
   FinalizeOnboardingDraftResponse,
   OnboardingDraftResponse,
   SaveOnboardingDraftPayload,
@@ -41,8 +43,13 @@ export interface AddEmployeeWizardState {
   readonly positionId: string | null;
   readonly departments: readonly SelectOption[];
   readonly positions: readonly SelectOption[];
+  readonly positionItems: readonly PositionListItemResponse[];
   readonly loadingDepartments: boolean;
   readonly loadingPositions: boolean;
+
+  readonly activeHolders: readonly ActiveHolder[];
+  readonly selectedReportsToEmployeeId: string | null;
+  readonly loadingActiveHolders: boolean;
 
   readonly workModes: readonly WorkModeOption[];
   readonly loadingWorkModes: boolean;
@@ -69,6 +76,11 @@ export interface AddEmployeeWizardState {
   readonly draftTasksSourceTemplateId: string | null;
 
   readonly formValue: AddEmployeeFormValue;
+  readonly savedDepartmentName: string | null;
+  readonly savedPositionName: string | null;
+  readonly savedWorkModeLabel: string | null;
+  readonly savedReportingManagerName: string | null;
+  readonly savedReportingManagerPositionName: string | null;
 
   readonly draftId: string | null;
   readonly version: string | null;
@@ -102,8 +114,13 @@ const initialState: AddEmployeeWizardState = {
   positionId: null,
   departments: [],
   positions: [],
+  positionItems: [],
   loadingDepartments: false,
   loadingPositions: false,
+
+  activeHolders: [],
+  selectedReportsToEmployeeId: null,
+  loadingActiveHolders: false,
 
   workModes: [],
   loadingWorkModes: false,
@@ -125,6 +142,11 @@ const initialState: AddEmployeeWizardState = {
   draftTasksSourceTemplateId: null,
 
   formValue: initialFormValue,
+  savedDepartmentName: null,
+  savedPositionName: null,
+  savedWorkModeLabel: null,
+  savedReportingManagerName: null,
+  savedReportingManagerPositionName: null,
 
   draftId: null,
   version: null,
@@ -144,6 +166,9 @@ const initialState: AddEmployeeWizardState = {
 export const AddEmployeeWizardStore = signalStore(
   { providedIn: 'root' },
   withState<AddEmployeeWizardState>(initialState),
+  withComputed(({ activeHolders }) => ({
+    needsReportsToPick: () => activeHolders().length > 1
+  })),
   withMethods(
     (
       store,
@@ -169,6 +194,31 @@ export const AddEmployeeWizardStore = signalStore(
         });
       }
 
+      async function loadActiveHoldersForReportsToPosition(
+        reportsToPositionId: string,
+        forPositionId: string
+      ): Promise<void> {
+        const companyId = store.companyId();
+        if (!companyId) {
+          patchState(store, { activeHolders: [], loadingActiveHolders: false });
+          return;
+        }
+
+        patchState(store, { loadingActiveHolders: true });
+        try {
+          const holders = await firstValueFrom(peopleApi.getActiveHolders(companyId, reportsToPositionId));
+          if (store.positionId() !== forPositionId) {
+            return;
+          }
+          patchState(store, { activeHolders: holders, loadingActiveHolders: false });
+        } catch {
+          if (store.positionId() !== forPositionId) {
+            return;
+          }
+          patchState(store, { activeHolders: [], loadingActiveHolders: false });
+        }
+      }
+
       return {
       reset(): void {
         patchState(store, initialState);
@@ -181,10 +231,18 @@ export const AddEmployeeWizardStore = signalStore(
           positionId: null,
           departments: [],
           positions: [],
+          positionItems: [],
+          activeHolders: [],
+          selectedReportsToEmployeeId: null,
+          loadingActiveHolders: false,
           selectedTemplateId: null,
           selectedTemplateDetail: null,
           selectedTemplateDetailError: null,
           loadingSelectedTemplateDetail: false,
+          savedDepartmentName: null,
+          savedPositionName: null,
+          savedReportingManagerName: null,
+          savedReportingManagerPositionName: null,
           draftTasks: [],
           draftTasksSourceTemplateId: null
         });
@@ -229,10 +287,18 @@ export const AddEmployeeWizardStore = signalStore(
           departmentId,
           positionId: null,
           positions: [],
+          positionItems: [],
+          activeHolders: [],
+          selectedReportsToEmployeeId: null,
+          loadingActiveHolders: false,
           selectedTemplateId: null,
           selectedTemplateDetail: null,
           selectedTemplateDetailError: null,
           loadingSelectedTemplateDetail: false,
+          savedDepartmentName: null,
+          savedPositionName: null,
+          savedReportingManagerName: null,
+          savedReportingManagerPositionName: null,
           draftTasks: [],
           draftTasksSourceTemplateId: null
         });
@@ -253,26 +319,46 @@ export const AddEmployeeWizardStore = signalStore(
           }
           patchState(store, {
             positions: page.items.map((p) => ({ value: p.id, label: p.name })),
+            positionItems: page.items,
             loadingPositions: false
           });
         } catch {
           if (store.departmentId() !== departmentId) {
             return;
           }
-          patchState(store, { positions: [], loadingPositions: false });
+          patchState(store, { positions: [], positionItems: [], loadingPositions: false });
         }
       },
 
-      setPosition(positionId: string): void {
+      async setPosition(positionId: string, reportsToPositionId?: string | null): Promise<void> {
+        const resolvedReportsTo =
+          reportsToPositionId ??
+          store.positionItems().find((p) => p.id === positionId)?.reportsToPositionId ??
+          null;
+
         patchState(store, {
           positionId,
+          activeHolders: [],
+          selectedReportsToEmployeeId: null,
+          loadingActiveHolders: false,
           selectedTemplateId: null,
           selectedTemplateDetail: null,
           selectedTemplateDetailError: null,
           loadingSelectedTemplateDetail: false,
+          savedPositionName: null,
+          savedReportingManagerName: null,
+          savedReportingManagerPositionName: null,
           draftTasks: [],
           draftTasksSourceTemplateId: null
         });
+
+        if (resolvedReportsTo) {
+          await loadActiveHoldersForReportsToPosition(resolvedReportsTo, positionId);
+        }
+      },
+
+      setReportsToEmployeeId(employeeId: string | null): void {
+        patchState(store, { selectedReportsToEmployeeId: employeeId });
       },
 
       selectChecklistTemplate(templateId: string): void {
@@ -472,6 +558,11 @@ export const AddEmployeeWizardStore = signalStore(
           editedTasksJson = serializeDraftTasksToEditedTasksJson(store.draftTasks(), form.startDate);
         }
 
+        if (store.needsReportsToPick() && !store.selectedReportsToEmployeeId()) {
+          patchState(store, { saveError: 'Select who this employee reports to before continuing.' });
+          return null;
+        }
+
         const payload: SaveOnboardingDraftPayload = {
           draftId: store.draftId() ?? undefined,
           firstName: form.firstName,
@@ -486,7 +577,8 @@ export const AddEmployeeWizardStore = signalStore(
           workModeId: form.workModeId,
           selectedTemplateId,
           editedTasksJson,
-          lastSavedStep
+          lastSavedStep,
+          reportsToEmployeeId: store.selectedReportsToEmployeeId()
         };
 
         patchState(store, { saving: true, saveError: null });
@@ -497,6 +589,12 @@ export const AddEmployeeWizardStore = signalStore(
             draftId: response.id,
             version: response.version,
             step: response.lastSavedStep,
+            savedDepartmentName: response.departmentName ?? store.savedDepartmentName(),
+            savedPositionName: response.positionName ?? store.savedPositionName(),
+            savedWorkModeLabel: response.workModeLabel ?? store.savedWorkModeLabel(),
+            savedReportingManagerName: response.reportingManagerName ?? store.savedReportingManagerName(),
+            savedReportingManagerPositionName:
+              response.reportingManagerPositionName ?? store.savedReportingManagerPositionName(),
             lastSaveStatus: response.status,
             lastSaveReason: response.draftReason
           });
@@ -528,6 +626,12 @@ export const AddEmployeeWizardStore = signalStore(
             companyId: draft.legalEntityId,
             departmentId: draft.departmentId,
             positionId: draft.positionId,
+            selectedReportsToEmployeeId: draft.reportsToEmployeeId,
+            savedDepartmentName: draft.departmentName ?? null,
+            savedPositionName: draft.positionName ?? null,
+            savedWorkModeLabel: draft.workModeLabel ?? null,
+            savedReportingManagerName: draft.reportingManagerName ?? null,
+            savedReportingManagerPositionName: draft.reportingManagerPositionName ?? null,
             selectedTemplateId: draft.selectedTemplateId,
             draftTasks: parsedTasks ?? [],
             draftTasksSourceTemplateId: parsedTasks ? draft.selectedTemplateId : null,
@@ -547,6 +651,13 @@ export const AddEmployeeWizardStore = signalStore(
           await this.loadDepartmentsForCompany(draft.legalEntityId);
           if (draft.departmentId) {
             await this.loadPositionsForDepartment(draft.legalEntityId, draft.departmentId);
+          }
+          if (draft.positionId) {
+            const reportsTo =
+              store.positionItems().find((p) => p.id === draft.positionId)?.reportsToPositionId ?? null;
+            if (reportsTo) {
+              await loadActiveHoldersForReportsToPosition(reportsTo, draft.positionId);
+            }
           }
           await this.loadChecklistTemplateMatches();
         } catch (err) {

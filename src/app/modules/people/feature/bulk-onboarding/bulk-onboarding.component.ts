@@ -6,6 +6,7 @@ import { ButtonComponent } from '../../../../shared/ui/button/button.component';
 import { EmptyStateComponent } from '../../../../shared/ui/empty-state/empty-state.component';
 import { SelectComponent, SelectOption } from '../../../../shared/ui/select/select.component';
 import { LegalEntityStore } from '../../../organization/state/legal-entity.store';
+import { BulkOnboardingApiService } from '../../data-access/bulk-onboarding-api.service';
 import { PeopleApiService } from '../../data-access/people-api.service';
 import {
   BULK_ONBOARDING_SYSTEM_FIELD_LABELS,
@@ -49,6 +50,7 @@ export class BulkOnboardingComponent implements OnInit, OnDestroy {
   store = inject(BulkOnboardingStore);
   private readonly legalEntityStore = inject(LegalEntityStore);
   private readonly peopleApi = inject(PeopleApiService);
+  private readonly bulkOnboardingApi = inject(BulkOnboardingApiService);
 
   readonly fieldLabels = BULK_ONBOARDING_SYSTEM_FIELD_LABELS;
   readonly fieldIds = Object.keys(BULK_ONBOARDING_SYSTEM_FIELD_LABELS) as BulkOnboardingSystemField[];
@@ -110,9 +112,11 @@ export class BulkOnboardingComponent implements OnInit, OnDestroy {
     const file = input.files?.[0];
     if (!file) return;
 
-    const isCsv = file.name.toLowerCase().endsWith('.csv') || file.type === 'text/csv';
-    if (!isCsv) {
-      this.fileError.set('Upload a CSV file. Spreadsheet formats are not accepted in this step.');
+    const isSupported =
+      file.name.toLowerCase().endsWith('.csv') ||
+      file.name.toLowerCase().endsWith('.xlsx');
+    if (!isSupported) {
+      this.fileError.set('Upload a CSV or Excel (.xlsx) file.');
       input.value = '';
       this.selectedFileName.set(null);
       return;
@@ -131,6 +135,17 @@ export class BulkOnboardingComponent implements OnInit, OnDestroy {
       defaultWorkModeId,
       defaultEmploymentType,
       defaultChecklistTemplateId: null
+    });
+  }
+
+  onDownloadTemplate(format: 'csv' | 'xlsx'): void {
+    this.bulkOnboardingApi.downloadTemplate(format).subscribe((blob) => {
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = format === 'csv' ? 'bulk-onboarding-template.csv' : 'bulk-onboarding-template.xlsx';
+      link.click();
+      URL.revokeObjectURL(url);
     });
   }
 

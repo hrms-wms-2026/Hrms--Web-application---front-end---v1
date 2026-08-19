@@ -11,6 +11,33 @@
   <div class="bo-banner bo-banner--error" role="alert">{{ fileError() }}</div>
 }
 
+<nav class="bo-step-flow" aria-label="Bulk onboarding progress">
+  <div class="bo-step-flow__item" [class.bo-step-flow__item--active]="currentStep() === 'upload'" [class.bo-step-flow__item--completed]="currentStep() !== 'upload'">
+    <span class="bo-step-flow__number">1</span>
+    <span class="bo-step-flow__label">Upload Roster</span>
+  </div>
+  <div class="bo-step-flow__divider"></div>
+  <div class="bo-step-flow__item" [class.bo-step-flow__item--active]="currentStep() === 'map-columns'" [class.bo-step-flow__item--completed]="currentStep() === 'validate' || currentStep() === 'review' || currentStep() === 'finalize'">
+    <span class="bo-step-flow__number">2</span>
+    <span class="bo-step-flow__label">Map Columns</span>
+  </div>
+  <div class="bo-step-flow__divider"></div>
+  <div class="bo-step-flow__item" [class.bo-step-flow__item--active]="currentStep() === 'validate'" [class.bo-step-flow__item--completed]="currentStep() === 'review' || currentStep() === 'finalize'">
+    <span class="bo-step-flow__number">3</span>
+    <span class="bo-step-flow__label">Validate</span>
+  </div>
+  <div class="bo-step-flow__divider"></div>
+  <div class="bo-step-flow__item" [class.bo-step-flow__item--active]="currentStep() === 'review'" [class.bo-step-flow__item--completed]="currentStep() === 'finalize'">
+    <span class="bo-step-flow__number">4</span>
+    <span class="bo-step-flow__label">Review Drafts</span>
+  </div>
+  <div class="bo-step-flow__divider"></div>
+  <div class="bo-step-flow__item" [class.bo-step-flow__item--active]="currentStep() === 'finalize'">
+    <span class="bo-step-flow__number">5</span>
+    <span class="bo-step-flow__label">Finalize</span>
+  </div>
+</nav>
+
 @switch (currentStep()) {
   @case ('upload') {
     @if (!hasCompany()) {
@@ -20,40 +47,61 @@
       />
     } @else {
     <section class="bo-section">
-      <div class="bo-section__intro">
-        <h2 class="bo-section__title">Upload the roster</h2>
-        <p class="bo-section__copy">
-          CSV only. Optional work mode and employment type defaults apply when a row has no mapped column for that field.
-        </p>
+      <div class="bo-section__header">
+        <div class="bo-section__intro">
+          <h2 class="bo-section__title">Upload the roster</h2>
+          <p class="bo-section__copy">
+            Upload a CSV or Excel spreadsheet containing your employee details. You can download formatted starter templates below.
+          </p>
+        </div>
+        <div class="bo-template-links">
+          <button type="button" class="bo-template-btn" (click)="onDownloadTemplate('csv')">
+            <svg class="bo-btn-icon" viewBox="0 0 20 20" fill="currentColor">
+              <path fill-rule="evenodd" d="M3 17a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zm3.293-7.707a1 1 0 011.414 0L9 10.586V3a1 1 0 112 0v7.586l1.293-1.293a1 1 0 111.414 1.414l-3 3a1 1 0 01-1.414 0l-3-3a1 1 0 010-1.414z" clip-rule="evenodd" />
+            </svg>
+            <span>Download CSV template</span>
+          </button>
+          <button type="button" class="bo-template-btn" (click)="onDownloadTemplate('xlsx')">
+            <svg class="bo-btn-icon" viewBox="0 0 20 20" fill="currentColor">
+              <path fill-rule="evenodd" d="M3 17a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zm3.293-7.707a1 1 0 011.414 0L9 10.586V3a1 1 0 112 0v7.586l1.293-1.293a1 1 0 111.414 1.414l-3 3a1 1 0 01-1.414 0l-3-3a1 1 0 010-1.414z" clip-rule="evenodd" />
+            </svg>
+            <span>Download Excel template</span>
+          </button>
+        </div>
       </div>
 
-      <div class="bo-defaults">
-        <app-select
-          label="Default work mode"
-          placeholder="Optional"
-          [options]="workModeOptions()"
-          [value]="workModeSelectValue()"
-          (valueChange)="onWorkModeChange($event)"
-        />
-        <app-select
-          label="Default employment type"
-          placeholder="Optional"
-          [options]="employmentTypeOptions"
-          [value]="defaultEmploymentType() ?? ''"
-          (valueChange)="onEmploymentTypeChange($event)"
-        />
-      </div>
-
-      <label class="bo-dropzone" [class.bo-dropzone--busy]="store.loading()">
+      <label class="bo-dropzone" [class.bo-dropzone--busy]="store.loading()" [class.bo-dropzone--has-file]="!!selectedFileName()">
         <input
           type="file"
-          accept=".csv,text/csv"
+          accept=".csv,.xlsx,text/csv,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
           (change)="onCsvInput($event)"
           [disabled]="store.loading()"
         />
-        <span class="bo-dropzone__rule" aria-hidden="true"></span>
-        <span class="bo-dropzone__title">{{ selectedFileName() ?? 'Drop a CSV roster here' }}</span>
-        <span class="bo-dropzone__hint">Or click to choose a .csv file. Maximum size follows the API limit.</span>
+        <div class="bo-dropzone__icon-wrapper">
+          @if (selectedFileName()) {
+            <svg class="bo-dropzone__icon bo-dropzone__icon--success" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+            </svg>
+          } @else {
+            <svg class="bo-dropzone__icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
+            </svg>
+          }
+        </div>
+        <div class="bo-dropzone__content">
+          <span class="bo-dropzone__title">{{ selectedFileName() ?? 'Drop a roster file here, or browse' }}</span>
+          <span class="bo-dropzone__hint">
+            @if (selectedFileName()) {
+              File selected. Click to choose a different .csv or .xlsx file.
+            } @else {
+              Or click to choose a .csv or .xlsx file. Maximum size follows the API limit.
+            }
+          </span>
+          <div class="bo-dropzone__tags">
+            <span class="bo-file-tag">.CSV</span>
+            <span class="bo-file-tag">.XLSX</span>
+          </div>
+        </div>
       </label>
     </section>
     }
@@ -65,6 +113,29 @@
         <p class="bo-section__copy">
           Match each system field to a CSV header. Row 1 preview updates as you change a mapping so a wrong header is visible immediately.
         </p>
+      </div>
+
+      <div class="bo-defaults-panel">
+        <div class="bo-defaults-panel__header">
+          <h3 class="bo-defaults-panel__title">Optional Roster Defaults</h3>
+          <p class="bo-defaults-panel__hint">Default work mode and employment type apply when a row has no mapped column for that field.</p>
+        </div>
+        <div class="bo-defaults">
+          <app-select
+            label="Default work mode"
+            placeholder="Optional"
+            [options]="workModeOptions()"
+            [value]="workModeSelectValue()"
+            (valueChange)="onWorkModeChange($event)"
+          />
+          <app-select
+            label="Default employment type"
+            placeholder="Optional"
+            [options]="employmentTypeOptions"
+            [value]="defaultEmploymentType() ?? ''"
+            (valueChange)="onEmploymentTypeChange($event)"
+          />
+        </div>
       </div>
 
       <div class="bo-map-layout">
@@ -187,7 +258,7 @@
                     />
                   </td>
                   <td>Row {{ row.rowNumber }}</td>
-                  <td>{{ rowStatusLabels[row.status] }}</td>
+                  <td><span class="bo-status-badge" [class.bo-status-badge--valid]="row.status === 'valid' || row.status === 'draft_created'">{{ rowStatusLabels[row.status] }}</span></td>
                   <td>{{ row.errorMessage ?? '—' }}</td>
                 </tr>
               }
@@ -223,7 +294,7 @@
             @for (row of store.detail()?.rows; track row.rowNumber) {
               <tr>
                 <td>Row {{ row.rowNumber }}</td>
-                <td>{{ rowStatusLabels[row.status] }}</td>
+                <td><span class="bo-status-badge" [class.bo-status-badge--valid]="row.status === 'finalized'">{{ rowStatusLabels[row.status] }}</span></td>
                 <td>{{ row.errorMessage ?? '—' }}</td>
               </tr>
             }

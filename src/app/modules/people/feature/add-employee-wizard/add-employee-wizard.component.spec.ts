@@ -175,6 +175,7 @@ describe('AddEmployeeWizardComponent', () => {
       draftReason: 'waiting_for_seat',
       lastSavedStep: 'employee_details',
       startedById: 'user-1',
+      reportsToEmployeeId: null,
       version: '1'
     });
     await fixture.whenStable();
@@ -278,6 +279,7 @@ describe('AddEmployeeWizardComponent', () => {
       draftReason: 'saved_manually',
       lastSavedStep: 'review_and_submit',
       startedById: 'user-1',
+      reportsToEmployeeId: null,
       version: '1'
     });
 
@@ -460,6 +462,7 @@ describe('AddEmployeeWizardComponent', () => {
       draftReason: 'saved_manually',
       lastSavedStep: 'review_and_submit',
       startedById: 'user-1',
+      reportsToEmployeeId: null,
       version: '1'
     });
 
@@ -505,6 +508,57 @@ describe('AddEmployeeWizardComponent', () => {
     });
 
     await finPromise;
+  });
+
+  it('shows saved labels and reporting manager details on the review step for a resumed draft even when live options are unavailable', async () => {
+    await setupWithCompany({ draftId: 'draft-review-labels' });
+
+    httpMock.expectOne(`${environment.apiUrl}/onboarding/drafts/draft-review-labels`).flush({
+      id: 'draft-review-labels',
+      firstName: 'Hello',
+      lastName: 'wms',
+      workEmail: 'iamilaxsl705@gmail.com',
+      legalEntityId: 'le-1',
+      departmentId: 'dept-1',
+      departmentName: 'Engineering',
+      positionId: 'pos-1',
+      positionName: 'Frontend Engineer',
+      employmentType: 'full_time',
+      startDate: '2026-08-20',
+      employeeNumber: 'ET231',
+      workModeId: 1,
+      workModeLabel: 'On-Site',
+      selectedTemplateId: null,
+      editedTasksJson: null,
+      status: 'draft',
+      draftReason: 'saved_manually',
+      lastSavedStep: 'review_and_submit',
+      startedById: 'user-1',
+      reportsToEmployeeId: 'mgr-1',
+      reportingManagerName: 'Grace Hopper',
+      reportingManagerPositionName: 'Engineering Manager',
+      version: '1'
+    });
+
+    await fixture.whenStable();
+    httpMock.expectOne((r) => r.url.includes('/departments')).flush({ items: [], page: 1, pageSize: 25, totalCount: 0, totalPages: 0 });
+    await fixture.whenStable();
+    await Promise.resolve();
+    await Promise.resolve();
+    httpMock.expectOne((r) => r.url.includes('/positions')).flush({ items: [], page: 1, pageSize: 25, totalCount: 0, totalPages: 0 });
+    await fixture.whenStable();
+    await Promise.resolve();
+    await Promise.resolve();
+    httpMock.expectOne((r) => r.url.includes('/onboarding/checklist-templates/matches')).flush([]);
+    await fixture.whenStable();
+    fixture.detectChanges();
+
+    const text = fixture.nativeElement.textContent as string;
+    expect(text).toContain('Engineering');
+    expect(text).toContain('Frontend Engineer');
+    expect(text).toContain('On-Site');
+    expect(text).toContain('Grace Hopper');
+    expect(text).toContain('Engineering Manager');
   });
 
   it('resets stale finalized wizard state when Add Employee opens without a draftId', async () => {
@@ -573,6 +627,7 @@ describe('AddEmployeeWizardComponent', () => {
       draftReason: 'invitation_sent',
       lastSavedStep: 'review_and_submit',
       startedById: 'user-1',
+      reportsToEmployeeId: null,
       version: '1'
     });
     await fixture.whenStable();
@@ -655,6 +710,7 @@ describe('AddEmployeeWizardComponent', () => {
       draftReason: 'saved_manually',
       lastSavedStep: 'review_and_submit',
       startedById: 'user-1',
+      reportsToEmployeeId: null,
       version: '1'
     });
 
@@ -945,5 +1001,35 @@ describe('AddEmployeeWizardComponent', () => {
     await fixture.whenStable();
 
     httpMock.expectNone(`${environment.apiUrl}/people/checklist-templates/tmpl-1`);
+  });
+
+  it('blocks save when a reports-to pick is needed but not made', async () => {
+    await setupWithCompany();
+    fixture.componentInstance.form.patchValue({
+      firstName: 'Ada',
+      lastName: 'Lovelace',
+      workEmail: 'ada@test.dev',
+      departmentId: 'dept-1',
+      positionId: 'pos-1',
+      employmentType: 'full_time',
+      startDate: '2026-08-10',
+      workModeId: '1'
+    });
+
+    const setPositionPromise = fixture.componentInstance.store.setPosition('pos-1', 'reports-to-pos');
+    httpMock.expectOne(
+      `${environment.apiUrl}/org/legal-entities/le-1/positions/reports-to-pos/active-holders`
+    ).flush([
+      { employeeId: 'a', firstName: 'A', lastName: 'One', workEmail: 'a@acme.test', avatarFileId: null },
+      { employeeId: 'b', firstName: 'B', lastName: 'Two', workEmail: 'b@acme.test', avatarFileId: null }
+    ]);
+    await setPositionPromise;
+    fixture.detectChanges();
+
+    await fixture.componentInstance.onSaveDraft();
+
+    httpMock.expectNone(`${environment.apiUrl}/onboarding/drafts`);
+    fixture.detectChanges();
+    expect(fixture.nativeElement.textContent).toContain('Select who this employee reports to');
   });
 });
