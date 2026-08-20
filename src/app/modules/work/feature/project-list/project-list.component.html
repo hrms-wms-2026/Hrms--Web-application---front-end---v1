@@ -41,12 +41,21 @@
             (viewed)="onView(selected)"
             (achieveRequested)="onAchieve(selected)"
             (settingsRequested)="onProjectSettingsRequested(selected)"
+            (membersRequested)="onMembersRequested()"
           />
         </div>
       }
     </div>
   }
 </div>
+
+<app-project-members-popup
+  [open]="membersModalOpen()"
+  [members]="selectedProject()?.members ?? []"
+  [canManage]="selectedProject()?.isLead ?? false"
+  (addRequested)="onAddProjectMember($event)"
+  (closed)="membersModalOpen.set(false)"
+/>
 
 <app-project-form-modal
   [open]="createModalOpen()"

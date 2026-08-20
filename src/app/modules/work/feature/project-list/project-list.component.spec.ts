@@ -6,6 +6,8 @@ import { ProjectListStore } from '../../state/project-list.store';
 import { ProjectDetailStore } from '../../state/project-detail.store';
 import { ProjectCategoryStore } from '../../state/project-category.store';
 import { EmployeeDirectoryStore } from '../../state/employee-directory.store';
+import { PeopleApiService } from '../../../people/data-access/people-api.service';
+import { of } from 'rxjs';
 import { Project } from '../../models/project.model';
 
 describe('ProjectListComponent', () => {
@@ -30,6 +32,7 @@ describe('ProjectListComponent', () => {
       setCategoryFilter: vi.fn(),
       setAchievedFilter: vi.fn(),
       createProject: vi.fn().mockResolvedValue(true),
+      addProjectMember: vi.fn().mockResolvedValue(true),
       editProject: vi.fn().mockResolvedValue(true),
       deleteProject: vi.fn().mockResolvedValue(true),
       achieveProject: vi.fn().mockResolvedValue(true),
@@ -51,6 +54,7 @@ describe('ProjectListComponent', () => {
         { provide: ProjectDetailStore, useValue: detailStoreStub },
         { provide: ProjectCategoryStore, useValue: { categories: () => [], loadCategories: vi.fn().mockResolvedValue(undefined) } },
         { provide: EmployeeDirectoryStore, useValue: { get: () => undefined, ensureLoaded: vi.fn().mockResolvedValue(undefined) } },
+        { provide: PeopleApiService, useValue: { listEmployees: () => of({ items: [{ id: 'e2', fullName: 'Grace Hopper', email: 'g@x.com', departmentName: 'Eng' }], totalCount: 1, page: 1, pageSize: 20 }) } },
         provideRouter([])
       ]
     }).compileComponents();
@@ -113,6 +117,24 @@ describe('ProjectListComponent', () => {
 
     expect(fixture.componentInstance.selectedProject()?.id).toBe('p2');
     expect(fixture.nativeElement.textContent).toContain('Mobile App');
+  });
+
+  it('opens the members popup for a lead and invites the picked employee', async () => {
+    fixture.detectChanges();
+    expect(fixture.nativeElement.querySelector('[data-testid="member-button"]')).not.toBeNull();
+
+    (fixture.nativeElement.querySelector('[data-testid="member-button"]') as HTMLButtonElement).click();
+    fixture.detectChanges();
+    expect(fixture.componentInstance.membersModalOpen()).toBe(true);
+
+    (fixture.nativeElement.querySelector('[data-testid="add-member-button"] button') as HTMLButtonElement).click();
+    fixture.detectChanges();
+    await fixture.whenStable();
+    fixture.detectChanges();
+    (fixture.nativeElement.querySelector('[data-testid="employee-picker-row"]') as HTMLButtonElement).click();
+    await fixture.whenStable();
+
+    expect(storeStub.addProjectMember).toHaveBeenCalledWith('p1', 'e2');
   });
 
   it('opens the create modal, calls createProject on submit, and closes on success', async () => {

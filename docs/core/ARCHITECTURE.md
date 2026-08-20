@@ -192,6 +192,8 @@ src/
 │   │   │   │   └── project-list-row.component.ts
 │   │   │   ├── project-explanation-card/
 │   │   │   │   └── project-explanation-card.component.ts
+│   │   │   ├── project-members-popup/
+│   │   │   │   └── project-members-popup.component.ts
 │   │   │   ├── project-filter-bar/
 │   │   │   │   └── project-filter-bar.component.ts
 │   │   │   ├── project-form-modal/            # Create only
