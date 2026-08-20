@@ -77,7 +77,7 @@ describe('ProjectListStore', () => {
     const result = await store.createProject({
       categoryId: 'cat1', name: 'Website Revamp', identifier: 'WEB', description: '',
       startDate: '2026-08-01', targetDate: '2026-12-01', releaseDate: '2026-11-15', color: '',
-      actualHours: 0, defaultObjectiveAllocatedHours: 40, logoFile: null
+      actualHours: 0, defaultObjectiveAllocatedHours: 40, logoFile: null, bannerFile: null, memberEmployeeIds: []
     });
 
     expect(result).toBe(true);
@@ -92,7 +92,7 @@ describe('ProjectListStore', () => {
     const result = await store.createProject({
       categoryId: 'cat1', name: 'Website Revamp', identifier: 'WEB', description: '',
       startDate: '2026-08-01', targetDate: '2026-12-01', releaseDate: '2026-11-15', color: '',
-      actualHours: 0, defaultObjectiveAllocatedHours: 40, logoFile: null
+      actualHours: 0, defaultObjectiveAllocatedHours: 40, logoFile: null, bannerFile: null, memberEmployeeIds: []
     });
 
     expect(result).toBe(false);

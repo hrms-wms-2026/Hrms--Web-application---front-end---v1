@@ -34,12 +34,17 @@ export class ProjectApiService {
     formData.set('description', payload.description);
     formData.set('startDate', payload.startDate);
     formData.set('targetDate', payload.targetDate);
-    formData.set('releaseDate', payload.releaseDate);
+    if (payload.releaseDate) {
+      formData.set('releaseDate', payload.releaseDate);
+    }
     formData.set('color', payload.color);
     formData.set('actualHours', String(payload.actualHours));
     formData.set('defaultObjectiveAllocatedHours', String(payload.defaultObjectiveAllocatedHours));
     if (payload.logoFile) {
       formData.set('logo', payload.logoFile);
+    }
+    if (payload.bannerFile) {
+      formData.set('banner', payload.bannerFile);
     }
     return this.http.post<CreateProjectResponseDto>(this.base, formData);
   }

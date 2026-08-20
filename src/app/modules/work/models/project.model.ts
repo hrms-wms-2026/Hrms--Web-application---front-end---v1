@@ -44,11 +44,13 @@ export interface CreateProjectPayload {
   description: string;
   startDate: string;
   targetDate: string;
-  releaseDate: string;
+  releaseDate: string | null;
   color: string;
   actualHours: number;
   defaultObjectiveAllocatedHours: number;
   logoFile: File | null;
+  bannerFile: File | null;
+  memberEmployeeIds: readonly string[];
 }
 
 export interface EditProjectPayload {

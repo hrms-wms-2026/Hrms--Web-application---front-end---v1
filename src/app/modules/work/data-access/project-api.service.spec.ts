@@ -49,7 +49,7 @@ describe('ProjectApiService', () => {
     service.create({
       categoryId: 'cat1', name: 'Website Revamp', identifier: 'WEB', description: 'Rebuild',
       startDate: '2026-08-01', targetDate: '2026-12-01', releaseDate: '2026-11-15', color: '#2563EB',
-      actualHours: 0, defaultObjectiveAllocatedHours: 40, logoFile: null
+      actualHours: 0, defaultObjectiveAllocatedHours: 40, logoFile: null, bannerFile: null, memberEmployeeIds: []
     }).subscribe((res) => expect(res).toEqual(response));
 
     const req = httpMock.expectOne(`${environment.apiUrl}/work/projects`);
@@ -66,11 +66,28 @@ describe('ProjectApiService', () => {
     service.create({
       categoryId: 'cat1', name: 'Website Revamp', identifier: 'WEB', description: 'Rebuild',
       startDate: '2026-08-01', targetDate: '2026-12-01', releaseDate: '2026-11-15', color: '#2563EB',
-      actualHours: 0, defaultObjectiveAllocatedHours: 40, logoFile
+      actualHours: 0, defaultObjectiveAllocatedHours: 40, logoFile, bannerFile: null, memberEmployeeIds: []
     }).subscribe((res) => expect(res).toEqual(response));
 
     const req = httpMock.expectOne(`${environment.apiUrl}/work/projects`);
     expect((req.request.body as FormData).get('logo')).toBe(logoFile);
+    req.flush(response);
+  });
+
+  it('omits releaseDate when it is null and includes banner independently of logo', () => {
+    const response = { project: { id: 'p1', name: 'Website Revamp' } };
+    const bannerFile = new File(['fake'], 'banner.png', { type: 'image/png' });
+    service.create({
+      categoryId: 'cat1', name: 'Website Revamp', identifier: 'WEB', description: 'Rebuild',
+      startDate: '2026-08-01', targetDate: '2026-12-01', releaseDate: null, color: '#2563EB',
+      actualHours: 0, defaultObjectiveAllocatedHours: 40, logoFile: null, bannerFile, memberEmployeeIds: []
+    }).subscribe((res) => expect(res).toEqual(response));
+
+    const req = httpMock.expectOne(`${environment.apiUrl}/work/projects`);
+    const body = req.request.body as FormData;
+    expect(body.get('releaseDate')).toBeNull();
+    expect(body.get('banner')).toBe(bannerFile);
+    expect(body.get('logo')).toBeNull();
     req.flush(response);
   });
 
