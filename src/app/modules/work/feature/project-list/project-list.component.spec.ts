@@ -1,9 +1,11 @@
 import { ComponentFixture, TestBed } from '@angular/core/testing';
-import { Router } from '@angular/router';
+import { provideRouter, Router } from '@angular/router';
+import { vi } from 'vitest';
 import { ProjectListComponent } from './project-list.component';
 import { ProjectListStore } from '../../state/project-list.store';
 import { ProjectDetailStore } from '../../state/project-detail.store';
 import { ProjectCategoryStore } from '../../state/project-category.store';
+import { EmployeeDirectoryStore } from '../../state/employee-directory.store';
 import { Project } from '../../models/project.model';
 
 describe('ProjectListComponent', () => {
@@ -48,12 +50,14 @@ describe('ProjectListComponent', () => {
         { provide: ProjectListStore, useValue: storeStub },
         { provide: ProjectDetailStore, useValue: detailStoreStub },
         { provide: ProjectCategoryStore, useValue: { categories: () => [], loadCategories: vi.fn().mockResolvedValue(undefined) } },
-        { provide: Router, useValue: { navigate: vi.fn() } }
+        { provide: EmployeeDirectoryStore, useValue: { get: () => undefined, ensureLoaded: vi.fn().mockResolvedValue(undefined) } },
+        provideRouter([])
       ]
     }).compileComponents();
 
     fixture = TestBed.createComponent(ProjectListComponent);
     router = TestBed.inject(Router);
+    vi.spyOn(router, 'navigate').mockResolvedValue(true);
   });
 
   it('loads projects on init', () => {
@@ -61,9 +65,18 @@ describe('ProjectListComponent', () => {
     expect(storeStub.loadProjects).toHaveBeenCalled();
   });
 
-  it('renders a card per project', () => {
+  it('renders a list row per project and auto-selects the first into the explanation card', () => {
     fixture.detectChanges();
+    expect(fixture.nativeElement.querySelector('app-project-card')).toBeNull();
+    expect(fixture.nativeElement.querySelectorAll('[data-testid="project-list-row"]').length).toBe(1);
+    expect(fixture.nativeElement.querySelector('[data-testid="project-explanation-card"]')).not.toBeNull();
     expect(fixture.nativeElement.textContent).toContain('Website Revamp');
+  });
+
+  it('renders the Work / Projects breadcrumb header', () => {
+    fixture.detectChanges();
+    expect(fixture.nativeElement.querySelector('app-breadcrumb-header')).not.toBeNull();
+    expect(fixture.nativeElement.textContent).toContain('Projects');
   });
 
   it('shows the loading state', () => {
@@ -84,10 +97,22 @@ describe('ProjectListComponent', () => {
     expect(fixture.nativeElement.textContent).toContain('No projects yet');
   });
 
-  it('navigates to /work/:id when a card emits viewed', () => {
+  it('navigates to /work/:id when View project is requested', () => {
     fixture.detectChanges();
     fixture.componentInstance.onView(project);
     expect(router.navigate).toHaveBeenCalledWith(['/work', 'p1']);
+  });
+
+  it('selects a clicked row in the explanation card', () => {
+    const other: Project = { ...project, id: 'p2', name: 'Mobile App' };
+    storeStub.filteredProjects = () => [project, other];
+    fixture.detectChanges();
+
+    fixture.componentInstance.onSelectProject(other);
+    fixture.detectChanges();
+
+    expect(fixture.componentInstance.selectedProject()?.id).toBe('p2');
+    expect(fixture.nativeElement.textContent).toContain('Mobile App');
   });
 
   it('opens the create modal, calls createProject on submit, and closes on success', async () => {
@@ -188,27 +213,6 @@ describe('ProjectListComponent', () => {
 
     expect(storeStub.deleteProject).toHaveBeenCalledWith('p1');
     expect(fixture.componentInstance.deleteConfirmOpen()).toBe(false);
-  });
-
-  it('sets expandedProjectId on toggle, then clears it when the same project is toggled again', async () => {
-    fixture.detectChanges();
-    expect(fixture.componentInstance.expandedProjectId()).toBeNull();
-
-    await fixture.componentInstance.onToggleExpand('p1');
-    expect(fixture.componentInstance.expandedProjectId()).toBe('p1');
-
-    await fixture.componentInstance.onToggleExpand('p1');
-    expect(fixture.componentInstance.expandedProjectId()).toBeNull();
-  });
-
-  it('switches expandedProjectId when a different project is toggled', async () => {
-    fixture.detectChanges();
-
-    await fixture.componentInstance.onToggleExpand('p1');
-    expect(fixture.componentInstance.expandedProjectId()).toBe('p1');
-
-    await fixture.componentInstance.onToggleExpand('p2');
-    expect(fixture.componentInstance.expandedProjectId()).toBe('p2');
   });
 
   it('forwards category and achieved filter changes to the store', () => {
