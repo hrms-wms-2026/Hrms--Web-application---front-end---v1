@@ -68,11 +68,34 @@ export const ProjectListStore = signalStore(
     async createProject(payload: CreateProjectPayload): Promise<boolean> {
       patchState(store, { error: null });
       try {
-        await firstValueFrom(api.create(payload));
+        const created = await firstValueFrom(api.create(payload));
+        let inviteError: string | null = null;
+        for (const employeeId of payload.memberEmployeeIds) {
+          try {
+            await firstValueFrom(api.addMember(created.project.id, employeeId));
+          } catch (err) {
+            inviteError = extractError(err, 'Failed to invite a project member.');
+          }
+        }
         await this.loadProjects();
+        if (inviteError) {
+          patchState(store, { error: inviteError });
+        }
         return true;
       } catch (err) {
         patchState(store, { error: extractError(err, 'Failed to create project.') });
+        return false;
+      }
+    },
+
+    async addProjectMember(projectId: string, employeeId: string): Promise<boolean> {
+      patchState(store, { error: null });
+      try {
+        await firstValueFrom(api.addMember(projectId, employeeId));
+        await this.loadProjects();
+        return true;
+      } catch (err) {
+        patchState(store, { error: extractError(err, 'Failed to invite a project member.') });
         return false;
       }
     },

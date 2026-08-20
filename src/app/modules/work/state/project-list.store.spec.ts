@@ -1,8 +1,15 @@
+import { HttpResponse } from '@angular/common/http';
 import { TestBed } from '@angular/core/testing';
 import { of, throwError } from 'rxjs';
+import { vi } from 'vitest';
 import { ProjectListStore } from './project-list.store';
 import { ProjectApiService } from '../data-access/project-api.service';
 import { ProjectListItemDto, PagedResultDto } from '../models/dto/project.dto';
+import { AddObjectiveMemberOutcomeDto } from '../models/dto/milestone.dto';
+
+function memberAccepted(body: AddObjectiveMemberOutcomeDto = { alreadyMember: false, invitation: null }) {
+  return of(new HttpResponse({ status: 202, body }));
+}
 
 describe('ProjectListStore', () => {
   const dto: ProjectListItemDto = {
@@ -81,6 +88,58 @@ describe('ProjectListStore', () => {
     });
 
     expect(result).toBe(true);
+    expect(store.projects()).toHaveLength(1);
+  });
+
+  it('createProject invites staged members after the project is created', async () => {
+    const addMember = vi.fn().mockReturnValue(memberAccepted());
+    const store = setup({
+      create: () => of({ project: { id: 'p1', name: 'Website Revamp' } }),
+      addMember,
+      listMine: () => of(page)
+    } as Partial<ProjectApiService>);
+
+    const result = await store.createProject({
+      categoryId: 'cat1', name: 'Website Revamp', identifier: 'WEB', description: '',
+      startDate: '2026-08-01', targetDate: '2026-12-01', releaseDate: null, color: '',
+      actualHours: 0, defaultObjectiveAllocatedHours: 40, logoFile: null, bannerFile: null,
+      memberEmployeeIds: ['e1', 'e2']
+    });
+
+    expect(result).toBe(true);
+    expect(addMember).toHaveBeenCalledTimes(2);
+    expect(addMember).toHaveBeenCalledWith('p1', 'e1');
+    expect(addMember).toHaveBeenCalledWith('p1', 'e2');
+  });
+
+  it('createProject still returns true when a later staged invite fails', async () => {
+    const addMember = vi.fn()
+      .mockReturnValueOnce(memberAccepted())
+      .mockReturnValueOnce(throwError(() => ({ error: { detail: 'already invited' } })));
+    const store = setup({
+      create: () => of({ project: { id: 'p1', name: 'Website Revamp' } }),
+      addMember,
+      listMine: () => of(page)
+    } as Partial<ProjectApiService>);
+
+    const result = await store.createProject({
+      categoryId: 'cat1', name: 'Website Revamp', identifier: 'WEB', description: '',
+      startDate: '2026-08-01', targetDate: '2026-12-01', releaseDate: null, color: '',
+      actualHours: 0, defaultObjectiveAllocatedHours: 40, logoFile: null, bannerFile: null,
+      memberEmployeeIds: ['e1', 'e2']
+    });
+
+    expect(result).toBe(true);
+    expect(store.error()).toBe('already invited');
+    expect(store.projects()).toHaveLength(1);
+  });
+
+  it('addProjectMember reloads the list on success', async () => {
+    const store = setup({
+      addMember: () => memberAccepted(),
+      listMine: () => of(page)
+    } as Partial<ProjectApiService>);
+    expect(await store.addProjectMember('p1', 'e1')).toBe(true);
     expect(store.projects()).toHaveLength(1);
   });
 
