@@ -37,8 +37,8 @@ describe('validateProjectForm', () => {
     expect(errors['allocatedHours']).toBeTruthy();
   });
 
-  it('requires releaseDate only in create mode', () => {
-    expect(validateProjectForm({ ...validCreateFields, releaseDate: '' }, 'create')['releaseDate']).toBeTruthy();
+  it('allows a blank releaseDate in create mode', () => {
+    expect(validateProjectForm({ ...validCreateFields, releaseDate: '' }, 'create')['releaseDate']).toBeUndefined();
     expect(validateProjectForm({ ...validCreateFields, releaseDate: '' }, 'edit')['releaseDate']).toBeUndefined();
   });
 });
