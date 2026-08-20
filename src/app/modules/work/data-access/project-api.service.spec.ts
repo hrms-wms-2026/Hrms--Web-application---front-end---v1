@@ -205,4 +205,16 @@ describe('ProjectApiService', () => {
 
     expect(result?.id).toBe('o2');
   });
+
+  it('adds a project member via POST /work/projects/{id}/members', () => {
+    service.addMember('p1', 'e1').subscribe((res) => {
+      expect(res.status).toBe(202);
+      expect(res.body?.alreadyMember).toBe(false);
+    });
+
+    const req = httpMock.expectOne(`${environment.apiUrl}/work/projects/p1/members`);
+    expect(req.request.method).toBe('POST');
+    expect(req.request.body).toEqual({ employeeId: 'e1' });
+    req.flush({ alreadyMember: false, invitation: { id: 'i1' } }, { status: 202, statusText: 'Accepted' });
+  });
 });

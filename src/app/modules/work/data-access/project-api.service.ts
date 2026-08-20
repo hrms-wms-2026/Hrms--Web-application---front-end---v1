@@ -6,7 +6,7 @@ import {
   CreateProjectRequestDto, CreateProjectResponseDto, EditProjectRequestDto,
   PagedResultDto, ProjectDetailDto, ProjectListItemDto
 } from '../models/dto/project.dto';
-import { MyProjectMilestoneDto, ObjectiveDetailDto, ObjectiveSubtreeResponseDto, EditObjectiveRequestDto, CreateObjectiveRequestDto } from '../models/dto/milestone.dto';
+import { MyProjectMilestoneDto, ObjectiveDetailDto, ObjectiveSubtreeResponseDto, EditObjectiveRequestDto, CreateObjectiveRequestDto, AddObjectiveMemberOutcomeDto } from '../models/dto/milestone.dto';
 
 @Injectable({ providedIn: 'root' })
 export class ProjectApiService {
@@ -63,6 +63,11 @@ export class ProjectApiService {
 
   unachieve(id: string): Observable<void> {
     return this.http.post<void>(`${this.base}/${id}/unachieve`, {});
+  }
+
+  addMember(projectId: string, employeeId: string): Observable<HttpResponse<AddObjectiveMemberOutcomeDto>> {
+    return this.http.post<AddObjectiveMemberOutcomeDto>(
+      `${this.base}/${projectId}/members`, { employeeId }, { observe: 'response' });
   }
 
   getMyMilestones(projectId: string): Observable<MyProjectMilestoneDto[]> {
