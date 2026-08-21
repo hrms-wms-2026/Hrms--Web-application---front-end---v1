@@ -241,7 +241,7 @@ export const ProjectDetailStore = signalStore(
           ...sprints.map((sprint) => toSprintTreeNode(sprint, { ...leaf, statusNames })),
           ...tasks
             .filter((task) => task.sprintId === null)
-            .map((task) => toTaskTreeNode(task, leaf, task.statusId))
+            .map((task) => toTaskTreeNode(task, leaf, statusNames[task.statusId] ?? task.statusId))
         ];
         patchState(store, {
           selectedSubtree: updateTreeNode(current, objectiveId, (node) => ({
@@ -278,7 +278,9 @@ export const ProjectDetailStore = signalStore(
         if (!current) return;
         const sprint = findTreeNode(current, sprintId);
         if (!sprint) return;
-        const children = tasks.map((task) => toTaskTreeNode(task, sprint, task.statusId));
+        const children = tasks.map((task) =>
+          toTaskTreeNode(task, sprint, (sprint.statusNames ?? {})[task.statusId] ?? task.statusId)
+        );
         patchState(store, {
           selectedSubtree: updateTreeNode(current, sprintId, (node) => ({
             ...node,
