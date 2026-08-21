@@ -98,12 +98,13 @@
   />
 }
 
-@if (createTaskSprint(); as sprintNode) {
+@if (createTaskOpen()) {
   <app-task-create-modal
     [open]="createTaskOpen()"
-    [objectiveId]="sprintNode.parentObjectiveId ?? ''"
-    [isObjectiveOwner]="sprintNode.isOwner"
+    [objectiveId]="createTaskObjectiveId()"
+    [isObjectiveOwner]="createTaskIsOwner()"
     [activeSprints]="createTaskSprints()"
+    [sprintRequired]="createTaskSprint() !== null"
     (created)="onTaskCreated()"
     (closed)="onTaskCreateClosed()"
   />

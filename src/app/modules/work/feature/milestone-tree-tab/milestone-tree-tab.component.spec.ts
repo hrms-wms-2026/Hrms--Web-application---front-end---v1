@@ -445,4 +445,18 @@ describe('MilestoneTreeTabComponent', () => {
     expect(storeStub.deleteTask).not.toHaveBeenCalled();
     expect(fixture.componentInstance.deleteConfirmOpen()).toBe(false);
   });
+
+  it('opens sprint-optional task create from a module row', async () => {
+    setup('o1');
+    fixture.detectChanges();
+    fixture.componentInstance.onCreateTaskRequested(tree);
+    fixture.detectChanges();
+
+    expect(fixture.componentInstance.createTaskObjectiveId()).toBe('o1');
+    expect(fixture.componentInstance.createTaskSprints()).toEqual([]);
+    expect(fixture.nativeElement.querySelector('[data-testid="sprint-fixed"]')).toBeNull();
+
+    await fixture.componentInstance.onTaskCreated();
+    expect(storeStub.loadSprintsAndTasksForLeaf).toHaveBeenCalledWith('o1', { force: true });
+  });
 });

@@ -71,6 +71,7 @@ export class MilestoneTreeTabComponent {
   createSprintNode = signal<MilestoneTreeNode | null>(null);
   createTaskOpen = signal(false);
   createTaskSprint = signal<MilestoneTreeNode | null>(null);
+  createTaskModule = signal<MilestoneTreeNode | null>(null);
   deleteConfirmOpen = signal(false);
   pendingDeleteNode = signal<MilestoneTreeNode | null>(null);
   editSprintOpen = signal(false);
@@ -157,19 +158,39 @@ export class MilestoneTreeTabComponent {
   }
 
   onCreateTaskRequested(node: MilestoneTreeNode): void {
-    this.createTaskSprint.set(node);
+    if ((node.kind ?? 'objective') === 'objective') {
+      this.createTaskModule.set(node);
+      this.createTaskSprint.set(null);
+    } else {
+      this.createTaskSprint.set(node);
+      this.createTaskModule.set(null);
+    }
     this.createTaskOpen.set(true);
   }
 
   async onTaskCreated(): Promise<void> {
     const sprint = this.createTaskSprint();
+    const module = this.createTaskModule();
     this.createTaskOpen.set(false);
-    if (sprint) await this.store.loadTasksForSprint(sprint.id, { force: true });
+    if (sprint) {
+      await this.store.loadTasksForSprint(sprint.id, { force: true });
+      return;
+    }
+    if (module) await this.store.loadSprintsAndTasksForLeaf(module.id, { force: true });
   }
 
   onTaskCreateClosed(): void {
     this.createTaskOpen.set(false);
     this.createTaskSprint.set(null);
+    this.createTaskModule.set(null);
+  }
+
+  createTaskObjectiveId(): string {
+    return this.createTaskSprint()?.parentObjectiveId ?? this.createTaskModule()?.id ?? '';
+  }
+
+  createTaskIsOwner(): boolean {
+    return this.createTaskSprint()?.isOwner ?? this.createTaskModule()?.isOwner ?? false;
   }
 
   createTaskSprints(): Sprint[] {

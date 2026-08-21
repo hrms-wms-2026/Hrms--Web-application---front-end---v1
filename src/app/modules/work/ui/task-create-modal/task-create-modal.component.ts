@@ -17,22 +17,24 @@ import { firstValueFrom } from 'rxjs';
     <app-modal [open]="open()" title="Create task" (closed)="closed.emit()">
       <div class="flex flex-col gap-3">
         <app-input label="Title" [value]="title()" [error]="errors()['title'] || ''" (valueChange)="title.set($event)" />
-        <label class="flex flex-col gap-1 text-sm text-[var(--color-text-primary)]">
-          Sprint
-          @if (singleSprint(); as sprint) {
-            <span class="task-create-modal__sprint-fixed" data-testid="sprint-fixed">{{ sprint.name }}</span>
-          } @else {
-            <select class="task-create-modal__select task-create-modal__sprint-select" [value]="sprintId()" (change)="sprintId.set($any($event.target).value)">
-              <option value="" disabled selected>Select a sprint</option>
-              @for (sprint of activeSprints(); track sprint.id) {
-                <option [value]="sprint.id">{{ sprint.name }}</option>
+          @if (sprintRequired()) {
+            <label class="flex flex-col gap-1 text-sm text-[var(--color-text-primary)]">
+              Sprint
+              @if (singleSprint(); as sprint) {
+                <span class="task-create-modal__sprint-fixed" data-testid="sprint-fixed">{{ sprint.name }}</span>
+              } @else {
+                <select class="task-create-modal__select task-create-modal__sprint-select" [value]="sprintId()" (change)="sprintId.set($any($event.target).value)">
+                  <option value="" disabled selected>Select a sprint</option>
+                  @for (sprint of activeSprints(); track sprint.id) {
+                    <option [value]="sprint.id">{{ sprint.name }}</option>
+                  }
+                </select>
               }
-            </select>
+              @if (errors()['sprintId']) {
+                <span class="text-xs text-[var(--color-danger-text)]">{{ errors()['sprintId'] }}</span>
+              }
+            </label>
           }
-          @if (errors()['sprintId']) {
-            <span class="text-xs text-[var(--color-danger-text)]">{{ errors()['sprintId'] }}</span>
-          }
-        </label>
         <label class="flex flex-col gap-1 text-sm text-[var(--color-text-primary)]">
           Assign to (optional)
           <select class="task-create-modal__select" [value]="assigneeEmployeeId()" (change)="assigneeEmployeeId.set($any($event.target).value)">
@@ -116,6 +118,7 @@ export class TaskCreateModalComponent {
   objectiveId = input.required<string>();
   isObjectiveOwner = input.required<boolean>();
   activeSprints = input<readonly Sprint[]>([]);
+  sprintRequired = input(true);
   assignableMembers = input<readonly { employeeId: string; name: string }[]>([]);
 
   created = output<WorkTask>();
@@ -182,7 +185,7 @@ export class TaskCreateModalComponent {
     if (!override) {
       const fieldErrors: Record<string, string> = {};
       if (!request.title.trim()) fieldErrors['title'] = 'Title is required.';
-      if (!request.sprintId) fieldErrors['sprintId'] = 'Sprint is required.';
+      if (this.sprintRequired() && !request.sprintId) fieldErrors['sprintId'] = 'Sprint is required.';
       this.errors.set(fieldErrors);
       if (Object.keys(fieldErrors).length > 0) return;
     }
@@ -229,7 +232,7 @@ export class TaskCreateModalComponent {
       dueDate: this.dueDate() || undefined,
       estimatedHours: this.estimatedHours() ?? undefined,
       storyPoints: this.storyPoints() ?? undefined,
-      sprintId: this.sprintId()
+      sprintId: this.sprintId() || null
     };
   }
 }

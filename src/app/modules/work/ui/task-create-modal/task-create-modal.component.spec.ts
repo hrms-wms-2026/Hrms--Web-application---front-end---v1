@@ -141,4 +141,17 @@ describe('TaskCreateModalComponent', () => {
     expect(options).toEqual(['Select a sprint', 'Sprint 1', 'Sprint 2']);
     expect(fixture.componentInstance.sprintId()).toBe('');
   });
+
+  it('omits the sprint field and allows a null sprintId when sprint is optional', async () => {
+    const { fixture, createTask } = setup(true, { id: 't-1' });
+    fixture.componentRef.setInput('activeSprints', []);
+    fixture.componentRef.setInput('sprintRequired', false);
+    fixture.detectChanges();
+    fixture.componentInstance.title.set('Backlog task');
+
+    await fixture.componentInstance.submit();
+
+    expect(fixture.nativeElement.querySelector('select.task-create-modal__sprint-select')).toBeNull();
+    expect(createTask).toHaveBeenCalledWith('obj-1', expect.objectContaining({ title: 'Backlog task', sprintId: null }));
+  });
 });
