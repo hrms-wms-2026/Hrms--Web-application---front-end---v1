@@ -71,6 +71,7 @@ describe('MilestoneTreeTabComponent', () => {
       loadTasksForSprint: vi.fn().mockResolvedValue(undefined),
       achieveSprint: vi.fn().mockResolvedValue({ success: true }),
       completeSprint: vi.fn().mockResolvedValue({ success: true }),
+      deleteTask: vi.fn().mockResolvedValue({ success: true }),
       getMilestoneDetail: vi.fn().mockResolvedValue(null),
       editMilestone: vi.fn().mockResolvedValue({ success: true, pending: false }),
       achieveMilestone: vi.fn().mockResolvedValue({ success: true, pending: false }),
@@ -421,10 +422,27 @@ describe('MilestoneTreeTabComponent', () => {
     expect(storeStub.completeSprint).toHaveBeenCalledWith('spr-1');
   });
 
-  it('stubs deleteRequested without calling a store delete method', () => {
+  it('opens a confirmation dialog then deletes the task on confirm', async () => {
+    setup('o1');
+    fixture.detectChanges();
+    const task: MilestoneTreeNode = { ...child, id: 't1', kind: 'task' };
+
+    fixture.componentInstance.onDeleteRequested(task);
+    fixture.detectChanges();
+    expect(fixture.componentInstance.deleteConfirmOpen()).toBe(true);
+    expect(storeStub.deleteTask).not.toHaveBeenCalled();
+
+    await fixture.componentInstance.onDeleteConfirmed();
+    expect(storeStub.deleteTask).toHaveBeenCalledWith('t1');
+    expect(fixture.componentInstance.deleteConfirmOpen()).toBe(false);
+  });
+
+  it('does not delete when the confirmation is cancelled', () => {
     setup('o1');
     fixture.detectChanges();
     fixture.componentInstance.onDeleteRequested({ ...child, id: 't1', kind: 'task' });
-    expect(storeStub.deleteTask).toBeUndefined();
+    fixture.componentInstance.onDeleteCancelled();
+    expect(storeStub.deleteTask).not.toHaveBeenCalled();
+    expect(fixture.componentInstance.deleteConfirmOpen()).toBe(false);
   });
 });

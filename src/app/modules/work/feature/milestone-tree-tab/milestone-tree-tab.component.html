@@ -129,3 +129,13 @@
     (saved)="onTaskSaved()"
   />
 }
+
+<app-confirm-modal
+  [open]="deleteConfirmOpen()"
+  title="Delete task"
+  message="Delete this task? This cannot be undone."
+  confirmLabel="Delete"
+  [errorMessage]="store.milestoneActionError() ?? ''"
+  (confirmed)="onDeleteConfirmed()"
+  (cancelled)="onDeleteCancelled()"
+/>

@@ -15,6 +15,7 @@ import { TaskDetailModalComponent } from '../../ui/task-detail-modal/task-detail
 import { LoaderComponent } from '../../../../shared/ui/loader/loader.component';
 import { ErrorStateComponent } from '../../../../shared/ui/error-state/error-state.component';
 import { EmptyStateComponent } from '../../../../shared/ui/empty-state/empty-state.component';
+import { ConfirmModalComponent } from '../../../../shared/ui/confirm-modal/confirm-modal.component';
 import { MilestoneTreeNode, ObjectiveDetail } from '../../models/milestone.model';
 import { EditObjectiveRequestDto, CreateObjectiveRequestDto } from '../../models/dto/milestone.dto';
 import { findTreeNode, isLeafObjective, collectObjectiveOptions, pruneTreeToModule } from '../../utils/project.mapper';
@@ -26,7 +27,7 @@ import { Sprint, SprintStatus } from '../../models/sprint.model';
   imports: [
     MilestoneTreeNodeComponent, ModuleFilterSelectComponent, TreeExplanationPanelComponent, MilestoneSettingsModalComponent,
     CreateSubModuleModalComponent, ObjectiveMembersPopupComponent, SprintCreateFormComponent,
-    SprintEditFormComponent, TaskCreateModalComponent, TaskDetailModalComponent, LoaderComponent, ErrorStateComponent, EmptyStateComponent
+    SprintEditFormComponent, TaskCreateModalComponent, TaskDetailModalComponent, LoaderComponent, ErrorStateComponent, EmptyStateComponent, ConfirmModalComponent
   ],
   templateUrl: './milestone-tree-tab.component.html'
 })
@@ -70,6 +71,8 @@ export class MilestoneTreeTabComponent {
   createSprintNode = signal<MilestoneTreeNode | null>(null);
   createTaskOpen = signal(false);
   createTaskSprint = signal<MilestoneTreeNode | null>(null);
+  deleteConfirmOpen = signal(false);
+  pendingDeleteNode = signal<MilestoneTreeNode | null>(null);
   editSprintOpen = signal(false);
   editSprintNode = signal<MilestoneTreeNode | null>(null);
   editTaskOpen = signal(false);
@@ -302,7 +305,23 @@ export class MilestoneTreeTabComponent {
   }
 
   onDeleteRequested(node: MilestoneTreeNode): void {
-    console.info('TODO: delete task once backend Part 4 is wired', node.id);
+    this.pendingDeleteNode.set(node);
+    this.deleteConfirmOpen.set(true);
+  }
+
+  async onDeleteConfirmed(): Promise<void> {
+    const node = this.pendingDeleteNode();
+    if (!node) return;
+    const result = await this.store.deleteTask(node.id);
+    if (!result.success) return;
+    if (this.selectedNodeId() === node.id) this.selectedNodeId.set(null);
+    this.deleteConfirmOpen.set(false);
+    this.pendingDeleteNode.set(null);
+  }
+
+  onDeleteCancelled(): void {
+    this.deleteConfirmOpen.set(false);
+    this.pendingDeleteNode.set(null);
   }
 
   onMembersRequested(node?: MilestoneTreeNode): void {
