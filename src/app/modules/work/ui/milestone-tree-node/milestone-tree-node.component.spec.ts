@@ -239,4 +239,29 @@ describe('MilestoneTreeNodeComponent', () => {
 
     expect(emitted).toEqual([failed]);
   });
+
+  it('re-emits createSprintRequested, createTaskRequested, editRequested, and membersRequested from a nested node', () => {
+    setup(root, null, true);
+    const createdSprints: MilestoneTreeNode[] = [];
+    const createdTasks: MilestoneTreeNode[] = [];
+    const edits: MilestoneTreeNode[] = [];
+    const members: MilestoneTreeNode[] = [];
+    fixture.componentInstance.createSprintRequested.subscribe((n) => createdSprints.push(n));
+    fixture.componentInstance.createTaskRequested.subscribe((n) => createdTasks.push(n));
+    fixture.componentInstance.editRequested.subscribe((n) => edits.push(n));
+    fixture.componentInstance.membersRequested.subscribe((n) => members.push(n));
+
+    const child = fixture.debugElement.query(
+      (de) => de.componentInstance instanceof MilestoneTreeNodeComponent && de.componentInstance !== fixture.componentInstance
+    );
+    child.componentInstance.createSprintRequested.emit(leaf);
+    child.componentInstance.createTaskRequested.emit(leaf);
+    child.componentInstance.editRequested.emit(leaf);
+    child.componentInstance.membersRequested.emit(leaf);
+
+    expect(createdSprints).toEqual([leaf]);
+    expect(createdTasks).toEqual([leaf]);
+    expect(edits).toEqual([leaf]);
+    expect(members).toEqual([leaf]);
+  });
 });

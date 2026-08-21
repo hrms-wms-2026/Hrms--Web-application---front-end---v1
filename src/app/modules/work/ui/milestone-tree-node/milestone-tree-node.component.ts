@@ -92,6 +92,10 @@ import { AvatarComponent } from '../../../../shared/ui/avatar/avatar.component';
               (selected)="selected.emit($event)"
               (createRequested)="createRequested.emit($event)"
               (expandLeafRequested)="expandLeafRequested.emit($event)"
+              (createSprintRequested)="createSprintRequested.emit($event)"
+              (createTaskRequested)="createTaskRequested.emit($event)"
+              (editRequested)="editRequested.emit($event)"
+              (membersRequested)="membersRequested.emit($event)"
             />
           }
         </div>
@@ -107,6 +111,10 @@ export class MilestoneTreeNodeComponent implements OnInit {
   selected = output<MilestoneTreeNode>();
   createRequested = output<MilestoneTreeNode>();
   expandLeafRequested = output<MilestoneTreeNode>();
+  createSprintRequested = output<MilestoneTreeNode>();
+  createTaskRequested = output<MilestoneTreeNode>();
+  editRequested = output<MilestoneTreeNode>();
+  membersRequested = output<MilestoneTreeNode>();
 
   expanded = signal(true);
 
