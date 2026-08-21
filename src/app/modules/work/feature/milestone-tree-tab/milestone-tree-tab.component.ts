@@ -49,9 +49,13 @@ export class MilestoneTreeTabComponent {
     return filterTreeByActivity(tree, this.selectedActivityFilter());
   });
 
+  // Intentionally independent of activityFilteredTree: the dropdown is a flat list, so it filters
+  // directly by isActive rather than inheriting the tree's ancestor-path-preservation semantics
+  // (which legitimately keep a non-matching ancestor visible in the tree for connectivity).
   moduleFilterOptions = computed(() => {
-    const tree = this.activityFilteredTree();
-    return tree ? collectObjectiveOptions(tree) : [];
+    const tree = this.store.selectedSubtree();
+    if (!tree) return [];
+    return this.filterOptionsByActivity(collectObjectiveOptions(tree), this.selectedActivityFilter());
   });
 
   renderedTree = computed(() => {
@@ -108,6 +112,23 @@ export class MilestoneTreeTabComponent {
 
   onActivityFilterChanged(filter: ActivityFilter): void {
     this.selectedActivityFilter.set(filter);
+
+    const currentModuleId = this.selectedModuleFilter();
+    if (currentModuleId === 'all') return;
+    const tree = this.store.selectedSubtree();
+    const options = tree ? this.filterOptionsByActivity(collectObjectiveOptions(tree), filter) : [];
+    if (!options.some((option) => option.id === currentModuleId)) {
+      this.selectedModuleFilter.set('all');
+    }
+  }
+
+  private filterOptionsByActivity(
+    options: { id: string; title: string; isActive: boolean }[],
+    filter: ActivityFilter
+  ): { id: string; title: string; isActive: boolean }[] {
+    if (filter === 'all') return options;
+    const wantActive = filter === 'active';
+    return options.filter((option) => option.isActive === wantActive);
   }
 
   onNodeSelected(node: MilestoneTreeNode): void {

@@ -104,12 +104,26 @@ export function filterTreeByActivity(node: MilestoneTreeNode, filter: ActivityFi
   if (!isObjective(node)) return node;
 
   const selfMatches = node.isActive === wantActive;
-  const filteredChildren = node.children
-    .map((child) => (isObjective(child) ? filterTreeByActivity(child, filter) : child))
+
+  if (selfMatches) {
+    // Node matches the filter on its own merits: keep all children as-is, recursing only
+    // into objective children (non-objective sprint/task children pass through unfiltered).
+    const children = node.children
+      .map((child) => (isObjective(child) ? filterTreeByActivity(child, filter) : child))
+      .filter((child): child is MilestoneTreeNode => child !== null);
+    return { ...node, children };
+  }
+
+  // Node doesn't match itself: it can only survive as a path-preserving ancestor of a
+  // matching descendant objective. Non-objective children (sprints/tasks) never count toward
+  // that decision and are dropped here — they're loaded-state side effects, not filter matches.
+  const filteredObjectiveChildren = node.children
+    .filter(isObjective)
+    .map((child) => filterTreeByActivity(child, filter))
     .filter((child): child is MilestoneTreeNode => child !== null);
 
-  if (!selfMatches && filteredChildren.length === 0) return null;
-  return { ...node, children: filteredChildren };
+  if (filteredObjectiveChildren.length === 0) return null;
+  return { ...node, children: filteredObjectiveChildren };
 }
 
 export function pruneTreeToModule(tree: MilestoneTreeNode, moduleId: string): MilestoneTreeNode | null {

@@ -451,5 +451,17 @@ describe('project.mapper', () => {
       expect(result?.id).toBe('o1');
       expect(result?.children.map((c) => c.id)).toEqual(['s1']);
     });
+
+    it('drops a non-matching leaf objective even if it has loaded sprint/task children (they never count toward path preservation)', () => {
+      const sprintChild: MilestoneTreeNode = { ...node('s1', 'Sprint 1', true), kind: 'sprint' };
+      const taskChild: MilestoneTreeNode = { ...node('t1', 'Task 1', true), kind: 'task' };
+      // An active leaf module ("Payments") that has already been lazy-loaded, so its children
+      // array holds sprint/task nodes (which hardcode isActive: true) instead of being empty.
+      const tree = node('o1', 'Payments', true, [sprintChild, taskChild]);
+
+      const result = filterTreeByActivity(tree, 'inactive');
+
+      expect(result).toBeNull();
+    });
   });
 });

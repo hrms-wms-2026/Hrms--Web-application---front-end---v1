@@ -219,6 +219,67 @@ describe('MilestoneTreeTabComponent', () => {
 
       expect(fixture.componentInstance.selectedActivityFilter()).toBe('inactive');
     });
+
+    it('resets selectedModuleFilter to all when the activity filter evicts the currently selected module', () => {
+      setup('o1');
+      fixture.detectChanges();
+
+      // o2 ("Child") is active with no inactive descendants, so it disappears from the
+      // inactive-filtered option list entirely.
+      fixture.componentInstance.onModuleFilterChanged('o2');
+      fixture.detectChanges();
+      expect(fixture.componentInstance.selectedModuleFilter()).toBe('o2');
+
+      fixture.componentInstance.onActivityFilterChanged('inactive');
+      fixture.detectChanges();
+
+      expect(fixture.componentInstance.selectedModuleFilter()).toBe('all');
+      const rendered = fixture.componentInstance.renderedTree();
+      expect(rendered?.children.map((c) => c.id)).toEqual(['o4']);
+    });
+
+    it('keeps selectedModuleFilter unchanged when the newly selected activity filter still includes the selected module', () => {
+      setup('o1');
+      fixture.detectChanges();
+
+      fixture.componentInstance.onModuleFilterChanged('o2');
+      fixture.detectChanges();
+
+      fixture.componentInstance.onActivityFilterChanged('active');
+      fixture.detectChanges();
+
+      expect(fixture.componentInstance.selectedModuleFilter()).toBe('o2');
+    });
+  });
+
+  describe('moduleFilterOptions ancestor independence (Finding 3)', () => {
+    const inactiveGrandchild: MilestoneTreeNode = {
+      id: 'g1', title: 'Inactive Grandchild', description: null, startDate: '2026-01-10', endDate: '2026-02-01',
+      progress: 0, allocatedHours: 0, completedHours: 0, isActive: false, isAchieved: false,
+      ownerName: null, isOwner: true, children: [], kind: 'objective'
+    };
+    const activeRootWithInactiveDescendant: MilestoneTreeNode = {
+      id: 'r1', title: 'Active Root', description: null, startDate: '2026-01-01', endDate: '2026-12-01',
+      progress: 0, allocatedHours: 0, completedHours: 0, isActive: true, isAchieved: false,
+      ownerName: null, isOwner: true, children: [inactiveGrandchild], kind: 'objective'
+    };
+
+    it('excludes an active ancestor from moduleFilterOptions under the inactive filter, even though it would remain visible in the tree for path preservation', () => {
+      setup('r1');
+      storeStub.selectedSubtree = () => activeRootWithInactiveDescendant;
+      fixture.detectChanges();
+
+      fixture.componentInstance.onActivityFilterChanged('inactive');
+      fixture.detectChanges();
+
+      const ids = fixture.componentInstance.moduleFilterOptions().map((o) => o.id);
+      expect(ids).toEqual(['g1']);
+      expect(ids).not.toContain('r1');
+
+      // Meanwhile renderedTree legitimately keeps the active root visible as a path-preserving ancestor.
+      const rendered = fixture.componentInstance.renderedTree();
+      expect(rendered?.id).toBe('r1');
+    });
   });
 
   it('renders the root tree node', () => {
