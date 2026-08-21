@@ -2,13 +2,32 @@ import { Component, OnInit, input, output, signal } from '@angular/core';
 import { MilestoneTreeNode } from '../../models/milestone.model';
 import { isLeafObjective } from '../../utils/project.mapper';
 import { AvatarComponent } from '../../../../shared/ui/avatar/avatar.component';
+import { ModuleTreeRowComponent } from '../module-tree-row/module-tree-row.component';
 
 @Component({
   selector: 'app-milestone-tree-node',
   standalone: true,
-  imports: [MilestoneTreeNodeComponent, AvatarComponent],
+  imports: [MilestoneTreeNodeComponent, AvatarComponent, ModuleTreeRowComponent],
   template: `
     <div>
+      @if ((node().kind ?? 'objective') === 'objective') {
+        <app-module-tree-row
+          [node]="node()"
+          [selected]="isSelected()"
+          [depth]="depth()"
+          [showChevron]="showChevron()"
+          [expanded]="expanded()"
+          (selectedRow)="selected.emit($event)"
+          (chevronClicked)="toggleExpanded($event)"
+          (retryClicked)="onRetryLoad($event)"
+          (createRequested)="createRequested.emit($event)"
+          (editRequested)="editRequested.emit($event)"
+          (membersRequested)="membersRequested.emit($event)"
+          (createTaskRequested)="createTaskRequested.emit($event)"
+          (createSprintRequested)="createSprintRequested.emit($event)"
+          (achieveRequested)="achieveRequested.emit($event)"
+        />
+      } @else {
       <div
         class="grid grid-cols-[1fr_112px_40px_88px_72px] items-center gap-3 rounded-md px-2 py-1.5 cursor-pointer {{ isSelected() ? 'bg-[var(--color-accent)]' : 'hover:bg-[var(--color-surface-secondary)]' }}"
         data-testid="tree-row"
@@ -114,6 +133,7 @@ import { AvatarComponent } from '../../../../shared/ui/avatar/avatar.component';
           }
         </span>
       </div>
+      }
 
       @if (node().children.length > 0 && expanded()) {
         <div class="flex flex-col gap-0.5">
@@ -130,6 +150,7 @@ import { AvatarComponent } from '../../../../shared/ui/avatar/avatar.component';
               (createTaskRequested)="createTaskRequested.emit($event)"
               (editRequested)="editRequested.emit($event)"
               (membersRequested)="membersRequested.emit($event)"
+              (achieveRequested)="achieveRequested.emit($event)"
             />
           }
         </div>
@@ -149,6 +170,7 @@ export class MilestoneTreeNodeComponent implements OnInit {
   createTaskRequested = output<MilestoneTreeNode>();
   editRequested = output<MilestoneTreeNode>();
   membersRequested = output<MilestoneTreeNode>();
+  achieveRequested = output<MilestoneTreeNode>();
 
   expanded = signal(true);
 

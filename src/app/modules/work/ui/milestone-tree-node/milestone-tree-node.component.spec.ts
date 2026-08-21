@@ -289,7 +289,7 @@ describe('MilestoneTreeNodeComponent', () => {
       fixture.componentInstance.createSprintRequested.subscribe((n) => sprints.push(n));
       fixture.componentInstance.createRequested.subscribe((n) => subs.push(n));
 
-      expect(fixture.nativeElement.querySelector('[data-testid="create-sub-button"]')).toBeNull();
+      expect(fixture.nativeElement.querySelector('[data-testid="create-sub-button"]')).not.toBeNull();
       (fixture.nativeElement.querySelector('[data-testid="create-sprint-button"]') as HTMLElement).click();
 
       expect(sprints).toEqual([ownedLeaf]);
