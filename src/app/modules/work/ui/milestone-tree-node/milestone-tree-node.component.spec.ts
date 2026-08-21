@@ -228,4 +228,15 @@ describe('MilestoneTreeNodeComponent', () => {
 
     expect(emitted).toEqual([leaf]);
   });
+
+  it('shows a retry control when sprint/task load failed and emits expandLeafRequested on click', () => {
+    const failed: MilestoneTreeNode = { ...leaf, sprintTaskLoadState: 'error' };
+    setup(failed);
+    const emitted: MilestoneTreeNode[] = [];
+    fixture.componentInstance.expandLeafRequested.subscribe((n) => emitted.push(n));
+
+    (fixture.nativeElement.querySelector('[data-testid="retry-sprint-task-load"]') as HTMLElement).click();
+
+    expect(emitted).toEqual([failed]);
+  });
 });

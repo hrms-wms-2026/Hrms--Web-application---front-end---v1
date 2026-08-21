@@ -1,9 +1,11 @@
 import { inject } from '@angular/core';
 import { patchState, signalStore, withMethods, withState } from '@ngrx/signals';
-import { firstValueFrom } from 'rxjs';
+import { firstValueFrom, forkJoin } from 'rxjs';
 import { ProjectApiService } from '../data-access/project-api.service';
 import { ObjectiveMemberApiService } from '../data-access/objective-member-api.service';
-import { toMilestone, toMilestoneTreeNode, toProjectDetail } from '../utils/project.mapper';
+import { SprintApiService } from '../data-access/sprint-api.service';
+import { TaskApiService } from '../data-access/task-api.service';
+import { findTreeNode, isLeafObjective, toMilestone, toMilestoneTreeNode, toProjectDetail, toSprintTreeNode, toTaskTreeNode, updateTreeNode } from '../utils/project.mapper';
 import { ProjectDetail } from '../models/project.model';
 import { Milestone, MilestoneTreeNode, ObjectiveDetail } from '../models/milestone.model';
 import { EditObjectiveRequestDto, CreateObjectiveRequestDto } from '../models/dto/milestone.dto';
@@ -42,7 +44,13 @@ function extractError(err: any, fallback: string): string {
 export const ProjectDetailStore = signalStore(
   { providedIn: 'root' },
   withState<ProjectDetailState>(initialState),
-  withMethods((store, api = inject(ProjectApiService), memberApi = inject(ObjectiveMemberApiService)) => ({
+  withMethods((
+    store,
+    api = inject(ProjectApiService),
+    memberApi = inject(ObjectiveMemberApiService),
+    sprintApi = inject(SprintApiService),
+    taskApi = inject(TaskApiService)
+  ) => ({
     async loadProject(id: string): Promise<void> {
       patchState(store, { projectLoading: true, projectError: null });
       try {
@@ -203,6 +211,52 @@ export const ProjectDetailStore = signalStore(
       } catch (err) {
         patchState(store, { milestoneActionError: extractError(err, 'Failed to reject invitation.') });
         return { success: false };
+      }
+    },
+
+    async loadSprintsAndTasksForLeaf(objectiveId: string, options?: { force?: boolean }): Promise<void> {
+      const tree = store.selectedSubtree();
+      if (!tree) return;
+      const target = findTreeNode(tree, objectiveId);
+      if (!target || !isLeafObjective(target)) return;
+      const state = target.sprintTaskLoadState;
+      if (!options?.force && (state === 'loaded' || state === 'loading')) return;
+
+      patchState(store, {
+        selectedSubtree: updateTreeNode(tree, objectiveId, (node) => ({ ...node, sprintTaskLoadState: 'loading' }))
+      });
+
+      try {
+        const [sprints, tasks, statuses] = await firstValueFrom(forkJoin([
+          sprintApi.getByObjective(objectiveId, false),
+          taskApi.getTasks(objectiveId),
+          taskApi.getStatuses(objectiveId)
+        ]));
+        const current = store.selectedSubtree();
+        if (!current) return;
+        const leaf = findTreeNode(current, objectiveId);
+        if (!leaf) return;
+        const statusNames = Object.fromEntries(statuses.map((s) => [s.id, s.name]));
+        const children = [
+          ...sprints.map((sprint) => toSprintTreeNode(sprint, { ...leaf, statusNames })),
+          ...tasks
+            .filter((task) => task.sprintId === null)
+            .map((task) => toTaskTreeNode(task, leaf, task.statusId))
+        ];
+        patchState(store, {
+          selectedSubtree: updateTreeNode(current, objectiveId, (node) => ({
+            ...node,
+            children,
+            sprintTaskLoadState: 'loaded',
+            statusNames
+          }))
+        });
+      } catch {
+        const current = store.selectedSubtree();
+        if (!current) return;
+        patchState(store, {
+          selectedSubtree: updateTreeNode(current, objectiveId, (node) => ({ ...node, sprintTaskLoadState: 'error' }))
+        });
       }
     }
   }))

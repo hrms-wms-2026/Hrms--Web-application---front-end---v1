@@ -1,4 +1,4 @@
-import { toProject, toProjectDetail, toMilestone, toMilestoneTreeNode, findTreeNode, isLeafObjective } from './project.mapper';
+import { toProject, toProjectDetail, toMilestone, toMilestoneTreeNode, findTreeNode, isLeafObjective, updateTreeNode } from './project.mapper';
 import { ProjectListItemDto, ProjectDetailDto } from '../models/dto/project.dto';
 import { MyProjectMilestoneDto } from '../models/dto/milestone.dto';
 import { ObjectiveSubtreeNodeDto } from '../models/dto/milestone.dto';
@@ -209,6 +209,38 @@ describe('project.mapper', () => {
 
     it('returns null when the id is not in the tree', () => {
       expect(findTreeNode(root, 'missing')).toBeNull();
+    });
+  });
+
+  describe('updateTreeNode', () => {
+    const leaf: MilestoneTreeNode = {
+      id: 'o2', title: 'Child', description: null, startDate: '2026-01-20', endDate: '2026-02-01',
+      progress: 40, allocatedHours: 5, completedHours: 2, isActive: true, isAchieved: false,
+      ownerName: 'Diya', isOwner: false, children: []
+    };
+    const sibling: MilestoneTreeNode = {
+      id: 'o3', title: 'Sibling', description: null, startDate: '2026-01-20', endDate: '2026-02-01',
+      progress: 0, allocatedHours: 5, completedHours: 0, isActive: true, isAchieved: false,
+      ownerName: 'Diya', isOwner: false, children: []
+    };
+    const root: MilestoneTreeNode = {
+      id: 'o1', title: 'Root', description: null, startDate: '2026-01-15', endDate: '2026-03-01',
+      progress: 0, allocatedHours: 20, completedHours: 0, isActive: true, isAchieved: false,
+      ownerName: 'Arun', isOwner: true, children: [leaf, sibling]
+    };
+
+    it('rebuilds only the path to the target with new object references', () => {
+      const next = updateTreeNode(root, 'o2', (node) => ({ ...node, title: 'Updated' }));
+
+      expect(next).not.toBe(root);
+      expect(next.children[0]).not.toBe(leaf);
+      expect(next.children[0].title).toBe('Updated');
+      expect(next.children[1]).toBe(sibling);
+    });
+
+    it('returns the same tree reference when the id is not found', () => {
+      const next = updateTreeNode(root, 'missing', (node) => ({ ...node, title: 'Updated' }));
+      expect(next).toBe(root);
     });
   });
 });

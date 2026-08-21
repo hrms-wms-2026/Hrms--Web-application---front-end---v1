@@ -11,7 +11,7 @@ import { LoaderComponent } from '../../../../shared/ui/loader/loader.component';
 import { ErrorStateComponent } from '../../../../shared/ui/error-state/error-state.component';
 import { MilestoneTreeNode, ObjectiveDetail } from '../../models/milestone.model';
 import { EditObjectiveRequestDto, CreateObjectiveRequestDto } from '../../models/dto/milestone.dto';
-import { findTreeNode } from '../../utils/project.mapper';
+import { findTreeNode, isLeafObjective } from '../../utils/project.mapper';
 
 @Component({
   selector: 'app-milestone-tree-tab',
@@ -72,6 +72,12 @@ export class MilestoneTreeTabComponent {
   onCreateSubRequested(node: MilestoneTreeNode): void {
     this.createModalParentId.set(node.id);
     this.createModalOpen.set(true);
+  }
+
+  onExpandLeafRequested(node: MilestoneTreeNode): void {
+    if (isLeafObjective(node)) {
+      void this.store.loadSprintsAndTasksForLeaf(node.id);
+    }
   }
 
   async onCreateModalCreated(payload: CreateObjectiveRequestDto): Promise<void> {

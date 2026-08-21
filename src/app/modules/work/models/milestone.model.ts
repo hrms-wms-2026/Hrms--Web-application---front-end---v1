@@ -41,6 +41,7 @@ export interface MilestoneTreeNode {
   sprintTaskLoadState?: SprintTaskLoadState;
   status?: string;
   parentObjectiveId?: string;
+  statusNames?: Record<string, string>;
 }
 
 export type ObjectiveDetail = import('./dto/milestone.dto').ObjectiveDetailDto;

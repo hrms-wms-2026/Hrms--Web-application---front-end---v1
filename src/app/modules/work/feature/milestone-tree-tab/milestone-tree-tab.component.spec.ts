@@ -45,6 +45,7 @@ describe('MilestoneTreeTabComponent', () => {
       subtreeError: () => null,
       milestoneActionError: () => null,
       loadMilestoneSubtree: vi.fn().mockResolvedValue(undefined),
+      loadSprintsAndTasksForLeaf: vi.fn().mockResolvedValue(undefined),
       getMilestoneDetail: vi.fn().mockResolvedValue(null),
       editMilestone: vi.fn().mockResolvedValue({ success: true, pending: false }),
       achieveMilestone: vi.fn().mockResolvedValue({ success: true, pending: false }),
@@ -235,5 +236,15 @@ describe('MilestoneTreeTabComponent', () => {
     await fixture.componentInstance.onTransferRequested('e9');
 
     expect(storeStub.transferObjectiveHead).toHaveBeenCalledWith('o1', 'e9');
+  });
+
+  it('loads sprints and tasks when a leaf expand is requested', () => {
+    setup('o1');
+    fixture.detectChanges();
+    const leaf: MilestoneTreeNode = { ...child, kind: 'objective', children: [] };
+
+    fixture.componentInstance.onExpandLeafRequested(leaf);
+
+    expect(storeStub.loadSprintsAndTasksForLeaf).toHaveBeenCalledWith('o2');
   });
 });

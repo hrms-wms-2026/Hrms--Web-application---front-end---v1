@@ -38,6 +38,14 @@ import { AvatarComponent } from '../../../../shared/ui/avatar/avatar.component';
           @if (node().isAchieved) {
             <span data-testid="achieved-badge" class="shrink-0 rounded-full px-2 py-0.5 text-xs font-medium {{ isSelected() ? 'bg-white/15 text-white' : 'bg-[var(--color-surface-secondary)] text-[var(--color-text-secondary)]' }}">Achieved</span>
           }
+          @if (node().sprintTaskLoadState === 'error') {
+            <button
+              type="button"
+              class="shrink-0 rounded-md px-1.5 py-0.5 text-xs {{ isSelected() ? 'text-white hover:bg-white/20' : 'text-[var(--color-text-secondary)] hover:bg-[var(--color-surface-secondary)]' }}"
+              data-testid="retry-sprint-task-load"
+              (click)="onRetryLoad($event)"
+            >Retry</button>
+          }
         </span>
 
         <span class="flex items-center gap-2 text-xs {{ isSelected() ? 'text-white' : 'text-[var(--color-text-secondary)]' }}" data-testid="progress-cell">
@@ -132,5 +140,10 @@ export class MilestoneTreeNodeComponent implements OnInit {
   onCreateClick(event: Event): void {
     event.stopPropagation();
     this.createRequested.emit(this.node());
+  }
+
+  onRetryLoad(event: Event): void {
+    event.stopPropagation();
+    this.expandLeafRequested.emit(this.node());
   }
 }
