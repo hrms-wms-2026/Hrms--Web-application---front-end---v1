@@ -69,6 +69,8 @@ describe('MilestoneTreeTabComponent', () => {
       loadProjectTree: vi.fn().mockResolvedValue(undefined),
       loadSprintsAndTasksForLeaf: vi.fn().mockResolvedValue(undefined),
       loadTasksForSprint: vi.fn().mockResolvedValue(undefined),
+      achieveSprint: vi.fn().mockResolvedValue({ success: true }),
+      completeSprint: vi.fn().mockResolvedValue({ success: true }),
       getMilestoneDetail: vi.fn().mockResolvedValue(null),
       editMilestone: vi.fn().mockResolvedValue({ success: true, pending: false }),
       achieveMilestone: vi.fn().mockResolvedValue({ success: true, pending: false }),
@@ -392,5 +394,37 @@ describe('MilestoneTreeTabComponent', () => {
 
     expect(fixture.componentInstance.settingsOpen()).toBe(true);
     expect(storeStub.getMilestoneDetail).toHaveBeenCalledWith('o1');
+  });
+
+  it('achieves a module then reloads the project tree', async () => {
+    setup('o1');
+    fixture.detectChanges();
+    await fixture.componentInstance.onAchieveRequested(tree);
+    expect(storeStub.achieveMilestone).toHaveBeenCalledWith('o1');
+    expect(storeStub.loadProjectTree).toHaveBeenCalledTimes(2);
+  });
+
+  it('unachieves a module that is already achieved', async () => {
+    setup('o1');
+    fixture.detectChanges();
+    await fixture.componentInstance.onAchieveRequested({ ...tree, isAchieved: true });
+    expect(storeStub.unachieveMilestone).toHaveBeenCalledWith('o1');
+  });
+
+  it('forwards sprint achieve and complete to the store', async () => {
+    setup('o1');
+    fixture.detectChanges();
+    const sprint: MilestoneTreeNode = { ...child, id: 'spr-1', kind: 'sprint' };
+    await fixture.componentInstance.onAchieveSprintRequested(sprint);
+    await fixture.componentInstance.onCompleteSprintRequested(sprint);
+    expect(storeStub.achieveSprint).toHaveBeenCalledWith('spr-1');
+    expect(storeStub.completeSprint).toHaveBeenCalledWith('spr-1');
+  });
+
+  it('stubs deleteRequested without calling a store delete method', () => {
+    setup('o1');
+    fixture.detectChanges();
+    fixture.componentInstance.onDeleteRequested({ ...child, id: 't1', kind: 'task' });
+    expect(storeStub.deleteTask).toBeUndefined();
   });
 });

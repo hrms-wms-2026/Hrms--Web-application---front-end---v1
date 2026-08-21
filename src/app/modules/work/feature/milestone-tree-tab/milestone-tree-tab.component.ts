@@ -284,6 +284,25 @@ export class MilestoneTreeTabComponent {
     await this.loadTree({ force: true });
   }
 
+  async onAchieveRequested(node: MilestoneTreeNode): Promise<void> {
+    const result = node.isAchieved
+      ? await this.store.unachieveMilestone(node.id)
+      : await this.store.achieveMilestone(node.id);
+    if (result.success) await this.loadTree({ force: true });
+  }
+
+  async onAchieveSprintRequested(node: MilestoneTreeNode): Promise<void> {
+    await this.store.achieveSprint(node.id);
+  }
+
+  async onCompleteSprintRequested(node: MilestoneTreeNode): Promise<void> {
+    await this.store.completeSprint(node.id);
+  }
+
+  onDeleteRequested(node: MilestoneTreeNode): void {
+    console.info('TODO: delete task once backend Part 4 is wired', node.id);
+  }
+
   onMembersRequested(node?: MilestoneTreeNode): void {
     const target = node ?? this.selectedNode();
     if (!target) return;
