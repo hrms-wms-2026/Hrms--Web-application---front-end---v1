@@ -3,11 +3,12 @@ import { MilestoneTreeNode } from '../../models/milestone.model';
 import { isLeafObjective } from '../../utils/project.mapper';
 import { AvatarComponent } from '../../../../shared/ui/avatar/avatar.component';
 import { ModuleTreeRowComponent } from '../module-tree-row/module-tree-row.component';
+import { SprintTreeRowComponent } from '../sprint-tree-row/sprint-tree-row.component';
 
 @Component({
   selector: 'app-milestone-tree-node',
   standalone: true,
-  imports: [MilestoneTreeNodeComponent, AvatarComponent, ModuleTreeRowComponent],
+  imports: [MilestoneTreeNodeComponent, AvatarComponent, ModuleTreeRowComponent, SprintTreeRowComponent],
   template: `
     <div>
       @if ((node().kind ?? 'objective') === 'objective') {
@@ -26,6 +27,21 @@ import { ModuleTreeRowComponent } from '../module-tree-row/module-tree-row.compo
           (createTaskRequested)="createTaskRequested.emit($event)"
           (createSprintRequested)="createSprintRequested.emit($event)"
           (achieveRequested)="achieveRequested.emit($event)"
+        />
+      } @else if (node().kind === 'sprint') {
+        <app-sprint-tree-row
+          [node]="node()"
+          [selected]="isSelected()"
+          [depth]="depth()"
+          [showChevron]="showChevron()"
+          [expanded]="expanded()"
+          (selectedRow)="selected.emit($event)"
+          (chevronClicked)="toggleExpanded($event)"
+          (retryClicked)="onRetryLoad($event)"
+          (createTaskRequested)="createTaskRequested.emit($event)"
+          (editRequested)="editRequested.emit($event)"
+          (achieveSprintRequested)="achieveSprintRequested.emit($event)"
+          (completeSprintRequested)="completeSprintRequested.emit($event)"
         />
       } @else {
       <div
@@ -151,6 +167,8 @@ import { ModuleTreeRowComponent } from '../module-tree-row/module-tree-row.compo
               (editRequested)="editRequested.emit($event)"
               (membersRequested)="membersRequested.emit($event)"
               (achieveRequested)="achieveRequested.emit($event)"
+              (achieveSprintRequested)="achieveSprintRequested.emit($event)"
+              (completeSprintRequested)="completeSprintRequested.emit($event)"
             />
           }
         </div>
@@ -171,6 +189,8 @@ export class MilestoneTreeNodeComponent implements OnInit {
   editRequested = output<MilestoneTreeNode>();
   membersRequested = output<MilestoneTreeNode>();
   achieveRequested = output<MilestoneTreeNode>();
+  achieveSprintRequested = output<MilestoneTreeNode>();
+  completeSprintRequested = output<MilestoneTreeNode>();
 
   expanded = signal(true);
 

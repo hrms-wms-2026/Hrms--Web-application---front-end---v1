@@ -299,6 +299,54 @@ export const ProjectDetailStore = signalStore(
           selectedSubtree: updateTreeNode(current, sprintId, (node) => ({ ...node, sprintTaskLoadState: 'error' }))
         });
       }
+    },
+
+    async achieveSprint(sprintId: string): Promise<{ success: boolean }> {
+      try {
+        const dto = await firstValueFrom(sprintApi.achieve(sprintId));
+        const tree = store.selectedSubtree();
+        if (tree) {
+          patchState(store, {
+            selectedSubtree: updateTreeNode(tree, sprintId, (node) => ({
+              ...node,
+              title: dto.name,
+              startDate: dto.startDate,
+              endDate: dto.endDate,
+              status: dto.status,
+              isAchieved: dto.status === 'achieved'
+            })),
+            milestoneActionError: null
+          });
+        }
+        return { success: true };
+      } catch (err) {
+        patchState(store, { milestoneActionError: extractError(err, 'Failed to achieve the sprint.') });
+        return { success: false };
+      }
+    },
+
+    async completeSprint(sprintId: string): Promise<{ success: boolean }> {
+      try {
+        const dto = await firstValueFrom(sprintApi.complete(sprintId));
+        const tree = store.selectedSubtree();
+        if (tree) {
+          patchState(store, {
+            selectedSubtree: updateTreeNode(tree, sprintId, (node) => ({
+              ...node,
+              title: dto.name,
+              startDate: dto.startDate,
+              endDate: dto.endDate,
+              status: dto.status,
+              isAchieved: dto.status === 'achieved'
+            })),
+            milestoneActionError: null
+          });
+        }
+        return { success: true };
+      } catch (err) {
+        patchState(store, { milestoneActionError: extractError(err, 'Failed to complete the sprint.') });
+        return { success: false };
+      }
     }
   }))
 );

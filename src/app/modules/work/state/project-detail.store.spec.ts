@@ -483,4 +483,73 @@ describe('ProjectDetailStore', () => {
       expect(store.selectedSubtree()?.children[0].sprintTaskLoadState).toBe('loaded');
     });
   });
+
+  describe('achieveSprint and completeSprint', () => {
+    it('patches the sprint node after a successful achieve', async () => {
+      const achieved: SprintDto = { ...{
+        id: 'spr-1', objectiveId: 'o1', name: 'Sprint 1', startDate: '2026-08-01', endDate: '2026-08-14',
+        status: 'achieved' as const, completedAt: null, achievedAt: '2026-08-21'
+      } };
+      const sprintApi = {
+        getByObjective: vi.fn().mockReturnValue(of([{
+          id: 'spr-1', objectiveId: 'o1', name: 'Sprint 1', startDate: '2026-08-01', endDate: '2026-08-14',
+          status: 'active' as const, completedAt: null, achievedAt: null
+        }])),
+        achieve: vi.fn().mockReturnValue(of(achieved))
+      };
+      const taskApi = {
+        getTasks: vi.fn().mockReturnValue(of([])),
+        getStatuses: vi.fn().mockReturnValue(of([{
+          id: 'st-1', name: 'To Do', displayOrder: 0, requiresApproval: false, approverId: null,
+          marksTaskComplete: false, visibility: 'public'
+        }]))
+      };
+      const store = setup({ getProjectTree: () => of(leafTree) }, sprintApi, taskApi);
+      await store.loadProjectTree('p1');
+      await store.loadSprintsAndTasksForLeaf('o1');
+
+      const result = await store.achieveSprint('spr-1');
+
+      expect(result.success).toBe(true);
+      expect(sprintApi.achieve).toHaveBeenCalledWith('spr-1');
+      expect(store.selectedSubtree()?.children[0].status).toBe('achieved');
+      expect(store.selectedSubtree()?.children[0].isAchieved).toBe(true);
+    });
+
+    it('patches the sprint node after a successful complete', async () => {
+      const completed: SprintDto = {
+        id: 'spr-1', objectiveId: 'o1', name: 'Sprint 1', startDate: '2026-08-01', endDate: '2026-08-14',
+        status: 'complete', completedAt: '2026-08-21', achievedAt: null
+      };
+      const sprintApi = {
+        getByObjective: vi.fn().mockReturnValue(of([{
+          id: 'spr-1', objectiveId: 'o1', name: 'Sprint 1', startDate: '2026-08-01', endDate: '2026-08-14',
+          status: 'active' as const, completedAt: null, achievedAt: null
+        }])),
+        complete: vi.fn().mockReturnValue(of(completed))
+      };
+      const taskApi = {
+        getTasks: vi.fn().mockReturnValue(of([])),
+        getStatuses: vi.fn().mockReturnValue(of([{
+          id: 'st-1', name: 'To Do', displayOrder: 0, requiresApproval: false, approverId: null,
+          marksTaskComplete: false, visibility: 'public'
+        }]))
+      };
+      const store = setup({ getProjectTree: () => of(leafTree) }, sprintApi, taskApi);
+      await store.loadProjectTree('p1');
+      await store.loadSprintsAndTasksForLeaf('o1');
+
+      const result = await store.completeSprint('spr-1');
+
+      expect(result.success).toBe(true);
+      expect(store.selectedSubtree()?.children[0].status).toBe('complete');
+    });
+
+    it('sets milestoneActionError when achieveSprint fails', async () => {
+      const store = setup({}, { achieve: () => throwError(() => ({ error: { detail: 'blocked' } })) });
+      const result = await store.achieveSprint('spr-1');
+      expect(result.success).toBe(false);
+      expect(store.milestoneActionError()).toBe('blocked');
+    });
+  });
 });
