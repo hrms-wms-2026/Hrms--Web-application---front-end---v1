@@ -20,6 +20,7 @@
         (createRequested)="onCreateSubRequested($event)"
         (expandLeafRequested)="onExpandLeafRequested($event)"
         (createSprintRequested)="onCreateSprintRequested($event)"
+        (createTaskRequested)="onCreateTaskRequested($event)"
       />
     }
   </div>
@@ -73,5 +74,16 @@
     [isObjectiveOwner]="sprintLeaf.isOwner"
     (created)="onSprintCreated()"
     (cancelled)="onSprintCreateCancelled()"
+  />
+}
+
+@if (createTaskSprint(); as sprintNode) {
+  <app-task-create-modal
+    [open]="createTaskOpen()"
+    [objectiveId]="sprintNode.parentObjectiveId ?? ''"
+    [isObjectiveOwner]="sprintNode.isOwner"
+    [activeSprints]="createTaskSprints()"
+    (created)="onTaskCreated()"
+    (closed)="onTaskCreateClosed()"
   />
 }

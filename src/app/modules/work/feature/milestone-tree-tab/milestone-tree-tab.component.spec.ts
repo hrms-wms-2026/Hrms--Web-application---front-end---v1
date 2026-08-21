@@ -6,6 +6,8 @@ import { ProjectDetailStore } from '../../state/project-detail.store';
 import { MilestoneTreeNode } from '../../models/milestone.model';
 import { PeopleApiService } from '../../../people/data-access/people-api.service';
 import { SprintListStore } from '../../state/sprint-list.store';
+import { TaskBoardStore } from '../../state/task-board.store';
+import { TaskApiService } from '../../data-access/task-api.service';
 
 describe('MilestoneTreeTabComponent', () => {
   let fixture: ComponentFixture<MilestoneTreeTabComponent>;
@@ -33,7 +35,9 @@ describe('MilestoneTreeTabComponent', () => {
         { provide: ProjectDetailStore, useValue: storeStub },
         { provide: ActivatedRoute, useValue: routeStub },
         { provide: PeopleApiService, useValue: { listEmployees: vi.fn().mockReturnValue(of({ items: [], totalCount: 0, page: 1, pageSize: 20 })) } },
-        { provide: SprintListStore, useValue: { error: () => null, create: vi.fn() } }
+        { provide: SprintListStore, useValue: { error: () => null, create: vi.fn() } },
+        { provide: TaskBoardStore, useValue: { error: () => null, createTask: vi.fn(), statuses: () => [] } },
+        { provide: TaskApiService, useValue: {} }
       ]
     }).compileComponents();
 
@@ -270,5 +274,23 @@ describe('MilestoneTreeTabComponent', () => {
     await fixture.componentInstance.onSprintCreated();
 
     expect(storeStub.loadSprintsAndTasksForLeaf).toHaveBeenCalledWith('o2', { force: true });
+  });
+
+  it('opens task create scoped to one sprint and refreshes that sprint after create', async () => {
+    setup('o1');
+    fixture.detectChanges();
+    const sprint: MilestoneTreeNode = {
+      ...child, id: 'spr-1', title: 'Sprint 1', kind: 'sprint', parentObjectiveId: 'o1', isOwner: true, children: []
+    };
+
+    fixture.componentInstance.onCreateTaskRequested(sprint);
+    fixture.detectChanges();
+
+    expect(fixture.componentInstance.createTaskSprints()).toHaveLength(1);
+    expect(fixture.componentInstance.createTaskSprints()[0].id).toBe('spr-1');
+    expect(fixture.nativeElement.querySelector('[data-testid="sprint-fixed"]')).not.toBeNull();
+
+    await fixture.componentInstance.onTaskCreated();
+    expect(storeStub.loadTasksForSprint).toHaveBeenCalledWith('spr-1', { force: true });
   });
 });

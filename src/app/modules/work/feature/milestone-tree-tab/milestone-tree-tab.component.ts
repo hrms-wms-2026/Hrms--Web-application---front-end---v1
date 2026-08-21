@@ -8,11 +8,13 @@ import { MilestoneSettingsModalComponent } from '../../ui/milestone-settings-mod
 import { CreateSubModuleModalComponent } from '../../ui/create-sub-module-modal/create-sub-module-modal.component';
 import { ObjectiveMembersPopupComponent } from '../../ui/objective-members-popup/objective-members-popup.component';
 import { SprintCreateFormComponent } from '../../ui/sprint-create-form/sprint-create-form.component';
+import { TaskCreateModalComponent } from '../../ui/task-create-modal/task-create-modal.component';
 import { LoaderComponent } from '../../../../shared/ui/loader/loader.component';
 import { ErrorStateComponent } from '../../../../shared/ui/error-state/error-state.component';
 import { MilestoneTreeNode, ObjectiveDetail } from '../../models/milestone.model';
 import { EditObjectiveRequestDto, CreateObjectiveRequestDto } from '../../models/dto/milestone.dto';
 import { findTreeNode, isLeafObjective } from '../../utils/project.mapper';
+import { Sprint, SprintStatus } from '../../models/sprint.model';
 
 @Component({
   selector: 'app-milestone-tree-tab',
@@ -20,7 +22,7 @@ import { findTreeNode, isLeafObjective } from '../../utils/project.mapper';
   imports: [
     MilestoneTreeNodeComponent, MilestoneDetailPanelComponent, MilestoneSettingsModalComponent,
     CreateSubModuleModalComponent, ObjectiveMembersPopupComponent, SprintCreateFormComponent,
-    LoaderComponent, ErrorStateComponent
+    TaskCreateModalComponent, LoaderComponent, ErrorStateComponent
   ],
   templateUrl: './milestone-tree-tab.component.html'
 })
@@ -49,6 +51,8 @@ export class MilestoneTreeTabComponent {
 
   createSprintOpen = signal(false);
   createSprintNode = signal<MilestoneTreeNode | null>(null);
+  createTaskOpen = signal(false);
+  createTaskSprint = signal<MilestoneTreeNode | null>(null);
 
   constructor() {
     this.route.paramMap.pipe(takeUntilDestroyed()).subscribe((paramMap) => {
@@ -101,6 +105,40 @@ export class MilestoneTreeTabComponent {
   onSprintCreateCancelled(): void {
     this.createSprintOpen.set(false);
     this.createSprintNode.set(null);
+  }
+
+  onCreateTaskRequested(node: MilestoneTreeNode): void {
+    this.createTaskSprint.set(node);
+    this.createTaskOpen.set(true);
+  }
+
+  async onTaskCreated(): Promise<void> {
+    const sprint = this.createTaskSprint();
+    this.createTaskOpen.set(false);
+    if (sprint) await this.store.loadTasksForSprint(sprint.id, { force: true });
+  }
+
+  onTaskCreateClosed(): void {
+    this.createTaskOpen.set(false);
+    this.createTaskSprint.set(null);
+  }
+
+  createTaskSprints(): Sprint[] {
+    const node = this.createTaskSprint();
+    return node ? [this.sprintFromNode(node)] : [];
+  }
+
+  sprintFromNode(node: MilestoneTreeNode): Sprint {
+    return {
+      id: node.id,
+      objectiveId: node.parentObjectiveId ?? '',
+      name: node.title,
+      startDate: new Date(node.startDate),
+      endDate: new Date(node.endDate),
+      status: (node.status as SprintStatus) ?? 'active',
+      completedAt: null,
+      achievedAt: null
+    };
   }
 
   async onCreateModalCreated(payload: CreateObjectiveRequestDto): Promise<void> {
