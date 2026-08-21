@@ -279,4 +279,57 @@ describe('PeopleApiService', () => {
     expect(req.request.method).toBe('GET');
     req.flush([]);
   });
+
+  it('getChecklistAssignees requests the people checklist-assignees endpoint', () => {
+    service.getChecklistAssignees('legal-entity-1', 'position-1').subscribe();
+
+    const req = httpMock.expectOne(
+      (r) => r.url === `${environment.apiUrl}/people/checklist-assignees`
+    );
+    expect(req.request.method).toBe('GET');
+    expect(req.request.params.get('legalEntityId')).toBe('legal-entity-1');
+    expect(req.request.params.get('positionId')).toBe('position-1');
+    req.flush([]);
+  });
+
+  it('getChecklistAssigneePositions requests the people checklist-assignee-positions endpoint', () => {
+    service.getChecklistAssigneePositions('legal-entity-1').subscribe();
+
+    const req = httpMock.expectOne(
+      (r) => r.url === `${environment.apiUrl}/people/checklist-assignee-positions`
+    );
+    expect(req.request.method).toBe('GET');
+    expect(req.request.params.get('legalEntityId')).toBe('legal-entity-1');
+    req.flush([{ id: 'pos-1', name: 'HR Partner' }]);
+  });
+
+  it('getEmployeeNumberSuggestion requests the onboarding suggestion endpoint', () => {
+    service.getEmployeeNumberSuggestion('legal-entity-1').subscribe((result) => {
+      expect(result.employeeNumber).toBe('DAPI-0005');
+      expect(result.prefix).toBe('DAPI');
+      expect(result.sequence).toBe(5);
+    });
+
+    const req = httpMock.expectOne(
+      (r) => r.url === `${environment.apiUrl}/onboarding/employee-number-suggestion`
+    );
+    expect(req.request.method).toBe('GET');
+    expect(req.request.params.get('legalEntityId')).toBe('legal-entity-1');
+    expect(req.request.params.get('tenantId')).toBeNull();
+    req.flush({ employeeNumber: 'DAPI-0005', prefix: 'DAPI', sequence: 5 });
+  });
+
+  it('checkEmployeeNumberAvailability requests the onboarding availability endpoint', () => {
+    service.checkEmployeeNumberAvailability('DAPI-0005').subscribe((result) => {
+      expect(result.available).toBe(false);
+    });
+
+    const req = httpMock.expectOne(
+      (r) => r.url === `${environment.apiUrl}/onboarding/employee-number-availability`
+    );
+    expect(req.request.method).toBe('GET');
+    expect(req.request.params.get('employeeNumber')).toBe('DAPI-0005');
+    expect(req.request.params.get('tenantId')).toBeNull();
+    req.flush({ employeeNumber: 'DAPI-0005', available: false });
+  });
 });

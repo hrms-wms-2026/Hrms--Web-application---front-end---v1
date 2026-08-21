@@ -49,7 +49,8 @@ export function createEmptyDraftTask(): DraftChecklistTask {
     title: '',
     assignee: 'employee',
     preservedOwnerType: null,
-    preservedAssignedToId: null,
+    assigneePositionId: null,
+    selectedAssigneeUserId: null,
     dueDays: 0,
     isRequired: true
   };
@@ -62,7 +63,8 @@ function draftTaskFromTemplateTask(task: ChecklistTemplateTaskResponse): DraftCh
     title: task.title,
     assignee: isEmployee ? 'employee' : 'another',
     preservedOwnerType: isEmployee ? null : task.ownerType,
-    preservedAssignedToId: isEmployee ? null : task.assignedToId,
+    assigneePositionId: isEmployee ? null : (task.assigneePositionId ?? null),
+    selectedAssigneeUserId: isEmployee ? null : (task.assignedToId ?? null),
     dueDays: task.dueOffsetDays,
     isRequired: task.isRequired
   };
@@ -76,11 +78,8 @@ export function createDraftTasksFromTemplate(tasks: readonly ChecklistTemplateTa
 
 /**
  * Serializes draft-local tasks into the backend's EditedTasksJson contract
- * (ChecklistTaskJsonContract.Parse, ChecklistTaskDueRuleMode.AbsoluteDate):
- * an array of { title, ownerType, assignedToId?, dueDate, sequence, isRequired }.
- * dueDate is computed from each task's dueDays offset against the wizard's own start date -
- * the wizard UI collects a relative "due after N days" value, but the draft's edited-task JSON
- * mode requires a concrete date once HR has reviewed it against a real start date.
+ * (ChecklistTaskJsonContract.Parse, ChecklistTaskDueRuleMode.AbsoluteDate).
+ * Another-person tasks send the selected UserId as assignedToId — never EmployeeId.
  */
 export function serializeDraftTasksToEditedTasksJson(tasks: readonly DraftChecklistTask[], startDateIso: string): string {
   const payload = tasks.map((task, index) => {
@@ -96,7 +95,8 @@ export function serializeDraftTasksToEditedTasksJson(tasks: readonly DraftCheckl
     return {
       ...base,
       ownerType: task.preservedOwnerType ?? 'custom_user',
-      assignedToId: task.preservedAssignedToId
+      assignedToId: task.selectedAssigneeUserId,
+      assigneePositionId: task.assigneePositionId
     };
   });
   return JSON.stringify(payload);
@@ -115,12 +115,14 @@ export function parseEditedTasksJsonToDraftTasks(json: string, startDateIso: str
       const isEmployee = ownerType === 'employee';
       const dueDate = typeof item['dueDate'] === 'string' ? (item['dueDate'] as string) : startDateIso;
       const assignedToId = typeof item['assignedToId'] === 'string' ? (item['assignedToId'] as string) : null;
+      const assigneePositionId = typeof item['assigneePositionId'] === 'string' ? (item['assigneePositionId'] as string) : null;
       return {
         clientId: crypto.randomUUID(),
         title: typeof item['title'] === 'string' ? (item['title'] as string) : '',
         assignee: isEmployee ? 'employee' : 'another',
         preservedOwnerType: isEmployee ? null : ownerType,
-        preservedAssignedToId: isEmployee ? null : assignedToId,
+        assigneePositionId: isEmployee ? null : assigneePositionId,
+        selectedAssigneeUserId: isEmployee ? null : assignedToId,
         dueDays: diffDaysBetweenIsoDates(startDateIso, dueDate),
         isRequired: item['isRequired'] === true
       };
@@ -130,19 +132,50 @@ export function parseEditedTasksJsonToDraftTasks(json: string, startDateIso: str
   }
 }
 
+export interface DraftTaskFieldErrors {
+  title?: string;
+  dueDays?: string;
+  position?: string;
+  assignee?: string;
+}
+
+/** Per-task field errors for inline display. */
+export function validateDraftTaskFields(task: DraftChecklistTask): DraftTaskFieldErrors {
+  const errors: DraftTaskFieldErrors = {};
+  if (!task.title.trim()) {
+    errors.title = 'A title is required.';
+  }
+  if (!Number.isInteger(task.dueDays) || task.dueDays < 0) {
+    errors.dueDays = 'Enter a whole number of days, 0 or more.';
+  }
+  if (task.assignee === 'another') {
+    if (!task.assigneePositionId) {
+      errors.position = 'Select a position.';
+    }
+    if (!task.selectedAssigneeUserId) {
+      errors.assignee = 'Select who should complete this task.';
+    }
+  }
+  return errors;
+}
+
 /** Friendly, UI-facing validation messages - never references raw backend field names. */
 export function validateDraftTasks(tasks: readonly DraftChecklistTask[]): string[] {
   const errors: string[] = [];
   tasks.forEach((task, index) => {
+    const fieldErrors = validateDraftTaskFields(task);
     const label = `Task ${index + 1}`;
-    if (!task.title.trim()) {
-      errors.push(`${label}: a title is required.`);
+    if (fieldErrors.title) {
+      errors.push(`${label}: ${fieldErrors.title}`);
     }
-    if (!Number.isInteger(task.dueDays) || task.dueDays < 0) {
-      errors.push(`${label}: due timing must be a whole number of days, 0 or more.`);
+    if (fieldErrors.dueDays) {
+      errors.push(`${label}: ${fieldErrors.dueDays}`);
     }
-    if (task.assignee === 'another' && !task.preservedAssignedToId) {
-      errors.push(`${label}: this task's assignee could not be carried over - switch it to Employee.`);
+    if (fieldErrors.position) {
+      errors.push(`${label}: ${fieldErrors.position}`);
+    }
+    if (fieldErrors.assignee) {
+      errors.push(`${label}: ${fieldErrors.assignee}`);
     }
   });
   return errors;

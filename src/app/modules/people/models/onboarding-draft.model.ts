@@ -157,3 +157,16 @@ export interface RejectAccessGrantRequestResponse {
   readonly draftReason: string | null;
   readonly messageKey: string;
 }
+
+/** GET /api/v1/onboarding/employee-number-suggestion */
+export interface EmployeeNumberSuggestionResponse {
+  readonly employeeNumber: string;
+  readonly prefix: string;
+  readonly sequence: number;
+}
+
+/** GET /api/v1/onboarding/employee-number-availability — live hint only; save/finalize re-check. */
+export interface EmployeeNumberAvailabilityResponse {
+  readonly employeeNumber: string;
+  readonly available: boolean;
+}

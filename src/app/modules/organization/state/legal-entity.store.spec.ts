@@ -54,7 +54,7 @@ describe('LegalEntityStore', () => {
   it('loads companies and selects primary company by default', async () => {
     const loadPromise = store.loadCompanies();
 
-    const req = httpMock.expectOne(`${environment.apiUrl}/org/legal-entities?includeInactive=false`);
+    const req = httpMock.expectOne(`${environment.apiUrl}/session/companies`);
     req.flush(mockCompanies);
     await loadPromise;
 
@@ -68,7 +68,7 @@ describe('LegalEntityStore', () => {
     localStorage.setItem(SELECTED_LEGAL_ENTITY_STORAGE_KEY, 'comp-2');
 
     const loadPromise = store.loadCompanies();
-    const req = httpMock.expectOne(`${environment.apiUrl}/org/legal-entities?includeInactive=false`);
+    const req = httpMock.expectOne(`${environment.apiUrl}/session/companies`);
     req.flush(mockCompanies);
     await loadPromise;
 
@@ -80,7 +80,7 @@ describe('LegalEntityStore', () => {
     localStorage.setItem(SELECTED_LEGAL_ENTITY_STORAGE_KEY, 'invalid-deleted-comp-id');
 
     const loadPromise = store.loadCompanies();
-    const req = httpMock.expectOne(`${environment.apiUrl}/org/legal-entities?includeInactive=false`);
+    const req = httpMock.expectOne(`${environment.apiUrl}/session/companies`);
     req.flush(mockCompanies);
     await loadPromise;
 
@@ -90,14 +90,14 @@ describe('LegalEntityStore', () => {
 
   it('updates selectedLegalEntityId state and localStorage when selectCompany is called', async () => {
     const loadPromise = store.loadCompanies();
-    const req = httpMock.expectOne(`${environment.apiUrl}/org/legal-entities?includeInactive=false`);
+    const req = httpMock.expectOne(`${environment.apiUrl}/session/companies`);
     req.flush(mockCompanies);
     await loadPromise;
 
     const selectPromise = store.selectCompany('comp-2');
     const switchReq = httpMock.expectOne(`${environment.apiUrl}/session/active-company`);
     expect(switchReq.request.method).toBe('POST');
-    expect(switchReq.request.body).toEqual({ employeeId: 'comp-2' });
+    expect(switchReq.request.body).toEqual({ legalEntityId: 'comp-2' });
     switchReq.flush(null);
     await selectPromise;
 
@@ -106,9 +106,26 @@ describe('LegalEntityStore', () => {
     expect(localStorage.getItem(SELECTED_LEGAL_ENTITY_STORAGE_KEY)).toBe('comp-2');
   });
 
+  it('does not change local selection when the backend rejects the switch', async () => {
+    const loadPromise = store.loadCompanies();
+    httpMock.expectOne(`${environment.apiUrl}/session/companies`).flush(mockCompanies);
+    await loadPromise;
+
+    const selectPromise = store.selectCompany('comp-2');
+    httpMock
+      .expectOne(`${environment.apiUrl}/session/active-company`)
+      .flush({ detail: 'Required permission org:read missing' }, { status: 403, statusText: 'Forbidden' });
+    const success = await selectPromise;
+
+    expect(success).toBe(false);
+    expect(store.selectedLegalEntityId()).toBe('comp-1');
+    expect(localStorage.getItem(SELECTED_LEGAL_ENTITY_STORAGE_KEY)).toBe('comp-1');
+    expect(store.switchError()).toBe('You do not have access to perform this action.');
+  });
+
   it('handles empty company list safely without crashing', async () => {
     const loadPromise = store.loadCompanies();
-    const req = httpMock.expectOne(`${environment.apiUrl}/org/legal-entities?includeInactive=false`);
+    const req = httpMock.expectOne(`${environment.apiUrl}/session/companies`);
     req.flush([]);
     await loadPromise;
 
@@ -119,7 +136,7 @@ describe('LegalEntityStore', () => {
 
   it('updateCompanyDisplay patches name/companyCode/isActive on the matching company only', async () => {
     const loadPromise = store.loadCompanies();
-    const req = httpMock.expectOne(`${environment.apiUrl}/org/legal-entities?includeInactive=false`);
+    const req = httpMock.expectOne(`${environment.apiUrl}/session/companies`);
     req.flush(mockCompanies);
     await loadPromise;
 
@@ -171,7 +188,7 @@ describe('LegalEntityStore', () => {
     postReq.flush(mockCreatedGeneralSettings);
 
     const refreshReq = await vi.waitFor(() =>
-      httpMock.expectOne(`${environment.apiUrl}/org/legal-entities?includeInactive=false`)
+      httpMock.expectOne(`${environment.apiUrl}/session/companies`)
     );
     refreshReq.flush([...mockCompanies, { id: 'comp-3', name: 'Gamma Inc', companyCode: 'GAMMA', logoFileId: null, isActive: true, isPrimary: false }]);
 
@@ -205,7 +222,7 @@ describe('LegalEntityStore', () => {
     const postReq = httpMock.expectOne((r) => r.url === `${environment.apiUrl}/org/legal-entities` && r.method === 'POST');
     postReq.flush(mockCreatedGeneralSettings);
     const refreshReq = await vi.waitFor(() =>
-      httpMock.expectOne(`${environment.apiUrl}/org/legal-entities?includeInactive=false`)
+      httpMock.expectOne(`${environment.apiUrl}/session/companies`)
     );
     refreshReq.flush(mockCompanies);
     await firstPromise;

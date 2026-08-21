@@ -8,7 +8,12 @@ import { PositionApiService } from '../../organization/data-access/position-api.
 import { PositionListItemResponse } from '../../organization/models/position.model';
 import { ChecklistApiService } from '../data-access/checklist-api.service';
 import { PeopleApiService } from '../data-access/people-api.service';
-import { ChecklistTemplateDetailResponse, DraftChecklistTask, OnboardingChecklistTemplateMatchResponse } from '../models/checklist-template.model';
+import {
+  ChecklistAssignee,
+  ChecklistTemplateDetailResponse,
+  DraftChecklistTask,
+  OnboardingChecklistTemplateMatchResponse
+} from '../models/checklist-template.model';
 import {
   ActiveHolder,
   FinalizeOnboardingDraftResponse,
@@ -46,6 +51,7 @@ export interface AddEmployeeWizardState {
   readonly positionItems: readonly PositionListItemResponse[];
   readonly loadingDepartments: boolean;
   readonly loadingPositions: boolean;
+  readonly positionValidationMessage: string | null;
 
   readonly activeHolders: readonly ActiveHolder[];
   readonly selectedReportsToEmployeeId: string | null;
@@ -70,10 +76,12 @@ export interface AddEmployeeWizardState {
   /** Employee-specific, editable copy of the selected checklist's tasks - never written back to
    *  the template. Only meaningful while selectedTemplateId is set. */
   readonly draftTasks: readonly DraftChecklistTask[];
-  /** The template id draftTasks was last seeded from (or restored against, for a resumed draft
-   *  with editedTasksJson). Lets seeding be skipped so a resumed draft's saved edits are never
-   *  clobbered by a subsequent template-detail load for the same template. */
   readonly draftTasksSourceTemplateId: string | null;
+  readonly checklistAssigneePositions: readonly SelectOption[];
+  readonly loadingChecklistAssigneePositions: boolean;
+  readonly checklistAssigneePositionsError: string | null;
+  readonly checklistAssigneesByPosition: Readonly<Record<string, readonly ChecklistAssignee[]>>;
+  readonly loadingChecklistAssigneesByPosition: Readonly<Record<string, boolean>>;
 
   readonly formValue: AddEmployeeFormValue;
   readonly savedDepartmentName: string | null;
@@ -117,6 +125,7 @@ const initialState: AddEmployeeWizardState = {
   positionItems: [],
   loadingDepartments: false,
   loadingPositions: false,
+  positionValidationMessage: null,
 
   activeHolders: [],
   selectedReportsToEmployeeId: null,
@@ -140,6 +149,11 @@ const initialState: AddEmployeeWizardState = {
 
   draftTasks: [],
   draftTasksSourceTemplateId: null,
+  checklistAssigneePositions: [],
+  loadingChecklistAssigneePositions: false,
+  checklistAssigneePositionsError: null,
+  checklistAssigneesByPosition: {},
+  loadingChecklistAssigneesByPosition: {},
 
   formValue: initialFormValue,
   savedDepartmentName: null,
@@ -162,6 +176,27 @@ const initialState: AddEmployeeWizardState = {
   finalizeError: null,
   finalizeResult: null
 };
+
+const POSITION_REQUIRED_MESSAGE = 'Position is required.';
+const POSITION_NO_VACANCY_MESSAGE = 'The selected position no longer has a vacancy. Choose another position.';
+const POSITION_NO_LONGER_AVAILABLE_MESSAGE = 'The selected position is no longer available. Choose another position.';
+
+function getAvailableSeats(position: PositionListItemResponse): number {
+  return position.maxOccupancy - position.assignedCount!;
+}
+
+function isPositionFull(position: PositionListItemResponse): boolean {
+  return getAvailableSeats(position) <= 0;
+}
+
+function toPositionOption(position: PositionListItemResponse): SelectOption {
+  const availableSeats = getAvailableSeats(position);
+  return {
+    value: position.id,
+    label: availableSeats <= 0 ? `${position.name} [No vacancy]` : `${position.name} [${availableSeats}]`,
+    disabled: availableSeats <= 0
+  };
+}
 
 export const AddEmployeeWizardStore = signalStore(
   { providedIn: 'root' },
@@ -188,10 +223,136 @@ export const AddEmployeeWizardStore = signalStore(
         if (store.draftTasksSourceTemplateId() === templateId) {
           return;
         }
+        const draftTasks = createDraftTasksFromTemplate(detail.tasks);
         patchState(store, {
-          draftTasks: createDraftTasksFromTemplate(detail.tasks),
+          draftTasks,
           draftTasksSourceTemplateId: templateId
         });
+        if (draftTasks.some((task) => task.assignee === 'another')) {
+          void loadChecklistAssigneePositions();
+        }
+        for (const task of draftTasks) {
+          if (task.assignee === 'another' && task.assigneePositionId) {
+            void loadChecklistAssigneesForPosition(task.assigneePositionId);
+          }
+        }
+      }
+
+      function maybePreselectSingleAssignee(positionId: string): void {
+        const holders = store.checklistAssigneesByPosition()[positionId] ?? [];
+        if (holders.length !== 1) {
+          return;
+        }
+        const onlyUserId = holders[0].userId;
+        patchState(store, {
+          draftTasks: store.draftTasks().map((task) => {
+            if (task.assignee !== 'another' || task.assigneePositionId !== positionId || task.selectedAssigneeUserId) {
+              return task;
+            }
+            return { ...task, selectedAssigneeUserId: onlyUserId };
+          })
+        });
+      }
+
+      function getPositionSelectionIssue(positionId: string | null | undefined): 'required' | 'missing' | 'full' | null {
+        if (!positionId) {
+          return 'required';
+        }
+        if (store.positionItems().length === 0) {
+          return null;
+        }
+        const selected = store.positionItems().find((position) => position.id === positionId);
+        if (!selected) {
+          return 'missing';
+        }
+        return isPositionFull(selected) ? 'full' : null;
+      }
+
+      function getPositionIssueMessage(issue: 'required' | 'missing' | 'full'): string {
+        if (issue === 'required') {
+          return POSITION_REQUIRED_MESSAGE;
+        }
+        if (issue === 'missing') {
+          return POSITION_NO_LONGER_AVAILABLE_MESSAGE;
+        }
+        return POSITION_NO_VACANCY_MESSAGE;
+      }
+
+      function clearChecklistSelectionState(message: string | null, positionId: string | null): void {
+        patchState(store, {
+          positionId,
+          activeHolders: [],
+          selectedReportsToEmployeeId: null,
+          loadingActiveHolders: false,
+          selectedTemplateId: null,
+          selectedTemplateDetail: null,
+          selectedTemplateDetailError: null,
+          loadingSelectedTemplateDetail: false,
+          savedPositionName: null,
+          savedReportingManagerName: null,
+          savedReportingManagerPositionName: null,
+          draftTasks: [],
+          draftTasksSourceTemplateId: null,
+          positionValidationMessage: message
+        });
+      }
+
+      async function loadChecklistAssigneePositions(): Promise<void> {
+        const companyId = store.companyId();
+        if (!companyId) {
+          return;
+        }
+        patchState(store, {
+          loadingChecklistAssigneePositions: true,
+          checklistAssigneePositionsError: null
+        });
+        try {
+          const items = await firstValueFrom(peopleApi.getChecklistAssigneePositions(companyId));
+          if (store.companyId() !== companyId) {
+            return;
+          }
+          patchState(store, {
+            checklistAssigneePositions: items.map((p) => ({ value: p.id, label: p.name })),
+            loadingChecklistAssigneePositions: false,
+            checklistAssigneePositionsError: null
+          });
+        } catch (err) {
+          if (store.companyId() !== companyId) {
+            return;
+          }
+          patchState(store, {
+            checklistAssigneePositions: [],
+            loadingChecklistAssigneePositions: false,
+            checklistAssigneePositionsError: toSafeErrorMessage(err, 'Could not load positions.')
+          });
+        }
+      }
+
+      async function loadChecklistAssigneesForPosition(positionId: string): Promise<void> {
+        const companyId = store.companyId();
+        if (!companyId || !positionId) {
+          return;
+        }
+        if (store.checklistAssigneesByPosition()[positionId]) {
+          maybePreselectSingleAssignee(positionId);
+          return;
+        }
+        patchState(store, {
+          loadingChecklistAssigneesByPosition: { ...store.loadingChecklistAssigneesByPosition(), [positionId]: true }
+        });
+        try {
+          const assignees = await firstValueFrom(peopleApi.getChecklistAssignees(companyId, positionId));
+          patchState(store, {
+            checklistAssigneesByPosition: { ...store.checklistAssigneesByPosition(), [positionId]: assignees },
+            loadingChecklistAssigneesByPosition: { ...store.loadingChecklistAssigneesByPosition(), [positionId]: false }
+          });
+          maybePreselectSingleAssignee(positionId);
+        } catch {
+          patchState(store, {
+            checklistAssigneesByPosition: { ...store.checklistAssigneesByPosition(), [positionId]: [] },
+            loadingChecklistAssigneesByPosition: { ...store.loadingChecklistAssigneesByPosition(), [positionId]: false }
+          });
+        }
       }
 
       async function loadActiveHoldersForReportsToPosition(
@@ -244,7 +405,8 @@ export const AddEmployeeWizardStore = signalStore(
           savedReportingManagerName: null,
           savedReportingManagerPositionName: null,
           draftTasks: [],
-          draftTasksSourceTemplateId: null
+          draftTasksSourceTemplateId: null,
+          positionValidationMessage: null
         });
         void this.loadDepartmentsForCompany(companyId);
       },
@@ -300,7 +462,8 @@ export const AddEmployeeWizardStore = signalStore(
           savedReportingManagerName: null,
           savedReportingManagerPositionName: null,
           draftTasks: [],
-          draftTasksSourceTemplateId: null
+          draftTasksSourceTemplateId: null,
+          positionValidationMessage: null
         });
         const companyId = store.companyId();
         if (companyId) {
@@ -317,11 +480,27 @@ export const AddEmployeeWizardStore = signalStore(
           if (store.departmentId() !== departmentId) {
             return;
           }
+          const selectedPositionId = store.positionId();
+          const selectedPosition = selectedPositionId
+            ? page.items.find((position) => position.id === selectedPositionId) ?? null
+            : null;
+          const selectionIssue =
+            selectedPositionId && page.items.length > 0
+              ? !selectedPosition
+                ? 'missing'
+                : isPositionFull(selectedPosition)
+                  ? 'full'
+                  : null
+              : null;
           patchState(store, {
-            positions: page.items.map((p) => ({ value: p.id, label: p.name })),
+            positions: page.items.map(toPositionOption),
             positionItems: page.items,
-            loadingPositions: false
+            loadingPositions: false,
+            positionValidationMessage: selectionIssue ? getPositionIssueMessage(selectionIssue) : null
           });
+          if (selectionIssue) {
+            clearChecklistSelectionState(getPositionIssueMessage(selectionIssue), null);
+          }
         } catch {
           if (store.departmentId() !== departmentId) {
             return;
@@ -331,13 +510,14 @@ export const AddEmployeeWizardStore = signalStore(
       },
 
       async setPosition(positionId: string, reportsToPositionId?: string | null): Promise<void> {
+        const normalizedPositionId = positionId || null;
         const resolvedReportsTo =
           reportsToPositionId ??
-          store.positionItems().find((p) => p.id === positionId)?.reportsToPositionId ??
+          store.positionItems().find((p) => p.id === normalizedPositionId)?.reportsToPositionId ??
           null;
 
         patchState(store, {
-          positionId,
+          positionId: normalizedPositionId,
           activeHolders: [],
           selectedReportsToEmployeeId: null,
           loadingActiveHolders: false,
@@ -349,12 +529,32 @@ export const AddEmployeeWizardStore = signalStore(
           savedReportingManagerName: null,
           savedReportingManagerPositionName: null,
           draftTasks: [],
-          draftTasksSourceTemplateId: null
+          draftTasksSourceTemplateId: null,
+          positionValidationMessage: null
         });
 
-        if (resolvedReportsTo) {
-          await loadActiveHoldersForReportsToPosition(resolvedReportsTo, positionId);
+        if (normalizedPositionId && resolvedReportsTo) {
+          await loadActiveHoldersForReportsToPosition(resolvedReportsTo, normalizedPositionId);
         }
+      },
+
+      getPositionSelectionIssue(positionId: string | null | undefined): 'required' | 'missing' | 'full' | null {
+        return getPositionSelectionIssue(positionId);
+      },
+
+      setPositionValidationMessage(message: string | null): void {
+        patchState(store, { positionValidationMessage: message });
+      },
+
+      syncSelectionFromForm(departmentId: string | null, positionId: string | null): void {
+        patchState(store, {
+          departmentId,
+          positionId
+        });
+      },
+
+      clearInvalidPositionSelection(message: string): void {
+        clearChecklistSelectionState(message, null);
       },
 
       setReportsToEmployeeId(employeeId: string | null): void {
@@ -422,18 +622,52 @@ export const AddEmployeeWizardStore = signalStore(
         }
       },
 
-      updateDraftTask(clientId: string, patch: Partial<Pick<DraftChecklistTask, 'title' | 'dueDays' | 'isRequired' | 'assignee'>>): void {
+      updateDraftTask(
+        clientId: string,
+        patch: Partial<Pick<DraftChecklistTask, 'title' | 'dueDays' | 'isRequired' | 'assignee' | 'assigneePositionId' | 'selectedAssigneeUserId'>>
+      ): void {
         patchState(store, {
           draftTasks: store.draftTasks().map((task) => {
             if (task.clientId !== clientId) {
               return task;
             }
             if (patch.assignee === 'employee') {
-              return { ...task, ...patch, preservedOwnerType: null, preservedAssignedToId: null };
+              return {
+                ...task,
+                ...patch,
+                preservedOwnerType: null,
+                assigneePositionId: null,
+                selectedAssigneeUserId: null
+              };
+            }
+            if (patch.assignee === 'another') {
+              return {
+                ...task,
+                ...patch,
+                preservedOwnerType: task.preservedOwnerType ?? 'custom_user',
+                selectedAssigneeUserId: patch.selectedAssigneeUserId ?? null
+              };
+            }
+            if (patch.assigneePositionId !== undefined && patch.assigneePositionId !== task.assigneePositionId) {
+              return { ...task, ...patch, selectedAssigneeUserId: null };
             }
             return { ...task, ...patch };
           })
         });
+        const updated = store.draftTasks().find((task) => task.clientId === clientId);
+        if (updated?.assignee === 'another' && updated.assigneePositionId) {
+          void loadChecklistAssigneesForPosition(updated.assigneePositionId);
+        }
+      },
+
+      async ensureChecklistAssigneePositionsLoaded(force = false): Promise<void> {
+        if (store.loadingChecklistAssigneePositions()) {
+          return;
+        }
+        if (!force && store.checklistAssigneePositions().length > 0) {
+          return;
+        }
+        await loadChecklistAssigneePositions();
       },
 
       addDraftTask(): void {
@@ -540,6 +774,19 @@ export const AddEmployeeWizardStore = signalStore(
         const form = store.formValue();
         if (!form.workModeId || form.workModeId <= 0) {
           patchState(store, { saveError: 'Work mode is required.' });
+          return null;
+        }
+
+        const positionIssue = getPositionSelectionIssue(store.positionId());
+        if (positionIssue) {
+          const message = getPositionIssueMessage(positionIssue);
+          patchState(store, {
+            saveError: message,
+            positionValidationMessage: message
+          });
+          if (positionIssue !== 'required') {
+            clearChecklistSelectionState(message, null);
+          }
           return null;
         }
 
@@ -660,6 +907,14 @@ export const AddEmployeeWizardStore = signalStore(
             }
           }
           await this.loadChecklistTemplateMatches();
+          if (store.draftTasks().some((task) => task.assignee === 'another')) {
+            await loadChecklistAssigneePositions();
+          }
+          for (const task of store.draftTasks()) {
+            if (task.assignee === 'another' && task.assigneePositionId) {
+              await loadChecklistAssigneesForPosition(task.assigneePositionId);
+            }
+          }
         } catch (err) {
           patchState(store, {
             resuming: false,

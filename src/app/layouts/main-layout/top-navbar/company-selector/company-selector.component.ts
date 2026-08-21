@@ -22,13 +22,6 @@ export class CompanySelectorComponent implements OnInit {
   readonly isOpen = signal(false);
   readonly showCreateModal = signal(false);
 
-  readonly hasOrgAccess = computed(() => {
-    return (
-      this.permissionService.hasModule('org_structure') &&
-      this.permissionService.hasAnyPermission(['org:read', 'org:manage'])
-    );
-  });
-
   readonly canCreateLegalEntity = computed(() => this.permissionService.hasPermission('legal_entity:create'));
 
   readonly selectedCompany = this.store.selectedLegalEntity;
@@ -51,7 +44,7 @@ export class CompanySelectorComponent implements OnInit {
   });
 
   ngOnInit(): void {
-    if (this.hasOrgAccess() && !this.store.loaded() && !this.store.loading()) {
+    if (!this.store.loaded() && !this.store.loading()) {
       this.store.loadCompanies();
     }
   }
@@ -65,8 +58,13 @@ export class CompanySelectorComponent implements OnInit {
   }
 
   async selectCompany(legalEntityId: string): Promise<void> {
-    await this.store.selectCompany(legalEntityId);
-    this.close();
+    const switched = await this.store.selectCompany(legalEntityId);
+    if (switched) {
+      this.close();
+      return;
+    }
+
+    this.notificationService.error(this.store.switchError() ?? 'Unable to switch company.');
   }
 
   onAddCompany(): void {

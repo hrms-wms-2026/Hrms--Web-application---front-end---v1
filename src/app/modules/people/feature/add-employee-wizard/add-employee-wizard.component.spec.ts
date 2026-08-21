@@ -17,8 +17,40 @@ describe('AddEmployeeWizardComponent', () => {
   let notificationService: { success: (m: string) => void; error: (m: string) => void; info: (m: string) => void; warning: (m: string) => void };
 
   const company = { id: 'le-1', name: 'Acme Co', companyCode: 'ACME', logoFileId: null, isActive: true, isPrimary: true };
+  const engineeringDepartment = { id: 'dept-1', name: 'Engineering', legalEntityId: 'le-1', isActive: true };
+  const openPosition = {
+    id: 'pos-open',
+    legalEntityId: 'le-1',
+    departmentId: 'dept-1',
+    name: 'Software Engineer',
+    code: 'SE-1',
+    positionType: 'Pooled',
+    maxOccupancy: 3,
+    reportsToPositionId: null,
+    isActive: true,
+    createdAt: '2026-08-20T00:00:00Z',
+    updatedAt: null,
+    assignedCount: 1
+  };
+  const fullPosition = {
+    id: 'pos-full',
+    legalEntityId: 'le-1',
+    departmentId: 'dept-1',
+    name: 'Project Manager',
+    code: 'PM-1',
+    positionType: 'Unique',
+    maxOccupancy: 1,
+    reportsToPositionId: null,
+    isActive: true,
+    createdAt: '2026-08-20T00:00:00Z',
+    updatedAt: null,
+    assignedCount: 1
+  };
 
-  async function setupWithCompany(queryParams: Record<string, string> = {}): Promise<void> {
+  async function setupWithCompany(
+    queryParams: Record<string, string> = {},
+    options: { departments?: readonly typeof engineeringDepartment[] } = {}
+  ): Promise<void> {
     TestBed.resetTestingModule();
     notificationService = { success: () => {}, error: () => {}, info: () => {}, warning: () => {} };
 
@@ -41,7 +73,7 @@ describe('AddEmployeeWizardComponent', () => {
     legalEntityStore = TestBed.inject(LegalEntityStore);
 
     const loadPromise = legalEntityStore.loadCompanies();
-    httpMock.expectOne(`${environment.apiUrl}/org/legal-entities?includeInactive=false`).flush([company]);
+    httpMock.expectOne(`${environment.apiUrl}/session/companies`).flush([company]);
     await loadPromise;
 
     fixture = TestBed.createComponent(AddEmployeeWizardComponent);
@@ -51,13 +83,59 @@ describe('AddEmployeeWizardComponent', () => {
     await fixture.whenStable();
 
     if (!queryParams['draftId']) {
-      httpMock.expectOne((r) => r.url.includes('/departments')).flush({ items: [], page: 1, pageSize: 25, totalCount: 0, totalPages: 0 });
+      httpMock.expectOne((r) => r.url.includes('/departments')).flush({
+        items: options.departments ?? [],
+        page: 1,
+        pageSize: 25,
+        totalCount: (options.departments ?? []).length,
+        totalPages: 1
+      });
+      httpMock
+        .expectOne((r) => r.url.includes('/onboarding/employee-number-suggestion'))
+        .flush({ employeeNumber: 'ACME-0001', prefix: 'ACME', sequence: 1 });
       await fixture.whenStable();
       fixture.detectChanges();
     }
   }
 
-  afterEach(() => httpMock.verify());
+  async function flushPositionsForDepartment(
+    positions: readonly (typeof openPosition | typeof fullPosition)[]
+  ): Promise<void> {
+    fixture.componentInstance.onDepartmentChange('dept-1');
+    fixture.detectChanges();
+    httpMock.expectOne((r) => r.url.includes('/positions')).flush({
+      items: positions,
+      page: 1,
+      pageSize: 25,
+      totalCount: positions.length,
+      totalPages: 1
+    });
+    await fixture.whenStable();
+    fixture.detectChanges();
+  }
+
+  function flushEmployeeNumberSuggestionRequests(sequence = 1): void {
+    for (const req of httpMock.match((r) => r.url.includes('/onboarding/employee-number-suggestion'))) {
+      req.flush({
+        employeeNumber: `ACME-${String(sequence).padStart(4, '0')}`,
+        prefix: 'ACME',
+        sequence
+      });
+    }
+  }
+
+  function flushEmployeeNumberAvailabilityRequests(available = true): void {
+    for (const req of httpMock.match((r) => r.url.includes('/onboarding/employee-number-availability'))) {
+      const employeeNumber = req.request.params.get('employeeNumber') ?? 'ACME-0001';
+      req.flush({ employeeNumber, available });
+    }
+  }
+
+  afterEach(() => {
+    flushEmployeeNumberSuggestionRequests();
+    flushEmployeeNumberAvailabilityRequests();
+    httpMock.verify();
+  });
 
   it('shows a precondition empty state and no form when no company is selected', async () => {
     notificationService = { success: () => {}, error: () => {}, info: () => {}, warning: () => {} };
@@ -85,6 +163,25 @@ describe('AddEmployeeWizardComponent', () => {
   it('shows a precondition empty state when the selected company has zero departments', async () => {
     await setupWithCompany();
     expect(fixture.nativeElement.textContent).toContain('No departments configured');
+  });
+
+  it('renders available and full positions with concise vacancy labels', async () => {
+    await setupWithCompany({}, { departments: [engineeringDepartment] });
+    await flushPositionsForDepartment([openPosition, fullPosition]);
+
+    const options = fixture.componentInstance.store.positions();
+    expect(options.some((option) => option.label.includes('Software Engineer [2]'))).toBe(true);
+    expect(options.some((option) => option.label.includes('Project Manager [No vacancy]'))).toBe(true);
+  });
+
+  it('disables the full position option in the position select', async () => {
+    await setupWithCompany({}, { departments: [engineeringDepartment] });
+    await flushPositionsForDepartment([openPosition, fullPosition]);
+
+    const options = fixture.componentInstance.store.positions();
+    const fullOption = options.find((option) => option.label.includes('Project Manager [No vacancy]'));
+    expect(fullOption).toBeTruthy();
+    expect(fullOption?.disabled).toBe(true);
   });
 
   it('renders work mode and employment type options as visible selectable chips', async () => {
@@ -121,6 +218,38 @@ describe('AddEmployeeWizardComponent', () => {
 
     expect(fixture.componentInstance.store.step()).toBe('employee_details');
     expect(fixture.nativeElement.textContent).toContain('First name is required.');
+  });
+
+  it('blocks continue, save draft, and finalize when the selected position has no vacancy', async () => {
+    await setupWithCompany({}, { departments: [engineeringDepartment] });
+    await flushPositionsForDepartment([openPosition, fullPosition]);
+
+    fixture.componentInstance.form.patchValue({
+      firstName: 'Ada',
+      lastName: 'Lovelace',
+      workEmail: 'ada@test.dev',
+      departmentId: 'dept-1',
+      positionId: 'pos-full',
+      employmentType: 'full_time',
+      startDate: '2026-08-10',
+      workModeId: '1'
+    });
+    await fixture.componentInstance.store.setPosition('pos-full', null);
+    fixture.detectChanges();
+
+    fixture.componentInstance.goToNextStep();
+    fixture.detectChanges();
+    expect(fixture.componentInstance.store.step()).toBe('employee_details');
+    expect(fixture.nativeElement.textContent).toContain('The selected position no longer has a vacancy. Choose another position.');
+
+    await fixture.componentInstance.onSaveDraft();
+    httpMock.expectNone(`${environment.apiUrl}/onboarding/drafts`);
+
+    fixture.componentInstance.store.goToStep('review_and_submit');
+    fixture.detectChanges();
+    await fixture.componentInstance.onFinalize();
+    httpMock.expectNone((req) => req.url.includes('/onboarding/drafts') && req.method === 'POST');
+    httpMock.expectNone((req) => req.url.includes('/onboarding/drafts/') && req.url.endsWith('/finalize'));
   });
 
   it('does not render Schedule/Shift notice text in the form', async () => {
@@ -410,6 +539,81 @@ describe('AddEmployeeWizardComponent', () => {
     await fixture.whenStable();
   });
 
+  it('clears a selected full position after reload and also clears checklist/template task edits', async () => {
+    await setupWithCompany({}, { departments: [engineeringDepartment] });
+    await flushPositionsForDepartment([openPosition]);
+
+    fixture.componentInstance.form.patchValue({
+      firstName: 'Ada',
+      lastName: 'Lovelace',
+      workEmail: 'ada@test.dev',
+      departmentId: 'dept-1',
+      positionId: 'pos-open',
+      employmentType: 'full_time',
+      startDate: '2026-08-10',
+      workModeId: '1'
+    });
+    await fixture.componentInstance.store.setPosition('pos-open', null);
+    fixture.componentInstance.goToNextStep();
+    fixture.detectChanges();
+
+    httpMock.expectOne((r) => r.url.includes('/onboarding/checklist-templates/matches')).flush([
+      { id: 'tmpl-1', name: 'Engineering Onboarding', matchLevel: 'position', departmentId: 'dept-1', positionId: 'pos-open' }
+    ]);
+    await fixture.whenStable();
+    fixture.detectChanges();
+
+    const card = fixture.nativeElement.querySelector('.checklist-card') as HTMLElement;
+    card.click();
+    fixture.detectChanges();
+
+    httpMock.expectOne(`${environment.apiUrl}/people/checklist-templates/tmpl-1`).flush({
+      id: 'tmpl-1',
+      name: 'Engineering Onboarding',
+      templateType: 'onboarding',
+      legalEntityId: 'le-1',
+      departmentId: 'dept-1',
+      departmentName: 'Engineering',
+      positionId: 'pos-open',
+      positionName: 'Software Engineer',
+      isActive: true,
+      tasks: [
+        { title: 'Provision laptop', ownerType: 'employee', assignedToId: null, dueOffsetDays: 1, sequence: 1, isRequired: true, isBypassable: false, bypassPenaltyDescription: null, category: null }
+      ]
+    });
+    await fixture.whenStable();
+    fixture.detectChanges();
+
+    const titleInput = fixture.nativeElement.querySelector('input[placeholder="Task title"]') as HTMLInputElement;
+    titleInput.value = 'Provision laptop ASAP';
+    titleInput.dispatchEvent(new Event('input'));
+    fixture.detectChanges();
+    expect(fixture.componentInstance.store.draftTasks().length).toBe(1);
+
+    const reloadedOpenPosition = { ...openPosition, assignedCount: 3 };
+    const reloadPromise = fixture.componentInstance.store.loadPositionsForDepartment('le-1', 'dept-1');
+    httpMock.expectOne((r) => r.url.includes('/positions')).flush({
+      items: [reloadedOpenPosition],
+      page: 1,
+      pageSize: 25,
+      totalCount: 1,
+      totalPages: 1
+    });
+    await reloadPromise;
+    fixture.detectChanges();
+
+    expect(fixture.componentInstance.form.controls.positionId.value).toBe('');
+    expect(fixture.componentInstance.store.positionId()).toBeNull();
+    expect(fixture.componentInstance.store.selectedTemplateId()).toBeNull();
+    expect(fixture.componentInstance.store.draftTasks()).toEqual([]);
+    expect(fixture.componentInstance.store.positionValidationMessage()).toBe(
+      'The selected position no longer has a vacancy. Choose another position.'
+    );
+    fixture.componentInstance.goToPreviousStep();
+    fixture.detectChanges();
+    expect(fixture.nativeElement.textContent).toContain('The selected position no longer has a vacancy. Choose another position.');
+  });
+
   it('does not repeatedly call the matches endpoint when opening Step 2 without department/position changes', async () => {
     await setupWithCompany();
     fixture.componentInstance.form.patchValue({
@@ -454,7 +658,7 @@ describe('AddEmployeeWizardComponent', () => {
       positionId: 'pos-1',
       employmentType: 'full_time',
       startDate: '2026-08-10',
-      employeeNumber: null,
+      employeeNumber: 'ACME-0001',
       workModeId: 1,
       selectedTemplateId: null,
       editedTasksJson: null,
@@ -478,6 +682,7 @@ describe('AddEmployeeWizardComponent', () => {
     httpMock.expectOne((r) => r.url.includes('/onboarding/checklist-templates/matches')).flush([]);
     await fixture.whenStable();
     await Promise.resolve();
+    flushEmployeeNumberSuggestionRequests();
 
     fixture.componentInstance.form.patchValue({
       firstName: 'Ada',
@@ -487,8 +692,10 @@ describe('AddEmployeeWizardComponent', () => {
       positionId: 'pos-1',
       employmentType: 'full_time',
       startDate: '2026-08-10',
-      workModeId: '1'
+      workModeId: '1',
+      employeeNumber: 'ACME-0001'
     });
+    fixture.componentInstance.employeeNumberAvailability.set('available');
     fixture.detectChanges();
 
     const finPromise = fixture.componentInstance.onFinalize();
@@ -543,6 +750,8 @@ describe('AddEmployeeWizardComponent', () => {
     await fixture.whenStable();
     httpMock.expectOne((r) => r.url.includes('/departments')).flush({ items: [], page: 1, pageSize: 25, totalCount: 0, totalPages: 0 });
     await fixture.whenStable();
+    flushEmployeeNumberSuggestionRequests();
+    await fixture.whenStable();
     await Promise.resolve();
     await Promise.resolve();
     httpMock.expectOne((r) => r.url.includes('/positions')).flush({ items: [], page: 1, pageSize: 25, totalCount: 0, totalPages: 0 });
@@ -551,6 +760,7 @@ describe('AddEmployeeWizardComponent', () => {
     await Promise.resolve();
     httpMock.expectOne((r) => r.url.includes('/onboarding/checklist-templates/matches')).flush([]);
     await fixture.whenStable();
+    flushEmployeeNumberSuggestionRequests();
     fixture.detectChanges();
 
     const text = fixture.nativeElement.textContent as string;
@@ -619,7 +829,7 @@ describe('AddEmployeeWizardComponent', () => {
       positionId: 'pos-1',
       employmentType: 'full_time',
       startDate: '2026-08-10',
-      employeeNumber: null,
+      employeeNumber: 'ACME-0001',
       workModeId: 1,
       selectedTemplateId: null,
       editedTasksJson: null,
@@ -641,6 +851,7 @@ describe('AddEmployeeWizardComponent', () => {
     await Promise.resolve();
     httpMock.expectOne((r) => r.url.includes('/onboarding/checklist-templates/matches')).flush([]);
     await fixture.whenStable();
+    flushEmployeeNumberSuggestionRequests();
     fixture.detectChanges();
 
     expect(fixture.nativeElement.textContent).toContain('This onboarding has already been finalized.');
@@ -789,6 +1000,11 @@ describe('AddEmployeeWizardComponent', () => {
       ]
     });
     await fixture.whenStable();
+    const positionLoads = httpMock.match((r) => r.url.includes('/people/checklist-assignee-positions'));
+    for (const req of positionLoads) {
+      req.flush([{ id: 'pos-hr', name: 'HR Partner' }]);
+    }
+    await fixture.whenStable();
     fixture.detectChanges();
   }
 
@@ -842,11 +1058,10 @@ describe('AddEmployeeWizardComponent', () => {
     expect(titleInputs.map((input) => input.value)).toEqual(['Provision laptop', 'Sign paperwork']);
 
     const text = fixture.nativeElement.textContent as string;
-    expect(text).toContain('Employee');
-    expect(text).toContain('Another person');
-    expect(text).toContain('days from employee start date');
-    expect(text).toContain('Required');
-    expect(text).toContain('Choosing another assignee is not available yet.');
+    expect(text).toContain('+ Assign');
+    expect(text).toContain('Ada Lovelace');
+    expect(text).toContain('Assigned to');
+    expect(text).not.toContain('Choosing another assignee is not available yet.');
   });
 
   it('task title can be edited', async () => {
@@ -1031,5 +1246,193 @@ describe('AddEmployeeWizardComponent', () => {
     httpMock.expectNone(`${environment.apiUrl}/onboarding/drafts`);
     fixture.detectChanges();
     expect(fixture.nativeElement.textContent).toContain('Select who this employee reports to');
+  });
+
+  it('shows a position selector for another-person tasks and loads people after a position is chosen', async () => {
+    await advanceToChecklistStepWithOneMatch();
+
+    const laptop = fixture.componentInstance.store.draftTasks().find((t) => t.title === 'Provision laptop')!;
+    expect(laptop.assignee).toBe('another');
+    expect(fixture.nativeElement.textContent).toContain('+ Assign');
+
+    (findByText('button', '+ Assign') as HTMLButtonElement).click();
+    fixture.detectChanges();
+
+    (findByText('button', 'Existing employee') as HTMLButtonElement).click();
+    fixture.detectChanges();
+    httpMock.expectOne((r) => r.url.includes('/people/checklist-assignee-positions')).flush([
+      { id: 'pos-hr', name: 'HR Partner' }
+    ]);
+    await fixture.whenStable();
+    fixture.detectChanges();
+    expect(fixture.nativeElement.textContent).toContain('Select position');
+    (findByText('button', 'HR Partner') as HTMLButtonElement).click();
+    fixture.detectChanges();
+
+    httpMock.expectOne((r) => r.url.includes('/people/checklist-assignees')).flush([
+      { employeeId: 'emp-1', userId: 'user-aaa', displayName: 'Jane Smith', workEmail: 'jane@acme.test', avatarFileId: null },
+      { employeeId: 'emp-2', userId: 'user-bbb', displayName: 'John Jones', workEmail: 'john@acme.test', avatarFileId: null }
+    ]);
+    await fixture.whenStable();
+    fixture.detectChanges();
+
+    expect(fixture.nativeElement.textContent).toContain('Jane Smith');
+    expect(fixture.nativeElement.textContent).toContain('John Jones');
+    expect(fixture.componentInstance.store.draftTasks().find((t) => t.clientId === laptop.clientId)?.selectedAssigneeUserId).toBeNull();
+  });
+
+  it('shows a friendly empty message when a position has no active employees', async () => {
+    await advanceToChecklistStepWithOneMatch();
+    (findByText('button', '+ Assign') as HTMLButtonElement).click();
+    fixture.detectChanges();
+    (findByText('button', 'Existing employee') as HTMLButtonElement).click();
+    fixture.detectChanges();
+    httpMock.expectOne((r) => r.url.includes('/people/checklist-assignee-positions')).flush([
+      { id: 'pos-hr', name: 'HR Partner' }
+    ]);
+    await fixture.whenStable();
+    fixture.detectChanges();
+    (findByText('button', 'HR Partner') as HTMLButtonElement).click();
+    fixture.detectChanges();
+    httpMock.expectOne((r) => r.url.includes('/people/checklist-assignees')).flush([]);
+    await fixture.whenStable();
+    fixture.detectChanges();
+
+    expect(fixture.nativeElement.textContent).toContain('No active employees are assigned to this position yet.');
+  });
+
+  it('preselects the only active employee and still lets HR change it', async () => {
+    await advanceToChecklistStepWithOneMatch();
+    const laptop = fixture.componentInstance.store.draftTasks().find((t) => t.title === 'Provision laptop')!;
+    (findByText('button', '+ Assign') as HTMLButtonElement).click();
+    fixture.detectChanges();
+    (findByText('button', 'Existing employee') as HTMLButtonElement).click();
+    fixture.detectChanges();
+    httpMock.expectOne((r) => r.url.includes('/people/checklist-assignee-positions')).flush([
+      { id: 'pos-hr', name: 'HR Partner' }
+    ]);
+    await fixture.whenStable();
+    fixture.detectChanges();
+    (findByText('button', 'HR Partner') as HTMLButtonElement).click();
+    fixture.detectChanges();
+    httpMock.expectOne((r) => r.url.includes('/people/checklist-assignees')).flush([
+      { employeeId: 'emp-1', userId: 'user-aaa', displayName: 'Jane Smith', workEmail: 'jane@acme.test', avatarFileId: null }
+    ]);
+    await fixture.whenStable();
+    fixture.detectChanges();
+
+    expect(fixture.componentInstance.store.draftTasks().find((t) => t.clientId === laptop.clientId)?.selectedAssigneeUserId).toBe('user-aaa');
+    expect(fixture.nativeElement.textContent).toContain('Jane Smith');
+  });
+
+  it('blocks Save Draft until an another-person task has a selected person', async () => {
+    await advanceToChecklistStepWithOneMatch();
+    await fixture.componentInstance.onSaveDraft();
+    fixture.detectChanges();
+
+    httpMock.expectNone(`${environment.apiUrl}/onboarding/drafts`);
+    expect(fixture.nativeElement.textContent).toContain('Select a position.');
+  });
+
+  it('auto-fills employee number from the suggestion endpoint when company is available', async () => {
+    await setupWithCompany({}, { departments: [engineeringDepartment] });
+    expect(fixture.componentInstance.form.controls.employeeNumber.value).toBe('ACME-0001');
+    expect(fixture.componentInstance.employeeNumberAvailability()).toBe('available');
+  });
+
+  it('does not overwrite a manually edited employee number when suggestion would refresh', async () => {
+    await setupWithCompany({}, { departments: [engineeringDepartment] });
+    fixture.componentInstance.onEmployeeNumberChange('CUSTOM-99');
+    fixture.detectChanges();
+
+    // Clear the dedupe key as if the company changed, while keeping the manual value.
+    (fixture.componentInstance as unknown as { employeeNumberSuggestionRequestKey: string | null }).employeeNumberSuggestionRequestKey =
+      null;
+    await (
+      fixture.componentInstance as unknown as { maybeSuggestEmployeeNumber: (id: string) => Promise<void> }
+    ).maybeSuggestEmployeeNumber('le-2');
+    fixture.detectChanges();
+
+    expect(fixture.componentInstance.form.controls.employeeNumber.value).toBe('CUSTOM-99');
+    httpMock.expectNone((r) => r.url.includes('/employee-number-suggestion'));
+  });
+
+  it('blocks Continue when the employee number is already in use', async () => {
+    await setupWithCompany({}, { departments: [engineeringDepartment] });
+    await flushPositionsForDepartment([openPosition]);
+
+    fixture.componentInstance.form.patchValue({
+      firstName: 'Ada',
+      lastName: 'Lovelace',
+      workEmail: 'ada@acme.test',
+      employmentType: 'full_time',
+      startDate: '2026-08-20',
+      workModeId: '1',
+      positionId: 'pos-open',
+      departmentId: 'dept-1'
+    });
+    fixture.componentInstance.store.setPosition('pos-open', null);
+    fixture.componentInstance.onEmployeeNumberChange('ACME-0001');
+    fixture.detectChanges();
+
+    await new Promise((resolve) => setTimeout(resolve, 400));
+    const availabilityReq = httpMock.expectOne((r) => r.url.includes('/employee-number-availability'));
+    availabilityReq.flush({ employeeNumber: 'ACME-0001', available: false });
+    await fixture.whenStable();
+    fixture.detectChanges();
+
+    const stepBefore = fixture.componentInstance.store.step();
+    fixture.componentInstance.goToNextStep();
+    fixture.detectChanges();
+
+    expect(fixture.componentInstance.store.step()).toBe(stepBefore);
+    expect(fixture.nativeElement.textContent).toContain('This employee number is already in use.');
+  });
+
+  it('saves the edited employee number in the draft payload', async () => {
+    await setupWithCompany({}, { departments: [engineeringDepartment] });
+    await flushPositionsForDepartment([openPosition]);
+
+    fixture.componentInstance.form.patchValue({
+      firstName: 'Ada',
+      lastName: 'Lovelace',
+      workEmail: 'ada@acme.test',
+      employmentType: 'full_time',
+      startDate: '2026-08-20',
+      workModeId: '1',
+      positionId: 'pos-open',
+      departmentId: 'dept-1',
+      employeeNumber: 'ACME-0042'
+    });
+    fixture.componentInstance.store.setPosition('pos-open', null);
+    fixture.componentInstance.employeeNumberAvailability.set('available');
+    fixture.detectChanges();
+
+    const savePromise = fixture.componentInstance.onSaveDraft();
+    const saveReq = httpMock.expectOne(`${environment.apiUrl}/onboarding/drafts`);
+    expect(saveReq.request.body.employeeNumber).toBe('ACME-0042');
+    saveReq.flush({
+      id: 'draft-1',
+      firstName: 'Ada',
+      lastName: 'Lovelace',
+      workEmail: 'ada@acme.test',
+      legalEntityId: 'le-1',
+      departmentId: 'dept-1',
+      positionId: 'pos-open',
+      employmentType: 'full_time',
+      startDate: '2026-08-20',
+      employeeNumber: 'ACME-0042',
+      workModeId: 1,
+      selectedTemplateId: null,
+      editedTasksJson: null,
+      status: 'draft',
+      draftReason: 'saved_manually',
+      lastSavedStep: 'employee_details',
+      startedById: 'user-1',
+      reportsToEmployeeId: null,
+      version: '1'
+    });
+    await savePromise;
+    flushEmployeeNumberAvailabilityRequests();
   });
 });

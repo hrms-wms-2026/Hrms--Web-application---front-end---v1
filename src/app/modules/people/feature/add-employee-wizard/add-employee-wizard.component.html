@@ -24,7 +24,11 @@
   <div>
     @switch (store.step()) {
       @case ('employee_details') {
-        <div class="grid grid-cols-1 md:grid-cols-2 gap-4 max-w-4xl">
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-3 max-w-4xl">
+          <div class="md:col-span-2 pb-1 border-b border-[var(--color-border)] mb-0.5">
+            <h3 class="text-[11px] font-bold uppercase tracking-wider text-[var(--color-text-secondary)]">Personal & Contact Info</h3>
+          </div>
+
           <app-input
             label="First name"
             [value]="form.controls.firstName.value || ''"
@@ -52,7 +56,7 @@
               <app-loader label="Loading work modes…" />
             </div>
           } @else if (store.workModesError()) {
-            <div class="md:col-span-1 rounded-lg border border-[var(--color-border)] p-4 text-sm text-[var(--color-text-primary)] flex items-center justify-between">
+            <div class="md:col-span-1 rounded-lg border border-[var(--color-border)] p-3 text-sm text-[var(--color-text-primary)] flex items-center justify-between">
               <span>{{ store.workModesError() }}</span>
               <app-button variant="secondary" size="sm" (pressed)="store.loadWorkModes()">Retry</app-button>
             </div>
@@ -64,7 +68,7 @@
               />
             </div>
           } @else {
-            <div class="flex flex-col gap-1.5">
+            <div class="flex flex-col gap-1">
               <label class="text-xs font-semibold text-[var(--color-text-secondary)]">
                 Work mode <span class="text-red-500">*</span>
               </label>
@@ -87,6 +91,10 @@
               }
             </div>
           }
+
+          <div class="md:col-span-2 pb-1 border-b border-[var(--color-border)] mt-1 mb-0.5">
+            <h3 class="text-[11px] font-bold uppercase tracking-wider text-[var(--color-text-secondary)]">Employment & Position Details</h3>
+          </div>
 
           @if (store.loadingDepartments()) {
             <div class="md:col-span-1">
@@ -135,7 +143,7 @@
               placeholder="Select a position"
               [options]="store.positions()"
               [value]="form.controls.positionId.value"
-              [error]="submitAttempted() && form.controls.positionId.invalid ? 'Position is required.' : ''"
+              [error]="positionFieldError()"
               (valueChange)="onPositionChange($event)"
             />
           }
@@ -145,7 +153,7 @@
               <app-loader label="Loading reporting options…" />
             </div>
           } @else if (store.needsReportsToPick()) {
-            <div class="md:col-span-2 flex flex-col gap-1.5">
+            <div class="md:col-span-2 flex flex-col gap-1">
               <label class="text-xs font-semibold text-[var(--color-text-secondary)]">
                 Reports to <span class="text-red-500">*</span>
               </label>
@@ -163,7 +171,7 @@
             </div>
           }
 
-          <div class="flex flex-col gap-1.5">
+          <div class="flex flex-col gap-1">
             <label class="text-xs font-semibold text-[var(--color-text-secondary)]">
               Employment type <span class="text-red-500">*</span>
             </label>
@@ -198,17 +206,19 @@
             label="Employee number"
             [maxlength]="20"
             [value]="form.controls.employeeNumber.value || ''"
-            (valueChange)="form.controls.employeeNumber.setValue($event)"
-            [error]="submitAttempted() && form.controls.employeeNumber.invalid ? 'Employee number must be 20 characters or fewer.' : ''"
+            (valueChange)="onEmployeeNumberChange($event)"
+            [error]="employeeNumberFieldError()"
+            [hint]="employeeNumberFieldHint()"
           />
         </div>
       }
+
       @case ('checklist_template') {
         <div class="max-w-6xl">
           @if (store.loadingChecklistTemplates()) {
             <app-loader label="Loading checklist templates…" />
           } @else if (store.checklistTemplatesError()) {
-            <div class="rounded-lg border border-[var(--color-border)] p-4 text-sm text-[var(--color-text-primary)] flex items-center justify-between">
+            <div class="rounded-lg border border-[var(--color-border)] p-3 text-sm text-[var(--color-text-primary)] flex items-center justify-between">
               <span>{{ store.checklistTemplatesError() }}</span>
               <app-button variant="secondary" size="sm" (pressed)="store.loadChecklistTemplateMatches()">Retry</app-button>
             </div>
@@ -250,7 +260,7 @@
                 } @else if (store.loadingSelectedTemplateDetail()) {
                   <app-loader label="Loading checklist details…" />
                 } @else if (store.selectedTemplateDetailError()) {
-                  <div class="rounded-lg border border-[var(--color-border)] p-4 text-sm text-[var(--color-text-primary)] flex items-center justify-between">
+                  <div class="rounded-lg border border-[var(--color-border)] p-3 text-sm text-[var(--color-text-primary)] flex items-center justify-between">
                     <span>{{ store.selectedTemplateDetailError() }}</span>
                     <app-button variant="secondary" size="sm" (pressed)="retrySelectedTemplateDetail()">Retry</app-button>
                   </div>
@@ -266,9 +276,9 @@
                     </div>
                   </div>
 
-                  <div class="flex flex-col gap-2.5 mb-3">
+                  <div class="flex flex-col gap-2 mb-3">
                     @for (task of store.draftTasks(); track task.clientId; let i = $index) {
-                      <div class="flex flex-col gap-2 rounded-lg border border-[var(--color-border)] p-2.5">
+                      <div class="flex flex-col gap-2 rounded-lg border border-[var(--color-border)] p-2">
                         <div class="flex items-start gap-1.5">
                           <span class="flex-none w-4 mt-2 text-xs font-semibold text-[var(--color-text-secondary)]" aria-hidden="true">{{ i + 1 }}</span>
                           <div class="flex-1 min-w-0">
@@ -287,33 +297,172 @@
                         </div>
 
                         <div class="flex flex-wrap items-end gap-3">
-                          <div class="flex flex-col gap-1">
-                            <span class="text-[11px] font-semibold text-[var(--color-text-secondary)]">Assignee</span>
-                            <div class="flex items-center gap-1.5" role="radiogroup" attr.aria-label="Assignee for task {{ i + 1 }}">
-                              <button
-                                type="button"
-                                role="radio"
-                                [attr.aria-checked]="task.assignee === 'employee'"
-                                class="task-edit-assignee__btn"
-                                [class.task-edit-assignee__btn--active]="task.assignee === 'employee'"
-                                (click)="setTaskAssigneeToEmployee(task.clientId)"
-                              >
-                                Employee
-                              </button>
-                              <button
-                                type="button"
-                                role="radio"
-                                disabled
-                                [attr.aria-checked]="task.assignee === 'another'"
-                                class="task-edit-assignee__btn"
-                                [class.task-edit-assignee__btn--active]="task.assignee === 'another'"
-                              >
-                                Another person
-                              </button>
+                          <div class="flex flex-col gap-1 min-w-[18rem]">
+                            <span class="text-[11px] font-semibold text-[var(--color-text-secondary)]">Assigned to</span>
+                            <div class="task-pill-stack">
+                              @if (task.assignee === 'employee') {
+                                <button type="button" class="task-pill task-pill--employee" (click)="openTaskAssignmentPicker(task.clientId)">
+                                  <span class="task-pill__icon" aria-hidden="true">
+                                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                      <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
+                                      <circle cx="12" cy="7" r="4"></circle>
+                                    </svg>
+                                  </span>
+                                  <span>{{ newEmployeeDisplayName() }}</span>
+                                </button>
+                              } @else if (!task.assigneePositionId) {
+                                <button type="button" class="task-pill task-pill--action" (click)="openTaskAssignmentPicker(task.clientId)">
+                                  + Assign
+                                </button>
+                              } @else {
+                                <div class="task-pill-row">
+                                  <button type="button" class="task-pill task-pill--position" (click)="openTaskPositionPicker(task.clientId)">
+                                    <span class="task-pill__icon" aria-hidden="true">
+                                      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                        <path d="M3 7h18v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V7Z"></path>
+                                        <path d="M8 7V5a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
+                                      </svg>
+                                    </span>
+                                    <span>{{ positionLabel(task.assigneePositionId) }}</span>
+                                    <span class="task-pill__remove" (click)="$event.stopPropagation(); clearTaskAssignment(task)">×</span>
+                                  </button>
+                                  @if (task.selectedAssigneeUserId) {
+                                    <button type="button" class="task-pill task-pill--employee" (click)="openTaskEmployeePicker(task.clientId)">
+                                      <span class="task-pill__icon" aria-hidden="true">
+                                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                          <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
+                                          <circle cx="12" cy="7" r="4"></circle>
+                                        </svg>
+                                      </span>
+                                      <span>{{ selectedTaskAssigneeName(task) }}</span>
+                                      <span class="task-pill__remove" (click)="$event.stopPropagation(); clearTaskEmployee(task)">×</span>
+                                    </button>
+                                  } @else {
+                                    <button type="button" class="task-pill-link" (click)="openTaskEmployeePicker(task.clientId)">
+                                      + Select employee *
+                                    </button>
+                                  }
+                                </div>
+                              }
+
+                              @if (openAssignmentPickerId() === task.clientId) {
+                                <div class="task-picker">
+                                  <div class="task-picker__title">Assign task to</div>
+                                  <button type="button" class="task-picker__option" (click)="setTaskAssignee(task.clientId, 'employee')">
+                                    <span class="task-picker__emoji" aria-hidden="true">
+                                      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                        <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
+                                        <circle cx="12" cy="7" r="4"></circle>
+                                      </svg>
+                                    </span>
+                                    <span class="task-picker__copy">
+                                      <span class="task-picker__option-title">New employee</span>
+                                      <span class="task-picker__option-subtitle">Person being onboarded</span>
+                                    </span>
+                                  </button>
+                                  <button type="button" class="task-picker__option" (click)="setTaskAssignee(task.clientId, 'another')">
+                                    <span class="task-picker__emoji" aria-hidden="true">
+                                      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                        <path d="M3 7h18v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V7Z"></path>
+                                        <path d="M8 7V5a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
+                                      </svg>
+                                    </span>
+                                    <span class="task-picker__copy">
+                                      <span class="task-picker__option-title">Existing employee</span>
+                                      <span class="task-picker__option-subtitle">Someone already in company</span>
+                                    </span>
+                                  </button>
+                                </div>
+                              }
+
+                              @if (openPositionPickerId() === task.clientId) {
+                                <div class="task-picker">
+                                  <div class="task-picker__header">
+                                    <div class="task-picker__title">Select position</div>
+                                    <button type="button" class="task-picker__close" (click)="closeTaskPickers()">×</button>
+                                  </div>
+                                  <input
+                                    type="text"
+                                    class="task-picker__search"
+                                    placeholder="Search positions..."
+                                    [value]="positionSearch()"
+                                    (input)="positionSearch.set($any($event.target).value)"
+                                  />
+                                  @if (store.loadingChecklistAssigneePositions()) {
+                                    <span class="text-[11px] text-[var(--color-text-secondary)]">Loading positions…</span>
+                                  } @else if (store.checklistAssigneePositionsError()) {
+                                    <div class="task-picker__helper">
+                                      <span>{{ store.checklistAssigneePositionsError() }}</span>
+                                      <button type="button" class="task-pill-link" (click)="openTaskPositionPicker(task.clientId)">Retry</button>
+                                    </div>
+                                  } @else if (filteredTaskPositions().length === 0) {
+                                    <span class="text-[11px] text-[var(--color-text-secondary)]">No active positions found for this company.</span>
+                                  } @else {
+                                    <div class="task-picker__list">
+                                      @for (pos of filteredTaskPositions(); track pos.value) {
+                                        <button type="button" class="task-picker__option task-picker__option--list" (click)="onTaskPositionChange(task.clientId, pos.value)">
+                                          <span class="task-picker__emoji" aria-hidden="true">
+                                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                              <path d="M3 7h18v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V7Z"></path>
+                                              <path d="M8 7V5a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
+                                            </svg>
+                                          </span>
+                                          <span class="task-picker__copy">
+                                            <span class="task-picker__option-title">{{ pos.label }}</span>
+                                          </span>
+                                        </button>
+                                      }
+                                    </div>
+                                  }
+                                </div>
+                              }
+
+                              @if (openEmployeePickerId() === task.clientId && task.assigneePositionId) {
+                                <div class="task-picker">
+                                  <div class="task-picker__header">
+                                    <div class="task-picker__title">Select {{ positionLabel(task.assigneePositionId) }}</div>
+                                    <button type="button" class="task-picker__close" (click)="closeTaskPickers()">×</button>
+                                  </div>
+                                  <div class="task-picker__helper">This task needs an assignee.</div>
+                                  <input
+                                    type="text"
+                                    class="task-picker__search"
+                                    [placeholder]="'Search ' + positionLabel(task.assigneePositionId) + '...'"
+                                    [value]="employeeSearch()"
+                                    (input)="employeeSearch.set($any($event.target).value)"
+                                  />
+                                  @if (isLoadingAssignees(task.assigneePositionId)) {
+                                    <span class="text-[11px] text-[var(--color-text-secondary)]">Loading people in this position…</span>
+                                  } @else if (assigneesFor(task.assigneePositionId).length === 0) {
+                                    <span class="text-[11px] text-[var(--color-text-secondary)]">No active employees are assigned to this position yet.</span>
+                                  } @else {
+                                    <div class="task-picker__list">
+                                      @for (person of filteredTaskAssignees(task); track person.userId) {
+                                        <button type="button" class="task-picker__option task-picker__option--list" (click)="onTaskAssigneeUserChange(task.clientId, person.userId); closeTaskPickers()">
+                                          <span class="task-picker__emoji" aria-hidden="true">
+                                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                              <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
+                                              <circle cx="12" cy="7" r="4"></circle>
+                                            </svg>
+                                          </span>
+                                          <span class="task-picker__copy">
+                                            <span class="task-picker__option-title">{{ person.displayName }}</span>
+                                            <span class="task-picker__option-subtitle">{{ positionLabel(task.assigneePositionId) }}</span>
+                                          </span>
+                                        </button>
+                                      }
+                                    </div>
+                                  }
+                                </div>
+                              }
+
+                              @if (taskPositionError(task)) {
+                                <span class="text-[11px] text-[var(--color-danger-text)]">{{ taskPositionError(task) }}</span>
+                              }
+                              @if (taskAssigneeError(task)) {
+                                <span class="text-[11px] text-[var(--color-danger-text)]">{{ taskAssigneeError(task) }}</span>
+                              }
                             </div>
-                            @if (task.assignee === 'another') {
-                              <span class="text-[11px] text-[var(--color-text-secondary)]">Choosing another assignee is not available yet.</span>
-                            }
                           </div>
 
                           <div class="flex flex-col gap-1">
@@ -328,21 +477,11 @@
                                 [value]="task.dueDays"
                                 (change)="onTaskDueDaysChange(task.clientId, $any($event.target).value)"
                               />
-                              <span class="text-xs text-[var(--color-text-secondary)]">days from employee start date</span>
                             </div>
                             @if (taskDueDaysError(task)) {
                               <span class="text-[11px] text-[var(--color-danger-text)]">{{ taskDueDaysError(task) }}</span>
                             }
                           </div>
-
-                          <label class="flex items-center gap-1.5 text-[13px] text-[var(--color-text-primary)] cursor-pointer">
-                            <input
-                              type="checkbox"
-                              [checked]="task.isRequired"
-                              (change)="onTaskRequiredChange(task.clientId, $any($event.target).checked)"
-                            />
-                            Required
-                          </label>
                         </div>
                       </div>
                     }
@@ -355,51 +494,115 @@
           }
         </div>
       }
+
       @case ('review_and_submit') {
         <div class="max-w-4xl space-y-4">
-          <div class="rounded-lg border border-[var(--color-border)] p-4 text-sm">
-            <dl class="grid grid-cols-2 gap-y-2">
-              <dt class="text-[var(--color-text-secondary)]">First name</dt>
-              <dd>{{ reviewFirstName() }}</dd>
-              <dt class="text-[var(--color-text-secondary)]">Last name</dt>
-              <dd>{{ reviewLastName() }}</dd>
-              <dt class="text-[var(--color-text-secondary)]">Work email</dt>
-              <dd>{{ reviewWorkEmail() }}</dd>
-              <dt class="text-[var(--color-text-secondary)]">Work mode</dt>
-              <dd>{{ selectedWorkModeLabel() }}</dd>
-              <dt class="text-[var(--color-text-secondary)]">Department</dt>
-              <dd>{{ selectedDepartmentLabel() }}</dd>
-              <dt class="text-[var(--color-text-secondary)]">Position</dt>
-              <dd>{{ selectedPositionLabel() }}</dd>
-              <dt class="text-[var(--color-text-secondary)]">Reporting manager</dt>
-              <dd>{{ selectedReportingManagerName() }}</dd>
-              <dt class="text-[var(--color-text-secondary)]">Reporting manager position</dt>
-              <dd>{{ selectedReportingManagerPositionName() }}</dd>
-              <dt class="text-[var(--color-text-secondary)]">Employment type</dt>
-              <dd>{{ selectedEmploymentTypeLabel() }}</dd>
-              <dt class="text-[var(--color-text-secondary)]">Start date</dt>
-              <dd>{{ reviewStartDate() }}</dd>
+          <!-- Profile Summary Header Banner -->
+          <div class="flex flex-wrap items-center justify-between gap-4 rounded-xl border border-[var(--color-border)] p-4 bg-[var(--color-surface)]">
+            <div class="flex items-center gap-3.5">
+              <div class="flex h-11 w-11 items-center justify-center rounded-full bg-blue-100 text-blue-700 font-bold text-sm flex-none">
+                {{ employeeInitials() }}
+              </div>
+              <div class="flex flex-col">
+                <h2 class="text-base font-bold text-[var(--color-text-primary)] leading-snug">
+                  {{ reviewFirstName() }} {{ reviewLastName() }}
+                </h2>
+                <p class="text-xs text-[var(--color-text-secondary)]">
+                  {{ selectedPositionLabel() }} · {{ selectedDepartmentLabel() }}
+                </p>
+              </div>
+            </div>
+            <div class="flex items-center gap-2">
+              <span class="inline-flex items-center rounded-full bg-slate-100 px-3 py-1 text-xs font-semibold text-slate-700 border border-slate-200">
+                {{ selectedWorkModeLabel() }}
+              </span>
+              <span class="inline-flex items-center rounded-full bg-blue-50 px-3 py-1 text-xs font-semibold text-blue-700 border border-blue-200">
+                {{ selectedEmploymentTypeLabel() }}
+              </span>
+            </div>
+          </div>
+
+          <!-- Structured Key-Value Details Grid -->
+          <div class="rounded-xl border border-[var(--color-border)] p-5 bg-[var(--color-surface)]">
+            <dl class="grid grid-cols-1 md:grid-cols-2 gap-y-3.5 gap-x-8 text-sm">
+              <div class="flex flex-col gap-0.5 pb-2.5 border-b border-[var(--color-border)] md:border-b-0">
+                <dt class="text-xs font-medium text-[var(--color-text-secondary)]">First name</dt>
+                <dd class="font-semibold text-[var(--color-text-primary)]">{{ reviewFirstName() }}</dd>
+              </div>
+
+              <div class="flex flex-col gap-0.5 pb-2.5 border-b border-[var(--color-border)] md:border-b-0">
+                <dt class="text-xs font-medium text-[var(--color-text-secondary)]">Last name</dt>
+                <dd class="font-semibold text-[var(--color-text-primary)]">{{ reviewLastName() }}</dd>
+              </div>
+
+              <div class="flex flex-col gap-0.5 pb-2.5 border-b border-[var(--color-border)] md:border-b-0">
+                <dt class="text-xs font-medium text-[var(--color-text-secondary)]">Work email</dt>
+                <dd class="font-semibold text-[var(--color-text-primary)]">{{ reviewWorkEmail() }}</dd>
+              </div>
+
+              <div class="flex flex-col gap-0.5 pb-2.5 border-b border-[var(--color-border)] md:border-b-0">
+                <dt class="text-xs font-medium text-[var(--color-text-secondary)]">Work mode</dt>
+                <dd class="font-semibold text-[var(--color-text-primary)]">{{ selectedWorkModeLabel() }}</dd>
+              </div>
+
+              <div class="flex flex-col gap-0.5 pb-2.5 border-b border-[var(--color-border)] md:border-b-0">
+                <dt class="text-xs font-medium text-[var(--color-text-secondary)]">Department</dt>
+                <dd class="font-semibold text-[var(--color-text-primary)]">{{ selectedDepartmentLabel() }}</dd>
+              </div>
+
+              <div class="flex flex-col gap-0.5 pb-2.5 border-b border-[var(--color-border)] md:border-b-0">
+                <dt class="text-xs font-medium text-[var(--color-text-secondary)]">Position</dt>
+                <dd class="font-semibold text-[var(--color-text-primary)]">{{ selectedPositionLabel() }}</dd>
+              </div>
+
+              @if (selectedReportingManagerName() !== '—') {
+                <div class="flex flex-col gap-0.5 pb-2.5 border-b border-[var(--color-border)] md:border-b-0">
+                  <dt class="text-xs font-medium text-[var(--color-text-secondary)]">Reports to</dt>
+                  <dd class="font-semibold text-[var(--color-text-primary)]">
+                    {{ selectedReportingManagerName() }}
+                    @if (selectedReportingManagerPositionName() !== '—') {
+                      <span> ({{ selectedReportingManagerPositionName() }})</span>
+                    }
+                  </dd>
+                </div>
+              }
+
+              <div class="flex flex-col gap-0.5 pb-2.5 border-b border-[var(--color-border)] md:border-b-0">
+                <dt class="text-xs font-medium text-[var(--color-text-secondary)]">Employment type</dt>
+                <dd class="font-semibold text-[var(--color-text-primary)]">{{ selectedEmploymentTypeLabel() }}</dd>
+              </div>
+
+              <div class="flex flex-col gap-0.5">
+                <dt class="text-xs font-medium text-[var(--color-text-secondary)]">Start date</dt>
+                <dd class="font-semibold text-[var(--color-text-primary)]">{{ reviewStartDate() }}</dd>
+              </div>
+
               @if (reviewEmployeeNumber()) {
-                <dt class="text-[var(--color-text-secondary)]">Employee number</dt>
-                <dd>{{ reviewEmployeeNumber() }}</dd>
+                <div class="flex flex-col gap-0.5">
+                  <dt class="text-xs font-medium text-[var(--color-text-secondary)]">Employee number</dt>
+                  <dd class="font-semibold text-[var(--color-text-primary)]">{{ reviewEmployeeNumber() }}</dd>
+                </div>
               }
             </dl>
           </div>
 
-          @if (saveReasonMessage()) {
-            <div class="rounded-lg border border-[var(--color-border)] bg-[var(--color-surface-secondary)] p-4 text-sm">
-              {{ saveReasonMessage() }}
-            </div>
-          } @else {
-            <p class="text-xs text-[var(--color-text-secondary)]">
-              Seat and approval status will be shown here after you save.
-            </p>
-          }
+          <!-- Status Notice Callout Banner -->
+          <div class="flex items-center gap-2.5 rounded-lg border border-slate-200 bg-slate-50 p-3 text-xs text-slate-600">
+            <svg class="h-4 w-4 flex-none text-slate-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+            </svg>
+            @if (saveReasonMessage()) {
+              <span>{{ saveReasonMessage() }}</span>
+            } @else {
+              <span>Seat and approval status will be shown here after you save.</span>
+            }
+          </div>
         </div>
       }
     }
 
-    <div class="mt-8 flex flex-wrap gap-3">
+    <!-- Action Buttons Row -->
+    <div class="mt-4 flex flex-wrap gap-3">
       @if (stepIndex() > 0) {
         <app-button variant="secondary" type="button" (pressed)="goToPreviousStep()">Back</app-button>
       }

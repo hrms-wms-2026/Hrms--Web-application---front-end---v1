@@ -27,7 +27,7 @@ describe('canAccessNavItem', () => {
       label: 'Organization',
       path: '/organization',
       requiredModules: ['org_structure'],
-      requiredPermissions: ['org:read', 'org:manage']
+      requiredPermissions: ['org:read']
     };
     expect(canAccessNavItem(item, checker(['org:read'], ['org_structure']))).toBe(true);
     expect(canAccessNavItem(item, checker(['org:read'], []))).toBe(false);
@@ -55,7 +55,7 @@ describe('canAccessNavItem', () => {
       label: 'Organization',
       path: '/organization',
       requiredModules: ['org_structure'],
-      requiredPermissions: ['org:read', 'org:manage'],
+      requiredPermissions: ['org:read'],
       children: [
         { id: 'organization-companies', label: 'Companies', path: '/organization/companies', requiredPermissions: ['org:read'] }
       ]
@@ -90,6 +90,15 @@ describe('canAccessNavItem', () => {
       const organization = NAV_ITEMS.find((item) => item.id === 'organization')!;
       expect(canAccessNavItem(organization, checker(['org:read'], ['org_structure']))).toBe(true);
       expect(canAccessNavItem(organization, checker(['org:read'], ['org']))).toBe(false);
+      expect(canAccessNavItem(organization, checker(['org:manage'], ['org_structure']))).toBe(false);
+    });
+
+    it('gates General Settings on legal_entity:update independently of org:read', () => {
+      const settings = NAV_ITEMS.find((item) => item.id === 'settings')!;
+      const general = settings.children!.find((item) => item.id === 'settings-general')!;
+
+      expect(canAccessNavItem(general, checker(['legal_entity:update'], []))).toBe(true);
+      expect(canAccessNavItem(general, checker(['org:read'], ['org_structure']))).toBe(false);
     });
   });
 
@@ -102,5 +111,17 @@ describe('canAccessNavItem', () => {
     expect(canAccessNavItem(item, checker(['employees:write'], ['core_hr']))).toBe(true);
     expect(canAccessNavItem(item, checker(['employees:write'], []))).toBe(false);
     expect(canAccessNavItem(item, checker([], ['core_hr']))).toBe(false);
+  });
+
+  it('settings-clock-in-policy requires time_attendance module and attendance:read', () => {
+    const settings = NAV_ITEMS.find((item) => item.id === 'settings')!;
+    const clockIn = settings.children!.find((item) => item.id === 'settings-clock-in-policy')!;
+
+    expect(clockIn.label).toBe('Clock-in Policy');
+    expect(clockIn.path).toBe('/settings/clock-in-policy');
+    expect(canAccessNavItem(clockIn, checker(['attendance:read'], ['time_attendance']))).toBe(true);
+    expect(canAccessNavItem(clockIn, checker(['attendance:read'], []))).toBe(false);
+    expect(canAccessNavItem(clockIn, checker([], ['time_attendance']))).toBe(false);
+    expect(canAccessNavItem(clockIn, checker(['org:manage'], ['time_attendance']))).toBe(false);
   });
 });

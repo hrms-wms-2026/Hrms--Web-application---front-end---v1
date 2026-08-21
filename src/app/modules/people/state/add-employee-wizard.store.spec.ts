@@ -294,6 +294,7 @@ describe('AddEmployeeWizardStore', () => {
   });
 
   it('saveDraft sends firstName, lastName, workModeId and never sends employeeName or scheduleId', async () => {
+    store.syncSelectionFromForm('dept-1', 'pos-1');
     store.updateFormValue({ firstName: 'Ada', lastName: 'Lovelace', workEmail: 'ada@test.dev', employmentType: 'full_time', startDate: '2026-08-10', workModeId: 1 });
     const savePromise = store.saveDraft('employee_details');
 
@@ -311,6 +312,7 @@ describe('AddEmployeeWizardStore', () => {
     store.setCompany('le-1');
     httpMock.expectOne((r) => r.url.includes('/departments')).flush({ items: [], page: 1, pageSize: 25, totalCount: 0, totalPages: 0 });
     await Promise.resolve();
+    store.syncSelectionFromForm('dept-1', 'pos-1');
 
     store.selectChecklistTemplate('tmpl-1');
     httpMock.expectOne(`${environment.apiUrl}/people/checklist-templates/tmpl-1`).flush(mockDetail('tmpl-1', 'Company Default Onboarding'));
@@ -328,6 +330,7 @@ describe('AddEmployeeWizardStore', () => {
   });
 
   it('saveDraft sends editedTasksJson null when no checklist selected', async () => {
+    store.syncSelectionFromForm('dept-1', 'pos-1');
     store.updateFormValue({ firstName: 'Ada', lastName: 'Lovelace', workEmail: 'ada@test.dev', employmentType: 'full_time', startDate: '2026-08-10', workModeId: 1 });
     const savePromise = store.saveDraft('employee_details');
 
@@ -374,6 +377,7 @@ describe('AddEmployeeWizardStore', () => {
   });
 
   it('saveDraft sends selectedTemplateId and editedTasksJson reflecting draft-local task edits', async () => {
+    store.syncSelectionFromForm('dept-1', 'pos-1');
     store.selectChecklistTemplate('tmpl-1');
     httpMock.expectOne(`${environment.apiUrl}/people/checklist-templates/tmpl-1`).flush({
       ...mockDetail('tmpl-1', 'Onboarding'),
@@ -595,6 +599,7 @@ describe('AddEmployeeWizardStore', () => {
   });
 
   it('never calls the checklist template create/update APIs while selecting, editing, or saving a checklist', async () => {
+    store.syncSelectionFromForm('dept-1', 'pos-1');
     store.selectChecklistTemplate('tmpl-1');
     httpMock.expectOne(`${environment.apiUrl}/people/checklist-templates/tmpl-1`).flush({
       ...mockDetail('tmpl-1', 'Onboarding'),

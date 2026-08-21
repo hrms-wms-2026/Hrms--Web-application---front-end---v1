@@ -11,12 +11,15 @@
           <th class="col-reason">Reason</th>
           <th class="col-step">Last Saved Step</th>
           <th class="col-started">Started By</th>
-          <th class="col-actions">Actions</th>
         </tr>
       </thead>
       <tbody>
         @for (draft of drafts(); track draft.id) {
-          <tr class="draft-row">
+          <tr
+            class="draft-row"
+            [class.draft-row--terminal]="isTerminal(draft)"
+            (click)="onRowClick(draft)"
+          >
             <td class="col-name">
               <span class="draft-name" [title]="draft.displayName">{{ draft.displayName }}</span>
             </td>
@@ -41,20 +44,6 @@
             </td>
             <td class="col-started">
               <span class="draft-started-text" [title]="draft.startedByName">{{ draft.startedByName }}</span>
-            </td>
-            <td class="col-actions">
-              @if (isTerminal(draft)) {
-                <button type="button" class="draft-action-btn draft-action-btn--disabled" disabled>Finalized</button>
-              } @else {
-                <button
-                  *appHasPermission="'employees:write'"
-                  type="button"
-                  class="draft-action-btn"
-                  (click)="continueDraft.emit(draft.id)"
-                >
-                  Continue Draft
-                </button>
-              }
             </td>
           </tr>
         }

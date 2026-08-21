@@ -1,43 +1,93 @@
 <section class="pf-section">
-  <h3 class="pf-section__title">Bank details</h3>
+  <div class="pf-section__header-row">
+    <div>
+      <h3 class="pf-section__title">Bank & Direct Deposit</h3>
+      <p class="pf-section__description">Manage your direct deposit bank account details for payroll processing.</p>
+    </div>
+    @if (payroll().hasBankDetailsOnFile && payroll().canEdit && !isEditing()) {
+      <app-button variant="secondary" size="sm" (pressed)="startEdit()">
+        Edit Details
+      </app-button>
+    }
+  </div>
 
-  @if (payroll().hasBankDetailsOnFile) {
-    <dl class="pf-info-grid">
-      <div><dt>Bank</dt><dd>{{ payroll().bankName ?? '—' }}</dd></div>
-      <div><dt>Account number</dt><dd>{{ payroll().maskedAccountNumber ?? '—' }}</dd></div>
-      <div><dt>Account type</dt><dd>{{ payroll().accountType ?? '—' }}</dd></div>
-    </dl>
-  } @else {
-    <p class="pf-empty">No bank details on file.</p>
-  }
-
-  @if (payroll().canEdit) {
-    <form [formGroup]="form" (ngSubmit)="onSubmit()" class="pf-form" style="margin-top: 1rem;">
+  @if (showForm()) {
+    <form [formGroup]="form" (ngSubmit)="onSubmit()" class="pf-form">
       <div class="pf-field-grid pf-field-grid--2">
-        <app-input label="Bank name" [value]="form.controls.bankName.value" (valueChange)="form.controls.bankName.setValue($event)"
+        <app-input
+          label="Bank name *"
+          [value]="form.controls.bankName.value"
+          (valueChange)="form.controls.bankName.setValue($event)"
           (blurred)="form.controls.bankName.markAsTouched()"
-          [error]="form.controls.bankName.touched && form.controls.bankName.invalid ? 'Bank name is required.' : ''" />
-        <app-input label="Branch" [value]="form.controls.branchName.value" (valueChange)="form.controls.branchName.setValue($event)"
+          [error]="form.controls.bankName.touched && form.controls.bankName.invalid ? 'Bank name is required.' : ''"
+        />
+        <app-input
+          label="Branch *"
+          [value]="form.controls.branchName.value"
+          (valueChange)="form.controls.branchName.setValue($event)"
           (blurred)="form.controls.branchName.markAsTouched()"
-          [error]="form.controls.branchName.touched && form.controls.branchName.invalid ? 'Branch is required.' : ''" />
-        <app-input label="Account holder name" [value]="form.controls.accountHolderName.value" (valueChange)="form.controls.accountHolderName.setValue($event)"
+          [error]="form.controls.branchName.touched && form.controls.branchName.invalid ? 'Branch is required.' : ''"
+        />
+        <app-input
+          label="Account holder name *"
+          [value]="form.controls.accountHolderName.value"
+          (valueChange)="form.controls.accountHolderName.setValue($event)"
           (blurred)="form.controls.accountHolderName.markAsTouched()"
-          [error]="form.controls.accountHolderName.touched && form.controls.accountHolderName.invalid ? 'Account holder name is required.' : ''" />
-        <app-input label="Account number" [value]="form.controls.accountNumber.value" (valueChange)="form.controls.accountNumber.setValue($event)"
+          [error]="form.controls.accountHolderName.touched && form.controls.accountHolderName.invalid ? 'Account holder name is required.' : ''"
+        />
+        <app-input
+          label="Account number *"
+          [value]="form.controls.accountNumber.value"
+          (valueChange)="form.controls.accountNumber.setValue($event)"
           (blurred)="form.controls.accountNumber.markAsTouched()"
-          [error]="form.controls.accountNumber.touched && form.controls.accountNumber.invalid ? 'Account number is required.' : ''" />
-        <app-input label="Account type" [value]="form.controls.accountType.value" (valueChange)="form.controls.accountType.setValue($event)"
+          [error]="form.controls.accountNumber.touched && form.controls.accountNumber.invalid ? 'Account number is required.' : ''"
+        />
+        <app-input
+          label="Account type *"
+          [value]="form.controls.accountType.value"
+          (valueChange)="form.controls.accountType.setValue($event)"
           (blurred)="form.controls.accountType.markAsTouched()"
-          [error]="form.controls.accountType.touched && form.controls.accountType.invalid ? 'Account type is required.' : ''" />
-        <app-input label="Routing number (optional)" [value]="form.controls.routingNumber.value" (valueChange)="form.controls.routingNumber.setValue($event)" />
+          [error]="form.controls.accountType.touched && form.controls.accountType.invalid ? 'Account type is required.' : ''"
+        />
+        <app-input
+          label="Routing number (optional)"
+          [value]="form.controls.routingNumber.value"
+          (valueChange)="form.controls.routingNumber.setValue($event)"
+        />
       </div>
       <div class="pf-actions">
+        @if (payroll().hasBankDetailsOnFile) {
+          <app-button variant="secondary" type="button" (pressed)="cancelEdit()" class="mr-2">
+            Cancel
+          </app-button>
+        }
         <app-button type="submit" [loading]="saving()" [disabled]="saving()">
           {{ saving() ? 'Saving…' : 'Save bank details' }}
         </app-button>
       </div>
     </form>
+  } @else if (payroll().hasBankDetailsOnFile) {
+    <div class="pf-bank-card">
+      <dl class="pf-info-grid">
+        <div>
+          <dt>Bank Name</dt>
+          <dd class="font-semibold">{{ payroll().bankName ?? '—' }}</dd>
+        </div>
+        <div>
+          <dt>Account Number</dt>
+          <dd><span class="pf-mono-badge">{{ payroll().maskedAccountNumber ?? '—' }}</span></dd>
+        </div>
+        <div>
+          <dt>Account Type</dt>
+          <dd><span class="pf-type-badge">{{ payroll().accountType ?? '—' }}</span></dd>
+        </div>
+      </dl>
+    </div>
   } @else {
+    <p class="pf-empty">No bank details on file.</p>
+  }
+
+  @if (!payroll().canEdit && !payroll().hasBankDetailsOnFile) {
     <p class="pf-note">Contact HR to update your bank details.</p>
   }
 </section>

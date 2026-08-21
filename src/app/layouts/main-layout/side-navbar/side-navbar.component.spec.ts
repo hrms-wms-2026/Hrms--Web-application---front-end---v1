@@ -38,8 +38,14 @@ describe('SideNavbarComponent', () => {
     expect(labels).toEqual(['Home', 'People', 'Calendar', 'Time Off', 'Attendance']);
   });
 
-  it('hides Organization when org_structure is active but the user lacks org:read/org:manage', () => {
+  it('hides Organization when org_structure is active but the user lacks org:read', () => {
     const fixture = setup([], ['org_structure']);
+    const labels = Array.from(fixture.nativeElement.querySelectorAll('.nav-rail-item span')).map((el) => (el as HTMLElement).textContent);
+    expect(labels).not.toContain('Org');
+  });
+
+  it('hides Organization when the user has org:manage but lacks org:read', () => {
+    const fixture = setup(['org:manage'], ['org_structure']);
     const labels = Array.from(fixture.nativeElement.querySelectorAll('.nav-rail-item span')).map((el) => (el as HTMLElement).textContent);
     expect(labels).not.toContain('Org');
   });

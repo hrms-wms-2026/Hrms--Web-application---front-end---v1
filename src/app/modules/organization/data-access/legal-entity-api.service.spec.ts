@@ -66,6 +66,14 @@ describe('LegalEntityApiService', () => {
     req.flush(mockCompanies);
   });
 
+  it('fetches selector companies from the tenant-authenticated session endpoint', () => {
+    service.getAccessibleCompanies().subscribe((companies) => expect(companies).toEqual(mockCompanies));
+
+    const req = httpMock.expectOne(`${environment.apiUrl}/session/companies`);
+    expect(req.request.method).toBe('GET');
+    req.flush(mockCompanies);
+  });
+
   const mockGeneralSettings: LegalEntityGeneralSettings = {
     id: 'company-1',
     name: 'OneVo Technologies',
@@ -88,7 +96,8 @@ describe('LegalEntityApiService', () => {
     timeFormat: '24h',
     status: 'active',
     workStartTime: '09:00',
-    workEndTime: '17:30'
+    workEndTime: '17:30',
+    breakDurationMinutes: 60
   };
 
   it('fetches general settings for a legal entity', () => {
@@ -122,7 +131,8 @@ describe('LegalEntityApiService', () => {
       timeFormat: '24h',
       status: 'active',
       workStartTime: '09:00',
-      workEndTime: '17:30'
+      workEndTime: '17:30',
+      breakDurationMinutes: 60
     };
 
     service.updateGeneralSettings('company-1', payload).subscribe((result) => {
@@ -187,7 +197,7 @@ describe('LegalEntityApiService', () => {
 
     const req = httpMock.expectOne(`${environment.apiUrl}/session/active-company`);
     expect(req.request.method).toBe('POST');
-    expect(req.request.body).toEqual({ employeeId: 'company-2' });
+    expect(req.request.body).toEqual({ legalEntityId: 'company-2' });
     req.flush(null, { status: 204, statusText: 'No Content' });
   });
 
