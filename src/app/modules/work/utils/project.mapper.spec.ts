@@ -1,4 +1,4 @@
-import { toProject, toProjectDetail, toMilestone, toMilestoneTreeNode, findTreeNode } from './project.mapper';
+import { toProject, toProjectDetail, toMilestone, toMilestoneTreeNode, findTreeNode, isLeafObjective } from './project.mapper';
 import { ProjectListItemDto, ProjectDetailDto } from '../models/dto/project.dto';
 import { MyProjectMilestoneDto } from '../models/dto/milestone.dto';
 import { ObjectiveSubtreeNodeDto } from '../models/dto/milestone.dto';
@@ -129,8 +129,61 @@ describe('project.mapper', () => {
       expect(node).toEqual({
         id: 'o1', title: 'Root', description: 'Root scope', startDate: '2026-01-01', endDate: '2026-12-01',
         progress: 72, allocatedHours: 40, completedHours: 29, isActive: true, isAchieved: false,
-        ownerName: 'Arun Kumar', isOwner: true, children: []
+        ownerName: 'Arun Kumar', isOwner: true, children: [], kind: 'objective'
       });
+    });
+
+    it('maps every node in a subtree response to kind objective', () => {
+      const dto: ObjectiveSubtreeNodeDto = {
+        id: 'o1', projectId: 'p1', parentObjectiveId: null, isDefault: true, title: 'Root',
+        description: null, ownerId: 'u1', ownerName: 'Arun Kumar', reportingManagerId: null, reportingManagerName: null,
+        createdById: 'u1', startDate: '2026-08-01', endDate: '2026-12-01', progress: 50, actualHours: null,
+        allocatedHours: 40, completedHours: 20, isActive: true, isOwner: true, isAchieved: false, achievedAt: null,
+        createdAt: '2026-08-01T00:00:00Z', updatedAt: null,
+        children: [
+          {
+            id: 'o2', projectId: 'p1', parentObjectiveId: 'o1', isDefault: false, title: 'Child',
+            description: null, ownerId: 'u1', ownerName: 'Diya', reportingManagerId: 'u1', reportingManagerName: 'Arun Kumar',
+            createdById: 'u1', startDate: '2026-08-01', endDate: '2026-09-01', progress: 0, actualHours: null,
+            allocatedHours: 10, completedHours: 0, isActive: true, isOwner: false, isAchieved: false, achievedAt: null,
+            createdAt: '2026-08-01T00:00:00Z', updatedAt: null, children: []
+          }
+        ]
+      };
+
+      const result = toMilestoneTreeNode(dto);
+
+      expect(result.kind).toBe('objective');
+      expect(result.children[0].kind).toBe('objective');
+    });
+  });
+
+  describe('isLeafObjective', () => {
+    const base: MilestoneTreeNode = {
+      id: 'o1', title: 'Root', description: null, startDate: '2026-01-15', endDate: '2026-03-01',
+      progress: 0, allocatedHours: 20, completedHours: 0, isActive: true, isAchieved: false,
+      ownerName: 'Arun', isOwner: true, children: []
+    };
+
+    it('returns true for an objective with no children', () => {
+      expect(isLeafObjective({ ...base, kind: 'objective', children: [] })).toBe(true);
+    });
+
+    it('returns true for an objective whose children are only sprints or tasks', () => {
+      const sprintChild: MilestoneTreeNode = {
+        ...base, id: 's1', title: 'Sprint 1', kind: 'sprint', children: []
+      };
+      expect(isLeafObjective({ ...base, kind: 'objective', children: [sprintChild] })).toBe(true);
+    });
+
+    it('returns false for an objective that has child objectives', () => {
+      const child: MilestoneTreeNode = { ...base, id: 'o2', title: 'Child', kind: 'objective' };
+      expect(isLeafObjective({ ...base, kind: 'objective', children: [child] })).toBe(false);
+    });
+
+    it('returns false for sprint and task nodes', () => {
+      expect(isLeafObjective({ ...base, kind: 'sprint' })).toBe(false);
+      expect(isLeafObjective({ ...base, kind: 'task' })).toBe(false);
     });
   });
 

@@ -20,6 +20,9 @@ export interface Milestone {
   isOwner: boolean;
 }
 
+export type MilestoneTreeNodeKind = 'objective' | 'sprint' | 'task';
+export type SprintTaskLoadState = 'unloaded' | 'loading' | 'loaded' | 'error';
+
 export interface MilestoneTreeNode {
   id: string;
   title: string;
@@ -34,6 +37,10 @@ export interface MilestoneTreeNode {
   ownerName: string | null;
   isOwner: boolean;
   children: MilestoneTreeNode[];
+  kind?: MilestoneTreeNodeKind;
+  sprintTaskLoadState?: SprintTaskLoadState;
+  status?: string;
+  parentObjectiveId?: string;
 }
 
 export type ObjectiveDetail = import('./dto/milestone.dto').ObjectiveDetailDto;

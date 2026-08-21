@@ -33,7 +33,8 @@ export function toMilestoneTreeNode(dto: ObjectiveSubtreeNodeDto): MilestoneTree
     id: dto.id, title: dto.title, description: dto.description, startDate: dto.startDate, endDate: dto.endDate,
     progress: dto.progress, allocatedHours: dto.allocatedHours, completedHours: dto.completedHours,
     isActive: dto.isActive, isAchieved: dto.isAchieved, ownerName: dto.ownerName, isOwner: dto.isOwner,
-    children: dto.children.map(toMilestoneTreeNode)
+    children: dto.children.map(toMilestoneTreeNode),
+    kind: 'objective'
   };
 }
 
@@ -44,4 +45,9 @@ export function findTreeNode(root: MilestoneTreeNode, id: string): MilestoneTree
     if (found) return found;
   }
   return null;
+}
+
+export function isLeafObjective(node: MilestoneTreeNode): boolean {
+  if ((node.kind ?? 'objective') !== 'objective') return false;
+  return node.children.every((child) => child.kind === 'sprint' || child.kind === 'task');
 }
