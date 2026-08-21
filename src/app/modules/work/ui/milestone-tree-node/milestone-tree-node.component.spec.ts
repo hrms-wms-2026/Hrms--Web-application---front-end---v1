@@ -1,6 +1,8 @@
 import { ComponentFixture, TestBed } from '@angular/core/testing';
+import { of } from 'rxjs';
 import { MilestoneTreeNodeComponent } from './milestone-tree-node.component';
 import { MilestoneTreeNode } from '../../models/milestone.model';
+import { PeopleApiService } from '../../../people/data-access/people-api.service';
 
 describe('MilestoneTreeNodeComponent', () => {
   let fixture: ComponentFixture<MilestoneTreeNodeComponent>;
@@ -18,6 +20,13 @@ describe('MilestoneTreeNodeComponent', () => {
   };
 
   function setup(node: MilestoneTreeNode, selectedId: string | null = null, expandedByDefault = true): void {
+    TestBed.resetTestingModule();
+    TestBed.configureTestingModule({
+      imports: [MilestoneTreeNodeComponent],
+      providers: [
+        { provide: PeopleApiService, useValue: { getEmployee: vi.fn().mockReturnValue(of({ id: 'e1', fullName: 'Ada Lovelace' })) } }
+      ]
+    });
     fixture = TestBed.createComponent(MilestoneTreeNodeComponent);
     fixture.componentRef.setInput('node', node);
     fixture.componentRef.setInput('selectedId', selectedId);
@@ -329,6 +338,16 @@ describe('MilestoneTreeNodeComponent', () => {
       fixture.componentInstance.editRequested.subscribe((n) => edits.push(n));
       (fixture.nativeElement.querySelector('[data-testid="edit-button"]') as HTMLElement).click();
       expect(edits).toEqual([taskNode]);
+    });
+
+    it('re-emits deleteRequested from a nested task row', () => {
+      const ownedTask: MilestoneTreeNode = { ...taskNode, isOwner: true };
+      const parent: MilestoneTreeNode = { ...root, children: [ownedTask] };
+      setup(parent, null, true);
+      const deleted: MilestoneTreeNode[] = [];
+      fixture.componentInstance.deleteRequested.subscribe((n) => deleted.push(n));
+      (fixture.nativeElement.querySelector('[data-testid="delete-task-button"]') as HTMLElement).click();
+      expect(deleted[0].id).toBe('t1');
     });
 
     it('renders sprint status with the achieved-badge styling', () => {
