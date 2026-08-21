@@ -1,4 +1,4 @@
-import { toProject, toProjectDetail, toMilestone, toMilestoneTreeNode, findTreeNode, isLeafObjective, updateTreeNode, toSprintTreeNode, toTaskTreeNode, buildObjectiveForest, pruneTreeToModule } from './project.mapper';
+import { toProject, toProjectDetail, toMilestone, toMilestoneTreeNode, findTreeNode, isLeafObjective, updateTreeNode, removeTreeNode, toSprintTreeNode, toTaskTreeNode, buildObjectiveForest, pruneTreeToModule } from './project.mapper';
 import { ProjectListItemDto, ProjectDetailDto } from '../models/dto/project.dto';
 import { MyProjectMilestoneDto } from '../models/dto/milestone.dto';
 import { ObjectiveSubtreeNodeDto } from '../models/dto/milestone.dto';
@@ -244,6 +244,31 @@ describe('project.mapper', () => {
     it('returns the same tree reference when the id is not found', () => {
       const next = updateTreeNode(root, 'missing', (node) => ({ ...node, title: 'Updated' }));
       expect(next).toBe(root);
+    });
+  });
+
+  describe('removeTreeNode', () => {
+    const node = (id: string, children: MilestoneTreeNode[] = []): MilestoneTreeNode => ({
+      id, title: id, description: null, startDate: '2026-01-01', endDate: '2026-12-01',
+      progress: 0, allocatedHours: 0, completedHours: 0, isActive: true, isAchieved: false,
+      ownerName: null, isOwner: true, children, kind: 'objective'
+    });
+
+    it('filters the target out of children without mutating the original tree', () => {
+      const task = { ...node('t1'), kind: 'task' as const };
+      const sprint = { ...node('spr-1', [task]), kind: 'sprint' as const };
+      const root = node('o1', [sprint]);
+
+      const next = removeTreeNode(root, 't1');
+
+      expect(next).not.toBe(root);
+      expect(next.children[0].children.map((c) => c.id)).toEqual([]);
+      expect(root.children[0].children.map((c) => c.id)).toEqual(['t1']);
+    });
+
+    it('returns the same tree reference when the id is not found', () => {
+      const root = node('o1', [node('o2')]);
+      expect(removeTreeNode(root, 'missing')).toBe(root);
     });
   });
 

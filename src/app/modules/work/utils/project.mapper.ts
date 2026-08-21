@@ -145,6 +145,20 @@ export function updateTreeNode(
   return { ...tree, children };
 }
 
+export function removeTreeNode(tree: MilestoneTreeNode, targetId: string): MilestoneTreeNode {
+  let changed = false;
+  const children = tree.children.flatMap((child) => {
+    if (child.id === targetId) {
+      changed = true;
+      return [];
+    }
+    const next = removeTreeNode(child, targetId);
+    if (next !== child) changed = true;
+    return [next];
+  });
+  return changed ? { ...tree, children } : tree;
+}
+
 export function toSprintTreeNode(sprint: SprintDto, parent: MilestoneTreeNode): MilestoneTreeNode {
   return {
     id: sprint.id,

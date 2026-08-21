@@ -552,4 +552,50 @@ describe('ProjectDetailStore', () => {
       expect(store.milestoneActionError()).toBe('blocked');
     });
   });
+
+  it('deleteTask removes the node from the tree on success', async () => {
+    const sprintApi = { getByObjective: vi.fn().mockReturnValue(of([{
+      id: 'spr-1', objectiveId: 'o1', name: 'Sprint 1', startDate: '2026-08-01', endDate: '2026-08-14',
+      status: 'active' as const, completedAt: null, achievedAt: null
+    }])) };
+    const taskApi = {
+      getTasks: vi.fn().mockReturnValue(of([])),
+      getStatuses: vi.fn().mockReturnValue(of([{
+        id: 'st-1', name: 'To Do', displayOrder: 0, requiresApproval: false, approverId: null,
+        marksTaskComplete: false, visibility: 'public'
+      }])),
+      getBySprintId: vi.fn().mockReturnValue(of([{
+        id: 't-sprint', objectiveId: 'o1', shortId: 'WEB-2', title: 'Sprint task', description: null,
+        taskType: 'task', statusId: 'st-1', priority: 'medium', storyPoints: null,
+        dueDate: null, estimatedHours: 3, completedHours: 0, progressPercent: 0, sprintId: 'spr-1', assigneeEmployeeIds: []
+      }])),
+      deleteTask: vi.fn().mockReturnValue(of(undefined))
+    };
+    const store = setup({ getProjectTree: () => of(leafTree) }, sprintApi, taskApi);
+    await store.loadProjectTree('p1');
+    await store.loadSprintsAndTasksForLeaf('o1');
+    await store.loadTasksForSprint('spr-1');
+
+    const result = await store.deleteTask('t-sprint');
+
+    expect(result.success).toBe(true);
+    expect(taskApi.deleteTask).toHaveBeenCalledWith('t-sprint');
+    expect(store.selectedSubtree()?.children[0].children.map((c) => c.id)).toEqual([]);
+  });
+
+  it('deleteTask leaves the tree unchanged and sets an error on failure', async () => {
+    const store = setup(
+      { getProjectTree: () => of(leafTree) },
+      {},
+      { deleteTask: () => throwError(() => ({ error: { detail: 'forbidden' } })) }
+    );
+    await store.loadProjectTree('p1');
+    const before = store.selectedSubtree();
+
+    const result = await store.deleteTask('t-1');
+
+    expect(result.success).toBe(false);
+    expect(store.milestoneActionError()).toBe('forbidden');
+    expect(store.selectedSubtree()).toBe(before);
+  });
 });

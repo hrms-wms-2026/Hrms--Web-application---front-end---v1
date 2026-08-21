@@ -5,7 +5,7 @@ import { ProjectApiService } from '../data-access/project-api.service';
 import { ObjectiveMemberApiService } from '../data-access/objective-member-api.service';
 import { SprintApiService } from '../data-access/sprint-api.service';
 import { TaskApiService } from '../data-access/task-api.service';
-import { buildObjectiveForest, findTreeNode, isLeafObjective, toMilestone, toProjectDetail, toSprintTreeNode, toTaskTreeNode, updateTreeNode } from '../utils/project.mapper';
+import { buildObjectiveForest, findTreeNode, isLeafObjective, removeTreeNode, toMilestone, toProjectDetail, toSprintTreeNode, toTaskTreeNode, updateTreeNode } from '../utils/project.mapper';
 import { toTaskStatusColumn } from '../utils/task.mapper';
 import { ProjectDetail } from '../models/project.model';
 import { Milestone, MilestoneTreeNode, ObjectiveDetail } from '../models/milestone.model';
@@ -345,6 +345,23 @@ export const ProjectDetailStore = signalStore(
         return { success: true };
       } catch (err) {
         patchState(store, { milestoneActionError: extractError(err, 'Failed to complete the sprint.') });
+        return { success: false };
+      }
+    },
+
+    async deleteTask(taskId: string): Promise<{ success: boolean }> {
+      try {
+        await firstValueFrom(taskApi.deleteTask(taskId));
+        const tree = store.selectedSubtree();
+        if (tree) {
+          patchState(store, {
+            selectedSubtree: removeTreeNode(tree, taskId),
+            milestoneActionError: null
+          });
+        }
+        return { success: true };
+      } catch (err) {
+        patchState(store, { milestoneActionError: extractError(err, 'Failed to delete the task.') });
         return { success: false };
       }
     }
