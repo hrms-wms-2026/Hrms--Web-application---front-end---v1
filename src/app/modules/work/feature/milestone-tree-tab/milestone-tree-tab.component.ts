@@ -3,7 +3,6 @@ import { ActivatedRoute } from '@angular/router';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { ProjectDetailStore } from '../../state/project-detail.store';
 import { MilestoneTreeNodeComponent } from '../../ui/milestone-tree-node/milestone-tree-node.component';
-import { MilestoneDetailPanelComponent } from '../../ui/milestone-detail-panel/milestone-detail-panel.component';
 import { MilestoneSettingsModalComponent } from '../../ui/milestone-settings-modal/milestone-settings-modal.component';
 import { CreateSubModuleModalComponent } from '../../ui/create-sub-module-modal/create-sub-module-modal.component';
 import { ObjectiveMembersPopupComponent } from '../../ui/objective-members-popup/objective-members-popup.component';
@@ -22,7 +21,7 @@ import { Sprint, SprintStatus } from '../../models/sprint.model';
   selector: 'app-milestone-tree-tab',
   standalone: true,
   imports: [
-    MilestoneTreeNodeComponent, MilestoneDetailPanelComponent, MilestoneSettingsModalComponent,
+    MilestoneTreeNodeComponent, MilestoneSettingsModalComponent,
     CreateSubModuleModalComponent, ObjectiveMembersPopupComponent, SprintCreateFormComponent,
     SprintEditFormComponent, TaskCreateModalComponent, TaskDetailModalComponent, LoaderComponent, ErrorStateComponent
   ],
@@ -210,17 +209,6 @@ export class MilestoneTreeTabComponent {
     this.createModalSubmitting.set(false);
     if (result.success) {
       this.createModalOpen.set(false);
-      await this.store.loadMilestoneSubtree(this.currentMilestoneId);
-    }
-  }
-
-  async onAchieveToggleRequested(): Promise<void> {
-    const node = this.selectedNode();
-    if (!node) return;
-    const result = node.isAchieved
-      ? await this.store.unachieveMilestone(node.id)
-      : await this.store.achieveMilestone(node.id);
-    if (result.success) {
       await this.store.loadMilestoneSubtree(this.currentMilestoneId);
     }
   }

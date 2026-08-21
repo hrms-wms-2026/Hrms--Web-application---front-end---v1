@@ -99,7 +99,7 @@ describe('MilestoneTreeTabComponent', () => {
     expect(fixture.componentInstance.selectedNode()?.id).toBe('o1');
   });
 
-  it('selecting a node shows its detail via findTreeNode, with no extra store call', () => {
+  it('selecting a node updates selectedNode via findTreeNode, with no extra store call', () => {
     setup('o1');
     fixture.detectChanges();
 
@@ -139,35 +139,6 @@ describe('MilestoneTreeTabComponent', () => {
     expect(storeStub.loadMilestoneSubtree).toHaveBeenCalledTimes(2);
   });
 
-  it('calls achieveMilestone when the selected node is not yet achieved, then reloads the tree', async () => {
-    setup('o1');
-    fixture.detectChanges();
-    const rows = fixture.nativeElement.querySelectorAll('[data-testid="tree-row"]');
-    (rows[0] as HTMLElement).click();
-    fixture.detectChanges();
-
-    await fixture.componentInstance.onAchieveToggleRequested();
-
-    expect(storeStub.achieveMilestone).toHaveBeenCalledWith('o1');
-    expect(storeStub.unachieveMilestone).not.toHaveBeenCalled();
-    expect(storeStub.loadMilestoneSubtree).toHaveBeenCalledTimes(2);
-  });
-
-  it('calls unachieveMilestone when the selected node is already achieved', async () => {
-    const achievedTree = { ...tree, isAchieved: true };
-    storeStub.selectedSubtree = () => achievedTree;
-    setup('o1');
-    fixture.detectChanges();
-    const rows = fixture.nativeElement.querySelectorAll('[data-testid="tree-row"]');
-    (rows[0] as HTMLElement).click();
-    fixture.detectChanges();
-
-    await fixture.componentInstance.onAchieveToggleRequested();
-
-    expect(storeStub.unachieveMilestone).toHaveBeenCalledWith('o1');
-    expect(storeStub.achieveMilestone).not.toHaveBeenCalled();
-  });
-
   it('opens the settings modal and fetches full detail when Edit is requested', async () => {
     const detail = { id: 'o1', title: 'Root', description: 'Full scope', startDate: '2026-01-01', endDate: '2026-12-01', allocatedHours: 40, isAchieved: false, isDefault: true };
     storeStub.getMilestoneDetail = vi.fn().mockResolvedValue(detail);
@@ -184,7 +155,7 @@ describe('MilestoneTreeTabComponent', () => {
     expect((fixture.componentInstance.settingsInitialValue() as any)?.description).toBe('Full scope');
   });
 
-  it('opens the members popup when the detail panel requests it', () => {
+  it('opens the members popup when a row requests it', () => {
     setup('o1');
     fixture.detectChanges();
     const rows = fixture.nativeElement.querySelectorAll('[data-testid="tree-row"]');
@@ -361,5 +332,22 @@ describe('MilestoneTreeTabComponent', () => {
 
     await fixture.componentInstance.onTaskSaved();
     expect(storeStub.loadTasksForSprint).toHaveBeenCalledWith('spr-1', { force: true });
+  });
+
+  it('renders the tree full width without a side panel, and the row edit icon still opens settings', async () => {
+    const detail = { id: 'o1', title: 'Root', description: 'Full scope', startDate: '2026-01-01', endDate: '2026-12-01', allocatedHours: 40, isAchieved: false, isDefault: true };
+    storeStub.getMilestoneDetail = vi.fn().mockResolvedValue(detail);
+    setup('o1');
+    fixture.detectChanges();
+
+    expect(fixture.nativeElement.querySelector('app-milestone-detail-panel')).toBeNull();
+    expect(fixture.nativeElement.innerHTML).not.toContain('md:w-[72%]');
+
+    (fixture.nativeElement.querySelector('[data-testid="edit-button"]') as HTMLElement).click();
+    await fixture.whenStable();
+    fixture.detectChanges();
+
+    expect(fixture.componentInstance.settingsOpen()).toBe(true);
+    expect(storeStub.getMilestoneDetail).toHaveBeenCalledWith('o1');
   });
 });
