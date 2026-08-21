@@ -1,4 +1,4 @@
-import { toProject, toProjectDetail, toMilestone, toMilestoneTreeNode, findTreeNode, isLeafObjective, updateTreeNode, toSprintTreeNode, toTaskTreeNode, buildObjectiveForest } from './project.mapper';
+import { toProject, toProjectDetail, toMilestone, toMilestoneTreeNode, findTreeNode, isLeafObjective, updateTreeNode, toSprintTreeNode, toTaskTreeNode, buildObjectiveForest, pruneTreeToModule } from './project.mapper';
 import { ProjectListItemDto, ProjectDetailDto } from '../models/dto/project.dto';
 import { MyProjectMilestoneDto } from '../models/dto/milestone.dto';
 import { ObjectiveSubtreeNodeDto } from '../models/dto/milestone.dto';
@@ -315,6 +315,34 @@ describe('project.mapper', () => {
       const single = buildObjectiveForest([item({ id: 'only', title: 'Only', isDefault: true, isOwner: true })]);
       expect(single?.id).toBe('only');
       expect(single?.children).toEqual([]);
+    });
+  });
+
+  describe('pruneTreeToModule', () => {
+    const node = (id: string, title: string, children: MilestoneTreeNode[] = [], isOwner = true): MilestoneTreeNode => ({
+      id, title, description: null, startDate: '2026-01-01', endDate: '2026-12-01',
+      progress: 0, allocatedHours: 0, completedHours: 0, isActive: true, isAchieved: false,
+      ownerName: null, isOwner, children, kind: 'objective'
+    });
+
+    const sibling = node('sib', 'Sibling');
+    const targetChild = node('gc', 'Grandchild');
+    const target = node('child', 'Child', [targetChild]);
+    const tree = node('root', 'Root', [target, sibling]);
+
+    it('returns the target subtree plus a single-path ancestor chain, excluding siblings', () => {
+      const pruned = pruneTreeToModule(tree, 'child');
+      expect(pruned?.id).toBe('root');
+      expect(pruned?.children.map((c) => c.id)).toEqual(['child']);
+      expect(pruned?.children[0].children.map((c) => c.id)).toEqual(['gc']);
+    });
+
+    it('returns the tree unchanged for the all sentinel', () => {
+      expect(pruneTreeToModule(tree, 'all')).toBe(tree);
+    });
+
+    it('returns null when the id is not in the tree', () => {
+      expect(pruneTreeToModule(tree, 'missing')).toBeNull();
     });
   });
 });
