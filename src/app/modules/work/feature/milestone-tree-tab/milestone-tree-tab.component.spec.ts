@@ -26,10 +26,16 @@ describe('MilestoneTreeTabComponent', () => {
     ownerName: 'Sam', isOwner: true, children: []
   };
 
+  const inactiveSibling: MilestoneTreeNode = {
+    id: 'o4', title: 'Retired Module', description: null, startDate: '2026-02-01', endDate: '2026-03-01',
+    progress: 100, allocatedHours: 6, completedHours: 6, isActive: false, isAchieved: false,
+    ownerName: 'Sam', isOwner: true, children: []
+  };
+
   const tree: MilestoneTreeNode = {
     id: 'o1', title: 'Root', description: null, startDate: '2026-01-01', endDate: '2026-12-01',
     progress: 72, allocatedHours: 40, completedHours: 29, isActive: true, isAchieved: false,
-    ownerName: 'Arun Kumar', isOwner: true, children: [child, sibling]
+    ownerName: 'Arun Kumar', isOwner: true, children: [child, sibling, inactiveSibling]
   };
 
   function setup(milestoneId: string | null): void {
@@ -117,6 +123,102 @@ describe('MilestoneTreeTabComponent', () => {
     expect(titles()).toContain('Child');
     expect(titles()).not.toContain('Other');
     expect(storeStub.loadProjectTree).toHaveBeenCalledTimes(1);
+  });
+
+  describe('activity filter', () => {
+    it('defaults selectedActivityFilter to all and leaves moduleFilterOptions/renderedTree provably unchanged', () => {
+      setup('o1');
+      fixture.detectChanges();
+
+      expect(fixture.componentInstance.selectedActivityFilter()).toBe('all');
+      expect(fixture.componentInstance.moduleFilterOptions().map((o) => o.id)).toEqual(['o1', 'o2', 'o3', 'o4']);
+      expect(fixture.componentInstance.renderedTree()).toEqual(tree);
+    });
+
+    it('includes isActive on each moduleFilterOptions entry', () => {
+      setup('o1');
+      fixture.detectChanges();
+
+      expect(fixture.componentInstance.moduleFilterOptions()).toEqual([
+        { id: 'o1', title: 'Root', isActive: true },
+        { id: 'o2', title: 'Child', isActive: true },
+        { id: 'o3', title: 'Other', isActive: true },
+        { id: 'o4', title: 'Retired Module', isActive: false }
+      ]);
+    });
+
+    it('excludes the inactive module from moduleFilterOptions when the filter is active', () => {
+      setup('o1');
+      fixture.detectChanges();
+
+      fixture.componentInstance.onActivityFilterChanged('active');
+      fixture.detectChanges();
+
+      const ids = fixture.componentInstance.moduleFilterOptions().map((o) => o.id);
+      expect(ids).not.toContain('o4');
+      expect(ids).toEqual(['o1', 'o2', 'o3']);
+    });
+
+    it('includes the inactive module in moduleFilterOptions when the filter is inactive', () => {
+      setup('o1');
+      fixture.detectChanges();
+
+      fixture.componentInstance.onActivityFilterChanged('inactive');
+      fixture.detectChanges();
+
+      expect(fixture.componentInstance.moduleFilterOptions().map((o) => o.id)).toContain('o4');
+    });
+
+    it('includes the inactive module in moduleFilterOptions when the filter is all', () => {
+      setup('o1');
+      fixture.detectChanges();
+
+      fixture.componentInstance.onActivityFilterChanged('all');
+      fixture.detectChanges();
+
+      expect(fixture.componentInstance.moduleFilterOptions().map((o) => o.id)).toContain('o4');
+    });
+
+    it('prunes renderedTree to only inactive modules when inactive is selected', () => {
+      setup('o1');
+      fixture.detectChanges();
+
+      fixture.componentInstance.onActivityFilterChanged('inactive');
+      fixture.detectChanges();
+
+      const rendered = fixture.componentInstance.renderedTree();
+      expect(rendered?.id).toBe('o1');
+      expect(rendered?.children.map((c) => c.id)).toEqual(['o4']);
+    });
+
+    it('prunes renderedTree to only active modules when active is selected', () => {
+      setup('o1');
+      fixture.detectChanges();
+
+      fixture.componentInstance.onActivityFilterChanged('active');
+      fixture.detectChanges();
+
+      const rendered = fixture.componentInstance.renderedTree();
+      expect(rendered?.id).toBe('o1');
+      expect(rendered?.children.map((c) => c.id)).toEqual(['o2', 'o3']);
+    });
+
+    it('wires the activity filter select to selectedActivityFilter and onActivityFilterChanged', async () => {
+      setup('o1');
+      fixture.detectChanges();
+      await fixture.whenStable();
+      fixture.detectChanges();
+
+      const select = fixture.nativeElement.querySelector('[data-testid="module-activity-filter-select"]') as HTMLSelectElement;
+      expect(select.value).toBe('all');
+
+      select.value = 'inactive';
+      select.dispatchEvent(new Event('input'));
+      select.dispatchEvent(new Event('change'));
+      fixture.detectChanges();
+
+      expect(fixture.componentInstance.selectedActivityFilter()).toBe('inactive');
+    });
   });
 
   it('renders the root tree node', () => {

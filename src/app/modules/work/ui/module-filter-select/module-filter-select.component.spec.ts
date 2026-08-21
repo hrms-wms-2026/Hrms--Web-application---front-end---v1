@@ -15,6 +15,7 @@ describe('ModuleFilterSelectComponent', () => {
       { id: 'o2', title: 'Child' }
     ]);
     fixture.componentRef.setInput('selected', 'o1');
+    fixture.componentRef.setInput('activityFilter', 'all');
     fixture.detectChanges();
   });
 
@@ -36,5 +37,25 @@ describe('ModuleFilterSelectComponent', () => {
     fixture.detectChanges();
 
     expect(emitted).toEqual(['all']);
+  });
+
+  it('renders All/Active/Inactive options for the activity filter select', () => {
+    const select = fixture.nativeElement.querySelector('[data-testid="module-activity-filter-select"]') as HTMLSelectElement;
+    const labels = Array.from(select.options).map((option) => option.textContent?.trim());
+    expect(labels).toEqual(['All', 'Active', 'Inactive']);
+    expect(select.value).toBe('all');
+  });
+
+  it('emits the selected value when the user changes the activity filter dropdown', () => {
+    const emitted: string[] = [];
+    fixture.componentInstance.activityFilterChanged.subscribe((value) => emitted.push(value));
+
+    const select = fixture.nativeElement.querySelector('[data-testid="module-activity-filter-select"]') as HTMLSelectElement;
+    select.value = 'inactive';
+    select.dispatchEvent(new Event('input'));
+    select.dispatchEvent(new Event('change'));
+    fixture.detectChanges();
+
+    expect(emitted).toEqual(['inactive']);
   });
 });

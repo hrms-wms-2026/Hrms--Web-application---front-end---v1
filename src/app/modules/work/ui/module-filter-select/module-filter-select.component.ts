@@ -1,5 +1,6 @@
 import { Component, input, output } from '@angular/core';
 import { FormsModule } from '@angular/forms';
+import { ActivityFilter } from '../../utils/project.mapper';
 
 @Component({
   selector: 'app-module-filter-select',
@@ -20,10 +21,26 @@ import { FormsModule } from '@angular/forms';
         }
       </select>
     </label>
+    <label class="flex items-center gap-2 text-sm text-[var(--color-text-secondary)]">
+      <span class="font-medium">Status</span>
+      <select
+        data-testid="module-activity-filter-select"
+        class="rounded-md border border-[var(--color-border)] bg-[var(--color-surface)] px-3 py-2 text-sm font-medium text-[var(--color-text-primary)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-focus-ring)]"
+        [ngModel]="activityFilter()"
+        (ngModelChange)="activityFilterChanged.emit($event)"
+      >
+        <option value="all">All</option>
+        <option value="active">Active</option>
+        <option value="inactive">Inactive</option>
+      </select>
+    </label>
   `
 })
 export class ModuleFilterSelectComponent {
   options = input.required<{ id: string; title: string }[]>();
   selected = input.required<string>();
   selectionChanged = output<string>();
+
+  activityFilter = input.required<ActivityFilter>();
+  activityFilterChanged = output<ActivityFilter>();
 }

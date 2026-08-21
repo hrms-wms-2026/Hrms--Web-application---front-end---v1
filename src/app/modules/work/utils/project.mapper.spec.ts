@@ -1,4 +1,4 @@
-import { toProject, toProjectDetail, toMilestone, toMilestoneTreeNode, findTreeNode, isLeafObjective, updateTreeNode, removeTreeNode, toSprintTreeNode, toTaskTreeNode, buildObjectiveForest, pruneTreeToModule } from './project.mapper';
+import { toProject, toProjectDetail, toMilestone, toMilestoneTreeNode, findTreeNode, isLeafObjective, updateTreeNode, removeTreeNode, toSprintTreeNode, toTaskTreeNode, buildObjectiveForest, pruneTreeToModule, collectObjectiveOptions, filterTreeByActivity } from './project.mapper';
 import { ProjectListItemDto, ProjectDetailDto } from '../models/dto/project.dto';
 import { MyProjectMilestoneDto } from '../models/dto/milestone.dto';
 import { ObjectiveSubtreeNodeDto } from '../models/dto/milestone.dto';
@@ -368,6 +368,88 @@ describe('project.mapper', () => {
 
     it('returns null when the id is not in the tree', () => {
       expect(pruneTreeToModule(tree, 'missing')).toBeNull();
+    });
+  });
+
+  describe('collectObjectiveOptions', () => {
+    const node = (id: string, title: string, isActive: boolean, children: MilestoneTreeNode[] = []): MilestoneTreeNode => ({
+      id, title, description: null, startDate: '2026-01-01', endDate: '2026-12-01',
+      progress: 0, allocatedHours: 0, completedHours: 0, isActive, isAchieved: false,
+      ownerName: null, isOwner: true, children, kind: 'objective'
+    });
+
+    it('includes isActive per option', () => {
+      const child = node('o2', 'Child', false);
+      const tree = node('o1', 'Root', true, [child]);
+
+      expect(collectObjectiveOptions(tree)).toEqual([
+        { id: 'o1', title: 'Root', isActive: true },
+        { id: 'o2', title: 'Child', isActive: false }
+      ]);
+    });
+  });
+
+  describe('filterTreeByActivity', () => {
+    const node = (id: string, title: string, isActive: boolean, children: MilestoneTreeNode[] = []): MilestoneTreeNode => ({
+      id, title, description: null, startDate: '2026-01-01', endDate: '2026-12-01',
+      progress: 0, allocatedHours: 0, completedHours: 0, isActive, isAchieved: false,
+      ownerName: null, isOwner: true, children, kind: 'objective'
+    });
+
+    it('returns the exact same tree reference for the all filter (true no-op)', () => {
+      const tree = node('o1', 'Root', true, [node('o2', 'Child', false)]);
+      expect(filterTreeByActivity(tree, 'all')).toBe(tree);
+    });
+
+    it('keeps only active objective nodes for the active filter', () => {
+      const activeChild = node('o2', 'Active Child', true);
+      const inactiveChild = node('o3', 'Inactive Child', false);
+      const tree = node('o1', 'Root', true, [activeChild, inactiveChild]);
+
+      const result = filterTreeByActivity(tree, 'active');
+
+      expect(result?.id).toBe('o1');
+      expect(result?.children.map((c) => c.id)).toEqual(['o2']);
+    });
+
+    it('keeps only inactive objective nodes for the inactive filter (dropping the active sibling)', () => {
+      const activeChild = node('o2', 'Active Child', true);
+      const inactiveChild = node('o3', 'Inactive Child', false);
+      const tree = node('o1', 'Root', true, [activeChild, inactiveChild]);
+
+      const result = filterTreeByActivity(tree, 'inactive');
+
+      // Root itself is active (doesn't match 'inactive'), but is kept because it has a
+      // matching inactive descendant (o3) — same ancestor-path-preservation principle as pruneTreeToModule.
+      expect(result?.id).toBe('o1');
+      expect(result?.children.map((c) => c.id)).toEqual(['o3']);
+    });
+
+    it('keeps a non-matching ancestor when it has a matching descendant (path preservation)', () => {
+      const inactiveGrandchild = node('o3', 'Inactive Grandchild', false);
+      const activeChild = node('o2', 'Active Child', true, [inactiveGrandchild]);
+      const tree = node('o1', 'Root', true, [activeChild]);
+
+      const result = filterTreeByActivity(tree, 'inactive');
+
+      expect(result?.id).toBe('o1');
+      expect(result?.children.map((c) => c.id)).toEqual(['o2']);
+      expect(result?.children[0].children.map((c) => c.id)).toEqual(['o3']);
+    });
+
+    it('returns null when nothing in the tree matches', () => {
+      const tree = node('o1', 'Root', true, [node('o2', 'Child', true)]);
+      expect(filterTreeByActivity(tree, 'inactive')).toBeNull();
+    });
+
+    it('passes non-objective children through unfiltered under a kept objective node', () => {
+      const sprintChild: MilestoneTreeNode = { ...node('s1', 'Sprint 1', true), kind: 'sprint' };
+      const tree = node('o1', 'Root', false, [sprintChild]);
+
+      const result = filterTreeByActivity(tree, 'inactive');
+
+      expect(result?.id).toBe('o1');
+      expect(result?.children.map((c) => c.id)).toEqual(['s1']);
     });
   });
 });

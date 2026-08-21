@@ -83,16 +83,33 @@ export function buildObjectiveForest(items: ObjectiveTreeItemDto[]): MilestoneTr
   return build(rootItem);
 }
 
-export function collectObjectiveOptions(node: MilestoneTreeNode): { id: string; title: string }[] {
-  const options: { id: string; title: string }[] = [];
+export type ActivityFilter = 'all' | 'active' | 'inactive';
+
+export function collectObjectiveOptions(node: MilestoneTreeNode): { id: string; title: string; isActive: boolean }[] {
+  const options: { id: string; title: string; isActive: boolean }[] = [];
   const walk = (current: MilestoneTreeNode): void => {
     if ((current.kind ?? 'objective') === 'objective') {
-      options.push({ id: current.id, title: current.title });
+      options.push({ id: current.id, title: current.title, isActive: current.isActive });
     }
     current.children.forEach(walk);
   };
   walk(node);
   return options;
+}
+
+export function filterTreeByActivity(node: MilestoneTreeNode, filter: ActivityFilter): MilestoneTreeNode | null {
+  if (filter === 'all') return node;
+  const wantActive = filter === 'active';
+  const isObjective = (n: MilestoneTreeNode) => (n.kind ?? 'objective') === 'objective';
+  if (!isObjective(node)) return node;
+
+  const selfMatches = node.isActive === wantActive;
+  const filteredChildren = node.children
+    .map((child) => (isObjective(child) ? filterTreeByActivity(child, filter) : child))
+    .filter((child): child is MilestoneTreeNode => child !== null);
+
+  if (!selfMatches && filteredChildren.length === 0) return null;
+  return { ...node, children: filteredChildren };
 }
 
 export function pruneTreeToModule(tree: MilestoneTreeNode, moduleId: string): MilestoneTreeNode | null {

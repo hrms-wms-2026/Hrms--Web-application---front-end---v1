@@ -18,7 +18,9 @@ import { EmptyStateComponent } from '../../../../shared/ui/empty-state/empty-sta
 import { ConfirmModalComponent } from '../../../../shared/ui/confirm-modal/confirm-modal.component';
 import { MilestoneTreeNode, ObjectiveDetail } from '../../models/milestone.model';
 import { EditObjectiveRequestDto, CreateObjectiveRequestDto } from '../../models/dto/milestone.dto';
-import { findTreeNode, isLeafObjective, collectObjectiveOptions, pruneTreeToModule } from '../../utils/project.mapper';
+import {
+  findTreeNode, isLeafObjective, collectObjectiveOptions, pruneTreeToModule, filterTreeByActivity, ActivityFilter
+} from '../../utils/project.mapper';
 import { Sprint, SprintStatus } from '../../models/sprint.model';
 
 @Component({
@@ -39,12 +41,21 @@ export class MilestoneTreeTabComponent {
   private loadedProjectId: string | null = null;
 
   selectedModuleFilter = signal<string>('all');
-  moduleFilterOptions = computed(() => {
+  selectedActivityFilter = signal<ActivityFilter>('all');
+
+  private activityFilteredTree = computed(() => {
     const tree = this.store.selectedSubtree();
+    if (!tree) return null;
+    return filterTreeByActivity(tree, this.selectedActivityFilter());
+  });
+
+  moduleFilterOptions = computed(() => {
+    const tree = this.activityFilteredTree();
     return tree ? collectObjectiveOptions(tree) : [];
   });
+
   renderedTree = computed(() => {
-    const tree = this.store.selectedSubtree();
+    const tree = this.activityFilteredTree();
     if (!tree) return null;
     return pruneTreeToModule(tree, this.selectedModuleFilter()) ?? tree;
   });
@@ -93,6 +104,10 @@ export class MilestoneTreeTabComponent {
 
   onModuleFilterChanged(moduleId: string): void {
     this.selectedModuleFilter.set(moduleId);
+  }
+
+  onActivityFilterChanged(filter: ActivityFilter): void {
+    this.selectedActivityFilter.set(filter);
   }
 
   onNodeSelected(node: MilestoneTreeNode): void {
