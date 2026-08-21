@@ -5,6 +5,7 @@ import { MilestoneTreeTabComponent } from './milestone-tree-tab.component';
 import { ProjectDetailStore } from '../../state/project-detail.store';
 import { MilestoneTreeNode } from '../../models/milestone.model';
 import { PeopleApiService } from '../../../people/data-access/people-api.service';
+import { SprintListStore } from '../../state/sprint-list.store';
 
 describe('MilestoneTreeTabComponent', () => {
   let fixture: ComponentFixture<MilestoneTreeTabComponent>;
@@ -31,7 +32,8 @@ describe('MilestoneTreeTabComponent', () => {
       providers: [
         { provide: ProjectDetailStore, useValue: storeStub },
         { provide: ActivatedRoute, useValue: routeStub },
-        { provide: PeopleApiService, useValue: { listEmployees: vi.fn().mockReturnValue(of({ items: [], totalCount: 0, page: 1, pageSize: 20 })) } }
+        { provide: PeopleApiService, useValue: { listEmployees: vi.fn().mockReturnValue(of({ items: [], totalCount: 0, page: 1, pageSize: 20 })) } },
+        { provide: SprintListStore, useValue: { error: () => null, create: vi.fn() } }
       ]
     }).compileComponents();
 
@@ -257,5 +259,16 @@ describe('MilestoneTreeTabComponent', () => {
     fixture.componentInstance.onExpandLeafRequested(sprint);
 
     expect(storeStub.loadTasksForSprint).toHaveBeenCalledWith('spr-1');
+  });
+
+  it('refreshes a leaf after creating a sprint from its row', async () => {
+    setup('o1');
+    fixture.detectChanges();
+    const leaf: MilestoneTreeNode = { ...child, kind: 'objective', children: [] };
+
+    fixture.componentInstance.onCreateSprintRequested(leaf);
+    await fixture.componentInstance.onSprintCreated();
+
+    expect(storeStub.loadSprintsAndTasksForLeaf).toHaveBeenCalledWith('o2', { force: true });
   });
 });

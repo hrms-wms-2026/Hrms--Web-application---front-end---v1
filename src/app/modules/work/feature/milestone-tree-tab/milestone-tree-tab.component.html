@@ -19,6 +19,7 @@
         (selected)="onNodeSelected($event)"
         (createRequested)="onCreateSubRequested($event)"
         (expandLeafRequested)="onExpandLeafRequested($event)"
+        (createSprintRequested)="onCreateSprintRequested($event)"
       />
     }
   </div>
@@ -64,3 +65,13 @@
   (transferRequested)="onTransferRequested($event)"
   (closed)="onMembersPopupClosed()"
 />
+
+@if (createSprintNode(); as sprintLeaf) {
+  <app-sprint-create-form
+    [open]="createSprintOpen()"
+    [objectiveId]="sprintLeaf.id"
+    [isObjectiveOwner]="sprintLeaf.isOwner"
+    (created)="onSprintCreated()"
+    (cancelled)="onSprintCreateCancelled()"
+  />
+}

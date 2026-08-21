@@ -7,6 +7,7 @@ import { MilestoneDetailPanelComponent } from '../../ui/milestone-detail-panel/m
 import { MilestoneSettingsModalComponent } from '../../ui/milestone-settings-modal/milestone-settings-modal.component';
 import { CreateSubModuleModalComponent } from '../../ui/create-sub-module-modal/create-sub-module-modal.component';
 import { ObjectiveMembersPopupComponent } from '../../ui/objective-members-popup/objective-members-popup.component';
+import { SprintCreateFormComponent } from '../../ui/sprint-create-form/sprint-create-form.component';
 import { LoaderComponent } from '../../../../shared/ui/loader/loader.component';
 import { ErrorStateComponent } from '../../../../shared/ui/error-state/error-state.component';
 import { MilestoneTreeNode, ObjectiveDetail } from '../../models/milestone.model';
@@ -18,7 +19,8 @@ import { findTreeNode, isLeafObjective } from '../../utils/project.mapper';
   standalone: true,
   imports: [
     MilestoneTreeNodeComponent, MilestoneDetailPanelComponent, MilestoneSettingsModalComponent,
-    CreateSubModuleModalComponent, ObjectiveMembersPopupComponent, LoaderComponent, ErrorStateComponent
+    CreateSubModuleModalComponent, ObjectiveMembersPopupComponent, SprintCreateFormComponent,
+    LoaderComponent, ErrorStateComponent
   ],
   templateUrl: './milestone-tree-tab.component.html'
 })
@@ -44,6 +46,9 @@ export class MilestoneTreeTabComponent {
   createModalSubmitting = signal(false);
 
   membersPopupOpen = signal(false);
+
+  createSprintOpen = signal(false);
+  createSprintNode = signal<MilestoneTreeNode | null>(null);
 
   constructor() {
     this.route.paramMap.pipe(takeUntilDestroyed()).subscribe((paramMap) => {
@@ -80,6 +85,22 @@ export class MilestoneTreeTabComponent {
     } else if (node.kind === 'sprint') {
       void this.store.loadTasksForSprint(node.id);
     }
+  }
+
+  onCreateSprintRequested(node: MilestoneTreeNode): void {
+    this.createSprintNode.set(node);
+    this.createSprintOpen.set(true);
+  }
+
+  async onSprintCreated(): Promise<void> {
+    const node = this.createSprintNode();
+    this.createSprintOpen.set(false);
+    if (node) await this.store.loadSprintsAndTasksForLeaf(node.id, { force: true });
+  }
+
+  onSprintCreateCancelled(): void {
+    this.createSprintOpen.set(false);
+    this.createSprintNode.set(null);
   }
 
   async onCreateModalCreated(payload: CreateObjectiveRequestDto): Promise<void> {
