@@ -4,10 +4,8 @@
   <app-error-state [message]="store.projectError()!" [retryable]="true" (retry)="retryProject()" />
 } @else if (store.project(); as project) {
   <div class="flex flex-wrap items-center justify-between gap-4 pb-2 mb-2.5 border-b border-[var(--color-border)]">
-    <div>
-      <h1 class="text-base font-semibold text-[var(--color-text-primary)]">{{ project.name }}</h1>
-      <p class="text-xs text-[var(--color-text-secondary)]">{{ project.identifier }} · {{ project.description ?? '' }}</p>
-    </div>
+    <app-breadcrumb-header parentLabel="Projects" [currentLabel]="project.name" parentUrl="/work" icon="work" />
+
     <dl class="flex gap-6 text-sm">
       <div>
         <dt class="text-xs text-[var(--color-text-secondary)]">Start</dt>

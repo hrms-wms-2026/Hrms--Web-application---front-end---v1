@@ -174,12 +174,12 @@ describe('ProjectListComponent', () => {
     fixture.componentInstance.onProjectSettingsRequested(project);
 
     await fixture.componentInstance.onProjectSettingsSaved({
-      fields: { name: 'Website Revamp v2', description: '', categoryId: 'cat1', startDate: '2026-08-01', targetDate: '2026-12-01', color: '', actualHours: 0 },
+      fields: { name: 'Website Revamp v2', description: '', categoryId: 'cat1', startDate: '2026-08-01', targetDate: '2026-12-01', color: '', actualHours: 0, allocatedHours: 40 },
       achievedChanged: false, achieved: false
     });
 
     expect(storeStub.editProject).toHaveBeenCalledWith('p1', {
-      name: 'Website Revamp v2', description: '', categoryId: 'cat1', startDate: '2026-08-01', targetDate: '2026-12-01', color: '', actualHours: 0
+      name: 'Website Revamp v2', description: '', categoryId: 'cat1', startDate: '2026-08-01', targetDate: '2026-12-01', color: '', actualHours: 0, allocatedHours: 40
     });
     expect(storeStub.achieveProject).not.toHaveBeenCalled();
     expect(storeStub.unachieveProject).not.toHaveBeenCalled();
@@ -191,7 +191,7 @@ describe('ProjectListComponent', () => {
     fixture.componentInstance.onProjectSettingsRequested(project);
 
     await fixture.componentInstance.onProjectSettingsSaved({
-      fields: { name: 'Website Revamp', description: '', categoryId: 'cat1', startDate: '2026-08-01', targetDate: '2026-12-01', color: '', actualHours: 0 },
+      fields: { name: 'Website Revamp', description: '', categoryId: 'cat1', startDate: '2026-08-01', targetDate: '2026-12-01', color: '', actualHours: 0, allocatedHours: 40 },
       achievedChanged: true, achieved: true
     });
 
@@ -205,7 +205,7 @@ describe('ProjectListComponent', () => {
     fixture.componentInstance.onProjectSettingsRequested({ ...project, isAchieved: true });
 
     await fixture.componentInstance.onProjectSettingsSaved({
-      fields: { name: 'Website Revamp', description: '', categoryId: 'cat1', startDate: '2026-08-01', targetDate: '2026-12-01', color: '', actualHours: 0 },
+      fields: { name: 'Website Revamp', description: '', categoryId: 'cat1', startDate: '2026-08-01', targetDate: '2026-12-01', color: '', actualHours: 0, allocatedHours: 40 },
       achievedChanged: true, achieved: false
     });
 
@@ -218,7 +218,7 @@ describe('ProjectListComponent', () => {
     fixture.componentInstance.onProjectSettingsRequested(project);
 
     await fixture.componentInstance.onProjectSettingsSaved({
-      fields: { name: 'Website Revamp', description: '', categoryId: 'cat1', startDate: '2026-08-01', targetDate: '2026-12-01', color: '', actualHours: 0 },
+      fields: { name: 'Website Revamp', description: '', categoryId: 'cat1', startDate: '2026-08-01', targetDate: '2026-12-01', color: '', actualHours: 0, allocatedHours: 40 },
       achievedChanged: true, achieved: true
     });
 

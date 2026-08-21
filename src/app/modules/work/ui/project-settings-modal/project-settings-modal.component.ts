@@ -146,7 +146,8 @@ export class ProjectSettingsModalComponent implements OnInit {
     this.saved.emit({
       fields: {
         name: fields.name, description: this.description(), categoryId: fields.categoryId,
-        startDate: fields.startDate, targetDate: fields.targetDate, color: this.color(), actualHours: 0
+        startDate: fields.startDate, targetDate: fields.targetDate, color: this.color(), actualHours: 0,
+        allocatedHours: this.allocatedHours()
       },
       achievedChanged,
       achieved: this.achieved()

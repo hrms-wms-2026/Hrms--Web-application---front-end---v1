@@ -8,12 +8,14 @@ import { MilestoneSubMenuComponent } from '../../ui/milestone-sub-menu/milestone
 import { LoaderComponent } from '../../../../shared/ui/loader/loader.component';
 import { ErrorStateComponent } from '../../../../shared/ui/error-state/error-state.component';
 import { EmptyStateComponent } from '../../../../shared/ui/empty-state/empty-state.component';
+import { BreadcrumbHeaderComponent } from '../../../../shared/ui/breadcrumb-header/breadcrumb-header.component';
 
 @Component({
   selector: 'app-project-detail',
   standalone: true,
   imports: [
-    MilestoneSubMenuComponent, LoaderComponent, ErrorStateComponent, EmptyStateComponent, RouterOutlet
+    MilestoneSubMenuComponent, LoaderComponent, ErrorStateComponent, EmptyStateComponent,
+    BreadcrumbHeaderComponent, RouterOutlet
   ],
   templateUrl: './project-detail.component.html'
 })

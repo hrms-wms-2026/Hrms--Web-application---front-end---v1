@@ -1,11 +1,12 @@
-<app-breadcrumb-header parentLabel="Work" currentLabel="Projects" icon="work" />
-
-<div class="flex items-center justify-end gap-3 pb-3.5 mb-5 border-b border-[var(--color-border)]">
-  <app-project-filter-bar
-    (categoryChanged)="onCategoryFilterChanged($event)"
-    (achievedFilterChanged)="onAchievedFilterChanged($event)"
-  />
-  <app-button variant="primary" (pressed)="openCreateModal()">+ Create project</app-button>
+<div class="flex flex-wrap items-center justify-between gap-3 pb-2 mb-2 border-b border-[var(--color-border)]">
+  <app-breadcrumb-header parentLabel="Work" currentLabel="Projects" icon="work" />
+  <div class="flex items-center gap-3">
+    <app-project-filter-bar
+      (categoryChanged)="onCategoryFilterChanged($event)"
+      (achievedFilterChanged)="onAchievedFilterChanged($event)"
+    />
+    <app-button variant="primary" (pressed)="openCreateModal()">+ Create project</app-button>
+  </div>
 </div>
 
 <app-my-invitations-panel
@@ -14,7 +15,7 @@
   (rejectRequested)="onRejectInvitation($event)"
 />
 
-<div class="mt-6">
+<div class="mt-2">
   @if (store.loading()) {
     <app-loader label="Loading projects…" />
   } @else if (store.error()) {
@@ -24,7 +25,7 @@
       <app-button variant="primary" (pressed)="openCreateModal()">+ Create project</app-button>
     </app-empty-state>
   } @else {
-    <div class="grid grid-cols-1 gap-4 lg:grid-cols-[minmax(0,1fr)_20rem] lg:items-start">
+    <div class="grid grid-cols-1 gap-4 lg:grid-cols-[minmax(0,1fr)_24rem] lg:items-start">
       <div class="flex flex-col gap-2" data-testid="project-list">
         @for (project of store.filteredProjects(); track project.id) {
           <app-project-list-row

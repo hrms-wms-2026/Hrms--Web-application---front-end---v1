@@ -95,4 +95,5 @@ export interface EditProjectRequestDto {
   targetDate: string;
   color: string;
   actualHours: number;
+  allocatedHours: number;
 }

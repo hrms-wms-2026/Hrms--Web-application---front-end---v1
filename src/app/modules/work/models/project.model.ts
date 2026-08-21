@@ -61,4 +61,5 @@ export interface EditProjectPayload {
   targetDate: string;
   color: string;
   actualHours: number;
+  allocatedHours: number;
 }

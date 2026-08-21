@@ -180,7 +180,7 @@ describe('ProjectListStore', () => {
     } as Partial<ProjectApiService>);
     const result = await store.editProject('p1', {
       name: 'Website Revamp v2', description: '', categoryId: 'cat1',
-      startDate: '2026-08-01', targetDate: '2027-01-01', color: '', actualHours: 0
+      startDate: '2026-08-01', targetDate: '2027-01-01', color: '', actualHours: 0, allocatedHours: 40
     });
     expect(result).toBe(true);
   });

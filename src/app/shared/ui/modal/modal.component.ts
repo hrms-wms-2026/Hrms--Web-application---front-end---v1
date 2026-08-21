@@ -1,7 +1,7 @@
 import { Component, ElementRef, computed, effect, input, output, viewChild } from '@angular/core';
 import { nextUniqueId } from '../../utils/unique-id';
 
-export type ModalSize = 'md' | 'lg' | 'xl';
+export type ModalSize = 'md' | 'lg' | 'xl' | '2xl';
 
 @Component({
   selector: 'app-modal',
@@ -51,6 +51,7 @@ export class ModalComponent {
       md: 'relative z-10 w-full max-w-md rounded-lg bg-[var(--color-surface)] p-6 shadow-lg outline-none',
       lg: 'relative z-10 w-full max-w-xl rounded-lg bg-[var(--color-surface)] p-6 shadow-lg outline-none',
       xl: 'relative z-10 w-full max-w-2xl rounded-lg bg-[var(--color-surface)] p-6 shadow-lg outline-none',
+      '2xl': 'relative z-10 w-full max-w-4xl rounded-lg bg-[var(--color-surface)] p-6 shadow-lg outline-none',
     };
     return sizeMap[this.size()];
   });
