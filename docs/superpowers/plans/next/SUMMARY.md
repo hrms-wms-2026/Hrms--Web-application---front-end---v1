@@ -21,3 +21,12 @@ Pending plans and raw not-yet-brainstormed future-feature context. Stays flat �
   §4. Backend counterpart's Parts 1-6 also all shipped (428/428 WorkManagement tests). Code-complete both
   repos — **still pending the manual browser pass** before this moves to `finished/`: green tests alone
   aren't enough, per this session's own experience on the Project Page Redesign work.
+- `2026-08-21-work-management-project-scoped-task-status-and-category/` — status: pending, not started.
+  2 parts. Design: `HRMS-Backend-v1/docs/superpowers/specs/next/2026-08-21-work-management-project-scoped-task-status-and-category-design.md`.
+  `part-1-project-settings-page-and-task-status-tab.md` — new `work/:id/settings` route
+  (`ProjectSettingsComponent`), moves Task Status editing off the per-Module `settings` tab onto this new
+  Project-level page, re-points `BoardStructureEditorComponent`/`TaskApiService` at the Project-scoped
+  API (needs the backend companion plan's Part 1 shipped first). `part-2-task-category-tab.md` — new
+  Task Category tab, net-new `CategoryListEditorComponent` (simplified drag-reorder, no
+  visibility/marksTaskComplete fields), needs backend companion Part 4 shipped first. Both parts also
+  need this same plan's Part 1 (the `ProjectSettingsComponent` shell) done before Part 2.
