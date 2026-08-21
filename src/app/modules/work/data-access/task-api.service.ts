@@ -40,6 +40,10 @@ export class TaskApiService {
     return this.http.get<WorkTaskDto[]>(`${this.baseUrl}/objectives/${objectiveId}/tasks`);
   }
 
+  getBySprintId(sprintId: string): Observable<WorkTaskDto[]> {
+    return this.http.get<WorkTaskDto[]>(`${this.baseUrl}/sprints/${sprintId}/tasks`);
+  }
+
   createTask(objectiveId: string, request: CreateTaskRequestDto): Observable<WorkTaskDto> {
     return this.http.post<WorkTaskDto>(`${this.baseUrl}/objectives/${objectiveId}/tasks`, request);
   }

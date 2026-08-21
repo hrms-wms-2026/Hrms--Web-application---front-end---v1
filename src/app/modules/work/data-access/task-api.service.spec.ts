@@ -37,6 +37,23 @@ describe('TaskApiService', () => {
     req.flush(mockTasks);
   });
 
+  it('getBySprintId fetches tasks for a sprint', () => {
+    const sprintId = 'spr-1';
+    const mockTasks: WorkTaskDto[] = [{
+      id: 't-1', objectiveId: 'obj-1', shortId: 'PRJ-1', title: 'Do it', description: null,
+      taskType: 'task', statusId: 's-1', priority: 'medium', storyPoints: null,
+      dueDate: null, estimatedHours: 5, completedHours: 0, progressPercent: 0, sprintId, assigneeEmployeeIds: []
+    }];
+
+    service.getBySprintId(sprintId).subscribe((tasks) => {
+      expect(tasks).toEqual(mockTasks);
+    });
+
+    const req = httpMock.expectOne(`${environment.apiUrl}/work/sprints/${sprintId}/tasks`);
+    expect(req.request.method).toBe('GET');
+    req.flush(mockTasks);
+  });
+
   it('getStatuses fetches task statuses for an objective', () => {
     const objectiveId = 'obj-1';
     const mockStatuses: TaskStatusDto[] = [{
