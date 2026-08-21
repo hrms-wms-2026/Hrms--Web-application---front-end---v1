@@ -1,7 +1,8 @@
-import { toProject, toProjectDetail, toMilestone, toMilestoneTreeNode, findTreeNode, isLeafObjective, updateTreeNode, toSprintTreeNode, toTaskTreeNode } from './project.mapper';
+import { toProject, toProjectDetail, toMilestone, toMilestoneTreeNode, findTreeNode, isLeafObjective, updateTreeNode, toSprintTreeNode, toTaskTreeNode, buildObjectiveForest } from './project.mapper';
 import { ProjectListItemDto, ProjectDetailDto } from '../models/dto/project.dto';
 import { MyProjectMilestoneDto } from '../models/dto/milestone.dto';
 import { ObjectiveSubtreeNodeDto } from '../models/dto/milestone.dto';
+import { ObjectiveTreeItemDto } from '../models/dto/objective-tree.dto';
 import { MilestoneTreeNode } from '../models/milestone.model';
 import { SprintDto } from '../models/dto/sprint.dto';
 import { WorkTaskDto } from '../models/dto/task.dto';
@@ -274,5 +275,46 @@ describe('project.mapper', () => {
     expect(task.taskSource?.shortId).toBe('WEB-9');
     expect(task.taskSource?.sprintId).toBe('spr-1');
     expect(task.taskStatuses?.[0].name).toBe('To Do');
+  });
+
+  describe('buildObjectiveForest', () => {
+    const item = (overrides: Partial<ObjectiveTreeItemDto> & Pick<ObjectiveTreeItemDto, 'id' | 'title'>): ObjectiveTreeItemDto => ({
+      parentObjectiveId: null, isDefault: false, ownerId: 'e1',
+      startDate: '2026-08-01', endDate: '2026-12-01', allocatedHours: 10, completedHours: 0,
+      isActive: true, isAchieved: false, progress: 0, ownerName: null, isOwner: false, ...overrides
+    });
+
+    it('nests a flat list under the default root', () => {
+      const tree = buildObjectiveForest([
+        item({ id: 'root', title: 'Default', isDefault: true, isOwner: true, progress: 20, ownerName: 'Ada' }),
+        item({ id: 'child', title: 'Child', parentObjectiveId: 'root', isOwner: true }),
+        item({ id: 'grandchild', title: 'Grand', parentObjectiveId: 'child', isOwner: false })
+      ]);
+
+      expect(tree?.id).toBe('root');
+      expect(tree?.kind).toBe('objective');
+      expect(tree?.children).toHaveLength(1);
+      expect(tree?.children[0].id).toBe('child');
+      expect(tree?.children[0].children[0].id).toBe('grandchild');
+      expect(tree?.progress).toBe(20);
+      expect(tree?.ownerName).toBe('Ada');
+    });
+
+    it('keeps ancestor-context isOwner false instead of coercing it to true', () => {
+      const tree = buildObjectiveForest([
+        item({ id: 'root', title: 'Default', isDefault: true, isOwner: false, ownerName: 'Ada' }),
+        item({ id: 'mine', title: 'Mine', parentObjectiveId: 'root', isOwner: true })
+      ]);
+
+      expect(tree?.isOwner).toBe(false);
+      expect(tree?.children[0].isOwner).toBe(true);
+    });
+
+    it('returns null for an empty list and a single node for a one-item list', () => {
+      expect(buildObjectiveForest([])).toBeNull();
+      const single = buildObjectiveForest([item({ id: 'only', title: 'Only', isDefault: true, isOwner: true })]);
+      expect(single?.id).toBe('only');
+      expect(single?.children).toEqual([]);
+    });
   });
 });

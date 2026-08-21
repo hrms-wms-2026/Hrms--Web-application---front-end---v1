@@ -1,5 +1,6 @@
 import { ProjectListItemDto, ProjectDetailDto } from '../models/dto/project.dto';
 import { MyProjectMilestoneDto, ObjectiveSubtreeNodeDto } from '../models/dto/milestone.dto';
+import { ObjectiveTreeItemDto } from '../models/dto/objective-tree.dto';
 import { SprintDto } from '../models/dto/sprint.dto';
 import { WorkTaskDto } from '../models/dto/task.dto';
 import { Project, ProjectDetail } from '../models/project.model';
@@ -39,6 +40,79 @@ export function toMilestoneTreeNode(dto: ObjectiveSubtreeNodeDto): MilestoneTree
     children: dto.children.map(toMilestoneTreeNode),
     kind: 'objective'
   };
+}
+
+function toObjectiveForestNode(item: ObjectiveTreeItemDto, children: MilestoneTreeNode[]): MilestoneTreeNode {
+  return {
+    id: item.id,
+    title: item.title,
+    description: null,
+    startDate: item.startDate,
+    endDate: item.endDate,
+    progress: item.progress,
+    allocatedHours: item.allocatedHours,
+    completedHours: item.completedHours,
+    isActive: item.isActive,
+    isAchieved: item.isAchieved,
+    ownerName: item.ownerName,
+    isOwner: item.isOwner,
+    children,
+    kind: 'objective'
+  };
+}
+
+export function buildObjectiveForest(items: ObjectiveTreeItemDto[]): MilestoneTreeNode | null {
+  if (items.length === 0) return null;
+
+  const childrenByParent = new Map<string | null, ObjectiveTreeItemDto[]>();
+  for (const item of items) {
+    const siblings = childrenByParent.get(item.parentObjectiveId) ?? [];
+    siblings.push(item);
+    childrenByParent.set(item.parentObjectiveId, siblings);
+  }
+
+  const roots = childrenByParent.get(null) ?? [];
+  if (roots.length === 0) return null;
+  if (roots.length > 1) {
+    console.error(`Objective tree has ${roots.length} root nodes; expected one Default Objective.`);
+  }
+
+  const rootItem = roots.find((item) => item.isDefault) ?? roots[0];
+  const build = (item: ObjectiveTreeItemDto): MilestoneTreeNode =>
+    toObjectiveForestNode(item, (childrenByParent.get(item.id) ?? []).map(build));
+  return build(rootItem);
+}
+
+export function collectObjectiveOptions(node: MilestoneTreeNode): { id: string; title: string }[] {
+  const options: { id: string; title: string }[] = [];
+  const walk = (current: MilestoneTreeNode): void => {
+    if ((current.kind ?? 'objective') === 'objective') {
+      options.push({ id: current.id, title: current.title });
+    }
+    current.children.forEach(walk);
+  };
+  walk(node);
+  return options;
+}
+
+export function pruneTreeToModule(tree: MilestoneTreeNode, moduleId: string): MilestoneTreeNode | null {
+  if (moduleId === 'all') return tree;
+  const path = findPathToNode(tree, moduleId);
+  if (!path) return null;
+  let node = path[path.length - 1];
+  for (let i = path.length - 2; i >= 0; i--) {
+    node = { ...path[i], children: [node] };
+  }
+  return node;
+}
+
+function findPathToNode(node: MilestoneTreeNode, targetId: string): MilestoneTreeNode[] | null {
+  if (node.id === targetId) return [node];
+  for (const child of node.children) {
+    const rest = findPathToNode(child, targetId);
+    if (rest) return [node, ...rest];
+  }
+  return null;
 }
 
 export function findTreeNode(root: MilestoneTreeNode, id: string): MilestoneTreeNode | null {
