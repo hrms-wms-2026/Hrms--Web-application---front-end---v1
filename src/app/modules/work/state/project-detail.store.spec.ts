@@ -408,4 +408,97 @@ describe('ProjectDetailStore', () => {
       expect(store.selectedSubtree()?.sprintTaskLoadState).toBe('loaded');
     });
   });
+
+  describe('loadTasksForSprint', () => {
+    const leafSubtree: ObjectiveSubtreeResponseDto = {
+      parentObjective: null,
+      objective: {
+        id: 'o1', projectId: 'p1', parentObjectiveId: null, isDefault: true, title: 'Root',
+        description: null, ownerId: 'u1', ownerName: 'Arun', reportingManagerId: null, reportingManagerName: null,
+        createdById: 'u1', startDate: '2026-08-01', endDate: '2026-12-01', progress: 0, actualHours: null,
+        allocatedHours: 40, completedHours: 0, isActive: true, isOwner: true, isAchieved: false, achievedAt: null,
+        createdAt: '2026-08-01T00:00:00Z', updatedAt: null, children: []
+      }
+    };
+
+    const sprintDto: SprintDto = {
+      id: 'spr-1', objectiveId: 'o1', name: 'Sprint 1', startDate: '2026-08-01', endDate: '2026-08-14',
+      status: 'active', completedAt: null, achievedAt: null
+    };
+
+    const sprintTask: WorkTaskDto = {
+      id: 't-sprint', objectiveId: 'o1', shortId: 'WEB-2', title: 'Sprint task', description: null,
+      taskType: 'task', statusId: 'st-1', priority: 'medium', storyPoints: null,
+      dueDate: null, estimatedHours: 3, completedHours: 0, progressPercent: 0, sprintId: 'spr-1', assigneeEmployeeIds: []
+    };
+
+    const statuses: TaskStatusDto[] = [{
+      id: 'st-1', name: 'To Do', displayOrder: 0, requiresApproval: false, approverId: null,
+      marksTaskComplete: false, visibility: 'public'
+    }];
+
+    async function loadLeafWithSprint(
+      getBySprintId: ReturnType<typeof vi.fn>
+    ) {
+      const sprintApi = { getByObjective: vi.fn().mockReturnValue(of([sprintDto])) };
+      const taskApi = {
+        getTasks: vi.fn().mockReturnValue(of([])),
+        getStatuses: vi.fn().mockReturnValue(of(statuses)),
+        getBySprintId
+      } as Partial<TaskApiService>;
+      const store = setup({ getMilestoneSubtree: () => of(leafSubtree) }, sprintApi, taskApi);
+      await store.loadMilestoneSubtree('o1');
+      await store.loadSprintsAndTasksForLeaf('o1');
+      return { store, getBySprintId };
+    }
+
+    it('fetches sprint tasks once and nests them under the sprint', async () => {
+      const getBySprintId = vi.fn().mockReturnValue(of([sprintTask]));
+      const { store } = await loadLeafWithSprint(getBySprintId);
+
+      await store.loadTasksForSprint('spr-1');
+
+      expect(getBySprintId).toHaveBeenCalledTimes(1);
+      expect(getBySprintId).toHaveBeenCalledWith('spr-1');
+      const sprintNode = store.selectedSubtree()?.children.find((c) => c.id === 'spr-1');
+      expect(sprintNode?.children).toHaveLength(1);
+      expect(sprintNode?.children[0].kind).toBe('task');
+      expect(sprintNode?.children[0].title).toBe('Sprint task');
+      expect(sprintNode?.sprintTaskLoadState).toBe('loaded');
+    });
+
+    it('does not re-fetch when the sprint is already loaded', async () => {
+      const getBySprintId = vi.fn().mockReturnValue(of([sprintTask]));
+      const { store } = await loadLeafWithSprint(getBySprintId);
+      await store.loadTasksForSprint('spr-1');
+
+      await store.loadTasksForSprint('spr-1');
+
+      expect(getBySprintId).toHaveBeenCalledTimes(1);
+    });
+
+    it('re-fetches when force is true even if already loaded', async () => {
+      const getBySprintId = vi.fn().mockReturnValue(of([sprintTask]));
+      const { store } = await loadLeafWithSprint(getBySprintId);
+      await store.loadTasksForSprint('spr-1');
+
+      await store.loadTasksForSprint('spr-1', { force: true });
+
+      expect(getBySprintId).toHaveBeenCalledTimes(2);
+    });
+
+    it('sets error state on failure and retries on the next call', async () => {
+      const getBySprintId = vi.fn()
+        .mockReturnValueOnce(throwError(() => ({ error: { detail: 'boom' } })))
+        .mockReturnValueOnce(of([sprintTask]));
+      const { store } = await loadLeafWithSprint(getBySprintId);
+
+      await store.loadTasksForSprint('spr-1');
+      expect(store.selectedSubtree()?.children[0].sprintTaskLoadState).toBe('error');
+
+      await store.loadTasksForSprint('spr-1');
+      expect(getBySprintId).toHaveBeenCalledTimes(2);
+      expect(store.selectedSubtree()?.children[0].sprintTaskLoadState).toBe('loaded');
+    });
+  });
 });

@@ -258,6 +258,41 @@ export const ProjectDetailStore = signalStore(
           selectedSubtree: updateTreeNode(current, objectiveId, (node) => ({ ...node, sprintTaskLoadState: 'error' }))
         });
       }
+    },
+
+    async loadTasksForSprint(sprintId: string, options?: { force?: boolean }): Promise<void> {
+      const tree = store.selectedSubtree();
+      if (!tree) return;
+      const target = findTreeNode(tree, sprintId);
+      if (!target || target.kind !== 'sprint') return;
+      const state = target.sprintTaskLoadState;
+      if (!options?.force && (state === 'loaded' || state === 'loading')) return;
+
+      patchState(store, {
+        selectedSubtree: updateTreeNode(tree, sprintId, (node) => ({ ...node, sprintTaskLoadState: 'loading' }))
+      });
+
+      try {
+        const tasks = await firstValueFrom(taskApi.getBySprintId(sprintId));
+        const current = store.selectedSubtree();
+        if (!current) return;
+        const sprint = findTreeNode(current, sprintId);
+        if (!sprint) return;
+        const children = tasks.map((task) => toTaskTreeNode(task, sprint, task.statusId));
+        patchState(store, {
+          selectedSubtree: updateTreeNode(current, sprintId, (node) => ({
+            ...node,
+            children,
+            sprintTaskLoadState: 'loaded'
+          }))
+        });
+      } catch {
+        const current = store.selectedSubtree();
+        if (!current) return;
+        patchState(store, {
+          selectedSubtree: updateTreeNode(current, sprintId, (node) => ({ ...node, sprintTaskLoadState: 'error' }))
+        });
+      }
     }
   }))
 );

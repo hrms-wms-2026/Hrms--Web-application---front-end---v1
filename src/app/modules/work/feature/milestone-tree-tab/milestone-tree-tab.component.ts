@@ -77,6 +77,8 @@ export class MilestoneTreeTabComponent {
   onExpandLeafRequested(node: MilestoneTreeNode): void {
     if (isLeafObjective(node)) {
       void this.store.loadSprintsAndTasksForLeaf(node.id);
+    } else if (node.kind === 'sprint') {
+      void this.store.loadTasksForSprint(node.id);
     }
   }
 
