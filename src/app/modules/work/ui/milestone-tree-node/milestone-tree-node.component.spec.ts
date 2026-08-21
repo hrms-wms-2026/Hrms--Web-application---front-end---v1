@@ -63,9 +63,9 @@ describe('MilestoneTreeNodeComponent', () => {
     expect(fixture.nativeElement.textContent).not.toContain('Child');
   });
 
-  it('does not render a chevron for a leaf node', () => {
+  it('renders a chevron for a leaf objective so it can be expanded', () => {
     setup(leaf);
-    expect(fixture.nativeElement.querySelector('[data-testid="chevron"]')).toBeNull();
+    expect(fixture.nativeElement.querySelector('[data-testid="chevron"]')).not.toBeNull();
   });
 
   it('chevron click toggles expansion without emitting selected', () => {
@@ -172,5 +172,60 @@ describe('MilestoneTreeNodeComponent', () => {
 
     expect(created).toEqual([root]);
     expect(selectedCount).toBe(0);
+  });
+
+  it('shows a chevron on an unloaded sprint node', () => {
+    const sprint: MilestoneTreeNode = { ...leaf, id: 's1', title: 'Sprint 1', kind: 'sprint', sprintTaskLoadState: 'unloaded' };
+    setup(sprint);
+    expect(fixture.nativeElement.querySelector('[data-testid="chevron"]')).not.toBeNull();
+  });
+
+  it('does not show a chevron on a task node', () => {
+    const task: MilestoneTreeNode = { ...leaf, id: 't1', title: 'A task', kind: 'task' };
+    setup(task);
+    expect(fixture.nativeElement.querySelector('[data-testid="chevron"]')).toBeNull();
+  });
+
+  it('emits expandLeafRequested when a leaf objective chevron is clicked', () => {
+    setup(leaf);
+    const emitted: MilestoneTreeNode[] = [];
+    fixture.componentInstance.expandLeafRequested.subscribe((n) => emitted.push(n));
+
+    (fixture.nativeElement.querySelector('[data-testid="chevron"]') as HTMLElement).click();
+
+    expect(emitted).toEqual([leaf]);
+  });
+
+  it('does not emit expandLeafRequested when expanding a non-leaf objective', () => {
+    setup(root, null, true);
+    const emitted: MilestoneTreeNode[] = [];
+    fixture.componentInstance.expandLeafRequested.subscribe((n) => emitted.push(n));
+
+    (fixture.nativeElement.querySelector('[data-testid="chevron"]') as HTMLElement).click();
+
+    expect(emitted).toEqual([]);
+  });
+
+  it('does not emit expandLeafRequested when the leaf is already loaded', () => {
+    const loadedLeaf: MilestoneTreeNode = { ...leaf, sprintTaskLoadState: 'loaded' };
+    setup(loadedLeaf);
+    const emitted: MilestoneTreeNode[] = [];
+    fixture.componentInstance.expandLeafRequested.subscribe((n) => emitted.push(n));
+
+    const chevron = fixture.nativeElement.querySelector('[data-testid="chevron"]') as HTMLElement | null;
+    chevron?.click();
+
+    expect(emitted).toEqual([]);
+  });
+
+  it('re-emits expandLeafRequested from a nested leaf through the parent', () => {
+    setup(root, null, true);
+    const emitted: MilestoneTreeNode[] = [];
+    fixture.componentInstance.expandLeafRequested.subscribe((n) => emitted.push(n));
+
+    const chevrons = fixture.nativeElement.querySelectorAll('[data-testid="chevron"]');
+    (chevrons[chevrons.length - 1] as HTMLElement).click();
+
+    expect(emitted).toEqual([leaf]);
   });
 });

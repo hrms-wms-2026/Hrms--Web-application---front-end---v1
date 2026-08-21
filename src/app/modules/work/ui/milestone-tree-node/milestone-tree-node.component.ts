@@ -1,5 +1,6 @@
 import { Component, OnInit, input, output, signal } from '@angular/core';
 import { MilestoneTreeNode } from '../../models/milestone.model';
+import { isLeafObjective } from '../../utils/project.mapper';
 import { AvatarComponent } from '../../../../shared/ui/avatar/avatar.component';
 
 @Component({
@@ -14,7 +15,7 @@ import { AvatarComponent } from '../../../../shared/ui/avatar/avatar.component';
         (click)="selected.emit(node())"
       >
         <span class="flex items-center gap-1.5 min-w-0" [style.paddingLeft.px]="depth() * 20">
-          @if (node().children.length > 0) {
+          @if (showChevron()) {
             <button
               type="button"
               class="flex h-4 w-4 shrink-0 items-center justify-center transition-transform {{ isSelected() ? 'text-white' : 'text-[var(--color-text-secondary)]' }}"
@@ -82,6 +83,7 @@ import { AvatarComponent } from '../../../../shared/ui/avatar/avatar.component';
               [depth]="depth() + 1"
               (selected)="selected.emit($event)"
               (createRequested)="createRequested.emit($event)"
+              (expandLeafRequested)="expandLeafRequested.emit($event)"
             />
           }
         </div>
@@ -96,6 +98,7 @@ export class MilestoneTreeNodeComponent implements OnInit {
   depth = input(0);
   selected = output<MilestoneTreeNode>();
   createRequested = output<MilestoneTreeNode>();
+  expandLeafRequested = output<MilestoneTreeNode>();
 
   expanded = signal(true);
 
@@ -107,9 +110,23 @@ export class MilestoneTreeNodeComponent implements OnInit {
     return this.node().id === this.selectedId();
   }
 
+  showChevron(): boolean {
+    return this.node().children.length > 0 || this.canLazyExpand();
+  }
+
+  canLazyExpand(): boolean {
+    const n = this.node();
+    const state = n.sprintTaskLoadState;
+    const needsFetch = state === undefined || state === 'unloaded' || state === 'error';
+    return needsFetch && (isLeafObjective(n) || n.kind === 'sprint');
+  }
+
   toggleExpanded(event: Event): void {
     event.stopPropagation();
     this.expanded.set(!this.expanded());
+    if (this.canLazyExpand()) {
+      this.expandLeafRequested.emit(this.node());
+    }
   }
 
   onCreateClick(event: Event): void {
