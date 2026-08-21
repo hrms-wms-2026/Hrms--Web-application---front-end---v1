@@ -41,8 +41,8 @@ describe('MilestoneTreeNodeComponent', () => {
   it('all rows share the same grid column template, only the title cell indents by depth', () => {
     setup(root, null, true);
     const rows = fixture.nativeElement.querySelectorAll('[data-testid="tree-row"]');
-    expect((rows[0] as HTMLElement).className).toContain('grid-cols-[1fr_112px_40px_88px_32px]');
-    expect((rows[1] as HTMLElement).className).toContain('grid-cols-[1fr_112px_40px_88px_32px]');
+    expect((rows[0] as HTMLElement).className).toContain('grid-cols-[1fr_112px_40px_88px_72px]');
+    expect((rows[1] as HTMLElement).className).toContain('grid-cols-[1fr_112px_40px_88px_72px]');
 
     const rootTitleCell = rows[0].querySelector('span') as HTMLElement;
     const childTitleCell = rows[1].querySelector('span') as HTMLElement;
@@ -263,5 +263,78 @@ describe('MilestoneTreeNodeComponent', () => {
     expect(createdTasks).toEqual([leaf]);
     expect(edits).toEqual([leaf]);
     expect(members).toEqual([leaf]);
+  });
+
+  describe('row action icons', () => {
+    const ownedLeaf: MilestoneTreeNode = { ...leaf, isOwner: true, kind: 'objective' };
+    const ownedSprint: MilestoneTreeNode = {
+      ...leaf, id: 'spr-1', title: 'Sprint 1', kind: 'sprint', isOwner: true, status: 'active', children: []
+    };
+    const taskNode: MilestoneTreeNode = {
+      ...leaf, id: 't1', title: 'A task', kind: 'task', isOwner: false, status: 'To Do', children: []
+    };
+
+    it('shows create-sub, members, and edit on a non-leaf owned objective', () => {
+      setup(root);
+      expect(fixture.nativeElement.querySelector('[data-testid="create-sub-button"]')).not.toBeNull();
+      expect(fixture.nativeElement.querySelector('[data-testid="members-button"]')).not.toBeNull();
+      expect(fixture.nativeElement.querySelector('[data-testid="edit-button"]')).not.toBeNull();
+      expect(fixture.nativeElement.querySelector('[data-testid="create-sprint-button"]')).toBeNull();
+    });
+
+    it('emits createSprintRequested from a leaf objective plus, not createRequested', () => {
+      setup(ownedLeaf);
+      const sprints: MilestoneTreeNode[] = [];
+      const subs: MilestoneTreeNode[] = [];
+      fixture.componentInstance.createSprintRequested.subscribe((n) => sprints.push(n));
+      fixture.componentInstance.createRequested.subscribe((n) => subs.push(n));
+
+      expect(fixture.nativeElement.querySelector('[data-testid="create-sub-button"]')).toBeNull();
+      (fixture.nativeElement.querySelector('[data-testid="create-sprint-button"]') as HTMLElement).click();
+
+      expect(sprints).toEqual([ownedLeaf]);
+      expect(subs).toEqual([]);
+    });
+
+    it('hides owner-gated icons on a leaf that the caller does not own', () => {
+      setup({ ...ownedLeaf, isOwner: false });
+      expect(fixture.nativeElement.querySelector('[data-testid="create-sprint-button"]')).toBeNull();
+      expect(fixture.nativeElement.querySelector('[data-testid="members-button"]')).toBeNull();
+      expect(fixture.nativeElement.querySelector('[data-testid="edit-button"]')).toBeNull();
+    });
+
+    it('emits createTaskRequested and editRequested from an owned sprint, with no members icon', () => {
+      setup(ownedSprint);
+      const tasks: MilestoneTreeNode[] = [];
+      const edits: MilestoneTreeNode[] = [];
+      fixture.componentInstance.createTaskRequested.subscribe((n) => tasks.push(n));
+      fixture.componentInstance.editRequested.subscribe((n) => edits.push(n));
+
+      expect(fixture.nativeElement.querySelector('[data-testid="members-button"]')).toBeNull();
+      (fixture.nativeElement.querySelector('[data-testid="create-task-button"]') as HTMLElement).click();
+      (fixture.nativeElement.querySelector('[data-testid="edit-button"]') as HTMLElement).click();
+
+      expect(tasks).toEqual([ownedSprint]);
+      expect(edits).toEqual([ownedSprint]);
+    });
+
+    it('shows only an ungated edit icon on a task row and renders its status', () => {
+      setup(taskNode);
+      expect(fixture.nativeElement.querySelector('[data-testid="create-task-button"]')).toBeNull();
+      expect(fixture.nativeElement.querySelector('[data-testid="members-button"]')).toBeNull();
+      expect(fixture.nativeElement.querySelector('[data-testid="edit-button"]')).not.toBeNull();
+      expect(fixture.nativeElement.querySelector('[data-testid="status-badge"]')?.textContent).toContain('To Do');
+
+      const edits: MilestoneTreeNode[] = [];
+      fixture.componentInstance.editRequested.subscribe((n) => edits.push(n));
+      (fixture.nativeElement.querySelector('[data-testid="edit-button"]') as HTMLElement).click();
+      expect(edits).toEqual([taskNode]);
+    });
+
+    it('renders sprint status with the achieved-badge styling', () => {
+      setup(ownedSprint);
+      const badge = fixture.nativeElement.querySelector('[data-testid="status-badge"]') as HTMLElement;
+      expect(badge.textContent).toContain('active');
+    });
   });
 });

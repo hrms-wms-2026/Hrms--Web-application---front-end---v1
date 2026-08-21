@@ -10,7 +10,7 @@ import { AvatarComponent } from '../../../../shared/ui/avatar/avatar.component';
   template: `
     <div>
       <div
-        class="grid grid-cols-[1fr_112px_40px_88px_32px] items-center gap-3 rounded-md px-2 py-1.5 cursor-pointer {{ isSelected() ? 'bg-[var(--color-accent)]' : 'hover:bg-[var(--color-surface-secondary)]' }}"
+        class="grid grid-cols-[1fr_112px_40px_88px_72px] items-center gap-3 rounded-md px-2 py-1.5 cursor-pointer {{ isSelected() ? 'bg-[var(--color-accent)]' : 'hover:bg-[var(--color-surface-secondary)]' }}"
         data-testid="tree-row"
         (click)="selected.emit(node())"
       >
@@ -35,7 +35,9 @@ import { AvatarComponent } from '../../../../shared/ui/avatar/avatar.component';
             <path d="M3 6a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V6Z" />
           </svg>
           <span data-testid="title-text" class="truncate text-sm {{ isSelected() ? 'text-white' : 'text-[var(--color-text-primary)]' }}">{{ node().title }}</span>
-          @if (node().isAchieved) {
+          @if (statusLabel(); as status) {
+            <span data-testid="status-badge" class="shrink-0 rounded-full px-2 py-0.5 text-xs font-medium {{ isSelected() ? 'bg-white/15 text-white' : 'bg-[var(--color-surface-secondary)] text-[var(--color-text-secondary)]' }}">{{ status }}</span>
+          } @else if (node().isAchieved) {
             <span data-testid="achieved-badge" class="shrink-0 rounded-full px-2 py-0.5 text-xs font-medium {{ isSelected() ? 'bg-white/15 text-white' : 'bg-[var(--color-surface-secondary)] text-[var(--color-text-secondary)]' }}">Achieved</span>
           }
           @if (node().sprintTaskLoadState === 'error') {
@@ -65,20 +67,52 @@ import { AvatarComponent } from '../../../../shared/ui/avatar/avatar.component';
 
         <span class="text-xs {{ isSelected() ? 'text-white' : 'text-[var(--color-text-secondary)]' }}" data-testid="due-date-cell">{{ node().endDate }}</span>
 
-        @if (node().isOwner) {
-          <button
-            type="button"
-            class="flex h-6 w-6 shrink-0 items-center justify-center rounded-md transition-colors {{ isSelected() ? 'text-white hover:bg-white/20' : 'text-[var(--color-text-secondary)] hover:bg-[var(--color-surface-secondary)] hover:text-[var(--color-text-primary)]' }}"
-            data-testid="create-sub-button"
-            aria-label="Create sub Module"
-            (click)="onCreateClick($event)"
-          >
-            <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" aria-hidden="true">
-              <line x1="12" y1="5" x2="12" y2="19" />
-              <line x1="5" y1="12" x2="19" y2="12" />
-            </svg>
-          </button>
-        }
+        <span class="flex items-center justify-end gap-0.5" data-testid="row-actions">
+          @if (plusAction(); as action) {
+            <button
+              type="button"
+              class="flex h-6 w-6 shrink-0 items-center justify-center rounded-md transition-colors {{ isSelected() ? 'text-white hover:bg-white/20' : 'text-[var(--color-text-secondary)] hover:bg-[var(--color-surface-secondary)] hover:text-[var(--color-text-primary)]' }}"
+              [attr.data-testid]="action.testId"
+              [attr.aria-label]="action.label"
+              (click)="onPlusClick($event, action.kind)"
+            >
+              <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" aria-hidden="true">
+                <line x1="12" y1="5" x2="12" y2="19" />
+                <line x1="5" y1="12" x2="19" y2="12" />
+              </svg>
+            </button>
+          }
+          @if (showMembers()) {
+            <button
+              type="button"
+              class="flex h-6 w-6 shrink-0 items-center justify-center rounded-md transition-colors {{ isSelected() ? 'text-white hover:bg-white/20' : 'text-[var(--color-text-secondary)] hover:bg-[var(--color-surface-secondary)] hover:text-[var(--color-text-primary)]' }}"
+              data-testid="members-button"
+              aria-label="Members"
+              (click)="onMembersClick($event)"
+            >
+              <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/>
+                <circle cx="9" cy="7" r="4"/>
+                <path d="M23 21v-2a4 4 0 0 0-3-3.87"/>
+                <path d="M16 3.13a4 4 0 0 1 0 7.75"/>
+              </svg>
+            </button>
+          }
+          @if (showEdit()) {
+            <button
+              type="button"
+              class="flex h-6 w-6 shrink-0 items-center justify-center rounded-md transition-colors {{ isSelected() ? 'text-white hover:bg-white/20' : 'text-[var(--color-text-secondary)] hover:bg-[var(--color-surface-secondary)] hover:text-[var(--color-text-primary)]' }}"
+              data-testid="edit-button"
+              aria-label="Edit"
+              (click)="onEditClick($event)"
+            >
+              <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                <path d="M12 20h9" />
+                <path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4Z" />
+              </svg>
+            </button>
+          }
+        </span>
       </div>
 
       @if (node().children.length > 0 && expanded()) {
@@ -148,6 +182,46 @@ export class MilestoneTreeNodeComponent implements OnInit {
   onCreateClick(event: Event): void {
     event.stopPropagation();
     this.createRequested.emit(this.node());
+  }
+
+  onPlusClick(event: Event, kind: 'sub' | 'sprint' | 'task'): void {
+    event.stopPropagation();
+    if (kind === 'sub') this.createRequested.emit(this.node());
+    else if (kind === 'sprint') this.createSprintRequested.emit(this.node());
+    else this.createTaskRequested.emit(this.node());
+  }
+
+  onEditClick(event: Event): void {
+    event.stopPropagation();
+    this.editRequested.emit(this.node());
+  }
+
+  onMembersClick(event: Event): void {
+    event.stopPropagation();
+    this.membersRequested.emit(this.node());
+  }
+
+  plusAction(): { testId: string; label: string; kind: 'sub' | 'sprint' | 'task' } | null {
+    const n = this.node();
+    if (!n.isOwner || n.kind === 'task') return null;
+    if (n.kind === 'sprint') return { testId: 'create-task-button', label: 'Create task', kind: 'task' };
+    if (isLeafObjective(n)) return { testId: 'create-sprint-button', label: 'Create sprint', kind: 'sprint' };
+    return { testId: 'create-sub-button', label: 'Create sub Module', kind: 'sub' };
+  }
+
+  showMembers(): boolean {
+    const n = this.node();
+    return n.isOwner && (n.kind ?? 'objective') === 'objective';
+  }
+
+  showEdit(): boolean {
+    return this.node().kind === 'task' || this.node().isOwner;
+  }
+
+  statusLabel(): string | null {
+    const n = this.node();
+    if ((n.kind === 'sprint' || n.kind === 'task') && n.status) return n.status;
+    return null;
   }
 
   onRetryLoad(event: Event): void {
