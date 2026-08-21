@@ -4,6 +4,7 @@ import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { ProjectDetailStore } from '../../state/project-detail.store';
 import { MilestoneTreeNodeComponent } from '../../ui/milestone-tree-node/milestone-tree-node.component';
 import { ModuleFilterSelectComponent } from '../../ui/module-filter-select/module-filter-select.component';
+import { TreeExplanationPanelComponent } from '../../ui/tree-explanation-panel/tree-explanation-panel.component';
 import { MilestoneSettingsModalComponent } from '../../ui/milestone-settings-modal/milestone-settings-modal.component';
 import { CreateSubModuleModalComponent } from '../../ui/create-sub-module-modal/create-sub-module-modal.component';
 import { ObjectiveMembersPopupComponent } from '../../ui/objective-members-popup/objective-members-popup.component';
@@ -13,6 +14,7 @@ import { TaskCreateModalComponent } from '../../ui/task-create-modal/task-create
 import { TaskDetailModalComponent } from '../../ui/task-detail-modal/task-detail-modal.component';
 import { LoaderComponent } from '../../../../shared/ui/loader/loader.component';
 import { ErrorStateComponent } from '../../../../shared/ui/error-state/error-state.component';
+import { EmptyStateComponent } from '../../../../shared/ui/empty-state/empty-state.component';
 import { MilestoneTreeNode, ObjectiveDetail } from '../../models/milestone.model';
 import { EditObjectiveRequestDto, CreateObjectiveRequestDto } from '../../models/dto/milestone.dto';
 import { findTreeNode, isLeafObjective, collectObjectiveOptions, pruneTreeToModule } from '../../utils/project.mapper';
@@ -22,9 +24,9 @@ import { Sprint, SprintStatus } from '../../models/sprint.model';
   selector: 'app-milestone-tree-tab',
   standalone: true,
   imports: [
-    MilestoneTreeNodeComponent, ModuleFilterSelectComponent, MilestoneSettingsModalComponent,
+    MilestoneTreeNodeComponent, ModuleFilterSelectComponent, TreeExplanationPanelComponent, MilestoneSettingsModalComponent,
     CreateSubModuleModalComponent, ObjectiveMembersPopupComponent, SprintCreateFormComponent,
-    SprintEditFormComponent, TaskCreateModalComponent, TaskDetailModalComponent, LoaderComponent, ErrorStateComponent
+    SprintEditFormComponent, TaskCreateModalComponent, TaskDetailModalComponent, LoaderComponent, ErrorStateComponent, EmptyStateComponent
   ],
   templateUrl: './milestone-tree-tab.component.html'
 })

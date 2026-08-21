@@ -1,3 +1,4 @@
+<div class="grid grid-cols-1 gap-4 lg:grid-cols-[minmax(0,1fr)_24rem] lg:items-start">
 <div class="w-full flex flex-col rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] p-4 shadow-sm min-h-[220px]">
   @if (store.subtreeLoading()) {
     <app-loader label="Loading tree…" />
@@ -37,6 +38,25 @@
     />
     }
   }
+</div>
+  <div class="lg:sticky lg:top-4">
+    @if (selectedNode(); as node) {
+      <app-tree-explanation-panel
+        [node]="node"
+        (editRequested)="onEditRequested($event)"
+        (membersRequested)="onMembersRequested($event)"
+        (achieveRequested)="onAchieveRequested($event)"
+        (createRequested)="onCreateSubRequested($event)"
+        (createSprintRequested)="onCreateSprintRequested($event)"
+        (createTaskRequested)="onCreateTaskRequested($event)"
+        (achieveSprintRequested)="onAchieveSprintRequested($event)"
+        (completeSprintRequested)="onCompleteSprintRequested($event)"
+        (deleteRequested)="onDeleteRequested($event)"
+      />
+    } @else {
+      <app-empty-state title="No selection" description="Select a module, sprint, or task to see its details" />
+    }
+  </div>
 </div>
 
 <app-milestone-settings-modal

@@ -379,14 +379,14 @@ describe('MilestoneTreeTabComponent', () => {
     expect(storeStub.loadTasksForSprint).toHaveBeenCalledWith('spr-1', { force: true });
   });
 
-  it('renders the tree full width without a side panel, and the row edit icon still opens settings', async () => {
-    const detail = { id: 'o1', title: 'Root', description: 'Full scope', startDate: '2026-01-01', endDate: '2026-12-01', allocatedHours: 40, isAchieved: false, isDefault: true };
-    storeStub.getMilestoneDetail = vi.fn().mockResolvedValue(detail);
+  it('shows the explanation panel for the selected tree node', async () => {
     setup('o1');
     fixture.detectChanges();
+    await fixture.whenStable();
+    fixture.detectChanges();
 
-    expect(fixture.nativeElement.querySelector('app-milestone-detail-panel')).toBeNull();
-    expect(fixture.nativeElement.innerHTML).not.toContain('md:w-[72%]');
+    expect(fixture.nativeElement.querySelector('app-tree-explanation-panel')).not.toBeNull();
+    expect(fixture.nativeElement.querySelector('[data-testid="tree-explanation-panel"]')?.textContent).toContain('Root');
 
     (fixture.nativeElement.querySelector('[data-testid="edit-button"]') as HTMLElement).click();
     await fixture.whenStable();
