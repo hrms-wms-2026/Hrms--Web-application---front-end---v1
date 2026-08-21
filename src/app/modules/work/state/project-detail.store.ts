@@ -5,7 +5,7 @@ import { ProjectApiService } from '../data-access/project-api.service';
 import { ObjectiveMemberApiService } from '../data-access/objective-member-api.service';
 import { SprintApiService } from '../data-access/sprint-api.service';
 import { TaskApiService } from '../data-access/task-api.service';
-import { findTreeNode, isLeafObjective, toMilestone, toMilestoneTreeNode, toProjectDetail, toSprintTreeNode, toTaskTreeNode, updateTreeNode } from '../utils/project.mapper';
+import { buildObjectiveForest, findTreeNode, isLeafObjective, toMilestone, toProjectDetail, toSprintTreeNode, toTaskTreeNode, updateTreeNode } from '../utils/project.mapper';
 import { toTaskStatusColumn } from '../utils/task.mapper';
 import { ProjectDetail } from '../models/project.model';
 import { Milestone, MilestoneTreeNode, ObjectiveDetail } from '../models/milestone.model';
@@ -72,11 +72,11 @@ export const ProjectDetailStore = signalStore(
       }
     },
 
-    async loadMilestoneSubtree(objectiveId: string): Promise<void> {
+    async loadProjectTree(projectId: string): Promise<void> {
       patchState(store, { subtreeLoading: true, subtreeError: null });
       try {
-        const response = await firstValueFrom(api.getMilestoneSubtree(objectiveId));
-        patchState(store, { selectedSubtree: toMilestoneTreeNode(response.objective), subtreeLoading: false });
+        const items = await firstValueFrom(api.getProjectTree(projectId));
+        patchState(store, { selectedSubtree: buildObjectiveForest(items), subtreeLoading: false });
       } catch (err) {
         patchState(store, { subtreeError: extractError(err, 'Failed to load milestone.'), subtreeLoading: false });
       }

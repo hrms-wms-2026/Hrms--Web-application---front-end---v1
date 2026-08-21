@@ -7,7 +7,8 @@ import { ObjectiveMemberApiService } from '../data-access/objective-member-api.s
 import { SprintApiService } from '../data-access/sprint-api.service';
 import { TaskApiService } from '../data-access/task-api.service';
 import { ProjectDetailDto } from '../models/dto/project.dto';
-import { MyProjectMilestoneDto, ObjectiveDetailDto, ObjectiveSubtreeResponseDto, CreateObjectiveRequestDto, AddObjectiveMemberOutcomeDto, TransferObjectiveHeadOutcomeDto } from '../models/dto/milestone.dto';
+import { MyProjectMilestoneDto, ObjectiveDetailDto, CreateObjectiveRequestDto, AddObjectiveMemberOutcomeDto, TransferObjectiveHeadOutcomeDto } from '../models/dto/milestone.dto';
+import { ObjectiveTreeItemDto } from '../models/dto/objective-tree.dto';
 import { ObjectiveInvitationDto } from '../models/dto/objective-invitation.dto';
 import { SprintDto } from '../models/dto/sprint.dto';
 import { WorkTaskDto, TaskStatusDto } from '../models/dto/task.dto';
@@ -47,6 +48,20 @@ describe('ProjectDetailStore', () => {
     createdAt: '2026-08-01T00:00:00Z', updatedAt: null, isLead: true, logoFileId: null,
     labels: [], members: [], memberCount: 0
   };
+
+  function treeItem(overrides: Partial<ObjectiveTreeItemDto> & Pick<ObjectiveTreeItemDto, 'id' | 'title'>): ObjectiveTreeItemDto {
+    return {
+      parentObjectiveId: null, isDefault: false, ownerId: 'u1',
+      startDate: '2026-08-01', endDate: '2026-12-01', allocatedHours: 40, completedHours: 0,
+      isActive: true, isAchieved: false, progress: 0, ownerName: 'Arun', isOwner: true, ...overrides
+    };
+  }
+
+  const leafTree: ObjectiveTreeItemDto[] = [treeItem({ id: 'o1', title: 'Root', isDefault: true })];
+  const parentTree: ObjectiveTreeItemDto[] = [
+    treeItem({ id: 'o1', title: 'Root', isDefault: true }),
+    treeItem({ id: 'o2', title: 'Child', parentObjectiveId: 'o1' })
+  ];
 
   it('loads a project successfully', async () => {
     const store = setup({ getById: () => of(projectDto) } as Partial<ProjectApiService>);
@@ -88,30 +103,20 @@ describe('ProjectDetailStore', () => {
     expect(store.milestonesError()).toBe('Failed to load modules.');
   });
 
-  it('loads and clears a milestone subtree', async () => {
-    const response: ObjectiveSubtreeResponseDto = {
-      parentObjective: null,
-      objective: {
-        id: 'o1', projectId: 'p1', parentObjectiveId: null, isDefault: true, title: 'Root',
-        description: null, ownerId: 'u1', ownerName: 'Arun', reportingManagerId: null, reportingManagerName: null,
-        createdById: 'u1', startDate: '2026-08-01', endDate: '2026-12-01', progress: 0, actualHours: null,
-        allocatedHours: 40, completedHours: 0, isActive: true, isOwner: true, isAchieved: false, achievedAt: null,
-        createdAt: '2026-08-01T00:00:00Z', updatedAt: null, children: []
-      }
-    };
-    const store = setup({ getMilestoneSubtree: () => of(response) } as Partial<ProjectApiService>);
-    await store.loadMilestoneSubtree('o1');
+  it('loads and clears a project tree', async () => {
+    const store = setup({ getProjectTree: () => of(leafTree) } as Partial<ProjectApiService>);
+    await store.loadProjectTree('p1');
     expect(store.selectedSubtree()?.title).toBe('Root');
     store.clearSelectedSubtree();
     expect(store.selectedSubtree()).toBeNull();
   });
 
-  it('sets subtreeError when loadMilestoneSubtree fails', async () => {
+  it('sets subtreeError when loadProjectTree fails', async () => {
     const store = setup({
-      getMilestoneSubtree: () => throwError(() => ({ error: { detail: 'Server error' } }))
+      getProjectTree: () => throwError(() => ({ error: { detail: 'Server error' } }))
     } as Partial<ProjectApiService>);
 
-    await store.loadMilestoneSubtree('o1');
+    await store.loadProjectTree('p1');
 
     expect(store.subtreeError()).toBe('Server error');
   });
@@ -278,24 +283,6 @@ describe('ProjectDetailStore', () => {
   });
 
   describe('loadSprintsAndTasksForLeaf', () => {
-    const leafSubtree: ObjectiveSubtreeResponseDto = {
-      parentObjective: null,
-      objective: {
-        id: 'o1', projectId: 'p1', parentObjectiveId: null, isDefault: true, title: 'Root',
-        description: null, ownerId: 'u1', ownerName: 'Arun', reportingManagerId: null, reportingManagerName: null,
-        createdById: 'u1', startDate: '2026-08-01', endDate: '2026-12-01', progress: 0, actualHours: null,
-        allocatedHours: 40, completedHours: 0, isActive: true, isOwner: true, isAchieved: false, achievedAt: null,
-        createdAt: '2026-08-01T00:00:00Z', updatedAt: null, children: []
-      }
-    };
-
-    const parentSubtree: ObjectiveSubtreeResponseDto = {
-      parentObjective: null,
-      objective: {
-        ...leafSubtree.objective,
-        children: [{ ...leafSubtree.objective, id: 'o2', title: 'Child', parentObjectiveId: 'o1', children: [] }]
-      }
-    };
 
     const sprintDto: SprintDto = {
       id: 'spr-1', objectiveId: 'o1', name: 'Sprint 1', startDate: '2026-08-01', endDate: '2026-08-14',
@@ -323,8 +310,8 @@ describe('ProjectDetailStore', () => {
         getTasks: vi.fn().mockReturnValue(of([directTask, sprintTask])),
         getStatuses: vi.fn().mockReturnValue(of(statuses))
       };
-      const store = setup({ getMilestoneSubtree: () => of(leafSubtree) }, sprintApi, taskApi);
-      await store.loadMilestoneSubtree('o1');
+      const store = setup({ getProjectTree: () => of(leafTree) }, sprintApi, taskApi);
+      await store.loadProjectTree('p1');
 
       await store.loadSprintsAndTasksForLeaf('o1');
 
@@ -350,8 +337,8 @@ describe('ProjectDetailStore', () => {
         getTasks: vi.fn().mockReturnValue(of([])),
         getStatuses: vi.fn().mockReturnValue(of(statuses))
       };
-      const store = setup({ getMilestoneSubtree: () => of(leafSubtree) }, sprintApi, taskApi);
-      await store.loadMilestoneSubtree('o1');
+      const store = setup({ getProjectTree: () => of(leafTree) }, sprintApi, taskApi);
+      await store.loadProjectTree('p1');
       await store.loadSprintsAndTasksForLeaf('o1');
 
       await store.loadSprintsAndTasksForLeaf('o1');
@@ -366,8 +353,8 @@ describe('ProjectDetailStore', () => {
         getTasks: vi.fn().mockReturnValue(of([])),
         getStatuses: vi.fn().mockReturnValue(of(statuses))
       };
-      const store = setup({ getMilestoneSubtree: () => of(leafSubtree) }, sprintApi, taskApi);
-      await store.loadMilestoneSubtree('o1');
+      const store = setup({ getProjectTree: () => of(leafTree) }, sprintApi, taskApi);
+      await store.loadProjectTree('p1');
       await store.loadSprintsAndTasksForLeaf('o1');
 
       await store.loadSprintsAndTasksForLeaf('o1', { force: true });
@@ -381,8 +368,8 @@ describe('ProjectDetailStore', () => {
         getTasks: vi.fn().mockReturnValue(of([])),
         getStatuses: vi.fn().mockReturnValue(of(statuses))
       };
-      const store = setup({ getMilestoneSubtree: () => of(parentSubtree) }, sprintApi, taskApi);
-      await store.loadMilestoneSubtree('o1');
+      const store = setup({ getProjectTree: () => of(parentTree) }, sprintApi, taskApi);
+      await store.loadProjectTree('p1');
 
       await store.loadSprintsAndTasksForLeaf('o1');
 
@@ -400,8 +387,8 @@ describe('ProjectDetailStore', () => {
         getTasks: vi.fn().mockReturnValue(of([])),
         getStatuses: vi.fn().mockReturnValue(of(statuses))
       };
-      const store = setup({ getMilestoneSubtree: () => of(leafSubtree) }, sprintApi, taskApi);
-      await store.loadMilestoneSubtree('o1');
+      const store = setup({ getProjectTree: () => of(leafTree) }, sprintApi, taskApi);
+      await store.loadProjectTree('p1');
 
       await store.loadSprintsAndTasksForLeaf('o1');
       expect(store.selectedSubtree()?.sprintTaskLoadState).toBe('error');
@@ -413,16 +400,6 @@ describe('ProjectDetailStore', () => {
   });
 
   describe('loadTasksForSprint', () => {
-    const leafSubtree: ObjectiveSubtreeResponseDto = {
-      parentObjective: null,
-      objective: {
-        id: 'o1', projectId: 'p1', parentObjectiveId: null, isDefault: true, title: 'Root',
-        description: null, ownerId: 'u1', ownerName: 'Arun', reportingManagerId: null, reportingManagerName: null,
-        createdById: 'u1', startDate: '2026-08-01', endDate: '2026-12-01', progress: 0, actualHours: null,
-        allocatedHours: 40, completedHours: 0, isActive: true, isOwner: true, isAchieved: false, achievedAt: null,
-        createdAt: '2026-08-01T00:00:00Z', updatedAt: null, children: []
-      }
-    };
 
     const sprintDto: SprintDto = {
       id: 'spr-1', objectiveId: 'o1', name: 'Sprint 1', startDate: '2026-08-01', endDate: '2026-08-14',
@@ -449,8 +426,8 @@ describe('ProjectDetailStore', () => {
         getStatuses: vi.fn().mockReturnValue(of(statuses)),
         getBySprintId
       } as Partial<TaskApiService>;
-      const store = setup({ getMilestoneSubtree: () => of(leafSubtree) }, sprintApi, taskApi);
-      await store.loadMilestoneSubtree('o1');
+      const store = setup({ getProjectTree: () => of(leafTree) }, sprintApi, taskApi);
+      await store.loadProjectTree('p1');
       await store.loadSprintsAndTasksForLeaf('o1');
       return { store, getBySprintId };
     }
