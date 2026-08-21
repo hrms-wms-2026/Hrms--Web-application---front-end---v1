@@ -8,7 +8,9 @@ import { MilestoneSettingsModalComponent } from '../../ui/milestone-settings-mod
 import { CreateSubModuleModalComponent } from '../../ui/create-sub-module-modal/create-sub-module-modal.component';
 import { ObjectiveMembersPopupComponent } from '../../ui/objective-members-popup/objective-members-popup.component';
 import { SprintCreateFormComponent } from '../../ui/sprint-create-form/sprint-create-form.component';
+import { SprintEditFormComponent } from '../../ui/sprint-edit-form/sprint-edit-form.component';
 import { TaskCreateModalComponent } from '../../ui/task-create-modal/task-create-modal.component';
+import { TaskDetailModalComponent } from '../../ui/task-detail-modal/task-detail-modal.component';
 import { LoaderComponent } from '../../../../shared/ui/loader/loader.component';
 import { ErrorStateComponent } from '../../../../shared/ui/error-state/error-state.component';
 import { MilestoneTreeNode, ObjectiveDetail } from '../../models/milestone.model';
@@ -22,7 +24,7 @@ import { Sprint, SprintStatus } from '../../models/sprint.model';
   imports: [
     MilestoneTreeNodeComponent, MilestoneDetailPanelComponent, MilestoneSettingsModalComponent,
     CreateSubModuleModalComponent, ObjectiveMembersPopupComponent, SprintCreateFormComponent,
-    TaskCreateModalComponent, LoaderComponent, ErrorStateComponent
+    SprintEditFormComponent, TaskCreateModalComponent, TaskDetailModalComponent, LoaderComponent, ErrorStateComponent
   ],
   templateUrl: './milestone-tree-tab.component.html'
 })
@@ -53,6 +55,10 @@ export class MilestoneTreeTabComponent {
   createSprintNode = signal<MilestoneTreeNode | null>(null);
   createTaskOpen = signal(false);
   createTaskSprint = signal<MilestoneTreeNode | null>(null);
+  editSprintOpen = signal(false);
+  editSprintNode = signal<MilestoneTreeNode | null>(null);
+  editTaskOpen = signal(false);
+  editTaskNode = signal<MilestoneTreeNode | null>(null);
 
   constructor() {
     this.route.paramMap.pipe(takeUntilDestroyed()).subscribe((paramMap) => {
@@ -141,6 +147,63 @@ export class MilestoneTreeTabComponent {
     };
   }
 
+  async onEditRequested(node?: MilestoneTreeNode): Promise<void> {
+    const target = node ?? this.selectedNode();
+    if (!target) return;
+    this.selectedNodeId.set(target.id);
+
+    const kind = target.kind ?? 'objective';
+    if (kind === 'sprint') {
+      this.editSprintNode.set(target);
+      this.editSprintOpen.set(true);
+      return;
+    }
+    if (kind === 'task') {
+      this.editTaskNode.set(target);
+      this.editTaskOpen.set(true);
+      return;
+    }
+
+    this.settingsOpen.set(true);
+    const detail = await this.store.getMilestoneDetail(target.id);
+    if (detail && this.selectedNode()?.id === target.id) {
+      this.settingsInitialValue.set(detail);
+    }
+  }
+
+  async onSprintSaved(): Promise<void> {
+    const node = this.editSprintNode();
+    this.editSprintOpen.set(false);
+    this.editSprintNode.set(null);
+    if (node?.parentObjectiveId) {
+      await this.store.loadSprintsAndTasksForLeaf(node.parentObjectiveId, { force: true });
+    }
+  }
+
+  onSprintEditCancelled(): void {
+    this.editSprintOpen.set(false);
+    this.editSprintNode.set(null);
+  }
+
+  async onTaskSaved(): Promise<void> {
+    const node = this.editTaskNode();
+    this.editTaskOpen.set(false);
+    this.editTaskNode.set(null);
+    if (!node) return;
+    const sprintId = node.taskSource?.sprintId ?? null;
+    if (sprintId) {
+      await this.store.loadTasksForSprint(sprintId, { force: true });
+      return;
+    }
+    const objectiveId = node.taskSource?.objectiveId ?? node.parentObjectiveId;
+    if (objectiveId) await this.store.loadSprintsAndTasksForLeaf(objectiveId, { force: true });
+  }
+
+  onTaskEditClosed(): void {
+    this.editTaskOpen.set(false);
+    this.editTaskNode.set(null);
+  }
+
   async onCreateModalCreated(payload: CreateObjectiveRequestDto): Promise<void> {
     this.createModalSubmitting.set(true);
     const result = await this.store.createSubModule(payload);
@@ -159,16 +222,6 @@ export class MilestoneTreeTabComponent {
       : await this.store.achieveMilestone(node.id);
     if (result.success) {
       await this.store.loadMilestoneSubtree(this.currentMilestoneId);
-    }
-  }
-
-  async onEditRequested(): Promise<void> {
-    const node = this.selectedNode();
-    if (!node) return;
-    this.settingsOpen.set(true);
-    const detail = await this.store.getMilestoneDetail(node.id);
-    if (detail && this.selectedNode()?.id === node.id) {
-      this.settingsInitialValue.set(detail);
     }
   }
 

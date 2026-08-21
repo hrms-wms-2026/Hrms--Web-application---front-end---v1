@@ -4,6 +4,7 @@ import { SprintDto } from '../models/dto/sprint.dto';
 import { WorkTaskDto } from '../models/dto/task.dto';
 import { Project, ProjectDetail } from '../models/project.model';
 import { Milestone, MilestoneTreeNode } from '../models/milestone.model';
+import { toWorkTask } from './task.mapper';
 
 export function toProject(dto: ProjectListItemDto): Project {
   return {
@@ -89,7 +90,8 @@ export function toSprintTreeNode(sprint: SprintDto, parent: MilestoneTreeNode): 
     sprintTaskLoadState: 'unloaded',
     status: sprint.status,
     parentObjectiveId: parent.id,
-    statusNames: parent.statusNames
+    statusNames: parent.statusNames,
+    taskStatuses: parent.taskStatuses
   };
 }
 
@@ -110,6 +112,8 @@ export function toTaskTreeNode(task: WorkTaskDto, parent: MilestoneTreeNode, sta
     isOwner: parent.isOwner,
     children: [],
     status: statusName,
-    parentObjectiveId: parent.id
+    parentObjectiveId: parent.id,
+    taskSource: toWorkTask(task),
+    taskStatuses: parent.taskStatuses
   };
 }

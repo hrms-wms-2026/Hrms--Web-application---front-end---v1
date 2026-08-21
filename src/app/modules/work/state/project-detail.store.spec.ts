@@ -339,6 +339,8 @@ describe('ProjectDetailStore', () => {
       expect(children[0].parentObjectiveId).toBe('o1');
       expect(children[1].title).toBe('Direct task');
       expect(children[1].status).toBe('To Do');
+      expect(children[1].taskSource?.shortId).toBe('WEB-1');
+      expect(children[0].taskStatuses?.[0].name).toBe('To Do');
       expect(store.selectedSubtree()?.sprintTaskLoadState).toBe('loaded');
     });
 
@@ -466,6 +468,7 @@ describe('ProjectDetailStore', () => {
       expect(sprintNode?.children[0].kind).toBe('task');
       expect(sprintNode?.children[0].title).toBe('Sprint task');
       expect(sprintNode?.children[0].status).toBe('To Do');
+      expect(sprintNode?.children[0].taskSource?.shortId).toBe('WEB-2');
       expect(sprintNode?.sprintTaskLoadState).toBe('loaded');
     });
 

@@ -21,6 +21,7 @@
         (expandLeafRequested)="onExpandLeafRequested($event)"
         (createSprintRequested)="onCreateSprintRequested($event)"
         (createTaskRequested)="onCreateTaskRequested($event)"
+        (editRequested)="onEditRequested($event)"
       />
     }
   </div>
@@ -85,5 +86,26 @@
     [activeSprints]="createTaskSprints()"
     (created)="onTaskCreated()"
     (closed)="onTaskCreateClosed()"
+  />
+}
+
+@if (editSprintNode(); as sprintNode) {
+  <app-sprint-edit-form
+    [open]="editSprintOpen()"
+    [objectiveId]="sprintNode.parentObjectiveId ?? ''"
+    [sprint]="sprintFromNode(sprintNode)"
+    (saved)="onSprintSaved()"
+    (cancelled)="onSprintEditCancelled()"
+  />
+}
+
+@if (editTaskNode(); as taskNode) {
+  <app-task-detail-modal
+    [open]="editTaskOpen()"
+    [task]="taskNode.taskSource ?? null"
+    [isObjectiveOwner]="taskNode.isOwner"
+    [statuses]="taskNode.taskStatuses ?? []"
+    (closed)="onTaskEditClosed()"
+    (saved)="onTaskSaved()"
   />
 }

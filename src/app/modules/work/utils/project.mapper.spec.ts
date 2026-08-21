@@ -1,8 +1,10 @@
-import { toProject, toProjectDetail, toMilestone, toMilestoneTreeNode, findTreeNode, isLeafObjective, updateTreeNode } from './project.mapper';
+import { toProject, toProjectDetail, toMilestone, toMilestoneTreeNode, findTreeNode, isLeafObjective, updateTreeNode, toSprintTreeNode, toTaskTreeNode } from './project.mapper';
 import { ProjectListItemDto, ProjectDetailDto } from '../models/dto/project.dto';
 import { MyProjectMilestoneDto } from '../models/dto/milestone.dto';
 import { ObjectiveSubtreeNodeDto } from '../models/dto/milestone.dto';
 import { MilestoneTreeNode } from '../models/milestone.model';
+import { SprintDto } from '../models/dto/sprint.dto';
+import { WorkTaskDto } from '../models/dto/task.dto';
 
 describe('project.mapper', () => {
   it('maps a ProjectListItemDto to a Project', () => {
@@ -242,5 +244,35 @@ describe('project.mapper', () => {
       const next = updateTreeNode(root, 'missing', (node) => ({ ...node, title: 'Updated' }));
       expect(next).toBe(root);
     });
+  });
+
+  it('stashes task source and status columns on sprint and task tree nodes', () => {
+    const parent: MilestoneTreeNode = {
+      id: 'o1', title: 'Root', description: null, startDate: '2026-01-01', endDate: '2026-12-01',
+      progress: 0, allocatedHours: 40, completedHours: 0, isActive: true, isAchieved: false,
+      ownerName: 'Arun', isOwner: true, children: [], kind: 'objective',
+      taskStatuses: [{
+        id: 'st-1', name: 'To Do', displayOrder: 0, requiresApproval: false,
+        marksTaskComplete: false, visibility: 'public'
+      }]
+    };
+    const sprintDto: SprintDto = {
+      id: 'spr-1', objectiveId: 'o1', name: 'Sprint 1', startDate: '2026-08-01', endDate: '2026-08-14',
+      status: 'active', completedAt: null, achievedAt: null
+    };
+    const taskDto: WorkTaskDto = {
+      id: 't1', objectiveId: 'o1', shortId: 'WEB-9', title: 'Do it', description: null,
+      taskType: 'task', statusId: 'st-1', priority: 'medium', storyPoints: null,
+      dueDate: null, estimatedHours: 3, completedHours: 0, progressPercent: 0,
+      sprintId: 'spr-1', assigneeEmployeeIds: []
+    };
+
+    const sprint = toSprintTreeNode(sprintDto, parent);
+    expect(sprint.taskStatuses?.[0].name).toBe('To Do');
+
+    const task = toTaskTreeNode(taskDto, sprint, 'To Do');
+    expect(task.taskSource?.shortId).toBe('WEB-9');
+    expect(task.taskSource?.sprintId).toBe('spr-1');
+    expect(task.taskStatuses?.[0].name).toBe('To Do');
   });
 });

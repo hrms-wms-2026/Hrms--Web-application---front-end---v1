@@ -6,6 +6,7 @@ import { ObjectiveMemberApiService } from '../data-access/objective-member-api.s
 import { SprintApiService } from '../data-access/sprint-api.service';
 import { TaskApiService } from '../data-access/task-api.service';
 import { findTreeNode, isLeafObjective, toMilestone, toMilestoneTreeNode, toProjectDetail, toSprintTreeNode, toTaskTreeNode, updateTreeNode } from '../utils/project.mapper';
+import { toTaskStatusColumn } from '../utils/task.mapper';
 import { ProjectDetail } from '../models/project.model';
 import { Milestone, MilestoneTreeNode, ObjectiveDetail } from '../models/milestone.model';
 import { EditObjectiveRequestDto, CreateObjectiveRequestDto } from '../models/dto/milestone.dto';
@@ -237,18 +238,21 @@ export const ProjectDetailStore = signalStore(
         const leaf = findTreeNode(current, objectiveId);
         if (!leaf) return;
         const statusNames = Object.fromEntries(statuses.map((s) => [s.id, s.name]));
+        const taskStatuses = statuses.map(toTaskStatusColumn);
+        const parent = { ...leaf, statusNames, taskStatuses };
         const children = [
-          ...sprints.map((sprint) => toSprintTreeNode(sprint, { ...leaf, statusNames })),
+          ...sprints.map((sprint) => toSprintTreeNode(sprint, parent)),
           ...tasks
             .filter((task) => task.sprintId === null)
-            .map((task) => toTaskTreeNode(task, leaf, statusNames[task.statusId] ?? task.statusId))
+            .map((task) => toTaskTreeNode(task, parent, statusNames[task.statusId] ?? task.statusId))
         ];
         patchState(store, {
           selectedSubtree: updateTreeNode(current, objectiveId, (node) => ({
             ...node,
             children,
             sprintTaskLoadState: 'loaded',
-            statusNames
+            statusNames,
+            taskStatuses
           }))
         });
       } catch {

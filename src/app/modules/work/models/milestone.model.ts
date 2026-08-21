@@ -1,3 +1,5 @@
+import { TaskStatusColumn, WorkTask } from './task.model';
+
 export interface Milestone {
   objectiveId: string;
   projectId: string;
@@ -42,6 +44,8 @@ export interface MilestoneTreeNode {
   status?: string;
   parentObjectiveId?: string;
   statusNames?: Record<string, string>;
+  taskSource?: WorkTask;
+  taskStatuses?: readonly TaskStatusColumn[];
 }
 
 export type ObjectiveDetail = import('./dto/milestone.dto').ObjectiveDetailDto;

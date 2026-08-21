@@ -35,7 +35,7 @@ describe('MilestoneTreeTabComponent', () => {
         { provide: ProjectDetailStore, useValue: storeStub },
         { provide: ActivatedRoute, useValue: routeStub },
         { provide: PeopleApiService, useValue: { listEmployees: vi.fn().mockReturnValue(of({ items: [], totalCount: 0, page: 1, pageSize: 20 })) } },
-        { provide: SprintListStore, useValue: { error: () => null, create: vi.fn() } },
+        { provide: SprintListStore, useValue: { error: () => null, create: vi.fn(), edit: vi.fn() } },
         { provide: TaskBoardStore, useValue: { error: () => null, createTask: vi.fn(), statuses: () => [] } },
         { provide: TaskApiService, useValue: {} }
       ]
@@ -291,6 +291,64 @@ describe('MilestoneTreeTabComponent', () => {
     expect(fixture.nativeElement.querySelector('[data-testid="sprint-fixed"]')).not.toBeNull();
 
     await fixture.componentInstance.onTaskCreated();
+    expect(storeStub.loadTasksForSprint).toHaveBeenCalledWith('spr-1', { force: true });
+  });
+
+  it('opens the settings modal with fetched detail when an objective row is edited', async () => {
+    const detail = { id: 'o1', title: 'Root', description: 'Full scope', startDate: '2026-01-01', endDate: '2026-12-01', allocatedHours: 40, isAchieved: false, isDefault: true };
+    storeStub.getMilestoneDetail = vi.fn().mockResolvedValue(detail);
+    setup('o1');
+    fixture.detectChanges();
+
+    await fixture.componentInstance.onEditRequested(tree);
+    fixture.detectChanges();
+
+    expect(fixture.componentInstance.settingsOpen()).toBe(true);
+    expect(storeStub.getMilestoneDetail).toHaveBeenCalledWith('o1');
+    expect((fixture.componentInstance.settingsInitialValue() as any)?.description).toBe('Full scope');
+  });
+
+  it('opens sprint edit with the row sprint and refreshes the leaf on save', async () => {
+    setup('o1');
+    fixture.detectChanges();
+    const sprint: MilestoneTreeNode = {
+      ...child, id: 'spr-1', title: 'Sprint 1', kind: 'sprint', parentObjectiveId: 'o1',
+      isOwner: true, children: [], startDate: '2026-08-01', endDate: '2026-08-14', status: 'active'
+    };
+
+    await fixture.componentInstance.onEditRequested(sprint);
+    fixture.detectChanges();
+
+    expect(fixture.nativeElement.textContent).toContain('Edit sprint');
+    expect(fixture.componentInstance.editSprintNode()?.title).toBe('Sprint 1');
+
+    await fixture.componentInstance.onSprintSaved();
+    expect(storeStub.loadSprintsAndTasksForLeaf).toHaveBeenCalledWith('o1', { force: true });
+  });
+
+  it('opens task detail with the stashed task and refreshes the sprint on save', async () => {
+    setup('o1');
+    fixture.detectChanges();
+    const task: MilestoneTreeNode = {
+      ...child, id: 't1', title: 'Do it', kind: 'task', parentObjectiveId: 'spr-1', isOwner: true, children: [],
+      taskSource: {
+        id: 't1', objectiveId: 'o1', shortId: 'WEB-9', title: 'Do it', description: null,
+        taskType: 'task', statusId: 'st-1', priority: 'medium', storyPoints: null,
+        dueDate: null, estimatedHours: 3, completedHours: 0, progressPercent: 0,
+        sprintId: 'spr-1', assigneeEmployeeIds: []
+      },
+      taskStatuses: [{
+        id: 'st-1', name: 'To Do', displayOrder: 0, requiresApproval: false,
+        marksTaskComplete: false, visibility: 'public'
+      }]
+    };
+
+    await fixture.componentInstance.onEditRequested(task);
+    fixture.detectChanges();
+
+    expect(fixture.nativeElement.textContent).toContain('WEB-9');
+
+    await fixture.componentInstance.onTaskSaved();
     expect(storeStub.loadTasksForSprint).toHaveBeenCalledWith('spr-1', { force: true });
   });
 });
