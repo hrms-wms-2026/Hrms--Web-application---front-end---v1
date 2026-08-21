@@ -36,4 +36,17 @@ describe('SprintTreeRowComponent', () => {
     setup({ ...sprint, isOwner: false });
     expect(fixture.nativeElement.querySelector('[data-testid="row-actions"]')?.querySelectorAll('button').length).toBe(0);
   });
+
+  it('renders title-text with both truncate and min-w-0 classes for proper text truncation', () => {
+    setup(sprint);
+    const titleEl = fixture.nativeElement.querySelector('[data-testid="title-text"]');
+    expect(titleEl).not.toBeNull();
+    expect(titleEl.classList.contains('truncate')).toBe(true);
+    expect(titleEl.classList.contains('min-w-0')).toBe(true);
+  });
+
+  it('renders status badge with correct content when status is present', () => {
+    setup({ ...sprint, status: 'active' });
+    expect(fixture.nativeElement.querySelector('[data-testid="status-badge"]')?.textContent).toContain('active');
+  });
 });

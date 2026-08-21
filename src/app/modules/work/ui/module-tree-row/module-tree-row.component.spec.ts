@@ -56,4 +56,17 @@ describe('ModuleTreeRowComponent', () => {
     setup({ ...owned, isOwner: false });
     expect(fixture.nativeElement.querySelector('[data-testid="row-actions"]')?.querySelectorAll('button').length).toBe(0);
   });
+
+  it('renders title-text with both truncate and min-w-0 classes for proper text truncation', () => {
+    setup(owned);
+    const titleEl = fixture.nativeElement.querySelector('[data-testid="title-text"]');
+    expect(titleEl).not.toBeNull();
+    expect(titleEl.classList.contains('truncate')).toBe(true);
+    expect(titleEl.classList.contains('min-w-0')).toBe(true);
+  });
+
+  it('renders achieved badge with correct content when isAchieved is true', () => {
+    setup({ ...owned, isAchieved: true });
+    expect(fixture.nativeElement.querySelector('[data-testid="achieved-badge"]')?.textContent).toContain('Achieved');
+  });
 });

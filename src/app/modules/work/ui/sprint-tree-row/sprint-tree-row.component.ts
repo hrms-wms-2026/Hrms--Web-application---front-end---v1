@@ -32,7 +32,7 @@ import { MilestoneTreeNode } from '../../models/milestone.model';
           <line x1="3" y1="10" x2="21" y2="10" />
           <path d="M8 14l2 2 4-4" />
         </svg>
-        <span data-testid="title-text" class="truncate text-sm {{ selected() ? 'text-white' : 'text-[var(--color-text-primary)]' }}">{{ node().title }}</span>
+        <span data-testid="title-text" class="min-w-0 truncate text-sm {{ selected() ? 'text-white' : 'text-[var(--color-text-primary)]' }}">{{ node().title }}</span>
         @if (node().status; as status) {
           <span data-testid="status-badge" class="shrink-0 rounded-full px-2 py-0.5 text-xs font-medium {{ selected() ? 'bg-white/15 text-white' : 'bg-[var(--color-surface-secondary)] text-[var(--color-text-secondary)]' }}">{{ status }}</span>
         }

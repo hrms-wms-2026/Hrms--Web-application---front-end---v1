@@ -39,6 +39,19 @@ describe('TaskTreeRowComponent', () => {
     expect(fixture.nativeElement.querySelector('[data-testid="assignee-cell"]')).not.toBeNull();
   });
 
+  it('renders title-text with both truncate and min-w-0 classes for proper text truncation', () => {
+    setup(task);
+    const titleEl = fixture.nativeElement.querySelector('[data-testid="title-text"]');
+    expect(titleEl).not.toBeNull();
+    expect(titleEl.classList.contains('truncate')).toBe(true);
+    expect(titleEl.classList.contains('min-w-0')).toBe(true);
+  });
+
+  it('renders status badge with correct content when status is present', () => {
+    setup({ ...task, status: 'In Progress' });
+    expect(fixture.nativeElement.querySelector('[data-testid="status-badge"]')?.textContent).toContain('In Progress');
+  });
+
   it('shows delete only when the caller owns the parent module', () => {
     setup({ ...task, isOwner: true });
     expect(fixture.nativeElement.querySelector('[data-testid="delete-task-button"]')).not.toBeNull();
