@@ -30,3 +30,10 @@ Pending plans and raw not-yet-brainstormed future-feature context. Stays flat �
   Task Category tab, net-new `CategoryListEditorComponent` (simplified drag-reorder, no
   visibility/marksTaskComplete fields), needs backend companion Part 4 shipped first. Both parts also
   need this same plan's Part 1 (the `ProjectSettingsComponent` shell) done before Part 2.
+- `2026-08-21-work-management-tree-ui-bug-fixes.md` — status: pending, not started. Single-file bounded
+  plan (no design doc, per `superpowers:brainstorming`'s bounded path). 4 items: Sprint-creation
+  verification (no code change, folds into the tree/sprint/task unified view manual pass), missing Task
+  delete icon (traced — not a separate bug, resolves once the backend's cascading-ownership plan ships),
+  status text/icon overlap (root cause not yet confirmed, needs repro first), Module filter missing an
+  Active/Inactive/All dimension (confirmed real gap in `collectObjectiveOptions` — no code reads
+  `isActive` at all today).
