@@ -48,6 +48,10 @@ export class TaskApiService {
     return this.http.post<WorkTaskDto>(`${this.baseUrl}/objectives/${objectiveId}/tasks`, request);
   }
 
+  deleteTask(taskId: string): Observable<void> {
+    return this.http.delete<void>(`${this.baseUrl}/tasks/${taskId}`);
+  }
+
   editTask(taskId: string, request: EditTaskRequestDto): Observable<WorkTaskDto> {
     return this.http.patch<WorkTaskDto>(`${this.baseUrl}/tasks/${taskId}`, request);
   }

@@ -54,6 +54,13 @@ describe('TaskApiService', () => {
     req.flush(mockTasks);
   });
 
+  it('deleteTask DELETEs the task by id', () => {
+    service.deleteTask('t-1').subscribe();
+    const req = httpMock.expectOne(`${environment.apiUrl}/work/tasks/t-1`);
+    expect(req.request.method).toBe('DELETE');
+    req.flush(null);
+  });
+
   it('getStatuses fetches task statuses for an objective', () => {
     const objectiveId = 'obj-1';
     const mockStatuses: TaskStatusDto[] = [{
