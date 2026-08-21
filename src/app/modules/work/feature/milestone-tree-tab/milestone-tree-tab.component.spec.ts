@@ -245,6 +245,17 @@ describe('MilestoneTreeTabComponent', () => {
     expect(storeStub.transferObjectiveHead).toHaveBeenCalledWith('o1', 'e9');
   });
 
+  it('opens the members popup from a row without relying on prior selection', () => {
+    setup('o1');
+    fixture.detectChanges();
+
+    fixture.componentInstance.onMembersRequested(child);
+    fixture.detectChanges();
+
+    expect(fixture.componentInstance.membersPopupOpen()).toBe(true);
+    expect(storeStub.loadObjectiveMembers).toHaveBeenCalledWith('o2');
+  });
+
   it('loads sprints and tasks when a leaf expand is requested', () => {
     setup('o1');
     fixture.detectChanges();

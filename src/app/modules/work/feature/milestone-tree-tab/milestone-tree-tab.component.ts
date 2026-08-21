@@ -257,11 +257,12 @@ export class MilestoneTreeTabComponent {
     await this.store.loadMilestoneSubtree(this.currentMilestoneId);
   }
 
-  onMembersRequested(): void {
-    const node = this.selectedNode();
-    if (!node) return;
+  onMembersRequested(node?: MilestoneTreeNode): void {
+    const target = node ?? this.selectedNode();
+    if (!target) return;
+    this.selectedNodeId.set(target.id);
     this.membersPopupOpen.set(true);
-    this.store.loadObjectiveMembers(node.id);
+    this.store.loadObjectiveMembers(target.id);
   }
 
   onMembersPopupClosed(): void {
