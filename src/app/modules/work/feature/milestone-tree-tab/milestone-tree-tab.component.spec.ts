@@ -27,7 +27,16 @@ describe('MilestoneTreeTabComponent', () => {
   };
 
   function setup(milestoneId: string | null): void {
-    routeStub = { paramMap: of({ get: (key: string) => (key === 'milestoneId' ? milestoneId : null) }) };
+    const paramGet = (key: string) => {
+      if (key === 'milestoneId') return milestoneId;
+      if (key === 'id') return 'p1';
+      return null;
+    };
+    routeStub = {
+      paramMap: of({ get: paramGet }),
+      snapshot: { paramMap: { get: paramGet } },
+      parent: null
+    };
 
     TestBed.configureTestingModule({
       imports: [MilestoneTreeTabComponent],
@@ -46,11 +55,12 @@ describe('MilestoneTreeTabComponent', () => {
 
   beforeEach(() => {
     storeStub = {
+      project: () => ({ id: 'p1' }),
       selectedSubtree: () => tree,
       subtreeLoading: () => false,
       subtreeError: () => null,
       milestoneActionError: () => null,
-      loadMilestoneSubtree: vi.fn().mockResolvedValue(undefined),
+      loadProjectTree: vi.fn().mockResolvedValue(undefined),
       loadSprintsAndTasksForLeaf: vi.fn().mockResolvedValue(undefined),
       loadTasksForSprint: vi.fn().mockResolvedValue(undefined),
       getMilestoneDetail: vi.fn().mockResolvedValue(null),
@@ -67,10 +77,10 @@ describe('MilestoneTreeTabComponent', () => {
     };
   });
 
-  it('loads the subtree for the routed milestone id', () => {
+  it('loads the project-wide tree for the routed project id', () => {
     setup('o1');
     fixture.detectChanges();
-    expect(storeStub.loadMilestoneSubtree).toHaveBeenCalledWith('o1');
+    expect(storeStub.loadProjectTree).toHaveBeenCalledWith('p1');
   });
 
   it('renders the root tree node', () => {
@@ -136,7 +146,7 @@ describe('MilestoneTreeTabComponent', () => {
 
     expect(storeStub.createSubModule).toHaveBeenCalled();
     expect(fixture.componentInstance.createModalOpen()).toBe(false);
-    expect(storeStub.loadMilestoneSubtree).toHaveBeenCalledTimes(2);
+    expect(storeStub.loadProjectTree).toHaveBeenCalledTimes(2);
   });
 
   it('opens the settings modal and fetches full detail when Edit is requested', async () => {

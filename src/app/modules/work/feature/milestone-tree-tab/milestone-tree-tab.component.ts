@@ -31,6 +31,8 @@ export class MilestoneTreeTabComponent {
   readonly store = inject(ProjectDetailStore);
   private readonly route = inject(ActivatedRoute);
   private currentMilestoneId = '';
+  private currentProjectId = '';
+  private loadedProjectId: string | null = null;
 
   selectedNodeId = signal<string | null>(null);
   selectedNode = computed<MilestoneTreeNode | null>(() => {
@@ -64,8 +66,9 @@ export class MilestoneTreeTabComponent {
       const milestoneId = paramMap.get('milestoneId');
       if (!milestoneId) return;
       this.currentMilestoneId = milestoneId;
+      this.currentProjectId = paramMap.get('id') ?? this.resolveProjectId() ?? '';
       this.selectedNodeId.set(null);
-      this.loadSubtreeAndSelectRoot(milestoneId);
+      void this.loadTree();
     });
   }
 
@@ -74,11 +77,30 @@ export class MilestoneTreeTabComponent {
   }
 
   async retryTree(): Promise<void> {
-    if (this.currentMilestoneId) await this.loadSubtreeAndSelectRoot(this.currentMilestoneId);
+    await this.loadTree({ force: true });
   }
 
-  private async loadSubtreeAndSelectRoot(milestoneId: string): Promise<void> {
-    await this.store.loadMilestoneSubtree(milestoneId);
+  private resolveProjectId(): string | null {
+    let current: ActivatedRoute | null = this.route;
+    while (current) {
+      const id = current.snapshot.paramMap.get('id');
+      if (id) return id;
+      current = current.parent;
+    }
+    return this.store.project()?.id ?? null;
+  }
+
+  private async loadTree(options?: { force?: boolean }): Promise<void> {
+    const projectId = this.currentProjectId || this.resolveProjectId();
+    if (!projectId) return;
+    this.currentProjectId = projectId;
+    if (!options?.force && this.loadedProjectId === projectId && this.store.selectedSubtree()) {
+      const tree = this.store.selectedSubtree();
+      if (tree && !this.selectedNodeId()) this.selectedNodeId.set(tree.id);
+      return;
+    }
+    await this.store.loadProjectTree(projectId);
+    this.loadedProjectId = projectId;
     const tree = this.store.selectedSubtree();
     if (tree) this.selectedNodeId.set(tree.id);
   }
@@ -209,7 +231,7 @@ export class MilestoneTreeTabComponent {
     this.createModalSubmitting.set(false);
     if (result.success) {
       this.createModalOpen.set(false);
-      await this.store.loadMilestoneSubtree(this.currentMilestoneId);
+      await this.loadTree({ force: true });
     }
   }
 
@@ -242,7 +264,7 @@ export class MilestoneTreeTabComponent {
 
     this.settingsSubmitting.set(false);
     this.settingsOpen.set(false);
-    await this.store.loadMilestoneSubtree(this.currentMilestoneId);
+    await this.loadTree({ force: true });
   }
 
   onMembersRequested(node?: MilestoneTreeNode): void {
