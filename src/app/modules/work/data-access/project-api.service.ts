@@ -7,6 +7,7 @@ import {
   PagedResultDto, ProjectDetailDto, ProjectListItemDto
 } from '../models/dto/project.dto';
 import { MyProjectMilestoneDto, ObjectiveDetailDto, ObjectiveSubtreeResponseDto, EditObjectiveRequestDto, CreateObjectiveRequestDto, AddObjectiveMemberOutcomeDto } from '../models/dto/milestone.dto';
+import { ObjectiveTreeItemDto } from '../models/dto/objective-tree.dto';
 
 @Injectable({ providedIn: 'root' })
 export class ProjectApiService {
@@ -72,6 +73,10 @@ export class ProjectApiService {
 
   getMyMilestones(projectId: string): Observable<MyProjectMilestoneDto[]> {
     return this.http.get<MyProjectMilestoneDto[]>(`${this.base}/${projectId}/objectives/mine`);
+  }
+
+  getProjectTree(projectId: string): Observable<ObjectiveTreeItemDto[]> {
+    return this.http.get<ObjectiveTreeItemDto[]>(`${this.base}/${projectId}/objectives`);
   }
 
   getObjectiveById(id: string): Observable<ObjectiveDetailDto> {

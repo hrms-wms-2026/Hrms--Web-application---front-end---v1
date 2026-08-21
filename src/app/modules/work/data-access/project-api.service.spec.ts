@@ -5,6 +5,7 @@ import { environment } from '../../../../environments/environment';
 import { ProjectApiService } from './project-api.service';
 import { ProjectDetailDto, ProjectListItemDto, PagedResultDto } from '../models/dto/project.dto';
 import { MyProjectMilestoneDto, ObjectiveDetailDto, ObjectiveSubtreeResponseDto, EditObjectiveRequestDto, CreateObjectiveRequestDto } from '../models/dto/milestone.dto';
+import { ObjectiveTreeItemDto } from '../models/dto/objective-tree.dto';
 
 describe('ProjectApiService', () => {
   let service: ProjectApiService;
@@ -95,7 +96,7 @@ describe('ProjectApiService', () => {
     const dto = { id: 'p1', name: 'Website Revamp v2' } as ProjectDetailDto;
     const payload = {
       name: 'Website Revamp v2', description: 'Rebuild', categoryId: 'cat1',
-      startDate: '2026-08-01', targetDate: '2027-01-01', color: '#2563EB', actualHours: 12
+      startDate: '2026-08-01', targetDate: '2027-01-01', color: '#2563EB', actualHours: 12, allocatedHours: 60
     };
     service.edit('p1', payload).subscribe((res) => expect(res).toEqual(dto));
 
@@ -216,5 +217,17 @@ describe('ProjectApiService', () => {
     expect(req.request.method).toBe('POST');
     expect(req.request.body).toEqual({ employeeId: 'e1' });
     req.flush({ alreadyMember: false, invitation: { id: 'i1' } }, { status: 202, statusText: 'Accepted' });
+  });
+
+  it('gets the project-wide objective tree', () => {
+    const items: ObjectiveTreeItemDto[] = [{
+      id: 'o1', parentObjectiveId: null, isDefault: true, title: 'Root', ownerId: 'e1',
+      startDate: '2026-08-01', endDate: '2026-12-01', allocatedHours: 40, completedHours: 0,
+      isActive: true, isAchieved: false, progress: 12.5, ownerName: 'Ada', isOwner: true
+    }];
+    service.getProjectTree('p1').subscribe((res) => expect(res).toEqual(items));
+    const req = httpMock.expectOne(`${environment.apiUrl}/work/projects/p1/objectives`);
+    expect(req.request.method).toBe('GET');
+    req.flush(items);
   });
 });
