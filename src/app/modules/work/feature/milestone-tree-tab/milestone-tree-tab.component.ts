@@ -3,6 +3,7 @@ import { ActivatedRoute } from '@angular/router';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { ProjectDetailStore } from '../../state/project-detail.store';
 import { MilestoneTreeNodeComponent } from '../../ui/milestone-tree-node/milestone-tree-node.component';
+import { ModuleFilterSelectComponent } from '../../ui/module-filter-select/module-filter-select.component';
 import { MilestoneSettingsModalComponent } from '../../ui/milestone-settings-modal/milestone-settings-modal.component';
 import { CreateSubModuleModalComponent } from '../../ui/create-sub-module-modal/create-sub-module-modal.component';
 import { ObjectiveMembersPopupComponent } from '../../ui/objective-members-popup/objective-members-popup.component';
@@ -14,14 +15,14 @@ import { LoaderComponent } from '../../../../shared/ui/loader/loader.component';
 import { ErrorStateComponent } from '../../../../shared/ui/error-state/error-state.component';
 import { MilestoneTreeNode, ObjectiveDetail } from '../../models/milestone.model';
 import { EditObjectiveRequestDto, CreateObjectiveRequestDto } from '../../models/dto/milestone.dto';
-import { findTreeNode, isLeafObjective } from '../../utils/project.mapper';
+import { findTreeNode, isLeafObjective, collectObjectiveOptions, pruneTreeToModule } from '../../utils/project.mapper';
 import { Sprint, SprintStatus } from '../../models/sprint.model';
 
 @Component({
   selector: 'app-milestone-tree-tab',
   standalone: true,
   imports: [
-    MilestoneTreeNodeComponent, MilestoneSettingsModalComponent,
+    MilestoneTreeNodeComponent, ModuleFilterSelectComponent, MilestoneSettingsModalComponent,
     CreateSubModuleModalComponent, ObjectiveMembersPopupComponent, SprintCreateFormComponent,
     SprintEditFormComponent, TaskCreateModalComponent, TaskDetailModalComponent, LoaderComponent, ErrorStateComponent
   ],
@@ -33,6 +34,17 @@ export class MilestoneTreeTabComponent {
   private currentMilestoneId = '';
   private currentProjectId = '';
   private loadedProjectId: string | null = null;
+
+  selectedModuleFilter = signal<string>('all');
+  moduleFilterOptions = computed(() => {
+    const tree = this.store.selectedSubtree();
+    return tree ? collectObjectiveOptions(tree) : [];
+  });
+  renderedTree = computed(() => {
+    const tree = this.store.selectedSubtree();
+    if (!tree) return null;
+    return pruneTreeToModule(tree, this.selectedModuleFilter()) ?? tree;
+  });
 
   selectedNodeId = signal<string | null>(null);
   selectedNode = computed<MilestoneTreeNode | null>(() => {
@@ -67,9 +79,14 @@ export class MilestoneTreeTabComponent {
       if (!milestoneId) return;
       this.currentMilestoneId = milestoneId;
       this.currentProjectId = paramMap.get('id') ?? this.resolveProjectId() ?? '';
+      this.selectedModuleFilter.set(milestoneId);
       this.selectedNodeId.set(null);
       void this.loadTree();
     });
+  }
+
+  onModuleFilterChanged(moduleId: string): void {
+    this.selectedModuleFilter.set(moduleId);
   }
 
   onNodeSelected(node: MilestoneTreeNode): void {

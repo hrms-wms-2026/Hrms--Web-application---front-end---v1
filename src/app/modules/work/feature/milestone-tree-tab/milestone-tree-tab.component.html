@@ -3,7 +3,14 @@
     <app-loader label="Loading tree…" />
   } @else if (store.subtreeError()) {
     <app-error-state [message]="store.subtreeError()!" [retryable]="true" (retry)="retryTree()" />
-  } @else if (store.selectedSubtree(); as tree) {
+  } @else if (store.selectedSubtree()) {
+    <div class="mb-3">
+      <app-module-filter-select
+        [options]="moduleFilterOptions()"
+        [selected]="selectedModuleFilter()"
+        (selectionChanged)="onModuleFilterChanged($event)"
+      />
+    </div>
     <div class="grid grid-cols-[1fr_112px_40px_88px_72px] gap-3 border-b border-[var(--color-border)] px-2 pb-2 text-xs font-medium text-[var(--color-text-secondary)]">
       <span>Work item</span>
       <span>Progress</span>
@@ -11,6 +18,7 @@
       <span>Due date</span>
       <span></span>
     </div>
+    @if (renderedTree(); as tree) {
     <app-milestone-tree-node
       [node]="tree"
       [selectedId]="selectedNodeId()"
@@ -23,6 +31,7 @@
       (editRequested)="onEditRequested($event)"
       (membersRequested)="onMembersRequested($event)"
     />
+    }
   }
 </div>
 

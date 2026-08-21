@@ -20,10 +20,16 @@ describe('MilestoneTreeTabComponent', () => {
     ownerName: 'Diya', isOwner: false, children: []
   };
 
+  const sibling: MilestoneTreeNode = {
+    id: 'o3', title: 'Other', description: null, startDate: '2026-03-01', endDate: '2026-04-01',
+    progress: 10, allocatedHours: 8, completedHours: 1, isActive: true, isAchieved: false,
+    ownerName: 'Sam', isOwner: true, children: []
+  };
+
   const tree: MilestoneTreeNode = {
     id: 'o1', title: 'Root', description: null, startDate: '2026-01-01', endDate: '2026-12-01',
     progress: 72, allocatedHours: 40, completedHours: 29, isActive: true, isAchieved: false,
-    ownerName: 'Arun Kumar', isOwner: true, children: [child]
+    ownerName: 'Arun Kumar', isOwner: true, children: [child, sibling]
   };
 
   function setup(milestoneId: string | null): void {
@@ -81,6 +87,33 @@ describe('MilestoneTreeTabComponent', () => {
     setup('o1');
     fixture.detectChanges();
     expect(storeStub.loadProjectTree).toHaveBeenCalledWith('p1');
+  });
+
+  it('defaults the module filter to the routed milestone id', async () => {
+    setup('o1');
+    fixture.detectChanges();
+    await fixture.whenStable();
+    fixture.detectChanges();
+    expect(fixture.componentInstance.selectedModuleFilter()).toBe('o1');
+    const select = fixture.nativeElement.querySelector('[data-testid="module-filter-select"]') as HTMLSelectElement;
+    expect(select.value).toBe('o1');
+  });
+
+  it('prunes the rendered tree on filter change without refetching', () => {
+    setup('o1');
+    fixture.detectChanges();
+    const titles = () =>
+      Array.from(fixture.nativeElement.querySelectorAll('[data-testid="title-text"]') as NodeListOf<HTMLElement>)
+        .map((el) => el.textContent?.trim());
+    expect(titles()).toContain('Other');
+    expect(storeStub.loadProjectTree).toHaveBeenCalledTimes(1);
+
+    fixture.componentInstance.onModuleFilterChanged('o2');
+    fixture.detectChanges();
+
+    expect(titles()).toContain('Child');
+    expect(titles()).not.toContain('Other');
+    expect(storeStub.loadProjectTree).toHaveBeenCalledTimes(1);
   });
 
   it('renders the root tree node', () => {
