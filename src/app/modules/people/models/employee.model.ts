@@ -4,6 +4,16 @@
  * Also used for the employee detail view (GET /api/v1/employees/{id}) in this slice -
  * the detail route is a minimal read-only view, not the full section-by-section detail UI.
  */
+export interface EmployeeListAttendanceSummaryResponse {
+  readonly showNotClockedInWarning: boolean;
+  readonly shouldHaveClockedIn: boolean;
+  readonly hasClockedInToday: boolean;
+  readonly workDate: string;
+  readonly timezone: string;
+  readonly scheduledStartTime: string | null;
+  readonly warningLabel: string | null;
+}
+
 export interface EmployeeListItemResponse {
   readonly id: string;
   readonly employeeNumber: string;
@@ -22,6 +32,7 @@ export interface EmployeeListItemResponse {
   /** "pending" | "accepted" | "expired" | "revoked" | null (no invitation ever issued, or list read). */
   readonly invitationStatus?: string | null;
   readonly invitationExpiresAt?: string | null;
+  readonly attendanceSummary?: EmployeeListAttendanceSummaryResponse | null;
 }
 
 export interface ResendInvitationResponse {

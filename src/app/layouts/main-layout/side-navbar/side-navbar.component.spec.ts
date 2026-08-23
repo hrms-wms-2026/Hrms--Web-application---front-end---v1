@@ -32,8 +32,8 @@ describe('SideNavbarComponent', () => {
     expect(labels).toEqual(['Home']);
   });
 
-  it('shows People/Calendar/Time Off/Attendance when their modules are active', () => {
-    const fixture = setup([], ['core_hr', 'calendar', 'leave', 'time_attendance']);
+  it('shows People/Calendar/Time Off/Attendance when their modules and self-service access are active', () => {
+    const fixture = setup(['attendance:read-own'], ['core_hr', 'calendar', 'leave', 'time_attendance']);
     const labels = Array.from(fixture.nativeElement.querySelectorAll('.nav-rail-item span')).map((el) => (el as HTMLElement).textContent);
     expect(labels).toEqual(['Home', 'People', 'Calendar', 'Time Off', 'Attendance']);
   });
@@ -64,7 +64,7 @@ describe('SideNavbarComponent', () => {
 
   it('renders all 8 sidebar items in canonical order for a tenant owner with every Phase 1 module and org/roles permissions', () => {
     const fixture = setup(
-      ['org:read', 'roles:manage', 'projects:access'],
+      ['org:read', 'roles:manage', 'projects:access', 'attendance:read-own'],
       ['worksync_foundation', 'core_hr', 'calendar', 'leave', 'time_attendance', 'org_structure']
     );
     const labels = Array.from(fixture.nativeElement.querySelectorAll('.nav-rail-item span')).map((el) => (el as HTMLElement).textContent);

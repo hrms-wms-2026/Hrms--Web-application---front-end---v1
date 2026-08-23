@@ -65,6 +65,72 @@ describe('EmployeeListComponent', () => {
     expect(fixture.nativeElement.textContent).toContain('No employees found');
   });
 
+  it('uses the employee-list response directly without per-employee attendance requests', async () => {
+    await setup(true);
+
+    httpMock.expectOne((r) => r.url.includes('/employees')).flush({
+      items: [
+        {
+          id: 'emp-warning',
+          employeeNumber: 'E-001',
+          fullName: 'Zoe Warning',
+          email: 'zoe@test.dev',
+          departmentId: null,
+          departmentName: null,
+          positionId: null,
+          positionName: null,
+          legalEntityId: 'le-1',
+          legalEntityName: 'Acme Co',
+          employmentTypeLabel: 'Full-time',
+          status: 'active',
+          reportingManagerId: null,
+          reportingManagerName: null,
+          attendanceSummary: {
+            showNotClockedInWarning: true,
+            shouldHaveClockedIn: true,
+            hasClockedInToday: false,
+            workDate: '2026-08-21',
+            timezone: 'Asia/Colombo',
+            scheduledStartTime: '09:00',
+            warningLabel: 'Still has not clocked in'
+          }
+        },
+        {
+          id: 'emp-normal',
+          employeeNumber: 'E-002',
+          fullName: 'Ada Normal',
+          email: 'ada@test.dev',
+          departmentId: null,
+          departmentName: null,
+          positionId: null,
+          positionName: null,
+          legalEntityId: 'le-1',
+          legalEntityName: 'Acme Co',
+          employmentTypeLabel: 'Full-time',
+          status: 'active',
+          reportingManagerId: null,
+          reportingManagerName: null
+        }
+      ],
+      totalCount: 2,
+      page: 1,
+      pageSize: 25
+    });
+    httpMock.expectOne((r) => r.url.includes('/onboarding/drafts')).flush({
+      items: [],
+      totalCount: 0,
+      page: 1,
+      pageSize: 25
+    });
+
+    await fixture.whenStable();
+    fixture.detectChanges();
+
+    expect(fixture.nativeElement.querySelectorAll('.emp-name')[0]?.textContent).toContain('Zoe Warning');
+    expect(fixture.nativeElement.querySelectorAll('.emp-name')[1]?.textContent).toContain('Ada Normal');
+    expect(httpMock.match((r) => /\/attendance|\/time-tracking/.test(r.url)).length).toBe(0);
+  });
+
   it('shows the error state with a retry action that reissues the request', async () => {
     await setup(true);
     httpMock.expectOne((r) => r.url.includes('/employees')).flush('error', { status: 500, statusText: 'Server Error' });

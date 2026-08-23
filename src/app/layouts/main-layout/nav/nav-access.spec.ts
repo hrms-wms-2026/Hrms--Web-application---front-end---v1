@@ -100,6 +100,17 @@ describe('canAccessNavItem', () => {
       expect(canAccessNavItem(general, checker(['legal_entity:update'], []))).toBe(true);
       expect(canAccessNavItem(general, checker(['org:read'], ['org_structure']))).toBe(false);
     });
+
+    it('gates Attendance on time_attendance and a self-service or read permission', () => {
+      const attendance = NAV_ITEMS.find((item) => item.id === 'time-attendance')!;
+
+      expect(attendance.path).toBe('/attendance/time-tracking');
+      expect(canAccessNavItem(attendance, checker(['attendance:read-own'], ['time_attendance']))).toBe(true);
+      expect(canAccessNavItem(attendance, checker(['attendance:write-own'], ['time_attendance']))).toBe(true);
+      expect(canAccessNavItem(attendance, checker(['attendance:read'], ['time_attendance']))).toBe(true);
+      expect(canAccessNavItem(attendance, checker([], ['time_attendance']))).toBe(false);
+      expect(canAccessNavItem(attendance, checker(['attendance:read-own'], []))).toBe(false);
+    });
   });
 
   it('settings-bulk-onboarding requires both core_hr module and employees:write permission', () => {

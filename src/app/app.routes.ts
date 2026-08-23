@@ -62,7 +62,21 @@ export const routes: Routes = [
       },
       { path: 'calendar', loadComponent: loadPlaceholder, data: { title: 'Calendar' } },
       { path: 'time-off', loadComponent: loadPlaceholder, data: { title: 'Time Off' } },
-      { path: 'time-attendance', loadComponent: loadPlaceholder, data: { title: 'Time & Attendance' } },
+      {
+        path: 'attendance',
+        canActivate: [permissionGuard],
+        data: {
+          permissions: ['attendance:read-own', 'attendance:write-own', 'attendance:read'],
+          modules: ['time_attendance']
+        },
+        loadChildren: () =>
+          import('./modules/attendance/attendance.routes').then((module) => module.ATTENDANCE_ROUTES)
+      },
+      {
+        path: 'time-attendance',
+        pathMatch: 'full',
+        redirectTo: 'attendance/time-tracking'
+      },
       {
         path: 'organization',
         canActivate: [permissionGuard],

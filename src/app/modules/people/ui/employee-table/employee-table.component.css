@@ -77,6 +77,17 @@
   flex-shrink: 0;
 }
 
+.emp-avatar-wrapper--warning {
+  border-radius: 50%;
+  box-shadow: 0 0 0 2px #dc2626;
+  z-index: 1;
+}
+
+.emp-avatar-wrapper--warning:focus-visible {
+  outline: 2px solid #991b1b;
+  outline-offset: 3px;
+}
+
 .emp-avatar {
   display: flex;
   align-items: center;
@@ -107,6 +118,34 @@
 
 .emp-status-dot-avatar--inactive {
   background-color: #ef4444;
+}
+
+.emp-attendance-warning-tooltip {
+  position: absolute;
+  left: 50%;
+  top: calc(100% + 0.45rem);
+  z-index: 4;
+  width: max-content;
+  max-width: 14rem;
+  padding: 0.35rem 0.55rem;
+  border-radius: 0.35rem;
+  background: #450a0a;
+  color: #fff;
+  font-size: 0.6875rem;
+  font-weight: 600;
+  line-height: 1.25;
+  white-space: nowrap;
+  box-shadow: 0 3px 10px rgba(69, 10, 10, 0.22);
+  opacity: 0;
+  pointer-events: none;
+  transform: translate(-50%, -0.2rem);
+  transition: opacity 120ms ease, transform 120ms ease;
+}
+
+.emp-avatar-wrapper--warning:hover .emp-attendance-warning-tooltip,
+.emp-avatar-wrapper--warning:focus .emp-attendance-warning-tooltip {
+  opacity: 1;
+  transform: translate(-50%, 0);
 }
 
 .emp-info {

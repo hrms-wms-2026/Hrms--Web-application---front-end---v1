@@ -92,6 +92,30 @@ describe('PeopleApiService', () => {
     req.flush(mockEmployeePage);
   });
 
+  it('preserves the backend attendance summary on the existing employee-list response', () => {
+    const warningEmployee: EmployeeListItemResponse = {
+      ...mockEmployee,
+      attendanceSummary: {
+        showNotClockedInWarning: true,
+        shouldHaveClockedIn: true,
+        hasClockedInToday: false,
+        workDate: '2026-08-21',
+        timezone: 'Asia/Colombo',
+        scheduledStartTime: '09:00',
+        warningLabel: 'Still has not clocked in'
+      }
+    };
+
+    service.listEmployees({ page: 1, pageSize: 25 }).subscribe((page) => {
+      expect(page.items[0].attendanceSummary?.showNotClockedInWarning).toBe(true);
+      expect(page.items[0].attendanceSummary?.warningLabel).toBe('Still has not clocked in');
+    });
+
+    const req = httpMock.expectOne(`${environment.apiUrl}/employees?page=1&pageSize=25`);
+    expect(req.request.method).toBe('GET');
+    req.flush({ ...mockEmployeePage, items: [warningEmployee] });
+  });
+
   it('omits empty/undefined query params', () => {
     service.listEmployees({}).subscribe();
 

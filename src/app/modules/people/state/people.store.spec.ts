@@ -54,6 +54,25 @@ describe('PeopleStore', () => {
     expect(store.employeesError()).toBeNull();
   });
 
+  it('preserves the backend employee order when loading the list', async () => {
+    const backendOrderedEmployees: readonly EmployeeListItemResponse[] = [
+      { ...mockEmployee, id: 'emp-warning', fullName: 'Zoe Warning' },
+      { ...mockEmployee, id: 'emp-normal', fullName: 'Ada Normal' }
+    ];
+    const backendOrderedPage: EmployeeListPageResponse = {
+      items: backendOrderedEmployees,
+      totalCount: 2,
+      page: 1,
+      pageSize: 25
+    };
+    const loadPromise = store.loadEmployees({ page: 1, pageSize: 25 });
+
+    httpMock.expectOne(`${environment.apiUrl}/employees?page=1&pageSize=25`).flush(backendOrderedPage);
+    await loadPromise;
+
+    expect(store.employees().map((item) => item.id)).toEqual(['emp-warning', 'emp-normal']);
+  });
+
   it('reflects an empty result as an empty array, not an error', async () => {
     const loadPromise = store.loadEmployees({});
     httpMock.expectOne(`${environment.apiUrl}/employees`).flush({ items: [], totalCount: 0, page: 1, pageSize: 25 });

@@ -81,8 +81,9 @@ export const NAV_ITEMS: readonly NavItem[] = [
     id: 'time-attendance',
     label: 'Attendance',
     icon: 'time-attendance',
-    path: '/time-attendance',
-    requiredModules: ['time_attendance']
+    path: '/attendance/time-tracking',
+    requiredModules: ['time_attendance'],
+    requiredPermissions: ['attendance:read-own', 'attendance:write-own', 'attendance:read']
   },
   {
     id: 'organization',
