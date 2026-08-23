@@ -6,6 +6,7 @@ import {
   BulkOnboardingBatchDetailResponse,
   BulkOnboardingBatchResponse,
   BulkOnboardingColumnMapping,
+  ResolveBulkOnboardingIssuesPayload,
   RowPreviewResponse,
   UploadBulkOnboardingBatchPayload,
   ValidateBulkOnboardingBatchResponse
@@ -14,7 +15,7 @@ import {
 /**
  * Targets HRMS-Backend-v1 BulkOnboardingController
  * (POST /api/v1/onboarding/bulk-batches, POST .../{id}/preview, POST .../{id}/validate,
- * POST .../{id}/create-drafts, GET .../{id}, POST .../{id}/finalize).
+ * POST .../{id}/resolve-issues, POST .../{id}/create-drafts, GET .../{id}, POST .../{id}/finalize).
  */
 @Injectable({ providedIn: 'root' })
 export class BulkOnboardingApiService {
@@ -38,6 +39,10 @@ export class BulkOnboardingApiService {
 
   validate(batchId: string, mapping: BulkOnboardingColumnMapping): Observable<ValidateBulkOnboardingBatchResponse> {
     return this.http.post<ValidateBulkOnboardingBatchResponse>(`${this.baseUrl}/${batchId}/validate`, { mapping });
+  }
+
+  resolveIssues(batchId: string, payload: ResolveBulkOnboardingIssuesPayload): Observable<ValidateBulkOnboardingBatchResponse> {
+    return this.http.post<ValidateBulkOnboardingBatchResponse>(`${this.baseUrl}/${batchId}/resolve-issues`, payload);
   }
 
   requestCreateDrafts(batchId: string): Observable<BulkOnboardingBatchResponse> {

@@ -1,6 +1,7 @@
 import { Component, OnDestroy, OnInit, computed, inject, signal } from '@angular/core';
 import { RouterLink } from '@angular/router';
 import { firstValueFrom } from 'rxjs';
+import { PermissionService } from '../../../../core/auth/state/permission.service';
 import { BreadcrumbHeaderComponent } from '../../../../shared/ui/breadcrumb-header/breadcrumb-header.component';
 import { ButtonComponent } from '../../../../shared/ui/button/button.component';
 import { EmptyStateComponent } from '../../../../shared/ui/empty-state/empty-state.component';
@@ -9,19 +10,28 @@ import { LegalEntityStore } from '../../../organization/state/legal-entity.store
 import { BulkOnboardingApiService } from '../../data-access/bulk-onboarding-api.service';
 import { PeopleApiService } from '../../data-access/people-api.service';
 import {
+  BULK_ONBOARDING_ISSUE_TYPE_LABELS,
   BULK_ONBOARDING_SYSTEM_FIELD_LABELS,
+  BulkOnboardingGroupedIssue,
+  BulkOnboardingIssueAction,
   BulkOnboardingRowStatus,
-  BulkOnboardingSystemField
+  BulkOnboardingSystemField,
+  ResolveBulkOnboardingIssuesPayload,
+  RowValidationResultItem
 } from '../../models/bulk-onboarding.model';
 import { DRAFT_STATUS_LABELS } from '../../models/onboarding-draft.model';
 import { BulkOnboardingStore } from '../../state/bulk-onboarding.store';
+import {
+  BulkIssueResolverAction,
+  BulkIssueResolverComponent
+} from '../../ui/bulk-issue-resolver/bulk-issue-resolver.component';
 
 export type BulkOnboardingStep = 'upload' | 'map-columns' | 'validate' | 'review' | 'finalize';
 
 const EMPLOYMENT_TYPE_OPTIONS: readonly SelectOption[] = [
   { value: 'full_time', label: 'Full-time' },
   { value: 'part_time', label: 'Part-time' },
-  { value: 'contractor', label: 'Contractor' },
+  { value: 'contract', label: 'Contract' },
   { value: 'intern', label: 'Intern' }
 ];
 
@@ -42,7 +52,14 @@ const BULK_ROW_STATUS_LABELS: Record<BulkOnboardingRowStatus, string> = {
 @Component({
   selector: 'app-bulk-onboarding',
   standalone: true,
-  imports: [BreadcrumbHeaderComponent, ButtonComponent, EmptyStateComponent, SelectComponent, RouterLink],
+  imports: [
+    BreadcrumbHeaderComponent,
+    ButtonComponent,
+    EmptyStateComponent,
+    SelectComponent,
+    RouterLink,
+    BulkIssueResolverComponent
+  ],
   templateUrl: './bulk-onboarding.component.html',
   styleUrl: './bulk-onboarding.component.css'
 })
@@ -51,6 +68,7 @@ export class BulkOnboardingComponent implements OnInit, OnDestroy {
   private readonly legalEntityStore = inject(LegalEntityStore);
   private readonly peopleApi = inject(PeopleApiService);
   private readonly bulkOnboardingApi = inject(BulkOnboardingApiService);
+  private readonly permissionService = inject(PermissionService);
 
   readonly fieldLabels = BULK_ONBOARDING_SYSTEM_FIELD_LABELS;
   readonly fieldIds = Object.keys(BULK_ONBOARDING_SYSTEM_FIELD_LABELS) as BulkOnboardingSystemField[];
@@ -62,6 +80,12 @@ export class BulkOnboardingComponent implements OnInit, OnDestroy {
   readonly defaultEmploymentType = signal<string | null>(null);
   readonly selectedFileName = signal<string | null>(null);
   readonly fileError = signal<string | null>(null);
+  readonly expandedIssueKey = signal<string | null>(null);
+
+  readonly resolverOpen = signal(false);
+  readonly resolverIssue = signal<BulkOnboardingGroupedIssue | null>(null);
+  readonly resolverAction = signal<BulkIssueResolverAction | null>(null);
+  readonly resolverSubmitting = signal(false);
 
   readonly selectedLegalEntityId = computed(() => this.legalEntityStore.selectedLegalEntity()?.id ?? '');
   readonly hasCompany = computed(() => !!this.selectedLegalEntityId());
@@ -70,6 +94,8 @@ export class BulkOnboardingComponent implements OnInit, OnDestroy {
     return id === null ? '' : String(id);
   });
   readonly workModeOptions = signal<readonly SelectOption[]>([]);
+  readonly unresolvedIssueCount = computed(() => this.store.validationResult()?.issues?.length ?? 0);
+  readonly canManageOrg = computed(() => this.permissionService.hasPermission('org:manage'));
 
   private readonly manualStep = signal<BulkOnboardingStep | null>(null);
 
@@ -196,5 +222,114 @@ export class BulkOnboardingComponent implements OnInit, OnDestroy {
   mappingColumnOptions(): readonly SelectOption[] {
     const columns = this.store.batch()?.detectedColumns ?? [];
     return [{ value: '', label: 'Not mapped' }, ...columns.map((column) => ({ value: column, label: column }))];
+  }
+
+  issueTypeLabel(issueType: string): string {
+    return BULK_ONBOARDING_ISSUE_TYPE_LABELS[issueType] ?? 'Import issue';
+  }
+
+  canAction(issue: BulkOnboardingGroupedIssue, action: BulkOnboardingIssueAction): boolean {
+    return issue.allowedActions.includes(action);
+  }
+
+  issueCapacityLabel(issue: BulkOnboardingGroupedIssue): string | null {
+    const ctx = issue.context;
+    if (ctx?.availableSeats == null || ctx.requiredSeatsInBatch == null) return null;
+    return `${ctx.availableSeats} seat${ctx.availableSeats === 1 ? '' : 's'} available · ${ctx.requiredSeatsInBatch} needed`;
+  }
+
+  toggleIssueRows(issueKey: string): void {
+    this.expandedIssueKey.set(this.expandedIssueKey() === issueKey ? null : issueKey);
+  }
+
+  friendlyRowMessage(row: RowValidationResultItem): string {
+    const code = row.errors?.[0]?.code;
+    switch (code) {
+      case 'department_not_found':
+        return 'This department could not be matched. Choose an existing department or create a new one.';
+      case 'position_not_found':
+        return 'This position could not be matched. Choose an existing position or create a new one.';
+      case 'position_capacity_exceeded':
+        return 'This position does not have enough open seats for everyone assigned to it in this import.';
+      case 'work_mode_missing':
+        return 'Work mode is required.';
+      case 'duplicate_work_email':
+        return 'This email is already used by another employee.';
+      case 'missing_first_name':
+        return 'First name is required.';
+      case 'missing_last_name':
+        return 'Last name is required.';
+      case 'reporting_manager_required':
+      case 'reporting_manager_not_found':
+        return 'Choose which employee should be the reporting manager.';
+      default:
+        return row.errorMessage ?? 'This row needs attention.';
+    }
+  }
+
+  openResolver(issue: BulkOnboardingGroupedIssue, action: BulkIssueResolverAction): void {
+    this.resolverIssue.set(issue);
+    this.resolverAction.set(action);
+    this.resolverOpen.set(true);
+  }
+
+  closeResolver(): void {
+    this.resolverOpen.set(false);
+    this.resolverIssue.set(null);
+    this.resolverAction.set(null);
+    this.resolverSubmitting.set(false);
+  }
+
+  async onUseSuggestedMatch(issue: BulkOnboardingGroupedIssue): Promise<void> {
+    const suggestion = issue.suggestions[0];
+    if (!suggestion) return;
+    await this.store.resolveIssue({
+      issueKey: issue.issueKey,
+      action: 'map_existing',
+      targetId: suggestion.id,
+      applyToRowNumbers: issue.affectedRowNumbers
+    });
+  }
+
+  async onResolverApply(payload: ResolveBulkOnboardingIssuesPayload): Promise<void> {
+    this.resolverSubmitting.set(true);
+    const ok = await this.store.resolveIssue(payload);
+    this.resolverSubmitting.set(false);
+    if (ok) this.closeResolver();
+  }
+
+  onChooseExisting(issue: BulkOnboardingGroupedIssue): void {
+    this.openResolver(issue, 'map_existing');
+  }
+
+  onEditImportedValue(issue: BulkOnboardingGroupedIssue): void {
+    if (
+      issue.issueType === 'reporting_manager_required' ||
+      issue.issueType === 'reporting_manager_not_found'
+    ) {
+      this.openResolver(issue, 'choose_manager');
+      return;
+    }
+    this.openResolver(issue, 'edit_imported_value');
+  }
+
+  onSetDefault(issue: BulkOnboardingGroupedIssue): void {
+    this.openResolver(issue, 'set_default');
+  }
+
+  onCreateDepartment(issue: BulkOnboardingGroupedIssue): void {
+    this.openResolver(issue, 'create_department');
+  }
+
+  onCreatePosition(issue: BulkOnboardingGroupedIssue): void {
+    this.openResolver(issue, 'create_position');
+  }
+
+  onIncreaseCapacity(issue: BulkOnboardingGroupedIssue): void {
+    this.openResolver(issue, 'increase_capacity');
+  }
+
+  onResolveCapacity(issue: BulkOnboardingGroupedIssue): void {
+    this.openResolver(issue, 'map_existing');
   }
 }

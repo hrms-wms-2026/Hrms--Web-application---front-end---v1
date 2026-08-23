@@ -1,14 +1,18 @@
 import { ChangeDetectionStrategy, Component, inject, input } from '@angular/core';
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
+import { firstValueFrom } from 'rxjs';
 import { ButtonComponent } from '../../../../../shared/ui/button/button.component';
+import { DatePickerComponent } from '../../../../../shared/ui/date-picker/date-picker.component';
 import { InputComponent } from '../../../../../shared/ui/input/input.component';
 import { SelectComponent } from '../../../../../shared/ui/select/select.component';
+import { OffboardingApiService } from '../../../data-access/offboarding-api.service';
+import { KnowledgeRiskLevel, OffboardingReason, RehireEligibility } from '../../../models/offboarding.model';
 import { OffboardingWizardStore } from '../../../state/offboarding-wizard.store';
 
 @Component({
   selector: 'app-offboarding-start-step',
   standalone: true,
-  imports: [ReactiveFormsModule, ButtonComponent, InputComponent, SelectComponent],
+  imports: [ReactiveFormsModule, ButtonComponent, DatePickerComponent, InputComponent, SelectComponent],
   template: `
     <div class="obs-step-container">
       <div class="obs-step-header">
@@ -28,9 +32,9 @@ import { OffboardingWizardStore } from '../../../state/offboarding-wizard.store'
           [value]="form.controls.reason.value || ''"
           (valueChange)="form.controls.reason.setValue($any($event))"
         />
-        <app-input
+        <app-date-picker
           label="Last working day *"
-          type="date"
+          placeholder="YYYY-MM-DD"
           [value]="form.controls.lastWorkingDate.value || ''"
           (valueChange)="form.controls.lastWorkingDate.setValue($event)"
         />
@@ -59,72 +63,53 @@ import { OffboardingWizardStore } from '../../../state/offboarding-wizard.store'
             (valueChange)="form.controls.notes.setValue($event || null)"
           />
         </div>
-        <div class="obs-form-actions col-span-full">
-          <app-button variant="primary" type="submit" [loading]="store.saving()" [disabled]="form.invalid">
-            Start Offboarding
+        <div class="col-span-full flex justify-end gap-3 pt-4 border-t border-[var(--color-border)]">
+          <app-button variant="primary" type="submit">
+            Continue to Checklist
           </app-button>
         </div>
       </form>
     </div>
   `,
-  styles: [`
-    .obs-step-container {
-      max-width: 42rem;
-    }
-    .obs-step-header {
-      margin-bottom: 1.25rem;
-    }
-    .obs-step-title {
-      margin: 0;
-      font-size: 1.05rem;
-      font-weight: 700;
-      color: var(--color-text-primary);
-    }
-    .obs-step-subtitle {
-      margin: 0.25rem 0 0;
-      font-size: 0.825rem;
-      color: var(--color-text-secondary);
-    }
-    .obs-form-grid {
-      display: grid;
-      grid-template-columns: repeat(2, 1fr);
-      gap: 1rem;
-    }
-    .obs-form-actions {
-      display: flex;
-      justify-content: flex-end;
-      margin-top: 0.5rem;
-    }
-    @media (max-width: 640px) {
-      .obs-form-grid {
-        grid-template-columns: 1fr;
-      }
-    }
-  `],
   changeDetection: ChangeDetectionStrategy.OnPush
 })
 export class OffboardingStartStepComponent {
-  readonly employeeId = input.required<string>();
-  readonly store = inject(OffboardingWizardStore);
   private readonly fb = inject(FormBuilder);
+  private readonly offboardingApi = inject(OffboardingApiService);
+  readonly store = inject(OffboardingWizardStore, { optional: true });
+
+  readonly employeeId = input.required<string>();
 
   readonly form = this.fb.group({
-    reason: ['resignation' as const, Validators.required],
-    lastWorkingDate: ['', Validators.required],
-    knowledgeRiskLevel: ['medium' as const, Validators.required],
-    rehireEligibility: [null as 'eligible' | 'not_eligible' | 'conditional' | null],
-    notes: [null as string | null]
+    reason: ['resignation', Validators.required],
+    lastWorkingDate: [new Date().toISOString().slice(0, 10), Validators.required],
+    knowledgeRiskLevel: ['medium', Validators.required],
+    rehireEligibility: ['eligible' as string | null],
+    notes: ['' as string | null]
   });
 
   async submit(): Promise<void> {
-    if (this.form.invalid) return;
-    const value = this.form.getRawValue();
-    await this.store.startOffboarding(this.employeeId(), {
-      reason: value.reason!,
-      lastWorkingDate: value.lastWorkingDate!,
-      knowledgeRiskLevel: value.knowledgeRiskLevel!,
-      rehireEligibility: value.rehireEligibility,
-      notes: value.notes
-    });
+    if (this.form.invalid) {
+      this.form.markAllAsTouched();
+      return;
+    }
+
+    const val = this.form.getRawValue();
+    const empId = this.employeeId();
+    if (!empId) return;
+
+    await firstValueFrom(
+      this.offboardingApi.startOffboarding(empId, {
+        reason: val.reason as OffboardingReason,
+        lastWorkingDate: val.lastWorkingDate!,
+        knowledgeRiskLevel: val.knowledgeRiskLevel as KnowledgeRiskLevel,
+        rehireEligibility: (val.rehireEligibility as RehireEligibility) || null,
+        notes: val.notes || null
+      })
+    );
+
+    if (this.store) {
+      this.store.loadOffboarding(empId);
+    }
   }
 }

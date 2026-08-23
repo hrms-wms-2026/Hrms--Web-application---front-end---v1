@@ -54,4 +54,25 @@ describe('BulkOnboardingApiService', () => {
     expect(req.request.method).toBe('GET');
     req.flush({ id: 'batch-1', status: 'drafts_created', totalRows: 1, validRows: 1, invalidRows: 0, rows: [] });
   });
+
+  it('resolveIssues() posts to /onboarding/bulk-batches/{id}/resolve-issues', () => {
+    service
+      .resolveIssues('batch-1', {
+        issueKey: 'department_not_found:Sales',
+        action: 'map_existing',
+        targetId: 'dept-1',
+        applyToRowNumbers: [2, 5]
+      })
+      .subscribe();
+
+    const req = httpMock.expectOne(`${environment.apiUrl}/onboarding/bulk-batches/batch-1/resolve-issues`);
+    expect(req.request.method).toBe('POST');
+    expect(req.request.body).toEqual({
+      issueKey: 'department_not_found:Sales',
+      action: 'map_existing',
+      targetId: 'dept-1',
+      applyToRowNumbers: [2, 5]
+    });
+    req.flush({ validRows: 2, invalidRows: 0, totalRows: 2, rows: [], issues: [] });
+  });
 });

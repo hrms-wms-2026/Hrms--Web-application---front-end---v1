@@ -17,10 +17,23 @@
             <!-- Employee (Avatar + Status Dot + Name & Email) -->
             <td class="col-employee">
               <div class="emp-identity">
-                <div class="emp-avatar-wrapper">
-                  <div class="emp-avatar">
+                <div
+                  class="emp-avatar-wrapper"
+                  [class.emp-avatar-wrapper--warning]="employee.attendanceSummary?.showNotClockedInWarning === true"
+                  [attr.role]="employee.attendanceSummary?.showNotClockedInWarning === true ? 'img' : null"
+                  [attr.tabindex]="employee.attendanceSummary?.showNotClockedInWarning === true ? 0 : null"
+                  [attr.aria-label]="employee.attendanceSummary?.showNotClockedInWarning === true ? 'Still has not clocked in' : null"
+                  [attr.title]="employee.attendanceSummary?.showNotClockedInWarning === true ? 'Still has not clocked in' : null"
+                >
+                  <div
+                    class="emp-avatar"
+                    [class.emp-avatar--warning]="employee.attendanceSummary?.showNotClockedInWarning === true"
+                  >
                     {{ avatarInitials(employee.fullName) }}
                   </div>
+                  @if (employee.attendanceSummary?.showNotClockedInWarning === true) {
+                    <span class="emp-attendance-warning-tooltip" role="tooltip">Still has not clocked in</span>
+                  }
                   <span
                     class="emp-status-dot-avatar"
                     [class.emp-status-dot-avatar--active]="employee.status.toLowerCase() === 'active'"

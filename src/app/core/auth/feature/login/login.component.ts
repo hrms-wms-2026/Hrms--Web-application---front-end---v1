@@ -1,4 +1,4 @@
-import { Component, OnInit, inject } from '@angular/core';
+import { Component, OnInit, inject, signal } from '@angular/core';
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { Router } from '@angular/router';
 import { AuthStore } from '../../state/auth.store';
@@ -17,22 +17,24 @@ export class LoginComponent implements OnInit {
   private router = inject(Router);
   store = inject(AuthStore);
 
+  readonly showPassword = signal(false);
+
   form = this.fb.nonNullable.group({
     email: ['', [Validators.required, Validators.email]],
     password: ['', [Validators.required]]
   });
 
   ngOnInit(): void {
-    // POST /auth/login only works against the root/system host (see getSystemApiUrl); a tenant
-    // subdomain must never submit credentials itself, so bounce it to the root host's /auth/login
-    // before the form can be used.
     if (isTenantHostname(window.location.hostname)) {
       window.location.href = buildRootUrl('/auth/login');
     }
   }
 
+  toggleShowPassword(): void {
+    this.showPassword.update((v) => !v);
+  }
+
   signInWithGoogle(): void {
-    // Google SSO OAuth trigger
     console.log('Initiating Google SSO login...');
   }
 
@@ -55,12 +57,12 @@ export class LoginComponent implements OnInit {
     if (this.store.legalAcceptanceRequired()) {
       this.router.navigate(['/auth/legal-consent']);
     } else if (this.store.redirectRequired()) {
-      // Every gate cleared, but this is still the base host: hand off to the tenant host's
-      // /auth/continue, which consumes the one-time code and creates the real session there.
       const url = this.store.continueUrl();
       if (url) {
         window.location.href = url;
       }
+    } else {
+      this.router.navigate(['/people/employees']);
     }
   }
 }

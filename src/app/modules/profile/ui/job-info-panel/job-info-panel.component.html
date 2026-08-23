@@ -1,19 +1,106 @@
 <section class="pf-section">
-  <h3 class="pf-section__title">Job information</h3>
-  <p class="pf-section__description">These fields are managed by HR. Contact your administrator to request a change.</p>
+  <div class="pf-notice-banner">
+    <div class="pf-notice-banner__icon">
+      <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
+      </svg>
+    </div>
+    <div class="pf-notice-banner__content">
+      <span class="pf-notice-banner__title">HR Managed Information</span>
+      <p class="pf-notice-banner__text">These employment and organizational details are managed by HR. Contact your administrator if any information requires updating.</p>
+    </div>
+  </div>
 
-  <dl class="pf-info-grid">
-    <div><dt>Employee number</dt><dd>{{ jobInformation().employeeNumber }}</dd></div>
-    <div><dt>Company</dt><dd>{{ jobInformation().legalEntityName ?? '—' }}</dd></div>
-    <div><dt>Department</dt><dd>{{ jobInformation().departmentName ?? '—' }}</dd></div>
-    <div><dt>Position</dt><dd>{{ jobInformation().positionName ?? '—' }}</dd></div>
-    <div><dt>Reports to</dt><dd>{{ jobInformation().reportingManagerName ?? '—' }}</dd></div>
-    <div><dt>Employment type</dt><dd>{{ jobInformation().employmentTypeLabel }}</dd></div>
-    <div><dt>Employment status</dt><dd>{{ jobInformation().employmentStatus }}</dd></div>
-    <div><dt>Start date</dt><dd>{{ jobInformation().hireDate }}</dd></div>
+  <div class="pf-grid-container">
+    <div class="pf-card-tile">
+      <span class="pf-card-tile__label">Employee Number</span>
+      <div class="pf-card-tile__value">
+        <span class="pf-mono-badge">{{ jobInformation().employeeNumber }}</span>
+      </div>
+    </div>
+
+    <div class="pf-card-tile">
+      <span class="pf-card-tile__label">Company</span>
+      <div class="pf-card-tile__value">
+        @if (jobInformation().legalEntityName) {
+          <span class="font-medium text-[var(--color-text-primary)]">{{ jobInformation().legalEntityName }}</span>
+        } @else {
+          <span class="pf-empty-val">Not assigned</span>
+        }
+      </div>
+    </div>
+
+    <div class="pf-card-tile">
+      <span class="pf-card-tile__label">Department</span>
+      <div class="pf-card-tile__value">
+        @if (jobInformation().departmentName) {
+          <span class="font-medium text-[var(--color-text-primary)]">{{ jobInformation().departmentName }}</span>
+        } @else {
+          <span class="pf-empty-val">Not assigned</span>
+        }
+      </div>
+    </div>
+
+    <div class="pf-card-tile">
+      <span class="pf-card-tile__label">Position</span>
+      <div class="pf-card-tile__value">
+        @if (jobInformation().positionName) {
+          <span class="font-medium text-[var(--color-text-primary)]">{{ jobInformation().positionName }}</span>
+        } @else {
+          <span class="pf-empty-val">Not assigned</span>
+        }
+      </div>
+    </div>
+
+    <div class="pf-card-tile">
+      <span class="pf-card-tile__label">Reports To</span>
+      <div class="pf-card-tile__value">
+        @if (jobInformation().reportingManagerName) {
+          <span class="font-medium text-[var(--color-text-primary)]">{{ jobInformation().reportingManagerName }}</span>
+        } @else {
+          <span class="pf-empty-val">Not assigned</span>
+        }
+      </div>
+    </div>
+
+    <div class="pf-card-tile">
+      <span class="pf-card-tile__label">Employment Type</span>
+      <div class="pf-card-tile__value">
+        <span class="pf-type-pill">{{ jobInformation().employmentTypeLabel }}</span>
+      </div>
+    </div>
+
+    <div class="pf-card-tile">
+      <span class="pf-card-tile__label">Employment Status</span>
+      <div class="pf-card-tile__value">
+        <span class="pf-status-pill pf-status-pill--active">
+          <span class="pf-status-dot"></span>
+          <span class="capitalize">{{ jobInformation().employmentStatus }}</span>
+        </span>
+      </div>
+    </div>
+
+    <div class="pf-card-tile">
+      <span class="pf-card-tile__label">Start Date</span>
+      <div class="pf-card-tile__value font-medium text-[var(--color-text-primary)]">
+        {{ jobInformation().hireDate }}
+      </div>
+    </div>
+
     @if (jobInformation().probationEndDate) {
-      <div><dt>Probation end date</dt><dd>{{ jobInformation().probationEndDate }}</dd></div>
+      <div class="pf-card-tile">
+        <span class="pf-card-tile__label">Probation End Date</span>
+        <div class="pf-card-tile__value font-medium text-[var(--color-text-primary)]">
+          {{ jobInformation().probationEndDate }}
+        </div>
+      </div>
     }
-    <div><dt>Work mode</dt><dd>{{ jobInformation().workMode }}</dd></div>
-  </dl>
+
+    <div class="pf-card-tile">
+      <span class="pf-card-tile__label">Work Mode</span>
+      <div class="pf-card-tile__value">
+        <span class="pf-workmode-pill">{{ jobInformation().workMode }}</span>
+      </div>
+    </div>
+  </div>
 </section>

@@ -37,12 +37,34 @@ export class AcceptInvitationComponent implements OnInit {
   previewError = signal<string | null>(null);
   invitation = signal<InvitationPreviewDto | null>(null);
   legalDocuments = signal<PublishedLegalDocumentDto[]>([]);
+  activeDoc = signal<PublishedLegalDocumentDto | null>(null);
+
+  readonly showPassword = signal(false);
+  readonly showConfirmPassword = signal(false);
 
   form = this.fb.nonNullable.group({
     password: ['', [Validators.required, Validators.minLength(8)]],
     confirmPassword: ['', [Validators.required]],
     legalAccepted: [false]
   });
+
+  toggleShowPassword(): void {
+    this.showPassword.update((v) => !v);
+  }
+
+  toggleShowConfirmPassword(): void {
+    this.showConfirmPassword.update((v) => !v);
+  }
+
+  openDocument(doc: PublishedLegalDocumentDto, event: Event): void {
+    event.preventDefault();
+    event.stopPropagation();
+    this.activeDoc.set(doc);
+  }
+
+  closeDocument(): void {
+    this.activeDoc.set(null);
+  }
 
   async ngOnInit(): Promise<void> {
     if (!this.token) {
@@ -61,49 +83,51 @@ export class AcceptInvitationComponent implements OnInit {
     }
 
     this.invitation.set(invitation);
+    this.loadingPreview.set(false);
 
-    // The backend already computes a definitive status (pending/accepted/revoked/expired) even
-    // on a successful 200 response - only "pending" should ever render the password form.
     if (invitation.status !== 'pending') {
-      this.loadingPreview.set(false);
       return;
     }
 
     try {
-      const legalDocuments = await firstValueFrom(this.api.getCurrentLegalDocuments());
-      this.legalDocuments.set(legalDocuments);
-      if (legalDocuments.length > 0) {
-        this.form.controls.legalAccepted.addValidators(Validators.requiredTrue);
-        this.form.controls.legalAccepted.updateValueAndValidity();
-      }
-    } catch (err) {
-      this.previewError.set(this.describePreviewFailure(err));
-    } finally {
-      this.loadingPreview.set(false);
+      const docs = await firstValueFrom(this.api.getCurrentLegalDocuments());
+      this.legalDocuments.set(docs);
+    } catch {
+      this.previewError.set(NETWORK_FAILURE_MESSAGE);
     }
   }
 
   statusMessage(): string {
     const status = this.invitation()?.status ?? '';
-    return STATUS_MESSAGES[status] ?? 'This invitation is not available.';
+    return STATUS_MESSAGES[status] ?? 'This invitation cannot be processed right now.';
   }
 
   private describePreviewFailure(err: unknown): string {
     if (err instanceof HttpErrorResponse) {
       if (err.status === 404) {
-        return 'This invitation link could not be found. Double-check the link or ask for a new invite.';
+        return 'This invitation link could not be found.';
       }
-      if (err.status === 0 || err.status >= 500) {
-        return NETWORK_FAILURE_MESSAGE;
+      if (err.status === 410) {
+        return 'This invitation link has expired.';
+      }
+      if (err.error && typeof err.error.detail === 'string') {
+        return err.error.detail;
       }
     }
     return NETWORK_FAILURE_MESSAGE;
   }
 
   async submit(): Promise<void> {
-    const { password, confirmPassword } = this.form.getRawValue();
-    if (password !== confirmPassword) {
+    if (this.form.controls.password.value !== this.form.controls.confirmPassword.value) {
       this.form.controls.confirmPassword.setErrors({ mismatch: true });
+      this.form.markAllAsTouched();
+      return;
+    }
+
+    if (this.legalDocuments().length > 0 && !this.form.controls.legalAccepted.value) {
+      this.form.controls.legalAccepted.setErrors({ required: true });
+      this.form.markAllAsTouched();
+      return;
     }
 
     if (this.form.invalid) {
@@ -111,24 +135,22 @@ export class AcceptInvitationComponent implements OnInit {
       return;
     }
 
-    const acceptances = this.legalDocuments().map((doc) => ({
-      document_type: doc.document_type,
-      version: doc.version,
-      decision: 'accepted' as const
-    }));
+    const payload = {
+      password: this.form.controls.password.value,
+      confirm_password: this.form.controls.confirmPassword.value,
+      acceptances: this.legalDocuments().map((d) => ({
+        document_type: d.document_type,
+        version: d.version,
+        decision: 'accepted' as const
+      }))
+    };
 
     try {
-      await this.store.acceptEmployeeInvitation(this.token, {
-        password,
-        confirm_password: confirmPassword,
-        acceptances
-      });
+      await this.store.acceptEmployeeInvitation(this.token, payload);
     } catch {
       return;
     }
 
-    // TenantHostDirect finalization signs the session in immediately on this same host - no
-    // continue_url hand-off needed, unlike login()/acceptLegalDocuments() on the root host.
     this.router.navigate(['/dashboard']);
   }
 }

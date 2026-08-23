@@ -104,7 +104,10 @@ export class GeneralSettingsComponent {
     status: ['active' as 'active' | 'inactive', [Validators.required, oneOfValidator(['active', 'inactive'])]],
     // Work hours — optional pair, validated as a group (both-or-neither, start < end).
     workStartTime: ['', [Validators.pattern(/^([01]\d|2[0-3]):[0-5]\d$/)]],
-    workEndTime: ['', [Validators.pattern(/^([01]\d|2[0-3]):[0-5]\d$/)]]
+    workEndTime: ['', [Validators.pattern(/^([01]\d|2[0-3]):[0-5]\d$/)]],
+    // Break duration — optional, independent of work start/end time. Blank allowed;
+    // non-negative whole-minute values only (the pattern rejects decimals/negatives).
+    breakDurationMinutes: ['', [Validators.pattern(/^\d+$/)]]
   }, { validators: [workTimePairValidator()] });
 
   constructor() {
@@ -243,7 +246,8 @@ export class GeneralSettingsComponent {
       timeFormat: '24h' as const,
       status: 'active' as const,
       workStartTime: '',
-      workEndTime: ''
+      workEndTime: '',
+      breakDurationMinutes: ''
     };
   }
 
@@ -268,7 +272,8 @@ export class GeneralSettingsComponent {
       timeFormat: settings.timeFormat,
       status: settings.status,
       workStartTime: settings.workStartTime ?? '',
-      workEndTime: settings.workEndTime ?? ''
+      workEndTime: settings.workEndTime ?? '',
+      breakDurationMinutes: settings.breakDurationMinutes != null ? String(settings.breakDurationMinutes) : ''
     };
   }
 
@@ -296,7 +301,8 @@ export class GeneralSettingsComponent {
       timeFormat: v.timeFormat,
       status: v.status,
       workStartTime: v.workStartTime.trim() !== '' ? v.workStartTime : null,
-      workEndTime: v.workEndTime.trim() !== '' ? v.workEndTime : null
+      workEndTime: v.workEndTime.trim() !== '' ? v.workEndTime : null,
+      breakDurationMinutes: v.breakDurationMinutes.trim() !== '' ? Number(v.breakDurationMinutes) : null
     };
   }
 }

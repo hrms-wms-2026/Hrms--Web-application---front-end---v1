@@ -2,6 +2,7 @@ import { ChangeDetectionStrategy, Component, computed, effect, inject, input, ou
 import { toSafeErrorMessage } from '../../../../core/services/error-handler.service';
 import { NotificationService } from '../../../../core/services/notification.service';
 import { ButtonComponent } from '../../../../shared/ui/button/button.component';
+import { DatePickerComponent } from '../../../../shared/ui/date-picker/date-picker.component';
 import { ModalComponent } from '../../../../shared/ui/modal/modal.component';
 import { PositionApiService } from '../../../organization/data-access/position-api.service';
 import { PositionListItemResponse } from '../../../organization/models/position.model';
@@ -12,7 +13,7 @@ import { ReportsToPickerComponent } from '../reports-to-picker/reports-to-picker
 @Component({
   selector: 'app-change-position-modal',
   standalone: true,
-  imports: [ModalComponent, ButtonComponent, ReportsToPickerComponent],
+  imports: [ModalComponent, ButtonComponent, DatePickerComponent, ReportsToPickerComponent],
   template: `
     <app-modal [open]="open()" [title]="modalTitle()" (closed)="onClose()">
       <div class="flex flex-col gap-4">
@@ -49,15 +50,12 @@ import { ReportsToPickerComponent } from '../reports-to-picker/reports-to-picker
             />
           </div>
         }
-        <label class="flex flex-col gap-1 text-sm">
-          <span class="text-[var(--color-text-secondary)]">Effective from</span>
-          <input
-            type="date"
-            class="rounded-md border border-[var(--color-border)] p-2"
-            [value]="effectiveFrom()"
-            (change)="effectiveFrom.set($any($event.target).value)"
-          />
-        </label>
+        <app-date-picker
+          label="Effective from"
+          placeholder="YYYY-MM-DD"
+          [value]="effectiveFrom()"
+          (valueChange)="effectiveFrom.set($event)"
+        />
         <div class="flex justify-end gap-2">
           <app-button variant="secondary" (pressed)="onClose()">Cancel</app-button>
           <app-button
@@ -119,7 +117,7 @@ export class ChangePositionModalComponent {
         this.positions.set(page.items.filter((p) => p.id !== this.currentPositionId()));
       },
       error: (err) => {
-        this.loadError.set(toSafeErrorMessage(err, 'Could not load positions.'));
+        this.loadError.set(toSafeErrorMessage(err, 'Failed to load positions for promotion/transfer.'));
       }
     });
   }
@@ -133,62 +131,59 @@ export class ChangePositionModalComponent {
       return;
     }
 
-    const reportsToPositionId = this.positions().find((p) => p.id === positionId)?.reportsToPositionId ?? null;
-    if (!reportsToPositionId) {
-      return;
-    }
-
-    this.peopleApi.getActiveHolders(this.legalEntityId(), reportsToPositionId).subscribe({
-      next: (holders) => {
-        if (this.selectedPositionId() !== positionId) {
-          return;
-        }
+    this.peopleApi.getActiveHolders(this.legalEntityId(), positionId).subscribe({
+      next: (holders: readonly ActiveHolder[]) => {
         this.activeHolders.set(holders);
+        if (holders.length === 1) {
+          this.selectedReportsToEmployeeId.set(holders[0].employeeId);
+        }
       },
       error: () => {
-        if (this.selectedPositionId() !== positionId) {
-          return;
-        }
         this.activeHolders.set([]);
       }
     });
   }
 
-  submit(): void {
-    if (!this.selectedPositionId() || !this.effectiveFrom()) {
-      return;
-    }
-    if (this.selectedPositionRequiresManagerPick() && !this.selectedReportsToEmployeeId()) {
-      return;
-    }
-    this.submitting.set(true);
-    this.peopleApi
-      .changePosition(this.employeeId(), {
-        positionId: this.selectedPositionId(),
-        effectiveFrom: this.effectiveFrom(),
-        changeReason: this.changeReason(),
-        reportsToEmployeeId: this.selectedReportsToEmployeeId()
-      })
-      .subscribe({
-        next: (response) => {
-          this.submitting.set(false);
-          if (response.pendingApproval) {
-            this.pendingApproval.emit();
-          } else {
-            this.changed.emit();
-          }
-        },
-        error: (err) => {
-          this.submitting.set(false);
-          this.notifications.error(toSafeErrorMessage(err, 'Could not change position.'));
-        }
-      });
-  }
-
   onClose(): void {
     this.selectedPositionId.set('');
-    this.selectedReportsToEmployeeId.set(null);
+    this.loadError.set(null);
     this.activeHolders.set([]);
+    this.selectedReportsToEmployeeId.set(null);
     this.closed.emit();
+  }
+
+  submit(): void {
+    const posId = this.selectedPositionId();
+    const eff = this.effectiveFrom();
+    if (!posId || !eff) {
+      return;
+    }
+
+    this.submitting.set(true);
+
+    const payload = {
+      positionId: posId,
+      effectiveFrom: eff,
+      changeReason: this.changeReason(),
+      reportsToEmployeeId: this.selectedReportsToEmployeeId()
+    };
+
+    this.peopleApi.changePosition(this.employeeId(), payload).subscribe({
+      next: (res) => {
+        this.submitting.set(false);
+        if (res.pendingApproval) {
+          this.notifications.success('Position change request submitted for approval.');
+          this.pendingApproval.emit();
+        } else {
+          this.notifications.success('Position updated successfully.');
+          this.changed.emit();
+        }
+        this.onClose();
+      },
+      error: (err) => {
+        this.submitting.set(false);
+        this.notifications.error(toSafeErrorMessage(err, 'Failed to change position.'));
+      }
+    });
   }
 }

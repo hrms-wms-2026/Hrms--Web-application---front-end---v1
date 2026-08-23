@@ -56,4 +56,22 @@ describe('InputComponent', () => {
     const input = fixture.nativeElement.querySelector('input') as HTMLInputElement;
     expect(input.type).toBe('date');
   });
+
+  it('toggles password visibility when eye toggle button is clicked', () => {
+    const fixture = TestBed.createComponent(InputComponent);
+    fixture.componentRef.setInput('type', 'password');
+    fixture.detectChanges();
+
+    const input = fixture.nativeElement.querySelector('input') as HTMLInputElement;
+    const button = fixture.nativeElement.querySelector('button') as HTMLButtonElement;
+
+    expect(input.type).toBe('password');
+    expect(button.getAttribute('aria-label')).toBe('Show password');
+
+    button.click();
+    fixture.detectChanges();
+
+    expect(input.type).toBe('text');
+    expect(button.getAttribute('aria-label')).toBe('Hide password');
+  });
 });
