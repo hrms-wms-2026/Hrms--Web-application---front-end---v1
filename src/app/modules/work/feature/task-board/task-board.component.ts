@@ -150,7 +150,11 @@ export class TaskBoardComponent implements OnInit, AfterViewChecked {
     this.highlightTaskId = this.route.snapshot?.queryParamMap?.get('highlightTaskId') ?? null;
     if (!projectId) return;
 
-    void this.projectStore.loadMyMilestones(projectId);
+    // No loadMyMilestones() call here - ProjectDetailComponent (the parent route) already
+    // awaits it and gates rendering of this component's outlet until it resolves, so modules()
+    // is already populated by the time this component exists. A second call here would just be
+    // a redundant request for data this component can already read reactively off the shared
+    // ProjectDetailStore.
     void this.loadAssignableMembers(projectId);
     this.reload();
   }
