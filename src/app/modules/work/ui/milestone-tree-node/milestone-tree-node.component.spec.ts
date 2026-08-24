@@ -1,6 +1,8 @@
 import { ComponentFixture, TestBed } from '@angular/core/testing';
+import { of } from 'rxjs';
 import { MilestoneTreeNodeComponent } from './milestone-tree-node.component';
 import { MilestoneTreeNode } from '../../models/milestone.model';
+import { PeopleApiService } from '../../../people/data-access/people-api.service';
 
 describe('MilestoneTreeNodeComponent', () => {
   let fixture: ComponentFixture<MilestoneTreeNodeComponent>;
@@ -18,6 +20,13 @@ describe('MilestoneTreeNodeComponent', () => {
   };
 
   function setup(node: MilestoneTreeNode, selectedId: string | null = null, expandedByDefault = true): void {
+    TestBed.resetTestingModule();
+    TestBed.configureTestingModule({
+      imports: [MilestoneTreeNodeComponent],
+      providers: [
+        { provide: PeopleApiService, useValue: { getEmployee: vi.fn().mockReturnValue(of({ id: 'e1', fullName: 'Ada Lovelace' })) } }
+      ]
+    });
     fixture = TestBed.createComponent(MilestoneTreeNodeComponent);
     fixture.componentRef.setInput('node', node);
     fixture.componentRef.setInput('selectedId', selectedId);
@@ -41,8 +50,8 @@ describe('MilestoneTreeNodeComponent', () => {
   it('all rows share the same grid column template, only the title cell indents by depth', () => {
     setup(root, null, true);
     const rows = fixture.nativeElement.querySelectorAll('[data-testid="tree-row"]');
-    expect((rows[0] as HTMLElement).className).toContain('grid-cols-[1fr_112px_40px_88px_32px]');
-    expect((rows[1] as HTMLElement).className).toContain('grid-cols-[1fr_112px_40px_88px_32px]');
+    expect((rows[0] as HTMLElement).className).toContain('grid-cols-[1fr_112px_40px_88px_72px]');
+    expect((rows[1] as HTMLElement).className).toContain('grid-cols-[1fr_112px_40px_88px_72px]');
 
     const rootTitleCell = rows[0].querySelector('span') as HTMLElement;
     const childTitleCell = rows[1].querySelector('span') as HTMLElement;
@@ -63,9 +72,9 @@ describe('MilestoneTreeNodeComponent', () => {
     expect(fixture.nativeElement.textContent).not.toContain('Child');
   });
 
-  it('does not render a chevron for a leaf node', () => {
+  it('renders a chevron for a leaf objective so it can be expanded', () => {
     setup(leaf);
-    expect(fixture.nativeElement.querySelector('[data-testid="chevron"]')).toBeNull();
+    expect(fixture.nativeElement.querySelector('[data-testid="chevron"]')).not.toBeNull();
   });
 
   it('chevron click toggles expansion without emitting selected', () => {
@@ -172,5 +181,179 @@ describe('MilestoneTreeNodeComponent', () => {
 
     expect(created).toEqual([root]);
     expect(selectedCount).toBe(0);
+  });
+
+  it('shows a chevron on an unloaded sprint node', () => {
+    const sprint: MilestoneTreeNode = { ...leaf, id: 's1', title: 'Sprint 1', kind: 'sprint', sprintTaskLoadState: 'unloaded' };
+    setup(sprint);
+    expect(fixture.nativeElement.querySelector('[data-testid="chevron"]')).not.toBeNull();
+  });
+
+  it('does not show a chevron on a task node', () => {
+    const task: MilestoneTreeNode = { ...leaf, id: 't1', title: 'A task', kind: 'task' };
+    setup(task);
+    expect(fixture.nativeElement.querySelector('[data-testid="chevron"]')).toBeNull();
+  });
+
+  it('emits expandLeafRequested when a leaf objective chevron is clicked', () => {
+    setup(leaf);
+    const emitted: MilestoneTreeNode[] = [];
+    fixture.componentInstance.expandLeafRequested.subscribe((n) => emitted.push(n));
+
+    (fixture.nativeElement.querySelector('[data-testid="chevron"]') as HTMLElement).click();
+
+    expect(emitted).toEqual([leaf]);
+  });
+
+  it('does not emit expandLeafRequested when expanding a non-leaf objective', () => {
+    setup(root, null, true);
+    const emitted: MilestoneTreeNode[] = [];
+    fixture.componentInstance.expandLeafRequested.subscribe((n) => emitted.push(n));
+
+    (fixture.nativeElement.querySelector('[data-testid="chevron"]') as HTMLElement).click();
+
+    expect(emitted).toEqual([]);
+  });
+
+  it('does not emit expandLeafRequested when the leaf is already loaded', () => {
+    const loadedLeaf: MilestoneTreeNode = { ...leaf, sprintTaskLoadState: 'loaded' };
+    setup(loadedLeaf);
+    const emitted: MilestoneTreeNode[] = [];
+    fixture.componentInstance.expandLeafRequested.subscribe((n) => emitted.push(n));
+
+    const chevron = fixture.nativeElement.querySelector('[data-testid="chevron"]') as HTMLElement | null;
+    chevron?.click();
+
+    expect(emitted).toEqual([]);
+  });
+
+  it('re-emits expandLeafRequested from a nested leaf through the parent', () => {
+    setup(root, null, true);
+    const emitted: MilestoneTreeNode[] = [];
+    fixture.componentInstance.expandLeafRequested.subscribe((n) => emitted.push(n));
+
+    const chevrons = fixture.nativeElement.querySelectorAll('[data-testid="chevron"]');
+    (chevrons[chevrons.length - 1] as HTMLElement).click();
+
+    expect(emitted).toEqual([leaf]);
+  });
+
+  it('shows a retry control when sprint/task load failed and emits expandLeafRequested on click', () => {
+    const failed: MilestoneTreeNode = { ...leaf, sprintTaskLoadState: 'error' };
+    setup(failed);
+    const emitted: MilestoneTreeNode[] = [];
+    fixture.componentInstance.expandLeafRequested.subscribe((n) => emitted.push(n));
+
+    (fixture.nativeElement.querySelector('[data-testid="retry-sprint-task-load"]') as HTMLElement).click();
+
+    expect(emitted).toEqual([failed]);
+  });
+
+  it('re-emits createSprintRequested, createTaskRequested, editRequested, and membersRequested from a nested node', () => {
+    setup(root, null, true);
+    const createdSprints: MilestoneTreeNode[] = [];
+    const createdTasks: MilestoneTreeNode[] = [];
+    const edits: MilestoneTreeNode[] = [];
+    const members: MilestoneTreeNode[] = [];
+    fixture.componentInstance.createSprintRequested.subscribe((n) => createdSprints.push(n));
+    fixture.componentInstance.createTaskRequested.subscribe((n) => createdTasks.push(n));
+    fixture.componentInstance.editRequested.subscribe((n) => edits.push(n));
+    fixture.componentInstance.membersRequested.subscribe((n) => members.push(n));
+
+    const child = fixture.debugElement.query(
+      (de) => de.componentInstance instanceof MilestoneTreeNodeComponent && de.componentInstance !== fixture.componentInstance
+    );
+    child.componentInstance.createSprintRequested.emit(leaf);
+    child.componentInstance.createTaskRequested.emit(leaf);
+    child.componentInstance.editRequested.emit(leaf);
+    child.componentInstance.membersRequested.emit(leaf);
+
+    expect(createdSprints).toEqual([leaf]);
+    expect(createdTasks).toEqual([leaf]);
+    expect(edits).toEqual([leaf]);
+    expect(members).toEqual([leaf]);
+  });
+
+  describe('row action icons', () => {
+    const ownedLeaf: MilestoneTreeNode = { ...leaf, isOwner: true, kind: 'objective' };
+    const ownedSprint: MilestoneTreeNode = {
+      ...leaf, id: 'spr-1', title: 'Sprint 1', kind: 'sprint', isOwner: true, status: 'active', children: []
+    };
+    const taskNode: MilestoneTreeNode = {
+      ...leaf, id: 't1', title: 'A task', kind: 'task', isOwner: false, status: 'To Do', children: []
+    };
+
+    it('shows create-sub, members, and edit on a non-leaf owned objective', () => {
+      setup(root);
+      expect(fixture.nativeElement.querySelector('[data-testid="create-sub-button"]')).not.toBeNull();
+      expect(fixture.nativeElement.querySelector('[data-testid="members-button"]')).not.toBeNull();
+      expect(fixture.nativeElement.querySelector('[data-testid="edit-button"]')).not.toBeNull();
+      expect(fixture.nativeElement.querySelector('[data-testid="create-sprint-button"]')).toBeNull();
+    });
+
+    it('emits createSprintRequested from a leaf objective plus, not createRequested', () => {
+      setup(ownedLeaf);
+      const sprints: MilestoneTreeNode[] = [];
+      const subs: MilestoneTreeNode[] = [];
+      fixture.componentInstance.createSprintRequested.subscribe((n) => sprints.push(n));
+      fixture.componentInstance.createRequested.subscribe((n) => subs.push(n));
+
+      expect(fixture.nativeElement.querySelector('[data-testid="create-sub-button"]')).not.toBeNull();
+      (fixture.nativeElement.querySelector('[data-testid="create-sprint-button"]') as HTMLElement).click();
+
+      expect(sprints).toEqual([ownedLeaf]);
+      expect(subs).toEqual([]);
+    });
+
+    it('hides owner-gated icons on a leaf that the caller does not own', () => {
+      setup({ ...ownedLeaf, isOwner: false });
+      expect(fixture.nativeElement.querySelector('[data-testid="create-sprint-button"]')).toBeNull();
+      expect(fixture.nativeElement.querySelector('[data-testid="members-button"]')).toBeNull();
+      expect(fixture.nativeElement.querySelector('[data-testid="edit-button"]')).toBeNull();
+    });
+
+    it('emits createTaskRequested and editRequested from an owned sprint, with no members icon', () => {
+      setup(ownedSprint);
+      const tasks: MilestoneTreeNode[] = [];
+      const edits: MilestoneTreeNode[] = [];
+      fixture.componentInstance.createTaskRequested.subscribe((n) => tasks.push(n));
+      fixture.componentInstance.editRequested.subscribe((n) => edits.push(n));
+
+      expect(fixture.nativeElement.querySelector('[data-testid="members-button"]')).toBeNull();
+      (fixture.nativeElement.querySelector('[data-testid="create-task-button"]') as HTMLElement).click();
+      (fixture.nativeElement.querySelector('[data-testid="edit-button"]') as HTMLElement).click();
+
+      expect(tasks).toEqual([ownedSprint]);
+      expect(edits).toEqual([ownedSprint]);
+    });
+
+    it('shows only an ungated edit icon on a task row and renders its status', () => {
+      setup(taskNode);
+      expect(fixture.nativeElement.querySelector('[data-testid="create-task-button"]')).toBeNull();
+      expect(fixture.nativeElement.querySelector('[data-testid="members-button"]')).toBeNull();
+      expect(fixture.nativeElement.querySelector('[data-testid="edit-button"]')).not.toBeNull();
+      expect(fixture.nativeElement.querySelector('[data-testid="status-badge"]')?.textContent).toContain('To Do');
+
+      const edits: MilestoneTreeNode[] = [];
+      fixture.componentInstance.editRequested.subscribe((n) => edits.push(n));
+      (fixture.nativeElement.querySelector('[data-testid="edit-button"]') as HTMLElement).click();
+      expect(edits).toEqual([taskNode]);
+    });
+
+    it('re-emits deleteRequested from a nested task row', () => {
+      const ownedTask: MilestoneTreeNode = { ...taskNode, isOwner: true };
+      const parent: MilestoneTreeNode = { ...root, children: [ownedTask] };
+      setup(parent, null, true);
+      const deleted: MilestoneTreeNode[] = [];
+      fixture.componentInstance.deleteRequested.subscribe((n) => deleted.push(n));
+      (fixture.nativeElement.querySelector('[data-testid="delete-task-button"]') as HTMLElement).click();
+      expect(deleted[0].id).toBe('t1');
+    });
+
+    it('renders sprint status with the achieved-badge styling', () => {
+      setup(ownedSprint);
+      const badge = fixture.nativeElement.querySelector('[data-testid="status-badge"]') as HTMLElement;
+      expect(badge.textContent).toContain('active');
+    });
   });
 });

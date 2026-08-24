@@ -45,6 +45,22 @@ describe('ProjectSettingsModalComponent', () => {
     expect(emitted.fields.name).toBe('Website Revamp');
   });
 
+  it('emits the edited allocated hours value in fields.allocatedHours', () => {
+    fixture.componentRef.setInput('initialValue', detail);
+    fixture.detectChanges();
+    let emitted: any;
+    fixture.componentInstance.saved.subscribe((v: any) => (emitted = v));
+
+    const allocatedInput: HTMLInputElement = fixture.nativeElement.querySelector('[data-testid="allocated-hours-field"] input');
+    allocatedInput.value = '75';
+    allocatedInput.dispatchEvent(new Event('input'));
+    fixture.detectChanges();
+
+    (fixture.nativeElement.querySelector('[data-testid="submit-button"] button') as HTMLButtonElement).click();
+
+    expect(emitted.fields.allocatedHours).toBe(75);
+  });
+
   it('emits saved with achievedChanged:true, achieved:true when toggled on', () => {
     fixture.componentRef.setInput('initialValue', detail);
     fixture.detectChanges();

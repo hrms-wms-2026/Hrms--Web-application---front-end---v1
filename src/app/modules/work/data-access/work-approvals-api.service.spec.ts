@@ -40,7 +40,7 @@ describe('WorkApprovalsApiService', () => {
       objectiveId: 'obj-1',
       status: 'pending',
       payload: {
-        title: 'Build login', description: null, taskType: 'task', priority: 'medium',
+        title: 'Build login', description: null, categoryId: 'task', priority: 'medium',
         dueDate: null, estimatedHours: 5, storyPoints: null
       },
       createdAt: '2026-08-17T00:00:00Z'

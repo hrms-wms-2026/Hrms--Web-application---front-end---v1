@@ -11,35 +11,54 @@ import { TaskCreateModalComponent } from '../../ui/task-create-modal/task-create
 import { TaskDetailModalComponent } from '../../ui/task-detail-modal/task-detail-modal.component';
 import { SprintTabComponent } from '../../ui/sprint-tab/sprint-tab.component';
 import { SprintCreateFormComponent } from '../../ui/sprint-create-form/sprint-create-form.component';
+import { SprintEditFormComponent } from '../../ui/sprint-edit-form/sprint-edit-form.component';
 import { TaskTableComponent } from '../../ui/task-table/task-table.component';
 import { WorkTask } from '../../models/task.model';
+import { Sprint, SprintStatus } from '../../models/sprint.model';
 
 @Component({
   selector: 'app-task-backlog',
   standalone: true,
-  imports: [TaskCreateModalComponent, TaskDetailModalComponent, SprintTabComponent, SprintCreateFormComponent, TaskTableComponent, ButtonComponent],
+  imports: [TaskCreateModalComponent, TaskDetailModalComponent, SprintTabComponent, SprintCreateFormComponent, SprintEditFormComponent, TaskTableComponent, ButtonComponent],
   template: `
     @if (milestoneId(); as mId) {
       @if (isObjectiveOwner()) {
         <div class="task-backlog__toolbar">
-          @if (!createSprintOpen()) {
-            <app-button variant="primary" (pressed)="createSprintOpen.set(true)">Create Sprint</app-button>
-          }
+          <select
+            class="task-backlog__status-filter"
+            data-testid="sprint-status-filter"
+            [value]="sprintStatusFilter()"
+            (change)="sprintStatusFilter.set($any($event.target).value)"
+          >
+            <option value="all">All</option>
+            <option value="future">Future</option>
+            <option value="active">Active</option>
+            <option value="complete">Complete</option>
+            <option value="incomplete">Incomplete</option>
+            <option value="achieved">Achieved</option>
+          </select>
+          <app-button variant="primary" (pressed)="createSprintOpen.set(true)">Create Sprint</app-button>
         </div>
 
-        @if (createSprintOpen()) {
-          <app-sprint-create-form
-            [objectiveId]="mId"
-            [isObjectiveOwner]="isObjectiveOwner()"
-            (created)="createSprintOpen.set(false)"
-            (cancelled)="createSprintOpen.set(false)"
-          />
-        }
+        <app-sprint-create-form
+          [open]="createSprintOpen()"
+          [objectiveId]="mId"
+          [isObjectiveOwner]="isObjectiveOwner()"
+          (created)="createSprintOpen.set(false)"
+          (cancelled)="createSprintOpen.set(false)"
+        />
+        <app-sprint-edit-form
+          [open]="editingSprint() !== null"
+          [objectiveId]="mId"
+          [sprint]="editingSprint()"
+          (saved)="editingSprint.set(null)"
+          (cancelled)="editingSprint.set(null)"
+        />
       }
     }
 
-    @if (sprintStore.error() || sprintActionMessage()) {
-      <p class="task-backlog__sprint-message" role="alert">{{ sprintStore.error() ?? sprintActionMessage() }}</p>
+    @if (sprintStore.error()) {
+      <p class="task-backlog__sprint-message" role="alert">{{ sprintStore.error() }}</p>
     }
 
     @if (store.loading() || sprintStore.loading()) {
@@ -47,7 +66,7 @@ import { WorkTask } from '../../models/task.model';
     } @else if (store.error()) {
       <p class="task-backlog__error">{{ store.error() }}</p>
     } @else {
-      @for (sprint of sprintStore.sprints(); track sprint.id) {
+      @for (sprint of filteredSprints(); track sprint.id) {
         <app-sprint-tab
           [sprint]="sprint"
           [isObjectiveOwner]="isObjectiveOwner()"
@@ -55,6 +74,7 @@ import { WorkTask } from '../../models/task.model';
           [statusNames]="statusNames()"
           [expanded]="expandedSprintId() === sprint.id"
           (toggled)="toggleExpanded(sprint.id)"
+          (editRequested)="editingSprint.set(sprint)"
           (statusChangeRequested)="onSprintStatusChangeRequested(sprint.id, $event)"
           (createTaskRequested)="onCreateTaskForSprint(sprint.id)"
           (taskViewed)="onTaskViewed($event)"
@@ -73,6 +93,7 @@ import { WorkTask } from '../../models/task.model';
       <app-task-create-modal
         [open]="createOpen()"
         [objectiveId]="mId"
+        [projectId]="projectId()"
         [isObjectiveOwner]="isObjectiveOwner()"
         [activeSprints]="createModalSprints()"
         [assignableMembers]="assignableMembers()"
@@ -82,6 +103,7 @@ import { WorkTask } from '../../models/task.model';
       <app-task-detail-modal
         [open]="detailOpen()"
         [task]="selectedTask()"
+        [projectId]="projectId()"
         [isObjectiveOwner]="isObjectiveOwner()"
         [statuses]="store.statuses()"
         (closed)="detailOpen.set(false)"
@@ -91,7 +113,8 @@ import { WorkTask } from '../../models/task.model';
     }
   `,
   styles: [`
-    .task-backlog__toolbar { display: flex; justify-content: flex-end; margin-bottom: 12px; }
+    .task-backlog__toolbar { display: flex; justify-content: flex-end; align-items: center; gap: 8px; margin-bottom: 12px; }
+    .task-backlog__status-filter { border: 1px solid var(--color-border); border-radius: 8px; padding: 8px 10px; background: var(--color-surface); color: var(--color-text-primary); }
     .task-backlog__error { color: var(--color-danger); }
     .task-backlog__sprint-message { color: var(--color-danger-text, var(--color-danger)); font-size: 12px; margin-bottom: 8px; }
     .task-backlog__unsorted { margin-top: 16px; }
@@ -108,19 +131,25 @@ export class TaskBacklogComponent implements OnInit {
 
   protected readonly createOpen = signal(false);
   protected readonly createSprintOpen = signal(false);
+  protected readonly editingSprint = signal<Sprint | null>(null);
   protected readonly detailOpen = signal(false);
   protected readonly selectedTask = signal<WorkTask | null>(null);
   protected readonly milestoneId = signal<string | null>(null);
+  protected readonly projectId = signal('');
   protected readonly isObjectiveOwner = signal(false);
   protected readonly expandedSprintId = signal<string | null>(null);
   protected readonly createForSprintId = signal<string | null>(null);
   protected readonly assignableMembers = signal<{ employeeId: string; name: string }[]>([]);
-  protected readonly sprintActionMessage = signal<string | null>(null);
+  protected readonly sprintStatusFilter = signal<'all' | SprintStatus>('all');
 
   protected readonly statusNames = computed(() => Object.fromEntries(this.store.statuses().map((s) => [s.id, s.name])));
   protected readonly createModalSprints = computed(() =>
     this.createForSprintId() ? this.sprintStore.sprints().filter((s) => s.id === this.createForSprintId()) : this.sprintStore.sprints()
   );
+  protected readonly filteredSprints = computed(() => {
+    const filter = this.sprintStatusFilter();
+    return filter === 'all' ? this.sprintStore.sprints() : this.sprintStore.sprints().filter((s) => s.status === filter);
+  });
   // Tasks with no sprint, or whose sprint isn't among the currently-loaded sprints (e.g. an
   // orphaned reference to a deleted sprint), have nowhere to render inside the per-sprint tabs.
   protected readonly unsortedTasks = computed(() => {
@@ -129,6 +158,7 @@ export class TaskBacklogComponent implements OnInit {
   });
 
   ngOnInit(): void {
+    this.projectId.set(this.route.parent?.parent?.snapshot.paramMap.get('id') ?? '');
     const id = this.route.parent?.snapshot.paramMap.get('milestoneId') ?? null;
     this.milestoneId.set(id);
     if (!id) return;
@@ -183,19 +213,11 @@ export class TaskBacklogComponent implements OnInit {
 
   async onSprintStatusChangeRequested(sprintId: string, newStatus: string): Promise<void> {
     const id = this.milestoneId();
-    if (!id) return;
-    // Only Complete and Achieve are owner-settable actions - Future/Active/Incomplete are date-driven
-    // by SprintLifecycleJob (see the note in Part 7's plan doc). Picking anything else here is a
-    // no-op with a message, not a call to a non-existent endpoint.
-    if (newStatus === 'complete') {
-      this.sprintActionMessage.set(null);
-      await this.sprintStore.complete(sprintId, id, !this.isObjectiveOwner());
-    } else if (newStatus === 'achieved') {
-      this.sprintActionMessage.set(null);
-      await this.sprintStore.achieve(sprintId, id, !this.isObjectiveOwner());
-    } else {
-      this.sprintActionMessage.set("This status changes automatically and can't be set manually.");
-    }
+    // The dropdown that emits this is only rendered for the objective owner (see the @if
+    // (isObjectiveOwner()) guard around app-sprint-tab's status select) - SetSprintStatusCommand
+    // also re-checks ownership server-side, this is just an extra guard against a stale UI state.
+    if (!id || !this.isObjectiveOwner()) return;
+    await this.sprintStore.setStatus(sprintId, newStatus as SprintStatus, id, false);
   }
 
   onTaskStatusChangeRequested(newStatusId: string): void {

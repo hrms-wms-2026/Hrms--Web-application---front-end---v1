@@ -5,6 +5,7 @@ import { environment } from '../../../../environments/environment';
 import { ProjectApiService } from './project-api.service';
 import { ProjectDetailDto, ProjectListItemDto, PagedResultDto } from '../models/dto/project.dto';
 import { MyProjectMilestoneDto, ObjectiveDetailDto, ObjectiveSubtreeResponseDto, EditObjectiveRequestDto, CreateObjectiveRequestDto } from '../models/dto/milestone.dto';
+import { ObjectiveTreeItemDto } from '../models/dto/objective-tree.dto';
 
 describe('ProjectApiService', () => {
   let service: ProjectApiService;
@@ -49,7 +50,7 @@ describe('ProjectApiService', () => {
     service.create({
       categoryId: 'cat1', name: 'Website Revamp', identifier: 'WEB', description: 'Rebuild',
       startDate: '2026-08-01', targetDate: '2026-12-01', releaseDate: '2026-11-15', color: '#2563EB',
-      actualHours: 0, defaultObjectiveAllocatedHours: 40, logoFile: null
+      actualHours: 0, defaultObjectiveAllocatedHours: 40, logoFile: null, bannerFile: null, memberEmployeeIds: []
     }).subscribe((res) => expect(res).toEqual(response));
 
     const req = httpMock.expectOne(`${environment.apiUrl}/work/projects`);
@@ -66,7 +67,7 @@ describe('ProjectApiService', () => {
     service.create({
       categoryId: 'cat1', name: 'Website Revamp', identifier: 'WEB', description: 'Rebuild',
       startDate: '2026-08-01', targetDate: '2026-12-01', releaseDate: '2026-11-15', color: '#2563EB',
-      actualHours: 0, defaultObjectiveAllocatedHours: 40, logoFile
+      actualHours: 0, defaultObjectiveAllocatedHours: 40, logoFile, bannerFile: null, memberEmployeeIds: []
     }).subscribe((res) => expect(res).toEqual(response));
 
     const req = httpMock.expectOne(`${environment.apiUrl}/work/projects`);
@@ -74,11 +75,28 @@ describe('ProjectApiService', () => {
     req.flush(response);
   });
 
+  it('omits releaseDate when it is null and includes banner independently of logo', () => {
+    const response = { project: { id: 'p1', name: 'Website Revamp' } };
+    const bannerFile = new File(['fake'], 'banner.png', { type: 'image/png' });
+    service.create({
+      categoryId: 'cat1', name: 'Website Revamp', identifier: 'WEB', description: 'Rebuild',
+      startDate: '2026-08-01', targetDate: '2026-12-01', releaseDate: null, color: '#2563EB',
+      actualHours: 0, defaultObjectiveAllocatedHours: 40, logoFile: null, bannerFile, memberEmployeeIds: []
+    }).subscribe((res) => expect(res).toEqual(response));
+
+    const req = httpMock.expectOne(`${environment.apiUrl}/work/projects`);
+    const body = req.request.body as FormData;
+    expect(body.get('releaseDate')).toBeNull();
+    expect(body.get('banner')).toBe(bannerFile);
+    expect(body.get('logo')).toBeNull();
+    req.flush(response);
+  });
+
   it('edits a project', () => {
     const dto = { id: 'p1', name: 'Website Revamp v2' } as ProjectDetailDto;
     const payload = {
       name: 'Website Revamp v2', description: 'Rebuild', categoryId: 'cat1',
-      startDate: '2026-08-01', targetDate: '2027-01-01', color: '#2563EB', actualHours: 12
+      startDate: '2026-08-01', targetDate: '2027-01-01', color: '#2563EB', actualHours: 12, allocatedHours: 60
     };
     service.edit('p1', payload).subscribe((res) => expect(res).toEqual(dto));
 
@@ -187,5 +205,29 @@ describe('ProjectApiService', () => {
     req.flush({ id: 'o2', title: 'Design Phase' } as ObjectiveDetailDto);
 
     expect(result?.id).toBe('o2');
+  });
+
+  it('adds a project member via POST /work/projects/{id}/members', () => {
+    service.addMember('p1', 'e1').subscribe((res) => {
+      expect(res.status).toBe(202);
+      expect(res.body?.alreadyMember).toBe(false);
+    });
+
+    const req = httpMock.expectOne(`${environment.apiUrl}/work/projects/p1/members`);
+    expect(req.request.method).toBe('POST');
+    expect(req.request.body).toEqual({ employeeId: 'e1' });
+    req.flush({ alreadyMember: false, invitation: { id: 'i1' } }, { status: 202, statusText: 'Accepted' });
+  });
+
+  it('gets the project-wide objective tree', () => {
+    const items: ObjectiveTreeItemDto[] = [{
+      id: 'o1', parentObjectiveId: null, isDefault: true, title: 'Root', ownerId: 'e1',
+      startDate: '2026-08-01', endDate: '2026-12-01', allocatedHours: 40, completedHours: 0,
+      isActive: true, isAchieved: false, progress: 12.5, ownerName: 'Ada', isOwner: true
+    }];
+    service.getProjectTree('p1').subscribe((res) => expect(res).toEqual(items));
+    const req = httpMock.expectOne(`${environment.apiUrl}/work/projects/p1/objectives`);
+    expect(req.request.method).toBe('GET');
+    req.flush(items);
   });
 });

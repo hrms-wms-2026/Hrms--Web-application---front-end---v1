@@ -15,6 +15,7 @@ describe('SprintCreateFormComponent', () => {
       providers: [{ provide: SprintListStore, useValue: storeStub }]
     });
     fixture = TestBed.createComponent(SprintCreateFormComponent);
+    fixture.componentRef.setInput('open', true);
     fixture.componentRef.setInput('objectiveId', 'obj-1');
     fixture.componentRef.setInput('isObjectiveOwner', isOwner);
     fixture.detectChanges();

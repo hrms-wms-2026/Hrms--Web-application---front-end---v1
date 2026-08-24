@@ -13,7 +13,7 @@ export interface WorkTask {
   shortId: string;
   title: string;
   description: string | null;
-  taskType: 'task' | 'bug' | 'story' | 'feature';
+  categoryId: string;
   statusId: string;
   priority: 'low' | 'medium' | 'high' | 'critical';
   storyPoints: number | null;
@@ -22,4 +22,5 @@ export interface WorkTask {
   completedHours: number;
   progressPercent: number;
   sprintId: string | null;
+  assigneeEmployeeIds: string[];
 }

@@ -4,10 +4,25 @@
   <app-error-state [message]="store.projectError()!" [retryable]="true" (retry)="retryProject()" />
 } @else if (store.project(); as project) {
   <div class="flex flex-wrap items-center justify-between gap-4 pb-2 mb-2.5 border-b border-[var(--color-border)]">
-    <div>
-      <h1 class="text-base font-semibold text-[var(--color-text-primary)]">{{ project.name }}</h1>
-      <p class="text-xs text-[var(--color-text-secondary)]">{{ project.identifier }} · {{ project.description ?? '' }}</p>
+    <div class="flex min-w-0 items-center gap-2">
+      <app-breadcrumb-header parentLabel="Projects" [currentLabel]="project.name" parentUrl="/work" icon="work" />
+      <a
+        class="inline-flex h-8 w-8 items-center justify-center rounded-md border border-[var(--color-border)] text-[var(--color-text-secondary)] transition-colors hover:bg-[var(--color-surface-hover)] hover:text-[var(--color-text-primary)]"
+        [routerLink]="['settings']"
+        [attr.aria-current]="isProjectSettings() ? 'page' : null"
+        aria-label="Project settings"
+        title="Project settings"
+        data-testid="project-settings-link"
+      >
+        <svg viewBox="0 0 24 24" aria-hidden="true" class="h-4 w-4 fill-none stroke-current stroke-2">
+          <path stroke-linecap="round" stroke-linejoin="round" d="M10.5 6h10.5M3 6h2.5M3 12h7.5M14.5 12H21M3 18h2.5M10.5 18H21" />
+          <circle cx="8" cy="6" r="1.5" />
+          <circle cx="12.5" cy="12" r="1.5" />
+          <circle cx="8" cy="18" r="1.5" />
+        </svg>
+      </a>
     </div>
+
     <dl class="flex gap-6 text-sm">
       <div>
         <dt class="text-xs text-[var(--color-text-secondary)]">Start</dt>
@@ -25,41 +40,21 @@
   </div>
 }
 
-<h2 class="mb-1.5 text-lg font-semibold text-[var(--color-text-primary)]">Modules</h2>
-
-@if (store.milestonesLoading()) {
-  <app-loader label="Loading modules…" />
-} @else if (store.milestonesError()) {
-  <app-error-state [message]="store.milestonesError()!" [retryable]="true" (retry)="retryMilestones()" />
-} @else if (store.milestones().length === 0) {
-  <app-empty-state title="No modules yet" />
+@if (isProjectSettings()) {
+  <router-outlet />
 } @else {
-  <div class="flex gap-4 overflow-x-auto p-1 pb-2">
-    @for (milestone of store.milestones(); track milestone.objectiveId) {
-      <div class="w-68 flex-shrink-0">
-        <app-milestone-card
-          [milestone]="milestone"
-          [selected]="activeMilestoneId() === milestone.objectiveId"
-          (viewed)="onMilestoneSelected(milestone)"
-          (settingsRequested)="onMilestoneSettingsRequested(milestone)"
-        />
-      </div>
-    }
-  </div>
-
-  @if (activeMilestoneId(); as milestoneId) {
+  @if (store.milestonesLoading()) {
+    <app-loader label="Loading modules…" />
+  } @else if (store.milestonesError()) {
+    <app-error-state [message]="store.milestonesError()!" [retryable]="true" (retry)="retryMilestones()" />
+  } @else if (store.milestones().length === 0) {
+    <app-empty-state title="No modules yet" />
+  } @else if (activeMilestoneId(); as milestoneId) {
     <div class="mt-2.5">
       <app-milestone-sub-menu [milestoneId]="milestoneId" [milestoneTitle]="activeMilestoneTitle()" [isOwner]="activeMilestoneIsOwner()" />
       <router-outlet />
     </div>
+  } @else {
+    <app-loader label="Opening module…" />
   }
 }
-
-<app-milestone-settings-modal
-  [open]="milestoneSettingsOpen()"
-  [initialValue]="milestoneSettingsInitialValue()"
-  [submitting]="milestoneSettingsSubmitting()"
-  [errorMessage]="store.milestoneActionError() ?? ''"
-  (saved)="onMilestoneSettingsSaved($event)"
-  (closed)="milestoneSettingsOpen.set(false)"
-/>

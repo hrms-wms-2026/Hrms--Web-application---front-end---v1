@@ -1,7 +1,7 @@
 export interface TaskCreationRequestPayloadDto {
   title: string;
   description: string | null;
-  taskType: string;
+  categoryId: string;
   priority: string;
   dueDate: string | null;
   estimatedHours: number | null;
@@ -19,7 +19,7 @@ export interface TaskCreationRequestDto {
 export interface CreateTaskCreationRequestDto {
   title: string;
   description?: string;
-  taskType: string;
+  categoryId: string;
   priority: string;
   dueDate?: string;
   estimatedHours?: number;

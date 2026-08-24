@@ -1,3 +1,5 @@
+import { TaskStatusColumn, WorkTask } from './task.model';
+
 export interface Milestone {
   objectiveId: string;
   projectId: string;
@@ -20,6 +22,9 @@ export interface Milestone {
   isOwner: boolean;
 }
 
+export type MilestoneTreeNodeKind = 'objective' | 'sprint' | 'task';
+export type SprintTaskLoadState = 'unloaded' | 'loading' | 'loaded' | 'error';
+
 export interface MilestoneTreeNode {
   id: string;
   title: string;
@@ -34,6 +39,13 @@ export interface MilestoneTreeNode {
   ownerName: string | null;
   isOwner: boolean;
   children: MilestoneTreeNode[];
+  kind?: MilestoneTreeNodeKind;
+  sprintTaskLoadState?: SprintTaskLoadState;
+  status?: string;
+  parentObjectiveId?: string;
+  statusNames?: Record<string, string>;
+  taskSource?: WorkTask;
+  taskStatuses?: readonly TaskStatusColumn[];
 }
 
 export type ObjectiveDetail = import('./dto/milestone.dto').ObjectiveDetailDto;

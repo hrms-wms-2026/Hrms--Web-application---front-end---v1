@@ -27,5 +27,9 @@ Layout and rules: see `../rules/FILE_CREATION_RULES.md`.
 | Project Detail Milestone Tree Explorer — Sub-Menu, Explorer Tree, Detail Panel (3 parts) | pending | `next/2026-08-11-project-detail-milestone-tree-explorer/` | 2026-08-11 |
 | Milestone → Module Display-Text Rename | pending | `next/2026-08-12-milestone-to-module-display-rename.md` | 2026-08-12 |
 | Work Management — Task Foundation: Board/Backlog tabs, Approvals tab, Notification bell (2 parts) | pending | `next/2026-08-16-work-management-task-foundation/` | 2026-08-16 |
+| Work Management — Project Page Redesign (list + wizard + members, 3 parts) | finished | `finished/2026-08-21/2026-08-20-work-management-project-page-redesign/` | 2026-08-20, shipped 2026-08-21 |
+| Work Management — Tree Sprint/Task Unified View (7 parts) | code-complete, manual browser pass pending | `next/2026-08-20-work-management-tree-sprint-task-unified-view/` | 2026-08-21 |
+| Work Management — Project-Scoped Task Status & Category (2 parts) | pending | `next/2026-08-21-work-management-project-scoped-task-status-and-category/` | 2026-08-21 |
+| Work Management — Tree UI Bug Fixes (4 items, single file) | pending | `next/2026-08-21-work-management-tree-ui-bug-fixes.md` | 2026-08-21 |
 
 **Note on "finished" here:** all of the above are implementation reports or already-executed plans as of the 2026-08-06 restructure — cross-checked against `src/app/` (auth, dashboard-home, organization/general-settings are all present in code). None were currently in-progress/pending at restructure time except the Project Management context file.
