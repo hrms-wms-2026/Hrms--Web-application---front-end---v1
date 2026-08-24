@@ -41,13 +41,15 @@ export const EmployeeDirectoryStore = signalStore(
 
           const additions: Record<string, EmployeeSummary> = {};
           fetched.forEach((employee, index) => {
-            if (!employee) return;
-            additions[missing[index]!] = {
-              id: employee.id,
-              name: employee.fullName,
-              initials: buildInitials(employee.fullName),
-              avatarUrl: null // no avatar field on EmployeeListItemResponse today - see plan's Global Constraints
-            };
+            const id = missing[index]!;
+            // A failed lookup (403 from the management-coverage-scoped GET /employees/{id} is the
+            // common case - most task assignees are outside the viewer's coverage, not a real
+            // error) is cached as an unresolved placeholder too, not left "missing" - otherwise
+            // every fresh mount that needs this id (a new row, a new card) retries the same
+            // doomed request forever, since there is no negative cache without this.
+            additions[id] = employee
+              ? { id: employee.id, name: employee.fullName, initials: buildInitials(employee.fullName), avatarUrl: null }
+              : { id, name: 'Unknown employee', initials: '?', avatarUrl: null };
           });
 
           if (Object.keys(additions).length > 0) {
