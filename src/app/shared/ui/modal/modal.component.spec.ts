@@ -69,4 +69,31 @@ describe('ModalComponent', () => {
 
     expect(fixture.componentInstance.closedCount).toBe(1);
   });
+
+  it('defaults to the md size class', async () => {
+    await TestBed.configureTestingModule({ imports: [HostComponent] }).compileComponents();
+    const fixture = TestBed.createComponent(HostComponent);
+    fixture.detectChanges();
+
+    const dialog = fixture.nativeElement.querySelector('[role="dialog"]') as HTMLElement;
+    expect(dialog.classList.contains('max-w-md')).toBe(true);
+    expect(dialog.classList.contains('max-w-5xl')).toBe(false);
+  });
+
+  it('applies the xl size class when size="xl"', async () => {
+    @Component({
+      standalone: true,
+      imports: [ModalComponent],
+      template: `<app-modal [open]="true" size="xl"><p>content</p></app-modal>`
+    })
+    class XlHostComponent {}
+
+    await TestBed.configureTestingModule({ imports: [XlHostComponent] }).compileComponents();
+    const fixture = TestBed.createComponent(XlHostComponent);
+    fixture.detectChanges();
+
+    const dialog = fixture.nativeElement.querySelector('[role="dialog"]') as HTMLElement;
+    expect(dialog.classList.contains('max-w-5xl')).toBe(true);
+    expect(dialog.classList.contains('max-w-md')).toBe(false);
+  });
 });

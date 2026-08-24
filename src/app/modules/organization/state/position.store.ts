@@ -4,6 +4,7 @@ import { patchState, signalStore, withComputed, withMethods, withState } from '@
 import { firstValueFrom } from 'rxjs';
 import { PositionApiService } from '../data-access/position-api.service';
 import {
+  ActiveHolder,
   AddCoverageRecordRequest,
   CreatePositionRequest,
   ListPositionsQueryParams,
@@ -41,6 +42,11 @@ export interface PositionState {
   readonly coverageSaving: boolean;
   readonly coverageError: string | null;
   readonly selectedCoveragePosition: PositionListItemResponse | PositionTreeNodeResponse | null;
+  /** Active coverage for whichever target is currently selected in the add/edit form, across ALL
+   * owner positions (not just the currently-open owner) - lets the modal show a level as already
+   * taken even when a different position holds it. */
+  readonly targetOccupancy: readonly ManagementCoverageRecordResponse[];
+  readonly targetOccupancyLoading: boolean;
   readonly accessTemplate: PositionAccessTemplateResponse | null;
   readonly accessLoading: boolean;
   readonly accessSaving: boolean;
@@ -51,6 +57,7 @@ export interface PositionState {
   readonly templatePacksError: string | null;
   readonly selectedTemplatePackKey: string | null;
   readonly templateSearchQuery: string;
+  readonly coverageOwnerHolders: readonly ActiveHolder[];
 }
 
 const initialState: PositionState = {
@@ -76,6 +83,8 @@ const initialState: PositionState = {
   coverageSaving: false,
   coverageError: null,
   selectedCoveragePosition: null,
+  targetOccupancy: [],
+  targetOccupancyLoading: false,
   accessTemplate: null,
   accessLoading: false,
   accessSaving: false,
@@ -85,7 +94,8 @@ const initialState: PositionState = {
   templatePacksLoading: false,
   templatePacksError: null,
   selectedTemplatePackKey: null,
-  templateSearchQuery: ''
+  templateSearchQuery: '',
+  coverageOwnerHolders: []
 };
 
 import { toSafeErrorMessage } from '../../../core/services/error-handler.service';
@@ -297,6 +307,35 @@ export const PositionStore = signalStore(
       }
     },
 
+    async loadTargetOccupancy(
+      legalEntityId: string,
+      coveredTargetType: 'Position' | 'Department',
+      coveredPositionId: string | null,
+      coveredDepartmentId: string | null,
+      excludingRecordId?: string | null
+    ): Promise<void> {
+      if (!coveredPositionId && !coveredDepartmentId) {
+        patchState(store, { targetOccupancy: [], targetOccupancyLoading: false });
+        return;
+      }
+      // Clear immediately so a stale prior-target result never briefly reads as "occupied" for
+      // the newly selected target while the new fetch is in flight. Also clears any leftover
+      // coverageError from a previous failed submit against a DIFFERENT target - the user is now
+      // looking at a new selection, so an old target's conflict message would be misleading here.
+      patchState(store, { targetOccupancy: [], targetOccupancyLoading: true, coverageError: null });
+      try {
+        const res = await firstValueFrom(
+          api.listCoverageByTarget(legalEntityId, coveredTargetType, coveredPositionId, coveredDepartmentId, excludingRecordId)
+        );
+        patchState(store, { targetOccupancy: res, targetOccupancyLoading: false });
+      } catch {
+        // Non-fatal: worst case the dropdown shows no levels as occupied (same as before this
+        // endpoint existed); the backend's HasActiveCoverageConflictAsync check still guards the
+        // actual submit either way.
+        patchState(store, { targetOccupancy: [], targetOccupancyLoading: false });
+      }
+    },
+
     async addCoverage(
       legalEntityId: string,
       positionId: string,
@@ -372,13 +411,25 @@ export const PositionStore = signalStore(
       }
     },
 
+    async loadCoverageOwnerHolders(legalEntityId: string, positionId: string): Promise<void> {
+      try {
+        const holders = await firstValueFrom(api.getActiveHolders(legalEntityId, positionId));
+        patchState(store, { coverageOwnerHolders: holders });
+      } catch {
+        patchState(store, { coverageOwnerHolders: [] });
+      }
+    },
+
     clearCoverage(): void {
       patchState(store, {
         selectedCoveragePosition: null,
         coverageRecords: [],
         coverageLoading: false,
         coverageSaving: false,
-        coverageError: null
+        coverageError: null,
+        targetOccupancy: [],
+        targetOccupancyLoading: false,
+        coverageOwnerHolders: []
       });
     },
 

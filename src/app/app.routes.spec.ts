@@ -35,4 +35,23 @@ describe('app routes - Settings', () => {
     expect(success).toBe(true);
     expect(router.url).toBe('/settings/general');
   });
+
+  it('resolves /settings/bulk-onboarding to BulkOnboardingComponent', async () => {
+    const success = await router.navigateByUrl('/settings/bulk-onboarding');
+    expect(success).toBe(true);
+    expect(router.url).toBe('/settings/bulk-onboarding');
+  });
+
+  it('defines the guarded lazy-loaded Attendance → Time Tracking route', () => {
+    const attendance = routes.find((route) => route.path === 'attendance');
+    expect(attendance).toBeTruthy();
+    expect(attendance?.loadChildren).toBeTypeOf('function');
+    expect(attendance?.data).toEqual({
+      permissions: ['attendance:read-own', 'attendance:write-own', 'attendance:read'],
+      modules: ['time_attendance']
+    });
+
+    const legacyRoute = routes.find((route) => route.path === 'time-attendance');
+    expect(legacyRoute?.redirectTo).toBe('attendance/time-tracking');
+  });
 });

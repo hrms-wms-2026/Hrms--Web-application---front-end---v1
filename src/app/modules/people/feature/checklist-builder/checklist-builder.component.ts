@@ -6,6 +6,7 @@ import {
   computed,
   effect,
   inject,
+  linkedSignal,
   signal
 } from '@angular/core';
 import {
@@ -18,6 +19,7 @@ import {
   Validators
 } from '@angular/forms';
 import { ActivatedRoute, Router } from '@angular/router';
+import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { firstValueFrom } from 'rxjs';
 
 import { PermissionService } from '../../../../core/auth/state/permission.service';
@@ -29,6 +31,8 @@ import { SelectComponent, SelectOption } from '../../../../shared/ui/select/sele
 import { DepartmentApiService } from '../../../organization/data-access/department-api.service';
 import { PositionApiService } from '../../../organization/data-access/position-api.service';
 import { LegalEntityStore } from '../../../organization/state/legal-entity.store';
+import { PeopleApiService } from '../../data-access/people-api.service';
+import { ChecklistAssignee } from '../../models/checklist-template.model';
 import {
   ChecklistTaskAssignmentType,
   ChecklistTaskOwnerType,
@@ -38,6 +42,7 @@ import {
   CreateChecklistTemplateRequest,
   UpdateChecklistTemplateRequest
 } from '../../models/checklist-template.model';
+import { ChecklistTaskCategory } from '../../models/offboarding.model';
 import { ChecklistTemplateStore } from '../../state/checklist-template.store';
 
 const TASK_PLACEHOLDERS: readonly string[] = [
@@ -51,11 +56,6 @@ const TASK_PLACEHOLDERS: readonly string[] = [
 /** Backend ownerType for position-resolved non-employee tasks (see ChecklistTemplateTaskInputResolver). */
 const POSITION_ASSIGNEE_OWNER_TYPE: ChecklistTaskOwnerType = 'custom_user';
 
-const ASSIGNMENT_OPTIONS: readonly SelectOption[] = [
-  { value: 'employee', label: 'Employee' },
-  { value: 'company_position', label: 'Company position' }
-];
-
 function nonNegativeIntegerValidator(control: AbstractControl): ValidationErrors | null {
   if (control.value === null || control.value === undefined || control.value === '') {
     return null;
@@ -68,8 +68,17 @@ export interface ChecklistTaskFormValue {
   title: string;
   assignmentType: ChecklistTaskAssignmentType;
   assigneePositionId: string;
+  selectedAssigneeUserId?: string;
+  /** Assignee user id carried through unchanged from a loaded template task whose
+   *  ownerType was resolved server-side from a position. Backend never returns the
+   *  original assigneePositionId, so re-saving an untouched row must resend this
+   *  instead of forcing HR to re-pick a position. */
+  originalAssignedToId?: string;
   dueOffsetDays: number;
   isRequired: boolean;
+  isBypassable: boolean;
+  bypassPenaltyDescription: string;
+  category: ChecklistTaskCategory | '';
 }
 
 @Component({
@@ -96,17 +105,23 @@ export class ChecklistBuilderComponent implements OnInit {
   private readonly legalEntityStore = inject(LegalEntityStore);
   private readonly departmentApi = inject(DepartmentApiService);
   private readonly positionApi = inject(PositionApiService);
+  private readonly peopleApi = inject(PeopleApiService);
   private readonly permissionService = inject(PermissionService);
 
   readonly canWrite = computed(() => this.permissionService.hasPermission('employees:write'));
   readonly selectedCompany = this.legalEntityStore.selectedLegalEntity;
-  readonly assignmentOptions = ASSIGNMENT_OPTIONS;
-
   readonly isEdit = signal(false);
   readonly templateId = signal<string | null>(null);
   readonly initialLoading = signal(false);
   readonly loadError = signal<string | null>(null);
   readonly submitAttempted = signal(false);
+  readonly openAssignmentPickerIndex = signal<number | null>(null);
+  readonly openPositionPickerIndex = signal<number | null>(null);
+  readonly openEmployeePickerIndex = signal<number | null>(null);
+  readonly positionSearch = signal('');
+  readonly employeeSearch = signal('');
+  readonly assigneesByPosition = signal<Readonly<Record<string, readonly ChecklistAssignee[]>>>({});
+  readonly loadingAssigneesByPosition = signal<Readonly<Record<string, boolean>>>({});
 
   readonly scopeLevel = signal<ChecklistTemplateScopeLevel>('company');
 
@@ -118,6 +133,33 @@ export class ChecklistBuilderComponent implements OnInit {
   readonly loadingDepartments = signal(false);
   readonly loadingPositions = signal(false);
   readonly loadingAssigneePositions = signal(false);
+  readonly selectedCompanyId = computed(() => this.selectedCompany()?.id ?? null);
+  readonly filteredAssigneePositions = computed(() => {
+    const term = this.positionSearch().trim().toLowerCase();
+    if (!term) {
+      return this.assigneePositions();
+    }
+    return this.assigneePositions().filter((pos) => pos.label.toLowerCase().includes(term));
+  });
+  readonly activeEmployeePickerTask = linkedSignal(() => {
+    const index = this.openEmployeePickerIndex();
+    return index === null ? null : this.tasksArray.at(index);
+  });
+  readonly filteredEmployeeOptions = computed(() => {
+    const taskGroup = this.activeEmployeePickerTask();
+    const positionId = taskGroup?.get('assigneePositionId')?.value;
+    if (!positionId) {
+      return [];
+    }
+    const term = this.employeeSearch().trim().toLowerCase();
+    const assignees = this.assigneesByPosition()[positionId] ?? [];
+    if (!term) {
+      return assignees;
+    }
+    return assignees.filter((person) =>
+      `${person.displayName} ${person.workEmail}`.toLowerCase().includes(term)
+    );
+  });
 
   readonly form = this.fb.group({
     name: ['', [Validators.required, Validators.maxLength(150)]],
@@ -133,6 +175,10 @@ export class ChecklistBuilderComponent implements OnInit {
   }
 
   constructor() {
+    this.form.controls.templateType.valueChanges.pipe(takeUntilDestroyed()).subscribe(() => {
+      this.cdr.markForCheck();
+    });
+
     effect(() => {
       const company = this.selectedCompany();
       if (company) {
@@ -196,7 +242,10 @@ export class ChecklistBuilderComponent implements OnInit {
             ownerType: t.ownerType as ChecklistTaskOwnerType,
             assignedToId: t.assignedToId,
             dueOffsetDays: t.dueOffsetDays,
-            isRequired: t.isRequired
+            isRequired: t.isRequired,
+            isBypassable: t.isBypassable,
+            bypassPenaltyDescription: t.bypassPenaltyDescription ?? '',
+            category: t.category ?? ''
           })
         );
       } else {
@@ -264,34 +313,65 @@ export class ChecklistBuilderComponent implements OnInit {
     return taskGroup.get('assignmentType')?.value === 'company_position';
   }
 
+  isUnassigned(taskGroup: FormGroup): boolean {
+    return taskGroup.get('assignmentType')?.value === 'unassigned';
+  }
+
+  isOffboardingTemplate(): boolean {
+    return this.form.controls.templateType.value === 'offboarding';
+  }
+
   onAssignmentTypeChange(index: number, assignmentType: ChecklistTaskAssignmentType): void {
     const taskGroup = this.tasksArray.at(index);
     taskGroup.get('assignmentType')?.setValue(assignmentType);
     if (assignmentType === 'employee') {
       taskGroup.get('assigneePositionId')?.setValue('');
+      taskGroup.get('selectedAssigneeUserId')?.setValue('');
       taskGroup.get('assigneePositionId')?.setErrors(null);
+      this.closeTaskPickers();
+    } else if (assignmentType === 'unassigned') {
+      taskGroup.get('assigneePositionId')?.setValue('');
+      taskGroup.get('selectedAssigneeUserId')?.setValue('');
+      taskGroup.get('originalAssignedToId')?.setValue('');
+      this.closeTaskPickers();
     }
     this.cdr.markForCheck();
   }
 
-  addTask(existing?: Partial<ChecklistTemplateTaskRequest> & { ownerType?: ChecklistTaskOwnerType }): void {
-    let assignmentType: ChecklistTaskAssignmentType = 'employee';
+  addTask(
+    existing?: Omit<Partial<ChecklistTemplateTaskRequest>, 'category'> & {
+      ownerType?: ChecklistTaskOwnerType;
+      category?: ChecklistTaskCategory | '' | null;
+    }
+  ): void {
+    let assignmentType: ChecklistTaskAssignmentType = 'unassigned';
     let assigneePositionId = '';
+    let selectedAssigneeUserId = '';
+    let originalAssignedToId = '';
 
     if (existing?.ownerType && existing.ownerType !== 'employee') {
       assignmentType = 'company_position';
       assigneePositionId = existing.assigneePositionId ?? '';
+      selectedAssigneeUserId = existing.assignedToId ?? '';
+      originalAssignedToId = existing.assignedToId ?? '';
+    } else if (existing?.ownerType === 'employee') {
+      assignmentType = 'employee';
     }
 
     const taskForm = this.fb.group({
       title: [existing?.title ?? '', [Validators.required, Validators.maxLength(200)]],
       assignmentType: [assignmentType, Validators.required],
       assigneePositionId: [assigneePositionId],
+      selectedAssigneeUserId: [selectedAssigneeUserId],
+      originalAssignedToId: [originalAssignedToId],
       dueOffsetDays: [
         existing?.dueOffsetDays ?? 0,
         [Validators.required, nonNegativeIntegerValidator]
       ],
-      isRequired: [existing?.isRequired ?? true]
+      isRequired: [existing?.isRequired ?? true],
+      isBypassable: [existing?.isBypassable ?? false],
+      bypassPenaltyDescription: [existing?.bypassPenaltyDescription ?? ''],
+      category: [existing?.category ?? '']
     });
 
     this.tasksArray.push(taskForm);
@@ -384,18 +464,43 @@ export class ChecklistBuilderComponent implements OnInit {
         assigneePositionId: null,
         dueOffsetDays: Number(value.dueOffsetDays) || 0,
         sequence: index + 1,
-        isRequired: !!value.isRequired
+        isRequired: !!value.isRequired,
+        isBypassable: !!value.isBypassable,
+        bypassPenaltyDescription: value.bypassPenaltyDescription || null,
+        category: (value.category || null) as ChecklistTaskCategory | null,
+      };
+    }
+
+    // A freshly picked position takes priority. Otherwise fall back to the assignee
+    // already resolved by the backend when this task was loaded for edit, so saving
+    // an untouched row doesn't force HR to re-pick a position (see resolver-collapse
+    // note on ChecklistTaskFormValue.originalAssignedToId).
+    if (value.assigneePositionId) {
+      return {
+        title: value.title,
+        ownerType: POSITION_ASSIGNEE_OWNER_TYPE,
+        assignedToId: value.selectedAssigneeUserId || null,
+        assigneePositionId: value.assigneePositionId,
+        dueOffsetDays: Number(value.dueOffsetDays) || 0,
+        sequence: index + 1,
+        isRequired: !!value.isRequired,
+        isBypassable: !!value.isBypassable,
+        bypassPenaltyDescription: value.bypassPenaltyDescription || null,
+        category: (value.category || null) as ChecklistTaskCategory | null,
       };
     }
 
     return {
       title: value.title,
       ownerType: POSITION_ASSIGNEE_OWNER_TYPE,
-      assignedToId: null,
-      assigneePositionId: value.assigneePositionId || null,
+      assignedToId: value.selectedAssigneeUserId || value.originalAssignedToId || null,
+      assigneePositionId: null,
       dueOffsetDays: Number(value.dueOffsetDays) || 0,
       sequence: index + 1,
-      isRequired: !!value.isRequired
+      isRequired: !!value.isRequired,
+      isBypassable: !!value.isBypassable,
+      bypassPenaltyDescription: value.bypassPenaltyDescription || null,
+      category: (value.category || null) as ChecklistTaskCategory | null,
     };
   }
 
@@ -403,11 +508,163 @@ export class ChecklistBuilderComponent implements OnInit {
     for (const grp of this.tasksArray.controls) {
       const assignmentType = grp.get('assignmentType')?.value;
       const assigneePositionId = grp.get('assigneePositionId');
-      if (assignmentType === 'company_position' && !assigneePositionId?.value) {
+      const selectedAssigneeUserId = grp.get('selectedAssigneeUserId')?.value;
+      const originalAssignedToId = grp.get('originalAssignedToId')?.value;
+      const missingAssignment = assignmentType === 'unassigned';
+      const missingAssignee =
+        assignmentType === 'company_position' && !assigneePositionId?.value && !originalAssignedToId;
+
+      if (missingAssignment || missingAssignee) {
         assigneePositionId?.setErrors({ required: true });
-      } else if (assigneePositionId?.hasError('required') && assignmentType === 'employee') {
+      } else if (assigneePositionId?.hasError('required')) {
         assigneePositionId.setErrors(null);
       }
+      if (assignmentType === 'company_position' && assigneePositionId?.value && !selectedAssigneeUserId) {
+        grp.get('selectedAssigneeUserId')?.setErrors(null);
+      }
+    }
+  }
+
+  openAssignmentPicker(index: number): void {
+    this.openAssignmentPickerIndex.set(index);
+    this.openPositionPickerIndex.set(null);
+    this.openEmployeePickerIndex.set(null);
+    this.positionSearch.set('');
+    this.employeeSearch.set('');
+  }
+
+  closeTaskPickers(): void {
+    this.openAssignmentPickerIndex.set(null);
+    this.openPositionPickerIndex.set(null);
+    this.openEmployeePickerIndex.set(null);
+    this.positionSearch.set('');
+    this.employeeSearch.set('');
+  }
+
+  chooseNewEmployee(index: number): void {
+    this.onAssignmentTypeChange(index, 'employee');
+  }
+
+  async chooseExistingEmployee(index: number): Promise<void> {
+    this.onAssignmentTypeChange(index, 'company_position');
+    this.openAssignmentPickerIndex.set(null);
+    this.openPositionPickerIndex.set(index);
+    this.openEmployeePickerIndex.set(null);
+    this.positionSearch.set('');
+    this.employeeSearch.set('');
+    await this.ensureAssigneePositionsLoaded();
+  }
+
+  async reopenPositionPicker(index: number): Promise<void> {
+    this.openPositionPickerIndex.set(index);
+    this.openAssignmentPickerIndex.set(null);
+    this.openEmployeePickerIndex.set(null);
+    this.positionSearch.set('');
+    await this.ensureAssigneePositionsLoaded();
+  }
+
+  async selectTaskPosition(index: number, positionId: string): Promise<void> {
+    const taskGroup = this.tasksArray.at(index);
+    taskGroup.get('assignmentType')?.setValue('company_position');
+    taskGroup.get('assigneePositionId')?.setValue(positionId);
+    taskGroup.get('originalAssignedToId')?.setValue('');
+    taskGroup.get('selectedAssigneeUserId')?.setValue('');
+    taskGroup.get('assigneePositionId')?.setErrors(null);
+    this.openPositionPickerIndex.set(null);
+    this.openEmployeePickerIndex.set(index);
+    this.employeeSearch.set('');
+    await this.ensureAssigneesLoaded(positionId);
+    this.cdr.markForCheck();
+  }
+
+  openEmployeePicker(index: number): void {
+    const taskGroup = this.tasksArray.at(index);
+    if (!taskGroup.get('assigneePositionId')?.value) {
+      return;
+    }
+    this.openEmployeePickerIndex.set(index);
+    this.openAssignmentPickerIndex.set(null);
+    this.openPositionPickerIndex.set(null);
+    this.employeeSearch.set('');
+  }
+
+  async selectTaskEmployee(index: number, userId: string): Promise<void> {
+    const taskGroup = this.tasksArray.at(index);
+    taskGroup.get('selectedAssigneeUserId')?.setValue(userId);
+    taskGroup.get('originalAssignedToId')?.setValue(userId);
+    this.openEmployeePickerIndex.set(null);
+    this.employeeSearch.set('');
+    this.cdr.markForCheck();
+  }
+
+  removeSelectedEmployee(index: number): void {
+    const taskGroup = this.tasksArray.at(index);
+    taskGroup.get('selectedAssigneeUserId')?.setValue('');
+    taskGroup.get('originalAssignedToId')?.setValue('');
+    this.cdr.markForCheck();
+  }
+
+  clearTaskAssignment(index: number): void {
+    this.onAssignmentTypeChange(index, 'unassigned');
+  }
+
+  assignmentPositionLabel(taskGroup: FormGroup): string {
+    const positionId = taskGroup.get('assigneePositionId')?.value;
+    if (!positionId) {
+      return '';
+    }
+    return this.assigneePositions().find((pos) => pos.value === positionId)?.label ?? 'Selected position';
+  }
+
+  assignmentEmployeeLabel(taskGroup: FormGroup): string {
+    const userId = taskGroup.get('selectedAssigneeUserId')?.value || taskGroup.get('originalAssignedToId')?.value;
+    const positionId = taskGroup.get('assigneePositionId')?.value;
+    if (!userId) {
+      return '';
+    }
+    const match = positionId ? (this.assigneesByPosition()[positionId] ?? []).find((person) => person.userId === userId) : null;
+    return match?.displayName ?? 'Selected employee';
+  }
+
+  assigneeCountLabel(positionId: string): string {
+    const count = (this.assigneesByPosition()[positionId] ?? []).length;
+    if (count === 0) {
+      return 'Choose a position';
+    }
+    return `${count} employee${count === 1 ? '' : 's'}`;
+  }
+
+  isLoadingAssignees(positionId: string): boolean {
+    return !!this.loadingAssigneesByPosition()[positionId];
+  }
+
+  assigneesForPosition(positionId: string): readonly ChecklistAssignee[] {
+    return this.assigneesByPosition()[positionId] ?? [];
+  }
+
+  private async ensureAssigneePositionsLoaded(): Promise<void> {
+    const companyId = this.selectedCompany()?.id;
+    if (!companyId || this.loadingAssigneePositions() || this.assigneePositions().length > 0) {
+      return;
+    }
+    await this.loadAssigneePositions(companyId);
+  }
+
+  private async ensureAssigneesLoaded(positionId: string): Promise<void> {
+    const companyId = this.selectedCompanyId();
+    if (!companyId || !positionId || this.assigneesByPosition()[positionId] || this.isLoadingAssignees(positionId)) {
+      return;
+    }
+    this.loadingAssigneesByPosition.update((state) => ({ ...state, [positionId]: true }));
+    this.cdr.markForCheck();
+    try {
+      const assignees = await firstValueFrom(this.peopleApi.getChecklistAssignees(companyId, positionId));
+      this.assigneesByPosition.update((state) => ({ ...state, [positionId]: assignees }));
+    } catch {
+      this.assigneesByPosition.update((state) => ({ ...state, [positionId]: [] }));
+    } finally {
+      this.loadingAssigneesByPosition.update((state) => ({ ...state, [positionId]: false }));
+      this.cdr.markForCheck();
     }
   }
 

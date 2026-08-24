@@ -83,6 +83,20 @@ describe('PositionTreeNodeComponent', () => {
     expect(fixture.nativeElement.querySelector('img')).toBeNull();
   });
 
+  it('status pill reflects assignedCount, not the deprecated currentOccupancy placeholder (regression: pill said Unassigned despite a real occupant)', async () => {
+    const emp: OccupantPreviewItem = {
+      employeeId: 'e-1', displayName: 'Dulanjana D', initials: 'DD',
+      avatarFileId: null, avatarUrl: null
+    };
+    // Tree responses never send currentOccupancy at all; assignedCount is the real field.
+    const node = makeNode({ maxOccupancy: 1, assignedCount: 1, occupantPreview: [emp], remainingAssignedCount: 0 } as Partial<PositionTreeNodeResponse>);
+    const fixture = await createComponent(node);
+    const text = cardText(fixture);
+
+    expect(text).not.toContain('Unassigned');
+    expect(text).toContain('Occupied');
+  });
+
   it('gives Archived precedence and the status pill shows Archived, not Unassigned', async () => {
     const fixture = await createComponent(makeNode({ isActive: false }));
     const text = cardText(fixture);

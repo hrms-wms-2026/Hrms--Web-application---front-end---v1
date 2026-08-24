@@ -3,7 +3,9 @@ import { Injectable, inject } from '@angular/core';
 import { Observable } from 'rxjs';
 import { environment } from '../../../../environments/environment';
 import {
+  ActiveHolder,
   AddCoverageRecordRequest,
+  CoverageResolutionLevel,
   CreatePositionRequest,
   ListPositionsQueryParams,
   ManagementCoverageRecordResponse,
@@ -114,6 +116,52 @@ export class PositionApiService {
   ): Observable<readonly ManagementCoverageRecordResponse[]> {
     return this.http.get<readonly ManagementCoverageRecordResponse[]>(
       `${environment.apiUrl}/org/legal-entities/${legalEntityId}/positions/${positionId}/coverage`
+    );
+  }
+
+  /**
+   * Every active coverage record for a specific covered target, regardless of which position owns
+   * each rule. Used to compute the true occupied-responsibility-level set before the user submits,
+   * instead of only finding out via a 409 from addCoverage/updateCoverage - listCoverage() above
+   * only returns records owned by one position and can't see this on its own.
+   */
+  listCoverageByTarget(
+    legalEntityId: string,
+    coveredTargetType: 'Position' | 'Department',
+    coveredPositionId: string | null,
+    coveredDepartmentId: string | null,
+    excludingRecordId?: string | null
+  ): Observable<readonly ManagementCoverageRecordResponse[]> {
+    let params = new HttpParams().set('coveredTargetType', coveredTargetType);
+    if (coveredPositionId) params = params.set('coveredPositionId', coveredPositionId);
+    if (coveredDepartmentId) params = params.set('coveredDepartmentId', coveredDepartmentId);
+    if (excludingRecordId) params = params.set('excludingRecordId', excludingRecordId);
+
+    return this.http.get<readonly ManagementCoverageRecordResponse[]>(
+      `${environment.apiUrl}/org/legal-entities/${legalEntityId}/positions/coverage/by-target`,
+      { params }
+    );
+  }
+
+  getActiveHolders(legalEntityId: string, positionId: string): Observable<readonly ActiveHolder[]> {
+    return this.http.get<readonly ActiveHolder[]>(
+      `${environment.apiUrl}/org/legal-entities/${legalEntityId}/positions/${positionId}/active-holders`
+    );
+  }
+
+  resolveCoverage(
+    legalEntityId: string,
+    coveredTargetType: 'Position' | 'Department',
+    coveredPositionId: string | null,
+    coveredDepartmentId: string | null
+  ): Observable<readonly CoverageResolutionLevel[]> {
+    let params = new HttpParams().set('coveredTargetType', coveredTargetType);
+    if (coveredPositionId) params = params.set('coveredPositionId', coveredPositionId);
+    if (coveredDepartmentId) params = params.set('coveredDepartmentId', coveredDepartmentId);
+
+    return this.http.get<readonly CoverageResolutionLevel[]>(
+      `${environment.apiUrl}/org/legal-entities/${legalEntityId}/positions/coverage/resolve`,
+      { params }
     );
   }
 

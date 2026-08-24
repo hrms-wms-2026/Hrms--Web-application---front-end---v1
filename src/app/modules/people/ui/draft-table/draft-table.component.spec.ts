@@ -52,7 +52,7 @@ describe('DraftTableComponent', () => {
     await setup([draft, approvalPendingDraft, rejectedDraft, seatConfigDraft, inviteSentDraft], true);
     const text = fixture.nativeElement.textContent as string;
 
-    expect(text).toContain('Draft – waiting for approval');
+    expect(text).toContain('Draft');
     expect(text).toContain('Waiting for position approval');
     expect(text).toContain('Position approval rejected');
     expect(text).toContain('Waiting for seat');
@@ -81,66 +81,42 @@ describe('DraftTableComponent', () => {
 
     await setup([approvalPendingDraft, rejectedDraft], true);
 
-    const buttons = Array.from(fixture.nativeElement.querySelectorAll('button')) as HTMLButtonElement[];
-    const buttonTexts = buttons.map((b) => b.textContent?.trim());
-
-    expect(buttonTexts).not.toContain('Approve');
-    expect(buttonTexts).not.toContain('Approve & Send Invite');
-    expect(buttonTexts).not.toContain('Reject');
-    expect(buttonTexts.every((t) => t === 'Continue Draft')).toBe(true);
+    const text = fixture.nativeElement.textContent as string;
+    expect(text).not.toContain('Approve');
+    expect(text).not.toContain('Reject');
   });
 
-  it('shows the Continue Draft action when the caller holds employees:write', async () => {
-    await setup([draft], true);
-    const button = fixture.nativeElement.querySelector('button');
-    expect(button?.textContent).toContain('Continue Draft');
-  });
-
-  it('hides the Continue Draft action without employees:write', async () => {
-    await setup([draft], false);
-    expect(fixture.nativeElement.querySelector('button')).toBeNull();
-  });
-
-  it('emits continueDraft with the draft id when clicked', async () => {
+  it('emits continueDraft with the draft id when row is clicked and caller holds employees:write', async () => {
     await setup([draft], true);
     const emitted: string[] = [];
     fixture.componentInstance.continueDraft.subscribe((id) => emitted.push(id));
 
-    fixture.nativeElement.querySelector('button')?.click();
+    const row = fixture.nativeElement.querySelector('.draft-row') as HTMLTableRowElement;
+    row?.click();
 
     expect(emitted).toEqual(['draft-1']);
   });
 
-  it('does not render Continue Draft for a finalized draft, and shows a disabled Finalized label instead', async () => {
+  it('does not emit continueDraft when row is clicked if caller lacks employees:write', async () => {
+    await setup([draft], false);
+    const emitted: string[] = [];
+    fixture.componentInstance.continueDraft.subscribe((id) => emitted.push(id));
+
+    const row = fixture.nativeElement.querySelector('.draft-row') as HTMLTableRowElement;
+    row?.click();
+
+    expect(emitted).toEqual([]);
+  });
+
+  it('does not emit continueDraft for a finalized draft', async () => {
     const finalizedDraft: DraftListItemResponse = { ...draft, id: 'draft-finalized', status: 'finalized', draftReason: 'invitation_sent' };
     await setup([finalizedDraft], true);
+    const emitted: string[] = [];
+    fixture.componentInstance.continueDraft.subscribe((id) => emitted.push(id));
 
-    const buttons: HTMLButtonElement[] = Array.from(fixture.nativeElement.querySelectorAll('button'));
-    expect(buttons.some((b) => b.textContent?.includes('Continue Draft'))).toBe(false);
-    expect(fixture.nativeElement.textContent).toContain('Finalized');
-  });
+    const row = fixture.nativeElement.querySelector('.draft-row') as HTMLTableRowElement;
+    row?.click();
 
-  it('does not render Continue Draft for a draft whose reason is invitation_sent, even if status has not flipped yet', async () => {
-    const inviteSentDraft: DraftListItemResponse = { ...draft, id: 'draft-invited', status: 'draft', draftReason: 'invitation_sent' };
-    await setup([inviteSentDraft], true);
-
-    const buttons: HTMLButtonElement[] = Array.from(fixture.nativeElement.querySelectorAll('button'));
-    expect(buttons.some((b) => b.textContent?.includes('Continue Draft'))).toBe(false);
-  });
-
-  it('still renders Continue Draft for draft/waiting_for_seat/waiting_for_position_approval statuses when the caller holds employees:write', async () => {
-    const draftStatus: DraftListItemResponse = { ...draft, id: 'draft-a', status: 'draft', draftReason: 'saved_manually' };
-    const waitingForSeat: DraftListItemResponse = { ...draft, id: 'draft-b', status: 'waiting_for_seat', draftReason: 'waiting_for_seat' };
-    const waitingForApproval: DraftListItemResponse = {
-      ...draft,
-      id: 'draft-c',
-      status: 'waiting_for_position_approval',
-      draftReason: 'waiting_for_position_approval'
-    };
-    await setup([draftStatus, waitingForSeat, waitingForApproval], true);
-
-    const buttons: HTMLButtonElement[] = Array.from(fixture.nativeElement.querySelectorAll('button'));
-    const continueButtons = buttons.filter((b) => b.textContent?.includes('Continue Draft'));
-    expect(continueButtons.length).toBe(3);
+    expect(emitted).toEqual([]);
   });
 });

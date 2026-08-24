@@ -46,6 +46,20 @@ export const NAV_ITEMS: readonly NavItem[] = [
         path: '/people/checklists',
         requiredModules: ['core_hr'],
         requiredPermissions: ['employees:read']
+      },
+      {
+        id: 'people-offboarding',
+        label: 'Offboarding',
+        path: '/people/offboarding',
+        requiredModules: ['core_hr'],
+        requiredPermissions: ['employees:read']
+      },
+      {
+        id: 'people-approvals',
+        label: 'Approvals',
+        path: '/people/approvals',
+        requiredModules: ['core_hr'],
+        requiredPermissions: ['roles:manage']
       }
     ]
   },
@@ -67,8 +81,9 @@ export const NAV_ITEMS: readonly NavItem[] = [
     id: 'time-attendance',
     label: 'Attendance',
     icon: 'time-attendance',
-    path: '/time-attendance',
-    requiredModules: ['time_attendance']
+    path: '/attendance/time-tracking',
+    requiredModules: ['time_attendance'],
+    requiredPermissions: ['attendance:read-own', 'attendance:write-own', 'attendance:read']
   },
   {
     id: 'organization',
@@ -76,21 +91,21 @@ export const NAV_ITEMS: readonly NavItem[] = [
     icon: 'organization',
     path: '/organization',
     requiredModules: ['org_structure'],
-    requiredPermissions: ['org:read', 'org:manage'],
+    requiredPermissions: ['org:read'],
     children: [
       {
         id: 'organization-departments',
         label: 'Departments',
         path: '/organization/departments',
         requiredModules: ['org_structure'],
-        requiredPermissions: ['org:read', 'org:manage']
+        requiredPermissions: ['org:read']
       },
       {
         id: 'organization-positions',
         label: 'Positions',
         path: '/organization/positions',
         requiredModules: ['org_structure'],
-        requiredPermissions: ['org:read', 'org:manage']
+        requiredPermissions: ['org:read']
       }
     ]
   },
@@ -121,9 +136,22 @@ export const NAV_ITEMS: readonly NavItem[] = [
         label: 'Notification Settings',
         path: '/settings/notifications',
         requiredPermissions: ['notifications:manage']
+      },
+      {
+        id: 'settings-bulk-onboarding',
+        label: 'Bulk Onboarding',
+        path: '/settings/bulk-onboarding',
+        requiredModules: ['core_hr'],
+        requiredPermissions: ['employees:write']
+      },
+      {
+        id: 'settings-clock-in-policy',
+        label: 'Clock-in Policy',
+        path: '/settings/clock-in-policy',
+        requiredModules: ['time_attendance'],
+        requiredPermissions: ['attendance:read']
       }
-      // Policy configuration, Devices & connections, and Audit log are intentionally
-      // not listed yet - no backend permission string exists for them (see report).
+      // Devices & connections and Audit log are intentionally not listed yet.
     ]
   }
 ];

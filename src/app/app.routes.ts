@@ -62,11 +62,25 @@ export const routes: Routes = [
       },
       { path: 'calendar', loadComponent: loadPlaceholder, data: { title: 'Calendar' } },
       { path: 'time-off', loadComponent: loadPlaceholder, data: { title: 'Time Off' } },
-      { path: 'time-attendance', loadComponent: loadPlaceholder, data: { title: 'Time & Attendance' } },
+      {
+        path: 'attendance',
+        canActivate: [permissionGuard],
+        data: {
+          permissions: ['attendance:read-own', 'attendance:write-own', 'attendance:read'],
+          modules: ['time_attendance']
+        },
+        loadChildren: () =>
+          import('./modules/attendance/attendance.routes').then((module) => module.ATTENDANCE_ROUTES)
+      },
+      {
+        path: 'time-attendance',
+        pathMatch: 'full',
+        redirectTo: 'attendance/time-tracking'
+      },
       {
         path: 'organization',
         canActivate: [permissionGuard],
-        data: { permissions: ['org:read', 'org:manage'], modules: ['org_structure'] },
+        data: { permissions: ['org:read'], modules: ['org_structure'] },
         loadChildren: () =>
           import('./modules/organization/organization.routes').then((module) => module.ORGANIZATION_ROUTES)
       },
@@ -96,6 +110,36 @@ export const routes: Routes = [
             loadComponent: loadPlaceholder,
             canActivate: [permissionGuard],
             data: { title: 'Notification Settings', permissions: ['notifications:manage'] }
+          },
+          {
+            path: 'bulk-onboarding',
+            loadComponent: () =>
+              import('./modules/people/feature/bulk-onboarding/bulk-onboarding.component').then(
+                (m) => m.BulkOnboardingComponent
+              ),
+            canActivate: [permissionGuard],
+            data: { title: 'Bulk Onboarding', permissions: ['employees:write'] }
+          },
+          {
+            path: 'clock-in-policy',
+            children: [
+              {
+                path: '',
+                loadComponent: () =>
+                  import('./modules/settings/feature/clock-in-policy-form/clock-in-policy-form.component').then(
+                    (m) => m.ClockInPolicyFormComponent
+                  ),
+                canActivate: [permissionGuard],
+                data: {
+                  title: 'Clock-in Policy',
+                  permissions: ['attendance:read'],
+                  modules: ['time_attendance']
+                }
+              },
+              // Legacy create/edit URLs → company-wide settings screen
+              { path: 'new', pathMatch: 'full', redirectTo: '' },
+              { path: ':id/edit', redirectTo: '' }
+            ]
           },
           { path: '', pathMatch: 'full', redirectTo: 'general' }
         ]
@@ -127,6 +171,13 @@ export const routes: Routes = [
         loadComponent: () =>
           import('./core/auth/feature/session-exchange/session-exchange.component').then(
             (module) => module.SessionExchangeComponent
+          )
+      },
+      {
+        path: 'invitations/:token',
+        loadComponent: () =>
+          import('./core/auth/feature/accept-invitation/accept-invitation.component').then(
+            (module) => module.AcceptInvitationComponent
           )
       },
       { path: '', pathMatch: 'full', redirectTo: 'login' }

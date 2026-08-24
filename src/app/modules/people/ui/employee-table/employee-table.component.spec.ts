@@ -1,10 +1,21 @@
-import { provideRouter } from '@angular/router';
+import { By } from '@angular/platform-browser';
+import { provideRouter, RouterLink } from '@angular/router';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { EmployeeListItemResponse } from '../../models/employee.model';
 import { EmployeeTableComponent } from './employee-table.component';
 
 describe('EmployeeTableComponent', () => {
   let fixture: ComponentFixture<EmployeeTableComponent>;
+
+  const warningSummary = {
+    showNotClockedInWarning: true,
+    shouldHaveClockedIn: true,
+    hasClockedInToday: false,
+    workDate: '2026-08-21',
+    timezone: 'Asia/Colombo',
+    scheduledStartTime: '09:00',
+    warningLabel: 'Still has not clocked in'
+  } as const;
 
   const employee: EmployeeListItemResponse = {
     id: 'emp-1',
@@ -55,5 +66,70 @@ describe('EmployeeTableComponent', () => {
   it('shows "Unassigned" rather than a blank cell when there is no reporting manager', async () => {
     await setup([{ ...employee, reportingManagerId: null, reportingManagerName: null }]);
     expect(fixture.nativeElement.textContent).toContain('Unassigned');
+  });
+
+  it('attaches routerLink to employee row and does not render Actions column or View link', async () => {
+    await setup([employee]);
+    const linkDe = fixture.debugElement.query(By.directive(RouterLink));
+    expect(linkDe).not.toBeNull();
+    expect(linkDe.nativeElement.classList.contains('emp-row')).toBe(true);
+    expect(fixture.nativeElement.textContent).not.toContain('Actions');
+    expect(fixture.nativeElement.querySelector('.emp-view-link')).toBeNull();
+  });
+
+  it('renders green status dot for active employee and red status dot for inactive employee on profile avatar', async () => {
+    await setup([employee, { ...employee, id: 'emp-2', status: 'inactive' }]);
+
+    const activeDot = fixture.nativeElement.querySelector('.emp-status-dot-avatar--active');
+    expect(activeDot).not.toBeNull();
+
+    const inactiveDot = fixture.nativeElement.querySelector('.emp-status-dot-avatar--inactive');
+    expect(inactiveDot).not.toBeNull();
+
+    expect(fixture.nativeElement.querySelector('.col-status')).toBeNull();
+  });
+
+  it('renders a red warning ring and friendly hover/focus text for a warning employee', async () => {
+    await setup([{ ...employee, attendanceSummary: warningSummary }]);
+
+    const warningAvatar = fixture.nativeElement.querySelector('.emp-avatar-wrapper--warning') as HTMLElement | null;
+    expect(warningAvatar).not.toBeNull();
+    expect(warningAvatar?.getAttribute('title')).toBe('Still has not clocked in');
+    expect(warningAvatar?.getAttribute('aria-label')).toBe('Still has not clocked in');
+    expect(warningAvatar?.getAttribute('role')).toBe('img');
+    expect(warningAvatar?.getAttribute('tabindex')).toBe('0');
+    expect(fixture.nativeElement.querySelector('.emp-attendance-warning-tooltip')?.textContent).toContain(
+      'Still has not clocked in'
+    );
+  });
+
+  it('does not render a warning ring or tooltip when attendanceSummary is null', async () => {
+    await setup([{ ...employee, attendanceSummary: null }]);
+
+    expect(fixture.nativeElement.querySelector('.emp-avatar-wrapper--warning')).toBeNull();
+    expect(fixture.nativeElement.querySelector('.emp-attendance-warning-tooltip')).toBeNull();
+    expect(fixture.nativeElement.querySelector('.emp-avatar-wrapper')?.getAttribute('title')).toBeNull();
+  });
+
+  it('does not render a warning ring or tooltip when the backend warning flag is false', async () => {
+    await setup([
+      {
+        ...employee,
+        attendanceSummary: { ...warningSummary, showNotClockedInWarning: false, shouldHaveClockedIn: false }
+      }
+    ]);
+
+    expect(fixture.nativeElement.querySelector('.emp-avatar-wrapper--warning')).toBeNull();
+    expect(fixture.nativeElement.querySelector('.emp-attendance-warning-tooltip')).toBeNull();
+  });
+
+  it('renders employees in the backend-provided order without client-side sorting', async () => {
+    const normalEmployee = { ...employee, id: 'emp-normal', fullName: 'Ada Normal' };
+    const warningEmployee = { ...employee, id: 'emp-warning', fullName: 'Zoe Warning', attendanceSummary: warningSummary };
+    await setup([warningEmployee, normalEmployee]);
+
+    const nameElements = fixture.nativeElement.querySelectorAll('.emp-name') as NodeListOf<HTMLElement>;
+    const names = Array.from(nameElements).map((element) => element.textContent?.trim());
+    expect(names).toEqual(['Zoe Warning', 'Ada Normal']);
   });
 });

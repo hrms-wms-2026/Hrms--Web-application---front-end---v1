@@ -6,11 +6,13 @@ import { AuthApiService } from '../data-access/auth-api.service';
 import { LoginRequestDto } from '../models/dto/login-request.dto';
 import { LegalAcceptanceRequestDto } from '../models/dto/legal-acceptance-request.dto';
 import { LegalDocumentDto } from '../models/dto/legal-document.dto';
+import { AcceptEmployeeInvitationRequestDto } from '../models/dto/accept-employee-invitation-request.dto';
 import { toCurrentUserViewModel } from '../utils/auth.mapper';
 
 type AuthState = {
   authenticated: boolean;
   email: string | null;
+  employeeId: string | null;
   permissions: string[];
   activeModules: string[];
   legalAcceptanceRequired: boolean;
@@ -25,6 +27,7 @@ type AuthState = {
 const initialState: AuthState = {
   authenticated: false,
   email: null,
+  employeeId: null,
   permissions: [],
   activeModules: [],
   legalAcceptanceRequired: false,
@@ -65,6 +68,7 @@ export const AuthStore = signalStore(
         patchState(store, {
           authenticated: view.authenticated,
           email: view.email,
+          employeeId: view.employeeId,
           permissions: view.permissions,
           activeModules: view.activeModules,
           legalAcceptanceRequired: view.legalAcceptanceRequired,
@@ -88,6 +92,7 @@ export const AuthStore = signalStore(
         patchState(store, {
           authenticated: view.authenticated,
           email: view.email,
+          employeeId: view.employeeId,
           permissions: view.permissions,
           activeModules: view.activeModules,
           legalAcceptanceRequired: view.legalAcceptanceRequired,
@@ -106,6 +111,39 @@ export const AuthStore = signalStore(
       }
     },
 
+    /**
+     * Tenant-host-only, like exchangeSession(): the invite link opens on the employee's own
+     * tenant subdomain and the backend command requires that host to resolve to the invitation's
+     * tenant, so this deliberately does not retarget to the root/system host the way login() and
+     * acceptLegalDocuments() do.
+     */
+    async acceptEmployeeInvitation(token: string, payload: AcceptEmployeeInvitationRequestDto): Promise<void> {
+      patchState(store, { loading: true, error: null });
+      try {
+        const dto = await firstValueFrom(api.acceptEmployeeInvitation(token, payload));
+        const view = toCurrentUserViewModel(dto);
+        patchState(store, {
+          authenticated: view.authenticated,
+          email: view.email,
+          employeeId: view.employeeId,
+          permissions: view.permissions,
+          activeModules: view.activeModules,
+          legalAcceptanceRequired: view.legalAcceptanceRequired,
+          pendingLegalDocuments: view.pendingLegalDocuments,
+          workspaceSlug: view.workspaceSlug,
+          redirectRequired: view.redirectRequired,
+          continueUrl: view.continueUrl,
+          loading: false
+        });
+      } catch (err) {
+        patchState(store, {
+          loading: false,
+          error: extractErrorMessage(err, 'Could not complete your invitation. Please try again.')
+        });
+        throw err;
+      }
+    },
+
     async checkSession(): Promise<boolean> {
       patchState(store, { loading: true });
       try {
@@ -114,6 +152,7 @@ export const AuthStore = signalStore(
         patchState(store, {
           authenticated: view.authenticated,
           email: view.email,
+          employeeId: view.employeeId,
           permissions: view.permissions,
           activeModules: view.activeModules,
           legalAcceptanceRequired: view.legalAcceptanceRequired,
@@ -143,6 +182,7 @@ export const AuthStore = signalStore(
         patchState(store, {
           authenticated: view.authenticated,
           email: view.email,
+          employeeId: view.employeeId,
           permissions: view.permissions,
           activeModules: view.activeModules,
           legalAcceptanceRequired: view.legalAcceptanceRequired,

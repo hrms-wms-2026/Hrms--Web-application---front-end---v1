@@ -1,0 +1,63 @@
+@if (dependents().length === 0) {
+  <p class="pf-empty">No dependents added yet.</p>
+} @else {
+  <ul class="pf-list">
+    @for (dependent of dependents(); track dependent.id) {
+      <li class="pf-list-item">
+        <div class="pf-list-item__main">
+          <span class="pf-list-item__name">
+            {{ dependent.name }}
+            <span class="pf-rel-tag">{{ dependent.relationship }}</span>
+            @if (dependent.isEmergencyContact) {
+              <span class="pf-badge">Emergency contact</span>
+            }
+          </span>
+          <span class="pf-list-item__meta">
+            DOB: {{ dependent.dateOfBirth }}
+            @if (dependent.phone) {
+              · {{ dependent.phone }}
+            }
+          </span>
+        </div>
+        <button type="button" class="pf-text-btn" [disabled]="saving()" (click)="onRemove(dependent.id)">
+          Remove
+        </button>
+      </li>
+    }
+  </ul>
+}
+
+<form [formGroup]="addForm" (ngSubmit)="onSubmitAdd()" class="pf-form" style="margin-top: 1.25rem;">
+  <div class="pf-field-grid pf-field-grid--2">
+    <app-input
+      label="Full name"
+      [value]="addForm.controls.name.value"
+      (valueChange)="addForm.controls.name.setValue($event)"
+      (blurred)="addForm.controls.name.markAsTouched()"
+      [error]="addForm.controls.name.touched && addForm.controls.name.invalid ? 'Full name is required.' : ''"
+    />
+    <app-select
+      label="Relationship"
+      [options]="relationshipOptions"
+      [value]="addForm.controls.relationship.value"
+      (valueChange)="addForm.controls.relationship.setValue($any($event))"
+    />
+    <app-date-picker
+      label="Date of birth"
+      placeholder="YYYY-MM-DD"
+      [value]="addForm.controls.dateOfBirth.value || ''"
+      (valueChange)="addForm.controls.dateOfBirth.setValue($event)"
+      (blurred)="addForm.controls.dateOfBirth.markAsTouched()"
+      [error]="addForm.controls.dateOfBirth.touched && addForm.controls.dateOfBirth.invalid ? 'Date of birth is required.' : ''"
+    />
+    <app-input
+      label="Phone (optional)"
+      type="tel"
+      [value]="addForm.controls.phone.value"
+      (valueChange)="addForm.controls.phone.setValue($event)"
+    />
+  </div>
+  <div class="pf-actions">
+    <app-button type="submit" variant="secondary" [disabled]="saving()">Add dependent</app-button>
+  </div>
+</form>

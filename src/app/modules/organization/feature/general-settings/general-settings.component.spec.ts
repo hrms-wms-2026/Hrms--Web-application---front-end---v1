@@ -44,10 +44,12 @@ describe('GeneralSettingsComponent', () => {
     timeFormat: '24h',
     status: 'active',
     workStartTime: null,
-    workEndTime: null
+    workEndTime: null,
+    breakDurationMinutes: null
   });
 
   async function setup(hasPermission: boolean) {
+    TestBed.resetTestingModule();
     permissionService = { hasPermission: () => hasPermission };
 
     await TestBed.configureTestingModule({
@@ -69,7 +71,7 @@ describe('GeneralSettingsComponent', () => {
   async function setupWithLoadedSettings(): Promise<ComponentFixture<GeneralSettingsComponent>> {
     await setup(true);
     const loadCompaniesPromise = legalEntityStore.loadCompanies();
-    httpMock.expectOne(`${environment.apiUrl}/org/legal-entities?includeInactive=false`).flush(companies);
+    httpMock.expectOne(`${environment.apiUrl}/session/companies`).flush(companies);
     await loadCompaniesPromise;
 
     const fixture = TestBed.createComponent(GeneralSettingsComponent);
@@ -115,10 +117,14 @@ describe('GeneralSettingsComponent', () => {
     const fixture = await setupWithLoadedSettings();
 
     fixture.componentInstance.form.controls.name.setValue('Dirty unsaved edit');
-    legalEntityStore.selectCompany('company-b');
-    fixture.detectChanges();
+    const selectPromise = legalEntityStore.selectCompany('company-b');
 
-    expect(fixture.componentInstance.form.controls.name.value).not.toBe('Dirty unsaved edit');
+    httpMock.expectOne(`${environment.apiUrl}/session/active-company`).flush({});
+    await fixture.whenStable();
+    httpMock.expectOne(`${environment.apiUrl}/auth/me`).flush({});
+    await selectPromise;
+
+    fixture.detectChanges();
 
     httpMock.expectOne(`${environment.apiUrl}/org/legal-entities/company-b/general-settings`).flush(settingsFor('company-b', 'Company B'));
     await fixture.whenStable();
@@ -141,7 +147,7 @@ describe('GeneralSettingsComponent', () => {
         'name', 'companyCode', 'registrationNumber', 'taxRegistrationNumber', 'vatGstNumber', 'email',
         'phoneNumber', 'website', 'countryCode', 'currencyCode', 'timezone', 'financialYearStartMonth',
         'firstDayOfWeek', 'standardWorkingDays', 'defaultLanguage', 'dateFormat', 'timeFormat', 'status',
-        'workStartTime', 'workEndTime'
+        'workStartTime', 'workEndTime', 'breakDurationMinutes'
       ].sort()
     );
     putReq.flush(settingsFor('company-a', 'Company A'));
@@ -188,7 +194,7 @@ describe('GeneralSettingsComponent', () => {
   it('blocks submit when the backend returns null for a field that is required on save (registrationNumber/companyCode/timezone)', async () => {
     await setup(true);
     const loadCompaniesPromise = legalEntityStore.loadCompanies();
-    httpMock.expectOne(`${environment.apiUrl}/org/legal-entities?includeInactive=false`).flush(companies);
+    httpMock.expectOne(`${environment.apiUrl}/session/companies`).flush(companies);
     await loadCompaniesPromise;
 
     const fixture = TestBed.createComponent(GeneralSettingsComponent);
@@ -305,7 +311,7 @@ describe('GeneralSettingsComponent', () => {
   it('populates workStartTime and workEndTime from settings into the form', async () => {
     await setup(true);
     const loadCompaniesPromise = legalEntityStore.loadCompanies();
-    httpMock.expectOne(`${environment.apiUrl}/org/legal-entities?includeInactive=false`).flush(companies);
+    httpMock.expectOne(`${environment.apiUrl}/session/companies`).flush(companies);
     await loadCompaniesPromise;
 
     const fixture = TestBed.createComponent(GeneralSettingsComponent);
@@ -382,5 +388,82 @@ describe('GeneralSettingsComponent', () => {
     fixture.componentInstance.form.controls.workStartTime.setValue('');
     fixture.componentInstance.form.controls.workEndTime.setValue('');
     expect(fixture.componentInstance.form.valid).toBe(true);
+  });
+
+  describe('breakDurationMinutes', () => {
+    it('renders a "Break duration" field in the Default work hours section', async () => {
+      const fixture = await setupWithLoadedSettings();
+      expect(fixture.nativeElement.textContent).toContain('Break duration');
+      const numberInput: HTMLInputElement | null = fixture.nativeElement.querySelector('input[type="number"]');
+      expect(numberInput).toBeTruthy();
+    });
+
+    it('loads an existing breakDurationMinutes value from the API into the form', async () => {
+      await setup(true);
+      const loadCompaniesPromise = legalEntityStore.loadCompanies();
+      httpMock.expectOne(`${environment.apiUrl}/session/companies`).flush(companies);
+      await loadCompaniesPromise;
+
+      const fixture = TestBed.createComponent(GeneralSettingsComponent);
+      fixture.detectChanges();
+
+      httpMock.expectOne(`${environment.apiUrl}/org/legal-entities/company-a/general-settings`).flush({
+        ...settingsFor('company-a', 'Company A'),
+        breakDurationMinutes: 60
+      });
+      await fixture.whenStable();
+      fixture.detectChanges();
+
+      expect(fixture.componentInstance.form.controls.breakDurationMinutes.value).toBe('60');
+      expect(fixture.componentInstance.form.valid).toBe(true);
+    });
+
+    it('leaves breakDurationMinutes blank when settings has a null value', async () => {
+      const fixture = await setupWithLoadedSettings(); // settingsFor returns breakDurationMinutes: null
+      expect(fixture.componentInstance.form.controls.breakDurationMinutes.value).toBe('');
+    });
+
+    it('toRequestPayload sends null when breakDurationMinutes is blank', async () => {
+      const fixture = await setupWithLoadedSettings();
+      const submitPromise = fixture.componentInstance.onSubmit();
+      const putReq = httpMock.expectOne(`${environment.apiUrl}/org/legal-entities/company-a/general-settings`);
+      expect(putReq.request.body.breakDurationMinutes).toBeNull();
+      putReq.flush(settingsFor('company-a', 'Company A'));
+      await submitPromise;
+    });
+
+    it('toRequestPayload sends a number when breakDurationMinutes has a valid value', async () => {
+      const fixture = await setupWithLoadedSettings();
+      fixture.componentInstance.form.controls.breakDurationMinutes.setValue('45');
+      const submitPromise = fixture.componentInstance.onSubmit();
+      const putReq = httpMock.expectOne(`${environment.apiUrl}/org/legal-entities/company-a/general-settings`);
+      expect(putReq.request.body.breakDurationMinutes).toBe(45);
+      putReq.flush(settingsFor('company-a', 'Company A'));
+      await submitPromise;
+    });
+
+    it('blocks submit on a negative breakDurationMinutes value', async () => {
+      const fixture = await setupWithLoadedSettings();
+      fixture.componentInstance.form.controls.breakDurationMinutes.setValue('-1');
+      expect(fixture.componentInstance.form.invalid).toBe(true);
+
+      await fixture.componentInstance.onSubmit();
+      httpMock.expectNone(`${environment.apiUrl}/org/legal-entities/company-a/general-settings`);
+    });
+
+    it('blocks submit on a decimal breakDurationMinutes value', async () => {
+      const fixture = await setupWithLoadedSettings();
+      fixture.componentInstance.form.controls.breakDurationMinutes.setValue('7.5');
+      expect(fixture.componentInstance.form.invalid).toBe(true);
+
+      await fixture.componentInstance.onSubmit();
+      httpMock.expectNone(`${environment.apiUrl}/org/legal-entities/company-a/general-settings`);
+    });
+
+    it('accepts zero as a valid breakDurationMinutes value', async () => {
+      const fixture = await setupWithLoadedSettings();
+      fixture.componentInstance.form.controls.breakDurationMinutes.setValue('0');
+      expect(fixture.componentInstance.form.valid).toBe(true);
+    });
   });
 });

@@ -1,6 +1,7 @@
 import { computed, inject } from '@angular/core';
 import { patchState, signalStore, withComputed, withMethods, withState } from '@ngrx/signals';
 import { firstValueFrom } from 'rxjs';
+import { AuthStore } from '../../../core/auth/state/auth.store';
 import { LegalEntityApiService } from '../data-access/legal-entity-api.service';
 import { CreateLegalEntityRequest, LegalEntityListItem } from '../models/legal-entity.model';
 
@@ -14,6 +15,7 @@ export interface LegalEntityState {
   readonly loaded: boolean;
   readonly saving: boolean;
   readonly createError: string | null;
+  readonly switchError: string | null;
 }
 
 import { toSafeErrorMessage } from '../../../core/services/error-handler.service';
@@ -27,7 +29,8 @@ export const LegalEntityStore = signalStore(
     error: null,
     loaded: false,
     saving: false,
-    createError: null
+    createError: null,
+    switchError: null
   }),
   withComputed(({ companies, selectedLegalEntityId }) => ({
     selectedLegalEntity: computed(() => {
@@ -43,11 +46,11 @@ export const LegalEntityStore = signalStore(
       return companies().filter((c) => c.id !== selectedId);
     })
   })),
-  withMethods((store, api = inject(LegalEntityApiService)) => ({
-    async loadCompanies(includeInactive = false): Promise<void> {
+  withMethods((store, api = inject(LegalEntityApiService), authStore = inject(AuthStore)) => ({
+    async loadCompanies(): Promise<void> {
       patchState(store, { loading: true, error: null });
       try {
-        const companies = await firstValueFrom(api.getLegalEntities(includeInactive));
+        const companies = await firstValueFrom(api.getAccessibleCompanies());
 
         let validId: string | null = null;
         const savedId = localStorage.getItem(SELECTED_LEGAL_ENTITY_STORAGE_KEY);
@@ -80,14 +83,25 @@ export const LegalEntityStore = signalStore(
       }
     },
 
-    selectCompany(legalEntityId: string): void {
+    async selectCompany(legalEntityId: string): Promise<boolean> {
       const company = store.companies().find((c) => c.id === legalEntityId);
       if (!company) {
-        return;
+        patchState(store, { switchError: 'The selected company is not available.' });
+        return false;
+      }
+
+      patchState(store, { switchError: null });
+      try {
+        await firstValueFrom(api.switchActiveCompany(legalEntityId));
+        await authStore.checkSession();
+      } catch (err: unknown) {
+        patchState(store, { switchError: toSafeErrorMessage(err, 'Unable to switch company.') });
+        return false;
       }
 
       localStorage.setItem(SELECTED_LEGAL_ENTITY_STORAGE_KEY, legalEntityId);
       patchState(store, { selectedLegalEntityId: legalEntityId });
+      return true;
     },
 
     updateCompanyDisplay(

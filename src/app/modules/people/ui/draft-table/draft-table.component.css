@@ -25,18 +25,19 @@
   letter-spacing: 0.03em;
   border-bottom: 1px solid var(--color-border);
   user-select: none;
+  white-space: nowrap;
 }
 
 .col-name {
-  width: 24%;
-}
-
-.col-position {
   width: 22%;
 }
 
+.col-position {
+  width: 24%;
+}
+
 .col-status {
-  width: 16%;
+  width: 14%;
 }
 
 .col-reason {
@@ -44,19 +45,15 @@
 }
 
 .col-step {
-  width: 10%;
+  width: 11%;
 }
 
 .col-started {
-  width: 8%;
-}
-
-.col-actions {
-  width: 4%;
-  text-align: right;
+  width: 13%;
 }
 
 .draft-row {
+  cursor: pointer;
   transition: background-color 150ms ease;
   border-bottom: 1px solid color-mix(in srgb, var(--color-border) 60%, transparent);
 }
@@ -65,7 +62,11 @@
   border-bottom: none;
 }
 
-.draft-row:hover {
+.draft-row--terminal {
+  cursor: default;
+}
+
+.draft-row:hover:not(.draft-row--terminal) {
   background: var(--color-surface-secondary);
 }
 
@@ -106,18 +107,17 @@
 }
 
 .draft-status-badge {
-  display: inline-block;
-  padding: 0.15rem 0.55rem;
-  border-radius: 999px;
-  font-size: 0.71875rem;
+  display: inline-flex;
+  align-items: center;
+  padding: 0.25rem 0.625rem;
+  font-size: 0.75rem;
   font-weight: 600;
-  background: #fef3c7;
-  color: #92400e;
+  border-radius: 9999px;
+  background: color-mix(in srgb, var(--color-accent) 12%, transparent);
+  color: var(--color-accent);
 }
 
-.draft-reason-text,
-.draft-step-text,
-.draft-started-text {
+.draft-reason-text {
   color: var(--color-text-secondary);
   overflow: hidden;
   text-overflow: ellipsis;
@@ -125,27 +125,15 @@
   display: block;
 }
 
-.draft-action-btn {
-  font-weight: 600;
-  color: var(--color-sidebar-active-bg, #2563eb);
-  background: transparent;
-  border: none;
-  cursor: pointer;
-  padding: 0;
-  font-size: 0.8125rem;
-  white-space: nowrap;
-  transition: opacity 150ms ease;
+.draft-step-text {
+  font-weight: 500;
+  color: var(--color-text-primary);
 }
 
-.draft-action-btn:hover {
-  opacity: 0.8;
-  text-decoration: underline;
-}
-
-.draft-action-btn--disabled,
-.draft-action-btn--disabled:hover {
+.draft-started-text {
   color: var(--color-text-secondary);
-  cursor: default;
-  opacity: 1;
-  text-decoration: none;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  display: block;
 }

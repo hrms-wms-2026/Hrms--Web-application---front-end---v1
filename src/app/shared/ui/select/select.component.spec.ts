@@ -44,4 +44,17 @@ describe('SelectComponent', () => {
     expect(select.options[0].textContent).toBe('Select a country');
     expect(select.options[0].disabled).toBe(true);
   });
+
+  it('renders disabled options as disabled without affecting enabled options', () => {
+    const fixture = TestBed.createComponent(SelectComponent);
+    fixture.componentRef.setInput('options', [
+      { value: 'open', label: 'Software Engineer [2]' },
+      { value: 'full', label: 'Project Manager [No vacancy]', disabled: true }
+    ]);
+    fixture.detectChanges();
+
+    const select = fixture.nativeElement.querySelector('select') as HTMLSelectElement;
+    expect(select.options[0].disabled).toBe(false);
+    expect(select.options[1].disabled).toBe(true);
+  });
 });

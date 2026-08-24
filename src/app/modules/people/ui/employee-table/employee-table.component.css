@@ -29,31 +29,23 @@
 
 /* Explicit column width percentages guaranteeing 100% fit with 0 horizontal scroll */
 .col-employee {
-  width: 28%;
+  width: 35%;
 }
 
 .col-position {
-  width: 24%;
+  width: 28%;
 }
 
 .col-type {
-  width: 20%;
-}
-
-.col-status {
-  width: 12%;
+  width: 22%;
 }
 
 .col-manager {
-  width: 12%;
-}
-
-.col-actions {
-  width: 4%;
-  text-align: right;
+  width: 15%;
 }
 
 .emp-row {
+  cursor: pointer;
   transition: background-color 150ms ease;
   border-bottom: 1px solid color-mix(in srgb, var(--color-border) 60%, transparent);
 }
@@ -71,12 +63,29 @@
   vertical-align: middle;
 }
 
-/* Employee cell with Avatar tile */
+/* Employee cell with Avatar tile & status indicator */
 .emp-identity {
   display: flex;
   align-items: center;
   gap: 0.75rem;
   min-width: 0;
+}
+
+.emp-avatar-wrapper {
+  position: relative;
+  display: inline-flex;
+  flex-shrink: 0;
+}
+
+.emp-avatar-wrapper--warning {
+  border-radius: 50%;
+  box-shadow: 0 0 0 2px #dc2626;
+  z-index: 1;
+}
+
+.emp-avatar-wrapper--warning:focus-visible {
+  outline: 2px solid #991b1b;
+  outline-offset: 3px;
 }
 
 .emp-avatar {
@@ -91,6 +100,52 @@
   font-weight: 700;
   font-size: 0.75rem;
   flex-shrink: 0;
+}
+
+.emp-status-dot-avatar {
+  position: absolute;
+  bottom: 0;
+  right: 0;
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  border: 2px solid var(--color-surface);
+}
+
+.emp-status-dot-avatar--active {
+  background-color: #22c55e;
+}
+
+.emp-status-dot-avatar--inactive {
+  background-color: #ef4444;
+}
+
+.emp-attendance-warning-tooltip {
+  position: absolute;
+  left: 50%;
+  top: calc(100% + 0.45rem);
+  z-index: 4;
+  width: max-content;
+  max-width: 14rem;
+  padding: 0.35rem 0.55rem;
+  border-radius: 0.35rem;
+  background: #450a0a;
+  color: #fff;
+  font-size: 0.6875rem;
+  font-weight: 600;
+  line-height: 1.25;
+  white-space: nowrap;
+  box-shadow: 0 3px 10px rgba(69, 10, 10, 0.22);
+  opacity: 0;
+  pointer-events: none;
+  transform: translate(-50%, -0.2rem);
+  transition: opacity 120ms ease, transform 120ms ease;
+}
+
+.emp-avatar-wrapper--warning:hover .emp-attendance-warning-tooltip,
+.emp-avatar-wrapper--warning:focus .emp-attendance-warning-tooltip {
+  opacity: 1;
+  transform: translate(-50%, 0);
 }
 
 .emp-info {
@@ -167,35 +222,6 @@
   max-width: 100%;
 }
 
-/* Status cell */
-.emp-status-badge {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.35rem;
-  padding: 0.2rem 0.55rem;
-  border-radius: 999px;
-  font-size: 0.71875rem;
-  font-weight: 600;
-  background: var(--color-surface-secondary);
-  color: var(--color-text-secondary);
-}
-
-.emp-status-dot {
-  width: 6px;
-  height: 6px;
-  border-radius: 50%;
-  background: var(--color-text-secondary);
-}
-
-.emp-status-badge--active {
-  background: #dcfce7;
-  color: #15803d;
-}
-
-.emp-status-badge--active .emp-status-dot {
-  background: #22c55e;
-}
-
 /* Reporting Manager cell */
 .emp-manager-text {
   color: var(--color-text-secondary);
@@ -203,18 +229,4 @@
   text-overflow: ellipsis;
   white-space: nowrap;
   display: block;
-}
-
-/* View Link */
-.emp-view-link {
-  font-weight: 600;
-  color: var(--color-sidebar-active-bg, #2563eb);
-  text-decoration: none;
-  font-size: 0.8125rem;
-  transition: opacity 150ms ease;
-}
-
-.emp-view-link:hover {
-  opacity: 0.8;
-  text-decoration: underline;
 }

@@ -2,12 +2,26 @@ import { HttpClient, HttpParams } from '@angular/common/http';
 import { Injectable, inject } from '@angular/core';
 import { Observable } from 'rxjs';
 import { environment } from '../../../../environments/environment';
-import { EmployeeListItemResponse, EmployeeListPageResponse, EmployeeListParams } from '../models/employee.model';
+import {
+  ChangePositionPayload,
+  ChangePositionResponse,
+  EmployeeDetailResponse,
+  EmployeeListItemResponse,
+  EmployeeListPageResponse,
+  EmployeeListParams,
+  ResendInvitationResponse
+} from '../models/employee.model';
+import { PendingAccessGrantRequestResponse } from '../models/access-grant-request.model';
+import { ChecklistAssignee } from '../models/checklist-template.model';
+import { PositionHistoryEntryResponse } from '../models/position-history.model';
 import {
   ApproveAccessGrantRequestResponse,
   DraftListPageResponse,
   DraftListParams,
+  EmployeeNumberAvailabilityResponse,
+  EmployeeNumberSuggestionResponse,
   FinalizeOnboardingDraftResponse,
+  ActiveHolder,
   OnboardingDraftResponse,
   RejectAccessGrantRequestRequest,
   RejectAccessGrantRequestResponse,
@@ -16,7 +30,8 @@ import {
 } from '../models/onboarding-draft.model';
 
 /**
- * Targets HRMS-Backend-v1 EmployeesController (GET /api/v1/employees, GET /api/v1/employees/{id}),
+ * Targets HRMS-Backend-v1 EmployeesController (GET /api/v1/employees, GET /api/v1/employees/{id},
+ * POST /api/v1/employees/{id}/resend-invitation),
  * OnboardingDraftsController (GET/POST/PUT /api/v1/onboarding/drafts, POST /api/v1/onboarding/drafts/{id}/finalize),
  * WorkModesController (GET /api/v1/work-modes), and AccessGrantRequestsController
  * (POST /api/v1/onboarding/access-grant-requests/{id}/approve-and-send-invite, POST /api/v1/onboarding/access-grant-requests/{id}/reject).
@@ -37,6 +52,18 @@ export class PeopleApiService {
 
   getEmployee(id: string): Observable<EmployeeListItemResponse> {
     return this.http.get<EmployeeListItemResponse>(`${environment.apiUrl}/employees/${id}`);
+  }
+
+  resendInvitation(id: string): Observable<ResendInvitationResponse> {
+    return this.http.post<ResendInvitationResponse>(`${environment.apiUrl}/employees/${id}/resend-invitation`, {});
+  }
+
+  getEmployeeDetail(id: string): Observable<EmployeeDetailResponse> {
+    return this.http.get<EmployeeDetailResponse>(`${environment.apiUrl}/employees/${id}/detail`);
+  }
+
+  changePosition(id: string, payload: ChangePositionPayload): Observable<ChangePositionResponse> {
+    return this.http.post<ChangePositionResponse>(`${environment.apiUrl}/employees/${id}/change-position`, payload);
   }
 
   listDrafts(params: DraftListParams): Observable<DraftListPageResponse> {
@@ -70,6 +97,20 @@ export class PeopleApiService {
     return this.http.post<FinalizeOnboardingDraftResponse>(`${environment.apiUrl}/onboarding/drafts/${id}/finalize`, {});
   }
 
+  getEmployeeNumberSuggestion(legalEntityId: string): Observable<EmployeeNumberSuggestionResponse> {
+    return this.http.get<EmployeeNumberSuggestionResponse>(
+      `${environment.apiUrl}/onboarding/employee-number-suggestion`,
+      { params: this.toHttpParams({ legalEntityId }) }
+    );
+  }
+
+  checkEmployeeNumberAvailability(employeeNumber: string): Observable<EmployeeNumberAvailabilityResponse> {
+    return this.http.get<EmployeeNumberAvailabilityResponse>(
+      `${environment.apiUrl}/onboarding/employee-number-availability`,
+      { params: this.toHttpParams({ employeeNumber }) }
+    );
+  }
+
   approveAccessGrantRequest(id: string): Observable<ApproveAccessGrantRequestResponse> {
     return this.http.post<ApproveAccessGrantRequestResponse>(
       `${environment.apiUrl}/onboarding/access-grant-requests/${id}/approve-and-send-invite`,
@@ -85,6 +126,37 @@ export class PeopleApiService {
       `${environment.apiUrl}/onboarding/access-grant-requests/${id}/reject`,
       payload ?? {}
     );
+  }
+
+  listPendingApprovals(): Observable<PendingAccessGrantRequestResponse[]> {
+    return this.http.get<PendingAccessGrantRequestResponse[]>(
+      `${environment.apiUrl}/onboarding/access-grant-requests/pending-for-me`
+    );
+  }
+
+  getJobJourney(employeeId: string): Observable<PositionHistoryEntryResponse[]> {
+    return this.http.get<PositionHistoryEntryResponse[]>(
+      `${environment.apiUrl}/employees/${employeeId}/position-history`
+    );
+  }
+
+  getActiveHolders(legalEntityId: string, positionId: string): Observable<readonly ActiveHolder[]> {
+    return this.http.get<readonly ActiveHolder[]>(
+      `${environment.apiUrl}/org/legal-entities/${legalEntityId}/positions/${positionId}/active-holders`
+    );
+  }
+
+  getChecklistAssigneePositions(legalEntityId: string): Observable<readonly { id: string; name: string }[]> {
+    return this.http.get<readonly { id: string; name: string }[]>(
+      `${environment.apiUrl}/people/checklist-assignee-positions`,
+      { params: this.toHttpParams({ legalEntityId }) }
+    );
+  }
+
+  getChecklistAssignees(legalEntityId: string, positionId: string): Observable<readonly ChecklistAssignee[]> {
+    return this.http.get<readonly ChecklistAssignee[]>(`${environment.apiUrl}/people/checklist-assignees`, {
+      params: this.toHttpParams({ legalEntityId, positionId })
+    });
   }
 
   private toHttpParams(params: object): HttpParams {

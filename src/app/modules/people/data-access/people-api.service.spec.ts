@@ -3,7 +3,7 @@ import { HttpTestingController, provideHttpClientTesting } from '@angular/common
 import { TestBed } from '@angular/core/testing';
 import { environment } from '../../../../environments/environment';
 import { PeopleApiService } from './people-api.service';
-import { EmployeeListItemResponse, EmployeeListPageResponse } from '../models/employee.model';
+import { EmployeeDetailResponse, EmployeeListItemResponse, EmployeeListPageResponse } from '../models/employee.model';
 import { OnboardingDraftResponse, SaveOnboardingDraftPayload } from '../models/onboarding-draft.model';
 
 describe('PeopleApiService', () => {
@@ -52,6 +52,7 @@ describe('PeopleApiService', () => {
     draftReason: 'waiting_for_seat',
     lastSavedStep: 'employee_details',
     startedById: 'user-1',
+    reportsToEmployeeId: null,
     version: '1'
   };
 
@@ -89,6 +90,30 @@ describe('PeopleApiService', () => {
     );
     expect(req.request.method).toBe('GET');
     req.flush(mockEmployeePage);
+  });
+
+  it('preserves the backend attendance summary on the existing employee-list response', () => {
+    const warningEmployee: EmployeeListItemResponse = {
+      ...mockEmployee,
+      attendanceSummary: {
+        showNotClockedInWarning: true,
+        shouldHaveClockedIn: true,
+        hasClockedInToday: false,
+        workDate: '2026-08-21',
+        timezone: 'Asia/Colombo',
+        scheduledStartTime: '09:00',
+        warningLabel: 'Still has not clocked in'
+      }
+    };
+
+    service.listEmployees({ page: 1, pageSize: 25 }).subscribe((page) => {
+      expect(page.items[0].attendanceSummary?.showNotClockedInWarning).toBe(true);
+      expect(page.items[0].attendanceSummary?.warningLabel).toBe('Still has not clocked in');
+    });
+
+    const req = httpMock.expectOne(`${environment.apiUrl}/employees?page=1&pageSize=25`);
+    expect(req.request.method).toBe('GET');
+    req.flush({ ...mockEmployeePage, items: [warningEmployee] });
   });
 
   it('omits empty/undefined query params', () => {
@@ -244,5 +269,91 @@ describe('PeopleApiService', () => {
       draftReason: 'position_approval_rejected',
       messageKey: 'rejected'
     });
+  });
+
+  it('getEmployeeDetail sends GET to /employees/{id}/detail', () => {
+    service.getEmployeeDetail('emp-1').subscribe();
+    const req = httpMock.expectOne(`${environment.apiUrl}/employees/emp-1/detail`);
+    expect(req.request.method).toBe('GET');
+    req.flush({} as EmployeeDetailResponse);
+  });
+
+  it('changePosition sends POST to /employees/{id}/change-position with the payload', () => {
+    service.changePosition('emp-1', { positionId: 'pos-1', effectiveFrom: '2026-09-01', changeReason: 'Transfer' }).subscribe();
+    const req = httpMock.expectOne(`${environment.apiUrl}/employees/emp-1/change-position`);
+    expect(req.request.method).toBe('POST');
+    expect(req.request.body).toEqual({ positionId: 'pos-1', effectiveFrom: '2026-09-01', changeReason: 'Transfer' });
+    req.flush({ pendingApproval: false });
+  });
+
+  it('changePosition sends changeReason and returns pendingApproval', () => {
+    service.changePosition('emp-1', { positionId: 'pos-1', effectiveFrom: '2026-09-01', changeReason: 'Promotion' })
+      .subscribe((response) => expect(response.pendingApproval).toBe(true));
+    const req = httpMock.expectOne(`${environment.apiUrl}/employees/emp-1/change-position`);
+    expect(req.request.body).toEqual({ positionId: 'pos-1', effectiveFrom: '2026-09-01', changeReason: 'Promotion' });
+    req.flush({ pendingApproval: true });
+  });
+
+  it('getActiveHolders requests the position active-holders endpoint', () => {
+    service.getActiveHolders('legal-entity-1', 'position-1').subscribe();
+
+    const req = httpMock.expectOne(
+      `${environment.apiUrl}/org/legal-entities/legal-entity-1/positions/position-1/active-holders`
+    );
+    expect(req.request.method).toBe('GET');
+    req.flush([]);
+  });
+
+  it('getChecklistAssignees requests the people checklist-assignees endpoint', () => {
+    service.getChecklistAssignees('legal-entity-1', 'position-1').subscribe();
+
+    const req = httpMock.expectOne(
+      (r) => r.url === `${environment.apiUrl}/people/checklist-assignees`
+    );
+    expect(req.request.method).toBe('GET');
+    expect(req.request.params.get('legalEntityId')).toBe('legal-entity-1');
+    expect(req.request.params.get('positionId')).toBe('position-1');
+    req.flush([]);
+  });
+
+  it('getChecklistAssigneePositions requests the people checklist-assignee-positions endpoint', () => {
+    service.getChecklistAssigneePositions('legal-entity-1').subscribe();
+
+    const req = httpMock.expectOne(
+      (r) => r.url === `${environment.apiUrl}/people/checklist-assignee-positions`
+    );
+    expect(req.request.method).toBe('GET');
+    expect(req.request.params.get('legalEntityId')).toBe('legal-entity-1');
+    req.flush([{ id: 'pos-1', name: 'HR Partner' }]);
+  });
+
+  it('getEmployeeNumberSuggestion requests the onboarding suggestion endpoint', () => {
+    service.getEmployeeNumberSuggestion('legal-entity-1').subscribe((result) => {
+      expect(result.employeeNumber).toBe('DAPI-0005');
+      expect(result.prefix).toBe('DAPI');
+      expect(result.sequence).toBe(5);
+    });
+
+    const req = httpMock.expectOne(
+      (r) => r.url === `${environment.apiUrl}/onboarding/employee-number-suggestion`
+    );
+    expect(req.request.method).toBe('GET');
+    expect(req.request.params.get('legalEntityId')).toBe('legal-entity-1');
+    expect(req.request.params.get('tenantId')).toBeNull();
+    req.flush({ employeeNumber: 'DAPI-0005', prefix: 'DAPI', sequence: 5 });
+  });
+
+  it('checkEmployeeNumberAvailability requests the onboarding availability endpoint', () => {
+    service.checkEmployeeNumberAvailability('DAPI-0005').subscribe((result) => {
+      expect(result.available).toBe(false);
+    });
+
+    const req = httpMock.expectOne(
+      (r) => r.url === `${environment.apiUrl}/onboarding/employee-number-availability`
+    );
+    expect(req.request.method).toBe('GET');
+    expect(req.request.params.get('employeeNumber')).toBe('DAPI-0005');
+    expect(req.request.params.get('tenantId')).toBeNull();
+    req.flush({ employeeNumber: 'DAPI-0005', available: false });
   });
 });

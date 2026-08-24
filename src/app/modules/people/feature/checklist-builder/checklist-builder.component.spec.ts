@@ -45,12 +45,17 @@ describe('ChecklistBuilderComponent', () => {
   };
 
   function flushInitialRequests(): void {
+    // Asserting length === 1 (not just flushing whatever matched) is the actual
+    // regression check for "no duplicate list API calls" — the constructor effect()
+    // reading selectedCompany() is the thing that can double-fire these.
     const deptReq = httpMock.match((r) => r.url.includes('/departments'));
+    expect(deptReq.length).toBe(1);
     deptReq.forEach((req) => req.flush(emptyPage));
 
     const assigneePosReq = httpMock.match(
       (r) => r.url.includes('/positions') && !r.url.includes('departmentId')
     );
+    expect(assigneePosReq.length).toBe(1);
     assigneePosReq.forEach((req) => req.flush(assigneePositionPage));
 
     const scopePosReq = httpMock.match(
@@ -67,7 +72,7 @@ describe('ChecklistBuilderComponent', () => {
         PermissionService,
         LegalEntityStore,
         ChecklistTemplateStore,
-        provideRouter([]),
+        provideRouter([{ path: 'people/checklists', component: ChecklistBuilderComponent }]),
         provideHttpClient(),
         provideHttpClientTesting(),
         {
@@ -103,27 +108,22 @@ describe('ChecklistBuilderComponent', () => {
     httpMock.verify({ ignoreCancelled: true });
   });
 
-  it('creates form with default task assigned to Employee using due after days = 0', () => {
+  it('creates form with default unassigned task using due after days = 0', () => {
     expect(component.form.controls.name.value).toBe('');
     expect(component.form.controls.templateType.value).toBe('onboarding');
     expect(component.scopeLevel()).toBe('company');
 
     expect(component.tasksArray.length).toBe(1);
     const task = component.tasksArray.at(0).value;
-    expect(task.assignmentType).toBe('employee');
+    expect(task.assignmentType).toBe('unassigned');
     expect(task.dueOffsetDays).toBe(0);
     expect(task.isRequired).toBe(true);
   });
 
-  it('renders Assigned to, Employee, and Company position labels', () => {
+  it('renders Assigned to and + Assign in the default row state', () => {
     const text = fixture.nativeElement.textContent;
     expect(text).toContain('Assigned to');
-    expect(text).toContain('Employee');
-    expect(text).toContain('Company position');
-
-    const assignedSelect = fixture.nativeElement.querySelector('.cb-assigned-field__select') as HTMLSelectElement;
-    expect(assignedSelect).not.toBeNull();
-    expect(Array.from(assignedSelect.options).map((o) => o.text)).toEqual(['Employee', 'Company position']);
+    expect(text).toContain('+ Assign');
   });
 
   it('does NOT render forbidden bad labels anywhere in the builder UI', () => {
@@ -132,8 +132,6 @@ describe('ChecklistBuilderComponent', () => {
     expect(text).not.toContain('relative due offset');
     expect(text).not.toContain('Days relative to start date');
     expect(text).not.toContain('Responsible party');
-    expect(text).not.toContain('New employee');
-    expect(text).not.toContain('Existing employee');
     expect(text).not.toContain('Someone else');
     expect(text).not.toContain('Scope level');
     expect(text).not.toContain('All employees in this company');
@@ -141,8 +139,8 @@ describe('ChecklistBuilderComponent', () => {
     expect(text).not.toContain('days from employee start date');
     expect(text).not.toContain('days after start date');
     expect(text).not.toContain('Required tasks must be completed before onboarding/offboarding is finished.');
-    expect(text).not.toContain('Another person');
     expect(text).not.toContain('Selecting a person by position is not available yet.');
+    expect(text).toContain('+ Assign');
   });
 
   it('renders required HR-facing builder labels and compact task-list structure', () => {
@@ -170,12 +168,18 @@ describe('ChecklistBuilderComponent', () => {
     expect(rows[0].querySelector('.cb-required-toggle')).toBeNull();
   });
 
-  it('shows assignee position dropdown when Company position is selected', () => {
-    component.onAssignmentTypeChange(0, 'company_position');
+  it('shows pill controls for existing-employee assignment when position flow is chosen', async () => {
+    await component.chooseExistingEmployee(0);
     fixture.detectChanges();
 
-    expect(fixture.nativeElement.querySelector('.cb-assigned-field__select--position')).not.toBeNull();
-    expect(fixture.nativeElement.textContent).toContain('Assignee position');
+    expect(fixture.nativeElement.textContent).toContain('Select position');
+  });
+
+  it('allows an optional employee picker in the template builder after position selection', async () => {
+    await component.chooseExistingEmployee(0);
+    fixture.detectChanges();
+
+    expect(fixture.nativeElement.textContent).toContain('+ Choose employee');
   });
 
   it('requires assignee position when Company position is selected', () => {
@@ -187,7 +191,7 @@ describe('ChecklistBuilderComponent', () => {
     fixture.detectChanges();
 
     expect(component.tasksArray.at(0).get('assigneePositionId')?.invalid).toBe(true);
-    expect(fixture.nativeElement.textContent).toContain('Assignee position is required.');
+    expect(fixture.nativeElement.textContent).toContain('Choose who this task is for.');
   });
 
   it('"Company default" scope emits departmentId: null, positionId: null', async () => {
@@ -201,6 +205,7 @@ describe('ChecklistBuilderComponent', () => {
 
     component.tasksArray.at(0).patchValue({
       title: 'Collect signed contract',
+      assignmentType: 'employee',
       dueOffsetDays: 0,
       isRequired: true
     });
@@ -229,6 +234,7 @@ describe('ChecklistBuilderComponent', () => {
 
     component.form.patchValue({ departmentId: 'dept-99' });
     component.tasksArray.at(0).patchValue({ title: 'Prepare laptop' });
+    component.tasksArray.at(0).patchValue({ assignmentType: 'employee' });
 
     const submitPromise = component.onSubmit();
     const req = httpMock.expectOne((r) => r.method === 'POST' && r.url === `${environment.apiUrl}/people/checklist-templates`);
@@ -249,7 +255,7 @@ describe('ChecklistBuilderComponent', () => {
     });
     component.setScopeLevel('position');
     component.form.patchValue({ departmentId: 'dept-99', positionId: 'pos-88' });
-    component.tasksArray.at(0).patchValue({ title: 'Review infrastructure access' });
+    component.tasksArray.at(0).patchValue({ title: 'Review infrastructure access', assignmentType: 'employee' });
 
     const submitPromise = component.onSubmit();
     const req = httpMock.expectOne((r) => r.method === 'POST' && r.url === `${environment.apiUrl}/people/checklist-templates`);
@@ -288,7 +294,10 @@ describe('ChecklistBuilderComponent', () => {
       assigneePositionId: null,
       dueOffsetDays: 0,
       sequence: 1,
-      isRequired: true
+      isRequired: true,
+      isBypassable: false,
+      bypassPenaltyDescription: null,
+      category: null
     });
 
     req.flush({ id: 'tmpl-104', ...req.request.body, isActive: true });
@@ -323,7 +332,10 @@ describe('ChecklistBuilderComponent', () => {
       assigneePositionId: 'pos-hr',
       dueOffsetDays: 2,
       sequence: 1,
-      isRequired: true
+      isRequired: true,
+      isBypassable: false,
+      bypassPenaltyDescription: null,
+      category: null
     });
 
     req.flush({ id: 'tmpl-105', ...req.request.body, isActive: true });
@@ -353,7 +365,7 @@ describe('ChecklistBuilderComponent', () => {
     vi.spyOn(router, 'navigate').mockResolvedValue(true);
 
     component.form.patchValue({ name: 'Zero Due Checklist', templateType: 'onboarding' });
-    component.tasksArray.at(0).patchValue({ title: 'Start day task', dueOffsetDays: 0 });
+    component.tasksArray.at(0).patchValue({ title: 'Start day task', dueOffsetDays: 0, assignmentType: 'employee' });
 
     const submitPromise = component.onSubmit();
     const req = httpMock.expectOne(
@@ -405,8 +417,12 @@ describe('ChecklistBuilderComponent', () => {
         title: 'Self task',
         assignmentType: 'employee',
         assigneePositionId: '',
+        selectedAssigneeUserId: '',
         dueOffsetDays: 0,
-        isRequired: true
+        isRequired: true,
+        isBypassable: false,
+        bypassPenaltyDescription: '',
+        category: ''
       },
       0
     );
@@ -419,14 +435,43 @@ describe('ChecklistBuilderComponent', () => {
         title: 'HR task',
         assignmentType: 'company_position',
         assigneePositionId: 'pos-hr',
+        selectedAssigneeUserId: '',
         dueOffsetDays: 1,
-        isRequired: false
+        isRequired: false,
+        isBypassable: false,
+        bypassPenaltyDescription: '',
+        category: ''
       },
       1
     );
     expect(positionPayload.ownerType).toBe('custom_user');
     expect(positionPayload.assignedToId).toBeNull();
     expect(positionPayload.assigneePositionId).toBe('pos-hr');
+  });
+
+  it('shows bypass/penalty/category fields only for offboarding templates', () => {
+    component.form.controls.templateType.setValue('onboarding');
+    fixture.detectChanges();
+    let compiled: HTMLElement = fixture.nativeElement;
+    expect(compiled.querySelector('[data-testid="task-0-bypassable"]')).toBeNull();
+
+    component.form.controls.templateType.setValue('offboarding');
+    fixture.detectChanges();
+    compiled = fixture.nativeElement;
+    expect(compiled.querySelector('[data-testid="task-0-bypassable"]')).not.toBeNull();
+  });
+
+  it('mapTaskFormToRequest carries isBypassable/bypassPenaltyDescription/category through', () => {
+    component.form.controls.templateType.setValue('offboarding');
+    const value = {
+      title: 'Return laptop', assignmentType: 'employee' as const, assigneePositionId: '',
+      selectedAssigneeUserId: '',
+      dueOffsetDays: 1, isRequired: true, isBypassable: true, bypassPenaltyDescription: 'Deduct from settlement', category: 'asset_return' as const
+    };
+    const request = component.mapTaskFormToRequest(value, 0);
+    expect(request.isBypassable).toBe(true);
+    expect(request.bypassPenaltyDescription).toBe('Deduct from settlement');
+    expect(request.category).toBe('asset_return');
   });
 });
 
@@ -470,7 +515,10 @@ describe('ChecklistBuilderComponent (Edit Mode)', () => {
         assignedToId: null,
         dueOffsetDays: 1,
         sequence: 1,
-        isRequired: true
+        isRequired: true,
+        isBypassable: false,
+        bypassPenaltyDescription: null,
+        category: null
       }
     ]
   };
@@ -485,7 +533,7 @@ describe('ChecklistBuilderComponent (Edit Mode)', () => {
         PermissionService,
         LegalEntityStore,
         ChecklistTemplateStore,
-        provideRouter([]),
+        provideRouter([{ path: 'people/checklists', component: ChecklistBuilderComponent }]),
         provideHttpClient(),
         provideHttpClientTesting(),
         {
@@ -557,7 +605,10 @@ describe('ChecklistBuilderComponent (Edit Mode)', () => {
           assigneePositionId: null,
           dueOffsetDays: 1,
           sequence: 1,
-          isRequired: true
+          isRequired: true,
+          isBypassable: false,
+          bypassPenaltyDescription: null,
+          category: null
         }
       ]
     });
@@ -574,7 +625,10 @@ describe('ChecklistBuilderComponent (Edit Mode)', () => {
           assignedToId: 'user-99',
           dueOffsetDays: 0,
           sequence: 1,
-          isRequired: true
+          isRequired: true,
+          isBypassable: false,
+          bypassPenaltyDescription: null,
+          category: null
         }
       ]
     };
@@ -594,5 +648,106 @@ describe('ChecklistBuilderComponent (Edit Mode)', () => {
     fixture.detectChanges();
 
     expect(component.tasksArray.at(0).value.assignmentType).toBe('company_position');
+    // The backend never returns the original assigneePositionId (it resolves to a
+    // concrete user at save time), so the "Assignee position" dropdown legitimately
+    // starts unselected — this is not a validation gap, see the round-trip test below.
+    expect(component.tasksArray.at(0).value.assigneePositionId).toBe('');
+    expect(component.tasksArray.at(0).value.originalAssignedToId).toBe('user-99');
+  });
+
+  it('re-saves an untouched Company position task without forcing re-selection (edit round trip)', async () => {
+    const detailWithPositionTask: ChecklistTemplateDetailResponse = {
+      ...mockDetail,
+      tasks: [
+        {
+          title: 'Return equipment',
+          ownerType: 'custom_user',
+          assignedToId: 'user-99',
+          dueOffsetDays: 0,
+          sequence: 1,
+          isRequired: true,
+          isBypassable: false,
+          bypassPenaltyDescription: null,
+          category: null
+        }
+      ]
+    };
+
+    fixture.detectChanges();
+    httpMock.expectOne(`${environment.apiUrl}/people/checklist-templates/tmpl-999`).flush(detailWithPositionTask);
+    await Promise.resolve();
+    await Promise.resolve();
+    await Promise.resolve();
+    httpMock.match((r) => r.url.includes('/departments')).forEach((req) => req.flush(emptyPage));
+    httpMock.match((r) => r.url.includes('/positions')).forEach((req) => req.flush(emptyPage));
+    await Promise.resolve();
+    fixture.detectChanges();
+
+    // HR opens the template and saves without touching the assignee at all.
+    expect(component.tasksArray.at(0).get('assigneePositionId')?.invalid).toBe(false);
+
+    const updateSpy = vi.spyOn(checklistStore, 'updateTemplate').mockResolvedValue(true);
+    await component.onSubmit();
+
+    expect(component.tasksArray.at(0).get('assigneePositionId')?.invalid).toBe(false);
+    expect(updateSpy).toHaveBeenCalledWith(
+      'tmpl-999',
+      expect.objectContaining({
+        tasks: [
+          expect.objectContaining({
+            ownerType: 'custom_user',
+            assignedToId: 'user-99',
+            assigneePositionId: null
+          })
+        ]
+      })
+    );
+  });
+
+  it('re-picking a position for a loaded Company position task overrides the carried-over assignee', async () => {
+    const detailWithPositionTask: ChecklistTemplateDetailResponse = {
+      ...mockDetail,
+      tasks: [
+        {
+          title: 'Return equipment',
+          ownerType: 'custom_user',
+          assignedToId: 'user-99',
+          dueOffsetDays: 0,
+          sequence: 1,
+          isRequired: true,
+          isBypassable: false,
+          bypassPenaltyDescription: null,
+          category: null
+        }
+      ]
+    };
+
+    fixture.detectChanges();
+    httpMock.expectOne(`${environment.apiUrl}/people/checklist-templates/tmpl-999`).flush(detailWithPositionTask);
+    await Promise.resolve();
+    await Promise.resolve();
+    await Promise.resolve();
+    httpMock.match((r) => r.url.includes('/departments')).forEach((req) => req.flush(emptyPage));
+    httpMock.match((r) => r.url.includes('/positions')).forEach((req) => req.flush(emptyPage));
+    await Promise.resolve();
+    fixture.detectChanges();
+
+    component.tasksArray.at(0).patchValue({ assigneePositionId: 'pos-new', selectedAssigneeUserId: '' });
+
+    const updateSpy = vi.spyOn(checklistStore, 'updateTemplate').mockResolvedValue(true);
+    await component.onSubmit();
+
+    expect(updateSpy).toHaveBeenCalledWith(
+      'tmpl-999',
+      expect.objectContaining({
+        tasks: [
+          expect.objectContaining({
+            ownerType: 'custom_user',
+            assignedToId: null,
+            assigneePositionId: 'pos-new'
+          })
+        ]
+      })
+    );
   });
 });

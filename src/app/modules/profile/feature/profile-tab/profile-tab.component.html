@@ -1,0 +1,58 @@
+@if (store.loading()) {
+  <div class="skeleton-rows" aria-busy="true" aria-label="Loading profile"></div>
+} @else if (store.error()) {
+  <div class="profile-error-banner">
+    <p>{{ store.error() }}</p>
+    <button type="button" (click)="store.loadProfile()">Retry</button>
+  </div>
+} @else if (store.profile(); as profile) {
+  <div class="profile-tab-container">
+    @if (activeSubTab() === 'personal') {
+      <app-personal-info-form
+        [personalInformation]="profile.personalInformation"
+        [saving]="store.saving()"
+        [saveError]="store.saveError()"
+        (save)="onSavePersonalInformation($event)"
+        (avatarSelected)="onAvatarSelected($event)"
+      />
+    }
+    @if (activeSubTab() === 'emergency') {
+      <section class="pf-section">
+        <h3 class="pf-section__title">Emergency contacts</h3>
+        <app-emergency-contacts-panel
+          [contacts]="profile.emergencyContacts"
+          [saving]="store.saving()"
+          (add)="onAddEmergencyContact($event)"
+          (remove)="onRemoveEmergencyContact($event)"
+        />
+      </section>
+      <section class="pf-section">
+        <h3 class="pf-section__title">Dependents</h3>
+        <app-dependents-panel
+          [dependents]="profile.dependents"
+          [saving]="store.saving()"
+          (add)="onAddDependent($event)"
+          (remove)="onRemoveDependent($event)"
+        />
+      </section>
+    }
+    @if (activeSubTab() === 'job') {
+      <app-job-info-panel [jobInformation]="profile.jobInformation" />
+    }
+    @if (activeSubTab() === 'payroll') {
+      <app-payroll-panel [payroll]="profile.payroll" [saving]="store.saving()" (save)="onSavePayroll($event)" />
+    }
+    @if (activeSubTab() === 'security') {
+      <app-security-panel
+        [security]="profile.security"
+        [saving]="store.saving()"
+        [qrCodeImage]="qrCodeImage()"
+        [qrCodeSecret]="qrCodeSecret()"
+        (changePassword)="onChangePassword($event)"
+        (startMfaSetup)="onStartMfaSetup()"
+        (confirmMfaSetup)="onConfirmMfaSetup($event)"
+        (disableMfa)="onDisableMfa($event)"
+      />
+    }
+  </div>
+}

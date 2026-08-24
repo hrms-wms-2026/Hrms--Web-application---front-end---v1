@@ -10,9 +10,8 @@ import {
 } from '../models/legal-entity.model';
 
 /**
- * Minimal Legal Entity API service for fetching tenant companies list.
- * Targets backend endpoint GET /api/v1/org/legal-entities (LegalEntitiesController.cs:29-37).
- * Requires org:read permission.
+ * Legal Entity API service. Selector reads are session-scoped; Organization management
+ * operations remain on the permission-protected /org/legal-entities routes.
  */
 @Injectable({ providedIn: 'root' })
 export class LegalEntityApiService {
@@ -21,6 +20,10 @@ export class LegalEntityApiService {
   getLegalEntities(includeInactive = false): Observable<readonly LegalEntityListItem[]> {
     const params = new HttpParams().set('includeInactive', includeInactive);
     return this.http.get<readonly LegalEntityListItem[]>(`${environment.apiUrl}/org/legal-entities`, { params });
+  }
+
+  getAccessibleCompanies(): Observable<readonly LegalEntityListItem[]> {
+    return this.http.get<readonly LegalEntityListItem[]>(`${environment.apiUrl}/session/companies`);
   }
 
   createLegalEntity(payload: CreateLegalEntityRequest): Observable<LegalEntityGeneralSettings> {
@@ -54,6 +57,10 @@ export class LegalEntityApiService {
 
   removeLogo(legalEntityId: string): Observable<void> {
     return this.http.delete<void>(`${environment.apiUrl}/org/legal-entities/${legalEntityId}/logo`);
+  }
+
+  switchActiveCompany(legalEntityId: string): Observable<void> {
+    return this.http.post<void>(`${environment.apiUrl}/session/active-company`, { legalEntityId });
   }
 
   /** Pure helper - no request. `?v=` busts the browser's image cache after a re-upload. */

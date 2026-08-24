@@ -31,7 +31,8 @@ describe('GeneralSettingsStore', () => {
     timeFormat: '24h',
     status: 'active',
     workStartTime: '09:00',
-    workEndTime: '17:30'
+    workEndTime: '17:30',
+    breakDurationMinutes: 60
   };
 
   const settingsB: LegalEntityGeneralSettings = { ...settingsA, id: 'company-b', name: 'Company B', companyCode: 'B' };
@@ -131,7 +132,8 @@ describe('GeneralSettingsStore', () => {
       timeFormat: '24h',
       status: 'active',
       workStartTime: '09:00',
-      workEndTime: '17:30'
+      workEndTime: '17:30',
+      breakDurationMinutes: 60
     });
 
     const putReq = httpMock.expectOne(`${environment.apiUrl}/org/legal-entities/company-a/general-settings`);
@@ -169,7 +171,8 @@ describe('GeneralSettingsStore', () => {
       timeFormat: '24h',
       status: 'active',
       workStartTime: null,
-      workEndTime: null
+      workEndTime: null,
+      breakDurationMinutes: null
     });
 
     httpMock
@@ -207,7 +210,8 @@ describe('GeneralSettingsStore', () => {
       timeFormat: '24h',
       status: 'active',
       workStartTime: '08:00',
-      workEndTime: '16:30'
+      workEndTime: '16:30',
+      breakDurationMinutes: 60
     });
 
     const putReq = httpMock.expectOne(`${environment.apiUrl}/org/legal-entities/company-a/general-settings`);
@@ -245,7 +249,8 @@ describe('GeneralSettingsStore', () => {
       timeFormat: '24h',
       status: 'active',
       workStartTime: null,
-      workEndTime: null
+      workEndTime: null,
+      breakDurationMinutes: null
     });
 
     const putReq = httpMock.expectOne(`${environment.apiUrl}/org/legal-entities/company-a/general-settings`);

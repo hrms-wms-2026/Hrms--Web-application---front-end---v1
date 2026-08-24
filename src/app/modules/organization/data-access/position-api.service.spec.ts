@@ -21,7 +21,9 @@ describe('PositionApiService', () => {
     ownerOrder: 3,
     source: 'Manual',
     isLocked: false,
-    status: 'active'
+    status: 'active',
+    responsibleEmployeeId: null,
+    responsibleEmployeeName: null
   };
 
   beforeEach(() => {
