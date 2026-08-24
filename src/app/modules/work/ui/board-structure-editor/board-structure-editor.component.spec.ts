@@ -28,7 +28,7 @@ describe('BoardStructureEditorComponent', () => {
     });
     const fixture = TestBed.createComponent(BoardStructureEditorComponent);
     fixture.componentRef.setInput('open', true);
-    fixture.componentRef.setInput('objectiveId', 'obj-1');
+    fixture.componentRef.setInput('projectId', 'project-1');
     fixture.componentRef.setInput('statuses', statuses);
     return { fixture, reorderTaskStatuses, createStatus, deleteStatus };
   }
@@ -66,7 +66,7 @@ describe('BoardStructureEditorComponent', () => {
     await fixture.whenStable();
 
     expect(reorderTaskStatuses).toHaveBeenCalledTimes(1);
-    expect(reorderTaskStatuses).toHaveBeenCalledWith('obj-1', [
+    expect(reorderTaskStatuses).toHaveBeenCalledWith('project-1', [
       { statusId: 's1', displayOrder: 0, visibility: 'public', marksTaskComplete: false },
       { statusId: 's2', displayOrder: 1, visibility: 'public', marksTaskComplete: false },
       { statusId: 's3', displayOrder: 2, visibility: 'public', marksTaskComplete: false },
@@ -93,7 +93,7 @@ describe('BoardStructureEditorComponent', () => {
     await fixture.whenStable();
 
     expect(reorderTaskStatuses).toHaveBeenCalledTimes(1);
-    expect(reorderTaskStatuses).toHaveBeenCalledWith('obj-1', [
+    expect(reorderTaskStatuses).toHaveBeenCalledWith('project-1', [
       { statusId: 's2', displayOrder: 0, visibility: 'public', marksTaskComplete: false },
       { statusId: 's3', displayOrder: 1, visibility: 'private', marksTaskComplete: false },
       { statusId: 's1', displayOrder: 2, visibility: 'public', marksTaskComplete: false },
@@ -134,7 +134,7 @@ describe('BoardStructureEditorComponent', () => {
     await fixture.whenStable();
     fixture.detectChanges();
 
-    expect(createStatus).toHaveBeenCalledWith('obj-1', {
+    expect(createStatus).toHaveBeenCalledWith('project-1', {
       name: 'Blocked', displayOrder: 4, visibility: 'public', marksTaskComplete: false, requiresApproval: false
     });
     const names = Array.from(fixture.nativeElement.querySelectorAll('.board-structure__name') as NodeListOf<HTMLElement>)

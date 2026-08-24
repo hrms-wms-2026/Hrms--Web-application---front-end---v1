@@ -11,6 +11,11 @@ import {
   WorkTaskDto
 } from '../models/dto/task.dto';
 import {
+  CreateTaskCategoryRequestDto,
+  EditTaskCategoryRequestDto,
+  TaskCategoryDto
+} from '../models/dto/task-category.dto';
+import {
   CreateTaskEditRequestDto,
   TaskEditRequestDto
 } from '../models/dto/task-edit-request.dto';
@@ -20,16 +25,16 @@ export class TaskApiService {
   private readonly http = inject(HttpClient);
   private readonly baseUrl = `${environment.apiUrl}/work`;
 
-  getStatuses(objectiveId: string): Observable<TaskStatusDto[]> {
-    return this.http.get<TaskStatusDto[]>(`${this.baseUrl}/objectives/${objectiveId}/task-statuses`);
+  getStatuses(projectId: string): Observable<TaskStatusDto[]> {
+    return this.http.get<TaskStatusDto[]>(`${this.baseUrl}/projects/${projectId}/task-statuses`);
   }
 
-  createStatus(objectiveId: string, request: CreateTaskStatusRequestDto): Observable<TaskStatusDto> {
-    return this.http.post<TaskStatusDto>(`${this.baseUrl}/objectives/${objectiveId}/task-statuses`, request);
+  createStatus(projectId: string, request: CreateTaskStatusRequestDto): Observable<TaskStatusDto> {
+    return this.http.post<TaskStatusDto>(`${this.baseUrl}/projects/${projectId}/task-statuses`, request);
   }
 
-  editStatus(objectiveId: string, id: string, request: EditTaskStatusRequestDto): Observable<void> {
-    return this.http.patch<void>(`${this.baseUrl}/objectives/${objectiveId}/task-statuses/${id}`, request);
+  editStatus(_projectId: string, id: string, request: EditTaskStatusRequestDto): Observable<void> {
+    return this.http.patch<void>(`${this.baseUrl}/task-statuses/${id}`, request);
   }
 
   deleteStatus(id: string): Observable<void> {
@@ -105,7 +110,27 @@ export class TaskApiService {
     return this.http.get<TaskEditRequestDto[]>(`${this.baseUrl}/task-edit-requests/mine`);
   }
 
-  reorderTaskStatuses(objectiveId: string, updates: { statusId: string; displayOrder: number; visibility: string; marksTaskComplete: boolean }[]): Observable<TaskStatusDto[]> {
-    return this.http.post<TaskStatusDto[]>(`${this.baseUrl}/objectives/${objectiveId}/task-statuses/reorder`, { updates });
+  reorderTaskStatuses(projectId: string, updates: { statusId: string; displayOrder: number; visibility: string; marksTaskComplete: boolean }[]): Observable<TaskStatusDto[]> {
+    return this.http.post<TaskStatusDto[]>(`${this.baseUrl}/projects/${projectId}/task-statuses/reorder`, { updates });
+  }
+
+  getCategories(projectId: string): Observable<TaskCategoryDto[]> {
+    return this.http.get<TaskCategoryDto[]>(`${this.baseUrl}/projects/${projectId}/task-categories`);
+  }
+
+  createCategory(projectId: string, request: CreateTaskCategoryRequestDto): Observable<TaskCategoryDto> {
+    return this.http.post<TaskCategoryDto>(`${this.baseUrl}/projects/${projectId}/task-categories`, request);
+  }
+
+  editCategory(id: string, request: EditTaskCategoryRequestDto): Observable<void> {
+    return this.http.patch<void>(`${this.baseUrl}/task-categories/${id}`, request);
+  }
+
+  deleteCategory(id: string): Observable<void> {
+    return this.http.delete<void>(`${this.baseUrl}/task-categories/${id}`);
+  }
+
+  reorderTaskCategories(projectId: string, updates: { categoryId: string; displayOrder: number }[]): Observable<TaskCategoryDto[]> {
+    return this.http.post<TaskCategoryDto[]>(`${this.baseUrl}/projects/${projectId}/task-categories/reorder`, { updates });
   }
 }

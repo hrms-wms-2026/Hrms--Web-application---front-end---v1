@@ -82,7 +82,7 @@ export class BoardStructureEditorComponent {
   private readonly taskApi = inject(TaskApiService);
 
   open = input(false);
-  objectiveId = input.required<string>();
+  projectId = input.required<string>();
   statuses = input.required<readonly TaskStatusColumn[]>();
   saved = output<void>();
   closed = output<void>();
@@ -140,7 +140,7 @@ export class BoardStructureEditorComponent {
     this.adding.set(true);
     this.errorMessage.set(null);
     try {
-      const created = await firstValueFrom(this.taskApi.createStatus(this.objectiveId(), {
+      const created = await firstValueFrom(this.taskApi.createStatus(this.projectId(), {
         name,
         displayOrder: this.rows().length,
         visibility: 'public',
@@ -176,7 +176,7 @@ export class BoardStructureEditorComponent {
     this.errorMessage.set(null);
     try {
       await firstValueFrom(this.taskApi.reorderTaskStatuses(
-        this.objectiveId(),
+        this.projectId(),
         this.rows().map((r, index) => ({ statusId: r.id, displayOrder: index, visibility: r.visibility, marksTaskComplete: r.marksTaskComplete }))
       ));
       this.saved.emit();
