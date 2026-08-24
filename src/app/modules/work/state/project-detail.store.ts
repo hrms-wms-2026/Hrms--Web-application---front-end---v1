@@ -27,6 +27,12 @@ interface ProjectDetailState {
   readonly objectiveMembersLoading: boolean;
   readonly objectiveMembersError: string | null;
   readonly myInvitations: readonly ObjectiveInvitationDto[];
+  /** Members of the project's Default Objective - what "Project members" means everywhere else
+   *  in this app (POST /work/projects/{id}/members writes here server-side), so this is the
+   *  correct assignee source for project-wide task-create flows (Tree and Backlog alike),
+   *  rather than whichever module a create-task click happened to be scoped to. */
+  readonly projectMembers: readonly ObjectiveMemberItemDto[];
+  readonly projectMembersLoading: boolean;
 }
 
 const initialState: ProjectDetailState = {
@@ -35,7 +41,8 @@ const initialState: ProjectDetailState = {
   selectedSubtree: null, subtreeLoading: false, subtreeError: null,
   milestoneActionError: null,
   objectiveMembers: [], objectiveMembersLoading: false, objectiveMembersError: null,
-  myInvitations: []
+  myInvitations: [],
+  projectMembers: [], projectMembersLoading: false
 };
 
 function extractError(err: any, fallback: string): string {
@@ -69,6 +76,26 @@ export const ProjectDetailStore = signalStore(
         patchState(store, { milestones: dtos.map(toMilestone), milestonesLoading: false });
       } catch (err) {
         patchState(store, { milestonesError: extractError(err, 'Failed to load modules.'), milestonesLoading: false });
+      }
+    },
+
+    async loadProjectMembers(projectId: string): Promise<void> {
+      patchState(store, { projectMembersLoading: true });
+      try {
+        const milestones = store.milestones().length > 0
+          ? store.milestones()
+          : (await firstValueFrom(api.getMyMilestones(projectId))).map(toMilestone);
+        if (store.milestones().length === 0) patchState(store, { milestones });
+
+        const defaultObjectiveId = milestones.find((m) => m.isDefault)?.objectiveId;
+        if (!defaultObjectiveId) {
+          patchState(store, { projectMembers: [], projectMembersLoading: false });
+          return;
+        }
+        const list = await firstValueFrom(memberApi.getMembers(defaultObjectiveId));
+        patchState(store, { projectMembers: list.items.filter((m) => !m.pending), projectMembersLoading: false });
+      } catch {
+        patchState(store, { projectMembers: [], projectMembersLoading: false });
       }
     },
 

@@ -64,6 +64,7 @@
 @if (createTaskOpen()) {
 <app-task-create-modal [open]="createTaskOpen()" [objectiveId]="createTaskObjectiveId()" [projectId]="projectId()"
   [isObjectiveOwner]="createTaskIsOwner()" [activeSprints]="createTaskSprints()"
+  [assignableMembers]="assignableMembers()"
   [sprintRequired]="createTaskSprint() !== null" (created)="onTaskCreated()" (closed)="onTaskCreateClosed()" />
 }
 

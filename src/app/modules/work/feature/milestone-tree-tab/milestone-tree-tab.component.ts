@@ -2,6 +2,7 @@ import { Component, computed, inject, signal } from '@angular/core';
 import { ActivatedRoute } from '@angular/router';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { ProjectDetailStore } from '../../state/project-detail.store';
+import { EmployeeDirectoryStore } from '../../state/employee-directory.store';
 import { MilestoneTreeNodeComponent } from '../../ui/milestone-tree-node/milestone-tree-node.component';
 import { ModuleFilterSelectComponent } from '../../ui/module-filter-select/module-filter-select.component';
 import { TreeExplanationPanelComponent } from '../../ui/tree-explanation-panel/tree-explanation-panel.component';
@@ -35,11 +36,14 @@ import { Sprint, SprintStatus } from '../../models/sprint.model';
 })
 export class MilestoneTreeTabComponent {
   readonly store = inject(ProjectDetailStore);
+  private readonly directory = inject(EmployeeDirectoryStore);
   private readonly route = inject(ActivatedRoute);
   private currentMilestoneId = '';
   private currentProjectId = '';
   protected readonly projectId = signal('');
+  protected readonly assignableMembers = signal<{ employeeId: string; name: string }[]>([]);
   private loadedProjectId: string | null = null;
+  private loadedMembersForProjectId: string | null = null;
 
   selectedModuleFilter = signal<string>('all');
   selectedActivityFilter = signal<ActivityFilter>('all');
@@ -105,7 +109,25 @@ export class MilestoneTreeTabComponent {
       this.selectedModuleFilter.set(milestoneId);
       this.selectedNodeId.set(null);
       void this.loadTree();
+      if (this.currentProjectId && this.loadedMembersForProjectId !== this.currentProjectId) {
+        this.loadedMembersForProjectId = this.currentProjectId;
+        void this.loadAssignableMembers(this.currentProjectId);
+      }
     });
+  }
+
+  private async loadAssignableMembers(projectId: string): Promise<void> {
+    try {
+      await this.store.loadProjectMembers(projectId);
+      const members = this.store.projectMembers();
+      await this.directory.ensureLoaded(members.map((member) => member.employeeId));
+      this.assignableMembers.set(members.map((member) => ({
+        employeeId: member.employeeId,
+        name: this.directory.get(member.employeeId)?.name ?? 'Unknown employee'
+      })));
+    } catch {
+      this.assignableMembers.set([]);
+    }
   }
 
   onModuleFilterChanged(moduleId: string): void {
