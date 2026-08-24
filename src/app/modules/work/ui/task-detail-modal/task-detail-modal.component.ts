@@ -4,6 +4,8 @@ import { ModalComponent } from '../../../../shared/ui/modal/modal.component';
 import { InputComponent } from '../../../../shared/ui/input/input.component';
 import { ButtonComponent } from '../../../../shared/ui/button/button.component';
 import { TaskStatusColumn, WorkTask } from '../../models/task.model';
+import { TaskCategoryColumn } from '../../models/task-category.model';
+import { toTaskCategoryColumn } from '../../utils/task-category.mapper';
 import { TaskApiService } from '../../data-access/task-api.service';
 import { toWorkTask } from '../../utils/task.mapper';
 
@@ -39,7 +41,7 @@ import { toWorkTask } from '../../utils/task.mapper';
           <app-input label="Story points" type="number" [value]="storyPointsDisplay()" (valueChange)="onStoryPointsChange($event)" />
 
           <dl class="task-detail__grid">
-            <dt>Type</dt><dd>{{ t.taskType }}</dd>
+            <dt>Category</dt><dd>{{ categoryName() }}</dd>
             <dt>Completed hours</dt><dd>{{ t.completedHours }}</dd>
             <dt>Progress</dt><dd>{{ t.progressPercent }}%</dd>
           </dl>
@@ -70,6 +72,7 @@ export class TaskDetailModalComponent {
 
   open = input(false);
   task = input<WorkTask | null>(null);
+  projectId = input.required<string>();
   isObjectiveOwner = input.required<boolean>();
   statuses = input.required<readonly TaskStatusColumn[]>();
   closed = output<void>();
@@ -84,9 +87,16 @@ export class TaskDetailModalComponent {
   estimatedHours = signal<number | null>(null);
   storyPoints = signal<number | null>(null);
   statusId = signal('');
+  categories = signal<TaskCategoryColumn[]>([]);
   submitting = signal(false);
   errors = signal<Record<string, string>>({});
   errorMessage = signal<string | null>(null);
+
+  categoryName = computed(() => {
+    const task = this.task();
+    if (!task) return '';
+    return this.categories().find((category) => category.id === task.categoryId)?.name ?? task.categoryId;
+  });
 
   availableStatuses = computed(() =>
     [...this.statuses()]
@@ -94,7 +104,12 @@ export class TaskDetailModalComponent {
       .sort((a, b) => a.displayOrder - b.displayOrder)
   );
 
-  constructor() {
+    constructor() {
+    effect(() => {
+      const projectId = this.projectId();
+      if (this.open() && projectId) void this.loadCategories(projectId);
+    });
+
     effect(() => {
       // Track `open()` alongside `task()` so the form re-seeds every time the modal transitions
       // to open, even when the same task object reference is reopened (Object.is would otherwise
@@ -121,6 +136,14 @@ export class TaskDetailModalComponent {
       this.errorMessage.set(null);
       this.errors.set({});
     });
+  }
+
+  private async loadCategories(projectId: string): Promise<void> {
+    try {
+      this.categories.set((await firstValueFrom(this.taskApi.getCategories(projectId))).map(toTaskCategoryColumn));
+    } catch {
+      // The category id remains visible if the lookup cannot be completed.
+    }
   }
 
   estimatedHoursDisplay(): string {

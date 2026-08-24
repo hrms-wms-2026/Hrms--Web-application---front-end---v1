@@ -38,6 +38,7 @@ export class MilestoneTreeTabComponent {
   private readonly route = inject(ActivatedRoute);
   private currentMilestoneId = '';
   private currentProjectId = '';
+  protected readonly projectId = signal('');
   private loadedProjectId: string | null = null;
 
   selectedModuleFilter = signal<string>('all');
@@ -100,6 +101,7 @@ export class MilestoneTreeTabComponent {
       if (!milestoneId) return;
       this.currentMilestoneId = milestoneId;
       this.currentProjectId = paramMap.get('id') ?? this.resolveProjectId() ?? '';
+      this.projectId.set(this.currentProjectId);
       this.selectedModuleFilter.set(milestoneId);
       this.selectedNodeId.set(null);
       void this.loadTree();

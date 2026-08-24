@@ -32,6 +32,7 @@ describe('TaskCreateModalComponent', () => {
   function setup(isObjectiveOwner: boolean, createTaskResult: unknown) {
     const createTask = vi.fn().mockResolvedValue(createTaskResult);
     const assignTask = vi.fn().mockReturnValue(of(undefined));
+    const getCategories = vi.fn().mockReturnValue(of([{ id: 'cat-1', name: 'Task', displayOrder: 0 }]));
     TestBed.configureTestingModule({
       imports: [TaskCreateModalComponent],
       providers: [
@@ -40,7 +41,8 @@ describe('TaskCreateModalComponent', () => {
           provide: TaskApiService,
           useValue: {
             createTaskCreationRequest: vi.fn().mockReturnValue(of({})),
-            assignTask
+            assignTask,
+            getCategories
           }
         }
       ]
@@ -48,6 +50,7 @@ describe('TaskCreateModalComponent', () => {
     const fixture = TestBed.createComponent(TaskCreateModalComponent);
     fixture.componentRef.setInput('open', true);
     fixture.componentRef.setInput('objectiveId', 'obj-1');
+    fixture.componentRef.setInput('projectId', 'project-1');
     fixture.componentRef.setInput('isObjectiveOwner', isObjectiveOwner);
     fixture.componentRef.setInput('activeSprints', [sprint]);
     fixture.componentRef.setInput('assignableMembers', [{ employeeId: 'emp-1', name: 'Ada' }]);
@@ -60,7 +63,7 @@ describe('TaskCreateModalComponent', () => {
 
     await fixture.componentInstance.submit({
       title: 'New task',
-      taskType: 'task',
+      categoryId: 'cat-1',
       priority: 'medium',
       sprintId: 'sp-1'
     });
@@ -74,6 +77,7 @@ describe('TaskCreateModalComponent', () => {
     const { fixture, createTask } = setup(true, { id: 't-1', shortId: 'T-1', title: 'New task' });
     fixture.componentRef.setInput('activeSprints', [sprint, sprint2]);
     fixture.detectChanges();
+    await fixture.whenStable();
     fixture.componentInstance.title.set('New task');
 
     await fixture.componentInstance.submit();
@@ -93,6 +97,7 @@ describe('TaskCreateModalComponent', () => {
       return of(undefined);
     });
     fixture.detectChanges();
+    await fixture.whenStable();
     fixture.componentInstance.title.set('New task');
     fixture.componentInstance.sprintId.set('sp-1');
     fixture.componentInstance.assigneeEmployeeId.set('emp-1');
@@ -106,6 +111,7 @@ describe('TaskCreateModalComponent', () => {
   it('on submit with no assignee selected, calls createTask only, never assignTask', async () => {
     const { fixture, createTask, assignTask } = setup(true, { id: 'task-1', shortId: 'T-1', title: 'New task' });
     fixture.detectChanges();
+    await fixture.whenStable();
     fixture.componentInstance.title.set('New task');
     fixture.componentInstance.sprintId.set('sp-1');
 
@@ -147,6 +153,7 @@ describe('TaskCreateModalComponent', () => {
     fixture.componentRef.setInput('activeSprints', []);
     fixture.componentRef.setInput('sprintRequired', false);
     fixture.detectChanges();
+    await fixture.whenStable();
     fixture.componentInstance.title.set('Backlog task');
 
     await fixture.componentInstance.submit();

@@ -1,5 +1,5 @@
 import { Component, OnInit, computed, inject, signal } from '@angular/core';
-import { ActivatedRoute, NavigationEnd, Router, RouterOutlet } from '@angular/router';
+import { ActivatedRoute, NavigationEnd, Router, RouterLink, RouterOutlet } from '@angular/router';
 import { filter } from 'rxjs/operators';
 import { firstValueFrom } from 'rxjs';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
@@ -15,7 +15,7 @@ import { BreadcrumbHeaderComponent } from '../../../../shared/ui/breadcrumb-head
   standalone: true,
   imports: [
     MilestoneSubMenuComponent, LoaderComponent, ErrorStateComponent, EmptyStateComponent,
-    BreadcrumbHeaderComponent, RouterOutlet
+    BreadcrumbHeaderComponent, RouterLink, RouterOutlet
   ],
   templateUrl: './project-detail.component.html'
 })
@@ -26,6 +26,7 @@ export class ProjectDetailComponent implements OnInit {
   private projectId = '';
 
   activeMilestoneId = signal<string | null>(null);
+  isProjectSettings = signal(false);
   activeMilestoneTitle = computed(() => {
     const id = this.activeMilestoneId();
     return this.store.milestones().find((m) => m.objectiveId === id)?.title ?? '';
@@ -37,15 +38,21 @@ export class ProjectDetailComponent implements OnInit {
   });
 
   constructor() {
-    this.activeMilestoneId.set(this.route.snapshot.firstChild?.paramMap.get('milestoneId') ?? null);
+    this.syncChildRouteState();
     this.router.events
       .pipe(
         filter((event) => event instanceof NavigationEnd),
         takeUntilDestroyed()
       )
       .subscribe(() => {
-        this.activeMilestoneId.set(this.route.snapshot.firstChild?.paramMap.get('milestoneId') ?? null);
+        this.syncChildRouteState();
       });
+  }
+
+  private syncChildRouteState(): void {
+    const child = this.route.snapshot.firstChild;
+    this.isProjectSettings.set(child?.routeConfig?.path === 'settings');
+    this.activeMilestoneId.set(child?.paramMap.get('milestoneId') ?? null);
   }
 
   async ngOnInit(): Promise<void> {

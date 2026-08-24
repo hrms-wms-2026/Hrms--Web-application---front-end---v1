@@ -104,6 +104,7 @@
   <app-task-create-modal
     [open]="createTaskOpen()"
     [objectiveId]="createTaskObjectiveId()"
+    [projectId]="projectId()"
     [isObjectiveOwner]="createTaskIsOwner()"
     [activeSprints]="createTaskSprints()"
     [sprintRequired]="createTaskSprint() !== null"
@@ -126,6 +127,7 @@
   <app-task-detail-modal
     [open]="editTaskOpen()"
     [task]="taskNode.taskSource ?? null"
+    [projectId]="projectId()"
     [isObjectiveOwner]="taskNode.isOwner"
     [statuses]="taskNode.taskStatuses ?? []"
     (closed)="onTaskEditClosed()"

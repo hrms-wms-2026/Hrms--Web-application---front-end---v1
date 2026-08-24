@@ -93,6 +93,7 @@ import { Sprint, SprintStatus } from '../../models/sprint.model';
       <app-task-create-modal
         [open]="createOpen()"
         [objectiveId]="mId"
+        [projectId]="projectId()"
         [isObjectiveOwner]="isObjectiveOwner()"
         [activeSprints]="createModalSprints()"
         [assignableMembers]="assignableMembers()"
@@ -102,6 +103,7 @@ import { Sprint, SprintStatus } from '../../models/sprint.model';
       <app-task-detail-modal
         [open]="detailOpen()"
         [task]="selectedTask()"
+        [projectId]="projectId()"
         [isObjectiveOwner]="isObjectiveOwner()"
         [statuses]="store.statuses()"
         (closed)="detailOpen.set(false)"
@@ -133,6 +135,7 @@ export class TaskBacklogComponent implements OnInit {
   protected readonly detailOpen = signal(false);
   protected readonly selectedTask = signal<WorkTask | null>(null);
   protected readonly milestoneId = signal<string | null>(null);
+  protected readonly projectId = signal('');
   protected readonly isObjectiveOwner = signal(false);
   protected readonly expandedSprintId = signal<string | null>(null);
   protected readonly createForSprintId = signal<string | null>(null);
@@ -155,6 +158,7 @@ export class TaskBacklogComponent implements OnInit {
   });
 
   ngOnInit(): void {
+    this.projectId.set(this.route.parent?.parent?.snapshot.paramMap.get('id') ?? '');
     const id = this.route.parent?.snapshot.paramMap.get('milestoneId') ?? null;
     this.milestoneId.set(id);
     if (!id) return;

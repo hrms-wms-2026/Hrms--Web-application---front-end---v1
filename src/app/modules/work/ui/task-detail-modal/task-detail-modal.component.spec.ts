@@ -9,12 +9,12 @@ import { WorkTaskDto } from '../../models/dto/task.dto';
 describe('TaskDetailModalComponent', () => {
   const task: WorkTask = {
     id: 't1', objectiveId: 'o1', shortId: 'EPOS-1', title: 'Do the thing', description: 'Details here',
-    taskType: 'task', statusId: 's1', priority: 'high', storyPoints: 3, dueDate: new Date('2026-09-20'),
+    categoryId: 'task', statusId: 's1', priority: 'high', storyPoints: 3, dueDate: new Date('2026-09-20'),
     estimatedHours: 8, completedHours: 0, progressPercent: 0, sprintId: null, assigneeEmployeeIds: []
   };
   const updatedDto: WorkTaskDto = {
     id: 't1', objectiveId: 'o1', shortId: 'EPOS-1', title: 'Updated title', description: 'Details here',
-    taskType: 'task', statusId: 's1', priority: 'high', storyPoints: 3, dueDate: '2026-09-20',
+    categoryId: 'task', statusId: 's1', priority: 'high', storyPoints: 3, dueDate: '2026-09-20',
     estimatedHours: 8, completedHours: 0, progressPercent: 0, sprintId: null, assigneeEmployeeIds: []
   };
   const statuses: TaskStatusColumn[] = [
@@ -26,15 +26,17 @@ describe('TaskDetailModalComponent', () => {
   function setup(isObjectiveOwner: boolean, statusList: TaskStatusColumn[] = statuses) {
     const editTask = vi.fn().mockReturnValue(of(updatedDto));
     const createTaskEditRequest = vi.fn().mockReturnValue(of({}));
+    const getCategories = vi.fn().mockReturnValue(of([{ id: 'task', name: 'Task', displayOrder: 0 }]));
     TestBed.configureTestingModule({
       imports: [TaskDetailModalComponent],
       providers: [
-        { provide: TaskApiService, useValue: { editTask, createTaskEditRequest } }
+        { provide: TaskApiService, useValue: { editTask, createTaskEditRequest, getCategories } }
       ]
     });
     const fixture = TestBed.createComponent(TaskDetailModalComponent);
     fixture.componentRef.setInput('open', true);
     fixture.componentRef.setInput('task', task);
+    fixture.componentRef.setInput('projectId', 'project-1');
     fixture.componentRef.setInput('isObjectiveOwner', isObjectiveOwner);
     fixture.componentRef.setInput('statuses', statusList);
     return { fixture, editTask, createTaskEditRequest };
