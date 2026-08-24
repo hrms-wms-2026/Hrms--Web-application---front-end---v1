@@ -317,7 +317,7 @@ describe('TaskBacklogComponent', () => {
 
   it('loads the board for the current milestoneId on init', async () => {
     const { loadBoard } = setup();
-    expect(loadBoard).toHaveBeenCalledWith('milestone-1');
+    expect(loadBoard).toHaveBeenCalledWith('milestone-1', '');
   });
 
   it('routes task-status changes from the detail modal to store.moveTask', async () => {

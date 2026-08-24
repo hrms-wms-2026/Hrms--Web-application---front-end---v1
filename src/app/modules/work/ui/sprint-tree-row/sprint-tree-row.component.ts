@@ -6,7 +6,7 @@ import { MilestoneTreeNode } from '../../models/milestone.model';
   standalone: true,
   template: `
     <div
-      class="grid grid-cols-[1fr_112px_40px_88px_72px] items-center gap-3 rounded-md px-2 py-1.5 cursor-pointer {{ selected() ? 'bg-[var(--color-accent)]' : 'hover:bg-[var(--color-surface-secondary)]' }}"
+      class="grid grid-cols-[1fr_112px_40px_88px_140px] items-center gap-3 rounded-md px-2 py-1.5 cursor-pointer {{ selected() ? 'bg-[var(--color-accent)]' : 'hover:bg-[var(--color-surface-secondary)]' }}"
       data-testid="tree-row"
       (click)="selectedRow.emit(node())"
     >
@@ -56,7 +56,7 @@ import { MilestoneTreeNode } from '../../models/milestone.model';
       <span data-testid="owner-cell"></span>
       <span class="text-xs {{ selected() ? 'text-white' : 'text-[var(--color-text-secondary)]' }}" data-testid="due-date-cell">{{ node().endDate }}</span>
 
-      <span class="flex items-center justify-end gap-0.5" data-testid="row-actions">
+      <span class="flex items-center justify-end gap-px" data-testid="row-actions">
         @if (node().isOwner) {
           <button type="button" class="{{ iconClass() }}" data-testid="create-task-button" aria-label="Create task" (click)="emit($event, createTaskRequested)">
             <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" aria-hidden="true">
@@ -104,8 +104,8 @@ export class SprintTreeRowComponent {
 
   iconClass(): string {
     return this.selected()
-      ? 'flex h-6 w-6 shrink-0 items-center justify-center rounded-md transition-colors text-white hover:bg-white/20'
-      : 'flex h-6 w-6 shrink-0 items-center justify-center rounded-md transition-colors text-[var(--color-text-secondary)] hover:bg-[var(--color-surface-secondary)] hover:text-[var(--color-text-primary)]';
+      ? 'flex h-5 w-5 shrink-0 items-center justify-center rounded-md transition-colors text-white hover:bg-white/20'
+      : 'flex h-5 w-5 shrink-0 items-center justify-center rounded-md transition-colors text-[var(--color-text-secondary)] hover:bg-[var(--color-surface-secondary)] hover:text-[var(--color-text-primary)]';
   }
 
   emit(event: Event, channel: { emit: (node: MilestoneTreeNode) => void }): void {

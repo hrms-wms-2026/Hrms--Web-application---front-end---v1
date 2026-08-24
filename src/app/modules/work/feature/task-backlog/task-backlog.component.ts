@@ -165,7 +165,7 @@ export class TaskBacklogComponent implements OnInit {
 
     const fromList = this.projectStore.milestones().find((m) => m.objectiveId === id);
     this.isObjectiveOwner.set(fromList?.isOwner ?? false);
-    void this.store.loadBoard(id);
+    void this.store.loadBoard(id, this.projectId());
     void this.sprintStore.load(id, !this.isObjectiveOwner());
     void firstValueFrom(this.memberApi.getMembers(id)).then(async (list) => {
       const active = list.items.filter((m) => !m.pending);
@@ -203,7 +203,7 @@ export class TaskBacklogComponent implements OnInit {
 
   async reloadTasks(): Promise<void> {
     const id = this.milestoneId();
-    if (id) await this.store.loadBoard(id);
+    if (id) await this.store.loadBoard(id, this.projectId());
   }
 
   onTaskViewed(task: WorkTask): void {

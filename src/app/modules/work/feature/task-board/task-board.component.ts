@@ -129,7 +129,7 @@ export class TaskBoardComponent implements OnInit, AfterViewChecked {
 
     const fromList = this.projectStore.milestones().find((m) => m.objectiveId === id);
     this.isObjectiveOwner.set(fromList?.isOwner ?? false);
-    void this.store.loadBoard(id).then(() => {
+    void this.store.loadBoard(id, this.projectId()).then(() => {
       const assigneeIds = this.store.tasks().flatMap((t) => t.assigneeEmployeeIds);
       if (assigneeIds.length > 0) void this.directory.ensureLoaded(assigneeIds);
     });
@@ -173,6 +173,6 @@ export class TaskBoardComponent implements OnInit, AfterViewChecked {
   }
 
   protected onTaskSaved(): void {
-    if (this.milestoneId()) void this.store.loadBoard(this.milestoneId()!);
+    if (this.milestoneId()) void this.store.loadBoard(this.milestoneId()!, this.projectId());
   }
 }

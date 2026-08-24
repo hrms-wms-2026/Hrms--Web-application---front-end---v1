@@ -231,7 +231,7 @@ export const ProjectDetailStore = signalStore(
         const [sprints, tasks, statuses] = await firstValueFrom(forkJoin([
           sprintApi.getByObjective(objectiveId, false),
           taskApi.getTasks(objectiveId),
-          taskApi.getStatuses(objectiveId)
+          taskApi.getStatuses(store.project()?.id ?? '')
         ]));
         const current = store.selectedSubtree();
         if (!current) return;

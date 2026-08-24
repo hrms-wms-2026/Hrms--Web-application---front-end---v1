@@ -24,7 +24,7 @@ describe('TaskBoardStore', () => {
 
   it('loadBoard populates statuses and tasks grouped by column', async () => {
     const store = setup();
-    await store.loadBoard('obj-1');
+    await store.loadBoard('obj-1', 'proj-1');
 
     expect(store.statuses().length).toBe(1);
     expect(store.tasks().length).toBe(1);
@@ -33,7 +33,7 @@ describe('TaskBoardStore', () => {
 
   it('moveTask optimistically updates statusId then confirms via API', async () => {
     const store = setup();
-    await store.loadBoard('obj-1');
+    await store.loadBoard('obj-1', 'proj-1');
 
     await store.moveTask('t-1', 's-2');
 
@@ -42,7 +42,7 @@ describe('TaskBoardStore', () => {
 
   it('moveTask reverts local state if the API call fails', async () => {
     const store = setup({ moveTaskStatus: () => throwError(() => ({ error: { detail: 'nope' } })) });
-    await store.loadBoard('obj-1');
+    await store.loadBoard('obj-1', 'proj-1');
 
     await store.moveTask('t-1', 's-2');
 

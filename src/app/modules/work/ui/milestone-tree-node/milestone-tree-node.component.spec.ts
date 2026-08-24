@@ -50,8 +50,8 @@ describe('MilestoneTreeNodeComponent', () => {
   it('all rows share the same grid column template, only the title cell indents by depth', () => {
     setup(root, null, true);
     const rows = fixture.nativeElement.querySelectorAll('[data-testid="tree-row"]');
-    expect((rows[0] as HTMLElement).className).toContain('grid-cols-[1fr_112px_40px_88px_72px]');
-    expect((rows[1] as HTMLElement).className).toContain('grid-cols-[1fr_112px_40px_88px_72px]');
+    expect((rows[0] as HTMLElement).className).toContain('grid-cols-[1fr_112px_40px_88px_140px]');
+    expect((rows[1] as HTMLElement).className).toContain('grid-cols-[1fr_112px_40px_88px_140px]');
 
     const rootTitleCell = rows[0].querySelector('span') as HTMLElement;
     const childTitleCell = rows[1].querySelector('span') as HTMLElement;

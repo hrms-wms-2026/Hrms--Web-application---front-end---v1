@@ -48,11 +48,11 @@ export const TaskBoardStore = signalStore(
     )
   })),
   withMethods((store, api = inject(TaskApiService)) => ({
-    async loadBoard(objectiveId: string): Promise<void> {
+    async loadBoard(objectiveId: string, projectId: string): Promise<void> {
       patchState(store, { loading: true, error: null });
       try {
         const [statusDtos, taskDtos] = await Promise.all([
-          firstValueFrom(api.getStatuses(objectiveId)),
+          firstValueFrom(api.getStatuses(projectId)),
           firstValueFrom(api.getTasks(objectiveId))
         ]);
         patchState(store, {

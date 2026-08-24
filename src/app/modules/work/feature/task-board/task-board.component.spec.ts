@@ -53,7 +53,7 @@ describe('TaskBoardComponent', () => {
     fixture.detectChanges();
     await fixture.whenStable();
 
-    expect(loadBoard).toHaveBeenCalledWith('milestone-1');
+    expect(loadBoard).toHaveBeenCalledWith('milestone-1', '');
   });
 
   it('columnsWithTasks only includes tasks whose sprintId is one of the active sprints', async () => {
