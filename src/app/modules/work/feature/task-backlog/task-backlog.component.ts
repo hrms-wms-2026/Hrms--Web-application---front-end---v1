@@ -6,7 +6,6 @@ import { ProjectDetailStore } from '../../state/project-detail.store';
 import { TaskBoardStore } from '../../state/task-board.store';
 import { SprintListStore } from '../../state/sprint-list.store';
 import { TaskApiService } from '../../data-access/task-api.service';
-import { ObjectiveMemberApiService } from '../../data-access/objective-member-api.service';
 import { EmployeeDirectoryStore } from '../../state/employee-directory.store';
 import { TaskCreateModalComponent } from '../../ui/task-create-modal/task-create-modal.component';
 import { TaskDetailModalComponent } from '../../ui/task-detail-modal/task-detail-modal.component';
@@ -51,19 +50,18 @@ import { toTaskCategoryColumn } from '../../utils/task-category.mapper';
         <option value="incomplete">Incomplete</option>
         <option value="achieved">Achieved</option>
       </select>
-      @if (createObjectiveId()) {
+      @if (modules().length > 0) {
         <app-button variant="secondary" (pressed)="openCreateTask()">Create task</app-button>
       }
-      @if (createSprintObjectiveId()) {
+      @if (ownedModuleOptions().length > 0) {
         <app-button variant="primary" (pressed)="createSprintOpen.set(true)">Create Sprint</app-button>
       }
     </div>
 
-    @if (createSprintObjectiveId()) {
+    @if (createSprintOpen() && ownedModuleOptions().length > 0) {
       <app-sprint-create-form
         [open]="createSprintOpen()"
-        [objectiveId]="createSprintObjectiveId()"
-        [isObjectiveOwner]="true"
+        [modules]="ownedModuleOptions()"
         (created)="onSprintCreated()"
         (cancelled)="createSprintOpen.set(false)"
       />
@@ -99,7 +97,7 @@ import { toTaskCategoryColumn } from '../../utils/task-category.mapper';
           (toggled)="toggleExpanded(sprint.id)"
           (editRequested)="editingSprint.set(sprint)"
           (statusChangeRequested)="onSprintStatusChangeRequested(sprint, $event)"
-          (createTaskRequested)="onCreateTaskForSprint(sprint)"
+          (createTaskRequested)="openCreateTask()"
           (taskViewed)="onTaskViewed($event)"
           (taskStatusChangeRequested)="onTaskStatusChangeRequested($event)"
         />
@@ -120,17 +118,19 @@ import { toTaskCategoryColumn } from '../../utils/task-category.mapper';
       }
     }
 
-    @if (createObjectiveId()) {
+    @if (createOpen()) {
       <app-task-create-modal
         [open]="createOpen()"
-        [objectiveId]="createObjectiveId()"
         [projectId]="projectId()"
-        [isObjectiveOwner]="objectiveOwners()[createObjectiveId()] ?? false"
-        [activeSprints]="createModalSprints()"
+        [modules]="moduleOptions()"
+        [sprintRequired]="false"
+        [activeSprints]="sprintStore.sprints()"
         [assignableMembers]="assignableMembers()"
         (closed)="createOpen.set(false)"
         (created)="onTaskCreated()"
       />
+    }
+    @if (detailOpen()) {
       <app-task-detail-modal
         [open]="detailOpen()"
         [task]="selectedTask()"
@@ -155,9 +155,8 @@ import { toTaskCategoryColumn } from '../../utils/task-category.mapper';
 export class TaskBacklogComponent implements OnInit {
   protected readonly store = inject(TaskBoardStore);
   protected readonly sprintStore = inject(SprintListStore);
-  private readonly projectStore = inject(ProjectDetailStore);
+  protected readonly projectStore = inject(ProjectDetailStore);
   private readonly taskApi = inject(TaskApiService);
-  private readonly memberApi = inject(ObjectiveMemberApiService);
   private readonly directory = inject(EmployeeDirectoryStore);
   private readonly route = inject(ActivatedRoute);
 
@@ -167,9 +166,6 @@ export class TaskBacklogComponent implements OnInit {
   protected readonly detailOpen = signal(false);
   protected readonly selectedTask = signal<WorkTask | null>(null);
   protected readonly projectId = signal('');
-  protected readonly createObjectiveId = signal('');
-  protected readonly createSprintObjectiveId = signal('');
-  protected readonly createSprintId = signal<string | null>(null);
   protected readonly expandedSprintId = signal<string | null>(null);
   protected readonly assignableMembers = signal<{ employeeId: string; name: string }[]>([]);
   protected readonly sprintStatusFilter = signal<'all' | SprintStatus>('all');
@@ -181,13 +177,13 @@ export class TaskBacklogComponent implements OnInit {
   protected readonly objectiveOwners = computed(() =>
     Object.fromEntries(this.modules().map((module) => [module.objectiveId, module.isOwner]))
   );
+  protected readonly moduleOptions = computed(() =>
+    this.modules().map((m) => ({ objectiveId: m.objectiveId, title: m.title, isOwner: m.isOwner }))
+  );
+  // Sprint creation has no pending/request path (unlike tasks) - only modules the user owns may
+  // ever be offered here, or SprintApiService.create would just fail for a non-owner's pick.
+  protected readonly ownedModuleOptions = computed(() => this.moduleOptions().filter((m) => m.isOwner));
   protected readonly statusNames = computed(() => Object.fromEntries(this.store.statuses().map((status) => [status.id, status.name])));
-  protected readonly createModalSprints = computed(() => {
-    const sprintId = this.createSprintId();
-    if (!sprintId) return this.sprintStore.sprints();
-    const sprint = this.sprintStore.sprints().find((item) => item.id === sprintId);
-    return sprint ? [sprint] : this.sprintStore.sprints();
-  });
   protected readonly filteredSprints = computed(() => {
     const filter = this.sprintStatusFilter();
     return filter === 'all' ? this.sprintStore.sprints() : this.sprintStore.sprints().filter((sprint) => sprint.status === filter);
@@ -198,42 +194,14 @@ export class TaskBacklogComponent implements OnInit {
   });
 
   ngOnInit(): void {
-    const routedProjectId = this.route.snapshot?.paramMap?.get('id');
-    const projectId = routedProjectId ?? '';
-    const legacyObjectiveId = routedProjectId ? null : this.route.parent?.snapshot?.paramMap?.get('milestoneId') ?? this.route.parent?.snapshot?.paramMap?.get('id') ?? null;
+    const projectId = this.route.snapshot?.paramMap?.get('id') ?? '';
     this.projectId.set(projectId);
-    if (!projectId && !legacyObjectiveId) return;
+    if (!projectId) return;
 
-    if (!projectId) {
-      const owner = this.modules().find((module) => module.isOwner);
-      if (owner) {
-        this.createObjectiveId.set(owner.objectiveId);
-        this.createSprintObjectiveId.set(owner.objectiveId);
-      }
-      if (legacyObjectiveId) {
-        void this.store.loadBoard(legacyObjectiveId, projectId);
-        if (typeof this.sprintStore.loadForProject === 'function') {
-          void this.sprintStore.loadForProject(projectId);
-        } else if (typeof this.sprintStore.load === 'function') {
-          void this.sprintStore.load(legacyObjectiveId, !(owner?.isOwner ?? false));
-        }
-        void this.loadAssignableMembers(legacyObjectiveId);
-      }
-      return;
-    }
-
-    if (typeof this.projectStore.loadMyMilestones === 'function') {
-      void this.projectStore.loadMyMilestones(projectId).then(() => {
-        const owner = this.modules().find((module) => module.isOwner);
-        if (owner) {
-          this.createObjectiveId.set(owner.objectiveId);
-          this.createSprintObjectiveId.set(owner.objectiveId);
-        }
-      });
-    }
     void this.store.loadBoard(projectId);
-    if (typeof this.sprintStore.loadForProject === 'function') void this.sprintStore.loadForProject(projectId);
+    void this.sprintStore.loadForProject(projectId);
     void this.loadCategories(projectId);
+    void this.loadAssignableMembers(projectId);
   }
 
   private filteredTasks(): WorkTask[] {
@@ -251,25 +219,12 @@ export class TaskBacklogComponent implements OnInit {
     this.expandedSprintId.set(this.expandedSprintId() === sprintId ? null : sprintId);
   }
 
-  onCreateTaskForSprint(sprint: Sprint): void {
-    this.createObjectiveId.set(sprint.objectiveId);
-    this.createSprintId.set(sprint.id);
-    void this.loadAssignableMembers(sprint.objectiveId);
-    this.createOpen.set(true);
-  }
-
   protected openCreateTask(): void {
-    const objective = this.modules().find((module) => module.isOwner);
-    if (!objective) return;
-    this.createSprintId.set(null);
-    this.createObjectiveId.set(objective.objectiveId);
-    void this.loadAssignableMembers(objective.objectiveId);
     this.createOpen.set(true);
   }
 
   protected onTaskCreated(): void {
     this.createOpen.set(false);
-    this.createSprintId.set(null);
     void this.reloadTasks();
   }
 
@@ -310,12 +265,12 @@ export class TaskBacklogComponent implements OnInit {
     void this.sprintStore.loadForProject(this.projectId());
   }
 
-  private async loadAssignableMembers(objectiveId: string): Promise<void> {
+  private async loadAssignableMembers(projectId: string): Promise<void> {
     try {
-      const list = await firstValueFrom(this.memberApi.getMembers(objectiveId));
-      const active = list.items.filter((member) => !member.pending);
-      await this.directory.ensureLoaded(active.map((member) => member.employeeId));
-      this.assignableMembers.set(active.map((member) => ({
+      await this.projectStore.loadProjectMembers(projectId);
+      const members = this.projectStore.projectMembers();
+      await this.directory.ensureLoaded(members.map((member) => member.employeeId));
+      this.assignableMembers.set(members.map((member) => ({
         employeeId: member.employeeId,
         name: this.directory.get(member.employeeId)?.name ?? 'Unknown employee'
       })));

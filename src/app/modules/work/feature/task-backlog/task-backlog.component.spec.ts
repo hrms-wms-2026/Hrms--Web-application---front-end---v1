@@ -7,7 +7,6 @@ import { signal } from '@angular/core';
 import { TaskBacklogComponent } from './task-backlog.component';
 import { TaskBoardStore } from '../../state/task-board.store';
 import { ProjectDetailStore } from '../../state/project-detail.store';
-import { ObjectiveMemberApiService } from '../../data-access/objective-member-api.service';
 import { TaskApiService } from '../../data-access/task-api.service';
 import { SprintListStore } from '../../state/sprint-list.store';
 import { SprintTabComponent } from '../../ui/sprint-tab/sprint-tab.component';
@@ -64,7 +63,6 @@ describe('TaskBacklogComponent', () => {
     isOwner?: boolean;
     sprints?: Sprint[];
     tasks?: WorkTask[];
-    sprintLoad?: ReturnType<typeof vi.fn>;
     sprintCreate?: ReturnType<typeof vi.fn>;
     sprintsSignal?: ReturnType<typeof signal<Sprint[]>>;
     sprintErrorSignal?: ReturnType<typeof signal<string | null>>;
@@ -79,11 +77,12 @@ describe('TaskBacklogComponent', () => {
     const taskErrorSignal = options.taskErrorSignal ?? signal<string | null>(null);
     const loadBoard = vi.fn().mockResolvedValue(undefined);
     const moveTask = vi.fn().mockResolvedValue(undefined);
-    const sprintLoad = options.sprintLoad ?? vi.fn().mockResolvedValue(undefined);
+    const loadForProject = vi.fn().mockResolvedValue(undefined);
     const sprintCreate = options.sprintCreate ?? vi.fn().mockResolvedValue(true);
     const sprintComplete = options.sprintComplete ?? vi.fn().mockResolvedValue(true);
     const sprintAchieve = options.sprintAchieve ?? vi.fn().mockResolvedValue(true);
     const sprintSetStatus = options.sprintSetStatus ?? vi.fn().mockResolvedValue(true);
+    const loadProjectMembers = vi.fn().mockResolvedValue(undefined);
 
     TestBed.resetTestingModule();
     TestBed.configureTestingModule({
@@ -103,18 +102,20 @@ describe('TaskBacklogComponent', () => {
         {
           provide: ProjectDetailStore,
           useValue: {
-            milestones: () => [{ objectiveId: 'milestone-1', isOwner }],
-            getMilestoneDetail: vi.fn().mockResolvedValue(null)
+            milestones: () => [{ objectiveId: 'milestone-1', title: 'Milestone One', isOwner }],
+            getMilestoneDetail: vi.fn().mockResolvedValue(null),
+            loadProjectMembers,
+            projectMembers: () => []
           }
         },
-        { provide: ObjectiveMemberApiService, useValue: { getMembers: vi.fn().mockReturnValue(of({ items: [] })) } },
         {
           provide: TaskApiService,
           useValue: {
             createTaskCreationRequest: vi.fn().mockReturnValue(of({})),
             assignTask: vi.fn().mockReturnValue(of(undefined)),
             editTask: vi.fn().mockReturnValue(of({})),
-            createTaskEditRequest: vi.fn().mockReturnValue(of({}))
+            createTaskEditRequest: vi.fn().mockReturnValue(of({})),
+            getCategories: vi.fn().mockReturnValue(of([]))
           }
         },
         {
@@ -127,7 +128,7 @@ describe('TaskBacklogComponent', () => {
             sprints: sprintsSignal,
             error: sprintErrorSignal,
             loading: signal(false),
-            load: sprintLoad,
+            loadForProject,
             create: sprintCreate,
             edit: vi.fn(),
             complete: sprintComplete,
@@ -137,28 +138,21 @@ describe('TaskBacklogComponent', () => {
         },
         {
           provide: ActivatedRoute,
-          useValue: { parent: { snapshot: { paramMap: { get: () => 'milestone-1' } } } }
+          useValue: { snapshot: { paramMap: { get: (key: string) => (key === 'id' ? 'project-1' : null) } } }
         }
       ]
     });
 
     const fixture = TestBed.createComponent(TaskBacklogComponent);
     fixture.detectChanges();
-    return { fixture, loadBoard, moveTask, sprintLoad, sprintCreate, sprintsSignal, sprintErrorSignal, taskErrorSignal, sprintComplete, sprintAchieve, sprintSetStatus };
+    return { fixture, loadBoard, moveTask, loadForProject, sprintCreate, sprintsSignal, sprintErrorSignal, taskErrorSignal, sprintComplete, sprintAchieve, sprintSetStatus, loadProjectMembers };
   }
 
-  it('renders one SprintTabComponent per sprint, owner sees all statuses, member sees active-only', async () => {
-    const owner = setup({ isOwner: true });
-    await owner.fixture.whenStable();
-    owner.fixture.detectChanges();
-    expect(owner.fixture.debugElement.queryAll(By.directive(SprintTabComponent)).length).toBe(2);
-    expect(owner.sprintLoad).toHaveBeenCalledWith('milestone-1', false);
-
-    const member = setup({ isOwner: false });
-    await member.fixture.whenStable();
-    member.fixture.detectChanges();
-    expect(member.fixture.debugElement.queryAll(By.directive(SprintTabComponent)).length).toBe(2);
-    expect(member.sprintLoad).toHaveBeenCalledWith('milestone-1', true);
+  it('renders one SprintTabComponent per sprint', async () => {
+    const { fixture } = setup();
+    await fixture.whenStable();
+    fixture.detectChanges();
+    expect(fixture.debugElement.queryAll(By.directive(SprintTabComponent)).length).toBe(2);
   });
 
   it("expanding a sprint shows only that sprint's tasks", async () => {
@@ -170,7 +164,6 @@ describe('TaskBacklogComponent', () => {
     const tabs = fixture.debugElement.queryAll(By.directive(SprintTabComponent));
     const sprint1Tab = tabs.find((t) => (t.componentInstance as SprintTabComponent).sprint().id === 'sp-1')!;
 
-    // Expand sprint 1 by emitting its toggled output (mirrors clicking its header).
     (sprint1Tab.componentInstance as SprintTabComponent).toggled.emit();
     fixture.detectChanges();
 
@@ -178,7 +171,7 @@ describe('TaskBacklogComponent', () => {
     expect(fixture.nativeElement.querySelector('[data-testid="task-row-t-2"]')).toBeNull();
   });
 
-  it('the sprint create-task + button opens the create modal with sprintId pre-filled and the dropdown hidden', async () => {
+  it('the sprint tab\'s + button opens the shared create-task modal with a required Module picker', async () => {
     const { fixture } = setup();
     await fixture.whenStable();
     fixture.detectChanges();
@@ -191,14 +184,8 @@ describe('TaskBacklogComponent', () => {
 
     const modal = fixture.debugElement.query(By.directive(TaskCreateModalComponent)).componentInstance as TaskCreateModalComponent;
     expect(modal.open()).toBe(true);
-    expect(modal.activeSprints()).toEqual([sprint1]);
-
-    fixture.detectChanges();
-    const fixedText = fixture.nativeElement.querySelector('[data-testid="sprint-fixed"]');
-    const select = fixture.nativeElement.querySelector('select.task-create-modal__sprint-select');
-    expect(fixedText).not.toBeNull();
-    expect(fixedText.textContent).toContain('Sprint One');
-    expect(select).toBeNull();
+    expect(modal.modules()).toEqual([{ objectiveId: 'milestone-1', title: 'Milestone One', isOwner: true }]);
+    expect(modal.sprintRequired()).toBe(false);
   });
 
   it("creating a sprint immediately reflects in this component's own sprint list and the create-task modal's dropdown, without a page reload", async () => {
@@ -213,12 +200,9 @@ describe('TaskBacklogComponent', () => {
 
     expect(fixture.debugElement.queryAll(By.directive(SprintTabComponent)).length).toBe(1);
 
-    // Open the inline sprint-create form and submit it - mirrors the SprintCreateFormComponent's
-    // own submit(), which calls SprintListStore.create() directly (no manual "reload" call needed;
-    // the store's own signal update is what both this list and the modal's dropdown read from).
-    const createButton = Array.from(fixture.nativeElement.querySelectorAll('button') as HTMLButtonElement[])
+    const createSprintButton = Array.from(fixture.nativeElement.querySelectorAll('button') as HTMLButtonElement[])
       .find((b) => b.textContent?.includes('Create Sprint'));
-    createButton?.click();
+    createSprintButton?.click();
     fixture.detectChanges();
 
     await fixture.componentInstance['sprintStore'].create('milestone-1', { name: 'x', startDate: '', endDate: '' }, false);
@@ -229,14 +213,18 @@ describe('TaskBacklogComponent', () => {
     expect(sprintCreate).toHaveBeenCalled();
     expect(fixture.debugElement.queryAll(By.directive(SprintTabComponent)).length).toBe(2);
 
-    // Open the create-task modal generically (no specific sprint clicked) and confirm the new
-    // sprint is already present in its dropdown data, without any page reload.
-    expect(fixture.componentInstance['createModalSprints']()).toEqual([sprint1, sprint2]);
+    // Opening the create-task modal afterward should already see the new sprint via the reactive
+    // SprintListStore.sprints() signal, without any page reload.
+    fixture.componentInstance['openCreateTask']();
+    fixture.detectChanges();
+    const modal = fixture.debugElement.query(By.directive(TaskCreateModalComponent)).componentInstance as TaskCreateModalComponent;
+    expect(modal.activeSprints()).toEqual([sprint1, sprint2]);
   });
 
-  it('resolves assignableMembers names from the employee directory instead of the raw employeeId', async () => {
+  it('resolves assignableMembers names from the project\'s Default Objective, via the employee directory', async () => {
     const directoryGet = vi.fn((id: string) => (id === 'emp-1' ? { id, name: 'Nevi Peiris', initials: 'NP', avatarUrl: null } : undefined));
     const directoryEnsureLoaded = vi.fn().mockResolvedValue(undefined);
+    const loadProjectMembers = vi.fn().mockResolvedValue(undefined);
 
     TestBed.configureTestingModule({
       imports: [TaskBacklogComponent],
@@ -255,19 +243,13 @@ describe('TaskBacklogComponent', () => {
         {
           provide: ProjectDetailStore,
           useValue: {
-            milestones: () => [{ objectiveId: 'milestone-1', isOwner: true }],
-            getMilestoneDetail: vi.fn().mockResolvedValue(null)
-          }
-        },
-        {
-          provide: ObjectiveMemberApiService,
-          useValue: {
-            getMembers: vi.fn().mockReturnValue(of({
-              items: [
-                { employeeId: 'emp-1', pending: false, isHead: false },
-                { employeeId: 'emp-2', pending: false, isHead: false }
-              ]
-            }))
+            milestones: () => [{ objectiveId: 'milestone-1', title: 'Milestone One', isOwner: true }],
+            getMilestoneDetail: vi.fn().mockResolvedValue(null),
+            loadProjectMembers,
+            projectMembers: () => [
+              { employeeId: 'emp-1', pending: false, isHead: false },
+              { employeeId: 'emp-2', pending: false, isHead: false }
+            ]
           }
         },
         {
@@ -276,7 +258,8 @@ describe('TaskBacklogComponent', () => {
             createTaskCreationRequest: vi.fn().mockReturnValue(of({})),
             assignTask: vi.fn().mockReturnValue(of(undefined)),
             editTask: vi.fn().mockReturnValue(of({})),
-            createTaskEditRequest: vi.fn().mockReturnValue(of({}))
+            createTaskEditRequest: vi.fn().mockReturnValue(of({})),
+            getCategories: vi.fn().mockReturnValue(of([]))
           }
         },
         { provide: EmployeeDirectoryStore, useValue: { get: directoryGet, ensureLoaded: directoryEnsureLoaded } },
@@ -286,7 +269,7 @@ describe('TaskBacklogComponent', () => {
             sprints: signal([]),
             error: signal(null),
             loading: signal(false),
-            load: vi.fn().mockResolvedValue(undefined),
+            loadForProject: vi.fn().mockResolvedValue(undefined),
             create: vi.fn(),
             edit: vi.fn(),
             complete: vi.fn(),
@@ -295,7 +278,7 @@ describe('TaskBacklogComponent', () => {
         },
         {
           provide: ActivatedRoute,
-          useValue: { parent: { snapshot: { paramMap: { get: () => 'milestone-1' } } } }
+          useValue: { snapshot: { paramMap: { get: (key: string) => (key === 'id' ? 'project-1' : null) } } }
         }
       ]
     });
@@ -305,6 +288,7 @@ describe('TaskBacklogComponent', () => {
     await fixture.whenStable();
     await fixture.whenStable();
 
+    expect(loadProjectMembers).toHaveBeenCalledWith('project-1');
     expect(directoryEnsureLoaded).toHaveBeenCalledWith(['emp-1', 'emp-2']);
     const members = (fixture.componentInstance as unknown as { assignableMembers: () => { employeeId: string; name: string }[] }).assignableMembers();
     expect(members).toEqual([
@@ -315,9 +299,10 @@ describe('TaskBacklogComponent', () => {
     expect(members.find((m) => m.employeeId === 'emp-2')?.name).not.toBe('emp-2');
   });
 
-  it('loads the board for the current milestoneId on init', async () => {
-    const { loadBoard } = setup();
-    expect(loadBoard).toHaveBeenCalledWith('milestone-1', '');
+  it('loads the board for the routed project id on init', async () => {
+    const { loadBoard, loadForProject } = setup();
+    expect(loadBoard).toHaveBeenCalledWith('project-1');
+    expect(loadForProject).toHaveBeenCalledWith('project-1');
   });
 
   it('routes task-status changes from the detail modal to store.moveTask', async () => {
@@ -339,10 +324,10 @@ describe('TaskBacklogComponent', () => {
     fixture.detectChanges();
 
     await fixture.componentInstance['onSprintStatusChangeRequested']('sp-1', 'complete');
-    expect(sprintSetStatus).toHaveBeenCalledWith('sp-1', 'complete', 'milestone-1', false);
+    expect(sprintSetStatus).toHaveBeenCalledWith('sp-1', 'complete', 'milestone-1', false, 'project-1');
 
     await fixture.componentInstance['onSprintStatusChangeRequested']('sp-1', 'active');
-    expect(sprintSetStatus).toHaveBeenCalledWith('sp-1', 'active', 'milestone-1', false);
+    expect(sprintSetStatus).toHaveBeenCalledWith('sp-1', 'active', 'milestone-1', false, 'project-1');
   });
 
   it('does not call setStatus for a non-owner even if the handler is invoked directly', async () => {
@@ -355,8 +340,8 @@ describe('TaskBacklogComponent', () => {
     expect(sprintSetStatus).not.toHaveBeenCalled();
   });
 
-  // Finding 1: a non-owner has no working "create sprint" path (SprintApiService.create has no
-  // member-request variant), so the button - and the form it opens - must not be shown to them.
+  // Sprint creation has no pending/request path (SprintApiService.create has no member-request
+  // variant), so the button - and the form it opens - must not be shown to a non-owner.
   it('does not show the Create Sprint button (or form) to a non-owner', async () => {
     const { fixture } = setup({ isOwner: false });
     await fixture.whenStable();
@@ -397,8 +382,6 @@ describe('TaskBacklogComponent', () => {
     expect((tabs[0].componentInstance as SprintTabComponent).sprint().id).toBe('sp-2');
   });
 
-  // Finding 2: a failed Complete/Achieve sets sprintStore.error(), which must be rendered
-  // somewhere always-visible (not just inside the create form, which may not be open).
   it("renders sprintStore.error() in the component's own template, always-visible", async () => {
     const sprintErrorSignal = signal<string | null>(null);
     const { fixture } = setup({ sprintErrorSignal });
@@ -415,8 +398,6 @@ describe('TaskBacklogComponent', () => {
     expect(alert.textContent).toContain('Every task in this sprint must be complete first.');
   });
 
-  // Owner override always wins: every status, including ones the date-driven SprintLifecycleJob
-  // would otherwise own (future/active/incomplete), is a real call - not a silent no-op.
   it('routes future/active/incomplete picks through to setStatus too, not just complete/achieved', async () => {
     const { fixture, sprintSetStatus } = setup();
     await fixture.whenStable();
@@ -424,11 +405,9 @@ describe('TaskBacklogComponent', () => {
 
     await fixture.componentInstance['onSprintStatusChangeRequested']('sp-1', 'future');
 
-    expect(sprintSetStatus).toHaveBeenCalledWith('sp-1', 'future', 'milestone-1', false);
+    expect(sprintSetStatus).toHaveBeenCalledWith('sp-1', 'future', 'milestone-1', false, 'project-1');
   });
 
-  // Finding 4: a failed task load must be shown to the user, matching TaskBoardComponent's
-  // behavior, instead of silently rendering sprint tabs with empty task lists.
   it('shows store.error() when the task load fails, instead of silently rendering empty sprint tabs', async () => {
     const taskErrorSignal = signal<string | null>(null);
     const { fixture } = setup({ taskErrorSignal });
@@ -443,12 +422,9 @@ describe('TaskBacklogComponent', () => {
     const errorEl = fixture.nativeElement.querySelector('.task-backlog__error');
     expect(errorEl).not.toBeNull();
     expect(errorEl.textContent).toContain('Failed to load tasks.');
-    // Sprint tabs should not render alongside the error.
     expect(fixture.debugElement.queryAll(By.directive(SprintTabComponent)).length).toBe(0);
   });
 
-  // Finding 5: a task with sprintId === null has nowhere to render inside the per-sprint tabs -
-  // it must appear in an always-visible "Unsorted" section, and remain clickable there.
   it('renders tasks with sprintId: null in an "Unsorted" section, clickable via the same onTaskViewed path', async () => {
     const tasks = [makeTask('t-1', 'sp-1'), makeTask('t-unsorted', null)];
     const { fixture } = setup({ tasks });
@@ -461,7 +437,6 @@ describe('TaskBacklogComponent', () => {
 
     const row = fixture.nativeElement.querySelector('[data-testid="task-row-t-unsorted"]');
     expect(row).not.toBeNull();
-    // The task should NOT also show up inside a sprint tab.
     expect(fixture.nativeElement.querySelector('[data-testid="task-row-t-1"]')).toBeNull();
 
     const viewButton = row.querySelector('.task-table__view-btn') as HTMLButtonElement;
