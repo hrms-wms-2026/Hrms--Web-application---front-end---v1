@@ -15,6 +15,10 @@ export class SprintApiService {
     return this.http.get<SprintDto[]>(`${this.baseUrl}/objectives/${objectiveId}/sprints`, { params });
   }
 
+  getByProject(projectId: string): Observable<SprintDto[]> {
+    return this.http.get<SprintDto[]>(`${this.baseUrl}/projects/${projectId}/sprints`);
+  }
+
   create(objectiveId: string, request: CreateSprintRequestDto): Observable<SprintDto> {
     return this.http.post<SprintDto>(`${this.baseUrl}/objectives/${objectiveId}/sprints`, request);
   }

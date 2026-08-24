@@ -20,16 +20,7 @@ export const WORK_ROUTES: Routes = [
             loadComponent: () =>
               import('./feature/milestone-tree-tab/milestone-tree-tab.component').then((m) => m.MilestoneTreeTabComponent)
           },
-          {
-            path: 'board',
-            loadComponent: () =>
-              import('./feature/task-board/task-board.component').then((m) => m.TaskBoardComponent)
-          },
-          {
-            path: 'backlog',
-            loadComponent: () =>
-              import('./feature/task-backlog/task-backlog.component').then((m) => m.TaskBacklogComponent)
-          },
+
           {
             path: 'approvals',
             loadComponent: () =>
@@ -55,6 +46,16 @@ export const WORK_ROUTES: Routes = [
           },
           
         ]
+      },
+      {
+        path: 'board',
+        loadComponent: () =>
+          import('./feature/task-board/task-board.component').then((m) => m.TaskBoardComponent)
+      },
+      {
+        path: 'backlog',
+        loadComponent: () =>
+          import('./feature/task-backlog/task-backlog.component').then((m) => m.TaskBacklogComponent)
       },
       {
         path: 'settings',

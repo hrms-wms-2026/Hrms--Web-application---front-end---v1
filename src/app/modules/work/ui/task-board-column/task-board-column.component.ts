@@ -23,7 +23,7 @@ import { TaskCardComponent } from '../task-card/task-card.component';
             <app-task-card
               [task]="task"
               [statuses]="allStatuses()"
-              [isObjectiveOwner]="isObjectiveOwner()"
+              [isObjectiveOwner]="objectiveOwners()[task.objectiveId] ?? false"
               [employeeNames]="employeeNames()"
               (viewed)="taskViewed.emit($event)"
               (statusChangeRequested)="taskDropped.emit({ taskId: task.id, newStatusId: $event })"
@@ -59,7 +59,7 @@ export class TaskBoardColumnComponent {
   tasks = input.required<WorkTask[]>();
   connectedListIds = input<string[]>([]);
   allStatuses = input<readonly TaskStatusColumn[]>([]);
-  isObjectiveOwner = input(false);
+  objectiveOwners = input<Record<string, boolean>>({});
   employeeNames = input<Record<string, string>>({});
   taskDropped = output<{ taskId: string; newStatusId: string }>();
   taskViewed = output<WorkTask>();

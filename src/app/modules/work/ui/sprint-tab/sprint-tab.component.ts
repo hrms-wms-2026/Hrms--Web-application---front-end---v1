@@ -2,7 +2,7 @@ import { DatePipe } from '@angular/common';
 import { Component, input, output } from '@angular/core';
 import { TaskTableComponent } from '../task-table/task-table.component';
 import { Sprint } from '../../models/sprint.model';
-import { WorkTask } from '../../models/task.model';
+import { TaskStatusColumn, WorkTask } from '../../models/task.model';
 
 @Component({
   selector: 'app-sprint-tab',
@@ -35,7 +35,14 @@ import { WorkTask } from '../../models/task.model';
           <div class="sprint-tab__body-toolbar">
             <button type="button" class="sprint-tab__add-task" aria-label="Add task to this sprint" (click)="createTaskRequested.emit()">+</button>
           </div>
-          <app-task-table [tasks]="tasks()" [statusNames]="statusNames()" (viewed)="taskViewed.emit($event)" />
+          <app-task-table
+            [tasks]="tasks()"
+            [statusNames]="statusNames()"
+            [statuses]="statuses()"
+            [objectiveOwners]="objectiveOwners()"
+            (viewed)="taskViewed.emit($event)"
+            (statusChangeRequested)="taskStatusChangeRequested.emit($event)"
+          />
         </div>
       }
     </div>
@@ -58,6 +65,8 @@ export class SprintTabComponent {
   isObjectiveOwner = input.required<boolean>();
   tasks = input.required<readonly WorkTask[]>();
   statusNames = input.required<Record<string, string>>();
+  statuses = input<readonly TaskStatusColumn[]>([]);
+  objectiveOwners = input<Record<string, boolean>>({});
   expanded = input(false);
 
   toggled = output<void>();
@@ -65,6 +74,7 @@ export class SprintTabComponent {
   statusChangeRequested = output<string>();
   createTaskRequested = output<void>();
   taskViewed = output<WorkTask>();
+  taskStatusChangeRequested = output<{ taskId: string; newStatusId: string }>();
 
   protected onStatusPicked(selectEl: HTMLSelectElement): void {
     const picked = selectEl.value;

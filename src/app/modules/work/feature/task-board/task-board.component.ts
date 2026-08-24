@@ -8,11 +8,14 @@ import { TaskCreateModalComponent } from '../../ui/task-create-modal/task-create
 import { TaskDetailModalComponent } from '../../ui/task-detail-modal/task-detail-modal.component';
 import { ButtonComponent } from '../../../../shared/ui/button/button.component';
 import { SprintApiService } from '../../data-access/sprint-api.service';
+import { TaskApiService } from '../../data-access/task-api.service';
 import { ObjectiveMemberApiService } from '../../data-access/objective-member-api.service';
 import { EmployeeDirectoryStore } from '../../state/employee-directory.store';
 import { toSprint } from '../../utils/sprint.mapper';
 import { Sprint } from '../../models/sprint.model';
 import { WorkTask } from '../../models/task.model';
+import { TaskCategoryColumn } from '../../models/task-category.model';
+import { toTaskCategoryColumn } from '../../utils/task-category.mapper';
 
 @Component({
   selector: 'app-task-board',
@@ -20,7 +23,28 @@ import { WorkTask } from '../../models/task.model';
   imports: [TaskBoardColumnComponent, TaskCreateModalComponent, TaskDetailModalComponent, ButtonComponent],
   template: `
     <div class="task-board__toolbar">
-      <app-button variant="primary" (pressed)="createOpen.set(true)">Create task</app-button>
+      <select class="task-board__filter" aria-label="Module filter" [value]="objectiveFilter()" (change)="objectiveFilter.set($any($event.target).value)">
+        <option value="all">All modules</option>
+        @for (module of modules(); track module.objectiveId) {
+          <option [value]="module.objectiveId">{{ module.title }}</option>
+        }
+      </select>
+      <select class="task-board__filter" aria-label="Sprint filter" [value]="sprintFilter()" (change)="sprintFilter.set($any($event.target).value)">
+        <option value="active">Active sprints</option>
+        <option value="all">All sprints</option>
+        @for (sprint of sprints(); track sprint.id) {
+          <option [value]="sprint.id">{{ sprint.name }}</option>
+        }
+      </select>
+      <select class="task-board__filter" aria-label="Category filter" [value]="categoryFilter()" (change)="categoryFilter.set($any($event.target).value)">
+        <option value="all">All categories</option>
+        @for (category of categories(); track category.id) {
+          <option [value]="category.id">{{ category.name }}</option>
+        }
+      </select>
+      @if (createObjectiveId()) {
+        <app-button variant="primary" (pressed)="openCreate()">Create task</app-button>
+      }
     </div>
 
     @if (store.loading()) {
@@ -35,7 +59,7 @@ import { WorkTask } from '../../models/task.model';
             [tasks]="column.tasks"
             [connectedListIds]="columnIds()"
             [allStatuses]="store.statuses()"
-            [isObjectiveOwner]="isObjectiveOwner()"
+            [objectiveOwners]="objectiveOwners()"
             [employeeNames]="employeeNames()"
             (taskDropped)="onTaskDropped($event)"
             (taskViewed)="onTaskViewed($event)"
@@ -44,16 +68,16 @@ import { WorkTask } from '../../models/task.model';
       </div>
     }
 
-    @if (milestoneId()) {
+    @if (createObjectiveId()) {
       <app-task-create-modal
         [open]="createOpen()"
-        [objectiveId]="milestoneId()!"
+        [objectiveId]="createObjectiveId()"
         [projectId]="projectId()"
-        [isObjectiveOwner]="isObjectiveOwner()"
-        [activeSprints]="activeSprints()"
+        [isObjectiveOwner]="objectiveOwners()[createObjectiveId()] ?? false"
+        [activeSprints]="sprints()"
         [assignableMembers]="assignableMembers()"
         (closed)="createOpen.set(false)"
-        (created)="createOpen.set(false)"
+        (created)="onTaskCreated()"
       />
     }
 
@@ -61,7 +85,7 @@ import { WorkTask } from '../../models/task.model';
       [open]="detailOpen()"
       [task]="selectedTask()"
       [projectId]="projectId()"
-      [isObjectiveOwner]="isObjectiveOwner()"
+      [isObjectiveOwner]="selectedTask() ? (objectiveOwners()[selectedTask()!.objectiveId] ?? false) : false"
       [statuses]="store.statuses()"
       (closed)="detailOpen.set(false)"
       (saved)="onTaskSaved()"
@@ -69,13 +93,11 @@ import { WorkTask } from '../../models/task.model';
     />
   `,
   styles: [`
-    .task-board__toolbar { display: flex; justify-content: flex-end; margin-bottom: 12px; }
+    .task-board__toolbar { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 8px; margin-bottom: 12px; }
+    .task-board__filter { border: 1px solid var(--color-border); border-radius: 8px; padding: 8px 10px; background: var(--color-surface); color: var(--color-text-primary); }
     .task-board { display: flex; gap: 12px; overflow-x: auto; padding-bottom: 8px; }
     .task-board__error { color: var(--color-danger); }
-    :host ::ng-deep .task-card--highlighted {
-      outline: 2px solid var(--color-focus-ring, var(--color-danger));
-      outline-offset: 2px;
-    }
+    :host ::ng-deep .task-card--highlighted { outline: 2px solid var(--color-focus-ring, var(--color-danger)); outline-offset: 2px; }
   `]
 })
 export class TaskBoardComponent implements OnInit, AfterViewChecked {
@@ -83,70 +105,75 @@ export class TaskBoardComponent implements OnInit, AfterViewChecked {
   private readonly projectStore = inject(ProjectDetailStore);
   private readonly route = inject(ActivatedRoute);
   private readonly sprintApi = inject(SprintApiService);
+  private readonly taskApi = inject(TaskApiService);
   private readonly memberApi = inject(ObjectiveMemberApiService);
   private readonly directory = inject(EmployeeDirectoryStore);
 
   protected readonly createOpen = signal(false);
   protected readonly detailOpen = signal(false);
   protected readonly selectedTask = signal<WorkTask | null>(null);
-  protected readonly milestoneId = signal<string | null>(null);
   protected readonly projectId = signal('');
-  protected readonly isObjectiveOwner = signal(false);
-  protected readonly activeSprints = signal<Sprint[]>([]);
+  protected readonly createObjectiveId = signal('');
+  protected readonly sprints = signal<Sprint[]>([]);
+  protected readonly categories = signal<TaskCategoryColumn[]>([]);
   protected readonly assignableMembers = signal<{ employeeId: string; name: string }[]>([]);
+  protected readonly objectiveFilter = signal('all');
+  protected readonly sprintFilter = signal('active');
+  protected readonly categoryFilter = signal('all');
   private highlightTaskId: string | null = null;
   private didScrollToHighlight = false;
 
-  protected readonly columnsWithTasks = computed(() => {
-    const activeSprintIds = new Set(this.activeSprints().map((s) => s.id));
-    return this.store.columnsWithTasks().map((column) => ({
+  protected readonly modules = computed(() => this.projectStore.milestones());
+  protected readonly objectiveOwners = computed(() =>
+    Object.fromEntries(this.modules().map((module) => [module.objectiveId, module.isOwner]))
+  );
+  protected readonly columnsWithTasks = computed(() =>
+    this.store.columnsWithTasks().map((column) => ({
       status: column.status,
-      tasks: column.tasks.filter((t) => activeSprintIds.has(t.sprintId ?? ''))
-    }));
-  });
-
-  // Employee names for the task cards' assignee display - keyed by employeeId so
-  // TaskCardComponent can resolve each of its task's assigneeEmployeeIds independently.
+      tasks: column.tasks.filter((task) => this.matchesFilters(task))
+    }))
+  );
   protected readonly employeeNames = computed(() =>
     Object.fromEntries(
       this.store.tasks()
-        .flatMap((t) => t.assigneeEmployeeIds)
+        .flatMap((task) => task.assigneeEmployeeIds)
         .filter((id, index, all) => all.indexOf(id) === index)
         .map((id) => [id, this.directory.get(id)?.name ?? 'Unknown employee'])
     )
   );
 
   columnIds(): string[] {
-    return this.columnsWithTasks().map((c) => c.status.id);
+    return this.columnsWithTasks().map((column) => column.status.id);
   }
 
   ngOnInit(): void {
-    this.projectId.set(this.route.parent?.parent?.snapshot.paramMap.get('id') ?? '');
-    const id = this.route.parent?.snapshot.paramMap.get('milestoneId') ?? null;
-    this.milestoneId.set(id);
-    this.highlightTaskId = this.route.snapshot.queryParamMap.get('highlightTaskId');
-    if (!id) return;
+    const routedProjectId = this.route.snapshot?.paramMap?.get('id');
+    const projectId = routedProjectId ?? '';
+    const legacyObjectiveId = routedProjectId ? null : this.route.parent?.snapshot?.paramMap?.get('milestoneId') ?? this.route.parent?.snapshot?.paramMap?.get('id') ?? null;
+    this.projectId.set(projectId);
+    this.highlightTaskId = this.route.snapshot?.queryParamMap?.get('highlightTaskId') ?? null;
+    if (!projectId && !legacyObjectiveId) return;
 
-    const fromList = this.projectStore.milestones().find((m) => m.objectiveId === id);
-    this.isObjectiveOwner.set(fromList?.isOwner ?? false);
-    void this.store.loadBoard(id, this.projectId()).then(() => {
-      const assigneeIds = this.store.tasks().flatMap((t) => t.assigneeEmployeeIds);
-      if (assigneeIds.length > 0) void this.directory.ensureLoaded(assigneeIds);
-    });
-    void firstValueFrom(this.sprintApi.getByObjective(id, true)).then((dtos) => this.activeSprints.set(dtos.map(toSprint)));
-    void firstValueFrom(this.memberApi.getMembers(id)).then(async (list) => {
-      const active = list.items.filter((m) => !m.pending);
-      await this.directory.ensureLoaded(active.map((m) => m.employeeId));
-      this.assignableMembers.set(
-        active.map((m) => ({ employeeId: m.employeeId, name: this.directory.get(m.employeeId)?.name ?? 'Unknown employee' }))
-      );
-    });
+    if (!projectId) {
+      const owner = this.modules().find((module) => module.isOwner);
+      if (owner) this.createObjectiveId.set(owner.objectiveId);
+      if (legacyObjectiveId) {
+        void this.store.loadBoard(legacyObjectiveId, projectId);
+        void firstValueFrom(this.sprintApi.getByObjective(legacyObjectiveId, true)).then((dtos) => this.sprints.set(dtos.map(toSprint)));
+        void this.loadAssignableMembers(legacyObjectiveId);
+      }
+      return;
+    }
 
-    if (!fromList) {
-      void this.projectStore.getMilestoneDetail(id).then((detail) => {
-        if (detail) this.isObjectiveOwner.set(detail.isOwner);
+    if (typeof this.projectStore.loadMyMilestones === 'function') {
+      void this.projectStore.loadMyMilestones(projectId).then(() => {
+        const owner = this.modules().find((module) => module.isOwner);
+        if (owner) this.createObjectiveId.set(owner.objectiveId);
       });
     }
+    void this.store.loadBoard(projectId);
+    void this.loadSprints(projectId);
+    void this.loadCategories(projectId);
   }
 
   ngAfterViewChecked(): void {
@@ -156,6 +183,60 @@ export class TaskBoardComponent implements OnInit, AfterViewChecked {
     this.didScrollToHighlight = true;
     el.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'center' });
     el.classList.add('task-card--highlighted');
+  }
+
+  private matchesFilters(task: WorkTask): boolean {
+    const objectiveMatches = this.objectiveFilter() === 'all' || task.objectiveId === this.objectiveFilter();
+    const sprintFilter = this.sprintFilter();
+    const activeSprintIds = new Set(this.sprints().filter((sprint) => sprint.status === 'active').map((sprint) => sprint.id));
+    const sprintMatches = sprintFilter === 'all'
+      ? true
+      : sprintFilter === 'active'
+        ? activeSprintIds.has(task.sprintId ?? '')
+        : task.sprintId === sprintFilter;
+    const categoryMatches = this.categoryFilter() === 'all' || task.categoryId === this.categoryFilter();
+    return objectiveMatches && sprintMatches && categoryMatches;
+  }
+
+  private async loadSprints(projectId: string): Promise<void> {
+    try {
+      const sprints = (await firstValueFrom(this.sprintApi.getByProject(projectId))).map(toSprint);
+      this.sprints.set(sprints);
+      const active = sprints.filter((sprint) => sprint.status === 'active');
+      this.sprintFilter.set(active.length === 1 ? active[0].id : 'all');
+    } catch {
+      this.sprints.set([]);
+    }
+  }
+
+  private async loadCategories(projectId: string): Promise<void> {
+    try {
+      this.categories.set((await firstValueFrom(this.taskApi.getCategories(projectId))).map(toTaskCategoryColumn));
+    } catch {
+      this.categories.set([]);
+    }
+  }
+
+  protected openCreate(): void {
+    const objective = this.modules().find((module) => module.isOwner);
+    if (!objective) return;
+    this.createObjectiveId.set(objective.objectiveId);
+    void this.loadAssignableMembers(objective.objectiveId);
+    this.createOpen.set(true);
+  }
+
+  private async loadAssignableMembers(objectiveId: string): Promise<void> {
+    try {
+      const list = await firstValueFrom(this.memberApi.getMembers(objectiveId));
+      const active = list.items.filter((member) => !member.pending);
+      await this.directory.ensureLoaded(active.map((member) => member.employeeId));
+      this.assignableMembers.set(active.map((member) => ({
+        employeeId: member.employeeId,
+        name: this.directory.get(member.employeeId)?.name ?? 'Unknown employee'
+      })));
+    } catch {
+      this.assignableMembers.set([]);
+    }
   }
 
   onTaskDropped(event: { taskId: string; newStatusId: string }): void {
@@ -172,7 +253,12 @@ export class TaskBoardComponent implements OnInit, AfterViewChecked {
     if (taskId) void this.store.moveTask(taskId, newStatusId);
   }
 
+  protected onTaskCreated(): void {
+    this.createOpen.set(false);
+    void this.store.loadBoard(this.projectId());
+  }
+
   protected onTaskSaved(): void {
-    if (this.milestoneId()) void this.store.loadBoard(this.milestoneId()!, this.projectId());
+    void this.store.loadBoard(this.projectId());
   }
 }
