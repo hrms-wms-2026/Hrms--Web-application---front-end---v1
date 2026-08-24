@@ -11,6 +11,12 @@ import { TaskBoardStore } from '../../state/task-board.store';
 import { TaskApiService } from '../../data-access/task-api.service';
 import { firstValueFrom } from 'rxjs';
 
+export interface TaskCreateModuleOption {
+  objectiveId: string;
+  title: string;
+  isOwner: boolean;
+}
+
 @Component({
   selector: 'app-task-create-modal',
   standalone: true,
@@ -19,15 +25,29 @@ import { firstValueFrom } from 'rxjs';
     <app-modal [open]="open()" title="Create task" (closed)="closed.emit()">
       <div class="flex flex-col gap-3">
         <app-input label="Title" [value]="title()" [error]="errors()['title'] || ''" (valueChange)="title.set($event)" />
-          @if (sprintRequired()) {
+          @if (modules().length > 0) {
             <label class="flex flex-col gap-1 text-sm text-[var(--color-text-primary)]">
-              Sprint
+              Module
+              <select class="task-create-modal__select" [value]="selectedObjectiveId()" (change)="selectedObjectiveId.set($any($event.target).value)">
+                <option value="" disabled>Select a module</option>
+                @for (module of modules(); track module.objectiveId) {
+                  <option [value]="module.objectiveId">{{ module.title }}</option>
+                }
+              </select>
+              @if (errors()['objectiveId']) {
+                <span class="text-xs text-[var(--color-danger-text)]">{{ errors()['objectiveId'] }}</span>
+              }
+            </label>
+          }
+          @if (sprintRequired() || modules().length > 0) {
+            <label class="flex flex-col gap-1 text-sm text-[var(--color-text-primary)]">
+              Sprint{{ sprintRequired() ? '' : ' (optional)' }}
               @if (singleSprint(); as sprint) {
                 <span class="task-create-modal__sprint-fixed" data-testid="sprint-fixed">{{ sprint.name }}</span>
               } @else {
                 <select class="task-create-modal__select task-create-modal__sprint-select" [value]="sprintId()" (change)="sprintId.set($any($event.target).value)">
-                  <option value="" disabled selected>Select a sprint</option>
-                  @for (sprint of activeSprints(); track sprint.id) {
+                  <option value="" [attr.disabled]="sprintRequired() ? true : null" [selected]="!sprintId()">{{ sprintRequired() ? 'Select a sprint' : 'No sprint' }}</option>
+                  @for (sprint of sprintOptions(); track sprint.id) {
                     <option [value]="sprint.id">{{ sprint.name }}</option>
                   }
                 </select>
@@ -86,7 +106,7 @@ import { firstValueFrom } from 'rxjs';
         <div class="mt-2 flex justify-end gap-2">
           <app-button variant="secondary" [disabled]="submitting()" (pressed)="closed.emit()">Cancel</app-button>
           <app-button variant="primary" [loading]="submitting()" (pressed)="submit()">
-            {{ isObjectiveOwner() ? 'Create' : 'Request' }}
+            {{ effectiveIsObjectiveOwner() ? 'Create' : 'Request' }}
           </app-button>
         </div>
       </div>
@@ -120,12 +140,18 @@ export class TaskCreateModalComponent {
   private readonly taskApi = inject(TaskApiService);
 
   open = input(false);
-  objectiveId = input.required<string>();
+  /** Fixed target module - used as-is when no `modules` list is provided (Tree's context,
+   *  where the module is already implicit from where "Create task" was clicked). */
+  objectiveId = input<string>('');
   projectId = input.required<string>();
-  isObjectiveOwner = input.required<boolean>();
+  isObjectiveOwner = input(false);
   activeSprints = input<readonly Sprint[]>([]);
   sprintRequired = input(true);
   assignableMembers = input<readonly { employeeId: string; name: string }[]>([]);
+  /** When provided (Backlog's project-wide context), renders a required Module picker instead
+   *  of relying on `objectiveId`, and narrows the Sprint choices to the selected module's own
+   *  sprints once one is picked. */
+  modules = input<readonly TaskCreateModuleOption[]>([]);
 
   created = output<WorkTask>();
   requestedInsteadOfCreated = output<void>();
@@ -146,12 +172,28 @@ export class TaskCreateModalComponent {
   errors = signal<Record<string, string>>({});
   errorMessage = signal<string | null>(null);
   allocationHint = signal<InsufficientAllocationErrorDto | null>(null);
+  selectedObjectiveId = signal('');
+
+  effectiveObjectiveId = computed(() => (this.modules().length > 0 ? this.selectedObjectiveId() : this.objectiveId()));
+
+  effectiveIsObjectiveOwner = computed(() => {
+    if (this.modules().length === 0) return this.isObjectiveOwner();
+    return this.modules().find((m) => m.objectiveId === this.selectedObjectiveId())?.isOwner ?? false;
+  });
+
+  // Once a module is picked from the Module dropdown, a task's sprint must belong to that same
+  // module - narrows the choices rather than letting a task point at another module's sprint.
+  sprintOptions = computed(() => {
+    if (this.modules().length === 0) return this.activeSprints();
+    const objectiveId = this.selectedObjectiveId();
+    return this.activeSprints().filter((s) => s.objectiveId === objectiveId);
+  });
 
   // When there is exactly one candidate sprint (e.g. the sprint tab's own "+" button narrows
   // activeSprints to just itself), pre-fill sprintId and hide the dropdown - there is nothing to
   // choose. Any other count (0 or many) keeps the normal visible <select> behavior.
   singleSprint = computed(() => {
-    const sprints = this.activeSprints();
+    const sprints = this.sprintOptions();
     return sprints.length === 1 ? sprints[0] : null;
   });
 
@@ -165,7 +207,7 @@ export class TaskCreateModalComponent {
       const sprint = this.singleSprint();
       if (sprint) {
         this.sprintId.set(sprint.id);
-      } else if (this.sprintId() && !this.activeSprints().some((s) => s.id === this.sprintId())) {
+      } else if (this.sprintId() && !this.sprintOptions().some((s) => s.id === this.sprintId())) {
         // Only clears a stale selection - a valid selection surviving the transition out of
         // single-sprint mode is left as-is rather than force-cleared. Safe today because every
         // consumer of this component reopens it with a freshly-scoped activeSprints array rather
@@ -197,6 +239,7 @@ export class TaskCreateModalComponent {
     if (!override) {
       const fieldErrors: Record<string, string> = {};
       if (!request.title.trim()) fieldErrors['title'] = 'Title is required.';
+      if (this.modules().length > 0 && !this.selectedObjectiveId()) fieldErrors['objectiveId'] = 'Module is required.';
       if (this.sprintRequired() && !request.sprintId) fieldErrors['sprintId'] = 'Sprint is required.';
       if (!request.categoryId) fieldErrors['categoryId'] = 'Category is required.';
       this.errors.set(fieldErrors);
@@ -208,14 +251,14 @@ export class TaskCreateModalComponent {
     this.allocationHint.set(null);
 
     try {
-      if (!this.isObjectiveOwner()) {
-        await firstValueFrom(this.taskApi.createTaskCreationRequest(this.objectiveId(), request));
+      if (!this.effectiveIsObjectiveOwner()) {
+        await firstValueFrom(this.taskApi.createTaskCreationRequest(this.effectiveObjectiveId(), request));
         this.requestedInsteadOfCreated.emit();
         this.closed.emit();
         return;
       }
 
-      const result = await this.store.createTask(this.objectiveId(), request);
+      const result = await this.store.createTask(this.effectiveObjectiveId(), request);
       if (result && 'availableSlackHours' in result) {
         this.allocationHint.set(result);
         return;

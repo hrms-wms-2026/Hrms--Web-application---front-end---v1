@@ -161,4 +161,62 @@ describe('TaskCreateModalComponent', () => {
     expect(fixture.nativeElement.querySelector('select.task-create-modal__sprint-select')).toBeNull();
     expect(createTask).toHaveBeenCalledWith('obj-1', expect.objectContaining({ title: 'Backlog task', sprintId: null }));
   });
+
+  describe('with a modules list (Backlog\'s project-wide context)', () => {
+    function setupWithModules(createTaskResult: unknown = { id: 't-1', shortId: 'T-1', title: 'New task' }) {
+      const { fixture, createTask, assignTask } = setup(false, createTaskResult);
+      fixture.componentRef.setInput('sprintRequired', false);
+      fixture.componentRef.setInput('activeSprints', [sprint, sprint2, { ...sprint, id: 'sp-3', objectiveId: 'obj-2', name: 'Sprint 3' }]);
+      fixture.componentRef.setInput('modules', [
+        { objectiveId: 'obj-1', title: 'Module One', isOwner: true },
+        { objectiveId: 'obj-2', title: 'Module Two', isOwner: false }
+      ]);
+      fixture.detectChanges();
+      return { fixture, createTask, assignTask };
+    }
+
+    it('renders a Module dropdown and blocks submit until one is chosen', async () => {
+      const { fixture, createTask } = setupWithModules();
+      fixture.componentInstance.title.set('New task');
+
+      const options = Array.from(fixture.nativeElement.querySelectorAll('select.task-create-modal__select option') as NodeListOf<HTMLOptionElement>)
+        .map((o) => o.textContent?.trim())
+        .filter((label) => label === 'Select a module' || label === 'Module One' || label === 'Module Two');
+      expect(options).toEqual(['Select a module', 'Module One', 'Module Two']);
+
+      await fixture.componentInstance.submit();
+
+      expect(createTask).not.toHaveBeenCalled();
+      expect(fixture.componentInstance.errors()['objectiveId']).toBeTruthy();
+    });
+
+    it('narrows Sprint options to the selected module and follows that module\'s ownership for Create vs Request', async () => {
+      const { fixture, createTask } = setupWithModules();
+      await fixture.whenStable();
+      fixture.componentInstance.title.set('New task');
+      fixture.componentInstance.selectedObjectiveId.set('obj-1');
+      fixture.detectChanges();
+
+      const sprintOptionLabels = fixture.componentInstance.sprintOptions().map((s) => s.name);
+      expect(sprintOptionLabels).toEqual(['Sprint 1', 'Sprint 2']);
+      expect(fixture.componentInstance.effectiveIsObjectiveOwner()).toBe(true);
+
+      await fixture.componentInstance.submit();
+
+      expect(createTask).toHaveBeenCalledWith('obj-1', expect.objectContaining({ title: 'New task' }));
+    });
+
+    it('submits as a creation request (not createTask) when the selected module is not owned', async () => {
+      const { fixture, createTask } = setupWithModules();
+      await fixture.whenStable();
+      const taskApi = TestBed.inject(TaskApiService) as unknown as { createTaskCreationRequest: ReturnType<typeof vi.fn> };
+      fixture.componentInstance.title.set('New task');
+      fixture.componentInstance.selectedObjectiveId.set('obj-2');
+
+      await fixture.componentInstance.submit();
+
+      expect(createTask).not.toHaveBeenCalled();
+      expect(taskApi.createTaskCreationRequest).toHaveBeenCalledWith('obj-2', expect.objectContaining({ title: 'New task' }));
+    });
+  });
 });

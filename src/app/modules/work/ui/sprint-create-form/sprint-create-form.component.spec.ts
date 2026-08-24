@@ -68,4 +68,51 @@ describe('SprintCreateFormComponent', () => {
 
     expect(cancelled).toHaveBeenCalledTimes(1);
   });
+
+  describe('with a modules list (Backlog\'s project-wide context)', () => {
+    function setupWithModules(create: ReturnType<typeof vi.fn> = vi.fn().mockResolvedValue(true)): void {
+      storeStub = { error: signal(null), create };
+      TestBed.configureTestingModule({
+        imports: [SprintCreateFormComponent],
+        providers: [{ provide: SprintListStore, useValue: storeStub }]
+      });
+      fixture = TestBed.createComponent(SprintCreateFormComponent);
+      fixture.componentRef.setInput('open', true);
+      fixture.componentRef.setInput('modules', [
+        { objectiveId: 'obj-1', title: 'Module One', isOwner: true },
+        { objectiveId: 'obj-2', title: 'Module Two', isOwner: false }
+      ]);
+      fixture.detectChanges();
+    }
+
+    it('renders a Module dropdown with the given options', () => {
+      setupWithModules();
+      const options = Array.from(fixture.nativeElement.querySelectorAll('.sprint-create-form__select option') as NodeListOf<HTMLOptionElement>)
+        .map((o) => o.textContent?.trim());
+      expect(options).toEqual(['Select a module', 'Module One', 'Module Two']);
+    });
+
+    it('blocks submit with a field error until a module is selected', async () => {
+      const create = vi.fn().mockResolvedValue(true);
+      setupWithModules(create);
+
+      await fixture.componentInstance.submit();
+
+      expect(create).not.toHaveBeenCalled();
+      expect((fixture.componentInstance as any).moduleError()).toBeTruthy();
+    });
+
+    it('creates the sprint under the selected module', async () => {
+      const create = vi.fn().mockResolvedValue(true);
+      setupWithModules(create);
+      (fixture.componentInstance as any).selectedObjectiveId.set('obj-1');
+      (fixture.componentInstance as any).newName.set('Sprint X');
+      (fixture.componentInstance as any).newStart.set('2026-09-01');
+      (fixture.componentInstance as any).newEnd.set('2026-09-14');
+
+      await fixture.componentInstance.submit();
+
+      expect(create).toHaveBeenCalledWith('obj-1', { name: 'Sprint X', startDate: '2026-09-01', endDate: '2026-09-14' }, false);
+    });
+  });
 });
