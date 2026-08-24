@@ -1,5 +1,4 @@
-@if (hasOrgAccess()) {
-  <app-popover [open]="isOpen()" ariaLabel="Company Selector" align="left" (closed)="close()">
+<app-popover [open]="isOpen()" ariaLabel="Company Selector" align="left" (closed)="close()">
     <button
       popover-trigger
       type="button"
@@ -117,8 +116,7 @@
         }
       }
     </div>
-  </app-popover>
-}
+</app-popover>
 
 @if (showCreateModal()) {
   <app-create-company-modal

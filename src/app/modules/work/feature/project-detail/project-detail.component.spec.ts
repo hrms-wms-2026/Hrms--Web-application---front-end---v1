@@ -81,13 +81,14 @@ describe('ProjectDetailComponent', () => {
     expect(storeStub.loadMyMilestones).toHaveBeenCalledWith('p1');
   });
 
-  it('renders project name and milestone cards', async () => {
+  it('renders the project name without the Modules carousel', async () => {
     setup('o1');
     fixture.detectChanges();
     await fixture.whenStable();
     fixture.detectChanges();
     expect(fixture.nativeElement.textContent).toContain('Website Revamp');
-    expect(fixture.nativeElement.textContent).toContain('Default');
+    expect(fixture.nativeElement.textContent).not.toContain('Modules');
+    expect(fixture.nativeElement.querySelector('app-milestone-card')).toBeNull();
   });
 
   it("navigates to the first milestone's tree route when landing with no milestone in the URL", async () => {
@@ -121,16 +122,11 @@ describe('ProjectDetailComponent', () => {
     expect(routerStub.navigate).not.toHaveBeenCalled();
   });
 
-  it("navigates to the clicked milestone's tree route, resetting the sub-tab", () => {
+  it('renders the sub-menu and outlet once a milestone is active', () => {
     setup('o1');
     fixture.detectChanges();
-
-    fixture.componentInstance.onMilestoneSelected(milestone2);
-
-    expect(routerStub.navigate).toHaveBeenCalledWith(
-      ['milestones', 'o2', 'tree'],
-      expect.objectContaining({ relativeTo: expect.anything() })
-    );
+    expect(fixture.nativeElement.querySelector('app-milestone-sub-menu')).not.toBeNull();
+    expect(fixture.nativeElement.querySelector('router-outlet')).not.toBeNull();
   });
 
   it('reflects the active milestone id from the route on init, and updates it on NavigationEnd', () => {
@@ -144,101 +140,11 @@ describe('ProjectDetailComponent', () => {
     expect(fixture.componentInstance.activeMilestoneId()).toBe('o2');
   });
 
-  it('renders the sub-menu once a milestone is active', () => {
-    setup('o1');
-    fixture.detectChanges();
-    expect(fixture.nativeElement.querySelector('app-milestone-sub-menu')).not.toBeNull();
-  });
-
   it('does not render the sub-menu when there is no active milestone', () => {
     storeStub.milestones = () => [];
     setup(null);
     fixture.detectChanges();
     expect(fixture.nativeElement.querySelector('app-milestone-sub-menu')).toBeNull();
-  });
-
-  it('opens the settings modal and patches in the full detail once fetched', async () => {
-    const detail = { id: 'o1', title: 'Default', description: 'Full scope', startDate: '2026-08-01', endDate: '2026-12-01', allocatedHours: 40, isAchieved: false, isDefault: true };
-    storeStub.getMilestoneDetail = vi.fn().mockResolvedValue(detail);
-    setup('o1');
-    fixture.detectChanges();
-
-    fixture.componentInstance.onMilestoneSettingsRequested(milestone);
-
-    expect(fixture.componentInstance.milestoneSettingsOpen()).toBe(true);
-    expect(storeStub.getMilestoneDetail).toHaveBeenCalledWith('o1');
-
-    await Promise.resolve();
-    await Promise.resolve();
-
-    expect((fixture.componentInstance.milestoneSettingsInitialValue() as any)?.description).toBe('Full scope');
-  });
-
-  it('saves fields only when the Achieved toggle is untouched', async () => {
-    setup('o1');
-    fixture.detectChanges();
-    fixture.componentInstance.onMilestoneSettingsRequested(milestone);
-
-    await fixture.componentInstance.onMilestoneSettingsSaved({
-      fields: { title: 'Default v2', description: 'Full scope', startDate: '2026-08-01', endDate: '2026-12-01', allocatedHours: 40 },
-      achievedChanged: false, achieved: false
-    });
-
-    expect(storeStub.editMilestone).toHaveBeenCalledWith('o1', {
-      title: 'Default v2', description: 'Full scope', startDate: '2026-08-01', endDate: '2026-12-01', allocatedHours: 40
-    });
-    expect(storeStub.achieveMilestone).not.toHaveBeenCalled();
-    expect(storeStub.unachieveMilestone).not.toHaveBeenCalled();
-    expect(fixture.componentInstance.milestoneSettingsOpen()).toBe(false);
-  });
-
-  it('edits then achieves, in that order, when the toggle is turned on', async () => {
-    const calls: string[] = [];
-    storeStub.editMilestone = vi.fn().mockImplementation(async () => { calls.push('edit'); return { success: true, pending: false }; });
-    storeStub.achieveMilestone = vi.fn().mockImplementation(async () => { calls.push('achieve'); return { success: true, pending: false }; });
-    setup('o1');
-    fixture.detectChanges();
-    fixture.componentInstance.onMilestoneSettingsRequested(milestone);
-
-    await fixture.componentInstance.onMilestoneSettingsSaved({
-      fields: { title: 'Default', description: '', startDate: '2026-08-01', endDate: '2026-12-01', allocatedHours: 40 },
-      achievedChanged: true, achieved: true
-    });
-
-    expect(calls).toEqual(['edit', 'achieve']);
-  });
-
-  it('unachieves then edits, in that order, when the toggle is turned off', async () => {
-    const calls: string[] = [];
-    storeStub.unachieveMilestone = vi.fn().mockImplementation(async () => { calls.push('unachieve'); return { success: true, pending: false }; });
-    storeStub.editMilestone = vi.fn().mockImplementation(async () => { calls.push('edit'); return { success: true, pending: false }; });
-    setup('o1');
-    fixture.detectChanges();
-    fixture.componentInstance.onMilestoneSettingsRequested(milestone);
-
-    await fixture.componentInstance.onMilestoneSettingsSaved({
-      fields: { title: 'Default', description: '', startDate: '2026-08-01', endDate: '2026-12-01', allocatedHours: 40 },
-      achievedChanged: true, achieved: false
-    });
-
-    expect(calls).toEqual(['unachieve', 'edit']);
-  });
-
-  it('stops the sequence and keeps the modal open if the first step fails', async () => {
-    storeStub.unachieveMilestone = vi.fn().mockResolvedValue({ success: false, pending: false });
-    const editSpy = vi.fn();
-    storeStub.editMilestone = editSpy;
-    setup('o1');
-    fixture.detectChanges();
-    fixture.componentInstance.onMilestoneSettingsRequested(milestone);
-
-    await fixture.componentInstance.onMilestoneSettingsSaved({
-      fields: { title: 'Default', description: '', startDate: '2026-08-01', endDate: '2026-12-01', allocatedHours: 40 },
-      achievedChanged: true, achieved: false
-    });
-
-    expect(editSpy).not.toHaveBeenCalled();
-    expect(fixture.componentInstance.milestoneSettingsOpen()).toBe(true);
   });
 
   it('shows "Loading modules…" while milestones are loading', () => {

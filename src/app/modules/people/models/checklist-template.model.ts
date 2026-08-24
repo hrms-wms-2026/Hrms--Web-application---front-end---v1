@@ -5,7 +5,7 @@ export type ChecklistTemplateType = 'onboarding' | 'offboarding';
 export type ChecklistTaskOwnerType = 'employee' | 'manager' | 'hr' | 'it' | 'custom_user';
 
 /** UI-only task assignee choice — mapped to backend ownerType/assignee fields on submit. */
-export type ChecklistTaskAssignmentType = 'employee' | 'company_position';
+export type ChecklistTaskAssignmentType = 'unassigned' | 'employee' | 'company_position';
 
 export type ChecklistTemplateScopeLevel = 'company' | 'department' | 'position';
 
@@ -26,6 +26,7 @@ export interface ChecklistTemplateTaskResponse {
   title: string;
   ownerType: string;
   assignedToId: string | null;
+  assigneePositionId?: string | null;
   dueOffsetDays: number;
   sequence: number;
   isRequired: boolean;
@@ -119,11 +120,19 @@ export interface DraftChecklistTask {
   readonly clientId: string;
   readonly title: string;
   readonly assignee: DraftTaskAssignee;
-  /** Raw ownerType/assignedToId preserved from a template task already assigned to someone
-   *  other than the employee. There is no picker to choose a new "another person" assignee, so
-   *  this can only ever be carried over unchanged from the source template - never set fresh. */
+  /** Raw ownerType preserved from a template task already assigned to someone other than the employee. */
   readonly preservedOwnerType: string | null;
-  readonly preservedAssignedToId: string | null;
+  readonly assigneePositionId: string | null;
+  /** Concrete backend UserId for another-person tasks. Never send EmployeeId. */
+  readonly selectedAssigneeUserId: string | null;
   readonly dueDays: number;
   readonly isRequired: boolean;
+}
+
+export interface ChecklistAssignee {
+  readonly employeeId: string;
+  readonly userId: string;
+  readonly displayName: string;
+  readonly workEmail: string;
+  readonly avatarFileId: string | null;
 }

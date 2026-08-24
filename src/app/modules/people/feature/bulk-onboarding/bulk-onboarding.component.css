@@ -56,7 +56,6 @@
   color: var(--color-text-secondary);
   font-size: 0.75rem;
   font-weight: 700;
-  transition: all 0.2s ease;
 }
 .bo-step-flow__item--active {
   color: var(--color-text-primary);
@@ -65,10 +64,6 @@
 .bo-step-flow__item--active .bo-step-flow__number {
   background: var(--color-primary);
   color: #ffffff;
-  box-shadow: 0 0 0 3px color-mix(in srgb, var(--color-primary) 20%, transparent);
-}
-.bo-step-flow__item--completed {
-  color: var(--color-text-primary);
 }
 .bo-step-flow__item--completed .bo-step-flow__number {
   background: color-mix(in srgb, var(--color-primary) 15%, var(--color-surface));
@@ -126,25 +121,14 @@
   border: 1px solid var(--color-border);
   border-radius: 8px;
   background: var(--color-surface);
-  color: var(--color-text-primary);
   font-size: 0.8125rem;
   font-weight: 600;
   cursor: pointer;
-  transition: all 0.15s ease;
-}
-.bo-template-btn:hover {
-  background: color-mix(in srgb, var(--color-primary) 6%, var(--color-surface));
-  border-color: color-mix(in srgb, var(--color-primary) 35%, transparent);
-  color: var(--color-primary);
 }
 .bo-btn-icon {
   width: 1rem;
   height: 1rem;
   color: var(--color-text-secondary);
-  transition: color 0.15s ease;
-}
-.bo-template-btn:hover .bo-btn-icon {
-  color: var(--color-primary);
 }
 .bo-defaults-panel {
   display: flex;
@@ -179,23 +163,16 @@
   align-items: center;
   justify-content: center;
   text-align: center;
-  gap: 0.875rem;
-  padding: 2.25rem 1.5rem;
+  gap: 0.75rem;
+  padding: 2rem 1.25rem;
   border: 2px dashed color-mix(in srgb, var(--color-primary) 30%, var(--color-border));
   border-radius: 14px;
   background: color-mix(in srgb, var(--color-primary) 2%, var(--color-surface));
   cursor: pointer;
-  transition: all 0.2s ease;
-}
-.bo-dropzone:hover {
-  border-color: var(--color-primary);
-  background: color-mix(in srgb, var(--color-primary) 5%, var(--color-surface));
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.03);
 }
 .bo-dropzone--has-file {
   border-style: solid;
   border-color: color-mix(in srgb, #16a34a 45%, var(--color-border));
-  background: color-mix(in srgb, #16a34a 3%, var(--color-surface));
 }
 .bo-dropzone input {
   position: absolute;
@@ -211,54 +188,30 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 3.25rem;
-  height: 3.25rem;
+  width: 3rem;
+  height: 3rem;
   border-radius: 50%;
   background: color-mix(in srgb, var(--color-primary) 12%, var(--color-surface));
   color: var(--color-primary);
-  transition: transform 0.2s ease;
-}
-.bo-dropzone:hover .bo-dropzone__icon-wrapper {
-  transform: translateY(-2px);
 }
 .bo-dropzone__icon {
-  width: 1.625rem;
-  height: 1.625rem;
+  width: 1.5rem;
+  height: 1.5rem;
 }
 .bo-dropzone__icon--success {
   color: #16a34a;
 }
-.bo-dropzone__content {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 0.35rem;
-}
 .bo-dropzone__title {
   font-weight: 700;
   font-size: 1rem;
-  color: var(--color-text-primary);
 }
 .bo-dropzone__hint {
   color: var(--color-text-secondary);
   font-size: 0.8125rem;
-  max-width: 28rem;
-  line-height: 1.45;
 }
-.bo-dropzone__tags {
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-  margin-top: 0.4rem;
-}
+.bo-dropzone__tags,
 .bo-file-tag {
-  padding: 0.15rem 0.5rem;
-  border-radius: 6px;
-  background: color-mix(in srgb, var(--color-border) 50%, transparent);
-  color: var(--color-text-secondary);
-  font-size: 0.725rem;
-  font-weight: 700;
-  letter-spacing: 0.04em;
+  display: none;
 }
 .bo-map-layout {
   display: grid;
@@ -392,3 +345,16 @@
     grid-template-columns: 1fr;
   }
 }
+
+.bo-summary-cards{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:.75rem;margin-bottom:1.25rem}
+.bo-summary-card{padding:.85rem 1rem;border:1px solid var(--color-border);border-radius:10px;background:var(--color-surface)}
+.bo-summary-card__value{display:block;font-size:1.25rem;font-weight:700}
+.bo-summary-card__label{font-size:.8rem;color:var(--color-text-secondary)}
+.bo-issue-groups{display:flex;flex-direction:column;gap:.7rem;margin-bottom:1.1rem}
+.bo-issue-card{border:1px solid var(--color-border);border-radius:12px;padding:.9rem 1rem;background:var(--color-surface)}
+.bo-issue-card__title{margin:0;font-size:1rem}
+.bo-issue-card__value,.bo-issue-card__meta,.bo-issue-card__suggestion,.bo-issue-card__rows,.bo-issue-card__capacity{margin:.3rem 0 0;color:var(--color-text-secondary);font-size:.875rem}
+.bo-issue-card__actions{display:flex;flex-wrap:wrap;gap:.5rem;margin-top:.75rem;align-items:center}
+.bo-link-btn{border:0;background:transparent;color:var(--color-primary);font-size:.85rem;cursor:pointer;text-decoration:underline}
+.bo-subsection-title{margin:0 0 .5rem;font-size:.95rem}
+@media (max-width:900px){.bo-summary-cards{grid-template-columns:repeat(2,minmax(0,1fr))}}

@@ -187,20 +187,116 @@
   @case ('validate') {
     <section class="bo-section">
       <div class="bo-section__intro">
-        <h2 class="bo-section__title">Validation summary</h2>
+        <h2 class="bo-section__title">Preview and resolve issues</h2>
         <p class="bo-section__copy">
-          Valid rows can continue even when some rows fail. Copy the invalid rows, fix the CSV, and re-upload just those people.
+          Fix spelling mismatches, map to existing records, or create missing setup only after confirming.
+          Valid rows can continue while unresolved rows stay blocked.
         </p>
       </div>
-      <p class="bo-summary">
-        {{ store.validationResult()?.validRows }} valid / {{ store.validationResult()?.invalidRows }} invalid of {{ store.batch()?.totalRows }} rows
-      </p>
+
+      <div class="bo-summary-cards" role="group" aria-label="Validation summary">
+        <div class="bo-summary-card">
+          <span class="bo-summary-card__value">{{ store.validationResult()?.validRows ?? 0 }}</span>
+          <span class="bo-summary-card__label">Valid rows</span>
+        </div>
+        <div class="bo-summary-card">
+          <span class="bo-summary-card__value">{{ unresolvedIssueCount() }}</span>
+          <span class="bo-summary-card__label">Need fixes</span>
+        </div>
+        <div class="bo-summary-card">
+          <span class="bo-summary-card__value">{{ store.validationResult()?.invalidRows ?? 0 }}</span>
+          <span class="bo-summary-card__label">Blocked rows</span>
+        </div>
+        <div class="bo-summary-card bo-summary-card--ready">
+          <span class="bo-summary-card__value">{{ store.validationResult()?.validRows ?? 0 }}</span>
+          <span class="bo-summary-card__label">Ready to import</span>
+        </div>
+      </div>
+
+      @if ((store.validationResult()?.issues?.length ?? 0) > 0) {
+        <div class="bo-issue-groups">
+          @for (issue of store.validationResult()?.issues; track issue.issueKey) {
+            <article class="bo-issue-card">
+              <header class="bo-issue-card__header">
+                <h3 class="bo-issue-card__title">{{ issueTypeLabel(issue.issueType) }}</h3>
+                @if (issue.importedValue) {
+                  <p class="bo-issue-card__value">“{{ issue.importedValue }}”</p>
+                }
+                <p class="bo-issue-card__meta">Used in {{ issue.affectedRowCount }} row{{ issue.affectedRowCount === 1 ? '' : 's' }}</p>
+              </header>
+
+              @if (issue.suggestions.length > 0) {
+                <p class="bo-issue-card__suggestion">
+                  We could not match “{{ issue.importedValue }}”.
+                  Suggested match: <strong>{{ issue.suggestions[0].label }}</strong>
+                </p>
+              }
+
+              <div class="bo-issue-card__actions">
+                @if (canAction(issue, 'map_existing') && issue.suggestions[0] && issue.issueType !== 'position_capacity_exceeded') {
+                  <app-button type="button" variant="secondary" [disabled]="store.loading()" (pressed)="onUseSuggestedMatch(issue)">
+                    Use {{ issue.suggestions[0].label }}
+                  </app-button>
+                }
+                @if (canAction(issue, 'map_existing')) {
+                  <app-button type="button" variant="secondary" [disabled]="store.loading()" (pressed)="onChooseExisting(issue)">
+                    {{ issue.issueType === 'position_capacity_exceeded' ? 'Resolve capacity' : 'Choose existing' }}
+                  </app-button>
+                }
+                @if (canAction(issue, 'edit_imported_value')) {
+                  <app-button type="button" variant="secondary" [disabled]="store.loading()" (pressed)="onEditImportedValue(issue)">
+                    {{
+                      issue.issueType === 'reporting_manager_required' || issue.issueType === 'reporting_manager_not_found'
+                        ? 'Choose manager'
+                        : 'Correct spelling'
+                    }}
+                  </app-button>
+                }
+                @if (canAction(issue, 'set_default')) {
+                  <app-button type="button" variant="secondary" [disabled]="store.loading()" (pressed)="onSetDefault(issue)">
+                    {{ issue.field === 'employmentType' ? 'Set employment type' : 'Set work mode' }}
+                  </app-button>
+                }
+                @if (canAction(issue, 'create_department')) {
+                  <app-button type="button" variant="secondary" [disabled]="store.loading()" (pressed)="onCreateDepartment(issue)">
+                    Create department
+                  </app-button>
+                }
+                @if (canAction(issue, 'create_position')) {
+                  <app-button type="button" variant="secondary" [disabled]="store.loading()" (pressed)="onCreatePosition(issue)">
+                    Create position
+                  </app-button>
+                }
+                @if (canAction(issue, 'increase_capacity')) {
+                  <app-button type="button" variant="secondary" [disabled]="store.loading()" (pressed)="onIncreaseCapacity(issue)">
+                    Increase capacity
+                  </app-button>
+                }
+                <button type="button" class="bo-link-btn" (click)="toggleIssueRows(issue.issueKey)">
+                  {{ expandedIssueKey() === issue.issueKey ? 'Hide rows' : 'View rows' }}
+                </button>
+              </div>
+
+              @if (issueCapacityLabel(issue); as capacityLabel) {
+                <p class="bo-issue-card__capacity">{{ capacityLabel }}</p>
+              }
+
+              @if (expandedIssueKey() === issue.issueKey) {
+                <p class="bo-issue-card__rows">Rows: {{ issue.affectedRowNumbers.join(', ') }}</p>
+              }
+            </article>
+          }
+        </div>
+      }
+
+      <h3 class="bo-subsection-title">Row details</h3>
       <table class="bo-table">
-        <caption class="sr-only">Invalid rows</caption>
+        <caption class="sr-only">Rows with remaining issues</caption>
         <thead>
           <tr>
             <th>Row</th>
-            <th>Error</th>
+            <th>Status</th>
+            <th>Issue</th>
           </tr>
         </thead>
         <tbody>
@@ -208,18 +304,36 @@
             @if (row.status === 'invalid') {
               <tr>
                 <td>Row {{ row.rowNumber }}</td>
-                <td>{{ row.errorMessage }}</td>
+                <td>Needs fix</td>
+                <td>{{ friendlyRowMessage(row) }}</td>
               </tr>
             }
           }
         </tbody>
       </table>
+
       <div class="bo-actions">
-        <app-button type="button" [disabled]="store.loading() || store.polling() || !store.validationResult()?.validRows" (pressed)="onCreateDrafts()">
-          Create {{ store.validationResult()?.validRows }} drafts
+        <app-button
+          type="button"
+          [disabled]="store.loading() || store.polling() || !(store.validationResult()?.validRows)"
+          (pressed)="onCreateDrafts()"
+        >
+          Import {{ store.validationResult()?.validRows }} valid rows
         </app-button>
       </div>
     </section>
+
+    <app-bulk-issue-resolver
+      [open]="resolverOpen()"
+      [issue]="resolverIssue()"
+      [action]="resolverAction()"
+      [legalEntityId]="selectedLegalEntityId()"
+      [canManageOrg]="canManageOrg()"
+      [workModeOptions]="workModeOptions()"
+      [submitting]="resolverSubmitting()"
+      (closed)="closeResolver()"
+      (apply)="onResolverApply($event)"
+    />
   }
   @case ('review') {
     <section class="bo-section">

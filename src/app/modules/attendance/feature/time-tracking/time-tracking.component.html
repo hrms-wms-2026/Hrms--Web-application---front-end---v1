@@ -1,0 +1,271 @@
+<div class="time-tracking-page">
+  <header class="time-tracking-header">
+    <app-breadcrumb-header parentLabel="Attendance" currentLabel="Time Tracking" icon="time-attendance" />
+  </header>
+
+  @if (store.todayLoading() && !store.today()) {
+    <div class="time-tracking-skeleton" aria-busy="true" aria-label="Loading today’s attendance"></div>
+  } @else if (store.todayError() && !store.today()) {
+    <section class="time-tracking-message time-tracking-message--error" role="alert">
+      <p>{{ store.todayError() }}</p>
+      <app-button type="button" variant="secondary" size="sm" (pressed)="retryToday()">Try again</app-button>
+    </section>
+  } @else {
+    @if (store.todayError()) {
+      <section class="time-tracking-message time-tracking-message--error" role="alert">
+        <p>{{ store.todayError() }}</p>
+        <app-button type="button" variant="secondary" size="sm" (pressed)="retryToday()">Refresh today</app-button>
+      </section>
+    }
+
+    @if (store.today(); as today) {
+      <section class="time-tracking-overview" aria-labelledby="today-heading">
+        <div class="overview-heading">
+          <div>
+            <p class="eyebrow">Today</p>
+            <h1 id="today-heading">{{ formatDate(today.workDate) }}</h1>
+          </div>
+          <span class="status-pill" [class.status-pill--active]="today.attendanceStatus === 'working' || today.attendanceStatus === 'clocked_in'">
+            {{ statusLabel(today.attendanceStatus) }}
+          </span>
+        </div>
+
+        <div class="overview-grid">
+          <article class="metric-card">
+            <span class="metric-label">Work schedule</span>
+            <strong>{{ today.scheduledStartTime || 'Not scheduled' }} – {{ today.scheduledEndTime || 'Not scheduled' }}</strong>
+            <span class="metric-helper">{{ today.timezone }}</span>
+          </article>
+          <article class="metric-card" [class.metric-card--muted]="today.breakRemainingMinutes === 0">
+            <span class="metric-label">Break time</span>
+            @if (today.breakAllowanceMinutes === null) {
+              <strong>Not configured</strong>
+              <span class="metric-helper">No break allowance is configured.</span>
+            } @else {
+              <strong>{{ formatMinutes(today.breakRemainingMinutes) }} remaining</strong>
+              <span class="metric-helper" [attr.title]="today.breakRemainingMinutes === 0 ? 'You have used your break time for today.' : null">
+                {{ formatMinutes(today.breakAllowanceMinutes) }} allowance · {{ formatMinutes(today.breakUsedMinutes) }} used
+              </span>
+              @if (today.breakRemainingMinutes === 0) {
+                <span class="metric-note">You have used your break time for today.</span>
+              }
+            }
+          </article>
+          <article class="metric-card">
+            <span class="metric-label">Work mode</span>
+            <strong>{{ workModeLabel(today.expectedWorkMode) }}</strong>
+            <span class="metric-helper">Source: {{ sourceLabel(today.attendanceSource) }}</span>
+          </article>
+          <article class="metric-card">
+            <span class="metric-label">Worked today</span>
+            <strong>{{ formatMinutes(today.totalWorkedMinutes) }}</strong>
+            <span class="metric-helper">{{ today.isWorkingDay ? 'Scheduled workday' : 'No scheduled workday' }}</span>
+          </article>
+          <article class="metric-card">
+            <span class="metric-label">Attendance times</span>
+            <span class="metric-helper">Clock in</span>
+            <strong>{{ formatDateTime(today.clockInAt, today.timezone) }}</strong>
+            <span class="metric-helper">Clock out</span>
+            <strong>{{ formatDateTime(today.clockOutAt, today.timezone) }}</strong>
+          </article>
+        </div>
+      </section>
+
+      @if (today.shouldHaveClockedIn) {
+        <section class="time-tracking-warning" role="status">
+          <span class="warning-icon" aria-hidden="true">!</span>
+          <p>You have not clocked in yet.</p>
+        </section>
+      }
+
+      @if (friendlyTodayMessages().length > 0) {
+        <section class="policy-messages" aria-label="Schedule and policy information">
+          @for (message of friendlyTodayMessages(); track message) {
+            <p>{{ message }}</p>
+          }
+        </section>
+      }
+
+      <section class="action-card" aria-labelledby="actions-heading">
+        <div class="section-heading">
+          <div>
+            <p class="eyebrow">Self service</p>
+            <h2 id="actions-heading">Attendance actions</h2>
+          </div>
+          <span class="action-state">{{ statusLabel(today.attendanceStatus) }}</span>
+        </div>
+        <div class="action-buttons">
+          @if (today.canClockIn) {
+            <app-button
+              type="button"
+              data-testid="clock-in"
+              [loading]="actionIsLoading('clockIn')"
+              [disabled]="store.actionLoading()"
+              (pressed)="store.clockIn()"
+            >Clock in</app-button>
+          }
+          @if (today.canStartBreak) {
+            <app-button
+              type="button"
+              data-testid="start-break"
+              variant="secondary"
+              [loading]="actionIsLoading('startBreak')"
+              [disabled]="store.actionLoading()"
+              (pressed)="store.startBreak()"
+            >Start break</app-button>
+          }
+          @if (today.canEndBreak) {
+            <app-button
+              type="button"
+              data-testid="end-break"
+              variant="secondary"
+              [loading]="actionIsLoading('endBreak')"
+              [disabled]="store.actionLoading()"
+              (pressed)="store.endBreak()"
+            >End break</app-button>
+          }
+          @if (today.canClockOut) {
+            <app-button
+              type="button"
+              data-testid="clock-out"
+              variant="danger"
+              [loading]="actionIsLoading('clockOut')"
+              [disabled]="store.actionLoading()"
+              (pressed)="store.clockOut()"
+            >Clock out</app-button>
+          }
+        </div>
+        @if (!today.canClockIn && !today.canStartBreak && !today.canEndBreak && !today.canClockOut) {
+          <p class="action-helper">There are no attendance actions available right now.</p>
+        }
+      </section>
+    }
+  }
+
+  <section class="history-card" aria-labelledby="history-heading">
+    <div class="section-heading section-heading--stacked-mobile">
+      <div>
+        <p class="eyebrow">Personal records</p>
+        <h2 id="history-heading">My attendance history</h2>
+      </div>
+      <div class="range-controls" aria-label="Attendance history date range">
+        <app-date-picker
+          label="From"
+          [value]="historyFrom()"
+          (valueChange)="setHistoryFrom($event)"
+        />
+        <app-date-picker
+          label="To"
+          [value]="historyTo()"
+          (valueChange)="setHistoryTo($event)"
+        />
+        <app-button type="button" size="sm" [disabled]="store.historyLoading()" (pressed)="applyHistoryRange()">Apply</app-button>
+      </div>
+    </div>
+    @if (rangeError()) {
+      <p class="field-error" role="alert">{{ rangeError() }}</p>
+    }
+    @if (store.historyLoading()) {
+      <div class="table-skeleton" aria-busy="true" aria-label="Loading attendance history"></div>
+    } @else if (store.historyError()) {
+      <div class="time-tracking-message time-tracking-message--error" role="alert">
+        <p>{{ store.historyError() }}</p>
+        <app-button type="button" variant="secondary" size="sm" (pressed)="retryHistory()">Try again</app-button>
+      </div>
+    } @else if (store.history().length === 0) {
+      <p class="empty-copy">No attendance records for this date range.</p>
+    } @else {
+      <div class="table-scroll">
+        <table class="attendance-table">
+          <thead>
+            <tr>
+              <th scope="col">Date</th>
+              <th scope="col">Clock in</th>
+              <th scope="col">Clock out</th>
+              <th scope="col">Break</th>
+              <th scope="col">Worked time</th>
+              <th scope="col">Work mode / source / status</th>
+            </tr>
+          </thead>
+          <tbody>
+            @for (row of store.history(); track row.attendanceRecordId) {
+              <tr>
+                <td>{{ formatDate(row.workDate) }}</td>
+                <td>{{ formatDateTime(row.clockInAt, displayTimezone()) }}</td>
+                <td>{{ formatDateTime(row.clockOutAt, displayTimezone()) }}</td>
+                <td>{{ formatMinutes(row.breakMinutes) }}</td>
+                <td>{{ formatMinutes(row.totalWorkedMinutes) }}</td>
+                <td>
+                  <span class="table-primary">{{ workModeLabel(row.expectedWorkMode) }}</span>
+                  <span class="table-secondary">{{ sourceLabel(row.attendanceSource) }} · {{ statusLabel(row.status) }}</span>
+                </td>
+              </tr>
+            }
+          </tbody>
+        </table>
+      </div>
+    }
+  </section>
+
+  @if (hasCoveredAccess()) {
+    <section class="history-card" aria-labelledby="covered-history-heading">
+      <div class="section-heading">
+        <div>
+          <p class="eyebrow">Attendance oversight</p>
+          <h2 id="covered-history-heading">Team attendance</h2>
+        </div>
+        @if (canViewCoveredEmployees()) {
+          <span class="access-note">Visible coverage records</span>
+        }
+      </div>
+      @if (store.coveredHistoryLoading()) {
+        <div class="table-skeleton" aria-busy="true" aria-label="Loading team attendance"></div>
+      } @else if (store.coveredHistoryError()) {
+        <div class="time-tracking-message time-tracking-message--error" role="alert">
+          <p>{{ store.coveredHistoryError() }}</p>
+          @if (store.coveredHistoryError() !== 'You do not have access to view team attendance.') {
+            <app-button type="button" variant="secondary" size="sm" (pressed)="retryCoveredHistory()">Try again</app-button>
+          }
+        </div>
+      } @else if (store.today() && !canViewCoveredEmployees()) {
+        <p class="empty-copy">Team attendance is not available for your coverage area.</p>
+      } @else if (store.coveredHistory().length === 0) {
+        <p class="empty-copy">No team attendance records for this date range.</p>
+      } @else {
+        <div class="table-scroll">
+          <table class="attendance-table">
+            <thead>
+              <tr>
+                <th scope="col">Employee</th>
+                <th scope="col">Date</th>
+                <th scope="col">Clock in</th>
+                <th scope="col">Clock out</th>
+                <th scope="col">Break</th>
+                <th scope="col">Worked time</th>
+                <th scope="col">Status</th>
+              </tr>
+            </thead>
+            <tbody>
+              @for (row of store.coveredHistory(); track row.attendanceRecordId) {
+                <tr>
+                  <td>
+                    <span class="table-primary">{{ employeeLabel(row) }}</span>
+                    @if (row.employee?.employeeNumber) {
+                      <span class="table-secondary">{{ row.employee?.employeeNumber }}</span>
+                    }
+                  </td>
+                  <td>{{ formatDate(row.workDate) }}</td>
+                  <td>{{ formatDateTime(row.clockInAt, displayTimezone()) }}</td>
+                  <td>{{ formatDateTime(row.clockOutAt, displayTimezone()) }}</td>
+                  <td>{{ formatMinutes(row.breakMinutes) }}</td>
+                  <td>{{ formatMinutes(row.totalWorkedMinutes) }}</td>
+                  <td>{{ statusLabel(row.status) }}</td>
+                </tr>
+              }
+            </tbody>
+          </table>
+        </div>
+      }
+    </section>
+  }
+</div>

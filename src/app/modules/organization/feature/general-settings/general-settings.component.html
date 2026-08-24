@@ -146,6 +146,18 @@
           } @else if (form.errors?.['workTimePair'] === 'start_not_before_end') {
             <p class="gs-field-error" role="alert">Work start time must be earlier than end time (same-day only).</p>
           }
+          <div class="gs-field-grid gs-field-grid--2">
+            <app-input
+              type="number"
+              label="Break duration"
+              placeholder="e.g. 60"
+              hint="minutes"
+              [value]="form.controls.breakDurationMinutes.value"
+              (valueChange)="form.controls.breakDurationMinutes.setValue($event); form.controls.breakDurationMinutes.markAsDirty()"
+              (blurred)="form.controls.breakDurationMinutes.markAsTouched()"
+              [error]="form.controls.breakDurationMinutes.touched && form.controls.breakDurationMinutes.invalid ? 'Enter a whole number of minutes, 0 or greater.' : ''"
+            />
+          </div>
         </div>
       </section>
 

@@ -36,7 +36,7 @@ describe('ChecklistTemplatesComponent - real selectedLegalEntity chain (no reque
 
     const loadPromise = legalEntityStore.loadCompanies();
     httpMock
-      .expectOne((r) => r.url === `${environment.apiUrl}/org/legal-entities`)
+      .expectOne((r) => r.url === `${environment.apiUrl}/session/companies`)
       .flush([{ id: 'legal-1', name: 'Real Co', companyCode: 'RC', logoFileId: null, isActive: true, isPrimary: true }]);
     await loadPromise;
 

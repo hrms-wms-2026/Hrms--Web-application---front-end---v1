@@ -180,14 +180,20 @@ src/
 │   ├── work/                                         # Work Management (Projects, Milestones/Objectives) — built 2026-08-03+
 │   │   ├── feature/
 │   │   │   ├── project-list/
-│   │   │   │   └── project-list.component.ts
+│   │   │   │   └── project-list.component.ts  # list rows + explanation panel (card grid removed 2026-08-20)
 │   │   │   ├── project-detail/
 │   │   │   │   └── project-detail.component.ts  # shell + router-outlet for milestone tabs
 │   │   │   └── milestone-tree-tab/
 │   │   │       └── milestone-tree-tab.component.ts  # owns tree + detail panel + members popup
 │   │   ├── ui/
-│   │   │   ├── project-card/
+│   │   │   ├── project-card/                  # unused on the list page after 2026-08-20 redesign; file kept
 │   │   │   │   └── project-card.component.ts
+│   │   │   ├── project-list-row/
+│   │   │   │   └── project-list-row.component.ts
+│   │   │   ├── project-explanation-card/
+│   │   │   │   └── project-explanation-card.component.ts
+│   │   │   ├── project-members-popup/
+│   │   │   │   └── project-members-popup.component.ts
 │   │   │   ├── project-filter-bar/
 │   │   │   │   └── project-filter-bar.component.ts
 │   │   │   ├── project-form-modal/            # Create only

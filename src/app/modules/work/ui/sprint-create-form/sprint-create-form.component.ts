@@ -1,30 +1,33 @@
 import { Component, inject, input, output, signal } from '@angular/core';
 import { SprintListStore } from '../../state/sprint-list.store';
+import { ModalComponent } from '../../../../shared/ui/modal/modal.component';
 import { InputComponent } from '../../../../shared/ui/input/input.component';
 import { ButtonComponent } from '../../../../shared/ui/button/button.component';
 
 @Component({
   selector: 'app-sprint-create-form',
   standalone: true,
-  imports: [InputComponent, ButtonComponent],
+  imports: [ModalComponent, InputComponent, ButtonComponent],
   template: `
-    <div class="sprint-create-form">
-      <app-input label="Name" [value]="newName()" (valueChange)="newName.set($event)" />
-      <app-input label="Start date" type="date" [value]="newStart()" (valueChange)="newStart.set($event)" />
-      <app-input label="End date" type="date" [value]="newEnd()" (valueChange)="newEnd.set($event)" />
+    <app-modal [open]="open()" title="Create sprint" (closed)="cancelled.emit()">
+      <div class="sprint-create-form">
+        <app-input label="Name" [value]="newName()" (valueChange)="newName.set($event)" />
+        <app-input label="Start date" type="date" [value]="newStart()" (valueChange)="newStart.set($event)" />
+        <app-input label="End date" type="date" [value]="newEnd()" (valueChange)="newEnd.set($event)" />
 
-      @if (store.error()) {
-        <p class="sprint-create-form__error" role="alert">{{ store.error() }}</p>
-      }
+        @if (store.error()) {
+          <p class="sprint-create-form__error" role="alert">{{ store.error() }}</p>
+        }
 
-      <div class="sprint-create-form__actions">
-        <app-button variant="secondary" [disabled]="submitting()" (pressed)="cancelled.emit()">Cancel</app-button>
-        <app-button variant="primary" [loading]="submitting()" (pressed)="submit()">Save</app-button>
+        <div class="sprint-create-form__actions">
+          <app-button variant="secondary" [disabled]="submitting()" (pressed)="cancelled.emit()">Cancel</app-button>
+          <app-button variant="primary" [loading]="submitting()" (pressed)="submit()">Save</app-button>
+        </div>
       </div>
-    </div>
+    </app-modal>
   `,
   styles: [`
-    .sprint-create-form { display: flex; flex-direction: column; gap: 8px; margin-bottom: 12px; padding: 10px; border: 1px solid var(--color-border); border-radius: 8px; }
+    .sprint-create-form { display: flex; flex-direction: column; gap: 8px; }
     .sprint-create-form__error { color: var(--color-danger-text); font-size: 12px; }
     .sprint-create-form__actions { display: flex; justify-content: flex-end; gap: 8px; }
   `]
@@ -32,6 +35,7 @@ import { ButtonComponent } from '../../../../shared/ui/button/button.component';
 export class SprintCreateFormComponent {
   protected readonly store = inject(SprintListStore);
 
+  open = input(false);
   objectiveId = input.required<string>();
   isObjectiveOwner = input.required<boolean>();
 

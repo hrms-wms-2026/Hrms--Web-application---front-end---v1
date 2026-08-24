@@ -4,6 +4,7 @@ import { TestBed } from '@angular/core/testing';
 import { environment } from '../../../../environments/environment';
 import { TaskApiService } from './task-api.service';
 import { WorkTaskDto, TaskStatusDto } from '../models/dto/task.dto';
+import { TaskCategoryDto } from '../models/dto/task-category.dto';
 import { TaskEditRequestDto, CreateTaskEditRequestDto } from '../models/dto/task-edit-request.dto';
 
 describe('TaskApiService', () => {
@@ -24,8 +25,8 @@ describe('TaskApiService', () => {
     const objectiveId = 'obj-1';
     const mockTasks: WorkTaskDto[] = [{
       id: 't-1', objectiveId, shortId: 'PRJ-1', title: 'Do it', description: null,
-      taskType: 'task', statusId: 's-1', priority: 'medium', storyPoints: null,
-      dueDate: null, estimatedHours: 5, completedHours: 0, progressPercent: 0, sprintId: null
+      categoryId: 'task', statusId: 's-1', priority: 'medium', storyPoints: null,
+      dueDate: null, estimatedHours: 5, completedHours: 0, progressPercent: 0, sprintId: null, assigneeEmployeeIds: []
     }];
 
     service.getTasks(objectiveId).subscribe((tasks) => {
@@ -37,30 +38,54 @@ describe('TaskApiService', () => {
     req.flush(mockTasks);
   });
 
-  it('getStatuses fetches task statuses for an objective', () => {
-    const objectiveId = 'obj-1';
+  it('getBySprintId fetches tasks for a sprint', () => {
+    const sprintId = 'spr-1';
+    const mockTasks: WorkTaskDto[] = [{
+      id: 't-1', objectiveId: 'obj-1', shortId: 'PRJ-1', title: 'Do it', description: null,
+      categoryId: 'task', statusId: 's-1', priority: 'medium', storyPoints: null,
+      dueDate: null, estimatedHours: 5, completedHours: 0, progressPercent: 0, sprintId, assigneeEmployeeIds: []
+    }];
+
+    service.getBySprintId(sprintId).subscribe((tasks) => {
+      expect(tasks).toEqual(mockTasks);
+    });
+
+    const req = httpMock.expectOne(`${environment.apiUrl}/work/sprints/${sprintId}/tasks`);
+    expect(req.request.method).toBe('GET');
+    req.flush(mockTasks);
+  });
+
+  it('deleteTask DELETEs the task by id', () => {
+    service.deleteTask('t-1').subscribe();
+    const req = httpMock.expectOne(`${environment.apiUrl}/work/tasks/t-1`);
+    expect(req.request.method).toBe('DELETE');
+    req.flush(null);
+  });
+
+it('getStatuses fetches task statuses for a project', () => {
+    const projectId = 'project-1';
     const mockStatuses: TaskStatusDto[] = [{
       id: 's-1', name: 'To Do', displayOrder: 0, requiresApproval: false, approverId: null, marksTaskComplete: false, visibility: 'public'
     }];
 
-    service.getStatuses(objectiveId).subscribe((statuses) => {
+    service.getStatuses(projectId).subscribe((statuses) => {
       expect(statuses).toEqual(mockStatuses);
     });
 
-    const req = httpMock.expectOne(`${environment.apiUrl}/work/objectives/${objectiveId}/task-statuses`);
+    const req = httpMock.expectOne(`${environment.apiUrl}/work/projects/${projectId}/task-statuses`);
     expect(req.request.method).toBe('GET');
     req.flush(mockStatuses);
   });
 
   it('createStatus posts to the task-statuses endpoint', () => {
-    service.createStatus('obj-1', {
+    service.createStatus('project-1', {
       name: 'Blocked',
       displayOrder: 4,
       visibility: 'private',
       marksTaskComplete: false,
       requiresApproval: false
     }).subscribe();
-    const req = httpMock.expectOne(`${environment.apiUrl}/work/objectives/obj-1/task-statuses`);
+    const req = httpMock.expectOne(`${environment.apiUrl}/work/projects/project-1/task-statuses`);
     expect(req.request.method).toBe('POST');
     req.flush({});
   });
@@ -112,8 +137,8 @@ describe('TaskApiService', () => {
     const editRequestId = 'ter-1';
     const mockTask: WorkTaskDto = {
       id: 't-1', objectiveId: 'obj-1', shortId: 'PRJ-1', title: 'Updated Title', description: 'Updated Description',
-      taskType: 'task', statusId: 's-1', priority: 'high', storyPoints: 5,
-      dueDate: '2024-12-31', estimatedHours: 10, completedHours: 0, progressPercent: 0, sprintId: null
+      categoryId: 'task', statusId: 's-1', priority: 'high', storyPoints: 5,
+      dueDate: '2024-12-31', estimatedHours: 10, completedHours: 0, progressPercent: 0, sprintId: null, assigneeEmployeeIds: []
     };
 
     service.approveTaskEditRequest(editRequestId).subscribe((response) => {
@@ -167,8 +192,8 @@ describe('TaskApiService', () => {
     req.flush(mockRequests);
   });
 
-  it('reorderTaskStatuses posts to objectives/{objectiveId}/task-statuses/reorder', () => {
-    const objectiveId = 'obj-1';
+it('reorderTaskStatuses posts to projects/{projectId}/task-statuses/reorder', () => {
+    const projectId = 'project-1';
     const updates = [
       { statusId: 's-1', displayOrder: 0, visibility: 'public', marksTaskComplete: false },
       { statusId: 's-2', displayOrder: 1, visibility: 'public', marksTaskComplete: false }
@@ -178,13 +203,66 @@ describe('TaskApiService', () => {
       { id: 's-2', name: 'In Progress', displayOrder: 1, requiresApproval: false, approverId: null, marksTaskComplete: false, visibility: 'public' }
     ];
 
-    service.reorderTaskStatuses(objectiveId, updates).subscribe((statuses) => {
+    service.reorderTaskStatuses(projectId, updates).subscribe((statuses) => {
       expect(statuses).toEqual(mockStatuses);
     });
 
-    const req = httpMock.expectOne(`${environment.apiUrl}/work/objectives/${objectiveId}/task-statuses/reorder`);
+    const req = httpMock.expectOne(`${environment.apiUrl}/work/projects/${projectId}/task-statuses/reorder`);
     expect(req.request.method).toBe('POST');
     expect(req.request.body).toEqual({ updates });
     req.flush(mockStatuses);
+  });
+
+  it('getCategories fetches task categories for a project', () => {
+    const projectId = 'project-1';
+    const mockCategories: TaskCategoryDto[] = [{ id: 'c-1', name: 'Feature', displayOrder: 0 }];
+
+    service.getCategories(projectId).subscribe((categories) => expect(categories).toEqual(mockCategories));
+
+    const req = httpMock.expectOne(`${environment.apiUrl}/work/projects/${projectId}/task-categories`);
+    expect(req.request.method).toBe('GET');
+    req.flush(mockCategories);
+  });
+
+  it('createCategory posts a category to the project endpoint', () => {
+    const request = { name: 'Bug', displayOrder: 1 };
+
+    service.createCategory('project-1', request).subscribe();
+
+    const req = httpMock.expectOne(`${environment.apiUrl}/work/projects/project-1/task-categories`);
+    expect(req.request.method).toBe('POST');
+    expect(req.request.body).toEqual(request);
+    req.flush({ id: 'c-2', ...request });
+  });
+
+  it('editCategory patches a category by id', () => {
+    const request = { name: 'Defect', displayOrder: 1 };
+
+    service.editCategory('c-2', request).subscribe();
+
+    const req = httpMock.expectOne(`${environment.apiUrl}/work/task-categories/c-2`);
+    expect(req.request.method).toBe('PATCH');
+    expect(req.request.body).toEqual(request);
+    req.flush(null);
+  });
+
+  it('deleteCategory deletes a category by id', () => {
+    service.deleteCategory('c-2').subscribe();
+
+    const req = httpMock.expectOne(`${environment.apiUrl}/work/task-categories/c-2`);
+    expect(req.request.method).toBe('DELETE');
+    req.flush(null);
+  });
+
+  it('reorderTaskCategories posts category order for a project', () => {
+    const updates = [{ categoryId: 'c-1', displayOrder: 0 }];
+    const mockCategories: TaskCategoryDto[] = [{ id: 'c-1', name: 'Feature', displayOrder: 0 }];
+
+    service.reorderTaskCategories('project-1', updates).subscribe((categories) => expect(categories).toEqual(mockCategories));
+
+    const req = httpMock.expectOne(`${environment.apiUrl}/work/projects/project-1/task-categories/reorder`);
+    expect(req.request.method).toBe('POST');
+    expect(req.request.body).toEqual({ updates });
+    req.flush(mockCategories);
   });
 });

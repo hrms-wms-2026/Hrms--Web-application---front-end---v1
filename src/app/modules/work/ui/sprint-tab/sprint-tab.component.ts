@@ -17,6 +17,7 @@ import { WorkTask } from '../../models/task.model';
         <span class="sprint-tab__dates">{{ sprint().startDate | date: 'MMM d' }} – {{ sprint().endDate | date: 'MMM d' }}</span>
 
         @if (isObjectiveOwner()) {
+          <button type="button" class="sprint-tab__edit" aria-label="Edit sprint" (click)="editRequested.emit()">Edit</button>
           <select #statusSelect class="sprint-tab__status-select" [value]="sprint().status" (change)="onStatusPicked(statusSelect)">
             <option value="future">Future</option>
             <option value="active">Active</option>
@@ -44,6 +45,7 @@ import { WorkTask } from '../../models/task.model';
     .sprint-tab__header { display: flex; align-items: center; gap: 12px; padding: 10px 12px; background: var(--color-surface); }
     .sprint-tab__expand { flex: 1; text-align: left; background: none; border: none; cursor: pointer; font-size: 13px; font-weight: 600; color: var(--color-text-primary); }
     .sprint-tab__dates { font-size: 11px; color: var(--color-text-secondary); }
+    .sprint-tab__edit { border: 1px solid var(--color-border); border-radius: 6px; padding: 4px 8px; background: var(--color-surface); color: var(--color-text-primary); font-size: 12px; cursor: pointer; }
     .sprint-tab__status-select { border: 1px solid var(--color-border); border-radius: 6px; padding: 4px 6px; background: var(--color-surface); color: var(--color-text-primary); font-size: 12px; }
     .sprint-tab__status-text { font-size: 12px; color: var(--color-text-secondary); text-transform: capitalize; }
     .sprint-tab__body { border-top: 1px solid var(--color-border); padding: 8px 12px; }
@@ -59,6 +61,7 @@ export class SprintTabComponent {
   expanded = input(false);
 
   toggled = output<void>();
+  editRequested = output<void>();
   statusChangeRequested = output<string>();
   createTaskRequested = output<void>();
   taskViewed = output<WorkTask>();

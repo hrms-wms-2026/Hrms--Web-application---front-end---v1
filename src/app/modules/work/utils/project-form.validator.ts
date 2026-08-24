@@ -40,9 +40,6 @@ export function validateProjectForm(
     } else if (!IDENTIFIER_PATTERN.test(fields.identifier)) {
       errors['identifier'] = 'Identifier must start with a letter and contain only letters/digits, max 20 characters.';
     }
-    if (!fields.releaseDate) {
-      errors['releaseDate'] = 'Release date is required.';
-    }
   }
 
   return errors;

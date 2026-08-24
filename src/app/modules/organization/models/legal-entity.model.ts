@@ -40,6 +40,8 @@ export interface LegalEntityGeneralSettings {
   readonly workStartTime: string | null;
   /** Default company work end time in HH:mm 24-hour format. Null when unset. */
   readonly workEndTime: string | null;
+  /** Default company break duration in minutes. Null when not configured. Independent of workStartTime/workEndTime. */
+  readonly breakDurationMinutes: number | null;
 }
 
 /**
@@ -71,6 +73,8 @@ export interface UpdateLegalEntityGeneralSettingsRequest {
   workStartTime: string | null;
   /** Default company work end time in HH:mm 24-hour format. Null to clear. */
   workEndTime: string | null;
+  /** Default company break duration in minutes. Null to clear. Independent of workStartTime/workEndTime. */
+  breakDurationMinutes: number | null;
 }
 
 /**

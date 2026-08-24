@@ -61,20 +61,26 @@ describe('CompanySelectorComponent', () => {
     return { fixture, legalEntityStore, notificationService, httpMock };
   }
 
-  it('does not render selector for users without org access', async () => {
+  it('renders selector and loads accessible companies without org module or org:read', async () => {
     const { fixture, httpMock } = await setup([], []);
     fixture.detectChanges();
 
+    const req = httpMock.expectOne((r) => r.url.includes('/session/companies'));
+    req.flush(mockCompanies);
+    await fixture.whenStable();
+    fixture.detectChanges();
+
     const trigger = fixture.nativeElement.querySelector('.company-selector__trigger');
-    expect(trigger).toBeNull();
+    expect(trigger).not.toBeNull();
+    expect(trigger.textContent).toContain('OneVo Technologies');
     httpMock.verify();
   });
 
-  it('renders selector and loads companies when user has org access', async () => {
+  it('loads selector companies from the session endpoint, not the Organization list endpoint', async () => {
     const { fixture, httpMock } = await setup(['org_structure'], ['org:read']);
     fixture.detectChanges();
 
-    const req = httpMock.expectOne((r) => r.url.includes('/org/legal-entities'));
+    const req = httpMock.expectOne((r) => r.url.includes('/session/companies'));
     req.flush(mockCompanies);
     await fixture.whenStable();
     fixture.detectChanges();
@@ -89,7 +95,7 @@ describe('CompanySelectorComponent', () => {
     const { fixture, legalEntityStore, httpMock } = await setup(['org_structure'], ['org:read']);
     fixture.detectChanges();
 
-    const req = httpMock.expectOne((r) => r.url.includes('/org/legal-entities'));
+    const req = httpMock.expectOne((r) => r.url.includes('/session/companies'));
     req.flush(mockCompanies);
     await fixture.whenStable();
     fixture.detectChanges();
@@ -106,7 +112,7 @@ describe('CompanySelectorComponent', () => {
 
     betaItem?.click();
     const switchReq = httpMock.expectOne((r) => r.url.includes('/session/active-company'));
-    expect(switchReq.request.body).toEqual({ employeeId: 'comp-2' });
+    expect(switchReq.request.body).toEqual({ legalEntityId: 'comp-2' });
     switchReq.flush(null);
     await fixture.whenStable();
     fixture.detectChanges();
@@ -124,7 +130,7 @@ describe('CompanySelectorComponent', () => {
     const trigger = fixture.nativeElement.querySelector('.company-selector__trigger');
     expect(trigger.textContent).toContain('Loading companies...');
 
-    httpMock.expectOne((r) => r.url.includes('/org/legal-entities')).flush(mockCompanies);
+    httpMock.expectOne((r) => r.url.includes('/session/companies')).flush(mockCompanies);
     httpMock.verify();
   });
 
@@ -132,7 +138,7 @@ describe('CompanySelectorComponent', () => {
     const { fixture, httpMock } = await setup(['org_structure'], ['org:read']);
     fixture.detectChanges();
 
-    httpMock.expectOne((r) => r.url.includes('/org/legal-entities')).flush([]);
+    httpMock.expectOne((r) => r.url.includes('/session/companies')).flush([]);
     await fixture.whenStable();
     fixture.detectChanges();
 
@@ -146,13 +152,13 @@ describe('CompanySelectorComponent', () => {
     httpMock.verify();
   });
 
-  it('shows an error state instead of disappearing when the legal entity list fails to load', async () => {
+  it('shows safe copy when the accessible company list is forbidden', async () => {
     const { fixture, httpMock } = await setup(['org_structure'], ['org:read']);
     fixture.detectChanges();
 
     httpMock
-      .expectOne((r) => r.url.includes('/org/legal-entities'))
-      .flush({ detail: 'Service unavailable' }, { status: 503, statusText: 'Service Unavailable' });
+      .expectOne((r) => r.url.includes('/session/companies'))
+      .flush({ detail: 'Required permission org:read missing' }, { status: 403, statusText: 'Forbidden' });
     await fixture.whenStable();
     fixture.detectChanges();
 
@@ -164,7 +170,7 @@ describe('CompanySelectorComponent', () => {
     fixture.detectChanges();
     const status = fixture.nativeElement.querySelector('.company-selector__status--error');
     expect(status).not.toBeNull();
-    expect(status.textContent).toContain('Service unavailable');
+    expect(status.textContent).toContain('You do not have access to perform this action.');
     httpMock.verify();
   });
 
@@ -172,7 +178,7 @@ describe('CompanySelectorComponent', () => {
     const { fixture, httpMock } = await setup(['org_structure'], ['org:manage', 'legal_entity:create']);
     fixture.detectChanges();
 
-    const req = httpMock.expectOne((r) => r.url.includes('/org/legal-entities'));
+    const req = httpMock.expectOne((r) => r.url.includes('/session/companies'));
     req.flush(mockCompanies);
     await fixture.whenStable();
     fixture.detectChanges();
@@ -195,7 +201,7 @@ describe('CompanySelectorComponent', () => {
     const { fixture, httpMock, notificationService, legalEntityStore } = await setup(['org_structure'], ['org:read', 'legal_entity:create']);
     fixture.detectChanges();
 
-    httpMock.expectOne((r) => r.url.includes('/org/legal-entities') && r.method === 'GET').flush(mockCompanies);
+    httpMock.expectOne((r) => r.url.includes('/session/companies')).flush(mockCompanies);
     await fixture.whenStable();
     fixture.detectChanges();
 
@@ -221,7 +227,7 @@ describe('CompanySelectorComponent', () => {
     postReq.flush({ id: 'comp-3', name: 'Gamma Inc' });
 
     const refreshReq = await vi.waitFor(() =>
-      httpMock.expectOne((r) => r.url.includes('/org/legal-entities') && r.method === 'GET')
+      httpMock.expectOne((r) => r.url.includes('/session/companies'))
     );
     refreshReq.flush([...mockCompanies, { id: 'comp-3', name: 'Gamma Inc', companyCode: 'GAMMA', logoFileId: null, isActive: true, isPrimary: false }]);
 
@@ -238,7 +244,7 @@ describe('CompanySelectorComponent', () => {
     const { fixture, httpMock, notificationService } = await setup(['org_structure'], ['org:read', 'legal_entity:create']);
     fixture.detectChanges();
 
-    httpMock.expectOne((r) => r.url.includes('/org/legal-entities') && r.method === 'GET').flush(mockCompanies);
+    httpMock.expectOne((r) => r.url.includes('/session/companies')).flush(mockCompanies);
     await fixture.whenStable();
     fixture.detectChanges();
 
@@ -272,7 +278,7 @@ describe('CompanySelectorComponent', () => {
     const { fixture, httpMock } = await setup(['org_structure'], ['org:read', 'legal_entity:create']);
     fixture.detectChanges();
 
-    const req = httpMock.expectOne((r) => r.url.includes('/org/legal-entities'));
+    const req = httpMock.expectOne((r) => r.url.includes('/session/companies'));
     req.flush(mockCompanies);
     await fixture.whenStable();
     fixture.detectChanges();
@@ -290,7 +296,7 @@ describe('CompanySelectorComponent', () => {
     const { fixture, httpMock } = await setup(['org_structure'], ['org:read', 'org:manage']);
     fixture.detectChanges();
 
-    const req = httpMock.expectOne((r) => r.url.includes('/org/legal-entities'));
+    const req = httpMock.expectOne((r) => r.url.includes('/session/companies'));
     req.flush(mockCompanies);
     await fixture.whenStable();
     fixture.detectChanges();
@@ -304,6 +310,28 @@ describe('CompanySelectorComponent', () => {
     expect(items.length).toBeGreaterThan(0); // company rows rendered - confirms we're past loading/error/empty, not just absent for the wrong reason
     const addItem = fixture.nativeElement.querySelector('.company-selector__item--action');
     expect(addItem).toBeNull();
+    httpMock.verify();
+  });
+
+  it('keeps the current company and shows safe copy when switching is forbidden', async () => {
+    const { fixture, legalEntityStore, notificationService, httpMock } = await setup([], []);
+    fixture.detectChanges();
+    httpMock.expectOne((r) => r.url.includes('/session/companies')).flush(mockCompanies);
+    await fixture.whenStable();
+    fixture.detectChanges();
+    vi.spyOn(notificationService, 'error');
+
+    fixture.componentInstance.isOpen.set(true);
+    const switchPromise = fixture.componentInstance.selectCompany('comp-2');
+    httpMock
+      .expectOne((r) => r.url.includes('/session/active-company'))
+      .flush({ detail: 'Required permission org:read missing' }, { status: 403, statusText: 'Forbidden' });
+    await switchPromise;
+
+    expect(legalEntityStore.selectedLegalEntityId()).toBe('comp-1');
+    expect(localStorage.getItem(SELECTED_LEGAL_ENTITY_STORAGE_KEY)).toBe('comp-1');
+    expect(fixture.componentInstance.isOpen()).toBe(true);
+    expect(notificationService.error).toHaveBeenCalledWith('You do not have access to perform this action.');
     httpMock.verify();
   });
 });

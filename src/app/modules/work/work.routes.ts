@@ -53,12 +53,13 @@ export const WORK_ROUTES: Routes = [
               import('./feature/milestone-coming-soon-tab/milestone-coming-soon-tab.component').then((m) => m.MilestoneComingSoonTabComponent),
             data: { title: 'Calendar' }
           },
-          {
-            path: 'settings',
-            loadComponent: () =>
-              import('./feature/objective-settings/objective-settings.component').then((m) => m.ObjectiveSettingsComponent)
-          }
+          
         ]
+      },
+      {
+        path: 'settings',
+        loadComponent: () =>
+          import('./feature/project-settings/project-settings.component').then((m) => m.ProjectSettingsComponent)
       }
     ]
   }

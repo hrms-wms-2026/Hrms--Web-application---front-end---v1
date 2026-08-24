@@ -1,3 +1,4 @@
+import { HttpErrorResponse } from '@angular/common/http';
 import { inject } from '@angular/core';
 import { patchState, signalStore, withMethods, withState } from '@ngrx/signals';
 import { firstValueFrom } from 'rxjs';
@@ -8,6 +9,7 @@ import {
   BulkOnboardingBatchResponse,
   BulkOnboardingColumnMapping,
   BulkOnboardingSystemField,
+  ResolveBulkOnboardingIssuesPayload,
   RowPreviewResponse,
   UploadBulkOnboardingBatchPayload,
   ValidateBulkOnboardingBatchResponse
@@ -72,6 +74,24 @@ export const BulkOnboardingStore = signalStore(
         patchState(store, { validationResult, loading: false });
       } catch (err: unknown) {
         patchState(store, { error: toSafeErrorMessage(err, 'Failed to validate the batch.'), loading: false });
+      }
+    },
+
+    async resolveIssue(payload: ResolveBulkOnboardingIssuesPayload): Promise<boolean> {
+      const batch = store.batch();
+      if (!batch) return false;
+      patchState(store, { loading: true, error: null });
+      try {
+        const validationResult = await firstValueFrom(api.resolveIssues(batch.id, payload));
+        patchState(store, { validationResult, loading: false });
+        return true;
+      } catch (err: unknown) {
+        const message =
+          err instanceof HttpErrorResponse && err.status === 403
+            ? 'You do not have permission to create or update organization setup.'
+            : toSafeErrorMessage(err, 'Could not apply this fix. Try again.');
+        patchState(store, { error: message, loading: false });
+        return false;
       }
     },
 

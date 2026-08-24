@@ -34,6 +34,9 @@ import { WorkTask } from '../../models/task.model';
             [status]="column.status"
             [tasks]="column.tasks"
             [connectedListIds]="columnIds()"
+            [allStatuses]="store.statuses()"
+            [isObjectiveOwner]="isObjectiveOwner()"
+            [employeeNames]="employeeNames()"
             (taskDropped)="onTaskDropped($event)"
             (taskViewed)="onTaskViewed($event)"
           />
@@ -45,6 +48,7 @@ import { WorkTask } from '../../models/task.model';
       <app-task-create-modal
         [open]="createOpen()"
         [objectiveId]="milestoneId()!"
+        [projectId]="projectId()"
         [isObjectiveOwner]="isObjectiveOwner()"
         [activeSprints]="activeSprints()"
         [assignableMembers]="assignableMembers()"
@@ -56,6 +60,7 @@ import { WorkTask } from '../../models/task.model';
     <app-task-detail-modal
       [open]="detailOpen()"
       [task]="selectedTask()"
+      [projectId]="projectId()"
       [isObjectiveOwner]="isObjectiveOwner()"
       [statuses]="store.statuses()"
       (closed)="detailOpen.set(false)"
@@ -85,6 +90,7 @@ export class TaskBoardComponent implements OnInit, AfterViewChecked {
   protected readonly detailOpen = signal(false);
   protected readonly selectedTask = signal<WorkTask | null>(null);
   protected readonly milestoneId = signal<string | null>(null);
+  protected readonly projectId = signal('');
   protected readonly isObjectiveOwner = signal(false);
   protected readonly activeSprints = signal<Sprint[]>([]);
   protected readonly assignableMembers = signal<{ employeeId: string; name: string }[]>([]);
@@ -99,11 +105,23 @@ export class TaskBoardComponent implements OnInit, AfterViewChecked {
     }));
   });
 
+  // Employee names for the task cards' assignee display - keyed by employeeId so
+  // TaskCardComponent can resolve each of its task's assigneeEmployeeIds independently.
+  protected readonly employeeNames = computed(() =>
+    Object.fromEntries(
+      this.store.tasks()
+        .flatMap((t) => t.assigneeEmployeeIds)
+        .filter((id, index, all) => all.indexOf(id) === index)
+        .map((id) => [id, this.directory.get(id)?.name ?? 'Unknown employee'])
+    )
+  );
+
   columnIds(): string[] {
     return this.columnsWithTasks().map((c) => c.status.id);
   }
 
   ngOnInit(): void {
+    this.projectId.set(this.route.parent?.parent?.snapshot.paramMap.get('id') ?? '');
     const id = this.route.parent?.snapshot.paramMap.get('milestoneId') ?? null;
     this.milestoneId.set(id);
     this.highlightTaskId = this.route.snapshot.queryParamMap.get('highlightTaskId');
@@ -111,7 +129,10 @@ export class TaskBoardComponent implements OnInit, AfterViewChecked {
 
     const fromList = this.projectStore.milestones().find((m) => m.objectiveId === id);
     this.isObjectiveOwner.set(fromList?.isOwner ?? false);
-    void this.store.loadBoard(id);
+    void this.store.loadBoard(id).then(() => {
+      const assigneeIds = this.store.tasks().flatMap((t) => t.assigneeEmployeeIds);
+      if (assigneeIds.length > 0) void this.directory.ensureLoaded(assigneeIds);
+    });
     void firstValueFrom(this.sprintApi.getByObjective(id, true)).then((dtos) => this.activeSprints.set(dtos.map(toSprint)));
     void firstValueFrom(this.memberApi.getMembers(id)).then(async (list) => {
       const active = list.items.filter((m) => !m.pending);

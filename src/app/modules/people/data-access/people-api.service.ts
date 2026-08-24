@@ -12,11 +12,14 @@ import {
   ResendInvitationResponse
 } from '../models/employee.model';
 import { PendingAccessGrantRequestResponse } from '../models/access-grant-request.model';
+import { ChecklistAssignee } from '../models/checklist-template.model';
 import { PositionHistoryEntryResponse } from '../models/position-history.model';
 import {
   ApproveAccessGrantRequestResponse,
   DraftListPageResponse,
   DraftListParams,
+  EmployeeNumberAvailabilityResponse,
+  EmployeeNumberSuggestionResponse,
   FinalizeOnboardingDraftResponse,
   ActiveHolder,
   OnboardingDraftResponse,
@@ -94,6 +97,20 @@ export class PeopleApiService {
     return this.http.post<FinalizeOnboardingDraftResponse>(`${environment.apiUrl}/onboarding/drafts/${id}/finalize`, {});
   }
 
+  getEmployeeNumberSuggestion(legalEntityId: string): Observable<EmployeeNumberSuggestionResponse> {
+    return this.http.get<EmployeeNumberSuggestionResponse>(
+      `${environment.apiUrl}/onboarding/employee-number-suggestion`,
+      { params: this.toHttpParams({ legalEntityId }) }
+    );
+  }
+
+  checkEmployeeNumberAvailability(employeeNumber: string): Observable<EmployeeNumberAvailabilityResponse> {
+    return this.http.get<EmployeeNumberAvailabilityResponse>(
+      `${environment.apiUrl}/onboarding/employee-number-availability`,
+      { params: this.toHttpParams({ employeeNumber }) }
+    );
+  }
+
   approveAccessGrantRequest(id: string): Observable<ApproveAccessGrantRequestResponse> {
     return this.http.post<ApproveAccessGrantRequestResponse>(
       `${environment.apiUrl}/onboarding/access-grant-requests/${id}/approve-and-send-invite`,
@@ -127,6 +144,19 @@ export class PeopleApiService {
     return this.http.get<readonly ActiveHolder[]>(
       `${environment.apiUrl}/org/legal-entities/${legalEntityId}/positions/${positionId}/active-holders`
     );
+  }
+
+  getChecklistAssigneePositions(legalEntityId: string): Observable<readonly { id: string; name: string }[]> {
+    return this.http.get<readonly { id: string; name: string }[]>(
+      `${environment.apiUrl}/people/checklist-assignee-positions`,
+      { params: this.toHttpParams({ legalEntityId }) }
+    );
+  }
+
+  getChecklistAssignees(legalEntityId: string, positionId: string): Observable<readonly ChecklistAssignee[]> {
+    return this.http.get<readonly ChecklistAssignee[]>(`${environment.apiUrl}/people/checklist-assignees`, {
+      params: this.toHttpParams({ legalEntityId, positionId })
+    });
   }
 
   private toHttpParams(params: object): HttpParams {

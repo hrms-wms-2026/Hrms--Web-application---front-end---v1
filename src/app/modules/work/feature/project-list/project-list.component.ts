@@ -1,31 +1,29 @@
-import { Component, OnInit, inject, signal, viewChild, ElementRef } from '@angular/core';
+import { Component, OnInit, computed, inject, signal } from '@angular/core';
 import { Router } from '@angular/router';
 import { ProjectListStore, AchievedFilter } from '../../state/project-list.store';
 import { ProjectDetailStore } from '../../state/project-detail.store';
-import { ProjectCardComponent } from '../../ui/project-card/project-card.component';
 import { ProjectFilterBarComponent } from '../../ui/project-filter-bar/project-filter-bar.component';
 import { ProjectFormModalComponent } from '../../ui/project-form-modal/project-form-modal.component';
 import { ProjectSettingsModalComponent } from '../../ui/project-settings-modal/project-settings-modal.component';
+import { ProjectListRowComponent } from '../../ui/project-list-row/project-list-row.component';
+import { ProjectExplanationCardComponent } from '../../ui/project-explanation-card/project-explanation-card.component';
+import { ProjectMembersPopupComponent } from '../../ui/project-members-popup/project-members-popup.component';
 import { MyInvitationsPanelComponent } from '../../ui/my-invitations-panel/my-invitations-panel.component';
 import { ConfirmModalComponent } from '../../../../shared/ui/confirm-modal/confirm-modal.component';
-import { PageHeaderComponent } from '../../../../shared/ui/page-header/page-header.component';
+import { BreadcrumbHeaderComponent } from '../../../../shared/ui/breadcrumb-header/breadcrumb-header.component';
 import { ButtonComponent } from '../../../../shared/ui/button/button.component';
 import { LoaderComponent } from '../../../../shared/ui/loader/loader.component';
 import { ErrorStateComponent } from '../../../../shared/ui/error-state/error-state.component';
 import { EmptyStateComponent } from '../../../../shared/ui/empty-state/empty-state.component';
 import { CreateProjectPayload, EditProjectPayload, Project, ProjectDetail } from '../../models/project.model';
-import { captureFlipRects, playFlipAnimation, FlipSnapshot } from '../../../../shared/utils/flip-animate';
-
-function waitForNextRender(): Promise<void> {
-  return new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(() => resolve())));
-}
 
 @Component({
   selector: 'app-project-list',
   standalone: true,
   imports: [
-    ProjectCardComponent, ProjectFilterBarComponent, ProjectFormModalComponent, ProjectSettingsModalComponent, ConfirmModalComponent,
-    MyInvitationsPanelComponent, PageHeaderComponent, ButtonComponent, LoaderComponent, ErrorStateComponent, EmptyStateComponent
+    ProjectFilterBarComponent, ProjectFormModalComponent, ProjectSettingsModalComponent, ConfirmModalComponent,
+    ProjectListRowComponent, ProjectExplanationCardComponent, ProjectMembersPopupComponent,
+    MyInvitationsPanelComponent, BreadcrumbHeaderComponent, ButtonComponent, LoaderComponent, ErrorStateComponent, EmptyStateComponent
   ],
   templateUrl: './project-list.component.html'
 })
@@ -33,34 +31,40 @@ export class ProjectListComponent implements OnInit {
   readonly store = inject(ProjectListStore);
   readonly detailStore = inject(ProjectDetailStore);
   private readonly router = inject(Router);
-  private readonly projectGrid = viewChild<ElementRef<HTMLElement>>('projectGrid');
 
-  expandedProjectId = signal<string | null>(null);
+  selectedProjectId = signal<string | null>(null);
   createModalOpen = signal(false);
   settingsModalOpen = signal(false);
   settingsModalInitialValue = signal<ProjectDetail | null>(null);
+  membersModalOpen = signal(false);
   deleteConfirmOpen = signal(false);
   private targetProject = signal<Project | null>(null);
   actionSubmitting = signal(false);
+
+  readonly selectedProject = computed(() => {
+    const list = this.store.filteredProjects();
+    if (list.length === 0) return null;
+    const id = this.selectedProjectId();
+    return list.find((p) => p.id === id) ?? list[0];
+  });
 
   ngOnInit(): void {
     this.store.loadProjects();
     this.detailStore.loadMyInvitations();
   }
 
+  onSelectProject(project: Project): void {
+    this.selectedProjectId.set(project.id);
+  }
+
   onView(project: Project): void {
     this.router.navigate(['/work', project.id]);
   }
 
-  async onToggleExpand(projectId: string): Promise<void> {
-    const container = this.projectGrid()?.nativeElement;
-    const before: FlipSnapshot = container ? captureFlipRects(container) : {};
-
-    this.expandedProjectId.set(this.expandedProjectId() === projectId ? null : projectId);
-
-    if (!container) return;
-    await waitForNextRender();
-    playFlipAnimation(container, before);
+  async onAchieve(project: Project): Promise<void> {
+    this.actionSubmitting.set(true);
+    await this.store.achieveProject(project.id);
+    this.actionSubmitting.set(false);
   }
 
   openCreateModal(): void {
@@ -74,6 +78,16 @@ export class ProjectListComponent implements OnInit {
     if (success) {
       this.createModalOpen.set(false);
     }
+  }
+
+  onMembersRequested(): void {
+    this.membersModalOpen.set(true);
+  }
+
+  async onAddProjectMember(employeeId: string): Promise<void> {
+    const project = this.selectedProject();
+    if (!project) return;
+    await this.store.addProjectMember(project.id, employeeId);
   }
 
   onProjectSettingsRequested(project: Project): void {

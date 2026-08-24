@@ -3,6 +3,8 @@ import { ModalComponent } from '../../../../shared/ui/modal/modal.component';
 import { InputComponent } from '../../../../shared/ui/input/input.component';
 import { ButtonComponent } from '../../../../shared/ui/button/button.component';
 import { CreateTaskRequestDto, InsufficientAllocationErrorDto, WorkTaskDto } from '../../models/dto/task.dto';
+import { TaskCategoryColumn } from '../../models/task-category.model';
+import { toTaskCategoryColumn } from '../../utils/task-category.mapper';
 import { WorkTask } from '../../models/task.model';
 import { Sprint } from '../../models/sprint.model';
 import { TaskBoardStore } from '../../state/task-board.store';
@@ -17,22 +19,24 @@ import { firstValueFrom } from 'rxjs';
     <app-modal [open]="open()" title="Create task" (closed)="closed.emit()">
       <div class="flex flex-col gap-3">
         <app-input label="Title" [value]="title()" [error]="errors()['title'] || ''" (valueChange)="title.set($event)" />
-        <label class="flex flex-col gap-1 text-sm text-[var(--color-text-primary)]">
-          Sprint
-          @if (singleSprint(); as sprint) {
-            <span class="task-create-modal__sprint-fixed" data-testid="sprint-fixed">{{ sprint.name }}</span>
-          } @else {
-            <select class="task-create-modal__select task-create-modal__sprint-select" [value]="sprintId()" (change)="sprintId.set($any($event.target).value)">
-              <option value="" disabled selected>Select a sprint</option>
-              @for (sprint of activeSprints(); track sprint.id) {
-                <option [value]="sprint.id">{{ sprint.name }}</option>
+          @if (sprintRequired()) {
+            <label class="flex flex-col gap-1 text-sm text-[var(--color-text-primary)]">
+              Sprint
+              @if (singleSprint(); as sprint) {
+                <span class="task-create-modal__sprint-fixed" data-testid="sprint-fixed">{{ sprint.name }}</span>
+              } @else {
+                <select class="task-create-modal__select task-create-modal__sprint-select" [value]="sprintId()" (change)="sprintId.set($any($event.target).value)">
+                  <option value="" disabled selected>Select a sprint</option>
+                  @for (sprint of activeSprints(); track sprint.id) {
+                    <option [value]="sprint.id">{{ sprint.name }}</option>
+                  }
+                </select>
               }
-            </select>
+              @if (errors()['sprintId']) {
+                <span class="text-xs text-[var(--color-danger-text)]">{{ errors()['sprintId'] }}</span>
+              }
+            </label>
           }
-          @if (errors()['sprintId']) {
-            <span class="text-xs text-[var(--color-danger-text)]">{{ errors()['sprintId'] }}</span>
-          }
-        </label>
         <label class="flex flex-col gap-1 text-sm text-[var(--color-text-primary)]">
           Assign to (optional)
           <select class="task-create-modal__select" [value]="assigneeEmployeeId()" (change)="assigneeEmployeeId.set($any($event.target).value)">
@@ -43,13 +47,16 @@ import { firstValueFrom } from 'rxjs';
           </select>
         </label>
         <label class="flex flex-col gap-1 text-sm text-[var(--color-text-primary)]">
-          Type
-          <select class="task-create-modal__select" [value]="taskType()" (change)="taskType.set($any($event.target).value)">
-            <option value="task">Task</option>
-            <option value="bug">Bug</option>
-            <option value="story">Story</option>
-            <option value="feature">Feature</option>
+          Category
+          <select class="task-create-modal__select" [value]="categoryId()" (change)="categoryId.set($any($event.target).value)">
+            <option value="" disabled>Select a category</option>
+            @for (category of categories(); track category.id) {
+              <option [value]="category.id">{{ category.name }}</option>
+            }
           </select>
+          @if (errors()['categoryId']) {
+            <span class="text-xs text-[var(--color-danger-text)]">{{ errors()['categoryId'] }}</span>
+          }
         </label>
         <label class="flex flex-col gap-1 text-sm text-[var(--color-text-primary)]">
           Priority
@@ -114,8 +121,10 @@ export class TaskCreateModalComponent {
 
   open = input(false);
   objectiveId = input.required<string>();
+  projectId = input.required<string>();
   isObjectiveOwner = input.required<boolean>();
   activeSprints = input<readonly Sprint[]>([]);
+  sprintRequired = input(true);
   assignableMembers = input<readonly { employeeId: string; name: string }[]>([]);
 
   created = output<WorkTask>();
@@ -125,7 +134,8 @@ export class TaskCreateModalComponent {
 
   title = signal('');
   description = signal('');
-  taskType = signal<WorkTaskDto['taskType']>('task');
+  categories = signal<TaskCategoryColumn[]>([]);
+  categoryId = signal('');
   priority = signal<WorkTaskDto['priority']>('medium');
   dueDate = signal('');
   estimatedHours = signal<number | null>(null);
@@ -146,6 +156,11 @@ export class TaskCreateModalComponent {
   });
 
   constructor() {
+    effect(() => {
+      const projectId = this.projectId();
+      if (this.open() && projectId) void this.loadCategories(projectId);
+    });
+
     effect(() => {
       const sprint = this.singleSprint();
       if (sprint) {
@@ -182,7 +197,8 @@ export class TaskCreateModalComponent {
     if (!override) {
       const fieldErrors: Record<string, string> = {};
       if (!request.title.trim()) fieldErrors['title'] = 'Title is required.';
-      if (!request.sprintId) fieldErrors['sprintId'] = 'Sprint is required.';
+      if (this.sprintRequired() && !request.sprintId) fieldErrors['sprintId'] = 'Sprint is required.';
+      if (!request.categoryId) fieldErrors['categoryId'] = 'Category is required.';
       this.errors.set(fieldErrors);
       if (Object.keys(fieldErrors).length > 0) return;
     }
@@ -220,16 +236,29 @@ export class TaskCreateModalComponent {
     }
   }
 
+    private async loadCategories(projectId: string): Promise<void> {
+    try {
+      const categories = (await firstValueFrom(this.taskApi.getCategories(projectId))).map(toTaskCategoryColumn);
+      this.categories.set(categories);
+      if (!categories.some((category) => category.id === this.categoryId())) {
+        this.categoryId.set(categories[0]?.id ?? '');
+      }
+    } catch {
+      this.errorMessage.set('Failed to load task categories.');
+    }
+  }
+
   private buildRequest(): CreateTaskRequestDto {
+
     return {
       title: this.title().trim(),
       description: this.description() || undefined,
-      taskType: this.taskType(),
+      categoryId: this.categoryId(),
       priority: this.priority(),
       dueDate: this.dueDate() || undefined,
       estimatedHours: this.estimatedHours() ?? undefined,
       storyPoints: this.storyPoints() ?? undefined,
-      sprintId: this.sprintId()
+      sprintId: this.sprintId() || null
     };
   }
 }

@@ -4,13 +4,28 @@ import { of, throwError } from 'rxjs';
 import { ProjectDetailStore } from './project-detail.store';
 import { ProjectApiService } from '../data-access/project-api.service';
 import { ObjectiveMemberApiService } from '../data-access/objective-member-api.service';
+import { SprintApiService } from '../data-access/sprint-api.service';
+import { TaskApiService } from '../data-access/task-api.service';
 import { ProjectDetailDto } from '../models/dto/project.dto';
-import { MyProjectMilestoneDto, ObjectiveDetailDto, ObjectiveSubtreeResponseDto, CreateObjectiveRequestDto, AddObjectiveMemberOutcomeDto, TransferObjectiveHeadOutcomeDto } from '../models/dto/milestone.dto';
+import { MyProjectMilestoneDto, ObjectiveDetailDto, CreateObjectiveRequestDto, AddObjectiveMemberOutcomeDto, TransferObjectiveHeadOutcomeDto } from '../models/dto/milestone.dto';
+import { ObjectiveTreeItemDto } from '../models/dto/objective-tree.dto';
 import { ObjectiveInvitationDto } from '../models/dto/objective-invitation.dto';
+import { SprintDto } from '../models/dto/sprint.dto';
+import { WorkTaskDto, TaskStatusDto } from '../models/dto/task.dto';
 
 describe('ProjectDetailStore', () => {
-  function setup(apiOverrides: Partial<ProjectApiService> = {}) {
-    TestBed.configureTestingModule({ providers: [{ provide: ProjectApiService, useValue: apiOverrides }] });
+  function setup(
+    apiOverrides: Partial<ProjectApiService> = {},
+    sprintApi: Partial<SprintApiService> = {},
+    taskApi: Partial<TaskApiService> = {}
+  ) {
+    TestBed.configureTestingModule({
+      providers: [
+        { provide: ProjectApiService, useValue: apiOverrides },
+        { provide: SprintApiService, useValue: sprintApi },
+        { provide: TaskApiService, useValue: taskApi }
+      ]
+    });
     return TestBed.inject(ProjectDetailStore);
   }
 
@@ -18,7 +33,9 @@ describe('ProjectDetailStore', () => {
     TestBed.configureTestingModule({
       providers: [
         { provide: ProjectApiService, useValue: {} },
-        { provide: ObjectiveMemberApiService, useValue: memberApiOverrides }
+        { provide: ObjectiveMemberApiService, useValue: memberApiOverrides },
+        { provide: SprintApiService, useValue: {} },
+        { provide: TaskApiService, useValue: {} }
       ]
     });
     return TestBed.inject(ProjectDetailStore);
@@ -31,6 +48,20 @@ describe('ProjectDetailStore', () => {
     createdAt: '2026-08-01T00:00:00Z', updatedAt: null, isLead: true, logoFileId: null,
     labels: [], members: [], memberCount: 0
   };
+
+  function treeItem(overrides: Partial<ObjectiveTreeItemDto> & Pick<ObjectiveTreeItemDto, 'id' | 'title'>): ObjectiveTreeItemDto {
+    return {
+      parentObjectiveId: null, isDefault: false, ownerId: 'u1',
+      startDate: '2026-08-01', endDate: '2026-12-01', allocatedHours: 40, completedHours: 0,
+      isActive: true, isAchieved: false, progress: 0, ownerName: 'Arun', isOwner: true, ...overrides
+    };
+  }
+
+  const leafTree: ObjectiveTreeItemDto[] = [treeItem({ id: 'o1', title: 'Root', isDefault: true })];
+  const parentTree: ObjectiveTreeItemDto[] = [
+    treeItem({ id: 'o1', title: 'Root', isDefault: true }),
+    treeItem({ id: 'o2', title: 'Child', parentObjectiveId: 'o1' })
+  ];
 
   it('loads a project successfully', async () => {
     const store = setup({ getById: () => of(projectDto) } as Partial<ProjectApiService>);
@@ -72,30 +103,20 @@ describe('ProjectDetailStore', () => {
     expect(store.milestonesError()).toBe('Failed to load modules.');
   });
 
-  it('loads and clears a milestone subtree', async () => {
-    const response: ObjectiveSubtreeResponseDto = {
-      parentObjective: null,
-      objective: {
-        id: 'o1', projectId: 'p1', parentObjectiveId: null, isDefault: true, title: 'Root',
-        description: null, ownerId: 'u1', ownerName: 'Arun', reportingManagerId: null, reportingManagerName: null,
-        createdById: 'u1', startDate: '2026-08-01', endDate: '2026-12-01', progress: 0, actualHours: null,
-        allocatedHours: 40, completedHours: 0, isActive: true, isOwner: true, isAchieved: false, achievedAt: null,
-        createdAt: '2026-08-01T00:00:00Z', updatedAt: null, children: []
-      }
-    };
-    const store = setup({ getMilestoneSubtree: () => of(response) } as Partial<ProjectApiService>);
-    await store.loadMilestoneSubtree('o1');
+  it('loads and clears a project tree', async () => {
+    const store = setup({ getProjectTree: () => of(leafTree) } as Partial<ProjectApiService>);
+    await store.loadProjectTree('p1');
     expect(store.selectedSubtree()?.title).toBe('Root');
     store.clearSelectedSubtree();
     expect(store.selectedSubtree()).toBeNull();
   });
 
-  it('sets subtreeError when loadMilestoneSubtree fails', async () => {
+  it('sets subtreeError when loadProjectTree fails', async () => {
     const store = setup({
-      getMilestoneSubtree: () => throwError(() => ({ error: { detail: 'Server error' } }))
+      getProjectTree: () => throwError(() => ({ error: { detail: 'Server error' } }))
     } as Partial<ProjectApiService>);
 
-    await store.loadMilestoneSubtree('o1');
+    await store.loadProjectTree('p1');
 
     expect(store.subtreeError()).toBe('Server error');
   });
@@ -259,5 +280,322 @@ describe('ProjectDetailStore', () => {
 
     expect(result).toEqual({ success: true });
     expect(store.myInvitations()).toEqual([]);
+  });
+
+  describe('loadSprintsAndTasksForLeaf', () => {
+
+    const sprintDto: SprintDto = {
+      id: 'spr-1', objectiveId: 'o1', name: 'Sprint 1', startDate: '2026-08-01', endDate: '2026-08-14',
+      status: 'active', completedAt: null, achievedAt: null
+    };
+
+    const directTask: WorkTaskDto = {
+      id: 't-direct', objectiveId: 'o1', shortId: 'WEB-1', title: 'Direct task', description: null,
+      categoryId: 'task', statusId: 'st-1', priority: 'medium', storyPoints: null,
+      dueDate: null, estimatedHours: 3, completedHours: 0, progressPercent: 0, sprintId: null, assigneeEmployeeIds: []
+    };
+
+    const sprintTask: WorkTaskDto = {
+      ...directTask, id: 't-sprint', title: 'Sprint task', sprintId: 'spr-1'
+    };
+
+    const statuses: TaskStatusDto[] = [{
+      id: 'st-1', name: 'To Do', displayOrder: 0, requiresApproval: false, approverId: null,
+      marksTaskComplete: false, visibility: 'public'
+    }];
+
+    it('fetches sprints, tasks, and statuses once and nests sprint plus direct-task children', async () => {
+      const sprintApi = { getByObjective: vi.fn().mockReturnValue(of([sprintDto])) };
+      const taskApi = {
+        getTasks: vi.fn().mockReturnValue(of([directTask, sprintTask])),
+        getStatuses: vi.fn().mockReturnValue(of(statuses))
+      };
+      const store = setup({ getProjectTree: () => of(leafTree) }, sprintApi, taskApi);
+      await store.loadProjectTree('p1');
+
+      await store.loadSprintsAndTasksForLeaf('o1');
+
+      expect(sprintApi.getByObjective).toHaveBeenCalledTimes(1);
+      expect(sprintApi.getByObjective).toHaveBeenCalledWith('o1', false);
+      expect(taskApi.getTasks).toHaveBeenCalledTimes(1);
+      expect(taskApi.getStatuses).toHaveBeenCalledTimes(1);
+      const children = store.selectedSubtree()?.children ?? [];
+      expect(children.map((c) => c.kind)).toEqual(['sprint', 'task']);
+      expect(children[0].title).toBe('Sprint 1');
+      expect(children[0].status).toBe('active');
+      expect(children[0].parentObjectiveId).toBe('o1');
+      expect(children[1].title).toBe('Direct task');
+      expect(children[1].status).toBe('To Do');
+      expect(children[1].taskSource?.shortId).toBe('WEB-1');
+      expect(children[0].taskStatuses?.[0].name).toBe('To Do');
+      expect(store.selectedSubtree()?.sprintTaskLoadState).toBe('loaded');
+    });
+
+    it('does not re-fetch when the leaf is already loaded', async () => {
+      const sprintApi = { getByObjective: vi.fn().mockReturnValue(of([sprintDto])) };
+      const taskApi = {
+        getTasks: vi.fn().mockReturnValue(of([])),
+        getStatuses: vi.fn().mockReturnValue(of(statuses))
+      };
+      const store = setup({ getProjectTree: () => of(leafTree) }, sprintApi, taskApi);
+      await store.loadProjectTree('p1');
+      await store.loadSprintsAndTasksForLeaf('o1');
+
+      await store.loadSprintsAndTasksForLeaf('o1');
+
+      expect(sprintApi.getByObjective).toHaveBeenCalledTimes(1);
+      expect(taskApi.getTasks).toHaveBeenCalledTimes(1);
+    });
+
+    it('re-fetches when force is true even if already loaded', async () => {
+      const sprintApi = { getByObjective: vi.fn().mockReturnValue(of([sprintDto])) };
+      const taskApi = {
+        getTasks: vi.fn().mockReturnValue(of([])),
+        getStatuses: vi.fn().mockReturnValue(of(statuses))
+      };
+      const store = setup({ getProjectTree: () => of(leafTree) }, sprintApi, taskApi);
+      await store.loadProjectTree('p1');
+      await store.loadSprintsAndTasksForLeaf('o1');
+
+      await store.loadSprintsAndTasksForLeaf('o1', { force: true });
+
+      expect(sprintApi.getByObjective).toHaveBeenCalledTimes(2);
+    });
+
+    it('does not fetch sprints or tasks when expanding a non-leaf objective', async () => {
+      const sprintApi = { getByObjective: vi.fn().mockReturnValue(of([sprintDto])) };
+      const taskApi = {
+        getTasks: vi.fn().mockReturnValue(of([])),
+        getStatuses: vi.fn().mockReturnValue(of(statuses))
+      };
+      const store = setup({ getProjectTree: () => of(parentTree) }, sprintApi, taskApi);
+      await store.loadProjectTree('p1');
+
+      await store.loadSprintsAndTasksForLeaf('o1');
+
+      expect(sprintApi.getByObjective).not.toHaveBeenCalled();
+      expect(taskApi.getTasks).not.toHaveBeenCalled();
+    });
+
+    it('sets error state on failure and retries on the next call', async () => {
+      const sprintApi = {
+        getByObjective: vi.fn()
+          .mockReturnValueOnce(throwError(() => ({ error: { detail: 'boom' } })))
+          .mockReturnValueOnce(of([sprintDto]))
+      };
+      const taskApi = {
+        getTasks: vi.fn().mockReturnValue(of([])),
+        getStatuses: vi.fn().mockReturnValue(of(statuses))
+      };
+      const store = setup({ getProjectTree: () => of(leafTree) }, sprintApi, taskApi);
+      await store.loadProjectTree('p1');
+
+      await store.loadSprintsAndTasksForLeaf('o1');
+      expect(store.selectedSubtree()?.sprintTaskLoadState).toBe('error');
+
+      await store.loadSprintsAndTasksForLeaf('o1');
+      expect(sprintApi.getByObjective).toHaveBeenCalledTimes(2);
+      expect(store.selectedSubtree()?.sprintTaskLoadState).toBe('loaded');
+    });
+  });
+
+  describe('loadTasksForSprint', () => {
+
+    const sprintDto: SprintDto = {
+      id: 'spr-1', objectiveId: 'o1', name: 'Sprint 1', startDate: '2026-08-01', endDate: '2026-08-14',
+      status: 'active', completedAt: null, achievedAt: null
+    };
+
+    const sprintTask: WorkTaskDto = {
+      id: 't-sprint', objectiveId: 'o1', shortId: 'WEB-2', title: 'Sprint task', description: null,
+      categoryId: 'task', statusId: 'st-1', priority: 'medium', storyPoints: null,
+      dueDate: null, estimatedHours: 3, completedHours: 0, progressPercent: 0, sprintId: 'spr-1', assigneeEmployeeIds: []
+    };
+
+    const statuses: TaskStatusDto[] = [{
+      id: 'st-1', name: 'To Do', displayOrder: 0, requiresApproval: false, approverId: null,
+      marksTaskComplete: false, visibility: 'public'
+    }];
+
+    async function loadLeafWithSprint(
+      getBySprintId: ReturnType<typeof vi.fn>
+    ) {
+      const sprintApi = { getByObjective: vi.fn().mockReturnValue(of([sprintDto])) };
+      const taskApi = {
+        getTasks: vi.fn().mockReturnValue(of([])),
+        getStatuses: vi.fn().mockReturnValue(of(statuses)),
+        getBySprintId
+      } as Partial<TaskApiService>;
+      const store = setup({ getProjectTree: () => of(leafTree) }, sprintApi, taskApi);
+      await store.loadProjectTree('p1');
+      await store.loadSprintsAndTasksForLeaf('o1');
+      return { store, getBySprintId };
+    }
+
+    it('fetches sprint tasks once and nests them under the sprint', async () => {
+      const getBySprintId = vi.fn().mockReturnValue(of([sprintTask]));
+      const { store } = await loadLeafWithSprint(getBySprintId);
+
+      await store.loadTasksForSprint('spr-1');
+
+      expect(getBySprintId).toHaveBeenCalledTimes(1);
+      expect(getBySprintId).toHaveBeenCalledWith('spr-1');
+      const sprintNode = store.selectedSubtree()?.children.find((c) => c.id === 'spr-1');
+      expect(sprintNode?.children).toHaveLength(1);
+      expect(sprintNode?.children[0].kind).toBe('task');
+      expect(sprintNode?.children[0].title).toBe('Sprint task');
+      expect(sprintNode?.children[0].status).toBe('To Do');
+      expect(sprintNode?.children[0].taskSource?.shortId).toBe('WEB-2');
+      expect(sprintNode?.sprintTaskLoadState).toBe('loaded');
+    });
+
+    it('does not re-fetch when the sprint is already loaded', async () => {
+      const getBySprintId = vi.fn().mockReturnValue(of([sprintTask]));
+      const { store } = await loadLeafWithSprint(getBySprintId);
+      await store.loadTasksForSprint('spr-1');
+
+      await store.loadTasksForSprint('spr-1');
+
+      expect(getBySprintId).toHaveBeenCalledTimes(1);
+    });
+
+    it('re-fetches when force is true even if already loaded', async () => {
+      const getBySprintId = vi.fn().mockReturnValue(of([sprintTask]));
+      const { store } = await loadLeafWithSprint(getBySprintId);
+      await store.loadTasksForSprint('spr-1');
+
+      await store.loadTasksForSprint('spr-1', { force: true });
+
+      expect(getBySprintId).toHaveBeenCalledTimes(2);
+    });
+
+    it('sets error state on failure and retries on the next call', async () => {
+      const getBySprintId = vi.fn()
+        .mockReturnValueOnce(throwError(() => ({ error: { detail: 'boom' } })))
+        .mockReturnValueOnce(of([sprintTask]));
+      const { store } = await loadLeafWithSprint(getBySprintId);
+
+      await store.loadTasksForSprint('spr-1');
+      expect(store.selectedSubtree()?.children[0].sprintTaskLoadState).toBe('error');
+
+      await store.loadTasksForSprint('spr-1');
+      expect(getBySprintId).toHaveBeenCalledTimes(2);
+      expect(store.selectedSubtree()?.children[0].sprintTaskLoadState).toBe('loaded');
+    });
+  });
+
+  describe('achieveSprint and completeSprint', () => {
+    it('patches the sprint node after a successful achieve', async () => {
+      const achieved: SprintDto = { ...{
+        id: 'spr-1', objectiveId: 'o1', name: 'Sprint 1', startDate: '2026-08-01', endDate: '2026-08-14',
+        status: 'achieved' as const, completedAt: null, achievedAt: '2026-08-21'
+      } };
+      const sprintApi = {
+        getByObjective: vi.fn().mockReturnValue(of([{
+          id: 'spr-1', objectiveId: 'o1', name: 'Sprint 1', startDate: '2026-08-01', endDate: '2026-08-14',
+          status: 'active' as const, completedAt: null, achievedAt: null
+        }])),
+        achieve: vi.fn().mockReturnValue(of(achieved))
+      };
+      const taskApi = {
+        getTasks: vi.fn().mockReturnValue(of([])),
+        getStatuses: vi.fn().mockReturnValue(of([{
+          id: 'st-1', name: 'To Do', displayOrder: 0, requiresApproval: false, approverId: null,
+          marksTaskComplete: false, visibility: 'public'
+        }]))
+      };
+      const store = setup({ getProjectTree: () => of(leafTree) }, sprintApi, taskApi);
+      await store.loadProjectTree('p1');
+      await store.loadSprintsAndTasksForLeaf('o1');
+
+      const result = await store.achieveSprint('spr-1');
+
+      expect(result.success).toBe(true);
+      expect(sprintApi.achieve).toHaveBeenCalledWith('spr-1');
+      expect(store.selectedSubtree()?.children[0].status).toBe('achieved');
+      expect(store.selectedSubtree()?.children[0].isAchieved).toBe(true);
+    });
+
+    it('patches the sprint node after a successful complete', async () => {
+      const completed: SprintDto = {
+        id: 'spr-1', objectiveId: 'o1', name: 'Sprint 1', startDate: '2026-08-01', endDate: '2026-08-14',
+        status: 'complete', completedAt: '2026-08-21', achievedAt: null
+      };
+      const sprintApi = {
+        getByObjective: vi.fn().mockReturnValue(of([{
+          id: 'spr-1', objectiveId: 'o1', name: 'Sprint 1', startDate: '2026-08-01', endDate: '2026-08-14',
+          status: 'active' as const, completedAt: null, achievedAt: null
+        }])),
+        complete: vi.fn().mockReturnValue(of(completed))
+      };
+      const taskApi = {
+        getTasks: vi.fn().mockReturnValue(of([])),
+        getStatuses: vi.fn().mockReturnValue(of([{
+          id: 'st-1', name: 'To Do', displayOrder: 0, requiresApproval: false, approverId: null,
+          marksTaskComplete: false, visibility: 'public'
+        }]))
+      };
+      const store = setup({ getProjectTree: () => of(leafTree) }, sprintApi, taskApi);
+      await store.loadProjectTree('p1');
+      await store.loadSprintsAndTasksForLeaf('o1');
+
+      const result = await store.completeSprint('spr-1');
+
+      expect(result.success).toBe(true);
+      expect(store.selectedSubtree()?.children[0].status).toBe('complete');
+    });
+
+    it('sets milestoneActionError when achieveSprint fails', async () => {
+      const store = setup({}, { achieve: () => throwError(() => ({ error: { detail: 'blocked' } })) });
+      const result = await store.achieveSprint('spr-1');
+      expect(result.success).toBe(false);
+      expect(store.milestoneActionError()).toBe('blocked');
+    });
+  });
+
+  it('deleteTask removes the node from the tree on success', async () => {
+    const sprintApi = { getByObjective: vi.fn().mockReturnValue(of([{
+      id: 'spr-1', objectiveId: 'o1', name: 'Sprint 1', startDate: '2026-08-01', endDate: '2026-08-14',
+      status: 'active' as const, completedAt: null, achievedAt: null
+    }])) };
+    const taskApi = {
+      getTasks: vi.fn().mockReturnValue(of([])),
+      getStatuses: vi.fn().mockReturnValue(of([{
+        id: 'st-1', name: 'To Do', displayOrder: 0, requiresApproval: false, approverId: null,
+        marksTaskComplete: false, visibility: 'public'
+      }])),
+      getBySprintId: vi.fn().mockReturnValue(of([{
+        id: 't-sprint', objectiveId: 'o1', shortId: 'WEB-2', title: 'Sprint task', description: null,
+        categoryId: 'task', statusId: 'st-1', priority: 'medium', storyPoints: null,
+        dueDate: null, estimatedHours: 3, completedHours: 0, progressPercent: 0, sprintId: 'spr-1', assigneeEmployeeIds: []
+      }])),
+      deleteTask: vi.fn().mockReturnValue(of(undefined))
+    };
+    const store = setup({ getProjectTree: () => of(leafTree) }, sprintApi, taskApi);
+    await store.loadProjectTree('p1');
+    await store.loadSprintsAndTasksForLeaf('o1');
+    await store.loadTasksForSprint('spr-1');
+
+    const result = await store.deleteTask('t-sprint');
+
+    expect(result.success).toBe(true);
+    expect(taskApi.deleteTask).toHaveBeenCalledWith('t-sprint');
+    expect(store.selectedSubtree()?.children[0].children.map((c) => c.id)).toEqual([]);
+  });
+
+  it('deleteTask leaves the tree unchanged and sets an error on failure', async () => {
+    const store = setup(
+      { getProjectTree: () => of(leafTree) },
+      {},
+      { deleteTask: () => throwError(() => ({ error: { detail: 'forbidden' } })) }
+    );
+    await store.loadProjectTree('p1');
+    const before = store.selectedSubtree();
+
+    const result = await store.deleteTask('t-1');
+
+    expect(result.success).toBe(false);
+    expect(store.milestoneActionError()).toBe('forbidden');
+    expect(store.selectedSubtree()).toBe(before);
   });
 });
