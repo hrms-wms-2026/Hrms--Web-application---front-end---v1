@@ -25,8 +25,11 @@ export class ProjectDetailComponent implements OnInit {
   private readonly router = inject(Router);
   private projectId = '';
 
+  private static readonly PROJECT_LEVEL_PATHS = new Set(['settings', 'board', 'backlog']);
+
   activeMilestoneId = signal<string | null>(null);
   isProjectSettings = signal(false);
+  isProjectLevelRoute = signal(false);
   activeMilestoneTitle = computed(() => {
     const id = this.activeMilestoneId();
     return this.store.milestones().find((m) => m.objectiveId === id)?.title ?? '';
@@ -51,7 +54,9 @@ export class ProjectDetailComponent implements OnInit {
 
   private syncChildRouteState(): void {
     const child = this.route.snapshot.firstChild;
-    this.isProjectSettings.set(child?.routeConfig?.path === 'settings');
+    const path = child?.routeConfig?.path ?? '';
+    this.isProjectSettings.set(path === 'settings');
+    this.isProjectLevelRoute.set(ProjectDetailComponent.PROJECT_LEVEL_PATHS.has(path));
     this.activeMilestoneId.set(child?.paramMap.get('milestoneId') ?? null);
   }
 

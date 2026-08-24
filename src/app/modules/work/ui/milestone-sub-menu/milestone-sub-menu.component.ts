@@ -4,19 +4,22 @@ import { RouterLink, RouterLinkActive } from '@angular/router';
 interface SubMenuTab {
   label: string;
   segment: string;
+  /** Board/Backlog/Settings moved to project-level routes (work/:id/<segment>) and are no
+   *  longer nested under milestones/:milestoneId - their link must not include the milestoneId. */
+  projectLevel?: boolean;
 }
 
 const BASE_TABS: SubMenuTab[] = [
   { label: 'Tree', segment: 'tree' },
-  { label: 'Board', segment: 'board' },
-  { label: 'Backlog', segment: 'backlog' },
+  { label: 'Board', segment: 'board', projectLevel: true },
+  { label: 'Backlog', segment: 'backlog', projectLevel: true },
   { label: 'My Task', segment: 'my-task' },
   { label: 'List', segment: 'list' },
   { label: 'Approvals', segment: 'approvals' },
   { label: 'Calendar', segment: 'calendar' }
 ];
 
-const SETTINGS_TAB: SubMenuTab = { label: 'Settings', segment: 'settings' };
+const SETTINGS_TAB: SubMenuTab = { label: 'Settings', segment: 'settings', projectLevel: true };
 
 @Component({
   selector: 'app-milestone-sub-menu',
@@ -24,16 +27,10 @@ const SETTINGS_TAB: SubMenuTab = { label: 'Settings', segment: 'settings' };
   imports: [RouterLink, RouterLinkActive],
   template: `
     <div class="mb-2">
-      <p
-        class="mb-1 text-sm font-medium text-[var(--color-text-primary)]"
-        data-testid="sub-menu-milestone-title"
-      >
-        {{ milestoneTitle() }}
-      </p>
       <nav class="flex gap-1 border-b border-[var(--color-border)]" data-testid="sub-menu-tabs">
         @for (tab of tabs(); track tab.segment) {
           <a
-            [routerLink]="['milestones', milestoneId(), tab.segment]"
+            [routerLink]="tab.projectLevel ? [tab.segment] : ['milestones', milestoneId(), tab.segment]"
             routerLinkActive="border-b-2 border-[var(--color-focus-ring)] font-semibold text-[var(--color-text-primary)]"
             class="flex items-center gap-1.5 px-3 py-2 text-sm text-[var(--color-text-secondary)] transition-colors hover:text-[var(--color-text-primary)]"
             data-testid="sub-menu-tab"

@@ -16,11 +16,6 @@ describe('MilestoneSubMenuComponent', () => {
     fixture.detectChanges();
   });
 
-  it('shows the selected milestone title above the tabs', () => {
-    const title = fixture.nativeElement.querySelector('[data-testid="sub-menu-milestone-title"]');
-    expect(title.textContent).toContain('Milestone 1');
-  });
-
   it('renders all seven base tabs in order for non-owners', () => {
     const labels = Array.from(fixture.nativeElement.querySelectorAll('[data-testid="sub-menu-tab"]'))
       .map((el) => (el as HTMLElement).textContent?.trim() ?? '');
@@ -45,12 +40,20 @@ describe('MilestoneSubMenuComponent', () => {
       .map((el: any) => el.getAttribute('href'));
     expect(hrefs).toEqual([
       '/milestones/o1/tree',
-      '/milestones/o1/board',
-      '/milestones/o1/backlog',
+      '/board',
+      '/backlog',
       '/milestones/o1/my-task',
       '/milestones/o1/list',
       '/milestones/o1/approvals',
       '/milestones/o1/calendar'
     ]);
+  });
+
+  it('links Settings to the project-level route, not nested under the milestone', () => {
+    fixture.componentRef.setInput('isOwner', true);
+    fixture.detectChanges();
+    const links = fixture.nativeElement.querySelectorAll('[data-testid="sub-menu-tab"]');
+    const settingsHref = (links[links.length - 1] as HTMLAnchorElement).getAttribute('href');
+    expect(settingsHref).toBe('/settings');
   });
 });

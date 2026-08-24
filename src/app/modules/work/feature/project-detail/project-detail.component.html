@@ -40,7 +40,7 @@
   </div>
 }
 
-@if (isProjectSettings()) {
+@if (isProjectLevelRoute()) {
   <router-outlet />
 } @else {
   @if (store.milestonesLoading()) {
