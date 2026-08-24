@@ -7,6 +7,7 @@ import {
   ChecklistTemplateDetailResponse,
   ChecklistTemplateListPageResponse,
   CreateChecklistTemplateRequest,
+  OnboardingChecklistTemplateMatchResponse,
   UpdateChecklistTemplateRequest
 } from '../models/checklist-template.model';
 
@@ -83,7 +84,10 @@ describe('ChecklistApiService', () => {
           assignedToId: 'user-1',
           dueOffsetDays: 0,
           sequence: 1,
-          isRequired: true
+          isRequired: true,
+          isBypassable: false,
+          bypassPenaltyDescription: null,
+          category: null
         }
       ]
     };
@@ -109,7 +113,10 @@ describe('ChecklistApiService', () => {
           assignedToId: null,
           dueOffsetDays: 1,
           sequence: 1,
-          isRequired: true
+          isRequired: true,
+          isBypassable: false,
+          bypassPenaltyDescription: null,
+          category: null
         }
       ]
     };
@@ -145,5 +152,27 @@ describe('ChecklistApiService', () => {
     expect(req.request.method).toBe('POST');
     expect(req.request.body).toEqual({});
     req.flush(null);
+  });
+
+  it('getOnboardingMatches sends GET request to matches endpoint with legalEntityId, departmentId, positionId and returns typed matches', () => {
+    const mockMatches: readonly OnboardingChecklistTemplateMatchResponse[] = [
+      { id: 'tmpl-1', name: 'Company Default Onboarding', matchLevel: 'company', departmentId: null, positionId: null }
+    ];
+
+    service
+      .getOnboardingMatches({ legalEntityId: 'legal-1', departmentId: 'dept-1', positionId: 'pos-1' })
+      .subscribe((res) => {
+        expect(res).toEqual(mockMatches);
+      });
+
+    const req = httpMock.expectOne(
+      (r) =>
+        r.url === `${environment.apiUrl}/onboarding/checklist-templates/matches` &&
+        r.params.get('legalEntityId') === 'legal-1' &&
+        r.params.get('departmentId') === 'dept-1' &&
+        r.params.get('positionId') === 'pos-1'
+    );
+    expect(req.request.method).toBe('GET');
+    req.flush(mockMatches);
   });
 });

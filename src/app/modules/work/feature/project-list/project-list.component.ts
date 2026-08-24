@@ -1,0 +1,155 @@
+import { Component, OnInit, inject, signal, viewChild, ElementRef } from '@angular/core';
+import { Router } from '@angular/router';
+import { ProjectListStore, AchievedFilter } from '../../state/project-list.store';
+import { ProjectDetailStore } from '../../state/project-detail.store';
+import { ProjectCardComponent } from '../../ui/project-card/project-card.component';
+import { ProjectFilterBarComponent } from '../../ui/project-filter-bar/project-filter-bar.component';
+import { ProjectFormModalComponent } from '../../ui/project-form-modal/project-form-modal.component';
+import { ProjectSettingsModalComponent } from '../../ui/project-settings-modal/project-settings-modal.component';
+import { MyInvitationsPanelComponent } from '../../ui/my-invitations-panel/my-invitations-panel.component';
+import { ConfirmModalComponent } from '../../../../shared/ui/confirm-modal/confirm-modal.component';
+import { PageHeaderComponent } from '../../../../shared/ui/page-header/page-header.component';
+import { ButtonComponent } from '../../../../shared/ui/button/button.component';
+import { LoaderComponent } from '../../../../shared/ui/loader/loader.component';
+import { ErrorStateComponent } from '../../../../shared/ui/error-state/error-state.component';
+import { EmptyStateComponent } from '../../../../shared/ui/empty-state/empty-state.component';
+import { CreateProjectPayload, EditProjectPayload, Project, ProjectDetail } from '../../models/project.model';
+import { captureFlipRects, playFlipAnimation, FlipSnapshot } from '../../../../shared/utils/flip-animate';
+
+function waitForNextRender(): Promise<void> {
+  return new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(() => resolve())));
+}
+
+@Component({
+  selector: 'app-project-list',
+  standalone: true,
+  imports: [
+    ProjectCardComponent, ProjectFilterBarComponent, ProjectFormModalComponent, ProjectSettingsModalComponent, ConfirmModalComponent,
+    MyInvitationsPanelComponent, PageHeaderComponent, ButtonComponent, LoaderComponent, ErrorStateComponent, EmptyStateComponent
+  ],
+  templateUrl: './project-list.component.html'
+})
+export class ProjectListComponent implements OnInit {
+  readonly store = inject(ProjectListStore);
+  readonly detailStore = inject(ProjectDetailStore);
+  private readonly router = inject(Router);
+  private readonly projectGrid = viewChild<ElementRef<HTMLElement>>('projectGrid');
+
+  expandedProjectId = signal<string | null>(null);
+  createModalOpen = signal(false);
+  settingsModalOpen = signal(false);
+  settingsModalInitialValue = signal<ProjectDetail | null>(null);
+  deleteConfirmOpen = signal(false);
+  private targetProject = signal<Project | null>(null);
+  actionSubmitting = signal(false);
+
+  ngOnInit(): void {
+    this.store.loadProjects();
+    this.detailStore.loadMyInvitations();
+  }
+
+  onView(project: Project): void {
+    this.router.navigate(['/work', project.id]);
+  }
+
+  async onToggleExpand(projectId: string): Promise<void> {
+    const container = this.projectGrid()?.nativeElement;
+    const before: FlipSnapshot = container ? captureFlipRects(container) : {};
+
+    this.expandedProjectId.set(this.expandedProjectId() === projectId ? null : projectId);
+
+    if (!container) return;
+    await waitForNextRender();
+    playFlipAnimation(container, before);
+  }
+
+  openCreateModal(): void {
+    this.createModalOpen.set(true);
+  }
+
+  async onCreateSubmit(payload: CreateProjectPayload): Promise<void> {
+    this.actionSubmitting.set(true);
+    const success = await this.store.createProject(payload);
+    this.actionSubmitting.set(false);
+    if (success) {
+      this.createModalOpen.set(false);
+    }
+  }
+
+  onProjectSettingsRequested(project: Project): void {
+    this.targetProject.set(project);
+    this.settingsModalOpen.set(true);
+    this.loadFullDetailForSettings(project.id);
+  }
+
+  private async loadFullDetailForSettings(id: string): Promise<void> {
+    const detail = await this.store.getProjectDetail(id);
+    if (detail && this.targetProject()?.id === id) {
+      this.settingsModalInitialValue.set(detail);
+    }
+  }
+
+  async onProjectSettingsSaved(event: { fields: EditProjectPayload; achievedChanged: boolean; achieved: boolean }): Promise<void> {
+    const project = this.targetProject();
+    if (!project) return;
+    this.actionSubmitting.set(true);
+
+    const editSuccess = await this.store.editProject(project.id, event.fields);
+    if (!editSuccess) {
+      this.actionSubmitting.set(false);
+      return;
+    }
+
+    if (event.achievedChanged) {
+      const achieveSuccess = event.achieved
+        ? await this.store.achieveProject(project.id)
+        : await this.store.unachieveProject(project.id);
+      if (!achieveSuccess) {
+        this.actionSubmitting.set(false);
+        return;
+      }
+    }
+
+    this.actionSubmitting.set(false);
+    this.settingsModalOpen.set(false);
+  }
+
+  openDeleteConfirm(project: Project): void {
+    this.targetProject.set(project);
+    this.deleteConfirmOpen.set(true);
+  }
+
+  async onDeleteConfirmed(): Promise<void> {
+    const project = this.targetProject();
+    if (!project) return;
+    this.actionSubmitting.set(true);
+    const success = await this.store.deleteProject(project.id);
+    this.actionSubmitting.set(false);
+    if (success) {
+      this.deleteConfirmOpen.set(false);
+    }
+  }
+
+  onCategoryFilterChanged(categoryId: string | null): void {
+    this.store.setCategoryFilter(categoryId);
+  }
+
+  onAchievedFilterChanged(filter: AchievedFilter): void {
+    this.store.setAchievedFilter(filter);
+  }
+
+  async onAcceptInvitation(invitationId: string): Promise<void> {
+    const result = await this.detailStore.acceptInvitation(invitationId);
+    if (result.success) {
+      await this.detailStore.loadMyInvitations();
+      await this.store.loadProjects();
+    }
+  }
+
+  async onRejectInvitation(invitationId: string): Promise<void> {
+    const result = await this.detailStore.rejectInvitation(invitationId);
+    if (result.success) {
+      await this.detailStore.loadMyInvitations();
+    }
+  }
+}

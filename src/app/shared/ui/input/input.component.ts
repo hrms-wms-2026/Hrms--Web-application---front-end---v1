@@ -1,7 +1,16 @@
 import { Component, computed, input, output } from '@angular/core';
 import { nextUniqueId } from '../../utils/unique-id';
 
-export type InputType = 'text' | 'email' | 'password' | 'number' | 'search' | 'tel' | 'url' | 'time';
+export type InputType =
+  'text'
+  | 'email'
+  | 'password'
+  | 'number'
+  | 'search'
+  | 'tel'
+  | 'url'
+  | 'date'
+  | 'time';
 
 @Component({
   selector: 'app-input',

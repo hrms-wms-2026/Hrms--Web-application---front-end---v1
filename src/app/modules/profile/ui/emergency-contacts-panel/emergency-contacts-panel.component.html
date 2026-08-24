@@ -1,0 +1,65 @@
+@if (contacts().length === 0) {
+  <p class="pf-empty">No emergency contacts added yet.</p>
+} @else {
+  <ul class="pf-list">
+    @for (contact of contacts(); track contact.id) {
+      <li class="pf-list-item">
+        <div class="pf-list-item__main">
+          <span class="pf-list-item__name">
+            {{ contact.name }}
+            <span class="pf-rel-tag">{{ contact.relationship }}</span>
+            @if (contact.isPrimary) {
+              <span class="pf-badge">Primary</span>
+            }
+          </span>
+          <span class="pf-list-item__meta">
+            {{ contact.phone }}
+            @if (contact.email) {
+              · {{ contact.email }}
+            }
+          </span>
+        </div>
+        <button type="button" class="pf-text-btn" [disabled]="saving()" (click)="onRemove(contact.id)">
+          Remove
+        </button>
+      </li>
+    }
+  </ul>
+}
+
+<form [formGroup]="addForm" (ngSubmit)="onSubmitAdd()" class="pf-form" style="margin-top: 1.25rem;">
+  <div class="pf-field-grid pf-field-grid--2">
+    <app-input
+      label="Full name"
+      [value]="addForm.controls.name.value"
+      (valueChange)="addForm.controls.name.setValue($event)"
+      (blurred)="addForm.controls.name.markAsTouched()"
+      [error]="addForm.controls.name.touched && addForm.controls.name.invalid ? 'Full name is required.' : ''"
+    />
+    <app-input
+      label="Relationship"
+      placeholder="e.g. Spouse, Parent"
+      [value]="addForm.controls.relationship.value"
+      (valueChange)="addForm.controls.relationship.setValue($event)"
+      (blurred)="addForm.controls.relationship.markAsTouched()"
+      [error]="addForm.controls.relationship.touched && addForm.controls.relationship.invalid ? 'Relationship is required.' : ''"
+    />
+    <app-input
+      label="Primary phone"
+      type="tel"
+      [value]="addForm.controls.phone.value"
+      (valueChange)="addForm.controls.phone.setValue($event)"
+      (blurred)="addForm.controls.phone.markAsTouched()"
+      [error]="addForm.controls.phone.touched && addForm.controls.phone.invalid ? 'Phone number is required.' : ''"
+    />
+    <app-input
+      label="Email (optional)"
+      type="email"
+      [value]="addForm.controls.email.value"
+      (valueChange)="addForm.controls.email.setValue($event)"
+    />
+  </div>
+  <div class="pf-actions">
+    <app-button type="submit" variant="secondary" [disabled]="saving()">Add contact</app-button>
+  </div>
+</form>

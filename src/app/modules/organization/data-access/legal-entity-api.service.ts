@@ -56,6 +56,10 @@ export class LegalEntityApiService {
     return this.http.delete<void>(`${environment.apiUrl}/org/legal-entities/${legalEntityId}/logo`);
   }
 
+  switchActiveCompany(employeeId: string): Observable<void> {
+    return this.http.post<void>(`${environment.apiUrl}/session/active-company`, { employeeId });
+  }
+
   /** Pure helper - no request. `?v=` busts the browser's image cache after a re-upload. */
   getLogoUrl(legalEntityId: string, logoFileId: string): string {
     return `${environment.apiUrl}/org/legal-entities/${legalEntityId}/logo?v=${logoFileId}`;

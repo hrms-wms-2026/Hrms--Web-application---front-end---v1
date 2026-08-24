@@ -1,6 +1,7 @@
 import { computed, inject } from '@angular/core';
 import { patchState, signalStore, withComputed, withMethods, withState } from '@ngrx/signals';
 import { firstValueFrom } from 'rxjs';
+import { AuthStore } from '../../../core/auth/state/auth.store';
 import { LegalEntityApiService } from '../data-access/legal-entity-api.service';
 import { CreateLegalEntityRequest, LegalEntityListItem } from '../models/legal-entity.model';
 
@@ -43,7 +44,7 @@ export const LegalEntityStore = signalStore(
       return companies().filter((c) => c.id !== selectedId);
     })
   })),
-  withMethods((store, api = inject(LegalEntityApiService)) => ({
+  withMethods((store, api = inject(LegalEntityApiService), authStore = inject(AuthStore)) => ({
     async loadCompanies(includeInactive = false): Promise<void> {
       patchState(store, { loading: true, error: null });
       try {
@@ -80,10 +81,17 @@ export const LegalEntityStore = signalStore(
       }
     },
 
-    selectCompany(legalEntityId: string): void {
+    async selectCompany(legalEntityId: string): Promise<void> {
       const company = store.companies().find((c) => c.id === legalEntityId);
       if (!company) {
         return;
+      }
+
+      try {
+        await firstValueFrom(api.switchActiveCompany(legalEntityId));
+        await authStore.checkSession();
+      } catch {
+        // Org users without an Employee row in that company still switch the local company filter.
       }
 
       localStorage.setItem(SELECTED_LEGAL_ENTITY_STORAGE_KEY, legalEntityId);

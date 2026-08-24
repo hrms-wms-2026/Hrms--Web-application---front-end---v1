@@ -182,6 +182,15 @@ describe('LegalEntityApiService', () => {
     req.flush(null, { status: 204, statusText: 'No Content' });
   });
 
+  it('posts the selected company id to session/active-company', () => {
+    service.switchActiveCompany('company-2').subscribe();
+
+    const req = httpMock.expectOne(`${environment.apiUrl}/session/active-company`);
+    expect(req.request.method).toBe('POST');
+    expect(req.request.body).toEqual({ employeeId: 'company-2' });
+    req.flush(null, { status: 204, statusText: 'No Content' });
+  });
+
   it('builds the logo display URL with a cache-busting query param', () => {
     const url = service.getLogoUrl('company-1', 'file-1');
 

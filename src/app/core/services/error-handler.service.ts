@@ -35,6 +35,11 @@ const HTTP_STATUS_MAPPINGS: Record<number, string> = {
 
 const DEFAULT_SAFE_MESSAGE = 'Something went wrong. Please try again.';
 const SESSION_SECURITY_SAFE_MESSAGE = 'Your session security check failed. Refresh the page and try again.';
+/** ExceptionHandlerMiddleware's static ValidationProblemDetails wording for FluentValidation
+ *  failures - "title" is "Validation Error", this exact sentence is always "detail". Neither
+ *  names the field that actually failed, so both must be skipped whenever a field-keyed
+ *  errors dictionary is available instead. */
+const GENERIC_VALIDATION_DETAIL = 'One or more validation errors occurred.';
 
 export function isSecurityError(str: string): boolean {
   if (!str) return false;
@@ -112,18 +117,23 @@ export function toSafeErrorMessage(err: unknown, fallbackMessage?: string): stri
     if (typeof body === 'string') {
       rawCandidate = body;
     } else if (body && typeof body === 'object') {
-      if (body.detail && typeof body.detail === 'string') {
-        rawCandidate = body.detail;
-      } else if (body.message && typeof body.message === 'string') {
-        rawCandidate = body.message;
-      } else if (body.title && typeof body.title === 'string' && body.title !== 'One or more validation errors occurred.') {
-        rawCandidate = body.title;
-      } else if (body.errors && typeof body.errors === 'object') {
+      // Field-keyed validation errors (ValidationProblemDetails.errors) are checked first and
+      // take priority over detail/message/title - those carry only the generic "Validation
+      // Error" / "One or more validation errors occurred." wording, which names no field and
+      // tells the user nothing actionable, even though a specific message is available.
+      if (body.errors && typeof body.errors === 'object' && !Array.isArray(body.errors)) {
         const firstKey = Object.keys(body.errors)[0];
         if (firstKey && body.errors[firstKey]) {
           const val = body.errors[firstKey];
           rawCandidate = Array.isArray(val) ? val[0] : String(val);
         }
+      }
+      if (!rawCandidate && body.detail && typeof body.detail === 'string' && body.detail !== GENERIC_VALIDATION_DETAIL) {
+        rawCandidate = body.detail;
+      } else if (!rawCandidate && body.message && typeof body.message === 'string') {
+        rawCandidate = body.message;
+      } else if (!rawCandidate && body.title && typeof body.title === 'string' && body.title !== GENERIC_VALIDATION_DETAIL) {
+        rawCandidate = body.title;
       }
     }
     if (!rawCandidate && err.message) {

@@ -7,6 +7,9 @@ import { LoginRequestDto } from '../models/dto/login-request.dto';
 import { AuthResponseDto } from '../models/dto/auth-response.dto';
 import { LegalAcceptanceRequestDto } from '../models/dto/legal-acceptance-request.dto';
 import { SessionExchangeRequestDto } from '../models/dto/session-exchange-request.dto';
+import { InvitationPreviewDto } from '../models/dto/invitation-preview.dto';
+import { PublishedLegalDocumentDto } from '../models/dto/published-legal-document.dto';
+import { AcceptEmployeeInvitationRequestDto } from '../models/dto/accept-employee-invitation-request.dto';
 
 import { getRootHostname } from '../utils/tenant-redirect';
 
@@ -47,6 +50,32 @@ export class AuthApiService {
   sessionExchange(code: string): Observable<AuthResponseDto> {
     const payload: SessionExchangeRequestDto = { code };
     return this.http.post<AuthResponseDto>(`${environment.apiUrl}${API_ENDPOINTS.auth.sessionExchange}`, payload);
+  }
+
+  /**
+   * Anonymous, resolves purely by token (no tenant-host requirement) - safe to call from
+   * whatever host the invite link opened on.
+   */
+  getInvitationPreview(token: string): Observable<InvitationPreviewDto> {
+    return this.http.get<InvitationPreviewDto>(`${environment.apiUrl}${API_ENDPOINTS.auth.invitationPreview(token)}`);
+  }
+
+  /** Anonymous, tenant-agnostic read of the currently-required legal document versions. */
+  getCurrentLegalDocuments(): Observable<PublishedLegalDocumentDto[]> {
+    return this.http.get<PublishedLegalDocumentDto[]>(`${environment.apiUrl}${API_ENDPOINTS.legal.currentDocuments}`);
+  }
+
+  /**
+   * Tenant-host-only, like sessionExchange(): the invite link points at the employee's own
+   * tenant subdomain, and AcceptEmployeeInvitationCommandHandler requires ITenantContext to
+   * resolve to the invitation's tenant, so this must run on whatever host the browser is
+   * currently on - it must NOT retarget to the root/system host like login() does.
+   */
+  acceptEmployeeInvitation(token: string, payload: AcceptEmployeeInvitationRequestDto): Observable<AuthResponseDto> {
+    return this.http.post<AuthResponseDto>(
+      `${environment.apiUrl}${API_ENDPOINTS.auth.acceptEmployeeInvitation(token)}`,
+      payload
+    );
   }
 
   /**

@@ -86,4 +86,42 @@ describe('AuthApiService on a tenant host', () => {
     const req = httpMock.expectOne('https://acme.localhost:7229/api/v1/auth/logout');
     req.flush(null);
   });
+
+  it('keeps getInvitationPreview() on the current tenant host', () => {
+    service.getInvitationPreview('raw-token').subscribe();
+    const req = httpMock.expectOne('https://acme.localhost:7229/api/v1/auth/invitations/raw-token');
+    expect(req.request.method).toBe('GET');
+    req.flush({});
+  });
+
+  it('sends a Base64Url-safe token (dashes/underscores) through untouched', () => {
+    const urlSafeToken = 'AbCd-_09_ThisIsUrlSafe-1234567890';
+    service.getInvitationPreview(urlSafeToken).subscribe();
+    const req = httpMock.expectOne(`https://acme.localhost:7229/api/v1/auth/invitations/${urlSafeToken}`);
+    expect(req.request.method).toBe('GET');
+    req.flush({});
+  });
+
+  it('percent-encodes a legacy Base64 token containing +, /, = so the path segment stays intact', () => {
+    service.getInvitationPreview('ab+c/d==').subscribe();
+    const req = httpMock.expectOne('https://acme.localhost:7229/api/v1/auth/invitations/ab%2Bc%2Fd%3D%3D');
+    expect(req.request.method).toBe('GET');
+    req.flush({});
+  });
+
+  it('keeps getCurrentLegalDocuments() on the current tenant host', () => {
+    service.getCurrentLegalDocuments().subscribe();
+    const req = httpMock.expectOne('https://acme.localhost:7229/api/v1/legal/documents/current');
+    expect(req.request.method).toBe('GET');
+    req.flush([]);
+  });
+
+  it('keeps acceptEmployeeInvitation() on the current tenant host - it must NOT retarget to the root host like login() does, because AcceptEmployeeInvitationCommandHandler requires ITenantContext to resolve to the invitation tenant', () => {
+    const payload = { password: 'Password123!', confirm_password: 'Password123!', acceptances: [] };
+    service.acceptEmployeeInvitation('raw-token', payload).subscribe();
+    const req = httpMock.expectOne('https://acme.localhost:7229/api/v1/auth/invitations/raw-token/accept-employee');
+    expect(req.request.method).toBe('POST');
+    expect(req.request.body).toEqual(payload);
+    req.flush(sampleResponse);
+  });
 });

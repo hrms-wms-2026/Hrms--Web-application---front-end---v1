@@ -4,6 +4,7 @@ import { CurrentUserViewModel } from '../models/view/current-user.view-model';
 export function toCurrentUserViewModel(dto: AuthResponseDto): CurrentUserViewModel {
   return {
     email: dto.user.email,
+    employeeId: dto.user.employeeId ?? null,
     permissions: dto.permissions,
     activeModules: dto.active_modules,
     authenticated: dto.authenticated,

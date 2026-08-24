@@ -1,3 +1,20 @@
+.cb-page-header {
+  margin-top: -1.25rem;
+  margin-bottom: 1.25rem;
+  padding-bottom: 0.625rem;
+  border-bottom: 1px solid var(--color-border);
+}
+
+.cb-header-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  width: 100%;
+  height: 36px;
+  min-height: 36px;
+}
+
 .cb-chip {
   display: inline-flex;
   align-items: center;
@@ -43,12 +60,39 @@
   overflow: hidden;
 }
 
-.cb-task-list__header,
+.cb-task-list__header {
+  display: grid;
+  grid-template-columns: 2.25rem minmax(0, 1fr) minmax(11rem, 1.15fr) 4.5rem 6.5rem;
+  align-items: center;
+  column-gap: 0.75rem;
+}
+
 .cb-task-row {
   display: grid;
   grid-template-columns: 2.25rem minmax(0, 1fr) minmax(11rem, 1.15fr) 4.5rem 6.5rem;
-  align-items: start;
+  align-items: center;
   column-gap: 0.75rem;
+}
+
+.cb-task-list__header--with-bypass,
+.cb-task-row--with-bypass {
+  grid-template-columns: 2.25rem minmax(0, 1fr) minmax(11rem, 1.15fr) 4.5rem 5.5rem 6.5rem;
+}
+
+.cb-task-list__col-bypass {
+  display: flex;
+  align-items: center;
+  min-height: 36px;
+  min-width: 0;
+}
+
+.cb-bypass-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.375rem;
+  font-size: 0.75rem;
+  color: var(--color-text-secondary);
+  cursor: pointer;
 }
 
 .cb-task-list__header {

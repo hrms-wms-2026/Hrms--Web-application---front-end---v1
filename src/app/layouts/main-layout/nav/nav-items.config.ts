@@ -24,7 +24,8 @@ export const NAV_ITEMS: readonly NavItem[] = [
     label: 'Work',
     icon: 'work',
     path: '/work',
-    requiredModules: ['worksync_foundation', 'projects', 'objectives_milestones', 'tasks', 'boards', 'planning_sprints']
+    requiredModules: ['worksync_foundation', 'projects', 'objectives_milestones', 'tasks', 'boards', 'planning_sprints'],
+    requiredPermissions: ['projects:access']
   },
   {
     id: 'people',
@@ -45,6 +46,20 @@ export const NAV_ITEMS: readonly NavItem[] = [
         path: '/people/checklists',
         requiredModules: ['core_hr'],
         requiredPermissions: ['employees:read']
+      },
+      {
+        id: 'people-offboarding',
+        label: 'Offboarding',
+        path: '/people/offboarding',
+        requiredModules: ['core_hr'],
+        requiredPermissions: ['employees:read']
+      },
+      {
+        id: 'people-approvals',
+        label: 'Approvals',
+        path: '/people/approvals',
+        requiredModules: ['core_hr'],
+        requiredPermissions: ['roles:manage']
       }
     ]
   },
@@ -120,6 +135,13 @@ export const NAV_ITEMS: readonly NavItem[] = [
         label: 'Notification Settings',
         path: '/settings/notifications',
         requiredPermissions: ['notifications:manage']
+      },
+      {
+        id: 'settings-bulk-onboarding',
+        label: 'Bulk Onboarding',
+        path: '/settings/bulk-onboarding',
+        requiredModules: ['core_hr'],
+        requiredPermissions: ['employees:write']
       }
       // Policy configuration, Devices & connections, and Audit log are intentionally
       // not listed yet - no backend permission string exists for them (see report).

@@ -5,6 +5,7 @@ export type AvatarSize = 'sm' | 'md' | 'lg';
 @Component({
   selector: 'app-avatar',
   standalone: true,
+  host: { class: 'inline-flex shrink-0' },
   template: `
     <div class="avatar avatar--{{ size() }}" [attr.aria-label]="altText()">
       @if (showImage()) {

@@ -1,0 +1,65 @@
+@if (store.projectLoading()) {
+  <app-loader label="Loading project…" />
+} @else if (store.projectError()) {
+  <app-error-state [message]="store.projectError()!" [retryable]="true" (retry)="retryProject()" />
+} @else if (store.project(); as project) {
+  <div class="flex flex-wrap items-center justify-between gap-4 pb-2 mb-2.5 border-b border-[var(--color-border)]">
+    <div>
+      <h1 class="text-base font-semibold text-[var(--color-text-primary)]">{{ project.name }}</h1>
+      <p class="text-xs text-[var(--color-text-secondary)]">{{ project.identifier }} · {{ project.description ?? '' }}</p>
+    </div>
+    <dl class="flex gap-6 text-sm">
+      <div>
+        <dt class="text-xs text-[var(--color-text-secondary)]">Start</dt>
+        <dd>{{ project.startDate }}</dd>
+      </div>
+      <div>
+        <dt class="text-xs text-[var(--color-text-secondary)]">Target</dt>
+        <dd>{{ project.targetDate }}</dd>
+      </div>
+      <div>
+        <dt class="text-xs text-[var(--color-text-secondary)]">Hours</dt>
+        <dd>{{ project.completedHours }} / {{ project.allocatedHours }}</dd>
+      </div>
+    </dl>
+  </div>
+}
+
+<h2 class="mb-1.5 text-lg font-semibold text-[var(--color-text-primary)]">Modules</h2>
+
+@if (store.milestonesLoading()) {
+  <app-loader label="Loading modules…" />
+} @else if (store.milestonesError()) {
+  <app-error-state [message]="store.milestonesError()!" [retryable]="true" (retry)="retryMilestones()" />
+} @else if (store.milestones().length === 0) {
+  <app-empty-state title="No modules yet" />
+} @else {
+  <div class="flex gap-4 overflow-x-auto p-1 pb-2">
+    @for (milestone of store.milestones(); track milestone.objectiveId) {
+      <div class="w-68 flex-shrink-0">
+        <app-milestone-card
+          [milestone]="milestone"
+          [selected]="activeMilestoneId() === milestone.objectiveId"
+          (viewed)="onMilestoneSelected(milestone)"
+          (settingsRequested)="onMilestoneSettingsRequested(milestone)"
+        />
+      </div>
+    }
+  </div>
+
+  @if (activeMilestoneId(); as milestoneId) {
+    <div class="mt-2.5">
+      <app-milestone-sub-menu [milestoneId]="milestoneId" [milestoneTitle]="activeMilestoneTitle()" [isOwner]="activeMilestoneIsOwner()" />
+      <router-outlet />
+    </div>
+  }
+}
+
+<app-milestone-settings-modal
+  [open]="milestoneSettingsOpen()"
+  [initialValue]="milestoneSettingsInitialValue()"
+  [submitting]="milestoneSettingsSubmitting()"
+  [errorMessage]="store.milestoneActionError() ?? ''"
+  (saved)="onMilestoneSettingsSaved($event)"
+  (closed)="milestoneSettingsOpen.set(false)"
+/>

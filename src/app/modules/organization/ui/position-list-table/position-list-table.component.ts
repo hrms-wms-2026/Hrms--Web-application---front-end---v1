@@ -43,11 +43,16 @@ export class PositionListTableComponent {
   }
 
   getOccupancy(pos: PositionListItemResponse): PositionOccupancyDisplay {
+    // assignedCount/occupantPreview are the real, populated fields (backed by
+    // position_assignments); currentOccupancy is a deprecated placeholder the
+    // backend still sends as (null, false) here. Prefer assignedCount whenever
+    // the backend has provided it.
+    const hasAssignedCount = pos.assignedCount !== undefined;
     return resolvePositionOccupancy({
       positionType: pos.positionType,
       maxOccupancy: pos.maxOccupancy,
-      currentOccupancy: pos.currentOccupancy,
-      currentOccupancyCheckSupported: pos.currentOccupancyCheckSupported,
+      currentOccupancy: hasAssignedCount ? pos.assignedCount : pos.currentOccupancy,
+      currentOccupancyCheckSupported: hasAssignedCount ? true : pos.currentOccupancyCheckSupported,
       isActive: pos.isActive
     });
   }
