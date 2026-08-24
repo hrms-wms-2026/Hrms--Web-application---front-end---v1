@@ -40,21 +40,15 @@
   </div>
 }
 
-@if (isProjectLevelRoute()) {
-  <router-outlet />
+@if (store.milestonesLoading()) {
+  <app-loader label="Loading modules…" />
+} @else if (store.milestonesError()) {
+  <app-error-state [message]="store.milestonesError()!" [retryable]="true" (retry)="retryMilestones()" />
+} @else if (store.milestones().length === 0) {
+  <app-empty-state title="No modules yet" />
 } @else {
-  @if (store.milestonesLoading()) {
-    <app-loader label="Loading modules…" />
-  } @else if (store.milestonesError()) {
-    <app-error-state [message]="store.milestonesError()!" [retryable]="true" (retry)="retryMilestones()" />
-  } @else if (store.milestones().length === 0) {
-    <app-empty-state title="No modules yet" />
-  } @else if (activeMilestoneId(); as milestoneId) {
-    <div class="mt-2.5">
-      <app-milestone-sub-menu [milestoneId]="milestoneId" [milestoneTitle]="activeMilestoneTitle()" [isOwner]="activeMilestoneIsOwner()" />
-      <router-outlet />
-    </div>
-  } @else {
-    <app-loader label="Opening module…" />
-  }
+  <div class="mt-2.5">
+    <app-milestone-sub-menu [milestoneId]="subMenuMilestoneId()" [milestoneTitle]="subMenuMilestoneTitle()" [isOwner]="subMenuIsOwner()" />
+    <router-outlet />
+  </div>
 }
