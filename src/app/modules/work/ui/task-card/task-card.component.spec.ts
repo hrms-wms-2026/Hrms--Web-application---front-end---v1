@@ -19,13 +19,12 @@ describe('TaskCardComponent', () => {
     { id: 's3', name: 'Internal Review', displayOrder: 2, requiresApproval: false, marksTaskComplete: false, visibility: 'private' }
   ];
 
-  function setup(overrides: { isObjectiveOwner?: boolean; employeeNames?: Record<string, string> } = {}): void {
+  function setup(overrides: { employeeNames?: Record<string, string> } = {}): void {
     TestBed.resetTestingModule();
     TestBed.configureTestingModule({ imports: [TaskCardComponent] });
     fixture = TestBed.createComponent(TaskCardComponent);
     fixture.componentRef.setInput('task', task);
     fixture.componentRef.setInput('statuses', statuses);
-    fixture.componentRef.setInput('isObjectiveOwner', overrides.isObjectiveOwner ?? false);
     fixture.componentRef.setInput('employeeNames', overrides.employeeNames ?? { 'emp-1': 'Nevi Peiris', 'emp-2': 'Sam Perera' });
     fixture.detectChanges();
   }
@@ -54,30 +53,18 @@ describe('TaskCardComponent', () => {
     expect(viewedSpy).toHaveBeenCalledWith(task);
   });
 
-  it('only shows public statuses in the dropdown for a non-owner, all statuses for the owner', () => {
-    setup({ isObjectiveOwner: false });
-    let options = Array.from(fixture.nativeElement.querySelectorAll('.task-card__status-select option') as NodeListOf<HTMLOptionElement>)
-      .map((o) => o.textContent?.trim());
-    expect(options).toEqual(['To Do', 'Done']);
-
-    setup({ isObjectiveOwner: true });
-    options = Array.from(fixture.nativeElement.querySelectorAll('.task-card__status-select option') as NodeListOf<HTMLOptionElement>)
-      .map((o) => o.textContent?.trim());
-    expect(options).toEqual(['To Do', 'Done', 'Internal Review']);
+  it('shows the current status as plain text, not an editable control', () => {
+    setup();
+    const statusEl = fixture.nativeElement.querySelector('[data-testid="task-card-status"]');
+    expect(statusEl.textContent.trim()).toBe('To Do');
+    expect(fixture.nativeElement.querySelector('select')).toBeNull();
   });
 
-  it('picking a status from the dropdown emits statusChangeRequested but not viewed (no card-click bubble)', () => {
-    setup({ isObjectiveOwner: true });
-    const statusSpy = vi.fn();
-    const viewedSpy = vi.fn();
-    fixture.componentInstance.statusChangeRequested.subscribe(statusSpy);
-    fixture.componentInstance.viewed.subscribe(viewedSpy);
-
-    const select: HTMLSelectElement = fixture.nativeElement.querySelector('.task-card__status-select');
-    select.value = 's2';
-    select.dispatchEvent(new Event('change', { bubbles: true }));
-
-    expect(statusSpy).toHaveBeenCalledWith('s2');
-    expect(viewedSpy).not.toHaveBeenCalled();
+  it('falls back to the raw statusId if the status is not in the provided list', () => {
+    setup();
+    fixture.componentRef.setInput('task', { ...task, statusId: 'missing-status' });
+    fixture.detectChanges();
+    const statusEl = fixture.nativeElement.querySelector('[data-testid="task-card-status"]');
+    expect(statusEl.textContent.trim()).toBe('missing-status');
   });
 });

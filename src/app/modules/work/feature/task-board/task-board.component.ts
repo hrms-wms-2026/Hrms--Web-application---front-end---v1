@@ -59,7 +59,6 @@ import { toTaskCategoryColumn } from '../../utils/task-category.mapper';
             [tasks]="column.tasks"
             [connectedListIds]="columnIds()"
             [allStatuses]="store.statuses()"
-            [objectiveOwners]="objectiveOwners()"
             [employeeNames]="employeeNames()"
             (taskDropped)="onTaskDropped($event)"
             (taskViewed)="onTaskViewed($event)"

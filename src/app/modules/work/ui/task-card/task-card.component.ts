@@ -28,17 +28,7 @@ import { TaskStatusColumn, WorkTask } from '../../models/task.model';
         }
       </div>
 
-      <select
-        #statusSelect
-        class="task-card__status-select"
-        [value]="task().statusId"
-        (click)="$event.stopPropagation()"
-        (change)="statusChangeRequested.emit($any($event.target).value); $event.stopPropagation()"
-      >
-        @for (status of availableStatuses(); track status.id) {
-          <option [value]="status.id">{{ status.name }}</option>
-        }
-      </select>
+      <span class="task-card__status" data-testid="task-card-status">{{ statusName() }}</span>
     </div>
   `,
   styles: [`
@@ -68,24 +58,18 @@ import { TaskStatusColumn, WorkTask } from '../../models/task.model';
     .task-card__meta { display: flex; gap: 8px; font-size: 11px; color: var(--color-text-secondary); margin-bottom: 6px; }
     .task-card__priority[data-priority="critical"],
     .task-card__priority[data-priority="high"] { color: var(--color-danger); }
-    .task-card__status-select { width: 100%; border: 1px solid var(--color-border); border-radius: 6px; padding: 4px 6px; background: var(--color-surface); color: var(--color-text-primary); font-size: 11px; cursor: pointer; }
+    .task-card__status { display: inline-block; font-size: 11px; color: var(--color-text-secondary); }
   `]
 })
 export class TaskCardComponent {
   task = input.required<WorkTask>();
   statuses = input<readonly TaskStatusColumn[]>([]);
-  isObjectiveOwner = input(false);
   employeeNames = input<Record<string, string>>({});
 
   viewed = output<WorkTask>();
-  statusChangeRequested = output<string>();
 
-  // Private statuses are only pickable by the objective owner - mirrors
-  // TaskDetailModalComponent.availableStatuses.
-  protected readonly availableStatuses = computed(() =>
-    [...this.statuses()]
-      .filter((s) => s.visibility === 'public' || this.isObjectiveOwner())
-      .sort((a, b) => a.displayOrder - b.displayOrder)
+  protected readonly statusName = computed(() =>
+    this.statuses().find((s) => s.id === this.task().statusId)?.name ?? this.task().statusId
   );
 
   protected readonly assigneeNames = computed(() => {
