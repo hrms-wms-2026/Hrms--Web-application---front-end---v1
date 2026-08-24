@@ -14,7 +14,7 @@ export interface WorkTaskDto {
   shortId: string;
   title: string;
   description: string | null;
-  taskType: 'task' | 'bug' | 'story' | 'feature';
+  categoryId: string;
   statusId: string;
   priority: 'low' | 'medium' | 'high' | 'critical';
   storyPoints: number | null;
@@ -29,7 +29,7 @@ export interface WorkTaskDto {
 export interface CreateTaskRequestDto {
   title: string;
   description?: string;
-  taskType: WorkTaskDto['taskType'];
+  categoryId: string;
   priority: WorkTaskDto['priority'];
   dueDate?: string;
   estimatedHours?: number;

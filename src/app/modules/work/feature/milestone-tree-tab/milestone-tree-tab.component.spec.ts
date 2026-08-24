@@ -524,7 +524,7 @@ describe('MilestoneTreeTabComponent', () => {
       ...child, id: 't1', title: 'Do it', kind: 'task', parentObjectiveId: 'spr-1', isOwner: true, children: [],
       taskSource: {
         id: 't1', objectiveId: 'o1', shortId: 'WEB-9', title: 'Do it', description: null,
-        taskType: 'task', statusId: 'st-1', priority: 'medium', storyPoints: null,
+        categoryId: 'task', statusId: 'st-1', priority: 'medium', storyPoints: null,
         dueDate: null, estimatedHours: 3, completedHours: 0, progressPercent: 0,
         sprintId: 'spr-1', assigneeEmployeeIds: []
       },

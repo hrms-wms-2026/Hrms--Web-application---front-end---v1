@@ -47,7 +47,7 @@ describe('TaskBacklogComponent', () => {
       shortId: `T-${id}`,
       title: `Task ${id}`,
       description: null,
-      taskType: 'task',
+      categoryId: 'task',
       statusId: 'status-1',
       priority: 'medium',
       storyPoints: null,

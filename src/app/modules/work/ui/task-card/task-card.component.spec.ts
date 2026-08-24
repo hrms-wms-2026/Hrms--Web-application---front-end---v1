@@ -8,7 +8,7 @@ describe('TaskCardComponent', () => {
 
   const task: WorkTask = {
     id: 't-1', objectiveId: 'o-1', shortId: 'PRJ-1', title: 'Do the thing', description: null,
-    taskType: 'task', statusId: 's1', priority: 'high', storyPoints: null, dueDate: null,
+    categoryId: 'task', statusId: 's1', priority: 'high', storyPoints: null, dueDate: null,
     estimatedHours: 5, completedHours: 0, progressPercent: 0, sprintId: null,
     assigneeEmployeeIds: ['emp-1', 'emp-2']
   };

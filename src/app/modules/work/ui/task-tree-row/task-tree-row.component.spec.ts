@@ -13,7 +13,7 @@ describe('TaskTreeRowComponent', () => {
     ownerName: null, isOwner: false, children: [], kind: 'task', status: 'To Do',
     taskSource: {
       id: 't1', objectiveId: 'o1', shortId: 'WEB-9', title: 'Do it', description: null,
-      taskType: 'task', statusId: 'st-1', priority: 'medium', storyPoints: null,
+      categoryId: 'task', statusId: 'st-1', priority: 'medium', storyPoints: null,
       dueDate: null, estimatedHours: 3, completedHours: 0, progressPercent: 0,
       sprintId: 'spr-1', assigneeEmployeeIds: ['e1']
     }

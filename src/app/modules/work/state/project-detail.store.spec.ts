@@ -291,7 +291,7 @@ describe('ProjectDetailStore', () => {
 
     const directTask: WorkTaskDto = {
       id: 't-direct', objectiveId: 'o1', shortId: 'WEB-1', title: 'Direct task', description: null,
-      taskType: 'task', statusId: 'st-1', priority: 'medium', storyPoints: null,
+      categoryId: 'task', statusId: 'st-1', priority: 'medium', storyPoints: null,
       dueDate: null, estimatedHours: 3, completedHours: 0, progressPercent: 0, sprintId: null, assigneeEmployeeIds: []
     };
 
@@ -408,7 +408,7 @@ describe('ProjectDetailStore', () => {
 
     const sprintTask: WorkTaskDto = {
       id: 't-sprint', objectiveId: 'o1', shortId: 'WEB-2', title: 'Sprint task', description: null,
-      taskType: 'task', statusId: 'st-1', priority: 'medium', storyPoints: null,
+      categoryId: 'task', statusId: 'st-1', priority: 'medium', storyPoints: null,
       dueDate: null, estimatedHours: 3, completedHours: 0, progressPercent: 0, sprintId: 'spr-1', assigneeEmployeeIds: []
     };
 
@@ -566,7 +566,7 @@ describe('ProjectDetailStore', () => {
       }])),
       getBySprintId: vi.fn().mockReturnValue(of([{
         id: 't-sprint', objectiveId: 'o1', shortId: 'WEB-2', title: 'Sprint task', description: null,
-        taskType: 'task', statusId: 'st-1', priority: 'medium', storyPoints: null,
+        categoryId: 'task', statusId: 'st-1', priority: 'medium', storyPoints: null,
         dueDate: null, estimatedHours: 3, completedHours: 0, progressPercent: 0, sprintId: 'spr-1', assigneeEmployeeIds: []
       }])),
       deleteTask: vi.fn().mockReturnValue(of(undefined))

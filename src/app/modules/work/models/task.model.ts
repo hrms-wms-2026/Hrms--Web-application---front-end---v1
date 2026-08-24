@@ -13,7 +13,7 @@ export interface WorkTask {
   shortId: string;
   title: string;
   description: string | null;
-  taskType: 'task' | 'bug' | 'story' | 'feature';
+  categoryId: string;
   statusId: string;
   priority: 'low' | 'medium' | 'high' | 'critical';
   storyPoints: number | null;

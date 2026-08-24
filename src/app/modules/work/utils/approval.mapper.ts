@@ -10,7 +10,7 @@ export function toApprovalItem(dto: ObjectiveInvitationDto): ApprovalItem;
 export function toApprovalItem(
   dto: TaskCreationRequestDto | AllocationRequestDto | ObjectiveChangeRequestDto | ObjectiveInvitationDto
 ): ApprovalItem {
-  if ('payload' in dto && 'taskType' in dto.payload) {
+  if ('payload' in dto && 'categoryId' in dto.payload) {
     const request = dto as TaskCreationRequestDto;
     return {
       id: request.id,

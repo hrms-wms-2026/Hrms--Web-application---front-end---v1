@@ -62,7 +62,7 @@ describe('TaskBoardComponent', () => {
     };
     const inSprint = {
       id: 't-in', objectiveId: 'milestone-1', shortId: 'PRJ-1', title: 'In sprint', description: null,
-      taskType: 'task' as const, statusId: 's-1', priority: 'medium' as const, storyPoints: null,
+      categoryId: 'task' as const, statusId: 's-1', priority: 'medium' as const, storyPoints: null,
       dueDate: null, estimatedHours: 5, completedHours: 0, progressPercent: 0, sprintId: 'sp-active', assigneeEmployeeIds: []
     };
     const outSprint = { ...inSprint, id: 't-out', title: 'Out of sprint', sprintId: 'sp-other' };
