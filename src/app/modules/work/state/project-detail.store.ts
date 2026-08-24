@@ -58,7 +58,14 @@ export const ProjectDetailStore = signalStore(
     memberApi = inject(ObjectiveMemberApiService),
     sprintApi = inject(SprintApiService),
     taskApi = inject(TaskApiService)
-  ) => ({
+  ) => {
+    // Tree/Board/Backlog are sibling routes that each mount their own component (and re-run
+    // their own ngOnInit) on every tab switch, all calling loadProjectMembers independently for
+    // the same project - without this guard, switching tabs back and forth refetches the same
+    // member list every single time.
+    let membersLoadedForProjectId: string | null = null;
+
+    return {
     async loadProject(id: string): Promise<void> {
       patchState(store, { projectLoading: true, projectError: null });
       try {
@@ -80,6 +87,8 @@ export const ProjectDetailStore = signalStore(
     },
 
     async loadProjectMembers(projectId: string): Promise<void> {
+      if (membersLoadedForProjectId === projectId) return;
+
       patchState(store, { projectMembersLoading: true });
       try {
         const milestones = store.milestones().length > 0
@@ -90,10 +99,12 @@ export const ProjectDetailStore = signalStore(
         const defaultObjectiveId = milestones.find((m) => m.isDefault)?.objectiveId;
         if (!defaultObjectiveId) {
           patchState(store, { projectMembers: [], projectMembersLoading: false });
+          membersLoadedForProjectId = projectId;
           return;
         }
         const list = await firstValueFrom(memberApi.getMembers(defaultObjectiveId));
         patchState(store, { projectMembers: list.items.filter((m) => !m.pending), projectMembersLoading: false });
+        membersLoadedForProjectId = projectId;
       } catch {
         patchState(store, { projectMembers: [], projectMembersLoading: false });
       }
@@ -392,5 +403,6 @@ export const ProjectDetailStore = signalStore(
         return { success: false };
       }
     }
-  }))
+    };
+  })
 );

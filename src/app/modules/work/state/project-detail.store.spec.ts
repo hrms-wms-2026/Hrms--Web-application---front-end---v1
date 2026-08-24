@@ -1,6 +1,7 @@
 import { TestBed } from '@angular/core/testing';
 import { HttpResponse } from '@angular/common/http';
 import { of, throwError } from 'rxjs';
+import { vi } from 'vitest';
 import { ProjectDetailStore } from './project-detail.store';
 import { ProjectApiService } from '../data-access/project-api.service';
 import { ObjectiveMemberApiService } from '../data-access/objective-member-api.service';
@@ -597,5 +598,62 @@ describe('ProjectDetailStore', () => {
     expect(result.success).toBe(false);
     expect(store.milestoneActionError()).toBe('forbidden');
     expect(store.selectedSubtree()).toBe(before);
+  });
+
+  describe('loadProjectMembers', () => {
+    const milestones: MyProjectMilestoneDto[] = [{
+      objectiveId: 'o1', projectId: 'p1', parentObjectiveId: null, isDefault: true, title: 'Default',
+      ownerId: 'u1', ownerName: 'Jane', reportingManagerId: null, reportingManagerName: null,
+      startDate: '2026-08-01', endDate: '2026-12-01', allocatedHours: 40, completedHours: 0,
+      objectiveIsActive: true, isAchieved: false, achievedAt: null, membershipIsActive: true, membershipRemovedAt: null,
+      isOwner: true
+    }];
+
+    function setupWithBoth(getMembers: ReturnType<typeof vi.fn>) {
+      TestBed.configureTestingModule({
+        providers: [
+          { provide: ProjectApiService, useValue: { getMyMilestones: vi.fn().mockReturnValue(of(milestones)) } },
+          { provide: ObjectiveMemberApiService, useValue: { getMembers } },
+          { provide: SprintApiService, useValue: {} },
+          { provide: TaskApiService, useValue: {} }
+        ]
+      });
+      return TestBed.inject(ProjectDetailStore);
+    }
+
+    it('fetches members from the Default Objective, excluding pending invites', async () => {
+      const getMembers = vi.fn().mockReturnValue(of({
+        items: [
+          { employeeId: 'e1', pending: false, isHead: true },
+          { employeeId: 'e2', pending: true, isHead: false }
+        ]
+      }));
+      const store = setupWithBoth(getMembers);
+
+      await store.loadProjectMembers('p1');
+
+      expect(getMembers).toHaveBeenCalledWith('o1');
+      expect(store.projectMembers()).toEqual([{ employeeId: 'e1', pending: false, isHead: true }]);
+    });
+
+    it('does not refetch for a project it has already loaded members for', async () => {
+      const getMembers = vi.fn().mockReturnValue(of({ items: [] }));
+      const store = setupWithBoth(getMembers);
+
+      await store.loadProjectMembers('p1');
+      await store.loadProjectMembers('p1');
+
+      expect(getMembers).toHaveBeenCalledTimes(1);
+    });
+
+    it('does refetch for a different project id', async () => {
+      const getMembers = vi.fn().mockReturnValue(of({ items: [] }));
+      const store = setupWithBoth(getMembers);
+
+      await store.loadProjectMembers('p1');
+      await store.loadProjectMembers('p2');
+
+      expect(getMembers).toHaveBeenCalledTimes(2);
+    });
   });
 });
