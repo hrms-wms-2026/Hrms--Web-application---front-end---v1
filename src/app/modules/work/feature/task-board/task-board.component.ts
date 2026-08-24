@@ -7,9 +7,9 @@ import { TaskBoardColumnComponent } from '../../ui/task-board-column/task-board-
 import { TaskCreateModalComponent } from '../../ui/task-create-modal/task-create-modal.component';
 import { TaskDetailModalComponent } from '../../ui/task-detail-modal/task-detail-modal.component';
 import { ButtonComponent } from '../../../../shared/ui/button/button.component';
+import { ErrorStateComponent } from '../../../../shared/ui/error-state/error-state.component';
 import { SprintApiService } from '../../data-access/sprint-api.service';
 import { TaskApiService } from '../../data-access/task-api.service';
-import { ObjectiveMemberApiService } from '../../data-access/objective-member-api.service';
 import { EmployeeDirectoryStore } from '../../state/employee-directory.store';
 import { toSprint } from '../../utils/sprint.mapper';
 import { Sprint } from '../../models/sprint.model';
@@ -20,7 +20,7 @@ import { toTaskCategoryColumn } from '../../utils/task-category.mapper';
 @Component({
   selector: 'app-task-board',
   standalone: true,
-  imports: [TaskBoardColumnComponent, TaskCreateModalComponent, TaskDetailModalComponent, ButtonComponent],
+  imports: [TaskBoardColumnComponent, TaskCreateModalComponent, TaskDetailModalComponent, ButtonComponent, ErrorStateComponent],
   template: `
     <div class="task-board__toolbar">
       <select class="task-board__filter" aria-label="Module filter" [value]="objectiveFilter()" (change)="objectiveFilter.set($any($event.target).value)">
@@ -42,15 +42,15 @@ import { toTaskCategoryColumn } from '../../utils/task-category.mapper';
           <option [value]="category.id">{{ category.name }}</option>
         }
       </select>
-      @if (createObjectiveId()) {
-        <app-button variant="primary" (pressed)="openCreate()">Create task</app-button>
+      @if (modules().length > 0) {
+        <app-button variant="primary" (pressed)="createOpen.set(true)">Create task</app-button>
       }
     </div>
 
     @if (store.loading()) {
       <p>Loading board…</p>
     } @else if (store.error()) {
-      <p class="task-board__error">{{ store.error() }}</p>
+      <app-error-state [message]="store.error()!" [retryable]="true" (retry)="reload()" />
     } @else {
       <div class="task-board">
         @for (column of columnsWithTasks(); track column.status.id) {
@@ -67,12 +67,11 @@ import { toTaskCategoryColumn } from '../../utils/task-category.mapper';
       </div>
     }
 
-    @if (createObjectiveId()) {
+    @if (createOpen()) {
       <app-task-create-modal
         [open]="createOpen()"
-        [objectiveId]="createObjectiveId()"
         [projectId]="projectId()"
-        [isObjectiveOwner]="objectiveOwners()[createObjectiveId()] ?? false"
+        [modules]="moduleOptions()"
         [activeSprints]="sprints()"
         [assignableMembers]="assignableMembers()"
         (closed)="createOpen.set(false)"
@@ -95,7 +94,6 @@ import { toTaskCategoryColumn } from '../../utils/task-category.mapper';
     .task-board__toolbar { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 8px; margin-bottom: 12px; }
     .task-board__filter { border: 1px solid var(--color-border); border-radius: 8px; padding: 8px 10px; background: var(--color-surface); color: var(--color-text-primary); }
     .task-board { display: flex; gap: 12px; overflow-x: auto; padding-bottom: 8px; }
-    .task-board__error { color: var(--color-danger); }
     :host ::ng-deep .task-card--highlighted { outline: 2px solid var(--color-focus-ring, var(--color-danger)); outline-offset: 2px; }
   `]
 })
@@ -105,14 +103,12 @@ export class TaskBoardComponent implements OnInit, AfterViewChecked {
   private readonly route = inject(ActivatedRoute);
   private readonly sprintApi = inject(SprintApiService);
   private readonly taskApi = inject(TaskApiService);
-  private readonly memberApi = inject(ObjectiveMemberApiService);
   private readonly directory = inject(EmployeeDirectoryStore);
 
   protected readonly createOpen = signal(false);
   protected readonly detailOpen = signal(false);
   protected readonly selectedTask = signal<WorkTask | null>(null);
   protected readonly projectId = signal('');
-  protected readonly createObjectiveId = signal('');
   protected readonly sprints = signal<Sprint[]>([]);
   protected readonly categories = signal<TaskCategoryColumn[]>([]);
   protected readonly assignableMembers = signal<{ employeeId: string; name: string }[]>([]);
@@ -125,6 +121,9 @@ export class TaskBoardComponent implements OnInit, AfterViewChecked {
   protected readonly modules = computed(() => this.projectStore.milestones());
   protected readonly objectiveOwners = computed(() =>
     Object.fromEntries(this.modules().map((module) => [module.objectiveId, module.isOwner]))
+  );
+  protected readonly moduleOptions = computed(() =>
+    this.modules().map((m) => ({ objectiveId: m.objectiveId, title: m.title, isOwner: m.isOwner }))
   );
   protected readonly columnsWithTasks = computed(() =>
     this.store.columnsWithTasks().map((column) => ({
@@ -146,30 +145,19 @@ export class TaskBoardComponent implements OnInit, AfterViewChecked {
   }
 
   ngOnInit(): void {
-    const routedProjectId = this.route.snapshot?.paramMap?.get('id');
-    const projectId = routedProjectId ?? '';
-    const legacyObjectiveId = routedProjectId ? null : this.route.parent?.snapshot?.paramMap?.get('milestoneId') ?? this.route.parent?.snapshot?.paramMap?.get('id') ?? null;
+    const projectId = this.route.snapshot?.paramMap?.get('id') ?? '';
     this.projectId.set(projectId);
     this.highlightTaskId = this.route.snapshot?.queryParamMap?.get('highlightTaskId') ?? null;
-    if (!projectId && !legacyObjectiveId) return;
+    if (!projectId) return;
 
-    if (!projectId) {
-      const owner = this.modules().find((module) => module.isOwner);
-      if (owner) this.createObjectiveId.set(owner.objectiveId);
-      if (legacyObjectiveId) {
-        void this.store.loadBoard(legacyObjectiveId, projectId);
-        void firstValueFrom(this.sprintApi.getByObjective(legacyObjectiveId, true)).then((dtos) => this.sprints.set(dtos.map(toSprint)));
-        void this.loadAssignableMembers(legacyObjectiveId);
-      }
-      return;
-    }
+    void this.projectStore.loadMyMilestones(projectId);
+    void this.loadAssignableMembers(projectId);
+    this.reload();
+  }
 
-    if (typeof this.projectStore.loadMyMilestones === 'function') {
-      void this.projectStore.loadMyMilestones(projectId).then(() => {
-        const owner = this.modules().find((module) => module.isOwner);
-        if (owner) this.createObjectiveId.set(owner.objectiveId);
-      });
-    }
+  protected reload(): void {
+    const projectId = this.projectId();
+    if (!projectId) return;
     void this.store.loadBoard(projectId);
     void this.loadSprints(projectId);
     void this.loadCategories(projectId);
@@ -216,20 +204,12 @@ export class TaskBoardComponent implements OnInit, AfterViewChecked {
     }
   }
 
-  protected openCreate(): void {
-    const objective = this.modules().find((module) => module.isOwner);
-    if (!objective) return;
-    this.createObjectiveId.set(objective.objectiveId);
-    void this.loadAssignableMembers(objective.objectiveId);
-    this.createOpen.set(true);
-  }
-
-  private async loadAssignableMembers(objectiveId: string): Promise<void> {
+  private async loadAssignableMembers(projectId: string): Promise<void> {
     try {
-      const list = await firstValueFrom(this.memberApi.getMembers(objectiveId));
-      const active = list.items.filter((member) => !member.pending);
-      await this.directory.ensureLoaded(active.map((member) => member.employeeId));
-      this.assignableMembers.set(active.map((member) => ({
+      await this.projectStore.loadProjectMembers(projectId);
+      const members = this.projectStore.projectMembers();
+      await this.directory.ensureLoaded(members.map((member) => member.employeeId));
+      this.assignableMembers.set(members.map((member) => ({
         employeeId: member.employeeId,
         name: this.directory.get(member.employeeId)?.name ?? 'Unknown employee'
       })));

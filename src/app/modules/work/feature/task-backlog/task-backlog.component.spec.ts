@@ -408,21 +408,26 @@ describe('TaskBacklogComponent', () => {
     expect(sprintSetStatus).toHaveBeenCalledWith('sp-1', 'future', 'milestone-1', false, 'project-1');
   });
 
-  it('shows store.error() when the task load fails, instead of silently rendering empty sprint tabs', async () => {
+  it('shows store.error() as a retryable error state when the task load fails, instead of silently rendering empty sprint tabs', async () => {
     const taskErrorSignal = signal<string | null>(null);
-    const { fixture } = setup({ taskErrorSignal });
+    const { fixture, loadBoard } = setup({ taskErrorSignal });
     await fixture.whenStable();
     fixture.detectChanges();
 
-    expect(fixture.nativeElement.querySelector('.task-backlog__error')).toBeNull();
+    expect(fixture.nativeElement.querySelector('[role="alert"]')).toBeNull();
 
     taskErrorSignal.set('Failed to load tasks.');
     fixture.detectChanges();
 
-    const errorEl = fixture.nativeElement.querySelector('.task-backlog__error');
+    const errorEl = fixture.nativeElement.querySelector('[role="alert"]');
     expect(errorEl).not.toBeNull();
     expect(errorEl.textContent).toContain('Failed to load tasks.');
     expect(fixture.debugElement.queryAll(By.directive(SprintTabComponent)).length).toBe(0);
+
+    loadBoard.mockClear();
+    const retryButton = errorEl.querySelector('button') as HTMLButtonElement;
+    retryButton.click();
+    expect(loadBoard).toHaveBeenCalledWith('project-1');
   });
 
   it('renders tasks with sprintId: null in an "Unsorted" section, clickable via the same onTaskViewed path', async () => {

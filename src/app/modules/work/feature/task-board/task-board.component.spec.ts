@@ -6,12 +6,17 @@ import { TaskBoardComponent } from './task-board.component';
 import { TaskBoardStore } from '../../state/task-board.store';
 import { ProjectDetailStore } from '../../state/project-detail.store';
 import { SprintApiService } from '../../data-access/sprint-api.service';
-import { ObjectiveMemberApiService } from '../../data-access/objective-member-api.service';
 import { TaskApiService } from '../../data-access/task-api.service';
 import { EmployeeDirectoryStore } from '../../state/employee-directory.store';
 
 describe('TaskBoardComponent', () => {
-  it('loads the board for the current milestoneId on init', async () => {
+  function routeStub() {
+    return {
+      snapshot: { paramMap: { get: (key: string) => (key === 'id' ? 'project-1' : null) }, queryParamMap: { get: () => null } }
+    };
+  }
+
+  it('loads the board for the routed project id on init', async () => {
     const loadBoard = vi.fn().mockResolvedValue(undefined);
     const storeStub = {
       loadBoard,
@@ -23,8 +28,11 @@ describe('TaskBoardComponent', () => {
       statuses: () => []
     };
     const projectStoreStub = {
-      milestones: () => [{ objectiveId: 'milestone-1', isOwner: true }],
-      getMilestoneDetail: vi.fn().mockResolvedValue(null)
+      milestones: () => [{ objectiveId: 'milestone-1', title: 'Milestone One', isOwner: true }],
+      getMilestoneDetail: vi.fn().mockResolvedValue(null),
+      loadMyMilestones: vi.fn().mockResolvedValue(undefined),
+      loadProjectMembers: vi.fn().mockResolvedValue(undefined),
+      projectMembers: () => []
     };
 
     TestBed.configureTestingModule({
@@ -32,20 +40,13 @@ describe('TaskBoardComponent', () => {
       providers: [
         { provide: TaskBoardStore, useValue: storeStub },
         { provide: ProjectDetailStore, useValue: projectStoreStub },
-        { provide: SprintApiService, useValue: { getByObjective: vi.fn().mockReturnValue(of([])) } },
-        { provide: ObjectiveMemberApiService, useValue: { getMembers: vi.fn().mockReturnValue(of({ items: [] })) } },
-        { provide: TaskApiService, useValue: { createTaskCreationRequest: vi.fn(), assignTask: vi.fn() } },
+        { provide: SprintApiService, useValue: { getByProject: vi.fn().mockReturnValue(of([])) } },
+        { provide: TaskApiService, useValue: { createTaskCreationRequest: vi.fn(), assignTask: vi.fn(), getCategories: vi.fn().mockReturnValue(of([])) } },
         {
           provide: EmployeeDirectoryStore,
           useValue: { get: vi.fn().mockReturnValue(undefined), ensureLoaded: vi.fn().mockResolvedValue(undefined) }
         },
-        {
-          provide: ActivatedRoute,
-          useValue: {
-            parent: { snapshot: { paramMap: { get: () => 'milestone-1' } } },
-            snapshot: { queryParamMap: { get: () => null } }
-          }
-        }
+        { provide: ActivatedRoute, useValue: routeStub() }
       ]
     });
 
@@ -53,7 +54,7 @@ describe('TaskBoardComponent', () => {
     fixture.detectChanges();
     await fixture.whenStable();
 
-    expect(loadBoard).toHaveBeenCalledWith('milestone-1', '');
+    expect(loadBoard).toHaveBeenCalledWith('project-1');
   });
 
   it('columnsWithTasks only includes tasks whose sprintId is one of the active sprints', async () => {
@@ -84,14 +85,17 @@ describe('TaskBoardComponent', () => {
         {
           provide: ProjectDetailStore,
           useValue: {
-            milestones: () => [{ objectiveId: 'milestone-1', isOwner: true }],
-            getMilestoneDetail: vi.fn().mockResolvedValue(null)
+            milestones: () => [{ objectiveId: 'milestone-1', title: 'Milestone One', isOwner: true }],
+            getMilestoneDetail: vi.fn().mockResolvedValue(null),
+            loadMyMilestones: vi.fn().mockResolvedValue(undefined),
+            loadProjectMembers: vi.fn().mockResolvedValue(undefined),
+            projectMembers: () => []
           }
         },
         {
           provide: SprintApiService,
           useValue: {
-            getByObjective: vi.fn().mockReturnValue(of([{
+            getByProject: vi.fn().mockReturnValue(of([{
               id: 'sp-active',
               objectiveId: 'milestone-1',
               name: 'Sprint 1',
@@ -103,19 +107,12 @@ describe('TaskBoardComponent', () => {
             }]))
           }
         },
-        { provide: ObjectiveMemberApiService, useValue: { getMembers: vi.fn().mockReturnValue(of({ items: [] })) } },
-        { provide: TaskApiService, useValue: { createTaskCreationRequest: vi.fn(), assignTask: vi.fn() } },
+        { provide: TaskApiService, useValue: { createTaskCreationRequest: vi.fn(), assignTask: vi.fn(), getCategories: vi.fn().mockReturnValue(of([])) } },
         {
           provide: EmployeeDirectoryStore,
           useValue: { get: vi.fn().mockReturnValue(undefined), ensureLoaded: vi.fn().mockResolvedValue(undefined) }
         },
-        {
-          provide: ActivatedRoute,
-          useValue: {
-            parent: { snapshot: { paramMap: { get: () => 'milestone-1' } } },
-            snapshot: { queryParamMap: { get: () => null } }
-          }
-        }
+        { provide: ActivatedRoute, useValue: routeStub() }
       ]
     });
 
@@ -131,7 +128,7 @@ describe('TaskBoardComponent', () => {
     expect(taskIds).toEqual(['t-in']);
   });
 
-  it('resolves assignableMembers names from the employee directory instead of the raw employeeId', async () => {
+  it('resolves assignableMembers names from the project\'s member list, via the employee directory', async () => {
     const loadBoard = vi.fn().mockResolvedValue(undefined);
     const storeStub = {
       loadBoard,
@@ -144,6 +141,7 @@ describe('TaskBoardComponent', () => {
     };
     const directoryGet = vi.fn((id: string) => (id === 'emp-1' ? { id, name: 'Nevi Peiris', initials: 'NP', avatarUrl: null } : undefined));
     const directoryEnsureLoaded = vi.fn().mockResolvedValue(undefined);
+    const loadProjectMembers = vi.fn().mockResolvedValue(undefined);
 
     TestBed.configureTestingModule({
       imports: [TaskBoardComponent],
@@ -152,31 +150,20 @@ describe('TaskBoardComponent', () => {
         {
           provide: ProjectDetailStore,
           useValue: {
-            milestones: () => [{ objectiveId: 'milestone-1', isOwner: true }],
-            getMilestoneDetail: vi.fn().mockResolvedValue(null)
+            milestones: () => [{ objectiveId: 'milestone-1', title: 'Milestone One', isOwner: true }],
+            getMilestoneDetail: vi.fn().mockResolvedValue(null),
+            loadMyMilestones: vi.fn().mockResolvedValue(undefined),
+            loadProjectMembers,
+            projectMembers: () => [
+              { employeeId: 'emp-1', pending: false, isHead: false },
+              { employeeId: 'emp-2', pending: false, isHead: false }
+            ]
           }
         },
-        { provide: SprintApiService, useValue: { getByObjective: vi.fn().mockReturnValue(of([])) } },
-        {
-          provide: ObjectiveMemberApiService,
-          useValue: {
-            getMembers: vi.fn().mockReturnValue(of({
-              items: [
-                { employeeId: 'emp-1', pending: false, isHead: false },
-                { employeeId: 'emp-2', pending: false, isHead: false }
-              ]
-            }))
-          }
-        },
-        { provide: TaskApiService, useValue: { createTaskCreationRequest: vi.fn(), assignTask: vi.fn() } },
+        { provide: SprintApiService, useValue: { getByProject: vi.fn().mockReturnValue(of([])) } },
+        { provide: TaskApiService, useValue: { createTaskCreationRequest: vi.fn(), assignTask: vi.fn(), getCategories: vi.fn().mockReturnValue(of([])) } },
         { provide: EmployeeDirectoryStore, useValue: { get: directoryGet, ensureLoaded: directoryEnsureLoaded } },
-        {
-          provide: ActivatedRoute,
-          useValue: {
-            parent: { snapshot: { paramMap: { get: () => 'milestone-1' } } },
-            snapshot: { queryParamMap: { get: () => null } }
-          }
-        }
+        { provide: ActivatedRoute, useValue: routeStub() }
       ]
     });
 
@@ -185,6 +172,7 @@ describe('TaskBoardComponent', () => {
     await fixture.whenStable();
     await fixture.whenStable();
 
+    expect(loadProjectMembers).toHaveBeenCalledWith('project-1');
     expect(directoryEnsureLoaded).toHaveBeenCalledWith(['emp-1', 'emp-2']);
     const members = (fixture.componentInstance as unknown as { assignableMembers: () => { employeeId: string; name: string }[] }).assignableMembers();
     expect(members).toEqual([
@@ -193,5 +181,57 @@ describe('TaskBoardComponent', () => {
     ]);
     expect(members.find((m) => m.employeeId === 'emp-1')?.name).not.toBe('emp-1');
     expect(members.find((m) => m.employeeId === 'emp-2')?.name).not.toBe('emp-2');
+  });
+
+  it('shows store.error() as a retryable error state, and Retry calls loadBoard again', async () => {
+    const loadBoard = vi.fn().mockResolvedValue(undefined);
+    const errorValues = ['Failed to load the board.', null] as const;
+    let errorIndex = 0;
+    const storeStub = {
+      loadBoard,
+      columnsWithTasks: () => [],
+      tasks: () => [],
+      loading: () => false,
+      error: () => errorValues[errorIndex],
+      moveTask: vi.fn(),
+      statuses: () => []
+    };
+    const projectStoreStub = {
+      milestones: () => [{ objectiveId: 'milestone-1', title: 'Milestone One', isOwner: true }],
+      getMilestoneDetail: vi.fn().mockResolvedValue(null),
+      loadMyMilestones: vi.fn().mockResolvedValue(undefined),
+      loadProjectMembers: vi.fn().mockResolvedValue(undefined),
+      projectMembers: () => []
+    };
+
+    TestBed.configureTestingModule({
+      imports: [TaskBoardComponent],
+      providers: [
+        { provide: TaskBoardStore, useValue: storeStub },
+        { provide: ProjectDetailStore, useValue: projectStoreStub },
+        { provide: SprintApiService, useValue: { getByProject: vi.fn().mockReturnValue(of([])) } },
+        { provide: TaskApiService, useValue: { createTaskCreationRequest: vi.fn(), assignTask: vi.fn(), getCategories: vi.fn().mockReturnValue(of([])) } },
+        {
+          provide: EmployeeDirectoryStore,
+          useValue: { get: vi.fn().mockReturnValue(undefined), ensureLoaded: vi.fn().mockResolvedValue(undefined) }
+        },
+        { provide: ActivatedRoute, useValue: routeStub() }
+      ]
+    });
+
+    const fixture = TestBed.createComponent(TaskBoardComponent);
+    fixture.detectChanges();
+    await fixture.whenStable();
+    fixture.detectChanges();
+
+    const alert = fixture.nativeElement.querySelector('[role="alert"]');
+    expect(alert).not.toBeNull();
+    expect(alert.textContent).toContain('Failed to load the board.');
+
+    loadBoard.mockClear();
+    const retryButton = alert.querySelector('button') as HTMLButtonElement;
+    retryButton.click();
+
+    expect(loadBoard).toHaveBeenCalledWith('project-1');
   });
 });

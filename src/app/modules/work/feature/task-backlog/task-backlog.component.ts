@@ -2,6 +2,7 @@ import { Component, OnInit, computed, inject, signal } from '@angular/core';
 import { ActivatedRoute } from '@angular/router';
 import { firstValueFrom } from 'rxjs';
 import { ButtonComponent } from '../../../../shared/ui/button/button.component';
+import { ErrorStateComponent } from '../../../../shared/ui/error-state/error-state.component';
 import { ProjectDetailStore } from '../../state/project-detail.store';
 import { TaskBoardStore } from '../../state/task-board.store';
 import { SprintListStore } from '../../state/sprint-list.store';
@@ -21,7 +22,7 @@ import { toTaskCategoryColumn } from '../../utils/task-category.mapper';
 @Component({
   selector: 'app-task-backlog',
   standalone: true,
-  imports: [TaskCreateModalComponent, TaskDetailModalComponent, SprintTabComponent, SprintCreateFormComponent, SprintEditFormComponent, TaskTableComponent, ButtonComponent],
+  imports: [TaskCreateModalComponent, TaskDetailModalComponent, SprintTabComponent, SprintCreateFormComponent, SprintEditFormComponent, TaskTableComponent, ButtonComponent, ErrorStateComponent],
   template: `
     <div class="task-backlog__toolbar">
       <select class="task-backlog__filter" aria-label="Module filter" [value]="objectiveFilter()" (change)="objectiveFilter.set($any($event.target).value)">
@@ -83,7 +84,7 @@ import { toTaskCategoryColumn } from '../../utils/task-category.mapper';
     @if (store.loading() || sprintStore.loading()) {
       <p>Loading…</p>
     } @else if (store.error()) {
-      <p class="task-backlog__error">{{ store.error() }}</p>
+      <app-error-state [message]="store.error()!" [retryable]="true" (retry)="reloadTasks()" />
     } @else {
       @for (sprint of filteredSprints(); track sprint.id) {
         <app-sprint-tab
@@ -146,7 +147,6 @@ import { toTaskCategoryColumn } from '../../utils/task-category.mapper';
   styles: [`
     .task-backlog__toolbar { display: flex; flex-wrap: wrap; justify-content: flex-end; align-items: center; gap: 8px; margin-bottom: 12px; }
     .task-backlog__filter, .task-backlog__status-filter { border: 1px solid var(--color-border); border-radius: 8px; padding: 8px 10px; background: var(--color-surface); color: var(--color-text-primary); }
-    .task-backlog__error { color: var(--color-danger); }
     .task-backlog__sprint-message { color: var(--color-danger-text, var(--color-danger)); font-size: 12px; margin-bottom: 8px; }
     .task-backlog__unsorted { margin-top: 16px; }
     .task-backlog__unsorted-title { font-size: 13px; font-weight: 600; color: var(--color-text-primary); margin: 0 0 8px; }
