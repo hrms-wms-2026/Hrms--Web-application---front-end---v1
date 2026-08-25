@@ -1,12 +1,13 @@
 /** Quiet Operations Desk: seven deliberate steps keep policy decisions comprehensible and reviewable. */
 import { ChangeDetectionStrategy, Component, EventEmitter, Input, Output, computed, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
+import { FormsModule } from '@angular/forms';
 import { LegalEntityListItem } from '../../../organization/models/legal-entity.model';
 import { LeaveTypeResponse } from '../../models/leave-type.model';
 import { CreateLeavePolicyBlackoutPeriodRequest, CreateLeavePolicyTypeRuleRequest, LeavePolicyFormDraft } from '../../models/leave-policy.model';
 import { createEmptyLeavePolicyFormDraft, validateLeavePolicyFormDraft } from '../../utils/leave-policy-form.mapper';
 
-@Component({ selector: 'app-leave-policy-form-wizard', standalone: true, imports: [CommonModule], templateUrl: './leave-policy-form-wizard.component.html', styleUrl: './leave-policy-form-wizard.component.css', changeDetection: ChangeDetectionStrategy.OnPush })
+@Component({ selector: 'app-leave-policy-form-wizard', standalone: true, imports: [CommonModule, FormsModule], templateUrl: './leave-policy-form-wizard.component.html', styleUrl: './leave-policy-form-wizard.component.css', changeDetection: ChangeDetectionStrategy.OnPush })
 export class LeavePolicyFormWizardComponent {
   @Input() leaveTypes: readonly LeaveTypeResponse[] = [];
   @Input() legalEntities: readonly LegalEntityListItem[] = [];
