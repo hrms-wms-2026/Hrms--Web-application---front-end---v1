@@ -61,6 +61,7 @@ describe('TimeTrackingStore', () => {
     getToday: ReturnType<typeof vi.fn>;
     getMyHistory: ReturnType<typeof vi.fn>;
     getCoveredHistory: ReturnType<typeof vi.fn>;
+    getMyCorrections: ReturnType<typeof vi.fn>;
     clockIn: ReturnType<typeof vi.fn>;
     startBreak: ReturnType<typeof vi.fn>;
     endBreak: ReturnType<typeof vi.fn>;
@@ -73,8 +74,9 @@ describe('TimeTrackingStore', () => {
   beforeEach(() => {
     api = {
       getToday: vi.fn(() => of(today)),
-      getMyHistory: vi.fn(() => of([])),
-      getCoveredHistory: vi.fn(() => of([])),
+      getMyHistory: vi.fn(() => of({ items: [], pageNumber: 1, pageSize: 20, totalCount: 0 })),
+      getCoveredHistory: vi.fn(() => of({ items: [], pageNumber: 1, pageSize: 20, totalCount: 0 })),
+      getMyCorrections: vi.fn(() => of({ items: [], pageNumber: 1, pageSize: 20, totalCount: 0 })),
       clockIn: vi.fn(() => of(today)),
       startBreak: vi.fn(() => of(today)),
       endBreak: vi.fn(() => of(today)),
@@ -156,5 +158,25 @@ describe('TimeTrackingStore', () => {
 
     expect(store.coveredHistoryError()).toBe(TIME_TRACKING_COVERED_FORBIDDEN_ERROR);
     expect(errors.toSafeMessage).not.toHaveBeenCalled();
+  });
+
+  it('loadMyHistory resets to the requested page and stores the paged totals', async () => {
+    api.getMyHistory.mockReturnValue(of({ items: [], pageNumber: 3, pageSize: 20, totalCount: 61 }));
+
+    await store.loadMyHistory({ from: '2026-08-17', to: '2026-08-23' }, 3);
+
+    expect(api.getMyHistory).toHaveBeenCalledWith('2026-08-17', '2026-08-23', 3, 20);
+    expect(store.historyPage()).toBe(3);
+    expect(store.historyTotalCount()).toBe(61);
+  });
+
+  it('loadMyCorrections defaults to page 1 and stores the paged totals', async () => {
+    api.getMyCorrections.mockReturnValue(of({ items: [], pageNumber: 1, pageSize: 20, totalCount: 5 }));
+
+    await store.loadMyCorrections();
+
+    expect(api.getMyCorrections).toHaveBeenCalledWith(1, 20);
+    expect(store.myCorrectionsPage()).toBe(1);
+    expect(store.myCorrectionsTotalCount()).toBe(5);
   });
 });

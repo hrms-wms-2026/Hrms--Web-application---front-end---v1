@@ -20,6 +20,8 @@ import {
   TimeTrackingRange
 } from '../models/time-tracking.model';
 
+const DEFAULT_PAGE_SIZE = 20;
+
 export type TimeTrackingAction = 'clockIn' | 'startBreak' | 'endBreak' | 'clockOut';
 export type CorrectionAction = 'preview' | 'submit' | 'cancel' | 'approve' | 'reject';
 
@@ -44,14 +46,23 @@ interface TimeTrackingState {
   readonly history: readonly AttendanceHistoryRow[];
   readonly historyLoading: boolean;
   readonly historyError: string | null;
+  readonly historyPage: number;
+  readonly historyPageSize: number;
+  readonly historyTotalCount: number;
   readonly coveredHistory: readonly AttendanceHistoryRow[];
   readonly coveredHistoryLoading: boolean;
   readonly coveredHistoryError: string | null;
+  readonly coveredHistoryPage: number;
+  readonly coveredHistoryPageSize: number;
+  readonly coveredHistoryTotalCount: number;
   readonly selectedHistoryRange: TimeTrackingRange | null;
   readonly selectedCoveredEmployeeId: string | null;
   readonly myCorrections: readonly AttendanceCorrectionListItem[];
   readonly myCorrectionsLoading: boolean;
   readonly myCorrectionsError: string | null;
+  readonly myCorrectionsPage: number;
+  readonly myCorrectionsPageSize: number;
+  readonly myCorrectionsTotalCount: number;
   readonly approvalInbox: readonly AttendanceCorrectionApprovalListItem[];
   readonly approvalInboxLoading: boolean;
   readonly approvalInboxError: string | null;
@@ -70,14 +81,23 @@ const initialState: TimeTrackingState = {
   history: [],
   historyLoading: false,
   historyError: null,
+  historyPage: 1,
+  historyPageSize: DEFAULT_PAGE_SIZE,
+  historyTotalCount: 0,
   coveredHistory: [],
   coveredHistoryLoading: false,
   coveredHistoryError: null,
+  coveredHistoryPage: 1,
+  coveredHistoryPageSize: DEFAULT_PAGE_SIZE,
+  coveredHistoryTotalCount: 0,
   selectedHistoryRange: null,
   selectedCoveredEmployeeId: null,
   myCorrections: [],
   myCorrectionsLoading: false,
   myCorrectionsError: null,
+  myCorrectionsPage: 1,
+  myCorrectionsPageSize: DEFAULT_PAGE_SIZE,
+  myCorrectionsTotalCount: 0,
   approvalInbox: [],
   approvalInboxLoading: false,
   approvalInboxError: null,
@@ -140,36 +160,54 @@ export const TimeTrackingStore = signalStore(
         }
       },
 
-      async loadMyHistory(range: TimeTrackingRange): Promise<void> {
+      async loadMyHistory(range: TimeTrackingRange, page = 1): Promise<void> {
         if (store.historyLoading()) return;
         patchState(store, { historyLoading: true, historyError: null, selectedHistoryRange: range });
         try {
-          const history = await firstValueFrom(api.getMyHistory(range.from, range.to));
-          patchState(store, { history, historyLoading: false, historyError: null });
+          const result = await firstValueFrom(api.getMyHistory(range.from, range.to, page, store.historyPageSize()));
+          patchState(store, {
+            history: result.items,
+            historyPage: result.pageNumber,
+            historyTotalCount: result.totalCount,
+            historyLoading: false,
+            historyError: null
+          });
         } catch (error) {
           patchState(store, { historyLoading: false, historyError: errors.toSafeMessage(error, TIME_TRACKING_HISTORY_ERROR) });
         }
       },
 
-      async loadCoveredHistory(range: TimeTrackingRange, employeeId?: string): Promise<void> {
+      async loadCoveredHistory(range: TimeTrackingRange, employeeId?: string, page = 1): Promise<void> {
         if (store.coveredHistoryLoading()) return;
         const selectedEmployeeId = employeeId?.trim() || null;
         patchState(store, { coveredHistoryLoading: true, coveredHistoryError: null, selectedCoveredEmployeeId: selectedEmployeeId });
         try {
-          const coveredHistory = await firstValueFrom(api.getCoveredHistory(range.from, range.to, selectedEmployeeId ?? undefined));
-          patchState(store, { coveredHistory, coveredHistoryLoading: false, coveredHistoryError: null });
+          const result = await firstValueFrom(api.getCoveredHistory(range.from, range.to, page, store.coveredHistoryPageSize(), selectedEmployeeId ?? undefined));
+          patchState(store, {
+            coveredHistory: result.items,
+            coveredHistoryPage: result.pageNumber,
+            coveredHistoryTotalCount: result.totalCount,
+            coveredHistoryLoading: false,
+            coveredHistoryError: null
+          });
         } catch (error) {
           const message = thisIsForbidden(error) ? TIME_TRACKING_COVERED_FORBIDDEN_ERROR : errors.toSafeMessage(error, TIME_TRACKING_COVERED_HISTORY_ERROR);
           patchState(store, { coveredHistoryLoading: false, coveredHistoryError: message });
         }
       },
 
-      async loadMyCorrections(): Promise<void> {
+      async loadMyCorrections(page = 1): Promise<void> {
         if (store.myCorrectionsLoading()) return;
         patchState(store, { myCorrectionsLoading: true, myCorrectionsError: null });
         try {
-          const myCorrections = await firstValueFrom(api.getMyCorrections());
-          patchState(store, { myCorrections, myCorrectionsLoading: false, myCorrectionsError: null });
+          const result = await firstValueFrom(api.getMyCorrections(page, store.myCorrectionsPageSize()));
+          patchState(store, {
+            myCorrections: result.items,
+            myCorrectionsPage: result.pageNumber,
+            myCorrectionsTotalCount: result.totalCount,
+            myCorrectionsLoading: false,
+            myCorrectionsError: null
+          });
         } catch (error) {
           patchState(store, { myCorrectionsLoading: false, myCorrectionsError: errors.toSafeMessage(error, CORRECTIONS_LOAD_ERROR) });
         }
