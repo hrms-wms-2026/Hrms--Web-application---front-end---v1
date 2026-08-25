@@ -38,12 +38,7 @@ export const WORK_ROUTES: Routes = [
               import('./feature/milestone-coming-soon-tab/milestone-coming-soon-tab.component').then((m) => m.MilestoneComingSoonTabComponent),
             data: { title: 'List' }
           },
-          {
-            path: 'calendar',
-            loadComponent: () =>
-              import('./feature/milestone-coming-soon-tab/milestone-coming-soon-tab.component').then((m) => m.MilestoneComingSoonTabComponent),
-            data: { title: 'Calendar' }
-          },
+          
           
         ]
       },
@@ -56,6 +51,11 @@ export const WORK_ROUTES: Routes = [
         path: 'backlog',
         loadComponent: () =>
           import('./feature/task-backlog/task-backlog.component').then((m) => m.TaskBacklogComponent)
+      },
+      {
+        path: 'calendar',
+        loadComponent: () =>
+          import('./feature/project-calendar/project-calendar.component').then((m) => m.ProjectCalendarComponent)
       },
       {
         path: 'settings',

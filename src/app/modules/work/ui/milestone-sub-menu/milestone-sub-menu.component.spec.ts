@@ -45,7 +45,8 @@ describe('MilestoneSubMenuComponent', () => {
       '/milestones/o1/my-task',
       '/milestones/o1/list',
       '/milestones/o1/approvals',
-      '/milestones/o1/calendar'
+            '/calendar'
+
     ]);
   });
 

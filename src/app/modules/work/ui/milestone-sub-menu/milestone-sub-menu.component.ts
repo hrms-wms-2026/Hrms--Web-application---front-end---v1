@@ -16,7 +16,8 @@ const BASE_TABS: SubMenuTab[] = [
   { label: 'My Task', segment: 'my-task' },
   { label: 'List', segment: 'list' },
   { label: 'Approvals', segment: 'approvals' },
-  { label: 'Calendar', segment: 'calendar' }
+    { label: 'Calendar', segment: 'calendar', projectLevel: true }
+
 ];
 
 const SETTINGS_TAB: SubMenuTab = { label: 'Settings', segment: 'settings', projectLevel: true };
