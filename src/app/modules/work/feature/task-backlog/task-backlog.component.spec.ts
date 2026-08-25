@@ -363,12 +363,18 @@ describe('TaskBacklogComponent', () => {
     await fixture.whenStable();
     fixture.detectChanges();
 
-    const select = fixture.nativeElement.querySelector('[data-testid="sprint-status-filter"]') as HTMLSelectElement;
-    expect(select.value).toBe('all');
+    // The native <select> was replaced by app-work-dropdown (see the 20260825
+    // reusable-dropdown commits) - it's a button + listbox popover now, not a <select>.
+    const trigger = fixture.nativeElement.querySelector('button[aria-label="Sprint status filter"]') as HTMLButtonElement;
+    expect(trigger.textContent).toContain('All sprint statuses');
     expect(fixture.debugElement.queryAll(By.directive(SprintTabComponent)).length).toBe(2);
 
-    select.value = 'future';
-    select.dispatchEvent(new Event('change'));
+    trigger.click();
+    fixture.detectChanges();
+    const dropdown = trigger.closest('.work-dropdown') as HTMLElement;
+    const futureOption = Array.from(dropdown.querySelectorAll('[role="option"]'))
+      .find((el) => el.textContent?.includes('Future')) as HTMLElement;
+    futureOption.click();
     fixture.detectChanges();
 
     const tabs = fixture.debugElement.queryAll(By.directive(SprintTabComponent));

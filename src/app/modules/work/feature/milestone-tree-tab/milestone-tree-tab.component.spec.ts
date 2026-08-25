@@ -554,7 +554,7 @@ describe('MilestoneTreeTabComponent', () => {
     expect(fixture.nativeElement.querySelector('app-tree-explanation-panel')).not.toBeNull();
     expect(fixture.nativeElement.querySelector('[data-testid="tree-explanation-panel"]')?.textContent).toContain('Root');
 
-    (fixture.nativeElement.querySelector('[data-testid="edit-button"]') as HTMLElement).click();
+    (fixture.nativeElement.querySelector('[data-testid="panel-edit"]') as HTMLElement).click();
     await fixture.whenStable();
     fixture.detectChanges();
 
