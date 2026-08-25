@@ -3,7 +3,7 @@ import { HttpTestingController, provideHttpClientTesting } from '@angular/common
 import { TestBed } from '@angular/core/testing';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { environment } from '../../../../environments/environment';
-import { AttendanceHistoryRow, AttendanceTodayResponse } from '../models/time-tracking.model';
+import { AttendanceHistoryRow, AttendanceTodayResponse, PagedResultDto } from '../models/time-tracking.model';
 import { TimeTrackingApiService } from './time-tracking-api.service';
 
 const today: AttendanceTodayResponse = {
@@ -117,36 +117,41 @@ describe('TimeTrackingApiService', () => {
       breakOverageMinutes: 15,
       isOverBreakAllowance: true
     };
-    service.getMyHistory('2026-08-17', '2026-08-23').subscribe((response) => {
-      expect(response[0]).toEqual(row);
+    const page: PagedResultDto<AttendanceHistoryRow> = { items: [row], pageNumber: 1, pageSize: 20, totalCount: 1 };
+    service.getMyHistory('2026-08-17', '2026-08-23', 1, 20).subscribe((response) => {
+      expect(response.items[0]).toEqual(row);
     });
     const request = httpMock.expectOne(
       (candidate) => candidate.url === `${base}/history` && candidate.params.get('from') === '2026-08-17'
     );
-    request.flush([row]);
+    request.flush(page);
   });
 
-  it('getMyHistory passes from and to query parameters', () => {
-    service.getMyHistory('2026-08-17', '2026-08-23').subscribe();
+  it('getMyHistory passes from, to, and paging query parameters', () => {
+    service.getMyHistory('2026-08-17', '2026-08-23', 2, 20).subscribe();
     const request = httpMock.expectOne(
       (candidate) => candidate.url === `${base}/history` && candidate.params.get('from') === '2026-08-17'
     );
     expect(request.request.method).toBe('GET');
     expect(request.request.params.get('from')).toBe('2026-08-17');
     expect(request.request.params.get('to')).toBe('2026-08-23');
-    request.flush([]);
+    expect(request.request.params.get('pageNumber')).toBe('2');
+    expect(request.request.params.get('pageSize')).toBe('20');
+    request.flush({ items: [], pageNumber: 2, pageSize: 20, totalCount: 0 });
   });
 
-  it('getCoveredHistory passes range and optional employeeId', () => {
-    service.getCoveredHistory('2026-08-17', '2026-08-23', 'employee-7').subscribe();
+  it('getCoveredHistory passes range, paging, and optional employeeId', () => {
+    service.getCoveredHistory('2026-08-17', '2026-08-23', 1, 20, 'employee-7').subscribe();
     const request = httpMock.expectOne(
       (candidate) => candidate.url === `${base}/covered-history` && candidate.params.get('employeeId') === 'employee-7'
     );
     expect(request.request.method).toBe('GET');
     expect(request.request.params.get('from')).toBe('2026-08-17');
     expect(request.request.params.get('to')).toBe('2026-08-23');
+    expect(request.request.params.get('pageNumber')).toBe('1');
+    expect(request.request.params.get('pageSize')).toBe('20');
     expect(request.request.params.get('employeeId')).toBe('employee-7');
-    request.flush([]);
+    request.flush({ items: [], pageNumber: 1, pageSize: 20, totalCount: 0 });
   });
 
   it('clockIn sends only the web source payload', () => {
@@ -178,12 +183,14 @@ describe('TimeTrackingApiService', () => {
     request.flush({ approvalRequired: true, approver: { employeeId: 'e2', userId: 'u2', displayName: 'Approver', positionName: 'Manager' } });
   });
 
-  it('loads requester corrections and pending approvals with status filters', () => {
-    service.getMyCorrections('2026-08-01', '2026-08-31').subscribe();
+  it('loads requester corrections with paging and optional date filters, and pending approvals with status filters', () => {
+    service.getMyCorrections(1, 20, '2026-08-01', '2026-08-31').subscribe();
     const mine = httpMock.expectOne((candidate) => candidate.url.endsWith('/attendance/corrections/my'));
     expect(mine.request.params.get('from')).toBe('2026-08-01');
     expect(mine.request.params.get('to')).toBe('2026-08-31');
-    mine.flush([]);
+    expect(mine.request.params.get('pageNumber')).toBe('1');
+    expect(mine.request.params.get('pageSize')).toBe('20');
+    mine.flush({ items: [], pageNumber: 1, pageSize: 20, totalCount: 0 });
 
     service.getApprovalInbox().subscribe();
     const approvals = httpMock.expectOne((candidate) => candidate.url.endsWith('/attendance/corrections/approvals'));

@@ -15,7 +15,8 @@ import {
 import {
   AttendanceHistoryRow,
   AttendanceTodayResponse,
-  ClockInRequest
+  ClockInRequest,
+  PagedResultDto
 } from '../models/time-tracking.model';
 
 @Injectable({ providedIn: 'root' })
@@ -28,23 +29,25 @@ export class TimeTrackingApiService {
     return this.http.get<AttendanceTodayResponse>(`${this.basePath}/today`);
   }
 
-  getMyHistory(from: string, to: string): Observable<readonly AttendanceHistoryRow[]> {
-    return this.http.get<readonly AttendanceHistoryRow[]>(`${this.basePath}/history`, {
-      params: this.rangeParams(from, to)
+  getMyHistory(from: string, to: string, page: number, pageSize: number): Observable<PagedResultDto<AttendanceHistoryRow>> {
+    return this.http.get<PagedResultDto<AttendanceHistoryRow>>(`${this.basePath}/history`, {
+      params: this.withPaging(this.rangeParams(from, to), page, pageSize)
     });
   }
 
   getCoveredHistory(
     from: string,
     to: string,
+    page: number,
+    pageSize: number,
     employeeId?: string
-  ): Observable<readonly AttendanceHistoryRow[]> {
-    let params = this.rangeParams(from, to);
+  ): Observable<PagedResultDto<AttendanceHistoryRow>> {
+    let params = this.withPaging(this.rangeParams(from, to), page, pageSize);
     if (employeeId) {
       params = params.set('employeeId', employeeId);
     }
 
-    return this.http.get<readonly AttendanceHistoryRow[]>(`${this.basePath}/covered-history`, {
+    return this.http.get<PagedResultDto<AttendanceHistoryRow>>(`${this.basePath}/covered-history`, {
       params
     });
   }
@@ -74,9 +77,9 @@ export class TimeTrackingApiService {
     return this.http.post<AttendanceCorrectionResponse>(this.correctionsPath, request);
   }
 
-  getMyCorrections(from?: string, to?: string): Observable<readonly AttendanceCorrectionListItem[]> {
-    return this.http.get<readonly AttendanceCorrectionListItem[]>(`${this.correctionsPath}/my`, {
-      params: this.optionalCorrectionParams(from, to)
+  getMyCorrections(page: number, pageSize: number, from?: string, to?: string): Observable<PagedResultDto<AttendanceCorrectionListItem>> {
+    return this.http.get<PagedResultDto<AttendanceCorrectionListItem>>(`${this.correctionsPath}/my`, {
+      params: this.withPaging(this.optionalCorrectionParams(from, to), page, pageSize)
     });
   }
 
@@ -100,6 +103,10 @@ export class TimeTrackingApiService {
 
   private rangeParams(from: string, to: string): HttpParams {
     return new HttpParams().set('from', from).set('to', to);
+  }
+
+  private withPaging(params: HttpParams, page: number, pageSize: number): HttpParams {
+    return params.set('pageNumber', page).set('pageSize', pageSize);
   }
 
   private optionalCorrectionParams(from?: string, to?: string): HttpParams {

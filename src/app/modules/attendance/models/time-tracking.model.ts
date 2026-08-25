@@ -87,3 +87,10 @@ export type TimeTrackingRange = {
   from: string;
   to: string;
 };
+
+export interface PagedResultDto<T> {
+  items: T[];
+  pageNumber: number;
+  pageSize: number;
+  totalCount: number;
+}
