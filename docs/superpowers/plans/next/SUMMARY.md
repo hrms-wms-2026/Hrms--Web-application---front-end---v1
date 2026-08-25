@@ -2,6 +2,15 @@
 
 Pending plans and raw not-yet-brainstormed future-feature context. Stays flat — no date subfolders (see `../../rules/FILE_CREATION_RULES.md`).
 
+- `2026-08-25-work-management-task-time-tracking-and-my-task/` — status: pending, not started. 6 parts:
+  Part 1 converts `my-task` to a project-level route and removes the standalone `list` stub tab, Part 2
+  data-access layer additions, Part 3 shared `TaskClockWidgetComponent`, Part 4 history feed +
+  `TaskDetailModalComponent` percent/reason editing, Part 5 the routed `MyTaskComponent` (Board/List
+  toggle, Sprint filter, search), Part 6 wires the clock widget into Board/Backlog/My Task cards and rows,
+  flips the route to the real component. Design:
+  `../../specs/next/2026-08-25-work-management-task-time-tracking-and-my-task-design.md`. Companion:
+  backend repo's same-named plan folder (9 parts, including a Part 9 added after a gap found mid-plan).
+  Combined execution/code-review prompts at `Desktop/build/`.
 - `Project Management.md` — raw context captured 2026-08-04 from a corrections document (Project Page, Create Project, Edit Project, Overdue/Close popup, Delete confirmation). Status: **not started**, no code exists for it yet, not yet brainstormed or spec'd. Moved here from the former `docs/superpowers/next-plan/` folder on 2026-08-06 to match the backend repo's `plans/next/` convention.
 - `2026-08-11-project-detail-milestone-tree-explorer/` — status: **superseded by `2026-08-12-milestone-tree-mockup-redesign.md` below**, not implemented. 3 parts (`part-1-sub-menu-and-stub-tabs.md`, `part-2-explorer-tree-and-detail-panel.md`, `part-3-routing-integration.md`), split per `FILE_CREATION_RULES.md` rule 3. Design doc: `../../specs/next/2026-08-11-project-detail-milestone-tree-explorer-design.md` (also marked superseded).
 - `2026-08-12-milestone-to-module-display-rename.md` — status: pending, not started. 5 tasks: 4 one-file display-string edits (project-detail loading/empty states, milestone-card aria-label, milestone-settings-modal title/help text, project-detail.store error message) plus a final regression-check task. Design doc: `../../specs/next/2026-08-12-milestone-to-module-display-rename-design.md`. Companion to the backend repo's same-named plan. Note: while working `2026-08-12-milestone-tree-mockup-redesign.md`, the milestone-settings-modal and project-detail.store edits were found already present in the working tree/live code — only the project-detail card-grid strings were still pending, and those strings are removed entirely (not renamed) by the mockup redesign since the card grid itself goes away.
