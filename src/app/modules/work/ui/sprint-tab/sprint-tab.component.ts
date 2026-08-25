@@ -1,13 +1,14 @@
 import { DatePipe } from '@angular/common';
 import { Component, input, output } from '@angular/core';
 import { TaskTableComponent } from '../task-table/task-table.component';
+import { WorkDropdownComponent, WorkDropdownOption } from '../work-dropdown/work-dropdown.component';
 import { Sprint } from '../../models/sprint.model';
 import { TaskStatusColumn, WorkTask } from '../../models/task.model';
 
 @Component({
   selector: 'app-sprint-tab',
   standalone: true,
-  imports: [DatePipe, TaskTableComponent],
+  imports: [DatePipe, TaskTableComponent, WorkDropdownComponent],
   template: `
     <div class="sprint-tab">
       <div class="sprint-tab__header">
@@ -19,17 +20,14 @@ import { TaskStatusColumn, WorkTask } from '../../models/task.model';
 
         @if (isObjectiveOwner()) {
           <button type="button" class="sprint-tab__edit" aria-label="Edit sprint" title="Edit sprint" (click)="editRequested.emit()"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 20h9" /><path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4Z" /></svg><span>Edit</span></button>
-          <span class="sprint-tab__status-wrap">
-            <svg class="sprint-tab__status-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><circle cx="12" cy="12" r="8" /><path d="M12 8v4l2.5 2" /></svg>
-            <select #statusSelect class="sprint-tab__status-select" [value]="sprint().status" (change)="onStatusPicked(statusSelect)">
-              <option value="future">Future</option>
-              <option value="active">Active</option>
-              <option value="complete">Complete</option>
-              <option value="incomplete">Incomplete</option>
-              <option value="achieved">Achieved</option>
-            </select>
-            <svg class="sprint-tab__status-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m6 9 6 6 6-6" /></svg>
-          </span>
+          <app-work-dropdown
+            class="sprint-tab__status-select"
+            [options]="statusOptions"
+            [selected]="sprint().status"
+            accessibleLabel="Sprint status"
+            leadingIcon="status"
+            (selectionChanged)="onStatusPicked($event)"
+          />
         } @else {
           <span class="sprint-tab__status-text" [attr.data-status]="sprint().status"><span class="sprint-tab__status-dot" aria-hidden="true"></span>{{ sprint().status }}</span>
         }
@@ -62,12 +60,7 @@ import { TaskStatusColumn, WorkTask } from '../../models/task.model';
     .sprint-tab__edit { display: inline-flex; align-items: center; gap: 5px; border: 1px solid var(--color-border); border-radius: 8px; padding: 7px 10px; background: var(--color-surface); color: var(--color-text-secondary); font-size: 12px; font-weight: 500; cursor: pointer; transition: background-color 160ms ease, border-color 160ms ease, color 160ms ease; }
     .sprint-tab__edit:hover { border-color: var(--color-accent); background: var(--color-surface-secondary); color: var(--color-text-primary); }
     .sprint-tab__edit svg { width: 14px; height: 14px; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
-    .sprint-tab__status-wrap { position: relative; display: inline-flex; align-items: center; }
-    .sprint-tab__status-icon { pointer-events: none; position: absolute; left: 10px; width: 14px; height: 14px; color: var(--color-accent); }
-    .sprint-tab__status-select { appearance: none; min-width: 118px; height: 34px; border: 1px solid var(--color-border); border-radius: 8px; padding: 0 28px 0 30px; background: var(--color-surface); color: var(--color-text-primary); font-size: 12px; font-weight: 500; cursor: pointer; }
-    .sprint-tab__status-select:hover { border-color: var(--color-accent); }
-    .sprint-tab__status-select:focus-visible { outline: 2px solid var(--color-focus-ring); outline-offset: 2px; }
-    .sprint-tab__status-chevron { pointer-events: none; position: absolute; right: 9px; width: 14px; height: 14px; color: var(--color-text-secondary); }
+    .sprint-tab__status-select { display: inline-block; min-width: 118px; }
     .sprint-tab__status-text { display: inline-flex; align-items: center; gap: 6px; font-size: 12px; color: var(--color-text-secondary); text-transform: capitalize; }
     .sprint-tab__status-dot { width: 7px; height: 7px; border-radius: 999px; background: var(--color-accent); }
     .sprint-tab__body { border-top: 1px solid var(--color-border); padding: 12px 14px; }
@@ -83,6 +76,13 @@ export class SprintTabComponent {
   isObjectiveOwner = input.required<boolean>();
   tasks = input.required<readonly WorkTask[]>();
   statusNames = input.required<Record<string, string>>();
+  readonly statusOptions: readonly WorkDropdownOption[] = [
+    { value: 'future', label: 'Future' },
+    { value: 'active', label: 'Active' },
+    { value: 'complete', label: 'Complete' },
+    { value: 'incomplete', label: 'Incomplete' },
+    { value: 'achieved', label: 'Achieved' }
+  ];
   statuses = input<readonly TaskStatusColumn[]>([]);
   objectiveOwners = input<Record<string, boolean>>({});
   expanded = input(false);
@@ -94,14 +94,7 @@ export class SprintTabComponent {
   taskViewed = output<WorkTask>();
   taskStatusChangeRequested = output<{ taskId: string; newStatusId: string }>();
 
-  protected onStatusPicked(selectEl: HTMLSelectElement): void {
-    const picked = selectEl.value;
+  protected onStatusPicked(picked: string): void {
     this.statusChangeRequested.emit(picked);
-    // Always resync to the real status - Angular's [value] binding won't rewrite the DOM if the
-    // bound value happens to be unchanged (e.g. the picked status was rejected or is a no-op), but
-    // the browser's own native <select> state already changed the instant the user picked it.
-    queueMicrotask(() => {
-      selectEl.value = this.sprint().status;
-    });
   }
 }

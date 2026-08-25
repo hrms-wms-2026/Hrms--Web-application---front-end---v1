@@ -11,9 +11,9 @@ import { WorkDropdownComponent, WorkDropdownOption } from '../work-dropdown/work
       <app-work-dropdown
         [options]="moduleOptions()"
         [selected]="selected()"
-        label="Module"
-        ariaLabel="Module filter"
-        icon="module"
+        fieldLabel="Module"
+        accessibleLabel="Module filter"
+        leadingIcon="module"
         [fullWidth]="true"
         data-testid="module-filter-dropdown"
         (selectionChanged)="selectionChanged.emit($event)"
@@ -21,12 +21,12 @@ import { WorkDropdownComponent, WorkDropdownOption } from '../work-dropdown/work
       <app-work-dropdown
         [options]="statusOptions"
         [selected]="activityFilter()"
-        label="Status"
-        ariaLabel="Activity status filter"
-        icon="status"
+        fieldLabel="Status"
+        accessibleLabel="Activity status filter"
+        leadingIcon="status"
         [fullWidth]="true"
         data-testid="module-activity-filter-dropdown"
-        (selectionChanged)="activityFilterChanged.emit($event as ActivityFilter)"
+        (selectionChanged)="onActivityFilterSelected($event)"
       />
     </div>
   `
@@ -49,4 +49,8 @@ export class ModuleFilterSelectComponent {
     { value: 'all', label: 'All modules' },
     ...this.options().map((option) => ({ value: option.id, label: option.title }))
   ]);
+
+  onActivityFilterSelected(value: string): void {
+    this.activityFilterChanged.emit(value as ActivityFilter);
+  }
 }

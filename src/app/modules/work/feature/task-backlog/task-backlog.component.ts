@@ -25,9 +25,9 @@ import { WorkDropdownComponent, WorkDropdownOption } from '../../ui/work-dropdow
   imports: [TaskCreateModalComponent, TaskDetailModalComponent, SprintTabComponent, SprintCreateFormComponent, SprintEditFormComponent, TaskTableComponent, ButtonComponent, ErrorStateComponent, WorkDropdownComponent],
   template: `
     <div class="task-backlog__toolbar">
-      <app-work-dropdown [options]="objectiveOptions()" [selected]="objectiveFilter()" ariaLabel="Module filter" icon="module" (selectionChanged)="setObjectiveFilter($event)" />
-      <app-work-dropdown [options]="categoryOptions()" [selected]="categoryFilter()" ariaLabel="Category filter" icon="category" (selectionChanged)="setCategoryFilter($event)" />
-      <app-work-dropdown [options]="sprintStatusOptions" [selected]="sprintStatusFilter()" ariaLabel="Sprint status filter" icon="status" (selectionChanged)="setSprintStatusFilter($event)" />
+      <app-work-dropdown [options]="objectiveOptions()" [selected]="objectiveFilter()" accessibleLabel="Module filter" leadingIcon="module" (selectionChanged)="setObjectiveFilter($event)" />
+      <app-work-dropdown [options]="categoryOptions()" [selected]="categoryFilter()" accessibleLabel="Category filter" leadingIcon="category" (selectionChanged)="setCategoryFilter($event)" />
+      <app-work-dropdown [options]="sprintStatusOptions" [selected]="sprintStatusFilter()" accessibleLabel="Sprint status filter" leadingIcon="status" (selectionChanged)="setSprintStatusFilter($event)" />
       @if (modules().length > 0) {
         <app-button variant="secondary" (pressed)="openCreateTask()">Create task</app-button>
       }

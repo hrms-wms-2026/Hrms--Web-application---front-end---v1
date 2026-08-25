@@ -12,21 +12,21 @@ export type WorkDropdownIcon = 'module' | 'status' | 'category' | 'sprint' | 'fi
   standalone: true,
   template: `
     <div class="work-dropdown" [class.work-dropdown--full]="fullWidth()">
-      @if (label()) {
-        <label class="work-dropdown__label" [attr.for]="controlId()">{{ label() }}</label>
+      @if (fieldLabel()) {
+        <label class="work-dropdown__label" [attr.for]="controlId">{{ fieldLabel() }}</label>
       }
       <div class="work-dropdown__control">
         <button
-          [id]="controlId()"
+          [id]="controlId"
           type="button"
           class="work-dropdown__trigger"
           [attr.aria-expanded]="open()"
           aria-haspopup="listbox"
-          [attr.aria-label]="ariaLabel() || label() || selectedLabel()"
+          [attr.aria-label]="accessibleLabel() || fieldLabel() || selectedLabel()"
           (click)="toggle($event)"
           (keydown)="onTriggerKeydown($event)"
         >
-          @switch (icon()) {
+          @switch (leadingIcon()) {
             @case ('module') {
               <svg class="work-dropdown__leading-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="4" y="5" width="16" height="14" rx="2" /><path d="M8 9h8M8 13h5" /></svg>
             }
@@ -48,7 +48,7 @@ export type WorkDropdownIcon = 'module' | 'status' | 'category' | 'sprint' | 'fi
         </button>
 
         @if (open()) {
-          <div class="work-dropdown__menu" role="listbox" [attr.aria-label]="ariaLabel() || label() || 'Options'">
+          <div class="work-dropdown__menu" role="listbox" [attr.aria-label]="accessibleLabel() || fieldLabel() || 'Options'">
             @for (option of options(); track option.value; let index = $index) {
               <button
                 type="button"
@@ -95,14 +95,14 @@ export type WorkDropdownIcon = 'module' | 'status' | 'category' | 'sprint' | 'fi
     .work-dropdown__option-label { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
     @keyframes work-dropdown-menu-in { from { opacity: 0; transform: translateY(-4px); } to { opacity: 1; transform: translateY(0); } }
     @media (prefers-reduced-motion: reduce) { .work-dropdown__menu, .work-dropdown__chevron { animation: none; transition: none; } }
-  `
+  `]
 })
 export class WorkDropdownComponent {
   options = input.required<readonly WorkDropdownOption[]>();
   selected = input.required<string>();
-  label = input('');
-  ariaLabel = input('');
-  icon = input<WorkDropdownIcon>('filter');
+  fieldLabel = input<string>('');
+  accessibleLabel = input<string>('');
+  leadingIcon = input<WorkDropdownIcon>('filter');
   fullWidth = input(false);
 
   selectionChanged = output<string>();

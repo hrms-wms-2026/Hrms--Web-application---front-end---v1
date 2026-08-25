@@ -18,15 +18,15 @@ const STATUS_OPTIONS: readonly WorkDropdownOption[] = [
       <app-work-dropdown
         [options]="categoryOptions()"
         [selected]="selectedCategory() ?? 'all'"
-        ariaLabel="Project category filter"
-        icon="category"
+        accessibleLabel="Project category filter"
+        leadingIcon="category"
         (selectionChanged)="selectCategoryFromDropdown($event)"
       />
       <app-work-dropdown
         [options]="statusOptions"
         [selected]="selectedStatus()"
-        ariaLabel="Project status filter"
-        icon="status"
+        accessibleLabel="Project status filter"
+        leadingIcon="status"
         (selectionChanged)="selectStatusFromDropdown($event)"
       />
     </div>

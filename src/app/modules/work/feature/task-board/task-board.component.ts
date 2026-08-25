@@ -24,9 +24,9 @@ import { WorkDropdownComponent, WorkDropdownOption } from '../../ui/work-dropdow
   imports: [TaskBoardColumnComponent, TaskCreateModalComponent, TaskDetailModalComponent, ButtonComponent, ErrorStateComponent, WorkDropdownComponent],
   template: `
     <div class="task-board__toolbar">
-      <app-work-dropdown [options]="objectiveOptions()" [selected]="objectiveFilter()" ariaLabel="Module filter" icon="module" (selectionChanged)="setObjectiveFilter($event)" />
-      <app-work-dropdown [options]="sprintOptions()" [selected]="sprintFilter()" ariaLabel="Sprint filter" icon="sprint" (selectionChanged)="setSprintFilter($event)" />
-      <app-work-dropdown [options]="categoryOptions()" [selected]="categoryFilter()" ariaLabel="Category filter" icon="category" (selectionChanged)="setCategoryFilter($event)" />
+      <app-work-dropdown [options]="objectiveOptions()" [selected]="objectiveFilter()" accessibleLabel="Module filter" leadingIcon="module" (selectionChanged)="setObjectiveFilter($event)" />
+      <app-work-dropdown [options]="sprintOptions()" [selected]="sprintFilter()" accessibleLabel="Sprint filter" leadingIcon="sprint" (selectionChanged)="setSprintFilter($event)" />
+      <app-work-dropdown [options]="categoryOptions()" [selected]="categoryFilter()" accessibleLabel="Category filter" leadingIcon="category" (selectionChanged)="setCategoryFilter($event)" />
       @if (modules().length > 0) {
         <app-button variant="primary" (pressed)="createOpen.set(true)">Create task</app-button>
       }

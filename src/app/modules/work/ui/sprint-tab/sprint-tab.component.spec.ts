@@ -86,31 +86,17 @@ describe('SprintTabComponent', () => {
     expect(taskList).not.toBeNull();
   });
 
-  it('resyncs the <select> back to the real sprint status after a rejected/no-op pick', async () => {
+  it('emits status changes through the shared dropdown component', () => {
     fixture.componentRef.setInput('isObjectiveOwner', true);
     fixture.detectChanges();
 
     const statusChangeSpy = vi.fn();
     fixture.componentInstance.statusChangeRequested.subscribe(statusChangeSpy);
+    const dropdown = fixture.debugElement.query(By.css('.sprint-tab__status-select')).componentInstance as { selectionChanged: { emit: (value: string) => void } };
 
-    const select: HTMLSelectElement = fixture.nativeElement.querySelector('.sprint-tab__status-select');
-    // Simulate the user picking "Incomplete" - the browser updates its own DOM value immediately,
-    // even before Angular's change handler runs.
-    select.value = 'incomplete';
-    select.dispatchEvent(new Event('change'));
-    fixture.detectChanges();
+    dropdown.selectionChanged.emit('incomplete');
 
     expect(statusChangeSpy).toHaveBeenCalledWith('incomplete');
-    // Immediately after the change event, the native element still shows the picked value...
-    expect(select.value).toBe('incomplete');
-
-    // ...but since the parent never accepted the pick, sprint().status ('active') never changed,
-    // so the [value] binding alone would never rewrite the DOM. The queued microtask must do it.
-    await Promise.resolve();
-    await Promise.resolve();
-    fixture.detectChanges();
-
-    expect(select.value).toBe('active');
     expect(fixture.componentInstance.sprint().status).toBe('active');
   });
 

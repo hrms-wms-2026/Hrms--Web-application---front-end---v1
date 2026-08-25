@@ -1,13 +1,14 @@
 import { DatePipe } from '@angular/common';
 import { Component, computed, input, output, signal } from '@angular/core';
 import { WorkTask, TaskStatusColumn } from '../../models/task.model';
+import { WorkDropdownComponent, WorkDropdownOption } from '../work-dropdown/work-dropdown.component';
 
 type SortKey = 'title' | 'statusId' | 'dueDate' | 'estimatedHours';
 
 @Component({
   selector: 'app-task-table',
   standalone: true,
-  imports: [DatePipe],
+  imports: [DatePipe, WorkDropdownComponent],
   template: `
     <div class="task-table__scroll">
     <table class="task-table">
@@ -29,19 +30,14 @@ type SortKey = 'title' | 'statusId' | 'dueDate' | 'estimatedHours';
             <td>{{ task.title }}</td>
             <td>
               @if (statuses().length > 0) {
-                <span class="task-table__status-wrap">
-                  <select
-                    class="task-table__status-select"
-                    [value]="task.statusId"
-                    (click)="$event.stopPropagation()"
-                    (change)="onStatusPicked(task, $any($event.target).value)"
-                  >
-                    @for (status of availableStatuses(task); track status.id) {
-                      <option [value]="status.id">{{ status.name }}</option>
-                    }
-                  </select>
-                  <svg class="task-table__status-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m6 9 6 6 6-6" /></svg>
-                </span>
+                <app-work-dropdown
+                  class="task-table__status-select"
+                  [options]="statusOptions(task)"
+                  [selected]="task.statusId"
+                  accessibleLabel="Task status"
+                  leadingIcon="status"
+                  (selectionChanged)="onStatusPicked(task, $event)"
+                />
               } @else {
                 {{ statusName(task.statusId) }}
               }
@@ -65,10 +61,7 @@ type SortKey = 'title' | 'statusId' | 'dueDate' | 'estimatedHours';
     .task-table tbody tr { transition: background-color 160ms ease; }
     .task-table tbody tr:last-child td { border-bottom: 0; }
     .task-table tbody tr:hover { background: var(--color-surface-secondary); }
-    .task-table__status-wrap { position: relative; display: inline-flex; align-items: center; }
-    .task-table__status-select { appearance: none; height: 34px; min-width: 108px; border: 1px solid var(--color-border); border-radius: 8px; padding: 0 28px 0 10px; background: var(--color-surface); color: var(--color-text-primary); font-size: 12px; font-weight: 500; cursor: pointer; }
-    .task-table__status-select:hover { border-color: var(--color-accent); }
-    .task-table__status-chevron { pointer-events: none; position: absolute; right: 8px; width: 14px; height: 14px; color: var(--color-text-secondary); }
+    .task-table__status-select { display: inline-block; min-width: 108px; }
     .task-table__status-select:focus-visible, .task-table__view-btn:focus-visible { outline: 2px solid var(--color-focus-ring); outline-offset: 2px; }
     .task-table__priority { font-size: 12px; font-weight: 500; text-transform: capitalize; }
     .task-table__priority[data-priority="critical"], .task-table__priority[data-priority="high"] { color: var(--color-danger); }
@@ -119,6 +112,10 @@ export class TaskTableComponent {
   availableStatuses(task: WorkTask): readonly TaskStatusColumn[] {
     const isOwner = this.objectiveOwners()[task.objectiveId] ?? false;
     return this.statuses().filter((status) => status.visibility === 'public' || isOwner);
+  }
+
+  statusOptions(task: WorkTask): WorkDropdownOption[] {
+    return this.availableStatuses(task).map((status) => ({ value: status.id, label: status.name }));
   }
 
   onStatusPicked(task: WorkTask, newStatusId: string): void {
