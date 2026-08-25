@@ -17,51 +17,17 @@ import { WorkTask } from '../../models/task.model';
 import { Sprint, SprintStatus } from '../../models/sprint.model';
 import { TaskCategoryColumn } from '../../models/task-category.model';
 import { toTaskCategoryColumn } from '../../utils/task-category.mapper';
+import { WorkDropdownComponent, WorkDropdownOption } from '../../ui/work-dropdown/work-dropdown.component';
 
 @Component({
   selector: 'app-task-backlog',
   standalone: true,
-  imports: [TaskCreateModalComponent, TaskDetailModalComponent, SprintTabComponent, SprintCreateFormComponent, SprintEditFormComponent, TaskTableComponent, ButtonComponent, ErrorStateComponent],
+  imports: [TaskCreateModalComponent, TaskDetailModalComponent, SprintTabComponent, SprintCreateFormComponent, SprintEditFormComponent, TaskTableComponent, ButtonComponent, ErrorStateComponent, WorkDropdownComponent],
   template: `
     <div class="task-backlog__toolbar">
-      <div class="task-backlog__filter-shell">
-        <svg class="task-backlog__filter-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 7h18M6 7v10M18 7v10M9 17h6" /></svg>
-        <select class="task-backlog__filter" aria-label="Module filter" [value]="objectiveFilter()" (change)="objectiveFilter.set($any($event.target).value)">
-          <option value="all">All modules</option>
-          @for (module of modules(); track module.objectiveId) {
-            <option [value]="module.objectiveId">{{ module.title }}</option>
-          }
-        </select>
-        <svg class="task-backlog__chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m6 9 6 6 6-6" /></svg>
-      </div>
-      <div class="task-backlog__filter-shell">
-        <svg class="task-backlog__filter-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 6h16M7 12h10M10 18h4" /></svg>
-        <select class="task-backlog__filter" aria-label="Category filter" [value]="categoryFilter()" (change)="categoryFilter.set($any($event.target).value)">
-          <option value="all">All categories</option>
-          @for (category of categories(); track category.id) {
-            <option [value]="category.id">{{ category.name }}</option>
-          }
-        </select>
-        <svg class="task-backlog__chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m6 9 6 6 6-6" /></svg>
-      </div>
-      <div class="task-backlog__filter-shell task-backlog__filter-shell--wide">
-        <svg class="task-backlog__filter-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="8" /><path d="M12 8v4l2.5 2" /></svg>
-        <select
-          class="task-backlog__status-filter"
-          data-testid="sprint-status-filter"
-          aria-label="Sprint status filter"
-          [value]="sprintStatusFilter()"
-          (change)="sprintStatusFilter.set($any($event.target).value)"
-        >
-          <option value="all">All sprint statuses</option>
-          <option value="future">Future</option>
-          <option value="active">Active</option>
-          <option value="complete">Complete</option>
-          <option value="incomplete">Incomplete</option>
-          <option value="achieved">Achieved</option>
-        </select>
-        <svg class="task-backlog__chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m6 9 6 6 6-6" /></svg>
-      </div>
+      <app-work-dropdown [options]="objectiveOptions()" [selected]="objectiveFilter()" ariaLabel="Module filter" icon="module" (selectionChanged)="setObjectiveFilter($event)" />
+      <app-work-dropdown [options]="categoryOptions()" [selected]="categoryFilter()" ariaLabel="Category filter" icon="category" (selectionChanged)="setCategoryFilter($event)" />
+      <app-work-dropdown [options]="sprintStatusOptions" [selected]="sprintStatusFilter()" ariaLabel="Sprint status filter" icon="status" (selectionChanged)="setSprintStatusFilter($event)" />
       @if (modules().length > 0) {
         <app-button variant="secondary" (pressed)="openCreateTask()">Create task</app-button>
       }
@@ -156,16 +122,9 @@ import { toTaskCategoryColumn } from '../../utils/task-category.mapper';
     }
   `,
   styles: [`
-    .task-backlog__toolbar { display: flex; flex-wrap: wrap; justify-content: flex-end; align-items: center; gap: 8px; margin-bottom: 16px; }
-    .task-backlog__filter-shell { position: relative; min-width: 180px; }
-    .task-backlog__filter-shell--wide { min-width: 210px; }
-    .task-backlog__filter, .task-backlog__status-filter { appearance: none; width: 100%; height: 44px; border: 1px solid var(--color-border); border-radius: 9px; padding: 0 34px 0 36px; background: var(--color-surface); color: var(--color-text-primary); font-size: 14px; font-weight: 500; box-shadow: 0 1px 2px rgb(15 23 42 / 0.04); transition: border-color 160ms ease, box-shadow 160ms ease; }
-    .task-backlog__filter:hover, .task-backlog__status-filter:hover { border-color: var(--color-accent); }
-    .task-backlog__filter:focus-visible, .task-backlog__status-filter:focus-visible { outline: 2px solid var(--color-focus-ring); outline-offset: 2px; }
-    .task-backlog__filter-icon, .task-backlog__chevron { pointer-events: none; position: absolute; top: 50%; width: 16px; height: 16px; transform: translateY(-50%); }
-    .task-backlog__filter-icon { left: 12px; color: var(--color-accent); }
-    .task-backlog__chevron { right: 12px; color: var(--color-text-secondary); transition: transform 160ms ease; }
-    .task-backlog__filter:focus + .task-backlog__chevron, .task-backlog__status-filter:focus + .task-backlog__chevron { transform: translateY(-50%) rotate(180deg); }
+    .task-backlog__toolbar { display: flex; flex-wrap: wrap; justify-content: flex-end; align-items: flex-end; gap: 8px; margin-bottom: 16px; }
+    .task-backlog__toolbar app-work-dropdown { flex: 1 1 180px; max-width: 220px; }
+    @media (max-width: 720px) { .task-backlog__toolbar { justify-content: stretch; } .task-backlog__toolbar app-work-dropdown { flex: 1 1 180px; max-width: none; } .task-backlog__toolbar app-button { flex: 1 1 100%; } }
     .task-backlog__sprint-message { color: var(--color-danger-text, var(--color-danger)); font-size: 12px; margin-bottom: 8px; }
     .task-backlog__unsorted { margin-top: 18px; }
     .task-backlog__unsorted-title { font-size: 13px; font-weight: 600; color: var(--color-text-primary); margin: 0 0 10px; }
@@ -191,6 +150,14 @@ export class TaskBacklogComponent implements OnInit {
   protected readonly objectiveFilter = signal('all');
   protected readonly categoryFilter = signal('all');
   protected readonly categories = signal<TaskCategoryColumn[]>([]);
+  protected readonly sprintStatusOptions: readonly WorkDropdownOption[] = [
+    { value: 'all', label: 'All sprint statuses' },
+    { value: 'future', label: 'Future' },
+    { value: 'active', label: 'Active' },
+    { value: 'complete', label: 'Complete' },
+    { value: 'incomplete', label: 'Incomplete' },
+    { value: 'achieved', label: 'Achieved' }
+  ];
 
   protected readonly modules = computed(() => this.projectStore.milestones());
   protected readonly objectiveOwners = computed(() =>
@@ -199,6 +166,14 @@ export class TaskBacklogComponent implements OnInit {
   protected readonly moduleOptions = computed(() =>
     this.modules().map((m) => ({ objectiveId: m.objectiveId, title: m.title, isOwner: m.isOwner }))
   );
+  protected readonly objectiveOptions = computed<WorkDropdownOption[]>(() => [
+    { value: 'all', label: 'All modules' },
+    ...this.modules().map((module) => ({ value: module.objectiveId, label: module.title }))
+  ]);
+  protected readonly categoryOptions = computed<WorkDropdownOption[]>(() => [
+    { value: 'all', label: 'All categories' },
+    ...this.categories().map((category) => ({ value: category.id, label: category.name }))
+  ]);
   // Sprint creation has no pending/request path (unlike tasks) - only modules the user owns may
   // ever be offered here, or SprintApiService.create would just fail for a non-owner's pick.
   protected readonly ownedModuleOptions = computed(() => this.moduleOptions().filter((m) => m.isOwner));
@@ -237,6 +212,10 @@ export class TaskBacklogComponent implements OnInit {
   toggleExpanded(sprintId: string): void {
     this.expandedSprintId.set(this.expandedSprintId() === sprintId ? null : sprintId);
   }
+
+  protected setObjectiveFilter(value: string): void { this.objectiveFilter.set(value); }
+  protected setCategoryFilter(value: string): void { this.categoryFilter.set(value); }
+  protected setSprintStatusFilter(value: string): void { this.sprintStatusFilter.set(value as 'all' | SprintStatus); }
 
   protected openCreateTask(): void {
     this.createOpen.set(true);

@@ -16,45 +16,17 @@ import { Sprint } from '../../models/sprint.model';
 import { WorkTask } from '../../models/task.model';
 import { TaskCategoryColumn } from '../../models/task-category.model';
 import { toTaskCategoryColumn } from '../../utils/task-category.mapper';
+import { WorkDropdownComponent, WorkDropdownOption } from '../../ui/work-dropdown/work-dropdown.component';
 
 @Component({
   selector: 'app-task-board',
   standalone: true,
-  imports: [TaskBoardColumnComponent, TaskCreateModalComponent, TaskDetailModalComponent, ButtonComponent, ErrorStateComponent],
+  imports: [TaskBoardColumnComponent, TaskCreateModalComponent, TaskDetailModalComponent, ButtonComponent, ErrorStateComponent, WorkDropdownComponent],
   template: `
     <div class="task-board__toolbar">
-      <div class="task-board__filter-shell">
-        <svg class="task-board__filter-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 7h18M6 7v10M18 7v10M9 17h6" /></svg>
-        <select class="task-board__filter" aria-label="Module filter" [value]="objectiveFilter()" (change)="objectiveFilter.set($any($event.target).value)">
-          <option value="all">All modules</option>
-          @for (module of modules(); track module.objectiveId) {
-            <option [value]="module.objectiveId">{{ module.title }}</option>
-          }
-        </select>
-        <svg class="task-board__chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m6 9 6 6 6-6" /></svg>
-      </div>
-      <div class="task-board__filter-shell">
-        <svg class="task-board__filter-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="8" /><path d="M12 8v4l2.5 2" /></svg>
-        <select class="task-board__filter" aria-label="Sprint filter" [value]="sprintFilter()" (change)="sprintFilter.set($any($event.target).value)">
-          <option value="active">Active sprints</option>
-          <option value="all">All sprints</option>
-          <option value="individual">Individual task</option>
-          @for (sprint of sprints(); track sprint.id) {
-            <option [value]="sprint.id">{{ sprint.name }}</option>
-          }
-        </select>
-        <svg class="task-board__chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m6 9 6 6 6-6" /></svg>
-      </div>
-      <div class="task-board__filter-shell">
-        <svg class="task-board__filter-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 6h16M7 12h10M10 18h4" /></svg>
-        <select class="task-board__filter" aria-label="Category filter" [value]="categoryFilter()" (change)="categoryFilter.set($any($event.target).value)">
-          <option value="all">All categories</option>
-          @for (category of categories(); track category.id) {
-            <option [value]="category.id">{{ category.name }}</option>
-          }
-        </select>
-        <svg class="task-board__chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m6 9 6 6 6-6" /></svg>
-      </div>
+      <app-work-dropdown [options]="objectiveOptions()" [selected]="objectiveFilter()" ariaLabel="Module filter" icon="module" (selectionChanged)="setObjectiveFilter($event)" />
+      <app-work-dropdown [options]="sprintOptions()" [selected]="sprintFilter()" ariaLabel="Sprint filter" icon="sprint" (selectionChanged)="setSprintFilter($event)" />
+      <app-work-dropdown [options]="categoryOptions()" [selected]="categoryFilter()" ariaLabel="Category filter" icon="category" (selectionChanged)="setCategoryFilter($event)" />
       @if (modules().length > 0) {
         <app-button variant="primary" (pressed)="createOpen.set(true)">Create task</app-button>
       }
@@ -104,17 +76,10 @@ import { toTaskCategoryColumn } from '../../utils/task-category.mapper';
     />
   `,
   styles: [`
-    .task-board__toolbar { display: flex; flex-wrap: wrap; align-items: center; justify-content: flex-end; gap: 8px; margin-bottom: 16px; }
-    .task-board__filter-shell { position: relative; min-width: 180px; }
-    .task-board__filter { appearance: none; width: 100%; height: 44px; border: 1px solid var(--color-border); border-radius: 9px; padding: 0 34px 0 36px; background: var(--color-surface); color: var(--color-text-primary); font-size: 14px; font-weight: 500; box-shadow: 0 1px 2px rgb(15 23 42 / 0.04); transition: border-color 160ms ease, box-shadow 160ms ease; }
-    .task-board__filter:hover { border-color: var(--color-accent); }
-    .task-board__filter:focus-visible { outline: 2px solid var(--color-focus-ring); outline-offset: 2px; }
-    .task-board__filter-icon, .task-board__chevron { pointer-events: none; position: absolute; top: 50%; width: 16px; height: 16px; transform: translateY(-50%); }
-    .task-board__filter-icon { left: 12px; color: var(--color-accent); }
-    .task-board__chevron { right: 12px; color: var(--color-text-secondary); transition: transform 160ms ease; }
-    .task-board__filter:focus + .task-board__chevron { transform: translateY(-50%) rotate(180deg); }
+    .task-board__toolbar { display: flex; flex-wrap: wrap; align-items: flex-end; justify-content: flex-end; gap: 8px; margin-bottom: 16px; }
+    .task-board__toolbar app-work-dropdown { flex: 1 1 180px; max-width: 220px; }
     .task-board { display: flex; gap: 16px; overflow-x: auto; padding: 0 0 10px; scroll-snap-type: x proximity; }
-    @media (max-width: 720px) { .task-board__toolbar { justify-content: stretch; } .task-board__filter-shell { flex: 1 1 180px; } .task-board__toolbar app-button { flex: 1 1 100%; } }
+    @media (max-width: 720px) { .task-board__toolbar { justify-content: stretch; } .task-board__toolbar app-work-dropdown { flex: 1 1 180px; max-width: none; } .task-board__toolbar app-button { flex: 1 1 100%; } }
     :host ::ng-deep .task-card--highlighted { outline: 2px solid var(--color-focus-ring, var(--color-danger)); outline-offset: 2px; }
   `]
 })
@@ -146,6 +111,20 @@ export class TaskBoardComponent implements OnInit, AfterViewChecked {
   protected readonly moduleOptions = computed(() =>
     this.modules().map((m) => ({ objectiveId: m.objectiveId, title: m.title, isOwner: m.isOwner }))
   );
+  protected readonly objectiveOptions = computed<WorkDropdownOption[]>(() => [
+    { value: 'all', label: 'All modules' },
+    ...this.modules().map((module) => ({ value: module.objectiveId, label: module.title }))
+  ]);
+  protected readonly sprintOptions = computed<WorkDropdownOption[]>(() => [
+    { value: 'active', label: 'Active sprints' },
+    { value: 'all', label: 'All sprints' },
+    { value: 'individual', label: 'Individual task' },
+    ...this.sprints().map((sprint) => ({ value: sprint.id, label: sprint.name }))
+  ]);
+  protected readonly categoryOptions = computed<WorkDropdownOption[]>(() => [
+    { value: 'all', label: 'All categories' },
+    ...this.categories().map((category) => ({ value: category.id, label: category.name }))
+  ]);
   protected readonly columnsWithTasks = computed(() =>
     this.store.columnsWithTasks().map((column) => ({
       status: column.status,
@@ -160,6 +139,10 @@ export class TaskBoardComponent implements OnInit, AfterViewChecked {
         .map((id) => [id, this.directory.get(id)?.name ?? 'Unknown employee'])
     )
   );
+
+  protected setObjectiveFilter(value: string): void { this.objectiveFilter.set(value); }
+  protected setSprintFilter(value: string): void { this.sprintFilter.set(value); }
+  protected setCategoryFilter(value: string): void { this.categoryFilter.set(value); }
 
   columnIds(): string[] {
     return this.columnsWithTasks().map((column) => column.status.id);
