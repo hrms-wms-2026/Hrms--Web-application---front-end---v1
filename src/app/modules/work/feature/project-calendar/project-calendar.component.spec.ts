@@ -56,66 +56,63 @@ describe('ProjectCalendarComponent', () => {
     expect(fixture.nativeElement.querySelector('[data-testid="timeline-bar-o2"]')).toBeTruthy();
   });
 
-  describe('week/month/year view navigation', () => {
+  describe('zoom - one continuous chart, no view-switching tabs', () => {
     beforeEach(() => {
-      store.items.set(items); // reset to the single-item fixture ('2026-01-01' start)
+      store.items.set(items); // '2026-01-01' -> '2026-01-05', 5 days
       fixture.detectChanges();
     });
 
-    it('hides period navigation in the default (full-range) view', () => {
-      expect(fixture.nativeElement.querySelector('[data-testid="period-nav"]')).toBeNull();
+    it('always shows the full project range - zoom never hides part of the chart', () => {
+      expect(fixture.componentInstance.timelineStart()).toBe('2026-01-01');
+      expect(fixture.componentInstance.timelineEnd()).toBe('2026-01-05');
+
+      fixture.componentInstance.zoomIn();
+      fixture.componentInstance.zoomIn();
+      fixture.detectChanges();
+      // Zooming changes dayWidth (and so timelineWidth, scrolled via the container),
+      // never the underlying date range itself.
+      expect(fixture.componentInstance.timelineStart()).toBe('2026-01-01');
+      expect(fixture.componentInstance.timelineEnd()).toBe('2026-01-05');
+      expect(fixture.nativeElement.querySelectorAll('[data-testid^="calendar-row-"]').length).toBe(1);
     });
 
-    it('anchors week view at the project start, and Next/Previous page by 7 days', () => {
-      fixture.componentInstance.setCalendarView('week');
+    it('zoom in/out multiply and divide day width, clamped between the fit floor and the max', () => {
+      const before = fixture.componentInstance.dayWidth();
+      fixture.componentInstance.zoomIn();
       fixture.detectChanges();
+      expect(fixture.componentInstance.dayWidth()).toBeGreaterThan(before);
 
-      expect(fixture.componentInstance.visibleTimelineStart()).toBe('2026-01-01');
-      expect(fixture.componentInstance.visibleTimelineEnd()).toBe('2026-01-07');
-
-      fixture.nativeElement.querySelector('[aria-label="Next period"]').click();
+      fixture.componentInstance.zoomOut();
+      fixture.componentInstance.zoomOut();
       fixture.detectChanges();
-      expect(fixture.componentInstance.visibleTimelineStart()).toBe('2026-01-08');
+      expect(fixture.componentInstance.dayWidth()).toBeLessThan(before);
 
-      fixture.nativeElement.querySelector('[aria-label="Previous period"]').click();
-      fixture.nativeElement.querySelector('[aria-label="Previous period"]').click();
+      // Zooming out past the fit-to-screen floor clamps there, doesn't go smaller.
+      for (let i = 0; i < 20; i++) fixture.componentInstance.zoomOut();
       fixture.detectChanges();
-      expect(fixture.componentInstance.visibleTimelineStart()).toBe('2025-12-25');
+      expect(fixture.componentInstance.dayWidth()).toBeCloseTo(fixture.componentInstance.fitDayWidth(), 5);
+      expect(fixture.componentInstance.isAtMinZoom()).toBe(true);
+
+      for (let i = 0; i < 40; i++) fixture.componentInstance.zoomIn();
+      fixture.detectChanges();
+      expect(fixture.componentInstance.isAtMaxZoom()).toBe(true);
     });
 
-    it('pages month view by whole calendar months, normalized to the 1st', () => {
-      fixture.componentInstance.setCalendarView('month');
+    it('the Fit button jumps straight to the fit-to-screen day width', () => {
+      fixture.componentInstance.containerWidth.set(940); // 700px available after the 240px label column
       fixture.detectChanges();
-      expect(fixture.componentInstance.visibleTimelineStart()).toBe('2026-01-01');
-      expect(fixture.componentInstance.visibleTimelineEnd()).toBe('2026-01-31');
+      fixture.nativeElement.querySelector('[data-testid="fit-to-screen"]').click();
+      fixture.detectChanges();
 
-      fixture.nativeElement.querySelector('[aria-label="Next period"]').click();
-      fixture.detectChanges();
-      expect(fixture.componentInstance.visibleTimelineStart()).toBe('2026-02-01');
-      expect(fixture.componentInstance.visibleTimelineEnd()).toBe('2026-02-28');
+      // 5-day project, 700px / 5 = 140px/day
+      expect(fixture.componentInstance.dayWidth()).toBe(140);
     });
 
-    it('pages year view by whole years', () => {
-      fixture.componentInstance.setCalendarView('year');
+    it('scales the fit floor down with a sane minimum for a very long project', () => {
+      fixture.componentInstance.containerWidth.set(250); // 10px available - below the 3px/day floor's need
+      fixture.componentInstance.fitToScreen();
       fixture.detectChanges();
-      expect(fixture.componentInstance.visibleTimelineStart()).toBe('2026-01-01');
-
-      fixture.nativeElement.querySelector('[aria-label="Next period"]').click();
-      fixture.detectChanges();
-      expect(fixture.componentInstance.visibleTimelineStart()).toBe('2027-01-01');
-      expect(fixture.componentInstance.visibleTimelineEnd()).toBe('2027-12-31');
-    });
-
-    it('resets the anchor back to the project start when switching views', () => {
-      fixture.componentInstance.setCalendarView('week');
-      fixture.detectChanges();
-      fixture.nativeElement.querySelector('[aria-label="Next period"]').click();
-      fixture.detectChanges();
-      expect(fixture.componentInstance.visibleTimelineStart()).toBe('2026-01-08');
-
-      fixture.componentInstance.setCalendarView('month');
-      fixture.detectChanges();
-      expect(fixture.componentInstance.visibleTimelineStart()).toBe('2026-01-01');
+      expect(fixture.componentInstance.dayWidth()).toBe(3);
     });
   });
 
@@ -125,47 +122,25 @@ describe('ProjectCalendarComponent', () => {
       fixture.detectChanges();
     });
 
-    it('Normal view ticks every day - the gap between any two adjacent ticks is one day', () => {
-      expect(fixture.componentInstance.calendarView()).toBe('default');
+    it('keeps ticks a consistent on-screen gap apart, regardless of zoom', () => {
+      // Default zoom (32px/day): 60/32 rounds to a 2-day step.
+      expect(fixture.componentInstance.dateMarkers()).toEqual(['2026-01-01', '2026-01-03', '2026-01-05']);
+
+      // Zoomed in enough that 60px covers less than a day - ticks every day.
+      fixture.componentInstance.zoomIn();
+      fixture.componentInstance.zoomIn();
+      fixture.componentInstance.zoomIn();
+      fixture.componentInstance.zoomIn();
+      fixture.detectChanges();
+      expect(fixture.componentInstance.dayWidth()).toBeGreaterThan(60);
       expect(fixture.componentInstance.dateMarkers()).toEqual(['2026-01-01', '2026-01-02', '2026-01-03', '2026-01-04', '2026-01-05']);
-    });
-
-    it('Week/Month/Year views show only the two endpoint ticks - the whole period IS the gap', () => {
-      fixture.componentInstance.setCalendarView('week');
-      fixture.detectChanges();
-      expect(fixture.componentInstance.dateMarkers()).toEqual(['2026-01-01', '2026-01-07']);
-
-      fixture.componentInstance.setCalendarView('month');
-      fixture.detectChanges();
-      expect(fixture.componentInstance.dateMarkers()).toEqual(['2026-01-01', '2026-01-31']);
-
-      fixture.componentInstance.setCalendarView('year');
-      fixture.detectChanges();
-      expect(fixture.componentInstance.dateMarkers()).toEqual(['2026-01-01', '2026-12-31']);
-    });
-  });
-
-  describe('fit to screen', () => {
-    it('scales day width down to fit the whole project into the container, with a sane floor', () => {
-      store.items.set(items);
-      fixture.detectChanges();
-      fixture.componentInstance.setCalendarView('fit');
-      fixture.componentInstance.containerWidth.set(940); // 700px available after the 240px label column
-      fixture.detectChanges();
-
-      // 5-day project, 700px / 5 = 140px/day
-      expect(fixture.componentInstance.dayWidth()).toBe(140);
-
-      fixture.componentInstance.containerWidth.set(250); // 10px available - below the 3px/day floor's total need
-      fixture.detectChanges();
-      expect(fixture.componentInstance.dayWidth()).toBe(3);
     });
   });
 
   describe('today marker', () => {
     afterEach(() => vi.useRealTimers());
 
-    it('shows the line only when today falls within the visible range, at the right offset', () => {
+    it('shows the line only when today falls within the range, unaffected by zoom', () => {
       vi.useFakeTimers();
       vi.setSystemTime(new Date('2026-01-03T00:00:00Z'));
       TestBed.resetTestingModule();
@@ -184,12 +159,12 @@ describe('ProjectCalendarComponent', () => {
       expect(todayFixture.componentInstance.todayOffset()).toBe(2 * todayFixture.componentInstance.dayWidth());
       expect(todayFixture.nativeElement.querySelector('[data-testid="today-marker"]')).toBeTruthy();
 
-      todayFixture.componentInstance.setCalendarView('year');
-      todayFixture.detectChanges(); // year view's range is the full 2026 year - still visible
+      todayFixture.componentInstance.zoomIn();
+      todayFixture.detectChanges();
       expect(todayFixture.componentInstance.todayVisible()).toBe(true);
     });
 
-    it('hides the line when today falls outside the visible range', () => {
+    it('hides the line when today falls outside the project range', () => {
       vi.useFakeTimers();
       vi.setSystemTime(new Date('2025-06-01T00:00:00Z'));
       TestBed.resetTestingModule();
