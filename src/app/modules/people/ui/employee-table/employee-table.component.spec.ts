@@ -123,6 +123,139 @@ describe('EmployeeTableComponent', () => {
     expect(fixture.nativeElement.querySelector('.emp-attendance-warning-tooltip')).toBeNull();
   });
 
+  it('prioritizes warningLabel, then attentionLabel, and never exposes attentionType', async () => {
+    await setup([
+      {
+        ...employee,
+        attendanceSummary: {
+          ...warningSummary,
+          warningLabel: 'Arrived late today',
+          attentionLabel: 'Friendly attention text',
+          attentionType: 'not_clocked_in'
+        }
+      }
+    ]);
+
+    const warningAvatar = fixture.nativeElement.querySelector('.emp-avatar-wrapper--warning') as HTMLElement;
+    expect(warningAvatar.getAttribute('title')).toBe('Arrived late today');
+    expect(warningAvatar.getAttribute('aria-label')).toBe('Arrived late today');
+    expect(fixture.nativeElement.textContent).not.toContain('not_clocked_in');
+  });
+
+  it('falls back to a friendly not-clocked-in message when warning labels are absent', async () => {
+    await setup([
+      {
+        ...employee,
+        attendanceSummary: {
+          ...warningSummary,
+          warningLabel: null,
+          attentionLabel: null,
+          attentionType: 'not_clocked_in'
+        }
+      }
+    ]);
+
+    const warningAvatar = fixture.nativeElement.querySelector('.emp-avatar-wrapper--warning') as HTMLElement;
+    expect(warningAvatar.getAttribute('title')).toBe('Still has not clocked in');
+    expect(fixture.nativeElement.querySelector('.emp-attendance-warning-tooltip')?.textContent).toContain(
+      'Still has not clocked in'
+    );
+    expect(fixture.nativeElement.textContent).not.toContain('not_clocked_in');
+  });
+
+  it('renders generic attention using its friendly label and severity class', async () => {
+    await setup([
+      {
+        ...employee,
+        id: 'emp-warning-attention',
+        attendanceSummary: {
+          ...warningSummary,
+          showNotClockedInWarning: false,
+          attentionType: 'worked_during_time_off',
+          attentionSeverity: 'warning',
+          attentionLabel: 'Worked during approved time off'
+        }
+      },
+      {
+        ...employee,
+        id: 'emp-critical-attention',
+        attendanceSummary: {
+          ...warningSummary,
+          showNotClockedInWarning: false,
+          attentionType: 'over_break',
+          attentionSeverity: 'critical',
+          attentionLabel: 'Break time exceeded'
+        }
+      },
+      {
+        ...employee,
+        id: 'emp-neutral-attention',
+        attendanceSummary: {
+          ...warningSummary,
+          showNotClockedInWarning: false,
+          attentionType: 'informational',
+          attentionSeverity: 'info',
+          attentionLabel: 'Schedule information'
+        }
+      }
+    ]);
+
+    const attentionElements = fixture.nativeElement.querySelectorAll('.emp-attention-indicator') as NodeListOf<HTMLElement>;
+    expect(attentionElements[0].textContent).toContain('Worked during approved time off');
+    expect(attentionElements[0].classList.contains('emp-attention--warning')).toBe(true);
+    expect(attentionElements[1].classList.contains('emp-attention--critical')).toBe(true);
+    expect(attentionElements[2].classList.contains('emp-attention--neutral')).toBe(true);
+    expect(fixture.nativeElement.textContent).not.toContain('worked_during_time_off');
+    expect(fixture.nativeElement.textContent).not.toContain('over_break');
+  });
+
+  it('renders backend break overage minutes and avoids duplicate break attention text', async () => {
+    await setup([
+      {
+        ...employee,
+        id: 'emp-overage',
+        attendanceSummary: {
+          ...warningSummary,
+          showNotClockedInWarning: false,
+          attentionLabel: 'Break time exceeded',
+          attentionSeverity: 'critical',
+          breakOverageMinutes: 15,
+          isOverBreakAllowance: true
+        }
+      }
+    ]);
+
+    expect(fixture.nativeElement.querySelector('.emp-break-overage-marker')).toBeNull();
+    expect(fixture.nativeElement.textContent).toContain('Break time exceeded');
+
+    fixture.componentRef.setInput('employees', [
+      {
+        ...employee,
+        id: 'emp-overage-only',
+        attendanceSummary: {
+          ...warningSummary,
+          showNotClockedInWarning: false,
+          attentionLabel: null,
+          breakOverageMinutes: 15,
+          isOverBreakAllowance: true
+        }
+      }
+    ]);
+    fixture.detectChanges();
+
+    const marker = fixture.nativeElement.querySelector('.emp-break-overage-marker');
+    expect(marker?.textContent).toContain('Break exceeded by 15 min');
+  });
+
+  it('renders no attendance markers when the summary is absent', async () => {
+    await setup([{ ...employee, attendanceSummary: null }]);
+
+    expect(fixture.nativeElement.querySelector('.emp-attention-indicator')).toBeNull();
+    expect(fixture.nativeElement.querySelector('.emp-break-overage-marker')).toBeNull();
+    expect(fixture.nativeElement.textContent).not.toContain('undefined');
+    expect(fixture.nativeElement.textContent).not.toContain('null');
+  });
+
   it('renders employees in the backend-provided order without client-side sorting', async () => {
     const normalEmployee = { ...employee, id: 'emp-normal', fullName: 'Ada Normal' };
     const warningEmployee = { ...employee, id: 'emp-warning', fullName: 'Zoe Warning', attendanceSummary: warningSummary };

@@ -38,6 +38,12 @@ export interface AttendanceTodayResponse {
   canViewCoveredEmployees: boolean;
   allowedClockInMethods: AllowedClockInMethods;
   messages: string[];
+  attendanceStatusLabel?: string | null;
+  attentionType?: string | null;
+  attentionLabel?: string | null;
+  attentionSeverity?: string | null;
+  breakOverageMinutes?: number;
+  isOverBreakAllowance?: boolean;
 }
 
 export interface AttendanceHistoryEmployee {
@@ -65,6 +71,12 @@ export interface AttendanceHistoryRow {
   canRequestCorrection: boolean;
   canRequestWorkAreaChange: boolean;
   canCorrect: boolean;
+  statusLabel?: string | null;
+  attentionType?: string | null;
+  attentionLabel?: string | null;
+  attentionSeverity?: string | null;
+  breakOverageMinutes?: number;
+  isOverBreakAllowance?: boolean;
 }
 
 export interface ClockInRequest {

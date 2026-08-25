@@ -122,10 +122,16 @@ export class NotificationBellComponent implements OnInit, OnDestroy {
   }
 
   private async navigateFromNotification(item: NotificationItem): Promise<void> {
+    if (item.isNavigable && item.destinationKey === 'attendance_correction_approval' && item.attendanceCorrectionId) {
+      await this.router.navigate(['/attendance/corrections/approvals'], {
+        queryParams: { requestId: item.attendanceCorrectionId }
+      });
+      return;
+    }
+
     const type = item.relatedEntityType;
     const id = item.relatedEntityId;
     if (!type || !id || !WORK_RELATED_TYPES.has(type)) {
-      await this.router.navigate(['/work']);
       return;
     }
 
