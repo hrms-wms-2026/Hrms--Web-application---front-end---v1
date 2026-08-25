@@ -1,4 +1,4 @@
-import { Component, computed, inject, OnInit, signal } from '@angular/core';
+import { AfterViewInit, Component, ElementRef, OnDestroy, OnInit, computed, inject, signal, viewChild } from '@angular/core';
 import { ActivatedRoute } from '@angular/router';
 import { CalendarEventLegendComponent } from '../../ui/calendar-event-legend/calendar-event-legend.component';
 import { CalendarEventModalComponent } from '../../ui/calendar-event-modal/calendar-event-modal.component';
@@ -14,7 +14,8 @@ import { ProjectCalendarStore } from '../../state/project-calendar.store';
 import { addCalendarDays, addCalendarMonths, calendarDayDifference, calendarRange, parseCalendarDate } from '../../utils/calendar-date.utils';
 import { buildCalendarTreeOrder } from '../../utils/calendar-tree.utils';
 
-type CalendarView = 'default' | 'week' | 'month' | 'year';
+type CalendarView = 'default' | 'fit' | 'week' | 'month' | 'year';
+const PAGED_VIEWS: readonly CalendarView[] = ['week', 'month', 'year'];
 
 function startOfMonth(value: string): string {
   const date = parseCalendarDate(value);
@@ -64,7 +65,7 @@ function periodRangeFor(
           <p class="project-calendar__description">Drag an editable bar to shift it, or use its edges to resize the date range.</p>
         </div>
         <div class="project-calendar__actions">
-          @if (calendarView() !== 'default') {
+          @if (isPagedView()) {
             <div class="project-calendar__period-nav" data-testid="period-nav">
               <button type="button" class="project-calendar__period-step" aria-label="Previous period" (click)="previousPeriod()">
                 <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m15 6-6 6 6 6" /></svg>
@@ -99,13 +100,13 @@ function periodRangeFor(
         <div class="project-calendar__empty">No objectives are available for this project.</div>
       } @else {
         <div class="project-calendar__layout">
-          <div class="project-calendar__timeline-scroll">
+          <div class="project-calendar__timeline-scroll" #scrollContainer>
             <div class="project-calendar__timeline" [style.minWidth.px]="timelineWidth() + LABEL_WIDTH">
               <div class="project-calendar__grid project-calendar__grid--header" [style.gridTemplateColumns]="LABEL_WIDTH + 'px ' + timelineWidth() + 'px'">
                 <div class="project-calendar__label-header">Objective</div>
                 <div class="project-calendar__date-header" [style.width.px]="timelineWidth()">
                   @for (day of dateMarkers(); track day) {
-                    <div class="project-calendar__date-marker" [style.left.px]="dayIndex(day) * dayWidth()">{{ formatDayLabel(day) }}</div>
+                    <div class="project-calendar__date-marker" [style.left.px]="dayIndex(day) * dayWidth()" [style.width.px]="markerBoxWidth()">{{ formatDayLabel(day) }}</div>
                   }
                 </div>
               </div>
@@ -132,6 +133,11 @@ function periodRangeFor(
                   </div>
                 </div>
               }
+              @if (todayVisible()) {
+                <div class="project-calendar__today-line" data-testid="today-marker" [style.left.px]="LABEL_WIDTH + todayOffset()">
+                  <span class="project-calendar__today-label">Today</span>
+                </div>
+              }
             </div>
           </div>
           <app-calendar-event-legend [events]="store.activeEvents()" (edit)="openEditEvent($event)" (close)="closeEvent($event)" />
@@ -156,15 +162,15 @@ function periodRangeFor(
     .project-calendar__eyebrow { margin: 0 0 4px; color: var(--color-text-secondary); font-size: 11px; font-weight: 600; letter-spacing: .08em; text-transform: uppercase; }
     .project-calendar__title { margin: 0; font-size: 24px; font-weight: 700; letter-spacing: -.02em; }
     .project-calendar__description { margin: 5px 0 0; color: var(--color-text-secondary); font-size: 13px; }
-    .project-calendar__actions { display: flex; flex-wrap: wrap; align-items: flex-end; justify-content: flex-end; gap: 9px; }
-    .project-calendar__actions app-work-dropdown { width: 164px; }
+    .project-calendar__actions { display: flex; flex-wrap: wrap; align-items: flex-end; justify-content: flex-end; gap: 16px; }
+    .project-calendar__actions app-work-dropdown { flex: 0 0 180px; width: 180px; }
     .project-calendar__period-nav { display: flex; align-items: center; gap: 6px; height: 44px; border: 1px solid var(--color-border); border-radius: 9px; padding: 0 6px; background: var(--color-surface); }
     .project-calendar__period-step { display: flex; height: 30px; width: 30px; flex: 0 0 auto; align-items: center; justify-content: center; border: 0; border-radius: 7px; background: transparent; color: var(--color-text-secondary); cursor: pointer; transition: background-color 140ms ease, color 140ms ease; }
     .project-calendar__period-step:hover { background: var(--color-surface-secondary); color: var(--color-text-primary); }
     .project-calendar__period-step:focus-visible { outline: 2px solid var(--color-focus-ring); outline-offset: 2px; }
     .project-calendar__period-step svg { width: 16px; height: 16px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
     .project-calendar__period-label { min-width: 120px; color: var(--color-text-primary); font-size: 12px; font-weight: 600; text-align: center; white-space: nowrap; }
-    .project-calendar__create { display: inline-flex; height: 44px; align-items: center; gap: 7px; border: 0; border-radius: 9px; padding: 0 14px; background: var(--color-accent); color: var(--color-accent-contrast, #fff); font: inherit; font-size: 13px; font-weight: 600; cursor: pointer; box-shadow: 0 5px 12px color-mix(in srgb, var(--color-accent) 22%, transparent); transition: filter 160ms ease, transform 160ms ease; }
+    .project-calendar__create { display: inline-flex; flex: 0 0 auto; height: 44px; align-items: center; gap: 7px; border: 0; border-radius: 9px; padding: 0 14px; background: var(--color-accent); color: var(--color-accent-contrast, #fff); font: inherit; font-size: 13px; font-weight: 600; cursor: pointer; box-shadow: 0 5px 12px color-mix(in srgb, var(--color-accent) 22%, transparent); transition: filter 160ms ease, transform 160ms ease; }
     .project-calendar__create:hover:not(:disabled) { filter: brightness(.96); transform: translateY(-1px); }
     .project-calendar__create:disabled { cursor: not-allowed; opacity: .5; }
     .project-calendar__create:focus-visible { outline: 2px solid var(--color-focus-ring); outline-offset: 2px; }
@@ -173,14 +179,16 @@ function periodRangeFor(
     .project-calendar__empty { border: 1px dashed var(--color-border); border-radius: 11px; padding: 42px 20px; color: var(--color-text-secondary); font-size: 13px; text-align: center; }
     .project-calendar__layout { display: grid; min-width: 0; grid-template-columns: minmax(0, 1fr) 220px; align-items: start; gap: 14px; }
     .project-calendar__timeline-scroll { min-width: 0; overflow-x: auto; border: 1px solid var(--color-border); border-radius: 11px; background: var(--color-surface); }
-    .project-calendar__timeline { min-height: 100%; }
+    .project-calendar__timeline { position: relative; min-height: 100%; }
+    .project-calendar__today-line { position: absolute; top: 0; bottom: 0; width: 2px; background: var(--color-danger); z-index: 5; pointer-events: none; }
+    .project-calendar__today-label { position: absolute; top: -17px; left: 50%; transform: translateX(-50%); border-radius: 4px; background: var(--color-danger); padding: 1px 5px; color: #fff; font-size: 9px; font-weight: 700; letter-spacing: .03em; text-transform: uppercase; white-space: nowrap; }
     .project-calendar__grid { display: grid; }
     .project-calendar__grid--header { min-height: 54px; border-bottom: 1px solid var(--color-border); }
     .project-calendar__grid--row { min-height: 76px; border-bottom: 1px solid color-mix(in srgb, var(--color-border) 78%, transparent); }
     .project-calendar__grid--row:last-child { border-bottom: 0; }
     .project-calendar__label-header { display: flex; align-items: center; padding: 0 14px; color: var(--color-text-secondary); font-size: 11px; font-weight: 600; letter-spacing: .05em; text-transform: uppercase; }
     .project-calendar__date-header { position: relative; overflow: hidden; border-left: 1px solid var(--color-border); background: var(--color-surface-secondary); }
-    .project-calendar__date-marker { position: absolute; top: 0; bottom: 0; display: flex; width: 64px; align-items: center; padding-left: 8px; border-left: 1px solid color-mix(in srgb, var(--color-border) 85%, transparent); color: var(--color-text-secondary); font-size: 10px; font-weight: 600; white-space: nowrap; }
+    .project-calendar__date-marker { position: absolute; top: 0; bottom: 0; display: flex; overflow: hidden; align-items: center; padding-left: 8px; border-left: 1px solid color-mix(in srgb, var(--color-border) 85%, transparent); color: var(--color-text-secondary); font-size: 10px; font-weight: 600; white-space: nowrap; text-overflow: ellipsis; }
     .project-calendar__objective { min-width: 0; overflow: hidden; padding: 12px 10px 10px 0; }
     .project-calendar__objective-title { display: flex; min-width: 0; align-items: center; gap: 7px; overflow: hidden; font-size: 13px; font-weight: 600; line-height: 1.35; }
     .project-calendar__objective-title span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
@@ -189,13 +197,18 @@ function periodRangeFor(
     .project-calendar__track { position: relative; min-width: 0; overflow: hidden; border-left: 1px solid var(--color-border); }
     .project-calendar__grid-background { position: absolute; inset: 0; opacity: .5; }
     @media (max-width: 900px) { .project-calendar__layout { grid-template-columns: minmax(0, 1fr); } .project-calendar__actions { width: 100%; justify-content: flex-start; } }
-    @media (max-width: 560px) { .project-calendar__actions app-work-dropdown { flex: 1 1 150px; width: auto; } .project-calendar__create { flex: 1 1 150px; justify-content: center; } }
+    @media (max-width: 560px) { .project-calendar__actions { gap: 10px; } .project-calendar__actions app-work-dropdown { flex: 1 1 150px; width: auto; } .project-calendar__create { flex: 1 1 150px; justify-content: center; } }
   `]
 })
-export class ProjectCalendarComponent implements OnInit {
+export class ProjectCalendarComponent implements OnInit, AfterViewInit, OnDestroy {
   readonly store = inject(ProjectCalendarStore);
   private readonly route = inject(ActivatedRoute);
+  private readonly scrollContainer = viewChild<ElementRef<HTMLElement>>('scrollContainer');
+  private resizeObserver?: ResizeObserver;
   readonly LABEL_WIDTH = 240;
+  private readonly MIN_FIT_DAY_WIDTH = 3;
+  readonly today = new Date().toISOString().slice(0, 10);
+  readonly containerWidth = signal(0);
   readonly modalOpen = signal(false);
   readonly editingEvent = signal<CalendarEventDto | null>(null);
   readonly projectId = signal<string | null>(null);
@@ -205,6 +218,7 @@ export class ProjectCalendarComponent implements OnInit {
   private readonly viewAnchor = signal<string | null>(null);
   readonly viewOptions: readonly WorkDropdownOption[] = [
     { value: 'default', label: 'Default timeline' },
+    { value: 'fit', label: 'Fit to screen' },
     { value: 'week', label: 'Week view' },
     { value: 'month', label: 'Month view' },
     { value: 'year', label: 'Year view' }
@@ -223,25 +237,42 @@ export class ProjectCalendarComponent implements OnInit {
   readonly visibleTimelineStart = computed(() => this.viewRange().start);
   readonly visibleTimelineEnd = computed(() => this.viewRange().end);
   readonly days = computed(() => calendarRange(this.visibleTimelineStart(), this.visibleTimelineEnd()));
+  // Fit view scales day width to squeeze the whole project range into the
+  // available container width, with no horizontal scroll.
+  readonly fitDayWidth = computed(() => {
+    const totalDays = Math.max(1, calendarDayDifference(this.timelineStart(), this.timelineEnd()) + 1);
+    const available = this.containerWidth() - this.LABEL_WIDTH;
+    return available > 0 ? Math.max(this.MIN_FIT_DAY_WIDTH, available / totalDays) : this.MIN_FIT_DAY_WIDTH;
+  });
   readonly dayWidth = computed(() => {
     switch (this.calendarView()) {
       case 'week': return 82;
       case 'month': return 38;
       case 'year': return 20;
+      case 'fit': return this.fitDayWidth();
       default: return 32;
     }
   });
-  readonly markerStep = computed(() => {
-    switch (this.calendarView()) {
-      case 'week': return 1;
-      case 'month': return 2;
-      case 'year': return 14;
-      default: return 7;
-    }
+  readonly isPagedView = computed(() => PAGED_VIEWS.includes(this.calendarView()));
+  // Normal view: one ruler tick per day, exactly as asked - the gap between any two
+  // adjacent ticks is one day. Fit: same idea, but the step grows as dayWidth shrinks
+  // on a long project so labels don't collide. Week/Month/Year already show their
+  // whole period at once, so the ruler is just its two endpoints (see dateMarkers) -
+  // the "duration between the two points" IS the week/month/year itself.
+  readonly markerStep = computed(() => this.calendarView() === 'fit' ? Math.max(1, Math.round(60 / this.dayWidth())) : 1);
+  readonly dateMarkers = computed(() => {
+    const days = this.days();
+    if (this.isPagedView()) return days.length > 1 ? [days[0], days[days.length - 1]] : days;
+    const step = this.markerStep();
+    return days.filter((_, index) => index % step === 0);
   });
-  readonly dateMarkers = computed(() => this.days().filter((_, index) => index % this.markerStep() === 0));
   readonly timelineWidth = computed(() => Math.max(1, this.days().length) * this.dayWidth());
+  // Cap each ruler label's box to the gap before the next tick, so dense daily ticks
+  // (Normal/Fit) clip with an ellipsis instead of visually overlapping their neighbor.
+  readonly markerBoxWidth = computed(() => this.isPagedView() ? 120 : Math.max(1, this.markerStep() * this.dayWidth()));
   readonly rows = computed(() => buildCalendarTreeOrder(this.store.items()));
+  readonly todayVisible = computed(() => this.today >= this.visibleTimelineStart() && this.today <= this.visibleTimelineEnd());
+  readonly todayOffset = computed(() => this.dayIndex(this.today) * this.dayWidth());
   readonly viewRangeLabel = computed(() => {
     const { start } = this.viewRange();
     switch (this.calendarView()) {
@@ -262,6 +293,21 @@ export class ProjectCalendarComponent implements OnInit {
       this.projectId.set(id);
       void this.store.load(id);
     }
+  }
+
+  ngAfterViewInit(): void {
+    const el = this.scrollContainer()?.nativeElement;
+    if (!el || typeof ResizeObserver === 'undefined') return;
+    this.containerWidth.set(el.clientWidth);
+    this.resizeObserver = new ResizeObserver((entries) => {
+      const width = entries[0]?.contentRect.width;
+      if (width) this.containerWidth.set(width);
+    });
+    this.resizeObserver.observe(el);
+  }
+
+  ngOnDestroy(): void {
+    this.resizeObserver?.disconnect();
   }
 
   setCalendarView(value: string): void {

@@ -118,4 +118,94 @@ describe('ProjectCalendarComponent', () => {
       expect(fixture.componentInstance.visibleTimelineStart()).toBe('2026-01-01');
     });
   });
+
+  describe('ruler tick spacing', () => {
+    beforeEach(() => {
+      store.items.set(items); // '2026-01-01' -> '2026-01-05', 5 days
+      fixture.detectChanges();
+    });
+
+    it('Normal view ticks every day - the gap between any two adjacent ticks is one day', () => {
+      expect(fixture.componentInstance.calendarView()).toBe('default');
+      expect(fixture.componentInstance.dateMarkers()).toEqual(['2026-01-01', '2026-01-02', '2026-01-03', '2026-01-04', '2026-01-05']);
+    });
+
+    it('Week/Month/Year views show only the two endpoint ticks - the whole period IS the gap', () => {
+      fixture.componentInstance.setCalendarView('week');
+      fixture.detectChanges();
+      expect(fixture.componentInstance.dateMarkers()).toEqual(['2026-01-01', '2026-01-07']);
+
+      fixture.componentInstance.setCalendarView('month');
+      fixture.detectChanges();
+      expect(fixture.componentInstance.dateMarkers()).toEqual(['2026-01-01', '2026-01-31']);
+
+      fixture.componentInstance.setCalendarView('year');
+      fixture.detectChanges();
+      expect(fixture.componentInstance.dateMarkers()).toEqual(['2026-01-01', '2026-12-31']);
+    });
+  });
+
+  describe('fit to screen', () => {
+    it('scales day width down to fit the whole project into the container, with a sane floor', () => {
+      store.items.set(items);
+      fixture.detectChanges();
+      fixture.componentInstance.setCalendarView('fit');
+      fixture.componentInstance.containerWidth.set(940); // 700px available after the 240px label column
+      fixture.detectChanges();
+
+      // 5-day project, 700px / 5 = 140px/day
+      expect(fixture.componentInstance.dayWidth()).toBe(140);
+
+      fixture.componentInstance.containerWidth.set(250); // 10px available - below the 3px/day floor's total need
+      fixture.detectChanges();
+      expect(fixture.componentInstance.dayWidth()).toBe(3);
+    });
+  });
+
+  describe('today marker', () => {
+    afterEach(() => vi.useRealTimers());
+
+    it('shows the line only when today falls within the visible range, at the right offset', () => {
+      vi.useFakeTimers();
+      vi.setSystemTime(new Date('2026-01-03T00:00:00Z'));
+      TestBed.resetTestingModule();
+      TestBed.configureTestingModule({
+        imports: [ProjectCalendarComponent],
+        providers: [
+          { provide: ProjectCalendarStore, useValue: store },
+          { provide: ActivatedRoute, useValue: { snapshot: { parent: { paramMap: { get: () => 'p1' } }, paramMap: { get: () => null } } } }
+        ]
+      });
+      store.items.set(items); // '2026-01-01' -> '2026-01-05' - today (Jan 3) falls inside
+      const todayFixture = TestBed.createComponent(ProjectCalendarComponent);
+      todayFixture.detectChanges();
+
+      expect(todayFixture.componentInstance.todayVisible()).toBe(true);
+      expect(todayFixture.componentInstance.todayOffset()).toBe(2 * todayFixture.componentInstance.dayWidth());
+      expect(todayFixture.nativeElement.querySelector('[data-testid="today-marker"]')).toBeTruthy();
+
+      todayFixture.componentInstance.setCalendarView('year');
+      todayFixture.detectChanges(); // year view's range is the full 2026 year - still visible
+      expect(todayFixture.componentInstance.todayVisible()).toBe(true);
+    });
+
+    it('hides the line when today falls outside the visible range', () => {
+      vi.useFakeTimers();
+      vi.setSystemTime(new Date('2025-06-01T00:00:00Z'));
+      TestBed.resetTestingModule();
+      TestBed.configureTestingModule({
+        imports: [ProjectCalendarComponent],
+        providers: [
+          { provide: ProjectCalendarStore, useValue: store },
+          { provide: ActivatedRoute, useValue: { snapshot: { parent: { paramMap: { get: () => 'p1' } }, paramMap: { get: () => null } } } }
+        ]
+      });
+      store.items.set(items); // '2026-01-01' -> '2026-01-05' - well after "today"
+      const todayFixture = TestBed.createComponent(ProjectCalendarComponent);
+      todayFixture.detectChanges();
+
+      expect(todayFixture.componentInstance.todayVisible()).toBe(false);
+      expect(todayFixture.nativeElement.querySelector('[data-testid="today-marker"]')).toBeNull();
+    });
+  });
 });
