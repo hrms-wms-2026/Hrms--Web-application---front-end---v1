@@ -3,38 +3,21 @@
 } @else if (store.projectError()) {
   <app-error-state [message]="store.projectError()!" [retryable]="true" (retry)="retryProject()" />
 } @else if (store.project(); as project) {
-  <div class="flex flex-wrap items-center justify-between gap-4 pb-2 mb-2.5 border-b border-[var(--color-border)]">
-    <div class="flex min-w-0 items-center gap-2">
-      <app-breadcrumb-header parentLabel="Projects" [currentLabel]="project.name" parentUrl="/work" icon="work" />
-      <a
-        class="inline-flex h-8 w-8 items-center justify-center rounded-md border border-[var(--color-border)] text-[var(--color-text-secondary)] transition-colors hover:bg-[var(--color-surface-hover)] hover:text-[var(--color-text-primary)]"
-        [routerLink]="['settings']"
-        [attr.aria-current]="isProjectSettings() ? 'page' : null"
-        aria-label="Project settings"
-        title="Project settings"
-        data-testid="project-settings-link"
-      >
-        <svg viewBox="0 0 24 24" aria-hidden="true" class="h-4 w-4 fill-none stroke-current stroke-2">
-          <path stroke-linecap="round" stroke-linejoin="round" d="M10.5 6h10.5M3 6h2.5M3 12h7.5M14.5 12H21M3 18h2.5M10.5 18H21" />
-          <circle cx="8" cy="6" r="1.5" />
-          <circle cx="12.5" cy="12" r="1.5" />
-          <circle cx="8" cy="18" r="1.5" />
-        </svg>
-      </a>
-    </div>
+  <div class="mb-2 flex flex-wrap items-center justify-between gap-3 border-b border-[var(--color-border)] pb-2">
+    <app-breadcrumb-header parentLabel="Projects" [currentLabel]="project.name" parentUrl="/work" icon="work" />
 
-    <dl class="flex gap-6 text-sm">
-      <div>
+    <dl class="flex flex-wrap items-center gap-x-6 gap-y-2 text-sm">
+      <div class="min-w-[7rem]">
         <dt class="text-xs text-[var(--color-text-secondary)]">Start</dt>
-        <dd>{{ project.startDate }}</dd>
+        <dd class="font-medium text-[var(--color-text-primary)]">{{ project.startDate }}</dd>
       </div>
-      <div>
+      <div class="min-w-[7rem]">
         <dt class="text-xs text-[var(--color-text-secondary)]">Target</dt>
-        <dd>{{ project.targetDate }}</dd>
+        <dd class="font-medium text-[var(--color-text-primary)]">{{ project.targetDate }}</dd>
       </div>
-      <div>
+      <div class="min-w-[7rem]">
         <dt class="text-xs text-[var(--color-text-secondary)]">Hours</dt>
-        <dd>{{ project.completedHours }} / {{ project.allocatedHours }}</dd>
+        <dd class="font-medium text-[var(--color-text-primary)]">{{ project.completedHours }} / {{ project.allocatedHours }}</dd>
       </div>
     </dl>
   </div>

@@ -2,7 +2,6 @@ import { Component, computed, inject, signal } from '@angular/core';
 import { ActivatedRoute } from '@angular/router';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { ProjectDetailStore } from '../../state/project-detail.store';
-import { EmployeeDirectoryStore } from '../../state/employee-directory.store';
 import { MilestoneTreeNodeComponent } from '../../ui/milestone-tree-node/milestone-tree-node.component';
 import { ModuleFilterSelectComponent } from '../../ui/module-filter-select/module-filter-select.component';
 import { TreeExplanationPanelComponent } from '../../ui/tree-explanation-panel/tree-explanation-panel.component';
@@ -36,7 +35,6 @@ import { Sprint, SprintStatus } from '../../models/sprint.model';
 })
 export class MilestoneTreeTabComponent {
   readonly store = inject(ProjectDetailStore);
-  private readonly directory = inject(EmployeeDirectoryStore);
   private readonly route = inject(ActivatedRoute);
   private currentMilestoneId = '';
   private currentProjectId = '';
@@ -120,10 +118,9 @@ export class MilestoneTreeTabComponent {
     try {
       await this.store.loadProjectMembers(projectId);
       const members = this.store.projectMembers();
-      await this.directory.ensureLoaded(members.map((member) => member.employeeId));
       this.assignableMembers.set(members.map((member) => ({
         employeeId: member.employeeId,
-        name: this.directory.get(member.employeeId)?.name ?? 'Unknown employee'
+        name: member.name ?? 'Unknown employee'
       })));
     } catch {
       this.assignableMembers.set([]);

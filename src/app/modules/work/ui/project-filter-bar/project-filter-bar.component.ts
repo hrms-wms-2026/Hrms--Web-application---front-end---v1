@@ -29,12 +29,13 @@ const STATUS_OPTIONS: SelectOption[] = [
       <div class="relative" #categoryDropdown>
         <button
           type="button"
-          class="inline-flex items-center gap-1.5 rounded-md border border-[var(--color-border)] bg-[var(--color-surface)] px-3 py-2 text-sm font-medium text-[var(--color-text-primary)] transition-colors hover:bg-[var(--color-surface-secondary)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-focus-ring)] min-w-[140px]"
+          class="inline-flex h-11 min-w-[180px] items-center gap-2 rounded-lg border border-[var(--color-border)] bg-[var(--color-surface)] px-3 text-sm font-medium text-[var(--color-text-primary)] shadow-sm transition-[border-color,box-shadow] hover:border-[var(--color-accent)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-focus-ring)]"
           (click)="toggleCategoryDropdown()"
           [attr.aria-expanded]="categoryOpen()"
           aria-haspopup="listbox"
         >
-          <span class="flex-1 text-left truncate">{{ selectedCategoryLabel() }}</span>
+          <svg class="h-4 w-4 shrink-0 text-[var(--color-accent)]" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 5h16M7 5v14M17 5v14M10 19h4" /></svg>
+          <span class="min-w-0 flex-1 truncate text-left">{{ selectedCategoryLabel() }}</span>
           <svg
             class="h-4 w-4 shrink-0 text-[var(--color-text-secondary)] transition-transform duration-150"
             [ngClass]="{ 'rotate-180': categoryOpen() }"
@@ -49,14 +50,14 @@ const STATUS_OPTIONS: SelectOption[] = [
 
         @if (categoryOpen()) {
           <div
-            class="absolute left-0 top-full z-50 mt-1 min-w-[180px] overflow-hidden rounded-md border border-[var(--color-border)] bg-[var(--color-surface)] shadow-lg"
+            class="absolute left-0 top-full z-50 mt-2 min-w-[220px] overflow-hidden rounded-lg border border-[var(--color-border)] bg-[var(--color-surface)] shadow-xl"
             role="listbox"
             aria-label="Project category"
           >
             <div class="max-h-52 overflow-y-auto py-1" style="scrollbar-width:none;-ms-overflow-style:none">
               <button
                 type="button"
-                class="flex w-full items-center gap-2 px-3 py-2 text-left text-sm transition-colors hover:bg-[var(--color-surface-secondary)]"
+                class="flex w-full items-center gap-2 rounded-md px-3 py-2.5 text-left text-sm font-medium text-[var(--color-text-primary)] transition-colors hover:bg-[var(--color-surface-secondary)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-focus-ring)]"
                 [ngClass]="{
                   'font-semibold text-[var(--color-accent)]': !selectedCategory(),
                   'text-[var(--color-text-primary)]': selectedCategory()
@@ -75,7 +76,7 @@ const STATUS_OPTIONS: SelectOption[] = [
               @for (opt of categoryOptions(); track opt.value) {
                 <button
                   type="button"
-                  class="flex w-full items-center gap-2 px-3 py-2 text-left text-sm transition-colors hover:bg-[var(--color-surface-secondary)]"
+                  class="flex w-full items-center gap-2 rounded-md px-3 py-2.5 text-left text-sm font-medium text-[var(--color-text-primary)] transition-colors hover:bg-[var(--color-surface-secondary)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-focus-ring)]"
                   [ngClass]="{
                     'font-semibold text-[var(--color-accent)]': selectedCategory() === opt.value,
                     'text-[var(--color-text-primary)]': selectedCategory() !== opt.value
@@ -101,12 +102,13 @@ const STATUS_OPTIONS: SelectOption[] = [
       <div class="relative" #statusDropdown>
         <button
           type="button"
-          class="inline-flex items-center gap-1.5 rounded-md border border-[var(--color-border)] bg-[var(--color-surface)] px-3 py-2 text-sm font-medium text-[var(--color-text-primary)] transition-colors hover:bg-[var(--color-surface-secondary)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-focus-ring)] min-w-[140px]"
+          class="inline-flex h-11 min-w-[180px] items-center gap-2 rounded-lg border border-[var(--color-border)] bg-[var(--color-surface)] px-3 text-sm font-medium text-[var(--color-text-primary)] shadow-sm transition-[border-color,box-shadow] hover:border-[var(--color-accent)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-focus-ring)]"
           (click)="toggleStatusDropdown()"
           [attr.aria-expanded]="statusOpen()"
           aria-haspopup="listbox"
         >
-          <span class="flex-1 text-left truncate">{{ selectedStatusLabel() }}</span>
+          <svg class="h-4 w-4 shrink-0 text-[var(--color-accent)]" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="8" /><path d="M12 8v4l2.5 2" /></svg>
+          <span class="min-w-0 flex-1 truncate text-left">{{ selectedStatusLabel() }}</span>
           <svg
             class="h-4 w-4 shrink-0 text-[var(--color-text-secondary)] transition-transform duration-150"
             [ngClass]="{ 'rotate-180': statusOpen() }"
@@ -121,7 +123,7 @@ const STATUS_OPTIONS: SelectOption[] = [
 
         @if (statusOpen()) {
           <div
-            class="absolute left-0 top-full z-50 mt-1 min-w-[160px] overflow-hidden rounded-md border border-[var(--color-border)] bg-[var(--color-surface)] shadow-lg"
+            class="absolute left-0 top-full z-50 mt-2 min-w-[180px] overflow-hidden rounded-lg border border-[var(--color-border)] bg-[var(--color-surface)] shadow-xl"
             role="listbox"
             aria-label="Status"
           >
@@ -129,7 +131,7 @@ const STATUS_OPTIONS: SelectOption[] = [
               @for (opt of statusOptions; track opt.value) {
                 <button
                   type="button"
-                  class="flex w-full items-center gap-2 px-3 py-2 text-left text-sm transition-colors hover:bg-[var(--color-surface-secondary)]"
+                  class="flex w-full items-center gap-2 rounded-md px-3 py-2.5 text-left text-sm font-medium text-[var(--color-text-primary)] transition-colors hover:bg-[var(--color-surface-secondary)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-focus-ring)]"
                   [ngClass]="{
                     'font-semibold text-[var(--color-accent)]': selectedStatus() === opt.value,
                     'text-[var(--color-text-primary)]': selectedStatus() !== opt.value

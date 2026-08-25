@@ -29,26 +29,64 @@ describe('ModuleTreeRowComponent', () => {
       .filter((id) => id.endsWith('-button'));
   }
 
-  it('shows all six icons on an owned leaf, including Add Sprint', () => {
+  it('shows the plus shortcut and an overflow button on an owned leaf', () => {
     setup({ ...child, isOwner: true });
     expect(testIds()).toEqual([
       'create-sub-button',
-      'edit-button',
-      'members-button',
-      'create-task-button',
-      'create-sprint-button',
-      'achieve-button'
+      'shortcut-menu-button'
     ]);
   });
 
-  it('hides Add Sprint on a non-leaf owned module but keeps the other five icons', () => {
+  it('reveals every existing leaf action with its shortcut name from the overflow menu', () => {
+    setup({ ...child, isOwner: true });
+    (fixture.nativeElement.querySelector('[data-testid="shortcut-menu-button"]') as HTMLButtonElement).click();
+    fixture.detectChanges();
+
+    expect(fixture.nativeElement.querySelector('[data-testid="shortcut-menu"]')?.textContent).toContain('Sub module');
+    expect(fixture.nativeElement.querySelector('[data-testid="shortcut-menu"]')?.textContent).toContain('Edit');
+    expect(fixture.nativeElement.querySelector('[data-testid="shortcut-menu"]')?.textContent).toContain('Members');
+    expect(fixture.nativeElement.querySelector('[data-testid="shortcut-menu"]')?.textContent).toContain('Create sprint');
+    expect(fixture.nativeElement.querySelector('[data-testid="shortcut-menu"]')?.textContent).toContain('Achieve module');
+  });
+
+  it('closes the shortcut menu on an outside document click', () => {
+    // Regression test: without this, the popover stayed open indefinitely and its
+    // absolutely-positioned menu visually overlapped rows beneath it in the tree,
+    // so a click aimed at a lower row's own "Edit task" button landed on this
+    // popover's stray "Edit" item instead - opening the wrong entity's edit form.
+    setup({ ...child, isOwner: true });
+    (fixture.nativeElement.querySelector('[data-testid="shortcut-menu-button"]') as HTMLButtonElement).click();
+    fixture.detectChanges();
+    expect(fixture.nativeElement.querySelector('[data-testid="shortcut-menu"]')).not.toBeNull();
+
+    document.body.click();
+    fixture.detectChanges();
+
+    expect(fixture.nativeElement.querySelector('[data-testid="shortcut-menu"]')).toBeNull();
+  });
+
+  it('clicking the trigger button to close an open menu does not reopen it', () => {
+    // Regression test for a bug introduced while fixing the overlap issue above: the
+    // capture-phase outside-click listener must not fight with the trigger button's
+    // own toggle - clicking the trigger while the menu is open should close it, not
+    // immediately reopen it.
+    setup({ ...child, isOwner: true });
+    const trigger = fixture.nativeElement.querySelector('[data-testid="shortcut-menu-button"]') as HTMLButtonElement;
+    trigger.click();
+    fixture.detectChanges();
+    expect(fixture.nativeElement.querySelector('[data-testid="shortcut-menu"]')).not.toBeNull();
+
+    trigger.click();
+    fixture.detectChanges();
+
+    expect(fixture.nativeElement.querySelector('[data-testid="shortcut-menu"]')).toBeNull();
+  });
+
+  it('keeps the overflow shortcut on a non-leaf owned module', () => {
     setup(owned);
     expect(testIds()).toEqual([
       'create-sub-button',
-      'edit-button',
-      'members-button',
-      'create-task-button',
-      'achieve-button'
+      'shortcut-menu-button'
     ]);
   });
 

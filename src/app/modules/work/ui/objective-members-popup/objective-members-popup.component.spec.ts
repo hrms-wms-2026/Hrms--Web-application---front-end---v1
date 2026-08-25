@@ -13,9 +13,9 @@ describe('ObjectiveMembersPopupComponent', () => {
   let directoryStub: { get: ReturnType<typeof vi.fn>; ensureLoaded: ReturnType<typeof vi.fn> };
 
   const members: ObjectiveMemberItemDto[] = [
-    { employeeId: 'head1', isHead: true, pending: false, inviteType: null, invitationId: null, sinceOrInvitedAt: '2026-01-01' },
-    { employeeId: 'mem1', isHead: false, pending: false, inviteType: null, invitationId: null, sinceOrInvitedAt: '2026-01-02' },
-    { employeeId: 'pend1', isHead: false, pending: true, inviteType: 'member', invitationId: 'inv1', sinceOrInvitedAt: '2026-01-03' }
+    { employeeId: 'head1', name: null, isHead: true, pending: false, inviteType: null, invitationId: null, sinceOrInvitedAt: '2026-01-01' },
+    { employeeId: 'mem1', name: null, isHead: false, pending: false, inviteType: null, invitationId: null, sinceOrInvitedAt: '2026-01-02' },
+    { employeeId: 'pend1', name: null, isHead: false, pending: true, inviteType: 'member', invitationId: 'inv1', sinceOrInvitedAt: '2026-01-03' }
   ];
 
   const names: Record<string, string> = { head1: 'Alice Head', mem1: 'Bob Member' };

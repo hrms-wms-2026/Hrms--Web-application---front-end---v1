@@ -621,7 +621,7 @@ describe('ProjectDetailStore', () => {
       return TestBed.inject(ProjectDetailStore);
     }
 
-    it('fetches members from the Default Objective, excluding pending invites', async () => {
+    it('fetches members from every reachable module, excluding pending invites', async () => {
       const getMembers = vi.fn().mockReturnValue(of({
         items: [
           { employeeId: 'e1', pending: false, isHead: true },
@@ -634,6 +634,69 @@ describe('ProjectDetailStore', () => {
 
       expect(getMembers).toHaveBeenCalledWith('o1');
       expect(store.projectMembers()).toEqual([{ employeeId: 'e1', pending: false, isHead: true }]);
+    });
+
+    it('unions members across multiple modules, deduping by employeeId', async () => {
+      // Regression test: assignee dropdowns must include members of every module the caller
+      // can reach (cascading ownership), not just the project's Default Objective - a parent
+      // member creating a task needs to be able to assign it to a child-module-only member.
+      const twoModules: MyProjectMilestoneDto[] = [
+        milestones[0],
+        {
+          ...milestones[0], objectiveId: 'o2', isDefault: false, title: 'Child module', parentObjectiveId: 'o1'
+        }
+      ];
+      TestBed.configureTestingModule({
+        providers: [
+          { provide: ProjectApiService, useValue: { getMyMilestones: vi.fn().mockReturnValue(of(twoModules)) } },
+          {
+            provide: ObjectiveMemberApiService, useValue: {
+              getMembers: vi.fn((objectiveId: string) => of({
+                items: objectiveId === 'o1'
+                  ? [{ employeeId: 'e1', pending: false, isHead: true }]
+                  : [
+                      { employeeId: 'e1', pending: false, isHead: false },
+                      { employeeId: 'e2', pending: false, isHead: false }
+                    ]
+              }))
+            }
+          },
+          { provide: SprintApiService, useValue: {} },
+          { provide: TaskApiService, useValue: {} }
+        ]
+      });
+      const store = TestBed.inject(ProjectDetailStore);
+
+      await store.loadProjectMembers('p1');
+
+      const employeeIds = store.projectMembers().map((m) => m.employeeId).sort();
+      expect(employeeIds).toEqual(['e1', 'e2']);
+    });
+
+    it('still returns other modules\' members when one module\'s member fetch fails', async () => {
+      const twoModules: MyProjectMilestoneDto[] = [
+        milestones[0],
+        { ...milestones[0], objectiveId: 'o2', isDefault: false, title: 'Child module', parentObjectiveId: 'o1' }
+      ];
+      TestBed.configureTestingModule({
+        providers: [
+          { provide: ProjectApiService, useValue: { getMyMilestones: vi.fn().mockReturnValue(of(twoModules)) } },
+          {
+            provide: ObjectiveMemberApiService, useValue: {
+              getMembers: vi.fn((objectiveId: string) => objectiveId === 'o1'
+                ? throwError(() => new Error('boom'))
+                : of({ items: [{ employeeId: 'e2', pending: false, isHead: false }] }))
+            }
+          },
+          { provide: SprintApiService, useValue: {} },
+          { provide: TaskApiService, useValue: {} }
+        ]
+      });
+      const store = TestBed.inject(ProjectDetailStore);
+
+      await store.loadProjectMembers('p1');
+
+      expect(store.projectMembers()).toEqual([{ employeeId: 'e2', pending: false, isHead: false }]);
     });
 
     it('does not refetch for a project it has already loaded members for', async () => {

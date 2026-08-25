@@ -23,25 +23,38 @@ import { toTaskCategoryColumn } from '../../utils/task-category.mapper';
   imports: [TaskBoardColumnComponent, TaskCreateModalComponent, TaskDetailModalComponent, ButtonComponent, ErrorStateComponent],
   template: `
     <div class="task-board__toolbar">
-      <select class="task-board__filter" aria-label="Module filter" [value]="objectiveFilter()" (change)="objectiveFilter.set($any($event.target).value)">
-        <option value="all">All modules</option>
-        @for (module of modules(); track module.objectiveId) {
-          <option [value]="module.objectiveId">{{ module.title }}</option>
-        }
-      </select>
-      <select class="task-board__filter" aria-label="Sprint filter" [value]="sprintFilter()" (change)="sprintFilter.set($any($event.target).value)">
-        <option value="active">Active sprints</option>
-        <option value="all">All sprints</option>
-        @for (sprint of sprints(); track sprint.id) {
-          <option [value]="sprint.id">{{ sprint.name }}</option>
-        }
-      </select>
-      <select class="task-board__filter" aria-label="Category filter" [value]="categoryFilter()" (change)="categoryFilter.set($any($event.target).value)">
-        <option value="all">All categories</option>
-        @for (category of categories(); track category.id) {
-          <option [value]="category.id">{{ category.name }}</option>
-        }
-      </select>
+      <div class="task-board__filter-shell">
+        <svg class="task-board__filter-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 7h18M6 7v10M18 7v10M9 17h6" /></svg>
+        <select class="task-board__filter" aria-label="Module filter" [value]="objectiveFilter()" (change)="objectiveFilter.set($any($event.target).value)">
+          <option value="all">All modules</option>
+          @for (module of modules(); track module.objectiveId) {
+            <option [value]="module.objectiveId">{{ module.title }}</option>
+          }
+        </select>
+        <svg class="task-board__chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m6 9 6 6 6-6" /></svg>
+      </div>
+      <div class="task-board__filter-shell">
+        <svg class="task-board__filter-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="8" /><path d="M12 8v4l2.5 2" /></svg>
+        <select class="task-board__filter" aria-label="Sprint filter" [value]="sprintFilter()" (change)="sprintFilter.set($any($event.target).value)">
+          <option value="active">Active sprints</option>
+          <option value="all">All sprints</option>
+          <option value="individual">Individual task</option>
+          @for (sprint of sprints(); track sprint.id) {
+            <option [value]="sprint.id">{{ sprint.name }}</option>
+          }
+        </select>
+        <svg class="task-board__chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m6 9 6 6 6-6" /></svg>
+      </div>
+      <div class="task-board__filter-shell">
+        <svg class="task-board__filter-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 6h16M7 12h10M10 18h4" /></svg>
+        <select class="task-board__filter" aria-label="Category filter" [value]="categoryFilter()" (change)="categoryFilter.set($any($event.target).value)">
+          <option value="all">All categories</option>
+          @for (category of categories(); track category.id) {
+            <option [value]="category.id">{{ category.name }}</option>
+          }
+        </select>
+        <svg class="task-board__chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m6 9 6 6 6-6" /></svg>
+      </div>
       @if (modules().length > 0) {
         <app-button variant="primary" (pressed)="createOpen.set(true)">Create task</app-button>
       }
@@ -91,9 +104,17 @@ import { toTaskCategoryColumn } from '../../utils/task-category.mapper';
     />
   `,
   styles: [`
-    .task-board__toolbar { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 8px; margin-bottom: 12px; }
-    .task-board__filter { border: 1px solid var(--color-border); border-radius: 8px; padding: 8px 10px; background: var(--color-surface); color: var(--color-text-primary); }
-    .task-board { display: flex; gap: 12px; overflow-x: auto; padding-bottom: 8px; }
+    .task-board__toolbar { display: flex; flex-wrap: wrap; align-items: center; justify-content: flex-end; gap: 8px; margin-bottom: 16px; }
+    .task-board__filter-shell { position: relative; min-width: 180px; }
+    .task-board__filter { appearance: none; width: 100%; height: 44px; border: 1px solid var(--color-border); border-radius: 9px; padding: 0 34px 0 36px; background: var(--color-surface); color: var(--color-text-primary); font-size: 14px; font-weight: 500; box-shadow: 0 1px 2px rgb(15 23 42 / 0.04); transition: border-color 160ms ease, box-shadow 160ms ease; }
+    .task-board__filter:hover { border-color: var(--color-accent); }
+    .task-board__filter:focus-visible { outline: 2px solid var(--color-focus-ring); outline-offset: 2px; }
+    .task-board__filter-icon, .task-board__chevron { pointer-events: none; position: absolute; top: 50%; width: 16px; height: 16px; transform: translateY(-50%); }
+    .task-board__filter-icon { left: 12px; color: var(--color-accent); }
+    .task-board__chevron { right: 12px; color: var(--color-text-secondary); transition: transform 160ms ease; }
+    .task-board__filter:focus + .task-board__chevron { transform: translateY(-50%) rotate(180deg); }
+    .task-board { display: flex; gap: 16px; overflow-x: auto; padding: 0 0 10px; scroll-snap-type: x proximity; }
+    @media (max-width: 720px) { .task-board__toolbar { justify-content: stretch; } .task-board__filter-shell { flex: 1 1 180px; } .task-board__toolbar app-button { flex: 1 1 100%; } }
     :host ::ng-deep .task-card--highlighted { outline: 2px solid var(--color-focus-ring, var(--color-danger)); outline-offset: 2px; }
   `]
 })
@@ -184,7 +205,9 @@ export class TaskBoardComponent implements OnInit, AfterViewChecked {
       ? true
       : sprintFilter === 'active'
         ? activeSprintIds.has(task.sprintId ?? '')
-        : task.sprintId === sprintFilter;
+        : sprintFilter === 'individual'
+          ? task.sprintId == null
+          : task.sprintId === sprintFilter;
     const categoryMatches = this.categoryFilter() === 'all' || task.categoryId === this.categoryFilter();
     return objectiveMatches && sprintMatches && categoryMatches;
   }
@@ -212,10 +235,14 @@ export class TaskBoardComponent implements OnInit, AfterViewChecked {
     try {
       await this.projectStore.loadProjectMembers(projectId);
       const members = this.projectStore.projectMembers();
+      // Still needed here even though the dropdown itself now uses member.name directly
+      // (server-resolved): employeeNames above resolves *existing task* assignees, which
+      // WorkTaskResponse only carries as raw EmployeeId GUIDs, and this is the only call in
+      // this component that populates the shared directory cache those names come from.
       await this.directory.ensureLoaded(members.map((member) => member.employeeId));
       this.assignableMembers.set(members.map((member) => ({
         employeeId: member.employeeId,
-        name: this.directory.get(member.employeeId)?.name ?? 'Unknown employee'
+        name: member.name ?? 'Unknown employee'
       })));
     } catch {
       this.assignableMembers.set([]);

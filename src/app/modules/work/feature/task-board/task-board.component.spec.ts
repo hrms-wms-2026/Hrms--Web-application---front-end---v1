@@ -128,7 +128,76 @@ describe('TaskBoardComponent', () => {
     expect(taskIds).toEqual(['t-in']);
   });
 
-  it('resolves assignableMembers names from the project\'s member list, via the employee directory', async () => {
+  it('sprint filter "Individual task" shows only tasks with no sprint assigned', async () => {
+    const status = {
+      id: 's-1', name: 'To Do', displayOrder: 0, requiresApproval: false, marksTaskComplete: false, visibility: 'public'
+    };
+    const base = {
+      objectiveId: 'milestone-1', shortId: 'PRJ-1', description: null,
+      categoryId: 'task' as const, statusId: 's-1', priority: 'medium' as const, storyPoints: null,
+      dueDate: null, estimatedHours: 5, completedHours: 0, progressPercent: 0, assigneeEmployeeIds: []
+    };
+    const individualTask = { ...base, id: 't-individual', title: 'Individual', sprintId: null };
+    const sprintTask = { ...base, id: 't-sprint', title: 'In sprint', sprintId: 'sp-active' };
+    const storeStub = {
+      loadBoard: vi.fn().mockResolvedValue(undefined),
+      columnsWithTasks: () => [{ status, tasks: [individualTask, sprintTask] }],
+      tasks: () => [individualTask, sprintTask],
+      loading: () => false,
+      error: () => null,
+      moveTask: vi.fn(),
+      statuses: () => []
+    };
+
+    TestBed.configureTestingModule({
+      imports: [TaskBoardComponent],
+      providers: [
+        { provide: TaskBoardStore, useValue: storeStub },
+        {
+          provide: ProjectDetailStore,
+          useValue: {
+            milestones: () => [{ objectiveId: 'milestone-1', title: 'Milestone One', isOwner: true }],
+            getMilestoneDetail: vi.fn().mockResolvedValue(null),
+            loadMyMilestones: vi.fn().mockResolvedValue(undefined),
+            loadProjectMembers: vi.fn().mockResolvedValue(undefined),
+            projectMembers: () => []
+          }
+        },
+        {
+          provide: SprintApiService,
+          useValue: {
+            getByProject: vi.fn().mockReturnValue(of([{
+              id: 'sp-active', objectiveId: 'milestone-1', name: 'Sprint 1',
+              startDate: '2026-09-01', endDate: '2026-09-14', status: 'active', completedAt: null, achievedAt: null
+            }]))
+          }
+        },
+        { provide: TaskApiService, useValue: { createTaskCreationRequest: vi.fn(), assignTask: vi.fn(), getCategories: vi.fn().mockReturnValue(of([])) } },
+        {
+          provide: EmployeeDirectoryStore,
+          useValue: { get: vi.fn().mockReturnValue(undefined), ensureLoaded: vi.fn().mockResolvedValue(undefined) }
+        },
+        { provide: ActivatedRoute, useValue: routeStub() }
+      ]
+    });
+
+    const fixture = TestBed.createComponent(TaskBoardComponent);
+    fixture.detectChanges();
+    await fixture.whenStable();
+    fixture.detectChanges();
+
+    const instance = fixture.componentInstance as unknown as {
+      sprintFilter: { set: (v: string) => void };
+      columnsWithTasks: () => { tasks: { id: string }[] }[];
+    };
+    instance.sprintFilter.set('individual');
+    fixture.detectChanges();
+
+    const taskIds = instance.columnsWithTasks().flatMap((c) => c.tasks.map((t) => t.id));
+    expect(taskIds).toEqual(['t-individual']);
+  });
+
+  it('builds assignableMembers from projectMembers, using the server-resolved name', async () => {
     const loadBoard = vi.fn().mockResolvedValue(undefined);
     const storeStub = {
       loadBoard,
@@ -139,7 +208,9 @@ describe('TaskBoardComponent', () => {
       moveTask: vi.fn(),
       statuses: () => []
     };
-    const directoryGet = vi.fn((id: string) => (id === 'emp-1' ? { id, name: 'Nevi Peiris', initials: 'NP', avatarUrl: null } : undefined));
+    // Still exercised: employeeNames (existing task-card assignees, a separate concern from the
+    // create-task dropdown) still resolves via the directory, since WorkTaskResponse only carries
+    // raw EmployeeId GUIDs.
     const directoryEnsureLoaded = vi.fn().mockResolvedValue(undefined);
     const loadProjectMembers = vi.fn().mockResolvedValue(undefined);
 
@@ -155,14 +226,14 @@ describe('TaskBoardComponent', () => {
             loadMyMilestones: vi.fn().mockResolvedValue(undefined),
             loadProjectMembers,
             projectMembers: () => [
-              { employeeId: 'emp-1', pending: false, isHead: false },
-              { employeeId: 'emp-2', pending: false, isHead: false }
+              { employeeId: 'emp-1', name: 'Nevi Peiris', pending: false, isHead: false },
+              { employeeId: 'emp-2', name: null, pending: false, isHead: false }
             ]
           }
         },
         { provide: SprintApiService, useValue: { getByProject: vi.fn().mockReturnValue(of([])) } },
         { provide: TaskApiService, useValue: { createTaskCreationRequest: vi.fn(), assignTask: vi.fn(), getCategories: vi.fn().mockReturnValue(of([])) } },
-        { provide: EmployeeDirectoryStore, useValue: { get: directoryGet, ensureLoaded: directoryEnsureLoaded } },
+        { provide: EmployeeDirectoryStore, useValue: { get: vi.fn(), ensureLoaded: directoryEnsureLoaded } },
         { provide: ActivatedRoute, useValue: routeStub() }
       ]
     });
@@ -179,8 +250,6 @@ describe('TaskBoardComponent', () => {
       { employeeId: 'emp-1', name: 'Nevi Peiris' },
       { employeeId: 'emp-2', name: 'Unknown employee' }
     ]);
-    expect(members.find((m) => m.employeeId === 'emp-1')?.name).not.toBe('emp-1');
-    expect(members.find((m) => m.employeeId === 'emp-2')?.name).not.toBe('emp-2');
   });
 
   it('shows store.error() as a retryable error state, and Retry calls loadBoard again', async () => {

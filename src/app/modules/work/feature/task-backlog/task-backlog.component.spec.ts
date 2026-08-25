@@ -221,9 +221,7 @@ describe('TaskBacklogComponent', () => {
     expect(modal.activeSprints()).toEqual([sprint1, sprint2]);
   });
 
-  it('resolves assignableMembers names from the project\'s Default Objective, via the employee directory', async () => {
-    const directoryGet = vi.fn((id: string) => (id === 'emp-1' ? { id, name: 'Nevi Peiris', initials: 'NP', avatarUrl: null } : undefined));
-    const directoryEnsureLoaded = vi.fn().mockResolvedValue(undefined);
+  it('builds assignableMembers from projectMembers, using the server-resolved name', async () => {
     const loadProjectMembers = vi.fn().mockResolvedValue(undefined);
 
     TestBed.configureTestingModule({
@@ -247,8 +245,8 @@ describe('TaskBacklogComponent', () => {
             getMilestoneDetail: vi.fn().mockResolvedValue(null),
             loadProjectMembers,
             projectMembers: () => [
-              { employeeId: 'emp-1', pending: false, isHead: false },
-              { employeeId: 'emp-2', pending: false, isHead: false }
+              { employeeId: 'emp-1', name: 'Nevi Peiris', pending: false, isHead: false },
+              { employeeId: 'emp-2', name: null, pending: false, isHead: false }
             ]
           }
         },
@@ -262,7 +260,6 @@ describe('TaskBacklogComponent', () => {
             getCategories: vi.fn().mockReturnValue(of([]))
           }
         },
-        { provide: EmployeeDirectoryStore, useValue: { get: directoryGet, ensureLoaded: directoryEnsureLoaded } },
         {
           provide: SprintListStore,
           useValue: {
@@ -289,14 +286,11 @@ describe('TaskBacklogComponent', () => {
     await fixture.whenStable();
 
     expect(loadProjectMembers).toHaveBeenCalledWith('project-1');
-    expect(directoryEnsureLoaded).toHaveBeenCalledWith(['emp-1', 'emp-2']);
     const members = (fixture.componentInstance as unknown as { assignableMembers: () => { employeeId: string; name: string }[] }).assignableMembers();
     expect(members).toEqual([
       { employeeId: 'emp-1', name: 'Nevi Peiris' },
       { employeeId: 'emp-2', name: 'Unknown employee' }
     ]);
-    expect(members.find((m) => m.employeeId === 'emp-1')?.name).not.toBe('emp-1');
-    expect(members.find((m) => m.employeeId === 'emp-2')?.name).not.toBe('emp-2');
   });
 
   it('loads the board for the routed project id on init', async () => {

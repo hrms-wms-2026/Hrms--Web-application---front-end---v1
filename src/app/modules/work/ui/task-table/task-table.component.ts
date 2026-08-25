@@ -9,6 +9,7 @@ type SortKey = 'title' | 'statusId' | 'dueDate' | 'estimatedHours';
   standalone: true,
   imports: [DatePipe],
   template: `
+    <div class="task-table__scroll">
     <table class="task-table">
       <thead>
         <tr>
@@ -28,36 +29,52 @@ type SortKey = 'title' | 'statusId' | 'dueDate' | 'estimatedHours';
             <td>{{ task.title }}</td>
             <td>
               @if (statuses().length > 0) {
-                <select
-                  class="task-table__status-select"
-                  [value]="task.statusId"
-                  (click)="$event.stopPropagation()"
-                  (change)="onStatusPicked(task, $any($event.target).value)"
-                >
-                  @for (status of availableStatuses(task); track status.id) {
-                    <option [value]="status.id">{{ status.name }}</option>
-                  }
-                </select>
+                <span class="task-table__status-wrap">
+                  <select
+                    class="task-table__status-select"
+                    [value]="task.statusId"
+                    (click)="$event.stopPropagation()"
+                    (change)="onStatusPicked(task, $any($event.target).value)"
+                  >
+                    @for (status of availableStatuses(task); track status.id) {
+                      <option [value]="status.id">{{ status.name }}</option>
+                    }
+                  </select>
+                  <svg class="task-table__status-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m6 9 6 6 6-6" /></svg>
+                </span>
               } @else {
                 {{ statusName(task.statusId) }}
               }
             </td>
             <td>{{ task.dueDate ? (task.dueDate | date: 'MMM d, y') : '—' }}</td>
             <td>{{ task.estimatedHours ?? '—' }}</td>
-            <td>{{ task.priority }}</td>
-            <td><button type="button" class="task-table__view-btn" (click)="$event.stopPropagation(); viewed.emit(task)">View</button></td>
+            <td><span class="task-table__priority" [attr.data-priority]="task.priority">{{ task.priority }}</span></td>
+            <td><button type="button" class="task-table__view-btn" aria-label="View task" title="View task" (click)="$event.stopPropagation(); viewed.emit(task)"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M2.5 12s3.5-5 9.5-5 9.5 5 9.5 5-3.5 5-9.5 5-9.5-5-9.5-5Z" /><circle cx="12" cy="12" r="2.5" /></svg><span>View</span></button></td>
           </tr>
         }
       </tbody>
     </table>
+    </div>
   `,
   styles: [`
-    .task-table { width: 100%; border-collapse: collapse; color: var(--color-text-primary); }
-    .task-table th, .task-table td { text-align: left; padding: 10px 12px; border-bottom: 1px solid var(--color-border); font-size: 13px; }
-    .task-table th { cursor: pointer; color: var(--color-text-secondary); font-weight: 600; }
+    .task-table__scroll { overflow-x: auto; border: 1px solid var(--color-border); border-radius: 12px; background: var(--color-surface); }
+    .task-table { width: 100%; min-width: 760px; border-collapse: separate; border-spacing: 0; color: var(--color-text-primary); }
+    .task-table th, .task-table td { text-align: left; padding: 12px 14px; border-bottom: 1px solid var(--color-border); font-size: 13px; white-space: nowrap; }
+    .task-table th { cursor: pointer; color: var(--color-text-secondary); font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: .04em; transition: color 160ms ease, background-color 160ms ease; }
+    .task-table th:hover { color: var(--color-accent); background: var(--color-surface-secondary); }
+    .task-table tbody tr { transition: background-color 160ms ease; }
+    .task-table tbody tr:last-child td { border-bottom: 0; }
     .task-table tbody tr:hover { background: var(--color-surface-secondary); }
-    .task-table__status-select, .task-table__view-btn { border: 1px solid var(--color-border); border-radius: 6px; padding: 4px 8px; background: var(--color-surface); color: var(--color-text-primary); }
-    .task-table__view-btn { cursor: pointer; }
+    .task-table__status-wrap { position: relative; display: inline-flex; align-items: center; }
+    .task-table__status-select { appearance: none; height: 34px; min-width: 108px; border: 1px solid var(--color-border); border-radius: 8px; padding: 0 28px 0 10px; background: var(--color-surface); color: var(--color-text-primary); font-size: 12px; font-weight: 500; cursor: pointer; }
+    .task-table__status-select:hover { border-color: var(--color-accent); }
+    .task-table__status-chevron { pointer-events: none; position: absolute; right: 8px; width: 14px; height: 14px; color: var(--color-text-secondary); }
+    .task-table__status-select:focus-visible, .task-table__view-btn:focus-visible { outline: 2px solid var(--color-focus-ring); outline-offset: 2px; }
+    .task-table__priority { font-size: 12px; font-weight: 500; text-transform: capitalize; }
+    .task-table__priority[data-priority="critical"], .task-table__priority[data-priority="high"] { color: var(--color-danger); }
+    .task-table__view-btn { display: inline-flex; align-items: center; gap: 6px; border: 1px solid var(--color-border); border-radius: 8px; padding: 7px 10px; background: var(--color-surface); color: var(--color-text-secondary); font-size: 12px; font-weight: 500; cursor: pointer; transition: background-color 160ms ease, border-color 160ms ease, color 160ms ease; }
+    .task-table__view-btn:hover { border-color: var(--color-accent); background: var(--color-surface-secondary); color: var(--color-text-primary); }
+    .task-table__view-btn svg { width: 14px; height: 14px; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
   `]
 })
 export class TaskTableComponent {

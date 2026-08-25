@@ -6,13 +6,13 @@
     } @else if (store.subtreeError()) {
     <app-error-state [message]="store.subtreeError()!" [retryable]="true" (retry)="retryTree()" />
     } @else if (store.selectedSubtree()) {
-    <div class="mb-3">
+    <div class="mb-4 px-1">
       <app-module-filter-select [options]="moduleFilterOptions()" [selected]="selectedModuleFilter()"
         (selectionChanged)="onModuleFilterChanged($event)" [activityFilter]="selectedActivityFilter()"
         (activityFilterChanged)="onActivityFilterChanged($event)" />
     </div>
     <div
-      class="grid grid-cols-[1fr_112px_40px_88px_140px] gap-3 border-b border-[var(--color-border)] px-2 pb-2 text-xs font-medium text-[var(--color-text-secondary)]">
+      class="grid grid-cols-[minmax(0,1fr)_112px_40px_88px_140px] items-center gap-3 border-b border-[var(--color-border)] px-2 pb-2 text-xs font-medium text-[var(--color-text-secondary)]">
       <span>Work item</span>
       <span>Progress</span>
       <span>Owner</span>

@@ -27,10 +27,11 @@ interface ProjectDetailState {
   readonly objectiveMembersLoading: boolean;
   readonly objectiveMembersError: string | null;
   readonly myInvitations: readonly ObjectiveInvitationDto[];
-  /** Members of the project's Default Objective - what "Project members" means everywhere else
-   *  in this app (POST /work/projects/{id}/members writes here server-side), so this is the
-   *  correct assignee source for project-wide task-create flows (Tree and Backlog alike),
-   *  rather than whichever module a create-task click happened to be scoped to. */
+  /** Union of every member across every module the caller can reach in this project (deduped
+   *  by employeeId) - the assignee source for task-create flows everywhere (Tree/Board/Backlog),
+   *  rather than whichever specific module a create-task click happened to be scoped to. Not
+   *  scoped to the Default Objective alone: a parent-level member (owner or cascading access)
+   *  needs to be able to assign tasks to people who only belong to a child module. */
   readonly projectMembers: readonly ObjectiveMemberItemDto[];
   readonly projectMembersLoading: boolean;
 }
@@ -96,14 +97,27 @@ export const ProjectDetailStore = signalStore(
           : (await firstValueFrom(api.getMyMilestones(projectId))).map(toMilestone);
         if (store.milestones().length === 0) patchState(store, { milestones });
 
-        const defaultObjectiveId = milestones.find((m) => m.isDefault)?.objectiveId;
-        if (!defaultObjectiveId) {
+        if (milestones.length === 0) {
           patchState(store, { projectMembers: [], projectMembersLoading: false });
           membersLoadedForProjectId = projectId;
           return;
         }
-        const list = await firstValueFrom(memberApi.getMembers(defaultObjectiveId));
-        patchState(store, { projectMembers: list.items.filter((m) => !m.pending), projectMembersLoading: false });
+
+        // Union of every module's members across the whole tree (not just the Default
+        // Objective): milestones already only lists what the caller can effectively reach
+        // (cascading ownership - GetMyProjectMilestonesQueryHandler), so this is "everyone
+        // assignable from here", not literally every employee in the project. A single
+        // module's member-fetch failing shouldn't blank out everyone else's.
+        const memberLists = await Promise.all(
+          milestones.map((m) => firstValueFrom(memberApi.getMembers(m.objectiveId)).catch(() => ({ items: [] as ObjectiveMemberItemDto[] })))
+        );
+        const byEmployeeId = new Map<string, ObjectiveMemberItemDto>();
+        for (const list of memberLists) {
+          for (const member of list.items) {
+            if (!member.pending && !byEmployeeId.has(member.employeeId)) byEmployeeId.set(member.employeeId, member);
+          }
+        }
+        patchState(store, { projectMembers: Array.from(byEmployeeId.values()), projectMembersLoading: false });
         membersLoadedForProjectId = projectId;
       } catch {
         patchState(store, { projectMembers: [], projectMembersLoading: false });
