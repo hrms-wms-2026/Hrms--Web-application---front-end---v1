@@ -1,0 +1,10 @@
+import { TestBed } from '@angular/core/testing';
+import { of } from 'rxjs';
+import { signal } from '@angular/core';
+import { PermissionService } from '../../../../core/auth/state/permission.service';
+import { NotificationService } from '../../../../core/services/notification.service';
+import { LegalEntityApiService } from '../../../organization/data-access/legal-entity-api.service';
+import { LeaveTypeStore } from '../../state/leave-type.store';
+import { LeavePolicyStore } from '../../state/leave-policy.store';
+import { PolicyManagementComponent } from './policy-management.component';
+describe('PolicyManagementComponent', () => { it('creates the manager-only policy workspace', () => { const policy = { items: signal([]), selectedPolicy: signal(null), loading: signal(false), loadError: signal(null), saving: signal(false), actionError: signal(null), replacementConfirmationMessage: signal(null), loadPolicies: async () => {}, loadPolicy: async () => {}, createPolicy: async () => 'created', clonePolicy: async () => 'created', clearReplacementConfirmation: () => {} }; const types = { items: signal([]), load: async () => {} }; TestBed.configureTestingModule({ providers: [{ provide: PermissionService, useValue: { hasPermission: () => true } }, { provide: NotificationService, useValue: { error: () => {}, success: () => {} } }, { provide: LegalEntityApiService, useValue: { getLegalEntities: () => of([]) } }, { provide: LeavePolicyStore, useValue: policy }, { provide: LeaveTypeStore, useValue: types }] }); const fixture = TestBed.createComponent(PolicyManagementComponent); fixture.detectChanges(); expect(fixture.componentInstance.hasManageAccess()).toBe(true); }); });

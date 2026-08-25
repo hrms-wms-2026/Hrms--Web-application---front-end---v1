@@ -61,7 +61,12 @@ export const routes: Routes = [
         loadChildren: () => import('./modules/people/people.routes').then((module) => module.PEOPLE_ROUTES)
       },
       { path: 'calendar', loadComponent: loadPlaceholder, data: { title: 'Calendar' } },
-      { path: 'time-off', loadComponent: loadPlaceholder, data: { title: 'Time Off' } },
+      {
+        path: 'time-off',
+        canActivate: [permissionGuard],
+        data: { permissions: ['leave:read-own'], modules: ['leave'] },
+        loadChildren: () => import('./modules/leave/leave.routes').then((module) => module.LEAVE_ROUTES)
+      },
       {
         path: 'attendance',
         canActivate: [permissionGuard],

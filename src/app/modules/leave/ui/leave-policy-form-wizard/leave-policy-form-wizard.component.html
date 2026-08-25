@@ -1,0 +1,125 @@
+<!-- Quiet Operations Desk: the vertical stepper makes configuration progress explicit without concealing business choices. -->
+<div class="lpw-backdrop" (click)="cancel.emit()">
+  <section class="lpw-modal" (click)="$event.stopPropagation()" role="dialog" aria-modal="true" aria-label="Create leave policy">
+    <aside class="lpw-steps">
+      <p>CREATE POLICY</p>
+      <h2>Policy builder</h2>
+      <ol>
+        @for (label of steps; track label; let index = $index) {
+          <li [class.is-active]="step() === index + 1" [class.is-complete]="step() > index + 1">
+            <button type="button" (click)="setStep(index + 1)"><span>{{ index + 1 }}</span>{{ label }}</button>
+          </li>
+        }
+      </ol>
+    </aside>
+
+    <form class="lpw-content" (ngSubmit)="submit()">
+      <header>
+        <div><p>TIME OFF / POLICY CONFIGURATION</p><h1>{{ steps[step() - 1] }}</h1><span>Step {{ step() }} of 7</span></div>
+        <button type="button" class="lpw-close" (click)="cancel.emit()" aria-label="Close policy builder">×</button>
+      </header>
+
+      <main>
+        @if (step() === 1) {
+          <div class="lpw-fields">
+            <label>Policy name *<input [value]="draft().name" (input)="setValue('name', $any($event.target).value)" /></label>
+            <label>Description<textarea [value]="draft().description ?? ''" (input)="setNullableText('description', $any($event.target).value)"></textarea></label>
+            <div class="lpw-two">
+              <label>Country code *<input maxlength="2" placeholder="e.g. LK" [value]="draft().country" (input)="setValue('country', $any($event.target).value)" /></label>
+              <label>Job level <input [value]="draft().jobLevel ?? ''" (input)="setNullableText('jobLevel', $any($event.target).value)" /></label>
+            </div>
+            <label>Effective from *<input type="date" [value]="draft().effectiveFrom" (input)="setValue('effectiveFrom', $any($event.target).value)" /></label>
+          </div>
+        }
+
+        @if (step() === 2) {
+          <div class="lpw-section-intro"><h3>Leave type rules</h3><p>Add every active leave type governed by this policy, then specify its entitlement terms.</p></div>
+          <div class="lpw-rule-list">
+            @for (rule of draft().leaveTypes; track $index; let index = $index) {
+              <div class="lpw-rule">
+                <div class="lpw-rule-head"><strong>Rule {{ index + 1 }}</strong><button type="button" (click)="removeRule(index)">Remove</button></div>
+                <label>Leave type
+                  <select [value]="rule.leaveTypeId" (change)="updateRule(index, 'leaveTypeId', $any($event.target).value)">
+                    <option value="">Select leave type</option>
+                    @for (type of activeLeaveTypes(); track type.id) { <option [value]="type.id">{{ type.name }} ({{ type.code }})</option> }
+                  </select>
+                </label>
+                <div class="lpw-four">
+                  <label>Annual days<input type="number" min="0.5" [value]="rule.annualEntitlementDays" (input)="updateRule(index, 'annualEntitlementDays', $any($event.target).value)" /></label>
+                  <label>Monthly accrual<input type="number" step="0.01" [value]="rule.monthlyAccrualDays ?? ''" (input)="updateRule(index, 'monthlyAccrualDays', $any($event.target).value)" /></label>
+                  <label>Carry-forward max<input type="number" [value]="rule.carryForwardMaxDays ?? ''" (input)="updateRule(index, 'carryForwardMaxDays', $any($event.target).value)" /></label>
+                  <label>Expiry months<input type="number" [value]="rule.carryForwardExpiryMonths ?? ''" (input)="updateRule(index, 'carryForwardExpiryMonths', $any($event.target).value)" /></label>
+                </div>
+              </div>
+            } @empty { <p class="lpw-empty">No leave type rules added yet.</p> }
+          </div>
+          <button type="button" class="lpw-add" (click)="addRule()">+ Add leave type rule</button>
+        }
+
+        @if (step() === 3) {
+          <div class="lpw-fields">
+            <div class="lpw-two">
+              <label>Accrual method<select [value]="draft().accrualMethod" (change)="setValue('accrualMethod', $any($event.target).value)"><option value="annual">Annual</option><option value="monthly">Monthly</option><option value="daily">Daily</option></select></label>
+              <label>Accrual starts<select [value]="draft().accrualStart" (change)="setValue('accrualStart', $any($event.target).value)"><option value="immediately">Immediately</option><option value="after_probation">After probation</option><option value="after_n_months">After N months</option></select></label>
+            </div>
+            @if (draft().accrualStart === 'after_n_months') { <label>Months before accrual begins *<input type="number" min="1" [value]="draft().accrualAfterNMonths ?? ''" (input)="setNullableNumber('accrualAfterNMonths', $any($event.target).value)" /></label> }
+            <label>Proration method<select [value]="draft().prorationMethod" (change)="setValue('prorationMethod', $any($event.target).value)"><option value="calendar_days">Calendar days</option><option value="working_days">Working days</option></select></label>
+          </div>
+        }
+
+        @if (step() === 4) {
+          <div class="lpw-fields">
+            <label class="lpw-toggle"><input type="checkbox" [checked]="draft().probationRestriction" (change)="setValue('probationRestriction', $any($event.target).checked)" /> Restrict leave during probation</label>
+            <div class="lpw-two">
+              <label>Minimum tenure (months)<input type="number" min="0" [value]="draft().minimumTenureMonths" (input)="setValue('minimumTenureMonths', +$any($event.target).value || 0)" /></label>
+              <label>First-year entitlement (%)<input type="number" min="0" max="100" [value]="draft().firstYearReducedPercent ?? ''" (input)="setNullableNumber('firstYearReducedPercent', $any($event.target).value)" /></label>
+            </div>
+          </div>
+        }
+
+        @if (step() === 5) {
+          <div class="lpw-fields">
+            <div class="lpw-two">
+              <label>Minimum notice (days)<input type="number" min="0" [value]="draft().minimumNoticeDays" (input)="setValue('minimumNoticeDays', +$any($event.target).value || 0)" /></label>
+              <label>Maximum consecutive days<input type="number" min="0" [value]="draft().maxConsecutiveDays ?? ''" (input)="setNullableNumber('maxConsecutiveDays', $any($event.target).value)" /></label>
+              <label>Minimum days per request<input type="number" min="0.5" step="0.5" [value]="draft().minDaysPerRequest" (input)="setValue('minDaysPerRequest', +$any($event.target).value || .5)" /></label>
+              <label>Maximum team absence (%)<input type="number" min="0" max="100" [value]="draft().maxTeamAbsencePercent ?? ''" (input)="setNullableNumber('maxTeamAbsencePercent', $any($event.target).value)" /></label>
+            </div>
+            <label>Approval mode<select [value]="draft().approvalMode" (change)="setValue('approvalMode', $any($event.target).value)"><option value="any_one">Any one approver</option><option value="all_must_approve">All must approve</option><option value="in_order">In order</option></select></label>
+          </div>
+        }
+
+        @if (step() === 6) {
+          <div class="lpw-section-intro"><h3>Blackout periods</h3><p>Optionally block leave requests during operationally sensitive dates.</p></div>
+          @for (period of draft().blackoutPeriods; track $index; let index = $index) {
+            <div class="lpw-blackout">
+              <label>Start<input type="date" [value]="period.startDate" (input)="updateBlackout(index, 'startDate', $any($event.target).value)" /></label>
+              <label>End<input type="date" [value]="period.endDate" (input)="updateBlackout(index, 'endDate', $any($event.target).value)" /></label>
+              <label>Reason<input [value]="period.reason ?? ''" (input)="updateBlackout(index, 'reason', $any($event.target).value)" /></label>
+              <button type="button" (click)="removeBlackout(index)" aria-label="Remove blackout period">×</button>
+            </div>
+          }
+          <button type="button" class="lpw-add" (click)="addBlackout()">+ Add blackout period</button>
+        }
+
+        @if (step() === 7) {
+          <div class="lpw-section-intro"><h3>Assign legal entities</h3><p>Select one or more legal entities. Existing active assignments may require confirmation.</p></div>
+          <div class="lpw-entity-list">
+            @for (entity of legalEntities; track entity.id) {
+              <label><input type="checkbox" [checked]="draft().legalEntityIds.includes(entity.id)" (change)="toggleLegalEntity(entity.id, $any($event.target).checked)" /><span><strong>{{ entity.name }}</strong><small>{{ entity.companyCode || 'No company code' }}</small></span></label>
+            }
+          </div>
+          <div class="lpw-review"><span>Policy</span><strong>{{ draft().name || 'Untitled policy' }}</strong><span>Rules</span><strong>{{ draft().leaveTypes.length }}</strong><span>Entities</span><strong>{{ draft().legalEntityIds.length }}</strong></div>
+          @if (validationErrors().length) {
+            <div class="lpw-errors"><strong>Review before saving</strong><ul>@for (error of validationErrors(); track error) { <li>{{ error }}</li> }</ul></div>
+          }
+        }
+      </main>
+
+      <footer>
+        <button type="button" class="lpw-secondary" (click)="step() === 1 ? cancel.emit() : back()">{{ step() === 1 ? 'Cancel' : 'Back' }}</button>
+        @if (step() < 7) { <button type="button" class="lpw-primary" (click)="next()">Continue</button> } @else { <button type="submit" class="lpw-primary" [disabled]="saving">{{ saving ? 'Saving…' : 'Create policy' }}</button> }
+      </footer>
+    </form>
+  </section>
+</div>

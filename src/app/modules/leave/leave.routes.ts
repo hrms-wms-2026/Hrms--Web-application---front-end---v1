@@ -1,0 +1,4 @@
+import { Routes } from '@angular/router';
+import { permissionGuard } from '../../core/guards/permission.guard';
+export const LEAVE_ROUTES: Routes = [{ path: '', loadComponent: () => import('./feature/time-off-shell/time-off-shell.component').then((m) => m.TimeOffShellComponent), children: [{ path: '', pathMatch: 'full', redirectTo: 'types' }, { path: 'types', loadComponent: () => import('./feature/leave-types-management/leave-types-management.component').then((m) => m.LeaveTypesManagementComponent), canActivate: [permissionGuard], data: { title: 'Leave Types', permissions: ['leave:read'] } }, { path: 'policies', loadComponent: () => import('./feature/policy-management/policy-management.component').then((m) => m.PolicyManagementComponent), canActivate: [permissionGuard], data: { title: 'Leave Policies', permissions: ['leave:manage'] } }] }];
+

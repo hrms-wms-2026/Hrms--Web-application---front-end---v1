@@ -2,6 +2,8 @@
 
 **Status:** Approved 2026-08-17. Companion to the backend repo's `HRMS-Backend-v1/docs/superpowers/specs/next/2026-08-17-attendance-leave-management-design.md`, which scopes the real API but has open questions still unanswered — this frontend ships against mocked data first and swaps to real calls once that backend work lands. No plan written yet.
 
+> **SUPERSEDED (Leave only) — 2026-08-21.** The backend companion doc named above was never actually written (confirmed by directory listing on 2026-08-21 — only this frontend doc ever existed for Leave). A complete product spec surfaced since then (`C:\HR\leave-management-complete.md`, all 9 screens, full self-service + HR flows, not just HR-admin list+approve/reject) and now drives real backend + frontend design docs: `HRMS-Backend-v1/docs/superpowers/specs/next/2026-08-21-leave-management-design.md` (backend) and `specs/next/2026-08-21-leave-management-design.md` (this repo). **The Leave section of this file below is historical only** — do not build against its mocked `LeaveRequestResponse` shape or its HR-only/no-self-service Phase 1 scope; see `plans/next/2026-08-21-leave-management/` instead. The **Attendance** section of this file is untouched and still current.
+
 ## Why this exists
 
 The nav shell (`src/app/layouts/main-layout/nav/nav-items.config.ts`) already has live entries for **Attendance** (`/time-attendance`, gated on module `time_attendance`) and **Time Off** (`/time-off`, gated on module `leave`), but no routed feature sits behind either path yet. This is the next module to build after People/Organization.
