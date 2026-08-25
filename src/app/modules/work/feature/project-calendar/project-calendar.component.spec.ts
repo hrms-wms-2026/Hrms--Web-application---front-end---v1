@@ -48,11 +48,74 @@ describe('ProjectCalendarComponent', () => {
     store.items.set(treeItems);
     fixture.detectChanges();
 
-    const rootCell = fixture.nativeElement.querySelector('[data-testid="calendar-row-o1"] .min-w-0') as HTMLElement;
-    const childCell = fixture.nativeElement.querySelector('[data-testid="calendar-row-o2"] .min-w-0') as HTMLElement;
+    const rootCell = fixture.nativeElement.querySelector('[data-testid="calendar-row-o1"] .project-calendar__objective') as HTMLElement;
+    const childCell = fixture.nativeElement.querySelector('[data-testid="calendar-row-o2"] .project-calendar__objective') as HTMLElement;
     expect(childCell.style.paddingLeft).not.toBe(rootCell.style.paddingLeft);
     // No collapse/expand - both bars stay on screen at once.
     expect(fixture.nativeElement.querySelector('[data-testid="timeline-bar-o1"]')).toBeTruthy();
     expect(fixture.nativeElement.querySelector('[data-testid="timeline-bar-o2"]')).toBeTruthy();
+  });
+
+  describe('week/month/year view navigation', () => {
+    beforeEach(() => {
+      store.items.set(items); // reset to the single-item fixture ('2026-01-01' start)
+      fixture.detectChanges();
+    });
+
+    it('hides period navigation in the default (full-range) view', () => {
+      expect(fixture.nativeElement.querySelector('[data-testid="period-nav"]')).toBeNull();
+    });
+
+    it('anchors week view at the project start, and Next/Previous page by 7 days', () => {
+      fixture.componentInstance.setCalendarView('week');
+      fixture.detectChanges();
+
+      expect(fixture.componentInstance.visibleTimelineStart()).toBe('2026-01-01');
+      expect(fixture.componentInstance.visibleTimelineEnd()).toBe('2026-01-07');
+
+      fixture.nativeElement.querySelector('[aria-label="Next period"]').click();
+      fixture.detectChanges();
+      expect(fixture.componentInstance.visibleTimelineStart()).toBe('2026-01-08');
+
+      fixture.nativeElement.querySelector('[aria-label="Previous period"]').click();
+      fixture.nativeElement.querySelector('[aria-label="Previous period"]').click();
+      fixture.detectChanges();
+      expect(fixture.componentInstance.visibleTimelineStart()).toBe('2025-12-25');
+    });
+
+    it('pages month view by whole calendar months, normalized to the 1st', () => {
+      fixture.componentInstance.setCalendarView('month');
+      fixture.detectChanges();
+      expect(fixture.componentInstance.visibleTimelineStart()).toBe('2026-01-01');
+      expect(fixture.componentInstance.visibleTimelineEnd()).toBe('2026-01-31');
+
+      fixture.nativeElement.querySelector('[aria-label="Next period"]').click();
+      fixture.detectChanges();
+      expect(fixture.componentInstance.visibleTimelineStart()).toBe('2026-02-01');
+      expect(fixture.componentInstance.visibleTimelineEnd()).toBe('2026-02-28');
+    });
+
+    it('pages year view by whole years', () => {
+      fixture.componentInstance.setCalendarView('year');
+      fixture.detectChanges();
+      expect(fixture.componentInstance.visibleTimelineStart()).toBe('2026-01-01');
+
+      fixture.nativeElement.querySelector('[aria-label="Next period"]').click();
+      fixture.detectChanges();
+      expect(fixture.componentInstance.visibleTimelineStart()).toBe('2027-01-01');
+      expect(fixture.componentInstance.visibleTimelineEnd()).toBe('2027-12-31');
+    });
+
+    it('resets the anchor back to the project start when switching views', () => {
+      fixture.componentInstance.setCalendarView('week');
+      fixture.detectChanges();
+      fixture.nativeElement.querySelector('[aria-label="Next period"]').click();
+      fixture.detectChanges();
+      expect(fixture.componentInstance.visibleTimelineStart()).toBe('2026-01-08');
+
+      fixture.componentInstance.setCalendarView('month');
+      fixture.detectChanges();
+      expect(fixture.componentInstance.visibleTimelineStart()).toBe('2026-01-01');
+    });
   });
 });

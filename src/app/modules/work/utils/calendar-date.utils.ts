@@ -23,3 +23,10 @@ export function calendarRange(startDate: string, endDate: string): string[] {
   const days = Math.max(1, calendarDayDifference(startDate, endDate) + 1);
   return Array.from({ length: days }, (_, index) => addCalendarDays(startDate, index));
 }
+
+/** Adds whole calendar months to a YYYY-MM-DD date, handling year rollover. */
+export function addCalendarMonths(value: string, months: number): string {
+  const date = parseCalendarDate(value);
+  date.setUTCMonth(date.getUTCMonth() + months);
+  return formatCalendarDate(date);
+}
