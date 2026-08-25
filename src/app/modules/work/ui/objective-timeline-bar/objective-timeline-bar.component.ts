@@ -14,11 +14,13 @@ interface DragState {
   standalone: true,
   template: `
     <div
-      class="relative h-9 rounded-md border border-black/10 transition-opacity"
+      class="absolute top-3 h-9 rounded-md border border-black/10 transition-opacity"
       [class.cursor-not-allowed]="disabled()"
       [class.opacity-55]="disabled() && !item().isAchieved"
       [class.opacity-75]="saving()"
       [style.backgroundColor]="barColor()"
+      [style.left.px]="left()"
+      [style.width.px]="width()"
       [attr.aria-label]="item().title"
       [attr.data-testid]="'timeline-bar-' + item().objectiveId"
       (pointerdown)="startDrag($event, 'move')"
@@ -35,7 +37,11 @@ interface DragState {
       </div>
     </div>
     @if (pendingApproval()) {
-      <div class="mt-1 text-[11px] text-[var(--color-warning)]" data-testid="pending-approval">{{ approvalMessage() }}</div>
+      <div
+        class="absolute top-12 mt-1 whitespace-nowrap text-[11px] text-[var(--color-warning)]"
+        [style.left.px]="left()"
+        data-testid="pending-approval"
+      >{{ approvalMessage() }}</div>
     }
   `
 })

@@ -44,6 +44,24 @@ describe('ObjectiveTimelineBarComponent', () => {
     expect(emitted).toBe(false);
   });
 
+  it('moves the rendered bar live during a drag, before pointerup commits it', () => {
+    // Regression test: left()/width() used to be computed but never bound in the
+    // template, so the bar sat still during a drag and only jumped to its new spot
+    // after drop. This asserts the DOM itself reflects the live preview mid-drag.
+    const bar = fixture.nativeElement.querySelector('[data-testid="timeline-bar-o1"]') as HTMLElement;
+    expect(bar.style.left).toBe('90px');
+    expect(bar.style.width).toBe('30px');
+
+    fixture.componentInstance.startDrag(new PointerEvent('pointerdown', { clientX: 10 }), 'move');
+    window.dispatchEvent(new PointerEvent('pointermove', { clientX: 30 }));
+    fixture.detectChanges();
+
+    expect(bar.style.left).toBe('110px');
+    expect(bar.style.width).toBe('30px');
+
+    window.dispatchEvent(new PointerEvent('pointerup', { clientX: 30 }));
+  });
+
   it('emits a shifted date range for a whole-bar drag', () => {
     let change: unknown;
     fixture.componentInstance.dateChange.subscribe((value) => change = value);

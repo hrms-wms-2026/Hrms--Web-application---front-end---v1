@@ -7,7 +7,6 @@ import {
   CalendarDateChange,
   CalendarEventDto,
   CreateCalendarEventRequestDto,
-  ProjectCalendarItemDto,
   UpdateCalendarEventRequestDto
 } from '../../models/dto/calendar.dto';
 import { ProjectCalendarStore } from '../../state/project-calendar.store';
@@ -55,17 +54,15 @@ import { addCalendarDays, calendarDayDifference, calendarRange } from '../../uti
                   </div>
                   <div class="relative h-16" [style.width.px]="timelineWidth()">
                     <div class="absolute inset-0 opacity-50" [style.background]="gridBackground()"></div>
-                    <div class="absolute top-3 h-9" [style.left.px]="barLeft(item)" [style.width.px]="barWidth(item)">
-                      <app-objective-timeline-bar
-                        [item]="item"
-                        [timelineStart]="timelineStart()"
-                        [dayWidth]="DAY_WIDTH"
-                        [saving]="store.saving()"
-                        [pendingApproval]="store.pendingSet().has(item.objectiveId)"
-                        [approvalMessage]="store.approvalMessages()[item.objectiveId] || 'Needs approval before this date change can be applied.'"
-                        (dateChange)="saveDates($event)"
-                      />
-                    </div>
+                    <app-objective-timeline-bar
+                      [item]="item"
+                      [timelineStart]="timelineStart()"
+                      [dayWidth]="DAY_WIDTH"
+                      [saving]="store.saving()"
+                      [pendingApproval]="store.pendingSet().has(item.objectiveId)"
+                      [approvalMessage]="store.approvalMessages()[item.objectiveId] || 'Needs approval before this date change can be applied.'"
+                      (dateChange)="saveDates($event)"
+                    />
                   </div>
                 </div>
               }
@@ -115,14 +112,6 @@ export class ProjectCalendarComponent implements OnInit {
 
   dayIndex(day: string): number {
     return calendarDayDifference(this.timelineStart(), day);
-  }
-
-  barLeft(item: ProjectCalendarItemDto): number {
-    return Math.max(0, this.dayIndex(item.startDate) * this.DAY_WIDTH);
-  }
-
-  barWidth(item: ProjectCalendarItemDto): number {
-    return Math.max(this.DAY_WIDTH, (calendarDayDifference(item.startDate, item.endDate) + 1) * this.DAY_WIDTH);
   }
 
   gridBackground(): string {
