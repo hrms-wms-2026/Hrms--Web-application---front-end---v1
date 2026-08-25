@@ -25,12 +25,17 @@ this pass:
 - New route `settings/devices`, added as a sibling of `settings/clock-in-policy` in
   `src/app/app.routes.ts`, lazy-loaded standalone component.
   - `canActivate: [permissionGuard]`
-  - `data: { title: 'Devices', permissions: ['settings:device'], modules: ['desktop_agent_gateway'] }`
+  - `data: { title: 'Devices', modules: ['desktop_agent_gateway'] }` — no `permissions` entry:
+    `MonitoringActivationController.Generate` requires only `TenantPolicy` (any authenticated
+    employee), no specific permission code. `settings:device` was considered and rejected here —
+    it's `PermissionSeeder.cs:166`'s "view biometric device connection status" permission
+    (fingerprint/biometric hardware), unrelated to the desktop tray agent.
 - New nav entry in `src/app/layouts/main-layout/nav/nav-items.config.ts`:
   - `id: 'settings-devices'`, `label: 'Devices'`, `path: '/settings/devices'`,
-    `requiredModules: ['desktop_agent_gateway']`, `requiredPermissions: ['settings:device']`
+    `requiredModules: ['desktop_agent_gateway']`, no `requiredPermissions`
 
-Both gates mirror the existing `clock-in-policy` entry's pattern exactly.
+The module gate mirrors the existing `clock-in-policy` entry's pattern; the permission gate is
+intentionally omitted per above.
 
 ## Component
 

@@ -35,6 +35,14 @@ would just show the user two messages for one failure. The component instead onl
 reset its own loading state on any error and let the existing global banner carry the
 message — see Task 2.
 
+**Correction (2026-08-25, post-commit):** Tasks 3 and 4 originally gated the route/nav entry
+on `permissions: ['settings:device']`. That permission is
+`PermissionSeeder.cs:166` — "View biometric device connection status" (fingerprint/biometric
+hardware integrations) — unrelated to the desktop tray agent. The backend's
+`MonitoringActivationController.Generate` endpoint requires only `TenantPolicy`
+(any authenticated employee), no permission code. Both tasks below are corrected to gate on
+`modules: ['desktop_agent_gateway']` only, with no `permissions` entry.
+
 ---
 
 ### Task 1: Activation code model + data-access service
@@ -579,11 +587,13 @@ In `src/app/app.routes.ts`, insert immediately after the `clock-in-policy` block
             canActivate: [permissionGuard],
             data: {
               title: 'Devices',
-              permissions: ['settings:device'],
               modules: ['desktop_agent_gateway']
             }
           },
 ```
+
+No `permissions` entry: `MonitoringActivationController.Generate` requires only
+`TenantPolicy` (any authenticated employee), no specific permission code.
 
 - [ ] **Step 4: Run the test to verify it passes**
 
@@ -612,15 +622,14 @@ Add to `src/app/layouts/main-layout/nav/nav-access.spec.ts`, right after the exi
 (around line 134):
 
 ```ts
-  it('settings-devices requires desktop_agent_gateway module and settings:device permission', () => {
+  it('settings-devices requires only the desktop_agent_gateway module, no permission code', () => {
     const settings = NAV_ITEMS.find((item) => item.id === 'settings')!;
     const devices = settings.children!.find((item) => item.id === 'settings-devices')!;
 
     expect(devices.label).toBe('Devices & connections');
     expect(devices.path).toBe('/settings/devices');
-    expect(canAccessNavItem(devices, checker(['settings:device'], ['desktop_agent_gateway']))).toBe(true);
-    expect(canAccessNavItem(devices, checker(['settings:device'], []))).toBe(false);
-    expect(canAccessNavItem(devices, checker([], ['desktop_agent_gateway']))).toBe(false);
+    expect(canAccessNavItem(devices, checker([], ['desktop_agent_gateway']))).toBe(true);
+    expect(canAccessNavItem(devices, checker([], []))).toBe(false);
   });
 ```
 
@@ -647,14 +656,18 @@ In `src/app/layouts/main-layout/nav/nav-items.config.ts`, replace the current
         id: 'settings-devices',
         label: 'Devices & connections',
         path: '/settings/devices',
-        requiredModules: ['desktop_agent_gateway'],
-        requiredPermissions: ['settings:device']
+        requiredModules: ['desktop_agent_gateway']
       }
       // Audit log is intentionally not listed yet.
     ]
   }
 ];
 ```
+
+No `requiredPermissions` entry: matches the route gate in Task 3, and the backend's
+`MonitoringActivationController.Generate` endpoint, which requires no specific permission
+code — `settings:device` (considered and rejected here) is `PermissionSeeder.cs:166`'s
+biometric-hardware-connection-status permission, unrelated to the desktop tray agent.
 
 - [ ] **Step 4: Run the test to verify it passes**
 
