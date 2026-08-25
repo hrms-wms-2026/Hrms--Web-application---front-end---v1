@@ -94,9 +94,15 @@ type StoreMock = {
   history: ReturnType<typeof signal<readonly AttendanceHistoryRow[]>>;
   historyLoading: ReturnType<typeof signal<boolean>>;
   historyError: ReturnType<typeof signal<string | null>>;
+  historyPage: ReturnType<typeof signal<number>>;
+  historyPageSize: ReturnType<typeof signal<number>>;
+  historyTotalCount: ReturnType<typeof signal<number>>;
   coveredHistory: ReturnType<typeof signal<readonly AttendanceHistoryRow[]>>;
   coveredHistoryLoading: ReturnType<typeof signal<boolean>>;
   coveredHistoryError: ReturnType<typeof signal<string | null>>;
+  coveredHistoryPage: ReturnType<typeof signal<number>>;
+  coveredHistoryPageSize: ReturnType<typeof signal<number>>;
+  coveredHistoryTotalCount: ReturnType<typeof signal<number>>;
   selectedHistoryRange: ReturnType<typeof signal<{ from: string; to: string } | null>>;
   selectedCoveredEmployeeId: ReturnType<typeof signal<string | null>>;
   loadToday: ReturnType<typeof vi.fn>;
@@ -109,6 +115,9 @@ type StoreMock = {
   myCorrections: ReturnType<typeof signal<readonly AttendanceCorrectionResponse[]>>;
   myCorrectionsLoading: ReturnType<typeof signal<boolean>>;
   myCorrectionsError: ReturnType<typeof signal<string | null>>;
+  myCorrectionsPage: ReturnType<typeof signal<number>>;
+  myCorrectionsPageSize: ReturnType<typeof signal<number>>;
+  myCorrectionsTotalCount: ReturnType<typeof signal<number>>;
   loadMyCorrections: ReturnType<typeof vi.fn>;
   cancelCorrection: ReturnType<typeof vi.fn>;
 };
@@ -131,9 +140,15 @@ describe('TimeTrackingComponent', () => {
       history: signal(history),
       historyLoading: signal(false),
       historyError: signal(null),
+      historyPage: signal(1),
+      historyPageSize: signal(20),
+      historyTotalCount: signal(0),
       coveredHistory: signal(access ? history : []),
       coveredHistoryLoading: signal(false),
       coveredHistoryError: signal(null),
+      coveredHistoryPage: signal(1),
+      coveredHistoryPageSize: signal(20),
+      coveredHistoryTotalCount: signal(0),
       selectedHistoryRange: signal(null),
       selectedCoveredEmployeeId: signal(null),
       loadToday: vi.fn(() => Promise.resolve()),
@@ -146,6 +161,9 @@ describe('TimeTrackingComponent', () => {
       myCorrections: signal(corrections),
       myCorrectionsLoading: signal(false),
       myCorrectionsError: signal(null),
+      myCorrectionsPage: signal(1),
+      myCorrectionsPageSize: signal(20),
+      myCorrectionsTotalCount: signal(0),
       loadMyCorrections: vi.fn(() => Promise.resolve()),
       cancelCorrection: vi.fn(() => Promise.resolve())
     };
@@ -294,6 +312,36 @@ describe('TimeTrackingComponent', () => {
     expect(element.querySelector('[data-testid="start-break"]')).toBeTruthy();
     expect(element.querySelector('[data-testid="end-break"]')).toBeNull();
     expect(element.querySelector('[data-testid="clock-out"]')).toBeTruthy();
+  });
+
+  it('shows the my-history Previous/Next control only when there is more than one page, and disables Previous on page 1', async () => {
+    const { fixture, store } = await setup({}, false, [coveredRow]);
+    store.historyTotalCount.set(41);
+    fixture.detectChanges();
+
+    const pageInfo = fixture.nativeElement.querySelector('.tt-pagination-info');
+    expect(pageInfo?.textContent).toContain('Page 1 of 3');
+
+    const buttons = fixture.nativeElement.querySelectorAll('.tt-pagination-buttons button');
+    expect((buttons[0] as HTMLButtonElement).disabled).toBe(true);
+    expect((buttons[1] as HTMLButtonElement).disabled).toBe(false);
+  });
+
+  it('hides the my-history Previous/Next control when everything fits on one page', async () => {
+    const { fixture, store } = await setup({}, false, [coveredRow]);
+    store.historyTotalCount.set(5);
+    fixture.detectChanges();
+
+    expect(fixture.nativeElement.querySelector('.tt-pagination-info')).toBeNull();
+  });
+
+  it('goToHistoryPage asks the store to load the requested page for the currently selected range', async () => {
+    const { fixture, store } = await setup({}, false, [coveredRow]);
+    const component = fixture.componentInstance;
+
+    component.goToHistoryPage(2);
+
+    expect(store.loadMyHistory).toHaveBeenCalledWith(expect.any(Object), 2);
   });
 
   it('shows remaining break time and the used-break helper when remaining is zero', async () => {

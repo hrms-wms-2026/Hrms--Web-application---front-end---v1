@@ -3,7 +3,31 @@
     <app-breadcrumb-header parentLabel="Attendance" currentLabel="Time Tracking" icon="time-attendance" />
   </header>
 
-  @if (store.todayLoading() && !store.today()) {
+  <div class="attendance-view-toggle" role="group" aria-label="Attendance view">
+    <button
+      type="button"
+      class="attendance-view-toggle__option"
+      [class.attendance-view-toggle__option--active]="viewMode() === 'my'"
+      [attr.aria-pressed]="viewMode() === 'my'"
+      (click)="selectViewMode('my')"
+    >
+      MY
+    </button>
+    @if (hasCoveredAccess()) {
+      <button
+        type="button"
+        class="attendance-view-toggle__option"
+        [class.attendance-view-toggle__option--active]="viewMode() === 'team'"
+        [attr.aria-pressed]="viewMode() === 'team'"
+        (click)="selectViewMode('team')"
+      >
+        TEAM
+      </button>
+    }
+  </div>
+
+  @if (viewMode() === 'my' || !hasCoveredAccess()) {
+    @if (store.todayLoading() && !store.today()) {
     <div class="time-tracking-skeleton" aria-busy="true" aria-label="Loading today’s attendance"></div>
   } @else if (store.todayError() && !store.today()) {
     <section class="time-tracking-message time-tracking-message--error" role="alert">
@@ -74,13 +98,19 @@
             <strong>{{ formatMinutes(today.totalWorkedMinutes) }}</strong>
             <span class="metric-helper">{{ today.isWorkingDay ? 'Scheduled workday' : 'No scheduled workday' }}</span>
           </article>
-          <article class="metric-card">
-            <span class="metric-label">Attendance times</span>
-            <span class="metric-helper">Clock in</span>
-            <strong>{{ formatDateTime(today.clockInAt, today.timezone) }}</strong>
-            <span class="metric-helper">Clock out</span>
-            <strong>{{ formatDateTime(today.clockOutAt, today.timezone) }}</strong>
-          </article>
+          @if (today.clockInAt || today.clockOutAt) {
+            <article class="metric-card">
+              <span class="metric-label">Attendance times</span>
+              @if (today.clockInAt) {
+                <span class="metric-helper">Clock in</span>
+                <strong>{{ formatDateTime(today.clockInAt, today.timezone) }}</strong>
+              }
+              @if (today.clockOutAt) {
+                <span class="metric-helper">Clock out</span>
+                <strong>{{ formatDateTime(today.clockOutAt, today.timezone) }}</strong>
+              }
+            </article>
+          }
         </div>
       </section>
 
@@ -102,23 +132,27 @@
         </section>
       }
 
-      <section class="action-card" aria-labelledby="actions-heading">
-        <div class="section-heading">
-          <div><p class="eyebrow">Self service</p><h2 id="actions-heading">Attendance actions</h2></div>
-          <span class="action-state">{{ statusLabel(today.attendanceStatus, today.attendanceStatusLabel) }}</span>
-        </div>
-        <div class="action-buttons">
-          @if (today.canClockIn) { <app-button type="button" data-testid="clock-in" [loading]="actionIsLoading('clockIn')" [disabled]="store.actionLoading()" (pressed)="store.clockIn()">Clock in</app-button> }
-          @if (today.canStartBreak) { <app-button type="button" data-testid="start-break" variant="secondary" [loading]="actionIsLoading('startBreak')" [disabled]="store.actionLoading()" (pressed)="store.startBreak()">Start break</app-button> }
-          @if (today.canEndBreak) { <app-button type="button" data-testid="end-break" variant="secondary" [loading]="actionIsLoading('endBreak')" [disabled]="store.actionLoading()" (pressed)="store.endBreak()">End break</app-button> }
-          @if (today.canClockOut) { <app-button type="button" data-testid="clock-out" variant="danger" [loading]="actionIsLoading('clockOut')" [disabled]="store.actionLoading()" (pressed)="store.clockOut()">Clock out</app-button> }
-        </div>
-        @if (!today.canClockIn && !today.canStartBreak && !today.canEndBreak && !today.canClockOut) { <p class="action-helper">There are no attendance actions available right now.</p> }
-      </section>
+      @if (today.allowedClockInMethods.web) {
+        <section class="action-card" aria-labelledby="actions-heading">
+          <div class="section-heading">
+            <div><p class="eyebrow">Self service</p><h2 id="actions-heading">Attendance actions</h2></div>
+            <span class="action-state">{{ statusLabel(today.attendanceStatus, today.attendanceStatusLabel) }}</span>
+          </div>
+          <div class="action-buttons">
+            @if (today.canClockIn) { <app-button type="button" data-testid="clock-in" [loading]="actionIsLoading('clockIn')" [disabled]="store.actionLoading()" (pressed)="store.clockIn()">Clock in</app-button> }
+            @if (today.canStartBreak) { <app-button type="button" data-testid="start-break" variant="secondary" [loading]="actionIsLoading('startBreak')" [disabled]="store.actionLoading()" (pressed)="store.startBreak()">Start break</app-button> }
+            @if (today.canEndBreak) { <app-button type="button" data-testid="end-break" variant="secondary" [loading]="actionIsLoading('endBreak')" [disabled]="store.actionLoading()" (pressed)="store.endBreak()">End break</app-button> }
+            @if (today.canClockOut) { <app-button type="button" data-testid="clock-out" variant="danger" [loading]="actionIsLoading('clockOut')" [disabled]="store.actionLoading()" (pressed)="store.clockOut()">Clock out</app-button> }
+          </div>
+          @if (!today.canClockIn && !today.canStartBreak && !today.canEndBreak && !today.canClockOut) { <p class="action-helper">There are no attendance actions available right now.</p> }
+        </section>
+      }
+    }
     }
   }
 
-  <section class="history-card" aria-labelledby="history-heading">
+  @if (viewMode() === 'my' || !hasCoveredAccess()) {
+    <section class="history-card" aria-labelledby="history-heading">
     <div class="section-heading section-heading--stacked-mobile">
       <div>
         <p class="eyebrow">Personal records</p>
@@ -165,10 +199,21 @@
           </tbody>
         </table>
       </div>
+      @if (store.historyTotalCount() > store.historyPageSize()) {
+        <div class="tt-pagination">
+          <span class="tt-pagination-info">
+            Page {{ store.historyPage() }} of {{ Math.ceil(store.historyTotalCount() / store.historyPageSize()) }}
+          </span>
+          <div class="tt-pagination-buttons">
+            <app-button type="button" variant="secondary" [disabled]="store.historyPage() <= 1" (pressed)="goToHistoryPage(store.historyPage() - 1)">Previous</app-button>
+            <app-button type="button" variant="secondary" [disabled]="store.historyPage() * store.historyPageSize() >= store.historyTotalCount()" (pressed)="goToHistoryPage(store.historyPage() + 1)">Next</app-button>
+          </div>
+        </div>
+      }
     }
-  </section>
+    </section>
 
-  <section class="history-card" aria-labelledby="my-corrections-heading">
+    <section class="history-card" aria-labelledby="my-corrections-heading">
     <div class="section-heading">
       <div><p class="eyebrow">Requests</p><h2 id="my-corrections-heading">My correction requests</h2></div>
       @if (store.myCorrectionsLoading?.()) { <span class="access-note">Loading…</span> }
@@ -197,10 +242,21 @@
           </tbody>
         </table>
       </div>
+      @if (store.myCorrectionsTotalCount() > store.myCorrectionsPageSize()) {
+        <div class="tt-pagination">
+          <span class="tt-pagination-info">
+            Page {{ store.myCorrectionsPage() }} of {{ Math.ceil(store.myCorrectionsTotalCount() / store.myCorrectionsPageSize()) }}
+          </span>
+          <div class="tt-pagination-buttons">
+            <app-button type="button" variant="secondary" [disabled]="store.myCorrectionsPage() <= 1" (pressed)="goToCorrectionsPage(store.myCorrectionsPage() - 1)">Previous</app-button>
+            <app-button type="button" variant="secondary" [disabled]="store.myCorrectionsPage() * store.myCorrectionsPageSize() >= store.myCorrectionsTotalCount()" (pressed)="goToCorrectionsPage(store.myCorrectionsPage() + 1)">Next</app-button>
+          </div>
+        </div>
+      }
     }
-  </section>
+    </section>
 
-  @if (correctionFormOpen(); as selectedRow) {
+    @if (correctionFormOpen(); as selectedRow) {
     <app-modal [open]="true" title="Request attendance correction" size="lg" [closeOnBackdropClick]="false" (closed)="closeCorrection()">
       <form class="correction-form" (ngSubmit)="previewOrSubmitCorrection()" novalidate>
         <div class="correction-form__intro">Update the attendance record for <strong>{{ formatDate(selectedRow.workDate) }}</strong>. Times are shown in company time.</div>
@@ -227,14 +283,23 @@
         <div class="correction-form__actions"><app-button type="button" variant="secondary" (pressed)="closeCorrection()">Cancel</app-button><app-button type="submit" [loading]="!!(store.correctionActionLoading?.() ?? false)" [disabled]="!!(store.correctionActionLoading?.() ?? false) || (correctionPreviewReady() && !!store.correctionPreview?.()?.approvalRequired && !store.correctionPreview?.()?.approver)">{{ correctionPreviewReady() ? 'Submit request' : 'Continue' }}</app-button></div>
       </form>
     </app-modal>
+    }
   }
 
-  @if (hasCoveredAccess()) {
+  @if (viewMode() === 'team' && hasCoveredAccess()) {
     <section class="history-card" aria-labelledby="covered-history-heading">
-      <div class="section-heading">
+      <div class="section-heading section-heading--stacked-mobile">
         <div><p class="eyebrow">Attendance oversight</p><h2 id="covered-history-heading">Team attendance</h2></div>
-        @if (canViewCoveredEmployees()) { <span class="access-note">Visible coverage records</span> }
+        <div class="team-heading-actions">
+          @if (canViewCoveredEmployees()) { <span class="access-note">Visible coverage records</span> }
+          <div class="range-controls" aria-label="Team attendance date range">
+            <app-date-picker label="From" [value]="historyFrom()" (valueChange)="setHistoryFrom($event)" />
+            <app-date-picker label="To" [value]="historyTo()" (valueChange)="setHistoryTo($event)" />
+            <app-button type="button" size="sm" [disabled]="store.coveredHistoryLoading()" (pressed)="applyHistoryRange()">Apply</app-button>
+          </div>
+        </div>
       </div>
+      @if (rangeError()) { <p class="field-error" role="alert">{{ rangeError() }}</p> }
       @if (store.coveredHistoryLoading()) {
         <div class="table-skeleton" aria-busy="true" aria-label="Loading team attendance"></div>
       } @else if (store.coveredHistoryError()) {
@@ -262,6 +327,17 @@
             </tbody>
           </table>
         </div>
+        @if (store.coveredHistoryTotalCount() > store.coveredHistoryPageSize()) {
+          <div class="tt-pagination">
+            <span class="tt-pagination-info">
+              Page {{ store.coveredHistoryPage() }} of {{ Math.ceil(store.coveredHistoryTotalCount() / store.coveredHistoryPageSize()) }}
+            </span>
+            <div class="tt-pagination-buttons">
+              <app-button type="button" variant="secondary" [disabled]="store.coveredHistoryPage() <= 1" (pressed)="goToCoveredHistoryPage(store.coveredHistoryPage() - 1)">Previous</app-button>
+              <app-button type="button" variant="secondary" [disabled]="store.coveredHistoryPage() * store.coveredHistoryPageSize() >= store.coveredHistoryTotalCount()" (pressed)="goToCoveredHistoryPage(store.coveredHistoryPage() + 1)">Next</app-button>
+            </div>
+          </div>
+        }
       }
     </section>
   }

@@ -21,6 +21,7 @@ import { TimeTrackingAction, TimeTrackingStore } from '../../state/time-tracking
 
 const DAY_IN_MILLISECONDS = 24 * 60 * 60 * 1000;
 const DISPLAY_TIMEZONE_FALLBACK = 'UTC';
+type AttendanceViewMode = 'my' | 'team';
 
 @Component({
   selector: 'app-time-tracking',
@@ -35,7 +36,9 @@ export class TimeTrackingComponent implements OnInit {
   private readonly permissionService = inject(PermissionService);
   private readonly notifications = inject(NotificationService);
 
+  readonly Math = Math;
   readonly hasCoveredAccess = computed(() => this.permissionService.hasPermission('attendance:read'));
+  readonly viewMode = signal<AttendanceViewMode>('my');
   readonly historyFrom = signal('');
   readonly historyTo = signal('');
   readonly rangeError = signal('');
@@ -65,9 +68,6 @@ export class TimeTrackingComponent implements OnInit {
     this.historyTo.set(range.to);
     void this.store.loadToday();
     void this.store.loadMyHistory(range);
-    if (this.hasCoveredAccess()) {
-      void this.store.loadCoveredHistory(range);
-    }
     if (this.store.loadMyCorrections) {
       void this.store.loadMyCorrections();
     }
@@ -79,10 +79,28 @@ export class TimeTrackingComponent implements OnInit {
       return;
     }
 
-    void this.store.loadMyHistory(range);
-    if (this.hasCoveredAccess()) {
-      void this.store.loadCoveredHistory(range);
+    if (this.viewMode() === 'team') {
+      if (this.hasCoveredAccess()) {
+        void this.store.loadCoveredHistory(range);
+      }
+      return;
     }
+
+    void this.store.loadMyHistory(range);
+  }
+
+  selectViewMode(mode: AttendanceViewMode): void {
+    this.viewMode.set(mode);
+    const range = this.store.selectedHistoryRange() ?? this.currentWeekRange;
+
+    if (mode === 'team') {
+      if (this.hasCoveredAccess()) {
+        void this.store.loadCoveredHistory(range);
+      }
+      return;
+    }
+
+    void this.store.loadMyHistory(range);
   }
 
   retryToday(): void {
@@ -91,6 +109,20 @@ export class TimeTrackingComponent implements OnInit {
 
   retryHistory(): void {
     this.applyHistoryRange();
+  }
+
+  goToHistoryPage(page: number): void {
+    const range = this.store.selectedHistoryRange() ?? this.currentWeekRange;
+    void this.store.loadMyHistory(range, page);
+  }
+
+  goToCoveredHistoryPage(page: number): void {
+    const range = this.store.selectedHistoryRange() ?? this.currentWeekRange;
+    void this.store.loadCoveredHistory(range, this.store.selectedCoveredEmployeeId() ?? undefined, page);
+  }
+
+  goToCorrectionsPage(page: number): void {
+    void this.store.loadMyCorrections(page);
   }
 
   openCorrection(row: AttendanceHistoryRow): void {
