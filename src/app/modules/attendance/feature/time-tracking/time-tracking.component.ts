@@ -13,7 +13,7 @@ import {
 } from '../../models/attendance-correction.model';
 import { BreadcrumbHeaderComponent } from '../../../../shared/ui/breadcrumb-header/breadcrumb-header.component';
 import { ButtonComponent } from '../../../../shared/ui/button/button.component';
-import { DatePickerComponent } from '../../../../shared/ui/date-picker/date-picker.component';
+import { DateRangePickerComponent } from '../../../../shared/ui/date-range-picker/date-range-picker.component';
 import { PermissionService } from '../../../../core/auth/state/permission.service';
 import { isMachineValue } from '../../../../core/services/error-handler.service';
 import { AttendanceHistoryRow, AttendanceTodayResponse, TimeTrackingRange } from '../../models/time-tracking.model';
@@ -26,7 +26,7 @@ type AttendanceViewMode = 'my' | 'team';
 @Component({
   selector: 'app-time-tracking',
   standalone: true,
-  imports: [BreadcrumbHeaderComponent, ButtonComponent, DatePickerComponent, FormsModule, ModalComponent],
+  imports: [BreadcrumbHeaderComponent, ButtonComponent, DateRangePickerComponent, FormsModule, ModalComponent],
   templateUrl: './time-tracking.component.html',
   styleUrl: './time-tracking.component.css',
   changeDetection: ChangeDetectionStrategy.OnPush
@@ -41,7 +41,6 @@ export class TimeTrackingComponent implements OnInit {
   readonly viewMode = signal<AttendanceViewMode>('my');
   readonly historyFrom = signal('');
   readonly historyTo = signal('');
-  readonly rangeError = signal('');
   readonly currentWeekRange = currentWeekRange();
   /** History rows have no timezone field, so use Today.timezone for the selected company.
    * UTC is an explicit display-only fallback until Today is available; it is never the browser timezone. */
@@ -73,12 +72,13 @@ export class TimeTrackingComponent implements OnInit {
     }
   }
 
-  applyHistoryRange(): void {
-    const range = this.selectedRange();
-    if (!range) {
-      return;
-    }
+  onRangeSelected(range: TimeTrackingRange): void {
+    this.historyFrom.set(range.from);
+    this.historyTo.set(range.to);
+    this.loadForCurrentView(range);
+  }
 
+  private loadForCurrentView(range: TimeTrackingRange): void {
     if (this.viewMode() === 'team') {
       if (this.hasCoveredAccess()) {
         void this.store.loadCoveredHistory(range);
@@ -108,7 +108,7 @@ export class TimeTrackingComponent implements OnInit {
   }
 
   retryHistory(): void {
-    this.applyHistoryRange();
+    this.loadForCurrentView({ from: this.historyFrom(), to: this.historyTo() });
   }
 
   goToHistoryPage(page: number): void {
@@ -286,30 +286,6 @@ export class TimeTrackingComponent implements OnInit {
     if (this.hasCoveredAccess()) {
       void this.store.loadCoveredHistory(range, this.store.selectedCoveredEmployeeId() ?? undefined);
     }
-  }
-
-  setHistoryFrom(value: string): void {
-    this.historyFrom.set(value);
-    this.rangeError.set('');
-  }
-
-  setHistoryTo(value: string): void {
-    this.historyTo.set(value);
-    this.rangeError.set('');
-  }
-
-  selectedRange(): TimeTrackingRange | null {
-    const range = { from: this.historyFrom().trim(), to: this.historyTo().trim() };
-    if (!range.from || !range.to) {
-      this.rangeError.set('Select both a start date and an end date.');
-      return null;
-    }
-    if (range.from > range.to) {
-      this.rangeError.set('The start date must be on or before the end date.');
-      return null;
-    }
-    this.rangeError.set('');
-    return range;
   }
 
   actionIsLoading(action: TimeTrackingAction): boolean {

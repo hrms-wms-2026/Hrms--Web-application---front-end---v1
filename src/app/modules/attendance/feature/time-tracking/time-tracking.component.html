@@ -152,19 +152,22 @@
   }
 
   @if (viewMode() === 'my' || !hasCoveredAccess()) {
-    <section class="history-card" aria-labelledby="history-heading">
+    <div class="personal-attendance-grid">
+      <section class="history-card" aria-labelledby="history-heading">
     <div class="section-heading section-heading--stacked-mobile">
       <div>
         <p class="eyebrow">Personal records</p>
         <h2 id="history-heading">My attendance history</h2>
       </div>
       <div class="range-controls" aria-label="Attendance history date range">
-        <app-date-picker label="From" [value]="historyFrom()" (valueChange)="setHistoryFrom($event)" />
-        <app-date-picker label="To" [value]="historyTo()" (valueChange)="setHistoryTo($event)" />
-        <app-button type="button" size="sm" [disabled]="store.historyLoading()" (pressed)="applyHistoryRange()">Apply</app-button>
+        <app-date-range-picker
+          [from]="historyFrom()"
+          [to]="historyTo()"
+          [disabled]="store.historyLoading()"
+          (rangeChange)="onRangeSelected($event)"
+        />
       </div>
     </div>
-    @if (rangeError()) { <p class="field-error" role="alert">{{ rangeError() }}</p> }
     @if (store.historyLoading()) {
       <div class="table-skeleton" aria-busy="true" aria-label="Loading attendance history"></div>
     } @else if (store.historyError()) {
@@ -213,8 +216,8 @@
     }
     </section>
 
-    <section class="history-card" aria-labelledby="my-corrections-heading">
-    <div class="section-heading">
+      <section class="history-card" aria-labelledby="my-corrections-heading">
+      <div class="section-heading">
       <div><p class="eyebrow">Requests</p><h2 id="my-corrections-heading">My correction requests</h2></div>
       @if (store.myCorrectionsLoading?.()) { <span class="access-note">Loading…</span> }
     </div>
@@ -253,8 +256,9 @@
           </div>
         </div>
       }
-    }
-    </section>
+      }
+      </section>
+    </div>
 
     @if (correctionFormOpen(); as selectedRow) {
     <app-modal [open]="true" title="Request attendance correction" size="lg" [closeOnBackdropClick]="false" (closed)="closeCorrection()">
@@ -290,16 +294,18 @@
     <section class="history-card" aria-labelledby="covered-history-heading">
       <div class="section-heading section-heading--stacked-mobile">
         <div><p class="eyebrow">Attendance oversight</p><h2 id="covered-history-heading">Team attendance</h2></div>
-        <div class="team-heading-actions">
+        <div>
           @if (canViewCoveredEmployees()) { <span class="access-note">Visible coverage records</span> }
           <div class="range-controls" aria-label="Team attendance date range">
-            <app-date-picker label="From" [value]="historyFrom()" (valueChange)="setHistoryFrom($event)" />
-            <app-date-picker label="To" [value]="historyTo()" (valueChange)="setHistoryTo($event)" />
-            <app-button type="button" size="sm" [disabled]="store.coveredHistoryLoading()" (pressed)="applyHistoryRange()">Apply</app-button>
+            <app-date-range-picker
+              [from]="historyFrom()"
+              [to]="historyTo()"
+              [disabled]="store.coveredHistoryLoading()"
+              (rangeChange)="onRangeSelected($event)"
+            />
           </div>
         </div>
       </div>
-      @if (rangeError()) { <p class="field-error" role="alert">{{ rangeError() }}</p> }
       @if (store.coveredHistoryLoading()) {
         <div class="table-skeleton" aria-busy="true" aria-label="Loading team attendance"></div>
       } @else if (store.coveredHistoryError()) {
