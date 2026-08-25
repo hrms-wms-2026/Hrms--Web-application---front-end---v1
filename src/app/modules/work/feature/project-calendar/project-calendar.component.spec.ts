@@ -37,4 +37,22 @@ describe('ProjectCalendarComponent', () => {
     expect(fixture.nativeElement.querySelector('[data-testid="timeline-bar-o1"]')).toBeTruthy();
     expect(fixture.nativeElement.textContent).toContain('Design');
   });
+
+  it('renders child objectives indented under their parent, all rows visible', () => {
+    const treeItems: ProjectCalendarItemDto[] = [
+      { ...items[0] },
+      { objectiveId: 'o2', projectId: 'p1', parentObjectiveId: 'o1', title: 'Sub design',
+        startDate: '2026-01-02', endDate: '2026-01-04', isActive: true, isAchieved: false,
+        canEdit: true, calendarEventId: null, calendarEventColor: null }
+    ];
+    store.items.set(treeItems);
+    fixture.detectChanges();
+
+    const rootCell = fixture.nativeElement.querySelector('[data-testid="calendar-row-o1"] .min-w-0') as HTMLElement;
+    const childCell = fixture.nativeElement.querySelector('[data-testid="calendar-row-o2"] .min-w-0') as HTMLElement;
+    expect(childCell.style.paddingLeft).not.toBe(rootCell.style.paddingLeft);
+    // No collapse/expand - both bars stay on screen at once.
+    expect(fixture.nativeElement.querySelector('[data-testid="timeline-bar-o1"]')).toBeTruthy();
+    expect(fixture.nativeElement.querySelector('[data-testid="timeline-bar-o2"]')).toBeTruthy();
+  });
 });

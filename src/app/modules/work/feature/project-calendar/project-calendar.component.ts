@@ -11,6 +11,7 @@ import {
 } from '../../models/dto/calendar.dto';
 import { ProjectCalendarStore } from '../../state/project-calendar.store';
 import { addCalendarDays, calendarDayDifference, calendarRange } from '../../utils/calendar-date.utils';
+import { buildCalendarTreeOrder } from '../../utils/calendar-tree.utils';
 
 @Component({
   selector: 'app-project-calendar',
@@ -46,21 +47,21 @@ import { addCalendarDays, calendarDayDifference, calendarRange } from '../../uti
                   }
                 </div>
               </div>
-              @for (item of store.items(); track item.objectiveId) {
-                <div class="grid border-b border-[var(--color-border)] last:border-b-0" [style.gridTemplateColumns]="'220px 1fr'" [attr.data-testid]="'calendar-row-' + item.objectiveId">
-                  <div class="min-w-0 p-3">
-                    <div class="truncate text-sm font-medium text-[var(--color-text-primary)]" [title]="item.title">{{ item.title }}</div>
-                    <div class="mt-1 text-xs text-[var(--color-text-secondary)]">{{ item.startDate }} → {{ item.endDate }}</div>
+              @for (row of rows(); track row.item.objectiveId) {
+                <div class="grid border-b border-[var(--color-border)] last:border-b-0" [style.gridTemplateColumns]="'220px 1fr'" [attr.data-testid]="'calendar-row-' + row.item.objectiveId">
+                  <div class="min-w-0 p-3" [style.paddingLeft.px]="12 + row.depth * 16">
+                    <div class="truncate text-sm font-medium text-[var(--color-text-primary)]" [title]="row.item.title">{{ row.item.title }}</div>
+                    <div class="mt-1 text-xs text-[var(--color-text-secondary)]">{{ row.item.startDate }} → {{ row.item.endDate }}</div>
                   </div>
                   <div class="relative h-16" [style.width.px]="timelineWidth()">
                     <div class="absolute inset-0 opacity-50" [style.background]="gridBackground()"></div>
                     <app-objective-timeline-bar
-                      [item]="item"
+                      [item]="row.item"
                       [timelineStart]="timelineStart()"
                       [dayWidth]="DAY_WIDTH"
                       [saving]="store.saving()"
-                      [pendingApproval]="store.pendingSet().has(item.objectiveId)"
-                      [approvalMessage]="store.approvalMessages()[item.objectiveId] || 'Needs approval before this date change can be applied.'"
+                      [pendingApproval]="store.pendingSet().has(row.item.objectiveId)"
+                      [approvalMessage]="store.approvalMessages()[row.item.objectiveId] || 'Needs approval before this date change can be applied.'"
                       (dateChange)="saveDates($event)"
                     />
                   </div>
@@ -101,6 +102,7 @@ export class ProjectCalendarComponent implements OnInit {
   });
   readonly days = computed(() => calendarRange(this.timelineStart(), this.timelineEnd()));
   readonly timelineWidth = computed(() => Math.max(1, this.days().length) * this.DAY_WIDTH);
+  readonly rows = computed(() => buildCalendarTreeOrder(this.store.items()));
 
   ngOnInit(): void {
     const id = this.route.snapshot.parent?.paramMap.get('id') ?? this.route.snapshot.paramMap.get('id');
