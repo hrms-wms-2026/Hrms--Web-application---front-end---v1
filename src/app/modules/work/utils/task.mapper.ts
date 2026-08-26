@@ -29,7 +29,9 @@ export function toWorkTask(dto: WorkTaskDto): WorkTask {
     progressPercent: dto.progressPercent,
     sprintId: dto.sprintId,
         assigneeEmployeeIds: dto.assigneeEmployeeIds ?? [],
-    openClockSessionEmployeeId: dto.openClockSessionEmployeeId
+    openClockSessionEmployeeId: dto.openClockSessionEmployeeId,
+    openClockSessionClockInAt: dto.openClockSessionClockInAt ? new Date(dto.openClockSessionClockInAt) : null,
+    totalLoggedMinutes: dto.totalLoggedMinutes
 
   };
 }

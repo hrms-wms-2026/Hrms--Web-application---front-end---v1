@@ -62,6 +62,10 @@ export class TaskApiService {
     return this.http.get<TaskHistoryEntryDto[]>(`${this.baseUrl}/tasks/${taskId}/history`);
   }
 
+  getCurrentEmployee(): Observable<{ employeeId: string }> {
+    return this.http.get<{ employeeId: string }>(`${this.baseUrl}/me`);
+  }
+
   getBySprintId(sprintId: string): Observable<WorkTaskDto[]> {
     return this.http.get<WorkTaskDto[]>(`${this.baseUrl}/sprints/${sprintId}/tasks`);
   }

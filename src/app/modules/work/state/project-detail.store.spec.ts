@@ -293,7 +293,7 @@ describe('ProjectDetailStore', () => {
     const directTask: WorkTaskDto = {
       id: 't-direct', objectiveId: 'o1', shortId: 'WEB-1', title: 'Direct task', description: null,
       categoryId: 'task', statusId: 'st-1', priority: 'medium', storyPoints: null,
-      dueDate: null, estimatedHours: 3, completedHours: 0, progressPercent: 0, sprintId: null, assigneeEmployeeIds: [], openClockSessionEmployeeId: null
+      dueDate: null, estimatedHours: 3, completedHours: 0, progressPercent: 0, sprintId: null, assigneeEmployeeIds: [], openClockSessionEmployeeId: null, openClockSessionClockInAt: null, totalLoggedMinutes: 0
     };
 
     const sprintTask: WorkTaskDto = {
@@ -410,7 +410,7 @@ describe('ProjectDetailStore', () => {
     const sprintTask: WorkTaskDto = {
       id: 't-sprint', objectiveId: 'o1', shortId: 'WEB-2', title: 'Sprint task', description: null,
       categoryId: 'task', statusId: 'st-1', priority: 'medium', storyPoints: null,
-      dueDate: null, estimatedHours: 3, completedHours: 0, progressPercent: 0, sprintId: 'spr-1', assigneeEmployeeIds: [], openClockSessionEmployeeId: null
+      dueDate: null, estimatedHours: 3, completedHours: 0, progressPercent: 0, sprintId: 'spr-1', assigneeEmployeeIds: [], openClockSessionEmployeeId: null, openClockSessionClockInAt: null, totalLoggedMinutes: 0
     };
 
     const statuses: TaskStatusDto[] = [{
@@ -568,7 +568,7 @@ describe('ProjectDetailStore', () => {
       getBySprintId: vi.fn().mockReturnValue(of([{
         id: 't-sprint', objectiveId: 'o1', shortId: 'WEB-2', title: 'Sprint task', description: null,
         categoryId: 'task', statusId: 'st-1', priority: 'medium', storyPoints: null,
-        dueDate: null, estimatedHours: 3, completedHours: 0, progressPercent: 0, sprintId: 'spr-1', assigneeEmployeeIds: [], openClockSessionEmployeeId: null
+        dueDate: null, estimatedHours: 3, completedHours: 0, progressPercent: 0, sprintId: 'spr-1', assigneeEmployeeIds: [], openClockSessionEmployeeId: null, openClockSessionClockInAt: null, totalLoggedMinutes: 0
       }])),
       deleteTask: vi.fn().mockReturnValue(of(undefined))
     };

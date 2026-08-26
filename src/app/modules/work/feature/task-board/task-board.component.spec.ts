@@ -64,7 +64,7 @@ describe('TaskBoardComponent', () => {
     const inSprint = {
       id: 't-in', objectiveId: 'milestone-1', shortId: 'PRJ-1', title: 'In sprint', description: null,
       categoryId: 'task' as const, statusId: 's-1', priority: 'medium' as const, storyPoints: null,
-      dueDate: null, estimatedHours: 5, completedHours: 0, progressPercent: 0, sprintId: 'sp-active', assigneeEmployeeIds: [], openClockSessionEmployeeId: null
+      dueDate: null, estimatedHours: 5, completedHours: 0, progressPercent: 0, sprintId: 'sp-active', assigneeEmployeeIds: [], openClockSessionEmployeeId: null, openClockSessionClockInAt: null, totalLoggedMinutes: 0
     };
     const outSprint = { ...inSprint, id: 't-out', title: 'Out of sprint', sprintId: 'sp-other' };
     const loadBoard = vi.fn().mockResolvedValue(undefined);
@@ -135,7 +135,7 @@ describe('TaskBoardComponent', () => {
     const base = {
       objectiveId: 'milestone-1', shortId: 'PRJ-1', description: null,
       categoryId: 'task' as const, statusId: 's-1', priority: 'medium' as const, storyPoints: null,
-      dueDate: null, estimatedHours: 5, completedHours: 0, progressPercent: 0, assigneeEmployeeIds: [], openClockSessionEmployeeId: null
+      dueDate: null, estimatedHours: 5, completedHours: 0, progressPercent: 0, assigneeEmployeeIds: [], openClockSessionEmployeeId: null, openClockSessionClockInAt: null, totalLoggedMinutes: 0
     };
     const individualTask = { ...base, id: 't-individual', title: 'Individual', sprintId: null };
     const sprintTask = { ...base, id: 't-sprint', title: 'In sprint', sprintId: 'sp-active' };

@@ -1,5 +1,5 @@
 import { Component, computed, inject, signal } from '@angular/core';
-import { AuthStore } from '../../../../core/auth/state/auth.store';
+import { CurrentEmployeeStore } from '../../state/current-employee.store';
 
 import { ActivatedRoute } from '@angular/router';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
@@ -38,7 +38,7 @@ import { Sprint, SprintStatus } from '../../models/sprint.model';
 export class MilestoneTreeTabComponent {
   readonly store = inject(ProjectDetailStore);
     private readonly route = inject(ActivatedRoute);
-  protected readonly auth = inject(AuthStore);
+  protected readonly currentEmployee = inject(CurrentEmployeeStore);
 
   private currentMilestoneId = '';
   private currentProjectId = '';
@@ -111,6 +111,7 @@ export class MilestoneTreeTabComponent {
       this.selectedModuleFilter.set(milestoneId);
       this.selectedNodeId.set(null);
       void this.loadTree();
+      void this.currentEmployee.ensureLoaded();
       if (this.currentProjectId && this.loadedMembersForProjectId !== this.currentProjectId) {
         this.loadedMembersForProjectId = this.currentProjectId;
         void this.loadAssignableMembers(this.currentProjectId);

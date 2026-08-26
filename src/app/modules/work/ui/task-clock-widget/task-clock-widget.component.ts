@@ -1,4 +1,4 @@
-import { Component, computed, inject, input, output, signal } from '@angular/core';
+import { Component, DestroyRef, computed, inject, input, output, signal } from '@angular/core';
 import { firstValueFrom } from 'rxjs';
 import { TaskApiService } from '../../data-access/task-api.service';
 import { WorkTask } from '../../models/task.model';
@@ -8,6 +8,7 @@ import { toWorkTask } from '../../utils/task.mapper';
   selector: 'app-task-clock-widget',
   standalone: true,
   template: `
+    <span data-testid="clock-timer" class="task-clock-widget__timer">{{ totalTimeLabel() }}</span>
     @if (hasOpenSessionMine()) {
       <button data-testid="push-button" type="button" class="task-clock-widget__button" (click)="openPushPopup()">
         Push
@@ -76,10 +77,18 @@ import { toWorkTask } from '../../utils/task.mapper';
     }
     .task-clock-widget__popup input { padding: 4px 6px; }
     .task-clock-widget__popup [role="alert"] { color: var(--color-danger-text); font-size: 12px; }
+    .task-clock-widget__timer {
+      font-variant-numeric: tabular-nums;
+      font-size: 12px;
+      color: var(--color-text-secondary);
+      margin-right: 6px;
+    }
   `]
 })
 export class TaskClockWidgetComponent {
   private readonly taskApi = inject(TaskApiService);
+  private readonly destroyRef = inject(DestroyRef);
+  private tickTimer: ReturnType<typeof setInterval> | null = null;
 
   task = input.required<WorkTask>();
   hasOpenSessionMine = input(false);
@@ -93,6 +102,32 @@ export class TaskClockWidgetComponent {
   pushReason = signal('');
   pushError = signal<string | null>(null);
   pushSubmitting = signal(false);
+  private readonly now = signal(Date.now());
+
+  constructor() {
+    this.tickTimer = setInterval(() => this.now.set(Date.now()), 1000);
+    this.destroyRef.onDestroy(() => {
+      if (this.tickTimer !== null) clearInterval(this.tickTimer);
+    });
+  }
+
+  // Total time spent on this task: the persisted total from all past closed sessions, plus the
+  // live-running elapsed time of the current session while clocked in. Always visible - frozen
+  // at the accumulated total when not clocked in, resumes counting up (never resets to 0) the
+  // moment a new Clock In starts, and freezes again at the new total the moment Push closes it.
+  totalTimeLabel = computed(() => {
+    const baseSeconds = this.task().totalLoggedMinutes * 60;
+    const clockInAt = this.task().openClockSessionClockInAt;
+    const liveSeconds = this.hasOpenSessionMine() && clockInAt
+      ? Math.max(0, Math.floor((this.now() - clockInAt.getTime()) / 1000))
+      : 0;
+    const totalSeconds = baseSeconds + liveSeconds;
+    const hours = Math.floor(totalSeconds / 3600);
+    const minutes = Math.floor((totalSeconds % 3600) / 60);
+    const seconds = totalSeconds % 60;
+    const pad = (value: number) => value.toString().padStart(2, '0');
+    return hours > 0 ? `${pad(hours)}:${pad(minutes)}:${pad(seconds)}` : `${pad(minutes)}:${pad(seconds)}`;
+  });
 
   isLockedAt100 = computed(() => this.task().progressPercent === 100);
 

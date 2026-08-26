@@ -1,7 +1,7 @@
 import { Component, OnInit, computed, inject, signal } from '@angular/core';
 import { ActivatedRoute } from '@angular/router';
 import { firstValueFrom } from 'rxjs';
-import { AuthStore } from '../../../../core/auth/state/auth.store';
+import { CurrentEmployeeStore } from '../../state/current-employee.store';
 import { ButtonComponent } from '../../../../shared/ui/button/button.component';
 import { ErrorStateComponent } from '../../../../shared/ui/error-state/error-state.component';
 import { TaskApiService } from '../../data-access/task-api.service';
@@ -45,7 +45,9 @@ import { WorkDropdownComponent } from '../../ui/work-dropdown/work-dropdown.comp
             [connectedListIds]="statuses().map(s => s.id)"
             [allStatuses]="statuses()"
             [employeeNames]="{}"
+            [currentEmployeeId]="currentEmployeeId()"
             (taskViewed)="onTaskViewed($event)"
+            (taskChanged)="reload()"
           />
         }
       </div>
@@ -91,7 +93,7 @@ export class MyTaskComponent implements OnInit {
   private readonly taskApi = inject(TaskApiService);
   private readonly sprintStore = inject(SprintListStore);
   private readonly projectStore = inject(ProjectDetailStore);
-  private readonly auth = inject(AuthStore);
+  private readonly currentEmployee = inject(CurrentEmployeeStore);
 
   view = signal<'board' | 'list'>('board');
   search = signal('');
@@ -105,7 +107,7 @@ export class MyTaskComponent implements OnInit {
   selectedTask = signal<WorkTask | null>(null);
 
   projectId = computed(() => this.route.parent?.snapshot.paramMap.get('id') ?? '');
-  currentEmployeeId = computed(() => this.auth.employeeId() ?? '');
+  currentEmployeeId = computed(() => this.currentEmployee.id());
 
   objectiveOwners = computed(() =>
     Object.fromEntries(this.projectStore.milestones().map((module) => [module.objectiveId, module.isOwner]))
@@ -130,6 +132,7 @@ export class MyTaskComponent implements OnInit {
   ]);
 
   async ngOnInit(): Promise<void> {
+    void this.currentEmployee.ensureLoaded();
     await this.load();
   }
 

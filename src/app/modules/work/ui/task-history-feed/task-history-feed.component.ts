@@ -1,4 +1,4 @@
-import { Component, inject, input, output } from '@angular/core';
+import { Component, DestroyRef, inject, input, output, signal } from '@angular/core';
 import { firstValueFrom } from 'rxjs';
 import { TaskApiService } from '../../data-access/task-api.service';
 import { TaskHistoryEntryDto } from '../../models/dto/task-history.dto';
@@ -55,9 +55,32 @@ import { TaskHistoryEntryDto } from '../../models/dto/task-history.dto';
 })
 export class TaskHistoryFeedComponent {
   private readonly taskApi = inject(TaskApiService);
+  private readonly destroyRef = inject(DestroyRef);
+  private tickTimer: ReturnType<typeof setInterval> | null = null;
+  private readonly now = signal(Date.now());
 
   entries = input.required<TaskHistoryEntryDto[]>();
   reasonSaved = output<void>();
+
+  constructor() {
+    this.tickTimer = setInterval(() => this.now.set(Date.now()), 1000);
+    this.destroyRef.onDestroy(() => {
+      if (this.tickTimer !== null) clearInterval(this.tickTimer);
+    });
+  }
+
+  private formatClockTime(at: string): string {
+    return new Date(at).toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit' });
+  }
+
+  private formatElapsedSince(startedAt: string): string {
+    const elapsedSeconds = Math.max(0, Math.floor((this.now() - new Date(startedAt).getTime()) / 1000));
+    const hours = Math.floor(elapsedSeconds / 3600);
+    const minutes = Math.floor((elapsedSeconds % 3600) / 60);
+    const seconds = elapsedSeconds % 60;
+    const pad = (value: number) => value.toString().padStart(2, '0');
+    return hours > 0 ? `${pad(hours)}:${pad(minutes)}:${pad(seconds)}` : `${pad(minutes)}:${pad(seconds)}`;
+  }
 
   summaryFor(entry: TaskHistoryEntryDto): string {
     switch (entry.type) {
@@ -67,9 +90,11 @@ export class TaskHistoryFeedComponent {
         return 'moved the status';
       case 'clock_session': {
         const cs = entry.clockSession!;
-        const duration = cs.durationMinutes !== null ? `${cs.durationMinutes} min` : 'in progress';
+        const duration = cs.durationMinutes !== null
+          ? `${cs.durationMinutes} min`
+          : `in progress, ${this.formatElapsedSince(cs.clockInAt)}`;
         const percent = cs.pushedPercent !== null ? `, pushed to ${cs.pushedPercent}%` : '';
-        return `clocked in (${duration}${percent})`;
+        return `clocked in at ${this.formatClockTime(cs.clockInAt)} (${duration}${percent})`;
       }
       case 'percentage_change': {
         const pc = entry.percentageChange!;

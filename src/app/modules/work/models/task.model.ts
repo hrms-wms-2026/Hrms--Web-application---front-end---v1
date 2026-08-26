@@ -24,5 +24,7 @@ export interface WorkTask {
   sprintId: string | null;
     assigneeEmployeeIds: string[];
   openClockSessionEmployeeId: string | null;
+  openClockSessionClockInAt: Date | null;
+  totalLoggedMinutes: number;
 
 }

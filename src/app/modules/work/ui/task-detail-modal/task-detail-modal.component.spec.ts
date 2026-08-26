@@ -11,12 +11,12 @@ describe('TaskDetailModalComponent', () => {
   const task: WorkTask = {
     id: 't1', objectiveId: 'o1', shortId: 'EPOS-1', title: 'Do the thing', description: 'Details here',
     categoryId: 'task', statusId: 's1', priority: 'high', storyPoints: 3, dueDate: new Date('2026-09-20'),
-    estimatedHours: 8, completedHours: 0, progressPercent: 0, sprintId: null, assigneeEmployeeIds: [], openClockSessionEmployeeId: null
+    estimatedHours: 8, completedHours: 0, progressPercent: 0, sprintId: null, assigneeEmployeeIds: [], openClockSessionEmployeeId: null, openClockSessionClockInAt: null, totalLoggedMinutes: 0
   };
   const updatedDto: WorkTaskDto = {
     id: 't1', objectiveId: 'o1', shortId: 'EPOS-1', title: 'Updated title', description: 'Details here',
     categoryId: 'task', statusId: 's1', priority: 'high', storyPoints: 3, dueDate: '2026-09-20',
-    estimatedHours: 8, completedHours: 0, progressPercent: 0, sprintId: null, assigneeEmployeeIds: [], openClockSessionEmployeeId: null
+    estimatedHours: 8, completedHours: 0, progressPercent: 0, sprintId: null, assigneeEmployeeIds: [], openClockSessionEmployeeId: null, openClockSessionClockInAt: null, totalLoggedMinutes: 0
   };
   const statuses: TaskStatusColumn[] = [
     { id: 's1', name: 'To Do', displayOrder: 0, requiresApproval: false, marksTaskComplete: false, visibility: 'public' },
@@ -328,6 +328,19 @@ describe('TaskDetailModalComponent', () => {
     await fixture.whenStable();
     expect(fixture.componentInstance.hasOpenSessionMine()).toBe(false);
     expect(fixture.componentInstance.hasOpenSessionOtherEmployee()).toBe(false);
+  });
+
+  it('sums closed clock sessions from history for the widget total, not the (possibly stale) task input', async () => {
+    // task input carries totalLoggedMinutes: 0 (set in setup()) - a Push only reloads history(),
+    // never refetches task(), so widgetTask() must derive the real total from history() itself.
+    const { fixture, getTaskHistory } = setup(true);
+    getTaskHistory.mockReturnValue(of([
+      { type: 'clock_session', occurredAt: '2026-08-25T09:00:00Z', employeeId: 'e1', employeeName: 'Alex', edit: null, statusChange: null, clockSession: { sessionId: 's1', clockInAt: '2026-08-25T08:30:00Z', clockOutAt: '2026-08-25T09:00:00Z', durationMinutes: 30, sessionReason: null, pushedPercent: 20, previousPercent: 0, percentageLogId: 'p1', percentageReason: null }, percentageChange: null },
+      { type: 'clock_session', occurredAt: '2026-08-25T10:00:00Z', employeeId: 'e1', employeeName: 'Alex', edit: null, statusChange: null, clockSession: { sessionId: 's2', clockInAt: '2026-08-25T09:45:00Z', clockOutAt: '2026-08-25T10:00:00Z', durationMinutes: 15, sessionReason: null, pushedPercent: 40, previousPercent: 20, percentageLogId: 'p2', percentageReason: null }, percentageChange: null }
+    ]));
+    fixture.detectChanges();
+    await fixture.whenStable();
+    expect(fixture.componentInstance.widgetTask()?.totalLoggedMinutes).toBe(45);
   });
 
   it('keeps the modal form usable when history loading fails', async () => {

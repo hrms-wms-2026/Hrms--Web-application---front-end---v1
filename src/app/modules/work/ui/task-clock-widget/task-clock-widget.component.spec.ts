@@ -8,7 +8,7 @@ import { environment } from '../../../../../environments/environment';
 const baseTask: WorkTask = {
   id: 't1', objectiveId: 'o1', shortId: 'T-1', title: 'Task', description: null,
   categoryId: 'c1', statusId: 'st1', priority: 'medium', storyPoints: null, dueDate: null,
-  estimatedHours: null, completedHours: 0, progressPercent: 30, sprintId: null, assigneeEmployeeIds: ['e1'], openClockSessionEmployeeId: null
+  estimatedHours: null, completedHours: 0, progressPercent: 30, sprintId: null, assigneeEmployeeIds: ['e1'], openClockSessionEmployeeId: null, openClockSessionClockInAt: null, totalLoggedMinutes: 0
 };
 
 describe('TaskClockWidgetComponent', () => {
@@ -60,6 +60,48 @@ describe('TaskClockWidgetComponent', () => {
     setup({ hasOpenSessionMine: true });
     expect(fixture.nativeElement.querySelector('[data-testid="clock-in-button"]')).toBeNull();
     expect(fixture.nativeElement.querySelector('[data-testid="push-button"]')).toBeTruthy();
+  });
+
+  it('shows a live-ticking timer while clocked in, and it advances every second', () => {
+    vi.useFakeTimers();
+    try {
+      const clockInAt = new Date('2026-08-26T10:00:00Z');
+      vi.setSystemTime(new Date('2026-08-26T10:01:05Z'));
+      setup({ hasOpenSessionMine: true, task: { ...baseTask, openClockSessionClockInAt: clockInAt } });
+      fixture.detectChanges();
+      expect(fixture.nativeElement.querySelector('[data-testid="clock-timer"]').textContent.trim()).toBe('01:05');
+
+      vi.advanceTimersByTime(1000);
+      fixture.detectChanges();
+      expect(fixture.nativeElement.querySelector('[data-testid="clock-timer"]').textContent.trim()).toBe('01:06');
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it('shows the timer frozen at the persisted total when not currently clocked in', () => {
+    setup({ hasOpenSessionMine: false, task: { ...baseTask, totalLoggedMinutes: 95 } });
+    // 95 min = 1h 35m
+    expect(fixture.nativeElement.querySelector('[data-testid="clock-timer"]').textContent.trim()).toBe('01:35:00');
+  });
+
+  it('shows the timer frozen at 0 when never clocked in before', () => {
+    setup({ hasOpenSessionMine: false });
+    expect(fixture.nativeElement.querySelector('[data-testid="clock-timer"]').textContent.trim()).toBe('00:00');
+  });
+
+  it('resumes the timer from the persisted total on a new Clock In, not from 0', () => {
+    vi.useFakeTimers();
+    try {
+      const clockInAt = new Date('2026-08-26T10:00:00Z');
+      vi.setSystemTime(new Date('2026-08-26T10:00:10Z'));
+      // 90 minutes already logged from earlier sessions, now 10s into a fresh session.
+      setup({ hasOpenSessionMine: true, task: { ...baseTask, totalLoggedMinutes: 90, openClockSessionClockInAt: clockInAt } });
+      fixture.detectChanges();
+      expect(fixture.nativeElement.querySelector('[data-testid="clock-timer"]').textContent.trim()).toBe('01:30:10');
+    } finally {
+      vi.useRealTimers();
+    }
   });
 
   it('opens the push popup showing the current percent for reference', () => {

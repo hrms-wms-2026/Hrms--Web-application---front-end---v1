@@ -7,21 +7,21 @@ import { MyTaskComponent } from './my-task.component';
 import { TaskApiService } from '../../data-access/task-api.service';
 import { SprintListStore } from '../../state/sprint-list.store';
 import { ProjectDetailStore } from '../../state/project-detail.store';
-import { AuthStore } from '../../../../core/auth/state/auth.store';
 
 const myTasks = [
-  { id: 't1', objectiveId: 'o1', shortId: 'T-1', title: 'First', description: null, categoryId: 'c1', statusId: 's1', priority: 'high' as const, storyPoints: null, dueDate: '2026-09-01', estimatedHours: null, completedHours: 0, progressPercent: 0, sprintId: 'sp1', assigneeEmployeeIds: ['e1'], openClockSessionEmployeeId: null },
-  { id: 't2', objectiveId: 'o1', shortId: 'T-2', title: 'Second', description: null, categoryId: 'c1', statusId: 's1', priority: 'low' as const, storyPoints: null, dueDate: '2026-09-05', estimatedHours: null, completedHours: 0, progressPercent: 0, sprintId: 'sp2', assigneeEmployeeIds: ['e1'], openClockSessionEmployeeId: null }
+  { id: 't1', objectiveId: 'o1', shortId: 'T-1', title: 'First', description: null, categoryId: 'c1', statusId: 's1', priority: 'high' as const, storyPoints: null, dueDate: '2026-09-01', estimatedHours: null, completedHours: 0, progressPercent: 0, sprintId: 'sp1', assigneeEmployeeIds: ['e1'], openClockSessionEmployeeId: null, openClockSessionClockInAt: null },
+  { id: 't2', objectiveId: 'o1', shortId: 'T-2', title: 'Second', description: null, categoryId: 'c1', statusId: 's1', priority: 'low' as const, storyPoints: null, dueDate: '2026-09-05', estimatedHours: null, completedHours: 0, progressPercent: 0, sprintId: 'sp2', assigneeEmployeeIds: ['e1'], openClockSessionEmployeeId: null, openClockSessionClockInAt: null }
 ];
 
 describe('MyTaskComponent', () => {
   let fixture: ComponentFixture<MyTaskComponent>;
-  let taskApiSpy: { getMyTasks: ReturnType<typeof vi.fn>; getStatuses: ReturnType<typeof vi.fn> };
+  let taskApiSpy: { getMyTasks: ReturnType<typeof vi.fn>; getStatuses: ReturnType<typeof vi.fn>; getCurrentEmployee: ReturnType<typeof vi.fn> };
 
   beforeEach(async () => {
     taskApiSpy = {
       getMyTasks: vi.fn().mockReturnValue(of(myTasks)),
-      getStatuses: vi.fn().mockReturnValue(of([{ id: 's1', name: 'To Do', displayOrder: 0, requiresApproval: false, approverId: null, marksTaskComplete: false, visibility: 'public' }]))
+      getStatuses: vi.fn().mockReturnValue(of([{ id: 's1', name: 'To Do', displayOrder: 0, requiresApproval: false, approverId: null, marksTaskComplete: false, visibility: 'public' }])),
+      getCurrentEmployee: vi.fn().mockReturnValue(of({ employeeId: 'e1' }))
     };
 
     await TestBed.configureTestingModule({
@@ -30,7 +30,6 @@ describe('MyTaskComponent', () => {
         { provide: TaskApiService, useValue: taskApiSpy },
         { provide: SprintListStore, useValue: { sprints: signal([]) } },
         { provide: ProjectDetailStore, useValue: { milestones: signal([{ objectiveId: 'o1', isOwner: false }]) } },
-        { provide: AuthStore, useValue: { employeeId: signal('e1') } },
         { provide: ActivatedRoute, useValue: { parent: { snapshot: { paramMap: { get: () => 'p1' } } } } }
       ]
     }).compileComponents();
@@ -53,6 +52,15 @@ describe('MyTaskComponent', () => {
     const testIds = Array.from(fixture.nativeElement.querySelectorAll('[data-testid]') as NodeListOf<Element>).map((el) => el.getAttribute('data-testid'));
     expect(testIds).toContain('my-task-board-view');
     expect(testIds).not.toContain('my-task-list-view');
+  });
+
+  // Regression: the board view's app-task-board-column was rendered without a
+  // [currentEmployeeId] binding at all, so every card's isAssignee() silently defaulted to
+  // false and the Clock In widget never showed for the current user's own tasks - the exact
+  // same tasks the "My Task" page exists to surface.
+  it('shows the clock widget on a Board-view card for the current employee\'s own task', () => {
+    const widget = fixture.nativeElement.querySelector('app-task-clock-widget');
+    expect(widget).toBeTruthy();
   });
 
   it('switches to List view on toggle click', () => {

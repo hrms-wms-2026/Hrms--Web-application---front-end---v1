@@ -1,5 +1,5 @@
 import { AfterViewChecked, Component, OnInit, computed, inject, signal } from '@angular/core';
-import { AuthStore } from '../../../../core/auth/state/auth.store';
+import { CurrentEmployeeStore } from '../../state/current-employee.store';
 import { ActivatedRoute } from '@angular/router';
 import { firstValueFrom } from 'rxjs';
 import { TaskBoardStore } from '../../state/task-board.store';
@@ -46,7 +46,7 @@ import { WorkDropdownComponent, WorkDropdownOption } from '../../ui/work-dropdow
             [connectedListIds]="columnIds()"
             [allStatuses]="store.statuses()"
             [employeeNames]="employeeNames()"
-            [currentEmployeeId]="auth.employeeId() ?? ''"
+            [currentEmployeeId]="currentEmployee.id()"
             (taskDropped)="onTaskDropped($event)"
             (taskViewed)="onTaskViewed($event)"
             (taskChanged)="reload()"
@@ -72,8 +72,8 @@ import { WorkDropdownComponent, WorkDropdownOption } from '../../ui/work-dropdow
       [task]="selectedTask()"
       [projectId]="projectId()"
       [isObjectiveOwner]="selectedTask() ? (objectiveOwners()[selectedTask()!.objectiveId] ?? false) : false"
-      [isAssignee]="selectedTask() ? selectedTask()!.assigneeEmployeeIds.includes(auth.employeeId() ?? '') : false"
-      [currentEmployeeId]="auth.employeeId() ?? ''"
+      [isAssignee]="selectedTask() ? selectedTask()!.assigneeEmployeeIds.includes(currentEmployee.id()) : false"
+      [currentEmployeeId]="currentEmployee.id()"
       [statuses]="store.statuses()"
       (closed)="detailOpen.set(false)"
       (saved)="onTaskSaved()"
@@ -95,7 +95,7 @@ export class TaskBoardComponent implements OnInit, AfterViewChecked {
   private readonly sprintApi = inject(SprintApiService);
   private readonly taskApi = inject(TaskApiService);
   private readonly directory = inject(EmployeeDirectoryStore);
-  protected readonly auth = inject(AuthStore);
+  protected readonly currentEmployee = inject(CurrentEmployeeStore);
 
   protected readonly createOpen = signal(false);
   protected readonly detailOpen = signal(false);
@@ -166,6 +166,7 @@ export class TaskBoardComponent implements OnInit, AfterViewChecked {
     // a redundant request for data this component can already read reactively off the shared
     // ProjectDetailStore.
     void this.loadAssignableMembers(projectId);
+    void this.currentEmployee.ensureLoaded();
     this.reload();
   }
 

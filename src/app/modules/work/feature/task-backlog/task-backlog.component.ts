@@ -1,5 +1,5 @@
 import { Component, OnInit, computed, inject, signal } from '@angular/core';
-import { AuthStore } from '../../../../core/auth/state/auth.store';
+import { CurrentEmployeeStore } from '../../state/current-employee.store';
 import { ActivatedRoute } from '@angular/router';
 import { firstValueFrom } from 'rxjs';
 import { ButtonComponent } from '../../../../shared/ui/button/button.component';
@@ -72,7 +72,7 @@ import { WorkDropdownComponent, WorkDropdownOption } from '../../ui/work-dropdow
           [statusNames]="statusNames()"
           [statuses]="store.statuses()"
           [objectiveOwners]="objectiveOwners()"
-          [currentEmployeeId]="auth.employeeId() ?? ''"
+          [currentEmployeeId]="currentEmployee.id()"
           [expanded]="expandedSprintId() === sprint.id"
           (toggled)="toggleExpanded(sprint.id)"
           (editRequested)="editingSprint.set(sprint)"
@@ -92,7 +92,7 @@ import { WorkDropdownComponent, WorkDropdownOption } from '../../ui/work-dropdow
             [statusNames]="statusNames()"
             [statuses]="store.statuses()"
             [objectiveOwners]="objectiveOwners()"
-            [currentEmployeeId]="auth.employeeId() ?? ''"
+            [currentEmployeeId]="currentEmployee.id()"
             (viewed)="onTaskViewed($event)"
             (taskChanged)="reloadTasks()"
             (statusChangeRequested)="onTaskStatusChangeRequested($event)"
@@ -119,8 +119,8 @@ import { WorkDropdownComponent, WorkDropdownOption } from '../../ui/work-dropdow
         [task]="selectedTask()"
         [projectId]="projectId()"
         [isObjectiveOwner]="selectedTask() ? (objectiveOwners()[selectedTask()!.objectiveId] ?? false) : false"
-        [isAssignee]="selectedTask() ? selectedTask()!.assigneeEmployeeIds.includes(auth.employeeId() ?? '') : false"
-        [currentEmployeeId]="auth.employeeId() ?? ''"
+        [isAssignee]="selectedTask() ? selectedTask()!.assigneeEmployeeIds.includes(currentEmployee.id()) : false"
+        [currentEmployeeId]="currentEmployee.id()"
         [statuses]="store.statuses()"
         (closed)="detailOpen.set(false)"
         (saved)="reloadTasks()"
@@ -144,7 +144,7 @@ export class TaskBacklogComponent implements OnInit {
   protected readonly projectStore = inject(ProjectDetailStore);
   private readonly taskApi = inject(TaskApiService);
   private readonly route = inject(ActivatedRoute);
-  protected readonly auth = inject(AuthStore);
+  protected readonly currentEmployee = inject(CurrentEmployeeStore);
 
   protected readonly createOpen = signal(false);
   protected readonly createSprintOpen = signal(false);
@@ -204,6 +204,7 @@ export class TaskBacklogComponent implements OnInit {
     void this.sprintStore.loadForProject(projectId);
     void this.loadCategories(projectId);
     void this.loadAssignableMembers(projectId);
+    void this.currentEmployee.ensureLoaded();
   }
 
   private filteredTasks(): WorkTask[] {

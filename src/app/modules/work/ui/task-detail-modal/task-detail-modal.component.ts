@@ -57,7 +57,7 @@ import { toWorkTask } from '../../utils/task.mapper';
 
           @if (isAssignee()) {
             <app-task-clock-widget
-              [task]="t"
+              [task]="widgetTask()!"
               [isAssignee]="isAssignee()"
               [hasOpenSessionMine]="hasOpenSessionMine()"
               [hasOpenSessionOtherEmployee]="hasOpenSessionOtherEmployee()"
@@ -127,6 +127,33 @@ export class TaskDetailModalComponent {
   hasOpenSessionOtherEmployee = computed(() => {
     const entry = this.openSessionEntry();
     return entry !== null && entry.employeeId !== this.currentEmployeeId();
+  });
+
+  // The clock widget's timer needs openClockSessionClockInAt, but clocking in only reloads
+  // history() (onReasonSaved), not task() itself - so task().openClockSessionClockInAt would
+  // stay stale (null) until an unrelated reload happened to refetch the task list. history()
+  // is reloaded immediately after every clock-in/push, so it's the fresher source here.
+  // Same staleness problem for the total-time-logged baseline the timer counts up from: it lives
+  // on task().totalLoggedMinutes, but a Push only reloads history(), not the task - so it's
+  // recomputed here from history()'s closed clock_session entries instead of trusting the task.
+  private readonly totalLoggedMinutesFromHistory = computed(() =>
+    this.history()
+      .filter((entry) => entry.type === 'clock_session' && entry.clockSession?.durationMinutes != null)
+      .reduce((sum, entry) => sum + (entry.clockSession!.durationMinutes ?? 0), 0)
+  );
+
+  widgetTask = computed<WorkTask | null>(() => {
+    const t = this.task();
+    if (!t) return null;
+    const entry = this.openSessionEntry();
+    return {
+      ...t,
+      openClockSessionEmployeeId: entry?.employeeId ?? null,
+      openClockSessionClockInAt: entry?.clockSession ? new Date(entry.clockSession.clockInAt) : null,
+      // Math.max guards the brief window before history() has loaded (starts empty, so the
+      // history-derived sum would otherwise flash 0 even when the task already has logged time).
+      totalLoggedMinutes: Math.max(t.totalLoggedMinutes, this.totalLoggedMinutesFromHistory())
+    };
   });
 
   categoryName = computed(() => {
