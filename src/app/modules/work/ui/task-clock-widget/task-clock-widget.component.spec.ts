@@ -15,6 +15,8 @@ describe('TaskClockWidgetComponent', () => {
   let fixture: ComponentFixture<TaskClockWidgetComponent>;
   let httpMock: HttpTestingController;
 
+  afterEach(() => httpMock.verify());
+
   function setup(overrides: Partial<{ task: WorkTask; hasOpenSessionMine: boolean; hasOpenSessionOtherEmployee: boolean; isAssignee: boolean }> = {}): void {
     TestBed.resetTestingModule();
     TestBed.configureTestingModule({ imports: [TaskClockWidgetComponent, HttpClientTestingModule] });
@@ -78,7 +80,65 @@ describe('TaskClockWidgetComponent', () => {
     (fixture.nativeElement.querySelector('[data-testid="push-submit-button"]') as HTMLButtonElement).click();
     fixture.detectChanges();
     expect(fixture.nativeElement.querySelector('[data-testid="push-error"]').textContent).toContain('greater than');
-    httpMock.verify();
+  });
+
+  it('blocks submission client-side when entered percent is below current', () => {
+    setup({ hasOpenSessionMine: true, task: { ...baseTask, progressPercent: 30 } });
+    (fixture.nativeElement.querySelector('[data-testid="push-button"]') as HTMLButtonElement).click();
+    fixture.detectChanges();
+    const input = fixture.nativeElement.querySelector('[data-testid="push-percent-input"]') as HTMLInputElement;
+    input.value = '29';
+    input.dispatchEvent(new Event('input'));
+    fixture.detectChanges();
+    (fixture.nativeElement.querySelector('[data-testid="push-submit-button"]') as HTMLButtonElement).click();
+    fixture.detectChanges();
+    expect(fixture.nativeElement.querySelector('[data-testid="push-error"]').textContent).toContain('greater than');
+  });
+
+  it('calls Clock In only before emitting clockedIn after the HTTP call resolves', async () => {
+    setup({});
+    const clockedInSpy = vi.fn();
+    fixture.componentInstance.clockedIn.subscribe(clockedInSpy);
+    (fixture.nativeElement.querySelector('[data-testid="clock-in-button"]') as HTMLButtonElement).click();
+    expect(clockedInSpy).not.toHaveBeenCalled();
+    const req = httpMock.expectOne(`${environment.apiUrl}/work/tasks/t1/clock-in`);
+    expect(req.request.method).toBe('POST');
+    req.flush(null);
+    await fixture.whenStable();
+    expect(clockedInSpy).toHaveBeenCalledTimes(1);
+  });
+
+  it('submits an empty optional reason as undefined', async () => {
+    setup({ hasOpenSessionMine: true });
+    (fixture.nativeElement.querySelector('[data-testid="push-button"]') as HTMLButtonElement).click();
+    fixture.detectChanges();
+    const input = fixture.nativeElement.querySelector('[data-testid="push-percent-input"]') as HTMLInputElement;
+    input.value = '60';
+    input.dispatchEvent(new Event('input'));
+    fixture.detectChanges();
+    (fixture.nativeElement.querySelector('[data-testid="push-submit-button"]') as HTMLButtonElement).click();
+    const req = httpMock.expectOne(`${environment.apiUrl}/work/tasks/t1/push`);
+    expect(req.request.body).toEqual({ percent: 60, reason: undefined });
+    req.flush({ ...baseTask, progressPercent: 60, dueDate: null });
+    await fixture.whenStable();
+  });
+
+  it('keeps the popup open and shows backend detail when Push fails', async () => {
+    setup({ hasOpenSessionMine: true });
+    (fixture.nativeElement.querySelector('[data-testid="push-button"]') as HTMLButtonElement).click();
+    fixture.detectChanges();
+    const input = fixture.nativeElement.querySelector('[data-testid="push-percent-input"]') as HTMLInputElement;
+    input.value = '60';
+    input.dispatchEvent(new Event('input'));
+    fixture.detectChanges();
+    (fixture.nativeElement.querySelector('[data-testid="push-submit-button"]') as HTMLButtonElement).click();
+    const req = httpMock.expectOne(`${environment.apiUrl}/work/tasks/t1/push`);
+    req.flush({ detail: 'Push rejected by the server.' }, { status: 422, statusText: 'Unprocessable Entity' });
+    await fixture.whenStable();
+    fixture.detectChanges();
+    expect(fixture.componentInstance.pushPopupOpen()).toBe(true);
+    expect(fixture.componentInstance.pushError()).toBe('Push rejected by the server.');
+    expect(fixture.componentInstance.pushSubmitting()).toBe(false);
   });
 
   it('submits Push with percent and reason and emits the updated task', async () => {
