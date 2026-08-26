@@ -1,0 +1,47 @@
+<header class="cda-page-header">
+  <app-breadcrumb-header parentLabel="Settings" currentLabel="Devices" icon="settings" />
+</header>
+
+<section class="cda-card">
+  @if (!code()) {
+    <h2 class="cda-title">Connect the OneXso Workspace desktop app</h2>
+    <p class="cda-description">
+      @if (expired()) {
+        Code expired — generate a new one.
+      } @else {
+        Generate a one-time activation code, then paste it into the OneXso Workspace desktop
+        app's Connect screen within 10 minutes.
+      }
+    </p>
+    <app-button
+      type="button"
+      data-testid="generate-code"
+      [loading]="generating()"
+      [disabled]="generating()"
+      (pressed)="generate()"
+    >
+      Generate Code
+    </app-button>
+  } @else {
+    <p class="cda-description">
+      Paste this code into the OneXso Workspace desktop app within 10 minutes.
+    </p>
+    <div class="cda-code-row">
+      <span class="cda-code" data-testid="activation-code">{{ code() }}</span>
+      <button type="button" class="cda-copy-btn" data-testid="copy-code" (click)="copyCode()">
+        {{ copied() ? 'Copied!' : 'Copy' }}
+      </button>
+    </div>
+    <p class="cda-countdown" data-testid="countdown">Expires in {{ formattedTime() }}</p>
+    <app-button
+      type="button"
+      variant="secondary"
+      data-testid="generate-again"
+      [loading]="generating()"
+      [disabled]="generating()"
+      (pressed)="generate()"
+    >
+      Generate a new code
+    </app-button>
+  }
+</section>
