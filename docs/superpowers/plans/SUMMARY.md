@@ -31,5 +31,6 @@ Layout and rules: see `../rules/FILE_CREATION_RULES.md`.
 | Work Management — Tree Sprint/Task Unified View (7 parts) | code-complete, manual browser pass pending | `next/2026-08-20-work-management-tree-sprint-task-unified-view/` | 2026-08-21 |
 | Work Management — Project-Scoped Task Status & Category (2 parts) | pending | `next/2026-08-21-work-management-project-scoped-task-status-and-category/` | 2026-08-21 |
 | Work Management — Tree UI Bug Fixes (4 items, single file) | pending | `next/2026-08-21-work-management-tree-ui-bug-fixes.md` | 2026-08-21 |
+| Leave Management — full 9-phase frontend build; Phases 1-2 (Leave Types, Leave Policies) written in full; Time Off uses People-style inner sidebar with only built pages shown | pending | `next/2026-08-21-leave-management/` | 2026-08-21 |
 
 **Note on "finished" here:** all of the above are implementation reports or already-executed plans as of the 2026-08-06 restructure — cross-checked against `src/app/` (auth, dashboard-home, organization/general-settings are all present in code). None were currently in-progress/pending at restructure time except the Project Management context file.

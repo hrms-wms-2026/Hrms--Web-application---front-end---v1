@@ -39,7 +39,8 @@ describe('EmployeeDetailComponent', () => {
     emergencyContacts: [],
     payroll: null,
     invitationStatus: null,
-    invitationExpiresAt: null
+    invitationExpiresAt: null,
+    trayAppAccessEnabled: false
   };
 
   function setup(
