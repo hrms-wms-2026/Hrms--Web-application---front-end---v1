@@ -1,7 +1,7 @@
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { ActivatedRoute } from '@angular/router';
 import { signal } from '@angular/core';
-import { of } from 'rxjs';
+import { of, throwError } from 'rxjs';
 import { vi } from 'vitest';
 import { MyTaskComponent } from './my-task.component';
 import { TaskApiService } from '../../data-access/task-api.service';
@@ -74,6 +74,52 @@ describe('MyTaskComponent', () => {
   it('refetches with the selected sprintId when the Sprint filter changes', () => {
     fixture.componentInstance.setSprintFilter('sp1');
     expect(taskApiSpy.getMyTasks).toHaveBeenCalledWith('p1', 'sp1');
+  });
+
+  it('matches shortId case-insensitively in the search filter', () => {
+    fixture.componentInstance.search.set('t-2');
+    fixture.detectChanges();
+    expect(fixture.componentInstance.filteredTasks().map((task) => task.id)).toEqual(['t2']);
+
+    fixture.componentInstance.search.set('FIRST');
+    fixture.detectChanges();
+    expect(fixture.componentInstance.filteredTasks().map((task) => task.id)).toEqual(['t1']);
+  });
+
+  it('keeps the active search term when the sprint filter refetches tasks', async () => {
+    taskApiSpy.getMyTasks.mockReturnValue(of([myTasks[0]]));
+    fixture.componentInstance.search.set('first');
+    fixture.componentInstance.setSprintFilter('sp1');
+    await fixture.whenStable();
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    fixture.detectChanges();
+    expect(fixture.componentInstance.search()).toBe('first');
+    expect(fixture.componentInstance.filteredTasks().map((task) => task.id)).toEqual(['t1']);
+  });
+
+  it('preserves view and sprint filter across reload', async () => {
+    fixture.componentInstance.view.set('list');
+    fixture.componentInstance.sprintFilter.set('sp1');
+    fixture.componentInstance.reload();
+    await fixture.whenStable();
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    expect(fixture.componentInstance.view()).toBe('list');
+    expect(fixture.componentInstance.sprintFilter()).toBe('sp1');
+  });
+
+  it('clears loading and reports an error when loading fails', async () => {
+    taskApiSpy.getMyTasks.mockReturnValue(throwError(() => new Error('unavailable')));
+    fixture.componentInstance.reload();
+    await fixture.whenStable();
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    expect(fixture.componentInstance.loading()).toBe(false);
+    expect(fixture.componentInstance.error()).toBe('Failed to load your tasks.');
+  });
+
+  it('shows the no-search-results empty state when tasks exist but no task matches', () => {
+    fixture.componentInstance.search.set('does-not-match');
+    fixture.detectChanges();
+    expect(fixture.nativeElement.textContent).toContain('No tasks match your search.');
   });
 
   it('shows an empty state distinguishing no-tasks from no-search-results', async () => {
