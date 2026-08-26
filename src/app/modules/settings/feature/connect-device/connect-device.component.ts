@@ -1,5 +1,6 @@
 import { HttpErrorResponse } from '@angular/common/http';
-import { ChangeDetectionStrategy, Component, OnDestroy, computed, inject, signal } from '@angular/core';
+import { ChangeDetectionStrategy, Component, DestroyRef, OnDestroy, computed, inject, signal } from '@angular/core';
+import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { BreadcrumbHeaderComponent } from '../../../../shared/ui/breadcrumb-header/breadcrumb-header.component';
 import { ButtonComponent } from '../../../../shared/ui/button/button.component';
 import { ActivationApiService } from '../../data-access/activation-api.service';
@@ -27,6 +28,7 @@ const COPIED_RESET_MS = 1500;
 })
 export class ConnectDeviceComponent implements OnDestroy {
   private readonly activationApi = inject(ActivationApiService);
+  private readonly destroyRef = inject(DestroyRef);
 
   readonly generating = signal(false);
   readonly code = signal<string | null>(null);
@@ -64,20 +66,22 @@ export class ConnectDeviceComponent implements OnDestroy {
     this.expired.set(false);
     this.copied.set(false);
 
-    this.activationApi.generate().subscribe({
-      next: (response) => {
-        this.code.set(response.code);
-        this.startCountdown(response.expires_in_seconds);
-        this.generating.set(false);
-      },
-      error: (_error: HttpErrorResponse) => {
-        this.generating.set(false);
-        this.releaseGuard();
-      },
-      complete: () => {
-        this.releaseGuard();
-      }
-    });
+    this.activationApi.generate()
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe({
+        next: (response) => {
+          this.code.set(response.code);
+          this.startCountdown(response.expires_in_seconds);
+          this.generating.set(false);
+        },
+        error: (_error: HttpErrorResponse) => {
+          this.generating.set(false);
+          this.releaseGuard();
+        },
+        complete: () => {
+          this.releaseGuard();
+        }
+      });
   }
 
   copyCode(): void {

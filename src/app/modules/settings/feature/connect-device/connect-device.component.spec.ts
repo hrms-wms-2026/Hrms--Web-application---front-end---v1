@@ -113,4 +113,15 @@ describe('ConnectDeviceComponent', () => {
 
     expect(activationApi.generate).toHaveBeenCalledTimes(1);
   });
+
+  it('allows a second, later generate() call after the first one settles', async () => {
+    activationApi.generate.mockReturnValue(of({ code: 'APDBSJNA', expires_in_seconds: 600 }));
+    fixture.detectChanges();
+
+    component.generate();
+    await Promise.resolve(); // let the queued microtask release the re-entrancy guard
+    component.generate();
+
+    expect(activationApi.generate).toHaveBeenCalledTimes(2);
+  });
 });
