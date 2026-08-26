@@ -150,8 +150,14 @@ export const NAV_ITEMS: readonly NavItem[] = [
         path: '/settings/clock-in-policy',
         requiredModules: ['time_attendance'],
         requiredPermissions: ['attendance:read']
+      },
+      {
+        id: 'settings-devices',
+        label: 'Devices & connections',
+        path: '/settings/devices',
+        requiredModules: ['desktop_agent_gateway']
       }
-      // Devices & connections and Audit log are intentionally not listed yet.
+      // Audit log is intentionally not listed yet.
     ]
   }
 ];
