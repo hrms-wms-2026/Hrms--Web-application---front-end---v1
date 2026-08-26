@@ -46,8 +46,10 @@ import { WorkDropdownComponent, WorkDropdownOption } from '../../ui/work-dropdow
             [connectedListIds]="columnIds()"
             [allStatuses]="store.statuses()"
             [employeeNames]="employeeNames()"
+            [currentEmployeeId]="auth.employeeId() ?? ''"
             (taskDropped)="onTaskDropped($event)"
             (taskViewed)="onTaskViewed($event)"
+            (taskChanged)="reload()"
           />
         }
       </div>

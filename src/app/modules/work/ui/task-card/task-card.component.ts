@@ -1,11 +1,13 @@
 import { DatePipe } from '@angular/common';
 import { Component, computed, input, output } from '@angular/core';
 import { TaskStatusColumn, WorkTask } from '../../models/task.model';
+import { TaskClockWidgetComponent } from '../task-clock-widget/task-clock-widget.component';
 
 @Component({
   selector: 'app-task-card',
   standalone: true,
-  imports: [DatePipe],
+    imports: [DatePipe, TaskClockWidgetComponent],
+
   template: `
     <div class="task-card" [attr.data-testid]="'task-card-' + task().id" (click)="viewed.emit(task())">
       <div class="task-card__header">
@@ -28,7 +30,20 @@ import { TaskStatusColumn, WorkTask } from '../../models/task.model';
         }
       </div>
 
-      <span class="task-card__status" data-testid="task-card-status">{{ statusName() }}</span>
+            <span class="task-card__status" data-testid="task-card-status">{{ statusName() }}</span>
+      @if (isAssignee()) {
+        <div (click)="$event.stopPropagation()">
+          <app-task-clock-widget
+            [task]="task()"
+            [isAssignee]="isAssignee()"
+            [hasOpenSessionMine]="hasOpenSessionMine()"
+            [hasOpenSessionOtherEmployee]="hasOpenSessionOtherEmployee()"
+            (clockedIn)="taskChanged.emit()"
+            (pushed)="taskChanged.emit()"
+          />
+        </div>
+      }
+
     </div>
   `,
   styles: [`
@@ -85,10 +100,22 @@ export class TaskCardComponent {
   task = input.required<WorkTask>();
   statuses = input<readonly TaskStatusColumn[]>([]);
   employeeNames = input<Record<string, string>>({});
+  currentEmployeeId = input('');
 
   viewed = output<WorkTask>();
+  taskChanged = output<void>();
+
+    protected readonly isAssignee = computed(() => this.task().assigneeEmployeeIds.includes(this.currentEmployeeId()));
+  protected readonly hasOpenSessionMine = computed(() =>
+    this.task().openClockSessionEmployeeId === this.currentEmployeeId() && this.currentEmployeeId() !== ''
+  );
+  protected readonly hasOpenSessionOtherEmployee = computed(() => {
+    const openBy = this.task().openClockSessionEmployeeId;
+    return openBy !== null && openBy !== this.currentEmployeeId();
+  });
 
   protected readonly statusName = computed(() =>
+
     this.statuses().find((s) => s.id === this.task().statusId)?.name ?? this.task().statusId
   );
 

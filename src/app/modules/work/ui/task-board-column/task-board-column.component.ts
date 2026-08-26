@@ -24,7 +24,9 @@ import { TaskCardComponent } from '../task-card/task-card.component';
               [task]="task"
               [statuses]="allStatuses()"
               [employeeNames]="employeeNames()"
+              [currentEmployeeId]="currentEmployeeId()"
               (viewed)="taskViewed.emit($event)"
+              (taskChanged)="taskChanged.emit()"
             />
             <div *cdkDragPreview class="task-board-column__drag-preview">
               <span class="task-board-column__drag-preview-id">{{ task.shortId }}</span>
@@ -111,8 +113,10 @@ export class TaskBoardColumnComponent {
   connectedListIds = input<string[]>([]);
   allStatuses = input<readonly TaskStatusColumn[]>([]);
   employeeNames = input<Record<string, string>>({});
+  currentEmployeeId = input('');
   taskDropped = output<{ taskId: string; newStatusId: string }>();
   taskViewed = output<WorkTask>();
+  taskChanged = output<void>();
 
   onDrop(event: CdkDragDrop<WorkTask[]>): void {
     if (event.previousContainer === event.container) return;

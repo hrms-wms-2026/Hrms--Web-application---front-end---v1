@@ -1,6 +1,10 @@
 import { ComponentFixture, TestBed } from '@angular/core/testing';
+import { By } from '@angular/platform-browser';
+
 import { vi } from 'vitest';
 import { TaskCardComponent } from './task-card.component';
+import { TaskClockWidgetComponent } from '../task-clock-widget/task-clock-widget.component';
+
 import { TaskStatusColumn, WorkTask } from '../../models/task.model';
 
 describe('TaskCardComponent', () => {
@@ -19,11 +23,14 @@ describe('TaskCardComponent', () => {
     { id: 's3', name: 'Internal Review', displayOrder: 2, requiresApproval: false, marksTaskComplete: false, visibility: 'private' }
   ];
 
-  function setup(overrides: { employeeNames?: Record<string, string> } = {}): void {
+    function setup(overrides: { employeeNames?: Record<string, string>; task?: WorkTask; currentEmployeeId?: string } = {}): void {
+
     TestBed.resetTestingModule();
     TestBed.configureTestingModule({ imports: [TaskCardComponent] });
     fixture = TestBed.createComponent(TaskCardComponent);
-    fixture.componentRef.setInput('task', task);
+        fixture.componentRef.setInput('task', overrides.task ?? task);
+    fixture.componentRef.setInput('currentEmployeeId', overrides.currentEmployeeId ?? '');
+
     fixture.componentRef.setInput('statuses', statuses);
     fixture.componentRef.setInput('employeeNames', overrides.employeeNames ?? { 'emp-1': 'Nevi Peiris', 'emp-2': 'Sam Perera' });
     fixture.detectChanges();
@@ -66,5 +73,23 @@ describe('TaskCardComponent', () => {
     fixture.detectChanges();
     const statusEl = fixture.nativeElement.querySelector('[data-testid="task-card-status"]');
     expect(statusEl.textContent.trim()).toBe('missing-status');
+  });
+
+  it('shows the clock widget when the caller is an assignee', () => {
+    setup({ task: { ...task, assigneeEmployeeIds: ['e1'] }, currentEmployeeId: 'e1' });
+    expect(fixture.nativeElement.querySelector('app-task-clock-widget')).toBeTruthy();
+  });
+
+  it('marks hasOpenSessionMine when the open session belongs to the caller', () => {
+    setup({ task: { ...task, assigneeEmployeeIds: ['e1'], openClockSessionEmployeeId: 'e1' }, currentEmployeeId: 'e1' });
+    const widget = fixture.debugElement.query(By.directive(TaskClockWidgetComponent));
+    expect(widget.componentInstance.hasOpenSessionMine()).toBe(true);
+  });
+
+  it('marks hasOpenSessionOtherEmployee when a different employee holds the open session', () => {
+    setup({ task: { ...task, assigneeEmployeeIds: ['e1', 'e2'], openClockSessionEmployeeId: 'e2' }, currentEmployeeId: 'e1' });
+    const widget = fixture.debugElement.query(By.directive(TaskClockWidgetComponent));
+    expect(widget.componentInstance.hasOpenSessionOtherEmployee()).toBe(true);
+    expect(widget.componentInstance.hasOpenSessionMine()).toBe(false);
   });
 });
