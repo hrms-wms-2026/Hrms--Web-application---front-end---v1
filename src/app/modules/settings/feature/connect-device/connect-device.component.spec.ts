@@ -1,7 +1,7 @@
 import { HttpErrorResponse } from '@angular/common/http';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { By } from '@angular/platform-browser';
-import { of, throwError } from 'rxjs';
+import { Subject, of, throwError } from 'rxjs';
 import { vi } from 'vitest';
 import { ActivationApiService } from '../../data-access/activation-api.service';
 import { ConnectDeviceComponent } from './connect-device.component';
@@ -123,5 +123,18 @@ describe('ConnectDeviceComponent', () => {
     component.generate();
 
     expect(activationApi.generate).toHaveBeenCalledTimes(2);
+  });
+
+  it('does not start a countdown when a response arrives after component destruction', () => {
+    const response$ = new Subject<{ code: string; expires_in_seconds: number }>();
+    activationApi.generate.mockReturnValue(response$.asObservable());
+    fixture.detectChanges();
+
+    component.generate();
+    fixture.destroy();
+    response$.next({ code: 'APDBSJNA', expires_in_seconds: 600 });
+
+    expect(component.code()).toBeNull();
+    expect(component.secondsRemaining()).toBe(0);
   });
 });
