@@ -43,7 +43,18 @@ export interface EditTaskRequestDto {
   priority: WorkTaskDto['priority'];
   dueDate?: string;
   estimatedHours?: number;
-  storyPoints?: number;
+    storyPoints?: number;
+  progressPercent?: number;
+  reason?: string;
+}
+
+export interface PushTaskRequestDto {
+  percent: number;
+  reason?: string;
+}
+
+export interface AddReasonRequestDto {
+  reason: string;
 }
 
 /** Shape of a 409 INSUFFICIENT_OBJECTIVE_ALLOCATION error body (backend spec §3.2). */
