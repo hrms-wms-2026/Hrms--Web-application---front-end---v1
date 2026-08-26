@@ -69,7 +69,7 @@ import { WorkDropdownComponent } from '../../ui/work-dropdown/work-dropdown.comp
       [open]="detailOpen()"
       [task]="selectedTask()"
       [projectId]="projectId()"
-      [isObjectiveOwner]="selectedTask() ? (objectiveOwners()[selectedTask()!.objectiveId] ?? false) : false"
+      [isObjectiveOwner]="selectedTask() ? (objectiveOwners()[selectedTask()!.objectiveId] || false) : false"
       [isAssignee]="selectedTask() ? selectedTask()!.assigneeEmployeeIds.includes(currentEmployeeId()) : false"
       [currentEmployeeId]="currentEmployeeId()"
       [statuses]="statuses()"
