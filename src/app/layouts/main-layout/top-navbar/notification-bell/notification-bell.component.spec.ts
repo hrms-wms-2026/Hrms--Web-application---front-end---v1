@@ -137,4 +137,52 @@ describe('NotificationBellComponent', () => {
 
     expect(navigate).toHaveBeenCalledWith(['/work', 'p1', 'milestones', 'o1', 'approvals'], {});
   });
+
+  it('navigates an attendance correction approval notification to the approval inbox with its request id', async () => {
+    const item = {
+      id: 'n3', templateCode: 'attendance_correction_request_created', title: 'Correction request', body: 'Please review',
+      relatedEntityType: 'attendance_correction', relatedEntityId: 'c1', isRead: false, readAt: null, createdAt: new Date(),
+      notificationType: 'attendance_correction_request_created', attendanceCorrectionId: 'c1', destinationKey: 'attendance_correction_approval', isNavigable: true
+    };
+    const storeStub = {
+      unreadCount: () => 1, items: () => [item], refreshUnreadCount: vi.fn().mockResolvedValue(undefined),
+      loadMine: vi.fn().mockResolvedValue(undefined), markRead: vi.fn().mockResolvedValue(undefined), markAllRead: vi.fn().mockResolvedValue(undefined)
+    };
+    const navigate = vi.fn().mockResolvedValue(true);
+    TestBed.configureTestingModule({ imports: [NotificationBellComponent], providers: [
+      { provide: NotificationsStore, useValue: storeStub }, { provide: Router, useValue: { navigate } },
+      { provide: TaskApiService, useValue: { getNotificationNavigation: vi.fn() } }
+    ] });
+    const fixture = TestBed.createComponent(NotificationBellComponent);
+    fixture.detectChanges();
+    fixture.nativeElement.querySelector('[data-testid="notification-bell"]').click();
+    fixture.detectChanges();
+    fixture.nativeElement.querySelector('.notification-dropdown__item').click();
+    await fixture.whenStable();
+    expect(navigate).toHaveBeenCalledWith(['/attendance/corrections/approvals'], { queryParams: { requestId: 'c1' } });
+  });
+
+  it('does not navigate non-navigable requester correction notifications', async () => {
+    const item = {
+      id: 'n4', templateCode: 'attendance_correction_request_decided', title: 'Correction updated', body: 'Your request was reviewed',
+      relatedEntityType: 'attendance_correction', relatedEntityId: 'c1', isRead: false, readAt: null, createdAt: new Date(),
+      destinationKey: null, attendanceCorrectionId: 'c1', isNavigable: false
+    };
+    const storeStub = {
+      unreadCount: () => 1, items: () => [item], refreshUnreadCount: vi.fn().mockResolvedValue(undefined),
+      loadMine: vi.fn().mockResolvedValue(undefined), markRead: vi.fn().mockResolvedValue(undefined), markAllRead: vi.fn().mockResolvedValue(undefined)
+    };
+    const navigate = vi.fn().mockResolvedValue(true);
+    TestBed.configureTestingModule({ imports: [NotificationBellComponent], providers: [
+      { provide: NotificationsStore, useValue: storeStub }, { provide: Router, useValue: { navigate } },
+      { provide: TaskApiService, useValue: { getNotificationNavigation: vi.fn() } }
+    ] });
+    const fixture = TestBed.createComponent(NotificationBellComponent);
+    fixture.detectChanges();
+    fixture.nativeElement.querySelector('[data-testid="notification-bell"]').click();
+    fixture.detectChanges();
+    fixture.nativeElement.querySelector('.notification-dropdown__item').click();
+    await fixture.whenStable();
+    expect(navigate).not.toHaveBeenCalled();
+  });
 });

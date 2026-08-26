@@ -3,6 +3,16 @@ import { Injectable, inject } from '@angular/core';
 import { Observable } from 'rxjs';
 import { environment } from '../../../../environments/environment';
 import {
+  AttendanceCorrectionApprovalListItem,
+  AttendanceCorrectionListItem,
+  AttendanceCorrectionPreviewRequest,
+  AttendanceCorrectionPreviewResponse,
+  AttendanceCorrectionRequest,
+  AttendanceCorrectionResponse,
+  ApproveAttendanceCorrectionRequest,
+  RejectAttendanceCorrectionRequest
+} from '../models/attendance-correction.model';
+import {
   AttendanceHistoryRow,
   AttendanceTodayResponse,
   ClockInRequest
@@ -12,6 +22,7 @@ import {
 export class TimeTrackingApiService {
   private readonly http = inject(HttpClient);
   private readonly basePath = `${environment.apiUrl}/attendance/time-tracking`;
+  private readonly correctionsPath = `${environment.apiUrl}/attendance/corrections`;
 
   getToday(): Observable<AttendanceTodayResponse> {
     return this.http.get<AttendanceTodayResponse>(`${this.basePath}/today`);
@@ -55,8 +66,47 @@ export class TimeTrackingApiService {
     return this.postWithoutBody(`${this.basePath}/clock-out`);
   }
 
+  previewCorrection(request: AttendanceCorrectionPreviewRequest): Observable<AttendanceCorrectionPreviewResponse> {
+    return this.http.post<AttendanceCorrectionPreviewResponse>(`${this.correctionsPath}/preview`, request);
+  }
+
+  submitCorrection(request: AttendanceCorrectionRequest): Observable<AttendanceCorrectionResponse> {
+    return this.http.post<AttendanceCorrectionResponse>(this.correctionsPath, request);
+  }
+
+  getMyCorrections(from?: string, to?: string): Observable<readonly AttendanceCorrectionListItem[]> {
+    return this.http.get<readonly AttendanceCorrectionListItem[]>(`${this.correctionsPath}/my`, {
+      params: this.optionalCorrectionParams(from, to)
+    });
+  }
+
+  getApprovalInbox(status = 'pending'): Observable<readonly AttendanceCorrectionApprovalListItem[]> {
+    return this.http.get<readonly AttendanceCorrectionApprovalListItem[]>(`${this.correctionsPath}/approvals`, {
+      params: new HttpParams().set('status', status)
+    });
+  }
+
+  approveCorrection(id: string, request: ApproveAttendanceCorrectionRequest): Observable<AttendanceCorrectionResponse> {
+    return this.http.post<AttendanceCorrectionResponse>(`${this.correctionsPath}/${id}/approve`, request);
+  }
+
+  rejectCorrection(id: string, request: RejectAttendanceCorrectionRequest): Observable<AttendanceCorrectionResponse> {
+    return this.http.post<AttendanceCorrectionResponse>(`${this.correctionsPath}/${id}/reject`, request);
+  }
+
+  cancelCorrection(id: string): Observable<AttendanceCorrectionResponse> {
+    return this.http.post<AttendanceCorrectionResponse>(`${this.correctionsPath}/${id}/cancel`, null);
+  }
+
   private rangeParams(from: string, to: string): HttpParams {
     return new HttpParams().set('from', from).set('to', to);
+  }
+
+  private optionalCorrectionParams(from?: string, to?: string): HttpParams {
+    let params = new HttpParams();
+    if (from) params = params.set('from', from);
+    if (to) params = params.set('to', to);
+    return params;
   }
 
   /** HttpClient requires the body argument; null produces an empty POST body. */
