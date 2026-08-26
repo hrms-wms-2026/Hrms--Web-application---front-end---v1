@@ -75,6 +75,7 @@ import { buildCalendarTreeOrder } from '../../utils/calendar-tree.utils';
                     <app-objective-timeline-bar
                       [item]="row.item"
                       [timelineStart]="timelineStart()"
+                      [timelineEnd]="timelineEnd()"
                       [dayWidth]="dayWidth()"
                       [saving]="store.saving()"
                       [pendingApproval]="store.pendingSet().has(row.item.objectiveId)"

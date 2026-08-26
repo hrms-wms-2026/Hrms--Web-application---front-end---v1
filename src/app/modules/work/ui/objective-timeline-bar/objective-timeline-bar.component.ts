@@ -14,10 +14,11 @@ interface DragState {
   standalone: true,
   template: `
     <div
-      class="absolute top-3 h-9 rounded-md border border-black/10 transition-opacity"
-      [class.cursor-not-allowed]="disabled()"
-      [class.opacity-55]="disabled() && !item().isAchieved"
-      [class.opacity-75]="saving()"
+      class="timeline-bar"
+      [class.timeline-bar--disabled]="disabled() && !item().isAchieved"
+      [class.timeline-bar--saving]="saving()"
+      [class.timeline-bar--achieved]="item().isAchieved"
+      [class.timeline-bar--readonly]="disabled()"
       [style.backgroundColor]="barColor()"
       [style.left.px]="left()"
       [style.width.px]="width()"
@@ -26,14 +27,14 @@ interface DragState {
       (pointerdown)="startDrag($event, 'move')"
     >
       @if (!disabled()) {
-        <button type="button" class="absolute left-0 top-0 z-10 h-full w-2 cursor-ew-resize bg-transparent" aria-label="Resize start" (pointerdown)="startDrag($event, 'start')"></button>
-        <button type="button" class="absolute right-0 top-0 z-10 h-full w-2 cursor-ew-resize bg-transparent" aria-label="Resize end" (pointerdown)="startDrag($event, 'end')"></button>
+        <button type="button" class="timeline-bar__resize timeline-bar__resize--start" aria-label="Resize start" (pointerdown)="startDrag($event, 'start')"></button>
+        <button type="button" class="timeline-bar__resize timeline-bar__resize--end" aria-label="Resize end" (pointerdown)="startDrag($event, 'end')"></button>
       }
-      <div class="flex h-full items-center gap-1 overflow-hidden px-3 text-xs font-semibold text-white">
-        @if (item().isAchieved) { <span aria-label="Achieved">✓</span> }
-        <span class="truncate">{{ item().title }}</span>
-        @if (saving()) { <span class="ml-auto text-[10px]">Saving…</span> }
-        @if (pendingApproval()) { <span class="ml-auto rounded bg-white/25 px-1 text-[10px]" title="Needs approval">Approval</span> }
+      <div class="timeline-bar__content">
+        @if (item().isAchieved) { <span class="timeline-bar__check" aria-label="Achieved">✓</span> }
+        <span class="timeline-bar__title">{{ item().title }}</span>
+        @if (saving()) { <span class="timeline-bar__state">Saving…</span> }
+        @if (pendingApproval()) { <span class="timeline-bar__state timeline-bar__state--approval" title="Needs approval">Approval</span> }
       </div>
     </div>
     @if (pendingApproval()) {
@@ -43,11 +44,32 @@ interface DragState {
         data-testid="pending-approval"
       >{{ approvalMessage() }}</div>
     }
-  `
+  `,
+  styles: [`
+    :host { display: block; position: absolute; inset: 0; }
+    .timeline-bar { position: absolute; top: 14px; height: 42px; min-width: 30px; overflow: hidden; border: 1px solid color-mix(in srgb, var(--color-accent) 35%, transparent); border-radius: 9px; color: #fff; box-shadow: 0 4px 10px rgb(15 23 42 / .12); transition: left 180ms ease, width 180ms ease, opacity 160ms ease, filter 160ms ease; }
+    .timeline-bar:hover { filter: brightness(.97); }
+    .timeline-bar--disabled { opacity: .62; }
+    .timeline-bar--saving { opacity: .76; }
+    .timeline-bar--achieved { border-color: color-mix(in srgb, var(--color-text-secondary) 55%, transparent); }
+    .timeline-bar--readonly { cursor: not-allowed; }
+    .timeline-bar__content { display: flex; height: 100%; min-width: 0; align-items: center; gap: 7px; padding: 0 12px; font-size: 12px; font-weight: 650; }
+    .timeline-bar__title { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .timeline-bar__check { display: inline-flex; width: 17px; height: 17px; flex: 0 0 auto; align-items: center; justify-content: center; border-radius: 999px; background: rgb(255 255 255 / .22); font-size: 11px; }
+    .timeline-bar__state { margin-left: auto; flex: 0 0 auto; border-radius: 999px; padding: 3px 7px; background: rgb(255 255 255 / .18); font-size: 10px; font-weight: 600; }
+    .timeline-bar__state--approval { background: rgb(255 255 255 / .25); }
+    .timeline-bar__resize { position: absolute; top: 0; z-index: 2; width: 8px; height: 100%; border: 0; background: transparent; cursor: ew-resize; }
+    .timeline-bar__resize--start { left: 0; }
+    .timeline-bar__resize--end { right: 0; }
+    .timeline-bar__resize:focus-visible { outline: 2px solid #fff; outline-offset: -2px; }
+    .timeline-bar + [data-testid="pending-approval"] { position: absolute; top: 60px; margin-top: 4px; white-space: nowrap; color: var(--color-warning); font-size: 11px; }
+    @media (prefers-reduced-motion: reduce) { .timeline-bar { transition: none; } }
+  `]
 })
 export class ObjectiveTimelineBarComponent {
   readonly item = input.required<ProjectCalendarItemDto>();
   readonly timelineStart = input.required<string>();
+  readonly timelineEnd = input<string | null>(null);
   readonly dayWidth = input(28);
   readonly saving = input(false);
   readonly pendingApproval = input(false);
@@ -65,12 +87,21 @@ export class ObjectiveTimelineBarComponent {
 
   left(): number {
     const dates = this.previewDates() ?? this.item();
-    return Math.max(0, calendarDayDifference(this.timelineStart(), dates.startDate) * this.dayWidth());
+    const startDate = this.clampDate(dates.startDate, this.timelineStart(), this.timelineEnd());
+    return Math.max(0, calendarDayDifference(this.timelineStart(), startDate) * this.dayWidth());
   }
 
   width(): number {
     const dates = this.previewDates() ?? this.item();
-    return Math.max(this.dayWidth(), (calendarDayDifference(dates.startDate, dates.endDate) + 1) * this.dayWidth());
+    const startDate = this.clampDate(dates.startDate, this.timelineStart(), this.timelineEnd());
+    const endDate = this.clampDate(dates.endDate, this.timelineStart(), this.timelineEnd());
+    return Math.max(this.dayWidth(), (calendarDayDifference(startDate, endDate) + 1) * this.dayWidth());
+  }
+
+  private clampDate(value: string, min: string, max: string | null): string {
+    if (value < min) return min;
+    if (max && value > max) return max;
+    return value;
   }
 
   startDrag(event: PointerEvent, mode: DragState['mode']): void {
