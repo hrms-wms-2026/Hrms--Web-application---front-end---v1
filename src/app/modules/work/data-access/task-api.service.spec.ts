@@ -26,7 +26,7 @@ describe('TaskApiService', () => {
     const mockTasks: WorkTaskDto[] = [{
       id: 't-1', objectiveId, shortId: 'PRJ-1', title: 'Do it', description: null,
       categoryId: 'task', statusId: 's-1', priority: 'medium', storyPoints: null,
-      dueDate: null, estimatedHours: 5, completedHours: 0, progressPercent: 0, sprintId: null, assigneeEmployeeIds: []
+      dueDate: null, estimatedHours: 5, completedHours: 0, progressPercent: 0, sprintId: null, assigneeEmployeeIds: [], openClockSessionEmployeeId: null
     }];
 
     service.getTasks(objectiveId).subscribe((tasks) => {
@@ -43,7 +43,7 @@ describe('TaskApiService', () => {
     const mockTasks: WorkTaskDto[] = [{
       id: 't-1', objectiveId: 'obj-1', shortId: 'PRJ-1', title: 'Do it', description: null,
       categoryId: 'task', statusId: 's-1', priority: 'medium', storyPoints: null,
-      dueDate: null, estimatedHours: 5, completedHours: 0, progressPercent: 0, sprintId, assigneeEmployeeIds: []
+      dueDate: null, estimatedHours: 5, completedHours: 0, progressPercent: 0, sprintId, assigneeEmployeeIds: [], openClockSessionEmployeeId: null
     }];
 
     service.getBySprintId(sprintId).subscribe((tasks) => {
@@ -138,7 +138,7 @@ it('getStatuses fetches task statuses for a project', () => {
     const mockTask: WorkTaskDto = {
       id: 't-1', objectiveId: 'obj-1', shortId: 'PRJ-1', title: 'Updated Title', description: 'Updated Description',
       categoryId: 'task', statusId: 's-1', priority: 'high', storyPoints: 5,
-      dueDate: '2024-12-31', estimatedHours: 10, completedHours: 0, progressPercent: 0, sprintId: null, assigneeEmployeeIds: []
+      dueDate: '2024-12-31', estimatedHours: 10, completedHours: 0, progressPercent: 0, sprintId: null, assigneeEmployeeIds: [], openClockSessionEmployeeId: null
     };
 
     service.approveTaskEditRequest(editRequestId).subscribe((response) => {

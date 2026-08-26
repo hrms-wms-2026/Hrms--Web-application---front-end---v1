@@ -15,7 +15,7 @@ describe('TaskTreeRowComponent', () => {
       id: 't1', objectiveId: 'o1', shortId: 'WEB-9', title: 'Do it', description: null,
       categoryId: 'task', statusId: 'st-1', priority: 'medium', storyPoints: null,
       dueDate: null, estimatedHours: 3, completedHours: 0, progressPercent: 0,
-      sprintId: 'spr-1', assigneeEmployeeIds: ['e1']
+      sprintId: 'spr-1', assigneeEmployeeIds: ['e1'], openClockSessionEmployeeId: null
     }
   };
 

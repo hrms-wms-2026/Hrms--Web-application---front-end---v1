@@ -10,8 +10,8 @@ import { ProjectDetailStore } from '../../state/project-detail.store';
 import { AuthStore } from '../../../../core/auth/state/auth.store';
 
 const myTasks = [
-  { id: 't1', objectiveId: 'o1', shortId: 'T-1', title: 'First', description: null, categoryId: 'c1', statusId: 's1', priority: 'high' as const, storyPoints: null, dueDate: '2026-09-01', estimatedHours: null, completedHours: 0, progressPercent: 0, sprintId: 'sp1', assigneeEmployeeIds: ['e1'] },
-  { id: 't2', objectiveId: 'o1', shortId: 'T-2', title: 'Second', description: null, categoryId: 'c1', statusId: 's1', priority: 'low' as const, storyPoints: null, dueDate: '2026-09-05', estimatedHours: null, completedHours: 0, progressPercent: 0, sprintId: 'sp2', assigneeEmployeeIds: ['e1'] }
+  { id: 't1', objectiveId: 'o1', shortId: 'T-1', title: 'First', description: null, categoryId: 'c1', statusId: 's1', priority: 'high' as const, storyPoints: null, dueDate: '2026-09-01', estimatedHours: null, completedHours: 0, progressPercent: 0, sprintId: 'sp1', assigneeEmployeeIds: ['e1'], openClockSessionEmployeeId: null },
+  { id: 't2', objectiveId: 'o1', shortId: 'T-2', title: 'Second', description: null, categoryId: 'c1', statusId: 's1', priority: 'low' as const, storyPoints: null, dueDate: '2026-09-05', estimatedHours: null, completedHours: 0, progressPercent: 0, sprintId: 'sp2', assigneeEmployeeIds: ['e1'], openClockSessionEmployeeId: null }
 ];
 
 describe('MyTaskComponent', () => {
