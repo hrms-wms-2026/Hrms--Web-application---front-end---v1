@@ -1,6 +1,7 @@
 import { TestBed } from '@angular/core/testing';
 import { vi } from 'vitest';
-import { of } from 'rxjs';
+import { of, throwError } from 'rxjs';
+
 import { TaskDetailModalComponent } from './task-detail-modal.component';
 import { TaskApiService } from '../../data-access/task-api.service';
 import { TaskStatusColumn, WorkTask } from '../../models/task.model';
@@ -279,7 +280,81 @@ describe('TaskDetailModalComponent', () => {
     expect(spy).toHaveBeenCalledWith('s2');
   });
 
+    it('includes progressPercent and reason in the non-owner edit-request payload', async () => {
+    const { fixture, createTaskEditRequest } = setup(false);
+    fixture.detectChanges();
+    fixture.componentInstance.progressPercent.set(75);
+    fixture.componentInstance.reason.set('caught up over the weekend');
+    await fixture.componentInstance.submit(task.id);
+    expect(createTaskEditRequest).toHaveBeenCalledWith(task.id, expect.objectContaining({ progressPercent: 75, reason: 'caught up over the weekend' }));
+  });
+
+  it('reseeds progressPercent and reason when reopened for a different task', () => {
+    const { fixture } = setup(true);
+    fixture.detectChanges();
+    fixture.componentInstance.progressPercent.set(75);
+    fixture.componentInstance.reason.set('abandoned note');
+    const secondTask = { ...task, id: 't2', title: 'Second task', progressPercent: 20 };
+    fixture.componentRef.setInput('open', false);
+    fixture.componentRef.setInput('task', secondTask);
+    fixture.componentRef.setInput('open', true);
+    fixture.detectChanges();
+    expect(fixture.componentInstance.progressPercent()).toBe(20);
+    expect(fixture.componentInstance.reason()).toBe('');
+  });
+
+  it('derives mine open-session state from history', async () => {
+    const { fixture, getTaskHistory } = setup(true);
+    getTaskHistory.mockReturnValue(of([{ type: 'clock_session', occurredAt: '2026-08-25T10:00:00Z', employeeId: 'e1', employeeName: 'Alex', edit: null, statusChange: null, clockSession: { sessionId: 's1', clockInAt: '2026-08-25T10:00:00Z', clockOutAt: null, durationMinutes: null, sessionReason: null, pushedPercent: null, previousPercent: null, percentageLogId: null, percentageReason: null }, percentageChange: null }]));
+    fixture.detectChanges();
+    await fixture.whenStable();
+    expect(fixture.componentInstance.hasOpenSessionMine()).toBe(true);
+    expect(fixture.componentInstance.hasOpenSessionOtherEmployee()).toBe(false);
+  });
+
+  it('derives someone-else open-session state from history', async () => {
+    const { fixture, getTaskHistory } = setup(true);
+    getTaskHistory.mockReturnValue(of([{ type: 'clock_session', occurredAt: '2026-08-25T10:00:00Z', employeeId: 'e2', employeeName: 'Sam', edit: null, statusChange: null, clockSession: { sessionId: 's1', clockInAt: '2026-08-25T10:00:00Z', clockOutAt: null, durationMinutes: null, sessionReason: null, pushedPercent: null, previousPercent: null, percentageLogId: null, percentageReason: null }, percentageChange: null }]));
+    fixture.detectChanges();
+    await fixture.whenStable();
+    expect(fixture.componentInstance.hasOpenSessionMine()).toBe(false);
+    expect(fixture.componentInstance.hasOpenSessionOtherEmployee()).toBe(true);
+  });
+
+  it('reports no open session when history contains only closed sessions', async () => {
+    const { fixture, getTaskHistory } = setup(true);
+    getTaskHistory.mockReturnValue(of([{ type: 'clock_session', occurredAt: '2026-08-25T10:00:00Z', employeeId: 'e1', employeeName: 'Alex', edit: null, statusChange: null, clockSession: { sessionId: 's1', clockInAt: '2026-08-25T10:00:00Z', clockOutAt: '2026-08-25T11:00:00Z', durationMinutes: 60, sessionReason: null, pushedPercent: null, previousPercent: null, percentageLogId: null, percentageReason: null }, percentageChange: null }]));
+    fixture.detectChanges();
+    await fixture.whenStable();
+    expect(fixture.componentInstance.hasOpenSessionMine()).toBe(false);
+    expect(fixture.componentInstance.hasOpenSessionOtherEmployee()).toBe(false);
+  });
+
+  it('keeps the modal form usable when history loading fails', async () => {
+    const { fixture, getTaskHistory } = setup(true);
+    getTaskHistory.mockReturnValue(throwError(() => new Error('history unavailable')));
+    fixture.detectChanges();
+    await fixture.whenStable();
+    expect(fixture.componentInstance.errorMessage()).toBeNull();
+    expect(fixture.componentInstance.title()).toBe('Do the thing');
+    expect(fixture.componentInstance.history()).toEqual([]);
+  });
+
+  it('onTaskPushed emits saved and reloads history', async () => {
+    const { fixture, getTaskHistory } = setup(true);
+    fixture.detectChanges();
+    await fixture.whenStable();
+    const savedSpy = vi.fn();
+    fixture.componentInstance.saved.subscribe(savedSpy);
+    const callsBefore = getTaskHistory.mock.calls.length;
+    const pushedTask = { ...task, progressPercent: 50 };
+    await fixture.componentInstance.onTaskPushed(pushedTask);
+    expect(savedSpy).toHaveBeenCalledWith(pushedTask);
+    expect(getTaskHistory.mock.calls.length).toBeGreaterThan(callsBefore);
+  });
+
   it('does not emit statusChangeRequested when submitting with the status unchanged', async () => {
+
     const { fixture } = setup(true);
     fixture.detectChanges();
 
