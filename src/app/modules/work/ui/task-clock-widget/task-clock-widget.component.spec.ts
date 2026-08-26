@@ -1,7 +1,9 @@
 import { ComponentFixture, TestBed } from '@angular/core/testing';
-import { HttpClientTestingModule } from '@angular/common/http/testing';
+import { HttpClientTestingModule, HttpTestingController } from '@angular/common/http/testing';
+import { vi } from 'vitest';
 import { TaskClockWidgetComponent } from './task-clock-widget.component';
 import { WorkTask } from '../../models/task.model';
+import { environment } from '../../../../../environments/environment';
 
 const baseTask: WorkTask = {
   id: 't1', objectiveId: 'o1', shortId: 'T-1', title: 'Task', description: null,
@@ -11,11 +13,13 @@ const baseTask: WorkTask = {
 
 describe('TaskClockWidgetComponent', () => {
   let fixture: ComponentFixture<TaskClockWidgetComponent>;
+  let httpMock: HttpTestingController;
 
   function setup(overrides: Partial<{ task: WorkTask; hasOpenSessionMine: boolean; hasOpenSessionOtherEmployee: boolean; isAssignee: boolean }> = {}): void {
     TestBed.resetTestingModule();
     TestBed.configureTestingModule({ imports: [TaskClockWidgetComponent, HttpClientTestingModule] });
     fixture = TestBed.createComponent(TaskClockWidgetComponent);
+    httpMock = TestBed.inject(HttpTestingController);
     fixture.componentRef.setInput('task', overrides.task ?? baseTask);
     fixture.componentRef.setInput('hasOpenSessionMine', overrides.hasOpenSessionMine ?? false);
     fixture.componentRef.setInput('hasOpenSessionOtherEmployee', overrides.hasOpenSessionOtherEmployee ?? false);
@@ -54,5 +58,55 @@ describe('TaskClockWidgetComponent', () => {
     setup({ hasOpenSessionMine: true });
     expect(fixture.nativeElement.querySelector('[data-testid="clock-in-button"]')).toBeNull();
     expect(fixture.nativeElement.querySelector('[data-testid="push-button"]')).toBeTruthy();
+  });
+
+  it('opens the push popup showing the current percent for reference', () => {
+    setup({ hasOpenSessionMine: true, task: { ...baseTask, progressPercent: 30 } });
+    (fixture.nativeElement.querySelector('[data-testid="push-button"]') as HTMLButtonElement).click();
+    fixture.detectChanges();
+    expect(fixture.nativeElement.querySelector('[data-testid="push-current-percent"]').textContent).toContain('30');
+  });
+
+  it('blocks submission client-side when entered percent is not greater than current', () => {
+    setup({ hasOpenSessionMine: true, task: { ...baseTask, progressPercent: 30 } });
+    (fixture.nativeElement.querySelector('[data-testid="push-button"]') as HTMLButtonElement).click();
+    fixture.detectChanges();
+    const input = fixture.nativeElement.querySelector('[data-testid="push-percent-input"]') as HTMLInputElement;
+    input.value = '30';
+    input.dispatchEvent(new Event('input'));
+    fixture.detectChanges();
+    (fixture.nativeElement.querySelector('[data-testid="push-submit-button"]') as HTMLButtonElement).click();
+    fixture.detectChanges();
+    expect(fixture.nativeElement.querySelector('[data-testid="push-error"]').textContent).toContain('greater than');
+    httpMock.verify();
+  });
+
+  it('submits Push with percent and reason and emits the updated task', async () => {
+    setup({ hasOpenSessionMine: true });
+    const pushedSpy = vi.fn();
+    fixture.componentInstance.pushed.subscribe(pushedSpy);
+    (fixture.nativeElement.querySelector('[data-testid="push-button"]') as HTMLButtonElement).click();
+    fixture.detectChanges();
+    const percentInput = fixture.nativeElement.querySelector('[data-testid="push-percent-input"]') as HTMLInputElement;
+    percentInput.value = '60';
+    percentInput.dispatchEvent(new Event('input'));
+    const reasonInput = fixture.nativeElement.querySelector('[data-testid="push-reason-input"]') as HTMLInputElement;
+    reasonInput.value = 'made progress';
+    reasonInput.dispatchEvent(new Event('input'));
+    fixture.detectChanges();
+    (fixture.nativeElement.querySelector('[data-testid="push-submit-button"]') as HTMLButtonElement).click();
+
+    const req = httpMock.expectOne(`${environment.apiUrl}/work/tasks/t1/push`);
+    expect(req.request.method).toBe('POST');
+    expect(req.request.body).toEqual({ percent: 60, reason: 'made progress' });
+    req.flush({
+      ...baseTask,
+      progressPercent: 60,
+      dueDate: null
+    });
+    await fixture.whenStable();
+    fixture.detectChanges();
+    expect(pushedSpy).toHaveBeenCalledWith(expect.objectContaining({ id: 't1', progressPercent: 60 }));
+    expect(fixture.nativeElement.querySelector('[data-testid="push-percent-input"]')).toBeNull();
   });
 });
