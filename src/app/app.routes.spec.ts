@@ -42,6 +42,12 @@ describe('app routes - Settings', () => {
     expect(router.url).toBe('/settings/bulk-onboarding');
   });
 
+  it('resolves /settings/devices to ConnectDeviceComponent', async () => {
+    const success = await router.navigateByUrl('/settings/devices');
+    expect(success).toBe(true);
+    expect(router.url).toBe('/settings/devices');
+  });
+
   it('defines the guarded lazy-loaded Attendance → Time Tracking route', () => {
     const attendance = routes.find((route) => route.path === 'attendance');
     expect(attendance).toBeTruthy();
