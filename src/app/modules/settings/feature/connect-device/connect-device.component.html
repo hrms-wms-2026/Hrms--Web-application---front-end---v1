@@ -1,47 +1,130 @@
-<header class="cda-page-header">
-  <app-breadcrumb-header parentLabel="Settings" currentLabel="Devices" icon="settings" />
-</header>
+<section
+  class="workspace-activation"
+  data-testid="workspace-activation"
+  aria-labelledby="workspace-activation-title"
+>
+  <header class="activation-hero">
+    <p class="activation-kicker">Desktop connection</p>
+    <h1 id="workspace-activation-title">
+      Activate your <span>OneXso Workspace</span>
+    </h1>
+    <p>Use this one-time code to securely connect your desktop application.</p>
+  </header>
 
-<section class="cda-card">
-  @if (!code()) {
-    <h2 class="cda-title">Connect the OneXso Workspace desktop app</h2>
-    <p class="cda-description">
-      @if (expired()) {
-        Code expired — generate a new one.
-      } @else {
-        Generate a one-time activation code, then paste it into the OneXso Workspace desktop
-        app's Connect screen within 10 minutes.
-      }
-    </p>
-    <app-button
-      type="button"
-      data-testid="generate-code"
-      [loading]="generating()"
-      [disabled]="generating()"
-      (pressed)="generate()"
-    >
-      Generate Code
-    </app-button>
-  } @else {
-    <p class="cda-description">
-      Paste this code into the OneXso Workspace desktop app within 10 minutes.
-    </p>
-    <div class="cda-code-row">
-      <span class="cda-code" data-testid="activation-code">{{ code() }}</span>
-      <button type="button" class="cda-copy-btn" data-testid="copy-code" (click)="copyCode()">
-        {{ copied() ? 'Copied!' : 'Copy' }}
-      </button>
+  <div class="handoff-stage">
+    <div class="handoff-route" aria-hidden="true">
+      <span></span><span></span><span></span><span></span><span></span>
     </div>
-    <p class="cda-countdown" data-testid="countdown">Expires in {{ formattedTime() }}</p>
-    <app-button
-      type="button"
-      variant="secondary"
-      data-testid="generate-again"
-      [loading]="generating()"
-      [disabled]="generating()"
-      (pressed)="generate()"
-    >
-      Generate a new code
-    </app-button>
-  }
+
+    <div class="device device--laptop" aria-hidden="true">
+      <div class="device__screen">
+        <img src="/assets/brand/onexso-mark.png" alt="" />
+        <span>Web portal</span>
+      </div>
+    </div>
+
+    <article class="activation-card">
+      <div class="security-badge" aria-hidden="true">
+        <svg viewBox="0 0 24 24" focusable="false">
+          <path d="M12 3 5.5 6v5.4c0 4.2 2.6 7.7 6.5 9.6 3.9-1.9 6.5-5.4 6.5-9.6V6L12 3Z" />
+          <path d="M9.5 11.3V9.8a2.5 2.5 0 0 1 5 0v1.5m-5 0h5v4.2h-5v-4.2Z" />
+        </svg>
+      </div>
+
+      <p class="activation-card__label">Activation code</p>
+
+      @if (code()) {
+        <div class="activation-code-row">
+          <code data-testid="activation-code">{{ code() }}</code>
+          <button type="button" class="icon-button" aria-label="Copy activation code" (click)="copyCode()">
+            <svg viewBox="0 0 24 24" aria-hidden="true">
+              <path d="M9 8h9a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2H9a2 2 0 0 1-2-2v-9a2 2 0 0 1 2-2Z" />
+              <path d="M16 8V5a2 2 0 0 0-2-2H5a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h2" />
+            </svg>
+          </button>
+        </div>
+
+        <p class="validity-copy">This activation code is valid for <strong>10 minutes.</strong></p>
+        <p class="countdown" data-testid="countdown" aria-live="polite">{{ formattedTime() }}</p>
+
+        <div class="activation-actions">
+          <button
+            type="button"
+            class="action-button action-button--primary"
+            data-testid="copy-code"
+            (click)="copyCode()"
+          >
+            <svg viewBox="0 0 24 24" aria-hidden="true">
+              <path d="M8 5h8m-7-2h6v4H9V3Zm-2 2H5v16h14V5h-2M8 11h8m-8 4h6" />
+            </svg>
+            {{ copied() ? 'Code copied' : 'Copy activation code' }}
+          </button>
+          <button
+            type="button"
+            class="action-button action-button--secondary"
+            data-testid="generate-again"
+            [disabled]="generating()"
+            (click)="generate()"
+          >
+            <svg viewBox="0 0 24 24" aria-hidden="true">
+              <path d="M20 11a8 8 0 1 0-2.3 5.7M20 5v6h-6" />
+            </svg>
+            New code
+          </button>
+        </div>
+      } @else if (generating()) {
+        <div class="generation-state" role="status" aria-live="polite">
+          <span class="generation-spinner" aria-hidden="true"></span>
+          <strong>Creating your secure code…</strong>
+          <span>This will only take a moment.</span>
+        </div>
+      } @else {
+        <div class="generation-state" role="status">
+          <strong>{{ expired() ? 'Your code has expired' : 'A code could not be created' }}</strong>
+          <span>Generate a fresh code to continue.</span>
+          <button type="button" class="action-button action-button--primary" data-testid="generate-code" (click)="generate()">
+            Generate new code
+          </button>
+        </div>
+      }
+    </article>
+
+    <div class="device device--monitor" aria-hidden="true">
+      <div class="device__screen">
+        <div class="connected-card">
+          <img src="/assets/brand/onexso-mark.png" alt="" />
+          <span>OneXso Workspace</span>
+          <small><i></i> Connected</small>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <ol class="activation-steps" data-testid="activation-steps" aria-label="How to connect your desktop app">
+    <li data-testid="activation-step">
+      <span class="step-icon">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M8 5h8m-7-2h6v4H9V3ZM7 5H5v16h14V5h-2M8 11h8m-8 4h6" /></svg>
+      </span>
+      <div><strong>Copy activation code</strong><p>Copy the one-time code shown above.</p></div>
+    </li>
+    <li data-testid="activation-step">
+      <span class="step-icon">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 4h14v10H5V4Zm4 16h6m-3-6v6M8 9h8" /></svg>
+      </span>
+      <div><strong>Open the tray app</strong><p>Launch OneXso Workspace on your desktop.</p></div>
+    </li>
+    <li data-testid="activation-step">
+      <span class="step-icon">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 4h14v16H5V4Zm4 8 2 2 4-5" /></svg>
+      </span>
+      <div><strong>Paste and connect</strong><p>Paste the code to activate your workspace.</p></div>
+    </li>
+  </ol>
+
+  <aside class="secure-note">
+    <span class="secure-note__icon" aria-hidden="true">
+      <svg viewBox="0 0 24 24"><path d="M12 3 5.5 6v5.4c0 4.2 2.6 7.7 6.5 9.6 3.9-1.9 6.5-5.4 6.5-9.6V6L12 3Z" /><path d="m9 12 2 2 4-5" /></svg>
+    </span>
+    <div><strong>Secure activation</strong><p>Your encrypted activation code can only be used once.</p></div>
+  </aside>
 </section>

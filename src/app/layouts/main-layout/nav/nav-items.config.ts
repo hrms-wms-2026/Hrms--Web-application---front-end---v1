@@ -27,7 +27,7 @@ export const NAV_ITEMS: readonly NavItem[] = [
     id: 'time-attendance', label: 'Attendance', icon: 'time-attendance', path: '/attendance', requiredModules: ['time_attendance'], requiredPermissions: ['attendance:read-own', 'attendance:write-own', 'attendance:read'],
     children: [
       { id: 'time-attendance-tracking', label: 'Time Tracking', path: '/attendance/time-tracking', exact: true, requiredModules: ['time_attendance'], requiredPermissions: ['attendance:read-own', 'attendance:write-own', 'attendance:read'] },
-      { id: 'time-attendance-monitoring', label: 'Monitoring', path: '/attendance/monitoring', exact: true, requiredModules: ['time_attendance'], requiredPermissions: ['attendance:read'] }
+      { id: 'time-attendance-monitoring', label: 'Monitoring', path: '/attendance/monitoring', exact: true, requiredModules: ['time_attendance'], requiredPermissions: ['attendance:read-own', 'attendance:write-own', 'attendance:read'] }
     ]
   },
   {
