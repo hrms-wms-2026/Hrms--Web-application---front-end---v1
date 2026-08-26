@@ -16,10 +16,12 @@ describe('MilestoneSubMenuComponent', () => {
     fixture.detectChanges();
   });
 
-  it('renders all seven base tabs in order for non-owners', () => {
+    it('renders all six base tabs in order for non-owners', () => {
+
     const labels = Array.from(fixture.nativeElement.querySelectorAll('[data-testid="sub-menu-tab"]'))
       .map((el) => (el as HTMLElement).textContent?.trim() ?? '');
-    expect(labels).toEqual(['Tree', 'Board', 'Backlog', 'My Task', 'List', 'Approvals', 'Calendar']);
+        expect(labels).toEqual(['Tree', 'Board', 'Backlog', 'My Task', 'Approvals', 'Calendar']);
+
   });
 
   it('includes Settings tab for owners', () => {
@@ -27,12 +29,14 @@ describe('MilestoneSubMenuComponent', () => {
     fixture.detectChanges();
     const labels = Array.from(fixture.nativeElement.querySelectorAll('[data-testid="sub-menu-tab"]'))
       .map((el) => (el as HTMLElement).textContent?.trim() ?? '');
-    expect(labels).toEqual(['Tree', 'Board', 'Backlog', 'My Task', 'List', 'Approvals', 'Calendar', 'Settings']);
+        expect(labels).toEqual(['Tree', 'Board', 'Backlog', 'My Task', 'Approvals', 'Calendar', 'Settings']);
+
   });
 
   it('renders an icon inside every tab link', () => {
     const icons = fixture.nativeElement.querySelectorAll('[data-testid="sub-menu-tab"] svg');
-    expect(icons.length).toBe(7);
+        expect(icons.length).toBe(6);
+
   });
 
   it('builds the correct link target for each tab', () => {
@@ -42,9 +46,9 @@ describe('MilestoneSubMenuComponent', () => {
       '/milestones/o1/tree',
       '/board',
       '/backlog',
-      '/milestones/o1/my-task',
-      '/milestones/o1/list',
+            '/my-task',
       '/milestones/o1/approvals',
+
             '/calendar'
 
     ]);
