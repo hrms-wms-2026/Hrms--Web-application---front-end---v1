@@ -26,20 +26,28 @@ describe('TaskDetailModalComponent', () => {
   function setup(isObjectiveOwner: boolean, statusList: TaskStatusColumn[] = statuses) {
     const editTask = vi.fn().mockReturnValue(of(updatedDto));
     const createTaskEditRequest = vi.fn().mockReturnValue(of({}));
-    const getCategories = vi.fn().mockReturnValue(of([{ id: 'task', name: 'Task', displayOrder: 0 }]));
+        const getCategories = vi.fn().mockReturnValue(of([{ id: 'task', name: 'Task', displayOrder: 0 }]));
+    const getTaskHistory = vi.fn().mockReturnValue(of([]));
+    const addClockingSessionReason = vi.fn().mockReturnValue(of(null));
+    const addPercentageLogReason = vi.fn().mockReturnValue(of(null));
+
     TestBed.configureTestingModule({
       imports: [TaskDetailModalComponent],
       providers: [
-        { provide: TaskApiService, useValue: { editTask, createTaskEditRequest, getCategories } }
+                { provide: TaskApiService, useValue: { editTask, createTaskEditRequest, getCategories, getTaskHistory, addClockingSessionReason, addPercentageLogReason } }
+
       ]
     });
     const fixture = TestBed.createComponent(TaskDetailModalComponent);
     fixture.componentRef.setInput('open', true);
     fixture.componentRef.setInput('task', task);
     fixture.componentRef.setInput('projectId', 'project-1');
-    fixture.componentRef.setInput('isObjectiveOwner', isObjectiveOwner);
+        fixture.componentRef.setInput('isObjectiveOwner', isObjectiveOwner);
+    fixture.componentRef.setInput('isAssignee', false);
+    fixture.componentRef.setInput('currentEmployeeId', 'e1');
     fixture.componentRef.setInput('statuses', statusList);
-    return { fixture, editTask, createTaskEditRequest };
+    return { fixture, editTask, createTaskEditRequest, getTaskHistory };
+
   }
 
   it('shows the task shortId in the modal title and populates the form fields from the bound task', () => {
@@ -164,9 +172,12 @@ describe('TaskDetailModalComponent', () => {
       description: undefined,
       priority: 'high',
       dueDate: undefined,
-      estimatedHours: undefined,
-      storyPoints: undefined
+            estimatedHours: undefined,
+      storyPoints: undefined,
+      progressPercent: 0,
+      reason: undefined
     });
+
   });
 
   it('blocks submit with an empty title, surfaces a field error, and calls neither editTask nor createTaskEditRequest', async () => {
@@ -220,7 +231,42 @@ describe('TaskDetailModalComponent', () => {
     expect(optionTexts).toEqual(['To Do', 'In Progress', 'Internal Review']);
   });
 
+    it('fetches and displays history when opened', async () => {
+    const { fixture, getTaskHistory } = setup(true);
+    getTaskHistory.mockReturnValue(of([
+      { type: 'edit', occurredAt: '2026-08-25T10:00:00Z', employeeId: 'e1', employeeName: 'Alex', edit: { logId: 'l1', source: 'direct', editRequestId: null, oldValuesJson: '{}', newValuesJson: '{}', reason: null }, statusChange: null, clockSession: null, percentageChange: null }
+    ]));
+    fixture.detectChanges();
+    await fixture.whenStable();
+    fixture.detectChanges();
+    expect(fixture.nativeElement.querySelector('app-task-history-feed')).toBeTruthy();
+  });
+
+  it('shows the clock widget when the caller is an assignee', () => {
+    const { fixture } = setup(true);
+    fixture.componentRef.setInput('isAssignee', true);
+    fixture.detectChanges();
+    expect(fixture.nativeElement.querySelector('app-task-clock-widget')).toBeTruthy();
+  });
+
+  it('hides the clock widget when the caller is not an assignee', () => {
+    const { fixture } = setup(true);
+    fixture.componentRef.setInput('isAssignee', false);
+    fixture.detectChanges();
+    expect(fixture.nativeElement.querySelector('app-task-clock-widget')).toBeNull();
+  });
+
+  it('includes progressPercent and reason in the direct-edit payload', async () => {
+    const { fixture, editTask } = setup(true);
+    fixture.detectChanges();
+    fixture.componentInstance.progressPercent.set(75);
+    fixture.componentInstance.reason.set('caught up over the weekend');
+    await fixture.componentInstance.submit(task.id);
+    expect(editTask).toHaveBeenCalledWith(task.id, expect.objectContaining({ progressPercent: 75, reason: 'caught up over the weekend' }));
+  });
+
   it('emits statusChangeRequested with the new status id when submitting with a changed status', async () => {
+
     const { fixture } = setup(true);
     fixture.detectChanges();
 

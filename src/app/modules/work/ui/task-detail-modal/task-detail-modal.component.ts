@@ -7,12 +7,16 @@ import { TaskStatusColumn, WorkTask } from '../../models/task.model';
 import { TaskCategoryColumn } from '../../models/task-category.model';
 import { toTaskCategoryColumn } from '../../utils/task-category.mapper';
 import { TaskApiService } from '../../data-access/task-api.service';
+import { TaskHistoryFeedComponent } from '../task-history-feed/task-history-feed.component';
+import { TaskClockWidgetComponent } from '../task-clock-widget/task-clock-widget.component';
+import { TaskHistoryEntryDto } from '../../models/dto/task-history.dto';
 import { toWorkTask } from '../../utils/task.mapper';
 
 @Component({
   selector: 'app-task-detail-modal',
   standalone: true,
-  imports: [ModalComponent, InputComponent, ButtonComponent],
+    imports: [ModalComponent, InputComponent, ButtonComponent, TaskHistoryFeedComponent, TaskClockWidgetComponent],
+
   template: `
     <app-modal [open]="open()" [title]="task()?.shortId ?? ''" size="lg" (closed)="onClose()">
       @if (task(); as t) {
@@ -38,19 +42,36 @@ import { toWorkTask } from '../../utils/task.mapper';
           </label>
           <app-input label="Due date" type="date" [value]="dueDate()" (valueChange)="dueDate.set($event)" />
           <app-input label="Estimated hours" type="number" [value]="estimatedHoursDisplay()" (valueChange)="onEstimatedHoursChange($event)" />
-          <app-input label="Story points" type="number" [value]="storyPointsDisplay()" (valueChange)="onStoryPointsChange($event)" />
+                    <app-input label="Story points" type="number" [value]="storyPointsDisplay()" (valueChange)="onStoryPointsChange($event)" />
+          <app-input label="Progress %" type="number" [value]="progressPercentDisplay()" (valueChange)="onProgressPercentChange($event)" />
+          <app-input label="Reason (optional)" [value]="reason()" (valueChange)="reason.set($event)" />
 
           <dl class="task-detail__grid">
+
             <dt>Category</dt><dd>{{ categoryName() }}</dd>
             <dt>Completed hours</dt><dd>{{ t.completedHours }}</dd>
-            <dt>Progress</dt><dd>{{ t.progressPercent }}%</dd>
+            
           </dl>
+
+                    <app-task-history-feed [entries]="history()" (reasonSaved)="onReasonSaved()" />
+
+          @if (isAssignee()) {
+            <app-task-clock-widget
+              [task]="t"
+              [isAssignee]="isAssignee()"
+              [hasOpenSessionMine]="hasOpenSessionMine()"
+              [hasOpenSessionOtherEmployee]="hasOpenSessionOtherEmployee()"
+              (clockedIn)="onReasonSaved()"
+              (pushed)="onTaskPushed($event)"
+            />
+          }
 
           @if (errorMessage()) {
             <p class="text-sm text-[var(--color-danger-text)]" role="alert">{{ errorMessage() }}</p>
           }
 
           <div class="mt-2 flex justify-end gap-2">
+
             <app-button variant="secondary" [disabled]="submitting()" (pressed)="onClose()">Cancel</app-button>
             <app-button variant="primary" [loading]="submitting()" (pressed)="submit(t.id)">
               {{ isObjectiveOwner() ? 'Save changes' : 'Request' }}
@@ -73,8 +94,11 @@ export class TaskDetailModalComponent {
   open = input(false);
   task = input<WorkTask | null>(null);
   projectId = input.required<string>();
-  isObjectiveOwner = input.required<boolean>();
+    isObjectiveOwner = input.required<boolean>();
+  isAssignee = input.required<boolean>();
+  currentEmployeeId = input.required<string>();
   statuses = input.required<readonly TaskStatusColumn[]>();
+
   closed = output<void>();
   saved = output<WorkTask>();
   requested = output<void>();
@@ -85,14 +109,28 @@ export class TaskDetailModalComponent {
   priority = signal<WorkTask['priority']>('medium');
   dueDate = signal('');
   estimatedHours = signal<number | null>(null);
-  storyPoints = signal<number | null>(null);
+    storyPoints = signal<number | null>(null);
+  progressPercent = signal<number | null>(null);
+  reason = signal('');
   statusId = signal('');
+  history = signal<TaskHistoryEntryDto[]>([]);
   categories = signal<TaskCategoryColumn[]>([]);
+
   submitting = signal(false);
   errors = signal<Record<string, string>>({});
-  errorMessage = signal<string | null>(null);
+    errorMessage = signal<string | null>(null);
+
+  private readonly openSessionEntry = computed(() =>
+    this.history().find((entry) => entry.type === 'clock_session' && entry.clockSession?.clockOutAt === null) ?? null
+  );
+  hasOpenSessionMine = computed(() => this.openSessionEntry()?.employeeId === this.currentEmployeeId());
+  hasOpenSessionOtherEmployee = computed(() => {
+    const entry = this.openSessionEntry();
+    return entry !== null && entry.employeeId !== this.currentEmployeeId();
+  });
 
   categoryName = computed(() => {
+
     const task = this.task();
     if (!task) return '';
     return this.categories().find((category) => category.id === task.categoryId)?.name ?? task.categoryId;
@@ -122,23 +160,53 @@ export class TaskDetailModalComponent {
         this.priority.set(t.priority);
         this.dueDate.set(t.dueDate ? t.dueDate.toISOString().slice(0, 10) : '');
         this.estimatedHours.set(t.estimatedHours);
-        this.storyPoints.set(t.storyPoints);
+                this.storyPoints.set(t.storyPoints);
+        this.progressPercent.set(t.progressPercent);
+        this.reason.set('');
         this.statusId.set(t.statusId);
       } else {
+
         this.title.set('');
         this.description.set('');
         this.priority.set('medium');
         this.dueDate.set('');
         this.estimatedHours.set(null);
-        this.storyPoints.set(null);
+                this.storyPoints.set(null);
+        this.progressPercent.set(null);
+        this.reason.set('');
         this.statusId.set('');
       }
+
       this.errorMessage.set(null);
       this.errors.set({});
     });
+
+    effect(() => {
+      const t = this.task();
+      if (this.open() && t) void this.loadHistory(t.id);
+    });
+  }
+
+    private async loadHistory(taskId: string): Promise<void> {
+    try {
+      this.history.set(await firstValueFrom(this.taskApi.getTaskHistory(taskId)));
+    } catch {
+      this.history.set([]);
+    }
+  }
+
+  async onReasonSaved(): Promise<void> {
+    const t = this.task();
+    if (t) await this.loadHistory(t.id);
+  }
+
+  async onTaskPushed(updated: WorkTask): Promise<void> {
+    this.saved.emit(updated);
+    await this.loadHistory(updated.id);
   }
 
   private async loadCategories(projectId: string): Promise<void> {
+
     try {
       this.categories.set((await firstValueFrom(this.taskApi.getCategories(projectId))).map(toTaskCategoryColumn));
     } catch {
@@ -150,11 +218,20 @@ export class TaskDetailModalComponent {
     return this.estimatedHours() == null ? '' : String(this.estimatedHours());
   }
 
-  storyPointsDisplay(): string {
+    storyPointsDisplay(): string {
     return this.storyPoints() == null ? '' : String(this.storyPoints());
   }
 
+  progressPercentDisplay(): string {
+    return this.progressPercent() == null ? '' : String(this.progressPercent());
+  }
+
+  onProgressPercentChange(value: string): void {
+    this.progressPercent.set(value === '' ? null : Number(value));
+  }
+
   onEstimatedHoursChange(value: string): void {
+
     this.estimatedHours.set(value === '' ? null : Number(value));
   }
 
@@ -180,8 +257,11 @@ export class TaskDetailModalComponent {
       description: this.description() || undefined,
       priority: this.priority(),
       dueDate: this.dueDate() || undefined,
-      estimatedHours: this.estimatedHours() ?? undefined,
-      storyPoints: this.storyPoints() ?? undefined
+            estimatedHours: this.estimatedHours() ?? undefined,
+      storyPoints: this.storyPoints() ?? undefined,
+      progressPercent: this.progressPercent() ?? undefined,
+      reason: this.reason().trim() || undefined
+
     };
 
     try {

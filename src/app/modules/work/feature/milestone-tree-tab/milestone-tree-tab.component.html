@@ -75,7 +75,10 @@
 
 @if (editTaskNode(); as taskNode) {
 <app-task-detail-modal [open]="editTaskOpen()" [task]="taskNode.taskSource ?? null" [projectId]="projectId()"
-  [isObjectiveOwner]="taskNode.isOwner" [statuses]="taskNode.taskStatuses ?? []" (closed)="onTaskEditClosed()"
+  [isObjectiveOwner]="taskNode.isOwner"
+  [isAssignee]="taskNode.taskSource?.assigneeEmployeeIds?.includes(auth.employeeId() ?? '') ?? false"
+  [currentEmployeeId]="auth.employeeId() ?? ''" [statuses]="taskNode.taskStatuses ?? []" (closed)="onTaskEditClosed()"
+
   (saved)="onTaskSaved()" />
 }
 

@@ -1,4 +1,6 @@
 import { Component, computed, inject, signal } from '@angular/core';
+import { AuthStore } from '../../../../core/auth/state/auth.store';
+
 import { ActivatedRoute } from '@angular/router';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { ProjectDetailStore } from '../../state/project-detail.store';
@@ -35,7 +37,9 @@ import { Sprint, SprintStatus } from '../../models/sprint.model';
 })
 export class MilestoneTreeTabComponent {
   readonly store = inject(ProjectDetailStore);
-  private readonly route = inject(ActivatedRoute);
+    private readonly route = inject(ActivatedRoute);
+  protected readonly auth = inject(AuthStore);
+
   private currentMilestoneId = '';
   private currentProjectId = '';
   protected readonly projectId = signal('');

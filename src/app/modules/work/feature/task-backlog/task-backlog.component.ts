@@ -1,4 +1,5 @@
 import { Component, OnInit, computed, inject, signal } from '@angular/core';
+import { AuthStore } from '../../../../core/auth/state/auth.store';
 import { ActivatedRoute } from '@angular/router';
 import { firstValueFrom } from 'rxjs';
 import { ButtonComponent } from '../../../../shared/ui/button/button.component';
@@ -114,6 +115,8 @@ import { WorkDropdownComponent, WorkDropdownOption } from '../../ui/work-dropdow
         [task]="selectedTask()"
         [projectId]="projectId()"
         [isObjectiveOwner]="selectedTask() ? (objectiveOwners()[selectedTask()!.objectiveId] ?? false) : false"
+        [isAssignee]="selectedTask() ? selectedTask()!.assigneeEmployeeIds.includes(auth.employeeId() ?? '') : false"
+        [currentEmployeeId]="auth.employeeId() ?? ''"
         [statuses]="store.statuses()"
         (closed)="detailOpen.set(false)"
         (saved)="reloadTasks()"
@@ -137,6 +140,7 @@ export class TaskBacklogComponent implements OnInit {
   protected readonly projectStore = inject(ProjectDetailStore);
   private readonly taskApi = inject(TaskApiService);
   private readonly route = inject(ActivatedRoute);
+  protected readonly auth = inject(AuthStore);
 
   protected readonly createOpen = signal(false);
   protected readonly createSprintOpen = signal(false);

@@ -1,4 +1,5 @@
 import { AfterViewChecked, Component, OnInit, computed, inject, signal } from '@angular/core';
+import { AuthStore } from '../../../../core/auth/state/auth.store';
 import { ActivatedRoute } from '@angular/router';
 import { firstValueFrom } from 'rxjs';
 import { TaskBoardStore } from '../../state/task-board.store';
@@ -69,6 +70,8 @@ import { WorkDropdownComponent, WorkDropdownOption } from '../../ui/work-dropdow
       [task]="selectedTask()"
       [projectId]="projectId()"
       [isObjectiveOwner]="selectedTask() ? (objectiveOwners()[selectedTask()!.objectiveId] ?? false) : false"
+      [isAssignee]="selectedTask() ? selectedTask()!.assigneeEmployeeIds.includes(auth.employeeId() ?? '') : false"
+      [currentEmployeeId]="auth.employeeId() ?? ''"
       [statuses]="store.statuses()"
       (closed)="detailOpen.set(false)"
       (saved)="onTaskSaved()"
@@ -90,6 +93,7 @@ export class TaskBoardComponent implements OnInit, AfterViewChecked {
   private readonly sprintApi = inject(SprintApiService);
   private readonly taskApi = inject(TaskApiService);
   private readonly directory = inject(EmployeeDirectoryStore);
+  protected readonly auth = inject(AuthStore);
 
   protected readonly createOpen = signal(false);
   protected readonly detailOpen = signal(false);
