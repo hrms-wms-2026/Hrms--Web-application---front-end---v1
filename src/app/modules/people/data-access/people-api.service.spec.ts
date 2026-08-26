@@ -278,6 +278,15 @@ describe('PeopleApiService', () => {
     req.flush({} as EmployeeDetailResponse);
   });
 
+  it('posts the enabled flag to /employees/{id}/tray-app-access', () => {
+    service.setTrayAppAccess('emp-1', false).subscribe();
+
+    const req = httpMock.expectOne(`${environment.apiUrl}/employees/emp-1/tray-app-access`);
+    expect(req.request.method).toBe('POST');
+    expect(req.request.body).toEqual({ enabled: false });
+    req.flush(null);
+  });
+
   it('changePosition sends POST to /employees/{id}/change-position with the payload', () => {
     service.changePosition('emp-1', { positionId: 'pos-1', effectiveFrom: '2026-09-01', changeReason: 'Transfer' }).subscribe();
     const req = httpMock.expectOne(`${environment.apiUrl}/employees/emp-1/change-position`);

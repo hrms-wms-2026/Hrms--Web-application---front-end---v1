@@ -27,11 +27,15 @@ describe('ConnectDeviceComponent', () => {
     vi.useRealTimers();
   });
 
-  it('shows the idle state with a Generate Code button and no code', () => {
+  it('generates an activation code as soon as the employee opens the page', () => {
+    activationApi.generate.mockReturnValue(of({ code: 'APDBSJNA', expires_in_seconds: 600 }));
+
     fixture.detectChanges();
 
-    expect(fixture.debugElement.query(By.css('[data-testid="generate-code"]'))).toBeTruthy();
-    expect(fixture.debugElement.query(By.css('[data-testid="activation-code"]'))).toBeNull();
+    expect(activationApi.generate).toHaveBeenCalledTimes(1);
+    expect(fixture.debugElement.query(By.css('[data-testid="activation-code"]')).nativeElement.textContent.trim()).toBe(
+      'APDBSJNA'
+    );
   });
 
   it('generates a code and starts a 10-minute countdown', () => {

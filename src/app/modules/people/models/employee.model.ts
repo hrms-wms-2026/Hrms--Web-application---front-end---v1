@@ -62,6 +62,7 @@ export interface EmployeeDetailResponse {
   readonly payroll: EmployeeDetailPayroll | null;
   readonly invitationStatus: string | null;
   readonly invitationExpiresAt: string | null;
+  readonly trayAppAccessEnabled: boolean;
 }
 
 export interface EmployeeDetailJobInformation {
