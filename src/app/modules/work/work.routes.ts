@@ -44,7 +44,7 @@ export const WORK_ROUTES: Routes = [
       {
         path: 'my-task',
         loadComponent: () =>
-          import('./feature/milestone-coming-soon-tab/milestone-coming-soon-tab.component').then((m) => m.MilestoneComingSoonTabComponent)
+          import('./feature/my-task/my-task.component').then((m) => m.MyTaskComponent)
       },
       {
         path: 'calendar',
