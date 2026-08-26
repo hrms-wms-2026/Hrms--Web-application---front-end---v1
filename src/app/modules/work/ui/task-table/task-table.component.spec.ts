@@ -1,10 +1,11 @@
 import { ComponentFixture, TestBed } from '@angular/core/testing';
-import { HttpClientTestingModule } from '@angular/common/http/testing';
+import { HttpClientTestingModule, HttpTestingController } from '@angular/common/http/testing';
 import { By } from '@angular/platform-browser';
 import { vi } from 'vitest';
 import { TaskTableComponent } from './task-table.component';
 import { TaskClockWidgetComponent } from '../task-clock-widget/task-clock-widget.component';
 import { TaskStatusColumn, WorkTask } from '../../models/task.model';
+import { environment } from '../../../../../environments/environment';
 
 const task: WorkTask = {
   id: 't1', objectiveId: 'o1', shortId: 'T-1', title: 'Task', description: null,
@@ -20,11 +21,15 @@ const status: TaskStatusColumn = {
 
 describe('TaskTableComponent', () => {
   let fixture: ComponentFixture<TaskTableComponent>;
+  let httpMock: HttpTestingController;
+
+  afterEach(() => httpMock.verify());
 
   beforeEach(() => {
     TestBed.resetTestingModule();
     TestBed.configureTestingModule({ imports: [TaskTableComponent, HttpClientTestingModule] });
     fixture = TestBed.createComponent(TaskTableComponent);
+    httpMock = TestBed.inject(HttpTestingController);
     fixture.componentRef.setInput('tasks', [task]);
     fixture.componentRef.setInput('statuses', [status]);
     fixture.componentRef.setInput('currentEmployeeId', 'e1');
@@ -49,5 +54,32 @@ describe('TaskTableComponent', () => {
     const widget = fixture.debugElement.query(By.directive(TaskClockWidgetComponent));
     widget.componentInstance.pushed.emit(task);
     expect(changedSpy).toHaveBeenCalled();
+  });
+
+  it('does not emit viewed when Clock In is clicked inside the row', async () => {
+    const viewedSpy = vi.fn();
+    fixture.componentInstance.viewed.subscribe(viewedSpy);
+    (fixture.nativeElement.querySelector('[data-testid="task-row-t1"] [data-testid="clock-in-button"]') as HTMLButtonElement).click();
+    expect(viewedSpy).not.toHaveBeenCalled();
+    const req = httpMock.expectOne(`${environment.apiUrl}/work/tasks/t1/clock-in`);
+    req.flush(null);
+    await fixture.whenStable();
+  });
+
+  it('does not emit viewed when the row Push popup Submit control is clicked', () => {
+    fixture.componentRef.setInput('tasks', [{ ...task, openClockSessionEmployeeId: 'e1' }]);
+    fixture.detectChanges();
+    const viewedSpy = vi.fn();
+    fixture.componentInstance.viewed.subscribe(viewedSpy);
+    (fixture.nativeElement.querySelector('[data-testid="push-button"]') as HTMLButtonElement).click();
+    fixture.detectChanges();
+    (fixture.nativeElement.querySelector('[data-testid="push-submit-button"]') as HTMLButtonElement).click();
+    expect(viewedSpy).not.toHaveBeenCalled();
+  });
+
+  it('hides the clock widget for a non-assignee row', () => {
+    fixture.componentRef.setInput('tasks', [{ ...task, assigneeEmployeeIds: ['e2'] }]);
+    fixture.detectChanges();
+    expect(fixture.nativeElement.querySelector('app-task-clock-widget')).toBeNull();
   });
 });
