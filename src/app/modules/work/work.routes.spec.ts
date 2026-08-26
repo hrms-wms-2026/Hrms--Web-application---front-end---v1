@@ -14,26 +14,23 @@ describe('WORK_ROUTES', () => {
     const emptyChild = milestoneRoute.children!.find((r) => r.path === '')!;
     expect(emptyChild.redirectTo).toBe('tree');
     expect(emptyChild.pathMatch).toBe('full');
-    expect(milestoneRoute.children!.map((route) => route.path)).toEqual(['', 'tree', 'approvals', 'my-task', 'list']);
+    expect(milestoneRoute.children!.map((route) => route.path)).toEqual(['', 'tree', 'approvals']);
   });
 
-  it('registers Board, Backlog, Calendar, and Settings as project-level siblings', () => {
+  it('registers Board, Backlog, My Task, Calendar, and Settings as project-level siblings', () => {
     const idRoute = WORK_ROUTES.find((r) => r.path === ':id')!;
-    expect(idRoute.children!.map((route) => route.path)).toEqual(['milestones/:milestoneId', 'board', 'backlog', 'calendar', 'settings']);
+    expect(idRoute.children!.map((route) => route.path)).toEqual(['milestones/:milestoneId', 'board', 'backlog', 'my-task', 'calendar', 'settings']);
     expect(idRoute.children!.find((r) => r.path === 'board')!.loadComponent).toBeTruthy();
     expect(idRoute.children!.find((r) => r.path === 'backlog')!.loadComponent).toBeTruthy();
+    expect(idRoute.children!.find((r) => r.path === 'my-task')!.loadComponent).toBeTruthy();
     expect(idRoute.children!.find((r) => r.path === 'calendar')!.loadComponent).toBeTruthy();
     expect(idRoute.children!.find((r) => r.path === 'settings')!.loadComponent).toBeTruthy();
   });
 
-  it('tags remaining milestone stub routes with titles in route data', () => {
+  it('has no remaining milestone-scoped stub routes', () => {
     const idRoute = WORK_ROUTES.find((r) => r.path === ':id')!;
     const milestoneRoute = idRoute.children!.find((r) => r.path === 'milestones/:milestoneId')!;
-    const byPath = (path: string) => milestoneRoute.children!.find((r) => r.path === path)!;
-
-    expect(byPath('my-task').data).toEqual({ title: 'My Task' });
-    expect(byPath('list').data).toEqual({ title: 'List' });
-    expect(byPath('calendar')).toBeUndefined();
-    expect(byPath('approvals').loadComponent).toBeTruthy();
+    expect(milestoneRoute.children!.map((r) => r.path)).toEqual(['', 'tree', 'approvals']);
+    expect(milestoneRoute.children!.find((r) => r.path === 'approvals')!.loadComponent).toBeTruthy();
   });
 });
