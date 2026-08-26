@@ -254,7 +254,64 @@ it('reorderTaskStatuses posts to projects/{projectId}/task-statuses/reorder', ()
     req.flush(null);
   });
 
+    it('getMyTasks builds the my-tasks URL with an optional sprintId param', () => {
+    service.getMyTasks('p1', 's1').subscribe();
+    const req = httpMock.expectOne((request) =>
+      request.url === `${environment.apiUrl}/work/projects/p1/my-tasks` && request.params.get('sprintId') === 's1'
+    );
+    expect(req.request.method).toBe('GET');
+    req.flush([]);
+  });
+
+  it('getMyTasks omits sprintId when not provided', () => {
+    service.getMyTasks('p1').subscribe();
+    const req = httpMock.expectOne(`${environment.apiUrl}/work/projects/p1/my-tasks`);
+    expect(req.request.method).toBe('GET');
+    expect(req.request.params.has('sprintId')).toBe(false);
+    req.flush([]);
+  });
+
+  it('getTaskHistory GETs the history endpoint', () => {
+    service.getTaskHistory('t1').subscribe();
+    const req = httpMock.expectOne(`${environment.apiUrl}/work/tasks/t1/history`);
+    expect(req.request.method).toBe('GET');
+    req.flush([]);
+  });
+
+  it('clockIn POSTs with no body', () => {
+    service.clockIn('t1').subscribe();
+    const req = httpMock.expectOne(`${environment.apiUrl}/work/tasks/t1/clock-in`);
+    expect(req.request.method).toBe('POST');
+    expect(req.request.body).toEqual({});
+    req.flush(null);
+  });
+
+  it('push POSTs percent and reason', () => {
+    service.push('t1', { percent: 60, reason: 'made progress' }).subscribe();
+    const req = httpMock.expectOne(`${environment.apiUrl}/work/tasks/t1/push`);
+    expect(req.request.method).toBe('POST');
+    expect(req.request.body).toEqual({ percent: 60, reason: 'made progress' });
+    req.flush({});
+  });
+
+  it('addClockingSessionReason PATCHes the reason', () => {
+    service.addClockingSessionReason('s1', 'note').subscribe();
+    const req = httpMock.expectOne(`${environment.apiUrl}/work/clocking-sessions/s1/reason`);
+    expect(req.request.method).toBe('PATCH');
+    expect(req.request.body).toEqual({ reason: 'note' });
+    req.flush(null);
+  });
+
+  it('addPercentageLogReason PATCHes the reason', () => {
+    service.addPercentageLogReason('l1', 'note').subscribe();
+    const req = httpMock.expectOne(`${environment.apiUrl}/work/percentage-log/l1/reason`);
+    expect(req.request.method).toBe('PATCH');
+    expect(req.request.body).toEqual({ reason: 'note' });
+    req.flush(null);
+  });
+
   it('reorderTaskCategories posts category order for a project', () => {
+
     const updates = [{ categoryId: 'c-1', displayOrder: 0 }];
     const mockCategories: TaskCategoryDto[] = [{ id: 'c-1', name: 'Feature', displayOrder: 0 }];
 
