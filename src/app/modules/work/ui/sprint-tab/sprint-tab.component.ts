@@ -43,8 +43,10 @@ import { TaskStatusColumn, WorkTask } from '../../models/task.model';
             [statusNames]="statusNames()"
             [statuses]="statuses()"
             [objectiveOwners]="objectiveOwners()"
+            [currentEmployeeId]="currentEmployeeId()"
             (viewed)="taskViewed.emit($event)"
             (statusChangeRequested)="taskStatusChangeRequested.emit($event)"
+            (taskChanged)="taskChanged.emit()"
           />
         </div>
       }
@@ -85,6 +87,7 @@ export class SprintTabComponent {
   ];
   statuses = input<readonly TaskStatusColumn[]>([]);
   objectiveOwners = input<Record<string, boolean>>({});
+  currentEmployeeId = input('');
   expanded = input(false);
 
   toggled = output<void>();
@@ -93,6 +96,7 @@ export class SprintTabComponent {
   createTaskRequested = output<void>();
   taskViewed = output<WorkTask>();
   taskStatusChangeRequested = output<{ taskId: string; newStatusId: string }>();
+  taskChanged = output<void>();
 
   protected onStatusPicked(picked: string): void {
     this.statusChangeRequested.emit(picked);

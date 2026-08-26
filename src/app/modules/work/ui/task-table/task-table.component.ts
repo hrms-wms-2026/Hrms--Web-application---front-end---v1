@@ -1,6 +1,7 @@
 import { DatePipe } from '@angular/common';
 import { Component, computed, input, output, signal } from '@angular/core';
 import { WorkTask, TaskStatusColumn } from '../../models/task.model';
+import { TaskClockWidgetComponent } from '../task-clock-widget/task-clock-widget.component';
 import { WorkDropdownComponent, WorkDropdownOption } from '../work-dropdown/work-dropdown.component';
 
 type SortKey = 'title' | 'statusId' | 'dueDate' | 'estimatedHours';
@@ -8,7 +9,7 @@ type SortKey = 'title' | 'statusId' | 'dueDate' | 'estimatedHours';
 @Component({
   selector: 'app-task-table',
   standalone: true,
-  imports: [DatePipe, WorkDropdownComponent],
+  imports: [DatePipe, WorkDropdownComponent, TaskClockWidgetComponent],
   template: `
     <div class="task-table__scroll">
     <table class="task-table">
@@ -20,6 +21,7 @@ type SortKey = 'title' | 'statusId' | 'dueDate' | 'estimatedHours';
           <th (click)="toggleSort('dueDate')">Due</th>
           <th (click)="toggleSort('estimatedHours')">Est. hours</th>
           <th>Priority</th>
+          <th>Clock</th>
           <th>View</th>
         </tr>
       </thead>
@@ -45,6 +47,18 @@ type SortKey = 'title' | 'statusId' | 'dueDate' | 'estimatedHours';
             <td>{{ task.dueDate ? (task.dueDate | date: 'MMM d, y') : '—' }}</td>
             <td>{{ task.estimatedHours ?? '—' }}</td>
             <td><span class="task-table__priority" [attr.data-priority]="task.priority">{{ task.priority }}</span></td>
+            <td (click)="$event.stopPropagation()">
+              @if (isAssignee(task)) {
+                <app-task-clock-widget
+                  [task]="task"
+                  [isAssignee]="isAssignee(task)"
+                  [hasOpenSessionMine]="hasOpenSessionMine(task)"
+                  [hasOpenSessionOtherEmployee]="hasOpenSessionOtherEmployee(task)"
+                  (clockedIn)="taskChanged.emit()"
+                  (pushed)="taskChanged.emit()"
+                />
+              }
+            </td>
             <td><button type="button" class="task-table__view-btn" aria-label="View task" title="View task" (click)="$event.stopPropagation(); viewed.emit(task)"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M2.5 12s3.5-5 9.5-5 9.5 5 9.5 5-3.5 5-9.5 5-9.5-5-9.5-5Z" /><circle cx="12" cy="12" r="2.5" /></svg><span>View</span></button></td>
           </tr>
         }
@@ -75,8 +89,23 @@ export class TaskTableComponent {
   statusNames = input<Record<string, string>>({});
   statuses = input<readonly TaskStatusColumn[]>([]);
   objectiveOwners = input<Record<string, boolean>>({});
+  currentEmployeeId = input('');
   viewed = output<WorkTask>();
+  taskChanged = output<void>();
   statusChangeRequested = output<{ taskId: string; newStatusId: string }>();
+
+  isAssignee(task: WorkTask): boolean {
+    return task.assigneeEmployeeIds.includes(this.currentEmployeeId());
+  }
+
+  hasOpenSessionMine(task: WorkTask): boolean {
+    return task.openClockSessionEmployeeId === this.currentEmployeeId() && this.currentEmployeeId() !== '';
+  }
+
+  hasOpenSessionOtherEmployee(task: WorkTask): boolean {
+    const openBy = task.openClockSessionEmployeeId;
+    return openBy !== null && openBy !== this.currentEmployeeId();
+  }
 
   private readonly sortBy = signal<SortKey>('title');
   private readonly sortDirection = signal<'asc' | 'desc'>('asc');

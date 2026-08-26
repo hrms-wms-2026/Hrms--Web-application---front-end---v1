@@ -72,6 +72,7 @@ import { WorkDropdownComponent, WorkDropdownOption } from '../../ui/work-dropdow
           [statusNames]="statusNames()"
           [statuses]="store.statuses()"
           [objectiveOwners]="objectiveOwners()"
+          [currentEmployeeId]="auth.employeeId() ?? ''"
           [expanded]="expandedSprintId() === sprint.id"
           (toggled)="toggleExpanded(sprint.id)"
           (editRequested)="editingSprint.set(sprint)"
@@ -79,6 +80,7 @@ import { WorkDropdownComponent, WorkDropdownOption } from '../../ui/work-dropdow
           (createTaskRequested)="openCreateTask()"
           (taskViewed)="onTaskViewed($event)"
           (taskStatusChangeRequested)="onTaskStatusChangeRequested($event)"
+          (taskChanged)="reloadTasks()"
         />
       }
 
@@ -90,7 +92,9 @@ import { WorkDropdownComponent, WorkDropdownOption } from '../../ui/work-dropdow
             [statusNames]="statusNames()"
             [statuses]="store.statuses()"
             [objectiveOwners]="objectiveOwners()"
+            [currentEmployeeId]="auth.employeeId() ?? ''"
             (viewed)="onTaskViewed($event)"
+            (taskChanged)="reloadTasks()"
             (statusChangeRequested)="onTaskStatusChangeRequested($event)"
           />
         </div>

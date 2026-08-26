@@ -51,7 +51,13 @@ import { WorkDropdownComponent } from '../../ui/work-dropdown/work-dropdown.comp
       </div>
     } @else {
       <div data-testid="my-task-list-view">
-        <app-task-table [tasks]="filteredTasks()" [statuses]="statuses()" (viewed)="onTaskViewed($event)" />
+        <app-task-table
+          [tasks]="filteredTasks()"
+          [statuses]="statuses()"
+          [currentEmployeeId]="currentEmployeeId()"
+          (viewed)="onTaskViewed($event)"
+          (taskChanged)="reload()"
+        />
       </div>
     }
 
