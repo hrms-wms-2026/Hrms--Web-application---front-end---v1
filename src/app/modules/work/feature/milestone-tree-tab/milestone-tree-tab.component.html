@@ -43,11 +43,11 @@
   </div>
 </div>
 
-<app-milestone-settings-modal [open]="settingsOpen()" [initialValue]="settingsInitialValue()"
+<app-sub-module-form mode="edit" [open]="settingsOpen()" [initialValue]="settingsInitialValue()"
   [submitting]="settingsSubmitting()" [errorMessage]="store.milestoneActionError() ?? ''"
   (saved)="onSettingsSaved($event)" (closed)="settingsOpen.set(false)" />
 
-<app-create-sub-module-modal [open]="createModalOpen()" [parentObjectiveId]="createModalParentId()"
+<app-sub-module-form mode="create" [open]="createModalOpen()" [parentObjectiveId]="createModalParentId()"
   [submitting]="createModalSubmitting()" [errorMessage]="store.milestoneActionError() ?? ''"
   (created)="onCreateModalCreated($event)" (closed)="createModalOpen.set(false)" />
 

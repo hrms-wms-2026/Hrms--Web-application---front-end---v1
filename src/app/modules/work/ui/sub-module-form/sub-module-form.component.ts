@@ -3,14 +3,14 @@ import { ModalComponent } from '../../../../shared/ui/modal/modal.component';
 import { InputComponent } from '../../../../shared/ui/input/input.component';
 import { ButtonComponent } from '../../../../shared/ui/button/button.component';
 import { ObjectiveDetail } from '../../models/milestone.model';
-import { EditObjectiveRequestDto } from '../../models/dto/milestone.dto';
+import { CreateObjectiveRequestDto, EditObjectiveRequestDto } from '../../models/dto/milestone.dto';
 
 @Component({
-  selector: 'app-milestone-settings-modal',
+  selector: 'app-sub-module-form',
   standalone: true,
   imports: [ModalComponent, InputComponent, ButtonComponent],
   template: `
-    <app-modal [open]="open()" title="Module settings" (closed)="closed.emit()">
+    <app-modal [open]="open()" [title]="mode() === 'edit' ? 'Module settings' : 'Create sub Module'" (closed)="closed.emit()">
       <div class="flex flex-col gap-3">
         <span data-testid="title-field">
           <app-input label="Title" [value]="title()" [error]="errors()['title'] ?? ''" (valueChange)="title.set($event)" />
@@ -28,13 +28,15 @@ import { EditObjectiveRequestDto } from '../../models/dto/milestone.dto';
           <app-input label="Allocated hours" type="number" [value]="allocatedHoursDisplay()" [error]="errors()['allocatedHours'] ?? ''" (valueChange)="onAllocatedHoursChange($event)" />
         </span>
 
-        <span data-testid="achieved-field" class="flex items-center gap-2">
-          <input type="checkbox" id="milestone-achieved-toggle" [checked]="achieved()" [disabled]="isDefault()" (change)="onAchievedChange($event)" />
-          <label for="milestone-achieved-toggle" class="text-sm text-[var(--color-text-primary)]">Achieved</label>
-          @if (isDefault()) {
-            <span class="text-xs text-[var(--color-text-secondary)]">(Achieve the project instead — the Default Module follows the project's own achieved state)</span>
-          }
-        </span>
+        @if (mode() === 'edit') {
+          <span data-testid="achieved-field" class="flex items-center gap-2">
+            <input type="checkbox" id="sub-module-achieved-toggle" [checked]="achieved()" [disabled]="isDefault()" (change)="onAchievedChange($event)" />
+            <label for="sub-module-achieved-toggle" class="text-sm text-[var(--color-text-primary)]">Achieved</label>
+            @if (isDefault()) {
+              <span class="text-xs text-[var(--color-text-secondary)]">(Achieve the project instead — the Default Module follows the project's own achieved state)</span>
+            }
+          </span>
+        }
 
         @if (errorMessage()) {
           <p class="text-sm text-[var(--color-danger-text)]" role="alert">{{ errorMessage() }}</p>
@@ -45,19 +47,24 @@ import { EditObjectiveRequestDto } from '../../models/dto/milestone.dto';
             <app-button variant="secondary" [disabled]="submitting()" (pressed)="closed.emit()">Cancel</app-button>
           </span>
           <span data-testid="submit-button">
-            <app-button variant="primary" [loading]="submitting()" (pressed)="submit()">Save changes</app-button>
+            <app-button variant="primary" [loading]="submitting()" (pressed)="submit()">
+              {{ mode() === 'edit' ? 'Save changes' : 'Create' }}
+            </app-button>
           </span>
         </div>
       </div>
     </app-modal>
   `
 })
-export class MilestoneSettingsModalComponent {
+export class SubModuleFormComponent {
+  mode = input<'create' | 'edit'>('create');
   open = input(false);
+  parentObjectiveId = input('');
   initialValue = input<ObjectiveDetail | null>(null);
   submitting = input(false);
-  errorMessage = input<string>('');
+  errorMessage = input('');
 
+  created = output<CreateObjectiveRequestDto>();
   saved = output<{ fields: EditObjectiveRequestDto; achievedChanged: boolean; achieved: boolean }>();
   closed = output<void>();
 
@@ -72,8 +79,9 @@ export class MilestoneSettingsModalComponent {
 
   constructor() {
     effect(() => {
+      this.open();
       const value = this.initialValue();
-      if (value) {
+      if (this.mode() === 'edit' && value) {
         this.title.set(value.title);
         this.description.set(value.description ?? '');
         this.startDate.set(value.startDate);
@@ -81,7 +89,7 @@ export class MilestoneSettingsModalComponent {
         this.allocatedHours.set(value.allocatedHours);
         this.achieved.set(value.isAchieved ?? false);
         this.isDefault.set(value.isDefault);
-      } else {
+      } else if (this.mode() === 'create') {
         this.title.set('');
         this.description.set('');
         this.startDate.set('');
@@ -117,15 +125,28 @@ export class MilestoneSettingsModalComponent {
     this.errors.set(errors);
     if (Object.keys(errors).length > 0) return;
 
-    const initial = this.initialValue();
-    const achievedChanged = initial !== null && this.achieved() !== (initial.isAchieved ?? false);
+    if (this.mode() === 'create') {
+      this.created.emit({
+        parentObjectiveId: this.parentObjectiveId(),
+        title: this.title(),
+        description: this.description() || null,
+        startDate: this.startDate(),
+        endDate: this.endDate(),
+        allocatedHours: this.allocatedHours()
+      });
+      return;
+    }
 
+    const initial = this.initialValue();
     this.saved.emit({
       fields: {
-        title: this.title(), description: this.description(),
-        startDate: this.startDate(), endDate: this.endDate(), allocatedHours: this.allocatedHours()
+        title: this.title(),
+        description: this.description(),
+        startDate: this.startDate(),
+        endDate: this.endDate(),
+        allocatedHours: this.allocatedHours()
       },
-      achievedChanged,
+      achievedChanged: initial !== null && this.achieved() !== (initial?.isAchieved ?? false),
       achieved: this.achieved()
     });
   }
