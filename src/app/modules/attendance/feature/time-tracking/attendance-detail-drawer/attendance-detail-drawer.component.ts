@@ -1,4 +1,4 @@
-import { ChangeDetectionStrategy, Component, computed, effect, inject, input, output } from '@angular/core';
+import { ChangeDetectionStrategy, Component, computed, effect, inject, input, output, untracked } from '@angular/core';
 import { ButtonComponent } from '../../../../../shared/ui/button/button.component';
 import { AttendanceHistoryRow } from '../../../models/time-tracking.model';
 import { TimeTrackingStore } from '../../../state/time-tracking.store';
@@ -56,7 +56,9 @@ export class AttendanceDetailDrawerComponent {
     effect(() => {
       const selected = this.selection();
       if (selected) {
-        void this.store.loadDayDetail(selected.employeeId, selected.workDate);
+        untracked(() => {
+          void this.store.loadDayDetail(selected.employeeId, selected.workDate);
+        });
       }
     });
   }
