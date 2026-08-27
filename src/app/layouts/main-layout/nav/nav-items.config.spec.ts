@@ -5,7 +5,11 @@ describe('NAV_ITEMS', () => {
     const attendance = NAV_ITEMS.find((item) => item.id === 'time-attendance');
 
     expect(attendance?.path).toBe('/attendance');
-    expect(attendance?.children?.map((item) => item.label)).toEqual(['Time Tracking', 'Monitoring']);
+    expect(attendance?.children?.map((item) => item.label)).toEqual([
+      'Time Tracking',
+      'Monitoring',
+      'Correction approvals'
+    ]);
     expect(NAV_ITEMS.some((item) => item.label === 'Monitoring')).toBe(false);
   });
 });
