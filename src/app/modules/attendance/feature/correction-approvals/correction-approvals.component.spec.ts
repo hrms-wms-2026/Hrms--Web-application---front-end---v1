@@ -20,6 +20,7 @@ describe('CorrectionApprovalsComponent', () => {
   async function setup(items: readonly AttendanceCorrectionResponse[] = [pending]) {
     const store = {
       approvalInbox: signal(items), approvalInboxLoading: signal(false), approvalInboxError: signal<string | null>(null),
+      approvalInboxLoaded: signal(false),
       correctionActionLoading: signal(false), activeCorrectionAction: signal<string | null>(null),
       loadApprovalInbox: vi.fn(() => Promise.resolve()),
       approveCorrection: vi.fn(() => Promise.resolve({ ...pending, status: 'approved' })),
@@ -97,5 +98,46 @@ describe('CorrectionApprovalsComponent', () => {
     expect(store.approveCorrection).toHaveBeenCalledWith('correction-1', { reviewComment: null });
     expect(store.loadApprovalInbox).toHaveBeenCalledTimes(2);
     expect(notifications.success).toHaveBeenCalledWith('Attendance correction approved.');
+  });
+
+  it('hides the breadcrumb and page heading when embedded', async () => {
+    const { fixture } = await setup();
+    fixture.componentRef.setInput('embedded', true);
+    fixture.detectChanges();
+    expect(fixture.nativeElement.querySelector('app-breadcrumb-header')).toBeNull();
+    expect(fixture.nativeElement.querySelector('#approvals-heading')).toBeNull();
+  });
+
+  it('still shows the breadcrumb and heading when not embedded', async () => {
+    const { fixture } = await setup();
+    expect(fixture.nativeElement.querySelector('app-breadcrumb-header')).toBeTruthy();
+    expect(fixture.nativeElement.querySelector('#approvals-heading')?.textContent).toContain('Attendance correction approvals');
+  });
+
+  it('does not re-fetch the inbox on init when the store already has a loaded inbox', async () => {
+    await TestBed.resetTestingModule();
+    const store = {
+      approvalInbox: signal([pending]), approvalInboxLoading: signal(false), approvalInboxError: signal<string | null>(null),
+      approvalInboxLoaded: signal(true),
+      correctionActionLoading: signal(false), activeCorrectionAction: signal<string | null>(null),
+      loadApprovalInbox: vi.fn(() => Promise.resolve()),
+      approveCorrection: vi.fn(() => Promise.resolve({ ...pending, status: 'approved' })),
+      rejectCorrection: vi.fn(() => Promise.resolve({ ...pending, status: 'rejected' }))
+    };
+    await TestBed.configureTestingModule({
+      imports: [CorrectionApprovalsComponent],
+      providers: [provideRouter([]), { provide: TimeTrackingStore, useValue: store }, { provide: NotificationService, useValue: { success: vi.fn() } }]
+    }).compileComponents();
+    const fixture = TestBed.createComponent(CorrectionApprovalsComponent);
+    fixture.detectChanges();
+    await fixture.whenStable();
+
+    expect(store.loadApprovalInbox).not.toHaveBeenCalled();
+    expect((fixture.nativeElement as HTMLElement).textContent).toContain('Jordan Lee');
+  });
+
+  it('still fetches on init when the store has no loaded inbox yet', async () => {
+    const { store } = await setup();
+    expect(store.loadApprovalInbox).toHaveBeenCalledTimes(1);
   });
 });

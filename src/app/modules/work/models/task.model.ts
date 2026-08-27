@@ -22,5 +22,9 @@ export interface WorkTask {
   completedHours: number;
   progressPercent: number;
   sprintId: string | null;
-  assigneeEmployeeIds: string[];
+    assigneeEmployeeIds: string[];
+  openClockSessionEmployeeId: string | null;
+  openClockSessionClockInAt: Date | null;
+  totalLoggedMinutes: number;
+
 }

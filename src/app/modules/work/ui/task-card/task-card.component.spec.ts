@@ -1,16 +1,25 @@
 import { ComponentFixture, TestBed } from '@angular/core/testing';
+import { HttpClientTestingModule, HttpTestingController } from '@angular/common/http/testing';
+import { By } from '@angular/platform-browser';
+
 import { vi } from 'vitest';
 import { TaskCardComponent } from './task-card.component';
+import { TaskClockWidgetComponent } from '../task-clock-widget/task-clock-widget.component';
+
 import { TaskStatusColumn, WorkTask } from '../../models/task.model';
+import { environment } from '../../../../../environments/environment';
 
 describe('TaskCardComponent', () => {
   let fixture: ComponentFixture<TaskCardComponent>;
+  let httpMock: HttpTestingController;
+
+  afterEach(() => httpMock.verify());
 
   const task: WorkTask = {
     id: 't-1', objectiveId: 'o-1', shortId: 'PRJ-1', title: 'Do the thing', description: null,
     categoryId: 'task', statusId: 's1', priority: 'high', storyPoints: null, dueDate: null,
     estimatedHours: 5, completedHours: 0, progressPercent: 0, sprintId: null,
-    assigneeEmployeeIds: ['emp-1', 'emp-2']
+    assigneeEmployeeIds: ['emp-1', 'emp-2'], openClockSessionEmployeeId: null, openClockSessionClockInAt: null, totalLoggedMinutes: 0
   };
 
   const statuses: TaskStatusColumn[] = [
@@ -19,13 +28,17 @@ describe('TaskCardComponent', () => {
     { id: 's3', name: 'Internal Review', displayOrder: 2, requiresApproval: false, marksTaskComplete: false, visibility: 'private' }
   ];
 
-  function setup(overrides: { isObjectiveOwner?: boolean; employeeNames?: Record<string, string> } = {}): void {
+    function setup(overrides: { employeeNames?: Record<string, string>; task?: WorkTask; currentEmployeeId?: string } = {}): void {
+
     TestBed.resetTestingModule();
-    TestBed.configureTestingModule({ imports: [TaskCardComponent] });
+        TestBed.configureTestingModule({ imports: [TaskCardComponent, HttpClientTestingModule] });
     fixture = TestBed.createComponent(TaskCardComponent);
-    fixture.componentRef.setInput('task', task);
+    httpMock = TestBed.inject(HttpTestingController);
+
+        fixture.componentRef.setInput('task', overrides.task ?? task);
+    fixture.componentRef.setInput('currentEmployeeId', overrides.currentEmployeeId ?? '');
+
     fixture.componentRef.setInput('statuses', statuses);
-    fixture.componentRef.setInput('isObjectiveOwner', overrides.isObjectiveOwner ?? false);
     fixture.componentRef.setInput('employeeNames', overrides.employeeNames ?? { 'emp-1': 'Nevi Peiris', 'emp-2': 'Sam Perera' });
     fixture.detectChanges();
   }
@@ -54,30 +67,62 @@ describe('TaskCardComponent', () => {
     expect(viewedSpy).toHaveBeenCalledWith(task);
   });
 
-  it('only shows public statuses in the dropdown for a non-owner, all statuses for the owner', () => {
-    setup({ isObjectiveOwner: false });
-    let options = Array.from(fixture.nativeElement.querySelectorAll('.task-card__status-select option') as NodeListOf<HTMLOptionElement>)
-      .map((o) => o.textContent?.trim());
-    expect(options).toEqual(['To Do', 'Done']);
-
-    setup({ isObjectiveOwner: true });
-    options = Array.from(fixture.nativeElement.querySelectorAll('.task-card__status-select option') as NodeListOf<HTMLOptionElement>)
-      .map((o) => o.textContent?.trim());
-    expect(options).toEqual(['To Do', 'Done', 'Internal Review']);
+  it('shows the current status as plain text, not an editable control', () => {
+    setup();
+    const statusEl = fixture.nativeElement.querySelector('[data-testid="task-card-status"]');
+    expect(statusEl.textContent.trim()).toBe('To Do');
+    expect(fixture.nativeElement.querySelector('select')).toBeNull();
   });
 
-  it('picking a status from the dropdown emits statusChangeRequested but not viewed (no card-click bubble)', () => {
-    setup({ isObjectiveOwner: true });
-    const statusSpy = vi.fn();
+  it('falls back to the raw statusId if the status is not in the provided list', () => {
+    setup();
+    fixture.componentRef.setInput('task', { ...task, statusId: 'missing-status' });
+    fixture.detectChanges();
+    const statusEl = fixture.nativeElement.querySelector('[data-testid="task-card-status"]');
+    expect(statusEl.textContent.trim()).toBe('missing-status');
+  });
+
+  it('shows the clock widget when the caller is an assignee', () => {
+    setup({ task: { ...task, assigneeEmployeeIds: ['e1'] }, currentEmployeeId: 'e1' });
+    expect(fixture.nativeElement.querySelector('app-task-clock-widget')).toBeTruthy();
+  });
+
+  it('marks hasOpenSessionMine when the open session belongs to the caller', () => {
+    setup({ task: { ...task, assigneeEmployeeIds: ['e1'], openClockSessionEmployeeId: 'e1' }, currentEmployeeId: 'e1' });
+    const widget = fixture.debugElement.query(By.directive(TaskClockWidgetComponent));
+    expect(widget.componentInstance.hasOpenSessionMine()).toBe(true);
+  });
+
+  it('marks hasOpenSessionOtherEmployee when a different employee holds the open session', () => {
+    setup({ task: { ...task, assigneeEmployeeIds: ['e1', 'e2'], openClockSessionEmployeeId: 'e2' }, currentEmployeeId: 'e1' });
+    const widget = fixture.debugElement.query(By.directive(TaskClockWidgetComponent));
+    expect(widget.componentInstance.hasOpenSessionOtherEmployee()).toBe(true);
+    expect(widget.componentInstance.hasOpenSessionMine()).toBe(false);
+  });
+
+  it('does not emit viewed when Clock In is clicked inside the card', async () => {
+    setup({ task: { ...task, assigneeEmployeeIds: ['e1'] }, currentEmployeeId: 'e1' });
     const viewedSpy = vi.fn();
-    fixture.componentInstance.statusChangeRequested.subscribe(statusSpy);
     fixture.componentInstance.viewed.subscribe(viewedSpy);
-
-    const select: HTMLSelectElement = fixture.nativeElement.querySelector('.task-card__status-select');
-    select.value = 's2';
-    select.dispatchEvent(new Event('change', { bubbles: true }));
-
-    expect(statusSpy).toHaveBeenCalledWith('s2');
+    (fixture.nativeElement.querySelector('[data-testid="clock-in-button"]') as HTMLButtonElement).click();
     expect(viewedSpy).not.toHaveBeenCalled();
+    const req = httpMock.expectOne(`${environment.apiUrl}/work/tasks/t-1/clock-in`);
+    req.flush(null);
+    await fixture.whenStable();
+  });
+
+  it('does not emit viewed when the Push popup Submit control is clicked', () => {
+    setup({ task: { ...task, assigneeEmployeeIds: ['e1'], openClockSessionEmployeeId: 'e1' }, currentEmployeeId: 'e1' });
+    const viewedSpy = vi.fn();
+    fixture.componentInstance.viewed.subscribe(viewedSpy);
+    (fixture.nativeElement.querySelector('[data-testid="push-button"]') as HTMLButtonElement).click();
+    fixture.detectChanges();
+    (fixture.nativeElement.querySelector('[data-testid="push-submit-button"]') as HTMLButtonElement).click();
+    expect(viewedSpy).not.toHaveBeenCalled();
+  });
+
+  it('hides the clock widget for a non-assignee', () => {
+    setup({ task: { ...task, assigneeEmployeeIds: ['e2'] }, currentEmployeeId: 'e1' });
+    expect(fixture.nativeElement.querySelector('app-task-clock-widget')).toBeNull();
   });
 });

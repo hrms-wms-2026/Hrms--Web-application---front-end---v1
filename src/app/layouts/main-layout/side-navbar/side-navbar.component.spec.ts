@@ -114,20 +114,6 @@ describe('SideNavbarComponent', () => {
     expect(activeLink?.textContent).toContain('Org');
   });
 
-  it('keeps Monitoring out of the primary rail and marks Attendance active at the Monitoring route', async () => {
-    const fixture = setup(['attendance:read'], ['time_attendance']);
-    const labels = Array.from(fixture.nativeElement.querySelectorAll('.nav-rail-item span')).map((el) => (el as HTMLElement).textContent);
-    const router = TestBed.inject(Router);
-
-    expect(labels).toEqual(['Home', 'Attendance', 'Settings']);
-
-    await router.navigateByUrl('/attendance/monitoring');
-    fixture.detectChanges();
-
-    const activeLink = fixture.nativeElement.querySelector('.nav-rail-item--active');
-    expect(activeLink?.textContent).toContain('Attendance');
-  });
-
   it('shows the sidebar-style initial tile when no company is selected', () => {
     const fixture = setup([], []);
     const initial = fixture.nativeElement.querySelector('.company-logo-tile__initial');

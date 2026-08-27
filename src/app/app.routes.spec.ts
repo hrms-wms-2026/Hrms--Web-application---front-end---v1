@@ -3,6 +3,8 @@ import { provideHttpClientTesting } from '@angular/common/http/testing';
 import { TestBed } from '@angular/core/testing';
 import { Router, provideRouter } from '@angular/router';
 import { routes } from './app.routes';
+import { authGuard } from './core/guards/auth.guard';
+import { permissionGuard } from './core/guards/permission.guard';
 import { AuthStore } from './core/auth/state/auth.store';
 import { PermissionService } from './core/auth/state/permission.service';
 
@@ -48,16 +50,30 @@ describe('app routes - Settings', () => {
     expect(router.url).toBe('/settings/devices');
   });
 
-  it('defines the guarded lazy-loaded Attendance → Time Tracking route', () => {
-    const attendance = routes.find((route) => route.path === 'attendance');
+  it('defines the guarded lazy-loaded Attendance route under the authenticated shell', () => {
+    const authenticatedShell = routes.find(
+      (route) =>
+        route.path === '' &&
+        route.canActivate?.includes(authGuard) &&
+        Array.isArray(route.children)
+    );
+    expect(authenticatedShell).toBeTruthy();
+
+    const shellChildren = authenticatedShell?.children ?? [];
+    const attendance = shellChildren.find((route) => route.path === 'attendance');
     expect(attendance).toBeTruthy();
     expect(attendance?.loadChildren).toBeTypeOf('function');
-    expect(attendance?.data).toEqual({
-      permissions: ['attendance:read-own', 'attendance:write-own', 'attendance:read'],
-      modules: ['time_attendance']
-    });
+    expect(attendance?.canActivate).toContain(permissionGuard);
+    expect(attendance?.data?.['modules']).toEqual(['time_attendance']);
+    expect(attendance?.data?.['permissions']).toEqual([
+      'attendance:read-own',
+      'attendance:write-own',
+      'attendance:read',
+      'attendance:approve'
+    ]);
 
-    const legacyRoute = routes.find((route) => route.path === 'time-attendance');
+    const legacyRoute = shellChildren.find((route) => route.path === 'time-attendance');
+    expect(legacyRoute).toBeTruthy();
     expect(legacyRoute?.redirectTo).toBe('attendance/time-tracking');
   });
 });

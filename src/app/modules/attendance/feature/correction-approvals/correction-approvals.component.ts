@@ -1,4 +1,4 @@
-import { ChangeDetectionStrategy, Component, OnInit, inject, signal } from '@angular/core';
+import { ChangeDetectionStrategy, Component, OnInit, inject, input, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { ActivatedRoute } from '@angular/router';
 import { ButtonComponent } from '../../../../shared/ui/button/button.component';
@@ -20,6 +20,7 @@ export class CorrectionApprovalsComponent implements OnInit {
   readonly store = inject(TimeTrackingStore);
   private readonly route = inject(ActivatedRoute);
   private readonly notifications = inject(NotificationService);
+  readonly embedded = input(false);
   readonly requestedId = signal<string | null>(null);
   readonly reviewRequest = signal<AttendanceCorrectionResponse | null>(null);
   readonly reviewComment = signal('');
@@ -29,11 +30,19 @@ export class CorrectionApprovalsComponent implements OnInit {
 
   ngOnInit(): void {
     this.requestedId.set(this.route.snapshot.queryParamMap.get('requestId'));
-    void this.load();
+    if (this.store.approvalInboxLoaded()) {
+      this.tryOpenDeepLink();
+    } else {
+      void this.load();
+    }
   }
 
   async load(): Promise<void> {
     await this.store.loadApprovalInbox();
+    this.tryOpenDeepLink();
+  }
+
+  private tryOpenDeepLink(): void {
     const id = this.requestedId();
     if (!id) return;
     const match = this.store.approvalInbox().find((request) => request.id === id && request.status === 'pending');

@@ -13,12 +13,15 @@ import { MemberButtonComponent } from '../member-button/member-button.component'
   imports: [ButtonComponent, CardComponent, EmployeeAvatarComponent, MemberButtonComponent],
   template: `
     <app-card>
-      <div data-testid="project-explanation-card" class="flex flex-col gap-4 p-3">
+<div data-testid="project-explanation-card" class="flex flex-col gap-5 p-4">
         <!-- Card Header Subtitle -->
-        <div class="flex items-center justify-between">
-          <span class="text-[11px] font-bold uppercase tracking-wider text-[var(--color-text-secondary)]">
-            Project Details
-          </span>
+        <div class="flex items-center justify-between border-b border-[var(--color-border)] pb-4">
+          <div class="flex items-center gap-2">
+            <span class="h-2 w-2 shrink-0 rounded-full bg-[var(--color-accent)]" aria-hidden="true"></span>
+            <span class="text-[11px] font-bold uppercase tracking-wider text-[var(--color-text-secondary)]">
+              Project Details
+            </span>
+          </div>
           @if (project().isLead) {
             <app-member-button [memberCount]="project().memberCount" (pressed)="membersRequested.emit()" />
           }
@@ -50,7 +53,7 @@ import { MemberButtonComponent } from '../member-button/member-button.component'
         }
 
         <!-- Details Key-Value List -->
-        <div class="flex flex-col text-xs border-y border-[var(--color-border)] py-1">
+        <div class="flex flex-col rounded-xl border border-[var(--color-border)] bg-[var(--color-surface-secondary)]/30 px-3 py-1 text-xs">
           <div class="flex items-center justify-between py-2 border-b border-[var(--color-border)]/50 last:border-0">
             <span class="text-[var(--color-text-secondary)] font-medium">Owner</span>
             <app-employee-avatar [employeeId]="project().leadId" [showName]="true" />
@@ -80,29 +83,32 @@ import { MemberButtonComponent } from '../member-button/member-button.component'
 
         <!-- 3 KPI Metric Boxes -->
         <div class="grid grid-cols-3 gap-2">
-          <div class="rounded-xl border border-[var(--color-border)] bg-[var(--color-surface-secondary)]/40 p-2.5 text-center">
+          <div class="rounded-lg border border-[var(--color-border)] bg-[var(--color-surface)] p-3 text-center shadow-sm">
             <div class="text-base font-bold text-[var(--color-text-primary)]">{{ project().allocatedHours }}h</div>
             <div class="text-[10px] font-medium text-[var(--color-text-secondary)] mt-0.5">Allocated</div>
           </div>
-          <div class="rounded-xl border border-[var(--color-border)] bg-[var(--color-surface-secondary)]/40 p-2.5 text-center">
+          <div class="rounded-lg border border-[var(--color-border)] bg-[var(--color-surface)] p-3 text-center shadow-sm">
             <div class="text-base font-bold text-[var(--color-text-primary)]">{{ project().completedHours }}h</div>
             <div class="text-[10px] font-medium text-[var(--color-text-secondary)] mt-0.5">Completed</div>
           </div>
-          <div class="rounded-xl border border-[var(--color-border)] bg-[var(--color-surface-secondary)]/40 p-2.5 text-center">
+          <div class="rounded-lg border border-[var(--color-border)] bg-[var(--color-surface)] p-3 text-center shadow-sm">
             <div class="text-base font-bold text-[var(--color-text-primary)]">{{ hoursProgress() }}%</div>
             <div class="text-[10px] font-medium text-[var(--color-text-secondary)] mt-0.5">Progress</div>
           </div>
         </div>
 
-        <!-- Vertical Stacked Action Buttons (Button Style Tabs) -->
-        <div class="flex flex-col gap-2 pt-1">
+        <!-- Project actions -->
+        <div class="border-t border-[var(--color-border)] pt-4">
+          <div class="mb-2 text-[11px] font-bold uppercase tracking-wider text-[var(--color-text-secondary)]">Quick actions</div>
+          <div class="flex flex-col gap-2">
           <span data-testid="view-button" class="w-full">
             <button
               type="button"
-              class="w-full py-2.5 px-4 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-semibold text-sm shadow-sm transition-colors text-center"
+              class="inline-flex w-full items-center justify-center gap-2 rounded-lg bg-[var(--color-accent)] px-3 py-2.5 text-center text-sm font-medium text-white shadow-sm transition-[filter,transform] hover:brightness-95 active:translate-y-px focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-focus-ring)]"
               (click)="viewed.emit()"
             >
-              Open project structure
+              <svg class="h-4 w-4 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 5h16v14H4z" /><path d="m8 9 3 3-3 3M13 15h3" /></svg>
+              <span>Open project structure</span>
             </button>
           </span>
 
@@ -110,10 +116,11 @@ import { MemberButtonComponent } from '../member-button/member-button.component'
             <span data-testid="settings-button" class="w-full">
               <button
                 type="button"
-                class="w-full py-2.5 px-4 rounded-xl border border-[var(--color-border)] bg-white hover:bg-[var(--color-surface-secondary)] text-[var(--color-text-primary)] font-semibold text-sm transition-colors text-center"
+                class="inline-flex w-full items-center justify-center gap-2 rounded-lg border border-[var(--color-border)] bg-[var(--color-surface)] px-3 py-2.5 text-center text-sm font-medium text-[var(--color-text-secondary)] shadow-sm transition-colors hover:bg-[var(--color-surface-secondary)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-focus-ring)]"
                 (click)="settingsRequested.emit()"
               >
-                Project settings
+                <svg class="h-4 w-4 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 6h16M4 12h16M4 18h16" /><circle cx="8" cy="6" r="1.5" /><circle cx="15" cy="12" r="1.5" /><circle cx="10" cy="18" r="1.5" /></svg>
+                <span>Project settings</span>
               </button>
             </span>
           }
@@ -122,7 +129,7 @@ import { MemberButtonComponent } from '../member-button/member-button.component'
             <span data-testid="achieve-button" class="w-full">
               <button
                 type="button"
-                class="w-full py-2.5 px-4 rounded-xl bg-blue-50 hover:bg-blue-100 text-blue-700 font-semibold text-sm transition-colors flex items-center justify-center gap-2"
+                class="inline-flex w-full items-center justify-center gap-2 rounded-lg border border-[var(--color-border)] bg-[var(--color-surface-secondary)] px-3 py-2.5 text-center text-sm font-medium text-[var(--color-accent)] shadow-sm transition-colors hover:brightness-95 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-focus-ring)]"
                 (click)="achieveRequested.emit()"
               >
                 <svg class="w-4 h-4 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -132,6 +139,7 @@ import { MemberButtonComponent } from '../member-button/member-button.component'
               </button>
             </span>
           }
+          </div>
         </div>
 
         <!-- Footer note -->

@@ -1,6 +1,7 @@
 import { TestBed } from '@angular/core/testing';
 import { HttpResponse } from '@angular/common/http';
 import { of, throwError } from 'rxjs';
+import { vi } from 'vitest';
 import { ProjectDetailStore } from './project-detail.store';
 import { ProjectApiService } from '../data-access/project-api.service';
 import { ObjectiveMemberApiService } from '../data-access/objective-member-api.service';
@@ -292,7 +293,7 @@ describe('ProjectDetailStore', () => {
     const directTask: WorkTaskDto = {
       id: 't-direct', objectiveId: 'o1', shortId: 'WEB-1', title: 'Direct task', description: null,
       categoryId: 'task', statusId: 'st-1', priority: 'medium', storyPoints: null,
-      dueDate: null, estimatedHours: 3, completedHours: 0, progressPercent: 0, sprintId: null, assigneeEmployeeIds: []
+      dueDate: null, estimatedHours: 3, completedHours: 0, progressPercent: 0, sprintId: null, assigneeEmployeeIds: [], openClockSessionEmployeeId: null, openClockSessionClockInAt: null, totalLoggedMinutes: 0
     };
 
     const sprintTask: WorkTaskDto = {
@@ -409,7 +410,7 @@ describe('ProjectDetailStore', () => {
     const sprintTask: WorkTaskDto = {
       id: 't-sprint', objectiveId: 'o1', shortId: 'WEB-2', title: 'Sprint task', description: null,
       categoryId: 'task', statusId: 'st-1', priority: 'medium', storyPoints: null,
-      dueDate: null, estimatedHours: 3, completedHours: 0, progressPercent: 0, sprintId: 'spr-1', assigneeEmployeeIds: []
+      dueDate: null, estimatedHours: 3, completedHours: 0, progressPercent: 0, sprintId: 'spr-1', assigneeEmployeeIds: [], openClockSessionEmployeeId: null, openClockSessionClockInAt: null, totalLoggedMinutes: 0
     };
 
     const statuses: TaskStatusDto[] = [{
@@ -567,7 +568,7 @@ describe('ProjectDetailStore', () => {
       getBySprintId: vi.fn().mockReturnValue(of([{
         id: 't-sprint', objectiveId: 'o1', shortId: 'WEB-2', title: 'Sprint task', description: null,
         categoryId: 'task', statusId: 'st-1', priority: 'medium', storyPoints: null,
-        dueDate: null, estimatedHours: 3, completedHours: 0, progressPercent: 0, sprintId: 'spr-1', assigneeEmployeeIds: []
+        dueDate: null, estimatedHours: 3, completedHours: 0, progressPercent: 0, sprintId: 'spr-1', assigneeEmployeeIds: [], openClockSessionEmployeeId: null, openClockSessionClockInAt: null, totalLoggedMinutes: 0
       }])),
       deleteTask: vi.fn().mockReturnValue(of(undefined))
     };
@@ -597,5 +598,125 @@ describe('ProjectDetailStore', () => {
     expect(result.success).toBe(false);
     expect(store.milestoneActionError()).toBe('forbidden');
     expect(store.selectedSubtree()).toBe(before);
+  });
+
+  describe('loadProjectMembers', () => {
+    const milestones: MyProjectMilestoneDto[] = [{
+      objectiveId: 'o1', projectId: 'p1', parentObjectiveId: null, isDefault: true, title: 'Default',
+      ownerId: 'u1', ownerName: 'Jane', reportingManagerId: null, reportingManagerName: null,
+      startDate: '2026-08-01', endDate: '2026-12-01', allocatedHours: 40, completedHours: 0,
+      objectiveIsActive: true, isAchieved: false, achievedAt: null, membershipIsActive: true, membershipRemovedAt: null,
+      isOwner: true
+    }];
+
+    function setupWithBoth(getMembers: ReturnType<typeof vi.fn>) {
+      TestBed.configureTestingModule({
+        providers: [
+          { provide: ProjectApiService, useValue: { getMyMilestones: vi.fn().mockReturnValue(of(milestones)) } },
+          { provide: ObjectiveMemberApiService, useValue: { getMembers } },
+          { provide: SprintApiService, useValue: {} },
+          { provide: TaskApiService, useValue: {} }
+        ]
+      });
+      return TestBed.inject(ProjectDetailStore);
+    }
+
+    it('fetches members from every reachable module, excluding pending invites', async () => {
+      const getMembers = vi.fn().mockReturnValue(of({
+        items: [
+          { employeeId: 'e1', pending: false, isHead: true },
+          { employeeId: 'e2', pending: true, isHead: false }
+        ]
+      }));
+      const store = setupWithBoth(getMembers);
+
+      await store.loadProjectMembers('p1');
+
+      expect(getMembers).toHaveBeenCalledWith('o1');
+      expect(store.projectMembers()).toEqual([{ employeeId: 'e1', pending: false, isHead: true }]);
+    });
+
+    it('unions members across multiple modules, deduping by employeeId', async () => {
+      // Regression test: assignee dropdowns must include members of every module the caller
+      // can reach (cascading ownership), not just the project's Default Objective - a parent
+      // member creating a task needs to be able to assign it to a child-module-only member.
+      const twoModules: MyProjectMilestoneDto[] = [
+        milestones[0],
+        {
+          ...milestones[0], objectiveId: 'o2', isDefault: false, title: 'Child module', parentObjectiveId: 'o1'
+        }
+      ];
+      TestBed.configureTestingModule({
+        providers: [
+          { provide: ProjectApiService, useValue: { getMyMilestones: vi.fn().mockReturnValue(of(twoModules)) } },
+          {
+            provide: ObjectiveMemberApiService, useValue: {
+              getMembers: vi.fn((objectiveId: string) => of({
+                items: objectiveId === 'o1'
+                  ? [{ employeeId: 'e1', pending: false, isHead: true }]
+                  : [
+                      { employeeId: 'e1', pending: false, isHead: false },
+                      { employeeId: 'e2', pending: false, isHead: false }
+                    ]
+              }))
+            }
+          },
+          { provide: SprintApiService, useValue: {} },
+          { provide: TaskApiService, useValue: {} }
+        ]
+      });
+      const store = TestBed.inject(ProjectDetailStore);
+
+      await store.loadProjectMembers('p1');
+
+      const employeeIds = store.projectMembers().map((m) => m.employeeId).sort();
+      expect(employeeIds).toEqual(['e1', 'e2']);
+    });
+
+    it('still returns other modules\' members when one module\'s member fetch fails', async () => {
+      const twoModules: MyProjectMilestoneDto[] = [
+        milestones[0],
+        { ...milestones[0], objectiveId: 'o2', isDefault: false, title: 'Child module', parentObjectiveId: 'o1' }
+      ];
+      TestBed.configureTestingModule({
+        providers: [
+          { provide: ProjectApiService, useValue: { getMyMilestones: vi.fn().mockReturnValue(of(twoModules)) } },
+          {
+            provide: ObjectiveMemberApiService, useValue: {
+              getMembers: vi.fn((objectiveId: string) => objectiveId === 'o1'
+                ? throwError(() => new Error('boom'))
+                : of({ items: [{ employeeId: 'e2', pending: false, isHead: false }] }))
+            }
+          },
+          { provide: SprintApiService, useValue: {} },
+          { provide: TaskApiService, useValue: {} }
+        ]
+      });
+      const store = TestBed.inject(ProjectDetailStore);
+
+      await store.loadProjectMembers('p1');
+
+      expect(store.projectMembers()).toEqual([{ employeeId: 'e2', pending: false, isHead: false }]);
+    });
+
+    it('does not refetch for a project it has already loaded members for', async () => {
+      const getMembers = vi.fn().mockReturnValue(of({ items: [] }));
+      const store = setupWithBoth(getMembers);
+
+      await store.loadProjectMembers('p1');
+      await store.loadProjectMembers('p1');
+
+      expect(getMembers).toHaveBeenCalledTimes(1);
+    });
+
+    it('does refetch for a different project id', async () => {
+      const getMembers = vi.fn().mockReturnValue(of({ items: [] }));
+      const store = setupWithBoth(getMembers);
+
+      await store.loadProjectMembers('p1');
+      await store.loadProjectMembers('p2');
+
+      expect(getMembers).toHaveBeenCalledTimes(2);
+    });
   });
 });

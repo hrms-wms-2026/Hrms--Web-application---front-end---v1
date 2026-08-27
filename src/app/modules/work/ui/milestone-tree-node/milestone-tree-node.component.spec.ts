@@ -50,8 +50,8 @@ describe('MilestoneTreeNodeComponent', () => {
   it('all rows share the same grid column template, only the title cell indents by depth', () => {
     setup(root, null, true);
     const rows = fixture.nativeElement.querySelectorAll('[data-testid="tree-row"]');
-    expect((rows[0] as HTMLElement).className).toContain('grid-cols-[1fr_112px_40px_88px_72px]');
-    expect((rows[1] as HTMLElement).className).toContain('grid-cols-[1fr_112px_40px_88px_72px]');
+    expect((rows[0] as HTMLElement).className).toContain('grid-cols-[1fr_112px_40px_88px_140px]');
+    expect((rows[1] as HTMLElement).className).toContain('grid-cols-[1fr_112px_40px_88px_140px]');
 
     const rootTitleCell = rows[0].querySelector('span') as HTMLElement;
     const childTitleCell = rows[1].querySelector('span') as HTMLElement;
@@ -286,9 +286,11 @@ describe('MilestoneTreeNodeComponent', () => {
     it('shows create-sub, members, and edit on a non-leaf owned objective', () => {
       setup(root);
       expect(fixture.nativeElement.querySelector('[data-testid="create-sub-button"]')).not.toBeNull();
-      expect(fixture.nativeElement.querySelector('[data-testid="members-button"]')).not.toBeNull();
-      expect(fixture.nativeElement.querySelector('[data-testid="edit-button"]')).not.toBeNull();
-      expect(fixture.nativeElement.querySelector('[data-testid="create-sprint-button"]')).toBeNull();
+      (fixture.nativeElement.querySelector('[data-testid="shortcut-menu-button"]') as HTMLElement).click();
+      fixture.detectChanges();
+      expect(fixture.nativeElement.querySelector('[data-testid="menu-members-button"]')).not.toBeNull();
+      expect(fixture.nativeElement.querySelector('[data-testid="menu-edit-button"]')).not.toBeNull();
+      expect(fixture.nativeElement.querySelector('[data-testid="menu-create-sprint-button"]')).toBeNull();
     });
 
     it('emits createSprintRequested from a leaf objective plus, not createRequested', () => {
@@ -299,7 +301,9 @@ describe('MilestoneTreeNodeComponent', () => {
       fixture.componentInstance.createRequested.subscribe((n) => subs.push(n));
 
       expect(fixture.nativeElement.querySelector('[data-testid="create-sub-button"]')).not.toBeNull();
-      (fixture.nativeElement.querySelector('[data-testid="create-sprint-button"]') as HTMLElement).click();
+      (fixture.nativeElement.querySelector('[data-testid="shortcut-menu-button"]') as HTMLElement).click();
+      fixture.detectChanges();
+      (fixture.nativeElement.querySelector('[data-testid="menu-create-sprint-button"]') as HTMLElement).click();
 
       expect(sprints).toEqual([ownedLeaf]);
       expect(subs).toEqual([]);
@@ -307,9 +311,8 @@ describe('MilestoneTreeNodeComponent', () => {
 
     it('hides owner-gated icons on a leaf that the caller does not own', () => {
       setup({ ...ownedLeaf, isOwner: false });
-      expect(fixture.nativeElement.querySelector('[data-testid="create-sprint-button"]')).toBeNull();
-      expect(fixture.nativeElement.querySelector('[data-testid="members-button"]')).toBeNull();
-      expect(fixture.nativeElement.querySelector('[data-testid="edit-button"]')).toBeNull();
+      expect(fixture.nativeElement.querySelector('[data-testid="create-sub-button"]')).toBeNull();
+      expect(fixture.nativeElement.querySelector('[data-testid="shortcut-menu-button"]')).toBeNull();
     });
 
     it('emits createTaskRequested and editRequested from an owned sprint, with no members icon', () => {

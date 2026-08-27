@@ -7,7 +7,7 @@ export const ATTENDANCE_ROUTES: Routes = [
     canActivate: [permissionGuard],
     data: {
       title: 'Time Tracking',
-      permissions: ['attendance:read-own', 'attendance:write-own', 'attendance:read'],
+      permissions: ['attendance:read-own', 'attendance:write-own', 'attendance:read', 'attendance:approve'],
       modules: ['time_attendance']
     },
     loadComponent: () =>
@@ -18,10 +18,19 @@ export const ATTENDANCE_ROUTES: Routes = [
   {
     path: 'corrections/approvals',
     canActivate: [permissionGuard],
-    data: { title: 'Attendance correction approvals', permissions: ['attendance:approve'], modules: ['time_attendance'] },
+    data: { title: 'Attendance correction approvals', permissions: ['attendance:approve'], modules: ['time_attendance'], approvalType: 'corrections' },
     loadComponent: () =>
-      import('./feature/correction-approvals/correction-approvals.component').then(
-        (module) => module.CorrectionApprovalsComponent
+      import('./feature/legacy-approval-redirect/legacy-approval-redirect.component').then(
+        (module) => module.LegacyApprovalRedirectComponent
+      )
+  },
+  {
+    path: 'work-area-change-requests/approvals',
+    canActivate: [permissionGuard],
+    data: { title: 'Work-area approvals', permissions: ['attendance:approve'], modules: ['time_attendance'], approvalType: 'work-area' },
+    loadComponent: () =>
+      import('./feature/legacy-approval-redirect/legacy-approval-redirect.component').then(
+        (module) => module.LegacyApprovalRedirectComponent
       )
   },
   {

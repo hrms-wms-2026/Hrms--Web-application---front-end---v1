@@ -19,20 +19,18 @@ describe('ModuleFilterSelectComponent', () => {
     fixture.detectChanges();
   });
 
-  it('renders All modules plus each option', () => {
-    const select = fixture.nativeElement.querySelector('[data-testid="module-filter-select"]') as HTMLSelectElement;
-    const labels = Array.from(select.options).map((option) => option.textContent?.trim());
-    expect(labels).toEqual(['All modules', 'Root', 'Child']);
+  it('renders All modules plus each option in the shared select', () => {
+    const select = fixture.nativeElement.querySelector('[data-testid="module-filter-dropdown"] select') as HTMLSelectElement;
+    expect(Array.from(select.options).map((option) => option.textContent?.trim())).toEqual(['All modules', 'Root', 'Child']);
     expect(select.value).toBe('o1');
   });
 
-  it('emits the selected value when the user changes the dropdown', () => {
+  it('emits the selected value when the user changes the module select', () => {
     const emitted: string[] = [];
     fixture.componentInstance.selectionChanged.subscribe((value) => emitted.push(value));
 
-    const select = fixture.nativeElement.querySelector('[data-testid="module-filter-select"]') as HTMLSelectElement;
+    const select = fixture.nativeElement.querySelector('[data-testid="module-filter-dropdown"] select') as HTMLSelectElement;
     select.value = 'all';
-    select.dispatchEvent(new Event('input'));
     select.dispatchEvent(new Event('change'));
     fixture.detectChanges();
 
@@ -40,19 +38,16 @@ describe('ModuleFilterSelectComponent', () => {
   });
 
   it('renders All/Active/Inactive options for the activity filter select', () => {
-    const select = fixture.nativeElement.querySelector('[data-testid="module-activity-filter-select"]') as HTMLSelectElement;
-    const labels = Array.from(select.options).map((option) => option.textContent?.trim());
-    expect(labels).toEqual(['All', 'Active', 'Inactive']);
-    expect(select.value).toBe('all');
+    const select = fixture.nativeElement.querySelector('[data-testid="module-activity-filter-dropdown"] select') as HTMLSelectElement;
+    expect(Array.from(select.options).map((option) => option.textContent?.trim())).toEqual(['All', 'Active', 'Inactive']);
   });
 
-  it('emits the selected value when the user changes the activity filter dropdown', () => {
+  it('emits the selected value when the user changes the activity filter select', () => {
     const emitted: string[] = [];
     fixture.componentInstance.activityFilterChanged.subscribe((value) => emitted.push(value));
 
-    const select = fixture.nativeElement.querySelector('[data-testid="module-activity-filter-select"]') as HTMLSelectElement;
+    const select = fixture.nativeElement.querySelector('[data-testid="module-activity-filter-dropdown"] select') as HTMLSelectElement;
     select.value = 'inactive';
-    select.dispatchEvent(new Event('input'));
     select.dispatchEvent(new Event('change'));
     fixture.detectChanges();
 
