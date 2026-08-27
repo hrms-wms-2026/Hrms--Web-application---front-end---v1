@@ -73,15 +73,6 @@
   [sprint]="sprintFromNode(sprintNode)" (saved)="onSprintSaved()" (cancelled)="onSprintEditCancelled()" />
 }
 
-@if (editTaskNode(); as taskNode) {
-<app-task-detail-modal [open]="editTaskOpen()" [task]="taskNode.taskSource ?? null" [projectId]="projectId()"
-  [isObjectiveOwner]="taskNode.isOwner"
-  [isAssignee]="taskNode.taskSource?.assigneeEmployeeIds?.includes(currentEmployee.id()) ?? false"
-  [currentEmployeeId]="currentEmployee.id()" [statuses]="taskNode.taskStatuses ?? []" (closed)="onTaskEditClosed()"
-
-  (saved)="onTaskSaved()" />
-}
-
 <app-confirm-modal [open]="deleteConfirmOpen()" title="Delete task" message="Delete this task? This cannot be undone."
   confirmLabel="Delete" [errorMessage]="store.milestoneActionError() ?? ''" (confirmed)="onDeleteConfirmed()"
   (cancelled)="onDeleteCancelled()" />

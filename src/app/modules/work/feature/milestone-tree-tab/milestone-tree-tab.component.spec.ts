@@ -1,5 +1,5 @@
 import { ComponentFixture, TestBed } from '@angular/core/testing';
-import { ActivatedRoute } from '@angular/router';
+import { ActivatedRoute, Router } from '@angular/router';
 import { of } from 'rxjs';
 import { MilestoneTreeTabComponent } from './milestone-tree-tab.component';
 import { ProjectDetailStore } from '../../state/project-detail.store';
@@ -13,6 +13,7 @@ describe('MilestoneTreeTabComponent', () => {
   let fixture: ComponentFixture<MilestoneTreeTabComponent>;
   let storeStub: any;
   let routeStub: any;
+  let routerStub: { navigate: ReturnType<typeof vi.fn> };
 
   const child: MilestoneTreeNode = {
     id: 'o2', title: 'Child', description: null, startDate: '2026-01-10', endDate: '2026-02-01',
@@ -49,6 +50,7 @@ describe('MilestoneTreeTabComponent', () => {
       snapshot: { paramMap: { get: paramGet } },
       parent: null
     };
+    routerStub = { navigate: vi.fn().mockResolvedValue(true) };
 
     TestBed.configureTestingModule({
       imports: [MilestoneTreeTabComponent],
@@ -58,7 +60,8 @@ describe('MilestoneTreeTabComponent', () => {
         { provide: PeopleApiService, useValue: { listEmployees: vi.fn().mockReturnValue(of({ items: [], totalCount: 0, page: 1, pageSize: 20 })) } },
         { provide: SprintListStore, useValue: { error: () => null, create: vi.fn(), edit: vi.fn() } },
         { provide: TaskBoardStore, useValue: { error: () => null, createTask: vi.fn(), statuses: () => [] } },
-        { provide: TaskApiService, useValue: {} }
+        { provide: TaskApiService, useValue: {} },
+        { provide: Router, useValue: routerStub }
       ]
     }).compileComponents();
 
@@ -518,7 +521,7 @@ describe('MilestoneTreeTabComponent', () => {
     expect(storeStub.loadSprintsAndTasksForLeaf).toHaveBeenCalledWith('o1', { force: true });
   });
 
-  it('opens task detail with the stashed task and refreshes the sprint on save', async () => {
+  it('navigates to the task detail page when a task node is edited', async () => {
     setup('o1');
     fixture.detectChanges();
     const task: MilestoneTreeNode = {
@@ -528,20 +531,12 @@ describe('MilestoneTreeTabComponent', () => {
         categoryId: 'task', statusId: 'st-1', priority: 'medium', storyPoints: null,
         dueDate: null, estimatedHours: 3, completedHours: 0, progressPercent: 0,
         sprintId: 'spr-1', assigneeEmployeeIds: [], openClockSessionEmployeeId: null, openClockSessionClockInAt: null, totalLoggedMinutes: 0
-      },
-      taskStatuses: [{
-        id: 'st-1', name: 'To Do', displayOrder: 0, requiresApproval: false,
-        marksTaskComplete: false, visibility: 'public'
-      }]
+      }
     };
 
     await fixture.componentInstance.onEditRequested(task);
-    fixture.detectChanges();
 
-    expect(fixture.nativeElement.textContent).toContain('WEB-9');
-
-    await fixture.componentInstance.onTaskSaved();
-    expect(storeStub.loadTasksForSprint).toHaveBeenCalledWith('spr-1', { force: true });
+    expect(routerStub.navigate).toHaveBeenCalledWith(['/work', 'p1', 'task', 't1']);
   });
 
   it('shows the explanation panel for the selected tree node', async () => {

@@ -1,7 +1,7 @@
 import { Component, computed, inject, signal } from '@angular/core';
 import { CurrentEmployeeStore } from '../../state/current-employee.store';
 
-import { ActivatedRoute } from '@angular/router';
+import { ActivatedRoute, Router } from '@angular/router';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { ProjectDetailStore } from '../../state/project-detail.store';
 import { MilestoneTreeNodeComponent } from '../../ui/milestone-tree-node/milestone-tree-node.component';
@@ -11,7 +11,6 @@ import { SubModuleFormComponent } from '../../ui/sub-module-form/sub-module-form
 import { MemberManagementPopupComponent } from '../../ui/member-management-popup/member-management-popup.component';
 import { SprintFormComponent } from '../../ui/sprint-form/sprint-form.component';
 import { TaskCreateModalComponent } from '../../ui/task-create-modal/task-create-modal.component';
-import { TaskDetailModalComponent } from '../../ui/task-detail-modal/task-detail-modal.component';
 import { LoaderComponent } from '../../../../shared/ui/loader/loader.component';
 import { ErrorStateComponent } from '../../../../shared/ui/error-state/error-state.component';
 import { EmptyStateComponent } from '../../../../shared/ui/empty-state/empty-state.component';
@@ -29,13 +28,14 @@ import { Sprint, SprintStatus } from '../../models/sprint.model';
   imports: [
     MilestoneTreeNodeComponent, ModuleFilterSelectComponent, TreeExplanationPanelComponent, SubModuleFormComponent,
     MemberManagementPopupComponent, SprintFormComponent,
-    TaskCreateModalComponent, TaskDetailModalComponent, LoaderComponent, ErrorStateComponent, EmptyStateComponent, ConfirmModalComponent
+    TaskCreateModalComponent, LoaderComponent, ErrorStateComponent, EmptyStateComponent, ConfirmModalComponent
   ],
   templateUrl: './milestone-tree-tab.component.html'
 })
 export class MilestoneTreeTabComponent {
   readonly store = inject(ProjectDetailStore);
     private readonly route = inject(ActivatedRoute);
+  private readonly router = inject(Router);
   protected readonly currentEmployee = inject(CurrentEmployeeStore);
 
   private currentMilestoneId = '';
@@ -96,8 +96,6 @@ export class MilestoneTreeTabComponent {
   pendingDeleteNode = signal<MilestoneTreeNode | null>(null);
   editSprintOpen = signal(false);
   editSprintNode = signal<MilestoneTreeNode | null>(null);
-  editTaskOpen = signal(false);
-  editTaskNode = signal<MilestoneTreeNode | null>(null);
 
   constructor() {
     this.route.paramMap.pipe(takeUntilDestroyed()).subscribe((paramMap) => {
@@ -283,8 +281,8 @@ export class MilestoneTreeTabComponent {
       return;
     }
     if (kind === 'task') {
-      this.editTaskNode.set(target);
-      this.editTaskOpen.set(true);
+      const taskId = target.taskSource?.id ?? target.id;
+      void this.router.navigate(['/work', this.projectId(), 'task', taskId]);
       return;
     }
 
@@ -307,25 +305,6 @@ export class MilestoneTreeTabComponent {
   onSprintEditCancelled(): void {
     this.editSprintOpen.set(false);
     this.editSprintNode.set(null);
-  }
-
-  async onTaskSaved(): Promise<void> {
-    const node = this.editTaskNode();
-    this.editTaskOpen.set(false);
-    this.editTaskNode.set(null);
-    if (!node) return;
-    const sprintId = node.taskSource?.sprintId ?? null;
-    if (sprintId) {
-      await this.store.loadTasksForSprint(sprintId, { force: true });
-      return;
-    }
-    const objectiveId = node.taskSource?.objectiveId ?? node.parentObjectiveId;
-    if (objectiveId) await this.store.loadSprintsAndTasksForLeaf(objectiveId, { force: true });
-  }
-
-  onTaskEditClosed(): void {
-    this.editTaskOpen.set(false);
-    this.editTaskNode.set(null);
   }
 
   async onCreateModalCreated(payload: CreateObjectiveRequestDto): Promise<void> {
