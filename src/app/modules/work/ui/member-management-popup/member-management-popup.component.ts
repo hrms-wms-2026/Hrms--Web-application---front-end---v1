@@ -18,7 +18,24 @@ export interface ProjectMemberPopupItem {
   imports: [ModalComponent, ButtonComponent, AvatarComponent, EmployeePickerComponent, EmployeeAvatarComponent],
   template: `
     <app-modal [open]="open()" title="Members" (closed)="closed.emit()">
-      @if (scope() === 'project') {
+      @if (pickerOpen() !== null) {
+        <div class="flex flex-col gap-2">
+          <div class="flex items-center justify-between">
+            <span class="text-xs font-semibold text-[var(--color-text-primary)]">
+              {{ pickerOpen() === 'leader' ? 'Choose a new leader' : 'Add a member' }}
+            </span>
+            <span data-testid="picker-back" (click)="pickerOpen.set(null)">
+              <app-button variant="secondary" size="sm">Back</app-button>
+            </span>
+          </div>
+          <app-employee-picker
+            [inline]="true"
+            [open]="true"
+            (selected)="onEmployeePicked($event)"
+            (closed)="pickerOpen.set(null)"
+          />
+        </div>
+      } @else if (scope() === 'project') {
         <div class="flex flex-col gap-2">
           @if (canManage()) {
             <span data-testid="add-member-button">
@@ -78,11 +95,6 @@ export interface ProjectMemberPopupItem {
         </div>
       }
     </app-modal>
-    <app-employee-picker
-      [open]="pickerOpen() !== null"
-      (selected)="onEmployeePicked($event)"
-      (closed)="pickerOpen.set(null)"
-    />
   `
 })
 export class MemberManagementPopupComponent {

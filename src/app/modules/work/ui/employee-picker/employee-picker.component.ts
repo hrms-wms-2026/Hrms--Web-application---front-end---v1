@@ -1,4 +1,5 @@
 import { Component, effect, inject, input, output, signal } from '@angular/core';
+import { NgTemplateOutlet } from '@angular/common';
 import { ModalComponent } from '../../../../shared/ui/modal/modal.component';
 import { PeopleApiService } from '../../../people/data-access/people-api.service';
 import { EmployeeListItemResponse } from '../../../people/models/employee.model';
@@ -6,9 +7,17 @@ import { EmployeeListItemResponse } from '../../../people/models/employee.model'
 @Component({
   selector: 'app-employee-picker',
   standalone: true,
-  imports: [ModalComponent],
+  imports: [ModalComponent, NgTemplateOutlet],
   template: `
-    <app-modal [open]="open()" title="Choose a person" (closed)="onClose()">
+    @if (inline()) {
+      <ng-container [ngTemplateOutlet]="body" />
+    } @else {
+      <app-modal [open]="open()" title="Choose a person" (closed)="onClose()">
+        <ng-container [ngTemplateOutlet]="body" />
+      </app-modal>
+    }
+
+    <ng-template #body>
       <input
         data-testid="employee-picker-search"
         type="text"
@@ -30,13 +39,14 @@ import { EmployeeListItemResponse } from '../../../people/models/employee.model'
         }
       </div>
       <span data-testid="employee-picker-close" (click)="onClose()"></span>
-    </app-modal>
+    </ng-template>
   `
 })
 export class EmployeePickerComponent {
   private readonly peopleApi = inject(PeopleApiService);
 
   open = input(false);
+  inline = input(false);
   selected = output<string>();
   closed = output<void>();
 

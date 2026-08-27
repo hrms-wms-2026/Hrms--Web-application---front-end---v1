@@ -1,7 +1,9 @@
 import { ComponentFixture, TestBed } from '@angular/core/testing';
+import { of } from 'rxjs';
 import { vi } from 'vitest';
 import { MemberManagementPopupComponent } from './member-management-popup.component';
 import { EmployeeDirectoryStore } from '../../state/employee-directory.store';
+import { PeopleApiService } from '../../../people/data-access/people-api.service';
 
 describe('MemberManagementPopupComponent', () => {
   let fixture: ComponentFixture<MemberManagementPopupComponent>;
@@ -9,7 +11,10 @@ describe('MemberManagementPopupComponent', () => {
   beforeEach(() => {
     TestBed.configureTestingModule({
       imports: [MemberManagementPopupComponent],
-      providers: [{ provide: EmployeeDirectoryStore, useValue: { get: () => ({ name: 'Objective Member' }), ensureLoaded: vi.fn() } }]
+      providers: [
+        { provide: EmployeeDirectoryStore, useValue: { get: () => ({ name: 'Objective Member' }), ensureLoaded: vi.fn() } },
+        { provide: PeopleApiService, useValue: { listEmployees: vi.fn().mockReturnValue(of({ items: [] })) } }
+      ]
     });
     fixture = TestBed.createComponent(MemberManagementPopupComponent);
     fixture.componentRef.setInput('open', true);
@@ -31,6 +36,20 @@ describe('MemberManagementPopupComponent', () => {
     fixture.componentInstance.onEmployeePicked('u2');
 
     expect(addRequested).toHaveBeenCalledWith('u2');
+  });
+
+  it('shows the add-member picker inline in the same dialog, not as a stacked second modal', () => {
+    fixture.componentRef.setInput('scope', 'objective');
+    fixture.componentRef.setInput('objectiveMembers', []);
+    fixture.componentRef.setInput('canManage', true);
+    fixture.detectChanges();
+
+    (fixture.componentInstance as any).pickerOpen.set('member');
+    fixture.detectChanges();
+
+    expect(fixture.nativeElement.querySelectorAll('app-modal').length).toBe(1);
+    expect(fixture.nativeElement.querySelector('[data-testid="employee-picker-search"]')).not.toBeNull();
+    expect(fixture.nativeElement.textContent).not.toContain('Choose a person');
   });
 
   it('renders objective badges and routes remove and transfer actions', () => {
