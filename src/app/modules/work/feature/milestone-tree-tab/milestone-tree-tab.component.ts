@@ -8,7 +8,7 @@ import { MilestoneTreeNodeComponent } from '../../ui/milestone-tree-node/milesto
 import { ModuleFilterSelectComponent } from '../../ui/module-filter-select/module-filter-select.component';
 import { TreeExplanationPanelComponent } from '../../ui/tree-explanation-panel/tree-explanation-panel.component';
 import { SubModuleFormComponent } from '../../ui/sub-module-form/sub-module-form.component';
-import { ObjectiveMembersPopupComponent } from '../../ui/objective-members-popup/objective-members-popup.component';
+import { MemberManagementPopupComponent } from '../../ui/member-management-popup/member-management-popup.component';
 import { SprintFormComponent } from '../../ui/sprint-form/sprint-form.component';
 import { TaskCreateModalComponent } from '../../ui/task-create-modal/task-create-modal.component';
 import { TaskDetailModalComponent } from '../../ui/task-detail-modal/task-detail-modal.component';
@@ -28,7 +28,7 @@ import { Sprint, SprintStatus } from '../../models/sprint.model';
   standalone: true,
   imports: [
     MilestoneTreeNodeComponent, ModuleFilterSelectComponent, TreeExplanationPanelComponent, SubModuleFormComponent,
-    ObjectiveMembersPopupComponent, SprintFormComponent,
+    MemberManagementPopupComponent, SprintFormComponent,
     TaskCreateModalComponent, TaskDetailModalComponent, LoaderComponent, ErrorStateComponent, EmptyStateComponent, ConfirmModalComponent
   ],
   templateUrl: './milestone-tree-tab.component.html'

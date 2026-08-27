@@ -51,7 +51,7 @@
   [submitting]="createModalSubmitting()" [errorMessage]="store.milestoneActionError() ?? ''"
   (created)="onCreateModalCreated($event)" (closed)="createModalOpen.set(false)" />
 
-<app-objective-members-popup [open]="membersPopupOpen()" [members]="store.objectiveMembers()"
+<app-member-management-popup scope="objective" [open]="membersPopupOpen()" [objectiveMembers]="store.objectiveMembers()"
   [loading]="store.objectiveMembersLoading()" [canManage]="selectedNode()?.isOwner ?? false"
   (addRequested)="onAddMemberRequested($event)" (removeRequested)="onRemoveMemberRequested($event)"
   (transferRequested)="onTransferRequested($event)" (closed)="onMembersPopupClosed()" />

@@ -7,7 +7,7 @@ import { ProjectFormModalComponent } from '../../ui/project-form-modal/project-f
 import { ProjectSettingsModalComponent } from '../../ui/project-settings-modal/project-settings-modal.component';
 import { ProjectListRowComponent } from '../../ui/project-list-row/project-list-row.component';
 import { ProjectExplanationCardComponent } from '../../ui/project-explanation-card/project-explanation-card.component';
-import { ProjectMembersPopupComponent } from '../../ui/project-members-popup/project-members-popup.component';
+import { MemberManagementPopupComponent } from '../../ui/member-management-popup/member-management-popup.component';
 import { MyInvitationsPanelComponent } from '../../ui/my-invitations-panel/my-invitations-panel.component';
 import { ConfirmModalComponent } from '../../../../shared/ui/confirm-modal/confirm-modal.component';
 import { BreadcrumbHeaderComponent } from '../../../../shared/ui/breadcrumb-header/breadcrumb-header.component';
@@ -22,7 +22,7 @@ import { CreateProjectPayload, EditProjectPayload, Project, ProjectDetail } from
   standalone: true,
   imports: [
     ProjectFilterBarComponent, ProjectFormModalComponent, ProjectSettingsModalComponent, ConfirmModalComponent,
-    ProjectListRowComponent, ProjectExplanationCardComponent, ProjectMembersPopupComponent,
+    ProjectListRowComponent, ProjectExplanationCardComponent, MemberManagementPopupComponent,
     MyInvitationsPanelComponent, BreadcrumbHeaderComponent, ButtonComponent, LoaderComponent, ErrorStateComponent, EmptyStateComponent
   ],
   templateUrl: './project-list.component.html'
@@ -40,6 +40,10 @@ export class ProjectListComponent implements OnInit {
   deleteConfirmOpen = signal(false);
   private targetProject = signal<Project | null>(null);
   actionSubmitting = signal(false);
+
+  readonly projectMemberPopupItems = computed(() =>
+    (this.selectedProject()?.members ?? []).map((member) => ({ id: member.userId, name: member.displayName }))
+  );
 
   readonly selectedProject = computed(() => {
     const list = this.store.filteredProjects();
