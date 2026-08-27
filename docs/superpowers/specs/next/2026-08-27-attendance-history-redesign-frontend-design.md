@@ -47,7 +47,7 @@ Parent `time-tracking.component` renders both inside a new `.history-requests-ro
 
 New component `AttendanceDetailDrawerComponent` (`feature/time-tracking/attendance-detail-drawer/`), opened from either list via `(employeeId, workDate)` inputs plus an `open` signal/input. Renders as a right-side drawer over the current view (list stays visible/dimmed behind it, closable via backdrop click or close button — standard drawer pattern, match whatever existing drawer/panel primitive the design system already has, if any; otherwise a new lightweight one scoped to this component).
 
-Single loading and error state for the whole drawer, backed by one call to the new endpoint (`GET /attendance/time-tracking/history/{employeeId}/{date}/detail`, added to `TimeTrackingApiService` as `getDayDetail(employeeId, date)`, and to `TimeTrackingStore` as `loadDayDetail(employeeId, date)` / a `dayDetail` signal + `dayDetailLoading`/`dayDetailError`).
+Single loading and error state for the whole drawer, backed by one call to the new endpoint (`GET /attendance/time-tracking/history-detail?employeeId={employeeId}&date={date}`, added to `TimeTrackingApiService` as `getDayDetail(employeeId, date)`, and to `TimeTrackingStore` as `loadDayDetail(employeeId, date)` / a `dayDetail` signal + `dayDetailLoading`/`dayDetailError`).
 
 Sections, in order:
 1. **Summary** — date, clock in/out, worked time, break total, work mode, source, status (from `response.summary`, same shape as `AttendanceHistoryRow`).
