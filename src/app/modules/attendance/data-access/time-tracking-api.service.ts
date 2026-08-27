@@ -13,6 +13,7 @@ import {
   RejectAttendanceCorrectionRequest
 } from '../models/attendance-correction.model';
 import {
+  AttendanceDayDetail,
   AttendanceHistoryRow,
   AttendanceTodayResponse,
   ClockInRequest,
@@ -58,6 +59,11 @@ export class TimeTrackingApiService {
     return this.http.get<PagedResultDto<AttendanceHistoryRow>>(`${this.basePath}/covered-history`, {
       params
     });
+  }
+
+  getDayDetail(employeeId: string, date: string): Observable<AttendanceDayDetail> {
+    const params = new HttpParams().set('employeeId', employeeId).set('date', date);
+    return this.http.get<AttendanceDayDetail>(`${this.basePath}/history-detail`, { params });
   }
 
   clockIn(): Observable<AttendanceTodayResponse> {

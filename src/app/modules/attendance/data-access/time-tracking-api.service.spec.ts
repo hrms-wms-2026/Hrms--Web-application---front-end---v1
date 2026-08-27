@@ -3,7 +3,7 @@ import { HttpTestingController, provideHttpClientTesting } from '@angular/common
 import { TestBed } from '@angular/core/testing';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { environment } from '../../../../environments/environment';
-import { AttendanceHistoryRow, AttendanceTodayResponse, PagedResultDto } from '../models/time-tracking.model';
+import { AttendanceDayDetail, AttendanceHistoryRow, AttendanceTodayResponse, PagedResultDto } from '../models/time-tracking.model';
 import { TimeTrackingApiService } from './time-tracking-api.service';
 
 const today: AttendanceTodayResponse = {
@@ -138,6 +138,36 @@ describe('TimeTrackingApiService', () => {
     expect(request.request.params.get('pageNumber')).toBe('2');
     expect(request.request.params.get('pageSize')).toBe('20');
     request.flush({ items: [], pageNumber: 2, pageSize: 20, totalCount: 0 });
+  });
+
+  it('getDayDetail calls the history-detail endpoint with employeeId and date', () => {
+    const detail: AttendanceDayDetail = {
+      summary: {
+        attendanceRecordId: 'record-1',
+        workDate: '2026-08-27',
+        employee: null,
+        clockInAt: '2026-08-27T04:00:00Z',
+        clockOutAt: null,
+        isActive: true,
+        breakMinutes: 0,
+        totalWorkedMinutes: 120,
+        expectedWorkMode: 'onsite',
+        attendanceSource: 'web',
+        status: 'clocked_in',
+        canViewDetails: true,
+        canRequestCorrection: true,
+        canRequestWorkAreaChange: false,
+        canCorrect: false
+      },
+      timelineEvents: [{ eventType: 'ClockIn', timestamp: '2026-08-27T04:00:00Z', source: 'web' }],
+      dailyActivity: null
+    };
+
+    service.getDayDetail('employee-1', '2026-08-27').subscribe((response) => expect(response).toEqual(detail));
+
+    const request = httpMock.expectOne(`${base}/history-detail?employeeId=employee-1&date=2026-08-27`);
+    expect(request.request.method).toBe('GET');
+    request.flush(detail);
   });
 
   it('getCoveredHistory passes range, paging, and optional employeeId', () => {
