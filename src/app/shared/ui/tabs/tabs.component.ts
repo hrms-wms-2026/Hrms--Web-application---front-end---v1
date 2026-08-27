@@ -9,7 +9,7 @@ export interface TabOption {
   selector: 'app-tabs',
   standalone: true,
   template: `
-    <div role="tablist" class="flex gap-1" aria-label="Tabs">
+    <div role="tablist" class="flex gap-1" [attr.aria-label]="ariaLabel()">
       @for (tab of tabs(); track tab.value) {
         <button
           type="button"
@@ -47,5 +47,6 @@ export interface TabOption {
 export class TabsComponent {
   tabs = input<readonly TabOption[]>([]);
   value = input('');
+  ariaLabel = input('Tabs');
   valueChange = output<string>();
 }

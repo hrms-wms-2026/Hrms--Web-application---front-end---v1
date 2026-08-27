@@ -104,8 +104,9 @@ describe('MilestoneTreeTabComponent', () => {
     await fixture.whenStable();
     fixture.detectChanges();
     expect(fixture.componentInstance.selectedModuleFilter()).toBe('o1');
-    const trigger = fixture.nativeElement.querySelector('[data-testid="module-filter-dropdown"] .work-dropdown__trigger') as HTMLButtonElement;
-    expect(trigger.textContent).toContain('Root');
+    const select = fixture.nativeElement.querySelector('[data-testid="module-filter-dropdown"] select') as HTMLSelectElement;
+    expect(select.value).toBe('o1');
+    expect(select.options[1].textContent).toContain('Root');
   });
 
   it('prunes the rendered tree on filter change without refetching', () => {
@@ -209,14 +210,12 @@ describe('MilestoneTreeTabComponent', () => {
       await fixture.whenStable();
       fixture.detectChanges();
 
-      const host = fixture.nativeElement.querySelector('[data-testid="module-activity-filter-dropdown"]') as HTMLElement;
-      const trigger = host.querySelector('.work-dropdown__trigger') as HTMLButtonElement;
-      expect(trigger.textContent).toContain('All');
+      const select = fixture.nativeElement.querySelector('[data-testid="module-activity-filter-dropdown"] select') as HTMLSelectElement;
+      expect(select.value).toBe('all');
+      expect(select.options[0].textContent).toContain('All');
 
-      trigger.click();
-      fixture.detectChanges();
-      const option = Array.from(host.querySelectorAll('.work-dropdown__option')).find((item) => item.textContent?.trim() === 'Inactive') as HTMLButtonElement;
-      option.click();
+      select.value = 'inactive';
+      select.dispatchEvent(new Event('change'));
       fixture.detectChanges();
 
       expect(fixture.componentInstance.selectedActivityFilter()).toBe('inactive');
