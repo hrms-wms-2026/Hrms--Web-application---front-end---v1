@@ -19,11 +19,18 @@ import {
   AttendanceTodayResponse,
   TimeTrackingRange
 } from '../models/time-tracking.model';
+import {
+  WorkAreaChangeRequestPayload,
+  WorkAreaChangeRequestPreviewResponse,
+  WorkAreaChangeRequestQuery,
+  WorkAreaChangeRequestResponse
+} from '../models/work-area-change-request.model';
 
 const DEFAULT_PAGE_SIZE = 20;
 
 export type TimeTrackingAction = 'clockIn' | 'startBreak' | 'endBreak' | 'clockOut';
 export type CorrectionAction = 'preview' | 'submit' | 'cancel' | 'approve' | 'reject';
+export type WorkAreaChangeAction = 'preview' | 'submit' | 'cancel' | 'approve' | 'reject';
 
 export const TIME_TRACKING_LOAD_ERROR = 'Could not load your attendance today. Try again.';
 export const TIME_TRACKING_HISTORY_ERROR = 'Could not load attendance history. Try again.';
@@ -35,6 +42,12 @@ export const CORRECTION_PREVIEW_ERROR = 'We could not confirm who will receive t
 export const CORRECTION_SUBMIT_ERROR = 'Could not submit the correction request. Try again.';
 export const CORRECTION_CANCEL_ERROR = 'Could not cancel the correction request. Try again.';
 export const CORRECTION_REVIEW_ERROR = 'Could not update this correction request. Try again.';
+export const WORK_AREA_REQUESTS_LOAD_ERROR = 'Could not load your work-area requests. Try again.';
+export const WORK_AREA_APPROVALS_LOAD_ERROR = 'Could not load work-area approvals. Try again.';
+export const WORK_AREA_PREVIEW_ERROR = 'We could not review this work-area change request. Try again.';
+export const WORK_AREA_CREATE_ERROR = 'Could not send the work-area change request. Try again.';
+export const WORK_AREA_DECISION_ERROR = 'Could not update this work-area change request. Try again.';
+export const WORK_AREA_CANCEL_ERROR = 'Could not cancel the work-area change request. Try again.';
 export const NO_ATTENDANCE_APPROVER_MESSAGE = 'No eligible attendance approver is configured for this employee.';
 
 interface TimeTrackingState {
@@ -63,13 +76,40 @@ interface TimeTrackingState {
   readonly myCorrectionsPage: number;
   readonly myCorrectionsPageSize: number;
   readonly myCorrectionsTotalCount: number;
+  readonly myCorrectionsLoaded: boolean;
   readonly approvalInbox: readonly AttendanceCorrectionApprovalListItem[];
   readonly approvalInboxLoading: boolean;
   readonly approvalInboxError: string | null;
+  readonly approvalInboxLoaded: boolean;
   readonly correctionPreview: AttendanceCorrectionPreviewResponse | null;
   readonly correctionError: string | null;
   readonly correctionActionLoading: boolean;
   readonly activeCorrectionAction: CorrectionAction | null;
+  readonly workAreaPreview: WorkAreaChangeRequestPreviewResponse | null;
+  readonly workAreaPreviewLoading: boolean;
+  readonly workAreaPreviewError: string | null;
+  readonly workAreaCreateLoading: boolean;
+  readonly workAreaCreateError: string | null;
+  readonly myWorkAreaRequests: readonly WorkAreaChangeRequestResponse[];
+  readonly myWorkAreaRequestsLoading: boolean;
+  readonly myWorkAreaRequestsError: string | null;
+  readonly myWorkAreaRequestsPage: number;
+  readonly myWorkAreaRequestsPageSize: number;
+  readonly myWorkAreaRequestsTotalCount: number;
+  readonly myWorkAreaRequestsLoaded: boolean;
+  readonly workAreaApprovalInbox: readonly WorkAreaChangeRequestResponse[];
+  readonly workAreaApprovalInboxLoading: boolean;
+  readonly workAreaApprovalInboxError: string | null;
+  readonly workAreaApprovalInboxPage: number;
+  readonly workAreaApprovalInboxPageSize: number;
+  readonly workAreaApprovalInboxTotalCount: number;
+  readonly workAreaApprovalInboxLoaded: boolean;
+  readonly selectedWorkAreaApprovalRequest: WorkAreaChangeRequestResponse | null;
+  readonly activeWorkAreaRequestId: string | null;
+  readonly activeWorkAreaAction: WorkAreaChangeAction | null;
+  readonly workAreaActionLoading: boolean;
+  readonly myWorkAreaRequestFilters: WorkAreaChangeRequestQuery;
+  readonly workAreaApprovalFilters: WorkAreaChangeRequestQuery;
 }
 
 const initialState: TimeTrackingState = {
@@ -98,13 +138,40 @@ const initialState: TimeTrackingState = {
   myCorrectionsPage: 1,
   myCorrectionsPageSize: DEFAULT_PAGE_SIZE,
   myCorrectionsTotalCount: 0,
+  myCorrectionsLoaded: false,
   approvalInbox: [],
   approvalInboxLoading: false,
   approvalInboxError: null,
+  approvalInboxLoaded: false,
   correctionPreview: null,
   correctionError: null,
   correctionActionLoading: false,
-  activeCorrectionAction: null
+  activeCorrectionAction: null,
+  workAreaPreview: null,
+  workAreaPreviewLoading: false,
+  workAreaPreviewError: null,
+  workAreaCreateLoading: false,
+  workAreaCreateError: null,
+  myWorkAreaRequests: [],
+  myWorkAreaRequestsLoading: false,
+  myWorkAreaRequestsError: null,
+  myWorkAreaRequestsPage: 1,
+  myWorkAreaRequestsPageSize: DEFAULT_PAGE_SIZE,
+  myWorkAreaRequestsTotalCount: 0,
+  myWorkAreaRequestsLoaded: false,
+  workAreaApprovalInbox: [],
+  workAreaApprovalInboxLoading: false,
+  workAreaApprovalInboxError: null,
+  workAreaApprovalInboxPage: 1,
+  workAreaApprovalInboxPageSize: DEFAULT_PAGE_SIZE,
+  workAreaApprovalInboxTotalCount: 0,
+  workAreaApprovalInboxLoaded: false,
+  selectedWorkAreaApprovalRequest: null,
+  activeWorkAreaRequestId: null,
+  activeWorkAreaAction: null,
+  workAreaActionLoading: false,
+  myWorkAreaRequestFilters: { pageNumber: 1, pageSize: DEFAULT_PAGE_SIZE },
+  workAreaApprovalFilters: { pageNumber: 1, pageSize: DEFAULT_PAGE_SIZE }
 };
 
 export const TimeTrackingStore = signalStore(
@@ -144,6 +211,46 @@ export const TimeTrackingStore = signalStore(
       } catch (error) {
         const safeMessage = correctionBusinessMessage(error, errors.toSafeMessage(error, failureFallback));
         patchState(store, { correctionActionLoading: false, activeCorrectionAction: null, correctionError: safeMessage });
+        return null;
+      }
+    };
+
+    const runWorkAreaMutation = async <T>(
+      action: WorkAreaChangeAction,
+      requestId: string | null,
+      operation: () => Observable<T>,
+      failureFallback: string,
+      onConflict?: () => Promise<void>
+    ): Promise<T | null> => {
+      if (store.workAreaActionLoading()) return null;
+      patchState(store, {
+        workAreaActionLoading: true,
+        workAreaCreateLoading: action === 'submit',
+        activeWorkAreaAction: action,
+        activeWorkAreaRequestId: requestId,
+        workAreaCreateError: null
+      });
+      try {
+        const result = await firstValueFrom(operation());
+        patchState(store, {
+          workAreaActionLoading: false,
+          workAreaCreateLoading: false,
+          activeWorkAreaAction: null,
+          activeWorkAreaRequestId: null,
+          workAreaCreateError: null
+        });
+        return result;
+      } catch (error) {
+        const safeMessage = workAreaBusinessMessage(error, errors.toSafeMessage(error, failureFallback));
+        patchState(store, {
+          workAreaActionLoading: false,
+          workAreaCreateLoading: false,
+          activeWorkAreaAction: null,
+          activeWorkAreaRequestId: null,
+          workAreaCreateError: safeMessage
+        });
+        notifications.error(safeMessage);
+        if (errorStatus(error) === 409 && onConflict) await onConflict();
         return null;
       }
     };
@@ -206,7 +313,8 @@ export const TimeTrackingStore = signalStore(
             myCorrectionsPage: result.pageNumber,
             myCorrectionsTotalCount: result.totalCount,
             myCorrectionsLoading: false,
-            myCorrectionsError: null
+            myCorrectionsError: null,
+            myCorrectionsLoaded: true
           });
         } catch (error) {
           patchState(store, { myCorrectionsLoading: false, myCorrectionsError: errors.toSafeMessage(error, CORRECTIONS_LOAD_ERROR) });
@@ -218,7 +326,7 @@ export const TimeTrackingStore = signalStore(
         patchState(store, { approvalInboxLoading: true, approvalInboxError: null });
         try {
           const approvalInbox = await firstValueFrom(api.getApprovalInbox('pending'));
-          patchState(store, { approvalInbox, approvalInboxLoading: false, approvalInboxError: null });
+          patchState(store, { approvalInbox, approvalInboxLoading: false, approvalInboxError: null, approvalInboxLoaded: true });
         } catch (error) {
           patchState(store, { approvalInboxLoading: false, approvalInboxError: errors.toSafeMessage(error, CORRECTIONS_APPROVAL_LOAD_ERROR) });
         }
@@ -246,6 +354,144 @@ export const TimeTrackingStore = signalStore(
         return runCorrectionAction('reject', () => api.rejectCorrection(id, request), CORRECTION_REVIEW_ERROR);
       },
 
+      async previewWorkAreaChange(payload: WorkAreaChangeRequestPayload): Promise<WorkAreaChangeRequestPreviewResponse | null> {
+        if (store.workAreaPreviewLoading()) return null;
+        patchState(store, { workAreaPreviewLoading: true, workAreaPreviewError: null });
+        try {
+          const preview = await firstValueFrom(api.previewWorkAreaChange(payload));
+          patchState(store, { workAreaPreview: preview, workAreaPreviewLoading: false, workAreaPreviewError: null });
+          return preview;
+        } catch (error) {
+          const safeMessage = workAreaBusinessMessage(error, errors.toSafeMessage(error, WORK_AREA_PREVIEW_ERROR));
+          patchState(store, { workAreaPreviewLoading: false, workAreaPreviewError: safeMessage });
+          notifications.error(safeMessage);
+          return null;
+        }
+      },
+
+      async submitWorkAreaChangeRequest(payload: WorkAreaChangeRequestPayload): Promise<WorkAreaChangeRequestResponse | null> {
+        const result = await runWorkAreaMutation('submit', null, () => api.createWorkAreaChangeRequest(payload), WORK_AREA_CREATE_ERROR);
+        if (result) notifications.success('Work-area change request sent.');
+        return result;
+      },
+
+      async loadMyWorkAreaRequests(query: Partial<WorkAreaChangeRequestQuery> = {}): Promise<void> {
+        if (store.myWorkAreaRequestsLoading()) return;
+        const filters = store.myWorkAreaRequestFilters();
+        const requestQuery: WorkAreaChangeRequestQuery = {
+          ...filters,
+          ...query,
+          pageNumber: query.pageNumber ?? filters.pageNumber,
+          pageSize: query.pageSize ?? filters.pageSize
+        };
+        patchState(store, {
+          myWorkAreaRequestsLoading: true,
+          myWorkAreaRequestsError: null,
+          myWorkAreaRequestFilters: requestQuery
+        });
+        try {
+          const result = await firstValueFrom(api.getMyWorkAreaChangeRequests(requestQuery));
+          patchState(store, {
+            myWorkAreaRequests: result.items,
+            myWorkAreaRequestsPage: result.pageNumber,
+            myWorkAreaRequestsPageSize: result.pageSize,
+            myWorkAreaRequestsTotalCount: result.totalCount,
+            myWorkAreaRequestsLoading: false,
+            myWorkAreaRequestsError: null,
+            myWorkAreaRequestsLoaded: true,
+            myWorkAreaRequestFilters: { ...requestQuery, pageNumber: result.pageNumber, pageSize: result.pageSize }
+          });
+        } catch (error) {
+          patchState(store, { myWorkAreaRequestsLoading: false, myWorkAreaRequestsError: errors.toSafeMessage(error, WORK_AREA_REQUESTS_LOAD_ERROR) });
+        }
+      },
+
+      async loadWorkAreaApprovalInbox(query: Partial<WorkAreaChangeRequestQuery> = {}): Promise<void> {
+        if (store.workAreaApprovalInboxLoading()) return;
+        const filters = store.workAreaApprovalFilters();
+        const requestQuery: WorkAreaChangeRequestQuery = {
+          ...filters,
+          ...query,
+          pageNumber: query.pageNumber ?? filters.pageNumber,
+          pageSize: query.pageSize ?? filters.pageSize
+        };
+        patchState(store, {
+          workAreaApprovalInboxLoading: true,
+          workAreaApprovalInboxError: null,
+          workAreaApprovalFilters: requestQuery
+        });
+        try {
+          const result = await firstValueFrom(api.getWorkAreaChangeApprovalInbox(requestQuery));
+          patchState(store, {
+            workAreaApprovalInbox: result.items,
+            workAreaApprovalInboxPage: result.pageNumber,
+            workAreaApprovalInboxPageSize: result.pageSize,
+            workAreaApprovalInboxTotalCount: result.totalCount,
+            workAreaApprovalInboxLoading: false,
+            workAreaApprovalInboxError: null,
+            workAreaApprovalInboxLoaded: true,
+            workAreaApprovalFilters: { ...requestQuery, pageNumber: result.pageNumber, pageSize: result.pageSize }
+          });
+        } catch (error) {
+          patchState(store, { workAreaApprovalInboxLoading: false, workAreaApprovalInboxError: errors.toSafeMessage(error, WORK_AREA_APPROVALS_LOAD_ERROR) });
+        }
+      },
+
+      async approveWorkAreaChangeRequest(id: string, reviewComment?: string | null): Promise<WorkAreaChangeRequestResponse | null> {
+        const result = await runWorkAreaMutation(
+          'approve', id,
+          () => api.approveWorkAreaChangeRequest(id, reviewComment),
+          WORK_AREA_DECISION_ERROR,
+          () => this.loadWorkAreaApprovalInbox()
+        );
+        if (result) notifications.success('Work-area change request approved.');
+        return result;
+      },
+
+      async rejectWorkAreaChangeRequest(id: string, reviewComment: string): Promise<WorkAreaChangeRequestResponse | null> {
+        const result = await runWorkAreaMutation(
+          'reject', id,
+          () => api.rejectWorkAreaChangeRequest(id, reviewComment),
+          WORK_AREA_DECISION_ERROR,
+          () => this.loadWorkAreaApprovalInbox()
+        );
+        if (result) notifications.success('Work-area change request rejected.');
+        return result;
+      },
+
+      async cancelWorkAreaChangeRequest(id: string): Promise<WorkAreaChangeRequestResponse | null> {
+        const result = await runWorkAreaMutation(
+          'cancel', id,
+          () => api.cancelWorkAreaChangeRequest(id),
+          WORK_AREA_CANCEL_ERROR,
+          () => this.loadMyWorkAreaRequests()
+        );
+        if (result) notifications.success('Work-area change request cancelled.');
+        return result;
+      },
+
+      selectWorkAreaApprovalRequest(request: WorkAreaChangeRequestResponse | null): void {
+        patchState(store, { selectedWorkAreaApprovalRequest: request });
+      },
+
+      clearWorkAreaPreview(): void {
+        patchState(store, { workAreaPreview: null, workAreaPreviewError: null });
+      },
+
+      resetWorkAreaRequestUiState(): void {
+        patchState(store, {
+          workAreaPreview: null,
+          workAreaPreviewLoading: false,
+          workAreaPreviewError: null,
+          workAreaCreateLoading: false,
+          workAreaCreateError: null,
+          selectedWorkAreaApprovalRequest: null,
+          activeWorkAreaRequestId: null,
+          activeWorkAreaAction: null,
+          workAreaActionLoading: false
+        });
+      },
+
       clearCorrectionPreview(): void {
         patchState(store, { correctionPreview: null, correctionError: null });
       },
@@ -265,6 +511,34 @@ export const TimeTrackingStore = signalStore(
     };
   })
 );
+
+function workAreaBusinessMessage(error: unknown, fallback: string): string {
+  const status = errorStatus(error);
+  const detail = errorDetail(error)?.toLowerCase() ?? '';
+  if (status === 409 || status === 400 || status === 422) {
+    if (detail.includes('active work-area') || detail.includes('active work area')) return 'You already have an active request for this date.';
+    if (detail.includes('already been updated') || detail.includes('changed by another')) return 'This request has already been updated. Refreshing the list.';
+    if (detail.includes('only be requested for today') || detail.includes('future date')) return 'Choose today or a future date.';
+    if (detail.includes('already planned')) return 'That work area is already planned for this date.';
+    if (detail.includes('no eligible') && detail.includes('approver')) return 'No eligible approver is currently available. Contact your HR administrator.';
+    if (detail.includes('field work-area')) return 'Field work-area changes are not supported.';
+    if (detail.includes('reason is required')) return 'Enter a reason for the request.';
+    if (detail.includes('date is required')) return 'Choose a request date.';
+    if (detail.includes('onsite or remote')) return 'Choose On-site or Remote.';
+    if (detail.includes('review comment')) return 'Add a reason before rejecting this request.';
+  }
+  return fallback;
+}
+
+function errorDetail(error: unknown): string | null {
+  if (!error || typeof error !== 'object') return null;
+  const response = error as { error?: unknown; detail?: unknown };
+  if (typeof response.detail === 'string') return response.detail;
+  if (response.error && typeof response.error === 'object' && typeof (response.error as { detail?: unknown }).detail === 'string') {
+    return (response.error as { detail: string }).detail;
+  }
+  return null;
+}
 
 function correctionBusinessMessage(error: unknown, fallback: string): string {
   const status = errorStatus(error);

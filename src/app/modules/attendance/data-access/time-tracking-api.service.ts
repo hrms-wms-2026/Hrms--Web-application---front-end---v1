@@ -18,12 +18,20 @@ import {
   ClockInRequest,
   PagedResultDto
 } from '../models/time-tracking.model';
+import {
+  ReviewWorkAreaChangeRequestPayload,
+  WorkAreaChangeRequestPayload,
+  WorkAreaChangeRequestPreviewResponse,
+  WorkAreaChangeRequestQuery,
+  WorkAreaChangeRequestResponse
+} from '../models/work-area-change-request.model';
 
 @Injectable({ providedIn: 'root' })
 export class TimeTrackingApiService {
   private readonly http = inject(HttpClient);
   private readonly basePath = `${environment.apiUrl}/attendance/time-tracking`;
   private readonly correctionsPath = `${environment.apiUrl}/attendance/corrections`;
+  private readonly workAreaChangeRequestsPath = `${environment.apiUrl}/attendance/work-area-change-requests`;
 
   getToday(): Observable<AttendanceTodayResponse> {
     return this.http.get<AttendanceTodayResponse>(`${this.basePath}/today`);
@@ -89,6 +97,42 @@ export class TimeTrackingApiService {
     });
   }
 
+  previewWorkAreaChange(payload: WorkAreaChangeRequestPayload): Observable<WorkAreaChangeRequestPreviewResponse> {
+    return this.http.post<WorkAreaChangeRequestPreviewResponse>(`${this.workAreaChangeRequestsPath}/preview`, payload);
+  }
+
+  createWorkAreaChangeRequest(payload: WorkAreaChangeRequestPayload): Observable<WorkAreaChangeRequestResponse> {
+    return this.http.post<WorkAreaChangeRequestResponse>(this.workAreaChangeRequestsPath, payload);
+  }
+
+  getMyWorkAreaChangeRequests(query: WorkAreaChangeRequestQuery): Observable<PagedResultDto<WorkAreaChangeRequestResponse>> {
+    return this.http.get<PagedResultDto<WorkAreaChangeRequestResponse>>(`${this.workAreaChangeRequestsPath}/my`, {
+      params: this.workAreaQueryParams(query)
+    });
+  }
+
+  getWorkAreaChangeApprovalInbox(query: WorkAreaChangeRequestQuery): Observable<PagedResultDto<WorkAreaChangeRequestResponse>> {
+    return this.http.get<PagedResultDto<WorkAreaChangeRequestResponse>>(`${this.workAreaChangeRequestsPath}/approvals`, {
+      params: this.workAreaQueryParams(query)
+    });
+  }
+
+  approveWorkAreaChangeRequest(id: string, reviewComment?: string | null): Observable<WorkAreaChangeRequestResponse> {
+    return this.http.post<WorkAreaChangeRequestResponse>(`${this.workAreaChangeRequestsPath}/${id}/approve`, {
+      reviewComment: reviewComment ?? null
+    } satisfies ReviewWorkAreaChangeRequestPayload);
+  }
+
+  rejectWorkAreaChangeRequest(id: string, reviewComment: string): Observable<WorkAreaChangeRequestResponse> {
+    return this.http.post<WorkAreaChangeRequestResponse>(`${this.workAreaChangeRequestsPath}/${id}/reject`, {
+      reviewComment
+    } satisfies ReviewWorkAreaChangeRequestPayload);
+  }
+
+  cancelWorkAreaChangeRequest(id: string): Observable<WorkAreaChangeRequestResponse> {
+    return this.http.post<WorkAreaChangeRequestResponse>(`${this.workAreaChangeRequestsPath}/${id}/cancel`, null);
+  }
+
   approveCorrection(id: string, request: ApproveAttendanceCorrectionRequest): Observable<AttendanceCorrectionResponse> {
     return this.http.post<AttendanceCorrectionResponse>(`${this.correctionsPath}/${id}/approve`, request);
   }
@@ -107,6 +151,16 @@ export class TimeTrackingApiService {
 
   private withPaging(params: HttpParams, page: number, pageSize: number): HttpParams {
     return params.set('pageNumber', page).set('pageSize', pageSize);
+  }
+
+  private workAreaQueryParams(query: WorkAreaChangeRequestQuery): HttpParams {
+    let params = new HttpParams()
+      .set('pageNumber', query.pageNumber)
+      .set('pageSize', query.pageSize);
+    if (query.from) params = params.set('from', query.from);
+    if (query.to) params = params.set('to', query.to);
+    if (query.status) params = params.set('status', query.status);
+    return params;
   }
 
   private optionalCorrectionParams(from?: string, to?: string): HttpParams {

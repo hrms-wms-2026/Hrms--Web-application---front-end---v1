@@ -80,10 +80,11 @@ describe('canAccessNavItem', () => {
       expect(canAccessNavItem(work, checker([], ['tasks']))).toBe(false);
     });
 
-    it('grants Time Off on the "leave" module key, not "time_off"', () => {
+    it('grants Time Off on the "leave" module key, not "time_off", once a child is reachable', () => {
       const timeOff = NAV_ITEMS.find((item) => item.id === 'time-off')!;
-      expect(canAccessNavItem(timeOff, checker([], ['leave']))).toBe(true);
-      expect(canAccessNavItem(timeOff, checker([], ['time_off']))).toBe(false);
+      expect(canAccessNavItem(timeOff, checker(['leave:read-own'], ['leave']))).toBe(true);
+      expect(canAccessNavItem(timeOff, checker(['leave:read-own'], ['time_off']))).toBe(false);
+      expect(canAccessNavItem(timeOff, checker([], ['leave']))).toBe(false);
     });
 
     it('grants Organization on the "org_structure" module key, not "org"', () => {
@@ -101,15 +102,21 @@ describe('canAccessNavItem', () => {
       expect(canAccessNavItem(general, checker(['org:read'], ['org_structure']))).toBe(false);
     });
 
-    it('gates Attendance on time_attendance and a self-service or read permission', () => {
+    it('gates Attendance on time_attendance and any of self-service, read, or approve — and keeps Time Tracking reachable for an approve-only user', () => {
       const attendance = NAV_ITEMS.find((item) => item.id === 'time-attendance')!;
 
       expect(attendance.path).toBe('/attendance/time-tracking');
       expect(canAccessNavItem(attendance, checker(['attendance:read-own'], ['time_attendance']))).toBe(true);
       expect(canAccessNavItem(attendance, checker(['attendance:write-own'], ['time_attendance']))).toBe(true);
       expect(canAccessNavItem(attendance, checker(['attendance:read'], ['time_attendance']))).toBe(true);
+      expect(canAccessNavItem(attendance, checker(['attendance:approve'], ['time_attendance']))).toBe(true);
       expect(canAccessNavItem(attendance, checker([], ['time_attendance']))).toBe(false);
       expect(canAccessNavItem(attendance, checker(['attendance:read-own'], []))).toBe(false);
+
+      const children = attendance.children ?? [];
+      expect(children.map((child) => child.id)).toEqual(['time-attendance-tracking']);
+      const tracking = children[0];
+      expect(canAccessNavItem(tracking, checker(['attendance:approve'], ['time_attendance']))).toBe(true);
     });
   });
 

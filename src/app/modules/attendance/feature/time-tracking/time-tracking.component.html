@@ -1,32 +1,34 @@
 <div class="time-tracking-page">
   <header class="time-tracking-header">
     <app-breadcrumb-header parentLabel="Attendance" currentLabel="Time Tracking" icon="time-attendance" />
+    <div class="time-tracking-header-actions">
+      @if (canShowTeamView()) {
+        <div class="attendance-view-toggle" role="group" aria-label="Attendance view">
+          <button
+            type="button"
+            class="attendance-view-toggle__option"
+            [class.attendance-view-toggle__option--active]="viewMode() === 'my'"
+            [attr.aria-pressed]="viewMode() === 'my'"
+            (click)="selectViewMode('my')"
+          >
+            MY
+          </button>
+          <button
+            type="button"
+            class="attendance-view-toggle__option"
+            [class.attendance-view-toggle__option--active]="viewMode() === 'team'"
+            [attr.aria-pressed]="viewMode() === 'team'"
+            (click)="selectViewMode('team')"
+          >
+            TEAM
+          </button>
+        </div>
+      }
+      <button type="button" class="page-action" data-testid="request-work-area-change" (click)="openWorkAreaChange()">Request work-area change</button>
+    </div>
   </header>
 
-  <div class="attendance-view-toggle" role="group" aria-label="Attendance view">
-    <button
-      type="button"
-      class="attendance-view-toggle__option"
-      [class.attendance-view-toggle__option--active]="viewMode() === 'my'"
-      [attr.aria-pressed]="viewMode() === 'my'"
-      (click)="selectViewMode('my')"
-    >
-      MY
-    </button>
-    @if (hasCoveredAccess()) {
-      <button
-        type="button"
-        class="attendance-view-toggle__option"
-        [class.attendance-view-toggle__option--active]="viewMode() === 'team'"
-        [attr.aria-pressed]="viewMode() === 'team'"
-        (click)="selectViewMode('team')"
-      >
-        TEAM
-      </button>
-    }
-  </div>
-
-  @if (viewMode() === 'my' || !hasCoveredAccess()) {
+  @if (viewMode() === 'my') {
     @if (store.todayLoading() && !store.today()) {
     <div class="time-tracking-skeleton" aria-busy="true" aria-label="Loading today’s attendance"></div>
   } @else if (store.todayError() && !store.today()) {
@@ -55,10 +57,19 @@
         </div>
 
         <div class="overview-grid">
-          <article class="metric-card">
+          <article class="metric-card metric-card--schedule">
             <span class="metric-label">Work schedule</span>
-            <strong>{{ today.scheduledStartTime || 'Not scheduled' }} – {{ today.scheduledEndTime || 'Not scheduled' }}</strong>
-            <span class="metric-helper">{{ today.timezone }}</span>
+            <div class="metric-detail-grid">
+              <div class="metric-detail">
+                <span class="metric-helper">Hours</span>
+                <strong>{{ today.scheduledStartTime || 'Not scheduled' }} – {{ today.scheduledEndTime || 'Not scheduled' }}</strong>
+              </div>
+              <div class="metric-detail">
+                <span class="metric-helper">Work mode</span>
+                <strong>{{ workModeLabel(today.expectedWorkMode) }}</strong>
+              </div>
+            </div>
+            <span class="metric-helper">{{ today.timezone || 'Timezone unavailable' }} · Source: {{ sourceLabel(today.attendanceSource) }}</span>
           </article>
           <article
             class="metric-card"
@@ -89,28 +100,23 @@
             }
           </article>
           <article class="metric-card">
-            <span class="metric-label">Work mode</span>
-            <strong>{{ workModeLabel(today.expectedWorkMode) }}</strong>
-            <span class="metric-helper">Source: {{ sourceLabel(today.attendanceSource) }}</span>
-          </article>
-          <article class="metric-card">
             <span class="metric-label">Worked today</span>
             <strong>{{ formatMinutes(today.totalWorkedMinutes) }}</strong>
             <span class="metric-helper">{{ today.isWorkingDay ? 'Scheduled workday' : 'No scheduled workday' }}</span>
           </article>
-          @if (today.clockInAt || today.clockOutAt) {
-            <article class="metric-card">
-              <span class="metric-label">Attendance times</span>
-              @if (today.clockInAt) {
+          <article class="metric-card metric-card--attendance-times">
+            <span class="metric-label">Attendance times</span>
+            <div class="metric-detail-grid metric-detail-grid--times">
+              <div class="metric-detail">
                 <span class="metric-helper">Clock in</span>
-                <strong>{{ formatDateTime(today.clockInAt, today.timezone) }}</strong>
-              }
-              @if (today.clockOutAt) {
+                <strong>{{ today.clockInAt ? formatDateTime(today.clockInAt, today.timezone) : 'Not recorded' }}</strong>
+              </div>
+              <div class="metric-detail">
                 <span class="metric-helper">Clock out</span>
-                <strong>{{ formatDateTime(today.clockOutAt, today.timezone) }}</strong>
-              }
-            </article>
-          }
+                <strong>{{ today.clockOutAt ? formatDateTime(today.clockOutAt, today.timezone) : 'Not recorded' }}</strong>
+              </div>
+            </div>
+          </article>
         </div>
       </section>
 
@@ -151,8 +157,7 @@
     }
   }
 
-  @if (viewMode() === 'my' || !hasCoveredAccess()) {
-    <div class="personal-attendance-grid">
+  @if (viewMode() === 'my') {
       <section class="history-card" aria-labelledby="history-heading">
     <div class="section-heading section-heading--stacked-mobile">
       <div>
@@ -216,49 +221,113 @@
     }
     </section>
 
-      <section class="history-card" aria-labelledby="my-corrections-heading">
-      <div class="section-heading">
-      <div><p class="eyebrow">Requests</p><h2 id="my-corrections-heading">My correction requests</h2></div>
-      @if (store.myCorrectionsLoading?.()) { <span class="access-note">Loading…</span> }
-    </div>
-    @if (store.myCorrectionsError?.()) {
-      <div class="time-tracking-message time-tracking-message--error" role="alert"><p>{{ store.myCorrectionsError?.() }}</p><app-button type="button" variant="secondary" size="sm" (pressed)="store.loadMyCorrections?.()">Try again</app-button></div>
-    } @else if ((store.myCorrections?.() ?? []).length === 0) {
-      <p class="empty-copy">You have not submitted any correction requests.</p>
-    } @else {
-      <div class="table-scroll">
-        <table class="attendance-table corrections-table">
-          <thead><tr><th scope="col">Date</th><th scope="col">Change</th><th scope="col">Status</th><th scope="col">Reason</th><th scope="col">Review</th><th scope="col">Actions</th></tr></thead>
-          <tbody>
-            @for (request of (store.myCorrections?.() ?? []); track request.id) {
-              <tr>
-                <td>{{ formatDate(request.workDate) }}<span class="table-secondary">Requested</span></td>
-                <td><span class="table-primary">{{ correctionTypeLabel(request.correctionType) }}</span><span class="table-secondary">{{ correctionSummary(request) }}</span></td>
-                <td><span class="status-pill status-pill--compact">{{ correctionStatusLabel(request.status) }}</span></td>
-                <td>{{ request.reason }}</td>
-                <td><span class="table-secondary">{{ request.reviewComment || (request.reviewedAt ? 'Reviewed ' + formatDateTime(request.reviewedAt, request.timezone) : 'Not reviewed') }}</span></td>
-                <td>
-                  @if (request.status === 'pending') { <button type="button" class="table-action table-action--danger" [disabled]="correctionActionIsLoading('cancel')" (click)="cancelCorrection(request.id)">Cancel request</button> }
-                </td>
-              </tr>
-            }
-          </tbody>
-        </table>
-      </div>
-      @if (store.myCorrectionsTotalCount() > store.myCorrectionsPageSize()) {
-        <div class="tt-pagination">
-          <span class="tt-pagination-info">
-            Page {{ store.myCorrectionsPage() }} of {{ Math.ceil(store.myCorrectionsTotalCount() / store.myCorrectionsPageSize()) }}
-          </span>
-          <div class="tt-pagination-buttons">
-            <app-button type="button" variant="secondary" [disabled]="store.myCorrectionsPage() <= 1" (pressed)="goToCorrectionsPage(store.myCorrectionsPage() - 1)">Previous</app-button>
-            <app-button type="button" variant="secondary" [disabled]="store.myCorrectionsPage() * store.myCorrectionsPageSize() >= store.myCorrectionsTotalCount()" (pressed)="goToCorrectionsPage(store.myCorrectionsPage() + 1)">Next</app-button>
-          </div>
+      <section class="history-card" aria-labelledby="my-requests-heading">
+        <div class="section-heading">
+          <div><p class="eyebrow">Requests</p><h2 id="my-requests-heading">My requests</h2></div>
         </div>
-      }
-      }
+        <div class="my-requests-tablist" role="tablist" aria-label="My requests">
+          <button
+            type="button"
+            role="tab"
+            id="my-requests-tab-corrections"
+            class="my-requests-tab"
+            [class.my-requests-tab--active]="selectedRequestTab() === 'corrections'"
+            [attr.aria-selected]="selectedRequestTab() === 'corrections'"
+            aria-controls="my-requests-panel-corrections"
+            tabindex="0"
+            (click)="selectRequestTab('corrections')"
+          >
+            Attendance corrections
+          </button>
+          <button
+            type="button"
+            role="tab"
+            id="my-requests-tab-work-area"
+            class="my-requests-tab"
+            [class.my-requests-tab--active]="selectedRequestTab() === 'work-area'"
+            [attr.aria-selected]="selectedRequestTab() === 'work-area'"
+            aria-controls="my-requests-panel-work-area"
+            tabindex="0"
+            (click)="selectRequestTab('work-area')"
+          >
+            Work-area changes
+          </button>
+        </div>
+
+        @if (selectedRequestTab() === 'corrections') {
+          <div id="my-requests-panel-corrections" role="tabpanel" aria-labelledby="my-requests-tab-corrections" tabindex="0">
+            @if (store.myCorrectionsLoading?.()) { <p class="access-note">Loading…</p> }
+            @if (store.myCorrectionsError?.()) {
+              <div class="time-tracking-message time-tracking-message--error" role="alert"><p>{{ store.myCorrectionsError?.() }}</p><app-button type="button" variant="secondary" size="sm" (pressed)="store.loadMyCorrections?.()">Try again</app-button></div>
+            } @else if ((store.myCorrections?.() ?? []).length === 0) {
+              <p class="empty-copy">You have not submitted any attendance correction requests.</p>
+            } @else {
+              <div class="table-scroll">
+                <table class="attendance-table corrections-table">
+                  <thead><tr><th scope="col">Date</th><th scope="col">Change</th><th scope="col">Status</th><th scope="col">Reason</th><th scope="col">Review</th><th scope="col">Actions</th></tr></thead>
+                  <tbody>
+                    @for (request of (store.myCorrections?.() ?? []); track request.id) {
+                      <tr>
+                        <td>{{ formatDate(request.workDate) }}<span class="table-secondary">Requested</span></td>
+                        <td><span class="table-primary">{{ correctionTypeLabel(request.correctionType) }}</span><span class="table-secondary">{{ correctionSummary(request) }}</span></td>
+                        <td><span class="status-pill status-pill--compact">{{ correctionStatusLabel(request.status) }}</span></td>
+                        <td>{{ request.reason }}</td>
+                        <td><span class="table-secondary">{{ request.reviewComment || (request.reviewedAt ? 'Reviewed ' + formatDateTime(request.reviewedAt, request.timezone) : 'Not reviewed') }}</span></td>
+                        <td>
+                          @if (request.status === 'pending') { <button type="button" class="table-action table-action--danger" [disabled]="correctionActionIsLoading('cancel')" (click)="cancelCorrection(request.id)">Cancel request</button> }
+                        </td>
+                      </tr>
+                    }
+                  </tbody>
+                </table>
+              </div>
+              @if (store.myCorrectionsTotalCount() > store.myCorrectionsPageSize()) {
+                <div class="tt-pagination">
+                  <span class="tt-pagination-info">
+                    Page {{ store.myCorrectionsPage() }} of {{ Math.ceil(store.myCorrectionsTotalCount() / store.myCorrectionsPageSize()) }}
+                  </span>
+                  <div class="tt-pagination-buttons">
+                    <app-button type="button" variant="secondary" [disabled]="store.myCorrectionsPage() <= 1" (pressed)="goToCorrectionsPage(store.myCorrectionsPage() - 1)">Previous</app-button>
+                    <app-button type="button" variant="secondary" [disabled]="store.myCorrectionsPage() * store.myCorrectionsPageSize() >= store.myCorrectionsTotalCount()" (pressed)="goToCorrectionsPage(store.myCorrectionsPage() + 1)">Next</app-button>
+                  </div>
+                </div>
+              }
+            }
+          </div>
+        } @else {
+          <div id="my-requests-panel-work-area" role="tabpanel" aria-labelledby="my-requests-tab-work-area" tabindex="0">
+            @if (store.myWorkAreaRequestsLoading()) { <p class="access-note">Loading…</p> }
+            @if (store.myWorkAreaRequestsError()) {
+              <div class="time-tracking-message time-tracking-message--error" role="alert"><p>{{ store.myWorkAreaRequestsError() }}</p><app-button type="button" variant="secondary" size="sm" (pressed)="store.loadMyWorkAreaRequests()">Try again</app-button></div>
+            } @else if (store.myWorkAreaRequests().length === 0) {
+              <p class="empty-copy">You have not submitted any work-area change requests.</p>
+            } @else {
+              <div class="table-scroll">
+                <table class="attendance-table work-area-requests-table">
+                  <thead><tr><th scope="col">Date</th><th scope="col">Change</th><th scope="col">Status</th><th scope="col">Reason</th><th scope="col">Sent to</th><th scope="col">Requested</th><th scope="col">Review</th><th scope="col">Actions</th></tr></thead>
+                  <tbody>
+                    @for (request of store.myWorkAreaRequests(); track request.id) {
+                      <tr>
+                        <td>{{ formatWorkAreaDate(request.date, request.timezone) }}</td>
+                        <td><span class="table-primary">{{ workAreaLabel(request.currentExpectedWorkArea) }} → {{ workAreaLabel(request.requestedWorkArea) }}</span></td>
+                        <td><span class="status-pill status-pill--compact">{{ workAreaChangeStatusLabel(request.status) }}</span></td>
+                        <td>{{ request.reason }}</td>
+                        <td>{{ request.receiver?.displayName || '—' }}@if (request.receiver?.positionName) { <span class="table-secondary">{{ request.receiver?.positionName }}</span> }</td>
+                        <td>{{ formatDateTime(request.requestedAt, request.timezone) }}</td>
+                        <td><span class="table-secondary">@if (request.reviewerDisplayName) { {{ request.reviewerDisplayName }} } @if (request.reviewedAt) { · {{ formatDateTime(request.reviewedAt, request.timezone) }} } @if (request.reviewComment) { <span class="table-note">{{ request.reviewComment }}</span> } @if (!request.reviewerDisplayName && !request.reviewedAt && !request.reviewComment) { Not reviewed }</span></td>
+                        <td>@if (request.status === 'pending') { <button type="button" class="table-action table-action--danger" [disabled]="store.workAreaActionLoading()" (click)="requestCancelWorkArea(request.id)">Cancel request</button> }</td>
+                      </tr>
+                    }
+                  </tbody>
+                </table>
+              </div>
+              @if (store.myWorkAreaRequestsTotalCount() > store.myWorkAreaRequestsPageSize()) {
+                <div class="tt-pagination"><span class="tt-pagination-info">Page {{ store.myWorkAreaRequestsPage() }} of {{ Math.ceil(store.myWorkAreaRequestsTotalCount() / store.myWorkAreaRequestsPageSize()) }}</span><div class="tt-pagination-buttons"><app-button type="button" variant="secondary" [disabled]="(store.myWorkAreaRequestsPage()) <= 1 || !!store.myWorkAreaRequestsLoading()" (pressed)="goToWorkAreaRequestsPage((store.myWorkAreaRequestsPage()) - 1)">Previous</app-button><app-button type="button" variant="secondary" [disabled]="(store.myWorkAreaRequestsPage()) * store.myWorkAreaRequestsPageSize() >= store.myWorkAreaRequestsTotalCount() || !!store.myWorkAreaRequestsLoading()" (pressed)="goToWorkAreaRequestsPage((store.myWorkAreaRequestsPage()) + 1)">Next</app-button></div></div>
+              }
+            }
+          </div>
+        }
       </section>
-    </div>
 
     @if (correctionFormOpen(); as selectedRow) {
     <app-modal [open]="true" title="Request attendance correction" size="lg" [closeOnBackdropClick]="false" (closed)="closeCorrection()">
@@ -288,63 +357,111 @@
       </form>
     </app-modal>
     }
+
+    @if (workAreaFormOpen()) {
+      <app-modal [open]="true" title="Request work-area change" size="lg" [closeOnBackdropClick]="false" (closed)="closeWorkAreaChange()">
+        <form class="work-area-form" (ngSubmit)="previewOrSubmitWorkAreaChange()" novalidate>
+          @if (!workAreaReviewReady()) {
+            <p class="form-intro">Choose a date and destination. The backend will confirm the planned work area and the person who receives the request.</p>
+            <label class="form-field"><span>Date <b aria-hidden="true">*</b></span><input type="date" [value]="workAreaDate()" (input)="workAreaDate.set($any($event.target).value); resetWorkAreaReview()" [min]="store.today()?.workDate || null" name="workAreaDate" required /><small class="field-error">{{ workAreaFieldErrors()['date'] || '' }}</small></label>
+            <fieldset class="form-field"><legend>Requested work area <b aria-hidden="true">*</b></legend><div class="work-area-options">@for (option of workAreaOptions; track option.value) { <label class="work-area-option"><input type="radio" name="requestedWorkArea" [value]="option.value" [checked]="workAreaRequestedArea() === option.value" (change)="workAreaRequestedArea.set(option.value); resetWorkAreaReview()" />{{ option.label }}</label> }</div><small class="field-error">{{ workAreaFieldErrors()['requestedWorkArea'] || '' }}</small></fieldset>
+            <label class="form-field"><span>Reason <b aria-hidden="true">*</b></span><textarea rows="4" [ngModel]="workAreaReason()" (ngModelChange)="workAreaReason.set($event); resetWorkAreaReview()" name="workAreaReason" required></textarea><small class="field-error">{{ workAreaFieldErrors()['reason'] || '' }}</small></label>
+          } @else if (store.workAreaPreview(); as preview) {
+            <div class="review-panel"><p>Review the details before sending this request.</p><dl class="review-summary"><div><dt>Date</dt><dd>{{ formatWorkAreaDate(preview.date, preview.timezone) }}</dd></div><div><dt>Current planned work area</dt><dd>{{ workAreaLabel(preview.currentExpectedWorkArea) }}</dd></div><div><dt>Requested work area</dt><dd>{{ workAreaLabel(preview.requestedWorkArea) }}</dd></div><div><dt>Reason</dt><dd>{{ preview.reason }}</dd></div><div><dt>Sent to</dt><dd>{{ preview.receiver.displayName }}@if (preview.receiver.positionName) {, {{ preview.receiver.positionName }}}</dd></div></dl><button type="button" class="text-action" (click)="resetWorkAreaReview()">Edit request</button></div>
+          }
+          @if (workAreaFormMessage()) { <p class="work-area-form-message" role="status">{{ workAreaFormMessage() }}</p> }
+          <div class="modal-actions"><app-button type="button" variant="secondary" (pressed)="closeWorkAreaChange()">Cancel</app-button><app-button type="submit" [loading]="(store.workAreaPreviewLoading()) || (store.workAreaActionLoading())" [disabled]="(store.workAreaPreviewLoading()) || (store.workAreaActionLoading())">{{ workAreaReviewReady() ? 'Send request' : 'Review request' }}</app-button></div>
+        </form>
+      </app-modal>
+    }
+
+    @if (workAreaCancelRequestId(); as requestId) {
+      <app-modal [open]="true" title="Cancel work-area request?" size="md" [closeOnBackdropClick]="false" (closed)="closeCancelWorkArea()">
+        <div class="confirmation-panel"><p>This pending request will be cancelled and can no longer be approved.</p><div class="modal-actions"><app-button type="button" variant="secondary" [disabled]="store.workAreaActionLoading()" (pressed)="closeCancelWorkArea()">Keep request</app-button><app-button type="button" variant="danger" [loading]="workAreaActionIsLoading(requestId)" [disabled]="store.workAreaActionLoading()" (pressed)="confirmCancelWorkArea()">Cancel request</app-button></div></div>
+      </app-modal>
+    }
   }
 
-  @if (viewMode() === 'team' && hasCoveredAccess()) {
-    <section class="history-card" aria-labelledby="covered-history-heading">
-      <div class="section-heading section-heading--stacked-mobile">
-        <div><p class="eyebrow">Attendance oversight</p><h2 id="covered-history-heading">Team attendance</h2></div>
-        <div>
-          @if (canViewCoveredEmployees()) { <span class="access-note">Visible coverage records</span> }
-          <div class="range-controls" aria-label="Team attendance date range">
-            <app-date-range-picker
-              [from]="historyFrom()"
-              [to]="historyTo()"
-              [disabled]="store.coveredHistoryLoading()"
-              (rangeChange)="onRangeSelected($event)"
-            />
-          </div>
-        </div>
-      </div>
-      @if (store.coveredHistoryLoading()) {
-        <div class="table-skeleton" aria-busy="true" aria-label="Loading team attendance"></div>
-      } @else if (store.coveredHistoryError()) {
-        <div class="time-tracking-message time-tracking-message--error" role="alert"><p>{{ store.coveredHistoryError() }}</p>@if (store.coveredHistoryError() !== 'You do not have access to view team attendance.') { <app-button type="button" variant="secondary" size="sm" (pressed)="retryCoveredHistory()">Try again</app-button> }</div>
-      } @else if (store.today() && !canViewCoveredEmployees()) {
-        <p class="empty-copy">Team attendance is not available for your coverage area.</p>
-      } @else if (store.coveredHistory().length === 0) {
-        <p class="empty-copy">No team attendance records for this date range.</p>
-      } @else {
-        <div class="table-scroll">
-          <table class="attendance-table">
-            <thead><tr><th scope="col">Employee</th><th scope="col">Date</th><th scope="col">Clock in</th><th scope="col">Clock out</th><th scope="col">Break</th><th scope="col">Worked time</th><th scope="col">Status</th></tr></thead>
-            <tbody>
-              @for (row of store.coveredHistory(); track row.attendanceRecordId) {
-                <tr>
-                  <td><span class="table-primary">{{ employeeLabel(row) }}</span>@if (row.employee?.employeeNumber) { <span class="table-secondary">{{ row.employee?.employeeNumber }}</span> }</td>
-                  <td>{{ formatDate(row.workDate) }}</td>
-                  <td>{{ formatDateTime(row.clockInAt, displayTimezone()) }}</td>
-                  <td>{{ formatDateTime(row.clockOutAt, displayTimezone()) }}</td>
-                  <td><span class="table-primary">{{ formatMinutes(row.breakMinutes) }}</span>@if (hasBreakOverage(row.breakOverageMinutes, row.isOverBreakAllowance)) { <span class="table-note table-note--warning">{{ breakOverageHistoryLabel(row.breakOverageMinutes) }}</span> }</td>
-                  <td>{{ formatMinutes(row.totalWorkedMinutes) }}</td>
-                  <td><span class="table-primary">{{ statusLabel(row.status, row.statusLabel) }}</span>@if (hasAttention(row.attentionLabel)) { <span class="table-note">{{ row.attentionLabel }}</span> }</td>
-                </tr>
-              }
-            </tbody>
-          </table>
-        </div>
-        @if (store.coveredHistoryTotalCount() > store.coveredHistoryPageSize()) {
-          <div class="tt-pagination">
-            <span class="tt-pagination-info">
-              Page {{ store.coveredHistoryPage() }} of {{ Math.ceil(store.coveredHistoryTotalCount() / store.coveredHistoryPageSize()) }}
-            </span>
-            <div class="tt-pagination-buttons">
-              <app-button type="button" variant="secondary" [disabled]="store.coveredHistoryPage() <= 1" (pressed)="goToCoveredHistoryPage(store.coveredHistoryPage() - 1)">Previous</app-button>
-              <app-button type="button" variant="secondary" [disabled]="store.coveredHistoryPage() * store.coveredHistoryPageSize() >= store.coveredHistoryTotalCount()" (pressed)="goToCoveredHistoryPage(store.coveredHistoryPage() + 1)">Next</app-button>
+  @if (viewMode() === 'team') {
+    @if (canViewCoveredEmployees()) {
+      <section class="history-card" aria-label="Team attendance">
+        <div class="section-heading section-heading--stacked-mobile">
+          <div><p class="eyebrow">Attendance oversight</p><h2 id="covered-history-heading">Team attendance</h2></div>
+          <div>
+            <span class="access-note">Visible coverage records</span>
+            <div class="range-controls" aria-label="Team attendance date range">
+              <app-date-range-picker
+                [from]="historyFrom()"
+                [to]="historyTo()"
+                [disabled]="store.coveredHistoryLoading()"
+                (rangeChange)="onRangeSelected($event)"
+              />
             </div>
           </div>
+        </div>
+        @if (store.coveredHistoryLoading()) {
+          <div class="table-skeleton" aria-busy="true" aria-label="Loading team attendance"></div>
+        } @else if (store.coveredHistoryError()) {
+          <div class="time-tracking-message time-tracking-message--error" role="alert"><p>{{ store.coveredHistoryError() }}</p>@if (store.coveredHistoryError() !== 'You do not have access to view team attendance.') { <app-button type="button" variant="secondary" size="sm" (pressed)="retryCoveredHistory()">Try again</app-button> }</div>
+        } @else if (store.coveredHistory().length === 0) {
+          <p class="empty-copy">No team attendance records for this date range.</p>
+        } @else {
+          <div class="table-scroll">
+            <table class="attendance-table">
+              <thead><tr><th scope="col">Employee</th><th scope="col">Date</th><th scope="col">Clock in</th><th scope="col">Clock out</th><th scope="col">Break</th><th scope="col">Worked time</th><th scope="col">Status</th></tr></thead>
+              <tbody>
+                @for (row of store.coveredHistory(); track row.attendanceRecordId) {
+                  <tr>
+                    <td><span class="table-primary">{{ employeeLabel(row) }}</span>@if (row.employee?.employeeNumber) { <span class="table-secondary">{{ row.employee?.employeeNumber }}</span> }</td>
+                    <td>{{ formatDate(row.workDate) }}</td>
+                    <td>{{ formatDateTime(row.clockInAt, displayTimezone()) }}</td>
+                    <td>{{ formatDateTime(row.clockOutAt, displayTimezone()) }}</td>
+                    <td><span class="table-primary">{{ formatMinutes(row.breakMinutes) }}</span>@if (hasBreakOverage(row.breakOverageMinutes, row.isOverBreakAllowance)) { <span class="table-note table-note--warning">{{ breakOverageHistoryLabel(row.breakOverageMinutes) }}</span> }</td>
+                    <td>{{ formatMinutes(row.totalWorkedMinutes) }}</td>
+                    <td><span class="table-primary">{{ statusLabel(row.status, row.statusLabel) }}</span>@if (hasAttention(row.attentionLabel)) { <span class="table-note">{{ row.attentionLabel }}</span> }</td>
+                  </tr>
+                }
+              </tbody>
+            </table>
+          </div>
+          @if (store.coveredHistoryTotalCount() > store.coveredHistoryPageSize()) {
+            <div class="tt-pagination">
+              <span class="tt-pagination-info">
+                Page {{ store.coveredHistoryPage() }} of {{ Math.ceil(store.coveredHistoryTotalCount() / store.coveredHistoryPageSize()) }}
+              </span>
+              <div class="tt-pagination-buttons">
+                <app-button type="button" variant="secondary" [disabled]="store.coveredHistoryPage() <= 1" (pressed)="goToCoveredHistoryPage(store.coveredHistoryPage() - 1)">Previous</app-button>
+                <app-button type="button" variant="secondary" [disabled]="store.coveredHistoryPage() * store.coveredHistoryPageSize() >= store.coveredHistoryTotalCount()" (pressed)="goToCoveredHistoryPage(store.coveredHistoryPage() + 1)">Next</app-button>
+              </div>
+            </div>
+          }
         }
-      }
-    </section>
+      </section>
+    }
+
+    @if (hasApproveAccess()) {
+      <section class="history-card" aria-label="Approvals">
+        <div class="section-heading">
+          <div><p class="eyebrow">Review queue</p><h2 id="approvals-heading">Approvals</h2><p class="access-note">Review attendance requests assigned to you.</p></div>
+        </div>
+        <div class="my-requests-tablist" role="tablist" aria-label="Approval type">
+          <button type="button" role="tab" id="approval-type-tab-corrections" class="my-requests-tab" [class.my-requests-tab--active]="approvalType() === 'corrections'" [attr.aria-selected]="approvalType() === 'corrections'" aria-controls="approval-type-panel-corrections" tabindex="0" (click)="selectApprovalType('corrections')">
+            Attendance corrections@if (approvalBadgeCorrections() > 0) { ({{ approvalBadgeCorrections() }}) }
+          </button>
+          <button type="button" role="tab" id="approval-type-tab-work-area" class="my-requests-tab" [class.my-requests-tab--active]="approvalType() === 'work-area'" [attr.aria-selected]="approvalType() === 'work-area'" aria-controls="approval-type-panel-work-area" tabindex="0" (click)="selectApprovalType('work-area')">
+            Work-area changes@if (approvalBadgeWorkArea() > 0) { ({{ approvalBadgeWorkArea() }}) }
+          </button>
+        </div>
+        @if (approvalType() === 'corrections') {
+          <div id="approval-type-panel-corrections" role="tabpanel" aria-labelledby="approval-type-tab-corrections" tabindex="0">
+            <app-correction-approvals [embedded]="true" />
+          </div>
+        } @else {
+          <div id="approval-type-panel-work-area" role="tabpanel" aria-labelledby="approval-type-tab-work-area" tabindex="0">
+            <app-work-area-approvals [embedded]="true" />
+          </div>
+        }
+      </section>
+    }
   }
 </div>

@@ -207,4 +207,48 @@ describe('TimeTrackingApiService', () => {
     expect(request.request.method).toBe('POST');
     request.flush({});
   });
+
+  it('posts the Work Area preview and create payloads to the dedicated endpoints', () => {
+    const payload = { date: '2026-08-25', requestedWorkArea: 'remote' as const, reason: 'Client meeting' };
+    service.previewWorkAreaChange(payload).subscribe();
+    const preview = httpMock.expectOne(`${environment.apiUrl}/attendance/work-area-change-requests/preview`);
+    expect(preview.request.method).toBe('POST');
+    expect(preview.request.body).toEqual(payload);
+    preview.flush({});
+
+    service.createWorkAreaChangeRequest(payload).subscribe();
+    const create = httpMock.expectOne(`${environment.apiUrl}/attendance/work-area-change-requests`);
+    expect(create.request.method).toBe('POST');
+    expect(create.request.body).toEqual(payload);
+    create.flush({});
+  });
+
+  it('loads Work Area requester and approval lists with contract filters', () => {
+    service.getMyWorkAreaChangeRequests({ status: 'pending', pageNumber: 2, pageSize: 10 }).subscribe();
+    const mine = httpMock.expectOne((candidate) => candidate.url.endsWith('/attendance/work-area-change-requests/my'));
+    expect(mine.request.params.get('status')).toBe('pending');
+    expect(mine.request.params.get('pageNumber')).toBe('2');
+    expect(mine.request.params.get('pageSize')).toBe('10');
+    mine.flush({ items: [], pageNumber: 2, pageSize: 10, totalCount: 0 });
+
+    service.getWorkAreaChangeApprovalInbox({ status: 'pending', pageNumber: 1, pageSize: 20 }).subscribe();
+    const approvals = httpMock.expectOne((candidate) => candidate.url.endsWith('/attendance/work-area-change-requests/approvals'));
+    expect(approvals.request.params.get('status')).toBe('pending');
+    approvals.flush({ items: [], pageNumber: 1, pageSize: 20, totalCount: 0 });
+  });
+
+  it.each([
+    ['approveWorkAreaChangeRequest', 'approve'], ['rejectWorkAreaChangeRequest', 'reject'], ['cancelWorkAreaChangeRequest', 'cancel']
+  ] as const)('%s calls the Work Area mutation endpoint', (method, action) => {
+    const operation = method === 'cancelWorkAreaChangeRequest'
+      ? service[method]('wa-1')
+      : method === 'rejectWorkAreaChangeRequest'
+        ? service[method]('wa-1', 'Reviewed')
+        : service[method]('wa-1', 'Approved');
+    operation.subscribe();
+    const request = httpMock.expectOne(`${environment.apiUrl}/attendance/work-area-change-requests/wa-1/${action}`);
+    expect(request.request.method).toBe('POST');
+    if (action !== 'cancel') expect(request.request.body).toEqual({ reviewComment: action === 'reject' ? 'Reviewed' : 'Approved' });
+    request.flush({});
+  });
 });
