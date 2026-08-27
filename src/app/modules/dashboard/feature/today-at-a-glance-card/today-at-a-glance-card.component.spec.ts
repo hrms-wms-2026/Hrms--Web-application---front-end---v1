@@ -95,6 +95,29 @@ describe('TodayAtAGlanceCardComponent', () => {
     expect(text).toContain('Not clocked in');
   });
 
+  it('prefers the backend-provided status label over the local status map', async () => {
+    const { fixture } = await setup({
+      attendanceStatus: 'non_working_day',
+      attendanceStatusLabel: 'Non-working day',
+      clockInAt: null,
+      totalWorkedMinutes: 0
+    });
+    const text = fixture.nativeElement.textContent as string;
+    expect(text).toContain('Non-working day');
+    expect(text).not.toContain('Not specified');
+  });
+
+  it('falls back to "Not specified" for an unmapped status with no backend label', async () => {
+    const { fixture } = await setup({
+      attendanceStatus: 'some_future_status',
+      attendanceStatusLabel: null,
+      clockInAt: null,
+      totalWorkedMinutes: 0
+    });
+    const text = fixture.nativeElement.textContent as string;
+    expect(text).toContain('Not specified');
+  });
+
   it('does not show worked time or status while today is not yet loaded', async () => {
     const { fixture } = await setup(null);
     const text = fixture.nativeElement.textContent as string;

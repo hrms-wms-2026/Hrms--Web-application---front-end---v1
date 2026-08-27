@@ -30,7 +30,10 @@ export class TodayAtAGlanceCardComponent implements OnInit {
 
   protected readonly statusLabel = computed(() => {
     const today = this.today();
-    return today ? STATUS_LABELS[today.attendanceStatus] ?? 'Not specified' : '';
+    if (!today) {
+      return '';
+    }
+    return today.attendanceStatusLabel?.trim() || STATUS_LABELS[today.attendanceStatus] || 'Not specified';
   });
 
   protected readonly clockInTimeLabel = computed(() => {
