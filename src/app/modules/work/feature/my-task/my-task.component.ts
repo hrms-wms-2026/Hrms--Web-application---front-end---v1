@@ -1,24 +1,22 @@
 import { Component, OnInit, computed, inject, signal } from '@angular/core';
-import { ActivatedRoute } from '@angular/router';
+import { ActivatedRoute, Router } from '@angular/router';
 import { firstValueFrom } from 'rxjs';
 import { CurrentEmployeeStore } from '../../state/current-employee.store';
 import { ButtonComponent } from '../../../../shared/ui/button/button.component';
 import { ErrorStateComponent } from '../../../../shared/ui/error-state/error-state.component';
 import { TaskApiService } from '../../data-access/task-api.service';
-import { ProjectDetailStore } from '../../state/project-detail.store';
 import { SprintListStore } from '../../state/sprint-list.store';
 import { TaskStatusColumn, WorkTask } from '../../models/task.model';
 import { toWorkTask } from '../../utils/task.mapper';
 import { TaskBoardColumnComponent } from '../../ui/task-board-column/task-board-column.component';
 import { TaskTableComponent } from '../../ui/task-table/task-table.component';
 import { TaskCreateModalComponent } from '../../ui/task-create-modal/task-create-modal.component';
-import { TaskDetailModalComponent } from '../../ui/task-detail-modal/task-detail-modal.component';
 import { SelectComponent, SelectOption } from '../../../../shared/ui/select/select.component';
 
 @Component({
   selector: 'app-my-task',
   standalone: true,
-  imports: [TaskBoardColumnComponent, TaskTableComponent, TaskCreateModalComponent, TaskDetailModalComponent, ButtonComponent, ErrorStateComponent, SelectComponent],
+  imports: [TaskBoardColumnComponent, TaskTableComponent, TaskCreateModalComponent, ButtonComponent, ErrorStateComponent, SelectComponent],
   template: `
     <div class="my-task__toolbar">
       <div class="my-task__view-toggle">
@@ -67,18 +65,6 @@ import { SelectComponent, SelectOption } from '../../../../shared/ui/select/sele
     @if (createOpen()) {
       <app-task-create-modal [open]="createOpen()" [projectId]="projectId()" (closed)="createOpen.set(false)" (created)="onTaskCreated()" />
     }
-
-    <app-task-detail-modal
-      [open]="detailOpen()"
-      [task]="selectedTask()"
-      [projectId]="projectId()"
-      [isObjectiveOwner]="selectedTask() ? (objectiveOwners()[selectedTask()!.objectiveId] || false) : false"
-      [isAssignee]="selectedTask() ? selectedTask()!.assigneeEmployeeIds.includes(currentEmployeeId()) : false"
-      [currentEmployeeId]="currentEmployeeId()"
-      [statuses]="statuses()"
-      (closed)="detailOpen.set(false)"
-      (saved)="onTaskSaved()"
-    />
   `,
   styles: [`
     .my-task__toolbar { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin-bottom: 16px; }
@@ -91,9 +77,9 @@ import { SelectComponent, SelectOption } from '../../../../shared/ui/select/sele
 })
 export class MyTaskComponent implements OnInit {
   private readonly route = inject(ActivatedRoute);
+  private readonly router = inject(Router);
   private readonly taskApi = inject(TaskApiService);
   private readonly sprintStore = inject(SprintListStore);
-  private readonly projectStore = inject(ProjectDetailStore);
   private readonly currentEmployee = inject(CurrentEmployeeStore);
 
   view = signal<'board' | 'list'>('board');
@@ -104,15 +90,9 @@ export class MyTaskComponent implements OnInit {
   loading = signal(true);
   error = signal<string | null>(null);
   createOpen = signal(false);
-  detailOpen = signal(false);
-  selectedTask = signal<WorkTask | null>(null);
 
   projectId = computed(() => this.route.parent?.snapshot.paramMap.get('id') ?? '');
   currentEmployeeId = computed(() => this.currentEmployee.id());
-
-  objectiveOwners = computed(() =>
-    Object.fromEntries(this.projectStore.milestones().map((module) => [module.objectiveId, module.isOwner]))
-  );
 
   filteredTasks = computed(() => {
     const term = this.search().trim().toLowerCase();
@@ -164,8 +144,7 @@ export class MyTaskComponent implements OnInit {
   }
 
   onTaskViewed(task: WorkTask): void {
-    this.selectedTask.set(task);
-    this.detailOpen.set(true);
+    void this.router.navigate(['/work', this.projectId(), 'task', task.id]);
   }
 
   async onTaskDropped(event: { taskId: string; newStatusId: string }): Promise<void> {
@@ -179,11 +158,6 @@ export class MyTaskComponent implements OnInit {
 
   onTaskCreated(): void {
     this.createOpen.set(false);
-    void this.load();
-  }
-
-  onTaskSaved(): void {
-    this.detailOpen.set(false);
     void this.load();
   }
 }

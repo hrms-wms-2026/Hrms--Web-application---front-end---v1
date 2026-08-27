@@ -1,5 +1,5 @@
 import { ComponentFixture, TestBed } from '@angular/core/testing';
-import { ActivatedRoute } from '@angular/router';
+import { ActivatedRoute, Router } from '@angular/router';
 import { By } from '@angular/platform-browser';
 import { signal } from '@angular/core';
 import { of, throwError } from 'rxjs';
@@ -36,7 +36,8 @@ describe('MyTaskComponent', () => {
         { provide: TaskApiService, useValue: taskApiSpy },
         { provide: SprintListStore, useValue: { sprints: signal([]) } },
         { provide: ProjectDetailStore, useValue: { milestones: signal([{ objectiveId: 'o1', isOwner: false }]) } },
-        { provide: ActivatedRoute, useValue: { parent: { snapshot: { paramMap: { get: () => 'p1' } } } } }
+        { provide: ActivatedRoute, useValue: { parent: { snapshot: { paramMap: { get: () => 'p1' } } } } },
+        { provide: Router, useValue: { navigate: vi.fn().mockResolvedValue(true) } }
       ]
     }).compileComponents();
     fixture = TestBed.createComponent(MyTaskComponent);
@@ -143,6 +144,12 @@ describe('MyTaskComponent', () => {
     await new Promise((resolve) => setTimeout(resolve, 0));
     fixture.detectChanges();
     expect(fixture.nativeElement.textContent).toContain('No tasks assigned to you');
+  });
+
+  it('navigates to the task detail page when a task is viewed', () => {
+    const navigate = TestBed.inject(Router).navigate as ReturnType<typeof vi.fn>;
+    fixture.componentInstance.onTaskViewed({ id: 't5', objectiveId: 'o1' } as never);
+    expect(navigate).toHaveBeenCalledWith(['/work', 'p1', 'task', 't5']);
   });
 
   // Regression: the Board-view column emits (taskDropped) on a cross-column drop, but the
