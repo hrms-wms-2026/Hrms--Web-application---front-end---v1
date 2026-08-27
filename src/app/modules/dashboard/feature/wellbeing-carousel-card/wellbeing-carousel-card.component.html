@@ -1,0 +1,107 @@
+<app-card title="Wellbeing">
+  @if (activeCard(); as card) {
+    <div class="flex flex-col gap-4" data-testid="wellbeing-card" [attr.data-card-kind]="card.kind">
+      @if (card.kind === 'reminder') {
+        <div class="flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wide text-rose-600">
+          <svg viewBox="0 0 20 20" fill="currentColor" class="h-3.5 w-3.5">
+            <circle cx="7" cy="7" r="4" />
+            <circle cx="13" cy="7" r="4" />
+            <path d="M3 9 L10 17 L17 9 Z" />
+          </svg>
+          Wellbeing Reminder
+        </div>
+
+        <div class="flex items-center gap-4">
+          <img src="/assets/wellbeing/mindful-break.png" alt="" class="h-20 w-20 shrink-0 object-contain" data-testid="wellbeing-reminder-illustration" />
+          <div>
+            <p class="font-semibold text-[var(--color-text-primary)]" data-testid="wellbeing-card-title">{{ card.title }}</p>
+            <p class="mt-0.5 text-sm text-[var(--color-text-secondary)]" data-testid="wellbeing-card-description">{{ card.description }}</p>
+          </div>
+        </div>
+
+        <button
+          type="button"
+          data-testid="wellbeing-start-break"
+          class="inline-flex w-full items-center justify-center rounded-md bg-gradient-to-r from-indigo-500 to-violet-500 px-4 py-2 text-sm font-medium text-white transition hover:from-indigo-600 hover:to-violet-600 disabled:cursor-not-allowed disabled:opacity-60"
+          [disabled]="actionLoading()"
+          (click)="startBreak()"
+        >
+          Start 5-min Break
+        </button>
+      } @else {
+        <div class="flex items-start gap-3">
+          <span
+            class="flex h-10 w-10 shrink-0 items-center justify-center rounded-full"
+            [class.bg-sky-100]="card.kind === 'hydration'"
+            [class.text-sky-600]="card.kind === 'hydration'"
+            [class.bg-indigo-100]="card.kind === 'posture'"
+            [class.text-indigo-600]="card.kind === 'posture'"
+            [class.bg-amber-100]="card.kind === 'eye-rest'"
+            [class.text-amber-600]="card.kind === 'eye-rest'"
+            [class.bg-emerald-100]="card.kind === 'stretch'"
+            [class.text-emerald-600]="card.kind === 'stretch'"
+          >
+            @switch (card.kind) {
+              @case ('hydration') {
+                <svg viewBox="0 0 20 20" fill="currentColor" class="h-5 w-5"><circle cx="10" cy="10" r="5" /></svg>
+              }
+              @case ('posture') {
+                <svg viewBox="0 0 20 20" fill="currentColor" class="h-5 w-5">
+                  <path
+                    fill-rule="evenodd"
+                    d="M16.704 4.153a.75.75 0 01.143 1.052l-8 10.5a.75.75 0 01-1.127.075l-4.5-4.5a.75.75 0 011.06-1.06l3.894 3.893 7.48-9.817a.75.75 0 011.05-.143z"
+                    clip-rule="evenodd"
+                  />
+                </svg>
+              }
+              @case ('eye-rest') {
+                <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5" class="h-5 w-5">
+                  <circle cx="10" cy="10" r="6" />
+                  <circle cx="10" cy="10" r="2" fill="currentColor" stroke="none" />
+                </svg>
+              }
+              @case ('stretch') {
+                <svg viewBox="0 0 20 20" fill="currentColor" class="h-5 w-5">
+                  <path d="M4 4h4v2H6v2H4V4zm12 0v4h-2V6h-2V4h4zM4 16v-4h2v2h2v2H4zm12 0h-4v-2h2v-2h2v4z" />
+                </svg>
+              }
+            }
+          </span>
+          <div>
+            <p class="font-semibold text-[var(--color-text-primary)]" data-testid="wellbeing-card-title">{{ card.title }}</p>
+            <p class="mt-0.5 text-sm text-[var(--color-text-secondary)]" data-testid="wellbeing-card-description">{{ card.description }}</p>
+          </div>
+        </div>
+      }
+
+      <div class="flex items-center justify-center gap-3">
+        <button type="button" aria-label="Previous tip" class="text-[var(--color-text-secondary)] hover:text-[var(--color-text-primary)]" (click)="previous()">
+          <svg viewBox="0 0 20 20" fill="currentColor" class="h-4 w-4">
+            <path fill-rule="evenodd" d="M12.79 5.23a.75.75 0 01-.02 1.06L8.832 10l3.938 3.71a.75.75 0 11-1.04 1.08l-4.5-4.25a.75.75 0 010-1.08l4.5-4.25a.75.75 0 011.06.02z" clip-rule="evenodd" />
+          </svg>
+        </button>
+
+        <div class="flex items-center gap-1.5" data-testid="wellbeing-dots">
+          @for (dot of cards(); track $index) {
+            <button
+              type="button"
+              [attr.aria-label]="'Go to card ' + ($index + 1)"
+              data-testid="wellbeing-dot"
+              class="h-1.5 rounded-full transition-all"
+              [class.w-4]="$index === currentIndex() % cards().length"
+              [class.w-1.5]="$index !== currentIndex() % cards().length"
+              [style.background-color]="$index === currentIndex() % cards().length ? 'var(--color-accent)' : 'var(--color-border)'"
+              (click)="goTo($index)"
+            ></button>
+          }
+        </div>
+
+        <button type="button" aria-label="Next tip" class="text-[var(--color-text-secondary)] hover:text-[var(--color-text-primary)]" (click)="next()">
+          <svg viewBox="0 0 20 20" fill="currentColor" class="h-4 w-4">
+            <path fill-rule="evenodd" d="M7.21 14.77a.75.75 0 01.02-1.06L11.168 10 7.23 6.29a.75.75 0 111.04-1.08l4.5 4.25a.75.75 0 010 1.08l-4.5 4.25a.75.75 0 01-1.06-.02z" clip-rule="evenodd" />
+          </svg>
+        </button>
+      </div>
+    </div>
+  }
+</app-card>
