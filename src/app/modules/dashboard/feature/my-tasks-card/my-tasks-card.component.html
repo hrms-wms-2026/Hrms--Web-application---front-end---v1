@@ -1,0 +1,43 @@
+<app-card title="My Tasks">
+  @if (!loading() && overdueTasks().length === 0 && upcomingTasks().length === 0) {
+    <p class="text-sm text-[var(--color-text-secondary)]" data-testid="my-tasks-empty">No tasks due soon.</p>
+  }
+
+  @if (overdueTasks().length > 0) {
+    <p class="mb-2 text-xs font-semibold uppercase tracking-wide text-red-600">Overdue</p>
+    <ul class="mb-4 flex flex-col gap-2" data-testid="my-tasks-overdue-list">
+      @for (task of overdueTasks(); track task.taskId) {
+        <li>
+          <a
+            [routerLink]="taskLink(task)"
+            data-testid="my-tasks-row"
+            class="flex items-center justify-between gap-3 rounded-md border border-[var(--color-border)] p-2 text-sm hover:bg-[var(--color-surface-secondary)]"
+          >
+            <span class="min-w-0 flex-1 truncate text-[var(--color-text-primary)]">{{ task.title }}</span>
+            <span class="shrink-0 text-xs text-[var(--color-text-secondary)]">{{ task.projectName }}</span>
+            <span class="shrink-0 text-xs font-medium text-red-600">{{ dueDateLabel(task.dueDate) }}</span>
+          </a>
+        </li>
+      }
+    </ul>
+  }
+
+  @if (upcomingTasks().length > 0) {
+    <p class="mb-2 text-xs font-semibold uppercase tracking-wide text-[var(--color-text-secondary)]">Due soon</p>
+    <ul class="flex flex-col gap-2" data-testid="my-tasks-upcoming-list">
+      @for (task of upcomingTasks(); track task.taskId) {
+        <li>
+          <a
+            [routerLink]="taskLink(task)"
+            data-testid="my-tasks-row"
+            class="flex items-center justify-between gap-3 rounded-md border border-[var(--color-border)] p-2 text-sm hover:bg-[var(--color-surface-secondary)]"
+          >
+            <span class="min-w-0 flex-1 truncate text-[var(--color-text-primary)]">{{ task.title }}</span>
+            <span class="shrink-0 text-xs text-[var(--color-text-secondary)]">{{ task.projectName }}</span>
+            <span class="shrink-0 text-xs text-[var(--color-text-secondary)]">{{ dueDateLabel(task.dueDate) }}</span>
+          </a>
+        </li>
+      }
+    </ul>
+  }
+</app-card>

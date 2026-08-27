@@ -1,8 +1,10 @@
 import { signal } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
+import { provideRouter } from '@angular/router';
 import { of } from 'rxjs';
 import { TimeTrackingStore } from '../../../attendance/state/time-tracking.store';
 import { ActivityTimelineApiService } from '../../data-access/activity-timeline-api.service';
+import { MyTasksApiService } from '../../data-access/my-tasks-api.service';
 import { DashboardHomeComponent } from './dashboard-home.component';
 
 describe('DashboardHomeComponent', () => {
@@ -21,8 +23,10 @@ describe('DashboardHomeComponent', () => {
     await TestBed.configureTestingModule({
       imports: [DashboardHomeComponent],
       providers: [
+        provideRouter([]),
         { provide: TimeTrackingStore, useValue: store },
-        { provide: ActivityTimelineApiService, useValue: { getMyTimeline: () => of({ date: '', segments: [] }) } }
+        { provide: ActivityTimelineApiService, useValue: { getMyTimeline: () => of({ date: '', segments: [] }) } },
+        { provide: MyTasksApiService, useValue: { getMyTasks: () => of({ tasks: [] }) } }
       ]
     }).compileComponents();
 
@@ -40,11 +44,12 @@ describe('DashboardHomeComponent', () => {
     expect(fixture.nativeElement.querySelector('button')).toBeNull();
   });
 
-  it('renders the Today at a Glance and Attendance Trend cards', async () => {
+  it('renders the Today at a Glance, Attendance Trend, and My Tasks cards', async () => {
     const fixture = await setup();
 
     const text = fixture.nativeElement.textContent as string;
     expect(text).toContain('Today at a glance');
     expect(text).toContain('Attendance Trend');
+    expect(text).toContain('My Tasks');
   });
 });
