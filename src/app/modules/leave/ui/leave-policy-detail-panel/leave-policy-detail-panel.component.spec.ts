@@ -1,0 +1,3 @@
+import { TestBed } from '@angular/core/testing';
+import { LeavePolicyDetailPanelComponent } from './leave-policy-detail-panel.component';
+describe('LeavePolicyDetailPanelComponent', () => { it('renders key policy facts when supplied', () => { const fixture = TestBed.createComponent(LeavePolicyDetailPanelComponent); fixture.componentInstance.policy = { id: 'p1', name: 'Annual policy', country: 'LK', effectiveFrom: '2026-01-01', leaveTypes: [], legalEntities: [], blackoutPeriods: [], minimumNoticeDays: 7, maxConsecutiveDays: null, minDaysPerRequest: .5, approvalMode: 'any_one' } as any; fixture.detectChanges(); expect(fixture.nativeElement.textContent).toContain('Annual policy'); expect(fixture.nativeElement.textContent).toContain('Minimum notice'); }); });

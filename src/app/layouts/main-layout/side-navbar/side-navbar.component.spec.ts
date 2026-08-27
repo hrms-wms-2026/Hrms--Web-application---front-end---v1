@@ -33,7 +33,7 @@ describe('SideNavbarComponent', () => {
   });
 
   it('shows People/Calendar/Time Off/Attendance when their modules and self-service access are active', () => {
-    const fixture = setup(['attendance:read-own'], ['core_hr', 'calendar', 'leave', 'time_attendance']);
+    const fixture = setup(['attendance:read-own', 'leave:read-own'], ['core_hr', 'calendar', 'leave', 'time_attendance']);
     const labels = Array.from(fixture.nativeElement.querySelectorAll('.nav-rail-item span')).map((el) => (el as HTMLElement).textContent);
     expect(labels).toEqual(['Home', 'People', 'Calendar', 'Time Off', 'Attendance']);
   });
@@ -64,7 +64,7 @@ describe('SideNavbarComponent', () => {
 
   it('renders all 8 sidebar items in canonical order for a tenant owner with every Phase 1 module and org/roles permissions', () => {
     const fixture = setup(
-      ['org:read', 'roles:manage', 'projects:access', 'attendance:read-own'],
+      ['org:read', 'roles:manage', 'projects:access', 'attendance:read', 'leave:read-own'],
       ['worksync_foundation', 'core_hr', 'calendar', 'leave', 'time_attendance', 'org_structure']
     );
     const labels = Array.from(fixture.nativeElement.querySelectorAll('.nav-rail-item span')).map((el) => (el as HTMLElement).textContent);
@@ -112,6 +112,20 @@ describe('SideNavbarComponent', () => {
 
     const activeLink = fixture.nativeElement.querySelector('.nav-rail-item--active');
     expect(activeLink?.textContent).toContain('Org');
+  });
+
+  it('keeps Monitoring out of the primary rail and marks Attendance active at the Monitoring route', async () => {
+    const fixture = setup(['attendance:read'], ['time_attendance']);
+    const labels = Array.from(fixture.nativeElement.querySelectorAll('.nav-rail-item span')).map((el) => (el as HTMLElement).textContent);
+    const router = TestBed.inject(Router);
+
+    expect(labels).toEqual(['Home', 'Attendance', 'Settings']);
+
+    await router.navigateByUrl('/attendance/monitoring');
+    fixture.detectChanges();
+
+    const activeLink = fixture.nativeElement.querySelector('.nav-rail-item--active');
+    expect(activeLink?.textContent).toContain('Attendance');
   });
 
   it('shows the sidebar-style initial tile when no company is selected', () => {

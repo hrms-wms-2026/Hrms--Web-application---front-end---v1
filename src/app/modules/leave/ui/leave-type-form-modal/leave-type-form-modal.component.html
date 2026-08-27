@@ -1,0 +1,55 @@
+<!-- Design: calm HR configuration workspace — clean form canvas, focused policy rail, and clear progressive disclosure. -->
+<div class="ltfm-backdrop" (click)="cancel.emit()">
+  <section class="ltfm-modal" (click)="$event.stopPropagation()" role="dialog" aria-modal="true" [attr.aria-label]="isEdit ? 'Edit leave type' : 'Create leave type'">
+    <header class="ltfm-header">
+      <div class="ltfm-heading">
+        <p class="ltfm-kicker">TIME OFF <span>/</span> CONFIGURATION</p>
+        <h2>{{ isEdit ? 'Edit leave type' : 'Create leave type' }}</h2>
+        <p class="ltfm-subtitle">{{ isEdit ? 'Update the leave category and its request rules. The code remains permanently locked.' : 'Define a requestable leave category, entitlement, and its default rules.' }}</p>
+      </div>
+      <button type="button" class="ltfm-close" (click)="cancel.emit()" aria-label="Close dialog">×</button>
+    </header>
+
+    <form class="ltfm-form" [formGroup]="form" (ngSubmit)="onSubmit()">
+      <div class="ltfm-guidance"><span class="ltfm-guidance-dot"></span><span><strong>Set the essentials first.</strong> Policy rules on the right control how this leave type behaves for employees.</span></div>
+      <div class="ltfm-grid">
+        <section class="ltfm-column ltfm-details" aria-labelledby="identity-title">
+          <div class="ltfm-section-head"><span class="ltfm-step">01</span><div><h3 id="identity-title">Identity & allowance</h3><p>Make this category recognizable and set its default yearly entitlement.</p></div></div>
+          <div class="ltfm-fields">
+            <app-input label="Leave type name *" [value]="form.controls.name.value || ''" (valueChange)="form.controls.name.setValue($event)" (blurred)="form.controls.name.markAsTouched()" [error]="form.controls.name.touched && form.controls.name.invalid ? 'Enter a name (up to 100 characters).' : ''" />
+            <app-input label="Code *" hint="Codes are immutable after creation." [value]="form.controls.code.value || ''" [disabled]="isEdit" (valueChange)="form.controls.code.setValue($event)" (blurred)="form.controls.code.markAsTouched()" [error]="form.controls.code.touched && form.controls.code.invalid ? 'Enter a code (up to 20 characters).' : ''" />
+            <app-input label="Description" hint="Optional internal guidance for HR and employees." [value]="form.controls.description.value || ''" (valueChange)="form.controls.description.setValue($event)" />
+          </div>
+          <div class="ltfm-divider"></div>
+          <div class="ltfm-section-head ltfm-section-head--compact"><span class="ltfm-step">02</span><div><h3>Eligibility & allowance</h3><p>Set who can use it and the default entitlement guardrails.</p></div></div>
+          <div class="ltfm-fields ltfm-fields--grid">
+            <app-select label="Category *" [options]="categoryOptions" [value]="form.controls.category.value || 'custom'" (valueChange)="form.controls.category.setValue($event)" />
+            <app-select label="Applicable to *" [options]="genderOptions" [value]="form.controls.applicableGender.value || 'all'" (valueChange)="form.controls.applicableGender.setValue($event)" />
+            <app-input label="Default days per year *" type="number" [value]="(form.controls.defaultDaysPerYear.value ?? 0).toString()" (valueChange)="form.controls.defaultDaysPerYear.setValue(+$event)" [error]="form.controls.defaultDaysPerYear.touched && form.controls.defaultDaysPerYear.invalid ? 'Enter at least 0.5 day.' : ''" />
+            <app-input label="Minimum notice (days)" type="number" [value]="(form.controls.minimumNoticeDays.value ?? 0).toString()" (valueChange)="form.controls.minimumNoticeDays.setValue($event ? +$event : 0)" />
+            <div class="ltfm-wide"><app-input label="Maximum consecutive days" hint="Leave blank when no limit applies." type="number" [value]="(form.controls.maxConsecutiveDays.value ?? '').toString()" (valueChange)="form.controls.maxConsecutiveDays.setValue($event ? +$event : null)" /></div>
+          </div>
+        </section>
+
+        <section class="ltfm-column ltfm-rules" aria-labelledby="rules-title">
+          <div class="ltfm-section-head"><span class="ltfm-step ltfm-step--rules">03</span><div><h3 id="rules-title">Request rules</h3><p>Turn on only the rules that employees need to follow.</p></div></div>
+          <div class="ltfm-rule-list">
+            <label class="ltfm-check"><input type="checkbox" [formControl]="form.controls.isPaid" /><span class="ltfm-check-copy"><strong>Paid leave</strong><small>Deducts from the employee's paid entitlement.</small></span><span class="ltfm-toggle-hint">Allowance</span></label>
+            <label class="ltfm-check"><input type="checkbox" [formControl]="form.controls.requiresApproval" /><span class="ltfm-check-copy"><strong>Manager approval</strong><small>Requests require approval before they apply.</small></span><span class="ltfm-toggle-hint">Workflow</span></label>
+            <label class="ltfm-check"><input type="checkbox" [formControl]="form.controls.requiresDocument" /><span class="ltfm-check-copy"><strong>Supporting document</strong><small>Ask employees for evidence when the threshold is reached.</small></span><span class="ltfm-toggle-hint">Evidence</span></label>
+            @if (form.controls.requiresDocument.value) {
+              <div class="ltfm-reveal"><app-input label="Document required after (days)" hint="Set 0 to ask for a document immediately." type="number" [value]="(form.controls.documentRequiredAfterDays.value ?? '').toString()" (valueChange)="form.controls.documentRequiredAfterDays.setValue($event ? +$event : null)" /></div>
+            }
+            <label class="ltfm-check"><input type="checkbox" [formControl]="form.controls.carryForwardAllowed" /><span class="ltfm-check-copy"><strong>Carry-forward allowed</strong><small>Retain unused entitlement under configured limits.</small></span><span class="ltfm-toggle-hint">Rollover</span></label>
+            @if (form.controls.carryForwardAllowed.value) {
+              <div class="ltfm-reveal ltfm-reveal--two"><app-input label="Maximum days" type="number" [value]="(form.controls.maxCarryForwardDays.value ?? '').toString()" (valueChange)="form.controls.maxCarryForwardDays.setValue($event ? +$event : null)" /><app-input label="Expiry (months)" type="number" [value]="(form.controls.carryForwardExpiryMonths.value ?? '').toString()" (valueChange)="form.controls.carryForwardExpiryMonths.setValue($event ? +$event : null)" /></div>
+            }
+            <label class="ltfm-check"><input type="checkbox" [formControl]="form.controls.proRataForNewJoiners" /><span class="ltfm-check-copy"><strong>Pro-rate for new joiners</strong><small>Calculate the first-year entitlement proportionally.</small></span><span class="ltfm-toggle-hint">Proration</span></label>
+          </div>
+          <div class="ltfm-rule-note"><strong>Good to know</strong><span>These settings become the starting point for future policy and entitlement calculations.</span></div>
+        </section>
+      </div>
+      <footer class="ltfm-footer"><p><span>*</span> Required fields</p><div class="ltfm-actions"><app-button type="button" variant="secondary" [disabled]="loading" (click)="cancel.emit()">Cancel</app-button><app-button type="submit" [loading]="loading" [disabled]="loading">{{ isEdit ? 'Save changes' : 'Create leave type' }}</app-button></div></footer>
+    </form>
+  </section>
+</div>

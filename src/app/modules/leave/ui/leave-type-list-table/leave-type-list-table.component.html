@@ -1,0 +1,15 @@
+<div class="ltt-table-wrap">
+  <table class="ltt-table">
+    <thead><tr><th>Leave type</th><th>Code</th><th>Category</th><th>Compensation</th><th>Annual allowance</th><th>Status</th>@if (canManage) { <th class="ltt-action-heading"><span class="sr-only">Actions</span></th> }</tr></thead>
+    <tbody>
+      @for (type of leaveTypes; track type.id) {
+        <tr [class.ltt-row--inactive]="!type.isActive">
+          <td class="ltt-type-cell"><span class="ltt-type-name">{{ type.name }}</span>@if (type.description) { <span class="ltt-type-description">{{ type.description }}</span> }</td>
+          <td><code class="ltt-code">{{ type.code }}</code></td><td><span class="ltt-category">{{ type.category }}</span></td><td>{{ type.isPaid ? 'Paid' : 'Unpaid' }}</td><td>{{ type.defaultDaysPerYear }} days</td>
+          <td><span class="ltt-status" [class.ltt-status--inactive]="!type.isActive"><span class="ltt-status-dot"></span>{{ type.isActive ? 'Active' : 'Inactive' }}</span></td>
+          @if (canManage) { <td class="ltt-actions-cell"><button type="button" class="ltt-menu-btn" (click)="toggleMenu(type.id, $event)" aria-label="Actions for {{ type.name }}">⋯</button>@if (openMenuId() === type.id) { <div class="ltt-menu" (click)="$event.stopPropagation()"><button type="button" (click)="onEdit(type, $event)">Edit configuration</button>@if (type.isActive) { <button type="button" class="ltt-menu-danger" (click)="onDeactivate(type, $event)">Deactivate</button> }</div> }</td> }
+        </tr>
+      }
+    </tbody>
+  </table>
+</div>

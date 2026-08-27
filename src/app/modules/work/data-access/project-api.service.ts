@@ -6,7 +6,8 @@ import {
   CreateProjectRequestDto, CreateProjectResponseDto, EditProjectRequestDto,
   PagedResultDto, ProjectDetailDto, ProjectListItemDto
 } from '../models/dto/project.dto';
-import { MyProjectMilestoneDto, ObjectiveDetailDto, ObjectiveSubtreeResponseDto, EditObjectiveRequestDto, CreateObjectiveRequestDto } from '../models/dto/milestone.dto';
+import { MyProjectMilestoneDto, ObjectiveDetailDto, ObjectiveSubtreeResponseDto, EditObjectiveRequestDto, CreateObjectiveRequestDto, AddObjectiveMemberOutcomeDto } from '../models/dto/milestone.dto';
+import { ObjectiveTreeItemDto } from '../models/dto/objective-tree.dto';
 
 @Injectable({ providedIn: 'root' })
 export class ProjectApiService {
@@ -34,12 +35,17 @@ export class ProjectApiService {
     formData.set('description', payload.description);
     formData.set('startDate', payload.startDate);
     formData.set('targetDate', payload.targetDate);
-    formData.set('releaseDate', payload.releaseDate);
+    if (payload.releaseDate) {
+      formData.set('releaseDate', payload.releaseDate);
+    }
     formData.set('color', payload.color);
     formData.set('actualHours', String(payload.actualHours));
     formData.set('defaultObjectiveAllocatedHours', String(payload.defaultObjectiveAllocatedHours));
     if (payload.logoFile) {
       formData.set('logo', payload.logoFile);
+    }
+    if (payload.bannerFile) {
+      formData.set('banner', payload.bannerFile);
     }
     return this.http.post<CreateProjectResponseDto>(this.base, formData);
   }
@@ -60,8 +66,17 @@ export class ProjectApiService {
     return this.http.post<void>(`${this.base}/${id}/unachieve`, {});
   }
 
+  addMember(projectId: string, employeeId: string): Observable<HttpResponse<AddObjectiveMemberOutcomeDto>> {
+    return this.http.post<AddObjectiveMemberOutcomeDto>(
+      `${this.base}/${projectId}/members`, { employeeId }, { observe: 'response' });
+  }
+
   getMyMilestones(projectId: string): Observable<MyProjectMilestoneDto[]> {
     return this.http.get<MyProjectMilestoneDto[]>(`${this.base}/${projectId}/objectives/mine`);
+  }
+
+  getProjectTree(projectId: string): Observable<ObjectiveTreeItemDto[]> {
+    return this.http.get<ObjectiveTreeItemDto[]>(`${this.base}/${projectId}/objectives`);
   }
 
   getObjectiveById(id: string): Observable<ObjectiveDetailDto> {

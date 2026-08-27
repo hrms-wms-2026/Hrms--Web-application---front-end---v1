@@ -61,7 +61,12 @@ export const routes: Routes = [
         loadChildren: () => import('./modules/people/people.routes').then((module) => module.PEOPLE_ROUTES)
       },
       { path: 'calendar', loadComponent: loadPlaceholder, data: { title: 'Calendar' } },
-      { path: 'time-off', loadComponent: loadPlaceholder, data: { title: 'Time Off' } },
+      {
+        path: 'time-off',
+        canActivate: [permissionGuard],
+        data: { permissions: ['leave:read-own'], modules: ['leave'] },
+        loadChildren: () => import('./modules/leave/leave.routes').then((module) => module.LEAVE_ROUTES)
+      },
       {
         path: 'attendance',
         canActivate: [permissionGuard],
@@ -140,6 +145,18 @@ export const routes: Routes = [
               { path: 'new', pathMatch: 'full', redirectTo: '' },
               { path: ':id/edit', redirectTo: '' }
             ]
+          },
+          {
+            path: 'devices',
+            loadComponent: () =>
+              import('./modules/settings/feature/connect-device/connect-device.component').then(
+                (m) => m.ConnectDeviceComponent
+              ),
+            canActivate: [permissionGuard],
+            data: {
+              title: 'Devices',
+              modules: ['desktop_agent_gateway']
+            }
           },
           { path: '', pathMatch: 'full', redirectTo: 'general' }
         ]

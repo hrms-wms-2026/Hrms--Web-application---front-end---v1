@@ -1,9 +1,12 @@
 import { inject } from '@angular/core';
 import { patchState, signalStore, withMethods, withState } from '@ngrx/signals';
-import { firstValueFrom } from 'rxjs';
+import { firstValueFrom, forkJoin } from 'rxjs';
 import { ProjectApiService } from '../data-access/project-api.service';
 import { ObjectiveMemberApiService } from '../data-access/objective-member-api.service';
-import { toMilestone, toMilestoneTreeNode, toProjectDetail } from '../utils/project.mapper';
+import { SprintApiService } from '../data-access/sprint-api.service';
+import { TaskApiService } from '../data-access/task-api.service';
+import { buildObjectiveForest, findTreeNode, isLeafObjective, removeTreeNode, toMilestone, toProjectDetail, toSprintTreeNode, toTaskTreeNode, updateTreeNode } from '../utils/project.mapper';
+import { toTaskStatusColumn } from '../utils/task.mapper';
 import { ProjectDetail } from '../models/project.model';
 import { Milestone, MilestoneTreeNode, ObjectiveDetail } from '../models/milestone.model';
 import { EditObjectiveRequestDto, CreateObjectiveRequestDto } from '../models/dto/milestone.dto';
@@ -42,7 +45,13 @@ function extractError(err: any, fallback: string): string {
 export const ProjectDetailStore = signalStore(
   { providedIn: 'root' },
   withState<ProjectDetailState>(initialState),
-  withMethods((store, api = inject(ProjectApiService), memberApi = inject(ObjectiveMemberApiService)) => ({
+  withMethods((
+    store,
+    api = inject(ProjectApiService),
+    memberApi = inject(ObjectiveMemberApiService),
+    sprintApi = inject(SprintApiService),
+    taskApi = inject(TaskApiService)
+  ) => ({
     async loadProject(id: string): Promise<void> {
       patchState(store, { projectLoading: true, projectError: null });
       try {
@@ -63,11 +72,11 @@ export const ProjectDetailStore = signalStore(
       }
     },
 
-    async loadMilestoneSubtree(objectiveId: string): Promise<void> {
+    async loadProjectTree(projectId: string): Promise<void> {
       patchState(store, { subtreeLoading: true, subtreeError: null });
       try {
-        const response = await firstValueFrom(api.getMilestoneSubtree(objectiveId));
-        patchState(store, { selectedSubtree: toMilestoneTreeNode(response.objective), subtreeLoading: false });
+        const items = await firstValueFrom(api.getProjectTree(projectId));
+        patchState(store, { selectedSubtree: buildObjectiveForest(items), subtreeLoading: false });
       } catch (err) {
         patchState(store, { subtreeError: extractError(err, 'Failed to load milestone.'), subtreeLoading: false });
       }
@@ -202,6 +211,157 @@ export const ProjectDetailStore = signalStore(
         return { success: true };
       } catch (err) {
         patchState(store, { milestoneActionError: extractError(err, 'Failed to reject invitation.') });
+        return { success: false };
+      }
+    },
+
+    async loadSprintsAndTasksForLeaf(objectiveId: string, options?: { force?: boolean }): Promise<void> {
+      const tree = store.selectedSubtree();
+      if (!tree) return;
+      const target = findTreeNode(tree, objectiveId);
+      if (!target || !isLeafObjective(target)) return;
+      const state = target.sprintTaskLoadState;
+      if (!options?.force && (state === 'loaded' || state === 'loading')) return;
+
+      patchState(store, {
+        selectedSubtree: updateTreeNode(tree, objectiveId, (node) => ({ ...node, sprintTaskLoadState: 'loading' }))
+      });
+
+      try {
+        const [sprints, tasks, statuses] = await firstValueFrom(forkJoin([
+          sprintApi.getByObjective(objectiveId, false),
+          taskApi.getTasks(objectiveId),
+          taskApi.getStatuses(objectiveId)
+        ]));
+        const current = store.selectedSubtree();
+        if (!current) return;
+        const leaf = findTreeNode(current, objectiveId);
+        if (!leaf) return;
+        const statusNames = Object.fromEntries(statuses.map((s) => [s.id, s.name]));
+        const taskStatuses = statuses.map(toTaskStatusColumn);
+        const parent = { ...leaf, statusNames, taskStatuses };
+        const children = [
+          ...sprints.map((sprint) => toSprintTreeNode(sprint, parent)),
+          ...tasks
+            .filter((task) => task.sprintId === null)
+            .map((task) => toTaskTreeNode(task, parent, statusNames[task.statusId] ?? task.statusId))
+        ];
+        patchState(store, {
+          selectedSubtree: updateTreeNode(current, objectiveId, (node) => ({
+            ...node,
+            children,
+            sprintTaskLoadState: 'loaded',
+            statusNames,
+            taskStatuses
+          }))
+        });
+      } catch {
+        const current = store.selectedSubtree();
+        if (!current) return;
+        patchState(store, {
+          selectedSubtree: updateTreeNode(current, objectiveId, (node) => ({ ...node, sprintTaskLoadState: 'error' }))
+        });
+      }
+    },
+
+    async loadTasksForSprint(sprintId: string, options?: { force?: boolean }): Promise<void> {
+      const tree = store.selectedSubtree();
+      if (!tree) return;
+      const target = findTreeNode(tree, sprintId);
+      if (!target || target.kind !== 'sprint') return;
+      const state = target.sprintTaskLoadState;
+      if (!options?.force && (state === 'loaded' || state === 'loading')) return;
+
+      patchState(store, {
+        selectedSubtree: updateTreeNode(tree, sprintId, (node) => ({ ...node, sprintTaskLoadState: 'loading' }))
+      });
+
+      try {
+        const tasks = await firstValueFrom(taskApi.getBySprintId(sprintId));
+        const current = store.selectedSubtree();
+        if (!current) return;
+        const sprint = findTreeNode(current, sprintId);
+        if (!sprint) return;
+        const children = tasks.map((task) =>
+          toTaskTreeNode(task, sprint, (sprint.statusNames ?? {})[task.statusId] ?? task.statusId)
+        );
+        patchState(store, {
+          selectedSubtree: updateTreeNode(current, sprintId, (node) => ({
+            ...node,
+            children,
+            sprintTaskLoadState: 'loaded'
+          }))
+        });
+      } catch {
+        const current = store.selectedSubtree();
+        if (!current) return;
+        patchState(store, {
+          selectedSubtree: updateTreeNode(current, sprintId, (node) => ({ ...node, sprintTaskLoadState: 'error' }))
+        });
+      }
+    },
+
+    async achieveSprint(sprintId: string): Promise<{ success: boolean }> {
+      try {
+        const dto = await firstValueFrom(sprintApi.achieve(sprintId));
+        const tree = store.selectedSubtree();
+        if (tree) {
+          patchState(store, {
+            selectedSubtree: updateTreeNode(tree, sprintId, (node) => ({
+              ...node,
+              title: dto.name,
+              startDate: dto.startDate,
+              endDate: dto.endDate,
+              status: dto.status,
+              isAchieved: dto.status === 'achieved'
+            })),
+            milestoneActionError: null
+          });
+        }
+        return { success: true };
+      } catch (err) {
+        patchState(store, { milestoneActionError: extractError(err, 'Failed to achieve the sprint.') });
+        return { success: false };
+      }
+    },
+
+    async completeSprint(sprintId: string): Promise<{ success: boolean }> {
+      try {
+        const dto = await firstValueFrom(sprintApi.complete(sprintId));
+        const tree = store.selectedSubtree();
+        if (tree) {
+          patchState(store, {
+            selectedSubtree: updateTreeNode(tree, sprintId, (node) => ({
+              ...node,
+              title: dto.name,
+              startDate: dto.startDate,
+              endDate: dto.endDate,
+              status: dto.status,
+              isAchieved: dto.status === 'achieved'
+            })),
+            milestoneActionError: null
+          });
+        }
+        return { success: true };
+      } catch (err) {
+        patchState(store, { milestoneActionError: extractError(err, 'Failed to complete the sprint.') });
+        return { success: false };
+      }
+    },
+
+    async deleteTask(taskId: string): Promise<{ success: boolean }> {
+      try {
+        await firstValueFrom(taskApi.deleteTask(taskId));
+        const tree = store.selectedSubtree();
+        if (tree) {
+          patchState(store, {
+            selectedSubtree: removeTreeNode(tree, taskId),
+            milestoneActionError: null
+          });
+        }
+        return { success: true };
+      } catch (err) {
+        patchState(store, { milestoneActionError: extractError(err, 'Failed to delete the task.') });
         return { success: false };
       }
     }

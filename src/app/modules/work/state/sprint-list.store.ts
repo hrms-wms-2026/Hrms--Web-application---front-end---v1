@@ -3,7 +3,7 @@ import { patchState, signalStore, withMethods, withState } from '@ngrx/signals';
 import { firstValueFrom } from 'rxjs';
 import { SprintApiService } from '../data-access/sprint-api.service';
 import { toSprint } from '../utils/sprint.mapper';
-import { Sprint } from '../models/sprint.model';
+import { Sprint, SprintStatus } from '../models/sprint.model';
 import { CreateSprintRequestDto, EditSprintRequestDto } from '../models/dto/sprint.dto';
 
 interface SprintListState {
@@ -76,6 +76,18 @@ export const SprintListStore = signalStore(
         return true;
       } catch (err) {
         patchState(store, { error: extractError(err, 'Failed to achieve the sprint.') });
+        return false;
+      }
+    },
+
+    async setStatus(sprintId: string, status: SprintStatus, objectiveId: string, activeOnly: boolean): Promise<boolean> {
+      patchState(store, { error: null });
+      try {
+        await firstValueFrom(api.setStatus(sprintId, status));
+        await this.load(objectiveId, activeOnly);
+        return true;
+      } catch (err) {
+        patchState(store, { error: extractError(err, 'Failed to change the sprint status.') });
         return false;
       }
     }

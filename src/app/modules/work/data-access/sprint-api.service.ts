@@ -3,6 +3,7 @@ import { Injectable, inject } from '@angular/core';
 import { Observable } from 'rxjs';
 import { environment } from '../../../../environments/environment';
 import { CreateSprintRequestDto, EditSprintRequestDto, SprintDto } from '../models/dto/sprint.dto';
+import { SprintStatus } from '../models/sprint.model';
 
 @Injectable({ providedIn: 'root' })
 export class SprintApiService {
@@ -28,5 +29,9 @@ export class SprintApiService {
 
   achieve(sprintId: string): Observable<SprintDto> {
     return this.http.post<SprintDto>(`${this.baseUrl}/sprints/${sprintId}/achieve`, {});
+  }
+
+  setStatus(sprintId: string, status: SprintStatus): Observable<SprintDto> {
+    return this.http.patch<SprintDto>(`${this.baseUrl}/sprints/${sprintId}/status`, { status });
   }
 }

@@ -1,0 +1,62 @@
+.cda-page-header {
+  margin-top: -1.25rem;
+  margin-bottom: 0.75rem;
+  padding-bottom: 0.625rem;
+  border-bottom: 1px solid var(--color-border);
+}
+
+.cda-card {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  max-width: 32rem;
+  padding: 1.25rem 1.5rem;
+  border: 1px solid color-mix(in srgb, var(--color-border) 60%, transparent);
+  border-radius: 12px;
+  background: var(--color-surface);
+}
+
+.cda-title {
+  margin: 0;
+  font-size: 1.0625rem;
+  font-weight: 600;
+  color: var(--color-text-primary);
+}
+
+.cda-description {
+  margin: 0;
+  font-size: 0.875rem;
+  line-height: 1.45;
+  color: var(--color-text-secondary);
+}
+
+.cda-code-row {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.cda-code {
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 1.5rem;
+  font-weight: 700;
+  letter-spacing: 0.15em;
+  color: var(--color-text-primary);
+}
+
+.cda-copy-btn {
+  padding: 0.375rem 0.75rem;
+  border: 1px solid var(--color-border);
+  border-radius: 8px;
+  background: var(--color-surface-secondary);
+  color: var(--color-text-primary);
+  font-size: 0.8125rem;
+  font-weight: 500;
+  cursor: pointer;
+}
+
+.cda-countdown {
+  margin: 0;
+  font-size: 0.8125rem;
+  color: var(--color-text-secondary);
+}
