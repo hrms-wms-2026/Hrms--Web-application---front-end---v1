@@ -29,9 +29,19 @@ import {
   workAreaLabel
 } from '../../models/work-area-change-request.model';
 import { TimeTrackingAction, TimeTrackingStore } from '../../state/time-tracking.store';
+import {
+  DISPLAY_TIMEZONE_FALLBACK as SHARED_DISPLAY_TIMEZONE_FALLBACK,
+  formatDate as formatDateShared,
+  formatDateTime as formatDateTimeShared,
+  formatMinutes as formatMinutesShared,
+  formatWorkAreaDate as formatWorkAreaDateShared,
+  sourceLabel as sourceLabelShared,
+  statusLabel as statusLabelShared,
+  validDisplayTimezone as validDisplayTimezoneShared,
+  workModeLabel as workModeLabelShared
+} from '../../utils/attendance-formatters';
 
 const DAY_IN_MILLISECONDS = 24 * 60 * 60 * 1000;
-const DISPLAY_TIMEZONE_FALLBACK = 'UTC';
 type AttendanceViewMode = 'my' | 'team';
 type PersonalRequestTab = 'corrections' | 'work-area';
 
@@ -88,7 +98,7 @@ export class TimeTrackingComponent implements OnInit {
   readonly currentWeekRange = currentWeekRange();
   /** History rows have no timezone field, so use Today.timezone for the selected company.
    * UTC is an explicit display-only fallback until Today is available; it is never the browser timezone. */
-  readonly displayTimezone = computed(() => this.store.today()?.timezone?.trim() || DISPLAY_TIMEZONE_FALLBACK);
+  readonly displayTimezone = computed(() => this.store.today()?.timezone?.trim() || SHARED_DISPLAY_TIMEZONE_FALLBACK);
   readonly canViewCoveredEmployees = computed(() => this.store.today()?.canViewCoveredEmployees ?? false);
   readonly friendlyTodayMessages = computed(() => this.getFriendlyTodayMessages(this.store.today()));
   readonly correctionFormOpen = signal<AttendanceHistoryRow | null>(null);
@@ -330,14 +340,7 @@ export class TimeTrackingComponent implements OnInit {
   }
 
   formatWorkAreaDate(value: string, timezone: string | null | undefined): string {
-    const displayTimezone = validDisplayTimezone(timezone);
-    if (!displayTimezone || !/^\d{4}-\d{2}-\d{2}$/.test(value)) return this.formatDate(value);
-    const [year, month, day] = value.split('-').map(Number);
-    try {
-      return new Intl.DateTimeFormat(undefined, { year: 'numeric', month: 'short', day: 'numeric', timeZone: displayTimezone }).format(new Date(Date.UTC(year, month - 1, day, 12)));
-    } catch {
-      return this.formatDate(value);
-    }
+    return formatWorkAreaDateShared(value, timezone);
   }
 
   private buildWorkAreaRequest(): WorkAreaChangeRequestPayload | null {
@@ -493,7 +496,7 @@ export class TimeTrackingComponent implements OnInit {
   private toDateTimeOffset(value: string, workDate: string): string | null {
     if (!value || !/^\d{2}:\d{2}$/.test(value)) return null;
     try {
-      const timezone = validDisplayTimezone(this.displayTimezone()) ?? DISPLAY_TIMEZONE_FALLBACK;
+      const timezone = validDisplayTimezoneShared(this.displayTimezone()) ?? SHARED_DISPLAY_TIMEZONE_FALLBACK;
       const iso = localDateTimeToIso(workDate, value, timezone);
       return iso && dateOnlyForZone(iso, timezone) === workDate ? iso : null;
     } catch {
@@ -503,7 +506,7 @@ export class TimeTrackingComponent implements OnInit {
 
   private localTimeForInput(value: string): string {
     try {
-      const timezone = validDisplayTimezone(this.displayTimezone()) ?? DISPLAY_TIMEZONE_FALLBACK;
+      const timezone = validDisplayTimezoneShared(this.displayTimezone()) ?? SHARED_DISPLAY_TIMEZONE_FALLBACK;
       const parts = new Intl.DateTimeFormat('en-CA', { timeZone: timezone, hour: '2-digit', minute: '2-digit', hour12: false }).formatToParts(new Date(value));
       return `${parts.find((part) => part.type === 'hour')?.value ?? '00'}:${parts.find((part) => part.type === 'minute')?.value ?? '00'}`;
     } catch {
@@ -523,72 +526,27 @@ export class TimeTrackingComponent implements OnInit {
   }
 
   statusLabel(value: string, backendLabel?: string | null): string {
-    const label = backendLabel?.trim();
-    if (label) {
-      return label;
-    }
-
-    return humanizeValue(value, {
-      not_clocked_in: 'Not clocked in',
-      clocked_in: 'Clocked in',
-      on_break: 'On break',
-      clocked_out: 'Clocked out',
-      present: 'Present',
-      absent: 'Absent',
-      late: 'Late',
-      off_day: 'Off day'
-    });
+    return statusLabelShared(value, backendLabel);
   }
 
   workModeLabel(value: string | null): string {
-    return value ? humanizeValue(value, { onsite: 'Onsite', remote: 'Remote', hybrid: 'Hybrid', field: 'Field' }) : 'Not specified';
+    return workModeLabelShared(value);
   }
 
   sourceLabel(value: string | null): string {
-    return value ? humanizeValue(value, { web: 'Web', desktop_tray: 'Desktop tray', biometric: 'Biometric' }) : '—';
+    return sourceLabelShared(value);
   }
 
   formatDate(value: string): string {
-    return formatDate(value);
+    return formatDateShared(value);
   }
 
   formatDateTime(value: string | null, timezone?: string | null): string {
-    if (!value) {
-      return '—';
-    }
-
-    const date = new Date(value);
-    if (Number.isNaN(date.getTime())) {
-      return '—';
-    }
-
-    const displayTimezone = validDisplayTimezone(timezone);
-    if (!displayTimezone) {
-      return '—';
-    }
-
-    try {
-      return new Intl.DateTimeFormat(undefined, {
-        hour: 'numeric',
-        minute: '2-digit',
-        timeZone: displayTimezone
-      }).format(date);
-    } catch {
-      // Invalid runtime timezone data must not surface a technical error to users.
-      return '—';
-    }
+    return formatDateTimeShared(value, timezone);
   }
 
   formatMinutes(value: number | null): string {
-    if (value === null || value < 0) {
-      return '—';
-    }
-    const hours = Math.floor(value / 60);
-    const minutes = value % 60;
-    if (hours === 0) {
-      return `${minutes}m`;
-    }
-    return minutes === 0 ? `${hours}h` : `${hours}h ${minutes}m`;
+    return formatMinutesShared(value);
   }
 
   employeeLabel(row: AttendanceHistoryRow): string {
@@ -677,26 +635,6 @@ function toDateOnly(value: Date): string {
   return `${value.getFullYear()}-${String(value.getMonth() + 1).padStart(2, '0')}-${String(value.getDate()).padStart(2, '0')}`;
 }
 
-function validDisplayTimezone(timezone: string | null | undefined): string | null {
-  const candidate = timezone?.trim() || DISPLAY_TIMEZONE_FALLBACK;
-  try {
-    new Intl.DateTimeFormat(undefined, { timeZone: candidate }).format();
-    return candidate;
-  } catch {
-    return null;
-  }
-}
-
-function formatDate(value: string): string {
-  if (!/^\d{4}-\d{2}-\d{2}$/.test(value)) return 'Date unavailable';
-  const [year, month, day] = value.split('-').map(Number);
-  const date = new Date(Date.UTC(year, month - 1, day, 12));
-  if (Number.isNaN(date.getTime()) || date.getUTCFullYear() !== year || date.getUTCMonth() !== month - 1 || date.getUTCDate() !== day) {
-    return 'Date unavailable';
-  }
-  return new Intl.DateTimeFormat(undefined, { month: 'short', day: 'numeric', year: 'numeric', timeZone: 'UTC' }).format(date);
-}
-
 function humanizeAttendanceMessage(value: string): string | null {
   const normalized = value.trim().toLowerCase().replace(/[ -]+/g, '_');
   if (!normalized) {
@@ -721,16 +659,3 @@ function humanizeAttendanceMessage(value: string): string | null {
   return isMachineValue(value) ? null : value;
 }
 
-function humanizeValue(value: string, knownValues: Record<string, string>): string {
-  const normalized = value.trim().toLowerCase().replace(/[ -]+/g, '_');
-  if (knownValues[normalized]) {
-    return knownValues[normalized];
-  }
-  if (!normalized) {
-    return 'Not specified';
-  }
-  return normalized
-    .split('_')
-    .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
-    .join(' ');
-}
