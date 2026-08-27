@@ -102,18 +102,37 @@ describe('PeopleApiService', () => {
         workDate: '2026-08-21',
         timezone: 'Asia/Colombo',
         scheduledStartTime: '09:00',
-        warningLabel: 'Still has not clocked in'
+        warningLabel: 'Still has not clocked in',
+        attendanceStatus: 'not_clocked_in',
+        attendanceStatusLabel: 'Not clocked in',
+        attentionType: 'not_clocked_in',
+        attentionSeverity: 'critical',
+        attentionLabel: 'Still has not clocked in',
+        breakUsedMinutes: 0,
+        breakAllowanceMinutes: 30,
+        breakOverageMinutes: 0,
+        isOverBreakAllowance: false
       }
     };
 
     service.listEmployees({ page: 1, pageSize: 25 }).subscribe((page) => {
-      expect(page.items[0].attendanceSummary?.showNotClockedInWarning).toBe(true);
-      expect(page.items[0].attendanceSummary?.warningLabel).toBe('Still has not clocked in');
+      expect(page.items[0].attendanceSummary).toEqual(warningEmployee.attendanceSummary);
     });
 
     const req = httpMock.expectOne(`${environment.apiUrl}/employees?page=1&pageSize=25`);
     expect(req.request.method).toBe('GET');
     req.flush({ ...mockEmployeePage, items: [warningEmployee] });
+  });
+
+  it('preserves a null attendance summary without transforming the employee response', () => {
+    const employeeWithNullSummary = { ...mockEmployee, attendanceSummary: null };
+
+    service.listEmployees({ page: 1, pageSize: 25 }).subscribe((page) => {
+      expect(page.items[0].attendanceSummary).toBeNull();
+    });
+
+    const req = httpMock.expectOne(`${environment.apiUrl}/employees?page=1&pageSize=25`);
+    req.flush({ ...mockEmployeePage, items: [employeeWithNullSummary] });
   });
 
   it('omits empty/undefined query params', () => {
@@ -276,6 +295,15 @@ describe('PeopleApiService', () => {
     const req = httpMock.expectOne(`${environment.apiUrl}/employees/emp-1/detail`);
     expect(req.request.method).toBe('GET');
     req.flush({} as EmployeeDetailResponse);
+  });
+
+  it('posts the enabled flag to /employees/{id}/tray-app-access', () => {
+    service.setTrayAppAccess('emp-1', false).subscribe();
+
+    const req = httpMock.expectOne(`${environment.apiUrl}/employees/emp-1/tray-app-access`);
+    expect(req.request.method).toBe('POST');
+    expect(req.request.body).toEqual({ enabled: false });
+    req.flush(null);
   });
 
   it('changePosition sends POST to /employees/{id}/change-position with the payload', () => {

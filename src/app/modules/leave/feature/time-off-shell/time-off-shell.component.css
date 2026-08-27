@@ -1,0 +1,4 @@
+/* People-style navigation: only routed Time Off content belongs in this feature shell. */
+:host { display: block; min-width: 0; height: 100%; }
+.tos-content { min-width: 0; min-height: 100%; }
+

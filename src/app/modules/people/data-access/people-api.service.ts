@@ -58,6 +58,10 @@ export class PeopleApiService {
     return this.http.post<ResendInvitationResponse>(`${environment.apiUrl}/employees/${id}/resend-invitation`, {});
   }
 
+  setTrayAppAccess(id: string, enabled: boolean): Observable<void> {
+    return this.http.post<void>(`${environment.apiUrl}/employees/${id}/tray-app-access`, { enabled });
+  }
+
   getEmployeeDetail(id: string): Observable<EmployeeDetailResponse> {
     return this.http.get<EmployeeDetailResponse>(`${environment.apiUrl}/employees/${id}/detail`);
   }
