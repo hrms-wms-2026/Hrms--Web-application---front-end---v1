@@ -23,6 +23,7 @@ const today: AttendanceTodayResponse = {
   breakUsedMinutes: 0,
   breakRemainingMinutes: 60,
   breakState: 'available',
+  breaks: [],
   expectedWorkMode: 'onsite',
   attendanceStatus: 'not_clocked_in',
   clockInAt: null,

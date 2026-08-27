@@ -22,6 +22,7 @@ const baseToday: AttendanceTodayResponse = {
   breakUsedMinutes: 0,
   breakRemainingMinutes: 60,
   breakState: 'available',
+  breaks: [],
   expectedWorkMode: 'onsite',
   attendanceStatus: 'clocked_in',
   clockInAt: '2026-08-26T03:24:00Z',
@@ -100,5 +101,38 @@ describe('TodayAtAGlanceCardComponent', () => {
     expect(text).not.toContain('Worked time');
     expect(text).not.toContain('Clocked in');
     expect(text).not.toContain('Not clocked in');
+  });
+
+  it('does not show the activity timeline before the employee has clocked in', async () => {
+    const { fixture } = await setup({ attendanceStatus: 'not_clocked_in', clockInAt: null, totalWorkedMinutes: 0 });
+    expect(fixture.nativeElement.querySelector('[data-testid="today-activity-timeline"]')).toBeNull();
+  });
+
+  it('renders a single working segment when there are no breaks', async () => {
+    const { fixture } = await setup({ clockInAt: '2026-08-26T03:00:00Z', clockOutAt: '2026-08-26T11:00:00Z', breaks: [] });
+    const segments = fixture.nativeElement.querySelectorAll('[data-testid="today-activity-segment"]');
+    expect(segments.length).toBe(1);
+    expect(segments[0].getAttribute('data-segment-type')).toBe('working');
+  });
+
+  it('splits the timeline into working/break/working segments around a closed break', async () => {
+    const { fixture } = await setup({
+      clockInAt: '2026-08-26T03:00:00Z',
+      clockOutAt: '2026-08-26T11:00:00Z',
+      breaks: [{ startedAt: '2026-08-26T07:00:00Z', endedAt: '2026-08-26T07:30:00Z' }]
+    });
+    const segments: NodeListOf<HTMLElement> = fixture.nativeElement.querySelectorAll('[data-testid="today-activity-segment"]');
+    expect(Array.from(segments).map((s) => s.getAttribute('data-segment-type'))).toEqual(['working', 'break', 'working']);
+    expect(segments[1].style.width).toBe('6.25%');
+  });
+
+  it('treats an open (ongoing) break as running to the end of the visible timeline', async () => {
+    const { fixture } = await setup({
+      clockInAt: '2026-08-26T03:00:00Z',
+      clockOutAt: '2026-08-26T11:00:00Z',
+      breaks: [{ startedAt: '2026-08-26T10:00:00Z', endedAt: null }]
+    });
+    const segments: NodeListOf<HTMLElement> = fixture.nativeElement.querySelectorAll('[data-testid="today-activity-segment"]');
+    expect(Array.from(segments).map((s) => s.getAttribute('data-segment-type'))).toEqual(['working', 'break']);
   });
 });

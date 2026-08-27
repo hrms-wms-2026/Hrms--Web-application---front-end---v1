@@ -36,5 +36,27 @@
         <p class="text-xl font-semibold text-[var(--color-text-primary)]">{{ workedTimeLabel() }}</p>
       </div>
     </div>
+
+    @if (timelineSegments().length > 0) {
+      <div class="mt-6">
+        <p class="mb-2 text-sm font-medium text-[var(--color-text-secondary)]">Today's activity</p>
+        <div class="flex h-3 w-full overflow-hidden rounded-full bg-[var(--color-surface-secondary)]" data-testid="today-activity-timeline">
+          @for (segment of timelineSegments(); track $index) {
+            <div
+              data-testid="today-activity-segment"
+              [attr.data-segment-type]="segment.type"
+              class="h-full first:rounded-l-full last:rounded-r-full"
+              [style.width.%]="segment.widthPercent"
+              [style.background-color]="segment.type === 'working' ? 'var(--color-accent)' : 'var(--color-border)'"
+              [attr.title]="segment.type === 'working' ? 'Working' : 'Break'"
+            ></div>
+          }
+        </div>
+        <div class="mt-1 flex justify-between text-xs text-[var(--color-text-secondary)]">
+          <span>{{ clockInTimeLabel() }}</span>
+          <span>{{ timelineEndLabel() }}</span>
+        </div>
+      </div>
+    }
   }
 </app-card>
