@@ -9,30 +9,35 @@
       <button type="button" class="drawer-close" aria-label="Close" (click)="close()">&#x2715;</button>
     </header>
 
+    @if (summary(); as summaryRow) {
+      <section class="drawer-section" aria-labelledby="drawer-summary-heading">
+        <h3 id="drawer-summary-heading">Summary</h3>
+        <dl class="drawer-summary-grid">
+          <div><dt>Clock in</dt><dd>{{ formatDateTime(summaryRow.clockInAt, displayTimezone()) }}</dd></div>
+          <div><dt>Clock out</dt><dd>{{ formatDateTime(summaryRow.clockOutAt, displayTimezone()) }}</dd></div>
+          <div><dt>Break</dt><dd>{{ formatMinutes(summaryRow.breakMinutes) }}</dd></div>
+          <div><dt>Worked time</dt><dd>{{ formatMinutes(summaryRow.totalWorkedMinutes) }}</dd></div>
+          <div><dt>Work mode</dt><dd>{{ workModeLabel(summaryRow.expectedWorkMode) }}</dd></div>
+          <div><dt>Source</dt><dd>{{ sourceLabel(summaryRow.attendanceSource) }}</dd></div>
+          <div><dt>Status</dt><dd>{{ statusLabel(summaryRow.status, summaryRow.statusLabel) }}</dd></div>
+        </dl>
+        @if (summaryRow.canRequestCorrection) {
+          <app-button type="button" variant="secondary" size="sm" (pressed)="emitRequestCorrection()">Request correction</app-button>
+        }
+      </section>
+    }
+
     @if (store.dayDetailLoading()) {
       <div class="drawer-skeleton" aria-busy="true" aria-label="Loading attendance detail"></div>
     } @else if (store.dayDetailError()) {
       <div class="time-tracking-message time-tracking-message--error" role="alert">
-        <p>{{ store.dayDetailError() }}</p>
+        <div>
+          <p>{{ store.dayDetailError() }}</p>
+          @if (summary()) { <p class="table-secondary">Basic attendance summary is shown above. Detailed timeline and activity are unavailable.</p> }
+        </div>
         <app-button type="button" variant="secondary" size="sm" (pressed)="retry()">Try again</app-button>
       </div>
     } @else if (store.dayDetail(); as detail) {
-      <section class="drawer-section" aria-labelledby="drawer-summary-heading">
-        <h3 id="drawer-summary-heading">Summary</h3>
-        <dl class="drawer-summary-grid">
-          <div><dt>Clock in</dt><dd>{{ formatDateTime(detail.summary.clockInAt, displayTimezone()) }}</dd></div>
-          <div><dt>Clock out</dt><dd>{{ formatDateTime(detail.summary.clockOutAt, displayTimezone()) }}</dd></div>
-          <div><dt>Break</dt><dd>{{ formatMinutes(detail.summary.breakMinutes) }}</dd></div>
-          <div><dt>Worked time</dt><dd>{{ formatMinutes(detail.summary.totalWorkedMinutes) }}</dd></div>
-          <div><dt>Work mode</dt><dd>{{ workModeLabel(detail.summary.expectedWorkMode) }}</dd></div>
-          <div><dt>Source</dt><dd>{{ sourceLabel(detail.summary.attendanceSource) }}</dd></div>
-          <div><dt>Status</dt><dd>{{ statusLabel(detail.summary.status, detail.summary.statusLabel) }}</dd></div>
-        </dl>
-        @if (detail.summary.canRequestCorrection) {
-          <app-button type="button" variant="secondary" size="sm" (pressed)="emitRequestCorrection()">Request correction</app-button>
-        }
-      </section>
-
       <section class="drawer-section" aria-labelledby="drawer-timeline-heading">
         <h3 id="drawer-timeline-heading">Timeline</h3>
         @if (detail.timelineEvents.length === 0) {
@@ -69,6 +74,15 @@
         } @else {
           <p class="empty-copy">No activity data recorded for this day.</p>
         }
+      </section>
+    } @else {
+      <section class="drawer-section" aria-labelledby="drawer-timeline-heading">
+        <h3 id="drawer-timeline-heading">Timeline</h3>
+        <p class="empty-copy">Detailed timeline is unavailable for this attendance record.</p>
+      </section>
+      <section class="drawer-section" aria-labelledby="drawer-activity-heading">
+        <h3 id="drawer-activity-heading">Daily activity</h3>
+        <p class="empty-copy">Detailed activity is unavailable for this attendance record.</p>
       </section>
     }
   </aside>

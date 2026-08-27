@@ -96,6 +96,7 @@ export class TimeTrackingComponent implements OnInit {
   readonly historyTo = signal('');
     readonly currentWeekRange = currentWeekRange();
   readonly selectedDetail = signal<AttendanceDetailSelection | null>(null);
+  readonly selectedDetailSummary = signal<AttendanceHistoryRow | null>(null);
   /** History rows have no timezone field, so use Today.timezone for the selected company.
    * UTC is an explicit display-only fallback until Today is available; it is never the browser timezone. */
   readonly displayTimezone = computed(() => this.store.today()?.timezone?.trim() || SHARED_DISPLAY_TIMEZONE_FALLBACK);
@@ -243,16 +244,19 @@ export class TimeTrackingComponent implements OnInit {
   onMyRowSelected(row: AttendanceHistoryRow): void {
     const employeeId = this.store.today()?.employeeId;
     if (!employeeId) return;
+    this.selectedDetailSummary.set(row);
     this.selectedDetail.set({ employeeId, workDate: row.workDate });
   }
 
   onTeamRowSelected(row: AttendanceHistoryRow): void {
     if (!row.employee) return;
+    this.selectedDetailSummary.set(row);
     this.selectedDetail.set({ employeeId: row.employee.employeeId, workDate: row.workDate });
   }
 
   closeDetailDrawer(): void {
     this.selectedDetail.set(null);
+    this.selectedDetailSummary.set(null);
     this.store.clearDayDetail();
   }
 

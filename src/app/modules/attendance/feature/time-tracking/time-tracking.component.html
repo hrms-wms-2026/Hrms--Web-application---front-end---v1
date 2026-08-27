@@ -306,6 +306,7 @@
 
   <app-attendance-detail-drawer
     [selection]="selectedDetail()"
+    [fallbackSummary]="selectedDetailSummary()"
     [displayTimezone]="displayTimezone()"
     (closed)="closeDetailDrawer()"
     (requestCorrection)="openCorrection($event)"

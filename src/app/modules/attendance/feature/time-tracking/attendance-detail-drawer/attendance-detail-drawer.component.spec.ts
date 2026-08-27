@@ -1,7 +1,7 @@
 import { signal } from '@angular/core';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { AttendanceDayDetail } from '../../../models/time-tracking.model';
+import { AttendanceDayDetail, AttendanceHistoryRow } from '../../../models/time-tracking.model';
 import { TimeTrackingStore } from '../../../state/time-tracking.store';
 import { AttendanceDetailDrawerComponent, AttendanceDetailSelection } from './attendance-detail-drawer.component';
 
@@ -55,6 +55,7 @@ describe('AttendanceDetailDrawerComponent', () => {
     data?: AttendanceDayDetail | null;
     loading?: boolean;
     error?: string | null;
+    fallbackSummary?: AttendanceHistoryRow | null;
   } = {}): Promise<{ fixture: ComponentFixture<AttendanceDetailDrawerComponent>; store: DrawerStoreMock }> {
     const store: DrawerStoreMock = {
       dayDetail: signal(options.data ?? null),
@@ -71,6 +72,7 @@ describe('AttendanceDetailDrawerComponent', () => {
 
     const fixture = TestBed.createComponent(AttendanceDetailDrawerComponent);
     fixture.componentRef.setInput('selection', options.selection === undefined ? { employeeId: 'employee-1', workDate: '2026-08-27' } : options.selection);
+    fixture.componentRef.setInput('fallbackSummary', options.fallbackSummary ?? null);
     fixture.componentRef.setInput('displayTimezone', 'UTC');
     fixture.detectChanges();
     await fixture.whenStable();
@@ -97,6 +99,17 @@ describe('AttendanceDetailDrawerComponent', () => {
   it('renders a retryable error state', async () => {
     const { fixture } = await setup({ error: 'Could not load attendance details. Try again.' });
     expect((fixture.nativeElement as HTMLElement).textContent).toContain('Could not load attendance details. Try again.');
+  });
+
+  it('renders the history-row summary when the detail endpoint cannot find a record', async () => {
+    const { fixture } = await setup({ error: 'The requested record could not be found.', fallbackSummary: detail.summary });
+    const text = (fixture.nativeElement as HTMLElement).textContent ?? '';
+
+    expect(text).toContain('Summary');
+    expect(text).toContain('Clock in');
+    expect(text).toContain('Worked time');
+    expect(text).toContain('The requested record could not be found.');
+    expect(text).toContain('Basic attendance summary is shown above. Detailed timeline and activity are unavailable.');
   });
 
   it('renders summary, timeline, and daily activity sections when data loads', async () => {

@@ -29,6 +29,7 @@ export class AttendanceDetailDrawerComponent {
   readonly store = inject(TimeTrackingStore);
 
   readonly selection = input<AttendanceDetailSelection | null>(null);
+  readonly fallbackSummary = input<AttendanceHistoryRow | null>(null);
   readonly displayTimezone = input<string>('UTC');
   readonly closed = output<void>();
   readonly requestCorrection = output<AttendanceHistoryRow>();
@@ -40,6 +41,8 @@ export class AttendanceDetailDrawerComponent {
   readonly sourceLabel = sourceLabel;
   readonly statusLabel = statusLabel;
   readonly timelineEventLabel = timelineEventLabel;
+
+  readonly summary = computed(() => this.store.dayDetail()?.summary ?? this.fallbackSummary());
 
   readonly appUsageByCategory = computed(() => {
     const activity = this.store.dayDetail()?.dailyActivity;
