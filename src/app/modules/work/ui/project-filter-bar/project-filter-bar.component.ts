@@ -1,9 +1,9 @@
 import { Component, OnInit, computed, inject, output, signal } from '@angular/core';
-import { WorkDropdownComponent, WorkDropdownOption } from '../work-dropdown/work-dropdown.component';
+import { SelectComponent, SelectOption } from '../../../../shared/ui/select/select.component';
 import { ProjectCategoryStore } from '../../state/project-category.store';
 import { AchievedFilter } from '../../state/project-list.store';
 
-const STATUS_OPTIONS: readonly WorkDropdownOption[] = [
+const STATUS_OPTIONS: readonly SelectOption[] = [
   { value: 'all', label: 'All statuses' },
   { value: 'active', label: 'Active' },
   { value: 'archived', label: 'Archived' }
@@ -12,22 +12,22 @@ const STATUS_OPTIONS: readonly WorkDropdownOption[] = [
 @Component({
   selector: 'app-project-filter-bar',
   standalone: true,
-  imports: [WorkDropdownComponent],
+  imports: [SelectComponent],
   template: `
     <div class="flex flex-wrap items-start justify-end gap-2">
-      <app-work-dropdown
+      <app-select
         [options]="categoryOptions()"
-        [selected]="selectedCategory() ?? 'all'"
-        accessibleLabel="Project category filter"
-        leadingIcon="category"
-        (selectionChanged)="selectCategoryFromDropdown($event)"
+        [value]="selectedCategory() ?? 'all'"
+        ariaLabel="Project category filter"
+        [icon]="'category'"
+        (valueChange)="selectCategoryFromDropdown($event)"
       />
-      <app-work-dropdown
+      <app-select
         [options]="statusOptions"
-        [selected]="selectedStatus()"
-        accessibleLabel="Project status filter"
-        leadingIcon="status"
-        (selectionChanged)="selectStatusFromDropdown($event)"
+        [value]="selectedStatus()"
+        ariaLabel="Project status filter"
+        [icon]="'status'"
+        (valueChange)="selectStatusFromDropdown($event)"
       />
     </div>
   `
@@ -36,7 +36,7 @@ export class ProjectFilterBarComponent implements OnInit {
   private readonly categoryStore = inject(ProjectCategoryStore);
 
   readonly statusOptions = STATUS_OPTIONS;
-  readonly categoryOptions = computed<WorkDropdownOption[]>(() => [
+  readonly categoryOptions = computed<SelectOption[]>(() => [
     { value: 'all', label: 'All categories' },
     ...this.categoryStore.categories().map((category) => ({ value: category.id, label: category.name }))
   ]);

@@ -13,19 +13,19 @@ import { TaskBoardColumnComponent } from '../../ui/task-board-column/task-board-
 import { TaskTableComponent } from '../../ui/task-table/task-table.component';
 import { TaskCreateModalComponent } from '../../ui/task-create-modal/task-create-modal.component';
 import { TaskDetailModalComponent } from '../../ui/task-detail-modal/task-detail-modal.component';
-import { WorkDropdownComponent } from '../../ui/work-dropdown/work-dropdown.component';
+import { SelectComponent, SelectOption } from '../../../../shared/ui/select/select.component';
 
 @Component({
   selector: 'app-my-task',
   standalone: true,
-  imports: [TaskBoardColumnComponent, TaskTableComponent, TaskCreateModalComponent, TaskDetailModalComponent, ButtonComponent, ErrorStateComponent, WorkDropdownComponent],
+  imports: [TaskBoardColumnComponent, TaskTableComponent, TaskCreateModalComponent, TaskDetailModalComponent, ButtonComponent, ErrorStateComponent, SelectComponent],
   template: `
     <div class="my-task__toolbar">
       <div class="my-task__view-toggle">
         <button data-testid="my-task-view-toggle-board" type="button" [class.my-task__view-toggle--active]="view() === 'board'" (click)="view.set('board')">Board</button>
         <button data-testid="my-task-view-toggle-list" type="button" [class.my-task__view-toggle--active]="view() === 'list'" (click)="view.set('list')">List</button>
       </div>
-      <app-work-dropdown [options]="sprintOptions()" [selected]="sprintFilter() ?? 'all'" accessibleLabel="Sprint filter" leadingIcon="sprint" (selectionChanged)="setSprintFilter($event === 'all' ? null : $event)" />
+      <app-select [options]="sprintOptions()" [value]="sprintFilter() ?? 'all'" ariaLabel="Sprint filter" [icon]="'sprint'" (valueChange)="setSprintFilter($event === 'all' ? null : $event)" />
       <input data-testid="my-task-search" type="text" placeholder="Search my tasks" (input)="search.set($any($event.target).value)" />
       <app-button variant="primary" (pressed)="createOpen.set(true)">Create task</app-button>
     </div>
@@ -126,7 +126,7 @@ export class MyTaskComponent implements OnInit {
     }))
   );
 
-  sprintOptions = computed(() => [
+  sprintOptions = computed<SelectOption[]>(() => [
     { value: 'all', label: 'All Sprints' },
     ...this.sprintStore.sprints().map((sprint) => ({ value: sprint.id, label: sprint.name }))
   ]);

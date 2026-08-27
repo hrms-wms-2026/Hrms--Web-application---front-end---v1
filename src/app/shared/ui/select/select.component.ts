@@ -45,6 +45,7 @@ const SELECT_ICON_PATHS: Record<SelectIcon, string> = {
         [id]="selectId"
         [disabled]="disabled()"
         (change)="onChange($event)"
+        [attr.aria-label]="ariaLabel() || null"
         [attr.aria-invalid]="error() ? true : null"
         [attr.aria-describedby]="error() ? errorId() : null"
         class="w-full rounded-md border border-[var(--color-border)] bg-[var(--color-surface)] px-3 py-1.5 text-sm text-[var(--color-text-primary)] transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-focus-ring)] disabled:cursor-not-allowed disabled:opacity-60"
@@ -71,6 +72,7 @@ export class SelectComponent {
   disabled = input(false);
   value = input<string>('');
   error = input<string>('');
+  ariaLabel = input<string>('');
   icon = input<SelectIcon | undefined>(undefined);
 
   valueChange = output<string>();

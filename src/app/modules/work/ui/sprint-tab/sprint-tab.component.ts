@@ -1,14 +1,14 @@
 import { DatePipe } from '@angular/common';
 import { Component, input, output } from '@angular/core';
 import { TaskTableComponent } from '../task-table/task-table.component';
-import { WorkDropdownComponent, WorkDropdownOption } from '../work-dropdown/work-dropdown.component';
+import { SelectComponent, SelectOption } from '../../../../shared/ui/select/select.component';
 import { Sprint } from '../../models/sprint.model';
 import { TaskStatusColumn, WorkTask } from '../../models/task.model';
 
 @Component({
   selector: 'app-sprint-tab',
   standalone: true,
-  imports: [DatePipe, TaskTableComponent, WorkDropdownComponent],
+  imports: [DatePipe, TaskTableComponent, SelectComponent],
   template: `
     <div class="sprint-tab">
       <div class="sprint-tab__header">
@@ -20,13 +20,13 @@ import { TaskStatusColumn, WorkTask } from '../../models/task.model';
 
         @if (isObjectiveOwner()) {
           <button type="button" class="sprint-tab__edit" aria-label="Edit sprint" title="Edit sprint" (click)="editRequested.emit()"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 20h9" /><path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4Z" /></svg><span>Edit</span></button>
-          <app-work-dropdown
+          <app-select
             class="sprint-tab__status-select"
             [options]="statusOptions"
-            [selected]="sprint().status"
-            accessibleLabel="Sprint status"
-            leadingIcon="status"
-            (selectionChanged)="onStatusPicked($event)"
+            [value]="sprint().status"
+            ariaLabel="Sprint status"
+            [icon]="'status'"
+            (valueChange)="onStatusPicked($event)"
           />
         } @else {
           <span class="sprint-tab__status-text" [attr.data-status]="sprint().status"><span class="sprint-tab__status-dot" aria-hidden="true"></span>{{ sprint().status }}</span>
@@ -78,7 +78,7 @@ export class SprintTabComponent {
   isObjectiveOwner = input.required<boolean>();
   tasks = input.required<readonly WorkTask[]>();
   statusNames = input.required<Record<string, string>>();
-  readonly statusOptions: readonly WorkDropdownOption[] = [
+  readonly statusOptions: readonly SelectOption[] = [
     { value: 'future', label: 'Future' },
     { value: 'active', label: 'Active' },
     { value: 'complete', label: 'Complete' },

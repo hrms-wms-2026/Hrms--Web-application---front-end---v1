@@ -19,48 +19,36 @@ describe('ModuleFilterSelectComponent', () => {
     fixture.detectChanges();
   });
 
-  it('renders All modules plus each option in the shared menu', () => {
-    const host = fixture.nativeElement.querySelector('[data-testid="module-filter-dropdown"]') as HTMLElement;
-    const trigger = host.querySelector('.work-dropdown__trigger') as HTMLButtonElement;
-    expect(trigger.textContent).toContain('Root');
-
-    trigger.click();
-    fixture.detectChanges();
-    const labels = Array.from(host.querySelectorAll('.work-dropdown__option')).map((option) => option.textContent?.trim());
-    expect(labels).toEqual(['All modules', 'Root', 'Child']);
+  it('renders All modules plus each option in the shared select', () => {
+    const select = fixture.nativeElement.querySelector('[data-testid="module-filter-dropdown"] select') as HTMLSelectElement;
+    expect(Array.from(select.options).map((option) => option.textContent?.trim())).toEqual(['All modules', 'Root', 'Child']);
+    expect(select.value).toBe('o1');
   });
 
-  it('emits the selected value when the user changes the dropdown', () => {
+  it('emits the selected value when the user changes the module select', () => {
     const emitted: string[] = [];
     fixture.componentInstance.selectionChanged.subscribe((value) => emitted.push(value));
 
-    const host = fixture.nativeElement.querySelector('[data-testid="module-filter-dropdown"]') as HTMLElement;
-    host.querySelector('.work-dropdown__trigger')?.dispatchEvent(new MouseEvent('click', { bubbles: true }));
-    fixture.detectChanges();
-    const option = Array.from(host.querySelectorAll('.work-dropdown__option')).find((item) => item.textContent?.trim() === 'All modules') as HTMLButtonElement;
-    option.click();
+    const select = fixture.nativeElement.querySelector('[data-testid="module-filter-dropdown"] select') as HTMLSelectElement;
+    select.value = 'all';
+    select.dispatchEvent(new Event('change'));
     fixture.detectChanges();
 
     expect(emitted).toEqual(['all']);
   });
 
-  it('renders All/Active/Inactive options for the activity filter menu', () => {
-    const host = fixture.nativeElement.querySelector('[data-testid="module-activity-filter-dropdown"]') as HTMLElement;
-    host.querySelector('.work-dropdown__trigger')?.dispatchEvent(new MouseEvent('click', { bubbles: true }));
-    fixture.detectChanges();
-    const labels = Array.from(host.querySelectorAll('.work-dropdown__option')).map((option) => option.textContent?.trim());
-    expect(labels).toEqual(['All', 'Active', 'Inactive']);
+  it('renders All/Active/Inactive options for the activity filter select', () => {
+    const select = fixture.nativeElement.querySelector('[data-testid="module-activity-filter-dropdown"] select') as HTMLSelectElement;
+    expect(Array.from(select.options).map((option) => option.textContent?.trim())).toEqual(['All', 'Active', 'Inactive']);
   });
 
-  it('emits the selected value when the user changes the activity filter dropdown', () => {
+  it('emits the selected value when the user changes the activity filter select', () => {
     const emitted: string[] = [];
     fixture.componentInstance.activityFilterChanged.subscribe((value) => emitted.push(value));
 
-    const host = fixture.nativeElement.querySelector('[data-testid="module-activity-filter-dropdown"]') as HTMLElement;
-    host.querySelector('.work-dropdown__trigger')?.dispatchEvent(new MouseEvent('click', { bubbles: true }));
-    fixture.detectChanges();
-    const option = Array.from(host.querySelectorAll('.work-dropdown__option')).find((item) => item.textContent?.trim() === 'Inactive') as HTMLButtonElement;
-    option.click();
+    const select = fixture.nativeElement.querySelector('[data-testid="module-activity-filter-dropdown"] select') as HTMLSelectElement;
+    select.value = 'inactive';
+    select.dispatchEvent(new Event('change'));
     fixture.detectChanges();
 
     expect(emitted).toEqual(['inactive']);

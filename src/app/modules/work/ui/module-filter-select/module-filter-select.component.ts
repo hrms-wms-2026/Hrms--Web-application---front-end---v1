@@ -1,32 +1,30 @@
 import { Component, computed, input, output } from '@angular/core';
 import { ActivityFilter } from '../../utils/project.mapper';
-import { WorkDropdownComponent, WorkDropdownOption } from '../work-dropdown/work-dropdown.component';
+import { SelectComponent, SelectOption } from '../../../../shared/ui/select/select.component';
 
 @Component({
   selector: 'app-module-filter-select',
   standalone: true,
-  imports: [WorkDropdownComponent],
+  imports: [SelectComponent],
   template: `
     <div class="flex flex-wrap items-start gap-3" data-testid="module-filter-bar">
-      <app-work-dropdown
+      <app-select
         [options]="moduleOptions()"
-        [selected]="selected()"
-        fieldLabel="Module"
-        accessibleLabel="Module filter"
-        leadingIcon="module"
-        [fullWidth]="true"
+        [value]="selected()"
+        label="Module"
+        ariaLabel="Module filter"
+        [icon]="'module'"
         data-testid="module-filter-dropdown"
-        (selectionChanged)="selectionChanged.emit($event)"
+        (valueChange)="selectionChanged.emit($event)"
       />
-      <app-work-dropdown
+      <app-select
         [options]="statusOptions"
-        [selected]="activityFilter()"
-        fieldLabel="Status"
-        accessibleLabel="Activity status filter"
-        leadingIcon="status"
-        [fullWidth]="true"
+        [value]="activityFilter()"
+        label="Status"
+        ariaLabel="Activity status filter"
+        [icon]="'status'"
         data-testid="module-activity-filter-dropdown"
-        (selectionChanged)="onActivityFilterSelected($event)"
+        (valueChange)="onActivityFilterSelected($event)"
       />
     </div>
   `
@@ -39,13 +37,13 @@ export class ModuleFilterSelectComponent {
   activityFilter = input.required<ActivityFilter>();
   activityFilterChanged = output<ActivityFilter>();
 
-  readonly statusOptions: readonly WorkDropdownOption[] = [
+  readonly statusOptions: readonly SelectOption[] = [
     { value: 'all', label: 'All' },
     { value: 'active', label: 'Active' },
     { value: 'inactive', label: 'Inactive' }
   ];
 
-  readonly moduleOptions = computed<WorkDropdownOption[]>(() => [
+  readonly moduleOptions = computed<SelectOption[]>(() => [
     { value: 'all', label: 'All modules' },
     ...this.options().map((option) => ({ value: option.id, label: option.title }))
   ]);
