@@ -235,6 +235,11 @@ export class MilestoneTreeTabComponent {
     };
   }
 
+  onViewRequested(node: MilestoneTreeNode): void {
+    this.selectedNodeId.set(node.id);
+    void this.router.navigate(['/work', this.projectId(), 'task', node.taskSource?.id ?? node.id]);
+  }
+
   async onEditRequested(node?: MilestoneTreeNode): Promise<void> {
     const target = node ?? this.selectedNode();
     if (!target) return;

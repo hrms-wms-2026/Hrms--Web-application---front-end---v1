@@ -42,6 +42,12 @@ import { EmployeeAvatarComponent } from '../employee-avatar/employee-avatar.comp
       <span class="text-xs {{ selected() ? 'text-white' : 'text-[var(--color-text-secondary)]' }}" data-testid="due-date-cell">{{ node().endDate }}</span>
 
       <span class="flex items-center justify-end gap-px" data-testid="row-actions">
+        <button type="button" class="{{ iconClass() }}" data-testid="view-button" aria-label="View task" (click)="emit($event, viewRequested)">
+          <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8Z" />
+            <circle cx="12" cy="12" r="3" />
+          </svg>
+        </button>
         <button type="button" class="{{ iconClass() }}" data-testid="edit-button" aria-label="Edit task" (click)="emit($event, editRequested)">
           <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
             <path d="M12 20h9" />
@@ -69,6 +75,7 @@ export class TaskTreeRowComponent {
   depth = input(0);
 
   selectedRow = output<MilestoneTreeNode>();
+  viewRequested = output<MilestoneTreeNode>();
   editRequested = output<MilestoneTreeNode>();
   deleteRequested = output<MilestoneTreeNode>();
 

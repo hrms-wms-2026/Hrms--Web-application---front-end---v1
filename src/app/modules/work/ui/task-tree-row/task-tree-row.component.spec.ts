@@ -66,4 +66,16 @@ describe('TaskTreeRowComponent', () => {
 
     expect(deleted[0].id).toBe('t1');
   });
+
+  it('emits viewRequested with the node when the View button is clicked', () => {
+    setup(task);
+    const viewed: MilestoneTreeNode[] = [];
+    fixture.componentInstance.viewRequested.subscribe((n) => viewed.push(n));
+
+    const btn = fixture.nativeElement.querySelector('[data-testid="view-button"]') as HTMLElement;
+    expect(btn).not.toBeNull();
+    btn.click();
+
+    expect(viewed[0].id).toBe('t1');
+  });
 });

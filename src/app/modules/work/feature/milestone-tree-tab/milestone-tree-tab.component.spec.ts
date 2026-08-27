@@ -536,6 +536,19 @@ describe('MilestoneTreeTabComponent', () => {
     expect(routerStub.navigate).toHaveBeenCalledWith(['/work', 'p1', 'task', 't1']);
   });
 
+  it('navigates to the task detail page when a task node View is requested', () => {
+    setup('o1');
+    fixture.detectChanges();
+    const task = {
+      ...child, id: 'node-1', kind: 'task' as const, children: [],
+      taskSource: { id: 't1', objectiveId: 'o1' }
+    } as unknown as MilestoneTreeNode;
+
+    fixture.componentInstance.onViewRequested(task);
+
+    expect(routerStub.navigate).toHaveBeenCalledWith(['/work', 'p1', 'task', 't1']);
+  });
+
   it('shows the explanation panel for the selected tree node', async () => {
     setup('o1');
     fixture.detectChanges();
