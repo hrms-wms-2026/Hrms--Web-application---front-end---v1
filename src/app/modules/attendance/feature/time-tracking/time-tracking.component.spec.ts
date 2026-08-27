@@ -5,7 +5,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 import { PermissionService } from '../../../../core/auth/state/permission.service';
 import { AttendanceCorrectionResponse } from '../../models/attendance-correction.model';
 import { WorkAreaChangeRequestResponse } from '../../models/work-area-change-request.model';
-import { AttendanceHistoryRow, AttendanceTodayResponse } from '../../models/time-tracking.model';
+import { AttendanceDayDetail, AttendanceHistoryRow, AttendanceTodayResponse } from '../../models/time-tracking.model';
 import { TimeTrackingStore } from '../../state/time-tracking.store';
 import { TimeTrackingComponent } from './time-tracking.component';
 
@@ -106,6 +106,11 @@ type StoreMock = {
   coveredHistoryTotalCount: ReturnType<typeof signal<number>>;
   selectedHistoryRange: ReturnType<typeof signal<{ from: string; to: string } | null>>;
   selectedCoveredEmployeeId: ReturnType<typeof signal<string | null>>;
+  dayDetail: ReturnType<typeof signal<AttendanceDayDetail | null>>;
+  dayDetailLoading: ReturnType<typeof signal<boolean>>;
+  dayDetailError: ReturnType<typeof signal<string | null>>;
+  loadDayDetail: ReturnType<typeof vi.fn>;
+  clearDayDetail: ReturnType<typeof vi.fn>;
   loadToday: ReturnType<typeof vi.fn>;
   loadMyHistory: ReturnType<typeof vi.fn>;
   loadCoveredHistory: ReturnType<typeof vi.fn>;
@@ -186,6 +191,11 @@ describe('TimeTrackingComponent', () => {
       coveredHistoryTotalCount: signal(0),
       selectedHistoryRange: signal(null),
       selectedCoveredEmployeeId: signal(null),
+      dayDetail: signal(null),
+      dayDetailLoading: signal(false),
+      dayDetailError: signal(null),
+      loadDayDetail: vi.fn(() => Promise.resolve()),
+      clearDayDetail: vi.fn(),
       loadToday: vi.fn(() => Promise.resolve()),
       loadMyHistory: vi.fn(() => Promise.resolve()),
       loadCoveredHistory: vi.fn(() => Promise.resolve()),
@@ -680,17 +690,70 @@ describe('TimeTrackingComponent', () => {
     expect(text).toContain('Team attendance');
     expect(text).toContain('Jordan Lee');
   });
-  it('shows Request correction only when the history row allows it', async () => {
-    const eligible = { ...coveredRow, canRequestCorrection: true };
-    const hidden = { ...eligible, attendanceRecordId: 'record-2', canRequestCorrection: false };
-    const { fixture } = await setup({}, false, [eligible, hidden]);
-    expect(fixture.nativeElement.querySelectorAll('[data-testid="request-correction"]')).toHaveLength(1);
+  it('opens the detail drawer for a My-history row using the current employee id from Today', async () => {
+    const row = { ...coveredRow, workDate: '2026-08-21' };
+    const { fixture } = await setup({ employeeId: 'employee-9' }, false, [row]);
+    const component = fixture.componentInstance;
+
+    component.onMyRowSelected(row);
+
+    expect(component.selectedDetail()).toEqual({ employeeId: 'employee-9', workDate: '2026-08-21' });
+  });
+
+  it('does not open the detail drawer for a My-history row when Today has not loaded', async () => {
+    const row = { ...coveredRow, workDate: '2026-08-21' };
+    const { fixture, store } = await setup({}, false, [row]);
+    store.today.set(null);
+    const component = fixture.componentInstance;
+
+    component.onMyRowSelected(row);
+
+    expect(component.selectedDetail()).toBeNull();
+  });
+
+  it("opens the detail drawer for a Team-attendance row using that row's employee id", async () => {
+    const { fixture } = await setup({ canViewCoveredEmployees: true }, true, [coveredRow]);
+    const component = fixture.componentInstance;
+
+    component.onTeamRowSelected(coveredRow);
+
+    expect(component.selectedDetail()).toEqual({ employeeId: 'employee-2', workDate: '2026-08-22' });
+  });
+
+  it('closes and clears the detail drawer', async () => {
+    const { fixture, store } = await setup({}, false, [coveredRow]);
+    const component = fixture.componentInstance;
+    component.selectedDetail.set({ employeeId: 'employee-2', workDate: coveredRow.workDate });
+
+    component.closeDetailDrawer();
+
+    expect(component.selectedDetail()).toBeNull();
+    expect(store.clearDayDetail).toHaveBeenCalled();
+  });
+
+  it('renders My attendance history and My requests side by side', async () => {
+    const { fixture } = await setup({}, false, [coveredRow]);
+    const row = fixture.nativeElement.querySelector('.history-requests-row');
+    expect(row).toBeTruthy();
+    expect(row?.querySelector('app-attendance-history-list')).toBeTruthy();
+    expect(row?.textContent).toContain('My requests');
+  });
+
+  it('renders the detail drawer content once a row is selected and its data loads', async () => {
+    const { fixture, store } = await setup({}, false, [coveredRow]);
+    const component = fixture.componentInstance;
+    component.selectedDetail.set({ employeeId: 'employee-2', workDate: coveredRow.workDate });
+    store.dayDetail.set({ summary: coveredRow, timelineEvents: [], dailyActivity: null });
+    fixture.detectChanges();
+
+    expect((fixture.nativeElement as HTMLElement).textContent).toContain('Attendance detail');
   });
 
   it('opens the correction form with the selected work date and clock-in fields', async () => {
     const eligible = { ...coveredRow, canRequestCorrection: true, workDate: '2026-08-21' };
     const { fixture } = await setup({}, false, [eligible]);
-    (fixture.nativeElement.querySelector('[data-testid="request-correction"]') as HTMLButtonElement).click();
+    const component = fixture.componentInstance;
+    component.openCorrection(eligible);
     fixture.detectChanges();
     const text = (fixture.nativeElement as HTMLElement).textContent ?? '';
     expect(text).toContain('Request attendance correction');

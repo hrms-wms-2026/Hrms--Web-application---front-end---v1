@@ -11,3 +11,5 @@
 .tt-pagination{display:flex;align-items:center;justify-content:space-between;margin-top:.875rem;font-size:.8125rem;color:var(--color-text-secondary)}.tt-pagination-info{font-weight:500}.tt-pagination-buttons{display:flex;align-items:center;gap:.5rem}
 
 
+
+.history-requests-row{display:flex;align-items:flex-start;gap:1rem}.history-requests-row>.history-card{flex:1 1 0;min-width:0}.history-requests-row>.history-card--history{flex:1.85 1 0}@media(max-width:900px){.history-requests-row{flex-direction:column}.history-requests-row>.history-card,.history-requests-row>.history-card--history{flex:1 1 auto;width:100%}}

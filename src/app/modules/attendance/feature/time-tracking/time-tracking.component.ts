@@ -3,6 +3,8 @@ import { toSignal } from '@angular/core/rxjs-interop';
 import { FormsModule } from '@angular/forms';
 import { ActivatedRoute, Router } from '@angular/router';
 import { ModalComponent } from '../../../../shared/ui/modal/modal.component';
+import { AttendanceDetailDrawerComponent, AttendanceDetailSelection } from './attendance-detail-drawer/attendance-detail-drawer.component';
+import { AttendanceHistoryListComponent } from './attendance-history-list/attendance-history-list.component';
 import { CorrectionApprovalsComponent } from '../correction-approvals/correction-approvals.component';
 import { WorkAreaApprovalsComponent } from '../work-area-approvals/work-area-approvals.component';
 import { NotificationService } from '../../../../core/services/notification.service';
@@ -28,7 +30,7 @@ import {
   workAreaChangeStatusLabel,
   workAreaLabel
 } from '../../models/work-area-change-request.model';
-import { TimeTrackingAction, TimeTrackingStore } from '../../state/time-tracking.store';
+import { TIME_TRACKING_COVERED_FORBIDDEN_ERROR, TimeTrackingAction, TimeTrackingStore } from '../../state/time-tracking.store';
 import {
   DISPLAY_TIMEZONE_FALLBACK as SHARED_DISPLAY_TIMEZONE_FALLBACK,
   formatDate as formatDateShared,
@@ -48,7 +50,7 @@ type PersonalRequestTab = 'corrections' | 'work-area';
 @Component({
   selector: 'app-time-tracking',
   standalone: true,
-  imports: [BreadcrumbHeaderComponent, ButtonComponent, CorrectionApprovalsComponent, DateRangePickerComponent, FormsModule, ModalComponent, WorkAreaApprovalsComponent],
+  imports: [AttendanceDetailDrawerComponent, AttendanceHistoryListComponent, BreadcrumbHeaderComponent, ButtonComponent, CorrectionApprovalsComponent, DateRangePickerComponent, FormsModule, ModalComponent, WorkAreaApprovalsComponent],
   templateUrl: './time-tracking.component.html',
   styleUrl: './time-tracking.component.css',
   changeDetection: ChangeDetectionStrategy.OnPush
@@ -60,7 +62,8 @@ export class TimeTrackingComponent implements OnInit {
   private readonly route = inject(ActivatedRoute);
   private readonly router = inject(Router);
 
-  readonly Math = Math;
+    readonly Math = Math;
+  readonly TIME_TRACKING_COVERED_FORBIDDEN_ERROR = TIME_TRACKING_COVERED_FORBIDDEN_ERROR;
   private readonly queryParams = toSignal(this.route.queryParamMap, { initialValue: this.route.snapshot.queryParamMap });
 
   readonly hasSelfServiceAccess = computed(() => this.permissionService.hasAnyPermission(['attendance:read-own', 'attendance:write-own']));
@@ -95,7 +98,8 @@ export class TimeTrackingComponent implements OnInit {
   readonly selectedRequestTab = signal<PersonalRequestTab>('corrections');
   readonly historyFrom = signal('');
   readonly historyTo = signal('');
-  readonly currentWeekRange = currentWeekRange();
+    readonly currentWeekRange = currentWeekRange();
+  readonly selectedDetail = signal<AttendanceDetailSelection | null>(null);
   /** History rows have no timezone field, so use Today.timezone for the selected company.
    * UTC is an explicit display-only fallback until Today is available; it is never the browser timezone. */
   readonly displayTimezone = computed(() => this.store.today()?.timezone?.trim() || SHARED_DISPLAY_TIMEZONE_FALLBACK);
@@ -253,9 +257,25 @@ export class TimeTrackingComponent implements OnInit {
     void this.store.loadMyHistory(range, page);
   }
 
-  goToCoveredHistoryPage(page: number): void {
+    goToCoveredHistoryPage(page: number): void {
     const range = this.store.selectedHistoryRange() ?? this.currentWeekRange;
     void this.store.loadCoveredHistory(range, this.store.selectedCoveredEmployeeId() ?? undefined, page);
+  }
+
+  onMyRowSelected(row: AttendanceHistoryRow): void {
+    const employeeId = this.store.today()?.employeeId;
+    if (!employeeId) return;
+    this.selectedDetail.set({ employeeId, workDate: row.workDate });
+  }
+
+  onTeamRowSelected(row: AttendanceHistoryRow): void {
+    if (!row.employee) return;
+    this.selectedDetail.set({ employeeId: row.employee.employeeId, workDate: row.workDate });
+  }
+
+  closeDetailDrawer(): void {
+    this.selectedDetail.set(null);
+    this.store.clearDayDetail();
   }
 
   goToCorrectionsPage(page: number): void {
@@ -416,6 +436,7 @@ export class TimeTrackingComponent implements OnInit {
     }
     this.notifications.success(result.status === 'approved' ? 'Attendance correction applied.' : 'Correction request submitted.');
     this.closeCorrection();
+    this.closeDetailDrawer();
     const range = this.store.selectedHistoryRange() ?? this.currentWeekRange;
     void this.store.loadToday();
     void this.store.loadMyHistory(range);

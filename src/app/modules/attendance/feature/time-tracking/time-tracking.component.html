@@ -158,68 +158,36 @@
   }
 
   @if (viewMode() === 'my') {
-      <section class="history-card" aria-labelledby="history-heading">
-    <div class="section-heading section-heading--stacked-mobile">
-      <div>
-        <p class="eyebrow">Personal records</p>
-        <h2 id="history-heading">My attendance history</h2>
-      </div>
-      <div class="range-controls" aria-label="Attendance history date range">
-        <app-date-range-picker
-          [from]="historyFrom()"
-          [to]="historyTo()"
-          [disabled]="store.historyLoading()"
-          (rangeChange)="onRangeSelected($event)"
-        />
-      </div>
-    </div>
-    @if (store.historyLoading()) {
-      <div class="table-skeleton" aria-busy="true" aria-label="Loading attendance history"></div>
-    } @else if (store.historyError()) {
-      <div class="time-tracking-message time-tracking-message--error" role="alert"><p>{{ store.historyError() }}</p><app-button type="button" variant="secondary" size="sm" (pressed)="retryHistory()">Try again</app-button></div>
-    } @else if (store.history().length === 0) {
-      <p class="empty-copy">No attendance records for this date range.</p>
-    } @else {
-      <div class="table-scroll">
-        <table class="attendance-table">
-          <thead><tr><th scope="col">Date</th><th scope="col">Clock in</th><th scope="col">Clock out</th><th scope="col">Break</th><th scope="col">Worked time</th><th scope="col">Work mode / source / status</th><th scope="col">Actions</th></tr></thead>
-          <tbody>
-            @for (row of store.history(); track row.attendanceRecordId) {
-              <tr>
-                <td>{{ formatDate(row.workDate) }}</td>
-                <td>{{ formatDateTime(row.clockInAt, displayTimezone()) }}</td>
-                <td>{{ formatDateTime(row.clockOutAt, displayTimezone()) }}</td>
-                <td>
-                  <span class="table-primary">{{ formatMinutes(row.breakMinutes) }}</span>
-                  @if (hasBreakOverage(row.breakOverageMinutes, row.isOverBreakAllowance)) { <span class="table-note table-note--warning">{{ breakOverageHistoryLabel(row.breakOverageMinutes) }}</span> }
-                </td>
-                <td>{{ formatMinutes(row.totalWorkedMinutes) }}</td>
-                <td>
-                  <span class="table-primary">{{ workModeLabel(row.expectedWorkMode) }}</span>
-                  <span class="table-secondary">{{ sourceLabel(row.attendanceSource) }} · {{ statusLabel(row.status, row.statusLabel) }}</span>
-                  @if (hasAttention(row.attentionLabel)) { <span class="table-note">{{ row.attentionLabel }}</span> }
-                </td>
-                <td>
-                  @if (row.canRequestCorrection) { <button type="button" class="table-action" data-testid="request-correction" (click)="openCorrection(row)">Request correction</button> }
-                </td>
-              </tr>
-            }
-          </tbody>
-        </table>
-      </div>
-      @if (store.historyTotalCount() > store.historyPageSize()) {
-        <div class="tt-pagination">
-          <span class="tt-pagination-info">
-            Page {{ store.historyPage() }} of {{ Math.ceil(store.historyTotalCount() / store.historyPageSize()) }}
-          </span>
-          <div class="tt-pagination-buttons">
-            <app-button type="button" variant="secondary" [disabled]="store.historyPage() <= 1" (pressed)="goToHistoryPage(store.historyPage() - 1)">Previous</app-button>
-            <app-button type="button" variant="secondary" [disabled]="store.historyPage() * store.historyPageSize() >= store.historyTotalCount()" (pressed)="goToHistoryPage(store.historyPage() + 1)">Next</app-button>
+    <div class="history-requests-row">
+      <section class="history-card history-card--history" aria-labelledby="history-heading">
+        <div class="section-heading section-heading--stacked-mobile">
+          <div>
+            <p class="eyebrow">Personal records</p>
+            <h2 id="history-heading">My attendance history</h2>
+          </div>
+          <div class="range-controls" aria-label="Attendance history date range">
+            <app-date-range-picker
+              [from]="historyFrom()"
+              [to]="historyTo()"
+              [disabled]="store.historyLoading()"
+              (rangeChange)="onRangeSelected($event)"
+            />
           </div>
         </div>
-      }
-    }
-    </section>
+        <app-attendance-history-list
+          [rows]="store.history()"
+          [loading]="store.historyLoading()"
+          [error]="store.historyError()"
+          [page]="store.historyPage()"
+          [pageSize]="store.historyPageSize()"
+          [totalCount]="store.historyTotalCount()"
+          [displayTimezone]="displayTimezone()"
+          emptyMessage="No attendance records for this date range."
+          (pageChange)="goToHistoryPage($event)"
+          (retryRequested)="retryHistory()"
+          (rowSelected)="onMyRowSelected($event)"
+        />
+      </section>
 
       <section class="history-card" aria-labelledby="my-requests-heading">
         <div class="section-heading">
@@ -328,6 +296,7 @@
           </div>
         }
       </section>
+    </div>
 
     @if (correctionFormOpen(); as selectedRow) {
     <app-modal [open]="true" title="Request attendance correction" size="lg" [closeOnBackdropClick]="false" (closed)="closeCorrection()">
@@ -399,43 +368,21 @@
             </div>
           </div>
         </div>
-        @if (store.coveredHistoryLoading()) {
-          <div class="table-skeleton" aria-busy="true" aria-label="Loading team attendance"></div>
-        } @else if (store.coveredHistoryError()) {
-          <div class="time-tracking-message time-tracking-message--error" role="alert"><p>{{ store.coveredHistoryError() }}</p>@if (store.coveredHistoryError() !== 'You do not have access to view team attendance.') { <app-button type="button" variant="secondary" size="sm" (pressed)="retryCoveredHistory()">Try again</app-button> }</div>
-        } @else if (store.coveredHistory().length === 0) {
-          <p class="empty-copy">No team attendance records for this date range.</p>
-        } @else {
-          <div class="table-scroll">
-            <table class="attendance-table">
-              <thead><tr><th scope="col">Employee</th><th scope="col">Date</th><th scope="col">Clock in</th><th scope="col">Clock out</th><th scope="col">Break</th><th scope="col">Worked time</th><th scope="col">Status</th></tr></thead>
-              <tbody>
-                @for (row of store.coveredHistory(); track row.attendanceRecordId) {
-                  <tr>
-                    <td><span class="table-primary">{{ employeeLabel(row) }}</span>@if (row.employee?.employeeNumber) { <span class="table-secondary">{{ row.employee?.employeeNumber }}</span> }</td>
-                    <td>{{ formatDate(row.workDate) }}</td>
-                    <td>{{ formatDateTime(row.clockInAt, displayTimezone()) }}</td>
-                    <td>{{ formatDateTime(row.clockOutAt, displayTimezone()) }}</td>
-                    <td><span class="table-primary">{{ formatMinutes(row.breakMinutes) }}</span>@if (hasBreakOverage(row.breakOverageMinutes, row.isOverBreakAllowance)) { <span class="table-note table-note--warning">{{ breakOverageHistoryLabel(row.breakOverageMinutes) }}</span> }</td>
-                    <td>{{ formatMinutes(row.totalWorkedMinutes) }}</td>
-                    <td><span class="table-primary">{{ statusLabel(row.status, row.statusLabel) }}</span>@if (hasAttention(row.attentionLabel)) { <span class="table-note">{{ row.attentionLabel }}</span> }</td>
-                  </tr>
-                }
-              </tbody>
-            </table>
-          </div>
-          @if (store.coveredHistoryTotalCount() > store.coveredHistoryPageSize()) {
-            <div class="tt-pagination">
-              <span class="tt-pagination-info">
-                Page {{ store.coveredHistoryPage() }} of {{ Math.ceil(store.coveredHistoryTotalCount() / store.coveredHistoryPageSize()) }}
-              </span>
-              <div class="tt-pagination-buttons">
-                <app-button type="button" variant="secondary" [disabled]="store.coveredHistoryPage() <= 1" (pressed)="goToCoveredHistoryPage(store.coveredHistoryPage() - 1)">Previous</app-button>
-                <app-button type="button" variant="secondary" [disabled]="store.coveredHistoryPage() * store.coveredHistoryPageSize() >= store.coveredHistoryTotalCount()" (pressed)="goToCoveredHistoryPage(store.coveredHistoryPage() + 1)">Next</app-button>
-              </div>
-            </div>
-          }
-        }
+        <app-attendance-history-list
+          [rows]="store.coveredHistory()"
+          [loading]="store.coveredHistoryLoading()"
+          [error]="store.coveredHistoryError()"
+          [page]="store.coveredHistoryPage()"
+          [pageSize]="store.coveredHistoryPageSize()"
+          [totalCount]="store.coveredHistoryTotalCount()"
+          [displayTimezone]="displayTimezone()"
+          [showEmployeeColumn]="true"
+          [retryDisabledMessage]="TIME_TRACKING_COVERED_FORBIDDEN_ERROR"
+          emptyMessage="No team attendance records for this date range."
+          (pageChange)="goToCoveredHistoryPage($event)"
+          (retryRequested)="retryCoveredHistory()"
+          (rowSelected)="onTeamRowSelected($event)"
+        />
       </section>
     }
 
@@ -464,4 +411,11 @@
       </section>
     }
   }
+
+  <app-attendance-detail-drawer
+    [selection]="selectedDetail()"
+    [displayTimezone]="displayTimezone()"
+    (closed)="closeDetailDrawer()"
+    (requestCorrection)="openCorrection($event)"
+  />
 </div>
