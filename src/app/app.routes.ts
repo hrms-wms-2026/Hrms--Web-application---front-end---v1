@@ -49,6 +49,20 @@ export const routes: Routes = [
           )
       },
       {
+        path: 'dashboard/insights',
+        loadComponent: () =>
+          import('./modules/dashboard/feature/my-insights-page/my-insights-page.component').then(
+            (module) => module.MyInsightsPageComponent
+          )
+      },
+      {
+        path: 'dashboard/activity-timeline',
+        loadComponent: () =>
+          import('./modules/dashboard/feature/activity-timeline-page/activity-timeline-page.component').then(
+            (module) => module.ActivityTimelinePageComponent
+          )
+      },
+      {
         path: 'work',
         canActivate: [permissionGuard],
         data: { permissions: ['projects:access'] },

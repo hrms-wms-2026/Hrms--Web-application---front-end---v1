@@ -1,0 +1,43 @@
+<app-card title="Task Progress">
+  @if (!loading() && total() === 0) {
+    <p class="text-sm text-[var(--color-text-secondary)]" data-testid="task-progress-empty">No tasks assigned yet.</p>
+  }
+
+  @if (total() > 0) {
+    <div class="flex flex-wrap items-center gap-6">
+      <div class="relative h-32 w-32 shrink-0">
+        <svg viewBox="0 0 120 120" class="h-32 w-32 -rotate-90" data-testid="task-progress-donut">
+          <circle cx="60" cy="60" r="50" fill="none" stroke="var(--color-surface-secondary)" stroke-width="16" />
+          @for (segment of segments(); track segment.bucket) {
+            <circle
+              cx="60"
+              cy="60"
+              r="50"
+              fill="none"
+              [attr.stroke]="bucketColor(segment.bucket)"
+              stroke-width="16"
+              [attr.stroke-dasharray]="segment.dashArray"
+              [attr.stroke-dashoffset]="segment.dashOffset"
+              data-testid="task-progress-segment"
+              [attr.data-bucket]="segment.bucket"
+            />
+          }
+        </svg>
+        <div class="absolute inset-0 flex flex-col items-center justify-center">
+          <span class="text-2xl font-semibold text-[var(--color-text-primary)]" data-testid="task-progress-percent">{{ completionPercent() }}%</span>
+          <span class="text-xs text-[var(--color-text-secondary)]">done</span>
+        </div>
+      </div>
+
+      <ul class="flex flex-col gap-2 text-sm" data-testid="task-progress-legend">
+        @for (bucket of bucketOrder; track bucket) {
+          <li class="flex items-center gap-2">
+            <span class="h-2.5 w-2.5 rounded-full" [style.background-color]="bucketColor(bucket)"></span>
+            <span class="text-[var(--color-text-secondary)]">{{ bucketLabel(bucket) }}</span>
+            <span class="font-medium text-[var(--color-text-primary)]">{{ bucketCount(bucket) }}</span>
+          </li>
+        }
+      </ul>
+    </div>
+  }
+</app-card>
