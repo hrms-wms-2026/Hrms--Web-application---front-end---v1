@@ -5,6 +5,7 @@ import { ActivatedRoute, Router } from '@angular/router';
 import { ModalComponent } from '../../../../shared/ui/modal/modal.component';
 import { AttendanceDetailDrawerComponent, AttendanceDetailSelection } from './attendance-detail-drawer/attendance-detail-drawer.component';
 import { AttendanceHistoryListComponent } from './attendance-history-list/attendance-history-list.component';
+import { MyRequestsPanelComponent } from './my-requests-panel/my-requests-panel.component';
 import { CorrectionApprovalsComponent } from '../correction-approvals/correction-approvals.component';
 import { WorkAreaApprovalsComponent } from '../work-area-approvals/work-area-approvals.component';
 import { NotificationService } from '../../../../core/services/notification.service';
@@ -12,10 +13,7 @@ import {
   AttendanceCorrectionBreakRequest,
   AttendanceCorrectionPreviewRequest,
   AttendanceCorrectionType,
-  CORRECTION_TYPE_OPTIONS,
-  correctionTypeLabel,
-  correctionStatusLabel,
-  AttendanceCorrectionResponse
+  CORRECTION_TYPE_OPTIONS
 } from '../../models/attendance-correction.model';
 import { BreadcrumbHeaderComponent } from '../../../../shared/ui/breadcrumb-header/breadcrumb-header.component';
 import { ButtonComponent } from '../../../../shared/ui/button/button.component';
@@ -45,12 +43,11 @@ import {
 
 const DAY_IN_MILLISECONDS = 24 * 60 * 60 * 1000;
 type AttendanceViewMode = 'my' | 'team';
-type PersonalRequestTab = 'corrections' | 'work-area';
 
 @Component({
   selector: 'app-time-tracking',
   standalone: true,
-  imports: [AttendanceDetailDrawerComponent, AttendanceHistoryListComponent, BreadcrumbHeaderComponent, ButtonComponent, CorrectionApprovalsComponent, DateRangePickerComponent, FormsModule, ModalComponent, WorkAreaApprovalsComponent],
+  imports: [AttendanceDetailDrawerComponent, AttendanceHistoryListComponent, BreadcrumbHeaderComponent, ButtonComponent, CorrectionApprovalsComponent, DateRangePickerComponent, FormsModule, ModalComponent, MyRequestsPanelComponent, WorkAreaApprovalsComponent],
   templateUrl: './time-tracking.component.html',
   styleUrl: './time-tracking.component.css',
   changeDetection: ChangeDetectionStrategy.OnPush
@@ -95,7 +92,6 @@ export class TimeTrackingComponent implements OnInit {
   readonly approvalBadgeCorrections = computed(() => this.store.approvalInbox().length);
   readonly approvalBadgeWorkArea = computed(() => this.store.workAreaApprovalInboxTotalCount());
 
-  readonly selectedRequestTab = signal<PersonalRequestTab>('corrections');
   readonly historyFrom = signal('');
   readonly historyTo = signal('');
     readonly currentWeekRange = currentWeekRange();
@@ -122,13 +118,11 @@ export class TimeTrackingComponent implements OnInit {
   readonly workAreaReason = signal('');
   readonly workAreaFieldErrors = signal<Record<string, string>>({});
   readonly workAreaFormMessage = signal('');
-  readonly workAreaCancelRequestId = signal<string | null>(null);
+
   readonly workAreaOptions = WORK_AREA_OPTIONS;
   readonly workAreaChangeStatusLabel = workAreaChangeStatusLabel;
   readonly workAreaLabel = workAreaLabel;
   readonly correctionTypeOptions = CORRECTION_TYPE_OPTIONS;
-  readonly correctionTypeLabel = correctionTypeLabel;
-  readonly correctionStatusLabel = correctionStatusLabel;
 
   /**
    * Per-activation dedupe keys for the team-loading effect below. These are plain
@@ -190,26 +184,10 @@ export class TimeTrackingComponent implements OnInit {
     }
     if (this.hasSelfServiceAccess()) {
       void this.store.loadMyHistory(range);
-      this.ensureRequestTabLoaded(this.selectedRequestTab());
     }
   }
 
-  selectRequestTab(tab: PersonalRequestTab): void {
-    this.selectedRequestTab.set(tab);
-    this.ensureRequestTabLoaded(tab);
-  }
 
-  private ensureRequestTabLoaded(tab: PersonalRequestTab): void {
-    if (tab === 'corrections') {
-      if (!this.store.myCorrectionsLoaded?.() && this.store.loadMyCorrections) {
-        void this.store.loadMyCorrections();
-      }
-      return;
-    }
-    if (!this.store.myWorkAreaRequestsLoaded()) {
-      void this.store.loadMyWorkAreaRequests({ pageNumber: 1 });
-    }
-  }
 
   onRangeSelected(range: TimeTrackingRange): void {
     this.historyFrom.set(range.from);
@@ -278,13 +256,7 @@ export class TimeTrackingComponent implements OnInit {
     this.store.clearDayDetail();
   }
 
-  goToCorrectionsPage(page: number): void {
-    void this.store.loadMyCorrections(page);
-  }
 
-  goToWorkAreaRequestsPage(page: number): void {
-    void this.store.loadMyWorkAreaRequests({ pageNumber: page });
-  }
 
   openWorkAreaChange(): void {
     this.workAreaFormOpen.set(true);
@@ -335,29 +307,7 @@ export class TimeTrackingComponent implements OnInit {
     void this.store.loadToday();
   }
 
-  requestCancelWorkArea(id: string): void {
-    if (this.store.myWorkAreaRequests().find((request) => request.id === id)?.status === 'pending') {
-      this.workAreaCancelRequestId.set(id);
-    }
-  }
 
-  closeCancelWorkArea(): void {
-    if (!this.store.workAreaActionLoading()) this.workAreaCancelRequestId.set(null);
-  }
-
-  async confirmCancelWorkArea(): Promise<void> {
-    const id = this.workAreaCancelRequestId();
-    if (!id) return;
-    const result = await this.store.cancelWorkAreaChangeRequest(id);
-    if (result) {
-      this.workAreaCancelRequestId.set(null);
-      void this.store.loadMyWorkAreaRequests({ pageNumber: this.store.myWorkAreaRequestsPage() });
-    }
-  }
-
-  workAreaActionIsLoading(id: string): boolean {
-    return this.store.activeWorkAreaRequestId() === id;
-  }
 
   formatWorkAreaDate(value: string, timezone: string | null | undefined): string {
     return formatWorkAreaDateShared(value, timezone);
@@ -443,24 +393,7 @@ export class TimeTrackingComponent implements OnInit {
     void this.store.loadMyCorrections();
   }
 
-  async cancelCorrection(id: string): Promise<void> {
-    const result = await this.store.cancelCorrection(id);
-    if (!result) return;
-    this.notifications.success('Correction request cancelled.');
-    void this.store.loadMyCorrections();
-  }
 
-  correctionActionIsLoading(action: string): boolean {
-    return this.store.activeCorrectionAction?.() === action;
-  }
-
-  correctionSummary(request: AttendanceCorrectionResponse): string {
-    if (request.correctionType === 'break') return `${request.requestedBreaks?.length ?? 0} interval(s)`;
-    const clockIn = request.requestedClockInAt ? this.formatDateTime(request.requestedClockInAt, request.timezone) : null;
-    const clockOut = request.requestedClockOutAt ? this.formatDateTime(request.requestedClockOutAt, request.timezone) : null;
-    if (clockIn && clockOut) return `${clockIn} to ${clockOut}`;
-    return clockIn || clockOut || 'Time update requested';
-  }
 
   private buildCorrectionRequest(): AttendanceCorrectionPreviewRequest | null {
     const row = this.correctionFormOpen();
