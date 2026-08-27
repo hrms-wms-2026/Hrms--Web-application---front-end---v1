@@ -8,7 +8,6 @@ import { ProjectDetailStore } from '../../state/project-detail.store';
 import { TaskBoardStore } from '../../state/task-board.store';
 import { SprintListStore } from '../../state/sprint-list.store';
 import { TaskApiService } from '../../data-access/task-api.service';
-import { TaskCreateModalComponent } from '../../ui/task-create-modal/task-create-modal.component';
 import { SprintTabComponent } from '../../ui/sprint-tab/sprint-tab.component';
 import { SprintFormComponent } from '../../ui/sprint-form/sprint-form.component';
 import { TaskTableComponent } from '../../ui/task-table/task-table.component';
@@ -21,7 +20,7 @@ import { SelectComponent, SelectOption } from '../../../../shared/ui/select/sele
 @Component({
   selector: 'app-task-backlog',
   standalone: true,
-  imports: [TaskCreateModalComponent, SprintTabComponent, SprintFormComponent, TaskTableComponent, ButtonComponent, ErrorStateComponent, SelectComponent],
+  imports: [SprintTabComponent, SprintFormComponent, TaskTableComponent, ButtonComponent, ErrorStateComponent, SelectComponent],
   template: `
     <div class="task-backlog__toolbar">
       <app-select [options]="objectiveOptions()" [value]="objectiveFilter()" ariaLabel="Module filter" [icon]="'module'" (valueChange)="setObjectiveFilter($event)" />
@@ -101,18 +100,6 @@ import { SelectComponent, SelectOption } from '../../../../shared/ui/select/sele
       }
     }
 
-    @if (createOpen()) {
-      <app-task-create-modal
-        [open]="createOpen()"
-        [projectId]="projectId()"
-        [modules]="moduleOptions()"
-        [sprintRequired]="false"
-        [activeSprints]="sprintStore.sprints()"
-        [assignableMembers]="assignableMembers()"
-        (closed)="createOpen.set(false)"
-        (created)="onTaskCreated()"
-      />
-    }
   `,
   styles: [`
     .task-backlog__toolbar { display: flex; flex-wrap: wrap; justify-content: flex-end; align-items: flex-end; gap: 8px; margin-bottom: 16px; }
@@ -133,7 +120,6 @@ export class TaskBacklogComponent implements OnInit {
   private readonly router = inject(Router);
   protected readonly currentEmployee = inject(CurrentEmployeeStore);
 
-  protected readonly createOpen = signal(false);
   protected readonly createSprintOpen = signal(false);
   protected readonly editingSprint = signal<Sprint | null>(null);
   protected readonly projectId = signal('');
@@ -212,12 +198,7 @@ export class TaskBacklogComponent implements OnInit {
   protected setSprintStatusFilter(value: string): void { this.sprintStatusFilter.set(value as 'all' | SprintStatus); }
 
   protected openCreateTask(): void {
-    this.createOpen.set(true);
-  }
-
-  protected onTaskCreated(): void {
-    this.createOpen.set(false);
-    void this.reloadTasks();
+    void this.router.navigate(['/work', this.projectId(), 'task', 'new'], { queryParams: { sprintRequired: 'false' } });
   }
 
   async reloadTasks(): Promise<void> {

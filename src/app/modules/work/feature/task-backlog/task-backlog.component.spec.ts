@@ -10,7 +10,6 @@ import { ProjectDetailStore } from '../../state/project-detail.store';
 import { TaskApiService } from '../../data-access/task-api.service';
 import { SprintListStore } from '../../state/sprint-list.store';
 import { SprintTabComponent } from '../../ui/sprint-tab/sprint-tab.component';
-import { TaskCreateModalComponent } from '../../ui/task-create-modal/task-create-modal.component';
 import { EmployeeDirectoryStore } from '../../state/employee-directory.store';
 import { Sprint } from '../../models/sprint.model';
 import { WorkTask } from '../../models/task.model';
@@ -172,8 +171,8 @@ describe('TaskBacklogComponent', () => {
     expect(fixture.nativeElement.querySelector('[data-testid="task-row-t-2"]')).toBeNull();
   });
 
-  it('the sprint tab\'s + button opens the shared create-task modal with a required Module picker', async () => {
-    const { fixture } = setup();
+  it('the sprint tab\'s + button navigates to the create-task page with sprintRequired=false', async () => {
+    const { fixture, navigate } = setup();
     await fixture.whenStable();
     fixture.detectChanges();
 
@@ -181,15 +180,11 @@ describe('TaskBacklogComponent', () => {
     const sprint1Tab = tabs.find((t) => (t.componentInstance as SprintTabComponent).sprint().id === 'sp-1')!;
 
     (sprint1Tab.componentInstance as SprintTabComponent).createTaskRequested.emit();
-    fixture.detectChanges();
 
-    const modal = fixture.debugElement.query(By.directive(TaskCreateModalComponent)).componentInstance as TaskCreateModalComponent;
-    expect(modal.open()).toBe(true);
-    expect(modal.modules()).toEqual([{ objectiveId: 'milestone-1', title: 'Milestone One', isOwner: true }]);
-    expect(modal.sprintRequired()).toBe(false);
+    expect(navigate).toHaveBeenCalledWith(['/work', 'project-1', 'task', 'new'], { queryParams: { sprintRequired: 'false' } });
   });
 
-  it("creating a sprint immediately reflects in this component's own sprint list and the create-task modal's dropdown, without a page reload", async () => {
+  it("creating a sprint immediately reflects in this component's own sprint list without a page reload", async () => {
     const sprintsSignal = signal<Sprint[]>([sprint1]);
     const sprintCreate = vi.fn().mockImplementation(async () => {
       sprintsSignal.set([sprint1, sprint2]);
@@ -213,13 +208,6 @@ describe('TaskBacklogComponent', () => {
 
     expect(sprintCreate).toHaveBeenCalled();
     expect(fixture.debugElement.queryAll(By.directive(SprintTabComponent)).length).toBe(2);
-
-    // Opening the create-task modal afterward should already see the new sprint via the reactive
-    // SprintListStore.sprints() signal, without any page reload.
-    fixture.componentInstance['openCreateTask']();
-    fixture.detectChanges();
-    const modal = fixture.debugElement.query(By.directive(TaskCreateModalComponent)).componentInstance as TaskCreateModalComponent;
-    expect(modal.activeSprints()).toEqual([sprint1, sprint2]);
   });
 
   it('builds assignableMembers from projectMembers, using the server-resolved name', async () => {
