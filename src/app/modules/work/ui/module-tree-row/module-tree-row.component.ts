@@ -1,4 +1,4 @@
-import { Component, input, output } from '@angular/core';
+import { Component, ElementRef, OnDestroy, OnInit, input, output, signal, viewChild } from '@angular/core';
 import { MilestoneTreeNode } from '../../models/milestone.model';
 import { isLeafObjective } from '../../utils/project.mapper';
 import { AvatarComponent } from '../../../../shared/ui/avatar/avatar.component';
@@ -9,7 +9,7 @@ import { AvatarComponent } from '../../../../shared/ui/avatar/avatar.component';
   imports: [AvatarComponent],
   template: `
     <div
-      class="grid grid-cols-[1fr_112px_40px_88px_72px] items-center gap-3 rounded-md px-2 py-1.5 cursor-pointer {{ selected() ? 'bg-[var(--color-accent)]' : 'hover:bg-[var(--color-surface-secondary)]' }}"
+      class="grid grid-cols-[1fr_112px_40px_88px_140px] items-center gap-3 rounded-md px-2 py-1.5 cursor-pointer {{ selected() ? 'bg-[var(--color-accent)]' : 'hover:bg-[var(--color-surface-secondary)]' }}"
       data-testid="tree-row"
       (click)="selectedRow.emit(node())"
     >
@@ -64,7 +64,7 @@ import { AvatarComponent } from '../../../../shared/ui/avatar/avatar.component';
 
       <span class="text-xs {{ selected() ? 'text-white' : 'text-[var(--color-text-secondary)]' }}" data-testid="due-date-cell">{{ node().endDate }}</span>
 
-      <span class="flex items-center justify-end gap-0.5" data-testid="row-actions">
+      <span class="relative flex items-center justify-end gap-px" data-testid="row-actions" #actionsCell>
         @if (node().isOwner) {
           <button type="button" class="{{ iconClass() }}" data-testid="create-sub-button" aria-label="Create sub Module" (click)="emit($event, createRequested)">
             <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" aria-hidden="true">
@@ -72,63 +72,56 @@ import { AvatarComponent } from '../../../../shared/ui/avatar/avatar.component';
               <line x1="5" y1="12" x2="19" y2="12" />
             </svg>
           </button>
-          <button type="button" class="{{ iconClass() }}" data-testid="edit-button" aria-label="Edit" (click)="emit($event, editRequested)">
-            <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-              <path d="M12 20h9" />
-              <path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4Z" />
-            </svg>
-          </button>
-          <button type="button" class="{{ iconClass() }}" data-testid="members-button" aria-label="Members" (click)="emit($event, membersRequested)">
-            <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-              <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/>
-              <circle cx="9" cy="7" r="4"/>
-              <path d="M23 21v-2a4 4 0 0 0-3-3.87"/>
-              <path d="M16 3.13a4 4 0 0 1 0 7.75"/>
-            </svg>
-          </button>
-          <button type="button" class="{{ iconClass() }}" data-testid="create-task-button" aria-label="Create task" (click)="emit($event, createTaskRequested)">
-            <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-              <rect x="4" y="4" width="16" height="16" rx="2" />
-              <line x1="12" y1="8" x2="12" y2="16" />
-              <line x1="8" y1="12" x2="16" y2="12" />
-            </svg>
-          </button>
-          @if (isLeaf()) {
-            <button type="button" class="{{ iconClass() }}" data-testid="create-sprint-button" aria-label="Create sprint" (click)="emit($event, createSprintRequested)">
-              <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-                <rect x="3" y="5" width="18" height="16" rx="2" />
-                <line x1="3" y1="10" x2="21" y2="10" />
-                <line x1="8" y1="3" x2="8" y2="7" />
-                <line x1="16" y1="3" x2="16" y2="7" />
-              </svg>
-            </button>
-          }
           <button
             type="button"
             class="{{ iconClass() }}"
-            data-testid="achieve-button"
-            [attr.aria-label]="node().isAchieved ? 'Unachieve module' : 'Achieve module'"
-            (click)="emit($event, achieveRequested)"
+            data-testid="shortcut-menu-button"
+            aria-label="Show all shortcuts"
+            [attr.aria-expanded]="actionsOpen()"
+            (click)="toggleActions($event)"
           >
-            <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-              <path d="M8 21h8" />
-              <path d="M12 17v4" />
-              <path d="M7 4h10v5a5 5 0 0 1-10 0V4Z" />
-              <path d="M17 4h3v3a3 3 0 0 1-3 3" />
-              <path d="M7 4H4v3a3 3 0 0 0 3 3" />
+            <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" aria-hidden="true">
+              <circle cx="5" cy="12" r="1" fill="currentColor" />
+              <circle cx="12" cy="12" r="1" fill="currentColor" />
+              <circle cx="19" cy="12" r="1" fill="currentColor" />
             </svg>
           </button>
+          @if (actionsOpen()) {
+            <div class="absolute right-0 top-7 z-30 min-w-48 rounded-lg border border-[var(--color-border)] bg-[var(--color-surface)] p-1.5 shadow-lg" data-testid="shortcut-menu">
+              <button type="button" class="{{ menuItemClass() }}" data-testid="menu-create-sub-button" (click)="emit($event, createRequested)">
+                <span class="{{ menuIconClass() }}" aria-hidden="true">+</span><span>Sub module</span>
+              </button>
+              <button type="button" class="{{ menuItemClass() }}" data-testid="menu-edit-button" (click)="emit($event, editRequested)">
+                <span class="{{ menuIconClass() }}" aria-hidden="true">✎</span><span>Edit</span>
+              </button>
+              <button type="button" class="{{ menuItemClass() }}" data-testid="menu-members-button" (click)="emit($event, membersRequested)">
+                <span class="{{ menuIconClass() }}" aria-hidden="true">♙</span><span>Members</span>
+              </button>
+              <button type="button" class="{{ menuItemClass() }}" data-testid="menu-create-task-button" (click)="emit($event, createTaskRequested)">
+                <span class="{{ menuIconClass() }}" aria-hidden="true">+</span><span>Create task</span>
+              </button>
+              @if (isLeaf()) {
+                <button type="button" class="{{ menuItemClass() }}" data-testid="menu-create-sprint-button" (click)="emit($event, createSprintRequested)">
+                  <span class="{{ menuIconClass() }}" aria-hidden="true">□</span><span>Create sprint</span>
+                </button>
+              }
+              <button type="button" class="{{ menuItemClass() }}" data-testid="menu-achieve-button" (click)="emit($event, achieveRequested)">
+                <span class="{{ menuIconClass() }}" aria-hidden="true">★</span><span>{{ node().isAchieved ? 'Unachieve module' : 'Achieve module' }}</span>
+              </button>
+            </div>
+          }
         }
       </span>
     </div>
   `
 })
-export class ModuleTreeRowComponent {
+export class ModuleTreeRowComponent implements OnInit, OnDestroy {
   node = input.required<MilestoneTreeNode>();
   selected = input(false);
   depth = input(0);
   showChevron = input(false);
-  expanded = input(false);
+    expanded = input(false);
+  actionsOpen = signal(false);
 
   selectedRow = output<MilestoneTreeNode>();
   chevronClicked = output<Event>();
@@ -146,12 +139,58 @@ export class ModuleTreeRowComponent {
 
   iconClass(): string {
     return this.selected()
-      ? 'flex h-6 w-6 shrink-0 items-center justify-center rounded-md transition-colors text-white hover:bg-white/20'
-      : 'flex h-6 w-6 shrink-0 items-center justify-center rounded-md transition-colors text-[var(--color-text-secondary)] hover:bg-[var(--color-surface-secondary)] hover:text-[var(--color-text-primary)]';
+      ? 'flex h-5 w-5 shrink-0 items-center justify-center rounded-md transition-colors text-white hover:bg-white/20'
+      : 'flex h-5 w-5 shrink-0 items-center justify-center rounded-md transition-colors text-[var(--color-text-secondary)] hover:bg-[var(--color-surface-secondary)] hover:text-[var(--color-text-primary)]';
+  }
+
+  // A capture-phase listener (not Angular's bubble-phase @HostListener('document:click'),
+  // which every other button here would silently block): this popover is tall enough
+  // (6 items) to visually overlap several rows below it in the tree, so if the user's
+  // next click lands on, say, a lower row's own "Edit task" button while this menu is
+  // still open, that button's own click handler calls event.stopPropagation() before the
+  // click ever bubbles to document - a bubble-phase listener would never see it, and this
+  // popover would still be open (and still overlapping) at the moment that click's target
+  // was resolved, so it silently swallows the click and opens THIS module's edit form
+  // instead of the task's. Capture phase runs top-down before any target handler executes,
+  // so it isn't affected by stopPropagation() called later during bubbling: it closes this
+  // popover in reaction to that same click, so by the time the user's very next click
+  // happens, the overlap is already gone.
+  private readonly actionsCell = viewChild<ElementRef<HTMLElement>>('actionsCell');
+
+  private readonly onDocumentClickCapture = (event: Event): void => {
+    const target = event.target as Node | null;
+    const cell = this.actionsCell()?.nativeElement;
+    // A click on the trigger button or a menu item is already handled by its own
+    // (click) binding (toggleActions/emit) - closing here too would race with that
+    // handler (e.g. re-opening a menu the trigger click just closed).
+    if (cell && target && cell.contains(target)) return;
+    this.actionsOpen.set(false);
+  };
+
+  ngOnInit(): void {
+    document.addEventListener('click', this.onDocumentClickCapture, true);
+  }
+
+  ngOnDestroy(): void {
+    document.removeEventListener('click', this.onDocumentClickCapture, true);
+  }
+
+  toggleActions(event: Event): void {
+    event.stopPropagation();
+    this.actionsOpen.update((open) => !open);
+  }
+
+  menuItemClass(): string {
+    return 'flex w-full items-center gap-2 rounded-md px-2.5 py-2 text-left text-xs font-medium text-[var(--color-text-primary)] transition-colors hover:bg-[var(--color-surface-secondary)] focus-visible:outline-2 focus-visible:outline-offset-[-2px] focus-visible:outline-[var(--color-focus-ring)]';
+  }
+
+  menuIconClass(): string {
+    return 'flex h-5 w-5 shrink-0 items-center justify-center rounded-md bg-[var(--color-surface-secondary)] text-sm font-semibold text-[var(--color-text-secondary)]';
   }
 
   emit(event: Event, channel: { emit: (node: MilestoneTreeNode) => void }): void {
     event.stopPropagation();
+    this.actionsOpen.set(false);
     channel.emit(this.node());
   }
 

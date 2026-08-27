@@ -4,19 +4,23 @@ import { RouterLink, RouterLinkActive } from '@angular/router';
 interface SubMenuTab {
   label: string;
   segment: string;
+  /** Board/Backlog/Settings moved to project-level routes (work/:id/<segment>) and are no
+   *  longer nested under milestones/:milestoneId - their link must not include the milestoneId. */
+  projectLevel?: boolean;
 }
 
 const BASE_TABS: SubMenuTab[] = [
   { label: 'Tree', segment: 'tree' },
-  { label: 'Board', segment: 'board' },
-  { label: 'Backlog', segment: 'backlog' },
-  { label: 'My Task', segment: 'my-task' },
-  { label: 'List', segment: 'list' },
+  { label: 'Board', segment: 'board', projectLevel: true },
+  { label: 'Backlog', segment: 'backlog', projectLevel: true },
+    { label: 'My Task', segment: 'my-task', projectLevel: true },
   { label: 'Approvals', segment: 'approvals' },
-  { label: 'Calendar', segment: 'calendar' }
+  { label: 'Calendar', segment: 'calendar', projectLevel: true }
+
+
 ];
 
-const SETTINGS_TAB: SubMenuTab = { label: 'Settings', segment: 'settings' };
+const SETTINGS_TAB: SubMenuTab = { label: 'Settings', segment: 'settings', projectLevel: true };
 
 @Component({
   selector: 'app-milestone-sub-menu',
@@ -24,16 +28,10 @@ const SETTINGS_TAB: SubMenuTab = { label: 'Settings', segment: 'settings' };
   imports: [RouterLink, RouterLinkActive],
   template: `
     <div class="mb-2">
-      <p
-        class="mb-1 text-sm font-medium text-[var(--color-text-primary)]"
-        data-testid="sub-menu-milestone-title"
-      >
-        {{ milestoneTitle() }}
-      </p>
       <nav class="flex gap-1 border-b border-[var(--color-border)]" data-testid="sub-menu-tabs">
         @for (tab of tabs(); track tab.segment) {
           <a
-            [routerLink]="['milestones', milestoneId(), tab.segment]"
+            [routerLink]="tab.projectLevel ? [tab.segment] : ['milestones', milestoneId(), tab.segment]"
             routerLinkActive="border-b-2 border-[var(--color-focus-ring)] font-semibold text-[var(--color-text-primary)]"
             class="flex items-center gap-1.5 px-3 py-2 text-sm text-[var(--color-text-secondary)] transition-colors hover:text-[var(--color-text-primary)]"
             data-testid="sub-menu-tab"
@@ -57,12 +55,7 @@ const SETTINGS_TAB: SubMenuTab = { label: 'Settings', segment: 'settings' };
                   <path d="M9 11l3 3 8-8" />
                   <path d="M20 12v6a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h9" />
                 }
-                @case ('list') {
-                  <circle cx="4.5" cy="6" r="1" />
-                  <circle cx="4.5" cy="12" r="1" />
-                  <circle cx="4.5" cy="18" r="1" />
-                  <path d="M9 6h11M9 12h11M9 18h11" />
-                }
+                
                 @case ('approvals') {
                   <circle cx="12" cy="12" r="9" />
                   <path d="M8 12l2.5 2.5L16 9" />

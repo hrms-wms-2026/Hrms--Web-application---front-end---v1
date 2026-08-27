@@ -41,6 +41,16 @@ export class WorkApprovalsApiService {
     );
   }
 
+  createAllocationRequest(
+    objectiveId: string,
+    payload: { requestedAdditionalHours: number; reason: string }
+  ): Observable<unknown> {
+    return this.http.post(
+      `${this.workBase}/objectives/${objectiveId}/allocation-requests`,
+      payload
+    );
+  }
+
   approveObjectiveChangeRequest(id: string): Observable<void> {
     return this.http.post<void>(`${this.workBase}/objectives/change-requests/${id}/approve`, {});
   }
@@ -49,8 +59,11 @@ export class WorkApprovalsApiService {
     return this.http.post<void>(`${this.workBase}/objectives/change-requests/${id}/reject`, {});
   }
 
-  approveAllocationRequest(id: string): Observable<void> {
-    return this.approveObjectiveChangeRequest(id);
+  approveAllocationRequest(id: string, approvedAdditionalHours: number): Observable<void> {
+    return this.http.post<void>(
+      `${this.workBase}/objectives/change-requests/${id}/approve`,
+      { approvedAdditionalHours }
+    );
   }
 
   rejectAllocationRequest(id: string): Observable<void> {

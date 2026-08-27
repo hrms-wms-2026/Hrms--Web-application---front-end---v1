@@ -3,6 +3,7 @@ import { patchState, signalStore, withComputed, withMethods, withState } from '@
 import { firstValueFrom } from 'rxjs';
 import { WorkApprovalsApiService } from '../data-access/work-approvals-api.service';
 import { ApprovalItem } from '../models/approval.model';
+import { AllocationRequestDto } from '../models/dto/allocation-request.dto';
 import { toApprovalItem } from '../utils/approval.mapper';
 
 interface WorkApprovalsState {
@@ -60,7 +61,7 @@ export const WorkApprovalsStore = signalStore(
       }
     },
 
-    async approve(item: ApprovalItem): Promise<boolean> {
+    async approve(item: ApprovalItem, approvedAdditionalHours?: number): Promise<boolean> {
       patchState(store, { error: null });
       try {
         switch (item.kind) {
@@ -70,12 +71,17 @@ export const WorkApprovalsStore = signalStore(
               taskCreationRequests: store.taskCreationRequests().filter((i) => i.id !== item.id)
             });
             break;
-          case 'allocation_extend':
-            await firstValueFrom(api.approveAllocationRequest(item.id));
+          case 'allocation_extend': {
+            const allocation = item.raw as AllocationRequestDto;
+            await firstValueFrom(api.approveAllocationRequest(
+              item.id,
+              approvedAdditionalHours ?? allocation.payload.requestedAdditionalHours
+            ));
             patchState(store, {
               allocationRequests: store.allocationRequests().filter((i) => i.id !== item.id)
             });
             break;
+          }
           case 'objective_change':
             await firstValueFrom(api.approveObjectiveChangeRequest(item.id));
             patchState(store, {

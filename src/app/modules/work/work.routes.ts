@@ -20,46 +20,52 @@ export const WORK_ROUTES: Routes = [
             loadComponent: () =>
               import('./feature/milestone-tree-tab/milestone-tree-tab.component').then((m) => m.MilestoneTreeTabComponent)
           },
-          {
-            path: 'board',
-            loadComponent: () =>
-              import('./feature/task-board/task-board.component').then((m) => m.TaskBoardComponent)
-          },
-          {
-            path: 'backlog',
-            loadComponent: () =>
-              import('./feature/task-backlog/task-backlog.component').then((m) => m.TaskBacklogComponent)
-          },
+
           {
             path: 'approvals',
             loadComponent: () =>
               import('./feature/work-approvals/work-approvals.component').then((m) => m.WorkApprovalsComponent)
           },
-          {
-            path: 'my-task',
-            loadComponent: () =>
-              import('./feature/milestone-coming-soon-tab/milestone-coming-soon-tab.component').then((m) => m.MilestoneComingSoonTabComponent),
-            data: { title: 'My Task' }
-          },
-          {
-            path: 'list',
-            loadComponent: () =>
-              import('./feature/milestone-coming-soon-tab/milestone-coming-soon-tab.component').then((m) => m.MilestoneComingSoonTabComponent),
-            data: { title: 'List' }
-          },
-          {
-            path: 'calendar',
-            loadComponent: () =>
-              import('./feature/milestone-coming-soon-tab/milestone-coming-soon-tab.component').then((m) => m.MilestoneComingSoonTabComponent),
-            data: { title: 'Calendar' }
-          },
+          
+          
           
         ]
+      },
+      {
+        path: 'board',
+        loadComponent: () =>
+          import('./feature/task-board/task-board.component').then((m) => m.TaskBoardComponent)
+      },
+      {
+        path: 'backlog',
+        loadComponent: () =>
+          import('./feature/task-backlog/task-backlog.component').then((m) => m.TaskBacklogComponent)
+      },
+      {
+        path: 'my-task',
+        loadComponent: () =>
+          import('./feature/my-task/my-task.component').then((m) => m.MyTaskComponent)
+      },
+      {
+        path: 'calendar',
+        loadComponent: () =>
+          import('./feature/project-calendar/project-calendar.component').then((m) => m.ProjectCalendarComponent)
       },
       {
         path: 'settings',
         loadComponent: () =>
           import('./feature/project-settings/project-settings.component').then((m) => m.ProjectSettingsComponent)
+      },
+      {
+        path: 'task/new',
+        data: { mode: 'create' },
+        loadComponent: () =>
+          import('./feature/task-detail-page/task-detail-page.component').then((m) => m.TaskDetailPageComponent)
+      },
+      {
+        path: 'task/:taskId',
+        loadComponent: () =>
+          import('./feature/task-detail-page/task-detail-page.component').then((m) => m.TaskDetailPageComponent)
       }
     ]
   }
