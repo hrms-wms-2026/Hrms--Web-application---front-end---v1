@@ -151,4 +151,15 @@ describe('AttendanceDetailDrawerComponent', () => {
     const text = (fixture.nativeElement as HTMLElement).textContent ?? '';
     expect(text).not.toContain('Request correction');
   });
+
+  it('emits requestCorrection using the fallback summary when the detail request has not loaded', async () => {
+    const { fixture, store } = await setup({ error: 'The requested record could not be found.', fallbackSummary: detail.summary });
+    expect(store.dayDetail()).toBeNull();
+    const emitted = vi.fn();
+    fixture.componentInstance.requestCorrection.subscribe(emitted);
+
+    fixture.componentInstance.emitRequestCorrection();
+
+    expect(emitted).toHaveBeenCalledWith(detail.summary);
+  });
 });

@@ -190,7 +190,7 @@
       </section>
 
       <section class="history-card" aria-labelledby="my-requests-heading">
-        <app-my-requests-panel />
+        <app-my-requests-panel [autoLoad]="hasSelfServiceAccess()" />
       </section>
     </div>
 

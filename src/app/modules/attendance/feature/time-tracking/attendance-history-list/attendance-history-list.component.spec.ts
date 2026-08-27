@@ -71,6 +71,7 @@ describe('AttendanceHistoryListComponent', () => {
     const withoutColumn = await setup({ showEmployeeColumn: false });
     expect(withoutColumn.fixture.nativeElement.querySelector('thead')?.textContent ?? '').not.toContain('Employee');
 
+    TestBed.resetTestingModule();
     const withColumn = await setup({ showEmployeeColumn: true });
     const text = withColumn.fixture.nativeElement.querySelector('thead')?.textContent ?? '';
     expect(text).toContain('Employee');
@@ -122,6 +123,7 @@ describe('AttendanceHistoryListComponent', () => {
     const { fixture: withoutPaging } = await setup({ totalCount: 5, pageSize: 20 });
     expect(withoutPaging.nativeElement.querySelector('.tt-pagination')).toBeNull();
 
+    TestBed.resetTestingModule();
     const { fixture: withPaging } = await setup({ totalCount: 45, pageSize: 20, page: 2 });
     expect(withPaging.nativeElement.querySelector('.tt-pagination-info')?.textContent).toContain('Page 2 of 3');
   });

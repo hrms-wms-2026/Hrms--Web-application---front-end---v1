@@ -73,6 +73,7 @@ describe('MyRequestsPanelComponent', () => {
   async function setup(options: {
     corrections?: readonly AttendanceCorrectionResponse[];
     workAreaRequests?: readonly WorkAreaChangeRequestResponse[];
+    autoLoad?: boolean;
   } = {}): Promise<{ fixture: ComponentFixture<MyRequestsPanelComponent>; store: PanelStoreMock }> {
     const store: PanelStoreMock = {
       myCorrections: signal(options.corrections ?? []),
@@ -108,6 +109,7 @@ describe('MyRequestsPanelComponent', () => {
     }).compileComponents();
 
     const fixture = TestBed.createComponent(MyRequestsPanelComponent);
+    fixture.componentRef.setInput('autoLoad', options.autoLoad ?? true);
     fixture.detectChanges();
     await fixture.whenStable();
     fixture.detectChanges();
@@ -117,6 +119,12 @@ describe('MyRequestsPanelComponent', () => {
   it('loads corrections on init (the default tab)', async () => {
     const { store } = await setup();
     expect(store.loadMyCorrections).toHaveBeenCalled();
+  });
+
+  it('does not auto-load when autoLoad is false', async () => {
+    const { store } = await setup({ autoLoad: false });
+    expect(store.loadMyCorrections).not.toHaveBeenCalled();
+    expect(store.loadMyWorkAreaRequests).not.toHaveBeenCalled();
   });
 
   it('switches to the work-area tab and loads it on first visit', async () => {
@@ -132,7 +140,7 @@ describe('MyRequestsPanelComponent', () => {
     const text = (fixture.nativeElement as HTMLElement).textContent ?? '';
     expect(text).toContain('Forgot to clock in');
 
-    fixture.nativeElement.querySelector<HTMLButtonElement>('.table-action--danger')!.click();
+    (fixture.nativeElement as HTMLElement).querySelector<HTMLButtonElement>('.table-action--danger')!.click();
     await fixture.whenStable();
 
     expect(store.cancelCorrection).toHaveBeenCalledWith('correction-1');
@@ -140,17 +148,90 @@ describe('MyRequestsPanelComponent', () => {
 
   it('opens the cancel-work-area confirmation modal and confirms it', async () => {
     const { fixture, store } = await setup({ workAreaRequests: [workAreaRequest] });
-    fixture.nativeElement.querySelector<HTMLButtonElement>('#my-requests-tab-work-area')!.click();
+    (fixture.nativeElement as HTMLElement).querySelector<HTMLButtonElement>('#my-requests-tab-work-area')!.click();
     fixture.detectChanges();
 
-    fixture.nativeElement.querySelector<HTMLButtonElement>('.table-action--danger')!.click();
+    (fixture.nativeElement as HTMLElement).querySelector<HTMLButtonElement>('.table-action--danger')!.click();
     fixture.detectChanges();
     expect((fixture.nativeElement as HTMLElement).textContent).toContain('Cancel work-area request?');
 
-    const confirmButtons = Array.from(fixture.nativeElement.querySelectorAll('button')) as HTMLButtonElement[];
+    const confirmButtons = Array.from(fixture.nativeElement.querySelectorAll('.modal-actions button')) as HTMLButtonElement[];
     confirmButtons.find((button) => button.textContent?.trim() === 'Cancel request')!.click();
     await fixture.whenStable();
 
     expect(store.cancelWorkAreaChangeRequest).toHaveBeenCalledWith('wa-1');
   });
+
+  it("formats a correction request's clock-in and clock-out using the response's own timezone", async () => {
+    const request = correctionResponse({
+      timezone: 'Asia/Colombo',
+      requestedClockInAt: '2026-08-22T09:00:00Z',
+      requestedClockOutAt: '2026-08-22T17:00:00Z'
+    });
+    const { fixture } = await setup({ corrections: [request] });
+    const component = fixture.componentInstance;
+    const correctionsRow = fixture.nativeElement.querySelector('.corrections-table tbody tr') as HTMLElement;
+
+    expect(component.correctionSummary(request)).toBe(
+      `${formatForTimezone(request.requestedClockInAt!, 'Asia/Colombo')} to ${formatForTimezone(request.requestedClockOutAt!, 'Asia/Colombo')}`
+    );
+    expect(component.correctionSummary(request)).not.toContain(formatForTimezone(request.requestedClockInAt!, 'America/New_York'));
+    expect(correctionsRow.textContent).toContain(component.correctionSummary(request));
+  });
+
+  it('handles invalid correction timezones and null correction timestamps without throwing or exposing raw timezone errors', async () => {
+    const invalid = correctionResponse({
+      timezone: 'Invalid/CorrectionTimezone',
+      requestedClockInAt: '2026-08-22T09:00:00Z',
+      requestedClockOutAt: null,
+      reviewedAt: null
+    });
+    const empty = correctionResponse({
+      timezone: 'Asia/Colombo',
+      requestedClockInAt: null,
+      requestedClockOutAt: null,
+      reviewedAt: null
+    });
+    const { fixture } = await setup({ corrections: [invalid, empty] });
+    const component = fixture.componentInstance;
+
+    expect(() => component.correctionSummary(invalid)).not.toThrow();
+    expect(component.correctionSummary(invalid)).toBe('—');
+    expect(component.correctionSummary(empty)).toBe('Time update requested');
+    expect((fixture.nativeElement as HTMLElement).textContent).not.toContain('Invalid/CorrectionTimezone');
+    expect((fixture.nativeElement as HTMLElement).textContent).not.toContain('RangeError');
+  });
 });
+
+function correctionResponse(overrides: Partial<AttendanceCorrectionResponse> = {}): AttendanceCorrectionResponse {
+  return {
+    id: 'correction-1',
+    employeeId: 'employee-1',
+    legalEntityId: 'entity-1',
+    timezone: 'Asia/Colombo',
+    workDate: '2026-08-22',
+    correctionType: 'clock_in',
+    requestedClockInAt: '2026-08-22T09:00:00Z',
+    requestedClockOutAt: null,
+    requestedBreaks: null,
+    reason: 'Forgot to clock in.',
+    notes: null,
+    status: 'pending',
+    approvalRequired: true,
+    requestedById: 'user-1',
+    reviewedById: null,
+    reviewedAt: null,
+    reviewComment: null,
+    approver: null,
+    requesterDisplayName: 'Alex Employee',
+    ...overrides
+  } as AttendanceCorrectionResponse;
+}
+
+function formatForTimezone(value: string, timezone: string): string {
+  return new Intl.DateTimeFormat(undefined, {
+    hour: 'numeric',
+    minute: '2-digit',
+    timeZone: timezone
+  }).format(new Date(value));
+}

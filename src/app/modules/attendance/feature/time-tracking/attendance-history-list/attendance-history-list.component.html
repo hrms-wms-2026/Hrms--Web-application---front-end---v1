@@ -38,6 +38,7 @@
             <td>
               <span class="table-primary">{{ statusLabel(row.status, row.statusLabel) }}</span>
               @if (row.attentionLabel) { <span class="table-note">{{ row.attentionLabel }}</span> }
+              @if (hasBreakOverage(row.breakOverageMinutes, row.isOverBreakAllowance)) { <span class="table-note table-note--warning">{{ breakOverageHistoryLabel(row.breakOverageMinutes) }}</span> }
             </td>
           </tr>
         }

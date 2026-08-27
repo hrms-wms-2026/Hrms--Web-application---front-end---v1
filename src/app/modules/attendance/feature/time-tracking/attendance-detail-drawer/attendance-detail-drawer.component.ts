@@ -78,9 +78,9 @@ export class AttendanceDetailDrawerComponent {
   }
 
   emitRequestCorrection(): void {
-    const detail = this.store.dayDetail();
-    if (detail) {
-      this.requestCorrection.emit(detail.summary);
+    const summary = this.summary();
+    if (summary) {
+      this.requestCorrection.emit(summary);
     }
   }
 }

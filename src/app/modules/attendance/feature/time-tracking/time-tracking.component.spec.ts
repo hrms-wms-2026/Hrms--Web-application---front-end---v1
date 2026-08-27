@@ -137,6 +137,7 @@ type StoreMock = {
   loadMyWorkAreaRequests: ReturnType<typeof vi.fn>;
   cancelWorkAreaChangeRequest: ReturnType<typeof vi.fn>;
   workAreaActionLoading: ReturnType<typeof signal<boolean>>;
+  activeWorkAreaRequestId: ReturnType<typeof signal<string | null>>;
   approvalInbox: ReturnType<typeof signal<readonly AttendanceCorrectionResponse[]>>;
   approvalInboxLoading: ReturnType<typeof signal<boolean>>;
   approvalInboxError: ReturnType<typeof signal<string | null>>;
@@ -222,6 +223,7 @@ describe('TimeTrackingComponent', () => {
       loadMyWorkAreaRequests: vi.fn(() => Promise.resolve()),
       cancelWorkAreaChangeRequest: vi.fn(() => Promise.resolve(workAreaRequests[0] ?? null)),
       workAreaActionLoading: signal(false),
+      activeWorkAreaRequestId: signal(null),
       approvalInbox: signal([]),
       approvalInboxLoading: signal(false),
       approvalInboxError: signal(null),
@@ -425,23 +427,6 @@ describe('TimeTrackingComponent', () => {
     expect(teamRowText).not.toContain(formatForTimezone(row.clockInAt, 'UTC'));
   });
 
-  it('formats My correction request clock-in and clock-out using the response timezone, not Today timezone', async () => {
-    const request = correctionResponse({
-      timezone: 'Asia/Colombo',
-      requestedClockInAt: '2026-08-22T09:00:00Z',
-      requestedClockOutAt: '2026-08-22T17:00:00Z'
-    });
-    const { fixture } = await setup({ timezone: 'America/New_York' }, false, [], [request]);
-    const component = fixture.componentInstance;
-    const correctionsRow = fixture.nativeElement.querySelector('.corrections-table tbody tr') as HTMLElement;
-
-    expect(component.correctionSummary(request)).toBe(
-      `${formatForTimezone(request.requestedClockInAt!, 'Asia/Colombo')} to ${formatForTimezone(request.requestedClockOutAt!, 'Asia/Colombo')}`
-    );
-    expect(component.correctionSummary(request)).not.toContain(formatForTimezone(request.requestedClockInAt!, 'America/New_York'));
-    expect(correctionsRow.textContent).toContain(component.correctionSummary(request));
-  });
-
   it('formats the reviewed correction timestamp using the response timezone', async () => {
     const request = correctionResponse({
       timezone: 'Asia/Colombo',
@@ -453,29 +438,6 @@ describe('TimeTrackingComponent', () => {
 
     expect(reviewText).toContain(`Reviewed ${formatForTimezone(request.reviewedAt!, 'Asia/Colombo')}`);
     expect(reviewText).not.toContain(formatForTimezone(request.reviewedAt!, 'America/New_York'));
-  });
-
-  it('handles invalid correction timezones and null correction timestamps without throwing or exposing raw timezone errors', async () => {
-    const invalid = correctionResponse({
-      timezone: 'Invalid/CorrectionTimezone',
-      requestedClockInAt: '2026-08-22T09:00:00Z',
-      requestedClockOutAt: null,
-      reviewedAt: null
-    });
-    const empty = correctionResponse({
-      timezone: 'Asia/Colombo',
-      requestedClockInAt: null,
-      requestedClockOutAt: null,
-      reviewedAt: null
-    });
-    const { fixture } = await setup({ timezone: 'America/New_York' }, false, [], [invalid, empty]);
-    const component = fixture.componentInstance;
-
-    expect(() => component.correctionSummary(invalid)).not.toThrow();
-    expect(component.correctionSummary(invalid)).toBe('—');
-    expect(component.correctionSummary(empty)).toBe('Time update requested');
-    expect((fixture.nativeElement as HTMLElement).textContent).not.toContain('Invalid/CorrectionTimezone');
-    expect((fixture.nativeElement as HTMLElement).textContent).not.toContain('RangeError');
   });
 
   it('returns an em dash for invalid timezone and null or invalid timestamps without throwing', async () => {

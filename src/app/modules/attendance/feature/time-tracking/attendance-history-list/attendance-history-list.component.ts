@@ -38,6 +38,14 @@ export class AttendanceHistoryListComponent {
     return row.employee?.displayName ?? 'Current employee';
   }
 
+  hasBreakOverage(value: number | null | undefined, isOverBreakAllowance = false): boolean {
+    return isOverBreakAllowance || (value ?? 0) > 0;
+  }
+
+  breakOverageHistoryLabel(value: number | null | undefined): string {
+    return `Break exceeded by ${Math.max(0, value ?? 0)} min`;
+  }
+
   selectRow(row: AttendanceHistoryRow): void {
     if (row.canViewDetails) {
       this.rowSelected.emit(row);

@@ -1,4 +1,4 @@
-import { ChangeDetectionStrategy, Component, OnInit, inject, signal } from '@angular/core';
+import { ChangeDetectionStrategy, Component, OnInit, inject, input, signal } from '@angular/core';
 import { ButtonComponent } from '../../../../../shared/ui/button/button.component';
 import { ModalComponent } from '../../../../../shared/ui/modal/modal.component';
 import { NotificationService } from '../../../../../core/services/notification.service';
@@ -30,11 +30,15 @@ export class MyRequestsPanelComponent implements OnInit {
   readonly workAreaLabel = workAreaLabel;
   readonly workAreaChangeStatusLabel = workAreaChangeStatusLabel;
 
+  readonly autoLoad = input(true);
+
   readonly selectedRequestTab = signal<PersonalRequestTab>('corrections');
   readonly workAreaCancelRequestId = signal<string | null>(null);
 
   ngOnInit(): void {
-    this.ensureRequestTabLoaded(this.selectedRequestTab());
+    if (this.autoLoad()) {
+      this.ensureRequestTabLoaded(this.selectedRequestTab());
+    }
   }
 
   selectRequestTab(tab: PersonalRequestTab): void {
