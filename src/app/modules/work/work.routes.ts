@@ -55,6 +55,11 @@ export const WORK_ROUTES: Routes = [
         path: 'settings',
         loadComponent: () =>
           import('./feature/project-settings/project-settings.component').then((m) => m.ProjectSettingsComponent)
+      },
+      {
+        path: 'task/:taskId',
+        loadComponent: () =>
+          import('./feature/task-detail-page/task-detail-page.component').then((m) => m.TaskDetailPageComponent)
       }
     ]
   }
