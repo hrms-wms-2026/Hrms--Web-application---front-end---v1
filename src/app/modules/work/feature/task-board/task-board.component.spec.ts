@@ -1,5 +1,5 @@
 import { TestBed } from '@angular/core/testing';
-import { ActivatedRoute } from '@angular/router';
+import { ActivatedRoute, Router } from '@angular/router';
 import { vi } from 'vitest';
 import { of } from 'rxjs';
 import { TaskBoardComponent } from './task-board.component';
@@ -46,7 +46,8 @@ describe('TaskBoardComponent', () => {
           provide: EmployeeDirectoryStore,
           useValue: { get: vi.fn().mockReturnValue(undefined), ensureLoaded: vi.fn().mockResolvedValue(undefined) }
         },
-        { provide: ActivatedRoute, useValue: routeStub() }
+        { provide: ActivatedRoute, useValue: routeStub() },
+        { provide: Router, useValue: { navigate: vi.fn() } }
       ]
     });
 
@@ -112,7 +113,8 @@ describe('TaskBoardComponent', () => {
           provide: EmployeeDirectoryStore,
           useValue: { get: vi.fn().mockReturnValue(undefined), ensureLoaded: vi.fn().mockResolvedValue(undefined) }
         },
-        { provide: ActivatedRoute, useValue: routeStub() }
+        { provide: ActivatedRoute, useValue: routeStub() },
+        { provide: Router, useValue: { navigate: vi.fn() } }
       ]
     });
 
@@ -177,7 +179,8 @@ describe('TaskBoardComponent', () => {
           provide: EmployeeDirectoryStore,
           useValue: { get: vi.fn().mockReturnValue(undefined), ensureLoaded: vi.fn().mockResolvedValue(undefined) }
         },
-        { provide: ActivatedRoute, useValue: routeStub() }
+        { provide: ActivatedRoute, useValue: routeStub() },
+        { provide: Router, useValue: { navigate: vi.fn() } }
       ]
     });
 
@@ -234,7 +237,8 @@ describe('TaskBoardComponent', () => {
         { provide: SprintApiService, useValue: { getByProject: vi.fn().mockReturnValue(of([])) } },
         { provide: TaskApiService, useValue: { createTaskCreationRequest: vi.fn(), assignTask: vi.fn(), getCategories: vi.fn().mockReturnValue(of([])) } },
         { provide: EmployeeDirectoryStore, useValue: { get: vi.fn(), ensureLoaded: directoryEnsureLoaded } },
-        { provide: ActivatedRoute, useValue: routeStub() }
+        { provide: ActivatedRoute, useValue: routeStub() },
+        { provide: Router, useValue: { navigate: vi.fn() } }
       ]
     });
 
@@ -284,7 +288,8 @@ describe('TaskBoardComponent', () => {
           provide: EmployeeDirectoryStore,
           useValue: { get: vi.fn().mockReturnValue(undefined), ensureLoaded: vi.fn().mockResolvedValue(undefined) }
         },
-        { provide: ActivatedRoute, useValue: routeStub() }
+        { provide: ActivatedRoute, useValue: routeStub() },
+        { provide: Router, useValue: { navigate: vi.fn() } }
       ]
     });
 
@@ -302,5 +307,48 @@ describe('TaskBoardComponent', () => {
     retryButton.click();
 
     expect(loadBoard).toHaveBeenCalledWith('project-1');
+  });
+
+  it('navigates to the task detail page when a card is viewed', async () => {
+    const storeStub = {
+      loadBoard: vi.fn().mockResolvedValue(undefined),
+      columnsWithTasks: () => [],
+      tasks: () => [],
+      loading: () => false,
+      error: () => null,
+      moveTask: vi.fn(),
+      statuses: () => []
+    };
+
+    TestBed.configureTestingModule({
+      imports: [TaskBoardComponent],
+      providers: [
+        { provide: TaskBoardStore, useValue: storeStub },
+        {
+          provide: ProjectDetailStore,
+          useValue: {
+            milestones: () => [{ objectiveId: 'milestone-1', title: 'Milestone One', isOwner: true }],
+            getMilestoneDetail: vi.fn().mockResolvedValue(null),
+            loadMyMilestones: vi.fn().mockResolvedValue(undefined),
+            loadProjectMembers: vi.fn().mockResolvedValue(undefined),
+            projectMembers: () => []
+          }
+        },
+        { provide: SprintApiService, useValue: { getByProject: vi.fn().mockReturnValue(of([])) } },
+        { provide: TaskApiService, useValue: { createTaskCreationRequest: vi.fn(), assignTask: vi.fn(), getCategories: vi.fn().mockReturnValue(of([])) } },
+        { provide: EmployeeDirectoryStore, useValue: { get: vi.fn().mockReturnValue(undefined), ensureLoaded: vi.fn().mockResolvedValue(undefined) } },
+        { provide: ActivatedRoute, useValue: routeStub() },
+        { provide: Router, useValue: { navigate: vi.fn() } }
+      ]
+    });
+
+    const fixture = TestBed.createComponent(TaskBoardComponent);
+    fixture.detectChanges();
+    await fixture.whenStable();
+
+    const navigate = vi.spyOn(TestBed.inject(Router), 'navigate').mockResolvedValue(true);
+    fixture.componentInstance.onTaskViewed({ id: 't-9', objectiveId: 'milestone-1' } as never);
+
+    expect(navigate).toHaveBeenCalledWith(['/work', 'project-1', 'task', 't-9']);
   });
 });

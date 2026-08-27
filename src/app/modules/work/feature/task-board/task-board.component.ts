@@ -1,12 +1,11 @@
 import { AfterViewChecked, Component, OnInit, computed, inject, signal } from '@angular/core';
 import { CurrentEmployeeStore } from '../../state/current-employee.store';
-import { ActivatedRoute } from '@angular/router';
+import { ActivatedRoute, Router } from '@angular/router';
 import { firstValueFrom } from 'rxjs';
 import { TaskBoardStore } from '../../state/task-board.store';
 import { ProjectDetailStore } from '../../state/project-detail.store';
 import { TaskBoardColumnComponent } from '../../ui/task-board-column/task-board-column.component';
 import { TaskCreateModalComponent } from '../../ui/task-create-modal/task-create-modal.component';
-import { TaskDetailModalComponent } from '../../ui/task-detail-modal/task-detail-modal.component';
 import { ButtonComponent } from '../../../../shared/ui/button/button.component';
 import { ErrorStateComponent } from '../../../../shared/ui/error-state/error-state.component';
 import { SprintApiService } from '../../data-access/sprint-api.service';
@@ -22,7 +21,7 @@ import { SelectComponent, SelectOption } from '../../../../shared/ui/select/sele
 @Component({
   selector: 'app-task-board',
   standalone: true,
-  imports: [TaskBoardColumnComponent, TaskCreateModalComponent, TaskDetailModalComponent, ButtonComponent, ErrorStateComponent, SelectComponent],
+  imports: [TaskBoardColumnComponent, TaskCreateModalComponent, ButtonComponent, ErrorStateComponent, SelectComponent],
   template: `
     <div class="task-board__toolbar">
       <app-select [options]="objectiveOptions()" [value]="objectiveFilter()" ariaLabel="Module filter" [icon]="'module'" (valueChange)="setObjectiveFilter($event)" />
@@ -66,19 +65,6 @@ import { SelectComponent, SelectOption } from '../../../../shared/ui/select/sele
         (created)="onTaskCreated()"
       />
     }
-
-    <app-task-detail-modal
-      [open]="detailOpen()"
-      [task]="selectedTask()"
-      [projectId]="projectId()"
-      [isObjectiveOwner]="selectedTask() ? (objectiveOwners()[selectedTask()!.objectiveId] ?? false) : false"
-      [isAssignee]="selectedTask() ? selectedTask()!.assigneeEmployeeIds.includes(currentEmployee.id()) : false"
-      [currentEmployeeId]="currentEmployee.id()"
-      [statuses]="store.statuses()"
-      (closed)="detailOpen.set(false)"
-      (saved)="onTaskSaved()"
-      (statusChangeRequested)="onStatusChangeRequested($event)"
-    />
   `,
   styles: [`
     .task-board__toolbar { display: flex; flex-wrap: wrap; align-items: flex-end; justify-content: flex-end; gap: 8px; margin-bottom: 16px; }
@@ -92,14 +78,13 @@ export class TaskBoardComponent implements OnInit, AfterViewChecked {
   protected readonly store = inject(TaskBoardStore);
   private readonly projectStore = inject(ProjectDetailStore);
   private readonly route = inject(ActivatedRoute);
+  private readonly router = inject(Router);
   private readonly sprintApi = inject(SprintApiService);
   private readonly taskApi = inject(TaskApiService);
   private readonly directory = inject(EmployeeDirectoryStore);
   protected readonly currentEmployee = inject(CurrentEmployeeStore);
 
   protected readonly createOpen = signal(false);
-  protected readonly detailOpen = signal(false);
-  protected readonly selectedTask = signal<WorkTask | null>(null);
   protected readonly projectId = signal('');
   protected readonly sprints = signal<Sprint[]>([]);
   protected readonly categories = signal<TaskCategoryColumn[]>([]);
@@ -111,9 +96,6 @@ export class TaskBoardComponent implements OnInit, AfterViewChecked {
   private didScrollToHighlight = false;
 
   protected readonly modules = computed(() => this.projectStore.milestones());
-  protected readonly objectiveOwners = computed(() =>
-    Object.fromEntries(this.modules().map((module) => [module.objectiveId, module.isOwner]))
-  );
   protected readonly moduleOptions = computed(() =>
     this.modules().map((m) => ({ objectiveId: m.objectiveId, title: m.title, isOwner: m.isOwner }))
   );
@@ -244,21 +226,11 @@ export class TaskBoardComponent implements OnInit, AfterViewChecked {
   }
 
   onTaskViewed(task: WorkTask): void {
-    this.selectedTask.set(task);
-    this.detailOpen.set(true);
-  }
-
-  protected onStatusChangeRequested(newStatusId: string): void {
-    const taskId = this.selectedTask()?.id;
-    if (taskId) void this.store.moveTask(taskId, newStatusId);
+    void this.router.navigate(['/work', this.projectId(), 'task', task.id]);
   }
 
   protected onTaskCreated(): void {
     this.createOpen.set(false);
-    void this.store.loadBoard(this.projectId());
-  }
-
-  protected onTaskSaved(): void {
     void this.store.loadBoard(this.projectId());
   }
 }
