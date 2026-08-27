@@ -471,7 +471,7 @@ describe('MilestoneTreeTabComponent', () => {
     expect(storeStub.loadSprintsAndTasksForLeaf).toHaveBeenCalledWith('o2', { force: true });
   });
 
-  it('opens task create scoped to one sprint and refreshes that sprint after create', async () => {
+  it('navigates to the create-task page scoped to one sprint from a sprint row', () => {
     setup('o1');
     fixture.detectChanges();
     const sprint: MilestoneTreeNode = {
@@ -479,14 +479,11 @@ describe('MilestoneTreeTabComponent', () => {
     };
 
     fixture.componentInstance.onCreateTaskRequested(sprint);
-    fixture.detectChanges();
 
-    expect(fixture.componentInstance.createTaskSprints()).toHaveLength(1);
-    expect(fixture.componentInstance.createTaskSprints()[0].id).toBe('spr-1');
-    expect(fixture.nativeElement.querySelector('[data-testid="sprint-fixed"]')).not.toBeNull();
-
-    await fixture.componentInstance.onTaskCreated();
-    expect(storeStub.loadTasksForSprint).toHaveBeenCalledWith('spr-1', { force: true });
+    expect(routerStub.navigate).toHaveBeenCalledWith(
+      ['/work', 'p1', 'task', 'new'],
+      { queryParams: { module: 'o1', sprint: 'spr-1', sprintRequired: 'true' } }
+    );
   });
 
   it('opens the settings modal with fetched detail when an objective row is edited', async () => {
@@ -605,17 +602,14 @@ describe('MilestoneTreeTabComponent', () => {
     expect(fixture.componentInstance.deleteConfirmOpen()).toBe(false);
   });
 
-  it('opens sprint-optional task create from a module row', async () => {
+  it('navigates to the create-task page with just the module from a module row', () => {
     setup('o1');
     fixture.detectChanges();
     fixture.componentInstance.onCreateTaskRequested(tree);
-    fixture.detectChanges();
 
-    expect(fixture.componentInstance.createTaskObjectiveId()).toBe('o1');
-    expect(fixture.componentInstance.createTaskSprints()).toEqual([]);
-    expect(fixture.nativeElement.querySelector('[data-testid="sprint-fixed"]')).toBeNull();
-
-    await fixture.componentInstance.onTaskCreated();
-    expect(storeStub.loadSprintsAndTasksForLeaf).toHaveBeenCalledWith('o1', { force: true });
+    expect(routerStub.navigate).toHaveBeenCalledWith(
+      ['/work', 'p1', 'task', 'new'],
+      { queryParams: { module: 'o1' } }
+    );
   });
 });

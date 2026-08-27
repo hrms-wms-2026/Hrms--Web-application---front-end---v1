@@ -61,13 +61,6 @@
   [isObjectiveOwner]="sprintLeaf.isOwner" (created)="onSprintCreated()" (cancelled)="onSprintCreateCancelled()" />
 }
 
-@if (createTaskOpen()) {
-<app-task-create-modal [open]="createTaskOpen()" [objectiveId]="createTaskObjectiveId()" [projectId]="projectId()"
-  [isObjectiveOwner]="createTaskIsOwner()" [activeSprints]="createTaskSprints()"
-  [assignableMembers]="assignableMembers()"
-  [sprintRequired]="createTaskSprint() !== null" (created)="onTaskCreated()" (closed)="onTaskCreateClosed()" />
-}
-
 @if (editSprintNode(); as sprintNode) {
 <app-sprint-form mode="edit" [open]="editSprintOpen()" [objectiveId]="sprintNode.parentObjectiveId ?? ''"
   [sprint]="sprintFromNode(sprintNode)" (saved)="onSprintSaved()" (cancelled)="onSprintEditCancelled()" />
