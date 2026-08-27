@@ -52,6 +52,10 @@ export class TaskApiService {
     return this.http.get<WorkTaskDto[]>(`${this.baseUrl}/projects/${projectId}/tasks`);
   }
 
+  getTaskById(taskId: string): Observable<WorkTaskDto> {
+    return this.http.get<WorkTaskDto>(`${this.baseUrl}/tasks/${taskId}`);
+  }
+
   getMyTasks(projectId: string, sprintId?: string): Observable<WorkTaskDto[]> {
     let params = new HttpParams();
     if (sprintId) params = params.set('sprintId', sprintId);

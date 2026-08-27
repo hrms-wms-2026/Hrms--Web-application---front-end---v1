@@ -278,6 +278,13 @@ it('reorderTaskStatuses posts to projects/{projectId}/task-statuses/reorder', ()
     req.flush([]);
   });
 
+  it('getTaskById GETs the single task endpoint', () => {
+    service.getTaskById('t1').subscribe();
+    const req = httpMock.expectOne(`${environment.apiUrl}/work/tasks/t1`);
+    expect(req.request.method).toBe('GET');
+    req.flush({});
+  });
+
   it('clockIn POSTs with no body', () => {
     service.clockIn('t1').subscribe();
     const req = httpMock.expectOne(`${environment.apiUrl}/work/tasks/t1/clock-in`);
