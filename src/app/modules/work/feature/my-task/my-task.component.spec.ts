@@ -152,6 +152,12 @@ describe('MyTaskComponent', () => {
     expect(navigate).toHaveBeenCalledWith(['/work', 'p1', 'task', 't5']);
   });
 
+  it('navigates to the task create page from the Create task button', () => {
+    const navigate = TestBed.inject(Router).navigate as ReturnType<typeof vi.fn>;
+    fixture.componentInstance.goToCreate();
+    expect(navigate).toHaveBeenCalledWith(['/work', 'p1', 'task', 'new']);
+  });
+
   // Regression: the Board-view column emits (taskDropped) on a cross-column drop, but the
   // My Task template never bound that output, so dragging a card to another status column
   // snapped back and never persisted the status change.

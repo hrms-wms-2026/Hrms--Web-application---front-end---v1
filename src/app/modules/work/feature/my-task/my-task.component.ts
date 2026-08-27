@@ -10,13 +10,12 @@ import { TaskStatusColumn, WorkTask } from '../../models/task.model';
 import { toWorkTask } from '../../utils/task.mapper';
 import { TaskBoardColumnComponent } from '../../ui/task-board-column/task-board-column.component';
 import { TaskTableComponent } from '../../ui/task-table/task-table.component';
-import { TaskCreateModalComponent } from '../../ui/task-create-modal/task-create-modal.component';
 import { SelectComponent, SelectOption } from '../../../../shared/ui/select/select.component';
 
 @Component({
   selector: 'app-my-task',
   standalone: true,
-  imports: [TaskBoardColumnComponent, TaskTableComponent, TaskCreateModalComponent, ButtonComponent, ErrorStateComponent, SelectComponent],
+  imports: [TaskBoardColumnComponent, TaskTableComponent, ButtonComponent, ErrorStateComponent, SelectComponent],
   template: `
     <div class="my-task__toolbar">
       <div class="my-task__view-toggle">
@@ -25,7 +24,7 @@ import { SelectComponent, SelectOption } from '../../../../shared/ui/select/sele
       </div>
       <app-select [options]="sprintOptions()" [value]="sprintFilter() ?? 'all'" ariaLabel="Sprint filter" [icon]="'sprint'" (valueChange)="setSprintFilter($event === 'all' ? null : $event)" />
       <input data-testid="my-task-search" type="text" placeholder="Search my tasks" (input)="search.set($any($event.target).value)" />
-      <app-button variant="primary" (pressed)="createOpen.set(true)">Create task</app-button>
+      <app-button variant="primary" (pressed)="goToCreate()">Create task</app-button>
     </div>
 
     @if (loading()) {
@@ -61,10 +60,6 @@ import { SelectComponent, SelectOption } from '../../../../shared/ui/select/sele
         />
       </div>
     }
-
-    @if (createOpen()) {
-      <app-task-create-modal [open]="createOpen()" [projectId]="projectId()" (closed)="createOpen.set(false)" (created)="onTaskCreated()" />
-    }
   `,
   styles: [`
     .my-task__toolbar { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin-bottom: 16px; }
@@ -89,7 +84,6 @@ export class MyTaskComponent implements OnInit {
   statuses = signal<TaskStatusColumn[]>([]);
   loading = signal(true);
   error = signal<string | null>(null);
-  createOpen = signal(false);
 
   projectId = computed(() => this.route.parent?.snapshot.paramMap.get('id') ?? '');
   currentEmployeeId = computed(() => this.currentEmployee.id());
@@ -156,8 +150,7 @@ export class MyTaskComponent implements OnInit {
     await this.load();
   }
 
-  onTaskCreated(): void {
-    this.createOpen.set(false);
-    void this.load();
+  goToCreate(): void {
+    void this.router.navigate(['/work', this.projectId(), 'task', 'new']);
   }
 }
