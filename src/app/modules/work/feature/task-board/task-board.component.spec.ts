@@ -350,5 +350,8 @@ describe('TaskBoardComponent', () => {
     fixture.componentInstance.onTaskViewed({ id: 't-9', objectiveId: 'milestone-1' } as never);
 
     expect(navigate).toHaveBeenCalledWith(['/work', 'project-1', 'task', 't-9']);
+
+    (fixture.componentInstance as unknown as { goToCreate: () => void }).goToCreate();
+    expect(navigate).toHaveBeenCalledWith(['/work', 'project-1', 'task', 'new']);
   });
 });

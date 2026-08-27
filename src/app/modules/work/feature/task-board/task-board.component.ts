@@ -5,7 +5,6 @@ import { firstValueFrom } from 'rxjs';
 import { TaskBoardStore } from '../../state/task-board.store';
 import { ProjectDetailStore } from '../../state/project-detail.store';
 import { TaskBoardColumnComponent } from '../../ui/task-board-column/task-board-column.component';
-import { TaskCreateModalComponent } from '../../ui/task-create-modal/task-create-modal.component';
 import { ButtonComponent } from '../../../../shared/ui/button/button.component';
 import { ErrorStateComponent } from '../../../../shared/ui/error-state/error-state.component';
 import { SprintApiService } from '../../data-access/sprint-api.service';
@@ -21,14 +20,14 @@ import { SelectComponent, SelectOption } from '../../../../shared/ui/select/sele
 @Component({
   selector: 'app-task-board',
   standalone: true,
-  imports: [TaskBoardColumnComponent, TaskCreateModalComponent, ButtonComponent, ErrorStateComponent, SelectComponent],
+  imports: [TaskBoardColumnComponent, ButtonComponent, ErrorStateComponent, SelectComponent],
   template: `
     <div class="task-board__toolbar">
       <app-select [options]="objectiveOptions()" [value]="objectiveFilter()" ariaLabel="Module filter" [icon]="'module'" (valueChange)="setObjectiveFilter($event)" />
       <app-select [options]="sprintOptions()" [value]="sprintFilter()" ariaLabel="Sprint filter" [icon]="'sprint'" (valueChange)="setSprintFilter($event)" />
       <app-select [options]="categoryOptions()" [value]="categoryFilter()" ariaLabel="Category filter" [icon]="'category'" (valueChange)="setCategoryFilter($event)" />
       @if (modules().length > 0) {
-        <app-button variant="primary" (pressed)="createOpen.set(true)">Create task</app-button>
+        <app-button variant="primary" (pressed)="goToCreate()">Create task</app-button>
       }
     </div>
 
@@ -54,17 +53,6 @@ import { SelectComponent, SelectOption } from '../../../../shared/ui/select/sele
       </div>
     }
 
-    @if (createOpen()) {
-      <app-task-create-modal
-        [open]="createOpen()"
-        [projectId]="projectId()"
-        [modules]="moduleOptions()"
-        [activeSprints]="sprints()"
-        [assignableMembers]="assignableMembers()"
-        (closed)="createOpen.set(false)"
-        (created)="onTaskCreated()"
-      />
-    }
   `,
   styles: [`
     .task-board__toolbar { display: flex; flex-wrap: wrap; align-items: flex-end; justify-content: flex-end; gap: 8px; margin-bottom: 16px; }
@@ -84,7 +72,6 @@ export class TaskBoardComponent implements OnInit, AfterViewChecked {
   private readonly directory = inject(EmployeeDirectoryStore);
   protected readonly currentEmployee = inject(CurrentEmployeeStore);
 
-  protected readonly createOpen = signal(false);
   protected readonly projectId = signal('');
   protected readonly sprints = signal<Sprint[]>([]);
   protected readonly categories = signal<TaskCategoryColumn[]>([]);
@@ -229,8 +216,7 @@ export class TaskBoardComponent implements OnInit, AfterViewChecked {
     void this.router.navigate(['/work', this.projectId(), 'task', task.id]);
   }
 
-  protected onTaskCreated(): void {
-    this.createOpen.set(false);
-    void this.store.loadBoard(this.projectId());
+  protected goToCreate(): void {
+    void this.router.navigate(['/work', this.projectId(), 'task', 'new']);
   }
 }
