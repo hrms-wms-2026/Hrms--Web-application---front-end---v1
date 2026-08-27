@@ -1,17 +1,18 @@
 import { ChangeDetectionStrategy, Component, OnInit, computed, inject, signal } from '@angular/core';
 import { CardComponent } from '../../../../shared/ui/card/card.component';
+import { TimeTrackingRange } from '../../../attendance/models/time-tracking.model';
+import { TimeTrackingStore } from '../../../attendance/state/time-tracking.store';
 import { WorkPatternApiService } from '../../data-access/work-pattern-api.service';
 import { WorkPatternDay } from '../../models/work-pattern.model';
 
 const DAY_IN_MILLISECONDS = 24 * 60 * 60 * 1000;
-const DAY_LABELS = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
-const CHART_SCALE_HOURS = 10;
 
-export interface StackedDayBar {
-  readonly label: string;
-  readonly focusHeightPercent: number;
-  readonly meetingHeightPercent: number;
-  readonly adminHeightPercent: number;
+export type WorkPatternSegmentType = 'focus' | 'meeting' | 'admin' | 'idle';
+
+export interface WorkPatternSegment {
+  readonly type: WorkPatternSegmentType;
+  readonly minutes: number;
+  readonly widthPercent: number;
 }
 
 @Component({
@@ -23,18 +24,55 @@ export interface StackedDayBar {
 })
 export class WorkPatternCardComponent implements OnInit {
   private readonly api = inject(WorkPatternApiService);
+  private readonly store = inject(TimeTrackingStore);
 
   private readonly rawDays = signal<WorkPatternDay[]>([]);
   protected readonly loading = signal(true);
 
-  protected readonly days = computed<StackedDayBar[]>(() => buildWeekBars(this.rawDays()));
+  private readonly focusMinutes = computed(() => sumBy(this.rawDays(), (d) => d.focusMinutes));
+  private readonly meetingMinutes = computed(() => sumBy(this.rawDays(), (d) => d.meetingMinutes));
+  private readonly adminMinutes = computed(() => sumBy(this.rawDays(), (d) => d.adminMinutes));
+  private readonly idleMinutes = computed(() => sumBy(this.rawDays(), (d) => d.idleMinutes));
 
-  protected readonly weeklyFocusLabel = computed(() =>
-    formatHours(this.rawDays().reduce((sum, d) => sum + d.focusMinutes, 0))
+  protected readonly weeklyWorkedMinutes = computed(() =>
+    this.store.history().reduce((sum, row) => sum + row.totalWorkedMinutes, 0)
   );
+
+  protected readonly productiveMinutes = computed(
+    () => this.focusMinutes() + this.meetingMinutes() + this.adminMinutes()
+  );
+
+  protected readonly weeklyWorkedLabel = computed(() => formatHours(this.weeklyWorkedMinutes()));
+  protected readonly productiveLabel = computed(() => formatHours(this.productiveMinutes()));
+  protected readonly focusLabel = computed(() => formatHours(this.focusMinutes()));
+  protected readonly meetingLabel = computed(() => formatHours(this.meetingMinutes()));
+  protected readonly adminLabel = computed(() => formatHours(this.adminMinutes()));
+  protected readonly idleLabel = computed(() => formatHours(this.idleMinutes()));
+
+  // Percentages are relative to weekly worked hours (attendance clock-in time), not to the sum
+  // of the monitoring categories - tray-app coverage rarely spans 100% of worked time, so the
+  // bar intentionally doesn't fill the full container in that gap.
+  protected readonly segments = computed<WorkPatternSegment[]>(() => {
+    const denominator = this.weeklyWorkedMinutes();
+    if (denominator <= 0) {
+      return [];
+    }
+    const raw: { type: WorkPatternSegmentType; minutes: number }[] = [
+      { type: 'focus', minutes: this.focusMinutes() },
+      { type: 'meeting', minutes: this.meetingMinutes() },
+      { type: 'admin', minutes: this.adminMinutes() },
+      { type: 'idle', minutes: this.idleMinutes() }
+    ];
+    const total = raw.reduce((sum, s) => sum + s.minutes, 0);
+    const scale = total > denominator ? denominator / total : 1; // never overflow the bar
+    return raw
+      .filter((s) => s.minutes > 0)
+      .map((s) => ({ ...s, widthPercent: ((s.minutes * scale) / denominator) * 100 }));
+  });
 
   ngOnInit(): void {
     const range = currentWeekRange();
+    void this.store.loadMyHistory(range);
     this.api.getMyWorkPattern(range.from, range.to).subscribe({
       next: (response) => {
         this.rawDays.set(response.days);
@@ -46,29 +84,28 @@ export class WorkPatternCardComponent implements OnInit {
       }
     });
   }
+
+  protected segmentPercentLabel(segment: WorkPatternSegment): string {
+    return `${segment.widthPercent.toFixed(1)}%`;
+  }
+
+  protected segmentLabel(type: WorkPatternSegmentType): string {
+    return SEGMENT_LABELS[type];
+  }
 }
 
-function buildWeekBars(days: readonly WorkPatternDay[]): StackedDayBar[] {
-  const byDate = new Map(days.map((d) => [d.date, d]));
-  const range = currentWeekRange();
-  const monday = new Date(`${range.from}T00:00:00`);
+const SEGMENT_LABELS: Record<WorkPatternSegmentType, string> = {
+  focus: 'Focus work',
+  meeting: 'Meeting time',
+  admin: 'Admin / other work',
+  idle: 'Idle time'
+};
 
-  return DAY_LABELS.map((label, index) => {
-    const date = new Date(monday.getTime() + index * DAY_IN_MILLISECONDS);
-    const day = byDate.get(toDateOnly(date));
-    const focusHours = (day?.focusMinutes ?? 0) / 60;
-    const meetingHours = (day?.meetingMinutes ?? 0) / 60;
-    const adminHours = (day?.adminMinutes ?? 0) / 60;
-    return {
-      label,
-      focusHeightPercent: Math.min(100, (focusHours / CHART_SCALE_HOURS) * 100),
-      meetingHeightPercent: Math.min(100, (meetingHours / CHART_SCALE_HOURS) * 100),
-      adminHeightPercent: Math.min(100, (adminHours / CHART_SCALE_HOURS) * 100)
-    };
-  });
+function sumBy<T>(items: readonly T[], selector: (item: T) => number): number {
+  return items.reduce((sum, item) => sum + selector(item), 0);
 }
 
-function currentWeekRange(reference = new Date()): { from: string; to: string } {
+function currentWeekRange(reference = new Date()): TimeTrackingRange {
   const referenceDay = new Date(reference.getFullYear(), reference.getMonth(), reference.getDate());
   const dayOfWeek = referenceDay.getDay();
   const mondayOffset = dayOfWeek === 0 ? -6 : 1 - dayOfWeek;

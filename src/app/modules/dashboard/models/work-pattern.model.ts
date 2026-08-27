@@ -3,6 +3,7 @@ export interface WorkPatternDay {
   focusMinutes: number;
   meetingMinutes: number;
   adminMinutes: number;
+  idleMinutes: number;
 }
 
 export interface WorkPatternResponse {
