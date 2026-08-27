@@ -1,6 +1,8 @@
 import { signal } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
+import { of } from 'rxjs';
 import { TimeTrackingStore } from '../../../attendance/state/time-tracking.store';
+import { ActivityTimelineApiService } from '../../data-access/activity-timeline-api.service';
 import { DashboardHomeComponent } from './dashboard-home.component';
 
 describe('DashboardHomeComponent', () => {
@@ -18,7 +20,10 @@ describe('DashboardHomeComponent', () => {
 
     await TestBed.configureTestingModule({
       imports: [DashboardHomeComponent],
-      providers: [{ provide: TimeTrackingStore, useValue: store }]
+      providers: [
+        { provide: TimeTrackingStore, useValue: store },
+        { provide: ActivityTimelineApiService, useValue: { getMyTimeline: () => of({ date: '', segments: [] }) } }
+      ]
     }).compileComponents();
 
     const fixture = TestBed.createComponent(DashboardHomeComponent);
