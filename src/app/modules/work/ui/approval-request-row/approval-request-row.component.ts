@@ -1,5 +1,5 @@
 import { DatePipe } from '@angular/common';
-import { Component, input, output, signal } from '@angular/core';
+import { Component, computed, input, output, signal } from '@angular/core';
 import { ButtonComponent } from '../../../../shared/ui/button/button.component';
 import { ApprovalItem } from '../../models/approval.model';
 
@@ -18,6 +18,20 @@ import { ApprovalItem } from '../../models/approval.model';
           }
           <span>{{ item().createdAt | date: 'MMM d, y' }}</span>
         </p>
+        @if (item().kind === 'allocation_extend') {
+          <label class="approval-row__hours-label">
+            Granted additional hours
+            <input
+              data-testid="allocation-hours-input"
+              class="approval-row__hours-input"
+              type="number"
+              min="0"
+              step="0.25"
+              [value]="approvedHours()"
+              (input)="onApprovedHoursInput($any($event.target).value)"
+            />
+          </label>
+        }
         @if (inlineError()) {
           <p class="approval-row__error" role="alert">
             {{ inlineError() }}
@@ -40,7 +54,7 @@ import { ApprovalItem } from '../../models/approval.model';
         }
       </div>
       <div class="approval-row__actions">
-        <app-button variant="primary" (pressed)="approved.emit()">Approve</app-button>
+        <app-button variant="primary" (pressed)="onApproveClick()">Approve</app-button>
         <app-button variant="secondary" (pressed)="onRejectClick()">Reject</app-button>
       </div>
     </div>
@@ -66,6 +80,23 @@ import { ApprovalItem } from '../../models/approval.model';
       margin: 4px 0 0;
       font-size: 12px;
       color: var(--color-text-secondary);
+    }
+    .approval-row__hours-label {
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+      margin-top: 10px;
+      font-size: 12px;
+      color: var(--color-text-secondary);
+    }
+    .approval-row__hours-input {
+      width: 9rem;
+      border: 1px solid var(--color-border);
+      border-radius: 6px;
+      padding: 6px 8px;
+      background: var(--color-surface);
+      color: var(--color-text-primary);
+      font-size: 13px;
     }
     .approval-row__actions {
       display: flex;
@@ -104,12 +135,37 @@ export class ApprovalRequestRowComponent {
   item = input.required<ApprovalItem>();
   inlineError = input<string | null>(null);
 
-  approved = output<void>();
+  approved = output<number | undefined>();
   rejected = output<string | undefined>();
   requestOwnAllocation = output<void>();
 
   protected readonly showRejectComment = signal(false);
   protected readonly rejectComment = signal('');
+  private readonly editedApprovedHours = signal<number | undefined>(undefined);
+  protected readonly approvedHours = computed(() =>
+    this.editedApprovedHours() ?? this.requestedAdditionalHours()
+  );
+
+  protected requestedAdditionalHours(): number {
+    const raw = this.item().raw;
+    if ('payload' in raw && 'requestedAdditionalHours' in raw.payload) {
+      return raw.payload.requestedAdditionalHours;
+    }
+    return 0;
+  }
+
+  onApprovedHoursInput(value: string): void {
+    const parsed = Number(value);
+    this.editedApprovedHours.set(Number.isFinite(parsed) ? parsed : 0);
+  }
+
+  onApproveClick(): void {
+    if (this.item().kind === 'allocation_extend') {
+      this.approved.emit(this.approvedHours());
+      return;
+    }
+    this.approved.emit(undefined);
+  }
 
   onRejectClick(): void {
     if (this.item().kind === 'task_creation' && !this.showRejectComment()) {

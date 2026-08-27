@@ -27,12 +27,18 @@ export class ProjectDetailComponent implements OnInit {
 
   activeMilestoneId = signal<string | null>(null);
   isProjectSettings = signal(false);
-  activeMilestoneTitle = computed(() => {
-    const id = this.activeMilestoneId();
+
+  // Board/Backlog/Settings are project-level routes with no milestoneId of their own, but the
+  // sub-menu bar (and its Tree/My Task/List/Approvals/Calendar links, which are still
+  // milestone-scoped) must stay visible on every tab - falls back to the first module so those
+  // links have somewhere valid to point when the user isn't currently inside a specific module.
+  subMenuMilestoneId = computed(() => this.activeMilestoneId() ?? this.store.milestones()[0]?.objectiveId ?? '');
+  subMenuMilestoneTitle = computed(() => {
+    const id = this.subMenuMilestoneId();
     return this.store.milestones().find((m) => m.objectiveId === id)?.title ?? '';
   });
-  activeMilestoneIsOwner = computed(() => {
-    const id = this.activeMilestoneId();
+  subMenuIsOwner = computed(() => {
+    const id = this.subMenuMilestoneId();
     if (!id) return false;
     return this.store.milestones().find((m) => m.objectiveId === id)?.isOwner ?? false;
   });

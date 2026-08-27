@@ -5,6 +5,7 @@ export interface TaskEditRequestPayloadDto {
   dueDate: string | null;
   estimatedHours: number | null;
   storyPoints: number | null;
+  progressPercent?: number | null;
 }
 
 export interface TaskEditRequestDto {
@@ -23,4 +24,6 @@ export interface CreateTaskEditRequestDto {
   dueDate?: string;
   estimatedHours?: number;
   storyPoints?: number;
+  progressPercent?: number;
+  reason?: string;
 }

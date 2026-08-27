@@ -5,10 +5,12 @@ import { environment } from '../../../../environments/environment';
 import {
   CreateTaskRequestDto,
   CreateTaskStatusRequestDto,
-  EditTaskRequestDto,
+    EditTaskRequestDto,
   EditTaskStatusRequestDto,
+  PushTaskRequestDto,
   TaskStatusDto,
   WorkTaskDto
+
 } from '../models/dto/task.dto';
 import {
   CreateTaskCategoryRequestDto,
@@ -19,6 +21,7 @@ import {
   CreateTaskEditRequestDto,
   TaskEditRequestDto
 } from '../models/dto/task-edit-request.dto';
+import { TaskHistoryEntryDto } from '../models/dto/task-history.dto';
 
 @Injectable({ providedIn: 'root' })
 export class TaskApiService {
@@ -45,6 +48,28 @@ export class TaskApiService {
     return this.http.get<WorkTaskDto[]>(`${this.baseUrl}/objectives/${objectiveId}/tasks`);
   }
 
+  getTasksByProject(projectId: string): Observable<WorkTaskDto[]> {
+    return this.http.get<WorkTaskDto[]>(`${this.baseUrl}/projects/${projectId}/tasks`);
+  }
+
+  getTaskById(taskId: string): Observable<WorkTaskDto> {
+    return this.http.get<WorkTaskDto>(`${this.baseUrl}/tasks/${taskId}`);
+  }
+
+  getMyTasks(projectId: string, sprintId?: string): Observable<WorkTaskDto[]> {
+    let params = new HttpParams();
+    if (sprintId) params = params.set('sprintId', sprintId);
+    return this.http.get<WorkTaskDto[]>(`${this.baseUrl}/projects/${projectId}/my-tasks`, { params });
+  }
+
+  getTaskHistory(taskId: string): Observable<TaskHistoryEntryDto[]> {
+    return this.http.get<TaskHistoryEntryDto[]>(`${this.baseUrl}/tasks/${taskId}/history`);
+  }
+
+  getCurrentEmployee(): Observable<{ employeeId: string }> {
+    return this.http.get<{ employeeId: string }>(`${this.baseUrl}/me`);
+  }
+
   getBySprintId(sprintId: string): Observable<WorkTaskDto[]> {
     return this.http.get<WorkTaskDto[]>(`${this.baseUrl}/sprints/${sprintId}/tasks`);
   }
@@ -59,6 +84,22 @@ export class TaskApiService {
 
   editTask(taskId: string, request: EditTaskRequestDto): Observable<WorkTaskDto> {
     return this.http.patch<WorkTaskDto>(`${this.baseUrl}/tasks/${taskId}`, request);
+  }
+
+  clockIn(taskId: string): Observable<void> {
+    return this.http.post<void>(`${this.baseUrl}/tasks/${taskId}/clock-in`, {});
+  }
+
+  push(taskId: string, request: PushTaskRequestDto): Observable<WorkTaskDto> {
+    return this.http.post<WorkTaskDto>(`${this.baseUrl}/tasks/${taskId}/push`, request);
+  }
+
+  addClockingSessionReason(sessionId: string, reason: string): Observable<void> {
+    return this.http.patch<void>(`${this.baseUrl}/clocking-sessions/${sessionId}/reason`, { reason });
+  }
+
+  addPercentageLogReason(logId: string, reason: string): Observable<void> {
+    return this.http.patch<void>(`${this.baseUrl}/percentage-log/${logId}/reason`, { reason });
   }
 
   moveTaskStatus(taskId: string, newStatusId: string): Observable<void> {

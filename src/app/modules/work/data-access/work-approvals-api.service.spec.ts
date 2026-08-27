@@ -94,10 +94,11 @@ describe('WorkApprovalsApiService', () => {
     req.flush(mine);
   });
 
-  it('approveAllocationRequest posts change-request approve', () => {
-    service.approveAllocationRequest('a1').subscribe();
+  it('approveAllocationRequest posts the edited additional hours to change-request approve', () => {
+    service.approveAllocationRequest('a1', 12).subscribe();
     const req = httpMock.expectOne(`${environment.apiUrl}/work/objectives/change-requests/a1/approve`);
     expect(req.request.method).toBe('POST');
+    expect(req.request.body).toEqual({ approvedAdditionalHours: 12 });
     req.flush(null);
   });
 });

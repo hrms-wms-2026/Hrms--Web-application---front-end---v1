@@ -15,7 +15,7 @@ describe('TaskTreeRowComponent', () => {
       id: 't1', objectiveId: 'o1', shortId: 'WEB-9', title: 'Do it', description: null,
       categoryId: 'task', statusId: 'st-1', priority: 'medium', storyPoints: null,
       dueDate: null, estimatedHours: 3, completedHours: 0, progressPercent: 0,
-      sprintId: 'spr-1', assigneeEmployeeIds: ['e1']
+      sprintId: 'spr-1', assigneeEmployeeIds: ['e1'], openClockSessionEmployeeId: null, openClockSessionClockInAt: null, totalLoggedMinutes: 0
     }
   };
 
@@ -65,5 +65,17 @@ describe('TaskTreeRowComponent', () => {
     (fixture.nativeElement.querySelector('[data-testid="delete-task-button"]') as HTMLElement).click();
 
     expect(deleted[0].id).toBe('t1');
+  });
+
+  it('emits viewRequested with the node when the View button is clicked', () => {
+    setup(task);
+    const viewed: MilestoneTreeNode[] = [];
+    fixture.componentInstance.viewRequested.subscribe((n) => viewed.push(n));
+
+    const btn = fixture.nativeElement.querySelector('[data-testid="view-button"]') as HTMLElement;
+    expect(btn).not.toBeNull();
+    btn.click();
+
+    expect(viewed[0].id).toBe('t1');
   });
 });

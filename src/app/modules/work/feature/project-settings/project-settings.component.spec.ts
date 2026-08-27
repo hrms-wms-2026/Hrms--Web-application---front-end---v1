@@ -6,7 +6,7 @@ import { ProjectSettingsComponent } from './project-settings.component';
 import { TaskApiService } from '../../data-access/task-api.service';
 
 describe('ProjectSettingsComponent', () => {
-  it('resolves the project id and switches between status and category tabs', async () => {
+  it('resolves the project id and renders both the status and category sections on one page', async () => {
     const getStatuses = vi.fn().mockReturnValue(of([]));
     const getCategories = vi.fn().mockReturnValue(of([]));
     TestBed.configureTestingModule({
@@ -23,15 +23,12 @@ describe('ProjectSettingsComponent', () => {
     fixture.detectChanges();
     await fixture.whenStable();
 
+    // Settings moved from a tab-switcher to a single scrolling page (see the
+    // 20260825 settings-redesign commits) - both sections load and render at once now,
+    // there's no click needed to reveal the second one.
     expect(getStatuses).toHaveBeenCalledWith('project-1');
-    expect(fixture.nativeElement.querySelector('[data-testid="project-settings-tab-task-statuses"]')).not.toBeNull();
-
-    const tabs = fixture.nativeElement.querySelectorAll('[role="tab"]') as NodeListOf<HTMLButtonElement>;
-    tabs[1].click();
-    fixture.detectChanges();
-    await fixture.whenStable();
-
     expect(getCategories).toHaveBeenCalledWith('project-1');
+    expect(fixture.nativeElement.querySelector('[data-testid="project-settings-tab-task-statuses"]')).not.toBeNull();
     expect(fixture.nativeElement.querySelector('[data-testid="project-settings-tab-task-categories"]')).not.toBeNull();
   });
 });

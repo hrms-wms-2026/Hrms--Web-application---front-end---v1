@@ -53,4 +53,20 @@ describe('EmployeeDirectoryStore', () => {
     expect(getEmployeeSpy).toHaveBeenCalledTimes(1);
     expect(store.get('emp-1')?.name).toBe('Nevi Peiris');
   });
+
+  // A 403 from the coverage-scoped GET /employees/{id} is the common case for an assignee outside
+  // the viewer's management coverage, not a rare error - without caching it as an unresolved
+  // placeholder, every fresh component mount that needs this id would retry the same doomed
+  // request forever (the request-storm this test guards against).
+  it('caches a failed lookup as an unresolved placeholder instead of leaving it re-fetchable forever', async () => {
+    const { throwError } = await import('rxjs');
+    getEmployeeSpy.mockReturnValue(throwError(() => ({ status: 403 })));
+
+    await store.ensureLoaded(['emp-403']);
+    expect(store.get('emp-403')?.name).toBe('Unknown employee');
+    expect(getEmployeeSpy).toHaveBeenCalledTimes(1);
+
+    await store.ensureLoaded(['emp-403']);
+    expect(getEmployeeSpy).toHaveBeenCalledTimes(1);
+  });
 });
