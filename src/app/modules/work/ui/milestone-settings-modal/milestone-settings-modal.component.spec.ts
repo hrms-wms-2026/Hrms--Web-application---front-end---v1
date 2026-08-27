@@ -37,7 +37,27 @@ describe('MilestoneSettingsModalComponent', () => {
     expect(achievedToggle.disabled).toBe(true);
   });
 
+    it('does not emit saved while draft fields change until Save changes is pressed', () => {
+    fixture.componentRef.setInput('initialValue', detail);
+    fixture.detectChanges();
+    const saved = vi.fn();
+    fixture.componentInstance.saved.subscribe(saved);
+
+    const titleInput = fixture.nativeElement.querySelector('[data-testid="title-field"] input') as HTMLInputElement;
+    titleInput.value = 'Draft title';
+    titleInput.dispatchEvent(new Event('input'));
+    fixture.detectChanges();
+
+    expect(saved).not.toHaveBeenCalled();
+
+    (fixture.nativeElement.querySelector('[data-testid="submit-button"] button') as HTMLButtonElement).click();
+
+    expect(saved).toHaveBeenCalledTimes(1);
+    expect(saved.mock.calls[0][0].fields.title).toBe('Draft title');
+  });
+
   it('emits saved with achievedChanged:false when the toggle is untouched', () => {
+
     fixture.componentRef.setInput('initialValue', detail);
     fixture.detectChanges();
     let emitted: any;
