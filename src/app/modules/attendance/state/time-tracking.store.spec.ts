@@ -3,7 +3,7 @@ import { of, Subject, throwError } from 'rxjs';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { ErrorHandlerService } from '../../../core/services/error-handler.service';
 import { NotificationService } from '../../../core/services/notification.service';
-import { AttendanceTodayResponse } from '../models/time-tracking.model';
+import { AttendanceDayDetail, AttendanceTodayResponse } from '../models/time-tracking.model';
 import { TimeTrackingApiService } from '../data-access/time-tracking-api.service';
 import { WorkAreaChangeRequestResponse } from '../models/work-area-change-request.model';
 import {
@@ -57,6 +57,28 @@ const today: AttendanceTodayResponse = {
   isOverBreakAllowance: false
 };
 
+const dayDetail: AttendanceDayDetail = {
+  summary: {
+    attendanceRecordId: 'record-1',
+    workDate: '2026-08-22',
+    employee: null,
+    clockInAt: '2026-08-22T04:00:00Z',
+    clockOutAt: '2026-08-22T12:30:00Z',
+    isActive: false,
+    breakMinutes: 45,
+    totalWorkedMinutes: 465,
+    expectedWorkMode: 'onsite',
+    attendanceSource: 'web',
+    status: 'clocked_out',
+    canViewDetails: true,
+    canRequestCorrection: true,
+    canRequestWorkAreaChange: false,
+    canCorrect: false
+  },
+  timelineEvents: [],
+  dailyActivity: null
+};
+
 const workAreaRequest: WorkAreaChangeRequestResponse = {
   id: 'wa-1',
   employeeId: 'employee-1',
@@ -80,7 +102,8 @@ describe('TimeTrackingStore', () => {
   let api: {
     getToday: ReturnType<typeof vi.fn>;
     getMyHistory: ReturnType<typeof vi.fn>;
-    getCoveredHistory: ReturnType<typeof vi.fn>;
+        getCoveredHistory: ReturnType<typeof vi.fn>;
+    getDayDetail: ReturnType<typeof vi.fn>;
     getMyCorrections: ReturnType<typeof vi.fn>;
     getApprovalInbox: ReturnType<typeof vi.fn>;
     previewWorkAreaChange: ReturnType<typeof vi.fn>;
@@ -103,7 +126,8 @@ describe('TimeTrackingStore', () => {
     api = {
       getToday: vi.fn(() => of(today)),
       getMyHistory: vi.fn(() => of({ items: [], pageNumber: 1, pageSize: 20, totalCount: 0 })),
-      getCoveredHistory: vi.fn(() => of({ items: [], pageNumber: 1, pageSize: 20, totalCount: 0 })),
+            getCoveredHistory: vi.fn(() => of({ items: [], pageNumber: 1, pageSize: 20, totalCount: 0 })),
+      getDayDetail: vi.fn(() => of(dayDetail)),
       getMyCorrections: vi.fn(() => of({ items: [], pageNumber: 1, pageSize: 20, totalCount: 0 })),
       getApprovalInbox: vi.fn(() => of([])),
       previewWorkAreaChange: vi.fn(() => of({ date: '2026-08-22', timezone: 'Asia/Colombo', currentExpectedWorkArea: 'onsite', requestedWorkArea: 'remote', reason: 'Client meeting', receiver: { employeeId: 'approver-1', userId: 'user-1', displayName: 'Approver', positionName: 'Manager' } })),
@@ -370,7 +394,7 @@ describe('TimeTrackingStore', () => {
     expect(api.getWorkAreaChangeApprovalInbox).toHaveBeenLastCalledWith({ status: 'pending', pageNumber: 2, pageSize: 20 });
   });
 
-  it('keeps requester and approval list data isolated', async () => {
+    it('keeps requester and approval list data isolated', async () => {
     const requester = { ...workAreaRequest, id: 'requester-only' };
     const approval = { ...workAreaRequest, id: 'approval-only' };
     api.getMyWorkAreaChangeRequests.mockReturnValue(of({ items: [requester], pageNumber: 1, pageSize: 20, totalCount: 1 }));
@@ -382,4 +406,49 @@ describe('TimeTrackingStore', () => {
     expect(store.myWorkAreaRequests().map((item) => item.id)).toEqual(['requester-only']);
     expect(store.workAreaApprovalInbox().map((item) => item.id)).toEqual(['approval-only']);
   });
+
+  it('loads day detail and exposes it on the store', async () => {
+    await store.loadDayDetail('employee-1', '2026-08-22');
+
+    expect(api.getDayDetail).toHaveBeenCalledWith('employee-1', '2026-08-22');
+    expect(store.dayDetail()).toEqual(dayDetail);
+    expect(store.dayDetailLoading()).toBe(false);
+    expect(store.dayDetailError()).toBeNull();
+  });
+
+  it('clears any previous day detail before loading a new one', async () => {
+    await store.loadDayDetail('employee-1', '2026-08-22');
+    expect(store.dayDetail()).not.toBeNull();
+
+    const pending = new Subject<AttendanceDayDetail>();
+    api.getDayDetail.mockReturnValueOnce(pending);
+    const loadPromise = store.loadDayDetail('employee-2', '2026-08-23');
+
+    expect(store.dayDetail()).toBeNull();
+    expect(store.dayDetailLoading()).toBe(true);
+
+    pending.next(dayDetail);
+    pending.complete();
+    await loadPromise;
+  });
+
+  it('sets a friendly error and clears loading when getDayDetail fails', async () => {
+    api.getDayDetail.mockReturnValueOnce(throwError(() => new Error('network error')));
+
+    await store.loadDayDetail('employee-1', '2026-08-22');
+
+    expect(store.dayDetailLoading()).toBe(false);
+    expect(store.dayDetailError()).toBe('A friendly attendance error.');
+    expect(store.dayDetail()).toBeNull();
+  });
+
+  it('clearDayDetail resets detail state', async () => {
+    await store.loadDayDetail('employee-1', '2026-08-22');
+    store.clearDayDetail();
+
+    expect(store.dayDetail()).toBeNull();
+    expect(store.dayDetailLoading()).toBe(false);
+    expect(store.dayDetailError()).toBeNull();
+  });
+
 });

@@ -15,6 +15,7 @@ import {
   RejectAttendanceCorrectionRequest
 } from '../models/attendance-correction.model';
 import {
+  AttendanceDayDetail,
   AttendanceHistoryRow,
   AttendanceTodayResponse,
   TimeTrackingRange
@@ -35,6 +36,7 @@ export type WorkAreaChangeAction = 'preview' | 'submit' | 'cancel' | 'approve' |
 export const TIME_TRACKING_LOAD_ERROR = 'Could not load your attendance today. Try again.';
 export const TIME_TRACKING_HISTORY_ERROR = 'Could not load attendance history. Try again.';
 export const TIME_TRACKING_COVERED_HISTORY_ERROR = 'Could not load team attendance. Try again.';
+export const TIME_TRACKING_DAY_DETAIL_ERROR = 'Could not load attendance details. Try again.';
 export const TIME_TRACKING_COVERED_FORBIDDEN_ERROR = 'You do not have access to view team attendance.';
 export const CORRECTIONS_LOAD_ERROR = 'Could not load your correction requests. Try again.';
 export const CORRECTIONS_APPROVAL_LOAD_ERROR = 'Could not load attendance correction approvals. Try again.';
@@ -70,6 +72,9 @@ interface TimeTrackingState {
   readonly coveredHistoryTotalCount: number;
   readonly selectedHistoryRange: TimeTrackingRange | null;
   readonly selectedCoveredEmployeeId: string | null;
+  readonly dayDetail: AttendanceDayDetail | null;
+  readonly dayDetailLoading: boolean;
+  readonly dayDetailError: string | null;
   readonly myCorrections: readonly AttendanceCorrectionListItem[];
   readonly myCorrectionsLoading: boolean;
   readonly myCorrectionsError: string | null;
@@ -132,6 +137,9 @@ const initialState: TimeTrackingState = {
   coveredHistoryTotalCount: 0,
   selectedHistoryRange: null,
   selectedCoveredEmployeeId: null,
+  dayDetail: null,
+  dayDetailLoading: false,
+  dayDetailError: null,
   myCorrections: [],
   myCorrectionsLoading: false,
   myCorrectionsError: null,
@@ -301,6 +309,21 @@ export const TimeTrackingStore = signalStore(
           const message = thisIsForbidden(error) ? TIME_TRACKING_COVERED_FORBIDDEN_ERROR : errors.toSafeMessage(error, TIME_TRACKING_COVERED_HISTORY_ERROR);
           patchState(store, { coveredHistoryLoading: false, coveredHistoryError: message });
         }
+      },
+
+      async loadDayDetail(employeeId: string, workDate: string): Promise<void> {
+        if (store.dayDetailLoading()) return;
+        patchState(store, { dayDetailLoading: true, dayDetailError: null, dayDetail: null });
+        try {
+          const detail = await firstValueFrom(api.getDayDetail(employeeId, workDate));
+          patchState(store, { dayDetail: detail, dayDetailLoading: false, dayDetailError: null });
+        } catch (error) {
+          patchState(store, { dayDetailLoading: false, dayDetailError: errors.toSafeMessage(error, TIME_TRACKING_DAY_DETAIL_ERROR) });
+        }
+      },
+
+      clearDayDetail(): void {
+        patchState(store, { dayDetail: null, dayDetailLoading: false, dayDetailError: null });
       },
 
       async loadMyCorrections(page = 1): Promise<void> {
