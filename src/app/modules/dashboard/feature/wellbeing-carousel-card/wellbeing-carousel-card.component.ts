@@ -15,6 +15,13 @@ export interface WellbeingCard {
 const FOCUS_STATUS_POLL_MS = 90_000;
 const ROTATE_MS = 6_000;
 
+/** Illustration for a card kind, added as each one is supplied. A kind with no entry falls
+ * back to the small line-icon badge. */
+const ILLUSTRATIONS: Partial<Record<WellbeingCardKind, string>> = {
+  reminder: '/assets/wellbeing/mindful-break.png',
+  hydration: '/assets/wellbeing/hydration.png'
+};
+
 const WELLBEING_TIPS: readonly WellbeingCard[] = [
   { kind: 'hydration', title: 'Stay hydrated', description: 'Drink a glass of water — dehydration is a common cause of afternoon fatigue.' },
   { kind: 'posture', title: 'Check your posture', description: 'Sit up straight and relax your shoulders. Good posture reduces strain over a long day.' },
@@ -93,6 +100,10 @@ export class WellbeingCarouselCardComponent implements OnInit, OnDestroy {
 
   protected goTo(index: number): void {
     this.currentIndex.set(index);
+  }
+
+  protected illustrationFor(kind: WellbeingCardKind): string | null {
+    return ILLUSTRATIONS[kind] ?? null;
   }
 
   protected startBreak(): void {

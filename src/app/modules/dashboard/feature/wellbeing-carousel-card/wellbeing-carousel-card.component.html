@@ -1,33 +1,37 @@
 <app-card title="Wellbeing">
   @if (activeCard(); as card) {
     <div class="flex flex-col gap-4" data-testid="wellbeing-card" [attr.data-card-kind]="card.kind">
-      @if (card.kind === 'reminder') {
-        <div class="flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wide text-rose-600">
-          <svg viewBox="0 0 20 20" fill="currentColor" class="h-3.5 w-3.5">
-            <circle cx="7" cy="7" r="4" />
-            <circle cx="13" cy="7" r="4" />
-            <path d="M3 9 L10 17 L17 9 Z" />
-          </svg>
-          Wellbeing Reminder
-        </div>
+      @if (illustrationFor(card.kind); as illustrationSrc) {
+        @if (card.kind === 'reminder') {
+          <div class="flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wide text-rose-600">
+            <svg viewBox="0 0 20 20" fill="currentColor" class="h-3.5 w-3.5">
+              <circle cx="7" cy="7" r="4" />
+              <circle cx="13" cy="7" r="4" />
+              <path d="M3 9 L10 17 L17 9 Z" />
+            </svg>
+            Wellbeing Reminder
+          </div>
+        }
 
         <div class="flex items-center gap-4">
-          <img src="/assets/wellbeing/mindful-break.png" alt="" class="h-20 w-20 shrink-0 object-contain" data-testid="wellbeing-reminder-illustration" />
+          <img [src]="illustrationSrc" alt="" class="h-20 w-20 shrink-0 object-contain" data-testid="wellbeing-illustration" />
           <div>
             <p class="font-semibold text-[var(--color-text-primary)]" data-testid="wellbeing-card-title">{{ card.title }}</p>
             <p class="mt-0.5 text-sm text-[var(--color-text-secondary)]" data-testid="wellbeing-card-description">{{ card.description }}</p>
           </div>
         </div>
 
-        <button
-          type="button"
-          data-testid="wellbeing-start-break"
-          class="inline-flex w-full items-center justify-center rounded-md bg-gradient-to-r from-indigo-500 to-violet-500 px-4 py-2 text-sm font-medium text-white transition hover:from-indigo-600 hover:to-violet-600 disabled:cursor-not-allowed disabled:opacity-60"
-          [disabled]="actionLoading()"
-          (click)="startBreak()"
-        >
-          Start 5-min Break
-        </button>
+        @if (card.kind === 'reminder') {
+          <button
+            type="button"
+            data-testid="wellbeing-start-break"
+            class="inline-flex w-full items-center justify-center rounded-md bg-gradient-to-r from-indigo-500 to-violet-500 px-4 py-2 text-sm font-medium text-white transition hover:from-indigo-600 hover:to-violet-600 disabled:cursor-not-allowed disabled:opacity-60"
+            [disabled]="actionLoading()"
+            (click)="startBreak()"
+          >
+            Start 5-min Break
+          </button>
+        }
       } @else {
         <div class="flex items-start gap-3">
           <span

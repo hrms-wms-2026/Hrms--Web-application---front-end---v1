@@ -52,6 +52,22 @@ describe('WellbeingCarouselCardComponent', () => {
     expect(fixture.nativeElement.querySelector('[data-testid="wellbeing-card-title"]').textContent.trim()).toBe('Stay hydrated');
   });
 
+  it('shows the illustration for a card kind that has one (hydration)', async () => {
+    const { fixture } = await setup();
+    const img: HTMLImageElement = fixture.nativeElement.querySelector('[data-testid="wellbeing-illustration"]');
+    expect(img).not.toBeNull();
+    expect(img.getAttribute('src')).toBe('/assets/wellbeing/hydration.png');
+  });
+
+  it('falls back to the icon badge for a card kind with no illustration yet (posture)', async () => {
+    const { fixture } = await setup();
+    fixture.nativeElement.querySelector('[aria-label="Next tip"]').click();
+    fixture.detectChanges();
+
+    expect(fixture.nativeElement.querySelector('[data-testid="wellbeing-card-title"]').textContent.trim()).toBe('Check your posture');
+    expect(fixture.nativeElement.querySelector('[data-testid="wellbeing-illustration"]')).toBeNull();
+  });
+
   it('inserts and jumps to the break-reminder card the moment it becomes due', async () => {
     const { fixture } = await setup(makeStatus({ isBreakReminderDue: true, continuousFocusMinutes: 92 }));
 
