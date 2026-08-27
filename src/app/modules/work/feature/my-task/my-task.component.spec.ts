@@ -1,5 +1,6 @@
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { ActivatedRoute } from '@angular/router';
+import { By } from '@angular/platform-browser';
 import { signal } from '@angular/core';
 import { of, throwError } from 'rxjs';
 import { vi } from 'vitest';
@@ -7,6 +8,7 @@ import { MyTaskComponent } from './my-task.component';
 import { TaskApiService } from '../../data-access/task-api.service';
 import { SprintListStore } from '../../state/sprint-list.store';
 import { ProjectDetailStore } from '../../state/project-detail.store';
+import { TaskBoardColumnComponent } from '../../ui/task-board-column/task-board-column.component';
 
 const myTasks = [
   { id: 't1', objectiveId: 'o1', shortId: 'T-1', title: 'First', description: null, categoryId: 'c1', statusId: 's1', priority: 'high' as const, storyPoints: null, dueDate: '2026-09-01', estimatedHours: null, completedHours: 0, progressPercent: 0, sprintId: 'sp1', assigneeEmployeeIds: ['e1'], openClockSessionEmployeeId: null, openClockSessionClockInAt: null },
@@ -15,13 +17,17 @@ const myTasks = [
 
 describe('MyTaskComponent', () => {
   let fixture: ComponentFixture<MyTaskComponent>;
-  let taskApiSpy: { getMyTasks: ReturnType<typeof vi.fn>; getStatuses: ReturnType<typeof vi.fn>; getCurrentEmployee: ReturnType<typeof vi.fn> };
+  let taskApiSpy: { getMyTasks: ReturnType<typeof vi.fn>; getStatuses: ReturnType<typeof vi.fn>; getCurrentEmployee: ReturnType<typeof vi.fn>; moveTaskStatus: ReturnType<typeof vi.fn> };
 
   beforeEach(async () => {
     taskApiSpy = {
       getMyTasks: vi.fn().mockReturnValue(of(myTasks)),
-      getStatuses: vi.fn().mockReturnValue(of([{ id: 's1', name: 'To Do', displayOrder: 0, requiresApproval: false, approverId: null, marksTaskComplete: false, visibility: 'public' }])),
-      getCurrentEmployee: vi.fn().mockReturnValue(of({ employeeId: 'e1' }))
+      getStatuses: vi.fn().mockReturnValue(of([
+        { id: 's1', name: 'To Do', displayOrder: 0, requiresApproval: false, approverId: null, marksTaskComplete: false, visibility: 'public' },
+        { id: 's2', name: 'Doing', displayOrder: 1, requiresApproval: false, approverId: null, marksTaskComplete: false, visibility: 'public' }
+      ])),
+      getCurrentEmployee: vi.fn().mockReturnValue(of({ employeeId: 'e1' })),
+      moveTaskStatus: vi.fn().mockReturnValue(of(undefined))
     };
 
     await TestBed.configureTestingModule({
@@ -137,5 +143,21 @@ describe('MyTaskComponent', () => {
     await new Promise((resolve) => setTimeout(resolve, 0));
     fixture.detectChanges();
     expect(fixture.nativeElement.textContent).toContain('No tasks assigned to you');
+  });
+
+  // Regression: the Board-view column emits (taskDropped) on a cross-column drop, but the
+  // My Task template never bound that output, so dragging a card to another status column
+  // snapped back and never persisted the status change.
+  it('persists the status change when a Board-view card is dropped into another column', async () => {
+    taskApiSpy.getMyTasks.mockClear();
+
+    const column = fixture.debugElement.query(By.directive(TaskBoardColumnComponent));
+    expect(column).toBeTruthy();
+    column.triggerEventHandler('taskDropped', { taskId: 't1', newStatusId: 's2' });
+    await fixture.whenStable();
+    await new Promise((resolve) => setTimeout(resolve, 0));
+
+    expect(taskApiSpy.moveTaskStatus).toHaveBeenCalledWith('t1', 's2');
+    expect(taskApiSpy.getMyTasks).toHaveBeenCalled();
   });
 });

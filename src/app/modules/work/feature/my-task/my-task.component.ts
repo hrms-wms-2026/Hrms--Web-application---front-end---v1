@@ -46,6 +46,7 @@ import { SelectComponent, SelectOption } from '../../../../shared/ui/select/sele
             [allStatuses]="statuses()"
             [employeeNames]="{}"
             [currentEmployeeId]="currentEmployeeId()"
+            (taskDropped)="onTaskDropped($event)"
             (taskViewed)="onTaskViewed($event)"
             (taskChanged)="reload()"
           />
@@ -165,6 +166,15 @@ export class MyTaskComponent implements OnInit {
   onTaskViewed(task: WorkTask): void {
     this.selectedTask.set(task);
     this.detailOpen.set(true);
+  }
+
+  async onTaskDropped(event: { taskId: string; newStatusId: string }): Promise<void> {
+    try {
+      await firstValueFrom(this.taskApi.moveTaskStatus(event.taskId, event.newStatusId));
+    } catch {
+      this.error.set('Failed to move the task.');
+    }
+    await this.load();
   }
 
   onTaskCreated(): void {
