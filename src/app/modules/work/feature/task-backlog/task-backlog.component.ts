@@ -1,6 +1,6 @@
 import { Component, OnInit, computed, inject, signal } from '@angular/core';
 import { CurrentEmployeeStore } from '../../state/current-employee.store';
-import { ActivatedRoute } from '@angular/router';
+import { ActivatedRoute, Router } from '@angular/router';
 import { firstValueFrom } from 'rxjs';
 import { ButtonComponent } from '../../../../shared/ui/button/button.component';
 import { ErrorStateComponent } from '../../../../shared/ui/error-state/error-state.component';
@@ -9,7 +9,6 @@ import { TaskBoardStore } from '../../state/task-board.store';
 import { SprintListStore } from '../../state/sprint-list.store';
 import { TaskApiService } from '../../data-access/task-api.service';
 import { TaskCreateModalComponent } from '../../ui/task-create-modal/task-create-modal.component';
-import { TaskDetailModalComponent } from '../../ui/task-detail-modal/task-detail-modal.component';
 import { SprintTabComponent } from '../../ui/sprint-tab/sprint-tab.component';
 import { SprintFormComponent } from '../../ui/sprint-form/sprint-form.component';
 import { TaskTableComponent } from '../../ui/task-table/task-table.component';
@@ -22,7 +21,7 @@ import { SelectComponent, SelectOption } from '../../../../shared/ui/select/sele
 @Component({
   selector: 'app-task-backlog',
   standalone: true,
-  imports: [TaskCreateModalComponent, TaskDetailModalComponent, SprintTabComponent, SprintFormComponent, TaskTableComponent, ButtonComponent, ErrorStateComponent, SelectComponent],
+  imports: [TaskCreateModalComponent, SprintTabComponent, SprintFormComponent, TaskTableComponent, ButtonComponent, ErrorStateComponent, SelectComponent],
   template: `
     <div class="task-backlog__toolbar">
       <app-select [options]="objectiveOptions()" [value]="objectiveFilter()" ariaLabel="Module filter" [icon]="'module'" (valueChange)="setObjectiveFilter($event)" />
@@ -114,20 +113,6 @@ import { SelectComponent, SelectOption } from '../../../../shared/ui/select/sele
         (created)="onTaskCreated()"
       />
     }
-    @if (detailOpen()) {
-      <app-task-detail-modal
-        [open]="detailOpen()"
-        [task]="selectedTask()"
-        [projectId]="projectId()"
-        [isObjectiveOwner]="selectedTask() ? (objectiveOwners()[selectedTask()!.objectiveId] ?? false) : false"
-        [isAssignee]="selectedTask() ? selectedTask()!.assigneeEmployeeIds.includes(currentEmployee.id()) : false"
-        [currentEmployeeId]="currentEmployee.id()"
-        [statuses]="store.statuses()"
-        (closed)="detailOpen.set(false)"
-        (saved)="reloadTasks()"
-        (statusChangeRequested)="onTaskStatusChangeRequested({ taskId: selectedTask()?.id ?? '', newStatusId: $event })"
-      />
-    }
   `,
   styles: [`
     .task-backlog__toolbar { display: flex; flex-wrap: wrap; justify-content: flex-end; align-items: flex-end; gap: 8px; margin-bottom: 16px; }
@@ -145,13 +130,12 @@ export class TaskBacklogComponent implements OnInit {
   protected readonly projectStore = inject(ProjectDetailStore);
   private readonly taskApi = inject(TaskApiService);
   private readonly route = inject(ActivatedRoute);
+  private readonly router = inject(Router);
   protected readonly currentEmployee = inject(CurrentEmployeeStore);
 
   protected readonly createOpen = signal(false);
   protected readonly createSprintOpen = signal(false);
   protected readonly editingSprint = signal<Sprint | null>(null);
-  protected readonly detailOpen = signal(false);
-  protected readonly selectedTask = signal<WorkTask | null>(null);
   protected readonly projectId = signal('');
   protected readonly expandedSprintId = signal<string | null>(null);
   protected readonly assignableMembers = signal<{ employeeId: string; name: string }[]>([]);
@@ -241,8 +225,7 @@ export class TaskBacklogComponent implements OnInit {
   }
 
   onTaskViewed(task: WorkTask): void {
-    this.selectedTask.set(task);
-    this.detailOpen.set(true);
+    void this.router.navigate(['/work', this.projectId(), 'task', task.id]);
   }
 
   async onSprintStatusChangeRequested(sprintOrId: Sprint | string, newStatus: string): Promise<void> {
@@ -257,10 +240,8 @@ export class TaskBacklogComponent implements OnInit {
     }
   }
 
-  onTaskStatusChangeRequested(event: { taskId: string; newStatusId: string } | string): void {
-    const taskId = typeof event === 'string' ? this.selectedTask()?.id ?? '' : event.taskId;
-    const newStatusId = typeof event === 'string' ? event : event.newStatusId;
-    if (taskId) void this.store.moveTask(taskId, newStatusId);
+  onTaskStatusChangeRequested(event: { taskId: string; newStatusId: string }): void {
+    if (event.taskId) void this.store.moveTask(event.taskId, event.newStatusId);
   }
 
   protected onSprintCreated(): void {

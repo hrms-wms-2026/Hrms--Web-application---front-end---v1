@@ -1,6 +1,6 @@
 import { TestBed } from '@angular/core/testing';
 import { By } from '@angular/platform-browser';
-import { ActivatedRoute } from '@angular/router';
+import { ActivatedRoute, Router } from '@angular/router';
 import { vi } from 'vitest';
 import { of } from 'rxjs';
 import { signal } from '@angular/core';
@@ -11,7 +11,6 @@ import { TaskApiService } from '../../data-access/task-api.service';
 import { SprintListStore } from '../../state/sprint-list.store';
 import { SprintTabComponent } from '../../ui/sprint-tab/sprint-tab.component';
 import { TaskCreateModalComponent } from '../../ui/task-create-modal/task-create-modal.component';
-import { TaskDetailModalComponent } from '../../ui/task-detail-modal/task-detail-modal.component';
 import { EmployeeDirectoryStore } from '../../state/employee-directory.store';
 import { Sprint } from '../../models/sprint.model';
 import { WorkTask } from '../../models/task.model';
@@ -83,6 +82,7 @@ describe('TaskBacklogComponent', () => {
     const sprintAchieve = options.sprintAchieve ?? vi.fn().mockResolvedValue(true);
     const sprintSetStatus = options.sprintSetStatus ?? vi.fn().mockResolvedValue(true);
     const loadProjectMembers = vi.fn().mockResolvedValue(undefined);
+    const navigate = vi.fn().mockResolvedValue(true);
 
     TestBed.resetTestingModule();
     TestBed.configureTestingModule({
@@ -139,13 +139,14 @@ describe('TaskBacklogComponent', () => {
         {
           provide: ActivatedRoute,
           useValue: { snapshot: { paramMap: { get: (key: string) => (key === 'id' ? 'project-1' : null) } } }
-        }
+        },
+        { provide: Router, useValue: { navigate } }
       ]
     });
 
     const fixture = TestBed.createComponent(TaskBacklogComponent);
     fixture.detectChanges();
-    return { fixture, loadBoard, moveTask, loadForProject, sprintCreate, sprintsSignal, sprintErrorSignal, taskErrorSignal, sprintComplete, sprintAchieve, sprintSetStatus, loadProjectMembers };
+    return { fixture, loadBoard, moveTask, loadForProject, sprintCreate, sprintsSignal, sprintErrorSignal, taskErrorSignal, sprintComplete, sprintAchieve, sprintSetStatus, loadProjectMembers, navigate };
   }
 
   it('renders one SprintTabComponent per sprint', async () => {
@@ -276,7 +277,8 @@ describe('TaskBacklogComponent', () => {
         {
           provide: ActivatedRoute,
           useValue: { snapshot: { paramMap: { get: (key: string) => (key === 'id' ? 'project-1' : null) } } }
-        }
+        },
+        { provide: Router, useValue: { navigate: vi.fn().mockResolvedValue(true) } }
       ]
     });
 
@@ -299,17 +301,25 @@ describe('TaskBacklogComponent', () => {
     expect(loadForProject).toHaveBeenCalledWith('project-1');
   });
 
-  it('routes task-status changes from the detail modal to store.moveTask', async () => {
+  it('routes task-status changes from a table row to store.moveTask', async () => {
     const tasks = [makeTask('t-1', 'sp-1')];
     const { fixture, moveTask } = setup({ tasks });
     await fixture.whenStable();
     fixture.detectChanges();
 
-    fixture.componentInstance['onTaskViewed'](tasks[0]);
-    fixture.detectChanges();
-    fixture.componentInstance['onTaskStatusChangeRequested']('status-2');
+    fixture.componentInstance['onTaskStatusChangeRequested']({ taskId: 't-1', newStatusId: 'status-2' });
 
     expect(moveTask).toHaveBeenCalledWith('t-1', 'status-2');
+  });
+
+  it('navigates to the task detail page when a task is viewed', async () => {
+    const tasks = [makeTask('t-1', 'sp-1')];
+    const { fixture, navigate } = setup({ tasks });
+    await fixture.whenStable();
+
+    fixture.componentInstance['onTaskViewed'](tasks[0]);
+
+    expect(navigate).toHaveBeenCalledWith(['/work', 'project-1', 'task', 't-1']);
   });
 
   it('routes any sprint-status pick from the sprint tab to sprintStore.setStatus - the owner override always wins', async () => {
@@ -427,7 +437,7 @@ describe('TaskBacklogComponent', () => {
 
   it('renders tasks with sprintId: null in an "Unsorted" section, clickable via the same onTaskViewed path', async () => {
     const tasks = [makeTask('t-1', 'sp-1'), makeTask('t-unsorted', null)];
-    const { fixture } = setup({ tasks });
+    const { fixture, navigate } = setup({ tasks });
     await fixture.whenStable();
     fixture.detectChanges();
 
@@ -443,9 +453,7 @@ describe('TaskBacklogComponent', () => {
     viewButton.click();
     fixture.detectChanges();
 
-    const modal = fixture.debugElement.query(By.directive(TaskDetailModalComponent)).componentInstance as TaskDetailModalComponent;
-    expect(modal.open()).toBe(true);
-    expect(modal.task()).toEqual(tasks[1]);
+    expect(navigate).toHaveBeenCalledWith(['/work', 'project-1', 'task', 't-unsorted']);
   });
 
   it('does not render the Unsorted section when there are no unsorted tasks', async () => {
