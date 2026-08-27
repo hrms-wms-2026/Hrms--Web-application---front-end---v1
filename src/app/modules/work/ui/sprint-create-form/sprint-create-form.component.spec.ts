@@ -87,8 +87,8 @@ describe('SprintCreateFormComponent', () => {
 
     it('renders a Module dropdown with the given options', () => {
       setupWithModules();
-      const options = Array.from(fixture.nativeElement.querySelectorAll('.sprint-create-form__select option') as NodeListOf<HTMLOptionElement>)
-        .map((o) => o.textContent?.trim());
+      const select = fixture.nativeElement.querySelector('app-select select') as HTMLSelectElement;
+      const options = Array.from(select.options).map((o) => o.textContent?.trim());
       expect(options).toEqual(['Select a module', 'Module One', 'Module Two']);
     });
 

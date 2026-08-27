@@ -3,6 +3,7 @@ import { SprintListStore } from '../../state/sprint-list.store';
 import { ModalComponent } from '../../../../shared/ui/modal/modal.component';
 import { InputComponent } from '../../../../shared/ui/input/input.component';
 import { ButtonComponent } from '../../../../shared/ui/button/button.component';
+import { SelectComponent, SelectOption } from '../../../../shared/ui/select/select.component';
 
 export interface SprintCreateModuleOption {
   objectiveId: string;
@@ -13,27 +14,20 @@ export interface SprintCreateModuleOption {
 @Component({
   selector: 'app-sprint-create-form',
   standalone: true,
-  imports: [ModalComponent, InputComponent, ButtonComponent],
+  imports: [ModalComponent, InputComponent, ButtonComponent, SelectComponent],
   template: `
     <app-modal [open]="open()" title="Create sprint" (closed)="cancelled.emit()">
       <div class="sprint-create-form">
         @if (modules().length > 0) {
-          <label class="sprint-create-form__field">
-            Module
-            <select
-              class="sprint-create-form__select"
-              [value]="selectedObjectiveId()"
-              (change)="selectedObjectiveId.set($any($event.target).value)"
-            >
-              <option value="" disabled>Select a module</option>
-              @for (module of modules(); track module.objectiveId) {
-                <option [value]="module.objectiveId">{{ module.title }}</option>
-              }
-            </select>
-            @if (moduleError()) {
-              <span class="sprint-create-form__field-error">{{ moduleError() }}</span>
-            }
-          </label>
+          <app-select
+            [options]="moduleOptions()"
+            [value]="selectedObjectiveId()"
+            label="Module"
+            placeholder="Select a module"
+            [error]="moduleError() || ''"
+            [icon]="'module'"
+            (valueChange)="selectedObjectiveId.set($event)"
+          />
         }
         <app-input label="Name" [value]="newName()" (valueChange)="newName.set($event)" />
         <app-input label="Start date" type="date" [value]="newStart()" (valueChange)="newStart.set($event)" />
@@ -83,6 +77,10 @@ export class SprintCreateFormComponent {
   protected readonly submitting = signal(false);
   protected readonly selectedObjectiveId = signal('');
   protected readonly moduleError = signal<string | null>(null);
+
+  protected readonly moduleOptions = computed<SelectOption[]>(() =>
+    this.modules().map((module) => ({ value: module.objectiveId, label: module.title }))
+  );
 
   private readonly effectiveObjectiveId = computed(() =>
     this.modules().length > 0 ? this.selectedObjectiveId() : this.objectiveId()

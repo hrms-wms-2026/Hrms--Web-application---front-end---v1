@@ -140,8 +140,8 @@ describe('TaskCreateModalComponent', () => {
     fixture.detectChanges();
 
     const fixedText = fixture.nativeElement.querySelector('[data-testid="sprint-fixed"]');
-    const options = Array.from(fixture.nativeElement.querySelectorAll('select.task-create-modal__sprint-select option') as HTMLOptionElement[])
-      .map((o) => o.textContent?.trim());
+    const sprintSelect = fixture.nativeElement.querySelector('[data-testid="task-create-sprint-select"] select') as HTMLSelectElement;
+    const options = Array.from(sprintSelect.options).map((o) => o.textContent?.trim());
 
     expect(fixedText).toBeNull();
     expect(options).toEqual(['Select a sprint', 'Sprint 1', 'Sprint 2']);
@@ -179,9 +179,8 @@ describe('TaskCreateModalComponent', () => {
       const { fixture, createTask } = setupWithModules();
       fixture.componentInstance.title.set('New task');
 
-      const options = Array.from(fixture.nativeElement.querySelectorAll('select.task-create-modal__select option') as NodeListOf<HTMLOptionElement>)
-        .map((o) => o.textContent?.trim())
-        .filter((label) => label === 'Select a module' || label === 'Module One' || label === 'Module Two');
+      const moduleSelect = fixture.nativeElement.querySelector('app-select select') as HTMLSelectElement;
+      const options = Array.from(moduleSelect.options).map((o) => o.textContent?.trim());
       expect(options).toEqual(['Select a module', 'Module One', 'Module Two']);
 
       await fixture.componentInstance.submit();
