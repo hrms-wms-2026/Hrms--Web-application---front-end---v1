@@ -47,7 +47,13 @@ const today: AttendanceTodayResponse = {
     locationRequired: false,
     allowedRadiusMeters: null
   },
-  messages: []
+  messages: [],
+  attendanceStatusLabel: 'Not clocked in',
+  attentionType: 'not_clocked_in',
+  attentionLabel: 'Still has not clocked in',
+  attentionSeverity: 'critical',
+  breakOverageMinutes: 0,
+  isOverBreakAllowance: false
 };
 
 describe('TimeTrackingStore', () => {
@@ -94,6 +100,12 @@ describe('TimeTrackingStore', () => {
     await store.loadToday();
     expect(api.getToday).toHaveBeenCalledOnce();
     expect(store.today()).toEqual(today);
+    expect(store.today()?.attendanceStatusLabel).toBe('Not clocked in');
+    expect(store.today()?.attentionType).toBe('not_clocked_in');
+    expect(store.today()?.attentionLabel).toBe('Still has not clocked in');
+    expect(store.today()?.attentionSeverity).toBe('critical');
+    expect(store.today()?.breakOverageMinutes).toBe(0);
+    expect(store.today()?.isOverBreakAllowance).toBe(false);
     expect(store.todayLoading()).toBe(false);
     expect(store.todayError()).toBeNull();
   });

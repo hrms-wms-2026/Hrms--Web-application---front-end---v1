@@ -3,7 +3,16 @@ import { Injectable, inject } from '@angular/core';
 import { Observable } from 'rxjs';
 import { environment } from '@environments/environment';
 
+export interface NotificationDestinationMetadata {
+  notificationType: string;
+  attendanceCorrectionId: string;
+  legalEntityId: string | null;
+  destinationKey: string | null;
+  isNavigable: boolean;
+}
+
 export interface NotificationDto {
+
   id: string;
   templateCode: string;
   title: string;
@@ -13,6 +22,7 @@ export interface NotificationDto {
   isRead: boolean;
   readAt: string | null;
   createdAt: string;
+  destination?: NotificationDestinationMetadata | null;
 }
 
 export interface NotificationItem {
@@ -25,6 +35,10 @@ export interface NotificationItem {
   isRead: boolean;
   readAt: Date | null;
   createdAt: Date;
+  notificationType?: string | null;
+  attendanceCorrectionId?: string | null;
+  destinationKey?: string | null;
+  isNavigable?: boolean;
 }
 
 @Injectable({ providedIn: 'root' })
@@ -62,6 +76,11 @@ export function toNotificationItem(dto: NotificationDto): NotificationItem {
     relatedEntityId: dto.relatedEntityId,
     isRead: dto.isRead,
     readAt: dto.readAt ? new Date(dto.readAt) : null,
-    createdAt: new Date(dto.createdAt)
+        createdAt: new Date(dto.createdAt),
+    notificationType: dto.destination?.notificationType ?? null,
+    attendanceCorrectionId: dto.destination?.attendanceCorrectionId ?? null,
+    destinationKey: dto.destination?.destinationKey ?? null,
+    isNavigable: dto.destination?.isNavigable ?? false
+
   };
 }

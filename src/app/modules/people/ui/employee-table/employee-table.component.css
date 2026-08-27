@@ -79,12 +79,12 @@
 
 .emp-avatar-wrapper--warning {
   border-radius: 50%;
-  box-shadow: 0 0 0 2px #dc2626;
+  box-shadow: 0 0 0 2px var(--color-danger);
   z-index: 1;
 }
 
 .emp-avatar-wrapper--warning:focus-visible {
-  outline: 2px solid #991b1b;
+  outline: 2px solid var(--color-danger-text);
   outline-offset: 3px;
 }
 
@@ -113,11 +113,11 @@
 }
 
 .emp-status-dot-avatar--active {
-  background-color: #22c55e;
+  background-color: var(--color-success);
 }
 
 .emp-status-dot-avatar--inactive {
-  background-color: #ef4444;
+  background-color: var(--color-danger);
 }
 
 .emp-attendance-warning-tooltip {
@@ -129,13 +129,13 @@
   max-width: 14rem;
   padding: 0.35rem 0.55rem;
   border-radius: 0.35rem;
-  background: #450a0a;
-  color: #fff;
+  background: var(--color-danger-subtle);
+  color: var(--color-danger-text);
   font-size: 0.6875rem;
   font-weight: 600;
   line-height: 1.25;
   white-space: nowrap;
-  box-shadow: 0 3px 10px rgba(69, 10, 10, 0.22);
+  box-shadow: 0 3px 10px color-mix(in srgb, var(--color-danger) 22%, transparent);
   opacity: 0;
   pointer-events: none;
   transform: translate(-50%, -0.2rem);
@@ -152,6 +152,47 @@
   display: flex;
   flex-direction: column;
   min-width: 0;
+}
+
+.emp-attention-indicator,
+.emp-attendance-status-label,
+.emp-break-overage-marker {
+  display: inline-flex;
+  align-items: center;
+  width: fit-content;
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  border: 1px solid transparent;
+  border-radius: 999px;
+  padding: 0.1rem 0.4rem;
+  font-size: 0.6875rem;
+  font-weight: 600;
+  line-height: 1.25;
+}
+
+.emp-attention--critical {
+  border-color: color-mix(in srgb, var(--color-danger) 35%, var(--color-border));
+  background: var(--color-danger-subtle);
+  color: var(--color-danger-text);
+}
+
+.emp-attention--warning {
+  border-color: color-mix(in srgb, var(--color-warning) 35%, var(--color-border));
+  background: var(--color-warning-subtle);
+  color: var(--color-warning-text);
+}
+
+.emp-attention--neutral,
+.emp-attendance-status-label {
+  border-color: var(--color-border);
+  background: var(--color-surface-secondary);
+  color: var(--color-text-secondary);
+}
+
+.emp-break-overage-marker {
+  margin-top: 0.1rem;
 }
 
 .emp-name {

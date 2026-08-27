@@ -12,6 +12,15 @@ export interface EmployeeListAttendanceSummaryResponse {
   readonly timezone: string;
   readonly scheduledStartTime: string | null;
   readonly warningLabel: string | null;
+  readonly attendanceStatus?: string | null;
+  readonly attendanceStatusLabel?: string | null;
+  readonly attentionType?: string | null;
+  readonly attentionSeverity?: string | null;
+  readonly attentionLabel?: string | null;
+  readonly breakUsedMinutes?: number;
+  readonly breakAllowanceMinutes?: number | null;
+  readonly breakOverageMinutes?: number;
+  readonly isOverBreakAllowance?: boolean;
 }
 
 export interface EmployeeListItemResponse {
