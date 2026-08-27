@@ -5,6 +5,7 @@ import { of } from 'rxjs';
 import { TimeTrackingStore } from '../../../attendance/state/time-tracking.store';
 import { ActivityTimelineApiService } from '../../data-access/activity-timeline-api.service';
 import { MyTasksApiService } from '../../data-access/my-tasks-api.service';
+import { WorkPatternApiService } from '../../data-access/work-pattern-api.service';
 import { DashboardHomeComponent } from './dashboard-home.component';
 
 describe('DashboardHomeComponent', () => {
@@ -26,7 +27,8 @@ describe('DashboardHomeComponent', () => {
         provideRouter([]),
         { provide: TimeTrackingStore, useValue: store },
         { provide: ActivityTimelineApiService, useValue: { getMyTimeline: () => of({ date: '', segments: [] }) } },
-        { provide: MyTasksApiService, useValue: { getMyTasks: () => of({ tasks: [] }) } }
+        { provide: MyTasksApiService, useValue: { getMyTasks: () => of({ tasks: [] }) } },
+        { provide: WorkPatternApiService, useValue: { getMyWorkPattern: () => of({ days: [] }) } }
       ]
     }).compileComponents();
 
@@ -44,12 +46,13 @@ describe('DashboardHomeComponent', () => {
     expect(fixture.nativeElement.querySelector('button')).toBeNull();
   });
 
-  it('renders the Today at a Glance, Attendance Trend, and My Tasks cards', async () => {
+  it('renders the Today at a Glance, Attendance Trend, My Tasks, and Work Pattern cards', async () => {
     const fixture = await setup();
 
     const text = fixture.nativeElement.textContent as string;
     expect(text).toContain('Today at a glance');
     expect(text).toContain('Attendance Trend');
     expect(text).toContain('My Tasks');
+    expect(text).toContain('Work Pattern');
   });
 });
