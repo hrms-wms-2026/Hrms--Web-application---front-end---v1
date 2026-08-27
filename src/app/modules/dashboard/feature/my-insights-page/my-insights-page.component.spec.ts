@@ -34,9 +34,9 @@ describe('MyInsightsPageComponent', () => {
     return fixture;
   }
 
-  it('renders a back-to-dashboard link and the page title', async () => {
+  it('renders a back-to-home link and the page title', async () => {
     const fixture = await setup();
-    expect(fixture.nativeElement.querySelector('[data-testid="my-insights-back-link"]').getAttribute('href')).toBe('/dashboard');
+    expect(fixture.nativeElement.querySelector('[data-testid="back-to-home-link"]').getAttribute('href')).toBe('/dashboard');
     expect((fixture.nativeElement.textContent as string)).toContain('My Insights');
   });
 

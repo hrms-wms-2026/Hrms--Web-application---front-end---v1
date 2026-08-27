@@ -1,9 +1,9 @@
 import { ChangeDetectionStrategy, Component, OnInit, computed, effect, inject, signal } from '@angular/core';
-import { RouterLink } from '@angular/router';
 import { ActivityTimelineApiService } from '../../data-access/activity-timeline-api.service';
 import { ActivityTimelineSegment } from '../../models/activity-timeline.model';
 import { TimeTrackingStore } from '../../../attendance/state/time-tracking.store';
 import { SEGMENT_LABELS, TimelineSegment, buildTimelineSegments, formatTime } from '../../util/timeline-segments.util';
+import { BackToHomeLinkComponent } from '../../ui/back-to-home-link/back-to-home-link.component';
 
 const SEGMENT_COLORS: Record<TimelineSegment['type'], string> = {
   working: 'var(--color-accent)',
@@ -22,7 +22,7 @@ const SEGMENT_OPACITY: Record<TimelineSegment['type'], number> = {
 @Component({
   selector: 'app-activity-timeline-page',
   standalone: true,
-  imports: [RouterLink],
+  imports: [BackToHomeLinkComponent],
   templateUrl: './activity-timeline-page.component.html',
   changeDetection: ChangeDetectionStrategy.OnPush
 })
