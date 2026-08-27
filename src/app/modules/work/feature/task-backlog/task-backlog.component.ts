@@ -11,8 +11,7 @@ import { TaskApiService } from '../../data-access/task-api.service';
 import { TaskCreateModalComponent } from '../../ui/task-create-modal/task-create-modal.component';
 import { TaskDetailModalComponent } from '../../ui/task-detail-modal/task-detail-modal.component';
 import { SprintTabComponent } from '../../ui/sprint-tab/sprint-tab.component';
-import { SprintCreateFormComponent } from '../../ui/sprint-create-form/sprint-create-form.component';
-import { SprintEditFormComponent } from '../../ui/sprint-edit-form/sprint-edit-form.component';
+import { SprintFormComponent } from '../../ui/sprint-form/sprint-form.component';
 import { TaskTableComponent } from '../../ui/task-table/task-table.component';
 import { WorkTask } from '../../models/task.model';
 import { Sprint, SprintStatus } from '../../models/sprint.model';
@@ -23,7 +22,7 @@ import { SelectComponent, SelectOption } from '../../../../shared/ui/select/sele
 @Component({
   selector: 'app-task-backlog',
   standalone: true,
-  imports: [TaskCreateModalComponent, TaskDetailModalComponent, SprintTabComponent, SprintCreateFormComponent, SprintEditFormComponent, TaskTableComponent, ButtonComponent, ErrorStateComponent, SelectComponent],
+  imports: [TaskCreateModalComponent, TaskDetailModalComponent, SprintTabComponent, SprintFormComponent, TaskTableComponent, ButtonComponent, ErrorStateComponent, SelectComponent],
   template: `
     <div class="task-backlog__toolbar">
       <app-select [options]="objectiveOptions()" [value]="objectiveFilter()" ariaLabel="Module filter" [icon]="'module'" (valueChange)="setObjectiveFilter($event)" />
@@ -38,15 +37,17 @@ import { SelectComponent, SelectOption } from '../../../../shared/ui/select/sele
     </div>
 
     @if (createSprintOpen() && ownedModuleOptions().length > 0) {
-      <app-sprint-create-form
-        [open]="createSprintOpen()"
-        [modules]="ownedModuleOptions()"
-        (created)="onSprintCreated()"
-        (cancelled)="createSprintOpen.set(false)"
-      />
+        <app-sprint-form
+          mode="create"
+          [open]="createSprintOpen()"
+          [modules]="ownedModuleOptions()"
+          (created)="onSprintCreated()"
+          (cancelled)="createSprintOpen.set(false)"
+        />
     }
     @if (editingSprint(); as sprint) {
-      <app-sprint-edit-form
+      <app-sprint-form
+        mode="edit"
         [open]="true"
         [objectiveId]="sprint.objectiveId"
         [sprint]="sprint"

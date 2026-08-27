@@ -346,7 +346,7 @@ describe('TaskBacklogComponent', () => {
 
     fixture.componentInstance['createSprintOpen'].set(true);
     fixture.detectChanges();
-    expect(fixture.nativeElement.querySelector('app-sprint-create-form')).toBeNull();
+    expect(fixture.nativeElement.querySelector('app-sprint-form')).toBeNull();
   });
 
   it('shows the Create Sprint button to an owner', async () => {

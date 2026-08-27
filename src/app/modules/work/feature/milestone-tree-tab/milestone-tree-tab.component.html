@@ -57,7 +57,7 @@
   (transferRequested)="onTransferRequested($event)" (closed)="onMembersPopupClosed()" />
 
 @if (createSprintNode(); as sprintLeaf) {
-<app-sprint-create-form [open]="createSprintOpen()" [objectiveId]="sprintLeaf.id"
+<app-sprint-form mode="create" [open]="createSprintOpen()" [objectiveId]="sprintLeaf.id"
   [isObjectiveOwner]="sprintLeaf.isOwner" (created)="onSprintCreated()" (cancelled)="onSprintCreateCancelled()" />
 }
 
@@ -69,7 +69,7 @@
 }
 
 @if (editSprintNode(); as sprintNode) {
-<app-sprint-edit-form [open]="editSprintOpen()" [objectiveId]="sprintNode.parentObjectiveId ?? ''"
+<app-sprint-form mode="edit" [open]="editSprintOpen()" [objectiveId]="sprintNode.parentObjectiveId ?? ''"
   [sprint]="sprintFromNode(sprintNode)" (saved)="onSprintSaved()" (cancelled)="onSprintEditCancelled()" />
 }
 

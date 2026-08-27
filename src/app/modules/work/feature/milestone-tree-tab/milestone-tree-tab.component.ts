@@ -10,8 +10,7 @@ import { TreeExplanationPanelComponent } from '../../ui/tree-explanation-panel/t
 import { MilestoneSettingsModalComponent } from '../../ui/milestone-settings-modal/milestone-settings-modal.component';
 import { CreateSubModuleModalComponent } from '../../ui/create-sub-module-modal/create-sub-module-modal.component';
 import { ObjectiveMembersPopupComponent } from '../../ui/objective-members-popup/objective-members-popup.component';
-import { SprintCreateFormComponent } from '../../ui/sprint-create-form/sprint-create-form.component';
-import { SprintEditFormComponent } from '../../ui/sprint-edit-form/sprint-edit-form.component';
+import { SprintFormComponent } from '../../ui/sprint-form/sprint-form.component';
 import { TaskCreateModalComponent } from '../../ui/task-create-modal/task-create-modal.component';
 import { TaskDetailModalComponent } from '../../ui/task-detail-modal/task-detail-modal.component';
 import { LoaderComponent } from '../../../../shared/ui/loader/loader.component';
@@ -30,8 +29,8 @@ import { Sprint, SprintStatus } from '../../models/sprint.model';
   standalone: true,
   imports: [
     MilestoneTreeNodeComponent, ModuleFilterSelectComponent, TreeExplanationPanelComponent, MilestoneSettingsModalComponent,
-    CreateSubModuleModalComponent, ObjectiveMembersPopupComponent, SprintCreateFormComponent,
-    SprintEditFormComponent, TaskCreateModalComponent, TaskDetailModalComponent, LoaderComponent, ErrorStateComponent, EmptyStateComponent, ConfirmModalComponent
+    CreateSubModuleModalComponent, ObjectiveMembersPopupComponent, SprintFormComponent,
+    TaskCreateModalComponent, TaskDetailModalComponent, LoaderComponent, ErrorStateComponent, EmptyStateComponent, ConfirmModalComponent
   ],
   templateUrl: './milestone-tree-tab.component.html'
 })
