@@ -1,5 +1,5 @@
 import { HttpErrorResponse } from '@angular/common/http';
-import { ChangeDetectionStrategy, Component, DestroyRef, OnDestroy, computed, inject, signal } from '@angular/core';
+import { ChangeDetectionStrategy, Component, DestroyRef, OnDestroy, OnInit, computed, inject, signal } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { BreadcrumbHeaderComponent } from '../../../../shared/ui/breadcrumb-header/breadcrumb-header.component';
 import { ButtonComponent } from '../../../../shared/ui/button/button.component';
@@ -26,7 +26,7 @@ const COPIED_RESET_MS = 1500;
   styleUrl: './connect-device.component.css',
   changeDetection: ChangeDetectionStrategy.OnPush
 })
-export class ConnectDeviceComponent implements OnDestroy {
+export class ConnectDeviceComponent implements OnInit, OnDestroy {
   private readonly activationApi = inject(ActivationApiService);
   private readonly destroyRef = inject(DestroyRef);
 
@@ -55,6 +55,10 @@ export class ConnectDeviceComponent implements OnDestroy {
 
   private countdownId: ReturnType<typeof setInterval> | null = null;
   private copiedResetId: ReturnType<typeof setTimeout> | null = null;
+
+  ngOnInit(): void {
+    this.generate();
+  }
 
   generate(): void {
     if (this.inFlight) {

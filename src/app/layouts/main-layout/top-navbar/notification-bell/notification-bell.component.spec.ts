@@ -159,7 +159,37 @@ describe('NotificationBellComponent', () => {
     fixture.detectChanges();
     fixture.nativeElement.querySelector('.notification-dropdown__item').click();
     await fixture.whenStable();
-    expect(navigate).toHaveBeenCalledWith(['/attendance/corrections/approvals'], { queryParams: { requestId: 'c1' } });
+    expect(navigate).toHaveBeenCalledWith(
+      ['/attendance/time-tracking'],
+      { queryParams: { view: 'team', type: 'corrections', requestId: 'c1' } }
+    );
+  });
+
+  it('navigates a Work Area approval notification to the Work Area approval inbox with its request id', async () => {
+    const item = {
+      id: 'n-work-area', templateCode: 'work_area_change_request_created', title: 'Work-area request', body: 'Please review',
+      relatedEntityType: 'work_area_change_request', relatedEntityId: 'wa-1', isRead: false, readAt: null, createdAt: new Date(),
+      notificationType: 'work_area_change_request_created', attendanceCorrectionId: null, workAreaChangeRequestId: 'wa-1', destinationKey: 'work_area_change_approval', isNavigable: true
+    };
+    const storeStub = {
+      unreadCount: () => 1, items: () => [item], refreshUnreadCount: vi.fn().mockResolvedValue(undefined),
+      loadMine: vi.fn().mockResolvedValue(undefined), markRead: vi.fn().mockResolvedValue(undefined), markAllRead: vi.fn().mockResolvedValue(undefined)
+    };
+    const navigate = vi.fn().mockResolvedValue(true);
+    TestBed.configureTestingModule({ imports: [NotificationBellComponent], providers: [
+      { provide: NotificationsStore, useValue: storeStub }, { provide: Router, useValue: { navigate } },
+      { provide: TaskApiService, useValue: { getNotificationNavigation: vi.fn() } }
+    ] });
+    const fixture = TestBed.createComponent(NotificationBellComponent);
+    fixture.detectChanges();
+    fixture.nativeElement.querySelector('[data-testid="notification-bell"]').click();
+    fixture.detectChanges();
+    fixture.nativeElement.querySelector('.notification-dropdown__item').click();
+    await fixture.whenStable();
+    expect(navigate).toHaveBeenCalledWith(
+      ['/attendance/time-tracking'],
+      { queryParams: { view: 'team', type: 'work-area', requestId: 'wa-1' } }
+    );
   });
 
   it('does not navigate non-navigable requester correction notifications', async () => {

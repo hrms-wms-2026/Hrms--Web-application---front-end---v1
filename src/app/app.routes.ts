@@ -71,7 +71,7 @@ export const routes: Routes = [
         path: 'attendance',
         canActivate: [permissionGuard],
         data: {
-          permissions: ['attendance:read-own', 'attendance:write-own', 'attendance:read'],
+          permissions: ['attendance:read-own', 'attendance:write-own', 'attendance:read', 'attendance:approve'],
           modules: ['time_attendance']
         },
         loadChildren: () =>

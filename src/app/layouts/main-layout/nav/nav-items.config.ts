@@ -24,10 +24,6 @@ export const NAV_ITEMS: readonly NavItem[] = [
     ]
   },
   {
-    id: 'time-attendance', label: 'Attendance', icon: 'time-attendance', path: '/attendance', requiredModules: ['time_attendance'], requiredPermissions: ['attendance:read-own', 'attendance:write-own', 'attendance:read'],
-    children: [
-      { id: 'time-attendance-tracking', label: 'Time Tracking', path: '/attendance/time-tracking', exact: true, requiredModules: ['time_attendance'], requiredPermissions: ['attendance:read-own', 'attendance:write-own', 'attendance:read'] },
-      { id: 'time-attendance-monitoring', label: 'Monitoring', path: '/attendance/monitoring', exact: true, requiredModules: ['time_attendance'], requiredPermissions: ['attendance:read'] }
     id: 'time-attendance',
     label: 'Attendance',
     icon: 'time-attendance',
@@ -40,14 +36,7 @@ export const NAV_ITEMS: readonly NavItem[] = [
         label: 'Time Tracking',
         path: '/attendance/time-tracking',
         requiredModules: ['time_attendance'],
-        requiredPermissions: ['attendance:read-own', 'attendance:write-own', 'attendance:read']
-      },
-      {
-        id: 'time-attendance-correction-approvals',
-        label: 'Correction approvals',
-        path: '/attendance/corrections/approvals',
-        requiredModules: ['time_attendance'],
-        requiredPermissions: ['attendance:approve']
+        requiredPermissions: ['attendance:read-own', 'attendance:write-own', 'attendance:read', 'attendance:approve']
       }
     ]
   },

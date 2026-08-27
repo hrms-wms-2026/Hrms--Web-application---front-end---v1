@@ -5,7 +5,8 @@ import { environment } from '@environments/environment';
 
 export interface NotificationDestinationMetadata {
   notificationType: string;
-  attendanceCorrectionId: string;
+  attendanceCorrectionId: string | null;
+  workAreaChangeRequestId: string | null;
   legalEntityId: string | null;
   destinationKey: string | null;
   isNavigable: boolean;
@@ -37,6 +38,7 @@ export interface NotificationItem {
   createdAt: Date;
   notificationType?: string | null;
   attendanceCorrectionId?: string | null;
+  workAreaChangeRequestId?: string | null;
   destinationKey?: string | null;
   isNavigable?: boolean;
 }
@@ -79,6 +81,7 @@ export function toNotificationItem(dto: NotificationDto): NotificationItem {
         createdAt: new Date(dto.createdAt),
     notificationType: dto.destination?.notificationType ?? null,
     attendanceCorrectionId: dto.destination?.attendanceCorrectionId ?? null,
+    workAreaChangeRequestId: dto.destination?.workAreaChangeRequestId ?? null,
     destinationKey: dto.destination?.destinationKey ?? null,
     isNavigable: dto.destination?.isNavigable ?? false
 
