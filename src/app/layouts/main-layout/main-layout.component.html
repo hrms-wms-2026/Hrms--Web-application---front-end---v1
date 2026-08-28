@@ -13,7 +13,7 @@
   }
 
   <main id="main-content" class="main-content" tabindex="-1">
-    @if (trayPresence.canRenderProtectedContent()) {
+    @if (!monitoringEnabled || trayPresence.canRenderProtectedContent()) {
       <router-outlet />
     } @else {
       <app-locked-workspace-preview />
