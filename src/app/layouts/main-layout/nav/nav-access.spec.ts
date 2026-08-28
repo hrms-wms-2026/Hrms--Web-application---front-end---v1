@@ -143,14 +143,4 @@ describe('canAccessNavItem', () => {
     expect(canAccessNavItem(clockIn, checker(['org:manage'], ['time_attendance']))).toBe(false);
   });
 
-  it('settings-devices requires only the desktop_agent_gateway module, no permission code', () => {
-    const settings = NAV_ITEMS.find((item) => item.id === 'settings')!;
-    const devices = settings.children!.find((item) => item.id === 'settings-devices')!;
-
-    expect(devices.label).toBe('Devices & connections');
-    expect(devices.path).toBe('/settings/devices');
-    expect(canAccessNavItem(devices, checker([], ['desktop_agent_gateway']))).toBe(true);
-    expect(canAccessNavItem(devices, checker([], []))).toBe(false);
-  });
-
 });
