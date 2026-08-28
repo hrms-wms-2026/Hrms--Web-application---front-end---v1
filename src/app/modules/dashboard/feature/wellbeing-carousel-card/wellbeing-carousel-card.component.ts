@@ -19,7 +19,10 @@ const ROTATE_MS = 6_000;
  * back to the small line-icon badge. */
 const ILLUSTRATIONS: Partial<Record<WellbeingCardKind, string>> = {
   reminder: '/assets/wellbeing/mindful-break.png',
-  hydration: '/assets/wellbeing/hydration.png'
+  hydration: '/assets/wellbeing/hydration.png',
+  posture: '/assets/wellbeing/posture.png',
+  'eye-rest': '/assets/wellbeing/eye-rest.png',
+  stretch: '/assets/wellbeing/stretch.png'
 };
 
 const WELLBEING_TIPS: readonly WellbeingCard[] = [

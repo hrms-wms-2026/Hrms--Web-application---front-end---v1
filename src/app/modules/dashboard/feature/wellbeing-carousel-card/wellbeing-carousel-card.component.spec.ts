@@ -59,13 +59,21 @@ describe('WellbeingCarouselCardComponent', () => {
     expect(img.getAttribute('src')).toBe('/assets/wellbeing/hydration.png');
   });
 
-  it('falls back to the icon badge for a card kind with no illustration yet (posture)', async () => {
+  it('shows the illustration for every remaining tip (posture, eye-rest, stretch)', async () => {
     const { fixture } = await setup();
-    fixture.nativeElement.querySelector('[aria-label="Next tip"]').click();
-    fixture.detectChanges();
+    const nextButton: HTMLButtonElement = fixture.nativeElement.querySelector('[aria-label="Next tip"]');
+    const expected = [
+      ['Check your posture', '/assets/wellbeing/posture.png'],
+      ['Rest your eyes', '/assets/wellbeing/eye-rest.png'],
+      ['Stretch it out', '/assets/wellbeing/stretch.png']
+    ];
 
-    expect(fixture.nativeElement.querySelector('[data-testid="wellbeing-card-title"]').textContent.trim()).toBe('Check your posture');
-    expect(fixture.nativeElement.querySelector('[data-testid="wellbeing-illustration"]')).toBeNull();
+    for (const [title, src] of expected) {
+      nextButton.click();
+      fixture.detectChanges();
+      expect(fixture.nativeElement.querySelector('[data-testid="wellbeing-card-title"]').textContent.trim()).toBe(title);
+      expect(fixture.nativeElement.querySelector('[data-testid="wellbeing-illustration"]').getAttribute('src')).toBe(src);
+    }
   });
 
   it('inserts and jumps to the break-reminder card the moment it becomes due', async () => {
