@@ -94,7 +94,7 @@
               class="h-1.5 rounded-full transition-all"
               [class.w-4]="$index === currentIndex() % cards().length"
               [class.w-1.5]="$index !== currentIndex() % cards().length"
-              [style.background-color]="$index === currentIndex() % cards().length ? 'var(--color-accent)' : 'var(--color-border)'"
+              [style.background-color]="$index === currentIndex() % cards().length ? 'var(--color-accent)' : '#d1d5db'"
               (click)="goTo($index)"
             ></button>
           }
