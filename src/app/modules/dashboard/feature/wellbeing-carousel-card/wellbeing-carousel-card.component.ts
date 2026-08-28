@@ -1,4 +1,4 @@
-import { ChangeDetectionStrategy, Component, OnDestroy, OnInit, computed, inject, signal } from '@angular/core';
+import { ChangeDetectionStrategy, Component, OnDestroy, OnInit, computed, effect, inject, signal } from '@angular/core';
 import { CardComponent } from '../../../../shared/ui/card/card.component';
 import { TimeTrackingStore } from '../../../attendance/state/time-tracking.store';
 import { FocusStatusApiService } from '../../data-access/focus-status-api.service';
@@ -67,9 +67,28 @@ export class WellbeingCarouselCardComponent implements OnInit, OnDestroy {
     return cards[this.currentIndex() % cards.length];
   });
 
+  protected readonly contentVisible = signal(true);
+
   private focusStatusPollId: ReturnType<typeof setInterval> | null = null;
   private rotateId: ReturnType<typeof setInterval> | null = null;
+  private fadeTimeoutId: ReturnType<typeof setTimeout> | null = null;
   private wasBreakReminderDue = false;
+  private isFirstIndexChange = true;
+
+  constructor() {
+    // Cross-fades card content on every index change (manual or auto) - skips the very first
+    // run so the initial card doesn't fade in on load.
+    effect(() => {
+      this.currentIndex();
+      if (this.isFirstIndexChange) {
+        this.isFirstIndexChange = false;
+        return;
+      }
+      if (this.fadeTimeoutId) clearTimeout(this.fadeTimeoutId);
+      this.contentVisible.set(false);
+      this.fadeTimeoutId = setTimeout(() => this.contentVisible.set(true), 30);
+    });
+  }
 
   ngOnInit(): void {
     this.refreshFocusStatus();
@@ -80,6 +99,7 @@ export class WellbeingCarouselCardComponent implements OnInit, OnDestroy {
   ngOnDestroy(): void {
     if (this.focusStatusPollId) clearInterval(this.focusStatusPollId);
     if (this.rotateId) clearInterval(this.rotateId);
+    if (this.fadeTimeoutId) clearTimeout(this.fadeTimeoutId);
   }
 
   /** Auto-rotate tick - skips advancing while the break reminder is showing, so an active

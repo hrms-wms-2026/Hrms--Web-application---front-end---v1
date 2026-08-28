@@ -99,6 +99,19 @@ describe('WellbeingCarouselCardComponent', () => {
     expect(startBreak).toHaveBeenCalledOnce();
   });
 
+  it('cross-fades content on navigation: dims immediately, then fades back in', async () => {
+    vi.useFakeTimers();
+    const { fixture } = await setup();
+
+    fixture.nativeElement.querySelector('[aria-label="Next tip"]').click();
+    fixture.detectChanges();
+    expect(fixture.nativeElement.querySelector('[data-testid="wellbeing-content"]').classList.contains('opacity-0')).toBe(true);
+
+    vi.advanceTimersByTime(30);
+    fixture.detectChanges();
+    expect(fixture.nativeElement.querySelector('[data-testid="wellbeing-content"]').classList.contains('opacity-100')).toBe(true);
+  });
+
   it('does not auto-rotate away from an active break-reminder card, but manual next still can', async () => {
     vi.useFakeTimers();
     const { fixture } = await setup(makeStatus({ isBreakReminderDue: true, continuousFocusMinutes: 90 }));

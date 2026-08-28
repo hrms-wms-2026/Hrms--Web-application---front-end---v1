@@ -1,6 +1,12 @@
 <app-card title="Wellbeing">
   @if (activeCard(); as card) {
     <div class="flex flex-col gap-3" data-testid="wellbeing-card" [attr.data-card-kind]="card.kind">
+    <div
+      class="flex flex-col gap-3 transition-opacity duration-300 ease-out"
+      [class.opacity-0]="!contentVisible()"
+      [class.opacity-100]="contentVisible()"
+      data-testid="wellbeing-content"
+    >
       @if (illustrationFor(card.kind); as illustrationSrc) {
         @if (card.kind === 'reminder') {
           <div class="flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wide text-rose-600">
@@ -77,6 +83,7 @@
           </div>
         </div>
       }
+    </div>
 
       <div class="flex items-center justify-center gap-3">
         <button type="button" aria-label="Previous tip" class="text-[var(--color-text-secondary)] hover:text-[var(--color-text-primary)]" (click)="previous()">
@@ -91,8 +98,8 @@
               type="button"
               [attr.aria-label]="'Go to card ' + ($index + 1)"
               data-testid="wellbeing-dot"
-              class="h-1.5 rounded-full transition-all"
-              [class.w-4]="$index === currentIndex() % cards().length"
+              class="h-1.5 rounded-full transition-all duration-300"
+              [class.w-6]="$index === currentIndex() % cards().length"
               [class.w-1.5]="$index !== currentIndex() % cards().length"
               [style.background-color]="$index === currentIndex() % cards().length ? 'var(--color-accent)' : '#d1d5db'"
               (click)="goTo($index)"
