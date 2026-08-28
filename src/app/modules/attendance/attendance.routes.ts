@@ -37,12 +37,12 @@ export const ATTENDANCE_ROUTES: Routes = [
     path: 'monitoring',
     canActivate: [permissionGuard],
     loadComponent: () =>
-      import('../../shared/feature/placeholder-page/placeholder-page.component').then(
-        (module) => module.PlaceholderPageComponent
+      import('../settings/feature/connect-device/connect-device.component').then(
+        (module) => module.ConnectDeviceComponent
       ),
     data: {
       title: 'Monitoring',
-      permissions: ['attendance:read'],
+      permissions: ['attendance:read-own', 'attendance:write-own', 'attendance:read'],
       modules: ['time_attendance']
     }
   },

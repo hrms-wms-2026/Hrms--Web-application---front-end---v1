@@ -40,6 +40,7 @@ export const routes: Routes = [
         (module) => module.MainLayoutComponent
       ),
     canActivate: [authGuard],
+
     children: [
       {
         path: 'dashboard',

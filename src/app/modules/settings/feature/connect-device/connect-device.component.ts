@@ -1,8 +1,6 @@
 import { HttpErrorResponse } from '@angular/common/http';
 import { ChangeDetectionStrategy, Component, DestroyRef, OnDestroy, OnInit, computed, inject, signal } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
-import { BreadcrumbHeaderComponent } from '../../../../shared/ui/breadcrumb-header/breadcrumb-header.component';
-import { ButtonComponent } from '../../../../shared/ui/button/button.component';
 import { ActivationApiService } from '../../data-access/activation-api.service';
 
 const COPIED_RESET_MS = 1500;
@@ -21,7 +19,6 @@ const COPIED_RESET_MS = 1500;
 @Component({
   selector: 'app-connect-device',
   standalone: true,
-  imports: [BreadcrumbHeaderComponent, ButtonComponent],
   templateUrl: './connect-device.component.html',
   styleUrl: './connect-device.component.css',
   changeDetection: ChangeDetectionStrategy.OnPush

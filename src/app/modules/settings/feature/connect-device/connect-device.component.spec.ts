@@ -38,6 +38,19 @@ describe('ConnectDeviceComponent', () => {
     );
   });
 
+  it('presents activation as a three-step desktop connection journey', () => {
+    activationApi.generate.mockReturnValue(of({ code: 'APDBSJNA', expires_in_seconds: 600 }));
+
+    fixture.detectChanges();
+
+    const page = fixture.debugElement.query(By.css('[data-testid="workspace-activation"]'));
+    const steps = fixture.debugElement.queryAll(By.css('[data-testid="activation-step"]'));
+
+    expect(page.nativeElement.textContent).toContain('Activate your OneXso Workspace');
+    expect(fixture.debugElement.query(By.css('[data-testid="copy-code"]'))).toBeTruthy();
+    expect(steps).toHaveLength(3);
+  });
+
   it('generates a code and starts a 10-minute countdown', () => {
     activationApi.generate.mockReturnValue(of({ code: 'APDBSJNA', expires_in_seconds: 600 }));
     fixture.detectChanges();
