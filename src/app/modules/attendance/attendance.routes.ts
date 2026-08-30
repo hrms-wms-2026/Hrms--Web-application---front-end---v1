@@ -3,6 +3,20 @@ import { permissionGuard } from '../../core/guards/permission.guard';
 
 export const ATTENDANCE_ROUTES: Routes = [
   {
+    path: 'monitoring',
+    canActivate: [permissionGuard],
+    data: {
+      title: 'Monitoring',
+      permissions: ['monitoring:read'],
+      modules: ['time_attendance']
+    },
+    loadComponent: () =>
+      import('./feature/monitoring/monitoring.component').then(
+        (module) => module.MonitoringComponent
+      )
+  },
+
+  {
     path: 'time-tracking',
     canActivate: [permissionGuard],
     data: {

@@ -114,9 +114,34 @@ describe('canAccessNavItem', () => {
       expect(canAccessNavItem(attendance, checker(['attendance:read-own'], []))).toBe(false);
 
       const children = attendance.children ?? [];
-      expect(children.map((child) => child.id)).toEqual(['time-attendance-tracking']);
+      expect(children.map((child) => child.id)).toEqual(['time-attendance-tracking', 'time-attendance-monitoring']);
+      const monitoring = children.find((child) => child.id === 'time-attendance-monitoring')!;
+      expect(monitoring.label).toBe('Monitoring');
+      expect(monitoring.path).toBe('/attendance/monitoring');
+      expect(canAccessNavItem(monitoring, checker(['monitoring:read'], ['time_attendance']))).toBe(true);
+      expect(canAccessNavItem(monitoring, checker(['attendance:read'], ['time_attendance']))).toBe(false);
+      expect(canAccessNavItem(monitoring, checker(['monitoring:read'], []))).toBe(false);
       const tracking = children[0];
       expect(canAccessNavItem(tracking, checker(['attendance:approve'], ['time_attendance']))).toBe(true);
+    });
+
+    it('does not leak the parent Attendance item to a monitoring:read-only user (no attendance permission)', () => {
+      const attendance = NAV_ITEMS.find((item) => item.id === 'time-attendance')!;
+      const monitoring = attendance.children!.find((item) => item.id === 'time-attendance-monitoring')!;
+
+      // monitoring:read alone must not unlock the parent - its link target (/attendance/time-tracking)
+      // is a page this user cannot open, since Time Tracking is separately gated on attendance:*.
+      expect(canAccessNavItem(attendance, checker(['monitoring:read'], ['time_attendance']))).toBe(false);
+      // but the child Monitoring item itself is reachable for this user.
+      expect(canAccessNavItem(monitoring, checker(['monitoring:read'], ['time_attendance']))).toBe(true);
+    });
+
+    it('shows Attendance to an attendance-permission user without monitoring:read, but hides the Monitoring child', () => {
+      const attendance = NAV_ITEMS.find((item) => item.id === 'time-attendance')!;
+      const monitoring = attendance.children!.find((item) => item.id === 'time-attendance-monitoring')!;
+
+      expect(canAccessNavItem(attendance, checker(['attendance:read'], ['time_attendance']))).toBe(true);
+      expect(canAccessNavItem(monitoring, checker(['attendance:read'], ['time_attendance']))).toBe(false);
     });
   });
 
