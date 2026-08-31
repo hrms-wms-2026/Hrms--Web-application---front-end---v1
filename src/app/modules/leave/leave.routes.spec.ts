@@ -12,4 +12,10 @@ describe('LEAVE_ROUTES', () => { it('has My Balances as the permission-protected
     const all = shell.children?.find((r) => r.path === 'all');
     expect(all?.data?.['permissions']).toEqual(['leave:read']);
   });
+
+  it('has a calendar child route requiring calendar:read', () => {
+    const shell = LEAVE_ROUTES[0];
+    const calendar = shell.children?.find((r) => r.path === 'calendar');
+    expect(calendar?.data?.['permissions']).toEqual(['calendar:read']);
+  });
 });
