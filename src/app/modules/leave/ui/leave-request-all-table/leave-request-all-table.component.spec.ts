@@ -27,4 +27,12 @@ describe('LeaveRequestAllTableComponent', () => {
     fixture.nativeElement.querySelector('[data-testid="all-request-row"]').click();
     expect(emitted).toEqual(['req-1']);
   });
+
+  it('emits cancelRequested with the row when Cancel is clicked', () => {
+    fixture.detectChanges();
+    const emitted: unknown[] = [];
+    fixture.componentInstance.cancelRequested.subscribe((e: unknown) => emitted.push(e));
+    fixture.nativeElement.querySelector('[data-testid="cancel-request"]').click();
+    expect(emitted).toEqual([rows[0]]);
+  });
 });

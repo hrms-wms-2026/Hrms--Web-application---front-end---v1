@@ -2,27 +2,33 @@
 import { ChangeDetectionStrategy, Component, inject, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { PermissionService } from '../../../../core/auth/state/permission.service';
+import { NotificationService } from '../../../../core/services/notification.service';
 import { EmptyStateComponent } from '../../../../shared/ui/empty-state/empty-state.component';
 import { ErrorStateComponent } from '../../../../shared/ui/error-state/error-state.component';
 import { LeaveApprovalStore } from '../../state/leave-approval.store';
 import { LeaveTypeStore } from '../../state/leave-type.store';
+import { CancelLeaveRequestRequest } from '../../models/leave-request.model';
+import { LeaveRequestAllListItemResponse } from '../../models/leave-approval.model';
+import { LeaveCancelConfirmDialogComponent } from '../../ui/leave-cancel-confirm-dialog/leave-cancel-confirm-dialog.component';
 import { LeaveRequestAllTableComponent } from '../../ui/leave-request-all-table/leave-request-all-table.component';
 import { LeaveApprovalDetailSheetComponent } from '../../ui/leave-approval-detail-sheet/leave-approval-detail-sheet.component';
 
 @Component({
   selector: 'app-requests-list',
   standalone: true,
-  imports: [CommonModule, EmptyStateComponent, ErrorStateComponent, LeaveRequestAllTableComponent, LeaveApprovalDetailSheetComponent],
+  imports: [CommonModule, EmptyStateComponent, ErrorStateComponent, LeaveCancelConfirmDialogComponent, LeaveRequestAllTableComponent, LeaveApprovalDetailSheetComponent],
   templateUrl: './requests-list.component.html',
   styleUrl: './requests-list.component.css',
   changeDetection: ChangeDetectionStrategy.OnPush
 })
 export class RequestsListComponent {
   private readonly permissionService = inject(PermissionService);
+  private readonly notificationService = inject(NotificationService);
   readonly store = inject(LeaveApprovalStore);
   readonly leaveTypeStore = inject(LeaveTypeStore);
   readonly canApprove = () => this.permissionService.hasPermission('leave:approve');
   readonly detailOpen = signal(false);
+  readonly cancelTarget = signal<LeaveRequestAllListItemResponse | null>(null);
 
   constructor() {
     void this.store.loadAll();
@@ -53,5 +59,25 @@ export class RequestsListComponent {
   closeDetail(): void {
     this.detailOpen.set(false);
     this.store.clearDetail();
+  }
+
+  onCancelRequested(row: LeaveRequestAllListItemResponse): void {
+    this.cancelTarget.set(row);
+  }
+
+  closeCancelDialog(): void {
+    this.cancelTarget.set(null);
+  }
+
+  async onConfirmCancel(payload: CancelLeaveRequestRequest): Promise<void> {
+    const target = this.cancelTarget();
+    if (!target) return;
+    const result = await this.store.cancel(target.requestId, payload);
+    if (result) {
+      this.notificationService.success('Leave request cancelled.');
+      this.closeCancelDialog();
+    } else {
+      this.notificationService.error(this.store.cancelDialogError() ?? 'Failed to cancel this request.');
+    }
   }
 }

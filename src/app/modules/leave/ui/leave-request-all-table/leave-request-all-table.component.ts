@@ -7,8 +7,13 @@ import { LeaveRequestAllListItemResponse } from '../../models/leave-approval.mod
 export class LeaveRequestAllTableComponent {
   @Input({ required: true }) rows: readonly LeaveRequestAllListItemResponse[] = [];
   @Output() rowClicked = new EventEmitter<string>();
+  @Output() cancelRequested = new EventEmitter<LeaveRequestAllListItemResponse>();
 
   statusLabel(status: string): string {
     return status.charAt(0).toUpperCase() + status.slice(1).replace('_', ' ');
+  }
+
+  canCancel(row: LeaveRequestAllListItemResponse): boolean {
+    return row.status === 'pending' || row.status === 'approved';
   }
 }

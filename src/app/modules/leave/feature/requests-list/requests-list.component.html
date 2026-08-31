@@ -23,7 +23,7 @@
   } @else if (store.all().length === 0) {
     <app-empty-state title="No leave requests found" description="No requests match the current filters." />
   } @else {
-    <app-leave-request-all-table [rows]="store.all()" (rowClicked)="onRowClicked($event)" />
+    <app-leave-request-all-table [rows]="store.all()" (rowClicked)="onRowClicked($event)" (cancelRequested)="onCancelRequested($event)" />
   }
 </section>
 
@@ -34,4 +34,18 @@
   [deciding]="store.deciding()"
   [decideError]="store.decideError()"
   (closed)="closeDetail()"
+/>
+
+<app-leave-cancel-confirm-dialog
+  [open]="cancelTarget() !== null"
+  [leaveTypeName]="cancelTarget()?.leaveTypeName ?? ''"
+  [startDate]="cancelTarget()?.startDate ?? ''"
+  [endDate]="cancelTarget()?.endDate ?? ''"
+  [totalDays]="cancelTarget()?.totalDays ?? 0"
+  [status]="cancelTarget()?.status ?? ''"
+  [requireReason]="true"
+  [cancelling]="store.cancelling()"
+  [cancelError]="store.cancelDialogError()"
+  (confirmed)="onConfirmCancel($event)"
+  (closed)="closeCancelDialog()"
 />
