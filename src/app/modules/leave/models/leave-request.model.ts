@@ -89,3 +89,23 @@ export interface LeaveRequestListFilter {
   toDate?: string;
   leaveTypeId?: string;
 }
+
+/** Matches ONEVO.Api.Contracts.Leave.Requests.CancelLeaveRequestRequest verbatim. */
+export interface CancelLeaveRequestRequest {
+  reason: string | null;
+  effectiveDate: string | null;
+  expectedVersion: string | null;
+}
+
+/** Matches ONEVO.Application.Features.Leave.Cancellation.DTOs.Responses.CancelLeaveRequestResponse verbatim. */
+export interface CancelLeaveRequestResponse {
+  requestId: string;
+  status: string;
+  isPartialCancellation: boolean;
+  effectiveDate: string | null;
+  releasedPendingDays: number;
+  restoredUsedDays: number;
+  remainingDays: number;
+  reason: string | null;
+  cancelledAt: string;
+}
