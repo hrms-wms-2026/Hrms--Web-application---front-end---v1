@@ -5,66 +5,142 @@ import { CalendarEventResponse, RecurrenceEditScope } from '../../models/calenda
 import { CalendarEventStore } from '../../state/calendar-event.store';
 import { buildMonthGrid } from '../../utils/calendar-grid.util';
 import { CalendarMonthGridComponent } from '../../ui/calendar-month-grid/calendar-month-grid.component';
+import { CalendarWeekViewComponent } from '../calendar-week-view/calendar-week-view.component';
+import { CalendarDayViewComponent } from '../calendar-day-view/calendar-day-view.component';
+import { CalendarAgendaViewComponent } from '../calendar-agenda-view/calendar-agenda-view.component';
 import { CalendarEventFormModalComponent, CalendarEventFormSubmission } from '../../ui/calendar-event-form-modal/calendar-event-form-modal.component';
+
+export type CalendarView = 'month' | 'week' | 'day' | 'agenda';
+
+function toDateString(d: Date): string {
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+}
+
+function startOfWeek(d: Date): Date {
+  const jsDay = d.getDay();
+  const daysBackToMonday = jsDay === 0 ? 6 : jsDay - 1;
+  return new Date(d.getFullYear(), d.getMonth(), d.getDate() - daysBackToMonday);
+}
 
 @Component({
   selector: 'app-calendar-page',
   standalone: true,
-  imports: [CommonModule, ButtonComponent, CalendarMonthGridComponent, CalendarEventFormModalComponent],
+  imports: [
+    CommonModule, ButtonComponent, CalendarMonthGridComponent, CalendarWeekViewComponent,
+    CalendarDayViewComponent, CalendarAgendaViewComponent, CalendarEventFormModalComponent
+  ],
   templateUrl: './calendar-page.component.html',
   changeDetection: ChangeDetectionStrategy.OnPush
 })
 export class CalendarPageComponent {
   readonly store = inject(CalendarEventStore);
 
-  readonly view = signal<'month'>('month'); // wired for future week/day/agenda views - only 'month' is ever set in R1
+  readonly view = signal<CalendarView>('month');
   readonly cursor = signal(new Date());
   readonly formOpen = signal(false);
   readonly editingEvent = signal<CalendarEventResponse | null>(null);
+  readonly prefillStart = signal<string | null>(null);
 
   readonly year = computed(() => this.cursor().getFullYear());
   readonly month = computed(() => this.cursor().getMonth() + 1);
+  readonly weekStart = computed(() => toDateString(startOfWeek(this.cursor())));
+  readonly dayDate = computed(() => toDateString(this.cursor()));
+
+  readonly viewLabel = computed(() => {
+    const c = this.cursor();
+    switch (this.view()) {
+      case 'month': return c.toLocaleDateString(undefined, { month: 'long', year: 'numeric' });
+      case 'week': return `Week of ${this.weekStart()}`;
+      case 'day': return this.dayDate();
+      case 'agenda': return 'Agenda';
+    }
+  });
 
   private readonly rangeEffect = effect(() => {
-    const grid = buildMonthGrid(this.year(), this.month());
-    const from = `${grid[0].date}T00:00:00Z`;
-    const to = `${grid[grid.length - 1].date}T23:59:59Z`;
+    const { from, to } = this.currentRange();
     this.store.loadEvents(from, to);
   });
 
-  previousMonth(): void {
-    const d = this.cursor();
-    this.cursor.set(new Date(d.getFullYear(), d.getMonth() - 1, 1));
+  private currentRange(): { from: string; to: string } {
+    switch (this.view()) {
+      case 'month': {
+        const grid = buildMonthGrid(this.year(), this.month());
+        return { from: `${grid[0].date}T00:00:00Z`, to: `${grid[grid.length - 1].date}T23:59:59Z` };
+      }
+      case 'week': {
+        const start = this.weekStart();
+        const startDate = new Date(`${start}T00:00:00`);
+        const end = new Date(startDate.getFullYear(), startDate.getMonth(), startDate.getDate() + 7);
+        return { from: `${start}T00:00:00Z`, to: `${toDateString(end)}T00:00:00Z` };
+      }
+      case 'day': {
+        const date = this.dayDate();
+        return { from: `${date}T00:00:00Z`, to: `${date}T23:59:59Z` };
+      }
+      case 'agenda': {
+        const start = toDateString(this.cursor());
+        const end = new Date(this.cursor());
+        end.setDate(end.getDate() + 30);
+        return { from: `${start}T00:00:00Z`, to: `${toDateString(end)}T23:59:59Z` };
+      }
+    }
   }
 
-  nextMonth(): void {
+  setView(view: CalendarView): void {
+    this.view.set(view);
+  }
+
+  previous(): void {
+    this.step(-1);
+  }
+
+  next(): void {
+    this.step(1);
+  }
+
+  private step(direction: 1 | -1): void {
     const d = this.cursor();
-    this.cursor.set(new Date(d.getFullYear(), d.getMonth() + 1, 1));
+    switch (this.view()) {
+      case 'month':
+        this.cursor.set(new Date(d.getFullYear(), d.getMonth() + direction, 1));
+        break;
+      case 'week':
+        this.cursor.set(new Date(d.getFullYear(), d.getMonth(), d.getDate() + direction * 7));
+        break;
+      case 'day':
+        this.cursor.set(new Date(d.getFullYear(), d.getMonth(), d.getDate() + direction));
+        break;
+      case 'agenda':
+        this.cursor.set(new Date(d.getFullYear(), d.getMonth(), d.getDate() + direction * 30));
+        break;
+    }
   }
 
   goToToday(): void {
     this.cursor.set(new Date());
   }
 
-  openCreate(): void {
+  openCreate(prefillDate?: string): void {
     this.editingEvent.set(null);
+    this.prefillStart.set(prefillDate ?? null);
     this.formOpen.set(true);
+  }
+
+  onSlotClick(slot: { date: string; hour: number }): void {
+    this.openCreate(`${slot.date}T${String(slot.hour).padStart(2, '0')}:00`);
   }
 
   openEdit(eventId: string): void {
     const found = this.store.events().find((e) => e.id === eventId) ?? null;
     this.editingEvent.set(found);
+    this.prefillStart.set(null);
     this.formOpen.set(true);
   }
 
   closeForm(): void {
     this.formOpen.set(false);
     this.editingEvent.set(null);
-  }
-
-  private currentRange(): { from: string; to: string } {
-    const grid = buildMonthGrid(this.year(), this.month());
-    return { from: `${grid[0].date}T00:00:00Z`, to: `${grid[grid.length - 1].date}T23:59:59Z` };
+    this.prefillStart.set(null);
   }
 
   async onSave(submission: CalendarEventFormSubmission): Promise<void> {
@@ -73,8 +149,6 @@ export class CalendarPageComponent {
 
     if ('update' in submission && editing) {
       if (submission.scope && editing.recurrenceMasterId) {
-        // scope is 'ThisEventOnly' or 'AllEvents', chosen via the form's own two buttons - both
-        // route through the occurrence endpoint, which is the only one that understands scope.
         const { from, to } = this.currentRange();
         ok = await this.store.editOccurrence(
           editing.recurrenceMasterId,
@@ -82,7 +156,6 @@ export class CalendarPageComponent {
           from, to
         );
       } else {
-        // scope is null: a plain manual event, or an already-detached occurrence edited by its own id.
         ok = await this.store.updateEvent(editing.id, submission.update);
       }
     } else if ('create' in submission) {
@@ -102,9 +175,6 @@ export class CalendarPageComponent {
     if (scope === 'ThisEventOnly' && editing.recurrenceMasterId) {
       await this.store.cancelOccurrence(editing.recurrenceMasterId, editing.originalStart!, from, to);
     } else if (scope === 'AllEvents' && editing.recurrenceMasterId) {
-      // Deleting the master's own id (never itself present in store.events()) leaves the now-gone
-      // virtual occurrences stranded in local state until reloaded - reload explicitly afterward
-      // rather than relying on deleteEvent's plain id-filter, which can't match a master's id.
       await this.store.deleteEvent(editing.recurrenceMasterId);
       await this.store.loadEvents(from, to);
     } else {

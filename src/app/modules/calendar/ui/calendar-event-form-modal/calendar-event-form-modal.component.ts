@@ -29,6 +29,7 @@ export class CalendarEventFormModalComponent implements OnChanges {
 
   @Input() open = false;
   @Input() event: CalendarEventResponse | null = null;
+  @Input() prefillStart: string | null = null;
   @Input() saving = false;
   @Output() save = new EventEmitter<CalendarEventFormSubmission>();
   @Output() delete = new EventEmitter<RecurrenceEditScope | null>();
@@ -65,21 +66,28 @@ export class CalendarEventFormModalComponent implements OnChanges {
   }
 
   ngOnChanges(): void {
-    if (!this.event) return;
-    const [startDate, startTimeRaw] = this.event.startDate.split('T');
-    const [endDate, endTimeRaw] = this.event.endDate.split('T');
-    this.form.patchValue({
-      title: this.event.title,
-      description: this.event.description ?? '',
-      startDate,
-      startTime: startTimeRaw.slice(0, 5),
-      endDate,
-      endTime: endTimeRaw.slice(0, 5),
-      isAllDay: this.event.isAllDay,
-      location: this.event.location ?? '',
-      meetingLink: this.event.meetingLink ?? '',
-      color: this.event.color ?? '#2563EB'
-    });
+    if (this.event) {
+      const [startDate, startTimeRaw] = this.event.startDate.split('T');
+      const [endDate, endTimeRaw] = this.event.endDate.split('T');
+      this.form.patchValue({
+        title: this.event.title,
+        description: this.event.description ?? '',
+        startDate,
+        startTime: startTimeRaw.slice(0, 5),
+        endDate,
+        endTime: endTimeRaw.slice(0, 5),
+        isAllDay: this.event.isAllDay,
+        location: this.event.location ?? '',
+        meetingLink: this.event.meetingLink ?? '',
+        color: this.event.color ?? '#2563EB'
+      });
+      return;
+    }
+
+    if (this.prefillStart) {
+      const [date, time] = this.prefillStart.split('T');
+      this.form.patchValue({ startDate: date, startTime: time ?? '09:00', endDate: date, endTime: time ?? '10:00' });
+    }
   }
 
   setTitle(value: string): void {
