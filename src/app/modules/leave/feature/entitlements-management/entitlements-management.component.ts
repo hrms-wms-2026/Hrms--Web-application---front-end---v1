@@ -9,25 +9,28 @@ import { EmptyStateComponent } from '../../../../shared/ui/empty-state/empty-sta
 import { ErrorStateComponent } from '../../../../shared/ui/error-state/error-state.component';
 import { LegalEntityApiService } from '../../../organization/data-access/legal-entity-api.service';
 import { LegalEntityListItem } from '../../../organization/models/legal-entity.model';
+import { LeaveEntitlementApiService } from '../../data-access/leave-entitlement-api.service';
 import { LeaveEntitlementStore } from '../../state/leave-entitlement.store';
 import { LeaveBalanceStore } from '../../state/leave-balance.store';
 import { LeaveTypeStore } from '../../state/leave-type.store';
 import { LeaveRequestStore } from '../../state/leave-request.store';
-import { AdjustEntitlementRequest, CreateManualEntitlementRequest, LeaveEntitlementResponse, RecalculateEntitlementRequest } from '../../models/leave-entitlement.model';
+import { LeaveBalanceAuditStore } from '../../state/leave-balance-audit.store';
+import { AdjustEntitlementRequest, CreateManualEntitlementRequest, GenerateEntitlementsRequest, LeaveEntitlementResponse, RecalculateEntitlementRequest } from '../../models/leave-entitlement.model';
 import { SubmitLeaveRequestOnBehalfRequest, SubmitLeaveRequestRequest } from '../../models/leave-request.model';
 import { LeaveEntitlementListTableComponent } from '../../ui/leave-entitlement-list-table/leave-entitlement-list-table.component';
 import { LeaveEntitlementGenerateModalComponent } from '../../ui/leave-entitlement-generate-modal/leave-entitlement-generate-modal.component';
 import { LeaveEntitlementManualFormModalComponent } from '../../ui/leave-entitlement-manual-form-modal/leave-entitlement-manual-form-modal.component';
 import { LeaveEntitlementAdjustModalComponent } from '../../ui/leave-entitlement-adjust-modal/leave-entitlement-adjust-modal.component';
 import { LeaveBalanceListTableComponent } from '../../ui/leave-balance-list-table/leave-balance-list-table.component';
+import { LeaveBalanceAuditTableComponent } from '../../ui/leave-balance-audit-table/leave-balance-audit-table.component';
 import { NewLeaveRequestWizardComponent } from '../../ui/new-leave-request-wizard/new-leave-request-wizard.component';
 
-type Tab = 'entitlements' | 'all-balances';
+type Tab = 'entitlements' | 'all-balances' | 'audit';
 
 @Component({
   selector: 'app-entitlements-management',
   standalone: true,
-  imports: [CommonModule, ButtonComponent, EmptyStateComponent, ErrorStateComponent, LeaveEntitlementListTableComponent, LeaveEntitlementGenerateModalComponent, LeaveEntitlementManualFormModalComponent, LeaveEntitlementAdjustModalComponent, LeaveBalanceListTableComponent, NewLeaveRequestWizardComponent],
+  imports: [CommonModule, ButtonComponent, EmptyStateComponent, ErrorStateComponent, LeaveEntitlementListTableComponent, LeaveEntitlementGenerateModalComponent, LeaveEntitlementManualFormModalComponent, LeaveEntitlementAdjustModalComponent, LeaveBalanceListTableComponent, LeaveBalanceAuditTableComponent, NewLeaveRequestWizardComponent],
   templateUrl: './entitlements-management.component.html',
   styleUrl: './entitlements-management.component.css',
   changeDetection: ChangeDetectionStrategy.OnPush
@@ -36,10 +39,12 @@ export class EntitlementsManagementComponent {
   private readonly notificationService = inject(NotificationService);
   private readonly permissionService = inject(PermissionService);
   private readonly legalEntityApi = inject(LegalEntityApiService);
+  private readonly entitlementApi = inject(LeaveEntitlementApiService);
   readonly entitlementStore = inject(LeaveEntitlementStore);
   readonly balanceStore = inject(LeaveBalanceStore);
   readonly leaveTypeStore = inject(LeaveTypeStore);
   readonly requestStore = inject(LeaveRequestStore);
+  readonly auditStore = inject(LeaveBalanceAuditStore);
   readonly canManage = computed(() => this.permissionService.hasPermission('leave:manage'));
   readonly canReadAllBalances = computed(() => this.permissionService.hasAnyPermission(['leave:read', 'leave:manage']));
   readonly activeTab = signal<Tab>('entitlements');
@@ -50,6 +55,7 @@ export class EntitlementsManagementComponent {
   readonly adjustNeedsConfirmation = signal(false);
   readonly requestWizardOpen = signal(false);
   private allBalancesLoaded = false;
+  private auditLoaded = false;
 
   constructor() {
     void this.entitlementStore.load();
@@ -71,6 +77,34 @@ export class EntitlementsManagementComponent {
       this.allBalancesLoaded = true;
       void this.balanceStore.loadAll(this.entitlementStore.year());
     }
+    if (tab === 'audit' && !this.auditLoaded) {
+      this.auditLoaded = true;
+      void this.auditStore.load();
+    }
+  }
+
+  async onExportAudit(): Promise<void> {
+    const blob = await this.auditStore.exportCsv();
+    if (!blob) { this.notificationService.error(this.auditStore.exportError() ?? 'Failed to export the audit trail.'); return; }
+    this.downloadBlob(blob, 'leave-balance-audit.csv');
+  }
+
+  async onExportGeneratePreview(payload: GenerateEntitlementsRequest): Promise<void> {
+    try {
+      const blob = await firstValueFrom(this.entitlementApi.exportGeneratePreview(payload));
+      this.downloadBlob(blob, `leave-entitlement-generate-preview-${payload.year}.csv`);
+    } catch {
+      this.notificationService.error('Failed to export the generation preview.');
+    }
+  }
+
+  private downloadBlob(blob: Blob, filename: string): void {
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = filename;
+    link.click();
+    URL.revokeObjectURL(url);
   }
 
   openGenerateModal(): void { this.generateModalOpen.set(true); }

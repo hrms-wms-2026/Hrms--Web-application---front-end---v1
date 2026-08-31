@@ -15,6 +15,7 @@
     @if (canReadAllBalances()) {
       <button type="button" data-testid="tab-all-balances" class="emc-tab" [class.active]="activeTab() === 'all-balances'" (click)="selectTab('all-balances')">All Balances</button>
     }
+    <button type="button" data-testid="tab-audit" class="emc-tab" [class.active]="activeTab() === 'audit'" (click)="selectTab('audit')">Audit Trail</button>
   </nav>
   @if (activeTab() === 'entitlements') {
     @if (entitlementStore.loading()) {
@@ -26,7 +27,7 @@
     } @else {
       <app-leave-entitlement-list-table [entitlements]="entitlementStore.items()" [canManage]="canManage()" (adjustEntitlement)="openAdjustModal($event)" (recalculateEntitlement)="onRecalculate($event)" />
     }
-  } @else {
+  } @else if (activeTab() === 'all-balances') {
     @if (balanceStore.allLoading()) {
       <div class="emc-loading" aria-busy="true"><span></span><span></span><span></span></div>
     } @else if (balanceStore.allError()) {
@@ -36,11 +37,24 @@
     } @else {
       <app-leave-balance-list-table [balances]="balanceStore.all()" [showDepartmentColumn]="true" [showLegalEntityColumn]="true" />
     }
+  } @else if (activeTab() === 'audit') {
+    <div class="emc-audit-actions">
+      <app-button variant="secondary" (click)="onExportAudit()" [loading]="auditStore.exporting()">Export CSV</app-button>
+    </div>
+    @if (auditStore.loading() && auditStore.rows().length === 0) {
+      <div class="emc-loading" aria-busy="true"><span></span><span></span><span></span></div>
+    } @else if (auditStore.error()) {
+      <app-error-state [message]="auditStore.error()!" [retryable]="true" (retry)="auditStore.load()" />
+    } @else if (auditStore.rows().length === 0) {
+      <app-empty-state title="No balance changes recorded yet" description="Accruals, deductions, and adjustments will appear here as they happen." />
+    } @else {
+      <app-leave-balance-audit-table [rows]="auditStore.rows()" [hasMore]="auditStore.hasMore()" [loading]="auditStore.loading()" (loadMoreRequested)="auditStore.loadMore()" />
+    }
   }
 </section>
 
 @if (generateModalOpen()) {
-  <app-leave-entitlement-generate-modal [open]="true" [year]="entitlementStore.year()" [legalEntities]="legalEntities()" [previewResult]="entitlementStore.generationPreview()" [generating]="entitlementStore.generating()" [generationError]="entitlementStore.generationError()" (preview)="onPreviewGenerate($event)" (confirmGenerate)="onConfirmGenerate($event)" (closed)="closeGenerateModal()" />
+  <app-leave-entitlement-generate-modal [open]="true" [year]="entitlementStore.year()" [legalEntities]="legalEntities()" [previewResult]="entitlementStore.generationPreview()" [generating]="entitlementStore.generating()" [generationError]="entitlementStore.generationError()" (preview)="onPreviewGenerate($event)" (confirmGenerate)="onConfirmGenerate($event)" (exportRequested)="onExportGeneratePreview($event)" (closed)="closeGenerateModal()" />
 }
 @if (manualModalOpen()) {
   <app-leave-entitlement-manual-form-modal [open]="true" [year]="entitlementStore.year()" [leaveTypes]="leaveTypeStore.items()" [saving]="entitlementStore.saving()" [actionError]="entitlementStore.actionError()" (save)="onSaveManual($event)" (closed)="closeManualModal()" />
