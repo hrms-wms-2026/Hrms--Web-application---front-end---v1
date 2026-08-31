@@ -12,12 +12,147 @@ import { LegalEntityListItem } from '../../../organization/models/legal-entity.m
 import { LeaveEntitlementStore } from '../../state/leave-entitlement.store';
 import { LeaveBalanceStore } from '../../state/leave-balance.store';
 import { LeaveTypeStore } from '../../state/leave-type.store';
+import { LeaveRequestStore } from '../../state/leave-request.store';
 import { AdjustEntitlementRequest, CreateManualEntitlementRequest, LeaveEntitlementResponse, RecalculateEntitlementRequest } from '../../models/leave-entitlement.model';
+import { SubmitLeaveRequestOnBehalfRequest, SubmitLeaveRequestRequest } from '../../models/leave-request.model';
 import { LeaveEntitlementListTableComponent } from '../../ui/leave-entitlement-list-table/leave-entitlement-list-table.component';
 import { LeaveEntitlementGenerateModalComponent } from '../../ui/leave-entitlement-generate-modal/leave-entitlement-generate-modal.component';
 import { LeaveEntitlementManualFormModalComponent } from '../../ui/leave-entitlement-manual-form-modal/leave-entitlement-manual-form-modal.component';
 import { LeaveEntitlementAdjustModalComponent } from '../../ui/leave-entitlement-adjust-modal/leave-entitlement-adjust-modal.component';
 import { LeaveBalanceListTableComponent } from '../../ui/leave-balance-list-table/leave-balance-list-table.component';
+import { NewLeaveRequestWizardComponent } from '../../ui/new-leave-request-wizard/new-leave-request-wizard.component';
+
 type Tab = 'entitlements' | 'all-balances';
-@Component({ selector: 'app-entitlements-management', standalone: true, imports: [CommonModule, ButtonComponent, EmptyStateComponent, ErrorStateComponent, LeaveEntitlementListTableComponent, LeaveEntitlementGenerateModalComponent, LeaveEntitlementManualFormModalComponent, LeaveEntitlementAdjustModalComponent, LeaveBalanceListTableComponent], templateUrl: './entitlements-management.component.html', styleUrl: './entitlements-management.component.css', changeDetection: ChangeDetectionStrategy.OnPush })
-export class EntitlementsManagementComponent { private readonly notificationService = inject(NotificationService); private readonly permissionService = inject(PermissionService); private readonly legalEntityApi = inject(LegalEntityApiService); readonly entitlementStore = inject(LeaveEntitlementStore); readonly balanceStore = inject(LeaveBalanceStore); readonly leaveTypeStore = inject(LeaveTypeStore); readonly canManage = computed(() => this.permissionService.hasPermission('leave:manage')); readonly canReadAllBalances = computed(() => this.permissionService.hasAnyPermission(['leave:read', 'leave:manage'])); readonly activeTab = signal<Tab>('entitlements'); readonly legalEntities = signal<readonly LegalEntityListItem[]>([]); readonly generateModalOpen = signal(false); readonly manualModalOpen = signal(false); readonly adjustTarget = signal<LeaveEntitlementResponse | null>(null); readonly adjustNeedsConfirmation = signal(false); private allBalancesLoaded = false; constructor() { void this.entitlementStore.load(); void this.leaveTypeStore.load(); void this.loadLegalEntities(); } private async loadLegalEntities(): Promise<void> { try { this.legalEntities.set(await firstValueFrom(this.legalEntityApi.getLegalEntities(false))); } catch { this.notificationService.error('Failed to load legal entities.'); } } selectTab(tab: Tab): void { this.activeTab.set(tab); if (tab === 'all-balances' && !this.allBalancesLoaded) { this.allBalancesLoaded = true; void this.balanceStore.loadAll(this.entitlementStore.year()); } } openGenerateModal(): void { this.generateModalOpen.set(true); } closeGenerateModal(): void { this.generateModalOpen.set(false); this.entitlementStore.clearGenerationPreview(); } async onPreviewGenerate(payload: { year: number; legalEntityId: string | null }): Promise<void> { await this.entitlementStore.previewGenerate(payload); } async onConfirmGenerate(payload: { year: number; legalEntityId: string | null }): Promise<void> { if (await this.entitlementStore.generate(payload)) { this.notificationService.success('Entitlements generated.'); this.closeGenerateModal(); } } openManualModal(): void { this.manualModalOpen.set(true); } closeManualModal(): void { this.manualModalOpen.set(false); } async onSaveManual(payload: CreateManualEntitlementRequest): Promise<void> { if (await this.entitlementStore.createManual(payload)) { this.notificationService.success('Manual entitlement created.'); this.closeManualModal(); } else this.notificationService.error(this.entitlementStore.actionError() ?? 'Failed to create manual entitlement.'); } openAdjustModal(value: LeaveEntitlementResponse): void { this.adjustTarget.set(value); this.adjustNeedsConfirmation.set(false); } closeAdjustModal(): void { this.adjustTarget.set(null); this.adjustNeedsConfirmation.set(false); } async onSaveAdjust(payload: AdjustEntitlementRequest): Promise<void> { const target = this.adjustTarget(); if (!target) return; const outcome = await this.entitlementStore.adjust(target.id, payload); if (outcome === 'success') { this.notificationService.success('Entitlement adjusted.'); this.closeAdjustModal(); } else if (outcome === 'confirm') this.adjustNeedsConfirmation.set(true); else this.notificationService.error(this.entitlementStore.actionError() ?? 'Failed to adjust entitlement.'); } async onRecalculate(value: LeaveEntitlementResponse): Promise<void> { const outcome = await this.entitlementStore.recalculate(value.id, { confirmNegativeRemaining: false }); if (outcome === 'success') this.notificationService.success('Entitlement recalculated.'); else if (outcome === 'confirm') { const proceed = window.confirm('This recalculation would leave a negative remaining balance. Continue anyway?'); if (proceed) { const forced = await this.entitlementStore.recalculate(value.id, { confirmNegativeRemaining: true } satisfies RecalculateEntitlementRequest); if (forced === 'success') this.notificationService.success('Entitlement recalculated.'); else this.notificationService.error(this.entitlementStore.actionError() ?? 'Failed to recalculate entitlement.'); } } else this.notificationService.error(this.entitlementStore.actionError() ?? 'Failed to recalculate entitlement.'); } }
+
+@Component({
+  selector: 'app-entitlements-management',
+  standalone: true,
+  imports: [CommonModule, ButtonComponent, EmptyStateComponent, ErrorStateComponent, LeaveEntitlementListTableComponent, LeaveEntitlementGenerateModalComponent, LeaveEntitlementManualFormModalComponent, LeaveEntitlementAdjustModalComponent, LeaveBalanceListTableComponent, NewLeaveRequestWizardComponent],
+  templateUrl: './entitlements-management.component.html',
+  styleUrl: './entitlements-management.component.css',
+  changeDetection: ChangeDetectionStrategy.OnPush
+})
+export class EntitlementsManagementComponent {
+  private readonly notificationService = inject(NotificationService);
+  private readonly permissionService = inject(PermissionService);
+  private readonly legalEntityApi = inject(LegalEntityApiService);
+  readonly entitlementStore = inject(LeaveEntitlementStore);
+  readonly balanceStore = inject(LeaveBalanceStore);
+  readonly leaveTypeStore = inject(LeaveTypeStore);
+  readonly requestStore = inject(LeaveRequestStore);
+  readonly canManage = computed(() => this.permissionService.hasPermission('leave:manage'));
+  readonly canReadAllBalances = computed(() => this.permissionService.hasAnyPermission(['leave:read', 'leave:manage']));
+  readonly activeTab = signal<Tab>('entitlements');
+  readonly legalEntities = signal<readonly LegalEntityListItem[]>([]);
+  readonly generateModalOpen = signal(false);
+  readonly manualModalOpen = signal(false);
+  readonly adjustTarget = signal<LeaveEntitlementResponse | null>(null);
+  readonly adjustNeedsConfirmation = signal(false);
+  readonly requestWizardOpen = signal(false);
+  private allBalancesLoaded = false;
+
+  constructor() {
+    void this.entitlementStore.load();
+    void this.leaveTypeStore.load();
+    void this.loadLegalEntities();
+  }
+
+  private async loadLegalEntities(): Promise<void> {
+    try {
+      this.legalEntities.set(await firstValueFrom(this.legalEntityApi.getLegalEntities(false)));
+    } catch {
+      this.notificationService.error('Failed to load legal entities.');
+    }
+  }
+
+  selectTab(tab: Tab): void {
+    this.activeTab.set(tab);
+    if (tab === 'all-balances' && !this.allBalancesLoaded) {
+      this.allBalancesLoaded = true;
+      void this.balanceStore.loadAll(this.entitlementStore.year());
+    }
+  }
+
+  openGenerateModal(): void { this.generateModalOpen.set(true); }
+  closeGenerateModal(): void { this.generateModalOpen.set(false); this.entitlementStore.clearGenerationPreview(); }
+
+  async onPreviewGenerate(payload: { year: number; legalEntityId: string | null }): Promise<void> {
+    await this.entitlementStore.previewGenerate(payload);
+  }
+
+  async onConfirmGenerate(payload: { year: number; legalEntityId: string | null }): Promise<void> {
+    if (await this.entitlementStore.generate(payload)) {
+      this.notificationService.success('Entitlements generated.');
+      this.closeGenerateModal();
+    }
+  }
+
+  openManualModal(): void { this.manualModalOpen.set(true); }
+  closeManualModal(): void { this.manualModalOpen.set(false); }
+
+  async onSaveManual(payload: CreateManualEntitlementRequest): Promise<void> {
+    if (await this.entitlementStore.createManual(payload)) {
+      this.notificationService.success('Manual entitlement created.');
+      this.closeManualModal();
+    } else {
+      this.notificationService.error(this.entitlementStore.actionError() ?? 'Failed to create manual entitlement.');
+    }
+  }
+
+  openAdjustModal(value: LeaveEntitlementResponse): void {
+    this.adjustTarget.set(value);
+    this.adjustNeedsConfirmation.set(false);
+  }
+
+  closeAdjustModal(): void {
+    this.adjustTarget.set(null);
+    this.adjustNeedsConfirmation.set(false);
+  }
+
+  async onSaveAdjust(payload: AdjustEntitlementRequest): Promise<void> {
+    const target = this.adjustTarget();
+    if (!target) return;
+    const outcome = await this.entitlementStore.adjust(target.id, payload);
+    if (outcome === 'success') {
+      this.notificationService.success('Entitlement adjusted.');
+      this.closeAdjustModal();
+    } else if (outcome === 'confirm') {
+      this.adjustNeedsConfirmation.set(true);
+    } else {
+      this.notificationService.error(this.entitlementStore.actionError() ?? 'Failed to adjust entitlement.');
+    }
+  }
+
+  async onRecalculate(value: LeaveEntitlementResponse): Promise<void> {
+    const outcome = await this.entitlementStore.recalculate(value.id, { confirmNegativeRemaining: false });
+    if (outcome === 'success') {
+      this.notificationService.success('Entitlement recalculated.');
+    } else if (outcome === 'confirm') {
+      const proceed = window.confirm('This recalculation would leave a negative remaining balance. Continue anyway?');
+      if (proceed) {
+        const forced = await this.entitlementStore.recalculate(value.id, { confirmNegativeRemaining: true } satisfies RecalculateEntitlementRequest);
+        if (forced === 'success') {
+          this.notificationService.success('Entitlement recalculated.');
+        } else {
+          this.notificationService.error(this.entitlementStore.actionError() ?? 'Failed to recalculate entitlement.');
+        }
+      }
+    } else {
+      this.notificationService.error(this.entitlementStore.actionError() ?? 'Failed to recalculate entitlement.');
+    }
+  }
+
+  openRequestWizard(): void { this.requestWizardOpen.set(true); }
+  closeRequestWizard(): void { this.requestWizardOpen.set(false); this.requestStore.clearPreview(); }
+  onRequestPreview(payload: SubmitLeaveRequestRequest): void { void this.requestStore.preview(payload); }
+
+  async onRequestSubmit(payload: SubmitLeaveRequestRequest | SubmitLeaveRequestOnBehalfRequest): Promise<void> {
+    const result = await this.requestStore.submitOnBehalf(payload as SubmitLeaveRequestOnBehalfRequest);
+    if (result) {
+      this.notificationService.success('Leave request submitted on behalf of the employee.');
+      this.closeRequestWizard();
+    } else {
+      this.notificationService.error(this.requestStore.submitError() ?? 'Failed to submit the request.');
+    }
+  }
+}
