@@ -1,0 +1,20 @@
+<table class="lpa-table">
+  <thead>
+    <tr><th></th><th>Name</th><th>Type</th><th>From</th><th>To</th><th>Days</th><th>Status</th></tr>
+  </thead>
+  <tbody>
+    @for (row of rows; track row.requestId) {
+      <tr data-testid="approval-row" (click)="rowClicked.emit(row.requestId)">
+        <td (click)="$event.stopPropagation()">
+          <input type="checkbox" data-testid="approval-select" [checked]="selectedIds.has(row.requestId)" (click)="onCheckboxClick($event, row.requestId)" />
+        </td>
+        <td>{{ row.employeeName }}</td>
+        <td>{{ row.leaveTypeName }}</td>
+        <td>{{ row.startDate }}</td>
+        <td>{{ row.endDate }}</td>
+        <td>{{ row.totalDays }}</td>
+        <td><span class="lpa-status" [class.lpa-status-info]="row.status === 'information_requested'">{{ statusLabel(row.status) }}</span></td>
+      </tr>
+    }
+  </tbody>
+</table>
