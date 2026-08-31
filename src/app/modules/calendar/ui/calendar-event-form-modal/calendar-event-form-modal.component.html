@@ -1,0 +1,87 @@
+<app-modal [open]="open" [title]="isEdit ? 'Edit event' : 'New event'" (closed)="cancel.emit()">
+  <!-- No (ngSubmit)/type="submit" here on purpose: a recurring occurrence needs an explicit
+       this-event/all-events choice, so every save action is a type="button" click handler below
+       rather than the form's native submit event (which would bypass that choice on Enter). -->
+  <form [formGroup]="form" class="flex flex-col gap-3">
+    <app-input label="Title" [value]="form.controls.title.value ?? ''" (valueChange)="setTitle($event)" />
+    <app-input label="Description" [value]="form.controls.description.value ?? ''" (valueChange)="setDescription($event)" />
+
+    <div class="grid grid-cols-2 gap-3">
+      <app-date-picker label="Start date" [value]="form.controls.startDate.value ?? ''" (valueChange)="form.controls.startDate.setValue($event)" />
+      <input type="time" formControlName="startTime" class="mt-5 rounded-md border border-[var(--color-border)] bg-[var(--color-surface)] px-2.5 py-1.5 text-sm" />
+      <app-date-picker label="End date" [value]="form.controls.endDate.value ?? ''" (valueChange)="form.controls.endDate.setValue($event)" />
+      <input type="time" formControlName="endTime" class="mt-5 rounded-md border border-[var(--color-border)] bg-[var(--color-surface)] px-2.5 py-1.5 text-sm" />
+    </div>
+
+    <label class="flex items-center gap-2 text-sm">
+      <input type="checkbox" formControlName="isAllDay" />
+      All day
+    </label>
+
+    <app-input label="Location" [value]="form.controls.location.value ?? ''" (valueChange)="setLocation($event)" />
+    <app-input label="Meeting link" [value]="form.controls.meetingLink.value ?? ''" (valueChange)="setMeetingLink($event)" />
+
+    <app-select label="Repeat" [options]="recurrenceOptions" [value]="form.controls.recurrenceFrequency.value ?? 'none'" (valueChange)="setRecurrenceFrequency($event)" />
+
+    @if (form.controls.recurrenceFrequency.value !== 'none') {
+      <div class="flex items-center gap-3 text-sm">
+        <label class="flex items-center gap-1.5">
+          <input type="radio" formControlName="recurrenceEndMode" value="never" />
+          Never ends
+        </label>
+        <label class="flex items-center gap-1.5">
+          <input type="radio" formControlName="recurrenceEndMode" value="until" />
+          Ends on
+        </label>
+      </div>
+      @if (form.controls.recurrenceEndMode.value === 'until') {
+        <app-date-picker
+          data-testid="calendar-form-recurrence-until"
+          label="Ends on"
+          [value]="form.controls.recurrenceUntilDate.value ?? ''"
+          (valueChange)="form.controls.recurrenceUntilDate.setValue($event)"
+        />
+      }
+    }
+
+    @if (!isEdit) {
+      <div class="flex items-center justify-between">
+        <span class="text-sm text-[var(--color-text-secondary)]">{{ participantIds().length }} participant(s)</span>
+        <app-button type="button" variant="secondary" (click)="openParticipantPicker()">Add participants</app-button>
+      </div>
+    }
+
+    @if (isEdit && event?.isRecurringOccurrence) {
+      <div class="mt-2 flex flex-wrap items-center justify-between gap-2">
+        <div class="flex gap-2">
+          <app-button type="button" variant="danger" data-testid="calendar-form-delete-this-event" (click)="onDelete('ThisEventOnly')">Delete this event</app-button>
+          <app-button type="button" variant="danger" data-testid="calendar-form-delete-all-events" (click)="onDelete('AllEvents')">Delete all events</app-button>
+        </div>
+        <div class="flex gap-2">
+          <app-button type="button" variant="secondary" (click)="cancel.emit()">Cancel</app-button>
+          <app-button type="button" variant="secondary" data-testid="calendar-form-save-this-event" [loading]="saving" (click)="onSubmit('ThisEventOnly')">Save this event</app-button>
+          <app-button type="button" data-testid="calendar-form-save-all-events" [loading]="saving" (click)="onSubmit('AllEvents')">Save all events</app-button>
+        </div>
+      </div>
+    } @else {
+      <div class="mt-2 flex flex-wrap items-center justify-between gap-2">
+        @if (isEdit) {
+          <app-button type="button" variant="danger" data-testid="calendar-form-delete-plain" (click)="onDelete(null)">Delete</app-button>
+        } @else {
+          <span></span>
+        }
+        <div class="flex gap-2">
+          <app-button type="button" variant="secondary" (click)="cancel.emit()">Cancel</app-button>
+          <app-button type="button" data-testid="calendar-form-save-plain" [loading]="saving" (click)="onSubmit(null)">{{ isEdit ? 'Save changes' : 'Create event' }}</app-button>
+        </div>
+      </div>
+    }
+  </form>
+</app-modal>
+
+<app-calendar-participant-picker
+  [open]="participantPickerOpen()"
+  [selectedIds]="participantIds()"
+  (selectedIdsChange)="participantIds.set($event)"
+  (closed)="participantPickerOpen.set(false)"
+/>

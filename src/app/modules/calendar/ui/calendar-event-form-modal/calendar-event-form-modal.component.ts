@@ -1,0 +1,146 @@
+import { ChangeDetectionStrategy, Component, EventEmitter, Input, OnChanges, Output, inject, signal } from '@angular/core';
+import { CommonModule } from '@angular/common';
+import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
+import { ButtonComponent } from '../../../../shared/ui/button/button.component';
+import { InputComponent } from '../../../../shared/ui/input/input.component';
+import { SelectComponent } from '../../../../shared/ui/select/select.component';
+import { ModalComponent } from '../../../../shared/ui/modal/modal.component';
+import { DatePickerComponent } from '../../../../shared/ui/date-picker/date-picker.component';
+import { CalendarEventResponse, CreateCalendarEventRequest, RecurrenceEditScope, UpdateCalendarEventRequest } from '../../models/calendar-event.model';
+import { RecurrenceEndMode, RecurrenceFrequency, buildRecurrenceRule } from '../../utils/recurrence-rule.util';
+import { CalendarParticipantPickerComponent } from '../calendar-participant-picker/calendar-participant-picker.component';
+
+export type CalendarEventFormSubmission =
+  | { create: CreateCalendarEventRequest }
+  | { update: UpdateCalendarEventRequest; scope: RecurrenceEditScope | null };
+
+@Component({
+  selector: 'app-calendar-event-form-modal',
+  standalone: true,
+  imports: [
+    CommonModule, ReactiveFormsModule, ButtonComponent, InputComponent, SelectComponent,
+    ModalComponent, DatePickerComponent, CalendarParticipantPickerComponent
+  ],
+  templateUrl: './calendar-event-form-modal.component.html',
+  changeDetection: ChangeDetectionStrategy.OnPush
+})
+export class CalendarEventFormModalComponent implements OnChanges {
+  private readonly fb = inject(FormBuilder);
+
+  @Input() open = false;
+  @Input() event: CalendarEventResponse | null = null;
+  @Input() saving = false;
+  @Output() save = new EventEmitter<CalendarEventFormSubmission>();
+  @Output() delete = new EventEmitter<RecurrenceEditScope | null>();
+  @Output() cancel = new EventEmitter<void>();
+
+  readonly recurrenceOptions = [
+    { value: 'none', label: 'Does not repeat' },
+    { value: 'daily', label: 'Daily' },
+    { value: 'weekly', label: 'Weekly' },
+    { value: 'monthly', label: 'Monthly' }
+  ];
+
+  readonly participantPickerOpen = signal(false);
+  readonly participantIds = signal<readonly string[]>([]);
+
+  readonly form = this.fb.group({
+    title: ['', [Validators.required, Validators.maxLength(200)]],
+    description: [''],
+    startDate: ['', Validators.required],
+    startTime: ['09:00', Validators.required],
+    endDate: ['', Validators.required],
+    endTime: ['10:00', Validators.required],
+    isAllDay: [false],
+    location: [''],
+    meetingLink: [''],
+    color: ['#2563EB'],
+    recurrenceFrequency: ['none' as RecurrenceFrequency],
+    recurrenceEndMode: ['never' as RecurrenceEndMode],
+    recurrenceUntilDate: ['']
+  });
+
+  get isEdit(): boolean {
+    return !!this.event;
+  }
+
+  ngOnChanges(): void {
+    if (!this.event) return;
+    const [startDate, startTimeRaw] = this.event.startDate.split('T');
+    const [endDate, endTimeRaw] = this.event.endDate.split('T');
+    this.form.patchValue({
+      title: this.event.title,
+      description: this.event.description ?? '',
+      startDate,
+      startTime: startTimeRaw.slice(0, 5),
+      endDate,
+      endTime: endTimeRaw.slice(0, 5),
+      isAllDay: this.event.isAllDay,
+      location: this.event.location ?? '',
+      meetingLink: this.event.meetingLink ?? '',
+      color: this.event.color ?? '#2563EB'
+    });
+  }
+
+  setTitle(value: string): void {
+    this.form.controls.title.setValue(value);
+  }
+
+  setDescription(value: string): void {
+    this.form.controls.description.setValue(value);
+  }
+
+  setLocation(value: string): void {
+    this.form.controls.location.setValue(value);
+  }
+
+  setMeetingLink(value: string): void {
+    this.form.controls.meetingLink.setValue(value);
+  }
+
+  setRecurrenceFrequency(value: string): void {
+    this.form.controls.recurrenceFrequency.setValue(value as RecurrenceFrequency);
+  }
+
+  openParticipantPicker(): void {
+    this.participantPickerOpen.set(true);
+  }
+
+  onSubmit(scope: RecurrenceEditScope | null = null): void {
+    if (this.form.invalid) {
+      this.form.markAllAsTouched();
+      return;
+    }
+
+    const raw = this.form.getRawValue();
+    const startDate = `${raw.startDate}T${raw.startTime}:00Z`;
+    const endDate = `${raw.endDate}T${raw.endTime}:00Z`;
+    const recurrence = raw.recurrenceFrequency ?? 'none';
+    const recurrenceRule = buildRecurrenceRule(recurrence as RecurrenceFrequency, raw.recurrenceEndMode as RecurrenceEndMode, raw.recurrenceUntilDate || null);
+
+    if (this.isEdit) {
+      this.save.emit({
+        update: {
+          title: raw.title!.trim(), description: raw.description || null, startDate, endDate,
+          isAllDay: !!raw.isAllDay, timezone: 'UTC', location: raw.location || null,
+          meetingLink: raw.meetingLink || null, color: raw.color || null, recurrence
+        },
+        scope
+      });
+      return;
+    }
+
+    this.save.emit({
+      create: {
+        title: raw.title!.trim(), description: raw.description || null, startDate, endDate,
+        isAllDay: !!raw.isAllDay, timezone: 'UTC', location: raw.location || null,
+        meetingLink: raw.meetingLink || null, color: raw.color || null, recurrence,
+        participantEmployeeIds: this.participantIds(), recurrenceRule
+      }
+    });
+  }
+
+  onDelete(scope: RecurrenceEditScope | null = null): void {
+    this.delete.emit(scope);
+  }
+}
