@@ -1,2 +1,46 @@
-<!-- Quiet Operations Desk: personal balances lead the Time Off module without management noise. -->
-<section class="mbc-page"><header class="mbc-header"><div><p class="mbc-kicker">TIME OFF</p><h1>My Balances</h1><p class="mbc-subtitle">Your leave entitlement and remaining days for the selected year.</p></div><app-select [options]="yearOptions" [value]="selectedYear()" (valueChange)="onYearChange($event)" /></header>@if (store.myLoading()) { <div class="mbc-loading" aria-busy="true"><span></span><span></span><span></span></div> } @else if (store.myError()) { <app-error-state [message]="store.myError()!" [retryable]="true" (retry)="store.loadMy(store.year())" /> } @else if (store.my().length === 0) { <app-empty-state title="No leave balances yet" description="Balances appear once HR generates entitlements for this year." /> } @else { <app-leave-balance-list-table [balances]="store.my()" [showEmployeeColumn]="false" /> }</section>
+<!-- Quiet Operations Desk: personal balances and request history lead the Time Off module without management noise. -->
+<section class="mbc-page">
+  <header class="mbc-header">
+    <div><p class="mbc-kicker">TIME OFF</p><h1>My Balances</h1><p class="mbc-subtitle">Your leave entitlement and remaining days for the selected year.</p></div>
+    <div class="mbc-header-actions">
+      <app-select [options]="yearOptions" [value]="selectedYear()" (valueChange)="onYearChange($event)" />
+      <app-button data-testid="new-request-button" (click)="openWizard()">+ New Request</app-button>
+    </div>
+  </header>
+  @if (store.myLoading()) {
+    <div class="mbc-loading" aria-busy="true"><span></span><span></span><span></span></div>
+  } @else if (store.myError()) {
+    <app-error-state [message]="store.myError()!" [retryable]="true" (retry)="store.loadMy(store.year())" />
+  } @else if (store.my().length === 0) {
+    <app-empty-state title="No leave balances yet" description="Balances appear once HR generates entitlements for this year." />
+  } @else {
+    <app-leave-balance-list-table [balances]="store.my()" [showEmployeeColumn]="false" />
+  }
+
+  <h2 class="mbc-subheading">Request History</h2>
+  @if (requestStore.myRequestsLoading()) {
+    <div class="mbc-loading" aria-busy="true"><span></span><span></span><span></span></div>
+  } @else if (requestStore.myRequestsError()) {
+    <app-error-state [message]="requestStore.myRequestsError()!" [retryable]="true" (retry)="requestStore.loadMine()" />
+  } @else if (requestStore.myRequests().length === 0) {
+    <app-empty-state title="No leave requests yet" description="Requests you submit will appear here." />
+  } @else {
+    <app-leave-request-history-table [requests]="requestStore.myRequests()" />
+  }
+</section>
+
+@if (wizardOpen()) {
+  <app-new-leave-request-wizard
+    [open]="true"
+    [leaveTypes]="leaveTypeStore.items()"
+    [balances]="store.my()"
+    [previewing]="requestStore.previewing()"
+    [previewResult]="requestStore.previewResult()"
+    [previewError]="requestStore.previewError()"
+    [submitting]="requestStore.submitting()"
+    [submitError]="requestStore.submitError()"
+    (previewRequested)="onPreviewRequested($event)"
+    (submitRequested)="onSubmitRequested($event)"
+    (closed)="closeWizard()"
+  />
+}
