@@ -29,4 +29,18 @@ describe('LeaveRequestHistoryTableComponent', () => {
     expect(badges[1].textContent.trim()).toBe('Rejected');
     expect(badges[1].className).toContain('lrh-status-rejected');
   });
+
+  it('shows a Cancel button only for pending or approved rows', () => {
+    fixture.detectChanges();
+    const buttons = fixture.nativeElement.querySelectorAll('[data-testid="cancel-request"]');
+    expect(buttons.length).toBe(1); // requests[0] is pending, requests[1] is rejected
+  });
+
+  it('emits cancelRequested with the row when Cancel is clicked', () => {
+    fixture.detectChanges();
+    const emitted: unknown[] = [];
+    fixture.componentInstance.cancelRequested.subscribe((e: unknown) => emitted.push(e));
+    fixture.nativeElement.querySelector('[data-testid="cancel-request"]').click();
+    expect(emitted).toEqual([requests[0]]);
+  });
 });

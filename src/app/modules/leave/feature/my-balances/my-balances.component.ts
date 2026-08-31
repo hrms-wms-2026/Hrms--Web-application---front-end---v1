@@ -5,18 +5,20 @@ import { ButtonComponent } from '../../../../shared/ui/button/button.component';
 import { EmptyStateComponent } from '../../../../shared/ui/empty-state/empty-state.component';
 import { ErrorStateComponent } from '../../../../shared/ui/error-state/error-state.component';
 import { SelectComponent, SelectOption } from '../../../../shared/ui/select/select.component';
+import { NotificationService } from '../../../../core/services/notification.service';
 import { LeaveBalanceStore } from '../../state/leave-balance.store';
 import { LeaveRequestStore } from '../../state/leave-request.store';
 import { LeaveTypeStore } from '../../state/leave-type.store';
-import { SubmitLeaveRequestRequest } from '../../models/leave-request.model';
+import { CancelLeaveRequestRequest, LeaveRequestListItemResponse, SubmitLeaveRequestRequest } from '../../models/leave-request.model';
 import { LeaveBalanceListTableComponent } from '../../ui/leave-balance-list-table/leave-balance-list-table.component';
+import { LeaveCancelConfirmDialogComponent } from '../../ui/leave-cancel-confirm-dialog/leave-cancel-confirm-dialog.component';
 import { LeaveRequestHistoryTableComponent } from '../../ui/leave-request-history-table/leave-request-history-table.component';
 import { NewLeaveRequestWizardComponent } from '../../ui/new-leave-request-wizard/new-leave-request-wizard.component';
 
 @Component({
   selector: 'app-my-balances',
   standalone: true,
-  imports: [CommonModule, ButtonComponent, EmptyStateComponent, ErrorStateComponent, SelectComponent, LeaveBalanceListTableComponent, LeaveRequestHistoryTableComponent, NewLeaveRequestWizardComponent],
+  imports: [CommonModule, ButtonComponent, EmptyStateComponent, ErrorStateComponent, SelectComponent, LeaveBalanceListTableComponent, LeaveCancelConfirmDialogComponent, LeaveRequestHistoryTableComponent, NewLeaveRequestWizardComponent],
   templateUrl: './my-balances.component.html',
   styleUrl: './my-balances.component.css',
   changeDetection: ChangeDetectionStrategy.OnPush
@@ -25,9 +27,11 @@ export class MyBalancesComponent {
   readonly store = inject(LeaveBalanceStore);
   readonly requestStore = inject(LeaveRequestStore);
   readonly leaveTypeStore = inject(LeaveTypeStore);
+  private readonly notificationService = inject(NotificationService);
   readonly yearOptions: SelectOption[] = yearOptions();
   readonly selectedYear = computed(() => String(this.store.year()));
   readonly wizardOpen = signal(false);
+  readonly cancelTarget = signal<LeaveRequestListItemResponse | null>(null);
 
   constructor() {
     void this.store.loadMy(new Date().getFullYear());
@@ -57,6 +61,26 @@ export class MyBalancesComponent {
     if (result) {
       this.closeWizard();
       void this.store.loadMy(this.store.year());
+    }
+  }
+
+  onCancelRequested(request: LeaveRequestListItemResponse): void {
+    this.cancelTarget.set(request);
+  }
+
+  closeCancelDialog(): void {
+    this.cancelTarget.set(null);
+  }
+
+  async onConfirmCancel(payload: CancelLeaveRequestRequest): Promise<void> {
+    const target = this.cancelTarget();
+    if (!target) return;
+    const result = await this.requestStore.cancel(target.id, payload);
+    if (result) {
+      this.notificationService.success('Leave request cancelled.');
+      this.closeCancelDialog();
+    } else {
+      this.notificationService.error(this.requestStore.cancelError() ?? 'Failed to cancel this request.');
     }
   }
 }

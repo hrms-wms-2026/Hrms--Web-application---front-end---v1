@@ -25,7 +25,7 @@
   } @else if (requestStore.myRequests().length === 0) {
     <app-empty-state title="No leave requests yet" description="Requests you submit will appear here." />
   } @else {
-    <app-leave-request-history-table [requests]="requestStore.myRequests()" />
+    <app-leave-request-history-table [requests]="requestStore.myRequests()" (cancelRequested)="onCancelRequested($event)" />
   }
 </section>
 
@@ -44,3 +44,17 @@
     (closed)="closeWizard()"
   />
 }
+
+<app-leave-cancel-confirm-dialog
+  [open]="cancelTarget() !== null"
+  [leaveTypeName]="cancelTarget()?.leaveTypeName ?? ''"
+  [startDate]="cancelTarget()?.startDate ?? ''"
+  [endDate]="cancelTarget()?.endDate ?? ''"
+  [totalDays]="cancelTarget()?.totalDays ?? 0"
+  [status]="cancelTarget()?.status ?? ''"
+  [requireReason]="false"
+  [cancelling]="requestStore.cancelling()"
+  [cancelError]="requestStore.cancelError()"
+  (confirmed)="onConfirmCancel($event)"
+  (closed)="closeCancelDialog()"
+/>
