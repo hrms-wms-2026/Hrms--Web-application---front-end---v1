@@ -1,0 +1,8 @@
+.lcd-body { display: flex; flex-direction: column; gap: .6rem; min-width: 260px; }
+.lcd-holidays p { margin: 0; font-size: .82rem; color: #8a5a12; }
+.lcd-muted { color: var(--color-text-secondary, #64748b); font-size: .84rem; }
+.lcd-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: .5rem; }
+.lcd-list li { display: flex; flex-direction: column; }
+.lcd-name { font-size: .86rem; font-weight: 600; }
+.lcd-meta { font-size: .76rem; color: var(--color-text-secondary, #64748b); }
+.lcd-badge { align-self: flex-start; margin-top: .15rem; font-size: .68rem; background: #e6eefc; color: #1b4fa8; border-radius: 999px; padding: .1rem .5rem; }
