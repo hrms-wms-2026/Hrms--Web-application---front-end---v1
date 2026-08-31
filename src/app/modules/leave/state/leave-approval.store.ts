@@ -18,6 +18,7 @@ import {
   RequestLeaveInformationRequest,
   RespondLeaveInformationRequest
 } from '../models/leave-approval.model';
+import { CancelLeaveRequestRequest, CancelLeaveRequestResponse } from '../models/leave-request.model';
 
 export interface LeaveApprovalState {
   readonly pending: readonly LeavePendingApprovalListItemResponse[];
@@ -33,6 +34,8 @@ export interface LeaveApprovalState {
   readonly detailError: string | null;
   readonly deciding: boolean;
   readonly decideError: string | null;
+  readonly cancelling: boolean;
+  readonly cancelDialogError: string | null;
 }
 
 const initialState: LeaveApprovalState = {
@@ -48,7 +51,9 @@ const initialState: LeaveApprovalState = {
   detailLoading: false,
   detailError: null,
   deciding: false,
-  decideError: null
+  decideError: null,
+  cancelling: false,
+  cancelDialogError: null
 };
 
 export const LeaveApprovalStore = signalStore(
@@ -142,6 +147,18 @@ export const LeaveApprovalStore = signalStore(
         return result;
       } catch (err) {
         patchState(store, { deciding: false, decideError: toSafeErrorMessage(err, 'Failed to bulk reject these requests.') });
+        return null;
+      }
+    },
+    async cancel(requestId: string, payload: CancelLeaveRequestRequest): Promise<CancelLeaveRequestResponse | null> {
+      patchState(store, { cancelling: true, cancelDialogError: null });
+      try {
+        const result = await firstValueFrom(api.cancel(requestId, payload));
+        patchState(store, { cancelling: false });
+        await this.loadAll();
+        return result;
+      } catch (err) {
+        patchState(store, { cancelling: false, cancelDialogError: toSafeErrorMessage(err, 'Failed to cancel this request.') });
         return null;
       }
     }

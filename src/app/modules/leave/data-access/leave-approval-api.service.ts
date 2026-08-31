@@ -17,6 +17,7 @@ import {
   RequestLeaveInformationRequest,
   RespondLeaveInformationRequest
 } from '../models/leave-approval.model';
+import { CancelLeaveRequestRequest, CancelLeaveRequestResponse } from '../models/leave-request.model';
 
 /** Client for ONEVO.Api's LeaveApprovalsController at /api/v1/leave/requests. */
 @Injectable({ providedIn: 'root' })
@@ -60,6 +61,10 @@ export class LeaveApprovalApiService {
 
   bulkReject(payload: BulkRejectLeaveRequestsRequest): Observable<LeaveApprovalBulkResultResponse> {
     return this.http.post<LeaveApprovalBulkResultResponse>(`${environment.apiUrl}/leave/requests/bulk-reject`, payload);
+  }
+
+  cancel(requestId: string, payload: CancelLeaveRequestRequest): Observable<CancelLeaveRequestResponse> {
+    return this.http.post<CancelLeaveRequestResponse>(`${environment.apiUrl}/leave/requests/${requestId}/cancel`, payload);
   }
 
   private toParams(filter: LeaveApprovalListFilter): HttpParams {

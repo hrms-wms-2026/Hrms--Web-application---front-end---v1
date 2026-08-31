@@ -3,6 +3,7 @@ import { HttpTestingController, provideHttpClientTesting } from '@angular/common
 import { TestBed } from '@angular/core/testing';
 import { environment } from '../../../../environments/environment';
 import { LeaveApprovalDecisionResponse, LeaveApprovalDetailResponse, LeavePendingApprovalListItemResponse, LeaveRequestAllListItemResponse } from '../models/leave-approval.model';
+import { CancelLeaveRequestRequest, CancelLeaveRequestResponse } from '../models/leave-request.model';
 import { LeaveApprovalApiService } from './leave-approval-api.service';
 
 describe('LeaveApprovalApiService', () => {
@@ -103,5 +104,17 @@ describe('LeaveApprovalApiService', () => {
     const req = httpMock.expectOne(`${environment.apiUrl}/leave/requests/bulk-reject`);
     expect(req.request.method).toBe('POST');
     req.flush(bulkResult);
+  });
+
+  it('cancels a request', () => {
+    const cancelResponse: CancelLeaveRequestResponse = {
+      requestId: 'req-1', status: 'cancelled', isPartialCancellation: false, effectiveDate: null,
+      releasedPendingDays: 0, restoredUsedDays: 3, remainingDays: 20, reason: 'Coverage issue', cancelledAt: '2026-08-30T00:00:00Z'
+    };
+    const payload: CancelLeaveRequestRequest = { reason: 'Coverage issue', effectiveDate: null, expectedVersion: null };
+    service.cancel('req-1', payload).subscribe((res) => expect(res).toEqual(cancelResponse));
+    const req = httpMock.expectOne(`${environment.apiUrl}/leave/requests/req-1/cancel`);
+    expect(req.request.method).toBe('POST');
+    req.flush(cancelResponse);
   });
 });

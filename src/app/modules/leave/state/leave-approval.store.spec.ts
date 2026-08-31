@@ -3,6 +3,7 @@ import { HttpTestingController, provideHttpClientTesting } from '@angular/common
 import { TestBed } from '@angular/core/testing';
 import { environment } from '../../../../environments/environment';
 import { LeaveApprovalDecisionResponse, LeaveApprovalDetailResponse } from '../models/leave-approval.model';
+import { CancelLeaveRequestResponse } from '../models/leave-request.model';
 import { LeaveApprovalStore } from './leave-approval.store';
 
 describe('LeaveApprovalStore', () => {
@@ -103,5 +104,18 @@ describe('LeaveApprovalStore', () => {
     httpMock.expectOne((r) => r.url === `${environment.apiUrl}/leave/requests/pending-approvals`).flush([]);
     const result = await bulking;
     expect(result).toEqual(bulkResult);
+  });
+
+  it('cancels a request and reloads the all-requests list', async () => {
+    const cancelResponse: CancelLeaveRequestResponse = {
+      requestId: 'req-1', status: 'cancelled', isPartialCancellation: false, effectiveDate: null,
+      releasedPendingDays: 0, restoredUsedDays: 3, remainingDays: 20, reason: 'Coverage issue', cancelledAt: '2026-08-30T00:00:00Z'
+    };
+    const cancelling = store.cancel('req-1', { reason: 'Coverage issue', effectiveDate: null, expectedVersion: null });
+    httpMock.expectOne(`${environment.apiUrl}/leave/requests/req-1/cancel`).flush(cancelResponse);
+    await Promise.resolve();
+    httpMock.expectOne((r) => r.url === `${environment.apiUrl}/leave/requests/all`).flush([]);
+    const result = await cancelling;
+    expect(result).toEqual(cancelResponse);
   });
 });
