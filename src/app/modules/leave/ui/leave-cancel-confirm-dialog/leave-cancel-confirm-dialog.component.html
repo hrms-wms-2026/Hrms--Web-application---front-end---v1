@@ -1,0 +1,31 @@
+<app-modal [open]="open" title="Cancel leave request" (closed)="onClose()">
+  <div class="lcc-body">
+    <p>
+      Are you sure you want to cancel this leave request? {{ leaveTypeName }} from {{ startDate }} to {{ endDate }} ({{ totalDays }} days).
+    </p>
+    @if (status === 'approved') {
+      <p class="lcc-restore">Your balance of {{ totalDays }} days will be restored.</p>
+    }
+
+    @if (isInProgress()) {
+      <label class="lcc-field">
+        <span>Cancel from (leave already taken stays deducted)</span>
+        <input type="date" [value]="effectiveDate() ?? ''" (input)="effectiveDate.set($any($event.target).value || null)" />
+      </label>
+    }
+
+    <label class="lcc-field">
+      <span>Reason @if (requireReason) { (required) } @else { (optional) }</span>
+      <textarea rows="2" [value]="reason()" (input)="reason.set($any($event.target).value)"></textarea>
+    </label>
+
+    @if (cancelError) { <p class="lcc-error">{{ cancelError }}</p> }
+
+    <div class="lcc-actions">
+      <button type="button" class="lcc-secondary" (click)="onClose()">Keep request</button>
+      <button type="button" class="lcc-primary" [disabled]="cancelling || (requireReason && !reason().trim())" (click)="onConfirm()">
+        {{ cancelling ? 'Cancelling...' : 'Cancel request' }}
+      </button>
+    </div>
+  </div>
+</app-modal>
