@@ -1,0 +1,33 @@
+<div class="flex h-full flex-col gap-4 p-4">
+  <div class="flex items-center justify-between">
+    <div class="flex items-center gap-2">
+      <app-button type="button" variant="secondary" (click)="previousMonth()">&lsaquo;</app-button>
+      <app-button type="button" variant="secondary" (click)="goToToday()">Today</app-button>
+      <app-button type="button" variant="secondary" (click)="nextMonth()">&rsaquo;</app-button>
+      <span class="ml-2 text-lg font-semibold text-[var(--color-text-primary)]">
+        {{ cursor() | date: 'MMMM yyyy' }}
+      </span>
+    </div>
+    <app-button type="button" (click)="openCreate()">New event</app-button>
+  </div>
+
+  @if (store.loadError()) {
+    <p class="text-sm text-red-600">{{ store.loadError() }}</p>
+  }
+
+  <app-calendar-month-grid
+    [year]="year()"
+    [month]="month()"
+    [events]="store.events()"
+    (eventClick)="openEdit($event)"
+  />
+</div>
+
+<app-calendar-event-form-modal
+  [open]="formOpen()"
+  [event]="editingEvent()"
+  [saving]="store.saving()"
+  (save)="onSave($event)"
+  (delete)="onDelete($event)"
+  (cancel)="closeForm()"
+/>
