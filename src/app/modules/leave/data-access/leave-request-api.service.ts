@@ -3,6 +3,8 @@ import { Injectable, inject } from '@angular/core';
 import { Observable } from 'rxjs';
 import { environment } from '../../../../environments/environment';
 import {
+  CancelLeaveRequestRequest,
+  CancelLeaveRequestResponse,
   LeaveRequestListFilter,
   LeaveRequestListItemResponse,
   LeaveRequestResponse,
@@ -34,5 +36,9 @@ export class LeaveRequestApiService {
     if (filter.toDate) params = params.set('toDate', filter.toDate);
     if (filter.leaveTypeId) params = params.set('leaveTypeId', filter.leaveTypeId);
     return this.http.get<LeaveRequestListItemResponse[]>(`${environment.apiUrl}/leave/requests/my`, { params });
+  }
+
+  cancel(requestId: string, payload: CancelLeaveRequestRequest): Observable<CancelLeaveRequestResponse> {
+    return this.http.post<CancelLeaveRequestResponse>(`${environment.apiUrl}/leave/requests/${requestId}/cancel`, payload);
   }
 }

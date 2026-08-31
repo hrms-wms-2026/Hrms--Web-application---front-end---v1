@@ -2,7 +2,7 @@ import { provideHttpClient } from '@angular/common/http';
 import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
 import { TestBed } from '@angular/core/testing';
 import { environment } from '../../../../environments/environment';
-import { LeaveRequestListItemResponse, LeaveRequestResponse, SubmitLeaveRequestRequest } from '../models/leave-request.model';
+import { CancelLeaveRequestRequest, CancelLeaveRequestResponse, LeaveRequestListItemResponse, LeaveRequestResponse, SubmitLeaveRequestRequest } from '../models/leave-request.model';
 import { LeaveRequestStore } from './leave-request.store';
 
 describe('LeaveRequestStore', () => {
@@ -100,5 +100,28 @@ describe('LeaveRequestStore', () => {
     httpMock.expectOne(`${environment.apiUrl}/leave/requests/my`).flush([]);
     const result = await submitting;
     expect(result).toEqual(mockResponse);
+  });
+
+  it('cancels a request and reloads my requests', async () => {
+    const cancelResponse: CancelLeaveRequestResponse = {
+      requestId: 'req-1', status: 'cancelled', isPartialCancellation: false, effectiveDate: null,
+      releasedPendingDays: 3, restoredUsedDays: 0, remainingDays: 17, reason: 'Plans changed', cancelledAt: '2026-08-30T00:00:00Z'
+    };
+    const cancelling = store.cancel('req-1', { reason: 'Plans changed', effectiveDate: null, expectedVersion: null });
+    httpMock.expectOne(`${environment.apiUrl}/leave/requests/req-1/cancel`).flush(cancelResponse);
+    await Promise.resolve();
+    httpMock.expectOne(`${environment.apiUrl}/leave/requests/my`).flush([]);
+    const result = await cancelling;
+    expect(result).toEqual(cancelResponse);
+    expect(store.cancelling()).toBe(false);
+  });
+
+  it('cancel sets cancelError and returns null on failure', async () => {
+    const cancelling = store.cancel('req-1', { reason: null, effectiveDate: null, expectedVersion: null });
+    httpMock.expectOne(`${environment.apiUrl}/leave/requests/req-1/cancel`)
+      .flush({ detail: 'This leave request has already been cancelled' }, { status: 409, statusText: 'Conflict' });
+    const result = await cancelling;
+    expect(result).toBeNull();
+    expect(store.cancelError()).toContain('already been cancelled');
   });
 });

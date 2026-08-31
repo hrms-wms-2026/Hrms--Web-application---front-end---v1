@@ -3,6 +3,8 @@ import { HttpTestingController, provideHttpClientTesting } from '@angular/common
 import { TestBed } from '@angular/core/testing';
 import { environment } from '../../../../environments/environment';
 import {
+  CancelLeaveRequestRequest,
+  CancelLeaveRequestResponse,
   LeaveRequestListItemResponse,
   LeaveRequestResponse,
   SubmitLeaveRequestOnBehalfRequest,
@@ -75,5 +77,18 @@ describe('LeaveRequestApiService', () => {
     const req = httpMock.expectOne(`${environment.apiUrl}/leave/requests/my`);
     expect(req.request.method).toBe('GET');
     req.flush([]);
+  });
+
+  it('cancels a request', () => {
+    const cancelResponse: CancelLeaveRequestResponse = {
+      requestId: 'req-1', status: 'cancelled', isPartialCancellation: false, effectiveDate: null,
+      releasedPendingDays: 3, restoredUsedDays: 0, remainingDays: 17, reason: 'Plans changed', cancelledAt: '2026-08-30T00:00:00Z'
+    };
+    const payload: CancelLeaveRequestRequest = { reason: 'Plans changed', effectiveDate: null, expectedVersion: null };
+    service.cancel('req-1', payload).subscribe((res) => expect(res).toEqual(cancelResponse));
+    const req = httpMock.expectOne(`${environment.apiUrl}/leave/requests/req-1/cancel`);
+    expect(req.request.method).toBe('POST');
+    expect(req.request.body).toEqual(payload);
+    req.flush(cancelResponse);
   });
 });

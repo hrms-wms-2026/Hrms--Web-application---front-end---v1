@@ -4,6 +4,8 @@ import { firstValueFrom } from 'rxjs';
 import { toSafeErrorMessage } from '../../../core/services/error-handler.service';
 import { LeaveRequestApiService } from '../data-access/leave-request-api.service';
 import {
+  CancelLeaveRequestRequest,
+  CancelLeaveRequestResponse,
   LeaveRequestListFilter,
   LeaveRequestListItemResponse,
   LeaveRequestResponse,
@@ -21,6 +23,8 @@ export interface LeaveRequestState {
   readonly previewError: string | null;
   readonly submitting: boolean;
   readonly submitError: string | null;
+  readonly cancelling: boolean;
+  readonly cancelError: string | null;
 }
 
 const initialState: LeaveRequestState = {
@@ -32,7 +36,9 @@ const initialState: LeaveRequestState = {
   previewResult: null,
   previewError: null,
   submitting: false,
-  submitError: null
+  submitError: null,
+  cancelling: false,
+  cancelError: null
 };
 
 export const LeaveRequestStore = signalStore(
@@ -85,6 +91,18 @@ export const LeaveRequestStore = signalStore(
         return result;
       } catch (err) {
         patchState(store, { submitting: false, submitError: toSafeErrorMessage(err, 'Failed to submit this request.') });
+        return null;
+      }
+    },
+    async cancel(requestId: string, payload: CancelLeaveRequestRequest): Promise<CancelLeaveRequestResponse | null> {
+      patchState(store, { cancelling: true, cancelError: null });
+      try {
+        const result = await firstValueFrom(api.cancel(requestId, payload));
+        patchState(store, { cancelling: false });
+        await this.loadMine();
+        return result;
+      } catch (err) {
+        patchState(store, { cancelling: false, cancelError: toSafeErrorMessage(err, 'Failed to cancel this request.') });
         return null;
       }
     }
