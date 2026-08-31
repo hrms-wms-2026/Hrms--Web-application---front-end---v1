@@ -49,7 +49,9 @@ describe('app routes - Settings', () => {
   });
 
   it('defines the guarded lazy-loaded Attendance → Time Tracking route', () => {
-    const attendance = routes.find((route) => route.path === 'attendance');
+    const mainLayout = routes.find((r) => r.path === '' && r.children);
+    const children = mainLayout?.children ?? [];
+    const attendance = children.find((route) => route.path === 'attendance');
     expect(attendance).toBeTruthy();
     expect(attendance?.loadChildren).toBeTypeOf('function');
     expect(attendance?.data).toEqual({
@@ -57,7 +59,7 @@ describe('app routes - Settings', () => {
       modules: ['time_attendance']
     });
 
-    const legacyRoute = routes.find((route) => route.path === 'time-attendance');
+    const legacyRoute = children.find((route) => route.path === 'time-attendance');
     expect(legacyRoute?.redirectTo).toBe('attendance/time-tracking');
   });
 });

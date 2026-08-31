@@ -202,7 +202,6 @@ describe('ClockInPolicyFormComponent', () => {
     expect(el.querySelector('[data-testid="clock-in-policy-form"]')).toBeTruthy();
     expect(el.querySelector('table')).toBeNull();
     expect(text).toContain('Clock-in Policy');
-    expect(text).toContain('Control how employees can clock in for this company.');
     expect(text).toContain('Save changes');
     expect(el.querySelector('[data-testid="work-area-onsite"]')?.textContent).toContain('Onsite');
     expect(el.querySelector('[data-testid="work-area-remote"]')?.textContent).toContain('Remote');

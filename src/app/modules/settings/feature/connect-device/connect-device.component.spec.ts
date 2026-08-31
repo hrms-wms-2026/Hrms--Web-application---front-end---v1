@@ -27,9 +27,11 @@ describe('ConnectDeviceComponent', () => {
     vi.useRealTimers();
   });
 
-  it('generates an activation code as soon as the employee opens the page', () => {
+  it('generates an activation code when the employee clicks the generate button', () => {
     activationApi.generate.mockReturnValue(of({ code: 'APDBSJNA', expires_in_seconds: 600 }));
 
+    fixture.detectChanges();
+    component.generate();
     fixture.detectChanges();
 
     expect(activationApi.generate).toHaveBeenCalledTimes(1);

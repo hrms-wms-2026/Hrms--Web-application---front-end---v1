@@ -82,8 +82,9 @@ describe('canAccessNavItem', () => {
 
     it('grants Time Off on the "leave" module key, not "time_off"', () => {
       const timeOff = NAV_ITEMS.find((item) => item.id === 'time-off')!;
-      expect(canAccessNavItem(timeOff, checker([], ['leave']))).toBe(true);
-      expect(canAccessNavItem(timeOff, checker([], ['time_off']))).toBe(false);
+      // needs a permission so at least one child (My Balances) passes its own gate
+      expect(canAccessNavItem(timeOff, checker(['leave:read-own'], ['leave']))).toBe(true);
+      expect(canAccessNavItem(timeOff, checker(['leave:read-own'], ['time_off']))).toBe(false);
     });
 
     it('grants Organization on the "org_structure" module key, not "org"', () => {
@@ -104,7 +105,7 @@ describe('canAccessNavItem', () => {
     it('gates Attendance on time_attendance and a self-service or read permission', () => {
       const attendance = NAV_ITEMS.find((item) => item.id === 'time-attendance')!;
 
-      expect(attendance.path).toBe('/attendance/time-tracking');
+      expect(attendance.path).toBe('/attendance');
       expect(canAccessNavItem(attendance, checker(['attendance:read-own'], ['time_attendance']))).toBe(true);
       expect(canAccessNavItem(attendance, checker(['attendance:write-own'], ['time_attendance']))).toBe(true);
       expect(canAccessNavItem(attendance, checker(['attendance:read'], ['time_attendance']))).toBe(true);
