@@ -6,6 +6,7 @@ import { InputComponent } from '../../../../shared/ui/input/input.component';
 import { SelectComponent } from '../../../../shared/ui/select/select.component';
 import { ModalComponent } from '../../../../shared/ui/modal/modal.component';
 import { DatePickerComponent } from '../../../../shared/ui/date-picker/date-picker.component';
+import { AvatarComponent } from '../../../../shared/ui/avatar/avatar.component';
 import { AuthStore } from '../../../../core/auth/state/auth.store';
 import {
   CalendarConflict, CalendarEventParticipant, CalendarEventResponse, CreateCalendarEventRequest,
@@ -23,7 +24,7 @@ export type CalendarEventFormSubmission =
   standalone: true,
   imports: [
     CommonModule, ReactiveFormsModule, ButtonComponent, InputComponent, SelectComponent,
-    ModalComponent, DatePickerComponent, CalendarParticipantPickerComponent
+    ModalComponent, DatePickerComponent, AvatarComponent, CalendarParticipantPickerComponent
   ],
   templateUrl: './calendar-event-form-modal.component.html',
   changeDetection: ChangeDetectionStrategy.OnPush
@@ -135,6 +136,10 @@ export class CalendarEventFormModalComponent implements OnChanges {
 
   openParticipantPicker(): void {
     this.participantPickerOpen.set(true);
+  }
+
+  toggleAllDay(): void {
+    this.form.controls.isAllDay.setValue(!this.form.controls.isAllDay.value);
   }
 
   onParticipantIdsChange(ids: readonly string[]): void {
