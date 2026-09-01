@@ -3,6 +3,20 @@ import { permissionGuard } from '../../core/guards/permission.guard';
 
 export const ATTENDANCE_ROUTES: Routes = [
   {
+    path: 'monitoring',
+    canActivate: [permissionGuard],
+    data: {
+      title: 'Monitoring',
+      permissions: ['monitoring:read'],
+      modules: ['time_attendance']
+    },
+    loadComponent: () =>
+      import('./feature/monitoring/monitoring.component').then(
+        (module) => module.MonitoringComponent
+      )
+  },
+
+  {
     path: 'time-tracking',
     canActivate: [permissionGuard],
     data: {
@@ -32,19 +46,6 @@ export const ATTENDANCE_ROUTES: Routes = [
       import('./feature/legacy-approval-redirect/legacy-approval-redirect.component').then(
         (module) => module.LegacyApprovalRedirectComponent
       )
-  },
-  {
-    path: 'monitoring',
-    canActivate: [permissionGuard],
-    loadComponent: () =>
-      import('../settings/feature/connect-device/connect-device.component').then(
-        (module) => module.ConnectDeviceComponent
-      ),
-    data: {
-      title: 'Monitoring',
-      permissions: ['attendance:read-own', 'attendance:write-own', 'attendance:read'],
-      modules: ['time_attendance']
-    }
   },
   {
     path: '',

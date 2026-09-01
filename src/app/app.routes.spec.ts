@@ -44,12 +44,6 @@ describe('app routes - Settings', () => {
     expect(router.url).toBe('/settings/bulk-onboarding');
   });
 
-  it('resolves /settings/devices to ConnectDeviceComponent', async () => {
-    const success = await router.navigateByUrl('/settings/devices');
-    expect(success).toBe(true);
-    expect(router.url).toBe('/settings/devices');
-  });
-
   it('defines the guarded lazy-loaded Attendance route under the authenticated shell', () => {
     const authenticatedShell = routes.find(
       (route) =>

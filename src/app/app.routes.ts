@@ -147,18 +147,6 @@ export const routes: Routes = [
               { path: ':id/edit', redirectTo: '' }
             ]
           },
-          {
-            path: 'devices',
-            loadComponent: () =>
-              import('./modules/settings/feature/connect-device/connect-device.component').then(
-                (m) => m.ConnectDeviceComponent
-              ),
-            canActivate: [permissionGuard],
-            data: {
-              title: 'Devices',
-              modules: ['desktop_agent_gateway']
-            }
-          },
           { path: '', pathMatch: 'full', redirectTo: 'general' }
         ]
       },

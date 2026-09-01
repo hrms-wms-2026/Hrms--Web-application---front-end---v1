@@ -5,6 +5,7 @@ import { TrayActivationGateComponent } from '../../core/tray-presence/feature/tr
 import { LockedWorkspacePreviewComponent } from '../../core/tray-presence/ui/locked-workspace-preview/locked-workspace-preview.component';
 
 import { AuthStore } from '../../core/auth/state/auth.store';
+import { PermissionService } from '../../core/auth/state/permission.service';
 import { NavigationStateService } from './nav/navigation-state.service';
 import { SideNavbarComponent } from './side-navbar/side-navbar.component';
 import { SubSidebarComponent } from './sub-sidebar/sub-sidebar.component';
@@ -24,6 +25,7 @@ import { MobileBottomNavComponent } from './mobile-bottom-nav/mobile-bottom-nav.
 })
 export class MainLayoutComponent {
     private readonly authStore = inject(AuthStore);
+  private readonly permissionService = inject(PermissionService);
   readonly trayPresence = inject(TrayPresenceStore);
 
   readonly navState = inject(NavigationStateService);
@@ -31,8 +33,13 @@ export class MainLayoutComponent {
   readonly email = this.authStore.email;
     readonly announcementMessage = signal('');
 
+  /** Tenants that never enabled the monitoring module have no tray app to connect. */
+  readonly monitoringEnabled = this.permissionService.hasModule('monitoring');
+
   constructor() {
-    this.trayPresence.start();
+    if (this.monitoringEnabled) {
+      this.trayPresence.start();
+    }
   }
 
 }

@@ -73,7 +73,14 @@ describe('MainLayoutComponent tray activation gate', () => {
       providers: [
         { provide: TrayPresenceStore, useValue: trayPresence },
         { provide: TrayPresenceApiService, useValue: trayApi },
-        { provide: AuthStore, useValue: { email: signal('buddy@example.test'), logout: vi.fn() } },
+        {
+          provide: AuthStore,
+          useValue: {
+            email: signal('buddy@example.test'),
+            logout: vi.fn(),
+            activeModules: signal(['monitoring'])
+          }
+        },
         {
           provide: NavigationStateService,
           useValue: { activeChildren: signal([]), activeItem: signal(null) }
@@ -120,5 +127,70 @@ describe('MainLayoutComponent tray activation gate', () => {
     expect(fixture.nativeElement.querySelector('app-tray-activation-gate')).toBeNull();
     expect(fixture.nativeElement.querySelector('app-locked-workspace-preview')).toBeNull();
     expect(fixture.nativeElement.querySelector('router-outlet')).not.toBeNull();
+  });
+});
+
+describe('MainLayoutComponent tray activation gate when monitoring module is not active', () => {
+  it('never starts presence tracking or shows the connect-tray gate', async () => {
+    const canRenderProtectedContent = signal(false);
+    const isBlocking = signal(true);
+    const start = vi.fn();
+
+    const trayPresence = {
+      canRenderProtectedContent,
+      isBlocking,
+      phase: signal<'waiting' | 'connected'>('waiting'),
+      hasUsableCode: signal(true),
+      code: signal('BCDF2345'),
+      codeSecondsRemaining: signal(600),
+      copyState: signal<'idle' | 'copied'>('idle'),
+      generationError: signal<string | null>(null),
+      start,
+      retry: vi.fn(),
+      copyCode: vi.fn()
+    };
+
+    TestBed.configureTestingModule({
+      imports: [MainLayoutComponent],
+      providers: [
+        { provide: TrayPresenceStore, useValue: trayPresence },
+        {
+          provide: TrayPresenceApiService,
+          useValue: { getStatus: vi.fn(), generateActivationCode: vi.fn() }
+        },
+        {
+          provide: AuthStore,
+          useValue: { email: signal('buddy@example.test'), logout: vi.fn(), activeModules: signal([]) }
+        },
+        {
+          provide: NavigationStateService,
+          useValue: { activeChildren: signal([]), activeItem: signal(null) }
+        }
+      ]
+    });
+    TestBed.overrideComponent(MainLayoutComponent, {
+      set: {
+        imports: [
+          RouterOutletStubComponent,
+          SideNavbarStubComponent,
+          TopNavbarStubComponent,
+          SubSidebarStubComponent,
+          ToastHostStubComponent,
+          MobileBottomNavStubComponent,
+          TrayActivationGateComponent,
+          LockedWorkspacePreviewStubComponent
+        ]
+      }
+    });
+    await TestBed.compileComponents();
+    const fixture = TestBed.createComponent(MainLayoutComponent);
+    fixture.detectChanges();
+
+    expect(start).not.toHaveBeenCalled();
+    expect(fixture.nativeElement.querySelector('router-outlet')).not.toBeNull();
+    expect(fixture.nativeElement.querySelector('app-locked-workspace-preview')).toBeNull();
+    expect(fixture.nativeElement.querySelector('app-tray-activation-gate')).toBeNull();
+
+    TestBed.resetTestingModule();
   });
 });
