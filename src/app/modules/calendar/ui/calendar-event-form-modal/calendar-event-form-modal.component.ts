@@ -7,6 +7,7 @@ import { SelectComponent } from '../../../../shared/ui/select/select.component';
 import { ModalComponent } from '../../../../shared/ui/modal/modal.component';
 import { DatePickerComponent } from '../../../../shared/ui/date-picker/date-picker.component';
 import { AvatarComponent } from '../../../../shared/ui/avatar/avatar.component';
+import { ConfirmModalComponent } from '../../../../shared/ui/confirm-modal/confirm-modal.component';
 import { AuthStore } from '../../../../core/auth/state/auth.store';
 import { localPartsToUtcIso, utcIsoToLocalParts } from '../../../../shared/utils/timezone.util';
 import {
@@ -25,7 +26,7 @@ export type CalendarEventFormSubmission =
   standalone: true,
   imports: [
     CommonModule, ReactiveFormsModule, ButtonComponent, InputComponent, SelectComponent,
-    ModalComponent, DatePickerComponent, AvatarComponent, CalendarParticipantPickerComponent
+    ModalComponent, DatePickerComponent, AvatarComponent, ConfirmModalComponent, CalendarParticipantPickerComponent
   ],
   templateUrl: './calendar-event-form-modal.component.html',
   changeDetection: ChangeDetectionStrategy.OnPush
@@ -58,6 +59,7 @@ export class CalendarEventFormModalComponent implements OnChanges {
 
   readonly participantPickerOpen = signal(false);
   readonly participantIds = signal<readonly string[]>([]);
+  readonly discardConfirmOpen = signal(false);
 
   readonly form = this.fb.group({
     title: ['', [Validators.required, Validators.maxLength(200)]],
@@ -118,30 +120,72 @@ export class CalendarEventFormModalComponent implements OnChanges {
 
   setTitle(value: string): void {
     this.form.controls.title.setValue(value);
+    this.form.markAsDirty();
   }
 
   setDescription(value: string): void {
     this.form.controls.description.setValue(value);
+    this.form.markAsDirty();
+  }
+
+  setStartDate(value: string): void {
+    this.form.controls.startDate.setValue(value);
+    this.form.markAsDirty();
+  }
+
+  setEndDate(value: string): void {
+    this.form.controls.endDate.setValue(value);
+    this.form.markAsDirty();
   }
 
   setLocation(value: string): void {
     this.form.controls.location.setValue(value);
+    this.form.markAsDirty();
   }
 
   setMeetingLink(value: string): void {
     this.form.controls.meetingLink.setValue(value);
+    this.form.markAsDirty();
   }
 
   setRecurrenceFrequency(value: string): void {
     this.form.controls.recurrenceFrequency.setValue(value as RecurrenceFrequency);
+    this.form.markAsDirty();
+  }
+
+  setRecurrenceUntilDate(value: string): void {
+    this.form.controls.recurrenceUntilDate.setValue(value);
+    this.form.markAsDirty();
   }
 
   openParticipantPicker(): void {
     this.participantPickerOpen.set(true);
   }
 
+  private isDirty(): boolean {
+    return this.form.dirty || this.participantIds().length > 0;
+  }
+
+  attemptClose(): void {
+    if (this.isDirty()) {
+      this.discardConfirmOpen.set(true);
+      return;
+    }
+    this.cancel.emit();
+  }
+
+  confirmDiscard(): void {
+    this.discardConfirmOpen.set(false);
+    this.cancel.emit();
+  }
+
+  cancelDiscard(): void {
+    this.discardConfirmOpen.set(false);
+  }
+
   toggleAllDay(): void {
     this.form.controls.isAllDay.setValue(!this.form.controls.isAllDay.value);
+    this.form.markAsDirty();
   }
 
   onParticipantIdsChange(ids: readonly string[]): void {

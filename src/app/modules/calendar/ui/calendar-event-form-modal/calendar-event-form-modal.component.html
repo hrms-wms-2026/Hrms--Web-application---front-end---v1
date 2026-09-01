@@ -1,4 +1,4 @@
-<app-modal [open]="open" [title]="isEdit ? 'Edit event' : 'New event'" size="lg" (closed)="cancel.emit()">
+<app-modal [open]="open" [title]="isEdit ? 'Edit event' : 'New event'" size="lg" (closed)="attemptClose()">
   <!-- No (ngSubmit)/type="submit" here on purpose: a recurring occurrence needs an explicit
        this-event/all-events choice, so every save action is a type="button" click handler below
        rather than the form's native submit event (which would bypass that choice on Enter). -->
@@ -21,9 +21,9 @@
       </div>
 
       <div class="grid grid-cols-2 gap-3">
-        <app-date-picker label="Start date" [value]="form.controls.startDate.value ?? ''" (valueChange)="form.controls.startDate.setValue($event)" />
+        <app-date-picker label="Start date" [value]="form.controls.startDate.value ?? ''" (valueChange)="setStartDate($event)" />
         <input type="time" formControlName="startTime" class="mt-5 rounded-md border border-[var(--color-border)] bg-[var(--color-surface)] px-2.5 py-1.5 text-sm" />
-        <app-date-picker label="End date" [value]="form.controls.endDate.value ?? ''" (valueChange)="form.controls.endDate.setValue($event)" />
+        <app-date-picker label="End date" [value]="form.controls.endDate.value ?? ''" (valueChange)="setEndDate($event)" />
         <input type="time" formControlName="endTime" class="mt-5 rounded-md border border-[var(--color-border)] bg-[var(--color-surface)] px-2.5 py-1.5 text-sm" />
       </div>
 
@@ -90,7 +90,7 @@
               data-testid="calendar-form-recurrence-until"
               label="Ends on"
               [value]="form.controls.recurrenceUntilDate.value ?? ''"
-              (valueChange)="form.controls.recurrenceUntilDate.setValue($event)"
+              (valueChange)="setRecurrenceUntilDate($event)"
             />
           }
         </div>
@@ -175,7 +175,7 @@
             <app-button type="button" variant="danger" data-testid="calendar-form-delete-all-events" (click)="onDelete('AllEvents')">Delete all events</app-button>
           </div>
           <div class="flex gap-2">
-            <app-button type="button" variant="secondary" (click)="cancel.emit()">Cancel</app-button>
+            <app-button type="button" variant="secondary" (click)="attemptClose()">Cancel</app-button>
             <app-button type="button" variant="secondary" data-testid="calendar-form-save-this-event" [loading]="saving" (click)="onSubmit('ThisEventOnly')">Save this event</app-button>
             <app-button type="button" data-testid="calendar-form-save-all-events" [loading]="saving" (click)="onSubmit('AllEvents')">Save all events</app-button>
           </div>
@@ -188,7 +188,7 @@
             <span></span>
           }
           <div class="flex gap-2">
-            <app-button type="button" variant="secondary" (click)="cancel.emit()">Cancel</app-button>
+            <app-button type="button" variant="secondary" (click)="attemptClose()">Cancel</app-button>
             <app-button type="button" data-testid="calendar-form-save-plain" [loading]="saving" (click)="onSubmit(null)">{{ isEdit ? 'Save changes' : 'Create event' }}</app-button>
           </div>
         </div>
@@ -202,4 +202,14 @@
   [selectedIds]="participantIds()"
   (selectedIdsChange)="onParticipantIdsChange($event)"
   (closed)="participantPickerOpen.set(false)"
+/>
+
+<app-confirm-modal
+  [open]="discardConfirmOpen()"
+  title="Discard changes?"
+  message="You have unsaved changes. Discard them?"
+  confirmLabel="Discard"
+  cancelLabel="Keep editing"
+  (confirmed)="confirmDiscard()"
+  (cancelled)="cancelDiscard()"
 />

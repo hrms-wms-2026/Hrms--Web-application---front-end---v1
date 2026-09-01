@@ -222,4 +222,45 @@ describe('CalendarEventFormModalComponent', () => {
     fixture.detectChanges();
     expect(fixture.nativeElement.textContent).toContain('Asia/Colombo');
   });
+
+  it('emits cancel immediately when the form is not dirty', () => {
+    const spy = vi.fn();
+    fixture.componentInstance.cancel.subscribe(spy);
+    fixture.componentInstance.attemptClose();
+    expect(spy).toHaveBeenCalledTimes(1);
+  });
+
+  it('shows a discard-confirmation instead of emitting cancel when the form is dirty', () => {
+    fixture.componentInstance.setTitle('Something typed');
+    const spy = vi.fn();
+    fixture.componentInstance.cancel.subscribe(spy);
+
+    fixture.componentInstance.attemptClose();
+
+    expect(spy).not.toHaveBeenCalled();
+    expect(fixture.componentInstance.discardConfirmOpen()).toBe(true);
+  });
+
+  it('emits cancel after the discard is confirmed', () => {
+    fixture.componentInstance.setTitle('Something typed');
+    fixture.componentInstance.attemptClose();
+
+    const spy = vi.fn();
+    fixture.componentInstance.cancel.subscribe(spy);
+    fixture.componentInstance.confirmDiscard();
+
+    expect(spy).toHaveBeenCalledTimes(1);
+    expect(fixture.componentInstance.discardConfirmOpen()).toBe(false);
+  });
+
+  it('treats a non-empty participant selection as dirty even with an untouched form', () => {
+    fixture.componentInstance.onParticipantIdsChange(['emp-1']);
+    const spy = vi.fn();
+    fixture.componentInstance.cancel.subscribe(spy);
+
+    fixture.componentInstance.attemptClose();
+
+    expect(spy).not.toHaveBeenCalled();
+    expect(fixture.componentInstance.discardConfirmOpen()).toBe(true);
+  });
 });
