@@ -4,7 +4,8 @@ import { firstValueFrom } from 'rxjs';
 import { toSafeErrorMessage } from '../../../core/services/error-handler.service';
 import { CalendarEventApiService } from '../data-access/calendar-event-api.service';
 import {
-  CalendarEventResponse, CreateCalendarEventRequest, EditRecurringOccurrenceRequest, UpdateCalendarEventRequest
+  CalendarConflict, CalendarEventResponse, CreateCalendarEventRequest, EditRecurringOccurrenceRequest,
+  RespondToCalendarEventStatus, UpdateCalendarEventRequest
 } from '../models/calendar-event.model';
 
 interface CalendarEventState {
@@ -13,11 +14,16 @@ interface CalendarEventState {
   readonly loadError: string | null;
   readonly saving: boolean;
   readonly actionError: string | null;
+  readonly conflicts: readonly CalendarConflict[];
+  readonly checkingConflicts: boolean;
 }
 
 export const CalendarEventStore = signalStore(
   { providedIn: 'root' },
-  withState<CalendarEventState>({ events: [], loading: false, loadError: null, saving: false, actionError: null }),
+  withState<CalendarEventState>({
+    events: [], loading: false, loadError: null, saving: false, actionError: null,
+    conflicts: [], checkingConflicts: false
+  }),
   withMethods((store, api = inject(CalendarEventApiService)) => ({
     async loadEvents(from: string, to: string): Promise<void> {
       patchState(store, { loading: true, loadError: null });
@@ -89,6 +95,34 @@ export const CalendarEventStore = signalStore(
         patchState(store, { saving: false, actionError: toSafeErrorMessage(err, 'Failed to cancel this occurrence.') });
         return false;
       }
+    },
+    async respondToEvent(
+      eventId: string, responseStatus: RespondToCalendarEventStatus, from: string, to: string
+    ): Promise<boolean> {
+      patchState(store, { saving: true, actionError: null });
+      try {
+        await firstValueFrom(api.respond(eventId, responseStatus));
+        const response = await firstValueFrom(api.getEvents(from, to));
+        patchState(store, { saving: false, events: response.events });
+        return true;
+      } catch (err) {
+        patchState(store, { saving: false, actionError: toSafeErrorMessage(err, 'Failed to respond to this event.') });
+        return false;
+      }
+    },
+    async checkConflicts(participantEmployeeIds: readonly string[], startDate: string, endDate: string): Promise<void> {
+      patchState(store, { checkingConflicts: true });
+      try {
+        const response = await firstValueFrom(api.checkConflicts({ participantEmployeeIds, startDate, endDate }));
+        patchState(store, { checkingConflicts: false, conflicts: response.conflicts });
+      } catch {
+        // Conflict-checking is informational only - a failed check should never block or alarm
+        // the user with an actionError; it just silently shows no warning.
+        patchState(store, { checkingConflicts: false, conflicts: [] });
+      }
+    },
+    clearConflicts(): void {
+      patchState(store, { conflicts: [], checkingConflicts: false });
     }
   }))
 );

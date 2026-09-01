@@ -79,4 +79,45 @@ describe('CalendarEventStore', () => {
     expect(await work).toBe(true);
     expect(store.events().map((e) => e.id)).toEqual(['refreshed']);
   });
+
+  it('respondToEvent posts the response then refreshes events', async () => {
+    const work = store.respondToEvent('event-1', 'Accepted', '2026-09-01T00:00:00Z', '2026-09-30T00:00:00Z');
+    http.expectOne((r) => r.url === `${environment.apiUrl}/calendar/event-1/respond` && r.method === 'POST').flush(null);
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    http.expectOne((r) => r.url === `${environment.apiUrl}/calendar`).flush({ events: [makeEvent({ id: 'refreshed' })] });
+
+    expect(await work).toBe(true);
+    expect(store.events().map((e) => e.id)).toEqual(['refreshed']);
+  });
+
+  it('respondToEvent sets actionError on failure', async () => {
+    const work = store.respondToEvent('event-1', 'Accepted', '2026-09-01T00:00:00Z', '2026-09-30T00:00:00Z');
+    http.expectOne((r) => r.url === `${environment.apiUrl}/calendar/event-1/respond`).flush({ detail: 'not a participant' }, { status: 404, statusText: 'Not Found' });
+    expect(await work).toBe(false);
+    expect(store.actionError()).toBeTruthy();
+  });
+
+  it('checkConflicts populates conflicts on success', async () => {
+    const work = store.checkConflicts(['emp-1'], '2026-09-01T09:00:00Z', '2026-09-01T10:00:00Z');
+    http.expectOne(`${environment.apiUrl}/calendar/check-conflicts`).flush({
+      conflicts: [{ employeeId: 'emp-1', employeeName: 'Ada Lovelace', conflictingEventId: 'e9', conflictingEventTitle: 'Standup' }]
+    });
+    await work;
+    expect(store.conflicts().length).toBe(1);
+    expect(store.checkingConflicts()).toBe(false);
+  });
+
+  it('checkConflicts clears conflicts on failure rather than surfacing actionError', async () => {
+    const work = store.checkConflicts(['emp-1'], '2026-09-01T09:00:00Z', '2026-09-01T10:00:00Z');
+    http.expectOne(`${environment.apiUrl}/calendar/check-conflicts`).flush({ detail: 'boom' }, { status: 500, statusText: 'Error' });
+    await work;
+    expect(store.conflicts()).toEqual([]);
+    expect(store.actionError()).toBeNull();
+  });
+
+  it('clearConflicts resets conflicts state', () => {
+    store.clearConflicts();
+    expect(store.conflicts()).toEqual([]);
+    expect(store.checkingConflicts()).toBe(false);
+  });
 });
