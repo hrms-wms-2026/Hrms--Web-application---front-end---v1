@@ -1,7 +1,7 @@
 import { ChangeDetectionStrategy, Component, computed, effect, inject, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { ButtonComponent } from '../../../../shared/ui/button/button.component';
-import { CalendarEventResponse, RecurrenceEditScope } from '../../models/calendar-event.model';
+import { CalendarEventResponse, RecurrenceEditScope, RespondToCalendarEventStatus } from '../../models/calendar-event.model';
 import { CalendarEventStore } from '../../state/calendar-event.store';
 import { buildMonthGrid } from '../../utils/calendar-grid.util';
 import { CalendarMonthGridComponent } from '../../ui/calendar-month-grid/calendar-month-grid.component';
@@ -141,6 +141,7 @@ export class CalendarPageComponent {
     this.formOpen.set(false);
     this.editingEvent.set(null);
     this.prefillStart.set(null);
+    this.store.clearConflicts();
   }
 
   async onSave(submission: CalendarEventFormSubmission): Promise<void> {
@@ -181,5 +182,18 @@ export class CalendarPageComponent {
       await this.store.deleteEvent(editing.id);
     }
     this.closeForm();
+  }
+
+  onCheckConflicts(payload: { participantEmployeeIds: readonly string[]; startDate: string; endDate: string }): void {
+    this.store.checkConflicts(payload.participantEmployeeIds, payload.startDate, payload.endDate);
+  }
+
+  async onRespond(status: RespondToCalendarEventStatus): Promise<void> {
+    const editing = this.editingEvent();
+    if (!editing) return;
+    const eventId = editing.recurrenceMasterId ?? editing.id;
+    const { from, to } = this.currentRange();
+    const ok = await this.store.respondToEvent(eventId, status, from, to);
+    if (ok) this.closeForm();
   }
 }

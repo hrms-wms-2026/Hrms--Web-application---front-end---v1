@@ -63,7 +63,11 @@
   [event]="editingEvent()"
   [prefillStart]="prefillStart()"
   [saving]="store.saving()"
+  [conflicts]="store.conflicts()"
+  [checkingConflicts]="store.checkingConflicts()"
   (save)="onSave($event)"
   (delete)="onDelete($event)"
+  (respond)="onRespond($event)"
+  (checkConflicts)="onCheckConflicts($event)"
   (cancel)="closeForm()"
 />
