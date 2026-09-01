@@ -1,3 +1,9 @@
+export interface CalendarEventParticipant {
+  employeeId: string;
+  employeeName: string;
+  responseStatus: string;
+}
+
 export interface CalendarEventResponse {
   id: string;
   title: string;
@@ -18,6 +24,7 @@ export interface CalendarEventResponse {
   isRecurringOccurrence: boolean;
   recurrenceMasterId: string | null;
   originalStart: string | null;
+  participants: readonly CalendarEventParticipant[] | null;
 }
 
 export interface CalendarEventsResponse {
@@ -66,4 +73,27 @@ export interface EditRecurringOccurrenceRequest {
   location: string | null;
   meetingLink: string | null;
   color: string | null;
+}
+
+export type RespondToCalendarEventStatus = 'Accepted' | 'Rejected';
+
+export interface RespondToCalendarEventRequest {
+  responseStatus: RespondToCalendarEventStatus;
+}
+
+export interface CalendarConflict {
+  employeeId: string;
+  employeeName: string;
+  conflictingEventId: string;
+  conflictingEventTitle: string;
+}
+
+export interface CheckCalendarConflictsRequest {
+  participantEmployeeIds: readonly string[];
+  startDate: string;
+  endDate: string;
+}
+
+export interface CalendarConflictsResponse {
+  conflicts: readonly CalendarConflict[];
 }

@@ -8,7 +8,7 @@ function makeEvent(id: string, date: string, startHHmm: string, endHHmm: string,
     id, title: id, description: null, startDate: `${date}T${startHHmm}:00Z`, endDate: `${date}T${endHHmm}:00Z`,
     sourceType: 'manual', color: '#2563EB', recurrence: 'none', isAllDay, timezone: 'UTC', eventStatus: null,
     isPrivate: false, location: null, meetingLink: null, externalSource: null, createdById: 'u1',
-    isRecurringOccurrence: false, recurrenceMasterId: null, originalStart: null
+    isRecurringOccurrence: false, recurrenceMasterId: null, originalStart: null, participants: null
   };
 }
 

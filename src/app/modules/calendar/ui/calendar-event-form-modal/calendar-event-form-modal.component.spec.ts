@@ -48,7 +48,7 @@ describe('CalendarEventFormModalComponent', () => {
       id: 'e1', title: 'Existing', description: null, startDate: '2026-09-01T09:00:00Z', endDate: '2026-09-01T09:30:00Z',
       sourceType: 'manual', color: null, recurrence: 'none', isAllDay: false, timezone: 'UTC', eventStatus: null,
       isPrivate: false, location: null, meetingLink: null, externalSource: null, createdById: 'u1',
-      isRecurringOccurrence: false, recurrenceMasterId: null, originalStart: null
+      isRecurringOccurrence: false, recurrenceMasterId: null, originalStart: null, participants: null
     });
     fixture.detectChanges();
     expect(fixture.componentInstance.form.controls.title.value).toBe('Existing');

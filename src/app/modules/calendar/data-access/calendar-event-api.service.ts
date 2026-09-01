@@ -3,8 +3,8 @@ import { Injectable, inject } from '@angular/core';
 import { Observable } from 'rxjs';
 import { environment } from '../../../../environments/environment';
 import {
-  CalendarEventResponse, CalendarEventsResponse, CreateCalendarEventRequest,
-  EditRecurringOccurrenceRequest, UpdateCalendarEventRequest
+  CalendarConflictsResponse, CalendarEventResponse, CalendarEventsResponse, CheckCalendarConflictsRequest,
+  CreateCalendarEventRequest, EditRecurringOccurrenceRequest, RespondToCalendarEventStatus, UpdateCalendarEventRequest
 } from '../models/calendar-event.model';
 
 @Injectable({ providedIn: 'root' })
@@ -34,5 +34,13 @@ export class CalendarEventApiService {
 
   cancelOccurrence(masterId: string, originalStart: string): Observable<void> {
     return this.http.delete<void>(`${this.baseUrl}/${masterId}/occurrence`, { params: { originalStart } });
+  }
+
+  respond(eventId: string, responseStatus: RespondToCalendarEventStatus): Observable<void> {
+    return this.http.post<void>(`${this.baseUrl}/${eventId}/respond`, { responseStatus });
+  }
+
+  checkConflicts(payload: CheckCalendarConflictsRequest): Observable<CalendarConflictsResponse> {
+    return this.http.post<CalendarConflictsResponse>(`${this.baseUrl}/check-conflicts`, payload);
   }
 }

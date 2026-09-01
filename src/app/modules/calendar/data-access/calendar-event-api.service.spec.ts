@@ -53,4 +53,20 @@ describe('CalendarEventApiService', () => {
     expect(req.request.method).toBe('DELETE');
     req.flush(null);
   });
+
+  it('respond posts { responseStatus } to {eventId}/respond', () => {
+    service.respond('event-1', 'Accepted').subscribe();
+    const req = http.expectOne(`${environment.apiUrl}/calendar/event-1/respond`);
+    expect(req.request.method).toBe('POST');
+    expect(req.request.body).toEqual({ responseStatus: 'Accepted' });
+    req.flush(null);
+  });
+
+  it('checkConflicts posts to check-conflicts', () => {
+    service.checkConflicts({ participantEmployeeIds: ['emp-1'], startDate: '2026-09-01T09:00:00Z', endDate: '2026-09-01T10:00:00Z' }).subscribe();
+    const req = http.expectOne(`${environment.apiUrl}/calendar/check-conflicts`);
+    expect(req.request.method).toBe('POST');
+    expect(req.request.body).toEqual({ participantEmployeeIds: ['emp-1'], startDate: '2026-09-01T09:00:00Z', endDate: '2026-09-01T10:00:00Z' });
+    req.flush({ conflicts: [] });
+  });
 });

@@ -8,7 +8,7 @@ function makeEvent(id: string, startDate: string): CalendarEventResponse {
     id, title: id, description: null, startDate, endDate: startDate,
     sourceType: 'manual', color: null, recurrence: 'none', isAllDay: false, timezone: 'UTC',
     eventStatus: null, isPrivate: false, location: null, meetingLink: null, externalSource: null,
-    createdById: 'u1', isRecurringOccurrence: false, recurrenceMasterId: null, originalStart: null
+    createdById: 'u1', isRecurringOccurrence: false, recurrenceMasterId: null, originalStart: null, participants: null
   };
 }
 

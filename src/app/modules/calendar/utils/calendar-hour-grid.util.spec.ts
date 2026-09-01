@@ -6,7 +6,7 @@ function makeEvent(id: string, startHHmm: string, endHHmm: string, isAllDay = fa
     id, title: id, description: null, startDate: `2026-09-01T${startHHmm}:00Z`, endDate: `2026-09-01T${endHHmm}:00Z`,
     sourceType: 'manual', color: null, recurrence: 'none', isAllDay, timezone: 'UTC', eventStatus: null,
     isPrivate: false, location: null, meetingLink: null, externalSource: null, createdById: 'u1',
-    isRecurringOccurrence: false, recurrenceMasterId: null, originalStart: null
+    isRecurringOccurrence: false, recurrenceMasterId: null, originalStart: null, participants: null
   };
 }
 
