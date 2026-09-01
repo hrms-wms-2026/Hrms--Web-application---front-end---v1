@@ -8,8 +8,8 @@ import { ModalComponent } from '../../../../shared/ui/modal/modal.component';
 import { DatePickerComponent } from '../../../../shared/ui/date-picker/date-picker.component';
 import { AuthStore } from '../../../../core/auth/state/auth.store';
 import {
-  CalendarEventParticipant, CalendarEventResponse, CreateCalendarEventRequest, RecurrenceEditScope,
-  RespondToCalendarEventStatus, UpdateCalendarEventRequest
+  CalendarConflict, CalendarEventParticipant, CalendarEventResponse, CreateCalendarEventRequest,
+  RecurrenceEditScope, RespondToCalendarEventStatus, UpdateCalendarEventRequest
 } from '../../models/calendar-event.model';
 import { RecurrenceEndMode, RecurrenceFrequency, buildRecurrenceRule } from '../../utils/recurrence-rule.util';
 import { CalendarParticipantPickerComponent } from '../calendar-participant-picker/calendar-participant-picker.component';
@@ -35,12 +35,16 @@ export class CalendarEventFormModalComponent implements OnChanges {
   @Input() event: CalendarEventResponse | null = null;
   @Input() prefillStart: string | null = null;
   @Input() saving = false;
+  @Input() conflicts: readonly CalendarConflict[] = [];
+  @Input() checkingConflicts = false;
   @Output() save = new EventEmitter<CalendarEventFormSubmission>();
   @Output() delete = new EventEmitter<RecurrenceEditScope | null>();
   @Output() respond = new EventEmitter<RespondToCalendarEventStatus>();
+  @Output() checkConflicts = new EventEmitter<{ participantEmployeeIds: readonly string[]; startDate: string; endDate: string }>();
   @Output() cancel = new EventEmitter<void>();
 
   private readonly authStore = inject(AuthStore);
+  private conflictCheckTimer: ReturnType<typeof setTimeout> | null = null;
 
   readonly recurrenceOptions = [
     { value: 'none', label: 'Does not repeat' },
@@ -67,6 +71,8 @@ export class CalendarEventFormModalComponent implements OnChanges {
     recurrenceEndMode: ['never' as RecurrenceEndMode],
     recurrenceUntilDate: ['']
   });
+
+  private readonly formChangeSubscription = this.form.valueChanges.subscribe(() => this.scheduleConflictCheck());
 
   get isEdit(): boolean {
     return !!this.event;
@@ -129,6 +135,26 @@ export class CalendarEventFormModalComponent implements OnChanges {
 
   openParticipantPicker(): void {
     this.participantPickerOpen.set(true);
+  }
+
+  onParticipantIdsChange(ids: readonly string[]): void {
+    this.participantIds.set(ids);
+    this.scheduleConflictCheck();
+  }
+
+  private scheduleConflictCheck(): void {
+    if (this.isEdit) return; // participants are read-only once an event exists - nothing to re-check
+    if (this.conflictCheckTimer) clearTimeout(this.conflictCheckTimer);
+    this.conflictCheckTimer = setTimeout(() => {
+      const ids = this.participantIds();
+      const raw = this.form.getRawValue();
+      if (ids.length === 0 || !raw.startDate || !raw.endDate) return;
+      this.checkConflicts.emit({
+        participantEmployeeIds: ids,
+        startDate: `${raw.startDate}T${raw.startTime}:00Z`,
+        endDate: `${raw.endDate}T${raw.endTime}:00Z`
+      });
+    }, 400);
   }
 
   onSubmit(scope: RecurrenceEditScope | null = null): void {

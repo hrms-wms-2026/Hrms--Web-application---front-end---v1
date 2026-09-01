@@ -494,7 +494,7 @@ Add to `calendar-event-form-modal.component.spec.ts`:
     ]);
     fixture.detectChanges();
     expect(fixture.nativeElement.textContent).toContain('Ada Lovelace is busy at this time (Standup)');
-    expect(fixture.nativeElement.querySelector('[data-testid="calendar-form-save-plain"]').disabled).toBe(false);
+    expect(fixture.nativeElement.querySelector('[data-testid="calendar-form-save-plain"] button').disabled).toBe(false);
   });
 ```
 

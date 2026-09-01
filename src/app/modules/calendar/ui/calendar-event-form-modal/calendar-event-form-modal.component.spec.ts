@@ -145,4 +145,47 @@ describe('CalendarEventFormModalComponent', () => {
     fixture.nativeElement.querySelector('[data-testid="calendar-form-accept"]').click();
     expect(spy).toHaveBeenCalledWith('Accepted');
   });
+
+  it('emits checkConflicts (debounced) once participants and both dates are set, but not while editing', () => {
+    vi.useFakeTimers();
+    const spy = vi.fn();
+    fixture.componentInstance.checkConflicts.subscribe(spy);
+
+    fixture.componentInstance.form.patchValue({ startDate: '2026-09-01', startTime: '09:00', endDate: '2026-09-01', endTime: '10:00' });
+    fixture.componentInstance.onParticipantIdsChange(['emp-1']);
+    expect(spy).not.toHaveBeenCalled();
+
+    vi.advanceTimersByTime(400);
+    expect(spy).toHaveBeenCalledWith({
+      participantEmployeeIds: ['emp-1'], startDate: '2026-09-01T09:00:00Z', endDate: '2026-09-01T10:00:00Z'
+    });
+    vi.useRealTimers();
+  });
+
+  it('does not emit checkConflicts while editing an existing event', () => {
+    vi.useFakeTimers();
+    fixture.componentRef.setInput('event', {
+      id: 'e1', title: 'Existing', description: null, startDate: '2026-09-01T09:00:00Z', endDate: '2026-09-01T09:30:00Z',
+      sourceType: 'manual', color: null, recurrence: 'none', isAllDay: false, timezone: 'UTC', eventStatus: null,
+      isPrivate: false, location: null, meetingLink: null, externalSource: null, createdById: 'u1',
+      isRecurringOccurrence: false, recurrenceMasterId: null, originalStart: null, participants: null
+    });
+    fixture.detectChanges();
+    const spy = vi.fn();
+    fixture.componentInstance.checkConflicts.subscribe(spy);
+
+    fixture.componentInstance.onParticipantIdsChange(['emp-1']);
+    vi.advanceTimersByTime(400);
+    expect(spy).not.toHaveBeenCalled();
+    vi.useRealTimers();
+  });
+
+  it('renders a non-blocking warning line per conflict', () => {
+    fixture.componentRef.setInput('conflicts', [
+      { employeeId: 'emp-1', employeeName: 'Ada Lovelace', conflictingEventId: 'e9', conflictingEventTitle: 'Standup' }
+    ]);
+    fixture.detectChanges();
+    expect(fixture.nativeElement.textContent).toContain('Ada Lovelace is busy at this time (Standup)');
+    expect(fixture.nativeElement.querySelector('[data-testid="calendar-form-save-plain"] button').disabled).toBe(false);
+  });
 });
