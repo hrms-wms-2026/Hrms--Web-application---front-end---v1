@@ -6,7 +6,11 @@ import { InputComponent } from '../../../../shared/ui/input/input.component';
 import { SelectComponent } from '../../../../shared/ui/select/select.component';
 import { ModalComponent } from '../../../../shared/ui/modal/modal.component';
 import { DatePickerComponent } from '../../../../shared/ui/date-picker/date-picker.component';
-import { CalendarEventResponse, CreateCalendarEventRequest, RecurrenceEditScope, UpdateCalendarEventRequest } from '../../models/calendar-event.model';
+import { AuthStore } from '../../../../core/auth/state/auth.store';
+import {
+  CalendarEventParticipant, CalendarEventResponse, CreateCalendarEventRequest, RecurrenceEditScope,
+  RespondToCalendarEventStatus, UpdateCalendarEventRequest
+} from '../../models/calendar-event.model';
 import { RecurrenceEndMode, RecurrenceFrequency, buildRecurrenceRule } from '../../utils/recurrence-rule.util';
 import { CalendarParticipantPickerComponent } from '../calendar-participant-picker/calendar-participant-picker.component';
 
@@ -33,7 +37,10 @@ export class CalendarEventFormModalComponent implements OnChanges {
   @Input() saving = false;
   @Output() save = new EventEmitter<CalendarEventFormSubmission>();
   @Output() delete = new EventEmitter<RecurrenceEditScope | null>();
+  @Output() respond = new EventEmitter<RespondToCalendarEventStatus>();
   @Output() cancel = new EventEmitter<void>();
+
+  private readonly authStore = inject(AuthStore);
 
   readonly recurrenceOptions = [
     { value: 'none', label: 'Does not repeat' },
@@ -63,6 +70,16 @@ export class CalendarEventFormModalComponent implements OnChanges {
 
   get isEdit(): boolean {
     return !!this.event;
+  }
+
+  viewerParticipant(): CalendarEventParticipant | null {
+    const employeeId = this.authStore.employeeId();
+    if (!employeeId || !this.event?.participants) return null;
+    return this.event.participants.find((p) => p.employeeId === employeeId) ?? null;
+  }
+
+  onRespond(status: RespondToCalendarEventStatus): void {
+    this.respond.emit(status);
   }
 
   ngOnChanges(): void {

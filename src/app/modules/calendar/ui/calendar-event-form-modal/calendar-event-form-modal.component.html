@@ -51,6 +51,36 @@
       </div>
     }
 
+    @if (isEdit && event?.participants?.length) {
+      <div class="flex flex-col gap-1.5">
+        <span class="text-sm font-medium text-[var(--color-text-primary)]">Participants</span>
+        @for (participant of event!.participants!; track participant.employeeId) {
+          <div class="flex items-center justify-between text-sm">
+            <span>{{ participant.employeeName }}</span>
+            <span
+              class="rounded-full px-2 py-0.5 text-xs font-medium"
+              [class.bg-gray-100]="participant.responseStatus === 'pending'"
+              [class.text-gray-700]="participant.responseStatus === 'pending'"
+              [class.bg-green-100]="participant.responseStatus === 'accepted'"
+              [class.text-green-700]="participant.responseStatus === 'accepted'"
+              [class.bg-red-100]="participant.responseStatus === 'rejected'"
+              [class.text-red-700]="participant.responseStatus === 'rejected'"
+            >{{ participant.responseStatus }}</span>
+          </div>
+        }
+      </div>
+    }
+
+    @if (isEdit && viewerParticipant(); as vp) {
+      <div class="flex items-center justify-between gap-2 rounded-md border border-[var(--color-border)] p-2">
+        <span class="text-sm">Your response: <strong>{{ vp.responseStatus }}</strong></span>
+        <div class="flex gap-2">
+          <app-button type="button" variant="secondary" data-testid="calendar-form-decline" (click)="onRespond('Rejected')">Decline</app-button>
+          <app-button type="button" data-testid="calendar-form-accept" (click)="onRespond('Accepted')">Accept</app-button>
+        </div>
+      </div>
+    }
+
     @if (isEdit && event?.isRecurringOccurrence) {
       <div class="mt-2 flex flex-wrap items-center justify-between gap-2">
         <div class="flex gap-2">

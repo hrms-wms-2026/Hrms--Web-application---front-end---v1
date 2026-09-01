@@ -1,12 +1,18 @@
 import { TestBed } from '@angular/core/testing';
 import { vi } from 'vitest';
+import { AuthStore } from '../../../../core/auth/state/auth.store';
 import { CalendarEventFormModalComponent } from './calendar-event-form-modal.component';
 
 describe('CalendarEventFormModalComponent', () => {
   let fixture: ReturnType<typeof TestBed.createComponent<CalendarEventFormModalComponent>>;
+  let currentEmployeeId: string | null;
 
   beforeEach(async () => {
-    await TestBed.configureTestingModule({ imports: [CalendarEventFormModalComponent] }).compileComponents();
+    currentEmployeeId = null;
+    await TestBed.configureTestingModule({
+      imports: [CalendarEventFormModalComponent],
+      providers: [{ provide: AuthStore, useValue: { employeeId: () => currentEmployeeId } }]
+    }).compileComponents();
     fixture = TestBed.createComponent(CalendarEventFormModalComponent);
     fixture.componentRef.setInput('open', true);
     fixture.detectChanges();
@@ -69,7 +75,7 @@ describe('CalendarEventFormModalComponent', () => {
       id: 'occurrence-id', title: 'Standup', description: null, startDate: '2026-09-08T09:00:00Z', endDate: '2026-09-08T09:30:00Z',
       sourceType: 'manual', color: null, recurrence: 'weekly', isAllDay: false, timezone: 'UTC', eventStatus: null,
       isPrivate: false, location: null, meetingLink: null, externalSource: null, createdById: 'u1',
-      isRecurringOccurrence: true, recurrenceMasterId: 'master-1', originalStart: '2026-09-08T09:00:00Z'
+      isRecurringOccurrence: true, recurrenceMasterId: 'master-1', originalStart: '2026-09-08T09:00:00Z', participants: null
     });
     fixture.detectChanges();
 
@@ -86,7 +92,7 @@ describe('CalendarEventFormModalComponent', () => {
       id: 'occurrence-id', title: 'Standup', description: null, startDate: '2026-09-08T09:00:00Z', endDate: '2026-09-08T09:30:00Z',
       sourceType: 'manual', color: null, recurrence: 'weekly', isAllDay: false, timezone: 'UTC', eventStatus: null,
       isPrivate: false, location: null, meetingLink: null, externalSource: null, createdById: 'u1',
-      isRecurringOccurrence: true, recurrenceMasterId: 'master-1', originalStart: '2026-09-08T09:00:00Z'
+      isRecurringOccurrence: true, recurrenceMasterId: 'master-1', originalStart: '2026-09-08T09:00:00Z', participants: null
     });
     fixture.detectChanges();
 
@@ -94,5 +100,49 @@ describe('CalendarEventFormModalComponent', () => {
     fixture.componentInstance.delete.subscribe(spy);
     fixture.nativeElement.querySelector('[data-testid="calendar-form-delete-all-events"]').click();
     expect(spy).toHaveBeenCalledWith('AllEvents');
+  });
+
+  it('shows participants with their response status badge', () => {
+    fixture.componentRef.setInput('event', {
+      id: 'e1', title: 'Existing', description: null, startDate: '2026-09-01T09:00:00Z', endDate: '2026-09-01T09:30:00Z',
+      sourceType: 'manual', color: null, recurrence: 'none', isAllDay: false, timezone: 'UTC', eventStatus: null,
+      isPrivate: false, location: null, meetingLink: null, externalSource: null, createdById: 'u1',
+      isRecurringOccurrence: false, recurrenceMasterId: null, originalStart: null,
+      participants: [{ employeeId: 'emp-1', employeeName: 'Ada Lovelace', responseStatus: 'pending' }]
+    });
+    fixture.detectChanges();
+
+    expect(fixture.nativeElement.textContent).toContain('Ada Lovelace');
+    expect(fixture.nativeElement.textContent).toContain('pending');
+  });
+
+  it('does not show Accept/Decline when the viewer is not a participant', () => {
+    fixture.componentRef.setInput('event', {
+      id: 'e1', title: 'Existing', description: null, startDate: '2026-09-01T09:00:00Z', endDate: '2026-09-01T09:30:00Z',
+      sourceType: 'manual', color: null, recurrence: 'none', isAllDay: false, timezone: 'UTC', eventStatus: null,
+      isPrivate: false, location: null, meetingLink: null, externalSource: null, createdById: 'u1',
+      isRecurringOccurrence: false, recurrenceMasterId: null, originalStart: null,
+      participants: [{ employeeId: 'someone-else', employeeName: 'Bob', responseStatus: 'pending' }]
+    });
+    fixture.detectChanges();
+
+    expect(fixture.nativeElement.querySelector('[data-testid="calendar-form-accept"]')).toBeNull();
+  });
+
+  it('emits respond when the viewer is a participant and clicks Accept', () => {
+    currentEmployeeId = 'emp-1';
+    fixture.componentRef.setInput('event', {
+      id: 'e1', title: 'Existing', description: null, startDate: '2026-09-01T09:00:00Z', endDate: '2026-09-01T09:30:00Z',
+      sourceType: 'manual', color: null, recurrence: 'none', isAllDay: false, timezone: 'UTC', eventStatus: null,
+      isPrivate: false, location: null, meetingLink: null, externalSource: null, createdById: 'u1',
+      isRecurringOccurrence: false, recurrenceMasterId: null, originalStart: null,
+      participants: [{ employeeId: 'emp-1', employeeName: 'Ada Lovelace', responseStatus: 'pending' }]
+    });
+    fixture.detectChanges();
+
+    const spy = vi.fn();
+    fixture.componentInstance.respond.subscribe(spy);
+    fixture.nativeElement.querySelector('[data-testid="calendar-form-accept"]').click();
+    expect(spy).toHaveBeenCalledWith('Accepted');
   });
 });
