@@ -63,11 +63,16 @@ export class ModalComponent {
 
   private readonly dialogRef = viewChild<ElementRef<HTMLElement>>('dialog');
   readonly titleId = nextUniqueId('app-modal-title');
+  private previouslyFocused: HTMLElement | null = null;
 
   constructor() {
     effect(() => {
       if (this.open()) {
+        this.previouslyFocused = document.activeElement as HTMLElement;
         this.dialogRef()?.nativeElement.focus();
+      } else if (this.previouslyFocused) {
+        this.previouslyFocused.focus();
+        this.previouslyFocused = null;
       }
     });
   }
