@@ -23,7 +23,15 @@ export class NavigationStateService {
 
   readonly activeItem = computed(() => {
     const url = this.currentUrl();
-    return this.visibleItems().find((item) => url === item.path || url.startsWith(`${item.path}/`));
+    return this.visibleItems().find((item) => {
+      if (url === item.path || url.startsWith(`${item.path}/`)) {
+        return true;
+      }
+      if (item.children && item.children.length > 0) {
+        return item.children.some((child) => url === child.path || url.startsWith(`${child.path}/`));
+      }
+      return false;
+    });
   });
 
   readonly activeChildren = computed(() => {

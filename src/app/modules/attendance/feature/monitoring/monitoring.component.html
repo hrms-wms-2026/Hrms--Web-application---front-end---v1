@@ -1,13 +1,6 @@
 <main class="monitoring-page">
-  <header class="page-header">
-    <div>
-      <p class="eyebrow">Attendance</p>
-      <h1>Monitoring</h1>
-      <p class="subtitle">Control which monitoring features are active for employees.</p>
-    </div>
-    @if (legalEntityStore.selectedLegalEntity(); as company) {
-      <span class="company-context">{{ company.name }}</span>
-    }
+  <header class="monitoring-page-header">
+    <app-breadcrumb-header parentLabel="Attendance" currentLabel="Monitoring" icon="time-attendance" />
   </header>
 
   @if (!hasReadAccess()) {

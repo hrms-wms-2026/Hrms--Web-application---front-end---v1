@@ -351,6 +351,34 @@ export class TimeTrackingComponent implements OnInit {
     if (!this.store.correctionActionLoading?.()) this.correctionFormOpen.set(null);
   }
 
+  /**
+   * One-click entry point from the missing-clock-out banner: opens the same correction
+   * form used everywhere else, pre-set to a clock-out correction for the specific stale day
+   * (that day has no attendance history row on screen to click "Request correction" from -
+   * it's surfaced only via Today's attention fields).
+   */
+  openMissingClockOutCorrection(workDate: string): void {
+    const syntheticRow: AttendanceHistoryRow = {
+      attendanceRecordId: '',
+      workDate,
+      employee: null,
+      clockInAt: null,
+      clockOutAt: null,
+      isActive: true,
+      breakMinutes: 0,
+      totalWorkedMinutes: 0,
+      expectedWorkMode: null,
+      attendanceSource: null,
+      status: 'missing_clock_out',
+      canViewDetails: false,
+      canRequestCorrection: true,
+      canRequestWorkAreaChange: false,
+      canCorrect: false
+    };
+    this.openCorrection(syntheticRow);
+    this.correctionType.set('clock_out');
+  }
+
   addBreakInterval(): void {
     this.correctionBreaks.update((items) => [...items, { start: '', end: '' }]);
   }

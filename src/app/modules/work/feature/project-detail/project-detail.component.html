@@ -3,24 +3,26 @@
 } @else if (store.projectError()) {
   <app-error-state [message]="store.projectError()!" [retryable]="true" (retry)="retryProject()" />
 } @else if (store.project(); as project) {
-  <div class="mb-2 flex flex-wrap items-center justify-between gap-3 border-b border-[var(--color-border)] pb-2">
-    <app-breadcrumb-header parentLabel="Projects" [currentLabel]="project.name" parentUrl="/work" icon="work" />
+  <header class="work-page-header">
+    <div class="work-header-row">
+      <app-breadcrumb-header parentLabel="Projects" [currentLabel]="project.name" parentUrl="/work" icon="work" />
 
-    <dl class="flex flex-wrap items-center gap-x-6 gap-y-2 text-sm">
-      <div class="min-w-[7rem]">
-        <dt class="text-xs text-[var(--color-text-secondary)]">Start</dt>
-        <dd class="font-medium text-[var(--color-text-primary)]">{{ project.startDate }}</dd>
-      </div>
-      <div class="min-w-[7rem]">
-        <dt class="text-xs text-[var(--color-text-secondary)]">Target</dt>
-        <dd class="font-medium text-[var(--color-text-primary)]">{{ project.targetDate }}</dd>
-      </div>
-      <div class="min-w-[7rem]">
-        <dt class="text-xs text-[var(--color-text-secondary)]">Hours</dt>
-        <dd class="font-medium text-[var(--color-text-primary)]">{{ project.completedHours }} / {{ project.allocatedHours }}</dd>
-      </div>
-    </dl>
-  </div>
+      <dl class="flex flex-wrap items-center gap-x-6 gap-y-1 text-xs">
+        <div class="flex items-center gap-1.5">
+          <dt class="text-xs text-[var(--color-text-secondary)]">Start:</dt>
+          <dd class="font-semibold text-[var(--color-text-primary)]">{{ project.startDate }}</dd>
+        </div>
+        <div class="flex items-center gap-1.5">
+          <dt class="text-xs text-[var(--color-text-secondary)]">Target:</dt>
+          <dd class="font-semibold text-[var(--color-text-primary)]">{{ project.targetDate }}</dd>
+        </div>
+        <div class="flex items-center gap-1.5">
+          <dt class="text-xs text-[var(--color-text-secondary)]">Hours:</dt>
+          <dd class="font-semibold text-[var(--color-text-primary)]">{{ project.completedHours }} / {{ project.allocatedHours }}</dd>
+        </div>
+      </dl>
+    </div>
+  </header>
 }
 
 @if (store.milestonesLoading()) {
