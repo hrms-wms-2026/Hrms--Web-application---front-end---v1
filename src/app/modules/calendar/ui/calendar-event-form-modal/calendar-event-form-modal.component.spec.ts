@@ -157,7 +157,7 @@ describe('CalendarEventFormModalComponent', () => {
 
     vi.advanceTimersByTime(400);
     expect(spy).toHaveBeenCalledWith({
-      participantEmployeeIds: ['emp-1'], startDate: '2026-09-01T09:00:00Z', endDate: '2026-09-01T10:00:00Z'
+      participantEmployeeIds: ['emp-1'], startDate: '2026-09-01T09:00:00.000Z', endDate: '2026-09-01T10:00:00.000Z'
     });
     vi.useRealTimers();
   });
@@ -187,5 +187,39 @@ describe('CalendarEventFormModalComponent', () => {
     fixture.detectChanges();
     expect(fixture.nativeElement.textContent).toContain('Ada Lovelace is busy at this time (Standup)');
     expect(fixture.nativeElement.querySelector('[data-testid="calendar-form-save-plain"] button').disabled).toBe(false);
+  });
+
+  it('pre-fills the form using the viewer timezone, not raw UTC digits', () => {
+    fixture.componentRef.setInput('myTimezone', 'Asia/Colombo');
+    fixture.componentRef.setInput('event', {
+      id: 'e1', title: 'Existing', description: null, startDate: '2026-09-01T09:00:00Z', endDate: '2026-09-01T09:30:00Z',
+      sourceType: 'manual', color: null, recurrence: 'none', isAllDay: false, timezone: 'Asia/Colombo', eventStatus: null,
+      isPrivate: false, location: null, meetingLink: null, externalSource: null, createdById: 'u1',
+      isRecurringOccurrence: false, recurrenceMasterId: null, originalStart: null, participants: null
+    });
+    fixture.detectChanges();
+
+    // 2026-09-01T09:00:00Z is 14:30 in Asia/Colombo (UTC+5:30)
+    expect(fixture.componentInstance.form.controls.startTime.value).toBe('14:30');
+  });
+
+  it('converts local wall-clock input to the correct UTC instant on save', () => {
+    fixture.componentRef.setInput('myTimezone', 'Asia/Colombo');
+    fixture.componentInstance.form.patchValue({
+      title: 'Standup', startDate: '2026-09-01', startTime: '14:30', endDate: '2026-09-01', endTime: '15:00'
+    });
+
+    const spy = vi.fn();
+    fixture.componentInstance.save.subscribe(spy);
+    fixture.componentInstance.onSubmit(null);
+
+    const submission = spy.mock.calls[0][0] as { create: { startDate: string; endDate: string } };
+    expect(new Date(submission.create.startDate).toISOString()).toBe('2026-09-01T09:00:00.000Z');
+  });
+
+  it('shows a hint naming the timezone times are displayed in', () => {
+    fixture.componentRef.setInput('myTimezone', 'Asia/Colombo');
+    fixture.detectChanges();
+    expect(fixture.nativeElement.textContent).toContain('Asia/Colombo');
   });
 });

@@ -8,6 +8,7 @@ import { ModalComponent } from '../../../../shared/ui/modal/modal.component';
 import { DatePickerComponent } from '../../../../shared/ui/date-picker/date-picker.component';
 import { AvatarComponent } from '../../../../shared/ui/avatar/avatar.component';
 import { AuthStore } from '../../../../core/auth/state/auth.store';
+import { localPartsToUtcIso, utcIsoToLocalParts } from '../../../../shared/utils/timezone.util';
 import {
   CalendarConflict, CalendarEventParticipant, CalendarEventResponse, CreateCalendarEventRequest,
   RecurrenceEditScope, RespondToCalendarEventStatus, UpdateCalendarEventRequest
@@ -38,6 +39,7 @@ export class CalendarEventFormModalComponent implements OnChanges {
   @Input() saving = false;
   @Input() conflicts: readonly CalendarConflict[] = [];
   @Input() checkingConflicts = false;
+  @Input() myTimezone = 'UTC';
   @Output() save = new EventEmitter<CalendarEventFormSubmission>();
   @Output() delete = new EventEmitter<RecurrenceEditScope | null>();
   @Output() respond = new EventEmitter<RespondToCalendarEventStatus>();
@@ -91,15 +93,15 @@ export class CalendarEventFormModalComponent implements OnChanges {
 
   ngOnChanges(): void {
     if (this.event) {
-      const [startDate, startTimeRaw] = this.event.startDate.split('T');
-      const [endDate, endTimeRaw] = this.event.endDate.split('T');
+      const start = utcIsoToLocalParts(this.event.startDate, this.myTimezone);
+      const end = utcIsoToLocalParts(this.event.endDate, this.myTimezone);
       this.form.patchValue({
         title: this.event.title,
         description: this.event.description ?? '',
-        startDate,
-        startTime: startTimeRaw.slice(0, 5),
-        endDate,
-        endTime: endTimeRaw.slice(0, 5),
+        startDate: start.date,
+        startTime: start.time,
+        endDate: end.date,
+        endTime: end.time,
         isAllDay: this.event.isAllDay,
         location: this.event.location ?? '',
         meetingLink: this.event.meetingLink ?? '',
@@ -156,8 +158,8 @@ export class CalendarEventFormModalComponent implements OnChanges {
       if (ids.length === 0 || !raw.startDate || !raw.endDate) return;
       this.checkConflicts.emit({
         participantEmployeeIds: ids,
-        startDate: `${raw.startDate}T${raw.startTime}:00Z`,
-        endDate: `${raw.endDate}T${raw.endTime}:00Z`
+        startDate: localPartsToUtcIso(raw.startDate, raw.startTime!, this.myTimezone),
+        endDate: localPartsToUtcIso(raw.endDate, raw.endTime!, this.myTimezone)
       });
     }, 400);
   }
@@ -169,8 +171,8 @@ export class CalendarEventFormModalComponent implements OnChanges {
     }
 
     const raw = this.form.getRawValue();
-    const startDate = `${raw.startDate}T${raw.startTime}:00Z`;
-    const endDate = `${raw.endDate}T${raw.endTime}:00Z`;
+    const startDate = localPartsToUtcIso(raw.startDate!, raw.startTime!, this.myTimezone);
+    const endDate = localPartsToUtcIso(raw.endDate!, raw.endTime!, this.myTimezone);
     const recurrence = raw.recurrenceFrequency ?? 'none';
     const recurrenceRule = buildRecurrenceRule(recurrence as RecurrenceFrequency, raw.recurrenceEndMode as RecurrenceEndMode, raw.recurrenceUntilDate || null);
 
