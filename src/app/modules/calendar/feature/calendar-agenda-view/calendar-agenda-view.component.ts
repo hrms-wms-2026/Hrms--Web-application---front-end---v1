@@ -1,6 +1,7 @@
 import { ChangeDetectionStrategy, Component, computed, input, output } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { CalendarEventResponse } from '../../models/calendar-event.model';
+import { dateOnlyInTimezone } from '../../../../shared/utils/timezone.util';
 
 interface AgendaGroup {
   readonly date: string;
@@ -16,12 +17,13 @@ interface AgendaGroup {
 })
 export class CalendarAgendaViewComponent {
   events = input<readonly CalendarEventResponse[]>([]);
+  timezone = input<string>('UTC');
   eventClick = output<string>();
 
   readonly groups = computed<readonly AgendaGroup[]>(() => {
     const byDate = new Map<string, CalendarEventResponse[]>();
     for (const event of this.events()) {
-      const dateKey = event.startDate.slice(0, 10);
+      const dateKey = dateOnlyInTimezone(event.startDate, this.timezone());
       const list = byDate.get(dateKey) ?? [];
       list.push(event);
       byDate.set(dateKey, list);

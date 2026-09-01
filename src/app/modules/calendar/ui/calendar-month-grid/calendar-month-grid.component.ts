@@ -2,6 +2,7 @@ import { ChangeDetectionStrategy, Component, computed, input, output } from '@an
 import { CommonModule } from '@angular/common';
 import { CalendarEventResponse } from '../../models/calendar-event.model';
 import { CalendarGridDay, buildMonthGrid } from '../../utils/calendar-grid.util';
+import { dateOnlyInTimezone } from '../../../../shared/utils/timezone.util';
 
 const MAX_VISIBLE_PER_DAY = 3;
 
@@ -22,6 +23,7 @@ export class CalendarMonthGridComponent {
   year = input.required<number>();
   month = input.required<number>();
   events = input<readonly CalendarEventResponse[]>([]);
+  timezone = input<string>('UTC');
 
   dayClick = output<string>();
   eventClick = output<string>();
@@ -30,7 +32,7 @@ export class CalendarMonthGridComponent {
     const grid = buildMonthGrid(this.year(), this.month());
     const byDate = new Map<string, CalendarEventResponse[]>();
     for (const event of this.events()) {
-      const dateKey = event.startDate.slice(0, 10);
+      const dateKey = dateOnlyInTimezone(event.startDate, this.timezone());
       const list = byDate.get(dateKey) ?? [];
       list.push(event);
       byDate.set(dateKey, list);

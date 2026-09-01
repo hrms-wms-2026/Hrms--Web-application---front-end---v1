@@ -44,16 +44,16 @@
 
   @switch (view()) {
     @case ('month') {
-      <app-calendar-month-grid [year]="year()" [month]="month()" [events]="store.events()" (eventClick)="openEdit($event)" />
+      <app-calendar-month-grid [year]="year()" [month]="month()" [events]="store.events()" [timezone]="store.myTimezone()" (eventClick)="openEdit($event)" />
     }
     @case ('week') {
-      <app-calendar-week-view [weekStart]="weekStart()" [events]="store.events()" (eventClick)="openEdit($event)" (slotClick)="onSlotClick($event)" />
+      <app-calendar-week-view [weekStart]="weekStart()" [events]="store.events()" [timezone]="store.myTimezone()" (eventClick)="openEdit($event)" (slotClick)="onSlotClick($event)" />
     }
     @case ('day') {
-      <app-calendar-day-view [date]="dayDate()" [events]="store.events()" (eventClick)="openEdit($event)" (slotClick)="onSlotClick($event)" />
+      <app-calendar-day-view [date]="dayDate()" [events]="store.events()" [timezone]="store.myTimezone()" (eventClick)="openEdit($event)" (slotClick)="onSlotClick($event)" />
     }
     @case ('agenda') {
-      <app-calendar-agenda-view [events]="store.events()" (eventClick)="openEdit($event)" />
+      <app-calendar-agenda-view [events]="store.events()" [timezone]="store.myTimezone()" (eventClick)="openEdit($event)" />
     }
   }
 </div>

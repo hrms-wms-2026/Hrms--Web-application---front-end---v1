@@ -61,4 +61,15 @@ describe('CalendarHourGridComponent', () => {
     expect(spy).toHaveBeenCalledTimes(1);
     expect(spy.mock.calls[0][0].date).toBe('2026-09-01');
   });
+
+  it('buckets an event into the correct day column using the given timezone, not the raw UTC date', () => {
+    // 2026-09-01T20:00:00Z is already 2026-09-02 local time in Asia/Colombo (UTC+5:30)
+    fixture.componentRef.setInput('timezone', 'Asia/Colombo');
+    fixture.componentRef.setInput('days', ['2026-09-01', '2026-09-02']);
+    fixture.componentRef.setInput('events', [makeEvent('late', '2026-09-01', '20:00', '20:30')]);
+    fixture.detectChanges();
+
+    expect(fixture.componentInstance.columns()[0].positioned.length).toBe(0);
+    expect(fixture.componentInstance.columns()[1].positioned.length).toBe(1);
+  });
 });

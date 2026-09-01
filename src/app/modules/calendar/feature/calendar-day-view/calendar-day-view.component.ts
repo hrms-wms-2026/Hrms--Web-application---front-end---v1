@@ -13,6 +13,7 @@ import { CalendarHourGridComponent } from '../../ui/calendar-hour-grid/calendar-
 export class CalendarDayViewComponent {
   date = input.required<string>();
   events = input<readonly CalendarEventResponse[]>([]);
+  timezone = input<string>('UTC');
 
   eventClick = output<string>();
   slotClick = output<{ date: string; hour: number }>();
