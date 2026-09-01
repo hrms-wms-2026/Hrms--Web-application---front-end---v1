@@ -118,4 +118,73 @@ describe('LeaveApprovalStore', () => {
     const result = await cancelling;
     expect(result).toEqual(cancelResponse);
   });
+
+  it('sets pendingLoading to false and pendingError on loadPending failure', async () => {
+    const loading = store.loadPending();
+    httpMock.expectOne(`${environment.apiUrl}/leave/requests/pending-approvals`).flush('Server error', { status: 500, statusText: 'Internal Server Error' });
+    await loading;
+    expect(store.pendingLoading()).toBe(false);
+    expect(store.pendingError()).toBeTruthy();
+  });
+
+  it('sets allLoading to false and allError on loadAll failure', async () => {
+    const loading = store.loadAll();
+    httpMock.expectOne(`${environment.apiUrl}/leave/requests/all`).flush('Server error', { status: 500, statusText: 'Internal Server Error' });
+    await loading;
+    expect(store.allLoading()).toBe(false);
+    expect(store.allError()).toBeTruthy();
+  });
+
+  it('sets detailLoading to false and detailError on loadDetail failure', async () => {
+    const loading = store.loadDetail('req-1');
+    httpMock.expectOne(`${environment.apiUrl}/leave/requests/req-1/approval`).flush('Not found', { status: 404, statusText: 'Not Found' });
+    await loading;
+    expect(store.detailLoading()).toBe(false);
+    expect(store.detailError()).toBeTruthy();
+  });
+
+  it('sets decideError and returns null when approve fails', async () => {
+    const deciding = store.approve('req-1', { comment: null });
+    httpMock.expectOne(`${environment.apiUrl}/leave/requests/req-1/approve`).flush('Server error', { status: 500, statusText: 'Internal Server Error' });
+    const result = await deciding;
+    expect(result).toBeNull();
+    expect(store.decideError()).toBeTruthy();
+    expect(store.deciding()).toBe(false);
+  });
+
+  it('sets decideError and returns null when bulkApprove fails', async () => {
+    const bulking = store.bulkApprove({ requestIds: ['req-1'], comment: null });
+    httpMock.expectOne(`${environment.apiUrl}/leave/requests/bulk-approve`).flush('Server error', { status: 500, statusText: 'Internal Server Error' });
+    const result = await bulking;
+    expect(result).toBeNull();
+    expect(store.decideError()).toBeTruthy();
+  });
+
+  it('bulkReject returns the bulk result and reloads pending', async () => {
+    const bulkResult = { items: [], successCount: 1, failureCount: 0 };
+    const bulking = store.bulkReject({ requestIds: ['req-1'], reason: 'Not approved' });
+    httpMock.expectOne(`${environment.apiUrl}/leave/requests/bulk-reject`).flush(bulkResult);
+    await Promise.resolve();
+    httpMock.expectOne((r) => r.url === `${environment.apiUrl}/leave/requests/pending-approvals`).flush([]);
+    const result = await bulking;
+    expect(result).toEqual(bulkResult);
+    expect(store.deciding()).toBe(false);
+  });
+
+  it('sets decideError and returns null when bulkReject fails', async () => {
+    const bulking = store.bulkReject({ requestIds: ['req-1'], reason: 'Not approved' });
+    httpMock.expectOne(`${environment.apiUrl}/leave/requests/bulk-reject`).flush('Server error', { status: 500, statusText: 'Internal Server Error' });
+    const result = await bulking;
+    expect(result).toBeNull();
+    expect(store.decideError()).toBeTruthy();
+  });
+
+  it('sets cancelDialogError and returns null when cancel fails', async () => {
+    const cancelling = store.cancel('req-1', { reason: null, effectiveDate: null, expectedVersion: null });
+    httpMock.expectOne(`${environment.apiUrl}/leave/requests/req-1/cancel`).flush('Server error', { status: 500, statusText: 'Internal Server Error' });
+    const result = await cancelling;
+    expect(result).toBeNull();
+    expect(store.cancelDialogError()).toBeTruthy();
+    expect(store.cancelling()).toBe(false);
+  });
 });

@@ -60,4 +60,22 @@ describe('LeaveCalendarStore', () => {
     await loading;
     expect(store.departmentId()).toBe('dept-1');
   });
+
+  it('sets error when load fails', async () => {
+    const loading = store.load();
+    httpMock.expectOne((r) => r.url === `${environment.apiUrl}/leave/calendar`).flush('Server error', { status: 500, statusText: 'Internal Server Error' });
+    await loading;
+    expect(store.error()).toBeTruthy();
+    expect(store.loading()).toBe(false);
+  });
+
+  it('goToToday resets to the current month and reloads', async () => {
+    store.setState(2020, 1);
+    const now = new Date();
+    const loading = store.goToToday();
+    httpMock.expectOne((r) => r.url === `${environment.apiUrl}/leave/calendar`).flush(month);
+    await loading;
+    expect(store.year()).toBe(now.getFullYear());
+    expect(store.monthNumber()).toBe(now.getMonth() + 1);
+  });
 });

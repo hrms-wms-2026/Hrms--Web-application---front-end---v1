@@ -64,4 +64,30 @@ describe('LeaveBalanceAuditStore', () => {
     store.setFilter({ changeType: 'deduction' });
     httpMock.expectOne((r) => r.url === `${environment.apiUrl}/leave/balance-audit` && r.params.get('changeType') === 'deduction' && r.params.get('page') === '1').flush([]);
   });
+
+  it('sets error and loading false when load fails', async () => {
+    const loading = store.load();
+    httpMock.expectOne((r) => r.url === `${environment.apiUrl}/leave/balance-audit`).flush('Server error', { status: 500, statusText: 'Internal Server Error' });
+    await loading;
+    expect(store.error()).toBeTruthy();
+    expect(store.loading()).toBe(false);
+  });
+
+  it('exportCsv returns a blob and clears exporting flag', async () => {
+    const blob = new Blob(['csv'], { type: 'text/csv' });
+    const exporting = store.exportCsv();
+    httpMock.expectOne((r) => r.url === `${environment.apiUrl}/leave/balance-audit/export`).flush(blob);
+    const result = await exporting;
+    expect(result).toEqual(blob);
+    expect(store.exporting()).toBe(false);
+  });
+
+  it('exportCsv sets exportError and returns null on failure', async () => {
+    const exporting = store.exportCsv();
+    httpMock.expectOne((r) => r.url === `${environment.apiUrl}/leave/balance-audit/export`).flush(new Blob(['error'], { type: 'application/json' }), { status: 500, statusText: 'Internal Server Error' });
+    const result = await exporting;
+    expect(result).toBeNull();
+    expect(store.exportError()).toBeTruthy();
+    expect(store.exporting()).toBe(false);
+  });
 });
