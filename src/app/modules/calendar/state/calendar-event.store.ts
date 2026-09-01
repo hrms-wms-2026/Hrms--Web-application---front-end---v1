@@ -16,13 +16,14 @@ interface CalendarEventState {
   readonly actionError: string | null;
   readonly conflicts: readonly CalendarConflict[];
   readonly checkingConflicts: boolean;
+  readonly myTimezone: string;
 }
 
 export const CalendarEventStore = signalStore(
   { providedIn: 'root' },
   withState<CalendarEventState>({
     events: [], loading: false, loadError: null, saving: false, actionError: null,
-    conflicts: [], checkingConflicts: false
+    conflicts: [], checkingConflicts: false, myTimezone: 'UTC'
   }),
   withMethods((store, api = inject(CalendarEventApiService)) => ({
     async loadEvents(from: string, to: string): Promise<void> {
@@ -123,6 +124,15 @@ export const CalendarEventStore = signalStore(
     },
     clearConflicts(): void {
       patchState(store, { conflicts: [], checkingConflicts: false });
+    },
+    async loadMyTimezone(): Promise<void> {
+      try {
+        const response = await firstValueFrom(api.getMyTimezone());
+        patchState(store, { myTimezone: response.timezone });
+      } catch {
+        // Falls back to the 'UTC' default already in state - a failed fetch should not block
+        // the calendar from rendering, just leave times shown in UTC.
+      }
     }
   }))
 );

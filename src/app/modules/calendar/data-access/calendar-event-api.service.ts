@@ -43,4 +43,8 @@ export class CalendarEventApiService {
   checkConflicts(payload: CheckCalendarConflictsRequest): Observable<CalendarConflictsResponse> {
     return this.http.post<CalendarConflictsResponse>(`${this.baseUrl}/check-conflicts`, payload);
   }
+
+  getMyTimezone(): Observable<{ timezone: string }> {
+    return this.http.get<{ timezone: string }>(`${this.baseUrl}/my-timezone`);
+  }
 }

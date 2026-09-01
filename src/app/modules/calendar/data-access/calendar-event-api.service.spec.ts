@@ -26,7 +26,7 @@ describe('CalendarEventApiService', () => {
   it('create posts to the base url', () => {
     service.create({
       title: 'Standup', description: null, startDate: '2026-09-01T09:00:00Z', endDate: '2026-09-01T09:30:00Z',
-      isAllDay: false, timezone: 'UTC', location: null, meetingLink: null, color: null,
+      isAllDay: false, location: null, meetingLink: null, color: null,
       recurrence: 'none', participantEmployeeIds: [], recurrenceRule: null
     }).subscribe();
     const req = http.expectOne(`${environment.apiUrl}/calendar`);
@@ -38,7 +38,7 @@ describe('CalendarEventApiService', () => {
     service.editOccurrence('master-1', {
       originalStart: '2026-09-08T09:00:00Z', scope: 'ThisEventOnly', title: 'X', description: null,
       startDate: '2026-09-08T09:00:00Z', endDate: '2026-09-08T09:30:00Z', isAllDay: false,
-      timezone: 'UTC', location: null, meetingLink: null, color: null
+      location: null, meetingLink: null, color: null
     }).subscribe();
     const req = http.expectOne(`${environment.apiUrl}/calendar/master-1/occurrence`);
     expect(req.request.method).toBe('PUT');
@@ -60,6 +60,13 @@ describe('CalendarEventApiService', () => {
     expect(req.request.method).toBe('POST');
     expect(req.request.body).toEqual({ responseStatus: 'Accepted' });
     req.flush(null);
+  });
+
+  it('getMyTimezone requests my-timezone', () => {
+    service.getMyTimezone().subscribe();
+    const req = http.expectOne(`${environment.apiUrl}/calendar/my-timezone`);
+    expect(req.request.method).toBe('GET');
+    req.flush({ timezone: 'Asia/Colombo' });
   });
 
   it('checkConflicts posts to check-conflicts', () => {

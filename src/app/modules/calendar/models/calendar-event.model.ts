@@ -37,7 +37,6 @@ export interface CreateCalendarEventRequest {
   startDate: string;
   endDate: string;
   isAllDay: boolean;
-  timezone: string | null;
   location: string | null;
   meetingLink: string | null;
   color: string | null;
@@ -52,7 +51,6 @@ export interface UpdateCalendarEventRequest {
   startDate: string;
   endDate: string;
   isAllDay: boolean;
-  timezone: string | null;
   location: string | null;
   meetingLink: string | null;
   color: string | null;
@@ -69,7 +67,6 @@ export interface EditRecurringOccurrenceRequest {
   startDate: string;
   endDate: string;
   isAllDay: boolean;
-  timezone: string | null;
   location: string | null;
   meetingLink: string | null;
   color: string | null;

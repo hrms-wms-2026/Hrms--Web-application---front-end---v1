@@ -43,7 +43,7 @@ describe('CalendarEventStore', () => {
   it('createEvent appends the created event on success', async () => {
     const work = store.createEvent({
       title: 'New', description: null, startDate: '2026-09-01T09:00:00Z', endDate: '2026-09-01T09:30:00Z',
-      isAllDay: false, timezone: 'UTC', location: null, meetingLink: null, color: null,
+      isAllDay: false, location: null, meetingLink: null, color: null,
       recurrence: 'none', participantEmployeeIds: [], recurrenceRule: null
     });
     http.expectOne(`${environment.apiUrl}/calendar`).flush(makeEvent({ id: 'e2', title: 'New' }));
@@ -66,7 +66,7 @@ describe('CalendarEventStore', () => {
     const work = store.editOccurrence('master-1', {
       originalStart: '2026-09-08T09:00:00Z', scope: 'ThisEventOnly', title: 'X', description: null,
       startDate: '2026-09-08T09:00:00Z', endDate: '2026-09-08T09:30:00Z', isAllDay: false,
-      timezone: 'UTC', location: null, meetingLink: null, color: null
+      location: null, meetingLink: null, color: null
     }, '2026-09-01T00:00:00Z', '2026-09-30T00:00:00Z');
 
     http.expectOne(`${environment.apiUrl}/calendar/master-1/occurrence`).flush(makeEvent());
@@ -113,6 +113,13 @@ describe('CalendarEventStore', () => {
     await work;
     expect(store.conflicts()).toEqual([]);
     expect(store.actionError()).toBeNull();
+  });
+
+  it('loadMyTimezone populates myTimezone from the API', async () => {
+    const work = store.loadMyTimezone();
+    http.expectOne(`${environment.apiUrl}/calendar/my-timezone`).flush({ timezone: 'Asia/Colombo' });
+    await work;
+    expect(store.myTimezone()).toBe('Asia/Colombo');
   });
 
   it('clearConflicts resets conflicts state', () => {

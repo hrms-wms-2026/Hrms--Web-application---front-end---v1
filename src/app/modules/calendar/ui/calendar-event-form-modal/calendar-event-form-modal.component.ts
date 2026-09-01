@@ -178,7 +178,7 @@ export class CalendarEventFormModalComponent implements OnChanges {
       this.save.emit({
         update: {
           title: raw.title!.trim(), description: raw.description || null, startDate, endDate,
-          isAllDay: !!raw.isAllDay, timezone: 'UTC', location: raw.location || null,
+          isAllDay: !!raw.isAllDay, location: raw.location || null,
           meetingLink: raw.meetingLink || null, color: raw.color || null, recurrence
         },
         scope
@@ -189,7 +189,7 @@ export class CalendarEventFormModalComponent implements OnChanges {
     this.save.emit({
       create: {
         title: raw.title!.trim(), description: raw.description || null, startDate, endDate,
-        isAllDay: !!raw.isAllDay, timezone: 'UTC', location: raw.location || null,
+        isAllDay: !!raw.isAllDay, location: raw.location || null,
         meetingLink: raw.meetingLink || null, color: raw.color || null, recurrence,
         participantEmployeeIds: this.participantIds(), recurrenceRule
       }

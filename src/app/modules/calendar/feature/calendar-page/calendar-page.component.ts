@@ -61,6 +61,10 @@ export class CalendarPageComponent {
     this.store.loadEvents(from, to);
   });
 
+  constructor() {
+    this.store.loadMyTimezone();
+  }
+
   private currentRange(): { from: string; to: string } {
     switch (this.view()) {
       case 'month': {
