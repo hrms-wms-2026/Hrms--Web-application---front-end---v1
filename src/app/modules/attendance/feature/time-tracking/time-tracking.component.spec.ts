@@ -742,6 +742,43 @@ describe('TimeTrackingComponent', () => {
     expect(fixture.nativeElement.querySelector('input[name="requestedClockOutAt"]')).toBeTruthy();
   });
 
+  it('shows a one-click fix button for a missing-clock-out attention, naming the stale day', async () => {
+    const { fixture } = await setup({
+      attentionType: 'missing_clock_out',
+      attentionLabel: 'Still shown as clocked in from Aug 19 — confirm the actual clock-out time',
+      attentionSeverity: 'critical',
+      attentionWorkDate: '2026-08-19'
+    });
+    fixture.detectChanges();
+    const button = fixture.nativeElement.querySelector('[data-testid="fix-missing-clock-out"]');
+    expect(button).toBeTruthy();
+    expect(button?.textContent).toContain('Aug 19, 2026');
+  });
+
+  it('does not show the fix button for other attention types', async () => {
+    const { fixture } = await setup({
+      shouldHaveClockedIn: true,
+      attentionType: 'not_clocked_in',
+      attentionLabel: 'Still has not clocked in',
+      attentionSeverity: 'critical',
+      attentionWorkDate: null
+    });
+    fixture.detectChanges();
+    expect(fixture.nativeElement.querySelector('[data-testid="fix-missing-clock-out"]')).toBeNull();
+  });
+
+  it('opens a clock-out correction pre-set to the stale day when the fix button is used', async () => {
+    const { fixture } = await setup({});
+    const component = fixture.componentInstance;
+
+    component.openMissingClockOutCorrection('2026-08-19');
+    fixture.detectChanges();
+
+    expect(component.correctionFormOpen()?.workDate).toBe('2026-08-19');
+    expect(component.correctionType()).toBe('clock_out');
+    expect(fixture.nativeElement.querySelector('input[name="requestedClockOutAt"]')).toBeTruthy();
+    expect(fixture.nativeElement.querySelector('input[name="requestedClockInAt"]')).toBeNull();
+  });
 
 });
 

@@ -1,8 +1,9 @@
 import { CommonModule } from '@angular/common';
-import { ChangeDetectionStrategy, Component, computed, effect, inject, signal } from '@angular/core';
+import { ChangeDetectionStrategy, Component, computed, effect, inject, signal, untracked } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { PermissionService } from '../../../../core/auth/state/permission.service';
 import { NotificationService } from '../../../../core/services/notification.service';
+import { BreadcrumbHeaderComponent } from '../../../../shared/ui/breadcrumb-header/breadcrumb-header.component';
 import { DepartmentStore } from '../../../organization/state/department.store';
 import { LegalEntityStore } from '../../../organization/state/legal-entity.store';
 import { PositionStore } from '../../../organization/state/position.store';
@@ -35,7 +36,7 @@ const emptyOverride = (): MonitoringPolicyOverrideRequest => ({
 @Component({
   selector: 'app-monitoring',
   standalone: true,
-  imports: [CommonModule, FormsModule],
+  imports: [CommonModule, FormsModule, BreadcrumbHeaderComponent],
   templateUrl: './monitoring.component.html',
   styleUrl: './monitoring.component.css',
   changeDetection: ChangeDetectionStrategy.OnPush
@@ -93,22 +94,20 @@ export class MonitoringComponent {
       void this.legalEntityStore.loadCompanies();
     });
 
-    // Reload the policy and this company's department/position target lists whenever the
-    // selected company changes - never leave department/position overrides pointed at a
-    // previous company's targets. The company default and role overrides don't depend on
-    // which company is selected, but re-fetching keeps them all on one predictable trigger.
     effect(() => {
       if (!this.hasReadAccess()) return;
       const company = this.legalEntityStore.selectedLegalEntity();
-      void this.monitoringStore.load();
-      if (company) {
-        void this.departmentStore.load(company.id);
-        void this.positionStore.load(company.id);
-      }
-      if (!this.rolesLoaded) {
-        this.rolesLoaded = true;
-        void this.roleStore.loadRolesOnly();
-      }
+      untracked(() => {
+        void this.monitoringStore.load();
+        if (company) {
+          void this.departmentStore.load(company.id);
+          void this.positionStore.load(company.id);
+        }
+        if (!this.rolesLoaded) {
+          this.rolesLoaded = true;
+          void this.roleStore.loadRolesOnly();
+        }
+      });
     });
 
     effect(() => {

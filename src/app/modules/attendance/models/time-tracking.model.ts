@@ -44,6 +44,7 @@ export interface AttendanceTodayResponse {
   attentionSeverity?: string | null;
   breakOverageMinutes?: number;
   isOverBreakAllowance?: boolean;
+  attentionWorkDate?: string | null;
 }
 
 export interface AttendanceHistoryEmployee {
