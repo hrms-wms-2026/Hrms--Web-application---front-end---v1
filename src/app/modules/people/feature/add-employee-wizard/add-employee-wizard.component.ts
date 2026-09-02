@@ -42,7 +42,7 @@ const TEMPLATE_TYPE_LABELS: Record<ChecklistTemplateType, string> = {
 const EMPLOYMENT_TYPE_OPTIONS: readonly SelectOption[] = [
   { value: 'full_time', label: 'Full-time' },
   { value: 'part_time', label: 'Part-time' },
-  { value: 'contractor', label: 'Contractor' },
+  { value: 'contract', label: 'Contract' },
   { value: 'intern', label: 'Intern' }
 ];
 
