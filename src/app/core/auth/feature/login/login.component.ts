@@ -60,7 +60,11 @@ export class LoginComponent implements OnInit {
     } else if (this.store.redirectRequired()) {
       const url = this.store.continueUrl();
       if (url) {
-        window.location.href = url;
+        // continueUrl already carries its own ?code=... query string, so append with '&'.
+        // The tenant host's SessionExchangeComponent reads this same returnUrl param back out
+        // once the session cookie is established there.
+        const returnUrl = this.route.snapshot.queryParamMap.get('returnUrl');
+        window.location.href = returnUrl ? `${url}&returnUrl=${encodeURIComponent(returnUrl)}` : url;
       }
     } else {
       const returnUrl = this.route.snapshot.queryParamMap.get('returnUrl');
