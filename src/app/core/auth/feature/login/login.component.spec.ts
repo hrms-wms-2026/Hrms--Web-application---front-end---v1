@@ -15,6 +15,7 @@ describe('LoginComponent', () => {
         provideRouter([
           { path: 'dashboard', component: RouteTargetStubComponent },
           { path: 'auth/legal-consent', component: RouteTargetStubComponent },
+          { path: 'device/activate', component: RouteTargetStubComponent },
           { path: '**', component: RouteTargetStubComponent }
         ]),
         { provide: AuthStore, useValue: authStoreOverrides },
@@ -137,7 +138,7 @@ describe('LoginComponent', () => {
     expect(loginSpy).toHaveBeenCalledWith({ email: 'a@b.com', password: 'secret' });
   });
 
-  it('navigates to returnUrl after a successful login when present', async () => {
+  it('navigates to returnUrl after a successful login when present, preserving its query params', async () => {
     const fixture = setup(
       {
         login: vi.fn().mockResolvedValue(undefined),
@@ -150,12 +151,15 @@ describe('LoginComponent', () => {
       '/device/activate?request_id=abc&user_code=XYZ'
     );
     const router = TestBed.inject(Router);
-    const navigateSpy = vi.spyOn(router, 'navigate');
 
     fixture.componentInstance.form.setValue({ email: 'a@b.com', password: 'secret' });
     await fixture.componentInstance.submit();
 
-    expect(navigateSpy).toHaveBeenCalledWith(['/device/activate?request_id=abc&user_code=XYZ']);
+    // Assert the router actually ended up at the right place, not just that some navigate
+    // overload was called with the right-looking argument — router.navigate(['/a?b=c']) treats
+    // the whole string as one path segment and drops the query params silently, which a
+    // navigate-was-called-with assertion alone would not have caught.
+    expect(router.url).toBe('/device/activate?request_id=abc&user_code=XYZ');
   });
 
   it('falls back to /people/employees when no returnUrl is present', async () => {
