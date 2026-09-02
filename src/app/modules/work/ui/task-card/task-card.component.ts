@@ -28,6 +28,9 @@ import { TaskClockWidgetComponent } from '../task-clock-widget/task-clock-widget
         @if (task().estimatedHours) {
           <span class="task-card__hours"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9" /><path d="M12 7v5l3 2" /></svg><span>{{ task().estimatedHours }}h</span></span>
         }
+        @if (task().activeEventName) {
+          <span class="task-card__event" data-testid="task-event-chip" [title]="'In event: ' + task().activeEventName">{{ task().activeEventName }}</span>
+        }
       </div>
 
       <div class="task-card__footer">
@@ -96,6 +99,7 @@ import { TaskClockWidgetComponent } from '../task-clock-widget/task-clock-widget
     .task-card__due-date, .task-card__hours { display: inline-flex; align-items: center; gap: 4px; }
     .task-card__priority[data-priority="critical"],
     .task-card__priority[data-priority="high"] { color: var(--color-danger); }
+    .task-card__event { overflow: hidden; max-width: 120px; border-radius: 999px; background: var(--color-surface-secondary); padding: 1px 8px; color: var(--color-text-secondary); font-size: 10px; font-weight: 600; text-overflow: ellipsis; white-space: nowrap; }
     .task-card__footer { display: flex; align-items: center; justify-content: space-between; gap: 8px; min-width: 0; }
     .task-card__clock { min-width: 0; margin-left: auto; }
     .task-card__status { display: inline-flex; width: fit-content; flex: 0 0 auto; border-radius: 999px; background: var(--color-surface-secondary); padding: 3px 8px; font-size: 10px; font-weight: 500; color: var(--color-text-secondary); }

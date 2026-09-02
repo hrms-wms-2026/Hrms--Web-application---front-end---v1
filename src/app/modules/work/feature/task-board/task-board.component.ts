@@ -16,16 +16,18 @@ import { WorkTask } from '../../models/task.model';
 import { TaskCategoryColumn } from '../../models/task-category.model';
 import { toTaskCategoryColumn } from '../../utils/task-category.mapper';
 import { WorkDropdownComponent, WorkDropdownOption } from '../../ui/work-dropdown/work-dropdown.component';
+import { PeopleFilterSelectComponent } from '../../ui/people-filter-select/people-filter-select.component';
 
 @Component({
   selector: 'app-task-board',
   standalone: true,
-  imports: [TaskBoardColumnComponent, ButtonComponent, ErrorStateComponent, WorkDropdownComponent],
+  imports: [TaskBoardColumnComponent, ButtonComponent, ErrorStateComponent, WorkDropdownComponent, PeopleFilterSelectComponent],
   template: `
     <div class="task-board__toolbar">
       <app-work-dropdown [options]="objectiveOptions()" [selected]="objectiveFilter()" accessibleLabel="Module filter" leadingIcon="module" (selectionChanged)="setObjectiveFilter($event)" />
       <app-work-dropdown [options]="sprintOptions()" [selected]="sprintFilter()" accessibleLabel="Sprint filter" leadingIcon="sprint" (selectionChanged)="setSprintFilter($event)" />
       <app-work-dropdown [options]="categoryOptions()" [selected]="categoryFilter()" accessibleLabel="Category filter" leadingIcon="category" (selectionChanged)="setCategoryFilter($event)" />
+      <app-people-filter-select [options]="memberOptions()" [selected]="assigneeFilter()" (selectionChanged)="setAssigneeFilter($event)" />
       @if (modules().length > 0) {
         <app-button variant="primary" (pressed)="goToCreate()">Create task</app-button>
       }
@@ -79,6 +81,7 @@ export class TaskBoardComponent implements OnInit, AfterViewChecked {
   protected readonly objectiveFilter = signal('all');
   protected readonly sprintFilter = signal('active');
   protected readonly categoryFilter = signal('all');
+  protected readonly assigneeFilter = signal<string[]>([]);
   private highlightTaskId: string | null = null;
   private didScrollToHighlight = false;
 
@@ -115,9 +118,14 @@ export class TaskBoardComponent implements OnInit, AfterViewChecked {
     )
   );
 
+  protected readonly memberOptions = computed(() =>
+    this.assignableMembers().map((member) => ({ employeeId: member.employeeId, name: member.name }))
+  );
+
   protected setObjectiveFilter(value: string): void { this.objectiveFilter.set(value); }
   protected setSprintFilter(value: string): void { this.sprintFilter.set(value); }
   protected setCategoryFilter(value: string): void { this.categoryFilter.set(value); }
+  protected setAssigneeFilter(ids: string[]): void { this.assigneeFilter.set(ids); }
 
   columnIds(): string[] {
     return this.columnsWithTasks().map((column) => column.status.id);
@@ -127,6 +135,8 @@ export class TaskBoardComponent implements OnInit, AfterViewChecked {
     const projectId = this.route.snapshot?.paramMap?.get('id') ?? '';
     this.projectId.set(projectId);
     this.highlightTaskId = this.route.snapshot?.queryParamMap?.get('highlightTaskId') ?? null;
+    const assignee = this.route.snapshot?.queryParamMap?.get('assignee');
+    if (assignee) this.assigneeFilter.set([assignee]);
     if (!projectId) return;
 
     // No loadMyMilestones() call here - ProjectDetailComponent (the parent route) already
@@ -168,7 +178,9 @@ export class TaskBoardComponent implements OnInit, AfterViewChecked {
           ? task.sprintId == null
           : task.sprintId === sprintFilter;
     const categoryMatches = this.categoryFilter() === 'all' || task.categoryId === this.categoryFilter();
-    return objectiveMatches && sprintMatches && categoryMatches;
+    const assignees = this.assigneeFilter();
+    const assigneeMatches = assignees.length === 0 || task.assigneeEmployeeIds.some((id) => assignees.includes(id));
+    return objectiveMatches && sprintMatches && categoryMatches && assigneeMatches;
   }
 
   private async loadSprints(projectId: string): Promise<void> {
