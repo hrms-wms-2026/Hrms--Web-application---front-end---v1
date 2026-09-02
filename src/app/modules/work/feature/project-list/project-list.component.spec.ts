@@ -248,8 +248,8 @@ describe('ProjectListComponent', () => {
 
   it('forwards category and achieved filter changes to the store', () => {
     fixture.detectChanges();
-    fixture.componentInstance.onCategoryFilterChanged('cat1');
-    expect(storeStub.setCategoryFilter).toHaveBeenCalledWith('cat1');
+    fixture.componentInstance.onCategoryFilterChanged(['cat1', 'cat2']);
+    expect(storeStub.setCategoryFilter).toHaveBeenCalledWith(['cat1', 'cat2']);
     fixture.componentInstance.onAchievedFilterChanged('archived');
     expect(storeStub.setAchievedFilter).toHaveBeenCalledWith('archived');
   });

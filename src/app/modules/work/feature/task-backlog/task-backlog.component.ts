@@ -1,6 +1,6 @@
 import { Component, OnInit, computed, inject, signal } from '@angular/core';
 import { CurrentEmployeeStore } from '../../state/current-employee.store';
-import { ActivatedRoute, Router } from '@angular/router';
+import { ActivatedRoute } from '@angular/router';
 import { firstValueFrom } from 'rxjs';
 import { ButtonComponent } from '../../../../shared/ui/button/button.component';
 import { ErrorStateComponent } from '../../../../shared/ui/error-state/error-state.component';
@@ -16,18 +16,18 @@ import { Sprint, SprintStatus } from '../../models/sprint.model';
 import { TaskCategoryColumn } from '../../models/task-category.model';
 import { toTaskCategoryColumn } from '../../utils/task-category.mapper';
 import { WorkDropdownComponent, WorkDropdownOption } from '../../ui/work-dropdown/work-dropdown.component';
-import { PeopleFilterSelectComponent } from '../../ui/people-filter-select/people-filter-select.component';
+import { TaskFormModalComponent } from '../../ui/task-form-modal/task-form-modal.component';
 
 @Component({
   selector: 'app-task-backlog',
   standalone: true,
-  imports: [SprintTabComponent, SprintFormComponent, TaskTableComponent, ButtonComponent, ErrorStateComponent, WorkDropdownComponent, PeopleFilterSelectComponent],
+  imports: [SprintTabComponent, SprintFormComponent, TaskTableComponent, ButtonComponent, ErrorStateComponent, WorkDropdownComponent, TaskFormModalComponent],
   template: `
     <div class="task-backlog__toolbar">
-      <app-work-dropdown [options]="objectiveOptions()" [selected]="objectiveFilter()" accessibleLabel="Module filter" leadingIcon="module" (selectionChanged)="setObjectiveFilter($event)" />
-      <app-work-dropdown [options]="categoryOptions()" [selected]="categoryFilter()" accessibleLabel="Category filter" leadingIcon="category" (selectionChanged)="setCategoryFilter($event)" />
-      <app-people-filter-select [options]="memberOptions()" [selected]="assigneeFilter()" (selectionChanged)="setAssigneeFilter($event)" />
-      <app-work-dropdown [options]="sprintStatusOptions" [selected]="sprintStatusFilter()" accessibleLabel="Sprint status filter" leadingIcon="status" (selectionChanged)="setSprintStatusFilter($event)" />
+      <app-work-dropdown [options]="objectiveOptions()" [multiple]="true" [values]="objectiveFilter()" allLabel="All modules" size="sm" accessibleLabel="Module filter" leadingIcon="module" (valuesChanged)="setObjectiveFilter($event)" />
+      <app-work-dropdown [options]="categoryOptions()" [multiple]="true" [values]="categoryFilter()" allLabel="All categories" size="sm" accessibleLabel="Category filter" leadingIcon="category" (valuesChanged)="setCategoryFilter($event)" />
+      <app-work-dropdown [options]="assigneeFilterOptions()" [multiple]="true" [values]="assigneeFilter()" allLabel="All people" size="sm" accessibleLabel="Assignee filter" leadingIcon="people" (valuesChanged)="setAssigneeFilter($event)" />
+      <app-work-dropdown [options]="sprintStatusOptions" [selected]="sprintStatusFilter()" size="sm" accessibleLabel="Sprint status filter" leadingIcon="status" (selectionChanged)="setSprintStatusFilter($event)" />
       @if (modules().length > 0) {
         <app-button variant="secondary" (pressed)="openCreateTask()">Create task</app-button>
       }
@@ -102,9 +102,18 @@ import { PeopleFilterSelectComponent } from '../../ui/people-filter-select/peopl
       }
     }
 
+    <app-task-form-modal
+      [open]="taskModalOpen()"
+      [mode]="taskModalMode()"
+      [projectId]="projectId()"
+      [taskId]="taskModalTaskId()"
+      (created)="onTaskModalDone()"
+      (saved)="onTaskModalDone()"
+      (closed)="taskModalOpen.set(false)"
+    />
   `,
   styles: [`
-    .task-backlog__toolbar { display: flex; flex-wrap: wrap; justify-content: flex-end; align-items: flex-end; gap: 8px; margin-bottom: 16px; }
+    .task-backlog__toolbar { display: flex; flex-wrap: wrap; justify-content: flex-end; align-items: center; gap: 8px; margin-bottom: 16px; }
     .task-backlog__toolbar app-work-dropdown { flex: 1 1 180px; max-width: 220px; }
     @media (max-width: 720px) { .task-backlog__toolbar { justify-content: stretch; } .task-backlog__toolbar app-work-dropdown { flex: 1 1 180px; max-width: none; } .task-backlog__toolbar app-button { flex: 1 1 100%; } }
     .task-backlog__sprint-message { color: var(--color-danger-text, var(--color-danger)); font-size: 12px; margin-bottom: 8px; }
@@ -119,7 +128,6 @@ export class TaskBacklogComponent implements OnInit {
   protected readonly projectStore = inject(ProjectDetailStore);
   private readonly taskApi = inject(TaskApiService);
   private readonly route = inject(ActivatedRoute);
-  private readonly router = inject(Router);
   protected readonly currentEmployee = inject(CurrentEmployeeStore);
 
   protected readonly createSprintOpen = signal(false);
@@ -128,8 +136,8 @@ export class TaskBacklogComponent implements OnInit {
   protected readonly expandedSprintId = signal<string | null>(null);
   protected readonly assignableMembers = signal<{ employeeId: string; name: string }[]>([]);
   protected readonly sprintStatusFilter = signal<'all' | SprintStatus>('all');
-  protected readonly objectiveFilter = signal('all');
-  protected readonly categoryFilter = signal('all');
+  protected readonly objectiveFilter = signal<string[]>([]);
+  protected readonly categoryFilter = signal<string[]>([]);
   protected readonly assigneeFilter = signal<string[]>([]);
   protected readonly categories = signal<TaskCategoryColumn[]>([]);
   protected readonly sprintStatusOptions: readonly WorkDropdownOption[] = [
@@ -148,14 +156,12 @@ export class TaskBacklogComponent implements OnInit {
   protected readonly moduleOptions = computed(() =>
     this.modules().map((m) => ({ objectiveId: m.objectiveId, title: m.title, isOwner: m.isOwner }))
   );
-  protected readonly objectiveOptions = computed<WorkDropdownOption[]>(() => [
-    { value: 'all', label: 'All modules' },
-    ...this.modules().map((module) => ({ value: module.objectiveId, label: module.title }))
-  ]);
-  protected readonly categoryOptions = computed<WorkDropdownOption[]>(() => [
-    { value: 'all', label: 'All categories' },
-    ...this.categories().map((category) => ({ value: category.id, label: category.name }))
-  ]);
+  protected readonly objectiveOptions = computed<WorkDropdownOption[]>(() =>
+    this.modules().map((module) => ({ value: module.objectiveId, label: module.title }))
+  );
+  protected readonly categoryOptions = computed<WorkDropdownOption[]>(() =>
+    this.categories().map((category) => ({ value: category.id, label: category.name }))
+  );
   // Sprint creation has no pending/request path (unlike tasks) - only modules the user owns may
   // ever be offered here, or SprintApiService.create would just fail for a non-owner's pick.
   protected readonly ownedModuleOptions = computed(() => this.moduleOptions().filter((m) => m.isOwner));
@@ -185,9 +191,11 @@ export class TaskBacklogComponent implements OnInit {
 
   private filteredTasks(): WorkTask[] {
     const assignees = this.assigneeFilter();
+    const objectives = this.objectiveFilter();
+    const categories = this.categoryFilter();
     return this.store.tasks().filter((task) =>
-      (this.objectiveFilter() === 'all' || task.objectiveId === this.objectiveFilter()) &&
-      (this.categoryFilter() === 'all' || task.categoryId === this.categoryFilter()) &&
+      (objectives.length === 0 || objectives.includes(task.objectiveId)) &&
+      (categories.length === 0 || categories.includes(task.categoryId)) &&
       (assignees.length === 0 || task.assigneeEmployeeIds.some((id) => assignees.includes(id)))
     );
   }
@@ -200,17 +208,23 @@ export class TaskBacklogComponent implements OnInit {
     this.expandedSprintId.set(this.expandedSprintId() === sprintId ? null : sprintId);
   }
 
-  protected readonly memberOptions = computed(() =>
-    this.assignableMembers().map((member) => ({ employeeId: member.employeeId, name: member.name }))
+  protected readonly assigneeFilterOptions = computed<WorkDropdownOption[]>(() =>
+    this.assignableMembers().map((member) => ({ value: member.employeeId, label: member.name }))
   );
 
-  protected setObjectiveFilter(value: string): void { this.objectiveFilter.set(value); }
-  protected setCategoryFilter(value: string): void { this.categoryFilter.set(value); }
+  protected setObjectiveFilter(ids: string[]): void { this.objectiveFilter.set(ids); }
+  protected setCategoryFilter(ids: string[]): void { this.categoryFilter.set(ids); }
   protected setAssigneeFilter(ids: string[]): void { this.assigneeFilter.set(ids); }
   protected setSprintStatusFilter(value: string): void { this.sprintStatusFilter.set(value as 'all' | SprintStatus); }
 
+  protected readonly taskModalOpen = signal(false);
+  protected readonly taskModalMode = signal<'create' | 'edit'>('create');
+  protected readonly taskModalTaskId = signal('');
+
   protected openCreateTask(): void {
-    void this.router.navigate(['/work', this.projectId(), 'task', 'new'], { queryParams: { sprintRequired: 'false' } });
+    this.taskModalMode.set('create');
+    this.taskModalTaskId.set('');
+    this.taskModalOpen.set(true);
   }
 
   async reloadTasks(): Promise<void> {
@@ -218,7 +232,14 @@ export class TaskBacklogComponent implements OnInit {
   }
 
   onTaskViewed(task: WorkTask): void {
-    void this.router.navigate(['/work', this.projectId(), 'task', task.id]);
+    this.taskModalMode.set('edit');
+    this.taskModalTaskId.set(task.id);
+    this.taskModalOpen.set(true);
+  }
+
+  protected onTaskModalDone(): void {
+    this.taskModalOpen.set(false);
+    void this.reloadTasks();
   }
 
   async onSprintStatusChangeRequested(sprintOrId: Sprint | string, newStatus: string): Promise<void> {

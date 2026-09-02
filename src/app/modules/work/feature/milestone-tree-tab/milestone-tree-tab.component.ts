@@ -1,11 +1,12 @@
 import { Component, computed, inject, signal } from '@angular/core';
 import { CurrentEmployeeStore } from '../../state/current-employee.store';
 
-import { ActivatedRoute, Router } from '@angular/router';
+import { ActivatedRoute } from '@angular/router';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { ProjectDetailStore } from '../../state/project-detail.store';
 import { MilestoneTreeNodeComponent } from '../../ui/milestone-tree-node/milestone-tree-node.component';
-import { ModuleFilterSelectComponent } from '../../ui/module-filter-select/module-filter-select.component';
+import { WorkDropdownComponent, WorkDropdownOption } from '../../ui/work-dropdown/work-dropdown.component';
+import { TaskFormModalComponent } from '../../ui/task-form-modal/task-form-modal.component';
 import { TreeExplanationPanelComponent } from '../../ui/tree-explanation-panel/tree-explanation-panel.component';
 import { SubModuleFormComponent } from '../../ui/sub-module-form/sub-module-form.component';
 import { MemberManagementPopupComponent } from '../../ui/member-management-popup/member-management-popup.component';
@@ -25,8 +26,8 @@ import { Sprint, SprintStatus } from '../../models/sprint.model';
   selector: 'app-milestone-tree-tab',
   standalone: true,
   imports: [
-    MilestoneTreeNodeComponent, ModuleFilterSelectComponent, TreeExplanationPanelComponent, SubModuleFormComponent,
-    MemberManagementPopupComponent, SprintFormComponent,
+    MilestoneTreeNodeComponent, WorkDropdownComponent, TreeExplanationPanelComponent, SubModuleFormComponent,
+    MemberManagementPopupComponent, SprintFormComponent, TaskFormModalComponent,
     LoaderComponent, ErrorStateComponent, EmptyStateComponent, ConfirmModalComponent
   ],
   templateUrl: './milestone-tree-tab.component.html'
@@ -34,8 +35,13 @@ import { Sprint, SprintStatus } from '../../models/sprint.model';
 export class MilestoneTreeTabComponent {
   readonly store = inject(ProjectDetailStore);
     private readonly route = inject(ActivatedRoute);
-  private readonly router = inject(Router);
   protected readonly currentEmployee = inject(CurrentEmployeeStore);
+
+  readonly taskModalOpen = signal(false);
+  readonly taskModalMode = signal<'create' | 'edit'>('create');
+  readonly taskModalTaskId = signal('');
+  readonly taskModalPrefillModule = signal('');
+  readonly taskModalPrefillSprint = signal('');
 
   private currentMilestoneId = '';
   private currentProjectId = '';
@@ -61,6 +67,19 @@ export class MilestoneTreeTabComponent {
     if (!tree) return [];
     return this.filterOptionsByActivity(collectObjectiveOptions(tree), this.selectedActivityFilter());
   });
+
+  // Adapts moduleFilterOptions to the shared dropdown's { value, label } shape, with the
+  // synthetic "all" entry the tree-prune filter needs. Single-select by design: it drives
+  // pruneTreeToModule (one subtree) and is also set by node interactions.
+  moduleDropdownOptions = computed<WorkDropdownOption[]>(() => [
+    { value: 'all', label: 'All modules' },
+    ...this.moduleFilterOptions().map((option) => ({ value: option.id, label: option.title }))
+  ]);
+  readonly activityFilterOptions: readonly WorkDropdownOption[] = [
+    { value: 'all', label: 'All' },
+    { value: 'active', label: 'Active' },
+    { value: 'inactive', label: 'Inactive' }
+  ];
 
   renderedTree = computed(() => {
     const tree = this.activityFilteredTree();
@@ -128,7 +147,8 @@ export class MilestoneTreeTabComponent {
     this.selectedModuleFilter.set(moduleId);
   }
 
-  onActivityFilterChanged(filter: ActivityFilter): void {
+  onActivityFilterChanged(value: string): void {
+    const filter = value as ActivityFilter;
     this.selectedActivityFilter.set(filter);
 
     const currentModuleId = this.selectedModuleFilter();
@@ -213,13 +233,28 @@ export class MilestoneTreeTabComponent {
 
   onCreateTaskRequested(node: MilestoneTreeNode): void {
     const isSprint = (node.kind ?? 'objective') === 'sprint';
-    const moduleId = isSprint ? (node.parentObjectiveId ?? '') : node.id;
-    const queryParams: Record<string, string> = { module: moduleId };
-    if (isSprint) {
-      queryParams['sprint'] = node.id;
-      queryParams['sprintRequired'] = 'true';
-    }
-    void this.router.navigate(['/work', this.projectId(), 'task', 'new'], { queryParams });
+    this.taskModalPrefillModule.set(isSprint ? (node.parentObjectiveId ?? '') : node.id);
+    this.taskModalPrefillSprint.set(isSprint ? node.id : '');
+    this.taskModalMode.set('create');
+    this.taskModalTaskId.set('');
+    this.taskModalOpen.set(true);
+  }
+
+  private openTaskModalForEdit(taskId: string): void {
+    this.taskModalPrefillModule.set('');
+    this.taskModalPrefillSprint.set('');
+    this.taskModalMode.set('edit');
+    this.taskModalTaskId.set(taskId);
+    this.taskModalOpen.set(true);
+  }
+
+  onTaskModalClosed(): void {
+    this.taskModalOpen.set(false);
+  }
+
+  async onTaskModalDone(): Promise<void> {
+    this.taskModalOpen.set(false);
+    await this.loadTree({ force: true });
   }
 
   sprintFromNode(node: MilestoneTreeNode): Sprint {
@@ -237,7 +272,7 @@ export class MilestoneTreeTabComponent {
 
   onViewRequested(node: MilestoneTreeNode): void {
     this.selectedNodeId.set(node.id);
-    void this.router.navigate(['/work', this.projectId(), 'task', node.taskSource?.id ?? node.id]);
+    this.openTaskModalForEdit(node.taskSource?.id ?? node.id);
   }
 
   async onEditRequested(node?: MilestoneTreeNode): Promise<void> {
@@ -252,8 +287,7 @@ export class MilestoneTreeTabComponent {
       return;
     }
     if (kind === 'task') {
-      const taskId = target.taskSource?.id ?? target.id;
-      void this.router.navigate(['/work', this.projectId(), 'task', taskId]);
+      this.openTaskModalForEdit(target.taskSource?.id ?? target.id);
       return;
     }
 
