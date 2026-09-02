@@ -2,7 +2,7 @@ import { Component, computed, effect, inject, input, output, signal } from '@ang
 import { ModalComponent } from '../../../../shared/ui/modal/modal.component';
 import { InputComponent } from '../../../../shared/ui/input/input.component';
 import { ButtonComponent } from '../../../../shared/ui/button/button.component';
-import { SelectComponent, SelectOption } from '../../../../shared/ui/select/select.component';
+import { WorkDropdownComponent, WorkDropdownOption } from '../work-dropdown/work-dropdown.component';
 import { SprintListStore } from '../../state/sprint-list.store';
 import { Sprint } from '../../models/sprint.model';
 export interface SprintFormModuleOption {
@@ -14,19 +14,20 @@ export interface SprintFormModuleOption {
 @Component({
   selector: 'app-sprint-form',
   standalone: true,
-  imports: [ModalComponent, InputComponent, ButtonComponent, SelectComponent],
+  imports: [ModalComponent, InputComponent, ButtonComponent, WorkDropdownComponent],
   template: `
     <app-modal [open]="open()" [title]="mode() === 'edit' ? 'Edit sprint' : 'Create sprint'" (closed)="cancelled.emit()">
       <div class="sprint-form">
         @if (mode() === 'create' && modules().length > 0) {
-          <app-select
+          <app-work-dropdown
             [options]="moduleOptions()"
-            [value]="selectedObjectiveId()"
-            label="Module"
+            [selected]="selectedObjectiveId()"
+            fieldLabel="Module"
             placeholder="Select a module"
             [error]="moduleError() || ''"
-            [icon]="'module'"
-            (valueChange)="selectedObjectiveId.set($event)"
+            leadingIcon="module"
+            [fullWidth]="true"
+            (selectionChanged)="selectedObjectiveId.set($event)"
           />
         }
         <app-input label="Name" [value]="name()" (valueChange)="name.set($event)" />
@@ -76,7 +77,7 @@ export class SprintFormComponent {
   protected readonly selectedObjectiveId = signal('');
   protected readonly moduleError = signal<string | null>(null);
 
-  protected readonly moduleOptions = computed<SelectOption[]>(() =>
+  protected readonly moduleOptions = computed<WorkDropdownOption[]>(() =>
     this.modules().map((module) => ({ value: module.objectiveId, label: module.title }))
   );
 

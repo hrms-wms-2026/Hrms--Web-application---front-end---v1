@@ -17,12 +17,11 @@ describe('WORK_ROUTES', () => {
     expect(milestoneRoute.children!.map((route) => route.path)).toEqual(['', 'tree', 'approvals']);
   });
 
-  it('registers Board, Backlog, My Task, Calendar, Settings, and the task pages as project-level siblings', () => {
+  it('registers Board, Backlog, Calendar, Settings, and the task pages as project-level siblings', () => {
     const idRoute = WORK_ROUTES.find((r) => r.path === ':id')!;
-    expect(idRoute.children!.map((route) => route.path)).toEqual(['milestones/:milestoneId', 'board', 'backlog', 'my-task', 'calendar', 'settings', 'task/new', 'task/:taskId']);
+    expect(idRoute.children!.map((route) => route.path)).toEqual(['milestones/:milestoneId', 'board', 'backlog', 'calendar', 'settings', 'task/new', 'task/:taskId']);
     expect(idRoute.children!.find((r) => r.path === 'board')!.loadComponent).toBeTruthy();
     expect(idRoute.children!.find((r) => r.path === 'backlog')!.loadComponent).toBeTruthy();
-    expect(idRoute.children!.find((r) => r.path === 'my-task')!.loadComponent).toBeTruthy();
     expect(idRoute.children!.find((r) => r.path === 'calendar')!.loadComponent).toBeTruthy();
     expect(idRoute.children!.find((r) => r.path === 'settings')!.loadComponent).toBeTruthy();
     expect(idRoute.children!.find((r) => r.path === 'task/:taskId')!.loadComponent).toBeTruthy();

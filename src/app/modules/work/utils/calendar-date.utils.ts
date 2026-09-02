@@ -30,3 +30,34 @@ export function addCalendarMonths(value: string, months: number): string {
   date.setUTCMonth(date.getUTCMonth() + months);
   return formatCalendarDate(date);
 }
+
+/** The overlap of two inclusive YYYY-MM-DD date ranges, or null when they don't touch. */
+export function intersectRanges(
+  aStart: string,
+  aEnd: string,
+  bStart: string,
+  bEnd: string
+): { start: string; end: string } | null {
+  const start = aStart > bStart ? aStart : bStart;
+  const end = aEnd < bEnd ? aEnd : bEnd;
+  return start <= end ? { start, end } : null;
+}
+
+/**
+ * Position of an inclusive date range as left/width percentages within a window.
+ * Clamped to [0, 100]. Used for the coloured "in event" sub-segment on a module bar.
+ */
+export function rangeToPercent(
+  start: string,
+  end: string,
+  windowStart: string,
+  windowEnd: string
+): { leftPct: number; widthPct: number } {
+  const total = calendarDayDifference(windowStart, windowEnd) + 1;
+  if (total <= 0) return { leftPct: 0, widthPct: 0 };
+  const rawLeft = (calendarDayDifference(windowStart, start) / total) * 100;
+  const rawWidth = ((calendarDayDifference(start, end) + 1) / total) * 100;
+  const leftPct = Math.min(100, Math.max(0, rawLeft));
+  const widthPct = Math.min(100 - leftPct, Math.max(0, rawWidth));
+  return { leftPct, widthPct };
+}

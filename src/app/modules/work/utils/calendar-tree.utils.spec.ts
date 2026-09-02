@@ -1,10 +1,10 @@
 import { buildCalendarTreeOrder } from './calendar-tree.utils';
-import { ProjectCalendarItemDto } from '../models/dto/calendar.dto';
+import { ProjectCalendarModuleDto } from '../models/dto/calendar.dto';
 
-const item = (overrides: Partial<ProjectCalendarItemDto> = {}): ProjectCalendarItemDto => ({
+const item = (overrides: Partial<ProjectCalendarModuleDto> = {}): ProjectCalendarModuleDto => ({
   objectiveId: 'o', projectId: 'p1', parentObjectiveId: null, title: 'Objective',
   startDate: '2026-01-01', endDate: '2026-02-01', isActive: true, isAchieved: false,
-  canEdit: true, calendarEventId: null, calendarEventColor: null, ...overrides
+  canEdit: true, events: [], ...overrides
 });
 
 describe('buildCalendarTreeOrder', () => {

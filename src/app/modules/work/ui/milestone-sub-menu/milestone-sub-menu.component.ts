@@ -13,7 +13,6 @@ const BASE_TABS: SubMenuTab[] = [
   { label: 'Tree', segment: 'tree' },
   { label: 'Board', segment: 'board', projectLevel: true },
   { label: 'Backlog', segment: 'backlog', projectLevel: true },
-    { label: 'My Task', segment: 'my-task', projectLevel: true },
   { label: 'Approvals', segment: 'approvals' },
   { label: 'Calendar', segment: 'calendar', projectLevel: true }
 
@@ -51,11 +50,6 @@ const SETTINGS_TAB: SubMenuTab = { label: 'Settings', segment: 'settings', proje
                 @case ('backlog') {
                   <path d="M4 6h16M4 12h16M4 18h10" />
                 }
-                @case ('my-task') {
-                  <path d="M9 11l3 3 8-8" />
-                  <path d="M20 12v6a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h9" />
-                }
-                
                 @case ('approvals') {
                   <circle cx="12" cy="12" r="9" />
                   <path d="M8 12l2.5 2.5L16 9" />
