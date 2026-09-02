@@ -13,8 +13,8 @@ import { Project } from '../../models/project.model';
       data-testid="project-list-row"
       class="flex w-full items-center gap-3 rounded-xl border px-3.5 py-3 text-left transition-all duration-150"
       [class]="selected()
-        ? 'border-blue-600 bg-blue-600 text-white shadow-md'
-        : 'border-[var(--color-border)] bg-white text-[var(--color-text-primary)] hover:bg-[var(--color-surface-secondary)] hover:border-slate-300'"
+        ? 'border-[var(--color-accent)] bg-[var(--color-accent)] text-white shadow-sm'
+        : 'border-[var(--color-border)] bg-[var(--color-surface)] text-[var(--color-text-primary)] hover:border-[var(--color-accent)]/50 hover:bg-[var(--color-surface-secondary)]'"
       (click)="selectedChange.emit()"
     >
       <span

@@ -1,39 +1,32 @@
-import { Component, input, output } from '@angular/core';
-import { FormsModule } from '@angular/forms';
+import { Component, computed, input, output } from '@angular/core';
 import { ActivityFilter } from '../../utils/project.mapper';
+import { SelectComponent, SelectOption } from '../../../../shared/ui/select/select.component';
 
 @Component({
   selector: 'app-module-filter-select',
   standalone: true,
-  imports: [FormsModule],
+  imports: [SelectComponent],
   template: `
-    <label class="flex items-center gap-2 text-sm text-[var(--color-text-secondary)]">
-      <span class="font-medium">Module</span>
-      <select
-        data-testid="module-filter-select"
-        class="rounded-md border border-[var(--color-border)] bg-[var(--color-surface)] px-3 py-2 text-sm font-medium text-[var(--color-text-primary)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-focus-ring)]"
-        [ngModel]="selected()"
-        (ngModelChange)="selectionChanged.emit($event)"
-      >
-        <option value="all">All modules</option>
-        @for (option of options(); track option.id) {
-          <option [value]="option.id">{{ option.title }}</option>
-        }
-      </select>
-    </label>
-    <label class="flex items-center gap-2 text-sm text-[var(--color-text-secondary)]">
-      <span class="font-medium">Status</span>
-      <select
-        data-testid="module-activity-filter-select"
-        class="rounded-md border border-[var(--color-border)] bg-[var(--color-surface)] px-3 py-2 text-sm font-medium text-[var(--color-text-primary)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-focus-ring)]"
-        [ngModel]="activityFilter()"
-        (ngModelChange)="activityFilterChanged.emit($event)"
-      >
-        <option value="all">All</option>
-        <option value="active">Active</option>
-        <option value="inactive">Inactive</option>
-      </select>
-    </label>
+    <div class="flex flex-wrap items-start gap-3" data-testid="module-filter-bar">
+      <app-select
+        [options]="moduleOptions()"
+        [value]="selected()"
+        label="Module"
+        ariaLabel="Module filter"
+        [icon]="'module'"
+        data-testid="module-filter-dropdown"
+        (valueChange)="selectionChanged.emit($event)"
+      />
+      <app-select
+        [options]="statusOptions"
+        [value]="activityFilter()"
+        label="Status"
+        ariaLabel="Activity status filter"
+        [icon]="'status'"
+        data-testid="module-activity-filter-dropdown"
+        (valueChange)="onActivityFilterSelected($event)"
+      />
+    </div>
   `
 })
 export class ModuleFilterSelectComponent {
@@ -43,4 +36,19 @@ export class ModuleFilterSelectComponent {
 
   activityFilter = input.required<ActivityFilter>();
   activityFilterChanged = output<ActivityFilter>();
+
+  readonly statusOptions: readonly SelectOption[] = [
+    { value: 'all', label: 'All' },
+    { value: 'active', label: 'Active' },
+    { value: 'inactive', label: 'Inactive' }
+  ];
+
+  readonly moduleOptions = computed<SelectOption[]>(() => [
+    { value: 'all', label: 'All modules' },
+    ...this.options().map((option) => ({ value: option.id, label: option.title }))
+  ]);
+
+  onActivityFilterSelected(value: string): void {
+    this.activityFilterChanged.emit(value as ActivityFilter);
+  }
 }

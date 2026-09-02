@@ -27,7 +27,7 @@ export const NAV_ITEMS: readonly NavItem[] = [
     id: 'time-attendance',
     label: 'Attendance',
     icon: 'time-attendance',
-    path: '/attendance',
+    path: '/attendance/time-tracking',
     requiredModules: ['time_attendance'],
     requiredPermissions: ['attendance:read-own', 'attendance:write-own', 'attendance:read', 'attendance:approve'],
     children: [
@@ -37,15 +37,14 @@ export const NAV_ITEMS: readonly NavItem[] = [
         path: '/attendance/time-tracking',
         exact: true,
         requiredModules: ['time_attendance'],
-        requiredPermissions: ['attendance:read-own', 'attendance:write-own', 'attendance:read']
+        requiredPermissions: ['attendance:read-own', 'attendance:write-own', 'attendance:read', 'attendance:approve']
       },
       {
         id: 'time-attendance-monitoring',
         label: 'Monitoring',
         path: '/attendance/monitoring',
-        exact: true,
         requiredModules: ['time_attendance'],
-        requiredPermissions: ['attendance:read']
+        requiredPermissions: ['monitoring:read']
       },
       {
         id: 'time-attendance-correction-approvals',
@@ -70,8 +69,7 @@ export const NAV_ITEMS: readonly NavItem[] = [
       { id: 'settings-roles', label: 'Roles & Permissions', path: '/settings/roles', requiredPermissions: ['roles:manage'] },
       { id: 'settings-notifications', label: 'Notification Settings', path: '/settings/notifications', requiredPermissions: ['notifications:manage'] },
       { id: 'settings-bulk-onboarding', label: 'Bulk Onboarding', path: '/settings/bulk-onboarding', requiredModules: ['core_hr'], requiredPermissions: ['employees:write'] },
-      { id: 'settings-clock-in-policy', label: 'Clock-in Policy', path: '/settings/clock-in-policy', requiredModules: ['time_attendance'], requiredPermissions: ['attendance:read'] },
-      { id: 'settings-devices', label: 'Devices & connections', path: '/settings/devices', requiredModules: ['desktop_agent_gateway'] }
+      { id: 'settings-clock-in-policy', label: 'Clock-in Policy', path: '/settings/clock-in-policy', requiredModules: ['time_attendance'], requiredPermissions: ['attendance:read'] }
       // Audit log is intentionally not listed yet.
     ]
   }

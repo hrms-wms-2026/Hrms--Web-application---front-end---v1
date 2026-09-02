@@ -1,0 +1,13 @@
+.preview { min-height: 26rem; padding: 2rem; filter: blur(4px); opacity: .62; user-select: none; }
+.preview__header { display: flex; gap: .75rem; margin-bottom: 2rem; }
+.preview__header span, .preview__rows div, article { border-radius: .75rem; background: #cbd5e1; }
+.preview__header span { width: 7rem; height: 1.5rem; }
+.preview__grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 1rem; }
+article { min-height: 8rem; padding: 1rem; background: #e2e8f0; }
+article i, article b, article em { display: block; border-radius: .4rem; background: #94a3b8; }
+article i { width: 2.5rem; height: 2.5rem; border-radius: 50%; }
+article b { width: 70%; height: 1rem; margin-top: 1rem; }
+article em { width: 45%; height: .75rem; margin-top: .75rem; }
+.preview__rows { display: grid; gap: .75rem; margin-top: 1.5rem; }
+.preview__rows div { height: 2.5rem; }
+@media (max-width: 40rem) { .preview { padding: 1rem; } .preview__grid { grid-template-columns: 1fr; } }

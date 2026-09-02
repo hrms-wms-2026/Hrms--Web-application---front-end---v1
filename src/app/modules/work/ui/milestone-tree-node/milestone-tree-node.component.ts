@@ -49,6 +49,7 @@ import { TaskTreeRowComponent } from '../task-tree-row/task-tree-row.component';
           [selected]="isSelected()"
           [depth]="depth()"
           (selectedRow)="selected.emit($event)"
+          (viewRequested)="viewRequested.emit($event)"
           (editRequested)="editRequested.emit($event)"
           (deleteRequested)="deleteRequested.emit($event)"
         />
@@ -67,6 +68,7 @@ import { TaskTreeRowComponent } from '../task-tree-row/task-tree-row.component';
               (expandLeafRequested)="expandLeafRequested.emit($event)"
               (createSprintRequested)="createSprintRequested.emit($event)"
               (createTaskRequested)="createTaskRequested.emit($event)"
+              (viewRequested)="viewRequested.emit($event)"
               (editRequested)="editRequested.emit($event)"
               (membersRequested)="membersRequested.emit($event)"
               (achieveRequested)="achieveRequested.emit($event)"
@@ -90,6 +92,7 @@ export class MilestoneTreeNodeComponent implements OnInit {
   expandLeafRequested = output<MilestoneTreeNode>();
   createSprintRequested = output<MilestoneTreeNode>();
   createTaskRequested = output<MilestoneTreeNode>();
+  viewRequested = output<MilestoneTreeNode>();
   editRequested = output<MilestoneTreeNode>();
   membersRequested = output<MilestoneTreeNode>();
   achieveRequested = output<MilestoneTreeNode>();

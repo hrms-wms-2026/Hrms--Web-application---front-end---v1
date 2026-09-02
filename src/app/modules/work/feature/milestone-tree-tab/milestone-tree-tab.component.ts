@@ -1,17 +1,15 @@
 import { Component, computed, inject, signal } from '@angular/core';
-import { ActivatedRoute } from '@angular/router';
+import { CurrentEmployeeStore } from '../../state/current-employee.store';
+
+import { ActivatedRoute, Router } from '@angular/router';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { ProjectDetailStore } from '../../state/project-detail.store';
 import { MilestoneTreeNodeComponent } from '../../ui/milestone-tree-node/milestone-tree-node.component';
 import { ModuleFilterSelectComponent } from '../../ui/module-filter-select/module-filter-select.component';
 import { TreeExplanationPanelComponent } from '../../ui/tree-explanation-panel/tree-explanation-panel.component';
-import { MilestoneSettingsModalComponent } from '../../ui/milestone-settings-modal/milestone-settings-modal.component';
-import { CreateSubModuleModalComponent } from '../../ui/create-sub-module-modal/create-sub-module-modal.component';
-import { ObjectiveMembersPopupComponent } from '../../ui/objective-members-popup/objective-members-popup.component';
-import { SprintCreateFormComponent } from '../../ui/sprint-create-form/sprint-create-form.component';
-import { SprintEditFormComponent } from '../../ui/sprint-edit-form/sprint-edit-form.component';
-import { TaskCreateModalComponent } from '../../ui/task-create-modal/task-create-modal.component';
-import { TaskDetailModalComponent } from '../../ui/task-detail-modal/task-detail-modal.component';
+import { SubModuleFormComponent } from '../../ui/sub-module-form/sub-module-form.component';
+import { MemberManagementPopupComponent } from '../../ui/member-management-popup/member-management-popup.component';
+import { SprintFormComponent } from '../../ui/sprint-form/sprint-form.component';
 import { LoaderComponent } from '../../../../shared/ui/loader/loader.component';
 import { ErrorStateComponent } from '../../../../shared/ui/error-state/error-state.component';
 import { EmptyStateComponent } from '../../../../shared/ui/empty-state/empty-state.component';
@@ -27,19 +25,24 @@ import { Sprint, SprintStatus } from '../../models/sprint.model';
   selector: 'app-milestone-tree-tab',
   standalone: true,
   imports: [
-    MilestoneTreeNodeComponent, ModuleFilterSelectComponent, TreeExplanationPanelComponent, MilestoneSettingsModalComponent,
-    CreateSubModuleModalComponent, ObjectiveMembersPopupComponent, SprintCreateFormComponent,
-    SprintEditFormComponent, TaskCreateModalComponent, TaskDetailModalComponent, LoaderComponent, ErrorStateComponent, EmptyStateComponent, ConfirmModalComponent
+    MilestoneTreeNodeComponent, ModuleFilterSelectComponent, TreeExplanationPanelComponent, SubModuleFormComponent,
+    MemberManagementPopupComponent, SprintFormComponent,
+    LoaderComponent, ErrorStateComponent, EmptyStateComponent, ConfirmModalComponent
   ],
   templateUrl: './milestone-tree-tab.component.html'
 })
 export class MilestoneTreeTabComponent {
   readonly store = inject(ProjectDetailStore);
-  private readonly route = inject(ActivatedRoute);
+    private readonly route = inject(ActivatedRoute);
+  private readonly router = inject(Router);
+  protected readonly currentEmployee = inject(CurrentEmployeeStore);
+
   private currentMilestoneId = '';
   private currentProjectId = '';
   protected readonly projectId = signal('');
+  protected readonly assignableMembers = signal<{ employeeId: string; name: string }[]>([]);
   private loadedProjectId: string | null = null;
+  private loadedMembersForProjectId: string | null = null;
 
   selectedModuleFilter = signal<string>('all');
   selectedActivityFilter = signal<ActivityFilter>('all');
@@ -85,15 +88,10 @@ export class MilestoneTreeTabComponent {
 
   createSprintOpen = signal(false);
   createSprintNode = signal<MilestoneTreeNode | null>(null);
-  createTaskOpen = signal(false);
-  createTaskSprint = signal<MilestoneTreeNode | null>(null);
-  createTaskModule = signal<MilestoneTreeNode | null>(null);
   deleteConfirmOpen = signal(false);
   pendingDeleteNode = signal<MilestoneTreeNode | null>(null);
   editSprintOpen = signal(false);
   editSprintNode = signal<MilestoneTreeNode | null>(null);
-  editTaskOpen = signal(false);
-  editTaskNode = signal<MilestoneTreeNode | null>(null);
 
   constructor() {
     this.route.paramMap.pipe(takeUntilDestroyed()).subscribe((paramMap) => {
@@ -105,7 +103,25 @@ export class MilestoneTreeTabComponent {
       this.selectedModuleFilter.set(milestoneId);
       this.selectedNodeId.set(null);
       void this.loadTree();
+      void this.currentEmployee.ensureLoaded();
+      if (this.currentProjectId && this.loadedMembersForProjectId !== this.currentProjectId) {
+        this.loadedMembersForProjectId = this.currentProjectId;
+        void this.loadAssignableMembers(this.currentProjectId);
+      }
     });
+  }
+
+  private async loadAssignableMembers(projectId: string): Promise<void> {
+    try {
+      await this.store.loadProjectMembers(projectId);
+      const members = this.store.projectMembers();
+      this.assignableMembers.set(members.map((member) => ({
+        employeeId: member.employeeId,
+        name: member.name ?? 'Unknown employee'
+      })));
+    } catch {
+      this.assignableMembers.set([]);
+    }
   }
 
   onModuleFilterChanged(moduleId: string): void {
@@ -196,44 +212,14 @@ export class MilestoneTreeTabComponent {
   }
 
   onCreateTaskRequested(node: MilestoneTreeNode): void {
-    if ((node.kind ?? 'objective') === 'objective') {
-      this.createTaskModule.set(node);
-      this.createTaskSprint.set(null);
-    } else {
-      this.createTaskSprint.set(node);
-      this.createTaskModule.set(null);
+    const isSprint = (node.kind ?? 'objective') === 'sprint';
+    const moduleId = isSprint ? (node.parentObjectiveId ?? '') : node.id;
+    const queryParams: Record<string, string> = { module: moduleId };
+    if (isSprint) {
+      queryParams['sprint'] = node.id;
+      queryParams['sprintRequired'] = 'true';
     }
-    this.createTaskOpen.set(true);
-  }
-
-  async onTaskCreated(): Promise<void> {
-    const sprint = this.createTaskSprint();
-    const module = this.createTaskModule();
-    this.createTaskOpen.set(false);
-    if (sprint) {
-      await this.store.loadTasksForSprint(sprint.id, { force: true });
-      return;
-    }
-    if (module) await this.store.loadSprintsAndTasksForLeaf(module.id, { force: true });
-  }
-
-  onTaskCreateClosed(): void {
-    this.createTaskOpen.set(false);
-    this.createTaskSprint.set(null);
-    this.createTaskModule.set(null);
-  }
-
-  createTaskObjectiveId(): string {
-    return this.createTaskSprint()?.parentObjectiveId ?? this.createTaskModule()?.id ?? '';
-  }
-
-  createTaskIsOwner(): boolean {
-    return this.createTaskSprint()?.isOwner ?? this.createTaskModule()?.isOwner ?? false;
-  }
-
-  createTaskSprints(): Sprint[] {
-    const node = this.createTaskSprint();
-    return node ? [this.sprintFromNode(node)] : [];
+    void this.router.navigate(['/work', this.projectId(), 'task', 'new'], { queryParams });
   }
 
   sprintFromNode(node: MilestoneTreeNode): Sprint {
@@ -249,6 +235,11 @@ export class MilestoneTreeTabComponent {
     };
   }
 
+  onViewRequested(node: MilestoneTreeNode): void {
+    this.selectedNodeId.set(node.id);
+    void this.router.navigate(['/work', this.projectId(), 'task', node.taskSource?.id ?? node.id]);
+  }
+
   async onEditRequested(node?: MilestoneTreeNode): Promise<void> {
     const target = node ?? this.selectedNode();
     if (!target) return;
@@ -261,8 +252,8 @@ export class MilestoneTreeTabComponent {
       return;
     }
     if (kind === 'task') {
-      this.editTaskNode.set(target);
-      this.editTaskOpen.set(true);
+      const taskId = target.taskSource?.id ?? target.id;
+      void this.router.navigate(['/work', this.projectId(), 'task', taskId]);
       return;
     }
 
@@ -285,25 +276,6 @@ export class MilestoneTreeTabComponent {
   onSprintEditCancelled(): void {
     this.editSprintOpen.set(false);
     this.editSprintNode.set(null);
-  }
-
-  async onTaskSaved(): Promise<void> {
-    const node = this.editTaskNode();
-    this.editTaskOpen.set(false);
-    this.editTaskNode.set(null);
-    if (!node) return;
-    const sprintId = node.taskSource?.sprintId ?? null;
-    if (sprintId) {
-      await this.store.loadTasksForSprint(sprintId, { force: true });
-      return;
-    }
-    const objectiveId = node.taskSource?.objectiveId ?? node.parentObjectiveId;
-    if (objectiveId) await this.store.loadSprintsAndTasksForLeaf(objectiveId, { force: true });
-  }
-
-  onTaskEditClosed(): void {
-    this.editTaskOpen.set(false);
-    this.editTaskNode.set(null);
   }
 
   async onCreateModalCreated(payload: CreateObjectiveRequestDto): Promise<void> {

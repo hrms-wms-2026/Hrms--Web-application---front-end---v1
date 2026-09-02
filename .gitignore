@@ -62,3 +62,7 @@ Thumbs.db
 
 # Local git worktrees for isolated plan execution
 .worktrees/
+
+# Scratch build-verification logs left by dev sessions (e.g. .board-dnd-build.log)
+.*-build.log
+.*-build2.log

@@ -4,7 +4,8 @@ import { provideRouter } from '@angular/router';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { PermissionService } from '../../../../core/auth/state/permission.service';
 import { AttendanceCorrectionResponse } from '../../models/attendance-correction.model';
-import { AttendanceHistoryRow, AttendanceTodayResponse } from '../../models/time-tracking.model';
+import { WorkAreaChangeRequestResponse } from '../../models/work-area-change-request.model';
+import { AttendanceDayDetail, AttendanceHistoryRow, AttendanceTodayResponse } from '../../models/time-tracking.model';
 import { TimeTrackingStore } from '../../state/time-tracking.store';
 import { TimeTrackingComponent } from './time-tracking.component';
 
@@ -95,11 +96,22 @@ type StoreMock = {
   history: ReturnType<typeof signal<readonly AttendanceHistoryRow[]>>;
   historyLoading: ReturnType<typeof signal<boolean>>;
   historyError: ReturnType<typeof signal<string | null>>;
+  historyPage: ReturnType<typeof signal<number>>;
+  historyPageSize: ReturnType<typeof signal<number>>;
+  historyTotalCount: ReturnType<typeof signal<number>>;
   coveredHistory: ReturnType<typeof signal<readonly AttendanceHistoryRow[]>>;
   coveredHistoryLoading: ReturnType<typeof signal<boolean>>;
   coveredHistoryError: ReturnType<typeof signal<string | null>>;
+  coveredHistoryPage: ReturnType<typeof signal<number>>;
+  coveredHistoryPageSize: ReturnType<typeof signal<number>>;
+  coveredHistoryTotalCount: ReturnType<typeof signal<number>>;
   selectedHistoryRange: ReturnType<typeof signal<{ from: string; to: string } | null>>;
   selectedCoveredEmployeeId: ReturnType<typeof signal<string | null>>;
+  dayDetail: ReturnType<typeof signal<AttendanceDayDetail | null>>;
+  dayDetailLoading: ReturnType<typeof signal<boolean>>;
+  dayDetailError: ReturnType<typeof signal<string | null>>;
+  loadDayDetail: ReturnType<typeof vi.fn>;
+  clearDayDetail: ReturnType<typeof vi.fn>;
   loadToday: ReturnType<typeof vi.fn>;
   loadMyHistory: ReturnType<typeof vi.fn>;
   loadCoveredHistory: ReturnType<typeof vi.fn>;
@@ -110,8 +122,43 @@ type StoreMock = {
   myCorrections: ReturnType<typeof signal<readonly AttendanceCorrectionResponse[]>>;
   myCorrectionsLoading: ReturnType<typeof signal<boolean>>;
   myCorrectionsError: ReturnType<typeof signal<string | null>>;
+  myCorrectionsPage: ReturnType<typeof signal<number>>;
+  myCorrectionsPageSize: ReturnType<typeof signal<number>>;
+  myCorrectionsTotalCount: ReturnType<typeof signal<number>>;
+  myCorrectionsLoaded: ReturnType<typeof signal<boolean>>;
   loadMyCorrections: ReturnType<typeof vi.fn>;
   cancelCorrection: ReturnType<typeof vi.fn>;
+  myWorkAreaRequests: ReturnType<typeof signal<readonly WorkAreaChangeRequestResponse[]>>;
+  myWorkAreaRequestsLoading: ReturnType<typeof signal<boolean>>;
+  myWorkAreaRequestsError: ReturnType<typeof signal<string | null>>;
+  myWorkAreaRequestsPage: ReturnType<typeof signal<number>>;
+  myWorkAreaRequestsPageSize: ReturnType<typeof signal<number>>;
+  myWorkAreaRequestsTotalCount: ReturnType<typeof signal<number>>;
+  myWorkAreaRequestsLoaded: ReturnType<typeof signal<boolean>>;
+  loadMyWorkAreaRequests: ReturnType<typeof vi.fn>;
+  cancelWorkAreaChangeRequest: ReturnType<typeof vi.fn>;
+  workAreaActionLoading: ReturnType<typeof signal<boolean>>;
+  activeWorkAreaRequestId: ReturnType<typeof signal<string | null>>;
+  approvalInbox: ReturnType<typeof signal<readonly AttendanceCorrectionResponse[]>>;
+  approvalInboxLoading: ReturnType<typeof signal<boolean>>;
+  approvalInboxError: ReturnType<typeof signal<string | null>>;
+  approvalInboxLoaded: ReturnType<typeof signal<boolean>>;
+  correctionActionLoading: ReturnType<typeof signal<boolean>>;
+  activeCorrectionAction: ReturnType<typeof signal<string | null>>;
+  loadApprovalInbox: ReturnType<typeof vi.fn>;
+  approveCorrection: ReturnType<typeof vi.fn>;
+  rejectCorrection: ReturnType<typeof vi.fn>;
+  workAreaApprovalInbox: ReturnType<typeof signal<readonly WorkAreaChangeRequestResponse[]>>;
+  workAreaApprovalInboxLoading: ReturnType<typeof signal<boolean>>;
+  workAreaApprovalInboxError: ReturnType<typeof signal<string | null>>;
+  workAreaApprovalInboxPage: ReturnType<typeof signal<number>>;
+  workAreaApprovalInboxPageSize: ReturnType<typeof signal<number>>;
+  workAreaApprovalInboxTotalCount: ReturnType<typeof signal<number>>;
+  workAreaApprovalInboxLoaded: ReturnType<typeof signal<boolean>>;
+  loadWorkAreaApprovalInbox: ReturnType<typeof vi.fn>;
+  selectWorkAreaApprovalRequest: ReturnType<typeof vi.fn>;
+  approveWorkAreaChangeRequest: ReturnType<typeof vi.fn>;
+  rejectWorkAreaChangeRequest: ReturnType<typeof vi.fn>;
 };
 
 describe('TimeTrackingComponent', () => {
@@ -121,7 +168,10 @@ describe('TimeTrackingComponent', () => {
     overrides: Partial<AttendanceTodayResponse> = {},
     access = false,
     history: readonly AttendanceHistoryRow[] = [],
-    corrections: readonly AttendanceCorrectionResponse[] = []
+    corrections: readonly AttendanceCorrectionResponse[] = [],
+    workAreaRequests: readonly WorkAreaChangeRequestResponse[] = [],
+    loadedFlags: { corrections?: boolean; workArea?: boolean } = {},
+    permissions: string[] = ['attendance:read-own', 'attendance:write-own']
   ): Promise<{ fixture: ComponentFixture<TimeTrackingComponent>; store: StoreMock }> {
     const store: StoreMock = {
       today: signal({ ...today, ...overrides }),
@@ -132,11 +182,22 @@ describe('TimeTrackingComponent', () => {
       history: signal(history),
       historyLoading: signal(false),
       historyError: signal(null),
+      historyPage: signal(1),
+      historyPageSize: signal(20),
+      historyTotalCount: signal(0),
       coveredHistory: signal(access ? history : []),
       coveredHistoryLoading: signal(false),
       coveredHistoryError: signal(null),
+      coveredHistoryPage: signal(1),
+      coveredHistoryPageSize: signal(20),
+      coveredHistoryTotalCount: signal(0),
       selectedHistoryRange: signal(null),
       selectedCoveredEmployeeId: signal(null),
+      dayDetail: signal(null),
+      dayDetailLoading: signal(false),
+      dayDetailError: signal(null),
+      loadDayDetail: vi.fn(() => Promise.resolve()),
+      clearDayDetail: vi.fn(),
       loadToday: vi.fn(() => Promise.resolve()),
       loadMyHistory: vi.fn(() => Promise.resolve()),
       loadCoveredHistory: vi.fn(() => Promise.resolve()),
@@ -147,8 +208,43 @@ describe('TimeTrackingComponent', () => {
       myCorrections: signal(corrections),
       myCorrectionsLoading: signal(false),
       myCorrectionsError: signal(null),
+      myCorrectionsPage: signal(1),
+      myCorrectionsPageSize: signal(20),
+      myCorrectionsTotalCount: signal(0),
+      myCorrectionsLoaded: signal(loadedFlags.corrections ?? false),
       loadMyCorrections: vi.fn(() => Promise.resolve()),
-      cancelCorrection: vi.fn(() => Promise.resolve())
+      cancelCorrection: vi.fn(() => Promise.resolve()),
+      myWorkAreaRequests: signal(workAreaRequests),
+      myWorkAreaRequestsLoading: signal(false),
+      myWorkAreaRequestsError: signal(null),
+      myWorkAreaRequestsPage: signal(1),
+      myWorkAreaRequestsPageSize: signal(20),
+      myWorkAreaRequestsTotalCount: signal(0),
+      myWorkAreaRequestsLoaded: signal(loadedFlags.workArea ?? false),
+      loadMyWorkAreaRequests: vi.fn(() => Promise.resolve()),
+      cancelWorkAreaChangeRequest: vi.fn(() => Promise.resolve(workAreaRequests[0] ?? null)),
+      workAreaActionLoading: signal(false),
+      activeWorkAreaRequestId: signal(null),
+      approvalInbox: signal([]),
+      approvalInboxLoading: signal(false),
+      approvalInboxError: signal(null),
+      approvalInboxLoaded: signal(false),
+      correctionActionLoading: signal(false),
+      activeCorrectionAction: signal(null),
+      loadApprovalInbox: vi.fn(() => Promise.resolve()),
+      approveCorrection: vi.fn(() => Promise.resolve(null)),
+      rejectCorrection: vi.fn(() => Promise.resolve(null)),
+      workAreaApprovalInbox: signal([]),
+      workAreaApprovalInboxLoading: signal(false),
+      workAreaApprovalInboxError: signal(null),
+      workAreaApprovalInboxPage: signal(1),
+      workAreaApprovalInboxPageSize: signal(20),
+      workAreaApprovalInboxTotalCount: signal(0),
+      workAreaApprovalInboxLoaded: signal(false),
+      loadWorkAreaApprovalInbox: vi.fn(() => Promise.resolve()),
+      selectWorkAreaApprovalRequest: vi.fn(),
+      approveWorkAreaChangeRequest: vi.fn(() => Promise.resolve(null)),
+      rejectWorkAreaChangeRequest: vi.fn(() => Promise.resolve(null))
     };
 
     await TestBed.configureTestingModule({
@@ -156,7 +252,13 @@ describe('TimeTrackingComponent', () => {
       providers: [
         provideRouter([]),
         { provide: TimeTrackingStore, useValue: store },
-        { provide: PermissionService, useValue: { hasPermission: vi.fn(() => access) } }
+        {
+          provide: PermissionService,
+          useValue: {
+            hasPermission: vi.fn((permission: string) => (permission === 'attendance:read' ? access : permissions.includes(permission))),
+            hasAnyPermission: vi.fn((required: string[]) => required.some((permission) => permissions.includes(permission)))
+          }
+        }
       ]
     }).compileComponents();
 
@@ -164,6 +266,114 @@ describe('TimeTrackingComponent', () => {
     fixture.detectChanges();
     return { fixture, store };
   }
+
+  it('an approve-only user without coverage never reaches Team view - attendance:approve alone does not imply coverage', async () => {
+    const { fixture, store } = await setup({}, false, [], [], [], {}, ['attendance:approve']);
+    expect(fixture.componentInstance.canShowTeamView()).toBe(false);
+    expect(fixture.componentInstance.viewMode()).toBe('my');
+    fixture.detectChanges();
+    expect(fixture.nativeElement.textContent).not.toContain('Approvals');
+    expect(fixture.nativeElement.querySelector('app-correction-approvals')).toBeNull();
+    expect(store.loadApprovalInbox).not.toHaveBeenCalled();
+    expect(store.loadWorkAreaApprovalInbox).not.toHaveBeenCalled();
+  });
+
+  it('does not call loadToday, loadMyHistory, or ensureRequestTabLoaded for an approve-only user without coverage', async () => {
+    const { store } = await setup({}, false, [], [], [], {}, ['attendance:approve']);
+    expect(store.loadToday).not.toHaveBeenCalled();
+    expect(store.loadMyHistory).not.toHaveBeenCalled();
+    expect(store.loadMyCorrections).not.toHaveBeenCalled();
+  });
+
+  it('does not show Team attendance for a user who has attendance:read (a universal permission) but no one covered', async () => {
+    const { fixture } = await setup({ canViewCoveredEmployees: false }, true, [], [], [], {}, ['attendance:read']);
+    expect(fixture.componentInstance.canShowTeamView()).toBe(false);
+    expect(fixture.componentInstance.viewMode()).toBe('my');
+    fixture.detectChanges();
+    expect(fixture.nativeElement.textContent).not.toContain('Team attendance');
+  });
+
+  it('shows Team attendance but not Approvals for a read-only user with coverage but no approve permission, and loads covered history on entering Team', async () => {
+    const { fixture, store } = await setup({ canViewCoveredEmployees: true }, true, [], [], [], {}, ['attendance:read']);
+    expect(fixture.componentInstance.canShowTeamView()).toBe(true);
+    expect(fixture.componentInstance.hasApproveAccess()).toBe(false);
+    fixture.componentInstance.selectViewMode('team');
+    fixture.detectChanges();
+    expect(store.loadCoveredHistory).toHaveBeenCalled();
+    expect(store.loadApprovalInbox).not.toHaveBeenCalled();
+    expect(store.loadWorkAreaApprovalInbox).not.toHaveBeenCalled();
+  });
+
+  it('places the MY/TEAM switcher in the breadcrumb header beside the request action', async () => {
+    const { fixture } = await setup({ canViewCoveredEmployees: true }, true, [], [], [], {}, ['attendance:read']);
+    const element = fixture.nativeElement as HTMLElement;
+    const header = element.querySelector('.time-tracking-header');
+    const headerActions = header?.querySelector('.time-tracking-header-actions');
+    const toggle = headerActions?.querySelector('.attendance-view-toggle');
+    const requestAction = headerActions?.querySelector('[data-testid="request-work-area-change"]');
+
+    expect(toggle).toBeTruthy();
+    expect(requestAction).toBeTruthy();
+    if (headerActions && toggle && requestAction) {
+      expect(headerActions.contains(toggle)).toBe(true);
+      expect(headerActions.contains(requestAction)).toBe(true);
+    }
+    expect(Array.from(element.children).some((child) => child.classList.contains('attendance-view-toggle'))).toBe(false);
+  });
+
+  it('a self-service-only user cannot reach team view', async () => {
+    const { fixture } = await setup({}, false, [], [], [], {}, ['attendance:read-own']);
+    expect(fixture.componentInstance.canShowTeamView()).toBe(false);
+    expect(fixture.componentInstance.viewMode()).toBe('my');
+  });
+
+  it('loads Today for a read-only (Team attendance) user even without self-service permission', async () => {
+    const { store } = await setup({}, true, [], [], [], {}, ['attendance:read']);
+    expect(store.loadToday).toHaveBeenCalled();
+  });
+
+  it('does not render a Team sub-nav toggle for a coverage-only user - Team attendance shows directly, no Approvals', async () => {
+    const { fixture } = await setup({ canViewCoveredEmployees: true }, true, [], [], [], {}, ['attendance:read']);
+    fixture.detectChanges();
+    expect(fixture.nativeElement.querySelector('[aria-label="Team workspace"]')).toBeNull();
+    expect(fixture.nativeElement.textContent).toContain('Team attendance');
+    expect(fixture.nativeElement.textContent).not.toContain('Approvals');
+  });
+
+  it('never renders a Team sub-nav toggle - Team attendance and Approvals show together, stacked, with no switcher between them', async () => {
+    const { fixture } = await setup({ canViewCoveredEmployees: true }, true, [], [], [], {}, ['attendance:read', 'attendance:approve']);
+    fixture.detectChanges();
+    expect(fixture.nativeElement.querySelector('[aria-label="Team workspace"]')).toBeNull();
+    expect(fixture.nativeElement.textContent).toContain('Team attendance');
+    expect(fixture.nativeElement.textContent).toContain('Approvals');
+  });
+
+  it('shows a count badge only when the corrections queue is non-empty', async () => {
+    const { fixture, store } = await setup({ canViewCoveredEmployees: true }, false, [], [], [], {}, ['attendance:approve']);
+    fixture.detectChanges();
+    expect(fixture.nativeElement.textContent).not.toMatch(/Attendance corrections \(0\)/);
+    expect(fixture.nativeElement.textContent).not.toMatch(/Attendance corrections \(\d+\)/);
+
+    store.approvalInbox.set([{ id: 'c1', status: 'pending' } as unknown as AttendanceCorrectionResponse]);
+    fixture.detectChanges();
+    expect(fixture.nativeElement.textContent).toMatch(/Attendance corrections \(1\)/);
+  });
+
+  it('embeds only the active approval type, not both, on initial entry', async () => {
+    const { fixture } = await setup({ canViewCoveredEmployees: true }, false, [], [], [], {}, ['attendance:approve']);
+    fixture.detectChanges();
+    expect(fixture.nativeElement.querySelectorAll('app-correction-approvals').length).toBe(1);
+    expect(fixture.nativeElement.querySelectorAll('app-work-area-approvals').length).toBe(0);
+  });
+
+  it('embeds the work-area panel instead when that approval type is selected', async () => {
+    const { fixture } = await setup({ canViewCoveredEmployees: true }, false, [], [], [], {}, ['attendance:approve']);
+    fixture.componentInstance.selectApprovalType('work-area');
+    await fixture.whenStable();
+    fixture.detectChanges();
+    expect(fixture.nativeElement.querySelectorAll('app-correction-approvals').length).toBe(0);
+    expect(fixture.nativeElement.querySelectorAll('app-work-area-approvals').length).toBe(1);
+  });
 
   it('formats Today clock-in and clock-out using the backend timezone', async () => {
     const clockIn = '2026-08-22T09:00:00Z';
@@ -207,29 +417,15 @@ describe('TimeTrackingComponent', () => {
       clockOutAt: '2026-08-22T17:00:00Z'
     };
     const { fixture } = await setup({ timezone: 'Asia/Colombo', canViewCoveredEmployees: true }, true, [row]);
-    const tables = fixture.nativeElement.querySelectorAll('table');
-    const teamRowText = tables[1]?.querySelector('tbody tr')?.textContent ?? '';
+    const teamToggle = fixture.nativeElement.querySelectorAll('.attendance-view-toggle__option')[1] as HTMLButtonElement;
+    teamToggle.click();
+    await fixture.whenStable();
+    fixture.detectChanges();
+    const teamRowText = fixture.nativeElement.querySelector('#covered-history-heading')?.closest('section')?.querySelector('tbody tr')?.textContent ?? '';
 
     expect(teamRowText).toContain(formatForTimezone(row.clockInAt, 'Asia/Colombo'));
     expect(teamRowText).toContain(formatForTimezone(row.clockOutAt, 'Asia/Colombo'));
     expect(teamRowText).not.toContain(formatForTimezone(row.clockInAt, 'UTC'));
-  });
-
-  it('formats My correction request clock-in and clock-out using the response timezone, not Today timezone', async () => {
-    const request = correctionResponse({
-      timezone: 'Asia/Colombo',
-      requestedClockInAt: '2026-08-22T09:00:00Z',
-      requestedClockOutAt: '2026-08-22T17:00:00Z'
-    });
-    const { fixture } = await setup({ timezone: 'America/New_York' }, false, [], [request]);
-    const component = fixture.componentInstance;
-    const correctionsRow = fixture.nativeElement.querySelector('.corrections-table tbody tr') as HTMLElement;
-
-    expect(component.correctionSummary(request)).toBe(
-      `${formatForTimezone(request.requestedClockInAt!, 'Asia/Colombo')} to ${formatForTimezone(request.requestedClockOutAt!, 'Asia/Colombo')}`
-    );
-    expect(component.correctionSummary(request)).not.toContain(formatForTimezone(request.requestedClockInAt!, 'America/New_York'));
-    expect(correctionsRow.textContent).toContain(component.correctionSummary(request));
   });
 
   it('formats the reviewed correction timestamp using the response timezone', async () => {
@@ -243,29 +439,6 @@ describe('TimeTrackingComponent', () => {
 
     expect(reviewText).toContain(`Reviewed ${formatForTimezone(request.reviewedAt!, 'Asia/Colombo')}`);
     expect(reviewText).not.toContain(formatForTimezone(request.reviewedAt!, 'America/New_York'));
-  });
-
-  it('handles invalid correction timezones and null correction timestamps without throwing or exposing raw timezone errors', async () => {
-    const invalid = correctionResponse({
-      timezone: 'Invalid/CorrectionTimezone',
-      requestedClockInAt: '2026-08-22T09:00:00Z',
-      requestedClockOutAt: null,
-      reviewedAt: null
-    });
-    const empty = correctionResponse({
-      timezone: 'Asia/Colombo',
-      requestedClockInAt: null,
-      requestedClockOutAt: null,
-      reviewedAt: null
-    });
-    const { fixture } = await setup({ timezone: 'America/New_York' }, false, [], [invalid, empty]);
-    const component = fixture.componentInstance;
-
-    expect(() => component.correctionSummary(invalid)).not.toThrow();
-    expect(component.correctionSummary(invalid)).toBe('—');
-    expect(component.correctionSummary(empty)).toBe('Time update requested');
-    expect((fixture.nativeElement as HTMLElement).textContent).not.toContain('Invalid/CorrectionTimezone');
-    expect((fixture.nativeElement as HTMLElement).textContent).not.toContain('RangeError');
   });
 
   it('returns an em dash for invalid timezone and null or invalid timestamps without throwing', async () => {
@@ -282,6 +455,28 @@ describe('TimeTrackingComponent', () => {
     expect(component.formatDateTime(null, 'Asia/Colombo')).toBe('—');
   });
 
+  it('shows Work mode inside the Work schedule KPI instead of a separate card', async () => {
+    const { fixture } = await setup({ expectedWorkMode: 'remote', attendanceSource: 'web' });
+    const element = fixture.nativeElement as HTMLElement;
+    const labels = Array.from(element.querySelectorAll('.metric-card .metric-label')).map((label) => label.textContent?.trim());
+    const schedule = element.querySelector('.metric-card--schedule');
+
+    expect(labels).not.toContain('Work mode');
+    expect(schedule?.querySelector('.metric-detail-grid')?.textContent).toContain('Work mode');
+    expect(schedule?.textContent).toContain('Remote');
+    expect(schedule?.textContent).toContain('Source: Web');
+  });
+
+  it('always shows Attendance times with fallbacks when no clock timestamps are available', async () => {
+    const { fixture } = await setup({ clockInAt: null, clockOutAt: null });
+    const attendanceTimes = fixture.nativeElement.querySelector('.metric-card--attendance-times') as HTMLElement | null;
+
+    expect(attendanceTimes).toBeTruthy();
+    expect(attendanceTimes?.textContent).toContain('Clock in');
+    expect(attendanceTimes?.textContent).toContain('Clock out');
+    expect(attendanceTimes?.textContent).toContain('Not recorded');
+  });
+
   it('shows only the actions enabled by the backend response flags', async () => {
     const { fixture } = await setup({
       canClockIn: false,
@@ -295,6 +490,36 @@ describe('TimeTrackingComponent', () => {
     expect(element.querySelector('[data-testid="start-break"]')).toBeTruthy();
     expect(element.querySelector('[data-testid="end-break"]')).toBeNull();
     expect(element.querySelector('[data-testid="clock-out"]')).toBeTruthy();
+  });
+
+  it('shows the my-history Previous/Next control only when there is more than one page, and disables Previous on page 1', async () => {
+    const { fixture, store } = await setup({}, false, [coveredRow]);
+    store.historyTotalCount.set(41);
+    fixture.detectChanges();
+
+    const pageInfo = fixture.nativeElement.querySelector('.tt-pagination-info');
+    expect(pageInfo?.textContent).toContain('Page 1 of 3');
+
+    const buttons = fixture.nativeElement.querySelectorAll('.tt-pagination-buttons button');
+    expect((buttons[0] as HTMLButtonElement).disabled).toBe(true);
+    expect((buttons[1] as HTMLButtonElement).disabled).toBe(false);
+  });
+
+  it('hides the my-history Previous/Next control when everything fits on one page', async () => {
+    const { fixture, store } = await setup({}, false, [coveredRow]);
+    store.historyTotalCount.set(5);
+    fixture.detectChanges();
+
+    expect(fixture.nativeElement.querySelector('.tt-pagination-info')).toBeNull();
+  });
+
+  it('goToHistoryPage asks the store to load the requested page for the currently selected range', async () => {
+    const { fixture, store } = await setup({}, false, [coveredRow]);
+    const component = fixture.componentInstance;
+
+    component.goToHistoryPage(2);
+
+    expect(store.loadMyHistory).toHaveBeenCalledWith(expect.any(Object), 2);
   });
 
   it('shows remaining break time and the used-break helper when remaining is zero', async () => {
@@ -386,14 +611,17 @@ describe('TimeTrackingComponent', () => {
       isOverBreakAllowance: true
     };
     const { fixture } = await setup({ canViewCoveredEmployees: true }, true, [row]);
-    const tables = fixture.nativeElement.querySelectorAll('table');
+    const teamToggle = fixture.nativeElement.querySelectorAll('.attendance-view-toggle__option')[1] as HTMLButtonElement;
+    teamToggle.click();
+    await fixture.whenStable();
+    fixture.detectChanges();
     const text = (fixture.nativeElement as HTMLElement).textContent ?? '';
 
     expect(text).toContain('Worked during time off');
     expect(text).toContain('Worked during approved time off');
     expect(text).toContain('Break exceeded by 12 min');
     expect(text).not.toContain('worked_during_time_off');
-    expect(tables).toHaveLength(2);
+    expect(fixture.nativeElement.querySelector('#covered-history-heading')?.closest('section')?.querySelectorAll('table')).toHaveLength(1);
   });
 
   it('humanizes common backend message values instead of rendering machine codes', async () => {
@@ -417,21 +645,78 @@ describe('TimeTrackingComponent', () => {
 
   it('shows team attendance with attendance:read', async () => {
     const { fixture } = await setup({ canViewCoveredEmployees: true }, true, [coveredRow]);
+    const teamToggle = fixture.nativeElement.querySelectorAll('.attendance-view-toggle__option')[1] as HTMLButtonElement;
+    teamToggle.click();
+    await fixture.whenStable();
+    fixture.detectChanges();
     const text = (fixture.nativeElement as HTMLElement).textContent ?? '';
     expect(text).toContain('Team attendance');
     expect(text).toContain('Jordan Lee');
   });
-  it('shows Request correction only when the history row allows it', async () => {
-    const eligible = { ...coveredRow, canRequestCorrection: true };
-    const hidden = { ...eligible, attendanceRecordId: 'record-2', canRequestCorrection: false };
-    const { fixture } = await setup({}, false, [eligible, hidden]);
-    expect(fixture.nativeElement.querySelectorAll('[data-testid="request-correction"]')).toHaveLength(1);
+  it('opens the detail drawer for a My-history row using the current employee id from Today', async () => {
+    const row = { ...coveredRow, workDate: '2026-08-21' };
+    const { fixture } = await setup({ employeeId: 'employee-9' }, false, [row]);
+    const component = fixture.componentInstance;
+
+    component.onMyRowSelected(row);
+
+    expect(component.selectedDetail()).toEqual({ employeeId: 'employee-9', workDate: '2026-08-21' });
+  });
+
+  it('does not open the detail drawer for a My-history row when Today has not loaded', async () => {
+    const row = { ...coveredRow, workDate: '2026-08-21' };
+    const { fixture, store } = await setup({}, false, [row]);
+    store.today.set(null);
+    const component = fixture.componentInstance;
+
+    component.onMyRowSelected(row);
+
+    expect(component.selectedDetail()).toBeNull();
+  });
+
+  it("opens the detail drawer for a Team-attendance row using that row's employee id", async () => {
+    const { fixture } = await setup({ canViewCoveredEmployees: true }, true, [coveredRow]);
+    const component = fixture.componentInstance;
+
+    component.onTeamRowSelected(coveredRow);
+
+    expect(component.selectedDetail()).toEqual({ employeeId: 'employee-2', workDate: '2026-08-22' });
+  });
+
+  it('closes and clears the detail drawer', async () => {
+    const { fixture, store } = await setup({}, false, [coveredRow]);
+    const component = fixture.componentInstance;
+    component.selectedDetail.set({ employeeId: 'employee-2', workDate: coveredRow.workDate });
+
+    component.closeDetailDrawer();
+
+    expect(component.selectedDetail()).toBeNull();
+    expect(store.clearDayDetail).toHaveBeenCalled();
+  });
+
+  it('renders My attendance history and My requests side by side', async () => {
+    const { fixture } = await setup({}, false, [coveredRow]);
+    const row = fixture.nativeElement.querySelector('.history-requests-row');
+    expect(row).toBeTruthy();
+    expect(row?.querySelector('app-attendance-history-list')).toBeTruthy();
+    expect(row?.textContent).toContain('My requests');
+  });
+
+  it('renders the detail drawer content once a row is selected and its data loads', async () => {
+    const { fixture, store } = await setup({}, false, [coveredRow]);
+    const component = fixture.componentInstance;
+    component.selectedDetail.set({ employeeId: 'employee-2', workDate: coveredRow.workDate });
+    store.dayDetail.set({ summary: coveredRow, timelineEvents: [], dailyActivity: null });
+    fixture.detectChanges();
+
+    expect((fixture.nativeElement as HTMLElement).textContent).toContain('Attendance detail');
   });
 
   it('opens the correction form with the selected work date and clock-in fields', async () => {
     const eligible = { ...coveredRow, canRequestCorrection: true, workDate: '2026-08-21' };
     const { fixture } = await setup({}, false, [eligible]);
-    (fixture.nativeElement.querySelector('[data-testid="request-correction"]') as HTMLButtonElement).click();
+    const component = fixture.componentInstance;
+    component.openCorrection(eligible);
     fixture.detectChanges();
     const text = (fixture.nativeElement as HTMLElement).textContent ?? '';
     expect(text).toContain('Request attendance correction');
@@ -457,6 +742,8 @@ describe('TimeTrackingComponent', () => {
     expect(fixture.nativeElement.querySelector('input[name="requestedClockInAt"]')).toBeTruthy();
     expect(fixture.nativeElement.querySelector('input[name="requestedClockOutAt"]')).toBeTruthy();
   });
+
+
 });
 
 function correctionResponse(overrides: Partial<AttendanceCorrectionResponse> = {}): AttendanceCorrectionResponse {

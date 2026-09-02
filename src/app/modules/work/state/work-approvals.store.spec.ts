@@ -68,7 +68,20 @@ describe('WorkApprovalsStore', () => {
     expect(store.taskCreationRequests().length).toBe(0);
   });
 
+    it('approve passes the edited additional hours for an allocation request', async () => {
+    const approveAllocationRequest = vi.fn().mockReturnValue(of(undefined));
+    const store = setup({ approveAllocationRequest });
+    await store.loadAll();
+    const item = store.allocationRequests()[0];
+
+    await store.approve(item, 12);
+
+    expect(approveAllocationRequest).toHaveBeenCalledWith('a1', 12);
+    expect(store.allocationRequests().length).toBe(0);
+  });
+
   it('approve on an allocation request with insufficient approver slack surfaces the 409 message and keeps the item pending', async () => {
+
     const approveAllocationRequest = vi.fn().mockReturnValue(
       throwError(() => ({ status: 409, error: { detail: "You don't have enough allocation yourself..." } }))
     );

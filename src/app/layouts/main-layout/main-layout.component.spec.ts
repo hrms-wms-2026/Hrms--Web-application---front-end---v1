@@ -3,11 +3,18 @@ import { TestBed } from '@angular/core/testing';
 import { Router, provideRouter } from '@angular/router';
 import { MainLayoutComponent } from './main-layout.component';
 import { AuthStore } from '../../core/auth/state/auth.store';
+import { TrayPresenceStore } from '../../core/tray-presence/state/tray-presence.store';
 
 const authStoreStub = {
   email: () => 'asha@onevo.test',
   permissions: () => [] as string[],
   activeModules: () => [] as string[]
+};
+
+const connectedTrayPresenceStub = {
+  start: () => undefined,
+  canRenderProtectedContent: () => true,
+  isBlocking: () => false
 };
 
 @Component({ standalone: true, template: '' })
@@ -21,7 +28,11 @@ describe('MainLayoutComponent', () => {
   it('renders the top and side navbar shell without legacy branding or placeholder text', async () => {
     await TestBed.configureTestingModule({
       imports: [MainLayoutComponent],
-      providers: [provideRouter([]), { provide: AuthStore, useValue: authStoreStub }]
+      providers: [
+        provideRouter([]),
+        { provide: AuthStore, useValue: authStoreStub },
+        { provide: TrayPresenceStore, useValue: connectedTrayPresenceStub }
+      ]
     }).compileComponents();
 
     const fixture = TestBed.createComponent(MainLayoutComponent);
@@ -37,7 +48,11 @@ describe('MainLayoutComponent', () => {
   it('passes the authenticated user email down to the top navbar profile popover', async () => {
     await TestBed.configureTestingModule({
       imports: [MainLayoutComponent],
-      providers: [provideRouter([]), { provide: AuthStore, useValue: authStoreStub }]
+      providers: [
+        provideRouter([]),
+        { provide: AuthStore, useValue: authStoreStub },
+        { provide: TrayPresenceStore, useValue: connectedTrayPresenceStub }
+      ]
     }).compileComponents();
 
     const fixture = TestBed.createComponent(MainLayoutComponent);
@@ -59,7 +74,11 @@ describe('MainLayoutComponent', () => {
   it('mounts app-toast-host inside global-notification-container', async () => {
     await TestBed.configureTestingModule({
       imports: [MainLayoutComponent],
-      providers: [provideRouter([]), { provide: AuthStore, useValue: authStoreStub }]
+      providers: [
+        provideRouter([]),
+        { provide: AuthStore, useValue: authStoreStub },
+        { provide: TrayPresenceStore, useValue: connectedTrayPresenceStub }
+      ]
     }).compileComponents();
 
     const fixture = TestBed.createComponent(MainLayoutComponent);
@@ -75,7 +94,8 @@ describe('MainLayoutComponent', () => {
       imports: [MainLayoutComponent],
       providers: [
         provideRouter([{ path: '**', component: BlankRouteComponent }]),
-        { provide: AuthStore, useValue: authStoreWith(['roles:manage'], []) }
+        { provide: AuthStore, useValue: authStoreWith(['roles:manage'], []) },
+        { provide: TrayPresenceStore, useValue: connectedTrayPresenceStub }
       ]
     }).compileComponents();
 
@@ -97,7 +117,8 @@ describe('MainLayoutComponent', () => {
       imports: [MainLayoutComponent],
       providers: [
         provideRouter([{ path: '**', component: BlankRouteComponent }]),
-        { provide: AuthStore, useValue: authStoreWith(['org:read'], ['org_structure']) }
+        { provide: AuthStore, useValue: authStoreWith(['org:read'], ['org_structure']) },
+        { provide: TrayPresenceStore, useValue: connectedTrayPresenceStub }
       ]
     }).compileComponents();
 
@@ -117,7 +138,11 @@ describe('MainLayoutComponent', () => {
   it('renders no sub-sidebar when the active item has no permitted children', async () => {
     await TestBed.configureTestingModule({
       imports: [MainLayoutComponent],
-      providers: [provideRouter([{ path: '**', component: BlankRouteComponent }]), { provide: AuthStore, useValue: authStoreStub }]
+      providers: [
+        provideRouter([{ path: '**', component: BlankRouteComponent }]),
+        { provide: AuthStore, useValue: authStoreStub },
+        { provide: TrayPresenceStore, useValue: connectedTrayPresenceStub }
+      ]
     }).compileComponents();
 
     const fixture = TestBed.createComponent(MainLayoutComponent);

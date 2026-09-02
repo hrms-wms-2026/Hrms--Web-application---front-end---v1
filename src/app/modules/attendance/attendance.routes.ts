@@ -3,11 +3,25 @@ import { permissionGuard } from '../../core/guards/permission.guard';
 
 export const ATTENDANCE_ROUTES: Routes = [
   {
+    path: 'monitoring',
+    canActivate: [permissionGuard],
+    data: {
+      title: 'Monitoring',
+      permissions: ['monitoring:read'],
+      modules: ['time_attendance']
+    },
+    loadComponent: () =>
+      import('./feature/monitoring/monitoring.component').then(
+        (module) => module.MonitoringComponent
+      )
+  },
+
+  {
     path: 'time-tracking',
     canActivate: [permissionGuard],
     data: {
       title: 'Time Tracking',
-      permissions: ['attendance:read-own', 'attendance:write-own', 'attendance:read'],
+      permissions: ['attendance:read-own', 'attendance:write-own', 'attendance:read', 'attendance:approve'],
       modules: ['time_attendance']
     },
     loadComponent: () =>
@@ -18,24 +32,20 @@ export const ATTENDANCE_ROUTES: Routes = [
   {
     path: 'corrections/approvals',
     canActivate: [permissionGuard],
-    data: { title: 'Attendance correction approvals', permissions: ['attendance:approve'], modules: ['time_attendance'] },
+    data: { title: 'Attendance correction approvals', permissions: ['attendance:approve'], modules: ['time_attendance'], approvalType: 'corrections' },
     loadComponent: () =>
-      import('./feature/correction-approvals/correction-approvals.component').then(
-        (module) => module.CorrectionApprovalsComponent
+      import('./feature/legacy-approval-redirect/legacy-approval-redirect.component').then(
+        (module) => module.LegacyApprovalRedirectComponent
       )
   },
   {
-    path: 'monitoring',
+    path: 'work-area-change-requests/approvals',
     canActivate: [permissionGuard],
+    data: { title: 'Work-area approvals', permissions: ['attendance:approve'], modules: ['time_attendance'], approvalType: 'work-area' },
     loadComponent: () =>
-      import('../../shared/feature/placeholder-page/placeholder-page.component').then(
-        (module) => module.PlaceholderPageComponent
-      ),
-    data: {
-      title: 'Monitoring',
-      permissions: ['attendance:read'],
-      modules: ['time_attendance']
-    }
+      import('./feature/legacy-approval-redirect/legacy-approval-redirect.component').then(
+        (module) => module.LegacyApprovalRedirectComponent
+      )
   },
   {
     path: '',

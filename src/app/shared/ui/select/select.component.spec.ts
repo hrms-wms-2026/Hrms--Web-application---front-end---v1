@@ -45,7 +45,19 @@ describe('SelectComponent', () => {
     expect(select.options[0].disabled).toBe(true);
   });
 
+    it('renders the requested Work Management leading icon without changing native select semantics', () => {
+    const fixture = TestBed.createComponent(SelectComponent);
+    fixture.componentRef.setInput('options', [{ value: 'all', label: 'All modules' }]);
+    fixture.componentRef.setInput('value', 'all');
+    fixture.componentRef.setInput('icon', 'module');
+    fixture.detectChanges();
+
+    expect(fixture.nativeElement.querySelector('select')).not.toBeNull();
+    expect(fixture.nativeElement.querySelector('[data-testid="select-leading-icon"]')).not.toBeNull();
+  });
+
   it('renders disabled options as disabled without affecting enabled options', () => {
+
     const fixture = TestBed.createComponent(SelectComponent);
     fixture.componentRef.setInput('options', [
       { value: 'open', label: 'Software Engineer [2]' },

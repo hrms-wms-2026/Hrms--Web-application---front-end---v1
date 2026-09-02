@@ -1,0 +1,69 @@
+<div class="drp-container">
+  <button
+    type="button"
+    class="drp-trigger"
+    (click)="togglePopover()"
+    [disabled]="disabled()"
+    [attr.aria-expanded]="isOpen()"
+    aria-haspopup="dialog"
+    [attr.aria-label]="triggerLabel() ? 'Change date range, currently ' + triggerLabel() : 'Choose date range'"
+  >
+    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+      <rect x="3" y="4" width="18" height="18" rx="2" ry="2"/>
+      <line x1="16" y1="2" x2="16" y2="6"/>
+      <line x1="8" y1="2" x2="8" y2="6"/>
+      <line x1="3" y1="10" x2="21" y2="10"/>
+    </svg>
+    @if (triggerLabel()) {
+      <span class="drp-trigger-label">{{ triggerLabel() }}</span>
+    }
+  </button>
+
+  @if (isOpen()) {
+    <div class="drp-popover" [class.drp-popover--up]="openUpward()" role="dialog" aria-label="Date range calendar">
+      <div class="drp-header">
+        <button type="button" class="drp-nav-btn" (click)="prevMonth()" title="Previous month" aria-label="Previous month">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+            <path d="m15 18-6-6 6-6"/>
+          </svg>
+        </button>
+
+        <span class="drp-month-title">{{ currentMonthLabel() }}</span>
+
+        <button type="button" class="drp-nav-btn" (click)="nextMonth()" title="Next month" aria-label="Next month">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+            <path d="m9 18 6-6-6-6"/>
+          </svg>
+        </button>
+      </div>
+
+      <div class="drp-weekdays">
+        @for (wd of weekdayNames; track wd) {
+          <span class="drp-weekday">{{ wd }}</span>
+        }
+      </div>
+
+      <div class="drp-grid">
+        @for (day of calendarDays(); track day.formattedDate) {
+          <button
+            type="button"
+            class="drp-day-btn"
+            [class.drp-day-btn--outside]="!day.isCurrentMonth"
+            [class.drp-day-btn--today]="day.isToday"
+            [class.drp-day-btn--start]="day.isRangeStart"
+            [class.drp-day-btn--end]="day.isRangeEnd"
+            [class.drp-day-btn--in-range]="day.isInRange"
+            (mouseenter)="hoverDay(day)"
+            (click)="selectDay(day)"
+          >
+            <span>{{ day.date }}</span>
+          </button>
+        }
+      </div>
+
+      <div class="drp-footer">
+        <button type="button" class="drp-today-link" (click)="goToToday()">Today</button>
+      </div>
+    </div>
+  }
+</div>
