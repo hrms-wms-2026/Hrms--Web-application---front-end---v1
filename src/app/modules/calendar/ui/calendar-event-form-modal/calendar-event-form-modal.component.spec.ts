@@ -263,4 +263,23 @@ describe('CalendarEventFormModalComponent', () => {
     expect(spy).not.toHaveBeenCalled();
     expect(fixture.componentInstance.discardConfirmOpen()).toBe(true);
   });
+
+  it('starts pristine again when reopened after a previous dirty session, even without destroying the component', () => {
+    fixture.componentInstance.setTitle('Something typed');
+    fixture.componentInstance.onParticipantIdsChange(['emp-1']);
+
+    // Simulate the page closing then reopening the same modal instance for a fresh create -
+    // `open` toggles false then true again, exactly like calendar-page.component.ts does.
+    fixture.componentRef.setInput('open', false);
+    fixture.detectChanges();
+    fixture.componentRef.setInput('open', true);
+    fixture.detectChanges();
+
+    const spy = vi.fn();
+    fixture.componentInstance.cancel.subscribe(spy);
+    fixture.componentInstance.attemptClose();
+
+    expect(spy).toHaveBeenCalledTimes(1);
+    expect(fixture.componentInstance.discardConfirmOpen()).toBe(false);
+  });
 });

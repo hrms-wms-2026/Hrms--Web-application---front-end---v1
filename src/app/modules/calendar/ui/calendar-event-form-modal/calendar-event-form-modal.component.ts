@@ -1,4 +1,4 @@
-import { ChangeDetectionStrategy, Component, EventEmitter, Input, OnChanges, Output, inject, signal } from '@angular/core';
+import { ChangeDetectionStrategy, Component, EventEmitter, Input, OnChanges, Output, SimpleChanges, inject, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { ButtonComponent } from '../../../../shared/ui/button/button.component';
@@ -93,7 +93,12 @@ export class CalendarEventFormModalComponent implements OnChanges {
     this.respond.emit(status);
   }
 
-  ngOnChanges(): void {
+  ngOnChanges(changes: SimpleChanges): void {
+    // Only reset dirty/participant state when the modal is *freshly opened* for a new session -
+    // this same input also toggles on every debounced conflict-check update while a create form
+    // is mid-use, and resetting on every ngOnChanges call would wipe out in-progress typing.
+    const justOpened = !!changes['open'] && this.open;
+
     if (this.event) {
       const start = utcIsoToLocalParts(this.event.startDate, this.myTimezone);
       const end = utcIsoToLocalParts(this.event.endDate, this.myTimezone);
@@ -109,12 +114,18 @@ export class CalendarEventFormModalComponent implements OnChanges {
         meetingLink: this.event.meetingLink ?? '',
         color: this.event.color ?? '#2563EB'
       });
+      if (justOpened) this.form.markAsPristine();
       return;
     }
 
     if (this.prefillStart) {
       const [date, time] = this.prefillStart.split('T');
       this.form.patchValue({ startDate: date, startTime: time ?? '09:00', endDate: date, endTime: time ?? '10:00' });
+    }
+
+    if (justOpened) {
+      this.form.markAsPristine();
+      this.participantIds.set([]);
     }
   }
 
