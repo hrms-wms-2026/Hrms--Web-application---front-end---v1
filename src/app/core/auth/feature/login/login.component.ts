@@ -64,7 +64,15 @@ export class LoginComponent implements OnInit {
       }
     } else {
       const returnUrl = this.route.snapshot.queryParamMap.get('returnUrl');
-      this.router.navigate([returnUrl ?? '/people/employees']);
+      if (returnUrl) {
+        // navigate([returnUrl]) would treat the whole string (path + query string) as one
+        // literal path segment and silently drop the query params — navigateByUrl parses it
+        // as a real URL instead, which a route like /device/activate?request_id=...&user_code=...
+        // depends on.
+        await this.router.navigateByUrl(returnUrl);
+      } else {
+        this.router.navigate(['/people/employees']);
+      }
     }
   }
 }
