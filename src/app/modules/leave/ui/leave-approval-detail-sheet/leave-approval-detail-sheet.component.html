@@ -1,0 +1,108 @@
+<app-modal [open]="open" size="xl" title="Leave Request Detail" (closed)="onClose()">
+  @if (detail) {
+    <div class="lad-body">
+      <header class="lad-header">
+        <h3>{{ detail.employeeName }}</h3>
+        <p>{{ detail.leaveTypeName }} &middot; {{ detail.startDate }} - {{ detail.endDate }} &middot; {{ detail.totalDays }} days</p>
+        <p class="lad-muted">{{ currentApproverState() }}</p>
+      </header>
+
+      <section class="lad-section">
+        <h4>Balance</h4>
+        <p>Remaining after this request: <strong>{{ detail.remainingDays }}</strong> days ({{ detail.paidDays }} paid, {{ detail.unpaidDays }} unpaid)</p>
+      </section>
+
+      @if (detail.reason) {
+        <section class="lad-section">
+          <h4>Reason</h4>
+          <p>{{ detail.reason }}</p>
+        </section>
+      }
+
+      <section class="lad-section">
+        <h4>Approvers</h4>
+        <ul class="lad-approvers">
+          @for (approver of detail.approvers; track approver.approverEmployeeId) {
+            <li>
+              Approver {{ approver.sequenceOrder }} &middot; {{ approver.status }}
+              @if (approver.comment) { &mdash; "{{ approver.comment }}" }
+              @if (approver.delegatedFromApproverId) { (delegated from {{ approver.delegatedFromApproverId }}) }
+            </li>
+          }
+        </ul>
+      </section>
+
+      @if (submissionSnapshot(); as snapshot) {
+        <section class="lad-section">
+          <h4>Conflicts at submission</h4>
+          @if (snapshot.warnings.length === 0 && snapshot.calendarConflicts.length === 0) {
+            <p class="lad-muted">No conflicts recorded at submission.</p>
+          } @else {
+            @for (warning of snapshot.warnings; track warning.code) { <p class="lad-warning">{{ warning.message }}</p> }
+            @for (conflict of snapshot.calendarConflicts; track conflict.title) { <p class="lad-muted">{{ conflict.title }} ({{ conflict.source }})</p> }
+          }
+        </section>
+      }
+
+      <section class="lad-section">
+        <h4>Current</h4>
+        @if (detail.currentWarnings.length === 0) {
+          <p class="lad-muted">No current warnings.</p>
+        } @else {
+          @for (warning of detail.currentWarnings; track warning.code) { <p class="lad-warning">{{ warning.message }}</p> }
+        }
+      </section>
+
+      @if (detail.infoMessages.length > 0) {
+        <section class="lad-section">
+          <h4>Information requests</h4>
+          @for (message of detail.infoMessages; track message.createdAt) {
+            <p class="lad-info-message">{{ message.message }}</p>
+          }
+        </section>
+      }
+
+      @if (decideError) { <p class="lad-error">{{ decideError }}</p> }
+
+      @if (canApprove) {
+        <div class="lad-actions">
+          @if (activeAction() === null) {
+            <button type="button" data-testid="action-approve" class="lad-primary" (click)="openAction('approve')">Approve</button>
+            <button type="button" class="lad-secondary" (click)="openAction('reject')">Reject</button>
+            <button type="button" class="lad-secondary" (click)="openAction('request-info')">Request more information</button>
+          }
+
+          @if (activeAction() === 'approve') {
+            <div class="lad-action-panel">
+              <label>Comment (optional)<textarea rows="2" [value]="approveComment()" (input)="approveComment.set($any($event.target).value)"></textarea></label>
+              <div class="lad-action-buttons">
+                <button type="button" class="lad-secondary" (click)="closeAction()">Cancel</button>
+                <button type="button" class="lad-primary" [disabled]="deciding" (click)="onSubmitApprove()">{{ deciding ? 'Approving...' : 'Confirm approve' }}</button>
+              </div>
+            </div>
+          }
+
+          @if (activeAction() === 'reject') {
+            <div class="lad-action-panel">
+              <label>Reason (required)<textarea rows="2" [value]="rejectReason()" (input)="rejectReason.set($any($event.target).value)"></textarea></label>
+              <div class="lad-action-buttons">
+                <button type="button" class="lad-secondary" (click)="closeAction()">Cancel</button>
+                <button type="button" class="lad-primary" [disabled]="deciding || !rejectReason().trim()" (click)="onSubmitReject()">{{ deciding ? 'Rejecting...' : 'Confirm reject' }}</button>
+              </div>
+            </div>
+          }
+
+          @if (activeAction() === 'request-info') {
+            <div class="lad-action-panel">
+              <label>Question for the employee (required)<textarea rows="2" [value]="infoQuestion()" (input)="infoQuestion.set($any($event.target).value)"></textarea></label>
+              <div class="lad-action-buttons">
+                <button type="button" class="lad-secondary" (click)="closeAction()">Cancel</button>
+                <button type="button" class="lad-primary" [disabled]="deciding || !infoQuestion().trim()" (click)="onSubmitRequestInfo()">{{ deciding ? 'Sending...' : 'Send question' }}</button>
+              </div>
+            </div>
+          }
+        </div>
+      }
+    </div>
+  }
+</app-modal>
