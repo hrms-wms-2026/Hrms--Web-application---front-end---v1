@@ -92,7 +92,7 @@ export class ObjectiveTimelineBarComponent {
     if (this.item().isAchieved) return '#64748B';
     const link = this.primaryEventLink();
     if (link) return link.eventColor;
-    return this.disabled() ? '#94A3B8' : '#94A3B8';
+    return '#94A3B8';
   };
 
   /** "N/M" when this module is only partly in its (single) event, else null. */
