@@ -107,9 +107,9 @@ describe('MilestoneTreeTabComponent', () => {
     await fixture.whenStable();
     fixture.detectChanges();
     expect(fixture.componentInstance.selectedModuleFilter()).toBe('o1');
-    const select = fixture.nativeElement.querySelector('[data-testid="module-filter-dropdown"] select') as HTMLSelectElement;
-    expect(select.value).toBe('o1');
-    expect(select.options[1].textContent).toContain('Root');
+    const trigger = fixture.nativeElement.querySelector('[data-testid="module-filter-dropdown"] .work-dropdown__trigger') as HTMLElement;
+    expect(trigger.textContent).toContain('Root');
+    expect(fixture.componentInstance.moduleDropdownOptions()[1]).toEqual({ value: 'o1', label: 'Root' });
   });
 
   it('prunes the rendered tree on filter change without refetching', () => {
@@ -213,12 +213,10 @@ describe('MilestoneTreeTabComponent', () => {
       await fixture.whenStable();
       fixture.detectChanges();
 
-      const select = fixture.nativeElement.querySelector('[data-testid="module-activity-filter-dropdown"] select') as HTMLSelectElement;
-      expect(select.value).toBe('all');
-      expect(select.options[0].textContent).toContain('All');
+      const trigger = fixture.nativeElement.querySelector('[data-testid="module-activity-filter-dropdown"] .work-dropdown__trigger') as HTMLElement;
+      expect(trigger.textContent).toContain('All');
 
-      select.value = 'inactive';
-      select.dispatchEvent(new Event('change'));
+      fixture.componentInstance.onActivityFilterChanged('inactive');
       fixture.detectChanges();
 
       expect(fixture.componentInstance.selectedActivityFilter()).toBe('inactive');
@@ -471,7 +469,7 @@ describe('MilestoneTreeTabComponent', () => {
     expect(storeStub.loadSprintsAndTasksForLeaf).toHaveBeenCalledWith('o2', { force: true });
   });
 
-  it('navigates to the create-task page scoped to one sprint from a sprint row', () => {
+  it('opens the task modal in create mode scoped to one sprint from a sprint row', () => {
     setup('o1');
     fixture.detectChanges();
     const sprint: MilestoneTreeNode = {
@@ -480,10 +478,10 @@ describe('MilestoneTreeTabComponent', () => {
 
     fixture.componentInstance.onCreateTaskRequested(sprint);
 
-    expect(routerStub.navigate).toHaveBeenCalledWith(
-      ['/work', 'p1', 'task', 'new'],
-      { queryParams: { module: 'o1', sprint: 'spr-1', sprintRequired: 'true' } }
-    );
+    expect(fixture.componentInstance.taskModalOpen()).toBe(true);
+    expect(fixture.componentInstance.taskModalMode()).toBe('create');
+    expect(fixture.componentInstance.taskModalPrefillModule()).toBe('o1');
+    expect(fixture.componentInstance.taskModalPrefillSprint()).toBe('spr-1');
   });
 
   it('opens the settings modal with fetched detail when an objective row is edited', async () => {
@@ -533,10 +531,12 @@ describe('MilestoneTreeTabComponent', () => {
 
     await fixture.componentInstance.onEditRequested(task);
 
-    expect(routerStub.navigate).toHaveBeenCalledWith(['/work', 'p1', 'task', 't1']);
+    expect(fixture.componentInstance.taskModalOpen()).toBe(true);
+    expect(fixture.componentInstance.taskModalMode()).toBe('edit');
+    expect(fixture.componentInstance.taskModalTaskId()).toBe('t1');
   });
 
-  it('navigates to the task detail page when a task node View is requested', () => {
+  it('opens the task modal in edit mode when a task node View is requested', () => {
     setup('o1');
     fixture.detectChanges();
     const task = {
@@ -546,7 +546,9 @@ describe('MilestoneTreeTabComponent', () => {
 
     fixture.componentInstance.onViewRequested(task);
 
-    expect(routerStub.navigate).toHaveBeenCalledWith(['/work', 'p1', 'task', 't1']);
+    expect(fixture.componentInstance.taskModalOpen()).toBe(true);
+    expect(fixture.componentInstance.taskModalMode()).toBe('edit');
+    expect(fixture.componentInstance.taskModalTaskId()).toBe('t1');
   });
 
   it('shows the explanation panel for the selected tree node', async () => {
@@ -615,14 +617,14 @@ describe('MilestoneTreeTabComponent', () => {
     expect(fixture.componentInstance.deleteConfirmOpen()).toBe(false);
   });
 
-  it('navigates to the create-task page with just the module from a module row', () => {
+  it('opens the task modal in create mode with just the module from a module row', () => {
     setup('o1');
     fixture.detectChanges();
     fixture.componentInstance.onCreateTaskRequested(tree);
 
-    expect(routerStub.navigate).toHaveBeenCalledWith(
-      ['/work', 'p1', 'task', 'new'],
-      { queryParams: { module: 'o1' } }
-    );
+    expect(fixture.componentInstance.taskModalOpen()).toBe(true);
+    expect(fixture.componentInstance.taskModalMode()).toBe('create');
+    expect(fixture.componentInstance.taskModalPrefillModule()).toBe('o1');
+    expect(fixture.componentInstance.taskModalPrefillSprint()).toBe('');
   });
 });

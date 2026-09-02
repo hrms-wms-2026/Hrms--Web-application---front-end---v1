@@ -4,7 +4,7 @@
       <app-breadcrumb-header parentLabel="Work" currentLabel="Projects" icon="work" />
       <div class="work-controls">
         <app-project-filter-bar
-          (categoryChanged)="onCategoryFilterChanged($event)"
+          (categoriesChanged)="onCategoryFilterChanged($event)"
           (achievedFilterChanged)="onAchievedFilterChanged($event)"
         />
         <app-button variant="primary" (pressed)="openCreateModal()">+ Create project</app-button>

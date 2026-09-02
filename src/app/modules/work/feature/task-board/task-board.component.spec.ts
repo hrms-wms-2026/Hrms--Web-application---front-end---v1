@@ -362,7 +362,7 @@ describe('TaskBoardComponent', () => {
     expect(loadBoard).toHaveBeenCalledWith('project-1');
   });
 
-  it('navigates to the task detail page when a card is viewed', async () => {
+  it('opens the task modal in edit mode when a card is viewed, and create mode from the toolbar', async () => {
     const storeStub = {
       loadBoard: vi.fn().mockResolvedValue(undefined),
       columnsWithTasks: () => [],
@@ -399,12 +399,22 @@ describe('TaskBoardComponent', () => {
     fixture.detectChanges();
     await fixture.whenStable();
 
-    const navigate = vi.spyOn(TestBed.inject(Router), 'navigate').mockResolvedValue(true);
-    fixture.componentInstance.onTaskViewed({ id: 't-9', objectiveId: 'milestone-1' } as never);
+    const inst = fixture.componentInstance as unknown as {
+      onTaskViewed: (t: unknown) => void;
+      goToCreate: () => void;
+      taskModalOpen: () => boolean;
+      taskModalMode: () => string;
+      taskModalTaskId: () => string;
+    };
 
-    expect(navigate).toHaveBeenCalledWith(['/work', 'project-1', 'task', 't-9']);
+    inst.onTaskViewed({ id: 't-9', objectiveId: 'milestone-1' });
+    expect(inst.taskModalOpen()).toBe(true);
+    expect(inst.taskModalMode()).toBe('edit');
+    expect(inst.taskModalTaskId()).toBe('t-9');
 
-    (fixture.componentInstance as unknown as { goToCreate: () => void }).goToCreate();
-    expect(navigate).toHaveBeenCalledWith(['/work', 'project-1', 'task', 'new']);
+    inst.goToCreate();
+    expect(inst.taskModalMode()).toBe('create');
+    expect(inst.taskModalTaskId()).toBe('');
+    expect(inst.taskModalOpen()).toBe(true);
   });
 });

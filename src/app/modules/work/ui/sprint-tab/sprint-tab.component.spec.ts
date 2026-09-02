@@ -92,9 +92,9 @@ describe('SprintTabComponent', () => {
 
     const statusChangeSpy = vi.fn();
     fixture.componentInstance.statusChangeRequested.subscribe(statusChangeSpy);
-    const select = fixture.debugElement.query(By.css('.sprint-tab__status-select')).componentInstance as { valueChange: { emit: (value: string) => void } };
+    const select = fixture.debugElement.query(By.css('.sprint-tab__status-select')).componentInstance as { selectionChanged: { emit: (value: string) => void } };
 
-    select.valueChange.emit('incomplete');
+    select.selectionChanged.emit('incomplete');
 
     expect(statusChangeSpy).toHaveBeenCalledWith('incomplete');
     expect(fixture.componentInstance.sprint().status).toBe('active');

@@ -1,6 +1,6 @@
 import { AfterViewChecked, Component, OnInit, computed, inject, signal } from '@angular/core';
 import { CurrentEmployeeStore } from '../../state/current-employee.store';
-import { ActivatedRoute, Router } from '@angular/router';
+import { ActivatedRoute } from '@angular/router';
 import { firstValueFrom } from 'rxjs';
 import { TaskBoardStore } from '../../state/task-board.store';
 import { ProjectDetailStore } from '../../state/project-detail.store';
@@ -16,18 +16,18 @@ import { WorkTask } from '../../models/task.model';
 import { TaskCategoryColumn } from '../../models/task-category.model';
 import { toTaskCategoryColumn } from '../../utils/task-category.mapper';
 import { WorkDropdownComponent, WorkDropdownOption } from '../../ui/work-dropdown/work-dropdown.component';
-import { PeopleFilterSelectComponent } from '../../ui/people-filter-select/people-filter-select.component';
+import { TaskFormModalComponent } from '../../ui/task-form-modal/task-form-modal.component';
 
 @Component({
   selector: 'app-task-board',
   standalone: true,
-  imports: [TaskBoardColumnComponent, ButtonComponent, ErrorStateComponent, WorkDropdownComponent, PeopleFilterSelectComponent],
+  imports: [TaskBoardColumnComponent, ButtonComponent, ErrorStateComponent, WorkDropdownComponent, TaskFormModalComponent],
   template: `
     <div class="task-board__toolbar">
-      <app-work-dropdown [options]="objectiveOptions()" [selected]="objectiveFilter()" accessibleLabel="Module filter" leadingIcon="module" (selectionChanged)="setObjectiveFilter($event)" />
-      <app-work-dropdown [options]="sprintOptions()" [selected]="sprintFilter()" accessibleLabel="Sprint filter" leadingIcon="sprint" (selectionChanged)="setSprintFilter($event)" />
-      <app-work-dropdown [options]="categoryOptions()" [selected]="categoryFilter()" accessibleLabel="Category filter" leadingIcon="category" (selectionChanged)="setCategoryFilter($event)" />
-      <app-people-filter-select [options]="memberOptions()" [selected]="assigneeFilter()" (selectionChanged)="setAssigneeFilter($event)" />
+      <app-work-dropdown [options]="objectiveOptions()" [multiple]="true" [values]="objectiveFilter()" allLabel="All modules" size="sm" accessibleLabel="Module filter" leadingIcon="module" (valuesChanged)="setObjectiveFilter($event)" />
+      <app-work-dropdown [options]="sprintOptions()" [selected]="sprintFilter()" size="sm" accessibleLabel="Sprint filter" leadingIcon="sprint" (selectionChanged)="setSprintFilter($event)" />
+      <app-work-dropdown [options]="categoryOptions()" [multiple]="true" [values]="categoryFilter()" allLabel="All categories" size="sm" accessibleLabel="Category filter" leadingIcon="category" (valuesChanged)="setCategoryFilter($event)" />
+      <app-work-dropdown [options]="assigneeFilterOptions()" [multiple]="true" [values]="assigneeFilter()" allLabel="All people" size="sm" accessibleLabel="Assignee filter" leadingIcon="people" (valuesChanged)="setAssigneeFilter($event)" />
       @if (modules().length > 0) {
         <app-button variant="primary" (pressed)="goToCreate()">Create task</app-button>
       }
@@ -55,9 +55,18 @@ import { PeopleFilterSelectComponent } from '../../ui/people-filter-select/peopl
       </div>
     }
 
+    <app-task-form-modal
+      [open]="taskModalOpen()"
+      [mode]="taskModalMode()"
+      [projectId]="projectId()"
+      [taskId]="taskModalTaskId()"
+      (created)="onTaskModalDone()"
+      (saved)="onTaskModalDone()"
+      (closed)="taskModalOpen.set(false)"
+    />
   `,
   styles: [`
-    .task-board__toolbar { display: flex; flex-wrap: wrap; align-items: flex-end; justify-content: flex-end; gap: 8px; margin-bottom: 16px; }
+    .task-board__toolbar { display: flex; flex-wrap: wrap; align-items: center; justify-content: flex-end; gap: 8px; margin-bottom: 16px; }
     .task-board__toolbar app-work-dropdown { flex: 1 1 180px; max-width: 220px; }
     .task-board { display: flex; gap: 16px; overflow-x: auto; padding: 0 0 10px; scroll-snap-type: x proximity; }
     @media (max-width: 720px) { .task-board__toolbar { justify-content: stretch; } .task-board__toolbar app-work-dropdown { flex: 1 1 180px; max-width: none; } .task-board__toolbar app-button { flex: 1 1 100%; } }
@@ -68,7 +77,6 @@ export class TaskBoardComponent implements OnInit, AfterViewChecked {
   protected readonly store = inject(TaskBoardStore);
   private readonly projectStore = inject(ProjectDetailStore);
   private readonly route = inject(ActivatedRoute);
-  private readonly router = inject(Router);
   private readonly sprintApi = inject(SprintApiService);
   private readonly taskApi = inject(TaskApiService);
   private readonly directory = inject(EmployeeDirectoryStore);
@@ -78,9 +86,9 @@ export class TaskBoardComponent implements OnInit, AfterViewChecked {
   protected readonly sprints = signal<Sprint[]>([]);
   protected readonly categories = signal<TaskCategoryColumn[]>([]);
   protected readonly assignableMembers = signal<{ employeeId: string; name: string }[]>([]);
-  protected readonly objectiveFilter = signal('all');
+  protected readonly objectiveFilter = signal<string[]>([]);
   protected readonly sprintFilter = signal('active');
-  protected readonly categoryFilter = signal('all');
+  protected readonly categoryFilter = signal<string[]>([]);
   protected readonly assigneeFilter = signal<string[]>([]);
   private highlightTaskId: string | null = null;
   private didScrollToHighlight = false;
@@ -89,20 +97,18 @@ export class TaskBoardComponent implements OnInit, AfterViewChecked {
   protected readonly moduleOptions = computed(() =>
     this.modules().map((m) => ({ objectiveId: m.objectiveId, title: m.title, isOwner: m.isOwner }))
   );
-  protected readonly objectiveOptions = computed<WorkDropdownOption[]>(() => [
-    { value: 'all', label: 'All modules' },
-    ...this.modules().map((module) => ({ value: module.objectiveId, label: module.title }))
-  ]);
+  protected readonly objectiveOptions = computed<WorkDropdownOption[]>(() =>
+    this.modules().map((module) => ({ value: module.objectiveId, label: module.title }))
+  );
   protected readonly sprintOptions = computed<WorkDropdownOption[]>(() => [
     { value: 'active', label: 'Active sprints' },
     { value: 'all', label: 'All sprints' },
     { value: 'individual', label: 'Individual task' },
     ...this.sprints().map((sprint) => ({ value: sprint.id, label: sprint.name }))
   ]);
-  protected readonly categoryOptions = computed<WorkDropdownOption[]>(() => [
-    { value: 'all', label: 'All categories' },
-    ...this.categories().map((category) => ({ value: category.id, label: category.name }))
-  ]);
+  protected readonly categoryOptions = computed<WorkDropdownOption[]>(() =>
+    this.categories().map((category) => ({ value: category.id, label: category.name }))
+  );
   protected readonly columnsWithTasks = computed(() =>
     this.store.columnsWithTasks().map((column) => ({
       status: column.status,
@@ -118,13 +124,13 @@ export class TaskBoardComponent implements OnInit, AfterViewChecked {
     )
   );
 
-  protected readonly memberOptions = computed(() =>
-    this.assignableMembers().map((member) => ({ employeeId: member.employeeId, name: member.name }))
+  protected readonly assigneeFilterOptions = computed<WorkDropdownOption[]>(() =>
+    this.assignableMembers().map((member) => ({ value: member.employeeId, label: member.name }))
   );
 
-  protected setObjectiveFilter(value: string): void { this.objectiveFilter.set(value); }
+  protected setObjectiveFilter(ids: string[]): void { this.objectiveFilter.set(ids); }
   protected setSprintFilter(value: string): void { this.sprintFilter.set(value); }
-  protected setCategoryFilter(value: string): void { this.categoryFilter.set(value); }
+  protected setCategoryFilter(ids: string[]): void { this.categoryFilter.set(ids); }
   protected setAssigneeFilter(ids: string[]): void { this.assigneeFilter.set(ids); }
 
   columnIds(): string[] {
@@ -167,7 +173,8 @@ export class TaskBoardComponent implements OnInit, AfterViewChecked {
   }
 
   private matchesFilters(task: WorkTask): boolean {
-    const objectiveMatches = this.objectiveFilter() === 'all' || task.objectiveId === this.objectiveFilter();
+    const objectiveFilter = this.objectiveFilter();
+    const objectiveMatches = objectiveFilter.length === 0 || objectiveFilter.includes(task.objectiveId);
     const sprintFilter = this.sprintFilter();
     const activeSprintIds = new Set(this.sprints().filter((sprint) => sprint.status === 'active').map((sprint) => sprint.id));
     const sprintMatches = sprintFilter === 'all'
@@ -177,7 +184,8 @@ export class TaskBoardComponent implements OnInit, AfterViewChecked {
         : sprintFilter === 'individual'
           ? task.sprintId == null
           : task.sprintId === sprintFilter;
-    const categoryMatches = this.categoryFilter() === 'all' || task.categoryId === this.categoryFilter();
+    const categoryFilter = this.categoryFilter();
+    const categoryMatches = categoryFilter.length === 0 || categoryFilter.includes(task.categoryId);
     const assignees = this.assigneeFilter();
     const assigneeMatches = assignees.length === 0 || task.assigneeEmployeeIds.some((id) => assignees.includes(id));
     return objectiveMatches && sprintMatches && categoryMatches && assigneeMatches;
@@ -224,11 +232,24 @@ export class TaskBoardComponent implements OnInit, AfterViewChecked {
     void this.store.moveTask(event.taskId, event.newStatusId);
   }
 
+  protected readonly taskModalOpen = signal(false);
+  protected readonly taskModalMode = signal<'create' | 'edit'>('create');
+  protected readonly taskModalTaskId = signal('');
+
   onTaskViewed(task: WorkTask): void {
-    void this.router.navigate(['/work', this.projectId(), 'task', task.id]);
+    this.taskModalMode.set('edit');
+    this.taskModalTaskId.set(task.id);
+    this.taskModalOpen.set(true);
   }
 
   protected goToCreate(): void {
-    void this.router.navigate(['/work', this.projectId(), 'task', 'new']);
+    this.taskModalMode.set('create');
+    this.taskModalTaskId.set('');
+    this.taskModalOpen.set(true);
+  }
+
+  protected onTaskModalDone(): void {
+    this.taskModalOpen.set(false);
+    this.reload();
   }
 }

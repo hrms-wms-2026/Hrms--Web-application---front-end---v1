@@ -17,18 +17,19 @@ describe('WORK_ROUTES', () => {
     expect(milestoneRoute.children!.map((route) => route.path)).toEqual(['', 'tree', 'approvals']);
   });
 
-  it('registers Board, Backlog, Calendar, Settings, and the task pages as project-level siblings', () => {
+  it('registers Board, Backlog, Calendar, and Settings as project-level siblings', () => {
     const idRoute = WORK_ROUTES.find((r) => r.path === ':id')!;
-    expect(idRoute.children!.map((route) => route.path)).toEqual(['milestones/:milestoneId', 'board', 'backlog', 'calendar', 'settings', 'task/new', 'task/:taskId']);
+    expect(idRoute.children!.map((route) => route.path)).toEqual(['milestones/:milestoneId', 'board', 'backlog', 'calendar', 'settings']);
     expect(idRoute.children!.find((r) => r.path === 'board')!.loadComponent).toBeTruthy();
     expect(idRoute.children!.find((r) => r.path === 'backlog')!.loadComponent).toBeTruthy();
     expect(idRoute.children!.find((r) => r.path === 'calendar')!.loadComponent).toBeTruthy();
     expect(idRoute.children!.find((r) => r.path === 'settings')!.loadComponent).toBeTruthy();
-    expect(idRoute.children!.find((r) => r.path === 'task/:taskId')!.loadComponent).toBeTruthy();
-    const createRoute = idRoute.children!.find((r) => r.path === 'task/new')!;
-    expect(createRoute.loadComponent).toBeTruthy();
-    expect(createRoute.data).toEqual({ mode: 'create' });
-    expect(idRoute.children!.indexOf(createRoute)).toBeLessThan(idRoute.children!.findIndex((r) => r.path === 'task/:taskId'));
+  });
+
+  it('no longer registers standalone task routes — task create/edit is an in-page modal', () => {
+    const idRoute = WORK_ROUTES.find((r) => r.path === ':id')!;
+    expect(idRoute.children!.find((r) => r.path === 'task/new')).toBeUndefined();
+    expect(idRoute.children!.find((r) => r.path === 'task/:taskId')).toBeUndefined();
   });
 
   it('has no remaining milestone-scoped stub routes', () => {

@@ -153,8 +153,8 @@ export class ProjectListComponent implements OnInit {
     }
   }
 
-  onCategoryFilterChanged(categoryId: string | null): void {
-    this.store.setCategoryFilter(categoryId);
+  onCategoryFilterChanged(categoryIds: string[]): void {
+    this.store.setCategoryFilter(categoryIds);
   }
 
   onAchievedFilterChanged(filter: AchievedFilter): void {
