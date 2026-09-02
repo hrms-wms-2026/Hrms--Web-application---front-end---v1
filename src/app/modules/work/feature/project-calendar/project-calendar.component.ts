@@ -10,7 +10,7 @@ import {
   UpdateCalendarEventRequestDto
 } from '../../models/dto/calendar.dto';
 import { ProjectCalendarStore } from '../../state/project-calendar.store';
-import { addCalendarDays, calendarDayDifference, calendarRange, parseCalendarDate } from '../../utils/calendar-date.utils';
+import { addCalendarDays, calendarDayDifference, calendarRange, parseCalendarDate, rangeToPercent } from '../../utils/calendar-date.utils';
 import { buildCalendarTreeOrder } from '../../utils/calendar-tree.utils';
 
 @Component({
@@ -35,7 +35,7 @@ import { buildCalendarTreeOrder } from '../../utils/calendar-tree.utils';
               <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="7" /><path d="m21 21-4.3-4.3M11 8v6M8 11h6" /></svg>
             </button>
           </div>
-          <button type="button" class="project-calendar__create" [disabled]="store.loading() || !store.items().length" (click)="openCreateEvent()">
+          <button type="button" class="project-calendar__create" [disabled]="store.loading() || !store.modules().length" (click)="openCreateEvent()">
             <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M5 12h14" /></svg>
             <span>Create event</span>
           </button>
@@ -47,7 +47,7 @@ import { buildCalendarTreeOrder } from '../../utils/calendar-tree.utils';
       }
       @if (store.loading()) {
         <div class="project-calendar__empty">Loading calendar…</div>
-      } @else if (!store.items().length) {
+      } @else if (!store.modules().length) {
         <div class="project-calendar__empty">No objectives are available for this project.</div>
       } @else {
         <div class="project-calendar__layout">
@@ -61,6 +61,23 @@ import { buildCalendarTreeOrder } from '../../utils/calendar-tree.utils';
                   }
                 </div>
               </div>
+              @if (bandRects().length) {
+                <div class="project-calendar__bands" [style.left.px]="LABEL_WIDTH" [style.width.px]="timelineWidth()">
+                  @for (band of bandRects(); track band.eventId) {
+                    <div
+                      class="project-calendar__band"
+                      data-testid="calendar-event-band"
+                      [style.left]="band.leftPct + '%'"
+                      [style.width]="band.widthPct + '%'"
+                      [style.backgroundColor]="band.tint"
+                      [style.borderColor]="band.color"
+                      [title]="band.name + '  ' + band.startDate + ' → ' + band.endDate"
+                    >
+                      <span class="project-calendar__band-label" [style.color]="band.color">{{ band.name }}</span>
+                    </div>
+                  }
+                </div>
+              }
               @for (row of rows(); track row.item.objectiveId) {
                 <div class="project-calendar__grid project-calendar__grid--row" [style.gridTemplateColumns]="LABEL_WIDTH + 'px ' + timelineWidth() + 'px'" [attr.data-testid]="'calendar-row-' + row.item.objectiveId">
                   <div class="project-calendar__objective" [style.paddingLeft.px]="12 + row.depth * 18">
@@ -100,7 +117,7 @@ import { buildCalendarTreeOrder } from '../../utils/calendar-tree.utils';
     @if (modalOpen()) {
       <app-calendar-event-modal
         [event]="editingEvent()"
-        [items]="store.items()"
+        [modules]="store.modules()"
         (cancel)="modalOpen.set(false)"
         (save)="saveEvent($event)"
       />
@@ -134,6 +151,9 @@ import { buildCalendarTreeOrder } from '../../utils/calendar-tree.utils';
     .project-calendar__layout { display: grid; min-width: 0; grid-template-columns: minmax(0, 1fr) 220px; align-items: start; gap: 14px; }
     .project-calendar__timeline-scroll { min-width: 0; overflow-x: auto; border: 1px solid var(--color-border); border-radius: 11px; background: var(--color-surface); }
     .project-calendar__timeline { position: relative; min-height: 100%; }
+    .project-calendar__bands { position: absolute; top: 54px; bottom: 0; z-index: 1; pointer-events: none; }
+    .project-calendar__band { position: absolute; top: 0; bottom: 0; border-left: 1.5px solid; border-right: 1.5px solid; border-radius: 4px; }
+    .project-calendar__band-label { position: absolute; top: 2px; left: 6px; font-size: 10px; font-weight: 600; white-space: nowrap; }
     .project-calendar__today-line { position: absolute; top: 0; bottom: 0; width: 2px; background: var(--color-danger); z-index: 5; pointer-events: none; }
     .project-calendar__today-label { position: absolute; top: -17px; left: 50%; transform: translateX(-50%); border-radius: 4px; background: var(--color-danger); padding: 1px 5px; color: #fff; font-size: 9px; font-weight: 700; letter-spacing: .03em; text-transform: uppercase; white-space: nowrap; }
     .project-calendar__grid { display: grid; }
@@ -175,11 +195,11 @@ export class ProjectCalendarComponent implements OnInit, AfterViewInit, OnDestro
   readonly zoomDayWidth = signal(32);
 
   readonly timelineStart = computed(() => {
-    const dates = this.store.items().map((item) => item.startDate).filter(Boolean).sort();
+    const dates = this.store.modules().map((item) => item.startDate).filter(Boolean).sort();
     return dates[0] ?? new Date().toISOString().slice(0, 10);
   });
   readonly timelineEnd = computed(() => {
-    const dates = this.store.items().map((item) => item.endDate).filter(Boolean).sort();
+    const dates = this.store.modules().map((item) => item.endDate).filter(Boolean).sort();
     return dates.at(-1) ?? addCalendarDays(this.timelineStart(), 30);
   });
   readonly days = computed(() => calendarRange(this.timelineStart(), this.timelineEnd()));
@@ -207,7 +227,24 @@ export class ProjectCalendarComponent implements OnInit, AfterViewInit, OnDestro
   // Caps each ruler label's box to the gap before the next tick, so dense ticks at
   // high zoom clip with an ellipsis instead of visually overlapping their neighbor.
   readonly markerBoxWidth = computed(() => Math.max(1, this.markerStep() * this.dayWidth()));
-  readonly rows = computed(() => buildCalendarTreeOrder(this.store.items()));
+  readonly rows = computed(() => buildCalendarTreeOrder(this.store.modules()));
+  readonly bandRects = computed(() => {
+    const windowStart = this.timelineStart();
+    const windowEnd = this.timelineEnd();
+    return this.store.bands().map((band) => {
+      const { leftPct, widthPct } = rangeToPercent(band.startDate, band.endDate, windowStart, windowEnd);
+      return {
+        eventId: band.eventId,
+        name: band.name,
+        color: band.color,
+        tint: `color-mix(in srgb, ${band.color} 12%, transparent)`,
+        startDate: band.startDate,
+        endDate: band.endDate,
+        leftPct,
+        widthPct
+      };
+    });
+  });
   readonly todayVisible = computed(() => this.today >= this.timelineStart() && this.today <= this.timelineEnd());
   readonly todayOffset = computed(() => this.dayIndex(this.today) * this.dayWidth());
 
@@ -271,7 +308,8 @@ export class ProjectCalendarComponent implements OnInit, AfterViewInit, OnDestro
     this.modalOpen.set(true);
   }
 
-  openEditEvent(event: CalendarEventDto): void {
+  openEditEvent(eventId: string): void {
+    const event = this.store.events().find((e) => e.id === eventId) ?? null;
     this.editingEvent.set(event);
     this.modalOpen.set(true);
   }

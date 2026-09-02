@@ -1,5 +1,5 @@
-import { Component, input, output, signal } from '@angular/core';
-import { ProjectCalendarItemDto, CalendarDateChange } from '../../models/dto/calendar.dto';
+import { Component, computed, input, output, signal } from '@angular/core';
+import { ProjectCalendarModuleDto, CalendarDateChange } from '../../models/dto/calendar.dto';
 import { addCalendarDays, calendarDayDifference } from '../../utils/calendar-date.utils';
 
 interface DragState {
@@ -33,6 +33,7 @@ interface DragState {
       <div class="timeline-bar__content">
         @if (item().isAchieved) { <span class="timeline-bar__check" aria-label="Achieved">✓</span> }
         <span class="timeline-bar__title">{{ item().title }}</span>
+        @if (partialBadge(); as badge) { <span class="timeline-bar__state" [title]="badge + ' tasks in event'" data-testid="timeline-bar-partial">{{ badge }}</span> }
         @if (saving()) { <span class="timeline-bar__state">Saving…</span> }
         @if (pendingApproval()) { <span class="timeline-bar__state timeline-bar__state--approval" title="Needs approval">Approval</span> }
       </div>
@@ -67,7 +68,7 @@ interface DragState {
   `]
 })
 export class ObjectiveTimelineBarComponent {
-  readonly item = input.required<ProjectCalendarItemDto>();
+  readonly item = input.required<ProjectCalendarModuleDto>();
   readonly timelineStart = input.required<string>();
   readonly timelineEnd = input<string | null>(null);
   readonly dayWidth = input(28);
@@ -80,10 +81,26 @@ export class ObjectiveTimelineBarComponent {
   private drag: DragState | null = null;
 
   readonly disabled = () => !this.item().canEdit || this.item().isAchieved;
+
+  /** The event whose colour paints this bar: a whole-module link wins, else the first partial link. */
+  private readonly primaryEventLink = computed(() => {
+    const links = this.item().events ?? [];
+    return links.find((l) => l.membership === 'whole') ?? links[0] ?? null;
+  });
+
   readonly barColor = () => {
-    if (this.disabled()) return this.item().isAchieved ? '#64748B' : '#94A3B8';
-    return this.item().calendarEventColor || 'var(--color-accent)';
+    if (this.item().isAchieved) return '#64748B';
+    const link = this.primaryEventLink();
+    if (link) return link.eventColor;
+    return this.disabled() ? '#94A3B8' : '#94A3B8';
   };
+
+  /** "N/M" when this module is only partly in its (single) event, else null. */
+  readonly partialBadge = computed(() => {
+    const link = this.primaryEventLink();
+    if (!link || link.membership !== 'partial') return null;
+    return `${link.tasksInEventCount}/${link.taskTotalCount}`;
+  });
 
   left(): number {
     const dates = this.previewDates() ?? this.item();

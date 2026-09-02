@@ -1,5 +1,5 @@
 import { Component, input, output } from '@angular/core';
-import { CalendarEventDto } from '../../models/dto/calendar.dto';
+import { ProjectCalendarEventBandDto } from '../../models/dto/calendar.dto';
 
 @Component({
   selector: 'app-calendar-event-legend',
@@ -18,17 +18,19 @@ import { CalendarEventDto } from '../../models/dto/calendar.dto';
       </div>
 
       <div class="calendar-events__list">
-        @for (event of events(); track event.id) {
+        @for (event of events(); track event.eventId) {
           <article class="calendar-event">
             <div class="calendar-event__accent" [style.backgroundColor]="event.color" aria-hidden="true"></div>
             <div class="calendar-event__body">
               <div class="calendar-event__name" [title]="event.name">{{ event.name }}</div>
-              <div class="calendar-event__meta"><span class="calendar-event__dot" [style.backgroundColor]="event.color" aria-hidden="true"></span>Active event</div>
+              <div class="calendar-event__meta"><span class="calendar-event__dot" [style.backgroundColor]="event.color" aria-hidden="true"></span>{{ event.startDate }} → {{ event.endDate }}</div>
             </div>
-            <div class="calendar-event__actions">
-              <button type="button" class="calendar-event__action" [attr.aria-label]="'Edit ' + event.name" title="Edit event" (click)="edit.emit(event)"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 20h9" /><path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1-1-4Z" /></svg></button>
-              <button type="button" class="calendar-event__action calendar-event__action--danger" [attr.aria-label]="'Close ' + event.name" title="Close event" (click)="close.emit(event.id)"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M18 6 6 18" /></svg></button>
-            </div>
+            @if (event.canEdit) {
+              <div class="calendar-event__actions">
+                <button type="button" class="calendar-event__action" [attr.aria-label]="'Edit ' + event.name" title="Edit event" (click)="edit.emit(event.eventId)"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 20h9" /><path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1-1-4Z" /></svg></button>
+                <button type="button" class="calendar-event__action calendar-event__action--danger" [attr.aria-label]="'Close ' + event.name" title="Close event" (click)="close.emit(event.eventId)"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M18 6 6 18" /></svg></button>
+              </div>
+            }
           </article>
         } @empty {
           <div class="calendar-events__empty"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 6h16v14H4z" /><path d="M8 3v6M16 3v6M4 11h16" /></svg><span>No active events yet.</span></div>
@@ -65,7 +67,7 @@ import { CalendarEventDto } from '../../models/dto/calendar.dto';
   `]
 })
 export class CalendarEventLegendComponent {
-  readonly events = input.required<readonly CalendarEventDto[]>();
-  readonly edit = output<CalendarEventDto>();
+  readonly events = input.required<readonly ProjectCalendarEventBandDto[]>();
+  readonly edit = output<string>();
   readonly close = output<string>();
 }
