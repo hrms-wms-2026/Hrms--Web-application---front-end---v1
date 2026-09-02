@@ -18,7 +18,7 @@ type ModuleCheckState = 'checked' | 'indeterminate' | 'unchecked';
     <div class="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4" role="presentation" (click)="cancel.emit()">
       <section class="w-full max-w-lg rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] p-5 shadow-xl" role="dialog" aria-modal="true" aria-labelledby="calendar-event-title" (click)="$event.stopPropagation()">
         <div class="mb-4 flex items-center justify-between">
-          <h2 id="calendar-event-title" class="text-lg font-semibold text-[var(--color-text-primary)]">{{ event() ? 'Edit event' : 'Create event' }}</h2>
+          <h2 id="calendar-event-title" class="text-lg font-semibold text-[var(--color-text-primary)]">{{ event() ? 'Edit milestone' : 'Create milestone' }}</h2>
           <button type="button" class="text-[var(--color-text-secondary)]" aria-label="Close" (click)="cancel.emit()">×</button>
         </div>
 
@@ -90,7 +90,7 @@ type ModuleCheckState = 'checked' | 'indeterminate' | 'unchecked';
         @if (error()) { <p class="mb-3 text-sm text-[var(--color-danger)]" role="alert" data-testid="event-error">{{ error() }}</p> }
         <div class="flex justify-end gap-2">
           <button type="button" class="rounded-md px-3 py-2 text-sm text-[var(--color-text-secondary)]" (click)="cancel.emit()">Cancel</button>
-          <button type="button" class="rounded-md bg-[var(--color-accent)] px-3 py-2 text-sm font-semibold text-white disabled:opacity-50" [disabled]="!valid()" (click)="submit()" data-testid="event-save">Save event</button>
+          <button type="button" class="rounded-md bg-[var(--color-accent)] px-3 py-2 text-sm font-semibold text-white disabled:opacity-50" [disabled]="!valid()" (click)="submit()" data-testid="event-save">Save milestone</button>
         </div>
       </section>
     </div>

@@ -29,7 +29,7 @@ import { TaskClockWidgetComponent } from '../task-clock-widget/task-clock-widget
           <span class="task-card__hours"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9" /><path d="M12 7v5l3 2" /></svg><span>{{ task().estimatedHours }}h</span></span>
         }
         @if (task().activeEventName) {
-          <span class="task-card__event" data-testid="task-event-chip" [title]="'In event: ' + task().activeEventName">{{ task().activeEventName }}</span>
+          <span class="task-card__event" data-testid="task-event-chip" [title]="'In milestone: ' + task().activeEventName">{{ task().activeEventName }}</span>
         }
       </div>
 

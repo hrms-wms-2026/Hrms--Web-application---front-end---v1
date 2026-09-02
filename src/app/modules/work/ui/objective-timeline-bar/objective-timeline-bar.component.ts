@@ -33,7 +33,7 @@ interface DragState {
       <div class="timeline-bar__content">
         @if (item().isAchieved) { <span class="timeline-bar__check" aria-label="Achieved">✓</span> }
         <span class="timeline-bar__title">{{ item().title }}</span>
-        @if (partialBadge(); as badge) { <span class="timeline-bar__state" [title]="badge + ' tasks in event'" data-testid="timeline-bar-partial">{{ badge }}</span> }
+        @if (partialBadge(); as badge) { <span class="timeline-bar__state" [title]="badge + ' tasks in milestone'" data-testid="timeline-bar-partial">{{ badge }}</span> }
         @if (saving()) { <span class="timeline-bar__state">Saving…</span> }
         @if (pendingApproval()) { <span class="timeline-bar__state timeline-bar__state--approval" title="Needs approval">Approval</span> }
       </div>

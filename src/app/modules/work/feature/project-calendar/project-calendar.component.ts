@@ -37,7 +37,7 @@ import { buildCalendarTreeOrder } from '../../utils/calendar-tree.utils';
           </div>
           <button type="button" class="project-calendar__create" [disabled]="store.loading() || !store.modules().length" (click)="openCreateEvent()">
             <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M5 12h14" /></svg>
-            <span>Create event</span>
+            <span>Create milestone</span>
           </button>
         </div>
       </header>

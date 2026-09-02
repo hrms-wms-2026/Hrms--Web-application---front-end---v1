@@ -155,7 +155,7 @@ export const ProjectCalendarStore = signalStore(
           await load(projectId);
           return true;
         } catch (err) {
-          patchState(store, { error: extractError(err, 'Failed to create the calendar event.') });
+          patchState(store, { error: extractError(err, 'Failed to create the calendar milestone.') });
           return false;
         }
       },
@@ -167,7 +167,7 @@ export const ProjectCalendarStore = signalStore(
           if (projectId) await load(projectId);
           return true;
         } catch (err) {
-          patchState(store, { error: extractError(err, 'Failed to update the calendar event.') });
+          patchState(store, { error: extractError(err, 'Failed to update the calendar milestone.') });
           return false;
         }
       },
@@ -183,7 +183,7 @@ export const ProjectCalendarStore = signalStore(
           if (projectId) await load(projectId);
           return true;
         } catch (err) {
-          patchState(store, { error: extractError(err, 'Failed to close the calendar event.') });
+          patchState(store, { error: extractError(err, 'Failed to close the calendar milestone.') });
           return false;
         }
       }

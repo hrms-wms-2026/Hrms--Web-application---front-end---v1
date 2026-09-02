@@ -5,12 +5,12 @@ import { ProjectCalendarEventBandDto } from '../../models/dto/calendar.dto';
   selector: 'app-calendar-event-legend',
   standalone: true,
   template: `
-    <aside class="calendar-events" aria-label="Calendar events">
+    <aside class="calendar-events" aria-label="Calendar milestones">
       <div class="calendar-events__header">
         <div class="calendar-events__title-wrap">
           <span class="calendar-events__icon" aria-hidden="true"><svg viewBox="0 0 24 24"><rect x="4" y="5" width="16" height="15" rx="2" /><path d="M8 3v4M16 3v4M4 10h16" /></svg></span>
           <div>
-            <h2 class="calendar-events__title">Events</h2>
+            <h2 class="calendar-events__title">Milestones</h2>
             <p class="calendar-events__subtitle">Project highlights</p>
           </div>
         </div>
@@ -27,13 +27,13 @@ import { ProjectCalendarEventBandDto } from '../../models/dto/calendar.dto';
             </div>
             @if (event.canEdit) {
               <div class="calendar-event__actions">
-                <button type="button" class="calendar-event__action" [attr.aria-label]="'Edit ' + event.name" title="Edit event" (click)="edit.emit(event.eventId)"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 20h9" /><path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1-1-4Z" /></svg></button>
-                <button type="button" class="calendar-event__action calendar-event__action--danger" [attr.aria-label]="'Close ' + event.name" title="Close event" (click)="close.emit(event.eventId)"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M18 6 6 18" /></svg></button>
+                <button type="button" class="calendar-event__action" [attr.aria-label]="'Edit ' + event.name" title="Edit milestone" (click)="edit.emit(event.eventId)"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 20h9" /><path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1-1-4Z" /></svg></button>
+                <button type="button" class="calendar-event__action calendar-event__action--danger" [attr.aria-label]="'Close ' + event.name" title="Close milestone" (click)="close.emit(event.eventId)"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M18 6 6 18" /></svg></button>
               </div>
             }
           </article>
         } @empty {
-          <div class="calendar-events__empty"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 6h16v14H4z" /><path d="M8 3v6M16 3v6M4 11h16" /></svg><span>No active events yet.</span></div>
+          <div class="calendar-events__empty"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 6h16v14H4z" /><path d="M8 3v6M16 3v6M4 11h16" /></svg><span>No active milestones yet.</span></div>
         }
       </div>
     </aside>
