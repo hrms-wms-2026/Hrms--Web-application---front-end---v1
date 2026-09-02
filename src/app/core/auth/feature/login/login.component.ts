@@ -1,6 +1,6 @@
 import { Component, OnInit, inject, signal } from '@angular/core';
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
-import { Router } from '@angular/router';
+import { ActivatedRoute, Router } from '@angular/router';
 import { AuthStore } from '../../state/auth.store';
 import { ButtonComponent } from '../../../../shared/ui/button/button.component';
 import { CardComponent } from '../../../../shared/ui/card/card.component';
@@ -15,6 +15,7 @@ import { buildRootUrl, isTenantHostname } from '../../utils/tenant-redirect';
 export class LoginComponent implements OnInit {
   private fb = inject(FormBuilder);
   private router = inject(Router);
+  private route = inject(ActivatedRoute);
   store = inject(AuthStore);
 
   readonly showPassword = signal(false);
@@ -62,7 +63,8 @@ export class LoginComponent implements OnInit {
         window.location.href = url;
       }
     } else {
-      this.router.navigate(['/people/employees']);
+      const returnUrl = this.route.snapshot.queryParamMap.get('returnUrl');
+      this.router.navigate([returnUrl ?? '/people/employees']);
     }
   }
 }
