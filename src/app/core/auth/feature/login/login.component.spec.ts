@@ -1,6 +1,6 @@
 import { Component } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
-import { Router, provideRouter } from '@angular/router';
+import { ActivatedRoute, Router, provideRouter } from '@angular/router';
 import { LoginComponent } from './login.component';
 import { AuthStore } from '../../state/auth.store';
 
@@ -8,15 +8,22 @@ import { AuthStore } from '../../state/auth.store';
 class RouteTargetStubComponent {}
 
 describe('LoginComponent', () => {
-  function setup(authStoreOverrides: Record<string, unknown>) {
+  function setup(authStoreOverrides: Record<string, unknown>, returnUrl: string | null = null) {
     TestBed.configureTestingModule({
       imports: [LoginComponent],
       providers: [
         provideRouter([
           { path: 'dashboard', component: RouteTargetStubComponent },
-          { path: 'auth/legal-consent', component: RouteTargetStubComponent }
+          { path: 'auth/legal-consent', component: RouteTargetStubComponent },
+          { path: '**', component: RouteTargetStubComponent }
         ]),
-        { provide: AuthStore, useValue: authStoreOverrides }
+        { provide: AuthStore, useValue: authStoreOverrides },
+        {
+          provide: ActivatedRoute,
+          useValue: {
+            snapshot: { queryParamMap: { get: (key: string) => (key === 'returnUrl' ? returnUrl : null) } }
+          }
+        }
       ]
     });
     const fixture = TestBed.createComponent(LoginComponent);
@@ -128,6 +135,45 @@ describe('LoginComponent', () => {
     await fixture.componentInstance.submit();
 
     expect(loginSpy).toHaveBeenCalledWith({ email: 'a@b.com', password: 'secret' });
+  });
+
+  it('navigates to returnUrl after a successful login when present', async () => {
+    const fixture = setup(
+      {
+        login: vi.fn().mockResolvedValue(undefined),
+        legalAcceptanceRequired: () => false,
+        redirectRequired: () => false,
+        continueUrl: () => null,
+        loading: () => false,
+        error: () => null
+      },
+      '/device/activate?request_id=abc&user_code=XYZ'
+    );
+    const router = TestBed.inject(Router);
+    const navigateSpy = vi.spyOn(router, 'navigate');
+
+    fixture.componentInstance.form.setValue({ email: 'a@b.com', password: 'secret' });
+    await fixture.componentInstance.submit();
+
+    expect(navigateSpy).toHaveBeenCalledWith(['/device/activate?request_id=abc&user_code=XYZ']);
+  });
+
+  it('falls back to /people/employees when no returnUrl is present', async () => {
+    const fixture = setup({
+      login: vi.fn().mockResolvedValue(undefined),
+      legalAcceptanceRequired: () => false,
+      redirectRequired: () => false,
+      continueUrl: () => null,
+      loading: () => false,
+      error: () => null
+    });
+    const router = TestBed.inject(Router);
+    const navigateSpy = vi.spyOn(router, 'navigate');
+
+    fixture.componentInstance.form.setValue({ email: 'a@b.com', password: 'secret' });
+    await fixture.componentInstance.submit();
+
+    expect(navigateSpy).toHaveBeenCalledWith(['/people/employees']);
   });
 
   it('navigates to /auth/legal-consent when login succeeds but legal acceptance is required', async () => {
