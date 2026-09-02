@@ -1,0 +1,18 @@
+<div class="lcg-grid">
+  @for (day of days; track day.date) {
+    <button type="button" data-testid="calendar-day" class="lcg-day" [class.lcg-day-holiday]="day.holidays.length > 0" (click)="dayClicked.emit(day.date)">
+      <span class="lcg-date">{{ day.date | slice:8:10 }}</span>
+      @if (day.holidays.length > 0) {
+        <span class="lcg-holiday">{{ day.holidays[0].name }}</span>
+      }
+      @if (day.absences.length > 0) {
+        <div class="lcg-dots">
+          @for (absence of day.absences.slice(0, 4); track absence.requestId) {
+            <span class="lcg-dot" [style.background]="colorFor(absence)" [title]="absence.employeeName"></span>
+          }
+        </div>
+        <span class="lcg-count">{{ day.absences.length }}</span>
+      }
+    </button>
+  }
+</div>

@@ -1,6 +1,4 @@
-<a class="skip-to-main" href="#main-content">
-  Skip to main content
-</a>
+<a class="skip-link" href="#main-content">Skip to main content</a>
 
 <div class="main-layout" [class.main-layout--has-sub-sidebar]="navState.activeChildren().length > 0">
   <app-side-navbar class="main-layout__rail" />
@@ -15,7 +13,14 @@
   }
 
   <main id="main-content" class="main-content" tabindex="-1">
-    <router-outlet />
+    @if (!monitoringEnabled || trayPresence.canRenderProtectedContent()) {
+      <router-outlet />
+    } @else {
+      <app-locked-workspace-preview />
+      @if (trayPresence.isBlocking()) {
+        <app-tray-activation-gate />
+      }
+    }
   </main>
 
   <app-mobile-bottom-nav />

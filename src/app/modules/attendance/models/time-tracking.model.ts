@@ -44,6 +44,7 @@ export interface AttendanceTodayResponse {
   attentionSeverity?: string | null;
   breakOverageMinutes?: number;
   isOverBreakAllowance?: boolean;
+  attentionWorkDate?: string | null;
 }
 
 export interface AttendanceHistoryEmployee {
@@ -79,6 +80,34 @@ export interface AttendanceHistoryRow {
   isOverBreakAllowance?: boolean;
 }
 
+export interface TimelineEvent {
+  eventType: 'ClockIn' | 'ClockOut' | 'BreakStart' | 'BreakEnd';
+  timestamp: string;
+  source: string;
+}
+
+export interface ActivityAppUsage {
+  appName: string;
+  totalSeconds: number;
+  category: string;
+}
+
+export interface ActivityDailySummary {
+  totalActiveMinutes: number;
+  totalIdleMinutes: number;
+  totalMeetingMinutes: number;
+  activePercentage: number;
+  activityScore: number;
+  dataCoveragePercentage: number;
+  topApps: ActivityAppUsage[];
+}
+
+export interface AttendanceDayDetail {
+  summary: AttendanceHistoryRow;
+  timelineEvents: TimelineEvent[];
+  dailyActivity: ActivityDailySummary | null;
+}
+
 export interface ClockInRequest {
   source: 'web';
 }
@@ -87,3 +116,10 @@ export type TimeTrackingRange = {
   from: string;
   to: string;
 };
+
+export interface PagedResultDto<T> {
+  items: T[];
+  pageNumber: number;
+  pageSize: number;
+  totalCount: number;
+}

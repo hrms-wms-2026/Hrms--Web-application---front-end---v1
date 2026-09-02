@@ -20,15 +20,34 @@ export const NAV_ITEMS: readonly NavItem[] = [
       { id: 'time-off-team-balances', label: 'Team Balances', path: '/time-off/team', requiredModules: ['leave'], requiredPermissions: ['leave:read-team'] },
       { id: 'time-off-entitlements', label: 'Entitlements', path: '/time-off/entitlements', requiredModules: ['leave'], requiredPermissions: ['leave:read', 'leave:manage'] },
       { id: 'time-off-types', label: 'Leave Types', path: '/time-off/types', requiredModules: ['leave'], requiredPermissions: ['leave:read'] },
-      { id: 'time-off-policies', label: 'Leave Policies', path: '/time-off/policies', requiredModules: ['leave'], requiredPermissions: ['leave:manage'] }
+      { id: 'time-off-policies', label: 'Leave Policies', path: '/time-off/policies', requiredModules: ['leave'], requiredPermissions: ['leave:manage'] },
+      { id: 'time-off-team-approvals', label: 'Pending Approvals', path: '/time-off/team-approvals', requiredModules: ['leave'], requiredPermissions: ['leave:approve'] },
+      { id: 'time-off-all-requests', label: 'All Requests', path: '/time-off/all', requiredModules: ['leave'], requiredPermissions: ['leave:read'] },
+      { id: 'time-off-calendar', label: 'Team Calendar', path: '/time-off/calendar', requiredModules: ['leave'], requiredPermissions: ['calendar:read'] }
     ]
   },
   {
-    id: 'time-attendance', label: 'Attendance', icon: 'time-attendance', path: '/attendance/time-tracking', requiredModules: ['time_attendance'], requiredPermissions: ['attendance:read-own', 'attendance:write-own', 'attendance:read', 'attendance:approve'],
+    id: 'time-attendance',
+    label: 'Attendance',
+    icon: 'time-attendance',
+    path: '/attendance/time-tracking',
+    requiredModules: ['time_attendance'],
+    requiredPermissions: ['attendance:read-own', 'attendance:write-own', 'attendance:read', 'attendance:approve'],
     children: [
-      { id: 'time-attendance-tracking', label: 'Time Tracking', path: '/attendance/time-tracking', exact: true, requiredModules: ['time_attendance'], requiredPermissions: ['attendance:read-own', 'attendance:write-own', 'attendance:read'] },
-      { id: 'time-attendance-monitoring', label: 'Monitoring', path: '/attendance/monitoring', exact: true, requiredModules: ['time_attendance'], requiredPermissions: ['attendance:read'] },
-      { id: 'time-attendance-correction-approvals', label: 'Correction approvals', path: '/attendance/corrections/approvals', requiredModules: ['time_attendance'], requiredPermissions: ['attendance:approve'] }
+      {
+        id: 'time-attendance-tracking',
+        label: 'Time Tracking',
+        path: '/attendance/time-tracking',
+        requiredModules: ['time_attendance'],
+        requiredPermissions: ['attendance:read-own', 'attendance:write-own', 'attendance:read', 'attendance:approve']
+      },
+      {
+        id: 'time-attendance-monitoring',
+        label: 'Monitoring',
+        path: '/attendance/monitoring',
+        requiredModules: ['time_attendance'],
+        requiredPermissions: ['monitoring:read']
+      }
     ]
   },
   {
@@ -45,8 +64,7 @@ export const NAV_ITEMS: readonly NavItem[] = [
       { id: 'settings-roles', label: 'Roles & Permissions', path: '/settings/roles', requiredPermissions: ['roles:manage'] },
       { id: 'settings-notifications', label: 'Notification Settings', path: '/settings/notifications', requiredPermissions: ['notifications:manage'] },
       { id: 'settings-bulk-onboarding', label: 'Bulk Onboarding', path: '/settings/bulk-onboarding', requiredModules: ['core_hr'], requiredPermissions: ['employees:write'] },
-      { id: 'settings-clock-in-policy', label: 'Clock-in Policy', path: '/settings/clock-in-policy', requiredModules: ['time_attendance'], requiredPermissions: ['attendance:read'] },
-      { id: 'settings-devices', label: 'Devices & connections', path: '/settings/devices', requiredModules: ['desktop_agent_gateway'] }
+      { id: 'settings-clock-in-policy', label: 'Clock-in Policy', path: '/settings/clock-in-policy', requiredModules: ['time_attendance'], requiredPermissions: ['attendance:read'] }
       // Audit log is intentionally not listed yet.
     ]
   }

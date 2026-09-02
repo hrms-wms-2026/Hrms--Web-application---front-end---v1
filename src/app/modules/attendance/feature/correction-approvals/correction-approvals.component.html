@@ -1,7 +1,11 @@
 <div class="approvals-page">
-  <header class="approvals-header"><app-breadcrumb-header parentLabel="Attendance" currentLabel="Correction approvals" icon="time-attendance" /></header>
+  @if (!embedded()) {
+    <header class="approvals-header"><app-breadcrumb-header parentLabel="Attendance" currentLabel="Correction approvals" icon="time-attendance" /></header>
+  }
   <section class="approvals-card" aria-labelledby="approvals-heading">
-    <div class="section-heading"><div><p class="eyebrow">Review queue</p><h1 id="approvals-heading">Attendance correction approvals</h1></div><span class="queue-count">{{ store.approvalInbox().length }} pending</span></div>
+    @if (!embedded()) {
+      <div class="section-heading"><div><p class="eyebrow">Review queue</p><h1 id="approvals-heading">Attendance correction approvals</h1></div><span class="queue-count">{{ store.approvalInbox().length }} pending</span></div>
+    }
     @if (reviewError()) { <p class="stale-message" role="status">{{ reviewError() }}</p> }
     @if (store.approvalInboxLoading()) {
       <div class="approval-skeleton" aria-busy="true" aria-label="Loading approval requests"></div>

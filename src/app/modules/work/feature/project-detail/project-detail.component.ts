@@ -17,7 +17,8 @@ import { BreadcrumbHeaderComponent } from '../../../../shared/ui/breadcrumb-head
     MilestoneSubMenuComponent, LoaderComponent, ErrorStateComponent, EmptyStateComponent,
     BreadcrumbHeaderComponent, RouterLink, RouterOutlet
   ],
-  templateUrl: './project-detail.component.html'
+  templateUrl: './project-detail.component.html',
+  styleUrls: ['./project-detail.component.css']
 })
 export class ProjectDetailComponent implements OnInit {
   readonly store = inject(ProjectDetailStore);

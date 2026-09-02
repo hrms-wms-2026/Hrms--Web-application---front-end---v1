@@ -40,6 +40,7 @@ export const routes: Routes = [
         (module) => module.MainLayoutComponent
       ),
     canActivate: [authGuard],
+
     children: [
       {
         path: 'dashboard',
@@ -71,7 +72,7 @@ export const routes: Routes = [
         path: 'attendance',
         canActivate: [permissionGuard],
         data: {
-          permissions: ['attendance:read-own', 'attendance:write-own', 'attendance:read'],
+          permissions: ['attendance:read-own', 'attendance:write-own', 'attendance:read', 'attendance:approve'],
           modules: ['time_attendance']
         },
         loadChildren: () =>
@@ -145,18 +146,6 @@ export const routes: Routes = [
               { path: 'new', pathMatch: 'full', redirectTo: '' },
               { path: ':id/edit', redirectTo: '' }
             ]
-          },
-          {
-            path: 'devices',
-            loadComponent: () =>
-              import('./modules/settings/feature/connect-device/connect-device.component').then(
-                (m) => m.ConnectDeviceComponent
-              ),
-            canActivate: [permissionGuard],
-            data: {
-              title: 'Devices',
-              modules: ['desktop_agent_gateway']
-            }
           },
           { path: '', pathMatch: 'full', redirectTo: 'general' }
         ]

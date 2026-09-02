@@ -119,6 +119,15 @@ describe('ProjectListComponent', () => {
     expect(fixture.nativeElement.textContent).toContain('Mobile App');
   });
 
+  it('navigates into the project detail screen when an already selected project is clicked again', () => {
+    fixture.detectChanges();
+    expect(fixture.componentInstance.selectedProject()?.id).toBe('p1');
+
+    fixture.componentInstance.onSelectProject(project);
+
+    expect(router.navigate).toHaveBeenCalledWith(['/work', 'p1']);
+  });
+
   it('opens the members popup for a lead and invites the picked employee', async () => {
     fixture.detectChanges();
     expect(fixture.nativeElement.querySelector('[data-testid="member-button"]')).not.toBeNull();

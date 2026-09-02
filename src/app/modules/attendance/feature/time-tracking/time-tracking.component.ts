@@ -1,31 +1,53 @@
-import { ChangeDetectionStrategy, Component, computed, inject, OnInit, signal } from '@angular/core';
+import { ChangeDetectionStrategy, Component, computed, effect, inject, OnInit, signal, untracked } from '@angular/core';
+import { toSignal } from '@angular/core/rxjs-interop';
 import { FormsModule } from '@angular/forms';
+import { ActivatedRoute, Router } from '@angular/router';
 import { ModalComponent } from '../../../../shared/ui/modal/modal.component';
+import { AttendanceDetailDrawerComponent, AttendanceDetailSelection } from './attendance-detail-drawer/attendance-detail-drawer.component';
+import { AttendanceHistoryListComponent } from './attendance-history-list/attendance-history-list.component';
+import { MyRequestsPanelComponent } from './my-requests-panel/my-requests-panel.component';
+import { CorrectionApprovalsComponent } from '../correction-approvals/correction-approvals.component';
+import { WorkAreaApprovalsComponent } from '../work-area-approvals/work-area-approvals.component';
 import { NotificationService } from '../../../../core/services/notification.service';
 import {
   AttendanceCorrectionBreakRequest,
   AttendanceCorrectionPreviewRequest,
   AttendanceCorrectionType,
-  CORRECTION_TYPE_OPTIONS,
-  correctionTypeLabel,
-  correctionStatusLabel,
-  AttendanceCorrectionResponse
+  CORRECTION_TYPE_OPTIONS
 } from '../../models/attendance-correction.model';
 import { BreadcrumbHeaderComponent } from '../../../../shared/ui/breadcrumb-header/breadcrumb-header.component';
 import { ButtonComponent } from '../../../../shared/ui/button/button.component';
-import { DatePickerComponent } from '../../../../shared/ui/date-picker/date-picker.component';
+import { DateRangePickerComponent } from '../../../../shared/ui/date-range-picker/date-range-picker.component';
 import { PermissionService } from '../../../../core/auth/state/permission.service';
 import { isMachineValue } from '../../../../core/services/error-handler.service';
 import { AttendanceHistoryRow, AttendanceTodayResponse, TimeTrackingRange } from '../../models/time-tracking.model';
-import { TimeTrackingAction, TimeTrackingStore } from '../../state/time-tracking.store';
+import {
+  WorkArea,
+  WorkAreaChangeRequestPayload,
+  WORK_AREA_OPTIONS,
+  workAreaChangeStatusLabel,
+  workAreaLabel
+} from '../../models/work-area-change-request.model';
+import { TIME_TRACKING_COVERED_FORBIDDEN_ERROR, TimeTrackingAction, TimeTrackingStore } from '../../state/time-tracking.store';
+import {
+  DISPLAY_TIMEZONE_FALLBACK as SHARED_DISPLAY_TIMEZONE_FALLBACK,
+  formatDate as formatDateShared,
+  formatDateTime as formatDateTimeShared,
+  formatMinutes as formatMinutesShared,
+  formatWorkAreaDate as formatWorkAreaDateShared,
+  sourceLabel as sourceLabelShared,
+  statusLabel as statusLabelShared,
+  validDisplayTimezone as validDisplayTimezoneShared,
+  workModeLabel as workModeLabelShared
+} from '../../utils/attendance-formatters';
 
 const DAY_IN_MILLISECONDS = 24 * 60 * 60 * 1000;
-const DISPLAY_TIMEZONE_FALLBACK = 'UTC';
+type AttendanceViewMode = 'my' | 'team';
 
 @Component({
   selector: 'app-time-tracking',
   standalone: true,
-  imports: [BreadcrumbHeaderComponent, ButtonComponent, DatePickerComponent, FormsModule, ModalComponent],
+  imports: [AttendanceDetailDrawerComponent, AttendanceHistoryListComponent, BreadcrumbHeaderComponent, ButtonComponent, CorrectionApprovalsComponent, DateRangePickerComponent, FormsModule, ModalComponent, MyRequestsPanelComponent, WorkAreaApprovalsComponent],
   templateUrl: './time-tracking.component.html',
   styleUrl: './time-tracking.component.css',
   changeDetection: ChangeDetectionStrategy.OnPush
@@ -34,15 +56,50 @@ export class TimeTrackingComponent implements OnInit {
   readonly store = inject(TimeTrackingStore);
   private readonly permissionService = inject(PermissionService);
   private readonly notifications = inject(NotificationService);
+  private readonly route = inject(ActivatedRoute);
+  private readonly router = inject(Router);
 
+    readonly Math = Math;
+  readonly TIME_TRACKING_COVERED_FORBIDDEN_ERROR = TIME_TRACKING_COVERED_FORBIDDEN_ERROR;
+  private readonly queryParams = toSignal(this.route.queryParamMap, { initialValue: this.route.snapshot.queryParamMap });
+
+  readonly hasSelfServiceAccess = computed(() => this.permissionService.hasAnyPermission(['attendance:read-own', 'attendance:write-own']));
   readonly hasCoveredAccess = computed(() => this.permissionService.hasPermission('attendance:read'));
+  readonly hasApproveAccess = computed(() => this.permissionService.hasPermission('attendance:approve'));
+  /**
+   * attendance:read (hasCoveredAccess) is a universal permission granted to every
+   * employee, same as the self-service permissions - it is not a signal that this
+   * person manages anyone, and attendance:approve without real coverage does not occur
+   * in this product's data model (an approver is always someone's covered manager).
+   * Team view is therefore gated purely on Today.canViewCoveredEmployees.
+   */
+  readonly canShowTeamView = computed(() => this.canViewCoveredEmployees());
+
+  readonly viewMode = computed<AttendanceViewMode>(() => {
+    const requested = this.queryParams().get('view');
+    if (requested === 'team' && this.canShowTeamView()) return 'team';
+    if (requested === 'my' && this.hasSelfServiceAccess()) return 'my';
+    if (this.hasSelfServiceAccess()) return 'my';
+    if (this.canShowTeamView()) return 'team';
+    return 'my';
+  });
+
+  readonly approvalType = computed<'corrections' | 'work-area'>(() =>
+    this.queryParams().get('type') === 'work-area' ? 'work-area' : 'corrections'
+  );
+
+  readonly deepLinkRequestId = computed(() => this.queryParams().get('requestId'));
+  readonly approvalBadgeCorrections = computed(() => this.store.approvalInbox().length);
+  readonly approvalBadgeWorkArea = computed(() => this.store.workAreaApprovalInboxTotalCount());
+
   readonly historyFrom = signal('');
   readonly historyTo = signal('');
-  readonly rangeError = signal('');
-  readonly currentWeekRange = currentWeekRange();
+    readonly currentWeekRange = currentWeekRange();
+  readonly selectedDetail = signal<AttendanceDetailSelection | null>(null);
+  readonly selectedDetailSummary = signal<AttendanceHistoryRow | null>(null);
   /** History rows have no timezone field, so use Today.timezone for the selected company.
    * UTC is an explicit display-only fallback until Today is available; it is never the browser timezone. */
-  readonly displayTimezone = computed(() => this.store.today()?.timezone?.trim() || DISPLAY_TIMEZONE_FALLBACK);
+  readonly displayTimezone = computed(() => this.store.today()?.timezone?.trim() || SHARED_DISPLAY_TIMEZONE_FALLBACK);
   readonly canViewCoveredEmployees = computed(() => this.store.today()?.canViewCoveredEmployees ?? false);
   readonly friendlyTodayMessages = computed(() => this.getFriendlyTodayMessages(this.store.today()));
   readonly correctionFormOpen = signal<AttendanceHistoryRow | null>(null);
@@ -55,34 +112,115 @@ export class TimeTrackingComponent implements OnInit {
   readonly correctionFieldErrors = signal<Record<string, string>>({});
   readonly correctionFormMessage = signal('');
   readonly correctionPreviewReady = signal(false);
+  readonly workAreaFormOpen = signal(false);
+  readonly workAreaReviewReady = signal(false);
+  readonly workAreaDate = signal('');
+  readonly workAreaRequestedArea = signal<WorkArea>('remote');
+  readonly workAreaReason = signal('');
+  readonly workAreaFieldErrors = signal<Record<string, string>>({});
+  readonly workAreaFormMessage = signal('');
+
+  readonly workAreaOptions = WORK_AREA_OPTIONS;
+  readonly workAreaChangeStatusLabel = workAreaChangeStatusLabel;
+  readonly workAreaLabel = workAreaLabel;
   readonly correctionTypeOptions = CORRECTION_TYPE_OPTIONS;
-  readonly correctionTypeLabel = correctionTypeLabel;
-  readonly correctionStatusLabel = correctionStatusLabel;
+
+  /**
+   * Per-activation dedupe keys for the team-loading effect below. These are plain
+   * component fields (never signals), read and written only inside that effect, so the
+   * effect's decision to fetch never depends on anything the fetch itself writes back to
+   * the store - that reactive read-your-own-write shape is what caused a runaway
+   * covered-history request loop before this guard was added. Each key resets only when
+   * Team view is no longer active, so at most one request is issued per distinct
+   * range/type activation, no matter how many unrelated signal changes cause this effect
+   * to re-run. Team attendance and Approvals load independently of each other - both are
+   * shown together (see the template), never behind a toggle - but only the active
+   * approval type (corrections vs work-area) loads within Approvals.
+   */
+  private teamAttendanceRangeKey: string | null = null;
+  private attemptedApprovalType: 'corrections' | 'work-area' | null = null;
+
+  constructor() {
+    effect(() => {
+      if (this.viewMode() !== 'team') {
+        this.teamAttendanceRangeKey = null;
+        this.attemptedApprovalType = null;
+        return;
+      }
+
+      if (this.canViewCoveredEmployees()) {
+        const range = untracked(() => this.store.selectedHistoryRange()) ?? this.currentWeekRange;
+        const key = `${range.from}:${range.to}`;
+        if (this.teamAttendanceRangeKey !== key) {
+          this.teamAttendanceRangeKey = key;
+          void this.store.loadCoveredHistory(range);
+        }
+      } else {
+        this.teamAttendanceRangeKey = null;
+      }
+
+      if (this.hasApproveAccess()) {
+        const type = this.approvalType();
+        if (this.attemptedApprovalType !== type) {
+          this.attemptedApprovalType = type;
+          if (type === 'corrections' && !this.store.approvalInboxLoaded()) {
+            void this.store.loadApprovalInbox();
+          }
+          if (type === 'work-area' && !this.store.workAreaApprovalInboxLoaded()) {
+            void this.store.loadWorkAreaApprovalInbox({ status: 'pending', pageNumber: 1 });
+          }
+        }
+      } else {
+        this.attemptedApprovalType = null;
+      }
+    });
+  }
 
   ngOnInit(): void {
     const range = this.currentWeekRange;
     this.historyFrom.set(range.from);
     this.historyTo.set(range.to);
-    void this.store.loadToday();
-    void this.store.loadMyHistory(range);
-    if (this.hasCoveredAccess()) {
-      void this.store.loadCoveredHistory(range);
+    if (this.hasSelfServiceAccess() || this.hasCoveredAccess()) {
+      void this.store.loadToday();
     }
-    if (this.store.loadMyCorrections) {
-      void this.store.loadMyCorrections();
+    if (this.hasSelfServiceAccess()) {
+      void this.store.loadMyHistory(range);
     }
   }
 
-  applyHistoryRange(): void {
-    const range = this.selectedRange();
-    if (!range) {
+
+
+  onRangeSelected(range: TimeTrackingRange): void {
+    this.historyFrom.set(range.from);
+    this.historyTo.set(range.to);
+    this.loadForCurrentView(range);
+  }
+
+  private loadForCurrentView(range: TimeTrackingRange): void {
+    if (this.viewMode() === 'team') {
+      if (this.canViewCoveredEmployees()) {
+        void this.store.loadCoveredHistory(range);
+      }
       return;
     }
 
     void this.store.loadMyHistory(range);
-    if (this.hasCoveredAccess()) {
-      void this.store.loadCoveredHistory(range);
+  }
+
+  selectViewMode(mode: AttendanceViewMode): void {
+    if (mode === 'my') {
+      this.navigateState({ view: null, type: null, requestId: null });
+      return;
     }
+    this.navigateState({ view: 'team', type: this.hasApproveAccess() ? this.approvalType() : null, requestId: null });
+  }
+
+  selectApprovalType(type: 'corrections' | 'work-area'): void {
+    this.navigateState({ view: 'team', type, requestId: null });
+  }
+
+  private navigateState(params: { view: string | null; type: string | null; requestId: string | null }): void {
+    void this.router.navigate([], { relativeTo: this.route, queryParams: params, queryParamsHandling: 'merge' });
   }
 
   retryToday(): void {
@@ -90,7 +228,108 @@ export class TimeTrackingComponent implements OnInit {
   }
 
   retryHistory(): void {
-    this.applyHistoryRange();
+    this.loadForCurrentView({ from: this.historyFrom(), to: this.historyTo() });
+  }
+
+  goToHistoryPage(page: number): void {
+    const range = this.store.selectedHistoryRange() ?? this.currentWeekRange;
+    void this.store.loadMyHistory(range, page);
+  }
+
+    goToCoveredHistoryPage(page: number): void {
+    const range = this.store.selectedHistoryRange() ?? this.currentWeekRange;
+    void this.store.loadCoveredHistory(range, this.store.selectedCoveredEmployeeId() ?? undefined, page);
+  }
+
+  onMyRowSelected(row: AttendanceHistoryRow): void {
+    const employeeId = this.store.today()?.employeeId;
+    if (!employeeId) return;
+    this.selectedDetailSummary.set(row);
+    this.selectedDetail.set({ employeeId, workDate: row.workDate });
+  }
+
+  onTeamRowSelected(row: AttendanceHistoryRow): void {
+    if (!row.employee) return;
+    this.selectedDetailSummary.set(row);
+    this.selectedDetail.set({ employeeId: row.employee.employeeId, workDate: row.workDate });
+  }
+
+  closeDetailDrawer(): void {
+    this.selectedDetail.set(null);
+    this.selectedDetailSummary.set(null);
+    this.store.clearDayDetail();
+  }
+
+
+
+  openWorkAreaChange(): void {
+    this.workAreaFormOpen.set(true);
+    this.workAreaReviewReady.set(false);
+    this.workAreaDate.set(this.store.today()?.workDate ?? '');
+    this.workAreaRequestedArea.set('remote');
+    this.workAreaReason.set('');
+    this.workAreaFieldErrors.set({});
+    this.workAreaFormMessage.set('');
+    this.store.clearWorkAreaPreview();
+  }
+
+  closeWorkAreaChange(): void {
+    if (this.store.workAreaPreviewLoading() || this.store.workAreaActionLoading()) return;
+    this.workAreaFormOpen.set(false);
+    this.workAreaReviewReady.set(false);
+    this.workAreaFieldErrors.set({});
+    this.workAreaFormMessage.set('');
+    this.store.clearWorkAreaPreview();
+  }
+
+  resetWorkAreaReview(): void {
+    this.workAreaReviewReady.set(false);
+    this.store.clearWorkAreaPreview();
+  }
+
+  async previewOrSubmitWorkAreaChange(): Promise<void> {
+    const payload = this.buildWorkAreaRequest();
+    if (!payload) return;
+    if (!this.workAreaReviewReady()) {
+      const preview = await this.store.previewWorkAreaChange(payload);
+      if (!preview) {
+        this.workAreaFormMessage.set(this.store.workAreaPreviewError() || 'We could not review this request. Try again.');
+        return;
+      }
+      this.workAreaReviewReady.set(true);
+      this.workAreaFormMessage.set('Review the request details before sending.');
+      return;
+    }
+
+    const result = await this.store.submitWorkAreaChangeRequest(payload);
+    if (!result) {
+      this.workAreaFormMessage.set(this.store.workAreaCreateError() || 'Could not send the work-area change request. Try again.');
+      return;
+    }
+    this.closeWorkAreaChange();
+    void this.store.loadMyWorkAreaRequests({ pageNumber: 1 });
+    void this.store.loadToday();
+  }
+
+
+
+  formatWorkAreaDate(value: string, timezone: string | null | undefined): string {
+    return formatWorkAreaDateShared(value, timezone);
+  }
+
+  private buildWorkAreaRequest(): WorkAreaChangeRequestPayload | null {
+    const date = this.workAreaDate().trim();
+    const reason = this.workAreaReason().trim();
+    const errors: Record<string, string> = {};
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) errors['date'] = 'Choose a request date.';
+    const today = this.store.today?.();
+    if (today && date && date < today.workDate) errors['date'] = 'Choose today or a future date.';
+    if (!this.workAreaRequestedArea()) errors['requestedWorkArea'] = 'Choose On-site or Remote.';
+    if (!reason) errors['reason'] = 'Enter a reason for the request.';
+    this.workAreaFieldErrors.set(errors);
+    this.workAreaFormMessage.set(Object.keys(errors).length ? 'Please correct the highlighted fields.' : '');
+    if (Object.keys(errors).length) return null;
+    return { date, requestedWorkArea: this.workAreaRequestedArea(), reason };
   }
 
   openCorrection(row: AttendanceHistoryRow): void {
@@ -110,6 +349,34 @@ export class TimeTrackingComponent implements OnInit {
 
   closeCorrection(): void {
     if (!this.store.correctionActionLoading?.()) this.correctionFormOpen.set(null);
+  }
+
+  /**
+   * One-click entry point from the missing-clock-out banner: opens the same correction
+   * form used everywhere else, pre-set to a clock-out correction for the specific stale day
+   * (that day has no attendance history row on screen to click "Request correction" from -
+   * it's surfaced only via Today's attention fields).
+   */
+  openMissingClockOutCorrection(workDate: string): void {
+    const syntheticRow: AttendanceHistoryRow = {
+      attendanceRecordId: '',
+      workDate,
+      employee: null,
+      clockInAt: null,
+      clockOutAt: null,
+      isActive: true,
+      breakMinutes: 0,
+      totalWorkedMinutes: 0,
+      expectedWorkMode: null,
+      attendanceSource: null,
+      status: 'missing_clock_out',
+      canViewDetails: false,
+      canRequestCorrection: true,
+      canRequestWorkAreaChange: false,
+      canCorrect: false
+    };
+    this.openCorrection(syntheticRow);
+    this.correctionType.set('clock_out');
   }
 
   addBreakInterval(): void {
@@ -151,30 +418,14 @@ export class TimeTrackingComponent implements OnInit {
     }
     this.notifications.success(result.status === 'approved' ? 'Attendance correction applied.' : 'Correction request submitted.');
     this.closeCorrection();
+    this.closeDetailDrawer();
     const range = this.store.selectedHistoryRange() ?? this.currentWeekRange;
     void this.store.loadToday();
     void this.store.loadMyHistory(range);
     void this.store.loadMyCorrections();
   }
 
-  async cancelCorrection(id: string): Promise<void> {
-    const result = await this.store.cancelCorrection(id);
-    if (!result) return;
-    this.notifications.success('Correction request cancelled.');
-    void this.store.loadMyCorrections();
-  }
 
-  correctionActionIsLoading(action: string): boolean {
-    return this.store.activeCorrectionAction?.() === action;
-  }
-
-  correctionSummary(request: AttendanceCorrectionResponse): string {
-    if (request.correctionType === 'break') return `${request.requestedBreaks?.length ?? 0} interval(s)`;
-    const clockIn = request.requestedClockInAt ? this.formatDateTime(request.requestedClockInAt, request.timezone) : null;
-    const clockOut = request.requestedClockOutAt ? this.formatDateTime(request.requestedClockOutAt, request.timezone) : null;
-    if (clockIn && clockOut) return `${clockIn} to ${clockOut}`;
-    return clockIn || clockOut || 'Time update requested';
-  }
 
   private buildCorrectionRequest(): AttendanceCorrectionPreviewRequest | null {
     const row = this.correctionFormOpen();
@@ -229,9 +480,9 @@ export class TimeTrackingComponent implements OnInit {
   }
 
   private toDateTimeOffset(value: string, workDate: string): string | null {
-    if (!value || !/^\\d{2}:\\d{2}$/.test(value)) return null;
+    if (!value || !/^\d{2}:\d{2}$/.test(value)) return null;
     try {
-      const timezone = validDisplayTimezone(this.displayTimezone()) ?? DISPLAY_TIMEZONE_FALLBACK;
+      const timezone = validDisplayTimezoneShared(this.displayTimezone()) ?? SHARED_DISPLAY_TIMEZONE_FALLBACK;
       const iso = localDateTimeToIso(workDate, value, timezone);
       return iso && dateOnlyForZone(iso, timezone) === workDate ? iso : null;
     } catch {
@@ -241,7 +492,7 @@ export class TimeTrackingComponent implements OnInit {
 
   private localTimeForInput(value: string): string {
     try {
-      const timezone = validDisplayTimezone(this.displayTimezone()) ?? DISPLAY_TIMEZONE_FALLBACK;
+      const timezone = validDisplayTimezoneShared(this.displayTimezone()) ?? SHARED_DISPLAY_TIMEZONE_FALLBACK;
       const parts = new Intl.DateTimeFormat('en-CA', { timeZone: timezone, hour: '2-digit', minute: '2-digit', hour12: false }).formatToParts(new Date(value));
       return `${parts.find((part) => part.type === 'hour')?.value ?? '00'}:${parts.find((part) => part.type === 'minute')?.value ?? '00'}`;
     } catch {
@@ -251,33 +502,9 @@ export class TimeTrackingComponent implements OnInit {
 
   retryCoveredHistory(): void {
     const range = this.store.selectedHistoryRange() ?? this.currentWeekRange;
-    if (this.hasCoveredAccess()) {
+    if (this.canViewCoveredEmployees()) {
       void this.store.loadCoveredHistory(range, this.store.selectedCoveredEmployeeId() ?? undefined);
     }
-  }
-
-  setHistoryFrom(value: string): void {
-    this.historyFrom.set(value);
-    this.rangeError.set('');
-  }
-
-  setHistoryTo(value: string): void {
-    this.historyTo.set(value);
-    this.rangeError.set('');
-  }
-
-  selectedRange(): TimeTrackingRange | null {
-    const range = { from: this.historyFrom().trim(), to: this.historyTo().trim() };
-    if (!range.from || !range.to) {
-      this.rangeError.set('Select both a start date and an end date.');
-      return null;
-    }
-    if (range.from > range.to) {
-      this.rangeError.set('The start date must be on or before the end date.');
-      return null;
-    }
-    this.rangeError.set('');
-    return range;
   }
 
   actionIsLoading(action: TimeTrackingAction): boolean {
@@ -285,72 +512,27 @@ export class TimeTrackingComponent implements OnInit {
   }
 
   statusLabel(value: string, backendLabel?: string | null): string {
-    const label = backendLabel?.trim();
-    if (label) {
-      return label;
-    }
-
-    return humanizeValue(value, {
-      not_clocked_in: 'Not clocked in',
-      clocked_in: 'Clocked in',
-      on_break: 'On break',
-      clocked_out: 'Clocked out',
-      present: 'Present',
-      absent: 'Absent',
-      late: 'Late',
-      off_day: 'Off day'
-    });
+    return statusLabelShared(value, backendLabel);
   }
 
   workModeLabel(value: string | null): string {
-    return value ? humanizeValue(value, { onsite: 'Onsite', remote: 'Remote', hybrid: 'Hybrid', field: 'Field' }) : 'Not specified';
+    return workModeLabelShared(value);
   }
 
   sourceLabel(value: string | null): string {
-    return value ? humanizeValue(value, { web: 'Web', desktop_tray: 'Desktop tray', biometric: 'Biometric' }) : '—';
+    return sourceLabelShared(value);
   }
 
   formatDate(value: string): string {
-    return formatDate(value);
+    return formatDateShared(value);
   }
 
   formatDateTime(value: string | null, timezone?: string | null): string {
-    if (!value) {
-      return '—';
-    }
-
-    const date = new Date(value);
-    if (Number.isNaN(date.getTime())) {
-      return '—';
-    }
-
-    const displayTimezone = validDisplayTimezone(timezone);
-    if (!displayTimezone) {
-      return '—';
-    }
-
-    try {
-      return new Intl.DateTimeFormat(undefined, {
-        hour: 'numeric',
-        minute: '2-digit',
-        timeZone: displayTimezone
-      }).format(date);
-    } catch {
-      // Invalid runtime timezone data must not surface a technical error to users.
-      return '—';
-    }
+    return formatDateTimeShared(value, timezone);
   }
 
   formatMinutes(value: number | null): string {
-    if (value === null || value < 0) {
-      return '—';
-    }
-    const hours = Math.floor(value / 60);
-    const minutes = value % 60;
-    if (hours === 0) {
-      return `${minutes}m`;
-    }
-    return minutes === 0 ? `${hours}h` : `${hours}h ${minutes}m`;
+    return formatMinutesShared(value);
   }
 
   employeeLabel(row: AttendanceHistoryRow): string {
@@ -439,23 +621,6 @@ function toDateOnly(value: Date): string {
   return `${value.getFullYear()}-${String(value.getMonth() + 1).padStart(2, '0')}-${String(value.getDate()).padStart(2, '0')}`;
 }
 
-function validDisplayTimezone(timezone: string | null | undefined): string | null {
-  const candidate = timezone?.trim() || DISPLAY_TIMEZONE_FALLBACK;
-  try {
-    new Intl.DateTimeFormat(undefined, { timeZone: candidate }).format();
-    return candidate;
-  } catch {
-    return null;
-  }
-}
-
-function formatDate(value: string): string {
-  const date = new Date(`${value}T00:00:00`);
-  return Number.isNaN(date.getTime())
-    ? value
-    : new Intl.DateTimeFormat(undefined, { month: 'short', day: 'numeric', year: 'numeric' }).format(date);
-}
-
 function humanizeAttendanceMessage(value: string): string | null {
   const normalized = value.trim().toLowerCase().replace(/[ -]+/g, '_');
   if (!normalized) {
@@ -480,16 +645,3 @@ function humanizeAttendanceMessage(value: string): string | null {
   return isMachineValue(value) ? null : value;
 }
 
-function humanizeValue(value: string, knownValues: Record<string, string>): string {
-  const normalized = value.trim().toLowerCase().replace(/[ -]+/g, '_');
-  if (knownValues[normalized]) {
-    return knownValues[normalized];
-  }
-  if (!normalized) {
-    return 'Not specified';
-  }
-  return normalized
-    .split('_')
-    .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
-    .join(' ');
-}
