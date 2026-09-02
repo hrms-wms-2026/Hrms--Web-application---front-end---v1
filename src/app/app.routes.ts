@@ -61,7 +61,12 @@ export const routes: Routes = [
         data: { permissions: ['employees:read', 'employees:write'], modules: ['core_hr'] },
         loadChildren: () => import('./modules/people/people.routes').then((module) => module.PEOPLE_ROUTES)
       },
-      { path: 'calendar', loadComponent: loadPlaceholder, data: { title: 'Calendar' } },
+      {
+        path: 'calendar',
+        canActivate: [permissionGuard],
+        data: { permissions: ['calendar:read'], modules: ['calendar'] },
+        loadChildren: () => import('./modules/calendar/calendar.routes').then((module) => module.CALENDAR_ROUTES)
+      },
       {
         path: 'time-off',
         canActivate: [permissionGuard],
