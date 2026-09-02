@@ -101,15 +101,27 @@ describe('MilestoneTreeTabComponent', () => {
     expect(storeStub.loadProjectTree).toHaveBeenCalledWith('p1');
   });
 
-  it('defaults the module filter to the routed milestone id', async () => {
-    setup('o1');
+  it('defaults the module filter to all so every member sees the full tree, regardless of the routed milestone', async () => {
+    setup('o2');
     fixture.detectChanges();
     await fixture.whenStable();
     fixture.detectChanges();
-    expect(fixture.componentInstance.selectedModuleFilter()).toBe('o1');
+    expect(fixture.componentInstance.selectedModuleFilter()).toBe('all');
     const trigger = fixture.nativeElement.querySelector('[data-testid="module-filter-dropdown"] .work-dropdown__trigger') as HTMLElement;
-    expect(trigger.textContent).toContain('Root');
-    expect(fixture.componentInstance.moduleDropdownOptions()[1]).toEqual({ value: 'o1', label: 'Root' });
+    expect(trigger.textContent).toContain('All modules');
+    expect(fixture.componentInstance.moduleDropdownOptions()[0]).toEqual({ value: 'all', label: 'All modules' });
+  });
+
+  it('keeps sibling branches visible and highlights the routed node when a member lands on their own non-root module', async () => {
+    setup('o2');
+    fixture.detectChanges();
+    await fixture.whenStable();
+    fixture.detectChanges();
+
+    const rendered = fixture.componentInstance.renderedTree();
+    const ids = (node: MilestoneTreeNode): string[] => [node.id, ...node.children.flatMap(ids)];
+    expect(ids(rendered!)).toEqual(expect.arrayContaining(['o1', 'o2', 'o3']));
+    expect(fixture.componentInstance.selectedNode()?.id).toBe('o2');
   });
 
   it('prunes the rendered tree on filter change without refetching', () => {
