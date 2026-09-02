@@ -70,7 +70,7 @@ export class MilestoneTreeTabComponent {
 
   // Adapts moduleFilterOptions to the shared dropdown's { value, label } shape, with the
   // synthetic "all" entry the tree-prune filter needs. Single-select by design: it drives
-  // pruneTreeToModule (one subtree) and is also set by node interactions.
+  // pruneTreeToModule (one subtree). Defaults to "all" - the routed milestone never scopes it.
   moduleDropdownOptions = computed<WorkDropdownOption[]>(() => [
     { value: 'all', label: 'All modules' },
     ...this.moduleFilterOptions().map((option) => ({ value: option.id, label: option.title }))
@@ -119,8 +119,12 @@ export class MilestoneTreeTabComponent {
       this.currentMilestoneId = milestoneId;
       this.currentProjectId = paramMap.get('id') ?? this.resolveProjectId() ?? '';
       this.projectId.set(this.currentProjectId);
-      this.selectedModuleFilter.set(milestoneId);
-      this.selectedNodeId.set(null);
+      // Every active project member sees the FULL objective tree. The routed milestone only
+      // preselects a node for the detail panel - it does NOT scope what the tree shows. The
+      // per-node isOwner flag still gates the editing tools; the module dropdown stays
+      // available for voluntary narrowing.
+      this.selectedModuleFilter.set('all');
+      this.selectedNodeId.set(milestoneId);
       void this.loadTree();
       void this.currentEmployee.ensureLoaded();
       if (this.currentProjectId && this.loadedMembersForProjectId !== this.currentProjectId) {
@@ -193,13 +197,14 @@ export class MilestoneTreeTabComponent {
     this.currentProjectId = projectId;
     if (!options?.force && this.loadedProjectId === projectId && this.store.selectedSubtree()) {
       const tree = this.store.selectedSubtree();
-      if (tree && !this.selectedNodeId()) this.selectedNodeId.set(tree.id);
+      if (tree && !findTreeNode(tree, this.selectedNodeId() ?? '')) this.selectedNodeId.set(tree.id);
       return;
     }
     await this.store.loadProjectTree(projectId);
     this.loadedProjectId = projectId;
     const tree = this.store.selectedSubtree();
-    if (tree) this.selectedNodeId.set(tree.id);
+    // Fall back to the root only when the routed milestone isn't in this project's tree.
+    if (tree && !findTreeNode(tree, this.selectedNodeId() ?? '')) this.selectedNodeId.set(tree.id);
   }
 
   onCreateSubRequested(node: MilestoneTreeNode): void {
