@@ -224,6 +224,34 @@ describe('LoginComponent', () => {
     window.location = originalLocation as unknown as string & Location;
   });
 
+  it('appends returnUrl to continue_url when present (cross-host handoff must not drop it)', async () => {
+    const originalLocation = window.location;
+    // @ts-expect-error -- replacing window.location with a controllable stand-in for this test
+    delete window.location;
+    window.location = { ...originalLocation, href: '' } as unknown as string & Location;
+
+    const fixture = setup(
+      {
+        login: vi.fn().mockResolvedValue(undefined),
+        legalAcceptanceRequired: () => false,
+        redirectRequired: () => true,
+        continueUrl: () => 'https://acme.localhost:4200/auth/continue?code=raw-exchange-code',
+        loading: () => false,
+        error: () => null
+      },
+      '/device/activate?request_id=abc&user_code=XYZ'
+    );
+
+    fixture.componentInstance.form.setValue({ email: 'a@b.com', password: 'secret' });
+    await fixture.componentInstance.submit();
+
+    expect(window.location.href).toBe(
+      'https://acme.localhost:4200/auth/continue?code=raw-exchange-code&returnUrl=%2Fdevice%2Factivate%3Frequest_id%3Dabc%26user_code%3DXYZ'
+    );
+
+    window.location = originalLocation as unknown as string & Location;
+  });
+
   it('does not navigate when login rejects', async () => {
     const fixture = setup({
       login: vi.fn().mockRejectedValue(new Error('bad credentials')),
