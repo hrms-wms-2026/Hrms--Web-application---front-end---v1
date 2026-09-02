@@ -16,6 +16,7 @@
 - The Members section applies to **create mode only** — `EditObjectiveRequestDto` has no head/member fields, and edit-mode membership changes already go through the separate `app-member-management-popup` (`scope="objective"`) elsewhere; do not duplicate that here.
 - File type/size validation is enforced server-side (backend plan, Task 1) — the frontend does not need to replicate the allow-list, but should let the server's 400 error surface via the existing `errorMessage`/status mechanisms.
 - `environment.apiUrl` already includes the API version prefix — objective asset endpoints are `` `${environment.apiUrl}/work/objectives/${id}/assets` `` and `` `${environment.apiUrl}/work/objectives/${id}/assets/${assetId}` ``, matching every other objective-scoped call in `ProjectApiService`.
+- **Test command:** this project has no standalone `vitest.config.ts` — `npm test` (`ng test`) runs the whole suite through the `@angular/build:unit-test` builder (confirmed in `angular.json`/`package.json`). There is no confirmed single-file-filter syntax for this builder, so every "Run the tests" step below runs the full suite via `npm test` rather than a fabricated path-scoped command — watch the output for the specific spec file's results.
 
 ---
 
@@ -92,6 +93,16 @@ Then add these two new tests, placed right after the existing `createSubModule` 
     expect(result).toEqual({ success: false });
     expect(store.milestoneActionError()).toBe('asset not found');
   });
+
+  it('setMilestoneActionError sets and clears the error message directly', () => {
+    const store = setup();
+
+    store.setMilestoneActionError('3 file(s) failed to upload.');
+    expect(store.milestoneActionError()).toBe('3 file(s) failed to upload.');
+
+    store.setMilestoneActionError(null);
+    expect(store.milestoneActionError()).toBeNull();
+  });
 ```
 
 Add `ObjectiveAssetDto` to the existing DTO import line at the top of the file:
@@ -102,7 +113,7 @@ import { MyProjectMilestoneDto, ObjectiveDetailDto, CreateObjectiveRequestDto, A
 
 - [ ] **Step 2: Run the tests to verify they fail**
 
-Run: `npx vitest run src/app/modules/work/state/project-detail.store.spec.ts`
+Run: `npm test` (watch for `project-detail.store.spec.ts` in the output)
 Expected: FAIL — `uploadObjectiveAsset`/`deleteObjectiveAsset` don't exist on `ProjectApiService` yet, `uploadMilestoneAsset`/`deleteMilestoneAsset` don't exist on the store yet, and the fixed `createSubModule` assertion fails against the current (unpatched) return value.
 
 - [ ] **Step 3: Add `ObjectiveAssetDto` to the DTO file**
@@ -147,11 +158,13 @@ export interface ObjectiveDetailDto {
   achievedAt: string | null;
   createdAt: string;
   updatedAt: string | null;
-  assets: ObjectiveAssetDto[];
+  assets?: ObjectiveAssetDto[];
 }
 ```
 
-(only the added `assets: ObjectiveAssetDto[];` line at the end is new — every other field stays as-is)
+(only the added `assets?: ObjectiveAssetDto[];` line at the end is new — every other field stays as-is)
+
+**Note:** `assets` is optional, not required. `ObjectiveSubtreeNodeDto extends ObjectiveDetailDto` (used by the milestone tree/subtree endpoints), and the backend plan deliberately leaves `ObjectiveSubtreeNodeResponse`/`ObjectiveSubtreeNodeViewModel` untouched — only the single-objective detail response (`GET /work/objectives/{id}`) gains `assets`. Marking it required would be a lie for every subtree/tree-item object literal elsewhere in the codebase (and would force fake `assets: []` into unrelated code just to satisfy the compiler). `sub-module-form.component.ts`'s edit-mode prefill already defensively reads `value.assets ?? []` for exactly this reason.
 
 - [ ] **Step 4: Add the API service methods**
 
@@ -218,13 +231,17 @@ Then add these two new methods immediately after it (still inside the same `with
         return { success: false };
       }
     },
+
+    setMilestoneActionError(message: string | null): void {
+      patchState(store, { milestoneActionError: message });
+    },
 ```
 
 Add `ObjectiveAssetDto` to whatever DTO import line this file already has for `CreateObjectiveRequestDto` (add it alongside the other milestone DTO imports at the top of the file).
 
 - [ ] **Step 6: Run the tests to verify they pass**
 
-Run: `npx vitest run src/app/modules/work/state/project-detail.store.spec.ts`
+Run: `npm test` (watch for `project-detail.store.spec.ts` in the output)
 Expected: PASS (all tests in the file, including the 4 new ones and the fixed one)
 
 - [ ] **Step 7: Commit**
@@ -246,6 +263,8 @@ git commit -m "feat: add objective asset DTOs, API methods, and store actions"
 - Produces: `AssetRowView { id: string; fileName: string; sizeBytes: number; status: 'staged' | 'uploading' | 'uploaded' | 'error'; errorMessage?: string }`; component selector `app-asset-upload-list` with `rows: input<readonly AssetRowView[]>`, `disabled: input(false)`, `filesPicked: output<File[]>`, `removeRequested: output<string>`, `retryRequested: output<string>` — consumed by Task 3.
 
 This component is purely presentational — no API access, no knowledge of create vs. edit mode. It renders one dropzone (drag/drop not required, a native file `<input>` is sufficient — the reference design and existing codebase precedent, `project-form-modal`'s logo/banner picker, are both click-to-browse, no drag-and-drop logic) plus a list of rows.
+
+**Scope note:** the backend's `ObjectiveAssetResponse`/`ObjectiveAssetDto` carries a signed `downloadUrl`, but `AssetRowView` deliberately doesn't include it and no row renders a link to open/preview the file — viewing an already-attached file was never requested in the spec (only upload/list/remove). If that's wanted later, it's a small addition (`downloadUrl` on `AssetRowView`, `[href]` on the filename), not a redesign.
 
 - [ ] **Step 1: Write the failing test**
 
@@ -319,7 +338,7 @@ describe('AssetUploadListComponent', () => {
 
 - [ ] **Step 2: Run the test to verify it fails**
 
-Run: `npx vitest run src/app/modules/work/ui/asset-upload-list/asset-upload-list.component.spec.ts`
+Run: `npm test` (watch for `asset-upload-list.component.spec.ts` in the output)
 Expected: FAIL — the component file doesn't exist yet.
 
 - [ ] **Step 3: Create the component**
@@ -411,7 +430,7 @@ export class AssetUploadListComponent {
 
 - [ ] **Step 4: Run the test to verify it passes**
 
-Run: `npx vitest run src/app/modules/work/ui/asset-upload-list/asset-upload-list.component.spec.ts`
+Run: `npm test` (watch for `asset-upload-list.component.spec.ts` in the output)
 Expected: PASS (all 4 tests)
 
 - [ ] **Step 5: Commit**
@@ -643,7 +662,7 @@ describe('SubModuleFormComponent', () => {
 
 - [ ] **Step 2: Run the tests to verify they fail**
 
-Run: `npx vitest run src/app/modules/work/ui/sub-module-form/sub-module-form.component.spec.ts`
+Run: `npm test` (watch for `sub-module-form.component.spec.ts` in the output)
 Expected: FAIL to compile / FAIL — `onMemberPicked`, `onSetOwner`, `onAssetFilesPicked`, `assetRows`, `onAssetRetry`, `onAssetRemove` don't exist yet; `created`'s payload shape doesn't match; `ObjectiveDetail`'s `assets` field doesn't exist on the type yet (fixed by Task 1, already merged if these plans run in order).
 
 - [ ] **Step 3: Rewrite the component**
@@ -713,10 +732,10 @@ interface SelectedMember {
                 <span class="text-xs font-medium text-[var(--color-text-primary)]">{{ directory.get(member.employeeId)?.name ?? 'Unknown employee' }}</span>
                 <div class="flex items-center gap-1">
                   @if (member.isOwner) {
-                    <span data-testid="owner-badge" class="rounded-full bg-[var(--color-accent)]/10 px-2 py-0.5 text-[10px] font-semibold text-[var(--color-accent)]">Owner</span>
+                    <span data-testid="owner-badge" class="rounded-full bg-[var(--color-accent)]/10 px-2 py-0.5 text-[10px] font-semibold text-[var(--color-accent)]">Owner invite pending</span>
                   } @else {
                     <span data-testid="make-owner-button" (click)="onSetOwner(member.employeeId)">
-                      <app-button variant="secondary" size="sm">Make owner</app-button>
+                      <app-button variant="secondary" size="sm">Invite as owner</app-button>
                     </span>
                   }
                   <span data-testid="remove-member-button" (click)="onMemberRemove(member.employeeId)">
@@ -838,8 +857,7 @@ export class SubModuleFormComponent {
   onMemberPicked(employeeId: string): void {
     this.memberPickerOpen.set(false);
     if (this.members().some((m) => m.employeeId === employeeId)) return;
-    const isFirst = this.members().length === 0;
-    this.members.update((list) => [...list, { employeeId, isOwner: isFirst }]);
+    this.members.update((list) => [...list, { employeeId, isOwner: false }]);
     void this.directory.ensureLoaded([employeeId]);
   }
 
@@ -848,6 +866,9 @@ export class SubModuleFormComponent {
   }
 
   onSetOwner(employeeId: string): void {
+    // Sets headEmployeeId on submit, which the backend treats as a pending leader
+    // invitation, not immediate headship (CreateObjectiveCommandHandler) — the
+    // creator stays head until that invite is accepted.
     this.members.update((list) => list.map((m) => ({ ...m, isOwner: m.employeeId === employeeId })));
   }
 
@@ -877,7 +898,14 @@ export class SubModuleFormComponent {
     this.pendingFiles.delete(id);
     if (this.mode() === 'edit' && objectiveId && row?.status === 'uploaded') {
       this.assetRows.update((rows) => rows.filter((r) => r.id !== id));
-      void firstValueFrom(this.api.deleteObjectiveAsset(objectiveId, id)).catch(() => undefined);
+      firstValueFrom(this.api.deleteObjectiveAsset(objectiveId, id)).catch(() => {
+        // Deletion failed server-side — put the row back rather than letting it
+        // silently vanish while still attached. Its Retry button (shared with
+        // upload-failure rows) would re-upload rather than re-delete; clicking
+        // Remove again is the actual retry path here. Acceptable for now —
+        // a distinct "pending delete" status would be needed to fix properly.
+        this.assetRows.update((rows) => [...rows, { ...row, status: 'error' as const, errorMessage: 'Failed to remove file. Click Remove to try again.' }]);
+      });
       return;
     }
     this.assetRows.update((rows) => rows.filter((r) => r.id !== id));
@@ -950,7 +978,7 @@ export class SubModuleFormComponent {
 
 - [ ] **Step 4: Run the tests to verify they pass**
 
-Run: `npx vitest run src/app/modules/work/ui/sub-module-form/sub-module-form.component.spec.ts`
+Run: `npm test` (watch for `sub-module-form.component.spec.ts` in the output)
 Expected: PASS (all tests)
 
 - [ ] **Step 5: Commit**
@@ -981,10 +1009,11 @@ In `src/app/modules/work/feature/milestone-tree-tab/milestone-tree-tab.component
       createSubModule: vi.fn().mockResolvedValue({ success: true, objectiveId: 'o1' }),
 ```
 
-Add `uploadMilestoneAsset` to the same `storeStub` object literal (alongside `createSubModule`):
+Add `uploadMilestoneAsset` and `setMilestoneActionError` to the same `storeStub` object literal (alongside `createSubModule`):
 
 ```typescript
       uploadMilestoneAsset: vi.fn().mockResolvedValue({ success: true }),
+      setMilestoneActionError: vi.fn(),
 ```
 
 Update the existing `'reloads the tree and closes the modal after a successful create'` test's call to the new event shape:
@@ -1026,11 +1055,29 @@ Add a new test right after it, asserting the upload loop runs for staged files:
     expect(storeStub.uploadMilestoneAsset).toHaveBeenCalledWith('o1', fileB);
     expect(fixture.componentInstance.createModalOpen()).toBe(false);
   });
+
+  it('surfaces a retry-via-Module-settings message when some staged files fail to upload', async () => {
+    setup('o1');
+    fixture.detectChanges();
+    storeStub.uploadMilestoneAsset = vi.fn()
+      .mockResolvedValueOnce({ success: true })
+      .mockResolvedValueOnce({ success: false });
+
+    await fixture.componentInstance.onCreateModalCreated({
+      payload: { parentObjectiveId: 'o1', title: 'Design Phase', description: null, startDate: '2026-01-15', endDate: '2026-03-01', allocatedHours: 20 },
+      assetFiles: [new File(['a'], 'ok.pdf'), new File(['b'], 'bad.exe')]
+    });
+
+    expect(storeStub.setMilestoneActionError).toHaveBeenCalledWith(
+      '"Design Phase" was created, but 1 file(s) failed to upload — open Module settings on it to retry.'
+    );
+    expect(fixture.componentInstance.createModalOpen()).toBe(false);
+  });
 ```
 
 - [ ] **Step 2: Run the tests to verify they fail**
 
-Run: `npx vitest run src/app/modules/work/feature/milestone-tree-tab/milestone-tree-tab.component.spec.ts`
+Run: `npm test` (watch for `milestone-tree-tab.component.spec.ts` in the output)
 Expected: FAIL — `onCreateModalCreated` still expects the old flat payload shape and never calls `uploadMilestoneAsset`.
 
 - [ ] **Step 3: Update `onCreateModalCreated`**
@@ -1041,30 +1088,41 @@ In `src/app/modules/work/feature/milestone-tree-tab/milestone-tree-tab.component
   async onCreateModalCreated(event: { payload: CreateObjectiveRequestDto; assetFiles: readonly File[] }): Promise<void> {
     this.createModalSubmitting.set(true);
     const result = await this.store.createSubModule(event.payload);
+    let failedFileCount = 0;
     if (result.success && result.objectiveId) {
       for (const file of event.assetFiles) {
-        await this.store.uploadMilestoneAsset(result.objectiveId, file);
+        const uploadResult = await this.store.uploadMilestoneAsset(result.objectiveId, file);
+        if (!uploadResult.success) {
+          failedFileCount++;
+        }
       }
     }
     this.createModalSubmitting.set(false);
     if (result.success) {
       this.createModalOpen.set(false);
+      if (failedFileCount > 0) {
+        this.store.setMilestoneActionError(
+          `"${event.payload.title}" was created, but ${failedFileCount} file(s) failed to upload — open Module settings on it to retry.`
+        );
+      }
       await this.loadTree({ force: true });
     }
   }
 ```
 
-(only the parameter type, and the new `if (result.success && result.objectiveId) { ... }` block, are new — the rest of the method is unchanged)
+(only the parameter type, the `failedFileCount` tracking, and the post-loop `setMilestoneActionError` call are new — the rest of the method is unchanged)
+
+**Deviation from the approved spec, recorded here:** the spec says a failed asset upload should offer "an inline retry per failed file" in the create dialog itself. Implementing that would require the create dialog to stay open after the objective already exists and re-target its (now edit-like) upload calls at the new id — a meaningfully larger change to the component's control flow than this plan's architecture (child stages files, parent orchestrates creation) supports cleanly. Instead: the objective and any successfully-uploaded files are kept, the modal still closes, and a clear message directs the user to the already-fully-functional edit-mode asset retry/upload (Task 3) for any file that failed. If literal in-dialog retry immediately after creation is required, treat it as a follow-up spec change, not part of this plan.
 
 - [ ] **Step 4: Run the tests to verify they pass**
 
-Run: `npx vitest run src/app/modules/work/feature/milestone-tree-tab/milestone-tree-tab.component.spec.ts`
+Run: `npm test` (watch for `milestone-tree-tab.component.spec.ts` in the output)
 Expected: PASS (all tests, including the 2 updated/new ones)
 
 - [ ] **Step 5: Run the full frontend test suite as a final check**
 
-Run: `npx vitest run`
-Expected: PASS, no regressions elsewhere (particularly anywhere else that might construct `ObjectiveDetail`/`ObjectiveDetailDto` object literals without an `assets` field — TypeScript will catch these at build time; run `npx tsc --noEmit` too if `vitest run` doesn't already type-check strictly).
+Run: `npm test`
+Expected: PASS, no regressions elsewhere.
 
 - [ ] **Step 6: Commit**
 
