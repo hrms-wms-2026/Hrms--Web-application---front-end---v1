@@ -2,14 +2,14 @@ import { DatePipe } from '@angular/common';
 import { Component, computed, input, output, signal } from '@angular/core';
 import { WorkTask, TaskStatusColumn } from '../../models/task.model';
 import { TaskClockWidgetComponent } from '../task-clock-widget/task-clock-widget.component';
-import { SelectComponent, SelectOption } from '../../../../shared/ui/select/select.component';
+import { WorkDropdownComponent, WorkDropdownOption } from '../work-dropdown/work-dropdown.component';
 
 type SortKey = 'title' | 'statusId' | 'dueDate' | 'estimatedHours';
 
 @Component({
   selector: 'app-task-table',
   standalone: true,
-  imports: [DatePipe, SelectComponent, TaskClockWidgetComponent],
+  imports: [DatePipe, WorkDropdownComponent, TaskClockWidgetComponent],
   template: `
     <div class="task-table__scroll">
     <table class="task-table">
@@ -32,13 +32,13 @@ type SortKey = 'title' | 'statusId' | 'dueDate' | 'estimatedHours';
             <td>{{ task.title }}</td>
             <td>
               @if (statuses().length > 0) {
-                <app-select
+                <app-work-dropdown
                   class="task-table__status-select"
                   [options]="statusOptions(task)"
-                  [value]="task.statusId"
-                  ariaLabel="Task status"
-                  [icon]="'status'"
-                  (valueChange)="onStatusPicked(task, $event)"
+                  [selected]="task.statusId"
+                  accessibleLabel="Task status"
+                  leadingIcon="status"
+                  (selectionChanged)="onStatusPicked(task, $event)"
                 />
               } @else {
                 {{ statusName(task.statusId) }}
@@ -52,6 +52,7 @@ type SortKey = 'title' | 'statusId' | 'dueDate' | 'estimatedHours';
                 <app-task-clock-widget
                   [task]="task"
                   [isAssignee]="isAssignee(task)"
+                  [compact]="true"
                   [hasOpenSessionMine]="hasOpenSessionMine(task)"
                   [hasOpenSessionOtherEmployee]="hasOpenSessionOtherEmployee(task)"
                   (clockedIn)="taskChanged.emit()"
@@ -143,7 +144,7 @@ export class TaskTableComponent {
     return this.statuses().filter((status) => status.visibility === 'public' || isOwner);
   }
 
-  statusOptions(task: WorkTask): SelectOption[] {
+  statusOptions(task: WorkTask): WorkDropdownOption[] {
     return this.availableStatuses(task).map((status) => ({ value: status.id, label: status.name }));
   }
 

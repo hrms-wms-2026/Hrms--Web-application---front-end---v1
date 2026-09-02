@@ -15,17 +15,17 @@ import { Sprint } from '../../models/sprint.model';
 import { WorkTask } from '../../models/task.model';
 import { TaskCategoryColumn } from '../../models/task-category.model';
 import { toTaskCategoryColumn } from '../../utils/task-category.mapper';
-import { SelectComponent, SelectOption } from '../../../../shared/ui/select/select.component';
+import { WorkDropdownComponent, WorkDropdownOption } from '../../ui/work-dropdown/work-dropdown.component';
 
 @Component({
   selector: 'app-task-board',
   standalone: true,
-  imports: [TaskBoardColumnComponent, ButtonComponent, ErrorStateComponent, SelectComponent],
+  imports: [TaskBoardColumnComponent, ButtonComponent, ErrorStateComponent, WorkDropdownComponent],
   template: `
     <div class="task-board__toolbar">
-      <app-select [options]="objectiveOptions()" [value]="objectiveFilter()" ariaLabel="Module filter" [icon]="'module'" (valueChange)="setObjectiveFilter($event)" />
-      <app-select [options]="sprintOptions()" [value]="sprintFilter()" ariaLabel="Sprint filter" [icon]="'sprint'" (valueChange)="setSprintFilter($event)" />
-      <app-select [options]="categoryOptions()" [value]="categoryFilter()" ariaLabel="Category filter" [icon]="'category'" (valueChange)="setCategoryFilter($event)" />
+      <app-work-dropdown [options]="objectiveOptions()" [selected]="objectiveFilter()" accessibleLabel="Module filter" leadingIcon="module" (selectionChanged)="setObjectiveFilter($event)" />
+      <app-work-dropdown [options]="sprintOptions()" [selected]="sprintFilter()" accessibleLabel="Sprint filter" leadingIcon="sprint" (selectionChanged)="setSprintFilter($event)" />
+      <app-work-dropdown [options]="categoryOptions()" [selected]="categoryFilter()" accessibleLabel="Category filter" leadingIcon="category" (selectionChanged)="setCategoryFilter($event)" />
       @if (modules().length > 0) {
         <app-button variant="primary" (pressed)="goToCreate()">Create task</app-button>
       }
@@ -56,9 +56,9 @@ import { SelectComponent, SelectOption } from '../../../../shared/ui/select/sele
   `,
   styles: [`
     .task-board__toolbar { display: flex; flex-wrap: wrap; align-items: flex-end; justify-content: flex-end; gap: 8px; margin-bottom: 16px; }
-    .task-board__toolbar app-select { flex: 1 1 180px; max-width: 220px; }
+    .task-board__toolbar app-work-dropdown { flex: 1 1 180px; max-width: 220px; }
     .task-board { display: flex; gap: 16px; overflow-x: auto; padding: 0 0 10px; scroll-snap-type: x proximity; }
-    @media (max-width: 720px) { .task-board__toolbar { justify-content: stretch; } .task-board__toolbar app-select { flex: 1 1 180px; max-width: none; } .task-board__toolbar app-button { flex: 1 1 100%; } }
+    @media (max-width: 720px) { .task-board__toolbar { justify-content: stretch; } .task-board__toolbar app-work-dropdown { flex: 1 1 180px; max-width: none; } .task-board__toolbar app-button { flex: 1 1 100%; } }
     :host ::ng-deep .task-card--highlighted { outline: 2px solid var(--color-focus-ring, var(--color-danger)); outline-offset: 2px; }
   `]
 })
@@ -86,17 +86,17 @@ export class TaskBoardComponent implements OnInit, AfterViewChecked {
   protected readonly moduleOptions = computed(() =>
     this.modules().map((m) => ({ objectiveId: m.objectiveId, title: m.title, isOwner: m.isOwner }))
   );
-  protected readonly objectiveOptions = computed<SelectOption[]>(() => [
+  protected readonly objectiveOptions = computed<WorkDropdownOption[]>(() => [
     { value: 'all', label: 'All modules' },
     ...this.modules().map((module) => ({ value: module.objectiveId, label: module.title }))
   ]);
-  protected readonly sprintOptions = computed<SelectOption[]>(() => [
+  protected readonly sprintOptions = computed<WorkDropdownOption[]>(() => [
     { value: 'active', label: 'Active sprints' },
     { value: 'all', label: 'All sprints' },
     { value: 'individual', label: 'Individual task' },
     ...this.sprints().map((sprint) => ({ value: sprint.id, label: sprint.name }))
   ]);
-  protected readonly categoryOptions = computed<SelectOption[]>(() => [
+  protected readonly categoryOptions = computed<WorkDropdownOption[]>(() => [
     { value: 'all', label: 'All categories' },
     ...this.categories().map((category) => ({ value: category.id, label: category.name }))
   ]);

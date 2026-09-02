@@ -15,17 +15,17 @@ import { WorkTask } from '../../models/task.model';
 import { Sprint, SprintStatus } from '../../models/sprint.model';
 import { TaskCategoryColumn } from '../../models/task-category.model';
 import { toTaskCategoryColumn } from '../../utils/task-category.mapper';
-import { SelectComponent, SelectOption } from '../../../../shared/ui/select/select.component';
+import { WorkDropdownComponent, WorkDropdownOption } from '../../ui/work-dropdown/work-dropdown.component';
 
 @Component({
   selector: 'app-task-backlog',
   standalone: true,
-  imports: [SprintTabComponent, SprintFormComponent, TaskTableComponent, ButtonComponent, ErrorStateComponent, SelectComponent],
+  imports: [SprintTabComponent, SprintFormComponent, TaskTableComponent, ButtonComponent, ErrorStateComponent, WorkDropdownComponent],
   template: `
     <div class="task-backlog__toolbar">
-      <app-select [options]="objectiveOptions()" [value]="objectiveFilter()" ariaLabel="Module filter" [icon]="'module'" (valueChange)="setObjectiveFilter($event)" />
-      <app-select [options]="categoryOptions()" [value]="categoryFilter()" ariaLabel="Category filter" [icon]="'category'" (valueChange)="setCategoryFilter($event)" />
-      <app-select [options]="sprintStatusOptions" [value]="sprintStatusFilter()" ariaLabel="Sprint status filter" [icon]="'status'" (valueChange)="setSprintStatusFilter($event)" />
+      <app-work-dropdown [options]="objectiveOptions()" [selected]="objectiveFilter()" accessibleLabel="Module filter" leadingIcon="module" (selectionChanged)="setObjectiveFilter($event)" />
+      <app-work-dropdown [options]="categoryOptions()" [selected]="categoryFilter()" accessibleLabel="Category filter" leadingIcon="category" (selectionChanged)="setCategoryFilter($event)" />
+      <app-work-dropdown [options]="sprintStatusOptions" [selected]="sprintStatusFilter()" accessibleLabel="Sprint status filter" leadingIcon="status" (selectionChanged)="setSprintStatusFilter($event)" />
       @if (modules().length > 0) {
         <app-button variant="secondary" (pressed)="openCreateTask()">Create task</app-button>
       }
@@ -103,8 +103,8 @@ import { SelectComponent, SelectOption } from '../../../../shared/ui/select/sele
   `,
   styles: [`
     .task-backlog__toolbar { display: flex; flex-wrap: wrap; justify-content: flex-end; align-items: flex-end; gap: 8px; margin-bottom: 16px; }
-    .task-backlog__toolbar app-select { flex: 1 1 180px; max-width: 220px; }
-    @media (max-width: 720px) { .task-backlog__toolbar { justify-content: stretch; } .task-backlog__toolbar app-select { flex: 1 1 180px; max-width: none; } .task-backlog__toolbar app-button { flex: 1 1 100%; } }
+    .task-backlog__toolbar app-work-dropdown { flex: 1 1 180px; max-width: 220px; }
+    @media (max-width: 720px) { .task-backlog__toolbar { justify-content: stretch; } .task-backlog__toolbar app-work-dropdown { flex: 1 1 180px; max-width: none; } .task-backlog__toolbar app-button { flex: 1 1 100%; } }
     .task-backlog__sprint-message { color: var(--color-danger-text, var(--color-danger)); font-size: 12px; margin-bottom: 8px; }
     .task-backlog__unsorted { margin-top: 18px; }
     .task-backlog__unsorted-title { font-size: 13px; font-weight: 600; color: var(--color-text-primary); margin: 0 0 10px; }
@@ -129,7 +129,7 @@ export class TaskBacklogComponent implements OnInit {
   protected readonly objectiveFilter = signal('all');
   protected readonly categoryFilter = signal('all');
   protected readonly categories = signal<TaskCategoryColumn[]>([]);
-  protected readonly sprintStatusOptions: readonly SelectOption[] = [
+  protected readonly sprintStatusOptions: readonly WorkDropdownOption[] = [
     { value: 'all', label: 'All sprint statuses' },
     { value: 'future', label: 'Future' },
     { value: 'active', label: 'Active' },
@@ -145,11 +145,11 @@ export class TaskBacklogComponent implements OnInit {
   protected readonly moduleOptions = computed(() =>
     this.modules().map((m) => ({ objectiveId: m.objectiveId, title: m.title, isOwner: m.isOwner }))
   );
-  protected readonly objectiveOptions = computed<SelectOption[]>(() => [
+  protected readonly objectiveOptions = computed<WorkDropdownOption[]>(() => [
     { value: 'all', label: 'All modules' },
     ...this.modules().map((module) => ({ value: module.objectiveId, label: module.title }))
   ]);
-  protected readonly categoryOptions = computed<SelectOption[]>(() => [
+  protected readonly categoryOptions = computed<WorkDropdownOption[]>(() => [
     { value: 'all', label: 'All categories' },
     ...this.categories().map((category) => ({ value: category.id, label: category.name }))
   ]);
