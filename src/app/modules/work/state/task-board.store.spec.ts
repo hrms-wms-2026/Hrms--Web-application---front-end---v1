@@ -7,7 +7,7 @@ describe('TaskBoardStore', () => {
   function setup(apiOverrides: Partial<TaskApiService> = {}) {
     const api = {
       getStatuses: () => of([{ id: 's-1', name: 'To Do', displayOrder: 0, requiresApproval: false, approverId: null, marksTaskComplete: false, visibility: 'public' }]),
-      getTasks: () => of([{
+      getTasksByProject: () => of([{
         id: 't-1', objectiveId: 'obj-1', shortId: 'PRJ-1', title: 'Do it', description: null,
         categoryId: 'task', statusId: 's-1', priority: 'medium', storyPoints: null,
         dueDate: null, estimatedHours: 5, completedHours: 0, progressPercent: 0, sprintId: null
@@ -24,7 +24,7 @@ describe('TaskBoardStore', () => {
 
   it('loadBoard populates statuses and tasks grouped by column', async () => {
     const store = setup();
-    await store.loadBoard('obj-1');
+    await store.loadBoard('proj-1');
 
     expect(store.statuses().length).toBe(1);
     expect(store.tasks().length).toBe(1);
@@ -33,7 +33,7 @@ describe('TaskBoardStore', () => {
 
   it('moveTask optimistically updates statusId then confirms via API', async () => {
     const store = setup();
-    await store.loadBoard('obj-1');
+    await store.loadBoard('proj-1');
 
     await store.moveTask('t-1', 's-2');
 
@@ -42,7 +42,7 @@ describe('TaskBoardStore', () => {
 
   it('moveTask reverts local state if the API call fails', async () => {
     const store = setup({ moveTaskStatus: () => throwError(() => ({ error: { detail: 'nope' } })) });
-    await store.loadBoard('obj-1');
+    await store.loadBoard('proj-1');
 
     await store.moveTask('t-1', 's-2');
 

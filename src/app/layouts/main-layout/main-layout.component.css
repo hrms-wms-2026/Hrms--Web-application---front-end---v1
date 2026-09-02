@@ -5,7 +5,7 @@
   overflow: hidden;
 }
 
-.skip-to-main {
+.skip-link {
   position: fixed;
   top: 0;
   left: 1rem;
@@ -19,7 +19,7 @@
   transition: transform 150ms ease;
 }
 
-.skip-to-main:focus {
+.skip-link:focus {
   transform: translateY(0.5rem);
 }
 

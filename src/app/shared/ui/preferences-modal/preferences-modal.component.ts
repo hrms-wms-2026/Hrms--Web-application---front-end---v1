@@ -1,5 +1,6 @@
-import { ChangeDetectionStrategy, Component, input, output } from '@angular/core';
+import { ChangeDetectionStrategy, Component, computed, input, output } from '@angular/core';
 import { ModalComponent, ModalSize } from '../modal/modal.component';
+import { TabsComponent, TabOption } from '../tabs/tabs.component';
 import { PreferenceSubTab } from './preference-subtab.model';
 
 export interface PreferenceTab {
@@ -22,7 +23,7 @@ const TAB_ICON_PATHS: Record<NonNullable<PreferenceTab['icon']>, string> = {
 @Component({
   selector: 'app-preferences-modal',
   standalone: true,
-  imports: [ModalComponent],
+  imports: [ModalComponent, TabsComponent],
   template: `
     <app-modal [open]="open()" [title]="title()" [size]="size()" (closed)="closed.emit()">
       <div class="preferences-container" [class.preferences-container--no-sidebar]="tabs().length === 0">
@@ -65,17 +66,12 @@ const TAB_ICON_PATHS: Record<NonNullable<PreferenceTab['icon']>, string> = {
 
               @if (tab.id === subTabsForTabId() && isProfileExpanded()) {
                 <div class="preferences-subtabs" role="group" [attr.aria-label]="tab.label + ' sections'">
-                  @for (subTab of subTabs(); track subTab.id) {
-                    <button
-                      type="button"
-                      class="preferences-subtab-btn"
-                      [class.preferences-subtab-btn--active]="activeSubTabId() === subTab.id"
-                      [attr.aria-selected]="activeSubTabId() === subTab.id"
-                      (click)="selectSubTab(subTab.id)"
-                    >
-                      {{ subTab.label }}
-                    </button>
-                  }
+                  <app-tabs
+                    [tabs]="subTabOptions()"
+                    [value]="activeSubTabId()"
+                    [ariaLabel]="tab.label + ' sections'"
+                    (valueChange)="selectSubTab($event)"
+                  />
                 </div>
               }
             }
@@ -103,6 +99,10 @@ export class PreferencesModalComponent {
   readonly activeTabIdChange = output<string>();
   readonly activeSubTabIdChange = output<string>();
   readonly closed = output<void>();
+
+  readonly subTabOptions = computed<TabOption[]>(() =>
+    this.subTabs().map((subTab) => ({ value: subTab.id, label: subTab.label }))
+  );
 
   selectTab(id: string): void {
     this.activeTabIdChange.emit(id);

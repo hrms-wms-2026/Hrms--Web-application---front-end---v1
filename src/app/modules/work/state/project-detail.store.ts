@@ -27,6 +27,13 @@ interface ProjectDetailState {
   readonly objectiveMembersLoading: boolean;
   readonly objectiveMembersError: string | null;
   readonly myInvitations: readonly ObjectiveInvitationDto[];
+  /** Union of every member across every module the caller can reach in this project (deduped
+   *  by employeeId) - the assignee source for task-create flows everywhere (Tree/Board/Backlog),
+   *  rather than whichever specific module a create-task click happened to be scoped to. Not
+   *  scoped to the Default Objective alone: a parent-level member (owner or cascading access)
+   *  needs to be able to assign tasks to people who only belong to a child module. */
+  readonly projectMembers: readonly ObjectiveMemberItemDto[];
+  readonly projectMembersLoading: boolean;
 }
 
 const initialState: ProjectDetailState = {
@@ -35,7 +42,8 @@ const initialState: ProjectDetailState = {
   selectedSubtree: null, subtreeLoading: false, subtreeError: null,
   milestoneActionError: null,
   objectiveMembers: [], objectiveMembersLoading: false, objectiveMembersError: null,
-  myInvitations: []
+  myInvitations: [],
+  projectMembers: [], projectMembersLoading: false
 };
 
 function extractError(err: any, fallback: string): string {
@@ -51,7 +59,14 @@ export const ProjectDetailStore = signalStore(
     memberApi = inject(ObjectiveMemberApiService),
     sprintApi = inject(SprintApiService),
     taskApi = inject(TaskApiService)
-  ) => ({
+  ) => {
+    // Tree/Board/Backlog are sibling routes that each mount their own component (and re-run
+    // their own ngOnInit) on every tab switch, all calling loadProjectMembers independently for
+    // the same project - without this guard, switching tabs back and forth refetches the same
+    // member list every single time.
+    let membersLoadedForProjectId: string | null = null;
+
+    return {
     async loadProject(id: string): Promise<void> {
       patchState(store, { projectLoading: true, projectError: null });
       try {
@@ -69,6 +84,43 @@ export const ProjectDetailStore = signalStore(
         patchState(store, { milestones: dtos.map(toMilestone), milestonesLoading: false });
       } catch (err) {
         patchState(store, { milestonesError: extractError(err, 'Failed to load modules.'), milestonesLoading: false });
+      }
+    },
+
+    async loadProjectMembers(projectId: string): Promise<void> {
+      if (membersLoadedForProjectId === projectId) return;
+
+      patchState(store, { projectMembersLoading: true });
+      try {
+        const milestones = store.milestones().length > 0
+          ? store.milestones()
+          : (await firstValueFrom(api.getMyMilestones(projectId))).map(toMilestone);
+        if (store.milestones().length === 0) patchState(store, { milestones });
+
+        if (milestones.length === 0) {
+          patchState(store, { projectMembers: [], projectMembersLoading: false });
+          membersLoadedForProjectId = projectId;
+          return;
+        }
+
+        // Union of every module's members across the whole tree (not just the Default
+        // Objective): milestones already only lists what the caller can effectively reach
+        // (cascading ownership - GetMyProjectMilestonesQueryHandler), so this is "everyone
+        // assignable from here", not literally every employee in the project. A single
+        // module's member-fetch failing shouldn't blank out everyone else's.
+        const memberLists = await Promise.all(
+          milestones.map((m) => firstValueFrom(memberApi.getMembers(m.objectiveId)).catch(() => ({ items: [] as ObjectiveMemberItemDto[] })))
+        );
+        const byEmployeeId = new Map<string, ObjectiveMemberItemDto>();
+        for (const list of memberLists) {
+          for (const member of list.items) {
+            if (!member.pending && !byEmployeeId.has(member.employeeId)) byEmployeeId.set(member.employeeId, member);
+          }
+        }
+        patchState(store, { projectMembers: Array.from(byEmployeeId.values()), projectMembersLoading: false });
+        membersLoadedForProjectId = projectId;
+      } catch {
+        patchState(store, { projectMembers: [], projectMembersLoading: false });
       }
     },
 
@@ -231,7 +283,7 @@ export const ProjectDetailStore = signalStore(
         const [sprints, tasks, statuses] = await firstValueFrom(forkJoin([
           sprintApi.getByObjective(objectiveId, false),
           taskApi.getTasks(objectiveId),
-          taskApi.getStatuses(objectiveId)
+          taskApi.getStatuses(store.project()?.id ?? '')
         ]));
         const current = store.selectedSubtree();
         if (!current) return;
@@ -365,5 +417,6 @@ export const ProjectDetailStore = signalStore(
         return { success: false };
       }
     }
-  }))
+    };
+  })
 );

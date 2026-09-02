@@ -4,6 +4,7 @@ import { Router } from '@angular/router';
 import { catchError, retry, throwError, timer } from 'rxjs';
 import { AuthStore } from '../auth/state/auth.store';
 import { ErrorHandlerService } from '../services/error-handler.service';
+import { TrayPresenceRequiredEvents } from '../tray-presence/state/tray-presence-required.events';
 
 const RETRY_DELAYS_MS = [250, 500, 1000];
 const SESSION_EXEMPT_PATH_FRAGMENTS = ['/auth/login', '/auth/me'];
@@ -22,7 +23,12 @@ function isSessionExempt(url: string): boolean {
  * every authenticated request (30min sliding window, 8h absolute cap), so reaching this state
  * means the tab was idle past that window, not a bug to retry around.
  */
+function isActiveTrayRequired(error: HttpErrorResponse): boolean {
+  return error.status === 428 && error.error?.code === 'active_tray_required';
+}
+
 function isCsrfError(error: HttpErrorResponse): boolean {
+
   return error.status === 403 && error.error?.type === CSRF_ERROR_TYPE;
 }
 
@@ -30,6 +36,7 @@ export const errorInterceptor: HttpInterceptorFn = (req, next) => {
   const router = inject(Router);
   const authStore = inject(AuthStore);
   const errorHandler = inject(ErrorHandlerService);
+  const trayPresenceEvents = inject(TrayPresenceRequiredEvents);
 
   return next(req).pipe(
     retry({
@@ -42,7 +49,13 @@ export const errorInterceptor: HttpInterceptorFn = (req, next) => {
       }
     }),
     catchError((error: HttpErrorResponse) => {
+            if (isActiveTrayRequired(error)) {
+        trayPresenceEvents.publish();
+        return throwError(() => error);
+      }
+
       if (error.status === 401 && isSessionExempt(req.url)) {
+
         return throwError(() => error);
       }
 

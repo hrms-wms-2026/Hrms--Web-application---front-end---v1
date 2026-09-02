@@ -95,8 +95,9 @@ describe('PreferencesModalComponent', () => {
     const fixture = TestBed.createComponent(SubTabHostComponent);
     fixture.detectChanges();
 
-    expect(fixture.nativeElement.querySelectorAll('.preferences-subtab-btn').length).toBe(2);
-    expect(fixture.nativeElement.querySelector('.preferences-subtabs')).toBeTruthy();
+    expect(fixture.nativeElement.querySelectorAll('.preferences-subtabs [role="tab"]').length).toBe(2);
+    expect(fixture.nativeElement.querySelector('.preferences-subtabs [role="tablist"]')).toBeTruthy();
+    expect(fixture.nativeElement.querySelector('.preferences-subtabs [role="tab"][aria-selected="true"]')?.textContent).toContain('Personal Information');
     expect(fixture.nativeElement.querySelector('.preferences-sub-sidebar')).toBeFalsy();
   });
 

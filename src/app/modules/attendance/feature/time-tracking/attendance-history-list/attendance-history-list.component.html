@@ -1,0 +1,57 @@
+@if (loading()) {
+  <div class="table-skeleton" aria-busy="true" aria-label="Loading attendance history"></div>
+} @else if (error()) {
+  <div class="time-tracking-message time-tracking-message--error" role="alert">
+    <p>{{ error() }}</p>
+    @if (error() !== retryDisabledMessage()) {
+      <app-button type="button" variant="secondary" size="sm" (pressed)="retryRequested.emit()">Try again</app-button>
+    }
+  </div>
+} @else if (rows().length === 0) {
+  <p class="empty-copy">{{ emptyMessage() }}</p>
+} @else {
+  <div class="table-scroll">
+    <table class="attendance-table">
+      <thead>
+        <tr>
+          @if (showEmployeeColumn()) { <th scope="col">Employee</th> }
+          <th scope="col">Date</th>
+          <th scope="col">Clock in</th>
+          <th scope="col">Clock out</th>
+          <th scope="col">Worked time</th>
+          <th scope="col">Status</th>
+        </tr>
+      </thead>
+      <tbody>
+        @for (row of rows(); track row.attendanceRecordId) {
+          <tr [class.attendance-table-row--clickable]="row.canViewDetails" (click)="selectRow(row)">
+            @if (showEmployeeColumn()) {
+              <td>
+                <span class="table-primary">{{ employeeLabel(row) }}</span>
+                @if (row.employee?.employeeNumber) { <span class="table-secondary">{{ row.employee?.employeeNumber }}</span> }
+              </td>
+            }
+            <td>{{ formatDate(row.workDate) }}</td>
+            <td>{{ formatDateTime(row.clockInAt, displayTimezone()) }}</td>
+            <td>{{ formatDateTime(row.clockOutAt, displayTimezone()) }}</td>
+            <td>{{ formatMinutes(row.totalWorkedMinutes) }}</td>
+            <td>
+              <span class="table-primary">{{ statusLabel(row.status, row.statusLabel) }}</span>
+              @if (row.attentionLabel) { <span class="table-note">{{ row.attentionLabel }}</span> }
+              @if (hasBreakOverage(row.breakOverageMinutes, row.isOverBreakAllowance)) { <span class="table-note table-note--warning">{{ breakOverageHistoryLabel(row.breakOverageMinutes) }}</span> }
+            </td>
+          </tr>
+        }
+      </tbody>
+    </table>
+  </div>
+  @if (totalCount() > pageSize()) {
+    <div class="tt-pagination">
+      <span class="tt-pagination-info">Page {{ page() }} of {{ Math.ceil(totalCount() / pageSize()) }}</span>
+      <div class="tt-pagination-buttons">
+        <app-button type="button" variant="secondary" [disabled]="page() <= 1" (pressed)="pageChange.emit(page() - 1)">Previous</app-button>
+        <app-button type="button" variant="secondary" [disabled]="page() * pageSize() >= totalCount()" (pressed)="pageChange.emit(page() + 1)">Next</app-button>
+      </div>
+    </div>
+  }
+}

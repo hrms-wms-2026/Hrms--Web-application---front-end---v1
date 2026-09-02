@@ -193,7 +193,7 @@ describe('ClockInPolicyFormComponent', () => {
     fixture.detectChanges();
   }
 
-  it('renders settings form directly with title, subtitle, and method cards', async () => {
+  it('renders the company-wide settings form with clock-in methods and save action', async () => {
     const fixture = await setup();
     await flushEmptyCompanyWide(fixture);
     const el = fixture.nativeElement as HTMLElement;
@@ -202,12 +202,26 @@ describe('ClockInPolicyFormComponent', () => {
     expect(el.querySelector('[data-testid="clock-in-policy-form"]')).toBeTruthy();
     expect(el.querySelector('table')).toBeNull();
     expect(text).toContain('Clock-in Policy');
-    expect(text).toContain('Control how employees can clock in for this company.');
     expect(text).toContain('Save changes');
+    expect(text).toContain('Late deduction rules');
     expect(el.querySelector('[data-testid="work-area-onsite"]')?.textContent).toContain('Onsite');
     expect(el.querySelector('[data-testid="work-area-remote"]')?.textContent).toContain('Remote');
     expect(el.querySelector('[data-testid="work-area-hybrid"]')?.textContent).toContain('Hybrid');
     expect(el.querySelector('[data-testid="work-area-field"]')?.textContent).toContain('Field');
+
+    for (const label of [
+      'Control how employees can clock in for this company.',
+      'Policy name',
+      'Effective from',
+      'Effective to',
+      'Applies to',
+      'Department',
+      'Position',
+      'Attendance corrections',
+      'Source rule'
+    ]) {
+      expect(text).not.toContain(label);
+    }
   });
 
   it('renders Late deduction rules section on the single Clock-in Policy screen', async () => {

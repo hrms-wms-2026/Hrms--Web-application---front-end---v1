@@ -23,7 +23,11 @@ export interface WorkTaskDto {
   completedHours: number;
   progressPercent: number;
   sprintId: string | null;
-  assigneeEmployeeIds: string[];
+    assigneeEmployeeIds: string[];
+  openClockSessionEmployeeId: string | null;
+  openClockSessionClockInAt: string | null;
+  totalLoggedMinutes: number;
+
 }
 
 export interface CreateTaskRequestDto {
@@ -43,7 +47,18 @@ export interface EditTaskRequestDto {
   priority: WorkTaskDto['priority'];
   dueDate?: string;
   estimatedHours?: number;
-  storyPoints?: number;
+    storyPoints?: number;
+  progressPercent?: number;
+  reason?: string;
+}
+
+export interface PushTaskRequestDto {
+  percent: number;
+  reason?: string;
+}
+
+export interface AddReasonRequestDto {
+  reason: string;
 }
 
 /** Shape of a 409 INSUFFICIENT_OBJECTIVE_ALLOCATION error body (backend spec §3.2). */

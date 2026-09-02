@@ -1,0 +1,246 @@
+import { computed, DestroyRef, inject } from '@angular/core';
+import { HttpErrorResponse } from '@angular/common/http';
+import { firstValueFrom } from 'rxjs';
+import { patchState, signalStore, withComputed, withMethods, withState } from '@ngrx/signals';
+import { TrayPresenceApiService } from '../data-access/tray-presence-api.service';
+import { BrowserReloadService } from '../services/browser-reload.service';
+import { TrayPresenceRequiredEvents } from './tray-presence-required.events';
+import { TrayPresenceState } from '../models/tray-presence.model';
+
+const initialState: TrayPresenceState = {
+  phase: 'checking',
+  required: true,
+  checkedOnce: false,
+  presenceValidUntil: null,
+  serverTime: null,
+  deviceName: null,
+  code: null,
+  codeSecondsRemaining: null,
+  generationError: null,
+  copyState: 'idle'
+};
+
+export const TrayPresenceStore = signalStore(
+  { providedIn: 'root' },
+  withState<TrayPresenceState>(initialState),
+  withComputed(store => ({
+    canRenderProtectedContent: computed(() => !store.required() || store.phase() === 'connected'),
+    isBlocking: computed(() =>
+      store.checkedOnce() && store.required() && store.phase() !== 'connected'),
+    hasUsableCode: computed(() => !!store.code() && (store.codeSecondsRemaining() ?? 0) > 0)
+  })),
+  withMethods((store,
+    api = inject(TrayPresenceApiService),
+    events = inject(TrayPresenceRequiredEvents),
+    reload = inject(BrowserReloadService),
+    destroyRef = inject(DestroyRef)) => {
+    let pollTimer: ReturnType<typeof setTimeout> | null = null;
+    let deadlineTimer: ReturnType<typeof setTimeout> | null = null;
+    let codeTimer: ReturnType<typeof setTimeout> | null = null;
+    let started = false;
+    let wasConnected = false;
+    let generationStarted = false;
+    let statusRequestGeneration = 0;
+    let activationRequestGeneration = 0;
+
+    const clearTimers = (): void => {
+      if (pollTimer) clearTimeout(pollTimer);
+      if (deadlineTimer) clearTimeout(deadlineTimer);
+      if (codeTimer) clearTimeout(codeTimer);
+      pollTimer = null;
+      deadlineTimer = null;
+      codeTimer = null;
+    };
+
+    const schedulePoll = (delayMs: number): void => {
+      if (!started) return;
+      if (pollTimer) clearTimeout(pollTimer);
+      pollTimer = setTimeout(() => void poll(), delayMs);
+    };
+
+    const scheduleDeadline = (validUntil: string | null): void => {
+      if (deadlineTimer) clearTimeout(deadlineTimer);
+      deadlineTimer = null;
+      if (!validUntil) return;
+
+      const remaining = new Date(validUntil).getTime() - Date.now();
+      deadlineTimer = setTimeout(() => {
+        if (store.phase() === 'connected' && store.required()) {
+          patchState(store, { phase: 'waiting', checkedOnce: true });
+          if (wasConnected) {
+            wasConnected = false;
+            reload.reloadCurrentUrl();
+          }
+          schedulePoll(0);
+        }
+      }, Math.max(0, remaining));
+    };
+
+    const scheduleCodeCountdown = (expiresInSeconds: number): void => {
+      if (codeTimer) clearTimeout(codeTimer);
+      const deadline = Date.now() + Math.max(0, expiresInSeconds) * 1000;
+
+      const tick = (): void => {
+        const seconds = Math.max(0, Math.ceil((deadline - Date.now()) / 1000));
+        patchState(store, { codeSecondsRemaining: seconds });
+        if (seconds === 0) {
+          codeTimer = null;
+          if (store.phase() !== 'connected')
+            patchState(store, { phase: 'expired' });
+          return;
+        }
+        codeTimer = setTimeout(tick, 1000);
+      };
+
+      tick();
+    };
+
+    const generationErrorMessage = (error: unknown): string => {
+      if (error instanceof HttpErrorResponse && error.status === 429)
+        return 'Too many activation codes requested. Please wait before trying again.';
+      return 'Could not generate an activation code. Please try again.';
+    };
+
+    const generateCode = async (): Promise<void> => {
+      if (!started || generationStarted) return;
+      generationStarted = true;
+      const requestGeneration = ++activationRequestGeneration;
+      patchState(store, {
+        phase: 'code-loading',
+        generationError: null,
+        copyState: 'idle'
+      });
+
+      try {
+        const result = await firstValueFrom(api.generateActivationCode());
+        if (!started || requestGeneration !== activationRequestGeneration) return;
+        patchState(store, {
+          phase: 'waiting',
+          code: result.code,
+          codeSecondsRemaining: result.expires_in_seconds,
+          generationError: null,
+          copyState: 'idle'
+        });
+        scheduleCodeCountdown(result.expires_in_seconds);
+      } catch (error) {
+        if (!started || requestGeneration !== activationRequestGeneration) return;
+        generationStarted = false;
+        patchState(store, {
+          phase: 'offline',
+          generationError: generationErrorMessage(error),
+          code: null,
+          codeSecondsRemaining: null,
+          copyState: 'idle'
+        });
+      }
+    };
+
+    const poll = async (): Promise<void> => {
+      if (!started) return;
+      const requestGeneration = ++statusRequestGeneration;
+
+      try {
+        const status = await firstValueFrom(api.getStatus());
+        if (!started || requestGeneration !== statusRequestGeneration) return;
+        const connected = status.connected && !!status.presence_valid_until;
+        const transitionedToLocked = wasConnected && status.required && !connected;
+
+        if (connected && generationStarted) {
+          activationRequestGeneration += 1;
+          generationStarted = false;
+        }
+
+        patchState(store, {
+          phase: connected ? 'connected' : status.required ? (store.code() ? 'waiting' : 'code-loading') : 'connected',
+          required: status.required,
+          checkedOnce: true,
+          presenceValidUntil: status.presence_valid_until,
+          serverTime: status.server_time,
+          deviceName: status.device?.name ?? null
+        });
+        scheduleDeadline(status.presence_valid_until);
+
+        if (transitionedToLocked) reload.reloadCurrentUrl();
+        wasConnected = connected;
+
+        if (!connected && status.required && !store.code() && !generationStarted)
+          void generateCode();
+
+        schedulePoll(connected ? 15_000 : 5_000);
+      } catch (error) {
+        if (!started || requestGeneration !== statusRequestGeneration) return;
+        const transitionedToLocked = wasConnected;
+        patchState(store, {
+          phase: 'offline',
+          checkedOnce: true,
+          generationError: 'The ONEVO service is temporarily unavailable. Retrying status…'
+        });
+        wasConnected = false;
+        if (transitionedToLocked) reload.reloadCurrentUrl();
+        schedulePoll(5_000);
+        if (!store.code() && !generationStarted)
+          void generateCode();
+      }
+    };
+
+    const start = (): void => {
+      if (started) return;
+      started = true;
+      void poll();
+    };
+
+    const lockImmediately = (): void => {
+      statusRequestGeneration += 1;
+      const shouldReload = wasConnected;
+      wasConnected = false;
+      patchState(store, {
+        phase: store.hasUsableCode() ? 'waiting' : 'code-loading',
+        required: true,
+        checkedOnce: true,
+        presenceValidUntil: null,
+        deviceName: null
+      });
+      if (shouldReload) reload.reloadCurrentUrl();
+      if (!generationStarted && !store.hasUsableCode()) void generateCode();
+      schedulePoll(5_000);
+    };
+
+    const copyCode = async (): Promise<void> => {
+      const value = store.code();
+      if (!value || !store.hasUsableCode()) return;
+      try {
+        await navigator.clipboard.writeText(value);
+        patchState(store, { copyState: 'copied' });
+        setTimeout(() => patchState(store, { copyState: 'idle' }), 1500);
+      } catch {
+        patchState(store, { copyState: 'idle' });
+      }
+    };
+
+    const retry = (): void => {
+      if (store.phase() === 'expired' || !store.hasUsableCode()) {
+        generationStarted = false;
+        patchState(store, { code: null, codeSecondsRemaining: null });
+        void generateCode();
+        return;
+      }
+      void poll();
+    };
+
+    const stop = (): void => {
+      started = false;
+      statusRequestGeneration += 1;
+      activationRequestGeneration += 1;
+      generationStarted = false;
+      clearTimers();
+    };
+
+    const subscription = events.required$.subscribe(lockImmediately);
+    destroyRef.onDestroy(() => {
+      subscription.unsubscribe();
+      stop();
+    });
+
+    return { start, stop, refresh: poll, generateCode, retry, copyCode, lockImmediately };
+  })
+);
