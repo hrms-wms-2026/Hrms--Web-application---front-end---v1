@@ -1,0 +1,21 @@
+<section class="tc-page">
+  <header class="tc-header">
+    <div><p class="tc-kicker">TIME OFF / CALENDAR</p><h1>Team Calendar</h1></div>
+    <nav class="tc-nav">
+      <button type="button" (click)="store.goToPreviousMonth()">&lsaquo; Prev</button>
+      <button type="button" (click)="store.goToToday()">{{ monthLabel() }}</button>
+      <button type="button" (click)="store.goToNextMonth()">Next &rsaquo;</button>
+    </nav>
+  </header>
+  @if (store.loading()) {
+    <div class="tc-loading" aria-busy="true"><span></span><span></span><span></span></div>
+  } @else if (store.error()) {
+    <app-error-state [message]="store.error()!" [retryable]="true" (retry)="store.load()" />
+  } @else if (store.month()?.isEmpty) {
+    <app-empty-state title="No leave scheduled for this month" description="Nobody has approved or pending leave in this range." />
+  } @else if (store.month(); as month) {
+    <app-leave-calendar-grid [days]="month.days" (dayClicked)="onDayClicked($event)" />
+  }
+</section>
+
+<app-leave-calendar-day-detail [open]="detailOpen()" [day]="selectedDay()" (closed)="closeDetail()" />

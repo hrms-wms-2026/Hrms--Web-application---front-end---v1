@@ -47,16 +47,18 @@ describe('ProjectListStore', () => {
     expect(store.loading()).toBe(false);
   });
 
-  it('filters projects client-side by selected category', async () => {
+  it('filters projects client-side by one or more selected categories', async () => {
     const otherDto = { ...dto, id: 'p2', categoryId: 'cat2' };
     const twoItemPage = { ...page, items: [dto, otherDto], totalCount: 2 };
     const store = setup({ listMine: () => of(twoItemPage) } as Partial<ProjectApiService>);
     await store.loadProjects();
 
     expect(store.filteredProjects()).toHaveLength(2);
-    store.setCategoryFilter('cat1');
+    store.setCategoryFilter(['cat1']);
     expect(store.filteredProjects()).toEqual([expect.objectContaining({ id: 'p1' })]);
-    store.setCategoryFilter(null);
+    store.setCategoryFilter(['cat1', 'cat2']);
+    expect(store.filteredProjects()).toHaveLength(2);
+    store.setCategoryFilter([]);
     expect(store.filteredProjects()).toHaveLength(2);
   });
 

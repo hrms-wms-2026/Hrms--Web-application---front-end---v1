@@ -1,7 +1,7 @@
 import { Component, OnInit, effect, inject, input, output, signal } from '@angular/core';
 import { ModalComponent } from '../../../../shared/ui/modal/modal.component';
 import { InputComponent } from '../../../../shared/ui/input/input.component';
-import { SelectComponent, SelectOption } from '../../../../shared/ui/select/select.component';
+import { WorkDropdownComponent, WorkDropdownOption } from '../work-dropdown/work-dropdown.component';
 import { ButtonComponent } from '../../../../shared/ui/button/button.component';
 import { ProjectCategoryStore } from '../../state/project-category.store';
 import { validateProjectForm, ProjectFormFields } from '../../utils/project-form.validator';
@@ -10,7 +10,7 @@ import { EditProjectPayload, ProjectDetail } from '../../models/project.model';
 @Component({
   selector: 'app-project-settings-modal',
   standalone: true,
-  imports: [ModalComponent, InputComponent, SelectComponent, ButtonComponent],
+  imports: [ModalComponent, InputComponent, WorkDropdownComponent, ButtonComponent],
   template: `
     <app-modal [open]="open()" title="Project settings" (closed)="closed.emit()">
       <div class="flex flex-col gap-3">
@@ -19,7 +19,7 @@ import { EditProjectPayload, ProjectDetail } from '../../models/project.model';
         </span>
 
         <span data-testid="category-field">
-          <app-select label="Category" placeholder="Select a category" [options]="categoryOptions()" [value]="categoryId()" [error]="errors()['categoryId'] ?? ''" (valueChange)="categoryId.set($event)" />
+          <app-work-dropdown fieldLabel="Category" accessibleLabel="Project category" placeholder="Select a category" [options]="categoryOptions()" [selected]="categoryId()" [error]="errors()['categoryId'] ?? ''" leadingIcon="category" [fullWidth]="true" (selectionChanged)="categoryId.set($event)" />
         </span>
 
         <span data-testid="description-field">
@@ -114,7 +114,7 @@ export class ProjectSettingsModalComponent implements OnInit {
     this.categoryStore.loadCategories();
   }
 
-  categoryOptions(): SelectOption[] {
+  categoryOptions(): WorkDropdownOption[] {
     return this.categoryStore.categories().map((c) => ({ value: c.id, label: c.name }));
   }
 

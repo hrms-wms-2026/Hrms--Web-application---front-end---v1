@@ -1,30 +1,38 @@
 <div class="time-tracking-page">
   <header class="time-tracking-header">
-    <app-breadcrumb-header parentLabel="Attendance" currentLabel="Time Tracking" icon="time-attendance" />
-    <div class="time-tracking-header-actions">
-      @if (canShowTeamView()) {
-        <div class="attendance-view-toggle" role="group" aria-label="Attendance view">
-          <button
-            type="button"
-            class="attendance-view-toggle__option"
-            [class.attendance-view-toggle__option--active]="viewMode() === 'my'"
-            [attr.aria-pressed]="viewMode() === 'my'"
-            (click)="selectViewMode('my')"
-          >
-            MY
-          </button>
-          <button
-            type="button"
-            class="attendance-view-toggle__option"
-            [class.attendance-view-toggle__option--active]="viewMode() === 'team'"
-            [attr.aria-pressed]="viewMode() === 'team'"
-            (click)="selectViewMode('team')"
-          >
-            TEAM
-          </button>
-        </div>
-      }
-      <button type="button" class="page-action" data-testid="request-work-area-change" (click)="openWorkAreaChange()">Request work-area change</button>
+    <div class="time-tracking-header-row">
+      <app-breadcrumb-header parentLabel="Attendance" currentLabel="Time Tracking" icon="time-attendance" />
+      <div class="time-tracking-header-actions">
+        @if (canShowTeamView()) {
+          <div class="attendance-view-toggle" role="group" aria-label="Attendance view">
+            <button
+              type="button"
+              class="attendance-view-toggle__option"
+              [class.attendance-view-toggle__option--active]="viewMode() === 'my'"
+              [attr.aria-pressed]="viewMode() === 'my'"
+              (click)="selectViewMode('my')"
+            >
+              MY
+            </button>
+            <button
+              type="button"
+              class="attendance-view-toggle__option"
+              [class.attendance-view-toggle__option--active]="viewMode() === 'team'"
+              [attr.aria-pressed]="viewMode() === 'team'"
+              (click)="selectViewMode('team')"
+            >
+              TEAM
+            </button>
+          </div>
+        }
+        <app-button
+          variant="primary"
+          data-testid="request-work-area-change"
+          (pressed)="openWorkAreaChange()"
+        >
+          Request work-area change
+        </app-button>
+      </div>
     </div>
   </header>
 
@@ -45,6 +53,17 @@
     }
 
     @if (store.today(); as today) {
+      @if (friendlyTodayMessages().length > 0) {
+        <div class="policy-messages-grid" aria-label="Schedule and policy information">
+          @for (message of friendlyTodayMessages(); track message) {
+            <div class="policy-message-item">
+              <span class="policy-message-bullet" aria-hidden="true"></span>
+              <p>{{ message }}</p>
+            </div>
+          }
+        </div>
+      }
+
       <section class="time-tracking-overview" aria-labelledby="today-heading">
         <div class="overview-heading">
           <div>
@@ -62,7 +81,17 @@
             <div class="metric-detail-grid">
               <div class="metric-detail">
                 <span class="metric-helper">Hours</span>
-                <strong>{{ today.scheduledStartTime || 'Not scheduled' }} – {{ today.scheduledEndTime || 'Not scheduled' }}</strong>
+                <strong>
+                  @if (today.scheduledStartTime && today.scheduledEndTime) {
+                    {{ today.scheduledStartTime }} – {{ today.scheduledEndTime }}
+                  } @else if (today.scheduledStartTime) {
+                    {{ today.scheduledStartTime }}
+                  } @else if (today.scheduledEndTime) {
+                    {{ today.scheduledEndTime }}
+                  } @else {
+                    Not scheduled
+                  }
+                </strong>
               </div>
               <div class="metric-detail">
                 <span class="metric-helper">Work mode</span>
@@ -124,17 +153,14 @@
         <section [class]="attentionClass(today.attentionSeverity)" role="status" aria-live="polite">
           <span class="warning-icon" aria-hidden="true">!</span>
           <p>{{ today.attentionLabel }}</p>
+          @if (today.attentionType === 'missing_clock_out' && today.attentionWorkDate) {
+            <app-button type="button" data-testid="fix-missing-clock-out" variant="secondary" (pressed)="openMissingClockOutCorrection(today.attentionWorkDate)">Fix {{ formatDate(today.attentionWorkDate) }}'s clock-out</app-button>
+          }
         </section>
       } @else if (today.shouldHaveClockedIn) {
         <section class="time-tracking-warning" role="status">
           <span class="warning-icon" aria-hidden="true">!</span>
           <p>You have not clocked in yet.</p>
-        </section>
-      }
-
-      @if (friendlyTodayMessages().length > 0) {
-        <section class="policy-messages" aria-label="Schedule and policy information">
-          @for (message of friendlyTodayMessages(); track message) { <p>{{ message }}</p> }
         </section>
       }
 

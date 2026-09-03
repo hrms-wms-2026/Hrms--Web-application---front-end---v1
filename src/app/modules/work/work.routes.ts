@@ -42,11 +42,6 @@ export const WORK_ROUTES: Routes = [
           import('./feature/task-backlog/task-backlog.component').then((m) => m.TaskBacklogComponent)
       },
       {
-        path: 'my-task',
-        loadComponent: () =>
-          import('./feature/my-task/my-task.component').then((m) => m.MyTaskComponent)
-      },
-      {
         path: 'calendar',
         loadComponent: () =>
           import('./feature/project-calendar/project-calendar.component').then((m) => m.ProjectCalendarComponent)
@@ -55,17 +50,6 @@ export const WORK_ROUTES: Routes = [
         path: 'settings',
         loadComponent: () =>
           import('./feature/project-settings/project-settings.component').then((m) => m.ProjectSettingsComponent)
-      },
-      {
-        path: 'task/new',
-        data: { mode: 'create' },
-        loadComponent: () =>
-          import('./feature/task-detail-page/task-detail-page.component').then((m) => m.TaskDetailPageComponent)
-      },
-      {
-        path: 'task/:taskId',
-        loadComponent: () =>
-          import('./feature/task-detail-page/task-detail-page.component').then((m) => m.TaskDetailPageComponent)
       }
     ]
   }

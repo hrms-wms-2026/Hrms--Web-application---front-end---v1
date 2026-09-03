@@ -209,6 +209,14 @@ export const routes: Routes = [
     ]
   },
   {
+    path: 'device/activate',
+    loadComponent: () =>
+      import('./modules/device-activation/feature/device-activation/device-activation.component').then(
+        (module) => module.DeviceActivationComponent
+      ),
+    canActivate: [authGuard]
+  },
+  {
     path: '**',
     redirectTo: 'auth/login',
   },

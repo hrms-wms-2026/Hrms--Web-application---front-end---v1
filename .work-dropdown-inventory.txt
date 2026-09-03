@@ -1,0 +1,83 @@
+﻿src\app\modules\work\feature\milestone-tree-tab\milestone-tree-tab.component.ts:8:import { ModuleFilterSelectComponent } from '../../ui/module-filter-select/module-filter-select.component';
+src\app\modules\work\feature\milestone-tree-tab\milestone-tree-tab.component.ts:28:MilestoneTreeNodeComponent, ModuleFilterSelectComponent, TreeExplanationPanelComponent, SubModuleFormComponent,
+src\app\modules\work\feature\my-task\my-task.component.ts:13:import { SelectComponent, SelectOption } from '../../../../shared/ui/select/select.component';
+src\app\modules\work\feature\my-task\my-task.component.ts:18:imports: [TaskBoardColumnComponent, TaskTableComponent, ButtonComponent, ErrorStateComponent, SelectComponent],
+src\app\modules\work\feature\my-task\my-task.component.ts:36:<app-select [options]="sprintOptions()" [value]="sprintFilter() ?? 'all'" ariaLabel="Sprint filter" [icon]="'sprint'" (valueChange)="setSprintFilter($event === 'all' ? null : $event)" />
+src\app\modules\work\feature\my-task\my-task.component.ts:90:.my-task__toolbar-actions app-select { min-width: 142px; }
+src\app\modules\work\feature\my-task\my-task.component.ts:93:@media (max-width: 860px) { .my-task__toolbar { grid-template-columns: auto minmax(180px, 1fr) auto; gap: 12px; } .my-task__toolbar-actions { gap: 8px; } .my-task__toolbar-actions app-select { min-width: 125px; } }
+src\app\modules\work\feature\my-task\my-task.component.ts:94:@media (max-width: 760px) { .my-task__toolbar { display: flex; align-items: stretch; flex-direction: column; gap: 12px; } .my-task__view-toggle { align-self: flex-start; } .my-task__search { align-self: stretch; max-width: none; } .my-task__toolbar-actions { width: 100%; justify-content: space-between; } .my-task__toolbar-actions app-select { flex: 1; } }
+src\app\modules\work\feature\my-task\my-task.component.ts:95:@media (max-width: 460px) { .my-task__toolbar-actions { align-items: stretch; flex-direction: column; } .my-task__toolbar-actions app-select { width: 100%; } .my-task__view-toggle { width: 100%; } .my-task__view-toggle button { flex: 1; } }
+src\app\modules\work\feature\my-task\my-task.component.ts:129:sprintOptions = computed<SelectOption[]>(() => [
+src\app\modules\work\feature\task-backlog\task-backlog.component.ts:18:import { SelectComponent, SelectOption } from '../../../../shared/ui/select/select.component';
+src\app\modules\work\feature\task-backlog\task-backlog.component.ts:23:imports: [SprintTabComponent, SprintFormComponent, TaskTableComponent, ButtonComponent, ErrorStateComponent, SelectComponent],
+src\app\modules\work\feature\task-backlog\task-backlog.component.ts:26:<app-select [options]="objectiveOptions()" [value]="objectiveFilter()" ariaLabel="Module filter" [icon]="'module'" (valueChange)="setObjectiveFilter($event)" />
+src\app\modules\work\feature\task-backlog\task-backlog.component.ts:27:<app-select [options]="categoryOptions()" [value]="categoryFilter()" ariaLabel="Category filter" [icon]="'category'" (valueChange)="setCategoryFilter($event)" />
+src\app\modules\work\feature\task-backlog\task-backlog.component.ts:28:<app-select [options]="sprintStatusOptions" [value]="sprintStatusFilter()" ariaLabel="Sprint status filter" [icon]="'status'" (valueChange)="setSprintStatusFilter($event)" />
+src\app\modules\work\feature\task-backlog\task-backlog.component.ts:106:.task-backlog__toolbar app-select { flex: 1 1 180px; max-width: 220px; }
+src\app\modules\work\feature\task-backlog\task-backlog.component.ts:107:@media (max-width: 720px) { .task-backlog__toolbar { justify-content: stretch; } .task-backlog__toolbar app-select { flex: 1 1 180px; max-width: none; } .task-backlog__toolbar app-button { flex: 1 1 100%; } }
+src\app\modules\work\feature\task-backlog\task-backlog.component.ts:148:protected readonly objectiveOptions = computed<SelectOption[]>(() => [
+src\app\modules\work\feature\task-backlog\task-backlog.component.ts:152:protected readonly categoryOptions = computed<SelectOption[]>(() => [
+src\app\modules\work\feature\task-board\task-board.component.ts:18:import { SelectComponent, SelectOption } from '../../../../shared/ui/select/select.component';
+src\app\modules\work\feature\task-board\task-board.component.ts:23:imports: [TaskBoardColumnComponent, ButtonComponent, ErrorStateComponent, SelectComponent],
+src\app\modules\work\feature\task-board\task-board.component.ts:26:<app-select [options]="objectiveOptions()" [value]="objectiveFilter()" ariaLabel="Module filter" [icon]="'module'" (valueChange)="setObjectiveFilter($event)" />
+src\app\modules\work\feature\task-board\task-board.component.ts:27:<app-select [options]="sprintOptions()" [value]="sprintFilter()" ariaLabel="Sprint filter" [icon]="'sprint'" (valueChange)="setSprintFilter($event)" />
+src\app\modules\work\feature\task-board\task-board.component.ts:28:<app-select [options]="categoryOptions()" [value]="categoryFilter()" ariaLabel="Category filter" [icon]="'category'" (valueChange)="setCategoryFilter($event)" />
+src\app\modules\work\feature\task-board\task-board.component.ts:59:.task-board__toolbar app-select { flex: 1 1 180px; max-width: 220px; }
+src\app\modules\work\feature\task-board\task-board.component.ts:61:@media (max-width: 720px) { .task-board__toolbar { justify-content: stretch; } .task-board__toolbar app-select { flex: 1 1 180px; max-width: none; } .task-board__toolbar app-button { flex: 1 1 100%; } }
+src\app\modules\work\feature\task-board\task-board.component.ts:89:protected readonly objectiveOptions = computed<SelectOption[]>(() => [
+src\app\modules\work\feature\task-board\task-board.component.ts:93:protected readonly sprintOptions = computed<SelectOption[]>(() => [
+src\app\modules\work\feature\task-board\task-board.component.ts:99:protected readonly categoryOptions = computed<SelectOption[]>(() => [
+src\app\modules\work\feature\task-detail-page\task-detail-page.component.ts:6:import { WorkDropdownComponent, WorkDropdownOption } from '../../ui/work-dropdown/work-dropdown.component';
+src\app\modules\work\feature\task-detail-page\task-detail-page.component.ts:27:imports: [InputComponent, ButtonComponent, WorkDropdownComponent, TaskHistoryFeedComponent, TaskClockWidgetComponent],
+src\app\modules\work\feature\task-detail-page\task-detail-page.component.ts:44:<app-work-dropdown [options]="moduleOptions()" [selected]="selectedObjectiveId()" fieldLabel="Module" accessibleLabel="Module" placeholder="Select a module"
+src\app\modules\work\feature\task-detail-page\task-detail-page.component.ts:46:<app-work-dropdown [options]="sprintOptions()" [selected]="sprintId()"
+src\app\modules\work\feature\task-detail-page\task-detail-page.component.ts:49:<app-work-dropdown [options]="assigneeOptions()" [selected]="assigneeEmployeeId()" fieldLabel="Assign to (optional)"
+src\app\modules\work\feature\task-detail-page\task-detail-page.component.ts:51:<app-work-dropdown [options]="categoryOptions()" [selected]="categoryId()" fieldLabel="Category" accessibleLabel="Category" placeholder="Select a category"
+src\app\modules\work\feature\task-detail-page\task-detail-page.component.ts:53:<app-work-dropdown [options]="priorityOptions" [selected]="priority()" fieldLabel="Priority" accessibleLabel="Priority"
+src\app\modules\work\feature\task-detail-page\task-detail-page.component.ts:85:<app-work-dropdown [options]="priorityOptions" [selected]="priority()" fieldLabel="Priority" accessibleLabel="Priority"
+src\app\modules\work\feature\task-detail-page\task-detail-page.component.ts:107:<app-work-dropdown [options]="statusOptions()" [selected]="statusId()" fieldLabel="Status" accessibleLabel="Task status"
+src\app\modules\work\feature\task-detail-page\task-detail-page.component.ts:226:moduleOptions = computed<WorkDropdownOption[]>(() => this.modules().map((m) => ({ value: m.objectiveId, label: m.title })));
+src\app\modules\work\feature\task-detail-page\task-detail-page.component.ts:227:categoryOptions = computed<WorkDropdownOption[]>(() => this.categories().map((c) => ({ value: c.id, label: c.name })));
+src\app\modules\work\feature\task-detail-page\task-detail-page.component.ts:228:assigneeOptions = computed<WorkDropdownOption[]>(() => [
+src\app\modules\work\feature\task-detail-page\task-detail-page.component.ts:232:sprintOptions = computed<WorkDropdownOption[]>(() => {
+src\app\modules\work\feature\task-detail-page\task-detail-page.component.ts:243:priorityOptions: readonly WorkDropdownOption[] = [
+src\app\modules\work\feature\task-detail-page\task-detail-page.component.ts:249:statusOptions = computed<WorkDropdownOption[]>(() => this.availableStatuses().map((status) => ({ value: status.id, label: status.name })));
+src\app\modules\work\feature\work-approvals\work-approvals.component.ts:12:import { SelectComponent, SelectOption } from '../../../../shared/ui/select/select.component';
+src\app\modules\work\feature\work-approvals\work-approvals.component.ts:18:imports: [ApprovalRequestRowComponent, ModalComponent, InputComponent, SelectComponent, ButtonComponent],
+src\app\modules\work\feature\work-approvals\work-approvals.component.ts:97:<app-select
+src\app\modules\work\ui\module-filter-select\module-filter-select.component.spec.ts:2:import { ModuleFilterSelectComponent } from './module-filter-select.component';
+src\app\modules\work\ui\module-filter-select\module-filter-select.component.spec.ts:4:describe('ModuleFilterSelectComponent', () => {
+src\app\modules\work\ui\module-filter-select\module-filter-select.component.spec.ts:5:let fixture: ComponentFixture<ModuleFilterSelectComponent>;
+src\app\modules\work\ui\module-filter-select\module-filter-select.component.spec.ts:9:imports: [ModuleFilterSelectComponent]
+src\app\modules\work\ui\module-filter-select\module-filter-select.component.spec.ts:12:fixture = TestBed.createComponent(ModuleFilterSelectComponent);
+src\app\modules\work\ui\module-filter-select\module-filter-select.component.ts:3:import { SelectComponent, SelectOption } from '../../../../shared/ui/select/select.component';
+src\app\modules\work\ui\module-filter-select\module-filter-select.component.ts:8:imports: [SelectComponent],
+src\app\modules\work\ui\module-filter-select\module-filter-select.component.ts:11:<app-select
+src\app\modules\work\ui\module-filter-select\module-filter-select.component.ts:20:<app-select
+src\app\modules\work\ui\module-filter-select\module-filter-select.component.ts:32:export class ModuleFilterSelectComponent {
+src\app\modules\work\ui\module-filter-select\module-filter-select.component.ts:46:readonly moduleOptions = computed<SelectOption[]>(() => [
+src\app\modules\work\ui\project-filter-bar\project-filter-bar.component.ts:2:import { SelectComponent, SelectOption } from '../../../../shared/ui/select/select.component';
+src\app\modules\work\ui\project-filter-bar\project-filter-bar.component.ts:15:imports: [SelectComponent],
+src\app\modules\work\ui\project-filter-bar\project-filter-bar.component.ts:18:<app-select
+src\app\modules\work\ui\project-filter-bar\project-filter-bar.component.ts:25:<app-select
+src\app\modules\work\ui\project-filter-bar\project-filter-bar.component.ts:39:readonly categoryOptions = computed<SelectOption[]>(() => [
+src\app\modules\work\ui\project-settings-modal\project-settings-modal.component.ts:4:import { SelectComponent, SelectOption } from '../../../../shared/ui/select/select.component';
+src\app\modules\work\ui\project-settings-modal\project-settings-modal.component.ts:13:imports: [ModalComponent, InputComponent, SelectComponent, ButtonComponent],
+src\app\modules\work\ui\project-settings-modal\project-settings-modal.component.ts:22:<app-select label="Category" placeholder="Select a category" [options]="categoryOptions()" [value]="categoryId()" [error]="errors()['categoryId'] ?? ''" (valueChange)="categoryId.set($event)" />
+src\app\modules\work\ui\sprint-form\sprint-form.component.spec.ts:72:expect(fixture.nativeElement.querySelector('app-select')).toBeNull();
+src\app\modules\work\ui\sprint-form\sprint-form.component.ts:5:import { SelectComponent, SelectOption } from '../../../../shared/ui/select/select.component';
+src\app\modules\work\ui\sprint-form\sprint-form.component.ts:17:imports: [ModalComponent, InputComponent, ButtonComponent, SelectComponent],
+src\app\modules\work\ui\sprint-form\sprint-form.component.ts:22:<app-select
+src\app\modules\work\ui\sprint-form\sprint-form.component.ts:79:protected readonly moduleOptions = computed<SelectOption[]>(() =>
+src\app\modules\work\ui\sprint-tab\sprint-tab.component.ts:4:import { SelectComponent, SelectOption } from '../../../../shared/ui/select/select.component';
+src\app\modules\work\ui\sprint-tab\sprint-tab.component.ts:11:imports: [DatePipe, TaskTableComponent, SelectComponent],
+src\app\modules\work\ui\sprint-tab\sprint-tab.component.ts:23:<app-select
+src\app\modules\work\ui\task-table\task-table.component.ts:5:import { SelectComponent, SelectOption } from '../../../../shared/ui/select/select.component';
+src\app\modules\work\ui\task-table\task-table.component.ts:12:imports: [DatePipe, SelectComponent, TaskClockWidgetComponent],
+src\app\modules\work\ui\task-table\task-table.component.ts:35:<app-select
+src\app\modules\work\ui\work-dropdown\work-dropdown.component.ts:3:export interface WorkDropdownOption {
+src\app\modules\work\ui\work-dropdown\work-dropdown.component.ts:8:export type WorkDropdownIcon = 'module' | 'status' | 'category' | 'sprint' | 'filter';
+src\app\modules\work\ui\work-dropdown\work-dropdown.component.ts:11:selector: 'app-work-dropdown',
+src\app\modules\work\ui\work-dropdown\work-dropdown.component.ts:85:export class WorkDropdownComponent {
+src\app\modules\work\ui\work-dropdown\work-dropdown.component.ts:86:options = input.required<readonly WorkDropdownOption[]>();
+src\app\modules\work\ui\work-dropdown\work-dropdown.component.ts:91:leadingIcon = input<WorkDropdownIcon>('filter');

@@ -1,4 +1,15 @@
-export interface ProjectCalendarItemDto {
+export interface ProjectCalendarEventLinkDto {
+  eventId: string;
+  eventName: string;
+  eventColor: string;
+  eventStartDate: string;
+  eventEndDate: string;
+  membership: 'whole' | 'partial';
+  tasksInEventCount: number;
+  taskTotalCount: number;
+}
+
+export interface ProjectCalendarModuleDto {
   objectiveId: string;
   projectId: string;
   parentObjectiveId: string | null;
@@ -8,11 +19,24 @@ export interface ProjectCalendarItemDto {
   isActive: boolean;
   isAchieved: boolean;
   canEdit: boolean;
-  calendarEventId: string | null;
-  calendarEventColor: string | null;
+  events: ProjectCalendarEventLinkDto[];
   /** Optional full-objective fields retained when the API supplies them. */
   description?: string | null;
   allocatedHours?: number;
+}
+
+export interface ProjectCalendarEventBandDto {
+  eventId: string;
+  name: string;
+  color: string;
+  startDate: string;
+  endDate: string;
+  canEdit: boolean;
+}
+
+export interface ProjectCalendarDto {
+  modules: ProjectCalendarModuleDto[];
+  bands: ProjectCalendarEventBandDto[];
 }
 
 export interface CalendarEventDto {
@@ -21,7 +45,10 @@ export interface CalendarEventDto {
   name: string;
   color: string;
   status: 'active' | 'archived' | string;
+  startDate: string;
+  endDate: string;
   objectiveIds: string[];
+  taskIds: string[];
   createdAt?: string;
   archivedAt?: string | null;
 }
@@ -29,15 +56,22 @@ export interface CalendarEventDto {
 export interface CreateCalendarEventRequestDto {
   name: string;
   color: string;
+  startDate: string;
+  endDate: string;
   objectiveIds: string[];
+  taskIds: string[];
 }
 
 export interface UpdateCalendarEventRequestDto {
   name?: string;
   color?: string;
+  startDate?: string;
+  endDate?: string;
   objectiveIds?: string[];
+  taskIds?: string[];
 }
 
+/** Module-bar drag still edits the Objective's own dates - unchanged. */
 export interface CalendarDateChange {
   objectiveId: string;
   startDate: string;

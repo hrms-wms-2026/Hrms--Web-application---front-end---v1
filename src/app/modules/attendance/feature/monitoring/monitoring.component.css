@@ -1,14 +1,30 @@
 :host { display: block; }
-.monitoring-page { max-width: 1180px; margin: 0 auto; padding: 32px; color: #172033; }
-.page-header, .section-heading, .override-item { display: flex; align-items: flex-start; justify-content: space-between; gap: 24px; }
+.monitoring-page {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  padding-bottom: 2rem;
+  color: #172033;
+}
+.monitoring-page-header {
+  margin-top: -1.25rem;
+  padding-bottom: 0.625rem;
+  border-bottom: 1px solid var(--color-border);
+}
+.section-heading, .override-item { display: flex; align-items: flex-start; justify-content: space-between; gap: 24px; }
 .eyebrow { margin: 0 0 8px; color: #64748b; font-size: 12px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; }
 h1, h2, p { margin-top: 0; }
 h1 { margin-bottom: 8px; font-size: 30px; letter-spacing: -.02em; }
 h2 { margin-bottom: 6px; font-size: 18px; }
 .subtitle, .section-heading p, small { color: #64748b; }
 .subtitle { margin-bottom: 0; }
-.company-context { padding: 9px 12px; border: 1px solid #dbe3ee; border-radius: 999px; color: #334155; font-size: 13px; }
-.section-block { margin-top: 28px; padding-top: 24px; border-top: 1px solid #e2e8f0; }
+.section-block {
+  margin-top: 0.25rem;
+  padding: 1.25rem 1.5rem;
+  border: 1px solid color-mix(in srgb, var(--color-border) 65%, transparent);
+  border-radius: var(--radius-content);
+  background: var(--color-surface);
+}
 .setting-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 1px; margin-top: 20px; border: 1px solid #e2e8f0; }
 .setting-row { display: flex; justify-content: space-between; gap: 24px; padding: 18px; background: #fff; }
 .setting-row span, .threshold-field span, .editor-fields label { display: flex; flex-direction: column; gap: 5px; }
@@ -40,4 +56,4 @@ button:disabled { cursor: not-allowed; opacity: .55; }
 .override-item small { display: block; margin-top: 4px; font-size: 12px; }
 .effective-values { display: flex; flex-wrap: wrap; gap: 8px 14px; flex: 1; color: #475569; font-size: 12px; }
 .item-actions { display: flex; align-items: center; gap: 8px; }
-@media (max-width: 800px) { .monitoring-page { padding: 20px; } .setting-grid, .editor-fields { grid-template-columns: 1fr; } .reason-field { grid-column: auto; } .override-item { align-items: flex-start; flex-direction: column; } }
+@media (max-width: 800px) { .monitoring-page { padding: 0; } .setting-grid, .editor-fields { grid-template-columns: 1fr; } .reason-field { grid-column: auto; } .override-item { align-items: flex-start; flex-direction: column; } }

@@ -6,10 +6,13 @@
     } @else if (store.subtreeError()) {
     <app-error-state [message]="store.subtreeError()!" [retryable]="true" (retry)="retryTree()" />
     } @else if (store.selectedSubtree()) {
-    <div class="mb-4 px-1">
-      <app-module-filter-select [options]="moduleFilterOptions()" [selected]="selectedModuleFilter()"
-        (selectionChanged)="onModuleFilterChanged($event)" [activityFilter]="selectedActivityFilter()"
-        (activityFilterChanged)="onActivityFilterChanged($event)" />
+    <div class="mb-4 flex flex-wrap items-center gap-3 px-1">
+      <app-work-dropdown [options]="moduleDropdownOptions()" [selected]="selectedModuleFilter()" size="sm"
+        accessibleLabel="Module filter" leadingIcon="module" data-testid="module-filter-dropdown"
+        (selectionChanged)="onModuleFilterChanged($event)" />
+      <app-work-dropdown [options]="activityFilterOptions" [selected]="selectedActivityFilter()" size="sm"
+        accessibleLabel="Activity status filter" leadingIcon="status" data-testid="module-activity-filter-dropdown"
+        (selectionChanged)="onActivityFilterChanged($event)" />
     </div>
     <div
       class="grid grid-cols-[minmax(0,1fr)_112px_40px_88px_140px] items-center gap-3 border-b border-[var(--color-border)] px-2 pb-2 text-xs font-medium text-[var(--color-text-secondary)]">
@@ -69,3 +72,15 @@
 <app-confirm-modal [open]="deleteConfirmOpen()" title="Delete task" message="Delete this task? This cannot be undone."
   confirmLabel="Delete" [errorMessage]="store.milestoneActionError() ?? ''" (confirmed)="onDeleteConfirmed()"
   (cancelled)="onDeleteCancelled()" />
+
+<app-task-form-modal
+  [open]="taskModalOpen()"
+  [mode]="taskModalMode()"
+  [projectId]="projectId()"
+  [taskId]="taskModalTaskId()"
+  [prefillModuleId]="taskModalPrefillModule()"
+  [prefillSprintId]="taskModalPrefillSprint()"
+  (created)="onTaskModalDone()"
+  (saved)="onTaskModalDone()"
+  (closed)="onTaskModalClosed()"
+/>

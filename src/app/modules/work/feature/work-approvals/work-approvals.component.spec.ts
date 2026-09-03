@@ -1,8 +1,10 @@
 import { ComponentFixture, TestBed } from '@angular/core/testing';
+import { By } from '@angular/platform-browser';
 import { ActivatedRoute } from '@angular/router';
 import { of, throwError } from 'rxjs';
 import { vi } from 'vitest';
 import { WorkApprovalsComponent } from './work-approvals.component';
+import { WorkDropdownComponent } from '../../ui/work-dropdown/work-dropdown.component';
 import { WorkApprovalsStore } from '../../state/work-approvals.store';
 import { WorkApprovalsApiService } from '../../data-access/work-approvals-api.service';
 import { ProjectApiService } from '../../data-access/project-api.service';
@@ -67,9 +69,10 @@ describe('WorkApprovalsComponent', () => {
     fixture.detectChanges();
 
     expect(fixture.nativeElement.querySelector('[data-testid="create-approval-modal"]')).not.toBeNull();
-    const options = Array.from(fixture.nativeElement.querySelectorAll('[data-testid="create-approval-modal"] select option'))
-      .map((option: any) => option.textContent?.trim());
-    expect(options).toEqual(['Select a module', 'Module One', 'Module Two']);
+    const dropdown = fixture.debugElement.query(By.directive(WorkDropdownComponent)).componentInstance as WorkDropdownComponent;
+    expect(dropdown.options().map((option) => option.label)).toEqual(['Module One', 'Module Two']);
+    const trigger = fixture.nativeElement.querySelector('[data-testid="create-approval-modal"] .work-dropdown__trigger');
+    expect(trigger.textContent).toContain('Select a module');
   });
 
   it('submits a create allocation request and reloads approvals on success', async () => {

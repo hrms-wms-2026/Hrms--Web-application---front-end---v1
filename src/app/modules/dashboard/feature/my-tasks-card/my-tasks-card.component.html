@@ -37,6 +37,7 @@
           <li>
             <a
               [routerLink]="taskLink(task)"
+              [queryParams]="taskQueryParams(task)"
               data-testid="my-tasks-row"
               class="flex flex-col gap-1 rounded-md border border-[var(--color-border)] p-2 text-sm hover:bg-[var(--color-surface-secondary)]"
             >
@@ -58,6 +59,7 @@
           <li>
             <a
               [routerLink]="taskLink(task)"
+              [queryParams]="taskQueryParams(task)"
               data-testid="my-tasks-row"
               class="flex flex-col gap-1 rounded-md border border-[var(--color-border)] p-2 text-sm hover:bg-[var(--color-surface-secondary)]"
             >

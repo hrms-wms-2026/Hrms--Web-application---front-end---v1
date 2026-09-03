@@ -25,7 +25,8 @@ import { CreateProjectPayload, EditProjectPayload, Project, ProjectDetail } from
     ProjectListRowComponent, ProjectExplanationCardComponent, MemberManagementPopupComponent,
     MyInvitationsPanelComponent, BreadcrumbHeaderComponent, ButtonComponent, LoaderComponent, ErrorStateComponent, EmptyStateComponent
   ],
-  templateUrl: './project-list.component.html'
+  templateUrl: './project-list.component.html',
+  styleUrl: './project-list.component.css'
 })
 export class ProjectListComponent implements OnInit {
   readonly store = inject(ProjectListStore);
@@ -58,7 +59,11 @@ export class ProjectListComponent implements OnInit {
   }
 
   onSelectProject(project: Project): void {
-    this.selectedProjectId.set(project.id);
+    if (this.selectedProject()?.id === project.id) {
+      this.onView(project);
+    } else {
+      this.selectedProjectId.set(project.id);
+    }
   }
 
   onView(project: Project): void {
@@ -148,8 +153,8 @@ export class ProjectListComponent implements OnInit {
     }
   }
 
-  onCategoryFilterChanged(categoryId: string | null): void {
-    this.store.setCategoryFilter(categoryId);
+  onCategoryFilterChanged(categoryIds: string[]): void {
+    this.store.setCategoryFilter(categoryIds);
   }
 
   onAchievedFilterChanged(filter: AchievedFilter): void {

@@ -1,0 +1,10 @@
+.lcc-body { display: flex; flex-direction: column; gap: .8rem; min-width: 320px; }
+.lcc-body > p { margin: 0; font-size: .88rem; }
+.lcc-restore { color: #1c7a3a; font-weight: 600; }
+.lcc-field { display: flex; flex-direction: column; gap: .3rem; font-size: .8rem; color: var(--color-text-secondary, #64748b); }
+.lcc-field input, .lcc-field textarea { border-radius: 6px; border: 1px solid var(--color-border, #e4e8ee); padding: .4rem .6rem; font-family: inherit; }
+.lcc-error { color: #a3271d; font-size: .82rem; }
+.lcc-actions { display: flex; justify-content: flex-end; gap: .5rem; }
+.lcc-primary { background: #c62828; color: #fff; border: none; border-radius: 6px; padding: .5rem 1rem; font-size: .82rem; cursor: pointer; }
+.lcc-primary:disabled { opacity: .5; cursor: not-allowed; }
+.lcc-secondary { background: transparent; border: 1px solid var(--color-border, #e4e8ee); border-radius: 6px; padding: .5rem 1rem; font-size: .82rem; cursor: pointer; }

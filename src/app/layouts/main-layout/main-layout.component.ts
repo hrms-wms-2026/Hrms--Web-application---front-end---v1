@@ -34,7 +34,7 @@ export class MainLayoutComponent {
     readonly announcementMessage = signal('');
 
   /** Tenants that never enabled the monitoring module have no tray app to connect. */
-  readonly monitoringEnabled = this.permissionService.hasModule('monitoring');
+  readonly monitoringEnabled = this.permissionService.hasModule('activity_monitoring');
 
   constructor() {
     if (this.monitoringEnabled) {
