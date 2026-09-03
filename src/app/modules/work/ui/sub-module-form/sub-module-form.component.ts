@@ -1,16 +1,27 @@
-import { Component, effect, input, output, signal } from '@angular/core';
+import { Component, effect, inject, input, output, signal } from '@angular/core';
+import { firstValueFrom } from 'rxjs';
 import { ModalComponent } from '../../../../shared/ui/modal/modal.component';
 import { InputComponent } from '../../../../shared/ui/input/input.component';
 import { ButtonComponent } from '../../../../shared/ui/button/button.component';
+import { DateRangePickerComponent } from '../../../../shared/ui/date-range-picker/date-range-picker.component';
+import { EmployeePickerComponent } from '../employee-picker/employee-picker.component';
+import { AssetUploadListComponent, AssetRowView } from '../asset-upload-list/asset-upload-list.component';
+import { ProjectApiService } from '../../data-access/project-api.service';
+import { EmployeeDirectoryStore } from '../../state/employee-directory.store';
 import { ObjectiveDetail } from '../../models/milestone.model';
 import { CreateObjectiveRequestDto, EditObjectiveRequestDto } from '../../models/dto/milestone.dto';
+
+interface SelectedMember {
+  employeeId: string;
+  isOwner: boolean;
+}
 
 @Component({
   selector: 'app-sub-module-form',
   standalone: true,
-  imports: [ModalComponent, InputComponent, ButtonComponent],
+  imports: [ModalComponent, InputComponent, ButtonComponent, DateRangePickerComponent, EmployeePickerComponent, AssetUploadListComponent],
   template: `
-    <app-modal [open]="open()" [title]="mode() === 'edit' ? 'Module settings' : 'Create sub Module'" (closed)="closed.emit()">
+    <app-modal [open]="open()" [title]="mode() === 'edit' ? 'Module settings' : 'Create sub Module'" size="lg" (closed)="closed.emit()">
       <div class="flex flex-col gap-3">
         <span data-testid="title-field">
           <app-input label="Title" [value]="title()" [error]="errors()['title'] ?? ''" (valueChange)="title.set($event)" />
@@ -18,11 +29,11 @@ import { CreateObjectiveRequestDto, EditObjectiveRequestDto } from '../../models
         <span data-testid="description-field">
           <app-input label="Description" [value]="description()" (valueChange)="description.set($event)" />
         </span>
-        <span data-testid="start-date-field">
-          <app-input label="Start date" type="date" [value]="startDate()" [error]="errors()['startDate'] ?? ''" (valueChange)="startDate.set($event)" />
-        </span>
-        <span data-testid="end-date-field">
-          <app-input label="End date" type="date" [value]="endDate()" [error]="errors()['endDate'] ?? ''" (valueChange)="endDate.set($event)" />
+        <span data-testid="date-range-field">
+          <app-date-range-picker [from]="startDate()" [to]="endDate()" (rangeChange)="onRangeChange($event)" />
+          @if (errors()['startDate'] || errors()['endDate']) {
+            <p class="text-xs text-[var(--color-danger-text)]">{{ errors()['startDate'] || errors()['endDate'] }}</p>
+          }
         </span>
         <span data-testid="allocated-hours-field">
           <app-input label="Allocated hours" type="number" [value]="allocatedHoursDisplay()" [error]="errors()['allocatedHours'] ?? ''" (valueChange)="onAllocatedHoursChange($event)" />
@@ -37,6 +48,44 @@ import { CreateObjectiveRequestDto, EditObjectiveRequestDto } from '../../models
             }
           </span>
         }
+
+        @if (mode() === 'create') {
+          <div data-testid="members-section" class="flex flex-col gap-2">
+            <span class="text-xs font-semibold text-[var(--color-text-primary)]">Members</span>
+            <span data-testid="add-member-button">
+              <app-button variant="secondary" size="sm" (pressed)="memberPickerOpen.set(true)">+ Add member</app-button>
+            </span>
+            @for (member of members(); track member.employeeId) {
+              <div data-testid="member-row" [attr.data-employee-id]="member.employeeId" class="flex items-center justify-between gap-2 rounded-lg border border-[var(--color-border)] px-2.5 py-2">
+                <span class="text-xs font-medium text-[var(--color-text-primary)]">{{ directory.get(member.employeeId)?.name ?? 'Unknown employee' }}</span>
+                <div class="flex items-center gap-1">
+                  @if (member.isOwner) {
+                    <span data-testid="owner-badge" class="rounded-full bg-[var(--color-accent)]/10 px-2 py-0.5 text-[10px] font-semibold text-[var(--color-accent)]">Owner invite pending</span>
+                  } @else {
+                    <span data-testid="make-owner-button" (click)="onSetOwner(member.employeeId)">
+                      <app-button variant="secondary" size="sm">Invite as owner</app-button>
+                    </span>
+                  }
+                  <span data-testid="remove-member-button" (click)="onMemberRemove(member.employeeId)">
+                    <app-button variant="secondary" size="sm">Remove</app-button>
+                  </span>
+                </div>
+              </div>
+            }
+          </div>
+          <app-employee-picker [open]="memberPickerOpen()" (selected)="onMemberPicked($event)" (closed)="memberPickerOpen.set(false)" />
+        }
+
+        <div data-testid="assets-section" class="flex flex-col gap-2">
+          <span class="text-xs font-semibold text-[var(--color-text-primary)]">Assets</span>
+          <app-asset-upload-list
+            [rows]="assetRows()"
+            [disabled]="submitting()"
+            (filesPicked)="onAssetFilesPicked($event)"
+            (removeRequested)="onAssetRemove($event)"
+            (retryRequested)="onAssetRetry($event)"
+          />
+        </div>
 
         @if (errorMessage()) {
           <p class="text-sm text-[var(--color-danger-text)]" role="alert">{{ errorMessage() }}</p>
@@ -57,6 +106,9 @@ import { CreateObjectiveRequestDto, EditObjectiveRequestDto } from '../../models
   `
 })
 export class SubModuleFormComponent {
+  private readonly api = inject(ProjectApiService);
+  protected readonly directory = inject(EmployeeDirectoryStore);
+
   mode = input<'create' | 'edit'>('create');
   open = input(false);
   parentObjectiveId = input('');
@@ -64,7 +116,7 @@ export class SubModuleFormComponent {
   submitting = input(false);
   errorMessage = input('');
 
-  created = output<CreateObjectiveRequestDto>();
+  created = output<{ payload: CreateObjectiveRequestDto; assetFiles: readonly File[] }>();
   saved = output<{ fields: EditObjectiveRequestDto; achievedChanged: boolean; achieved: boolean }>();
   closed = output<void>();
 
@@ -76,6 +128,13 @@ export class SubModuleFormComponent {
   achieved = signal(false);
   isDefault = signal(false);
   errors = signal<Record<string, string>>({});
+
+  members = signal<SelectedMember[]>([]);
+  memberPickerOpen = signal(false);
+
+  assetRows = signal<AssetRowView[]>([]);
+  private pendingFiles = new Map<string, File>();
+  private nextLocalId = 0;
 
   constructor() {
     effect(() => {
@@ -89,6 +148,7 @@ export class SubModuleFormComponent {
         this.allocatedHours.set(value.allocatedHours);
         this.achieved.set(value.isAchieved ?? false);
         this.isDefault.set(value.isDefault);
+        this.assetRows.set((value.assets ?? []).map((a) => ({ id: a.id, fileName: a.fileName, sizeBytes: a.sizeBytes, status: 'uploaded' as const })));
       } else if (this.mode() === 'create') {
         this.title.set('');
         this.description.set('');
@@ -97,7 +157,10 @@ export class SubModuleFormComponent {
         this.allocatedHours.set(0);
         this.achieved.set(false);
         this.isDefault.set(false);
+        this.assetRows.set([]);
+        this.members.set([]);
       }
+      this.pendingFiles.clear();
       this.errors.set({});
     });
   }
@@ -114,6 +177,82 @@ export class SubModuleFormComponent {
     this.achieved.set((event.target as HTMLInputElement).checked);
   }
 
+  onRangeChange(range: { from: string; to: string }): void {
+    this.startDate.set(range.from);
+    this.endDate.set(range.to);
+  }
+
+  onMemberPicked(employeeId: string): void {
+    this.memberPickerOpen.set(false);
+    if (this.members().some((m) => m.employeeId === employeeId)) return;
+    this.members.update((list) => [...list, { employeeId, isOwner: false }]);
+    void this.directory.ensureLoaded([employeeId]);
+  }
+
+  onMemberRemove(employeeId: string): void {
+    this.members.update((list) => list.filter((m) => m.employeeId !== employeeId));
+  }
+
+  onSetOwner(employeeId: string): void {
+    // Sets headEmployeeId on submit, which the backend treats as a pending leader
+    // invitation, not immediate headship (CreateObjectiveCommandHandler) — the
+    // creator stays head until that invite is accepted.
+    this.members.update((list) => list.map((m) => ({ ...m, isOwner: m.employeeId === employeeId })));
+  }
+
+  onAssetFilesPicked(files: File[]): void {
+    for (const file of files) {
+      const id = `local-${this.nextLocalId++}`;
+      this.pendingFiles.set(id, file);
+      if (this.mode() === 'edit') {
+        this.assetRows.update((rows) => [...rows, { id, fileName: file.name, sizeBytes: file.size, status: 'uploading' }]);
+        void this.uploadEditModeAsset(id, file);
+      } else {
+        this.assetRows.update((rows) => [...rows, { id, fileName: file.name, sizeBytes: file.size, status: 'staged' }]);
+      }
+    }
+  }
+
+  onAssetRetry(id: string): void {
+    const file = this.pendingFiles.get(id);
+    if (!file) return;
+    this.assetRows.update((rows) => rows.map((row) => (row.id === id ? { ...row, status: 'uploading' as const, errorMessage: undefined } : row)));
+    void this.uploadEditModeAsset(id, file);
+  }
+
+  onAssetRemove(id: string): void {
+    const objectiveId = this.initialValue()?.id;
+    const row = this.assetRows().find((r) => r.id === id);
+    this.pendingFiles.delete(id);
+    if (this.mode() === 'edit' && objectiveId && row?.status === 'uploaded') {
+      this.assetRows.update((rows) => rows.filter((r) => r.id !== id));
+      firstValueFrom(this.api.deleteObjectiveAsset(objectiveId, id)).catch(() => {
+        // Deletion failed server-side — put the row back rather than letting it
+        // silently vanish while still attached. Its Retry button (shared with
+        // upload-failure rows) would re-upload rather than re-delete; clicking
+        // Remove again is the actual retry path here. Acceptable for now —
+        // a distinct "pending delete" status would be needed to fix properly.
+        this.assetRows.update((rows) => [...rows, { ...row, status: 'error' as const, errorMessage: 'Failed to remove file. Click Remove to try again.' }]);
+      });
+      return;
+    }
+    this.assetRows.update((rows) => rows.filter((r) => r.id !== id));
+  }
+
+  private async uploadEditModeAsset(localId: string, file: File): Promise<void> {
+    const objectiveId = this.initialValue()?.id;
+    if (!objectiveId) return;
+    try {
+      const asset = await firstValueFrom(this.api.uploadObjectiveAsset(objectiveId, file));
+      this.pendingFiles.delete(localId);
+      this.assetRows.update((rows) => rows.map((row) =>
+        row.id === localId ? { id: asset.id, fileName: asset.fileName, sizeBytes: asset.sizeBytes, status: 'uploaded' as const } : row));
+    } catch {
+      this.assetRows.update((rows) => rows.map((row) =>
+        row.id === localId ? { ...row, status: 'error' as const, errorMessage: 'Upload failed.' } : row));
+    }
+  }
+
   submit(): void {
     const errors: Record<string, string> = {};
     if (!this.title().trim()) errors['title'] = 'Title is required.';
@@ -126,13 +265,25 @@ export class SubModuleFormComponent {
     if (Object.keys(errors).length > 0) return;
 
     if (this.mode() === 'create') {
+      const owner = this.members().find((m) => m.isOwner);
+      const others = this.members().filter((m) => !m.isOwner);
+      const assetFiles = this.assetRows()
+        .filter((row) => row.status === 'staged')
+        .map((row) => this.pendingFiles.get(row.id))
+        .filter((file): file is File => file !== undefined);
+
       this.created.emit({
-        parentObjectiveId: this.parentObjectiveId(),
-        title: this.title(),
-        description: this.description() || null,
-        startDate: this.startDate(),
-        endDate: this.endDate(),
-        allocatedHours: this.allocatedHours()
+        payload: {
+          parentObjectiveId: this.parentObjectiveId(),
+          title: this.title(),
+          description: this.description() || null,
+          startDate: this.startDate(),
+          endDate: this.endDate(),
+          allocatedHours: this.allocatedHours(),
+          headEmployeeId: owner ? owner.employeeId : null,
+          memberInvitations: others.map((m) => ({ employeeId: m.employeeId, type: 'member' as const }))
+        },
+        assetFiles
       });
       return;
     }
