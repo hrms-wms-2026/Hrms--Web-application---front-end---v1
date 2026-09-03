@@ -1,4 +1,4 @@
-<app-card title="Work Pattern">
+<app-card title="Work Pattern (This Week)">
   @if (!hasActivity()) {
     <div class="flex flex-col items-center gap-2 py-4 text-center" data-testid="work-pattern-empty">
       <span class="flex h-10 w-10 items-center justify-center rounded-full bg-[var(--color-surface-secondary)] text-[var(--color-text-secondary)]">
@@ -15,12 +15,10 @@
         <p class="text-xs text-[var(--color-text-secondary)]">Weekly worked hours</p>
         <p class="text-lg font-semibold text-[var(--color-text-primary)]" data-testid="work-pattern-weekly-worked">{{ weeklyWorkedLabel() }}</p>
       </div>
-      <div>
-        <p class="text-xs text-[var(--color-text-secondary)]">Productive hours</p>
-        <p class="text-lg font-semibold text-[var(--color-text-primary)]">
-          <span data-testid="work-pattern-productive">{{ productiveLabel() }}</span>
-          <span class="text-sm font-medium text-[var(--color-text-secondary)]" data-testid="work-pattern-productive-percent">({{ productivePercentLabel() }})</span>
-        </p>
+      <div class="rounded-lg bg-[var(--color-accent-subtle)] p-3 text-[var(--color-accent)]">
+        <p class="text-xs">Productive</p>
+        <p class="text-lg font-semibold" data-testid="work-pattern-productive-percent">{{ productivePercentLabel() }}</p>
+        <p class="text-sm" data-testid="work-pattern-productive">{{ productiveLabel() }} worked</p>
       </div>
       <div>
         <p class="text-xs text-[var(--color-text-secondary)]">Focus work</p>
@@ -45,9 +43,10 @@
         <div
           data-testid="work-pattern-segment"
           [attr.data-segment-type]="segment.type"
-          class="flex h-full items-center justify-center text-[10px] font-medium text-[var(--color-accent-contrast)] first:rounded-l-full last:rounded-r-full"
+          class="flex h-full items-center justify-center text-[10px] font-medium first:rounded-l-full last:rounded-r-full"
           [style.width.%]="segment.widthPercent"
           [style.background-color]="segment.type === 'focus' || segment.type === 'meeting' ? 'var(--color-accent)' : 'var(--color-border)'"
+          [style.color]="segment.type === 'focus' || segment.type === 'meeting' ? 'var(--color-accent-contrast)' : 'var(--color-text-primary)'"
           [style.opacity]="segment.type === 'meeting' ? 0.6 : segment.type === 'idle' ? 0.5 : 1"
           [attr.title]="segmentLabel(segment.type)"
         >
@@ -76,5 +75,9 @@
         Idle time
       </span>
     </div>
+
+    @if (lastUpdated()) {
+      <p class="mt-2 text-right text-xs text-[var(--color-text-secondary)]">Updated: {{ lastUpdatedLabel() }}</p>
+    }
   }
 </app-card>

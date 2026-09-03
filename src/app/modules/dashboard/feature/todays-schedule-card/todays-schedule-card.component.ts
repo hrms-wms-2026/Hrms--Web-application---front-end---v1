@@ -6,6 +6,12 @@ import { CalendarEventApiService } from '../../../calendar/data-access/calendar-
 import { CalendarEventResponse } from '../../../calendar/models/calendar-event.model';
 
 const MAX_AGENDA_ITEMS = 4;
+const FALLBACK_DOT_COLORS: readonly string[] = [
+  'var(--color-accent)',
+  'var(--color-text-primary)',
+  'var(--color-warning)',
+  'var(--color-success)'
+];
 
 @Component({
   selector: 'app-todays-schedule-card',
@@ -38,8 +44,18 @@ export class TodaysScheduleCardComponent implements OnInit {
   }
 
   protected timeLabel(event: CalendarEventResponse): string {
+    return formatEventTimeLabel(event.startDate, event.isAllDay);
+  }
+
+  protected timeRangeLabel(event: CalendarEventResponse): string {
     if (event.isAllDay) return 'All day';
-    return new Date(event.startDate).toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit' });
+    const start = formatEventTimeLabel(event.startDate, false);
+    const end = formatEventTimeLabel(event.endDate, false);
+    return `${start} – ${end}`;
+  }
+
+  protected dotColor(event: CalendarEventResponse, index = 0): string {
+    return event.color || FALLBACK_DOT_COLORS[index % FALLBACK_DOT_COLORS.length];
   }
 
   private loadTodaysEvents(timezone: string): void {
@@ -58,4 +74,11 @@ export class TodaysScheduleCardComponent implements OnInit {
       }
     });
   }
+}
+
+function formatEventTimeLabel(iso: string, isAllDay: boolean): string {
+  if (isAllDay) return 'All day';
+  return new Date(iso)
+    .toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: true })
+    .replace(/\u202f/g, ' ');
 }

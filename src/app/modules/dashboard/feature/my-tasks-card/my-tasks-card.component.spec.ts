@@ -65,11 +65,11 @@ describe('MyTasksCardComponent', () => {
     expect(fixture.nativeElement.querySelector('[data-testid="my-tasks-empty"]')).toBeNull();
   });
 
-  it('links each task row to its project/objective my-task page', async () => {
+  it('links each task row directly to that task\'s detail page', async () => {
     const { fixture } = await setup({ tasks: [makeTask()] });
 
     const row: HTMLAnchorElement = fixture.nativeElement.querySelector('[data-testid="my-tasks-row"]');
-    expect(row.getAttribute('href')).toBe('/work/project-1/milestones/objective-1/my-task');
+    expect(row.getAttribute('href')).toBe('/work/project-1/task/task-1');
   });
 
   it('falls back to the empty state when the request fails', async () => {

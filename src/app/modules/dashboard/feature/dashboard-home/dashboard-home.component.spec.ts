@@ -60,7 +60,7 @@ describe('DashboardHomeComponent', () => {
 
     const text = fixture.nativeElement.textContent as string;
     expect(text).toContain('Arjun Kumar');
-    expect(text).toContain('Today at a glance');
+    expect(text).toContain('View full timeline');
     expect(text).toContain('Quick Actions');
     expect(text).toContain('My Tasks');
     expect(text).toContain('Today\'s Schedule');

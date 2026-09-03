@@ -32,12 +32,12 @@ export class MyTasksCardComponent implements OnInit {
   protected readonly hasMoreTasks = computed(() => this.tasks().length > MAX_VISIBLE_TASKS);
   protected readonly hiddenTaskCount = computed(() => Math.max(0, this.tasks().length - MAX_VISIBLE_TASKS));
 
-  // No dedicated cross-project "all tasks" page exists yet - "View all tasks" reuses the
-  // per-row destination (that project's My Task view) for the most urgent task, matching
-  // where every row link already goes rather than inventing a new destination.
+  // No dedicated cross-project "all tasks" page exists yet - "View all tasks" links to
+  // the most urgent task's project My Task view instead, since that's the closest thing
+  // to a full list.
   protected readonly viewAllTasksLink = computed<string[] | null>(() => {
     const first = this.tasks()[0];
-    return first ? this.taskLink(first) : null;
+    return first ? this.myTaskListLink(first) : null;
   });
 
   ngOnInit(): void {
@@ -54,6 +54,10 @@ export class MyTasksCardComponent implements OnInit {
   }
 
   protected taskLink(task: MyTaskItem): string[] {
+    return ['/work', task.projectId, 'task', task.taskId];
+  }
+
+  private myTaskListLink(task: MyTaskItem): string[] {
     return ['/work', task.projectId, 'milestones', task.objectiveId, 'my-task'];
   }
 

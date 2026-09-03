@@ -28,6 +28,7 @@ export class WorkPatternCardComponent implements OnInit {
 
   private readonly rawDays = signal<WorkPatternDay[]>([]);
   protected readonly loading = signal(true);
+  protected readonly lastUpdated = signal<Date | null>(null);
 
   private readonly focusMinutes = computed(() => sumBy(this.rawDays(), (d) => d.focusMinutes));
   private readonly meetingMinutes = computed(() => sumBy(this.rawDays(), (d) => d.meetingMinutes));
@@ -59,6 +60,19 @@ export class WorkPatternCardComponent implements OnInit {
     if (denominator <= 0) return '—';
     const percent = Math.min(100, (this.productiveMinutes() / denominator) * 100);
     return `${Math.round(percent)}%`;
+  });
+
+  protected readonly lastUpdatedLabel = computed(() => {
+    const d = this.lastUpdated();
+    return d
+      ? new Intl.DateTimeFormat(undefined, {
+          hour: 'numeric',
+          minute: '2-digit',
+          hour12: true,
+          day: 'numeric',
+          month: 'short'
+        }).format(d)
+      : '';
   });
 
   // Percentages are relative to weekly worked hours (attendance clock-in time), not to the sum
@@ -95,6 +109,7 @@ export class WorkPatternCardComponent implements OnInit {
         this.loading.set(false);
       }
     });
+    this.lastUpdated.set(new Date());
   }
 
   protected segmentPercentLabel(segment: WorkPatternSegment): string {

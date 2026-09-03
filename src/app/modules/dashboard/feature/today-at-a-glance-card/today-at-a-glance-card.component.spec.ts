@@ -5,6 +5,7 @@ import { of, throwError } from 'rxjs';
 import { describe, expect, it, vi } from 'vitest';
 import { AttendanceTodayResponse } from '../../../attendance/models/time-tracking.model';
 import { TimeTrackingStore } from '../../../attendance/state/time-tracking.store';
+import { AuthStore } from '../../../../core/auth/state/auth.store';
 import { ActivityTimelineApiService } from '../../data-access/activity-timeline-api.service';
 import { ActivityTimelineResponse } from '../../models/activity-timeline.model';
 import { TodayAtAGlanceCardComponent } from './today-at-a-glance-card.component';
@@ -82,7 +83,8 @@ describe('TodayAtAGlanceCardComponent', () => {
       providers: [
         provideRouter([]),
         { provide: TimeTrackingStore, useValue: store },
-        { provide: ActivityTimelineApiService, useValue: { getMyTimeline } }
+        { provide: ActivityTimelineApiService, useValue: { getMyTimeline } },
+        { provide: AuthStore, useValue: { email: signal('arjun.kumar@onevo.dev') } }
       ]
     }).compileComponents();
 
@@ -160,6 +162,16 @@ describe('TodayAtAGlanceCardComponent', () => {
     const segments = fixture.nativeElement.querySelectorAll('[data-testid="today-activity-segment"]');
     expect(segments.length).toBe(1);
     expect(segments[0].getAttribute('data-segment-type')).toBe('working');
+  });
+
+  it('does not crash when the backend omits `breaks` entirely (seen live for an in-progress break)', async () => {
+    const { fixture } = await setup({
+      clockInAt: '2026-08-26T03:00:00Z',
+      clockOutAt: null,
+      breaks: undefined as unknown as []
+    });
+    const segments = fixture.nativeElement.querySelectorAll('[data-testid="today-activity-segment"]');
+    expect(segments.length).toBeGreaterThan(0);
   });
 
   it('splits the timeline into working/break/working segments around a closed break', async () => {

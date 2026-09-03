@@ -1,6 +1,7 @@
 import { ChangeDetectionStrategy, Component, OnInit, computed, effect, inject, signal } from '@angular/core';
 import { RouterLink } from '@angular/router';
 import { CardComponent } from '../../../../shared/ui/card/card.component';
+import { DashboardGreetingComponent } from '../dashboard-greeting/dashboard-greeting.component';
 import { ActivityTimelineApiService } from '../../data-access/activity-timeline-api.service';
 import { ActivityTimelineSegment } from '../../models/activity-timeline.model';
 import { TimeTrackingStore } from '../../../attendance/state/time-tracking.store';
@@ -24,7 +25,7 @@ const STATUS_LABELS: Record<string, string> = {
 @Component({
   selector: 'app-today-at-a-glance-card',
   standalone: true,
-  imports: [CardComponent, RouterLink],
+  imports: [CardComponent, RouterLink, DashboardGreetingComponent],
   templateUrl: './today-at-a-glance-card.component.html',
   changeDetection: ChangeDetectionStrategy.OnPush
 })
@@ -53,6 +54,8 @@ export class TodayAtAGlanceCardComponent implements OnInit {
 
   protected readonly workedTimeLabel = computed(() => formatMinutes(this.today()?.totalWorkedMinutes ?? null));
 
+  protected readonly legendTypes: TimelineSegment['type'][] = ['working', 'focus', 'break', 'idle'];
+
   protected readonly timelineSegments = computed<TimelineSegment[]>(() => {
     const today = this.today();
     if (!today?.clockInAt) {
@@ -63,7 +66,10 @@ export class TodayAtAGlanceCardComponent implements OnInit {
     if (Number.isNaN(start) || Number.isNaN(end) || end <= start) {
       return [];
     }
-    return buildTimelineSegments(start, end, today.breaks, this.activitySegments());
+    // The today-summary endpoint sometimes omits `breaks` entirely (seen live for an
+    // in-progress break with no completed break intervals yet) rather than sending an
+    // empty array - guard so the timeline still renders instead of throwing in buildTimelineSegments.
+    return buildTimelineSegments(start, end, today.breaks ?? [], this.activitySegments());
   });
 
   protected readonly timelineEndLabel = computed(() => {
@@ -72,6 +78,19 @@ export class TodayAtAGlanceCardComponent implements OnInit {
       return null;
     }
     return formatTime(today.clockOutAt ? new Date(today.clockOutAt) : new Date());
+  });
+
+  private readonly lastUpdated = signal<Date | null>(null);
+
+  protected readonly lastUpdatedLabel = computed(() => {
+    const updated = this.lastUpdated();
+    if (!updated) {
+      return null;
+    }
+    const diffMinutes = Math.floor((Date.now() - updated.getTime()) / 60_000);
+    if (diffMinutes < 1) return 'Last updated: just now';
+    if (diffMinutes === 1) return 'Last updated: 1 min ago';
+    return `Last updated: ${diffMinutes} min ago`;
   });
 
   constructor() {
@@ -89,7 +108,7 @@ export class TodayAtAGlanceCardComponent implements OnInit {
   }
 
   ngOnInit(): void {
-    void this.store.loadToday();
+    void this.store.loadToday().then(() => this.lastUpdated.set(new Date()));
   }
 
   protected segmentLabel(type: TimelineSegment['type']): string {
