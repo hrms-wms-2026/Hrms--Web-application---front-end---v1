@@ -29,4 +29,19 @@ describe('RequestsListComponent', () => {
     fixture.componentInstance.setStatusFilter('rejected');
     httpMock.expectOne(`${environment.apiUrl}/leave/requests/all?status=rejected`).flush([]);
   });
+
+  it('shows its own header by default', () => {
+    fixture.detectChanges();
+    httpMock.expectOne((r) => r.url === `${environment.apiUrl}/leave/requests/all`).flush([]);
+    httpMock.expectOne((r) => r.url === `${environment.apiUrl}/leave/types`).flush([]);
+    expect(fixture.nativeElement.querySelector('.rl-header')).toBeTruthy();
+  });
+
+  it('hides its own header when embedded', () => {
+    fixture.componentRef.setInput('embedded', true);
+    fixture.detectChanges();
+    httpMock.expectOne((r) => r.url === `${environment.apiUrl}/leave/requests/all`).flush([]);
+    httpMock.expectOne((r) => r.url === `${environment.apiUrl}/leave/types`).flush([]);
+    expect(fixture.nativeElement.querySelector('.rl-header')).toBeNull();
+  });
 });

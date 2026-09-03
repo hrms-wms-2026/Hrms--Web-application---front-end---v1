@@ -1,5 +1,5 @@
 /** Quiet Operations Desk: Screen 6's HR-wide filterable ledger, counts + status filter chips. */
-import { ChangeDetectionStrategy, Component, inject, signal } from '@angular/core';
+import { ChangeDetectionStrategy, Component, inject, input, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { PermissionService } from '../../../../core/auth/state/permission.service';
 import { NotificationService } from '../../../../core/services/notification.service';
@@ -29,6 +29,7 @@ export class RequestsListComponent {
   readonly canApprove = () => this.permissionService.hasPermission('leave:approve');
   readonly detailOpen = signal(false);
   readonly cancelTarget = signal<LeaveRequestAllListItemResponse | null>(null);
+  readonly embedded = input(false);
 
   constructor() {
     void this.store.loadAll();
