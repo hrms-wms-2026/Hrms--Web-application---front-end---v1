@@ -1,14 +1,14 @@
 import { ComponentFixture, TestBed } from '@angular/core/testing';
-import { of, throwError } from 'rxjs';
 import { vi } from 'vitest';
 import { SubModuleFormComponent } from './sub-module-form.component';
 import { ObjectiveDetail } from '../../models/milestone.model';
-import { ProjectApiService } from '../../data-access/project-api.service';
+import { ProjectDetailStore } from '../../state/project-detail.store';
 import { EmployeeDirectoryStore } from '../../state/employee-directory.store';
 
 describe('SubModuleFormComponent', () => {
   let fixture: ComponentFixture<SubModuleFormComponent>;
-  let api: { uploadObjectiveAsset: ReturnType<typeof vi.fn>; deleteObjectiveAsset: ReturnType<typeof vi.fn> };
+  let store: { uploadMilestoneAsset: ReturnType<typeof vi.fn>; deleteMilestoneAsset: ReturnType<typeof vi.fn>; milestoneActionError: ReturnType<typeof vi.fn> };
+  let currentActionError: string | null;
 
   const detail: ObjectiveDetail = {
     id: 'o1', projectId: 'p1', parentObjectiveId: 'parent-1', isDefault: false,
@@ -21,11 +21,16 @@ describe('SubModuleFormComponent', () => {
   };
 
   beforeEach(() => {
-    api = { uploadObjectiveAsset: vi.fn(), deleteObjectiveAsset: vi.fn() };
+    currentActionError = null;
+    store = {
+      uploadMilestoneAsset: vi.fn(),
+      deleteMilestoneAsset: vi.fn(),
+      milestoneActionError: vi.fn(() => currentActionError)
+    };
     TestBed.configureTestingModule({
       imports: [SubModuleFormComponent],
       providers: [
-        { provide: ProjectApiService, useValue: api },
+        { provide: ProjectDetailStore, useValue: store },
         { provide: EmployeeDirectoryStore, useValue: { get: () => ({ name: 'Nadia Shah' }), ensureLoaded: vi.fn() } }
       ]
     });
@@ -84,7 +89,7 @@ describe('SubModuleFormComponent', () => {
 
     component.submit();
 
-    expect(api.uploadObjectiveAsset).not.toHaveBeenCalled();
+    expect(store.uploadMilestoneAsset).not.toHaveBeenCalled();
     expect(created).toHaveBeenCalledWith(expect.objectContaining({ assetFiles: [file] }));
   });
 
@@ -103,7 +108,7 @@ describe('SubModuleFormComponent', () => {
     fixture.detectChanges();
     const component = fixture.componentInstance as any;
     const uploaded = { id: 'a2', fileName: 'new.pdf', sizeBytes: 512, contentType: 'application/pdf', uploadedAt: '2026-01-02T00:00:00Z', downloadUrl: 'https://signed.example/new.pdf' };
-    api.uploadObjectiveAsset.mockReturnValue(of(uploaded));
+    store.uploadMilestoneAsset.mockResolvedValue({ success: true, asset: uploaded });
     const file = new File(['content'], 'new.pdf', { type: 'application/pdf' });
 
     component.onAssetFilesPicked([file]);
@@ -111,16 +116,17 @@ describe('SubModuleFormComponent', () => {
     await Promise.resolve();
     await Promise.resolve();
 
-    expect(api.uploadObjectiveAsset).toHaveBeenCalledWith('o1', file);
+    expect(store.uploadMilestoneAsset).toHaveBeenCalledWith('o1', file);
     expect(component.assetRows().find((r: any) => r.id === 'a2').status).toBe('uploaded');
   });
 
-  it('marks a failed edit-mode upload as error and allows retry', async () => {
+  it('marks a failed edit-mode upload as error with the store\'s real server-error detail, and allows retry', async () => {
     fixture.componentRef.setInput('mode', 'edit');
     fixture.componentRef.setInput('initialValue', detail);
     fixture.detectChanges();
     const component = fixture.componentInstance as any;
-    api.uploadObjectiveAsset.mockReturnValueOnce(throwError(() => new Error('rejected')));
+    currentActionError = 'File type .exe is not allowed.';
+    store.uploadMilestoneAsset.mockResolvedValueOnce({ success: false });
     const file = new File(['content'], 'bad.exe', { type: 'application/x-msdownload' });
 
     component.onAssetFilesPicked([file]);
@@ -129,8 +135,10 @@ describe('SubModuleFormComponent', () => {
 
     const failedRow = component.assetRows().find((r: any) => r.fileName === 'bad.exe');
     expect(failedRow.status).toBe('error');
+    expect(failedRow.errorMessage).toBe('File type .exe is not allowed.');
 
-    api.uploadObjectiveAsset.mockReturnValue(of({ id: 'a3', fileName: 'bad.exe', sizeBytes: 1, contentType: 'x', uploadedAt: 'now', downloadUrl: 'x' }));
+    currentActionError = null;
+    store.uploadMilestoneAsset.mockResolvedValue({ success: true, asset: { id: 'a3', fileName: 'bad.exe', sizeBytes: 1, contentType: 'x', uploadedAt: 'now', downloadUrl: 'x' } });
     component.onAssetRetry(failedRow.id);
     await Promise.resolve();
     await Promise.resolve();
@@ -143,20 +151,21 @@ describe('SubModuleFormComponent', () => {
     fixture.componentRef.setInput('initialValue', detail);
     fixture.detectChanges();
     const component = fixture.componentInstance as any;
-    api.deleteObjectiveAsset.mockReturnValue(of(undefined));
+    store.deleteMilestoneAsset.mockResolvedValue({ success: true });
 
     component.onAssetRemove('a1');
 
-    expect(api.deleteObjectiveAsset).toHaveBeenCalledWith('o1', 'a1');
+    expect(store.deleteMilestoneAsset).toHaveBeenCalledWith('o1', 'a1');
     expect(component.assetRows()).toEqual([]);
   });
 
-  it('retries a failed delete when Remove is clicked again, and removes the row once it succeeds', async () => {
+  it('retries a failed delete when Remove is clicked again, surfacing the store\'s real error, and removes the row once it succeeds', async () => {
     fixture.componentRef.setInput('mode', 'edit');
     fixture.componentRef.setInput('initialValue', detail);
     fixture.detectChanges();
     const component = fixture.componentInstance as any;
-    api.deleteObjectiveAsset.mockReturnValueOnce(throwError(() => new Error('rejected')));
+    currentActionError = 'This file is still attached to an open task.';
+    store.deleteMilestoneAsset.mockResolvedValueOnce({ success: false });
 
     component.onAssetRemove('a1');
     await Promise.resolve();
@@ -164,15 +173,16 @@ describe('SubModuleFormComponent', () => {
 
     const failedRow = component.assetRows().find((r: any) => r.id === 'a1');
     expect(failedRow.status).toBe('error');
-    expect(failedRow.errorMessage).toBe('Failed to remove file. Click Remove to try again.');
+    expect(failedRow.errorMessage).toBe('This file is still attached to an open task.');
 
-    api.deleteObjectiveAsset.mockReturnValue(of(undefined));
+    currentActionError = null;
+    store.deleteMilestoneAsset.mockResolvedValue({ success: true });
     component.onAssetRemove('a1');
     await Promise.resolve();
     await Promise.resolve();
 
-    expect(api.deleteObjectiveAsset).toHaveBeenCalledTimes(2);
-    expect(api.deleteObjectiveAsset).toHaveBeenNthCalledWith(2, 'o1', 'a1');
+    expect(store.deleteMilestoneAsset).toHaveBeenCalledTimes(2);
+    expect(store.deleteMilestoneAsset).toHaveBeenNthCalledWith(2, 'o1', 'a1');
     expect(component.assetRows().find((r: any) => r.id === 'a1')).toBeUndefined();
   });
 
@@ -181,20 +191,20 @@ describe('SubModuleFormComponent', () => {
     fixture.componentRef.setInput('initialValue', detail);
     fixture.detectChanges();
     const component = fixture.componentInstance as any;
-    api.deleteObjectiveAsset.mockReturnValueOnce(throwError(() => new Error('rejected')));
+    store.deleteMilestoneAsset.mockResolvedValueOnce({ success: false });
 
     component.onAssetRemove('a1');
     await Promise.resolve();
     await Promise.resolve();
     expect(component.assetRows().find((r: any) => r.id === 'a1').status).toBe('error');
 
-    api.deleteObjectiveAsset.mockReturnValue(of(undefined));
+    store.deleteMilestoneAsset.mockResolvedValue({ success: true });
     component.onAssetRetry('a1');
     await Promise.resolve();
     await Promise.resolve();
 
-    expect(api.deleteObjectiveAsset).toHaveBeenCalledTimes(2);
-    expect(api.deleteObjectiveAsset).toHaveBeenNthCalledWith(2, 'o1', 'a1');
+    expect(store.deleteMilestoneAsset).toHaveBeenCalledTimes(2);
+    expect(store.deleteMilestoneAsset).toHaveBeenNthCalledWith(2, 'o1', 'a1');
     expect(component.assetRows().find((r: any) => r.id === 'a1')).toBeUndefined();
   });
 

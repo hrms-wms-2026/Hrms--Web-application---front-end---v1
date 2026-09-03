@@ -1,12 +1,11 @@
 import { Component, effect, inject, input, output, signal } from '@angular/core';
-import { firstValueFrom } from 'rxjs';
 import { ModalComponent } from '../../../../shared/ui/modal/modal.component';
 import { InputComponent } from '../../../../shared/ui/input/input.component';
 import { ButtonComponent } from '../../../../shared/ui/button/button.component';
 import { DateRangePickerComponent } from '../../../../shared/ui/date-range-picker/date-range-picker.component';
 import { EmployeePickerComponent } from '../employee-picker/employee-picker.component';
 import { AssetUploadListComponent, AssetRowView } from '../asset-upload-list/asset-upload-list.component';
-import { ProjectApiService } from '../../data-access/project-api.service';
+import { ProjectDetailStore } from '../../state/project-detail.store';
 import { EmployeeDirectoryStore } from '../../state/employee-directory.store';
 import { ObjectiveDetail } from '../../models/milestone.model';
 import { CreateObjectiveRequestDto, EditObjectiveRequestDto } from '../../models/dto/milestone.dto';
@@ -106,7 +105,7 @@ interface SelectedMember {
   `
 })
 export class SubModuleFormComponent {
-  private readonly api = inject(ProjectApiService);
+  private readonly store = inject(ProjectDetailStore);
   protected readonly directory = inject(EmployeeDirectoryStore);
 
   mode = input<'create' | 'edit'>('create');
@@ -244,15 +243,7 @@ export class SubModuleFormComponent {
       this.failedDeleteIds.delete(id);
       this.pendingFiles.delete(id);
       this.assetRows.update((rows) => rows.filter((r) => r.id !== id));
-      firstValueFrom(this.api.deleteObjectiveAsset(objectiveId, id)).catch(() => {
-        // Deletion failed server-side — put the row back and mark it as a
-        // pending delete-retry (rather than a pending upload-retry) so the
-        // next Remove or Retry click on this row re-attempts the delete
-        // instead of just filtering the row out of the local list while it
-        // stays attached server-side.
-        this.failedDeleteIds.add(id);
-        this.assetRows.update((rows) => [...rows, { ...row, status: 'error' as const, errorMessage: 'Failed to remove file. Click Remove to try again.' }]);
-      });
+      void this.deleteEditModeAsset(objectiveId, id, row);
       return;
     }
 
@@ -261,17 +252,34 @@ export class SubModuleFormComponent {
     this.assetRows.update((rows) => rows.filter((r) => r.id !== id));
   }
 
+  private async deleteEditModeAsset(objectiveId: string, id: string, row: AssetRowView): Promise<void> {
+    const result = await this.store.deleteMilestoneAsset(objectiveId, id);
+    if (!result.success) {
+      // Deletion failed server-side — put the row back and mark it as a
+      // pending delete-retry (rather than a pending upload-retry) so the
+      // next Remove or Retry click on this row re-attempts the delete
+      // instead of just filtering the row out of the local list while it
+      // stays attached server-side. The store already ran extractError, so
+      // its milestoneActionError carries the real server detail.
+      const message = this.store.milestoneActionError() ?? 'Failed to remove file. Click Remove to try again.';
+      this.failedDeleteIds.add(id);
+      this.assetRows.update((rows) => [...rows, { ...row, status: 'error' as const, errorMessage: message }]);
+    }
+  }
+
   private async uploadEditModeAsset(localId: string, file: File): Promise<void> {
     const objectiveId = this.initialValue()?.id;
     if (!objectiveId) return;
-    try {
-      const asset = await firstValueFrom(this.api.uploadObjectiveAsset(objectiveId, file));
+    const result = await this.store.uploadMilestoneAsset(objectiveId, file);
+    if (result.success && result.asset) {
       this.pendingFiles.delete(localId);
+      const asset = result.asset;
       this.assetRows.update((rows) => rows.map((row) =>
         row.id === localId ? { id: asset.id, fileName: asset.fileName, sizeBytes: asset.sizeBytes, status: 'uploaded' as const } : row));
-    } catch {
+    } else {
+      const message = this.store.milestoneActionError() ?? 'Upload failed.';
       this.assetRows.update((rows) => rows.map((row) =>
-        row.id === localId ? { ...row, status: 'error' as const, errorMessage: 'Upload failed.' } : row));
+        row.id === localId ? { ...row, status: 'error' as const, errorMessage: message } : row));
     }
   }
 

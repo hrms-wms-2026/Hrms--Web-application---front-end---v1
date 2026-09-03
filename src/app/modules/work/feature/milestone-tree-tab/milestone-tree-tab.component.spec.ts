@@ -381,7 +381,7 @@ describe('MilestoneTreeTabComponent', () => {
     expect(fixture.componentInstance.createModalOpen()).toBe(false);
   });
 
-  it('surfaces a retry-via-Module-settings message when some staged files fail to upload', async () => {
+  it('surfaces a retry-via-Module-settings message in a non-modal banner when some staged files fail to upload, after the create modal has closed', async () => {
     setup('o1');
     fixture.detectChanges();
     storeStub.uploadMilestoneAsset = vi.fn()
@@ -392,11 +392,55 @@ describe('MilestoneTreeTabComponent', () => {
       payload: { parentObjectiveId: 'o1', title: 'Design Phase', description: null, startDate: '2026-01-15', endDate: '2026-03-01', allocatedHours: 20 },
       assetFiles: [new File(['a'], 'ok.pdf'), new File(['b'], 'bad.exe')]
     });
+    fixture.detectChanges();
 
-    expect(storeStub.setMilestoneActionError).toHaveBeenCalledWith(
+    // The store's modal-scoped error must NOT be used here — the create modal is already
+    // closed by this point, so setMilestoneActionError would render nowhere.
+    expect(storeStub.setMilestoneActionError).not.toHaveBeenCalled();
+    expect(fixture.componentInstance.createModalOpen()).toBe(false);
+
+    const banner = fixture.nativeElement.querySelector('[data-testid="create-asset-warning"]') as HTMLElement;
+    expect(banner).toBeTruthy();
+    expect(banner.textContent).toContain(
       '"Design Phase" was created, but 1 file(s) failed to upload — open Module settings on it to retry.'
     );
-    expect(fixture.componentInstance.createModalOpen()).toBe(false);
+  });
+
+  it('dismisses the create-asset warning banner when its close button is clicked', async () => {
+    setup('o1');
+    fixture.detectChanges();
+    storeStub.uploadMilestoneAsset = vi.fn().mockResolvedValueOnce({ success: false });
+
+    await fixture.componentInstance.onCreateModalCreated({
+      payload: { parentObjectiveId: 'o1', title: 'Design Phase', description: null, startDate: '2026-01-15', endDate: '2026-03-01', allocatedHours: 20 },
+      assetFiles: [new File(['a'], 'bad.exe')]
+    });
+    fixture.detectChanges();
+    expect(fixture.nativeElement.querySelector('[data-testid="create-asset-warning"]')).toBeTruthy();
+
+    (fixture.nativeElement.querySelector('[data-testid="dismiss-create-asset-warning"]') as HTMLElement).click();
+    fixture.detectChanges();
+
+    expect(fixture.nativeElement.querySelector('[data-testid="create-asset-warning"]')).toBeFalsy();
+  });
+
+  it('does not leak a stale create-asset warning into a freshly opened create dialog', async () => {
+    setup('o1');
+    fixture.detectChanges();
+    storeStub.uploadMilestoneAsset = vi.fn().mockResolvedValueOnce({ success: false });
+
+    await fixture.componentInstance.onCreateModalCreated({
+      payload: { parentObjectiveId: 'o1', title: 'Design Phase', description: null, startDate: '2026-01-15', endDate: '2026-03-01', allocatedHours: 20 },
+      assetFiles: [new File(['a'], 'bad.exe')]
+    });
+    fixture.detectChanges();
+    expect(fixture.nativeElement.querySelector('[data-testid="create-asset-warning"]')).toBeTruthy();
+
+    fixture.componentInstance.onCreateSubRequested(tree);
+    fixture.detectChanges();
+
+    expect(fixture.componentInstance.createModalOpen()).toBe(true);
+    expect(fixture.nativeElement.querySelector('[data-testid="create-asset-warning"]')).toBeFalsy();
   });
 
   it('opens the settings modal and fetches full detail when Edit is requested', async () => {
