@@ -1,0 +1,40 @@
+<section class="gate" role="dialog" aria-modal="true" aria-labelledby="gate-title">
+  <div class="gate__card">
+    <p class="eyebrow">Workspace protection</p>
+    <h1 id="gate-title">Connect the ONEVO tray app</h1>
+
+    @if (presence.phase() === 'checking') {
+      <p aria-live="polite">Checking the ONEVO tray connection…</p>
+    } @else if (presence.phase() === 'code-loading') {
+      <p aria-live="polite">Generating your secure activation code…</p>
+      <div class="code" aria-label="Activation code">--------</div>
+    } @else if (presence.phase() === 'waiting' && presence.hasUsableCode()) {
+      <p>Open the already-installed ONEVO tray app, paste this code, and select <strong>Connect &amp; Login</strong>.</p>
+      <div class="code" aria-label="Activation code">{{ presence.code() }}</div>
+      <p class="expiry" aria-live="polite">
+        Code expires in {{ presence.codeSecondsRemaining() }} seconds.
+      </p>
+      <div class="actions">
+        <button class="primary" type="button" (click)="copyCode()">
+          {{ presence.copyState() === 'copied' ? 'Copied' : 'Copy code' }}
+        </button>
+        <button class="secondary" type="button" (click)="regenerate()">Regenerate</button>
+      </div>
+      <p class="waiting" aria-live="polite">This page unlocks automatically after the tray sends its first heartbeat.</p>
+    } @else if (presence.phase() === 'expired') {
+      <p>The activation code has expired. Generate a new code in the web portal and paste it into the installed tray app.</p>
+      <button class="primary" type="button" (click)="regenerate()">Generate a new code</button>
+    } @else if (presence.phase() === 'offline') {
+      <p aria-live="polite">The ONEVO service is temporarily unavailable. The page will retry automatically.</p>
+      @if (presence.generationError(); as message) {
+        <p class="error" role="alert">{{ message }}</p>
+      }
+      <button class="secondary" type="button" (click)="retry()">Retry</button>
+    }
+
+    @if (presence.generationError() && presence.phase() !== 'offline') {
+      <p class="error" role="alert">{{ presence.generationError() }}</p>
+    }
+    <button class="logout" type="button" (click)="logout()">Log out</button>
+  </div>
+</section>

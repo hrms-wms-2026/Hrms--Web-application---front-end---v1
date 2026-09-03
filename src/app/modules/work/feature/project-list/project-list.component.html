@@ -1,0 +1,88 @@
+<div class="flex flex-wrap items-center justify-between gap-3 pb-2 mb-2 border-b border-[var(--color-border)]">
+  <app-breadcrumb-header parentLabel="Work" currentLabel="Projects" icon="work" />
+  <div class="flex flex-wrap items-center justify-end gap-2">
+    <app-project-filter-bar
+      (categoryChanged)="onCategoryFilterChanged($event)"
+      (achievedFilterChanged)="onAchievedFilterChanged($event)"
+    />
+    <app-button variant="primary" (pressed)="openCreateModal()">+ Create project</app-button>
+  </div>
+</div>
+
+<app-my-invitations-panel
+  [invitations]="detailStore.myInvitations()"
+  (acceptRequested)="onAcceptInvitation($event)"
+  (rejectRequested)="onRejectInvitation($event)"
+/>
+
+<div class="mt-2">
+  @if (store.loading()) {
+    <app-loader label="Loading projects…" />
+  } @else if (store.error()) {
+    <app-error-state [message]="store.error()!" [retryable]="true" (retry)="store.loadProjects()" />
+  } @else if (store.filteredProjects().length === 0) {
+    <app-empty-state title="No projects yet" description="Create your first project to get started.">
+      <app-button variant="primary" (pressed)="openCreateModal()">+ Create project</app-button>
+    </app-empty-state>
+  } @else {
+    <div class="grid grid-cols-1 gap-4 lg:grid-cols-[minmax(0,1fr)_24rem] lg:items-start">
+      <div class="flex flex-col gap-2" data-testid="project-list">
+        @for (project of store.filteredProjects(); track project.id) {
+          <app-project-list-row
+            [project]="project"
+            [selected]="selectedProject()?.id === project.id"
+            (selectedChange)="onSelectProject(project)"
+          />
+        }
+      </div>
+      @if (selectedProject(); as selected) {
+        <div class="lg:sticky lg:top-4">
+          <app-project-explanation-card
+            [project]="selected"
+            (viewed)="onView(selected)"
+            (achieveRequested)="onAchieve(selected)"
+            (settingsRequested)="onProjectSettingsRequested(selected)"
+            (membersRequested)="onMembersRequested()"
+          />
+        </div>
+      }
+    </div>
+  }
+</div>
+
+<app-member-management-popup
+  scope="project"
+  [open]="membersModalOpen()"
+  [projectMembers]="projectMemberPopupItems()"
+  [canManage]="selectedProject()?.isLead ?? false"
+  (addRequested)="onAddProjectMember($event)"
+  (closed)="membersModalOpen.set(false)"
+/>
+
+<app-project-form-modal
+  [open]="createModalOpen()"
+  [submitting]="actionSubmitting()"
+  [errorMessage]="store.error() ?? ''"
+  (createSubmitted)="onCreateSubmit($event)"
+  (closed)="createModalOpen.set(false)"
+/>
+
+<app-project-settings-modal
+  [open]="settingsModalOpen()"
+  [initialValue]="settingsModalInitialValue()"
+  [submitting]="actionSubmitting()"
+  [errorMessage]="store.error() ?? ''"
+  (saved)="onProjectSettingsSaved($event)"
+  (closed)="settingsModalOpen.set(false)"
+/>
+
+<app-confirm-modal
+  [open]="deleteConfirmOpen()"
+  title="Delete project"
+  message="Delete this project? This cannot be undone."
+  confirmLabel="Delete"
+  [loading]="actionSubmitting()"
+  [errorMessage]="store.error() ?? ''"
+  (confirmed)="onDeleteConfirmed()"
+  (cancelled)="deleteConfirmOpen.set(false)"
+/>

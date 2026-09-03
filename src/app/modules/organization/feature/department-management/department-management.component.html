@@ -1,0 +1,217 @@
+<header class="dm-page-header">
+  <div class="dm-header-row">
+    <app-breadcrumb-header parentLabel="Organization" currentLabel="Departments" icon="organization" />
+
+    @if (hasReadAccess() && selectedLegalEntity()) {
+      <div class="dm-controls">
+        <!-- Expandable Search (Icon Click Toggle) -->
+        <div class="dm-search-container">
+          @if (searchExpanded()) {
+            <div class="dm-search-expandable">
+              <svg class="dm-search-icon" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/>
+              </svg>
+              <input
+                type="text"
+                class="dm-search-input"
+                placeholder="Search departments…"
+                [value]="departmentStore.searchQuery()"
+                (input)="onSearchChange($any($event.target).value)"
+              />
+              <button
+                type="button"
+                class="dm-search-clear-btn"
+                (click)="toggleSearch()"
+                title="Close search"
+                aria-label="Close search"
+              >
+                &times;
+              </button>
+            </div>
+          } @else {
+            <button
+              type="button"
+              class="dm-icon-btn"
+              [class.dm-icon-btn--active]="departmentStore.searchQuery()"
+              (click)="toggleSearch()"
+              title="Search departments"
+              aria-label="Search departments"
+            >
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/>
+              </svg>
+            </button>
+          }
+        </div>
+
+        <!-- Right Controls Group -->
+        <div class="dm-controls-right">
+          <!-- View Switcher Toggle (Icons only) -->
+          <div class="dm-view-toggle">
+            <button
+              type="button"
+              class="dm-toggle-btn"
+              [class.dm-toggle-btn--active]="departmentStore.viewMode() === 'tree'"
+              (click)="onViewModeToggle('tree')"
+              title="Tree view"
+              aria-label="Tree view"
+            >
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/></svg>
+            </button>
+            <button
+              type="button"
+              class="dm-toggle-btn"
+              [class.dm-toggle-btn--active]="departmentStore.viewMode() === 'list'"
+              (click)="onViewModeToggle('list')"
+              title="List view"
+              aria-label="List view"
+            >
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/><line x1="3" y1="6" x2="3.01" y2="6"/><line x1="3" y1="12" x2="3.01" y2="12"/><line x1="3" y1="18" x2="3.01" y2="18"/></svg>
+            </button>
+          </div>
+
+          <!-- Filter Dropdown Button -->
+          <div class="dm-filter-dropdown-wrap">
+            <button
+              type="button"
+              class="dm-filter-btn"
+              [class.dm-filter-btn--active]="departmentStore.includeInactive()"
+              (click)="onFilterToggle()"
+            >
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3"/></svg>
+              <span>Filter</span>
+              @if (departmentStore.includeInactive()) {
+                <span class="dm-filter-dot"></span>
+              }
+            </button>
+
+            @if (filterMenuOpen()) {
+              <div class="dm-filter-menu" (click)="$event.stopPropagation()">
+                <label class="dm-filter-menu-item">
+                  <input
+                    type="checkbox"
+                    [checked]="departmentStore.includeInactive()"
+                    (change)="onIncludeInactiveToggle($event)"
+                  />
+                  <span>Show archived departments</span>
+                </label>
+              </div>
+            }
+          </div>
+
+          <!-- Create Department Button -->
+          @if (hasManageAccess()) {
+            <app-button type="button" (click)="openCreateModal()">
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+              Create department
+            </app-button>
+          }
+        </div>
+      </div>
+    }
+  </div>
+</header>
+
+@if (!hasReadAccess()) {
+  <app-empty-state
+    title="You don't have access to this."
+    description="Viewing departments and reporting structure requires the org:read permission."
+  />
+} @else if (!selectedLegalEntity()) {
+  <app-empty-state title="Select a company to view departments." />
+} @else {
+
+  <!-- Content Loading / Error / Data View -->
+  @if (departmentStore.loading()) {
+    <div class="dm-skeleton-block" aria-busy="true" aria-label="Loading departments"></div>
+  } @else if (departmentStore.loadError()) {
+    <app-error-state
+      [message]="departmentStore.loadError()!"
+      [retryable]="true"
+      (retry)="departmentStore.load(selectedLegalEntity()!.id)"
+    />
+  } @else {
+
+    <!-- TREE VIEW -->
+    @if (departmentStore.viewMode() === 'tree') {
+      
+      <div class="dm-tree-container">
+        
+        <!-- Root Selected Company Card -->
+        <div class="dm-company-root-card">
+          <div class="dm-company-icon">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75">
+              <path d="M6 22V4a2 2 0 0 1 2-2h8a2 2 0 0 1 2 2v18Z"/>
+              <path d="M6 12H4a2 2 0 0 0-2 2v6a2 2 0 0 0 2 2h2"/>
+              <path d="M18 9h2a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2h-2"/>
+              <path d="M10 6h4"/><path d="M10 10h4"/><path d="M10 14h4"/><path d="M10 18h4"/>
+            </svg>
+          </div>
+          <div class="dm-company-info">
+            <span class="dm-company-name">{{ selectedLegalEntity()?.name }}</span>
+          </div>
+        </div>
+
+        <!-- Tree Nodes List -->
+        @if (departmentStore.treeData().length > 0) {
+          <div class="dm-tree-list">
+            @for (node of departmentStore.treeData(); track node.id) {
+              <app-department-tree-node
+                [node]="node"
+                [level]="1"
+                [canManage]="hasManageAccess()"
+                (addSubdepartment)="openCreateModal($event)"
+                (editDepartment)="openEditModal($event)"
+                (archiveDepartment)="openArchiveModal($event)"
+              />
+            }
+          </div>
+        } @else {
+          <app-empty-state
+            title="No departments found"
+            description="Create your first department to start building the organisation structure."
+          />
+        }
+
+      </div>
+
+    } @else {
+
+      <!-- LIST VIEW -->
+      <app-department-list-table
+        [departments]="departmentStore.flatItems()"
+        [canManage]="hasManageAccess()"
+        (editDepartment)="openEditModal($event)"
+        (archiveDepartment)="openArchiveModal($event)"
+        (restoreDepartment)="onRestoreDepartment($event)"
+      />
+
+    }
+
+  }
+
+}
+
+<!-- Modals -->
+@if (formModalOpen()) {
+  <app-department-form-modal
+    [department]="editingDepartment()"
+    [parentPreset]="parentPreset()"
+    [availableParents]="departmentStore.allFlatList()"
+    [companyName]="selectedLegalEntity()?.name || ''"
+    [loading]="departmentStore.saving()"
+    (save)="onSaveDepartment($event)"
+    (cancel)="closeFormModal()"
+  />
+}
+
+@if (archiveModalOpen() && archivingDepartment()) {
+  <app-department-archive-modal
+    [department]="archivingDepartment()!"
+    [dependency]="departmentStore.archiveDependency()"
+    [checking]="departmentStore.archiveChecking()"
+    [saving]="departmentStore.saving()"
+    (confirmArchive)="onConfirmArchive()"
+    (cancel)="closeArchiveModal()"
+  />
+}

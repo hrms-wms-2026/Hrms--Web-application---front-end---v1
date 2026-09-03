@@ -1,0 +1,65 @@
+import { ChangeDetectionStrategy, Component, input, output } from '@angular/core';
+import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
+import { Dependent, UpsertDependentRequest } from '../../models/profile.model';
+import { InputComponent } from '../../../../shared/ui/input/input.component';
+import { SelectComponent, SelectOption } from '../../../../shared/ui/select/select.component';
+import { ButtonComponent } from '../../../../shared/ui/button/button.component';
+import { DatePickerComponent } from '../../../../shared/ui/date-picker/date-picker.component';
+
+@Component({
+  selector: 'app-dependents-panel',
+  standalone: true,
+  imports: [ReactiveFormsModule, InputComponent, SelectComponent, ButtonComponent, DatePickerComponent],
+  templateUrl: './dependents-panel.component.html',
+  styleUrls: ['../profile-panel.shared.css'],
+  changeDetection: ChangeDetectionStrategy.OnPush
+})
+export class DependentsPanelComponent {
+  readonly dependents = input.required<Dependent[]>();
+  readonly saving = input(false);
+  readonly add = output<UpsertDependentRequest>();
+  readonly remove = output<string>();
+
+  readonly relationshipOptions: readonly SelectOption[] = [
+    { value: 'spouse', label: 'Spouse' },
+    { value: 'child', label: 'Child' },
+    { value: 'parent', label: 'Parent' },
+    { value: 'other', label: 'Other' }
+  ];
+
+  private readonly fb = new FormBuilder().nonNullable;
+  readonly addForm = this.fb.group({
+    name: ['', Validators.required],
+    relationship: ['child' as Dependent['relationship'], Validators.required],
+    dateOfBirth: ['', Validators.required],
+    phone: ['']
+  });
+
+  getInitials(name: string): string {
+    const parts = name.trim().split(/\s+/).filter(Boolean);
+    if (parts.length === 0) return '?';
+    if (parts.length === 1) return parts[0].substring(0, 2).toUpperCase();
+    return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
+  }
+
+  onSubmitAdd(): void {
+    if (this.addForm.invalid) {
+      this.addForm.markAllAsTouched();
+      return;
+    }
+
+    const value = this.addForm.getRawValue();
+    this.add.emit({
+      name: value.name,
+      relationship: value.relationship,
+      dateOfBirth: value.dateOfBirth,
+      isEmergencyContact: false,
+      phone: value.phone || null
+    });
+    this.addForm.reset({ relationship: 'child' });
+  }
+
+  onRemove(id: string): void {
+    this.remove.emit(id);
+  }
+}

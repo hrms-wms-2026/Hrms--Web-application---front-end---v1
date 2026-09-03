@@ -1,0 +1,53 @@
+<div class="flex flex-col gap-4">
+  <div>
+    <app-back-to-home-link />
+    <h1 class="mt-3 text-2xl font-semibold text-[var(--color-text-primary)]">Activity Timeline</h1>
+  </div>
+
+  <section class="rounded-lg border border-[var(--color-border)] bg-[var(--color-surface)] p-6 shadow-sm">
+    @if (!loading() && !hasClockedInToday()) {
+      <p class="text-sm text-[var(--color-text-secondary)]" data-testid="activity-timeline-empty">
+        You haven't clocked in today, so there's no activity to show yet.
+      </p>
+    }
+
+    @if (hasClockedInToday()) {
+      <div class="flex h-6 w-full overflow-hidden rounded-full bg-[var(--color-surface-secondary)]" data-testid="activity-timeline-bar">
+        @for (segment of segments(); track $index) {
+          <div
+            data-testid="activity-timeline-segment"
+            [attr.data-segment-type]="segment.type"
+            class="h-full first:rounded-l-full last:rounded-r-full"
+            [style.width.%]="segment.widthPercent"
+            [style.background-color]="segmentColor(segment.type)"
+            [style.opacity]="segmentOpacity(segment.type)"
+            [attr.title]="segmentLabel(segment.type)"
+          ></div>
+        }
+      </div>
+      <div class="mt-1 flex justify-between text-xs text-[var(--color-text-secondary)]">
+        <span>{{ rangeStartLabel() }}</span>
+        <span>{{ rangeEndLabel() }}</span>
+      </div>
+
+      <ul class="mt-6 flex flex-wrap gap-4 text-sm" data-testid="activity-timeline-legend">
+        <li class="flex items-center gap-2">
+          <span class="h-2.5 w-2.5 rounded-full" [style.background-color]="segmentColor('working')"></span>
+          <span class="text-[var(--color-text-secondary)]">Working</span>
+        </li>
+        <li class="flex items-center gap-2">
+          <span class="h-2.5 w-2.5 rounded-full" [style.background-color]="segmentColor('break')"></span>
+          <span class="text-[var(--color-text-secondary)]">Break</span>
+        </li>
+        <li class="flex items-center gap-2">
+          <span class="h-2.5 w-2.5 rounded-full" [style.opacity]="1" [style.background-color]="segmentColor('focus')"></span>
+          <span class="text-[var(--color-text-secondary)]">Focus work</span>
+        </li>
+        <li class="flex items-center gap-2">
+          <span class="h-2.5 w-2.5 rounded-full" [style.opacity]="segmentOpacity('idle')" [style.background-color]="segmentColor('idle')"></span>
+          <span class="text-[var(--color-text-secondary)]">Idle time</span>
+        </li>
+      </ul>
+    }
+  </section>
+</div>

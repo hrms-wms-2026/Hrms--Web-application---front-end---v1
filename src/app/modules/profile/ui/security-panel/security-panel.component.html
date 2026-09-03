@@ -1,0 +1,88 @@
+<section class="pf-section">
+  <div>
+    <h3 class="pf-section__title">Change password</h3>
+    <form [formGroup]="passwordForm" (ngSubmit)="onSubmitPasswordChange()" class="pf-form">
+      <div class="pf-field-grid pf-field-grid--2">
+        <app-input
+          label="Current password"
+          type="password"
+          [value]="passwordForm.controls.currentPassword.value"
+          (valueChange)="passwordForm.controls.currentPassword.setValue($event)"
+          (blurred)="passwordForm.controls.currentPassword.markAsTouched()"
+          [error]="passwordForm.controls.currentPassword.touched && passwordForm.controls.currentPassword.invalid ? 'Current password is required.' : ''"
+        />
+        <app-input
+          label="New password"
+          type="password"
+          placeholder="Minimum 8 characters"
+          [value]="passwordForm.controls.newPassword.value"
+          (valueChange)="passwordForm.controls.newPassword.setValue($event)"
+          (blurred)="passwordForm.controls.newPassword.markAsTouched()"
+          [error]="passwordForm.controls.newPassword.touched && passwordForm.controls.newPassword.invalid ? 'Enter at least 8 characters.' : ''"
+        />
+      </div>
+      <div class="pf-actions">
+        <app-button type="submit" [disabled]="saving()">Change password</app-button>
+      </div>
+    </form>
+  </div>
+
+  <div class="pt-6 border-t border-[var(--color-border)]">
+    <h3 class="pf-section__title">Two-factor authentication</h3>
+
+    @if (security().mfaEnabled) {
+      <p class="pf-section__description">MFA is currently enabled on your account.</p>
+      <form [formGroup]="disableMfaForm" (ngSubmit)="onSubmitDisableMfa()" class="pf-form">
+        <div class="pf-field-grid pf-field-grid--2">
+          <app-input
+            label="Current password"
+            type="password"
+            placeholder="Confirm to disable MFA"
+            [value]="disableMfaForm.controls.currentPassword.value"
+            (valueChange)="disableMfaForm.controls.currentPassword.setValue($event)"
+            (blurred)="disableMfaForm.controls.currentPassword.markAsTouched()"
+            [error]="disableMfaForm.controls.currentPassword.touched && disableMfaForm.controls.currentPassword.invalid ? 'Current password is required.' : ''"
+          />
+        </div>
+        <div class="pf-actions">
+          <app-button type="submit" variant="danger" [disabled]="saving()">Disable MFA</app-button>
+        </div>
+      </form>
+    } @else if (mfaSetupStep() === 'idle') {
+      <p class="pf-section__description" style="margin-bottom: 1rem;">Add an extra layer of security with an authenticator app.</p>
+      <div class="pf-actions" style="justify-content: flex-start;">
+        <app-button type="button" [disabled]="saving()" (pressed)="onStartMfaSetup()">Enable MFA</app-button>
+      </div>
+    } @else if (mfaSetupStep() === 'show-qr') {
+      <p class="pf-section__description" style="margin-bottom: 1rem;">Scan this QR code with your authenticator app.</p>
+      @if (qrCodeImage()) {
+        <img [src]="qrCodeImage()" alt="MFA setup QR code" width="180" height="180" style="border-radius: 8px; margin-bottom: 1rem;" />
+      }
+      @if (qrCodeSecret()) {
+        <p class="pf-section__description" style="margin-bottom: 1rem;">
+          Can't scan it? Enter this code manually: <code>{{ qrCodeSecret() }}</code>
+        </p>
+      }
+      <div class="pf-actions" style="justify-content: flex-start;">
+        <app-button type="button" variant="secondary" (pressed)="onProceedToConfirmCode()">I've scanned it</app-button>
+      </div>
+    } @else if (mfaSetupStep() === 'confirm-code') {
+      <form [formGroup]="mfaCodeForm" (ngSubmit)="onSubmitMfaCode()" class="pf-form">
+        <div class="pf-field-grid pf-field-grid--2">
+          <app-input
+            label="Verification code"
+            placeholder="6-digit code"
+            [value]="mfaCodeForm.controls.code.value"
+            (valueChange)="mfaCodeForm.controls.code.setValue($event)"
+            (blurred)="mfaCodeForm.controls.code.markAsTouched()"
+            [error]="mfaCodeForm.controls.code.touched && mfaCodeForm.controls.code.invalid ? 'Enter a valid 6-digit code.' : ''"
+            [maxlength]="6"
+          />
+        </div>
+        <div class="pf-actions">
+          <app-button type="submit" [disabled]="saving()">Confirm</app-button>
+        </div>
+      </form>
+    }
+  </div>
+</section>

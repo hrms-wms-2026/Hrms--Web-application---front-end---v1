@@ -1,0 +1,20 @@
+<section class="ltm-page">
+  <header class="ltm-header">
+    <div><p class="ltm-kicker">TIME OFF / ADMINISTRATION</p><h1>Leave Types</h1><p class="ltm-subtitle">Configure the requestable categories and default rules for your workforce.</p></div>
+    @if (hasManageAccess()) { <app-button (click)="openCreateModal()">+ New leave type</app-button> }
+  </header>
+  <div class="ltm-toolbar"><p><strong>{{ store.items().length }}</strong> {{ store.includeInactive() ? 'configured records' : 'active leave types' }}</p><label class="ltm-filter"><input type="checkbox" [checked]="store.includeInactive()" (change)="store.setIncludeInactive($any($event.target).checked)" /> Show inactive</label></div>
+  @if (store.loading()) {
+    <div class="ltm-loading" aria-busy="true"><span></span><span></span><span></span></div>
+  } @else if (store.loadError()) {
+    <app-error-state [message]="store.loadError()!" [retryable]="true" (retry)="store.load()" />
+  } @else if (store.items().length === 0) {
+    <app-empty-state title="No leave types configured" description="Create your first leave type to define what employees can request." />
+  } @else {
+    <app-leave-type-list-table [leaveTypes]="store.items()" [canManage]="hasManageAccess()" (editLeaveType)="openEditModal($event)" (deactivateLeaveType)="onDeactivateRequest($event)" />
+  }
+</section>
+@if (formModalOpen()) { <app-leave-type-form-modal [leaveType]="editingType()" [loading]="store.saving()" (save)="onSave($event)" (cancel)="closeFormModal()" /> }
+@if (pendingDeactivateType()) {
+  <div class="ltm-confirm-backdrop" (click)="cancelDeactivate()"><section class="ltm-confirm-modal" (click)="$event.stopPropagation()" role="dialog" aria-modal="true" aria-label="Confirm leave type deactivation"><p class="ltm-confirm-kicker">ACTION REQUIRES CONFIRMATION</p><h2>Deactivate {{ pendingDeactivateType()!.name }}?</h2><p>There are pending requests using this leave type. Continuing will automatically cancel those requests.</p><div class="ltm-confirm-footer"><app-button variant="secondary" (click)="cancelDeactivate()">Keep active</app-button><app-button [loading]="store.saving()" (click)="onConfirmDeactivate()">Deactivate anyway</app-button></div></section></div>
+}

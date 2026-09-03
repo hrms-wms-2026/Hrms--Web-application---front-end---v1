@@ -1,0 +1,161 @@
+/*
+ * Centralized design tokens. Every color in the app must come from one of these
+ * custom properties - never a hardcoded hex/rgb value or a Tailwind slate/gray/etc.
+ * utility class - so that switching --data-theme on <html> re-skins the whole app
+ * consistently (sidebar, buttons, focus rings, links, selected states) from one
+ * control (ThemeStore), per FRONTEND_PART2A_APP_SHELL_THEME_PERMISSION_FOUNDATION.
+ */
+
+:root {
+  /* Neutral surfaces/text/borders - shared across every theme preset. */
+  --color-app-bg: #fafafa;
+  --color-surface: #ffffff;
+  --color-surface-secondary: #f4f4f5;
+  --color-text-primary: #09090b;
+  --color-text-secondary: #71717a;
+  --color-text-inverse: #ffffff;
+  --color-border: #e4e4e7;
+  --color-danger: #dc2626;
+  --color-danger-subtle: #fee2e2;
+  --color-danger-text: #991b1b;
+  --color-success: #16a34a;
+  --color-warning: #d97706;
+  --color-warning-subtle: #fef3c7;
+  --color-warning-text: #92400e;
+  --radius-content: 12px;
+
+  /* Glassmorphism & backdrop tokens */
+  --color-glass-bg: rgba(255, 255, 255, 0.68);
+  --color-glass-border: rgba(0, 0, 0, 0.08);
+  --color-card-shadow: rgba(0, 0, 0, 0.04);
+
+  /* Avatar / seat-preview tokens */
+  --color-seat-empty-bg: #e4e4e7;
+  --color-seat-empty-border: #d4d4d8;
+  --color-seat-initials-bg: color-mix(in srgb, var(--color-accent) 18%, transparent);
+  --color-seat-initials-text: var(--color-accent);
+  --color-seat-overflow-bg: #3f3f46;
+  --color-seat-overflow-text: #ffffff;
+}
+
+:root[data-mode='dark'],
+html.dark {
+  --color-app-bg: #09090b;
+  --color-surface: #18181b;
+  --color-surface-secondary: #27272a;
+  --color-text-primary: #f4f4f5;
+  --color-text-secondary: #a1a1aa;
+  --color-text-inverse: #09090b;
+  --color-border: #27272a;
+  --color-danger: #ef4444;
+  --color-danger-subtle: #450a0a;
+  --color-danger-text: #fca5a5;
+  --color-success: #22c55e;
+  --color-warning: #f59e0b;
+  --color-warning-subtle: #451a03;
+  --color-warning-text: #fcd34d;
+  --color-glass-bg: rgba(18, 18, 20, 0.72);
+  --color-glass-border: rgba(255, 255, 255, 0.12);
+  --color-card-shadow: rgba(0, 0, 0, 0.5);
+
+  /* Avatar / seat-preview tokens (dark overrides) */
+  --color-seat-empty-bg: #3f3f46;
+  --color-seat-empty-border: #52525b;
+  --color-seat-overflow-bg: #71717a;
+  --color-seat-overflow-text: #ffffff;
+}
+
+:root {
+  /* Themed tokens - overridden per [data-theme]; these are the "default" (blue) preset. */
+  --color-accent: #2563eb;
+  --color-accent-hover: #1d4ed8;
+  --color-accent-contrast: #ffffff;
+  --color-accent-subtle: #dbeafe;
+  --color-focus-ring: #93c5fd;
+  --color-link: #2563eb;
+
+  --color-sidebar-bg: #0f172a;
+  --color-sidebar-text: #cbd5e1;
+  --color-sidebar-text-muted: #64748b;
+  --color-sidebar-active-bg: #1e3a8a;
+  --color-sidebar-active-text: #ffffff;
+
+  --color-profile-bg: #d1d5db;
+  --color-profile-text: var(--color-text-primary);
+
+  /*
+   * Fixed (never overridden per [data-theme]) preview colors for the Appearance
+   * selector's swatches - it must show all 5 presets' actual colors simultaneously,
+   * not just the one currently active in --color-accent.
+   */
+  --preset-preview-default: #2563eb;
+  --preset-preview-emerald: #059669;
+  --preset-preview-violet: #7c3aed;
+  --preset-preview-rose: #e11d48;
+  --preset-preview-slate: #475569;
+}
+
+:root[data-theme='default'] {
+  --color-accent: #2563eb;
+  --color-accent-hover: #1d4ed8;
+  --color-accent-subtle: #dbeafe;
+  --color-focus-ring: #93c5fd;
+  --color-link: #2563eb;
+  --color-sidebar-bg: #0f172a;
+  --color-sidebar-text: #cbd5e1;
+  --color-sidebar-text-muted: #64748b;
+  --color-sidebar-active-bg: #1e3a8a;
+  --color-sidebar-active-text: #ffffff;
+}
+
+:root[data-theme='emerald'] {
+  --color-accent: #059669;
+  --color-accent-hover: #047857;
+  --color-accent-subtle: #d1fae5;
+  --color-focus-ring: #6ee7b7;
+  --color-link: #059669;
+  --color-sidebar-bg: #052e2b;
+  --color-sidebar-text: #a7f3d0;
+  --color-sidebar-text-muted: #4d9c85;
+  --color-sidebar-active-bg: #065f46;
+  --color-sidebar-active-text: #ffffff;
+}
+
+:root[data-theme='violet'] {
+  --color-accent: #7c3aed;
+  --color-accent-hover: #6d28d9;
+  --color-accent-subtle: #ede9fe;
+  --color-focus-ring: #c4b5fd;
+  --color-link: #7c3aed;
+  --color-sidebar-bg: #1e1033;
+  --color-sidebar-text: #ddd6fe;
+  --color-sidebar-text-muted: #8b7bb8;
+  --color-sidebar-active-bg: #5b21b6;
+  --color-sidebar-active-text: #ffffff;
+}
+
+:root[data-theme='rose'] {
+  --color-accent: #e11d48;
+  --color-accent-hover: #be123c;
+  --color-accent-subtle: #ffe4e6;
+  --color-focus-ring: #fda4af;
+  --color-link: #e11d48;
+  --color-sidebar-bg: #2b0a13;
+  --color-sidebar-text: #fecdd3;
+  --color-sidebar-text-muted: #a1626f;
+  --color-sidebar-active-bg: #9f1239;
+  --color-sidebar-active-text: #ffffff;
+}
+
+:root[data-theme='slate'] {
+  --color-accent: #475569;
+  --color-accent-hover: #334155;
+  --color-accent-subtle: #e2e8f0;
+  --color-focus-ring: #94a3b8;
+  --color-link: #475569;
+  --color-sidebar-bg: #0b1120;
+  --color-sidebar-text: #cbd5e1;
+  --color-sidebar-text-muted: #64748b;
+  --color-sidebar-active-bg: #334155;
+  --color-sidebar-active-text: #ffffff;
+}

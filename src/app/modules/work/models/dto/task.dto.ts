@@ -1,0 +1,85 @@
+export interface TaskStatusDto {
+  id: string;
+  name: string;
+  displayOrder: number;
+  requiresApproval: boolean;
+  approverId: string | null;
+  marksTaskComplete: boolean;
+  visibility: 'public' | 'private';
+}
+
+export interface WorkTaskDto {
+  id: string;
+  objectiveId: string;
+  shortId: string;
+  title: string;
+  description: string | null;
+  categoryId: string;
+  statusId: string;
+  priority: 'low' | 'medium' | 'high' | 'critical';
+  storyPoints: number | null;
+  dueDate: string | null;
+  estimatedHours: number | null;
+  completedHours: number;
+  progressPercent: number;
+  sprintId: string | null;
+    assigneeEmployeeIds: string[];
+  openClockSessionEmployeeId: string | null;
+  openClockSessionClockInAt: string | null;
+  totalLoggedMinutes: number;
+
+}
+
+export interface CreateTaskRequestDto {
+  title: string;
+  description?: string;
+  categoryId: string;
+  priority: WorkTaskDto['priority'];
+  dueDate?: string;
+  estimatedHours?: number;
+  storyPoints?: number;
+  sprintId: string | null;
+}
+
+export interface EditTaskRequestDto {
+  title: string;
+  description?: string;
+  priority: WorkTaskDto['priority'];
+  dueDate?: string;
+  estimatedHours?: number;
+    storyPoints?: number;
+  progressPercent?: number;
+  reason?: string;
+}
+
+export interface PushTaskRequestDto {
+  percent: number;
+  reason?: string;
+}
+
+export interface AddReasonRequestDto {
+  reason: string;
+}
+
+/** Shape of a 409 INSUFFICIENT_OBJECTIVE_ALLOCATION error body (backend spec §3.2). */
+export interface InsufficientAllocationErrorDto {
+  availableSlackHours: number;
+  suggestedAction: 'extend_allocation';
+}
+
+export interface CreateTaskStatusRequestDto {
+  name: string;
+  displayOrder: number;
+  visibility: 'public' | 'private';
+  marksTaskComplete: boolean;
+  requiresApproval: boolean;
+  approverId?: string;
+}
+
+export interface EditTaskStatusRequestDto {
+  name: string;
+  displayOrder: number;
+  requiresApproval: boolean;
+  approverId?: string;
+  visibility: 'public' | 'private';
+}

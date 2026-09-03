@@ -1,0 +1,157 @@
+import { Component, OnDestroy, OnInit, inject, signal } from '@angular/core';
+import { Router } from '@angular/router';
+import { firstValueFrom } from 'rxjs';
+import { NotificationsStore } from '../../../../core/state/notifications.store';
+import { NotificationItem } from '../../../../core/services/notification-api.service';
+import { PopoverComponent } from '../../../../shared/ui/popover/popover.component';
+import { TaskApiService } from '../../../../modules/work/data-access/task-api.service';
+import { NotificationDropdownComponent } from './notification-dropdown/notification-dropdown.component';
+
+const WORK_RELATED_TYPES = new Set([
+  'task',
+  'task_creation_request',
+  'objective_change_request',
+  'allocation_extend'
+]);
+
+@Component({
+  selector: 'app-notification-bell',
+  standalone: true,
+  imports: [PopoverComponent, NotificationDropdownComponent],
+  template: `
+    <app-popover [open]="isOpen()" ariaLabel="Notifications" (closed)="close()">
+      <button
+        type="button"
+        popover-trigger
+        class="notification-bell__btn"
+        aria-label="Notifications"
+        title="Notifications"
+        (click)="toggle()"
+        data-testid="notification-bell"
+      >
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9"/>
+          <path d="M10.3 21a1.94 1.94 0 0 0 3.4 0"/>
+        </svg>
+        @if (store.unreadCount() > 0) {
+          <span class="notification-bell__badge" aria-hidden="true" data-testid="notification-badge">
+            {{ store.unreadCount() > 9 ? '9+' : store.unreadCount() }}
+          </span>
+        }
+      </button>
+
+      <div popover-panel>
+        <app-notification-dropdown
+          [items]="store.items()"
+          (itemClicked)="onItemClicked($event)"
+          (markAllRead)="onMarkAllRead()"
+        />
+      </div>
+    </app-popover>
+  `,
+  styles: [`
+    .notification-bell__btn {
+      position: relative;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      width: 28px;
+      height: 28px;
+      border-radius: 8px;
+      border: 1px solid transparent;
+      background: var(--color-surface-secondary);
+      color: var(--color-text-secondary);
+      cursor: pointer;
+    }
+    .notification-bell__btn:hover {
+      background: var(--color-border);
+      color: var(--color-text-primary);
+    }
+    .notification-bell__badge {
+      position: absolute;
+      top: 2px;
+      right: 2px;
+      min-width: 14px;
+      height: 14px;
+      padding: 0 3px;
+      border-radius: 999px;
+      background: var(--color-danger);
+      color: var(--color-surface);
+      font-size: 9px;
+      line-height: 14px;
+      text-align: center;
+      border: 1.5px solid var(--color-surface);
+    }
+  `]
+})
+export class NotificationBellComponent implements OnInit, OnDestroy {
+  protected readonly store = inject(NotificationsStore);
+  private readonly router = inject(Router);
+  private readonly taskApi = inject(TaskApiService);
+
+  protected readonly isOpen = signal(false);
+  private pollId: ReturnType<typeof setInterval> | null = null;
+
+  ngOnInit(): void {
+    void this.store.refreshUnreadCount();
+    this.pollId = setInterval(() => void this.store.refreshUnreadCount(), 60_000);
+  }
+
+  ngOnDestroy(): void {
+    if (this.pollId) clearInterval(this.pollId);
+  }
+
+  toggle(): void {
+    const next = !this.isOpen();
+    this.isOpen.set(next);
+    if (next) void this.store.loadMine();
+  }
+
+  close(): void {
+    this.isOpen.set(false);
+  }
+
+  async onItemClicked(item: NotificationItem): Promise<void> {
+    await this.store.markRead(item.id);
+    this.close();
+    await this.navigateFromNotification(item);
+  }
+
+  async onMarkAllRead(): Promise<void> {
+    await this.store.markAllRead();
+  }
+
+  private async navigateFromNotification(item: NotificationItem): Promise<void> {
+    if (item.isNavigable && item.destinationKey === 'attendance_correction_approval' && item.attendanceCorrectionId) {
+      await this.router.navigate(['/attendance/time-tracking'], {
+        queryParams: { view: 'team', type: 'corrections', requestId: item.attendanceCorrectionId }
+      });
+      return;
+    }
+
+    if (item.isNavigable && item.destinationKey === 'work_area_change_approval' && item.workAreaChangeRequestId) {
+      await this.router.navigate(['/attendance/time-tracking'], {
+        queryParams: { view: 'team', type: 'work-area', requestId: item.workAreaChangeRequestId }
+      });
+      return;
+    }
+
+    const type = item.relatedEntityType;
+    const id = item.relatedEntityId;
+    if (!type || !id || !WORK_RELATED_TYPES.has(type)) {
+      return;
+    }
+
+    try {
+      const nav = await firstValueFrom(this.taskApi.getNotificationNavigation(type, id));
+      const commands = ['/work', nav.projectId, 'milestones', nav.objectiveId, nav.targetTab];
+      const extras =
+        nav.targetTab === 'board' && nav.taskId
+          ? { queryParams: { highlightTaskId: nav.taskId } }
+          : {};
+      await this.router.navigate(commands, extras);
+    } catch {
+      await this.router.navigate(['/work']);
+    }
+  }
+}

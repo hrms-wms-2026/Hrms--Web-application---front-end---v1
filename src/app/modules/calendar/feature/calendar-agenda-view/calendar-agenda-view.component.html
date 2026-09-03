@@ -1,0 +1,21 @@
+<div class="flex flex-col gap-4">
+  @for (group of groups(); track group.date) {
+    <div>
+      <div data-testid="calendar-agenda-date-header" class="mb-1 text-sm font-semibold text-[var(--color-text-primary)]">{{ group.date }}</div>
+      <div class="flex flex-col gap-1">
+        @for (event of group.events; track event.id) {
+          <button
+            type="button"
+            data-testid="calendar-agenda-row"
+            class="flex items-center gap-2 rounded-md border border-[var(--color-border)] px-2 py-1.5 text-left text-sm hover:bg-[var(--color-surface-secondary)]"
+            (click)="eventClick.emit(event.id)"
+          >
+            <span class="h-2 w-2 shrink-0 rounded-full" [style.background-color]="event.color || 'var(--color-accent)'"></span>
+            <span class="text-xs text-[var(--color-text-secondary)]">{{ event.startDate.slice(11, 16) }}</span>
+            <span class="text-[var(--color-text-primary)]">{{ event.title }}</span>
+          </button>
+        }
+      </div>
+    </div>
+  }
+</div>

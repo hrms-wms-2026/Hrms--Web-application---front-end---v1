@@ -1,0 +1,209 @@
+.dtn-node-wrapper {
+  display: flex;
+  flex-direction: column;
+  position: relative;
+}
+
+.dtn-node-row {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.75rem 1rem;
+  border-radius: 8px;
+  background: var(--color-surface);
+  border: 1px solid color-mix(in srgb, var(--color-border) 60%, transparent);
+  margin-bottom: 0.375rem;
+  transition: background 150ms ease, border-color 150ms ease;
+}
+
+.dtn-node-row:hover {
+  background: var(--color-surface-secondary);
+  border-color: var(--color-border);
+}
+
+.dtn-node-row--inactive {
+  opacity: 0.65;
+  background: color-mix(in srgb, var(--color-surface-secondary) 50%, transparent);
+}
+
+.dtn-expand-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  border-radius: 4px;
+  border: none;
+  background: transparent;
+  color: var(--color-text-secondary);
+  cursor: pointer;
+  padding: 0;
+  transition: color 150ms ease;
+}
+
+.dtn-expand-btn:hover {
+  color: var(--color-text-primary);
+  background: var(--color-border);
+}
+
+.dtn-expand-btn--hidden {
+  visibility: hidden;
+  pointer-events: none;
+}
+
+.dtn-expand-icon {
+  transition: transform 150ms ease;
+}
+
+.dtn-expand-icon--expanded {
+  transform: rotate(90deg);
+}
+
+.dtn-icon-badge {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  border-radius: 6px;
+  background: color-mix(in srgb, var(--color-sidebar-active-bg, #2563eb) 10%, transparent);
+  color: var(--color-sidebar-active-bg, #2563eb);
+  flex-shrink: 0;
+}
+
+.dtn-info {
+  flex: 1;
+  min-width: 0;
+}
+
+.dtn-title-line {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.dtn-name {
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: var(--color-text-primary);
+}
+
+.dtn-code {
+  font-size: 0.75rem;
+  font-weight: 500;
+  color: var(--color-text-secondary);
+  padding: 0.125rem 0.375rem;
+  border-radius: 4px;
+  background: var(--color-surface-secondary);
+}
+
+.dtn-archived-badge {
+  font-size: 0.6875rem;
+  font-weight: 500;
+  color: var(--color-danger-text, #ef4444);
+  background: color-mix(in srgb, var(--color-danger-text, #ef4444) 12%, transparent);
+  padding: 0.125rem 0.375rem;
+  border-radius: 4px;
+}
+
+.dtn-meta {
+  display: flex;
+  align-items: center;
+  gap: 1.5rem;
+}
+
+.dtn-head-pos {
+  display: flex;
+  align-items: center;
+  gap: 0.375rem;
+  font-size: 0.8125rem;
+}
+
+.dtn-meta-label {
+  color: var(--color-text-secondary);
+}
+
+.dtn-meta-val {
+  font-weight: 500;
+  color: var(--color-text-primary);
+}
+
+.dtn-counts {
+  display: flex;
+  align-items: center;
+  gap: 0.375rem;
+  font-size: 0.8125rem;
+  color: var(--color-text-secondary);
+}
+
+.dtn-count-sep {
+  opacity: 0.4;
+}
+
+.dtn-action-container {
+  position: relative;
+}
+
+.dtn-action-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  border-radius: 6px;
+  border: 1px solid transparent;
+  background: transparent;
+  color: var(--color-text-secondary);
+  cursor: pointer;
+  transition: background 150ms ease, color 150ms ease;
+}
+
+.dtn-action-btn:hover {
+  background: var(--color-surface-secondary);
+  border-color: var(--color-border);
+  color: var(--color-text-primary);
+}
+
+.dtn-menu {
+  position: absolute;
+  right: 0;
+  top: 100%;
+  margin-top: 0.25rem;
+  width: 170px;
+  border-radius: 8px;
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+  z-index: 20;
+  display: flex;
+  flex-direction: column;
+  padding: 0.25rem;
+}
+
+.dtn-menu-item {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.5rem 0.75rem;
+  border: none;
+  background: transparent;
+  font-size: 0.8125rem;
+  font-weight: 500;
+  color: var(--color-text-primary);
+  border-radius: 6px;
+  cursor: pointer;
+  text-align: left;
+  transition: background 150ms ease;
+}
+
+.dtn-menu-item:hover {
+  background: var(--color-surface-secondary);
+}
+
+.dtn-menu-item--danger {
+  color: var(--color-danger-text, #ef4444);
+}
+
+.dtn-menu-item--danger:hover {
+  background: color-mix(in srgb, var(--color-danger-text, #ef4444) 10%, transparent);
+}

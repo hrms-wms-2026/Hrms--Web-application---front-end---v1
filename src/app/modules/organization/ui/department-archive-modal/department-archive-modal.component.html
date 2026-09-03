@@ -1,0 +1,85 @@
+<div class="dam-backdrop" (click)="cancel.emit()">
+  <div class="dam-modal" (click)="$event.stopPropagation()" role="dialog" aria-modal="true">
+    
+    <!-- Header -->
+    <div class="dam-header">
+      <div class="dam-title-row">
+        <div class="dam-icon-wrap">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/>
+            <line x1="12" y1="9" x2="12" y2="13"/>
+            <line x1="12" y1="17" x2="12.01" y2="17"/>
+          </svg>
+        </div>
+        <div>
+          <h2 class="dam-title">Archive ‘{{ department.name }}’?</h2>
+          <p class="dam-subtitle">This removes the department from the active organisation structure.</p>
+        </div>
+      </div>
+      <button type="button" class="dam-close-btn" (click)="cancel.emit()" aria-label="Close">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+      </button>
+    </div>
+
+    <!-- Body -->
+    <div class="dam-body">
+      @if (checking) {
+        <div class="dam-loading-state">
+          <span class="dam-spinner"></span>
+          <span>Checking department dependencies…</span>
+        </div>
+      } @else if (dependency) {
+
+        <div class="dam-deps-grid">
+          <div class="dam-dep-card" [class.dam-dep-card--blocked]="dependency.blockers.activeChildCount > 0">
+            <span class="dam-dep-count">{{ dependency.blockers.activeChildCount }}</span>
+            <span class="dam-dep-label">Child departments</span>
+          </div>
+          <div class="dam-dep-card" [class.dam-dep-card--blocked]="dependency.blockers.activeEmployeeCount > 0">
+            <span class="dam-dep-count">{{ dependency.blockers.activeEmployeeCount }}</span>
+            <span class="dam-dep-label">Active employees</span>
+          </div>
+          <div class="dam-dep-card" [class.dam-dep-card--blocked]="dependency.blockers.activePositionCount > 0">
+            <span class="dam-dep-count">{{ dependency.blockers.activePositionCount }}</span>
+            <span class="dam-dep-label">Positions</span>
+          </div>
+        </div>
+
+        @if (!dependency.canArchive) {
+          <div class="dam-alert dam-alert--error">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+            <div>
+              <strong>This department cannot be archived yet.</strong>
+              <ul class="dam-blocker-list">
+                @for (msg of dependency.blockerMessages; track msg) {
+                  <li>{{ msg }}</li>
+                }
+              </ul>
+            </div>
+          </div>
+        } @else {
+          <div class="dam-alert dam-alert--info">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>
+            <span>No active employees, positions, or subdepartments are linked to this department. Historical records and audit history will remain available.</span>
+          </div>
+        }
+
+      }
+    </div>
+
+    <!-- Footer -->
+    <div class="dam-footer">
+      <app-button type="button" variant="secondary" (click)="cancel.emit()" [disabled]="saving">Cancel</app-button>
+      <app-button
+        type="button"
+        variant="danger"
+        (click)="confirmArchive.emit()"
+        [disabled]="checking || saving || (dependency ? !dependency.canArchive : true)"
+        [loading]="saving"
+      >
+        Archive department
+      </app-button>
+    </div>
+
+  </div>
+</div>

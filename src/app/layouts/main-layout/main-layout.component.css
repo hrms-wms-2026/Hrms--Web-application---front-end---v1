@@ -1,0 +1,144 @@
+:host {
+  display: block;
+  height: 100vh;
+  max-height: 100vh;
+  overflow: hidden;
+}
+
+.skip-link {
+  position: fixed;
+  top: 0;
+  left: 1rem;
+  z-index: 1000;
+  padding: 0.75rem 1rem;
+  background: var(--color-surface);
+  color: var(--color-text-primary);
+  border: 2px solid currentColor;
+  border-radius: 0.5rem;
+  transform: translateY(-150%);
+  transition: transform 150ms ease;
+}
+
+.skip-link:focus {
+  transform: translateY(0.5rem);
+}
+
+.main-layout {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  grid-template-rows: auto minmax(0, 1fr);
+  grid-template-areas:
+    "rail navbar"
+    "rail main";
+  height: 100vh;
+  max-height: 100vh;
+  overflow: hidden;
+  background: var(--color-app-bg);
+}
+
+.main-layout--has-sub-sidebar {
+  grid-template-columns: auto auto minmax(0, 1fr);
+  grid-template-areas:
+    "rail navbar navbar"
+    "rail sub-sidebar main";
+}
+
+.main-layout__rail {
+  grid-area: rail;
+  height: 100vh;
+  max-height: 100vh;
+  overflow: hidden;
+}
+
+.main-layout__topbar {
+  grid-area: navbar;
+  min-width: 0;
+}
+
+.main-layout__sub-sidebar {
+  grid-area: sub-sidebar;
+  height: 100%;
+  overflow: hidden;
+}
+
+.main-content {
+  grid-area: main;
+  min-width: 0;
+  min-height: 0;
+  height: calc(100% - 0.5rem);
+  margin: 0 0.5rem 0.5rem 0.25rem;
+  padding: 1.75rem 2rem;
+  outline: none;
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: 0 0 16px 0;
+  overflow-y: auto;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.03);
+}
+
+.main-layout--has-sub-sidebar .main-content {
+  margin-left: 0;
+}
+
+.main-content:focus-visible {
+  outline: 3px solid currentColor;
+  outline-offset: -3px;
+}
+
+.global-notification-container {
+  position: fixed;
+  bottom: 1.5rem;
+  right: 1.5rem;
+  z-index: 1100;
+}
+
+.global-dialog-container {
+  position: relative;
+  z-index: 1200;
+}
+
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+@media (max-width: 768px) {
+  .main-layout {
+    display: flex;
+    flex-direction: column;
+    height: 100vh;
+    max-height: 100vh;
+    overflow: hidden;
+  }
+
+  .main-layout__rail,
+  .main-layout__sub-sidebar {
+    display: none !important;
+  }
+
+  .main-layout__topbar {
+    width: 100%;
+    margin: 0;
+    border-radius: 0;
+    border-left: none;
+    border-right: none;
+    border-top: none;
+  }
+
+  .main-content {
+    flex: 1;
+    margin: 0;
+    border-radius: 0;
+    border: none;
+    padding: 1rem 1rem 5.5rem 1rem;
+    height: auto;
+    overflow-y: auto;
+  }
+}

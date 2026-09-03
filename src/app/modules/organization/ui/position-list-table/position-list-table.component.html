@@ -1,0 +1,121 @@
+<div class="plt-table-container">
+  <table class="plt-table">
+    <thead>
+      <tr>
+        <th>Position name</th>
+        <th>Code</th>
+        <th>Department</th>
+        <th>Reports to</th>
+        <th>Type</th>
+        <th>Capacity</th>
+        <th>Status</th>
+        @if (canManage) {
+          <th class="plt-th-actions">Actions</th>
+        }
+      </tr>
+    </thead>
+    <tbody>
+      @for (pos of positions; track pos.id) {
+        @let occupancy = getOccupancy(pos);
+        <tr [class.plt-tr--inactive]="!pos.isActive">
+          <td>
+            <span class="plt-name">{{ pos.name }}</span>
+          </td>
+          <td>
+            @if (pos.code) {
+              <span class="plt-code-chip">{{ pos.code }}</span>
+            } @else {
+              <span class="plt-text-secondary">—</span>
+            }
+          </td>
+          <td>
+            <span>{{ pos.departmentName || getDepartmentName(pos.departmentId) }}</span>
+          </td>
+          <td>
+            <span class="plt-text-secondary">{{ pos.reportsToPositionName || getReportsToName(pos.reportsToPositionId) }}</span>
+          </td>
+          <td>
+            <span class="plt-type-badge" [class.plt-type-badge--pooled]="(pos.positionType || '').toLowerCase() === 'pooled'">
+              {{ (pos.positionType || '').toLowerCase() === 'pooled' ? 'Pooled' : 'Unique' }}
+            </span>
+          </td>
+          <td>
+            <app-position-seat-preview
+              [assignedCount]="pos.assignedCount ?? 0"
+              [maxOccupancy]="pos.maxOccupancy"
+              [occupantPreview]="pos.occupantPreview ?? []"
+              [remainingAssignedCount]="pos.remainingAssignedCount ?? 0"
+            />
+          </td>
+          <td>
+            <span
+              class="plt-badge"
+              [class.plt-badge--occupied]="occupancy.statusType === 'occupied'"
+              [class.plt-badge--vacant]="occupancy.statusType === 'vacant'"
+              [class.plt-badge--available]="occupancy.statusType === 'available'"
+              [class.plt-badge--full]="occupancy.statusType === 'full'"
+              [class.plt-badge--unknown]="occupancy.statusType === 'unassigned' || occupancy.statusType === 'unknown'"
+              [class.plt-badge--inactive]="occupancy.statusType === 'archived'"
+            >
+              {{ occupancy.statusLabel }}
+            </span>
+          </td>
+          @if (canManage) {
+            <td class="plt-td-actions">
+              <div class="plt-action-wrapper">
+                <button
+                  type="button"
+                  class="plt-action-btn"
+                  (click)="toggleMenu(pos.id, $event)"
+                  aria-label="Actions"
+                >
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <circle cx="12" cy="12" r="1" />
+                    <circle cx="12" cy="5" r="1" />
+                    <circle cx="12" cy="19" r="1" />
+                  </svg>
+                </button>
+
+                @if (openMenuId() === pos.id) {
+                  <div class="plt-menu" (click)="$event.stopPropagation()">
+                    <button type="button" class="plt-menu-item" (click)="onEdit(pos, $event)">
+                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"/></svg>
+                      Edit
+                    </button>
+                    @if (canConfigureAccess) {
+                      <button type="button" class="plt-menu-item" (click)="onAccess(pos, $event)">
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+                        Position Access
+                      </button>
+                    }
+                    <button type="button" class="plt-menu-item" (click)="onCoverage(pos, $event)">
+                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+                      Management Coverage
+                    </button>
+                    @if (pos.isActive) {
+                      <button type="button" class="plt-menu-item plt-menu-item--danger" (click)="onArchive(pos, $event)">
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
+                        Archive
+                      </button>
+                    } @else {
+                      <button type="button" class="plt-menu-item" (click)="onRestore(pos, $event)">
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="1 4 1 10 7 10"/><path d="M3.51 15a9 9 0 1 0 2.13-9.36L1 10"/></svg>
+                        Restore
+                      </button>
+                    }
+                  </div>
+                }
+              </div>
+            </td>
+          }
+        </tr>
+      } @empty {
+        <tr>
+          <td [attr.colspan]="canManage ? 8 : 7" class="plt-empty-td">
+            No positions found.
+          </td>
+        </tr>
+      }
+    </tbody>
+  </table>
+</div>

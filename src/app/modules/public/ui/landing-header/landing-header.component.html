@@ -1,0 +1,87 @@
+<header class="landing-header" [class.landing-header--scrolled]="isScrolled()" [class.landing-header--hidden]="!headerVisible()">
+  <nav class="landing-header__bar" aria-label="Primary Navigation">
+    <a routerLink="/" class="landing-header__brand" aria-label="ONEXSO Workspace, go to homepage">
+      <img
+        ngSrc="assets/brand/onexso-mark.png"
+        alt="ONEXSO"
+        width="134"
+        height="132"
+        priority
+        class="landing-header__mark"
+      />
+      <span class="landing-header__brand-name">ONEXSO</span>
+    </a>
+
+    <ul class="landing-header__links">
+      <li><a href="#features">Features</a></li>
+      <li><a href="#pillars">Solution</a></li>
+      <li><a href="#walkthrough">How it Works</a></li>
+      <li><a href="#faq">About</a></li>
+    </ul>
+
+    <div class="landing-header__actions">
+      <!-- Capsule Theme Mode Switch (Sun & Moon pill capsule) -->
+      <div class="landing-header__theme-capsule">
+        <button
+          type="button"
+          class="landing-header__theme-icon"
+          [class.landing-header__theme-icon--active]="!isDarkMode()"
+          (click)="applyLightMode()"
+          aria-label="Light mode"
+          title="Light mode"
+        >
+          <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <circle cx="12" cy="12" r="4"/>
+            <path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M4.93 19.07l1.41-1.41M17.66 6.34l1.41-1.41"/>
+          </svg>
+        </button>
+        <button
+          type="button"
+          class="landing-header__theme-icon"
+          [class.landing-header__theme-icon--active]="isDarkMode()"
+          (click)="applyDarkMode()"
+          aria-label="Dark mode"
+          title="Dark mode"
+        >
+          <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/>
+          </svg>
+        </button>
+      </div>
+
+      <a routerLink="/auth/login" class="landing-header__signin">Login</a>
+
+      <button
+        type="button"
+        class="landing-header__menu-btn"
+        [attr.aria-expanded]="menuOpen()"
+        aria-controls="landing-mobile-nav"
+        (click)="toggleMenu()"
+      >
+        <span class="sr-only">{{ menuOpen() ? 'Close menu' : 'Open menu' }}</span>
+        @if (!menuOpen()) {
+          <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true">
+            <path d="M4 6h16M4 12h16M4 18h16" />
+          </svg>
+        } @else {
+          <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true">
+            <path d="M6 6l12 12M18 6L6 18" />
+          </svg>
+        }
+      </button>
+    </div>
+  </nav>
+
+  <div id="landing-mobile-nav" class="landing-header__mobile" [hidden]="!menuOpen()">
+    <a href="#hero" (click)="closeMenu()">Overview</a>
+    <a href="#pillars" (click)="closeMenu()">3 Pillars</a>
+    <a href="#features" (click)="closeMenu()">Deep Dive</a>
+    <a href="#walkthrough" (click)="closeMenu()">How it Works</a>
+    <a href="#pricing" (click)="closeMenu()">Pricing</a>
+    <a href="#faq" (click)="closeMenu()">FAQ</a>
+    <div class="landing-header__mobile-actions">
+      <a routerLink="/auth/login" class="landing-header__signin landing-header__signin--mobile" (click)="closeMenu()">Sign in</a>
+      <a routerLink="/book-a-demo" class="landing-header__demo-btn landing-header__demo-btn--mobile" (click)="closeMenu()">Request Demo</a>
+    </div>
+  </div>
+</header>

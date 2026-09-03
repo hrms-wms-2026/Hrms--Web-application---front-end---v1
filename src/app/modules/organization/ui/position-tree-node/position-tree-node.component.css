@@ -1,0 +1,360 @@
+.ptn-org-branch {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  position: relative;
+}
+
+/* ── Node Card Styling (Matching Mockup ORG-POS-01) ────────── */
+.ptn-node-card {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.875rem 1rem;
+  border-radius: 10px;
+  background: var(--color-surface);
+  border: 1px solid color-mix(in srgb, var(--color-border) 70%, transparent);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
+  width: 270px;
+  min-height: 84px;
+  position: relative;
+  transition: transform 150ms ease, border-color 150ms ease, box-shadow 150ms ease;
+  user-select: none;
+}
+
+.ptn-node-card:hover {
+  border-color: var(--color-sidebar-active-bg, #2563eb);
+  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.08);
+}
+
+.ptn-node-card--dragover {
+  border: 2px dashed var(--color-sidebar-active-bg, #2563eb) !important;
+  background: color-mix(in srgb, var(--color-sidebar-active-bg, #2563eb) 6%, transparent);
+  transform: scale(1.02);
+}
+
+.ptn-node-card--template-dragover {
+  border: 2px dashed var(--color-accent) !important;
+  background: color-mix(in srgb, var(--color-accent) 6%, transparent);
+  transform: scale(1.02);
+}
+
+.ptn-node-card--inactive {
+  opacity: 0.65;
+  background: color-mix(in srgb, var(--color-surface-secondary) 50%, transparent);
+}
+
+.ptn-drag-handle {
+  color: color-mix(in srgb, var(--color-text-secondary) 40%, transparent);
+  cursor: grab;
+  display: flex;
+  align-items: center;
+  padding: 0.25rem 0;
+}
+
+.ptn-drag-handle:active {
+  cursor: grabbing;
+}
+
+
+/* Position Details */
+.ptn-details {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+.ptn-name-row {
+  display: flex;
+  align-items: center;
+  gap: 0.375rem;
+}
+
+.ptn-name {
+  font-size: 0.875rem;
+  font-weight: 700;
+  color: var(--color-text-primary);
+  line-height: 1.25;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.ptn-archived-badge {
+  font-size: 0.6875rem;
+  font-weight: 500;
+  color: var(--color-danger-text, #ef4444);
+  background: color-mix(in srgb, var(--color-danger-text, #ef4444) 12%, transparent);
+  padding: 0.125rem 0.375rem;
+  border-radius: 4px;
+}
+
+.ptn-sub-row {
+  display: flex;
+  align-items: center;
+  gap: 0.375rem;
+  font-size: 0.71875rem;
+  color: var(--color-text-secondary);
+}
+
+.ptn-code-chip {
+  font-weight: 600;
+  text-transform: uppercase;
+}
+
+.ptn-dept {
+  font-weight: 500;
+}
+
+.ptn-bottom-row {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 0.25rem 0.5rem;
+  margin-top: 0.125rem;
+}
+
+.ptn-capacity {
+  font-size: 0.75rem;
+  font-weight: 700;
+  color: var(--color-text-primary);
+  flex-shrink: 0;
+}
+
+.ptn-status-pill {
+  font-size: 0.6875rem;
+  font-weight: 600;
+  padding: 0.125rem 0.45rem;
+  border-radius: 999px;
+  white-space: normal;
+  text-align: center;
+}
+
+.ptn-status-pill--occupied {
+  background: color-mix(in srgb, #10b981 12%, transparent);
+  color: #059669;
+}
+
+.ptn-status-pill--vacant {
+  background: color-mix(in srgb, #f59e0b 12%, transparent);
+  color: #d97706;
+}
+
+.ptn-status-pill--available {
+  background: color-mix(in srgb, var(--color-sidebar-active-bg, #2563eb) 12%, transparent);
+  color: var(--color-sidebar-active-bg, #2563eb);
+}
+
+.ptn-status-pill--full {
+  background: color-mix(in srgb, #10b981 12%, transparent);
+  color: #059669;
+}
+
+.ptn-status-pill--unknown {
+  background: color-mix(in srgb, var(--color-text-secondary) 12%, transparent);
+  color: var(--color-text-secondary);
+}
+
+/* Action Dropdown (Top Right) */
+.ptn-action-wrapper {
+  position: relative;
+  align-self: flex-start;
+}
+
+.ptn-action-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  border-radius: 6px;
+  border: 1px solid transparent;
+  background: transparent;
+  color: var(--color-text-secondary);
+  cursor: pointer;
+}
+
+.ptn-action-btn:hover {
+  background: var(--color-surface-secondary);
+  border-color: var(--color-border);
+  color: var(--color-text-primary);
+}
+
+/* Floating Bottom-Center + Add Button */
+.ptn-bottom-add-btn {
+  position: absolute;
+  bottom: -13px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 26px;
+  height: 26px;
+  border-radius: 50%;
+  border: 1px solid var(--color-sidebar-active-bg, #2563eb);
+  background: var(--color-surface);
+  color: var(--color-sidebar-active-bg, #2563eb);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  box-shadow: 0 2px 6px rgba(37, 99, 235, 0.2);
+  z-index: 10;
+  transition: background 150ms ease, color 150ms ease, transform 150ms ease, box-shadow 150ms ease;
+}
+
+.ptn-bottom-add-btn:hover {
+  background: var(--color-sidebar-active-bg, #2563eb);
+  color: #ffffff;
+  transform: translateX(-50%) scale(1.15);
+  box-shadow: 0 4px 10px rgba(37, 99, 235, 0.35);
+}
+
+.ptn-menu {
+  position: absolute;
+  right: 0;
+  top: 100%;
+  margin-top: 0.25rem;
+  width: max-content;
+  min-width: 155px;
+  border-radius: 8px;
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.12);
+  z-index: 50;
+  display: flex;
+  flex-direction: column;
+  padding: 0.375rem;
+  white-space: nowrap;
+}
+
+.ptn-menu-item {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.5rem 0.75rem;
+  border: none;
+  background: transparent;
+  font-size: 0.8125rem;
+  font-weight: 500;
+  color: var(--color-text-primary);
+  border-radius: 6px;
+  cursor: pointer;
+  text-align: left;
+  white-space: nowrap;
+}
+
+.ptn-menu-item:hover {
+  background: var(--color-surface-secondary);
+}
+
+.ptn-menu-item--danger {
+  color: var(--color-danger-text, #ef4444);
+}
+
+.ptn-menu-item--danger:hover {
+  background: color-mix(in srgb, var(--color-danger-text, #ef4444) 10%, transparent);
+}
+
+/* Drop target box placeholder (dotted box from ORG-POS-01) */
+.ptn-drop-target-box {
+  margin-top: 0.5rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  width: 240px;
+  padding: 0.75rem;
+  border: 2px dashed #2563eb;
+  border-radius: 8px;
+  background: color-mix(in srgb, #2563eb 8%, transparent);
+  color: #2563eb;
+  font-size: 0.75rem;
+  font-weight: 600;
+}
+
+.ptn-drop-target-box--template {
+  border-color: var(--color-accent);
+  background: color-mix(in srgb, var(--color-accent) 8%, transparent);
+  color: var(--color-accent);
+}
+
+/* ── Org Chart Connector Lines ──────────────────────────────── */
+.ptn-line-down {
+  width: 2px;
+  height: 24px;
+  background: #3b82f6;
+}
+
+.ptn-children-row {
+  display: flex;
+  align-items: flex-start;
+  justify-content: center;
+  position: relative;
+}
+
+.ptn-child-wrapper {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  position: relative;
+  padding: 0 1rem;
+}
+
+/* Top Line for Each Child */
+.ptn-line-top {
+  width: 2px;
+  height: 24px;
+  background: #3b82f6;
+  position: relative;
+}
+
+/* Horizontal Connector Line Across Children */
+.ptn-child-wrapper::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  height: 2px;
+  background: #3b82f6;
+  width: 100%;
+}
+
+.ptn-child-wrapper--first::before {
+  width: 50%;
+  left: 50%;
+}
+
+.ptn-child-wrapper--last::before {
+  width: 50%;
+  left: 0;
+}
+
+.ptn-child-wrapper--single::before {
+  display: none;
+}
+
+/* ── Responsive Tree Diagram ────────────────────────────────── */
+@media (max-width: 900px) {
+  .ptn-children-row {
+    flex-direction: column;
+    align-items: center;
+    gap: 1rem;
+  }
+
+  .ptn-child-wrapper {
+    padding: 0;
+  }
+
+  .ptn-child-wrapper::before {
+    display: none;
+  }
+
+  .ptn-line-top {
+    height: 16px;
+  }
+
+  .ptn-node-card {
+    width: 100%;
+    max-width: 320px;
+  }
+}

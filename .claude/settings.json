@@ -1,0 +1,36 @@
+{
+  "permissions": {
+    "allow": [
+      "Read(//c/Users/User/Desktop/build/HRMS-Backend-v1/src/ONEVO.Api/Controllers/Tenant/Auth/**)",
+      "Bash(cd \"C:/Users/User/Desktop/build/HRMS-Backend-v1\" && find . -maxdepth 1 -iname \"*.sln\" 2>&1)",
+      "Read(//c/Users/User/Desktop/build/HRMS-Backend-v1/**)",
+      "Bash(find \"C:/Users/User/Desktop/build/HRMS-Backend-v1\" -maxdepth 1 -iname \"*.sln\")",
+      "Bash(find \"C:/Users/User/Desktop/build/HRMS-Backend-v1\" -iname \"*.sln\" -o -iname \"ONEVO.Api.csproj\")",
+      "Bash(dotnet build *)",
+      "Bash(git -C \"C:/Users/User/Desktop/build/HRMS-Backend-v1\" diff -- src/ONEVO.Api/Controllers/Tenant/Auth/TenantAuthResponseWriter.cs src/ONEVO.Api/Controllers/Tenant/Auth/AuthPendingLegalController.cs src/ONEVO.Api/Controllers/Tenant/Auth/AuthSessionController.cs)",
+      "Bash(cd \"C:\\\\Users\\\\User\\\\Desktop\\\\build\\\\HRMS-Backend-v1\\\\src\\\\ONEVO.Infrastructure\" && grep -rln \"app.tenant_context_mode\\\\|app.current_tenant_id\\\\|ITenantContextSwitcher\\\\|DbConnectionInterceptor\\\\|IDbCommandInterceptor\" --include=*.cs . | grep -v Migrations)",
+      "Read(//c/Users/User/Desktop/build/HRMS-Backend-v1/src/ONEVO.Infrastructure/**)",
+      "Read(//c/Users/User/Desktop/build/HRMS-Backend-v1/src/ONEVO.Infrastructure/Persistence/Interceptors/**)",
+      "Bash(cd \"C:\\\\Users\\\\User\\\\Desktop\\\\build\\\\HRMS-Backend-v1\" && grep -rn \"Authentication required\" --include=*.cs src)",
+      "Read(//c/Users/User/Desktop/build/HRMS-Backend-v1/src/ONEVO.Api/Middleware/**)",
+      "Bash(cd \"C:\\\\Users\\\\User\\\\Desktop\\\\build\\\\HRMS-Backend-v1\\\\src\\\\ONEVO.Api\" && find . -iname \"Program.cs\")",
+      "Read(//c/Users/User/Desktop/build/HRMS-Backend-v1/src/ONEVO.Api/**)",
+      "Bash(cd \"C:\\\\Users\\\\User\\\\Desktop\\\\build\\\\HRMS-Backend-v1\\\\src\\\\ONEVO.Api\\\\Middleware\" && find . -iname \"CsrfProtectionMiddleware.cs\" -o -iname \"HostTenantResolutionMiddleware.cs\" -o -iname \"AuthRateLimitingMiddleware.cs\")",
+      "Read(//c/Users/User/Desktop/build/HRMS-Backend-v1/src/ONEVO.Infrastructure/Identity/Tenancy/**)",
+      "Bash(cd \"C:\\\\Users\\\\User\\\\Desktop\\\\build\\\\HRMS-Backend-v1\\\\src\" && grep -rln \"class.*DateTimeProvider\\\\|IDateTimeProvider\" --include=*.cs ONEVO.Infrastructure ONEVO.Application | grep -v Tests)",
+      "Read(//c/Users/User/Desktop/build/HRMS-Backend-v1/src/**)",
+      "Read(//c/Users/User/Desktop/build/HRMS-Backend-v1/src/ONEVO.Infrastructure/Identity/Time/**)",
+      "Bash(xargs cat)",
+      "Bash(cd \"C:\\\\Users\\\\User\\\\Desktop\\\\build\\\\HRMS-Backend-v1\\\\src\\\\ONEVO.Infrastructure\\\\Migrations\" && grep -rln \"\\\\\"tenants\\\\\"\\\\|'tenants'\\\\| tenants \\\\|ON tenants\" *.cs | head -20)",
+      "Read(//c/Users/User/Desktop/build/HRMS-Backend-v1/src/ONEVO.Infrastructure/Migrations/**)",
+      "Bash(cd \"C:\\\\Users\\\\User\\\\Desktop\\\\build\\\\HRMS-Backend-v1\\\\src\" && grep -rn \"TenantPolicy\\\\|OnValidatePrincipal\" --include=*.cs . | grep -v Tests)",
+      "Read(//c/Users/User/Desktop/build/HRMS-Backend-v1/src/ONEVO.Api/Extensions/**)",
+      "Read(//c/Users/User/Desktop/build/HRMS-Backend-v1/src/ONEVO.Application/Features/Auth/Login/Queries/GetCurrentSession/**)",
+      "Bash(cd \"C:\\\\Users\\\\User\\\\Desktop\\\\build\\\\HRMS-Backend-v1\\\\src\" && grep -rln \"class.*CurrentUser\" --include=*.cs ONEVO.Infrastructure ONEVO.Api | grep -v Tests)",
+      "Read(//c/Users/User/Desktop/build/HRMS-Backend-v1/src/ONEVO.Infrastructure/Identity/CurrentUser/**)"
+    ],
+    "additionalDirectories": [
+      "C:\\Users\\User\\Desktop\\build\\HRMS-Backend-v1\\src\\ONEVO.Api\\Controllers\\Tenant\\Auth"
+    ]
+  }
+}

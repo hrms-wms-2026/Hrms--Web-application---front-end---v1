@@ -1,0 +1,121 @@
+<header class="rm-page-header">
+  <div class="rm-header-row">
+    <app-breadcrumb-header parentLabel="Settings" currentLabel="Roles & Permissions" icon="settings" />
+
+    @if (hasReadAccess()) {
+      <div class="rm-controls">
+        <!-- Expandable Search (Icon Click Toggle) -->
+        <div class="rm-search-container">
+          @if (searchExpanded()) {
+            <div class="rm-search-expandable">
+              <svg class="rm-search-icon" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/>
+              </svg>
+              <input
+                type="text"
+                class="rm-search-input"
+                placeholder="Search roles…"
+                [value]="searchQuery()"
+                (input)="onSearchChange($any($event.target).value)"
+              />
+              <button
+                type="button"
+                class="rm-search-clear-btn"
+                (click)="toggleSearch()"
+                title="Close search"
+                aria-label="Close search"
+              >
+                &times;
+              </button>
+            </div>
+          } @else {
+            <button
+              type="button"
+              class="rm-icon-btn"
+              [class.rm-icon-btn--active]="searchQuery()"
+              (click)="toggleSearch()"
+              title="Search roles"
+              aria-label="Search roles"
+            >
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/>
+              </svg>
+            </button>
+          }
+        </div>
+
+        <!-- Right Controls Group -->
+        <div class="rm-controls-right">
+          @if (hasManageAccess()) {
+            <app-button type="button" (click)="openCreateModal()">
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+              Create role
+            </app-button>
+          }
+        </div>
+      </div>
+    }
+  </div>
+</header>
+
+@if (!hasReadAccess()) {
+  <app-empty-state
+    title="You don't have access to this."
+    description="Viewing roles and permissions requires the roles:read permission."
+  />
+} @else {
+
+  <!-- Content Loading / Error / Table View -->
+  @if (roleStore.loading()) {
+    <div class="rm-skeleton-block" aria-busy="true" aria-label="Loading roles"></div>
+  } @else if (roleStore.loadError()) {
+    <app-error-state
+      [message]="roleStore.loadError()!"
+      [retryable]="true"
+      (retry)="roleStore.loadAll()"
+    />
+  } @else {
+
+    <app-role-list-table
+      [roles]="filteredRoles()"
+      [canManage]="hasManageAccess()"
+      (editRole)="openEditModal($event)"
+      (managePermissions)="openPermissionsModal($event)"
+      (archiveRole)="openArchiveModal($event)"
+    />
+
+  }
+
+}
+
+<!-- Modals -->
+@if (formModalOpen()) {
+  <app-role-form-modal
+    [role]="editingRole()"
+    [groupedCatalog]="roleStore.groupedCatalog()"
+    [loading]="roleStore.saving()"
+    (save)="onSaveRole($event)"
+    (cancel)="closeFormModal()"
+  />
+}
+
+@if (permsModalOpen() && managingPermsRole()) {
+  <app-role-permissions-modal
+    [role]="managingPermsRole()!"
+    [roleDetail]="roleStore.selectedRoleDetail()"
+    [groupedCatalog]="roleStore.groupedCatalog()"
+    [loading]="roleStore.detailLoading()"
+    [saving]="roleStore.saving()"
+    (savePermissions)="onSavePermissions($event)"
+    (cancel)="closePermissionsModal()"
+  />
+}
+
+@if (archiveModalOpen() && archivingRole()) {
+  <app-role-archive-modal
+    [role]="archivingRole()!"
+    [saving]="roleStore.saving()"
+    (confirmArchive)="onConfirmArchive()"
+    (cancel)="closeArchiveModal()"
+  />
+}

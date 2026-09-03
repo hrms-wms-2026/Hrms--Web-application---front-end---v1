@@ -1,0 +1,340 @@
+.gs-page-header {
+  margin-top: -1.25rem;
+  margin-bottom: 0.75rem;
+  padding-bottom: 0.625rem;
+  border-bottom: 1px solid var(--color-border);
+}
+
+.gs-header-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  width: 100%;
+  height: 30px;
+  min-height: 30px;
+  flex-wrap: wrap;
+}
+
+.gs-header-row app-breadcrumb-header {
+  display: inline-flex;
+  align-items: center;
+  flex-shrink: 0;
+  align-self: center;
+  height: 30px;
+  overflow: hidden;
+}
+
+.gs-header-row app-breadcrumb-header ::ng-deep .bh-header-bar,
+.gs-header-row ::ng-deep .bh-header-bar {
+  display: flex !important;
+  align-items: center !important;
+  margin-bottom: 0 !important;
+  padding-bottom: 0 !important;
+  border-bottom: none !important;
+}
+
+/* ── Form ─────────────────────────────────────────────────────── */
+.gs-form {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+/* ── Section card ───────────────────────────────────────────── */
+.gs-card-container {
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+  padding: 1.5rem 1.75rem;
+  border: 1px solid color-mix(in srgb, var(--color-border) 60%, transparent);
+  border-radius: 12px;
+  background: var(--color-surface);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.02);
+}
+
+.gs-section-block {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.gs-section__title {
+  margin: 0;
+  font-size: 0.9375rem;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+  color: var(--color-text-primary);
+}
+
+/* ── Identity & Logo row ─────────────────────────────────────── */
+.gs-identity-row {
+  display: flex;
+  align-items: flex-start;
+  gap: 1.5rem;
+}
+
+.gs-identity-fields {
+  flex: 1;
+  min-width: 0;
+}
+
+/* ── Logo upload area ─────────────────────────────────────────── */
+.gs-logo-upload-block {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.625rem;
+  flex-shrink: 0;
+  margin-top: 1.25rem;
+}
+
+.gs-logo-preview {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.gs-logo-info {
+  display: flex;
+  flex-direction: column;
+  gap: 0.375rem;
+}
+
+.gs-logo-info__title {
+  margin: 0;
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: var(--color-text-primary);
+}
+
+.gs-logo-info__hint {
+  margin: 0;
+  font-size: 0.75rem;
+  color: var(--color-text-secondary);
+}
+
+.gs-logo-actions {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.gs-logo-btn {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.375rem;
+  margin-top: 0.25rem;
+  padding: 0.375rem 0.875rem;
+  border-radius: var(--radius-content);
+  border: 1px solid var(--color-border);
+  background: var(--color-surface-secondary);
+  color: var(--color-text-primary);
+  font-size: 0.8125rem;
+  font-weight: 500;
+  cursor: pointer;
+}
+
+.gs-logo-btn--busy {
+  opacity: 0.7;
+  cursor: default;
+}
+
+.gs-logo-btn input[type='file'] {
+  position: absolute;
+  inset: 0;
+  opacity: 0;
+  cursor: pointer;
+}
+
+.gs-logo-btn input[type='file']:disabled {
+  cursor: default;
+}
+
+.gs-logo-remove-btn {
+  margin-top: 0.25rem;
+  padding: 0.375rem 0.875rem;
+  border-radius: var(--radius-content);
+  border: 1px solid var(--color-border);
+  background: transparent;
+  color: var(--color-danger-text);
+  font-size: 0.8125rem;
+  font-weight: 500;
+  cursor: pointer;
+}
+
+/* ── Dense field grid ───────────────────────────────────────── */
+.gs-field-grid {
+  display: grid;
+  gap: 0.75rem 1rem;
+}
+
+.gs-field-grid--2 {
+  grid-template-columns: repeat(2, 1fr);
+}
+
+.gs-field-grid--3 {
+  grid-template-columns: repeat(3, 1fr);
+}
+
+/* ── Responsive ────────────────────────────────────────────── */
+@media (max-width: 1024px) {
+  .gs-field-grid--3 {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+@media (max-width: 768px) {
+  .gs-identity-row {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 1rem;
+  }
+
+  .gs-field-grid--2,
+  .gs-field-grid--3 {
+    grid-template-columns: 1fr;
+  }
+
+  .gs-sticky-save {
+    position: relative;
+    bottom: auto;
+    margin-left: 0;
+    margin-right: 0;
+    margin-bottom: 0;
+    padding: 1rem 0 2rem 0;
+    box-shadow: none;
+    background: transparent;
+  }
+}
+
+@media (max-width: 640px) {
+  .gs-sticky-save {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 0.5rem;
+    padding: 0.625rem 0 2rem 0;
+  }
+
+  .gs-sticky-save__hint {
+    font-size: 0.7rem;
+  }
+}
+
+/* ── Fieldset ─────────────────────────────────────────────────── */
+.gs-fieldset {
+  border: none;
+  padding: 0;
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.625rem;
+}
+
+.gs-fieldset--span-2 {
+  grid-column: span 2;
+}
+
+@media (max-width: 1024px) {
+  .gs-fieldset--span-2 {
+    grid-column: span 1;
+  }
+}
+
+.gs-fieldset__legend {
+  font-size: 0.75rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  color: var(--color-text-secondary);
+  padding: 0;
+  margin-bottom: 0.25rem;
+}
+
+/* ── Weekday chips ────────────────────────────────────────────── */
+.gs-weekdays {
+  display: flex;
+  align-items: center;
+  gap: 0.375rem;
+  flex-wrap: wrap;
+}
+
+.gs-weekday-chip {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0.35rem 0.65rem;
+  border-radius: 6px;
+  border: 1px solid transparent;
+  background: var(--color-surface-secondary);
+  font-size: 0.78125rem;
+  font-weight: 500;
+  color: var(--color-text-secondary);
+  cursor: pointer;
+  user-select: none;
+  transition: background 150ms ease, color 150ms ease;
+}
+
+.gs-weekday-chip input[type='checkbox'] {
+  position: absolute;
+  opacity: 0;
+  width: 0;
+  height: 0;
+  pointer-events: none;
+}
+
+.gs-weekday-chip--selected {
+  background: #2563eb;
+  color: #ffffff;
+}
+
+/* ── Field error ──────────────────────────────────────────────── */
+.gs-field-error {
+  margin: 0;
+  font-size: 0.75rem;
+  color: var(--color-danger-text);
+}
+
+/* ── Sticky Save bar ───────────────────────────────────────── */
+.gs-sticky-save {
+  position: sticky;
+  bottom: -1.75rem;
+  margin-left: -2rem;
+  margin-right: -2rem;
+  margin-bottom: -1.75rem;
+  margin-top: 1.5rem;
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 1rem;
+  padding: 0.75rem 2rem;
+  background: var(--color-surface);
+  border-top: 1px solid var(--color-border);
+  z-index: 10;
+  box-shadow: 0 -4px 16px rgba(0, 0, 0, 0.06);
+}
+
+.gs-sticky-save__hint {
+  display: flex;
+  align-items: center;
+  gap: 0.375rem;
+  margin: 0;
+  font-size: 0.78125rem;
+  color: var(--color-text-secondary);
+}
+
+/* ── Skeleton ─────────────────────────────────────────────────── */
+.skeleton-block {
+  height: 12rem;
+  border-radius: var(--radius-content);
+  background: var(--color-surface-secondary);
+}
+
+/* ── Work hours section hint ──────────────────────────────────── */
+.gs-work-hours-hint {
+  margin: 0.375rem 0 0;
+  font-size: 0.75rem;
+  color: var(--color-text-secondary);
+}

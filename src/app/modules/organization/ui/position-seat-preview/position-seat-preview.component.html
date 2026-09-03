@@ -1,0 +1,39 @@
+<div class="psp-stack" role="group" aria-label="Seat occupancy preview">
+  @for (slot of slots; track trackSlot($index, slot)) {
+    @if (slot.kind === 'employee') {
+      <!-- Assigned employee circle -->
+      <div
+        class="psp-circle psp-circle--employee"
+        [title]="employeeTitle(slot.item)"
+        [attr.aria-label]="employeeAriaLabel(slot.item)"
+      >
+        @if (hasAvatarUrl(slot.item)) {
+          <img
+            class="psp-avatar-img"
+            [src]="slot.item.avatarUrl!"
+            [alt]="slot.item.displayName || 'Employee avatar'"
+            loading="lazy"
+          />
+        } @else {
+          <span class="psp-initials">{{ getInitials(slot.item) }}</span>
+        }
+      </div>
+    } @else if (slot.kind === 'empty') {
+      <!-- Vacant seat circle -->
+      <div
+        class="psp-circle psp-circle--empty"
+        aria-label="Empty seat"
+        title="Empty seat"
+      ></div>
+    } @else if (slot.kind === 'overflow') {
+      <!-- Overflow indicator -->
+      <div
+        class="psp-circle psp-circle--overflow"
+        [title]="'+' + slot.n + ' more seats'"
+        [attr.aria-label]="'+' + slot.n + ' additional seats not shown'"
+      >
+        <span class="psp-overflow-label">+{{ slot.n }}</span>
+      </div>
+    }
+  }
+</div>

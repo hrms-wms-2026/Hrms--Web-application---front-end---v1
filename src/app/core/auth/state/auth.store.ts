@@ -1,0 +1,227 @@
+import { signalStore, withState, withMethods, patchState } from '@ngrx/signals';
+import { inject } from '@angular/core';
+import { HttpErrorResponse } from '@angular/common/http';
+import { firstValueFrom } from 'rxjs';
+import { AuthApiService } from '../data-access/auth-api.service';
+import { LoginRequestDto } from '../models/dto/login-request.dto';
+import { LegalAcceptanceRequestDto } from '../models/dto/legal-acceptance-request.dto';
+import { LegalDocumentDto } from '../models/dto/legal-document.dto';
+import { AcceptEmployeeInvitationRequestDto } from '../models/dto/accept-employee-invitation-request.dto';
+import { toCurrentUserViewModel } from '../utils/auth.mapper';
+
+type AuthState = {
+  authenticated: boolean;
+  email: string | null;
+  employeeId: string | null;
+  permissions: string[];
+  activeModules: string[];
+  legalAcceptanceRequired: boolean;
+  pendingLegalDocuments: LegalDocumentDto[];
+  workspaceSlug: string | null;
+  redirectRequired: boolean;
+  continueUrl: string | null;
+  loading: boolean;
+  error: string | null;
+};
+
+const initialState: AuthState = {
+  authenticated: false,
+  email: null,
+  employeeId: null,
+  permissions: [],
+  activeModules: [],
+  legalAcceptanceRequired: false,
+  pendingLegalDocuments: [],
+  workspaceSlug: null,
+  redirectRequired: false,
+  continueUrl: null,
+  loading: false,
+  error: null
+};
+
+function extractErrorMessage(err: unknown, fallback: string): string {
+  if (err && typeof err === 'object' && 'error' in err) {
+    const body = (err as { error?: { detail?: string; title?: string; message?: string; errors?: Record<string, string[] | string> } }).error;
+    if (body?.detail) return body.detail;
+    if (body?.message) return body.message;
+    if (body?.title && body.title !== 'One or more validation errors occurred.') return body.title;
+    if (body?.errors) {
+      const firstKey = Object.keys(body.errors)[0];
+      if (firstKey && body.errors[firstKey]) {
+        const val = body.errors[firstKey];
+        return Array.isArray(val) ? val[0] : val;
+      }
+    }
+  }
+  return fallback;
+}
+
+export const AuthStore = signalStore(
+  { providedIn: 'root' },
+  withState<AuthState>(initialState),
+  withMethods((store, api = inject(AuthApiService)) => ({
+    async login(payload: LoginRequestDto): Promise<void> {
+      patchState(store, { loading: true, error: null });
+      try {
+        const dto = await firstValueFrom(api.login(payload));
+        const view = toCurrentUserViewModel(dto);
+        patchState(store, {
+          authenticated: view.authenticated,
+          email: view.email,
+          employeeId: view.employeeId,
+          permissions: view.permissions,
+          activeModules: view.activeModules,
+          legalAcceptanceRequired: view.legalAcceptanceRequired,
+          pendingLegalDocuments: view.pendingLegalDocuments,
+          workspaceSlug: view.workspaceSlug,
+          redirectRequired: view.redirectRequired,
+          continueUrl: view.continueUrl,
+          loading: false
+        });
+      } catch (err) {
+        patchState(store, { loading: false, error: extractErrorMessage(err, 'Invalid email or password.') });
+        throw err;
+      }
+    },
+
+    async acceptLegalDocuments(payload: LegalAcceptanceRequestDto): Promise<void> {
+      patchState(store, { loading: true, error: null });
+      try {
+        const dto = await firstValueFrom(api.acceptLegalDocuments(payload));
+        const view = toCurrentUserViewModel(dto);
+        patchState(store, {
+          authenticated: view.authenticated,
+          email: view.email,
+          employeeId: view.employeeId,
+          permissions: view.permissions,
+          activeModules: view.activeModules,
+          legalAcceptanceRequired: view.legalAcceptanceRequired,
+          pendingLegalDocuments: view.pendingLegalDocuments,
+          workspaceSlug: view.workspaceSlug,
+          redirectRequired: view.redirectRequired,
+          continueUrl: view.continueUrl,
+          loading: false
+        });
+      } catch (err) {
+        patchState(store, {
+          loading: false,
+          error: extractErrorMessage(err, 'Could not save your acceptance. Please try again.')
+        });
+        throw err;
+      }
+    },
+
+    /**
+     * Tenant-host-only, like exchangeSession(): the invite link opens on the employee's own
+     * tenant subdomain and the backend command requires that host to resolve to the invitation's
+     * tenant, so this deliberately does not retarget to the root/system host the way login() and
+     * acceptLegalDocuments() do.
+     */
+    async acceptEmployeeInvitation(token: string, payload: AcceptEmployeeInvitationRequestDto): Promise<void> {
+      patchState(store, { loading: true, error: null });
+      try {
+        const dto = await firstValueFrom(api.acceptEmployeeInvitation(token, payload));
+        const view = toCurrentUserViewModel(dto);
+        patchState(store, {
+          authenticated: view.authenticated,
+          email: view.email,
+          employeeId: view.employeeId,
+          permissions: view.permissions,
+          activeModules: view.activeModules,
+          legalAcceptanceRequired: view.legalAcceptanceRequired,
+          pendingLegalDocuments: view.pendingLegalDocuments,
+          workspaceSlug: view.workspaceSlug,
+          redirectRequired: view.redirectRequired,
+          continueUrl: view.continueUrl,
+          loading: false
+        });
+      } catch (err) {
+        patchState(store, {
+          loading: false,
+          error: extractErrorMessage(err, 'Could not complete your invitation. Please try again.')
+        });
+        throw err;
+      }
+    },
+
+    async checkSession(): Promise<boolean> {
+      patchState(store, { loading: true });
+      try {
+        const dto = await firstValueFrom(api.me());
+        const view = toCurrentUserViewModel(dto);
+        patchState(store, {
+          authenticated: view.authenticated,
+          email: view.email,
+          employeeId: view.employeeId,
+          permissions: view.permissions,
+          activeModules: view.activeModules,
+          legalAcceptanceRequired: view.legalAcceptanceRequired,
+          pendingLegalDocuments: view.pendingLegalDocuments,
+          workspaceSlug: view.workspaceSlug,
+          redirectRequired: view.redirectRequired,
+          continueUrl: view.continueUrl,
+          loading: false
+        });
+        return view.authenticated;
+      } catch {
+        patchState(store, { ...initialState, loading: false });
+        return false;
+      }
+    },
+
+    /**
+     * Tenant-host-only: consumes the one-time code from continue_url and, on success, is the call
+     * that actually establishes onevo_session/onevo_csrf - login()/acceptLegalDocuments() never do
+     * this themselves anymore once redirectRequired is true.
+     */
+    async exchangeSession(code: string): Promise<void> {
+      patchState(store, { loading: true, error: null });
+      try {
+        const dto = await firstValueFrom(api.sessionExchange(code));
+        const view = toCurrentUserViewModel(dto);
+        patchState(store, {
+          authenticated: view.authenticated,
+          email: view.email,
+          employeeId: view.employeeId,
+          permissions: view.permissions,
+          activeModules: view.activeModules,
+          legalAcceptanceRequired: view.legalAcceptanceRequired,
+          pendingLegalDocuments: view.pendingLegalDocuments,
+          workspaceSlug: view.workspaceSlug,
+          redirectRequired: view.redirectRequired,
+          continueUrl: view.continueUrl,
+          loading: false
+        });
+      } catch (err) {
+        // status 0 means the request never reached the server (network/TLS/CORS failure on the
+        // tenant host), which is a distinct problem from a rejected/expired exchange code and
+        // needs a different fix on the user's end - see error.interceptor.ts's retry condition
+        // and ErrorHandlerService's ERROR_TAXONOMY[0] for the same status-0 convention.
+        const isUnreachable = err instanceof HttpErrorResponse && err.status === 0;
+        patchState(store, {
+          loading: false,
+          error: isUnreachable
+            ? 'Could not reach the tenant workspace. Check your local HTTPS certificate and try again.'
+            : extractErrorMessage(err, 'This sign-in link is invalid or has expired. Please sign in again.')
+        });
+        throw err;
+      }
+    },
+
+    async logout(): Promise<boolean> {
+      try {
+        await firstValueFrom(api.logout());
+        return true;
+      } catch {
+        // Session is treated as gone client-side regardless of logout call outcome.
+        return false;
+      } finally {
+        patchState(store, initialState);
+      }
+    },
+
+    clearSession(): void {
+      patchState(store, initialState);
+    }
+  }))
+);

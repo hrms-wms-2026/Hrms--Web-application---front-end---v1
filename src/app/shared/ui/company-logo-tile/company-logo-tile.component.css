@@ -1,0 +1,45 @@
+.company-logo-tile {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 8px;
+  background: var(--color-surface);
+  color: var(--color-text-primary);
+  font-weight: 800;
+  line-height: 1;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.25);
+  overflow: hidden;
+  flex-shrink: 0;
+}
+
+.company-logo-tile--sm {
+  width: 34px;
+  height: 34px;
+  font-size: 0.9375rem;
+}
+
+.company-logo-tile--md {
+  width: 48px;
+  height: 48px;
+  font-size: 1.125rem;
+  border-radius: 10px;
+}
+
+.company-logo-tile--lg {
+  width: 96px;
+  height: 96px;
+  font-size: 2rem;
+  border-radius: 14px;
+  border: 1px solid var(--color-border);
+}
+
+.company-logo-tile__img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  border-radius: inherit;
+}
+
+.company-logo-tile__initial {
+  text-transform: uppercase;
+}

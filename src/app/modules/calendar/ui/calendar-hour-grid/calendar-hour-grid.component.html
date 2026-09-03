@@ -1,0 +1,64 @@
+<div class="flex flex-col overflow-hidden rounded-lg border border-[var(--color-border)]">
+  <div data-testid="calendar-hour-allday-row" class="flex border-b border-[var(--color-border)] bg-[var(--color-surface)]">
+    <div class="w-14 shrink-0 border-r border-[var(--color-border)] p-1 text-[10px] text-[var(--color-text-secondary)]">All day</div>
+    @for (column of columns(); track column.date) {
+      <div class="flex flex-1 flex-col gap-1 border-r border-[var(--color-border)] p-1 last:border-r-0">
+        @for (event of column.allDayEvents; track event.id) {
+          <button
+            type="button"
+            data-testid="calendar-hour-allday-chip"
+            class="truncate rounded px-1.5 py-0.5 text-left text-[11px] text-white"
+            [style.background-color]="event.color || 'var(--color-accent)'"
+            (click)="eventClick.emit(event.id)"
+          >
+            {{ event.title }}
+          </button>
+        }
+      </div>
+    }
+  </div>
+
+  <div class="flex max-h-[70vh] overflow-y-auto">
+    <div class="w-14 shrink-0 border-r border-[var(--color-border)] bg-[var(--color-surface)]">
+      @for (hour of hours; track hour) {
+        <div data-testid="calendar-hour-label" class="h-12 border-b border-[var(--color-border)] px-1 text-[10px] text-[var(--color-text-secondary)]">
+          {{ hour === 0 ? '12 AM' : hour < 12 ? hour + ' AM' : hour === 12 ? '12 PM' : (hour - 12) + ' PM' }}
+        </div>
+      }
+    </div>
+
+    @for (column of columns(); track column.date) {
+      <div data-testid="calendar-hour-day-column" [attr.data-date]="column.date" class="relative flex-1 border-r border-[var(--color-border)] last:border-r-0">
+        <div
+          data-testid="calendar-hour-slots"
+          class="absolute inset-0"
+          (click)="onSlotClick(column.date, $event, $any($event.currentTarget))"
+        >
+          @for (hour of hours; track hour) {
+            <div class="h-12 border-b border-[var(--color-border)]"></div>
+          }
+        </div>
+
+        @if (column.nowFraction !== null) {
+          <div class="pointer-events-none absolute left-0 right-0 z-10 border-t-2 border-red-500" [style.top.%]="column.nowFraction * 100"></div>
+        }
+
+        @for (positioned of column.positioned; track positioned.event.id) {
+          <button
+            type="button"
+            data-testid="calendar-hour-event-block"
+            class="absolute overflow-hidden rounded px-1 text-left text-[11px] text-white"
+            [style.top.%]="positioned.top * 100"
+            [style.height.%]="positioned.height * 100"
+            [style.left.%]="positioned.left * 100"
+            [style.width.%]="positioned.width * 100"
+            [style.background-color]="positioned.event.color || 'var(--color-accent)'"
+            (click)="$event.stopPropagation(); eventClick.emit(positioned.event.id)"
+          >
+            {{ positioned.event.title }}
+          </button>
+        }
+      </div>
+    }
+  </div>
+</div>

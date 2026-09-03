@@ -1,0 +1,97 @@
+<app-popover [open]="isOpen()" ariaLabel="Profile menu" (closed)="close()">
+  <button
+    popover-trigger
+    type="button"
+    class="profile-menu-trigger"
+    aria-haspopup="menu"
+    [attr.aria-expanded]="isOpen()"
+    aria-label="Profile and settings"
+    (click)="toggle()"
+  >
+    <div class="profile-avatar-wrapper">
+      <app-avatar [avatarUrl]="avatarUrl()" [userName]="userName()" [email]="email()" size="sm" />
+      <span class="profile-online-badge" title="Online"></span>
+    </div>
+
+    <svg
+      class="profile-menu-chevron"
+      [class.profile-menu-chevron--open]="isOpen()"
+      width="14"
+      height="14"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      stroke-width="2.5"
+      stroke-linecap="round"
+      stroke-linejoin="round"
+    >
+      <path d="m6 9 6 6 6-6"/>
+    </svg>
+  </button>
+
+  <div popover-panel class="profile-popover-panel">
+    <section class="profile-header-section">
+      <app-avatar [avatarUrl]="avatarUrl()" [userName]="userName()" [email]="email()" size="lg" />
+      <div class="profile-user-details">
+        <span class="profile-user-name">{{ displayName() }}</span>
+        @if (email()) {
+          <span class="profile-user-email">{{ email() }}</span>
+        }
+      </div>
+    </section>
+
+    <div class="profile-popover-divider"></div>
+
+    <section class="profile-actions-section">
+      <button type="button" class="profile-action-btn" (click)="openPreferences('profile')">
+        <svg class="action-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M20 21a8 8 0 1 0-16 0"/>
+          <circle cx="12" cy="7" r="4"/>
+        </svg>
+        <span>My Profile</span>
+      </button>
+
+      <button type="button" class="profile-action-btn" (click)="openPreferences('appearance')">
+        <svg class="action-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M12 21a9 9 0 1 1 0-18c4.97 0 9 3.58 9 8 0 2.2-1.5 4-3.5 4-1 0-1.5-.5-2-1-.4-.4-.8-.9-1.5-.9H12a2 2 0 0 0-2 2c0 2.5 2 3.9 2 5.9Z"/>
+          <circle cx="7.5" cy="10.5" r="1.5" fill="currentColor"/>
+          <circle cx="12" cy="7.5" r="1.5" fill="currentColor"/>
+          <circle cx="16.5" cy="10.5" r="1.5" fill="currentColor"/>
+        </svg>
+        <span>Appearance</span>
+      </button>
+
+      <div class="profile-popover-divider"></div>
+
+      <button type="button" class="profile-action-btn profile-action-btn--logout" (click)="onLogout()">
+        <svg class="action-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/>
+          <polyline points="16 17 21 12 16 7"/>
+          <line x1="21" y1="12" x2="9" y2="12"/>
+        </svg>
+        <span>Log out</span>
+      </button>
+    </section>
+  </div>
+</app-popover>
+
+<app-preferences-modal
+  [open]="isPreferencesOpen()"
+  [title]="preferencesTitle()"
+  [tabs]="activePreferenceTabs()"
+  [activeTabId]="currentActiveSidebarTabId()"
+  (activeTabIdChange)="onSidebarTabIdChange($event)"
+  [size]="preferenceModalSize()"
+  (closed)="closePreferences()"
+>
+  @if (activeMode() === 'appearance') {
+    <app-appearance-panel />
+  }
+  @if (activeMode() === 'profile') {
+    @defer (when isPreferencesOpen() && activeMode() === 'profile') {
+      <app-profile-tab [activeSubTab]="activeProfileSubTab()" />
+    } @placeholder {
+      <div class="skeleton-rows" aria-busy="true" aria-label="Loading profile"></div>
+    }
+  }
+</app-preferences-modal>

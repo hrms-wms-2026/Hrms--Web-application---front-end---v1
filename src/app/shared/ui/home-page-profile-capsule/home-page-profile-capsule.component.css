@@ -1,0 +1,16 @@
+.profile-capsule {
+  display: inline-flex;
+  align-items: center;
+  max-width: 18rem;
+  padding: 0.375rem 1rem;
+  border-radius: 999px;
+  background: var(--color-profile-bg);
+  color: var(--color-profile-text);
+  border: 1px solid var(--color-border);
+  font-size: 0.875rem;
+  font-weight: 500;
+  line-height: 1;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}

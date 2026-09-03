@@ -1,0 +1,496 @@
+<header class="cb-page-header">
+  <div class="cb-header-row">
+    <app-breadcrumb-header
+      parentLabel="Checklists"
+      [currentLabel]="isEdit() ? 'Edit checklist' : 'Create checklist'"
+      parentUrl="/people/checklists"
+      icon="people"
+    />
+    <div class="flex items-center gap-3">
+      <app-button variant="secondary" type="button" (pressed)="cancel()">
+        Cancel
+      </app-button>
+      <app-button variant="primary" type="button" [loading]="store.saving()" (pressed)="onSubmit()">
+        {{ isEdit() ? 'Save checklist' : 'Create checklist' }}
+      </app-button>
+    </div>
+  </div>
+</header>
+
+<div class="cb-container max-w-4xl mx-auto py-1 md:py-3">
+
+  @if (initialLoading()) {
+    <div class="p-6 flex justify-center items-center">
+      <app-loader label="Loading checklist template..." />
+    </div>
+  } @else if (loadError()) {
+    <div class="p-5 bg-[var(--color-surface-secondary)] border border-[var(--color-border)] rounded-lg text-center space-y-3">
+      <p class="text-sm text-[var(--color-danger-text)]">{{ loadError() }}</p>
+      <app-button variant="secondary" (pressed)="cancel()">
+        Back to Checklists
+      </app-button>
+    </div>
+  } @else {
+    <form [formGroup]="form" (ngSubmit)="onSubmit()" class="bg-[var(--color-surface)] border border-[var(--color-border)] rounded-xl p-5 space-y-5">
+      <!-- Section 1: Checklist Configuration -->
+      <div class="space-y-4">
+        <div>
+          <h2 class="text-base font-semibold text-[var(--color-text-primary)]">
+            Checklist details
+          </h2>
+          <p class="text-xs text-[var(--color-text-secondary)] mt-0.5">
+            Create reusable tasks for employee onboarding or offboarding.
+          </p>
+        </div>
+
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-4 items-start">
+          <!-- Checklist Name -->
+          <div class="space-y-1">
+            <app-input
+              label="Checklist name *"
+              placeholder="e.g. Engineering Onboarding Checklist"
+              [value]="form.controls.name.value || ''"
+              (valueChange)="form.controls.name.setValue($event)"
+              [error]="submitAttempted() && form.controls.name.invalid ? 'Checklist name is required (max 150 characters).' : ''"
+            />
+          </div>
+
+          <!-- Checklist Type -->
+          <div class="flex flex-col gap-1">
+            <label class="text-xs font-semibold text-[var(--color-text-secondary)]">Checklist type *</label>
+            <div class="flex gap-2">
+              <button
+                type="button"
+                class="cb-chip"
+                [class.cb-chip--active]="form.controls.templateType.value === 'onboarding'"
+                [disabled]="isEdit()"
+                (click)="setTemplateType('onboarding')"
+              >
+                <span>Onboarding</span>
+              </button>
+              <button
+                type="button"
+                class="cb-chip"
+                [class.cb-chip--active]="form.controls.templateType.value === 'offboarding'"
+                [disabled]="isEdit()"
+                (click)="setTemplateType('offboarding')"
+              >
+                <span>Offboarding</span>
+              </button>
+            </div>
+            @if (isEdit()) {
+              <p class="text-xs text-[var(--color-text-secondary)]">Checklist type cannot be changed after creation.</p>
+            }
+          </div>
+        </div>
+
+        <!-- Applicability Scope -->
+        <div class="pt-3 border-t border-[var(--color-border)] space-y-3">
+          <div>
+            <h3 class="text-xs font-semibold text-[var(--color-text-primary)]">
+              Use this checklist for
+            </h3>
+          </div>
+
+          <div class="flex flex-wrap gap-2">
+            <button
+              type="button"
+              class="cb-chip"
+              [class.cb-chip--active]="scopeLevel() === 'company'"
+              (click)="setScopeLevel('company')"
+            >
+              <span>Company default</span>
+            </button>
+            <button
+              type="button"
+              class="cb-chip"
+              [class.cb-chip--active]="scopeLevel() === 'department'"
+              (click)="setScopeLevel('department')"
+            >
+              <span>Department</span>
+            </button>
+            <button
+              type="button"
+              class="cb-chip"
+              [class.cb-chip--active]="scopeLevel() === 'position'"
+              (click)="setScopeLevel('position')"
+            >
+              <span>Position</span>
+            </button>
+          </div>
+
+          @if (scopeLevel() === 'department' || scopeLevel() === 'position') {
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4 pt-1">
+              @if (loadingDepartments()) {
+                <app-loader label="Loading departments..." />
+              } @else {
+                <app-select
+                  label="Department *"
+                  placeholder="Select a department"
+                  [options]="departments()"
+                  [value]="form.controls.departmentId.value || ''"
+                  [error]="submitAttempted() && (scopeLevel() === 'department' || scopeLevel() === 'position') && !form.controls.departmentId.value ? 'Department is required.' : ''"
+                  (valueChange)="onDepartmentChange($event)"
+                />
+              }
+
+              @if (scopeLevel() === 'position') {
+                @if (!form.controls.departmentId.value) {
+                  <app-select
+                    label="Position *"
+                    placeholder="Select a department first"
+                    [options]="[]"
+                    [disabled]="true"
+                  />
+                } @else if (loadingPositions()) {
+                  <app-loader label="Loading positions..." />
+                } @else {
+                  <app-select
+                    label="Position *"
+                    placeholder="Select a position"
+                    [options]="positions()"
+                    [value]="form.controls.positionId.value || ''"
+                    [error]="submitAttempted() && scopeLevel() === 'position' && !form.controls.positionId.value ? 'Position is required.' : ''"
+                    (valueChange)="form.controls.positionId.setValue($event)"
+                  />
+                }
+              }
+            </div>
+          }
+        </div>
+      </div>
+
+      <!-- Section 2: Task List -->
+      <div class="pt-4 border-t border-[var(--color-border)] space-y-3">
+        <div class="flex items-center justify-between">
+          <div>
+            <h2 class="text-base font-semibold text-[var(--color-text-primary)]">
+              Tasks
+            </h2>
+          </div>
+          <app-button variant="secondary" size="sm" type="button" (pressed)="addTask()">
+            + Add Task
+          </app-button>
+        </div>
+
+        @if (submitAttempted() && tasksArray.length === 0) {
+          <p class="text-xs text-[var(--color-danger-text)]">At least one task is required in the checklist.</p>
+        }
+
+        <div class="cb-task-list">
+          <div class="cb-task-list__header" [class.cb-task-list__header--with-bypass]="isOffboardingTemplate()" aria-hidden="true">
+            <span class="cb-task-list__col-order"></span>
+            <span class="cb-task-list__col-title">Task</span>
+            <span class="cb-task-list__col-assigned">Assigned to</span>
+            <span class="cb-task-list__col-due">Due</span>
+            @if (isOffboardingTemplate()) {
+              <span class="cb-task-list__col-bypass">Bypass</span>
+            }
+            <span class="cb-task-list__col-actions">Actions</span>
+          </div>
+
+          @for (taskGroup of tasksArray.controls; track $index; let idx = $index) {
+            <div class="cb-task-row" [class.cb-task-row--with-bypass]="isOffboardingTemplate()" [formGroup]="$any(taskGroup)">
+              <span class="cb-task-list__col-order cb-task-row__order" aria-hidden="true">
+                {{ idx + 1 }}
+              </span>
+
+              <div class="cb-task-list__col-title">
+                <span class="cb-task-row__mobile-label">Task</span>
+                <app-input
+                  [placeholder]="'e.g. ' + getTaskPlaceholder(idx)"
+                  [value]="taskGroup.value.title || ''"
+                  (valueChange)="taskGroup.get('title')?.setValue($event)"
+                  [error]="submitAttempted() && taskGroup.get('title')?.invalid ? 'Task title is required.' : ''"
+                />
+              </div>
+
+              <div class="cb-task-list__col-assigned">
+                <span class="cb-task-row__mobile-label">Assigned to</span>
+                <div class="cb-assignment">
+                  @if (isUnassigned(taskGroup)) {
+                    <button
+                      type="button"
+                      class="cb-assignment__add"
+                      [attr.aria-label]="'Assign task ' + (idx + 1)"
+                      (click)="openAssignmentPicker(idx)"
+                    >
+                      + Assign
+                    </button>
+                  } @else if (taskGroup.value.assignmentType === 'employee') {
+                    <button
+                      type="button"
+                      class="cb-pill cb-pill--employee"
+                      [attr.aria-label]="'Assigned to new employee for task ' + (idx + 1)"
+                      (click)="openAssignmentPicker(idx)"
+                    >
+                      <span class="cb-pill__icon" aria-hidden="true">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                          <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
+                          <circle cx="12" cy="7" r="4"></circle>
+                        </svg>
+                      </span>
+                      <span>New employee</span>
+                    </button>
+                  } @else {
+                    <div class="cb-assignment__pills">
+                      <button
+                        type="button"
+                        class="cb-pill cb-pill--position"
+                        [attr.aria-label]="'Selected position for task ' + (idx + 1)"
+                        (click)="reopenPositionPicker(idx)"
+                      >
+                        <span class="cb-pill__icon" aria-hidden="true">
+                          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <path d="M3 7h18v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V7Z"></path>
+                            <path d="M8 7V5a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
+                          </svg>
+                        </span>
+                        <span>{{ assignmentPositionLabel(taskGroup) }}</span>
+                        <span class="cb-pill__remove" (click)="$event.stopPropagation(); clearTaskAssignment(idx)">×</span>
+                      </button>
+                      @if (taskGroup.value.selectedAssigneeUserId || taskGroup.value.originalAssignedToId) {
+                        <button
+                          type="button"
+                          class="cb-pill cb-pill--employee"
+                          [attr.aria-label]="'Selected employee for task ' + (idx + 1)"
+                          (click)="openEmployeePicker(idx)"
+                        >
+                          <span class="cb-pill__icon" aria-hidden="true">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                              <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
+                              <circle cx="12" cy="7" r="4"></circle>
+                            </svg>
+                          </span>
+                          <span>{{ assignmentEmployeeLabel(taskGroup) }}</span>
+                          <span class="cb-pill__remove" (click)="$event.stopPropagation(); removeSelectedEmployee(idx)">×</span>
+                        </button>
+                      } @else {
+                        <button
+                          type="button"
+                          class="cb-assignment__choose"
+                          [attr.aria-label]="'Choose employee for task ' + (idx + 1)"
+                          (click)="openEmployeePicker(idx)"
+                        >
+                          + Choose employee
+                        </button>
+                      }
+                    </div>
+                  }
+
+                  @if (openAssignmentPickerIndex() === idx) {
+                    <div class="cb-picker">
+                      <div class="cb-picker__title">Assign task to</div>
+                      <button type="button" class="cb-picker__option" (click)="chooseNewEmployee(idx)">
+                        <span class="cb-picker__emoji" aria-hidden="true">
+                          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
+                            <circle cx="12" cy="7" r="4"></circle>
+                          </svg>
+                        </span>
+                        <span class="cb-picker__option-copy">
+                          <span class="cb-picker__option-title">New employee</span>
+                          <span class="cb-picker__option-subtitle">Person being onboarded</span>
+                        </span>
+                      </button>
+                      <button type="button" class="cb-picker__option" (click)="chooseExistingEmployee(idx)">
+                        <span class="cb-picker__emoji" aria-hidden="true">
+                          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <path d="M3 7h18v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V7Z"></path>
+                            <path d="M8 7V5a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
+                          </svg>
+                        </span>
+                        <span class="cb-picker__option-copy">
+                          <span class="cb-picker__option-title">Existing employee</span>
+                          <span class="cb-picker__option-subtitle">Someone already in company</span>
+                        </span>
+                      </button>
+                    </div>
+                  }
+
+                  @if (openPositionPickerIndex() === idx) {
+                    <div class="cb-picker">
+                      <div class="cb-picker__header">
+                        <div class="cb-picker__title">Select position</div>
+                        <button type="button" class="cb-picker__close" (click)="closeTaskPickers()">×</button>
+                      </div>
+                      <input
+                        class="cb-picker__search"
+                        type="text"
+                        placeholder="Search positions..."
+                        [value]="positionSearch()"
+                        (input)="positionSearch.set($any($event.target).value)"
+                      />
+                      @if (loadingAssigneePositions()) {
+                        <span class="cb-assigned-field__loading">Loading positions…</span>
+                      } @else {
+                        <div class="cb-picker__list">
+                          @for (pos of filteredAssigneePositions(); track pos.value) {
+                            <button type="button" class="cb-picker__option cb-picker__option--list" (click)="selectTaskPosition(idx, pos.value)">
+                              <span class="cb-picker__emoji" aria-hidden="true">
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                  <path d="M3 7h18v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V7Z"></path>
+                                  <path d="M8 7V5a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
+                                </svg>
+                              </span>
+                              <span class="cb-picker__option-copy">
+                                <span class="cb-picker__option-title">{{ pos.label }}</span>
+                                <span class="cb-picker__option-subtitle">{{ assigneeCountLabel(pos.value) }}</span>
+                              </span>
+                            </button>
+                          }
+                        </div>
+                      }
+                    </div>
+                  }
+
+                  @if (openEmployeePickerIndex() === idx && taskGroup.value.assigneePositionId) {
+                    <div class="cb-picker">
+                      <div class="cb-picker__header">
+                        <div class="cb-picker__title">{{ assignmentPositionLabel(taskGroup) }}</div>
+                        <button type="button" class="cb-picker__close" (click)="closeTaskPickers()">×</button>
+                      </div>
+                      <div class="cb-picker__helper">Choose employee <span class="text-[var(--color-text-secondary)]">Optional for checklist template</span></div>
+                      <input
+                        class="cb-picker__search"
+                        type="text"
+                        placeholder="Search employees..."
+                        [value]="employeeSearch()"
+                        (input)="employeeSearch.set($any($event.target).value)"
+                      />
+                      @if (isLoadingAssignees(taskGroup.value.assigneePositionId)) {
+                        <span class="cb-assigned-field__loading">Loading employees…</span>
+                      } @else {
+                        <div class="cb-picker__list">
+                          @for (person of filteredEmployeeOptions(); track person.userId) {
+                            <button type="button" class="cb-picker__option cb-picker__option--list" (click)="selectTaskEmployee(idx, person.userId)">
+                              <span class="cb-picker__emoji" aria-hidden="true">
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                  <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
+                                  <circle cx="12" cy="7" r="4"></circle>
+                                </svg>
+                              </span>
+                              <span class="cb-picker__option-copy">
+                                <span class="cb-picker__option-title">{{ person.displayName }}</span>
+                                <span class="cb-picker__option-subtitle">{{ assignmentPositionLabel(taskGroup) }}</span>
+                              </span>
+                            </button>
+                          }
+                          @if (assigneesForPosition(taskGroup.value.assigneePositionId).length === 0) {
+                            <span class="cb-picker__empty">No active employees are assigned to this position yet.</span>
+                          }
+                        </div>
+                      }
+                    </div>
+                  }
+
+                  @if (submitAttempted() && taskGroup.get('assigneePositionId')?.invalid) {
+                    <span class="cb-task-row__error">Choose who this task is for.</span>
+                  }
+                </div>
+              </div>
+
+              <div class="cb-task-list__col-due">
+                <span class="cb-task-row__mobile-label">Due</span>
+                <div class="cb-due-field">
+                  <input
+                    type="number"
+                    min="0"
+                    step="1"
+                    class="cb-due-field__input"
+                    [attr.aria-label]="'Due for task ' + (idx + 1)"
+                    [value]="taskGroup.value.dueOffsetDays"
+                    (input)="taskGroup.get('dueOffsetDays')?.setValue($any($event.target).value)"
+                  />
+                </div>
+                @if (submitAttempted() && taskGroup.get('dueOffsetDays')?.invalid) {
+                  <span class="cb-task-row__error">Enter a whole number of 0 or more.</span>
+                }
+              </div>
+
+              @if (isOffboardingTemplate()) {
+                <div class="cb-task-list__col-bypass">
+                  <span class="cb-task-row__mobile-label">Bypass</span>
+                  <label class="cb-bypass-toggle" title="Allow task to be bypassed during offboarding">
+                    <input
+                      type="checkbox"
+                      [attr.data-testid]="'task-' + idx + '-bypassable'"
+                      [checked]="taskGroup.value.isBypassable"
+                      (change)="taskGroup.get('isBypassable')?.setValue($any($event.target).checked)"
+                    />
+                    <span>Bypassable</span>
+                  </label>
+                </div>
+              }
+
+              <div class="cb-task-list__col-actions">
+                <span class="cb-task-row__mobile-label">Actions</span>
+                <div class="cb-task-row__actions">
+                  <button
+                    type="button"
+                    class="cb-icon-btn"
+                    [disabled]="idx === 0"
+                    (click)="moveTaskUp(idx)"
+                    title="Move up"
+                    aria-label="Move task up"
+                  >
+                    ↑
+                  </button>
+                  <button
+                    type="button"
+                    class="cb-icon-btn"
+                    [disabled]="idx === tasksArray.length - 1"
+                    (click)="moveTaskDown(idx)"
+                    title="Move down"
+                    aria-label="Move task down"
+                  >
+                    ↓
+                  </button>
+                  <button
+                    type="button"
+                    class="cb-icon-btn cb-icon-btn--danger"
+                    [disabled]="tasksArray.length === 1"
+                    (click)="removeTask(idx)"
+                    title="Remove task"
+                    aria-label="Remove task"
+                  >
+                    ✕
+                  </button>
+                </div>
+              </div>
+            </div>
+
+            @if (isOffboardingTemplate() && taskGroup.value.isBypassable) {
+              <div class="flex flex-col sm:flex-row items-start sm:items-center gap-3 px-3 py-2 bg-[var(--color-surface-secondary)] border-b border-[var(--color-border)] text-xs" [formGroup]="$any(taskGroup)">
+                <span class="font-semibold text-[var(--color-text-secondary)] whitespace-nowrap">Bypass Options:</span>
+                <div class="flex-1 w-full">
+                  <app-input
+                    placeholder="Penalty if bypassed (optional e.g. $50 equipment fee)"
+                    [value]="taskGroup.value.bypassPenaltyDescription || ''"
+                    (valueChange)="taskGroup.get('bypassPenaltyDescription')?.setValue($event)"
+                  />
+                </div>
+                <div class="w-full sm:w-56">
+                  <select
+                    class="cb-assigned-field__select"
+                    [attr.aria-label]="'Category for task ' + (idx + 1)"
+                    [value]="taskGroup.value.category || ''"
+                    (change)="taskGroup.get('category')?.setValue($any($event.target).value)"
+                  >
+                    <option value="">No category</option>
+                    <option value="asset_return">Asset Return</option>
+                    <option value="access_removal">Access Removal</option>
+                    <option value="document_handover">Document Handover</option>
+                    <option value="final_settlement">Final Settlement</option>
+                    <option value="knowledge_handover">Knowledge Handover</option>
+                    <option value="other">Other</option>
+                  </select>
+                </div>
+              </div>
+            }
+          }
+        </div>
+      </div>
+    </form>
+  }
+</div>

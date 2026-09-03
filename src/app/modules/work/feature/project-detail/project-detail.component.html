@@ -1,0 +1,37 @@
+@if (store.projectLoading()) {
+  <app-loader label="Loading project…" />
+} @else if (store.projectError()) {
+  <app-error-state [message]="store.projectError()!" [retryable]="true" (retry)="retryProject()" />
+} @else if (store.project(); as project) {
+  <div class="mb-2 flex flex-wrap items-center justify-between gap-3 border-b border-[var(--color-border)] pb-2">
+    <app-breadcrumb-header parentLabel="Projects" [currentLabel]="project.name" parentUrl="/work" icon="work" />
+
+    <dl class="flex flex-wrap items-center gap-x-6 gap-y-2 text-sm">
+      <div class="min-w-[7rem]">
+        <dt class="text-xs text-[var(--color-text-secondary)]">Start</dt>
+        <dd class="font-medium text-[var(--color-text-primary)]">{{ project.startDate }}</dd>
+      </div>
+      <div class="min-w-[7rem]">
+        <dt class="text-xs text-[var(--color-text-secondary)]">Target</dt>
+        <dd class="font-medium text-[var(--color-text-primary)]">{{ project.targetDate }}</dd>
+      </div>
+      <div class="min-w-[7rem]">
+        <dt class="text-xs text-[var(--color-text-secondary)]">Hours</dt>
+        <dd class="font-medium text-[var(--color-text-primary)]">{{ project.completedHours }} / {{ project.allocatedHours }}</dd>
+      </div>
+    </dl>
+  </div>
+}
+
+@if (store.milestonesLoading()) {
+  <app-loader label="Loading modules…" />
+} @else if (store.milestonesError()) {
+  <app-error-state [message]="store.milestonesError()!" [retryable]="true" (retry)="retryMilestones()" />
+} @else if (store.milestones().length === 0) {
+  <app-empty-state title="No modules yet" />
+} @else {
+  <div class="mt-2.5">
+    <app-milestone-sub-menu [milestoneId]="subMenuMilestoneId()" [milestoneTitle]="subMenuMilestoneTitle()" [isOwner]="subMenuIsOwner()" />
+    <router-outlet />
+  </div>
+}

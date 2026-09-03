@@ -1,0 +1,26 @@
+export type NavIconName =
+  | 'home'
+  | 'work'
+  | 'people'
+  | 'calendar'
+  | 'time-off'
+  | 'time-attendance'
+  | 'organization'
+  | 'settings';
+
+export interface NavItem {
+  id: string;
+  label: string;
+  /** Absolute router path, e.g. '/organization/departments'. */
+  path: string;
+  /** Rail icon - only set on top-level items; sub-sidebar entries render as text. */
+  icon?: NavIconName;
+  /** Any-of match against AuthStore.activeModules(). */
+  requiredModules?: readonly string[];
+  /** Any-of match against AuthStore.permissions(). */
+  requiredPermissions?: readonly string[];
+  /** Sub-sidebar entries shown when this item's section is active. */
+  children?: readonly NavItem[];
+  /** Match only the exact path when applying the shared submenu active state. */
+  exact?: boolean;
+}

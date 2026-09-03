@@ -1,0 +1,217 @@
+<section id="features" class="tabs-sec">
+  <div class="tabs-sec__header">
+    <span class="tabs-sec__tag">INTERACTIVE MODULE EXPLORER</span>
+    <h2 class="tabs-sec__title font-serif">Explore the ONEXSO Workspace</h2>
+    <p class="tabs-sec__subtitle">
+      Click each module to see how ONEXSO unifies workday tracking, employee org structures, activity intelligence, and sprint execution.
+    </p>
+  </div>
+
+  <div class="tabs-sec__nav">
+    <div
+      class="tabs-sec__tab-item"
+      [class.tabs-sec__tab-item--active]="activeTab() === 'workday'"
+      (click)="selectTab('workday')"
+    >
+      <div class="tabs-sec__tab-title">Workday & Attendance</div>
+      <div class="tabs-sec__tab-sub">Zero-touch time & face check-in</div>
+      @if (activeTab() === 'workday') {
+        <div class="tabs-sec__nav-line"></div>
+      }
+    </div>
+
+    <div
+      class="tabs-sec__tab-item"
+      [class.tabs-sec__tab-item--active]="activeTab() === 'hr'"
+      (click)="selectTab('hr')"
+    >
+      <div class="tabs-sec__tab-title">Org & Employee Management</div>
+      <div class="tabs-sec__tab-sub">Multi-company legal entities & seats</div>
+      @if (activeTab() === 'hr') {
+        <div class="tabs-sec__nav-line"></div>
+      }
+    </div>
+
+    <div
+      class="tabs-sec__tab-item"
+      [class.tabs-sec__tab-item--active]="activeTab() === 'intelligence'"
+      (click)="selectTab('intelligence')"
+    >
+      <div class="tabs-sec__tab-title">WorkPulse Intelligence</div>
+      <div class="tabs-sec__tab-sub">Active app tracking & privacy logs</div>
+      @if (activeTab() === 'intelligence') {
+        <div class="tabs-sec__nav-line"></div>
+      }
+    </div>
+
+    <div
+      class="tabs-sec__tab-item"
+      [class.tabs-sec__tab-item--active]="activeTab() === 'worksync'"
+      (click)="selectTab('worksync')"
+    >
+      <div class="tabs-sec__tab-title">WorkSync Sprints & Tasks</div>
+      <div class="tabs-sec__tab-sub">Kanban boards & GitHub PR sync</div>
+      @if (activeTab() === 'worksync') {
+        <div class="tabs-sec__nav-line"></div>
+      }
+    </div>
+  </div>
+
+  <div class="tabs-sec__content">
+    <div class="tabs-sec__app-window">
+      <div class="tabs-sec__window-bar">
+        <div class="tabs-sec__window-dots">
+          <span class="dot dot--red"></span>
+          <span class="dot dot--yellow"></span>
+          <span class="dot dot--green"></span>
+        </div>
+        <div class="tabs-sec__window-url">
+          <svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+          <span>https://company.onexso.com/app/{{ activeTab() }}</span>
+        </div>
+        <span class="tabs-sec__live-badge">Live Workspace</span>
+      </div>
+
+      <div class="tabs-sec__app-body">
+        <aside class="tabs-sec__app-sidebar">
+          <div class="tabs-sec__side-item" [class.tabs-sec__side-item--active]="activeTab() === 'workday'" (click)="setTab('workday')">
+            <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/></svg>
+            <span>Workday</span>
+          </div>
+          <div class="tabs-sec__side-item" [class.tabs-sec__side-item--active]="activeTab() === 'hr'" (click)="setTab('hr')">
+            <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/></svg>
+            <span>Employees</span>
+          </div>
+          <div class="tabs-sec__side-item" [class.tabs-sec__side-item--active]="activeTab() === 'intelligence'" (click)="setTab('intelligence')">
+            <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2v20M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>
+            <span>WorkPulse</span>
+          </div>
+          <div class="tabs-sec__side-item" [class.tabs-sec__side-item--active]="activeTab() === 'worksync'" (click)="setTab('worksync')">
+            <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2"><rect width="20" height="14" x="2" y="7" rx="2"/><path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16"/></svg>
+            <span>WorkSync</span>
+          </div>
+        </aside>
+
+        <main class="tabs-sec__app-main">
+          @switch (activeTab()) {
+            @case ('workday') {
+              <div class="tabs-sec__canvas">
+                <div class="tabs-sec__canvas-head">
+                  <div>
+                    <h4>Zero-Touch Workday & Attendance</h4>
+                    <p>Automatic time capture, face verification, and daily work timeline.</p>
+                  </div>
+                  <span class="tabs-sec__status-pill tabs-sec__status-pill--green">Checked In: 09:01 AM</span>
+                </div>
+
+                <div class="tabs-sec__dashboard-grid">
+                  <div class="tabs-sec__metric-box">
+                    <span class="lbl">Total Workday Time</span>
+                    <span class="val">7h 45m</span>
+                    <span class="sub">100% Accurate</span>
+                  </div>
+                  <div class="tabs-sec__metric-box">
+                    <span class="lbl">Focus Tool Time</span>
+                    <span class="val">5h 20m</span>
+                    <span class="sub">VS Code & Figma</span>
+                  </div>
+                  <div class="tabs-sec__metric-box">
+                    <span class="lbl">Verified Check-in</span>
+                    <span class="val">Biometric</span>
+                    <span class="sub">Face Verified</span>
+                  </div>
+                </div>
+              </div>
+            }
+
+            @case ('hr') {
+              <div class="tabs-sec__canvas">
+                <div class="tabs-sec__canvas-head">
+                  <div>
+                    <h4>Multi-Company Legal Entities & Position Hierarchy</h4>
+                    <p>Manage legal company entities, nested departments, and position seat occupancy.</p>
+                  </div>
+                  <span class="tabs-sec__status-pill tabs-sec__status-pill--blue">Entity: ONEXSO Tech</span>
+                </div>
+
+                <div class="tabs-sec__tree-table">
+                  <div class="tabs-sec__table-row tabs-sec__table-row--head">
+                    <span>Department</span>
+                    <span>Positions</span>
+                    <span>Occupancy</span>
+                    <span>Status</span>
+                  </div>
+                  <div class="tabs-sec__table-row">
+                    <span>Engineering</span>
+                    <span>VP Eng, Sr Backend</span>
+                    <span>4 / 4 Seats</span>
+                    <span class="tabs-sec__tag-green">Full</span>
+                  </div>
+                  <div class="tabs-sec__table-row">
+                    <span>Operations & HR</span>
+                    <span>HR Director, People Ops</span>
+                    <span>3 / 4 Seats</span>
+                    <span class="tabs-sec__tag-amber">1 Vacant Seat</span>
+                  </div>
+                </div>
+              </div>
+            }
+
+            @case ('intelligence') {
+              <div class="tabs-sec__canvas">
+                <div class="tabs-sec__canvas-head">
+                  <div>
+                    <h4>WorkPulse Activity Intelligence Stream</h4>
+                    <p>Transparent active window title tracking with SHA-256 privacy hashing.</p>
+                  </div>
+                  <span class="tabs-sec__status-pill tabs-sec__status-pill--green">Agent Stream Active</span>
+                </div>
+
+                <div class="tabs-sec__stream-box">
+                  <div class="tabs-sec__stream-row">
+                    <span class="app">VS Code</span>
+                    <span class="title">OrderService.cs — API Validation</span>
+                    <span class="hash">SHA-256: 8f9b...a12c</span>
+                    <span class="time">3h 40m</span>
+                  </div>
+                  <div class="tabs-sec__stream-row">
+                    <span class="app">Slack</span>
+                    <span class="title">#engineering-sprint-24</span>
+                    <span class="hash">SHA-256: 4c3d...b8e9</span>
+                    <span class="time">1h 15m</span>
+                  </div>
+                </div>
+              </div>
+            }
+
+            @case ('worksync') {
+              <div class="tabs-sec__canvas">
+                <div class="tabs-sec__canvas-head">
+                  <div>
+                    <h4>WorkSync Sprint Execution & GitHub PR Sync</h4>
+                    <p>Kanban sprint backlogs linked directly to developer commits and pull requests.</p>
+                  </div>
+                  <span class="tabs-sec__status-pill tabs-sec__status-pill--purple">Sprint 24 Active</span>
+                </div>
+
+                <div class="tabs-sec__kanban-preview">
+                  <div class="tabs-sec__kanban-col">
+                    <span class="col-title">In Progress (2)</span>
+                    <div class="tabs-sec__kanban-card">
+                      <div class="card-key">WORK-104</div>
+                      <div class="card-desc">Rotate JWT sessions & payload validation</div>
+                      <div class="card-github">
+                        <svg viewBox="0 0 24 24" width="12" height="12" fill="currentColor"><path d="M12 0C5.37 0 0 5.37 0 12c0 5.31 3.435 9.795 8.205 11.385.6.105.825-.255.825-.57 0-.285-.015-1.23-.015-2.235-3.015.555-3.795-.735-4.035-1.41-.135-.345-.72-1.41-1.23-1.695-.42-.225-1.02-.78-.015-.795.945-.015 1.62.87 1.845 1.23 1.08 1.815 2.805 1.305 3.495.99.105-.78.42-1.305.765-1.605-2.67-.3-5.46-1.335-5.46-5.925 0-1.305.465-2.385 1.23-3.225-.12-.3-.54-1.53.12-3.18 0 0 1.005-.315 3.3 1.23.96-.27 1.98-.405 3-.405s2.04.135 3 .405c2.295-1.56 3.3-1.23 3.3-1.23.66 1.65.24 2.88.12 3.18.765.84 1.23 1.905 1.23 3.225 0 4.605-2.805 5.625-5.475 5.925.435.375.81 1.095.81 2.22 0 1.605-.015 2.895-.015 3.3 0 .315.225.69.825.57A12.02 12.02 0 0024 12c0-6.63-5.37-12-12-12z"/></svg>
+                        <span>Merged PR #142 → Auto-Closed</span>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            }
+          }
+        </main>
+      </div>
+    </div>
+  </div>
+</section>

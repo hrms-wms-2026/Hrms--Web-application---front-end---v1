@@ -1,0 +1,41 @@
+<a class="skip-link" href="#main-content">Skip to main content</a>
+
+<div class="main-layout" [class.main-layout--has-sub-sidebar]="navState.activeChildren().length > 0">
+  <app-side-navbar class="main-layout__rail" />
+  <app-top-navbar class="main-layout__topbar" [email]="email()" />
+
+  @if (navState.activeChildren().length > 0) {
+    <app-sub-sidebar
+      class="main-layout__sub-sidebar"
+      [sectionLabel]="navState.activeItem()!.label"
+      [items]="navState.activeChildren()"
+    />
+  }
+
+  <main id="main-content" class="main-content" tabindex="-1">
+    @if (!monitoringEnabled || trayPresence.canRenderProtectedContent()) {
+      <router-outlet />
+    } @else {
+      <app-locked-workspace-preview />
+      @if (trayPresence.isBlocking()) {
+        <app-tray-activation-gate />
+      }
+    }
+  </main>
+
+  <app-mobile-bottom-nav />
+</div>
+
+<div
+  id="global-notification-container"
+  class="global-notification-container"
+  aria-label="Application notifications"
+>
+  <app-toast-host />
+</div>
+
+<div id="global-dialog-container" class="global-dialog-container"></div>
+
+<div class="sr-only" aria-live="polite" aria-atomic="true">
+  {{ announcementMessage() }}
+</div>

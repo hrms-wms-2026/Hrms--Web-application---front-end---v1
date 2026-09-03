@@ -1,0 +1,128 @@
+<app-popover [open]="isOpen()" ariaLabel="Company Selector" align="left" (closed)="close()">
+    <button
+      popover-trigger
+      type="button"
+      class="company-selector__trigger"
+      [attr.aria-expanded]="isOpen()"
+      aria-haspopup="menu"
+      (click)="toggle()"
+    >
+      <span class="company-selector__building-icon" aria-hidden="true">
+        <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <rect x="4" y="2" width="16" height="20" rx="2" ry="2"/>
+          <path d="M9 22v-4h6v4"/>
+          <path d="M8 6h.01"/>
+          <path d="M16 6h.01"/>
+          <path d="M12 6h.01"/>
+          <path d="M12 10h.01"/>
+          <path d="M12 14h.01"/>
+          <path d="M16 10h.01"/>
+          <path d="M16 14h.01"/>
+          <path d="M8 10h.01"/>
+          <path d="M8 14h.01"/>
+        </svg>
+      </span>
+      <span class="company-selector__label">
+        {{ triggerLabel() }}
+      </span>
+      <svg
+        class="company-selector__chevron"
+        [class.company-selector__chevron--open]="isOpen()"
+        width="16"
+        height="16"
+        viewBox="0 0 24 24"
+        fill="none"
+        stroke="currentColor"
+        stroke-width="2"
+        stroke-linecap="round"
+        stroke-linejoin="round"
+      >
+        <path d="m6 9 6 6 6-6"/>
+      </svg>
+    </button>
+
+    <div popover-panel class="company-selector__menu">
+      @if (store.loading()) {
+        <div class="company-selector__status">Loading companies...</div>
+      } @else if (store.error()) {
+        <div class="company-selector__status company-selector__status--error">{{ store.error() }}</div>
+      } @else if (store.companies().length === 0) {
+        <div class="company-selector__status">No companies found</div>
+      } @else {
+        <!-- Current Company Section -->
+        <div class="company-selector__section">
+          <div class="company-selector__section-header">Current Company</div>
+          @if (selectedCompany(); as current) {
+            <button
+              type="button"
+              class="company-selector__item company-selector__item--selected"
+              role="menuitem"
+              (click)="close()"
+            >
+              <div class="company-selector__item-content">
+                <span class="company-selector__item-name">{{ current.name }}</span>
+                @if (current.companyCode) {
+                  <span class="company-selector__item-code">{{ current.companyCode }}</span>
+                }
+              </div>
+              <svg class="company-selector__check-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                <polyline points="20 6 9 17 4 12"/>
+              </svg>
+            </button>
+          }
+        </div>
+
+        <!-- Other Companies Section -->
+        @if (otherCompanies().length > 0) {
+          <div class="company-selector__divider"></div>
+          <div class="company-selector__section">
+            <div class="company-selector__section-header">Other Companies</div>
+            @for (company of otherCompanies(); track company.id) {
+              <button
+                type="button"
+                class="company-selector__item"
+                role="menuitem"
+                (click)="selectCompany(company.id)"
+              >
+                <div class="company-selector__item-content">
+                  <span class="company-selector__item-name">{{ company.name }}</span>
+                  @if (company.companyCode) {
+                    <span class="company-selector__item-code">{{ company.companyCode }}</span>
+                  }
+                </div>
+              </button>
+            }
+          </div>
+        }
+
+        <!-- Add Company Section -->
+        @if (canCreateLegalEntity()) {
+          <div class="company-selector__divider"></div>
+          <div class="company-selector__section">
+            <button
+              type="button"
+              class="company-selector__item company-selector__item--action"
+              role="menuitem"
+              (click)="onAddCompany()"
+            >
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <circle cx="12" cy="12" r="10"/>
+                <line x1="12" y1="8" x2="12" y2="16"/>
+                <line x1="8" y1="12" x2="16" y2="12"/>
+              </svg>
+              <span>Add Company</span>
+            </button>
+          </div>
+        }
+      }
+    </div>
+</app-popover>
+
+@if (showCreateModal()) {
+  <app-create-company-modal
+    [availableParents]="store.companies()"
+    [saving]="store.saving()"
+    (save)="onCreateCompany($event)"
+    (cancel)="closeCreateModal()"
+  />
+}
