@@ -80,6 +80,23 @@ describe('canAccessNavItem', () => {
       expect(canAccessNavItem(work, checker([], ['tasks']))).toBe(false);
     });
 
+    it('collapses Team Balances, Pending Approvals, and All Requests into one Team nav entry', () => {
+      const timeOff = NAV_ITEMS.find((item) => item.id === 'time-off')!;
+      const children = timeOff.children ?? [];
+      expect(children.map((child) => child.id)).toEqual([
+        'time-off-my-balances',
+        'time-off-team',
+        'time-off-entitlements',
+        'time-off-types',
+        'time-off-policies',
+        'time-off-calendar'
+      ]);
+
+      const team = children.find((child) => child.id === 'time-off-team')!;
+      expect(team.path).toBe('/time-off/team');
+      expect(team.requiredPermissions).toEqual(['leave:read-team', 'leave:approve', 'leave:read']);
+    });
+
     it('grants Time Off on the "leave" module key, not "time_off", once a child is reachable', () => {
       const timeOff = NAV_ITEMS.find((item) => item.id === 'time-off')!;
       expect(canAccessNavItem(timeOff, checker(['leave:read-own'], ['leave']))).toBe(true);

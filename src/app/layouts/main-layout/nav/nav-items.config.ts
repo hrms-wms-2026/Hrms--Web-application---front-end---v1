@@ -17,12 +17,10 @@ export const NAV_ITEMS: readonly NavItem[] = [
     id: 'time-off', label: 'Time Off', icon: 'time-off', path: '/time-off', requiredModules: ['leave'],
     children: [
       { id: 'time-off-my-balances', label: 'My Balances', path: '/time-off', exact: true, requiredModules: ['leave'], requiredPermissions: ['leave:read-own'] },
-      { id: 'time-off-team-balances', label: 'Team Balances', path: '/time-off/team', requiredModules: ['leave'], requiredPermissions: ['leave:read-team'] },
+      { id: 'time-off-team', label: 'Team', path: '/time-off/team', requiredModules: ['leave'], requiredPermissions: ['leave:read-team', 'leave:approve', 'leave:read'] },
       { id: 'time-off-entitlements', label: 'Entitlements', path: '/time-off/entitlements', requiredModules: ['leave'], requiredPermissions: ['leave:read', 'leave:manage'] },
       { id: 'time-off-types', label: 'Leave Types', path: '/time-off/types', requiredModules: ['leave'], requiredPermissions: ['leave:read'] },
       { id: 'time-off-policies', label: 'Leave Policies', path: '/time-off/policies', requiredModules: ['leave'], requiredPermissions: ['leave:manage'] },
-      { id: 'time-off-team-approvals', label: 'Pending Approvals', path: '/time-off/team-approvals', requiredModules: ['leave'], requiredPermissions: ['leave:approve'] },
-      { id: 'time-off-all-requests', label: 'All Requests', path: '/time-off/all', requiredModules: ['leave'], requiredPermissions: ['leave:read'] },
       { id: 'time-off-calendar', label: 'Team Calendar', path: '/time-off/calendar', requiredModules: ['leave'], requiredPermissions: ['calendar:read'] }
     ]
   },
