@@ -33,5 +33,6 @@ Layout and rules: see `../rules/FILE_CREATION_RULES.md`.
 | Work Management — Tree UI Bug Fixes (4 items, single file) | pending | `next/2026-08-21-work-management-tree-ui-bug-fixes.md` | 2026-08-21 |
 | Leave Management — full 9-phase frontend build; Phases 1-2 (Leave Types, Leave Policies) written in full; Time Off uses People-style inner sidebar with only built pages shown | pending | `next/2026-08-21-leave-management/` | 2026-08-21 |
 | Attendance History Redesign — trimmed history row, shared detail drawer, side-by-side My requests, list/panel extraction (2 parts) | pending | `next/2026-08-27-attendance-history-redesign-frontend/` | 2026-08-27 |
+| Time Off Team Consolidation — merge Team Balances/Pending Approvals/All Requests into one tabbed Team hub, fix outer route permission-gate bug, legacy URL redirects | pending, not started | `next/2026-09-03-time-off-team-consolidation.md` | 2026-09-03 |
 
 **Note on "finished" here:** all of the above are implementation reports or already-executed plans as of the 2026-08-06 restructure — cross-checked against `src/app/` (auth, dashboard-home, organization/general-settings are all present in code). None were currently in-progress/pending at restructure time except the Project Management context file.
