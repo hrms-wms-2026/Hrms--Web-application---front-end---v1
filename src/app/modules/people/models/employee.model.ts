@@ -86,6 +86,7 @@ export interface EmployeeDetailJobInformation {
   readonly status: string;
   readonly hireDate: string;
   readonly probationEndDate: string | null;
+  readonly workModeLabel: string | null;
 }
 
 export interface EmployeeDetailPersonalInformation {
