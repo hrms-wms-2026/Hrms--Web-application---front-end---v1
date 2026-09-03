@@ -61,6 +61,13 @@ describe('TeamHubComponent', () => {
     expect(fixture.nativeElement.querySelector('app-pending-approvals')).toBeTruthy();
   });
 
+  it('shows only the All Requests tab for a leave:read-only user, and defaults to it', async () => {
+    const { fixture } = await setup(['leave:read']);
+    const tabs = fixture.nativeElement.querySelectorAll('[role="tab"]');
+    expect(Array.from(tabs).map((tab: any) => tab.textContent.trim())).toEqual(['All Requests']);
+    expect(fixture.nativeElement.querySelector('app-requests-list')).toBeTruthy();
+  });
+
   it('defaults to the Balances tab when the user has both read-team and approve', async () => {
     const { fixture } = await setup(['leave:read-team', 'leave:approve']);
     expect(fixture.nativeElement.querySelector('app-team-balances')).toBeTruthy();
