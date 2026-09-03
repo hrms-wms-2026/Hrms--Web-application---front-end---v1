@@ -71,3 +71,18 @@ describe('app routes - Settings', () => {
     expect(legacyRoute?.redirectTo).toBe('attendance/time-tracking');
   });
 });
+
+describe('app routes - Time Off outer gate', () => {
+  it('allows leave:read-team, leave:approve, or leave:read to reach /time-off, not just leave:read-own', () => {
+    const shell = routes.find((route) => route.path === '' && route.children)!;
+    const timeOff = shell.children!.find((route) => route.path === 'time-off')!;
+
+    expect(timeOff.data?.['permissions']).toEqual([
+      'leave:read-own',
+      'leave:read-team',
+      'leave:approve',
+      'leave:read'
+    ]);
+    expect(timeOff.data?.['modules']).toEqual(['leave']);
+  });
+});

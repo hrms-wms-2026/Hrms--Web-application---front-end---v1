@@ -70,7 +70,7 @@ export const routes: Routes = [
       {
         path: 'time-off',
         canActivate: [permissionGuard],
-        data: { permissions: ['leave:read-own'], modules: ['leave'] },
+        data: { permissions: ['leave:read-own', 'leave:read-team', 'leave:approve', 'leave:read'], modules: ['leave'] },
         loadChildren: () => import('./modules/leave/leave.routes').then((module) => module.LEAVE_ROUTES)
       },
       {
