@@ -81,7 +81,9 @@ describe('app routes - Time Off outer gate', () => {
       'leave:read-own',
       'leave:read-team',
       'leave:approve',
-      'leave:read'
+      'leave:read',
+      'leave:manage',
+      'calendar:read'
     ]);
     expect(timeOff.data?.['modules']).toEqual(['leave']);
   });
