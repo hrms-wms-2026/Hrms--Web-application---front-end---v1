@@ -9,7 +9,7 @@ import { buildObjectiveForest, findTreeNode, isLeafObjective, removeTreeNode, to
 import { toTaskStatusColumn } from '../utils/task.mapper';
 import { ProjectDetail } from '../models/project.model';
 import { Milestone, MilestoneTreeNode, ObjectiveDetail } from '../models/milestone.model';
-import { EditObjectiveRequestDto, CreateObjectiveRequestDto } from '../models/dto/milestone.dto';
+import { EditObjectiveRequestDto, CreateObjectiveRequestDto, ObjectiveAssetDto } from '../models/dto/milestone.dto';
 import { ObjectiveMemberItemDto, ObjectiveInvitationDto } from '../models/dto/objective-invitation.dto';
 
 interface ProjectDetailState {
@@ -182,15 +182,41 @@ export const ProjectDetailStore = signalStore(
       }
     },
 
-    async createSubModule(payload: CreateObjectiveRequestDto): Promise<{ success: boolean }> {
+    async createSubModule(payload: CreateObjectiveRequestDto): Promise<{ success: boolean; objectiveId?: string }> {
       try {
-        await firstValueFrom(api.createObjective(payload));
+        const created = await firstValueFrom(api.createObjective(payload));
         patchState(store, { milestoneActionError: null });
-        return { success: true };
+        return { success: true, objectiveId: created.id };
       } catch (err) {
         patchState(store, { milestoneActionError: extractError(err, 'Failed to create sub-module.') });
         return { success: false };
       }
+    },
+
+    async uploadMilestoneAsset(objectiveId: string, file: File): Promise<{ success: boolean; asset?: ObjectiveAssetDto }> {
+      try {
+        const asset = await firstValueFrom(api.uploadObjectiveAsset(objectiveId, file));
+        patchState(store, { milestoneActionError: null });
+        return { success: true, asset };
+      } catch (err) {
+        patchState(store, { milestoneActionError: extractError(err, 'Failed to upload file.') });
+        return { success: false };
+      }
+    },
+
+    async deleteMilestoneAsset(objectiveId: string, assetId: string): Promise<{ success: boolean }> {
+      try {
+        await firstValueFrom(api.deleteObjectiveAsset(objectiveId, assetId));
+        patchState(store, { milestoneActionError: null });
+        return { success: true };
+      } catch (err) {
+        patchState(store, { milestoneActionError: extractError(err, 'Failed to delete file.') });
+        return { success: false };
+      }
+    },
+
+    setMilestoneActionError(message: string | null): void {
+      patchState(store, { milestoneActionError: message });
     },
 
     async loadObjectiveMembers(objectiveId: string): Promise<void> {
