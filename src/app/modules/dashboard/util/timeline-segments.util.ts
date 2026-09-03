@@ -13,6 +13,22 @@ export const SEGMENT_LABELS: Record<TimelineSegment['type'], string> = {
   idle: 'Idle time'
 };
 
+/** Single source of truth for timeline segment colors, shared by the compact Today at a
+ * Glance strip and the full Activity Timeline page so the two never visually disagree. */
+export const SEGMENT_COLORS: Record<TimelineSegment['type'], string> = {
+  working: 'var(--color-accent)',
+  break: 'var(--color-border)',
+  focus: 'var(--color-accent)',
+  idle: 'var(--color-border)'
+};
+
+export const SEGMENT_OPACITY: Record<TimelineSegment['type'], number> = {
+  working: 1,
+  break: 1,
+  focus: 1,
+  idle: 0.4
+};
+
 interface Interval {
   start: number;
   end: number;

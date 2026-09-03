@@ -9,7 +9,7 @@
     >
       @if (illustrationFor(card.kind); as illustrationSrc) {
         @if (card.kind === 'reminder') {
-          <div class="flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wide text-rose-600">
+          <div class="flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wide text-[var(--color-warning-text)]">
             <svg viewBox="0 0 20 20" fill="currentColor" class="h-3.5 w-3.5">
               <circle cx="7" cy="7" r="4" />
               <circle cx="13" cy="7" r="4" />
@@ -31,7 +31,7 @@
           <button
             type="button"
             data-testid="wellbeing-start-break"
-            class="inline-flex w-full items-center justify-center rounded-md bg-gradient-to-r from-indigo-500 to-violet-500 px-4 py-2 text-sm font-medium text-white transition hover:from-indigo-600 hover:to-violet-600 disabled:cursor-not-allowed disabled:opacity-60"
+            class="inline-flex w-full items-center justify-center rounded-md bg-[var(--color-accent)] px-4 py-2 text-sm font-medium text-[var(--color-accent-contrast)] transition hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-60"
             [disabled]="actionLoading()"
             (click)="startBreak()"
           >
@@ -40,17 +40,7 @@
         }
       } @else {
         <div class="flex items-start gap-3">
-          <span
-            class="flex h-10 w-10 shrink-0 items-center justify-center rounded-full"
-            [class.bg-sky-100]="card.kind === 'hydration'"
-            [class.text-sky-600]="card.kind === 'hydration'"
-            [class.bg-indigo-100]="card.kind === 'posture'"
-            [class.text-indigo-600]="card.kind === 'posture'"
-            [class.bg-amber-100]="card.kind === 'eye-rest'"
-            [class.text-amber-600]="card.kind === 'eye-rest'"
-            [class.bg-emerald-100]="card.kind === 'stretch'"
-            [class.text-emerald-600]="card.kind === 'stretch'"
-          >
+          <span class="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-[var(--color-accent-subtle)] text-[var(--color-accent)]">
             @switch (card.kind) {
               @case ('hydration') {
                 <svg viewBox="0 0 20 20" fill="currentColor" class="h-5 w-5"><circle cx="10" cy="10" r="5" /></svg>
@@ -101,7 +91,7 @@
               class="h-1.5 rounded-full transition-all duration-300"
               [class.w-6]="$index === currentIndex() % cards().length"
               [class.w-1.5]="$index !== currentIndex() % cards().length"
-              [style.background-color]="$index === currentIndex() % cards().length ? 'var(--color-accent)' : '#d1d5db'"
+              [style.background-color]="$index === currentIndex() % cards().length ? 'var(--color-accent)' : 'var(--color-border)'"
               (click)="goTo($index)"
             ></button>
           }

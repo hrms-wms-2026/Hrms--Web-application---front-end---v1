@@ -4,6 +4,10 @@ import { CardComponent } from '../../../../shared/ui/card/card.component';
 import { MyTasksApiService } from '../../data-access/my-tasks-api.service';
 import { MyTaskItem } from '../../models/my-tasks.model';
 
+/** "Show only the most relevant tasks, not the full task list" (dashboard spec) - the card
+ * shows at most this many rows total, overdue first, then upcoming filling the rest. */
+const MAX_VISIBLE_TASKS = 4;
+
 @Component({
   selector: 'app-my-tasks-card',
   standalone: true,
@@ -17,8 +21,24 @@ export class MyTasksCardComponent implements OnInit {
   protected readonly tasks = signal<MyTaskItem[]>([]);
   protected readonly loading = signal(true);
 
-  protected readonly overdueTasks = computed(() => this.tasks().filter((t) => t.isOverdue));
-  protected readonly upcomingTasks = computed(() => this.tasks().filter((t) => !t.isOverdue));
+  private readonly allOverdueTasks = computed(() => this.tasks().filter((t) => t.isOverdue));
+  private readonly allUpcomingTasks = computed(() => this.tasks().filter((t) => !t.isOverdue));
+
+  protected readonly overdueTasks = computed(() => this.allOverdueTasks().slice(0, MAX_VISIBLE_TASKS));
+  protected readonly upcomingTasks = computed(() =>
+    this.allUpcomingTasks().slice(0, Math.max(0, MAX_VISIBLE_TASKS - this.overdueTasks().length))
+  );
+
+  protected readonly hasMoreTasks = computed(() => this.tasks().length > MAX_VISIBLE_TASKS);
+  protected readonly hiddenTaskCount = computed(() => Math.max(0, this.tasks().length - MAX_VISIBLE_TASKS));
+
+  // No dedicated cross-project "all tasks" page exists yet - "View all tasks" reuses the
+  // per-row destination (that project's My Task view) for the most urgent task, matching
+  // where every row link already goes rather than inventing a new destination.
+  protected readonly viewAllTasksLink = computed<string[] | null>(() => {
+    const first = this.tasks()[0];
+    return first ? this.taskLink(first) : null;
+  });
 
   ngOnInit(): void {
     this.api.getMyTasks().subscribe({

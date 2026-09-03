@@ -4,18 +4,20 @@
   }
 
   @if (overdueTasks().length > 0) {
-    <p class="mb-2 text-xs font-semibold uppercase tracking-wide text-red-600">Overdue</p>
+    <p class="mb-2 text-xs font-semibold uppercase tracking-wide text-[var(--color-danger-text)]">Overdue</p>
     <ul class="mb-4 flex flex-col gap-2" data-testid="my-tasks-overdue-list">
       @for (task of overdueTasks(); track task.taskId) {
         <li>
           <a
             [routerLink]="taskLink(task)"
             data-testid="my-tasks-row"
-            class="flex items-center justify-between gap-3 rounded-md border border-[var(--color-border)] p-2 text-sm hover:bg-[var(--color-surface-secondary)]"
+            class="flex flex-col gap-1 rounded-md border border-[var(--color-border)] p-2 text-sm hover:bg-[var(--color-surface-secondary)]"
           >
-            <span class="min-w-0 flex-1 truncate text-[var(--color-text-primary)]">{{ task.title }}</span>
-            <span class="shrink-0 text-xs text-[var(--color-text-secondary)]">{{ task.projectName }}</span>
-            <span class="shrink-0 text-xs font-medium text-red-600">{{ dueDateLabel(task.dueDate) }}</span>
+            <span class="truncate text-[var(--color-text-primary)]">{{ task.title }}</span>
+            <span class="flex items-center justify-between gap-2">
+              <span class="min-w-0 truncate text-xs text-[var(--color-text-secondary)]">{{ task.projectName }}</span>
+              <span class="shrink-0 text-xs font-medium text-[var(--color-danger-text)]">{{ dueDateLabel(task.dueDate) }}</span>
+            </span>
           </a>
         </li>
       }
@@ -30,14 +32,27 @@
           <a
             [routerLink]="taskLink(task)"
             data-testid="my-tasks-row"
-            class="flex items-center justify-between gap-3 rounded-md border border-[var(--color-border)] p-2 text-sm hover:bg-[var(--color-surface-secondary)]"
+            class="flex flex-col gap-1 rounded-md border border-[var(--color-border)] p-2 text-sm hover:bg-[var(--color-surface-secondary)]"
           >
-            <span class="min-w-0 flex-1 truncate text-[var(--color-text-primary)]">{{ task.title }}</span>
-            <span class="shrink-0 text-xs text-[var(--color-text-secondary)]">{{ task.projectName }}</span>
-            <span class="shrink-0 text-xs text-[var(--color-text-secondary)]">{{ dueDateLabel(task.dueDate) }}</span>
+            <span class="truncate text-[var(--color-text-primary)]">{{ task.title }}</span>
+            <span class="flex items-center justify-between gap-2">
+              <span class="min-w-0 truncate text-xs text-[var(--color-text-secondary)]">{{ task.projectName }}</span>
+              <span class="shrink-0 text-xs text-[var(--color-text-secondary)]">{{ dueDateLabel(task.dueDate) }}</span>
+            </span>
           </a>
         </li>
       }
     </ul>
+  }
+
+  @if (viewAllTasksLink(); as link) {
+    <div class="mt-3 flex items-center gap-2">
+      <a [routerLink]="link" class="inline-block text-xs font-medium text-[var(--color-accent)]" data-testid="my-tasks-view-all-link">
+        View all tasks →
+      </a>
+      @if (hasMoreTasks()) {
+        <span class="text-xs text-[var(--color-text-secondary)]" data-testid="my-tasks-hidden-count">+{{ hiddenTaskCount() }} more</span>
+      }
+    </div>
   }
 </app-card>

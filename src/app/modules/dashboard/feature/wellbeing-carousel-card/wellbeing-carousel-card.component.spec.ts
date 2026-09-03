@@ -158,4 +158,34 @@ describe('WellbeingCarouselCardComponent', () => {
     const { fixture } = await setup('error');
     expect(fixture.nativeElement.querySelector('[data-testid="wellbeing-card-title"]').textContent.trim()).toBe('Stay hydrated');
   });
+
+  it('does not auto-rotate when prefers-reduced-motion is set, but manual next still works', async () => {
+    vi.useFakeTimers();
+    const originalMatchMedia = window.matchMedia;
+    Object.defineProperty(window, 'matchMedia', {
+      configurable: true,
+      value: vi.fn().mockReturnValue({ matches: true })
+    });
+
+    const { fixture } = await setup();
+
+    vi.advanceTimersByTime(6_000);
+    fixture.detectChanges();
+    expect(fixture.nativeElement.querySelector('[data-testid="wellbeing-card-title"]').textContent.trim()).toBe('Stay hydrated');
+
+    fixture.nativeElement.querySelector('[aria-label="Next tip"]').click();
+    fixture.detectChanges();
+    expect(fixture.nativeElement.querySelector('[data-testid="wellbeing-card-title"]').textContent.trim()).toBe('Check your posture');
+
+    Object.defineProperty(window, 'matchMedia', { configurable: true, value: originalMatchMedia });
+  });
+
+  it('uses design-token colors for the dot indicators, not a hardcoded hex value', async () => {
+    const { fixture } = await setup();
+    const dots: HTMLElement[] = Array.from(fixture.nativeElement.querySelectorAll('[data-testid="wellbeing-dot"]'));
+    expect(dots.length).toBeGreaterThan(0);
+    for (const dot of dots) {
+      expect(dot.style.backgroundColor.startsWith('var(')).toBe(true);
+    }
+  });
 });

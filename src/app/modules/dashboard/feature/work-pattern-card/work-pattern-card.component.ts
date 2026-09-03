@@ -38,6 +38,10 @@ export class WorkPatternCardComponent implements OnInit {
     this.store.history().reduce((sum, row) => sum + row.totalWorkedMinutes, 0)
   );
 
+  // Six 0h tiles read as broken, not empty - show an intentional empty state instead
+  // once we know there's genuinely nothing to report (has attendance history loaded, all zero).
+  protected readonly hasActivity = computed(() => this.weeklyWorkedMinutes() > 0);
+
   protected readonly productiveMinutes = computed(
     () => this.focusMinutes() + this.meetingMinutes() + this.adminMinutes()
   );
@@ -48,6 +52,14 @@ export class WorkPatternCardComponent implements OnInit {
   protected readonly meetingLabel = computed(() => formatHours(this.meetingMinutes()));
   protected readonly adminLabel = computed(() => formatHours(this.adminMinutes()));
   protected readonly idleLabel = computed(() => formatHours(this.idleMinutes()));
+
+  // Same denominator as the segment bar below - weekly worked minutes, not the monitoring total.
+  protected readonly productivePercentLabel = computed(() => {
+    const denominator = this.weeklyWorkedMinutes();
+    if (denominator <= 0) return '—';
+    const percent = Math.min(100, (this.productiveMinutes() / denominator) * 100);
+    return `${Math.round(percent)}%`;
+  });
 
   // Percentages are relative to weekly worked hours (attendance clock-in time), not to the sum
   // of the monitoring categories - tray-app coverage rarely spans 100% of worked time, so the

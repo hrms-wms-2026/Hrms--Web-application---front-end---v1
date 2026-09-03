@@ -2,7 +2,9 @@ import { signal } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
 import { provideRouter } from '@angular/router';
 import { of } from 'rxjs';
+import { AuthStore } from '../../../../core/auth/state/auth.store';
 import { TimeTrackingStore } from '../../../attendance/state/time-tracking.store';
+import { CalendarEventApiService } from '../../../calendar/data-access/calendar-event-api.service';
 import { ActivityTimelineApiService } from '../../data-access/activity-timeline-api.service';
 import { FocusStatusApiService } from '../../data-access/focus-status-api.service';
 import { MyTasksApiService } from '../../data-access/my-tasks-api.service';
@@ -34,7 +36,9 @@ describe('DashboardHomeComponent', () => {
         { provide: ActivityTimelineApiService, useValue: { getMyTimeline: () => of({ date: '', segments: [] }) } },
         { provide: MyTasksApiService, useValue: { getMyTasks: () => of({ tasks: [] }) } },
         { provide: WorkPatternApiService, useValue: { getMyWorkPattern: () => of({ days: [] }) } },
-        { provide: FocusStatusApiService, useValue: { getMyFocusStatus: () => of({ isBreakReminderDue: false, continuousFocusMinutes: 0 }) } }
+        { provide: FocusStatusApiService, useValue: { getMyFocusStatus: () => of({ isBreakReminderDue: false, continuousFocusMinutes: 0 }) } },
+        { provide: CalendarEventApiService, useValue: { getEvents: () => of({ events: [] }), getMyTimezone: () => of({ timezone: 'UTC' }) } },
+        { provide: AuthStore, useValue: { email: signal('arjun.kumar@onevo.dev') } }
       ]
     }).compileComponents();
 
@@ -51,13 +55,15 @@ describe('DashboardHomeComponent', () => {
     expect(text).not.toContain('Sign out');
   });
 
-  it('renders the Today at a Glance, Quick Actions, My Tasks, Work Pattern, and Wellbeing cards', async () => {
+  it('renders the greeting, Today at a Glance, Quick Actions, My Tasks, Today\'s Schedule, Work Pattern, and Wellbeing cards', async () => {
     const fixture = await setup();
 
     const text = fixture.nativeElement.textContent as string;
+    expect(text).toContain('Arjun Kumar');
     expect(text).toContain('Today at a glance');
     expect(text).toContain('Quick Actions');
     expect(text).toContain('My Tasks');
+    expect(text).toContain('Today\'s Schedule');
     expect(text).toContain('Work Pattern');
     expect(text).toContain('Wellbeing');
   });

@@ -2,22 +2,10 @@ import { ChangeDetectionStrategy, Component, OnInit, computed, effect, inject, s
 import { ActivityTimelineApiService } from '../../data-access/activity-timeline-api.service';
 import { ActivityTimelineSegment } from '../../models/activity-timeline.model';
 import { TimeTrackingStore } from '../../../attendance/state/time-tracking.store';
-import { SEGMENT_LABELS, TimelineSegment, buildTimelineSegments, formatTime } from '../../util/timeline-segments.util';
+import {
+  SEGMENT_COLORS, SEGMENT_LABELS, SEGMENT_OPACITY, TimelineSegment, buildTimelineSegments, formatTime
+} from '../../util/timeline-segments.util';
 import { BackToHomeLinkComponent } from '../../ui/back-to-home-link/back-to-home-link.component';
-
-const SEGMENT_COLORS: Record<TimelineSegment['type'], string> = {
-  working: 'var(--color-accent)',
-  break: 'var(--color-border)',
-  focus: 'var(--color-accent)',
-  idle: 'var(--color-border)'
-};
-
-const SEGMENT_OPACITY: Record<TimelineSegment['type'], number> = {
-  working: 1,
-  break: 1,
-  focus: 1,
-  idle: 0.4
-};
 
 @Component({
   selector: 'app-activity-timeline-page',

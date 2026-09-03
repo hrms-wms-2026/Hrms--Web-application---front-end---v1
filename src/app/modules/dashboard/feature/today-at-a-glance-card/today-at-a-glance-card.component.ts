@@ -1,10 +1,13 @@
 import { ChangeDetectionStrategy, Component, OnInit, computed, effect, inject, signal } from '@angular/core';
+import { RouterLink } from '@angular/router';
 import { CardComponent } from '../../../../shared/ui/card/card.component';
 import { ActivityTimelineApiService } from '../../data-access/activity-timeline-api.service';
 import { ActivityTimelineSegment } from '../../models/activity-timeline.model';
 import { TimeTrackingStore } from '../../../attendance/state/time-tracking.store';
 import {
+  SEGMENT_COLORS,
   SEGMENT_LABELS,
+  SEGMENT_OPACITY,
   TimelineSegment,
   buildTimelineSegments,
   formatMinutes,
@@ -21,7 +24,7 @@ const STATUS_LABELS: Record<string, string> = {
 @Component({
   selector: 'app-today-at-a-glance-card',
   standalone: true,
-  imports: [CardComponent],
+  imports: [CardComponent, RouterLink],
   templateUrl: './today-at-a-glance-card.component.html',
   changeDetection: ChangeDetectionStrategy.OnPush
 })
@@ -91,5 +94,13 @@ export class TodayAtAGlanceCardComponent implements OnInit {
 
   protected segmentLabel(type: TimelineSegment['type']): string {
     return SEGMENT_LABELS[type];
+  }
+
+  protected segmentColor(type: TimelineSegment['type']): string {
+    return SEGMENT_COLORS[type];
+  }
+
+  protected segmentOpacity(type: TimelineSegment['type']): number {
+    return SEGMENT_OPACITY[type];
   }
 }

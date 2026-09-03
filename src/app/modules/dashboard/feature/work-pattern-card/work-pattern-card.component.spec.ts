@@ -96,6 +96,22 @@ describe('WorkPatternCardComponent', () => {
     expect(text).toContain('21h 30m'); // productive = 800 + 370 + 120 = 1290 min
   });
 
+  it('shows productive hours as a percentage of weekly worked minutes, rounded', async () => {
+    const { fixture } = await setup({
+      days: [day('2026-08-24', 800, 370, 120, 105)] // 1290 productive / 1560 weekly = 82.69% -> 83%
+    });
+    const percent: HTMLElement = fixture.nativeElement.querySelector('[data-testid="work-pattern-productive-percent"]');
+    expect(percent.textContent).toContain('83%');
+  });
+
+  it('shows the intentional empty state (not six 0h tiles) when there is no weekly worked time', async () => {
+    const { fixture } = await setup({ days: [day('2026-08-24', 800, 0, 0, 0)] }, []);
+    const text = fixture.nativeElement.textContent as string;
+    expect(text).toContain('No work activity yet');
+    expect(fixture.nativeElement.querySelector('[data-testid="work-pattern-empty"]')).not.toBeNull();
+    expect(fixture.nativeElement.querySelector('[data-testid="work-pattern-weekly-worked"]')).toBeNull();
+  });
+
   it('sizes segments as a percentage of weekly worked minutes, not the monitoring total', async () => {
     const { fixture } = await setup({
       days: [day('2026-08-24', 800, 370, 120, 105)]
@@ -120,9 +136,10 @@ describe('WorkPatternCardComponent', () => {
     expect(segments.length).toBe(0);
   });
 
-  it('shows no segments when there is no attendance history yet', async () => {
+  it('shows the empty state (no segments) when there is no attendance history yet', async () => {
     const { fixture } = await setup({ days: [day('2026-08-24', 800, 0, 0, 0)] }, []);
     const segments = fixture.nativeElement.querySelectorAll('[data-testid="work-pattern-segment"]');
     expect(segments.length).toBe(0);
+    expect(fixture.nativeElement.querySelector('[data-testid="work-pattern-empty"]')).not.toBeNull();
   });
 });

@@ -93,7 +93,11 @@ export class WellbeingCarouselCardComponent implements OnInit, OnDestroy {
   ngOnInit(): void {
     this.refreshFocusStatus();
     this.focusStatusPollId = setInterval(() => this.refreshFocusStatus(), FOCUS_STATUS_POLL_MS);
-    this.rotateId = setInterval(() => this.autoAdvance(), ROTATE_MS);
+    // Respect prefers-reduced-motion: don't auto-advance a rotating carousel for employees who
+    // asked the OS not to animate content changes on their behalf. Manual prev/next/dots still work.
+    if (!prefersReducedMotion()) {
+      this.rotateId = setInterval(() => this.autoAdvance(), ROTATE_MS);
+    }
   }
 
   ngOnDestroy(): void {
@@ -148,4 +152,8 @@ export class WellbeingCarouselCardComponent implements OnInit, OnDestroy {
       error: () => this.focusStatus.set(null)
     });
   }
+}
+
+function prefersReducedMotion(): boolean {
+  return typeof window !== 'undefined' && !!window.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
 }

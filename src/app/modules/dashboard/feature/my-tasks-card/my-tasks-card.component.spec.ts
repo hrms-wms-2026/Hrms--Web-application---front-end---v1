@@ -76,4 +76,46 @@ describe('MyTasksCardComponent', () => {
     const { fixture } = await setup('error');
     expect(fixture.nativeElement.querySelector('[data-testid="my-tasks-empty"]')).not.toBeNull();
   });
+
+  it('shows at most 4 tasks total, overdue first', async () => {
+    const overdue = Array.from({ length: 3 }, (_, i) => makeTask({ taskId: `overdue-${i}`, isOverdue: true, title: `Overdue ${i}` }));
+    const upcoming = Array.from({ length: 5 }, (_, i) => makeTask({ taskId: `upcoming-${i}`, isOverdue: false, title: `Upcoming ${i}` }));
+    const { fixture } = await setup({ tasks: [...overdue, ...upcoming] });
+
+    const rows = fixture.nativeElement.querySelectorAll('[data-testid="my-tasks-row"]');
+    expect(rows.length).toBe(4);
+    // 3 overdue slots filled first, only 1 upcoming slot left
+    expect(fixture.nativeElement.querySelectorAll('[data-testid="my-tasks-overdue-list"] [data-testid="my-tasks-row"]').length).toBe(3);
+    expect(fixture.nativeElement.querySelectorAll('[data-testid="my-tasks-upcoming-list"] [data-testid="my-tasks-row"]').length).toBe(1);
+  });
+
+  it('links "View all tasks" to the most urgent task\'s project my-task page', async () => {
+    const { fixture } = await setup({
+      tasks: [
+        makeTask({ taskId: 'overdue-1', isOverdue: true, projectId: 'project-9', objectiveId: 'objective-9' }),
+        makeTask({ taskId: 'upcoming-1', isOverdue: false })
+      ]
+    });
+
+    const link: HTMLAnchorElement = fixture.nativeElement.querySelector('[data-testid="my-tasks-view-all-link"]');
+    expect(link.getAttribute('href')).toBe('/work/project-9/milestones/objective-9/my-task');
+  });
+
+  it('does not show "View all tasks" when there are no tasks', async () => {
+    const { fixture } = await setup({ tasks: [] });
+    expect(fixture.nativeElement.querySelector('[data-testid="my-tasks-view-all-link"]')).toBeNull();
+  });
+
+  it('shows a "+N more" count when there are more tasks than the visible cap', async () => {
+    const tasks = Array.from({ length: 6 }, (_, i) => makeTask({ taskId: `task-${i}`, isOverdue: false }));
+    const { fixture } = await setup({ tasks });
+
+    const hiddenCount: HTMLElement = fixture.nativeElement.querySelector('[data-testid="my-tasks-hidden-count"]');
+    expect(hiddenCount.textContent).toContain('+2 more');
+  });
+
+  it('does not show a "+N more" count when all tasks fit within the visible cap', async () => {
+    const { fixture } = await setup({ tasks: [makeTask()] });
+    expect(fixture.nativeElement.querySelector('[data-testid="my-tasks-hidden-count"]')).toBeNull();
+  });
 });
