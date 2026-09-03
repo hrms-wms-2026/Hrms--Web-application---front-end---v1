@@ -1,9 +1,19 @@
 import { ChangeDetectionStrategy, Component, OnInit, computed, effect, inject, signal } from '@angular/core';
+import { RouterLink } from '@angular/router';
 import { CardComponent } from '../../../../shared/ui/card/card.component';
+import { DashboardGreetingComponent } from '../dashboard-greeting/dashboard-greeting.component';
 import { ActivityTimelineApiService } from '../../data-access/activity-timeline-api.service';
 import { ActivityTimelineSegment } from '../../models/activity-timeline.model';
-import { BreakInterval } from '../../../attendance/models/time-tracking.model';
 import { TimeTrackingStore } from '../../../attendance/state/time-tracking.store';
+import {
+  SEGMENT_COLORS,
+  SEGMENT_LABELS,
+  SEGMENT_OPACITY,
+  TimelineSegment,
+  buildTimelineSegments,
+  formatMinutes,
+  formatTime
+} from '../../util/timeline-segments.util';
 
 const STATUS_LABELS: Record<string, string> = {
   not_clocked_in: 'Not clocked in',
@@ -12,20 +22,10 @@ const STATUS_LABELS: Record<string, string> = {
   clocked_out: 'Clocked out'
 };
 
-export interface TimelineSegment {
-  readonly type: 'working' | 'break' | 'focus' | 'idle';
-  readonly widthPercent: number;
-}
-
-interface Interval {
-  start: number;
-  end: number;
-}
-
 @Component({
   selector: 'app-today-at-a-glance-card',
   standalone: true,
-  imports: [CardComponent],
+  imports: [CardComponent, RouterLink, DashboardGreetingComponent],
   templateUrl: './today-at-a-glance-card.component.html',
   changeDetection: ChangeDetectionStrategy.OnPush
 })
@@ -54,6 +54,8 @@ export class TodayAtAGlanceCardComponent implements OnInit {
 
   protected readonly workedTimeLabel = computed(() => formatMinutes(this.today()?.totalWorkedMinutes ?? null));
 
+  protected readonly legendTypes: TimelineSegment['type'][] = ['working', 'focus', 'break', 'idle'];
+
   protected readonly timelineSegments = computed<TimelineSegment[]>(() => {
     const today = this.today();
     if (!today?.clockInAt) {
@@ -64,7 +66,10 @@ export class TodayAtAGlanceCardComponent implements OnInit {
     if (Number.isNaN(start) || Number.isNaN(end) || end <= start) {
       return [];
     }
-    return buildTimelineSegments(start, end, today.breaks, this.activitySegments());
+    // The today-summary endpoint sometimes omits `breaks` entirely (seen live for an
+    // in-progress break with no completed break intervals yet) rather than sending an
+    // empty array - guard so the timeline still renders instead of throwing in buildTimelineSegments.
+    return buildTimelineSegments(start, end, today.breaks ?? [], this.activitySegments());
   });
 
   protected readonly timelineEndLabel = computed(() => {
@@ -73,6 +78,19 @@ export class TodayAtAGlanceCardComponent implements OnInit {
       return null;
     }
     return formatTime(today.clockOutAt ? new Date(today.clockOutAt) : new Date());
+  });
+
+  private readonly lastUpdated = signal<Date | null>(null);
+
+  protected readonly lastUpdatedLabel = computed(() => {
+    const updated = this.lastUpdated();
+    if (!updated) {
+      return null;
+    }
+    const diffMinutes = Math.floor((Date.now() - updated.getTime()) / 60_000);
+    if (diffMinutes < 1) return 'Last updated: just now';
+    if (diffMinutes === 1) return 'Last updated: 1 min ago';
+    return `Last updated: ${diffMinutes} min ago`;
   });
 
   constructor() {
@@ -90,109 +108,18 @@ export class TodayAtAGlanceCardComponent implements OnInit {
   }
 
   ngOnInit(): void {
-    void this.store.loadToday();
+    void this.store.loadToday().then(() => this.lastUpdated.set(new Date()));
   }
 
   protected segmentLabel(type: TimelineSegment['type']): string {
     return SEGMENT_LABELS[type];
   }
-}
 
-const SEGMENT_LABELS: Record<TimelineSegment['type'], string> = {
-  working: 'Working',
-  break: 'Break',
-  focus: 'Focus work',
-  idle: 'Idle time'
-};
-
-function buildTimelineSegments(
-  start: number,
-  end: number,
-  breaks: BreakInterval[],
-  activity: ActivityTimelineSegment[]
-): TimelineSegment[] {
-  const totalMs = end - start;
-  if (totalMs <= 0) {
-    return [];
+  protected segmentColor(type: TimelineSegment['type']): string {
+    return SEGMENT_COLORS[type];
   }
 
-  const breakIntervals = clip(
-    breaks.map((b) => ({
-      start: new Date(b.startedAt).getTime(),
-      end: b.endedAt ? new Date(b.endedAt).getTime() : end
-    })),
-    start,
-    end
-  );
-  const activityIntervals = clip(
-    activity.map((a) => ({
-      start: new Date(a.startedAt).getTime(),
-      end: new Date(a.endedAt).getTime(),
-      type: a.type
-    })),
-    start,
-    end
-  );
-
-  const segments: { type: TimelineSegment['type']; start: number; end: number }[] = [];
-  let cursor = start;
-  for (const b of breakIntervals) {
-    if (b.start > cursor) {
-      segments.push(...subdivideWorking(cursor, b.start, activityIntervals));
-    }
-    segments.push({ type: 'break', start: b.start, end: b.end });
-    cursor = Math.max(cursor, b.end);
+  protected segmentOpacity(type: TimelineSegment['type']): number {
+    return SEGMENT_OPACITY[type];
   }
-  if (cursor < end) {
-    segments.push(...subdivideWorking(cursor, end, activityIntervals));
-  }
-
-  return segments.map((s) => ({ type: s.type, widthPercent: ((s.end - s.start) / totalMs) * 100 }));
-}
-
-/** Fills [rangeStart, rangeEnd) with focus/idle activity data where available, 'working' elsewhere. */
-function subdivideWorking(
-  rangeStart: number,
-  rangeEnd: number,
-  activity: (Interval & { type: 'focus' | 'idle' })[]
-): { type: TimelineSegment['type']; start: number; end: number }[] {
-  const clipped = clip(activity, rangeStart, rangeEnd);
-  const result: { type: TimelineSegment['type']; start: number; end: number }[] = [];
-  let cursor = rangeStart;
-  for (const a of clipped) {
-    if (a.start > cursor) {
-      result.push({ type: 'working', start: cursor, end: a.start });
-    }
-    result.push({ type: a.type, start: a.start, end: a.end });
-    cursor = Math.max(cursor, a.end);
-  }
-  if (cursor < rangeEnd) {
-    result.push({ type: 'working', start: cursor, end: rangeEnd });
-  }
-  return result;
-}
-
-function clip<T extends Interval>(intervals: T[], start: number, end: number): T[] {
-  return intervals
-    .map((i) => ({ ...i, start: Math.max(start, i.start), end: Math.min(end, i.end) }))
-    .filter((i) => i.end > i.start)
-    .sort((a, b) => a.start - b.start);
-}
-
-function formatTime(date: Date): string | null {
-  return Number.isNaN(date.getTime())
-    ? null
-    : new Intl.DateTimeFormat(undefined, { hour: 'numeric', minute: '2-digit' }).format(date);
-}
-
-function formatMinutes(value: number | null): string {
-  if (value === null || value < 0) {
-    return '—';
-  }
-  const hours = Math.floor(value / 60);
-  const minutes = value % 60;
-  if (hours === 0) {
-    return `${minutes}m`;
-  }
-  return minutes === 0 ? `${hours}h` : `${hours}h ${minutes}m`;
 }

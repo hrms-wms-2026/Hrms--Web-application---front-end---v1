@@ -1,9 +1,11 @@
 import { signal } from '@angular/core';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
+import { provideRouter } from '@angular/router';
 import { of, throwError } from 'rxjs';
 import { describe, expect, it, vi } from 'vitest';
 import { AttendanceTodayResponse } from '../../../attendance/models/time-tracking.model';
 import { TimeTrackingStore } from '../../../attendance/state/time-tracking.store';
+import { AuthStore } from '../../../../core/auth/state/auth.store';
 import { ActivityTimelineApiService } from '../../data-access/activity-timeline-api.service';
 import { ActivityTimelineResponse } from '../../models/activity-timeline.model';
 import { TodayAtAGlanceCardComponent } from './today-at-a-glance-card.component';
@@ -79,8 +81,10 @@ describe('TodayAtAGlanceCardComponent', () => {
     await TestBed.configureTestingModule({
       imports: [TodayAtAGlanceCardComponent],
       providers: [
+        provideRouter([]),
         { provide: TimeTrackingStore, useValue: store },
-        { provide: ActivityTimelineApiService, useValue: { getMyTimeline } }
+        { provide: ActivityTimelineApiService, useValue: { getMyTimeline } },
+        { provide: AuthStore, useValue: { email: signal('arjun.kumar@onevo.dev') } }
       ]
     }).compileComponents();
 
@@ -160,6 +164,16 @@ describe('TodayAtAGlanceCardComponent', () => {
     expect(segments[0].getAttribute('data-segment-type')).toBe('working');
   });
 
+  it('does not crash when the backend omits `breaks` entirely (seen live for an in-progress break)', async () => {
+    const { fixture } = await setup({
+      clockInAt: '2026-08-26T03:00:00Z',
+      clockOutAt: null,
+      breaks: undefined as unknown as []
+    });
+    const segments = fixture.nativeElement.querySelectorAll('[data-testid="today-activity-segment"]');
+    expect(segments.length).toBeGreaterThan(0);
+  });
+
   it('splits the timeline into working/break/working segments around a closed break', async () => {
     const { fixture } = await setup({
       clockInAt: '2026-08-26T03:00:00Z',
@@ -229,5 +243,26 @@ describe('TodayAtAGlanceCardComponent', () => {
 
     const segments: NodeListOf<HTMLElement> = fixture.nativeElement.querySelectorAll('[data-testid="today-activity-segment"]');
     expect(Array.from(segments).map((s) => s.getAttribute('data-segment-type'))).toEqual(['working', 'idle', 'focus', 'working']);
+  });
+
+  it('colors idle segments with the border token, not the accent token - matching the Activity Timeline page', async () => {
+    const getMyTimeline = vi.fn(() =>
+      of({
+        date: '2026-08-26',
+        segments: [{ startedAt: '2026-08-26T05:00:00Z', endedAt: '2026-08-26T05:20:00Z', type: 'idle' as const }]
+      })
+    );
+    const { fixture } = await setup(tray(), getMyTimeline);
+
+    const segments: NodeListOf<HTMLElement> = fixture.nativeElement.querySelectorAll('[data-testid="today-activity-segment"]');
+    const idle = Array.from(segments).find((s) => s.getAttribute('data-segment-type') === 'idle')!;
+    expect(idle.style.backgroundColor).toBe('var(--color-border)');
+    expect(idle.style.opacity).toBe('0.4');
+  });
+
+  it('links to the full Activity Timeline page', async () => {
+    const { fixture } = await setup({ clockInAt: '2026-08-26T03:00:00Z', clockOutAt: '2026-08-26T11:00:00Z' });
+    const link: HTMLAnchorElement = fixture.nativeElement.querySelector('[data-testid="today-at-a-glance-view-timeline-link"]');
+    expect(link.getAttribute('href')).toBe('/dashboard/activity-timeline');
   });
 });
