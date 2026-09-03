@@ -317,12 +317,26 @@ export class MilestoneTreeTabComponent {
     this.editSprintNode.set(null);
   }
 
-  async onCreateModalCreated(payload: CreateObjectiveRequestDto): Promise<void> {
+  async onCreateModalCreated(event: { payload: CreateObjectiveRequestDto; assetFiles: readonly File[] }): Promise<void> {
     this.createModalSubmitting.set(true);
-    const result = await this.store.createSubModule(payload);
+    const result = await this.store.createSubModule(event.payload);
+    let failedFileCount = 0;
+    if (result.success && result.objectiveId) {
+      for (const file of event.assetFiles) {
+        const uploadResult = await this.store.uploadMilestoneAsset(result.objectiveId, file);
+        if (!uploadResult.success) {
+          failedFileCount++;
+        }
+      }
+    }
     this.createModalSubmitting.set(false);
     if (result.success) {
       this.createModalOpen.set(false);
+      if (failedFileCount > 0) {
+        this.store.setMilestoneActionError(
+          `"${event.payload.title}" was created, but ${failedFileCount} file(s) failed to upload — open Module settings on it to retry.`
+        );
+      }
       await this.loadTree({ force: true });
     }
   }
