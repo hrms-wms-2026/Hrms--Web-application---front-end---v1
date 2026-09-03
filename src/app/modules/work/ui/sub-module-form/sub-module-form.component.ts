@@ -135,6 +135,12 @@ export class SubModuleFormComponent {
   assetRows = signal<AssetRowView[]>([]);
   private pendingFiles = new Map<string, File>();
   private nextLocalId = 0;
+  // Ids of already-uploaded assets whose delete call failed server-side and is
+  // now showing as an error row. Tracked separately from pendingFiles (which
+  // only ever holds local upload files) so onAssetRemove/onAssetRetry can tell
+  // a failed-delete row apart from a failed-upload row and dispatch the right
+  // retry action instead of silently dropping the row.
+  private failedDeleteIds = new Set<string>();
 
   constructor() {
     effect(() => {
@@ -161,6 +167,7 @@ export class SubModuleFormComponent {
         this.members.set([]);
       }
       this.pendingFiles.clear();
+      this.failedDeleteIds.clear();
       this.errors.set({});
     });
   }
@@ -214,6 +221,14 @@ export class SubModuleFormComponent {
   }
 
   onAssetRetry(id: string): void {
+    if (this.failedDeleteIds.has(id)) {
+      // This error row came from a failed delete, not a failed upload - the
+      // shared Retry button (rendered by AssetUploadListComponent for any
+      // status === 'error' row) needs to re-attempt the delete, not an upload
+      // pendingFiles has no entry for.
+      this.onAssetRemove(id);
+      return;
+    }
     const file = this.pendingFiles.get(id);
     if (!file) return;
     this.assetRows.update((rows) => rows.map((row) => (row.id === id ? { ...row, status: 'uploading' as const, errorMessage: undefined } : row)));
@@ -223,19 +238,26 @@ export class SubModuleFormComponent {
   onAssetRemove(id: string): void {
     const objectiveId = this.initialValue()?.id;
     const row = this.assetRows().find((r) => r.id === id);
-    this.pendingFiles.delete(id);
-    if (this.mode() === 'edit' && objectiveId && row?.status === 'uploaded') {
+    const isDeleteRetry = this.failedDeleteIds.has(id);
+
+    if (this.mode() === 'edit' && objectiveId && row && (row.status === 'uploaded' || isDeleteRetry)) {
+      this.failedDeleteIds.delete(id);
+      this.pendingFiles.delete(id);
       this.assetRows.update((rows) => rows.filter((r) => r.id !== id));
       firstValueFrom(this.api.deleteObjectiveAsset(objectiveId, id)).catch(() => {
-        // Deletion failed server-side — put the row back rather than letting it
-        // silently vanish while still attached. Its Retry button (shared with
-        // upload-failure rows) would re-upload rather than re-delete; clicking
-        // Remove again is the actual retry path here. Acceptable for now —
-        // a distinct "pending delete" status would be needed to fix properly.
+        // Deletion failed server-side — put the row back and mark it as a
+        // pending delete-retry (rather than a pending upload-retry) so the
+        // next Remove or Retry click on this row re-attempts the delete
+        // instead of just filtering the row out of the local list while it
+        // stays attached server-side.
+        this.failedDeleteIds.add(id);
         this.assetRows.update((rows) => [...rows, { ...row, status: 'error' as const, errorMessage: 'Failed to remove file. Click Remove to try again.' }]);
       });
       return;
     }
+
+    this.failedDeleteIds.delete(id);
+    this.pendingFiles.delete(id);
     this.assetRows.update((rows) => rows.filter((r) => r.id !== id));
   }
 

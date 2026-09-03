@@ -151,6 +151,53 @@ describe('SubModuleFormComponent', () => {
     expect(component.assetRows()).toEqual([]);
   });
 
+  it('retries a failed delete when Remove is clicked again, and removes the row once it succeeds', async () => {
+    fixture.componentRef.setInput('mode', 'edit');
+    fixture.componentRef.setInput('initialValue', detail);
+    fixture.detectChanges();
+    const component = fixture.componentInstance as any;
+    api.deleteObjectiveAsset.mockReturnValueOnce(throwError(() => new Error('rejected')));
+
+    component.onAssetRemove('a1');
+    await Promise.resolve();
+    await Promise.resolve();
+
+    const failedRow = component.assetRows().find((r: any) => r.id === 'a1');
+    expect(failedRow.status).toBe('error');
+    expect(failedRow.errorMessage).toBe('Failed to remove file. Click Remove to try again.');
+
+    api.deleteObjectiveAsset.mockReturnValue(of(undefined));
+    component.onAssetRemove('a1');
+    await Promise.resolve();
+    await Promise.resolve();
+
+    expect(api.deleteObjectiveAsset).toHaveBeenCalledTimes(2);
+    expect(api.deleteObjectiveAsset).toHaveBeenNthCalledWith(2, 'o1', 'a1');
+    expect(component.assetRows().find((r: any) => r.id === 'a1')).toBeUndefined();
+  });
+
+  it('retries a failed delete when Retry is clicked, and removes the row once it succeeds', async () => {
+    fixture.componentRef.setInput('mode', 'edit');
+    fixture.componentRef.setInput('initialValue', detail);
+    fixture.detectChanges();
+    const component = fixture.componentInstance as any;
+    api.deleteObjectiveAsset.mockReturnValueOnce(throwError(() => new Error('rejected')));
+
+    component.onAssetRemove('a1');
+    await Promise.resolve();
+    await Promise.resolve();
+    expect(component.assetRows().find((r: any) => r.id === 'a1').status).toBe('error');
+
+    api.deleteObjectiveAsset.mockReturnValue(of(undefined));
+    component.onAssetRetry('a1');
+    await Promise.resolve();
+    await Promise.resolve();
+
+    expect(api.deleteObjectiveAsset).toHaveBeenCalledTimes(2);
+    expect(api.deleteObjectiveAsset).toHaveBeenNthCalledWith(2, 'o1', 'a1');
+    expect(component.assetRows().find((r: any) => r.id === 'a1')).toBeUndefined();
+  });
+
   it('prefills edit mode and emits fields with achieved metadata', () => {
     fixture.componentRef.setInput('mode', 'edit');
     fixture.componentRef.setInput('initialValue', detail);
