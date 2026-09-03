@@ -35,7 +35,7 @@ function startOfWeek(d: Date): Date {
 export class CalendarPageComponent {
   readonly store = inject(CalendarEventStore);
 
-  readonly view = signal<CalendarView>('month');
+  readonly view = signal<CalendarView>('day');
   readonly cursor = signal(new Date());
   readonly formOpen = signal(false);
   readonly editingEvent = signal<CalendarEventResponse | null>(null);
