@@ -1,7 +1,9 @@
 <section class="pa-page">
-  <header class="pa-header">
-    <div><p class="pa-kicker">TIME OFF / APPROVALS</p><h1>Pending Approvals</h1><p class="pa-subtitle">Requests waiting on your decision.</p></div>
-  </header>
+  @if (!embedded()) {
+    <header class="pa-header">
+      <div><p class="pa-kicker">TIME OFF / APPROVALS</p><h1>Pending Approvals</h1><p class="pa-subtitle">Requests waiting on your decision.</p></div>
+    </header>
+  }
   <div class="pa-toolbar">
     <input type="search" placeholder="Search by name" (input)="onSearchInput($event)" />
     <select (change)="onLeaveTypeFilterChange($any($event.target).value)">

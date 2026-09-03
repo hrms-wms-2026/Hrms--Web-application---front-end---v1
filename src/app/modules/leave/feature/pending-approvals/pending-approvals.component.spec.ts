@@ -48,4 +48,19 @@ describe('PendingApprovalsComponent', () => {
     await bulking;
     expect(fixture.componentInstance.selectedIds().size).toBe(0);
   });
+
+  it('shows its own header by default', () => {
+    fixture.detectChanges();
+    httpMock.expectOne((r) => r.url === `${environment.apiUrl}/leave/requests/pending-approvals`).flush([]);
+    httpMock.expectOne((r) => r.url === `${environment.apiUrl}/leave/types`).flush([]);
+    expect(fixture.nativeElement.querySelector('.pa-header')).toBeTruthy();
+  });
+
+  it('hides its own header when embedded', () => {
+    fixture.componentRef.setInput('embedded', true);
+    fixture.detectChanges();
+    httpMock.expectOne((r) => r.url === `${environment.apiUrl}/leave/requests/pending-approvals`).flush([]);
+    httpMock.expectOne((r) => r.url === `${environment.apiUrl}/leave/types`).flush([]);
+    expect(fixture.nativeElement.querySelector('.pa-header')).toBeNull();
+  });
 });

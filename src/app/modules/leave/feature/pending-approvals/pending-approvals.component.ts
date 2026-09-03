@@ -1,5 +1,5 @@
 /** Quiet Operations Desk: Screen 6/8's queue - one place for a manager or HR to clear pending leave. */
-import { ChangeDetectionStrategy, Component, inject, signal } from '@angular/core';
+import { ChangeDetectionStrategy, Component, inject, input, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { NotificationService } from '../../../../core/services/notification.service';
 import { PermissionService } from '../../../../core/auth/state/permission.service';
@@ -27,6 +27,7 @@ export class PendingApprovalsComponent {
 
   readonly detailOpen = signal(false);
   readonly selectedIds = signal<Set<string>>(new Set());
+  readonly embedded = input(false);
 
   constructor() {
     void this.store.loadPending();
