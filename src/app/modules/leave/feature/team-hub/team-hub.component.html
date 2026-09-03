@@ -1,0 +1,16 @@
+<section class="team-hub-page">
+  <header class="team-hub-header">
+    <p class="team-hub-kicker">TIME OFF / TEAM</p>
+    <h1>Team</h1>
+  </header>
+
+  @if (tabs().length > 0) {
+    <app-tabs [tabs]="tabs()" [value]="activeTab() ?? ''" ariaLabel="Team workspace" (valueChange)="selectTab($event)" />
+  }
+
+  @switch (activeTab()) {
+    @case ('balances') { <app-team-balances [embedded]="true" /> }
+    @case ('approvals') { <app-pending-approvals [embedded]="true" /> }
+    @case ('all') { <app-requests-list [embedded]="true" /> }
+  }
+</section>
