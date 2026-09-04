@@ -38,9 +38,9 @@ export type ModalSize = 'md' | 'lg' | 'xl' | '2xl';
     }
   `,
   styles: `
-    .modal-dialog--xl {
+    .modal-dialog--constrained {
       max-height: 85vh;
-      overflow: hidden;
+      overflow-y: auto;
     }
   `
 })
@@ -54,9 +54,9 @@ export class ModalComponent {
   readonly dialogClass = computed(() => {
     const sizeMap: Record<ModalSize, string> = {
       md: 'relative z-10 w-full max-w-md rounded-xl bg-[var(--color-surface)] p-6 shadow-lg outline-none',
-      lg: 'relative z-10 w-full max-w-xl rounded-xl bg-[var(--color-surface)] p-6 shadow-lg outline-none',
-      xl: 'relative z-10 w-full max-w-5xl rounded-xl bg-[var(--color-surface)] p-8 shadow-lg outline-none modal-dialog--xl',
-      '2xl': 'relative z-10 w-full max-w-6xl rounded-xl bg-[var(--color-surface)] p-8 shadow-lg outline-none modal-dialog--xl',
+      lg: 'relative z-10 w-full max-w-xl rounded-xl bg-[var(--color-surface)] p-6 shadow-lg outline-none modal-dialog--constrained',
+      xl: 'relative z-10 w-full max-w-5xl rounded-xl bg-[var(--color-surface)] p-8 shadow-lg outline-none modal-dialog--constrained',
+      '2xl': 'relative z-10 w-full max-w-6xl rounded-xl bg-[var(--color-surface)] p-8 shadow-lg outline-none modal-dialog--constrained',
     };
     return sizeMap[this.size()];
   });

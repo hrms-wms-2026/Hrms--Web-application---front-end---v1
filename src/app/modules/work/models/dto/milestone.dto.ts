@@ -44,6 +44,7 @@ export interface ObjectiveDetailDto {
   achievedAt: string | null;
   createdAt: string;
   updatedAt: string | null;
+  assets?: ObjectiveAssetDto[];
 }
 
 export interface ObjectiveSubtreeNodeDto extends ObjectiveDetailDto {
@@ -53,6 +54,15 @@ export interface ObjectiveSubtreeNodeDto extends ObjectiveDetailDto {
 export interface ObjectiveSubtreeResponseDto {
   parentObjective: ObjectiveDetailDto | null;
   objective: ObjectiveSubtreeNodeDto;
+}
+
+export interface ObjectiveAssetDto {
+  id: string;
+  fileName: string;
+  sizeBytes: number;
+  contentType: string;
+  uploadedAt: string;
+  downloadUrl: string;
 }
 
 export interface CreateObjectiveMemberInvitationRequestDto {

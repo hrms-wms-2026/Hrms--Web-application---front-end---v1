@@ -6,7 +6,7 @@ import {
   CreateProjectRequestDto, CreateProjectResponseDto, EditProjectRequestDto,
   PagedResultDto, ProjectDetailDto, ProjectListItemDto
 } from '../models/dto/project.dto';
-import { MyProjectMilestoneDto, ObjectiveDetailDto, ObjectiveSubtreeResponseDto, EditObjectiveRequestDto, CreateObjectiveRequestDto, AddObjectiveMemberOutcomeDto } from '../models/dto/milestone.dto';
+import { MyProjectMilestoneDto, ObjectiveDetailDto, ObjectiveSubtreeResponseDto, EditObjectiveRequestDto, CreateObjectiveRequestDto, AddObjectiveMemberOutcomeDto, ObjectiveAssetDto } from '../models/dto/milestone.dto';
 import { ObjectiveTreeItemDto } from '../models/dto/objective-tree.dto';
 
 @Injectable({ providedIn: 'root' })
@@ -101,5 +101,15 @@ export class ProjectApiService {
 
   createObjective(payload: CreateObjectiveRequestDto): Observable<ObjectiveDetailDto> {
     return this.http.post<ObjectiveDetailDto>(`${environment.apiUrl}/work/objectives`, payload);
+  }
+
+  uploadObjectiveAsset(objectiveId: string, file: File): Observable<ObjectiveAssetDto> {
+    const formData = new FormData();
+    formData.set('File', file);
+    return this.http.post<ObjectiveAssetDto>(`${environment.apiUrl}/work/objectives/${objectiveId}/assets`, formData);
+  }
+
+  deleteObjectiveAsset(objectiveId: string, assetId: string): Observable<void> {
+    return this.http.delete<void>(`${environment.apiUrl}/work/objectives/${objectiveId}/assets/${assetId}`);
   }
 }

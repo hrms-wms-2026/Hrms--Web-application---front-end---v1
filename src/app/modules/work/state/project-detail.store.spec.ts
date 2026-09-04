@@ -8,7 +8,7 @@ import { ObjectiveMemberApiService } from '../data-access/objective-member-api.s
 import { SprintApiService } from '../data-access/sprint-api.service';
 import { TaskApiService } from '../data-access/task-api.service';
 import { ProjectDetailDto } from '../models/dto/project.dto';
-import { MyProjectMilestoneDto, ObjectiveDetailDto, CreateObjectiveRequestDto, AddObjectiveMemberOutcomeDto, TransferObjectiveHeadOutcomeDto } from '../models/dto/milestone.dto';
+import { MyProjectMilestoneDto, ObjectiveDetailDto, CreateObjectiveRequestDto, AddObjectiveMemberOutcomeDto, TransferObjectiveHeadOutcomeDto, ObjectiveAssetDto } from '../models/dto/milestone.dto';
 import { ObjectiveTreeItemDto } from '../models/dto/objective-tree.dto';
 import { ObjectiveInvitationDto } from '../models/dto/objective-invitation.dto';
 import { SprintDto } from '../models/dto/sprint.dto';
@@ -205,7 +205,7 @@ describe('ProjectDetailStore', () => {
       startDate: '2026-01-15', endDate: '2026-03-01', allocatedHours: 20
     });
 
-    expect(result).toEqual({ success: true });
+    expect(result).toEqual({ success: true, objectiveId: 'o3' });
     expect(store.milestoneActionError()).toBeNull();
   });
 
@@ -221,6 +221,60 @@ describe('ProjectDetailStore', () => {
 
     expect(result).toEqual({ success: false });
     expect(store.milestoneActionError()).toBe('date range exceeds parent');
+  });
+
+  it('uploadMilestoneAsset returns success:true with the uploaded asset on success', async () => {
+    const asset: ObjectiveAssetDto = {
+      id: 'a1', fileName: 'plan.pdf', sizeBytes: 2048, contentType: 'application/pdf',
+      uploadedAt: '2026-09-02T00:00:00Z', downloadUrl: 'https://signed.example/plan.pdf'
+    };
+    const store = setup({ uploadObjectiveAsset: () => of(asset) } as Partial<ProjectApiService>);
+
+    const result = await store.uploadMilestoneAsset('o1', new File(['x'], 'plan.pdf'));
+
+    expect(result).toEqual({ success: true, asset });
+    expect(store.milestoneActionError()).toBeNull();
+  });
+
+  it('uploadMilestoneAsset returns success:false and sets milestoneActionError on failure', async () => {
+    const store = setup({
+      uploadObjectiveAsset: () => throwError(() => ({ error: { detail: 'file too large' } }))
+    } as Partial<ProjectApiService>);
+
+    const result = await store.uploadMilestoneAsset('o1', new File(['x'], 'huge.zip'));
+
+    expect(result).toEqual({ success: false });
+    expect(store.milestoneActionError()).toBe('file too large');
+  });
+
+  it('deleteMilestoneAsset returns success:true and clears milestoneActionError on success', async () => {
+    const store = setup({ deleteObjectiveAsset: () => of(undefined) } as Partial<ProjectApiService>);
+
+    const result = await store.deleteMilestoneAsset('o1', 'a1');
+
+    expect(result).toEqual({ success: true });
+    expect(store.milestoneActionError()).toBeNull();
+  });
+
+  it('deleteMilestoneAsset returns success:false and sets milestoneActionError on failure', async () => {
+    const store = setup({
+      deleteObjectiveAsset: () => throwError(() => ({ error: { detail: 'asset not found' } }))
+    } as Partial<ProjectApiService>);
+
+    const result = await store.deleteMilestoneAsset('o1', 'a1');
+
+    expect(result).toEqual({ success: false });
+    expect(store.milestoneActionError()).toBe('asset not found');
+  });
+
+  it('setMilestoneActionError sets and clears the error message directly', () => {
+    const store = setup();
+
+    store.setMilestoneActionError('3 file(s) failed to upload.');
+    expect(store.milestoneActionError()).toBe('3 file(s) failed to upload.');
+
+    store.setMilestoneActionError(null);
+    expect(store.milestoneActionError()).toBeNull();
   });
 
   it('loadObjectiveMembers populates objectiveMembers on success', async () => {

@@ -1,3 +1,12 @@
+@if (createAssetWarning(); as warning) {
+<div data-testid="create-asset-warning" role="alert"
+  class="mb-4 flex items-start justify-between gap-3 rounded-lg border border-[var(--color-warning)]/30 bg-[var(--color-warning-subtle)] px-3 py-2 text-sm text-[var(--color-warning-text)]">
+  <span>{{ warning }}</span>
+  <button type="button" data-testid="dismiss-create-asset-warning" aria-label="Dismiss"
+    class="shrink-0 text-[var(--color-warning-text)] transition-opacity hover:opacity-70"
+    (click)="dismissCreateAssetWarning()">&#x2715;</button>
+</div>
+}
 <div class="grid grid-cols-1 gap-4 lg:grid-cols-[minmax(0,1fr)_24rem] lg:items-start">
   <div
     class="w-full flex flex-col rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] p-4 shadow-sm min-h-[220px]">
