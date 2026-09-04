@@ -71,3 +71,52 @@ describe('app routes - Settings', () => {
     expect(legacyRoute?.redirectTo).toBe('attendance/time-tracking');
   });
 });
+
+describe('app routes - already-authenticated tabs skip the login form', () => {
+  // Reproduces the "new tab asks me to log in again" bug: a tab landing on /auth/login (or an
+  // unmatched URL, which redirects there) must not render the login form when the browser
+  // already carries a valid session cookie - it should land in the app like any other guarded
+  // route already does.
+  let router: Router;
+
+  async function setUp(authenticated: boolean) {
+    await TestBed.configureTestingModule({
+      providers: [
+        provideRouter(routes),
+        provideHttpClient(),
+        provideHttpClientTesting(),
+        { provide: AuthStore, useValue: { checkSession: () => Promise.resolve(authenticated) } },
+        {
+          provide: PermissionService,
+          useValue: { hasAnyPermission: () => true, hasAnyModule: () => true, hasPermission: () => true }
+        }
+      ]
+    }).compileComponents();
+    router = TestBed.inject(Router);
+  }
+
+  it('redirects an already-authenticated tab away from /auth/login to /dashboard', async () => {
+    await setUp(true);
+
+    await router.navigateByUrl('/auth/login');
+
+    expect(router.url).toBe('/dashboard');
+  });
+
+  it('redirects an already-authenticated tab landing on an unmatched URL to /dashboard', async () => {
+    await setUp(true);
+
+    await router.navigateByUrl('/some/bookmarked/url-that-no-longer-exists');
+
+    expect(router.url).toBe('/dashboard');
+  });
+
+  it('still shows the login form for a guest with no session', async () => {
+    await setUp(false);
+
+    const success = await router.navigateByUrl('/auth/login');
+
+    expect(success).toBe(true);
+    expect(router.url).toBe('/auth/login');
+  });
+});
