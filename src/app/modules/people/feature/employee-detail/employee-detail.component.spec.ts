@@ -24,7 +24,8 @@ describe('EmployeeDetailComponent', () => {
       employmentTypeLabel: 'Full time',
       status: 'active',
       hireDate: '2024-01-15',
-      probationEndDate: null
+      probationEndDate: null,
+      workModeLabel: 'Remote'
     },
     personalInformation: {
       firstName: 'Ada',

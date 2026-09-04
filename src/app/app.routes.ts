@@ -182,7 +182,8 @@ export const routes: Routes = [
       {
         path: 'login',
         loadComponent: () =>
-          import('./core/auth/feature/login/login.component').then((module) => module.LoginComponent)
+          import('./core/auth/feature/login/login.component').then((module) => module.LoginComponent),
+        canActivate: [redirectIfAuthenticatedGuard]
       },
       {
         path: 'legal-consent',

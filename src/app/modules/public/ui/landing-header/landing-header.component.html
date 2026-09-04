@@ -49,7 +49,11 @@
         </button>
       </div>
 
-      <a routerLink="/auth/login" class="landing-header__signin">Login</a>
+      @if (workspaceUrl(); as url) {
+        <a [href]="url" class="landing-header__signin">Go to Workspace</a>
+      } @else {
+        <a routerLink="/auth/login" class="landing-header__signin">Login</a>
+      }
 
       <button
         type="button"
@@ -80,7 +84,11 @@
     <a href="#pricing" (click)="closeMenu()">Pricing</a>
     <a href="#faq" (click)="closeMenu()">FAQ</a>
     <div class="landing-header__mobile-actions">
-      <a routerLink="/auth/login" class="landing-header__signin landing-header__signin--mobile" (click)="closeMenu()">Sign in</a>
+      @if (workspaceUrl(); as url) {
+        <a [href]="url" class="landing-header__signin landing-header__signin--mobile" (click)="closeMenu()">Go to Workspace</a>
+      } @else {
+        <a routerLink="/auth/login" class="landing-header__signin landing-header__signin--mobile" (click)="closeMenu()">Sign in</a>
+      }
       <a routerLink="/book-a-demo" class="landing-header__demo-btn landing-header__demo-btn--mobile" (click)="closeMenu()">Request Demo</a>
     </div>
   </div>
