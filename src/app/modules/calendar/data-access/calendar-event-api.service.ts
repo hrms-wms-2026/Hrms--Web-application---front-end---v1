@@ -4,7 +4,8 @@ import { Observable } from 'rxjs';
 import { environment } from '../../../../environments/environment';
 import {
   CalendarConflictsResponse, CalendarEventResponse, CalendarEventsResponse, CheckCalendarConflictsRequest,
-  CreateCalendarEventRequest, EditRecurringOccurrenceRequest, RespondToCalendarEventStatus, UpdateCalendarEventRequest
+  CreateCalendarEventRequest, EditRecurringOccurrenceRequest, GetEligibleNomineesResponse,
+  RespondToCalendarEventStatus, UpdateCalendarEventRequest
 } from '../models/calendar-event.model';
 
 @Injectable({ providedIn: 'root' })
@@ -36,8 +37,15 @@ export class CalendarEventApiService {
     return this.http.delete<void>(`${this.baseUrl}/${masterId}/occurrence`, { params: { originalStart } });
   }
 
-  respond(eventId: string, responseStatus: RespondToCalendarEventStatus): Observable<void> {
-    return this.http.post<void>(`${this.baseUrl}/${eventId}/respond`, { responseStatus });
+  respond(
+    eventId: string, responseStatus: RespondToCalendarEventStatus,
+    reason: string | null = null, nomineeEmployeeId: string | null = null
+  ): Observable<void> {
+    return this.http.post<void>(`${this.baseUrl}/${eventId}/respond`, { responseStatus, reason, nomineeEmployeeId });
+  }
+
+  getEligibleNominees(eventId: string): Observable<GetEligibleNomineesResponse> {
+    return this.http.get<GetEligibleNomineesResponse>(`${this.baseUrl}/${eventId}/eligible-nominees`);
   }
 
   checkConflicts(payload: CheckCalendarConflictsRequest): Observable<CalendarConflictsResponse> {

@@ -12,7 +12,7 @@ import { AuthStore } from '../../../../core/auth/state/auth.store';
 import { localPartsToUtcIso, utcIsoToLocalParts } from '../../../../shared/utils/timezone.util';
 import {
   CalendarConflict, CalendarEventParticipant, CalendarEventResponse, CreateCalendarEventRequest,
-  RecurrenceEditScope, RespondToCalendarEventStatus, UpdateCalendarEventRequest
+  EligibleNominee, RecurrenceEditScope, RespondToCalendarEventStatus, UpdateCalendarEventRequest
 } from '../../models/calendar-event.model';
 import { RecurrenceEndMode, RecurrenceFrequency, buildRecurrenceRule } from '../../utils/recurrence-rule.util';
 import { CalendarParticipantPickerComponent } from '../calendar-participant-picker/calendar-participant-picker.component';
@@ -20,6 +20,12 @@ import { CalendarParticipantPickerComponent } from '../calendar-participant-pick
 export type CalendarEventFormSubmission =
   | { create: CreateCalendarEventRequest }
   | { update: UpdateCalendarEventRequest; scope: RecurrenceEditScope | null };
+
+export interface RespondToCalendarEventPayload {
+  status: RespondToCalendarEventStatus;
+  reason: string | null;
+  nomineeEmployeeId: string | null;
+}
 
 @Component({
   selector: 'app-calendar-event-form-modal',
@@ -41,10 +47,12 @@ export class CalendarEventFormModalComponent implements OnChanges {
   @Input() conflicts: readonly CalendarConflict[] = [];
   @Input() checkingConflicts = false;
   @Input() myTimezone = 'UTC';
+  @Input() eligibleNominees: readonly EligibleNominee[] = [];
   @Output() save = new EventEmitter<CalendarEventFormSubmission>();
   @Output() delete = new EventEmitter<RecurrenceEditScope | null>();
-  @Output() respond = new EventEmitter<RespondToCalendarEventStatus>();
+  @Output() respond = new EventEmitter<RespondToCalendarEventPayload>();
   @Output() checkConflicts = new EventEmitter<{ participantEmployeeIds: readonly string[]; startDate: string; endDate: string }>();
+  @Output() loadEligibleNominees = new EventEmitter<void>();
   @Output() cancel = new EventEmitter<void>();
 
   private readonly authStore = inject(AuthStore);
@@ -60,6 +68,12 @@ export class CalendarEventFormModalComponent implements OnChanges {
   readonly participantPickerOpen = signal(false);
   readonly participantIds = signal<readonly string[]>([]);
   readonly discardConfirmOpen = signal(false);
+
+  readonly moreMenuOpen = signal(false);
+  readonly resolutionReasonPromptOpen = signal(false);
+  readonly nomineePickerOpen = signal(false);
+  readonly reasonText = signal('');
+  readonly selectedNomineeId = signal<string | null>(null);
 
   readonly form = this.fb.group({
     title: ['', [Validators.required, Validators.maxLength(200)]],
@@ -89,8 +103,56 @@ export class CalendarEventFormModalComponent implements OnChanges {
     return this.event.participants.find((p) => p.employeeId === employeeId) ?? null;
   }
 
-  onRespond(status: RespondToCalendarEventStatus): void {
-    this.respond.emit(status);
+  onRespond(status: RespondToCalendarEventStatus, reason: string | null = null, nomineeEmployeeId: string | null = null): void {
+    this.respond.emit({ status, reason, nomineeEmployeeId });
+  }
+
+  toggleMoreMenu(): void {
+    const opening = !this.moreMenuOpen();
+    this.moreMenuOpen.set(opening);
+    if (opening) this.loadEligibleNominees.emit();
+  }
+
+  openResolutionPrompt(): void {
+    this.moreMenuOpen.set(false);
+    this.reasonText.set('');
+    this.resolutionReasonPromptOpen.set(true);
+  }
+
+  cancelResolutionPrompt(): void {
+    this.resolutionReasonPromptOpen.set(false);
+  }
+
+  setReasonText(value: string): void {
+    this.reasonText.set(value);
+  }
+
+  submitResolutionRequest(): void {
+    const reason = this.reasonText().trim();
+    if (!reason) return;
+    this.resolutionReasonPromptOpen.set(false);
+    this.onRespond('ResolutionRequested', reason, null);
+  }
+
+  openNomineePicker(): void {
+    this.moreMenuOpen.set(false);
+    this.selectedNomineeId.set(this.eligibleNominees[0]?.employeeId ?? null);
+    this.nomineePickerOpen.set(true);
+  }
+
+  cancelNomineePicker(): void {
+    this.nomineePickerOpen.set(false);
+  }
+
+  setSelectedNomineeId(value: string): void {
+    this.selectedNomineeId.set(value);
+  }
+
+  submitNomineeNomination(): void {
+    const nomineeId = this.selectedNomineeId();
+    if (!nomineeId) return;
+    this.nomineePickerOpen.set(false);
+    this.onRespond('ReplacementNominated', null, nomineeId);
   }
 
   ngOnChanges(changes: SimpleChanges): void {

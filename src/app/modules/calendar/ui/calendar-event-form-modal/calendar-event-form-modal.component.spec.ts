@@ -143,7 +143,79 @@ describe('CalendarEventFormModalComponent', () => {
     const spy = vi.fn();
     fixture.componentInstance.respond.subscribe(spy);
     fixture.nativeElement.querySelector('[data-testid="calendar-form-accept"]').click();
-    expect(spy).toHaveBeenCalledWith('Accepted');
+    expect(spy).toHaveBeenCalledWith({ status: 'Accepted', reason: null, nomineeEmployeeId: null });
+  });
+
+  it('does not show "Nominate replacement" when there are no eligible nominees', () => {
+    currentEmployeeId = 'emp-1';
+    fixture.componentRef.setInput('event', {
+      id: 'e1', title: 'Existing', description: null, startDate: '2026-09-01T09:00:00Z', endDate: '2026-09-01T09:30:00Z',
+      sourceType: 'manual', color: null, recurrence: 'none', isAllDay: false, timezone: 'UTC', eventStatus: null,
+      isPrivate: false, location: null, meetingLink: null, externalSource: null, createdById: 'u1',
+      isRecurringOccurrence: false, recurrenceMasterId: null, originalStart: null,
+      participants: [{ employeeId: 'emp-1', employeeName: 'Ada Lovelace', responseStatus: 'pending' }]
+    });
+    fixture.componentRef.setInput('eligibleNominees', []);
+    fixture.detectChanges();
+
+    fixture.nativeElement.querySelector('[data-testid="calendar-form-more"]').click();
+    fixture.detectChanges();
+
+    expect(fixture.nativeElement.querySelector('[data-testid="calendar-form-nominate"]')).toBeNull();
+  });
+
+  it('shows "Nominate replacement" and submits the chosen nominee when eligible nominees exist', () => {
+    currentEmployeeId = 'emp-1';
+    fixture.componentRef.setInput('event', {
+      id: 'e1', title: 'Existing', description: null, startDate: '2026-09-01T09:00:00Z', endDate: '2026-09-01T09:30:00Z',
+      sourceType: 'manual', color: null, recurrence: 'none', isAllDay: false, timezone: 'UTC', eventStatus: null,
+      isPrivate: false, location: null, meetingLink: null, externalSource: null, createdById: 'u1',
+      isRecurringOccurrence: false, recurrenceMasterId: null, originalStart: null,
+      participants: [{ employeeId: 'emp-1', employeeName: 'Ada Lovelace', responseStatus: 'pending' }]
+    });
+    fixture.componentRef.setInput('eligibleNominees', [{ employeeId: 'emp-2', employeeName: 'Grace Hopper' }]);
+    fixture.detectChanges();
+
+    const loadSpy = vi.fn();
+    fixture.componentInstance.loadEligibleNominees.subscribe(loadSpy);
+    fixture.nativeElement.querySelector('[data-testid="calendar-form-more"]').click();
+    fixture.detectChanges();
+    expect(loadSpy).toHaveBeenCalledTimes(1);
+
+    fixture.nativeElement.querySelector('[data-testid="calendar-form-nominate"]').click();
+    fixture.detectChanges();
+
+    const respondSpy = vi.fn();
+    fixture.componentInstance.respond.subscribe(respondSpy);
+    fixture.nativeElement.querySelector('[data-testid="calendar-form-submit-nominate"]').click();
+    expect(respondSpy).toHaveBeenCalledWith({ status: 'ReplacementNominated', reason: null, nomineeEmployeeId: 'emp-2' });
+  });
+
+  it('submits a reason when requesting conflict resolution', () => {
+    currentEmployeeId = 'emp-1';
+    fixture.componentRef.setInput('event', {
+      id: 'e1', title: 'Existing', description: null, startDate: '2026-09-01T09:00:00Z', endDate: '2026-09-01T09:30:00Z',
+      sourceType: 'manual', color: null, recurrence: 'none', isAllDay: false, timezone: 'UTC', eventStatus: null,
+      isPrivate: false, location: null, meetingLink: null, externalSource: null, createdById: 'u1',
+      isRecurringOccurrence: false, recurrenceMasterId: null, originalStart: null,
+      participants: [{ employeeId: 'emp-1', employeeName: 'Ada Lovelace', responseStatus: 'pending' }]
+    });
+    fixture.detectChanges();
+
+    fixture.nativeElement.querySelector('[data-testid="calendar-form-more"]').click();
+    fixture.detectChanges();
+    fixture.nativeElement.querySelector('[data-testid="calendar-form-request-resolution"]').click();
+    fixture.detectChanges();
+
+    const textarea = fixture.nativeElement.querySelector('[data-testid="calendar-form-resolution-reason"]');
+    textarea.value = 'Need to check with my team';
+    textarea.dispatchEvent(new Event('input'));
+    fixture.detectChanges();
+
+    const spy = vi.fn();
+    fixture.componentInstance.respond.subscribe(spy);
+    fixture.nativeElement.querySelector('[data-testid="calendar-form-submit-resolution"]').click();
+    expect(spy).toHaveBeenCalledWith({ status: 'ResolutionRequested', reason: 'Need to check with my team', nomineeEmployeeId: null });
   });
 
   it('emits checkConflicts (debounced) once participants and both dates are set, but not while editing', () => {

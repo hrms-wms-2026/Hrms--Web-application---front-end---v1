@@ -155,12 +155,60 @@
         </div>
 
         @if (viewerParticipant(); as vp) {
-          <div class="flex items-center justify-between gap-2 rounded-md border border-[var(--color-border)] p-2">
-            <span class="text-sm">Your response: <strong>{{ vp.responseStatus }}</strong></span>
-            <div class="flex gap-2">
-              <app-button type="button" variant="secondary" data-testid="calendar-form-decline" (click)="onRespond('Rejected')">Decline</app-button>
-              <app-button type="button" data-testid="calendar-form-accept" (click)="onRespond('Accepted')">Accept</app-button>
+          <div class="flex flex-col gap-2 rounded-md border border-[var(--color-border)] p-2">
+            <div class="flex items-center justify-between gap-2">
+              <span class="text-sm">Your response: <strong>{{ vp.responseStatus }}</strong></span>
+              <div class="flex gap-2">
+                <app-button type="button" variant="secondary" data-testid="calendar-form-decline" (click)="onRespond('Rejected')">Decline</app-button>
+                <app-button type="button" data-testid="calendar-form-accept" (click)="onRespond('Accepted')">Accept</app-button>
+                <app-button type="button" variant="secondary" data-testid="calendar-form-more" (click)="toggleMoreMenu()">More</app-button>
+              </div>
             </div>
+
+            @if (moreMenuOpen()) {
+              <div class="flex flex-col gap-2 rounded-md border border-[var(--color-border)] p-2">
+                <button type="button" class="text-left text-sm" data-testid="calendar-form-request-resolution" (click)="openResolutionPrompt()">Request conflict resolution</button>
+                @if (eligibleNominees.length > 0) {
+                  <button type="button" class="text-left text-sm" data-testid="calendar-form-nominate" (click)="openNomineePicker()">Nominate replacement</button>
+                }
+              </div>
+            }
+
+            @if (resolutionReasonPromptOpen()) {
+              <div class="flex flex-col gap-2 rounded-md border border-[var(--color-border)] p-2">
+                <textarea
+                  data-testid="calendar-form-resolution-reason"
+                  placeholder="Why do you need help resolving this conflict?"
+                  class="rounded-md border border-[var(--color-border)] bg-[var(--color-surface)] px-2.5 py-1.5 text-sm"
+                  rows="2"
+                  [value]="reasonText()"
+                  (input)="setReasonText($any($event.target).value)"
+                ></textarea>
+                <div class="flex justify-end gap-2">
+                  <app-button type="button" variant="secondary" (click)="cancelResolutionPrompt()">Cancel</app-button>
+                  <app-button type="button" data-testid="calendar-form-submit-resolution" [disabled]="!reasonText().trim()" (click)="submitResolutionRequest()">Submit</app-button>
+                </div>
+              </div>
+            }
+
+            @if (nomineePickerOpen()) {
+              <div class="flex flex-col gap-2 rounded-md border border-[var(--color-border)] p-2">
+                <select
+                  data-testid="calendar-form-nominee-select"
+                  class="rounded-md border border-[var(--color-border)] bg-[var(--color-surface)] px-2.5 py-1.5 text-sm"
+                  [value]="selectedNomineeId()"
+                  (change)="setSelectedNomineeId($any($event.target).value)"
+                >
+                  @for (nominee of eligibleNominees; track nominee.employeeId) {
+                    <option [value]="nominee.employeeId">{{ nominee.employeeName }}</option>
+                  }
+                </select>
+                <div class="flex justify-end gap-2">
+                  <app-button type="button" variant="secondary" (click)="cancelNomineePicker()">Cancel</app-button>
+                  <app-button type="button" data-testid="calendar-form-submit-nominate" [disabled]="!selectedNomineeId()" (click)="submitNomineeNomination()">Submit</app-button>
+                </div>
+              </div>
+            }
           </div>
         }
       }
