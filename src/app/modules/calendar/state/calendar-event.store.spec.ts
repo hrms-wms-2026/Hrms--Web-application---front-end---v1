@@ -10,7 +10,8 @@ function makeEvent(overrides: Partial<CalendarEventResponse> = {}): CalendarEven
     id: 'e1', title: 'Standup', description: null, startDate: '2026-09-01T09:00:00Z', endDate: '2026-09-01T09:30:00Z',
     sourceType: 'manual', color: null, recurrence: 'none', isAllDay: false, timezone: 'UTC', eventStatus: null,
     isPrivate: false, location: null, meetingLink: null, externalSource: null, createdById: 'u1',
-    isRecurringOccurrence: false, recurrenceMasterId: null, originalStart: null, participants: null, ...overrides
+    isRecurringOccurrence: false, recurrenceMasterId: null, originalStart: null, participants: null,
+    hasConflict: false, ...overrides
   };
 }
 

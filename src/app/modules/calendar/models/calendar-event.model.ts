@@ -25,6 +25,7 @@ export interface CalendarEventResponse {
   recurrenceMasterId: string | null;
   originalStart: string | null;
   participants: readonly CalendarEventParticipant[] | null;
+  hasConflict: boolean;
 }
 
 export interface CalendarEventsResponse {

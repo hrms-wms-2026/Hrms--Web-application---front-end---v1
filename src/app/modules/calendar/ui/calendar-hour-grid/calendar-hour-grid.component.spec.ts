@@ -3,12 +3,12 @@ import { vi } from 'vitest';
 import { CalendarEventResponse } from '../../models/calendar-event.model';
 import { CalendarHourGridComponent } from './calendar-hour-grid.component';
 
-function makeEvent(id: string, date: string, startHHmm: string, endHHmm: string, isAllDay = false): CalendarEventResponse {
+function makeEvent(id: string, date: string, startHHmm: string, endHHmm: string, isAllDay = false, hasConflict = false): CalendarEventResponse {
   return {
     id, title: id, description: null, startDate: `${date}T${startHHmm}:00Z`, endDate: `${date}T${endHHmm}:00Z`,
     sourceType: 'manual', color: '#2563EB', recurrence: 'none', isAllDay, timezone: 'UTC', eventStatus: null,
     isPrivate: false, location: null, meetingLink: null, externalSource: null, createdById: 'u1',
-    isRecurringOccurrence: false, recurrenceMasterId: null, originalStart: null, participants: null
+    isRecurringOccurrence: false, recurrenceMasterId: null, originalStart: null, participants: null, hasConflict
   };
 }
 
@@ -71,5 +71,24 @@ describe('CalendarHourGridComponent', () => {
 
     expect(fixture.componentInstance.columns()[0].positioned.length).toBe(0);
     expect(fixture.componentInstance.columns()[1].positioned.length).toBe(1);
+  });
+
+  it('renders a conflict indicator on a timed event block flagged hasConflict', () => {
+    fixture.componentRef.setInput('events', [makeEvent('timed', '2026-09-01', '09:00', '10:00', false, true)]);
+    fixture.detectChanges();
+    const block = fixture.nativeElement.querySelector('[data-testid="calendar-hour-event-block"]');
+    expect(block.querySelector('[data-testid="calendar-conflict-marker"]')).not.toBeNull();
+  });
+
+  it('does not render a conflict indicator on a non-conflicting timed event block', () => {
+    const block = fixture.nativeElement.querySelector('[data-testid="calendar-hour-event-block"]');
+    expect(block.querySelector('[data-testid="calendar-conflict-marker"]')).toBeNull();
+  });
+
+  it('renders a conflict indicator on an all-day chip flagged hasConflict', () => {
+    fixture.componentRef.setInput('events', [makeEvent('allday', '2026-09-02', '00:00', '23:59', true, true)]);
+    fixture.detectChanges();
+    const chip = fixture.nativeElement.querySelector('[data-testid="calendar-hour-allday-chip"]');
+    expect(chip.querySelector('[data-testid="calendar-conflict-marker"]')).not.toBeNull();
   });
 });
