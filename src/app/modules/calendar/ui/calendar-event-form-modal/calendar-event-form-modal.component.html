@@ -126,7 +126,7 @@
                   <path d="M12 9v4" />
                   <path d="M12 17h.01" />
                 </svg>
-                <span>{{ conflict.employeeName }} is busy at this time ({{ conflict.conflictingEventTitle }}).</span>
+                <span>{{ conflict.employeeName }} is busy {{ formatOverlap(conflict.overlapStart, conflict.overlapEnd) }} ({{ conflict.conflictingEventTitle }}).</span>
               </div>
             }
           </div>

@@ -100,7 +100,10 @@ describe('CalendarEventStore', () => {
   it('checkConflicts populates conflicts on success', async () => {
     const work = store.checkConflicts(['emp-1'], '2026-09-01T09:00:00Z', '2026-09-01T10:00:00Z');
     http.expectOne(`${environment.apiUrl}/calendar/check-conflicts`).flush({
-      conflicts: [{ employeeId: 'emp-1', employeeName: 'Ada Lovelace', conflictingEventId: 'e9', conflictingEventTitle: 'Standup' }]
+      conflicts: [{
+        employeeId: 'emp-1', employeeName: 'Ada Lovelace', conflictingEventId: 'e9', conflictingEventTitle: 'Standup',
+        overlapStart: '2026-09-01T09:00:00Z', overlapEnd: '2026-09-01T10:00:00Z'
+      }]
     });
     await work;
     expect(store.conflicts().length).toBe(1);

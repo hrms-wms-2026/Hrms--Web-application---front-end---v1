@@ -256,4 +256,11 @@ export class CalendarEventFormModalComponent implements OnChanges {
   onDelete(scope: RecurrenceEditScope | null = null): void {
     this.delete.emit(scope);
   }
+
+  formatOverlap(start: string, end: string): string {
+    const formatter = new Intl.DateTimeFormat(undefined, {
+      timeZone: this.myTimezone, hour: 'numeric', minute: '2-digit', hour12: true
+    });
+    return `from ${formatter.format(new Date(start))} to ${formatter.format(new Date(end))}`;
+  }
 }

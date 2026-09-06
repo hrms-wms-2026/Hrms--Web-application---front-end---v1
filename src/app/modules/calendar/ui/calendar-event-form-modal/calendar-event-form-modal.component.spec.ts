@@ -182,11 +182,26 @@ describe('CalendarEventFormModalComponent', () => {
 
   it('renders a non-blocking warning line per conflict', () => {
     fixture.componentRef.setInput('conflicts', [
-      { employeeId: 'emp-1', employeeName: 'Ada Lovelace', conflictingEventId: 'e9', conflictingEventTitle: 'Standup' }
+      {
+        employeeId: 'emp-1', employeeName: 'Ada Lovelace', conflictingEventId: 'e9', conflictingEventTitle: 'Standup',
+        overlapStart: '2026-09-01T09:00:00Z', overlapEnd: '2026-09-01T09:30:00Z'
+      }
     ]);
     fixture.detectChanges();
-    expect(fixture.nativeElement.textContent).toContain('Ada Lovelace is busy at this time (Standup)');
+    expect(fixture.nativeElement.textContent).toContain('Ada Lovelace is busy from 9:00 AM to 9:30 AM (Standup)');
     expect(fixture.nativeElement.querySelector('[data-testid="calendar-form-save-plain"] button').disabled).toBe(false);
+  });
+
+  it('shows the overlap time range in the conflict warning', () => {
+    fixture.componentRef.setInput('myTimezone', 'Asia/Colombo');
+    fixture.componentRef.setInput('conflicts', [
+      {
+        employeeId: 'emp-1', employeeName: 'Ada Lovelace', conflictingEventId: 'e9', conflictingEventTitle: 'Standup',
+        overlapStart: '2026-04-10T09:00:00+05:30', overlapEnd: '2026-04-10T09:30:00+05:30'
+      }
+    ]);
+    fixture.detectChanges();
+    expect(fixture.nativeElement.textContent).toContain('9:00 AM to 9:30 AM');
   });
 
   it('pre-fills the form using the viewer timezone, not raw UTC digits', () => {

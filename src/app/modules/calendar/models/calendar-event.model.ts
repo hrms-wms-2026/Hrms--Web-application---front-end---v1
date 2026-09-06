@@ -83,6 +83,8 @@ export interface CalendarConflict {
   employeeName: string;
   conflictingEventId: string;
   conflictingEventTitle: string;
+  overlapStart: string;
+  overlapEnd: string;
 }
 
 export interface CheckCalendarConflictsRequest {
