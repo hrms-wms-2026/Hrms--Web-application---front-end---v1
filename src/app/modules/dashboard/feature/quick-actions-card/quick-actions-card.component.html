@@ -1,44 +1,47 @@
 <app-card title="Quick Actions">
-  <div class="grid grid-cols-3 gap-4">
+  <div class="grid grid-cols-3 gap-2.5">
+    <!-- Break Action Tile -->
     <button
       type="button"
       data-testid="quick-action-break"
-      class="flex flex-col items-center gap-2 text-center transition hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-50"
+      class="group flex flex-col items-center justify-center gap-1.5 rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] p-3 text-center transition hover:border-[var(--color-success)] hover:shadow-2xs disabled:cursor-not-allowed disabled:opacity-50 cursor-pointer"
       [disabled]="breakDisabled() || breakBusy()"
       (click)="toggleBreak()"
     >
-      <span class="flex h-12 w-12 items-center justify-center rounded-full bg-[var(--color-success-subtle,var(--color-surface-secondary))] text-[var(--color-success)]">
-        <svg viewBox="0 0 20 20" fill="currentColor" class="h-5 w-5">
+      <span class="flex h-9 w-9 items-center justify-center rounded-lg bg-[var(--color-success-subtle,var(--color-surface-secondary))] text-[var(--color-success)] transition group-hover:scale-105 shadow-2xs">
+        <svg viewBox="0 0 20 20" fill="currentColor" class="h-4.5 w-4.5">
           <path d="M4 3a1 1 0 00-1 1v7a4 4 0 004 4h4a4 4 0 004-4v-1h.5a2.5 2.5 0 000-5H15V4a1 1 0 00-1-1H4zm11 6h.5a.5.5 0 010 1H15V9z" />
         </svg>
       </span>
-      <span class="text-sm font-medium text-[var(--color-text-primary)]" data-testid="quick-action-break-label">
+      <span class="text-xs font-semibold text-[var(--color-text-primary)] group-hover:text-[var(--color-success)]" data-testid="quick-action-break-label">
         {{ breakBusy() ? 'Working…' : breakLabel() }}
       </span>
-      <span class="text-xs text-[var(--color-text-secondary)]">Take a break</span>
+      <span class="text-2xs text-[var(--color-text-secondary)]">Take a break</span>
     </button>
 
+    <!-- Insights Action Tile -->
     <a
       routerLink="/dashboard/insights"
       data-testid="quick-action-insights"
-      class="flex flex-col items-center gap-2 text-center transition hover:opacity-90"
+      class="group flex flex-col items-center justify-center gap-1.5 rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] p-3 text-center transition hover:border-[var(--color-accent)] hover:shadow-2xs cursor-pointer"
     >
-      <span class="flex h-12 w-12 items-center justify-center rounded-full bg-[var(--color-accent-subtle)] text-[var(--color-accent)]">
-        <svg viewBox="0 0 20 20" fill="currentColor" class="h-5 w-5">
+      <span class="flex h-9 w-9 items-center justify-center rounded-lg bg-[var(--color-accent-subtle)] text-[var(--color-accent)] transition group-hover:scale-105 shadow-2xs">
+        <svg viewBox="0 0 20 20" fill="currentColor" class="h-4.5 w-4.5">
           <path d="M2 11a1 1 0 011-1h1a1 1 0 011 1v6a1 1 0 01-1 1H3a1 1 0 01-1-1v-6zM8 7a1 1 0 011-1h1a1 1 0 011 1v10a1 1 0 01-1 1H9a1 1 0 01-1-1V7zM14 4a1 1 0 011-1h1a1 1 0 011 1v13a1 1 0 01-1 1h-1a1 1 0 01-1-1V4z" />
         </svg>
       </span>
-      <span class="text-sm font-medium text-[var(--color-text-primary)]">My Insights</span>
-      <span class="text-xs text-[var(--color-text-secondary)]">View analytics</span>
+      <span class="text-xs font-semibold text-[var(--color-text-primary)] group-hover:text-[var(--color-accent)]">My Insights</span>
+      <span class="text-2xs text-[var(--color-text-secondary)]">View analytics</span>
     </a>
 
+    <!-- Activity Timeline Action Tile -->
     <a
       routerLink="/dashboard/activity-timeline"
       data-testid="quick-action-activity-timeline"
-      class="flex flex-col items-center gap-2 text-center transition hover:opacity-90"
+      class="group flex flex-col items-center justify-center gap-1.5 rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] p-3 text-center transition hover:border-[var(--color-accent)] hover:shadow-2xs cursor-pointer"
     >
-      <span class="flex h-12 w-12 items-center justify-center rounded-full bg-[var(--color-surface-secondary)] text-[var(--color-text-secondary)]">
-        <svg viewBox="0 0 20 20" fill="currentColor" class="h-5 w-5">
+      <span class="flex h-9 w-9 items-center justify-center rounded-lg bg-[var(--color-surface-secondary)] text-[var(--color-text-secondary)] transition group-hover:scale-105 shadow-2xs">
+        <svg viewBox="0 0 20 20" fill="currentColor" class="h-4.5 w-4.5">
           <path
             fill-rule="evenodd"
             d="M10 18a8 8 0 100-16 8 8 0 000 16zm1-12a1 1 0 10-2 0v4a1 1 0 00.293.707l2.828 2.829a1 1 0 101.415-1.415L11 9.586V6z"
@@ -46,8 +49,8 @@
           />
         </svg>
       </span>
-      <span class="text-sm font-medium text-[var(--color-text-primary)]">Activity Timeline</span>
-      <span class="text-xs text-[var(--color-text-secondary)]">View full timeline</span>
+      <span class="text-xs font-semibold text-[var(--color-text-primary)] group-hover:text-[var(--color-accent)]">Activity Timeline</span>
+      <span class="text-2xs text-[var(--color-text-secondary)]">View full timeline</span>
     </a>
   </div>
 </app-card>
