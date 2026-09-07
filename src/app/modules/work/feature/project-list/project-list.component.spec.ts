@@ -69,12 +69,54 @@ describe('ProjectListComponent', () => {
     expect(storeStub.loadProjects).toHaveBeenCalled();
   });
 
-  it('renders a list row per project and auto-selects the first into the explanation card', () => {
+  it('renders list view by default as the base view', () => {
+    fixture.detectChanges();
+    expect(fixture.componentInstance.viewMode()).toBe('list');
+    expect(fixture.nativeElement.querySelector('[data-testid="project-list"]')).not.toBeNull();
+    expect(fixture.nativeElement.textContent).toContain('Website Revamp');
+  });
+
+  it('cycles viewMode sequentially (list -> card -> table -> list) on button click and persists to localStorage', () => {
+    fixture.detectChanges();
+    expect(fixture.componentInstance.viewMode()).toBe('list');
+
+    const cycleBtn: HTMLButtonElement | null = fixture.nativeElement.querySelector('[data-testid="work-view-cycle-btn"]');
+    expect(cycleBtn).toBeTruthy();
+
+    // 1st click: list -> card
+    cycleBtn!.click();
+    fixture.detectChanges();
+    expect(fixture.componentInstance.viewMode()).toBe('card');
+    expect(localStorage.getItem('projects_view_mode')).toBe('card');
+
+    // 2nd click: card -> table
+    cycleBtn!.click();
+    fixture.detectChanges();
+    expect(fixture.componentInstance.viewMode()).toBe('table');
+    expect(localStorage.getItem('projects_view_mode')).toBe('table');
+
+    // 3rd click: table -> list
+    cycleBtn!.click();
+    fixture.detectChanges();
+    expect(fixture.componentInstance.viewMode()).toBe('list');
+    expect(localStorage.getItem('projects_view_mode')).toBe('list');
+
+    localStorage.removeItem('projects_view_mode');
+  });
+
+  it('renders a list row per project and auto-selects the first into the explanation card in list view', () => {
+    fixture.componentInstance.setViewMode('list');
     fixture.detectChanges();
     expect(fixture.nativeElement.querySelector('app-project-card')).toBeNull();
     expect(fixture.nativeElement.querySelectorAll('[data-testid="project-list-row"]').length).toBe(1);
     expect(fixture.nativeElement.querySelector('[data-testid="project-explanation-card"]')).not.toBeNull();
     expect(fixture.nativeElement.textContent).toContain('Website Revamp');
+  });
+
+  it('renders project cards in card view', () => {
+    fixture.componentInstance.setViewMode('card');
+    fixture.detectChanges();
+    expect(fixture.nativeElement.querySelector('app-project-card')).not.toBeNull();
   });
 
   it('renders the Work / Projects breadcrumb header', () => {
@@ -129,6 +171,7 @@ describe('ProjectListComponent', () => {
   });
 
   it('opens the members popup for a lead and invites the picked employee', async () => {
+    fixture.componentInstance.setViewMode('list');
     fixture.detectChanges();
     expect(fixture.nativeElement.querySelector('[data-testid="member-button"]')).not.toBeNull();
 

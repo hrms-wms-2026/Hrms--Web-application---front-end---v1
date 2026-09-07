@@ -97,7 +97,10 @@ describe('LegalEntityApiService', () => {
     status: 'active',
     workStartTime: '09:00',
     workEndTime: '17:30',
-    breakDurationMinutes: 60
+    breakDurationMinutes: 60,
+    officeAddress: null,
+    officeLatitude: null,
+    officeLongitude: null
   };
 
   it('fetches general settings for a legal entity', () => {
@@ -132,7 +135,10 @@ describe('LegalEntityApiService', () => {
       status: 'active',
       workStartTime: '09:00',
       workEndTime: '17:30',
-      breakDurationMinutes: 60
+      breakDurationMinutes: 60,
+      officeAddress: null,
+      officeLatitude: null,
+      officeLongitude: null
     };
 
     service.updateGeneralSettings('company-1', payload).subscribe((result) => {

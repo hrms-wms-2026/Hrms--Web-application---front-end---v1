@@ -19,12 +19,10 @@ export const PEOPLE_ROUTES: Routes = [
       },
       {
         path: 'new',
-        loadComponent: () =>
-          import('./feature/add-employee-wizard/add-employee-wizard.component').then(
-            (m) => m.AddEmployeeWizardComponent
-          ),
-        canActivate: [permissionGuard],
-        data: { title: 'Add Employee', permissions: ['employees:write'] }
+        redirectTo: (redirectData) => {
+          const draftId = redirectData.queryParams['draftId'];
+          return draftId ? `/people/employees?draftId=${draftId}` : '/people/employees?addEmployee=true';
+        }
       },
       {
         path: ':id',

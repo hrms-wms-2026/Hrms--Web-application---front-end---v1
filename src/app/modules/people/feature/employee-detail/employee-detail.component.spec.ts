@@ -320,4 +320,65 @@ describe('EmployeeDetailComponent', () => {
     expect(fixture.nativeElement.querySelector('app-breadcrumb-header')).toBeTruthy();
     expect(fixture.nativeElement.textContent).not.toContain('Back to Employees');
   });
+
+  it('omits the Attendance today card when the response has no attendance summary (caller lacks attendance:read)', () => {
+    const { fixture } = setup({ ...detailFixture, attendanceSummary: null });
+    fixture.detectChanges();
+
+    expect(fixture.nativeElement.textContent).not.toContain('Attendance today');
+  });
+
+  it('shows the not-clocked-in warning in the Attendance today card', () => {
+    const { fixture } = setup({
+      ...detailFixture,
+      attendanceSummary: {
+        showNotClockedInWarning: true,
+        shouldHaveClockedIn: true,
+        hasClockedInToday: false,
+        workDate: '2026-08-15',
+        timezone: 'UTC',
+        scheduledStartTime: '09:00',
+        warningLabel: 'Still has not clocked in',
+        attendanceStatus: 'not_clocked_in',
+        attendanceStatusLabel: 'Not clocked in',
+        attentionType: 'not_clocked_in',
+        attentionSeverity: 'critical',
+        attentionLabel: 'Still has not clocked in'
+      }
+    });
+    fixture.detectChanges();
+
+    const text = fixture.nativeElement.textContent as string;
+    expect(text).toContain('Attendance today');
+    expect(text).toContain('Still has not clocked in');
+  });
+
+  it('shows the status label and break-overage marker in the Attendance today card', () => {
+    const { fixture } = setup({
+      ...detailFixture,
+      attendanceSummary: {
+        showNotClockedInWarning: false,
+        shouldHaveClockedIn: true,
+        hasClockedInToday: true,
+        workDate: '2026-08-15',
+        timezone: 'UTC',
+        scheduledStartTime: '09:00',
+        warningLabel: null,
+        attendanceStatus: 'on_break',
+        attendanceStatusLabel: 'On break',
+        attentionType: null,
+        attentionSeverity: null,
+        attentionLabel: null,
+        breakUsedMinutes: 75,
+        breakAllowanceMinutes: 60,
+        breakOverageMinutes: 15,
+        isOverBreakAllowance: true
+      }
+    });
+    fixture.detectChanges();
+
+    const text = fixture.nativeElement.textContent as string;
+    expect(text).toContain('On break');
+    expect(text).toContain('Break exceeded by 15 min');
+  });
 });

@@ -36,7 +36,17 @@ const detail: AttendanceDayDetail = {
     activityScore: 91,
     dataCoveragePercentage: 95,
     topApps: [{ appName: 'VS Code', totalSeconds: 3600, category: 'productive' }]
-  }
+  },
+  checkIns: [
+    {
+      id: 'checkin-1',
+      checkedInAt: '2026-08-27T04:01:00Z',
+      latitude: 6.9271,
+      longitude: 79.8612,
+      locationAccuracy: 12.5,
+      locationAddress: 'Colombo Office'
+    }
+  ]
 };
 
 interface DrawerStoreMock {
@@ -112,7 +122,7 @@ describe('AttendanceDetailDrawerComponent', () => {
     expect(text).toContain('Basic attendance summary is shown above. Detailed timeline and activity are unavailable.');
   });
 
-  it('renders summary, timeline, and daily activity sections when data loads', async () => {
+  it('renders summary, timeline, daily activity, and check-in location sections when data loads', async () => {
     const { fixture } = await setup({ data: detail });
     const text = (fixture.nativeElement as HTMLElement).textContent ?? '';
     expect(text).toContain('Summary');
@@ -121,11 +131,25 @@ describe('AttendanceDetailDrawerComponent', () => {
     expect(text).toContain('Clocked in');
     expect(text).toContain('Clocked out');
     expect(text).toContain('productive');
+    expect(text).toContain('Location check-ins');
+    expect(text).toContain('Colombo Office');
   });
 
   it('renders a friendly empty state when daily activity is null', async () => {
     const { fixture } = await setup({ data: { ...detail, dailyActivity: null } });
     expect((fixture.nativeElement as HTMLElement).textContent).toContain('No activity data recorded for this day.');
+  });
+
+  it('renders a friendly empty state when there are no check-ins', async () => {
+    const { fixture } = await setup({ data: { ...detail, checkIns: [] } });
+    expect((fixture.nativeElement as HTMLElement).textContent).toContain('No check-in locations recorded for this day.');
+  });
+
+  it('falls back to coordinates when a check-in has no resolved address', async () => {
+    const { fixture } = await setup({
+      data: { ...detail, checkIns: [{ ...detail.checkIns[0], locationAddress: null }] }
+    });
+    expect((fixture.nativeElement as HTMLElement).textContent).toContain('6.92710, 79.86120 (±13 m)');
   });
 
   it('emits closed when the close button is clicked', async () => {

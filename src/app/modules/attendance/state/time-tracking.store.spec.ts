@@ -77,7 +77,8 @@ const dayDetail: AttendanceDayDetail = {
     canCorrect: false
   },
   timelineEvents: [],
-  dailyActivity: null
+  dailyActivity: null,
+  checkIns: []
 };
 
 const workAreaRequest: WorkAreaChangeRequestResponse = {

@@ -2,11 +2,14 @@ import { Component, OnInit, computed, inject, signal } from '@angular/core';
 import { Router } from '@angular/router';
 import { ProjectListStore, AchievedFilter } from '../../state/project-list.store';
 import { ProjectDetailStore } from '../../state/project-detail.store';
+import { ProjectCategoryStore } from '../../state/project-category.store';
 import { ProjectFilterBarComponent } from '../../ui/project-filter-bar/project-filter-bar.component';
 import { ProjectFormModalComponent } from '../../ui/project-form-modal/project-form-modal.component';
 import { ProjectSettingsModalComponent } from '../../ui/project-settings-modal/project-settings-modal.component';
 import { ProjectListRowComponent } from '../../ui/project-list-row/project-list-row.component';
 import { ProjectExplanationCardComponent } from '../../ui/project-explanation-card/project-explanation-card.component';
+import { ProjectTableViewComponent } from '../../ui/project-table-view/project-table-view.component';
+import { ProjectCardComponent } from '../../ui/project-card/project-card.component';
 import { MemberManagementPopupComponent } from '../../ui/member-management-popup/member-management-popup.component';
 import { MyInvitationsPanelComponent } from '../../ui/my-invitations-panel/my-invitations-panel.component';
 import { ConfirmModalComponent } from '../../../../shared/ui/confirm-modal/confirm-modal.component';
@@ -17,13 +20,16 @@ import { ErrorStateComponent } from '../../../../shared/ui/error-state/error-sta
 import { EmptyStateComponent } from '../../../../shared/ui/empty-state/empty-state.component';
 import { CreateProjectPayload, EditProjectPayload, Project, ProjectDetail } from '../../models/project.model';
 
+export type ProjectViewMode = 'table' | 'list' | 'card';
+
 @Component({
   selector: 'app-project-list',
   standalone: true,
   imports: [
     ProjectFilterBarComponent, ProjectFormModalComponent, ProjectSettingsModalComponent, ConfirmModalComponent,
-    ProjectListRowComponent, ProjectExplanationCardComponent, MemberManagementPopupComponent,
-    MyInvitationsPanelComponent, BreadcrumbHeaderComponent, ButtonComponent, LoaderComponent, ErrorStateComponent, EmptyStateComponent
+    ProjectListRowComponent, ProjectExplanationCardComponent, ProjectTableViewComponent, ProjectCardComponent,
+    MemberManagementPopupComponent, MyInvitationsPanelComponent, BreadcrumbHeaderComponent, ButtonComponent,
+    LoaderComponent, ErrorStateComponent, EmptyStateComponent
   ],
   templateUrl: './project-list.component.html',
   styleUrl: './project-list.component.css'
@@ -31,7 +37,11 @@ import { CreateProjectPayload, EditProjectPayload, Project, ProjectDetail } from
 export class ProjectListComponent implements OnInit {
   readonly store = inject(ProjectListStore);
   readonly detailStore = inject(ProjectDetailStore);
+  readonly categoryStore = inject(ProjectCategoryStore);
   private readonly router = inject(Router);
+
+  viewMode = signal<ProjectViewMode>(this.loadInitialViewMode());
+  expandedCardIds = signal<Set<string>>(new Set());
 
   selectedProjectId = signal<string | null>(null);
   createModalOpen = signal(false);
@@ -41,6 +51,62 @@ export class ProjectListComponent implements OnInit {
   deleteConfirmOpen = signal(false);
   private targetProject = signal<Project | null>(null);
   actionSubmitting = signal(false);
+
+  private loadInitialViewMode(): ProjectViewMode {
+    if (typeof window !== 'undefined' && window.localStorage) {
+      const saved = window.localStorage.getItem('projects_view_mode');
+      if (saved === 'table' || saved === 'list' || saved === 'card') {
+        return saved;
+      }
+    }
+    return 'list';
+  }
+
+  setViewMode(mode: ProjectViewMode): void {
+    this.viewMode.set(mode);
+    if (typeof window !== 'undefined' && window.localStorage) {
+      window.localStorage.setItem('projects_view_mode', mode);
+    }
+  }
+
+  cycleViewMode(): void {
+    const current = this.viewMode();
+    let next: ProjectViewMode = 'list';
+    if (current === 'list') {
+      next = 'card';
+    } else if (current === 'card') {
+      next = 'table';
+    } else {
+      next = 'list';
+    }
+    this.setViewMode(next);
+  }
+
+  readonly viewModeTitle = computed(() => {
+    const mode = this.viewMode();
+    if (mode === 'list') return 'List view (click to switch to Card)';
+    if (mode === 'card') return 'Card view (click to switch to Table)';
+    return 'Table view (click to switch to List)';
+  });
+
+  readonly viewModeAriaLabel = computed(() => {
+    const mode = this.viewMode();
+    if (mode === 'list') return 'List view, switch to Card view';
+    if (mode === 'card') return 'Card view, switch to Table view';
+    return 'Table view, switch to List view';
+  });
+
+  toggleCardExpand(id: string): void {
+    this.expandedCardIds.update((set) => {
+      const next = new Set(set);
+      if (next.has(id)) {
+        next.delete(id);
+      } else {
+        next.add(id);
+      }
+      return next;
+    });
+  }
 
   readonly projectMemberPopupItems = computed(() =>
     (this.selectedProject()?.members ?? []).map((member) => ({ id: member.userId, name: member.displayName }))
@@ -90,6 +156,11 @@ export class ProjectListComponent implements OnInit {
   }
 
   onMembersRequested(): void {
+    this.membersModalOpen.set(true);
+  }
+
+  onMembersRequestedForProject(project: Project): void {
+    this.selectedProjectId.set(project.id);
     this.membersModalOpen.set(true);
   }
 

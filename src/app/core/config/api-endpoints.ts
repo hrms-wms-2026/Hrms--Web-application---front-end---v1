@@ -6,6 +6,8 @@ export const API_ENDPOINTS = {
     login: '/auth/login',
     logout: '/auth/logout',
     me: '/auth/me',
+    forgotPassword: '/auth/forgot-password',
+    resetPassword: '/auth/reset-password',
     sessionExchange: '/auth/session-exchange',
     invitationPreview: (token: string): string =>
       `/auth/invitations/${encodePathValue(token)}`,

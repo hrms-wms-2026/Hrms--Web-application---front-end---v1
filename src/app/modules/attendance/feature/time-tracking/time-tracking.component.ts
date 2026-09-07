@@ -8,6 +8,8 @@ import { AttendanceHistoryListComponent } from './attendance-history-list/attend
 import { MyRequestsPanelComponent } from './my-requests-panel/my-requests-panel.component';
 import { CorrectionApprovalsComponent } from '../correction-approvals/correction-approvals.component';
 import { WorkAreaApprovalsComponent } from '../work-area-approvals/work-area-approvals.component';
+import { LocationChangeApprovalsComponent } from '../location-change-approvals/location-change-approvals.component';
+import { LocationChangeRequestsStore } from '../../state/location-change-requests.store';
 import { NotificationService } from '../../../../core/services/notification.service';
 import {
   AttendanceCorrectionBreakRequest,
@@ -47,13 +49,14 @@ type AttendanceViewMode = 'my' | 'team';
 @Component({
   selector: 'app-time-tracking',
   standalone: true,
-  imports: [AttendanceDetailDrawerComponent, AttendanceHistoryListComponent, BreadcrumbHeaderComponent, ButtonComponent, CorrectionApprovalsComponent, DateRangePickerComponent, FormsModule, ModalComponent, MyRequestsPanelComponent, WorkAreaApprovalsComponent],
+  imports: [AttendanceDetailDrawerComponent, AttendanceHistoryListComponent, BreadcrumbHeaderComponent, ButtonComponent, CorrectionApprovalsComponent, DateRangePickerComponent, FormsModule, ModalComponent, MyRequestsPanelComponent, WorkAreaApprovalsComponent, LocationChangeApprovalsComponent],
   templateUrl: './time-tracking.component.html',
   styleUrl: './time-tracking.component.css',
   changeDetection: ChangeDetectionStrategy.OnPush
 })
 export class TimeTrackingComponent implements OnInit {
   readonly store = inject(TimeTrackingStore);
+  readonly locationChangeStore = inject(LocationChangeRequestsStore);
   private readonly permissionService = inject(PermissionService);
   private readonly notifications = inject(NotificationService);
   private readonly route = inject(ActivatedRoute);
@@ -84,13 +87,15 @@ export class TimeTrackingComponent implements OnInit {
     return 'my';
   });
 
-  readonly approvalType = computed<'corrections' | 'work-area'>(() =>
-    this.queryParams().get('type') === 'work-area' ? 'work-area' : 'corrections'
-  );
+  readonly approvalType = computed<'corrections' | 'work-area' | 'location'>(() => {
+    const requested = this.queryParams().get('type');
+    return requested === 'work-area' || requested === 'location' ? requested : 'corrections';
+  });
 
   readonly deepLinkRequestId = computed(() => this.queryParams().get('requestId'));
   readonly approvalBadgeCorrections = computed(() => this.store.approvalInbox().length);
   readonly approvalBadgeWorkArea = computed(() => this.store.workAreaApprovalInboxTotalCount());
+  readonly approvalBadgeLocation = computed(() => this.locationChangeStore.approvalInboxTotalCount());
 
   readonly historyFrom = signal('');
   readonly historyTo = signal('');
@@ -138,7 +143,7 @@ export class TimeTrackingComponent implements OnInit {
    * approval type (corrections vs work-area) loads within Approvals.
    */
   private teamAttendanceRangeKey: string | null = null;
-  private attemptedApprovalType: 'corrections' | 'work-area' | null = null;
+  private attemptedApprovalType: 'corrections' | 'work-area' | 'location' | null = null;
 
   constructor() {
     effect(() => {
@@ -168,6 +173,9 @@ export class TimeTrackingComponent implements OnInit {
           }
           if (type === 'work-area' && !this.store.workAreaApprovalInboxLoaded()) {
             void this.store.loadWorkAreaApprovalInbox({ status: 'pending', pageNumber: 1 });
+          }
+          if (type === 'location' && !this.locationChangeStore.approvalInboxLoaded()) {
+            void this.locationChangeStore.loadApprovalInbox(1);
           }
         }
       } else {
@@ -215,7 +223,7 @@ export class TimeTrackingComponent implements OnInit {
     this.navigateState({ view: 'team', type: this.hasApproveAccess() ? this.approvalType() : null, requestId: null });
   }
 
-  selectApprovalType(type: 'corrections' | 'work-area'): void {
+  selectApprovalType(type: 'corrections' | 'work-area' | 'location'): void {
     this.navigateState({ view: 'team', type, requestId: null });
   }
 
