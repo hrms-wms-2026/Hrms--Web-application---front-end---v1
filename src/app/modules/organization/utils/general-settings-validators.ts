@@ -70,3 +70,23 @@ export function workTimePairValidator(): ValidatorFn {
     return null;
   };
 }
+
+/**
+ * Group-level validator for officeLatitude / officeLongitude.
+ *
+ * Mirrors the backend's office-location check constraint: both set together, or both
+ * blank/null. officeAddress is a display label only and not part of this rule. The
+ * geofence radius lives on Clock-in Policy (AllowedRadiusMeters), not here. Applied to
+ * the FormGroup - read via `form.errors?.['officeLocation']`.
+ */
+export function officeLocationValidator(): ValidatorFn {
+  return (group: AbstractControl): ValidationErrors | null => {
+    const latitude = group.get('officeLatitude')?.value as number | null;
+    const longitude = group.get('officeLongitude')?.value as number | null;
+
+    const allAbsent = latitude == null && longitude == null;
+    const allPresent = latitude != null && longitude != null;
+
+    return allAbsent || allPresent ? null : { officeLocation: true };
+  };
+}

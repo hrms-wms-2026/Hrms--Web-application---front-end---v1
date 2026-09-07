@@ -14,7 +14,11 @@ import { PendingAccessGrantRequestResponse } from '../../models/access-grant-req
   standalone: true,
   imports: [DatePipe, BreadcrumbHeaderComponent, ButtonComponent, ErrorStateComponent, LoaderComponent],
   template: `
-    <app-breadcrumb-header parentLabel="People" currentLabel="Approvals" icon="people" parentUrl="/people/employees" />
+    <header class="al-page-header">
+      <div class="al-header-row">
+        <app-breadcrumb-header parentLabel="People" currentLabel="Approvals" icon="people" parentUrl="/people/employees" />
+      </div>
+    </header>
 
     @if (loading()) {
       <app-loader label="Loading approvals…" />
@@ -23,7 +27,7 @@ import { PendingAccessGrantRequestResponse } from '../../models/access-grant-req
     } @else if (requests().length === 0) {
       <p class="mt-6 text-sm text-[var(--color-text-secondary)]">No pending approvals.</p>
     } @else {
-      <div class="mt-6 overflow-x-auto rounded-xl border border-[var(--color-border)]">
+      <div class="mt-6 overflow-x-auto rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)]">
         <table class="w-full text-left text-sm">
           <thead class="bg-[var(--color-surface-secondary)] text-[var(--color-text-secondary)]">
             <tr>

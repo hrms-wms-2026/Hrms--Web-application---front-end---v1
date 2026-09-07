@@ -72,6 +72,7 @@ export interface EmployeeDetailResponse {
   readonly invitationStatus: string | null;
   readonly invitationExpiresAt: string | null;
   readonly trayAppAccessEnabled: boolean;
+  readonly attendanceSummary?: EmployeeListAttendanceSummaryResponse | null;
 }
 
 export interface EmployeeDetailJobInformation {

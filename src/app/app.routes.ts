@@ -206,6 +206,20 @@ export const routes: Routes = [
             (module) => module.AcceptInvitationComponent
           )
       },
+      {
+        path: 'forgot-password',
+        loadComponent: () =>
+          import('./core/auth/feature/forgot-password/forgot-password.component').then(
+            (module) => module.ForgotPasswordComponent
+          )
+      },
+      {
+        path: 'reset-password',
+        loadComponent: () =>
+          import('./core/auth/feature/reset-password/reset-password.component').then(
+            (module) => module.ResetPasswordComponent
+          )
+      },
       { path: '', pathMatch: 'full', redirectTo: 'login' }
     ]
   },

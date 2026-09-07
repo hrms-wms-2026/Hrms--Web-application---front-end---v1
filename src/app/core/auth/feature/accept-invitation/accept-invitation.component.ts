@@ -21,8 +21,9 @@ const STATUS_MESSAGES: Record<string, string> = {
 @Component({
   selector: 'app-accept-invitation',
   standalone: true,
-  imports: [ReactiveFormsModule, ButtonComponent, CardComponent],
-  templateUrl: './accept-invitation.component.html'
+  imports: [ReactiveFormsModule],
+  templateUrl: './accept-invitation.component.html',
+  styleUrl: './accept-invitation.component.css'
 })
 export class AcceptInvitationComponent implements OnInit {
   private fb = inject(FormBuilder);
