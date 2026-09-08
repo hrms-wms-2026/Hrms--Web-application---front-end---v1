@@ -1,0 +1,20 @@
+<div class="attendance-overview-page">
+  <header class="attendance-overview-header">
+    <app-breadcrumb-header parentLabel="Attendance" currentLabel="Overview" icon="time-attendance" />
+  </header>
+
+  <app-attendance-status-card />
+
+  <div class="attendance-overview-grid">
+    <app-attendance-trend-card />
+    <app-attendance-monthly-health-card />
+    <app-attendance-requests-summary-card />
+  </div>
+
+  <nav class="attendance-overview-quick-links" aria-label="Quick links">
+    <a routerLink="/attendance/time-tracking" data-testid="quick-link-time-tracking">View time tracking</a>
+    @if (canShowTeamLink()) {
+      <a routerLink="/attendance/time-tracking" [queryParams]="{ view: 'team' }" data-testid="quick-link-team">View team attendance</a>
+    }
+  </nav>
+</div>

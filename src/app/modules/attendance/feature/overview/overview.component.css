@@ -1,0 +1,20 @@
+:host {
+  display: block;
+}
+
+.attendance-overview-page {
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+}
+
+.attendance-overview-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+  gap: 1rem;
+}
+
+.attendance-overview-quick-links {
+  display: flex;
+  gap: 1rem;
+}
