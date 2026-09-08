@@ -17,6 +17,7 @@ import {
 import {
   AttendanceDayDetail,
   AttendanceHistoryRow,
+  AttendanceMonthlySummaryResponse,
   AttendanceTodayResponse,
   TimeTrackingRange
 } from '../models/time-tracking.model';
@@ -37,6 +38,7 @@ export const TIME_TRACKING_LOAD_ERROR = 'Could not load your attendance today. T
 export const TIME_TRACKING_HISTORY_ERROR = 'Could not load attendance history. Try again.';
 export const TIME_TRACKING_COVERED_HISTORY_ERROR = 'Could not load team attendance. Try again.';
 export const TIME_TRACKING_DAY_DETAIL_ERROR = 'Could not load attendance details. Try again.';
+export const TIME_TRACKING_MONTHLY_SUMMARY_ERROR = 'Could not load your attendance summary. Try again.';
 export const TIME_TRACKING_COVERED_FORBIDDEN_ERROR = 'You do not have access to view team attendance.';
 export const CORRECTIONS_LOAD_ERROR = 'Could not load your correction requests. Try again.';
 export const CORRECTIONS_APPROVAL_LOAD_ERROR = 'Could not load attendance correction approvals. Try again.';
@@ -64,6 +66,9 @@ interface TimeTrackingState {
   readonly historyPage: number;
   readonly historyPageSize: number;
   readonly historyTotalCount: number;
+  readonly monthlySummary: AttendanceMonthlySummaryResponse | null;
+  readonly monthlySummaryLoading: boolean;
+  readonly monthlySummaryError: string | null;
   readonly coveredHistory: readonly AttendanceHistoryRow[];
   readonly coveredHistoryLoading: boolean;
   readonly coveredHistoryError: string | null;
@@ -129,6 +134,9 @@ const initialState: TimeTrackingState = {
   historyPage: 1,
   historyPageSize: DEFAULT_PAGE_SIZE,
   historyTotalCount: 0,
+  monthlySummary: null,
+  monthlySummaryLoading: false,
+  monthlySummaryError: null,
   coveredHistory: [],
   coveredHistoryLoading: false,
   coveredHistoryError: null,
@@ -291,6 +299,17 @@ export const TimeTrackingStore = signalStore(
           });
         } catch (error) {
           patchState(store, { historyLoading: false, historyError: errors.toSafeMessage(error, TIME_TRACKING_HISTORY_ERROR) });
+        }
+      },
+
+      async loadMonthlySummary(range: TimeTrackingRange): Promise<void> {
+        if (store.monthlySummaryLoading()) return;
+        patchState(store, { monthlySummaryLoading: true, monthlySummaryError: null });
+        try {
+          const monthlySummary = await firstValueFrom(api.getMyMonthlySummary(range.from, range.to));
+          patchState(store, { monthlySummary, monthlySummaryLoading: false, monthlySummaryError: null });
+        } catch (error) {
+          patchState(store, { monthlySummaryLoading: false, monthlySummaryError: errors.toSafeMessage(error, TIME_TRACKING_MONTHLY_SUMMARY_ERROR) });
         }
       },
 

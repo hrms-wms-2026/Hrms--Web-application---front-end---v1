@@ -84,6 +84,17 @@ export interface AttendanceHistoryRow {
   attentionSeverity?: string | null;
   breakOverageMinutes?: number;
   isOverBreakAllowance?: boolean;
+  scheduledStartTime?: string | null;
+  scheduledEndTime?: string | null;
+  requiredWorkMinutes?: number | null;
+}
+
+export interface AttendanceMonthlySummaryResponse {
+  workingDays: number;
+  daysPresent: number;
+  lateArrivals: number;
+  earlyDepartures: number;
+  missingClockOuts: number;
 }
 
 export interface TimelineEvent {

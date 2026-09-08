@@ -104,6 +104,7 @@ describe('TimeTrackingStore', () => {
   let api: {
     getToday: ReturnType<typeof vi.fn>;
     getMyHistory: ReturnType<typeof vi.fn>;
+    getMyMonthlySummary: ReturnType<typeof vi.fn>;
         getCoveredHistory: ReturnType<typeof vi.fn>;
     getDayDetail: ReturnType<typeof vi.fn>;
     getMyCorrections: ReturnType<typeof vi.fn>;
@@ -128,6 +129,7 @@ describe('TimeTrackingStore', () => {
     api = {
       getToday: vi.fn(() => of(today)),
       getMyHistory: vi.fn(() => of({ items: [], pageNumber: 1, pageSize: 20, totalCount: 0 })),
+      getMyMonthlySummary: vi.fn(() => of({ workingDays: 20, daysPresent: 18, lateArrivals: 2, earlyDepartures: 1, missingClockOuts: 0 })),
             getCoveredHistory: vi.fn(() => of({ items: [], pageNumber: 1, pageSize: 20, totalCount: 0 })),
       getDayDetail: vi.fn(() => of(dayDetail)),
       getMyCorrections: vi.fn(() => of({ items: [], pageNumber: 1, pageSize: 20, totalCount: 0 })),
@@ -294,6 +296,20 @@ describe('TimeTrackingStore', () => {
     expect(api.getMyHistory).toHaveBeenCalledWith('2026-08-17', '2026-08-23', 3, 20);
     expect(store.historyPage()).toBe(3);
     expect(store.historyTotalCount()).toBe(61);
+  });
+
+  it('loadMonthlySummary patches monthlySummary on success', async () => {
+    api.getMyMonthlySummary.mockReturnValue(of({
+      workingDays: 20, daysPresent: 18, lateArrivals: 2, earlyDepartures: 1, missingClockOuts: 0
+    }));
+
+    await store.loadMonthlySummary({ from: '2026-08-01', to: '2026-08-31' });
+
+    expect(store.monthlySummary()).toEqual({
+      workingDays: 20, daysPresent: 18, lateArrivals: 2, earlyDepartures: 1, missingClockOuts: 0
+    });
+    expect(store.monthlySummaryLoading()).toBe(false);
+    expect(store.monthlySummaryError()).toBeNull();
   });
 
   it('loadMyCorrections defaults to page 1 and stores the paged totals', async () => {
