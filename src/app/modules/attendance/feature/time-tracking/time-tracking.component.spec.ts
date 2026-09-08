@@ -486,10 +486,10 @@ describe('TimeTrackingComponent', () => {
     });
     const element = fixture.nativeElement as HTMLElement;
 
-    expect(element.querySelector('[data-testid="clock-in"]')).toBeNull();
-    expect(element.querySelector('[data-testid="start-break"]')).toBeTruthy();
-    expect(element.querySelector('[data-testid="end-break"]')).toBeNull();
-    expect(element.querySelector('[data-testid="clock-out"]')).toBeTruthy();
+    expect(element.querySelector('[data-testid="status-card-clock-in"]')).toBeNull();
+    expect(element.querySelector('[data-testid="status-card-start-break"]')).toBeTruthy();
+    expect(element.querySelector('[data-testid="status-card-end-break"]')).toBeNull();
+    expect(element.querySelector('[data-testid="status-card-clock-out"]')).toBeTruthy();
   });
 
   it('shows the my-history Previous/Next control only when there is more than one page, and disables Previous on page 1', async () => {
@@ -532,11 +532,8 @@ describe('TimeTrackingComponent', () => {
 
   it('uses the backend Today status label and falls back to the humanized status', async () => {
     const { fixture } = await setup({ attendanceStatus: 'on_time_off', attendanceStatusLabel: 'On approved time off' });
-    const component = fixture.componentInstance;
 
     expect((fixture.nativeElement as HTMLElement).textContent).toContain('On approved time off');
-    expect(component.statusLabel('not_clocked_in', null)).toBe('Not clocked in');
-    expect(component.statusLabel('not_clocked_in', '  ')).toBe('Not clocked in');
   });
 
   it('renders the backend attention label without exposing its machine type and applies severity styling', async () => {
@@ -577,7 +574,7 @@ describe('TimeTrackingComponent', () => {
       isWorkingDay: false,
       canClockIn: true
     });
-    expect(fixture.nativeElement.querySelector('[data-testid="clock-in"]')).toBeTruthy();
+    expect(fixture.nativeElement.querySelector('[data-testid="status-card-clock-in"]')).toBeTruthy();
     expect((fixture.nativeElement as HTMLElement).textContent).not.toContain('You have not clocked in yet.');
   });
 
@@ -596,7 +593,7 @@ describe('TimeTrackingComponent', () => {
     expect(text).toContain('Break time exceeded by 15 min.');
     expect(text).toContain('30m allowance · 45m used');
     expect(text).not.toContain('-15m');
-    expect(element.querySelector('[data-testid="end-break"]')).toBeTruthy();
+    expect(element.querySelector('[data-testid="status-card-end-break"]')).toBeTruthy();
   });
 
   it('uses backend history labels and shows attention and break overage for personal and covered rows', async () => {

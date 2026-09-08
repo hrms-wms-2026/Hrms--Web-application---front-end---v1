@@ -4,6 +4,7 @@ import { FormsModule } from '@angular/forms';
 import { ActivatedRoute, Router } from '@angular/router';
 import { ModalComponent } from '../../../../shared/ui/modal/modal.component';
 import { AttendanceDetailDrawerComponent, AttendanceDetailSelection } from './attendance-detail-drawer/attendance-detail-drawer.component';
+import { AttendanceStatusCardComponent } from '../status-card/attendance-status-card.component';
 import { AttendanceHistoryListComponent } from './attendance-history-list/attendance-history-list.component';
 import { MyRequestsPanelComponent } from './my-requests-panel/my-requests-panel.component';
 import { CorrectionApprovalsComponent } from '../correction-approvals/correction-approvals.component';
@@ -30,7 +31,7 @@ import {
   workAreaChangeStatusLabel,
   workAreaLabel
 } from '../../models/work-area-change-request.model';
-import { TIME_TRACKING_COVERED_FORBIDDEN_ERROR, TimeTrackingAction, TimeTrackingStore } from '../../state/time-tracking.store';
+import { TIME_TRACKING_COVERED_FORBIDDEN_ERROR, TimeTrackingStore } from '../../state/time-tracking.store';
 import {
   DISPLAY_TIMEZONE_FALLBACK as SHARED_DISPLAY_TIMEZONE_FALLBACK,
   formatDate as formatDateShared,
@@ -38,7 +39,6 @@ import {
   formatMinutes as formatMinutesShared,
   formatWorkAreaDate as formatWorkAreaDateShared,
   sourceLabel as sourceLabelShared,
-  statusLabel as statusLabelShared,
   validDisplayTimezone as validDisplayTimezoneShared,
   workModeLabel as workModeLabelShared
 } from '../../utils/attendance-formatters';
@@ -49,7 +49,7 @@ type AttendanceViewMode = 'my' | 'team';
 @Component({
   selector: 'app-time-tracking',
   standalone: true,
-  imports: [AttendanceDetailDrawerComponent, AttendanceHistoryListComponent, BreadcrumbHeaderComponent, ButtonComponent, CorrectionApprovalsComponent, DateRangePickerComponent, FormsModule, ModalComponent, MyRequestsPanelComponent, WorkAreaApprovalsComponent, LocationChangeApprovalsComponent],
+  imports: [AttendanceDetailDrawerComponent, AttendanceHistoryListComponent, AttendanceStatusCardComponent, BreadcrumbHeaderComponent, ButtonComponent, CorrectionApprovalsComponent, DateRangePickerComponent, FormsModule, ModalComponent, MyRequestsPanelComponent, WorkAreaApprovalsComponent, LocationChangeApprovalsComponent],
   templateUrl: './time-tracking.component.html',
   styleUrl: './time-tracking.component.css',
   changeDetection: ChangeDetectionStrategy.OnPush
@@ -513,14 +513,6 @@ export class TimeTrackingComponent implements OnInit {
     if (this.canViewCoveredEmployees()) {
       void this.store.loadCoveredHistory(range, this.store.selectedCoveredEmployeeId() ?? undefined);
     }
-  }
-
-  actionIsLoading(action: TimeTrackingAction): boolean {
-    return this.store.activeAction() === action;
-  }
-
-  statusLabel(value: string, backendLabel?: string | null): string {
-    return statusLabelShared(value, backendLabel);
   }
 
   workModeLabel(value: string | null): string {

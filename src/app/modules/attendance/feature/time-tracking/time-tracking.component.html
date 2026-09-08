@@ -65,40 +65,8 @@
         </div>
       }
 
-      <section class="time-tracking-overview" aria-labelledby="today-heading">
-        <div class="overview-header-bar">
-          <div class="overview-title-cluster">
-            <div class="overview-date-line">
-              <h1 id="today-heading">{{ formatDate(today.workDate) }}</h1>
-              <span
-                class="status-pill"
-                [class.status-pill--active]="today.attendanceStatus === 'working' || today.attendanceStatus === 'clocked_in'"
-                [class.status-pill--break]="today.attendanceStatus === 'on_break'"
-              >
-                <span class="status-pill__dot"></span>
-                {{ statusLabel(today.attendanceStatus, today.attendanceStatusLabel) }}
-              </span>
-            </div>
-            <p class="overview-eyebrow">Daily Attendance Overview</p>
-          </div>
-
-          @if (today.allowedClockInMethods.web) {
-            <div class="action-buttons">
-              @if (today.canClockIn) {
-                <app-button type="button" data-testid="clock-in" variant="primary" size="sm" [loading]="actionIsLoading('clockIn')" [disabled]="store.actionLoading()" (pressed)="store.clockIn()">Clock in</app-button>
-              }
-              @if (today.canStartBreak) {
-                <app-button type="button" data-testid="start-break" variant="secondary" size="sm" [loading]="actionIsLoading('startBreak')" [disabled]="store.actionLoading()" (pressed)="store.startBreak()">Start break</app-button>
-              }
-              @if (today.canEndBreak) {
-                <app-button type="button" data-testid="end-break" variant="secondary" size="sm" [loading]="actionIsLoading('endBreak')" [disabled]="store.actionLoading()" (pressed)="store.endBreak()">End break</app-button>
-              }
-              @if (today.canClockOut) {
-                <app-button type="button" data-testid="clock-out" variant="danger" size="sm" [loading]="actionIsLoading('clockOut')" [disabled]="store.actionLoading()" (pressed)="store.clockOut()">Clock out</app-button>
-              }
-            </div>
-          }
-        </div>
+      <section class="time-tracking-overview" aria-labelledby="status-card-heading">
+        <app-attendance-status-card />
 
         @if (hasAttention(today.attentionLabel)) {
           <div [class]="attentionClass(today.attentionSeverity)" role="status" aria-live="polite">
