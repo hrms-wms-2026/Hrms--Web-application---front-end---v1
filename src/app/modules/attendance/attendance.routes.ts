@@ -3,6 +3,20 @@ import { permissionGuard } from '../../core/guards/permission.guard';
 
 export const ATTENDANCE_ROUTES: Routes = [
   {
+    path: 'overview',
+    canActivate: [permissionGuard],
+    data: {
+      title: 'Overview',
+      permissions: ['attendance:read-own', 'attendance:write-own', 'attendance:read', 'attendance:approve'],
+      modules: ['time_attendance']
+    },
+    loadComponent: () =>
+      import('./feature/overview/overview.component').then(
+        (module) => module.OverviewComponent
+      )
+  },
+
+  {
     path: 'monitoring',
     canActivate: [permissionGuard],
     data: {
@@ -50,6 +64,6 @@ export const ATTENDANCE_ROUTES: Routes = [
   {
     path: '',
     pathMatch: 'full',
-    redirectTo: 'time-tracking'
+    redirectTo: 'overview'
   }
 ];

@@ -8,7 +8,21 @@ describe('ATTENDANCE_ROUTES', () => {
   const approvals = () => ATTENDANCE_ROUTES.find((route) => route.path === 'corrections/approvals')!;
   const workAreaApprovals = () => ATTENDANCE_ROUTES.find((route) => route.path === 'work-area-change-requests/approvals')!;
 
-    it('guards Monitoring with time_attendance and monitoring:read', () => {
+    it('redirects the empty path to overview', () => {
+    const emptyRoute = ATTENDANCE_ROUTES.find((route) => route.path === '');
+    expect(emptyRoute?.redirectTo).toBe('overview');
+  });
+
+  it('registers the overview route with the correct permissions and module gate', () => {
+    const overviewRoute = ATTENDANCE_ROUTES.find((route) => route.path === 'overview');
+    expect(overviewRoute).toBeDefined();
+    expect(overviewRoute?.data?.['modules']).toEqual(['time_attendance']);
+    expect(overviewRoute?.data?.['permissions']).toEqual([
+      'attendance:read-own', 'attendance:write-own', 'attendance:read', 'attendance:approve'
+    ]);
+  });
+
+  it('guards Monitoring with time_attendance and monitoring:read', () => {
     const route = monitoring();
 
     expect(route.canActivate).toContain(permissionGuard);
@@ -64,7 +78,7 @@ describe('ATTENDANCE_ROUTES', () => {
     expect(route.loadComponent).toBeTypeOf('function');
     expect(monitoringRoute.loadComponent).toBeTypeOf('function');
     expect(approvalRoute.loadComponent).toBeTypeOf('function');
-    expect(root?.redirectTo).toBe('time-tracking');
+    expect(root?.redirectTo).toBe('overview');
     expect(root?.pathMatch).toBe('full');
     for (const candidate of [route, monitoringRoute, approvalRoute, workAreaRoute]) {
       expect(candidate.canActivate?.includes(permissionGuard)).toBe(true);
