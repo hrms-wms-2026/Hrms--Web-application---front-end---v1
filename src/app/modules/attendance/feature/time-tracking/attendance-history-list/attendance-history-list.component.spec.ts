@@ -55,16 +55,33 @@ describe('AttendanceHistoryListComponent', () => {
     return { fixture };
   }
 
-  it('renders the trimmed columns without Break/Work mode/Source', async () => {
+  it('renders the trimmed columns, including Scheduled and Break, without Work mode/Source', async () => {
     const { fixture } = await setup();
     const headerText = fixture.nativeElement.querySelector('thead')?.textContent ?? '';
     expect(headerText).toContain('Date');
+    expect(headerText).toContain('Scheduled');
     expect(headerText).toContain('Clock in');
     expect(headerText).toContain('Clock out');
+    expect(headerText).toContain('Break');
     expect(headerText).toContain('Worked time');
     expect(headerText).toContain('Status');
-    expect(headerText).not.toContain('Break');
     expect(headerText).not.toContain('Work mode');
+  });
+
+  it('renders Scheduled and Break columns for each row', async () => {
+    const { fixture } = await setup({
+      rows: [{
+        ...row,
+        breakMinutes: 45,
+        scheduledStartTime: '09:00',
+        scheduledEndTime: '17:30'
+      }]
+    });
+
+    const text: string = fixture.nativeElement.textContent;
+    expect(text).toContain('09:00');
+    expect(text).toContain('17:30');
+    expect(text).toContain('45m');
   });
 
   it('shows the Employee column only when showEmployeeColumn is true', async () => {

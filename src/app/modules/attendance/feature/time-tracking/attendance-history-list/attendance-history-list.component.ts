@@ -38,6 +38,13 @@ export class AttendanceHistoryListComponent {
     return row.employee?.displayName ?? 'Current employee';
   }
 
+  scheduledLabel(row: AttendanceHistoryRow): string {
+    if (row.scheduledStartTime && row.scheduledEndTime) return `${row.scheduledStartTime} – ${row.scheduledEndTime}`;
+    if (row.scheduledStartTime) return row.scheduledStartTime;
+    if (row.scheduledEndTime) return row.scheduledEndTime;
+    return 'Not scheduled';
+  }
+
   hasBreakOverage(value: number | null | undefined, isOverBreakAllowance = false): boolean {
     return isOverBreakAllowance || (value ?? 0) > 0;
   }
