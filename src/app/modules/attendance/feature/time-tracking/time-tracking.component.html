@@ -66,120 +66,196 @@
       }
 
       <section class="time-tracking-overview" aria-labelledby="today-heading">
-        <div class="overview-heading">
-          <div>
-            <p class="eyebrow">Today</p>
-            <h1 id="today-heading">{{ formatDate(today.workDate) }}</h1>
+        <div class="overview-header-bar">
+          <div class="overview-title-cluster">
+            <div class="overview-date-line">
+              <h1 id="today-heading">{{ formatDate(today.workDate) }}</h1>
+              <span
+                class="status-pill"
+                [class.status-pill--active]="today.attendanceStatus === 'working' || today.attendanceStatus === 'clocked_in'"
+                [class.status-pill--break]="today.attendanceStatus === 'on_break'"
+              >
+                <span class="status-pill__dot"></span>
+                {{ statusLabel(today.attendanceStatus, today.attendanceStatusLabel) }}
+              </span>
+            </div>
+            <p class="overview-eyebrow">Daily Attendance Overview</p>
           </div>
-          <span class="status-pill" [class.status-pill--active]="today.attendanceStatus === 'working' || today.attendanceStatus === 'clocked_in'">
-            {{ statusLabel(today.attendanceStatus, today.attendanceStatusLabel) }}
-          </span>
+
+          @if (today.allowedClockInMethods.web) {
+            <div class="action-buttons">
+              @if (today.canClockIn) {
+                <app-button type="button" data-testid="clock-in" variant="primary" size="sm" [loading]="actionIsLoading('clockIn')" [disabled]="store.actionLoading()" (pressed)="store.clockIn()">Clock in</app-button>
+              }
+              @if (today.canStartBreak) {
+                <app-button type="button" data-testid="start-break" variant="secondary" size="sm" [loading]="actionIsLoading('startBreak')" [disabled]="store.actionLoading()" (pressed)="store.startBreak()">Start break</app-button>
+              }
+              @if (today.canEndBreak) {
+                <app-button type="button" data-testid="end-break" variant="secondary" size="sm" [loading]="actionIsLoading('endBreak')" [disabled]="store.actionLoading()" (pressed)="store.endBreak()">End break</app-button>
+              }
+              @if (today.canClockOut) {
+                <app-button type="button" data-testid="clock-out" variant="danger" size="sm" [loading]="actionIsLoading('clockOut')" [disabled]="store.actionLoading()" (pressed)="store.clockOut()">Clock out</app-button>
+              }
+            </div>
+          }
         </div>
+
+        @if (hasAttention(today.attentionLabel)) {
+          <div [class]="attentionClass(today.attentionSeverity)" role="status" aria-live="polite">
+            <span class="warning-icon" aria-hidden="true">!</span>
+            <p>{{ today.attentionLabel }}</p>
+            @if (today.attentionType === 'missing_clock_out' && today.attentionWorkDate) {
+              <app-button type="button" data-testid="fix-missing-clock-out" variant="secondary" size="sm" (pressed)="openMissingClockOutCorrection(today.attentionWorkDate)">Fix {{ formatDate(today.attentionWorkDate) }}'s clock-out</app-button>
+            }
+          </div>
+        } @else if (today.shouldHaveClockedIn) {
+          <div class="time-tracking-warning" role="status">
+            <span class="warning-icon" aria-hidden="true">!</span>
+            <p>You have not clocked in yet.</p>
+          </div>
+        }
 
         <div class="overview-grid">
           <article class="metric-card metric-card--schedule">
-            <span class="metric-label">Work schedule</span>
-            <div class="metric-detail-grid">
-              <div class="metric-detail">
-                <span class="metric-helper">Hours</span>
-                <strong>
-                  @if (today.scheduledStartTime && today.scheduledEndTime) {
-                    {{ today.scheduledStartTime }} – {{ today.scheduledEndTime }}
-                  } @else if (today.scheduledStartTime) {
-                    {{ today.scheduledStartTime }}
-                  } @else if (today.scheduledEndTime) {
-                    {{ today.scheduledEndTime }}
-                  } @else {
-                    Not scheduled
-                  }
-                </strong>
-              </div>
-              <div class="metric-detail">
-                <span class="metric-helper">Work mode</span>
-                <strong>{{ workModeLabel(today.expectedWorkMode) }}</strong>
-              </div>
+            <div class="metric-card-header">
+              <span class="metric-label">Work schedule</span>
+              <span class="metric-icon-indicator" aria-hidden="true">
+                <svg class="metric-svg" viewBox="0 0 20 20" fill="currentColor">
+                  <path fill-rule="evenodd" d="M6 2a1 1 0 00-1 1v1H4a2 2 0 00-2 2v10a2 2 0 002 2h12a2 2 0 002-2V6a2 2 0 00-2-2h-1V3a1 1 0 10-2 0v1H7V3a1 1 0 00-1-1zm0 5a1 1 0 000 2h8a1 1 0 100-2H6z" clip-rule="evenodd" />
+                </svg>
+              </span>
             </div>
-            <span class="metric-helper">{{ today.timezone || 'Timezone unavailable' }} · Source: {{ sourceLabel(today.attendanceSource) }}</span>
+            <div class="metric-card-body">
+              <div class="metric-detail-grid">
+                <div class="metric-detail">
+                  <span class="metric-helper">Hours</span>
+                  <strong class="metric-value">
+                    @if (today.scheduledStartTime && today.scheduledEndTime) {
+                      {{ today.scheduledStartTime }} – {{ today.scheduledEndTime }}
+                    } @else if (today.scheduledStartTime) {
+                      {{ today.scheduledStartTime }}
+                    } @else if (today.scheduledEndTime) {
+                      {{ today.scheduledEndTime }}
+                    } @else {
+                      Not scheduled
+                    }
+                  </strong>
+                </div>
+                <div class="metric-detail">
+                  <span class="metric-helper">Work mode</span>
+                  <span
+                    class="work-mode-badge"
+                    [class.work-mode-badge--onsite]="today.expectedWorkMode === 'onsite'"
+                    [class.work-mode-badge--remote]="today.expectedWorkMode === 'remote'"
+                  >
+                    {{ workModeLabel(today.expectedWorkMode) }}
+                  </span>
+                </div>
+              </div>
+              <span class="metric-helper">{{ today.timezone || 'Timezone unavailable' }} · Source: {{ sourceLabel(today.attendanceSource) }}</span>
+            </div>
           </article>
+
           <article
             class="metric-card"
             [class.metric-card--muted]="today.breakRemainingMinutes === 0"
             [class.metric-card--overage]="hasBreakOverage(today.breakOverageMinutes, today.isOverBreakAllowance)"
           >
-            <span class="metric-label">Break time</span>
-            @if (hasBreakOverage(today.breakOverageMinutes, today.isOverBreakAllowance)) {
-              <strong class="metric-overage">{{ breakOverageLabel(today.breakOverageMinutes) }}</strong>
-              <span class="metric-helper">
-                @if (today.breakAllowanceMinutes === null) {
-                  {{ formatMinutes(today.breakUsedMinutes) }} used · No break allowance is configured.
-                } @else {
+            <div class="metric-card-header">
+              <span class="metric-label">Break time</span>
+              <span class="metric-icon-indicator" aria-hidden="true">
+                <svg class="metric-svg" viewBox="0 0 20 20" fill="currentColor">
+                  <path d="M4 4a2 2 0 012-2h8a2 2 0 012 2v2h1a3 3 0 013 3v2a3 3 0 01-3 3h-1v2a2 2 0 01-2 2H6a2 2 0 01-2-2V4zm12 4v3h1a1 1 0 001-1v-1a1 1 0 00-1-1h-1z" />
+                </svg>
+              </span>
+            </div>
+            <div class="metric-card-body">
+              @if (hasBreakOverage(today.breakOverageMinutes, today.isOverBreakAllowance)) {
+                <strong class="metric-value metric-value--danger">{{ breakOverageLabel(today.breakOverageMinutes) }}</strong>
+                <div class="break-progress-track">
+                  <div class="break-progress-fill break-progress-fill--overage" style="width: 100%"></div>
+                </div>
+                <span class="metric-helper">
+                  @if (today.breakAllowanceMinutes === null) {
+                    {{ formatMinutes(today.breakUsedMinutes) }} used · No allowance configured
+                  } @else {
+                    {{ formatMinutes(today.breakAllowanceMinutes) }} allowance · {{ formatMinutes(today.breakUsedMinutes) }} used
+                  }
+                </span>
+              } @else if (today.breakAllowanceMinutes === null) {
+                <strong class="metric-value">Not configured</strong>
+                <span class="metric-helper">No break allowance configured.</span>
+              } @else {
+                <strong class="metric-value">{{ formatMinutes(today.breakRemainingMinutes) }} remaining</strong>
+                <div class="break-progress-track" [attr.title]="(today.breakUsedMinutes || 0) + 'm used of ' + today.breakAllowanceMinutes + 'm allowance'">
+                  <div
+                    class="break-progress-fill"
+                    [style.width.%]="Math.min(100, Math.round(((today.breakUsedMinutes || 0) / (today.breakAllowanceMinutes || 1)) * 100))"
+                  ></div>
+                </div>
+                <span class="metric-helper" [attr.title]="today.breakRemainingMinutes === 0 ? 'You have used your break time for today.' : null">
                   {{ formatMinutes(today.breakAllowanceMinutes) }} allowance · {{ formatMinutes(today.breakUsedMinutes) }} used
+                </span>
+                @if (today.breakRemainingMinutes === 0) {
+                  <span class="metric-note">You have used your break time for today.</span>
                 }
-              </span>
-            } @else if (today.breakAllowanceMinutes === null) {
-              <strong>Not configured</strong>
-              <span class="metric-helper">No break allowance is configured.</span>
-            } @else {
-              <strong>{{ formatMinutes(today.breakRemainingMinutes) }} remaining</strong>
-              <span class="metric-helper" [attr.title]="today.breakRemainingMinutes === 0 ? 'You have used your break time for today.' : null">
-                {{ formatMinutes(today.breakAllowanceMinutes) }} allowance · {{ formatMinutes(today.breakUsedMinutes) }} used
-              </span>
-              @if (today.breakRemainingMinutes === 0) {
-                <span class="metric-note">You have used your break time for today.</span>
               }
-            }
+            </div>
           </article>
+
           <article class="metric-card">
-            <span class="metric-label">Worked today</span>
-            <strong>{{ formatMinutes(today.totalWorkedMinutes) }}</strong>
-            <span class="metric-helper">{{ today.isWorkingDay ? 'Scheduled workday' : 'No scheduled workday' }}</span>
-          </article>
-          <article class="metric-card metric-card--attendance-times">
-            <span class="metric-label">Attendance times</span>
-            <div class="metric-detail-grid metric-detail-grid--times">
-              <div class="metric-detail">
-                <span class="metric-helper">Clock in</span>
-                <strong>{{ today.clockInAt ? formatDateTime(today.clockInAt, today.timezone) : 'Not recorded' }}</strong>
+            <div class="metric-card-header">
+              <span class="metric-label">Worked today</span>
+              <span class="metric-icon-indicator" aria-hidden="true">
+                <svg class="metric-svg" viewBox="0 0 20 20" fill="currentColor">
+                  <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm1-12a1 1 0 10-2 0v4a1 1 0 00.293.707l2.828 2.829a1 1 0 101.415-1.415L11 9.586V6z" clip-rule="evenodd" />
+                </svg>
+              </span>
+            </div>
+            <div class="metric-card-body">
+              <div class="metric-value-with-pulse">
+                <strong class="metric-value">{{ formatMinutes(today.totalWorkedMinutes) }}</strong>
+                @if (today.attendanceStatus === 'working' || today.attendanceStatus === 'clocked_in') {
+                  <span class="live-active-indicator" title="Actively tracking time">
+                    <span class="live-active-indicator__pulse"></span>
+                    <span class="live-active-indicator__dot"></span>
+                  </span>
+                }
               </div>
-              <div class="metric-detail">
-                <span class="metric-helper">Clock out</span>
-                <strong>{{ today.clockOutAt ? formatDateTime(today.clockOutAt, today.timezone) : 'Not recorded' }}</strong>
+              <span class="metric-helper">{{ today.isWorkingDay ? 'Scheduled workday' : 'No scheduled workday' }}</span>
+            </div>
+          </article>
+
+          <article class="metric-card metric-card--attendance-times">
+            <div class="metric-card-header">
+              <span class="metric-label">Attendance times</span>
+              <span class="metric-icon-indicator" aria-hidden="true">
+                <svg class="metric-svg" viewBox="0 0 20 20" fill="currentColor">
+                  <path fill-rule="evenodd" d="M3 3a1 1 0 00-1 1v12a1 1 0 102 0V4a1 1 0 00-1-1zm10.293 9.293a1 1 0 001.414 1.414l3-3a1 1 0 000-1.414l-3-3a1 1 0 10-1.414 1.414L14.586 9H7a1 1 0 100 2h7.586l-1.293 1.293z" clip-rule="evenodd" />
+                </svg>
+              </span>
+            </div>
+            <div class="metric-card-body">
+              <div class="metric-times-grid">
+                <div class="metric-time-item">
+                  <span class="metric-time-item__label">
+                    <span class="time-dot time-dot--in"></span>
+                    Clock in
+                  </span>
+                  <strong class="metric-time-item__val">{{ today.clockInAt ? formatDateTime(today.clockInAt, today.timezone) : 'Not recorded' }}</strong>
+                </div>
+                <div class="metric-time-item">
+                  <span class="metric-time-item__label">
+                    <span class="time-dot time-dot--out"></span>
+                    Clock out
+                  </span>
+                  <strong class="metric-time-item__val">{{ today.clockOutAt ? formatDateTime(today.clockOutAt, today.timezone) : 'Not recorded' }}</strong>
+                </div>
               </div>
             </div>
           </article>
         </div>
       </section>
-
-      @if (hasAttention(today.attentionLabel)) {
-        <section [class]="attentionClass(today.attentionSeverity)" role="status" aria-live="polite">
-          <span class="warning-icon" aria-hidden="true">!</span>
-          <p>{{ today.attentionLabel }}</p>
-          @if (today.attentionType === 'missing_clock_out' && today.attentionWorkDate) {
-            <app-button type="button" data-testid="fix-missing-clock-out" variant="secondary" (pressed)="openMissingClockOutCorrection(today.attentionWorkDate)">Fix {{ formatDate(today.attentionWorkDate) }}'s clock-out</app-button>
-          }
-        </section>
-      } @else if (today.shouldHaveClockedIn) {
-        <section class="time-tracking-warning" role="status">
-          <span class="warning-icon" aria-hidden="true">!</span>
-          <p>You have not clocked in yet.</p>
-        </section>
-      }
-
-      @if (today.allowedClockInMethods.web) {
-        <section class="action-card" aria-labelledby="actions-heading">
-          <div class="section-heading">
-            <div><p class="eyebrow">Self service</p><h2 id="actions-heading">Attendance actions</h2></div>
-            <span class="action-state">{{ statusLabel(today.attendanceStatus, today.attendanceStatusLabel) }}</span>
-          </div>
-          <div class="action-buttons">
-            @if (today.canClockIn) { <app-button type="button" data-testid="clock-in" [loading]="actionIsLoading('clockIn')" [disabled]="store.actionLoading()" (pressed)="store.clockIn()">Clock in</app-button> }
-            @if (today.canStartBreak) { <app-button type="button" data-testid="start-break" variant="secondary" [loading]="actionIsLoading('startBreak')" [disabled]="store.actionLoading()" (pressed)="store.startBreak()">Start break</app-button> }
-            @if (today.canEndBreak) { <app-button type="button" data-testid="end-break" variant="secondary" [loading]="actionIsLoading('endBreak')" [disabled]="store.actionLoading()" (pressed)="store.endBreak()">End break</app-button> }
-            @if (today.canClockOut) { <app-button type="button" data-testid="clock-out" variant="danger" [loading]="actionIsLoading('clockOut')" [disabled]="store.actionLoading()" (pressed)="store.clockOut()">Clock out</app-button> }
-          </div>
-          @if (!today.canClockIn && !today.canStartBreak && !today.canEndBreak && !today.canClockOut) { <p class="action-helper">There are no attendance actions available right now.</p> }
-        </section>
-      }
     }
     }
   }
