@@ -1,0 +1,9 @@
+<app-card title="Requests">
+  @if (pendingCount() > 0) {
+    <p class="requests-summary-count">{{ pendingCount() }} pending</p>
+  } @else {
+    <p class="requests-summary-empty">No pending requests</p>
+  }
+
+  <a routerLink="/attendance/time-tracking" [queryParams]="{ view: 'my' }" class="requests-summary-link">View requests</a>
+</app-card>
