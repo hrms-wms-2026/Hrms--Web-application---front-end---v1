@@ -67,6 +67,7 @@
 
       <section class="time-tracking-overview" aria-labelledby="status-card-heading">
         <app-attendance-status-card />
+        <app-attendance-today-timeline />
 
         @if (hasAttention(today.attentionLabel)) {
           <div [class]="attentionClass(today.attentionSeverity)" role="status" aria-live="polite">

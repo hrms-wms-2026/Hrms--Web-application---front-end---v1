@@ -5,6 +5,7 @@ import { ActivatedRoute, Router } from '@angular/router';
 import { ModalComponent } from '../../../../shared/ui/modal/modal.component';
 import { AttendanceDetailDrawerComponent, AttendanceDetailSelection } from './attendance-detail-drawer/attendance-detail-drawer.component';
 import { AttendanceStatusCardComponent } from '../status-card/attendance-status-card.component';
+import { AttendanceTodayTimelineComponent } from './today-timeline/attendance-today-timeline.component';
 import { AttendanceHistoryListComponent } from './attendance-history-list/attendance-history-list.component';
 import { MyRequestsPanelComponent } from './my-requests-panel/my-requests-panel.component';
 import { CorrectionApprovalsComponent } from '../correction-approvals/correction-approvals.component';
@@ -49,7 +50,7 @@ type AttendanceViewMode = 'my' | 'team';
 @Component({
   selector: 'app-time-tracking',
   standalone: true,
-  imports: [AttendanceDetailDrawerComponent, AttendanceHistoryListComponent, AttendanceStatusCardComponent, BreadcrumbHeaderComponent, ButtonComponent, CorrectionApprovalsComponent, DateRangePickerComponent, FormsModule, ModalComponent, MyRequestsPanelComponent, WorkAreaApprovalsComponent, LocationChangeApprovalsComponent],
+  imports: [AttendanceDetailDrawerComponent, AttendanceHistoryListComponent, AttendanceStatusCardComponent, AttendanceTodayTimelineComponent, BreadcrumbHeaderComponent, ButtonComponent, CorrectionApprovalsComponent, DateRangePickerComponent, FormsModule, ModalComponent, MyRequestsPanelComponent, WorkAreaApprovalsComponent, LocationChangeApprovalsComponent],
   templateUrl: './time-tracking.component.html',
   styleUrl: './time-tracking.component.css',
   changeDetection: ChangeDetectionStrategy.OnPush
@@ -189,7 +190,10 @@ export class TimeTrackingComponent implements OnInit {
     this.historyFrom.set(range.from);
     this.historyTo.set(range.to);
     if (this.hasSelfServiceAccess() || this.hasCoveredAccess()) {
-      void this.store.loadToday();
+      void this.store.loadToday().then(() => {
+        const today = this.store.today();
+        if (today) void this.store.loadTodayTimeline(today.employeeId, today.workDate);
+      });
     }
     if (this.hasSelfServiceAccess()) {
       void this.store.loadMyHistory(range);

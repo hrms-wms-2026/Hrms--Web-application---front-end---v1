@@ -491,4 +491,18 @@ describe('TimeTrackingStore', () => {
     expect(store.dayDetailError()).toBeNull();
   });
 
+  it('loadTodayTimeline patches todayTimelineEvents independently of dayDetail', async () => {
+    api.getDayDetail.mockReturnValue(of({
+      summary: dayDetail.summary,
+      timelineEvents: [{ eventType: 'ClockIn', timestamp: '2026-09-08T04:00:00Z', source: 'web' }],
+      dailyActivity: null,
+      checkIns: []
+    }));
+
+    await store.loadTodayTimeline('employee-1', '2026-09-08');
+
+    expect(store.todayTimelineEvents()).toHaveLength(1);
+    expect(store.dayDetail()).toBeNull();
+  });
+
 });

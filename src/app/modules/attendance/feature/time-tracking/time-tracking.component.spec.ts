@@ -5,7 +5,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 import { PermissionService } from '../../../../core/auth/state/permission.service';
 import { AttendanceCorrectionResponse } from '../../models/attendance-correction.model';
 import { WorkAreaChangeRequestResponse } from '../../models/work-area-change-request.model';
-import { AttendanceDayDetail, AttendanceHistoryRow, AttendanceTodayResponse } from '../../models/time-tracking.model';
+import { AttendanceDayDetail, AttendanceHistoryRow, AttendanceTodayResponse, TimelineEvent } from '../../models/time-tracking.model';
 import { TimeTrackingStore } from '../../state/time-tracking.store';
 import { TimeTrackingComponent } from './time-tracking.component';
 
@@ -112,6 +112,10 @@ type StoreMock = {
   dayDetailError: ReturnType<typeof signal<string | null>>;
   loadDayDetail: ReturnType<typeof vi.fn>;
   clearDayDetail: ReturnType<typeof vi.fn>;
+  todayTimelineEvents: ReturnType<typeof signal<readonly TimelineEvent[]>>;
+  todayTimelineLoading: ReturnType<typeof signal<boolean>>;
+  todayTimelineError: ReturnType<typeof signal<string | null>>;
+  loadTodayTimeline: ReturnType<typeof vi.fn>;
   loadToday: ReturnType<typeof vi.fn>;
   loadMyHistory: ReturnType<typeof vi.fn>;
   loadCoveredHistory: ReturnType<typeof vi.fn>;
@@ -198,6 +202,10 @@ describe('TimeTrackingComponent', () => {
       dayDetailError: signal(null),
       loadDayDetail: vi.fn(() => Promise.resolve()),
       clearDayDetail: vi.fn(),
+      todayTimelineEvents: signal([]),
+      todayTimelineLoading: signal(false),
+      todayTimelineError: signal(null),
+      loadTodayTimeline: vi.fn(() => Promise.resolve()),
       loadToday: vi.fn(() => Promise.resolve()),
       loadMyHistory: vi.fn(() => Promise.resolve()),
       loadCoveredHistory: vi.fn(() => Promise.resolve()),

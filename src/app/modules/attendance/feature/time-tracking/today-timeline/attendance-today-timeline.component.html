@@ -1,0 +1,20 @@
+<section class="today-timeline" aria-labelledby="today-timeline-heading">
+  <h3 id="today-timeline-heading">Today's activity</h3>
+
+  @if (store.todayTimelineLoading()) {
+    <p aria-busy="true">Loading today's activity…</p>
+  } @else if (store.todayTimelineError()) {
+    <p role="alert">{{ store.todayTimelineError() }}</p>
+  } @else if (store.todayTimelineEvents().length === 0) {
+    <p class="today-timeline-empty">No activity recorded yet today.</p>
+  } @else {
+    <ol class="today-timeline-list">
+      @for (event of store.todayTimelineEvents(); track event.timestamp + event.eventType) {
+        <li class="today-timeline-item">
+          <span class="today-timeline-item__label">{{ timelineEventLabel(event.eventType) }}</span>
+          <span class="today-timeline-item__time">{{ formatDateTime(event.timestamp, store.today()?.timezone) }}</span>
+        </li>
+      }
+    </ol>
+  }
+</section>
