@@ -1,0 +1,24 @@
+<app-card title="This month">
+  @if (loading() && !summary()) {
+    <p class="monthly-health-skeleton" aria-busy="true">Loading attendance health…</p>
+  } @else if (error() && !summary()) {
+    <p role="alert">{{ error() }}</p>
+    <button type="button" (click)="retry()">Try again</button>
+  } @else if (summary(); as summary) {
+    <p class="monthly-health-headline">{{ summary.daysPresent }} / {{ summary.workingDays }} days present</p>
+    <dl class="monthly-health-grid">
+      <div class="monthly-health-item">
+        <dt>Late arrivals</dt>
+        <dd>{{ summary.lateArrivals }}</dd>
+      </div>
+      <div class="monthly-health-item">
+        <dt>Early departures</dt>
+        <dd>{{ summary.earlyDepartures }}</dd>
+      </div>
+      <div class="monthly-health-item">
+        <dt>Missing clock-outs</dt>
+        <dd>{{ summary.missingClockOuts }}</dd>
+      </div>
+    </dl>
+  }
+</app-card>
