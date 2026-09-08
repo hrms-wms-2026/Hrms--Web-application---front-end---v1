@@ -116,8 +116,7 @@ describe('canAccessNavItem', () => {
       const children = attendance.children ?? [];
       expect(children.map((child) => child.id)).toEqual([
         'time-attendance-tracking',
-        'time-attendance-monitoring',
-        'time-attendance-correction-approvals'
+        'time-attendance-monitoring'
       ]);
       const monitoring = children.find((child) => child.id === 'time-attendance-monitoring')!;
       expect(monitoring.label).toBe('Monitoring');
