@@ -1,4 +1,4 @@
-import { ChangeDetectionStrategy, Component, DestroyRef, computed, inject, input, output, signal } from '@angular/core';
+import { ChangeDetectionStrategy, Component, DestroyRef, ElementRef, computed, effect, inject, input, output, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { CalendarEventResponse } from '../../models/calendar-event.model';
 import { PositionedEvent, layoutDayEvents } from '../../utils/calendar-hour-grid.util';
@@ -31,6 +31,7 @@ export class CalendarHourGridComponent {
 
   readonly hours = HOURS;
 
+  private readonly host = inject<ElementRef<HTMLElement>>(ElementRef);
   private readonly destroyRef = inject(DestroyRef);
   // `columns` derives the red "now" line from the current clock. `new Date()` on its own never
   // invalidates a computed(), so without this tick the line freezes at first render - and also
@@ -38,10 +39,31 @@ export class CalendarHourGridComponent {
   // first paint (leaving the line stuck at the UTC-offset position). Ticking a signal re-derives
   // it and self-heals that load-order race within one interval. Same pattern as DashboardGreeting.
   private readonly now = signal(Date.now());
+  private autoScrollTimer: ReturnType<typeof setTimeout> | null = null;
+  private didAutoScroll = false;
 
   constructor() {
     const tick = setInterval(() => this.now.set(Date.now()), 30_000);
-    this.destroyRef.onDestroy(() => clearInterval(tick));
+    this.destroyRef.onDestroy(() => {
+      clearInterval(tick);
+      if (this.autoScrollTimer !== null) clearTimeout(this.autoScrollTimer);
+    });
+
+    // On first load, scroll the viewport so the "now" line is centred once today is in view -
+    // the grid otherwise opens parked at midnight. Debounced so it settles on the
+    // timezone-corrected position (loadMyTimezone resolves a beat after first paint) rather than
+    // the transient UTC one. One-shot: it never fights the user's own scrolling afterwards, and
+    // does nothing when the shown day isn't today.
+    effect(() => {
+      const showsToday = this.columns().some((c) => c.nowFraction !== null);
+      if (this.didAutoScroll || !showsToday) return;
+      if (this.autoScrollTimer !== null) clearTimeout(this.autoScrollTimer);
+      this.autoScrollTimer = setTimeout(() => {
+        this.didAutoScroll = true;
+        const line = this.host.nativeElement.querySelector('[data-testid="calendar-now-line"]');
+        line?.scrollIntoView?.({ block: 'center' });
+      }, 300);
+    });
   }
 
   readonly columns = computed<readonly DayColumnViewModel[]>(() => {

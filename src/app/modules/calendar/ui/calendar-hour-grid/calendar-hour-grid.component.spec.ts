@@ -92,6 +92,54 @@ describe('CalendarHourGridComponent', () => {
     expect(chip.querySelector('[data-testid="calendar-conflict-marker"]')).not.toBeNull();
   });
 
+  it('scrolls the "now" line into view once, on first load, when today is shown', async () => {
+    vi.useFakeTimers();
+    const scrollIntoView = vi.fn();
+    const original = (Element.prototype as { scrollIntoView?: unknown }).scrollIntoView;
+    (Element.prototype as { scrollIntoView?: unknown }).scrollIntoView = scrollIntoView;
+    try {
+      const today = new Intl.DateTimeFormat('en-CA', { timeZone: 'UTC' }).format(new Date());
+      const f = TestBed.createComponent(CalendarHourGridComponent);
+      f.componentRef.setInput('timezone', 'UTC');
+      f.componentRef.setInput('days', [today]);
+      f.componentRef.setInput('events', []);
+      f.detectChanges();
+      await vi.advanceTimersByTimeAsync(400);
+      f.detectChanges();
+
+      expect(scrollIntoView).toHaveBeenCalledTimes(1);
+      expect(scrollIntoView.mock.calls[0][0]).toMatchObject({ block: 'center' });
+
+      scrollIntoView.mockClear();
+      await vi.advanceTimersByTimeAsync(60_000);
+      f.detectChanges();
+      expect(scrollIntoView).not.toHaveBeenCalled();
+    } finally {
+      (Element.prototype as { scrollIntoView?: unknown }).scrollIntoView = original;
+      vi.useRealTimers();
+    }
+  });
+
+  it('does not auto-scroll when the shown day is not today', async () => {
+    vi.useFakeTimers();
+    const scrollIntoView = vi.fn();
+    const original = (Element.prototype as { scrollIntoView?: unknown }).scrollIntoView;
+    (Element.prototype as { scrollIntoView?: unknown }).scrollIntoView = scrollIntoView;
+    try {
+      const f = TestBed.createComponent(CalendarHourGridComponent);
+      f.componentRef.setInput('timezone', 'UTC');
+      f.componentRef.setInput('days', ['2001-01-01']);
+      f.componentRef.setInput('events', []);
+      f.detectChanges();
+      await vi.advanceTimersByTimeAsync(400);
+      f.detectChanges();
+      expect(scrollIntoView).not.toHaveBeenCalled();
+    } finally {
+      (Element.prototype as { scrollIntoView?: unknown }).scrollIntoView = original;
+      vi.useRealTimers();
+    }
+  });
+
   it('advances the "now" line as the clock ticks instead of freezing at first render', async () => {
     vi.useFakeTimers();
     try {
