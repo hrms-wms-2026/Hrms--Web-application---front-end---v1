@@ -6,8 +6,8 @@ describe('LeaveRequestHistoryTableComponent', () => {
   let fixture: ComponentFixture<LeaveRequestHistoryTableComponent>;
 
   const requests: LeaveRequestListItemResponse[] = [
-    { id: 'req-1', employeeId: 'emp-1', leaveTypeId: 'type-1', leaveTypeName: 'Annual Leave', leaveTypeCode: 'ANNUAL', startDate: '2026-09-10', endDate: '2026-09-12', totalDays: 3, paidDays: 3, unpaidDays: 0, status: 'pending', noticePeriodMissed: false, createdAt: '2026-08-25T00:00:00Z', updatedAt: null },
-    { id: 'req-2', employeeId: 'emp-1', leaveTypeId: 'type-1', leaveTypeName: 'Annual Leave', leaveTypeCode: 'ANNUAL', startDate: '2026-07-01', endDate: '2026-07-01', totalDays: 1, paidDays: 1, unpaidDays: 0, status: 'rejected', noticePeriodMissed: true, createdAt: '2026-06-20T00:00:00Z', updatedAt: '2026-06-21T00:00:00Z' }
+    { id: 'req-1', employeeId: 'emp-1', leaveTypeId: 'type-1', leaveTypeName: 'Annual Leave', leaveTypeCode: 'ANNUAL', startAt: '2026-09-10T00:00:00Z', endAt: '2026-09-12T00:00:00Z', totalHours: 3, paidHours: 3, unpaidHours: 0, status: 'pending', noticePeriodMissed: false, createdAt: '2026-08-25T00:00:00Z', updatedAt: null },
+    { id: 'req-2', employeeId: 'emp-1', leaveTypeId: 'type-1', leaveTypeName: 'Annual Leave', leaveTypeCode: 'ANNUAL', startAt: '2026-07-01T00:00:00Z', endAt: '2026-07-01T00:00:00Z', totalHours: 1, paidHours: 1, unpaidHours: 0, status: 'rejected', noticePeriodMissed: true, createdAt: '2026-06-20T00:00:00Z', updatedAt: '2026-06-21T00:00:00Z' }
   ];
 
   beforeEach(async () => {

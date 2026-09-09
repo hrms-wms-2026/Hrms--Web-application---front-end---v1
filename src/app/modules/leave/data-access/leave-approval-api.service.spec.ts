@@ -12,14 +12,14 @@ describe('LeaveApprovalApiService', () => {
 
   const decision: LeaveApprovalDecisionResponse = {
     requestId: 'req-1', status: 'approved', currentApproverState: 'complete',
-    paidDaysMovedFromPending: 3, unpaidDays: 0, remainingDays: 14, currentWarnings: []
+    paidHoursMovedFromPending: 3, unpaidHours: 0, remainingHours: 14, currentWarnings: []
   };
 
   const detail: LeaveApprovalDetailResponse = {
     requestId: 'req-1', employeeId: 'emp-1', employeeName: 'Anu Raman', leaveTypeId: 'type-1',
-    leaveTypeName: 'Annual Leave', leaveTypeCode: 'ANNUAL', startDate: '2026-09-10', endDate: '2026-09-12',
-    totalDays: 3, paidDays: 3, unpaidDays: 0, status: 'pending', reason: 'Trip',
-    approvers: [], infoMessages: [], submissionConflictSnapshotJson: null, currentWarnings: [], remainingDays: 17
+    leaveTypeName: 'Annual Leave', leaveTypeCode: 'ANNUAL', startAt: '2026-09-10T00:00:00Z', endAt: '2026-09-12T00:00:00Z',
+    totalHours: 3, paidHours: 3, unpaidHours: 0, status: 'pending', reason: 'Trip',
+    approvers: [], infoMessages: [], submissionConflictSnapshotJson: null, currentWarnings: [], remainingHours: 17
   };
 
   beforeEach(() => {
@@ -109,7 +109,7 @@ describe('LeaveApprovalApiService', () => {
   it('cancels a request', () => {
     const cancelResponse: CancelLeaveRequestResponse = {
       requestId: 'req-1', status: 'cancelled', isPartialCancellation: false, effectiveDate: null,
-      releasedPendingDays: 0, restoredUsedDays: 3, remainingDays: 20, reason: 'Coverage issue', cancelledAt: '2026-08-30T00:00:00Z'
+      releasedPendingHours: 0, restoredUsedHours: 3, remainingHours: 20, reason: 'Coverage issue', cancelledAt: '2026-08-30T00:00:00Z'
     };
     const payload: CancelLeaveRequestRequest = { reason: 'Coverage issue', effectiveDate: null, expectedVersion: null };
     service.cancel('req-1', payload).subscribe((res) => expect(res).toEqual(cancelResponse));

@@ -6,8 +6,8 @@ describe('LeaveBalanceAuditTableComponent', () => {
   let fixture: ComponentFixture<LeaveBalanceAuditTableComponent>;
 
   const rows: LeaveBalanceAuditResponse[] = [
-    { id: 'audit-1', employeeId: 'emp-1', employeeNumber: 'EMP-001', employeeName: 'Anu Raman', leaveTypeId: 'type-1', leaveTypeName: 'Annual Leave', leaveTypeCode: 'ANNUAL', changeType: 'accrual', daysChanged: 20, balanceAfter: 20, reason: 'Auto-generated', relatedRequestId: null, createdAt: '2026-08-25T00:00:00Z' },
-    { id: 'audit-2', employeeId: 'emp-1', employeeNumber: 'EMP-001', employeeName: 'Anu Raman', leaveTypeId: 'type-1', leaveTypeName: 'Annual Leave', leaveTypeCode: 'ANNUAL', changeType: 'deduction', daysChanged: -3, balanceAfter: 17, reason: 'Leave request approved', relatedRequestId: 'req-1', createdAt: '2026-08-26T00:00:00Z' }
+    { id: 'audit-1', employeeId: 'emp-1', employeeNumber: 'EMP-001', employeeName: 'Anu Raman', leaveTypeId: 'type-1', leaveTypeName: 'Annual Leave', leaveTypeCode: 'ANNUAL', changeType: 'accrual', hoursChanged: 20, balanceAfter: 20, reason: 'Auto-generated', relatedRequestId: null, createdAt: '2026-08-25T00:00:00Z' },
+    { id: 'audit-2', employeeId: 'emp-1', employeeNumber: 'EMP-001', employeeName: 'Anu Raman', leaveTypeId: 'type-1', leaveTypeName: 'Annual Leave', leaveTypeCode: 'ANNUAL', changeType: 'deduction', hoursChanged: -3, balanceAfter: 17, reason: 'Leave request approved', relatedRequestId: 'req-1', createdAt: '2026-08-26T00:00:00Z' }
   ];
 
   beforeEach(async () => {

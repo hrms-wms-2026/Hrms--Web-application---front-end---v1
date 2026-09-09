@@ -8,9 +8,9 @@
         <td>{{ row.employeeName }}</td>
         <td>{{ row.departmentName ?? '-' }}</td>
         <td>{{ row.leaveTypeName }}</td>
-        <td>{{ row.startDate }}</td>
-        <td>{{ row.endDate }}</td>
-        <td>{{ row.totalDays }}</td>
+        <td>{{ row.startAt }}</td>
+        <td>{{ row.endAt }}</td>
+        <td>{{ row.totalHours }}</td>
         <td><span class="lra-status" [class]="'lra-status-' + row.status">{{ statusLabel(row.status) }}</span></td>
         <td>
           @if (canCancel(row)) {

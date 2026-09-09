@@ -6,9 +6,9 @@
     @for (request of requests; track request.id) {
       <tr data-testid="request-row">
         <td>{{ request.leaveTypeName }}</td>
-        <td>{{ request.startDate }}</td>
-        <td>{{ request.endDate }}</td>
-        <td>{{ request.totalDays.toFixed(1) }}</td>
+        <td>{{ request.startAt }}</td>
+        <td>{{ request.endAt }}</td>
+        <td>{{ request.totalHours.toFixed(1) }}</td>
         <td><span data-testid="request-status" class="lrh-status" [class]="'lrh-status-' + request.status">{{ statusLabel(request.status) }}</span></td>
         <td>-</td>
         <td>{{ request.createdAt | slice:0:10 }}</td>

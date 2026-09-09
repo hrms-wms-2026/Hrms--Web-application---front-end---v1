@@ -52,7 +52,7 @@ export class NewLeaveRequestWizardComponent {
 
   remainingDaysFor(leaveTypeId: string): number | null {
     const balance = (this.balances as LeaveBalanceResponse[]).find((b) => b.leaveTypeId === leaveTypeId);
-    return balance ? balance.remainingDays : null;
+    return balance ? balance.remainingHours : null;
   }
 
   onLeaveTypeChange(leaveTypeId: string): void {
@@ -100,9 +100,8 @@ export class NewLeaveRequestWizardComponent {
     const d = this.draft();
     return {
       leaveTypeId: d.leaveTypeId,
-      startDate: d.startDate,
-      endDate: d.endDate,
-      halfDayPeriod: d.halfDayPeriod,
+      startAt: d.startDate,
+      endAt: d.endDate,
       reason: d.reason,
       fileRecordIds: []
     };

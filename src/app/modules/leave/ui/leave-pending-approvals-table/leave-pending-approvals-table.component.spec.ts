@@ -6,8 +6,8 @@ describe('LeavePendingApprovalsTableComponent', () => {
   let fixture: ComponentFixture<LeavePendingApprovalsTableComponent>;
 
   const rows: LeavePendingApprovalListItemResponse[] = [
-    { requestId: 'req-1', employeeId: 'emp-1', employeeName: 'Anu Raman', leaveTypeId: 'type-1', leaveTypeName: 'Annual Leave', leaveTypeCode: 'ANNUAL', startDate: '2026-09-10', endDate: '2026-09-12', totalDays: 3, paidDays: 3, unpaidDays: 0, status: 'pending', submittedAt: '2026-08-25T00:00:00Z' },
-    { requestId: 'req-2', employeeId: 'emp-2', employeeName: 'Karthik S', leaveTypeId: 'type-2', leaveTypeName: 'Sick Leave', leaveTypeCode: 'SICK', startDate: '2026-09-01', endDate: '2026-09-01', totalDays: 1, paidDays: 1, unpaidDays: 0, status: 'information_requested', submittedAt: '2026-08-20T00:00:00Z' }
+    { requestId: 'req-1', employeeId: 'emp-1', employeeName: 'Anu Raman', leaveTypeId: 'type-1', leaveTypeName: 'Annual Leave', leaveTypeCode: 'ANNUAL', startAt: '2026-09-10T00:00:00Z', endAt: '2026-09-12T00:00:00Z', totalHours: 3, paidHours: 3, unpaidHours: 0, status: 'pending', submittedAt: '2026-08-25T00:00:00Z' },
+    { requestId: 'req-2', employeeId: 'emp-2', employeeName: 'Karthik S', leaveTypeId: 'type-2', leaveTypeName: 'Sick Leave', leaveTypeCode: 'SICK', startAt: '2026-09-01T00:00:00Z', endAt: '2026-09-01T00:00:00Z', totalHours: 1, paidHours: 1, unpaidHours: 0, status: 'information_requested', submittedAt: '2026-08-20T00:00:00Z' }
   ];
 
   beforeEach(async () => {

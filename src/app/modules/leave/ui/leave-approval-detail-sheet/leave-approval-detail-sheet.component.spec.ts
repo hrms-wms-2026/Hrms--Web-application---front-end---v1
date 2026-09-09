@@ -7,15 +7,15 @@ describe('LeaveApprovalDetailSheetComponent', () => {
 
   const detail: LeaveApprovalDetailResponse = {
     requestId: 'req-1', employeeId: 'emp-1', employeeName: 'Anu Raman', leaveTypeId: 'type-1',
-    leaveTypeName: 'Annual Leave', leaveTypeCode: 'ANNUAL', startDate: '2026-09-10', endDate: '2026-09-12',
-    totalDays: 3, paidDays: 3, unpaidDays: 0, status: 'pending', reason: 'Family trip',
+    leaveTypeName: 'Annual Leave', leaveTypeCode: 'ANNUAL', startAt: '2026-09-10T00:00:00Z', endAt: '2026-09-12T00:00:00Z',
+    totalHours: 3, paidHours: 3, unpaidHours: 0, status: 'pending', reason: 'Family trip',
     approvers: [
       { approverEmployeeId: 'mgr-1', sequenceOrder: 1, status: 'pending', comment: null, delegatedFromApproverId: null, decidedAt: null }
     ],
     infoMessages: [],
     submissionConflictSnapshotJson: JSON.stringify({ warnings: [], calendarConflicts: [], teamAbsencePercent: null }),
     currentWarnings: [{ code: 'blackout_period', message: 'Overlaps a configured blackout period.' }],
-    remainingDays: 17
+    remainingHours: 17
   };
 
   beforeEach(async () => {

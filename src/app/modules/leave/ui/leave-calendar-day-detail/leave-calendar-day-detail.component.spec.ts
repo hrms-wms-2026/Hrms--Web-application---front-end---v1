@@ -8,7 +8,7 @@ describe('LeaveCalendarDayDetailComponent', () => {
   const day: LeaveCalendarDayResponse = {
     date: '2026-09-10', dayOfWeek: 'Thursday',
     absences: [
-      { requestId: 'req-1', employeeId: 'emp-1', employeeName: 'Anu Raman', departmentId: null, departmentName: 'Engineering', legalEntityId: null, legalEntityName: null, leaveTypeId: 'type-1', leaveTypeName: 'Annual Leave', leaveTypeCode: 'ANNUAL', leaveTypeCategory: 'annual', typeColorHex: null, status: 'approved', isTentative: false, isPartialCancellationHistory: false, startDate: '2026-09-10', endDate: '2026-09-12', totalDays: 3, halfDayPeriod: null }
+      { requestId: 'req-1', employeeId: 'emp-1', employeeName: 'Anu Raman', departmentId: null, departmentName: 'Engineering', legalEntityId: null, legalEntityName: null, leaveTypeId: 'type-1', leaveTypeName: 'Annual Leave', leaveTypeCode: 'ANNUAL', leaveTypeCategory: 'annual', typeColorHex: null, status: 'approved', isTentative: false, isPartialCancellationHistory: false, startAt: '2026-09-10T00:00:00Z', endAt: '2026-09-12T00:00:00Z', totalHours: 3 }
     ],
     holidays: []
   };

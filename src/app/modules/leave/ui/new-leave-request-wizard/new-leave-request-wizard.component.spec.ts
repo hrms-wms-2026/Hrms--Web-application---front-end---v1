@@ -12,7 +12,7 @@ describe('NewLeaveRequestWizardComponent', () => {
     { id: 'type-1', name: 'Annual Leave', code: 'ANNUAL', description: null, category: 'annual', isPaid: true, requiresApproval: true, requiresDocument: false, documentRequiredAfterDays: null, acceptedDocumentTypes: [], maxConsecutiveDays: null, defaultDaysPerYear: 20, carryForwardAllowed: true, maxCarryForwardDays: 5, carryForwardExpiryMonths: 3, proRataForNewJoiners: true, applicableGender: 'all', minimumNoticeDays: 0, isActive: true, createdAt: '2026-08-21T00:00:00Z' }
   ];
   const balances: LeaveBalanceResponse[] = [
-    { employeeId: 'emp-1', employeeNumber: 'EMP-001', employeeName: 'Anu Raman', departmentId: null, departmentName: null, legalEntityId: null, legalEntityName: null, leaveTypeId: 'type-1', leaveTypeName: 'Annual Leave', leaveTypeCode: 'ANNUAL', year: 2026, entitledDays: 20, annualDays: 20, carriedForwardDays: 0, usedDays: 5, pendingDays: 0, remainingDays: 15, isNegative: false, carryForwardExpiresOn: null }
+    { employeeId: 'emp-1', employeeNumber: 'EMP-001', employeeName: 'Anu Raman', departmentId: null, departmentName: null, legalEntityId: null, legalEntityName: null, leaveTypeId: 'type-1', leaveTypeName: 'Annual Leave', leaveTypeCode: 'ANNUAL', year: 2026, entitledHours: 20, annualHours: 20, carriedForwardHours: 0, usedHours: 5, pendingHours: 0, remainingHours: 15, isNegative: false, carryForwardExpiresOn: null }
   ];
 
   beforeEach(async () => {
@@ -52,7 +52,7 @@ describe('NewLeaveRequestWizardComponent', () => {
     fixture.componentInstance.draft.update((d) => ({ ...d, leaveTypeId: 'type-1', startDate: '2026-09-10', endDate: '2026-09-12' }));
     fixture.componentInstance.step.set(2);
     fixture.componentInstance.onNext();
-    expect(emitted).toEqual([{ leaveTypeId: 'type-1', startDate: '2026-09-10', endDate: '2026-09-12', halfDayPeriod: null, reason: null, fileRecordIds: [] }]);
+    expect(emitted).toEqual([{ leaveTypeId: 'type-1', startAt: '2026-09-10', endAt: '2026-09-12', reason: null, fileRecordIds: [] }]);
   });
 
   it('requires an employee to be picked in on-behalf mode before advancing', () => {
@@ -75,6 +75,6 @@ describe('NewLeaveRequestWizardComponent', () => {
     const emitted: unknown[] = [];
     fixture.componentInstance.submitRequested.subscribe((e: unknown) => emitted.push(e));
     fixture.componentInstance.onSubmit();
-    expect(emitted).toEqual([{ employeeId: 'emp-2', leaveTypeId: 'type-1', startDate: '2026-09-10', endDate: '2026-09-12', halfDayPeriod: null, reason: 'Trip', fileRecordIds: [] }]);
+    expect(emitted).toEqual([{ employeeId: 'emp-2', leaveTypeId: 'type-1', startAt: '2026-09-10', endAt: '2026-09-12', reason: 'Trip', fileRecordIds: [] }]);
   });
 });

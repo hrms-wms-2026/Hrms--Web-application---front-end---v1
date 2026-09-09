@@ -38,7 +38,7 @@
       } @else if (previewError) {
         <p class="nlw-error">{{ previewError }}</p>
       } @else if (previewResult) {
-        <p class="nlw-total">Total leave days: <strong>{{ previewResult.totalDays }}</strong></p>
+        <p class="nlw-total">Total leave days: <strong>{{ previewResult.totalHours }}</strong></p>
         @if (previewResult.noticePeriodMissed) {
           <p class="nlw-warning">This request does not meet the minimum notice period. Your manager will be informed.</p>
         }
@@ -69,8 +69,8 @@
         <span>Type</span><strong>{{ draft().leaveTypeId }}</strong>
         <span>Dates</span><strong>{{ draft().startDate }} - {{ draft().endDate }}</strong>
         @if (previewResult) {
-          <span>Total Days</span><strong>{{ previewResult.totalDays }}</strong>
-          <span>Balance</span><strong>{{ previewResult.balanceImpact.currentRemainingDays }} &rarr; {{ previewResult.balanceImpact.remainingAfterSubmitDays }}</strong>
+          <span>Total Days</span><strong>{{ previewResult.totalHours }}</strong>
+          <span>Balance</span><strong>{{ previewResult.balanceImpact.currentRemainingHours }} &rarr; {{ previewResult.balanceImpact.remainingAfterSubmitHours }}</strong>
         }
       </div>
       @if (submitError) { <p class="nlw-error">{{ submitError }}</p> }
