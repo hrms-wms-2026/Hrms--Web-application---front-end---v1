@@ -376,12 +376,42 @@ describe('GeneralSettingsComponent', () => {
     expect(fixture.componentInstance.form.errors?.['workTimePair']).toBe('both_required');
   });
 
-  it('form is invalid when workStartTime >= workEndTime', async () => {
+  it('form is valid when workStartTime is after workEndTime (overnight window)', async () => {
     const fixture = await setupWithLoadedSettings();
     fixture.componentInstance.form.controls.workStartTime.setValue('17:30');
     fixture.componentInstance.form.controls.workEndTime.setValue('09:00');
-    expect(fixture.componentInstance.form.invalid).toBe(true);
-    expect(fixture.componentInstance.form.errors?.['workTimePair']).toBe('start_not_before_end');
+    expect(fixture.componentInstance.form.valid).toBe(true);
+    expect(fixture.componentInstance.form.errors?.['workTimePair']).toBeUndefined();
+    expect(fixture.componentInstance.getWorkingHoursSummary()).not.toBeNull();
+    expect(fixture.componentInstance.isOvernightWindow()).toBe(true);
+  });
+
+  it('overnight 22:00-06:00 with no break is 8.0 working hours and the next calendar day', async () => {
+    await setup(true);
+    const loadCompaniesPromise = legalEntityStore.loadCompanies();
+    httpMock.expectOne(`${environment.apiUrl}/session/companies`).flush(companies);
+    await loadCompaniesPromise;
+
+    const fixture = TestBed.createComponent(GeneralSettingsComponent);
+    fixture.detectChanges();
+
+    httpMock.expectOne(`${environment.apiUrl}/org/legal-entities/company-a/general-settings`).flush({
+      ...settingsFor('company-a', 'Company A'),
+      workStartTime: '22:00',
+      workEndTime: '06:00',
+      breakDurationMinutes: 0
+    });
+    await fixture.whenStable();
+    fixture.detectChanges();
+
+    expect(fixture.componentInstance.form.controls.workStartTime.value).toBe('22:00');
+    expect(fixture.componentInstance.form.controls.workEndTime.value).toBe('06:00');
+    expect(fixture.componentInstance.form.controls.breakDurationMinutes.value).toBe('0');
+    expect(fixture.componentInstance.getWorkingHoursSummary()).toContain('8.0 working hours');
+    expect(fixture.componentInstance.isOvernightWindow()).toBe(true);
+    const liveLine: HTMLElement | null = fixture.nativeElement.querySelector('[data-testid="work-hours-live-line"]');
+    expect(liveLine?.textContent).toContain('8.0 working hours');
+    expect(fixture.nativeElement.textContent).toContain('End time is the next calendar day.');
   });
 
   it('form is valid when work times are cleared after being set', async () => {

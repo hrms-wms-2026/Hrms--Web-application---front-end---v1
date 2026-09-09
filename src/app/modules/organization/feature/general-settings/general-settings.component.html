@@ -168,10 +168,17 @@
             />
           </div>
 
+          @if (getWorkingHoursSummary(); as summary) {
+            <p class="gs-work-hours-live" data-testid="work-hours-live-line">{{ summary }}</p>
+          }
+          @if (isOvernightWindow()) {
+            <p class="gs-work-hours-nextday">End time is the next calendar day.</p>
+          }
+
           @if (form.errors?.['workTimePair'] === 'both_required') {
             <p class="gs-field-error" role="alert">Both start and end time must be set together, or leave both blank.</p>
-          } @else if (form.errors?.['workTimePair'] === 'start_not_before_end') {
-            <p class="gs-field-error" role="alert">Work start time must be earlier than end time (same-day only).</p>
+          } @else if (form.errors?.['workTimePair'] === 'break_covers_shift') {
+            <p class="gs-field-error" role="alert">Break duration must be shorter than the work window.</p>
           }
         </div>
 
