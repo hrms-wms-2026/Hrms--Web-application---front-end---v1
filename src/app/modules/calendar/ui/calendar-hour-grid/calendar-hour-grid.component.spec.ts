@@ -91,4 +91,29 @@ describe('CalendarHourGridComponent', () => {
     const chip = fixture.nativeElement.querySelector('[data-testid="calendar-hour-allday-chip"]');
     expect(chip.querySelector('[data-testid="calendar-conflict-marker"]')).not.toBeNull();
   });
+
+  it('advances the "now" line as the clock ticks instead of freezing at first render', async () => {
+    vi.useFakeTimers();
+    try {
+      vi.setSystemTime(new Date('2026-09-01T03:00:00Z'));
+      const tzFixture = TestBed.createComponent(CalendarHourGridComponent);
+      tzFixture.componentRef.setInput('days', ['2026-09-01']);
+      tzFixture.componentRef.setInput('timezone', 'UTC');
+      tzFixture.componentRef.setInput('events', []);
+      tzFixture.detectChanges();
+
+      const lineAt = () =>
+        Number(tzFixture.nativeElement.querySelector('[data-testid="calendar-now-line"]').style.top.replace('%', ''));
+
+      expect(lineAt()).toBeCloseTo((3 / 24) * 100, 1);
+
+      vi.setSystemTime(new Date('2026-09-01T09:00:00Z'));
+      vi.advanceTimersByTime(30_000);
+      tzFixture.detectChanges();
+
+      expect(lineAt()).toBeCloseTo((9 / 24) * 100, 1);
+    } finally {
+      vi.useRealTimers();
+    }
+  });
 });

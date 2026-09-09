@@ -1,4 +1,4 @@
-import { ChangeDetectionStrategy, Component, computed, input, output } from '@angular/core';
+import { ChangeDetectionStrategy, Component, DestroyRef, computed, inject, input, output, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { CalendarEventResponse } from '../../models/calendar-event.model';
 import { PositionedEvent, layoutDayEvents } from '../../utils/calendar-hour-grid.util';
@@ -31,9 +31,22 @@ export class CalendarHourGridComponent {
 
   readonly hours = HOURS;
 
+  private readonly destroyRef = inject(DestroyRef);
+  // `columns` derives the red "now" line from the current clock. `new Date()` on its own never
+  // invalidates a computed(), so without this tick the line freezes at first render - and also
+  // never picks up the tenant timezone, which `loadMyTimezone()` resolves a beat after the grid's
+  // first paint (leaving the line stuck at the UTC-offset position). Ticking a signal re-derives
+  // it and self-heals that load-order race within one interval. Same pattern as DashboardGreeting.
+  private readonly now = signal(Date.now());
+
+  constructor() {
+    const tick = setInterval(() => this.now.set(Date.now()), 30_000);
+    this.destroyRef.onDestroy(() => clearInterval(tick));
+  }
+
   readonly columns = computed<readonly DayColumnViewModel[]>(() => {
     const timezone = this.timezone();
-    const nowIso = new Date().toISOString();
+    const nowIso = new Date(this.now()).toISOString();
     const todayStr = dateOnlyInTimezone(nowIso, timezone);
     const nowParts = utcIsoToLocalParts(nowIso, timezone);
     const [nowHour, nowMinute] = nowParts.time.split(':').map(Number);

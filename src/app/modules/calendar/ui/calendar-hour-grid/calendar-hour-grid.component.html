@@ -43,7 +43,7 @@
         </div>
 
         @if (column.nowFraction !== null) {
-          <div class="pointer-events-none absolute left-0 right-0 z-10 border-t-2 border-red-500" [style.top.%]="column.nowFraction * 100"></div>
+          <div data-testid="calendar-now-line" class="pointer-events-none absolute left-0 right-0 z-10 border-t-2 border-red-500" [style.top.%]="column.nowFraction * 100"></div>
         }
 
         @for (positioned of column.positioned; track positioned.event.id) {
