@@ -1,14 +1,14 @@
 <table class="lrh-table">
   <thead>
-    <tr><th>Type</th><th>Start</th><th>End</th><th>Total Days</th><th>Status</th><th>Approved By</th><th>Submitted On</th><th>Actions</th></tr>
+    <tr><th>Type</th><th>From</th><th>To</th><th>Hours</th><th>Status</th><th>Approved By</th><th>Submitted On</th><th>Actions</th></tr>
   </thead>
   <tbody>
     @for (request of requests; track request.id) {
       <tr data-testid="request-row">
         <td>{{ request.leaveTypeName }}</td>
-        <td>{{ request.startAt }}</td>
-        <td>{{ request.endAt }}</td>
-        <td>{{ request.totalHours.toFixed(1) }}</td>
+        <td data-testid="request-from">{{ formatWhen(request.startAt) }}</td>
+        <td data-testid="request-to">{{ formatWhen(request.endAt) }}</td>
+        <td data-testid="request-hours">{{ formatHours(request.totalHours) }}</td>
         <td><span data-testid="request-status" class="lrh-status" [class]="'lrh-status-' + request.status">{{ statusLabel(request.status) }}</span></td>
         <td>-</td>
         <td>{{ request.createdAt | slice:0:10 }}</td>

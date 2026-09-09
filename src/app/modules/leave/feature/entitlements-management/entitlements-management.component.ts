@@ -9,6 +9,7 @@ import { EmptyStateComponent } from '../../../../shared/ui/empty-state/empty-sta
 import { ErrorStateComponent } from '../../../../shared/ui/error-state/error-state.component';
 import { LegalEntityApiService } from '../../../organization/data-access/legal-entity-api.service';
 import { LegalEntityListItem } from '../../../organization/models/legal-entity.model';
+import { computeWorkDayHours } from '../../../organization/utils/work-day-hours';
 import { GeneralSettingsStore } from '../../../organization/state/general-settings.store';
 import { LegalEntityStore } from '../../../organization/state/legal-entity.store';
 import { LeaveEntitlementApiService } from '../../data-access/leave-entitlement-api.service';
@@ -58,6 +59,13 @@ export class EntitlementsManagementComponent {
   readonly adjustTarget = signal<LeaveEntitlementResponse | null>(null);
   readonly adjustNeedsConfirmation = signal(false);
   readonly requestWizardOpen = signal(false);
+  readonly workDayHours = computed(() =>
+    computeWorkDayHours(
+      this.settingsStore.settings()?.workStartTime,
+      this.settingsStore.settings()?.workEndTime,
+      this.settingsStore.settings()?.breakDurationMinutes
+    )
+  );
   private allBalancesLoaded = false;
   private auditLoaded = false;
 

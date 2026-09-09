@@ -35,7 +35,7 @@
     } @else if (balanceStore.all().length === 0) {
       <app-empty-state title="No balances found" description="No entitlements match the current filters." />
     } @else {
-      <app-leave-balance-list-table [balances]="balanceStore.all()" [showDepartmentColumn]="true" [showLegalEntityColumn]="true" />
+      <app-leave-balance-list-table [balances]="balanceStore.all()" [showDepartmentColumn]="true" [showLegalEntityColumn]="true" [workDayHours]="workDayHours()" />
     }
   } @else if (activeTab() === 'audit') {
     <div class="emc-audit-actions">

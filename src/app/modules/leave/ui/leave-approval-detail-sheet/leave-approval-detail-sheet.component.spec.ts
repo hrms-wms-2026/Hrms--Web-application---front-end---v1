@@ -7,8 +7,8 @@ describe('LeaveApprovalDetailSheetComponent', () => {
 
   const detail: LeaveApprovalDetailResponse = {
     requestId: 'req-1', employeeId: 'emp-1', employeeName: 'Anu Raman', leaveTypeId: 'type-1',
-    leaveTypeName: 'Annual Leave', leaveTypeCode: 'ANNUAL', startAt: '2026-09-10T00:00:00Z', endAt: '2026-09-12T00:00:00Z',
-    totalHours: 3, paidHours: 3, unpaidHours: 0, status: 'pending', reason: 'Family trip',
+    leaveTypeName: 'Annual Leave', leaveTypeCode: 'ANNUAL', startAt: '2026-09-09T14:00:00.000Z', endAt: '2026-09-09T18:00:00.000Z',
+    totalHours: 4, paidHours: 4, unpaidHours: 0, status: 'pending', reason: 'Family trip',
     approvers: [
       { approverEmployeeId: 'mgr-1', sequenceOrder: 1, status: 'pending', comment: null, delegatedFromApproverId: null, decidedAt: null }
     ],
@@ -26,12 +26,14 @@ describe('LeaveApprovalDetailSheetComponent', () => {
     fixture.componentRef.setInput('canApprove', true);
   });
 
-  it('renders the employee, type, and total days in the header', () => {
+  it('renders the employee, type, datetime range, and total hours in the header', () => {
     fixture.detectChanges();
     const text = fixture.nativeElement.textContent as string;
     expect(text).toContain('Anu Raman');
     expect(text).toContain('Annual Leave');
-    expect(text).toContain('3');
+    expect(text).toContain('9 Sep 14:00 → 9 Sep 18:00');
+    expect(text).toContain('4h');
+    expect(text).not.toContain('days');
   });
 
   it('renders current warnings', () => {

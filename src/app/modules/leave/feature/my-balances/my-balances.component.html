@@ -1,7 +1,7 @@
 <!-- Quiet Operations Desk: personal balances and request history lead the Time Off module without management noise. -->
 <section class="mbc-page">
   <header class="mbc-header">
-    <div><p class="mbc-kicker">TIME OFF</p><h1>My Balances</h1><p class="mbc-subtitle">Your leave entitlement and remaining days for the selected year.</p></div>
+    <div><p class="mbc-kicker">TIME OFF</p><h1>My Balances</h1><p class="mbc-subtitle">Your leave entitlement and remaining hours for the selected year.</p></div>
     <div class="mbc-header-actions">
       <app-select [options]="yearOptions" [value]="selectedYear()" (valueChange)="onYearChange($event)" />
       <app-button data-testid="new-request-button" (click)="openWizard()">+ New Request</app-button>
@@ -14,7 +14,7 @@
   } @else if (store.my().length === 0) {
     <app-empty-state title="No leave balances yet" description="Balances appear once HR generates entitlements for this year." />
   } @else {
-    <app-leave-balance-list-table [balances]="store.my()" [showEmployeeColumn]="false" />
+    <app-leave-balance-list-table [balances]="store.my()" [showEmployeeColumn]="false" [workDayHours]="workDayHours()" />
   }
 
   <h2 class="mbc-subheading">Request History</h2>
@@ -25,7 +25,7 @@
   } @else if (requestStore.myRequests().length === 0) {
     <app-empty-state title="No leave requests yet" description="Requests you submit will appear here." />
   } @else {
-    <app-leave-request-history-table [requests]="requestStore.myRequests()" (cancelRequested)="onCancelRequested($event)" />
+    <app-leave-request-history-table [requests]="requestStore.myRequests()" [timezone]="settingsStore.settings()?.timezone ?? null" (cancelRequested)="onCancelRequested($event)" />
   }
 </section>
 
@@ -51,9 +51,10 @@
 <app-leave-cancel-confirm-dialog
   [open]="cancelTarget() !== null"
   [leaveTypeName]="cancelTarget()?.leaveTypeName ?? ''"
-  [startDate]="cancelTarget()?.startAt ?? ''"
-  [endDate]="cancelTarget()?.endAt ?? ''"
-  [totalDays]="cancelTarget()?.totalHours ?? 0"
+  [startAt]="cancelTarget()?.startAt ?? ''"
+  [endAt]="cancelTarget()?.endAt ?? ''"
+  [totalHours]="cancelTarget()?.totalHours ?? 0"
+  [timezone]="settingsStore.settings()?.timezone ?? null"
   [status]="cancelTarget()?.status ?? ''"
   [requireReason]="false"
   [cancelling]="requestStore.cancelling()"

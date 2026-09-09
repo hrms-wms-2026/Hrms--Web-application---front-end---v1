@@ -1,2 +1,57 @@
 <!-- Quiet Operations Desk: a preview prevents broad entitlement generation from feeling irreversible. -->
-<app-modal [open]="open" title="Generate Entitlements" (closed)="onClose()"><div class="egm-body"><label class="egm-field"><span>Legal entity <em>(optional)</em></span><select (change)="onLegalEntityChange($any($event.target).value)"><option value="">All legal entities</option>@for (entity of legalEntities; track entity.id) { <option [value]="entity.id">{{ entity.name }}</option> }</select></label>@if (!previewResult) { <button type="button" class="egm-primary" [disabled]="generating" (click)="onPreviewClick()">{{ generating ? 'Loading preview…' : 'Preview generation' }}</button> } @else { <div class="egm-summary"><strong>Ready to generate</strong><p><b>{{ previewResult.employeeCount }}</b> employees and <b>{{ previewResult.entitlementLineCount }}</b> entitlement lines will be processed.</p>@if (previewResult.skipped.length) { <p class="egm-warning">{{ previewResult.skipped.length }} employees will be skipped.</p> }</div>@if (generationError) { <p class="egm-error">{{ generationError }}</p> }<div class="egm-actions"><button type="button" class="egm-secondary" [disabled]="generating" (click)="onPreviewClick()">Refresh preview</button><button type="button" class="egm-secondary" (click)="onExportClick()">Export CSV</button><button type="button" data-testid="generate-confirm" class="egm-primary" [disabled]="generating" (click)="onConfirmClick()">{{ generating ? 'Generating…' : 'Confirm & Generate' }}</button></div> }</div></app-modal>
+<app-modal [open]="open" title="Generate Entitlements" (closed)="onClose()">
+  <div class="egm-body">
+    <label class="egm-field">
+      <span>Legal entity <em>(optional)</em></span>
+      <select (change)="onLegalEntityChange($any($event.target).value)">
+        <option value="">All legal entities</option>
+        @for (entity of legalEntities; track entity.id) {
+          <option [value]="entity.id">{{ entity.name }}</option>
+        }
+      </select>
+    </label>
+    @if (!previewResult) {
+      <button type="button" class="egm-primary" [disabled]="generating" (click)="onPreviewClick()">{{ generating ? 'Loading preview…' : 'Preview generation' }}</button>
+    } @else {
+      <div class="egm-summary">
+        <strong>Ready to generate</strong>
+        <p><b>{{ previewResult.employeeCount }}</b> employees and <b>{{ previewResult.entitlementLineCount }}</b> entitlement lines will be processed.</p>
+        @if (previewResult.skipped.length) {
+          <p class="egm-warning">{{ previewResult.skipped.length }} employees will be skipped.</p>
+        }
+      </div>
+      @if (previewResult.lines.length) {
+        <div class="egm-preview">
+          <table>
+            <thead>
+              <tr>
+                <th>Employee</th>
+                <th>Leave type</th>
+                <th>Total hours</th>
+                <th>Carried forward hours</th>
+                <th>Remaining hours</th>
+              </tr>
+            </thead>
+            <tbody>
+              @for (line of previewResult.lines; track line.employeeId + line.leaveTypeId) {
+                <tr data-testid="generate-preview-row">
+                  <td>{{ line.employeeName }}</td>
+                  <td>{{ line.leaveTypeName }}</td>
+                  <td>{{ line.totalHours.toFixed(1) }}</td>
+                  <td>{{ line.carriedForwardHours.toFixed(1) }}</td>
+                  <td>{{ line.remainingHours.toFixed(1) }}</td>
+                </tr>
+              }
+            </tbody>
+          </table>
+        </div>
+      }
+      @if (generationError) { <p class="egm-error">{{ generationError }}</p> }
+      <div class="egm-actions">
+        <button type="button" class="egm-secondary" [disabled]="generating" (click)="onPreviewClick()">Refresh preview</button>
+        <button type="button" class="egm-secondary" (click)="onExportClick()">Export CSV</button>
+        <button type="button" data-testid="generate-confirm" class="egm-primary" [disabled]="generating" (click)="onConfirmClick()">{{ generating ? 'Generating…' : 'Confirm & Generate' }}</button>
+      </div>
+    }
+  </div>
+</app-modal>

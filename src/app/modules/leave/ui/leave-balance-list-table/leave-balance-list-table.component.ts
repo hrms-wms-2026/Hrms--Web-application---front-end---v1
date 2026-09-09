@@ -2,5 +2,25 @@
 import { ChangeDetectionStrategy, Component, Input } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { LeaveBalanceResponse } from '../../models/leave-balance.model';
-@Component({ selector: 'app-leave-balance-list-table', standalone: true, imports: [CommonModule], templateUrl: './leave-balance-list-table.component.html', styleUrl: './leave-balance-list-table.component.css', changeDetection: ChangeDetectionStrategy.OnPush })
-export class LeaveBalanceListTableComponent { @Input({ required: true }) balances: readonly LeaveBalanceResponse[] = []; @Input() showEmployeeColumn = true; @Input() showDepartmentColumn = false; @Input() showLegalEntityColumn = false; }
+import { formatDaysAtWorkDayHours } from '../../utils/leave-hours-format';
+
+@Component({
+  selector: 'app-leave-balance-list-table',
+  standalone: true,
+  imports: [CommonModule],
+  templateUrl: './leave-balance-list-table.component.html',
+  styleUrl: './leave-balance-list-table.component.css',
+  changeDetection: ChangeDetectionStrategy.OnPush
+})
+export class LeaveBalanceListTableComponent {
+  @Input({ required: true }) balances: readonly LeaveBalanceResponse[] = [];
+  @Input() showEmployeeColumn = true;
+  @Input() showDepartmentColumn = false;
+  @Input() showLegalEntityColumn = false;
+  @Input() workDayHours: number | null = null;
+
+  daysAtRate(entitledHours: number): string | null {
+    if (!this.workDayHours || this.workDayHours <= 0) return null;
+    return formatDaysAtWorkDayHours(entitledHours, this.workDayHours);
+  }
+}

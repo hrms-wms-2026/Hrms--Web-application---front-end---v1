@@ -8,7 +8,7 @@
       @if (day.absences.length > 0) {
         <div class="lcg-dots">
           @for (absence of day.absences.slice(0, 4); track absence.requestId) {
-            <span class="lcg-dot" [style.background]="colorFor(absence)" [title]="absence.employeeName"></span>
+            <span class="lcg-dot" [style.background]="colorFor(absence)" [title]="chipTitle(absence)"></span>
           }
         </div>
         <span class="lcg-count">{{ day.absences.length }}</span>

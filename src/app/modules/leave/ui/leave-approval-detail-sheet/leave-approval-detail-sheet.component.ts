@@ -3,6 +3,7 @@ import { ChangeDetectionStrategy, Component, EventEmitter, Input, Output, comput
 import { CommonModule } from '@angular/common';
 import { ModalComponent } from '../../../../shared/ui/modal/modal.component';
 import { LeaveApprovalDetailResponse, parseSubmissionConflictSnapshot } from '../../models/leave-approval.model';
+import { formatHoursLabel, formatLeaveRange } from '../../utils/leave-hours-format';
 
 export type LeaveApprovalDecisionRequest =
   | { kind: 'approve'; comment: string | null }
@@ -23,6 +24,7 @@ export class LeaveApprovalDetailSheetComponent {
   @Input({ required: true }) open = false;
   @Input({ required: true }) detail: LeaveApprovalDetailResponse | null = null;
   @Input({ required: true }) canApprove = false;
+  @Input() timezone: string | null = null;
   @Input() deciding = false;
   @Input() decideError: string | null = null;
   @Output() decisionRequested = new EventEmitter<LeaveApprovalDecisionRequest>();
@@ -36,6 +38,14 @@ export class LeaveApprovalDetailSheetComponent {
   readonly submissionSnapshot = computed(() =>
     this.detail ? parseSubmissionConflictSnapshot(this.detail.submissionConflictSnapshotJson) : null
   );
+
+  formatRange(startAt: string, endAt: string): string {
+    return formatLeaveRange(startAt, endAt, this.timezone);
+  }
+
+  formatHours(hours: number): string {
+    return formatHoursLabel(hours);
+  }
 
   readonly currentApproverState = computed(() => {
     const approver = this.detail?.approvers.find(

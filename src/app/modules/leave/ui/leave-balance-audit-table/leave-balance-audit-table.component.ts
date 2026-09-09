@@ -9,7 +9,7 @@ export class LeaveBalanceAuditTableComponent {
   @Input({ required: true }) loading = false;
   @Output() loadMoreRequested = new EventEmitter<void>();
 
-  signedDays(hoursChanged: number): string {
+  signedHours(hoursChanged: number): string {
     return hoursChanged >= 0 ? `+${hoursChanged}` : `${hoursChanged}`;
   }
 

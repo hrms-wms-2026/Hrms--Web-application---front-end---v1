@@ -8,7 +8,7 @@ describe('LeaveCalendarDayDetailComponent', () => {
   const day: LeaveCalendarDayResponse = {
     date: '2026-09-10', dayOfWeek: 'Thursday',
     absences: [
-      { requestId: 'req-1', employeeId: 'emp-1', employeeName: 'Anu Raman', departmentId: null, departmentName: 'Engineering', legalEntityId: null, legalEntityName: null, leaveTypeId: 'type-1', leaveTypeName: 'Annual Leave', leaveTypeCode: 'ANNUAL', leaveTypeCategory: 'annual', typeColorHex: null, status: 'approved', isTentative: false, isPartialCancellationHistory: false, startAt: '2026-09-10T00:00:00Z', endAt: '2026-09-12T00:00:00Z', totalHours: 3 }
+      { requestId: 'req-1', employeeId: 'emp-1', employeeName: 'Anu Raman', departmentId: null, departmentName: 'Engineering', legalEntityId: null, legalEntityName: null, leaveTypeId: 'type-1', leaveTypeName: 'Annual Leave', leaveTypeCode: 'ANNUAL', leaveTypeCategory: 'annual', typeColorHex: null, status: 'approved', isTentative: false, isPartialCancellationHistory: false, startAt: '2026-09-09T14:00:00.000Z', endAt: '2026-09-09T18:00:00.000Z', totalHours: 4 }
     ],
     holidays: []
   };
@@ -20,12 +20,14 @@ describe('LeaveCalendarDayDetailComponent', () => {
     fixture.componentRef.setInput('day', day);
   });
 
-  it('lists everyone on leave that day with department and type', () => {
+  it('lists everyone on leave that day with department, type, range, and hours', () => {
     fixture.detectChanges();
     const text = fixture.nativeElement.textContent as string;
     expect(text).toContain('Anu Raman');
     expect(text).toContain('Engineering');
     expect(text).toContain('Annual Leave');
+    expect(text).toContain('9 Sep 14:00 → 9 Sep 18:00');
+    expect(text).toContain('4h');
   });
 
   it('shows a tentative badge when the absence is tentative', () => {

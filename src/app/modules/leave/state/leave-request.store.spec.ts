@@ -60,7 +60,7 @@ describe('LeaveRequestStore', () => {
   it('sets previewError on a failed preview and clears previewResult', async () => {
     const previewing = store.preview(payload);
     httpMock.expectOne(`${environment.apiUrl}/leave/requests/preview`)
-      .flush({ detail: 'Insufficient balance. You have 1 days remaining for Annual Leave' }, { status: 400, statusText: 'Bad Request' });
+      .flush({ detail: 'Insufficient balance. You have 1 hours remaining for Annual Leave' }, { status: 400, statusText: 'Bad Request' });
     await previewing;
     expect(store.previewResult()).toBeNull();
     expect(store.previewError()).toContain('Insufficient balance');

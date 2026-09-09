@@ -1,6 +1,6 @@
 <table class="lpa-table">
   <thead>
-    <tr><th></th><th>Name</th><th>Type</th><th>From</th><th>To</th><th>Days</th><th>Status</th></tr>
+    <tr><th></th><th>Name</th><th>Type</th><th>From</th><th>To</th><th>Hours</th><th>Status</th></tr>
   </thead>
   <tbody>
     @for (row of rows; track row.requestId) {
@@ -10,9 +10,9 @@
         </td>
         <td>{{ row.employeeName }}</td>
         <td>{{ row.leaveTypeName }}</td>
-        <td>{{ row.startAt }}</td>
-        <td>{{ row.endAt }}</td>
-        <td>{{ row.totalHours }}</td>
+        <td>{{ formatWhen(row.startAt) }}</td>
+        <td>{{ formatWhen(row.endAt) }}</td>
+        <td>{{ formatHours(row.totalHours) }}</td>
         <td><span class="lpa-status" [class.lpa-status-info]="row.status === 'information_requested'">{{ statusLabel(row.status) }}</span></td>
       </tr>
     }

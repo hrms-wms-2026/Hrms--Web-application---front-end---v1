@@ -50,7 +50,7 @@ const LEAVE_TYPE = {
 const BALANCE_BEFORE = {
   employeeId: 'emp-1', employeeNumber: 'EMP-001', employeeName: 'Anu Raman', departmentId: null, departmentName: null,
   legalEntityId: null, legalEntityName: null, leaveTypeId: 'type-1', leaveTypeName: 'Annual Leave', leaveTypeCode: 'ANNUAL',
-  year: 2026, entitledDays: 20, annualDays: 20, carriedForwardDays: 0, usedDays: 0, pendingDays: 0, remainingDays: 20,
+  year: 2026, entitledHours: 20, annualHours: 20, carriedForwardHours: 0, usedHours: 0, pendingHours: 0, remainingHours: 20,
   isNegative: false, carryForwardExpiresOn: null,
 };
 
@@ -82,8 +82,8 @@ test.describe('Leave Management - golden path', () => {
     await mockSessionAndLayout(page, authResponse({ user: { email: 'manager@acme.com' }, permissions: ['leave:approve'] }));
     await mockJson(page, '**/api/v1/leave/requests/pending-approvals*', [{
       requestId: 'req-1', employeeId: 'emp-1', employeeName: 'Anu Raman', leaveTypeId: 'type-1',
-      leaveTypeName: 'Annual Leave', leaveTypeCode: 'ANNUAL', startDate: '2026-09-10', endDate: '2026-09-12',
-      totalDays: 3, paidDays: 3, unpaidDays: 0, status: 'pending', submittedAt: '2026-08-30T00:00:00Z',
+      leaveTypeName: 'Annual Leave', leaveTypeCode: 'ANNUAL', startAt: '2026-09-10T00:00:00Z', endAt: '2026-09-12T00:00:00Z',
+      totalHours: 3, paidHours: 3, unpaidHours: 0, status: 'pending', submittedAt: '2026-08-30T00:00:00Z',
     }]);
 
     await page.goto('/time-off/team-approvals');
@@ -95,18 +95,18 @@ test.describe('Leave Management - golden path', () => {
     await mockSessionAndLayout(page, authResponse({ user: { email: 'manager@acme.com' }, permissions: ['leave:approve'] }));
     await mockJson(page, '**/api/v1/leave/requests/pending-approvals*', [{
       requestId: 'req-1', employeeId: 'emp-1', employeeName: 'Anu Raman', leaveTypeId: 'type-1',
-      leaveTypeName: 'Annual Leave', leaveTypeCode: 'ANNUAL', startDate: '2026-09-10', endDate: '2026-09-12',
-      totalDays: 3, paidDays: 3, unpaidDays: 0, status: 'pending', submittedAt: '2026-08-30T00:00:00Z',
+      leaveTypeName: 'Annual Leave', leaveTypeCode: 'ANNUAL', startAt: '2026-09-10T00:00:00Z', endAt: '2026-09-12T00:00:00Z',
+      totalHours: 3, paidHours: 3, unpaidHours: 0, status: 'pending', submittedAt: '2026-08-30T00:00:00Z',
     }]);
     await mockJson(page, '**/api/v1/leave/requests/req-1/approval', {
       requestId: 'req-1', employeeId: 'emp-1', employeeName: 'Anu Raman', leaveTypeId: 'type-1',
-      leaveTypeName: 'Annual Leave', leaveTypeCode: 'ANNUAL', startDate: '2026-09-10', endDate: '2026-09-12',
-      totalDays: 3, paidDays: 3, unpaidDays: 0, status: 'pending', reason: null,
-      approvers: [], infoMessages: [], submissionConflictSnapshotJson: null, currentWarnings: [], remainingDays: 17,
+      leaveTypeName: 'Annual Leave', leaveTypeCode: 'ANNUAL', startAt: '2026-09-10T00:00:00Z', endAt: '2026-09-12T00:00:00Z',
+      totalHours: 3, paidHours: 3, unpaidHours: 0, status: 'pending', reason: null,
+      approvers: [], infoMessages: [], submissionConflictSnapshotJson: null, currentWarnings: [], remainingHours: 17,
     });
     await mockJson(page, '**/api/v1/leave/requests/req-1/approve', {
       requestId: 'req-1', status: 'approved', currentApproverState: 'complete',
-      paidDaysMovedFromPending: 3, unpaidDays: 0, remainingDays: 17, currentWarnings: [],
+      paidHoursMovedFromPending: 3, unpaidHours: 0, remainingHours: 17, currentWarnings: [],
     });
 
     await page.goto('/time-off/team-approvals');
@@ -118,7 +118,7 @@ test.describe('Leave Management - golden path', () => {
   });
 
   test('employee balance drops after approval', async ({ page }) => {
-    const balanceAfter = { ...BALANCE_BEFORE, usedDays: 3, remainingDays: 17 };
+    const balanceAfter = { ...BALANCE_BEFORE, usedHours: 3, remainingHours: 17 };
     await mockSessionAndLayout(page, authResponse());
     await mockJson(page, '**/api/v1/leave/types*', [LEAVE_TYPE]);
     await mockJson(page, '**/api/v1/leave/balances/my*', [balanceAfter]);

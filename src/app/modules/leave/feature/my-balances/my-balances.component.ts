@@ -6,6 +6,7 @@ import { EmptyStateComponent } from '../../../../shared/ui/empty-state/empty-sta
 import { ErrorStateComponent } from '../../../../shared/ui/error-state/error-state.component';
 import { SelectComponent, SelectOption } from '../../../../shared/ui/select/select.component';
 import { NotificationService } from '../../../../core/services/notification.service';
+import { computeWorkDayHours } from '../../../organization/utils/work-day-hours';
 import { GeneralSettingsStore } from '../../../organization/state/general-settings.store';
 import { LegalEntityStore } from '../../../organization/state/legal-entity.store';
 import { LeaveBalanceStore } from '../../state/leave-balance.store';
@@ -34,6 +35,13 @@ export class MyBalancesComponent {
   private readonly notificationService = inject(NotificationService);
   readonly yearOptions: SelectOption[] = yearOptions();
   readonly selectedYear = computed(() => String(this.store.year()));
+  readonly workDayHours = computed(() =>
+    computeWorkDayHours(
+      this.settingsStore.settings()?.workStartTime,
+      this.settingsStore.settings()?.workEndTime,
+      this.settingsStore.settings()?.breakDurationMinutes
+    )
+  );
   readonly wizardOpen = signal(false);
   readonly cancelTarget = signal<LeaveRequestListItemResponse | null>(null);
 

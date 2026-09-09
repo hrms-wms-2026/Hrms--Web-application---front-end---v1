@@ -23,9 +23,9 @@ describe('LeaveBalanceAuditTableComponent', () => {
     expect(fixture.nativeElement.querySelectorAll('[data-testid="audit-row"]').length).toBe(2);
   });
 
-  it('shows a positive/negative sign on daysChanged', () => {
+  it('shows a positive/negative sign on hoursChanged', () => {
     fixture.detectChanges();
-    const cells = fixture.nativeElement.querySelectorAll('[data-testid="audit-days-changed"]');
+    const cells = fixture.nativeElement.querySelectorAll('[data-testid="audit-hours-changed"]');
     expect(cells[0].textContent.trim()).toBe('+20');
     expect(cells[1].textContent.trim()).toBe('-3');
   });

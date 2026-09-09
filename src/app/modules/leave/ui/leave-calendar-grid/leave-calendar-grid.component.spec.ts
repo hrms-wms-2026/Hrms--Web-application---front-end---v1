@@ -9,7 +9,7 @@ describe('LeaveCalendarGridComponent', () => {
     {
       date: '2026-09-10', dayOfWeek: 'Thursday',
       absences: [
-        { requestId: 'req-1', employeeId: 'emp-1', employeeName: 'Anu Raman', departmentId: null, departmentName: null, legalEntityId: null, legalEntityName: null, leaveTypeId: 'type-1', leaveTypeName: 'Annual Leave', leaveTypeCode: 'ANNUAL', leaveTypeCategory: 'annual', typeColorHex: null, status: 'approved', isTentative: false, isPartialCancellationHistory: false, startAt: '2026-09-10T00:00:00Z', endAt: '2026-09-12T00:00:00Z', totalHours: 3 }
+        { requestId: 'req-1', employeeId: 'emp-1', employeeName: 'Anu Raman', departmentId: null, departmentName: null, legalEntityId: null, legalEntityName: null, leaveTypeId: 'type-1', leaveTypeName: 'Annual Leave', leaveTypeCode: 'ANNUAL', leaveTypeCategory: 'annual', typeColorHex: null, status: 'approved', isTentative: false, isPartialCancellationHistory: false, startAt: '2026-09-09T14:00:00.000Z', endAt: '2026-09-09T18:00:00.000Z', totalHours: 4 }
       ],
       holidays: []
     },
@@ -31,6 +31,14 @@ describe('LeaveCalendarGridComponent', () => {
     fixture.detectChanges();
     const cells = fixture.nativeElement.querySelectorAll('[data-testid="calendar-day"]');
     expect(cells[0].textContent).toContain('1');
+  });
+
+  it('puts startAt, endAt, and hours on the absence chip title', () => {
+    fixture.detectChanges();
+    const title = fixture.nativeElement.querySelector('.lcg-dot').getAttribute('title') as string;
+    expect(title).toContain('Anu Raman');
+    expect(title).toContain('9 Sep 14:00 → 9 Sep 18:00');
+    expect(title).toContain('4h');
   });
 
   it('shows the holiday name on a holiday day', () => {

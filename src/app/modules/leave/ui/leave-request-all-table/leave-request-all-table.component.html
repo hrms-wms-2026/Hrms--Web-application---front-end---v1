@@ -1,6 +1,6 @@
 <table class="lra-table">
   <thead>
-    <tr><th>Name</th><th>Department</th><th>Type</th><th>From</th><th>To</th><th>Days</th><th>Status</th><th>Actions</th></tr>
+    <tr><th>Name</th><th>Department</th><th>Type</th><th>From</th><th>To</th><th>Hours</th><th>Status</th><th>Actions</th></tr>
   </thead>
   <tbody>
     @for (row of rows; track row.requestId) {
@@ -8,9 +8,9 @@
         <td>{{ row.employeeName }}</td>
         <td>{{ row.departmentName ?? '-' }}</td>
         <td>{{ row.leaveTypeName }}</td>
-        <td>{{ row.startAt }}</td>
-        <td>{{ row.endAt }}</td>
-        <td>{{ row.totalHours }}</td>
+        <td>{{ formatWhen(row.startAt) }}</td>
+        <td>{{ formatWhen(row.endAt) }}</td>
+        <td>{{ formatHours(row.totalHours) }}</td>
         <td><span class="lra-status" [class]="'lra-status-' + row.status">{{ statusLabel(row.status) }}</span></td>
         <td>
           @if (canCancel(row)) {

@@ -21,6 +21,7 @@ describe('MyBalancesComponent', () => {
     httpMock.expectOne((r) => r.url === `${environment.apiUrl}/leave/balances/my`).flush([]);
     httpMock.expectOne((r) => r.url === `${environment.apiUrl}/leave/requests/my`).flush([]);
     httpMock.expectOne((r) => r.url === `${environment.apiUrl}/leave/types`).flush([]);
+    expect(fixture.nativeElement.textContent).toContain('remaining hours');
   });
 
   it('opens the new-request wizard when the button is clicked', () => {
