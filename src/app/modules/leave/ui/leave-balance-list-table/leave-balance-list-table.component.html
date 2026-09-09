@@ -23,19 +23,19 @@
           @if (showLegalEntityColumn) { <td>{{ balance.legalEntityName ?? '—' }}</td> }
           <td><strong>{{ balance.leaveTypeName }}</strong><span class="lbt-muted">{{ balance.leaveTypeCode }}</span></td>
           <td>
-            {{ balance.entitledHours.toFixed(1) }}
+            {{ formatHours(balance.entitledHours) }}
             @if (daysAtRate(balance.entitledHours); as subtitle) {
               <span class="lbt-muted" data-testid="balance-days-at-rate">{{ subtitle }}</span>
             }
           </td>
-          <td>{{ balance.carriedForwardHours.toFixed(1) }}</td>
-          <td>{{ balance.usedHours.toFixed(1) }}</td>
-          <td>{{ balance.pendingHours.toFixed(1) }}</td>
+          <td>{{ formatHours(balance.carriedForwardHours) }}</td>
+          <td>{{ formatHours(balance.usedHours) }}</td>
+          <td>{{ formatHours(balance.pendingHours) }}</td>
           <td>
             @if (balance.isNegative) {
-              <span data-testid="balance-remaining-negative" class="lbt-negative">{{ balance.remainingHours.toFixed(1) }}</span>
+              <span data-testid="balance-remaining-negative" class="lbt-negative">{{ formatHours(balance.remainingHours) }}</span>
             } @else {
-              <span data-testid="balance-remaining">{{ balance.remainingHours.toFixed(1) }}</span>
+              <span data-testid="balance-remaining">{{ formatHours(balance.remainingHours) }}</span>
             }
           </td>
           <td>{{ balance.carryForwardExpiresOn ?? '—' }}</td>

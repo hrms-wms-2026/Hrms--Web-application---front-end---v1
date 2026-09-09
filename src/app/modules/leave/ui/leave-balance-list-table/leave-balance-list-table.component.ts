@@ -2,7 +2,7 @@
 import { ChangeDetectionStrategy, Component, Input } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { LeaveBalanceResponse } from '../../models/leave-balance.model';
-import { formatDaysAtWorkDayHours } from '../../utils/leave-hours-format';
+import { formatDaysAtWorkDayHours, formatHours } from '../../utils/leave-hours-format';
 
 @Component({
   selector: 'app-leave-balance-list-table',
@@ -18,6 +18,7 @@ export class LeaveBalanceListTableComponent {
   @Input() showDepartmentColumn = false;
   @Input() showLegalEntityColumn = false;
   @Input() workDayHours: number | null = null;
+  readonly formatHours = formatHours;
 
   daysAtRate(entitledHours: number): string | null {
     if (!this.workDayHours || this.workDayHours <= 0) return null;

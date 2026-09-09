@@ -1,8 +1,10 @@
 /** Quiet Operations Desk: Screen 7's month view - who's off, colour by type, click for detail. */
-import { ChangeDetectionStrategy, Component, computed, inject, signal } from '@angular/core';
+import { ChangeDetectionStrategy, Component, computed, effect, inject, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { EmptyStateComponent } from '../../../../shared/ui/empty-state/empty-state.component';
 import { ErrorStateComponent } from '../../../../shared/ui/error-state/error-state.component';
+import { GeneralSettingsStore } from '../../../organization/state/general-settings.store';
+import { LegalEntityStore } from '../../../organization/state/legal-entity.store';
 import { LeaveCalendarStore } from '../../state/leave-calendar.store';
 import { LeaveCalendarGridComponent } from '../../ui/leave-calendar-grid/leave-calendar-grid.component';
 import { LeaveCalendarDayDetailComponent } from '../../ui/leave-calendar-day-detail/leave-calendar-day-detail.component';
@@ -17,6 +19,8 @@ import { LeaveCalendarDayDetailComponent } from '../../ui/leave-calendar-day-det
 })
 export class TeamCalendarComponent {
   readonly store = inject(LeaveCalendarStore);
+  readonly settingsStore = inject(GeneralSettingsStore);
+  private readonly legalEntityStore = inject(LegalEntityStore);
   readonly detailOpen = signal(false);
   readonly selectedDate = signal<string | null>(null);
   readonly selectedDay = computed(() =>
@@ -31,6 +35,11 @@ export class TeamCalendarComponent {
 
   constructor() {
     void this.store.load();
+    effect(() => {
+      const id = this.legalEntityStore.selectedLegalEntityId();
+      if (!id || this.settingsStore.legalEntityId() === id) return;
+      void this.settingsStore.load(id);
+    });
   }
 
   onDayClicked(date: string): void {

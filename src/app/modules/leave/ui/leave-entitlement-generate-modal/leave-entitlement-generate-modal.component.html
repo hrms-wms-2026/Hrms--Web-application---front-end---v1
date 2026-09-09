@@ -37,9 +37,9 @@
                 <tr data-testid="generate-preview-row">
                   <td>{{ line.employeeName }}</td>
                   <td>{{ line.leaveTypeName }}</td>
-                  <td>{{ line.totalHours.toFixed(1) }}</td>
-                  <td>{{ line.carriedForwardHours.toFixed(1) }}</td>
-                  <td>{{ line.remainingHours.toFixed(1) }}</td>
+                  <td>{{ formatHours(line.totalHours) }}</td>
+                  <td>{{ formatHours(line.carriedForwardHours) }}</td>
+                  <td>{{ formatHours(line.remainingHours) }}</td>
                 </tr>
               }
             </tbody>

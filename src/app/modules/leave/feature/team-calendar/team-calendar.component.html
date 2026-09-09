@@ -14,8 +14,8 @@
   } @else if (store.month()?.isEmpty) {
     <app-empty-state title="No leave scheduled for this month" description="Nobody has approved or pending leave in this range." />
   } @else if (store.month(); as month) {
-    <app-leave-calendar-grid [days]="month.days" (dayClicked)="onDayClicked($event)" />
+    <app-leave-calendar-grid [days]="month.days" [timezone]="settingsStore.settings()?.timezone ?? null" (dayClicked)="onDayClicked($event)" />
   }
 </section>
 
-<app-leave-calendar-day-detail [open]="detailOpen()" [day]="selectedDay()" (closed)="closeDetail()" />
+<app-leave-calendar-day-detail [open]="detailOpen()" [day]="selectedDay()" [timezone]="settingsStore.settings()?.timezone ?? null" (closed)="closeDetail()" />

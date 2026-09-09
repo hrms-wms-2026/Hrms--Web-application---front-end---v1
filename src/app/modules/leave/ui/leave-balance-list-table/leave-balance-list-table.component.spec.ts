@@ -39,4 +39,11 @@ describe('LeaveBalanceListTableComponent', () => {
     fixture.detectChanges();
     expect(fixture.nativeElement.querySelector('[data-testid="balance-days-at-rate"]').textContent.trim()).toBe('14 days at 8.0h/day');
   });
+
+  it('renders hours without a forced one-decimal trailing zero', () => {
+    fixture.componentRef.setInput('balances', [{ ...balances[0], entitledHours: 4.25, remainingHours: 112 }]);
+    fixture.detectChanges();
+    expect(fixture.nativeElement.textContent).toContain('4.25');
+    expect(fixture.nativeElement.querySelector('[data-testid="balance-remaining"]').textContent.trim()).toBe('112');
+  });
 });

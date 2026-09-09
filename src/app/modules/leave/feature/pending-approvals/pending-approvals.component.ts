@@ -1,10 +1,12 @@
 /** Quiet Operations Desk: Screen 6/8's queue - one place for a manager or HR to clear pending leave. */
-import { ChangeDetectionStrategy, Component, inject, signal } from '@angular/core';
+import { ChangeDetectionStrategy, Component, effect, inject, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { NotificationService } from '../../../../core/services/notification.service';
 import { PermissionService } from '../../../../core/auth/state/permission.service';
 import { EmptyStateComponent } from '../../../../shared/ui/empty-state/empty-state.component';
 import { ErrorStateComponent } from '../../../../shared/ui/error-state/error-state.component';
+import { GeneralSettingsStore } from '../../../organization/state/general-settings.store';
+import { LegalEntityStore } from '../../../organization/state/legal-entity.store';
 import { LeaveApprovalStore } from '../../state/leave-approval.store';
 import { LeaveTypeStore } from '../../state/leave-type.store';
 import { LeavePendingApprovalsTableComponent } from '../../ui/leave-pending-approvals-table/leave-pending-approvals-table.component';
@@ -23,6 +25,8 @@ export class PendingApprovalsComponent {
   private readonly permissionService = inject(PermissionService);
   readonly store = inject(LeaveApprovalStore);
   readonly leaveTypeStore = inject(LeaveTypeStore);
+  readonly settingsStore = inject(GeneralSettingsStore);
+  private readonly legalEntityStore = inject(LegalEntityStore);
   readonly canApprove = () => this.permissionService.hasPermission('leave:approve');
 
   readonly detailOpen = signal(false);
@@ -31,6 +35,11 @@ export class PendingApprovalsComponent {
   constructor() {
     void this.store.loadPending();
     void this.leaveTypeStore.load();
+    effect(() => {
+      const id = this.legalEntityStore.selectedLegalEntityId();
+      if (!id || this.settingsStore.legalEntityId() === id) return;
+      void this.settingsStore.load(id);
+    });
   }
 
   onSearchInput(event: Event): void {

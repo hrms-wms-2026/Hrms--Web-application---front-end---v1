@@ -24,7 +24,7 @@
   } @else if (store.pending().length === 0) {
     <app-empty-state title="No pending leave requests" description="All caught up!" />
   } @else {
-    <app-leave-pending-approvals-table [rows]="store.pending()" [selectedIds]="selectedIds()" (rowClicked)="onRowClicked($event)" (selectionChanged)="onSelectionChanged($event)" />
+    <app-leave-pending-approvals-table [rows]="store.pending()" [selectedIds]="selectedIds()" [timezone]="settingsStore.settings()?.timezone ?? null" (rowClicked)="onRowClicked($event)" (selectionChanged)="onSelectionChanged($event)" />
   }
 </section>
 
@@ -32,6 +32,7 @@
   [open]="detailOpen()"
   [detail]="store.detail()"
   [canApprove]="canApprove()"
+  [timezone]="settingsStore.settings()?.timezone ?? null"
   [deciding]="store.deciding()"
   [decideError]="store.decideError()"
   (decisionRequested)="onDecision($event)"

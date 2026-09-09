@@ -1,10 +1,12 @@
 /** Quiet Operations Desk: Screen 6's HR-wide filterable ledger, counts + status filter chips. */
-import { ChangeDetectionStrategy, Component, inject, signal } from '@angular/core';
+import { ChangeDetectionStrategy, Component, effect, inject, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { PermissionService } from '../../../../core/auth/state/permission.service';
 import { NotificationService } from '../../../../core/services/notification.service';
 import { EmptyStateComponent } from '../../../../shared/ui/empty-state/empty-state.component';
 import { ErrorStateComponent } from '../../../../shared/ui/error-state/error-state.component';
+import { GeneralSettingsStore } from '../../../organization/state/general-settings.store';
+import { LegalEntityStore } from '../../../organization/state/legal-entity.store';
 import { LeaveApprovalStore } from '../../state/leave-approval.store';
 import { LeaveTypeStore } from '../../state/leave-type.store';
 import { CancelLeaveRequestRequest } from '../../models/leave-request.model';
@@ -26,6 +28,8 @@ export class RequestsListComponent {
   private readonly notificationService = inject(NotificationService);
   readonly store = inject(LeaveApprovalStore);
   readonly leaveTypeStore = inject(LeaveTypeStore);
+  readonly settingsStore = inject(GeneralSettingsStore);
+  private readonly legalEntityStore = inject(LegalEntityStore);
   readonly canApprove = () => this.permissionService.hasPermission('leave:approve');
   readonly detailOpen = signal(false);
   readonly cancelTarget = signal<LeaveRequestAllListItemResponse | null>(null);
@@ -33,6 +37,11 @@ export class RequestsListComponent {
   constructor() {
     void this.store.loadAll();
     void this.leaveTypeStore.load();
+    effect(() => {
+      const id = this.legalEntityStore.selectedLegalEntityId();
+      if (!id || this.settingsStore.legalEntityId() === id) return;
+      void this.settingsStore.load(id);
+    });
   }
 
   setStatusFilter(status: string | undefined): void {

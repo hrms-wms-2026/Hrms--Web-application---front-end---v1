@@ -19,6 +19,10 @@ describe('leave-hours-format', () => {
     expect(formatLeaveDateTime('2026-09-09T18:00:00.000Z')).toBe('9 Sep 18:00');
   });
 
+  it('formats an instant in the legal-entity timezone', () => {
+    expect(formatLeaveDateTime('2026-09-09T08:30:00.000Z', 'Asia/Colombo')).toBe('9 Sep 14:00');
+  });
+
   it('formats an overnight window in UTC', () => {
     expect(formatLeaveDateTime('2026-09-12T22:00:00.000Z')).toBe('12 Sep 22:00');
     expect(formatLeaveDateTime('2026-09-13T06:00:00.000Z')).toBe('13 Sep 06:00');

@@ -23,7 +23,7 @@
   } @else if (store.all().length === 0) {
     <app-empty-state title="No leave requests found" description="No requests match the current filters." />
   } @else {
-    <app-leave-request-all-table [rows]="store.all()" (rowClicked)="onRowClicked($event)" (cancelRequested)="onCancelRequested($event)" />
+    <app-leave-request-all-table [rows]="store.all()" [timezone]="settingsStore.settings()?.timezone ?? null" (rowClicked)="onRowClicked($event)" (cancelRequested)="onCancelRequested($event)" />
   }
 </section>
 
@@ -31,6 +31,7 @@
   [open]="detailOpen()"
   [detail]="store.detail()"
   [canApprove]="canApprove()"
+  [timezone]="settingsStore.settings()?.timezone ?? null"
   [deciding]="store.deciding()"
   [decideError]="store.decideError()"
   (closed)="closeDetail()"
@@ -42,6 +43,7 @@
   [startAt]="cancelTarget()?.startAt ?? ''"
   [endAt]="cancelTarget()?.endAt ?? ''"
   [totalHours]="cancelTarget()?.totalHours ?? 0"
+  [timezone]="settingsStore.settings()?.timezone ?? null"
   [status]="cancelTarget()?.status ?? ''"
   [requireReason]="true"
   [cancelling]="store.cancelling()"
