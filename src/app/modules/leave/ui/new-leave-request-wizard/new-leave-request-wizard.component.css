@@ -1,4 +1,5 @@
 .nlw-body { display: flex; flex-direction: column; gap: .8rem; min-width: 340px; }
+.nlw-datetime-row { display: grid; grid-template-columns: 1fr 1fr; gap: .6rem; align-items: end; }
 .nlw-field { display: flex; flex-direction: column; gap: .3rem; font-size: .8rem; color: var(--color-text-secondary, #64748b); }
 .nlw-field select, .nlw-field textarea { border-radius: 6px; border: 1px solid var(--color-border, #e4e8ee); padding: .4rem .6rem; font-family: inherit; }
 .nlw-zero-balance { color: #9aa4b2; }

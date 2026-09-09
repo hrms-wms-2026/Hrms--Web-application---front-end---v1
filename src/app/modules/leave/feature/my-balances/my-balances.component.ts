@@ -1,11 +1,13 @@
 /** Quiet Operations Desk: the employee's own leave position, request history, and the New Request entry point. */
-import { ChangeDetectionStrategy, Component, computed, inject, signal } from '@angular/core';
+import { ChangeDetectionStrategy, Component, computed, effect, inject, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { ButtonComponent } from '../../../../shared/ui/button/button.component';
 import { EmptyStateComponent } from '../../../../shared/ui/empty-state/empty-state.component';
 import { ErrorStateComponent } from '../../../../shared/ui/error-state/error-state.component';
 import { SelectComponent, SelectOption } from '../../../../shared/ui/select/select.component';
 import { NotificationService } from '../../../../core/services/notification.service';
+import { GeneralSettingsStore } from '../../../organization/state/general-settings.store';
+import { LegalEntityStore } from '../../../organization/state/legal-entity.store';
 import { LeaveBalanceStore } from '../../state/leave-balance.store';
 import { LeaveRequestStore } from '../../state/leave-request.store';
 import { LeaveTypeStore } from '../../state/leave-type.store';
@@ -27,6 +29,8 @@ export class MyBalancesComponent {
   readonly store = inject(LeaveBalanceStore);
   readonly requestStore = inject(LeaveRequestStore);
   readonly leaveTypeStore = inject(LeaveTypeStore);
+  readonly settingsStore = inject(GeneralSettingsStore);
+  private readonly legalEntityStore = inject(LegalEntityStore);
   private readonly notificationService = inject(NotificationService);
   readonly yearOptions: SelectOption[] = yearOptions();
   readonly selectedYear = computed(() => String(this.store.year()));
@@ -37,6 +41,11 @@ export class MyBalancesComponent {
     void this.store.loadMy(new Date().getFullYear());
     void this.requestStore.loadMine();
     void this.leaveTypeStore.load();
+    effect(() => {
+      const id = this.legalEntityStore.selectedLegalEntityId();
+      if (!id || this.settingsStore.legalEntityId() === id) return;
+      void this.settingsStore.load(id);
+    });
   }
 
   onYearChange(year: string): void {
