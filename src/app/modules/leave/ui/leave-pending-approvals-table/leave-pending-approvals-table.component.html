@@ -8,7 +8,12 @@
         <td (click)="$event.stopPropagation()">
           <input type="checkbox" data-testid="approval-select" [checked]="selectedIds.has(row.requestId)" (click)="onCheckboxClick($event, row.requestId)" />
         </td>
-        <td>{{ row.employeeName }}</td>
+        <td>
+          <div class="lpa-person">
+            <span class="lpa-avatar" aria-hidden="true">{{ initials(row.employeeName) }}</span>
+            <span>{{ row.employeeName }}</span>
+          </div>
+        </td>
         <td>{{ row.leaveTypeName }}</td>
         <td>{{ row.startDate }}</td>
         <td>{{ row.endDate }}</td>

@@ -1,10 +1,14 @@
 <section class="tc-page">
   <header class="tc-header">
-    <div><p class="tc-kicker">TIME OFF / CALENDAR</p><h1>Team Calendar</h1></div>
-    <nav class="tc-nav">
-      <button type="button" (click)="store.goToPreviousMonth()">&lsaquo; Prev</button>
-      <button type="button" (click)="store.goToToday()">{{ monthLabel() }}</button>
-      <button type="button" (click)="store.goToNextMonth()">Next &rsaquo;</button>
+    <div>
+      <p class="tc-kicker">TIME OFF</p>
+      <h1>Team Calendar</h1>
+      <p class="tc-subtitle">Who is off this month.</p>
+    </div>
+    <nav class="tc-nav" aria-label="Month">
+      <button type="button" (click)="store.goToPreviousMonth()">‹</button>
+      <button type="button" class="tc-nav__current" (click)="store.goToToday()">{{ monthLabel() || 'Today' }}</button>
+      <button type="button" (click)="store.goToNextMonth()">›</button>
     </nav>
   </header>
   @if (store.loading()) {
@@ -12,9 +16,18 @@
   } @else if (store.error()) {
     <app-error-state [message]="store.error()!" [retryable]="true" (retry)="store.load()" />
   } @else if (store.month()?.isEmpty) {
-    <app-empty-state title="No leave scheduled for this month" description="Nobody has approved or pending leave in this range." />
+    <div class="tc-empty">
+      <h2>No leave this month</h2>
+      <p>Nobody has approved or pending leave in this range.</p>
+    </div>
   } @else if (store.month(); as month) {
-    <app-leave-calendar-grid [days]="month.days" (dayClicked)="onDayClicked($event)" />
+    <section class="tc-summary" aria-label="Month totals">
+      <article class="tc-metric"><p>People off</p><strong>{{ monthStats().people }}</strong></article>
+      <article class="tc-metric"><p>Days with leave</p><strong>{{ monthStats().days }}</strong></article>
+    </section>
+    <div class="tc-card">
+      <app-leave-calendar-grid [days]="month.days" (dayClicked)="onDayClicked($event)" />
+    </div>
   }
 </section>
 

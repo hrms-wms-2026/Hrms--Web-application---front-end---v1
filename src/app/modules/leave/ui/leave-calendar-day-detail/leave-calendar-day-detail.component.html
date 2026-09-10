@@ -12,8 +12,11 @@
         <ul class="lcd-list">
           @for (absence of day.absences; track absence.requestId) {
             <li>
-              <span class="lcd-name">{{ absence.employeeName }}</span>
-              <span class="lcd-meta">{{ absence.departmentName ?? '-' }} &middot; {{ absence.leaveTypeName }}</span>
+              <span class="lcd-avatar" aria-hidden="true">{{ initials(absence.employeeName) }}</span>
+              <div>
+                <span class="lcd-name">{{ absence.employeeName }}</span>
+                <span class="lcd-meta">{{ absence.departmentName ?? '-' }} · {{ absence.leaveTypeName }}</span>
+              </div>
               @if (absence.isTentative) { <span class="lcd-badge">Tentative</span> }
             </li>
           }

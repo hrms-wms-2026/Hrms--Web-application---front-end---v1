@@ -7,6 +7,7 @@ import { NotificationService } from '../../../../core/services/notification.serv
 import { ButtonComponent } from '../../../../shared/ui/button/button.component';
 import { EmptyStateComponent } from '../../../../shared/ui/empty-state/empty-state.component';
 import { ErrorStateComponent } from '../../../../shared/ui/error-state/error-state.component';
+import { SelectComponent, SelectOption } from '../../../../shared/ui/select/select.component';
 import { LegalEntityApiService } from '../../../organization/data-access/legal-entity-api.service';
 import { LegalEntityListItem } from '../../../organization/models/legal-entity.model';
 import { LeaveEntitlementApiService } from '../../data-access/leave-entitlement-api.service';
@@ -30,7 +31,7 @@ type Tab = 'entitlements' | 'all-balances' | 'audit';
 @Component({
   selector: 'app-entitlements-management',
   standalone: true,
-  imports: [CommonModule, ButtonComponent, EmptyStateComponent, ErrorStateComponent, LeaveEntitlementListTableComponent, LeaveEntitlementGenerateModalComponent, LeaveEntitlementManualFormModalComponent, LeaveEntitlementAdjustModalComponent, LeaveBalanceListTableComponent, LeaveBalanceAuditTableComponent, NewLeaveRequestWizardComponent],
+  imports: [CommonModule, ButtonComponent, EmptyStateComponent, ErrorStateComponent, SelectComponent, LeaveEntitlementListTableComponent, LeaveEntitlementGenerateModalComponent, LeaveEntitlementManualFormModalComponent, LeaveEntitlementAdjustModalComponent, LeaveBalanceListTableComponent, LeaveBalanceAuditTableComponent, NewLeaveRequestWizardComponent],
   templateUrl: './entitlements-management.component.html',
   styleUrl: './entitlements-management.component.css',
   changeDetection: ChangeDetectionStrategy.OnPush
@@ -54,6 +55,9 @@ export class EntitlementsManagementComponent {
   readonly adjustTarget = signal<LeaveEntitlementResponse | null>(null);
   readonly adjustNeedsConfirmation = signal(false);
   readonly requestWizardOpen = signal(false);
+  readonly yearOptions: SelectOption[] = yearOptions();
+  readonly selectedYear = computed(() => String(this.entitlementStore.year()));
+  readonly entitlementSummary = computed(() => summarizeEntitlements(this.entitlementStore.items()));
   private allBalancesLoaded = false;
   private auditLoaded = false;
 
@@ -69,6 +73,20 @@ export class EntitlementsManagementComponent {
     } catch {
       this.notificationService.error('Failed to load legal entities.');
     }
+  }
+
+  onYearChange(year: string): void {
+    this.entitlementStore.setYear(Number(year));
+    if (this.activeTab() === 'all-balances') void this.balanceStore.loadAll(Number(year));
+  }
+
+  onSearchInput(event: Event): void {
+    const search = (event.target as HTMLInputElement).value;
+    this.entitlementStore.setFilters({ ...this.entitlementStore.filters(), search: search || undefined });
+  }
+
+  formatDays(value: number): string {
+    return value.toFixed(1);
   }
 
   selectTab(tab: Tab): void {
@@ -189,4 +207,24 @@ export class EntitlementsManagementComponent {
       this.notificationService.error(this.requestStore.submitError() ?? 'Failed to submit the request.');
     }
   }
+}
+
+function yearOptions(): SelectOption[] {
+  const current = new Date().getFullYear();
+  return [current - 1, current, current + 1].map((year) => ({ value: String(year), label: String(year) }));
+}
+
+function summarizeEntitlements(items: readonly LeaveEntitlementResponse[]): {
+  lines: number;
+  employees: number;
+  remaining: number;
+  overUtilized: number;
+} {
+  const employees = new Set(items.map((item) => item.employeeId));
+  return {
+    lines: items.length,
+    employees: employees.size,
+    remaining: items.reduce((sum, item) => sum + item.remainingDays, 0),
+    overUtilized: items.filter((item) => item.isOverUtilized || item.remainingDays < 0).length
+  };
 }

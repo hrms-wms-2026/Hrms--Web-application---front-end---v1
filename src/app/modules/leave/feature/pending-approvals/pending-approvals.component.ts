@@ -3,7 +3,7 @@ import { ChangeDetectionStrategy, Component, inject, signal } from '@angular/cor
 import { CommonModule } from '@angular/common';
 import { NotificationService } from '../../../../core/services/notification.service';
 import { PermissionService } from '../../../../core/auth/state/permission.service';
-import { EmptyStateComponent } from '../../../../shared/ui/empty-state/empty-state.component';
+import { ButtonComponent } from '../../../../shared/ui/button/button.component';
 import { ErrorStateComponent } from '../../../../shared/ui/error-state/error-state.component';
 import { LeaveApprovalStore } from '../../state/leave-approval.store';
 import { LeaveTypeStore } from '../../state/leave-type.store';
@@ -13,7 +13,7 @@ import { LeaveApprovalDecisionRequest, LeaveApprovalDetailSheetComponent } from 
 @Component({
   selector: 'app-pending-approvals',
   standalone: true,
-  imports: [CommonModule, EmptyStateComponent, ErrorStateComponent, LeavePendingApprovalsTableComponent, LeaveApprovalDetailSheetComponent],
+  imports: [CommonModule, ButtonComponent, ErrorStateComponent, LeavePendingApprovalsTableComponent, LeaveApprovalDetailSheetComponent],
   templateUrl: './pending-approvals.component.html',
   styleUrl: './pending-approvals.component.css',
   changeDetection: ChangeDetectionStrategy.OnPush

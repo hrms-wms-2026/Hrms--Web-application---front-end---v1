@@ -1,13 +1,17 @@
 <section class="rl-page">
   <header class="rl-header">
-    <div><p class="rl-kicker">TIME OFF / APPROVALS</p><h1>All Requests</h1><p class="rl-subtitle">Every leave request across the organization.</p></div>
+    <div>
+      <p class="rl-kicker">TIME OFF</p>
+      <h1>All Requests</h1>
+      <p class="rl-subtitle">Every leave request across the organization.</p>
+    </div>
   </header>
-  <nav class="rl-filters">
-    <button type="button" (click)="setStatusFilter(undefined)">All</button>
-    <button type="button" (click)="setStatusFilter('pending')">Pending</button>
-    <button type="button" (click)="setStatusFilter('approved')">Approved</button>
-    <button type="button" (click)="setStatusFilter('rejected')">Rejected</button>
-  </nav>
+  <div class="rl-tabs" role="tablist" aria-label="Request status">
+    <button type="button" class="rl-tab" [class.rl-tab--active]="statusFilter() === ''" (click)="setStatusFilter(undefined)">All</button>
+    <button type="button" class="rl-tab" [class.rl-tab--active]="statusFilter() === 'pending'" (click)="setStatusFilter('pending')">Pending</button>
+    <button type="button" class="rl-tab" [class.rl-tab--active]="statusFilter() === 'approved'" (click)="setStatusFilter('approved')">Approved</button>
+    <button type="button" class="rl-tab" [class.rl-tab--active]="statusFilter() === 'rejected'" (click)="setStatusFilter('rejected')">Rejected</button>
+  </div>
   <div class="rl-toolbar">
     <select (change)="onLeaveTypeFilterChange($any($event.target).value)">
       <option value="">All leave types</option>
@@ -21,9 +25,14 @@
   } @else if (store.allError()) {
     <app-error-state [message]="store.allError()!" [retryable]="true" (retry)="store.loadAll()" />
   } @else if (store.all().length === 0) {
-    <app-empty-state title="No leave requests found" description="No requests match the current filters." />
+    <div class="rl-empty">
+      <h2>No leave requests found</h2>
+      <p>No requests match the current filters.</p>
+    </div>
   } @else {
-    <app-leave-request-all-table [rows]="store.all()" (rowClicked)="onRowClicked($event)" (cancelRequested)="onCancelRequested($event)" />
+    <div class="rl-table-card">
+      <app-leave-request-all-table [rows]="store.all()" (rowClicked)="onRowClicked($event)" (cancelRequested)="onCancelRequested($event)" />
+    </div>
   }
 </section>
 

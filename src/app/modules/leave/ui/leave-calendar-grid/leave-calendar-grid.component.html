@@ -1,18 +1,36 @@
-<div class="lcg-grid">
-  @for (day of days; track day.date) {
-    <button type="button" data-testid="calendar-day" class="lcg-day" [class.lcg-day-holiday]="day.holidays.length > 0" (click)="dayClicked.emit(day.date)">
-      <span class="lcg-date">{{ day.date | slice:8:10 }}</span>
-      @if (day.holidays.length > 0) {
-        <span class="lcg-holiday">{{ day.holidays[0].name }}</span>
-      }
-      @if (day.absences.length > 0) {
-        <div class="lcg-dots">
-          @for (absence of day.absences.slice(0, 4); track absence.requestId) {
-            <span class="lcg-dot" [style.background]="colorFor(absence)" [title]="absence.employeeName"></span>
+<div class="lcg">
+  <div class="lcg-weekdays" aria-hidden="true">
+    @for (label of weekdays; track label) { <span>{{ label }}</span> }
+  </div>
+  <div class="lcg-grid">
+    @for (pad of leadingPads(); track $index) { <div class="lcg-pad"></div> }
+    @for (day of days; track day.date) {
+      <button
+        type="button"
+        data-testid="calendar-day"
+        class="lcg-day"
+        [class.lcg-day--holiday]="day.holidays.length > 0"
+        [class.lcg-day--today]="isToday(day.date)"
+        [class.lcg-day--weekend]="isWeekend(day.dayOfWeek)"
+        (click)="dayClicked.emit(day.date)"
+      >
+        <span class="lcg-date">{{ day.date | slice:8:10 }}</span>
+        @if (day.holidays.length > 0) {
+          <span class="lcg-holiday">{{ day.holidays[0].name }}</span>
+        }
+        @if (day.absences.length > 0) {
+          <div class="lcg-chips">
+            @for (absence of day.absences.slice(0, 3); track absence.requestId) {
+              <span class="lcg-chip" [style.background]="colorFor(absence)" [title]="absence.employeeName">{{ firstName(absence.employeeName) }}</span>
+            }
+          </div>
+          @if (day.absences.length > 3) {
+            <span class="lcg-count">+{{ day.absences.length - 3 }}</span>
+          } @else {
+            <span class="lcg-count">{{ day.absences.length }}</span>
           }
-        </div>
-        <span class="lcg-count">{{ day.absences.length }}</span>
-      }
-    </button>
-  }
+        }
+      </button>
+    }
+  </div>
 </div>

@@ -1,31 +1,78 @@
-<!-- Quiet Operations Desk: one HR workspace, with a controlled switch between writes and organization-wide facts. -->
 <section class="emc-page">
   <header class="emc-header">
-    <div><p class="emc-kicker">TIME OFF / ADMINISTRATION</p><h1>Entitlements</h1><p class="emc-subtitle">Generate, assign, and adjust leave entitlement; review organization-wide balances.</p></div>
-    @if (canManage() && activeTab() === 'entitlements') {
-      <div class="emc-header-actions">
+    <div>
+      <p class="emc-kicker">TIME OFF</p>
+      <h1>Entitlements</h1>
+      <p class="emc-subtitle">Assign leave days from policy, then adjust exceptions.</p>
+    </div>
+    <div class="emc-header-actions">
+      <app-select [options]="yearOptions" [value]="selectedYear()" (valueChange)="onYearChange($event)" />
+      @if (canManage() && activeTab() === 'entitlements') {
         <app-button variant="secondary" data-testid="new-request-on-behalf-button" (click)="openRequestWizard()">+ New Request</app-button>
-        <app-button variant="secondary" (click)="openManualModal()">+ Manual entitlement</app-button>
-        <app-button (click)="openGenerateModal()">Generate entitlements</app-button>
-      </div>
-    }
+        <app-button variant="secondary" (click)="openManualModal()">+ Manual</app-button>
+        <app-button (click)="openGenerateModal()">Generate</app-button>
+      }
+      @if (activeTab() === 'audit') {
+        <app-button variant="secondary" (click)="onExportAudit()" [loading]="auditStore.exporting()">Export CSV</app-button>
+      }
+    </div>
   </header>
-  <nav class="emc-tabs">
-    <button type="button" data-testid="tab-entitlements" class="emc-tab" [class.active]="activeTab() === 'entitlements'" (click)="selectTab('entitlements')">Entitlements</button>
+
+  <div class="emc-tabs" role="tablist" aria-label="Entitlement views">
+    <button type="button" role="tab" data-testid="tab-entitlements" class="emc-tab" [class.emc-tab--active]="activeTab() === 'entitlements'" [attr.aria-selected]="activeTab() === 'entitlements'" (click)="selectTab('entitlements')">Entitlements</button>
     @if (canReadAllBalances()) {
-      <button type="button" data-testid="tab-all-balances" class="emc-tab" [class.active]="activeTab() === 'all-balances'" (click)="selectTab('all-balances')">All Balances</button>
+      <button type="button" role="tab" data-testid="tab-all-balances" class="emc-tab" [class.emc-tab--active]="activeTab() === 'all-balances'" [attr.aria-selected]="activeTab() === 'all-balances'" (click)="selectTab('all-balances')">All Balances</button>
     }
-    <button type="button" data-testid="tab-audit" class="emc-tab" [class.active]="activeTab() === 'audit'" (click)="selectTab('audit')">Audit Trail</button>
-  </nav>
+    <button type="button" role="tab" data-testid="tab-audit" class="emc-tab" [class.emc-tab--active]="activeTab() === 'audit'" [attr.aria-selected]="activeTab() === 'audit'" (click)="selectTab('audit')">Audit Trail</button>
+  </div>
+
   @if (activeTab() === 'entitlements') {
     @if (entitlementStore.loading()) {
-      <div class="emc-loading" aria-busy="true"><span></span><span></span><span></span></div>
+      <div class="emc-loading" aria-busy="true" aria-label="Loading entitlements"><span></span><span></span><span></span></div>
     } @else if (entitlementStore.loadError()) {
       <app-error-state [message]="entitlementStore.loadError()!" [retryable]="true" (retry)="entitlementStore.load()" />
     } @else if (entitlementStore.items().length === 0) {
-      <app-empty-state title="No entitlements generated for this year" description="Use Generate entitlements to create them from each employee's active leave policy." />
+      <div class="emc-empty">
+        <h2>No entitlements for {{ selectedYear() }}</h2>
+        <p>Generate from each employee’s active leave policy, or add a manual line for an exception.</p>
+        @if (canManage()) {
+          <div class="emc-empty-actions">
+            <app-button (click)="openGenerateModal()">Generate entitlements</app-button>
+            <app-button variant="secondary" (click)="openManualModal()">+ Manual entitlement</app-button>
+          </div>
+        }
+      </div>
     } @else {
-      <app-leave-entitlement-list-table [entitlements]="entitlementStore.items()" [canManage]="canManage()" (adjustEntitlement)="openAdjustModal($event)" (recalculateEntitlement)="onRecalculate($event)" />
+      <section class="emc-summary" aria-label="Entitlement totals">
+        <article class="emc-metric">
+          <p class="emc-metric__label">Employees</p>
+          <p class="emc-metric__value">{{ entitlementSummary().employees }}</p>
+        </article>
+        <article class="emc-metric">
+          <p class="emc-metric__label">Lines</p>
+          <p class="emc-metric__value">{{ entitlementSummary().lines }}</p>
+        </article>
+        <article class="emc-metric">
+          <p class="emc-metric__label">Remaining</p>
+          <p class="emc-metric__value">{{ formatDays(entitlementSummary().remaining) }}</p>
+        </article>
+        <article class="emc-metric" [class.emc-metric--warn]="entitlementSummary().overUtilized > 0">
+          <p class="emc-metric__label">Over-utilized</p>
+          <p class="emc-metric__value">{{ entitlementSummary().overUtilized }}</p>
+        </article>
+      </section>
+      <div class="emc-toolbar">
+        <input
+          type="search"
+          class="emc-search"
+          placeholder="Search name or employee number"
+          [value]="entitlementStore.filters().search ?? ''"
+          (input)="onSearchInput($event)"
+        />
+      </div>
+      <div class="emc-table-card">
+        <app-leave-entitlement-list-table [entitlements]="entitlementStore.items()" [canManage]="canManage()" (adjustEntitlement)="openAdjustModal($event)" (recalculateEntitlement)="onRecalculate($event)" />
+      </div>
     }
   } @else if (activeTab() === 'all-balances') {
     @if (balanceStore.allLoading()) {
@@ -33,14 +80,13 @@
     } @else if (balanceStore.allError()) {
       <app-error-state [message]="balanceStore.allError()!" [retryable]="true" (retry)="balanceStore.loadAll(entitlementStore.year())" />
     } @else if (balanceStore.all().length === 0) {
-      <app-empty-state title="No balances found" description="No entitlements match the current filters." />
+      <app-empty-state title="No balances found" description="No entitlements match the current year." />
     } @else {
-      <app-leave-balance-list-table [balances]="balanceStore.all()" [showDepartmentColumn]="true" [showLegalEntityColumn]="true" />
+      <div class="emc-table-card">
+        <app-leave-balance-list-table [balances]="balanceStore.all()" [showDepartmentColumn]="true" [showLegalEntityColumn]="true" />
+      </div>
     }
   } @else if (activeTab() === 'audit') {
-    <div class="emc-audit-actions">
-      <app-button variant="secondary" (click)="onExportAudit()" [loading]="auditStore.exporting()">Export CSV</app-button>
-    </div>
     @if (auditStore.loading() && auditStore.rows().length === 0) {
       <div class="emc-loading" aria-busy="true"><span></span><span></span><span></span></div>
     } @else if (auditStore.error()) {
@@ -48,7 +94,9 @@
     } @else if (auditStore.rows().length === 0) {
       <app-empty-state title="No balance changes recorded yet" description="Accruals, deductions, and adjustments will appear here as they happen." />
     } @else {
-      <app-leave-balance-audit-table [rows]="auditStore.rows()" [hasMore]="auditStore.hasMore()" [loading]="auditStore.loading()" (loadMoreRequested)="auditStore.loadMore()" />
+      <div class="emc-table-card">
+        <app-leave-balance-audit-table [rows]="auditStore.rows()" [hasMore]="auditStore.hasMore()" [loading]="auditStore.loading()" (loadMoreRequested)="auditStore.loadMore()" />
+      </div>
     }
   }
 </section>

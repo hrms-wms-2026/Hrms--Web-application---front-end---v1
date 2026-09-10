@@ -30,6 +30,7 @@ describe('LeaveCalendarGridComponent', () => {
   it('shows the employee count for a day with absences', () => {
     fixture.detectChanges();
     const cells = fixture.nativeElement.querySelectorAll('[data-testid="calendar-day"]');
+    expect(cells[0].textContent).toContain('Anu');
     expect(cells[0].textContent).toContain('1');
   });
 

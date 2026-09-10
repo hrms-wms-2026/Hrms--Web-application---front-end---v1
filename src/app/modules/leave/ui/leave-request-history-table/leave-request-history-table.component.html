@@ -14,7 +14,7 @@
         <td>{{ request.createdAt | slice:0:10 }}</td>
         <td>
           @if (canCancel(request)) {
-            <button type="button" data-testid="cancel-request" (click)="cancelRequested.emit(request)">Cancel</button>
+            <button type="button" data-testid="cancel-request" class="lrh-cancel" (click)="cancelRequested.emit(request)">Cancel</button>
           }
         </td>
       </tr>

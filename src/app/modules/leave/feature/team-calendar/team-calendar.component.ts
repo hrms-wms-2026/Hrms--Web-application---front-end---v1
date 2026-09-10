@@ -1,7 +1,6 @@
 /** Quiet Operations Desk: Screen 7's month view - who's off, colour by type, click for detail. */
 import { ChangeDetectionStrategy, Component, computed, inject, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { EmptyStateComponent } from '../../../../shared/ui/empty-state/empty-state.component';
 import { ErrorStateComponent } from '../../../../shared/ui/error-state/error-state.component';
 import { LeaveCalendarStore } from '../../state/leave-calendar.store';
 import { LeaveCalendarGridComponent } from '../../ui/leave-calendar-grid/leave-calendar-grid.component';
@@ -10,7 +9,7 @@ import { LeaveCalendarDayDetailComponent } from '../../ui/leave-calendar-day-det
 @Component({
   selector: 'app-team-calendar',
   standalone: true,
-  imports: [CommonModule, EmptyStateComponent, ErrorStateComponent, LeaveCalendarGridComponent, LeaveCalendarDayDetailComponent],
+  imports: [CommonModule, ErrorStateComponent, LeaveCalendarGridComponent, LeaveCalendarDayDetailComponent],
   templateUrl: './team-calendar.component.html',
   styleUrl: './team-calendar.component.css',
   changeDetection: ChangeDetectionStrategy.OnPush
@@ -27,6 +26,17 @@ export class TeamCalendarComponent {
     const m = this.store.month();
     if (!m) return '';
     return new Date(m.year, m.month - 1, 1).toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
+  });
+  readonly monthStats = computed(() => {
+    const month = this.store.month();
+    if (!month) return { people: 0, days: 0 };
+    const people = new Set<string>();
+    let days = 0;
+    for (const day of month.days) {
+      if (day.absences.length > 0) days += 1;
+      for (const absence of day.absences) people.add(absence.employeeId);
+    }
+    return { people: people.size, days };
   });
 
   constructor() {

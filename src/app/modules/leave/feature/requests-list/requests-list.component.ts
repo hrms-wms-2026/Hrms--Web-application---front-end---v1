@@ -1,9 +1,8 @@
 /** Quiet Operations Desk: Screen 6's HR-wide filterable ledger, counts + status filter chips. */
-import { ChangeDetectionStrategy, Component, inject, signal } from '@angular/core';
+import { ChangeDetectionStrategy, Component, computed, inject, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { PermissionService } from '../../../../core/auth/state/permission.service';
 import { NotificationService } from '../../../../core/services/notification.service';
-import { EmptyStateComponent } from '../../../../shared/ui/empty-state/empty-state.component';
 import { ErrorStateComponent } from '../../../../shared/ui/error-state/error-state.component';
 import { LeaveApprovalStore } from '../../state/leave-approval.store';
 import { LeaveTypeStore } from '../../state/leave-type.store';
@@ -16,7 +15,7 @@ import { LeaveApprovalDetailSheetComponent } from '../../ui/leave-approval-detai
 @Component({
   selector: 'app-requests-list',
   standalone: true,
-  imports: [CommonModule, EmptyStateComponent, ErrorStateComponent, LeaveCancelConfirmDialogComponent, LeaveRequestAllTableComponent, LeaveApprovalDetailSheetComponent],
+  imports: [CommonModule, ErrorStateComponent, LeaveCancelConfirmDialogComponent, LeaveRequestAllTableComponent, LeaveApprovalDetailSheetComponent],
   templateUrl: './requests-list.component.html',
   styleUrl: './requests-list.component.css',
   changeDetection: ChangeDetectionStrategy.OnPush
@@ -29,6 +28,7 @@ export class RequestsListComponent {
   readonly canApprove = () => this.permissionService.hasPermission('leave:approve');
   readonly detailOpen = signal(false);
   readonly cancelTarget = signal<LeaveRequestAllListItemResponse | null>(null);
+  readonly statusFilter = computed(() => this.store.allFilter().status ?? '');
 
   constructor() {
     void this.store.loadAll();

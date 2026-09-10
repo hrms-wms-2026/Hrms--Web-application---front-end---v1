@@ -1,31 +1,152 @@
-<!-- Quiet Operations Desk: personal balances and request history lead the Time Off module without management noise. -->
+<!-- Quiet Operations Desk: one Balances workspace with a MY / TEAM switch instead of two nav items. -->
 <section class="mbc-page">
   <header class="mbc-header">
-    <div><p class="mbc-kicker">TIME OFF</p><h1>My Balances</h1><p class="mbc-subtitle">Your leave entitlement and remaining days for the selected year.</p></div>
+    <div>
+      <p class="mbc-kicker">TIME OFF</p>
+      <h1>Balances</h1>
+      <p class="mbc-subtitle">{{ pageSubtitle() }}</p>
+    </div>
     <div class="mbc-header-actions">
+      @if (canShowViewToggle()) {
+        <div class="mbc-view-toggle" role="group" aria-label="Balances view" data-testid="balances-view-toggle">
+          <button
+            type="button"
+            class="mbc-view-toggle__option"
+            [class.mbc-view-toggle__option--active]="viewMode() === 'my'"
+            [attr.aria-pressed]="viewMode() === 'my'"
+            data-testid="balances-view-my"
+            (click)="selectViewMode('my')"
+          >
+            MY
+          </button>
+          <button
+            type="button"
+            class="mbc-view-toggle__option"
+            [class.mbc-view-toggle__option--active]="viewMode() === 'team'"
+            [attr.aria-pressed]="viewMode() === 'team'"
+            data-testid="balances-view-team"
+            (click)="selectViewMode('team')"
+          >
+            TEAM
+          </button>
+        </div>
+      }
       <app-select [options]="yearOptions" [value]="selectedYear()" (valueChange)="onYearChange($event)" />
-      <app-button data-testid="new-request-button" (click)="openWizard()">+ New Request</app-button>
+      @if (viewMode() === 'my') {
+        <app-button data-testid="new-request-button" (click)="openWizard()">+ New Request</app-button>
+      }
+      @if (viewMode() === 'team') {
+        <input
+          data-testid="team-balances-search"
+          type="search"
+          placeholder="Search name or employee number"
+          class="mbc-search"
+          [value]="store.teamFilters().search ?? ''"
+          (input)="onSearchInput($event)"
+        />
+      }
     </div>
   </header>
-  @if (store.myLoading()) {
-    <div class="mbc-loading" aria-busy="true"><span></span><span></span><span></span></div>
-  } @else if (store.myError()) {
-    <app-error-state [message]="store.myError()!" [retryable]="true" (retry)="store.loadMy(store.year())" />
-  } @else if (store.my().length === 0) {
-    <app-empty-state title="No leave balances yet" description="Balances appear once HR generates entitlements for this year." />
-  } @else {
-    <app-leave-balance-list-table [balances]="store.my()" [showEmployeeColumn]="false" />
-  }
 
-  <h2 class="mbc-subheading">Request History</h2>
-  @if (requestStore.myRequestsLoading()) {
-    <div class="mbc-loading" aria-busy="true"><span></span><span></span><span></span></div>
-  } @else if (requestStore.myRequestsError()) {
-    <app-error-state [message]="requestStore.myRequestsError()!" [retryable]="true" (retry)="requestStore.loadMine()" />
-  } @else if (requestStore.myRequests().length === 0) {
-    <app-empty-state title="No leave requests yet" description="Requests you submit will appear here." />
+  @if (viewMode() === 'my') {
+    @if (store.myLoading()) {
+      <div class="mbc-loading" aria-busy="true"><span></span><span></span><span></span></div>
+    } @else if (store.myError()) {
+      <app-error-state [message]="store.myError()!" [retryable]="true" (retry)="store.loadMy(store.year())" />
+    } @else if (store.my().length === 0) {
+      <app-empty-state title="No leave balances yet" description="Balances appear once HR generates entitlements for this year." />
+    } @else {
+      <section class="mbc-summary" aria-label="Balance totals">
+        <article class="mbc-metric">
+          <p class="mbc-metric__label">Remaining</p>
+          <p class="mbc-metric__value" data-testid="summary-remaining">{{ formatDays(mySummary().remaining) }}</p>
+          <p class="mbc-metric__hint">across {{ mySummary().types }} leave {{ mySummary().types === 1 ? 'type' : 'types' }}</p>
+        </article>
+        <article class="mbc-metric">
+          <p class="mbc-metric__label">Pending</p>
+          <p class="mbc-metric__value">{{ formatDays(mySummary().pending) }}</p>
+          <p class="mbc-metric__hint">awaiting approval</p>
+        </article>
+        <article class="mbc-metric">
+          <p class="mbc-metric__label">Used</p>
+          <p class="mbc-metric__value">{{ formatDays(mySummary().used) }}</p>
+          <p class="mbc-metric__hint">of {{ formatDays(mySummary().entitled) }} entitled</p>
+        </article>
+      </section>
+
+      @if (expiringCarryForward().length > 0) {
+        <aside class="mbc-banner" role="status">
+          Carry-forward days are on the clock for
+          @for (balance of expiringCarryForward(); track balance.leaveTypeId; let last = $last) {
+            <strong>{{ balance.leaveTypeName }}</strong> ({{ formatDays(balance.carriedForwardDays) }} by {{ balance.carryForwardExpiresOn }}){{ last ? '.' : ', ' }}
+          }
+        </aside>
+      }
+
+      <div class="mbc-card-grid">
+        @for (balance of store.my(); track balance.employeeId + balance.leaveTypeId) {
+          <article class="mbc-card" data-testid="balance-row">
+            <header class="mbc-card__head">
+              <div>
+                <h2>{{ balance.leaveTypeName }}</h2>
+                <p class="mbc-card__code">{{ balance.leaveTypeCode }}</p>
+              </div>
+              @if (balance.isNegative) {
+                <span class="mbc-pill mbc-pill--danger" data-testid="balance-remaining-negative">{{ formatDays(balance.remainingDays) }} overdrawn</span>
+              } @else {
+                <span class="mbc-pill">{{ formatDays(balance.remainingDays) }} left</span>
+              }
+            </header>
+            <p class="mbc-card__remaining">
+              <span data-testid="balance-remaining">{{ formatDays(balance.remainingDays) }}</span>
+              <small>remaining days</small>
+            </p>
+            <div class="mbc-bar" aria-hidden="true">
+              <span class="mbc-bar__used" [style.width.%]="barShare(balance.usedDays, balance)"></span>
+              <span class="mbc-bar__pending" [style.width.%]="barShare(balance.pendingDays, balance)"></span>
+              <span class="mbc-bar__remaining" [style.width.%]="barShare(balance.remainingDays, balance)"></span>
+            </div>
+            <dl class="mbc-card__stats">
+              <div><dt>Entitled</dt><dd>{{ formatDays(balance.entitledDays) }}</dd></div>
+              <div><dt>Carried</dt><dd>{{ formatDays(balance.carriedForwardDays) }}</dd></div>
+              <div><dt>Used</dt><dd>{{ formatDays(balance.usedDays) }}</dd></div>
+              <div><dt>Pending</dt><dd>{{ formatDays(balance.pendingDays) }}</dd></div>
+            </dl>
+            @if (balance.carryForwardExpiresOn) {
+              <p class="mbc-card__expiry">Carry-forward expires {{ balance.carryForwardExpiresOn }}</p>
+            }
+          </article>
+        }
+      </div>
+    }
+
+    <section class="mbc-history" aria-labelledby="request-history-heading">
+      <div class="mbc-history__head">
+        <h2 id="request-history-heading">Request History</h2>
+        <p>Requests you have submitted this year.</p>
+      </div>
+      @if (requestStore.myRequestsLoading()) {
+        <div class="mbc-loading" aria-busy="true"><span></span><span></span><span></span></div>
+      } @else if (requestStore.myRequestsError()) {
+        <app-error-state [message]="requestStore.myRequestsError()!" [retryable]="true" (retry)="requestStore.loadMine()" />
+      } @else if (requestStore.myRequests().length === 0) {
+        <app-empty-state title="No leave requests yet" description="Requests you submit will appear here." />
+      } @else {
+        <app-leave-request-history-table [requests]="requestStore.myRequests()" (cancelRequested)="onCancelRequested($event)" />
+      }
+    </section>
   } @else {
-    <app-leave-request-history-table [requests]="requestStore.myRequests()" (cancelRequested)="onCancelRequested($event)" />
+    @if (store.teamLoading()) {
+      <div class="mbc-loading" aria-busy="true"><span></span><span></span><span></span></div>
+    } @else if (store.teamError()) {
+      <app-error-state [message]="store.teamError()!" [retryable]="true" (retry)="store.loadTeam(store.year())" />
+    } @else if (store.team().length === 0) {
+      <app-empty-state title="No team balances found" description="No entitlements match the current filters, or your team has none generated yet." />
+    } @else {
+      <div class="mbc-table-card">
+        <app-leave-balance-list-table [balances]="store.team()" [showDepartmentColumn]="true" />
+      </div>
+    }
   }
 </section>
 

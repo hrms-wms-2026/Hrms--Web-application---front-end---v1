@@ -83,8 +83,12 @@ describe('canAccessNavItem', () => {
     it('grants Time Off on the "leave" module key, not "time_off", once a child is reachable', () => {
       const timeOff = NAV_ITEMS.find((item) => item.id === 'time-off')!;
       expect(canAccessNavItem(timeOff, checker(['leave:read-own'], ['leave']))).toBe(true);
+      expect(canAccessNavItem(timeOff, checker(['leave:read-team'], ['leave']))).toBe(true);
       expect(canAccessNavItem(timeOff, checker(['leave:read-own'], ['time_off']))).toBe(false);
       expect(canAccessNavItem(timeOff, checker([], ['leave']))).toBe(false);
+      const balances = timeOff.children!.find((item) => item.id === 'time-off-balances')!;
+      expect(balances.label).toBe('Balances');
+      expect(timeOff.children!.some((item) => item.id === 'time-off-my-balances' || item.id === 'time-off-team-balances')).toBe(false);
     });
 
     it('grants Organization on the "org_structure" module key, not "org"', () => {
