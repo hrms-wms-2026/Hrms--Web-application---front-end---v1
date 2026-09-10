@@ -16,6 +16,29 @@ import {
 } from '../../models/calendar-event.model';
 import { RecurrenceEndMode, RecurrenceFrequency, buildRecurrenceRule } from '../../utils/recurrence-rule.util';
 import { CalendarParticipantPickerComponent } from '../calendar-participant-picker/calendar-participant-picker.component';
+import { CalendarSelectComponent } from '../calendar-select/calendar-select.component';
+
+/** Curated set of IANA zones for the "times entered in" picker. The organizer's own
+ * tenant zone is always merged in on top of this so it can never be missing. */
+const CURATED_TIMEZONES = [
+  'UTC',
+  'Asia/Colombo', 'Asia/Kolkata', 'Asia/Karachi', 'Asia/Dhaka', 'Asia/Kathmandu',
+  'Asia/Dubai', 'Asia/Riyadh', 'Asia/Tehran', 'Asia/Jerusalem',
+  'Asia/Singapore', 'Asia/Bangkok', 'Asia/Jakarta', 'Asia/Hong_Kong', 'Asia/Shanghai',
+  'Asia/Tokyo', 'Asia/Seoul', 'Asia/Manila',
+  'Australia/Perth', 'Australia/Sydney', 'Pacific/Auckland',
+  'Europe/London', 'Europe/Berlin', 'Europe/Paris', 'Europe/Madrid', 'Europe/Moscow', 'Europe/Istanbul',
+  'Africa/Cairo', 'Africa/Lagos', 'Africa/Johannesburg', 'Africa/Nairobi',
+  'America/Sao_Paulo', 'America/New_York', 'America/Chicago', 'America/Denver',
+  'America/Los_Angeles', 'America/Mexico_City', 'America/Bogota',
+];
+
+function addMinutes(hhmm: string, minutes: number): string {
+  const [h, m] = hhmm.split(':').map(Number);
+  if (Number.isNaN(h) || Number.isNaN(m)) return hhmm;
+  const total = ((h * 60 + m + minutes) % 1440 + 1440) % 1440;
+  return `${String(Math.floor(total / 60)).padStart(2, '0')}:${String(total % 60).padStart(2, '0')}`;
+}
 
 export type CalendarEventFormSubmission =
   | { create: CreateCalendarEventRequest }
@@ -32,7 +55,8 @@ export interface RespondToCalendarEventPayload {
   standalone: true,
   imports: [
     CommonModule, ReactiveFormsModule, ButtonComponent, InputComponent, SelectComponent,
-    ModalComponent, DatePickerComponent, AvatarComponent, ConfirmModalComponent, CalendarParticipantPickerComponent
+    ModalComponent, DatePickerComponent, AvatarComponent, ConfirmModalComponent, CalendarParticipantPickerComponent,
+    CalendarSelectComponent
   ],
   templateUrl: './calendar-event-form-modal.component.html',
   changeDetection: ChangeDetectionStrategy.OnPush
@@ -67,7 +91,22 @@ export class CalendarEventFormModalComponent implements OnChanges {
 
   readonly participantPickerOpen = signal(false);
   readonly participantIds = signal<readonly string[]>([]);
+  readonly participants = signal<readonly { id: string; name: string }[]>([]);
+  readonly maxParticipantChips = 6;
   readonly discardConfirmOpen = signal(false);
+
+  /** Zone the typed start/end times are read in. Falls back to the organizer's tenant
+   * zone (`myTimezone`) until the user explicitly picks one; changing it re-converts
+   * (edit) or re-interprets (create) the times. */
+  readonly pickedTimezone = signal('');
+  readonly timezoneOptions = signal<readonly { value: string; label: string }[]>([]);
+  private endTimeTouched = false;
+  private timezoneTouched = false;
+
+  /** The zone actually used for every local<->UTC conversion in this form. */
+  currentTimezone(): string {
+    return this.timezoneTouched && this.pickedTimezone() ? this.pickedTimezone() : this.myTimezone;
+  }
 
   readonly moreMenuOpen = signal(false);
   readonly resolutionReasonPromptOpen = signal(false);
@@ -81,7 +120,7 @@ export class CalendarEventFormModalComponent implements OnChanges {
     startDate: ['', Validators.required],
     startTime: ['09:00', Validators.required],
     endDate: ['', Validators.required],
-    endTime: ['10:00', Validators.required],
+    endTime: ['09:30', Validators.required],
     isAllDay: [false],
     location: [''],
     meetingLink: [''],
@@ -161,9 +200,22 @@ export class CalendarEventFormModalComponent implements OnChanges {
     // is mid-use, and resetting on every ngOnChanges call would wipe out in-progress typing.
     const justOpened = !!changes['open'] && this.open;
 
+    if (justOpened) {
+      this.endTimeTouched = false;
+      this.timezoneTouched = false;
+      this.pickedTimezone.set(this.myTimezone);
+    }
+    if (justOpened || changes['myTimezone']) {
+      this.timezoneOptions.set(
+        [...new Set([...CURATED_TIMEZONES, this.myTimezone])]
+          .sort()
+          .map((z) => ({ value: z, label: z.replace(/_/g, ' ') }))
+      );
+    }
+
     if (this.event) {
-      const start = utcIsoToLocalParts(this.event.startDate, this.myTimezone);
-      const end = utcIsoToLocalParts(this.event.endDate, this.myTimezone);
+      const start = utcIsoToLocalParts(this.event.startDate, this.currentTimezone());
+      const end = utcIsoToLocalParts(this.event.endDate, this.currentTimezone());
       this.form.patchValue({
         title: this.event.title,
         description: this.event.description ?? '',
@@ -182,13 +234,51 @@ export class CalendarEventFormModalComponent implements OnChanges {
 
     if (this.prefillStart) {
       const [date, time] = this.prefillStart.split('T');
-      this.form.patchValue({ startDate: date, startTime: time ?? '09:00', endDate: date, endTime: time ?? '10:00' });
+      const start = time ?? '09:00';
+      this.form.patchValue({ startDate: date, startTime: start, endDate: date, endTime: addMinutes(start, 30) });
     }
 
     if (justOpened) {
       this.form.markAsPristine();
       this.participantIds.set([]);
+      this.participants.set([]);
     }
+  }
+
+  setStartTime(value: string): void {
+    this.form.controls.startTime.setValue(value);
+    if (!this.endTimeTouched) this.form.controls.endTime.setValue(addMinutes(value, 30));
+    this.form.markAsDirty();
+  }
+
+  setEndTime(value: string): void {
+    this.endTimeTouched = true;
+    this.form.controls.endTime.setValue(value);
+    this.form.markAsDirty();
+  }
+
+  setTimezone(value: string): void {
+    this.timezoneTouched = true;
+    this.pickedTimezone.set(value);
+    if (this.event) {
+      // Edit mode: the stored instant is fixed - re-show it in the newly chosen zone.
+      const start = utcIsoToLocalParts(this.event.startDate, value);
+      const end = utcIsoToLocalParts(this.event.endDate, value);
+      this.form.patchValue({ startDate: start.date, startTime: start.time, endDate: end.date, endTime: end.time });
+    }
+    this.form.markAsDirty();
+    this.scheduleConflictCheck();
+  }
+
+  removeParticipant(id: string): void {
+    this.participantIds.set(this.participantIds().filter((x) => x !== id));
+    this.participants.set(this.participants().filter((p) => p.id !== id));
+    this.form.markAsDirty();
+    this.scheduleConflictCheck();
+  }
+
+  onParticipantPeopleChange(people: readonly { id: string; name: string }[]): void {
+    this.participants.set(people);
   }
 
   setTitle(value: string): void {
@@ -275,8 +365,8 @@ export class CalendarEventFormModalComponent implements OnChanges {
       if (ids.length === 0 || !raw.startDate || !raw.endDate) return;
       this.checkConflicts.emit({
         participantEmployeeIds: ids,
-        startDate: localPartsToUtcIso(raw.startDate, raw.startTime!, this.myTimezone),
-        endDate: localPartsToUtcIso(raw.endDate, raw.endTime!, this.myTimezone)
+        startDate: localPartsToUtcIso(raw.startDate, raw.startTime!, this.currentTimezone()),
+        endDate: localPartsToUtcIso(raw.endDate, raw.endTime!, this.currentTimezone())
       });
     }, 400);
   }
@@ -288,8 +378,8 @@ export class CalendarEventFormModalComponent implements OnChanges {
     }
 
     const raw = this.form.getRawValue();
-    const startDate = localPartsToUtcIso(raw.startDate!, raw.startTime!, this.myTimezone);
-    const endDate = localPartsToUtcIso(raw.endDate!, raw.endTime!, this.myTimezone);
+    const startDate = localPartsToUtcIso(raw.startDate!, raw.startTime!, this.currentTimezone());
+    const endDate = localPartsToUtcIso(raw.endDate!, raw.endTime!, this.currentTimezone());
     const recurrence = raw.recurrenceFrequency ?? 'none';
     const recurrenceRule = buildRecurrenceRule(recurrence as RecurrenceFrequency, raw.recurrenceEndMode as RecurrenceEndMode, raw.recurrenceUntilDate || null);
 
@@ -321,7 +411,7 @@ export class CalendarEventFormModalComponent implements OnChanges {
 
   formatOverlap(start: string, end: string): string {
     const formatter = new Intl.DateTimeFormat(undefined, {
-      timeZone: this.myTimezone, hour: 'numeric', minute: '2-digit', hour12: true
+      timeZone: this.currentTimezone(), hour: 'numeric', minute: '2-digit', hour12: true
     });
     return `from ${formatter.format(new Date(start))} to ${formatter.format(new Date(end))}`;
   }

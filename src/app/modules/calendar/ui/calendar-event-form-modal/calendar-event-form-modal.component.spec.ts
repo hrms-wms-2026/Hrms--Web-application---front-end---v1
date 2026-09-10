@@ -369,4 +369,60 @@ describe('CalendarEventFormModalComponent', () => {
     expect(spy).toHaveBeenCalledTimes(1);
     expect(fixture.componentInstance.discardConfirmOpen()).toBe(false);
   });
+
+  it('defaults a new event to a 30-minute slot', () => {
+    expect(fixture.componentInstance.form.controls.startTime.value).toBe('09:00');
+    expect(fixture.componentInstance.form.controls.endTime.value).toBe('09:30');
+  });
+
+  it('follows the start time with a +30m end until the end is set by hand', () => {
+    fixture.componentInstance.setStartTime('11:00');
+    expect(fixture.componentInstance.form.controls.endTime.value).toBe('11:30');
+
+    fixture.componentInstance.setEndTime('12:15');
+    fixture.componentInstance.setStartTime('13:00');
+    expect(fixture.componentInstance.form.controls.endTime.value).toBe('12:15');
+  });
+
+  it('reads the typed times in the picked timezone, not the tenant one, on save', () => {
+    fixture.componentRef.setInput('myTimezone', 'Asia/Colombo');
+    fixture.detectChanges();
+    expect(fixture.nativeElement.querySelector('[data-testid="calendar-form-timezone"]')).not.toBeNull();
+
+    fixture.componentInstance.setTimezone('America/New_York');
+    fixture.componentInstance.form.patchValue({
+      title: 'Standup', startDate: '2026-06-10', startTime: '09:00', endDate: '2026-06-10', endTime: '09:30'
+    });
+    const spy = vi.fn();
+    fixture.componentInstance.save.subscribe(spy);
+    fixture.componentInstance.onSubmit(null);
+
+    // 2026-06-10 09:00 America/New_York (EDT, UTC-4) == 13:00Z
+    const { create } = spy.mock.calls[0][0] as { create: { startDate: string } };
+    expect(new Date(create.startDate).toISOString()).toBe('2026-06-10T13:00:00.000Z');
+  });
+
+  it('renders participants as removable avatar chips with an overflow count', () => {
+    const people = Array.from({ length: 8 }, (_, i) => ({ id: `e${i}`, name: `Person ${i}` }));
+    fixture.componentInstance.onParticipantIdsChange(people.map((p) => p.id));
+    fixture.componentInstance.onParticipantPeopleChange(people);
+    fixture.detectChanges();
+
+    const chips = fixture.nativeElement.querySelectorAll('[data-testid="calendar-form-participant-remove"]');
+    expect(chips.length).toBe(6);
+    expect(fixture.nativeElement.textContent).toContain('+2 more');
+
+    (chips[0] as HTMLButtonElement).click();
+    fixture.detectChanges();
+    expect(fixture.componentInstance.participants().length).toBe(7);
+    expect(fixture.componentInstance.participantIds().length).toBe(7);
+    expect(fixture.componentInstance.participantIds()).not.toContain('e0');
+  });
+
+  it('uses the calendar-module styled dropdown for Repeat, not a native select', () => {
+    const repeat = fixture.nativeElement.querySelector('[data-testid="calendar-form-repeat"]');
+    expect(repeat).not.toBeNull();
+    expect(repeat.tagName.toLowerCase()).toBe('app-calendar-select');
+    expect(repeat.querySelector('select')).toBeNull();
+  });
 });

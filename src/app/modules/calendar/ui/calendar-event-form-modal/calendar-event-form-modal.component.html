@@ -24,12 +24,21 @@
 
           <div class="grid grid-cols-2 gap-3">
             <app-date-picker label="Start date" [value]="form.controls.startDate.value ?? ''" (valueChange)="setStartDate($event)" />
-            <input type="time" formControlName="startTime" class="mt-5 rounded-md border border-[var(--color-border)] bg-[var(--color-surface)] px-2.5 py-1.5 text-sm" />
+            <input type="time" data-testid="calendar-form-start-time" [value]="form.controls.startTime.value ?? ''" (input)="setStartTime($any($event.target).value)" class="mt-5 rounded-md border border-[var(--color-border)] bg-[var(--color-surface)] px-2.5 py-1.5 text-sm" />
             <app-date-picker label="End date" [value]="form.controls.endDate.value ?? ''" (valueChange)="setEndDate($event)" />
-            <input type="time" formControlName="endTime" class="mt-5 rounded-md border border-[var(--color-border)] bg-[var(--color-surface)] px-2.5 py-1.5 text-sm" />
+            <input type="time" data-testid="calendar-form-end-time" [value]="form.controls.endTime.value ?? ''" (input)="setEndTime($any($event.target).value)" class="mt-5 rounded-md border border-[var(--color-border)] bg-[var(--color-surface)] px-2.5 py-1.5 text-sm" />
           </div>
 
-          <span class="text-xs text-[var(--color-text-secondary)]">Times shown in {{ myTimezone }}</span>
+          <label class="flex flex-col gap-1">
+            <span class="text-xs text-[var(--color-text-secondary)]">Times entered in</span>
+            <app-select
+              data-testid="calendar-form-timezone"
+              ariaLabel="Timezone for the times entered above"
+              [options]="timezoneOptions()"
+              [value]="currentTimezone()"
+              (valueChange)="setTimezone($event)"
+            />
+          </label>
 
           <div class="flex items-center justify-between">
             <span class="text-sm text-[var(--color-text-primary)]">All day</span>
@@ -75,7 +84,13 @@
             </svg>
             Repeat
           </div>
-          <app-select [options]="recurrenceOptions" [value]="form.controls.recurrenceFrequency.value ?? 'none'" (valueChange)="setRecurrenceFrequency($event)" />
+          <app-calendar-select
+            data-testid="calendar-form-repeat"
+            ariaLabel="Repeat"
+            [options]="recurrenceOptions"
+            [value]="form.controls.recurrenceFrequency.value ?? 'none'"
+            (valueChange)="setRecurrenceFrequency($event)"
+          />
 
           @if (form.controls.recurrenceFrequency.value !== 'none') {
             <div class="flex flex-col gap-3 border-l-2 border-[var(--color-border)] pl-3">
@@ -114,10 +129,33 @@
           </div>
 
           @if (!isEdit) {
-        <div class="flex items-center justify-between">
-          <span class="text-sm text-[var(--color-text-secondary)]">
-            {{ participantIds().length === 0 ? 'No participants yet' : participantIds().length + ' participant(s)' }}
-          </span>
+        <div class="flex items-start justify-between gap-3">
+          @if (participants().length === 0) {
+            <span class="text-sm text-[var(--color-text-secondary)]">No participants yet</span>
+          } @else {
+            <div class="flex flex-wrap gap-1.5" data-testid="calendar-form-participant-chips">
+              @for (participant of participants().slice(0, maxParticipantChips); track participant.id) {
+                <span class="flex items-center gap-1.5 rounded-full border border-[var(--color-border)] bg-[var(--color-surface-secondary)] py-0.5 pl-0.5 pr-1.5 text-xs">
+                  <span style="--color-profile-bg: var(--color-accent-subtle); --color-text-primary: var(--color-accent);">
+                    <app-avatar [userName]="participant.name" size="sm" />
+                  </span>
+                  <span class="text-[var(--color-text-primary)]">{{ participant.name || 'Unknown' }}</span>
+                  <button
+                    type="button"
+                    data-testid="calendar-form-participant-remove"
+                    class="flex h-4 w-4 items-center justify-center rounded-full text-[var(--color-text-secondary)] hover:bg-[var(--color-border)] hover:text-[var(--color-text-primary)]"
+                    [attr.aria-label]="'Remove ' + (participant.name || 'participant')"
+                    (click)="removeParticipant(participant.id)"
+                  >&times;</button>
+                </span>
+              }
+              @if (participants().length > maxParticipantChips) {
+                <span class="flex items-center rounded-full bg-[var(--color-surface-secondary)] px-2 py-0.5 text-xs text-[var(--color-text-secondary)]">
+                  +{{ participants().length - maxParticipantChips }} more
+                </span>
+              }
+            </div>
+          }
           <app-button type="button" variant="secondary" (click)="openParticipantPicker()">Add participants</app-button>
         </div>
 
@@ -256,6 +294,7 @@
   [open]="participantPickerOpen()"
   [selectedIds]="participantIds()"
   (selectedIdsChange)="onParticipantIdsChange($event)"
+  (selectedPeopleChange)="onParticipantPeopleChange($event)"
   (closed)="participantPickerOpen.set(false)"
 />
 
