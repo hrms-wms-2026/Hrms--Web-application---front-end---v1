@@ -113,6 +113,7 @@ describe('MyBalancesComponent', () => {
     expect(card?.textContent).toContain('Annual Leave');
     expect(fixture.nativeElement.querySelector('[data-testid="summary-remaining"]')?.textContent).toContain('17.0');
     expect(fixture.nativeElement.querySelector('[data-testid="balance-remaining"]')?.textContent).toContain('17.0');
+    expect(fixture.nativeElement.querySelector('[data-testid="export-balances-csv"]')).toBeTruthy();
   });
 
   it('loads team balances when TEAM is selected', async () => {

@@ -32,6 +32,9 @@
         </div>
       }
       <app-select [options]="yearOptions" [value]="selectedYear()" (valueChange)="onYearChange($event)" />
+      @if (canExportCsv()) {
+        <app-button variant="secondary" data-testid="export-balances-csv" (click)="onExportCsv()">Export CSV</app-button>
+      }
       @if (viewMode() === 'my') {
         <app-button data-testid="new-request-button" (click)="openWizard()">+ New Request</app-button>
       }

@@ -12,6 +12,9 @@
         <app-button variant="secondary" (click)="openManualModal()">+ Manual</app-button>
         <app-button (click)="openGenerateModal()">Generate</app-button>
       }
+      @if (activeTab() === 'all-balances' && balanceStore.all().length > 0) {
+        <app-button variant="secondary" data-testid="export-all-balances-csv" (click)="onExportAllBalances()">Export CSV</app-button>
+      }
       @if (activeTab() === 'audit') {
         <app-button variant="secondary" (click)="onExportAudit()" [loading]="auditStore.exporting()">Export CSV</app-button>
       }

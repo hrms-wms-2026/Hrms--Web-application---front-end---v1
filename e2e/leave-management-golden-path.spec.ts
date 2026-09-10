@@ -63,7 +63,7 @@ test.describe('Leave Management - golden path', () => {
 
     await page.goto('/time-off');
     await expect(page.getByText('Annual Leave')).toBeVisible();
-    await expect(page.getByText('20')).toBeVisible();
+    await expect(page.getByTestId('balance-remaining')).toHaveText('20.0');
   });
 
   test('employee can open the New Request wizard', async ({ page }) => {
@@ -80,6 +80,7 @@ test.describe('Leave Management - golden path', () => {
 
   test('manager sees Pending Approvals page', async ({ page }) => {
     await mockSessionAndLayout(page, authResponse({ user: { email: 'manager@acme.com' }, permissions: ['leave:approve'] }));
+    await mockJson(page, '**/api/v1/leave/types*', [LEAVE_TYPE]);
     await mockJson(page, '**/api/v1/leave/requests/pending-approvals*', [{
       requestId: 'req-1', employeeId: 'emp-1', employeeName: 'Anu Raman', leaveTypeId: 'type-1',
       leaveTypeName: 'Annual Leave', leaveTypeCode: 'ANNUAL', startDate: '2026-09-10', endDate: '2026-09-12',
@@ -93,6 +94,7 @@ test.describe('Leave Management - golden path', () => {
 
   test('manager can open and approve a pending request', async ({ page }) => {
     await mockSessionAndLayout(page, authResponse({ user: { email: 'manager@acme.com' }, permissions: ['leave:approve'] }));
+    await mockJson(page, '**/api/v1/leave/types*', [LEAVE_TYPE]);
     await mockJson(page, '**/api/v1/leave/requests/pending-approvals*', [{
       requestId: 'req-1', employeeId: 'emp-1', employeeName: 'Anu Raman', leaveTypeId: 'type-1',
       leaveTypeName: 'Annual Leave', leaveTypeCode: 'ANNUAL', startDate: '2026-09-10', endDate: '2026-09-12',
@@ -117,6 +119,45 @@ test.describe('Leave Management - golden path', () => {
     await expect(page.getByText('Request approved.')).toBeVisible();
   });
 
+  test('employee can submit a leave request through the wizard', async ({ page }) => {
+    const preview = {
+      id: 'req-new', employeeId: 'emp-1', leaveTypeId: 'type-1', leaveTypeName: 'Annual Leave', leaveTypeCode: 'ANNUAL',
+      startDate: '2026-09-10', endDate: '2026-09-12', halfDayPeriod: null, totalDays: 3, paidDays: 3, unpaidDays: 0,
+      status: 'pending', noticePeriodMissed: false, submittedOnBehalfOfBy: null,
+      balanceImpact: { currentRemainingDays: 20, pendingAfterSubmitDays: 3, remainingAfterSubmitDays: 17 },
+      approvers: [], conflictSnapshot: { warnings: [], calendarConflicts: [], teamAbsencePercent: null },
+      createdAt: '2026-09-01T00:00:00Z',
+    };
+
+    await mockSessionAndLayout(page, authResponse());
+    await mockJson(page, '**/api/v1/leave/types*', [LEAVE_TYPE]);
+    await mockJson(page, '**/api/v1/leave/balances/my*', [BALANCE_BEFORE]);
+    await mockJson(page, '**/api/v1/leave/requests/my*', []);
+    await page.route('**/api/v1/leave/requests/preview', (route) =>
+      route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(preview) })
+    );
+    await page.route('**/api/v1/leave/requests', (route) => {
+      if (route.request().method() === 'POST' && !route.request().url().includes('/preview') && !route.request().url().includes('/my')) {
+        return route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(preview) });
+      }
+      return route.continue();
+    });
+
+    await page.goto('/time-off');
+    await page.getByTestId('new-request-button').click();
+    await page.getByTestId('leave-type-select').selectOption('type-1');
+    await page.getByRole('button', { name: 'Continue' }).click();
+    await pickDate(page, 'Start date', 10);
+    await pickDate(page, 'End date', 12);
+    await page.getByRole('button', { name: 'Continue' }).click();
+    await expect(page.getByText('Total leave days')).toBeVisible();
+    await page.getByRole('button', { name: 'Continue' }).click();
+    await page.getByRole('button', { name: 'Continue' }).click();
+    await expect(page.getByTestId('request-review')).toContainText('Annual Leave');
+    await page.getByRole('button', { name: 'Submit' }).click();
+    await expect(page.getByText('New Leave Request')).toHaveCount(0);
+  });
+
   test('employee balance drops after approval', async ({ page }) => {
     const balanceAfter = { ...BALANCE_BEFORE, usedDays: 3, remainingDays: 17 };
     await mockSessionAndLayout(page, authResponse());
@@ -126,6 +167,12 @@ test.describe('Leave Management - golden path', () => {
 
     await page.goto('/time-off');
     await expect(page.getByText('Annual Leave')).toBeVisible();
-    await expect(page.getByText('17')).toBeVisible();
+    await expect(page.getByTestId('balance-remaining')).toHaveText('17.0');
   });
 });
+
+async function pickDate(page: Page, label: string, dayOfMonth: number): Promise<void> {
+  const field = page.locator('.dp-container').filter({ hasText: label });
+  await field.getByLabel('Open calendar picker').click();
+  await field.locator('.dp-day-btn:not(.dp-day-btn--outside)').filter({ hasText: new RegExp(`^${dayOfMonth}$`) }).click();
+}

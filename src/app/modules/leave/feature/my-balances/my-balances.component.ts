@@ -17,6 +17,7 @@ import { LeaveBalanceListTableComponent } from '../../ui/leave-balance-list-tabl
 import { LeaveCancelConfirmDialogComponent } from '../../ui/leave-cancel-confirm-dialog/leave-cancel-confirm-dialog.component';
 import { LeaveRequestHistoryTableComponent } from '../../ui/leave-request-history-table/leave-request-history-table.component';
 import { NewLeaveRequestWizardComponent } from '../../ui/new-leave-request-wizard/new-leave-request-wizard.component';
+import { balancesToCsv, downloadCsv } from '../../utils/leave-balance-csv';
 
 export type BalanceViewMode = 'my' | 'team';
 
@@ -87,6 +88,16 @@ export class MyBalancesComponent {
   onSearchInput(event: Event): void {
     const search = (event.target as HTMLInputElement).value;
     this.store.setTeamFilters({ ...this.store.teamFilters(), search: search || undefined });
+  }
+
+  canExportCsv(): boolean {
+    return this.viewMode() === 'team' ? this.store.team().length > 0 : this.store.my().length > 0;
+  }
+
+  onExportCsv(): void {
+    const rows = this.viewMode() === 'team' ? this.store.team() : this.store.my();
+    if (rows.length === 0) return;
+    downloadCsv(balancesToCsv(rows), `leave-balances-${this.viewMode()}-${this.store.year()}.csv`);
   }
 
   openWizard(): void {

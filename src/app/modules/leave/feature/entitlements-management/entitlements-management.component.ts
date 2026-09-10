@@ -25,6 +25,7 @@ import { LeaveEntitlementAdjustModalComponent } from '../../ui/leave-entitlement
 import { LeaveBalanceListTableComponent } from '../../ui/leave-balance-list-table/leave-balance-list-table.component';
 import { LeaveBalanceAuditTableComponent } from '../../ui/leave-balance-audit-table/leave-balance-audit-table.component';
 import { NewLeaveRequestWizardComponent } from '../../ui/new-leave-request-wizard/new-leave-request-wizard.component';
+import { balancesToCsv, downloadCsv } from '../../utils/leave-balance-csv';
 
 type Tab = 'entitlements' | 'all-balances' | 'audit';
 
@@ -99,6 +100,12 @@ export class EntitlementsManagementComponent {
       this.auditLoaded = true;
       void this.auditStore.load();
     }
+  }
+
+  onExportAllBalances(): void {
+    const rows = this.balanceStore.all();
+    if (rows.length === 0) return;
+    downloadCsv(balancesToCsv(rows), `leave-balances-all-${this.entitlementStore.year()}.csv`);
   }
 
   async onExportAudit(): Promise<void> {

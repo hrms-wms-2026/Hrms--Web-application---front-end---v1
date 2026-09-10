@@ -70,6 +70,22 @@ describe('app routes - Settings', () => {
     expect(legacyRoute).toBeTruthy();
     expect(legacyRoute?.redirectTo).toBe('attendance/time-tracking');
   });
+
+  it('lets any Time Off child permission through the parent /time-off gate', () => {
+    const authenticatedShell = routes.find(
+      (route) => route.path === '' && route.canActivate?.includes(authGuard) && Array.isArray(route.children)
+    );
+    const timeOff = authenticatedShell?.children?.find((route) => route.path === 'time-off');
+    expect(timeOff?.canActivate).toContain(permissionGuard);
+    expect(timeOff?.data?.['permissions']).toEqual([
+      'leave:read-own',
+      'leave:read-team',
+      'leave:read',
+      'leave:manage',
+      'leave:approve',
+      'calendar:read'
+    ]);
+  });
 });
 
 describe('app routes - already-authenticated tabs skip the login form', () => {

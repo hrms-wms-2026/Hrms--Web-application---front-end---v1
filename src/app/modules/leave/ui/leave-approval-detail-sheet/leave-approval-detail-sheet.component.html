@@ -10,6 +10,9 @@
       <section class="lad-section">
         <h4>Balance</h4>
         <p>Remaining after this request: <strong>{{ detail.remainingDays }}</strong> days ({{ detail.paidDays }} paid, {{ detail.unpaidDays }} unpaid)</p>
+        @if (teamCoverageLabel(); as coverage) {
+          <p class="lad-muted" data-testid="team-coverage">{{ coverage }}</p>
+        }
       </section>
 
       @if (detail.reason) {
@@ -49,7 +52,12 @@
         @if (detail.currentWarnings.length === 0) {
           <p class="lad-muted">No current warnings.</p>
         } @else {
-          @for (warning of detail.currentWarnings; track warning.code) { <p class="lad-warning">{{ warning.message }}</p> }
+          @for (warning of detail.currentWarnings; track warning.code) {
+            <p class="lad-warning">
+              @if (isNewWarning(warning.code)) { <span class="lad-new" data-testid="warning-new">NEW</span> }
+              {{ warning.message }}
+            </p>
+          }
         }
       </section>
 

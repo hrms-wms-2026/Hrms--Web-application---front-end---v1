@@ -39,6 +39,20 @@ describe('LeaveApprovalDetailSheetComponent', () => {
     expect(fixture.nativeElement.textContent).toContain('Overlaps a configured blackout period.');
   });
 
+  it('marks a current warning as NEW when it was not in the submission snapshot', () => {
+    fixture.detectChanges();
+    expect(fixture.nativeElement.querySelector('[data-testid="warning-new"]')?.textContent?.trim()).toBe('NEW');
+  });
+
+  it('shows team coverage when the submission snapshot includes a percent', () => {
+    fixture.componentRef.setInput('detail', {
+      ...detail,
+      submissionConflictSnapshotJson: JSON.stringify({ warnings: [], calendarConflicts: [], teamAbsencePercent: 40 })
+    });
+    fixture.detectChanges();
+    expect(fixture.nativeElement.querySelector('[data-testid="team-coverage"]')?.textContent).toContain('40%');
+  });
+
   it('opens the reject form and requires a reason before emitting', () => {
     fixture.detectChanges();
     fixture.componentInstance.openAction('reject');

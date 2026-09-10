@@ -44,6 +44,17 @@ export class LeaveApprovalDetailSheetComponent {
     return approver ? `Awaiting approver ${approver.sequenceOrder}` : 'No pending approver';
   });
 
+  teamCoverageLabel(): string | null {
+    const percent = this.submissionSnapshot()?.teamAbsencePercent;
+    if (percent === null || percent === undefined) return null;
+    return `${percent}% of the team is off in this range`;
+  }
+
+  isNewWarning(code: string): boolean {
+    const submitted = this.submissionSnapshot()?.warnings ?? [];
+    return !submitted.some((warning) => warning.code === code);
+  }
+
   openAction(action: Exclude<ActionPanel, null>): void {
     this.activeAction.set(action);
   }
