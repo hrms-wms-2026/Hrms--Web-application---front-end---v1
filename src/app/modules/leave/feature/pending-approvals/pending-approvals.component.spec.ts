@@ -62,4 +62,28 @@ describe('PendingApprovalsComponent', () => {
     await rejecting;
     expect(fixture.componentInstance.selectedIds().size).toBe(0);
   });
+
+  it('loads cover periods when Cover my approvals is opened', () => {
+    fixture.detectChanges();
+    httpMock.expectOne((r) => r.url === `${environment.apiUrl}/leave/requests/pending-approvals`).flush([]);
+    httpMock.expectOne((r) => r.url === `${environment.apiUrl}/leave/types`).flush([]);
+    fixture.componentInstance.openCover();
+    expect(fixture.componentInstance.coverOpen()).toBe(true);
+    httpMock.expectOne((r) => r.url === `${environment.apiUrl}/leave/approval-delegates`).flush([]);
+  });
+
+  it('saves a cover period then reloads the list', async () => {
+    fixture.detectChanges();
+    httpMock.expectOne((r) => r.url === `${environment.apiUrl}/leave/requests/pending-approvals`).flush([]);
+    httpMock.expectOne((r) => r.url === `${environment.apiUrl}/leave/types`).flush([]);
+    const saving = fixture.componentInstance.onSaveCover({
+      delegateEmployeeId: 'emp-2', startDate: '2026-09-01', endDate: '2026-09-10'
+    });
+    httpMock.expectOne((r) => r.url === `${environment.apiUrl}/leave/approval-delegates` && r.method === 'POST').flush({
+      id: 'd1', delegateEmployeeId: 'emp-2', delegateName: 'Sam Lee', startDate: '2026-09-01', endDate: '2026-09-10'
+    });
+    await Promise.resolve();
+    httpMock.expectOne((r) => r.url === `${environment.apiUrl}/leave/approval-delegates` && r.method === 'GET').flush([]);
+    await saving;
+  });
 });

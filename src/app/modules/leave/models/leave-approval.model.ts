@@ -132,6 +132,20 @@ export interface LeaveApprovalListFilter {
   toDate?: string;
 }
 
+export interface LeaveApprovalDelegateResponse {
+  id: string;
+  delegateEmployeeId: string;
+  delegateName: string;
+  startDate: string;
+  endDate: string;
+}
+
+export interface CreateLeaveApprovalDelegateRequest {
+  delegateEmployeeId: string;
+  startDate: string;
+  endDate: string;
+}
+
 export interface LeaveRequestAllListFilter extends LeaveApprovalListFilter {
   status?: string;
 }

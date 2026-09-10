@@ -22,6 +22,13 @@ describe('LeavePendingApprovalsTableComponent', () => {
     expect(fixture.nativeElement.querySelectorAll('[data-testid="approval-row"]').length).toBe(2);
   });
 
+  it('labels the table and each row checkbox for assistive tech', () => {
+    fixture.detectChanges();
+    expect(fixture.nativeElement.querySelector('caption')?.textContent).toContain('Pending leave approvals');
+    const checkbox: HTMLInputElement = fixture.nativeElement.querySelector('[data-testid="approval-select"]');
+    expect(checkbox.getAttribute('aria-label')).toContain('Anu Raman');
+  });
+
   it('emits rowClicked with the request id when a row is clicked', () => {
     fixture.detectChanges();
     const emitted: string[] = [];

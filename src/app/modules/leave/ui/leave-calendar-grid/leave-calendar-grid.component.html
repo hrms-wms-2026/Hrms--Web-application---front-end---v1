@@ -9,6 +9,7 @@
         type="button"
         data-testid="calendar-day"
         class="lcg-day"
+        [attr.aria-label]="dayLabel(day)"
         [class.lcg-day--holiday]="day.holidays.length > 0"
         [class.lcg-day--today]="isToday(day.date)"
         [class.lcg-day--weekend]="isWeekend(day.dayOfWeek)"

@@ -5,6 +5,11 @@
       <h1>Pending Approvals</h1>
       <p class="pa-subtitle">Requests waiting on your decision.</p>
     </div>
+    <div class="pa-header-actions">
+      @if (canApprove()) {
+        <app-button variant="secondary" data-testid="cover-approvals" (click)="openCover()">Cover my approvals</app-button>
+      }
+    </div>
     @if (selectedIds().size > 0) {
       <div class="pa-bulk">
         <span>{{ selectedIds().size }} selected</span>
@@ -14,8 +19,8 @@
     }
   </header>
   <div class="pa-toolbar">
-    <input type="search" placeholder="Search by name" (input)="onSearchInput($event)" />
-    <select (change)="onLeaveTypeFilterChange($any($event.target).value)">
+    <input type="search" placeholder="Search by name" aria-label="Search by employee name" (input)="onSearchInput($event)" />
+    <select aria-label="Leave type" (change)="onLeaveTypeFilterChange($any($event.target).value)">
       <option value="">All leave types</option>
       @for (type of leaveTypeStore.items(); track type.id) { <option [value]="type.id">{{ type.name }}</option> }
     </select>
@@ -23,7 +28,7 @@
     <input type="date" aria-label="To date" (change)="onToDateChange($any($event.target).value)" />
   </div>
   @if (store.pendingLoading()) {
-    <div class="pa-loading" aria-busy="true"><span></span><span></span><span></span></div>
+    <div class="pa-loading" aria-busy="true" aria-label="Loading pending approvals"><span></span><span></span><span></span></div>
   } @else if (store.pendingError()) {
     <app-error-state [message]="store.pendingError()!" [retryable]="true" (retry)="store.loadPending()" />
   } @else if (store.pending().length === 0) {
@@ -67,3 +72,13 @@
     </section>
   </div>
 }
+
+<app-leave-approval-delegate-modal
+  [open]="coverOpen()"
+  [delegates]="store.delegates()"
+  [saving]="coverSaving()"
+  [actionError]="store.delegatesError()"
+  (save)="onSaveCover($event)"
+  (remove)="onRemoveCover($event)"
+  (closed)="closeCover()"
+/>

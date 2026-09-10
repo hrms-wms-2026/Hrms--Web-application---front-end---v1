@@ -11,6 +11,7 @@ describe('LeaveRequestHistoryTableComponent', () => {
   ];
 
   beforeEach(async () => {
+    TestBed.resetTestingModule();
     await TestBed.configureTestingModule({ imports: [LeaveRequestHistoryTableComponent] }).compileComponents();
     fixture = TestBed.createComponent(LeaveRequestHistoryTableComponent);
     fixture.componentRef.setInput('requests', requests);

@@ -8,12 +8,14 @@ import { ErrorStateComponent } from '../../../../shared/ui/error-state/error-sta
 import { LeaveApprovalStore } from '../../state/leave-approval.store';
 import { LeaveTypeStore } from '../../state/leave-type.store';
 import { LeavePendingApprovalsTableComponent } from '../../ui/leave-pending-approvals-table/leave-pending-approvals-table.component';
+import { CreateLeaveApprovalDelegateRequest } from '../../models/leave-approval.model';
 import { LeaveApprovalDecisionRequest, LeaveApprovalDetailSheetComponent } from '../../ui/leave-approval-detail-sheet/leave-approval-detail-sheet.component';
+import { LeaveApprovalDelegateModalComponent } from '../../ui/leave-approval-delegate-modal/leave-approval-delegate-modal.component';
 
 @Component({
   selector: 'app-pending-approvals',
   standalone: true,
-  imports: [CommonModule, ButtonComponent, ErrorStateComponent, LeavePendingApprovalsTableComponent, LeaveApprovalDetailSheetComponent],
+  imports: [CommonModule, ButtonComponent, ErrorStateComponent, LeavePendingApprovalsTableComponent, LeaveApprovalDetailSheetComponent, LeaveApprovalDelegateModalComponent],
   templateUrl: './pending-approvals.component.html',
   styleUrl: './pending-approvals.component.css',
   changeDetection: ChangeDetectionStrategy.OnPush
@@ -29,10 +31,35 @@ export class PendingApprovalsComponent {
   readonly selectedIds = signal<Set<string>>(new Set());
   readonly bulkRejectOpen = signal(false);
   readonly bulkRejectReason = signal('');
+  readonly coverOpen = signal(false);
+  readonly coverSaving = signal(false);
 
   constructor() {
     void this.store.loadPending();
     void this.leaveTypeStore.load();
+  }
+
+  openCover(): void {
+    this.coverOpen.set(true);
+    void this.store.loadDelegates();
+  }
+
+  closeCover(): void {
+    this.coverOpen.set(false);
+  }
+
+  async onSaveCover(payload: CreateLeaveApprovalDelegateRequest): Promise<void> {
+    this.coverSaving.set(true);
+    const created = await this.store.createDelegate(payload);
+    this.coverSaving.set(false);
+    if (created) this.notificationService.success('Cover period saved.');
+    else this.notificationService.error(this.store.delegatesError() ?? 'Failed to save cover.');
+  }
+
+  async onRemoveCover(id: string): Promise<void> {
+    const ok = await this.store.deleteDelegate(id);
+    if (ok) this.notificationService.success('Cover period removed.');
+    else this.notificationService.error(this.store.delegatesError() ?? 'Failed to remove cover.');
   }
 
   onSearchInput(event: Event): void {

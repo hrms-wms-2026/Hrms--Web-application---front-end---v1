@@ -1,6 +1,7 @@
 /** Quiet Operations Desk: Screen 7's month view - who's off, colour by type, click for detail. */
 import { ChangeDetectionStrategy, Component, computed, inject, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
+import { ButtonComponent } from '../../../../shared/ui/button/button.component';
 import { ErrorStateComponent } from '../../../../shared/ui/error-state/error-state.component';
 import { PermissionService } from '../../../../core/auth/state/permission.service';
 import { LeaveCalendarStore } from '../../state/leave-calendar.store';
@@ -11,11 +12,14 @@ import { LeaveUploadedDocument, SubmitLeaveRequestRequest } from '../../models/l
 import { LeaveCalendarGridComponent } from '../../ui/leave-calendar-grid/leave-calendar-grid.component';
 import { LeaveCalendarDayDetailComponent } from '../../ui/leave-calendar-day-detail/leave-calendar-day-detail.component';
 import { NewLeaveRequestWizardComponent } from '../../ui/new-leave-request-wizard/new-leave-request-wizard.component';
+import { LeaveHolidayModalComponent } from '../../ui/leave-holiday-modal/leave-holiday-modal.component';
+import { CreateLeaveHolidayRequest } from '../../models/leave-calendar.model';
+import { NotificationService } from '../../../../core/services/notification.service';
 
 @Component({
   selector: 'app-team-calendar',
   standalone: true,
-  imports: [CommonModule, ErrorStateComponent, LeaveCalendarGridComponent, LeaveCalendarDayDetailComponent, NewLeaveRequestWizardComponent],
+  imports: [CommonModule, ButtonComponent, ErrorStateComponent, LeaveCalendarGridComponent, LeaveCalendarDayDetailComponent, NewLeaveRequestWizardComponent, LeaveHolidayModalComponent],
   templateUrl: './team-calendar.component.html',
   styleUrl: './team-calendar.component.css',
   changeDetection: ChangeDetectionStrategy.OnPush
@@ -26,7 +30,11 @@ export class TeamCalendarComponent {
   readonly balanceStore = inject(LeaveBalanceStore);
   readonly requestStore = inject(LeaveRequestStore);
   private readonly permissionService = inject(PermissionService);
+  private readonly notificationService = inject(NotificationService);
   readonly canRequestLeave = computed(() => this.permissionService.hasPermission('leave:read-own'));
+  readonly canManageHolidays = computed(() => this.permissionService.hasPermission('leave:manage'));
+  readonly holidayOpen = signal(false);
+  readonly holidaySaving = signal(false);
   readonly detailOpen = signal(false);
   readonly wizardOpen = signal(false);
   readonly uploadedDocuments = signal<LeaveUploadedDocument[]>([]);
@@ -64,6 +72,29 @@ export class TeamCalendarComponent {
 
   constructor() {
     void this.store.load();
+  }
+
+  openHolidays(): void {
+    this.holidayOpen.set(true);
+    void this.store.loadHolidays();
+  }
+
+  closeHolidays(): void {
+    this.holidayOpen.set(false);
+  }
+
+  async onSaveHoliday(payload: CreateLeaveHolidayRequest): Promise<void> {
+    this.holidaySaving.set(true);
+    const created = await this.store.createHoliday(payload);
+    this.holidaySaving.set(false);
+    if (created) this.notificationService.success('Holiday added.');
+    else this.notificationService.error(this.store.holidaysError() ?? 'Failed to save holiday.');
+  }
+
+  async onRemoveHoliday(id: string): Promise<void> {
+    const ok = await this.store.deleteHoliday(id);
+    if (ok) this.notificationService.success('Holiday removed.');
+    else this.notificationService.error(this.store.holidaysError() ?? 'Failed to remove holiday.');
   }
 
   onDayClicked(date: string): void {

@@ -39,6 +39,14 @@ describe('LeaveCalendarGridComponent', () => {
     expect(fixture.nativeElement.textContent).toContain('Founders Day');
   });
 
+  it('labels each day cell with the date and occupancy', () => {
+    fixture.detectChanges();
+    const cells: NodeListOf<HTMLButtonElement> = fixture.nativeElement.querySelectorAll('[data-testid="calendar-day"]');
+    expect(cells[0].getAttribute('aria-label')).toContain('2026-09-10');
+    expect(cells[0].getAttribute('aria-label')).toContain('1 off');
+    expect(cells[1].getAttribute('aria-label')).toContain('Founders Day');
+  });
+
   it('emits dayClicked with the date when a day cell is clicked', () => {
     fixture.detectChanges();
     const emitted: string[] = [];

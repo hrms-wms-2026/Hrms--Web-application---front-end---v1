@@ -42,4 +42,13 @@ export class LeaveCalendarGridComponent {
   firstName(name: string): string {
     return name.trim().split(/\s+/)[0] ?? name;
   }
+
+  dayLabel(day: LeaveCalendarDayResponse): string {
+    const holiday = day.holidays[0]?.name;
+    const count = day.absences.length;
+    if (holiday && count) return `${day.date}, ${holiday}, ${count} off`;
+    if (holiday) return `${day.date}, ${holiday}`;
+    if (count) return `${day.date}, ${count} off`;
+    return day.date;
+  }
 }

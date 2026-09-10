@@ -7,8 +7,10 @@ import {
   ApproveLeaveRequestRequest,
   BulkApproveLeaveRequestsRequest,
   BulkRejectLeaveRequestsRequest,
+  CreateLeaveApprovalDelegateRequest,
   LeaveApprovalBulkResultResponse,
   LeaveApprovalDecisionResponse,
+  LeaveApprovalDelegateResponse,
   LeaveApprovalDetailResponse,
   LeaveApprovalListFilter,
   LeavePendingApprovalListItemResponse,
@@ -36,6 +38,9 @@ export interface LeaveApprovalState {
   readonly decideError: string | null;
   readonly cancelling: boolean;
   readonly cancelDialogError: string | null;
+  readonly delegates: readonly LeaveApprovalDelegateResponse[];
+  readonly delegatesLoading: boolean;
+  readonly delegatesError: string | null;
 }
 
 const initialState: LeaveApprovalState = {
@@ -53,7 +58,10 @@ const initialState: LeaveApprovalState = {
   deciding: false,
   decideError: null,
   cancelling: false,
-  cancelDialogError: null
+  cancelDialogError: null,
+  delegates: [],
+  delegatesLoading: false,
+  delegatesError: null
 };
 
 export const LeaveApprovalStore = signalStore(
@@ -168,6 +176,36 @@ export const LeaveApprovalStore = signalStore(
       } catch (err) {
         patchState(store, { cancelling: false, cancelDialogError: toSafeErrorMessage(err, 'Failed to cancel this request.') });
         return null;
+      }
+    },
+    async loadDelegates(): Promise<void> {
+      patchState(store, { delegatesLoading: true, delegatesError: null });
+      try {
+        const delegates = await firstValueFrom(api.listDelegates());
+        patchState(store, { delegates, delegatesLoading: false });
+      } catch (err) {
+        patchState(store, { delegatesLoading: false, delegatesError: toSafeErrorMessage(err, 'Failed to load cover periods.') });
+      }
+    },
+    async createDelegate(payload: CreateLeaveApprovalDelegateRequest): Promise<LeaveApprovalDelegateResponse | null> {
+      patchState(store, { delegatesError: null });
+      try {
+        const created = await firstValueFrom(api.createDelegate(payload));
+        await this.loadDelegates();
+        return created;
+      } catch (err) {
+        patchState(store, { delegatesError: toSafeErrorMessage(err, 'Failed to save this cover period.') });
+        return null;
+      }
+    },
+    async deleteDelegate(id: string): Promise<boolean> {
+      try {
+        await firstValueFrom(api.deleteDelegate(id));
+        await this.loadDelegates();
+        return true;
+      } catch (err) {
+        patchState(store, { delegatesError: toSafeErrorMessage(err, 'Failed to remove this cover period.') });
+        return false;
       }
     }
   }))

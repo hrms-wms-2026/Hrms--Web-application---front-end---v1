@@ -1,4 +1,5 @@
 .lrh-table { width: 100%; border-collapse: collapse; font-size: 0.82rem; }
+.sr-only { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0, 0, 0, 0); }
 .lrh-table th {
   text-align: left;
   padding: 0.55rem 0.7rem;

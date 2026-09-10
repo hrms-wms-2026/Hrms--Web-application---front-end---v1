@@ -3,7 +3,7 @@ import { patchState, signalStore, withMethods, withState } from '@ngrx/signals';
 import { firstValueFrom } from 'rxjs';
 import { toSafeErrorMessage } from '../../../core/services/error-handler.service';
 import { LeaveCalendarApiService } from '../data-access/leave-calendar-api.service';
-import { LeaveCalendarMonthResponse } from '../models/leave-calendar.model';
+import { CreateLeaveHolidayRequest, LeaveCalendarMonthResponse, LeaveHolidayResponse } from '../models/leave-calendar.model';
 
 export interface LeaveCalendarState {
   readonly month: LeaveCalendarMonthResponse | null;
@@ -13,6 +13,8 @@ export interface LeaveCalendarState {
   readonly monthNumber: number;
   readonly departmentId: string | null;
   readonly includeTentative: boolean;
+  readonly holidays: readonly LeaveHolidayResponse[];
+  readonly holidaysError: string | null;
 }
 
 function currentYearMonth(): { year: number; monthNumber: number } {
@@ -26,7 +28,9 @@ const initialState: LeaveCalendarState = {
   error: null,
   ...currentYearMonth(),
   departmentId: null,
-  includeTentative: false
+  includeTentative: false,
+  holidays: [],
+  holidaysError: null
 };
 
 export const LeaveCalendarStore = signalStore(
@@ -73,6 +77,44 @@ export const LeaveCalendarStore = signalStore(
     async setIncludeTentative(includeTentative: boolean): Promise<void> {
       patchState(store, { includeTentative });
       await this.load();
+    },
+    monthRange(): { from: string; to: string } {
+      const year = store.year();
+      const month = store.monthNumber();
+      const last = new Date(year, month, 0).getDate();
+      const pad = (n: number) => String(n).padStart(2, '0');
+      return { from: `${year}-${pad(month)}-01`, to: `${year}-${pad(month)}-${pad(last)}` };
+    },
+    async loadHolidays(): Promise<void> {
+      const { from, to } = this.monthRange();
+      try {
+        const holidays = await firstValueFrom(api.listHolidays(from, to));
+        patchState(store, { holidays, holidaysError: null });
+      } catch (err) {
+        patchState(store, { holidaysError: toSafeErrorMessage(err, 'Failed to load holidays.') });
+      }
+    },
+    async createHoliday(payload: CreateLeaveHolidayRequest): Promise<LeaveHolidayResponse | null> {
+      try {
+        const created = await firstValueFrom(api.createHoliday(payload));
+        await this.loadHolidays();
+        await this.load();
+        return created;
+      } catch (err) {
+        patchState(store, { holidaysError: toSafeErrorMessage(err, 'Failed to save this holiday.') });
+        return null;
+      }
+    },
+    async deleteHoliday(id: string): Promise<boolean> {
+      try {
+        await firstValueFrom(api.deleteHoliday(id));
+        await this.loadHolidays();
+        await this.load();
+        return true;
+      } catch (err) {
+        patchState(store, { holidaysError: toSafeErrorMessage(err, 'Failed to remove this holiday.') });
+        return false;
+      }
     }
   }))
 );

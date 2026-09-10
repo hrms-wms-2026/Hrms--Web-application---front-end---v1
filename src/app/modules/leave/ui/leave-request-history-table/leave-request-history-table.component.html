@@ -1,4 +1,5 @@
 <table class="lrh-table">
+  <caption class="sr-only">Leave request history</caption>
   <thead>
     <tr><th>Type</th><th>From</th><th>To</th><th>Hours</th><th>Status</th><th>Approved By</th><th>Submitted On</th><th>Actions</th></tr>
   </thead>
@@ -14,7 +15,7 @@
         <td>{{ request.createdAt | slice:0:10 }}</td>
         <td>
           @if (canReply(request)) {
-            <button type="button" data-testid="reply-request" class="lrh-reply" (click)="replyRequested.emit(request)">Reply</button>
+            <button type="button" data-testid="reply-request" class="lrh-reply" aria-label="Reply to information request" (click)="replyRequested.emit(request)">Reply</button>
           }
           @if (canCancel(request)) {
             <button type="button" data-testid="cancel-request" class="lrh-cancel" (click)="cancelRequested.emit(request)">Cancel</button>

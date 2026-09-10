@@ -51,3 +51,17 @@ export interface LeaveCalendarFilter {
   departmentId?: string;
   includeTentative?: boolean;
 }
+
+/** Matches ONEVO.Application.Features.Leave.Calendar.DTOs.Responses.LeaveHolidayResponse. */
+export interface LeaveHolidayResponse {
+  id: string;
+  name: string;
+  date: string;
+  endDate: string;
+}
+
+export interface CreateLeaveHolidayRequest {
+  name: string;
+  date: string;
+  endDate: string | null;
+}

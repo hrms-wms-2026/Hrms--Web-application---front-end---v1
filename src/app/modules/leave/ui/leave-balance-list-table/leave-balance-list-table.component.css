@@ -24,3 +24,4 @@
 .lbt-table strong { font-weight: 650; }
 .lbt-muted { display: block; margin-top: 0.15rem; color: var(--color-text-secondary); font-size: 0.68rem; }
 .lbt-negative { color: var(--color-danger); font-weight: 750; }
+.sr-only { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0, 0, 0, 0); }
