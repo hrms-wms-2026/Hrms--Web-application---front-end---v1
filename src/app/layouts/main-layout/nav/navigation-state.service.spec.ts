@@ -33,6 +33,14 @@ describe('NavigationStateService', () => {
 
     expect(service.activeItem()?.id).toBe('time-attendance');
     const childIds = service.activeChildren().map((c) => c.id);
-    expect(childIds).toEqual(['time-attendance-overview', 'time-attendance-tracking', 'time-attendance-monitoring']);
+    expect(childIds).toEqual(['time-attendance-overview', 'time-attendance-tracking', 'time-attendance-requests', 'time-attendance-monitoring']);
+  });
+
+  it('keeps Attendance active and sub-sidebar visible when navigating with query parameters', async () => {
+    await router.navigateByUrl('/attendance/time-tracking?openCorrection=today');
+
+    expect(service.activeItem()?.id).toBe('time-attendance');
+    const childIds = service.activeChildren().map((c) => c.id);
+    expect(childIds).toEqual(['time-attendance-overview', 'time-attendance-tracking', 'time-attendance-requests', 'time-attendance-monitoring']);
   });
 });

@@ -22,7 +22,8 @@ export class NavigationStateService {
   readonly visibleItems = computed(() => NAV_ITEMS.filter((item) => canAccessNavItem(item, this.permissionService)));
 
   readonly activeItem = computed(() => {
-    const url = this.currentUrl();
+    const rawUrl = this.currentUrl();
+    const url = rawUrl.split('?')[0].split('#')[0];
     return this.visibleItems().find((item) => {
       if (url === item.path || url.startsWith(`${item.path}/`)) {
         return true;

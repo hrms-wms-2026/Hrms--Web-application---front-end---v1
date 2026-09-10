@@ -44,13 +44,16 @@ import {
   workModeLabel as workModeLabelShared
 } from '../../utils/attendance-formatters';
 
+import { AttendanceCorrectionModalComponent } from '../../ui/attendance-correction-modal/attendance-correction-modal.component';
+import { PopoverComponent } from '../../../../shared/ui/popover/popover.component';
+
 const DAY_IN_MILLISECONDS = 24 * 60 * 60 * 1000;
 type AttendanceViewMode = 'my' | 'team';
 
 @Component({
   selector: 'app-time-tracking',
   standalone: true,
-  imports: [AttendanceDetailDrawerComponent, AttendanceHistoryListComponent, AttendanceStatusCardComponent, AttendanceTodayTimelineComponent, BreadcrumbHeaderComponent, ButtonComponent, CorrectionApprovalsComponent, DateRangePickerComponent, FormsModule, ModalComponent, MyRequestsPanelComponent, WorkAreaApprovalsComponent, LocationChangeApprovalsComponent],
+  imports: [AttendanceCorrectionModalComponent, AttendanceDetailDrawerComponent, AttendanceHistoryListComponent, AttendanceStatusCardComponent, AttendanceTodayTimelineComponent, BreadcrumbHeaderComponent, ButtonComponent, CorrectionApprovalsComponent, DateRangePickerComponent, FormsModule, ModalComponent, MyRequestsPanelComponent, PopoverComponent, WorkAreaApprovalsComponent, LocationChangeApprovalsComponent],
   templateUrl: './time-tracking.component.html',
   styleUrl: './time-tracking.component.css',
   changeDetection: ChangeDetectionStrategy.OnPush
@@ -108,6 +111,7 @@ export class TimeTrackingComponent implements OnInit {
   readonly displayTimezone = computed(() => this.store.today()?.timezone?.trim() || SHARED_DISPLAY_TIMEZONE_FALLBACK);
   readonly canViewCoveredEmployees = computed(() => this.store.today()?.canViewCoveredEmployees ?? false);
   readonly friendlyTodayMessages = computed(() => this.getFriendlyTodayMessages(this.store.today()));
+
   readonly correctionFormOpen = signal<AttendanceHistoryRow | null>(null);
   readonly correctionType = signal<AttendanceCorrectionType>('clock_in');
   readonly requestedClockInTime = signal('');
@@ -193,11 +197,39 @@ export class TimeTrackingComponent implements OnInit {
       void this.store.loadToday().then(() => {
         const today = this.store.today();
         if (today) void this.store.loadTodayTimeline(today.employeeId, today.workDate);
+        if (today && this.hasSelfServiceAccess() && this.queryParams().get('openCorrection') === 'today') {
+          this.openTodayCorrection();
+        }
       });
     }
     if (this.hasSelfServiceAccess()) {
       void this.store.loadMyHistory(range);
     }
+  }
+
+  /** Entry point for Overview's "New request"/"Request correction" links, which have no
+   * specific day-row to click - opens the same correction form pre-set to today. */
+  openTodayCorrection(): void {
+    const workDate = this.store.today()?.workDate;
+    if (!workDate) return;
+    const syntheticRow: AttendanceHistoryRow = {
+      attendanceRecordId: '',
+      workDate,
+      employee: null,
+      clockInAt: null,
+      clockOutAt: null,
+      isActive: true,
+      breakMinutes: 0,
+      totalWorkedMinutes: 0,
+      expectedWorkMode: null,
+      attendanceSource: null,
+      status: '',
+      canViewDetails: false,
+      canRequestCorrection: true,
+      canRequestWorkAreaChange: false,
+      canCorrect: false
+    };
+    this.openCorrection(syntheticRow);
   }
 
 
@@ -274,6 +306,26 @@ export class TimeTrackingComponent implements OnInit {
 
 
 
+  readonly requestDropdownOpen = signal(false);
+
+  toggleRequestDropdown(): void {
+    this.requestDropdownOpen.update((open) => !open);
+  }
+
+  closeRequestDropdown(): void {
+    this.requestDropdownOpen.set(false);
+  }
+
+  selectAttendanceCorrection(): void {
+    this.closeRequestDropdown();
+    this.openTodayCorrection();
+  }
+
+  selectWorkAreaChange(): void {
+    this.closeRequestDropdown();
+    this.openWorkAreaChange();
+  }
+
   openWorkAreaChange(): void {
     this.workAreaFormOpen.set(true);
     this.workAreaReviewReady.set(false);
@@ -282,21 +334,21 @@ export class TimeTrackingComponent implements OnInit {
     this.workAreaReason.set('');
     this.workAreaFieldErrors.set({});
     this.workAreaFormMessage.set('');
-    this.store.clearWorkAreaPreview();
+    this.store.clearWorkAreaPreview?.();
   }
 
   closeWorkAreaChange(): void {
-    if (this.store.workAreaPreviewLoading() || this.store.workAreaActionLoading()) return;
+    if (this.store.workAreaPreviewLoading?.() || this.store.workAreaActionLoading?.()) return;
     this.workAreaFormOpen.set(false);
     this.workAreaReviewReady.set(false);
     this.workAreaFieldErrors.set({});
     this.workAreaFormMessage.set('');
-    this.store.clearWorkAreaPreview();
+    this.store.clearWorkAreaPreview?.();
   }
 
   resetWorkAreaReview(): void {
     this.workAreaReviewReady.set(false);
-    this.store.clearWorkAreaPreview();
+    this.store.clearWorkAreaPreview?.();
   }
 
   async previewOrSubmitWorkAreaChange(): Promise<void> {
@@ -361,6 +413,15 @@ export class TimeTrackingComponent implements OnInit {
 
   closeCorrection(): void {
     if (!this.store.correctionActionLoading?.()) this.correctionFormOpen.set(null);
+  }
+
+  onCorrectionSubmitted(): void {
+    this.closeCorrection();
+    this.closeDetailDrawer();
+    const range = this.store.selectedHistoryRange() ?? this.currentWeekRange;
+    void this.store.loadToday();
+    void this.store.loadMyHistory(range);
+    void this.store.loadMyCorrections();
   }
 
   /**
@@ -539,6 +600,11 @@ export class TimeTrackingComponent implements OnInit {
     return formatMinutesShared(value);
   }
 
+  remainingWorkLabel(today: AttendanceTodayResponse): string {
+    if (!today.requiredWorkMinutes) return 'Not scheduled';
+    return formatMinutesShared(Math.max(0, today.requiredWorkMinutes - today.totalWorkedMinutes));
+  }
+
   employeeLabel(row: AttendanceHistoryRow): string {
     return row.employee?.displayName ?? 'Current employee';
   }
@@ -554,16 +620,30 @@ export class TimeTrackingComponent implements OnInit {
     return 'attention-banner attention-banner--neutral';
   }
 
-  hasAttention(label: string | null | undefined): boolean {
-    return !!label?.trim();
-  }
-
-  hasBreakOverage(value: number | null | undefined, isOverBreakAllowance = false): boolean {
-    return isOverBreakAllowance || (value ?? 0) > 0;
-  }
-
-  breakOverageLabel(value: number | null | undefined): string {
-    return `Break time exceeded by ${Math.max(0, value ?? 0)} min.`;
+  hasAttention(todayOrLabel: AttendanceTodayResponse | string | null | undefined): boolean {
+    if (!todayOrLabel) {
+      return false;
+    }
+    if (typeof todayOrLabel === 'string') {
+      const trimmed = todayOrLabel.trim();
+      if (!trimmed) return false;
+      return !trimmed.toLowerCase().includes('break');
+    }
+    const today = todayOrLabel;
+    if (!today.attentionLabel?.trim()) {
+      return false;
+    }
+    // Break overage is already alerted directly above in the status card meta
+    // (with overage minutes, allowance/used metrics, and status pill).
+    if (
+      today.attentionType === 'over_break' ||
+      !!today.isOverBreakAllowance ||
+      (today.breakOverageMinutes ?? 0) > 0 ||
+      today.attentionLabel.toLowerCase().includes('break')
+    ) {
+      return false;
+    }
+    return true;
   }
 
   breakOverageHistoryLabel(value: number | null | undefined): string {

@@ -4,6 +4,8 @@ import {
   formatDateTime,
   formatMinutes,
   formatWorkAreaDate,
+  fullDateLabel,
+  greetingForTime,
   sourceLabel,
   statusLabel,
   timelineEventLabel,
@@ -49,6 +51,9 @@ describe('attendance-formatters', () => {
   it('statusLabel prefers the backend label when present, otherwise humanizes the code', () => {
     expect(statusLabel('clocked_in', 'Custom label')).toBe('Custom label');
     expect(statusLabel('clocked_in')).toBe('Clocked in');
+    expect(statusLabel('over_break', 'Over break allowance')).toBe('Over break');
+    expect(statusLabel('over_break_allowance')).toBe('Over break');
+    expect(statusLabel('over_break')).toBe('Over break');
   });
 
   it('timelineEventLabel maps each known event type', () => {
@@ -62,5 +67,19 @@ describe('attendance-formatters', () => {
     const expected = new Intl.DateTimeFormat(undefined, { year: 'numeric', month: 'short', day: 'numeric', timeZone: 'UTC' }).format(new Date(Date.UTC(2026, 7, 27, 12)));
     expect(formatWorkAreaDate('2026-08-27', 'UTC')).toBe(expected);
     expect(formatWorkAreaDate('not-a-date', 'UTC')).toBe('Date unavailable');
+  });
+
+  it('fullDateLabel renders weekday, month, day, and year in UTC', () => {
+    const expected = new Intl.DateTimeFormat(undefined, { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric', timeZone: 'UTC' }).format(new Date(Date.UTC(2026, 8, 8, 12)));
+    expect(fullDateLabel('2026-09-08')).toBe(expected);
+    expect(fullDateLabel('not-a-date')).toBe('Date unavailable');
+  });
+
+  it('greetingForTime picks a greeting from the company-local hour, not the browser hour', () => {
+    expect(greetingForTime(new Date('2026-09-08T02:00:00Z'), 'UTC')).toBe('Good morning');
+    expect(greetingForTime(new Date('2026-09-08T14:00:00Z'), 'UTC')).toBe('Good afternoon');
+    expect(greetingForTime(new Date('2026-09-08T20:00:00Z'), 'UTC')).toBe('Good evening');
+    // 02:00 UTC is 07:30 in Asia/Colombo (UTC+5:30) - still morning there, not the UTC hour.
+    expect(greetingForTime(new Date('2026-09-08T02:00:00Z'), 'Asia/Colombo')).toBe('Good morning');
   });
 });

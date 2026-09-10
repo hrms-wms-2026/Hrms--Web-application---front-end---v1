@@ -505,4 +505,13 @@ describe('TimeTrackingStore', () => {
     expect(store.dayDetail()).toBeNull();
   });
 
+  it('treats a 404 from loadTodayTimeline as an empty day, not an error', async () => {
+    api.getDayDetail.mockReturnValue(throwError(() => ({ status: 404 })));
+
+    await store.loadTodayTimeline('employee-1', '2026-09-09');
+
+    expect(store.todayTimelineEvents()).toEqual([]);
+    expect(store.todayTimelineError()).toBeNull();
+  });
+
 });

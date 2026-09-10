@@ -4,6 +4,7 @@ import { ATTENDANCE_ROUTES } from './attendance.routes';
 describe('ATTENDANCE_ROUTES', () => {
     const monitoring = () => ATTENDANCE_ROUTES.find((route) => route.path === 'monitoring')!;
   const timeTracking = () => ATTENDANCE_ROUTES.find((route) => route.path === 'time-tracking')!;
+  const requests = () => ATTENDANCE_ROUTES.find((route) => route.path === 'time-tracking/requests')!;
 
   const approvals = () => ATTENDANCE_ROUTES.find((route) => route.path === 'corrections/approvals')!;
   const workAreaApprovals = () => ATTENDANCE_ROUTES.find((route) => route.path === 'work-area-change-requests/approvals')!;
@@ -44,6 +45,17 @@ describe('ATTENDANCE_ROUTES', () => {
       'attendance:approve'
     ]);
     expect(route.data?.['roles']).toBeUndefined();
+  });
+
+  it('gives Requests its own path so it does not co-highlight with Time Tracking, but renders the same component', () => {
+    const route = requests();
+    const trackingRoute = timeTracking();
+
+    expect(route).toBeDefined();
+    expect(route.path).not.toBe(trackingRoute.path);
+    expect(route.canActivate).toContain(permissionGuard);
+    expect(route.data?.['modules']).toEqual(['time_attendance']);
+    expect(route.loadComponent).toBeTypeOf('function');
   });
 
   it('routes correction approvals through the legacy redirect with time_attendance and attendance:approve only', () => {

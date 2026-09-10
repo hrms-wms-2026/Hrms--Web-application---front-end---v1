@@ -1,17 +1,18 @@
-import { ChangeDetectionStrategy, Component, OnInit, computed, inject } from '@angular/core';
+import { ChangeDetectionStrategy, Component, OnInit, computed, effect, inject } from '@angular/core';
 import { CardComponent } from '../../../../shared/ui/card/card.component';
 import { AttendanceHistoryRow, TimeTrackingRange } from '../../../attendance/models/time-tracking.model';
 import { TimeTrackingStore } from '../../../attendance/state/time-tracking.store';
+import { GeneralSettingsStore } from '../../../organization/state/general-settings.store';
+import { LegalEntityStore } from '../../../organization/state/legal-entity.store';
 
 const DAY_IN_MILLISECONDS = 24 * 60 * 60 * 1000;
 const DAY_LABELS = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
-const WEEKLY_GOAL_MINUTES = 40 * 60;
-const DAILY_GOAL_HOURS = 8;
-const CHART_SCALE_HOURS = 10;
 
 export interface DayBar {
   readonly label: string;
+  readonly minutes: number;
   readonly hours: number;
+  readonly hoursLabel: string;
   readonly heightPercent: number;
 }
 
@@ -24,39 +25,132 @@ export interface DayBar {
 })
 export class AttendanceTrendCardComponent implements OnInit {
   private readonly store = inject(TimeTrackingStore);
+  private readonly generalSettingsStore = inject(GeneralSettingsStore, { optional: true });
+  private readonly legalEntityStore = inject(LegalEntityStore, { optional: true });
+
+  constructor() {
+    effect(() => {
+      const legalEntityId = this.store.today?.()?.legalEntityId || this.legalEntityStore?.selectedLegalEntityId();
+      if (legalEntityId && this.generalSettingsStore && this.generalSettingsStore.legalEntityId() !== legalEntityId) {
+        void this.generalSettingsStore.load(legalEntityId);
+      }
+    });
+  }
 
   protected readonly loading = this.store.historyLoading;
-  protected readonly goalHours = DAILY_GOAL_HOURS;
-  protected readonly goalLinePercent = (DAILY_GOAL_HOURS / CHART_SCALE_HOURS) * 100;
 
-  protected readonly days = computed<DayBar[]>(() => buildWeekBars(this.store.history()));
+  protected readonly dailyGoalMinutes = computed(() => {
+    const settings = this.generalSettingsStore?.settings();
+    const fromSettings = parseNetWorkMinutes(settings?.workStartTime, settings?.workEndTime, settings?.breakDurationMinutes);
+    if (fromSettings && fromSettings > 0) return fromSettings;
 
-  protected readonly totalHoursLabel = computed(() => {
-    const totalMinutes = this.store.history().reduce((sum, row) => sum + row.totalWorkedMinutes, 0);
-    return formatHours(totalMinutes);
+    const todayRequired = this.store.today?.()?.requiredWorkMinutes;
+    if (todayRequired && todayRequired > 0) return todayRequired;
+
+    return 8 * 60;
   });
 
-  protected readonly weeklyGoalLabel = formatHours(WEEKLY_GOAL_MINUTES);
+  protected readonly workingDaysCount = computed(() => {
+    const settings = this.generalSettingsStore?.settings();
+    if (settings?.standardWorkingDays && settings.standardWorkingDays.length > 0) {
+      return settings.standardWorkingDays.length;
+    }
+    return 5;
+  });
+
+  protected readonly weeklyGoalMinutes = computed(() => {
+    return this.dailyGoalMinutes() * this.workingDaysCount();
+  });
+
+  protected readonly weeklyGoalLabel = computed(() => {
+    return formatHours(this.weeklyGoalMinutes());
+  });
+
+  protected readonly dailyGoalHours = computed(() => {
+    return this.dailyGoalMinutes() / 60;
+  });
+
+  protected readonly dailyGoalLabel = computed(() => {
+    const mins = this.dailyGoalMinutes();
+    const h = Math.floor(mins / 60);
+    const m = mins % 60;
+    return m > 0 ? `${h}h ${m}m/day` : `${h}h/day`;
+  });
+
+  protected readonly chartScaleHours = computed(() => {
+    return Math.max(10, Math.ceil(this.dailyGoalHours() * 1.25));
+  });
+
+  protected readonly goalLinePercent = computed(() => {
+    return (this.dailyGoalHours() / this.chartScaleHours()) * 100;
+  });
+
+  protected readonly days = computed<DayBar[]>(() => {
+    const history = this.store.history();
+    const today = this.store.today ? this.store.today() : null;
+    return buildWeekBars(history, today, this.chartScaleHours());
+  });
+
+  // Summed from `days()` (the same Mon-Sun rows the bars are built from), not raw
+  // `store.history()` - that signal can hold rows outside the plotted week (a shared,
+  // root-provided store also written by Time Tracking's own history range), which
+  // previously produced a nonzero total alongside all-zero bars whenever the two diverged.
+  protected readonly totalHoursLabel = computed(() => {
+    const totalMinutes = this.days().reduce((sum, day) => sum + day.minutes, 0);
+    return formatHours(totalMinutes);
+  });
 
   ngOnInit(): void {
     void this.store.loadMyHistory(currentWeekRange());
   }
 }
 
-function buildWeekBars(history: readonly AttendanceHistoryRow[]): DayBar[] {
+export function parseNetWorkMinutes(
+  startTime: string | null | undefined,
+  endTime: string | null | undefined,
+  breakMinutes: number | null | undefined
+): number | null {
+  if (!startTime || !endTime) return null;
+  const startParts = startTime.split(':').map(Number);
+  const endParts = endTime.split(':').map(Number);
+  if (startParts.length !== 2 || endParts.length !== 2 || isNaN(startParts[0]) || isNaN(endParts[0])) {
+    return null;
+  }
+  const startMins = startParts[0] * 60 + startParts[1];
+  const endMins = endParts[0] * 60 + endParts[1];
+  if (startMins >= endMins) return null;
+  const shiftMins = endMins - startMins;
+  const breakM = Math.max(0, breakMinutes ?? 0);
+  return Math.max(0, shiftMins - breakM);
+}
+
+function buildWeekBars(
+  history: readonly AttendanceHistoryRow[],
+  today?: { workDate?: string; totalWorkedMinutes?: number } | null,
+  scaleHours = 10
+): DayBar[] {
   const minutesByDate = new Map(history.map((row) => [row.workDate, row.totalWorkedMinutes]));
+  if (today?.workDate && typeof today.totalWorkedMinutes === 'number') {
+    const recorded = minutesByDate.get(today.workDate) ?? 0;
+    if (today.totalWorkedMinutes > recorded) {
+      minutesByDate.set(today.workDate, today.totalWorkedMinutes);
+    }
+  }
   const range = currentWeekRange();
-  const monday = new Date(`${range.from}T00:00:00`);
+  const [year, month, day] = range.from.split('-').map(Number);
+  const monday = new Date(year, month - 1, day);
 
   return DAY_LABELS.map((label, index) => {
-    const date = new Date(monday.getTime() + index * DAY_IN_MILLISECONDS);
+    const date = new Date(monday.getFullYear(), monday.getMonth(), monday.getDate() + index);
     const workDate = toDateOnly(date);
     const minutes = minutesByDate.get(workDate) ?? 0;
     const hours = minutes / 60;
     return {
       label,
+      minutes,
       hours,
-      heightPercent: Math.min(100, (hours / CHART_SCALE_HOURS) * 100)
+      hoursLabel: formatHours(minutes),
+      heightPercent: Math.min(100, (hours / scaleHours) * 100)
     };
   });
 }

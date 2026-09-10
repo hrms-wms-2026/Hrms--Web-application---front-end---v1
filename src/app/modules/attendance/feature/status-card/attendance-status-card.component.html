@@ -1,21 +1,94 @@
 @if (store.todayLoading() && !store.today()) {
   <div class="status-card-skeleton" aria-busy="true" aria-label="Loading today's attendance"></div>
 } @else if (store.today(); as today) {
-  <section class="attendance-status-card" aria-labelledby="status-card-heading">
-    <div class="status-card-header">
-      <div class="status-card-title-cluster">
-        <h1 id="status-card-heading" class="status-card-date">{{ formatDate(today.workDate) }}</h1>
-        <span
-          class="status-pill"
-          [class.status-pill--active]="today.attendanceStatus === 'working' || today.attendanceStatus === 'clocked_in'"
-          [class.status-pill--break]="today.attendanceStatus === 'on_break'"
-        >
-          <span class="status-pill__dot"></span>
-          {{ statusLabel(today.attendanceStatus, today.attendanceStatusLabel) }}
-        </span>
+  <section class="attendance-status-card" [class.attendance-status-card--borderless]="borderless()" aria-labelledby="status-card-heading">
+    @if (showHeader()) {
+      <div class="status-card-header">
+        <div class="status-card-title-cluster">
+          <h1 id="status-card-heading" class="status-card-date">{{ formatDate(today.workDate) }}</h1>
+          <span
+            class="status-pill"
+            [class.status-pill--active]="today.attendanceStatus === 'working' || today.attendanceStatus === 'clocked_in'"
+            [class.status-pill--break]="today.attendanceStatus === 'on_break'"
+          >
+            <span class="status-pill__dot"></span>
+            {{ statusLabel(today.attendanceStatus, today.attendanceStatusLabel) }}
+          </span>
+        </div>
+
+        @if (today.allowedClockInMethods.web) {
+          <div class="action-buttons">
+            @if (today.canClockIn) {
+              <app-button type="button" data-testid="status-card-clock-in" variant="primary" size="sm" [loading]="actionIsLoading('clockIn')" [disabled]="store.actionLoading()" (pressed)="store.clockIn()">Clock in</app-button>
+            }
+            @if (today.canStartBreak) {
+              <app-button type="button" data-testid="status-card-start-break" variant="secondary" size="sm" [loading]="actionIsLoading('startBreak')" [disabled]="store.actionLoading()" (pressed)="store.startBreak()">Start break</app-button>
+            }
+            @if (today.canEndBreak) {
+              <app-button type="button" data-testid="status-card-end-break" variant="secondary" size="sm" [loading]="actionIsLoading('endBreak')" [disabled]="store.actionLoading()" (pressed)="store.endBreak()">End break</app-button>
+            }
+            @if (today.canClockOut) {
+              <app-button type="button" data-testid="status-card-clock-out" variant="danger" size="sm" [loading]="actionIsLoading('clockOut')" [disabled]="store.actionLoading()" (pressed)="store.clockOut()">Clock out</app-button>
+            }
+          </div>
+        }
+      </div>
+    }
+
+    @if (layout() === 'summary') {
+      <div class="status-card-stats">
+        <div class="status-card-stat">
+          <strong class="status-card-stat__value">{{ formatMinutes(today.totalWorkedMinutes) }}</strong>
+          <span class="status-card-stat__label">Worked</span>
+        </div>
+        <div class="status-card-stat">
+          <strong class="status-card-stat__value">{{ today.requiredWorkMinutes ? formatMinutes(today.requiredWorkMinutes) : 'Not scheduled' }}</strong>
+          <span class="status-card-stat__label">Scheduled</span>
+        </div>
+        <div class="status-card-stat">
+          <strong class="status-card-stat__value">{{ today.breakRemainingMinutes !== null ? formatMinutes(today.breakRemainingMinutes) : '—' }}</strong>
+          <span class="status-card-stat__label">Break remaining</span>
+        </div>
       </div>
 
-      @if (today.allowedClockInMethods.web) {
+      <div class="worked-progress-track" [attr.title]="formatMinutes(today.totalWorkedMinutes) + ' worked of ' + (today.requiredWorkMinutes ? formatMinutes(today.requiredWorkMinutes) : 'an unscheduled day')">
+        <div class="worked-progress-fill" data-testid="worked-progress-fill" [style.width.%]="workedPercent()"></div>
+      </div>
+    } @else {
+      <div class="status-card-session">
+        <strong class="status-card-session__value" data-testid="status-card-session-value">{{ formatMinutes(today.totalWorkedMinutes) }}</strong>
+        <span class="status-card-session__caption">Current work session</span>
+      </div>
+    }
+
+    <div class="status-card-footer">
+      <div class="status-card-meta">
+        @if (layout() === 'summary') {
+          <span class="status-card-meta__item">Clocked in {{ today.clockInAt ? formatDateTime(today.clockInAt, today.timezone) : 'not recorded' }}</span>
+          <span class="status-card-meta__item">Work mode {{ workModeLabel(today.expectedWorkMode) }}</span>
+        }
+        @if (hasBreakOverage()) {
+          <span class="status-card-meta__item status-card-meta__item--danger">{{ breakOverageLabel(today.breakOverageMinutes) }}</span>
+          <span class="status-card-meta__item status-card-meta__item--muted">
+            @if (today.breakAllowanceMinutes === null) {
+              {{ formatMinutes(today.breakUsedMinutes) }} used · No allowance configured
+            } @else {
+              {{ formatMinutes(today.breakAllowanceMinutes) }} allowance · {{ formatMinutes(today.breakUsedMinutes) }} used
+            }
+          </span>
+        } @else if (today.breakRemainingMinutes !== null) {
+          @if (layout() === 'session') {
+            <!-- 'summary' layout already shows this exact number as its own stat tile above;
+                 repeating it here would just be the duplication this card exists to avoid. -->
+            <span class="status-card-meta__item">Break {{ formatMinutes(today.breakRemainingMinutes) }} remaining</span>
+          }
+          @if (today.breakRemainingMinutes === 0) {
+            <span class="status-card-meta__item status-card-meta__item--muted">You have used your break time for today.</span>
+          }
+        }
+      </div>
+
+      @if (!showHeader() && today.allowedClockInMethods.web) {
         <div class="action-buttons">
           @if (today.canClockIn) {
             <app-button type="button" data-testid="status-card-clock-in" variant="primary" size="sm" [loading]="actionIsLoading('clockIn')" [disabled]="store.actionLoading()" (pressed)="store.clockIn()">Clock in</app-button>
@@ -30,26 +103,6 @@
             <app-button type="button" data-testid="status-card-clock-out" variant="danger" size="sm" [loading]="actionIsLoading('clockOut')" [disabled]="store.actionLoading()" (pressed)="store.clockOut()">Clock out</app-button>
           }
         </div>
-      }
-    </div>
-
-    <div class="worked-progress" [attr.title]="formatMinutes(today.totalWorkedMinutes) + ' worked of ' + (today.requiredWorkMinutes ? formatMinutes(today.requiredWorkMinutes) : 'an unscheduled day')">
-      <div class="worked-progress-track">
-        <div class="worked-progress-fill" data-testid="worked-progress-fill" [style.width.%]="workedPercent()"></div>
-      </div>
-      <span class="worked-progress-label">
-        {{ formatMinutes(today.totalWorkedMinutes) }}
-        @if (today.requiredWorkMinutes) {
-          <span class="worked-progress-label__muted">of {{ formatMinutes(today.requiredWorkMinutes) }} scheduled</span>
-        }
-      </span>
-    </div>
-
-    <div class="status-card-meta">
-      <span class="status-card-meta__item">Clocked in {{ today.clockInAt ? formatDateTime(today.clockInAt, today.timezone) : 'not recorded' }}</span>
-      <span class="status-card-meta__item">Work mode {{ workModeLabel(today.expectedWorkMode) }}</span>
-      @if (today.breakRemainingMinutes !== null) {
-        <span class="status-card-meta__item">{{ formatMinutes(today.breakRemainingMinutes) }} break remaining</span>
       }
     </div>
   </section>

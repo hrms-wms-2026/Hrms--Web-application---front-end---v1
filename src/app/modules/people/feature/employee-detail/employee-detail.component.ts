@@ -147,7 +147,7 @@ import {
         @if (employee.attendanceSummary) {
           <div class="rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] p-4">
             <span class="text-xs font-medium text-[var(--color-text-secondary)] block mb-1">Attendance today</span>
-            @if (attendanceWarningLabel(employee); as warningLabel) {
+            @if (employee.attendanceSummary.showNotClockedInWarning && attendanceWarningLabel(employee); as warningLabel) {
               <span class="inline-flex items-center gap-1.5 text-sm font-semibold text-red-600">
                 <span class="w-2 h-2 rounded-full bg-red-500"></span>
                 {{ warningLabel }}

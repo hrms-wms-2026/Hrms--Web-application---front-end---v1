@@ -122,4 +122,21 @@ describe('ModalComponent', () => {
     expect(xl.classList.contains('modal-dialog--constrained')).toBe(true);
     expect(xxl.classList.contains('modal-dialog--constrained')).toBe(true);
   });
+
+  it('allows overriding maxWidth with customMaxWidth', async () => {
+    @Component({
+      standalone: true,
+      imports: [ModalComponent],
+      template: `<app-modal [open]="true" size="lg" customMaxWidth="max-w-3xl"><p>wide</p></app-modal>`
+    })
+    class CustomWidthHostComponent {}
+
+    await TestBed.configureTestingModule({ imports: [CustomWidthHostComponent] }).compileComponents();
+    const fixture = TestBed.createComponent(CustomWidthHostComponent);
+    fixture.detectChanges();
+
+    const dialog = fixture.nativeElement.querySelector('[role="dialog"]') as HTMLElement;
+    expect(dialog.classList.contains('max-w-3xl')).toBe(true);
+    expect(dialog.classList.contains('max-w-xl')).toBe(false);
+  });
 });

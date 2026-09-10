@@ -1,20 +1,313 @@
 <section class="today-timeline" aria-labelledby="today-timeline-heading">
-  <h3 id="today-timeline-heading">Today's activity</h3>
+  <div class="today-timeline-header">
+    <h3 id="today-timeline-heading">Today's activity</h3>
+    @if (totalCount() > 0) {
+      <span class="today-timeline-count-badge">{{ totalCount() }} {{ totalCount() === 1 ? 'event' : 'events' }}</span>
+    }
+  </div>
 
   @if (store.todayTimelineLoading()) {
     <p aria-busy="true">Loading today's activity…</p>
   } @else if (store.todayTimelineError()) {
     <p role="alert">{{ store.todayTimelineError() }}</p>
-  } @else if (store.todayTimelineEvents().length === 0) {
+  } @else if (totalCount() === 0) {
     <p class="today-timeline-empty">No activity recorded yet today.</p>
   } @else {
     <ol class="today-timeline-list">
-      @for (event of store.todayTimelineEvents(); track event.timestamp + event.eventType) {
-        <li class="today-timeline-item">
-          <span class="today-timeline-item__label">{{ timelineEventLabel(event.eventType) }}</span>
-          <span class="today-timeline-item__time">{{ formatDateTime(event.timestamp, store.today()?.timezone) }}</span>
+      @for (item of visibleItems(); track item.id) {
+        <li class="today-timeline-item" [class.today-timeline-item--now]="item.isNow">
+          <span class="today-timeline-item__label">{{ item.label }}</span>
+          <span class="today-timeline-item__time">{{ item.time }}</span>
         </li>
       }
     </ol>
+
+    @if (hasMore()) {
+      <div class="today-timeline-footer">
+        <button
+          type="button"
+          class="today-timeline-more-btn"
+          (click)="openModal()"
+          aria-haspopup="dialog"
+        >
+          <span>+{{ moreCount() }} more {{ moreCount() === 1 ? 'action' : 'actions' }}</span>
+          <span class="more-link-action">View full timeline & chart &rarr;</span>
+        </button>
+      </div>
+    } @else {
+      <div class="today-timeline-footer">
+        <button
+          type="button"
+          class="today-timeline-more-btn today-timeline-more-btn--subtle"
+          (click)="openModal()"
+          aria-haspopup="dialog"
+        >
+          <span class="more-link-action">View breakdown & chart &rarr;</span>
+        </button>
+      </div>
+    }
   }
 </section>
+
+@if (isModalOpen()) {
+  <div class="today-modal-backdrop" (click)="closeModal()">
+    <div
+      class="today-modal"
+      (click)="$event.stopPropagation()"
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="today-modal-title"
+      (keydown.escape)="closeModal()"
+      tabindex="-1"
+    >
+      <!-- Modal Header matching Add Employee wizard -->
+      <div class="today-modal-header">
+        <div class="today-modal-header-left">
+          <h2 id="today-modal-title" class="today-modal-title">Today's Activity & Time Distribution</h2>
+          <p class="today-modal-subtitle">
+            {{ chartMetrics().fullDateLabel }} &middot;
+            <span class="status-badge" [attr.data-status]="store.today()?.attendanceStatus">
+              {{ chartMetrics().statusText }} &middot; {{ chartMetrics().workMode }}
+            </span>
+          </p>
+        </div>
+        <button
+          type="button"
+          class="today-modal-close-btn"
+          (click)="closeModal()"
+          title="Close dialog"
+          aria-label="Close dialog"
+        >
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <line x1="18" y1="6" x2="6" y2="18" />
+            <line x1="6" y1="6" x2="18" y2="18" />
+          </svg>
+        </button>
+      </div>
+
+      <!-- Modal Body: 2-Column Balanced Layout -->
+      <div class="today-modal-body">
+        <!-- LEFT COLUMN: Premium Donut Chart & Compact Metrics -->
+        <div class="today-modal-left">
+          <div class="circle-chart-container">
+            <div class="circle-chart-svg-wrap">
+              <svg viewBox="0 0 160 160" class="circle-chart-svg" aria-label="Work time distribution chart">
+                <defs>
+                  <linearGradient id="workedGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+                    <stop offset="0%" stop-color="#4f46e5" />
+                    <stop offset="100%" stop-color="#7c3aed" />
+                  </linearGradient>
+                  <linearGradient id="breakGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+                    <stop offset="0%" stop-color="#f59e0b" />
+                    <stop offset="100%" stop-color="#fbbf24" />
+                  </linearGradient>
+                  <filter id="chartDropShadow" x="-10%" y="-10%" width="120%" height="120%">
+                    <feDropShadow dx="0" dy="1" stdDeviation="2" flood-opacity="0.12" />
+                  </filter>
+                </defs>
+
+                <!-- Background Track Ring -->
+                <circle
+                  cx="80"
+                  cy="80"
+                  [attr.r]="CIRCLE_RADIUS"
+                  fill="none"
+                  stroke="#f1f5f9"
+                  stroke-width="12"
+                />
+
+                <!-- Rotated Segments (Starts at 12 o'clock) -->
+                <g transform="rotate(-90 80 80)">
+                  <!-- Remaining Shift Track -->
+                  <circle
+                    cx="80"
+                    cy="80"
+                    [attr.r]="CIRCLE_RADIUS"
+                    fill="none"
+                    stroke="#e2e8f0"
+                    stroke-width="12"
+                    [attr.stroke-dasharray]="chartMetrics().remainingDasharray"
+                    [attr.stroke-dashoffset]="chartMetrics().remainingOffset"
+                  />
+                  <!-- Break Arc (Amber) -->
+                  @if (chartMetrics().breakUsedMinutes > 0) {
+                    <circle
+                      cx="80"
+                      cy="80"
+                      [attr.r]="CIRCLE_RADIUS"
+                      fill="none"
+                      stroke="url(#breakGradient)"
+                      stroke-width="12"
+                      stroke-linecap="round"
+                      [attr.stroke-dasharray]="chartMetrics().breakDasharray"
+                      [attr.stroke-dashoffset]="chartMetrics().breakOffset"
+                    />
+                  }
+                  <!-- Worked Arc (Indigo Gradient) -->
+                  <circle
+                    cx="80"
+                    cy="80"
+                    [attr.r]="CIRCLE_RADIUS"
+                    fill="none"
+                    stroke="url(#workedGradient)"
+                    stroke-width="12"
+                    stroke-linecap="round"
+                    [attr.stroke-dasharray]="chartMetrics().workedDasharray"
+                    [attr.stroke-dashoffset]="chartMetrics().workedOffset"
+                    filter="url(#chartDropShadow)"
+                  />
+                </g>
+
+                <!-- Center Display -->
+                <circle cx="80" cy="52" r="10" fill="color-mix(in srgb, var(--color-accent) 12%, transparent)" />
+                <path d="M80 47v5l2.5 1.5" stroke="var(--color-accent)" stroke-width="1.5" stroke-linecap="round" fill="none" />
+
+                <text x="80" y="75" text-anchor="middle" class="circle-chart-text-worked">
+                  {{ chartMetrics().workedLabel }}
+                </text>
+                <text x="80" y="91" text-anchor="middle" class="circle-chart-text-percent">
+                  {{ chartMetrics().completionPercent }}% completed
+                </text>
+                <text x="80" y="105" text-anchor="middle" class="circle-chart-text-goal">
+                  Goal: {{ chartMetrics().scheduledLabel }}
+                </text>
+              </svg>
+            </div>
+          </div>
+
+          <!-- Stacked Horizontal Ratio Bar -->
+          <div class="ratio-progress-bar" title="Time distribution breakdown">
+            <div
+              class="ratio-bar-segment ratio-bar-segment--worked"
+              [style.width.%]="chartMetrics().completionPercent"
+            ></div>
+            <div
+              class="ratio-bar-segment ratio-bar-segment--break"
+              [style.width.%]="chartMetrics().breakPercent"
+            ></div>
+          </div>
+
+          <!-- Compact 3-Row Metric Stats -->
+          <div class="metrics-compact-stack">
+            <!-- Worked -->
+            <div class="metric-compact-row">
+              <div class="metric-compact-info">
+                <span class="metric-dot metric-dot--worked"></span>
+                <span class="metric-compact-name">Worked</span>
+              </div>
+              <div class="metric-compact-values">
+                <strong>{{ chartMetrics().workedLabel }}</strong>
+                <span class="metric-compact-sub">({{ chartMetrics().completionPercent }}%)</span>
+              </div>
+            </div>
+
+            <!-- Breaks -->
+            <div class="metric-compact-row">
+              <div class="metric-compact-info">
+                <span class="metric-dot metric-dot--break"></span>
+                <span class="metric-compact-name">Breaks</span>
+              </div>
+              <div class="metric-compact-values">
+                <strong>{{ chartMetrics().breakLabel }}</strong>
+                @if (chartMetrics().breakAllowanceMinutes > 0) {
+                  <span class="metric-compact-sub">({{ chartMetrics().breakRemainingMinutes }}m left)</span>
+                }
+              </div>
+            </div>
+
+            <!-- Remaining -->
+            <div class="metric-compact-row">
+              <div class="metric-compact-info">
+                <span class="metric-dot metric-dot--remaining"></span>
+                <span class="metric-compact-name">Remaining</span>
+              </div>
+              <div class="metric-compact-values">
+                <strong>{{ chartMetrics().remainingLabel }}</strong>
+                <span class="metric-compact-sub">to goal</span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- RIGHT COLUMN: Full Activity Stepper (Compact, No Scroll) -->
+        <div class="today-modal-right">
+          <div class="modal-timeline-heading">
+            <h4>All Activities Today</h4>
+            <span class="modal-timeline-count">{{ totalCount() }} {{ totalCount() === 1 ? 'entry' : 'entries' }}</span>
+          </div>
+
+          <div class="modal-stepper">
+            @for (item of allTimelineItems(); track item.id; let isLast = $last) {
+              <div
+                class="modal-stepper-item"
+                [class.modal-stepper-item--now]="item.isNow"
+                [class.modal-stepper-item--last]="isLast"
+              >
+                @if (!isLast) {
+                  <div class="modal-stepper-track" aria-hidden="true"></div>
+                }
+
+                <div
+                  class="modal-stepper-node"
+                  [class.modal-stepper-node--clock-in]="item.iconType === 'clock_in'"
+                  [class.modal-stepper-node--break-start]="item.iconType === 'break_start'"
+                  [class.modal-stepper-node--break-end]="item.iconType === 'break_end'"
+                  [class.modal-stepper-node--clock-out]="item.iconType === 'clock_out'"
+                  [class.modal-stepper-node--now]="item.iconType === 'now'"
+                >
+                  @if (item.iconType === 'clock_in') {
+                    <svg viewBox="0 0 16 16" fill="currentColor" class="w-3 h-3">
+                      <path fill-rule="evenodd" d="M10 12.5a.75.75 0 0 1-.75.75H3a1 1 0 0 1-1-1V3.75A1 1 0 0 1 3 2.75h6.25a.75.75 0 0 1 0 1.5H3.5v7.5h5.75a.75.75 0 0 1 .75.75Zm4.03-4.97a.75.75 0 0 1 0 1.06l-3 3a.75.75 0 1 1-1.06-1.06L11.44 9H6.75a.75.75 0 0 1 0-1.5h4.69l-1.47-1.47a.75.75 0 1 1 1.06-1.06l3 3Z" clip-rule="evenodd" />
+                    </svg>
+                  } @else if (item.iconType === 'break_start' || item.iconType === 'break_end') {
+                    <svg viewBox="0 0 16 16" fill="currentColor" class="w-3 h-3">
+                      <path d="M2 3.5A1.5 1.5 0 0 1 3.5 2h6A1.5 1.5 0 0 1 11 3.5V4h1.5A2.5 2.5 0 0 1 15 6.5v1A2.5 2.5 0 0 1 12.5 10H11v1.5a2.5 2.5 0 0 1-2.5 2.5h-5A2.5 2.5 0 0 1 1 11.5v-8A1.5 1.5 0 0 1 2 3.5ZM11 8.5h1.5a1 1 0 0 0 1-1v-1a1 1 0 0 0-1-1H11v3Z" />
+                    </svg>
+                  } @else if (item.iconType === 'clock_out') {
+                    <svg viewBox="0 0 16 16" fill="currentColor" class="w-3 h-3">
+                      <path fill-rule="evenodd" d="M6 3.5a.75.75 0 0 1 .75-.75H13a1 1 0 0 1 1 1v8.5a1 1 0 0 1-1 1H6.75a.75.75 0 0 1 0-1.5H12.5V4.25H6.75A.75.75 0 0 1 6 3.5Zm-4.03 4.97a.75.75 0 0 0 0-1.06l3-3a.75.75 0 1 0-1.06-1.06l-4.25 4.25a.75.75 0 0 0 0 1.06l4.25 4.25a.75.75 0 1 0 1.06-1.06l-3-3H9.25a.75.75 0 0 0 0-1.5H1.97Z" clip-rule="evenodd" />
+                    </svg>
+                  } @else {
+                    <span class="live-dot-pulse"></span>
+                  }
+                </div>
+
+                <div class="modal-stepper-body">
+                  <div class="modal-stepper-left-col">
+                    <span class="modal-stepper-title">{{ item.label }}</span>
+                    @if (item.durationLabel || item.isNow) {
+                      <div class="modal-stepper-badges">
+                        @if (item.durationLabel) {
+                          <span class="modal-badge modal-badge--duration">{{ item.durationLabel }}</span>
+                        }
+                        @if (item.isNow) {
+                          <span class="modal-badge modal-badge--live">
+                            <span class="live-pulse-anim"></span>
+                            Active now
+                          </span>
+                        }
+                      </div>
+                    }
+                  </div>
+                  <div class="modal-stepper-right-col">
+                    <span class="modal-stepper-time">{{ item.time }}</span>
+                    @if (item.sourceLabel) {
+                      <span class="modal-stepper-source">{{ item.sourceLabel }}</span>
+                    }
+                  </div>
+                </div>
+              </div>
+            }
+          </div>
+        </div>
+      </div>
+
+      <!-- Modal Footer matching Add Employee wizard -->
+      <div class="today-modal-footer">
+        <button type="button" class="modal-close-btn" (click)="closeModal()">
+          Close
+        </button>
+      </div>
+    </div>
+  </div>
+}

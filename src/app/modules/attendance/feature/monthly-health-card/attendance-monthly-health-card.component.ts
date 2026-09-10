@@ -8,6 +8,7 @@ import { TimeTrackingRange } from '../../models/time-tracking.model';
   standalone: true,
   imports: [CardComponent],
   templateUrl: './attendance-monthly-health-card.component.html',
+  styleUrl: './attendance-monthly-health-card.component.css',
   changeDetection: ChangeDetectionStrategy.OnPush
 })
 export class AttendanceMonthlyHealthCardComponent implements OnInit {

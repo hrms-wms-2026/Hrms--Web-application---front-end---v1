@@ -23,11 +23,9 @@
         <tr>
           @if (showEmployeeColumn()) { <th scope="col">Employee</th> }
           <th scope="col">Date</th>
-          <th scope="col">Scheduled</th>
           <th scope="col">Clock in</th>
           <th scope="col">Clock out</th>
           <th scope="col">Break</th>
-          <th scope="col">Worked time</th>
           <th scope="col">Status</th>
         </tr>
       </thead>
@@ -41,11 +39,9 @@
               </td>
             }
             <td><span class="table-primary">{{ formatDate(row.workDate) }}</span></td>
-            <td>{{ scheduledLabel(row) }}</td>
             <td>{{ formatDateTime(row.clockInAt, displayTimezone()) }}</td>
             <td>{{ formatDateTime(row.clockOutAt, displayTimezone()) }}</td>
             <td>{{ formatMinutes(row.breakMinutes) }}</td>
-            <td><strong class="table-worked-val">{{ formatMinutes(row.totalWorkedMinutes) }}</strong></td>
             <td>
               <span
                 class="table-status-pill"
@@ -56,8 +52,10 @@
                 <span class="table-status-dot"></span>
                 {{ statusLabel(row.status, row.statusLabel) }}
               </span>
-              @if (row.attentionLabel) { <span class="table-note">{{ row.attentionLabel }}</span> }
-              @if (hasBreakOverage(row.breakOverageMinutes, row.isOverBreakAllowance)) { <span class="table-note table-note--warning">{{ breakOverageHistoryLabel(row.breakOverageMinutes) }}</span> }
+              @if (showStatusNotes()) {
+                @if (row.attentionLabel) { <span class="table-note">{{ row.attentionLabel }}</span> }
+                @if (hasBreakOverage(row.breakOverageMinutes, row.isOverBreakAllowance)) { <span class="table-note table-note--warning">{{ breakOverageHistoryLabel(row.breakOverageMinutes) }}</span> }
+              }
             </td>
           </tr>
         }

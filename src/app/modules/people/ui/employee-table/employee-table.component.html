@@ -55,8 +55,7 @@
                     >
                       {{ attentionLabel }}
                     </span>
-                  }
-                  @if (attendanceStatusLabel(employee); as statusLabel) {
+                  } @else if (attendanceStatusLabel(employee); as statusLabel) {
                     <span class="emp-attendance-status-label" [attr.title]="statusLabel">
                       {{ statusLabel }}
                     </span>

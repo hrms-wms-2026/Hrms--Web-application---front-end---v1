@@ -5,16 +5,19 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 import { TimeTrackingStore } from '../../state/time-tracking.store';
 import { AttendanceRequestsSummaryCardComponent } from './attendance-requests-summary-card.component';
 
+type CorrectionFixture = { status: string; correctionType?: string; workDate?: string };
+type WorkAreaFixture = { status: string; date?: string };
+
 describe('AttendanceRequestsSummaryCardComponent', () => {
   afterEach(() => TestBed.resetTestingModule());
 
   async function setup(): Promise<{
     fixture: ComponentFixture<AttendanceRequestsSummaryCardComponent>;
-    myCorrections: ReturnType<typeof signal<{ status: string }[]>>;
-    myWorkAreaRequests: ReturnType<typeof signal<{ status: string }[]>>;
+    myCorrections: ReturnType<typeof signal<CorrectionFixture[]>>;
+    myWorkAreaRequests: ReturnType<typeof signal<WorkAreaFixture[]>>;
   }> {
-    const myCorrections = signal<{ status: string }[]>([]);
-    const myWorkAreaRequests = signal<{ status: string }[]>([]);
+    const myCorrections = signal<CorrectionFixture[]>([]);
+    const myWorkAreaRequests = signal<WorkAreaFixture[]>([]);
 
     await TestBed.configureTestingModule({
       imports: [AttendanceRequestsSummaryCardComponent],
@@ -47,5 +50,32 @@ describe('AttendanceRequestsSummaryCardComponent', () => {
     fixture.detectChanges();
 
     expect(fixture.nativeElement.textContent).toContain('2 pending');
+  });
+
+  it('lists recent corrections and work-area changes with title, date, and status badge', async () => {
+    const { fixture, myCorrections, myWorkAreaRequests } = await setup();
+    myCorrections.set([{ status: 'pending', correctionType: 'clock_in', workDate: '2026-09-07' }]);
+    myWorkAreaRequests.set([{ status: 'approved', date: '2026-09-05' }]);
+    fixture.detectChanges();
+
+    const rows = fixture.nativeElement.querySelectorAll('.requests-summary-row');
+    expect(rows.length).toBe(2);
+    expect(rows[0].textContent).toContain('Clock-in time');
+    expect(rows[0].querySelector('.requests-summary-badge')?.textContent?.trim()).toBe('Pending review');
+    expect(rows[1].textContent).toContain('Work-area change');
+    expect(rows[1].querySelector('.requests-summary-badge')?.textContent?.trim()).toBe('Approved');
+  });
+
+  it('caps the recent requests list at three items', async () => {
+    const { fixture, myCorrections } = await setup();
+    myCorrections.set([
+      { status: 'pending', correctionType: 'clock_in', workDate: '2026-09-01' },
+      { status: 'pending', correctionType: 'clock_out', workDate: '2026-09-02' },
+      { status: 'pending', correctionType: 'break', workDate: '2026-09-03' },
+      { status: 'pending', correctionType: 'full_day', workDate: '2026-09-04' }
+    ]);
+    fixture.detectChanges();
+
+    expect(fixture.nativeElement.querySelectorAll('.requests-summary-row').length).toBe(3);
   });
 });

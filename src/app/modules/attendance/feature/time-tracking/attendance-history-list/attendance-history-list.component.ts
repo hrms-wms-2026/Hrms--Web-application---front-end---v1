@@ -21,6 +21,7 @@ export class AttendanceHistoryListComponent {
   readonly displayTimezone = input<string>('UTC');
   readonly emptyMessage = input('No attendance records for this date range.');
   readonly showEmployeeColumn = input(false);
+  readonly showStatusNotes = input(false);
   readonly retryDisabledMessage = input<string | null>(null);
 
   readonly pageChange = output<number>();

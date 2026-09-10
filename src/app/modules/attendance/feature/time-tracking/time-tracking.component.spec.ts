@@ -163,6 +163,13 @@ type StoreMock = {
   selectWorkAreaApprovalRequest: ReturnType<typeof vi.fn>;
   approveWorkAreaChangeRequest: ReturnType<typeof vi.fn>;
   rejectWorkAreaChangeRequest: ReturnType<typeof vi.fn>;
+  workAreaPreview: ReturnType<typeof signal<any>>;
+  workAreaPreviewLoading: ReturnType<typeof signal<boolean>>;
+  workAreaPreviewError: ReturnType<typeof signal<string | null>>;
+  workAreaCreateError: ReturnType<typeof signal<string | null>>;
+  clearWorkAreaPreview: ReturnType<typeof vi.fn>;
+  previewWorkAreaChange: ReturnType<typeof vi.fn>;
+  submitWorkAreaChangeRequest: ReturnType<typeof vi.fn>;
 };
 
 describe('TimeTrackingComponent', () => {
@@ -252,7 +259,14 @@ describe('TimeTrackingComponent', () => {
       loadWorkAreaApprovalInbox: vi.fn(() => Promise.resolve()),
       selectWorkAreaApprovalRequest: vi.fn(),
       approveWorkAreaChangeRequest: vi.fn(() => Promise.resolve(null)),
-      rejectWorkAreaChangeRequest: vi.fn(() => Promise.resolve(null))
+      rejectWorkAreaChangeRequest: vi.fn(() => Promise.resolve(null)),
+      workAreaPreview: signal(null),
+      workAreaPreviewLoading: signal(false),
+      workAreaPreviewError: signal(null),
+      workAreaCreateError: signal(null),
+      clearWorkAreaPreview: vi.fn(),
+      previewWorkAreaChange: vi.fn(() => Promise.resolve(null)),
+      submitWorkAreaChangeRequest: vi.fn(() => Promise.resolve(null))
     };
 
     await TestBed.configureTestingModule({
@@ -327,6 +341,53 @@ describe('TimeTrackingComponent', () => {
       expect(headerActions.contains(requestAction)).toBe(true);
     }
     expect(Array.from(element.children).some((child) => child.classList.contains('attendance-view-toggle'))).toBe(false);
+  });
+
+  it('toggles the Request dropdown and shows Attendance correction and Request to change the work mode', async () => {
+    const { fixture } = await setup();
+    fixture.detectChanges();
+    const component = fixture.componentInstance;
+
+    expect(component.requestDropdownOpen()).toBe(false);
+    expect(fixture.nativeElement.querySelector('[data-testid="request-option-attendance-correction"]')).toBeNull();
+
+    const trigger = fixture.nativeElement.querySelector('[data-testid="request-work-area-change"] button') as HTMLButtonElement;
+    trigger.click();
+    fixture.detectChanges();
+
+    expect(component.requestDropdownOpen()).toBe(true);
+    const correctionOption = fixture.nativeElement.querySelector('[data-testid="request-option-attendance-correction"]') as HTMLButtonElement;
+    const workModeOption = fixture.nativeElement.querySelector('[data-testid="request-option-work-area-change"]') as HTMLButtonElement;
+
+    expect(correctionOption).toBeTruthy();
+    expect(workModeOption).toBeTruthy();
+    expect(correctionOption.textContent).toContain('Attendance correction');
+    expect(workModeOption.textContent).toContain('Request to change the work mode');
+
+    const openCorrectionSpy = vi.spyOn(component, 'openTodayCorrection');
+    correctionOption.click();
+    fixture.detectChanges();
+
+    expect(openCorrectionSpy).toHaveBeenCalled();
+    expect(component.requestDropdownOpen()).toBe(false);
+  });
+
+  it('opens work area change modal when work mode option is clicked from Request dropdown', async () => {
+    const { fixture } = await setup();
+    fixture.detectChanges();
+    const component = fixture.componentInstance;
+
+    const trigger = fixture.nativeElement.querySelector('[data-testid="request-work-area-change"] button') as HTMLButtonElement;
+    trigger.click();
+    fixture.detectChanges();
+
+    const workModeOption = fixture.nativeElement.querySelector('[data-testid="request-option-work-area-change"]') as HTMLButtonElement;
+    const openWorkAreaSpy = vi.spyOn(component, 'openWorkAreaChange');
+    workModeOption.click();
+    fixture.detectChanges();
+
+    expect(openWorkAreaSpy).toHaveBeenCalled();
+    expect(component.workAreaFormOpen()).toBe(true);
   });
 
   it('a self-service-only user cannot reach team view', async () => {
@@ -530,12 +591,38 @@ describe('TimeTrackingComponent', () => {
     expect(store.loadMyHistory).toHaveBeenCalledWith(expect.any(Object), 2);
   });
 
+  it('shows a session-style hero (single number, no stat tiles) and a Today\'s total breakdown', async () => {
+    const { fixture } = await setup({ requiredWorkMinutes: 480, totalWorkedMinutes: 150, breakUsedMinutes: 20 });
+    const element = fixture.nativeElement as HTMLElement;
+
+    expect(element.querySelector('[data-testid="status-card-session-value"]')?.textContent?.trim()).toBe('2h 30m');
+    expect(element.querySelector('.status-card-stats')).toBeNull();
+
+    const totals = Array.from(element.querySelectorAll('.today-total__item')).map((item) => ({
+      label: item.querySelector('dt')?.textContent?.trim(),
+      value: item.querySelector('dd')?.textContent?.trim()
+    }));
+    expect(totals).toContainEqual({ label: 'Scheduled', value: '8h' });
+    expect(totals).toContainEqual({ label: 'Worked', value: '2h 30m' });
+    expect(totals).toContainEqual({ label: 'Break', value: '20m' });
+    expect(totals).toContainEqual({ label: 'Remaining', value: '5h 30m' });
+  });
+
   it('shows remaining break time and the used-break helper when remaining is zero', async () => {
     const { fixture } = await setup({ breakUsedMinutes: 60, breakRemainingMinutes: 0 });
     const text = (fixture.nativeElement as HTMLElement).textContent ?? '';
 
     expect(text).toContain('0m remaining');
     expect(text).toContain('You have used your break time for today.');
+  });
+
+  it('openTodayCorrection opens the correction form pre-set to today\'s work date', async () => {
+    const { fixture } = await setup({ workDate: '2026-09-08' });
+
+    fixture.componentInstance.openTodayCorrection();
+
+    expect(fixture.componentInstance.correctionFormOpen()?.workDate).toBe('2026-09-08');
+    expect(fixture.componentInstance.correctionFormOpen()?.canRequestCorrection).toBe(true);
   });
 
   it('uses the backend Today status label and falls back to the humanized status', async () => {
@@ -602,6 +689,21 @@ describe('TimeTrackingComponent', () => {
     expect(text).toContain('30m allowance · 45m used');
     expect(text).not.toContain('-15m');
     expect(element.querySelector('[data-testid="status-card-end-break"]')).toBeTruthy();
+  });
+
+  it('suppresses the duplicate attention banner for break overage because the status card already displays the alert', async () => {
+    const { fixture } = await setup({
+      attendanceStatus: 'working',
+      attentionType: 'over_break',
+      attentionLabel: 'Break time has exceeded the allowance',
+      attentionSeverity: 'warning',
+      breakOverageMinutes: 75,
+      isOverBreakAllowance: true
+    });
+    fixture.detectChanges();
+    const banner = fixture.nativeElement.querySelector('.attention-banner');
+    expect(banner).toBeNull();
+    expect((fixture.nativeElement as HTMLElement).textContent).toContain('Break time exceeded by 75 min.');
   });
 
   it('uses backend history labels and shows attention and break overage for personal and covered rows', async () => {

@@ -362,6 +362,13 @@ export const TimeTrackingStore = signalStore(
           const detail = await firstValueFrom(api.getDayDetail(employeeId, workDate));
           patchState(store, { todayTimelineEvents: detail.timelineEvents, todayTimelineLoading: false, todayTimelineError: null });
         } catch (error) {
+          if (errorStatus(error) === 404) {
+            // No AttendanceRecord exists yet for today (before the first clock-in of the
+            // day) - that is a legitimate empty state, not a failure, so it must not surface
+            // the backend's raw "No attendance record was found for this date." text.
+            patchState(store, { todayTimelineEvents: [], todayTimelineLoading: false, todayTimelineError: null });
+            return;
+          }
           patchState(store, { todayTimelineLoading: false, todayTimelineError: errors.toSafeMessage(error, TIME_TRACKING_TODAY_TIMELINE_ERROR) });
         }
       },

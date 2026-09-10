@@ -51,6 +51,67 @@
   line-height: 1;
 }
 
+.request-chevron {
+  margin-left: 0.35rem;
+  transition: transform 150ms ease;
+}
+
+.request-chevron--open {
+  transform: rotate(180deg);
+}
+
+.request-popover-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  min-width: 19rem;
+  padding: 0.25rem;
+}
+
+.request-option-item {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.75rem;
+  width: 100%;
+  padding: 0.625rem 0.75rem;
+  border: 0;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--color-text-primary);
+  text-align: left;
+  cursor: pointer;
+  transition: background-color 150ms ease;
+}
+
+.request-option-item:hover {
+  background: var(--color-surface-secondary);
+}
+
+.request-option-icon {
+  width: 1.125rem;
+  height: 1.125rem;
+  margin-top: 0.125rem;
+  flex-shrink: 0;
+  color: var(--color-accent);
+}
+
+.request-option-text {
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+}
+
+.request-option-title {
+  font-size: 0.8125rem;
+  font-weight: 600;
+  color: var(--color-text-primary);
+}
+
+.request-option-sub {
+  font-size: 0.6875rem;
+  color: var(--color-text-secondary);
+}
+
 .history-card {
   display: flex;
   flex-direction: column;
@@ -62,13 +123,43 @@
 }
 
 .time-tracking-overview {
+  display: grid;
+  grid-template-columns: minmax(0, 1.15fr) minmax(0, 1fr);
+  gap: 1rem;
+  align-items: start;
+}
+
+.time-tracking-column {
   display: flex;
   flex-direction: column;
+  gap: 1rem;
+  min-width: 0;
+}
+
+.time-tracking-hero-card {
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-start;
   gap: 0.875rem;
   padding: 1.125rem 1.25rem;
   border: 1px solid var(--color-border);
   border-radius: 10px;
   background: var(--color-surface);
+}
+
+.time-tracking-side-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.activity-timeline-card {
+  display: flex;
+  flex-direction: column;
+  padding: 0.875rem 1rem;
+  border: 1px solid var(--color-border);
+  border-radius: 8px;
+  background: color-mix(in srgb, var(--color-surface) 96%, var(--color-surface-secondary));
 }
 
 .overview-header-bar {
@@ -146,9 +237,38 @@ h2 {
   font-weight: 650;
 }
 
-.overview-grid {
+.today-total {
   display: grid;
   grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 0.75rem;
+  margin: 0;
+  padding: 0.75rem 1rem;
+  border: 1px solid var(--color-border);
+  border-radius: 8px;
+  background: color-mix(in srgb, var(--color-surface) 96%, var(--color-surface-secondary));
+}
+
+.today-total__item {
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+}
+
+.today-total__item dt {
+  font-size: 0.72rem;
+  color: var(--color-text-secondary);
+}
+
+.today-total__item dd {
+  margin: 0;
+  font-size: 1.05rem;
+  font-weight: 700;
+  color: var(--color-text-primary);
+}
+
+.overview-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 0.75rem;
 }
 
@@ -520,14 +640,15 @@ h2 {
   }
 }
 
-@media (max-width: 1100px) {
-  .overview-grid {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
+@media (max-width: 1024px) {
+  .time-tracking-overview {
+    grid-template-columns: 1fr;
   }
 }
 
 @media (max-width: 760px) {
-  .time-tracking-overview,
+  .time-tracking-hero-card,
+  .activity-timeline-card,
   .action-card,
   .history-card {
     padding: 1rem;
@@ -548,6 +669,9 @@ h2 {
 @media (max-width: 520px) {
   .overview-grid {
     grid-template-columns: 1fr;
+  }
+  .today-total {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
   }
   .action-buttons {
     flex-direction: column;
@@ -665,27 +789,5 @@ h2 {
 }
 
 .history-requests-row {
-  display: flex;
-  align-items: flex-start;
-  gap: 1rem;
-}
-
-.history-requests-row > .history-card {
-  flex: 1 1 0;
-  min-width: 0;
-}
-
-.history-requests-row > .history-card--history {
-  flex: 1.85 1 0;
-}
-
-@media (max-width: 900px) {
-  .history-requests-row {
-    flex-direction: column;
-  }
-  .history-requests-row > .history-card,
-  .history-requests-row > .history-card--history {
-    flex: 1 1 auto;
-    width: 100%;
-  }
+  width: 100%;
 }

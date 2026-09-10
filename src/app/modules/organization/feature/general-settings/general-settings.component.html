@@ -26,7 +26,6 @@
         <div class="gs-section-block">
           <div class="gs-section-header">
             <h2 class="gs-section__title">Company identity</h2>
-            <p class="gs-section__hint">Legal entity name, organization code, and operational status.</p>
           </div>
           <div class="gs-identity-row">
             <div class="gs-logo-upload-block">
@@ -64,7 +63,6 @@
         <div class="gs-section-block">
           <div class="gs-section-header">
             <h2 class="gs-section__title">Registration &amp; contact</h2>
-            <p class="gs-section__hint">Official government registrations and direct contact channels.</p>
           </div>
           <div class="gs-field-grid gs-field-grid--3">
             <app-input label="Company registration number" [value]="form.controls.registrationNumber.value" (valueChange)="form.controls.registrationNumber.setValue($event)"
@@ -89,7 +87,6 @@
         <div class="gs-section-block">
           <div class="gs-section-header">
             <h2 class="gs-section__title">Regional defaults</h2>
-            <p class="gs-section__hint">Default localization, currency, and standard weekly work schedule.</p>
           </div>
           <div class="gs-field-grid gs-field-grid--3">
             <app-select label="Country" [options]="COUNTRY_CODE_OPTIONS" placeholder="Select a country"
@@ -135,9 +132,6 @@
                 <span class="gs-work-hours-title-summary">({{ summary }})</span>
               }
             </h2>
-            <p class="gs-section__hint">
-              Configure standard daily work schedule and break duration for employees in this company.
-            </p>
           </div>
 
           <div class="gs-work-hours-grid">
@@ -179,10 +173,6 @@
         <div class="gs-section-block">
           <div class="gs-section-header">
             <h2 class="gs-section__title">Office location</h2>
-            <p class="gs-section__hint">
-              Used to flag (never block) an on-site employee whose check-in location falls outside the
-              allowed distance set in Clock-in Policy. Leave blank to disable the check for this company.
-            </p>
           </div>
           <app-office-location-picker
             [address]="form.controls.officeAddress.value"

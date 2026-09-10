@@ -8,7 +8,10 @@ import { AttendanceStatusCardComponent } from './attendance-status-card.componen
 describe('AttendanceStatusCardComponent', () => {
   afterEach(() => TestBed.resetTestingModule());
 
-  async function setup(today: Partial<AttendanceTodayResponse> | null): Promise<ComponentFixture<AttendanceStatusCardComponent>> {
+  async function setup(
+    today: Partial<AttendanceTodayResponse> | null,
+    layout?: 'summary' | 'session'
+  ): Promise<ComponentFixture<AttendanceStatusCardComponent>> {
     await TestBed.configureTestingModule({
       imports: [AttendanceStatusCardComponent],
       providers: [
@@ -29,6 +32,7 @@ describe('AttendanceStatusCardComponent', () => {
     }).compileComponents();
 
     const fixture = TestBed.createComponent(AttendanceStatusCardComponent);
+    if (layout) fixture.componentRef.setInput('layout', layout);
     fixture.detectChanges();
     return fixture;
   }
@@ -51,5 +55,17 @@ describe('AttendanceStatusCardComponent', () => {
 
     const bar: HTMLElement = fixture.nativeElement.querySelector('[data-testid="worked-progress-fill"]');
     expect(bar.style.width).toBe('100%');
+  });
+
+  it('shows a single current-session number and no stat tiles or progress bar in session layout', async () => {
+    const fixture = await setup({
+      totalWorkedMinutes: 177, requiredWorkMinutes: 480, attendanceStatus: 'working',
+      allowedClockInMethods: { web: true, desktopTray: false, biometric: false, photoRequired: false, locationRequired: false, allowedRadiusMeters: null }
+    }, 'session');
+
+    const element = fixture.nativeElement as HTMLElement;
+    expect(element.querySelector('[data-testid="status-card-session-value"]')?.textContent?.trim()).toBe('2h 57m');
+    expect(element.querySelector('.status-card-stats')).toBeNull();
+    expect(element.querySelector('[data-testid="worked-progress-fill"]')).toBeNull();
   });
 });
