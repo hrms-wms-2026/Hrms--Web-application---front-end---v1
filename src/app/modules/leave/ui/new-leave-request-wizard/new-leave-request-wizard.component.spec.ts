@@ -77,4 +77,43 @@ describe('NewLeaveRequestWizardComponent', () => {
     fixture.componentInstance.onSubmit();
     expect(emitted).toEqual([{ employeeId: 'emp-2', leaveTypeId: 'type-1', startDate: '2026-09-10', endDate: '2026-09-12', halfDayPeriod: null, reason: 'Trip', fileRecordIds: [] }]);
   });
+
+  it('shows the leave type name, not the id, on the review step', () => {
+    fixture.detectChanges();
+    fixture.componentInstance.draft.update((d) => ({ ...d, leaveTypeId: 'type-1', startDate: '2026-09-10', endDate: '2026-09-12' }));
+    fixture.componentInstance.step.set(5);
+    fixture.detectChanges();
+    const review = fixture.nativeElement.querySelector('[data-testid="request-review"]') as HTMLElement;
+    expect(review.textContent).toContain('Annual Leave');
+    expect(review.textContent).not.toContain('type-1');
+    expect(review.textContent).toContain('2026-09-10');
+  });
+
+  it('hides the document note when the selected type does not require a document', () => {
+    fixture.detectChanges();
+    fixture.componentInstance.draft.update((d) => ({ ...d, leaveTypeId: 'type-1' }));
+    fixture.componentInstance.step.set(4);
+    fixture.detectChanges();
+    expect(fixture.nativeElement.textContent).not.toContain('Document upload is not available yet');
+    expect(fixture.nativeElement.querySelector('[data-testid="document-note"]')).toBeNull();
+  });
+
+  it('prefills start and end dates from initialStartDate and initialEndDate', () => {
+    fixture.componentRef.setInput('initialStartDate', '2026-09-10');
+    fixture.componentRef.setInput('initialEndDate', '2026-09-10');
+    fixture.detectChanges();
+    fixture.componentInstance.ngOnInit();
+    expect(fixture.componentInstance.draft().startDate).toBe('2026-09-10');
+    expect(fixture.componentInstance.draft().endDate).toBe('2026-09-10');
+  });
+
+  it('explains the document rule when the selected type requires a document', () => {
+    fixture.componentRef.setInput('leaveTypes', [{ ...leaveTypes[0], requiresDocument: true, documentRequiredAfterDays: 3 }]);
+    fixture.detectChanges();
+    fixture.componentInstance.draft.update((d) => ({ ...d, leaveTypeId: 'type-1' }));
+    fixture.componentInstance.step.set(4);
+    fixture.detectChanges();
+    const note = fixture.nativeElement.querySelector('[data-testid="document-note"]') as HTMLElement;
+    expect(note.textContent).toContain('3');
+  });
 });

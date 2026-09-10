@@ -32,4 +32,18 @@ describe('TeamCalendarComponent', () => {
     expect(fixture.componentInstance.detailOpen()).toBe(true);
     expect(fixture.componentInstance.selectedDay()?.date).toBe('2026-09-10');
   });
+
+  it('opens the new-request wizard for a calendar day', async () => {
+    fixture.detectChanges();
+    httpMock.expectOne((r) => r.url === `${environment.apiUrl}/leave/calendar`).flush({
+      year: 2026, month: 9, monthStart: '2026-09-01', monthEnd: '2026-09-30', includesTentativeBlocks: false, isEmpty: false,
+      days: [{ date: '2026-09-10', dayOfWeek: 'Thursday', absences: [], holidays: [] }]
+    });
+    await Promise.resolve();
+    fixture.componentInstance.onRequestLeave('2026-09-10');
+    expect(fixture.componentInstance.wizardOpen()).toBe(true);
+    expect(fixture.componentInstance.requestDate()).toBe('2026-09-10');
+    httpMock.expectOne((r) => r.url === `${environment.apiUrl}/leave/types`).flush([]);
+    httpMock.expectOne((r) => r.url.startsWith(`${environment.apiUrl}/leave/balances/my`)).flush([]);
+  });
 });

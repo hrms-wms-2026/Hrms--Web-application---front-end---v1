@@ -32,6 +32,8 @@ export class NewLeaveRequestWizardComponent {
   @Input({ required: true }) open = false;
   @Input({ required: true }) leaveTypes: readonly LeaveTypeResponse[] = [];
   @Input({ required: true }) balances: readonly LeaveBalanceResponse[] = [];
+  @Input() initialStartDate = '';
+  @Input() initialEndDate = '';
   @Input() onBehalf = false;
   @Input() previewing = false;
   @Input() previewResult: LeaveRequestResponse | null = null;
@@ -50,9 +52,37 @@ export class NewLeaveRequestWizardComponent {
   readonly steps = ['Leave type', 'Dates', 'Total & warnings', 'Reason', 'Review'];
   readonly activeLeaveTypes = computed(() => (this.leaveTypes as LeaveTypeResponse[]).filter((type) => type.isActive));
 
+  ngOnInit(): void {
+    if (!this.initialStartDate && !this.initialEndDate) return;
+    this.draft.update((d) => ({
+      ...d,
+      startDate: this.initialStartDate || d.startDate,
+      endDate: this.initialEndDate || d.endDate
+    }));
+  }
+
   remainingDaysFor(leaveTypeId: string): number | null {
     const balance = (this.balances as LeaveBalanceResponse[]).find((b) => b.leaveTypeId === leaveTypeId);
     return balance ? balance.remainingDays : null;
+  }
+
+  selectedLeaveType(): LeaveTypeResponse | undefined {
+    return this.activeLeaveTypes().find((type) => type.id === this.draft().leaveTypeId);
+  }
+
+  selectedLeaveTypeName(): string {
+    return this.selectedLeaveType()?.name ?? '';
+  }
+
+  halfDayLabel(): string {
+    const period = this.draft().halfDayPeriod;
+    if (period === 'am') return 'AM';
+    if (period === 'pm') return 'PM';
+    return 'Full day(s)';
+  }
+
+  stepLabel(): string {
+    return this.steps[this.step() - 1] ?? '';
   }
 
   onLeaveTypeChange(leaveTypeId: string): void {

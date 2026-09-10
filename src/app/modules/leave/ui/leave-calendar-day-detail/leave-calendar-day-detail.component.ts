@@ -15,7 +15,9 @@ import { LeaveCalendarDayResponse } from '../../models/leave-calendar.model';
 export class LeaveCalendarDayDetailComponent {
   @Input({ required: true }) open = false;
   @Input({ required: true }) day: LeaveCalendarDayResponse | null = null;
+  @Input() canRequestLeave = false;
   @Output() closed = new EventEmitter<void>();
+  @Output() requestLeave = new EventEmitter<string>();
 
   initials(name: string): string {
     const parts = name.trim().split(/\s+/).filter(Boolean);

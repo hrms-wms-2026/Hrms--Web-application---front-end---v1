@@ -1,4 +1,12 @@
 .nlw-body { display: flex; flex-direction: column; gap: 0.85rem; min-width: 340px; }
+.nlw-step {
+  margin: 0;
+  color: var(--color-accent);
+  font-size: 0.68rem;
+  font-weight: 750;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
 .nlw-field { display: flex; flex-direction: column; gap: 0.3rem; color: var(--color-text-secondary); font-size: 0.8rem; }
 .nlw-field select, .nlw-field textarea {
   border: 1px solid var(--color-border);

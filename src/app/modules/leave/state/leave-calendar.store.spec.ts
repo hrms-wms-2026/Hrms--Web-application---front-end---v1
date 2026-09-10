@@ -61,6 +61,13 @@ describe('LeaveCalendarStore', () => {
     expect(store.departmentId()).toBe('dept-1');
   });
 
+  it('setIncludeTentative reloads with includeTentative=true', async () => {
+    const loading = store.setIncludeTentative(true);
+    httpMock.expectOne(`${environment.apiUrl}/leave/calendar?year=${store.year()}&month=${store.monthNumber()}&includeTentative=true`).flush(month);
+    await loading;
+    expect(store.includeTentative()).toBe(true);
+  });
+
   it('sets error when load fails', async () => {
     const loading = store.load();
     httpMock.expectOne((r) => r.url === `${environment.apiUrl}/leave/calendar`).flush('Server error', { status: 500, statusText: 'Internal Server Error' });

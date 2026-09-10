@@ -12,6 +12,7 @@ export interface LeaveCalendarState {
   readonly year: number;
   readonly monthNumber: number;
   readonly departmentId: string | null;
+  readonly includeTentative: boolean;
 }
 
 function currentYearMonth(): { year: number; monthNumber: number } {
@@ -24,7 +25,8 @@ const initialState: LeaveCalendarState = {
   loading: false,
   error: null,
   ...currentYearMonth(),
-  departmentId: null
+  departmentId: null,
+  includeTentative: false
 };
 
 export const LeaveCalendarStore = signalStore(
@@ -37,7 +39,8 @@ export const LeaveCalendarStore = signalStore(
         const month = await firstValueFrom(api.getMonth({
           year: store.year(),
           month: store.monthNumber(),
-          departmentId: store.departmentId() ?? undefined
+          departmentId: store.departmentId() ?? undefined,
+          includeTentative: store.includeTentative() || undefined
         }));
         patchState(store, { month, loading: false });
       } catch (err) {
@@ -65,6 +68,10 @@ export const LeaveCalendarStore = signalStore(
     },
     async setDepartmentFilter(departmentId: string | null): Promise<void> {
       patchState(store, { departmentId });
+      await this.load();
+    },
+    async setIncludeTentative(includeTentative: boolean): Promise<void> {
+      patchState(store, { includeTentative });
       await this.load();
     }
   }))

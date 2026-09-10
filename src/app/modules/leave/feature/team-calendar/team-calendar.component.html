@@ -5,11 +5,23 @@
       <h1>Team Calendar</h1>
       <p class="tc-subtitle">Who is off this month.</p>
     </div>
-    <nav class="tc-nav" aria-label="Month">
-      <button type="button" (click)="store.goToPreviousMonth()">‹</button>
-      <button type="button" class="tc-nav__current" (click)="store.goToToday()">{{ monthLabel() || 'Today' }}</button>
-      <button type="button" (click)="store.goToNextMonth()">›</button>
-    </nav>
+    <div class="tc-header-actions">
+      <select data-testid="calendar-department" [value]="store.departmentId() ?? ''" (change)="onDepartmentChange($any($event.target).value)" aria-label="Department">
+        <option value="">All departments</option>
+        @for (dept of departmentOptions(); track dept.id) {
+          <option [value]="dept.id">{{ dept.name }}</option>
+        }
+      </select>
+      <label class="tc-pending">
+        <input type="checkbox" data-testid="calendar-include-pending" [checked]="store.includeTentative()" (change)="store.setIncludeTentative($any($event.target).checked)" />
+        Include pending
+      </label>
+      <nav class="tc-nav" aria-label="Month">
+        <button type="button" (click)="store.goToPreviousMonth()">‹</button>
+        <button type="button" class="tc-nav__current" (click)="store.goToToday()">{{ monthLabel() || 'Today' }}</button>
+        <button type="button" (click)="store.goToNextMonth()">›</button>
+      </nav>
+    </div>
   </header>
   @if (store.loading()) {
     <div class="tc-loading" aria-busy="true"><span></span><span></span><span></span></div>
@@ -31,4 +43,28 @@
   }
 </section>
 
-<app-leave-calendar-day-detail [open]="detailOpen()" [day]="selectedDay()" (closed)="closeDetail()" />
+<app-leave-calendar-day-detail
+  [open]="detailOpen()"
+  [day]="selectedDay()"
+  [canRequestLeave]="canRequestLeave()"
+  (requestLeave)="onRequestLeave($event)"
+  (closed)="closeDetail()"
+/>
+
+@if (wizardOpen()) {
+  <app-new-leave-request-wizard
+    [open]="true"
+    [leaveTypes]="leaveTypeStore.items()"
+    [balances]="balanceStore.my()"
+    [initialStartDate]="requestDate() ?? ''"
+    [initialEndDate]="requestDate() ?? ''"
+    [previewing]="requestStore.previewing()"
+    [previewResult]="requestStore.previewResult()"
+    [previewError]="requestStore.previewError()"
+    [submitting]="requestStore.submitting()"
+    [submitError]="requestStore.submitError()"
+    (previewRequested)="onPreviewRequested($event)"
+    (submitRequested)="onSubmitRequested($event)"
+    (closed)="closeWizard()"
+  />
+}

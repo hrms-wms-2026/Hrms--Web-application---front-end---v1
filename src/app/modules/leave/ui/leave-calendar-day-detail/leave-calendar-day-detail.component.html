@@ -6,6 +6,9 @@
           @for (holiday of day.holidays; track holiday.name) { <p>{{ holiday.name }}</p> }
         </section>
       }
+      @if (canRequestLeave && day.date) {
+        <button type="button" class="lcd-request" data-testid="request-leave-from-day" (click)="requestLeave.emit(day.date)">Request leave</button>
+      }
       @if (day.absences.length === 0) {
         <p class="lcd-muted">No one is on leave this day.</p>
       } @else {

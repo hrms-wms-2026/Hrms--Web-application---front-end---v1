@@ -1,5 +1,6 @@
 <app-modal [open]="open" title="New Leave Request" (closed)="onClose()">
   <div class="nlw-body">
+    <p class="nlw-step">Step {{ step() }} of 5 · {{ stepLabel() }}</p>
     @if (onBehalf && step() === 1) {
       <button type="button" class="nlw-picker-trigger" (click)="pickerOpen.set(true)">{{ employeeId() ? 'Employee selected' : 'Choose employee' }}</button>
       <app-employee-picker [open]="pickerOpen()" (selected)="onEmployeePicked($event)" (closed)="pickerOpen.set(false)" />
@@ -61,16 +62,21 @@
         <span>Reason</span>
         <textarea rows="3" [value]="draft().reason ?? ''" (input)="draft.update(d => ({...d, reason: ($any($event.target).value || null)}))"></textarea>
       </label>
-      <p class="nlw-muted">Document upload is not available yet - if this leave type requires a document past a certain length, submission will be blocked with an explanation.</p>
+      @if (selectedLeaveType()?.requiresDocument) {
+        <p class="nlw-muted" data-testid="document-note">
+          A supporting document is required when this leave is {{ selectedLeaveType()?.documentRequiredAfterDays ?? 1 }} days or longer. File upload is not wired yet — the server will block submit if the request is long enough.
+        </p>
+      }
     }
 
     @if (step() === 5) {
-      <div class="nlw-review">
-        <span>Type</span><strong>{{ draft().leaveTypeId }}</strong>
-        <span>Dates</span><strong>{{ draft().startDate }} - {{ draft().endDate }}</strong>
+      <div class="nlw-review" data-testid="request-review">
+        <span>Type</span><strong>{{ selectedLeaveTypeName() }}</strong>
+        <span>Dates</span><strong>{{ draft().startDate }} – {{ draft().endDate }}</strong>
+        <span>Half day</span><strong>{{ halfDayLabel() }}</strong>
         @if (previewResult) {
-          <span>Total Days</span><strong>{{ previewResult.totalDays }}</strong>
-          <span>Balance</span><strong>{{ previewResult.balanceImpact.currentRemainingDays }} &rarr; {{ previewResult.balanceImpact.remainingAfterSubmitDays }}</strong>
+          <span>Total days</span><strong>{{ previewResult.totalDays }}</strong>
+          <span>Balance</span><strong>{{ previewResult.balanceImpact.currentRemainingDays }} → {{ previewResult.balanceImpact.remainingAfterSubmitDays }}</strong>
         }
       </div>
       @if (submitError) { <p class="nlw-error">{{ submitError }}</p> }

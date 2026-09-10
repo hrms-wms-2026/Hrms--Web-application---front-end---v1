@@ -28,6 +28,15 @@ describe('LeaveCalendarDayDetailComponent', () => {
     expect(text).toContain('Annual Leave');
   });
 
+  it('emits requestLeave with the day date when Request leave is clicked', () => {
+    fixture.componentRef.setInput('canRequestLeave', true);
+    fixture.detectChanges();
+    const emitted: string[] = [];
+    fixture.componentInstance.requestLeave.subscribe((d: string) => emitted.push(d));
+    fixture.nativeElement.querySelector('[data-testid="request-leave-from-day"]').click();
+    expect(emitted).toEqual(['2026-09-10']);
+  });
+
   it('shows a tentative badge when the absence is tentative', () => {
     fixture.componentRef.setInput('day', { ...day, absences: [{ ...day.absences[0], isTentative: true }] });
     fixture.detectChanges();
