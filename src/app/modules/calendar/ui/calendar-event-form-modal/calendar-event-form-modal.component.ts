@@ -92,7 +92,7 @@ export class CalendarEventFormModalComponent implements OnChanges {
   readonly participantPickerOpen = signal(false);
   readonly participantIds = signal<readonly string[]>([]);
   readonly participants = signal<readonly { id: string; name: string }[]>([]);
-  readonly maxParticipantChips = 6;
+  readonly maxParticipantAvatars = 6;
   readonly discardConfirmOpen = signal(false);
 
   /** Zone the typed start/end times are read in. Falls back to the organizer's tenant

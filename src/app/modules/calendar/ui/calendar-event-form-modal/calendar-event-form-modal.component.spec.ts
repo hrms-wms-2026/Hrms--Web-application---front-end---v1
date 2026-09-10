@@ -402,21 +402,32 @@ describe('CalendarEventFormModalComponent', () => {
     expect(new Date(create.startDate).toISOString()).toBe('2026-06-10T13:00:00.000Z');
   });
 
-  it('renders participants as removable avatar chips with an overflow count', () => {
+  it('renders participants as overlapping avatar circles with a removable overflow badge', () => {
     const people = Array.from({ length: 8 }, (_, i) => ({ id: `e${i}`, name: `Person ${i}` }));
     fixture.componentInstance.onParticipantIdsChange(people.map((p) => p.id));
     fixture.componentInstance.onParticipantPeopleChange(people);
     fixture.detectChanges();
 
-    const chips = fixture.nativeElement.querySelectorAll('[data-testid="calendar-form-participant-remove"]');
-    expect(chips.length).toBe(6);
-    expect(fixture.nativeElement.textContent).toContain('+2 more');
+    const cluster = fixture.nativeElement.querySelector('[data-testid="calendar-form-participant-avatars"]');
+    expect(cluster.className).toContain('-space-x-3');
+    const removes = fixture.nativeElement.querySelectorAll('[data-testid="calendar-form-participant-remove"]');
+    expect(removes.length).toBe(6);
+    const overflow = fixture.nativeElement.querySelector('[data-testid="calendar-form-participant-overflow"]');
+    expect(overflow.textContent.trim()).toBe('+2');
 
-    (chips[0] as HTMLButtonElement).click();
+    (removes[0] as HTMLButtonElement).click();
     fixture.detectChanges();
     expect(fixture.componentInstance.participants().length).toBe(7);
     expect(fixture.componentInstance.participantIds().length).toBe(7);
     expect(fixture.componentInstance.participantIds()).not.toContain('e0');
+  });
+
+  it('opens the participant picker when the overflow badge is clicked', () => {
+    const people = Array.from({ length: 8 }, (_, i) => ({ id: `e${i}`, name: `Person ${i}` }));
+    fixture.componentInstance.onParticipantPeopleChange(people);
+    fixture.detectChanges();
+    (fixture.nativeElement.querySelector('[data-testid="calendar-form-participant-overflow"]') as HTMLButtonElement).click();
+    expect(fixture.componentInstance.participantPickerOpen()).toBe(true);
   });
 
   it('uses the calendar-module styled dropdown for Repeat, not a native select', () => {
