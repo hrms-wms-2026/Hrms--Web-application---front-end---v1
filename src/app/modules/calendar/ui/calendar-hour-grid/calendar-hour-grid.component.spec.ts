@@ -30,6 +30,32 @@ describe('CalendarHourGridComponent', () => {
     expect(fixture.nativeElement.querySelectorAll('[data-testid="calendar-hour-label"]').length).toBe(24);
   });
 
+  it('renders a header cell per day with its weekday and date number', () => {
+    const cells = fixture.nativeElement.querySelectorAll('[data-testid="calendar-hour-header-cell"]');
+    expect(cells.length).toBe(2);
+    // 2026-09-01 is a Tuesday
+    expect(cells[0].textContent).toContain('TUE');
+    expect(cells[0].textContent).toContain('1');
+    expect(cells[1].textContent).toContain('2');
+  });
+
+  it('highlights only today\'s date number in the header', () => {
+    const today = new Intl.DateTimeFormat('en-CA', { timeZone: 'UTC' }).format(new Date());
+    fixture.componentRef.setInput('timezone', 'UTC');
+    fixture.componentRef.setInput('days', [today, '2001-01-01']);
+    fixture.componentRef.setInput('events', []);
+    fixture.detectChanges();
+    const highlights = fixture.nativeElement.querySelectorAll('[data-testid="calendar-hour-header-today"]');
+    expect(highlights.length).toBe(1);
+    expect(highlights[0].textContent.trim()).toBe(String(Number(today.slice(-2))));
+  });
+
+  it('shows the timezone offset in the top-left corner label', () => {
+    fixture.componentRef.setInput('timezone', 'Asia/Colombo');
+    fixture.detectChanges();
+    expect(fixture.nativeElement.querySelector('[data-testid="calendar-hour-tz-label"]').textContent).toContain('GMT+05:30');
+  });
+
   it('renders one day column per input day', () => {
     expect(fixture.nativeElement.querySelectorAll('[data-testid="calendar-hour-day-column"]').length).toBe(2);
   });

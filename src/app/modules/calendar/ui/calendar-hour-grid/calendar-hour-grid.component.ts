@@ -7,6 +7,8 @@ import { dateOnlyInTimezone, localPartsToUtcIso, utcIsoToLocalParts } from '../.
 interface DayColumnViewModel {
   readonly date: string;
   readonly isToday: boolean;
+  readonly weekdayLabel: string; // e.g. "SUN"
+  readonly dayNumber: number; // 1-31
   readonly allDayEvents: readonly CalendarEventResponse[];
   readonly positioned: readonly PositionedEvent[];
   readonly nowFraction: number | null; // 0-1, only set when isToday
@@ -42,6 +44,19 @@ export class CalendarHourGridComponent {
 
   readonly hours = HOURS;
   readonly dragSelection = signal<DragSelection | null>(null);
+
+  /** "GMT+05:30"-style offset for the shown timezone, rendered in the top-left corner
+   * cell. Reads `now()` so a DST transition re-derives it. Falls back to the raw id. */
+  readonly tzLabel = computed(() => {
+    const tz = this.timezone();
+    try {
+      const parts = new Intl.DateTimeFormat('en-US', { timeZone: tz, timeZoneName: 'longOffset' })
+        .formatToParts(new Date(this.now()));
+      return parts.find((p) => p.type === 'timeZoneName')?.value ?? tz;
+    } catch {
+      return tz;
+    }
+  });
 
   private dragDate: string | null = null;
   private dragColumnEl: HTMLElement | null = null;
@@ -103,9 +118,15 @@ export class CalendarHourGridComponent {
       const dayEvents = byDate.get(date) ?? [];
       const dayStart = new Date(localPartsToUtcIso(date, '00:00', timezone));
       const isToday = date === todayStr;
+      // `date` is already a wall-clock date in the shown timezone (YYYY-MM-DD), so a
+      // local Date built from its parts carries the right weekday without any tz maths.
+      const [y, m, d] = date.split('-').map(Number);
+      const local = new Date(y, m - 1, d);
       return {
         date,
         isToday,
+        weekdayLabel: local.toLocaleDateString('en-US', { weekday: 'short' }).toUpperCase(),
+        dayNumber: d,
         allDayEvents: dayEvents.filter((e) => e.isAllDay),
         positioned: layoutDayEvents(dayEvents, dayStart),
         nowFraction: isToday ? (nowHour * 60 + nowMinute) / 1440 : null

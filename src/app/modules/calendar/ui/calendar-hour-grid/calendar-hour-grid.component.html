@@ -1,4 +1,29 @@
 <div class="flex flex-col overflow-hidden rounded-lg border border-[var(--color-border)]">
+  <div data-testid="calendar-hour-header-row" class="flex border-b border-[var(--color-border)] bg-[var(--color-surface)]">
+    <div
+      data-testid="calendar-hour-tz-label"
+      class="flex w-14 shrink-0 items-center justify-center border-r border-[var(--color-border)] px-1 py-2 text-center text-[10px] leading-tight text-[var(--color-text-secondary)]"
+    >
+      {{ tzLabel() }}
+    </div>
+    @for (column of columns(); track column.date) {
+      <div
+        data-testid="calendar-hour-header-cell"
+        class="flex flex-1 flex-col items-center gap-0.5 border-r border-[var(--color-border)] py-1.5 last:border-r-0"
+      >
+        <span class="text-[10px] font-medium uppercase tracking-wide text-[var(--color-text-secondary)]">{{ column.weekdayLabel }}</span>
+        @if (column.isToday) {
+          <span
+            data-testid="calendar-hour-header-today"
+            class="flex h-7 w-7 items-center justify-center rounded-full bg-[var(--color-accent)] text-sm font-semibold text-[var(--color-accent-contrast)]"
+          >{{ column.dayNumber }}</span>
+        } @else {
+          <span class="flex h-7 w-7 items-center justify-center text-sm text-[var(--color-text-primary)]">{{ column.dayNumber }}</span>
+        }
+      </div>
+    }
+  </div>
+
   <div data-testid="calendar-hour-allday-row" class="flex border-b border-[var(--color-border)] bg-[var(--color-surface)]">
     <div class="w-14 shrink-0 border-r border-[var(--color-border)] p-1 text-[10px] text-[var(--color-text-secondary)]">All day</div>
     @for (column of columns(); track column.date) {
