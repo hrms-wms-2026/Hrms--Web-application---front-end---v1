@@ -62,7 +62,7 @@ type ModuleCheckState = 'checked' | 'indeterminate' | 'unchecked';
               </div>
               @if (expanded().has(module.objectiveId)) {
                 <div class="ml-8 border-l border-[var(--color-border)] pl-2">
-                  @for (task of moduleTasks()[module.objectiveId] ?? []; track task.id) {
+                  @for (task of moduleTasks()[module.objectiveId]; track task.id) {
                     <label class="flex items-center gap-2 rounded px-2 py-1 text-sm hover:bg-[var(--color-surface-muted)]">
                       <input
                         type="checkbox"

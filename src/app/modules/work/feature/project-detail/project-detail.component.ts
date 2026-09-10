@@ -1,5 +1,5 @@
 import { Component, OnInit, computed, inject, signal } from '@angular/core';
-import { ActivatedRoute, NavigationEnd, Router, RouterLink, RouterOutlet } from '@angular/router';
+import { ActivatedRoute, NavigationEnd, Router, RouterOutlet } from '@angular/router';
 import { filter } from 'rxjs/operators';
 import { firstValueFrom } from 'rxjs';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
@@ -15,7 +15,7 @@ import { BreadcrumbHeaderComponent } from '../../../../shared/ui/breadcrumb-head
   standalone: true,
   imports: [
     MilestoneSubMenuComponent, LoaderComponent, ErrorStateComponent, EmptyStateComponent,
-    BreadcrumbHeaderComponent, RouterLink, RouterOutlet
+    BreadcrumbHeaderComponent, RouterOutlet
   ],
   templateUrl: './project-detail.component.html',
   styleUrls: ['./project-detail.component.css']

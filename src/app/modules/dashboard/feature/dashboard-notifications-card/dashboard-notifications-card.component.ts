@@ -1,5 +1,4 @@
 import { ChangeDetectionStrategy, Component, OnInit, computed, inject } from '@angular/core';
-import { CardComponent } from '../../../../shared/ui/card/card.component';
 import { NotificationsStore } from '../../../../core/state/notifications.store';
 import { NotificationItem } from '../../../../core/services/notification-api.service';
 import { NotificationNavigationService } from '../../../../core/services/notification-navigation.service';
@@ -9,7 +8,7 @@ const MAX_VISIBLE_NOTIFICATIONS = 4;
 @Component({
   selector: 'app-dashboard-notifications-card',
   standalone: true,
-  imports: [CardComponent],
+  imports: [],
   templateUrl: './dashboard-notifications-card.component.html',
   changeDetection: ChangeDetectionStrategy.OnPush
 })

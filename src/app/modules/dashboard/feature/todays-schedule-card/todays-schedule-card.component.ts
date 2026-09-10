@@ -1,6 +1,5 @@
 import { ChangeDetectionStrategy, Component, OnInit, computed, inject, signal } from '@angular/core';
 import { RouterLink } from '@angular/router';
-import { CardComponent } from '../../../../shared/ui/card/card.component';
 import { dateOnlyInTimezone, localPartsToUtcIso } from '../../../../shared/utils/timezone.util';
 import { CalendarEventApiService } from '../../../calendar/data-access/calendar-event-api.service';
 import { CalendarEventResponse } from '../../../calendar/models/calendar-event.model';
@@ -16,7 +15,7 @@ const FALLBACK_DOT_COLORS: readonly string[] = [
 @Component({
   selector: 'app-todays-schedule-card',
   standalone: true,
-  imports: [CardComponent, RouterLink],
+  imports: [RouterLink],
   templateUrl: './todays-schedule-card.component.html',
   changeDetection: ChangeDetectionStrategy.OnPush
 })

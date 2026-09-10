@@ -68,7 +68,7 @@ import { TaskFormModalComponent } from '../../ui/task-form-modal/task-form-modal
       @for (sprint of filteredSprints(); track sprint.id) {
         <app-sprint-tab
           [sprint]="sprint"
-          [isObjectiveOwner]="objectiveOwners()[sprint.objectiveId] ?? false"
+          [isObjectiveOwner]="objectiveOwners()[sprint.objectiveId]"
           [tasks]="tasksForSprint(sprint.id)"
           [statusNames]="statusNames()"
           [statuses]="store.statuses()"
