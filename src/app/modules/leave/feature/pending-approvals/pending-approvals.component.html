@@ -9,6 +9,7 @@
       <div class="pa-bulk">
         <span>{{ selectedIds().size }} selected</span>
         <app-button (click)="onBulkApprove()">Bulk approve</app-button>
+        <app-button variant="secondary" data-testid="bulk-reject" (click)="bulkRejectOpen.set(true)">Bulk reject</app-button>
       </div>
     }
   </header>
@@ -50,3 +51,19 @@
   (decisionRequested)="onDecision($event)"
   (closed)="closeDetail()"
 />
+
+@if (bulkRejectOpen()) {
+  <div class="pa-reject-backdrop" (click)="bulkRejectOpen.set(false)">
+    <section class="pa-reject-modal" (click)="$event.stopPropagation()" role="dialog" aria-modal="true" aria-label="Bulk reject leave requests">
+      <h2>Reject {{ selectedIds().size }} requests?</h2>
+      <label class="pa-reject-field">
+        <span>Reason (required)</span>
+        <textarea rows="3" [value]="bulkRejectReason()" (input)="bulkRejectReason.set($any($event.target).value)" aria-label="Bulk reject reason"></textarea>
+      </label>
+      <div class="pa-reject-actions">
+        <app-button variant="secondary" (click)="bulkRejectOpen.set(false)">Cancel</app-button>
+        <app-button data-testid="bulk-reject-confirm" [disabled]="!bulkRejectReason().trim() || store.deciding()" (click)="onBulkReject()">Reject selected</app-button>
+      </div>
+    </section>
+  </div>
+}

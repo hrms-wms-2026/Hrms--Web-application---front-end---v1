@@ -41,7 +41,9 @@ export class LeaveApprovalDetailSheetComponent {
     const approver = this.detail?.approvers.find(
       (a) => a.status === 'pending' || a.status === 'information_requested'
     );
-    return approver ? `Awaiting approver ${approver.sequenceOrder}` : 'No pending approver';
+    return approver
+      ? `Awaiting ${approver.approverName || 'approver ' + approver.sequenceOrder}`
+      : 'No pending approver';
   });
 
   teamCoverageLabel(): string | null {

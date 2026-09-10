@@ -10,7 +10,7 @@ describe('LeaveApprovalDetailSheetComponent', () => {
     leaveTypeName: 'Annual Leave', leaveTypeCode: 'ANNUAL', startAt: '2026-09-10', endAt: '2026-09-12',
     totalHours: 3, paidHours: 3, unpaidHours: 0, status: 'pending', reason: 'Family trip',
     approvers: [
-      { approverEmployeeId: 'mgr-1', sequenceOrder: 1, status: 'pending', comment: null, delegatedFromApproverId: null, decidedAt: null }
+      { approverEmployeeId: 'mgr-1', approverName: 'Priya Nair', sequenceOrder: 1, status: 'pending', comment: null, delegatedFromApproverId: null, decidedAt: null }
     ],
     infoMessages: [],
     submissionConflictSnapshotJson: JSON.stringify({ warnings: [], calendarConflicts: [], teamAbsencePercent: null }),

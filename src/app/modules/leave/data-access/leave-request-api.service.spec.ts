@@ -21,7 +21,7 @@ describe('LeaveRequestApiService', () => {
     startAt: '2026-09-10T09:00:00.000Z', endAt: '2026-09-12T18:00:00.000Z', totalHours: 24, paidHours: 24, unpaidHours: 0,
     status: 'pending', noticePeriodMissed: false, submittedOnBehalfOfBy: null,
     balanceImpact: { currentRemainingHours: 17, pendingAfterSubmitHours: 3, remainingAfterSubmitHours: 14 },
-    approvers: [{ approverEmployeeId: 'mgr-1', sequenceOrder: 1, status: 'pending', delegatedFromApproverId: null }],
+    approvers: [{ approverEmployeeId: 'mgr-1', approverName: 'Priya Nair', sequenceOrder: 1, status: 'pending', delegatedFromApproverId: null }],
     conflictSnapshot: { warnings: [], calendarConflicts: [], teamAbsencePercent: null },
     createdAt: '2026-08-25T00:00:00Z'
   };

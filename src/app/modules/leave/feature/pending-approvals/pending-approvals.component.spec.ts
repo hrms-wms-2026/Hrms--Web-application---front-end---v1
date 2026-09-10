@@ -48,4 +48,18 @@ describe('PendingApprovalsComponent', () => {
     await bulking;
     expect(fixture.componentInstance.selectedIds().size).toBe(0);
   });
+
+  it('clears selection after a bulk reject completes', async () => {
+    fixture.detectChanges();
+    httpMock.expectOne((r) => r.url === `${environment.apiUrl}/leave/requests/pending-approvals`).flush([]);
+    httpMock.expectOne((r) => r.url === `${environment.apiUrl}/leave/types`).flush([]);
+    fixture.componentInstance.onSelectionChanged(new Set(['req-1']));
+    fixture.componentInstance.bulkRejectReason.set('Coverage too low');
+    const rejecting = fixture.componentInstance.onBulkReject();
+    httpMock.expectOne((r) => r.url === `${environment.apiUrl}/leave/requests/bulk-reject`).flush({ items: [], successCount: 1, failureCount: 0 });
+    await Promise.resolve();
+    httpMock.expectOne((r) => r.url === `${environment.apiUrl}/leave/requests/pending-approvals`).flush([]);
+    await rejecting;
+    expect(fixture.componentInstance.selectedIds().size).toBe(0);
+  });
 });

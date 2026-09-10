@@ -27,7 +27,7 @@
         <ul class="lad-approvers">
           @for (approver of detail.approvers; track approver.approverEmployeeId) {
             <li>
-              Approver {{ approver.sequenceOrder }} &middot; {{ approver.status }}
+              {{ approver.approverName || ('Approver ' + approver.sequenceOrder) }} &middot; {{ approver.status }}
               @if (approver.comment) { &mdash; "{{ approver.comment }}" }
               @if (approver.delegatedFromApproverId) { (delegated from {{ approver.delegatedFromApproverId }}) }
             </li>

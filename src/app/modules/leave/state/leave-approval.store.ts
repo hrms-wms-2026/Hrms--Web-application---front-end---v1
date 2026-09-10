@@ -108,7 +108,15 @@ export const LeaveApprovalStore = signalStore(
       return this.decide(() => api.requestInfo(requestId, payload), requestId);
     },
     async respondInfo(requestId: string, payload: RespondLeaveInformationRequest): Promise<LeaveApprovalDecisionResponse | null> {
-      return this.decide(() => api.respondInfo(requestId, payload), requestId);
+      patchState(store, { deciding: true, decideError: null });
+      try {
+        const result = await firstValueFrom(api.respondInfo(requestId, payload));
+        patchState(store, { deciding: false });
+        return result;
+      } catch (err) {
+        patchState(store, { deciding: false, decideError: toSafeErrorMessage(err, 'Failed to send this reply.') });
+        return null;
+      }
     },
     async decide(
       call: () => ReturnType<LeaveApprovalApiService['approve']>,

@@ -39,6 +39,7 @@ export interface LeaveRequestAllListItemResponse {
 
 export interface LeaveApprovalApproverResponse {
   approverEmployeeId: string;
+  approverName: string;
   sequenceOrder: number;
   status: 'pending' | 'approved' | 'rejected' | 'skipped' | 'information_requested';
   comment: string | null;

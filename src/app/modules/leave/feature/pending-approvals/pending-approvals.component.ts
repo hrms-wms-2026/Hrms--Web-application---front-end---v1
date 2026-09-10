@@ -27,6 +27,8 @@ export class PendingApprovalsComponent {
 
   readonly detailOpen = signal(false);
   readonly selectedIds = signal<Set<string>>(new Set());
+  readonly bulkRejectOpen = signal(false);
+  readonly bulkRejectReason = signal('');
 
   constructor() {
     void this.store.loadPending();
@@ -95,13 +97,16 @@ export class PendingApprovalsComponent {
     }
   }
 
-  async onBulkReject(reason: string): Promise<void> {
+  async onBulkReject(): Promise<void> {
     const requestIds = [...this.selectedIds()];
-    if (requestIds.length === 0 || !reason.trim()) return;
-    const result = await this.store.bulkReject({ requestIds, reason: reason.trim() });
+    const reason = this.bulkRejectReason().trim();
+    if (requestIds.length === 0 || !reason) return;
+    const result = await this.store.bulkReject({ requestIds, reason });
     if (result) {
       this.notificationService.success(`${result.successCount} rejected${result.failureCount > 0 ? `, ${result.failureCount} failed` : ''}.`);
       this.selectedIds.set(new Set());
+      this.bulkRejectOpen.set(false);
+      this.bulkRejectReason.set('');
     } else {
       this.notificationService.error(this.store.decideError() ?? 'Failed to bulk reject these requests.');
     }

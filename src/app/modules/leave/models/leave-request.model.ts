@@ -7,6 +7,7 @@ export interface LeaveRequestBalanceImpactResponse {
 
 export interface LeaveRequestApproverResponse {
   approverEmployeeId: string;
+  approverName: string;
   sequenceOrder: number;
   status: 'pending' | 'approved' | 'rejected' | 'skipped';
   delegatedFromApproverId: string | null;
@@ -61,8 +62,10 @@ export interface LeaveRequestListItemResponse {
   totalHours: number;
   paidHours: number;
   unpaidHours: number;
-  status: 'pending' | 'approved' | 'rejected' | 'cancelled';
+  status: 'pending' | 'approved' | 'rejected' | 'cancelled' | 'information_requested';
   noticePeriodMissed: boolean;
+  approvedByName: string | null;
+  infoQuestion: string | null;
   createdAt: string;
   updatedAt: string | null;
 }

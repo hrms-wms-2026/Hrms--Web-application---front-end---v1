@@ -10,9 +10,12 @@
         <td>{{ request.endAt | date:'yyyy-MM-dd HH:mm' }}</td>
         <td>{{ request.totalHours.toFixed(2) }}h</td>
         <td><span data-testid="request-status" class="lrh-status" [class]="'lrh-status-' + request.status">{{ statusLabel(request.status) }}</span></td>
-        <td>-</td>
+        <td data-testid="approved-by">{{ request.approvedByName || '—' }}</td>
         <td>{{ request.createdAt | slice:0:10 }}</td>
         <td>
+          @if (canReply(request)) {
+            <button type="button" data-testid="reply-request" class="lrh-reply" (click)="replyRequested.emit(request)">Reply</button>
+          }
           @if (canCancel(request)) {
             <button type="button" data-testid="cancel-request" class="lrh-cancel" (click)="cancelRequested.emit(request)">Cancel</button>
           }

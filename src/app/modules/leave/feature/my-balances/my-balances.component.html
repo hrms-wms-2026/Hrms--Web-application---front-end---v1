@@ -135,7 +135,7 @@
       } @else if (requestStore.myRequests().length === 0) {
         <app-empty-state title="No leave requests yet" description="Requests you submit will appear here." />
       } @else {
-        <app-leave-request-history-table [requests]="requestStore.myRequests()" (cancelRequested)="onCancelRequested($event)" />
+        <app-leave-request-history-table [requests]="requestStore.myRequests()" (cancelRequested)="onCancelRequested($event)" (replyRequested)="onReplyRequested($event)" />
       }
     </section>
   } @else {
@@ -189,4 +189,13 @@
   [cancelError]="requestStore.cancelError()"
   (confirmed)="onConfirmCancel($event)"
   (closed)="closeCancelDialog()"
+/>
+
+<app-leave-respond-info-dialog
+  [open]="replyTarget() !== null"
+  [question]="replyTarget()?.infoQuestion ?? ''"
+  [sending]="approvalStore.deciding()"
+  [sendError]="approvalStore.decideError()"
+  (confirmed)="onConfirmReply($event)"
+  (closed)="closeReplyDialog()"
 />
