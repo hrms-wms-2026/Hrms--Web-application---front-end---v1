@@ -53,11 +53,17 @@ describe('CalendarHourGridComponent', () => {
     expect(spy).toHaveBeenCalledWith('timed');
   });
 
-  it('emits slotClick with the clicked column\'s date when an empty area is clicked', () => {
+  it('emits slotClick with the clicked column\'s date when an empty area is pressed without dragging', () => {
     const spy = vi.fn();
     fixture.componentInstance.slotClick.subscribe(spy);
-    const column = fixture.nativeElement.querySelector('[data-date="2026-09-01"] [data-testid="calendar-hour-slots"]');
-    column.click();
+    const column = fixture.nativeElement.querySelector('[data-date="2026-09-01"] [data-testid="calendar-hour-slots"]') as HTMLElement;
+    const ev = (type: string) => {
+      const e = new Event(type, { bubbles: true }) as Event & { button: number; clientY: number; pointerId: number };
+      e.button = 0; e.clientY = 0; e.pointerId = 1;
+      return e;
+    };
+    column.dispatchEvent(ev('pointerdown'));
+    document.dispatchEvent(ev('pointerup'));
     expect(spy).toHaveBeenCalledTimes(1);
     expect(spy.mock.calls[0][0].date).toBe('2026-09-01');
   });
@@ -163,5 +169,77 @@ describe('CalendarHourGridComponent', () => {
     } finally {
       vi.useRealTimers();
     }
+  });
+
+  describe('drag to select a time range', () => {
+    // jsdom has no layout: pin the column's rect so 1px == 1 minute over a 1440px day.
+    function pinColumnRect(): void {
+      const slots = fixture.nativeElement.querySelector('[data-date="2026-09-01"] [data-testid="calendar-hour-slots"]') as HTMLElement;
+      vi.spyOn(slots, 'getBoundingClientRect').mockReturnValue({
+        top: 0, bottom: 1440, left: 0, right: 100, width: 100, height: 1440, x: 0, y: 0, toJSON: () => ({})
+      } as DOMRect);
+    }
+    const ptr = (type: string, clientY: number): Event => {
+      const e = new Event(type, { bubbles: true }) as Event & { button: number; clientY: number; pointerId: number };
+      e.button = 0;
+      e.clientY = clientY;
+      e.pointerId = 1;
+      return e;
+    };
+    const slots = () => fixture.nativeElement.querySelector('[data-date="2026-09-01"] [data-testid="calendar-hour-slots"]') as HTMLElement;
+
+    beforeEach(() => {
+      fixture.componentRef.setInput('days', ['2026-09-01']);
+      fixture.componentRef.setInput('events', []);
+      fixture.detectChanges();
+      pinColumnRect();
+    });
+
+    it('emits slotRange with 15-min-snapped, ordered bounds after a press-drag', () => {
+      const spy = vi.fn();
+      fixture.componentInstance.slotRange.subscribe(spy);
+
+      slots().dispatchEvent(ptr('pointerdown', 122)); // 122 -> snaps to 120 (02:00)
+      document.dispatchEvent(ptr('pointermove', 313)); // 313 -> snaps to 315 (05:15)
+      document.dispatchEvent(ptr('pointerup', 313));
+
+      expect(spy).toHaveBeenCalledWith({ date: '2026-09-01', startMinutes: 120, endMinutes: 315 });
+    });
+
+    it('orders the range when dragged upward', () => {
+      const spy = vi.fn();
+      fixture.componentInstance.slotRange.subscribe(spy);
+      slots().dispatchEvent(ptr('pointerdown', 600)); // 10:00
+      document.dispatchEvent(ptr('pointermove', 450)); // 07:30
+      document.dispatchEvent(ptr('pointerup', 450));
+      expect(spy).toHaveBeenCalledWith({ date: '2026-09-01', startMinutes: 450, endMinutes: 600 });
+    });
+
+    it('falls back to slotClick when the press does not move', () => {
+      const range = vi.fn();
+      const click = vi.fn();
+      fixture.componentInstance.slotRange.subscribe(range);
+      fixture.componentInstance.slotClick.subscribe(click);
+
+      slots().dispatchEvent(ptr('pointerdown', 130)); // 02:xx
+      document.dispatchEvent(ptr('pointerup', 130));
+
+      expect(range).not.toHaveBeenCalled();
+      expect(click).toHaveBeenCalledWith({ date: '2026-09-01', hour: 2 });
+    });
+
+    it('renders a selection block while dragging and clears it on release', () => {
+      slots().dispatchEvent(ptr('pointerdown', 120));
+      document.dispatchEvent(ptr('pointermove', 240));
+      fixture.detectChanges();
+      const block = fixture.nativeElement.querySelector('[data-testid="calendar-hour-drag-selection"]');
+      expect(block).not.toBeNull();
+      expect(Number(block.style.top.replace('%', ''))).toBeCloseTo((120 / 1440) * 100, 1);
+      expect(Number(block.style.height.replace('%', ''))).toBeCloseTo((120 / 1440) * 100, 1);
+
+      document.dispatchEvent(ptr('pointerup', 240));
+      fixture.detectChanges();
+      expect(fixture.nativeElement.querySelector('[data-testid="calendar-hour-drag-selection"]')).toBeNull();
+    });
   });
 });

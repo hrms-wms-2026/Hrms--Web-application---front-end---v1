@@ -17,6 +17,7 @@ export class CalendarDayViewComponent {
 
   eventClick = output<string>();
   slotClick = output<{ date: string; hour: number }>();
+  slotRange = output<{ date: string; startMinutes: number; endMinutes: number }>();
 
   readonly days = computed<readonly string[]>(() => [this.date()]);
 }

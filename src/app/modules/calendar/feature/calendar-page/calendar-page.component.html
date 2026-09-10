@@ -47,10 +47,10 @@
       <app-calendar-month-grid [year]="year()" [month]="month()" [events]="store.events()" [timezone]="store.myTimezone()" (eventClick)="openEdit($event)" />
     }
     @case ('week') {
-      <app-calendar-week-view [weekStart]="weekStart()" [events]="store.events()" [timezone]="store.myTimezone()" (eventClick)="openEdit($event)" (slotClick)="onSlotClick($event)" />
+      <app-calendar-week-view [weekStart]="weekStart()" [events]="store.events()" [timezone]="store.myTimezone()" (eventClick)="openEdit($event)" (slotClick)="onSlotClick($event)" (slotRange)="onSlotRange($event)" />
     }
     @case ('day') {
-      <app-calendar-day-view [date]="dayDate()" [events]="store.events()" [timezone]="store.myTimezone()" (eventClick)="openEdit($event)" (slotClick)="onSlotClick($event)" />
+      <app-calendar-day-view [date]="dayDate()" [events]="store.events()" [timezone]="store.myTimezone()" (eventClick)="openEdit($event)" (slotClick)="onSlotClick($event)" (slotRange)="onSlotRange($event)" />
     }
     @case ('agenda') {
       <app-calendar-agenda-view [events]="store.events()" [timezone]="store.myTimezone()" (eventClick)="openEdit($event)" />
@@ -62,6 +62,7 @@
   [open]="formOpen()"
   [event]="editingEvent()"
   [prefillStart]="prefillStart()"
+  [prefillEnd]="prefillEnd()"
   [saving]="store.saving()"
   [conflicts]="store.conflicts()"
   [checkingConflicts]="store.checkingConflicts()"

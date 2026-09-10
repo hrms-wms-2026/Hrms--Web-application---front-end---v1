@@ -34,13 +34,24 @@
       <div data-testid="calendar-hour-day-column" [attr.data-date]="column.date" class="relative flex-1 border-r border-[var(--color-border)] last:border-r-0">
         <div
           data-testid="calendar-hour-slots"
-          class="absolute inset-0"
-          (click)="onSlotClick(column.date, $event, $any($event.currentTarget))"
+          class="absolute inset-0 touch-none select-none"
+          (pointerdown)="onSlotPointerDown(column.date, $event, $any($event.currentTarget))"
         >
           @for (hour of hours; track hour) {
             <div class="h-12 border-b border-[var(--color-border)]"></div>
           }
         </div>
+
+        @if (dragSelection(); as sel) {
+          @if (sel.date === column.date) {
+            <div
+              data-testid="calendar-hour-drag-selection"
+              class="pointer-events-none absolute left-0.5 right-0.5 z-10 rounded border border-[var(--color-accent)] bg-[var(--color-accent-subtle)] opacity-80"
+              [style.top.%]="sel.topPct"
+              [style.height.%]="sel.heightPct"
+            ></div>
+          }
+        }
 
         @if (column.nowFraction !== null) {
           <div data-testid="calendar-now-line" class="pointer-events-none absolute left-0 right-0 z-10 border-t-2 border-red-500" [style.top.%]="column.nowFraction * 100"></div>

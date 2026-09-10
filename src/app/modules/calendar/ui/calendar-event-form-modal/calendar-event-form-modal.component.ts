@@ -67,6 +67,7 @@ export class CalendarEventFormModalComponent implements OnChanges {
   @Input() open = false;
   @Input() event: CalendarEventResponse | null = null;
   @Input() prefillStart: string | null = null;
+  @Input() prefillEnd: string | null = null;
   @Input() saving = false;
   @Input() conflicts: readonly CalendarConflict[] = [];
   @Input() checkingConflicts = false;
@@ -235,7 +236,15 @@ export class CalendarEventFormModalComponent implements OnChanges {
     if (this.prefillStart) {
       const [date, time] = this.prefillStart.split('T');
       const start = time ?? '09:00';
-      this.form.patchValue({ startDate: date, startTime: start, endDate: date, endTime: addMinutes(start, 30) });
+      const [endDate, endTime] = this.prefillEnd?.split('T') ?? [];
+      this.form.patchValue({
+        startDate: date,
+        startTime: start,
+        endDate: endDate || date,
+        endTime: endTime || addMinutes(start, 30)
+      });
+      // a dragged range set the end explicitly - don't let a later start-time nudge override it
+      this.endTimeTouched = !!this.prefillEnd;
     }
 
     if (justOpened) {

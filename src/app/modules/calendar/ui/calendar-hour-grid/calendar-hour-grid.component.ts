@@ -13,6 +13,14 @@ interface DayColumnViewModel {
 }
 
 const HOURS = Array.from({ length: 24 }, (_, h) => h);
+const SNAP_MINUTES = 15;
+const DAY_MINUTES = 24 * 60;
+
+interface DragSelection {
+  readonly date: string;
+  readonly topPct: number;
+  readonly heightPct: number;
+}
 
 @Component({
   selector: 'app-calendar-hour-grid',
@@ -28,8 +36,19 @@ export class CalendarHourGridComponent {
 
   eventClick = output<string>();
   slotClick = output<{ date: string; hour: number }>();
+  /** Emitted when the user press-drags across the column to pick a time range.
+   * Minutes are from midnight, snapped to 15, ordered, at least one snap apart. */
+  slotRange = output<{ date: string; startMinutes: number; endMinutes: number }>();
 
   readonly hours = HOURS;
+  readonly dragSelection = signal<DragSelection | null>(null);
+
+  private dragDate: string | null = null;
+  private dragColumnEl: HTMLElement | null = null;
+  private dragStartMinutes = 0;
+  private dragCurrentMinutes = 0;
+  private dragMoved = false;
+  private stopDragListeners: (() => void) | null = null;
 
   private readonly host = inject<ElementRef<HTMLElement>>(ElementRef);
   private readonly destroyRef = inject(DestroyRef);
@@ -94,10 +113,71 @@ export class CalendarHourGridComponent {
     });
   });
 
-  onSlotClick(date: string, event: MouseEvent, columnEl: HTMLElement): void {
+  onSlotPointerDown(date: string, event: PointerEvent, columnEl: HTMLElement): void {
+    if (event.button !== 0) return;
+    event.preventDefault();
+    this.dragDate = date;
+    this.dragColumnEl = columnEl;
+    this.dragStartMinutes = this.minutesAt(event.clientY, columnEl);
+    this.dragCurrentMinutes = this.dragStartMinutes;
+    this.dragMoved = false;
+    this.updateDragSelection();
+
+    const move = (e: PointerEvent) => this.onDragMove(e);
+    const up = (e: PointerEvent) => this.onDragEnd(e);
+    document.addEventListener('pointermove', move);
+    document.addEventListener('pointerup', up);
+    this.stopDragListeners = () => {
+      document.removeEventListener('pointermove', move);
+      document.removeEventListener('pointerup', up);
+      this.stopDragListeners = null;
+    };
+    this.destroyRef.onDestroy(() => this.stopDragListeners?.());
+  }
+
+  private onDragMove(event: PointerEvent): void {
+    if (!this.dragColumnEl) return;
+    this.dragCurrentMinutes = this.minutesAt(event.clientY, this.dragColumnEl);
+    if (Math.abs(this.dragCurrentMinutes - this.dragStartMinutes) >= SNAP_MINUTES) this.dragMoved = true;
+    this.updateDragSelection();
+  }
+
+  private onDragEnd(_event: PointerEvent): void {
+    this.stopDragListeners?.();
+    const date = this.dragDate;
+    const a = this.dragStartMinutes;
+    const b = this.dragCurrentMinutes;
+    this.dragSelection.set(null);
+    this.dragDate = null;
+    this.dragColumnEl = null;
+    if (!date) return;
+
+    if (this.dragMoved) {
+      let start = Math.min(a, b);
+      let end = Math.max(a, b);
+      if (end - start < SNAP_MINUTES) end = Math.min(start + SNAP_MINUTES, DAY_MINUTES);
+      this.slotRange.emit({ date, startMinutes: start, endMinutes: end });
+    } else {
+      this.slotClick.emit({ date, hour: Math.floor(a / 60) });
+    }
+  }
+
+  private updateDragSelection(): void {
+    if (!this.dragDate) return;
+    const start = Math.min(this.dragStartMinutes, this.dragCurrentMinutes);
+    const end = Math.max(this.dragStartMinutes, this.dragCurrentMinutes);
+    this.dragSelection.set({
+      date: this.dragDate,
+      topPct: (start / DAY_MINUTES) * 100,
+      heightPct: (Math.max(end - start, SNAP_MINUTES) / DAY_MINUTES) * 100
+    });
+  }
+
+  private minutesAt(clientY: number, columnEl: HTMLElement): number {
     const rect = columnEl.getBoundingClientRect();
-    const fraction = (event.clientY - rect.top) / rect.height;
-    const hour = Math.max(0, Math.min(23, Math.floor(fraction * 24)));
-    this.slotClick.emit({ date, hour });
+    if (!rect.height) return 0;
+    const fraction = Math.min(1, Math.max(0, (clientY - rect.top) / rect.height));
+    const snapped = Math.round((fraction * DAY_MINUTES) / SNAP_MINUTES) * SNAP_MINUTES;
+    return Math.min(DAY_MINUTES - SNAP_MINUTES, Math.max(0, snapped));
   }
 }

@@ -422,6 +422,22 @@ describe('CalendarEventFormModalComponent', () => {
     expect(fixture.componentInstance.participantIds()).not.toContain('e0');
   });
 
+  it('uses prefillEnd for the end fields when a dragged range provides one', () => {
+    fixture.componentRef.setInput('prefillStart', '2026-09-20T10:15');
+    fixture.componentRef.setInput('prefillEnd', '2026-09-20T11:45');
+    fixture.componentRef.setInput('open', false);
+    fixture.detectChanges();
+    fixture.componentRef.setInput('open', true);
+    fixture.detectChanges();
+
+    expect(fixture.componentInstance.form.controls.startTime.value).toBe('10:15');
+    expect(fixture.componentInstance.form.controls.endTime.value).toBe('11:45');
+
+    // a later start-time nudge must not clobber the explicitly dragged end
+    fixture.componentInstance.setStartTime('09:00');
+    expect(fixture.componentInstance.form.controls.endTime.value).toBe('11:45');
+  });
+
   it('opens the participant picker when the overflow badge is clicked', () => {
     const people = Array.from({ length: 8 }, (_, i) => ({ id: `e${i}`, name: `Person ${i}` }));
     fixture.componentInstance.onParticipantPeopleChange(people);

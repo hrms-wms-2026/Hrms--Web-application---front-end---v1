@@ -42,6 +42,7 @@ export class CalendarPageComponent {
   readonly formOpen = signal(false);
   readonly editingEvent = signal<CalendarEventResponse | null>(null);
   readonly prefillStart = signal<string | null>(null);
+  readonly prefillEnd = signal<string | null>(null);
 
   readonly year = computed(() => this.cursor().getFullYear());
   readonly month = computed(() => this.cursor().getMonth() + 1);
@@ -126,9 +127,10 @@ export class CalendarPageComponent {
     this.cursor.set(new Date());
   }
 
-  openCreate(prefillDate?: string): void {
+  openCreate(prefillStart?: string, prefillEnd?: string): void {
     this.editingEvent.set(null);
-    this.prefillStart.set(prefillDate ?? null);
+    this.prefillStart.set(prefillStart ?? null);
+    this.prefillEnd.set(prefillEnd ?? null);
     this.formOpen.set(true);
   }
 
@@ -136,10 +138,17 @@ export class CalendarPageComponent {
     this.openCreate(`${slot.date}T${String(slot.hour).padStart(2, '0')}:00`);
   }
 
+  onSlotRange(range: { date: string; startMinutes: number; endMinutes: number }): void {
+    const hhmm = (minutes: number) =>
+      `${String(Math.floor(minutes / 60)).padStart(2, '0')}:${String(minutes % 60).padStart(2, '0')}`;
+    this.openCreate(`${range.date}T${hhmm(range.startMinutes)}`, `${range.date}T${hhmm(range.endMinutes)}`);
+  }
+
   openEdit(eventId: string): void {
     const found = this.store.events().find((e) => e.id === eventId) ?? null;
     this.editingEvent.set(found);
     this.prefillStart.set(null);
+    this.prefillEnd.set(null);
     this.formOpen.set(true);
   }
 
@@ -147,6 +156,7 @@ export class CalendarPageComponent {
     this.formOpen.set(false);
     this.editingEvent.set(null);
     this.prefillStart.set(null);
+    this.prefillEnd.set(null);
     this.store.clearConflicts();
     this.store.clearEligibleNominees();
   }
