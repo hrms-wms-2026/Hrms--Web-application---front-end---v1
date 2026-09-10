@@ -12,8 +12,8 @@
         <select data-testid="leave-type-select" [value]="draft().leaveTypeId" (change)="onLeaveTypeChange($any($event.target).value)">
           <option value="">Select a leave type</option>
           @for (type of activeLeaveTypes(); track type.id) {
-            <option [value]="type.id" [class.nlw-zero-balance]="remainingDaysFor(type.id) === 0">
-              {{ type.name }}@if (remainingDaysFor(type.id) !== null) { - {{ remainingDaysFor(type.id) }} days remaining}
+            <option [value]="type.id" [class.nlw-zero-balance]="remainingHoursFor(type.id) === 0">
+              {{ type.name }}@if (remainingHoursFor(type.id) !== null) { - {{ remainingHoursFor(type.id) }} hours remaining}
             </option>
           }
         </select>
@@ -21,16 +21,13 @@
     }
 
     @if (step() === 2) {
-      <app-date-picker label="Start date" [value]="draft().startDate" (valueChange)="draft.update(d => ({...d, startDate: $event}))" />
-      <app-date-picker label="End date" [value]="draft().endDate" (valueChange)="draft.update(d => ({...d, endDate: $event}))" />
-      <label class="nlw-field">
-        <span>Half day</span>
-        <select [value]="draft().halfDayPeriod ?? ''" (change)="draft.update(d => ({...d, halfDayPeriod: ($any($event.target).value || null)}))">
-          <option value="">Full day(s)</option>
-          <option value="am">AM</option>
-          <option value="pm">PM</option>
-        </select>
-      </label>
+      @if (workWindowMissing()) {
+        <p class="nlw-error" data-testid="work-window-required">Set work start and end in General Settings first.</p>
+      }
+      <app-date-picker label="From date" [value]="draft().startDate" (valueChange)="draft.update(d => ({...d, startDate: $event}))" />
+      <app-time-picker label="From time" [value]="draft().startTime || workStartTime || ''" (valueChange)="draft.update(d => ({...d, startTime: $event}))" />
+      <app-date-picker label="To date" [value]="draft().endDate" (valueChange)="draft.update(d => ({...d, endDate: $event}))" />
+      <app-time-picker label="To time" [value]="draft().endTime || workEndTime || ''" (valueChange)="draft.update(d => ({...d, endTime: $event}))" />
     }
 
     @if (step() === 3) {
@@ -39,7 +36,7 @@
       } @else if (previewError) {
         <p class="nlw-error">{{ previewError }}</p>
       } @else if (previewResult) {
-        <p class="nlw-total">Total leave days: <strong>{{ previewResult.totalDays }}</strong></p>
+        <p class="nlw-total">Total leave hours: <strong>{{ formatHours(previewResult.totalHours) }}</strong></p>
         @if (previewResult.noticePeriodMissed) {
           <p class="nlw-warning">This request does not meet the minimum notice period. Your manager will be informed.</p>
         }
@@ -84,11 +81,11 @@
     @if (step() === 5) {
       <div class="nlw-review" data-testid="request-review">
         <span>Type</span><strong>{{ selectedLeaveTypeName() }}</strong>
-        <span>Dates</span><strong>{{ draft().startDate }} – {{ draft().endDate }}</strong>
-        <span>Half day</span><strong>{{ halfDayLabel() }}</strong>
+        <span>From</span><strong>{{ draft().startDate }} {{ draft().startTime || workStartTime }}</strong>
+        <span>To</span><strong>{{ draft().endDate }} {{ draft().endTime || workEndTime }}</strong>
         @if (previewResult) {
-          <span>Total days</span><strong>{{ previewResult.totalDays }}</strong>
-          <span>Balance</span><strong>{{ previewResult.balanceImpact.currentRemainingDays }} → {{ previewResult.balanceImpact.remainingAfterSubmitDays }}</strong>
+          <span>Total hours</span><strong>{{ formatHours(previewResult.totalHours) }}</strong>
+          <span>Balance</span><strong>{{ formatHours(previewResult.balanceImpact.currentRemainingHours) }} → {{ formatHours(previewResult.balanceImpact.remainingAfterSubmitHours) }}</strong>
         }
       </div>
       @if (submitError) { <p class="nlw-error">{{ submitError }}</p> }

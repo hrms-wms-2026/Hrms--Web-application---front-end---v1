@@ -21,12 +21,12 @@ const ANNUAL: LeaveBalanceResponse = {
   leaveTypeName: 'Annual Leave',
   leaveTypeCode: 'ANNUAL',
   year: 2026,
-  entitledDays: 20,
-  annualDays: 20,
-  carriedForwardDays: 2,
-  usedDays: 4,
-  pendingDays: 1,
-  remainingDays: 17,
+  entitledHours: 20,
+  annualHours: 20,
+  carriedForwardHours: 2,
+  usedHours: 4,
+  pendingHours: 1,
+  remainingHours: 17,
   isNegative: false,
   carryForwardExpiresOn: '2026-12-31'
 };
@@ -77,6 +77,9 @@ describe('MyBalancesComponent', () => {
     const button: HTMLButtonElement = fixture.nativeElement.querySelector('[data-testid="new-request-button"]');
     button.click();
     fixture.detectChanges();
+    httpMock.expectOne((r) => r.url === `${environment.apiUrl}/leave/balances/work-window`).flush({
+      workStartTime: '09:00', workEndTime: '18:00', breakDurationMinutes: 60, timezone: 'UTC'
+    });
     expect(fixture.componentInstance.wizardOpen()).toBe(true);
   });
 
@@ -111,8 +114,8 @@ describe('MyBalancesComponent', () => {
     const card = fixture.nativeElement.querySelector('[data-testid="balance-row"]') as HTMLElement | null;
     expect(card).toBeTruthy();
     expect(card?.textContent).toContain('Annual Leave');
-    expect(fixture.nativeElement.querySelector('[data-testid="summary-remaining"]')?.textContent).toContain('17.0');
-    expect(fixture.nativeElement.querySelector('[data-testid="balance-remaining"]')?.textContent).toContain('17.0');
+    expect(fixture.nativeElement.querySelector('[data-testid="summary-remaining"]')?.textContent).toContain('17.00');
+    expect(fixture.nativeElement.querySelector('[data-testid="balance-remaining"]')?.textContent).toContain('17.00');
     expect(fixture.nativeElement.querySelector('[data-testid="export-balances-csv"]')).toBeTruthy();
   });
 
@@ -150,8 +153,8 @@ describe('MyBalancesComponent', () => {
 });
 
 describe('summarizeBalances', () => {
-  it('sums remaining, pending, used, and entitled days', () => {
-    expect(summarizeBalances([ANNUAL, { ...ANNUAL, leaveTypeId: 'type-2', remainingDays: 3, pendingDays: 0, usedDays: 2, entitledDays: 5 }])).toEqual({
+  it('sums remaining, pending, used, and entitled hours', () => {
+    expect(summarizeBalances([ANNUAL, { ...ANNUAL, leaveTypeId: 'type-2', remainingHours: 3, pendingHours: 0, usedHours: 2, entitledHours: 5 }])).toEqual({
       remaining: 20,
       pending: 1,
       used: 6,

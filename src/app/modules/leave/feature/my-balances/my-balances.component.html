@@ -62,26 +62,26 @@
       <section class="mbc-summary" aria-label="Balance totals">
         <article class="mbc-metric">
           <p class="mbc-metric__label">Remaining</p>
-          <p class="mbc-metric__value" data-testid="summary-remaining">{{ formatDays(mySummary().remaining) }}</p>
+          <p class="mbc-metric__value" data-testid="summary-remaining">{{ formatHours(mySummary().remaining) }}</p>
           <p class="mbc-metric__hint">across {{ mySummary().types }} leave {{ mySummary().types === 1 ? 'type' : 'types' }}</p>
         </article>
         <article class="mbc-metric">
           <p class="mbc-metric__label">Pending</p>
-          <p class="mbc-metric__value">{{ formatDays(mySummary().pending) }}</p>
+          <p class="mbc-metric__value">{{ formatHours(mySummary().pending) }}</p>
           <p class="mbc-metric__hint">awaiting approval</p>
         </article>
         <article class="mbc-metric">
           <p class="mbc-metric__label">Used</p>
-          <p class="mbc-metric__value">{{ formatDays(mySummary().used) }}</p>
-          <p class="mbc-metric__hint">of {{ formatDays(mySummary().entitled) }} entitled</p>
+          <p class="mbc-metric__value">{{ formatHours(mySummary().used) }}</p>
+          <p class="mbc-metric__hint">of {{ formatHours(mySummary().entitled) }} entitled</p>
         </article>
       </section>
 
       @if (expiringCarryForward().length > 0) {
         <aside class="mbc-banner" role="status">
-          Carry-forward days are on the clock for
+          Carry-forward hours are on the clock for
           @for (balance of expiringCarryForward(); track balance.leaveTypeId; let last = $last) {
-            <strong>{{ balance.leaveTypeName }}</strong> ({{ formatDays(balance.carriedForwardDays) }} by {{ balance.carryForwardExpiresOn }}){{ last ? '.' : ', ' }}
+            <strong>{{ balance.leaveTypeName }}</strong> ({{ formatHours(balance.carriedForwardHours) }} by {{ balance.carryForwardExpiresOn }}){{ last ? '.' : ', ' }}
           }
         </aside>
       }
@@ -95,25 +95,25 @@
                 <p class="mbc-card__code">{{ balance.leaveTypeCode }}</p>
               </div>
               @if (balance.isNegative) {
-                <span class="mbc-pill mbc-pill--danger" data-testid="balance-remaining-negative">{{ formatDays(balance.remainingDays) }} overdrawn</span>
+                <span class="mbc-pill mbc-pill--danger" data-testid="balance-remaining-negative">{{ formatHours(balance.remainingHours) }} overdrawn</span>
               } @else {
-                <span class="mbc-pill">{{ formatDays(balance.remainingDays) }} left</span>
+                <span class="mbc-pill">{{ formatHours(balance.remainingHours) }} left</span>
               }
             </header>
             <p class="mbc-card__remaining">
-              <span data-testid="balance-remaining">{{ formatDays(balance.remainingDays) }}</span>
-              <small>remaining days</small>
+              <span data-testid="balance-remaining">{{ formatHours(balance.remainingHours) }}</span>
+              <small>remaining hours</small>
             </p>
             <div class="mbc-bar" aria-hidden="true">
-              <span class="mbc-bar__used" [style.width.%]="barShare(balance.usedDays, balance)"></span>
-              <span class="mbc-bar__pending" [style.width.%]="barShare(balance.pendingDays, balance)"></span>
-              <span class="mbc-bar__remaining" [style.width.%]="barShare(balance.remainingDays, balance)"></span>
+              <span class="mbc-bar__used" [style.width.%]="barShare(balance.usedHours, balance)"></span>
+              <span class="mbc-bar__pending" [style.width.%]="barShare(balance.pendingHours, balance)"></span>
+              <span class="mbc-bar__remaining" [style.width.%]="barShare(balance.remainingHours, balance)"></span>
             </div>
             <dl class="mbc-card__stats">
-              <div><dt>Entitled</dt><dd>{{ formatDays(balance.entitledDays) }}</dd></div>
-              <div><dt>Carried</dt><dd>{{ formatDays(balance.carriedForwardDays) }}</dd></div>
-              <div><dt>Used</dt><dd>{{ formatDays(balance.usedDays) }}</dd></div>
-              <div><dt>Pending</dt><dd>{{ formatDays(balance.pendingDays) }}</dd></div>
+              <div><dt>Entitled</dt><dd>{{ formatHours(balance.entitledHours) }}</dd></div>
+              <div><dt>Carried</dt><dd>{{ formatHours(balance.carriedForwardHours) }}</dd></div>
+              <div><dt>Used</dt><dd>{{ formatHours(balance.usedHours) }}</dd></div>
+              <div><dt>Pending</dt><dd>{{ formatHours(balance.pendingHours) }}</dd></div>
             </dl>
             @if (balance.carryForwardExpiresOn) {
               <p class="mbc-card__expiry">Carry-forward expires {{ balance.carryForwardExpiresOn }}</p>
@@ -158,6 +158,9 @@
     [open]="true"
     [leaveTypes]="leaveTypeStore.items()"
     [balances]="store.my()"
+    [workStartTime]="store.workWindow()?.workStartTime ?? null"
+    [workEndTime]="store.workWindow()?.workEndTime ?? null"
+    [timezone]="store.workWindow()?.timezone ?? 'UTC'"
     [previewing]="requestStore.previewing()"
     [previewResult]="requestStore.previewResult()"
     [previewError]="requestStore.previewError()"
@@ -177,9 +180,9 @@
 <app-leave-cancel-confirm-dialog
   [open]="cancelTarget() !== null"
   [leaveTypeName]="cancelTarget()?.leaveTypeName ?? ''"
-  [startDate]="cancelTarget()?.startDate ?? ''"
-  [endDate]="cancelTarget()?.endDate ?? ''"
-  [totalDays]="cancelTarget()?.totalDays ?? 0"
+  [startAt]="cancelTarget()?.startAt ?? ''"
+  [endAt]="cancelTarget()?.endAt ?? ''"
+  [totalHours]="cancelTarget()?.totalHours ?? 0"
   [status]="cancelTarget()?.status ?? ''"
   [requireReason]="false"
   [cancelling]="requestStore.cancelling()"

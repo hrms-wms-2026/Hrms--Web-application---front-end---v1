@@ -52,12 +52,12 @@ export class MyBalancesComponent {
   readonly pageSubtitle = computed(() =>
     this.viewMode() === 'team'
       ? 'Leave positions for your direct and indirect reports.'
-      : 'Your leave entitlement and remaining days for the selected year.'
+      : 'Your leave entitlement and remaining hours for the selected year.'
   );
 
   readonly mySummary = computed(() => summarizeBalances(this.store.my()));
   readonly expiringCarryForward = computed(() =>
-    this.store.my().filter((balance) => balance.carriedForwardDays > 0 && !!balance.carryForwardExpiresOn)
+    this.store.my().filter((balance) => balance.carriedForwardHours > 0 && !!balance.carryForwardExpiresOn)
   );
 
   constructor() {
@@ -103,6 +103,7 @@ export class MyBalancesComponent {
 
   openWizard(): void {
     this.wizardOpen.set(true);
+    void this.store.loadWorkWindow();
   }
 
   closeWizard(): void {
@@ -152,12 +153,12 @@ export class MyBalancesComponent {
     }
   }
 
-  formatDays(value: number): string {
-    return value.toFixed(1);
+  formatHours(value: number): string {
+    return value.toFixed(2);
   }
 
   barShare(part: number, balance: LeaveBalanceResponse): number {
-    const total = Math.max(balance.entitledDays, balance.usedDays + balance.pendingDays + Math.max(balance.remainingDays, 0), 1);
+    const total = Math.max(balance.entitledHours, balance.usedHours + balance.pendingHours + Math.max(balance.remainingHours, 0), 1);
     return Math.max(0, Math.min(100, (Math.max(part, 0) / total) * 100));
   }
 
@@ -196,10 +197,10 @@ export function summarizeBalances(rows: readonly LeaveBalanceResponse[]): {
 } {
   return rows.reduce(
     (summary, row) => ({
-      remaining: summary.remaining + row.remainingDays,
-      pending: summary.pending + row.pendingDays,
-      used: summary.used + row.usedDays,
-      entitled: summary.entitled + row.entitledDays,
+      remaining: summary.remaining + row.remainingHours,
+      pending: summary.pending + row.pendingHours,
+      used: summary.used + row.usedHours,
+      entitled: summary.entitled + row.entitledHours,
       types: summary.types + 1
     }),
     { remaining: 0, pending: 0, used: 0, entitled: 0, types: 0 }

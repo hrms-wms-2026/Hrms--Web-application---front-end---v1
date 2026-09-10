@@ -13,11 +13,11 @@ export interface LeavePendingApprovalListItemResponse {
   leaveTypeId: string;
   leaveTypeName: string;
   leaveTypeCode: string;
-  startDate: string;
-  endDate: string;
-  totalDays: number;
-  paidDays: number;
-  unpaidDays: number;
+  startAt: string;
+  endAt: string;
+  totalHours: number;
+  paidHours: number;
+  unpaidHours: number;
   status: 'pending' | 'information_requested';
   submittedAt: string;
 }
@@ -30,9 +30,9 @@ export interface LeaveRequestAllListItemResponse {
   departmentName: string | null;
   leaveTypeId: string;
   leaveTypeName: string;
-  startDate: string;
-  endDate: string;
-  totalDays: number;
+  startAt: string;
+  endAt: string;
+  totalHours: number;
   status: 'pending' | 'approved' | 'rejected' | 'cancelled' | 'information_requested';
   submittedAt: string;
 }
@@ -59,27 +59,27 @@ export interface LeaveApprovalDetailResponse {
   leaveTypeId: string;
   leaveTypeName: string;
   leaveTypeCode: string;
-  startDate: string;
-  endDate: string;
-  totalDays: number;
-  paidDays: number;
-  unpaidDays: number;
+  startAt: string;
+  endAt: string;
+  totalHours: number;
+  paidHours: number;
+  unpaidHours: number;
   status: 'pending' | 'approved' | 'rejected' | 'cancelled' | 'information_requested';
   reason: string | null;
   approvers: LeaveApprovalApproverResponse[];
   infoMessages: LeaveApprovalInfoMessageResponse[];
   submissionConflictSnapshotJson: string | null;
   currentWarnings: LeaveApprovalWarningResponse[];
-  remainingDays: number;
+  remainingHours: number;
 }
 
 export interface LeaveApprovalDecisionResponse {
   requestId: string;
   status: string;
   currentApproverState: string;
-  paidDaysMovedFromPending: number;
-  unpaidDays: number;
-  remainingDays: number;
+  paidHoursMovedFromPending: number;
+  unpaidHours: number;
+  remainingHours: number;
   currentWarnings: LeaveApprovalWarningResponse[];
 }
 

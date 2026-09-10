@@ -3,13 +3,13 @@
     <div class="lad-body">
       <header class="lad-header">
         <h3>{{ detail.employeeName }}</h3>
-        <p>{{ detail.leaveTypeName }} &middot; {{ detail.startDate }} - {{ detail.endDate }} &middot; {{ detail.totalDays }} days</p>
+        <p>{{ detail.leaveTypeName }} &middot; {{ detail.startAt | date:'yyyy-MM-dd HH:mm' }} - {{ detail.endAt | date:'yyyy-MM-dd HH:mm' }} &middot; {{ detail.totalHours }} hours</p>
         <p class="lad-muted">{{ currentApproverState() }}</p>
       </header>
 
       <section class="lad-section">
         <h4>Balance</h4>
-        <p>Remaining after this request: <strong>{{ detail.remainingDays }}</strong> days ({{ detail.paidDays }} paid, {{ detail.unpaidDays }} unpaid)</p>
+        <p>Remaining after this request: <strong>{{ detail.remainingHours }}</strong> hours ({{ detail.paidHours }} paid, {{ detail.unpaidHours }} unpaid)</p>
         @if (teamCoverageLabel(); as coverage) {
           <p class="lad-muted" data-testid="team-coverage">{{ coverage }}</p>
         }

@@ -15,10 +15,9 @@ export interface LeaveCalendarAbsenceResponse {
   status: string;
   isTentative: boolean;
   isPartialCancellationHistory: boolean;
-  startDate: string;
-  endDate: string;
-  totalDays: number;
-  halfDayPeriod: 'am' | 'pm' | null;
+  startAt: string;
+  endAt: string;
+  totalHours: number;
 }
 
 export interface LeaveCalendarHolidayResponse {

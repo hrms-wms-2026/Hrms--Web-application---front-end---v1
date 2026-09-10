@@ -3,7 +3,7 @@
     <div>
       <p class="emc-kicker">TIME OFF</p>
       <h1>Entitlements</h1>
-      <p class="emc-subtitle">Assign leave days from policy, then adjust exceptions.</p>
+      <p class="emc-subtitle">Assign leave hours from policy days × work-day hours, then adjust exceptions.</p>
     </div>
     <div class="emc-header-actions">
       <app-select [options]="yearOptions" [value]="selectedYear()" (valueChange)="onYearChange($event)" />
@@ -57,7 +57,7 @@
         </article>
         <article class="emc-metric">
           <p class="emc-metric__label">Remaining</p>
-          <p class="emc-metric__value">{{ formatDays(entitlementSummary().remaining) }}</p>
+          <p class="emc-metric__value">{{ formatHours(entitlementSummary().remaining) }}</p>
         </article>
         <article class="emc-metric" [class.emc-metric--warn]="entitlementSummary().overUtilized > 0">
           <p class="emc-metric__label">Over-utilized</p>
@@ -119,6 +119,9 @@
     [onBehalf]="true"
     [leaveTypes]="leaveTypeStore.items()"
     [balances]="[]"
+    [workStartTime]="balanceStore.workWindow()?.workStartTime ?? null"
+    [workEndTime]="balanceStore.workWindow()?.workEndTime ?? null"
+    [timezone]="balanceStore.workWindow()?.timezone ?? 'UTC'"
     [previewing]="requestStore.previewing()"
     [previewResult]="requestStore.previewResult()"
     [previewError]="requestStore.previewError()"

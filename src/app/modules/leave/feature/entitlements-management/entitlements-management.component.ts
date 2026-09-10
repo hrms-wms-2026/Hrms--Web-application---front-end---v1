@@ -87,8 +87,8 @@ export class EntitlementsManagementComponent {
     this.entitlementStore.setFilters({ ...this.entitlementStore.filters(), search: search || undefined });
   }
 
-  formatDays(value: number): string {
-    return value.toFixed(1);
+  formatHours(value: number): string {
+    return value.toFixed(2);
   }
 
   selectTab(tab: Tab): void {
@@ -202,7 +202,10 @@ export class EntitlementsManagementComponent {
     }
   }
 
-  openRequestWizard(): void { this.requestWizardOpen.set(true); }
+  openRequestWizard(): void {
+    this.requestWizardOpen.set(true);
+    void this.balanceStore.loadWorkWindow();
+  }
   closeRequestWizard(): void { this.requestWizardOpen.set(false); this.uploadedDocuments.set([]); this.requestStore.clearPreview(); }
   async onDocumentSelected(file: File): Promise<void> {
     const uploaded = await this.requestStore.uploadDocument(file);
@@ -239,7 +242,7 @@ function summarizeEntitlements(items: readonly LeaveEntitlementResponse[]): {
   return {
     lines: items.length,
     employees: employees.size,
-    remaining: items.reduce((sum, item) => sum + item.remainingDays, 0),
-    overUtilized: items.filter((item) => item.isOverUtilized || item.remainingDays < 0).length
+    remaining: items.reduce((sum, item) => sum + item.remainingHours, 0),
+    overUtilized: items.filter((item) => item.isOverUtilized || item.remainingHours < 0).length
   };
 }

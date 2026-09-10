@@ -8,11 +8,11 @@ const HEADER = [
   'Leave type',
   'Code',
   'Year',
-  'Entitled',
-  'Carried forward',
-  'Used',
-  'Pending',
-  'Remaining',
+  'Entitled hours',
+  'Carried forward hours',
+  'Used hours',
+  'Pending hours',
+  'Remaining hours',
   'Carry-forward expires'
 ];
 
@@ -32,11 +32,11 @@ export function balancesToCsv(rows: readonly LeaveBalanceResponse[]): string {
       row.leaveTypeName,
       row.leaveTypeCode,
       row.year,
-      row.entitledDays,
-      row.carriedForwardDays,
-      row.usedDays,
-      row.pendingDays,
-      row.remainingDays,
+      row.entitledHours,
+      row.carriedForwardHours,
+      row.usedHours,
+      row.pendingHours,
+      row.remainingHours,
       row.carryForwardExpiresOn
     ]
       .map(csvCell)

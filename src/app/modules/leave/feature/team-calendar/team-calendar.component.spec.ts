@@ -45,5 +45,8 @@ describe('TeamCalendarComponent', () => {
     expect(fixture.componentInstance.requestDate()).toBe('2026-09-10');
     httpMock.expectOne((r) => r.url === `${environment.apiUrl}/leave/types`).flush([]);
     httpMock.expectOne((r) => r.url.startsWith(`${environment.apiUrl}/leave/balances/my`)).flush([]);
+    httpMock.expectOne((r) => r.url === `${environment.apiUrl}/leave/balances/work-window`).flush({
+      workStartTime: '09:00', workEndTime: '18:00', breakDurationMinutes: 60, timezone: 'UTC'
+    });
   });
 });

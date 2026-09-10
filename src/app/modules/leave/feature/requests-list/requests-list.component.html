@@ -48,9 +48,9 @@
 <app-leave-cancel-confirm-dialog
   [open]="cancelTarget() !== null"
   [leaveTypeName]="cancelTarget()?.leaveTypeName ?? ''"
-  [startDate]="cancelTarget()?.startDate ?? ''"
-  [endDate]="cancelTarget()?.endDate ?? ''"
-  [totalDays]="cancelTarget()?.totalDays ?? 0"
+  [startAt]="cancelTarget()?.startAt ?? ''"
+  [endAt]="cancelTarget()?.endAt ?? ''"
+  [totalHours]="cancelTarget()?.totalHours ?? 0"
   [status]="cancelTarget()?.status ?? ''"
   [requireReason]="true"
   [cancelling]="store.cancelling()"

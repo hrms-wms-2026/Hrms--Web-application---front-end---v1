@@ -85,6 +85,7 @@ export class TeamCalendarComponent {
     this.wizardOpen.set(true);
     void this.leaveTypeStore.load();
     void this.balanceStore.loadMy(this.store.year());
+    void this.balanceStore.loadWorkWindow();
   }
 
   closeWizard(): void {

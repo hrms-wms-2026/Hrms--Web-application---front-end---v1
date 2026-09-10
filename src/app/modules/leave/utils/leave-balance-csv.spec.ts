@@ -13,12 +13,12 @@ const row: LeaveBalanceResponse = {
   leaveTypeName: 'Annual Leave',
   leaveTypeCode: 'ANNUAL',
   year: 2026,
-  entitledDays: 20,
-  annualDays: 20,
-  carriedForwardDays: 2,
-  usedDays: 4,
-  pendingDays: 1,
-  remainingDays: 17,
+  entitledHours: 20,
+  annualHours: 20,
+  carriedForwardHours: 2,
+  usedHours: 4,
+  pendingHours: 1,
+  remainingHours: 17,
   isNegative: false,
   carryForwardExpiresOn: '2026-12-31'
 };
