@@ -124,8 +124,13 @@
     [previewError]="requestStore.previewError()"
     [submitting]="requestStore.submitting()"
     [submitError]="requestStore.submitError()"
+    [uploadedDocuments]="uploadedDocuments()"
+    [uploadingDocument]="requestStore.uploadingDocument()"
+    [documentUploadError]="requestStore.documentUploadError()"
     (previewRequested)="onRequestPreview($event)"
     (submitRequested)="onRequestSubmit($event)"
+    (documentSelected)="onDocumentSelected($event)"
+    (documentRemoved)="onDocumentRemoved($event)"
     (closed)="closeRequestWizard()"
   />
 }

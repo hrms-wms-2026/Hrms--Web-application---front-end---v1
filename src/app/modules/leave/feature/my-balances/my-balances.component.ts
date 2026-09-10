@@ -11,7 +11,7 @@ import { NotificationService } from '../../../../core/services/notification.serv
 import { LeaveBalanceStore } from '../../state/leave-balance.store';
 import { LeaveRequestStore } from '../../state/leave-request.store';
 import { LeaveTypeStore } from '../../state/leave-type.store';
-import { CancelLeaveRequestRequest, LeaveRequestListItemResponse, SubmitLeaveRequestRequest } from '../../models/leave-request.model';
+import { CancelLeaveRequestRequest, LeaveRequestListItemResponse, LeaveUploadedDocument, SubmitLeaveRequestRequest } from '../../models/leave-request.model';
 import { LeaveBalanceResponse } from '../../models/leave-balance.model';
 import { LeaveBalanceListTableComponent } from '../../ui/leave-balance-list-table/leave-balance-list-table.component';
 import { LeaveCancelConfirmDialogComponent } from '../../ui/leave-cancel-confirm-dialog/leave-cancel-confirm-dialog.component';
@@ -41,6 +41,7 @@ export class MyBalancesComponent {
   readonly yearOptions: SelectOption[] = yearOptions();
   readonly selectedYear = computed(() => String(this.store.year()));
   readonly wizardOpen = signal(false);
+  readonly uploadedDocuments = signal<LeaveUploadedDocument[]>([]);
   readonly cancelTarget = signal<LeaveRequestListItemResponse | null>(null);
   readonly viewMode = signal<BalanceViewMode>('my');
 
@@ -106,7 +107,17 @@ export class MyBalancesComponent {
 
   closeWizard(): void {
     this.wizardOpen.set(false);
+    this.uploadedDocuments.set([]);
     this.requestStore.clearPreview();
+  }
+
+  async onDocumentSelected(file: File): Promise<void> {
+    const uploaded = await this.requestStore.uploadDocument(file);
+    if (uploaded) this.uploadedDocuments.update((docs) => [...docs, uploaded]);
+  }
+
+  onDocumentRemoved(id: string): void {
+    this.uploadedDocuments.update((docs) => docs.filter((doc) => doc.id !== id));
   }
 
   onPreviewRequested(payload: SubmitLeaveRequestRequest): void {

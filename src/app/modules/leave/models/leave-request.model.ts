@@ -68,6 +68,12 @@ export interface LeaveRequestListItemResponse {
   updatedAt: string | null;
 }
 
+/** Matches ONEVO.Application.Features.Storage.File.DTOs.Responses.FileRecordDto (camelCase). */
+export interface LeaveUploadedDocument {
+  id: string;
+  originalFileName: string;
+}
+
 /** Matches ONEVO.Api.Contracts.Leave.Requests.SubmitLeaveRequestRequest verbatim. Shared by preview and submit. */
 export interface SubmitLeaveRequestRequest {
   leaveTypeId: string;

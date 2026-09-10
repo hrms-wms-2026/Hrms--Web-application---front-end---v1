@@ -376,12 +376,14 @@ describe('GeneralSettingsComponent', () => {
     expect(fixture.componentInstance.form.errors?.['workTimePair']).toBe('both_required');
   });
 
-  it('form is invalid when workStartTime >= workEndTime', async () => {
+  it('form is valid for overnight 22:00-06:00 and shows the leave-day hours line', async () => {
     const fixture = await setupWithLoadedSettings();
-    fixture.componentInstance.form.controls.workStartTime.setValue('17:30');
-    fixture.componentInstance.form.controls.workEndTime.setValue('09:00');
-    expect(fixture.componentInstance.form.invalid).toBe(true);
-    expect(fixture.componentInstance.form.errors?.['workTimePair']).toBe('start_not_before_end');
+    fixture.componentInstance.form.controls.workStartTime.setValue('22:00');
+    fixture.componentInstance.form.controls.workEndTime.setValue('06:00');
+    fixture.componentInstance.form.controls.breakDurationMinutes.setValue('0');
+    expect(fixture.componentInstance.form.valid).toBe(true);
+    expect(fixture.componentInstance.isOvernightWindow()).toBe(true);
+    expect(fixture.componentInstance.getWorkingHoursSummary()).toContain('8.0 working hours');
   });
 
   it('form is valid when work times are cleared after being set', async () => {

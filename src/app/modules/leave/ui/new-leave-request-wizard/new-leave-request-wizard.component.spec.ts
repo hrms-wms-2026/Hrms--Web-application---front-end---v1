@@ -115,5 +115,6 @@ describe('NewLeaveRequestWizardComponent', () => {
     fixture.detectChanges();
     const note = fixture.nativeElement.querySelector('[data-testid="document-note"]') as HTMLElement;
     expect(note.textContent).toContain('3');
+    expect(fixture.nativeElement.querySelector('[data-testid="document-input"]')).toBeTruthy();
   });
 });

@@ -64,8 +64,20 @@
       </label>
       @if (selectedLeaveType()?.requiresDocument) {
         <p class="nlw-muted" data-testid="document-note">
-          A supporting document is required when this leave is {{ selectedLeaveType()?.documentRequiredAfterDays ?? 1 }} days or longer. File upload is not wired yet — the server will block submit if the request is long enough.
+          A supporting document is required when this leave is {{ selectedLeaveType()?.documentRequiredAfterDays ?? 1 }} days or longer.
         </p>
+        <label class="nlw-field">
+          <span>Supporting document</span>
+          <input type="file" data-testid="document-input" accept=".pdf,.png,.jpg,.jpeg,.doc,.docx,application/pdf,image/png,image/jpeg" [disabled]="uploadingDocument" (change)="onDocumentPicked($event)" />
+        </label>
+        @if (uploadingDocument) { <p class="nlw-muted">Uploading…</p> }
+        @if (documentUploadError) { <p class="nlw-error">{{ documentUploadError }}</p> }
+        @for (doc of uploadedDocuments; track doc.id) {
+          <p class="nlw-file">
+            {{ doc.originalFileName }}
+            <button type="button" class="nlw-secondary" (click)="documentRemoved.emit(doc.id)">Remove</button>
+          </p>
+        }
       }
     }
 

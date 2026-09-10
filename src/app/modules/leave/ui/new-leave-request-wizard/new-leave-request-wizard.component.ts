@@ -5,7 +5,7 @@ import { ModalComponent } from '../../../../shared/ui/modal/modal.component';
 import { DatePickerComponent } from '../../../../shared/ui/date-picker/date-picker.component';
 import { EmployeePickerComponent } from '../../../work/ui/employee-picker/employee-picker.component';
 import { LeaveBalanceResponse } from '../../models/leave-balance.model';
-import { LeaveRequestResponse, SubmitLeaveRequestOnBehalfRequest, SubmitLeaveRequestRequest } from '../../models/leave-request.model';
+import { LeaveRequestResponse, LeaveUploadedDocument, SubmitLeaveRequestOnBehalfRequest, SubmitLeaveRequestRequest } from '../../models/leave-request.model';
 import { LeaveTypeResponse } from '../../models/leave-type.model';
 
 export interface LeaveRequestDraft {
@@ -40,8 +40,13 @@ export class NewLeaveRequestWizardComponent {
   @Input() previewError: string | null = null;
   @Input() submitting = false;
   @Input() submitError: string | null = null;
+  @Input() uploadedDocuments: readonly LeaveUploadedDocument[] = [];
+  @Input() uploadingDocument = false;
+  @Input() documentUploadError: string | null = null;
   @Output() previewRequested = new EventEmitter<SubmitLeaveRequestRequest>();
   @Output() submitRequested = new EventEmitter<SubmitLeaveRequestRequest | SubmitLeaveRequestOnBehalfRequest>();
+  @Output() documentSelected = new EventEmitter<File>();
+  @Output() documentRemoved = new EventEmitter<string>();
   @Output() closed = new EventEmitter<void>();
 
   readonly step = signal(1);
@@ -126,6 +131,13 @@ export class NewLeaveRequestWizardComponent {
     this.closed.emit();
   }
 
+  onDocumentPicked(event: Event): void {
+    const input = event.target as HTMLInputElement;
+    const file = input.files?.[0];
+    input.value = '';
+    if (file) this.documentSelected.emit(file);
+  }
+
   private toRequest(): SubmitLeaveRequestRequest {
     const d = this.draft();
     return {
@@ -134,7 +146,7 @@ export class NewLeaveRequestWizardComponent {
       endDate: d.endDate,
       halfDayPeriod: d.halfDayPeriod,
       reason: d.reason,
-      fileRecordIds: []
+      fileRecordIds: this.uploadedDocuments.map((doc) => doc.id)
     };
   }
 }

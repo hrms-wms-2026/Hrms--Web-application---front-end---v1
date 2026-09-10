@@ -39,6 +39,15 @@ describe('LeaveRequestApiService', () => {
 
   afterEach(() => httpMock.verify());
 
+  it('uploads a supporting document as multipart', () => {
+    const file = new File(['note'], 'note.pdf', { type: 'application/pdf' });
+    service.uploadDocument(file).subscribe((res) => expect(res.id).toBe('file-1'));
+    const req = httpMock.expectOne(`${environment.apiUrl}/leave/requests/documents`);
+    expect(req.request.method).toBe('POST');
+    expect(req.request.body).toBeInstanceOf(FormData);
+    req.flush({ id: 'file-1', originalFileName: 'note.pdf' });
+  });
+
   it('previews a request', () => {
     service.preview(payload).subscribe((res) => expect(res).toEqual(mockResponse));
     const req = httpMock.expectOne(`${environment.apiUrl}/leave/requests/preview`);

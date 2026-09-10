@@ -17,7 +17,7 @@ import { LeaveTypeStore } from '../../state/leave-type.store';
 import { LeaveRequestStore } from '../../state/leave-request.store';
 import { LeaveBalanceAuditStore } from '../../state/leave-balance-audit.store';
 import { AdjustEntitlementRequest, CreateManualEntitlementRequest, GenerateEntitlementsRequest, LeaveEntitlementResponse, RecalculateEntitlementRequest } from '../../models/leave-entitlement.model';
-import { SubmitLeaveRequestOnBehalfRequest, SubmitLeaveRequestRequest } from '../../models/leave-request.model';
+import { LeaveUploadedDocument, SubmitLeaveRequestOnBehalfRequest, SubmitLeaveRequestRequest } from '../../models/leave-request.model';
 import { LeaveEntitlementListTableComponent } from '../../ui/leave-entitlement-list-table/leave-entitlement-list-table.component';
 import { LeaveEntitlementGenerateModalComponent } from '../../ui/leave-entitlement-generate-modal/leave-entitlement-generate-modal.component';
 import { LeaveEntitlementManualFormModalComponent } from '../../ui/leave-entitlement-manual-form-modal/leave-entitlement-manual-form-modal.component';
@@ -56,6 +56,7 @@ export class EntitlementsManagementComponent {
   readonly adjustTarget = signal<LeaveEntitlementResponse | null>(null);
   readonly adjustNeedsConfirmation = signal(false);
   readonly requestWizardOpen = signal(false);
+  readonly uploadedDocuments = signal<LeaveUploadedDocument[]>([]);
   readonly yearOptions: SelectOption[] = yearOptions();
   readonly selectedYear = computed(() => String(this.entitlementStore.year()));
   readonly entitlementSummary = computed(() => summarizeEntitlements(this.entitlementStore.items()));
@@ -202,7 +203,14 @@ export class EntitlementsManagementComponent {
   }
 
   openRequestWizard(): void { this.requestWizardOpen.set(true); }
-  closeRequestWizard(): void { this.requestWizardOpen.set(false); this.requestStore.clearPreview(); }
+  closeRequestWizard(): void { this.requestWizardOpen.set(false); this.uploadedDocuments.set([]); this.requestStore.clearPreview(); }
+  async onDocumentSelected(file: File): Promise<void> {
+    const uploaded = await this.requestStore.uploadDocument(file);
+    if (uploaded) this.uploadedDocuments.update((docs) => [...docs, uploaded]);
+  }
+  onDocumentRemoved(id: string): void {
+    this.uploadedDocuments.update((docs) => docs.filter((doc) => doc.id !== id));
+  }
   onRequestPreview(payload: SubmitLeaveRequestRequest): void { void this.requestStore.preview(payload); }
 
   async onRequestSubmit(payload: SubmitLeaveRequestRequest | SubmitLeaveRequestOnBehalfRequest): Promise<void> {

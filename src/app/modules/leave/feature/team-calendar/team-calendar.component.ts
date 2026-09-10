@@ -7,7 +7,7 @@ import { LeaveCalendarStore } from '../../state/leave-calendar.store';
 import { LeaveBalanceStore } from '../../state/leave-balance.store';
 import { LeaveRequestStore } from '../../state/leave-request.store';
 import { LeaveTypeStore } from '../../state/leave-type.store';
-import { SubmitLeaveRequestRequest } from '../../models/leave-request.model';
+import { LeaveUploadedDocument, SubmitLeaveRequestRequest } from '../../models/leave-request.model';
 import { LeaveCalendarGridComponent } from '../../ui/leave-calendar-grid/leave-calendar-grid.component';
 import { LeaveCalendarDayDetailComponent } from '../../ui/leave-calendar-day-detail/leave-calendar-day-detail.component';
 import { NewLeaveRequestWizardComponent } from '../../ui/new-leave-request-wizard/new-leave-request-wizard.component';
@@ -29,6 +29,7 @@ export class TeamCalendarComponent {
   readonly canRequestLeave = computed(() => this.permissionService.hasPermission('leave:read-own'));
   readonly detailOpen = signal(false);
   readonly wizardOpen = signal(false);
+  readonly uploadedDocuments = signal<LeaveUploadedDocument[]>([]);
   readonly requestDate = signal<string | null>(null);
   readonly selectedDate = signal<string | null>(null);
   readonly selectedDay = computed(() =>
@@ -89,7 +90,17 @@ export class TeamCalendarComponent {
   closeWizard(): void {
     this.wizardOpen.set(false);
     this.requestDate.set(null);
+    this.uploadedDocuments.set([]);
     this.requestStore.clearPreview();
+  }
+
+  async onDocumentSelected(file: File): Promise<void> {
+    const uploaded = await this.requestStore.uploadDocument(file);
+    if (uploaded) this.uploadedDocuments.update((docs) => [...docs, uploaded]);
+  }
+
+  onDocumentRemoved(id: string): void {
+    this.uploadedDocuments.update((docs) => docs.filter((doc) => doc.id !== id));
   }
 
   onPreviewRequested(payload: SubmitLeaveRequestRequest): void {
