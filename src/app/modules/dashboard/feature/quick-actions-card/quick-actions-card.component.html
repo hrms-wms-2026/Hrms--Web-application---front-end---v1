@@ -1,56 +1,55 @@
-<app-card title="Quick Actions">
+<section class="rounded-2xl border border-slate-200/80 bg-white p-5 shadow-xs" data-purpose="quick-actions">
+  <h2 class="text-sm font-bold text-slate-800 mb-3.5">Quick Actions</h2>
   <div class="grid grid-cols-3 gap-2.5">
-    <!-- Break Action Tile -->
+    <!-- Action 1: Start Break -->
     <button
       type="button"
       data-testid="quick-action-break"
-      class="group flex flex-col items-center justify-center gap-1.5 rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] p-3 text-center transition hover:border-[var(--color-success)] hover:shadow-2xs disabled:cursor-not-allowed disabled:opacity-50 cursor-pointer"
+      class="group flex flex-col items-center justify-center p-3 rounded-xl border border-slate-200/70 hover:border-emerald-300 hover:bg-emerald-50/30 transition-all text-center cursor-pointer disabled:cursor-not-allowed disabled:opacity-50"
       [disabled]="breakDisabled() || breakBusy()"
       (click)="toggleBreak()"
     >
-      <span class="flex h-9 w-9 items-center justify-center rounded-lg bg-[var(--color-success-subtle,var(--color-surface-secondary))] text-[var(--color-success)] transition group-hover:scale-105 shadow-2xs">
-        <svg viewBox="0 0 20 20" fill="currentColor" class="h-4.5 w-4.5">
-          <path d="M4 3a1 1 0 00-1 1v7a4 4 0 004 4h4a4 4 0 004-4v-1h.5a2.5 2.5 0 000-5H15V4a1 1 0 00-1-1H4zm11 6h.5a.5.5 0 010 1H15V9z" />
+      <div class="w-10 h-10 rounded-xl bg-emerald-50 text-emerald-600 flex items-center justify-center mb-2 group-hover:scale-105 transition-transform shadow-2xs">
+        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path d="M18 8h1a4 4 0 010 8h-1M2 8h16v9a4 4 0 01-4 4H6a4 4 0 01-4-4V8zM6 1v3M10 1v3M14 1v3" stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8"></path>
         </svg>
-      </span>
-      <span class="text-xs font-semibold text-[var(--color-text-primary)] group-hover:text-[var(--color-success)]" data-testid="quick-action-break-label">
+      </div>
+      <span class="text-xs font-bold text-slate-800 leading-tight" data-testid="quick-action-break-label">
         {{ breakBusy() ? 'Working…' : breakLabel() }}
       </span>
-      <span class="text-2xs text-[var(--color-text-secondary)]">Take a break</span>
+      <span class="text-[10px] text-slate-400 mt-0.5">Take a pause</span>
     </button>
 
-    <!-- Insights Action Tile -->
+    <!-- Action 2: My Insights -->
     <a
       routerLink="/dashboard/insights"
       data-testid="quick-action-insights"
-      class="group flex flex-col items-center justify-center gap-1.5 rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] p-3 text-center transition hover:border-[var(--color-accent)] hover:shadow-2xs cursor-pointer"
+      class="group flex flex-col items-center justify-center p-3 rounded-xl border border-slate-200/70 hover:border-blue-300 hover:bg-blue-50/30 transition-all text-center cursor-pointer"
     >
-      <span class="flex h-9 w-9 items-center justify-center rounded-lg bg-[var(--color-accent-subtle)] text-[var(--color-accent)] transition group-hover:scale-105 shadow-2xs">
-        <svg viewBox="0 0 20 20" fill="currentColor" class="h-4.5 w-4.5">
-          <path d="M2 11a1 1 0 011-1h1a1 1 0 011 1v6a1 1 0 01-1 1H3a1 1 0 01-1-1v-6zM8 7a1 1 0 011-1h1a1 1 0 011 1v10a1 1 0 01-1 1H9a1 1 0 01-1-1V7zM14 4a1 1 0 011-1h1a1 1 0 011 1v13a1 1 0 01-1 1h-1a1 1 0 01-1-1V4z" />
+      <div class="w-10 h-10 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center mb-2 group-hover:scale-105 transition-transform shadow-2xs">
+        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8"></path>
         </svg>
-      </span>
-      <span class="text-xs font-semibold text-[var(--color-text-primary)] group-hover:text-[var(--color-accent)]">My Insights</span>
-      <span class="text-2xs text-[var(--color-text-secondary)]">View analytics</span>
+      </div>
+      <span class="text-xs font-bold text-slate-800 leading-tight">My Insights</span>
+      <span class="text-[10px] text-slate-400 mt-0.5">View analytics</span>
     </a>
 
-    <!-- Activity Timeline Action Tile -->
+    <!-- Action 3: Activity Timeline -->
     <a
       routerLink="/dashboard/activity-timeline"
       data-testid="quick-action-activity-timeline"
-      class="group flex flex-col items-center justify-center gap-1.5 rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] p-3 text-center transition hover:border-[var(--color-accent)] hover:shadow-2xs cursor-pointer"
+      class="group flex flex-col items-center justify-center p-3 rounded-xl border border-slate-200/70 hover:border-purple-300 hover:bg-purple-50/30 transition-all text-center cursor-pointer"
     >
-      <span class="flex h-9 w-9 items-center justify-center rounded-lg bg-[var(--color-surface-secondary)] text-[var(--color-text-secondary)] transition group-hover:scale-105 shadow-2xs">
-        <svg viewBox="0 0 20 20" fill="currentColor" class="h-4.5 w-4.5">
-          <path
-            fill-rule="evenodd"
-            d="M10 18a8 8 0 100-16 8 8 0 000 16zm1-12a1 1 0 10-2 0v4a1 1 0 00.293.707l2.828 2.829a1 1 0 101.415-1.415L11 9.586V6z"
-            clip-rule="evenodd"
-          />
+      <div class="w-10 h-10 rounded-xl bg-purple-50 text-purple-600 flex items-center justify-center mb-2 group-hover:scale-105 transition-transform shadow-2xs">
+        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <circle cx="12" cy="12" r="9" stroke-width="1.8"></circle>
+          <path d="M12 7v5l3 2" stroke-linecap="round" stroke-width="1.8"></path>
         </svg>
-      </span>
-      <span class="text-xs font-semibold text-[var(--color-text-primary)] group-hover:text-[var(--color-accent)]">Activity Timeline</span>
-      <span class="text-2xs text-[var(--color-text-secondary)]">View full timeline</span>
+      </div>
+      <span class="text-xs font-bold text-slate-800 leading-tight">Activity Timeline</span>
+      <span class="text-[10px] text-slate-400 mt-0.5">Full activity</span>
     </a>
   </div>
-</app-card>
+</section>
+

@@ -41,7 +41,12 @@ export class NotificationNavigationService {
 
     try {
       const nav = await firstValueFrom(this.taskApi.getNotificationNavigation(type, id));
-      const commands = ['/work', nav.projectId, 'milestones', nav.objectiveId, nav.targetTab];
+      // 'board' is a sibling of 'milestones/:milestoneId' (/work/:id/board), not nested under
+      // it - only 'approvals' actually lives under milestones/:objectiveId.
+      const commands =
+        nav.targetTab === 'board'
+          ? ['/work', nav.projectId, 'board']
+          : ['/work', nav.projectId, 'milestones', nav.objectiveId, nav.targetTab];
       const extras =
         nav.targetTab === 'board' && nav.taskId
           ? { queryParams: { highlightTaskId: nav.taskId } }
