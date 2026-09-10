@@ -10,6 +10,9 @@ import { SessionExchangeRequestDto } from '../models/dto/session-exchange-reques
 import { InvitationPreviewDto } from '../models/dto/invitation-preview.dto';
 import { PublishedLegalDocumentDto } from '../models/dto/published-legal-document.dto';
 import { AcceptEmployeeInvitationRequestDto } from '../models/dto/accept-employee-invitation-request.dto';
+import { ForgotPasswordRequestDto } from '../models/dto/forgot-password-request.dto';
+import { ResetPasswordRequestDto } from '../models/dto/reset-password-request.dto';
+import { MessageResponseDto } from '../models/dto/message-response.dto';
 
 import { getRootHostname } from '../utils/tenant-redirect';
 
@@ -94,5 +97,25 @@ export class AuthApiService {
    */
   logout(): Observable<void> {
     return this.http.post<void>(`${environment.apiUrl}${API_ENDPOINTS.auth.logout}`, {});
+  }
+
+  /**
+   * Anonymous, whatever host it's called from: AuthPasswordController branches server-side on
+   * tenant vs. base host context, so unlike login() this must NOT retarget to the root/system host.
+   * Always resolves with the same generic message regardless of whether the email exists.
+   */
+  forgotPassword(email: string): Observable<MessageResponseDto> {
+    const payload: ForgotPasswordRequestDto = { email };
+    return this.http.post<MessageResponseDto>(`${environment.apiUrl}${API_ENDPOINTS.auth.forgotPassword}`, payload);
+  }
+
+  /**
+   * Anonymous, tenant-host-only in practice: the emailed reset link lands on the tenant's own
+   * subdomain (see EmailTemplateRenderer.ApplyTenantSlug), so this deliberately does not retarget
+   * to the root/system host like login() does.
+   */
+  resetPassword(token: string, newPassword: string): Observable<MessageResponseDto> {
+    const payload: ResetPasswordRequestDto = { token, newPassword };
+    return this.http.post<MessageResponseDto>(`${environment.apiUrl}${API_ENDPOINTS.auth.resetPassword}`, payload);
   }
 }

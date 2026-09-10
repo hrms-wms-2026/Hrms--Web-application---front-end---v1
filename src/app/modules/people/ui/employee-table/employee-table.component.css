@@ -1,10 +1,10 @@
 .emp-table-container {
   width: 100%;
-  border-radius: 12px;
-  border: 1px solid var(--color-border);
-  background: var(--color-surface);
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.03);
-  overflow: hidden;
+  background: transparent;
+  border: none;
+  box-shadow: none;
+  border-radius: 0;
+  overflow: visible;
 }
 
 .emp-table {
@@ -17,13 +17,16 @@
 
 .emp-table th {
   padding: 0.75rem 1rem;
-  background: var(--color-surface-secondary);
+  background: transparent;
   color: var(--color-text-secondary);
   font-size: 0.75rem;
   font-weight: 600;
   text-transform: uppercase;
   letter-spacing: 0.03em;
   border-bottom: 1px solid var(--color-border);
+  border-top: none;
+  border-left: none;
+  border-right: none;
   user-select: none;
 }
 
@@ -59,7 +62,7 @@
 }
 
 .emp-table td {
-  padding: 0.75rem 1rem;
+  padding: 0.85rem 1rem;
   vertical-align: middle;
 }
 
@@ -92,13 +95,13 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 34px;
-  height: 34px;
+  width: 36px;
+  height: 36px;
   border-radius: 50%;
   background: color-mix(in srgb, var(--color-sidebar-active-bg, #2563eb) 12%, transparent);
   color: var(--color-sidebar-active-bg, #2563eb);
   font-weight: 700;
-  font-size: 0.75rem;
+  font-size: 0.78125rem;
   flex-shrink: 0;
 }
 
@@ -154,6 +157,40 @@
   min-width: 0;
 }
 
+.emp-name-row {
+  display: flex;
+  align-items: center;
+  gap: 0.45rem;
+  min-width: 0;
+}
+
+.emp-name {
+  font-weight: 600;
+  color: var(--color-text-primary);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.emp-number-pill {
+  font-size: 0.6875rem;
+  font-weight: 600;
+  padding: 0.05rem 0.35rem;
+  border-radius: 4px;
+  background: var(--color-surface-secondary);
+  color: var(--color-text-secondary);
+  border: 1px solid var(--color-border);
+  flex-shrink: 0;
+}
+
+.emp-email {
+  font-size: 0.75rem;
+  color: var(--color-text-secondary);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
 .emp-attention-indicator,
 .emp-attendance-status-label,
 .emp-break-overage-marker {
@@ -193,22 +230,6 @@
 
 .emp-break-overage-marker {
   margin-top: 0.1rem;
-}
-
-.emp-name {
-  font-weight: 600;
-  color: var(--color-text-primary);
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.emp-email {
-  font-size: 0.75rem;
-  color: var(--color-text-secondary);
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
 }
 
 /* Role & Position cell */
@@ -264,6 +285,28 @@
 }
 
 /* Reporting Manager cell */
+.emp-manager-wrap {
+  display: flex;
+  align-items: center;
+  gap: 0.45rem;
+  min-width: 0;
+}
+
+.emp-manager-avatar {
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  background: var(--color-surface-secondary);
+  border: 1px solid var(--color-border);
+  font-size: 0.625rem;
+  font-weight: 650;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--color-text-secondary);
+  flex-shrink: 0;
+}
+
 .emp-manager-text {
   color: var(--color-text-secondary);
   overflow: hidden;

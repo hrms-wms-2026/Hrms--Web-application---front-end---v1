@@ -74,10 +74,40 @@
   border-radius: 0 0 16px 0;
   overflow-y: auto;
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.03);
+  scrollbar-width: thin;
+  scrollbar-color: rgba(148, 163, 184, 0.35) transparent;
+}
+
+.main-content::-webkit-scrollbar {
+  width: 5px;
+  height: 5px;
+}
+
+.main-content::-webkit-scrollbar-button {
+  display: none;
+  width: 0;
+  height: 0;
+}
+
+.main-content::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.main-content::-webkit-scrollbar-thumb {
+  background: rgba(148, 163, 184, 0.35);
+  border-radius: 9999px;
+}
+
+.main-content::-webkit-scrollbar-thumb:hover {
+  background: rgba(148, 163, 184, 0.6);
 }
 
 .main-layout--has-sub-sidebar .main-content {
   margin-left: 0;
+}
+
+.main-content > * {
+  display: block;
 }
 
 .main-content:focus-visible {
