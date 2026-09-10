@@ -228,6 +228,25 @@ describe('CalendarHourGridComponent', () => {
       expect(click).toHaveBeenCalledWith({ date: '2026-09-01', hour: 2 });
     });
 
+    it('maps the pointer against the full 24h stack, not the clipped scroll viewport', () => {
+      // Real DOM: the day column is pinned to 1152px but sits in a max-h-[70vh] scroll
+      // container, so getBoundingClientRect().height is the visible slice (~511) while
+      // scrollHeight is the true 1152. minutesAt must divide by the latter.
+      const spy = vi.fn();
+      fixture.componentInstance.slotRange.subscribe(spy);
+      const el = slots();
+      vi.spyOn(el, 'getBoundingClientRect').mockReturnValue({
+        top: 0, bottom: 511, left: 0, right: 100, width: 100, height: 511, x: 0, y: 0, toJSON: () => ({})
+      } as DOMRect);
+      Object.defineProperty(el, 'scrollHeight', { value: 1152, configurable: true });
+
+      el.dispatchEvent(ptr('pointerdown', 576)); // 576/1152 = 0.5 -> 720 (12:00)
+      document.dispatchEvent(ptr('pointermove', 720)); // 720/1152 = 0.625 -> 900 (15:00)
+      document.dispatchEvent(ptr('pointerup', 720));
+
+      expect(spy).toHaveBeenCalledWith({ date: '2026-09-01', startMinutes: 720, endMinutes: 900 });
+    });
+
     it('renders a selection block while dragging and clears it on release', () => {
       slots().dispatchEvent(ptr('pointerdown', 120));
       document.dispatchEvent(ptr('pointermove', 240));

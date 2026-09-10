@@ -175,8 +175,12 @@ export class CalendarHourGridComponent {
 
   private minutesAt(clientY: number, columnEl: HTMLElement): number {
     const rect = columnEl.getBoundingClientRect();
-    if (!rect.height) return 0;
-    const fraction = Math.min(1, Math.max(0, (clientY - rect.top) / rect.height));
+    // scrollHeight is the full 24-hour stack (24 x h-12); rect.height is only the
+    // slice visible inside the max-h-[70vh] scroll viewport. The pointer maps to
+    // the former - `rect.top` already tracks the internal scroll.
+    const fullHeight = columnEl.scrollHeight || rect.height;
+    if (!fullHeight) return 0;
+    const fraction = Math.min(1, Math.max(0, (clientY - rect.top) / fullHeight));
     const snapped = Math.round((fraction * DAY_MINUTES) / SNAP_MINUTES) * SNAP_MINUTES;
     return Math.min(DAY_MINUTES - SNAP_MINUTES, Math.max(0, snapped));
   }

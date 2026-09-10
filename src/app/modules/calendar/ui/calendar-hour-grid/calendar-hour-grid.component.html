@@ -22,7 +22,7 @@
   </div>
 
   <div class="flex max-h-[70vh] overflow-y-auto">
-    <div class="w-14 shrink-0 border-r border-[var(--color-border)] bg-[var(--color-surface)]">
+    <div class="h-[72rem] w-14 shrink-0 border-r border-[var(--color-border)] bg-[var(--color-surface)]">
       @for (hour of hours; track hour) {
         <div data-testid="calendar-hour-label" class="h-12 border-b border-[var(--color-border)] px-1 text-[10px] text-[var(--color-text-secondary)]">
           {{ hour === 0 ? '12 AM' : hour < 12 ? hour + ' AM' : hour === 12 ? '12 PM' : (hour - 12) + ' PM' }}
@@ -31,7 +31,7 @@
     </div>
 
     @for (column of columns(); track column.date) {
-      <div data-testid="calendar-hour-day-column" [attr.data-date]="column.date" class="relative flex-1 border-r border-[var(--color-border)] last:border-r-0">
+      <div data-testid="calendar-hour-day-column" [attr.data-date]="column.date" class="relative h-[72rem] flex-1 border-r border-[var(--color-border)] last:border-r-0">
         <div
           data-testid="calendar-hour-slots"
           class="absolute inset-0 touch-none select-none"
