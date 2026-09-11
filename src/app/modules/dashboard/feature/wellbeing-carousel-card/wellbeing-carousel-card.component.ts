@@ -1,5 +1,4 @@
 import { ChangeDetectionStrategy, Component, OnDestroy, OnInit, computed, effect, inject, signal } from '@angular/core';
-import { CardComponent } from '../../../../shared/ui/card/card.component';
 import { TimeTrackingStore } from '../../../attendance/state/time-tracking.store';
 import { FocusStatusApiService } from '../../data-access/focus-status-api.service';
 import { FocusStatus } from '../../models/focus-status.model';
@@ -49,7 +48,7 @@ const WELLBEING_TIPS: readonly WellbeingCard[] = [
 @Component({
   selector: 'app-wellbeing-carousel-card',
   standalone: true,
-  imports: [CardComponent],
+  imports: [],
   templateUrl: './wellbeing-carousel-card.component.html',
   changeDetection: ChangeDetectionStrategy.OnPush
 })
