@@ -13,6 +13,9 @@
             <span class="h-2 w-2 shrink-0 rounded-full" [style.background-color]="event.color || 'var(--color-accent)'"></span>
             <span class="text-xs text-[var(--color-text-secondary)]">{{ event.startDate.slice(11, 16) }}</span>
             <span class="text-[var(--color-text-primary)]">{{ event.title }}</span>
+            @if (event.hasConflict) {
+              <span data-testid="calendar-conflict-marker" class="h-1.5 w-1.5 shrink-0 rounded-full bg-[var(--color-danger)]" aria-hidden="true"></span>
+            }
           </button>
         }
       </div>

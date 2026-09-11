@@ -22,6 +22,7 @@
   --color-warning: #d97706;
   --color-warning-subtle: #fef3c7;
   --color-warning-text: #92400e;
+  --color-greeting-card-border: #e5edfa;
   --radius-content: 12px;
 
   /* Glassmorphism & backdrop tokens */
@@ -54,6 +55,7 @@ html.dark {
   --color-warning: #f59e0b;
   --color-warning-subtle: #451a03;
   --color-warning-text: #fcd34d;
+  --color-greeting-card-border: rgba(255, 255, 255, 0.1);
   --color-glass-bg: rgba(18, 18, 20, 0.72);
   --color-glass-border: rgba(255, 255, 255, 0.12);
   --color-card-shadow: rgba(0, 0, 0, 0.5);

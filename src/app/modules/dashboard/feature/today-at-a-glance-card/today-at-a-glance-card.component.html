@@ -1,94 +1,168 @@
-<app-card>
-  <app-dashboard-greeting />
-  <div class="mb-4 flex justify-end">
-    <a
-      routerLink="/dashboard/activity-timeline"
-      class="inline-flex items-center gap-1.5 text-xs font-semibold text-[var(--color-accent)] transition-opacity hover:opacity-80"
-      data-testid="today-at-a-glance-view-timeline-link"
-    >
-      <span>View full timeline</span>
-      <svg viewBox="0 0 16 16" fill="currentColor" class="h-3.5 w-3.5" aria-hidden="true">
-        <path
-          fill-rule="evenodd"
-          d="M2 8a.75.75 0 01.75-.75h8.69L8.22 4.03a.75.75 0 011.06-1.06l4.5 4.5a.75.75 0 010 1.06l-4.5 4.5a.75.75 0 01-1.06-1.06l3.22-3.22H2.75A.75.75 0 012 8z"
-          clip-rule="evenodd"
-        />
-      </svg>
-    </a>
+<section
+  [class]="timeOfDayInfo().cardBgClass + ' relative flex flex-col justify-between overflow-hidden rounded-2xl border border-[var(--color-greeting-card-border)] bg-[var(--color-surface)] p-5 shadow-xs transition-all'"
+  data-purpose="greeting-hero"
+>
+  <!-- Subtle Vector Illustration Background from photos 4 agent (blended softly) -->
+  <div class="pointer-events-none absolute inset-0 overflow-hidden rounded-2xl">
+    <img
+      [src]="timeOfDayInfo().illustrationSrc"
+      alt=""
+      aria-hidden="true"
+      class="h-full w-full object-cover object-center opacity-25 mix-blend-multiply transition-opacity duration-700 select-none"
+    />
+    <!-- Subtle gradient overlay to guarantee contrast & readability -->
+    <div class="absolute inset-0 bg-gradient-to-b from-white/40 via-white/70 to-white/95"></div>
   </div>
 
-  @if (today(); as data) {
-    <div class="flex flex-wrap items-center gap-6">
-      <div class="flex items-center gap-3">
-        @if (data.attendanceStatus === 'clocked_in' || data.attendanceStatus === 'on_break') {
-          <span class="flex h-11 w-11 items-center justify-center rounded-full bg-[var(--color-success-subtle,var(--color-surface-secondary))] text-[var(--color-success)]">
-            <svg viewBox="0 0 20 20" fill="currentColor" class="h-6 w-6">
-              <path
-                fill-rule="evenodd"
-                d="M16.704 4.153a.75.75 0 01.143 1.052l-8 10.5a.75.75 0 01-1.127.075l-4.5-4.5a.75.75 0 011.06-1.06l3.894 3.893 7.48-9.817a.75.75 0 011.05-.143z"
-                clip-rule="evenodd"
-              />
-            </svg>
+  <div class="relative z-10 flex flex-col justify-between h-full">
+    <div>
+      <!-- Top Row: Timeline Pill & Glowing Sun / Time Emoji -->
+      <div class="mb-3 flex items-center justify-between">
+        <a
+          routerLink="/dashboard/activity-timeline"
+          data-testid="today-at-a-glance-view-timeline-link"
+          class="inline-flex items-center gap-1.5 rounded-full border border-blue-100 bg-white/90 px-3 py-1 text-xs font-semibold text-blue-600 shadow-xs backdrop-blur-xs transition-all hover:bg-white hover:shadow-sm"
+        >
+          <span>Timeline</span>
+          <svg class="h-3 w-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path d="M14 5l7 7m0 0l-7 7m7-7H3" stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5"></path>
+          </svg>
+        </a>
+
+        <!-- Glowing Sun/Time Indicator -->
+        <div class="relative flex items-center justify-center">
+          <div [class]="'absolute h-10 w-10 rounded-full blur-md ' + timeOfDayInfo().glowClass"></div>
+          <span class="relative text-xl leading-none select-none" role="img" [attr.aria-label]="timeOfDayInfo().timeOfDay">
+            {{ timeOfDayInfo().emoji }}
           </span>
-        } @else {
-          <span class="flex h-11 w-11 items-center justify-center rounded-full bg-[var(--color-surface-secondary)] text-[var(--color-text-secondary)]">
-            <svg viewBox="0 0 20 20" fill="currentColor" class="h-6 w-6">
-              <path
-                fill-rule="evenodd"
-                d="M10 18a8 8 0 100-16 8 8 0 000 16zm1-12a1 1 0 10-2 0v4a1 1 0 00.293.707l2.828 2.829a1 1 0 101.415-1.415L11 9.586V6z"
-                clip-rule="evenodd"
-              />
-            </svg>
-          </span>
-        }
-        <div>
-          <p class="text-base font-semibold text-[var(--color-text-primary)]">{{ statusLabel() }}</p>
-          @if (clockInTimeLabel(); as time) {
-            <p class="text-sm text-[var(--color-text-secondary)]">Since {{ time }}</p>
-          }
         </div>
       </div>
 
-      <div>
-        <p class="text-sm text-[var(--color-text-secondary)]">Worked time</p>
-        <p class="text-3xl font-semibold text-[var(--color-text-primary)]">{{ workedTimeLabel() }}</p>
-      </div>
+      <!-- Greeting Component: Title, Subtitle, and Date -->
+      <app-dashboard-greeting />
+
+      @if (today(); as data) {
+        <!-- Status Cards (On Break & Worked Time) -->
+        <div class="mt-4 grid grid-cols-2 gap-2.5">
+          <!-- Attendance Status Box -->
+          <div class="flex items-center gap-2.5 rounded-xl border border-emerald-100 bg-white/90 p-3 shadow-xs backdrop-blur-xs">
+            @if (data.attendanceStatus === 'clocked_in' || data.attendanceStatus === 'on_break') {
+              <div class="relative flex shrink-0 items-center justify-center">
+                <div class="flex h-7 w-7 items-center justify-center rounded-xl bg-emerald-50 text-emerald-600">
+                  <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path d="M5 13l4 4L19 7" stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5"></path>
+                  </svg>
+                </div>
+                <span class="absolute -right-0.5 -top-0.5 h-2.5 w-2.5 rounded-full border-2 border-white bg-emerald-500"></span>
+              </div>
+              <div class="min-w-0">
+                <p class="truncate text-xs font-bold leading-none text-slate-800">{{ statusLabel() }}</p>
+                @if (clockInTimeLabel(); as time) {
+                  <p class="mt-1 truncate text-[10px] text-slate-400">Since {{ time }}</p>
+                }
+              </div>
+            } @else {
+              <div class="flex h-7 w-7 shrink-0 items-center justify-center rounded-xl bg-slate-50 text-slate-400">
+                <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <circle cx="12" cy="12" r="9" stroke-width="2"></circle>
+                  <path d="M12 7v5l3 2" stroke-linecap="round" stroke-width="2"></path>
+                </svg>
+              </div>
+              <div class="min-w-0">
+                <p class="truncate text-xs font-bold leading-none text-slate-800">{{ statusLabel() }}</p>
+                <p class="mt-1 truncate text-[10px] text-slate-400">Shift not active</p>
+              </div>
+            }
+          </div>
+
+          <!-- Worked Time Box -->
+          <div class="flex items-center justify-between rounded-xl border border-blue-100 bg-white/90 p-3 shadow-xs backdrop-blur-xs">
+            <div>
+              <p class="text-[10px] font-bold uppercase tracking-wider text-slate-400">Worked Time</p>
+              <p class="mt-0.5 text-lg font-bold leading-tight text-slate-800">{{ workedTimeLabel() }}</p>
+            </div>
+            <div class="flex h-7 w-7 shrink-0 items-center justify-center rounded-xl bg-blue-50 text-blue-500">
+              <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <circle cx="12" cy="12" r="9" stroke-width="2"></circle>
+                <path d="M12 7v5l3 2" stroke-linecap="round" stroke-width="2"></path>
+              </svg>
+            </div>
+          </div>
+        </div>
+      } @else if (loading()) {
+        <div class="mt-4 grid grid-cols-2 gap-2.5 animate-pulse" data-testid="today-at-a-glance-skeleton">
+          <div class="h-16 rounded-xl bg-slate-100"></div>
+          <div class="h-16 rounded-xl bg-slate-100"></div>
+        </div>
+      }
     </div>
 
-    @if (timelineSegments().length > 0) {
-      <div class="mt-6">
-        <p class="mb-2 text-sm font-medium text-[var(--color-text-secondary)]">Today's activity</p>
-        <div class="flex h-3 w-full overflow-hidden rounded-full bg-[var(--color-surface-secondary)]" data-testid="today-activity-timeline">
-          @for (segment of timelineSegments(); track $index) {
-            <div
-              data-testid="today-activity-segment"
-              [attr.data-segment-type]="segment.type"
-              class="h-full first:rounded-l-full last:rounded-r-full"
-              [style.width.%]="segment.widthPercent"
-              [style.background-color]="segmentColor(segment.type)"
-              [style.opacity]="segmentOpacity(segment.type)"
-              [attr.title]="segmentLabel(segment.type)"
-            ></div>
-          }
-        </div>
-        <div class="mt-1 flex justify-between text-xs text-[var(--color-text-secondary)]">
-          <span>{{ clockInTimeLabel() }}</span>
-          <span>{{ timelineEndLabel() }}</span>
+    <!-- Bottom Today's Activity Section -->
+    @if (today()) {
+      <div class="mt-4 border-t border-slate-200/60 pt-3">
+        <div class="mb-2 flex items-center justify-between text-xs">
+          <span class="inline-flex items-center gap-1.5 font-semibold text-slate-700">
+            <span class="inline-block h-2 w-2 rounded-full bg-amber-500"></span>
+            Today's activity
+          </span>
+          <span class="flex items-center gap-1 text-[11px] text-slate-400">
+            <svg class="h-3 w-3 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path
+                d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                stroke-width="2"
+              ></path>
+            </svg>
+            <span data-testid="today-at-a-glance-last-updated">{{ lastUpdatedLabel() ?? 'just now' }}</span>
+          </span>
         </div>
 
-        <div class="mt-3 flex flex-wrap items-center gap-3 text-xs text-[var(--color-text-secondary)]">
-          @for (type of legendTypes; track type) {
-            <span class="flex items-center gap-1.5">
-              <span class="h-2 w-2 rounded-full" [style.background-color]="segmentColor(type)" [style.opacity]="segmentOpacity(type)"></span>
-              {{ segmentLabel(type) }}
+        @if (timelineSegments().length > 0) {
+          <!-- Progress Bar Breakdown -->
+          <div class="flex h-2 w-full overflow-hidden rounded-full bg-slate-100" data-testid="today-activity-timeline">
+            @for (segment of timelineSegments(); track $index) {
+              <div
+                data-testid="today-activity-segment"
+                [attr.data-segment-type]="segment.type"
+                class="h-full first:rounded-l-full last:rounded-r-full transition-all"
+                [style.width.%]="segment.widthPercent"
+                [style.background-color]="segmentColor(segment.type)"
+                [style.opacity]="segmentOpacity(segment.type)"
+                [attr.title]="segmentLabel(segment.type)"
+              ></div>
+            }
+          </div>
+
+          <!-- Activity Times -->
+          <div class="mt-1 flex items-center justify-between text-[10px] font-medium text-slate-400">
+            <span>{{ clockInTimeLabel() }}</span>
+            <span>{{ timelineEndLabel() }}</span>
+          </div>
+
+          <!-- Activity Legends with colored dots -->
+          <div class="mt-2.5 flex items-center justify-between gap-1 pt-1 text-[10px] font-medium text-slate-600">
+            <span class="inline-flex items-center gap-1">
+              <span class="h-2 w-2 rounded-full" [style.background-color]="segmentColor('working')"></span> Working
             </span>
-          }
-        </div>
-
-        @if (lastUpdatedLabel(); as updated) {
-          <p class="mt-2 text-xs text-[var(--color-text-secondary)]" data-testid="today-at-a-glance-last-updated">{{ updated }}</p>
+            <span class="inline-flex items-center gap-1">
+              <span class="h-2 w-2 rounded-full" [style.background-color]="segmentColor('focus')"></span> Focus work
+            </span>
+            <span class="inline-flex items-center gap-1">
+              <span class="h-2 w-2 rounded-full" [style.background-color]="segmentColor('break')"></span> Break
+            </span>
+            <span class="inline-flex items-center gap-1">
+              <span class="h-2 w-2 rounded-full" [style.background-color]="segmentColor('idle')" [style.opacity]="segmentOpacity('idle')"></span> Idle
+            </span>
+          </div>
         }
       </div>
+    } @else if (loading()) {
+      <div class="mt-4 border-t border-slate-200/60 pt-3 animate-pulse" data-testid="today-at-a-glance-activity-skeleton">
+        <div class="mb-2 h-3 w-1/3 rounded bg-slate-100"></div>
+        <div class="h-2 w-full rounded-full bg-slate-100"></div>
+      </div>
     }
-  }
-</app-card>
+  </div>
+</section>
+

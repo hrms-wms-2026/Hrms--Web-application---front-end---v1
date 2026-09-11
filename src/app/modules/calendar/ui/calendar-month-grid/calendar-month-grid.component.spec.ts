@@ -3,12 +3,13 @@ import { vi } from 'vitest';
 import { CalendarEventResponse } from '../../models/calendar-event.model';
 import { CalendarMonthGridComponent } from './calendar-month-grid.component';
 
-function makeEvent(id: string, startDate: string): CalendarEventResponse {
+function makeEvent(id: string, startDate: string, hasConflict = false): CalendarEventResponse {
   return {
     id, title: `Event ${id}`, description: null, startDate, endDate: startDate,
     sourceType: 'manual', color: '#2563EB', recurrence: 'none', isAllDay: false, timezone: 'UTC',
     eventStatus: null, isPrivate: false, location: null, meetingLink: null, externalSource: null,
-    createdById: 'u1', isRecurringOccurrence: false, recurrenceMasterId: null, originalStart: null, participants: null
+    createdById: 'u1', isRecurringOccurrence: false, recurrenceMasterId: null, originalStart: null,
+    participants: null, hasConflict
   };
 }
 
@@ -46,5 +47,17 @@ describe('CalendarMonthGridComponent', () => {
     fixture.componentInstance.eventClick.subscribe(spy);
     fixture.nativeElement.querySelector('[data-testid="calendar-event-chip"]').click();
     expect(spy).toHaveBeenCalledWith('e1');
+  });
+
+  it('renders a conflict indicator on an event chip flagged hasConflict', () => {
+    fixture.componentRef.setInput('events', [makeEvent('e1', '2026-09-01T09:00:00Z', true)]);
+    fixture.detectChanges();
+    const chip = fixture.nativeElement.querySelector('[data-testid="calendar-event-chip"]');
+    expect(chip.querySelector('[data-testid="calendar-conflict-marker"]')).not.toBeNull();
+  });
+
+  it('does not render a conflict indicator on a non-conflicting event chip', () => {
+    const chip = fixture.nativeElement.querySelector('[data-testid="calendar-event-chip"]');
+    expect(chip.querySelector('[data-testid="calendar-conflict-marker"]')).toBeNull();
   });
 });

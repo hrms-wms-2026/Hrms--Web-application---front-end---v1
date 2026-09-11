@@ -1,11 +1,19 @@
-import { ChangeDetectionStrategy, Component, OnInit, computed, inject, signal } from '@angular/core';
-import { CardComponent } from '../../../../shared/ui/card/card.component';
+import { ChangeDetectionStrategy, Component, HostListener, OnInit, computed, inject, signal } from '@angular/core';
 import { TimeTrackingRange } from '../../../attendance/models/time-tracking.model';
 import { TimeTrackingStore } from '../../../attendance/state/time-tracking.store';
 import { WorkPatternApiService } from '../../data-access/work-pattern-api.service';
 import { WorkPatternDay } from '../../models/work-pattern.model';
 
 const DAY_IN_MILLISECONDS = 24 * 60 * 60 * 1000;
+
+export type WorkPatternPeriod = 'this-week' | 'last-week' | 'this-month' | 'last-month';
+
+export const WORK_PATTERN_PERIOD_OPTIONS: ReadonlyArray<{ value: WorkPatternPeriod; label: string }> = [
+  { value: 'this-week', label: 'This Week' },
+  { value: 'last-week', label: 'Last Week' },
+  { value: 'this-month', label: 'This Month' },
+  { value: 'last-month', label: 'Last Month' }
+];
 
 export type WorkPatternSegmentType = 'focus' | 'meeting' | 'admin' | 'idle';
 
@@ -18,7 +26,7 @@ export interface WorkPatternSegment {
 @Component({
   selector: 'app-work-pattern-card',
   standalone: true,
-  imports: [CardComponent],
+  imports: [],
   templateUrl: './work-pattern-card.component.html',
   changeDetection: ChangeDetectionStrategy.OnPush
 })
@@ -29,6 +37,19 @@ export class WorkPatternCardComponent implements OnInit {
   private readonly rawDays = signal<WorkPatternDay[]>([]);
   protected readonly loading = signal(true);
   protected readonly lastUpdated = signal<Date | null>(null);
+  protected readonly selectedPeriod = signal<WorkPatternPeriod>('this-week');
+  protected readonly periodDropdownOpen = signal(false);
+  protected readonly periodOptions = WORK_PATTERN_PERIOD_OPTIONS;
+
+  // Label shown on the trigger pill
+  protected readonly selectedPeriodLabel = computed(
+    () => WORK_PATTERN_PERIOD_OPTIONS.find((o) => o.value === this.selectedPeriod())!.label
+  );
+
+  // "Total this week" / "Total this month" etc. - lowercased since it's used mid-sentence.
+  protected readonly periodLabelLower = computed(
+    () => WORK_PATTERN_PERIOD_OPTIONS.find((o) => o.value === this.selectedPeriod())!.label.toLowerCase()
+  );
 
   private readonly focusMinutes = computed(() => sumBy(this.rawDays(), (d) => d.focusMinutes));
   private readonly meetingMinutes = computed(() => sumBy(this.rawDays(), (d) => d.meetingMinutes));
@@ -97,7 +118,41 @@ export class WorkPatternCardComponent implements OnInit {
   });
 
   ngOnInit(): void {
-    const range = currentWeekRange();
+    this.loadForPeriod(this.selectedPeriod());
+  }
+
+  protected onPeriodChange(value: string): void {
+    const period = value as WorkPatternPeriod;
+    this.selectedPeriod.set(period);
+    this.loadForPeriod(period);
+  }
+
+  protected togglePeriodDropdown(event: Event): void {
+    event.stopPropagation();
+    this.periodDropdownOpen.update((v) => !v);
+  }
+
+  protected selectPeriod(value: WorkPatternPeriod): void {
+    this.periodDropdownOpen.set(false);
+    if (value !== this.selectedPeriod()) {
+      this.onPeriodChange(value);
+    }
+  }
+
+  protected closePeriodDropdown(): void {
+    this.periodDropdownOpen.set(false);
+  }
+
+  @HostListener('document:click')
+  protected onDocumentClick(): void {
+    if (this.periodDropdownOpen()) {
+      this.periodDropdownOpen.set(false);
+    }
+  }
+
+  private loadForPeriod(period: WorkPatternPeriod): void {
+    this.loading.set(true);
+    const range = rangeForPeriod(period);
     void this.store.loadMyHistory(range);
     this.api.getMyWorkPattern(range.from, range.to).subscribe({
       next: (response) => {
@@ -119,6 +174,19 @@ export class WorkPatternCardComponent implements OnInit {
   protected segmentLabel(type: WorkPatternSegmentType): string {
     return SEGMENT_LABELS[type];
   }
+
+  protected segmentColor(type: WorkPatternSegmentType): string {
+    switch (type) {
+      case 'focus':
+        return '#2563eb';
+      case 'meeting':
+        return '#60a5fa';
+      case 'admin':
+        return '#94a3b8';
+      case 'idle':
+        return '#f59e0b';
+    }
+  }
 }
 
 const SEGMENT_LABELS: Record<WorkPatternSegmentType, string> = {
@@ -132,6 +200,21 @@ function sumBy<T>(items: readonly T[], selector: (item: T) => number): number {
   return items.reduce((sum, item) => sum + selector(item), 0);
 }
 
+function rangeForPeriod(period: WorkPatternPeriod, reference = new Date()): TimeTrackingRange {
+  switch (period) {
+    case 'this-week':
+      return currentWeekRange(reference);
+    case 'last-week':
+      return currentWeekRange(new Date(reference.getTime() - 7 * DAY_IN_MILLISECONDS));
+    case 'this-month':
+      return monthRange(reference.getFullYear(), reference.getMonth());
+    case 'last-month': {
+      const lastMonthReference = new Date(reference.getFullYear(), reference.getMonth() - 1, 1);
+      return monthRange(lastMonthReference.getFullYear(), lastMonthReference.getMonth());
+    }
+  }
+}
+
 function currentWeekRange(reference = new Date()): TimeTrackingRange {
   const referenceDay = new Date(reference.getFullYear(), reference.getMonth(), reference.getDate());
   const dayOfWeek = referenceDay.getDay();
@@ -139,6 +222,12 @@ function currentWeekRange(reference = new Date()): TimeTrackingRange {
   const monday = new Date(referenceDay.getTime() + mondayOffset * DAY_IN_MILLISECONDS);
   const sunday = new Date(monday.getTime() + 6 * DAY_IN_MILLISECONDS);
   return { from: toDateOnly(monday), to: toDateOnly(sunday) };
+}
+
+function monthRange(year: number, month: number): TimeTrackingRange {
+  const firstDay = new Date(year, month, 1);
+  const lastDay = new Date(year, month + 1, 0);
+  return { from: toDateOnly(firstDay), to: toDateOnly(lastDay) };
 }
 
 function toDateOnly(value: Date): string {
