@@ -32,17 +32,17 @@
 
 @if (selectedRequestTab() === 'corrections') {
   <div id="my-requests-panel-corrections" role="tabpanel" aria-labelledby="my-requests-tab-corrections" tabindex="0">
-    @if (store.myCorrectionsLoading?.()) { <p class="access-note">Loading…</p> }
-    @if (store.myCorrectionsError?.()) {
-      <div class="time-tracking-message time-tracking-message--error" role="alert"><p>{{ store.myCorrectionsError?.() }}</p><app-button type="button" variant="secondary" size="sm" (pressed)="store.loadMyCorrections?.()">Try again</app-button></div>
-    } @else if ((store.myCorrections?.() ?? []).length === 0) {
+    @if (store.myCorrectionsLoading()) { <p class="access-note">Loading…</p> }
+    @if (store.myCorrectionsError()) {
+      <div class="time-tracking-message time-tracking-message--error" role="alert"><p>{{ store.myCorrectionsError() }}</p><app-button type="button" variant="secondary" size="sm" (pressed)="store.loadMyCorrections()">Try again</app-button></div>
+    } @else if (store.myCorrections().length === 0) {
       <p class="empty-copy">You have not submitted any attendance correction requests.</p>
     } @else {
       <div class="table-scroll">
         <table class="attendance-table corrections-table">
           <thead><tr><th scope="col">Date</th><th scope="col">Change</th><th scope="col">Status</th><th scope="col">Reason</th><th scope="col">Review</th><th scope="col">Actions</th></tr></thead>
           <tbody>
-            @for (request of (store.myCorrections?.() ?? []); track request.id) {
+            @for (request of store.myCorrections(); track request.id) {
               <tr>
                 <td>{{ formatDate(request.workDate) }}<span class="table-secondary">Requested</span></td>
                 <td><span class="table-primary">{{ correctionTypeLabel(request.correctionType) }}</span><span class="table-secondary">{{ correctionSummary(request) }}</span></td>

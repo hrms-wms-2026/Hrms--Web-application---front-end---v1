@@ -23,7 +23,7 @@ interface SelectedMember {
     <app-modal [open]="open()" [title]="mode() === 'edit' ? 'Module settings' : 'Create sub Module'" size="lg" (closed)="closed.emit()">
       <div class="flex flex-col gap-3">
         <span data-testid="title-field">
-          <app-input label="Title" [value]="title()" [error]="errors()['title'] ?? ''" (valueChange)="title.set($event)" />
+          <app-input label="Title" [value]="title()" [error]="errors()['title']" (valueChange)="title.set($event)" />
         </span>
         <span data-testid="description-field">
           <app-input label="Description" [value]="description()" (valueChange)="description.set($event)" />
@@ -35,7 +35,7 @@ interface SelectedMember {
           }
         </span>
         <span data-testid="allocated-hours-field">
-          <app-input label="Allocated hours" type="number" [value]="allocatedHoursDisplay()" [error]="errors()['allocatedHours'] ?? ''" (valueChange)="onAllocatedHoursChange($event)" />
+          <app-input label="Allocated hours" type="number" [value]="allocatedHoursDisplay()" [error]="errors()['allocatedHours']" (valueChange)="onAllocatedHoursChange($event)" />
         </span>
 
         @if (mode() === 'edit') {

@@ -1,6 +1,5 @@
 import { ChangeDetectionStrategy, Component, DestroyRef, OnInit, computed, effect, inject, signal } from '@angular/core';
 import { RouterLink } from '@angular/router';
-import { CardComponent } from '../../../../shared/ui/card/card.component';
 import { DashboardGreetingComponent } from '../dashboard-greeting/dashboard-greeting.component';
 import { ActivityTimelineApiService } from '../../data-access/activity-timeline-api.service';
 import { ActivityTimelineSegment } from '../../models/activity-timeline.model';
@@ -26,7 +25,7 @@ const STATUS_LABELS: Record<string, string> = {
 @Component({
   selector: 'app-today-at-a-glance-card',
   standalone: true,
-  imports: [CardComponent, RouterLink, DashboardGreetingComponent],
+  imports: [RouterLink, DashboardGreetingComponent],
   templateUrl: './today-at-a-glance-card.component.html',
   changeDetection: ChangeDetectionStrategy.OnPush
 })

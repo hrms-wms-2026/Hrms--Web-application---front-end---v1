@@ -4,14 +4,13 @@ import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { Subject, Subscription, catchError, debounceTime, distinctUntilChanged, firstValueFrom, map, of, switchMap } from 'rxjs';
 import { NotificationService } from '../../../../core/services/notification.service';
 import { HasPermissionDirective } from '../../../../shared/directives/has-permission.directive';
-import { BreadcrumbHeaderComponent } from '../../../../shared/ui/breadcrumb-header/breadcrumb-header.component';
 import { ButtonComponent } from '../../../../shared/ui/button/button.component';
 import { DatePickerComponent } from '../../../../shared/ui/date-picker/date-picker.component';
 import { EmptyStateComponent } from '../../../../shared/ui/empty-state/empty-state.component';
 import { InputComponent } from '../../../../shared/ui/input/input.component';
 import { LoaderComponent } from '../../../../shared/ui/loader/loader.component';
 import { CustomSelectComponent } from '../../../../shared/ui/custom-select/custom-select.component';
-import { SelectComponent, SelectOption } from '../../../../shared/ui/select/select.component';
+import { SelectOption } from '../../../../shared/ui/select/select.component';
 import { LegalEntityStore } from '../../../organization/state/legal-entity.store';
 import { PeopleApiService } from '../../data-access/people-api.service';
 import { AddEmployeeWizardStore } from '../../state/add-employee-wizard.store';
@@ -61,13 +60,11 @@ const STEP_LABELS: Record<WizardStep, string> = {
   imports: [
     HasPermissionDirective,
     RouterLink,
-    BreadcrumbHeaderComponent,
     ButtonComponent,
     DatePickerComponent,
     EmptyStateComponent,
     InputComponent,
     LoaderComponent,
-    SelectComponent,
     CustomSelectComponent,
     ReportsToPickerComponent
   ],
