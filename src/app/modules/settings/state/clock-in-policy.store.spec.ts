@@ -42,7 +42,7 @@ describe('ClockInPolicyStore', () => {
     allowedRadiusMeters: null,
     workAreaRules: {
       onsite: { biometricEnabled: true, webEnabled: false, trayEnabled: false, photoRequired: false },
-      remote: { biometricEnabled: false, webEnabled: true, trayEnabled: true, photoRequired: true },
+      remote: { biometricEnabled: false, webEnabled: true, trayEnabled: true, photoRequired: true, locationCheckRequired: false },
       hybrid: {
         biometricEnabled: false,
         webEnabled: true,

@@ -23,6 +23,7 @@ const today: AttendanceTodayResponse = {
   breakUsedMinutes: 0,
   breakRemainingMinutes: 60,
   breakState: 'available',
+  breaks: [],
   expectedWorkMode: 'onsite',
   attendanceStatus: 'not_clocked_in',
   clockInAt: null,
@@ -160,7 +161,8 @@ describe('TimeTrackingApiService', () => {
         canCorrect: false
       },
       timelineEvents: [{ eventType: 'ClockIn', timestamp: '2026-08-27T04:00:00Z', source: 'web' }],
-      dailyActivity: null
+      dailyActivity: null,
+      checkIns: []
     };
 
     service.getDayDetail('employee-1', '2026-08-27').subscribe((response) => expect(response).toEqual(detail));

@@ -28,6 +28,7 @@ const today: AttendanceTodayResponse = {
   breakUsedMinutes: 0,
   breakRemainingMinutes: 60,
   breakState: 'available',
+  breaks: [],
   expectedWorkMode: 'onsite',
   attendanceStatus: 'not_clocked_in',
   clockInAt: null,
@@ -76,7 +77,8 @@ const dayDetail: AttendanceDayDetail = {
     canCorrect: false
   },
   timelineEvents: [],
-  dailyActivity: null
+  dailyActivity: null,
+  checkIns: []
 };
 
 const workAreaRequest: WorkAreaChangeRequestResponse = {
@@ -251,6 +253,28 @@ describe('TimeTrackingStore', () => {
     expect(store.todayError()).toBe('A friendly attendance error.');
     expect(notifications.error).toHaveBeenCalledWith('A friendly attendance error.');
     expect(notifications.success).not.toHaveBeenCalled();
+  });
+
+  it('shows the raw conflict detail when clock-out is blocked by an open task session, even though it contains words the machine-value filter would normally strip', async () => {
+    // Task titles are free text and can easily contain words toSafeErrorMessage's isMachineValue
+    // filter treats as "technical" (e.g. "Update", which matches its raw-SQL-keyword check) -
+    // this message must reach the user unfiltered, bypassing that generic safety net entirely.
+    const detail = "Task 'Update API docs' is still running. Push it before clocking out for the day.";
+    api.clockOut.mockReturnValue(throwError(() => ({ status: 409, error: { detail } })));
+
+    await store.clockOut();
+
+    expect(store.todayError()).toBe(detail);
+    expect(notifications.error).toHaveBeenCalledWith(detail);
+  });
+
+  it('falls back to the sanitized message for a clock-out conflict that is not the open-task-session guard', async () => {
+    api.clockOut.mockReturnValue(throwError(() => ({ status: 409, error: { detail: 'open_break_must_be_ended_before_clock_out' } })));
+
+    await store.clockOut();
+
+    expect(errors.toSafeMessage).toHaveBeenCalled();
+    expect(store.todayError()).toBe('A friendly attendance error.');
   });
 
   it('shows a friendly covered-history message for a 403 response', async () => {

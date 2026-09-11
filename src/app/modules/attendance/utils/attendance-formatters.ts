@@ -109,6 +109,25 @@ export function timelineEventLabel(eventType: string): string {
   }
 }
 
+/** Mirrors the tray app's own WorkLocationViewModel.FormatFixText convention (coordinates to 5
+ * decimal places, accuracy in whole metres) so the same fix reads identically on both ends. */
+export function checkInLocationLabel(
+  latitude: number | null,
+  longitude: number | null,
+  accuracy: number | null,
+  address: string | null
+): string {
+  const trimmedAddress = address?.trim();
+  if (trimmedAddress) {
+    return trimmedAddress;
+  }
+  if (latitude === null || longitude === null) {
+    return 'Location unavailable';
+  }
+  const coords = `${latitude.toFixed(5)}, ${longitude.toFixed(5)}`;
+  return accuracy !== null ? `${coords} (±${Math.round(accuracy)} m)` : coords;
+}
+
 export function formatWorkAreaDate(value: string, timezone: string | null | undefined): string {
   const displayTimezone = validDisplayTimezone(timezone);
   if (!displayTimezone || !/^\d{4}-\d{2}-\d{2}$/.test(value)) return formatDate(value);

@@ -7,6 +7,11 @@ export interface AllowedClockInMethods {
   allowedRadiusMeters: number | null;
 }
 
+export interface BreakInterval {
+  startedAt: string;
+  endedAt: string | null;
+}
+
 export interface AttendanceTodayResponse {
   employeeId: string;
   legalEntityId: string;
@@ -24,6 +29,7 @@ export interface AttendanceTodayResponse {
   breakUsedMinutes: number;
   breakRemainingMinutes: number | null;
   breakState: string;
+  breaks: BreakInterval[];
   expectedWorkMode: string | null;
   attendanceStatus: string;
   clockInAt: string | null;
@@ -102,10 +108,20 @@ export interface ActivityDailySummary {
   topApps: ActivityAppUsage[];
 }
 
+export interface CheckInLocation {
+  id: string;
+  checkedInAt: string;
+  latitude: number | null;
+  longitude: number | null;
+  locationAccuracy: number | null;
+  locationAddress: string | null;
+}
+
 export interface AttendanceDayDetail {
   summary: AttendanceHistoryRow;
   timelineEvents: TimelineEvent[];
   dailyActivity: ActivityDailySummary | null;
+  checkIns: CheckInLocation[];
 }
 
 export interface ClockInRequest {

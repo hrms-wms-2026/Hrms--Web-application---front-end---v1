@@ -50,6 +50,20 @@ export const routes: Routes = [
           )
       },
       {
+        path: 'dashboard/insights',
+        loadComponent: () =>
+          import('./modules/dashboard/feature/my-insights-page/my-insights-page.component').then(
+            (module) => module.MyInsightsPageComponent
+          )
+      },
+      {
+        path: 'dashboard/activity-timeline',
+        loadComponent: () =>
+          import('./modules/dashboard/feature/activity-timeline-page/activity-timeline-page.component').then(
+            (module) => module.ActivityTimelinePageComponent
+          )
+      },
+      {
         path: 'work',
         canActivate: [permissionGuard],
         data: { permissions: ['projects:access'] },
@@ -61,7 +75,12 @@ export const routes: Routes = [
         data: { permissions: ['employees:read', 'employees:write'], modules: ['core_hr'] },
         loadChildren: () => import('./modules/people/people.routes').then((module) => module.PEOPLE_ROUTES)
       },
-      { path: 'calendar', loadComponent: loadPlaceholder, data: { title: 'Calendar' } },
+      {
+        path: 'calendar',
+        canActivate: [permissionGuard],
+        data: { permissions: ['calendar:read'], modules: ['calendar'] },
+        loadChildren: () => import('./modules/calendar/calendar.routes').then((module) => module.CALENDAR_ROUTES)
+      },
       {
         path: 'time-off',
         canActivate: [permissionGuard],
@@ -163,7 +182,8 @@ export const routes: Routes = [
       {
         path: 'login',
         loadComponent: () =>
-          import('./core/auth/feature/login/login.component').then((module) => module.LoginComponent)
+          import('./core/auth/feature/login/login.component').then((module) => module.LoginComponent),
+        canActivate: [redirectIfAuthenticatedGuard]
       },
       {
         path: 'legal-consent',
@@ -186,8 +206,30 @@ export const routes: Routes = [
             (module) => module.AcceptInvitationComponent
           )
       },
+      {
+        path: 'forgot-password',
+        loadComponent: () =>
+          import('./core/auth/feature/forgot-password/forgot-password.component').then(
+            (module) => module.ForgotPasswordComponent
+          )
+      },
+      {
+        path: 'reset-password',
+        loadComponent: () =>
+          import('./core/auth/feature/reset-password/reset-password.component').then(
+            (module) => module.ResetPasswordComponent
+          )
+      },
       { path: '', pathMatch: 'full', redirectTo: 'login' }
     ]
+  },
+  {
+    path: 'device/activate',
+    loadComponent: () =>
+      import('./modules/device-activation/feature/device-activation/device-activation.component').then(
+        (module) => module.DeviceActivationComponent
+      ),
+    canActivate: [authGuard]
   },
   {
     path: '**',

@@ -26,6 +26,7 @@ const today: AttendanceTodayResponse = {
   breakUsedMinutes: 0,
   breakRemainingMinutes: 60,
   breakState: 'available',
+  breaks: [],
   expectedWorkMode: 'onsite',
   attendanceStatus: 'not_clocked_in',
   clockInAt: null,
@@ -705,7 +706,7 @@ describe('TimeTrackingComponent', () => {
     const { fixture, store } = await setup({}, false, [coveredRow]);
     const component = fixture.componentInstance;
     component.selectedDetail.set({ employeeId: 'employee-2', workDate: coveredRow.workDate });
-    store.dayDetail.set({ summary: coveredRow, timelineEvents: [], dailyActivity: null });
+    store.dayDetail.set({ summary: coveredRow, timelineEvents: [], dailyActivity: null, checkIns: [] });
     fixture.detectChanges();
 
     expect((fixture.nativeElement as HTMLElement).textContent).toContain('Attendance detail');

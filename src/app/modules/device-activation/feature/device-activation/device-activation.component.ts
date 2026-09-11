@@ -1,16 +1,15 @@
 import { ChangeDetectionStrategy, Component, OnInit, inject, signal } from '@angular/core';
-import { DatePipe } from '@angular/common';
-import { ActivatedRoute, Router } from '@angular/router';
+import { DatePipe, NgOptimizedImage } from '@angular/common';
+import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { firstValueFrom } from 'rxjs';
 import { DeviceAuthorizationApiService } from '../../data-access/device-authorization-api.service';
 import { DeviceAuthorizationPreview } from '../../models/device-authorization.model';
 
 @Component({
   selector: 'app-device-activation',
-    standalone: true,
-  imports: [DatePipe],
-  templateUrl:
- './device-activation.component.html',
+  standalone: true,
+  imports: [DatePipe, NgOptimizedImage, RouterLink],
+  templateUrl: './device-activation.component.html',
   styleUrl: './device-activation.component.css',
   changeDetection: ChangeDetectionStrategy.OnPush
 })

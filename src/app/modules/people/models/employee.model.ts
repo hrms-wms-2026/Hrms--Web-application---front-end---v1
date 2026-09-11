@@ -72,6 +72,7 @@ export interface EmployeeDetailResponse {
   readonly invitationStatus: string | null;
   readonly invitationExpiresAt: string | null;
   readonly trayAppAccessEnabled: boolean;
+  readonly attendanceSummary?: EmployeeListAttendanceSummaryResponse | null;
 }
 
 export interface EmployeeDetailJobInformation {
@@ -86,6 +87,7 @@ export interface EmployeeDetailJobInformation {
   readonly status: string;
   readonly hireDate: string;
   readonly probationEndDate: string | null;
+  readonly workModeLabel: string | null;
 }
 
 export interface EmployeeDetailPersonalInformation {

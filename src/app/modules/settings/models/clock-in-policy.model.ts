@@ -40,6 +40,14 @@ export interface WorkAreaSourceRules {
   readonly photoRequired: boolean;
 }
 
+export interface RemoteWorkAreaRules {
+  readonly biometricEnabled: boolean;
+  readonly webEnabled: boolean;
+  readonly trayEnabled: boolean;
+  readonly photoRequired: boolean;
+  readonly locationCheckRequired: boolean;
+}
+
 export interface HybridWorkAreaRules {
   readonly biometricEnabled: boolean;
   readonly webEnabled: boolean;
@@ -58,7 +66,7 @@ export interface FieldWorkAreaRules {
 
 export interface WorkAreaRules {
   readonly onsite: WorkAreaSourceRules;
-  readonly remote: WorkAreaSourceRules;
+  readonly remote: RemoteWorkAreaRules;
   readonly hybrid: HybridWorkAreaRules;
   readonly field: FieldWorkAreaRules;
 }

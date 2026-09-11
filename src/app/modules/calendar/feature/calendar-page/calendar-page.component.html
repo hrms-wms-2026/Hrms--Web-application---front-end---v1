@@ -1,0 +1,77 @@
+<div class="flex h-full flex-col gap-4 p-4">
+  <div class="flex flex-wrap items-center justify-between gap-2">
+    <div class="flex items-center gap-2">
+      <app-button type="button" variant="secondary" (click)="previous()">&lsaquo;</app-button>
+      <app-button type="button" variant="secondary" (click)="goToToday()">Today</app-button>
+      <app-button type="button" variant="secondary" (click)="next()">&rsaquo;</app-button>
+      <span class="ml-2 text-lg font-semibold text-[var(--color-text-primary)]">{{ viewLabel() }}</span>
+    </div>
+
+    <div class="flex items-center gap-2">
+      <div class="flex overflow-hidden rounded-md border border-[var(--color-border)]">
+        <button
+          type="button" data-testid="calendar-view-month" class="px-3 py-1.5 text-sm"
+          [style.background-color]="view() === 'month' ? 'var(--color-accent)' : null"
+          [style.color]="view() === 'month' ? 'var(--color-accent-contrast)' : null"
+          (click)="setView('month')"
+        >Month</button>
+        <button
+          type="button" data-testid="calendar-view-week" class="px-3 py-1.5 text-sm"
+          [style.background-color]="view() === 'week' ? 'var(--color-accent)' : null"
+          [style.color]="view() === 'week' ? 'var(--color-accent-contrast)' : null"
+          (click)="setView('week')"
+        >Week</button>
+        <button
+          type="button" data-testid="calendar-view-day" class="px-3 py-1.5 text-sm"
+          [style.background-color]="view() === 'day' ? 'var(--color-accent)' : null"
+          [style.color]="view() === 'day' ? 'var(--color-accent-contrast)' : null"
+          (click)="setView('day')"
+        >Day</button>
+        <button
+          type="button" data-testid="calendar-view-agenda" class="px-3 py-1.5 text-sm"
+          [style.background-color]="view() === 'agenda' ? 'var(--color-accent)' : null"
+          [style.color]="view() === 'agenda' ? 'var(--color-accent-contrast)' : null"
+          (click)="setView('agenda')"
+        >Agenda</button>
+      </div>
+      <app-button type="button" (click)="openCreate()">New event</app-button>
+    </div>
+  </div>
+
+  @if (store.loadError()) {
+    <p class="text-sm text-red-600">{{ store.loadError() }}</p>
+  }
+
+  @switch (view()) {
+    @case ('month') {
+      <app-calendar-month-grid [year]="year()" [month]="month()" [events]="store.events()" [timezone]="store.myTimezone()" (eventClick)="openEdit($event)" />
+    }
+    @case ('week') {
+      <app-calendar-week-view [weekStart]="weekStart()" [events]="store.events()" [timezone]="store.myTimezone()" (eventClick)="openEdit($event)" (slotClick)="onSlotClick($event)" (slotRange)="onSlotRange($event)" />
+    }
+    @case ('day') {
+      <app-calendar-day-view [date]="dayDate()" [events]="store.events()" [timezone]="store.myTimezone()" (eventClick)="openEdit($event)" (slotClick)="onSlotClick($event)" (slotRange)="onSlotRange($event)" />
+    }
+    @case ('agenda') {
+      <app-calendar-agenda-view [events]="store.events()" [timezone]="store.myTimezone()" (eventClick)="openEdit($event)" />
+    }
+  }
+</div>
+
+<app-calendar-event-form-modal
+  [open]="formOpen()"
+  [event]="editingEvent()"
+  [prefillStart]="prefillStart()"
+  [prefillEnd]="prefillEnd()"
+  [saving]="store.saving()"
+  [conflicts]="store.conflicts()"
+  [checkingConflicts]="store.checkingConflicts()"
+  [myTimezone]="store.myTimezone()"
+  [eligibleNominees]="store.eligibleNominees()"
+  (save)="onSave($event)"
+  (delete)="onDelete($event)"
+  (respond)="onRespond($event)"
+  (checkConflicts)="onCheckConflicts($event)"
+  (loadEligibleNominees)="onLoadEligibleNominees()"
+  (cancel)="closeForm()"
+/>

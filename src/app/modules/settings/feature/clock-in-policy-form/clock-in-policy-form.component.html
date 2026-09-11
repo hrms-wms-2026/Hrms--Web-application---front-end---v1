@@ -86,6 +86,29 @@
             <input type="checkbox" [disabled]="!hasWriteAccess()" [checked]="form().workAreaRules.remote.photoRequired" (change)="patchRemote({ photoRequired: $any($event.target).checked })" />
             <span>Photo required</span>
           </label>
+          <label class="cipf-check">
+            <input
+              type="checkbox"
+              data-testid="remote-location-check"
+              [disabled]="!hasWriteAccess()"
+              [checked]="form().workAreaRules.remote.locationCheckRequired"
+              (change)="setRemoteLocationCheck($any($event.target).checked)"
+            />
+            <span>Location check required</span>
+          </label>
+          @if (form().workAreaRules.remote.locationCheckRequired) {
+            <div class="cipf-distance" data-testid="remote-allowed-distance">
+              <app-input
+                label="Allowed distance"
+                type="number"
+                [disabled]="!hasWriteAccess()"
+                [value]="form().allowedDistanceMeters"
+                (valueChange)="patchForm({ allowedDistanceMeters: $event })"
+                [error]="errorFor('allowedDistanceMeters')"
+              />
+              <span class="cipf-distance-unit">meters</span>
+            </div>
+          }
         </article>
 
         <article class="cipf-method" data-testid="work-area-hybrid">

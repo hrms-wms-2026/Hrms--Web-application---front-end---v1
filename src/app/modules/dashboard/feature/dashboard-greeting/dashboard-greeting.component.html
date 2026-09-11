@@ -1,0 +1,14 @@
+<div class="flex flex-col">
+  <h1 class="text-[17px] font-bold text-slate-800 tracking-tight leading-snug">
+    {{ timeOfDayGreeting() }}{{ displayName() ? ', ' + displayName() : '' }}!
+  </h1>
+  <p class="text-xs text-slate-500 mt-1 font-medium">Here's what's happening with your work today.</p>
+  <div class="flex items-center gap-1.5 mt-2 text-slate-400 text-xs font-normal">
+    <svg class="w-3.5 h-3.5 text-slate-400 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+      <rect height="18" rx="2" stroke-width="2" width="18" x="3" y="4"></rect>
+      <path d="M16 2v4M8 2v4M3 10h18" stroke-linecap="round" stroke-width="2"></path>
+    </svg>
+    <span data-testid="dashboard-greeting-date">{{ dateLabel }}</span>
+  </div>
+</div>
+

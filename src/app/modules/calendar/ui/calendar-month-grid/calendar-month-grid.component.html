@@ -1,0 +1,38 @@
+<div class="grid grid-cols-7 gap-px overflow-hidden rounded-lg border border-[var(--color-border)] bg-[var(--color-border)]">
+  @for (cell of cells(); track cell.day.date) {
+    <div
+      data-testid="calendar-day-cell"
+      [attr.data-date]="cell.day.date"
+      class="flex min-h-24 flex-col gap-1 bg-[var(--color-surface)] p-1.5"
+      [class.opacity-50]="!cell.day.isCurrentMonth"
+      (click)="dayClick.emit(cell.day.date)"
+    >
+      <span
+        class="self-end text-xs"
+        [class.font-semibold]="cell.day.isToday"
+        [style.color]="cell.day.isToday ? 'var(--color-accent)' : null"
+      >
+        {{ cell.day.date.slice(-2) }}
+      </span>
+
+      @for (event of cell.visible; track event.id) {
+        <button
+          type="button"
+          data-testid="calendar-event-chip"
+          class="flex items-center gap-1 truncate rounded px-1.5 py-0.5 text-left text-[11px] text-white"
+          [style.background-color]="event.color || 'var(--color-accent)'"
+          (click)="$event.stopPropagation(); eventClick.emit(event.id)"
+        >
+          @if (event.hasConflict) {
+            <span data-testid="calendar-conflict-marker" class="h-1.5 w-1.5 shrink-0 rounded-full bg-[var(--color-danger)]" aria-hidden="true"></span>
+          }
+          <span class="truncate">{{ event.title }}</span>
+        </button>
+      }
+
+      @if (cell.overflowCount > 0) {
+        <span class="text-[10px] text-[var(--color-text-secondary)]">+{{ cell.overflowCount }} more</span>
+      }
+    </div>
+  }
+</div>

@@ -45,7 +45,10 @@ describe('GeneralSettingsComponent', () => {
     status: 'active',
     workStartTime: null,
     workEndTime: null,
-    breakDurationMinutes: null
+    breakDurationMinutes: null,
+    officeAddress: null,
+    officeLatitude: null,
+    officeLongitude: null
   });
 
   async function setup(hasPermission: boolean) {
@@ -147,7 +150,8 @@ describe('GeneralSettingsComponent', () => {
         'name', 'companyCode', 'registrationNumber', 'taxRegistrationNumber', 'vatGstNumber', 'email',
         'phoneNumber', 'website', 'countryCode', 'currencyCode', 'timezone', 'financialYearStartMonth',
         'firstDayOfWeek', 'standardWorkingDays', 'defaultLanguage', 'dateFormat', 'timeFormat', 'status',
-        'workStartTime', 'workEndTime', 'breakDurationMinutes'
+        'workStartTime', 'workEndTime', 'breakDurationMinutes',
+        'officeAddress', 'officeLatitude', 'officeLongitude'
       ].sort()
     );
     putReq.flush(settingsFor('company-a', 'Company A'));

@@ -33,6 +33,6 @@ describe('NavigationStateService', () => {
 
     expect(service.activeItem()?.id).toBe('time-attendance');
     const childIds = service.activeChildren().map((c) => c.id);
-    expect(childIds).toEqual(['time-attendance-tracking', 'time-attendance-monitoring']);
+    expect(childIds).toEqual(['time-attendance-tracking', 'time-attendance-monitoring', 'time-attendance-correction-approvals']);
   });
 });

@@ -5,9 +5,9 @@ import { Component, input } from '@angular/core';
   standalone: true,
   host: { class: 'block h-full' },
   template: `
-    <section class="flex h-full flex-col rounded-lg border border-[var(--color-border)] bg-[var(--color-surface)] p-6 shadow-sm">
+    <section class="flex h-full flex-col rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] p-4 sm:p-5 shadow-xs">
       @if (title()) {
-        <h2 class="mb-3 text-lg font-semibold text-[var(--color-text-primary)]">{{ title() }}</h2>
+        <h2 class="mb-3 text-base font-semibold text-[var(--color-text-primary)]">{{ title() }}</h2>
       }
       <ng-content />
     </section>

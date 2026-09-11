@@ -190,7 +190,8 @@ export const TimeTrackingStore = signalStore(
       action: TimeTrackingAction,
       operation: () => Observable<AttendanceTodayResponse>,
       successMessage: string,
-      failureFallback: string
+      failureFallback: string,
+      businessMessage?: (error: unknown, fallback: string) => string
     ): Promise<void> => {
       if (store.actionLoading()) return;
       patchState(store, { actionLoading: true, activeAction: action, todayError: null });
@@ -199,7 +200,8 @@ export const TimeTrackingStore = signalStore(
         patchState(store, { today, actionLoading: false, activeAction: null, todayError: null });
         notifications.success(successMessage);
       } catch (error) {
-        const safeMessage = errors.toSafeMessage(error, failureFallback);
+        const fallback = errors.toSafeMessage(error, failureFallback);
+        const safeMessage = businessMessage ? businessMessage(error, fallback) : fallback;
         patchState(store, { actionLoading: false, activeAction: null, todayError: safeMessage });
         notifications.error(safeMessage);
       }
@@ -529,11 +531,30 @@ export const TimeTrackingStore = signalStore(
         return runAction('endBreak', () => api.endBreak(), 'Break ended.', 'Could not end your break. Try again.');
       },
       clockOut(): Promise<void> {
-        return runAction('clockOut', () => api.clockOut(), 'Clocked out.', 'Could not clock out. Try again.');
+        return runAction(
+          'clockOut',
+          () => api.clockOut(),
+          'Clocked out.',
+          'Could not clock out. Try again.',
+          clockOutBusinessMessage
+        );
       }
     };
   })
 );
+
+function clockOutBusinessMessage(error: unknown, fallback: string): string {
+  // The open-task-session conflict message is backend-authored and names the running task(s) by
+  // title, which is free text that can trip toSafeErrorMessage's generic isMachineValue filter
+  // (e.g. a task titled "Update API docs" matches its raw-SQL-keyword check). Detected by this
+  // stable marker phrase, the raw detail is shown as-is rather than routed through that filter.
+  const status = errorStatus(error);
+  const detail = errorDetail(error);
+  if (status === 409 && detail && detail.includes('before clocking out for the day')) {
+    return detail;
+  }
+  return fallback;
+}
 
 function workAreaBusinessMessage(error: unknown, fallback: string): string {
   const status = errorStatus(error);

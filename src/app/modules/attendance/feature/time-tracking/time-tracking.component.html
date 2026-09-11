@@ -27,6 +27,7 @@
         }
         <app-button
           variant="primary"
+          size="sm"
           data-testid="request-work-area-change"
           (pressed)="openWorkAreaChange()"
         >
@@ -316,14 +317,21 @@
           <button type="button" role="tab" id="approval-type-tab-work-area" class="my-requests-tab" [class.my-requests-tab--active]="approvalType() === 'work-area'" [attr.aria-selected]="approvalType() === 'work-area'" aria-controls="approval-type-panel-work-area" tabindex="0" (click)="selectApprovalType('work-area')">
             Work-area changes@if (approvalBadgeWorkArea() > 0) { ({{ approvalBadgeWorkArea() }}) }
           </button>
+          <button type="button" role="tab" id="approval-type-tab-location" class="my-requests-tab" [class.my-requests-tab--active]="approvalType() === 'location'" [attr.aria-selected]="approvalType() === 'location'" aria-controls="approval-type-panel-location" tabindex="0" (click)="selectApprovalType('location')">
+            Location changes@if (approvalBadgeLocation() > 0) { ({{ approvalBadgeLocation() }}) }
+          </button>
         </div>
         @if (approvalType() === 'corrections') {
           <div id="approval-type-panel-corrections" role="tabpanel" aria-labelledby="approval-type-tab-corrections" tabindex="0">
             <app-correction-approvals [embedded]="true" />
           </div>
-        } @else {
+        } @else if (approvalType() === 'work-area') {
           <div id="approval-type-panel-work-area" role="tabpanel" aria-labelledby="approval-type-tab-work-area" tabindex="0">
             <app-work-area-approvals [embedded]="true" />
+          </div>
+        } @else {
+          <div id="approval-type-panel-location" role="tabpanel" aria-labelledby="approval-type-tab-location" tabindex="0">
+            <app-location-change-approvals [embedded]="true" />
           </div>
         }
       </section>

@@ -78,7 +78,7 @@ describe('MainLayoutComponent tray activation gate', () => {
           useValue: {
             email: signal('buddy@example.test'),
             logout: vi.fn(),
-            activeModules: signal(['monitoring'])
+            activeModules: signal(['activity_monitoring'])
           }
         },
         {

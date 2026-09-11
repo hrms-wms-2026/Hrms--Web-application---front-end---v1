@@ -75,6 +75,22 @@
           <p class="empty-copy">No activity data recorded for this day.</p>
         }
       </section>
+
+      <section class="drawer-section" aria-labelledby="drawer-checkins-heading">
+        <h3 id="drawer-checkins-heading">Location check-ins</h3>
+        @if (detail.checkIns.length === 0) {
+          <p class="empty-copy">No check-in locations recorded for this day.</p>
+        } @else {
+          <ol class="drawer-timeline">
+            @for (checkIn of detail.checkIns; track checkIn.id) {
+              <li>
+                <span class="drawer-timeline-label">{{ checkInLocationLabel(checkIn.latitude, checkIn.longitude, checkIn.locationAccuracy, checkIn.locationAddress) }}</span>
+                <span class="drawer-timeline-time">{{ formatDateTime(checkIn.checkedInAt, displayTimezone()) }}</span>
+              </li>
+            }
+          </ol>
+        }
+      </section>
     } @else {
       <section class="drawer-section" aria-labelledby="drawer-timeline-heading">
         <h3 id="drawer-timeline-heading">Timeline</h3>
@@ -83,6 +99,10 @@
       <section class="drawer-section" aria-labelledby="drawer-activity-heading">
         <h3 id="drawer-activity-heading">Daily activity</h3>
         <p class="empty-copy">Detailed activity is unavailable for this attendance record.</p>
+      </section>
+      <section class="drawer-section" aria-labelledby="drawer-checkins-heading">
+        <h3 id="drawer-checkins-heading">Location check-ins</h3>
+        <p class="empty-copy">Check-in locations are unavailable for this attendance record.</p>
       </section>
     }
   </aside>

@@ -88,7 +88,7 @@ describe('NotificationBellComponent', () => {
     expect(storeStub.markRead).toHaveBeenCalledWith('n1');
     expect(getNotificationNavigation).toHaveBeenCalledWith('task_creation_request', 'r1');
     expect(navigate).toHaveBeenCalledWith(
-      ['/work', 'p1', 'milestones', 'o1', 'board'],
+      ['/work', 'p1', 'board'],
       { queryParams: { highlightTaskId: 't1' } }
     );
   });

@@ -102,6 +102,10 @@ export class MilestoneTreeTabComponent {
   createModalOpen = signal(false);
   createModalParentId = signal('');
   createModalSubmitting = signal(false);
+  // Not modal-scoped: onCreateModalCreated can close the create dialog and still need to
+  // warn about partial asset-upload failures, so this renders inline in the tab itself
+  // rather than inside any modal (which would already be closed by then).
+  createAssetWarning = signal<string | null>(null);
 
   membersPopupOpen = signal(false);
 
@@ -210,6 +214,13 @@ export class MilestoneTreeTabComponent {
   onCreateSubRequested(node: MilestoneTreeNode): void {
     this.createModalParentId.set(node.id);
     this.createModalOpen.set(true);
+    // Clear any leftover warning from a previous create flow so it can't leak onto
+    // this unrelated dialog.
+    this.createAssetWarning.set(null);
+  }
+
+  dismissCreateAssetWarning(): void {
+    this.createAssetWarning.set(null);
   }
 
   onExpandLeafRequested(node: MilestoneTreeNode): void {
@@ -317,12 +328,29 @@ export class MilestoneTreeTabComponent {
     this.editSprintNode.set(null);
   }
 
-  async onCreateModalCreated(payload: CreateObjectiveRequestDto): Promise<void> {
+  async onCreateModalCreated(event: { payload: CreateObjectiveRequestDto; assetFiles: readonly File[] }): Promise<void> {
     this.createModalSubmitting.set(true);
-    const result = await this.store.createSubModule(payload);
+    const result = await this.store.createSubModule(event.payload);
+    let failedFileCount = 0;
+    if (result.success && result.objectiveId) {
+      for (const file of event.assetFiles) {
+        const uploadResult = await this.store.uploadMilestoneAsset(result.objectiveId, file);
+        if (!uploadResult.success) {
+          failedFileCount++;
+        }
+      }
+    }
     this.createModalSubmitting.set(false);
     if (result.success) {
       this.createModalOpen.set(false);
+      if (failedFileCount > 0) {
+        // milestoneActionError only has render surfaces inside modals, and the create
+        // modal is closing right now — use the non-modal-scoped signal instead so the
+        // warning is actually visible, and doesn't leak into a later, unrelated dialog.
+        this.createAssetWarning.set(
+          `"${event.payload.title}" was created, but ${failedFileCount} file(s) failed to upload — open Module settings on it to retry.`
+        );
+      }
       await this.loadTree({ force: true });
     }
   }

@@ -1,6 +1,6 @@
 import { Component } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
-import { Router, provideRouter } from '@angular/router';
+import { ActivatedRoute, Router, provideRouter } from '@angular/router';
 import { LoginComponent } from './login.component';
 import { AuthStore } from '../../state/auth.store';
 
@@ -8,15 +8,23 @@ import { AuthStore } from '../../state/auth.store';
 class RouteTargetStubComponent {}
 
 describe('LoginComponent', () => {
-  function setup(authStoreOverrides: Record<string, unknown>) {
+  function setup(authStoreOverrides: Record<string, unknown>, returnUrl: string | null = null) {
     TestBed.configureTestingModule({
       imports: [LoginComponent],
       providers: [
         provideRouter([
           { path: 'dashboard', component: RouteTargetStubComponent },
-          { path: 'auth/legal-consent', component: RouteTargetStubComponent }
+          { path: 'auth/legal-consent', component: RouteTargetStubComponent },
+          { path: 'device/activate', component: RouteTargetStubComponent },
+          { path: '**', component: RouteTargetStubComponent }
         ]),
-        { provide: AuthStore, useValue: authStoreOverrides }
+        { provide: AuthStore, useValue: authStoreOverrides },
+        {
+          provide: ActivatedRoute,
+          useValue: {
+            snapshot: { queryParamMap: { get: (key: string) => (key === 'returnUrl' ? returnUrl : null) } }
+          }
+        }
       ]
     });
     const fixture = TestBed.createComponent(LoginComponent);
@@ -130,6 +138,48 @@ describe('LoginComponent', () => {
     expect(loginSpy).toHaveBeenCalledWith({ email: 'a@b.com', password: 'secret' });
   });
 
+  it('navigates to returnUrl after a successful login when present, preserving its query params', async () => {
+    const fixture = setup(
+      {
+        login: vi.fn().mockResolvedValue(undefined),
+        legalAcceptanceRequired: () => false,
+        redirectRequired: () => false,
+        continueUrl: () => null,
+        loading: () => false,
+        error: () => null
+      },
+      '/device/activate?request_id=abc&user_code=XYZ'
+    );
+    const router = TestBed.inject(Router);
+
+    fixture.componentInstance.form.setValue({ email: 'a@b.com', password: 'secret' });
+    await fixture.componentInstance.submit();
+
+    // Assert the router actually ended up at the right place, not just that some navigate
+    // overload was called with the right-looking argument — router.navigate(['/a?b=c']) treats
+    // the whole string as one path segment and drops the query params silently, which a
+    // navigate-was-called-with assertion alone would not have caught.
+    expect(router.url).toBe('/device/activate?request_id=abc&user_code=XYZ');
+  });
+
+  it('falls back to /people/employees when no returnUrl is present', async () => {
+    const fixture = setup({
+      login: vi.fn().mockResolvedValue(undefined),
+      legalAcceptanceRequired: () => false,
+      redirectRequired: () => false,
+      continueUrl: () => null,
+      loading: () => false,
+      error: () => null
+    });
+    const router = TestBed.inject(Router);
+    const navigateSpy = vi.spyOn(router, 'navigate');
+
+    fixture.componentInstance.form.setValue({ email: 'a@b.com', password: 'secret' });
+    await fixture.componentInstance.submit();
+
+    expect(navigateSpy).toHaveBeenCalledWith(['/people/employees']);
+  });
+
   it('navigates to /auth/legal-consent when login succeeds but legal acceptance is required', async () => {
     const fixture = setup({
       login: vi.fn().mockResolvedValue(undefined),
@@ -170,6 +220,34 @@ describe('LoginComponent', () => {
 
     expect(window.location.href).toBe('https://acme.localhost:4200/auth/continue?code=raw-exchange-code');
     expect(navigateSpy).not.toHaveBeenCalled();
+
+    window.location = originalLocation as unknown as string & Location;
+  });
+
+  it('appends returnUrl to continue_url when present (cross-host handoff must not drop it)', async () => {
+    const originalLocation = window.location;
+    // @ts-expect-error -- replacing window.location with a controllable stand-in for this test
+    delete window.location;
+    window.location = { ...originalLocation, href: '' } as unknown as string & Location;
+
+    const fixture = setup(
+      {
+        login: vi.fn().mockResolvedValue(undefined),
+        legalAcceptanceRequired: () => false,
+        redirectRequired: () => true,
+        continueUrl: () => 'https://acme.localhost:4200/auth/continue?code=raw-exchange-code',
+        loading: () => false,
+        error: () => null
+      },
+      '/device/activate?request_id=abc&user_code=XYZ'
+    );
+
+    fixture.componentInstance.form.setValue({ email: 'a@b.com', password: 'secret' });
+    await fixture.componentInstance.submit();
+
+    expect(window.location.href).toBe(
+      'https://acme.localhost:4200/auth/continue?code=raw-exchange-code&returnUrl=%2Fdevice%2Factivate%3Frequest_id%3Dabc%26user_code%3DXYZ'
+    );
 
     window.location = originalLocation as unknown as string & Location;
   });

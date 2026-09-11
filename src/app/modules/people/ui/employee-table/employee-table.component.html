@@ -14,7 +14,7 @@
       <tbody>
         @for (employee of employees(); track employee.id) {
           <tr class="emp-row" [routerLink]="['/people/employees', employee.id]">
-            <!-- Employee (Avatar + Status Dot + Name & Attendance Attention) -->
+            <!-- Employee: Avatar + Status Dot + Name & Email & Attendance -->
             <td class="col-employee">
               <div class="emp-identity">
                 <div
@@ -25,10 +25,7 @@
                   [attr.aria-label]="attendanceWarningLabel(employee)"
                   [attr.title]="attendanceWarningLabel(employee)"
                 >
-                  <div
-                    class="emp-avatar"
-                    [class.emp-avatar--warning]="attendanceWarningLabel(employee) !== null"
-                  >
+                  <div class="emp-avatar">
                     {{ avatarInitials(employee.fullName) }}
                   </div>
                   @if (attendanceWarningLabel(employee); as warningLabel) {
@@ -41,8 +38,14 @@
                     [title]="'Status: ' + employee.status"
                   ></span>
                 </div>
+
                 <div class="emp-info">
-                  <span class="emp-name" [title]="employee.fullName">{{ employee.fullName }}</span>
+                  <div class="emp-name-row">
+                    <span class="emp-name" [title]="employee.fullName">{{ employee.fullName }}</span>
+                    @if (employee.employeeNumber) {
+                      <span class="emp-number-pill" [title]="'ID: ' + employee.employeeNumber">{{ employee.employeeNumber }}</span>
+                    }
+                  </div>
                   <span class="emp-email" [title]="employee.email">{{ employee.email }}</span>
                   @if (attendanceAttentionLabel(employee); as attentionLabel) {
                     <span
@@ -70,8 +73,12 @@
             <!-- Position & Department -->
             <td class="col-position">
               <div class="emp-role">
-                <span class="emp-position" [title]="employee.positionName || 'Unassigned'">{{ employee.positionName || '—' }}</span>
-                <span class="emp-department" [title]="employee.departmentName || ''">{{ employee.departmentName || 'No Department' }}</span>
+                <span class="emp-position" [title]="employee.positionName || 'Unassigned'">
+                  {{ employee.positionName || '—' }}
+                </span>
+                <span class="emp-department" [title]="employee.departmentName || ''">
+                  {{ employee.departmentName || 'No Department' }}
+                </span>
               </div>
             </td>
 
@@ -79,15 +86,24 @@
             <td class="col-type">
               <div class="emp-type-wrap">
                 <span class="emp-type-chip">{{ employee.employmentTypeLabel }}</span>
-                <span class="emp-company" [title]="employee.legalEntityName || ''">{{ employee.legalEntityName || '—' }}</span>
+                <span class="emp-company" [title]="employee.legalEntityName || ''">
+                  {{ employee.legalEntityName || '—' }}
+                </span>
               </div>
             </td>
 
             <!-- Reporting Manager -->
             <td class="col-manager">
-              <span class="emp-manager-text" [title]="employee.reportingManagerName || 'Unassigned'">
-                {{ employee.reportingManagerName || 'Unassigned' }}
-              </span>
+              <div class="emp-manager-wrap">
+                @if (employee.reportingManagerName) {
+                  <span class="emp-manager-avatar">
+                    {{ avatarInitials(employee.reportingManagerName) }}
+                  </span>
+                }
+                <span class="emp-manager-text" [title]="employee.reportingManagerName || 'Unassigned'">
+                  {{ employee.reportingManagerName || 'Unassigned' }}
+                </span>
+              </div>
             </td>
           </tr>
         }

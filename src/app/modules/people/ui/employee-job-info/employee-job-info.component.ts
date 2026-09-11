@@ -67,6 +67,13 @@ import { EmployeeDetailJobInformation } from '../../models/employee.model';
         </div>
 
         <div>
+          <dt class="text-xs font-medium text-[var(--color-text-secondary)] mb-1">Work Mode</dt>
+          <dd class="font-semibold text-[var(--color-text-primary)]">
+            {{ jobInformation().workModeLabel || '—' }}
+          </dd>
+        </div>
+
+        <div>
           <dt class="text-xs font-medium text-[var(--color-text-secondary)] mb-1">Hire Date</dt>
           <dd class="font-semibold text-[var(--color-text-primary)]">
             {{ jobInformation().hireDate }}

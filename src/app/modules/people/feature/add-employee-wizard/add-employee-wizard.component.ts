@@ -1,4 +1,4 @@
-import { ChangeDetectionStrategy, Component, computed, effect, inject, OnDestroy, signal } from '@angular/core';
+import { ChangeDetectionStrategy, Component, computed, effect, inject, input, OnDestroy, output, signal } from '@angular/core';
 import { FormBuilder, Validators } from '@angular/forms';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { Subject, Subscription, catchError, debounceTime, distinctUntilChanged, firstValueFrom, map, of, switchMap } from 'rxjs';
@@ -10,6 +10,7 @@ import { DatePickerComponent } from '../../../../shared/ui/date-picker/date-pick
 import { EmptyStateComponent } from '../../../../shared/ui/empty-state/empty-state.component';
 import { InputComponent } from '../../../../shared/ui/input/input.component';
 import { LoaderComponent } from '../../../../shared/ui/loader/loader.component';
+import { CustomSelectComponent } from '../../../../shared/ui/custom-select/custom-select.component';
 import { SelectComponent, SelectOption } from '../../../../shared/ui/select/select.component';
 import { LegalEntityStore } from '../../../organization/state/legal-entity.store';
 import { PeopleApiService } from '../../data-access/people-api.service';
@@ -42,7 +43,7 @@ const TEMPLATE_TYPE_LABELS: Record<ChecklistTemplateType, string> = {
 const EMPLOYMENT_TYPE_OPTIONS: readonly SelectOption[] = [
   { value: 'full_time', label: 'Full-time' },
   { value: 'part_time', label: 'Part-time' },
-  { value: 'contractor', label: 'Contractor' },
+  { value: 'contract', label: 'Contract' },
   { value: 'intern', label: 'Intern' }
 ];
 
@@ -67,6 +68,7 @@ const STEP_LABELS: Record<WizardStep, string> = {
     InputComponent,
     LoaderComponent,
     SelectComponent,
+    CustomSelectComponent,
     ReportsToPickerComponent
   ],
   templateUrl: './add-employee-wizard.component.html',
@@ -82,6 +84,11 @@ export class AddEmployeeWizardComponent implements OnDestroy {
 
   readonly store = inject(AddEmployeeWizardStore);
   readonly legalEntityStore = inject(LegalEntityStore);
+
+  readonly isModal = input<boolean>(true);
+  readonly initialDraftId = input<string | null>(null);
+  readonly closed = output<void>();
+  readonly saved = output<{ finalized: boolean; draftId?: string }>();
 
   readonly employmentTypeOptions = EMPLOYMENT_TYPE_OPTIONS;
   readonly stepOrder = STEP_ORDER;
@@ -131,8 +138,8 @@ export class AddEmployeeWizardComponent implements OnDestroy {
   /** True once a resumed draft turns out to be terminal - the backend rejects any further save/finalize call against it. */
   readonly resumedDraftIsFinalized = computed(() => isTerminalDraft(this.store.lastSaveStatus(), this.store.lastSaveReason()));
 
-  readonly workModeOptions = computed<readonly SelectOption[]>(() =>
-    this.store.workModes().map((wm) => ({ value: String(wm.id), label: wm.label }))
+  readonly workModeOptions = computed<readonly { value: string; label: string; code: string }[]>(() =>
+    this.store.workModes().map((wm) => ({ value: String(wm.id), label: wm.label, code: wm.code }))
   );
 
   readonly selectedWorkModeLabel = computed(() => {
@@ -284,12 +291,12 @@ export class AddEmployeeWizardComponent implements OnDestroy {
   });
 
   constructor() {
-    const draftId = this.route.snapshot.queryParamMap.get('draftId');
+    const routeDraftId = this.route.snapshot.queryParamMap.get('draftId');
 
     // The store is providedIn: 'root' and survives route navigation, so a fresh "+ Add Employee"
     // visit (no draftId) must clear out whatever an earlier finalized/in-progress draft left
     // behind - otherwise stale finalizeResult/lastSaveReason/draftId leak into the new wizard.
-    if (!draftId) {
+    if (!routeDraftId && !this.initialDraftId()) {
       this.store.reset();
       this.lastSuggestedEmployeeNumber = null;
       this.employeeNumberSuggestionRequestKey = null;
@@ -335,7 +342,7 @@ export class AddEmployeeWizardComponent implements OnDestroy {
     // resumeExistingDraft() below sets the wizard's companyId from the draft's own
     // legalEntityId, which must not be clobbered by whatever company happens to be selected now.
     effect(() => {
-      if (draftId) {
+      if (routeDraftId || this.initialDraftId()) {
         return;
       }
       const company = this.legalEntityStore.selectedLegalEntity();
@@ -345,7 +352,7 @@ export class AddEmployeeWizardComponent implements OnDestroy {
     });
 
     effect(() => {
-      if (draftId) {
+      if (routeDraftId || this.initialDraftId()) {
         return;
       }
       const companyId = this.store.companyId();
@@ -361,8 +368,15 @@ export class AddEmployeeWizardComponent implements OnDestroy {
       }
     });
 
-    if (draftId) {
-      void this.resumeExistingDraft(draftId);
+    effect(() => {
+      const inputDraftId = this.initialDraftId();
+      if (inputDraftId && inputDraftId !== this.store.draftId()) {
+        void this.resumeExistingDraft(inputDraftId);
+      }
+    });
+
+    if (routeDraftId) {
+      void this.resumeExistingDraft(routeDraftId);
     }
 
     this.form.valueChanges.subscribe((value) => {
@@ -807,6 +821,7 @@ export class AddEmployeeWizardComponent implements OnDestroy {
     const result = await this.store.saveDraft(this.store.step());
     if (result) {
       this.notificationService.success('Draft saved.');
+      this.saved.emit({ finalized: false, draftId: result.id });
     } else {
       this.notificationService.error(this.store.saveError() ?? 'Something went wrong while saving the employee.');
     }
@@ -842,24 +857,30 @@ export class AddEmployeeWizardComponent implements OnDestroy {
     if (response) {
       if (response.invitationQueued && !response.positionApprovalPending) {
         this.notificationService.success('Employee onboarding invitation was queued.');
-        // Navigate first, then reset - this component (and its company-selection effect) is
-        // still live until navigation completes, and reset() nulling companyId would otherwise
-        // make that effect re-fire setCompany()/loadDepartmentsForCompany() on a component
-        // that's mid-teardown.
+        this.saved.emit({ finalized: true, draftId });
+        this.closed.emit();
         await this.router.navigate(['/people/employees']);
         this.store.reset();
       } else if (response.positionApprovalPending) {
         this.notificationService.info('Position approval was requested before the invitation can be sent.');
-        this.router.navigate(['/people/employees']);
+        this.saved.emit({ finalized: true, draftId });
+        this.closed.emit();
+        await this.router.navigate(['/people/employees']);
+        this.store.reset();
       } else if (response.status === 'waiting_for_seat' || response.draftReason === 'waiting_for_seat') {
         this.notificationService.info('No seat is available. The draft was saved for follow-up.');
+        this.saved.emit({ finalized: false, draftId });
       } else if (response.draftReason === 'seat_configuration_required') {
         this.notificationService.warning('Seat policy is not configured. The draft was saved, but invitation cannot be sent yet.');
+        this.saved.emit({ finalized: false, draftId });
       } else if (response.draftReason === 'position_approval_rejected') {
         this.notificationService.error('Position approval was rejected.');
       } else {
         this.notificationService.success('Employee onboarding draft updated.');
-        this.router.navigate(['/people/employees']);
+        this.saved.emit({ finalized: true, draftId });
+        this.closed.emit();
+        await this.router.navigate(['/people/employees']);
+        this.store.reset();
       }
     } else {
       this.notificationService.error(this.store.finalizeError() ?? 'Failed to finalize employee.');
@@ -867,7 +888,27 @@ export class AddEmployeeWizardComponent implements OnDestroy {
   }
 
   onCancel(): void {
+    this.closed.emit();
     this.router.navigate(['/people/employees']);
+  }
+
+  canJumpToStep(targetIndex: number): boolean {
+    return targetIndex < this.stepIndex();
+  }
+
+  jumpToStep(targetIndex: number): void {
+    if (this.canJumpToStep(targetIndex)) {
+      const targetStep = this.stepOrder[targetIndex];
+      if (targetStep) {
+        this.store.goToStep(targetStep);
+      }
+    }
+  }
+
+  onBackdropClick(event: MouseEvent): void {
+    if ((event.target as HTMLElement)?.classList.contains('add-emp-modal-backdrop')) {
+      this.onCancel();
+    }
   }
 
   draftReasonLabel(reason: string): string {

@@ -265,4 +265,67 @@ describe('EmployeeListComponent', () => {
 
     expect(req.request.params.get('search')).toBe('grace');
   });
+
+  it('toggles viewMode between table, list, and card and persists to localStorage', async () => {
+    await setup(true);
+    flushEmployeesAndDrafts();
+    await fixture.whenStable();
+    fixture.detectChanges();
+
+    expect(fixture.componentInstance.viewMode()).toBe('table');
+    expect(fixture.nativeElement.querySelector('app-employee-table')).not.toBeNull();
+    expect(fixture.nativeElement.querySelector('app-employee-list-view')).toBeNull();
+    expect(fixture.nativeElement.querySelector('app-employee-card-view')).toBeNull();
+
+    // Switch to List view
+    fixture.componentInstance.setViewMode('list');
+    fixture.detectChanges();
+
+    expect(fixture.componentInstance.viewMode()).toBe('list');
+    expect(fixture.nativeElement.querySelector('app-employee-table')).toBeNull();
+    expect(fixture.nativeElement.querySelector('app-employee-list-view')).not.toBeNull();
+    expect(localStorage.getItem('employee_view_mode')).toBe('list');
+
+    // Switch to Card view
+    fixture.componentInstance.setViewMode('card');
+    fixture.detectChanges();
+
+    expect(fixture.componentInstance.viewMode()).toBe('card');
+    expect(fixture.nativeElement.querySelector('app-employee-card-view')).not.toBeNull();
+    expect(localStorage.getItem('employee_view_mode')).toBe('card');
+
+    localStorage.removeItem('employee_view_mode');
+  });
+
+  it('cycles viewMode sequentially (table -> list -> card -> table) when clicking view cycle button', async () => {
+    await setup(true);
+    flushEmployeesAndDrafts();
+    await fixture.whenStable();
+    fixture.detectChanges();
+
+    const cycleBtn: HTMLButtonElement | null = fixture.nativeElement.querySelector('[data-testid="emp-view-cycle-btn"]');
+    expect(cycleBtn).toBeTruthy();
+    expect(fixture.componentInstance.viewMode()).toBe('table');
+
+    // 1st click: table -> list
+    cycleBtn!.click();
+    fixture.detectChanges();
+    expect(fixture.componentInstance.viewMode()).toBe('list');
+    expect(localStorage.getItem('employee_view_mode')).toBe('list');
+
+    // 2nd click: list -> card
+    cycleBtn!.click();
+    fixture.detectChanges();
+    expect(fixture.componentInstance.viewMode()).toBe('card');
+    expect(localStorage.getItem('employee_view_mode')).toBe('card');
+
+    // 3rd click: card -> table
+    cycleBtn!.click();
+    fixture.detectChanges();
+    expect(fixture.componentInstance.viewMode()).toBe('table');
+    expect(localStorage.getItem('employee_view_mode')).toBe('table');
+
+    localStorage.removeItem('employee_view_mode');
+  });
 });
+
