@@ -69,7 +69,8 @@ export const NAV_ITEMS: readonly NavItem[] = [
       { id: 'settings-roles', label: 'Roles & Permissions', path: '/settings/roles', requiredPermissions: ['roles:manage'] },
       { id: 'settings-notifications', label: 'Notification Settings', path: '/settings/notifications', requiredPermissions: ['notifications:manage'] },
       { id: 'settings-bulk-onboarding', label: 'Bulk Onboarding', path: '/settings/bulk-onboarding', requiredModules: ['core_hr'], requiredPermissions: ['employees:write'] },
-      { id: 'settings-clock-in-policy', label: 'Clock-in Policy', path: '/settings/clock-in-policy', requiredModules: ['time_attendance'], requiredPermissions: ['attendance:read'] }
+      { id: 'settings-clock-in-policy', label: 'Clock-in Policy', path: '/settings/clock-in-policy', requiredModules: ['time_attendance'], requiredPermissions: ['attendance:read'] },
+      { id: 'settings-calendar-connections', label: 'Calendar Sync', path: '/settings/calendar-connections', requiredModules: ['calendar'], requiredPermissions: ['calendar:read'] }
       // Audit log is intentionally not listed yet.
     ]
   }

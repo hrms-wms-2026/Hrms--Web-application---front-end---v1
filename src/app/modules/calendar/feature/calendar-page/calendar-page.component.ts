@@ -1,5 +1,7 @@
 import { ChangeDetectionStrategy, Component, computed, effect, inject, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
+import { ActivatedRoute, Router } from '@angular/router';
+import { NotificationService } from '../../../../core/services/notification.service';
 import { ButtonComponent } from '../../../../shared/ui/button/button.component';
 import { CalendarEventResponse, RecurrenceEditScope, RespondToCalendarEventStatus } from '../../models/calendar-event.model';
 import { CalendarEventStore } from '../../state/calendar-event.store';
@@ -22,6 +24,11 @@ function startOfWeek(d: Date): Date {
   return new Date(d.getFullYear(), d.getMonth(), d.getDate() - daysBackToMonday);
 }
 
+const CONNECTED_PROVIDER_LABELS: Record<string, string> = {
+  google: 'Google Calendar',
+  microsoft: 'Outlook'
+};
+
 @Component({
   selector: 'app-calendar-page',
   standalone: true,
@@ -34,6 +41,9 @@ function startOfWeek(d: Date): Date {
 })
 export class CalendarPageComponent {
   readonly store = inject(CalendarEventStore);
+  private readonly route = inject(ActivatedRoute);
+  private readonly router = inject(Router);
+  private readonly notificationService = inject(NotificationService);
 
   readonly view = signal<CalendarView>('day');
   readonly cursor = signal(new Date());
@@ -63,6 +73,35 @@ export class CalendarPageComponent {
 
   constructor() {
     this.store.loadMyTimezone();
+    this.handleCalendarConnectionRedirect();
+  }
+
+  /**
+   * The backend's OAuth callback (CalendarOAuthCallbackController) redirects the browser straight
+   * back to /calendar?connected={provider} or ?connectionError=1 once the connection completes -
+   * there is no dedicated frontend callback route. Surface the result as a toast once, then strip
+   * the query params so a refresh doesn't re-show it.
+   */
+  private handleCalendarConnectionRedirect(): void {
+    const params = this.route.snapshot.queryParamMap;
+    const connected = params.get('connected');
+    const hasError = params.has('connectionError');
+    if (!connected && !hasError) {
+      return;
+    }
+
+    if (connected) {
+      const label = CONNECTED_PROVIDER_LABELS[connected] ?? connected;
+      this.notificationService.success(`${label} connected.`);
+    } else {
+      this.notificationService.error('Could not connect the calendar. Please try again.');
+    }
+
+    void this.router.navigate([], {
+      relativeTo: this.route,
+      queryParams: {},
+      replaceUrl: true
+    });
   }
 
   private currentRange(): { from: string; to: string } {

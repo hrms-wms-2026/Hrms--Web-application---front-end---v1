@@ -166,6 +166,15 @@ export const routes: Routes = [
               { path: ':id/edit', redirectTo: '' }
             ]
           },
+          {
+            path: 'calendar-connections',
+            loadComponent: () =>
+              import('./modules/settings/feature/calendar-connections/calendar-connections.component').then(
+                (m) => m.CalendarConnectionsComponent
+              ),
+            canActivate: [permissionGuard],
+            data: { title: 'Calendar Sync', permissions: ['calendar:read'], modules: ['calendar'] }
+          },
           { path: '', pathMatch: 'full', redirectTo: 'general' }
         ]
       },
