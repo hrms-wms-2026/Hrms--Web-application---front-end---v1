@@ -249,6 +249,8 @@
                 <app-date-range-picker
                   [from]="historyFrom()"
                   [to]="historyTo()"
+                  [maxDate]="todayDateString()"
+                  align="right"
                   [disabled]="store.historyLoading()"
                   (rangeChange)="onRangeSelected($event)"
                 />
@@ -316,6 +318,8 @@
               <app-date-range-picker
                 [from]="historyFrom()"
                 [to]="historyTo()"
+                [maxDate]="todayDateString()"
+                align="right"
                 [disabled]="store.coveredHistoryLoading()"
                 (rangeChange)="onRangeSelected($event)"
               />

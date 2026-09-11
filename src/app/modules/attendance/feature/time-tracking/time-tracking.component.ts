@@ -103,7 +103,8 @@ export class TimeTrackingComponent implements OnInit {
 
   readonly historyFrom = signal('');
   readonly historyTo = signal('');
-    readonly currentWeekRange = currentWeekRange();
+  readonly todayDateString = computed(() => this.store.today()?.workDate || toDateOnly(new Date()));
+  readonly currentWeekRange = currentWeekRange();
   readonly selectedDetail = signal<AttendanceDetailSelection | null>(null);
   readonly selectedDetailSummary = signal<AttendanceHistoryRow | null>(null);
   /** History rows have no timezone field, so use Today.timezone for the selected company.
@@ -196,7 +197,15 @@ export class TimeTrackingComponent implements OnInit {
     if (this.hasSelfServiceAccess() || this.hasCoveredAccess()) {
       void this.store.loadToday().then(() => {
         const today = this.store.today();
-        if (today) void this.store.loadTodayTimeline(today.employeeId, today.workDate);
+        if (today) {
+          if (this.historyTo() > today.workDate) {
+            this.historyTo.set(today.workDate);
+            if (this.historyFrom() > today.workDate) {
+              this.historyFrom.set(today.workDate);
+            }
+          }
+          void this.store.loadTodayTimeline(today.employeeId, today.workDate);
+        }
         if (today && this.hasSelfServiceAccess() && this.queryParams().get('openCorrection') === 'today') {
           this.openTodayCorrection();
         }
@@ -235,9 +244,15 @@ export class TimeTrackingComponent implements OnInit {
 
 
   onRangeSelected(range: TimeTrackingRange): void {
-    this.historyFrom.set(range.from);
-    this.historyTo.set(range.to);
-    this.loadForCurrentView(range);
+    const max = this.todayDateString();
+    let { from, to } = range;
+    if (max && to > max) to = max;
+    if (max && from > max) from = max;
+    if (from > to) from = to;
+    const safeRange = { from, to };
+    this.historyFrom.set(safeRange.from);
+    this.historyTo.set(safeRange.to);
+    this.loadForCurrentView(safeRange);
   }
 
   private loadForCurrentView(range: TimeTrackingRange): void {
@@ -692,13 +707,22 @@ function dateOnlyForZone(value: string, timezone: string): string {
   return `${parts.find((part) => part.type === 'year')?.value}-${parts.find((part) => part.type === 'month')?.value}-${parts.find((part) => part.type === 'day')?.value}`;
 }
 
-function currentWeekRange(reference = new Date()): TimeTrackingRange {
+function currentWeekRange(reference = new Date(), maxDate?: string): TimeTrackingRange {
   const referenceDay = new Date(reference.getFullYear(), reference.getMonth(), reference.getDate());
   const dayOfWeek = referenceDay.getDay();
   const mondayOffset = dayOfWeek === 0 ? -6 : 1 - dayOfWeek;
   const monday = new Date(referenceDay.getTime() + mondayOffset * DAY_IN_MILLISECONDS);
   const sunday = new Date(monday.getTime() + 6 * DAY_IN_MILLISECONDS);
-  return { from: toDateOnly(monday), to: toDateOnly(sunday) };
+  let from = toDateOnly(monday);
+  let to = toDateOnly(sunday);
+  const effectiveMax = maxDate || toDateOnly(referenceDay);
+  if (to > effectiveMax) {
+    to = effectiveMax;
+  }
+  if (from > to) {
+    from = to;
+  }
+  return { from, to };
 }
 
 function toDateOnly(value: Date): string {
