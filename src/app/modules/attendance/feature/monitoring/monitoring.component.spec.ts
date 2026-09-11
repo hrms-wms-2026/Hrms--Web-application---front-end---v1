@@ -266,4 +266,41 @@ describe('MonitoringComponent', () => {
     expect(el.textContent).not.toContain('Select a company to configure monitoring.');
     expect(el.querySelector('[aria-label="Monitoring override scope"]')).not.toBeNull();
   });
+
+  it('renders custom-select for target selection and radio button groups for override features', async () => {
+    const { fixture, component } = await setup({ hasActiveCompanyContext: true });
+    const el = fixture.nativeElement as HTMLElement;
+
+    const customSelect = el.querySelector('app-custom-select');
+    expect(customSelect).not.toBeNull();
+
+    const radioGroups = el.querySelectorAll('.radio-group');
+    expect(radioGroups.length).toBe(4);
+
+    const radioLabels = Array.from(el.querySelectorAll('.radio-text')).map((item) => item.textContent?.trim());
+    expect(radioLabels).toContain('Inherited');
+    expect(radioLabels).toContain('On');
+    expect(radioLabels).toContain('Off');
+
+    // Test selecting a target and updating override flags
+    component.selectTarget('dept-1');
+    fixture.detectChanges();
+    expect(component.selectedTargetId()).toBe('dept-1');
+    expect(component.editMode()).toBe(true);
+
+    component.setOverrideFlag('workLocationVerification', true);
+    fixture.detectChanges();
+    expect(component.overrideForm().workLocationVerification).toBe(true);
+    expect(component.getOverrideFlag('workLocationVerification')).toBe(true);
+
+    component.setOverrideFlag('workLocationVerification', false);
+    fixture.detectChanges();
+    expect(component.overrideForm().workLocationVerification).toBe(false);
+    expect(component.getOverrideFlag('workLocationVerification')).toBe(false);
+
+    component.setOverrideFlag('workLocationVerification', null);
+    fixture.detectChanges();
+    expect(component.overrideForm().workLocationVerification).toBeNull();
+    expect(component.getOverrideFlag('workLocationVerification')).toBeNull();
+  });
 });

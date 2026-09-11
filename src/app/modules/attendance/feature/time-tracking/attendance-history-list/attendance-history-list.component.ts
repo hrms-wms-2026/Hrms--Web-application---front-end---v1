@@ -21,6 +21,7 @@ export class AttendanceHistoryListComponent {
   readonly displayTimezone = input<string>('UTC');
   readonly emptyMessage = input('No attendance records for this date range.');
   readonly showEmployeeColumn = input(false);
+  readonly showStatusNotes = input(false);
   readonly retryDisabledMessage = input<string | null>(null);
 
   readonly pageChange = output<number>();
@@ -36,6 +37,13 @@ export class AttendanceHistoryListComponent {
 
   employeeLabel(row: AttendanceHistoryRow): string {
     return row.employee?.displayName ?? 'Current employee';
+  }
+
+  scheduledLabel(row: AttendanceHistoryRow): string {
+    if (row.scheduledStartTime && row.scheduledEndTime) return `${row.scheduledStartTime} – ${row.scheduledEndTime}`;
+    if (row.scheduledStartTime) return row.scheduledStartTime;
+    if (row.scheduledEndTime) return row.scheduledEndTime;
+    return 'Not scheduled';
   }
 
   hasBreakOverage(value: number | null | undefined, isOverBreakAllowance = false): boolean {

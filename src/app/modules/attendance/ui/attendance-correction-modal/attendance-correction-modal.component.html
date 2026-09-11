@@ -1,0 +1,177 @@
+<app-modal
+  [open]="open()"
+  title="Request attendance correction"
+  size="lg"
+  [customMaxWidth]="customMaxWidth()"
+  [closeOnBackdropClick]="false"
+  (closed)="closeModal()"
+>
+  <form class="correction-modal-form" (ngSubmit)="previewOrSubmitCorrection()" novalidate>
+    <div class="correction-form__intro">
+      Update the attendance record for <strong>{{ formatDate(effectiveWorkDate()) }}</strong>. Times are shown in company time.
+    </div>
+
+    <div class="correction-form-grid">
+      <label class="form-field">
+        <span>Correction type</span>
+        <select
+          [ngModel]="type()"
+          (ngModelChange)="type.set($event); correctionPreviewReady.set(false)"
+          name="correctionType"
+        >
+          <option value="clock_in">Clock-in time</option>
+          <option value="clock_out">Clock-out time</option>
+          <option value="break">Break time</option>
+          <option value="full_day">Full day</option>
+        </select>
+      </label>
+
+      <label class="form-field">
+        <span>Work date</span>
+        <input [value]="effectiveWorkDate()" readonly aria-readonly="true" />
+      </label>
+    </div>
+
+    @if (type() === 'clock_in') {
+      <div class="correction-form-grid">
+        <label class="form-field">
+          <span>Requested clock-in time</span>
+          <input
+            type="time"
+            [ngModel]="requestedClockInTime()"
+            (ngModelChange)="requestedClockInTime.set($event); correctionPreviewReady.set(false)"
+            name="requestedClockInAt"
+          />
+          <small class="field-error">{{ correctionFieldErrors()['requestedClockInAt'] || '' }}</small>
+        </label>
+      </div>
+    }
+
+    @if (type() === 'clock_out') {
+      <div class="correction-form-grid">
+        <label class="form-field">
+          <span>Requested clock-out time</span>
+          <input
+            type="time"
+            [ngModel]="requestedClockOutTime()"
+            (ngModelChange)="requestedClockOutTime.set($event); correctionPreviewReady.set(false)"
+            name="requestedClockOutAt"
+          />
+          <small class="field-error">{{ correctionFieldErrors()['requestedClockOutAt'] || '' }}</small>
+        </label>
+      </div>
+    }
+
+    @if (type() === 'full_day') {
+      <div class="correction-form-grid">
+        <label class="form-field">
+          <span>Requested clock-in time</span>
+          <input
+            type="time"
+            [ngModel]="requestedClockInTime()"
+            (ngModelChange)="requestedClockInTime.set($event); correctionPreviewReady.set(false)"
+            name="requestedClockInAt"
+          />
+          <small class="field-error">{{ correctionFieldErrors()['requestedClockInAt'] || '' }}</small>
+        </label>
+
+        <label class="form-field">
+          <span>Requested clock-out time</span>
+          <input
+            type="time"
+            [ngModel]="requestedClockOutTime()"
+            (ngModelChange)="requestedClockOutTime.set($event); correctionPreviewReady.set(false)"
+            name="requestedClockOutAt"
+          />
+          <small class="field-error">{{ correctionFieldErrors()['requestedClockOutAt'] || '' }}</small>
+        </label>
+      </div>
+    }
+
+    @if (type() === 'break') {
+      <div class="form-field">
+        <span>Break intervals</span>
+        <div class="break-list-container">
+          @for (item of correctionBreaks(); track $index; let index = $index) {
+            <div class="break-row">
+              <input
+                type="time"
+                [ngModel]="item.start"
+                (ngModelChange)="correctionBreaks.update((items) => items.map((entry, itemIndex) => itemIndex === index ? { ...entry, start: $event } : entry)); correctionPreviewReady.set(false)"
+                [name]="'breakStart' + index"
+                aria-label="Break start time"
+              />
+              <span>to</span>
+              <input
+                type="time"
+                [ngModel]="item.end"
+                (ngModelChange)="correctionBreaks.update((items) => items.map((entry, itemIndex) => itemIndex === index ? { ...entry, end: $event } : entry)); correctionPreviewReady.set(false)"
+                [name]="'breakEnd' + index"
+                aria-label="Break end time"
+              />
+              <button
+                type="button"
+                class="icon-action"
+                (click)="removeBreakInterval(index)"
+                [disabled]="correctionBreaks().length === 1"
+              >
+                Remove
+              </button>
+            </div>
+          }
+        </div>
+        <button type="button" class="text-action" (click)="addBreakInterval()">+ Add interval</button>
+        <small class="field-error">{{ correctionFieldErrors()['requestedBreaks'] || '' }}</small>
+      </div>
+    }
+
+    <label class="form-field">
+      <span>Reason <b aria-hidden="true">*</b></span>
+      <textarea
+        rows="3"
+        maxlength="255"
+        [ngModel]="correctionReason()"
+        (ngModelChange)="correctionReason.set($event); correctionPreviewReady.set(false)"
+        name="reason"
+        placeholder="Provide a brief explanation for this request"
+      ></textarea>
+      <small class="field-error">{{ correctionFieldErrors()['reason'] || '' }}</small>
+    </label>
+
+    <label class="form-field">
+      <span>Notes <small>(optional)</small></span>
+      <textarea
+        rows="2"
+        maxlength="2000"
+        [ngModel]="correctionNotes()"
+        (ngModelChange)="correctionNotes.set($event); correctionPreviewReady.set(false)"
+        name="notes"
+        placeholder="Additional context if needed"
+      ></textarea>
+      <small class="field-error">{{ correctionFieldErrors()['notes'] || '' }}</small>
+    </label>
+
+    @if (correctionFormMessage()) {
+      <p
+        class="correction-form__message"
+        [class.correction-form__message--error]="!correctionPreviewReady()"
+        role="status"
+      >
+        {{ correctionFormMessage() }}
+      </p>
+    }
+
+    <div class="correction-form__actions">
+      <app-button type="button" variant="secondary" (pressed)="closeModal()">
+        Cancel
+      </app-button>
+      <app-button
+        type="submit"
+        [loading]="!!(store.correctionActionLoading?.() ?? false)"
+        [disabled]="!!(store.correctionActionLoading?.() ?? false) || (correctionPreviewReady() && !!store.correctionPreview?.()?.approvalRequired && !store.correctionPreview?.()?.approver)"
+      >
+        {{ correctionPreviewReady() ? 'Submit request' : 'Continue' }}
+      </app-button>
+    </div>
+  </form>
+</app-modal>

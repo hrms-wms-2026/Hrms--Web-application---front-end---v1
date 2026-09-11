@@ -1,4 +1,4 @@
-import { Injectable, computed, inject } from '@angular/core';
+import { Injectable, computed, inject, signal } from '@angular/core';
 import { toSignal } from '@angular/core/rxjs-interop';
 import { NavigationEnd, Router } from '@angular/router';
 import { filter, map } from 'rxjs/operators';
@@ -8,6 +8,8 @@ import { NAV_ITEMS } from './nav-items.config';
 
 @Injectable({ providedIn: 'root' })
 export class NavigationStateService {
+  private static readonly STORAGE_KEY = 'onevo.sub_sidebar_collapsed';
+
   private readonly router = inject(Router);
   private readonly permissionService = inject(PermissionService);
 
@@ -22,7 +24,8 @@ export class NavigationStateService {
   readonly visibleItems = computed(() => NAV_ITEMS.filter((item) => canAccessNavItem(item, this.permissionService)));
 
   readonly activeItem = computed(() => {
-    const url = this.currentUrl();
+    const rawUrl = this.currentUrl();
+    const url = rawUrl.split('?')[0].split('#')[0];
     return this.visibleItems().find((item) => {
       if (url === item.path || url.startsWith(`${item.path}/`)) {
         return true;
@@ -41,4 +44,51 @@ export class NavigationStateService {
     }
     return active.children.filter((child) => canAccessNavItem(child, this.permissionService));
   });
+
+  readonly isSubSidebarCollapsed = signal<boolean>(this.loadInitialCollapsedState());
+
+  readonly hasSubSidebar = computed(() => this.activeChildren().length > 0);
+
+  readonly hasVisibleSubSidebar = computed(() => this.hasSubSidebar() && !this.isSubSidebarCollapsed());
+
+  readonly canExpandSubSidebar = computed(() => this.hasSubSidebar() && this.isSubSidebarCollapsed());
+
+  collapseSubSidebar(): void {
+    this.isSubSidebarCollapsed.set(true);
+    this.persistCollapsedState(true);
+  }
+
+  expandSubSidebar(): void {
+    this.isSubSidebarCollapsed.set(false);
+    this.persistCollapsedState(false);
+  }
+
+  toggleSubSidebar(): void {
+    const next = !this.isSubSidebarCollapsed();
+    this.isSubSidebarCollapsed.set(next);
+    this.persistCollapsedState(next);
+  }
+
+  private loadInitialCollapsedState(): boolean {
+    if (typeof window === 'undefined' || !window.localStorage) {
+      return false;
+    }
+    try {
+      return window.localStorage.getItem(NavigationStateService.STORAGE_KEY) === 'true';
+    } catch {
+      return false;
+    }
+  }
+
+  private persistCollapsedState(collapsed: boolean): void {
+    if (typeof window === 'undefined' || !window.localStorage) {
+      return;
+    }
+    try {
+      window.localStorage.setItem(NavigationStateService.STORAGE_KEY, String(collapsed));
+    } catch {
+      // Ignore localStorage exceptions in private/restricted environments
+    }
+  }
 }
+

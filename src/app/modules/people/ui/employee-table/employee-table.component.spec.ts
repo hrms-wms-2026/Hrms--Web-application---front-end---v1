@@ -182,9 +182,9 @@ describe('EmployeeTableComponent', () => {
         attendanceSummary: {
           ...warningSummary,
           showNotClockedInWarning: false,
-          attentionType: 'over_break',
+          attentionType: 'urgent_notice',
           attentionSeverity: 'critical',
-          attentionLabel: 'Break time exceeded'
+          attentionLabel: 'Urgent attendance notice'
         }
       },
       {
@@ -206,10 +206,10 @@ describe('EmployeeTableComponent', () => {
     expect(attentionElements[1].classList.contains('emp-attention--critical')).toBe(true);
     expect(attentionElements[2].classList.contains('emp-attention--neutral')).toBe(true);
     expect(fixture.nativeElement.textContent).not.toContain('worked_during_time_off');
-    expect(fixture.nativeElement.textContent).not.toContain('over_break');
+    expect(fixture.nativeElement.textContent).not.toContain('urgent_notice');
   });
 
-  it('renders backend break overage minutes and avoids duplicate break attention text', async () => {
+  it('renders over break status alone, suppresses yellow warning, and applies avatar warning ring', async () => {
     await setup([
       {
         ...employee,
@@ -217,34 +217,20 @@ describe('EmployeeTableComponent', () => {
         attendanceSummary: {
           ...warningSummary,
           showNotClockedInWarning: false,
-          attentionLabel: 'Break time exceeded',
-          attentionSeverity: 'critical',
+          attentionLabel: 'Break time has exceeded the allowance',
+          attentionSeverity: 'warning',
           breakOverageMinutes: 15,
-          isOverBreakAllowance: true
+          isOverBreakAllowance: true,
+          attendanceStatusLabel: 'Over break'
         }
       }
     ]);
 
-    expect(fixture.nativeElement.querySelector('.emp-break-overage-marker')).toBeNull();
-    expect(fixture.nativeElement.textContent).toContain('Break time exceeded');
-
-    fixture.componentRef.setInput('employees', [
-      {
-        ...employee,
-        id: 'emp-overage-only',
-        attendanceSummary: {
-          ...warningSummary,
-          showNotClockedInWarning: false,
-          attentionLabel: null,
-          breakOverageMinutes: 15,
-          isOverBreakAllowance: true
-        }
-      }
-    ]);
-    fixture.detectChanges();
-
-    const marker = fixture.nativeElement.querySelector('.emp-break-overage-marker');
-    expect(marker?.textContent).toContain('Break exceeded by 15 min');
+    expect(fixture.nativeElement.querySelector('.emp-avatar-wrapper--warning')).not.toBeNull();
+    expect(fixture.nativeElement.querySelector('.emp-attendance-warning-tooltip')?.textContent).toContain('Over break');
+    expect(fixture.nativeElement.querySelector('.emp-attention-indicator')).toBeNull();
+    expect(fixture.nativeElement.textContent).not.toContain('Break time has exceeded the allowance');
+    expect(fixture.nativeElement.querySelector('.emp-attendance-status-label')?.textContent).toContain('Over break');
   });
 
   it('renders no attendance markers when the summary is absent', async () => {

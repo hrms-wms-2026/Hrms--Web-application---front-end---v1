@@ -224,9 +224,12 @@
 
 .pm-main-layout {
   display: flex;
-  gap: 1.25rem;
+  gap: 0;
   align-items: stretch;
-  width: 100%;
+  margin-left: -2rem;
+  margin-right: -2rem;
+  margin-top: -0.75rem;
+  margin-bottom: -1.75rem;
   position: relative;
 }
 
@@ -238,8 +241,9 @@
 app-position-template-drawer {
   flex-shrink: 0;
   width: 300px;
-  height: calc(100vh - 150px);
+  height: calc(100vh - 115px);
   align-self: stretch;
+  border-left: 1px solid var(--color-border);
 }
 
 
@@ -247,15 +251,15 @@ app-position-template-drawer {
   display: flex;
   flex-direction: column;
   gap: 1.5rem;
-  padding: 1.75rem;
-  border-radius: 14px;
-  background-color: var(--color-surface-secondary);
+  padding: 1.75rem 2rem;
+  border-radius: 0;
+  background-color: var(--color-surface);
   background-image: radial-gradient(color-mix(in srgb, var(--color-text-secondary) 18%, transparent) 1px, transparent 1px);
   background-size: 20px 20px;
-  border: 1px solid color-mix(in srgb, var(--color-border) 70%, transparent);
-  box-shadow: inset 0 2px 6px rgba(0, 0, 0, 0.02);
-  height: calc(100vh - 150px);
-  min-height: calc(100vh - 150px);
+  border: none;
+  box-shadow: none;
+  height: calc(100vh - 115px);
+  min-height: calc(100vh - 115px);
   overflow: auto;
   overscroll-behavior: contain;
   scrollbar-width: none;

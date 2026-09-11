@@ -17,7 +17,9 @@ import {
 import {
   AttendanceDayDetail,
   AttendanceHistoryRow,
+  AttendanceMonthlySummaryResponse,
   AttendanceTodayResponse,
+  TimelineEvent,
   TimeTrackingRange
 } from '../models/time-tracking.model';
 import {
@@ -37,6 +39,8 @@ export const TIME_TRACKING_LOAD_ERROR = 'Could not load your attendance today. T
 export const TIME_TRACKING_HISTORY_ERROR = 'Could not load attendance history. Try again.';
 export const TIME_TRACKING_COVERED_HISTORY_ERROR = 'Could not load team attendance. Try again.';
 export const TIME_TRACKING_DAY_DETAIL_ERROR = 'Could not load attendance details. Try again.';
+export const TIME_TRACKING_MONTHLY_SUMMARY_ERROR = 'Could not load your attendance summary. Try again.';
+export const TIME_TRACKING_TODAY_TIMELINE_ERROR = 'Could not load today’s activity. Try again.';
 export const TIME_TRACKING_COVERED_FORBIDDEN_ERROR = 'You do not have access to view team attendance.';
 export const CORRECTIONS_LOAD_ERROR = 'Could not load your correction requests. Try again.';
 export const CORRECTIONS_APPROVAL_LOAD_ERROR = 'Could not load attendance correction approvals. Try again.';
@@ -64,6 +68,9 @@ interface TimeTrackingState {
   readonly historyPage: number;
   readonly historyPageSize: number;
   readonly historyTotalCount: number;
+  readonly monthlySummary: AttendanceMonthlySummaryResponse | null;
+  readonly monthlySummaryLoading: boolean;
+  readonly monthlySummaryError: string | null;
   readonly coveredHistory: readonly AttendanceHistoryRow[];
   readonly coveredHistoryLoading: boolean;
   readonly coveredHistoryError: string | null;
@@ -75,6 +82,9 @@ interface TimeTrackingState {
   readonly dayDetail: AttendanceDayDetail | null;
   readonly dayDetailLoading: boolean;
   readonly dayDetailError: string | null;
+  readonly todayTimelineEvents: readonly TimelineEvent[];
+  readonly todayTimelineLoading: boolean;
+  readonly todayTimelineError: string | null;
   readonly myCorrections: readonly AttendanceCorrectionListItem[];
   readonly myCorrectionsLoading: boolean;
   readonly myCorrectionsError: string | null;
@@ -129,6 +139,9 @@ const initialState: TimeTrackingState = {
   historyPage: 1,
   historyPageSize: DEFAULT_PAGE_SIZE,
   historyTotalCount: 0,
+  monthlySummary: null,
+  monthlySummaryLoading: false,
+  monthlySummaryError: null,
   coveredHistory: [],
   coveredHistoryLoading: false,
   coveredHistoryError: null,
@@ -140,6 +153,9 @@ const initialState: TimeTrackingState = {
   dayDetail: null,
   dayDetailLoading: false,
   dayDetailError: null,
+  todayTimelineEvents: [],
+  todayTimelineLoading: false,
+  todayTimelineError: null,
   myCorrections: [],
   myCorrectionsLoading: false,
   myCorrectionsError: null,
@@ -294,6 +310,17 @@ export const TimeTrackingStore = signalStore(
         }
       },
 
+      async loadMonthlySummary(range: TimeTrackingRange): Promise<void> {
+        if (store.monthlySummaryLoading()) return;
+        patchState(store, { monthlySummaryLoading: true, monthlySummaryError: null });
+        try {
+          const monthlySummary = await firstValueFrom(api.getMyMonthlySummary(range.from, range.to));
+          patchState(store, { monthlySummary, monthlySummaryLoading: false, monthlySummaryError: null });
+        } catch (error) {
+          patchState(store, { monthlySummaryLoading: false, monthlySummaryError: errors.toSafeMessage(error, TIME_TRACKING_MONTHLY_SUMMARY_ERROR) });
+        }
+      },
+
       async loadCoveredHistory(range: TimeTrackingRange, employeeId?: string, page = 1): Promise<void> {
         if (store.coveredHistoryLoading()) return;
         const selectedEmployeeId = employeeId?.trim() || null;
@@ -326,6 +353,24 @@ export const TimeTrackingStore = signalStore(
 
       clearDayDetail(): void {
         patchState(store, { dayDetail: null, dayDetailLoading: false, dayDetailError: null });
+      },
+
+      async loadTodayTimeline(employeeId: string, workDate: string): Promise<void> {
+        if (store.todayTimelineLoading()) return;
+        patchState(store, { todayTimelineLoading: true, todayTimelineError: null });
+        try {
+          const detail = await firstValueFrom(api.getDayDetail(employeeId, workDate));
+          patchState(store, { todayTimelineEvents: detail.timelineEvents, todayTimelineLoading: false, todayTimelineError: null });
+        } catch (error) {
+          if (errorStatus(error) === 404) {
+            // No AttendanceRecord exists yet for today (before the first clock-in of the
+            // day) - that is a legitimate empty state, not a failure, so it must not surface
+            // the backend's raw "No attendance record was found for this date." text.
+            patchState(store, { todayTimelineEvents: [], todayTimelineLoading: false, todayTimelineError: null });
+            return;
+          }
+          patchState(store, { todayTimelineLoading: false, todayTimelineError: errors.toSafeMessage(error, TIME_TRACKING_TODAY_TIMELINE_ERROR) });
+        }
       },
 
       async loadMyCorrections(page = 1): Promise<void> {

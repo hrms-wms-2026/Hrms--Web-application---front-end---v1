@@ -3,26 +3,29 @@
     <h2 class="text-lg font-semibold text-[var(--color-text-primary)]">Attendance Trend</h2>
     <div class="text-right">
       <p class="text-lg font-semibold text-[var(--color-text-primary)]">
-        {{ totalHoursLabel() }} <span class="text-sm font-normal text-[var(--color-text-secondary)]">/ {{ weeklyGoalLabel }}</span>
+        {{ totalHoursLabel() }} <span class="text-sm font-normal text-[var(--color-text-secondary)]">/ {{ weeklyGoalLabel() }}</span>
       </p>
-      <p class="text-xs text-[var(--color-text-secondary)]">Weekly worked hours | Goal: {{ goalHours }}h/day</p>
+      <p class="text-xs text-[var(--color-text-secondary)]">Weekly worked hours | Goal: {{ dailyGoalLabel() }}</p>
     </div>
   </div>
 
   <div class="relative flex h-40 items-end gap-3 border-b border-[var(--color-border)] pb-1">
     <div
-      class="pointer-events-none absolute left-0 right-0 border-t border-dashed border-[var(--color-accent)]"
-      [style.bottom.%]="goalLinePercent"
+      class="pointer-events-none absolute left-0 right-0 z-10 border-t border-dashed border-[var(--color-accent)]"
+      [style.bottom.%]="goalLinePercent()"
     ></div>
 
     @for (day of days(); track day.label) {
-      <div class="flex flex-1 flex-col items-center gap-1">
-        <div class="flex h-full w-full items-end">
+      <div class="flex h-full flex-1 items-end justify-center">
+        <div
+          class="relative flex h-full w-full max-w-[36px] items-end justify-center rounded-t bg-[var(--color-surface-secondary)]"
+        >
           <div
             data-testid="attendance-trend-bar"
-            class="w-full rounded-t bg-[var(--color-accent)]"
+            class="w-full rounded-t bg-[var(--color-accent)] transition-all duration-300"
             [style.height.%]="day.heightPercent"
-            [attr.title]="day.hours + 'h'"
+            [style.minHeight.px]="day.minutes > 0 ? 4 : 0"
+            [attr.title]="day.label + ': ' + day.hoursLabel"
           ></div>
         </div>
       </div>

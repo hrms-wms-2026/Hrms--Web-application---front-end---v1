@@ -31,4 +31,10 @@ export class SideNavbarComponent {
     const company = this.selectedCompany();
     return company?.logoFileId ? this.legalEntityApi.getLogoUrl(company.id, company.logoFileId) : null;
   });
+
+  readonly canExpandSubSidebar = this.navState.canExpandSubSidebar;
+
+  expandSubSidebar(): void {
+    this.navState.expandSubSidebar();
+  }
 }

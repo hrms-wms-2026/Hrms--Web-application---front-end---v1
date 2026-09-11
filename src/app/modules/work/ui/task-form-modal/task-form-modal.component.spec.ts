@@ -239,4 +239,63 @@ describe('TaskFormModalComponent - create mode', () => {
     expect(createTask).not.toHaveBeenCalled();
     expect(fixture.componentInstance.errors()['objectiveId']).toBeTruthy();
   });
+
+  it('automatically inherits module and active sprint when there is only one module in the project', async () => {
+    await build();
+    // In build(), exactly 1 module 'o1' and 1 active sprint 'sp1' are returned
+    expect(fixture.componentInstance.selectedObjectiveId()).toBe('o1');
+    expect(fixture.componentInstance.sprintId()).toBe('sp1');
+  });
+
+  it('supports "Create & add another": creates task, emits created, keeps modal open, and resets title/description', async () => {
+    await build();
+    const createdSpy = vi.fn();
+    const closedSpy = vi.fn();
+    fixture.componentInstance.created.subscribe(createdSpy);
+    fixture.componentInstance.closed.subscribe(closedSpy);
+
+    fixture.componentInstance.title.set('First quick task');
+    fixture.componentInstance.description.set('Quick details');
+    fixture.componentInstance.selectedObjectiveId.set('o1');
+    fixture.componentInstance.categoryId.set('c1');
+
+    await fixture.componentInstance.submitCreateWithAction('create_and_add_another');
+
+    expect(createTask).toHaveBeenCalledWith('o1', expect.objectContaining({ title: 'First quick task' }));
+    expect(createdSpy).toHaveBeenCalledWith('t-new');
+    expect(closedSpy).not.toHaveBeenCalled();
+    expect(fixture.componentInstance.title()).toBe('');
+    expect(fixture.componentInstance.description()).toBe('');
+    expect(fixture.componentInstance.selectedObjectiveId()).toBe('o1');
+    expect(fixture.componentInstance.categoryId()).toBe('c1');
+    expect(fixture.componentInstance.successToastMessage()).toBeTruthy();
+  });
+
+  it('sets quick due date preset correctly and closes popover', async () => {
+    await build();
+    fixture.componentInstance.activePopover.set('dueDate');
+    fixture.componentInstance.setQuickDueDate(0); // Today
+    expect(fixture.componentInstance.dueDate()).toBeTruthy();
+    expect(fixture.componentInstance.activePopover()).toBeNull();
+  });
+
+  it('displays More fields section by default and allows toggling to hide or show', async () => {
+    await build();
+    expect(fixture.componentInstance.showMoreFields()).toBe(true);
+
+    const toggleBtn = fixture.nativeElement.querySelector('.tfm-more-toggle') as HTMLButtonElement | null;
+    expect(toggleBtn).toBeTruthy();
+
+    toggleBtn?.click();
+    fixture.detectChanges();
+    expect(fixture.componentInstance.showMoreFields()).toBe(false);
+
+    const actionBtn = fixture.nativeElement.querySelector('.tfm-more-action') as HTMLButtonElement | null;
+    expect(actionBtn?.textContent?.trim()).toBe('Show');
+
+    actionBtn?.click();
+    fixture.detectChanges();
+    expect(fixture.componentInstance.showMoreFields()).toBe(true);
+  });
 });
+
