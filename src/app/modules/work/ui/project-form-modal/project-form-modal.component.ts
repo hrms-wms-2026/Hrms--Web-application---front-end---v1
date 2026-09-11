@@ -124,10 +124,10 @@ const STEP_ITEMS = [
 
               <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <span data-testid="name-field">
-                  <app-input label="Project Name *" [value]="name()" [error]="errors()['name'] ?? ''" (valueChange)="name.set($event)" />
+                  <app-input label="Project Name *" [value]="name()" [error]="errors()['name']" (valueChange)="name.set($event)" />
                 </span>
                 <span data-testid="identifier-field">
-                  <app-input label="Key / Identifier *" [value]="identifier()" [error]="errors()['identifier'] ?? ''" (valueChange)="identifier.set($event)" />
+                  <app-input label="Key / Identifier *" [value]="identifier()" [error]="errors()['identifier']" (valueChange)="identifier.set($event)" />
                 </span>
               </div>
 
@@ -137,16 +137,16 @@ const STEP_ITEMS = [
 
               <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <span data-testid="start-date-field">
-                  <app-input label="Start Date *" type="date" [value]="startDate()" [error]="errors()['startDate'] ?? ''" (valueChange)="startDate.set($event)" />
+                  <app-input label="Start Date *" type="date" [value]="startDate()" [error]="errors()['startDate']" (valueChange)="startDate.set($event)" />
                 </span>
                 <span data-testid="target-date-field">
-                  <app-input label="Target Date *" type="date" [value]="targetDate()" [error]="errors()['targetDate'] ?? ''" (valueChange)="targetDate.set($event)" />
+                  <app-input label="Target Date *" type="date" [value]="targetDate()" [error]="errors()['targetDate']" (valueChange)="targetDate.set($event)" />
                 </span>
               </div>
 
               <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <span data-testid="allocated-hours-field">
-                  <app-input label="Allocated Hours" type="number" [value]="allocatedHoursDisplay()" [error]="errors()['allocatedHours'] ?? ''" (valueChange)="onAllocatedHoursChange($event)" />
+                  <app-input label="Allocated Hours" type="number" [value]="allocatedHoursDisplay()" [error]="errors()['allocatedHours']" (valueChange)="onAllocatedHoursChange($event)" />
                 </span>
                 <span data-testid="color-field">
                   <app-input label="Color Hex Code" placeholder="#2563EB" [value]="color()" (valueChange)="color.set($event)" />
