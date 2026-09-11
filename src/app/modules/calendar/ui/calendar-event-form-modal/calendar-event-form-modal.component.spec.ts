@@ -143,7 +143,79 @@ describe('CalendarEventFormModalComponent', () => {
     const spy = vi.fn();
     fixture.componentInstance.respond.subscribe(spy);
     fixture.nativeElement.querySelector('[data-testid="calendar-form-accept"]').click();
-    expect(spy).toHaveBeenCalledWith('Accepted');
+    expect(spy).toHaveBeenCalledWith({ status: 'Accepted', reason: null, nomineeEmployeeId: null });
+  });
+
+  it('does not show "Nominate replacement" when there are no eligible nominees', () => {
+    currentEmployeeId = 'emp-1';
+    fixture.componentRef.setInput('event', {
+      id: 'e1', title: 'Existing', description: null, startDate: '2026-09-01T09:00:00Z', endDate: '2026-09-01T09:30:00Z',
+      sourceType: 'manual', color: null, recurrence: 'none', isAllDay: false, timezone: 'UTC', eventStatus: null,
+      isPrivate: false, location: null, meetingLink: null, externalSource: null, createdById: 'u1',
+      isRecurringOccurrence: false, recurrenceMasterId: null, originalStart: null,
+      participants: [{ employeeId: 'emp-1', employeeName: 'Ada Lovelace', responseStatus: 'pending' }]
+    });
+    fixture.componentRef.setInput('eligibleNominees', []);
+    fixture.detectChanges();
+
+    fixture.nativeElement.querySelector('[data-testid="calendar-form-more"]').click();
+    fixture.detectChanges();
+
+    expect(fixture.nativeElement.querySelector('[data-testid="calendar-form-nominate"]')).toBeNull();
+  });
+
+  it('shows "Nominate replacement" and submits the chosen nominee when eligible nominees exist', () => {
+    currentEmployeeId = 'emp-1';
+    fixture.componentRef.setInput('event', {
+      id: 'e1', title: 'Existing', description: null, startDate: '2026-09-01T09:00:00Z', endDate: '2026-09-01T09:30:00Z',
+      sourceType: 'manual', color: null, recurrence: 'none', isAllDay: false, timezone: 'UTC', eventStatus: null,
+      isPrivate: false, location: null, meetingLink: null, externalSource: null, createdById: 'u1',
+      isRecurringOccurrence: false, recurrenceMasterId: null, originalStart: null,
+      participants: [{ employeeId: 'emp-1', employeeName: 'Ada Lovelace', responseStatus: 'pending' }]
+    });
+    fixture.componentRef.setInput('eligibleNominees', [{ employeeId: 'emp-2', employeeName: 'Grace Hopper' }]);
+    fixture.detectChanges();
+
+    const loadSpy = vi.fn();
+    fixture.componentInstance.loadEligibleNominees.subscribe(loadSpy);
+    fixture.nativeElement.querySelector('[data-testid="calendar-form-more"]').click();
+    fixture.detectChanges();
+    expect(loadSpy).toHaveBeenCalledTimes(1);
+
+    fixture.nativeElement.querySelector('[data-testid="calendar-form-nominate"]').click();
+    fixture.detectChanges();
+
+    const respondSpy = vi.fn();
+    fixture.componentInstance.respond.subscribe(respondSpy);
+    fixture.nativeElement.querySelector('[data-testid="calendar-form-submit-nominate"]').click();
+    expect(respondSpy).toHaveBeenCalledWith({ status: 'ReplacementNominated', reason: null, nomineeEmployeeId: 'emp-2' });
+  });
+
+  it('submits a reason when requesting conflict resolution', () => {
+    currentEmployeeId = 'emp-1';
+    fixture.componentRef.setInput('event', {
+      id: 'e1', title: 'Existing', description: null, startDate: '2026-09-01T09:00:00Z', endDate: '2026-09-01T09:30:00Z',
+      sourceType: 'manual', color: null, recurrence: 'none', isAllDay: false, timezone: 'UTC', eventStatus: null,
+      isPrivate: false, location: null, meetingLink: null, externalSource: null, createdById: 'u1',
+      isRecurringOccurrence: false, recurrenceMasterId: null, originalStart: null,
+      participants: [{ employeeId: 'emp-1', employeeName: 'Ada Lovelace', responseStatus: 'pending' }]
+    });
+    fixture.detectChanges();
+
+    fixture.nativeElement.querySelector('[data-testid="calendar-form-more"]').click();
+    fixture.detectChanges();
+    fixture.nativeElement.querySelector('[data-testid="calendar-form-request-resolution"]').click();
+    fixture.detectChanges();
+
+    const textarea = fixture.nativeElement.querySelector('[data-testid="calendar-form-resolution-reason"]');
+    textarea.value = 'Need to check with my team';
+    textarea.dispatchEvent(new Event('input'));
+    fixture.detectChanges();
+
+    const spy = vi.fn();
+    fixture.componentInstance.respond.subscribe(spy);
+    fixture.nativeElement.querySelector('[data-testid="calendar-form-submit-resolution"]').click();
+    expect(spy).toHaveBeenCalledWith({ status: 'ResolutionRequested', reason: 'Need to check with my team', nomineeEmployeeId: null });
   });
 
   it('emits checkConflicts (debounced) once participants and both dates are set, but not while editing', () => {
@@ -182,11 +254,26 @@ describe('CalendarEventFormModalComponent', () => {
 
   it('renders a non-blocking warning line per conflict', () => {
     fixture.componentRef.setInput('conflicts', [
-      { employeeId: 'emp-1', employeeName: 'Ada Lovelace', conflictingEventId: 'e9', conflictingEventTitle: 'Standup' }
+      {
+        employeeId: 'emp-1', employeeName: 'Ada Lovelace', conflictingEventId: 'e9', conflictingEventTitle: 'Standup',
+        overlapStart: '2026-09-01T09:00:00Z', overlapEnd: '2026-09-01T09:30:00Z'
+      }
     ]);
     fixture.detectChanges();
-    expect(fixture.nativeElement.textContent).toContain('Ada Lovelace is busy at this time (Standup)');
+    expect(fixture.nativeElement.textContent).toContain('Ada Lovelace is busy from 9:00 AM to 9:30 AM (Standup)');
     expect(fixture.nativeElement.querySelector('[data-testid="calendar-form-save-plain"] button').disabled).toBe(false);
+  });
+
+  it('shows the overlap time range in the conflict warning', () => {
+    fixture.componentRef.setInput('myTimezone', 'Asia/Colombo');
+    fixture.componentRef.setInput('conflicts', [
+      {
+        employeeId: 'emp-1', employeeName: 'Ada Lovelace', conflictingEventId: 'e9', conflictingEventTitle: 'Standup',
+        overlapStart: '2026-04-10T09:00:00+05:30', overlapEnd: '2026-04-10T09:30:00+05:30'
+      }
+    ]);
+    fixture.detectChanges();
+    expect(fixture.nativeElement.textContent).toContain('9:00 AM to 9:30 AM');
   });
 
   it('pre-fills the form using the viewer timezone, not raw UTC digits', () => {
@@ -281,5 +368,88 @@ describe('CalendarEventFormModalComponent', () => {
 
     expect(spy).toHaveBeenCalledTimes(1);
     expect(fixture.componentInstance.discardConfirmOpen()).toBe(false);
+  });
+
+  it('defaults a new event to a 30-minute slot', () => {
+    expect(fixture.componentInstance.form.controls.startTime.value).toBe('09:00');
+    expect(fixture.componentInstance.form.controls.endTime.value).toBe('09:30');
+  });
+
+  it('follows the start time with a +30m end until the end is set by hand', () => {
+    fixture.componentInstance.setStartTime('11:00');
+    expect(fixture.componentInstance.form.controls.endTime.value).toBe('11:30');
+
+    fixture.componentInstance.setEndTime('12:15');
+    fixture.componentInstance.setStartTime('13:00');
+    expect(fixture.componentInstance.form.controls.endTime.value).toBe('12:15');
+  });
+
+  it('reads the typed times in the picked timezone, not the tenant one, on save', () => {
+    fixture.componentRef.setInput('myTimezone', 'Asia/Colombo');
+    fixture.detectChanges();
+    expect(fixture.nativeElement.querySelector('[data-testid="calendar-form-timezone"]')).not.toBeNull();
+
+    fixture.componentInstance.setTimezone('America/New_York');
+    fixture.componentInstance.form.patchValue({
+      title: 'Standup', startDate: '2026-06-10', startTime: '09:00', endDate: '2026-06-10', endTime: '09:30'
+    });
+    const spy = vi.fn();
+    fixture.componentInstance.save.subscribe(spy);
+    fixture.componentInstance.onSubmit(null);
+
+    // 2026-06-10 09:00 America/New_York (EDT, UTC-4) == 13:00Z
+    const { create } = spy.mock.calls[0][0] as { create: { startDate: string } };
+    expect(new Date(create.startDate).toISOString()).toBe('2026-06-10T13:00:00.000Z');
+  });
+
+  it('renders participants as overlapping avatar circles with a removable overflow badge', () => {
+    const people = Array.from({ length: 8 }, (_, i) => ({ id: `e${i}`, name: `Person ${i}` }));
+    fixture.componentInstance.onParticipantIdsChange(people.map((p) => p.id));
+    fixture.componentInstance.onParticipantPeopleChange(people);
+    fixture.detectChanges();
+
+    const cluster = fixture.nativeElement.querySelector('[data-testid="calendar-form-participant-avatars"]');
+    expect(cluster.className).toContain('-space-x-3');
+    const removes = fixture.nativeElement.querySelectorAll('[data-testid="calendar-form-participant-remove"]');
+    expect(removes.length).toBe(6);
+    const overflow = fixture.nativeElement.querySelector('[data-testid="calendar-form-participant-overflow"]');
+    expect(overflow.textContent.trim()).toBe('+2');
+
+    (removes[0] as HTMLButtonElement).click();
+    fixture.detectChanges();
+    expect(fixture.componentInstance.participants().length).toBe(7);
+    expect(fixture.componentInstance.participantIds().length).toBe(7);
+    expect(fixture.componentInstance.participantIds()).not.toContain('e0');
+  });
+
+  it('uses prefillEnd for the end fields when a dragged range provides one', () => {
+    fixture.componentRef.setInput('prefillStart', '2026-09-20T10:15');
+    fixture.componentRef.setInput('prefillEnd', '2026-09-20T11:45');
+    fixture.componentRef.setInput('open', false);
+    fixture.detectChanges();
+    fixture.componentRef.setInput('open', true);
+    fixture.detectChanges();
+
+    expect(fixture.componentInstance.form.controls.startTime.value).toBe('10:15');
+    expect(fixture.componentInstance.form.controls.endTime.value).toBe('11:45');
+
+    // a later start-time nudge must not clobber the explicitly dragged end
+    fixture.componentInstance.setStartTime('09:00');
+    expect(fixture.componentInstance.form.controls.endTime.value).toBe('11:45');
+  });
+
+  it('opens the participant picker when the overflow badge is clicked', () => {
+    const people = Array.from({ length: 8 }, (_, i) => ({ id: `e${i}`, name: `Person ${i}` }));
+    fixture.componentInstance.onParticipantPeopleChange(people);
+    fixture.detectChanges();
+    (fixture.nativeElement.querySelector('[data-testid="calendar-form-participant-overflow"]') as HTMLButtonElement).click();
+    expect(fixture.componentInstance.participantPickerOpen()).toBe(true);
+  });
+
+  it('uses the calendar-module styled dropdown for Repeat, not a native select', () => {
+    const repeat = fixture.nativeElement.querySelector('[data-testid="calendar-form-repeat"]');
+    expect(repeat).not.toBeNull();
+    expect(repeat.tagName.toLowerCase()).toBe('app-calendar-select');
+    expect(repeat.querySelector('select')).toBeNull();
   });
 });

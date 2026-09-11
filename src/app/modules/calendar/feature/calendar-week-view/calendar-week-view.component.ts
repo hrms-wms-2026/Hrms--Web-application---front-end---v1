@@ -17,6 +17,7 @@ export class CalendarWeekViewComponent {
 
   eventClick = output<string>();
   slotClick = output<{ date: string; hour: number }>();
+  slotRange = output<{ date: string; startMinutes: number; endMinutes: number }>();
 
   readonly days = computed<readonly string[]>(() => {
     const [y, m, d] = this.weekStart().split('-').map(Number);

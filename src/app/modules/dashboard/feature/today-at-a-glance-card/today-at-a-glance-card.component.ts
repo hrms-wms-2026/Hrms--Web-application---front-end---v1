@@ -1,4 +1,4 @@
-import { ChangeDetectionStrategy, Component, OnInit, computed, effect, inject, signal } from '@angular/core';
+import { ChangeDetectionStrategy, Component, DestroyRef, OnInit, computed, effect, inject, signal } from '@angular/core';
 import { RouterLink } from '@angular/router';
 import { CardComponent } from '../../../../shared/ui/card/card.component';
 import { DashboardGreetingComponent } from '../dashboard-greeting/dashboard-greeting.component';
@@ -14,6 +14,7 @@ import {
   formatMinutes,
   formatTime
 } from '../../util/timeline-segments.util';
+import { getTimeOfDayInfo, TimeOfDayInfo } from '../../util/time-of-day.util';
 
 const STATUS_LABELS: Record<string, string> = {
   not_clocked_in: 'Not clocked in',
@@ -32,9 +33,16 @@ const STATUS_LABELS: Record<string, string> = {
 export class TodayAtAGlanceCardComponent implements OnInit {
   private readonly store = inject(TimeTrackingStore);
   private readonly activityApi = inject(ActivityTimelineApiService);
+  private readonly destroyRef = inject(DestroyRef);
+  private tickTimer: ReturnType<typeof setInterval> | null = null;
+  // Ticks every minute so greeting/timeline/"last updated" labels stay live without a manual
+  // page reload - the greeting/timeline calculations below read this instead of calling
+  // `new Date()`/`Date.now()` directly so they re-run on each tick.
+  private readonly now = signal(Date.now());
 
   protected readonly today = this.store.today;
   protected readonly loading = this.store.todayLoading;
+  protected readonly timeOfDayInfo = computed<TimeOfDayInfo>(() => getTimeOfDayInfo(new Date(this.now())));
 
   private readonly activitySegments = signal<ActivityTimelineSegment[]>([]);
   private activityRequested = false;
@@ -62,7 +70,7 @@ export class TodayAtAGlanceCardComponent implements OnInit {
       return [];
     }
     const start = new Date(today.clockInAt).getTime();
-    const end = (today.clockOutAt ? new Date(today.clockOutAt) : new Date()).getTime();
+    const end = today.clockOutAt ? new Date(today.clockOutAt).getTime() : this.now();
     if (Number.isNaN(start) || Number.isNaN(end) || end <= start) {
       return [];
     }
@@ -77,7 +85,7 @@ export class TodayAtAGlanceCardComponent implements OnInit {
     if (!today?.clockInAt) {
       return null;
     }
-    return formatTime(today.clockOutAt ? new Date(today.clockOutAt) : new Date());
+    return formatTime(today.clockOutAt ? new Date(today.clockOutAt) : new Date(this.now()));
   });
 
   private readonly lastUpdated = signal<Date | null>(null);
@@ -87,13 +95,18 @@ export class TodayAtAGlanceCardComponent implements OnInit {
     if (!updated) {
       return null;
     }
-    const diffMinutes = Math.floor((Date.now() - updated.getTime()) / 60_000);
+    const diffMinutes = Math.floor((this.now() - updated.getTime()) / 60_000);
     if (diffMinutes < 1) return 'Last updated: just now';
     if (diffMinutes === 1) return 'Last updated: 1 min ago';
     return `Last updated: ${diffMinutes} min ago`;
   });
 
   constructor() {
+    this.tickTimer = setInterval(() => this.now.set(Date.now()), 60_000);
+    this.destroyRef.onDestroy(() => {
+      if (this.tickTimer !== null) clearInterval(this.tickTimer);
+    });
+
     effect(() => {
       const today = this.today();
       if (!today?.allowedClockInMethods.desktopTray || this.activityRequested) {

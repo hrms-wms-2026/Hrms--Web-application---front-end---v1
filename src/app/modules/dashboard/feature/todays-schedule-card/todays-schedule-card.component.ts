@@ -34,7 +34,15 @@ export class TodaysScheduleCardComponent implements OnInit {
       .slice(0, MAX_AGENDA_ITEMS);
   });
 
-  protected readonly nextUp = computed(() => this.agendaItems().find((item) => item.isUpcoming)?.event ?? null);
+  protected readonly nextUp = computed(
+    () => this.agendaItems().find((item) => item.isUpcoming)?.event ?? (this.agendaItems()[0]?.event ?? null)
+  );
+
+  protected readonly remainingItems = computed(() => {
+    const next = this.nextUp();
+    if (!next) return this.agendaItems();
+    return this.agendaItems().filter((item) => item.event.id !== next.id);
+  });
 
   ngOnInit(): void {
     this.api.getMyTimezone().subscribe({
