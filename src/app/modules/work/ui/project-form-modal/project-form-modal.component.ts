@@ -22,20 +22,20 @@ const STEP_ITEMS = [
   template: `
     <app-modal [open]="open()" title="Create New Project" size="2xl" (closed)="closed.emit()">
       <div class="flex flex-col gap-6 py-1">
-        <!-- Modern Stepper Header -->
-        <div class="relative flex items-center justify-between border-b border-[var(--color-border)] pb-5 px-1">
+        <!-- Modern Stepper Header - fixed grid track keeps every connector equal regardless of label width -->
+        <div class="relative grid items-center [grid-template-columns:auto_1fr_auto_1fr_auto_1fr_auto] border-b border-[var(--color-border)] pb-5 px-1">
           @for (item of steps; track item.id; let i = $index) {
             <div
               class="flex items-center gap-2.5 z-10 cursor-pointer group"
               (click)="navigateToStep(item.id)"
             >
-              <!-- Step Number Badge -->
+              <!-- Step Number Badge - done and active share the accent hue; active adds the ring -->
               <div
                 class="flex h-9 w-9 items-center justify-center rounded-full text-xs font-bold transition-all shadow-xs"
                 [class]="step() === item.id
-                  ? 'bg-blue-600 text-white ring-4 ring-blue-100 dark:ring-blue-900/30'
+                  ? 'bg-[var(--color-accent)] text-[var(--color-accent-contrast)] ring-4 ring-[var(--color-accent)]/20'
                   : step() > item.id
-                    ? 'bg-emerald-500 text-white'
+                    ? 'bg-[var(--color-accent)] text-[var(--color-accent-contrast)]'
                     : 'bg-[var(--color-surface-secondary)] text-[var(--color-text-secondary)] border border-[var(--color-border)]'"
               >
                 @if (step() > item.id) {
@@ -51,7 +51,7 @@ const STEP_ITEMS = [
               <div class="hidden sm:flex flex-col">
                 <span
                   class="text-xs font-bold transition-colors"
-                  [class]="step() === item.id ? 'text-blue-600' : 'text-[var(--color-text-primary)]'"
+                  [class]="step() === item.id ? 'text-[var(--color-accent)]' : 'text-[var(--color-text-primary)]'"
                 >
                   {{ item.label }}
                 </span>
@@ -61,11 +61,11 @@ const STEP_ITEMS = [
               </div>
             </div>
 
-            <!-- Step Connector Line -->
+            <!-- Step Connector Line - width comes from the 1fr grid track, not flex-grow -->
             @if (i < steps.length - 1) {
-              <div class="flex-1 h-0.5 mx-2 bg-[var(--color-border)] relative">
+              <div class="h-0.5 mx-2 bg-[var(--color-border)] relative">
                 <div
-                  class="h-full bg-blue-600 transition-all duration-300"
+                  class="h-full bg-[var(--color-accent)] transition-all duration-300"
                   [style.width]="step() > item.id ? '100%' : '0%'"
                 ></div>
               </div>
@@ -89,15 +89,15 @@ const STEP_ITEMS = [
                     type="button"
                     data-testid="category-pill"
                     [attr.data-category-id]="category.id"
-                    class="flex items-center justify-between rounded-xl border p-3.5 text-left text-sm font-semibold transition-all hover:border-blue-500 hover:shadow-xs"
+                    class="flex items-center justify-between rounded-xl border p-3.5 text-left text-sm font-semibold transition-all hover:border-[var(--color-accent)] hover:shadow-xs"
                     [class]="categoryId() === category.id
-                      ? 'border-blue-600 bg-blue-50/50 dark:bg-blue-950/20 text-blue-700 ring-2 ring-blue-500/20'
+                      ? 'border-[var(--color-accent)] bg-[var(--color-accent)]/10 text-[var(--color-accent)] ring-2 ring-[var(--color-accent)]/20'
                       : 'border-[var(--color-border)] bg-white text-[var(--color-text-primary)] hover:bg-[var(--color-surface-secondary)]'"
                     (click)="categoryId.set(category.id)"
                   >
                     <span>{{ category.name }}</span>
                     @if (categoryId() === category.id) {
-                      <svg class="h-4 w-4 text-blue-600 shrink-0" fill="currentColor" viewBox="0 0 20 20">
+                      <svg class="h-4 w-4 text-[var(--color-accent)] shrink-0" fill="currentColor" viewBox="0 0 20 20">
                         <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd" />
                       </svg>
                     }
@@ -156,25 +156,25 @@ const STEP_ITEMS = [
               <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-1">
                 <span data-testid="logo-field" class="flex flex-col gap-1.5">
                   <label class="text-xs font-semibold text-[var(--color-text-secondary)]">Project Logo</label>
-                  <div class="relative flex items-center justify-between rounded-xl border border-dashed border-[var(--color-border)] p-3 hover:border-blue-500 bg-[var(--color-surface-secondary)]/30 transition-colors">
+                  <div class="relative flex items-center justify-between rounded-xl border border-dashed border-[var(--color-border)] p-3 hover:border-[var(--color-accent)] bg-[var(--color-surface-secondary)]/30 transition-colors">
                     <input type="file" accept="image/png,image/jpeg,image/webp" (change)="onLogoFileSelected($event)" class="absolute inset-0 opacity-0 cursor-pointer w-full h-full" />
                     <div class="flex items-center gap-2 text-xs text-[var(--color-text-secondary)] min-w-0">
-                      <svg class="h-4 w-4 text-blue-600 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"/></svg>
+                      <svg class="h-4 w-4 text-[var(--color-accent)] shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"/></svg>
                       <span class="truncate font-medium">{{ logoFile() ? logoFile()!.name : 'Choose Logo image' }}</span>
                     </div>
-                    <span class="text-[10px] font-bold text-blue-600 uppercase shrink-0 ml-1">Browse</span>
+                    <span class="text-[10px] font-bold text-[var(--color-accent)] uppercase shrink-0 ml-1">Browse</span>
                   </div>
                 </span>
 
                 <span data-testid="banner-field" class="flex flex-col gap-1.5">
                   <label class="text-xs font-semibold text-[var(--color-text-secondary)]">Project Banner</label>
-                  <div class="relative flex items-center justify-between rounded-xl border border-dashed border-[var(--color-border)] p-3 hover:border-blue-500 bg-[var(--color-surface-secondary)]/30 transition-colors">
+                  <div class="relative flex items-center justify-between rounded-xl border border-dashed border-[var(--color-border)] p-3 hover:border-[var(--color-accent)] bg-[var(--color-surface-secondary)]/30 transition-colors">
                     <input type="file" accept="image/png,image/jpeg,image/webp" (change)="onBannerFileSelected($event)" class="absolute inset-0 opacity-0 cursor-pointer w-full h-full" />
                     <div class="flex items-center gap-2 text-xs text-[var(--color-text-secondary)] min-w-0">
-                      <svg class="h-4 w-4 text-blue-600 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"/></svg>
+                      <svg class="h-4 w-4 text-[var(--color-accent)] shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"/></svg>
                       <span class="truncate font-medium">{{ bannerFile() ? bannerFile()!.name : 'Choose Banner image' }}</span>
                     </div>
-                    <span class="text-[10px] font-bold text-blue-600 uppercase shrink-0 ml-1">Browse</span>
+                    <span class="text-[10px] font-bold text-[var(--color-accent)] uppercase shrink-0 ml-1">Browse</span>
                   </div>
                 </span>
               </div>
@@ -200,7 +200,7 @@ const STEP_ITEMS = [
                 @for (id of memberEmployeeIds(); track id) {
                   <div data-testid="staged-member" class="flex items-center justify-between rounded-xl border border-[var(--color-border)] p-3 text-xs bg-white">
                     <div class="flex items-center gap-2.5">
-                      <div class="flex h-7 w-7 items-center justify-center rounded-full bg-blue-100 text-blue-700 font-bold text-[11px]">
+                      <div class="flex h-7 w-7 items-center justify-center rounded-full bg-[var(--color-accent)]/15 text-[var(--color-accent)] font-bold text-[11px]">
                         {{ (directory.get(id)?.name || id).substring(0, 2).toUpperCase() }}
                       </div>
                       <span class="font-semibold text-[var(--color-text-primary)]">{{ directory.get(id)?.name ?? id }}</span>
@@ -238,7 +238,7 @@ const STEP_ITEMS = [
                 <div class="flex items-center gap-3 border-b border-[var(--color-border)] pb-3">
                   <div
                     class="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg font-bold text-white text-base shadow-xs"
-                    [style.background]="color() || 'linear-gradient(135deg, #2563eb, #4f46e5)'"
+                    [style.background]="color() || 'var(--color-accent)'"
                   >
                     {{ name().substring(0, 1).toUpperCase() || 'P' }}
                   </div>
@@ -254,10 +254,10 @@ const STEP_ITEMS = [
                   <div><dt class="text-[var(--color-text-secondary)] font-medium">Allocated Hours</dt><dd class="font-bold text-[var(--color-text-primary)] mt-0.5">{{ allocatedHours() }}h</dd></div>
                   <div><dt class="text-[var(--color-text-secondary)] font-medium">Team Members</dt><dd class="font-bold text-[var(--color-text-primary)] mt-0.5">{{ memberEmployeeIds().length }} member(s)</dd></div>
                   @if (logoFile(); as file) {
-                    <div><dt class="text-[var(--color-text-secondary)] font-medium">Logo</dt><dd class="font-semibold text-blue-600 mt-0.5">{{ file.name }}</dd></div>
+                    <div><dt class="text-[var(--color-text-secondary)] font-medium">Logo</dt><dd class="font-semibold text-[var(--color-accent)] mt-0.5">{{ file.name }}</dd></div>
                   }
                   @if (bannerFile(); as file) {
-                    <div><dt class="text-[var(--color-text-secondary)] font-medium">Banner</dt><dd class="font-semibold text-blue-600 mt-0.5">{{ file.name }}</dd></div>
+                    <div><dt class="text-[var(--color-text-secondary)] font-medium">Banner</dt><dd class="font-semibold text-[var(--color-accent)] mt-0.5">{{ file.name }}</dd></div>
                   }
                 </dl>
               </div>
