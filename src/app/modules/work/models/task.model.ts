@@ -26,5 +26,7 @@ export interface WorkTask {
   openClockSessionEmployeeId: string | null;
   openClockSessionClockInAt: Date | null;
   totalLoggedMinutes: number;
+  activeEventId?: string | null;
+  activeEventName?: string | null;
 
 }

@@ -5,7 +5,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 import { PermissionService } from '../../../../core/auth/state/permission.service';
 import { AttendanceCorrectionResponse } from '../../models/attendance-correction.model';
 import { WorkAreaChangeRequestResponse } from '../../models/work-area-change-request.model';
-import { AttendanceDayDetail, AttendanceHistoryRow, AttendanceTodayResponse } from '../../models/time-tracking.model';
+import { AttendanceDayDetail, AttendanceHistoryRow, AttendanceTodayResponse, TimelineEvent } from '../../models/time-tracking.model';
 import { TimeTrackingStore } from '../../state/time-tracking.store';
 import { TimeTrackingComponent } from './time-tracking.component';
 
@@ -112,6 +112,10 @@ type StoreMock = {
   dayDetailError: ReturnType<typeof signal<string | null>>;
   loadDayDetail: ReturnType<typeof vi.fn>;
   clearDayDetail: ReturnType<typeof vi.fn>;
+  todayTimelineEvents: ReturnType<typeof signal<readonly TimelineEvent[]>>;
+  todayTimelineLoading: ReturnType<typeof signal<boolean>>;
+  todayTimelineError: ReturnType<typeof signal<string | null>>;
+  loadTodayTimeline: ReturnType<typeof vi.fn>;
   loadToday: ReturnType<typeof vi.fn>;
   loadMyHistory: ReturnType<typeof vi.fn>;
   loadCoveredHistory: ReturnType<typeof vi.fn>;
@@ -159,6 +163,13 @@ type StoreMock = {
   selectWorkAreaApprovalRequest: ReturnType<typeof vi.fn>;
   approveWorkAreaChangeRequest: ReturnType<typeof vi.fn>;
   rejectWorkAreaChangeRequest: ReturnType<typeof vi.fn>;
+  workAreaPreview: ReturnType<typeof signal<any>>;
+  workAreaPreviewLoading: ReturnType<typeof signal<boolean>>;
+  workAreaPreviewError: ReturnType<typeof signal<string | null>>;
+  workAreaCreateError: ReturnType<typeof signal<string | null>>;
+  clearWorkAreaPreview: ReturnType<typeof vi.fn>;
+  previewWorkAreaChange: ReturnType<typeof vi.fn>;
+  submitWorkAreaChangeRequest: ReturnType<typeof vi.fn>;
 };
 
 describe('TimeTrackingComponent', () => {
@@ -198,6 +209,10 @@ describe('TimeTrackingComponent', () => {
       dayDetailError: signal(null),
       loadDayDetail: vi.fn(() => Promise.resolve()),
       clearDayDetail: vi.fn(),
+      todayTimelineEvents: signal([]),
+      todayTimelineLoading: signal(false),
+      todayTimelineError: signal(null),
+      loadTodayTimeline: vi.fn(() => Promise.resolve()),
       loadToday: vi.fn(() => Promise.resolve()),
       loadMyHistory: vi.fn(() => Promise.resolve()),
       loadCoveredHistory: vi.fn(() => Promise.resolve()),
@@ -244,7 +259,14 @@ describe('TimeTrackingComponent', () => {
       loadWorkAreaApprovalInbox: vi.fn(() => Promise.resolve()),
       selectWorkAreaApprovalRequest: vi.fn(),
       approveWorkAreaChangeRequest: vi.fn(() => Promise.resolve(null)),
-      rejectWorkAreaChangeRequest: vi.fn(() => Promise.resolve(null))
+      rejectWorkAreaChangeRequest: vi.fn(() => Promise.resolve(null)),
+      workAreaPreview: signal(null),
+      workAreaPreviewLoading: signal(false),
+      workAreaPreviewError: signal(null),
+      workAreaCreateError: signal(null),
+      clearWorkAreaPreview: vi.fn(),
+      previewWorkAreaChange: vi.fn(() => Promise.resolve(null)),
+      submitWorkAreaChangeRequest: vi.fn(() => Promise.resolve(null))
     };
 
     await TestBed.configureTestingModule({
@@ -319,6 +341,53 @@ describe('TimeTrackingComponent', () => {
       expect(headerActions.contains(requestAction)).toBe(true);
     }
     expect(Array.from(element.children).some((child) => child.classList.contains('attendance-view-toggle'))).toBe(false);
+  });
+
+  it('toggles the Request dropdown and shows Attendance correction and Request to change the work mode', async () => {
+    const { fixture } = await setup();
+    fixture.detectChanges();
+    const component = fixture.componentInstance;
+
+    expect(component.requestDropdownOpen()).toBe(false);
+    expect(fixture.nativeElement.querySelector('[data-testid="request-option-attendance-correction"]')).toBeNull();
+
+    const trigger = fixture.nativeElement.querySelector('[data-testid="request-work-area-change"] button') as HTMLButtonElement;
+    trigger.click();
+    fixture.detectChanges();
+
+    expect(component.requestDropdownOpen()).toBe(true);
+    const correctionOption = fixture.nativeElement.querySelector('[data-testid="request-option-attendance-correction"]') as HTMLButtonElement;
+    const workModeOption = fixture.nativeElement.querySelector('[data-testid="request-option-work-area-change"]') as HTMLButtonElement;
+
+    expect(correctionOption).toBeTruthy();
+    expect(workModeOption).toBeTruthy();
+    expect(correctionOption.textContent).toContain('Attendance correction');
+    expect(workModeOption.textContent).toContain('Request to change the work mode');
+
+    const openCorrectionSpy = vi.spyOn(component, 'openTodayCorrection');
+    correctionOption.click();
+    fixture.detectChanges();
+
+    expect(openCorrectionSpy).toHaveBeenCalled();
+    expect(component.requestDropdownOpen()).toBe(false);
+  });
+
+  it('opens work area change modal when work mode option is clicked from Request dropdown', async () => {
+    const { fixture } = await setup();
+    fixture.detectChanges();
+    const component = fixture.componentInstance;
+
+    const trigger = fixture.nativeElement.querySelector('[data-testid="request-work-area-change"] button') as HTMLButtonElement;
+    trigger.click();
+    fixture.detectChanges();
+
+    const workModeOption = fixture.nativeElement.querySelector('[data-testid="request-option-work-area-change"]') as HTMLButtonElement;
+    const openWorkAreaSpy = vi.spyOn(component, 'openWorkAreaChange');
+    workModeOption.click();
+    fixture.detectChanges();
+
+    expect(openWorkAreaSpy).toHaveBeenCalled();
+    expect(component.workAreaFormOpen()).toBe(true);
   });
 
   it('a self-service-only user cannot reach team view', async () => {
@@ -486,10 +555,10 @@ describe('TimeTrackingComponent', () => {
     });
     const element = fixture.nativeElement as HTMLElement;
 
-    expect(element.querySelector('[data-testid="clock-in"]')).toBeNull();
-    expect(element.querySelector('[data-testid="start-break"]')).toBeTruthy();
-    expect(element.querySelector('[data-testid="end-break"]')).toBeNull();
-    expect(element.querySelector('[data-testid="clock-out"]')).toBeTruthy();
+    expect(element.querySelector('[data-testid="status-card-clock-in"]')).toBeNull();
+    expect(element.querySelector('[data-testid="status-card-start-break"]')).toBeTruthy();
+    expect(element.querySelector('[data-testid="status-card-end-break"]')).toBeNull();
+    expect(element.querySelector('[data-testid="status-card-clock-out"]')).toBeTruthy();
   });
 
   it('shows the my-history Previous/Next control only when there is more than one page, and disables Previous on page 1', async () => {
@@ -522,6 +591,23 @@ describe('TimeTrackingComponent', () => {
     expect(store.loadMyHistory).toHaveBeenCalledWith(expect.any(Object), 2);
   });
 
+  it('shows a session-style hero (single number, no stat tiles) and a Today\'s total breakdown', async () => {
+    const { fixture } = await setup({ requiredWorkMinutes: 480, totalWorkedMinutes: 150, breakUsedMinutes: 20 });
+    const element = fixture.nativeElement as HTMLElement;
+
+    expect(element.querySelector('[data-testid="status-card-session-value"]')?.textContent?.trim()).toBe('2h 30m');
+    expect(element.querySelector('.status-card-stats')).toBeNull();
+
+    const totals = Array.from(element.querySelectorAll('.today-total__item')).map((item) => ({
+      label: item.querySelector('dt')?.textContent?.trim(),
+      value: item.querySelector('dd')?.textContent?.trim()
+    }));
+    expect(totals).toContainEqual({ label: 'Scheduled', value: '8h' });
+    expect(totals).toContainEqual({ label: 'Worked', value: '2h 30m' });
+    expect(totals).toContainEqual({ label: 'Break', value: '20m' });
+    expect(totals).toContainEqual({ label: 'Remaining', value: '5h 30m' });
+  });
+
   it('shows remaining break time and the used-break helper when remaining is zero', async () => {
     const { fixture } = await setup({ breakUsedMinutes: 60, breakRemainingMinutes: 0 });
     const text = (fixture.nativeElement as HTMLElement).textContent ?? '';
@@ -530,13 +616,19 @@ describe('TimeTrackingComponent', () => {
     expect(text).toContain('You have used your break time for today.');
   });
 
+  it('openTodayCorrection opens the correction form pre-set to today\'s work date', async () => {
+    const { fixture } = await setup({ workDate: '2026-09-08' });
+
+    fixture.componentInstance.openTodayCorrection();
+
+    expect(fixture.componentInstance.correctionFormOpen()?.workDate).toBe('2026-09-08');
+    expect(fixture.componentInstance.correctionFormOpen()?.canRequestCorrection).toBe(true);
+  });
+
   it('uses the backend Today status label and falls back to the humanized status', async () => {
     const { fixture } = await setup({ attendanceStatus: 'on_time_off', attendanceStatusLabel: 'On approved time off' });
-    const component = fixture.componentInstance;
 
     expect((fixture.nativeElement as HTMLElement).textContent).toContain('On approved time off');
-    expect(component.statusLabel('not_clocked_in', null)).toBe('Not clocked in');
-    expect(component.statusLabel('not_clocked_in', '  ')).toBe('Not clocked in');
   });
 
   it('renders the backend attention label without exposing its machine type and applies severity styling', async () => {
@@ -577,7 +669,7 @@ describe('TimeTrackingComponent', () => {
       isWorkingDay: false,
       canClockIn: true
     });
-    expect(fixture.nativeElement.querySelector('[data-testid="clock-in"]')).toBeTruthy();
+    expect(fixture.nativeElement.querySelector('[data-testid="status-card-clock-in"]')).toBeTruthy();
     expect((fixture.nativeElement as HTMLElement).textContent).not.toContain('You have not clocked in yet.');
   });
 
@@ -596,7 +688,22 @@ describe('TimeTrackingComponent', () => {
     expect(text).toContain('Break time exceeded by 15 min.');
     expect(text).toContain('30m allowance · 45m used');
     expect(text).not.toContain('-15m');
-    expect(element.querySelector('[data-testid="end-break"]')).toBeTruthy();
+    expect(element.querySelector('[data-testid="status-card-end-break"]')).toBeTruthy();
+  });
+
+  it('suppresses the duplicate attention banner for break overage because the status card already displays the alert', async () => {
+    const { fixture } = await setup({
+      attendanceStatus: 'working',
+      attentionType: 'over_break',
+      attentionLabel: 'Break time has exceeded the allowance',
+      attentionSeverity: 'warning',
+      breakOverageMinutes: 75,
+      isOverBreakAllowance: true
+    });
+    fixture.detectChanges();
+    const banner = fixture.nativeElement.querySelector('.attention-banner');
+    expect(banner).toBeNull();
+    expect((fixture.nativeElement as HTMLElement).textContent).toContain('Break time exceeded by 75 min.');
   });
 
   it('uses backend history labels and shows attention and break overage for personal and covered rows', async () => {
@@ -706,7 +813,7 @@ describe('TimeTrackingComponent', () => {
     const { fixture, store } = await setup({}, false, [coveredRow]);
     const component = fixture.componentInstance;
     component.selectedDetail.set({ employeeId: 'employee-2', workDate: coveredRow.workDate });
-    store.dayDetail.set({ summary: coveredRow, timelineEvents: [], dailyActivity: null });
+    store.dayDetail.set({ summary: coveredRow, timelineEvents: [], dailyActivity: null, checkIns: [] });
     fixture.detectChanges();
 
     expect((fixture.nativeElement as HTMLElement).textContent).toContain('Attendance detail');
@@ -743,6 +850,43 @@ describe('TimeTrackingComponent', () => {
     expect(fixture.nativeElement.querySelector('input[name="requestedClockOutAt"]')).toBeTruthy();
   });
 
+  it('shows a one-click fix button for a missing-clock-out attention, naming the stale day', async () => {
+    const { fixture } = await setup({
+      attentionType: 'missing_clock_out',
+      attentionLabel: 'Still shown as clocked in from Aug 19 — confirm the actual clock-out time',
+      attentionSeverity: 'critical',
+      attentionWorkDate: '2026-08-19'
+    });
+    fixture.detectChanges();
+    const button = fixture.nativeElement.querySelector('[data-testid="fix-missing-clock-out"]');
+    expect(button).toBeTruthy();
+    expect(button?.textContent).toContain('Aug 19, 2026');
+  });
+
+  it('does not show the fix button for other attention types', async () => {
+    const { fixture } = await setup({
+      shouldHaveClockedIn: true,
+      attentionType: 'not_clocked_in',
+      attentionLabel: 'Still has not clocked in',
+      attentionSeverity: 'critical',
+      attentionWorkDate: null
+    });
+    fixture.detectChanges();
+    expect(fixture.nativeElement.querySelector('[data-testid="fix-missing-clock-out"]')).toBeNull();
+  });
+
+  it('opens a clock-out correction pre-set to the stale day when the fix button is used', async () => {
+    const { fixture } = await setup({});
+    const component = fixture.componentInstance;
+
+    component.openMissingClockOutCorrection('2026-08-19');
+    fixture.detectChanges();
+
+    expect(component.correctionFormOpen()?.workDate).toBe('2026-08-19');
+    expect(component.correctionType()).toBe('clock_out');
+    expect(fixture.nativeElement.querySelector('input[name="requestedClockOutAt"]')).toBeTruthy();
+    expect(fixture.nativeElement.querySelector('input[name="requestedClockInAt"]')).toBeNull();
+  });
 
 });
 

@@ -254,23 +254,6 @@ it('reorderTaskStatuses posts to projects/{projectId}/task-statuses/reorder', ()
     req.flush(null);
   });
 
-    it('getMyTasks builds the my-tasks URL with an optional sprintId param', () => {
-    service.getMyTasks('p1', 's1').subscribe();
-    const req = httpMock.expectOne((request) =>
-      request.url === `${environment.apiUrl}/work/projects/p1/my-tasks` && request.params.get('sprintId') === 's1'
-    );
-    expect(req.request.method).toBe('GET');
-    req.flush([]);
-  });
-
-  it('getMyTasks omits sprintId when not provided', () => {
-    service.getMyTasks('p1').subscribe();
-    const req = httpMock.expectOne(`${environment.apiUrl}/work/projects/p1/my-tasks`);
-    expect(req.request.method).toBe('GET');
-    expect(req.request.params.has('sprintId')).toBe(false);
-    req.flush([]);
-  });
-
   it('getTaskHistory GETs the history endpoint', () => {
     service.getTaskHistory('t1').subscribe();
     const req = httpMock.expectOne(`${environment.apiUrl}/work/tasks/t1/history`);

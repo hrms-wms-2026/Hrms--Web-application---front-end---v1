@@ -1,0 +1,16 @@
+.nlw-body { display: flex; flex-direction: column; gap: .8rem; min-width: 340px; }
+.nlw-field { display: flex; flex-direction: column; gap: .3rem; font-size: .8rem; color: var(--color-text-secondary, #64748b); }
+.nlw-field select, .nlw-field textarea { border-radius: 6px; border: 1px solid var(--color-border, #e4e8ee); padding: .4rem .6rem; font-family: inherit; }
+.nlw-zero-balance { color: #9aa4b2; }
+.nlw-picker-trigger { text-align: left; border: 1px dashed var(--color-border, #e4e8ee); border-radius: 6px; padding: .5rem .7rem; font-size: .82rem; background: transparent; cursor: pointer; }
+.nlw-muted { color: var(--color-text-secondary, #64748b); font-size: .8rem; }
+.nlw-total { font-size: .9rem; }
+.nlw-warning { color: #8a5a12; font-size: .8rem; background: #fef3e2; border-radius: 6px; padding: .45rem .65rem; }
+.nlw-error { color: #a3271d; font-size: .8rem; }
+.nlw-conflicts { font-size: .8rem; color: var(--color-text-secondary, #64748b); }
+.nlw-review { display: grid; grid-template-columns: auto 1fr; gap: .3rem .8rem; font-size: .84rem; }
+.nlw-review span { color: var(--color-text-secondary, #64748b); }
+.nlw-actions { display: flex; justify-content: flex-end; gap: .5rem; margin-top: .4rem; }
+.nlw-primary { background: #1e5eff; color: #fff; border: none; border-radius: 6px; padding: .5rem 1rem; font-size: .82rem; cursor: pointer; }
+.nlw-primary:disabled { opacity: .5; cursor: not-allowed; }
+.nlw-secondary { background: transparent; border: 1px solid var(--color-border, #e4e8ee); border-radius: 6px; padding: .5rem 1rem; font-size: .82rem; cursor: pointer; }

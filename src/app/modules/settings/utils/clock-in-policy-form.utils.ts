@@ -35,7 +35,8 @@ export const DEFAULT_WORK_AREA_RULES: WorkAreaRules = {
     biometricEnabled: false,
     webEnabled: true,
     trayEnabled: true,
-    photoRequired: true
+    photoRequired: true,
+    locationCheckRequired: false
   },
   hybrid: {
     biometricEnabled: false,
@@ -134,9 +135,11 @@ export function formModelFromPolicy(
   const fieldPhoto =
     policy.workAreaRules.field.photoRequirement === 'required' ? 'required' : 'off';
 
-  const locationCheckRequired = policy.workAreaRules.hybrid.locationCheckRequired === true;
+  const hybridLocationCheckRequired = policy.workAreaRules.hybrid.locationCheckRequired === true;
+  const remoteLocationCheckRequired = policy.workAreaRules.remote.locationCheckRequired === true;
+  const anyLocationCheckRequired = hybridLocationCheckRequired || remoteLocationCheckRequired;
   const allowedDistanceMeters =
-    locationCheckRequired &&
+    anyLocationCheckRequired &&
     policy.allowedRadiusMeters !== null &&
     policy.allowedRadiusMeters !== undefined
       ? String(policy.allowedRadiusMeters)
@@ -149,9 +152,13 @@ export function formModelFromPolicy(
     allowedDistanceMeters,
     workAreaRules: {
       ...structuredClone(policy.workAreaRules),
+      remote: {
+        ...structuredClone(policy.workAreaRules.remote),
+        locationCheckRequired: remoteLocationCheckRequired
+      },
       hybrid: {
         ...structuredClone(policy.workAreaRules.hybrid),
-        locationCheckRequired,
+        locationCheckRequired: hybridLocationCheckRequired,
         sourceRule: 'employee_choice'
       },
       field: {
@@ -218,7 +225,7 @@ export function validateClockInPolicyForm(
 ): FormValidationResult {
   const errors: Record<string, string> = {};
 
-  if (model.workAreaRules.hybrid.locationCheckRequired) {
+  if (model.workAreaRules.hybrid.locationCheckRequired || model.workAreaRules.remote.locationCheckRequired) {
     const distance = Number(model.allowedDistanceMeters);
     if (
       !model.allowedDistanceMeters.trim() ||
@@ -314,14 +321,20 @@ export function toUpsertRequest(
     lateDeductionRules = [];
   }
 
-  const locationCheckRequired = model.workAreaRules.hybrid.locationCheckRequired === true;
+  const hybridLocationCheckRequired = model.workAreaRules.hybrid.locationCheckRequired === true;
+  const remoteLocationCheckRequired = model.workAreaRules.remote.locationCheckRequired === true;
+  const anyLocationCheckRequired = hybridLocationCheckRequired || remoteLocationCheckRequired;
 
   const cloned = structuredClone(model.workAreaRules);
   const workAreaRules: WorkAreaRules = {
     ...cloned,
+    remote: {
+      ...cloned.remote,
+      locationCheckRequired: remoteLocationCheckRequired
+    },
     hybrid: {
       ...cloned.hybrid,
-      locationCheckRequired,
+      locationCheckRequired: hybridLocationCheckRequired,
       sourceRule: 'employee_choice'
     },
     field: {
@@ -342,8 +355,8 @@ export function toUpsertRequest(
     },
     effectiveFrom: safeEffectiveFrom(model.effectiveFrom, now),
     effectiveTo: effectiveTo || null,
-    locationVerificationRequired: locationCheckRequired,
-    allowedRadiusMeters: locationCheckRequired ? Number(model.allowedDistanceMeters) : null,
+    locationVerificationRequired: anyLocationCheckRequired,
+    allowedRadiusMeters: anyLocationCheckRequired ? Number(model.allowedDistanceMeters) : null,
     workAreaRules,
     correctionRequiresApproval: true,
     notificationRecipientResolver: 'management_coverage_owner',

@@ -12,7 +12,7 @@ interface ProjectListState {
   readonly pageNumber: number;
   readonly pageSize: number;
   readonly totalCount: number;
-  readonly selectedCategoryId: string | null;
+  readonly selectedCategoryIds: readonly string[];
   readonly achievedFilter: AchievedFilter;
   readonly loading: boolean;
   readonly error: string | null;
@@ -20,7 +20,7 @@ interface ProjectListState {
 
 const initialState: ProjectListState = {
   projects: [], pageNumber: 1, pageSize: 20, totalCount: 0,
-  selectedCategoryId: null, achievedFilter: 'all', loading: false, error: null
+  selectedCategoryIds: [], achievedFilter: 'all', loading: false, error: null
 };
 
 function extractError(err: any, fallback: string): string {
@@ -30,12 +30,12 @@ function extractError(err: any, fallback: string): string {
 export const ProjectListStore = signalStore(
   { providedIn: 'root' },
   withState<ProjectListState>(initialState),
-  withComputed(({ projects, selectedCategoryId, achievedFilter }) => ({
+  withComputed(({ projects, selectedCategoryIds, achievedFilter }) => ({
     filteredProjects: computed(() => {
-      const categoryId = selectedCategoryId();
+      const categoryIds = selectedCategoryIds();
       const status = achievedFilter();
       return projects().filter((p) => {
-        if (categoryId && p.categoryId !== categoryId) return false;
+        if (categoryIds.length && !categoryIds.includes(p.categoryId ?? '')) return false;
         if (status === 'active' && p.isAchieved) return false;
         if (status === 'archived' && !p.isAchieved) return false;
         return true;
@@ -57,8 +57,8 @@ export const ProjectListStore = signalStore(
       }
     },
 
-    setCategoryFilter(categoryId: string | null): void {
-      patchState(store, { selectedCategoryId: categoryId });
+    setCategoryFilter(categoryIds: readonly string[]): void {
+      patchState(store, { selectedCategoryIds: categoryIds });
     },
 
     setAchievedFilter(filter: AchievedFilter): void {

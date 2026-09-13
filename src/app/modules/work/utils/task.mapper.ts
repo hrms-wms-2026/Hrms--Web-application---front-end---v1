@@ -31,7 +31,9 @@ export function toWorkTask(dto: WorkTaskDto): WorkTask {
         assigneeEmployeeIds: dto.assigneeEmployeeIds ?? [],
     openClockSessionEmployeeId: dto.openClockSessionEmployeeId,
     openClockSessionClockInAt: dto.openClockSessionClockInAt ? new Date(dto.openClockSessionClockInAt) : null,
-    totalLoggedMinutes: dto.totalLoggedMinutes
+    totalLoggedMinutes: dto.totalLoggedMinutes,
+    activeEventId: dto.activeEventId ?? null,
+    activeEventName: dto.activeEventName ?? null
 
   };
 }

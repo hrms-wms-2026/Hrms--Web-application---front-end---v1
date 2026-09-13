@@ -8,7 +8,8 @@ describe('EmployeeJobInfoComponent', () => {
   const jobInfo: EmployeeDetailJobInformation = {
     employeeNumber: 'E-100', legalEntityId: 'le-1', legalEntityName: 'Acme Inc', departmentName: 'Engineering',
     positionName: 'Senior Engineer', positionId: 'pos-1', reportingManagerName: 'Jane Doe',
-    employmentTypeLabel: 'Full-time', status: 'active', hireDate: '2026-01-01', probationEndDate: null
+    employmentTypeLabel: 'Full-time', status: 'active', hireDate: '2026-01-01', probationEndDate: null,
+    workModeLabel: 'Remote'
   };
 
   beforeEach(async () => {
@@ -29,5 +30,18 @@ describe('EmployeeJobInfoComponent', () => {
     fixture.detectChanges();
     const text = fixture.nativeElement.textContent as string;
     expect(text).toContain('Unassigned');
+  });
+
+  it('renders the work mode', () => {
+    const text = fixture.nativeElement.textContent as string;
+    expect(text).toContain('Work Mode');
+    expect(text).toContain('Remote');
+  });
+
+  it('shows a fallback when work mode is not resolved', () => {
+    fixture.componentRef.setInput('jobInformation', { ...jobInfo, workModeLabel: null });
+    fixture.detectChanges();
+    const text = fixture.nativeElement.textContent as string;
+    expect(text).toContain('—');
   });
 });

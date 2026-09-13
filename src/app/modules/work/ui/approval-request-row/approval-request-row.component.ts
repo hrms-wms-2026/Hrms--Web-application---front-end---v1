@@ -10,17 +10,21 @@ import { ApprovalItem } from '../../models/approval.model';
   template: `
     <div class="approval-row" [attr.data-testid]="'approval-row-' + item().id">
       <div class="approval-row__body">
-        <p class="approval-row__title">{{ item().title }}</p>
-        <p class="approval-row__description">{{ item().description }}</p>
-        <p class="approval-row__meta">
-          @if (item().requestedByName) {
-            <span>{{ item().requestedByName }} · </span>
+        <div class="approval-row__copy">
+          <p class="approval-row__title">{{ item().title }}</p>
+          @if (item().description) {
+            <p class="approval-row__description">{{ item().description }}</p>
           }
-          <span>{{ item().createdAt | date: 'MMM d, y' }}</span>
-        </p>
+          <p class="approval-row__meta">
+            @if (item().requestedByName) {
+              <span>{{ item().requestedByName }} · </span>
+            }
+            <span>{{ item().createdAt | date: 'MMM d, y' }}</span>
+          </p>
+        </div>
         @if (item().kind === 'allocation_extend') {
           <label class="approval-row__hours-label">
-            Granted additional hours
+            <span>Granted additional hours</span>
             <input
               data-testid="allocation-hours-input"
               class="approval-row__hours-input"
@@ -60,50 +64,18 @@ import { ApprovalItem } from '../../models/approval.model';
     </div>
   `,
   styles: [`
-    .approval-row {
-      display: flex;
-      justify-content: space-between;
-      gap: 12px;
-      padding: 12px;
-      border: 1px solid var(--color-border);
-      border-radius: 10px;
-      background: var(--color-surface);
-    }
-    .approval-row__title {
-      margin: 0;
-      font-size: 14px;
-      font-weight: 600;
-      color: var(--color-text-primary);
-    }
-    .approval-row__description,
-    .approval-row__meta {
-      margin: 4px 0 0;
-      font-size: 12px;
-      color: var(--color-text-secondary);
-    }
-    .approval-row__hours-label {
-      display: flex;
-      flex-direction: column;
-      gap: 4px;
-      margin-top: 10px;
-      font-size: 12px;
-      color: var(--color-text-secondary);
-    }
-    .approval-row__hours-input {
-      width: 9rem;
-      border: 1px solid var(--color-border);
-      border-radius: 6px;
-      padding: 6px 8px;
-      background: var(--color-surface);
-      color: var(--color-text-primary);
-      font-size: 13px;
-    }
-    .approval-row__actions {
-      display: flex;
-      gap: 8px;
-      align-items: flex-start;
-      flex-shrink: 0;
-    }
+    .approval-row { display: flex; align-items: center; justify-content: space-between; gap: 22px; min-height: 74px; padding: 10px 16px; border: 1px solid var(--color-border); border-radius: 12px; background: var(--color-surface); box-shadow: 0 2px 8px rgb(15 23 42 / .035); transition: border-color 160ms ease, box-shadow 160ms ease, transform 160ms ease; }
+    .approval-row:hover { border-color: color-mix(in srgb, var(--color-accent) 35%, var(--color-border)); box-shadow: 0 6px 16px rgb(15 23 42 / .07); transform: translateY(-1px); }
+    .approval-row__body { display: flex; align-items: center; flex: 1; min-width: 0; gap: 28px; }
+    .approval-row__copy { min-width: 0; }
+    .approval-row__title { margin: 0; font-size: 14px; font-weight: 600; color: var(--color-text-primary); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .approval-row__description, .approval-row__meta { margin: 3px 0 0; font-size: 12px; color: var(--color-text-secondary); line-height: 1.35; }
+    .approval-row__meta { font-size: 11px; }
+    .approval-row__hours-label { display: flex; align-items: center; gap: 10px; margin: 0; flex: 0 0 auto; font-size: 11px; color: var(--color-text-secondary); white-space: nowrap; }
+    .approval-row__hours-input { width: 8rem; height: 34px; border: 1px solid var(--color-border); border-radius: 7px; padding: 5px 8px; background: var(--color-surface); color: var(--color-text-primary); font-size: 13px; }
+    .approval-row__actions { display: flex; align-items: center; gap: 8px; flex-shrink: 0; }
+    .approval-row__actions app-button { min-width: 84px; }
+    @media (max-width: 760px) { .approval-row { align-items: stretch; flex-direction: column; gap: 10px; padding: 12px; } .approval-row__body { align-items: flex-start; flex-wrap: wrap; gap: 10px 18px; } .approval-row__hours-label { width: 100%; justify-content: space-between; } .approval-row__actions { width: 100%; } .approval-row__actions app-button { flex: 1; min-width: 0; } }
     .approval-row__error {
       margin-top: 8px;
       font-size: 12px;

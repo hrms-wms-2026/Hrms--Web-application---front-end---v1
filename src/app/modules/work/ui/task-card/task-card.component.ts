@@ -28,21 +28,27 @@ import { TaskClockWidgetComponent } from '../task-clock-widget/task-clock-widget
         @if (task().estimatedHours) {
           <span class="task-card__hours"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9" /><path d="M12 7v5l3 2" /></svg><span>{{ task().estimatedHours }}h</span></span>
         }
+        @if (task().activeEventName) {
+          <span class="task-card__event" data-testid="task-event-chip" [title]="'In milestone: ' + task().activeEventName">{{ task().activeEventName }}</span>
+        }
       </div>
 
-            <span class="task-card__status" data-testid="task-card-status">{{ statusName() }}</span>
-      @if (isAssignee()) {
-        <div (click)="$event.stopPropagation()">
-          <app-task-clock-widget
-            [task]="task()"
-            [isAssignee]="isAssignee()"
-            [hasOpenSessionMine]="hasOpenSessionMine()"
-            [hasOpenSessionOtherEmployee]="hasOpenSessionOtherEmployee()"
-            (clockedIn)="taskChanged.emit()"
-            (pushed)="taskChanged.emit()"
-          />
-        </div>
-      }
+      <div class="task-card__footer">
+        <span class="task-card__status" data-testid="task-card-status">{{ statusName() }}</span>
+        @if (isAssignee()) {
+          <div class="task-card__clock" (click)="$event.stopPropagation()">
+            <app-task-clock-widget
+              [task]="task()"
+              [isAssignee]="isAssignee()"
+              [compact]="true"
+              [hasOpenSessionMine]="hasOpenSessionMine()"
+              [hasOpenSessionOtherEmployee]="hasOpenSessionOtherEmployee()"
+              (clockedIn)="taskChanged.emit()"
+              (pushed)="taskChanged.emit()"
+            />
+          </div>
+        }
+      </div>
 
     </div>
   `,
@@ -93,7 +99,10 @@ import { TaskClockWidgetComponent } from '../task-clock-widget/task-clock-widget
     .task-card__due-date, .task-card__hours { display: inline-flex; align-items: center; gap: 4px; }
     .task-card__priority[data-priority="critical"],
     .task-card__priority[data-priority="high"] { color: var(--color-danger); }
-    .task-card__status { display: inline-flex; width: fit-content; border-radius: 999px; background: var(--color-surface-secondary); padding: 3px 8px; font-size: 10px; font-weight: 500; color: var(--color-text-secondary); }
+    .task-card__event { overflow: hidden; max-width: 120px; border-radius: 999px; background: var(--color-surface-secondary); padding: 1px 8px; color: var(--color-text-secondary); font-size: 10px; font-weight: 600; text-overflow: ellipsis; white-space: nowrap; }
+    .task-card__footer { display: flex; align-items: center; justify-content: space-between; gap: 8px; min-width: 0; }
+    .task-card__clock { min-width: 0; margin-left: auto; }
+    .task-card__status { display: inline-flex; width: fit-content; flex: 0 0 auto; border-radius: 999px; background: var(--color-surface-secondary); padding: 3px 8px; font-size: 10px; font-weight: 500; color: var(--color-text-secondary); }
   `]
 })
 export class TaskCardComponent {

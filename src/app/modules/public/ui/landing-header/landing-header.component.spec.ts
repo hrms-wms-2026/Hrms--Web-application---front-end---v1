@@ -1,6 +1,7 @@
 import { TestBed } from '@angular/core/testing';
 import { By } from '@angular/platform-browser';
 import { provideRouter } from '@angular/router';
+import { DOCUMENT } from '@angular/common';
 import { LandingHeaderComponent } from './landing-header.component';
 
 function setScrollY(y: number): void {
@@ -18,11 +19,20 @@ async function scrollTo(y: number): Promise<void> {
 }
 
 describe('LandingHeaderComponent', () => {
-  async function createComponent() {
+  let document: Document;
+
+  // The hint cookie is read once, in the component's constructor, so it must be set on the
+  // TestBed-injected Document *before* TestBed.createComponent runs - hence the optional param
+  // here rather than setting document.cookie after the fixture already exists.
+  async function createComponent(lastTenantCookie?: string) {
     await TestBed.configureTestingModule({
       imports: [LandingHeaderComponent],
       providers: [provideRouter([])]
     }).compileComponents();
+    document = TestBed.inject(DOCUMENT);
+    if (lastTenantCookie !== undefined) {
+      document.cookie = `onevo_last_tenant=${lastTenantCookie}`;
+    }
     const fixture = TestBed.createComponent(LandingHeaderComponent);
     setScrollY(0);
     fixture.detectChanges();
@@ -32,6 +42,7 @@ describe('LandingHeaderComponent', () => {
 
   afterEach(() => {
     setScrollY(0);
+    document.cookie = 'onevo_last_tenant=; expires=Thu, 01 Jan 1970 00:00:00 GMT';
   });
 
   it('renders the primary navigation links', async () => {
@@ -44,6 +55,29 @@ describe('LandingHeaderComponent', () => {
     const fixture = await createComponent();
     const signIn = fixture.debugElement.query(By.css('.landing-header__signin')).nativeElement as HTMLAnchorElement;
     expect(signIn.getAttribute('routerLink') ?? signIn.getAttribute('href')).toContain('/auth/login');
+  });
+
+  it('shows "Go to Workspace" linking to the remembered tenant when onevo_last_tenant is set', async () => {
+    const fixture = await createComponent('acme');
+
+    const signIn = fixture.debugElement.query(By.css('.landing-header__signin')).nativeElement as HTMLAnchorElement;
+    expect(signIn.textContent?.trim()).toBe('Go to Workspace');
+    expect(signIn.getAttribute('href')).toContain('acme');
+    expect(signIn.getAttribute('href')).toContain('/dashboard');
+  });
+
+  it('still shows Login when onevo_last_tenant is absent', async () => {
+    const fixture = await createComponent();
+
+    const signIn = fixture.debugElement.query(By.css('.landing-header__signin')).nativeElement as HTMLAnchorElement;
+    expect(signIn.textContent?.trim()).toBe('Login');
+  });
+
+  it('still shows Login when onevo_last_tenant is present but empty', async () => {
+    const fixture = await createComponent('');
+
+    const signIn = fixture.debugElement.query(By.css('.landing-header__signin')).nativeElement as HTMLAnchorElement;
+    expect(signIn.textContent?.trim()).toBe('Login');
   });
 
   it('toggles the mobile menu accessibly on button click', async () => {

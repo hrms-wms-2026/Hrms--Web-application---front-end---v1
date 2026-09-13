@@ -1,5 +1,5 @@
 import { Component, OnInit, computed, inject, signal } from '@angular/core';
-import { ActivatedRoute, NavigationEnd, Router, RouterLink, RouterOutlet } from '@angular/router';
+import { ActivatedRoute, NavigationEnd, Router, RouterOutlet } from '@angular/router';
 import { filter } from 'rxjs/operators';
 import { firstValueFrom } from 'rxjs';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
@@ -15,9 +15,10 @@ import { BreadcrumbHeaderComponent } from '../../../../shared/ui/breadcrumb-head
   standalone: true,
   imports: [
     MilestoneSubMenuComponent, LoaderComponent, ErrorStateComponent, EmptyStateComponent,
-    BreadcrumbHeaderComponent, RouterLink, RouterOutlet
+    BreadcrumbHeaderComponent, RouterOutlet
   ],
-  templateUrl: './project-detail.component.html'
+  templateUrl: './project-detail.component.html',
+  styleUrls: ['./project-detail.component.css']
 })
 export class ProjectDetailComponent implements OnInit {
   readonly store = inject(ProjectDetailStore);
@@ -29,7 +30,7 @@ export class ProjectDetailComponent implements OnInit {
   isProjectSettings = signal(false);
 
   // Board/Backlog/Settings are project-level routes with no milestoneId of their own, but the
-  // sub-menu bar (and its Tree/My Task/List/Approvals/Calendar links, which are still
+  // sub-menu bar (and its Tree/Approvals/Calendar links, which are still
   // milestone-scoped) must stay visible on every tab - falls back to the first module so those
   // links have somewhere valid to point when the user isn't currently inside a specific module.
   subMenuMilestoneId = computed(() => this.activeMilestoneId() ?? this.store.milestones()[0]?.objectiveId ?? '');

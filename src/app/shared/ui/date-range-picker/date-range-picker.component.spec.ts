@@ -1,4 +1,4 @@
-import { Component } from '@angular/core';
+import { Component, signal } from '@angular/core';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { DateRangePickerComponent } from './date-range-picker.component';
 
@@ -7,21 +7,25 @@ import { DateRangePickerComponent } from './date-range-picker.component';
   imports: [DateRangePickerComponent],
   template: `
     <app-date-range-picker
-      [from]="from"
-      [to]="to"
+      [from]="from()"
+      [to]="to()"
+      [maxDate]="maxDate()"
+      [align]="align()"
       (rangeChange)="onRangeChange($event)"
     />
   `
 })
 class TestHostComponent {
-  from = '2026-08-17';
-  to = '2026-08-23';
+  readonly from = signal('2026-08-17');
+  readonly to = signal('2026-08-23');
+  readonly maxDate = signal('');
+  readonly align = signal<'auto' | 'left' | 'right'>('auto');
   lastEmitted: { from: string; to: string } | null = null;
 
   onRangeChange(range: { from: string; to: string }): void {
     this.lastEmitted = range;
-    this.from = range.from;
-    this.to = range.to;
+    this.from.set(range.from);
+    this.to.set(range.to);
   }
 }
 
@@ -155,4 +159,58 @@ describe('DateRangePickerComponent', () => {
 
     expect(fixture.nativeElement.querySelector('.drp-popover')).toBeFalsy();
   });
+
+  it('aligns popover to the right when align is set to right', () => {
+    fixture.componentInstance.align.set('right');
+    fixture.detectChanges();
+
+    const trigger = fixture.nativeElement.querySelector('.drp-trigger') as HTMLButtonElement;
+    trigger.click();
+    fixture.detectChanges();
+
+    const popover = fixture.nativeElement.querySelector('.drp-popover');
+    expect(popover).toBeTruthy();
+    expect(popover.classList.contains('drp-popover--right')).toBe(true);
+  });
+
+  it('disables dates after maxDate and prevents selecting them', () => {
+    fixture.componentInstance.maxDate.set('2026-08-15');
+    fixture.detectChanges();
+
+    const trigger = fixture.nativeElement.querySelector('.drp-trigger') as HTMLButtonElement;
+    trigger.click();
+    fixture.detectChanges();
+
+    const btn15 = dayButton('15');
+    const btn16 = dayButton('16');
+
+    expect(btn15.disabled).toBe(false);
+    expect(btn15.classList.contains('drp-day-btn--disabled')).toBe(false);
+
+    expect(btn16.disabled).toBe(true);
+    expect(btn16.classList.contains('drp-day-btn--disabled')).toBe(true);
+
+    btn16.click();
+    fixture.detectChanges();
+    expect(fixture.componentInstance.lastEmitted).toBeNull();
+
+    btn15.click();
+    fixture.detectChanges();
+    btn16.click();
+    fixture.detectChanges();
+    expect(fixture.componentInstance.lastEmitted).toBeNull();
+  });
+
+  it('disables next month navigation when next month starts after maxDate', () => {
+    fixture.componentInstance.maxDate.set('2026-08-31');
+    fixture.detectChanges();
+
+    const trigger = fixture.nativeElement.querySelector('.drp-trigger') as HTMLButtonElement;
+    trigger.click();
+    fixture.detectChanges();
+
+    const nextBtn = fixture.nativeElement.querySelector('.drp-nav-btn:last-of-type') as HTMLButtonElement;
+    expect(nextBtn.disabled).toBe(true);
+  });
 });
+

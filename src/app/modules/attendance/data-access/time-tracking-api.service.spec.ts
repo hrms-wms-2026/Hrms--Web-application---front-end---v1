@@ -141,6 +141,18 @@ describe('TimeTrackingApiService', () => {
     request.flush({ items: [], pageNumber: 2, pageSize: 20, totalCount: 0 });
   });
 
+  it('getMyMonthlySummary requests the monthly-summary endpoint with from/to params', () => {
+    service.getMyMonthlySummary('2026-08-01', '2026-08-31').subscribe();
+
+    const request = httpMock.expectOne(
+      (candidate) => candidate.url === `${base}/monthly-summary`
+        && candidate.params.get('from') === '2026-08-01'
+        && candidate.params.get('to') === '2026-08-31'
+    );
+    expect(request.request.method).toBe('GET');
+    request.flush({ workingDays: 20, daysPresent: 18, lateArrivals: 2, earlyDepartures: 1, missingClockOuts: 0 });
+  });
+
   it('getDayDetail calls the history-detail endpoint with employeeId and date', () => {
     const detail: AttendanceDayDetail = {
       summary: {
@@ -161,7 +173,8 @@ describe('TimeTrackingApiService', () => {
         canCorrect: false
       },
       timelineEvents: [{ eventType: 'ClockIn', timestamp: '2026-08-27T04:00:00Z', source: 'web' }],
-      dailyActivity: null
+      dailyActivity: null,
+      checkIns: []
     };
 
     service.getDayDetail('employee-1', '2026-08-27').subscribe((response) => expect(response).toEqual(detail));

@@ -38,9 +38,9 @@ export type ModalSize = 'md' | 'lg' | 'xl' | '2xl';
     }
   `,
   styles: `
-    .modal-dialog--xl {
+    .modal-dialog--constrained {
       max-height: 85vh;
-      overflow: hidden;
+      overflow-y: auto;
     }
   `
 })
@@ -48,26 +48,39 @@ export class ModalComponent {
   open = input(false);
   title = input<string>('');
   size = input<ModalSize>('md');
+  customMaxWidth = input<string>('');
+  panelClass = input<string>('');
   closeOnBackdropClick = input(true);
   closed = output<void>();
 
   readonly dialogClass = computed(() => {
     const sizeMap: Record<ModalSize, string> = {
       md: 'relative z-10 w-full max-w-md rounded-xl bg-[var(--color-surface)] p-6 shadow-lg outline-none',
-      lg: 'relative z-10 w-full max-w-xl rounded-xl bg-[var(--color-surface)] p-6 shadow-lg outline-none',
-      xl: 'relative z-10 w-full max-w-5xl rounded-xl bg-[var(--color-surface)] p-8 shadow-lg outline-none modal-dialog--xl',
-      '2xl': 'relative z-10 w-full max-w-6xl rounded-xl bg-[var(--color-surface)] p-8 shadow-lg outline-none modal-dialog--xl',
+      lg: 'relative z-10 w-full max-w-xl rounded-xl bg-[var(--color-surface)] p-6 shadow-lg outline-none modal-dialog--constrained',
+      xl: 'relative z-10 w-full max-w-5xl rounded-xl bg-[var(--color-surface)] p-8 shadow-lg outline-none modal-dialog--constrained',
+      '2xl': 'relative z-10 w-full max-w-6xl rounded-xl bg-[var(--color-surface)] p-8 shadow-lg outline-none modal-dialog--constrained',
     };
-    return sizeMap[this.size()];
+    let cls = sizeMap[this.size()];
+    const custom = this.customMaxWidth().trim();
+    if (custom) {
+      cls = cls.replace(/max-w-[a-z0-9]+/, custom);
+    }
+    const extra = this.panelClass().trim();
+    return extra ? `${cls} ${extra}` : cls;
   });
 
   private readonly dialogRef = viewChild<ElementRef<HTMLElement>>('dialog');
   readonly titleId = nextUniqueId('app-modal-title');
+  private previouslyFocused: HTMLElement | null = null;
 
   constructor() {
     effect(() => {
       if (this.open()) {
+        this.previouslyFocused = document.activeElement as HTMLElement;
         this.dialogRef()?.nativeElement.focus();
+      } else if (this.previouslyFocused) {
+        this.previouslyFocused.focus();
+        this.previouslyFocused = null;
       }
     });
   }

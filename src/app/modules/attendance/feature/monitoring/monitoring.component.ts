@@ -1,8 +1,11 @@
 import { CommonModule } from '@angular/common';
-import { ChangeDetectionStrategy, Component, computed, effect, inject, signal } from '@angular/core';
+import { ChangeDetectionStrategy, Component, computed, effect, inject, signal, untracked } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { PermissionService } from '../../../../core/auth/state/permission.service';
 import { NotificationService } from '../../../../core/services/notification.service';
+import { BreadcrumbHeaderComponent } from '../../../../shared/ui/breadcrumb-header/breadcrumb-header.component';
+import { CustomSelectComponent } from '../../../../shared/ui/custom-select/custom-select.component';
+import { SelectOption } from '../../../../shared/ui/select/select.component';
 import { DepartmentStore } from '../../../organization/state/department.store';
 import { LegalEntityStore } from '../../../organization/state/legal-entity.store';
 import { PositionStore } from '../../../organization/state/position.store';
@@ -35,7 +38,7 @@ const emptyOverride = (): MonitoringPolicyOverrideRequest => ({
 @Component({
   selector: 'app-monitoring',
   standalone: true,
-  imports: [CommonModule, FormsModule],
+  imports: [CommonModule, FormsModule, BreadcrumbHeaderComponent, CustomSelectComponent],
   templateUrl: './monitoring.component.html',
   styleUrl: './monitoring.component.css',
   changeDetection: ChangeDetectionStrategy.OnPush
@@ -66,6 +69,10 @@ export class MonitoringComponent {
     return this.scopeLabels[scope];
   }
 
+  overrideCount(scope: MonitoringScopeType): number {
+    return this.monitoringStore.overrides().filter((item) => item.scopeType === scope).length;
+  }
+
   readonly visibleOverrides = computed(() =>
     this.monitoringStore.overrides().filter((item) => item.scopeType === this.selectedScope())
   );
@@ -83,6 +90,38 @@ export class MonitoringComponent {
     }
   });
 
+  readonly targetSelectOptions = computed<readonly SelectOption[]>(() => {
+    return this.targetOptions().map((item) => ({
+      value: item.id,
+      label: item.name
+    }));
+  });
+
+  targetPlaceholder(): string {
+    switch (this.selectedScope()) {
+      case 'department':
+        return 'Select a department';
+      case 'position':
+        return 'Select a position';
+      case 'role':
+        return 'Select a role';
+      default:
+        return 'Select a target';
+    }
+  }
+
+  readonly overrideFieldList: readonly { readonly key: keyof MonitoringPolicyOverrideRequest; readonly label: string }[] = [
+    { key: 'workLocationVerification', label: 'Location tracking' },
+    { key: 'activityMonitoring', label: 'Keyboard and mouse activity' },
+    { key: 'applicationTracking', label: 'Application usage' },
+    { key: 'screenshotCapture', label: 'Screenshot capture' }
+  ];
+
+  getOverrideFlag(key: keyof MonitoringPolicyOverrideRequest): boolean | null {
+    const val = this.overrideForm()[key];
+    return typeof val === 'boolean' ? val : null;
+  }
+
   readonly hasActiveCompanyContext = this.monitoringStore.hasActiveCompanyContext;
 
   private rolesLoaded = false;
@@ -93,22 +132,20 @@ export class MonitoringComponent {
       void this.legalEntityStore.loadCompanies();
     });
 
-    // Reload the policy and this company's department/position target lists whenever the
-    // selected company changes - never leave department/position overrides pointed at a
-    // previous company's targets. The company default and role overrides don't depend on
-    // which company is selected, but re-fetching keeps them all on one predictable trigger.
     effect(() => {
       if (!this.hasReadAccess()) return;
       const company = this.legalEntityStore.selectedLegalEntity();
-      void this.monitoringStore.load();
-      if (company) {
-        void this.departmentStore.load(company.id);
-        void this.positionStore.load(company.id);
-      }
-      if (!this.rolesLoaded) {
-        this.rolesLoaded = true;
-        void this.roleStore.loadRolesOnly();
-      }
+      untracked(() => {
+        void this.monitoringStore.load();
+        if (company) {
+          void this.departmentStore.load(company.id);
+          void this.positionStore.load(company.id);
+        }
+        if (!this.rolesLoaded) {
+          this.rolesLoaded = true;
+          void this.roleStore.loadRolesOnly();
+        }
+      });
     });
 
     effect(() => {

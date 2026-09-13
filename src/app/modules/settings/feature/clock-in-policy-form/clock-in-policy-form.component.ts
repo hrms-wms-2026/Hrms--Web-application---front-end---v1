@@ -129,9 +129,19 @@ export class ClockInPolicyFormComponent {
       locationCheckRequired: checked,
       sourceRule: 'employee_choice' as const
     };
+    const keepDistance = checked || this.form().workAreaRules.remote.locationCheckRequired;
     this.patchForm({
       workAreaRules: { ...this.form().workAreaRules, hybrid },
-      allowedDistanceMeters: checked ? this.form().allowedDistanceMeters : ''
+      allowedDistanceMeters: keepDistance ? this.form().allowedDistanceMeters : ''
+    });
+  }
+
+  setRemoteLocationCheck(checked: boolean): void {
+    const remote = { ...this.form().workAreaRules.remote, locationCheckRequired: checked };
+    const keepDistance = checked || this.form().workAreaRules.hybrid.locationCheckRequired;
+    this.patchForm({
+      workAreaRules: { ...this.form().workAreaRules, remote },
+      allowedDistanceMeters: keepDistance ? this.form().allowedDistanceMeters : ''
     });
   }
 
@@ -140,7 +150,14 @@ export class ClockInPolicyFormComponent {
     this.patchForm({ workAreaRules: { ...this.form().workAreaRules, onsite } });
   }
 
-  patchRemote(partial: Partial<WorkAreaSourceRules>): void {
+  patchRemote(
+    partial: Partial<{
+      biometricEnabled: boolean;
+      webEnabled: boolean;
+      trayEnabled: boolean;
+      photoRequired: boolean;
+    }>
+  ): void {
     const remote = { ...this.form().workAreaRules.remote, ...partial };
     this.patchForm({ workAreaRules: { ...this.form().workAreaRules, remote } });
   }

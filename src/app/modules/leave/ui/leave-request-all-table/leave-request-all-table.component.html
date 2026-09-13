@@ -1,0 +1,23 @@
+<table class="lra-table">
+  <thead>
+    <tr><th>Name</th><th>Department</th><th>Type</th><th>From</th><th>To</th><th>Days</th><th>Status</th><th>Actions</th></tr>
+  </thead>
+  <tbody>
+    @for (row of rows; track row.requestId) {
+      <tr data-testid="all-request-row" (click)="rowClicked.emit(row.requestId)">
+        <td>{{ row.employeeName }}</td>
+        <td>{{ row.departmentName ?? '-' }}</td>
+        <td>{{ row.leaveTypeName }}</td>
+        <td>{{ row.startDate }}</td>
+        <td>{{ row.endDate }}</td>
+        <td>{{ row.totalDays }}</td>
+        <td><span class="lra-status" [class]="'lra-status-' + row.status">{{ statusLabel(row.status) }}</span></td>
+        <td>
+          @if (canCancel(row)) {
+            <button type="button" data-testid="cancel-request" (click)="$event.stopPropagation(); cancelRequested.emit(row)">Cancel</button>
+          }
+        </td>
+      </tr>
+    }
+  </tbody>
+</table>

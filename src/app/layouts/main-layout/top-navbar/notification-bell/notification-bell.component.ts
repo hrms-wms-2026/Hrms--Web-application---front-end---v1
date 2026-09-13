@@ -1,18 +1,9 @@
 import { Component, OnDestroy, OnInit, inject, signal } from '@angular/core';
-import { Router } from '@angular/router';
-import { firstValueFrom } from 'rxjs';
 import { NotificationsStore } from '../../../../core/state/notifications.store';
 import { NotificationItem } from '../../../../core/services/notification-api.service';
+import { NotificationNavigationService } from '../../../../core/services/notification-navigation.service';
 import { PopoverComponent } from '../../../../shared/ui/popover/popover.component';
-import { TaskApiService } from '../../../../modules/work/data-access/task-api.service';
 import { NotificationDropdownComponent } from './notification-dropdown/notification-dropdown.component';
-
-const WORK_RELATED_TYPES = new Set([
-  'task',
-  'task_creation_request',
-  'objective_change_request',
-  'allocation_extend'
-]);
 
 @Component({
   selector: 'app-notification-bell',
@@ -86,8 +77,7 @@ const WORK_RELATED_TYPES = new Set([
 })
 export class NotificationBellComponent implements OnInit, OnDestroy {
   protected readonly store = inject(NotificationsStore);
-  private readonly router = inject(Router);
-  private readonly taskApi = inject(TaskApiService);
+  private readonly navigation = inject(NotificationNavigationService);
 
   protected readonly isOpen = signal(false);
   private pollId: ReturnType<typeof setInterval> | null = null;
@@ -114,44 +104,10 @@ export class NotificationBellComponent implements OnInit, OnDestroy {
   async onItemClicked(item: NotificationItem): Promise<void> {
     await this.store.markRead(item.id);
     this.close();
-    await this.navigateFromNotification(item);
+    await this.navigation.navigate(item);
   }
 
   async onMarkAllRead(): Promise<void> {
     await this.store.markAllRead();
-  }
-
-  private async navigateFromNotification(item: NotificationItem): Promise<void> {
-    if (item.isNavigable && item.destinationKey === 'attendance_correction_approval' && item.attendanceCorrectionId) {
-      await this.router.navigate(['/attendance/time-tracking'], {
-        queryParams: { view: 'team', type: 'corrections', requestId: item.attendanceCorrectionId }
-      });
-      return;
-    }
-
-    if (item.isNavigable && item.destinationKey === 'work_area_change_approval' && item.workAreaChangeRequestId) {
-      await this.router.navigate(['/attendance/time-tracking'], {
-        queryParams: { view: 'team', type: 'work-area', requestId: item.workAreaChangeRequestId }
-      });
-      return;
-    }
-
-    const type = item.relatedEntityType;
-    const id = item.relatedEntityId;
-    if (!type || !id || !WORK_RELATED_TYPES.has(type)) {
-      return;
-    }
-
-    try {
-      const nav = await firstValueFrom(this.taskApi.getNotificationNavigation(type, id));
-      const commands = ['/work', nav.projectId, 'milestones', nav.objectiveId, nav.targetTab];
-      const extras =
-        nav.targetTab === 'board' && nav.taskId
-          ? { queryParams: { highlightTaskId: nav.taskId } }
-          : {};
-      await this.router.navigate(commands, extras);
-    } catch {
-      await this.router.navigate(['/work']);
-    }
   }
 }

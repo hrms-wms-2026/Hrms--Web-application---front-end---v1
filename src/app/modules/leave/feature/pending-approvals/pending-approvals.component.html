@@ -1,0 +1,39 @@
+<section class="pa-page">
+  <header class="pa-header">
+    <div><p class="pa-kicker">TIME OFF / APPROVALS</p><h1>Pending Approvals</h1><p class="pa-subtitle">Requests waiting on your decision.</p></div>
+  </header>
+  <div class="pa-toolbar">
+    <input type="search" placeholder="Search by name" (input)="onSearchInput($event)" />
+    <select (change)="onLeaveTypeFilterChange($any($event.target).value)">
+      <option value="">All leave types</option>
+      @for (type of leaveTypeStore.items(); track type.id) { <option [value]="type.id">{{ type.name }}</option> }
+    </select>
+    <input type="date" aria-label="From date" (change)="onFromDateChange($any($event.target).value)" />
+    <input type="date" aria-label="To date" (change)="onToDateChange($any($event.target).value)" />
+    @if (selectedIds().size > 0) {
+      <div class="pa-bulk">
+        <span>{{ selectedIds().size }} selected</span>
+        <button type="button" (click)="onBulkApprove()">Bulk approve</button>
+      </div>
+    }
+  </div>
+  @if (store.pendingLoading()) {
+    <div class="pa-loading" aria-busy="true"><span></span><span></span><span></span></div>
+  } @else if (store.pendingError()) {
+    <app-error-state [message]="store.pendingError()!" [retryable]="true" (retry)="store.loadPending()" />
+  } @else if (store.pending().length === 0) {
+    <app-empty-state title="No pending leave requests" description="All caught up!" />
+  } @else {
+    <app-leave-pending-approvals-table [rows]="store.pending()" [selectedIds]="selectedIds()" (rowClicked)="onRowClicked($event)" (selectionChanged)="onSelectionChanged($event)" />
+  }
+</section>
+
+<app-leave-approval-detail-sheet
+  [open]="detailOpen()"
+  [detail]="store.detail()"
+  [canApprove]="canApprove()"
+  [deciding]="store.deciding()"
+  [decideError]="store.decideError()"
+  (decisionRequested)="onDecision($event)"
+  (closed)="closeDetail()"
+/>

@@ -1,3 +1,12 @@
+@if (createAssetWarning(); as warning) {
+<div data-testid="create-asset-warning" role="alert"
+  class="mb-4 flex items-start justify-between gap-3 rounded-lg border border-[var(--color-warning)]/30 bg-[var(--color-warning-subtle)] px-3 py-2 text-sm text-[var(--color-warning-text)]">
+  <span>{{ warning }}</span>
+  <button type="button" data-testid="dismiss-create-asset-warning" aria-label="Dismiss"
+    class="shrink-0 text-[var(--color-warning-text)] transition-opacity hover:opacity-70"
+    (click)="dismissCreateAssetWarning()">&#x2715;</button>
+</div>
+}
 <div class="grid grid-cols-1 gap-4 lg:grid-cols-[minmax(0,1fr)_24rem] lg:items-start">
   <div
     class="w-full flex flex-col rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] p-4 shadow-sm min-h-[220px]">
@@ -6,10 +15,13 @@
     } @else if (store.subtreeError()) {
     <app-error-state [message]="store.subtreeError()!" [retryable]="true" (retry)="retryTree()" />
     } @else if (store.selectedSubtree()) {
-    <div class="mb-4 px-1">
-      <app-module-filter-select [options]="moduleFilterOptions()" [selected]="selectedModuleFilter()"
-        (selectionChanged)="onModuleFilterChanged($event)" [activityFilter]="selectedActivityFilter()"
-        (activityFilterChanged)="onActivityFilterChanged($event)" />
+    <div class="mb-4 flex flex-wrap items-center gap-3 px-1">
+      <app-work-dropdown [options]="moduleDropdownOptions()" [selected]="selectedModuleFilter()" size="sm"
+        accessibleLabel="Module filter" leadingIcon="module" data-testid="module-filter-dropdown"
+        (selectionChanged)="onModuleFilterChanged($event)" />
+      <app-work-dropdown [options]="activityFilterOptions" [selected]="selectedActivityFilter()" size="sm"
+        accessibleLabel="Activity status filter" leadingIcon="status" data-testid="module-activity-filter-dropdown"
+        (selectionChanged)="onActivityFilterChanged($event)" />
     </div>
     <div
       class="grid grid-cols-[minmax(0,1fr)_112px_40px_88px_140px] items-center gap-3 border-b border-[var(--color-border)] px-2 pb-2 text-xs font-medium text-[var(--color-text-secondary)]">
@@ -69,3 +81,15 @@
 <app-confirm-modal [open]="deleteConfirmOpen()" title="Delete task" message="Delete this task? This cannot be undone."
   confirmLabel="Delete" [errorMessage]="store.milestoneActionError() ?? ''" (confirmed)="onDeleteConfirmed()"
   (cancelled)="onDeleteCancelled()" />
+
+<app-task-form-modal
+  [open]="taskModalOpen()"
+  [mode]="taskModalMode()"
+  [projectId]="projectId()"
+  [taskId]="taskModalTaskId()"
+  [prefillModuleId]="taskModalPrefillModule()"
+  [prefillSprintId]="taskModalPrefillSprint()"
+  (created)="onTaskModalDone()"
+  (saved)="onTaskModalDone()"
+  (closed)="onTaskModalClosed()"
+/>
