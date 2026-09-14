@@ -8,8 +8,8 @@ import { ErrorStateComponent } from '../../../../shared/ui/error-state/error-sta
 import { InputComponent } from '../../../../shared/ui/input/input.component';
 import { SelectComponent, SelectOption } from '../../../../shared/ui/select/select.component';
 import { LegalEntityStore } from '../../../organization/state/legal-entity.store';
-import { WorkAreaSourceRules } from '../../models/clock-in-policy.model';
 import { ClockInPolicyStore } from '../../state/clock-in-policy.store';
+import { WorkModeListComponent } from '../work-mode-list/work-mode-list.component';
 import {
   ClockInPolicySettingsFormValue,
   createDefaultClockInPolicyFormModel,
@@ -24,7 +24,10 @@ import {
 /**
  * Settings → Clock-in Policy — single company-wide settings screen.
  * Resolves one active full_company policy behind the scenes (POST or PUT).
- * Policy metadata, scope, corrections, status, and source rule are not exposed.
+ * Policy metadata, scope, corrections, and status are not exposed.
+ * Clock-in method configuration (Onsite/Remote/Hybrid/Field toggles,
+ * location verification) is delegated entirely to WorkModeListComponent,
+ * which manages its own set of Work Modes via WorkModeStore.
  */
 @Component({
   selector: 'app-clock-in-policy-form',
@@ -35,7 +38,8 @@ import {
     EmptyStateComponent,
     ErrorStateComponent,
     InputComponent,
-    SelectComponent
+    SelectComponent,
+    WorkModeListComponent
   ],
   templateUrl: './clock-in-policy-form.component.html',
   styleUrl: './clock-in-policy-form.component.css',
@@ -121,80 +125,6 @@ export class ClockInPolicyFormComponent {
       return;
     }
     this.form.update((current) => ({ ...current, ...partial }));
-  }
-
-  setHybridLocationCheck(checked: boolean): void {
-    const hybrid = {
-      ...this.form().workAreaRules.hybrid,
-      locationCheckRequired: checked,
-      sourceRule: 'employee_choice' as const
-    };
-    const keepDistance = checked || this.form().workAreaRules.remote.locationCheckRequired;
-    this.patchForm({
-      workAreaRules: { ...this.form().workAreaRules, hybrid },
-      allowedDistanceMeters: keepDistance ? this.form().allowedDistanceMeters : ''
-    });
-  }
-
-  setRemoteLocationCheck(checked: boolean): void {
-    const remote = { ...this.form().workAreaRules.remote, locationCheckRequired: checked };
-    const keepDistance = checked || this.form().workAreaRules.hybrid.locationCheckRequired;
-    this.patchForm({
-      workAreaRules: { ...this.form().workAreaRules, remote },
-      allowedDistanceMeters: keepDistance ? this.form().allowedDistanceMeters : ''
-    });
-  }
-
-  patchOnsite(partial: Partial<WorkAreaSourceRules>): void {
-    const onsite = { ...this.form().workAreaRules.onsite, ...partial };
-    this.patchForm({ workAreaRules: { ...this.form().workAreaRules, onsite } });
-  }
-
-  patchRemote(
-    partial: Partial<{
-      biometricEnabled: boolean;
-      webEnabled: boolean;
-      trayEnabled: boolean;
-      photoRequired: boolean;
-    }>
-  ): void {
-    const remote = { ...this.form().workAreaRules.remote, ...partial };
-    this.patchForm({ workAreaRules: { ...this.form().workAreaRules, remote } });
-  }
-
-  patchHybrid(
-    partial: Partial<{
-      biometricEnabled: boolean;
-      webEnabled: boolean;
-      trayEnabled: boolean;
-      photoRequired: boolean;
-    }>
-  ): void {
-    const hybrid = {
-      ...this.form().workAreaRules.hybrid,
-      ...partial,
-      sourceRule: 'employee_choice' as const
-    };
-    this.patchForm({ workAreaRules: { ...this.form().workAreaRules, hybrid } });
-  }
-
-  patchField(
-    partial: Partial<{
-      biometricEnabled: boolean;
-      webEnabled: boolean;
-      trayEnabled: boolean;
-    }>
-  ): void {
-    const field = { ...this.form().workAreaRules.field, ...partial };
-    this.patchForm({ workAreaRules: { ...this.form().workAreaRules, field } });
-  }
-
-  setFieldPhotoRequired(checked: boolean): void {
-    const field = {
-      ...this.form().workAreaRules.field,
-      photoRequirement: checked ? ('required' as const) : ('off' as const)
-    };
-    this.patchForm({ workAreaRules: { ...this.form().workAreaRules, field } });
   }
 
   addLateRule(): void {

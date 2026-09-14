@@ -1,0 +1,73 @@
+<div class="work-mode-list">
+  @if (store.error(); as err) {
+    <div class="work-mode-list__error">{{ err }}</div>
+  }
+
+  @for (mode of store.items(); track mode.id) {
+    <div data-testid="work-mode-row" class="work-mode-row">
+      <span class="work-mode-row__name">{{ mode.name }}</span>
+      @if (mode.isSystemSeeded) {
+        <span class="work-mode-row__badge">Default</span>
+      }
+      <label class="cipf-check">
+        <input
+          type="checkbox"
+          [checked]="mode.biometricEnabled"
+          [disabled]="!canEdit()"
+          (change)="save(mode.id, { name: mode.name, biometricEnabled: $any($event.target).checked, webEnabled: mode.webEnabled, trayEnabled: mode.trayEnabled, photoRequired: mode.photoRequired })"
+        />
+        <span>Biometric</span>
+      </label>
+      <label class="cipf-check">
+        <input
+          type="checkbox"
+          [checked]="mode.webEnabled"
+          [disabled]="!canEdit()"
+          (change)="save(mode.id, { name: mode.name, biometricEnabled: mode.biometricEnabled, webEnabled: $any($event.target).checked, trayEnabled: mode.trayEnabled, photoRequired: mode.photoRequired })"
+        />
+        <span>Web/app</span>
+      </label>
+      <label class="cipf-check">
+        <input
+          type="checkbox"
+          [checked]="mode.trayEnabled"
+          [disabled]="!canEdit()"
+          (change)="save(mode.id, { name: mode.name, biometricEnabled: mode.biometricEnabled, webEnabled: mode.webEnabled, trayEnabled: $any($event.target).checked, photoRequired: mode.photoRequired })"
+        />
+        <span>Desktop tray</span>
+      </label>
+      <label class="cipf-check">
+        <input
+          type="checkbox"
+          [checked]="mode.photoRequired"
+          [disabled]="!canEdit()"
+          (change)="save(mode.id, { name: mode.name, biometricEnabled: mode.biometricEnabled, webEnabled: mode.webEnabled, trayEnabled: mode.trayEnabled, photoRequired: $any($event.target).checked })"
+        />
+        <span>Photo required</span>
+      </label>
+      @if (canEdit()) {
+        <button type="button" data-testid="deactivate-work-mode" (click)="deactivate(mode.id, mode.name)">
+          Deactivate
+        </button>
+      }
+    </div>
+  }
+
+  @if (addingNew) {
+    <div class="work-mode-row work-mode-row--new">
+      <input type="text" [(ngModel)]="draft.name" placeholder="Work mode name" />
+      <label class="cipf-check"><input type="checkbox" [(ngModel)]="draft.biometricEnabled" /> <span>Biometric</span></label>
+      <label class="cipf-check"><input type="checkbox" [(ngModel)]="draft.webEnabled" /> <span>Web/app</span></label>
+      <label class="cipf-check"><input type="checkbox" [(ngModel)]="draft.trayEnabled" /> <span>Desktop tray</span></label>
+      <label class="cipf-check"><input type="checkbox" [(ngModel)]="draft.photoRequired" /> <span>Photo required</span></label>
+      <button type="button" (click)="confirmAdd()">Add</button>
+      <button type="button" (click)="cancelAdd()">Cancel</button>
+    </div>
+  }
+
+  @if (canEdit()) {
+    <button type="button" data-testid="add-work-mode" [disabled]="store.atCap()" (click)="startAdd()">
+      Add work mode {{ store.atCap() ? '(maximum of 5 reached)' : '' }}
+    </button>
+  }
+</div>
