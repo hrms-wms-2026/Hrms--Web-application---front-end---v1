@@ -19,6 +19,7 @@ function emptyDraft(): UpsertWorkModeRequest {
   standalone: true,
   imports: [FormsModule],
   templateUrl: './work-mode-list.component.html',
+  styleUrl: './work-mode-list.component.css',
   changeDetection: ChangeDetectionStrategy.OnPush
 })
 export class WorkModeListComponent {

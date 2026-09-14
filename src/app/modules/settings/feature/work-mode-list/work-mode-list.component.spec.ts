@@ -67,4 +67,11 @@ describe('WorkModeListComponent', () => {
     deleteButton.click();
     expect(storeStub.deactivate).toHaveBeenCalledWith('wm-1');
   });
+
+  it('does not call store.deactivate when the confirm dialog is dismissed', () => {
+    vi.spyOn(window, 'confirm').mockReturnValue(false);
+    const deleteButton = fixture.nativeElement.querySelector('[data-testid="deactivate-work-mode"]');
+    deleteButton.click();
+    expect(storeStub.deactivate).not.toHaveBeenCalled();
+  });
 });
