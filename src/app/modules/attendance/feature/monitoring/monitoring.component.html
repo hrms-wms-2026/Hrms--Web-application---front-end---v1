@@ -196,6 +196,32 @@
           <span class="threshold-card__unit">minutes</span>
         </div>
       </div>
+
+      <!-- Allowed range -->
+      <div class="threshold-field threshold-card">
+        <div class="threshold-card__icon">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0 1 16 0Z"/>
+            <circle cx="12" cy="10" r="3"/>
+          </svg>
+        </div>
+        <div class="threshold-card__info">
+          <span class="threshold-card__title">Allowed range</span>
+          <small class="threshold-card__desc">Maximum distance from the verified location permitted for location tracking checks.</small>
+        </div>
+        <div class="threshold-card__input-group">
+          <input
+            type="number"
+            class="threshold-input"
+            min="0"
+            [value]="company.allowedRadiusMeters ?? ''"
+            [disabled]="!hasWriteAccess()"
+            (change)="setCompanyAllowedRadius($any($event.target).value)"
+            placeholder="No limit"
+          />
+          <span class="threshold-card__unit">meters</span>
+        </div>
+      </div>
     </section>
 
     <!-- Overrides section -->
@@ -272,6 +298,21 @@
                   placeholder="Inherited"
                 />
                 <span class="input-unit">min</span>
+              </div>
+            </div>
+
+            <div class="form-group threshold-input-field">
+              <span class="form-label">Allowed range</span>
+              <div class="input-with-unit">
+                <input
+                  type="number"
+                  min="0"
+                  [value]="overrideForm().allowedRadiusMeters ?? ''"
+                  [disabled]="!hasWriteAccess()"
+                  (change)="setOverrideAllowedRadius($any($event.target).value)"
+                  placeholder="Inherited"
+                />
+                <span class="input-unit">m</span>
               </div>
             </div>
 

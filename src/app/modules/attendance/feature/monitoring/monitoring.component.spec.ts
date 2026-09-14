@@ -7,6 +7,7 @@ import { DepartmentStore } from '../../../organization/state/department.store';
 import { LegalEntityStore } from '../../../organization/state/legal-entity.store';
 import { PositionStore } from '../../../organization/state/position.store';
 import { RoleStore } from '../../../organization/state/role.store';
+import { WorkModeStore } from '../../../settings/state/work-mode.store';
 import { MonitoringStore } from '../../state/monitoring.store';
 import {
   MonitoringFeatureToggles,
@@ -30,6 +31,7 @@ const companyDefault: MonitoringFeatureToggles = {
   identityVerification: false,
   biometric: false,
   idleThresholdMinutes: 15,
+  allowedRadiusMeters: 100,
   updatedAt: '2026-08-20T00:00:00.000Z'
 };
 
@@ -50,6 +52,7 @@ const override: MonitoringPolicyOverride = {
   identityVerification: null,
   biometric: null,
   idleThresholdMinutes: null,
+  allowedRadiusMeters: null,
   overrideReason: 'Because reasons',
   updatedAt: '2026-08-21T00:00:00.000Z'
 };
@@ -114,6 +117,7 @@ describe('MonitoringComponent', () => {
     const departmentStore = { allFlatList: signal([]), load: vi.fn(() => Promise.resolve()) };
     const positionStore = { allPositionsList: signal([]), load: vi.fn(() => Promise.resolve()) };
     const roleStore = { roles: signal([]), loadRolesOnly: vi.fn(() => Promise.resolve()) };
+    const workModeStore = { items: signal([]), load: vi.fn() };
 
     await TestBed.configureTestingModule({
       imports: [MonitoringComponent],
@@ -124,7 +128,8 @@ describe('MonitoringComponent', () => {
         { provide: LegalEntityStore, useValue: legalEntityStore },
         { provide: DepartmentStore, useValue: departmentStore },
         { provide: PositionStore, useValue: positionStore },
-        { provide: RoleStore, useValue: roleStore }
+        { provide: RoleStore, useValue: roleStore },
+        { provide: WorkModeStore, useValue: workModeStore }
       ]
     }).compileComponents();
 
@@ -141,7 +146,8 @@ describe('MonitoringComponent', () => {
       notifications,
       legalEntityStore,
       departmentStore,
-      positionStore
+      positionStore,
+      workModeStore
     };
   }
 

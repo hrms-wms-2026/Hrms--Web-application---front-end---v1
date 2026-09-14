@@ -10,6 +10,7 @@ import { DepartmentStore } from '../../../organization/state/department.store';
 import { LegalEntityStore } from '../../../organization/state/legal-entity.store';
 import { PositionStore } from '../../../organization/state/position.store';
 import { RoleStore } from '../../../organization/state/role.store';
+import { WorkModeStore } from '../../../settings/state/work-mode.store';
 import { MonitoringStore } from '../../state/monitoring.store';
 import {
   MonitoringFeatureToggles,
@@ -32,6 +33,7 @@ const emptyOverride = (): MonitoringPolicyOverrideRequest => ({
   identityVerification: null,
   biometric: null,
   idleThresholdMinutes: null,
+  allowedRadiusMeters: null,
   overrideReason: null
 });
 
@@ -51,6 +53,7 @@ export class MonitoringComponent {
   readonly departmentStore = inject(DepartmentStore);
   readonly positionStore = inject(PositionStore);
   readonly roleStore = inject(RoleStore);
+  readonly workModeStore = inject(WorkModeStore);
 
   readonly hasReadAccess = computed(
     () => this.permissions.hasModule('time_attendance') && this.permissions.hasPermission('monitoring:read')
@@ -63,7 +66,7 @@ export class MonitoringComponent {
   readonly selectedTargetId = signal('');
   readonly editMode = signal(false);
   readonly scopeLabels = MONITORING_SCOPE_LABELS;
-  readonly scopeOptions: readonly MonitoringScopeType[] = ['department', 'position', 'role'];
+  readonly scopeOptions: readonly MonitoringScopeType[] = ['department', 'position', 'role', 'work_mode'];
 
   scopeLabel(scope: MonitoringScopeType): string {
     return this.scopeLabels[scope];
@@ -85,6 +88,8 @@ export class MonitoringComponent {
         return this.positionStore.allPositionsList().filter((item) => item.isActive).map((item) => ({ id: item.id, name: item.name }));
       case 'role':
         return this.roleStore.roles().map((item) => ({ id: item.id, name: item.name }));
+      case 'work_mode':
+        return this.workModeStore.items().filter((item) => item.isActive).map((item) => ({ id: item.id, name: item.name }));
       default:
         return [];
     }
@@ -105,6 +110,8 @@ export class MonitoringComponent {
         return 'Select a position';
       case 'role':
         return 'Select a role';
+      case 'work_mode':
+        return 'Select a work mode';
       default:
         return 'Select a target';
     }
@@ -140,6 +147,7 @@ export class MonitoringComponent {
         if (company) {
           void this.departmentStore.load(company.id);
           void this.positionStore.load(company.id);
+          this.workModeStore.load(company.id);
         }
         if (!this.rolesLoaded) {
           this.rolesLoaded = true;
@@ -173,6 +181,12 @@ export class MonitoringComponent {
     this.companyForm.update((current) => current ? { ...current, idleThresholdMinutes: Number.isFinite(threshold) ? threshold : current.idleThresholdMinutes } : current);
   }
 
+  setCompanyAllowedRadius(value: string): void {
+    if (!this.hasWriteAccess()) return;
+    const parsed = value.trim() === '' ? null : Number(value);
+    this.companyForm.update((current) => current ? { ...current, allowedRadiusMeters: parsed === null || Number.isFinite(parsed) ? parsed : current.allowedRadiusMeters } : current);
+  }
+
   async saveCompany(): Promise<void> {
     const form = this.companyForm();
     if (!form || !this.hasWriteAccess()) return;
@@ -204,6 +218,11 @@ export class MonitoringComponent {
   setOverrideThreshold(value: string): void {
     const parsed = value.trim() === '' ? null : Number(value);
     this.overrideForm.update((current) => ({ ...current, idleThresholdMinutes: parsed === null || Number.isFinite(parsed) ? parsed : current.idleThresholdMinutes }));
+  }
+
+  setOverrideAllowedRadius(value: string): void {
+    const parsed = value.trim() === '' ? null : Number(value);
+    this.overrideForm.update((current) => ({ ...current, allowedRadiusMeters: parsed === null || Number.isFinite(parsed) ? parsed : current.allowedRadiusMeters }));
   }
 
   overrideSelectValue(key: keyof MonitoringPolicyOverrideRequest): string {
@@ -273,6 +292,7 @@ export class MonitoringComponent {
       identityVerification: item.identityVerification,
       biometric: item.biometric,
       idleThresholdMinutes: item.idleThresholdMinutes,
+      allowedRadiusMeters: item.allowedRadiusMeters,
       overrideReason: item.overrideReason
     };
   }

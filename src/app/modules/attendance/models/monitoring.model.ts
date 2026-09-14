@@ -1,4 +1,4 @@
-export type MonitoringScopeType = 'department' | 'position' | 'role';
+export type MonitoringScopeType = 'department' | 'position' | 'role' | 'work_mode';
 
 export interface MonitoringFeatureToggles {
   activityMonitoring: boolean;
@@ -13,6 +13,7 @@ export interface MonitoringFeatureToggles {
   identityVerification: boolean;
   biometric: boolean;
   idleThresholdMinutes: number;
+  allowedRadiusMeters: number | null;
   updatedAt: string | null;
 }
 
@@ -33,6 +34,7 @@ export interface MonitoringPolicyOverride {
   identityVerification: boolean | null;
   biometric: boolean | null;
   idleThresholdMinutes: number | null;
+  allowedRadiusMeters: number | null;
   overrideReason: string;
   updatedAt: string;
 }
@@ -60,11 +62,13 @@ export type MonitoringPolicyOverrideRequest = {
   identityVerification: boolean | null;
   biometric: boolean | null;
   idleThresholdMinutes: number | null;
+  allowedRadiusMeters: number | null;
   overrideReason: string | null;
 };
 
 export const MONITORING_SCOPE_LABELS: Record<MonitoringScopeType, string> = {
   department: 'Departments',
   position: 'Positions',
-  role: 'Roles'
+  role: 'Roles',
+  work_mode: 'Work Mode'
 };
