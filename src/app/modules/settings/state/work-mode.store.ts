@@ -23,6 +23,7 @@ const initialState: WorkModeState = {
 };
 
 export const WorkModeStore = signalStore(
+  { providedIn: 'root' },
   withState(initialState),
   withComputed(({ items }) => ({
     atCap: computed(() => items().filter(m => m.isActive).length >= MAX_WORK_MODES_PER_LEGAL_ENTITY)
