@@ -49,6 +49,25 @@ describe('CalendarEventFormModalComponent', () => {
     expect(submission.create.recurrenceRule).toBe('FREQ=WEEKLY');
   });
 
+  it('spans the full day when "All day" is on, regardless of whatever time is in the time pickers', () => {
+    // Regression test: toggleAllDay only flips the isAllDay flag and never touches
+    // startTime/endTime, so before this fix the submitted range stayed whatever narrow window was
+    // in the time pickers - the event never actually blocked the rest of that day.
+    const spy = vi.fn();
+    fixture.componentInstance.save.subscribe(spy);
+    fixture.componentInstance.form.patchValue({
+      title: 'Wedding', startDate: '2026-09-15', startTime: '11:30', endDate: '2026-09-15', endTime: '13:00',
+      isAllDay: true
+    });
+    fixture.componentInstance.onSubmit(null);
+
+    expect(spy).toHaveBeenCalledTimes(1);
+    const submission = spy.mock.calls[0][0] as { create: { startDate: string; endDate: string; isAllDay: boolean } };
+    expect(submission.create.isAllDay).toBe(true);
+    expect(submission.create.startDate).toBe('2026-09-15T00:00:00.000Z');
+    expect(submission.create.endDate).toBe('2026-09-15T23:59:00.000Z');
+  });
+
   it('pre-fills the form and emits an update payload with scope=null for a plain event', () => {
     fixture.componentRef.setInput('event', {
       id: 'e1', title: 'Existing', description: null, startDate: '2026-09-01T09:00:00Z', endDate: '2026-09-01T09:30:00Z',

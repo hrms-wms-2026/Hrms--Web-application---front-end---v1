@@ -387,8 +387,14 @@ export class CalendarEventFormModalComponent implements OnChanges {
     }
 
     const raw = this.form.getRawValue();
-    const startDate = localPartsToUtcIso(raw.startDate!, raw.startTime!, this.currentTimezone());
-    const endDate = localPartsToUtcIso(raw.endDate!, raw.endTime!, this.currentTimezone());
+    // toggleAllDay only flips the isAllDay flag - it never touches startTime/endTime, so without
+    // this the stored range stayed whatever narrow window was in the time pickers (e.g.
+    // 11:30-13:00) even with "All day" on, meaning the event never actually blocked the rest of
+    // that day for availability/conflict checks.
+    const startTime = raw.isAllDay ? '00:00' : raw.startTime!;
+    const endTime = raw.isAllDay ? '23:59' : raw.endTime!;
+    const startDate = localPartsToUtcIso(raw.startDate!, startTime, this.currentTimezone());
+    const endDate = localPartsToUtcIso(raw.endDate!, endTime, this.currentTimezone());
     const recurrence = raw.recurrenceFrequency ?? 'none';
     const recurrenceRule = buildRecurrenceRule(recurrence as RecurrenceFrequency, raw.recurrenceEndMode as RecurrenceEndMode, raw.recurrenceUntilDate || null);
 
