@@ -74,4 +74,26 @@ describe('WorkModeListComponent', () => {
     deleteButton.click();
     expect(storeStub.deactivate).not.toHaveBeenCalled();
   });
+
+  it('disables every row checkbox when canEdit is false', () => {
+    fixture.componentRef.setInput('canEdit', false);
+    fixture.detectChanges();
+    const row = fixture.nativeElement.querySelector('[data-testid="work-mode-row"]');
+    const checkboxes: HTMLInputElement[] = Array.from(row.querySelectorAll('input[type="checkbox"]'));
+    expect(checkboxes.length).toBe(4);
+    checkboxes.forEach((checkbox) => expect(checkbox.disabled).toBe(true));
+  });
+
+  it('does not render the Deactivate button when canEdit is false', () => {
+    fixture.componentRef.setInput('canEdit', false);
+    fixture.detectChanges();
+    expect(fixture.nativeElement.querySelector('[data-testid="deactivate-work-mode"]')).toBeNull();
+  });
+
+  it('does not render the "Add work mode" button when canEdit is false, regardless of atCap', () => {
+    fixture.componentRef.setInput('canEdit', false);
+    (storeStub.atCap as any).set(false);
+    fixture.detectChanges();
+    expect(fixture.nativeElement.querySelector('[data-testid="add-work-mode"]')).toBeNull();
+  });
 });
