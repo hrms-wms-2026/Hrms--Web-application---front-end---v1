@@ -66,9 +66,13 @@ export type MonitoringPolicyOverrideRequest = {
   overrideReason: string | null;
 };
 
+// Note: 'Work Modes' (plural), not the brief's verbatim 'Work Mode', deliberately —
+// scopeLabel consumers in MonitoringComponent derive a singular form via
+// `.slice(0, -1)` (stripping a trailing 's'), which the other three plural labels
+// rely on already. A non-plural 'Work Mode' would render as 'Work Mod' there.
 export const MONITORING_SCOPE_LABELS: Record<MonitoringScopeType, string> = {
   department: 'Departments',
   position: 'Positions',
   role: 'Roles',
-  work_mode: 'Work Mode'
+  work_mode: 'Work Modes'
 };

@@ -1,12 +1,15 @@
 import { signal } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
+import { By } from '@angular/platform-browser';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { PermissionService } from '../../../../core/auth/state/permission.service';
 import { NotificationService } from '../../../../core/services/notification.service';
+import { CustomSelectComponent } from '../../../../shared/ui/custom-select/custom-select.component';
 import { DepartmentStore } from '../../../organization/state/department.store';
 import { LegalEntityStore } from '../../../organization/state/legal-entity.store';
 import { PositionStore } from '../../../organization/state/position.store';
 import { RoleStore } from '../../../organization/state/role.store';
+import { WorkMode } from '../../../settings/models/work-mode.model';
 import { WorkModeStore } from '../../../settings/state/work-mode.store';
 import { MonitoringStore } from '../../state/monitoring.store';
 import {
@@ -57,6 +60,23 @@ const override: MonitoringPolicyOverride = {
   updatedAt: '2026-08-21T00:00:00.000Z'
 };
 
+function makeWorkMode(id: string, name: string, isActive: boolean): WorkMode {
+  return {
+    id,
+    legalEntityId: 'company-1',
+    name,
+    biometricEnabled: false,
+    webEnabled: true,
+    trayEnabled: false,
+    photoRequired: false,
+    isSystemSeeded: true,
+    displayOrder: 1,
+    isActive,
+    createdAt: '2026-08-01T00:00:00.000Z',
+    updatedAt: '2026-08-01T00:00:00.000Z'
+  };
+}
+
 describe('MonitoringComponent', () => {
   afterEach(() => TestBed.resetTestingModule());
 
@@ -67,6 +87,7 @@ describe('MonitoringComponent', () => {
     hasActiveCompanyContext?: boolean;
     saveCompanyResult?: boolean;
     saveErrorMessage?: string | null;
+    workModes?: readonly WorkMode[];
   }
 
   async function setup(options: Options = {}) {
@@ -76,7 +97,8 @@ describe('MonitoringComponent', () => {
       overrides = [override],
       hasActiveCompanyContext = true,
       saveCompanyResult = true,
-      saveErrorMessage = null
+      saveErrorMessage = null,
+      workModes = []
     } = options;
 
     const monitoringStore = {
@@ -117,7 +139,7 @@ describe('MonitoringComponent', () => {
     const departmentStore = { allFlatList: signal([]), load: vi.fn(() => Promise.resolve()) };
     const positionStore = { allPositionsList: signal([]), load: vi.fn(() => Promise.resolve()) };
     const roleStore = { roles: signal([]), loadRolesOnly: vi.fn(() => Promise.resolve()) };
-    const workModeStore = { items: signal([]), load: vi.fn() };
+    const workModeStore = { items: signal<readonly WorkMode[]>(workModes), load: vi.fn() };
 
     await TestBed.configureTestingModule({
       imports: [MonitoringComponent],
@@ -242,11 +264,12 @@ describe('MonitoringComponent', () => {
     expect(monitoringStore.load).toHaveBeenCalled();
   });
 
-  it('reloads the policy and this company\'s department/position lists when the selected company changes', async () => {
-    const { fixture, monitoringStore, legalEntityStore, departmentStore, positionStore } = await setup();
+  it('reloads the policy and this company\'s department/position/work-mode lists when the selected company changes', async () => {
+    const { fixture, monitoringStore, legalEntityStore, departmentStore, positionStore, workModeStore } = await setup();
     monitoringStore.load.mockClear();
     departmentStore.load.mockClear();
     positionStore.load.mockClear();
+    workModeStore.load.mockClear();
 
     legalEntityStore.selectedLegalEntity.set({ id: 'company-b', name: 'Company B' });
     fixture.detectChanges();
@@ -255,6 +278,7 @@ describe('MonitoringComponent', () => {
     expect(monitoringStore.load).toHaveBeenCalled();
     expect(departmentStore.load).toHaveBeenCalledWith('company-b');
     expect(positionStore.load).toHaveBeenCalledWith('company-b');
+    expect(workModeStore.load).toHaveBeenCalledWith('company-b');
   });
 
   it('shows a friendly prompt instead of the override editor/list when there is no active company context', async () => {
@@ -308,5 +332,59 @@ describe('MonitoringComponent', () => {
     fixture.detectChanges();
     expect(component.overrideForm().workLocationVerification).toBeNull();
     expect(component.getOverrideFlag('workLocationVerification')).toBeNull();
+  });
+
+  it('renders a fourth "Work Modes" tab, and does not truncate the singular label to "Work Mod" when it is selected', async () => {
+    const { fixture, monitoringStore } = await setup();
+    const el = fixture.nativeElement as HTMLElement;
+
+    const tabLabels = Array.from(el.querySelectorAll('.tabs button span:first-child')).map((s) => s.textContent?.trim());
+    expect(tabLabels).toEqual(['Departments', 'Positions', 'Roles', 'Work Modes']);
+
+    monitoringStore.selectedScope.set('work_mode');
+    fixture.detectChanges();
+
+    expect(el.textContent).toContain('Add Work Mode override');
+    expect(el.textContent).not.toContain('Work Mod ');
+    expect(el.textContent).not.toContain('Work Mod override');
+
+    const customSelect = fixture.debugElement.query(By.directive(CustomSelectComponent));
+    expect(customSelect.componentInstance.label()).toBe('Work Mode');
+    expect(customSelect.componentInstance.placeholder()).toBe('Select a work mode');
+  });
+
+  it('targetOptions sources the Work Mode tab from WorkModeStore, filtered to active work modes', async () => {
+    const { component, monitoringStore } = await setup({
+      workModes: [makeWorkMode('wm-1', 'Remote', true), makeWorkMode('wm-2', 'Retired Mode', false)]
+    });
+
+    monitoringStore.selectedScope.set('work_mode');
+
+    expect(component.targetOptions()).toEqual([{ id: 'wm-1', name: 'Remote' }]);
+  });
+
+  it('renders an "Allowed range" numeric input in the company-default section bound to setCompanyAllowedRadius', async () => {
+    const { fixture, component } = await setup();
+    const el = fixture.nativeElement as HTMLElement;
+
+    expect(el.textContent).toContain('Allowed range');
+    const radiusInputs = Array.from(el.querySelectorAll('input[type="number"]')) as HTMLInputElement[];
+    expect(radiusInputs.some((input) => Number(input.value) === companyDefault.allowedRadiusMeters)).toBe(true);
+
+    component.setCompanyAllowedRadius('200');
+    expect(component.companyForm()?.allowedRadiusMeters).toBe(200);
+
+    component.setCompanyAllowedRadius('');
+    expect(component.companyForm()?.allowedRadiusMeters).toBeNull();
+  });
+
+  it('renders an "Allowed range" numeric input in the override editor bound to setOverrideAllowedRadius', async () => {
+    const { component } = await setup();
+
+    component.setOverrideAllowedRadius('150');
+    expect(component.overrideForm().allowedRadiusMeters).toBe(150);
+
+    component.setOverrideAllowedRadius('');
+    expect(component.overrideForm().allowedRadiusMeters).toBeNull();
   });
 });

@@ -171,7 +171,7 @@ export class MonitoringComponent {
   }
 
   setCompanyFlag(key: keyof MonitoringFeatureToggles, value: boolean): void {
-    if (!this.hasWriteAccess() || key === 'updatedAt' || key === 'idleThresholdMinutes') return;
+    if (!this.hasWriteAccess() || key === 'updatedAt' || key === 'idleThresholdMinutes' || key === 'allowedRadiusMeters') return;
     this.companyForm.update((current) => current ? { ...current, [key]: value } : current);
   }
 
@@ -211,7 +211,7 @@ export class MonitoringComponent {
   }
 
   setOverrideFlag(key: keyof MonitoringPolicyOverrideRequest, value: boolean | null): void {
-    if (!this.hasWriteAccess() || key === 'idleThresholdMinutes' || key === 'overrideReason') return;
+    if (!this.hasWriteAccess() || key === 'idleThresholdMinutes' || key === 'allowedRadiusMeters' || key === 'overrideReason') return;
     this.overrideForm.update((current) => ({ ...current, [key]: value }));
   }
 
