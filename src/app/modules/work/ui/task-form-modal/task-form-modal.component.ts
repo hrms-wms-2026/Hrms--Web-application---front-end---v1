@@ -18,6 +18,7 @@ import { TaskBoardStore } from '../../state/task-board.store';
 import { CurrentEmployeeStore } from '../../state/current-employee.store';
 import { TaskHistoryFeedComponent } from '../task-history-feed/task-history-feed.component';
 import { TaskClockWidgetComponent } from '../task-clock-widget/task-clock-widget.component';
+import { TaskAttachmentListComponent, AttachmentPill } from '../task-attachment-list/task-attachment-list.component';
 import { TaskHistoryEntryDto } from '../../models/dto/task-history.dto';
 
 export type TaskFormMode = 'create' | 'edit';
@@ -25,7 +26,7 @@ export type TaskFormMode = 'create' | 'edit';
 @Component({
   selector: 'app-task-form-modal',
   standalone: true,
-  imports: [InputComponent, ButtonComponent, WorkDropdownComponent, TaskHistoryFeedComponent, TaskClockWidgetComponent],
+  imports: [InputComponent, ButtonComponent, WorkDropdownComponent, TaskHistoryFeedComponent, TaskClockWidgetComponent, TaskAttachmentListComponent],
   template: `
     @if (open()) {
       <div class="tfm-scrim" (click)="onBackdrop()">
@@ -54,7 +55,7 @@ export type TaskFormMode = 'create' | 'edit';
             } @else {
               <div class="tfm__title"><h2>Task</h2></div>
             }
-            <button type="button" class="tfm__x" aria-label="Close" (click)="closed.emit()">
+            <button type="button" class="tfm__x" aria-label="Close" (click)="onCancel()">
               <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M18 6 6 18" /></svg>
             </button>
           </header>
@@ -529,25 +530,13 @@ export type TaskFormMode = 'create' | 'edit';
                     <!-- Attachments -->
                     <div class="tfm-inline-field">
                       <span class="tfm-inline-label">Attachments</span>
-                      <label class="tfm-attachment-box" title="Attach files">
-                        <input type="file" multiple class="tfm-file-hidden" (change)="onFilesSelected($event)" />
-                        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m21.44 11.05-9.19 9.19a6 6 0 0 1-8.49-8.49l8.57-8.57A4 4 0 1 1 18 8.84l-8.59 8.57a2 2 0 0 1-2.83-2.83l8.49-8.48" /></svg>
-                        <span>{{ attachedFileNames().length > 0 ? attachedFileNames().length + ' attached' : '+ Add files' }}</span>
-                      </label>
+                      <app-task-attachment-list
+                        [files]="attachedFiles()"
+                        (fileSelected)="onAttachmentFilesSelected($event)"
+                        (removed)="removeAttachedFile($event)"
+                      />
                     </div>
                   </div>
-
-                  @if (attachedFileNames().length > 0) {
-                    <div class="tfm-attached-files">
-                      @for (name of attachedFileNames(); track name) {
-                        <span class="tfm-attached-pill">
-                          <svg class="tfm-chip-svg" viewBox="0 0 24 24" aria-hidden="true"><path d="m21.44 11.05-9.19 9.19a6 6 0 0 1-8.49-8.49l8.57-8.57A4 4 0 1 1 18 8.84l-8.59 8.57a2 2 0 0 1-2.83-2.83l8.49-8.48" /></svg>
-                          <span>{{ name }}</span>
-                          <button type="button" class="tfm-attached-remove" (click)="removeAttachedFile(name)">×</button>
-                        </span>
-                      }
-                    </div>
-                  }
                 }
               </div>
 
@@ -598,6 +587,18 @@ export type TaskFormMode = 'create' | 'edit';
                     </dl>
                   </section>
 
+                  <section class="tfm__card">
+                    <div class="tfm__card-head">
+                      <span class="tfm__card-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m21.44 11.05-9.19 9.19a6 6 0 0 1-8.49-8.49l8.57-8.57A4 4 0 1 1 18 8.84l-8.59 8.57a2 2 0 0 1-2.83-2.83l8.49-8.48" /></svg></span>
+                      <div><h3>Attachments</h3><p>Files attached to this task</p></div>
+                    </div>
+                    <app-task-attachment-list
+                      [files]="attachedFiles()"
+                      (fileSelected)="onAttachmentFilesSelected($event)"
+                      (removed)="removeAttachedFile($event)"
+                    />
+                  </section>
+
                   @if (isAssignee()) {
                     <section class="tfm__card">
                       <div class="tfm__card-head">
@@ -631,7 +632,7 @@ export type TaskFormMode = 'create' | 'edit';
           </div>
 
           <footer class="tfm__foot">
-            <button type="button" class="tfm__cancel" (click)="closed.emit()">
+            <button type="button" class="tfm__cancel" (click)="onCancel()">
               <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M18 6 6 18" /></svg><span>Cancel</span>
             </button>
 
@@ -856,14 +857,6 @@ export type TaskFormMode = 'create' | 'edit';
     .tfm-inline-box { display: inline-flex; align-items: center; gap: 4px; height: 34px; padding: 0 10px; border: 1px solid var(--color-border); border-radius: 7px; background: var(--color-surface); }
     .tfm-inline-input { width: 56px; border: 0; outline: none; background: transparent; font: inherit; font-size: 13px; font-weight: 600; color: var(--color-text-primary); }
     .tfm-inline-unit { font-size: 12px; font-weight: 600; color: var(--color-text-secondary); }
-    .tfm-attachment-box { display: inline-flex; align-items: center; gap: 6px; height: 34px; padding: 0 12px; border: 1px dashed var(--color-border); border-radius: 7px; background: var(--color-surface-secondary); font-size: 12px; font-weight: 500; color: var(--color-text-primary); cursor: pointer; transition: all 140ms ease; }
-    .tfm-attachment-box:hover { border-color: var(--color-accent); background: var(--color-surface); }
-    .tfm-attachment-box svg { width: 14px; height: 14px; stroke: currentColor; fill: none; stroke-width: 2; }
-    .tfm-file-hidden { display: none; }
-    .tfm-attached-files { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 6px; }
-    .tfm-attached-pill { display: inline-flex; align-items: center; gap: 6px; padding: 3px 8px; border-radius: 6px; background: var(--color-surface-secondary); font-size: 11px; font-weight: 500; border: 1px solid var(--color-border); }
-    .tfm-attached-remove { border: 0; background: transparent; color: var(--color-text-secondary); cursor: pointer; font-size: 13px; padding: 0; }
-    .tfm-attached-remove:hover { color: var(--color-danger); }
 
     /* Success / Feedback Toast & Errors */
     .tfm-success-toast { display: flex; align-items: center; gap: 8px; padding: 10px 14px; border-radius: 8px; background: color-mix(in srgb, var(--color-success) 12%, var(--color-surface)); border: 1px solid color-mix(in srgb, var(--color-success) 30%, transparent); color: var(--color-success); font-size: 13px; font-weight: 500; animation: tfm-popover-in 140ms ease-out; }
@@ -954,7 +947,7 @@ export class TaskFormModalComponent {
   assigneeSearchQuery = signal('');
   moduleSearchQuery = signal('');
   successToastMessage = signal<string | null>(null);
-  attachedFileNames = signal<string[]>([]);
+  attachedFiles = signal<AttachmentPill[]>([]);
   descTab = signal<'write' | 'preview'>('write');
 
   showLinkPopover = signal(false);
@@ -1168,7 +1161,7 @@ export class TaskFormModalComponent {
     this.internalMode.set(null);
     this.activePopover.set(null);
     this.successToastMessage.set(null);
-    this.attachedFileNames.set([]);
+    this.attachedFiles.set([]);
     this.assigneeSearchQuery.set('');
     this.moduleSearchQuery.set('');
     this.showMoreFields.set(true);
@@ -1288,6 +1281,7 @@ export class TaskFormModalComponent {
     const currentAssignee = t.assigneeEmployeeIds[0] ?? '';
     this.assigneeEmployeeId.set(currentAssignee);
     this.originalAssigneeId.set(currentAssignee);
+    this.attachedFiles.set(t.attachments.map((a) => ({ fileId: a.fileId, name: a.name, sizeBytes: a.sizeBytes })));
     this.errors.set({});
     this.errorMessage.set(null);
   }
@@ -1317,6 +1311,7 @@ export class TaskFormModalComponent {
     if (this.activePopover()) {
       this.activePopover.set(null);
     } else {
+      this.cleanupUnsavedAttachments();
       this.closed.emit();
     }
   }
@@ -1325,6 +1320,7 @@ export class TaskFormModalComponent {
     if (this.activePopover()) {
       this.activePopover.set(null);
     } else {
+      this.cleanupUnsavedAttachments();
       this.closed.emit();
     }
   }
@@ -1626,16 +1622,52 @@ export class TaskFormModalComponent {
     return html;
   }
 
-  onFilesSelected(event: Event): void {
+  async onFilesSelected(event: Event): Promise<void> {
     const input = event.target as HTMLInputElement;
-    if (input.files) {
-      const names = Array.from(input.files).map((f) => f.name);
-      this.attachedFileNames.update((curr) => [...curr, ...names]);
+    if (!input.files) return;
+    await this.uploadAttachmentFiles(input.files);
+  }
+
+  async onAttachmentFilesSelected(files: FileList): Promise<void> {
+    await this.uploadAttachmentFiles(files);
+  }
+
+  private async uploadAttachmentFiles(files: FileList): Promise<void> {
+    for (const file of Array.from(files)) {
+      try {
+        const uploaded = await firstValueFrom(this.taskApi.uploadPendingFile(file, 'task_attachment'));
+        this.attachedFiles.update((curr) => [
+          ...curr,
+          { fileId: uploaded.fileId, name: uploaded.originalFileName, sizeBytes: uploaded.fileSizeBytes }
+        ]);
+      } catch {
+        this.errorMessage.set(`Failed to upload ${file.name}.`);
+      }
     }
   }
 
-  removeAttachedFile(name: string): void {
-    this.attachedFileNames.update((curr) => curr.filter((n) => n !== name));
+  async removeAttachedFile(fileId: string): Promise<void> {
+    this.attachedFiles.update((curr) => curr.filter((f) => f.fileId !== fileId));
+    try {
+      await firstValueFrom(this.taskApi.deletePendingFile(fileId));
+    } catch {
+      // Best-effort: the pill is already gone from the UI either way. In edit mode a file that's
+      // already linked to the task returns 409 here (Task 6's semantics) - that's expected; the
+      // real unlink+quota-release happens on Save via TaskAssetLinker resyncing to the reduced
+      // attachmentFileIds list.
+    }
+  }
+
+  private cleanupUnsavedAttachments(): void {
+    if (this.currentEffectiveMode() !== 'create') return;
+    for (const file of this.attachedFiles()) {
+      firstValueFrom(this.taskApi.deletePendingFile(file.fileId)).catch(() => {});
+    }
+  }
+
+  onCancel(): void {
+    this.cleanupUnsavedAttachments();
+    this.closed.emit();
   }
 
   async submit(): Promise<void> {
@@ -1669,7 +1701,10 @@ export class TaskFormModalComponent {
         await firstValueFrom(this.taskApi.moveTaskStatus(this.taskId(), newStatusId));
       }
       if (this.isObjectiveOwner()) {
-        await firstValueFrom(this.taskApi.editTask(this.taskId(), fields));
+        await firstValueFrom(this.taskApi.editTask(this.taskId(), {
+          ...fields,
+          attachmentFileIds: this.attachedFiles().map((f) => f.fileId)
+        }));
         await this.applyReassignment();
       } else {
         await firstValueFrom(this.taskApi.createTaskEditRequest(this.taskId(), fields));
@@ -1708,7 +1743,8 @@ export class TaskFormModalComponent {
       dueDate: this.dueDate() || undefined,
       estimatedHours: this.estimatedHours() ?? undefined,
       storyPoints: this.storyPoints() ?? undefined,
-      sprintId: this.sprintId() || null
+      sprintId: this.sprintId() || null,
+      attachmentFileIds: this.attachedFiles().map((f) => f.fileId)
     };
 
     this.submitting.set(true);
@@ -1728,7 +1764,7 @@ export class TaskFormModalComponent {
             this.description.set('');
             const ed = this.descEditor()?.nativeElement;
             if (ed) ed.innerHTML = '';
-            this.attachedFileNames.set([]);
+            this.attachedFiles.set([]);
             this.successToastMessage.set('Creation request submitted! You can enter another task below.');
             setTimeout(() => this.taskTitleInput()?.nativeElement?.focus());
           } else {
@@ -1756,7 +1792,7 @@ export class TaskFormModalComponent {
           this.description.set('');
           const ed = this.descEditor()?.nativeElement;
           if (ed) ed.innerHTML = '';
-          this.attachedFileNames.set([]);
+          this.attachedFiles.set([]);
           this.successToastMessage.set('Task created! You can enter another task below.');
           setTimeout(() => this.taskTitleInput()?.nativeElement?.focus());
         } else if (action === 'create_and_open') {

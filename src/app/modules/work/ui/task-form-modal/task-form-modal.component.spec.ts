@@ -14,7 +14,8 @@ const taskDto = {
   id: 't1', objectiveId: 'o1', shortId: 'P-1', title: 'First', description: 'desc',
   categoryId: 'c1', statusId: 's1', priority: 'high' as const, storyPoints: 2, dueDate: '2026-09-01',
   estimatedHours: 4, completedHours: 0, progressPercent: 0, sprintId: null, assigneeEmployeeIds: ['e1'],
-  openClockSessionEmployeeId: null, openClockSessionClockInAt: null, totalLoggedMinutes: 0
+  openClockSessionEmployeeId: null, openClockSessionClockInAt: null, totalLoggedMinutes: 0,
+  attachments: [{ fileId: 'f1', fileName: 'spec.pdf', fileSizeBytes: 2048, contentType: 'application/pdf' }]
 };
 
 function baseApi(): Record<string, ReturnType<typeof vi.fn>> {
@@ -31,7 +32,9 @@ function baseApi(): Record<string, ReturnType<typeof vi.fn>> {
     createTaskCreationRequest: vi.fn().mockReturnValue(of({})),
     assignTask: vi.fn().mockReturnValue(of(undefined)),
     unassignTask: vi.fn().mockReturnValue(of(undefined)),
-    moveTaskStatus: vi.fn().mockReturnValue(of(undefined))
+    moveTaskStatus: vi.fn().mockReturnValue(of(undefined)),
+    uploadPendingFile: vi.fn().mockReturnValue(of({ fileId: 'f1', originalFileName: 'a.png', fileSizeBytes: 100, contentType: 'image/png' })),
+    deletePendingFile: vi.fn().mockReturnValue(of(undefined))
   };
 }
 
@@ -129,6 +132,18 @@ describe('TaskFormModalComponent - edit mode', () => {
     await fixture.componentInstance.submit();
     expect(api['editTask']).not.toHaveBeenCalled();
     expect(fixture.componentInstance.errors()['title']).toBeTruthy();
+  });
+
+  it('seeds attachedFiles from the loaded task and renders the Attachments card', () => {
+    expect(fixture.componentInstance.attachedFiles()).toEqual([{ fileId: 'f1', name: 'spec.pdf', sizeBytes: 2048 }]);
+    const pill = fixture.nativeElement.querySelector('.tal-pill');
+    expect(pill.textContent).toContain('spec.pdf');
+  });
+
+  it('on Save Changes: includes the current attachedFiles ids in the edit payload', async () => {
+    fixture.componentInstance.title.set('Edited');
+    await fixture.componentInstance.submit();
+    expect(api['editTask']).toHaveBeenCalledWith('t1', expect.objectContaining({ attachmentFileIds: ['f1'] }));
   });
 });
 
@@ -296,6 +311,45 @@ describe('TaskFormModalComponent - create mode', () => {
     actionBtn?.click();
     fixture.detectChanges();
     expect(fixture.componentInstance.showMoreFields()).toBe(true);
+  });
+
+  it('uploads a selected file immediately and adds it to attachedFiles', async () => {
+    await build();
+    const file = new File(['x'], 'a.png', { type: 'image/png' });
+    const input = document.createElement('input');
+    Object.defineProperty(input, 'files', { value: [file], configurable: true });
+    await fixture.componentInstance.onFilesSelected({ target: input } as unknown as Event);
+
+    expect(api['uploadPendingFile']).toHaveBeenCalledWith(file, 'task_attachment');
+    expect(fixture.componentInstance.attachedFiles()).toEqual([{ fileId: 'f1', name: 'a.png', sizeBytes: 100 }]);
+  });
+
+  it('removeAttachedFile deletes the pending upload and drops the pill', async () => {
+    await build();
+    fixture.componentInstance.attachedFiles.set([{ fileId: 'f1', name: 'a.png', sizeBytes: 100 }]);
+    await fixture.componentInstance.removeAttachedFile('f1');
+
+    expect(api['deletePendingFile']).toHaveBeenCalledWith('f1');
+    expect(fixture.componentInstance.attachedFiles()).toEqual([]);
+  });
+
+  it('submit includes attachmentFileIds in the create payload', async () => {
+    await build();
+    fixture.componentInstance.attachedFiles.set([{ fileId: 'f1', name: 'a.png', sizeBytes: 100 }]);
+    fixture.componentInstance.title.set('New task');
+    fixture.componentInstance.selectedObjectiveId.set('o1');
+    fixture.componentInstance.categoryId.set('c1');
+    await fixture.componentInstance.submitCreateWithAction('create_and_close');
+
+    expect(createTask).toHaveBeenCalledWith('o1', expect.objectContaining({ attachmentFileIds: ['f1'] }));
+  });
+
+  it('onBackdrop cleans up any still-pending attachments', async () => {
+    await build();
+    fixture.componentInstance.attachedFiles.set([{ fileId: 'f1', name: 'a.png', sizeBytes: 100 }]);
+    fixture.componentInstance.onBackdrop();
+
+    expect(api['deletePendingFile']).toHaveBeenCalledWith('f1');
   });
 });
 
