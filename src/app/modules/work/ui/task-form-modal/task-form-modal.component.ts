@@ -203,6 +203,17 @@ export type TaskFormMode = 'create' | 'edit';
                           </div>
                         }
                       </div>
+
+                      <input #imageFileInput type="file" accept="image/png,image/jpeg,image/webp" class="tfm-image-input-hidden" (change)="onImageFileSelected($event)" />
+                      <button
+                        type="button"
+                        class="tfm-editor__tool"
+                        title="Insert image"
+                        (mousedown)="$event.preventDefault()"
+                        (click)="imageFileInput.click()"
+                      >
+                        <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="3" width="18" height="18" rx="2" /><circle cx="8.5" cy="8.5" r="1.5" /><path d="m21 15-5-5L5 21" /></svg>
+                      </button>
                     </div>
 
                     <div class="tfm-editor__tabs">
@@ -795,6 +806,7 @@ export type TaskFormMode = 'create' | 'edit';
     .tfm-editor__tool--active { background: color-mix(in srgb, var(--color-accent) 15%, var(--color-surface)) !important; color: var(--color-accent) !important; }
     .tfm-editor__tool svg { width: 14px; height: 14px; stroke: currentColor; fill: none; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
     .tfm-link-anchor { position: relative; display: inline-flex; }
+    .tfm-image-input-hidden { display: none; }
     .tfm-link-popover { position: absolute; top: calc(100% + 6px); left: 0; z-index: 1050; width: 250px; padding: 10px; border-radius: 8px; border: 1px solid var(--color-border); background: var(--color-surface); box-shadow: 0 12px 28px rgb(15 23 42 / .18); display: flex; flex-direction: column; gap: 8px; animation: tfm-popover-in 120ms ease-out; }
     .tfm-link-popover__row { display: flex; width: 100%; }
     .tfm-link-input { width: 100%; height: 30px; padding: 0 8px; border: 1px solid var(--color-border); border-radius: 5px; background: var(--color-surface-secondary); font: inherit; font-size: 12px; color: var(--color-text-primary); outline: none; }
@@ -1017,6 +1029,7 @@ export class TaskFormModalComponent {
   private readonly dialogRef = viewChild<ElementRef<HTMLElement>>('tfm');
   readonly taskTitleInput = viewChild<ElementRef<HTMLInputElement>>('taskTitleInput');
   readonly descEditor = viewChild<ElementRef<HTMLDivElement>>('descEditor');
+  readonly imageFileInput = viewChild<ElementRef<HTMLInputElement>>('imageFileInput');
   private previouslyFocused: HTMLElement | null = null;
 
   assigneeOptions = computed<WorkDropdownOption[]>(() => [
@@ -1689,6 +1702,30 @@ export class TaskFormModalComponent {
     document.execCommand('hiliteColor', false, hex ?? 'transparent');
     this.showHighlightPopover.set(false);
     this.onEditorInput();
+  }
+
+  async onImageFileSelected(event: Event): Promise<void> {
+    const input = event.target as HTMLInputElement;
+    const file = input.files?.[0];
+    if (!file) return;
+
+    const selection = window.getSelection();
+    const savedRange = selection && selection.rangeCount > 0 ? selection.getRangeAt(0).cloneRange() : null;
+
+    try {
+      const uploaded = await firstValueFrom(this.taskApi.uploadPendingFile(file, 'task_description_image'));
+
+      if (selection && savedRange) {
+        selection.removeAllRanges();
+        selection.addRange(savedRange);
+      }
+      document.execCommand('insertImage', false, this.taskApi.getFileUrl(uploaded.fileId));
+      this.onEditorInput();
+    } catch {
+      this.errorMessage.set(`Failed to insert ${file.name}.`);
+    } finally {
+      input.value = '';
+    }
   }
 
   onEditorInput(): void {

@@ -34,7 +34,8 @@ function baseApi(): Record<string, ReturnType<typeof vi.fn>> {
     unassignTask: vi.fn().mockReturnValue(of(undefined)),
     moveTaskStatus: vi.fn().mockReturnValue(of(undefined)),
     uploadPendingFile: vi.fn().mockReturnValue(of({ fileId: 'f1', originalFileName: 'a.png', fileSizeBytes: 100, contentType: 'image/png' })),
-    deletePendingFile: vi.fn().mockReturnValue(of(undefined))
+    deletePendingFile: vi.fn().mockReturnValue(of(undefined)),
+    getFileUrl: vi.fn((fileId: string) => `http://test/api/v1/work/tasks/files/${fileId}`)
   };
 }
 
@@ -369,6 +370,35 @@ describe('TaskFormModalComponent - create mode', () => {
     (document as unknown as { execCommand: typeof execSpy }).execCommand = execSpy;
     fixture.componentInstance.applyHighlight('#fff3bf');
     expect(execSpy).toHaveBeenCalledWith('hiliteColor', false, '#fff3bf');
+  });
+
+  it('insertImage uploads the file and inserts an <img> at the saved selection', async () => {
+    await build();
+    const execSpy = vi.fn().mockReturnValue(true);
+    (document as unknown as { execCommand: typeof execSpy }).execCommand = execSpy;
+    const file = new File(['x'], 'shot.png', { type: 'image/png' });
+    const input = document.createElement('input');
+    Object.defineProperty(input, 'files', { value: [file], configurable: true });
+
+    await fixture.componentInstance.onImageFileSelected({ target: input } as unknown as Event);
+
+    expect(api['uploadPendingFile']).toHaveBeenCalledWith(file, 'task_description_image');
+    expect(execSpy).toHaveBeenCalledWith('insertImage', false, expect.stringContaining('/tasks/files/f1'));
+  });
+
+  it('a failed image upload does not touch the editor and surfaces an error', async () => {
+    await build();
+    api['uploadPendingFile'] = vi.fn().mockReturnValue(throwError(() => new Error('boom')));
+    const execSpy = vi.fn().mockReturnValue(true);
+    (document as unknown as { execCommand: typeof execSpy }).execCommand = execSpy;
+    const file = new File(['x'], 'shot.png', { type: 'image/png' });
+    const input = document.createElement('input');
+    Object.defineProperty(input, 'files', { value: [file], configurable: true });
+
+    await fixture.componentInstance.onImageFileSelected({ target: input } as unknown as Event);
+
+    expect(execSpy).not.toHaveBeenCalledWith('insertImage', expect.anything(), expect.anything());
+    expect(fixture.componentInstance.errorMessage()).toBeTruthy();
   });
 });
 
