@@ -19,6 +19,7 @@ import { CurrentEmployeeStore } from '../../state/current-employee.store';
 import { TaskHistoryFeedComponent } from '../task-history-feed/task-history-feed.component';
 import { TaskClockWidgetComponent } from '../task-clock-widget/task-clock-widget.component';
 import { TaskAttachmentListComponent, AttachmentPill } from '../task-attachment-list/task-attachment-list.component';
+import { ColorSwatchPopoverComponent } from '../color-swatch-popover/color-swatch-popover.component';
 import { TaskHistoryEntryDto } from '../../models/dto/task-history.dto';
 
 export type TaskFormMode = 'create' | 'edit';
@@ -26,7 +27,7 @@ export type TaskFormMode = 'create' | 'edit';
 @Component({
   selector: 'app-task-form-modal',
   standalone: true,
-  imports: [InputComponent, ButtonComponent, WorkDropdownComponent, TaskHistoryFeedComponent, TaskClockWidgetComponent, TaskAttachmentListComponent],
+  imports: [InputComponent, ButtonComponent, WorkDropdownComponent, TaskHistoryFeedComponent, TaskClockWidgetComponent, TaskAttachmentListComponent, ColorSwatchPopoverComponent],
   template: `
     @if (open()) {
       <div class="tfm-scrim" (click)="onBackdrop()">
@@ -108,6 +109,45 @@ export type TaskFormMode = 'create' | 'edit';
                       <button type="button" class="tfm-editor__tool" title="Underline (Ctrl+U)" (mousedown)="$event.preventDefault()" (click)="formatDoc('underline')">
                         <u>U</u>
                       </button>
+                      <div class="tfm-link-anchor">
+                        <button
+                          type="button"
+                          class="tfm-editor__tool"
+                          [class.tfm-editor__tool--active]="showTextColorPopover()"
+                          title="Text color"
+                          (mousedown)="$event.preventDefault()"
+                          (click)="toggleTextColorPopover($event)"
+                        >
+                          <strong style="text-decoration: underline; text-decoration-color: #e03131;">A</strong>
+                        </button>
+                        @if (showTextColorPopover()) {
+                          <app-color-swatch-popover
+                            label="Remove color"
+                            [swatches]="swatchPalette"
+                            (colorSelected)="applyTextColor($event)"
+                          />
+                        }
+                      </div>
+
+                      <div class="tfm-link-anchor">
+                        <button
+                          type="button"
+                          class="tfm-editor__tool"
+                          [class.tfm-editor__tool--active]="showHighlightPopover()"
+                          title="Highlight"
+                          (mousedown)="$event.preventDefault()"
+                          (click)="toggleHighlightPopover($event)"
+                        >
+                          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m9 11 6-6 4 4-6 6H9v-4Z" /><path d="M3 21h6" /></svg>
+                        </button>
+                        @if (showHighlightPopover()) {
+                          <app-color-swatch-popover
+                            label="Remove highlight"
+                            [swatches]="highlightPalette"
+                            (colorSelected)="applyHighlight($event)"
+                          />
+                        }
+                      </div>
                       <span class="tfm-editor__divider"></span>
                       <button type="button" class="tfm-editor__tool" title="Code" (mousedown)="$event.preventDefault()" (click)="formatCode()">
                         <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m16 18 6-6-6-6M8 6l-6 6 6 6" /></svg>
@@ -955,6 +995,24 @@ export class TaskFormModalComponent {
   linkTextInput = signal('');
   savedLinkRange: Range | null = null;
 
+  showTextColorPopover = signal(false);
+  showHighlightPopover = signal(false);
+  private savedColorRange: Range | null = null;
+
+  readonly swatchPalette = [
+    { name: 'Red', hex: '#e03131' }, { name: 'Orange', hex: '#f08c00' },
+    { name: 'Yellow', hex: '#f2c400' }, { name: 'Green', hex: '#2f9e44' },
+    { name: 'Blue', hex: '#1971c2' }, { name: 'Purple', hex: '#9c36b5' },
+    { name: 'Pink', hex: '#e64980' }, { name: 'Default', hex: '#1e293b' }
+  ];
+
+  readonly highlightPalette = [
+    { name: 'Red', hex: '#ffc9c9' }, { name: 'Orange', hex: '#ffe0b2' },
+    { name: 'Yellow', hex: '#fff3bf' }, { name: 'Green', hex: '#d3f9d8' },
+    { name: 'Blue', hex: '#d0ebff' }, { name: 'Purple', hex: '#eebefa' },
+    { name: 'Pink', hex: '#ffd6e8' }, { name: 'Grey', hex: '#e9ecef' }
+  ];
+
   private loadedKey = '';
   private readonly dialogRef = viewChild<ElementRef<HTMLElement>>('tfm');
   readonly taskTitleInput = viewChild<ElementRef<HTMLInputElement>>('taskTitleInput');
@@ -1333,6 +1391,8 @@ export class TaskFormModalComponent {
   closePopover(): void {
     this.activePopover.set(null);
     this.showLinkPopover.set(false);
+    this.showTextColorPopover.set(false);
+    this.showHighlightPopover.set(false);
   }
 
   clearError(field: string): void {
@@ -1571,6 +1631,63 @@ export class TaskFormModalComponent {
     sel?.addRange(newRange);
 
     this.showLinkPopover.set(false);
+    this.onEditorInput();
+  }
+
+  toggleTextColorPopover(event: MouseEvent): void {
+    event.stopPropagation();
+    if (this.showTextColorPopover()) {
+      this.showTextColorPopover.set(false);
+      return;
+    }
+    this.closePopover();
+    this.saveColorSelectionRange();
+    this.showTextColorPopover.set(true);
+  }
+
+  toggleHighlightPopover(event: MouseEvent): void {
+    event.stopPropagation();
+    if (this.showHighlightPopover()) {
+      this.showHighlightPopover.set(false);
+      return;
+    }
+    this.closePopover();
+    this.saveColorSelectionRange();
+    this.showHighlightPopover.set(true);
+  }
+
+  private saveColorSelectionRange(): void {
+    const el = this.descEditor()?.nativeElement;
+    const sel = window.getSelection();
+    this.savedColorRange = el && sel && sel.rangeCount > 0 && el.contains(sel.anchorNode)
+      ? sel.getRangeAt(0).cloneRange()
+      : null;
+  }
+
+  private restoreColorSelectionRange(): void {
+    const el = this.descEditor()?.nativeElement;
+    if (!el) return;
+    el.focus();
+    if (this.savedColorRange && el.contains(this.savedColorRange.commonAncestorContainer)) {
+      const sel = window.getSelection();
+      sel?.removeAllRanges();
+      sel?.addRange(this.savedColorRange);
+    }
+  }
+
+  applyTextColor(hex: string | null): void {
+    this.restoreColorSelectionRange();
+    document.execCommand('styleWithCSS', false, 'true');
+    document.execCommand('foreColor', false, hex ?? 'inherit');
+    this.showTextColorPopover.set(false);
+    this.onEditorInput();
+  }
+
+  applyHighlight(hex: string | null): void {
+    this.restoreColorSelectionRange();
+    document.execCommand('styleWithCSS', false, 'true');
+    document.execCommand('hiliteColor', false, hex ?? 'transparent');
+    this.showHighlightPopover.set(false);
     this.onEditorInput();
   }
 

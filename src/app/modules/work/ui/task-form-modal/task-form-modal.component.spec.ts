@@ -351,5 +351,24 @@ describe('TaskFormModalComponent - create mode', () => {
 
     expect(api['deletePendingFile']).toHaveBeenCalledWith('f1');
   });
+
+  it('applyTextColor runs execCommand foreColor and syncs description', async () => {
+    await build();
+    // jsdom does not implement document.execCommand, so vi.spyOn (which requires the property to
+    // already exist) cannot be used here - stub it directly instead.
+    const execSpy = vi.fn().mockReturnValue(true);
+    (document as unknown as { execCommand: typeof execSpy }).execCommand = execSpy;
+    fixture.componentInstance.applyTextColor('#e03131');
+    expect(execSpy).toHaveBeenCalledWith('foreColor', false, '#e03131');
+    expect(fixture.componentInstance.showTextColorPopover()).toBe(false);
+  });
+
+  it('applyHighlight runs execCommand hiliteColor', async () => {
+    await build();
+    const execSpy = vi.fn().mockReturnValue(true);
+    (document as unknown as { execCommand: typeof execSpy }).execCommand = execSpy;
+    fixture.componentInstance.applyHighlight('#fff3bf');
+    expect(execSpy).toHaveBeenCalledWith('hiliteColor', false, '#fff3bf');
+  });
 });
 
