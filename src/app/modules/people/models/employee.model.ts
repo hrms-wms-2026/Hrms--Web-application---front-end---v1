@@ -88,6 +88,8 @@ export interface EmployeeDetailJobInformation {
   readonly hireDate: string;
   readonly probationEndDate: string | null;
   readonly workModeLabel: string | null;
+  readonly employmentTypeCode: string;
+  readonly workModeId: string | null;
 }
 
 export interface EmployeeDetailPersonalInformation {
@@ -133,4 +135,10 @@ export interface ChangePositionPayload {
 
 export interface ChangePositionResponse {
   readonly pendingApproval: boolean;
+}
+
+export interface UpdateEmployeeJobDetailsRequest {
+  readonly employeeNumber: string;
+  readonly employmentTypeCode: string;
+  readonly workModeId: string | null;
 }

@@ -39,14 +39,19 @@ import { TaskCardComponent } from '../task-card/task-card.component';
     </div>
   `,
   styles: [`
+    :host {
+      display: flex;
+      flex: 1 1 0;
+      min-width: 280px;
+    }
     .task-board-column {
       display: flex;
       flex-direction: column;
+      width: 100%;
       background: var(--color-surface-secondary);
       border: 1px solid var(--color-border);
       border-radius: 12px;
       padding: 12px;
-      min-width: 280px;
       min-height: 180px;
       box-shadow: 0 1px 2px rgb(15 23 42 / 0.03);
       scroll-snap-align: start;

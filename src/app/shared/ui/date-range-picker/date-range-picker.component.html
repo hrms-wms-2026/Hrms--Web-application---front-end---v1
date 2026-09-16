@@ -6,7 +6,7 @@
     [disabled]="disabled()"
     [attr.aria-expanded]="isOpen()"
     aria-haspopup="dialog"
-    [attr.aria-label]="triggerLabel() ? 'Change date range, currently ' + triggerLabel() : 'Choose date range'"
+    [attr.aria-label]="triggerLabel() ? 'Change date range, currently ' + triggerLabel() : (placeholder() || 'Choose date range')"
   >
     <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
       <rect x="3" y="4" width="18" height="18" rx="2" ry="2"/>
@@ -16,6 +16,8 @@
     </svg>
     @if (triggerLabel()) {
       <span class="drp-trigger-label">{{ triggerLabel() }}</span>
+    } @else if (placeholder()) {
+      <span class="drp-trigger-label drp-placeholder">{{ placeholder() }}</span>
     }
   </button>
 

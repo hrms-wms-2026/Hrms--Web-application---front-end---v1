@@ -3,15 +3,14 @@
  * - ClockInPolicyListItemResponse / ClockInPolicyResponse (Application DTOs)
  * - UpsertClockInPolicyRequest (Api Contracts)
  *
- * Product language uses Hybrid for the hybrid work area. Backend persistence may
- * use internal either_* columns; those names must not appear in UI.
+ * Work-mode/clock-in-method configuration (Onsite/Remote/Hybrid/Field toggles,
+ * location verification) lives in the separate WorkMode model/API — see
+ * ../models/work-mode.model.ts and ../state/work-mode.store.ts. This model
+ * covers only policy scope, effective dates, corrections, and late deduction
+ * rules.
  */
 
 export type ClockInPolicyScopeType = 'full_company' | 'department' | 'position' | 'employee';
-
-export type HybridSourceRule = 'onsite' | 'remote' | 'employee_choice';
-
-export type FieldPhotoRequirement = 'off' | 'optional' | 'required';
 
 export interface ClockInPolicyListItemResponse {
   readonly id: string;
@@ -33,44 +32,6 @@ export interface ClockInPolicyScope {
   readonly employeeIds: readonly string[];
 }
 
-export interface WorkAreaSourceRules {
-  readonly biometricEnabled: boolean;
-  readonly webEnabled: boolean;
-  readonly trayEnabled: boolean;
-  readonly photoRequired: boolean;
-}
-
-export interface RemoteWorkAreaRules {
-  readonly biometricEnabled: boolean;
-  readonly webEnabled: boolean;
-  readonly trayEnabled: boolean;
-  readonly photoRequired: boolean;
-  readonly locationCheckRequired: boolean;
-}
-
-export interface HybridWorkAreaRules {
-  readonly biometricEnabled: boolean;
-  readonly webEnabled: boolean;
-  readonly trayEnabled: boolean;
-  readonly photoRequired: boolean;
-  readonly locationCheckRequired: boolean;
-  readonly sourceRule: HybridSourceRule;
-}
-
-export interface FieldWorkAreaRules {
-  readonly biometricEnabled: boolean;
-  readonly webEnabled: boolean;
-  readonly trayEnabled: boolean;
-  readonly photoRequirement: FieldPhotoRequirement;
-}
-
-export interface WorkAreaRules {
-  readonly onsite: WorkAreaSourceRules;
-  readonly remote: RemoteWorkAreaRules;
-  readonly hybrid: HybridWorkAreaRules;
-  readonly field: FieldWorkAreaRules;
-}
-
 export interface LateDeductionRule {
   readonly id?: string;
   readonly lateArrivalMinute: number;
@@ -86,9 +47,6 @@ export interface ClockInPolicyResponse {
   readonly scope: ClockInPolicyScope;
   readonly effectiveFrom: string;
   readonly effectiveTo: string | null;
-  readonly locationVerificationRequired: boolean;
-  readonly allowedRadiusMeters: number | null;
-  readonly workAreaRules: WorkAreaRules;
   readonly correctionRequiresApproval: boolean;
   readonly notificationRecipientResolver: string;
   readonly lateDeductionRules: readonly LateDeductionRule[];
@@ -103,9 +61,6 @@ export interface UpsertClockInPolicyRequest {
   readonly scope: ClockInPolicyScope;
   readonly effectiveFrom: string;
   readonly effectiveTo: string | null;
-  readonly locationVerificationRequired: boolean;
-  readonly allowedRadiusMeters: number | null;
-  readonly workAreaRules: WorkAreaRules;
   readonly correctionRequiresApproval: boolean;
   readonly notificationRecipientResolver: string;
   readonly lateDeductionRules: readonly {

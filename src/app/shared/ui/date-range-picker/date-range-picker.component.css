@@ -37,6 +37,11 @@
   white-space: nowrap;
 }
 
+.drp-placeholder {
+  color: var(--color-text-secondary);
+  font-weight: 400;
+}
+
 .drp-popover {
   position: absolute;
   top: calc(100% + 0.25rem);

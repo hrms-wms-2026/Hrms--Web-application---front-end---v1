@@ -18,6 +18,51 @@
     <svg class="bh-breadcrumb__sep" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
       <polyline points="9 18 15 12 9 6"/>
     </svg>
-    <span class="bh-breadcrumb__item bh-breadcrumb__item--current" aria-current="page">{{ currentLabel() }}</span>
+    @if (switcherItems().length > 0) {
+      <div class="bh-switcher">
+        <button
+          type="button"
+          class="bh-breadcrumb__item bh-breadcrumb__item--current bh-switcher__trigger"
+          aria-current="page"
+          aria-haspopup="listbox"
+          [attr.aria-expanded]="open()"
+          (click)="toggleOpen($event)"
+        >
+          <span>{{ currentLabel() }}</span>
+          <svg class="bh-switcher__chevron" [class.bh-switcher__chevron--open]="open()" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+            <polyline points="6 9 12 15 18 9"/>
+          </svg>
+        </button>
+        @if (open()) {
+          <div class="bh-switcher__panel" role="listbox" (click)="$event.stopPropagation()">
+            @if (switcherGroupLabel()) {
+              <div class="bh-switcher__group-label">{{ switcherGroupLabel() }}</div>
+            }
+            <div class="bh-switcher__search">
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><circle cx="11" cy="11" r="8" /><path d="m21 21-4.3-4.3" /></svg>
+              <input type="text" placeholder="Search…" [value]="search()" (input)="search.set($any($event.target).value)" />
+            </div>
+            <div class="bh-switcher__list">
+              @for (item of filteredSwitcherItems(); track item.id) {
+                <button
+                  type="button"
+                  class="bh-switcher__item"
+                  [class.bh-switcher__item--active]="item.id === switcherActiveId()"
+                  role="option"
+                  [attr.aria-selected]="item.id === switcherActiveId()"
+                  (click)="select(item.id)"
+                >
+                  {{ item.label }}
+                </button>
+              } @empty {
+                <p class="bh-switcher__empty">No matches</p>
+              }
+            </div>
+          </div>
+        }
+      </div>
+    } @else {
+      <span class="bh-breadcrumb__item bh-breadcrumb__item--current" aria-current="page">{{ currentLabel() }}</span>
+    }
   </nav>
 </header>

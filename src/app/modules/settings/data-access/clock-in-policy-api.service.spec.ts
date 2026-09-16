@@ -33,21 +33,6 @@ describe('ClockInPolicyApiService', () => {
     scope: { type: 'full_company', departmentIds: [], positionIds: [], employeeIds: [] },
     effectiveFrom: '2026-08-21',
     effectiveTo: null,
-    locationVerificationRequired: true,
-    allowedRadiusMeters: 100,
-    workAreaRules: {
-      onsite: { biometricEnabled: true, webEnabled: false, trayEnabled: false, photoRequired: false },
-      remote: { biometricEnabled: false, webEnabled: true, trayEnabled: true, photoRequired: true, locationCheckRequired: false },
-      hybrid: {
-        biometricEnabled: false,
-        webEnabled: true,
-        trayEnabled: true,
-        photoRequired: true,
-        locationCheckRequired: true,
-        sourceRule: 'employee_choice'
-      },
-      field: { biometricEnabled: false, webEnabled: true, trayEnabled: true, photoRequirement: 'required' }
-    },
     correctionRequiresApproval: true,
     notificationRecipientResolver: 'management_coverage_owner',
     lateDeductionRules: [],
@@ -62,9 +47,6 @@ describe('ClockInPolicyApiService', () => {
     scope: { type: 'full_company', departmentIds: [], positionIds: [], employeeIds: [] },
     effectiveFrom: '2026-08-21',
     effectiveTo: null,
-    locationVerificationRequired: true,
-    allowedRadiusMeters: 100,
-    workAreaRules: detail.workAreaRules,
     correctionRequiresApproval: true,
     notificationRecipientResolver: 'management_coverage_owner',
     lateDeductionRules: [],
@@ -115,7 +97,6 @@ describe('ClockInPolicyApiService', () => {
     );
     expect(req.request.method).toBe('POST');
     expect(req.request.body).toEqual(upsert);
-    expect(req.request.body.workAreaRules.hybrid).toBeTruthy();
     expect(JSON.stringify(req.request.body).toLowerCase()).not.toContain('either');
     expect((req.request.body as Record<string, unknown>)['tenantId']).toBeUndefined();
     req.flush(detail);
@@ -128,7 +109,6 @@ describe('ClockInPolicyApiService', () => {
       `${environment.apiUrl}/attendance/legal-entities/le-1/clock-in-policies/policy-1`
     );
     expect(req.request.method).toBe('PUT');
-    expect(req.request.body.workAreaRules.hybrid).toBeTruthy();
     expect(JSON.stringify(req.request.body).toLowerCase()).not.toContain('either');
     req.flush(detail);
   });

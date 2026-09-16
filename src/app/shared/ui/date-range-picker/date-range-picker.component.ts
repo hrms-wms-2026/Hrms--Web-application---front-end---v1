@@ -54,6 +54,7 @@ export class DateRangePickerComponent {
   maxDate = input<string>('');
   minDate = input<string>('');
   align = input<'auto' | 'left' | 'right'>('auto');
+  placeholder = input<string>('Select date range');
 
   rangeChange = output<{ from: string; to: string }>();
 

@@ -12,7 +12,6 @@ import { TaskClockWidgetComponent } from '../task-clock-widget/task-clock-widget
     <div class="task-card" [attr.data-testid]="'task-card-' + task().id" (click)="viewed.emit(task())">
       <div class="task-card__header">
         <span class="task-card__short-id">{{ task().shortId }}</span>
-        <button type="button" class="task-card__view-btn" aria-label="View task" title="View task" (click)="viewed.emit(task()); $event.stopPropagation()"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M2.5 12s3.5-5 9.5-5 9.5 5 9.5 5-3.5 5-9.5 5-9.5-5-9.5-5Z" /><circle cx="12" cy="12" r="2.5" /></svg></button>
       </div>
       <p class="task-card__title">{{ task().title }}</p>
 
@@ -73,24 +72,6 @@ import { TaskClockWidgetComponent } from '../task-clock-widget/task-clock-widget
       justify-content: space-between;
       gap: 8px;
     }
-    .task-card__view-btn {
-      display: inline-flex;
-      align-items: center;
-      justify-content: center;
-      width: 28px;
-      height: 28px;
-      color: var(--color-accent);
-      background: transparent;
-      border: 0;
-      border-radius: 7px;
-      cursor: pointer;
-      padding: 0;
-      line-height: 1;
-      transition: background-color 160ms ease, color 160ms ease;
-    }
-    .task-card__view-btn svg { width: 15px; height: 15px; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
-    .task-card__view-btn:hover { background: var(--color-surface-secondary); color: var(--color-text-primary); }
-    .task-card__view-btn:focus-visible { outline: 2px solid var(--color-focus-ring); outline-offset: 2px; }
     .task-card__short-id { font-size: 11px; color: var(--color-text-secondary); }
     .task-card__title { margin: 5px 0 7px; font-size: 13px; font-weight: 500; color: var(--color-text-primary); line-height: 1.4; }
     .task-card__assignees { display: flex; align-items: center; gap: 5px; margin: 0 0 7px; font-size: 11px; color: var(--color-text-secondary); }

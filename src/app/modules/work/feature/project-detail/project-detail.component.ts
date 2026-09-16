@@ -1,9 +1,11 @@
-import { Component, OnInit, computed, inject, signal } from '@angular/core';
+import { Component, computed, inject, signal } from '@angular/core';
+import { NgTemplateOutlet } from '@angular/common';
 import { ActivatedRoute, NavigationEnd, Router, RouterOutlet } from '@angular/router';
-import { filter } from 'rxjs/operators';
-import { firstValueFrom } from 'rxjs';
+import { distinctUntilChanged, filter, map } from 'rxjs/operators';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { ProjectDetailStore } from '../../state/project-detail.store';
+import { ProjectListStore } from '../../state/project-list.store';
+import { WorkPageToolbarStore } from '../../state/work-page-toolbar.store';
 import { MilestoneSubMenuComponent } from '../../ui/milestone-sub-menu/milestone-sub-menu.component';
 import { LoaderComponent } from '../../../../shared/ui/loader/loader.component';
 import { ErrorStateComponent } from '../../../../shared/ui/error-state/error-state.component';
@@ -15,16 +17,22 @@ import { BreadcrumbHeaderComponent } from '../../../../shared/ui/breadcrumb-head
   standalone: true,
   imports: [
     MilestoneSubMenuComponent, LoaderComponent, ErrorStateComponent, EmptyStateComponent,
-    BreadcrumbHeaderComponent, RouterOutlet
+    BreadcrumbHeaderComponent, RouterOutlet, NgTemplateOutlet
   ],
   templateUrl: './project-detail.component.html',
   styleUrls: ['./project-detail.component.css']
 })
-export class ProjectDetailComponent implements OnInit {
+export class ProjectDetailComponent {
   readonly store = inject(ProjectDetailStore);
+  protected readonly toolbarStore = inject(WorkPageToolbarStore);
+  protected readonly projectListStore = inject(ProjectListStore);
   private readonly route = inject(ActivatedRoute);
   private readonly router = inject(Router);
   private projectId = '';
+
+  protected readonly projectSwitcherItems = computed(() =>
+    this.projectListStore.projects().map((p) => ({ id: p.id, label: p.name }))
+  );
 
   activeMilestoneId = signal<string | null>(null);
   isProjectSettings = signal(false);
@@ -54,6 +62,23 @@ export class ProjectDetailComponent implements OnInit {
       .subscribe(() => {
         this.syncChildRouteState();
       });
+
+    // Reactive to the :id param itself (not just a one-time read) - switching projects via the
+    // breadcrumb switcher navigates to a sibling route matching the same path shape
+    // (/work/:id/board), which Angular's router reuses the existing component instance for
+    // rather than re-instantiating it, so ngOnInit alone would never see the new id.
+    this.route.paramMap
+      .pipe(
+        map((paramMap) => paramMap.get('id') ?? ''),
+        distinctUntilChanged(),
+        takeUntilDestroyed()
+      )
+      .subscribe((id) => {
+        this.projectId = id;
+        void this.loadProject(id);
+      });
+
+    void this.projectListStore.loadProjects();
   }
 
   private syncChildRouteState(): void {
@@ -62,11 +87,10 @@ export class ProjectDetailComponent implements OnInit {
     this.activeMilestoneId.set(child?.paramMap.get('milestoneId') ?? null);
   }
 
-  async ngOnInit(): Promise<void> {
-    const paramMap = await firstValueFrom(this.route.paramMap);
-    this.projectId = paramMap.get('id')!;
-    this.store.loadProject(this.projectId);
-    await this.store.loadMyMilestones(this.projectId);
+  private async loadProject(id: string): Promise<void> {
+    if (!id) return;
+    this.store.loadProject(id);
+    await this.store.loadMyMilestones(id);
 
     if (!this.route.snapshot.firstChild) {
       const milestones = this.store.milestones();
@@ -82,5 +106,12 @@ export class ProjectDetailComponent implements OnInit {
 
   retryMilestones(): void {
     this.store.loadMyMilestones(this.projectId);
+  }
+
+  protected switchProject(id: string): void {
+    // Board is the one landing tab every project-level route can reach directly regardless of
+    // which milestone-scoped tab (Tree/Approvals) the user was on, since milestone ids don't
+    // carry over between projects.
+    this.router.navigate(['/work', id, 'board']);
   }
 }

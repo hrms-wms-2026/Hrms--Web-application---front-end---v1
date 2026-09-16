@@ -1,7 +1,8 @@
-import { Component, inject, OnInit, signal } from '@angular/core';
+import { AfterViewInit, Component, inject, OnDestroy, OnInit, signal, TemplateRef, viewChild } from '@angular/core';
 import { ActivatedRoute } from '@angular/router';
 import { firstValueFrom } from 'rxjs';
 import { WorkApprovalsStore } from '../../state/work-approvals.store';
+import { WorkPageToolbarStore } from '../../state/work-page-toolbar.store';
 import { ApprovalItem } from '../../models/approval.model';
 import { AllocationRequestDto } from '../../models/dto/allocation-request.dto';
 import { ApprovalRequestRowComponent } from '../../ui/approval-request-row/approval-request-row.component';
@@ -17,6 +18,12 @@ import { ButtonComponent } from '../../../../shared/ui/button/button.component';
   standalone: true,
   imports: [ApprovalRequestRowComponent, ModalComponent, InputComponent, WorkDropdownComponent, ButtonComponent],
   template: `
+    <ng-template #toolbarTpl>
+      <app-button data-testid="create-approval-button" variant="primary" (pressed)="openCreateApproval()">
+        Create Approval
+      </app-button>
+    </ng-template>
+
     @if (store.loading()) {
       <p>Loading approvals…</p>
     } @else if (store.error() && store.pendingCount() === 0) {
@@ -25,9 +32,6 @@ import { ButtonComponent } from '../../../../shared/ui/button/button.component';
       <div class="work-approvals">
         <div class="work-approvals__toolbar">
           <h1>Approvals</h1>
-          <app-button data-testid="create-approval-button" variant="primary" (pressed)="openCreateApproval()">
-            Create Approval
-          </app-button>
         </div>
 
         @if (store.taskCreationRequests().length > 0) {
@@ -144,11 +148,13 @@ import { ButtonComponent } from '../../../../shared/ui/button/button.component';
     .work-approvals__form-actions { display: flex; justify-content: flex-end; gap: 8px; }
   `]
 })
-export class WorkApprovalsComponent implements OnInit {
+export class WorkApprovalsComponent implements OnInit, AfterViewInit, OnDestroy {
   protected readonly store = inject(WorkApprovalsStore);
   private readonly route = inject(ActivatedRoute);
   private readonly approvalsApi = inject(WorkApprovalsApiService);
   private readonly projectApi = inject(ProjectApiService);
+  private readonly toolbarStore = inject(WorkPageToolbarStore);
+  private readonly toolbarTpl = viewChild.required<TemplateRef<unknown>>('toolbarTpl');
   private readonly projectId = this.resolveProjectId();
   private lastFailedId: string | null = null;
 
@@ -166,6 +172,14 @@ export class WorkApprovalsComponent implements OnInit {
   ngOnInit(): void {
     void this.store.loadAll();
     void this.loadModules();
+  }
+
+  ngAfterViewInit(): void {
+    this.toolbarStore.setTemplate(this.toolbarTpl());
+  }
+
+  ngOnDestroy(): void {
+    this.toolbarStore.setTemplate(null);
   }
 
   activeErrorFor(item: ApprovalItem): string | null {
