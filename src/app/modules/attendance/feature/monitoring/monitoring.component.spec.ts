@@ -69,6 +69,8 @@ function makeWorkMode(id: string, name: string, isActive: boolean): WorkMode {
     webEnabled: true,
     trayEnabled: false,
     photoRequired: false,
+    selfRegistersLocation: false,
+    allowsDailyLocationChoice: false,
     isSystemSeeded: true,
     displayOrder: 1,
     isActive,

@@ -41,6 +41,22 @@
   width: auto;
 }
 
+.cipf-actions app-button ::ng-deep button:disabled {
+  background-color: #bfdbfe !important;
+  color: #ffffff !important;
+  cursor: not-allowed !important;
+  opacity: 0.95 !important;
+  border-color: transparent !important;
+  box-shadow: none !important;
+}
+
+:host-context([data-theme='dark']) .cipf-actions app-button ::ng-deep button:disabled,
+:host-context(.dark) .cipf-actions app-button ::ng-deep button:disabled {
+  background-color: #1e3a8a !important;
+  color: #93c5fd !important;
+  opacity: 0.7 !important;
+}
+
 .cipf-intro {
   margin-bottom: 1.25rem;
 }
@@ -104,11 +120,48 @@
   background: color-mix(in srgb, var(--color-surface-secondary) 45%, var(--color-surface));
 }
 
+.cipf-section-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 1rem;
+}
+
+.cipf-section-header__text {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
 .cipf-section-title {
   margin: 0;
-  font-size: 0.9375rem;
+  font-size: 1rem;
   font-weight: 600;
   color: var(--color-text-primary);
+}
+
+.cipf-section-desc {
+  margin: 0;
+  font-size: 0.8125rem;
+  color: var(--color-text-secondary);
+  line-height: 1.4;
+}
+
+.cipf-callout-info {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.875rem 1rem;
+  border-radius: 10px;
+  background: color-mix(in srgb, var(--color-accent) 8%, var(--color-surface));
+  border: 1px solid color-mix(in srgb, var(--color-accent) 22%, transparent);
+}
+
+.cipf-callout-icon {
+  width: 1.25rem;
+  height: 1.25rem;
+  color: var(--color-accent);
+  flex-shrink: 0;
 }
 
 .cipf-grid {

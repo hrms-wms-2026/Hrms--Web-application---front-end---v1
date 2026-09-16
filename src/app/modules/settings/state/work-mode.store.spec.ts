@@ -8,8 +8,8 @@ describe('WorkModeStore', () => {
   const legalEntityId = 'le-1';
   const fiveModes: WorkMode[] = Array.from({ length: 5 }, (_, i) => ({
     id: `wm-${i}`, legalEntityId, name: `Mode ${i}`, biometricEnabled: false, webEnabled: true,
-    trayEnabled: false, photoRequired: false, isSystemSeeded: i < 3, displayOrder: i,
-    isActive: true, createdAt: '', updatedAt: ''
+    trayEnabled: false, photoRequired: false, selfRegistersLocation: false, allowsDailyLocationChoice: false,
+    isSystemSeeded: i < 3, displayOrder: i, isActive: true, createdAt: '', updatedAt: ''
   }));
 
   function setup(apiStub: Partial<WorkModeApiService>) {
@@ -38,7 +38,15 @@ describe('WorkModeStore', () => {
     const created = fiveModes[0];
     const store = setup({ list: () => of([]), create: () => of(created) });
     store.load(legalEntityId);
-    store.create({ name: created.name, biometricEnabled: false, webEnabled: true, trayEnabled: false, photoRequired: false });
+    store.create({
+      name: created.name,
+      biometricEnabled: false,
+      webEnabled: true,
+      trayEnabled: false,
+      photoRequired: false,
+      selfRegistersLocation: false,
+      allowsDailyLocationChoice: false
+    });
     expect(store.items()).toEqual([created]);
     expect(store.atCap()).toBe(false);
   });

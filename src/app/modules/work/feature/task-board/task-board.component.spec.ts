@@ -58,7 +58,7 @@ describe('TaskBoardComponent', () => {
     expect(loadBoard).toHaveBeenCalledWith('project-1');
   });
 
-  it('columnsWithTasks only includes tasks whose sprintId is one of the active sprints', async () => {
+  it('shows all tasks by default and only filters by sprint when explicitly selected', async () => {
     const status = {
       id: 's-1', name: 'To Do', displayOrder: 0, requiresApproval: false, marksTaskComplete: false, visibility: 'public'
     };
@@ -123,10 +123,22 @@ describe('TaskBoardComponent', () => {
     await fixture.whenStable();
     fixture.detectChanges();
 
-    const columns = (
+    // Sprints are not auto-selected; all tasks are shown by default
+    let columns = (
       fixture.componentInstance as unknown as { columnsWithTasks: () => { tasks: { id: string }[] }[] }
     ).columnsWithTasks();
-    const taskIds = columns.flatMap((c) => c.tasks.map((t) => t.id));
+    let taskIds = columns.flatMap((c) => c.tasks.map((t) => t.id));
+    expect(taskIds).toEqual(['t-in', 't-out']);
+
+    // When the user explicitly selects a sprint, only tasks in that sprint are shown
+    (fixture.componentInstance as unknown as { onFilterFieldChanged: (e: { key: string; values: string[] }) => void })
+      .onFilterFieldChanged({ key: 'sprint', values: ['sp-active'] });
+    fixture.detectChanges();
+
+    columns = (
+      fixture.componentInstance as unknown as { columnsWithTasks: () => { tasks: { id: string }[] }[] }
+    ).columnsWithTasks();
+    taskIds = columns.flatMap((c) => c.tasks.map((t) => t.id));
     expect(taskIds).toEqual(['t-in']);
   });
 

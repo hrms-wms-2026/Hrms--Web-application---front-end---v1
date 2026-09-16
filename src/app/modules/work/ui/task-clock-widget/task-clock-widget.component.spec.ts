@@ -57,10 +57,12 @@ describe('TaskClockWidgetComponent', () => {
     expect(btn.title).toContain('assignee');
   });
 
-  it('shows a Push button instead of Clock In when the caller has an open session', () => {
+  it('shows a Pause button instead of Clock In when the caller has an open session', () => {
     setup({ hasOpenSessionMine: true });
     expect(fixture.nativeElement.querySelector('[data-testid="clock-in-button"]')).toBeNull();
-    expect(fixture.nativeElement.querySelector('[data-testid="push-button"]')).toBeTruthy();
+    const pauseBtn = fixture.nativeElement.querySelector('[data-testid="push-button"]') as HTMLButtonElement;
+    expect(pauseBtn).toBeTruthy();
+    expect(pauseBtn.textContent).toContain('Pause');
   });
 
   it('shows a live-ticking timer while clocked in, and it advances every second', () => {

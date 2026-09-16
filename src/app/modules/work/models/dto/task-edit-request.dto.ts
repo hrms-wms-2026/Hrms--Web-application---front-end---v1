@@ -6,6 +6,7 @@ export interface TaskEditRequestPayloadDto {
   estimatedHours: number | null;
   storyPoints: number | null;
   progressPercent?: number | null;
+  sprintId?: string | null;
 }
 
 export interface TaskEditRequestDto {
@@ -26,4 +27,5 @@ export interface CreateTaskEditRequestDto {
   storyPoints?: number;
   progressPercent?: number;
   reason?: string;
+  sprintId?: string | null;
 }

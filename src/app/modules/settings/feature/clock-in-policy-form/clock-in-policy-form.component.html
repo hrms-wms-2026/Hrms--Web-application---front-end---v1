@@ -8,7 +8,7 @@
           type="button"
           data-testid="save-policy"
           [loading]="policyStore.saving()"
-          [disabled]="policyStore.saving() || policyStore.loading()"
+          [disabled]="!isDirty() || policyStore.saving() || policyStore.loading()"
           (pressed)="onSubmit()"
         >
           Save changes
@@ -46,10 +46,16 @@
     (submit)="$event.preventDefault(); onSubmit()"
   >
     <section class="cipf-card" aria-labelledby="cipf-methods-heading">
-      <h2 id="cipf-methods-heading" class="cipf-section-title">Work modes</h2>
+      <div class="cipf-section-header">
+        <div class="cipf-section-header__text">
+          <h2 id="cipf-methods-heading" class="cipf-section-title">Work modes</h2>
+          <p class="cipf-section-desc">Manage clock-in channels and verification requirements for each work mode.</p>
+        </div>
+      </div>
       <app-work-mode-list
         [legalEntityId]="selectedLegalEntity()!.id"
         [canEdit]="hasWriteAccess()"
+        (changed)="markDirty()"
       ></app-work-mode-list>
     </section>
 
@@ -58,12 +64,24 @@
       data-testid="late-deduction-rules-section"
       aria-labelledby="cipf-late-heading"
     >
-      <h2 id="cipf-late-heading" class="cipf-section-title">Late deduction rules</h2>
+      <div class="cipf-section-header">
+        <div class="cipf-section-header__text">
+          <h2 id="cipf-late-heading" class="cipf-section-title">Late deduction rules</h2>
+          <p class="cipf-section-desc">Configure leave deductions when clock-in occurs after scheduled time.</p>
+        </div>
+      </div>
 
       @if (!lateRulesEditable()) {
-        <p class="cipf-helper" data-testid="late-deduction-disabled-message">
-          {{ lateDeductionDisabledMessage }}
-        </p>
+        <div class="cipf-callout-info">
+          <svg class="cipf-callout-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <circle cx="12" cy="12" r="10"></circle>
+            <line x1="12" y1="16" x2="12" y2="12"></line>
+            <line x1="12" y1="8" x2="12.01" y2="8"></line>
+          </svg>
+          <p class="cipf-helper" data-testid="late-deduction-disabled-message">
+            {{ lateDeductionDisabledMessage }}
+          </p>
+        </div>
       } @else {
         <div class="cipf-late-rules" data-testid="late-deduction-rules-editor">
           @for (rule of form().lateDeductionRules; track $index; let i = $index) {

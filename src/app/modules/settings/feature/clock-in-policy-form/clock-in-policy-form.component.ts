@@ -84,6 +84,11 @@ export class ClockInPolicyFormComponent {
   readonly form = signal<ClockInPolicySettingsFormValue>(createDefaultClockInPolicyFormModel());
   readonly fieldErrors = signal<Record<string, string>>({});
   readonly submitted = signal(false);
+  readonly isDirty = signal(false);
+
+  markDirty(): void {
+    this.isDirty.set(true);
+  }
 
   /** Prevents overlapping bootstrap from reloading the same company. */
   private bootstrapKey: string | null = null;
@@ -107,6 +112,7 @@ export class ClockInPolicyFormComponent {
     this.form.set(createDefaultClockInPolicyFormModel());
     this.fieldErrors.set({});
     this.submitted.set(false);
+    this.isDirty.set(false);
 
     await this.policyStore.loadCompanyPolicy(legalEntityId);
 
@@ -118,6 +124,7 @@ export class ClockInPolicyFormComponent {
     if (policy) {
       this.form.set(formModelFromPolicy(policy, undefined, this.lateRulesEditable()));
     }
+    this.isDirty.set(false);
   }
 
   patchForm(partial: Partial<ClockInPolicySettingsFormValue>): void {
@@ -125,6 +132,7 @@ export class ClockInPolicyFormComponent {
       return;
     }
     this.form.update((current) => ({ ...current, ...partial }));
+    this.isDirty.set(true);
   }
 
   addLateRule(): void {
@@ -179,6 +187,7 @@ export class ClockInPolicyFormComponent {
 
     const saved = await this.policyStore.saveCompanyPolicy(le.id, model, this.lateRulesEditable());
     if (saved) {
+      this.isDirty.set(false);
       this.form.set(formModelFromPolicy(saved, undefined, this.lateRulesEditable()));
       this.notificationService.success('Changes saved.');
     } else {

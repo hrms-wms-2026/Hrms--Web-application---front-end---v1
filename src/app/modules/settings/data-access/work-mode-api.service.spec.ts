@@ -29,7 +29,15 @@ describe('WorkModeApiService', () => {
   });
 
   it('creates a work mode', () => {
-    const payload = { name: 'Client Site', biometricEnabled: true, webEnabled: true, trayEnabled: false, photoRequired: true };
+    const payload = {
+      name: 'Client Site',
+      biometricEnabled: true,
+      webEnabled: true,
+      trayEnabled: false,
+      photoRequired: true,
+      selfRegistersLocation: false,
+      allowsDailyLocationChoice: false
+    };
     service.create(legalEntityId, payload).subscribe();
     const req = httpMock.expectOne(`${environment.apiUrl}/attendance/legal-entities/${legalEntityId}/work-modes`);
     expect(req.request.method).toBe('POST');

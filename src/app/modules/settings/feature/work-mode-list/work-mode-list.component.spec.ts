@@ -19,6 +19,8 @@ describe('WorkModeListComponent', () => {
           webEnabled: true,
           trayEnabled: false,
           photoRequired: false,
+          selfRegistersLocation: false,
+          allowsDailyLocationChoice: false,
           isSystemSeeded: true,
           displayOrder: 0,
           isActive: true,
@@ -80,7 +82,7 @@ describe('WorkModeListComponent', () => {
     fixture.detectChanges();
     const row = fixture.nativeElement.querySelector('[data-testid="work-mode-row"]');
     const checkboxes: HTMLInputElement[] = Array.from(row.querySelectorAll('input[type="checkbox"]'));
-    expect(checkboxes.length).toBe(4);
+    expect(checkboxes.length).toBe(6);
     checkboxes.forEach((checkbox) => expect(checkbox.disabled).toBe(true));
   });
 
@@ -95,5 +97,31 @@ describe('WorkModeListComponent', () => {
     (storeStub.atCap as any).set(false);
     fixture.detectChanges();
     expect(fixture.nativeElement.querySelector('[data-testid="add-work-mode"]')).toBeNull();
+  });
+
+  describe('setLocationBehavior', () => {
+    it('turning on selfRegistersLocation turns off allowsDailyLocationChoice', () => {
+      const component = fixture.componentInstance;
+      const payload = { ...storeStub.items!()[0], allowsDailyLocationChoice: true };
+      const result = component.setLocationBehavior(payload, 'selfRegistersLocation', true);
+      expect(result.selfRegistersLocation).toBe(true);
+      expect(result.allowsDailyLocationChoice).toBe(false);
+    });
+
+    it('turning on allowsDailyLocationChoice turns off selfRegistersLocation', () => {
+      const component = fixture.componentInstance;
+      const payload = { ...storeStub.items!()[0], selfRegistersLocation: true };
+      const result = component.setLocationBehavior(payload, 'allowsDailyLocationChoice', true);
+      expect(result.allowsDailyLocationChoice).toBe(true);
+      expect(result.selfRegistersLocation).toBe(false);
+    });
+
+    it('turning a flag off leaves the other flag untouched', () => {
+      const component = fixture.componentInstance;
+      const payload = { ...storeStub.items!()[0], selfRegistersLocation: true, allowsDailyLocationChoice: false };
+      const result = component.setLocationBehavior(payload, 'selfRegistersLocation', false);
+      expect(result.selfRegistersLocation).toBe(false);
+      expect(result.allowsDailyLocationChoice).toBe(false);
+    });
   });
 });

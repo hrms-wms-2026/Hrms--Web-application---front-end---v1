@@ -65,9 +65,10 @@ export interface EditTaskRequestDto {
   priority: WorkTaskDto['priority'];
   dueDate?: string;
   estimatedHours?: number;
-    storyPoints?: number;
+  storyPoints?: number;
   progressPercent?: number;
   reason?: string;
+  sprintId?: string | null;
   attachmentFileIds?: string[];
 }
 
