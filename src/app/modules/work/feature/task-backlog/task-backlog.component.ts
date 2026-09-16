@@ -107,6 +107,8 @@ import { TaskFormModalComponent } from '../../ui/task-form-modal/task-form-modal
       [mode]="taskModalMode()"
       [projectId]="projectId()"
       [taskId]="taskModalTaskId()"
+      [prefillModuleId]="modalPrefillModuleId()"
+      [prefillSprintId]="modalPrefillSprintId()"
       (created)="onTaskModalDone()"
       (saved)="onTaskModalDone()"
       (closed)="taskModalOpen.set(false)"
@@ -220,6 +222,15 @@ export class TaskBacklogComponent implements OnInit {
   protected readonly taskModalOpen = signal(false);
   protected readonly taskModalMode = signal<'create' | 'edit'>('create');
   protected readonly taskModalTaskId = signal('');
+
+  protected readonly modalPrefillModuleId = computed(() => {
+    const filter = this.objectiveFilter();
+    return filter.length === 1 ? filter[0] : '';
+  });
+
+  protected readonly modalPrefillSprintId = computed(() => {
+    return this.expandedSprintId() ?? '';
+  });
 
   protected openCreateTask(): void {
     this.taskModalMode.set('create');

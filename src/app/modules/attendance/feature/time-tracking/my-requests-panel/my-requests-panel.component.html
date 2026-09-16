@@ -32,11 +32,18 @@
 
 @if (selectedRequestTab() === 'corrections') {
   <div id="my-requests-panel-corrections" role="tabpanel" aria-labelledby="my-requests-tab-corrections" tabindex="0">
-    @if (store.myCorrectionsLoading()) { <p class="access-note">Loading…</p> }
-    @if (store.myCorrectionsError()) {
-      <div class="time-tracking-message time-tracking-message--error" role="alert"><p>{{ store.myCorrectionsError() }}</p><app-button type="button" variant="secondary" size="sm" (pressed)="store.loadMyCorrections()">Try again</app-button></div>
-    } @else if (store.myCorrections().length === 0) {
-      <p class="empty-copy">You have not submitted any attendance correction requests.</p>
+    @if (store.myCorrectionsLoading?.()) { <p class="access-note">Loading…</p> }
+    @if (store.myCorrectionsError?.()) {
+      <div class="time-tracking-message time-tracking-message--error" role="alert"><p>{{ store.myCorrectionsError?.() }}</p><app-button type="button" variant="secondary" size="sm" (pressed)="store.loadMyCorrections?.()">Try again</app-button></div>
+    } @else if ((store.myCorrections?.() ?? []).length === 0) {
+      <div class="empty-state-box">
+        <div class="empty-state-icon" aria-hidden="true">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+          </svg>
+        </div>
+        <p class="empty-copy">You have not submitted any attendance correction requests.</p>
+      </div>
     } @else {
       <div class="table-scroll">
         <table class="attendance-table corrections-table">
@@ -76,7 +83,15 @@
     @if (store.myWorkAreaRequestsError()) {
       <div class="time-tracking-message time-tracking-message--error" role="alert"><p>{{ store.myWorkAreaRequestsError() }}</p><app-button type="button" variant="secondary" size="sm" (pressed)="store.loadMyWorkAreaRequests()">Try again</app-button></div>
     } @else if (store.myWorkAreaRequests().length === 0) {
-      <p class="empty-copy">You have not submitted any work-area change requests.</p>
+      <div class="empty-state-box">
+        <div class="empty-state-icon" aria-hidden="true">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M15 10.5a3 3 0 11-6 0 3 3 0 016 0z" />
+            <path stroke-linecap="round" stroke-linejoin="round" d="M19.5 10.5c0 7.142-7.5 11.25-7.5 11.25S4.5 17.642 4.5 10.5a7.5 7.5 0 1115 0z" />
+          </svg>
+        </div>
+        <p class="empty-copy">You have not submitted any work-area change requests.</p>
+      </div>
     } @else {
       <div class="table-scroll">
         <table class="attendance-table work-area-requests-table">

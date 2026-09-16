@@ -48,6 +48,8 @@ export class ModalComponent {
   open = input(false);
   title = input<string>('');
   size = input<ModalSize>('md');
+  customMaxWidth = input<string>('');
+  panelClass = input<string>('');
   closeOnBackdropClick = input(true);
   closed = output<void>();
 
@@ -58,7 +60,13 @@ export class ModalComponent {
       xl: 'relative z-10 w-full max-w-5xl rounded-xl bg-[var(--color-surface)] p-8 shadow-lg outline-none modal-dialog--constrained',
       '2xl': 'relative z-10 w-full max-w-6xl rounded-xl bg-[var(--color-surface)] p-8 shadow-lg outline-none modal-dialog--constrained',
     };
-    return sizeMap[this.size()];
+    let cls = sizeMap[this.size()];
+    const custom = this.customMaxWidth().trim();
+    if (custom) {
+      cls = cls.replace(/max-w-[a-z0-9]+/, custom);
+    }
+    const extra = this.panelClass().trim();
+    return extra ? `${cls} ${extra}` : cls;
   });
 
   private readonly dialogRef = viewChild<ElementRef<HTMLElement>>('dialog');

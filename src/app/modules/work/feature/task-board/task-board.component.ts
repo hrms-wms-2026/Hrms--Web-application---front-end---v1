@@ -60,6 +60,8 @@ import { TaskFormModalComponent } from '../../ui/task-form-modal/task-form-modal
       [mode]="taskModalMode()"
       [projectId]="projectId()"
       [taskId]="taskModalTaskId()"
+      [prefillModuleId]="modalPrefillModuleId()"
+      [prefillSprintId]="modalPrefillSprintId()"
       (created)="onTaskModalDone()"
       (saved)="onTaskModalDone()"
       (closed)="taskModalOpen.set(false)"
@@ -235,6 +237,23 @@ export class TaskBoardComponent implements OnInit, AfterViewChecked {
   protected readonly taskModalOpen = signal(false);
   protected readonly taskModalMode = signal<'create' | 'edit'>('create');
   protected readonly taskModalTaskId = signal('');
+
+  protected readonly modalPrefillModuleId = computed(() => {
+    const filter = this.objectiveFilter();
+    return filter.length === 1 ? filter[0] : '';
+  });
+
+  protected readonly modalPrefillSprintId = computed(() => {
+    const filter = this.sprintFilter();
+    if (filter && filter !== 'all' && filter !== 'individual' && filter !== 'active') {
+      return filter;
+    }
+    if (filter === 'active') {
+      const active = this.sprints().filter((s) => s.status === 'active');
+      return active.length === 1 ? active[0].id : '';
+    }
+    return '';
+  });
 
   onTaskViewed(task: WorkTask): void {
     this.taskModalMode.set('edit');

@@ -42,7 +42,7 @@ describe('employee-view.utils', () => {
   });
 
   describe('attendanceWarningLabel', () => {
-    it('returns null when showNotClockedInWarning is false', () => {
+    it('returns null when showNotClockedInWarning is false and not over break', () => {
       expect(attendanceWarningLabel(baseEmployee)).toBeNull();
     });
 
@@ -60,6 +60,130 @@ describe('employee-view.utils', () => {
         }
       };
       expect(attendanceWarningLabel(emp)).toBe('Arrived late');
+    });
+
+    it('returns Over break when isOverBreakAllowance is true', () => {
+      const emp: EmployeeListItemResponse = {
+        ...baseEmployee,
+        attendanceSummary: {
+          showNotClockedInWarning: false,
+          shouldHaveClockedIn: true,
+          hasClockedInToday: true,
+          workDate: '2026-09-01',
+          timezone: 'UTC',
+          scheduledStartTime: '09:00',
+          warningLabel: null,
+          isOverBreakAllowance: true
+        }
+      };
+      expect(attendanceWarningLabel(emp)).toBe('Over break');
+    });
+
+    it('returns Over break when attendanceStatus is over_break', () => {
+      const emp: EmployeeListItemResponse = {
+        ...baseEmployee,
+        attendanceSummary: {
+          showNotClockedInWarning: false,
+          shouldHaveClockedIn: true,
+          hasClockedInToday: true,
+          workDate: '2026-09-01',
+          timezone: 'UTC',
+          scheduledStartTime: '09:00',
+          warningLabel: null,
+          attendanceStatus: 'over_break'
+        }
+      };
+      expect(attendanceWarningLabel(emp)).toBe('Over break');
+    });
+  });
+
+  describe('attendanceAttentionLabel', () => {
+    it('returns null when showNotClockedInWarning is true', () => {
+      const emp: EmployeeListItemResponse = {
+        ...baseEmployee,
+        attendanceSummary: {
+          showNotClockedInWarning: true,
+          shouldHaveClockedIn: true,
+          hasClockedInToday: false,
+          workDate: '2026-09-01',
+          timezone: 'UTC',
+          scheduledStartTime: '09:00',
+          warningLabel: null,
+          attentionLabel: 'Still has not clocked in'
+        }
+      };
+      expect(attendanceAttentionLabel(emp)).toBeNull();
+    });
+
+    it('returns null when employee is over break (yellow warning suppressed)', () => {
+      const emp: EmployeeListItemResponse = {
+        ...baseEmployee,
+        attendanceSummary: {
+          showNotClockedInWarning: false,
+          shouldHaveClockedIn: true,
+          hasClockedInToday: true,
+          workDate: '2026-09-01',
+          timezone: 'UTC',
+          scheduledStartTime: '09:00',
+          warningLabel: null,
+          attentionLabel: 'Break time has exceeded the allowance',
+          isOverBreakAllowance: true
+        }
+      };
+      expect(attendanceAttentionLabel(emp)).toBeNull();
+    });
+
+    it('returns attentionLabel for other attention types', () => {
+      const emp: EmployeeListItemResponse = {
+        ...baseEmployee,
+        attendanceSummary: {
+          showNotClockedInWarning: false,
+          shouldHaveClockedIn: true,
+          hasClockedInToday: true,
+          workDate: '2026-09-01',
+          timezone: 'UTC',
+          scheduledStartTime: '09:00',
+          warningLabel: null,
+          attentionLabel: 'Worked during approved time off'
+        }
+      };
+      expect(attendanceAttentionLabel(emp)).toBe('Worked during approved time off');
+    });
+  });
+
+  describe('attendanceStatusLabel', () => {
+    it('normalizes Over break allowance to Over break', () => {
+      const emp: EmployeeListItemResponse = {
+        ...baseEmployee,
+        attendanceSummary: {
+          showNotClockedInWarning: false,
+          shouldHaveClockedIn: true,
+          hasClockedInToday: true,
+          workDate: '2026-09-01',
+          timezone: 'UTC',
+          scheduledStartTime: '09:00',
+          warningLabel: null,
+          attendanceStatusLabel: 'Over break allowance'
+        }
+      };
+      expect(attendanceStatusLabel(emp)).toBe('Over break');
+    });
+
+    it('returns Over break when over break even if label is null', () => {
+      const emp: EmployeeListItemResponse = {
+        ...baseEmployee,
+        attendanceSummary: {
+          showNotClockedInWarning: false,
+          shouldHaveClockedIn: true,
+          hasClockedInToday: true,
+          workDate: '2026-09-01',
+          timezone: 'UTC',
+          scheduledStartTime: '09:00',
+          warningLabel: null,
+          isOverBreakAllowance: true
+        }
+      };
+      expect(attendanceStatusLabel(emp)).toBe('Over break');
     });
   });
 

@@ -106,6 +106,10 @@
   margin-left: 0;
 }
 
+.main-content:has(app-position-management) {
+  overflow: hidden;
+}
+
 .main-content > * {
   display: block;
 }
