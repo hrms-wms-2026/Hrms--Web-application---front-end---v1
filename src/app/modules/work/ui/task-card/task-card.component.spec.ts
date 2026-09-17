@@ -68,19 +68,11 @@ describe('TaskCardComponent', () => {
     expect(viewedSpy).toHaveBeenCalledWith(task);
   });
 
-  it('shows the current status as plain text, not an editable control', () => {
+  it('does not render status pill on task card since column header already shows status', () => {
     setup();
     const statusEl = fixture.nativeElement.querySelector('[data-testid="task-card-status"]');
-    expect(statusEl.textContent.trim()).toBe('To Do');
+    expect(statusEl).toBeNull();
     expect(fixture.nativeElement.querySelector('select')).toBeNull();
-  });
-
-  it('falls back to the raw statusId if the status is not in the provided list', () => {
-    setup();
-    fixture.componentRef.setInput('task', { ...task, statusId: 'missing-status' });
-    fixture.detectChanges();
-    const statusEl = fixture.nativeElement.querySelector('[data-testid="task-card-status"]');
-    expect(statusEl.textContent.trim()).toBe('missing-status');
   });
 
   it('shows the clock widget when the caller is an assignee', () => {

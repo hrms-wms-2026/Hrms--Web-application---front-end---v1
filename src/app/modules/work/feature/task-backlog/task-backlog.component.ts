@@ -1,7 +1,7 @@
 import { AfterViewInit, Component, OnDestroy, OnInit, TemplateRef, computed, inject, signal, viewChild } from '@angular/core';
 import { CurrentEmployeeStore } from '../../state/current-employee.store';
 import { ActivatedRoute } from '@angular/router';
-import { firstValueFrom } from 'rxjs';
+import { firstValueFrom, of } from 'rxjs';
 import { distinctUntilChanged, map } from 'rxjs/operators';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { ButtonComponent } from '../../../../shared/ui/button/button.component';
@@ -78,24 +78,29 @@ import { TaskFormModalComponent } from '../../ui/task-form-modal/task-form-modal
     } @else if (store.error()) {
       <app-error-state [message]="store.error()!" [retryable]="true" (retry)="reloadTasks()" />
     } @else {
-      @for (sprint of filteredSprints(); track sprint.id) {
-        <app-sprint-tab
-          [sprint]="sprint"
-          [isObjectiveOwner]="objectiveOwners()[sprint.objectiveId] ?? false"
-          [tasks]="tasksForSprint(sprint.id)"
-          [statusNames]="statusNames()"
-          [statuses]="store.statuses()"
-          [objectiveOwners]="objectiveOwners()"
-          [currentEmployeeId]="currentEmployee.id()"
-          [expanded]="expandedSprintId() === sprint.id"
-          (toggled)="toggleExpanded(sprint.id)"
-          (editRequested)="editingSprint.set(sprint)"
-          (statusChangeRequested)="onSprintStatusChangeRequested(sprint, $event)"
-          (createTaskRequested)="openCreateTask()"
-          (taskViewed)="onTaskViewed($event)"
-          (taskStatusChangeRequested)="onTaskStatusChangeRequested($event)"
-          (taskChanged)="reloadTasks()"
-        />
+      @if (filteredSprints().length > 0) {
+        <div class="task-backlog__sprints">
+          <h3 class="task-backlog__sprints-title">Sprint</h3>
+          @for (sprint of filteredSprints(); track sprint.id) {
+            <app-sprint-tab
+              [sprint]="sprint"
+              [isObjectiveOwner]="objectiveOwners()[sprint.objectiveId] ?? false"
+              [tasks]="tasksForSprint(sprint.id)"
+              [statusNames]="statusNames()"
+              [statuses]="store.statuses()"
+              [objectiveOwners]="objectiveOwners()"
+              [currentEmployeeId]="currentEmployee.id()"
+              [expanded]="expandedSprintId() === sprint.id"
+              (toggled)="toggleExpanded(sprint.id)"
+              (editRequested)="editingSprint.set(sprint)"
+              (statusChangeRequested)="onSprintStatusChangeRequested(sprint, $event)"
+              (createTaskRequested)="openCreateTask()"
+              (taskViewed)="onTaskViewed($event)"
+              (taskStatusChangeRequested)="onTaskStatusChangeRequested($event)"
+              (taskChanged)="reloadTasks()"
+            />
+          }
+        </div>
       }
 
       @if (unsortedTasks().length > 0) {
@@ -133,6 +138,8 @@ import { TaskFormModalComponent } from '../../ui/task-form-modal/task-form-modal
     .task-backlog__me-toggle:hover { border-color: var(--color-accent); color: var(--color-accent); }
     .task-backlog__me-toggle--active { border-color: var(--color-accent); background: var(--color-accent); color: var(--color-accent-contrast); }
     .task-backlog__sprint-message { color: var(--color-danger-text, var(--color-danger)); font-size: 12px; margin-bottom: 8px; }
+    .task-backlog__sprints { margin-top: 4px; }
+    .task-backlog__sprints-title { font-size: 13px; font-weight: 600; color: var(--color-text-primary); margin: 0 0 10px; }
     .task-backlog__unsorted { margin-top: 18px; }
     .task-backlog__unsorted-title { font-size: 13px; font-weight: 600; color: var(--color-text-primary); margin: 0 0 10px; }
   `]
@@ -172,9 +179,10 @@ export class TaskBacklogComponent implements OnInit, AfterViewInit, OnDestroy {
     // Switching projects via the breadcrumb switcher navigates to a sibling route matching the
     // same path shape (/work/:id/backlog) - Angular reuses this component instance rather than
     // re-instantiating it, so the :id param must be watched reactively, not just read once.
-    this.route.paramMap
+    const paramMap$ = this.route.paramMap ?? of(this.route.snapshot?.paramMap);
+    paramMap$
       .pipe(
-        map((paramMap) => paramMap.get('id') ?? ''),
+        map((paramMap) => paramMap?.get('id') ?? ''),
         distinctUntilChanged(),
         takeUntilDestroyed()
       )
