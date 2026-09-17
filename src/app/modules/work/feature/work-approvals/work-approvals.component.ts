@@ -1,7 +1,8 @@
-import { Component, inject, OnInit, signal } from '@angular/core';
+import { AfterViewInit, Component, inject, OnDestroy, OnInit, signal, TemplateRef, viewChild } from '@angular/core';
 import { ActivatedRoute } from '@angular/router';
 import { firstValueFrom } from 'rxjs';
 import { WorkApprovalsStore } from '../../state/work-approvals.store';
+import { WorkPageToolbarStore } from '../../state/work-page-toolbar.store';
 import { ApprovalItem } from '../../models/approval.model';
 import { AllocationRequestDto } from '../../models/dto/allocation-request.dto';
 import { ApprovalRequestRowComponent } from '../../ui/approval-request-row/approval-request-row.component';
@@ -9,14 +10,20 @@ import { WorkApprovalsApiService } from '../../data-access/work-approvals-api.se
 import { ProjectApiService } from '../../data-access/project-api.service';
 import { ModalComponent } from '../../../../shared/ui/modal/modal.component';
 import { InputComponent } from '../../../../shared/ui/input/input.component';
-import { SelectComponent, SelectOption } from '../../../../shared/ui/select/select.component';
+import { WorkDropdownComponent, WorkDropdownOption } from '../../ui/work-dropdown/work-dropdown.component';
 import { ButtonComponent } from '../../../../shared/ui/button/button.component';
 
 @Component({
   selector: 'app-work-approvals',
   standalone: true,
-  imports: [ApprovalRequestRowComponent, ModalComponent, InputComponent, SelectComponent, ButtonComponent],
+  imports: [ApprovalRequestRowComponent, ModalComponent, InputComponent, WorkDropdownComponent, ButtonComponent],
   template: `
+    <ng-template #toolbarTpl>
+      <app-button data-testid="create-approval-button" variant="primary" (pressed)="openCreateApproval()">
+        Create Approval
+      </app-button>
+    </ng-template>
+
     @if (store.loading()) {
       <p>Loading approvals…</p>
     } @else if (store.error() && store.pendingCount() === 0) {
@@ -25,26 +32,24 @@ import { ButtonComponent } from '../../../../shared/ui/button/button.component';
       <div class="work-approvals">
         <div class="work-approvals__toolbar">
           <h1>Approvals</h1>
-          <app-button data-testid="create-approval-button" variant="primary" (pressed)="openCreateApproval()">
-            Create Approval
-          </app-button>
         </div>
 
+        @if (store.taskCreationRequests().length > 0) {
         <section>
-          <h2>Task Creation Requests</h2>
+          <h2>Task Creation Requests <span>{{ store.taskCreationRequests().length }}</span></h2>
           @for (item of store.taskCreationRequests(); track item.id) {
             <app-approval-request-row
               [item]="item"
               (approved)="onApprove(item, $event)"
               (rejected)="onReject(item, $event)"
             />
-          } @empty {
-            <p class="work-approvals__empty">No pending task creation requests.</p>
           }
         </section>
+        }
 
+        @if (store.allocationRequests().length > 0) {
         <section>
-          <h2>Allocation Requests</h2>
+          <h2>Allocation Requests <span>{{ store.allocationRequests().length }}</span></h2>
           @for (item of store.allocationRequests(); track item.id) {
             <app-approval-request-row
               [item]="item"
@@ -53,36 +58,35 @@ import { ButtonComponent } from '../../../../shared/ui/button/button.component';
               (rejected)="onReject(item, $event)"
               (requestOwnAllocation)="onRequestOwnAllocation(item)"
             />
-          } @empty {
-            <p class="work-approvals__empty">No pending allocation requests.</p>
           }
         </section>
+        }
 
+        @if (store.objectiveChangeRequests().length > 0) {
         <section>
-          <h2>Objective Change Requests</h2>
+          <h2>Objective Change Requests <span>{{ store.objectiveChangeRequests().length }}</span></h2>
           @for (item of store.objectiveChangeRequests(); track item.id) {
             <app-approval-request-row
               [item]="item"
               (approved)="onApprove(item, $event)"
               (rejected)="onReject(item, $event)"
             />
-          } @empty {
-            <p class="work-approvals__empty">No pending objective change requests.</p>
           }
         </section>
+        }
 
+        @if (store.objectiveInvitations().length > 0) {
         <section>
-          <h2>Objective Invitations</h2>
+          <h2>Objective Invitations <span>{{ store.objectiveInvitations().length }}</span></h2>
           @for (item of store.objectiveInvitations(); track item.id) {
             <app-approval-request-row
               [item]="item"
               (approved)="onApprove(item, $event)"
               (rejected)="onReject(item, $event)"
             />
-          } @empty {
-            <p class="work-approvals__empty">No pending invitations.</p>
           }
         </section>
+        }
       </div>
     }
 
@@ -94,14 +98,15 @@ import { ButtonComponent } from '../../../../shared/ui/button/button.component';
         (closed)="closeCreateApproval()"
       >
         <div class="work-approvals__form">
-          <app-select
+          <app-work-dropdown
             [options]="moduleOptions()"
-            [value]="createModuleId()"
-            label="Module"
+            [selected]="createModuleId()"
+            fieldLabel="Module"
             placeholder="Select a module"
             [error]="createErrors()['module'] || ''"
-            [icon]="'module'"
-            (valueChange)="createModuleId.set($event)"
+            leadingIcon="module"
+            [fullWidth]="true"
+            (selectionChanged)="createModuleId.set($event)"
           />
           <app-input
             label="Requested additional hours"
@@ -130,44 +135,26 @@ import { ButtonComponent } from '../../../../shared/ui/button/button.component';
     }
   `,
   styles: [`
-    .work-approvals {
-      display: flex;
-      flex-direction: column;
-      gap: 24px;
-    }
-    .work-approvals__toolbar {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      gap: 16px;
-    }
-    .work-approvals h1,
-    .work-approvals h2 {
-      margin: 0;
-      color: var(--color-text-primary);
-    }
-    .work-approvals h1 { font-size: 20px; font-weight: 700; }
-    .work-approvals h2 { font-size: 14px; font-weight: 600; }
-    .work-approvals section {
-      display: flex;
-      flex-direction: column;
-      gap: 10px;
-    }
-    .work-approvals__empty {
-      margin: 0;
-      font-size: 13px;
-      color: var(--color-text-secondary);
-    }
+    .work-approvals { display: flex; flex-direction: column; gap: 18px; width: min(100%, 1180px); margin: 0 auto; padding: 8px 20px 28px; }
+    .work-approvals__toolbar { display: flex; align-items: center; justify-content: space-between; gap: 16px; padding-bottom: 4px; border-bottom: 1px solid var(--color-border); }
+    .work-approvals h1, .work-approvals h2 { margin: 0; color: var(--color-text-primary); }
+    .work-approvals h1 { font-size: 22px; font-weight: 700; letter-spacing: -.02em; }
+    .work-approvals h2 { display: flex; align-items: center; gap: 7px; font-size: 14px; font-weight: 650; }
+    .work-approvals h2 span { display: inline-flex; min-width: 22px; height: 22px; align-items: center; justify-content: center; border-radius: 999px; background: var(--color-surface-secondary); color: var(--color-text-secondary); font-size: 11px; font-weight: 650; }
+    .work-approvals section { display: flex; flex-direction: column; gap: 10px; }
+    @media (max-width: 680px) { .work-approvals { padding-inline: 12px; } .work-approvals__toolbar { align-items: flex-start; flex-direction: column; } }
     .work-approvals__error { color: var(--color-danger); }
     .work-approvals__form { display: flex; flex-direction: column; gap: 14px; }
     .work-approvals__form-actions { display: flex; justify-content: flex-end; gap: 8px; }
   `]
 })
-export class WorkApprovalsComponent implements OnInit {
+export class WorkApprovalsComponent implements OnInit, AfterViewInit, OnDestroy {
   protected readonly store = inject(WorkApprovalsStore);
   private readonly route = inject(ActivatedRoute);
   private readonly approvalsApi = inject(WorkApprovalsApiService);
   private readonly projectApi = inject(ProjectApiService);
+  private readonly toolbarStore = inject(WorkPageToolbarStore);
+  private readonly toolbarTpl = viewChild.required<TemplateRef<unknown>>('toolbarTpl');
   private readonly projectId = this.resolveProjectId();
   private lastFailedId: string | null = null;
 
@@ -179,12 +166,20 @@ export class WorkApprovalsComponent implements OnInit {
   protected readonly createError = signal<string | null>(null);
   protected readonly createErrors = signal<Record<string, string>>({});
   protected readonly modules = signal<readonly { objectiveId: string; title: string; isOwner?: boolean }[]>([]);
-  protected readonly moduleOptions = signal<readonly SelectOption[]>([]);
+  protected readonly moduleOptions = signal<readonly WorkDropdownOption[]>([]);
   private prefillObjectiveId: string | null = null;
 
   ngOnInit(): void {
     void this.store.loadAll();
     void this.loadModules();
+  }
+
+  ngAfterViewInit(): void {
+    this.toolbarStore.setTemplate(this.toolbarTpl());
+  }
+
+  ngOnDestroy(): void {
+    this.toolbarStore.setTemplate(null);
   }
 
   activeErrorFor(item: ApprovalItem): string | null {

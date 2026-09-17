@@ -10,3 +10,5 @@ export interface LeaveEntitlementGenerationResultResponse { year: number; create
 export interface CreateManualEntitlementRequest { employeeId: string; leaveTypeId: string; year: number; totalDays: number; carriedForwardDays: number; reason: string; }
 export interface AdjustEntitlementRequest { totalDays: number; carriedForwardDays: number; reason: string; confirmNegativeRemaining: boolean; }
 export interface RecalculateEntitlementRequest { confirmNegativeRemaining: boolean; }
+export interface LeaveBalanceAuditResponse { id: string; employeeId: string; employeeNumber: string; employeeName: string; leaveTypeId: string; leaveTypeName: string; leaveTypeCode: string; changeType: 'accrual' | 'deduction' | 'carry_forward' | 'forfeiture' | 'adjustment'; daysChanged: number; balanceAfter: number; reason: string | null; relatedRequestId: string | null; createdAt: string; }
+export interface LeaveBalanceAuditListFilter { employeeId?: string; leaveTypeId?: string; changeType?: string; fromDate?: string; toDate?: string; }

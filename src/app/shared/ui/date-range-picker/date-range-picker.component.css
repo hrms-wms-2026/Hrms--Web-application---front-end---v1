@@ -37,6 +37,11 @@
   white-space: nowrap;
 }
 
+.drp-placeholder {
+  color: var(--color-text-secondary);
+  font-weight: 400;
+}
+
 .drp-popover {
   position: absolute;
   top: calc(100% + 0.25rem);
@@ -55,6 +60,11 @@
   top: auto;
   bottom: calc(100% + 0.25rem);
   animation: drpFadeInUp 0.12s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.drp-popover--right {
+  left: auto;
+  right: 0;
 }
 
 @keyframes drpFadeIn {
@@ -95,9 +105,15 @@
   transition: background-color 0.15s ease, color 0.15s ease;
 }
 
-.drp-nav-btn:hover {
+.drp-nav-btn:hover:not(:disabled) {
   background-color: var(--color-surface-secondary);
   color: var(--color-text-primary);
+}
+
+.drp-nav-btn:disabled {
+  cursor: not-allowed;
+  opacity: 0.25;
+  pointer-events: none;
 }
 
 .drp-nav-btn:focus-visible {
@@ -146,7 +162,7 @@
   user-select: none;
 }
 
-.drp-day-btn:hover:not(.drp-day-btn--start):not(.drp-day-btn--end) {
+.drp-day-btn:hover:not(.drp-day-btn--start):not(.drp-day-btn--end):not(:disabled) {
   background-color: var(--color-surface-secondary);
   color: var(--color-accent);
 }
@@ -161,7 +177,16 @@
   opacity: 0.3;
 }
 
-.drp-day-btn--today:not(.drp-day-btn--start):not(.drp-day-btn--end) {
+.drp-day-btn--disabled,
+.drp-day-btn:disabled {
+  cursor: not-allowed;
+  opacity: 0.25;
+  color: var(--color-text-secondary);
+  background: transparent;
+  pointer-events: none;
+}
+
+.drp-day-btn--today:not(.drp-day-btn--start):not(.drp-day-btn--end):not(:disabled) {
   font-weight: 700;
   color: var(--color-accent);
 }
@@ -199,8 +224,14 @@
   transition: background-color 0.15s ease;
 }
 
-.drp-today-link:hover {
+.drp-today-link:hover:not(:disabled) {
   background-color: var(--color-surface-secondary);
+}
+
+.drp-today-link:disabled {
+  cursor: not-allowed;
+  opacity: 0.3;
+  pointer-events: none;
 }
 
 .drp-today-link:focus-visible {

@@ -254,23 +254,6 @@ it('reorderTaskStatuses posts to projects/{projectId}/task-statuses/reorder', ()
     req.flush(null);
   });
 
-    it('getMyTasks builds the my-tasks URL with an optional sprintId param', () => {
-    service.getMyTasks('p1', 's1').subscribe();
-    const req = httpMock.expectOne((request) =>
-      request.url === `${environment.apiUrl}/work/projects/p1/my-tasks` && request.params.get('sprintId') === 's1'
-    );
-    expect(req.request.method).toBe('GET');
-    req.flush([]);
-  });
-
-  it('getMyTasks omits sprintId when not provided', () => {
-    service.getMyTasks('p1').subscribe();
-    const req = httpMock.expectOne(`${environment.apiUrl}/work/projects/p1/my-tasks`);
-    expect(req.request.method).toBe('GET');
-    expect(req.request.params.has('sprintId')).toBe(false);
-    req.flush([]);
-  });
-
   it('getTaskHistory GETs the history endpoint', () => {
     service.getTaskHistory('t1').subscribe();
     const req = httpMock.expectOne(`${environment.apiUrl}/work/tasks/t1/history`);
@@ -328,5 +311,25 @@ it('reorderTaskStatuses posts to projects/{projectId}/task-statuses/reorder', ()
     expect(req.request.method).toBe('POST');
     expect(req.request.body).toEqual({ updates });
     req.flush(mockCategories);
+  });
+
+  it('uploadPendingFile posts multipart form data to tasks/pending-uploads', () => {
+    const file = new File(['x'], 'a.png', { type: 'image/png' });
+    service.uploadPendingFile(file, 'task_attachment').subscribe();
+    const req = httpMock.expectOne(`${environment.apiUrl}/work/tasks/pending-uploads`);
+    expect(req.request.method).toBe('POST');
+    expect(req.request.body instanceof FormData).toBe(true);
+    req.flush({ fileId: 'f1', originalFileName: 'a.png', fileSizeBytes: 1, contentType: 'image/png' });
+  });
+
+  it('deletePendingFile deletes by fileId', () => {
+    service.deletePendingFile('f1').subscribe();
+    const req = httpMock.expectOne(`${environment.apiUrl}/work/tasks/pending-uploads/f1`);
+    expect(req.request.method).toBe('DELETE');
+    req.flush(null);
+  });
+
+  it('getFileUrl builds the content url', () => {
+    expect(service.getFileUrl('f1')).toBe(`${environment.apiUrl}/work/tasks/files/f1`);
   });
 });

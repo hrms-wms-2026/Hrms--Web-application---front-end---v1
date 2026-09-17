@@ -8,6 +8,20 @@ export interface TaskStatusDto {
   visibility: 'public' | 'private';
 }
 
+export interface TaskAttachmentDto {
+  fileId: string;
+  fileName: string;
+  fileSizeBytes: number;
+  contentType: string;
+}
+
+export interface PendingUploadDto {
+  fileId: string;
+  originalFileName: string;
+  fileSizeBytes: number;
+  contentType: string;
+}
+
 export interface WorkTaskDto {
   id: string;
   objectiveId: string;
@@ -27,6 +41,9 @@ export interface WorkTaskDto {
   openClockSessionEmployeeId: string | null;
   openClockSessionClockInAt: string | null;
   totalLoggedMinutes: number;
+  activeEventId?: string | null;
+  activeEventName?: string | null;
+  attachments?: TaskAttachmentDto[];
 
 }
 
@@ -39,6 +56,7 @@ export interface CreateTaskRequestDto {
   estimatedHours?: number;
   storyPoints?: number;
   sprintId: string | null;
+  attachmentFileIds?: string[];
 }
 
 export interface EditTaskRequestDto {
@@ -47,9 +65,11 @@ export interface EditTaskRequestDto {
   priority: WorkTaskDto['priority'];
   dueDate?: string;
   estimatedHours?: number;
-    storyPoints?: number;
+  storyPoints?: number;
   progressPercent?: number;
   reason?: string;
+  sprintId?: string | null;
+  attachmentFileIds?: string[];
 }
 
 export interface PushTaskRequestDto {

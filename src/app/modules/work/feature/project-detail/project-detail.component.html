@@ -3,24 +3,26 @@
 } @else if (store.projectError()) {
   <app-error-state [message]="store.projectError()!" [retryable]="true" (retry)="retryProject()" />
 } @else if (store.project(); as project) {
-  <div class="mb-2 flex flex-wrap items-center justify-between gap-3 border-b border-[var(--color-border)] pb-2">
-    <app-breadcrumb-header parentLabel="Projects" [currentLabel]="project.name" parentUrl="/work" icon="work" />
+  <header class="work-page-header">
+    <div class="work-header-row">
+      <app-breadcrumb-header
+        parentLabel="Projects"
+        [currentLabel]="project.name"
+        parentUrl="/work"
+        icon="work"
+        [switcherItems]="projectSwitcherItems()"
+        [switcherActiveId]="project.id"
+        switcherGroupLabel="Projects"
+        (switcherSelected)="switchProject($event)"
+      />
 
-    <dl class="flex flex-wrap items-center gap-x-6 gap-y-2 text-sm">
-      <div class="min-w-[7rem]">
-        <dt class="text-xs text-[var(--color-text-secondary)]">Start</dt>
-        <dd class="font-medium text-[var(--color-text-primary)]">{{ project.startDate }}</dd>
-      </div>
-      <div class="min-w-[7rem]">
-        <dt class="text-xs text-[var(--color-text-secondary)]">Target</dt>
-        <dd class="font-medium text-[var(--color-text-primary)]">{{ project.targetDate }}</dd>
-      </div>
-      <div class="min-w-[7rem]">
-        <dt class="text-xs text-[var(--color-text-secondary)]">Hours</dt>
-        <dd class="font-medium text-[var(--color-text-primary)]">{{ project.completedHours }} / {{ project.allocatedHours }}</dd>
-      </div>
-    </dl>
-  </div>
+      <ng-container *ngTemplateOutlet="toolbarStore.template()" />
+    </div>
+
+    @if (!store.milestonesLoading() && !store.milestonesError() && store.milestones().length > 0) {
+      <app-milestone-sub-menu [milestoneId]="subMenuMilestoneId()" [milestoneTitle]="subMenuMilestoneTitle()" [isOwner]="subMenuIsOwner()" />
+    }
+  </header>
 }
 
 @if (store.milestonesLoading()) {
@@ -30,8 +32,7 @@
 } @else if (store.milestones().length === 0) {
   <app-empty-state title="No modules yet" />
 } @else {
-  <div class="mt-2.5">
-    <app-milestone-sub-menu [milestoneId]="subMenuMilestoneId()" [milestoneTitle]="subMenuMilestoneTitle()" [isOwner]="subMenuIsOwner()" />
+  <div class="project-detail-content">
     <router-outlet />
   </div>
 }

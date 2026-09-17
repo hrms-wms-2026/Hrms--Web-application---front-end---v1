@@ -182,7 +182,8 @@ export const routes: Routes = [
       {
         path: 'login',
         loadComponent: () =>
-          import('./core/auth/feature/login/login.component').then((module) => module.LoginComponent)
+          import('./core/auth/feature/login/login.component').then((module) => module.LoginComponent),
+        canActivate: [redirectIfAuthenticatedGuard]
       },
       {
         path: 'legal-consent',
@@ -205,8 +206,30 @@ export const routes: Routes = [
             (module) => module.AcceptInvitationComponent
           )
       },
+      {
+        path: 'forgot-password',
+        loadComponent: () =>
+          import('./core/auth/feature/forgot-password/forgot-password.component').then(
+            (module) => module.ForgotPasswordComponent
+          )
+      },
+      {
+        path: 'reset-password',
+        loadComponent: () =>
+          import('./core/auth/feature/reset-password/reset-password.component').then(
+            (module) => module.ResetPasswordComponent
+          )
+      },
       { path: '', pathMatch: 'full', redirectTo: 'login' }
     ]
+  },
+  {
+    path: 'device/activate',
+    loadComponent: () =>
+      import('./modules/device-activation/feature/device-activation/device-activation.component').then(
+        (module) => module.DeviceActivationComponent
+      ),
+    canActivate: [authGuard]
   },
   {
     path: '**',

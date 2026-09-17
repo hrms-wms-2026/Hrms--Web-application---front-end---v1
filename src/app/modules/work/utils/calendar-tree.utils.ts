@@ -1,7 +1,7 @@
-import { ProjectCalendarItemDto } from '../models/dto/calendar.dto';
+import { ProjectCalendarModuleDto } from '../models/dto/calendar.dto';
 
 export interface CalendarTreeRow {
-  readonly item: ProjectCalendarItemDto;
+  readonly item: ProjectCalendarModuleDto;
   readonly depth: number;
 }
 
@@ -11,8 +11,8 @@ export interface CalendarTreeRow {
  * the parent/child tree via indentation alone - no collapse/expand widget,
  * every row always stays visible so every bar's timeline stays comparable.
  */
-export function buildCalendarTreeOrder(items: readonly ProjectCalendarItemDto[]): CalendarTreeRow[] {
-  const childrenByParentId = new Map<string | null, ProjectCalendarItemDto[]>();
+export function buildCalendarTreeOrder(items: readonly ProjectCalendarModuleDto[]): CalendarTreeRow[] {
+  const childrenByParentId = new Map<string | null, ProjectCalendarModuleDto[]>();
   for (const item of items) {
     const siblings = childrenByParentId.get(item.parentObjectiveId);
     if (siblings) siblings.push(item);

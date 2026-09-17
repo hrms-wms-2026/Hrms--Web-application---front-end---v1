@@ -58,7 +58,7 @@ describe('TaskBoardComponent', () => {
     expect(loadBoard).toHaveBeenCalledWith('project-1');
   });
 
-  it('columnsWithTasks only includes tasks whose sprintId is one of the active sprints', async () => {
+  it('shows all tasks by default and only filters by sprint when explicitly selected', async () => {
     const status = {
       id: 's-1', name: 'To Do', displayOrder: 0, requiresApproval: false, marksTaskComplete: false, visibility: 'public'
     };
@@ -123,11 +123,76 @@ describe('TaskBoardComponent', () => {
     await fixture.whenStable();
     fixture.detectChanges();
 
-    const columns = (
+    // Sprints are not auto-selected; all tasks are shown by default
+    let columns = (
       fixture.componentInstance as unknown as { columnsWithTasks: () => { tasks: { id: string }[] }[] }
     ).columnsWithTasks();
-    const taskIds = columns.flatMap((c) => c.tasks.map((t) => t.id));
+    let taskIds = columns.flatMap((c) => c.tasks.map((t) => t.id));
+    expect(taskIds).toEqual(['t-in', 't-out']);
+
+    // When the user explicitly selects a sprint, only tasks in that sprint are shown
+    (fixture.componentInstance as unknown as { onFilterFieldChanged: (e: { key: string; values: string[] }) => void })
+      .onFilterFieldChanged({ key: 'sprint', values: ['sp-active'] });
+    fixture.detectChanges();
+
+    columns = (
+      fixture.componentInstance as unknown as { columnsWithTasks: () => { tasks: { id: string }[] }[] }
+    ).columnsWithTasks();
+    taskIds = columns.flatMap((c) => c.tasks.map((t) => t.id));
     expect(taskIds).toEqual(['t-in']);
+  });
+
+  it('filters the board by the selected assignees, and shows all when the filter is empty', async () => {
+    const status = { id: 's-1', name: 'To Do', displayOrder: 0, requiresApproval: false, marksTaskComplete: false, visibility: 'public' };
+    const base = {
+      objectiveId: 'milestone-1', shortId: 'PRJ', title: 'T', description: null, categoryId: 'task' as const,
+      statusId: 's-1', priority: 'medium' as const, storyPoints: null, dueDate: null, estimatedHours: 5,
+      completedHours: 0, progressPercent: 0, sprintId: null, openClockSessionEmployeeId: null,
+      openClockSessionClockInAt: null, totalLoggedMinutes: 0
+    };
+    const t1 = { ...base, id: 't1', assigneeEmployeeIds: ['emp-a'] };
+    const t2 = { ...base, id: 't2', assigneeEmployeeIds: ['emp-b'] };
+    const t3 = { ...base, id: 't3', assigneeEmployeeIds: [] };
+    const storeStub = {
+      loadBoard: vi.fn().mockResolvedValue(undefined),
+      columnsWithTasks: () => [{ status, tasks: [t1, t2, t3] }],
+      tasks: () => [t1, t2, t3],
+      loading: () => false, error: () => null, moveTask: vi.fn(), statuses: () => []
+    };
+
+    TestBed.configureTestingModule({
+      imports: [TaskBoardComponent],
+      providers: [
+        { provide: TaskBoardStore, useValue: storeStub },
+        { provide: ProjectDetailStore, useValue: {
+          milestones: () => [{ objectiveId: 'milestone-1', title: 'M', isOwner: true }],
+          getMilestoneDetail: vi.fn().mockResolvedValue(null), loadMyMilestones: vi.fn().mockResolvedValue(undefined),
+          loadProjectMembers: vi.fn().mockResolvedValue(undefined), projectMembers: () => []
+        }},
+        { provide: SprintApiService, useValue: { getByProject: vi.fn().mockReturnValue(of([])) } },
+        { provide: TaskApiService, useValue: { createTaskCreationRequest: vi.fn(), assignTask: vi.fn(), getCategories: vi.fn().mockReturnValue(of([])) } },
+        { provide: EmployeeDirectoryStore, useValue: { get: vi.fn().mockReturnValue(undefined), ensureLoaded: vi.fn().mockResolvedValue(undefined) } },
+        { provide: ActivatedRoute, useValue: routeStub() },
+        { provide: Router, useValue: { navigate: vi.fn() } }
+      ]
+    });
+
+    const fixture = TestBed.createComponent(TaskBoardComponent);
+    fixture.detectChanges();
+    await fixture.whenStable();
+
+    const instance = fixture.componentInstance as unknown as {
+      setAssigneeFilter: (ids: string[]) => void;
+      columnsWithTasks: () => { tasks: { id: string }[] }[];
+    };
+
+    instance.setAssigneeFilter(['emp-a']);
+    fixture.detectChanges();
+    expect(instance.columnsWithTasks().flatMap((c) => c.tasks.map((t) => t.id))).toEqual(['t1']);
+
+    instance.setAssigneeFilter([]);
+    fixture.detectChanges();
+    expect(instance.columnsWithTasks().flatMap((c) => c.tasks.map((t) => t.id))).toEqual(['t1', 't2', 't3']);
   });
 
   it('sprint filter "Individual task" shows only tasks with no sprint assigned', async () => {
@@ -309,7 +374,7 @@ describe('TaskBoardComponent', () => {
     expect(loadBoard).toHaveBeenCalledWith('project-1');
   });
 
-  it('navigates to the task detail page when a card is viewed', async () => {
+  it('opens the task modal in edit mode when a card is viewed, and create mode from the toolbar', async () => {
     const storeStub = {
       loadBoard: vi.fn().mockResolvedValue(undefined),
       columnsWithTasks: () => [],
@@ -346,12 +411,90 @@ describe('TaskBoardComponent', () => {
     fixture.detectChanges();
     await fixture.whenStable();
 
-    const navigate = vi.spyOn(TestBed.inject(Router), 'navigate').mockResolvedValue(true);
-    fixture.componentInstance.onTaskViewed({ id: 't-9', objectiveId: 'milestone-1' } as never);
+    const inst = fixture.componentInstance as unknown as {
+      onTaskViewed: (t: unknown) => void;
+      goToCreate: () => void;
+      taskModalOpen: () => boolean;
+      taskModalMode: () => string;
+      taskModalTaskId: () => string;
+    };
 
-    expect(navigate).toHaveBeenCalledWith(['/work', 'project-1', 'task', 't-9']);
+    inst.onTaskViewed({ id: 't-9', objectiveId: 'milestone-1' });
+    expect(inst.taskModalOpen()).toBe(true);
+    expect(inst.taskModalMode()).toBe('edit');
+    expect(inst.taskModalTaskId()).toBe('t-9');
 
-    (fixture.componentInstance as unknown as { goToCreate: () => void }).goToCreate();
-    expect(navigate).toHaveBeenCalledWith(['/work', 'project-1', 'task', 'new']);
+    inst.goToCreate();
+    expect(inst.taskModalMode()).toBe('create');
+    expect(inst.taskModalTaskId()).toBe('');
+    expect(inst.taskModalOpen()).toBe(true);
+  });
+
+  it('creates task, assigns, moves status and reloads board when onQuickTaskCreated is invoked', async () => {
+    const createTask = vi.fn().mockResolvedValue({ id: 't-new', statusId: 's-default' });
+    const loadBoard = vi.fn().mockResolvedValue(undefined);
+    const storeStub = {
+      loadBoard,
+      createTask,
+      columnsWithTasks: () => [],
+      tasks: () => [],
+      loading: () => false,
+      error: () => null,
+      moveTask: vi.fn(),
+      statuses: () => []
+    };
+    const taskApiStub = {
+      createTaskCreationRequest: vi.fn(),
+      assignTask: vi.fn().mockReturnValue(of(undefined)),
+      moveTaskStatus: vi.fn().mockReturnValue(of(undefined)),
+      getCategories: vi.fn().mockReturnValue(of([]))
+    };
+
+    TestBed.configureTestingModule({
+      imports: [TaskBoardComponent],
+      providers: [
+        { provide: TaskBoardStore, useValue: storeStub },
+        {
+          provide: ProjectDetailStore,
+          useValue: {
+            milestones: () => [{ objectiveId: 'milestone-1', title: 'Milestone One', isOwner: true }],
+            getMilestoneDetail: vi.fn().mockResolvedValue(null),
+            loadMyMilestones: vi.fn().mockResolvedValue(undefined),
+            loadProjectMembers: vi.fn().mockResolvedValue(undefined),
+            projectMembers: () => []
+          }
+        },
+        { provide: SprintApiService, useValue: { getByProject: vi.fn().mockReturnValue(of([])) } },
+        { provide: TaskApiService, useValue: taskApiStub },
+        { provide: EmployeeDirectoryStore, useValue: { get: vi.fn().mockReturnValue(undefined), ensureLoaded: vi.fn().mockResolvedValue(undefined) } },
+        { provide: ActivatedRoute, useValue: routeStub() },
+        { provide: Router, useValue: { navigate: vi.fn() } }
+      ]
+    });
+
+    const fixture = TestBed.createComponent(TaskBoardComponent);
+    fixture.detectChanges();
+    await fixture.whenStable();
+
+    const resolveSpy = vi.fn();
+    await fixture.componentInstance.onQuickTaskCreated({
+      title: 'Quick Task 1',
+      statusId: 's-custom',
+      priority: 'high',
+      assigneeId: 'emp-1',
+      objectiveId: 'milestone-1',
+      categoryId: 'cat-1',
+      resolve: resolveSpy
+    });
+
+    expect(createTask).toHaveBeenCalledWith('milestone-1', expect.objectContaining({
+      title: 'Quick Task 1',
+      priority: 'high',
+      categoryId: 'cat-1'
+    }));
+    expect(taskApiStub.assignTask).toHaveBeenCalledWith('t-new', 'emp-1');
+    expect(taskApiStub.moveTaskStatus).toHaveBeenCalledWith('t-new', 's-custom');
+    expect(resolveSpy).toHaveBeenCalledWith(true);
   });
 });
+

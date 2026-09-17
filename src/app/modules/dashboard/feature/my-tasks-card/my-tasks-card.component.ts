@@ -1,6 +1,5 @@
 import { ChangeDetectionStrategy, Component, OnInit, computed, inject, signal } from '@angular/core';
 import { RouterLink } from '@angular/router';
-import { CardComponent } from '../../../../shared/ui/card/card.component';
 import { MyTasksApiService } from '../../data-access/my-tasks-api.service';
 import { MyTaskItem } from '../../models/my-tasks.model';
 
@@ -11,7 +10,7 @@ const MAX_VISIBLE_TASKS = 4;
 @Component({
   selector: 'app-my-tasks-card',
   standalone: true,
-  imports: [CardComponent, RouterLink],
+  imports: [RouterLink],
   templateUrl: './my-tasks-card.component.html',
   changeDetection: ChangeDetectionStrategy.OnPush
 })
@@ -33,11 +32,12 @@ export class MyTasksCardComponent implements OnInit {
   protected readonly hiddenTaskCount = computed(() => Math.max(0, this.tasks().length - MAX_VISIBLE_TASKS));
 
   // No dedicated cross-project "all tasks" page exists yet - "View all tasks" links to
-  // the most urgent task's project My Task view instead, since that's the closest thing
-  // to a full list.
+  // the most urgent task's project board instead, since that's the closest thing to a
+  // full list (the standalone task-detail page and its "My Task" tab were both removed
+  // in favor of editing tasks in a modal on the board).
   protected readonly viewAllTasksLink = computed<string[] | null>(() => {
     const first = this.tasks()[0];
-    return first ? this.myTaskListLink(first) : null;
+    return first ? ['/work', first.projectId, 'board'] : null;
   });
 
   ngOnInit(): void {
@@ -53,12 +53,14 @@ export class MyTasksCardComponent implements OnInit {
     });
   }
 
+  // Same board + highlightTaskId deep-link the notification bell uses to point at one
+  // task - there is no standalone task-detail route to link to any more.
   protected taskLink(task: MyTaskItem): string[] {
-    return ['/work', task.projectId, 'task', task.taskId];
+    return ['/work', task.projectId, 'board'];
   }
 
-  private myTaskListLink(task: MyTaskItem): string[] {
-    return ['/work', task.projectId, 'milestones', task.objectiveId, 'my-task'];
+  protected taskQueryParams(task: MyTaskItem): { highlightTaskId: string } {
+    return { highlightTaskId: task.taskId };
   }
 
   protected dueDateLabel(dueDate: string): string {

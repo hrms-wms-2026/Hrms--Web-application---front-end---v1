@@ -3,6 +3,7 @@ import { ButtonComponent } from '../../../../../shared/ui/button/button.componen
 import { AttendanceHistoryRow } from '../../../models/time-tracking.model';
 import { TimeTrackingStore } from '../../../state/time-tracking.store';
 import {
+  checkInLocationLabel,
   formatDate,
   formatDateTime,
   formatMinutes,
@@ -41,6 +42,7 @@ export class AttendanceDetailDrawerComponent {
   readonly sourceLabel = sourceLabel;
   readonly statusLabel = statusLabel;
   readonly timelineEventLabel = timelineEventLabel;
+  readonly checkInLocationLabel = checkInLocationLabel;
 
   readonly summary = computed(() => this.store.dayDetail()?.summary ?? this.fallbackSummary());
 

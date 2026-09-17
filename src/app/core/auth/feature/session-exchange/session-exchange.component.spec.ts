@@ -8,18 +8,27 @@ import { AuthStore } from '../../state/auth.store';
 class RouteTargetStubComponent {}
 
 describe('SessionExchangeComponent', () => {
-  function setup(authStoreOverrides: Record<string, unknown>, code: string | null) {
+  function setup(
+    authStoreOverrides: Record<string, unknown>,
+    code: string | null,
+    returnUrl: string | null = null
+  ) {
     TestBed.configureTestingModule({
       imports: [SessionExchangeComponent],
       providers: [
         provideRouter([
           { path: 'dashboard', component: RouteTargetStubComponent },
-          { path: 'auth/login', component: RouteTargetStubComponent }
+          { path: 'auth/login', component: RouteTargetStubComponent },
+          { path: 'device/activate', component: RouteTargetStubComponent }
         ]),
         { provide: AuthStore, useValue: authStoreOverrides },
         {
           provide: ActivatedRoute,
-          useValue: { snapshot: { queryParamMap: { get: () => code } } }
+          useValue: {
+            snapshot: {
+              queryParamMap: { get: (key: string) => (key === 'returnUrl' ? returnUrl : code) }
+            }
+          }
         }
       ]
     });
@@ -39,6 +48,26 @@ describe('SessionExchangeComponent', () => {
     expect(exchangeSpy).toHaveBeenCalledWith('raw-exchange-code');
     expect(navigateSpy).toHaveBeenCalledWith(['/dashboard']);
     expect(fixture.componentInstance.failed()).toBe(false);
+  });
+
+  it('navigates to returnUrl (preserving its query params) when present, instead of /dashboard', async () => {
+    const exchangeSpy = vi.fn().mockResolvedValue(undefined);
+    const fixture = setup(
+      { exchangeSession: exchangeSpy, error: () => null },
+      'raw-exchange-code',
+      '/device/activate?request_id=abc&user_code=XYZ'
+    );
+    const router = TestBed.inject(Router);
+
+    fixture.detectChanges();
+    await fixture.whenStable();
+    await fixture.whenStable();
+
+    expect(exchangeSpy).toHaveBeenCalledWith('raw-exchange-code');
+    // Same navigate([returnUrl]) pitfall as LoginComponent: it would treat the whole string as
+    // one literal path segment and silently drop the query params, so assert on router.url
+    // rather than a mocked call argument.
+    expect(router.url).toBe('/device/activate?request_id=abc&user_code=XYZ');
   });
 
   it('shows the failure state and does not navigate when the exchange call rejects', async () => {

@@ -11,6 +11,7 @@ import { TaskApiService } from '../../data-access/task-api.service';
 import { SprintListStore } from '../../state/sprint-list.store';
 import { SprintTabComponent } from '../../ui/sprint-tab/sprint-tab.component';
 import { EmployeeDirectoryStore } from '../../state/employee-directory.store';
+import { WorkPageToolbarStore } from '../../state/work-page-toolbar.store';
 import { Sprint } from '../../models/sprint.model';
 import { WorkTask } from '../../models/task.model';
 
@@ -53,7 +54,8 @@ describe('TaskBacklogComponent', () => {
       completedHours: 0,
       progressPercent: 0,
       sprintId,
-      assigneeEmployeeIds: [], openClockSessionEmployeeId: null, openClockSessionClockInAt: null, totalLoggedMinutes: 0
+      assigneeEmployeeIds: [], openClockSessionEmployeeId: null, openClockSessionClockInAt: null, totalLoggedMinutes: 0,
+      attachments: []
     };
   }
 
@@ -171,8 +173,8 @@ describe('TaskBacklogComponent', () => {
     expect(fixture.nativeElement.querySelector('[data-testid="task-row-t-2"]')).toBeNull();
   });
 
-  it('the sprint tab\'s + button navigates to the create-task page with sprintRequired=false', async () => {
-    const { fixture, navigate } = setup();
+  it('the sprint tab\'s + button opens the task modal in create mode', async () => {
+    const { fixture } = setup();
     await fixture.whenStable();
     fixture.detectChanges();
 
@@ -181,7 +183,9 @@ describe('TaskBacklogComponent', () => {
 
     (sprint1Tab.componentInstance as SprintTabComponent).createTaskRequested.emit();
 
-    expect(navigate).toHaveBeenCalledWith(['/work', 'project-1', 'task', 'new'], { queryParams: { sprintRequired: 'false' } });
+    const inst = fixture.componentInstance as unknown as { taskModalOpen: () => boolean; taskModalMode: () => string };
+    expect(inst.taskModalOpen()).toBe(true);
+    expect(inst.taskModalMode()).toBe('create');
   });
 
   it("creating a sprint immediately reflects in this component's own sprint list without a page reload", async () => {
@@ -300,14 +304,17 @@ describe('TaskBacklogComponent', () => {
     expect(moveTask).toHaveBeenCalledWith('t-1', 'status-2');
   });
 
-  it('navigates to the task detail page when a task is viewed', async () => {
+  it('opens the task modal in edit mode when a task is viewed', async () => {
     const tasks = [makeTask('t-1', 'sp-1')];
-    const { fixture, navigate } = setup({ tasks });
+    const { fixture } = setup({ tasks });
     await fixture.whenStable();
 
     fixture.componentInstance['onTaskViewed'](tasks[0]);
 
-    expect(navigate).toHaveBeenCalledWith(['/work', 'project-1', 'task', 't-1']);
+    const inst = fixture.componentInstance as unknown as { taskModalOpen: () => boolean; taskModalMode: () => string; taskModalTaskId: () => string };
+    expect(inst.taskModalOpen()).toBe(true);
+    expect(inst.taskModalMode()).toBe('edit');
+    expect(inst.taskModalTaskId()).toBe('t-1');
   });
 
   it('routes any sprint-status pick from the sprint tab to sprintStore.setStatus - the owner override always wins', async () => {
@@ -339,8 +346,7 @@ describe('TaskBacklogComponent', () => {
     await fixture.whenStable();
     fixture.detectChanges();
 
-    const text = fixture.nativeElement.textContent as string;
-    expect(text).not.toContain('Create Sprint');
+    expect(fixture.componentInstance['ownedModuleOptions']().length).toBe(0);
 
     fixture.componentInstance['createSprintOpen'].set(true);
     fixture.detectChanges();
@@ -352,8 +358,9 @@ describe('TaskBacklogComponent', () => {
     await fixture.whenStable();
     fixture.detectChanges();
 
-    const text = fixture.nativeElement.textContent as string;
-    expect(text).toContain('Create Sprint');
+    expect(fixture.componentInstance['ownedModuleOptions']().length).toBeGreaterThan(0);
+    const toolbarStore = TestBed.inject(WorkPageToolbarStore);
+    expect(toolbarStore.template()).not.toBeNull();
   });
 
   it('sprint status filter defaults to All and narrows the rendered sprint tabs by status', async () => {
@@ -361,18 +368,34 @@ describe('TaskBacklogComponent', () => {
     await fixture.whenStable();
     fixture.detectChanges();
 
-    const select = fixture.nativeElement.querySelector('select[aria-label="Sprint status filter"]') as HTMLSelectElement;
-    expect(select.options[0].textContent).toContain('All sprint statuses');
-    expect(select.value).toBe('all');
+    expect(fixture.componentInstance['sprintStatusFilter']()).toBe('all');
     expect(fixture.debugElement.queryAll(By.directive(SprintTabComponent)).length).toBe(2);
 
-    select.value = 'future';
-    select.dispatchEvent(new Event('change'));
+    fixture.componentInstance['setSprintStatusFilter']('future');
     fixture.detectChanges();
 
     const tabs = fixture.debugElement.queryAll(By.directive(SprintTabComponent));
     expect(tabs.length).toBe(1);
     expect((tabs[0].componentInstance as SprintTabComponent).sprint().id).toBe('sp-2');
+  });
+
+  it('renders the Sprint section header when sprints exist', async () => {
+    const { fixture } = setup({ sprints: [sprint1] });
+    await fixture.whenStable();
+    fixture.detectChanges();
+
+    const header = fixture.nativeElement.querySelector('.task-backlog__sprints-title');
+    expect(header).not.toBeNull();
+    expect(header.textContent.trim()).toBe('Sprint');
+  });
+
+  it('does not render the Sprint section header when there are no sprints', async () => {
+    const { fixture } = setup({ sprints: [] });
+    await fixture.whenStable();
+    fixture.detectChanges();
+
+    const header = fixture.nativeElement.querySelector('.task-backlog__sprints-title');
+    expect(header).toBeNull();
   });
 
   it("renders sprintStore.error() in the component's own template, always-visible", async () => {
@@ -441,7 +464,9 @@ describe('TaskBacklogComponent', () => {
     viewButton.click();
     fixture.detectChanges();
 
-    expect(navigate).toHaveBeenCalledWith(['/work', 'project-1', 'task', 't-unsorted']);
+    const inst = fixture.componentInstance as unknown as { taskModalOpen: () => boolean; taskModalTaskId: () => string };
+    expect(inst.taskModalOpen()).toBe(true);
+    expect(inst.taskModalTaskId()).toBe('t-unsorted');
   });
 
   it('does not render the Unsorted section when there are no unsorted tasks', async () => {

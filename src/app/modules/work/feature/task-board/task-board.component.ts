@@ -1,9 +1,12 @@
-import { AfterViewChecked, Component, OnInit, computed, inject, signal } from '@angular/core';
+import { AfterViewChecked, AfterViewInit, Component, OnDestroy, OnInit, TemplateRef, computed, inject, signal, viewChild } from '@angular/core';
 import { CurrentEmployeeStore } from '../../state/current-employee.store';
-import { ActivatedRoute, Router } from '@angular/router';
+import { ActivatedRoute } from '@angular/router';
 import { firstValueFrom } from 'rxjs';
+import { distinctUntilChanged, map } from 'rxjs/operators';
+import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { TaskBoardStore } from '../../state/task-board.store';
 import { ProjectDetailStore } from '../../state/project-detail.store';
+import { WorkPageToolbarStore } from '../../state/work-page-toolbar.store';
 import { TaskBoardColumnComponent } from '../../ui/task-board-column/task-board-column.component';
 import { ButtonComponent } from '../../../../shared/ui/button/button.component';
 import { ErrorStateComponent } from '../../../../shared/ui/error-state/error-state.component';
@@ -15,21 +18,34 @@ import { Sprint } from '../../models/sprint.model';
 import { WorkTask } from '../../models/task.model';
 import { TaskCategoryColumn } from '../../models/task-category.model';
 import { toTaskCategoryColumn } from '../../utils/task-category.mapper';
-import { SelectComponent, SelectOption } from '../../../../shared/ui/select/select.component';
+import { WorkDropdownOption } from '../../ui/work-dropdown/work-dropdown.component';
+import { TaskFilterBarComponent, TaskFilterFieldConfig } from '../../ui/task-filter-bar/task-filter-bar.component';
+import { TaskFormModalComponent } from '../../ui/task-form-modal/task-form-modal.component';
+import { CreateTaskRequestDto } from '../../models/dto/task.dto';
 
 @Component({
   selector: 'app-task-board',
   standalone: true,
-  imports: [TaskBoardColumnComponent, ButtonComponent, ErrorStateComponent, SelectComponent],
+  imports: [TaskBoardColumnComponent, ButtonComponent, ErrorStateComponent, TaskFilterBarComponent, TaskFormModalComponent],
   template: `
-    <div class="task-board__toolbar">
-      <app-select [options]="objectiveOptions()" [value]="objectiveFilter()" ariaLabel="Module filter" [icon]="'module'" (valueChange)="setObjectiveFilter($event)" />
-      <app-select [options]="sprintOptions()" [value]="sprintFilter()" ariaLabel="Sprint filter" [icon]="'sprint'" (valueChange)="setSprintFilter($event)" />
-      <app-select [options]="categoryOptions()" [value]="categoryFilter()" ariaLabel="Category filter" [icon]="'category'" (valueChange)="setCategoryFilter($event)" />
-      @if (modules().length > 0) {
-        <app-button variant="primary" (pressed)="goToCreate()">Create task</app-button>
-      }
-    </div>
+    <ng-template #toolbarTpl>
+      <div class="task-board__toolbar">
+        <app-task-filter-bar [fields]="filterFields()" [values]="filterValues()" (fieldChanged)="onFilterFieldChanged($event)" />
+        <button
+          type="button"
+          class="task-board__me-toggle"
+          [class.task-board__me-toggle--active]="onlyMyTasks()"
+          [attr.aria-pressed]="onlyMyTasks()"
+          title="Only my tasks"
+          (click)="toggleOnlyMyTasks()"
+        >
+          {{ myInitials() }}
+        </button>
+        @if (modules().length > 0) {
+          <app-button variant="primary" (pressed)="goToCreate()">Create task</app-button>
+        }
+      </div>
+    </ng-template>
 
     @if (store.loading()) {
       <p>Loading board…</p>
@@ -45,61 +61,144 @@ import { SelectComponent, SelectOption } from '../../../../shared/ui/select/sele
             [allStatuses]="store.statuses()"
             [employeeNames]="employeeNames()"
             [currentEmployeeId]="currentEmployee.id()"
+            [assignableMembers]="assignableMembers()"
+            [modules]="moduleOptions()"
+            [categories]="categories()"
+            [defaultObjectiveId]="modalPrefillModuleId()"
+            [defaultSprintId]="modalPrefillSprintId()"
             (taskDropped)="onTaskDropped($event)"
             (taskViewed)="onTaskViewed($event)"
             (taskChanged)="reload()"
+            (quickTaskCreated)="onQuickTaskCreated($event)"
           />
         }
       </div>
     }
 
+    <app-task-form-modal
+      [open]="taskModalOpen()"
+      [mode]="taskModalMode()"
+      [projectId]="projectId()"
+      [taskId]="taskModalTaskId()"
+      [prefillModuleId]="modalPrefillModuleId()"
+      [prefillSprintId]="modalPrefillSprintId()"
+      (created)="onTaskModalDone()"
+      (saved)="onTaskModalDone()"
+      (closed)="taskModalOpen.set(false)"
+    />
   `,
   styles: [`
-    .task-board__toolbar { display: flex; flex-wrap: wrap; align-items: flex-end; justify-content: flex-end; gap: 8px; margin-bottom: 16px; }
-    .task-board__toolbar app-select { flex: 1 1 180px; max-width: 220px; }
-    .task-board { display: flex; gap: 16px; overflow-x: auto; padding: 0 0 10px; scroll-snap-type: x proximity; }
-    @media (max-width: 720px) { .task-board__toolbar { justify-content: stretch; } .task-board__toolbar app-select { flex: 1 1 180px; max-width: none; } .task-board__toolbar app-button { flex: 1 1 100%; } }
+    .task-board__toolbar { display: flex; flex-wrap: wrap; align-items: center; justify-content: flex-end; gap: 8px; }
+    .task-board__me-toggle { display: inline-flex; align-items: center; justify-content: center; width: 30px; height: 30px; border: 1px solid var(--color-border); border-radius: 999px; background: var(--color-surface); color: var(--color-text-secondary); font: inherit; font-size: 11px; font-weight: 700; cursor: pointer; transition: all 140ms ease; }
+    .task-board__me-toggle:hover { border-color: var(--color-accent); color: var(--color-accent); }
+    .task-board__me-toggle--active { border-color: var(--color-accent); background: var(--color-accent); color: var(--color-accent-contrast); }
+    .task-board { display: flex; align-items: flex-start; gap: 16px; width: 100%; box-sizing: border-box; overflow-x: auto; padding: 0 0 10px; scroll-snap-type: x proximity; }
     :host ::ng-deep .task-card--highlighted { outline: 2px solid var(--color-focus-ring, var(--color-danger)); outline-offset: 2px; }
   `]
 })
-export class TaskBoardComponent implements OnInit, AfterViewChecked {
+export class TaskBoardComponent implements OnInit, AfterViewChecked, AfterViewInit, OnDestroy {
   protected readonly store = inject(TaskBoardStore);
   private readonly projectStore = inject(ProjectDetailStore);
   private readonly route = inject(ActivatedRoute);
-  private readonly router = inject(Router);
   private readonly sprintApi = inject(SprintApiService);
   private readonly taskApi = inject(TaskApiService);
   private readonly directory = inject(EmployeeDirectoryStore);
   protected readonly currentEmployee = inject(CurrentEmployeeStore);
+  private readonly toolbarStore = inject(WorkPageToolbarStore);
+  private readonly toolbarTpl = viewChild.required<TemplateRef<unknown>>('toolbarTpl');
 
   protected readonly projectId = signal('');
   protected readonly sprints = signal<Sprint[]>([]);
   protected readonly categories = signal<TaskCategoryColumn[]>([]);
   protected readonly assignableMembers = signal<{ employeeId: string; name: string }[]>([]);
-  protected readonly objectiveFilter = signal('all');
-  protected readonly sprintFilter = signal('active');
-  protected readonly categoryFilter = signal('all');
+  protected readonly objectiveFilter = signal<string[]>([]);
+  // Defaults to 'all' so no sprint is auto-selected on load; only filtered when explicitly chosen by the user.
+  protected readonly sprintFilter = signal('all');
+  protected readonly categoryFilter = signal<string[]>([]);
+  protected readonly assigneeFilter = signal<string[]>([]);
+  protected readonly statusFilter = signal<string[]>([]);
+  protected readonly priorityFilter = signal<string[]>([]);
   private highlightTaskId: string | null = null;
   private didScrollToHighlight = false;
+
+  constructor() {
+    // Switching projects via the breadcrumb switcher navigates to a sibling route matching the
+    // same path shape (/work/:id/board) - Angular reuses this component instance rather than
+    // re-instantiating it, so the :id param must be watched reactively, not just read once.
+    if (this.route.paramMap) {
+      this.route.paramMap
+        .pipe(
+          map((paramMap) => paramMap.get('id') ?? ''),
+          distinctUntilChanged(),
+          takeUntilDestroyed()
+        )
+        .subscribe((projectId) => {
+          this.projectId.set(projectId);
+          if (!projectId) return;
+          void this.loadAssignableMembers(projectId);
+          this.reload();
+        });
+    } else {
+      const projectId = this.route.snapshot?.paramMap?.get('id') ?? '';
+      this.projectId.set(projectId);
+      if (projectId) {
+        void this.loadAssignableMembers(projectId);
+        this.reload();
+      }
+    }
+  }
 
   protected readonly modules = computed(() => this.projectStore.milestones());
   protected readonly moduleOptions = computed(() =>
     this.modules().map((m) => ({ objectiveId: m.objectiveId, title: m.title, isOwner: m.isOwner }))
   );
-  protected readonly objectiveOptions = computed<SelectOption[]>(() => [
-    { value: 'all', label: 'All modules' },
-    ...this.modules().map((module) => ({ value: module.objectiveId, label: module.title }))
-  ]);
-  protected readonly sprintOptions = computed<SelectOption[]>(() => [
+  protected readonly objectiveOptions = computed<WorkDropdownOption[]>(() =>
+    this.modules().map((module) => ({ value: module.objectiveId, label: module.title }))
+  );
+  protected readonly sprintOptions = computed<WorkDropdownOption[]>(() => [
     { value: 'active', label: 'Active sprints' },
     { value: 'all', label: 'All sprints' },
     { value: 'individual', label: 'Individual task' },
     ...this.sprints().map((sprint) => ({ value: sprint.id, label: sprint.name }))
   ]);
-  protected readonly categoryOptions = computed<SelectOption[]>(() => [
-    { value: 'all', label: 'All categories' },
-    ...this.categories().map((category) => ({ value: category.id, label: category.name }))
+  protected readonly categoryOptions = computed<WorkDropdownOption[]>(() =>
+    this.categories().map((category) => ({ value: category.id, label: category.name }))
+  );
+  protected readonly statusOptions = computed<WorkDropdownOption[]>(() =>
+    this.store.statuses().map((status) => ({ value: status.id, label: status.name }))
+  );
+  protected readonly priorityOptions: readonly WorkDropdownOption[] = [
+    { value: 'low', label: 'Low' },
+    { value: 'medium', label: 'Medium' },
+    { value: 'high', label: 'High' },
+    { value: 'critical', label: 'Critical' }
+  ];
+  protected readonly filterFields = computed<TaskFilterFieldConfig[]>(() => [
+    { key: 'module', label: 'Module', icon: 'module', kind: 'multi', options: this.objectiveOptions() },
+    { key: 'sprint', label: 'Sprint', icon: 'sprint', kind: 'single', options: this.sprintOptions(), defaultValues: ['all'] },
+    { key: 'category', label: 'Category', icon: 'category', kind: 'multi', options: this.categoryOptions() },
+    { key: 'assignee', label: 'Assignee', icon: 'people', kind: 'multi', options: this.assigneeFilterOptions() },
+    { key: 'status', label: 'Status', icon: 'status', kind: 'multi', options: this.statusOptions() },
+    { key: 'priority', label: 'Priority', icon: 'priority', kind: 'multi', options: this.priorityOptions }
   ]);
+  protected readonly filterValues = computed<Record<string, string[]>>(() => ({
+    module: this.objectiveFilter(),
+    sprint: [this.sprintFilter()],
+    category: this.categoryFilter(),
+    assignee: this.assigneeFilter(),
+    status: this.statusFilter(),
+    priority: this.priorityFilter()
+  }));
+  protected readonly onlyMyTasks = computed(() => {
+    const me = this.currentEmployee.id();
+    const assignees = this.assigneeFilter();
+    return !!me && assignees.length === 1 && assignees[0] === me;
+  });
+  protected readonly myInitials = computed(() => {
+    const me = this.currentEmployee.id();
+    const name = this.assignableMembers().find((m) => m.employeeId === me)?.name ?? '';
+    return this.getInitials(name);
+  });
   protected readonly columnsWithTasks = computed(() =>
     this.store.columnsWithTasks().map((column) => ({
       status: column.status,
@@ -115,28 +214,47 @@ export class TaskBoardComponent implements OnInit, AfterViewChecked {
     )
   );
 
-  protected setObjectiveFilter(value: string): void { this.objectiveFilter.set(value); }
+  protected readonly assigneeFilterOptions = computed<WorkDropdownOption[]>(() =>
+    this.assignableMembers().map((member) => ({ value: member.employeeId, label: member.name }))
+  );
+
+  protected setObjectiveFilter(ids: string[]): void { this.objectiveFilter.set(ids); }
   protected setSprintFilter(value: string): void { this.sprintFilter.set(value); }
-  protected setCategoryFilter(value: string): void { this.categoryFilter.set(value); }
+  protected setCategoryFilter(ids: string[]): void { this.categoryFilter.set(ids); }
+  protected setAssigneeFilter(ids: string[]): void { this.assigneeFilter.set(ids); }
+
+  protected onFilterFieldChanged(event: { key: string; values: string[] }): void {
+    switch (event.key) {
+      case 'module': this.setObjectiveFilter(event.values); break;
+      case 'sprint': this.setSprintFilter(event.values[0] ?? 'all'); break;
+      case 'category': this.setCategoryFilter(event.values); break;
+      case 'assignee': this.setAssigneeFilter(event.values); break;
+      case 'status': this.statusFilter.set(event.values); break;
+      case 'priority': this.priorityFilter.set(event.values); break;
+    }
+  }
+
+  /** Shortcut toggle mirroring the filter's own Assignee row - turning it on replaces any existing assignee selection with just me, off clears it. */
+  protected toggleOnlyMyTasks(): void {
+    this.setAssigneeFilter(this.onlyMyTasks() ? [] : [this.currentEmployee.id()]);
+  }
+
+  private getInitials(name: string): string {
+    if (!name) return '?';
+    const parts = name.trim().split(/\s+/);
+    if (parts.length >= 2) return (parts[0][0] + parts[1][0]).toUpperCase();
+    return name.slice(0, 2).toUpperCase();
+  }
 
   columnIds(): string[] {
     return this.columnsWithTasks().map((column) => column.status.id);
   }
 
   ngOnInit(): void {
-    const projectId = this.route.snapshot?.paramMap?.get('id') ?? '';
-    this.projectId.set(projectId);
     this.highlightTaskId = this.route.snapshot?.queryParamMap?.get('highlightTaskId') ?? null;
-    if (!projectId) return;
-
-    // No loadMyMilestones() call here - ProjectDetailComponent (the parent route) already
-    // awaits it and gates rendering of this component's outlet until it resolves, so modules()
-    // is already populated by the time this component exists. A second call here would just be
-    // a redundant request for data this component can already read reactively off the shared
-    // ProjectDetailStore.
-    void this.loadAssignableMembers(projectId);
+    const assignee = this.route.snapshot?.queryParamMap?.get('assignee');
+    if (assignee) this.assigneeFilter.set([assignee]);
     void this.currentEmployee.ensureLoaded();
-    this.reload();
   }
 
   protected reload(): void {
@@ -145,6 +263,14 @@ export class TaskBoardComponent implements OnInit, AfterViewChecked {
     void this.store.loadBoard(projectId);
     void this.loadSprints(projectId);
     void this.loadCategories(projectId);
+  }
+
+  ngAfterViewInit(): void {
+    this.toolbarStore.setTemplate(this.toolbarTpl());
+  }
+
+  ngOnDestroy(): void {
+    this.toolbarStore.setTemplate(null);
   }
 
   ngAfterViewChecked(): void {
@@ -157,7 +283,8 @@ export class TaskBoardComponent implements OnInit, AfterViewChecked {
   }
 
   private matchesFilters(task: WorkTask): boolean {
-    const objectiveMatches = this.objectiveFilter() === 'all' || task.objectiveId === this.objectiveFilter();
+    const objectiveFilter = this.objectiveFilter();
+    const objectiveMatches = objectiveFilter.length === 0 || objectiveFilter.includes(task.objectiveId);
     const sprintFilter = this.sprintFilter();
     const activeSprintIds = new Set(this.sprints().filter((sprint) => sprint.status === 'active').map((sprint) => sprint.id));
     const sprintMatches = sprintFilter === 'all'
@@ -167,16 +294,21 @@ export class TaskBoardComponent implements OnInit, AfterViewChecked {
         : sprintFilter === 'individual'
           ? task.sprintId == null
           : task.sprintId === sprintFilter;
-    const categoryMatches = this.categoryFilter() === 'all' || task.categoryId === this.categoryFilter();
-    return objectiveMatches && sprintMatches && categoryMatches;
+    const categoryFilter = this.categoryFilter();
+    const categoryMatches = categoryFilter.length === 0 || categoryFilter.includes(task.categoryId);
+    const assignees = this.assigneeFilter();
+    const assigneeMatches = assignees.length === 0 || task.assigneeEmployeeIds.some((id) => assignees.includes(id));
+    const statuses = this.statusFilter();
+    const statusMatches = statuses.length === 0 || statuses.includes(task.statusId);
+    const priorities = this.priorityFilter();
+    const priorityMatches = priorities.length === 0 || priorities.includes(task.priority);
+    return objectiveMatches && sprintMatches && categoryMatches && assigneeMatches && statusMatches && priorityMatches;
   }
 
   private async loadSprints(projectId: string): Promise<void> {
     try {
       const sprints = (await firstValueFrom(this.sprintApi.getByProject(projectId))).map(toSprint);
       this.sprints.set(sprints);
-      const active = sprints.filter((sprint) => sprint.status === 'active');
-      this.sprintFilter.set(active.length === 1 ? active[0].id : 'all');
     } catch {
       this.sprints.set([]);
     }
@@ -212,11 +344,92 @@ export class TaskBoardComponent implements OnInit, AfterViewChecked {
     void this.store.moveTask(event.taskId, event.newStatusId);
   }
 
+  protected readonly taskModalOpen = signal(false);
+  protected readonly taskModalMode = signal<'create' | 'edit'>('create');
+  protected readonly taskModalTaskId = signal('');
+
+  protected readonly modalPrefillModuleId = computed(() => {
+    const filter = this.objectiveFilter();
+    return filter.length === 1 ? filter[0] : '';
+  });
+
+  protected readonly modalPrefillSprintId = computed(() => {
+    const filter = this.sprintFilter();
+    if (filter && filter !== 'all' && filter !== 'individual' && filter !== 'active') {
+      return filter;
+    }
+    if (filter === 'active') {
+      const active = this.sprints().filter((s) => s.status === 'active');
+      return active.length === 1 ? active[0].id : '';
+    }
+    return '';
+  });
+
   onTaskViewed(task: WorkTask): void {
-    void this.router.navigate(['/work', this.projectId(), 'task', task.id]);
+    this.taskModalMode.set('edit');
+    this.taskModalTaskId.set(task.id);
+    this.taskModalOpen.set(true);
   }
 
   protected goToCreate(): void {
-    void this.router.navigate(['/work', this.projectId(), 'task', 'new']);
+    this.taskModalMode.set('create');
+    this.taskModalTaskId.set('');
+    this.taskModalOpen.set(true);
+  }
+
+  protected onTaskModalDone(): void {
+    this.taskModalOpen.set(false);
+    this.reload();
+  }
+
+  async onQuickTaskCreated(event: {
+    title: string;
+    statusId: string;
+    priority: WorkTask['priority'];
+    assigneeId?: string;
+    dueDate?: string;
+    objectiveId: string;
+    categoryId: string;
+    sprintId?: string | null;
+    resolve: (ok: boolean) => void;
+  }): Promise<void> {
+    const isOwner = this.modules().find((m) => m.objectiveId === event.objectiveId)?.isOwner ?? true;
+    const request: CreateTaskRequestDto = {
+      title: event.title,
+      categoryId: event.categoryId,
+      priority: event.priority,
+      dueDate: event.dueDate || undefined,
+      sprintId: event.sprintId ?? null
+    };
+
+    try {
+      if (!isOwner) {
+        await firstValueFrom(this.taskApi.createTaskCreationRequest(event.objectiveId, request));
+        event.resolve(true);
+        this.reload();
+        return;
+      }
+
+      const result = await this.store.createTask(event.objectiveId, request);
+      if (result && 'id' in result) {
+        if (event.assigneeId) {
+          try {
+            await firstValueFrom(this.taskApi.assignTask(result.id, event.assigneeId));
+          } catch {}
+        }
+        if (event.statusId && event.statusId !== result.statusId) {
+          try {
+            await firstValueFrom(this.taskApi.moveTaskStatus(result.id, event.statusId));
+          } catch {}
+        }
+        event.resolve(true);
+        this.reload();
+        return;
+      }
+      event.resolve(false);
+    } catch {
+      event.resolve(false);
+    }
   }
 }
+

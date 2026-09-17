@@ -7,6 +7,7 @@ import {
   CreateTaskStatusRequestDto,
     EditTaskRequestDto,
   EditTaskStatusRequestDto,
+  PendingUploadDto,
   PushTaskRequestDto,
   TaskStatusDto,
   WorkTaskDto
@@ -54,12 +55,6 @@ export class TaskApiService {
 
   getTaskById(taskId: string): Observable<WorkTaskDto> {
     return this.http.get<WorkTaskDto>(`${this.baseUrl}/tasks/${taskId}`);
-  }
-
-  getMyTasks(projectId: string, sprintId?: string): Observable<WorkTaskDto[]> {
-    let params = new HttpParams();
-    if (sprintId) params = params.set('sprintId', sprintId);
-    return this.http.get<WorkTaskDto[]>(`${this.baseUrl}/projects/${projectId}/my-tasks`, { params });
   }
 
   getTaskHistory(taskId: string): Observable<TaskHistoryEntryDto[]> {
@@ -173,5 +168,20 @@ export class TaskApiService {
 
   reorderTaskCategories(projectId: string, updates: { categoryId: string; displayOrder: number }[]): Observable<TaskCategoryDto[]> {
     return this.http.post<TaskCategoryDto[]>(`${this.baseUrl}/projects/${projectId}/task-categories/reorder`, { updates });
+  }
+
+  uploadPendingFile(file: File, purpose: 'task_attachment' | 'task_description_image'): Observable<PendingUploadDto> {
+    const formData = new FormData();
+    formData.set('purpose', purpose);
+    formData.set('file', file);
+    return this.http.post<PendingUploadDto>(`${this.baseUrl}/tasks/pending-uploads`, formData);
+  }
+
+  deletePendingFile(fileId: string): Observable<void> {
+    return this.http.delete<void>(`${this.baseUrl}/tasks/pending-uploads/${fileId}`);
+  }
+
+  getFileUrl(fileId: string): string {
+    return `${this.baseUrl}/tasks/files/${fileId}`;
   }
 }

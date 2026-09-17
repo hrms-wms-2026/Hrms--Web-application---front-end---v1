@@ -142,4 +142,43 @@ describe('WorkPatternCardComponent', () => {
     expect(segments.length).toBe(0);
     expect(fixture.nativeElement.querySelector('[data-testid="work-pattern-empty"]')).not.toBeNull();
   });
+
+  it('refetches with a new date range when a period is picked from the dropdown', async () => {
+    const { fixture, getMyWorkPattern, store } = await setup();
+    expect(getMyWorkPattern).toHaveBeenCalledOnce();
+    const [initialFrom] = getMyWorkPattern.mock.calls[0];
+
+    const container: HTMLElement = fixture.nativeElement.querySelector('[data-testid="work-pattern-period-select"]');
+    container.querySelector<HTMLButtonElement>('button')!.click();
+    fixture.detectChanges();
+
+    const options = container.querySelectorAll<HTMLButtonElement>('[role="option"]');
+    const lastMonthOption = Array.from(options).find((o) => o.textContent?.includes('Last Month'));
+    lastMonthOption!.click();
+    fixture.detectChanges();
+
+    expect(getMyWorkPattern).toHaveBeenCalledTimes(2);
+    expect(store.loadMyHistory).toHaveBeenCalledTimes(2);
+    const [newFrom, newTo] = getMyWorkPattern.mock.calls[1];
+    expect(newFrom).not.toBe(initialFrom);
+    expect(newFrom.endsWith('-01')).toBe(true); // month range always starts on the 1st
+    expect(newFrom <= newTo).toBe(true);
+    // the popup closes and the trigger pill now shows the newly-selected period
+    expect(container.querySelector('[role="listbox"]')).toBeNull();
+    expect(container.querySelector('button')!.textContent).toContain('Last Month');
+  });
+
+  it('closes the period dropdown on Escape without changing the selection', async () => {
+    const { fixture, getMyWorkPattern } = await setup();
+    const container: HTMLElement = fixture.nativeElement.querySelector('[data-testid="work-pattern-period-select"]');
+    container.querySelector<HTMLButtonElement>('button')!.click();
+    fixture.detectChanges();
+    expect(container.querySelector('[role="listbox"]')).not.toBeNull();
+
+    container.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }));
+    fixture.detectChanges();
+
+    expect(container.querySelector('[role="listbox"]')).toBeNull();
+    expect(getMyWorkPattern).toHaveBeenCalledOnce(); // no refetch just from opening/closing
+  });
 });

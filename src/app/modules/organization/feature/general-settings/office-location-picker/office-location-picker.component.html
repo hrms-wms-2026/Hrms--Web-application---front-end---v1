@@ -1,0 +1,39 @@
+<div class="olp-root">
+  <div class="olp-search">
+    <input
+      type="text"
+      class="olp-search__input"
+      placeholder="Search for an address..."
+      [value]="searchQuery()"
+      [disabled]="disabled()"
+      (input)="onSearchInput($any($event.target).value)"
+      (focus)="showResults.set(searchResults().length > 0)"
+    />
+    @if (searching()) {
+      <span class="olp-search__status">Searching…</span>
+    }
+    @if (showResults() && searchResults().length > 0) {
+      <ul class="olp-search__results">
+        @for (result of searchResults(); track result.display_name) {
+          <li>
+            <button type="button" class="olp-search__result" (click)="selectResult(result)">
+              {{ result.display_name }}
+            </button>
+          </li>
+        }
+      </ul>
+    }
+    @if (searchError()) {
+      <p class="olp-search__error" role="alert">{{ searchError() }}</p>
+    }
+  </div>
+
+  <div #mapContainer class="olp-map"></div>
+
+  <div class="olp-footer">
+    <p class="olp-footer__hint">Search an address, click the map, or drag the pin to set the office location.</p>
+    @if (latitude() != null && longitude() != null) {
+      <button type="button" class="olp-footer__clear" [disabled]="disabled()" (click)="clearLocation()">Clear location</button>
+    }
+  </div>
+</div>

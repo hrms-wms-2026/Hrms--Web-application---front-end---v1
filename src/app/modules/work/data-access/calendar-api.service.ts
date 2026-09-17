@@ -5,7 +5,7 @@ import { environment } from '../../../../environments/environment';
 import {
   CalendarEventDto,
   CreateCalendarEventRequestDto,
-  ProjectCalendarItemDto,
+  ProjectCalendarDto,
   UpdateCalendarEventRequestDto
 } from '../models/dto/calendar.dto';
 
@@ -15,8 +15,8 @@ export class CalendarApiService {
   private readonly projectsBase = `${environment.apiUrl}/work/projects`;
   private readonly eventsBase = `${environment.apiUrl}/work/calendar-events`;
 
-  getProjectCalendar(projectId: string): Observable<ProjectCalendarItemDto[]> {
-    return this.http.get<ProjectCalendarItemDto[]>(`${this.projectsBase}/${projectId}/calendar`);
+  getProjectCalendar(projectId: string): Observable<ProjectCalendarDto> {
+    return this.http.get<ProjectCalendarDto>(`${this.projectsBase}/${projectId}/calendar`);
   }
 
   createEvent(projectId: string, payload: CreateCalendarEventRequestDto): Observable<CalendarEventDto> {

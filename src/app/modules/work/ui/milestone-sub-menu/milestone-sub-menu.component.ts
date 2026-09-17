@@ -13,7 +13,6 @@ const BASE_TABS: SubMenuTab[] = [
   { label: 'Tree', segment: 'tree' },
   { label: 'Board', segment: 'board', projectLevel: true },
   { label: 'Backlog', segment: 'backlog', projectLevel: true },
-    { label: 'My Task', segment: 'my-task', projectLevel: true },
   { label: 'Approvals', segment: 'approvals' },
   { label: 'Calendar', segment: 'calendar', projectLevel: true }
 
@@ -27,13 +26,13 @@ const SETTINGS_TAB: SubMenuTab = { label: 'Settings', segment: 'settings', proje
   standalone: true,
   imports: [RouterLink, RouterLinkActive],
   template: `
-    <div class="mb-2">
-      <nav class="flex gap-1 border-b border-[var(--color-border)]" data-testid="sub-menu-tabs">
+    <div class="w-full">
+      <nav class="flex w-full gap-1 overflow-x-auto" data-testid="sub-menu-tabs">
         @for (tab of tabs(); track tab.segment) {
           <a
             [routerLink]="tab.projectLevel ? [tab.segment] : ['milestones', milestoneId(), tab.segment]"
-            routerLinkActive="border-b-2 border-[var(--color-focus-ring)] font-semibold text-[var(--color-text-primary)]"
-            class="flex items-center gap-1.5 px-3 py-2 text-sm text-[var(--color-text-secondary)] transition-colors hover:text-[var(--color-text-primary)]"
+            routerLinkActive="active-tab"
+            class="sub-menu-tab flex items-center gap-1.5 px-3 py-2 text-sm text-[var(--color-text-secondary)] transition-colors hover:text-[var(--color-text-primary)]"
             data-testid="sub-menu-tab"
           >
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" [attr.data-testid]="'sub-menu-tab-icon-' + tab.segment">
@@ -51,11 +50,6 @@ const SETTINGS_TAB: SubMenuTab = { label: 'Settings', segment: 'settings', proje
                 @case ('backlog') {
                   <path d="M4 6h16M4 12h16M4 18h10" />
                 }
-                @case ('my-task') {
-                  <path d="M9 11l3 3 8-8" />
-                  <path d="M20 12v6a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h9" />
-                }
-                
                 @case ('approvals') {
                   <circle cx="12" cy="12" r="9" />
                   <path d="M8 12l2.5 2.5L16 9" />
@@ -76,7 +70,30 @@ const SETTINGS_TAB: SubMenuTab = { label: 'Settings', segment: 'settings', proje
         }
       </nav>
     </div>
-  `
+  `,
+  styles: [
+    `
+      :host {
+        display: block;
+        width: 100%;
+      }
+      nav {
+        scrollbar-width: none;
+      }
+      nav::-webkit-scrollbar {
+        display: none;
+      }
+      .sub-menu-tab {
+        border-bottom: 2px solid transparent;
+        margin-bottom: -1px;
+      }
+      .sub-menu-tab.active-tab {
+        border-bottom-color: var(--color-focus-ring);
+        font-weight: 600;
+        color: var(--color-text-primary);
+      }
+    `
+  ]
 })
 export class MilestoneSubMenuComponent {
   milestoneId = input.required<string>();

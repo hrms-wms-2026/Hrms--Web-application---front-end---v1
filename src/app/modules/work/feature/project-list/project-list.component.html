@@ -1,53 +1,129 @@
-<div class="flex flex-wrap items-center justify-between gap-3 pb-2 mb-2 border-b border-[var(--color-border)]">
-  <app-breadcrumb-header parentLabel="Work" currentLabel="Projects" icon="work" />
-  <div class="flex flex-wrap items-center justify-end gap-2">
-    <app-project-filter-bar
-      (categoryChanged)="onCategoryFilterChanged($event)"
-      (achievedFilterChanged)="onAchievedFilterChanged($event)"
-    />
-    <app-button variant="primary" (pressed)="openCreateModal()">+ Create project</app-button>
-  </div>
-</div>
+<div class="flex h-full min-h-0 flex-col">
+  <header class="work-page-header">
+    <div class="work-header-row">
+      <app-breadcrumb-header parentLabel="Work" currentLabel="Projects" icon="work" />
+      <div class="work-controls">
+        <!-- Single View Mode Toggle Button: List -> Card -> Table (Base: List) -->
+        <button
+          type="button"
+          class="work-view-cycle-btn"
+          (click)="cycleViewMode()"
+          [attr.aria-label]="viewModeAriaLabel()"
+          [title]="viewModeTitle()"
+          data-testid="work-view-cycle-btn"
+        >
+          @if (viewMode() === 'list') {
+            <svg class="h-3.5 w-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <line x1="8" y1="6" x2="21" y2="6" />
+              <line x1="8" y1="12" x2="21" y2="12" />
+              <line x1="8" y1="18" x2="21" y2="18" />
+              <line x1="3" y1="6" x2="3.01" y2="6" />
+              <line x1="3" y1="12" x2="3.01" y2="12" />
+              <line x1="3" y1="18" x2="3.01" y2="18" />
+            </svg>
+          } @else if (viewMode() === 'card') {
+            <svg class="h-3.5 w-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <rect x="3" y="3" width="7" height="7" rx="1" />
+              <rect x="14" y="3" width="7" height="7" rx="1" />
+              <rect x="14" y="14" width="7" height="7" rx="1" />
+              <rect x="3" y="14" width="7" height="7" rx="1" />
+            </svg>
+          } @else if (viewMode() === 'table') {
+            <svg class="h-3.5 w-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <rect x="3" y="3" width="18" height="18" rx="2" />
+              <path d="M3 9h18" />
+              <path d="M3 15h18" />
+              <path d="M9 3v18" />
+            </svg>
+          }
+        </button>
 
-<app-my-invitations-panel
-  [invitations]="detailStore.myInvitations()"
-  (acceptRequested)="onAcceptInvitation($event)"
-  (rejectRequested)="onRejectInvitation($event)"
-/>
-
-<div class="mt-2">
-  @if (store.loading()) {
-    <app-loader label="Loading projects…" />
-  } @else if (store.error()) {
-    <app-error-state [message]="store.error()!" [retryable]="true" (retry)="store.loadProjects()" />
-  } @else if (store.filteredProjects().length === 0) {
-    <app-empty-state title="No projects yet" description="Create your first project to get started.">
-      <app-button variant="primary" (pressed)="openCreateModal()">+ Create project</app-button>
-    </app-empty-state>
-  } @else {
-    <div class="grid grid-cols-1 gap-4 lg:grid-cols-[minmax(0,1fr)_24rem] lg:items-start">
-      <div class="flex flex-col gap-2" data-testid="project-list">
-        @for (project of store.filteredProjects(); track project.id) {
-          <app-project-list-row
-            [project]="project"
-            [selected]="selectedProject()?.id === project.id"
-            (selectedChange)="onSelectProject(project)"
-          />
-        }
+        <app-project-filter-bar
+          (categoriesChanged)="onCategoryFilterChanged($event)"
+          (achievedFilterChanged)="onAchievedFilterChanged($event)"
+        />
+        <app-button variant="primary" (pressed)="openCreateModal()">+ Create project</app-button>
       </div>
-      @if (selectedProject(); as selected) {
-        <div class="lg:sticky lg:top-4">
-          <app-project-explanation-card
-            [project]="selected"
-            (viewed)="onView(selected)"
-            (achieveRequested)="onAchieve(selected)"
-            (settingsRequested)="onProjectSettingsRequested(selected)"
-            (membersRequested)="onMembersRequested()"
+    </div>
+  </header>
+
+  <app-my-invitations-panel
+    class="shrink-0"
+    [invitations]="detailStore.myInvitations()"
+    (acceptRequested)="onAcceptInvitation($event)"
+    (rejectRequested)="onRejectInvitation($event)"
+  />
+
+  <div class="mt-2 min-h-0 flex-1 overflow-hidden">
+    @if (store.loading()) {
+      <app-loader label="Loading projects…" />
+    } @else if (store.error()) {
+      <app-error-state [message]="store.error()!" [retryable]="true" (retry)="store.loadProjects()" />
+    } @else if (store.filteredProjects().length === 0) {
+      <app-empty-state title="No projects yet" description="Create your first project to get started.">
+        <app-button variant="primary" (pressed)="openCreateModal()">+ Create project</app-button>
+      </app-empty-state>
+    } @else {
+      <!-- TABLE VIEW -->
+      @if (viewMode() === 'table') {
+        <div class="h-full overflow-y-auto pb-4">
+          <app-project-table-view
+            [projects]="store.filteredProjects()"
+            [categories]="categoryStore.categories()"
+            (rowSelected)="onSelectProject($event)"
+            (viewRequested)="onView($event)"
+            (settingsRequested)="onProjectSettingsRequested($event)"
+            (achieveRequested)="onAchieve($event)"
+            (membersRequested)="onMembersRequestedForProject($event)"
+            (deleteRequested)="openDeleteConfirm($event)"
           />
         </div>
       }
-    </div>
-  }
+
+      <!-- LIST VIEW (Split Master-Detail) -->
+      @else if (viewMode() === 'list') {
+        <div class="grid h-full grid-cols-1 gap-4 lg:grid-cols-[minmax(0,1fr)_26.5rem] lg:items-start">
+          <div class="flex flex-col gap-2.5 lg:h-full lg:min-h-0 lg:overflow-y-auto lg:pr-1" data-testid="project-list">
+            @for (project of store.filteredProjects(); track project.id) {
+              <app-project-list-row
+                [project]="project"
+                [selected]="selectedProject()?.id === project.id"
+                (selectedChange)="onSelectProject(project)"
+              />
+            }
+          </div>
+          @if (selectedProject(); as selected) {
+            <div class="lg:self-start">
+              <app-project-explanation-card
+                [project]="selected"
+                (viewed)="onView(selected)"
+                (achieveRequested)="onAchieve(selected)"
+                (settingsRequested)="onProjectSettingsRequested(selected)"
+                (membersRequested)="onMembersRequested()"
+              />
+            </div>
+          }
+        </div>
+      }
+
+      <!-- CARD VIEW (Grid) -->
+      @else if (viewMode() === 'card') {
+        <div class="h-full overflow-y-auto pb-4">
+          <div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4" data-testid="project-grid">
+            @for (project of store.filteredProjects(); track project.id) {
+              <app-project-card
+                [project]="project"
+                [expanded]="expandedCardIds().has(project.id)"
+                (viewed)="onView(project)"
+                (settingsRequested)="onProjectSettingsRequested(project)"
+                (toggleExpandRequested)="toggleCardExpand(project.id)"
+              />
+            }
+          </div>
+        </div>
+      }
+    }
+  </div>
 </div>
 
 <app-member-management-popup

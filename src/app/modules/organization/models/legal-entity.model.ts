@@ -42,6 +42,13 @@ export interface LegalEntityGeneralSettings {
   readonly workEndTime: string | null;
   /** Default company break duration in minutes. Null when not configured. Independent of workStartTime/workEndTime. */
   readonly breakDurationMinutes: number | null;
+  /** Free-text office address label. Null when office location is not configured. */
+  readonly officeAddress: string | null;
+  /** Office latitude. Set together with officeLongitude or not at all. The geofence radius for
+   *  the on-site/remote location checks lives on ClockInPolicy (AllowedRadiusMeters), not here. */
+  readonly officeLatitude: number | null;
+  /** Office longitude. Set together with officeLatitude or not at all. */
+  readonly officeLongitude: number | null;
 }
 
 /**
@@ -75,6 +82,12 @@ export interface UpdateLegalEntityGeneralSettingsRequest {
   workEndTime: string | null;
   /** Default company break duration in minutes. Null to clear. Independent of workStartTime/workEndTime. */
   breakDurationMinutes: number | null;
+  /** Free-text office address label. Null to clear. */
+  officeAddress: string | null;
+  /** Office latitude. Must be set together with officeLongitude or both null. */
+  officeLatitude: number | null;
+  /** Office longitude. Must be set together with officeLatitude or both null. */
+  officeLongitude: number | null;
 }
 
 /**

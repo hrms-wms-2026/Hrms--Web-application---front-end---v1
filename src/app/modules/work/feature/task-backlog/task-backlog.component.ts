@@ -1,10 +1,13 @@
-import { Component, OnInit, computed, inject, signal } from '@angular/core';
+import { AfterViewInit, Component, OnDestroy, OnInit, TemplateRef, computed, inject, signal, viewChild } from '@angular/core';
 import { CurrentEmployeeStore } from '../../state/current-employee.store';
-import { ActivatedRoute, Router } from '@angular/router';
-import { firstValueFrom } from 'rxjs';
+import { ActivatedRoute } from '@angular/router';
+import { firstValueFrom, of } from 'rxjs';
+import { distinctUntilChanged, map } from 'rxjs/operators';
+import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { ButtonComponent } from '../../../../shared/ui/button/button.component';
 import { ErrorStateComponent } from '../../../../shared/ui/error-state/error-state.component';
 import { ProjectDetailStore } from '../../state/project-detail.store';
+import { WorkPageToolbarStore } from '../../state/work-page-toolbar.store';
 import { TaskBoardStore } from '../../state/task-board.store';
 import { SprintListStore } from '../../state/sprint-list.store';
 import { TaskApiService } from '../../data-access/task-api.service';
@@ -15,24 +18,36 @@ import { WorkTask } from '../../models/task.model';
 import { Sprint, SprintStatus } from '../../models/sprint.model';
 import { TaskCategoryColumn } from '../../models/task-category.model';
 import { toTaskCategoryColumn } from '../../utils/task-category.mapper';
-import { SelectComponent, SelectOption } from '../../../../shared/ui/select/select.component';
+import { WorkDropdownOption } from '../../ui/work-dropdown/work-dropdown.component';
+import { TaskFilterBarComponent, TaskFilterFieldConfig } from '../../ui/task-filter-bar/task-filter-bar.component';
+import { TaskFormModalComponent } from '../../ui/task-form-modal/task-form-modal.component';
 
 @Component({
   selector: 'app-task-backlog',
   standalone: true,
-  imports: [SprintTabComponent, SprintFormComponent, TaskTableComponent, ButtonComponent, ErrorStateComponent, SelectComponent],
+  imports: [SprintTabComponent, SprintFormComponent, TaskTableComponent, ButtonComponent, ErrorStateComponent, TaskFilterBarComponent, TaskFormModalComponent],
   template: `
-    <div class="task-backlog__toolbar">
-      <app-select [options]="objectiveOptions()" [value]="objectiveFilter()" ariaLabel="Module filter" [icon]="'module'" (valueChange)="setObjectiveFilter($event)" />
-      <app-select [options]="categoryOptions()" [value]="categoryFilter()" ariaLabel="Category filter" [icon]="'category'" (valueChange)="setCategoryFilter($event)" />
-      <app-select [options]="sprintStatusOptions" [value]="sprintStatusFilter()" ariaLabel="Sprint status filter" [icon]="'status'" (valueChange)="setSprintStatusFilter($event)" />
-      @if (modules().length > 0) {
-        <app-button variant="secondary" (pressed)="openCreateTask()">Create task</app-button>
-      }
-      @if (ownedModuleOptions().length > 0) {
-        <app-button variant="primary" (pressed)="createSprintOpen.set(true)">Create Sprint</app-button>
-      }
-    </div>
+    <ng-template #toolbarTpl>
+      <div class="task-backlog__toolbar">
+        <app-task-filter-bar [fields]="filterFields()" [values]="filterValues()" (fieldChanged)="onFilterFieldChanged($event)" />
+        <button
+          type="button"
+          class="task-backlog__me-toggle"
+          [class.task-backlog__me-toggle--active]="onlyMyTasks()"
+          [attr.aria-pressed]="onlyMyTasks()"
+          title="Only my tasks"
+          (click)="toggleOnlyMyTasks()"
+        >
+          {{ myInitials() }}
+        </button>
+        @if (modules().length > 0) {
+          <app-button variant="secondary" (pressed)="openCreateTask()">Create task</app-button>
+        }
+        @if (ownedModuleOptions().length > 0) {
+          <app-button variant="primary" (pressed)="createSprintOpen.set(true)">Create Sprint</app-button>
+        }
+      </div>
+    </ng-template>
 
     @if (createSprintOpen() && ownedModuleOptions().length > 0) {
         <app-sprint-form
@@ -63,24 +78,29 @@ import { SelectComponent, SelectOption } from '../../../../shared/ui/select/sele
     } @else if (store.error()) {
       <app-error-state [message]="store.error()!" [retryable]="true" (retry)="reloadTasks()" />
     } @else {
-      @for (sprint of filteredSprints(); track sprint.id) {
-        <app-sprint-tab
-          [sprint]="sprint"
-          [isObjectiveOwner]="objectiveOwners()[sprint.objectiveId] ?? false"
-          [tasks]="tasksForSprint(sprint.id)"
-          [statusNames]="statusNames()"
-          [statuses]="store.statuses()"
-          [objectiveOwners]="objectiveOwners()"
-          [currentEmployeeId]="currentEmployee.id()"
-          [expanded]="expandedSprintId() === sprint.id"
-          (toggled)="toggleExpanded(sprint.id)"
-          (editRequested)="editingSprint.set(sprint)"
-          (statusChangeRequested)="onSprintStatusChangeRequested(sprint, $event)"
-          (createTaskRequested)="openCreateTask()"
-          (taskViewed)="onTaskViewed($event)"
-          (taskStatusChangeRequested)="onTaskStatusChangeRequested($event)"
-          (taskChanged)="reloadTasks()"
-        />
+      @if (filteredSprints().length > 0) {
+        <div class="task-backlog__sprints">
+          <h3 class="task-backlog__sprints-title">Sprint</h3>
+          @for (sprint of filteredSprints(); track sprint.id) {
+            <app-sprint-tab
+              [sprint]="sprint"
+              [isObjectiveOwner]="objectiveOwners()[sprint.objectiveId] ?? false"
+              [tasks]="tasksForSprint(sprint.id)"
+              [statusNames]="statusNames()"
+              [statuses]="store.statuses()"
+              [objectiveOwners]="objectiveOwners()"
+              [currentEmployeeId]="currentEmployee.id()"
+              [expanded]="expandedSprintId() === sprint.id"
+              (toggled)="toggleExpanded(sprint.id)"
+              (editRequested)="editingSprint.set(sprint)"
+              (statusChangeRequested)="onSprintStatusChangeRequested(sprint, $event)"
+              (createTaskRequested)="openCreateTask()"
+              (taskViewed)="onTaskViewed($event)"
+              (taskStatusChangeRequested)="onTaskStatusChangeRequested($event)"
+              (taskChanged)="reloadTasks()"
+            />
+          }
+        </div>
       }
 
       @if (unsortedTasks().length > 0) {
@@ -100,24 +120,38 @@ import { SelectComponent, SelectOption } from '../../../../shared/ui/select/sele
       }
     }
 
+    <app-task-form-modal
+      [open]="taskModalOpen()"
+      [mode]="taskModalMode()"
+      [projectId]="projectId()"
+      [taskId]="taskModalTaskId()"
+      [prefillModuleId]="modalPrefillModuleId()"
+      [prefillSprintId]="modalPrefillSprintId()"
+      (created)="onTaskModalDone()"
+      (saved)="onTaskModalDone()"
+      (closed)="taskModalOpen.set(false)"
+    />
   `,
   styles: [`
-    .task-backlog__toolbar { display: flex; flex-wrap: wrap; justify-content: flex-end; align-items: flex-end; gap: 8px; margin-bottom: 16px; }
-    .task-backlog__toolbar app-select { flex: 1 1 180px; max-width: 220px; }
-    @media (max-width: 720px) { .task-backlog__toolbar { justify-content: stretch; } .task-backlog__toolbar app-select { flex: 1 1 180px; max-width: none; } .task-backlog__toolbar app-button { flex: 1 1 100%; } }
+    .task-backlog__toolbar { display: flex; flex-wrap: wrap; justify-content: flex-end; align-items: center; gap: 8px; }
+    .task-backlog__me-toggle { display: inline-flex; align-items: center; justify-content: center; width: 30px; height: 30px; border: 1px solid var(--color-border); border-radius: 999px; background: var(--color-surface); color: var(--color-text-secondary); font: inherit; font-size: 11px; font-weight: 700; cursor: pointer; transition: all 140ms ease; }
+    .task-backlog__me-toggle:hover { border-color: var(--color-accent); color: var(--color-accent); }
+    .task-backlog__me-toggle--active { border-color: var(--color-accent); background: var(--color-accent); color: var(--color-accent-contrast); }
     .task-backlog__sprint-message { color: var(--color-danger-text, var(--color-danger)); font-size: 12px; margin-bottom: 8px; }
+    .task-backlog__sprints { margin-top: 4px; }
+    .task-backlog__sprints-title { font-size: 13px; font-weight: 600; color: var(--color-text-primary); margin: 0 0 10px; }
     .task-backlog__unsorted { margin-top: 18px; }
     .task-backlog__unsorted-title { font-size: 13px; font-weight: 600; color: var(--color-text-primary); margin: 0 0 10px; }
-    @media (max-width: 720px) { .task-backlog__toolbar { justify-content: stretch; } .task-backlog__filter-shell { flex: 1 1 180px; } .task-backlog__toolbar app-button { flex: 1 1 100%; } }
   `]
 })
-export class TaskBacklogComponent implements OnInit {
+export class TaskBacklogComponent implements OnInit, AfterViewInit, OnDestroy {
   protected readonly store = inject(TaskBoardStore);
   protected readonly sprintStore = inject(SprintListStore);
   protected readonly projectStore = inject(ProjectDetailStore);
+  private readonly toolbarStore = inject(WorkPageToolbarStore);
+  private readonly toolbarTpl = viewChild.required<TemplateRef<unknown>>('toolbarTpl');
   private readonly taskApi = inject(TaskApiService);
   private readonly route = inject(ActivatedRoute);
-  private readonly router = inject(Router);
   protected readonly currentEmployee = inject(CurrentEmployeeStore);
 
   protected readonly createSprintOpen = signal(false);
@@ -126,10 +160,13 @@ export class TaskBacklogComponent implements OnInit {
   protected readonly expandedSprintId = signal<string | null>(null);
   protected readonly assignableMembers = signal<{ employeeId: string; name: string }[]>([]);
   protected readonly sprintStatusFilter = signal<'all' | SprintStatus>('all');
-  protected readonly objectiveFilter = signal('all');
-  protected readonly categoryFilter = signal('all');
+  protected readonly objectiveFilter = signal<string[]>([]);
+  protected readonly categoryFilter = signal<string[]>([]);
+  protected readonly assigneeFilter = signal<string[]>([]);
+  protected readonly statusFilter = signal<string[]>([]);
+  protected readonly priorityFilter = signal<string[]>([]);
   protected readonly categories = signal<TaskCategoryColumn[]>([]);
-  protected readonly sprintStatusOptions: readonly SelectOption[] = [
+  protected readonly sprintStatusOptions: readonly WorkDropdownOption[] = [
     { value: 'all', label: 'All sprint statuses' },
     { value: 'future', label: 'Future' },
     { value: 'active', label: 'Active' },
@@ -138,6 +175,27 @@ export class TaskBacklogComponent implements OnInit {
     { value: 'achieved', label: 'Achieved' }
   ];
 
+  constructor() {
+    // Switching projects via the breadcrumb switcher navigates to a sibling route matching the
+    // same path shape (/work/:id/backlog) - Angular reuses this component instance rather than
+    // re-instantiating it, so the :id param must be watched reactively, not just read once.
+    const paramMap$ = this.route.paramMap ?? of(this.route.snapshot?.paramMap);
+    paramMap$
+      .pipe(
+        map((paramMap) => paramMap?.get('id') ?? ''),
+        distinctUntilChanged(),
+        takeUntilDestroyed()
+      )
+      .subscribe((projectId) => {
+        this.projectId.set(projectId);
+        if (!projectId) return;
+        void this.store.loadBoard(projectId);
+        void this.sprintStore.loadForProject(projectId);
+        void this.loadCategories(projectId);
+        void this.loadAssignableMembers(projectId);
+      });
+  }
+
   protected readonly modules = computed(() => this.projectStore.milestones());
   protected readonly objectiveOwners = computed(() =>
     Object.fromEntries(this.modules().map((module) => [module.objectiveId, module.isOwner]))
@@ -145,14 +203,47 @@ export class TaskBacklogComponent implements OnInit {
   protected readonly moduleOptions = computed(() =>
     this.modules().map((m) => ({ objectiveId: m.objectiveId, title: m.title, isOwner: m.isOwner }))
   );
-  protected readonly objectiveOptions = computed<SelectOption[]>(() => [
-    { value: 'all', label: 'All modules' },
-    ...this.modules().map((module) => ({ value: module.objectiveId, label: module.title }))
+  protected readonly objectiveOptions = computed<WorkDropdownOption[]>(() =>
+    this.modules().map((module) => ({ value: module.objectiveId, label: module.title }))
+  );
+  protected readonly categoryOptions = computed<WorkDropdownOption[]>(() =>
+    this.categories().map((category) => ({ value: category.id, label: category.name }))
+  );
+  protected readonly statusOptions = computed<WorkDropdownOption[]>(() =>
+    this.store.statuses().map((status) => ({ value: status.id, label: status.name }))
+  );
+  protected readonly priorityOptions: readonly WorkDropdownOption[] = [
+    { value: 'low', label: 'Low' },
+    { value: 'medium', label: 'Medium' },
+    { value: 'high', label: 'High' },
+    { value: 'critical', label: 'Critical' }
+  ];
+  protected readonly filterFields = computed<TaskFilterFieldConfig[]>(() => [
+    { key: 'module', label: 'Module', icon: 'module', kind: 'multi', options: this.objectiveOptions() },
+    { key: 'category', label: 'Category', icon: 'category', kind: 'multi', options: this.categoryOptions() },
+    { key: 'assignee', label: 'Assignee', icon: 'people', kind: 'multi', options: this.assigneeFilterOptions() },
+    { key: 'sprintStatus', label: 'Sprint status', icon: 'sprint', kind: 'single', options: this.sprintStatusOptions, defaultValues: ['all'] },
+    { key: 'status', label: 'Status', icon: 'status', kind: 'multi', options: this.statusOptions() },
+    { key: 'priority', label: 'Priority', icon: 'priority', kind: 'multi', options: this.priorityOptions }
   ]);
-  protected readonly categoryOptions = computed<SelectOption[]>(() => [
-    { value: 'all', label: 'All categories' },
-    ...this.categories().map((category) => ({ value: category.id, label: category.name }))
-  ]);
+  protected readonly filterValues = computed<Record<string, string[]>>(() => ({
+    module: this.objectiveFilter(),
+    category: this.categoryFilter(),
+    assignee: this.assigneeFilter(),
+    sprintStatus: [this.sprintStatusFilter()],
+    status: this.statusFilter(),
+    priority: this.priorityFilter()
+  }));
+  protected readonly onlyMyTasks = computed(() => {
+    const me = this.currentEmployee.id();
+    const assignees = this.assigneeFilter();
+    return !!me && assignees.length === 1 && assignees[0] === me;
+  });
+  protected readonly myInitials = computed(() => {
+    const me = this.currentEmployee.id();
+    const name = this.assignableMembers().find((m) => m.employeeId === me)?.name ?? '';
+    return this.getInitials(name);
+  });
   // Sprint creation has no pending/request path (unlike tasks) - only modules the user owns may
   // ever be offered here, or SprintApiService.create would just fail for a non-owner's pick.
   protected readonly ownedModuleOptions = computed(() => this.moduleOptions().filter((m) => m.isOwner));
@@ -167,21 +258,31 @@ export class TaskBacklogComponent implements OnInit {
   });
 
   ngOnInit(): void {
-    const projectId = this.route.snapshot?.paramMap?.get('id') ?? '';
-    this.projectId.set(projectId);
-    if (!projectId) return;
-
-    void this.store.loadBoard(projectId);
-    void this.sprintStore.loadForProject(projectId);
-    void this.loadCategories(projectId);
-    void this.loadAssignableMembers(projectId);
+    const assignee = this.route.snapshot?.queryParamMap?.get('assignee');
+    if (assignee) this.assigneeFilter.set([assignee]);
     void this.currentEmployee.ensureLoaded();
   }
 
+  ngAfterViewInit(): void {
+    this.toolbarStore.setTemplate(this.toolbarTpl());
+  }
+
+  ngOnDestroy(): void {
+    this.toolbarStore.setTemplate(null);
+  }
+
   private filteredTasks(): WorkTask[] {
+    const assignees = this.assigneeFilter();
+    const objectives = this.objectiveFilter();
+    const categories = this.categoryFilter();
+    const statuses = this.statusFilter();
+    const priorities = this.priorityFilter();
     return this.store.tasks().filter((task) =>
-      (this.objectiveFilter() === 'all' || task.objectiveId === this.objectiveFilter()) &&
-      (this.categoryFilter() === 'all' || task.categoryId === this.categoryFilter())
+      (objectives.length === 0 || objectives.includes(task.objectiveId)) &&
+      (categories.length === 0 || categories.includes(task.categoryId)) &&
+      (assignees.length === 0 || task.assigneeEmployeeIds.some((id) => assignees.includes(id))) &&
+      (statuses.length === 0 || statuses.includes(task.statusId)) &&
+      (priorities.length === 0 || priorities.includes(task.priority))
     );
   }
 
@@ -193,12 +294,55 @@ export class TaskBacklogComponent implements OnInit {
     this.expandedSprintId.set(this.expandedSprintId() === sprintId ? null : sprintId);
   }
 
-  protected setObjectiveFilter(value: string): void { this.objectiveFilter.set(value); }
-  protected setCategoryFilter(value: string): void { this.categoryFilter.set(value); }
+  protected readonly assigneeFilterOptions = computed<WorkDropdownOption[]>(() =>
+    this.assignableMembers().map((member) => ({ value: member.employeeId, label: member.name }))
+  );
+
+  protected setObjectiveFilter(ids: string[]): void { this.objectiveFilter.set(ids); }
+  protected setCategoryFilter(ids: string[]): void { this.categoryFilter.set(ids); }
+  protected setAssigneeFilter(ids: string[]): void { this.assigneeFilter.set(ids); }
   protected setSprintStatusFilter(value: string): void { this.sprintStatusFilter.set(value as 'all' | SprintStatus); }
 
+  protected onFilterFieldChanged(event: { key: string; values: string[] }): void {
+    switch (event.key) {
+      case 'module': this.setObjectiveFilter(event.values); break;
+      case 'category': this.setCategoryFilter(event.values); break;
+      case 'assignee': this.setAssigneeFilter(event.values); break;
+      case 'sprintStatus': this.setSprintStatusFilter(event.values[0] ?? 'all'); break;
+      case 'status': this.statusFilter.set(event.values); break;
+      case 'priority': this.priorityFilter.set(event.values); break;
+    }
+  }
+
+  /** Shortcut toggle mirroring the filter's own Assignee row - turning it on replaces any existing assignee selection with just me, off clears it. */
+  protected toggleOnlyMyTasks(): void {
+    this.setAssigneeFilter(this.onlyMyTasks() ? [] : [this.currentEmployee.id()]);
+  }
+
+  private getInitials(name: string): string {
+    if (!name) return '?';
+    const parts = name.trim().split(/\s+/);
+    if (parts.length >= 2) return (parts[0][0] + parts[1][0]).toUpperCase();
+    return name.slice(0, 2).toUpperCase();
+  }
+
+  protected readonly taskModalOpen = signal(false);
+  protected readonly taskModalMode = signal<'create' | 'edit'>('create');
+  protected readonly taskModalTaskId = signal('');
+
+  protected readonly modalPrefillModuleId = computed(() => {
+    const filter = this.objectiveFilter();
+    return filter.length === 1 ? filter[0] : '';
+  });
+
+  protected readonly modalPrefillSprintId = computed(() => {
+    return this.expandedSprintId() ?? '';
+  });
+
   protected openCreateTask(): void {
-    void this.router.navigate(['/work', this.projectId(), 'task', 'new'], { queryParams: { sprintRequired: 'false' } });
+    this.taskModalMode.set('create');
+    this.taskModalTaskId.set('');
+    this.taskModalOpen.set(true);
   }
 
   async reloadTasks(): Promise<void> {
@@ -206,7 +350,14 @@ export class TaskBacklogComponent implements OnInit {
   }
 
   onTaskViewed(task: WorkTask): void {
-    void this.router.navigate(['/work', this.projectId(), 'task', task.id]);
+    this.taskModalMode.set('edit');
+    this.taskModalTaskId.set(task.id);
+    this.taskModalOpen.set(true);
+  }
+
+  protected onTaskModalDone(): void {
+    this.taskModalOpen.set(false);
+    void this.reloadTasks();
   }
 
   async onSprintStatusChangeRequested(sprintOrId: Sprint | string, newStatus: string): Promise<void> {

@@ -1,0 +1,88 @@
+<app-modal [open]="open" title="New Leave Request" (closed)="onClose()">
+  <div class="nlw-body">
+    @if (onBehalf && step() === 1) {
+      <button type="button" class="nlw-picker-trigger" (click)="pickerOpen.set(true)">{{ employeeId() ? 'Employee selected' : 'Choose employee' }}</button>
+      <app-employee-picker [open]="pickerOpen()" (selected)="onEmployeePicked($event)" (closed)="pickerOpen.set(false)" />
+    }
+
+    @if (step() === 1) {
+      <label class="nlw-field">
+        <span>Leave Type</span>
+        <select data-testid="leave-type-select" [value]="draft().leaveTypeId" (change)="onLeaveTypeChange($any($event.target).value)">
+          <option value="">Select a leave type</option>
+          @for (type of activeLeaveTypes(); track type.id) {
+            <option [value]="type.id" [class.nlw-zero-balance]="remainingDaysFor(type.id) === 0">
+              {{ type.name }}@if (remainingDaysFor(type.id) !== null) { - {{ remainingDaysFor(type.id) }} days remaining}
+            </option>
+          }
+        </select>
+      </label>
+    }
+
+    @if (step() === 2) {
+      <app-date-picker label="Start date" [value]="draft().startDate" (valueChange)="draft.update(d => ({...d, startDate: $event}))" />
+      <app-date-picker label="End date" [value]="draft().endDate" (valueChange)="draft.update(d => ({...d, endDate: $event}))" />
+      <label class="nlw-field">
+        <span>Half day</span>
+        <select [value]="draft().halfDayPeriod ?? ''" (change)="draft.update(d => ({...d, halfDayPeriod: ($any($event.target).value || null)}))">
+          <option value="">Full day(s)</option>
+          <option value="am">AM</option>
+          <option value="pm">PM</option>
+        </select>
+      </label>
+    }
+
+    @if (step() === 3) {
+      @if (previewing) {
+        <p class="nlw-muted">Calculating total and checking policy warnings...</p>
+      } @else if (previewError) {
+        <p class="nlw-error">{{ previewError }}</p>
+      } @else if (previewResult) {
+        <p class="nlw-total">Total leave days: <strong>{{ previewResult.totalDays }}</strong></p>
+        @if (previewResult.noticePeriodMissed) {
+          <p class="nlw-warning">This request does not meet the minimum notice period. Your manager will be informed.</p>
+        }
+        @for (warning of previewResult.conflictSnapshot.warnings; track warning.code) {
+          <p class="nlw-warning">{{ warning.message }}</p>
+        }
+        @if (previewResult.conflictSnapshot.calendarConflicts.length > 0) {
+          <details class="nlw-conflicts">
+            <summary>{{ previewResult.conflictSnapshot.calendarConflicts.length }} calendar conflict(s) - does not block submission</summary>
+            @for (conflict of previewResult.conflictSnapshot.calendarConflicts; track conflict.title) {
+              <p>{{ conflict.title }} ({{ conflict.source }})</p>
+            }
+          </details>
+        }
+      }
+    }
+
+    @if (step() === 4) {
+      <label class="nlw-field">
+        <span>Reason</span>
+        <textarea rows="3" [value]="draft().reason ?? ''" (input)="draft.update(d => ({...d, reason: ($any($event.target).value || null)}))"></textarea>
+      </label>
+      <p class="nlw-muted">Document upload is not available yet - if this leave type requires a document past a certain length, submission will be blocked with an explanation.</p>
+    }
+
+    @if (step() === 5) {
+      <div class="nlw-review">
+        <span>Type</span><strong>{{ draft().leaveTypeId }}</strong>
+        <span>Dates</span><strong>{{ draft().startDate }} - {{ draft().endDate }}</strong>
+        @if (previewResult) {
+          <span>Total Days</span><strong>{{ previewResult.totalDays }}</strong>
+          <span>Balance</span><strong>{{ previewResult.balanceImpact.currentRemainingDays }} &rarr; {{ previewResult.balanceImpact.remainingAfterSubmitDays }}</strong>
+        }
+      </div>
+      @if (submitError) { <p class="nlw-error">{{ submitError }}</p> }
+    }
+
+    <div class="nlw-actions">
+      @if (step() > 1) { <button type="button" class="nlw-secondary" (click)="onBack()">Back</button> }
+      @if (step() < 5) {
+        <button type="button" class="nlw-primary" [disabled]="!canLeaveStep(step())" (click)="onNext()">Continue</button>
+      } @else {
+        <button type="button" class="nlw-primary" [disabled]="submitting || !previewResult" (click)="onSubmit()">{{ submitting ? 'Submitting...' : 'Submit' }}</button>
+      }
+    </div>
+  </div>
+</app-modal>

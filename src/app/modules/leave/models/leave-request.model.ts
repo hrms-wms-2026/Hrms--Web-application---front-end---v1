@@ -1,0 +1,111 @@
+/** Matches ONEVO.Application.Features.Leave.Request.DTOs.Responses.* verbatim. */
+export interface LeaveRequestBalanceImpactResponse {
+  currentRemainingDays: number;
+  pendingAfterSubmitDays: number;
+  remainingAfterSubmitDays: number;
+}
+
+export interface LeaveRequestApproverResponse {
+  approverEmployeeId: string;
+  sequenceOrder: number;
+  status: 'pending' | 'approved' | 'rejected' | 'skipped';
+  delegatedFromApproverId: string | null;
+}
+
+export interface LeaveRequestWarningResponse {
+  code: string;
+  message: string;
+}
+
+export interface LeaveRequestCalendarConflictResponse {
+  source: string;
+  title: string;
+  startsAt: string | null;
+  endsAt: string | null;
+}
+
+export interface LeaveRequestConflictSnapshotResponse {
+  warnings: LeaveRequestWarningResponse[];
+  calendarConflicts: LeaveRequestCalendarConflictResponse[];
+  teamAbsencePercent: number | null;
+}
+
+export interface LeaveRequestResponse {
+  id: string;
+  employeeId: string;
+  leaveTypeId: string;
+  leaveTypeName: string;
+  leaveTypeCode: string;
+  startDate: string;
+  endDate: string;
+  halfDayPeriod: 'am' | 'pm' | null;
+  totalDays: number;
+  paidDays: number;
+  unpaidDays: number;
+  status: 'pending' | 'approved' | 'rejected' | 'cancelled';
+  noticePeriodMissed: boolean;
+  submittedOnBehalfOfBy: string | null;
+  balanceImpact: LeaveRequestBalanceImpactResponse;
+  approvers: LeaveRequestApproverResponse[];
+  conflictSnapshot: LeaveRequestConflictSnapshotResponse;
+  createdAt: string;
+}
+
+export interface LeaveRequestListItemResponse {
+  id: string;
+  employeeId: string;
+  leaveTypeId: string;
+  leaveTypeName: string;
+  leaveTypeCode: string;
+  startDate: string;
+  endDate: string;
+  totalDays: number;
+  paidDays: number;
+  unpaidDays: number;
+  status: 'pending' | 'approved' | 'rejected' | 'cancelled';
+  noticePeriodMissed: boolean;
+  createdAt: string;
+  updatedAt: string | null;
+}
+
+/** Matches ONEVO.Api.Contracts.Leave.Requests.SubmitLeaveRequestRequest verbatim. Shared by preview and submit. */
+export interface SubmitLeaveRequestRequest {
+  leaveTypeId: string;
+  startDate: string;
+  endDate: string;
+  halfDayPeriod: 'am' | 'pm' | null;
+  reason: string | null;
+  fileRecordIds: string[] | null;
+}
+
+/** Matches ONEVO.Api.Contracts.Leave.Requests.SubmitLeaveRequestOnBehalfRequest verbatim. */
+export interface SubmitLeaveRequestOnBehalfRequest extends SubmitLeaveRequestRequest {
+  employeeId: string;
+}
+
+export interface LeaveRequestListFilter {
+  status?: string;
+  fromDate?: string;
+  toDate?: string;
+  leaveTypeId?: string;
+}
+
+/** Matches ONEVO.Api.Contracts.Leave.Requests.CancelLeaveRequestRequest verbatim. */
+export interface CancelLeaveRequestRequest {
+  reason: string | null;
+  effectiveDate: string | null;
+  expectedVersion: string | null;
+}
+
+/** Matches ONEVO.Application.Features.Leave.Cancellation.DTOs.Responses.CancelLeaveRequestResponse verbatim. */
+export interface CancelLeaveRequestResponse {
+  requestId: string;
+  status: string;
+  isPartialCancellation: boolean;
+  effectiveDate: string | null;
+  releasedPendingDays: number;
+  restoredUsedDays: number;
+  remainingDays: number;
+  reason: string | null;
+  cancelledAt: string;
+}

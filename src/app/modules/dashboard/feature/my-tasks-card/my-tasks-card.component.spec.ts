@@ -65,11 +65,11 @@ describe('MyTasksCardComponent', () => {
     expect(fixture.nativeElement.querySelector('[data-testid="my-tasks-empty"]')).toBeNull();
   });
 
-  it('links each task row directly to that task\'s detail page', async () => {
+  it('links each task row to that task highlighted on its project board', async () => {
     const { fixture } = await setup({ tasks: [makeTask()] });
 
     const row: HTMLAnchorElement = fixture.nativeElement.querySelector('[data-testid="my-tasks-row"]');
-    expect(row.getAttribute('href')).toBe('/work/project-1/task/task-1');
+    expect(row.getAttribute('href')).toBe('/work/project-1/board?highlightTaskId=task-1');
   });
 
   it('falls back to the empty state when the request fails', async () => {
@@ -89,7 +89,7 @@ describe('MyTasksCardComponent', () => {
     expect(fixture.nativeElement.querySelectorAll('[data-testid="my-tasks-upcoming-list"] [data-testid="my-tasks-row"]').length).toBe(1);
   });
 
-  it('links "View all tasks" to the most urgent task\'s project my-task page', async () => {
+  it('links "View all tasks" to the most urgent task\'s project board', async () => {
     const { fixture } = await setup({
       tasks: [
         makeTask({ taskId: 'overdue-1', isOverdue: true, projectId: 'project-9', objectiveId: 'objective-9' }),
@@ -98,7 +98,7 @@ describe('MyTasksCardComponent', () => {
     });
 
     const link: HTMLAnchorElement = fixture.nativeElement.querySelector('[data-testid="my-tasks-view-all-link"]');
-    expect(link.getAttribute('href')).toBe('/work/project-9/milestones/objective-9/my-task');
+    expect(link.getAttribute('href')).toBe('/work/project-9/board');
   });
 
   it('does not show "View all tasks" when there are no tasks', async () => {

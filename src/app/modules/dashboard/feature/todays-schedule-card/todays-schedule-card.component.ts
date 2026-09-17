@@ -1,6 +1,5 @@
 import { ChangeDetectionStrategy, Component, OnInit, computed, inject, signal } from '@angular/core';
 import { RouterLink } from '@angular/router';
-import { CardComponent } from '../../../../shared/ui/card/card.component';
 import { dateOnlyInTimezone, localPartsToUtcIso } from '../../../../shared/utils/timezone.util';
 import { CalendarEventApiService } from '../../../calendar/data-access/calendar-event-api.service';
 import { CalendarEventResponse } from '../../../calendar/models/calendar-event.model';
@@ -16,7 +15,7 @@ const FALLBACK_DOT_COLORS: readonly string[] = [
 @Component({
   selector: 'app-todays-schedule-card',
   standalone: true,
-  imports: [CardComponent, RouterLink],
+  imports: [RouterLink],
   templateUrl: './todays-schedule-card.component.html',
   changeDetection: ChangeDetectionStrategy.OnPush
 })
@@ -34,7 +33,15 @@ export class TodaysScheduleCardComponent implements OnInit {
       .slice(0, MAX_AGENDA_ITEMS);
   });
 
-  protected readonly nextUp = computed(() => this.agendaItems().find((item) => item.isUpcoming)?.event ?? null);
+  protected readonly nextUp = computed(
+    () => this.agendaItems().find((item) => item.isUpcoming)?.event ?? (this.agendaItems()[0]?.event ?? null)
+  );
+
+  protected readonly remainingItems = computed(() => {
+    const next = this.nextUp();
+    if (!next) return this.agendaItems();
+    return this.agendaItems().filter((item) => item.event.id !== next.id);
+  });
 
   ngOnInit(): void {
     this.api.getMyTimezone().subscribe({

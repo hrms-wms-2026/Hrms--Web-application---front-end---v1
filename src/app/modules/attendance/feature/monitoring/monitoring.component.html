@@ -1,134 +1,443 @@
 <main class="monitoring-page">
-  <header class="page-header">
-    <div>
-      <p class="eyebrow">Attendance</p>
-      <h1>Monitoring</h1>
-      <p class="subtitle">Control which monitoring features are active for employees.</p>
+  <header class="monitoring-page-header">
+    <div class="monitoring-header-row">
+      <app-breadcrumb-header parentLabel="Attendance" currentLabel="Monitoring" icon="time-attendance" />
     </div>
-    @if (legalEntityStore.selectedLegalEntity(); as company) {
-      <span class="company-context">{{ company.name }}</span>
-    }
   </header>
 
   @if (!hasReadAccess()) {
-    <section class="notice" role="status">You do not have access to view monitoring configuration.</section>
+    <section class="notice notice--access" role="status">
+      <div class="notice__icon">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <rect width="18" height="11" x="3" y="11" rx="2" ry="2"/>
+          <path d="M7 11V7a5 5 0 0 1 10 0v4"/>
+        </svg>
+      </div>
+      <div>
+        <strong>Access restricted</strong>
+        <p>You do not have access to view monitoring configuration.</p>
+      </div>
+    </section>
   } @else if (monitoringStore.loading() && !companyForm()) {
-    <section class="notice" aria-busy="true">Loading monitoring configuration…</section>
+    <div class="monitoring-skeleton" aria-busy="true">
+      <div class="skeleton-card"></div>
+      <div class="skeleton-card"></div>
+    </div>
   } @else if (monitoringStore.error()) {
-    <section class="notice error" role="alert">{{ monitoringStore.error() }}</section>
+    <section class="notice error" role="alert">
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <circle cx="12" cy="12" r="10"/>
+        <line x1="12" y1="8" x2="12" y2="12"/>
+        <line x1="12" y1="16" x2="12.01" y2="16"/>
+      </svg>
+      <span>{{ monitoringStore.error() }}</span>
+    </section>
   } @else if (companyForm(); as company) {
+    <!-- Company default section -->
     <section class="section-block">
       <div class="section-heading">
-        <div>
-          <h2>Company default</h2>
-          <p>These settings apply unless a department, position, or role has its own rule.</p>
+        <div class="section-heading__title-cluster">
+          <div class="section-heading__icon-badge">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"/>
+              <circle cx="12" cy="12" r="3"/>
+            </svg>
+          </div>
+          <div>
+            <h2>Company default</h2>
+            <p>These settings apply unless a department, position, or role has its own rule.</p>
+          </div>
         </div>
         @if (hasWriteAccess()) {
-          <button class="primary" type="button" [disabled]="monitoringStore.saving()" (click)="saveCompany()">
-            {{ monitoringStore.saving() ? 'Saving…' : 'Save defaults' }}
+          <button class="primary btn-save" type="button" [disabled]="monitoringStore.saving()" (click)="saveCompany()">
+            @if (monitoringStore.saving()) {
+              <span class="btn-spinner" aria-hidden="true"></span>
+              <span>Saving…</span>
+            } @else {
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/>
+                <polyline points="17 21 17 13 7 13 7 21"/>
+                <polyline points="7 3 7 8 15 8"/>
+              </svg>
+              <span>Save defaults</span>
+            }
           </button>
         }
       </div>
 
       <div class="setting-grid">
-        <label class="setting-row">
-          <span><strong>Location tracking</strong><small>Apply during the allowed attendance or work-time window.</small></span>
-          <input type="checkbox" [checked]="company.workLocationVerification" [disabled]="!hasWriteAccess()" (change)="setCompanyFlag('workLocationVerification', $any($event.target).checked)" />
+        <!-- 1. Location tracking -->
+        <label class="feature-card setting-row" [class.feature-card--active]="company.workLocationVerification" [class.feature-card--disabled]="!hasWriteAccess()">
+          <div class="feature-card__icon-wrapper">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0 1 16 0Z"/>
+              <circle cx="12" cy="10" r="3"/>
+            </svg>
+          </div>
+          <div class="feature-card__content">
+            <div class="feature-card__header">
+              <strong class="feature-card__title">Location tracking</strong>
+            </div>
+            <small class="feature-card__desc">Apply during the allowed attendance or work-time window.</small>
+          </div>
+          <div class="switch-control">
+            <input
+              type="checkbox"
+              class="switch-input"
+              [checked]="company.workLocationVerification"
+              [disabled]="!hasWriteAccess()"
+              (change)="setCompanyFlag('workLocationVerification', $any($event.target).checked)"
+            />
+            <span class="switch-slider" aria-hidden="true"></span>
+          </div>
         </label>
-        <label class="setting-row">
-          <span><strong>Keyboard and mouse activity</strong><small>Counts activity events; does not capture typed keys.</small></span>
-          <input type="checkbox" [checked]="company.activityMonitoring" [disabled]="!hasWriteAccess()" (change)="setCompanyFlag('activityMonitoring', $any($event.target).checked)" />
+
+        <!-- 2. Keyboard and mouse activity -->
+        <label class="feature-card setting-row" [class.feature-card--active]="company.activityMonitoring" [class.feature-card--disabled]="!hasWriteAccess()">
+          <div class="feature-card__icon-wrapper">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <rect width="20" height="16" x="2" y="4" rx="2"/>
+              <path d="M6 8h.01M10 8h.01M14 8h.01M18 8h.01M8 12h.01M12 12h.01M16 12h.01M7 16h10"/>
+            </svg>
+          </div>
+          <div class="feature-card__content">
+            <div class="feature-card__header">
+              <strong class="feature-card__title">Keyboard and mouse activity</strong>
+            </div>
+            <small class="feature-card__desc">Counts activity events; does not capture typed keys.</small>
+          </div>
+          <div class="switch-control">
+            <input
+              type="checkbox"
+              class="switch-input"
+              [checked]="company.activityMonitoring"
+              [disabled]="!hasWriteAccess()"
+              (change)="setCompanyFlag('activityMonitoring', $any($event.target).checked)"
+            />
+            <span class="switch-slider" aria-hidden="true"></span>
+          </div>
         </label>
-        <label class="setting-row">
-          <span><strong>Application usage</strong><small>Records application activity using the existing agent contract.</small></span>
-          <input type="checkbox" [checked]="company.applicationTracking" [disabled]="!hasWriteAccess()" (change)="setCompanyFlag('applicationTracking', $any($event.target).checked)" />
+
+        <!-- 3. Application usage -->
+        <label class="feature-card setting-row" [class.feature-card--active]="company.applicationTracking" [class.feature-card--disabled]="!hasWriteAccess()">
+          <div class="feature-card__icon-wrapper">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <rect width="20" height="16" x="2" y="4" rx="2"/>
+              <path d="M6 8h.01M9 8h.01M12 8h.01M2 12h20"/>
+            </svg>
+          </div>
+          <div class="feature-card__content">
+            <div class="feature-card__header">
+              <strong class="feature-card__title">Application usage</strong>
+            </div>
+            <small class="feature-card__desc">Records application activity using the existing agent contract.</small>
+          </div>
+          <div class="switch-control">
+            <input
+              type="checkbox"
+              class="switch-input"
+              [checked]="company.applicationTracking"
+              [disabled]="!hasWriteAccess()"
+              (change)="setCompanyFlag('applicationTracking', $any($event.target).checked)"
+            />
+            <span class="switch-slider" aria-hidden="true"></span>
+          </div>
         </label>
-        <label class="setting-row">
-          <span><strong>Screenshot capture</strong><small>Permits the existing authorized capture flows; it is not random capture.</small></span>
-          <input type="checkbox" [checked]="company.screenshotCapture" [disabled]="!hasWriteAccess()" (change)="setCompanyFlag('screenshotCapture', $any($event.target).checked)" />
+
+        <!-- 4. Screenshot capture -->
+        <label class="feature-card setting-row" [class.feature-card--active]="company.screenshotCapture" [class.feature-card--disabled]="!hasWriteAccess()">
+          <div class="feature-card__icon-wrapper">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/>
+              <circle cx="12" cy="13" r="4"/>
+            </svg>
+          </div>
+          <div class="feature-card__content">
+            <div class="feature-card__header">
+              <strong class="feature-card__title">Screenshot capture</strong>
+            </div>
+            <small class="feature-card__desc">Permits the existing authorized capture flows; it is not random capture.</small>
+          </div>
+          <div class="switch-control">
+            <input
+              type="checkbox"
+              class="switch-input"
+              [checked]="company.screenshotCapture"
+              [disabled]="!hasWriteAccess()"
+              (change)="setCompanyFlag('screenshotCapture', $any($event.target).checked)"
+            />
+            <span class="switch-slider" aria-hidden="true"></span>
+          </div>
         </label>
       </div>
-      <label class="threshold-field">
-        <span>Activity check threshold <small>Minutes of continuous inactivity before the existing check flow.</small></span>
-        <input type="number" min="1" max="1440" [value]="company.idleThresholdMinutes" [disabled]="!hasWriteAccess()" (change)="setCompanyThreshold($any($event.target).value)" />
-      </label>
+
+      <!-- Threshold settings row -->
+      <div class="threshold-grid">
+        <div class="threshold-field threshold-card">
+          <div class="threshold-card__icon">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <circle cx="12" cy="12" r="10"/>
+              <polyline points="12 6 12 12 16 14"/>
+            </svg>
+          </div>
+          <div class="threshold-card__info">
+            <span class="threshold-card__title">Activity check threshold</span>
+            <small class="threshold-card__desc">Minutes of continuous inactivity before the existing check flow.</small>
+          </div>
+          <div class="threshold-card__input-group">
+            <input
+              type="number"
+              class="threshold-input"
+              min="1"
+              max="1440"
+              [value]="company.idleThresholdMinutes"
+              [disabled]="!hasWriteAccess()"
+              (change)="setCompanyThreshold($any($event.target).value)"
+            />
+            <span class="threshold-card__unit">minutes</span>
+          </div>
+        </div>
+
+        <!-- Allowed range -->
+        <div class="threshold-field threshold-card">
+          <div class="threshold-card__icon">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0 1 16 0Z"/>
+              <circle cx="12" cy="10" r="3"/>
+            </svg>
+          </div>
+          <div class="threshold-card__info">
+            <span class="threshold-card__title">Allowed range</span>
+            <small class="threshold-card__desc">Maximum distance from the verified location permitted for location tracking checks.</small>
+          </div>
+          <div class="threshold-card__input-group">
+            <input
+              type="number"
+              class="threshold-input"
+              min="0"
+              [value]="company.allowedRadiusMeters ?? ''"
+              [disabled]="!hasWriteAccess()"
+              (change)="setCompanyAllowedRadius($any($event.target).value)"
+              placeholder="No limit"
+            />
+            <span class="threshold-card__unit">meters</span>
+          </div>
+        </div>
+      </div>
     </section>
 
+    <!-- Overrides section -->
     <section class="section-block overrides">
       <div class="section-heading">
-        <div>
-          <h2>Overrides</h2>
-          <p>Set an explicit value or leave a feature inherited from the company default.</p>
+        <div class="section-heading__title-cluster">
+          <div class="section-heading__icon-badge">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M16 3h5v5"/>
+              <path d="m21 3-7 7"/>
+              <path d="m8 10 4-4"/>
+              <path d="m3 21 5-5"/>
+              <path d="m3 16 5 5"/>
+            </svg>
+          </div>
+          <div>
+            <h2>Overrides</h2>
+            <p>Set an explicit value or leave a feature inherited from the company default.</p>
+          </div>
         </div>
       </div>
 
       @if (!hasActiveCompanyContext()) {
-        <p class="notice">Select a company to configure monitoring.</p>
+        <div class="notice notice--info">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <circle cx="12" cy="12" r="10"/>
+            <line x1="12" y1="16" x2="12" y2="12"/>
+            <line x1="12" y1="8" x2="12.01" y2="8"/>
+          </svg>
+          <p class="notice-text">Select a company to configure monitoring.</p>
+        </div>
       } @else {
         <nav class="tabs" aria-label="Monitoring override scope">
           @for (scope of scopeOptions; track scope) {
-            <button type="button" [class.active]="selectedScope() === scope" (click)="setScope(scope)">{{ scopeLabel(scope) }}</button>
+            <button type="button" [class.active]="selectedScope() === scope" (click)="setScope(scope)">
+              <span>{{ scopeLabel(scope) }}</span>
+              <span class="tab-count-pill" [class.tab-count-pill--has-items]="overrideCount(scope) > 0">
+                {{ overrideCount(scope) }}
+              </span>
+            </button>
           }
         </nav>
 
         <div class="override-editor">
+          <div class="override-editor__header">
+            <h3 class="override-editor__title">
+              {{ editMode() ? 'Edit ' + scopeLabels[selectedScope()].slice(0, -1) + ' override' : 'Add ' + scopeLabels[selectedScope()].slice(0, -1) + ' override' }}
+            </h3>
+            <span class="override-editor__hint">Override specific features or threshold for a target</span>
+          </div>
+
           <div class="editor-fields">
-            <label>
-              <span>{{ scopeLabels[selectedScope()].slice(0, -1) }}</span>
-              <select [value]="selectedTargetId()" [disabled]="!hasWriteAccess()" (change)="selectTarget($any($event.target).value)">
-                <option value="">Select a target</option>
-                @for (target of targetOptions(); track target.id) {
-                  <option [value]="target.id">{{ target.name }}</option>
-                }
-              </select>
-            </label>
-            @for (field of [
-              { key: 'workLocationVerification', label: 'Location tracking' },
-              { key: 'activityMonitoring', label: 'Keyboard and mouse activity' },
-              { key: 'applicationTracking', label: 'Application usage' },
-              { key: 'screenshotCapture', label: 'Screenshot capture' }
-            ]; track field.key) {
-              <label>
-                <span>{{ field.label }}</span>
-                <select [value]="overrideSelectValue($any(field.key))" [disabled]="!hasWriteAccess()" (change)="setOverrideFlag($any(field.key), selectToBoolean($any($event.target).value))">
-                  <option value="">Inherited</option>
-                  <option value="true">On</option>
-                  <option value="false">Off</option>
-                </select>
-              </label>
+            <div class="form-group target-field">
+              <app-custom-select
+                [label]="scopeLabels[selectedScope()].slice(0, -1)"
+                [placeholder]="targetPlaceholder()"
+                [options]="targetSelectOptions()"
+                [value]="selectedTargetId()"
+                [disabled]="!hasWriteAccess()"
+                (valueChange)="selectTarget($event)"
+              />
+            </div>
+
+            <div class="form-group threshold-input-field">
+              <span class="form-label">Activity check threshold</span>
+              <div class="input-with-unit">
+                <input
+                  type="number"
+                  min="1"
+                  max="1440"
+                  [value]="overrideForm().idleThresholdMinutes ?? ''"
+                  [disabled]="!hasWriteAccess()"
+                  (change)="setOverrideThreshold($any($event.target).value)"
+                  placeholder="Inherited"
+                />
+                <span class="input-unit">min</span>
+              </div>
+            </div>
+
+            <div class="form-group threshold-input-field">
+              <span class="form-label">Allowed range</span>
+              <div class="input-with-unit">
+                <input
+                  type="number"
+                  min="0"
+                  [value]="overrideForm().allowedRadiusMeters ?? ''"
+                  [disabled]="!hasWriteAccess()"
+                  (change)="setOverrideAllowedRadius($any($event.target).value)"
+                  placeholder="Inherited"
+                />
+                <span class="input-unit">m</span>
+              </div>
+            </div>
+
+            @for (field of overrideFieldList; track field.key) {
+              <div class="form-group override-feature-group">
+                <span class="form-label">{{ field.label }}</span>
+                <div class="radio-group" role="radiogroup" [attr.aria-label]="field.label">
+                  <label class="radio-option" [class.radio-option--active]="getOverrideFlag(field.key) === null">
+                    <input
+                      type="radio"
+                      [name]="'override-' + field.key"
+                      [checked]="getOverrideFlag(field.key) === null"
+                      [disabled]="!hasWriteAccess()"
+                      (change)="setOverrideFlag(field.key, null)"
+                    />
+                    <span class="radio-circle" aria-hidden="true">
+                      <span class="radio-dot"></span>
+                    </span>
+                    <span class="radio-text">Inherited</span>
+                  </label>
+
+                  <label class="radio-option radio-option--on" [class.radio-option--active]="getOverrideFlag(field.key) === true">
+                    <input
+                      type="radio"
+                      [name]="'override-' + field.key"
+                      [checked]="getOverrideFlag(field.key) === true"
+                      [disabled]="!hasWriteAccess()"
+                      (change)="setOverrideFlag(field.key, true)"
+                    />
+                    <span class="radio-circle" aria-hidden="true">
+                      <span class="radio-dot"></span>
+                    </span>
+                    <span class="radio-text">On</span>
+                  </label>
+
+                  <label class="radio-option radio-option--off" [class.radio-option--active]="getOverrideFlag(field.key) === false">
+                    <input
+                      type="radio"
+                      [name]="'override-' + field.key"
+                      [checked]="getOverrideFlag(field.key) === false"
+                      [disabled]="!hasWriteAccess()"
+                      (change)="setOverrideFlag(field.key, false)"
+                    />
+                    <span class="radio-circle" aria-hidden="true">
+                      <span class="radio-dot"></span>
+                    </span>
+                    <span class="radio-text">Off</span>
+                  </label>
+                </div>
+              </div>
             }
-            <label>
-              <span>Activity check threshold</span>
-              <input type="number" min="1" max="1440" [value]="overrideForm().idleThresholdMinutes ?? ''" [disabled]="!hasWriteAccess()" (change)="setOverrideThreshold($any($event.target).value)" placeholder="Inherited" />
-            </label>
-            <label class="reason-field">
-              <span>Reason <small>Optional note for administrators.</small></span>
-              <input type="text" maxlength="500" [value]="overrideForm().overrideReason ?? ''" [disabled]="!hasWriteAccess()" (input)="setOverrideReason($any($event.target).value)" />
+
+            <label class="reason-field form-group">
+              <span class="form-label">Reason <small>Optional note for administrators.</small></span>
+              <textarea
+                rows="2"
+                maxlength="500"
+                placeholder="e.g. Specific team policy requirements"
+                [value]="overrideForm().overrideReason ?? ''"
+                [disabled]="!hasWriteAccess()"
+                (input)="setOverrideReason($any($event.target).value)"
+              ></textarea>
             </label>
           </div>
+
           @if (hasWriteAccess()) {
             <div class="editor-actions">
-              <button class="primary" type="button" [disabled]="monitoringStore.saving()" (click)="saveOverride()">{{ editMode() ? 'Update override' : 'Add override' }}</button>
-              <button class="secondary" type="button" (click)="clearOverrideForm()">Clear</button>
+              <button class="primary btn-action" type="button" [disabled]="monitoringStore.saving()" (click)="saveOverride()">
+                @if (monitoringStore.saving()) {
+                  <span class="btn-spinner" aria-hidden="true"></span>
+                  <span>Saving…</span>
+                } @else {
+                  <span>{{ editMode() ? 'Update override' : 'Add override' }}</span>
+                }
+              </button>
+              <button class="secondary btn-action" type="button" (click)="clearOverrideForm()">Clear</button>
             </div>
           }
         </div>
 
         @if (visibleOverrides().length === 0) {
-          <p class="empty">No {{ scopeLabels[selectedScope()].toLowerCase() }} overrides configured.</p>
+          <div class="empty-state-box">
+            <div class="empty-state-box__icon">
+              <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+                <circle cx="12" cy="12" r="10"/>
+                <line x1="12" y1="8" x2="12" y2="12"/>
+                <line x1="12" y1="16" x2="12.01" y2="16"/>
+              </svg>
+            </div>
+            <p class="empty">No {{ scopeLabels[selectedScope()].toLowerCase() }} overrides configured.</p>
+            <span class="empty-state-box__sub">Items in this scope currently inherit all company default rules above.</span>
+          </div>
         } @else {
           <div class="override-list" role="list">
             @for (item of visibleOverrides(); track item.id) {
               <article class="override-item" role="listitem">
-                <div><strong>{{ item.targetName }}</strong><small>Updated {{ item.updatedAt | date:'mediumDate' }}</small></div>
-                <div class="effective-values">
-                  <span>Location: {{ flagValue(item.workLocationVerification) }}</span>
-                  <span>Activity: {{ flagValue(item.activityMonitoring) }}</span>
-                  <span>Apps: {{ flagValue(item.applicationTracking) }}</span>
-                  <span>Screenshots: {{ flagValue(item.screenshotCapture) }}</span>
+                <div class="override-item__target">
+                  <div class="target-avatar">{{ item.targetName.charAt(0).toUpperCase() }}</div>
+                  <div>
+                    <strong class="target-name">{{ item.targetName }}</strong>
+                    <small>Updated {{ item.updatedAt | date:'mediumDate' }}</small>
+                  </div>
                 </div>
+                <div class="effective-values">
+                  <span class="val-pill" [attr.data-state]="flagValue(item.workLocationVerification)">Location: {{ flagValue(item.workLocationVerification) }}</span>
+                  <span class="val-pill" [attr.data-state]="flagValue(item.activityMonitoring)">Activity: {{ flagValue(item.activityMonitoring) }}</span>
+                  <span class="val-pill" [attr.data-state]="flagValue(item.applicationTracking)">Apps: {{ flagValue(item.applicationTracking) }}</span>
+                  <span class="val-pill" [attr.data-state]="flagValue(item.screenshotCapture)">Screenshots: {{ flagValue(item.screenshotCapture) }}</span>
+                  @if (item.idleThresholdMinutes !== null) {
+                    <span class="val-pill val-pill--threshold">Idle: {{ item.idleThresholdMinutes }}m</span>
+                  }
+                </div>
+                @if (item.overrideReason) {
+                  <div class="override-item__reason" title="Reason for override">
+                    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+                    <span>{{ item.overrideReason }}</span>
+                  </div>
+                }
                 @if (hasWriteAccess()) {
-                  <div class="item-actions"><button class="secondary" type="button" (click)="selectTarget(item.scopeId)">Edit</button><button class="link-danger" type="button" (click)="removeOverride(item)">Remove</button></div>
+                  <div class="item-actions">
+                    <button class="secondary btn-item-action" type="button" (click)="selectTarget(item.scopeId)">Edit</button>
+                    <button class="link-danger btn-item-action" type="button" (click)="removeOverride(item)">Remove</button>
+                  </div>
                 }
               </article>
             }
@@ -138,3 +447,4 @@
     </section>
   }
 </main>
+

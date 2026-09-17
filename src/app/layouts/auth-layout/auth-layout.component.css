@@ -4,34 +4,105 @@
 }
 
 .auth-layout {
-  display: grid;
+  position: relative;
+  display: flex;
+  flex-direction: column;
   min-height: 100dvh;
-  place-items: center;
-  padding: 1.5rem;
-  background: var(--color-app-bg);
+  width: 100%;
+  background: #ffffff;
+  overflow-x: hidden;
+}
+
+/* ── Top Atmospheric Aurora Glow (Dark and Light Blue Brand Theme) ─────── */
+.auth-glow {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 280px;
+  pointer-events: none;
+  overflow: hidden;
+  background:
+    radial-gradient(ellipse 50% 85% at 8% -10%, rgba(30, 58, 138, 0.38), transparent 70%),
+    radial-gradient(ellipse 42% 75% at 28% -15%, rgba(37, 99, 235, 0.40), transparent 70%),
+    radial-gradient(ellipse 48% 85% at 50% -10%, rgba(14, 165, 233, 0.32), transparent 72%),
+    radial-gradient(ellipse 42% 80% at 72% -12%, rgba(56, 189, 248, 0.40), transparent 72%),
+    radial-gradient(ellipse 40% 70% at 94% -10%, rgba(147, 197, 253, 0.48), transparent 75%);
+  filter: blur(38px);
+  -webkit-mask-image: linear-gradient(to bottom, rgba(0, 0, 0, 1) 30%, rgba(0, 0, 0, 0) 100%);
+  mask-image: linear-gradient(to bottom, rgba(0, 0, 0, 1) 30%, rgba(0, 0, 0, 0) 100%);
+  z-index: 0;
+}
+
+.auth-layout__body {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: space-between;
+  flex: 1;
+  min-height: 100dvh;
+  width: 100%;
+  padding: 3rem 1.5rem 1.5rem;
+  box-sizing: border-box;
 }
 
 .auth-layout__content {
-  width: min(100%, 30rem);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  width: min(100%, 26.5rem);
+  margin: auto 0;
+}
+
+.auth-layout__content > :not(.auth-layout__brand) {
+  width: 100%;
+  display: block;
 }
 
 .auth-layout__brand {
-  display: flex;
+  display: inline-flex;
   align-items: center;
   justify-content: center;
   gap: 0.625rem;
-  margin-bottom: 1.5rem;
+  margin-bottom: 1.75rem;
   text-decoration: none;
+  transition: opacity 150ms ease, transform 150ms ease;
+}
+
+.auth-layout__brand:hover {
+  opacity: 0.88;
 }
 
 .auth-layout__logo-img {
   height: 38px;
   width: auto;
+  object-fit: contain;
 }
 
 .auth-layout__logo-text {
   font-size: 1.5rem;
   font-weight: 800;
-  color: var(--color-text-primary);
+  color: #0f172a;
   letter-spacing: -0.02em;
+}
+
+.auth-layout__footer {
+  margin-top: auto;
+  padding-top: 2rem;
+  text-align: center;
+}
+
+.auth-layout__help-link {
+  font-size: 0.8125rem;
+  color: #94a3b8;
+  text-decoration: none;
+  font-weight: 500;
+  transition: color 150ms ease;
+}
+
+.auth-layout__help-link:hover {
+  color: #475569;
+  text-decoration: underline;
 }

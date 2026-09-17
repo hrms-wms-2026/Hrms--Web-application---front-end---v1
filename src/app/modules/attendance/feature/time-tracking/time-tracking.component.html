@@ -1,30 +1,90 @@
 <div class="time-tracking-page">
   <header class="time-tracking-header">
-    <app-breadcrumb-header parentLabel="Attendance" currentLabel="Time Tracking" icon="time-attendance" />
-    <div class="time-tracking-header-actions">
-      @if (canShowTeamView()) {
-        <div class="attendance-view-toggle" role="group" aria-label="Attendance view">
-          <button
-            type="button"
-            class="attendance-view-toggle__option"
-            [class.attendance-view-toggle__option--active]="viewMode() === 'my'"
-            [attr.aria-pressed]="viewMode() === 'my'"
-            (click)="selectViewMode('my')"
-          >
-            MY
-          </button>
-          <button
-            type="button"
-            class="attendance-view-toggle__option"
-            [class.attendance-view-toggle__option--active]="viewMode() === 'team'"
-            [attr.aria-pressed]="viewMode() === 'team'"
-            (click)="selectViewMode('team')"
-          >
-            TEAM
-          </button>
-        </div>
-      }
-      <button type="button" class="page-action" data-testid="request-work-area-change" (click)="openWorkAreaChange()">Request work-area change</button>
+    <div class="time-tracking-header-row">
+      <app-breadcrumb-header parentLabel="Attendance" currentLabel="Time Tracking" icon="time-attendance" />
+      <div class="time-tracking-header-actions">
+        @if (canShowTeamView()) {
+          <div class="attendance-view-toggle" role="group" aria-label="Attendance view">
+            <button
+              type="button"
+              class="attendance-view-toggle__option"
+              [class.attendance-view-toggle__option--active]="viewMode() === 'my'"
+              [attr.aria-pressed]="viewMode() === 'my'"
+              (click)="selectViewMode('my')"
+            >
+              MY
+            </button>
+            <button
+              type="button"
+              class="attendance-view-toggle__option"
+              [class.attendance-view-toggle__option--active]="viewMode() === 'team'"
+              [attr.aria-pressed]="viewMode() === 'team'"
+              (click)="selectViewMode('team')"
+            >
+              TEAM
+            </button>
+          </div>
+        }
+        <app-popover [open]="requestDropdownOpen()" (closed)="closeRequestDropdown()">
+          <div popover-trigger>
+            <app-button
+              variant="primary"
+              size="sm"
+              data-testid="request-work-area-change"
+              (pressed)="toggleRequestDropdown()"
+            >
+              <span>Request</span>
+              <svg
+                class="request-chevron"
+                [class.request-chevron--open]="requestDropdownOpen()"
+                width="14"
+                height="14"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="2.5"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+              >
+                <path d="m6 9 6 6 6-6"/>
+              </svg>
+            </app-button>
+          </div>
+
+          <div popover-panel class="request-popover-panel">
+            <button
+              type="button"
+              class="request-option-item"
+              data-testid="request-option-attendance-correction"
+              (click)="selectAttendanceCorrection()"
+            >
+              <svg class="request-option-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <circle cx="12" cy="12" r="10"/>
+                <polyline points="12 6 12 12 16 14"/>
+              </svg>
+              <div class="request-option-text">
+                <span class="request-option-title">Attendance correction</span>
+                <span class="request-option-sub">Fix clock-in, clock-out, or break times</span>
+              </div>
+            </button>
+            <button
+              type="button"
+              class="request-option-item"
+              data-testid="request-option-work-area-change"
+              (click)="selectWorkAreaChange()"
+            >
+              <svg class="request-option-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0 1 16 0Z"/>
+                <circle cx="12" cy="10" r="3"/>
+              </svg>
+              <div class="request-option-text">
+                <span class="request-option-title">Request to change the work mode</span>
+                <span class="request-option-sub">Switch between on-site and remote</span>
+              </div>
+            </button>
+          </div>
+        </app-popover>
+      </div>
     </div>
   </header>
 
@@ -45,182 +105,186 @@
     }
 
     @if (store.today(); as today) {
-      <section class="time-tracking-overview" aria-labelledby="today-heading">
-        <div class="overview-heading">
-          <div>
-            <p class="eyebrow">Today</p>
-            <h1 id="today-heading">{{ formatDate(today.workDate) }}</h1>
-          </div>
-          <span class="status-pill" [class.status-pill--active]="today.attendanceStatus === 'working' || today.attendanceStatus === 'clocked_in'">
-            {{ statusLabel(today.attendanceStatus, today.attendanceStatusLabel) }}
-          </span>
-        </div>
-
-        <div class="overview-grid">
-          <article class="metric-card metric-card--schedule">
-            <span class="metric-label">Work schedule</span>
-            <div class="metric-detail-grid">
-              <div class="metric-detail">
-                <span class="metric-helper">Hours</span>
-                <strong>{{ today.scheduledStartTime || 'Not scheduled' }} – {{ today.scheduledEndTime || 'Not scheduled' }}</strong>
-              </div>
-              <div class="metric-detail">
-                <span class="metric-helper">Work mode</span>
-                <strong>{{ workModeLabel(today.expectedWorkMode) }}</strong>
-              </div>
-            </div>
-            <span class="metric-helper">{{ today.timezone || 'Timezone unavailable' }} · Source: {{ sourceLabel(today.attendanceSource) }}</span>
-          </article>
-          <article
-            class="metric-card"
-            [class.metric-card--muted]="today.breakRemainingMinutes === 0"
-            [class.metric-card--overage]="hasBreakOverage(today.breakOverageMinutes, today.isOverBreakAllowance)"
-          >
-            <span class="metric-label">Break time</span>
-            @if (hasBreakOverage(today.breakOverageMinutes, today.isOverBreakAllowance)) {
-              <strong class="metric-overage">{{ breakOverageLabel(today.breakOverageMinutes) }}</strong>
-              <span class="metric-helper">
-                @if (today.breakAllowanceMinutes === null) {
-                  {{ formatMinutes(today.breakUsedMinutes) }} used · No break allowance is configured.
-                } @else {
-                  {{ formatMinutes(today.breakAllowanceMinutes) }} allowance · {{ formatMinutes(today.breakUsedMinutes) }} used
-                }
-              </span>
-            } @else if (today.breakAllowanceMinutes === null) {
-              <strong>Not configured</strong>
-              <span class="metric-helper">No break allowance is configured.</span>
-            } @else {
-              <strong>{{ formatMinutes(today.breakRemainingMinutes) }} remaining</strong>
-              <span class="metric-helper" [attr.title]="today.breakRemainingMinutes === 0 ? 'You have used your break time for today.' : null">
-                {{ formatMinutes(today.breakAllowanceMinutes) }} allowance · {{ formatMinutes(today.breakUsedMinutes) }} used
-              </span>
-              @if (today.breakRemainingMinutes === 0) {
-                <span class="metric-note">You have used your break time for today.</span>
-              }
-            }
-          </article>
-          <article class="metric-card">
-            <span class="metric-label">Worked today</span>
-            <strong>{{ formatMinutes(today.totalWorkedMinutes) }}</strong>
-            <span class="metric-helper">{{ today.isWorkingDay ? 'Scheduled workday' : 'No scheduled workday' }}</span>
-          </article>
-          <article class="metric-card metric-card--attendance-times">
-            <span class="metric-label">Attendance times</span>
-            <div class="metric-detail-grid metric-detail-grid--times">
-              <div class="metric-detail">
-                <span class="metric-helper">Clock in</span>
-                <strong>{{ today.clockInAt ? formatDateTime(today.clockInAt, today.timezone) : 'Not recorded' }}</strong>
-              </div>
-              <div class="metric-detail">
-                <span class="metric-helper">Clock out</span>
-                <strong>{{ today.clockOutAt ? formatDateTime(today.clockOutAt, today.timezone) : 'Not recorded' }}</strong>
-              </div>
-            </div>
-          </article>
-        </div>
-      </section>
-
-      @if (hasAttention(today.attentionLabel)) {
-        <section [class]="attentionClass(today.attentionSeverity)" role="status" aria-live="polite">
-          <span class="warning-icon" aria-hidden="true">!</span>
-          <p>{{ today.attentionLabel }}</p>
-        </section>
-      } @else if (today.shouldHaveClockedIn) {
-        <section class="time-tracking-warning" role="status">
-          <span class="warning-icon" aria-hidden="true">!</span>
-          <p>You have not clocked in yet.</p>
-        </section>
-      }
-
       @if (friendlyTodayMessages().length > 0) {
-        <section class="policy-messages" aria-label="Schedule and policy information">
-          @for (message of friendlyTodayMessages(); track message) { <p>{{ message }}</p> }
-        </section>
-      }
-
-      @if (today.allowedClockInMethods.web) {
-        <section class="action-card" aria-labelledby="actions-heading">
-          <div class="section-heading">
-            <div><p class="eyebrow">Self service</p><h2 id="actions-heading">Attendance actions</h2></div>
-            <span class="action-state">{{ statusLabel(today.attendanceStatus, today.attendanceStatusLabel) }}</span>
-          </div>
-          <div class="action-buttons">
-            @if (today.canClockIn) { <app-button type="button" data-testid="clock-in" [loading]="actionIsLoading('clockIn')" [disabled]="store.actionLoading()" (pressed)="store.clockIn()">Clock in</app-button> }
-            @if (today.canStartBreak) { <app-button type="button" data-testid="start-break" variant="secondary" [loading]="actionIsLoading('startBreak')" [disabled]="store.actionLoading()" (pressed)="store.startBreak()">Start break</app-button> }
-            @if (today.canEndBreak) { <app-button type="button" data-testid="end-break" variant="secondary" [loading]="actionIsLoading('endBreak')" [disabled]="store.actionLoading()" (pressed)="store.endBreak()">End break</app-button> }
-            @if (today.canClockOut) { <app-button type="button" data-testid="clock-out" variant="danger" [loading]="actionIsLoading('clockOut')" [disabled]="store.actionLoading()" (pressed)="store.clockOut()">Clock out</app-button> }
-          </div>
-          @if (!today.canClockIn && !today.canStartBreak && !today.canEndBreak && !today.canClockOut) { <p class="action-helper">There are no attendance actions available right now.</p> }
-        </section>
-      }
-    }
-    }
-  }
-
-  @if (viewMode() === 'my') {
-    <div class="history-requests-row">
-      <section class="history-card history-card--history" aria-labelledby="history-heading">
-        <div class="section-heading section-heading--stacked-mobile">
-          <div>
-            <p class="eyebrow">Personal records</p>
-            <h2 id="history-heading">My attendance history</h2>
-          </div>
-          <div class="range-controls" aria-label="Attendance history date range">
-            <app-date-range-picker
-              [from]="historyFrom()"
-              [to]="historyTo()"
-              [disabled]="store.historyLoading()"
-              (rangeChange)="onRangeSelected($event)"
-            />
-          </div>
+        <div class="policy-messages-grid" aria-label="Schedule and policy information">
+          @for (message of friendlyTodayMessages(); track message) {
+            <div class="policy-message-item">
+              <span class="policy-message-bullet" aria-hidden="true"></span>
+              <p>{{ message }}</p>
+            </div>
+          }
         </div>
-        <app-attendance-history-list
-          [rows]="store.history()"
-          [loading]="store.historyLoading()"
-          [error]="store.historyError()"
-          [page]="store.historyPage()"
-          [pageSize]="store.historyPageSize()"
-          [totalCount]="store.historyTotalCount()"
-          [displayTimezone]="displayTimezone()"
-          emptyMessage="No attendance records for this date range."
-          (pageChange)="goToHistoryPage($event)"
-          (retryRequested)="retryHistory()"
-          (rowSelected)="onMyRowSelected($event)"
-        />
-      </section>
+      }
 
-      <section class="history-card" aria-labelledby="my-requests-heading">
-        <app-my-requests-panel [autoLoad]="hasSelfServiceAccess()" />
-      </section>
-    </div>
+      <div class="time-tracking-overview history-requests-row" aria-labelledby="status-card-heading">
+        <div class="time-tracking-column time-tracking-column--left">
+          <div class="time-tracking-hero-card">
+            <app-attendance-status-card [layout]="'session'" [borderless]="true" />
+
+            @if (hasAttention(today)) {
+              <div [class]="attentionClass(today.attentionSeverity)" role="status" aria-live="polite">
+                <span class="warning-icon" aria-hidden="true">!</span>
+                <p>{{ today.attentionLabel }}</p>
+                @if (today.attentionType === 'missing_clock_out' && today.attentionWorkDate) {
+                  <app-button type="button" data-testid="fix-missing-clock-out" variant="secondary" size="sm" (pressed)="openMissingClockOutCorrection(today.attentionWorkDate)">Fix {{ formatDate(today.attentionWorkDate) }}'s clock-out</app-button>
+                }
+              </div>
+            } @else if (today.shouldHaveClockedIn) {
+              <div class="time-tracking-warning" role="status">
+                <span class="warning-icon" aria-hidden="true">!</span>
+                <p>You have not clocked in yet.</p>
+              </div>
+            }
+
+            <dl class="today-total" aria-label="Today's total">
+              <div class="today-total__item">
+                <dt>Scheduled</dt>
+                <dd>{{ today.requiredWorkMinutes ? formatMinutes(today.requiredWorkMinutes) : 'Not scheduled' }}</dd>
+              </div>
+              <div class="today-total__item">
+                <dt>Worked</dt>
+                <dd>{{ formatMinutes(today.totalWorkedMinutes) }}</dd>
+              </div>
+              <div class="today-total__item">
+                <dt>Break</dt>
+                <dd>{{ formatMinutes(today.breakUsedMinutes) }}</dd>
+              </div>
+              <div class="today-total__item">
+                <dt>Remaining</dt>
+                <dd>{{ remainingWorkLabel(today) }}</dd>
+              </div>
+            </dl>
+          </div>
+
+          <section class="history-card" aria-labelledby="my-requests-heading">
+            <app-my-requests-panel [autoLoad]="hasSelfServiceAccess()" />
+          </section>
+        </div>
+
+        <div class="time-tracking-column time-tracking-column--right">
+          <div class="time-tracking-side-panel">
+            <div class="overview-grid">
+              <article class="metric-card metric-card--schedule">
+                <div class="metric-card-header">
+                  <span class="metric-label">Work schedule</span>
+                  <span class="metric-icon-indicator" aria-hidden="true">
+                    <svg class="metric-svg" viewBox="0 0 20 20" fill="currentColor">
+                      <path fill-rule="evenodd" d="M6 2a1 1 0 00-1 1v1H4a2 2 0 00-2 2v10a2 2 0 002 2h12a2 2 0 002-2V6a2 2 0 00-2-2h-1V3a1 1 0 10-2 0v1H7V3a1 1 0 00-1-1zm0 5a1 1 0 000 2h8a1 1 0 100-2H6z" clip-rule="evenodd" />
+                    </svg>
+                  </span>
+                </div>
+                <div class="metric-card-body">
+                  <div class="metric-detail-grid">
+                    <div class="metric-detail">
+                      <span class="metric-helper">Hours</span>
+                      <strong class="metric-value">
+                        @if (today.scheduledStartTime && today.scheduledEndTime) {
+                          {{ today.scheduledStartTime }} – {{ today.scheduledEndTime }}
+                        } @else if (today.scheduledStartTime) {
+                          {{ today.scheduledStartTime }}
+                        } @else if (today.scheduledEndTime) {
+                          {{ today.scheduledEndTime }}
+                        } @else {
+                          Not scheduled
+                        }
+                      </strong>
+                    </div>
+                    <div class="metric-detail">
+                      <span class="metric-helper">Work mode</span>
+                      <span
+                        class="work-mode-badge"
+                        [class.work-mode-badge--onsite]="today.expectedWorkMode === 'onsite'"
+                        [class.work-mode-badge--remote]="today.expectedWorkMode === 'remote'"
+                      >
+                        {{ workModeLabel(today.expectedWorkMode) }}
+                      </span>
+                    </div>
+                  </div>
+                  <span class="metric-helper">{{ today.timezone || 'Timezone unavailable' }} · Source: {{ sourceLabel(today.attendanceSource) }}</span>
+                </div>
+              </article>
+
+              <article class="metric-card metric-card--attendance-times">
+                <div class="metric-card-header">
+                  <span class="metric-label">Attendance times</span>
+                  <span class="metric-icon-indicator" aria-hidden="true">
+                    <svg class="metric-svg" viewBox="0 0 20 20" fill="currentColor">
+                      <path fill-rule="evenodd" d="M3 3a1 1 0 00-1 1v12a1 1 0 102 0V4a1 1 0 00-1-1zm10.293 9.293a1 1 0 001.414 1.414l3-3a1 1 0 000-1.414l-3-3a1 1 0 10-1.414 1.414L14.586 9H7a1 1 0 100 2h7.586l-1.293 1.293z" clip-rule="evenodd" />
+                    </svg>
+                  </span>
+                </div>
+                <div class="metric-card-body">
+                  <div class="metric-times-grid">
+                    <div class="metric-time-item">
+                      <span class="metric-time-item__label">
+                        <span class="time-dot time-dot--in"></span>
+                        Clock in
+                      </span>
+                      <strong class="metric-time-item__val">{{ today.clockInAt ? formatDateTime(today.clockInAt, today.timezone) : 'Not recorded' }}</strong>
+                    </div>
+                    <div class="metric-time-item">
+                      <span class="metric-time-item__label">
+                        <span class="time-dot time-dot--out"></span>
+                        Clock out
+                      </span>
+                      <strong class="metric-time-item__val">{{ today.clockOutAt ? formatDateTime(today.clockOutAt, today.timezone) : 'Not recorded' }}</strong>
+                    </div>
+                  </div>
+                </div>
+              </article>
+            </div>
+
+            <div class="activity-timeline-card">
+              <app-attendance-today-timeline />
+            </div>
+          </div>
+
+          <section class="history-card history-card--history" aria-labelledby="history-heading">
+            <div class="section-heading section-heading--stacked-mobile">
+              <div>
+                <p class="eyebrow">Personal records</p>
+                <h2 id="history-heading">My attendance history</h2>
+              </div>
+              <div class="range-controls" aria-label="Attendance history date range">
+                <app-date-range-picker
+                  [from]="historyFrom()"
+                  [to]="historyTo()"
+                  [maxDate]="todayDateString()"
+                  align="right"
+                  [disabled]="store.historyLoading()"
+                  (rangeChange)="onRangeSelected($event)"
+                />
+              </div>
+            </div>
+            <app-attendance-history-list
+              [rows]="store.history()"
+              [loading]="store.historyLoading()"
+              [error]="store.historyError()"
+              [page]="store.historyPage()"
+              [pageSize]="store.historyPageSize()"
+              [totalCount]="store.historyTotalCount()"
+              [displayTimezone]="displayTimezone()"
+              emptyMessage="No attendance records for this date range."
+              (pageChange)="goToHistoryPage($event)"
+              (retryRequested)="retryHistory()"
+              (rowSelected)="onMyRowSelected($event)"
+            />
+          </section>
+        </div>
+      </div>
+    }
+    }
 
     @if (correctionFormOpen(); as selectedRow) {
-    <app-modal [open]="true" title="Request attendance correction" size="lg" [closeOnBackdropClick]="false" (closed)="closeCorrection()">
-      <form class="correction-form" (ngSubmit)="previewOrSubmitCorrection()" novalidate>
-        <div class="correction-form__intro">Update the attendance record for <strong>{{ formatDate(selectedRow.workDate) }}</strong>. Times are shown in company time.</div>
-        <label class="form-field"><span>Correction type</span><select [ngModel]="correctionType()" (ngModelChange)="correctionType.set($event); correctionPreviewReady.set(false)" name="correctionType"><option value="clock_in">Clock-in time</option><option value="clock_out">Clock-out time</option><option value="break">Break time</option><option value="full_day">Full day</option></select></label>
-        <label class="form-field"><span>Work date</span><input [value]="selectedRow.workDate" readonly aria-readonly="true" /></label>
-        @if (correctionType() === 'clock_in' || correctionType() === 'full_day') {
-          <label class="form-field"><span>Requested clock-in time</span><input type="time" [ngModel]="requestedClockInTime()" (ngModelChange)="requestedClockInTime.set($event); correctionPreviewReady.set(false)" name="requestedClockInAt" /><small class="field-error">{{ correctionFieldErrors()['requestedClockInAt'] || '' }}</small></label>
-        }
-        @if (correctionType() === 'clock_out' || correctionType() === 'full_day') {
-          <label class="form-field"><span>Requested clock-out time</span><input type="time" [ngModel]="requestedClockOutTime()" (ngModelChange)="requestedClockOutTime.set($event); correctionPreviewReady.set(false)" name="requestedClockOutAt" /><small class="field-error">{{ correctionFieldErrors()['requestedClockOutAt'] || '' }}</small></label>
-        }
-        @if (correctionType() === 'break') {
-          <div class="form-field"><span>Break intervals</span>
-            @for (item of correctionBreaks(); track $index; let index = $index) {
-              <div class="break-row"><input type="time" [ngModel]="item.start" (ngModelChange)="correctionBreaks.update((items) => items.map((entry, itemIndex) => itemIndex === index ? { ...entry, start: $event } : entry)); correctionPreviewReady.set(false)" [name]="'breakStart' + index" aria-label="Break start time" /><span>to</span><input type="time" [ngModel]="item.end" (ngModelChange)="correctionBreaks.update((items) => items.map((entry, itemIndex) => itemIndex === index ? { ...entry, end: $event } : entry)); correctionPreviewReady.set(false)" [name]="'breakEnd' + index" aria-label="Break end time" /><button type="button" class="icon-action" (click)="removeBreakInterval(index)" [disabled]="correctionBreaks().length === 1">Remove</button></div>
-            }
-            <button type="button" class="text-action" (click)="addBreakInterval()">Add interval</button>
-            <small class="field-error">{{ correctionFieldErrors()['requestedBreaks'] || '' }}</small>
-          </div>
-        }
-        <label class="form-field"><span>Reason <b aria-hidden="true">*</b></span><textarea rows="3" maxlength="255" [ngModel]="correctionReason()" (ngModelChange)="correctionReason.set($event); correctionPreviewReady.set(false)" name="reason"></textarea><small class="field-error">{{ correctionFieldErrors()['reason'] || '' }}</small></label>
-        <label class="form-field"><span>Notes <small>(optional)</small></span><textarea rows="2" maxlength="2000" [ngModel]="correctionNotes()" (ngModelChange)="correctionNotes.set($event); correctionPreviewReady.set(false)" name="notes"></textarea><small class="field-error">{{ correctionFieldErrors()['notes'] || '' }}</small></label>
-        @if (correctionFormMessage()) { <p class="correction-form__message" [class.correction-form__message--error]="!correctionPreviewReady()" role="status">{{ correctionFormMessage() }}</p> }
-        <div class="correction-form__actions"><app-button type="button" variant="secondary" (pressed)="closeCorrection()">Cancel</app-button><app-button type="submit" [loading]="!!(store.correctionActionLoading?.() ?? false)" [disabled]="!!(store.correctionActionLoading?.() ?? false) || (correctionPreviewReady() && !!store.correctionPreview?.()?.approvalRequired && !store.correctionPreview?.()?.approver)">{{ correctionPreviewReady() ? 'Submit request' : 'Continue' }}</app-button></div>
-      </form>
-    </app-modal>
+      <app-attendance-correction-modal
+        [open]="true"
+        [workDate]="selectedRow.workDate"
+        [(type)]="correctionType"
+        [initialClockIn]="requestedClockInTime()"
+        [initialClockOut]="requestedClockOutTime()"
+        (closed)="closeCorrection()"
+        (submitted)="onCorrectionSubmitted()"
+      />
     }
 
     @if (workAreaFormOpen()) {
@@ -235,7 +299,7 @@
             <div class="review-panel"><p>Review the details before sending this request.</p><dl class="review-summary"><div><dt>Date</dt><dd>{{ formatWorkAreaDate(preview.date, preview.timezone) }}</dd></div><div><dt>Current planned work area</dt><dd>{{ workAreaLabel(preview.currentExpectedWorkArea) }}</dd></div><div><dt>Requested work area</dt><dd>{{ workAreaLabel(preview.requestedWorkArea) }}</dd></div><div><dt>Reason</dt><dd>{{ preview.reason }}</dd></div><div><dt>Sent to</dt><dd>{{ preview.receiver.displayName }}@if (preview.receiver.positionName) {, {{ preview.receiver.positionName }}}</dd></div></dl><button type="button" class="text-action" (click)="resetWorkAreaReview()">Edit request</button></div>
           }
           @if (workAreaFormMessage()) { <p class="work-area-form-message" role="status">{{ workAreaFormMessage() }}</p> }
-          <div class="modal-actions"><app-button type="button" variant="secondary" (pressed)="closeWorkAreaChange()">Cancel</app-button><app-button type="submit" [loading]="(store.workAreaPreviewLoading()) || (store.workAreaActionLoading())" [disabled]="(store.workAreaPreviewLoading()) || (store.workAreaActionLoading())">{{ workAreaReviewReady() ? 'Send request' : 'Review request' }}</app-button></div>
+          <div class="modal-actions"><app-button type="button" variant="secondary" (pressed)="closeWorkAreaChange()">Cancel</app-button><app-button type="submit" [loading]="!!(store.workAreaPreviewLoading?.() || store.workAreaActionLoading?.())" [disabled]="!!(store.workAreaPreviewLoading?.() || store.workAreaActionLoading?.())">{{ workAreaReviewReady() ? 'Send request' : 'Review request' }}</app-button></div>
         </form>
       </app-modal>
     }
@@ -254,6 +318,8 @@
               <app-date-range-picker
                 [from]="historyFrom()"
                 [to]="historyTo()"
+                [maxDate]="todayDateString()"
+                align="right"
                 [disabled]="store.coveredHistoryLoading()"
                 (rangeChange)="onRangeSelected($event)"
               />
@@ -269,6 +335,7 @@
           [totalCount]="store.coveredHistoryTotalCount()"
           [displayTimezone]="displayTimezone()"
           [showEmployeeColumn]="true"
+          [showStatusNotes]="true"
           [retryDisabledMessage]="TIME_TRACKING_COVERED_FORBIDDEN_ERROR"
           emptyMessage="No team attendance records for this date range."
           (pageChange)="goToCoveredHistoryPage($event)"
@@ -290,14 +357,28 @@
           <button type="button" role="tab" id="approval-type-tab-work-area" class="my-requests-tab" [class.my-requests-tab--active]="approvalType() === 'work-area'" [attr.aria-selected]="approvalType() === 'work-area'" aria-controls="approval-type-panel-work-area" tabindex="0" (click)="selectApprovalType('work-area')">
             Work-area changes@if (approvalBadgeWorkArea() > 0) { ({{ approvalBadgeWorkArea() }}) }
           </button>
+          <button type="button" role="tab" id="approval-type-tab-location" class="my-requests-tab" [class.my-requests-tab--active]="approvalType() === 'location'" [attr.aria-selected]="approvalType() === 'location'" aria-controls="approval-type-panel-location" tabindex="0" (click)="selectApprovalType('location')">
+            Location changes@if (approvalBadgeLocation() > 0) { ({{ approvalBadgeLocation() }}) }
+          </button>
+          <button type="button" role="tab" id="approval-type-tab-device-change" class="my-requests-tab" [class.my-requests-tab--active]="approvalType() === 'device-change'" [attr.aria-selected]="approvalType() === 'device-change'" aria-controls="approval-type-panel-device-change" tabindex="0" (click)="selectApprovalType('device-change')">
+            Device changes@if (approvalBadgeDeviceChange() > 0) { ({{ approvalBadgeDeviceChange() }}) }
+          </button>
         </div>
         @if (approvalType() === 'corrections') {
           <div id="approval-type-panel-corrections" role="tabpanel" aria-labelledby="approval-type-tab-corrections" tabindex="0">
             <app-correction-approvals [embedded]="true" />
           </div>
-        } @else {
+        } @else if (approvalType() === 'work-area') {
           <div id="approval-type-panel-work-area" role="tabpanel" aria-labelledby="approval-type-tab-work-area" tabindex="0">
             <app-work-area-approvals [embedded]="true" />
+          </div>
+        } @else if (approvalType() === 'location') {
+          <div id="approval-type-panel-location" role="tabpanel" aria-labelledby="approval-type-tab-location" tabindex="0">
+            <app-location-change-approvals [embedded]="true" />
+          </div>
+        } @else {
+          <div id="approval-type-panel-device-change" role="tabpanel" aria-labelledby="approval-type-tab-device-change" tabindex="0">
+            <app-device-change-approvals [embedded]="true" />
           </div>
         }
       </section>

@@ -1,16 +1,25 @@
 <main class="auth-layout">
-  <section class="auth-layout__content" aria-label="Authentication">
-    <a routerLink="/" class="auth-layout__brand" aria-label="ONEXSO Workspace, go to homepage">
-      <img
-        ngSrc="assets/brand/onexso-mark.png"
-        alt="ONEXSO"
-        width="44"
-        height="43"
-        priority
-        class="auth-layout__logo-img"
-      />
-      <span class="auth-layout__logo-text">ONEXSO</span>
-    </a>
-    <router-outlet />
-  </section>
+  <!-- Top Atmospheric Aurora Glow (Dark & Light Blue Brand Theme) -->
+  <div class="auth-glow" aria-hidden="true"></div>
+
+  <div class="auth-layout__body">
+    <section class="auth-layout__content" aria-label="Authentication">
+      <a routerLink="/" class="auth-layout__brand" aria-label="ONEXSO Workspace, go to homepage">
+        <img
+          ngSrc="assets/brand/onexso-mark.png"
+          alt="ONEXSO"
+          width="44"
+          height="43"
+          priority
+          class="auth-layout__logo-img"
+        />
+        <span class="auth-layout__logo-text">ONEXSO</span>
+      </a>
+      <router-outlet />
+    </section>
+
+    <footer class="auth-layout__footer">
+      <a href="mailto:support@onexso.com" class="auth-layout__help-link">Need help?</a>
+    </footer>
+  </div>
 </main>

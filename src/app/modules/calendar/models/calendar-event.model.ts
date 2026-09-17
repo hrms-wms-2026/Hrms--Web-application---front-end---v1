@@ -25,6 +25,7 @@ export interface CalendarEventResponse {
   recurrenceMasterId: string | null;
   originalStart: string | null;
   participants: readonly CalendarEventParticipant[] | null;
+  hasConflict: boolean;
 }
 
 export interface CalendarEventsResponse {
@@ -72,10 +73,21 @@ export interface EditRecurringOccurrenceRequest {
   color: string | null;
 }
 
-export type RespondToCalendarEventStatus = 'Accepted' | 'Rejected';
+export type RespondToCalendarEventStatus = 'Accepted' | 'Rejected' | 'ResolutionRequested' | 'ReplacementNominated';
 
 export interface RespondToCalendarEventRequest {
   responseStatus: RespondToCalendarEventStatus;
+  reason: string | null;
+  nomineeEmployeeId: string | null;
+}
+
+export interface EligibleNominee {
+  employeeId: string;
+  employeeName: string;
+}
+
+export interface GetEligibleNomineesResponse {
+  nominees: readonly EligibleNominee[];
 }
 
 export interface CalendarConflict {
@@ -83,6 +95,8 @@ export interface CalendarConflict {
   employeeName: string;
   conflictingEventId: string;
   conflictingEventTitle: string;
+  overlapStart: string;
+  overlapEnd: string;
 }
 
 export interface CheckCalendarConflictsRequest {

@@ -10,7 +10,7 @@ import { LoaderComponent } from '../../../../shared/ui/loader/loader.component';
 import { BreadcrumbHeaderComponent } from '../../../../shared/ui/breadcrumb-header/breadcrumb-header.component';
 import { PopoverComponent } from '../../../../shared/ui/popover/popover.component';
 import { PeopleApiService } from '../../data-access/people-api.service';
-import { EmployeeDetailAddress, EmployeeDetailResponse } from '../../models/employee.model';
+import { EmployeeDetailAddress, EmployeeDetailResponse, UpdateEmployeeJobDetailsRequest } from '../../models/employee.model';
 import { EmployeeJobInfoComponent } from '../../ui/employee-job-info/employee-job-info.component';
 import { EmployeePersonalInfoComponent } from '../../ui/employee-personal-info/employee-personal-info.component';
 import { EmployeeEmergencyContactsComponent } from '../../ui/employee-emergency-contacts/employee-emergency-contacts.component';
@@ -19,6 +19,13 @@ import { ChangePositionModalComponent } from '../../ui/change-position-modal/cha
 import { EmployeeJobJourneyComponent } from '../../ui/employee-job-journey/employee-job-journey.component';
 import { PositionHistoryEntryResponse } from '../../models/position-history.model';
 import { OffboardingWizardStore } from '../../state/offboarding-wizard.store';
+import {
+  attendanceWarningLabel,
+  attendanceAttentionLabel,
+  attendanceStatusLabel,
+  attendanceSeverityClass,
+  breakOverageLabel
+} from '../../utils/employee-view.utils';
 
 /**
  * Full section-by-section employee detail view backed by GET /api/v1/employees/{id}/detail.
@@ -137,21 +144,29 @@ import { OffboardingWizardStore } from '../../state/offboarding-wizard.store';
           </span>
         </div>
 
-        <div class="rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] p-4">
-          <span class="text-xs font-medium text-[var(--color-text-secondary)] block mb-1">Account Status</span>
-          <span class="inline-flex items-center gap-1.5 text-sm font-semibold"
-                [class.text-green-600]="getAccountStatusInfo(employee.invitationStatus, employee.jobInformation.status).color === 'green'"
-                [class.text-amber-600]="getAccountStatusInfo(employee.invitationStatus, employee.jobInformation.status).color === 'amber'"
-                [class.text-blue-600]="getAccountStatusInfo(employee.invitationStatus, employee.jobInformation.status).color === 'blue'"
-                [class.text-red-600]="getAccountStatusInfo(employee.invitationStatus, employee.jobInformation.status).color === 'red'">
-            <span class="w-2 h-2 rounded-full"
-                  [class.bg-green-500]="getAccountStatusInfo(employee.invitationStatus, employee.jobInformation.status).color === 'green'"
-                  [class.bg-amber-500]="getAccountStatusInfo(employee.invitationStatus, employee.jobInformation.status).color === 'amber'"
-                  [class.bg-blue-500]="getAccountStatusInfo(employee.invitationStatus, employee.jobInformation.status).color === 'blue'"
-                  [class.bg-red-500]="getAccountStatusInfo(employee.invitationStatus, employee.jobInformation.status).color === 'red'"></span>
-            {{ getAccountStatusInfo(employee.invitationStatus, employee.jobInformation.status).label }}
-          </span>
-        </div>
+        @if (employee.attendanceSummary) {
+          <div class="rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] p-4">
+            <span class="text-xs font-medium text-[var(--color-text-secondary)] block mb-1">Attendance today</span>
+            @if (employee.attendanceSummary.showNotClockedInWarning && attendanceWarningLabel(employee); as warningLabel) {
+              <span class="inline-flex items-center gap-1.5 text-sm font-semibold text-red-600">
+                <span class="w-2 h-2 rounded-full bg-red-500"></span>
+                {{ warningLabel }}
+              </span>
+            } @else {
+              <span class="text-sm font-semibold text-[var(--color-text-primary)] block truncate">
+                {{ attendanceStatusLabel(employee) || 'Not specified' }}
+              </span>
+              @if (attendanceAttentionLabel(employee); as attentionLabel) {
+                <span class="mt-1 inline-block text-xs font-medium px-2 py-0.5 rounded-full" [class]="severityBadgeClass(employee)">
+                  {{ attentionLabel }}
+                </span>
+              }
+            }
+            @if (breakOverageLabel(employee); as breakLabel) {
+              <span class="mt-1 block text-xs font-medium text-red-600">{{ breakLabel }}</span>
+            }
+          </div>
+        }
       </div>
 
       <!-- Navigation Tabs -->
@@ -213,7 +228,13 @@ import { OffboardingWizardStore } from '../../state/offboarding-wizard.store';
       <!-- Tab Content Section -->
       @if (activeTab() === 'job') {
         <div class="rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] p-6 space-y-6">
-          <app-employee-job-info [jobInformation]="employee.jobInformation" />
+          <app-employee-job-info
+            [jobInformation]="employee.jobInformation"
+            [employeeId]="employee.id"
+            [canEdit]="canChangePosition() && !isReadOnly()"
+            [saving]="savingJobDetails()"
+            (save)="onJobDetailsSave($event)"
+          />
           <app-employee-job-journey [entries]="jobJourney()" />
         </div>
       } @else if (activeTab() === 'personal') {
@@ -294,11 +315,17 @@ export class EmployeeDetailComponent {
   readonly loading = signal(false);
   readonly error = signal<string | null>(null);
   readonly resending = signal(false);
+  readonly savingJobDetails = signal(false);
   readonly changePositionMenuOpen = signal(false);
   readonly changePositionOpen = signal(false);
   readonly changePositionReason = signal<'Promotion' | 'Transfer'>('Promotion');
   readonly activeTab = signal<'job' | 'personal' | 'emergency' | 'payroll'>('job');
   readonly jobJourney = signal<readonly PositionHistoryEntryResponse[]>([]);
+
+  readonly attendanceWarningLabel = attendanceWarningLabel;
+  readonly attendanceAttentionLabel = attendanceAttentionLabel;
+  readonly attendanceStatusLabel = attendanceStatusLabel;
+  readonly breakOverageLabel = breakOverageLabel;
 
   readonly canChangePosition = computed(() => this.permissionService.hasPermission('employees:write'));
   readonly isOwnRecord = computed(() => this.employee()?.id === this.authStore.employeeId());
@@ -338,6 +365,23 @@ export class EmployeeDetailComponent {
       error: () => this.jobJourney.set([])
     });
     void this.offboardingStore.loadOffboarding(id);
+  }
+
+  onJobDetailsSave(payload: UpdateEmployeeJobDetailsRequest): void {
+    const id = this.employee()?.id;
+    if (!id) return;
+    this.savingJobDetails.set(true);
+    this.api.updateJobDetails(id, payload).subscribe({
+      next: () => {
+        this.savingJobDetails.set(false);
+        this.notifications.success('Job details updated.');
+        this.load();
+      },
+      error: (err) => {
+        this.savingJobDetails.set(false);
+        this.notifications.error(toSafeErrorMessage(err, 'Could not update job details.'));
+      }
+    });
   }
 
   resendInvitation(employeeId: string): void {
@@ -426,16 +470,11 @@ export class EmployeeDetailComponent {
     return 'Not specified';
   }
 
-  getAccountStatusInfo(invitationStatus: string | null | undefined, jobStatus: string): { label: string; color: 'green' | 'amber' | 'blue' | 'red' } {
-    if (invitationStatus === 'expired') {
-      return { label: 'Invitation Expired', color: 'amber' };
-    }
-    if (invitationStatus === 'pending') {
-      return { label: 'Invitation Pending', color: 'blue' };
-    }
-    if (jobStatus?.toLowerCase() === 'active') {
-      return { label: 'Account Active', color: 'green' };
-    }
-    return { label: 'Inactive', color: 'red' };
+  severityBadgeClass(employee: EmployeeDetailResponse): string {
+    const severity = attendanceSeverityClass(employee);
+    if (severity === 'emp-attention--critical') return 'bg-red-50 text-red-700';
+    if (severity === 'emp-attention--warning') return 'bg-amber-50 text-amber-700';
+    return 'bg-[var(--color-surface-secondary)] text-[var(--color-text-secondary)]';
   }
+
 }

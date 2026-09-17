@@ -7,6 +7,12 @@ export interface TaskStatusColumn {
   visibility: 'public' | 'private';
 }
 
+export interface TaskAttachment {
+  fileId: string;
+  name: string;
+  sizeBytes: number;
+}
+
 export interface WorkTask {
   id: string;
   objectiveId: string;
@@ -26,5 +32,8 @@ export interface WorkTask {
   openClockSessionEmployeeId: string | null;
   openClockSessionClockInAt: Date | null;
   totalLoggedMinutes: number;
+  activeEventId?: string | null;
+  activeEventName?: string | null;
+  attachments: TaskAttachment[];
 
 }

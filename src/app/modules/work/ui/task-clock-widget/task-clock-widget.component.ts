@@ -7,14 +7,19 @@ import { toWorkTask } from '../../utils/task.mapper';
 @Component({
   selector: 'app-task-clock-widget',
   standalone: true,
-  template: `
-    <span data-testid="clock-timer" class="task-clock-widget__timer">{{ totalTimeLabel() }}</span>
+    template: `
+    <div class="task-clock-widget" [class.task-clock-widget--compact]="compact()">
+    <div class="task-clock-widget__controls" [class.task-clock-widget__controls--active]="hasOpenSessionMine()">
+      <span class="task-clock-widget__timer-label"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="8" /><path d="M12 8v4l3 2" /></svg><span>Tracked time</span></span>
+      <span data-testid="clock-timer" class="task-clock-widget__timer">{{ totalTimeLabel() }}</span>
+    </div>
     @if (hasOpenSessionMine()) {
-      <button data-testid="push-button" type="button" class="task-clock-widget__button" (click)="openPushPopup()">
-        Push
+        <button data-testid="push-button" type="button" class="task-clock-widget__button task-clock-widget__button--active" (click)="openPushPopup()">
+        Pause
       </button>
       @if (pushPopupOpen()) {
-        <div class="task-clock-widget__popup">
+        <div class="task-clock-widget__overlay" aria-hidden="true" (click)="closePushPopup()"></div>
+        <div class="task-clock-widget__popup" role="dialog" aria-modal="true" aria-label="Pause task progress" (click)="$event.stopPropagation()">
           <p data-testid="push-current-percent">Current: {{ task().progressPercent }}%</p>
           <input
             data-testid="push-percent-input"
@@ -43,46 +48,61 @@ import { toWorkTask } from '../../utils/task.mapper';
         </div>
       }
     } @else {
-      <button
-        data-testid="clock-in-button"
-        type="button"
-        class="task-clock-widget__button"
-        [disabled]="clockInDisabled()"
-        [title]="clockInDisabledReason()"
-        (click)="onClockIn()"
-      >
-        Clock In
-      </button>
+      <div class="task-clock-widget__action-row">
+        <button
+          data-testid="clock-in-button"
+          type="button"
+          class="task-clock-widget__button task-clock-widget__button--clock-in"
+          [disabled]="clockInDisabled()"
+          [title]="clockInDisabledReason()"
+          (click)="onClockIn()"
+        >
+          Clock In
+        </button>
+      </div>
     }
+    </div>
   `,
   styles: [`
-    .task-clock-widget__button {
-      border: 1px solid var(--color-border);
-      border-radius: 8px;
-      padding: 4px 10px;
-      font-size: 12px;
-      background: var(--color-surface);
-      color: var(--color-text-primary);
-    }
-    .task-clock-widget__button:disabled { opacity: 0.5; cursor: not-allowed; }
-    .task-clock-widget__popup {
-      display: flex;
-      flex-direction: column;
-      gap: 8px;
-      margin-top: 8px;
-      padding: 10px;
-      border: 1px solid var(--color-border);
-      border-radius: 8px;
-      background: var(--color-surface);
-    }
-    .task-clock-widget__popup input { padding: 4px 6px; }
-    .task-clock-widget__popup [role="alert"] { color: var(--color-danger-text); font-size: 12px; }
-    .task-clock-widget__timer {
-      font-variant-numeric: tabular-nums;
-      font-size: 12px;
-      color: var(--color-text-secondary);
-      margin-right: 6px;
-    }
+    :host { display: inline-block; min-width: 0; vertical-align: middle; }
+    .task-clock-widget { position: relative; display: inline-flex; align-items: center; gap: 8px; min-width: 0; }
+    .task-clock-widget--compact { gap: 6px; width: max-content; max-width: 100%; }
+    .task-clock-widget__controls { display: inline-flex; align-items: center; gap: 8px; height: 32px; border: 1px solid var(--color-border); border-radius: 6px; padding: 0 10px; background: var(--color-surface-secondary); }
+    .task-clock-widget__controls--active { border-color: color-mix(in srgb, var(--color-accent) 55%, var(--color-border)); background: color-mix(in srgb, var(--color-accent) 8%, var(--color-surface)); }
+    .task-clock-widget__timer-label { display: inline-flex; align-items: center; gap: 5px; color: var(--color-text-secondary); font-size: 11px; font-weight: 600; }
+    .task-clock-widget__timer-label svg { width: 14px; height: 14px; fill: none; stroke: var(--color-accent); stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+    .task-clock-widget__action-row { display: inline-flex; align-items: center; margin: 0; padding: 0; }
+    .task-clock-widget--compact .task-clock-widget__controls { height: 28px; gap: 4px; padding: 0 6px; }
+    .task-clock-widget--compact .task-clock-widget__timer-label span { display: none; }
+    .task-clock-widget--compact .task-clock-widget__timer-label svg { width: 13px; height: 13px; }
+    .task-clock-widget--compact .task-clock-widget__timer { font-size: 11px; letter-spacing: .02em; }
+    .task-clock-widget--compact .task-clock-widget__action-row { flex: 0 0 auto; }
+    .task-clock-widget--compact .task-clock-widget__button { height: 28px; min-height: 28px; padding: 0 8px; font-size: 11px; }
+    .task-clock-widget--compact .task-clock-widget__button--clock-in { animation: none; box-shadow: none; }
+    .task-clock-widget__button { display: inline-flex; align-items: center; justify-content: center; height: 32px; min-height: 32px; border: 1px solid var(--color-border); border-radius: 6px; padding: 0 12px; font: inherit; font-size: 12.5px; font-weight: 600; background: var(--color-surface); color: var(--color-text-primary); cursor: pointer; transition: border-color 160ms ease, background-color 160ms ease, color 160ms ease, transform 160ms ease; white-space: nowrap; }
+    .task-clock-widget__button:hover:not(:disabled) { border-color: var(--color-accent); background: var(--color-surface-secondary); }
+    .task-clock-widget__button--clock-in { border-color: var(--color-accent); background: var(--color-accent); color: var(--color-accent-contrast); box-shadow: 0 2px 8px color-mix(in srgb, var(--color-accent) 22%, transparent); animation: task-clock-attention 2.4s ease-in-out infinite; }
+    .task-clock-widget__button--active { border-color: var(--color-accent); background: color-mix(in srgb, var(--color-accent) 10%, var(--color-surface)); color: var(--color-accent); }
+    .task-clock-widget__button:disabled { opacity: 0.5; cursor: not-allowed; animation: none; }
+    .task-clock-widget__button:focus-visible, .task-clock-widget__popup button:focus-visible, .task-clock-widget__popup input:focus-visible { outline: 2px solid var(--color-focus-ring); outline-offset: 2px; }
+    .task-clock-widget__overlay { position: fixed; z-index: 90; inset: 0; background: rgb(15 23 42 / .22); backdrop-filter: blur(5px); -webkit-backdrop-filter: blur(5px); animation: task-clock-overlay-in 160ms ease-out; }
+    .task-clock-widget__popup { position: fixed; z-index: 91; top: 50%; left: 50%; display: flex; flex-direction: column; gap: 9px; width: min(320px, calc(100vw - 32px)); margin: 0; padding: 16px; border: 1px solid var(--color-border); border-radius: 12px; background: var(--color-surface); box-shadow: 0 20px 50px rgb(15 23 42 / .24); transform: translate(-50%, -50%); animation: task-clock-popup-in 160ms ease-out; }
+    .task-clock-widget__popup p { margin: 0; color: var(--color-text-primary); font-size: 13px; font-weight: 600; }
+    .task-clock-widget__popup input { width: 100%; height: 34px; box-sizing: border-box; padding: 6px 8px; border: 1px solid var(--color-border); border-radius: 7px; background: var(--color-surface); color: var(--color-text-primary); font: inherit; font-size: 13px; }
+    .task-clock-widget__popup input::placeholder { color: var(--color-text-secondary); }
+    .task-clock-widget__popup [role="alert"] { color: var(--color-danger-text); font-size: 12px; line-height: 1.35; }
+    .task-clock-widget__popup > div { display: flex; justify-content: flex-end; gap: 8px; padding-top: 2px; }
+    .task-clock-widget__popup button { min-height: 30px; padding: 5px 10px; border: 1px solid var(--color-border); border-radius: 7px; background: var(--color-surface); color: var(--color-text-secondary); font: inherit; font-size: 12px; font-weight: 600; cursor: pointer; }
+    .task-clock-widget__popup button:first-child { border-color: var(--color-accent); background: var(--color-accent); color: var(--color-accent-contrast); }
+    .task-clock-widget__popup button:hover:not(:disabled) { border-color: var(--color-accent); }
+    .task-clock-widget__popup button:disabled { opacity: .55; cursor: not-allowed; }
+    .task-clock-widget__timer { font-variant-numeric: tabular-nums; font-size: 13px; font-weight: 700; letter-spacing: .03em; color: var(--color-text-primary); }
+    .task-clock-widget__controls--active .task-clock-widget__timer { color: var(--color-accent); animation: task-clock-timer-pulse 2s ease-in-out infinite; }
+    @keyframes task-clock-attention { 0%, 100% { box-shadow: 0 2px 8px color-mix(in srgb, var(--color-accent) 18%, transparent); } 50% { box-shadow: 0 4px 14px color-mix(in srgb, var(--color-accent) 34%, transparent); } }
+    @keyframes task-clock-timer-pulse { 0%, 100% { opacity: 1; } 50% { opacity: .72; } }
+    @keyframes task-clock-overlay-in { from { opacity: 0; } to { opacity: 1; } }
+    @keyframes task-clock-popup-in { from { opacity: 0; transform: translate(-50%, calc(-50% + 8px)) scale(.98); } to { opacity: 1; transform: translate(-50%, -50%) scale(1); } }
+    @media (prefers-reduced-motion: reduce) { .task-clock-widget__button--clock-in, .task-clock-widget__controls--active .task-clock-widget__timer, .task-clock-widget__overlay, .task-clock-widget__popup { animation: none; } }
   `]
 })
 export class TaskClockWidgetComponent {
@@ -93,6 +113,7 @@ export class TaskClockWidgetComponent {
   task = input.required<WorkTask>();
   hasOpenSessionMine = input(false);
   hasOpenSessionOtherEmployee = input(false);
+  compact = input(false);
   isAssignee = input.required<boolean>();
   clockedIn = output<void>();
   pushed = output<WorkTask>();
