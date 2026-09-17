@@ -21,6 +21,7 @@ import { toTaskCategoryColumn } from '../../utils/task-category.mapper';
 import { WorkDropdownOption } from '../../ui/work-dropdown/work-dropdown.component';
 import { TaskFilterBarComponent, TaskFilterFieldConfig } from '../../ui/task-filter-bar/task-filter-bar.component';
 import { TaskFormModalComponent } from '../../ui/task-form-modal/task-form-modal.component';
+import { CreateTaskRequestDto } from '../../models/dto/task.dto';
 
 @Component({
   selector: 'app-task-board',
@@ -60,9 +61,15 @@ import { TaskFormModalComponent } from '../../ui/task-form-modal/task-form-modal
             [allStatuses]="store.statuses()"
             [employeeNames]="employeeNames()"
             [currentEmployeeId]="currentEmployee.id()"
+            [assignableMembers]="assignableMembers()"
+            [modules]="moduleOptions()"
+            [categories]="categories()"
+            [defaultObjectiveId]="modalPrefillModuleId()"
+            [defaultSprintId]="modalPrefillSprintId()"
             (taskDropped)="onTaskDropped($event)"
             (taskViewed)="onTaskViewed($event)"
             (taskChanged)="reload()"
+            (quickTaskCreated)="onQuickTaskCreated($event)"
           />
         }
       </div>
@@ -85,7 +92,7 @@ import { TaskFormModalComponent } from '../../ui/task-form-modal/task-form-modal
     .task-board__me-toggle { display: inline-flex; align-items: center; justify-content: center; width: 30px; height: 30px; border: 1px solid var(--color-border); border-radius: 999px; background: var(--color-surface); color: var(--color-text-secondary); font: inherit; font-size: 11px; font-weight: 700; cursor: pointer; transition: all 140ms ease; }
     .task-board__me-toggle:hover { border-color: var(--color-accent); color: var(--color-accent); }
     .task-board__me-toggle--active { border-color: var(--color-accent); background: var(--color-accent); color: var(--color-accent-contrast); }
-    .task-board { display: flex; gap: 16px; width: 100%; box-sizing: border-box; overflow-x: auto; padding: 0 0 10px; scroll-snap-type: x proximity; }
+    .task-board { display: flex; align-items: flex-start; gap: 16px; width: 100%; box-sizing: border-box; overflow-x: auto; padding: 0 0 10px; scroll-snap-type: x proximity; }
     :host ::ng-deep .task-card--highlighted { outline: 2px solid var(--color-focus-ring, var(--color-danger)); outline-offset: 2px; }
   `]
 })
@@ -374,4 +381,55 @@ export class TaskBoardComponent implements OnInit, AfterViewChecked, AfterViewIn
     this.taskModalOpen.set(false);
     this.reload();
   }
+
+  async onQuickTaskCreated(event: {
+    title: string;
+    statusId: string;
+    priority: WorkTask['priority'];
+    assigneeId?: string;
+    dueDate?: string;
+    objectiveId: string;
+    categoryId: string;
+    sprintId?: string | null;
+    resolve: (ok: boolean) => void;
+  }): Promise<void> {
+    const isOwner = this.modules().find((m) => m.objectiveId === event.objectiveId)?.isOwner ?? true;
+    const request: CreateTaskRequestDto = {
+      title: event.title,
+      categoryId: event.categoryId,
+      priority: event.priority,
+      dueDate: event.dueDate || undefined,
+      sprintId: event.sprintId ?? null
+    };
+
+    try {
+      if (!isOwner) {
+        await firstValueFrom(this.taskApi.createTaskCreationRequest(event.objectiveId, request));
+        event.resolve(true);
+        this.reload();
+        return;
+      }
+
+      const result = await this.store.createTask(event.objectiveId, request);
+      if (result && 'id' in result) {
+        if (event.assigneeId) {
+          try {
+            await firstValueFrom(this.taskApi.assignTask(result.id, event.assigneeId));
+          } catch {}
+        }
+        if (event.statusId && event.statusId !== result.statusId) {
+          try {
+            await firstValueFrom(this.taskApi.moveTaskStatus(result.id, event.statusId));
+          } catch {}
+        }
+        event.resolve(true);
+        this.reload();
+        return;
+      }
+      event.resolve(false);
+    } catch {
+      event.resolve(false);
+    }
+  }
 }
+

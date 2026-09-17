@@ -32,9 +32,8 @@ import { TaskClockWidgetComponent } from '../task-clock-widget/task-clock-widget
         }
       </div>
 
-      <div class="task-card__footer">
-        <span class="task-card__status" data-testid="task-card-status">{{ statusName() }}</span>
-        @if (isAssignee()) {
+      @if (isAssignee()) {
+        <div class="task-card__footer">
           <div class="task-card__clock" (click)="$event.stopPropagation()">
             <app-task-clock-widget
               [task]="task()"
@@ -46,8 +45,8 @@ import { TaskClockWidgetComponent } from '../task-clock-widget/task-clock-widget
               (pushed)="taskChanged.emit()"
             />
           </div>
-        }
-      </div>
+        </div>
+      }
 
     </div>
   `,
@@ -76,14 +75,13 @@ import { TaskClockWidgetComponent } from '../task-clock-widget/task-clock-widget
     .task-card__title { margin: 5px 0 7px; font-size: 13px; font-weight: 500; color: var(--color-text-primary); line-height: 1.4; }
     .task-card__assignees { display: flex; align-items: center; gap: 5px; margin: 0 0 7px; font-size: 11px; color: var(--color-text-secondary); }
     .task-card__assignees svg, .task-card__due-date svg, .task-card__hours svg { width: 13px; height: 13px; flex: 0 0 auto; fill: none; stroke: var(--color-accent); stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
-    .task-card__meta { display: flex; align-items: center; flex-wrap: wrap; gap: 8px; font-size: 11px; color: var(--color-text-secondary); margin-bottom: 8px; }
+    .task-card__meta { display: flex; align-items: center; flex-wrap: wrap; gap: 8px; font-size: 11px; color: var(--color-text-secondary); }
     .task-card__due-date, .task-card__hours { display: inline-flex; align-items: center; gap: 4px; }
     .task-card__priority[data-priority="critical"],
     .task-card__priority[data-priority="high"] { color: var(--color-danger); }
     .task-card__event { overflow: hidden; max-width: 120px; border-radius: 999px; background: var(--color-surface-secondary); padding: 1px 8px; color: var(--color-text-secondary); font-size: 10px; font-weight: 600; text-overflow: ellipsis; white-space: nowrap; }
-    .task-card__footer { display: flex; align-items: center; justify-content: space-between; gap: 8px; min-width: 0; }
+    .task-card__footer { display: flex; align-items: center; justify-content: flex-end; gap: 8px; min-width: 0; margin-top: 8px; }
     .task-card__clock { min-width: 0; margin-left: auto; }
-    .task-card__status { display: inline-flex; width: fit-content; flex: 0 0 auto; border-radius: 999px; background: var(--color-surface-secondary); padding: 3px 8px; font-size: 10px; font-weight: 500; color: var(--color-text-secondary); }
   `]
 })
 export class TaskCardComponent {
