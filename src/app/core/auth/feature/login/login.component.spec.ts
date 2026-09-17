@@ -32,7 +32,7 @@ describe('LoginComponent', () => {
     return fixture;
   }
 
-  function stubLocation(hostname: string) {
+  function stubLocation(hostname: string, search = '') {
     const originalLocation = window.location;
     // @ts-expect-error -- replacing window.location with a controllable stand-in for this test
     delete window.location;
@@ -40,6 +40,7 @@ describe('LoginComponent', () => {
       protocol: originalLocation.protocol,
       hostname,
       port: originalLocation.port,
+      search,
       href: ''
     } as unknown as string & Location;
     return () => {
@@ -65,6 +66,32 @@ describe('LoginComponent', () => {
 
       expect(window.location.href).toBe(`${protocol}//localhost${portSuffix}/auth/login`);
       restore();
+    });
+
+    it('preserves returnUrl when bouncing from a tenant host to root-host login', () => {
+      const { protocol, port } = window.location;
+      const portSuffix = port ? `:${port}` : '';
+      const returnUrlQuery =
+        '?returnUrl=%2Fdevice%2Factivate%3Frequest_id%3Dabc%26user_code%3DXYZ';
+      const restore = stubLocation('acme.localhost', returnUrlQuery);
+
+      try {
+        const fixture = setup({
+          login: vi.fn(),
+          legalAcceptanceRequired: () => false,
+          redirectRequired: () => false,
+          continueUrl: () => null,
+          loading: () => false,
+          error: () => null
+        });
+        void fixture;
+
+        expect(window.location.href).toBe(
+          `${protocol}//localhost${portSuffix}/auth/login${returnUrlQuery}`
+        );
+      } finally {
+        restore();
+      }
     });
 
     it('does not redirect when already on the root host', () => {
