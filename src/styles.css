@@ -92,6 +92,47 @@ body {
 
 .time-tracking-header-actions{display:flex;align-items:center;justify-content:flex-end;gap:.75rem}.time-tracking-header-actions .attendance-view-toggle{margin:0}.time-tracking-header-actions .page-action{white-space:nowrap}@media(max-width:760px){.time-tracking-header-actions{width:100%;justify-content:space-between}.time-tracking-header-actions .attendance-view-toggle{flex-shrink:0}.time-tracking-header-actions .page-action{width:auto}}@media(max-width:520px){.time-tracking-header-actions{align-items:stretch;flex-direction:column}.time-tracking-header-actions .attendance-view-toggle{align-self:flex-start}.time-tracking-header-actions .page-action{width:100%}}
 
+/* Subtle decorative sunburst background gradients matching modern productivity dashboard */
+.greeting-card-bg,
+.greeting-card-bg-afternoon {
+  background: radial-gradient(circle at 92% 16%, rgba(254, 240, 138, 0.45) 0%, rgba(254, 243, 199, 0.2) 30%, transparent 65%),
+              linear-gradient(145deg, #ffffff 0%, #f0fdfa 45%, #eff6ff 100%);
+}
+
+.greeting-card-bg-morning {
+  background: radial-gradient(circle at 92% 16%, rgba(254, 240, 138, 0.5) 0%, rgba(254, 243, 199, 0.25) 30%, transparent 65%),
+              linear-gradient(145deg, #ffffff 0%, #f0fdf4 45%, #eff6ff 100%);
+}
+
+.greeting-card-bg-evening {
+  background: radial-gradient(circle at 92% 16%, rgba(251, 146, 60, 0.4) 0%, rgba(253, 186, 116, 0.2) 30%, transparent 65%),
+              linear-gradient(145deg, #ffffff 0%, #fff7ed 45%, #fef2f2 100%);
+}
+
+.greeting-card-bg-night {
+  background: radial-gradient(circle at 92% 16%, rgba(99, 102, 241, 0.35) 0%, rgba(30, 27, 75, 0.2) 35%, transparent 65%),
+              linear-gradient(145deg, #ffffff 0%, #f8fafc 50%, #eef2ff 100%);
+}
+
+:root[data-mode='dark'] .greeting-card-bg,
+html.dark .greeting-card-bg {
+  background: radial-gradient(circle at 92% 16%, rgba(59, 130, 246, 0.25) 0%, transparent 65%),
+              linear-gradient(145deg, #18181b 0%, #0f172a 60%, #1e1b4b 100%);
+  border-color: rgba(255, 255, 255, 0.1);
+}
+
+/* Custom dropdown animation */
+@keyframes dropIn {
+  from {
+    opacity: 0;
+    transform: scale(0.95) translateY(-4px);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1) translateY(0);
+  }
+}
+
 /* Unified Sticky Breadcrumb Header across all application screens */
 .emp-page-header,
 .dm-page-header,

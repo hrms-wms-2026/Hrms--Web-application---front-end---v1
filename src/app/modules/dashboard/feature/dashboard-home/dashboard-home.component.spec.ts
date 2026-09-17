@@ -3,6 +3,8 @@ import { TestBed } from '@angular/core/testing';
 import { provideRouter } from '@angular/router';
 import { of } from 'rxjs';
 import { AuthStore } from '../../../../core/auth/state/auth.store';
+import { NotificationNavigationService } from '../../../../core/services/notification-navigation.service';
+import { NotificationsStore } from '../../../../core/state/notifications.store';
 import { TimeTrackingStore } from '../../../attendance/state/time-tracking.store';
 import { CalendarEventApiService } from '../../../calendar/data-access/calendar-event-api.service';
 import { ActivityTimelineApiService } from '../../data-access/activity-timeline-api.service';
@@ -38,7 +40,19 @@ describe('DashboardHomeComponent', () => {
         { provide: WorkPatternApiService, useValue: { getMyWorkPattern: () => of({ days: [] }) } },
         { provide: FocusStatusApiService, useValue: { getMyFocusStatus: () => of({ isBreakReminderDue: false, continuousFocusMinutes: 0 }) } },
         { provide: CalendarEventApiService, useValue: { getEvents: () => of({ events: [] }), getMyTimezone: () => of({ timezone: 'UTC' }) } },
-        { provide: AuthStore, useValue: { email: signal('arjun.kumar@onevo.dev') } }
+        { provide: AuthStore, useValue: { email: signal('arjun.kumar@onevo.dev') } },
+        {
+          provide: NotificationsStore,
+          useValue: {
+            items: signal([]),
+            unreadCount: signal(0),
+            loading: signal(false),
+            loadMine: () => Promise.resolve(),
+            markRead: () => Promise.resolve(),
+            markAllRead: () => Promise.resolve()
+          }
+        },
+        { provide: NotificationNavigationService, useValue: { navigate: () => Promise.resolve() } }
       ]
     }).compileComponents();
 
@@ -55,14 +69,15 @@ describe('DashboardHomeComponent', () => {
     expect(text).not.toContain('Sign out');
   });
 
-  it('renders the greeting, Today at a Glance, Quick Actions, My Tasks, Today\'s Schedule, Work Pattern, and Wellbeing cards', async () => {
+  it('renders the greeting, Today at a Glance, Quick Actions, My Tasks, Notifications, Today\'s Schedule, Work Pattern, and Wellbeing cards', async () => {
     const fixture = await setup();
 
     const text = fixture.nativeElement.textContent as string;
     expect(text).toContain('Arjun Kumar');
-    expect(text).toContain('View full timeline');
+    expect(text).toContain('Activity Timeline');
     expect(text).toContain('Quick Actions');
     expect(text).toContain('My Tasks');
+    expect(text).toContain('Notifications');
     expect(text).toContain('Today\'s Schedule');
     expect(text).toContain('Work Pattern');
     expect(text).toContain('Wellbeing');

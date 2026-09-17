@@ -3,12 +3,13 @@ import { vi } from 'vitest';
 import { CalendarEventResponse } from '../../models/calendar-event.model';
 import { CalendarAgendaViewComponent } from './calendar-agenda-view.component';
 
-function makeEvent(id: string, startDate: string): CalendarEventResponse {
+function makeEvent(id: string, startDate: string, hasConflict = false): CalendarEventResponse {
   return {
     id, title: id, description: null, startDate, endDate: startDate,
     sourceType: 'manual', color: null, recurrence: 'none', isAllDay: false, timezone: 'UTC',
     eventStatus: null, isPrivate: false, location: null, meetingLink: null, externalSource: null,
-    createdById: 'u1', isRecurringOccurrence: false, recurrenceMasterId: null, originalStart: null, participants: null
+    createdById: 'u1', isRecurringOccurrence: false, recurrenceMasterId: null, originalStart: null,
+    participants: null, hasConflict
   };
 }
 
@@ -43,5 +44,19 @@ describe('CalendarAgendaViewComponent', () => {
     fixture.componentInstance.eventClick.subscribe(spy);
     fixture.nativeElement.querySelector('[data-testid="calendar-agenda-row"]').click();
     expect(spy).toHaveBeenCalledWith('a');
+  });
+
+  it('renders a conflict indicator on a row flagged hasConflict', () => {
+    fixture.componentRef.setInput('events', [makeEvent('a', '2026-09-01T09:00:00Z', true)]);
+    fixture.detectChanges();
+    const row = fixture.nativeElement.querySelector('[data-testid="calendar-agenda-row"]');
+    expect(row.querySelector('[data-testid="calendar-conflict-marker"]')).not.toBeNull();
+  });
+
+  it('does not render a conflict indicator on a non-conflicting row', () => {
+    fixture.componentRef.setInput('events', [makeEvent('a', '2026-09-01T09:00:00Z')]);
+    fixture.detectChanges();
+    const row = fixture.nativeElement.querySelector('[data-testid="calendar-agenda-row"]');
+    expect(row.querySelector('[data-testid="calendar-conflict-marker"]')).toBeNull();
   });
 });

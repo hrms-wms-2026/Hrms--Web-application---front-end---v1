@@ -1,6 +1,7 @@
-import { ChangeDetectionStrategy, Component, input } from '@angular/core';
+import { ChangeDetectionStrategy, Component, inject, input } from '@angular/core';
 import { RouterLink, RouterLinkActive } from '@angular/router';
 import { NavItem } from '../nav/nav-item.model';
+import { NavigationStateService } from '../nav/navigation-state.service';
 
 /**
  * Reusable module-specific sub-navigation shell (Organization, Settings, and any future
@@ -16,6 +17,12 @@ import { NavItem } from '../nav/nav-item.model';
   changeDetection: ChangeDetectionStrategy.OnPush
 })
 export class SubSidebarComponent {
+  private readonly navState = inject(NavigationStateService);
+
   sectionLabel = input.required<string>();
   items = input.required<readonly NavItem[]>();
+
+  collapse(): void {
+    this.navState.collapseSubSidebar();
+  }
 }

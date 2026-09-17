@@ -1,0 +1,44 @@
+:host {
+  display: block;
+}
+
+.monthly-health-headline {
+  margin: 0 0 0.9rem;
+  font-size: 1.375rem;
+  font-weight: 700;
+  letter-spacing: -0.01em;
+  color: var(--color-text-primary);
+}
+
+.monthly-health-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 0.6rem;
+  margin: 0;
+}
+
+.monthly-health-item {
+  display: flex;
+  flex-direction: column-reverse;
+  gap: 0.2rem;
+  padding: 0.55rem 0.65rem;
+  background: var(--color-surface-secondary);
+  border-radius: 8px;
+}
+
+.monthly-health-item dt {
+  font-size: 0.72rem;
+  color: var(--color-text-secondary);
+}
+
+.monthly-health-item dd {
+  margin: 0;
+  font-size: 1.05rem;
+  font-weight: 700;
+  color: var(--color-text-primary);
+}
+
+.monthly-health-skeleton {
+  color: var(--color-text-secondary);
+  font-size: 0.85rem;
+}

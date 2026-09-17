@@ -17,8 +17,8 @@ export const SEGMENT_LABELS: Record<TimelineSegment['type'], string> = {
  * Glance strip and the full Activity Timeline page so the two never visually disagree. */
 export const SEGMENT_COLORS: Record<TimelineSegment['type'], string> = {
   working: 'var(--color-accent)',
-  break: 'var(--color-border)',
-  focus: 'var(--color-accent)',
+  break: 'var(--color-warning)',
+  focus: '#6366f1',
   idle: 'var(--color-border)'
 };
 

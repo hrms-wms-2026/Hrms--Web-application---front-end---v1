@@ -2,6 +2,7 @@ import { provideHttpClient } from '@angular/common/http';
 import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
 import { signal } from '@angular/core';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
+import { By } from '@angular/platform-browser';
 import { provideRouter } from '@angular/router';
 import { vi } from 'vitest';
 import { PermissionService } from '../../../../core/auth/state/permission.service';
@@ -16,6 +17,8 @@ import {
   CLOCK_IN_POLICY_COMPANY_WIDE_CONFLICT,
   ClockInPolicyStore
 } from '../../state/clock-in-policy.store';
+import { WorkModeStore } from '../../state/work-mode.store';
+import { WorkModeListComponent } from '../work-mode-list/work-mode-list.component';
 import { ClockInPolicyFormComponent } from './clock-in-policy-form.component';
 import {
   LATE_DEDUCTION_RULES_DISABLED_MESSAGE,
@@ -27,6 +30,17 @@ describe('ClockInPolicyFormComponent', () => {
   let httpMock: HttpTestingController;
   let permissionService: PermissionService;
   let notifications: { success: ReturnType<typeof vi.fn>; error: ReturnType<typeof vi.fn> };
+  let workModeStoreStub: {
+    items: ReturnType<typeof signal>;
+    atCap: ReturnType<typeof signal>;
+    loading: ReturnType<typeof signal>;
+    saving: ReturnType<typeof signal>;
+    error: ReturnType<typeof signal>;
+    load: ReturnType<typeof vi.fn>;
+    create: ReturnType<typeof vi.fn>;
+    update: ReturnType<typeof vi.fn>;
+    deactivate: ReturnType<typeof vi.fn>;
+  };
 
   const listItem: ClockInPolicyListItemResponse = {
     id: 'policy-1',
@@ -48,21 +62,6 @@ describe('ClockInPolicyFormComponent', () => {
     scope: { type: 'full_company', departmentIds: [], positionIds: [], employeeIds: [] },
     effectiveFrom: '2026-08-21',
     effectiveTo: null,
-    locationVerificationRequired: false,
-    allowedRadiusMeters: null,
-    workAreaRules: {
-      onsite: { biometricEnabled: true, webEnabled: false, trayEnabled: false, photoRequired: false },
-      remote: { biometricEnabled: false, webEnabled: true, trayEnabled: true, photoRequired: true, locationCheckRequired: false },
-      hybrid: {
-        biometricEnabled: false,
-        webEnabled: true,
-        trayEnabled: true,
-        photoRequired: true,
-        locationCheckRequired: false,
-        sourceRule: 'employee_choice'
-      },
-      field: { biometricEnabled: false, webEnabled: true, trayEnabled: true, photoRequirement: 'required' }
-    },
     correctionRequiresApproval: true,
     notificationRecipientResolver: 'management_coverage_owner',
     lateDeductionRules: [
@@ -101,6 +100,23 @@ describe('ClockInPolicyFormComponent', () => {
       error: vi.fn()
     };
 
+    // WorkModeListComponent is embedded directly (not lazy) and injects the
+    // root-provided WorkModeStore. Stub it here so this parent spec never
+    // hits the real HTTP work-modes endpoint (which would fail httpMock.verify()
+    // across every test in this file) and stays focused on the policy form's
+    // own behavior.
+    workModeStoreStub = {
+      items: signal([]),
+      atCap: signal(false),
+      loading: signal(false),
+      saving: signal(false),
+      error: signal(null),
+      load: vi.fn(),
+      create: vi.fn(),
+      update: vi.fn(),
+      deactivate: vi.fn()
+    };
+
     TestBed.resetTestingModule();
     await TestBed.configureTestingModule({
       imports: [ClockInPolicyFormComponent],
@@ -110,6 +126,7 @@ describe('ClockInPolicyFormComponent', () => {
         provideHttpClient(),
         provideHttpClientTesting(),
         provideRouter([]),
+        { provide: WorkModeStore, useValue: workModeStoreStub },
         {
           provide: LegalEntityStore,
           useValue: { selectedLegalEntity: selectedCompany }
@@ -193,7 +210,7 @@ describe('ClockInPolicyFormComponent', () => {
     fixture.detectChanges();
   }
 
-  it('renders the company-wide settings form with clock-in methods and save action', async () => {
+  it('renders the company-wide settings form with the work mode list and save action', async () => {
     const fixture = await setup();
     await flushEmptyCompanyWide(fixture);
     const el = fixture.nativeElement as HTMLElement;
@@ -204,10 +221,8 @@ describe('ClockInPolicyFormComponent', () => {
     expect(text).toContain('Clock-in Policy');
     expect(text).toContain('Save changes');
     expect(text).toContain('Late deduction rules');
-    expect(el.querySelector('[data-testid="work-area-onsite"]')?.textContent).toContain('Onsite');
-    expect(el.querySelector('[data-testid="work-area-remote"]')?.textContent).toContain('Remote');
-    expect(el.querySelector('[data-testid="work-area-hybrid"]')?.textContent).toContain('Hybrid');
-    expect(el.querySelector('[data-testid="work-area-field"]')?.textContent).toContain('Field');
+    expect(text).toContain('Work modes');
+    expect(el.querySelector('app-work-mode-list')).toBeTruthy();
 
     for (const label of [
       'Control how employees can clock in for this company.',
@@ -222,6 +237,15 @@ describe('ClockInPolicyFormComponent', () => {
     ]) {
       expect(text).not.toContain(label);
     }
+  });
+
+  it('embeds the work mode list bound to the selected legal entity', async () => {
+    const fixture = await setup();
+    await flushEmptyCompanyWide(fixture);
+    const workModeDebugEl = fixture.debugElement.query(By.directive(WorkModeListComponent));
+    expect(workModeDebugEl).toBeTruthy();
+    expect(workModeDebugEl.componentInstance.legalEntityId()).toBe('le-1');
+    expect(workModeDebugEl.componentInstance.canEdit()).toBe(true);
   });
 
   it('renders Late deduction rules section on the single Clock-in Policy screen', async () => {
@@ -299,54 +323,11 @@ describe('ClockInPolicyFormComponent', () => {
     }
   });
 
-  it('Hybrid card owns location check and allowed distance', async () => {
-    const fixture = await setup();
-    await flushEmptyCompanyWide(fixture);
-    const el = fixture.nativeElement as HTMLElement;
-
-    expect(el.querySelector('[data-testid="hybrid-location-check"]')).toBeTruthy();
-    expect(pageText(fixture)).toContain('Location check required');
-    expect(el.querySelector('[data-testid="hybrid-allowed-distance"]')).toBeNull();
-
-    fixture.componentInstance.setHybridLocationCheck(true);
-    fixture.detectChanges();
-    expect(el.querySelector('[data-testid="hybrid-allowed-distance"]')).toBeTruthy();
-    expect(pageText(fixture)).toContain('Allowed distance');
-    expect(pageText(fixture)).toContain('meters');
-  });
-
-  it('Field photo uses checkbox not dropdown', async () => {
-    const fixture = await setup();
-    await flushEmptyCompanyWide(fixture);
-    const el = fixture.nativeElement as HTMLElement;
-    const photo = el.querySelector(
-      '[data-testid="field-photo-required"]'
-    ) as HTMLInputElement | null;
-    expect(photo).toBeTruthy();
-    expect(photo?.type).toBe('checkbox');
-    expect(el.querySelector('[data-testid="field-photo-requirement"]')).toBeNull();
-  });
-
-  it('allowed distance required only when Hybrid location check is enabled', async () => {
-    const fixture = await setup();
-    await flushEmptyCompanyWide(fixture);
-    const component = fixture.componentInstance;
-
-    expect(validateClockInPolicyForm(component.form()).valid).toBe(true);
-    component.setHybridLocationCheck(true);
-    component.patchForm({ allowedDistanceMeters: '' });
-    await component.onSubmit();
-    fixture.detectChanges();
-    expect(component.fieldErrors()['allowedDistanceMeters']).toBeTruthy();
-    httpMock.expectNone(createUrl);
-  });
-
   it('create posts company-wide payload with forced backend-required fields', async () => {
     const fixture = await setup();
     await flushEmptyCompanyWide(fixture);
     const component = fixture.componentInstance;
     const expectedFrom = component.form().effectiveFrom;
-    component.setFieldPhotoRequired(false);
     const submit = component.onSubmit();
 
     const req = httpMock.expectOne(createUrl);
@@ -354,8 +335,6 @@ describe('ClockInPolicyFormComponent', () => {
     expect(req.request.body.name).toBe('Default clock-in policy');
     expect(req.request.body.effectiveFrom).toBe(expectedFrom);
     expect(req.request.body.effectiveTo).toBeNull();
-    expect(req.request.body.locationVerificationRequired).toBe(false);
-    expect(req.request.body.allowedRadiusMeters).toBeNull();
     expect(req.request.body.scope).toEqual({
       type: 'full_company',
       departmentIds: [],
@@ -365,9 +344,10 @@ describe('ClockInPolicyFormComponent', () => {
     expect(req.request.body.isActive).toBe(true);
     expect(req.request.body.correctionRequiresApproval).toBe(true);
     expect(req.request.body.notificationRecipientResolver).toBe('management_coverage_owner');
-    expect(req.request.body.workAreaRules.hybrid.sourceRule).toBe('employee_choice');
-    expect(req.request.body.workAreaRules.field.photoRequirement).toBe('off');
     expect(req.request.body.lateDeductionRules).toEqual([]);
+    expect(req.request.body).not.toHaveProperty('workAreaRules');
+    expect(req.request.body).not.toHaveProperty('locationVerificationRequired');
+    expect(req.request.body).not.toHaveProperty('allowedRadiusMeters');
     expect(JSON.stringify(req.request.body).toLowerCase()).not.toContain('either');
     req.flush(detail);
     await submit;
@@ -379,31 +359,18 @@ describe('ClockInPolicyFormComponent', () => {
     await flushExistingCompanyWide(fixture);
     const component = fixture.componentInstance;
     expect(component.lateRulesEditable()).toBe(false);
-    component.setHybridLocationCheck(true);
-    component.patchForm({ allowedDistanceMeters: '50' });
     const submit = component.onSubmit();
 
     const req = httpMock.expectOne((r) => r.url === detailUrl && r.method === 'PUT');
     expect(req.request.body.name).toBe('Existing Policy');
     expect(req.request.body.effectiveFrom).toBe('2026-08-21');
     expect(req.request.body.effectiveTo).toBeNull();
-    expect(req.request.body.workAreaRules.hybrid.locationCheckRequired).toBe(true);
-    expect(req.request.body.locationVerificationRequired).toBe(true);
-    expect(req.request.body.allowedRadiusMeters).toBe(50);
     expect(req.request.body.scope.type).toBe('full_company');
     expect(req.request.body.isActive).toBe(true);
     expect(req.request.body.lateDeductionRules).toEqual([
       { lateArrivalMinute: 15, multiplier: 0.5, timeOffTypeId: 'tot-1' }
     ]);
-    req.flush({
-      ...detail,
-      locationVerificationRequired: true,
-      allowedRadiusMeters: 50,
-      workAreaRules: {
-        ...detail.workAreaRules,
-        hybrid: { ...detail.workAreaRules.hybrid, locationCheckRequired: true }
-      }
-    });
+    req.flush(detail);
     await submit;
     expect(notifications.success).toHaveBeenCalledWith('Changes saved.');
   });
@@ -566,16 +533,15 @@ describe('ClockInPolicyFormComponent', () => {
     expect(pageText(fixture)).toContain('Select a company to manage clock-in policy.');
   });
 
-  it('read-only user sees settings but cannot save', async () => {
+  it('read-only user sees settings but cannot save, and work mode list is not editable', async () => {
     const fixture = await setup({ permissions: ['attendance:read'] });
     await flushEmptyCompanyWide(fixture);
     const el = fixture.nativeElement as HTMLElement;
     expect(el.querySelector('[data-testid="save-policy"]')).toBeNull();
     expect(el.querySelector('[data-testid="clock-in-policy-form"]')).toBeTruthy();
     expect(pageText(fixture)).toContain('Clock-in Policy');
-    const checkboxes = el.querySelectorAll('input[type="checkbox"]');
-    expect(checkboxes.length).toBeGreaterThan(0);
-    checkboxes.forEach((input) => expect((input as HTMLInputElement).disabled).toBe(true));
+    const workModeDebugEl = fixture.debugElement.query(By.directive(WorkModeListComponent));
+    expect(workModeDebugEl.componentInstance.canEdit()).toBe(false);
   });
 
   it('uses environment.apiUrl legal-entity routes', async () => {

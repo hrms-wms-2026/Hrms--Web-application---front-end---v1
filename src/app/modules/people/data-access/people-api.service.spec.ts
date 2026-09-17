@@ -384,4 +384,35 @@ describe('PeopleApiService', () => {
     expect(req.request.params.get('tenantId')).toBeNull();
     req.flush({ employeeNumber: 'DAPI-0005', available: false });
   });
+
+  it('checkEmployeeNumberAvailability passes excludeEmployeeId through when provided', () => {
+    service.checkEmployeeNumberAvailability('DAPI-0005', 'emp-1').subscribe();
+
+    const req = httpMock.expectOne(
+      (r) => r.url === `${environment.apiUrl}/onboarding/employee-number-availability`
+    );
+    expect(req.request.params.get('excludeEmployeeId')).toBe('emp-1');
+    req.flush({ employeeNumber: 'DAPI-0005', available: true });
+  });
+
+  it('checkEmployeeNumberAvailability omits excludeEmployeeId when not provided', () => {
+    service.checkEmployeeNumberAvailability('DAPI-0005').subscribe();
+
+    const req = httpMock.expectOne(
+      (r) => r.url === `${environment.apiUrl}/onboarding/employee-number-availability`
+    );
+    expect(req.request.params.has('excludeEmployeeId')).toBe(false);
+    req.flush({ employeeNumber: 'DAPI-0005', available: true });
+  });
+
+  it('updateJobDetails sends PUT to /employees/{id}/job-details with the payload', () => {
+    service
+      .updateJobDetails('emp-1', { employeeNumber: 'E-002', employmentTypeCode: 'part_time', workModeId: 'wm-1' })
+      .subscribe();
+
+    const req = httpMock.expectOne(`${environment.apiUrl}/employees/emp-1/job-details`);
+    expect(req.request.method).toBe('PUT');
+    expect(req.request.body).toEqual({ employeeNumber: 'E-002', employmentTypeCode: 'part_time', workModeId: 'wm-1' });
+    req.flush(null);
+  });
 });

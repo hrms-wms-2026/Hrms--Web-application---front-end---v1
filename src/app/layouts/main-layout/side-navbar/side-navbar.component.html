@@ -6,6 +6,21 @@
 
   <div class="nav-rail__divider"></div>
 
+  @if (canExpandSubSidebar()) {
+    <button
+      type="button"
+      class="nav-rail__expand-btn"
+      (click)="expandSubSidebar()"
+      title="Open sidebar (Ctrl+\)"
+      aria-label="Open sidebar"
+    >
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+        <polyline points="13 17 18 12 13 7"></polyline>
+        <polyline points="6 17 11 12 6 7"></polyline>
+      </svg>
+    </button>
+  }
+
   @for (item of visibleItems(); track item.id) {
     <a
       [routerLink]="item.path"

@@ -44,9 +44,13 @@ export class CalendarParticipantPickerComponent {
   open = input(false);
   selectedIds = input<readonly string[]>([]);
   selectedIdsChange = output<readonly string[]>();
+  /** Same selection as `selectedIdsChange`, paired with display names so callers can
+   * render avatar chips without a second lookup. */
+  selectedPeopleChange = output<readonly { id: string; name: string }[]>();
   closed = output<void>();
 
   results = signal<readonly EmployeeListItemResponse[]>([]);
+  private readonly namesById = new Map<string, string>();
 
   constructor() {
     effect(() => {
@@ -68,9 +72,13 @@ export class CalendarParticipantPickerComponent {
     const current = this.selectedIds();
     const next = current.includes(employeeId) ? current.filter((id) => id !== employeeId) : [...current, employeeId];
     this.selectedIdsChange.emit(next);
+    this.selectedPeopleChange.emit(next.map((id) => ({ id, name: this.namesById.get(id) ?? '' })));
   }
 
   private query(search: string): void {
-    this.peopleApi.listEmployees({ search, page: 1, pageSize: 20 }).subscribe((page) => this.results.set(page.items));
+    this.peopleApi.listEmployees({ search, page: 1, pageSize: 20 }).subscribe((page) => {
+      for (const e of page.items) this.namesById.set(e.id, e.fullName);
+      this.results.set(page.items);
+    });
   }
 }

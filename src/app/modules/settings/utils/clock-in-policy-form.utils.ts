@@ -1,8 +1,4 @@
-import {
-  ClockInPolicyResponse,
-  UpsertClockInPolicyRequest,
-  WorkAreaRules
-} from '../models/clock-in-policy.model';
+import { ClockInPolicyResponse, UpsertClockInPolicyRequest } from '../models/clock-in-policy.model';
 
 /** Local browser date as yyyy-MM-dd for Effective from default. */
 export function todayLocalIsoDate(now = new Date()): string {
@@ -24,36 +20,6 @@ export const LATE_DEDUCTION_RULES_EDITABLE = false;
 export const LATE_DEDUCTION_RULES_DISABLED_MESSAGE =
   'Time off types must be configured before late deduction rules can be added.';
 
-export const DEFAULT_WORK_AREA_RULES: WorkAreaRules = {
-  onsite: {
-    biometricEnabled: true,
-    webEnabled: false,
-    trayEnabled: false,
-    photoRequired: false
-  },
-  remote: {
-    biometricEnabled: false,
-    webEnabled: true,
-    trayEnabled: true,
-    photoRequired: true,
-    locationCheckRequired: false
-  },
-  hybrid: {
-    biometricEnabled: false,
-    webEnabled: true,
-    trayEnabled: true,
-    photoRequired: true,
-    locationCheckRequired: false,
-    sourceRule: 'employee_choice'
-  },
-  field: {
-    biometricEnabled: false,
-    webEnabled: true,
-    trayEnabled: true,
-    photoRequirement: 'required'
-  }
-};
-
 /** Editable late-deduction row (string fields for inputs). */
 export interface LateDeductionRuleFormRow {
   lateArrivalMinutes: string;
@@ -62,9 +28,10 @@ export interface LateDeductionRuleFormRow {
 }
 
 /**
- * Company-wide settings form model (user-editable clock-in methods + late rules).
+ * Company-wide settings form model (late rules only). Work-mode/clock-in-method
+ * configuration is handled by the separate WorkModeListComponent/WorkModeStore,
+ * not this form.
  * Name / effective dates are kept internally for upsert payloads — never shown in UI.
- * Hybrid "Allowed distance" maps to locationVerificationRequired + allowedRadiusMeters on save.
  */
 export interface ClockInPolicySettingsFormValue {
   /** Internal — not rendered. */
@@ -73,9 +40,6 @@ export interface ClockInPolicySettingsFormValue {
   effectiveFrom: string;
   /** Internal — not rendered. Empty string maps to null on save. */
   effectiveTo: string;
-  /** Hybrid "Allowed distance" value (meters). Used only when hybrid.locationCheckRequired. */
-  allowedDistanceMeters: string;
-  workAreaRules: WorkAreaRules;
   /** Late deduction rows — only submitted when LATE_DEDUCTION_RULES_EDITABLE is true. */
   lateDeductionRules: LateDeductionRuleFormRow[];
 }
@@ -96,8 +60,6 @@ export function createDefaultClockInPolicyFormModel(now = new Date()): ClockInPo
     name: DEFAULT_POLICY_NAME,
     effectiveFrom: todayLocalIsoDate(now),
     effectiveTo: '',
-    allowedDistanceMeters: '',
-    workAreaRules: structuredClone(DEFAULT_WORK_AREA_RULES),
     lateDeductionRules: []
   };
 }
@@ -132,40 +94,10 @@ export function formModelFromPolicy(
   now = new Date(),
   lateRulesEditable = LATE_DEDUCTION_RULES_EDITABLE
 ): ClockInPolicySettingsFormValue {
-  const fieldPhoto =
-    policy.workAreaRules.field.photoRequirement === 'required' ? 'required' : 'off';
-
-  const hybridLocationCheckRequired = policy.workAreaRules.hybrid.locationCheckRequired === true;
-  const remoteLocationCheckRequired = policy.workAreaRules.remote.locationCheckRequired === true;
-  const anyLocationCheckRequired = hybridLocationCheckRequired || remoteLocationCheckRequired;
-  const allowedDistanceMeters =
-    anyLocationCheckRequired &&
-    policy.allowedRadiusMeters !== null &&
-    policy.allowedRadiusMeters !== undefined
-      ? String(policy.allowedRadiusMeters)
-      : '';
-
   return {
     name: safePolicyName(policy.name),
     effectiveFrom: safeEffectiveFrom(policy.effectiveFrom, now),
     effectiveTo: safeEffectiveTo(policy.effectiveTo),
-    allowedDistanceMeters,
-    workAreaRules: {
-      ...structuredClone(policy.workAreaRules),
-      remote: {
-        ...structuredClone(policy.workAreaRules.remote),
-        locationCheckRequired: remoteLocationCheckRequired
-      },
-      hybrid: {
-        ...structuredClone(policy.workAreaRules.hybrid),
-        locationCheckRequired: hybridLocationCheckRequired,
-        sourceRule: 'employee_choice'
-      },
-      field: {
-        ...structuredClone(policy.workAreaRules.field),
-        photoRequirement: fieldPhoto
-      }
-    },
     lateDeductionRules: lateRulesEditable ? lateRulesFromPolicy(policy) : []
   };
 }
@@ -224,17 +156,6 @@ export function validateClockInPolicyForm(
   lateRulesEditable = LATE_DEDUCTION_RULES_EDITABLE
 ): FormValidationResult {
   const errors: Record<string, string> = {};
-
-  if (model.workAreaRules.hybrid.locationCheckRequired || model.workAreaRules.remote.locationCheckRequired) {
-    const distance = Number(model.allowedDistanceMeters);
-    if (
-      !model.allowedDistanceMeters.trim() ||
-      !Number.isInteger(distance) ||
-      distance <= 0
-    ) {
-      errors['allowedDistanceMeters'] = 'Enter a positive distance in meters.';
-    }
-  }
 
   if (lateRulesEditable) {
     const seenMinutes = new Map<number, number>();
@@ -299,7 +220,6 @@ function mapExistingLateRulesToPayload(
 
 /**
  * Build upsert payload for the company-wide settings screen.
- * Hybrid location check maps to locationVerificationRequired + allowedRadiusMeters.
  * Late deduction rules:
  * - editable → send sorted user-entered rules
  * - not editable + create → []
@@ -321,28 +241,6 @@ export function toUpsertRequest(
     lateDeductionRules = [];
   }
 
-  const hybridLocationCheckRequired = model.workAreaRules.hybrid.locationCheckRequired === true;
-  const remoteLocationCheckRequired = model.workAreaRules.remote.locationCheckRequired === true;
-  const anyLocationCheckRequired = hybridLocationCheckRequired || remoteLocationCheckRequired;
-
-  const cloned = structuredClone(model.workAreaRules);
-  const workAreaRules: WorkAreaRules = {
-    ...cloned,
-    remote: {
-      ...cloned.remote,
-      locationCheckRequired: remoteLocationCheckRequired
-    },
-    hybrid: {
-      ...cloned.hybrid,
-      locationCheckRequired: hybridLocationCheckRequired,
-      sourceRule: 'employee_choice'
-    },
-    field: {
-      ...cloned.field,
-      photoRequirement: cloned.field.photoRequirement === 'required' ? 'required' : 'off'
-    }
-  };
-
   const effectiveTo = safeEffectiveTo(model.effectiveTo);
 
   return {
@@ -355,9 +253,6 @@ export function toUpsertRequest(
     },
     effectiveFrom: safeEffectiveFrom(model.effectiveFrom, now),
     effectiveTo: effectiveTo || null,
-    locationVerificationRequired: anyLocationCheckRequired,
-    allowedRadiusMeters: anyLocationCheckRequired ? Number(model.allowedDistanceMeters) : null,
-    workAreaRules,
     correctionRequiresApproval: true,
     notificationRecipientResolver: 'management_coverage_owner',
     lateDeductionRules,

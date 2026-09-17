@@ -1,78 +1,95 @@
-<app-card>
-  <div class="mb-4 flex items-center justify-between">
-    <h2 class="text-base font-bold text-[var(--color-text-primary)] sm:text-lg">My Tasks</h2>
-    @if (viewAllTasksLink(); as link) {
+<section class="rounded-2xl border border-slate-200/80 bg-white p-5 shadow-xs flex-1 flex flex-col justify-between h-full" data-purpose="my-tasks">
+  <div>
+    <!-- Widget Header -->
+    <div class="flex items-center justify-between mb-4">
       <div class="flex items-center gap-2">
-        <a
-          [routerLink]="link"
-          class="inline-flex items-center gap-1.5 text-xs font-semibold text-[var(--color-accent)] transition-opacity hover:opacity-80"
-          data-testid="my-tasks-view-all-link"
-        >
-          <span>View all tasks</span>
-          <svg viewBox="0 0 16 16" fill="currentColor" class="h-3.5 w-3.5" aria-hidden="true">
-            <path
-              fill-rule="evenodd"
-              d="M2 8a.75.75 0 01.75-.75h8.69L8.22 4.03a.75.75 0 011.06-1.06l4.5 4.5a.75.75 0 010 1.06l-4.5 4.5a.75.75 0 01-1.06-1.06l3.22-3.22H2.75A.75.75 0 012 8z"
-              clip-rule="evenodd"
-            />
-          </svg>
-        </a>
-        @if (hasMoreTasks()) {
-          <span class="text-xs text-[var(--color-text-secondary)]" data-testid="my-tasks-hidden-count">+{{ hiddenTaskCount() }} more</span>
+        <h2 class="text-sm font-bold text-slate-800">My Tasks</h2>
+        @if (overdueTasks().length > 0) {
+          <span class="text-[10px] font-bold text-rose-500 bg-rose-50 border border-rose-200 px-1.5 py-0.5 rounded tracking-wide uppercase">
+            OVERDUE
+          </span>
+        }
+      </div>
+      @if (viewAllTasksLink(); as link) {
+        <div class="flex items-center gap-2">
+          <a
+            [routerLink]="link"
+            class="inline-flex items-center gap-1.5 rounded-full border border-blue-100 bg-white/90 px-3 py-1 text-xs font-semibold text-blue-600 shadow-xs backdrop-blur-xs transition-all hover:bg-white hover:shadow-sm"
+            data-testid="my-tasks-view-all-link"
+          >
+            <span>View all tasks</span>
+            <svg class="h-3 w-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path d="M14 5l7 7m0 0l-7 7m7-7H3" stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5"></path>
+            </svg>
+          </a>
+          @if (hasMoreTasks()) {
+            <span class="text-xs text-slate-400" data-testid="my-tasks-hidden-count">+{{ hiddenTaskCount() }} more</span>
+          }
+        </div>
+      }
+    </div>
+
+    @if (loading()) {
+      <div class="flex flex-col gap-2 animate-pulse py-1">
+        <div class="h-12 w-full rounded-lg bg-slate-100"></div>
+        <div class="h-12 w-full rounded-lg bg-slate-100"></div>
+        <div class="h-12 w-full rounded-lg bg-slate-100"></div>
+      </div>
+    } @else if (overdueTasks().length === 0 && upcomingTasks().length === 0) {
+      <p class="text-xs text-slate-400 py-6 text-center" data-testid="my-tasks-empty">No tasks due soon.</p>
+    } @else {
+      <!-- Tasks List -->
+      <div class="divide-y divide-slate-100">
+        @if (overdueTasks().length > 0) {
+          <ul class="divide-y divide-slate-100" data-testid="my-tasks-overdue-list">
+            @for (task of overdueTasks(); track task.taskId) {
+              <li>
+                <a
+                  [routerLink]="taskLink(task)"
+                  [queryParams]="taskQueryParams(task)"
+                  data-testid="my-tasks-row"
+                  class="py-3 flex items-center justify-between group cursor-pointer"
+                >
+                  <div class="min-w-0 flex-1 pr-2">
+                    <p class="text-xs font-semibold text-slate-800 group-hover:text-blue-600 transition-colors truncate">
+                      {{ task.title }}
+                    </p>
+                    <p class="text-[11px] text-slate-400 mt-0.5 truncate">{{ task.projectName }}</p>
+                  </div>
+                  <span class="px-2 py-0.5 bg-rose-50 text-rose-600 text-[10px] font-medium rounded border border-rose-100 shrink-0">
+                    {{ dueDateLabel(task.dueDate) }}
+                  </span>
+                </a>
+              </li>
+            }
+          </ul>
+        }
+
+        @if (upcomingTasks().length > 0) {
+          <ul class="divide-y divide-slate-100" data-testid="my-tasks-upcoming-list">
+            @for (task of upcomingTasks(); track task.taskId) {
+              <li>
+                <a
+                  [routerLink]="taskLink(task)"
+                  [queryParams]="taskQueryParams(task)"
+                  data-testid="my-tasks-row"
+                  class="py-3 flex items-center justify-between group cursor-pointer"
+                >
+                  <div class="min-w-0 flex-1 pr-2">
+                    <p class="text-xs font-semibold text-slate-800 group-hover:text-blue-600 transition-colors truncate">
+                      {{ task.title }}
+                    </p>
+                    <p class="text-[11px] text-slate-400 mt-0.5 truncate">{{ task.projectName }}</p>
+                  </div>
+                  <span class="px-2 py-0.5 bg-amber-50 text-amber-700 text-[10px] font-medium rounded border border-amber-200/60 shrink-0">
+                    {{ dueDateLabel(task.dueDate) }}
+                  </span>
+                </a>
+              </li>
+            }
+          </ul>
         }
       </div>
     }
   </div>
-
-  <div class="flex h-64 flex-col">
-  @if (!loading() && overdueTasks().length === 0 && upcomingTasks().length === 0) {
-    <p class="text-sm text-[var(--color-text-secondary)]" data-testid="my-tasks-empty">No tasks due soon.</p>
-  }
-
-  <div class="scrollbar-hide min-h-0 flex-1 overflow-y-auto pr-1">
-    @if (overdueTasks().length > 0) {
-      <p class="mb-2 text-xs font-semibold uppercase tracking-wide text-[var(--color-danger-text)]">Overdue</p>
-      <ul class="mb-4 flex flex-col gap-2" data-testid="my-tasks-overdue-list">
-        @for (task of overdueTasks(); track task.taskId) {
-          <li>
-            <a
-              [routerLink]="taskLink(task)"
-              [queryParams]="taskQueryParams(task)"
-              data-testid="my-tasks-row"
-              class="flex flex-col gap-1 rounded-md border border-[var(--color-border)] p-2 text-sm hover:bg-[var(--color-surface-secondary)]"
-            >
-              <span class="truncate text-[var(--color-text-primary)]">{{ task.title }}</span>
-              <span class="flex items-center justify-between gap-2">
-                <span class="min-w-0 truncate text-xs text-[var(--color-text-secondary)]">{{ task.projectName }}</span>
-                <span class="shrink-0 text-xs font-medium text-[var(--color-danger-text)]">{{ dueDateLabel(task.dueDate) }}</span>
-              </span>
-            </a>
-          </li>
-        }
-      </ul>
-    }
-
-    @if (upcomingTasks().length > 0) {
-      <p class="mb-2 text-xs font-semibold uppercase tracking-wide text-[var(--color-text-secondary)]">Due soon</p>
-      <ul class="flex flex-col gap-2" data-testid="my-tasks-upcoming-list">
-        @for (task of upcomingTasks(); track task.taskId) {
-          <li>
-            <a
-              [routerLink]="taskLink(task)"
-              [queryParams]="taskQueryParams(task)"
-              data-testid="my-tasks-row"
-              class="flex flex-col gap-1 rounded-md border border-[var(--color-border)] p-2 text-sm hover:bg-[var(--color-surface-secondary)]"
-            >
-              <span class="truncate text-[var(--color-text-primary)]">{{ task.title }}</span>
-              <span class="flex items-center justify-between gap-2">
-                <span class="min-w-0 truncate text-xs text-[var(--color-text-secondary)]">{{ task.projectName }}</span>
-                <span class="shrink-0 text-xs text-[var(--color-text-secondary)]">{{ dueDateLabel(task.dueDate) }}</span>
-              </span>
-            </a>
-          </li>
-        }
-      </ul>
-    }
-  </div>
-  </div>
-</app-card>
+</section>

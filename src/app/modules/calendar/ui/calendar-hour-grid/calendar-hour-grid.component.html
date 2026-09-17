@@ -1,4 +1,29 @@
 <div class="flex flex-col overflow-hidden rounded-lg border border-[var(--color-border)]">
+  <div data-testid="calendar-hour-header-row" class="flex border-b border-[var(--color-border)] bg-[var(--color-surface)]">
+    <div
+      data-testid="calendar-hour-tz-label"
+      class="flex w-14 shrink-0 items-center justify-center border-r border-[var(--color-border)] px-1 py-2 text-center text-[10px] leading-tight text-[var(--color-text-secondary)]"
+    >
+      {{ tzLabel() }}
+    </div>
+    @for (column of columns(); track column.date) {
+      <div
+        data-testid="calendar-hour-header-cell"
+        class="flex flex-1 flex-col items-center gap-0.5 border-r border-[var(--color-border)] py-1.5 last:border-r-0"
+      >
+        <span class="text-[10px] font-medium uppercase tracking-wide text-[var(--color-text-secondary)]">{{ column.weekdayLabel }}</span>
+        @if (column.isToday) {
+          <span
+            data-testid="calendar-hour-header-today"
+            class="flex h-7 w-7 items-center justify-center rounded-full bg-[var(--color-accent)] text-sm font-semibold text-[var(--color-accent-contrast)]"
+          >{{ column.dayNumber }}</span>
+        } @else {
+          <span class="flex h-7 w-7 items-center justify-center text-sm text-[var(--color-text-primary)]">{{ column.dayNumber }}</span>
+        }
+      </div>
+    }
+  </div>
+
   <div data-testid="calendar-hour-allday-row" class="flex border-b border-[var(--color-border)] bg-[var(--color-surface)]">
     <div class="w-14 shrink-0 border-r border-[var(--color-border)] p-1 text-[10px] text-[var(--color-text-secondary)]">All day</div>
     @for (column of columns(); track column.date) {
@@ -7,11 +32,14 @@
           <button
             type="button"
             data-testid="calendar-hour-allday-chip"
-            class="truncate rounded px-1.5 py-0.5 text-left text-[11px] text-white"
+            class="flex items-center gap-1 truncate rounded px-1.5 py-0.5 text-left text-[11px] text-white"
             [style.background-color]="event.color || 'var(--color-accent)'"
             (click)="eventClick.emit(event.id)"
           >
-            {{ event.title }}
+            @if (event.hasConflict) {
+              <span data-testid="calendar-conflict-marker" class="h-1.5 w-1.5 shrink-0 rounded-full bg-[var(--color-danger)]" aria-hidden="true"></span>
+            }
+            <span class="truncate">{{ event.title }}</span>
           </button>
         }
       </div>
@@ -19,7 +47,7 @@
   </div>
 
   <div class="flex max-h-[70vh] overflow-y-auto">
-    <div class="w-14 shrink-0 border-r border-[var(--color-border)] bg-[var(--color-surface)]">
+    <div class="h-[72rem] w-14 shrink-0 border-r border-[var(--color-border)] bg-[var(--color-surface)]">
       @for (hour of hours; track hour) {
         <div data-testid="calendar-hour-label" class="h-12 border-b border-[var(--color-border)] px-1 text-[10px] text-[var(--color-text-secondary)]">
           {{ hour === 0 ? '12 AM' : hour < 12 ? hour + ' AM' : hour === 12 ? '12 PM' : (hour - 12) + ' PM' }}
@@ -28,26 +56,37 @@
     </div>
 
     @for (column of columns(); track column.date) {
-      <div data-testid="calendar-hour-day-column" [attr.data-date]="column.date" class="relative flex-1 border-r border-[var(--color-border)] last:border-r-0">
+      <div data-testid="calendar-hour-day-column" [attr.data-date]="column.date" class="relative h-[72rem] flex-1 border-r border-[var(--color-border)] last:border-r-0">
         <div
           data-testid="calendar-hour-slots"
-          class="absolute inset-0"
-          (click)="onSlotClick(column.date, $event, $any($event.currentTarget))"
+          class="absolute inset-0 touch-none select-none"
+          (pointerdown)="onSlotPointerDown(column.date, $event, $any($event.currentTarget))"
         >
           @for (hour of hours; track hour) {
             <div class="h-12 border-b border-[var(--color-border)]"></div>
           }
         </div>
 
+        @if (dragSelection(); as sel) {
+          @if (sel.date === column.date) {
+            <div
+              data-testid="calendar-hour-drag-selection"
+              class="pointer-events-none absolute left-0.5 right-0.5 z-10 rounded border border-[var(--color-accent)] bg-[var(--color-accent-subtle)] opacity-80"
+              [style.top.%]="sel.topPct"
+              [style.height.%]="sel.heightPct"
+            ></div>
+          }
+        }
+
         @if (column.nowFraction !== null) {
-          <div class="pointer-events-none absolute left-0 right-0 z-10 border-t-2 border-red-500" [style.top.%]="column.nowFraction * 100"></div>
+          <div data-testid="calendar-now-line" class="pointer-events-none absolute left-0 right-0 z-10 border-t-2 border-red-500" [style.top.%]="column.nowFraction * 100"></div>
         }
 
         @for (positioned of column.positioned; track positioned.event.id) {
           <button
             type="button"
             data-testid="calendar-hour-event-block"
-            class="absolute overflow-hidden rounded px-1 text-left text-[11px] text-white"
+            class="absolute flex items-center gap-1 overflow-hidden rounded px-1 text-left text-[11px] text-white"
             [style.top.%]="positioned.top * 100"
             [style.height.%]="positioned.height * 100"
             [style.left.%]="positioned.left * 100"
@@ -55,7 +94,10 @@
             [style.background-color]="positioned.event.color || 'var(--color-accent)'"
             (click)="$event.stopPropagation(); eventClick.emit(positioned.event.id)"
           >
-            {{ positioned.event.title }}
+            @if (positioned.event.hasConflict) {
+              <span data-testid="calendar-conflict-marker" class="h-1.5 w-1.5 shrink-0 rounded-full bg-[var(--color-danger)]" aria-hidden="true"></span>
+            }
+            <span class="truncate">{{ positioned.event.title }}</span>
           </button>
         }
       </div>

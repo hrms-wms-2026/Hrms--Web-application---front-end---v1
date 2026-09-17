@@ -4,6 +4,7 @@ import { Router, provideRouter } from '@angular/router';
 import { MainLayoutComponent } from './main-layout.component';
 import { AuthStore } from '../../core/auth/state/auth.store';
 import { TrayPresenceStore } from '../../core/tray-presence/state/tray-presence.store';
+import { NavigationStateService } from './nav/navigation-state.service';
 
 const authStoreStub = {
   email: () => 'asha@onevo.test',
@@ -149,5 +150,44 @@ describe('MainLayoutComponent', () => {
     fixture.detectChanges();
 
     expect(fixture.nativeElement.querySelector('app-sub-sidebar')).toBeNull();
+  });
+
+  it('hides the sub-sidebar when collapsed via NavigationStateService and expands on keyboard shortcut Ctrl+\\', async () => {
+    localStorage.clear();
+    await TestBed.configureTestingModule({
+      imports: [MainLayoutComponent],
+      providers: [
+        provideRouter([{ path: '**', component: BlankRouteComponent }]),
+        { provide: AuthStore, useValue: authStoreWith(['org:read'], ['org_structure']) },
+        { provide: TrayPresenceStore, useValue: connectedTrayPresenceStub }
+      ]
+    }).compileComponents();
+
+    const fixture = TestBed.createComponent(MainLayoutComponent);
+    const router = TestBed.inject(Router);
+    const navState = TestBed.inject(NavigationStateService);
+    fixture.detectChanges();
+
+    await router.navigateByUrl('/organization/departments');
+    fixture.detectChanges();
+
+    // Visible initially
+    expect(fixture.nativeElement.querySelector('app-sub-sidebar')).toBeTruthy();
+    expect(fixture.nativeElement.querySelector('.main-layout--has-sub-sidebar')).toBeTruthy();
+
+    // Collapse
+    navState.collapseSubSidebar();
+    fixture.detectChanges();
+
+    expect(fixture.nativeElement.querySelector('app-sub-sidebar')).toBeNull();
+    expect(fixture.nativeElement.querySelector('.main-layout--has-sub-sidebar')).toBeNull();
+
+    // Trigger Ctrl+\ shortcut
+    window.dispatchEvent(new KeyboardEvent('keydown', { key: '\\', ctrlKey: true }));
+    fixture.detectChanges();
+
+    expect(navState.isSubSidebarCollapsed()).toBe(false);
+    expect(fixture.nativeElement.querySelector('app-sub-sidebar')).toBeTruthy();
+    expect(fixture.nativeElement.querySelector('.main-layout--has-sub-sidebar')).toBeTruthy();
   });
 });

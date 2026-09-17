@@ -21,34 +21,36 @@
 
     <form [formGroup]="form" (ngSubmit)="onSubmit()" class="gs-form">
 
-      <section class="gs-card-container">
+      <section class="gs-sections-container">
         <!-- Section 1: Company identity -->
-        <div class="gs-section-block">
-          <div class="gs-section-header">
+        <div class="gs-section-row">
+          <div class="gs-section-info">
             <h2 class="gs-section__title">Company identity</h2>
-            <p class="gs-section__hint">Legal entity name, organization code, and operational status.</p>
+            <p class="gs-section__description">Your company's visual logo, legal entity name, system identifier, and active operating status.</p>
           </div>
-          <div class="gs-identity-row">
-            <div class="gs-logo-upload-block">
+          <div class="gs-section-content">
+            <div class="gs-logo-row">
               <div class="gs-logo-preview" aria-label="Company logo preview">
                 <app-company-logo-tile [name]="selectedLegalEntity()!.name" [logoUrl]="logoUrl()" size="lg" />
               </div>
-              <div class="gs-logo-actions">
-                <label class="gs-logo-btn" [class.gs-logo-btn--busy]="uploadingLogo()">
-                  <input type="file" accept="image/png,image/jpeg,image/webp" (change)="onLogoFileSelected($event)" [disabled]="uploadingLogo() || removingLogo()" />
-                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" x2="12" y1="3" y2="15"/></svg>
-                  {{ uploadingLogo() ? 'Uploading…' : 'Change logo' }}
-                </label>
-                @if (logoUrl()) {
-                  <button type="button" class="gs-logo-remove-btn" [disabled]="uploadingLogo() || removingLogo()" (click)="onRemoveLogo()">
-                    {{ removingLogo() ? 'Removing…' : 'Remove' }}
-                  </button>
-                }
+              <div class="gs-logo-meta">
+                <div class="gs-logo-actions">
+                  <label class="gs-logo-btn" [class.gs-logo-btn--busy]="uploadingLogo()">
+                    <input type="file" accept="image/png,image/jpeg,image/webp" (change)="onLogoFileSelected($event)" [disabled]="uploadingLogo() || removingLogo()" />
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" x2="12" y1="3" y2="15"/></svg>
+                    {{ uploadingLogo() ? 'Uploading…' : 'Change logo' }}
+                  </label>
+                  @if (logoUrl()) {
+                    <button type="button" class="gs-logo-remove-btn" [disabled]="uploadingLogo() || removingLogo()" (click)="onRemoveLogo()">
+                      {{ removingLogo() ? 'Removing…' : 'Remove' }}
+                    </button>
+                  }
+                </div>
+                <span class="gs-logo-hint">PNG, JPG or WebP · Max 2MB</span>
               </div>
-              <span class="gs-logo-hint">PNG, JPG or WebP · Max 2MB</span>
             </div>
 
-            <div class="gs-field-grid gs-field-grid--2 gs-identity-fields">
+            <div class="gs-field-grid gs-field-grid--3 gs-identity-fields">
               <app-input label="Company name" [value]="form.controls.name.value" (valueChange)="form.controls.name.setValue($event)"
                 (blurred)="form.controls.name.markAsTouched()"
                 [error]="form.controls.name.touched && form.controls.name.invalid ? 'Required (max 200 chars).' : ''" />
@@ -61,111 +63,120 @@
         </div>
 
         <!-- Section 2: Registration & contact -->
-        <div class="gs-section-block">
-          <div class="gs-section-header">
+        <div class="gs-section-row">
+          <div class="gs-section-info">
             <h2 class="gs-section__title">Registration &amp; contact</h2>
-            <p class="gs-section__hint">Official government registrations and direct contact channels.</p>
+            <p class="gs-section__description">Official government registration numbers, tax identifiers, and official company contact channels.</p>
           </div>
-          <div class="gs-field-grid gs-field-grid--3">
-            <app-input label="Company registration number" [value]="form.controls.registrationNumber.value" (valueChange)="form.controls.registrationNumber.setValue($event)"
-              (blurred)="form.controls.registrationNumber.markAsTouched()"
-              [error]="form.controls.registrationNumber.touched && form.controls.registrationNumber.invalid ? 'Required (max 50 chars).' : ''" />
-            <app-input label="Tax registration number" [value]="form.controls.taxRegistrationNumber.value" (valueChange)="form.controls.taxRegistrationNumber.setValue($event)"
-              [error]="form.controls.taxRegistrationNumber.invalid ? 'Max 80 characters.' : ''" />
-            <app-input label="VAT/GST number (optional)" [value]="form.controls.vatGstNumber.value" (valueChange)="form.controls.vatGstNumber.setValue($event)"
-              [error]="form.controls.vatGstNumber.invalid ? 'Max 50 characters.' : ''" />
-            <app-input label="Company email" type="email" [value]="form.controls.email.value" (valueChange)="form.controls.email.setValue($event)"
-              (blurred)="form.controls.email.markAsTouched()"
-              [error]="form.controls.email.touched && form.controls.email.invalid ? 'Enter a valid email address.' : ''" />
-            <app-input label="Phone number" [value]="form.controls.phoneNumber.value" (valueChange)="form.controls.phoneNumber.setValue($event)"
-              [error]="form.controls.phoneNumber.invalid ? 'Max 20 characters.' : ''" />
-            <app-input label="Website (optional)" type="url" [value]="form.controls.website.value" (valueChange)="form.controls.website.setValue($event)"
-              (blurred)="form.controls.website.markAsTouched()"
-              [error]="form.controls.website.touched && form.controls.website.invalid ? 'Enter a full URL, e.g. https://example.com.' : ''" />
+          <div class="gs-section-content">
+            <div class="gs-field-grid gs-field-grid--3">
+              <app-input label="Company registration number" [value]="form.controls.registrationNumber.value" (valueChange)="form.controls.registrationNumber.setValue($event)"
+                (blurred)="form.controls.registrationNumber.markAsTouched()"
+                [error]="form.controls.registrationNumber.touched && form.controls.registrationNumber.invalid ? 'Required (max 50 chars).' : ''" />
+              <app-input label="Tax registration number" [value]="form.controls.taxRegistrationNumber.value" (valueChange)="form.controls.taxRegistrationNumber.setValue($event)"
+                [error]="form.controls.taxRegistrationNumber.invalid ? 'Max 80 characters.' : ''" />
+              <app-input label="VAT/GST number (optional)" [value]="form.controls.vatGstNumber.value" (valueChange)="form.controls.vatGstNumber.setValue($event)"
+                [error]="form.controls.vatGstNumber.invalid ? 'Max 50 characters.' : ''" />
+              <app-input label="Company email" type="email" [value]="form.controls.email.value" (valueChange)="form.controls.email.setValue($event)"
+                (blurred)="form.controls.email.markAsTouched()"
+                [error]="form.controls.email.touched && form.controls.email.invalid ? 'Enter a valid email address.' : ''" />
+              <app-input label="Phone number" [value]="form.controls.phoneNumber.value" (valueChange)="form.controls.phoneNumber.setValue($event)"
+                [error]="form.controls.phoneNumber.invalid ? 'Max 20 characters.' : ''" />
+              <app-input label="Website (optional)" type="url" [value]="form.controls.website.value" (valueChange)="form.controls.website.setValue($event)"
+                (blurred)="form.controls.website.markAsTouched()"
+                [error]="form.controls.website.touched && form.controls.website.invalid ? 'Enter a full URL, e.g. https://example.com.' : ''" />
+            </div>
           </div>
         </div>
 
         <!-- Section 3: Regional defaults -->
-        <div class="gs-section-block">
-          <div class="gs-section-header">
+        <div class="gs-section-row">
+          <div class="gs-section-info">
             <h2 class="gs-section__title">Regional defaults</h2>
-            <p class="gs-section__hint">Default localization, currency, and standard weekly work schedule.</p>
+            <p class="gs-section__description">Localization settings including operating country, default currency, time zone, and work week schedule.</p>
           </div>
-          <div class="gs-field-grid gs-field-grid--3">
-            <app-select label="Country" [options]="COUNTRY_CODE_OPTIONS" placeholder="Select a country"
-              [value]="form.controls.countryCode.value"
-              (valueChange)="form.controls.countryCode.setValue($event); form.controls.countryCode.markAsTouched()"
-              [error]="form.controls.countryCode.touched && form.controls.countryCode.invalid ? 'Required.' : ''" />
-            <app-select label="Currency" [options]="CURRENCY_CODE_OPTIONS" placeholder="Select a currency"
-              [value]="form.controls.currencyCode.value"
-              (valueChange)="form.controls.currencyCode.setValue($event); form.controls.currencyCode.markAsTouched()"
-              [error]="form.controls.currencyCode.touched && form.controls.currencyCode.invalid ? 'Required.' : ''" />
-            <app-select label="Time zone" [options]="TIMEZONE_OPTIONS" placeholder="Select a timezone"
-              [value]="form.controls.timezone.value"
-              (valueChange)="form.controls.timezone.setValue($event); form.controls.timezone.markAsTouched()"
-              [error]="form.controls.timezone.touched && form.controls.timezone.invalid ? 'Required.' : ''" />
-            <app-select label="Financial year starts in" [options]="FINANCIAL_YEAR_MONTH_OPTIONS"
-              [value]="form.controls.financialYearStartMonth.value + ''" (valueChange)="form.controls.financialYearStartMonth.setValue(+$event)" />
-            <app-select label="First day of the week" [options]="FIRST_DAY_OF_WEEK_OPTIONS"
-              [value]="form.controls.firstDayOfWeek.value + ''" (valueChange)="form.controls.firstDayOfWeek.setValue(+$event)" />
+          <div class="gs-section-content">
+            <div class="gs-field-grid gs-field-grid--3">
+              <app-select label="Country" [options]="COUNTRY_CODE_OPTIONS" placeholder="Select a country"
+                [value]="form.controls.countryCode.value"
+                (valueChange)="form.controls.countryCode.setValue($event); form.controls.countryCode.markAsTouched()"
+                [error]="form.controls.countryCode.touched && form.controls.countryCode.invalid ? 'Required.' : ''" />
+              <app-select label="Currency" [options]="CURRENCY_CODE_OPTIONS" placeholder="Select a currency"
+                [value]="form.controls.currencyCode.value"
+                (valueChange)="form.controls.currencyCode.setValue($event); form.controls.currencyCode.markAsTouched()"
+                [error]="form.controls.currencyCode.touched && form.controls.currencyCode.invalid ? 'Required.' : ''" />
+              <app-select label="Time zone" [options]="TIMEZONE_OPTIONS" placeholder="Select a timezone"
+                [value]="form.controls.timezone.value"
+                (valueChange)="form.controls.timezone.setValue($event); form.controls.timezone.markAsTouched()"
+                [error]="form.controls.timezone.touched && form.controls.timezone.invalid ? 'Required.' : ''" />
+              <app-select label="Financial year starts in" [options]="FINANCIAL_YEAR_MONTH_OPTIONS"
+                [value]="form.controls.financialYearStartMonth.value + ''" (valueChange)="form.controls.financialYearStartMonth.setValue(+$event)" />
+              <app-select label="First day of the week" [options]="FIRST_DAY_OF_WEEK_OPTIONS"
+                [value]="form.controls.firstDayOfWeek.value + ''" (valueChange)="form.controls.firstDayOfWeek.setValue(+$event)" />
 
-            <fieldset class="gs-fieldset">
-              <legend class="gs-fieldset__legend">Standard working days</legend>
-              <div class="gs-weekdays">
-                @for (day of WEEKDAY_OPTIONS; track day.value) {
-                  <label class="gs-weekday-chip" [class.gs-weekday-chip--selected]="isDaySelected(day.value)">
-                    <input type="checkbox" [checked]="isDaySelected(day.value)" (change)="toggleDay(day.value, $any($event.target).checked)" />
-                    {{ day.shortLabel }}
-                  </label>
+              <fieldset class="gs-fieldset">
+                <legend class="gs-fieldset__legend">Standard working days</legend>
+                <div class="gs-weekdays">
+                  @for (day of WEEKDAY_OPTIONS; track day.value) {
+                    <label class="gs-weekday-chip" [class.gs-weekday-chip--selected]="isDaySelected(day.value)">
+                      <input type="checkbox" [checked]="isDaySelected(day.value)" (change)="toggleDay(day.value, $any($event.target).checked)" />
+                      {{ day.shortLabel }}
+                    </label>
+                  }
+                </div>
+                @if (form.controls.standardWorkingDays.touched && form.controls.standardWorkingDays.invalid) {
+                  <p class="gs-field-error">Select at least one working day.</p>
                 }
-              </div>
-              @if (form.controls.standardWorkingDays.touched && form.controls.standardWorkingDays.invalid) {
-                <p class="gs-field-error">Select at least one working day.</p>
-              }
-            </fieldset>
+              </fieldset>
+            </div>
           </div>
         </div>
 
         <!-- Section 4: Default work hours -->
-        <div class="gs-section-block">
-          <div class="gs-section-header">
+        <div class="gs-section-row">
+          <div class="gs-section-info">
             <h2 class="gs-section__title">
               Default work hours
               @if (getWorkingHoursSummary(); as summary) {
                 <span class="gs-work-hours-title-summary">({{ summary }})</span>
               }
             </h2>
-            <p class="gs-section__hint">
-              Configure standard daily work schedule and break duration for employees in this company.
-            </p>
+            <p class="gs-section__description">Standard shift hours and break duration used for schedule planning and attendance calculations.</p>
           </div>
+          <div class="gs-section-content">
+            <div class="gs-work-hours-grid">
+              <app-time-picker
+                label="Work start time"
+                placeholder="e.g. 09:00 AM"
+                [value]="form.controls.workStartTime.value"
+                (valueChange)="form.controls.workStartTime.setValue($event); form.controls.workStartTime.markAsDirty()"
+                (blurred)="form.controls.workStartTime.markAsTouched()"
+                [error]="form.controls.workStartTime.touched && form.controls.workStartTime.invalid ? 'Enter a valid time (HH:mm).' : ''"
+              />
+              <app-time-picker
+                label="Work end time"
+                placeholder="e.g. 05:30 PM"
+                [value]="form.controls.workEndTime.value"
+                (valueChange)="form.controls.workEndTime.setValue($event); form.controls.workEndTime.markAsDirty()"
+                (blurred)="form.controls.workEndTime.markAsTouched()"
+                [error]="form.controls.workEndTime.touched && form.controls.workEndTime.invalid ? 'Enter a valid time (HH:mm).' : ''"
+              />
+              <app-input
+                type="number"
+                label="Break duration (minutes)"
+                placeholder="e.g. 60"
+                [value]="form.controls.breakDurationMinutes.value"
+                (valueChange)="form.controls.breakDurationMinutes.setValue($event); form.controls.breakDurationMinutes.markAsDirty()"
+                (blurred)="form.controls.breakDurationMinutes.markAsTouched()"
+                [error]="form.controls.breakDurationMinutes.touched && form.controls.breakDurationMinutes.invalid ? 'Enter a whole number of minutes, 0 or greater.' : ''"
+              />
+            </div>
 
-          <div class="gs-work-hours-grid">
-            <app-time-picker
-              label="Work start time"
-              placeholder="e.g. 09:00 AM"
-              [value]="form.controls.workStartTime.value"
-              (valueChange)="form.controls.workStartTime.setValue($event); form.controls.workStartTime.markAsDirty()"
-              (blurred)="form.controls.workStartTime.markAsTouched()"
-              [error]="form.controls.workStartTime.touched && form.controls.workStartTime.invalid ? 'Enter a valid time (HH:mm).' : ''"
-            />
-            <app-time-picker
-              label="Work end time"
-              placeholder="e.g. 05:30 PM"
-              [value]="form.controls.workEndTime.value"
-              (valueChange)="form.controls.workEndTime.setValue($event); form.controls.workEndTime.markAsDirty()"
-              (blurred)="form.controls.workEndTime.markAsTouched()"
-              [error]="form.controls.workEndTime.touched && form.controls.workEndTime.invalid ? 'Enter a valid time (HH:mm).' : ''"
-            />
-            <app-input
-              type="number"
-              label="Break duration (minutes)"
-              placeholder="e.g. 60"
-              [value]="form.controls.breakDurationMinutes.value"
-              (valueChange)="form.controls.breakDurationMinutes.setValue($event); form.controls.breakDurationMinutes.markAsDirty()"
-              (blurred)="form.controls.breakDurationMinutes.markAsTouched()"
-              [error]="form.controls.breakDurationMinutes.touched && form.controls.breakDurationMinutes.invalid ? 'Enter a whole number of minutes, 0 or greater.' : ''"
-            />
+            @if (form.errors?.['workTimePair'] === 'both_required') {
+              <p class="gs-field-error" role="alert">Both start and end time must be set together, or leave both blank.</p>
+            } @else if (form.errors?.['workTimePair'] === 'start_not_before_end') {
+              <p class="gs-field-error" role="alert">Work start time must be earlier than end time (same-day only).</p>
+            }
           </div>
 
           @if (getWorkingHoursSummary(); as summary) {
@@ -183,24 +194,23 @@
         </div>
 
         <!-- Section 5: Office location (on-site work-location warning) -->
-        <div class="gs-section-block">
-          <div class="gs-section-header">
+        <div class="gs-section-row">
+          <div class="gs-section-info">
             <h2 class="gs-section__title">Office location</h2>
-            <p class="gs-section__hint">
-              Used to flag (never block) an on-site employee whose check-in location falls outside the
-              allowed distance set in Clock-in Policy. Leave blank to disable the check for this company.
-            </p>
+            <p class="gs-section__description">Geographic coordinates and registered office address for on-site attendance verification.</p>
           </div>
-          <app-office-location-picker
-            [address]="form.controls.officeAddress.value"
-            [latitude]="form.controls.officeLatitude.value"
-            [longitude]="form.controls.officeLongitude.value"
-            (locationChange)="onOfficeLocationChange($event)"
-            (locationCleared)="onOfficeLocationCleared()"
-          />
-          @if (form.errors?.['officeLocation']) {
-            <p class="gs-field-error" role="alert">Set both an office latitude and longitude, or leave both blank.</p>
-          }
+          <div class="gs-section-content">
+            <app-office-location-picker
+              [address]="form.controls.officeAddress.value"
+              [latitude]="form.controls.officeLatitude.value"
+              [longitude]="form.controls.officeLongitude.value"
+              (locationChange)="onOfficeLocationChange($event)"
+              (locationCleared)="onOfficeLocationCleared()"
+            />
+            @if (form.errors?.['officeLocation']) {
+              <p class="gs-field-error" role="alert">Set both an office latitude and longitude, or leave both blank.</p>
+            }
+          </div>
         </div>
       </section>
 

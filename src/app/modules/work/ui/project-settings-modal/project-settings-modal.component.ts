@@ -15,11 +15,11 @@ import { EditProjectPayload, ProjectDetail } from '../../models/project.model';
     <app-modal [open]="open()" title="Project settings" (closed)="closed.emit()">
       <div class="flex flex-col gap-3">
         <span data-testid="name-field">
-          <app-input label="Name" [value]="name()" [error]="errors()['name'] ?? ''" (valueChange)="name.set($event)" />
+          <app-input label="Name" [value]="name()" [error]="errors()['name']" (valueChange)="name.set($event)" />
         </span>
 
         <span data-testid="category-field">
-          <app-work-dropdown fieldLabel="Category" accessibleLabel="Project category" placeholder="Select a category" [options]="categoryOptions()" [selected]="categoryId()" [error]="errors()['categoryId'] ?? ''" leadingIcon="category" [fullWidth]="true" (selectionChanged)="categoryId.set($event)" />
+          <app-work-dropdown fieldLabel="Category" accessibleLabel="Project category" placeholder="Select a category" [options]="categoryOptions()" [selected]="categoryId()" [error]="errors()['categoryId']" leadingIcon="category" [fullWidth]="true" (selectionChanged)="categoryId.set($event)" />
         </span>
 
         <span data-testid="description-field">
@@ -27,15 +27,15 @@ import { EditProjectPayload, ProjectDetail } from '../../models/project.model';
         </span>
 
         <span data-testid="start-date-field">
-          <app-input label="Start date" type="date" [value]="startDate()" [error]="errors()['startDate'] ?? ''" (valueChange)="startDate.set($event)" />
+          <app-input label="Start date" type="date" [value]="startDate()" [error]="errors()['startDate']" (valueChange)="startDate.set($event)" />
         </span>
 
         <span data-testid="target-date-field">
-          <app-input label="Target date" type="date" [value]="targetDate()" [error]="errors()['targetDate'] ?? ''" (valueChange)="targetDate.set($event)" />
+          <app-input label="Target date" type="date" [value]="targetDate()" [error]="errors()['targetDate']" (valueChange)="targetDate.set($event)" />
         </span>
 
         <span data-testid="allocated-hours-field">
-          <app-input label="Allocated hours" type="number" [value]="allocatedHoursDisplay()" [error]="errors()['allocatedHours'] ?? ''" (valueChange)="onAllocatedHoursChange($event)" />
+          <app-input label="Allocated hours" type="number" [value]="allocatedHoursDisplay()" [error]="errors()['allocatedHours']" (valueChange)="onAllocatedHoursChange($event)" />
         </span>
 
         <span data-testid="color-field">

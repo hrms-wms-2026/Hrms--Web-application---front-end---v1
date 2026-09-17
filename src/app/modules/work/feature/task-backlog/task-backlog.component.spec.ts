@@ -11,6 +11,7 @@ import { TaskApiService } from '../../data-access/task-api.service';
 import { SprintListStore } from '../../state/sprint-list.store';
 import { SprintTabComponent } from '../../ui/sprint-tab/sprint-tab.component';
 import { EmployeeDirectoryStore } from '../../state/employee-directory.store';
+import { WorkPageToolbarStore } from '../../state/work-page-toolbar.store';
 import { Sprint } from '../../models/sprint.model';
 import { WorkTask } from '../../models/task.model';
 
@@ -53,7 +54,8 @@ describe('TaskBacklogComponent', () => {
       completedHours: 0,
       progressPercent: 0,
       sprintId,
-      assigneeEmployeeIds: [], openClockSessionEmployeeId: null, openClockSessionClockInAt: null, totalLoggedMinutes: 0
+      assigneeEmployeeIds: [], openClockSessionEmployeeId: null, openClockSessionClockInAt: null, totalLoggedMinutes: 0,
+      attachments: []
     };
   }
 
@@ -344,8 +346,7 @@ describe('TaskBacklogComponent', () => {
     await fixture.whenStable();
     fixture.detectChanges();
 
-    const text = fixture.nativeElement.textContent as string;
-    expect(text).not.toContain('Create Sprint');
+    expect(fixture.componentInstance['ownedModuleOptions']().length).toBe(0);
 
     fixture.componentInstance['createSprintOpen'].set(true);
     fixture.detectChanges();
@@ -357,8 +358,9 @@ describe('TaskBacklogComponent', () => {
     await fixture.whenStable();
     fixture.detectChanges();
 
-    const text = fixture.nativeElement.textContent as string;
-    expect(text).toContain('Create Sprint');
+    expect(fixture.componentInstance['ownedModuleOptions']().length).toBeGreaterThan(0);
+    const toolbarStore = TestBed.inject(WorkPageToolbarStore);
+    expect(toolbarStore.template()).not.toBeNull();
   });
 
   it('sprint status filter defaults to All and narrows the rendered sprint tabs by status', async () => {
@@ -366,8 +368,7 @@ describe('TaskBacklogComponent', () => {
     await fixture.whenStable();
     fixture.detectChanges();
 
-    const trigger = fixture.nativeElement.querySelector('[aria-label="Sprint status filter"]') as HTMLElement;
-    expect(trigger.textContent).toContain('All sprint statuses');
+    expect(fixture.componentInstance['sprintStatusFilter']()).toBe('all');
     expect(fixture.debugElement.queryAll(By.directive(SprintTabComponent)).length).toBe(2);
 
     fixture.componentInstance['setSprintStatusFilter']('future');
@@ -376,6 +377,25 @@ describe('TaskBacklogComponent', () => {
     const tabs = fixture.debugElement.queryAll(By.directive(SprintTabComponent));
     expect(tabs.length).toBe(1);
     expect((tabs[0].componentInstance as SprintTabComponent).sprint().id).toBe('sp-2');
+  });
+
+  it('renders the Sprint section header when sprints exist', async () => {
+    const { fixture } = setup({ sprints: [sprint1] });
+    await fixture.whenStable();
+    fixture.detectChanges();
+
+    const header = fixture.nativeElement.querySelector('.task-backlog__sprints-title');
+    expect(header).not.toBeNull();
+    expect(header.textContent.trim()).toBe('Sprint');
+  });
+
+  it('does not render the Sprint section header when there are no sprints', async () => {
+    const { fixture } = setup({ sprints: [] });
+    await fixture.whenStable();
+    fixture.detectChanges();
+
+    const header = fixture.nativeElement.querySelector('.task-backlog__sprints-title');
+    expect(header).toBeNull();
   });
 
   it("renders sprintStore.error() in the component's own template, always-visible", async () => {

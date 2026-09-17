@@ -33,7 +33,8 @@ export function toWorkTask(dto: WorkTaskDto): WorkTask {
     openClockSessionClockInAt: dto.openClockSessionClockInAt ? new Date(dto.openClockSessionClockInAt) : null,
     totalLoggedMinutes: dto.totalLoggedMinutes,
     activeEventId: dto.activeEventId ?? null,
-    activeEventName: dto.activeEventName ?? null
+    activeEventName: dto.activeEventName ?? null,
+    attachments: (dto.attachments ?? []).map((a) => ({ fileId: a.fileId, name: a.fileName, sizeBytes: a.fileSizeBytes }))
 
   };
 }

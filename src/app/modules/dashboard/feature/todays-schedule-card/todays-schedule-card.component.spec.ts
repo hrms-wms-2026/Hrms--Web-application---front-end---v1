@@ -11,7 +11,7 @@ function event(partial: Partial<CalendarEventResponse> & { id: string; title: st
     description: null, sourceType: 'manual', color: null, recurrence: 'none', isAllDay: false,
     timezone: null, eventStatus: null, isPrivate: false, location: null, meetingLink: null,
     externalSource: null, createdById: 'creator-1', isRecurringOccurrence: false, recurrenceMasterId: null,
-    originalStart: null, participants: null,
+    originalStart: null, participants: null, hasConflict: false,
     ...partial
   };
 }

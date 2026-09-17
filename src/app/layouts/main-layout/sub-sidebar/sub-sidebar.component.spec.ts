@@ -1,5 +1,6 @@
 import { TestBed } from '@angular/core/testing';
 import { provideRouter } from '@angular/router';
+import { NavigationStateService } from '../nav/navigation-state.service';
 import { SubSidebarComponent } from './sub-sidebar.component';
 
 describe('SubSidebarComponent', () => {
@@ -37,5 +38,26 @@ describe('SubSidebarComponent', () => {
     fixture.detectChanges();
 
     expect(fixture.nativeElement.querySelector('nav')?.getAttribute('aria-label')).toBe('Organization navigation');
+  });
+
+  it('renders the collapse button and calls collapseSubSidebar when clicked', async () => {
+    await TestBed.configureTestingModule({
+      imports: [SubSidebarComponent],
+      providers: [provideRouter([])]
+    }).compileComponents();
+
+    const fixture = TestBed.createComponent(SubSidebarComponent);
+    fixture.componentRef.setInput('sectionLabel', 'Attendance');
+    fixture.componentRef.setInput('items', []);
+    fixture.detectChanges();
+
+    const navState = TestBed.inject(NavigationStateService);
+    const collapseBtn = fixture.nativeElement.querySelector('.sub-sidebar__collapse-btn') as HTMLButtonElement;
+    expect(collapseBtn).toBeTruthy();
+    expect(collapseBtn.getAttribute('aria-label')).toBe('Close sidebar');
+
+    expect(navState.isSubSidebarCollapsed()).toBe(false);
+    collapseBtn.click();
+    expect(navState.isSubSidebarCollapsed()).toBe(true);
   });
 });

@@ -1,121 +1,103 @@
-<app-card title="Wellbeing">
+<section class="rounded-2xl border border-slate-200/80 bg-white p-5 shadow-xs flex-1 flex flex-col justify-between h-full" data-purpose="wellbeing-card">
   @if (activeCard(); as card) {
-    <div class="flex flex-col" data-testid="wellbeing-card" [attr.data-card-kind]="card.kind">
-      <div class="relative flex h-64 flex-col justify-center rounded-xl bg-[var(--color-success-subtle,var(--color-surface-secondary))] p-6">
-        <button
-          type="button"
-          aria-label="Previous tip"
-          class="absolute left-2 top-1/2 -translate-y-1/2 flex h-8 w-8 items-center justify-center rounded-full bg-[var(--color-surface)] text-[var(--color-text-secondary)] shadow-sm transition hover:text-[var(--color-text-primary)]"
-          (click)="previous()"
-        >
-          <svg viewBox="0 0 20 20" fill="currentColor" class="h-4 w-4">
-            <path fill-rule="evenodd" d="M12.79 5.23a.75.75 0 01-.02 1.06L8.832 10l3.938 3.71a.75.75 0 11-1.04 1.08l-4.5-4.25a.75.75 0 010-1.08l4.5-4.25a.75.75 0 011.06.02z" clip-rule="evenodd" />
-          </svg>
-        </button>
+    <div class="flex flex-col justify-between h-full" data-testid="wellbeing-card" [attr.data-card-kind]="card.kind">
+      <div>
+        <!-- Header with navigation arrows -->
+        <div class="mb-3 flex items-center justify-between">
+          <h2 class="flex items-center gap-1.5 text-sm font-bold text-slate-800">
+            <span class="text-xs text-rose-500">❤️</span>
+            Wellbeing
+          </h2>
+          <div class="flex items-center gap-1">
+            <button
+              type="button"
+              aria-label="Previous tip"
+              class="flex h-6 w-6 items-center justify-center rounded-full border border-slate-200 text-slate-400 transition-colors hover:border-slate-300 hover:text-slate-600 cursor-pointer"
+              (click)="previous()"
+            >
+              <svg class="h-3 w-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path d="M15 19l-7-7 7-7" stroke-linecap="round" stroke-linejoin="round" stroke-width="2"></path>
+              </svg>
+            </button>
+            <button
+              type="button"
+              aria-label="Next tip"
+              class="flex h-6 w-6 items-center justify-center rounded-full border border-slate-200 text-slate-400 transition-colors hover:border-slate-300 hover:text-slate-600 cursor-pointer"
+              (click)="next()"
+            >
+              <svg class="h-3 w-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path d="M9 5l7 7-7 7" stroke-linecap="round" stroke-linejoin="round" stroke-width="2"></path>
+              </svg>
+            </button>
+          </div>
+        </div>
 
-        <div
-          class="flex flex-col gap-3 transition-opacity duration-300 ease-out"
-          [class.opacity-0]="!contentVisible()"
-          [class.opacity-100]="contentVisible()"
-          data-testid="wellbeing-content"
-        >
-          @if (illustrationFor(card.kind); as illustrationSrc) {
-            @if (card.kind === 'reminder') {
-              <div class="flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wide text-[var(--color-warning-text)]">
-                <svg viewBox="0 0 20 20" fill="currentColor" class="h-3.5 w-3.5">
-                  <circle cx="7" cy="7" r="4" />
-                  <circle cx="13" cy="7" r="4" />
-                  <path d="M3 9 L10 17 L17 9 Z" />
-                </svg>
-                Wellbeing Reminder
-              </div>
-            }
-
-            <div class="flex flex-col items-center gap-2 text-center">
-              <div class="h-20 w-20 shrink-0 overflow-hidden rounded-lg">
+        <!-- Wellbeing Content Card -->
+        <div class="my-2 flex items-center gap-3.5 rounded-2xl border border-blue-100 bg-[#f4f9ff] p-4">
+          <div
+            class="flex flex-1 items-center gap-3.5 transition-opacity duration-300 ease-out"
+            [class.opacity-0]="!contentVisible()"
+            [class.opacity-100]="contentVisible()"
+            data-testid="wellbeing-content"
+          >
+            @if (illustrationFor(card.kind); as illustrationSrc) {
+              <!-- Water Glass Graphic Container / Illustration -->
+              <div class="h-14 w-14 shrink-0 overflow-hidden rounded-xl border border-blue-200/60 bg-blue-100/70 p-1 shadow-inner flex items-center justify-center">
                 <img
                   [src]="illustrationSrc"
                   alt=""
-                  class="h-full w-full object-cover"
+                  class="h-full w-full rounded-lg object-cover"
                   [style.object-position]="illustrationPosition(card.kind)"
                   [style.transform]="'scale(' + illustrationScale(card.kind) + ')'"
                   data-testid="wellbeing-illustration"
                 />
               </div>
-              <div class="min-w-0 w-full">
-                <p class="line-clamp-1 text-base font-semibold text-[var(--color-text-primary)]" data-testid="wellbeing-card-title">{{ card.title }}</p>
-                <p class="line-clamp-2 mt-0.5 text-sm text-[var(--color-text-secondary)]" data-testid="wellbeing-card-description">{{ card.description }}</p>
-              </div>
-            </div>
 
-            @if (card.kind === 'reminder') {
-              <button
-                type="button"
-                data-testid="wellbeing-start-break"
-                class="inline-flex w-full items-center justify-center rounded-md bg-[var(--color-accent)] px-4 py-2 text-sm font-medium text-[var(--color-accent-contrast)] transition hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-60"
-                [disabled]="actionLoading()"
-                (click)="startBreak()"
-              >
-                Start 5-min Break
-              </button>
-            }
-          } @else {
-            <div class="flex items-start gap-3">
-              <span class="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-[var(--color-accent-subtle)] text-[var(--color-accent)]">
-                @switch (card.kind) {
-                  @case ('hydration') {
-                    <svg viewBox="0 0 20 20" fill="currentColor" class="h-5 w-5"><circle cx="10" cy="10" r="5" /></svg>
-                  }
-                  @case ('posture') {
-                    <svg viewBox="0 0 20 20" fill="currentColor" class="h-5 w-5">
-                      <path
-                        fill-rule="evenodd"
-                        d="M16.704 4.153a.75.75 0 01.143 1.052l-8 10.5a.75.75 0 01-1.127.075l-4.5-4.5a.75.75 0 011.06-1.06l3.894 3.893 7.48-9.817a.75.75 0 011.05-.143z"
-                        clip-rule="evenodd"
-                      />
-                    </svg>
-                  }
-                  @case ('eye-rest') {
-                    <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5" class="h-5 w-5">
-                      <circle cx="10" cy="10" r="6" />
-                      <circle cx="10" cy="10" r="2" fill="currentColor" stroke="none" />
-                    </svg>
-                  }
-                  @case ('stretch') {
-                    <svg viewBox="0 0 20 20" fill="currentColor" class="h-5 w-5">
-                      <path d="M4 4h4v2H6v2H4V4zm12 0v4h-2V6h-2V4h4zM4 16v-4h2v2h2v2H4zm12 0h-4v-2h2v-2h2v4z" />
-                    </svg>
-                  }
+              <!-- Recommendation Text -->
+              <div class="min-w-0 flex-1">
+                @if (card.kind === 'reminder') {
+                  <div class="mb-1 flex items-center gap-1 text-[10px] font-bold uppercase tracking-wider text-amber-600">
+                    <span>Wellbeing Reminder</span>
+                  </div>
                 }
-              </span>
-              <div>
-                <p class="font-semibold text-[var(--color-text-primary)]" data-testid="wellbeing-card-title">{{ card.title }}</p>
-                <p class="mt-0.5 text-sm text-[var(--color-text-secondary)]" data-testid="wellbeing-card-description">{{ card.description }}</p>
+                <h3 class="flex items-center gap-1 text-xs font-bold text-slate-800">
+                  <span data-testid="wellbeing-card-title">{{ card.title }}</span>
+                  <span class="text-[11px]">{{ card.kind === 'hydration' ? '💧' : card.kind === 'eye-rest' ? '👀' : card.kind === 'posture' ? '🧘' : '✨' }}</span>
+                </h3>
+                <p class="mt-1 text-[11px] leading-relaxed text-slate-500 line-clamp-2" data-testid="wellbeing-card-description">
+                  {{ card.description }}
+                </p>
+                @if (card.kind === 'reminder') {
+                  <button
+                    type="button"
+                    data-testid="wellbeing-start-break"
+                    class="mt-2 inline-flex items-center justify-center rounded-lg bg-blue-600 px-3 py-1 text-xs font-semibold text-white transition hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-60 cursor-pointer"
+                    [disabled]="actionLoading()"
+                    (click)="startBreak()"
+                  >
+                    Start 5-min Break
+                  </button>
+                }
               </div>
-            </div>
-          }
+            } @else {
+              <div class="min-w-0 flex-1">
+                <h3 class="text-xs font-bold text-slate-800" data-testid="wellbeing-card-title">{{ card.title }}</h3>
+                <p class="mt-1 text-[11px] text-slate-500" data-testid="wellbeing-card-description">{{ card.description }}</p>
+              </div>
+            }
+          </div>
         </div>
-
-        <button
-          type="button"
-          aria-label="Next tip"
-          class="absolute right-2 top-1/2 -translate-y-1/2 flex h-8 w-8 items-center justify-center rounded-full bg-[var(--color-surface)] text-[var(--color-text-secondary)] shadow-sm transition hover:text-[var(--color-text-primary)]"
-          (click)="next()"
-        >
-          <svg viewBox="0 0 20 20" fill="currentColor" class="h-4 w-4">
-            <path fill-rule="evenodd" d="M7.21 14.77a.75.75 0 01.02-1.06L11.168 10 7.23 6.29a.75.75 0 111.04-1.08l4.5 4.25a.75.75 0 010 1.08l-4.5 4.25a.75.75 0 01-1.06-.02z" clip-rule="evenodd" />
-          </svg>
-        </button>
       </div>
 
-      <div class="mt-3 flex shrink-0 items-center justify-center gap-1.5" data-testid="wellbeing-dots">
+      <!-- Pagination Dots -->
+      <div class="flex items-center justify-center gap-1.5 pt-3" data-testid="wellbeing-dots">
         @for (dot of cards(); track $index) {
           <button
             type="button"
             [attr.aria-label]="'Go to card ' + ($index + 1)"
             data-testid="wellbeing-dot"
-            class="h-1.5 rounded-full transition-all duration-300"
-            [class.w-6]="$index === currentIndex() % cards().length"
+            class="h-1.5 rounded-full transition-all duration-300 cursor-pointer"
+            [class.w-4]="$index === currentIndex() % cards().length"
             [class.w-1.5]="$index !== currentIndex() % cards().length"
             [style.background-color]="$index === currentIndex() % cards().length ? 'var(--color-accent)' : 'var(--color-border)'"
             (click)="goTo($index)"
@@ -124,4 +106,5 @@
       </div>
     </div>
   }
-</app-card>
+</section>
+
