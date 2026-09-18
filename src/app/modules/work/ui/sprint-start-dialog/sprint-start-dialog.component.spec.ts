@@ -7,7 +7,7 @@ import { WorkTask } from '../../models/task.model';
 
 describe('SprintStartDialogComponent', () => {
   let fixture: ComponentFixture<SprintStartDialogComponent>;
-  let storeStub: { start: ReturnType<typeof vi.fn> };
+  let storeStub: { start: ReturnType<typeof vi.fn>; error: ReturnType<typeof vi.fn> };
 
   function buildTask(overrides: Partial<WorkTask> = {}): WorkTask {
     return {
@@ -45,7 +45,7 @@ describe('SprintStartDialogComponent', () => {
   ];
 
   function setup(overrides: Record<string, unknown> = {}): void {
-    storeStub = { start: vi.fn().mockResolvedValue(true) };
+    storeStub = { start: vi.fn().mockResolvedValue(true), error: vi.fn().mockReturnValue(null) };
     TestBed.configureTestingModule({
       imports: [SprintStartDialogComponent],
       providers: [{ provide: SprintListStore, useValue: storeStub }]

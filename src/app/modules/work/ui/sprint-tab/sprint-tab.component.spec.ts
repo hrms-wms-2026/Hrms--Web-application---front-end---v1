@@ -54,10 +54,6 @@ describe('SprintTabComponent', () => {
     fixture.detectChanges();
   }
 
-  beforeEach(() => {
-    setup();
-  });
-
   it('shows an Edit button to the owner (and only the owner), emitting editRequested when clicked', () => {
     setup({ isObjectiveOwner: false });
     expect(fixture.nativeElement.querySelector('.sprint-tab__edit')).toBeNull();
