@@ -49,12 +49,14 @@ async function flush(fixture: ComponentFixture<unknown>): Promise<void> {
 describe('TaskFormModalComponent - edit mode', () => {
   let fixture: ComponentFixture<TaskFormModalComponent>;
   let api: Record<string, ReturnType<typeof vi.fn>>;
-  let milestones: ReturnType<typeof signal<{ objectiveId: string; isOwner: boolean }[]>>;
+  let milestones: ReturnType<typeof signal<{ objectiveId: string; isOwner: boolean; isEffectiveOwner: boolean }[]>>;
   let members: { employeeId: string; name: string }[];
 
   beforeEach(async () => {
     api = baseApi();
-    milestones = signal<{ objectiveId: string; isOwner: boolean }[]>([{ objectiveId: 'o1', isOwner: true }]);
+    milestones = signal<{ objectiveId: string; isOwner: boolean; isEffectiveOwner: boolean }[]>(
+      [{ objectiveId: 'o1', isOwner: true, isEffectiveOwner: true }]
+    );
     members = [{ employeeId: 'e1', name: 'Ann' }, { employeeId: 'e2', name: 'Bob' }];
 
     await TestBed.configureTestingModule({
@@ -117,15 +119,31 @@ describe('TaskFormModalComponent - edit mode', () => {
     expect(api['unassignTask']).not.toHaveBeenCalled();
   });
 
-  it('non-owner Save routes through createTaskEditRequest and skips reassignment', async () => {
-    milestones.set([{ objectiveId: 'o1', isOwner: false }]);
+  it('non-owner Save routes through createTaskEditRequest and does not call editTask', async () => {
+    milestones.set([{ objectiveId: 'o1', isOwner: false, isEffectiveOwner: false }]);
+    fixture.detectChanges();
+    fixture.componentInstance.title.set('Edited');
+    await fixture.componentInstance.submit();
+    expect(api['createTaskEditRequest']).toHaveBeenCalledWith('t1', expect.objectContaining({ title: 'Edited' }));
+    expect(api['editTask']).not.toHaveBeenCalled();
+  });
+
+  it('a member who can reassign but not edit directly (isOwner true, isEffectiveOwner false) still routes field edits through createTaskEditRequest, and reassignment still applies', async () => {
+    // Regression for the bug where isObjectiveOwner (isOwner - owner OR active member) was used
+    // to decide both the button label and the direct-edit call: a plain member with broad
+    // effective-manager rights (can see/use the assignee picker, isOwner true) but who is not the
+    // milestone's actual owner (isEffectiveOwner false) must still get routed through the edit
+    // request flow for field changes - but reassignment (its own, separately-permitted action) is
+    // unaffected and still applies.
+    milestones.set([{ objectiveId: 'o1', isOwner: true, isEffectiveOwner: false }]);
     fixture.detectChanges();
     fixture.componentInstance.title.set('Edited');
     fixture.componentInstance.assigneeEmployeeId.set('e2');
     await fixture.componentInstance.submit();
     expect(api['createTaskEditRequest']).toHaveBeenCalledWith('t1', expect.objectContaining({ title: 'Edited' }));
     expect(api['editTask']).not.toHaveBeenCalled();
-    expect(api['assignTask']).not.toHaveBeenCalled();
+    expect(api['unassignTask']).toHaveBeenCalledWith('t1', 'e1');
+    expect(api['assignTask']).toHaveBeenCalledWith('t1', 'e2');
   });
 
   it('blocks Save when the title is emptied', async () => {

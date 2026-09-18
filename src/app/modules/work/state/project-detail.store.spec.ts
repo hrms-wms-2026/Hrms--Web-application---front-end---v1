@@ -84,7 +84,7 @@ describe('ProjectDetailStore', () => {
       ownerId: 'u1', ownerName: 'Jane', reportingManagerId: null, reportingManagerName: null,
       startDate: '2026-08-01', endDate: '2026-12-01', allocatedHours: 40, completedHours: 0,
       objectiveIsActive: true, isAchieved: false, achievedAt: null, membershipIsActive: true, membershipRemovedAt: null,
-      isOwner: false
+      isOwner: false, isEffectiveOwner: false
     }];
     const store = setup({ getMyMilestones: () => of(milestones) } as Partial<ProjectApiService>);
     await store.loadMyMilestones('p1');
@@ -637,7 +637,7 @@ describe('ProjectDetailStore', () => {
       ownerId: 'u1', ownerName: 'Jane', reportingManagerId: null, reportingManagerName: null,
       startDate: '2026-08-01', endDate: '2026-12-01', allocatedHours: 40, completedHours: 0,
       objectiveIsActive: true, isAchieved: false, achievedAt: null, membershipIsActive: true, membershipRemovedAt: null,
-      isOwner: true
+      isOwner: true, isEffectiveOwner: true
     }];
 
     function setupWithBoth(getMembers: ReturnType<typeof vi.fn>) {
