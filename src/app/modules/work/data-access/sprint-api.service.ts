@@ -2,8 +2,9 @@ import { HttpClient, HttpParams } from '@angular/common/http';
 import { Injectable, inject } from '@angular/core';
 import { Observable } from 'rxjs';
 import { environment } from '../../../../environments/environment';
-import { CreateSprintRequestDto, EditSprintRequestDto, SprintDto } from '../models/dto/sprint.dto';
-import { SprintStatus } from '../models/sprint.model';
+import {
+  CompleteSprintRequestDto, CreateSprintRequestDto, EditSprintRequestDto, SprintDto, StartSprintRequestDto
+} from '../models/dto/sprint.dto';
 
 @Injectable({ providedIn: 'root' })
 export class SprintApiService {
@@ -23,19 +24,19 @@ export class SprintApiService {
     return this.http.post<SprintDto>(`${this.baseUrl}/objectives/${objectiveId}/sprints`, request);
   }
 
+  start(sprintId: string, request: StartSprintRequestDto): Observable<SprintDto> {
+    return this.http.post<SprintDto>(`${this.baseUrl}/sprints/${sprintId}/start`, request);
+  }
+
   edit(sprintId: string, request: EditSprintRequestDto): Observable<SprintDto> {
     return this.http.patch<SprintDto>(`${this.baseUrl}/sprints/${sprintId}`, request);
   }
 
-  complete(sprintId: string): Observable<SprintDto> {
-    return this.http.post<SprintDto>(`${this.baseUrl}/sprints/${sprintId}/complete`, {});
+  complete(sprintId: string, request: CompleteSprintRequestDto): Observable<SprintDto> {
+    return this.http.post<SprintDto>(`${this.baseUrl}/sprints/${sprintId}/complete`, request);
   }
 
   achieve(sprintId: string): Observable<SprintDto> {
     return this.http.post<SprintDto>(`${this.baseUrl}/sprints/${sprintId}/achieve`, {});
-  }
-
-  setStatus(sprintId: string, status: SprintStatus): Observable<SprintDto> {
-    return this.http.patch<SprintDto>(`${this.baseUrl}/sprints/${sprintId}/status`, { status });
   }
 }
