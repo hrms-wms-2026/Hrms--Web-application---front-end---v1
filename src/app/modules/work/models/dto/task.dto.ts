@@ -1,3 +1,5 @@
+import { TaskStatusCategory } from '../task.model';
+
 export interface TaskStatusDto {
   id: string;
   name: string;
@@ -6,6 +8,8 @@ export interface TaskStatusDto {
   approverId: string | null;
   marksTaskComplete: boolean;
   visibility: 'public' | 'private';
+  category: TaskStatusCategory;
+  color: string;
 }
 
 export interface TaskAttachmentDto {
@@ -91,7 +95,8 @@ export interface CreateTaskStatusRequestDto {
   name: string;
   displayOrder: number;
   visibility: 'public' | 'private';
-  marksTaskComplete: boolean;
+  category: TaskStatusCategory;
+  color: string;
   requiresApproval: boolean;
   approverId?: string;
 }
@@ -102,4 +107,10 @@ export interface EditTaskStatusRequestDto {
   requiresApproval: boolean;
   approverId?: string;
   visibility: 'public' | 'private';
+  category: TaskStatusCategory;
+  color: string;
+}
+
+export interface ClockInResponseDto {
+  movedToStatus: { id: string; name: string; color: string } | null;
 }

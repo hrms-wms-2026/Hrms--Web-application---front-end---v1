@@ -65,7 +65,7 @@ describe('TaskApiService', () => {
 it('getStatuses fetches task statuses for a project', () => {
     const projectId = 'project-1';
     const mockStatuses: TaskStatusDto[] = [{
-      id: 's-1', name: 'To Do', displayOrder: 0, requiresApproval: false, approverId: null, marksTaskComplete: false, visibility: 'public'
+      id: 's-1', name: 'To Do', displayOrder: 0, requiresApproval: false, approverId: null, marksTaskComplete: false, category: 'active', color: '#2563EB', visibility: 'public'
     }];
 
     service.getStatuses(projectId).subscribe((statuses) => {
@@ -82,7 +82,8 @@ it('getStatuses fetches task statuses for a project', () => {
       name: 'Blocked',
       displayOrder: 4,
       visibility: 'private',
-      marksTaskComplete: false,
+      category: 'active',
+      color: '#2563EB',
       requiresApproval: false
     }).subscribe();
     const req = httpMock.expectOne(`${environment.apiUrl}/work/projects/project-1/task-statuses`);
@@ -195,12 +196,12 @@ it('getStatuses fetches task statuses for a project', () => {
 it('reorderTaskStatuses posts to projects/{projectId}/task-statuses/reorder', () => {
     const projectId = 'project-1';
     const updates = [
-      { statusId: 's-1', displayOrder: 0, visibility: 'public', marksTaskComplete: false },
-      { statusId: 's-2', displayOrder: 1, visibility: 'public', marksTaskComplete: false }
+      { statusId: 's-1', displayOrder: 0, visibility: 'public', category: 'active' as const, color: '#2563EB' },
+      { statusId: 's-2', displayOrder: 1, visibility: 'public', category: 'active' as const, color: '#2563EB' }
     ];
     const mockStatuses: TaskStatusDto[] = [
-      { id: 's-1', name: 'To Do', displayOrder: 0, requiresApproval: false, approverId: null, marksTaskComplete: false, visibility: 'public' },
-      { id: 's-2', name: 'In Progress', displayOrder: 1, requiresApproval: false, approverId: null, marksTaskComplete: false, visibility: 'public' }
+      { id: 's-1', name: 'To Do', displayOrder: 0, requiresApproval: false, approverId: null, marksTaskComplete: false, category: 'active', color: '#2563EB', visibility: 'public' },
+      { id: 's-2', name: 'In Progress', displayOrder: 1, requiresApproval: false, approverId: null, marksTaskComplete: false, category: 'active', color: '#2563EB', visibility: 'public' }
     ];
 
     service.reorderTaskStatuses(projectId, updates).subscribe((statuses) => {

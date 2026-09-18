@@ -1,7 +1,9 @@
 import { CdkDrag, CdkDragDrop, CdkDragPlaceholder, CdkDragPreview, CdkDropList } from '@angular/cdk/drag-drop';
-import { Component, ElementRef, HostListener, computed, effect, input, output, signal, viewChild } from '@angular/core';
+import { Component, ElementRef, HostListener, computed, effect, inject, input, output, signal, viewChild } from '@angular/core';
+import { firstValueFrom } from 'rxjs';
 import { TaskStatusColumn, WorkTask } from '../../models/task.model';
 import { TaskCategoryColumn } from '../../models/task-category.model';
+import { TaskApiService } from '../../data-access/task-api.service';
 import { TaskCardComponent } from '../task-card/task-card.component';
 
 export interface QuickTaskCreatedEvent {
@@ -20,29 +22,212 @@ export interface QuickTaskCreatedEvent {
   selector: 'app-task-board-column',
   standalone: true,
   imports: [CdkDropList, CdkDrag, CdkDragPlaceholder, CdkDragPreview, TaskCardComponent],
+  host: {
+    '[class.task-board-column-host--collapsed]': 'isCollapsed()'
+  },
   template: `
-    <div class="task-board-column">
-      <!-- Status Header with hover '+' button -->
-      <div class="task-board-column__header">
-        <h3 class="task-board-column__title">
-          <span class="task-board-column__title-text">{{ status().name }}</span>
-          <span class="task-board-column__count">{{ tasks().length }}</span>
-        </h3>
-        <div class="task-board-column__actions">
+    @if (isCollapsed()) {
+      <div
+        class="task-board-column task-board-column--collapsed"
+        [style.--status-color]="status().color || '#94a3b8'"
+        (click)="toggleCollapse()"
+        (keydown.enter)="toggleCollapse()"
+        (keydown.space)="toggleCollapse(); $event.preventDefault()"
+        tabindex="0"
+        role="button"
+        [attr.aria-label]="'Expand ' + status().name + ' column'"
+        title="Expand group"
+      >
+        <div class="task-board-column__collapsed-strip">
           <button
             type="button"
-            class="task-board-column__add-btn"
-            [class.task-board-column__add-btn--active]="isQuickCreateOpen()"
-            title="Add Task"
-            aria-label="Add Task"
-            (click)="toggleQuickCreate()"
+            class="task-board-column__expand-btn"
+            title="Expand group"
+            aria-label="Expand group"
+            (click)="toggleCollapse(); $event.stopPropagation()"
           >
-            <svg viewBox="0 0 24 24" aria-hidden="true">
-              <path d="M12 5v14M5 12h14" />
+            <span
+              class="task-board-column__collapsed-dot"
+              [class.task-board-column__collapsed-dot--not-started]="status().category === 'not_started'"
+              [class.task-board-column__collapsed-dot--done]="status().category === 'done'"
+              aria-hidden="true"
+            >
+              @if (status().category === 'done') {
+                <svg viewBox="0 0 12 12"><path d="m3 6 2 2 4-4" fill="none" stroke="white" stroke-width="2" /></svg>
+              }
+            </span>
+            <svg class="task-board-column__expand-chevron" viewBox="0 0 24 24" aria-hidden="true">
+              <path d="m9 18 6-6-6-6" />
             </svg>
           </button>
+
+          <span class="task-board-column__collapsed-title">{{ status().name }}</span>
+
+          <span class="task-board-column__collapsed-count">{{ tasks().length }}</span>
         </div>
       </div>
+    } @else {
+      <div class="task-board-column" [style.--status-color]="status().color || '#94a3b8'">
+        <!-- Status Header with hover '<' collapse, '...' menu, and '+' add button -->
+        <div class="task-board-column__header">
+          @if (isRenaming()) {
+            <div class="task-board-column__rename-wrap" (click)="$event.stopPropagation()">
+              <div class="task-board-column__rename-box">
+                <!-- Color Swatch Button -->
+                <button
+                  type="button"
+                  class="task-board-column__rename-color-btn"
+                  [style.background]="renameColor()"
+                  (click)="toggleRenameColorPicker($event)"
+                  title="Change color"
+                  aria-label="Change status color"
+                ></button>
+
+                <!-- Color Picker Popover -->
+                @if (isRenameColorPickerOpen()) {
+                  <div class="task-board-column__color-popover" role="dialog" (click)="$event.stopPropagation()">
+                    <span class="task-board-column__color-popover-title">Status color</span>
+                    <div class="task-board-column__color-palette">
+                      @for (preset of baseColorPresets; track preset.value) {
+                        <button
+                          type="button"
+                          class="task-board-column__color-swatch"
+                          [class.task-board-column__color-swatch--active]="renameColor().toLowerCase() === preset.value.toLowerCase()"
+                          [style.background]="preset.value"
+                          [title]="preset.label"
+                          [attr.aria-label]="preset.label"
+                          (click)="selectRenameColor(preset.value)"
+                        ></button>
+                      }
+                    </div>
+                  </div>
+                }
+
+                <!-- Name Input -->
+                <input
+                  #renameInput
+                  type="text"
+                  class="task-board-column__rename-input"
+                  [value]="renameName()"
+                  (input)="renameName.set($any($event.target).value)"
+                  (keydown.enter)="saveRename()"
+                  (keydown.escape)="cancelRename()"
+                  placeholder="Status name..."
+                />
+
+                <!-- Confirm Save Button -->
+                <button
+                  type="button"
+                  class="task-board-column__rename-save-btn"
+                  [disabled]="!renameName().trim() || savingRename()"
+                  (click)="saveRename()"
+                  title="Save rename"
+                  aria-label="Save rename"
+                >
+                  <svg viewBox="0 0 24 24" aria-hidden="true">
+                    <path d="M20 6 9 17l-5-5" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" />
+                  </svg>
+                </button>
+              </div>
+            </div>
+          } @else {
+            <h3 class="task-board-column__title">
+              <span class="task-board-column__status-badge" [style.background]="status().color || '#94a3b8'">
+                <span class="task-board-column__status-dot" [style.color]="status().color" [class.task-board-column__status-dot--not-started]="status().category === 'not_started'"
+                  [class.task-board-column__status-dot--done]="status().category === 'done'" aria-hidden="true">@if(status().category === 'done'){<svg viewBox="0 0 12 12"><path d="m3 6 2 2 4-4" fill="none" stroke="white" stroke-width="2" /></svg>}</span>
+                <span class="task-board-column__title-text">{{ status().name }}</span>
+              </span>
+              <span class="task-board-column__count">{{ tasks().length }}</span>
+            </h3>
+          }
+
+          <div class="task-board-column__actions">
+            <button
+              type="button"
+              class="task-board-column__collapse-btn"
+              title="Collapse group"
+              aria-label="Collapse group"
+              (click)="toggleCollapse()"
+            >
+              <svg viewBox="0 0 24 24" aria-hidden="true">
+                <path d="m15 18-6-6 6-6" />
+              </svg>
+            </button>
+
+            @if (isProjectMember()) {
+              <div class="task-board-column__menu-anchor">
+                <button
+                  type="button"
+                  class="task-board-column__menu-btn"
+                  [class.task-board-column__menu-btn--active]="isMenuOpen()"
+                  title="Group options"
+                  aria-label="Group options"
+                  [attr.aria-expanded]="isMenuOpen()"
+                  (click)="toggleMenu($event)"
+                >
+                  <svg viewBox="0 0 24 24" aria-hidden="true">
+                    <circle cx="5" cy="12" r="1.75" />
+                    <circle cx="12" cy="12" r="1.75" />
+                    <circle cx="19" cy="12" r="1.75" />
+                  </svg>
+                </button>
+
+                @if (isMenuOpen()) {
+                  <div class="task-board-column__menu" role="menu" (click)="$event.stopPropagation()">
+                    <div class="task-board-column__menu-heading">Group options</div>
+                    <button
+                      type="button"
+                      class="task-board-column__menu-item"
+                      role="menuitem"
+                      (click)="onMenuCollapse()"
+                    >
+                      <svg viewBox="0 0 24 24" aria-hidden="true">
+                        <path d="M4 4v16M9 12h11M14 7l-5 5 5 5" />
+                      </svg>
+                      <span>Collapse group</span>
+                    </button>
+                    <button
+                      type="button"
+                      class="task-board-column__menu-item"
+                      role="menuitem"
+                      (click)="startRename()"
+                    >
+                      <svg viewBox="0 0 24 24" aria-hidden="true">
+                        <path d="M12 20h9M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4Z" />
+                      </svg>
+                      <span>Rename</span>
+                    </button>
+                    <button
+                      type="button"
+                      class="task-board-column__menu-item"
+                      role="menuitem"
+                      (click)="onMenuEditStatuses()"
+                    >
+                      <svg viewBox="0 0 24 24" aria-hidden="true">
+                        <circle cx="12" cy="12" r="9" />
+                        <path d="M12 8v8M8 12h8" />
+                      </svg>
+                      <span>Edit statuses</span>
+                    </button>
+                  </div>
+                }
+              </div>
+            }
+
+            <button
+              type="button"
+              class="task-board-column__add-btn"
+              [class.task-board-column__add-btn--active]="isQuickCreateOpen()"
+              title="Add Task"
+              aria-label="Add Task"
+              (click)="toggleQuickCreate()"
+            >
+              <svg viewBox="0 0 24 24" aria-hidden="true">
+                <path d="M12 5v14M5 12h14" />
+              </svg>
+            </button>
+          </div>
+        </div>
 
       <!-- Quick Task Creation Card -->
       @if (isQuickCreateOpen()) {
@@ -289,6 +474,7 @@ export interface QuickTaskCreatedEvent {
         <span>Add Task</span>
       </button>
     </div>
+  }
   `,
   styles: [`
     :host {
@@ -296,17 +482,132 @@ export interface QuickTaskCreatedEvent {
       flex: 1 1 0;
       min-width: 280px;
       align-self: flex-start;
+      transition: flex 160ms ease, min-width 160ms ease, max-width 160ms ease;
+    }
+    :host(.task-board-column-host--collapsed) {
+      flex: 0 0 38px;
+      min-width: 38px;
+      max-width: 38px;
     }
     .task-board-column {
       display: flex;
       flex-direction: column;
       width: 100%;
       height: fit-content;
-      background: var(--color-surface-secondary);
+      background: color-mix(in srgb, var(--status-color, #94a3b8) 4.5%, var(--color-surface, #ffffff));
       border: none;
       border-radius: 12px;
       padding: 12px;
       scroll-snap-align: start;
+      transition: background-color 150ms ease;
+      box-sizing: border-box;
+    }
+    .task-board-column--collapsed {
+      width: 38px;
+      min-width: 38px;
+      max-width: 38px;
+      padding: 10px 4px;
+      align-items: center;
+      cursor: pointer;
+      min-height: 180px;
+      outline: none;
+    }
+    .task-board-column--collapsed:hover {
+      background: color-mix(in srgb, var(--status-color, #94a3b8) 8.5%, var(--color-surface, #ffffff));
+    }
+    .task-board-column--collapsed:focus-visible {
+      outline: 2px solid var(--color-accent, #3b82f6);
+      outline-offset: 1px;
+    }
+    .task-board-column__collapsed-strip {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      width: 100%;
+      gap: 10px;
+    }
+    .task-board-column__expand-btn {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      width: 24px;
+      height: 24px;
+      padding: 0;
+      border: 1px solid transparent;
+      border-radius: 6px;
+      background: transparent;
+      cursor: pointer;
+      position: relative;
+      transition: all 140ms ease;
+    }
+    .task-board-column__expand-btn:hover {
+      background: var(--color-surface);
+      border-color: var(--color-border);
+      box-shadow: 0 1px 3px rgba(15, 23, 42, 0.06);
+    }
+    .task-board-column__collapsed-dot {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      width: 12px;
+      height: 12px;
+      border-radius: 999px;
+      background: var(--status-color, #94a3b8);
+      border: 1.5px solid var(--status-color, #94a3b8);
+      box-sizing: border-box;
+      flex-shrink: 0;
+      transition: opacity 120ms ease;
+    }
+    .task-board-column__collapsed-dot--not-started {
+      background: transparent !important;
+      border: 1.5px solid var(--status-color, #94a3b8) !important;
+    }
+    .task-board-column__collapsed-dot--done {
+      background: var(--status-color, #16a34a) !important;
+      border-color: var(--status-color, #16a34a) !important;
+    }
+    .task-board-column__collapsed-dot svg {
+      width: 9px;
+      height: 9px;
+    }
+    .task-board-column__expand-chevron {
+      position: absolute;
+      width: 14px;
+      height: 14px;
+      stroke: var(--color-text-primary);
+      stroke-width: 2.2;
+      fill: none;
+      stroke-linecap: round;
+      stroke-linejoin: round;
+      opacity: 0;
+      transition: opacity 120ms ease;
+    }
+    .task-board-column--collapsed:hover .task-board-column__collapsed-dot {
+      opacity: 0;
+    }
+    .task-board-column--collapsed:hover .task-board-column__expand-chevron {
+      opacity: 1;
+    }
+    .task-board-column__collapsed-title {
+      writing-mode: vertical-rl;
+      text-orientation: mixed;
+      text-transform: uppercase;
+      font-size: 11px;
+      font-weight: 700;
+      letter-spacing: 0.5px;
+      color: var(--color-text-secondary);
+      user-select: none;
+      white-space: nowrap;
+      transition: color 140ms ease;
+    }
+    .task-board-column--collapsed:hover .task-board-column__collapsed-title {
+      color: var(--color-text-primary);
+    }
+    .task-board-column__collapsed-count {
+      font-size: 11.5px;
+      font-weight: 600;
+      color: var(--color-text-secondary);
+      user-select: none;
     }
     .task-board-column__header {
       display: flex;
@@ -318,23 +619,63 @@ export interface QuickTaskCreatedEvent {
     .task-board-column__title {
       display: flex;
       align-items: center;
-      gap: 8px;
-      font-size: 13px;
-      font-weight: 600;
-      color: var(--color-text-primary);
+      gap: 7px;
       margin: 0;
+    }
+    .task-board-column__status-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 3px 9px 3px 7px;
+      border-radius: 6px;
+      color: #ffffff;
+      line-height: 1.2;
+    }
+    .task-board-column__status-dot {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      width: 11px;
+      height: 11px;
+      border-radius: 999px;
+      background: #ffffff;
+      border: 1.5px solid #ffffff;
+      box-sizing: border-box;
+      flex-shrink: 0;
+    }
+    .task-board-column__status-dot--not-started {
+      background: transparent;
+      border: 1.5px solid #ffffff;
+    }
+    .task-board-column__status-dot--done {
+      background: transparent;
+      border: 0;
+    }
+    .task-board-column__status-dot svg {
+      width: 11px;
+      height: 11px;
+    }
+    .task-board-column__title-text {
+      font-size: 11px;
+      font-weight: 700;
+      color: #ffffff;
+      text-transform: uppercase;
+      letter-spacing: 0.4px;
+      white-space: nowrap;
     }
     .task-board-column__count {
       font-size: 12px;
-      font-weight: 500;
-      color: var(--color-text-secondary);
+      font-weight: 600;
+      color: var(--status-color, var(--color-text-secondary));
     }
     .task-board-column__actions {
       display: flex;
       align-items: center;
       gap: 4px;
     }
-    /* The '+' button only needs to appear when hovering the status header / column */
+    /* The hover collapse, menu, and add buttons */
+    .task-board-column__collapse-btn,
+    .task-board-column__menu-btn,
     .task-board-column__add-btn {
       display: inline-flex;
       align-items: center;
@@ -351,19 +692,36 @@ export interface QuickTaskCreatedEvent {
       pointer-events: none;
       transition: opacity 140ms ease, background-color 140ms ease, border-color 140ms ease, color 140ms ease;
     }
+    .task-board-column__header:hover .task-board-column__collapse-btn,
+    .task-board-column__header:hover .task-board-column__menu-btn,
     .task-board-column__header:hover .task-board-column__add-btn,
+    .task-board-column:hover .task-board-column__collapse-btn,
+    .task-board-column:hover .task-board-column__menu-btn,
     .task-board-column:hover .task-board-column__add-btn,
+    .task-board-column__menu-btn--active,
     .task-board-column__add-btn--active {
       opacity: 1;
       pointer-events: auto;
     }
+    .task-board-column__collapse-btn:hover,
+    .task-board-column__menu-btn:hover,
     .task-board-column__add-btn:hover,
+    .task-board-column__menu-btn--active,
     .task-board-column__add-btn--active {
       background: var(--color-surface);
       border-color: var(--color-border);
       color: var(--color-text-primary);
       box-shadow: 0 1px 3px rgba(15, 23, 42, 0.06);
     }
+    .task-board-column__collapse-btn:focus-visible,
+    .task-board-column__menu-btn:focus-visible,
+    .task-board-column__add-btn:focus-visible {
+      opacity: 1;
+      pointer-events: auto;
+      outline: 2px solid var(--color-accent);
+      outline-offset: 1px;
+    }
+    .task-board-column__collapse-btn svg,
     .task-board-column__add-btn svg {
       width: 15px;
       height: 15px;
@@ -372,6 +730,192 @@ export interface QuickTaskCreatedEvent {
       fill: none;
       stroke-linecap: round;
       stroke-linejoin: round;
+    }
+    .task-board-column__menu-btn svg {
+      width: 16px;
+      height: 16px;
+      fill: currentColor;
+    }
+
+    /* 3-Dot Dropdown Menu */
+    .task-board-column__menu-anchor {
+      position: relative;
+      display: inline-flex;
+    }
+    .task-board-column__menu {
+      position: absolute;
+      top: calc(100% + 4px);
+      right: 0;
+      z-index: 50;
+      min-width: 170px;
+      padding: 4px;
+      border: 1px solid var(--color-border);
+      border-radius: 8px;
+      background: var(--color-surface);
+      box-shadow: 0 4px 16px rgba(15, 23, 42, 0.12);
+      display: flex;
+      flex-direction: column;
+      gap: 2px;
+      animation: menu-appear 120ms ease-out;
+    }
+    @keyframes menu-appear {
+      from { opacity: 0; transform: translateY(-4px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+    .task-board-column__menu-heading {
+      font-size: 11px;
+      font-weight: 600;
+      color: var(--color-text-secondary);
+      padding: 4px 8px 2px;
+      user-select: none;
+    }
+    .task-board-column__menu-item {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      width: 100%;
+      padding: 6px 8px;
+      font-size: 12.5px;
+      font-weight: 500;
+      color: var(--color-text-primary);
+      border: none;
+      border-radius: 5px;
+      background: transparent;
+      cursor: pointer;
+      text-align: left;
+      transition: background-color 100ms ease;
+    }
+    .task-board-column__menu-item:hover {
+      background: var(--color-surface-secondary, #f1f5f9);
+    }
+    .task-board-column__menu-item svg {
+      width: 14px;
+      height: 14px;
+      stroke: currentColor;
+      stroke-width: 2;
+      fill: none;
+      flex-shrink: 0;
+      color: var(--color-text-secondary);
+    }
+
+    /* Rename Inline Controls */
+    .task-board-column__rename-wrap {
+      position: relative;
+      display: flex;
+      align-items: center;
+      flex: 1;
+      min-width: 0;
+      margin-right: 6px;
+    }
+    .task-board-column__rename-box {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      width: 100%;
+      height: 28px;
+      padding: 2px 6px 2px 5px;
+      background: var(--color-surface);
+      border: 1px solid var(--color-border);
+      border-radius: 6px;
+      box-sizing: border-box;
+      box-shadow: 0 1px 2px rgba(15, 23, 42, 0.05);
+      position: relative;
+    }
+    .task-board-column__rename-box:focus-within {
+      border-color: var(--color-accent);
+      box-shadow: 0 0 0 2px color-mix(in srgb, var(--color-accent) 20%, transparent);
+    }
+    .task-board-column__rename-color-btn {
+      width: 15px;
+      height: 15px;
+      border-radius: 4px;
+      border: 1.5px solid rgba(0, 0, 0, 0.15);
+      cursor: pointer;
+      flex-shrink: 0;
+      padding: 0;
+      transition: transform 100ms ease;
+    }
+    .task-board-column__rename-color-btn:hover {
+      transform: scale(1.1);
+    }
+    .task-board-column__rename-input {
+      flex: 1;
+      min-width: 0;
+      border: none;
+      background: transparent;
+      outline: none;
+      font: inherit;
+      font-size: 12px;
+      font-weight: 600;
+      color: var(--color-text-primary);
+      padding: 0;
+    }
+    .task-board-column__rename-save-btn {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      width: 20px;
+      height: 20px;
+      padding: 0;
+      border: none;
+      border-radius: 4px;
+      background: transparent;
+      color: var(--color-accent);
+      cursor: pointer;
+      flex-shrink: 0;
+      transition: background-color 100ms ease;
+    }
+    .task-board-column__rename-save-btn:hover:not(:disabled) {
+      background: color-mix(in srgb, var(--color-accent) 15%, transparent);
+    }
+    .task-board-column__rename-save-btn:disabled {
+      opacity: 0.35;
+      cursor: not-allowed;
+    }
+    .task-board-column__rename-save-btn svg {
+      width: 14px;
+      height: 14px;
+    }
+    .task-board-column__color-popover {
+      position: absolute;
+      top: calc(100% + 4px);
+      left: 0;
+      z-index: 60;
+      background: var(--color-surface);
+      border: 1px solid var(--color-border);
+      border-radius: 8px;
+      padding: 8px;
+      box-shadow: 0 4px 14px rgba(15, 23, 42, 0.12);
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+    .task-board-column__color-popover-title {
+      font-size: 10.5px;
+      font-weight: 600;
+      color: var(--color-text-secondary);
+      user-select: none;
+    }
+    .task-board-column__color-palette {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+    .task-board-column__color-swatch {
+      width: 20px;
+      height: 20px;
+      border-radius: 999px;
+      border: 2px solid transparent;
+      cursor: pointer;
+      padding: 0;
+      transition: transform 100ms ease, border-color 100ms ease;
+    }
+    .task-board-column__color-swatch:hover {
+      transform: scale(1.15);
+    }
+    .task-board-column__color-swatch--active {
+      border-color: var(--color-text-primary);
+      transform: scale(1.15);
     }
 
     /* Quick Task Card */
@@ -713,9 +1257,9 @@ export interface QuickTaskCreatedEvent {
     .task-board-column__drag-preview-title { overflow: hidden; color: var(--color-text-primary); font-size: 13px; font-weight: 500; text-overflow: ellipsis; white-space: nowrap; }
     .task-board-column__drag-placeholder {
       min-height: 78px;
-      border: 1px dashed color-mix(in srgb, var(--color-accent) 55%, var(--color-border));
+      border: 1px dashed color-mix(in srgb, var(--status-color, var(--color-accent)) 55%, var(--color-border));
       border-radius: 12px;
-      background: color-mix(in srgb, var(--color-accent) 8%, transparent);
+      background: color-mix(in srgb, var(--status-color, var(--color-accent)) 8%, transparent);
       animation: task-drop-placeholder-in 180ms ease-out;
     }
     :host ::ng-deep .task-board-column__list.cdk-drop-list-dragging .task-board-column__drag-item:not(.cdk-drag-placeholder) {
@@ -737,21 +1281,20 @@ export interface QuickTaskCreatedEvent {
       width: 100%;
       padding: 7px 10px;
       margin-top: 8px;
-      border: 1px dashed transparent;
+      border: none;
       border-radius: 8px;
       background: transparent;
-      color: var(--color-accent, #3b82f6);
+      color: var(--status-color, var(--color-accent, #3b82f6));
       font: inherit;
-      font-size: 12.5px;
+      font-size: 13px;
       font-weight: 500;
       cursor: pointer;
       text-align: left;
       transition: all 140ms ease;
     }
     .task-board-column__always-add-btn:hover {
-      background: var(--color-surface);
-      border-color: color-mix(in srgb, var(--color-accent, #3b82f6) 30%, var(--color-border));
-      box-shadow: 0 1px 3px rgba(15, 23, 42, 0.05);
+      background: color-mix(in srgb, var(--status-color, #94a3b8) 10%, transparent);
+      box-shadow: none;
     }
     .task-board-column__always-add-icon {
       font-size: 15px;
@@ -780,11 +1323,34 @@ export class TaskBoardColumnComponent {
   categories = input<readonly TaskCategoryColumn[]>([]);
   defaultObjectiveId = input('');
   defaultSprintId = input('');
+  projectId = input('');
+  isProjectMember = input(false);
 
   taskDropped = output<{ taskId: string; newStatusId: string }>();
   taskViewed = output<WorkTask>();
   taskChanged = output<void>();
   quickTaskCreated = output<QuickTaskCreatedEvent>();
+  editStatusesClicked = output<void>();
+  statusUpdated = output<void>();
+
+  private readonly taskApi = inject(TaskApiService);
+
+  // 3-dot Menu & Rename state
+  isMenuOpen = signal(false);
+  isRenaming = signal(false);
+  renameName = signal('');
+  renameColor = signal('');
+  isRenameColorPickerOpen = signal(false);
+  savingRename = signal(false);
+
+  readonly renameInput = viewChild<ElementRef<HTMLInputElement>>('renameInput');
+
+  readonly baseColorPresets = [
+    { value: '#94A3B8', label: 'Gray' },
+    { value: '#16A34A', label: 'Green' },
+    { value: '#2563EB', label: 'Blue' },
+    { value: '#DC2626', label: 'Red' }
+  ];
 
   // Quick create state
   isQuickCreateOpen = signal(false);
@@ -798,6 +1364,9 @@ export class TaskBoardColumnComponent {
   errorMessage = signal<string | null>(null);
   activePopover = signal<'assignee' | 'dueDate' | 'priority' | 'module' | null>(null);
   assigneeSearch = signal('');
+
+  // Column collapse state
+  isCollapsed = signal(false);
 
   readonly quickTitleInput = viewChild<ElementRef<HTMLInputElement>>('quickTitleInput');
 
@@ -823,6 +1392,12 @@ export class TaskBoardColumnComponent {
   onDocumentClick(): void {
     if (this.activePopover()) {
       this.activePopover.set(null);
+    }
+    if (this.isMenuOpen()) {
+      this.isMenuOpen.set(false);
+    }
+    if (this.isRenameColorPickerOpen()) {
+      this.isRenameColorPickerOpen.set(false);
     }
   }
 
@@ -866,6 +1441,89 @@ export class TaskBoardColumnComponent {
     return this.modules().find((m) => m.objectiveId === id)?.title ?? 'Module';
   });
 
+  toggleMenu(event: MouseEvent): void {
+    event.stopPropagation();
+    this.isMenuOpen.update((v) => !v);
+  }
+
+  onMenuCollapse(): void {
+    this.isMenuOpen.set(false);
+    this.toggleCollapse();
+  }
+
+  startRename(): void {
+    this.isMenuOpen.set(false);
+    this.renameName.set(this.status().name);
+    this.renameColor.set(this.status().color || '#94a3b8');
+    this.isRenameColorPickerOpen.set(false);
+    this.isRenaming.set(true);
+    setTimeout(() => {
+      this.renameInput()?.nativeElement?.select();
+    }, 50);
+  }
+
+  cancelRename(): void {
+    this.isRenaming.set(false);
+    this.isRenameColorPickerOpen.set(false);
+  }
+
+  toggleRenameColorPicker(event: MouseEvent): void {
+    event.stopPropagation();
+    this.isRenameColorPickerOpen.update((v) => !v);
+  }
+
+  selectRenameColor(color: string): void {
+    this.renameColor.set(color);
+    this.isRenameColorPickerOpen.set(false);
+  }
+
+  async saveRename(): Promise<void> {
+    const newName = this.renameName().trim();
+    if (!newName || this.savingRename()) return;
+    const newColor = this.renameColor() || this.status().color || '#94a3b8';
+    if (newName === this.status().name && newColor === this.status().color) {
+      this.isRenaming.set(false);
+      return;
+    }
+
+    this.savingRename.set(true);
+    try {
+      const s = this.status();
+      await firstValueFrom(
+        this.taskApi.editStatus(this.projectId(), s.id, {
+          name: newName,
+          displayOrder: s.displayOrder,
+          requiresApproval: s.requiresApproval,
+          approverId: s.approverId ?? undefined,
+          visibility: s.visibility,
+          category: s.category,
+          color: newColor
+        })
+      );
+      this.isRenaming.set(false);
+      this.isRenameColorPickerOpen.set(false);
+      this.statusUpdated.emit();
+    } catch (err) {
+      console.error('Failed to update status', err);
+    } finally {
+      this.savingRename.set(false);
+    }
+  }
+
+  onMenuEditStatuses(): void {
+    this.isMenuOpen.set(false);
+    this.editStatusesClicked.emit();
+  }
+
+  toggleCollapse(): void {
+    this.isCollapsed.update((v) => !v);
+    if (this.isCollapsed()) {
+      this.closeQuickCreate();
+      this.cancelRename();
+      this.isMenuOpen.set(false);
+    }
+  }
+
   toggleQuickCreate(): void {
     if (this.isQuickCreateOpen()) {
       this.closeQuickCreate();
@@ -895,7 +1553,13 @@ export class TaskBoardColumnComponent {
   }
 
   onEscape(): void {
-    if (this.activePopover()) {
+    if (this.isRenameColorPickerOpen()) {
+      this.isRenameColorPickerOpen.set(false);
+    } else if (this.isRenaming()) {
+      this.cancelRename();
+    } else if (this.isMenuOpen()) {
+      this.isMenuOpen.set(false);
+    } else if (this.activePopover()) {
       this.activePopover.set(null);
     } else {
       this.closeQuickCreate();

@@ -3,6 +3,7 @@ import { HttpClientTestingModule, HttpTestingController } from '@angular/common/
 import { vi } from 'vitest';
 import { TaskClockWidgetComponent } from './task-clock-widget.component';
 import { WorkTask } from '../../models/task.model';
+import { NotificationService } from '../../../../core/services/notification.service';
 import { environment } from '../../../../../environments/environment';
 
 const baseTask: WorkTask = {
@@ -214,4 +215,28 @@ describe('TaskClockWidgetComponent', () => {
     expect(pushedSpy).toHaveBeenCalledWith(expect.objectContaining({ id: 't1', progressPercent: 60 }));
     expect(fixture.nativeElement.querySelector('[data-testid="push-percent-input"]')).toBeNull();
   });
+
+  it('toasts a moved-to status and emits refresh after clock-in', async () => {
+    setup();
+    const success=vi.spyOn(TestBed.inject(NotificationService),'success');
+    const emitted=vi.fn();fixture.componentInstance.clockedIn.subscribe(emitted);
+    const pending=fixture.componentInstance.onClockIn();
+    httpMock.expectOne(environment.apiUrl+'/work/tasks/t1/clock-in').flush({movedToStatus:{id:'s2',name:'In Process',color:'#2563EB'}});
+    await pending;
+    expect(success).toHaveBeenCalledWith('Moved to "In Process" to start tracking time.');
+    expect(emitted).toHaveBeenCalledOnce();
+  });
+  it('does not toast for an unchanged status and reports backend errors without emitting refresh', async () => {
+    setup();
+    const notifications=TestBed.inject(NotificationService);
+    const success=vi.spyOn(notifications,'success'), error=vi.spyOn(notifications,'error');
+    const emitted=vi.fn();fixture.componentInstance.clockedIn.subscribe(emitted);
+    let pending=fixture.componentInstance.onClockIn();
+    httpMock.expectOne(environment.apiUrl+'/work/tasks/t1/clock-in').flush({movedToStatus:null});await pending;
+    expect(success).not.toHaveBeenCalled();expect(emitted).toHaveBeenCalledOnce();emitted.mockClear();
+    pending=fixture.componentInstance.onClockIn();
+    httpMock.expectOne(environment.apiUrl+'/work/tasks/t1/clock-in').flush({detail:'Ask the module owner to move the task first.'},{status:409,statusText:'Conflict'});await pending;
+    expect(error).toHaveBeenCalledWith('Ask the module owner to move the task first.');expect(emitted).not.toHaveBeenCalled();
+  });
+
 });

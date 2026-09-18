@@ -134,10 +134,10 @@
                     <polyline points="9 18 15 12 9 6"/>
                   </svg>
                   <span class="ptd-pack-name">{{ pack.name }}</span>
+                  <span class="ptd-pack-count-chip ptd-pack-count-badge">
+                    {{ pack.positions.length }}
+                  </span>
                 </div>
-                <span class="ptd-pack-count-chip ptd-pack-count-badge">
-                  {{ pack.positions.length }} {{ pack.positions.length === 1 ? 'position' : 'positions' }}
-                </span>
               </button>
 
               <!-- Pack Content (Position Cards) -->

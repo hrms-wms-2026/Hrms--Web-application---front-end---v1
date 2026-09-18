@@ -136,7 +136,7 @@ describe('PositionTemplateDrawerComponent', () => {
     expect(rangeBadge).toBeNull();
   });
 
-  it('renders position count badge on the right of pack header and handles singular/plural formatting', () => {
+  it('renders position count badge next to pack name', () => {
     const packsWithSingular: readonly PositionTemplatePackResponse[] = [
       {
         ...mockTemplatePacks[0],
@@ -152,8 +152,8 @@ describe('PositionTemplateDrawerComponent', () => {
 
     const countBadges = fixture.nativeElement.querySelectorAll('.ptd-pack-count-chip');
     expect(countBadges.length).toBe(2);
-    expect(countBadges[0].textContent.trim()).toBe('1 position');
-    expect(countBadges[1].textContent.trim()).toBe('2 positions');
+    expect(countBadges[0].textContent.trim()).toBe('1');
+    expect(countBadges[1].textContent.trim()).toBe('2');
   });
 
   it('expanding and collapsing template pack toggle position card visibility', () => {

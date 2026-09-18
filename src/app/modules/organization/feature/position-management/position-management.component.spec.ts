@@ -397,6 +397,7 @@ describe('PositionManagementComponent - System Access Flow', () => {
       const templatesBtn = native.querySelector('.pm-templates-btn');
       expect(templatesBtn).not.toBeNull();
       expect(templatesBtn.textContent).toContain('Templates');
+      expect(native.querySelector('.pm-templates-count')).toBeNull();
 
       const filterBtn = native.querySelector('.pm-filter-btn');
       expect(filterBtn).toBeNull();

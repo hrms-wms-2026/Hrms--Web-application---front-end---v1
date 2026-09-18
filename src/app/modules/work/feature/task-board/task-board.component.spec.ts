@@ -1,8 +1,10 @@
 import { TestBed } from '@angular/core/testing';
+import { By } from '@angular/platform-browser';
 import { ActivatedRoute, Router } from '@angular/router';
 import { vi } from 'vitest';
 import { of } from 'rxjs';
 import { TaskBoardComponent } from './task-board.component';
+import { TaskBoardColumnComponent } from '../../ui/task-board-column/task-board-column.component';
 import { TaskBoardStore } from '../../state/task-board.store';
 import { ProjectDetailStore } from '../../state/project-detail.store';
 import { SprintApiService } from '../../data-access/sprint-api.service';
@@ -495,6 +497,56 @@ describe('TaskBoardComponent', () => {
     expect(taskApiStub.assignTask).toHaveBeenCalledWith('t-new', 'emp-1');
     expect(taskApiStub.moveTaskStatus).toHaveBeenCalledWith('t-new', 's-custom');
     expect(resolveSpy).toHaveBeenCalledWith(true);
+  });
+
+  it('opens BoardStructureEditorComponent when editStatusesClicked is emitted from column', async () => {
+    const status = {
+      id: 's-1', name: 'To Do', displayOrder: 0, requiresApproval: false, marksTaskComplete: false, visibility: 'public'
+    };
+    const storeStub = {
+      loadBoard: vi.fn().mockResolvedValue(undefined),
+      columnsWithTasks: () => [{ status, tasks: [] }],
+      tasks: () => [],
+      loading: () => false,
+      error: () => null,
+      moveTask: vi.fn(),
+      statuses: () => [status]
+    };
+
+    TestBed.configureTestingModule({
+      imports: [TaskBoardComponent],
+      providers: [
+        { provide: TaskBoardStore, useValue: storeStub },
+        {
+          provide: ProjectDetailStore,
+          useValue: {
+            milestones: () => [{ objectiveId: 'milestone-1', title: 'Milestone One', isOwner: true }],
+            getMilestoneDetail: vi.fn().mockResolvedValue(null),
+            loadMyMilestones: vi.fn().mockResolvedValue(undefined),
+            loadProjectMembers: vi.fn().mockResolvedValue(undefined),
+            projectMembers: () => []
+          }
+        },
+        { provide: SprintApiService, useValue: { getByProject: vi.fn().mockReturnValue(of([])) } },
+        { provide: TaskApiService, useValue: { getStatuses: vi.fn().mockReturnValue(of([])), createTaskCreationRequest: vi.fn(), assignTask: vi.fn(), getCategories: vi.fn().mockReturnValue(of([])) } },
+        { provide: EmployeeDirectoryStore, useValue: { get: vi.fn().mockReturnValue(undefined), ensureLoaded: vi.fn().mockResolvedValue(undefined) } },
+        { provide: ActivatedRoute, useValue: routeStub() },
+        { provide: Router, useValue: { navigate: vi.fn() } }
+      ]
+    });
+
+    const fixture = TestBed.createComponent(TaskBoardComponent);
+    fixture.detectChanges();
+    await fixture.whenStable();
+
+    expect(fixture.componentInstance['boardStructureEditorOpen']()).toBe(false);
+
+    const column = fixture.debugElement.query(By.directive(TaskBoardColumnComponent));
+    expect(column).not.toBeNull();
+    column.componentInstance.editStatusesClicked.emit();
+    fixture.detectChanges();
+
+    expect(fixture.componentInstance['boardStructureEditorOpen']()).toBe(true);
   });
 });
 

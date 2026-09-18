@@ -20,27 +20,25 @@ import { TaskCategoryColumn } from '../../models/task-category.model';
 import { toTaskCategoryColumn } from '../../utils/task-category.mapper';
 import { WorkDropdownOption } from '../../ui/work-dropdown/work-dropdown.component';
 import { TaskFilterBarComponent, TaskFilterFieldConfig } from '../../ui/task-filter-bar/task-filter-bar.component';
+import { TaskAssigneeAvatarFilterComponent } from '../../ui/task-assignee-avatar-filter/task-assignee-avatar-filter.component';
 import { TaskFormModalComponent } from '../../ui/task-form-modal/task-form-modal.component';
+import { BoardStructureEditorComponent } from '../../ui/board-structure-editor/board-structure-editor.component';
 import { CreateTaskRequestDto } from '../../models/dto/task.dto';
 
 @Component({
   selector: 'app-task-board',
   standalone: true,
-  imports: [TaskBoardColumnComponent, ButtonComponent, ErrorStateComponent, TaskFilterBarComponent, TaskFormModalComponent],
+  imports: [TaskBoardColumnComponent, ButtonComponent, ErrorStateComponent, TaskFilterBarComponent, TaskAssigneeAvatarFilterComponent, TaskFormModalComponent, BoardStructureEditorComponent],
   template: `
     <ng-template #toolbarTpl>
       <div class="task-board__toolbar">
+        <app-task-assignee-avatar-filter
+          [members]="assignableMembers()"
+          [currentEmployeeId]="currentEmployee.id()"
+          [selected]="assigneeFilter()"
+          (selectionChanged)="setAssigneeFilter($event)"
+        />
         <app-task-filter-bar [fields]="filterFields()" [values]="filterValues()" (fieldChanged)="onFilterFieldChanged($event)" />
-        <button
-          type="button"
-          class="task-board__me-toggle"
-          [class.task-board__me-toggle--active]="onlyMyTasks()"
-          [attr.aria-pressed]="onlyMyTasks()"
-          title="Only my tasks"
-          (click)="toggleOnlyMyTasks()"
-        >
-          {{ myInitials() }}
-        </button>
         @if (modules().length > 0) {
           <app-button variant="primary" (pressed)="goToCreate()">Create task</app-button>
         }
@@ -66,9 +64,13 @@ import { CreateTaskRequestDto } from '../../models/dto/task.dto';
             [categories]="categories()"
             [defaultObjectiveId]="modalPrefillModuleId()"
             [defaultSprintId]="modalPrefillSprintId()"
+            [projectId]="projectId()"
+            [isProjectMember]="isProjectMember()"
             (taskDropped)="onTaskDropped($event)"
             (taskViewed)="onTaskViewed($event)"
             (taskChanged)="reload()"
+            (statusUpdated)="reload()"
+            (editStatusesClicked)="boardStructureEditorOpen.set(true)"
             (quickTaskCreated)="onQuickTaskCreated($event)"
           />
         }
@@ -86,12 +88,18 @@ import { CreateTaskRequestDto } from '../../models/dto/task.dto';
       (saved)="onTaskModalDone()"
       (closed)="taskModalOpen.set(false)"
     />
+
+    <app-board-structure-editor
+      [open]="boardStructureEditorOpen()"
+      [projectId]="projectId()"
+      [statuses]="store.statuses()"
+      (closed)="boardStructureEditorOpen.set(false)"
+      (saved)="reload()"
+    />
   `,
   styles: [`
     .task-board__toolbar { display: flex; flex-wrap: wrap; align-items: center; justify-content: flex-end; gap: 8px; }
-    .task-board__me-toggle { display: inline-flex; align-items: center; justify-content: center; width: 30px; height: 30px; border: 1px solid var(--color-border); border-radius: 999px; background: var(--color-surface); color: var(--color-text-secondary); font: inherit; font-size: 11px; font-weight: 700; cursor: pointer; transition: all 140ms ease; }
-    .task-board__me-toggle:hover { border-color: var(--color-accent); color: var(--color-accent); }
-    .task-board__me-toggle--active { border-color: var(--color-accent); background: var(--color-accent); color: var(--color-accent-contrast); }
+    .task-board__toolbar ::ng-deep app-button > button { width: auto; }
     .task-board { display: flex; align-items: flex-start; gap: 16px; width: 100%; box-sizing: border-box; overflow-x: auto; padding: 0 0 10px; scroll-snap-type: x proximity; }
     :host ::ng-deep .task-card--highlighted { outline: 2px solid var(--color-focus-ring, var(--color-danger)); outline-offset: 2px; }
   `]
@@ -118,6 +126,7 @@ export class TaskBoardComponent implements OnInit, AfterViewChecked, AfterViewIn
   protected readonly assigneeFilter = signal<string[]>([]);
   protected readonly statusFilter = signal<string[]>([]);
   protected readonly priorityFilter = signal<string[]>([]);
+  protected readonly boardStructureEditorOpen = signal(false);
   private highlightTaskId: string | null = null;
   private didScrollToHighlight = false;
 
@@ -152,6 +161,14 @@ export class TaskBoardComponent implements OnInit, AfterViewChecked, AfterViewIn
   protected readonly moduleOptions = computed(() =>
     this.modules().map((m) => ({ objectiveId: m.objectiveId, title: m.title, isOwner: m.isOwner }))
   );
+  protected readonly isProjectMember = computed(() => {
+    const empId = this.currentEmployee.id();
+    if (!empId) return false;
+    const isModuleOwner = this.modules().some((m) => m.isOwner);
+    const isMember = this.assignableMembers().some((m) => m.employeeId === empId);
+    const isLead = this.projectStore.project()?.isLead ?? false;
+    return isModuleOwner || isMember || isLead;
+  });
   protected readonly objectiveOptions = computed<WorkDropdownOption[]>(() =>
     this.modules().map((module) => ({ value: module.objectiveId, label: module.title }))
   );
@@ -189,16 +206,6 @@ export class TaskBoardComponent implements OnInit, AfterViewChecked, AfterViewIn
     status: this.statusFilter(),
     priority: this.priorityFilter()
   }));
-  protected readonly onlyMyTasks = computed(() => {
-    const me = this.currentEmployee.id();
-    const assignees = this.assigneeFilter();
-    return !!me && assignees.length === 1 && assignees[0] === me;
-  });
-  protected readonly myInitials = computed(() => {
-    const me = this.currentEmployee.id();
-    const name = this.assignableMembers().find((m) => m.employeeId === me)?.name ?? '';
-    return this.getInitials(name);
-  });
   protected readonly columnsWithTasks = computed(() =>
     this.store.columnsWithTasks().map((column) => ({
       status: column.status,
@@ -232,18 +239,6 @@ export class TaskBoardComponent implements OnInit, AfterViewChecked, AfterViewIn
       case 'status': this.statusFilter.set(event.values); break;
       case 'priority': this.priorityFilter.set(event.values); break;
     }
-  }
-
-  /** Shortcut toggle mirroring the filter's own Assignee row - turning it on replaces any existing assignee selection with just me, off clears it. */
-  protected toggleOnlyMyTasks(): void {
-    this.setAssigneeFilter(this.onlyMyTasks() ? [] : [this.currentEmployee.id()]);
-  }
-
-  private getInitials(name: string): string {
-    if (!name) return '?';
-    const parts = name.trim().split(/\s+/);
-    if (parts.length >= 2) return (parts[0][0] + parts[1][0]).toUpperCase();
-    return name.slice(0, 2).toUpperCase();
   }
 
   columnIds(): string[] {
