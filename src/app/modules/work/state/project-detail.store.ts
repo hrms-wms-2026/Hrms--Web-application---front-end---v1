@@ -10,6 +10,7 @@ import { toTaskStatusColumn } from '../utils/task.mapper';
 import { ProjectDetail } from '../models/project.model';
 import { Milestone, MilestoneTreeNode, ObjectiveDetail } from '../models/milestone.model';
 import { EditObjectiveRequestDto, CreateObjectiveRequestDto, ObjectiveAssetDto } from '../models/dto/milestone.dto';
+import { CompleteSprintRequestDto } from '../models/dto/sprint.dto';
 import { ObjectiveMemberItemDto, ObjectiveInvitationDto } from '../models/dto/objective-invitation.dto';
 
 interface ProjectDetailState {
@@ -403,9 +404,9 @@ export const ProjectDetailStore = signalStore(
       }
     },
 
-    async completeSprint(sprintId: string): Promise<{ success: boolean }> {
+    async completeSprint(sprintId: string, request: CompleteSprintRequestDto): Promise<{ success: boolean }> {
       try {
-        const dto = await firstValueFrom(sprintApi.complete(sprintId));
+        const dto = await firstValueFrom(sprintApi.complete(sprintId, request));
         const tree = store.selectedSubtree();
         if (tree) {
           patchState(store, {
