@@ -9,14 +9,39 @@ describe('SprintStartDialogComponent', () => {
   let fixture: ComponentFixture<SprintStartDialogComponent>;
   let storeStub: { start: ReturnType<typeof vi.fn> };
 
+  function buildTask(overrides: Partial<WorkTask> = {}): WorkTask {
+    return {
+      id: 't',
+      objectiveId: 'obj-1',
+      shortId: 'T-1',
+      title: 'Task',
+      description: null,
+      categoryId: 'task',
+      statusId: 'todo',
+      priority: 'medium',
+      storyPoints: null,
+      dueDate: null,
+      estimatedHours: null,
+      completedHours: 0,
+      progressPercent: 0,
+      sprintId: 'sp-1',
+      assigneeEmployeeIds: [],
+      openClockSessionEmployeeId: null,
+      openClockSessionClockInAt: null,
+      totalLoggedMinutes: 0,
+      attachments: [],
+      ...overrides
+    } as WorkTask;
+  }
+
   const sprint: Sprint = {
     id: 'sp-1', objectiveId: 'obj-1', name: 'Sprint 1', goal: 'Old goal',
     startDate: null, endDate: null, status: 'draft', completedAt: null, achievedAt: null
   };
 
   const tasks: WorkTask[] = [
-    { id: 't1', objectiveId: 'obj-1', sprintId: 'sp-1', title: 'Task 1', estimatedHours: 4, assigneeEmployeeIds: ['e1'] } as unknown as WorkTask,
-    { id: 't2', objectiveId: 'obj-1', sprintId: 'sp-1', title: 'Task 2', estimatedHours: null, assigneeEmployeeIds: [] } as unknown as WorkTask
+    buildTask({ id: 't1', estimatedHours: 4, assigneeEmployeeIds: ['e1'] }),
+    buildTask({ id: 't2', estimatedHours: null, assigneeEmployeeIds: [] })
   ];
 
   function setup(overrides: Record<string, unknown> = {}): void {
@@ -56,7 +81,7 @@ describe('SprintStartDialogComponent', () => {
     await component.submit();
 
     expect(storeStub.start).toHaveBeenCalledWith(
-      'sp-1', { startDate: '2026-09-21', endDate: '2026-10-02', goal: 'Old goal' }, 'obj-1', false
+      'sp-1', { startDate: '2026-09-21', endDate: '2026-10-02', goal: 'Old goal' }, 'obj-1', false, undefined
     );
     expect(started).toHaveBeenCalledTimes(1);
   });
