@@ -1,0 +1,73 @@
+import { ComponentFixture, TestBed } from '@angular/core/testing';
+import { vi } from 'vitest';
+import { SprintStartDialogComponent } from './sprint-start-dialog.component';
+import { SprintListStore } from '../../state/sprint-list.store';
+import { Sprint } from '../../models/sprint.model';
+import { WorkTask } from '../../models/task.model';
+
+describe('SprintStartDialogComponent', () => {
+  let fixture: ComponentFixture<SprintStartDialogComponent>;
+  let storeStub: { start: ReturnType<typeof vi.fn> };
+
+  const sprint: Sprint = {
+    id: 'sp-1', objectiveId: 'obj-1', name: 'Sprint 1', goal: 'Old goal',
+    startDate: null, endDate: null, status: 'draft', completedAt: null, achievedAt: null
+  };
+
+  const tasks: WorkTask[] = [
+    { id: 't1', objectiveId: 'obj-1', sprintId: 'sp-1', title: 'Task 1', estimatedHours: 4, assigneeEmployeeIds: ['e1'] } as unknown as WorkTask,
+    { id: 't2', objectiveId: 'obj-1', sprintId: 'sp-1', title: 'Task 2', estimatedHours: null, assigneeEmployeeIds: [] } as unknown as WorkTask
+  ];
+
+  function setup(overrides: Record<string, unknown> = {}): void {
+    storeStub = { start: vi.fn().mockResolvedValue(true) };
+    TestBed.configureTestingModule({
+      imports: [SprintStartDialogComponent],
+      providers: [{ provide: SprintListStore, useValue: storeStub }]
+    });
+    fixture = TestBed.createComponent(SprintStartDialogComponent);
+    fixture.componentRef.setInput('open', true);
+    fixture.componentRef.setInput('sprint', sprint);
+    fixture.componentRef.setInput('tasks', tasks);
+    fixture.componentRef.setInput('objectiveId', 'obj-1');
+    for (const [key, value] of Object.entries(overrides)) fixture.componentRef.setInput(key, value);
+    fixture.detectChanges();
+  }
+
+  it('pre-fills the goal from the sprint and summarizes tasks/hours/assignees', () => {
+    setup();
+    const component = fixture.componentInstance as any;
+    expect(component.goal()).toBe('Old goal');
+    expect(component.taskCount()).toBe(2);
+    expect(component.totalEstimatedHours()).toBe(4);
+    expect(component.assigneeCount()).toBe(1);
+    expect(component.hasUnestimatedTasks()).toBe(true);
+    expect(component.hasUnassignedTasks()).toBe(true);
+  });
+
+  it('starts the sprint with the chosen dates and emits started', async () => {
+    setup();
+    const component = fixture.componentInstance as any;
+    component.startDate.set('2026-09-21');
+    component.endDate.set('2026-10-02');
+    const started = vi.fn();
+    component.started.subscribe(started);
+
+    await component.submit();
+
+    expect(storeStub.start).toHaveBeenCalledWith(
+      'sp-1', { startDate: '2026-09-21', endDate: '2026-10-02', goal: 'Old goal' }, 'obj-1', false
+    );
+    expect(started).toHaveBeenCalledTimes(1);
+  });
+
+  it('does not submit when either date is missing', async () => {
+    setup();
+    const component = fixture.componentInstance as any;
+    component.startDate.set('2026-09-21');
+    await component.submit();
+
+    expect(storeStub.start).not.toHaveBeenCalled();
+    expect(component.dateError()).toBeTruthy();
+  });
+});
