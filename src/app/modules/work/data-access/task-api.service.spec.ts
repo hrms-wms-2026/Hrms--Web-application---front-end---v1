@@ -65,7 +65,7 @@ describe('TaskApiService', () => {
 it('getStatuses fetches task statuses for a project', () => {
     const projectId = 'project-1';
     const mockStatuses: TaskStatusDto[] = [{
-      id: 's-1', name: 'To Do', displayOrder: 0, requiresApproval: false, approverId: null, marksTaskComplete: false, visibility: 'public'
+      id: 's-1', name: 'To Do', displayOrder: 0, requiresApproval: false, approverId: null, marksTaskComplete: false, category: 'active', color: '#2563EB', visibility: 'public'
     }];
 
     service.getStatuses(projectId).subscribe((statuses) => {
@@ -82,7 +82,8 @@ it('getStatuses fetches task statuses for a project', () => {
       name: 'Blocked',
       displayOrder: 4,
       visibility: 'private',
-      marksTaskComplete: false,
+      category: 'active',
+      color: '#2563EB',
       requiresApproval: false
     }).subscribe();
     const req = httpMock.expectOne(`${environment.apiUrl}/work/projects/project-1/task-statuses`);
@@ -195,12 +196,12 @@ it('getStatuses fetches task statuses for a project', () => {
 it('reorderTaskStatuses posts to projects/{projectId}/task-statuses/reorder', () => {
     const projectId = 'project-1';
     const updates = [
-      { statusId: 's-1', displayOrder: 0, visibility: 'public', marksTaskComplete: false },
-      { statusId: 's-2', displayOrder: 1, visibility: 'public', marksTaskComplete: false }
+      { statusId: 's-1', displayOrder: 0, visibility: 'public', category: 'active' as const, color: '#2563EB' },
+      { statusId: 's-2', displayOrder: 1, visibility: 'public', category: 'active' as const, color: '#2563EB' }
     ];
     const mockStatuses: TaskStatusDto[] = [
-      { id: 's-1', name: 'To Do', displayOrder: 0, requiresApproval: false, approverId: null, marksTaskComplete: false, visibility: 'public' },
-      { id: 's-2', name: 'In Progress', displayOrder: 1, requiresApproval: false, approverId: null, marksTaskComplete: false, visibility: 'public' }
+      { id: 's-1', name: 'To Do', displayOrder: 0, requiresApproval: false, approverId: null, marksTaskComplete: false, category: 'active', color: '#2563EB', visibility: 'public' },
+      { id: 's-2', name: 'In Progress', displayOrder: 1, requiresApproval: false, approverId: null, marksTaskComplete: false, category: 'active', color: '#2563EB', visibility: 'public' }
     ];
 
     service.reorderTaskStatuses(projectId, updates).subscribe((statuses) => {
@@ -311,5 +312,25 @@ it('reorderTaskStatuses posts to projects/{projectId}/task-statuses/reorder', ()
     expect(req.request.method).toBe('POST');
     expect(req.request.body).toEqual({ updates });
     req.flush(mockCategories);
+  });
+
+  it('uploadPendingFile posts multipart form data to tasks/pending-uploads', () => {
+    const file = new File(['x'], 'a.png', { type: 'image/png' });
+    service.uploadPendingFile(file, 'task_attachment').subscribe();
+    const req = httpMock.expectOne(`${environment.apiUrl}/work/tasks/pending-uploads`);
+    expect(req.request.method).toBe('POST');
+    expect(req.request.body instanceof FormData).toBe(true);
+    req.flush({ fileId: 'f1', originalFileName: 'a.png', fileSizeBytes: 1, contentType: 'image/png' });
+  });
+
+  it('deletePendingFile deletes by fileId', () => {
+    service.deletePendingFile('f1').subscribe();
+    const req = httpMock.expectOne(`${environment.apiUrl}/work/tasks/pending-uploads/f1`);
+    expect(req.request.method).toBe('DELETE');
+    req.flush(null);
+  });
+
+  it('getFileUrl builds the content url', () => {
+    expect(service.getFileUrl('f1')).toBe(`${environment.apiUrl}/work/tasks/files/f1`);
   });
 });

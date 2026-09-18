@@ -8,6 +8,7 @@ import { AuthStore } from '../../../core/auth/state/auth.store';
 import { environment } from '../../../../environments/environment';
 import { LegalEntityApiService } from '../../../modules/organization/data-access/legal-entity-api.service';
 import { LegalEntityStore } from '../../../modules/organization/state/legal-entity.store';
+import { NavigationStateService } from '../nav/navigation-state.service';
 
 @Component({ standalone: true, template: '' })
 class BlankComponent {}
@@ -188,5 +189,33 @@ describe('SideNavbarComponent', () => {
 
     const img: HTMLImageElement = fixture.nativeElement.querySelector('.company-logo-tile__img');
     expect(img.src).toBe(expectedUrl);
+  });
+
+  it('renders expand button when active section has children and sub-sidebar is collapsed, and expands on click', async () => {
+    localStorage.clear();
+    const fixture = setup(['attendance:read-own', 'attendance:write-own', 'attendance:read', 'attendance:approve'], ['time_attendance']);
+    const router = TestBed.inject(Router);
+    const navState = TestBed.inject(NavigationStateService);
+
+    await router.navigateByUrl('/attendance/overview');
+    fixture.detectChanges();
+
+    // Initially not collapsed
+    expect(fixture.nativeElement.querySelector('.nav-rail__expand-btn')).toBeNull();
+
+    // Collapse sub-sidebar
+    navState.collapseSubSidebar();
+    fixture.detectChanges();
+
+    const expandBtn = fixture.nativeElement.querySelector('.nav-rail__expand-btn') as HTMLButtonElement;
+    expect(expandBtn).toBeTruthy();
+    expect(expandBtn.getAttribute('aria-label')).toBe('Open sidebar');
+
+    // Click expand
+    expandBtn.click();
+    fixture.detectChanges();
+
+    expect(navState.isSubSidebarCollapsed()).toBe(false);
+    expect(fixture.nativeElement.querySelector('.nav-rail__expand-btn')).toBeNull();
   });
 });

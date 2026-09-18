@@ -1,14 +1,18 @@
 import { ChangeDetectionStrategy, Component, computed, effect, inject, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
+import { ActivatedRoute, Router } from '@angular/router';
+import { NotificationService } from '../../../../core/services/notification.service';
 import { ButtonComponent } from '../../../../shared/ui/button/button.component';
-import { CalendarEventResponse, RecurrenceEditScope, RespondToCalendarEventStatus } from '../../models/calendar-event.model';
+import { CalendarEventResponse, RecurrenceEditScope } from '../../models/calendar-event.model';
 import { CalendarEventStore } from '../../state/calendar-event.store';
 import { buildMonthGrid } from '../../utils/calendar-grid.util';
 import { CalendarMonthGridComponent } from '../../ui/calendar-month-grid/calendar-month-grid.component';
 import { CalendarWeekViewComponent } from '../calendar-week-view/calendar-week-view.component';
 import { CalendarDayViewComponent } from '../calendar-day-view/calendar-day-view.component';
 import { CalendarAgendaViewComponent } from '../calendar-agenda-view/calendar-agenda-view.component';
-import { CalendarEventFormModalComponent, CalendarEventFormSubmission } from '../../ui/calendar-event-form-modal/calendar-event-form-modal.component';
+import {
+  CalendarEventFormModalComponent, CalendarEventFormSubmission, RespondToCalendarEventPayload
+} from '../../ui/calendar-event-form-modal/calendar-event-form-modal.component';
 
 export type CalendarView = 'month' | 'week' | 'day' | 'agenda';
 
@@ -22,6 +26,11 @@ function startOfWeek(d: Date): Date {
   return new Date(d.getFullYear(), d.getMonth(), d.getDate() - daysBackToMonday);
 }
 
+const CONNECTED_PROVIDER_LABELS: Record<string, string> = {
+  google: 'Google Calendar',
+  microsoft: 'Outlook'
+};
+
 @Component({
   selector: 'app-calendar-page',
   standalone: true,
@@ -34,12 +43,16 @@ function startOfWeek(d: Date): Date {
 })
 export class CalendarPageComponent {
   readonly store = inject(CalendarEventStore);
+  private readonly route = inject(ActivatedRoute);
+  private readonly router = inject(Router);
+  private readonly notificationService = inject(NotificationService);
 
-  readonly view = signal<CalendarView>('day');
+  readonly view = signal<CalendarView>('week');
   readonly cursor = signal(new Date());
   readonly formOpen = signal(false);
   readonly editingEvent = signal<CalendarEventResponse | null>(null);
   readonly prefillStart = signal<string | null>(null);
+  readonly prefillEnd = signal<string | null>(null);
 
   readonly year = computed(() => this.cursor().getFullYear());
   readonly month = computed(() => this.cursor().getMonth() + 1);
@@ -63,6 +76,35 @@ export class CalendarPageComponent {
 
   constructor() {
     this.store.loadMyTimezone();
+    this.handleCalendarConnectionRedirect();
+  }
+
+  /**
+   * The backend's OAuth callback (CalendarOAuthCallbackController) redirects the browser straight
+   * back to /calendar?connected={provider} or ?connectionError=1 once the connection completes -
+   * there is no dedicated frontend callback route. Surface the result as a toast once, then strip
+   * the query params so a refresh doesn't re-show it.
+   */
+  private handleCalendarConnectionRedirect(): void {
+    const params = this.route.snapshot.queryParamMap;
+    const connected = params.get('connected');
+    const hasError = params.has('connectionError');
+    if (!connected && !hasError) {
+      return;
+    }
+
+    if (connected) {
+      const label = CONNECTED_PROVIDER_LABELS[connected] ?? connected;
+      this.notificationService.success(`${label} connected.`);
+    } else {
+      this.notificationService.error('Could not connect the calendar. Please try again.');
+    }
+
+    void this.router.navigate([], {
+      relativeTo: this.route,
+      queryParams: {},
+      replaceUrl: true
+    });
   }
 
   private currentRange(): { from: string; to: string } {
@@ -124,9 +166,10 @@ export class CalendarPageComponent {
     this.cursor.set(new Date());
   }
 
-  openCreate(prefillDate?: string): void {
+  openCreate(prefillStart?: string, prefillEnd?: string): void {
     this.editingEvent.set(null);
-    this.prefillStart.set(prefillDate ?? null);
+    this.prefillStart.set(prefillStart ?? null);
+    this.prefillEnd.set(prefillEnd ?? null);
     this.formOpen.set(true);
   }
 
@@ -134,10 +177,17 @@ export class CalendarPageComponent {
     this.openCreate(`${slot.date}T${String(slot.hour).padStart(2, '0')}:00`);
   }
 
+  onSlotRange(range: { date: string; startMinutes: number; endMinutes: number }): void {
+    const hhmm = (minutes: number) =>
+      `${String(Math.floor(minutes / 60)).padStart(2, '0')}:${String(minutes % 60).padStart(2, '0')}`;
+    this.openCreate(`${range.date}T${hhmm(range.startMinutes)}`, `${range.date}T${hhmm(range.endMinutes)}`);
+  }
+
   openEdit(eventId: string): void {
     const found = this.store.events().find((e) => e.id === eventId) ?? null;
     this.editingEvent.set(found);
     this.prefillStart.set(null);
+    this.prefillEnd.set(null);
     this.formOpen.set(true);
   }
 
@@ -145,7 +195,9 @@ export class CalendarPageComponent {
     this.formOpen.set(false);
     this.editingEvent.set(null);
     this.prefillStart.set(null);
+    this.prefillEnd.set(null);
     this.store.clearConflicts();
+    this.store.clearEligibleNominees();
   }
 
   async onSave(submission: CalendarEventFormSubmission): Promise<void> {
@@ -192,12 +244,19 @@ export class CalendarPageComponent {
     this.store.checkConflicts(payload.participantEmployeeIds, payload.startDate, payload.endDate);
   }
 
-  async onRespond(status: RespondToCalendarEventStatus): Promise<void> {
+  async onRespond(payload: RespondToCalendarEventPayload): Promise<void> {
     const editing = this.editingEvent();
     if (!editing) return;
     const eventId = editing.recurrenceMasterId ?? editing.id;
     const { from, to } = this.currentRange();
-    const ok = await this.store.respondToEvent(eventId, status, from, to);
+    const ok = await this.store.respondToEvent(eventId, payload.status, from, to, payload.reason, payload.nomineeEmployeeId);
     if (ok) this.closeForm();
+  }
+
+  onLoadEligibleNominees(): void {
+    const editing = this.editingEvent();
+    if (!editing) return;
+    const eventId = editing.recurrenceMasterId ?? editing.id;
+    this.store.loadEligibleNominees(eventId);
   }
 }

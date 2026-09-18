@@ -5,7 +5,7 @@ import { toSafeErrorMessage } from '../../../core/services/error-handler.service
 import { CalendarEventApiService } from '../data-access/calendar-event-api.service';
 import {
   CalendarConflict, CalendarEventResponse, CreateCalendarEventRequest, EditRecurringOccurrenceRequest,
-  RespondToCalendarEventStatus, UpdateCalendarEventRequest
+  EligibleNominee, RespondToCalendarEventStatus, UpdateCalendarEventRequest
 } from '../models/calendar-event.model';
 
 interface CalendarEventState {
@@ -17,13 +17,14 @@ interface CalendarEventState {
   readonly conflicts: readonly CalendarConflict[];
   readonly checkingConflicts: boolean;
   readonly myTimezone: string;
+  readonly eligibleNominees: readonly EligibleNominee[];
 }
 
 export const CalendarEventStore = signalStore(
   { providedIn: 'root' },
   withState<CalendarEventState>({
     events: [], loading: false, loadError: null, saving: false, actionError: null,
-    conflicts: [], checkingConflicts: false, myTimezone: 'UTC'
+    conflicts: [], checkingConflicts: false, myTimezone: 'UTC', eligibleNominees: []
   }),
   withMethods((store, api = inject(CalendarEventApiService)) => ({
     async loadEvents(from: string, to: string): Promise<void> {
@@ -98,11 +99,12 @@ export const CalendarEventStore = signalStore(
       }
     },
     async respondToEvent(
-      eventId: string, responseStatus: RespondToCalendarEventStatus, from: string, to: string
+      eventId: string, responseStatus: RespondToCalendarEventStatus, from: string, to: string,
+      reason: string | null = null, nomineeEmployeeId: string | null = null
     ): Promise<boolean> {
       patchState(store, { saving: true, actionError: null });
       try {
-        await firstValueFrom(api.respond(eventId, responseStatus));
+        await firstValueFrom(api.respond(eventId, responseStatus, reason, nomineeEmployeeId));
         const response = await firstValueFrom(api.getEvents(from, to));
         patchState(store, { saving: false, events: response.events });
         return true;
@@ -110,6 +112,19 @@ export const CalendarEventStore = signalStore(
         patchState(store, { saving: false, actionError: toSafeErrorMessage(err, 'Failed to respond to this event.') });
         return false;
       }
+    },
+    async loadEligibleNominees(eventId: string): Promise<void> {
+      try {
+        const response = await firstValueFrom(api.getEligibleNominees(eventId));
+        patchState(store, { eligibleNominees: response.nominees });
+      } catch {
+        // Informational only, same as checkConflicts - a failed fetch just leaves the
+        // "Nominate replacement" option hidden rather than surfacing an actionError.
+        patchState(store, { eligibleNominees: [] });
+      }
+    },
+    clearEligibleNominees(): void {
+      patchState(store, { eligibleNominees: [] });
     },
     async checkConflicts(participantEmployeeIds: readonly string[], startDate: string, endDate: string): Promise<void> {
       patchState(store, { checkingConflicts: true });

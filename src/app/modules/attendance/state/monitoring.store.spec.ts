@@ -24,6 +24,7 @@ const companyDefault: MonitoringFeatureToggles = {
   identityVerification: false,
   biometric: false,
   idleThresholdMinutes: 15,
+  allowedRadiusMeters: 100,
   updatedAt: '2026-08-20T00:00:00.000Z'
 };
 
@@ -39,7 +40,8 @@ const companyRequest: MonitoringFeatureTogglesRequest = {
   workLocationVerification: true,
   identityVerification: false,
   biometric: false,
-  idleThresholdMinutes: 15
+  idleThresholdMinutes: 15,
+  allowedRadiusMeters: 100
 };
 
 function makeOverride(scopeType: MonitoringPolicyOverride['scopeType'], id: string, scopeId: string, targetName: string): MonitoringPolicyOverride {
@@ -60,6 +62,7 @@ function makeOverride(scopeType: MonitoringPolicyOverride['scopeType'], id: stri
     identityVerification: null,
     biometric: null,
     idleThresholdMinutes: null,
+    allowedRadiusMeters: null,
     overrideReason: 'Because reasons',
     updatedAt: '2026-08-21T00:00:00.000Z'
   };
@@ -78,6 +81,7 @@ const overrideRequest: MonitoringPolicyOverrideRequest = {
   identityVerification: null,
   biometric: null,
   idleThresholdMinutes: null,
+  allowedRadiusMeters: null,
   overrideReason: 'Because reasons'
 };
 
@@ -196,6 +200,7 @@ describe('MonitoringStore', () => {
     expect(Object.keys(sentPayload).sort()).toEqual(
       [
         'activityMonitoring',
+        'allowedRadiusMeters',
         'applicationTracking',
         'autoScreenshotCapture',
         'biometric',
@@ -247,6 +252,12 @@ describe('MonitoringStore', () => {
     pending.complete();
     expect(await second).toBe(false);
     expect(await first).toBe(true);
+  });
+
+  it('saveCompany includes allowedRadiusMeters in the request payload', async () => {
+    await store.saveCompany({ ...companyRequest, allowedRadiusMeters: 200 });
+
+    expect(api.updateCompany).toHaveBeenCalledWith(expect.objectContaining({ allowedRadiusMeters: 200 }));
   });
 
   describe.each([
@@ -311,5 +322,10 @@ describe('MonitoringStore', () => {
     store.selectScope('role');
     expect(store.selectedScope()).toBe('role');
     expect(api.getPolicy).not.toHaveBeenCalled();
+  });
+
+  it('selectScope accepts work_mode as a valid MonitoringScopeType', () => {
+    store.selectScope('work_mode');
+    expect(store.selectedScope()).toBe('work_mode');
   });
 });

@@ -279,7 +279,7 @@ describe('project.mapper', () => {
       ownerName: 'Arun', isOwner: true, children: [], kind: 'objective',
       taskStatuses: [{
         id: 'st-1', name: 'To Do', displayOrder: 0, requiresApproval: false,
-        marksTaskComplete: false, visibility: 'public'
+        marksTaskComplete: false, category: 'active', color: '#2563EB', visibility: 'public'
       }]
     };
     const sprintDto: SprintDto = {

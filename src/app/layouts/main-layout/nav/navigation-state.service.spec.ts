@@ -12,6 +12,7 @@ describe('NavigationStateService', () => {
   let router: Router;
 
   beforeEach(() => {
+    localStorage.clear();
     TestBed.configureTestingModule({
       providers: [
         provideRouter([{ path: '**', component: BlankComponent }]),
@@ -33,6 +34,39 @@ describe('NavigationStateService', () => {
 
     expect(service.activeItem()?.id).toBe('time-attendance');
     const childIds = service.activeChildren().map((c) => c.id);
-    expect(childIds).toEqual(['time-attendance-tracking', 'time-attendance-monitoring', 'time-attendance-correction-approvals']);
+    expect(childIds).toEqual(['time-attendance-overview', 'time-attendance-tracking', 'time-attendance-requests', 'time-attendance-monitoring']);
+  });
+
+  it('keeps Attendance active and sub-sidebar visible when navigating with query parameters', async () => {
+    await router.navigateByUrl('/attendance/time-tracking?openCorrection=today');
+
+    expect(service.activeItem()?.id).toBe('time-attendance');
+    const childIds = service.activeChildren().map((c) => c.id);
+    expect(childIds).toEqual(['time-attendance-overview', 'time-attendance-tracking', 'time-attendance-requests', 'time-attendance-monitoring']);
+  });
+
+  it('manages sub-sidebar collapsed and expanded states and persists to localStorage', async () => {
+    await router.navigateByUrl('/attendance/overview');
+
+    expect(service.hasSubSidebar()).toBe(true);
+    expect(service.isSubSidebarCollapsed()).toBe(false);
+    expect(service.hasVisibleSubSidebar()).toBe(true);
+    expect(service.canExpandSubSidebar()).toBe(false);
+
+    service.collapseSubSidebar();
+    expect(service.isSubSidebarCollapsed()).toBe(true);
+    expect(service.hasVisibleSubSidebar()).toBe(false);
+    expect(service.canExpandSubSidebar()).toBe(true);
+    expect(localStorage.getItem('onevo.sub_sidebar_collapsed')).toBe('true');
+
+    service.expandSubSidebar();
+    expect(service.isSubSidebarCollapsed()).toBe(false);
+    expect(service.hasVisibleSubSidebar()).toBe(true);
+    expect(service.canExpandSubSidebar()).toBe(false);
+    expect(localStorage.getItem('onevo.sub_sidebar_collapsed')).toBe('false');
+
+    service.toggleSubSidebar();
+    expect(service.isSubSidebarCollapsed()).toBe(true);
+    expect(localStorage.getItem('onevo.sub_sidebar_collapsed')).toBe('true');
   });
 });

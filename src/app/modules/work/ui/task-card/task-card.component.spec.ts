@@ -19,13 +19,14 @@ describe('TaskCardComponent', () => {
     id: 't-1', objectiveId: 'o-1', shortId: 'PRJ-1', title: 'Do the thing', description: null,
     categoryId: 'task', statusId: 's1', priority: 'high', storyPoints: null, dueDate: null,
     estimatedHours: 5, completedHours: 0, progressPercent: 0, sprintId: null,
-    assigneeEmployeeIds: ['emp-1', 'emp-2'], openClockSessionEmployeeId: null, openClockSessionClockInAt: null, totalLoggedMinutes: 0
+    assigneeEmployeeIds: ['emp-1', 'emp-2'], openClockSessionEmployeeId: null, openClockSessionClockInAt: null, totalLoggedMinutes: 0,
+    attachments: []
   };
 
   const statuses: TaskStatusColumn[] = [
-    { id: 's1', name: 'To Do', displayOrder: 0, requiresApproval: false, marksTaskComplete: false, visibility: 'public' },
-    { id: 's2', name: 'Done', displayOrder: 1, requiresApproval: false, marksTaskComplete: true, visibility: 'public' },
-    { id: 's3', name: 'Internal Review', displayOrder: 2, requiresApproval: false, marksTaskComplete: false, visibility: 'private' }
+    { id: 's1', name: 'To Do', displayOrder: 0, requiresApproval: false, marksTaskComplete: false, category: 'active', color: '#2563EB', visibility: 'public' },
+    { id: 's2', name: 'Done', displayOrder: 1, requiresApproval: false, marksTaskComplete: true, category: 'done', color: '#2563EB', visibility: 'public' },
+    { id: 's3', name: 'Internal Review', displayOrder: 2, requiresApproval: false, marksTaskComplete: false, category: 'active', color: '#2563EB', visibility: 'private' }
   ];
 
     function setup(overrides: { employeeNames?: Record<string, string>; task?: WorkTask; currentEmployeeId?: string } = {}): void {
@@ -67,19 +68,11 @@ describe('TaskCardComponent', () => {
     expect(viewedSpy).toHaveBeenCalledWith(task);
   });
 
-  it('shows the current status as plain text, not an editable control', () => {
+  it('does not render status pill on task card since column header already shows status', () => {
     setup();
     const statusEl = fixture.nativeElement.querySelector('[data-testid="task-card-status"]');
-    expect(statusEl.textContent.trim()).toBe('To Do');
+    expect(statusEl).toBeNull();
     expect(fixture.nativeElement.querySelector('select')).toBeNull();
-  });
-
-  it('falls back to the raw statusId if the status is not in the provided list', () => {
-    setup();
-    fixture.componentRef.setInput('task', { ...task, statusId: 'missing-status' });
-    fixture.detectChanges();
-    const statusEl = fixture.nativeElement.querySelector('[data-testid="task-card-status"]');
-    expect(statusEl.textContent.trim()).toBe('missing-status');
   });
 
   it('shows the clock widget when the caller is an assignee', () => {

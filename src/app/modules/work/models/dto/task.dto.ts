@@ -1,3 +1,5 @@
+import { TaskStatusCategory } from '../task.model';
+
 export interface TaskStatusDto {
   id: string;
   name: string;
@@ -6,6 +8,22 @@ export interface TaskStatusDto {
   approverId: string | null;
   marksTaskComplete: boolean;
   visibility: 'public' | 'private';
+  category: TaskStatusCategory;
+  color: string;
+}
+
+export interface TaskAttachmentDto {
+  fileId: string;
+  fileName: string;
+  fileSizeBytes: number;
+  contentType: string;
+}
+
+export interface PendingUploadDto {
+  fileId: string;
+  originalFileName: string;
+  fileSizeBytes: number;
+  contentType: string;
 }
 
 export interface WorkTaskDto {
@@ -29,6 +47,7 @@ export interface WorkTaskDto {
   totalLoggedMinutes: number;
   activeEventId?: string | null;
   activeEventName?: string | null;
+  attachments?: TaskAttachmentDto[];
 
 }
 
@@ -41,6 +60,7 @@ export interface CreateTaskRequestDto {
   estimatedHours?: number;
   storyPoints?: number;
   sprintId: string | null;
+  attachmentFileIds?: string[];
 }
 
 export interface EditTaskRequestDto {
@@ -49,9 +69,11 @@ export interface EditTaskRequestDto {
   priority: WorkTaskDto['priority'];
   dueDate?: string;
   estimatedHours?: number;
-    storyPoints?: number;
+  storyPoints?: number;
   progressPercent?: number;
   reason?: string;
+  sprintId?: string | null;
+  attachmentFileIds?: string[];
 }
 
 export interface PushTaskRequestDto {
@@ -73,7 +95,8 @@ export interface CreateTaskStatusRequestDto {
   name: string;
   displayOrder: number;
   visibility: 'public' | 'private';
-  marksTaskComplete: boolean;
+  category: TaskStatusCategory;
+  color: string;
   requiresApproval: boolean;
   approverId?: string;
 }
@@ -84,4 +107,10 @@ export interface EditTaskStatusRequestDto {
   requiresApproval: boolean;
   approverId?: string;
   visibility: 'public' | 'private';
+  category: TaskStatusCategory;
+  color: string;
+}
+
+export interface ClockInResponseDto {
+  movedToStatus: { id: string; name: string; color: string } | null;
 }

@@ -5,13 +5,16 @@ import { environment } from '../../../../environments/environment';
 import {
   CreateTaskRequestDto,
   CreateTaskStatusRequestDto,
+  ClockInResponseDto,
     EditTaskRequestDto,
   EditTaskStatusRequestDto,
+  PendingUploadDto,
   PushTaskRequestDto,
   TaskStatusDto,
   WorkTaskDto
 
 } from '../models/dto/task.dto';
+import { TaskStatusCategory } from '../models/task.model';
 import {
   CreateTaskCategoryRequestDto,
   EditTaskCategoryRequestDto,
@@ -80,8 +83,8 @@ export class TaskApiService {
     return this.http.patch<WorkTaskDto>(`${this.baseUrl}/tasks/${taskId}`, request);
   }
 
-  clockIn(taskId: string): Observable<void> {
-    return this.http.post<void>(`${this.baseUrl}/tasks/${taskId}/clock-in`, {});
+  clockIn(taskId: string): Observable<ClockInResponseDto> {
+    return this.http.post<ClockInResponseDto>(`${this.baseUrl}/tasks/${taskId}/clock-in`, {});
   }
 
   push(taskId: string, request: PushTaskRequestDto): Observable<WorkTaskDto> {
@@ -145,7 +148,7 @@ export class TaskApiService {
     return this.http.get<TaskEditRequestDto[]>(`${this.baseUrl}/task-edit-requests/mine`);
   }
 
-  reorderTaskStatuses(projectId: string, updates: { statusId: string; displayOrder: number; visibility: string; marksTaskComplete: boolean }[]): Observable<TaskStatusDto[]> {
+  reorderTaskStatuses(projectId: string, updates: { statusId: string; displayOrder: number; visibility: string; category: TaskStatusCategory; color: string }[]): Observable<TaskStatusDto[]> {
     return this.http.post<TaskStatusDto[]>(`${this.baseUrl}/projects/${projectId}/task-statuses/reorder`, { updates });
   }
 
@@ -167,5 +170,20 @@ export class TaskApiService {
 
   reorderTaskCategories(projectId: string, updates: { categoryId: string; displayOrder: number }[]): Observable<TaskCategoryDto[]> {
     return this.http.post<TaskCategoryDto[]>(`${this.baseUrl}/projects/${projectId}/task-categories/reorder`, { updates });
+  }
+
+  uploadPendingFile(file: File, purpose: 'task_attachment' | 'task_description_image'): Observable<PendingUploadDto> {
+    const formData = new FormData();
+    formData.set('purpose', purpose);
+    formData.set('file', file);
+    return this.http.post<PendingUploadDto>(`${this.baseUrl}/tasks/pending-uploads`, formData);
+  }
+
+  deletePendingFile(fileId: string): Observable<void> {
+    return this.http.delete<void>(`${this.baseUrl}/tasks/pending-uploads/${fileId}`);
+  }
+
+  getFileUrl(fileId: string): string {
+    return `${this.baseUrl}/tasks/files/${fileId}`;
   }
 }

@@ -15,6 +15,7 @@ import {
 import {
   AttendanceDayDetail,
   AttendanceHistoryRow,
+  AttendanceMonthlySummaryResponse,
   AttendanceTodayResponse,
   ClockInRequest,
   PagedResultDto
@@ -58,6 +59,12 @@ export class TimeTrackingApiService {
 
     return this.http.get<PagedResultDto<AttendanceHistoryRow>>(`${this.basePath}/covered-history`, {
       params
+    });
+  }
+
+  getMyMonthlySummary(from: string, to: string): Observable<AttendanceMonthlySummaryResponse> {
+    return this.http.get<AttendanceMonthlySummaryResponse>(`${this.basePath}/monthly-summary`, {
+      params: this.rangeParams(from, to)
     });
   }
 

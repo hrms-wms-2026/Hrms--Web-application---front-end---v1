@@ -19,11 +19,14 @@
         <button
           type="button"
           data-testid="calendar-event-chip"
-          class="truncate rounded px-1.5 py-0.5 text-left text-[11px] text-white"
+          class="flex items-center gap-1 truncate rounded px-1.5 py-0.5 text-left text-[11px] text-white"
           [style.background-color]="event.color || 'var(--color-accent)'"
           (click)="$event.stopPropagation(); eventClick.emit(event.id)"
         >
-          {{ event.title }}
+          @if (event.hasConflict) {
+            <span data-testid="calendar-conflict-marker" class="h-1.5 w-1.5 shrink-0 rounded-full bg-[var(--color-danger)]" aria-hidden="true"></span>
+          }
+          <span class="truncate">{{ event.title }}</span>
         </button>
       }
 

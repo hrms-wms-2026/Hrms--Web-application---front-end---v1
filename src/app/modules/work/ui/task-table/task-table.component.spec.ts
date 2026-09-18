@@ -11,12 +11,13 @@ const task: WorkTask = {
   id: 't1', objectiveId: 'o1', shortId: 'T-1', title: 'Task', description: null,
   categoryId: 'c1', statusId: 's1', priority: 'medium', storyPoints: null, dueDate: null,
   estimatedHours: null, completedHours: 0, progressPercent: 30, sprintId: null,
-  assigneeEmployeeIds: ['e1'], openClockSessionEmployeeId: null, openClockSessionClockInAt: null, totalLoggedMinutes: 0
+  assigneeEmployeeIds: ['e1'], openClockSessionEmployeeId: null, openClockSessionClockInAt: null, totalLoggedMinutes: 0,
+  attachments: []
 };
 
 const status: TaskStatusColumn = {
   id: 's1', name: 'To Do', displayOrder: 0, requiresApproval: false,
-  marksTaskComplete: false, visibility: 'public'
+  marksTaskComplete: false, category: 'active', color: '#2563EB', visibility: 'public'
 };
 
 describe('TaskTableComponent', () => {

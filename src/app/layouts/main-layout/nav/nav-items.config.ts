@@ -29,10 +29,18 @@ export const NAV_ITEMS: readonly NavItem[] = [
     id: 'time-attendance',
     label: 'Attendance',
     icon: 'time-attendance',
-    path: '/attendance/time-tracking',
+    path: '/attendance/overview',
     requiredModules: ['time_attendance'],
     requiredPermissions: ['attendance:read-own', 'attendance:write-own', 'attendance:read', 'attendance:approve'],
     children: [
+      {
+        id: 'time-attendance-overview',
+        label: 'Overview',
+        path: '/attendance/overview',
+        exact: true,
+        requiredModules: ['time_attendance'],
+        requiredPermissions: ['attendance:read-own', 'attendance:write-own', 'attendance:read', 'attendance:approve']
+      },
       {
         id: 'time-attendance-tracking',
         label: 'Time Tracking',
@@ -42,18 +50,27 @@ export const NAV_ITEMS: readonly NavItem[] = [
         requiredPermissions: ['attendance:read-own', 'attendance:write-own', 'attendance:read', 'attendance:approve']
       },
       {
+        // Requests has no standalone page yet - the correction/work-area draft-form state it
+        // needs still lives on TimeTrackingComponent itself (see
+        // docs/superpowers/plans/2026-09-08-attendance-overview-redesign.md, "Deferred"). It
+        // renders that same component via a second route (attendance.routes.ts,
+        // 'time-tracking/requests') so this has its own URL, distinct from "Time Tracking" -
+        // reusing the identical path made both sidebar links highlight together, since
+        // routerLinkActive compares each link's own target against the current URL and can't
+        // tell two identical targets apart.
+        id: 'time-attendance-requests',
+        label: 'Requests',
+        path: '/attendance/time-tracking/requests',
+        exact: true,
+        requiredModules: ['time_attendance'],
+        requiredPermissions: ['attendance:read-own', 'attendance:write-own']
+      },
+      {
         id: 'time-attendance-monitoring',
         label: 'Monitoring',
         path: '/attendance/monitoring',
         requiredModules: ['time_attendance'],
         requiredPermissions: ['monitoring:read']
-      },
-      {
-        id: 'time-attendance-correction-approvals',
-        label: 'Correction approvals',
-        path: '/attendance/corrections/approvals',
-        requiredModules: ['time_attendance'],
-        requiredPermissions: ['attendance:approve']
       }
     ]
   },
@@ -71,7 +88,8 @@ export const NAV_ITEMS: readonly NavItem[] = [
       { id: 'settings-roles', label: 'Roles & Permissions', path: '/settings/roles', requiredPermissions: ['roles:manage'] },
       { id: 'settings-notifications', label: 'Notification Settings', path: '/settings/notifications', requiredPermissions: ['notifications:manage'] },
       { id: 'settings-bulk-onboarding', label: 'Bulk Onboarding', path: '/settings/bulk-onboarding', requiredModules: ['core_hr'], requiredPermissions: ['employees:write'] },
-      { id: 'settings-clock-in-policy', label: 'Clock-in Policy', path: '/settings/clock-in-policy', requiredModules: ['time_attendance'], requiredPermissions: ['attendance:read'] }
+      { id: 'settings-clock-in-policy', label: 'Clock-in Policy', path: '/settings/clock-in-policy', requiredModules: ['time_attendance'], requiredPermissions: ['attendance:read'] },
+      { id: 'settings-calendar-connections', label: 'Calendar Sync', path: '/settings/calendar-connections', requiredModules: ['calendar'], requiredPermissions: ['calendar:read'] }
       // Audit log is intentionally not listed yet.
     ]
   }

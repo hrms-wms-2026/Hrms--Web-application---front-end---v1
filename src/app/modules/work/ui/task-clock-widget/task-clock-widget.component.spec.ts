@@ -3,12 +3,14 @@ import { HttpClientTestingModule, HttpTestingController } from '@angular/common/
 import { vi } from 'vitest';
 import { TaskClockWidgetComponent } from './task-clock-widget.component';
 import { WorkTask } from '../../models/task.model';
+import { NotificationService } from '../../../../core/services/notification.service';
 import { environment } from '../../../../../environments/environment';
 
 const baseTask: WorkTask = {
   id: 't1', objectiveId: 'o1', shortId: 'T-1', title: 'Task', description: null,
   categoryId: 'c1', statusId: 'st1', priority: 'medium', storyPoints: null, dueDate: null,
-  estimatedHours: null, completedHours: 0, progressPercent: 30, sprintId: null, assigneeEmployeeIds: ['e1'], openClockSessionEmployeeId: null, openClockSessionClockInAt: null, totalLoggedMinutes: 0
+  estimatedHours: null, completedHours: 0, progressPercent: 30, sprintId: null, assigneeEmployeeIds: ['e1'], openClockSessionEmployeeId: null, openClockSessionClockInAt: null, totalLoggedMinutes: 0,
+  attachments: []
 };
 
 describe('TaskClockWidgetComponent', () => {
@@ -56,10 +58,12 @@ describe('TaskClockWidgetComponent', () => {
     expect(btn.title).toContain('assignee');
   });
 
-  it('shows a Push button instead of Clock In when the caller has an open session', () => {
+  it('shows a Pause button instead of Clock In when the caller has an open session', () => {
     setup({ hasOpenSessionMine: true });
     expect(fixture.nativeElement.querySelector('[data-testid="clock-in-button"]')).toBeNull();
-    expect(fixture.nativeElement.querySelector('[data-testid="push-button"]')).toBeTruthy();
+    const pauseBtn = fixture.nativeElement.querySelector('[data-testid="push-button"]') as HTMLButtonElement;
+    expect(pauseBtn).toBeTruthy();
+    expect(pauseBtn.textContent).toContain('Pause');
   });
 
   it('shows a live-ticking timer while clocked in, and it advances every second', () => {
@@ -211,4 +215,28 @@ describe('TaskClockWidgetComponent', () => {
     expect(pushedSpy).toHaveBeenCalledWith(expect.objectContaining({ id: 't1', progressPercent: 60 }));
     expect(fixture.nativeElement.querySelector('[data-testid="push-percent-input"]')).toBeNull();
   });
+
+  it('toasts a moved-to status and emits refresh after clock-in', async () => {
+    setup();
+    const success=vi.spyOn(TestBed.inject(NotificationService),'success');
+    const emitted=vi.fn();fixture.componentInstance.clockedIn.subscribe(emitted);
+    const pending=fixture.componentInstance.onClockIn();
+    httpMock.expectOne(environment.apiUrl+'/work/tasks/t1/clock-in').flush({movedToStatus:{id:'s2',name:'In Process',color:'#2563EB'}});
+    await pending;
+    expect(success).toHaveBeenCalledWith('Moved to "In Process" to start tracking time.');
+    expect(emitted).toHaveBeenCalledOnce();
+  });
+  it('does not toast for an unchanged status and reports backend errors without emitting refresh', async () => {
+    setup();
+    const notifications=TestBed.inject(NotificationService);
+    const success=vi.spyOn(notifications,'success'), error=vi.spyOn(notifications,'error');
+    const emitted=vi.fn();fixture.componentInstance.clockedIn.subscribe(emitted);
+    let pending=fixture.componentInstance.onClockIn();
+    httpMock.expectOne(environment.apiUrl+'/work/tasks/t1/clock-in').flush({movedToStatus:null});await pending;
+    expect(success).not.toHaveBeenCalled();expect(emitted).toHaveBeenCalledOnce();emitted.mockClear();
+    pending=fixture.componentInstance.onClockIn();
+    httpMock.expectOne(environment.apiUrl+'/work/tasks/t1/clock-in').flush({detail:'Ask the module owner to move the task first.'},{status:409,statusText:'Conflict'});await pending;
+    expect(error).toHaveBeenCalledWith('Ask the module owner to move the task first.');expect(emitted).not.toHaveBeenCalled();
+  });
+
 });

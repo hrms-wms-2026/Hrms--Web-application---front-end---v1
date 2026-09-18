@@ -9,6 +9,7 @@ export interface RangeCalendarDay {
   isRangeStart: boolean;
   isRangeEnd: boolean;
   isInRange: boolean;
+  isDisabled: boolean;
   formattedDate: string;
 }
 
@@ -50,11 +51,16 @@ export class DateRangePickerComponent {
   from = input<string>('');
   to = input<string>('');
   disabled = input(false);
+  maxDate = input<string>('');
+  minDate = input<string>('');
+  align = input<'auto' | 'left' | 'right'>('auto');
+  placeholder = input<string>('Select date range');
 
   rangeChange = output<{ from: string; to: string }>();
 
   readonly isOpen = signal(false);
   readonly openUpward = signal(false);
+  readonly openRightAligned = signal(false);
   readonly pendingStart = signal<string | null>(null);
   readonly hoverDate = signal<string | null>(null);
 
@@ -74,6 +80,35 @@ export class DateRangePickerComponent {
     return from && to ? `${formatShortDate(from)} – ${formatShortDate(to)}` : '';
   });
 
+  readonly isTodayDisabled = computed(() => {
+    const max = this.maxDate();
+    const min = this.minDate();
+    return !!((max && this.todayFormatted > max) || (min && this.todayFormatted < min));
+  });
+
+  readonly isNextMonthDisabled = computed(() => {
+    const max = this.maxDate();
+    if (!max) return false;
+    const year = this.viewYear();
+    const month = this.viewMonth();
+    const nextMonthYear = month === 11 ? year + 1 : year;
+    const nextMonth = month === 11 ? 0 : month + 1;
+    const firstOfNextMonth = formatYYYYMMDD(nextMonthYear, nextMonth, 1);
+    return firstOfNextMonth > max;
+  });
+
+  readonly isPrevMonthDisabled = computed(() => {
+    const min = this.minDate();
+    if (!min) return false;
+    const year = this.viewYear();
+    const month = this.viewMonth();
+    const prevMonthYear = month === 0 ? year - 1 : year;
+    const prevMonth = month === 0 ? 11 : month - 1;
+    const daysInPrevMonth = new Date(prevMonthYear, prevMonth + 1, 0).getDate();
+    const lastOfPrevMonth = formatYYYYMMDD(prevMonthYear, prevMonth, daysInPrevMonth);
+    return lastOfPrevMonth < min;
+  });
+
   readonly calendarDays = computed<RangeCalendarDay[]>(() => {
     const year = this.viewYear();
     const month = this.viewMonth();
@@ -82,6 +117,8 @@ export class DateRangePickerComponent {
     const rangeEndRaw = pendingStart ? (this.hoverDate() ?? pendingStart) : this.to();
     const lo = rangeStart && rangeEndRaw ? (rangeStart <= rangeEndRaw ? rangeStart : rangeEndRaw) : rangeStart || null;
     const hi = rangeStart && rangeEndRaw ? (rangeStart <= rangeEndRaw ? rangeEndRaw : rangeStart) : null;
+    const max = this.maxDate();
+    const min = this.minDate();
 
     const firstDate = new Date(year, month, 1);
     const startDayOfWeek = firstDate.getDay();
@@ -92,15 +129,19 @@ export class DateRangePickerComponent {
 
     const pushDay = (y: number, m: number, d: number, isCurrentMonth: boolean) => {
       const formatted = formatYYYYMMDD(y, m, d);
+      const isAfterMax = !!max && formatted > max;
+      const isBeforeMin = !!min && formatted < min;
+      const isDisabled = isAfterMax || isBeforeMin;
       days.push({
         year: y,
         month: m,
         date: d,
         isCurrentMonth,
         isToday: formatted === this.todayFormatted,
-        isRangeStart: formatted === lo,
-        isRangeEnd: formatted === hi || (hi === null && formatted === lo),
-        isInRange: !!lo && !!hi && formatted > lo && formatted < hi,
+        isRangeStart: !isDisabled && formatted === lo,
+        isRangeEnd: !isDisabled && (formatted === hi || (hi === null && formatted === lo)),
+        isInRange: !isDisabled && !!lo && !!hi && formatted > lo && formatted < hi,
+        isDisabled,
         formattedDate: formatted
       });
     };
@@ -144,6 +185,16 @@ export class DateRangePickerComponent {
     const rect = this.elementRef.nativeElement.getBoundingClientRect();
     const spaceBelow = window.innerHeight - rect.bottom;
     this.openUpward.set(spaceBelow < 260);
+
+    const alignPref = this.align();
+    if (alignPref === 'right') {
+      this.openRightAligned.set(true);
+    } else if (alignPref === 'left') {
+      this.openRightAligned.set(false);
+    } else {
+      const spaceRight = window.innerWidth - rect.left;
+      this.openRightAligned.set(spaceRight < 275);
+    }
   }
 
   closePopover(): void {
@@ -155,6 +206,7 @@ export class DateRangePickerComponent {
   }
 
   prevMonth(): void {
+    if (this.isPrevMonthDisabled()) return;
     if (this.viewMonth() === 0) {
       this.viewMonth.set(11);
       this.viewYear.update((y) => y - 1);
@@ -164,6 +216,7 @@ export class DateRangePickerComponent {
   }
 
   nextMonth(): void {
+    if (this.isNextMonthDisabled()) return;
     if (this.viewMonth() === 11) {
       this.viewMonth.set(0);
       this.viewYear.update((y) => y + 1);
@@ -173,17 +226,20 @@ export class DateRangePickerComponent {
   }
 
   goToToday(): void {
+    if (this.isTodayDisabled()) return;
     this.rangeChange.emit({ from: this.todayFormatted, to: this.todayFormatted });
     this.closePopover();
   }
 
   hoverDay(day: RangeCalendarDay): void {
+    if (day.isDisabled) return;
     if (this.pendingStart()) {
       this.hoverDate.set(day.formattedDate);
     }
   }
 
   selectDay(day: RangeCalendarDay): void {
+    if (day.isDisabled) return;
     const start = this.pendingStart();
     if (!start) {
       this.pendingStart.set(day.formattedDate);

@@ -1,6 +1,5 @@
 import { ChangeDetectionStrategy, Component, OnInit, computed, inject, signal } from '@angular/core';
 import { RouterLink } from '@angular/router';
-import { CardComponent } from '../../../../shared/ui/card/card.component';
 import { MyTasksApiService } from '../../data-access/my-tasks-api.service';
 import { MyTaskItem } from '../../models/my-tasks.model';
 
@@ -11,7 +10,7 @@ const MAX_VISIBLE_TASKS = 4;
 @Component({
   selector: 'app-my-tasks-card',
   standalone: true,
-  imports: [CardComponent, RouterLink],
+  imports: [RouterLink],
   templateUrl: './my-tasks-card.component.html',
   changeDetection: ChangeDetectionStrategy.OnPush
 })

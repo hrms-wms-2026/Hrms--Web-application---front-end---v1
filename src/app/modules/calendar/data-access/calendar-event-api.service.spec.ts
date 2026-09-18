@@ -54,12 +54,26 @@ describe('CalendarEventApiService', () => {
     req.flush(null);
   });
 
-  it('respond posts { responseStatus } to {eventId}/respond', () => {
+  it('respond posts { responseStatus, reason, nomineeEmployeeId } to {eventId}/respond', () => {
     service.respond('event-1', 'Accepted').subscribe();
     const req = http.expectOne(`${environment.apiUrl}/calendar/event-1/respond`);
     expect(req.request.method).toBe('POST');
-    expect(req.request.body).toEqual({ responseStatus: 'Accepted' });
+    expect(req.request.body).toEqual({ responseStatus: 'Accepted', reason: null, nomineeEmployeeId: null });
     req.flush(null);
+  });
+
+  it('respond forwards a reason and nominee when provided', () => {
+    service.respond('event-1', 'ReplacementNominated', null, 'emp-2').subscribe();
+    const req = http.expectOne(`${environment.apiUrl}/calendar/event-1/respond`);
+    expect(req.request.body).toEqual({ responseStatus: 'ReplacementNominated', reason: null, nomineeEmployeeId: 'emp-2' });
+    req.flush(null);
+  });
+
+  it('getEligibleNominees requests {eventId}/eligible-nominees', () => {
+    service.getEligibleNominees('event-1').subscribe();
+    const req = http.expectOne(`${environment.apiUrl}/calendar/event-1/eligible-nominees`);
+    expect(req.request.method).toBe('GET');
+    req.flush({ nominees: [] });
   });
 
   it('getMyTimezone requests my-timezone', () => {

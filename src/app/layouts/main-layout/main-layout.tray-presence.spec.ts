@@ -83,7 +83,7 @@ describe('MainLayoutComponent tray activation gate', () => {
         },
         {
           provide: NavigationStateService,
-          useValue: { activeChildren: signal([]), activeItem: signal(null) }
+          useValue: { activeChildren: signal([]), activeItem: signal(null), hasVisibleSubSidebar: signal(false), hasSubSidebar: signal(false) }
         }
       ]
     });
@@ -164,7 +164,7 @@ describe('MainLayoutComponent tray activation gate when monitoring module is not
         },
         {
           provide: NavigationStateService,
-          useValue: { activeChildren: signal([]), activeItem: signal(null) }
+          useValue: { activeChildren: signal([]), activeItem: signal(null), hasVisibleSubSidebar: signal(false), hasSubSidebar: signal(false) }
         }
       ]
     });

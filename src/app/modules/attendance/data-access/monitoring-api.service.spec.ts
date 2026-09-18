@@ -23,7 +23,8 @@ const companyRequest: MonitoringFeatureTogglesRequest = {
   workLocationVerification: true,
   identityVerification: false,
   biometric: false,
-  idleThresholdMinutes: 15
+  idleThresholdMinutes: 15,
+  allowedRadiusMeters: 100
 };
 
 const overrideRequest: MonitoringPolicyOverrideRequest = {
@@ -39,6 +40,7 @@ const overrideRequest: MonitoringPolicyOverrideRequest = {
   identityVerification: null,
   biometric: null,
   idleThresholdMinutes: null,
+  allowedRadiusMeters: null,
   overrideReason: 'Because reasons'
 };
 

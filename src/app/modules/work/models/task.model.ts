@@ -1,10 +1,21 @@
+export type TaskStatusCategory = 'not_started' | 'active' | 'done';
+
 export interface TaskStatusColumn {
   id: string;
   name: string;
   displayOrder: number;
   requiresApproval: boolean;
+  approverId?: string | null;
   marksTaskComplete: boolean;
   visibility: 'public' | 'private';
+  category: TaskStatusCategory;
+  color: string;
+}
+
+export interface TaskAttachment {
+  fileId: string;
+  name: string;
+  sizeBytes: number;
 }
 
 export interface WorkTask {
@@ -28,5 +39,6 @@ export interface WorkTask {
   totalLoggedMinutes: number;
   activeEventId?: string | null;
   activeEventName?: string | null;
+  attachments: TaskAttachment[];
 
 }

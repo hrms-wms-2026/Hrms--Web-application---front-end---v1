@@ -10,7 +10,7 @@ import { LoaderComponent } from '../../../../shared/ui/loader/loader.component';
 import { BreadcrumbHeaderComponent } from '../../../../shared/ui/breadcrumb-header/breadcrumb-header.component';
 import { PopoverComponent } from '../../../../shared/ui/popover/popover.component';
 import { PeopleApiService } from '../../data-access/people-api.service';
-import { EmployeeDetailAddress, EmployeeDetailResponse } from '../../models/employee.model';
+import { EmployeeDetailAddress, EmployeeDetailResponse, UpdateEmployeeJobDetailsRequest } from '../../models/employee.model';
 import { EmployeeJobInfoComponent } from '../../ui/employee-job-info/employee-job-info.component';
 import { EmployeePersonalInfoComponent } from '../../ui/employee-personal-info/employee-personal-info.component';
 import { EmployeeEmergencyContactsComponent } from '../../ui/employee-emergency-contacts/employee-emergency-contacts.component';
@@ -147,7 +147,7 @@ import {
         @if (employee.attendanceSummary) {
           <div class="rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] p-4">
             <span class="text-xs font-medium text-[var(--color-text-secondary)] block mb-1">Attendance today</span>
-            @if (attendanceWarningLabel(employee); as warningLabel) {
+            @if (employee.attendanceSummary.showNotClockedInWarning && attendanceWarningLabel(employee); as warningLabel) {
               <span class="inline-flex items-center gap-1.5 text-sm font-semibold text-red-600">
                 <span class="w-2 h-2 rounded-full bg-red-500"></span>
                 {{ warningLabel }}
@@ -228,7 +228,13 @@ import {
       <!-- Tab Content Section -->
       @if (activeTab() === 'job') {
         <div class="rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] p-6 space-y-6">
-          <app-employee-job-info [jobInformation]="employee.jobInformation" />
+          <app-employee-job-info
+            [jobInformation]="employee.jobInformation"
+            [employeeId]="employee.id"
+            [canEdit]="canChangePosition() && !isReadOnly()"
+            [saving]="savingJobDetails()"
+            (save)="onJobDetailsSave($event)"
+          />
           <app-employee-job-journey [entries]="jobJourney()" />
         </div>
       } @else if (activeTab() === 'personal') {
@@ -309,6 +315,7 @@ export class EmployeeDetailComponent {
   readonly loading = signal(false);
   readonly error = signal<string | null>(null);
   readonly resending = signal(false);
+  readonly savingJobDetails = signal(false);
   readonly changePositionMenuOpen = signal(false);
   readonly changePositionOpen = signal(false);
   readonly changePositionReason = signal<'Promotion' | 'Transfer'>('Promotion');
@@ -358,6 +365,23 @@ export class EmployeeDetailComponent {
       error: () => this.jobJourney.set([])
     });
     void this.offboardingStore.loadOffboarding(id);
+  }
+
+  onJobDetailsSave(payload: UpdateEmployeeJobDetailsRequest): void {
+    const id = this.employee()?.id;
+    if (!id) return;
+    this.savingJobDetails.set(true);
+    this.api.updateJobDetails(id, payload).subscribe({
+      next: () => {
+        this.savingJobDetails.set(false);
+        this.notifications.success('Job details updated.');
+        this.load();
+      },
+      error: (err) => {
+        this.savingJobDetails.set(false);
+        this.notifications.error(toSafeErrorMessage(err, 'Could not update job details.'));
+      }
+    });
   }
 
   resendInvitation(employeeId: string): void {

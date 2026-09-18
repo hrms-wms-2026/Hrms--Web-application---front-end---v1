@@ -1,83 +1,237 @@
-<app-card title="Work Pattern (This Week)">
-  @if (!hasActivity()) {
-    <div class="flex flex-col items-center gap-2 py-4 text-center" data-testid="work-pattern-empty">
-      <span class="flex h-10 w-10 items-center justify-center rounded-full bg-[var(--color-surface-secondary)] text-[var(--color-text-secondary)]">
-        <svg viewBox="0 0 20 20" fill="currentColor" class="h-5 w-5">
-          <path d="M2 11a1 1 0 011-1h1a1 1 0 011 1v6a1 1 0 01-1 1H3a1 1 0 01-1-1v-6zM8 7a1 1 0 011-1h1a1 1 0 011 1v10a1 1 0 01-1 1H9a1 1 0 01-1-1V7zM14 4a1 1 0 011-1h1a1 1 0 011 1v13a1 1 0 01-1 1h-1a1 1 0 01-1-1V4z" />
+<section class="rounded-2xl border border-slate-200/80 bg-white p-5 shadow-xs" data-purpose="work-pattern">
+  <!-- Header -->
+  <div class="mb-4 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+    <div>
+      <h2 class="text-sm font-bold text-slate-800">Work Pattern</h2>
+      <p class="text-xs text-slate-400">Your breakdown across focus, collaboration, and breaks</p>
+    </div>
+    <div class="flex items-center gap-3">
+      <!-- Modern Custom Period Dropdown -->
+      <div class="relative inline-flex items-center" data-testid="work-pattern-period-select" (keydown.escape)="closePeriodDropdown()">
+        <!-- Trigger Pill -->
+        <button
+          type="button"
+          class="group inline-flex items-center gap-1.5 rounded-full border border-[var(--color-accent-subtle)] bg-[linear-gradient(to_right,color-mix(in_srgb,var(--color-accent)_8%,var(--color-surface)),var(--color-surface))] pl-3 pr-2.5 py-1.5 text-xs font-semibold text-[var(--color-accent)] shadow-xs backdrop-blur-sm transition-all duration-200 hover:border-[color-mix(in_srgb,var(--color-accent)_25%,white)] hover:shadow-sm active:scale-[0.97]"
+          [attr.aria-label]="'Work pattern period'"
+          [attr.aria-expanded]="periodDropdownOpen()"
+          (click)="togglePeriodDropdown($event)"
+        >
+          <svg class="h-3.5 w-3.5 shrink-0 text-[color-mix(in_srgb,var(--color-accent)_80%,white)] transition-colors group-hover:text-[var(--color-accent)]" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24">
+            <rect height="18" rx="2.5" width="18" x="3" y="4"></rect>
+            <line stroke-linecap="round" x1="16" x2="16" y1="2" y2="6"></line>
+            <line stroke-linecap="round" x1="8" x2="8" y1="2" y2="6"></line>
+            <line stroke-linecap="round" x1="3" x2="21" y1="10" y2="10"></line>
+          </svg>
+          <span>{{ selectedPeriodLabel() }}</span>
+          <svg
+            class="h-3 w-3 shrink-0 text-[color-mix(in_srgb,var(--color-accent)_65%,white)] transition-transform duration-200"
+            [class.rotate-180]="periodDropdownOpen()"
+            fill="none" stroke="currentColor" viewBox="0 0 24 24"
+          >
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M19 9l-7 7-7-7"></path>
+          </svg>
+        </button>
+
+        <!-- Dropdown Popup -->
+        @if (periodDropdownOpen()) {
+          <div
+            class="absolute right-0 top-full z-50 mt-1.5 min-w-[160px] origin-top-right animate-[dropIn_150ms_ease-out] rounded-xl border border-[var(--color-border)] bg-[color-mix(in_srgb,var(--color-surface)_95%,transparent)] p-1 shadow-lg shadow-[var(--color-card-shadow)] backdrop-blur-xl"
+            role="listbox"
+            [attr.aria-label]="'Select period'"
+          >
+            @for (opt of periodOptions; track opt.value) {
+              <button
+                type="button"
+                role="option"
+                [attr.aria-selected]="opt.value === selectedPeriod()"
+                class="flex w-full items-center gap-2.5 rounded-lg px-3 py-2 text-left text-xs font-medium transition-all duration-150"
+                [class]="opt.value === selectedPeriod()
+                  ? 'bg-[var(--color-accent-subtle)] text-[var(--color-accent-hover)]'
+                  : 'text-[var(--color-text-secondary)] hover:bg-[var(--color-surface-secondary)] hover:text-[var(--color-text-primary)]'"
+                (click)="selectPeriod(opt.value)"
+              >
+                <span
+                  class="h-1.5 w-1.5 shrink-0 rounded-full transition-all duration-200"
+                  [class]="opt.value === selectedPeriod()
+                    ? 'bg-[var(--color-accent)] scale-100'
+                    : 'bg-transparent scale-0'"
+                ></span>
+                {{ opt.label }}
+              </button>
+            }
+          </div>
+        }
+      </div>
+
+      @if (lastUpdatedLabel()) {
+        <div class="inline-flex items-center gap-1.5 text-xs text-slate-400 whitespace-nowrap">
+          <svg viewBox="0 0 16 16" fill="currentColor" class="h-3.5 w-3.5 text-slate-400">
+            <path fill-rule="evenodd" d="M8 1.5a6.5 6.5 0 100 13 6.5 6.5 0 000-13zM2.5 8a5.5 5.5 0 1111 0 5.5 5.5 0 01-11 0zm5.75-3.25a.75.75 0 00-1.5 0v3.5c0 .2.08.39.22.53l2.5 2.5a.75.75 0 001.06-1.06L8.25 8.06V4.75z" clip-rule="evenodd" />
+          </svg>
+          <span>Updated: {{ lastUpdatedLabel() }}</span>
+        </div>
+      }
+    </div>
+  </div>
+
+  @if (loading()) {
+    <div class="flex flex-col gap-2.5 animate-pulse py-1" data-testid="work-pattern-skeleton">
+      <div class="h-24 w-full rounded-lg bg-slate-100"></div>
+      <div class="h-4 w-2/3 rounded bg-slate-100"></div>
+      <div class="h-4 w-1/2 rounded bg-slate-100"></div>
+    </div>
+  } @else if (!hasActivity()) {
+    <div class="flex flex-col items-center justify-center gap-3 py-10 text-center" data-testid="work-pattern-empty">
+      <span class="flex h-12 w-12 items-center justify-center rounded-2xl border border-slate-200 bg-slate-50 text-slate-400 shadow-2xs">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" class="h-6 w-6">
+          <path stroke-linecap="round" stroke-linejoin="round" d="M3 13.125C3 12.504 3.504 12 4.125 12h2.25c.621 0 1.125.504 1.125 1.125v6.75C7.5 20.496 6.996 21 6.375 21h-2.25A1.125 1.125 0 013 19.875v-6.75zM9.75 8.625c0-.621.504-1.125 1.125-1.125h2.25c.621 0 1.125.504 1.125 1.125v11.25c0 .621-.504 1.125-1.125 1.125h-2.25a1.125 1.125 0 01-1.125-1.125V8.625zM16.5 4.125c0-.621.504-1.125 1.125-1.125h2.25C20.496 3 21 3.504 21 4.125v15.75c0 .621-.504 1.125-1.125 1.125h-2.25a1.125 1.125 0 01-1.125-1.125V4.125z" />
         </svg>
       </span>
-      <p class="text-sm font-medium text-[var(--color-text-primary)]">No work activity yet</p>
-      <p class="text-xs text-[var(--color-text-secondary)]">Your work pattern will appear here as you work.</p>
+      <div>
+        <p class="text-sm font-semibold text-slate-800">No work activity yet</p>
+        <p class="mt-0.5 text-xs text-slate-400">Your work pattern will appear here as you log work.</p>
+      </div>
     </div>
   } @else {
+    <!-- 6 KPI Stat Tiles with Modern Styling -->
     <div class="mb-4 grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-6">
-      <div>
-        <p class="text-xs text-[var(--color-text-secondary)]">Weekly worked hours</p>
-        <p class="text-lg font-semibold text-[var(--color-text-primary)]" data-testid="work-pattern-weekly-worked">{{ weeklyWorkedLabel() }}</p>
+      <!-- 1. Weekly Worked Hours -->
+      <div class="group flex flex-col justify-between gap-2 rounded-xl border border-slate-200/80 bg-slate-50/50 p-3.5 transition-all hover:border-slate-300 hover:shadow-xs">
+        <div class="flex items-center justify-between">
+          <span class="text-[10px] font-bold uppercase tracking-wider text-slate-400">Worked</span>
+          <span class="flex h-6 w-6 shrink-0 items-center justify-center rounded-lg bg-white border border-slate-200/80 text-slate-400 shadow-2xs">
+            <svg viewBox="0 0 20 20" fill="currentColor" class="h-3.5 w-3.5">
+              <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm.75-13a.75.75 0 00-1.5 0v5c0 .26.134.501.357.64l3.5 2.188a.75.75 0 10.786-1.28L10.75 9.7V5z" clip-rule="evenodd" />
+            </svg>
+          </span>
+        </div>
+        <div>
+          <div class="text-xl font-bold tracking-tight text-slate-900" data-testid="work-pattern-weekly-worked">{{ weeklyWorkedLabel() }}</div>
+          <span class="text-[11px] text-slate-400">Total {{ periodLabelLower() }}</span>
+        </div>
       </div>
-      <div class="rounded-lg bg-[var(--color-accent-subtle)] p-3 text-[var(--color-accent)]">
-        <p class="text-xs">Productive</p>
-        <p class="text-lg font-semibold" data-testid="work-pattern-productive-percent">{{ productivePercentLabel() }}</p>
-        <p class="text-sm" data-testid="work-pattern-productive">{{ productiveLabel() }} worked</p>
+
+      <!-- 2. Productive (Hero Highlighted Tile) -->
+      <div class="group flex flex-col justify-between gap-2 rounded-xl border border-blue-200 bg-blue-50/70 p-3.5 text-blue-900 shadow-2xs transition-all hover:border-blue-300 hover:shadow-xs">
+        <div class="flex items-center justify-between">
+          <div class="flex items-center gap-1.5">
+            <span class="flex h-6 w-6 shrink-0 items-center justify-center rounded-lg bg-blue-600 text-white shadow-2xs">
+              <svg viewBox="0 0 20 20" fill="currentColor" class="h-3.5 w-3.5">
+                <path fill-rule="evenodd" d="M11.3 1.046A1 1 0 0112 2v5h4a1 1 0 01.82 1.573l-7 10A1 1 0 018 18v-5H4a1 1 0 01-.82-1.573l7-10a1 1 0 011.12-.38z" clip-rule="evenodd" />
+              </svg>
+            </span>
+            <span class="text-[10px] font-bold uppercase tracking-wider text-blue-700">Productive</span>
+          </div>
+          <span class="rounded-full bg-blue-600 px-2 py-0.5 text-[10px] font-bold text-white shadow-2xs" data-testid="work-pattern-productive-percent">{{ productivePercentLabel() }}</span>
+        </div>
+        <div>
+          <div class="text-xl font-bold tracking-tight text-blue-950" data-testid="work-pattern-productive">{{ productiveLabel() }} worked</div>
+          <span class="text-[11px] font-medium text-blue-600">Effective output</span>
+        </div>
       </div>
-      <div>
-        <p class="text-xs text-[var(--color-text-secondary)]">Focus work</p>
-        <p class="text-lg font-semibold text-[var(--color-text-primary)]">{{ focusLabel() }}</p>
+
+      <!-- 3. Focus Work -->
+      <div class="group flex flex-col justify-between gap-2 rounded-xl border border-slate-200/80 bg-slate-50/50 p-3.5 transition-all hover:border-blue-200 hover:shadow-xs">
+        <div class="flex items-center justify-between">
+          <span class="text-[10px] font-bold uppercase tracking-wider text-slate-400">Focus work</span>
+          <span class="flex h-6 w-6 shrink-0 items-center justify-center rounded-lg bg-blue-50 text-blue-600 border border-blue-100 shadow-2xs">
+            <svg viewBox="0 0 20 20" fill="currentColor" class="h-3.5 w-3.5">
+              <path d="M10 12a2 2 0 100-4 2 2 0 000 4z" />
+              <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm0-2a6 6 0 100-12 6 6 0 000 12z" clip-rule="evenodd" />
+            </svg>
+          </span>
+        </div>
+        <div>
+          <div class="text-xl font-bold tracking-tight text-slate-900">{{ focusLabel() }}</div>
+          <span class="text-[11px] text-slate-400">Deep focus</span>
+        </div>
       </div>
-      <div>
-        <p class="text-xs text-[var(--color-text-secondary)]">Meeting time</p>
-        <p class="text-lg font-semibold text-[var(--color-text-primary)]">{{ meetingLabel() }}</p>
+
+      <!-- 4. Meeting Time -->
+      <div class="group flex flex-col justify-between gap-2 rounded-xl border border-slate-200/80 bg-slate-50/50 p-3.5 transition-all hover:border-blue-200 hover:shadow-xs">
+        <div class="flex items-center justify-between">
+          <span class="text-[10px] font-bold uppercase tracking-wider text-slate-400">Meeting time</span>
+          <span class="flex h-6 w-6 shrink-0 items-center justify-center rounded-lg bg-sky-50 text-sky-600 border border-sky-100 shadow-2xs">
+            <svg viewBox="0 0 20 20" fill="currentColor" class="h-3.5 w-3.5">
+              <path d="M7 3a1 1 0 000 2h6a1 1 0 100-2H7zM4 7a1 1 0 011-1h10a1 1 0 110 2H5a1 1 0 01-1-1zM2 11a2 2 0 012-2h12a2 2 0 012 2v4a2 2 0 01-2 2H4a2 2 0 01-2-2v-4z" />
+            </svg>
+          </span>
+        </div>
+        <div>
+          <div class="text-xl font-bold tracking-tight text-slate-900">{{ meetingLabel() }}</div>
+          <span class="text-[11px] text-slate-400">Collaboration</span>
+        </div>
       </div>
-      <div>
-        <p class="text-xs text-[var(--color-text-secondary)]">Admin / other</p>
-        <p class="text-lg font-semibold text-[var(--color-text-primary)]">{{ adminLabel() }}</p>
+
+      <!-- 5. Admin / Other -->
+      <div class="group flex flex-col justify-between gap-2 rounded-xl border border-slate-200/80 bg-slate-50/50 p-3.5 transition-all hover:border-slate-300 hover:shadow-xs">
+        <div class="flex items-center justify-between">
+          <span class="text-[10px] font-bold uppercase tracking-wider text-slate-400">Admin / other</span>
+          <span class="flex h-6 w-6 shrink-0 items-center justify-center rounded-lg bg-white border border-slate-200/80 text-slate-400 shadow-2xs">
+            <svg viewBox="0 0 20 20" fill="currentColor" class="h-3.5 w-3.5">
+              <path d="M2 4a2 2 0 012-2h12a2 2 0 012 2v1H2V4zM2 7v9a2 2 0 002 2h12a2 2 0 002-2V7H2zm5 2a1 1 0 011-1h4a1 1 0 110 2H8a1 1 0 01-1-1z" />
+            </svg>
+          </span>
+        </div>
+        <div>
+          <div class="text-xl font-bold tracking-tight text-slate-900">{{ adminLabel() }}</div>
+          <span class="text-[11px] text-slate-400">Operations</span>
+        </div>
       </div>
-      <div>
-        <p class="text-xs text-[var(--color-text-secondary)]">Idle time</p>
-        <p class="text-lg font-semibold text-[var(--color-text-primary)]">{{ idleLabel() }}</p>
+
+      <!-- 6. Idle Time -->
+      <div class="group flex flex-col justify-between gap-2 rounded-xl border border-slate-200/80 bg-slate-50/50 p-3.5 transition-all hover:border-amber-200 hover:shadow-xs">
+        <div class="flex items-center justify-between">
+          <span class="text-[10px] font-bold uppercase tracking-wider text-slate-400">Idle time</span>
+          <span class="flex h-6 w-6 shrink-0 items-center justify-center rounded-lg bg-amber-50 text-amber-600 border border-amber-100 shadow-2xs">
+            <svg viewBox="0 0 20 20" fill="currentColor" class="h-3.5 w-3.5">
+              <path fill-rule="evenodd" d="M10 2a1 1 0 011 1v1.323l3.954 1.582 1.599-.8a1 1 0 01.894 1.79l-1.233.616 1.738 5.42a1 1 0 01-.285 1.05A3.989 3.989 0 0115 15a3.989 3.989 0 01-2.667-1.019 1 1 0 01-.285-1.05l1.715-5.349L11 6.477V16h2a1 1 0 110 2H7a1 1 0 110-2h2V6.477L6.237 7.582l1.715 5.349a1 1 0 01-.285 1.05A3.989 3.989 0 015 15a3.989 3.989 0 01-2.667-1.019 1 1 0 01-.285-1.05l1.738-5.42-1.233-.617a1 1 0 01.894-1.788l1.599.799L9 4.323V3a1 1 0 011-1z" clip-rule="evenodd" />
+            </svg>
+          </span>
+        </div>
+        <div>
+          <div class="text-xl font-bold tracking-tight text-slate-900">{{ idleLabel() }}</div>
+          <span class="text-[11px] text-slate-400">Away from keys</span>
+        </div>
       </div>
     </div>
 
-    <div class="flex h-8 w-full overflow-hidden rounded-full bg-[var(--color-surface-secondary)]" data-testid="work-pattern-bar">
+    <!-- Segmented Multi-Color Progress Bar -->
+    <div class="flex h-3.5 w-full overflow-hidden rounded-full bg-slate-100 p-0.5 shadow-2xs" data-testid="work-pattern-bar">
       @for (segment of segments(); track segment.type) {
         <div
           data-testid="work-pattern-segment"
           [attr.data-segment-type]="segment.type"
-          class="flex h-full items-center justify-center text-[10px] font-medium first:rounded-l-full last:rounded-r-full"
+          class="flex h-full items-center justify-center text-[10px] font-bold text-white first:rounded-l-full last:rounded-r-full transition-all"
           [style.width.%]="segment.widthPercent"
-          [style.background-color]="segment.type === 'focus' || segment.type === 'meeting' ? 'var(--color-accent)' : 'var(--color-border)'"
-          [style.color]="segment.type === 'focus' || segment.type === 'meeting' ? 'var(--color-accent-contrast)' : 'var(--color-text-primary)'"
-          [style.opacity]="segment.type === 'meeting' ? 0.6 : segment.type === 'idle' ? 0.5 : 1"
+          [style.background-color]="segmentColor(segment.type)"
           [attr.title]="segmentLabel(segment.type)"
         >
-          @if (segment.widthPercent >= 6) {
+          @if (segment.widthPercent >= 8) {
             {{ segmentPercentLabel(segment) }}
           }
         </div>
       }
     </div>
 
-    <div class="mt-3 flex flex-wrap items-center gap-4 text-xs text-[var(--color-text-secondary)]">
-      <span class="flex items-center gap-1.5">
-        <span class="h-2 w-2 rounded-full" [style.background-color]="'var(--color-accent)'"></span>
+    <!-- Legend -->
+    <div class="mt-3 flex flex-wrap items-center gap-4 text-xs font-medium text-slate-500">
+      <span class="inline-flex items-center gap-1.5">
+        <span class="h-2 w-2 rounded-full bg-blue-600"></span>
         Focus work
       </span>
-      <span class="flex items-center gap-1.5">
-        <span class="h-2 w-2 rounded-full" [style.background-color]="'var(--color-accent)'" [style.opacity]="0.6"></span>
+      <span class="inline-flex items-center gap-1.5">
+        <span class="h-2 w-2 rounded-full bg-blue-400"></span>
         Meeting time
       </span>
-      <span class="flex items-center gap-1.5">
-        <span class="h-2 w-2 rounded-full" [style.background-color]="'var(--color-border)'"></span>
+      <span class="inline-flex items-center gap-1.5">
+        <span class="h-2 w-2 rounded-full bg-slate-400"></span>
         Admin / other work
       </span>
-      <span class="flex items-center gap-1.5">
-        <span class="h-2 w-2 rounded-full" [style.background-color]="'var(--color-border)'" [style.opacity]="0.5"></span>
+      <span class="inline-flex items-center gap-1.5">
+        <span class="h-2 w-2 rounded-full bg-amber-500"></span>
         Idle time
       </span>
     </div>
-
-    @if (lastUpdated()) {
-      <p class="mt-2 text-right text-xs text-[var(--color-text-secondary)]">Updated: {{ lastUpdatedLabel() }}</p>
-    }
   }
-</app-card>
+</section>

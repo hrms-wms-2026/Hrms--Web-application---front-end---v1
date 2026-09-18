@@ -12,21 +12,51 @@ import { AuthStore } from '../../../../core/auth/state/auth.store';
 import { localPartsToUtcIso, utcIsoToLocalParts } from '../../../../shared/utils/timezone.util';
 import {
   CalendarConflict, CalendarEventParticipant, CalendarEventResponse, CreateCalendarEventRequest,
-  RecurrenceEditScope, RespondToCalendarEventStatus, UpdateCalendarEventRequest
+  EligibleNominee, RecurrenceEditScope, RespondToCalendarEventStatus, UpdateCalendarEventRequest
 } from '../../models/calendar-event.model';
 import { RecurrenceEndMode, RecurrenceFrequency, buildRecurrenceRule } from '../../utils/recurrence-rule.util';
 import { CalendarParticipantPickerComponent } from '../calendar-participant-picker/calendar-participant-picker.component';
+import { CalendarSelectComponent } from '../calendar-select/calendar-select.component';
+
+/** Curated set of IANA zones for the "times entered in" picker. The organizer's own
+ * tenant zone is always merged in on top of this so it can never be missing. */
+const CURATED_TIMEZONES = [
+  'UTC',
+  'Asia/Colombo', 'Asia/Kolkata', 'Asia/Karachi', 'Asia/Dhaka', 'Asia/Kathmandu',
+  'Asia/Dubai', 'Asia/Riyadh', 'Asia/Tehran', 'Asia/Jerusalem',
+  'Asia/Singapore', 'Asia/Bangkok', 'Asia/Jakarta', 'Asia/Hong_Kong', 'Asia/Shanghai',
+  'Asia/Tokyo', 'Asia/Seoul', 'Asia/Manila',
+  'Australia/Perth', 'Australia/Sydney', 'Pacific/Auckland',
+  'Europe/London', 'Europe/Berlin', 'Europe/Paris', 'Europe/Madrid', 'Europe/Moscow', 'Europe/Istanbul',
+  'Africa/Cairo', 'Africa/Lagos', 'Africa/Johannesburg', 'Africa/Nairobi',
+  'America/Sao_Paulo', 'America/New_York', 'America/Chicago', 'America/Denver',
+  'America/Los_Angeles', 'America/Mexico_City', 'America/Bogota',
+];
+
+function addMinutes(hhmm: string, minutes: number): string {
+  const [h, m] = hhmm.split(':').map(Number);
+  if (Number.isNaN(h) || Number.isNaN(m)) return hhmm;
+  const total = ((h * 60 + m + minutes) % 1440 + 1440) % 1440;
+  return `${String(Math.floor(total / 60)).padStart(2, '0')}:${String(total % 60).padStart(2, '0')}`;
+}
 
 export type CalendarEventFormSubmission =
   | { create: CreateCalendarEventRequest }
   | { update: UpdateCalendarEventRequest; scope: RecurrenceEditScope | null };
+
+export interface RespondToCalendarEventPayload {
+  status: RespondToCalendarEventStatus;
+  reason: string | null;
+  nomineeEmployeeId: string | null;
+}
 
 @Component({
   selector: 'app-calendar-event-form-modal',
   standalone: true,
   imports: [
     CommonModule, ReactiveFormsModule, ButtonComponent, InputComponent, SelectComponent,
-    ModalComponent, DatePickerComponent, AvatarComponent, ConfirmModalComponent, CalendarParticipantPickerComponent
+    ModalComponent, DatePickerComponent, AvatarComponent, ConfirmModalComponent, CalendarParticipantPickerComponent,
+    CalendarSelectComponent
   ],
   templateUrl: './calendar-event-form-modal.component.html',
   changeDetection: ChangeDetectionStrategy.OnPush
@@ -37,14 +67,17 @@ export class CalendarEventFormModalComponent implements OnChanges {
   @Input() open = false;
   @Input() event: CalendarEventResponse | null = null;
   @Input() prefillStart: string | null = null;
+  @Input() prefillEnd: string | null = null;
   @Input() saving = false;
   @Input() conflicts: readonly CalendarConflict[] = [];
   @Input() checkingConflicts = false;
   @Input() myTimezone = 'UTC';
+  @Input() eligibleNominees: readonly EligibleNominee[] = [];
   @Output() save = new EventEmitter<CalendarEventFormSubmission>();
   @Output() delete = new EventEmitter<RecurrenceEditScope | null>();
-  @Output() respond = new EventEmitter<RespondToCalendarEventStatus>();
+  @Output() respond = new EventEmitter<RespondToCalendarEventPayload>();
   @Output() checkConflicts = new EventEmitter<{ participantEmployeeIds: readonly string[]; startDate: string; endDate: string }>();
+  @Output() loadEligibleNominees = new EventEmitter<void>();
   @Output() cancel = new EventEmitter<void>();
 
   private readonly authStore = inject(AuthStore);
@@ -59,7 +92,28 @@ export class CalendarEventFormModalComponent implements OnChanges {
 
   readonly participantPickerOpen = signal(false);
   readonly participantIds = signal<readonly string[]>([]);
+  readonly participants = signal<readonly { id: string; name: string }[]>([]);
+  readonly maxParticipantAvatars = 6;
   readonly discardConfirmOpen = signal(false);
+
+  /** Zone the typed start/end times are read in. Falls back to the organizer's tenant
+   * zone (`myTimezone`) until the user explicitly picks one; changing it re-converts
+   * (edit) or re-interprets (create) the times. */
+  readonly pickedTimezone = signal('');
+  readonly timezoneOptions = signal<readonly { value: string; label: string }[]>([]);
+  private endTimeTouched = false;
+  private timezoneTouched = false;
+
+  /** The zone actually used for every local<->UTC conversion in this form. */
+  currentTimezone(): string {
+    return this.timezoneTouched && this.pickedTimezone() ? this.pickedTimezone() : this.myTimezone;
+  }
+
+  readonly moreMenuOpen = signal(false);
+  readonly resolutionReasonPromptOpen = signal(false);
+  readonly nomineePickerOpen = signal(false);
+  readonly reasonText = signal('');
+  readonly selectedNomineeId = signal<string | null>(null);
 
   readonly form = this.fb.group({
     title: ['', [Validators.required, Validators.maxLength(200)]],
@@ -67,7 +121,7 @@ export class CalendarEventFormModalComponent implements OnChanges {
     startDate: ['', Validators.required],
     startTime: ['09:00', Validators.required],
     endDate: ['', Validators.required],
-    endTime: ['10:00', Validators.required],
+    endTime: ['09:30', Validators.required],
     isAllDay: [false],
     location: [''],
     meetingLink: [''],
@@ -89,8 +143,56 @@ export class CalendarEventFormModalComponent implements OnChanges {
     return this.event.participants.find((p) => p.employeeId === employeeId) ?? null;
   }
 
-  onRespond(status: RespondToCalendarEventStatus): void {
-    this.respond.emit(status);
+  onRespond(status: RespondToCalendarEventStatus, reason: string | null = null, nomineeEmployeeId: string | null = null): void {
+    this.respond.emit({ status, reason, nomineeEmployeeId });
+  }
+
+  toggleMoreMenu(): void {
+    const opening = !this.moreMenuOpen();
+    this.moreMenuOpen.set(opening);
+    if (opening) this.loadEligibleNominees.emit();
+  }
+
+  openResolutionPrompt(): void {
+    this.moreMenuOpen.set(false);
+    this.reasonText.set('');
+    this.resolutionReasonPromptOpen.set(true);
+  }
+
+  cancelResolutionPrompt(): void {
+    this.resolutionReasonPromptOpen.set(false);
+  }
+
+  setReasonText(value: string): void {
+    this.reasonText.set(value);
+  }
+
+  submitResolutionRequest(): void {
+    const reason = this.reasonText().trim();
+    if (!reason) return;
+    this.resolutionReasonPromptOpen.set(false);
+    this.onRespond('ResolutionRequested', reason, null);
+  }
+
+  openNomineePicker(): void {
+    this.moreMenuOpen.set(false);
+    this.selectedNomineeId.set(this.eligibleNominees[0]?.employeeId ?? null);
+    this.nomineePickerOpen.set(true);
+  }
+
+  cancelNomineePicker(): void {
+    this.nomineePickerOpen.set(false);
+  }
+
+  setSelectedNomineeId(value: string): void {
+    this.selectedNomineeId.set(value);
+  }
+
+  submitNomineeNomination(): void {
+    const nomineeId = this.selectedNomineeId();
+    if (!nomineeId) return;
+    this.nomineePickerOpen.set(false);
+    this.onRespond('ReplacementNominated', null, nomineeId);
   }
 
   ngOnChanges(changes: SimpleChanges): void {
@@ -99,9 +201,22 @@ export class CalendarEventFormModalComponent implements OnChanges {
     // is mid-use, and resetting on every ngOnChanges call would wipe out in-progress typing.
     const justOpened = !!changes['open'] && this.open;
 
+    if (justOpened) {
+      this.endTimeTouched = false;
+      this.timezoneTouched = false;
+      this.pickedTimezone.set(this.myTimezone);
+    }
+    if (justOpened || changes['myTimezone']) {
+      this.timezoneOptions.set(
+        [...new Set([...CURATED_TIMEZONES, this.myTimezone])]
+          .sort()
+          .map((z) => ({ value: z, label: z.replace(/_/g, ' ') }))
+      );
+    }
+
     if (this.event) {
-      const start = utcIsoToLocalParts(this.event.startDate, this.myTimezone);
-      const end = utcIsoToLocalParts(this.event.endDate, this.myTimezone);
+      const start = utcIsoToLocalParts(this.event.startDate, this.currentTimezone());
+      const end = utcIsoToLocalParts(this.event.endDate, this.currentTimezone());
       this.form.patchValue({
         title: this.event.title,
         description: this.event.description ?? '',
@@ -120,13 +235,59 @@ export class CalendarEventFormModalComponent implements OnChanges {
 
     if (this.prefillStart) {
       const [date, time] = this.prefillStart.split('T');
-      this.form.patchValue({ startDate: date, startTime: time ?? '09:00', endDate: date, endTime: time ?? '10:00' });
+      const start = time ?? '09:00';
+      const [endDate, endTime] = this.prefillEnd?.split('T') ?? [];
+      this.form.patchValue({
+        startDate: date,
+        startTime: start,
+        endDate: endDate || date,
+        endTime: endTime || addMinutes(start, 30)
+      });
+      // a dragged range set the end explicitly - don't let a later start-time nudge override it
+      this.endTimeTouched = !!this.prefillEnd;
     }
 
     if (justOpened) {
       this.form.markAsPristine();
       this.participantIds.set([]);
+      this.participants.set([]);
     }
+  }
+
+  setStartTime(value: string): void {
+    this.form.controls.startTime.setValue(value);
+    if (!this.endTimeTouched) this.form.controls.endTime.setValue(addMinutes(value, 30));
+    this.form.markAsDirty();
+  }
+
+  setEndTime(value: string): void {
+    this.endTimeTouched = true;
+    this.form.controls.endTime.setValue(value);
+    this.form.markAsDirty();
+  }
+
+  setTimezone(value: string): void {
+    this.timezoneTouched = true;
+    this.pickedTimezone.set(value);
+    if (this.event) {
+      // Edit mode: the stored instant is fixed - re-show it in the newly chosen zone.
+      const start = utcIsoToLocalParts(this.event.startDate, value);
+      const end = utcIsoToLocalParts(this.event.endDate, value);
+      this.form.patchValue({ startDate: start.date, startTime: start.time, endDate: end.date, endTime: end.time });
+    }
+    this.form.markAsDirty();
+    this.scheduleConflictCheck();
+  }
+
+  removeParticipant(id: string): void {
+    this.participantIds.set(this.participantIds().filter((x) => x !== id));
+    this.participants.set(this.participants().filter((p) => p.id !== id));
+    this.form.markAsDirty();
+    this.scheduleConflictCheck();
+  }
+
+  onParticipantPeopleChange(people: readonly { id: string; name: string }[]): void {
+    this.participants.set(people);
   }
 
   setTitle(value: string): void {
@@ -213,8 +374,8 @@ export class CalendarEventFormModalComponent implements OnChanges {
       if (ids.length === 0 || !raw.startDate || !raw.endDate) return;
       this.checkConflicts.emit({
         participantEmployeeIds: ids,
-        startDate: localPartsToUtcIso(raw.startDate, raw.startTime!, this.myTimezone),
-        endDate: localPartsToUtcIso(raw.endDate, raw.endTime!, this.myTimezone)
+        startDate: localPartsToUtcIso(raw.startDate, raw.startTime!, this.currentTimezone()),
+        endDate: localPartsToUtcIso(raw.endDate, raw.endTime!, this.currentTimezone())
       });
     }, 400);
   }
@@ -226,8 +387,14 @@ export class CalendarEventFormModalComponent implements OnChanges {
     }
 
     const raw = this.form.getRawValue();
-    const startDate = localPartsToUtcIso(raw.startDate!, raw.startTime!, this.myTimezone);
-    const endDate = localPartsToUtcIso(raw.endDate!, raw.endTime!, this.myTimezone);
+    // toggleAllDay only flips the isAllDay flag - it never touches startTime/endTime, so without
+    // this the stored range stayed whatever narrow window was in the time pickers (e.g.
+    // 11:30-13:00) even with "All day" on, meaning the event never actually blocked the rest of
+    // that day for availability/conflict checks.
+    const startTime = raw.isAllDay ? '00:00' : raw.startTime!;
+    const endTime = raw.isAllDay ? '23:59' : raw.endTime!;
+    const startDate = localPartsToUtcIso(raw.startDate!, startTime, this.currentTimezone());
+    const endDate = localPartsToUtcIso(raw.endDate!, endTime, this.currentTimezone());
     const recurrence = raw.recurrenceFrequency ?? 'none';
     const recurrenceRule = buildRecurrenceRule(recurrence as RecurrenceFrequency, raw.recurrenceEndMode as RecurrenceEndMode, raw.recurrenceUntilDate || null);
 
@@ -255,5 +422,12 @@ export class CalendarEventFormModalComponent implements OnChanges {
 
   onDelete(scope: RecurrenceEditScope | null = null): void {
     this.delete.emit(scope);
+  }
+
+  formatOverlap(start: string, end: string): string {
+    const formatter = new Intl.DateTimeFormat(undefined, {
+      timeZone: this.currentTimezone(), hour: 'numeric', minute: '2-digit', hour12: true
+    });
+    return `from ${formatter.format(new Date(start))} to ${formatter.format(new Date(end))}`;
   }
 }

@@ -15,9 +15,9 @@
   height: 100%;
   display: flex;
   flex-direction: column;
-  border: 1px solid var(--color-border);
-  border-radius: 12px;
-  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.06);
+  border: none;
+  border-radius: 0;
+  box-shadow: none;
   overflow: hidden;
   flex-shrink: 0;
   animation: ptdSlideIn 0.2s ease-out;
@@ -35,14 +35,13 @@
 }
 
 .ptd-header {
-  padding: 0.75rem 1rem;
-  border-bottom: 1px solid var(--color-border);
+  padding: 0.875rem 1rem;
+  border-bottom: 1px solid color-mix(in srgb, var(--color-border) 70%, transparent);
   display: flex;
   align-items: center;
   justify-content: space-between;
-  background: var(--color-surface-secondary);
-  border-top-left-radius: 12px;
-  border-top-right-radius: 12px;
+  background: var(--color-surface);
+  border-radius: 0;
 }
 
 .ptd-header-left {
@@ -115,8 +114,8 @@
   padding: 0.375rem 1.75rem 0.375rem 0.625rem;
   font-size: 0.8125rem;
   border-radius: 6px;
-  border: 1px solid var(--color-border);
-  background: var(--color-surface-secondary);
+  border: 1px solid color-mix(in srgb, var(--color-border) 60%, transparent);
+  background: color-mix(in srgb, var(--color-surface-secondary) 30%, var(--color-surface));
   color: var(--color-text-primary);
   outline: none;
   transition: border-color 0.15s ease, background-color 0.15s ease;
@@ -288,15 +287,22 @@
 
 .ptd-pack-count-chip,
 .ptd-pack-count-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 1.25rem;
+  height: 1.25rem;
+  padding: 0 0.375rem;
   font-size: 0.6875rem;
-  font-weight: 500;
+  font-weight: 600;
   color: var(--color-text-secondary);
-  background: var(--color-surface-secondary);
-  padding: 0.1rem 0.45rem;
+  background: color-mix(in srgb, var(--color-surface-secondary) 40%, var(--color-surface));
   border-radius: 9999px;
-  border: 1px solid color-mix(in srgb, var(--color-border) 60%, transparent);
+  border: 1px solid color-mix(in srgb, var(--color-border) 50%, transparent);
   white-space: nowrap;
   flex-shrink: 0;
+  line-height: 1;
+  margin-left: 0.25rem;
 }
 
 .ptd-pack-content {
@@ -319,21 +325,22 @@
 }
 
 .ptd-pos-card {
-  border: 1px solid var(--color-border);
-  border-radius: 6px;
-  padding: 0.45rem 0.625rem;
+  border: 1px solid color-mix(in srgb, var(--color-border) 65%, transparent);
+  border-radius: 8px;
+  padding: 0.5rem 0.625rem;
   background: var(--color-surface);
   display: flex;
   align-items: center;
   justify-content: space-between;
   gap: 0.5rem;
   cursor: grab;
-  transition: border-color 0.15s ease, box-shadow 0.15s ease;
+  transition: border-color 0.15s ease, box-shadow 0.15s ease, transform 0.15s ease;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.02);
 }
 
 .ptd-pos-card:hover {
   border-color: var(--color-accent);
-  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.05);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
 }
 
 .ptd-pos-card--disabled {
@@ -342,7 +349,7 @@
 }
 
 .ptd-pos-card--disabled:hover {
-  border-color: var(--color-border);
+  border-color: color-mix(in srgb, var(--color-border) 65%, transparent);
   box-shadow: none;
 }
 
@@ -389,9 +396,10 @@
   gap: 0.25rem;
   font-size: 0.6875rem;
   color: var(--color-text-secondary);
-  background: var(--color-surface-secondary);
+  background: color-mix(in srgb, var(--color-surface-secondary) 35%, var(--color-surface));
   padding: 0.1rem 0.4rem;
   border-radius: 4px;
+  border: 1px solid color-mix(in srgb, var(--color-border) 35%, transparent);
 }
 
 .ptd-pos-card-actions {
