@@ -11,4 +11,8 @@ export class ProjectCategoryApiService {
   list(): Observable<ProjectCategoryDto[]> {
     return this.http.get<ProjectCategoryDto[]>(`${environment.apiUrl}/work/project-categories`);
   }
+
+  create(name: string): Observable<ProjectCategoryDto> {
+    return this.http.post<ProjectCategoryDto>(`${environment.apiUrl}/work/project-categories`, { name });
+  }
 }

@@ -33,6 +33,15 @@ export const ProjectCategoryStore = signalStore(
           loaded: true
         });
       }
+    },
+
+    async createCategory(name: string): Promise<ProjectCategory> {
+      const dto = await firstValueFrom(api.create(name));
+      const category: ProjectCategory = { id: dto.id, name: dto.name };
+      patchState(store, {
+        categories: [...store.categories(), category].sort((a, b) => a.name.localeCompare(b.name))
+      });
+      return category;
     }
   }))
 );

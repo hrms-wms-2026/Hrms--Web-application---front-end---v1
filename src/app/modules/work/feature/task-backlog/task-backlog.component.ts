@@ -20,26 +20,23 @@ import { TaskCategoryColumn } from '../../models/task-category.model';
 import { toTaskCategoryColumn } from '../../utils/task-category.mapper';
 import { WorkDropdownOption } from '../../ui/work-dropdown/work-dropdown.component';
 import { TaskFilterBarComponent, TaskFilterFieldConfig } from '../../ui/task-filter-bar/task-filter-bar.component';
+import { TaskAssigneeAvatarFilterComponent } from '../../ui/task-assignee-avatar-filter/task-assignee-avatar-filter.component';
 import { TaskFormModalComponent } from '../../ui/task-form-modal/task-form-modal.component';
 
 @Component({
   selector: 'app-task-backlog',
   standalone: true,
-  imports: [SprintTabComponent, SprintFormComponent, TaskTableComponent, ButtonComponent, ErrorStateComponent, TaskFilterBarComponent, TaskFormModalComponent],
+  imports: [SprintTabComponent, SprintFormComponent, TaskTableComponent, ButtonComponent, ErrorStateComponent, TaskFilterBarComponent, TaskAssigneeAvatarFilterComponent, TaskFormModalComponent],
   template: `
     <ng-template #toolbarTpl>
       <div class="task-backlog__toolbar">
+        <app-task-assignee-avatar-filter
+          [members]="assignableMembers()"
+          [currentEmployeeId]="currentEmployee.id()"
+          [selected]="assigneeFilter()"
+          (selectionChanged)="setAssigneeFilter($event)"
+        />
         <app-task-filter-bar [fields]="filterFields()" [values]="filterValues()" (fieldChanged)="onFilterFieldChanged($event)" />
-        <button
-          type="button"
-          class="task-backlog__me-toggle"
-          [class.task-backlog__me-toggle--active]="onlyMyTasks()"
-          [attr.aria-pressed]="onlyMyTasks()"
-          title="Only my tasks"
-          (click)="toggleOnlyMyTasks()"
-        >
-          {{ myInitials() }}
-        </button>
         @if (modules().length > 0) {
           <app-button variant="secondary" (pressed)="openCreateTask()">Create task</app-button>
         }
@@ -134,9 +131,7 @@ import { TaskFormModalComponent } from '../../ui/task-form-modal/task-form-modal
   `,
   styles: [`
     .task-backlog__toolbar { display: flex; flex-wrap: wrap; justify-content: flex-end; align-items: center; gap: 8px; }
-    .task-backlog__me-toggle { display: inline-flex; align-items: center; justify-content: center; width: 30px; height: 30px; border: 1px solid var(--color-border); border-radius: 999px; background: var(--color-surface); color: var(--color-text-secondary); font: inherit; font-size: 11px; font-weight: 700; cursor: pointer; transition: all 140ms ease; }
-    .task-backlog__me-toggle:hover { border-color: var(--color-accent); color: var(--color-accent); }
-    .task-backlog__me-toggle--active { border-color: var(--color-accent); background: var(--color-accent); color: var(--color-accent-contrast); }
+    .task-backlog__toolbar ::ng-deep app-button > button { width: auto; }
     .task-backlog__sprint-message { color: var(--color-danger-text, var(--color-danger)); font-size: 12px; margin-bottom: 8px; }
     .task-backlog__sprints { margin-top: 4px; }
     .task-backlog__sprints-title { font-size: 13px; font-weight: 600; color: var(--color-text-primary); margin: 0 0 10px; }
@@ -234,16 +229,6 @@ export class TaskBacklogComponent implements OnInit, AfterViewInit, OnDestroy {
     status: this.statusFilter(),
     priority: this.priorityFilter()
   }));
-  protected readonly onlyMyTasks = computed(() => {
-    const me = this.currentEmployee.id();
-    const assignees = this.assigneeFilter();
-    return !!me && assignees.length === 1 && assignees[0] === me;
-  });
-  protected readonly myInitials = computed(() => {
-    const me = this.currentEmployee.id();
-    const name = this.assignableMembers().find((m) => m.employeeId === me)?.name ?? '';
-    return this.getInitials(name);
-  });
   // Sprint creation has no pending/request path (unlike tasks) - only modules the user owns may
   // ever be offered here, or SprintApiService.create would just fail for a non-owner's pick.
   protected readonly ownedModuleOptions = computed(() => this.moduleOptions().filter((m) => m.isOwner));
@@ -312,18 +297,6 @@ export class TaskBacklogComponent implements OnInit, AfterViewInit, OnDestroy {
       case 'status': this.statusFilter.set(event.values); break;
       case 'priority': this.priorityFilter.set(event.values); break;
     }
-  }
-
-  /** Shortcut toggle mirroring the filter's own Assignee row - turning it on replaces any existing assignee selection with just me, off clears it. */
-  protected toggleOnlyMyTasks(): void {
-    this.setAssigneeFilter(this.onlyMyTasks() ? [] : [this.currentEmployee.id()]);
-  }
-
-  private getInitials(name: string): string {
-    if (!name) return '?';
-    const parts = name.trim().split(/\s+/);
-    if (parts.length >= 2) return (parts[0][0] + parts[1][0]).toUpperCase();
-    return name.slice(0, 2).toUpperCase();
   }
 
   protected readonly taskModalOpen = signal(false);

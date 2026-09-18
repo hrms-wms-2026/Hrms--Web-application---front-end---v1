@@ -205,9 +205,39 @@ describe('BoardStructureEditorComponent', () => {
     fixture.detectChanges();
     (
       fixture.nativeElement.querySelector(
-        'app-color-swatch-picker [title="Purple"]',
+        'app-color-swatch-picker [title="Red"]',
       ) as HTMLButtonElement
     ).click();
-    expect(component.rowsFor('not_started')()[0].color).toBe('#7c3aed');
+    expect(component.rowsFor('not_started')()[0].color).toBe('#dc2626');
+  });
+  it('shows add button on Done and allows adding when Done has 0 rows', async () => {
+    const noDoneStatuses = statuses.filter((s) => s.category !== 'done');
+    const api = {
+      reorderTaskStatuses: vi.fn().mockReturnValue(of([])),
+      editStatus: vi.fn().mockReturnValue(of(undefined)),
+      createStatus: vi.fn().mockReturnValue(
+        of({ ...statuses[0], id: 's5', name: 'Finished', category: 'done' }),
+      ),
+      deleteStatus: vi.fn().mockReturnValue(of(undefined)),
+    };
+    TestBed.configureTestingModule({
+      imports: [BoardStructureEditorComponent],
+      providers: [{ provide: TaskApiService, useValue: api }],
+    });
+    const fixture = TestBed.createComponent(BoardStructureEditorComponent);
+    fixture.componentRef.setInput('projectId', 'project-1');
+    fixture.componentRef.setInput('open', true);
+    fixture.componentRef.setInput('statuses', noDoneStatuses);
+    fixture.detectChanges();
+    const component = fixture.componentInstance;
+
+    expect(fixture.nativeElement.querySelector('[aria-label="Add Done status"]')).not.toBeNull();
+    component.startAdd('done');
+    component['newStatusName'].set('Finished');
+    await component.confirmAdd();
+    expect(api.createStatus).toHaveBeenCalledWith(
+      'project-1',
+      expect.objectContaining({ category: 'done', name: 'Finished' }),
+    );
   });
 });

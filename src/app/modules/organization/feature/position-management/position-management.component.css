@@ -243,7 +243,8 @@ app-position-template-drawer {
   width: 300px;
   height: calc(100vh - 115px);
   align-self: stretch;
-  border-left: 1px solid var(--color-border);
+  border-left: 1px solid color-mix(in srgb, var(--color-border) 70%, transparent);
+  background: var(--color-surface);
 }
 
 
@@ -280,8 +281,7 @@ app-position-template-drawer {
 }
 
 .pm-tree-container--drop-active {
-  border-color: var(--color-accent);
-  box-shadow: inset 0 0 0 2px var(--color-accent);
+  background: color-mix(in srgb, var(--color-accent) 3%, var(--color-surface));
 }
 
 .pm-canvas-drop-overlay {
@@ -292,7 +292,7 @@ app-position-template-drawer {
   justify-content: center;
   gap: 0.5rem;
   border: 2px dashed var(--color-accent);
-  border-radius: 14px;
+  border-radius: 8px;
   background: color-mix(in srgb, var(--color-accent) 6%, transparent);
   color: var(--color-accent);
   font-size: 0.875rem;

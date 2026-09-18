@@ -56,7 +56,7 @@ const colors = { not_started: '#94A3B8', active: '#2563EB', done: '#16A34A' };
             <header>
               <b>{{ label(group) }}</b
               ><span>{{ rowsFor(group)().length }}</span>
-              @if (group !== 'done') {
+              @if (group !== 'done' || rowsFor('done')().length === 0) {
                 <button
                   type="button"
                   [disabled]="busy()"
@@ -71,14 +71,14 @@ const colors = { not_started: '#94A3B8', active: '#2563EB', done: '#16A34A' };
               cdkDropList
               [id]="'board-structure-drop-' + group"
               [cdkDropListData]="rowsFor(group)()"
-              [cdkDropListDisabled]="busy() || group === 'done'"
+              [cdkDropListDisabled]="busy() || (group === 'done' && rowsFor('done')().length >= 1)"
               (cdkDropListDropped)="onDrop($event, group)"
               class="board-structure__list"
             >
               @for (row of rowsFor(group)(); track row.id) {
                 <div
                   cdkDrag
-                  [cdkDragDisabled]="busy() || row.category === 'done'"
+                  [cdkDragDisabled]="busy()"
                   class="board-structure__row"
                 >
                   <span cdkDragHandle aria-hidden="true">⠿</span>
@@ -241,10 +241,10 @@ export class BoardStructureEditorComponent {
   private readonly taskApi = inject(TaskApiService);
   readonly groups = groups;
   readonly presets = [
-    { value: '#2563eb', label: 'Blue' },
+    { value: '#94a3b8', label: 'Gray' },
     { value: '#16a34a', label: 'Green' },
-    { value: '#7c3aed', label: 'Purple' },
-    { value: '#ea580c', label: 'Orange' },
+    { value: '#2563eb', label: 'Blue' },
+    { value: '#dc2626', label: 'Red' },
   ];
   open = input(false);
   projectId = input.required<string>();
@@ -308,7 +308,9 @@ export class BoardStructureEditorComponent {
       'board-structure-drop-',
       '',
     ) as TaskStatusCategory;
-    if (!groups.includes(source) || target === 'done' || source === 'done') return;
+    if (!groups.includes(source)) return;
+    if (target === 'done' && source !== 'done' && this.done().length >= 1) return;
+    if (source === 'done' && target !== 'done' && this.done().length <= 1) return;
     const sourceRows = [...event.previousContainer.data],
       targetRows = [...event.container.data];
     if (event.previousContainer === event.container) {
@@ -345,7 +347,7 @@ export class BoardStructureEditorComponent {
     this.update(id, (row) => ({ ...row, color }));
   }
   startAdd(group: TaskStatusCategory) {
-    if (group === 'done' || this.busy()) return;
+    if ((group === 'done' && this.done().length >= 1) || this.busy()) return;
     this.addingTo.set(group);
     this.newStatusName.set('');
   }
@@ -356,7 +358,7 @@ export class BoardStructureEditorComponent {
   async confirmAdd() {
     const group = this.addingTo(),
       name = this.newStatusName().trim();
-    if (!group || group === 'done' || !name || this.busy()) return;
+    if (!group || (group === 'done' && this.done().length >= 1) || !name || this.busy()) return;
     this.mutating.set(true);
     this.errorMessage.set(null);
     try {

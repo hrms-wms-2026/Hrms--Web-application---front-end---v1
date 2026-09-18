@@ -99,7 +99,60 @@ const STEP_ITEMS = [
                       }
                     </button>
                   }
+                  @if (addingCategory()) {
+                    <div data-testid="add-category-form" class="proj-category-card proj-category-add-form">
+                      <input
+                        #newCategoryInput
+                        type="text"
+                        class="proj-category-add-input"
+                        placeholder="Category name"
+                        maxlength="100"
+                        [value]="newCategoryName()"
+                        (input)="newCategoryName.set($any($event.target).value)"
+                        (keydown.enter)="confirmAddCategory()"
+                        (keydown.escape)="cancelAddCategory()"
+                      />
+                      <div class="proj-category-add-actions">
+                        <button
+                          type="button"
+                          class="proj-category-add-btn proj-category-add-btn--confirm"
+                          data-testid="confirm-add-category"
+                          [disabled]="creatingCategory()"
+                          (click)="confirmAddCategory()"
+                          aria-label="Save category"
+                        >
+                          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+                        </button>
+                        <button
+                          type="button"
+                          class="proj-category-add-btn proj-category-add-btn--cancel"
+                          data-testid="cancel-add-category"
+                          [disabled]="creatingCategory()"
+                          (click)="cancelAddCategory()"
+                          aria-label="Cancel"
+                        >
+                          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" /></svg>
+                        </button>
+                      </div>
+                    </div>
+                  } @else {
+                    <button
+                      type="button"
+                      data-testid="add-category-button"
+                      class="proj-category-card proj-category-card--add"
+                      (click)="startAddCategory()"
+                    >
+                      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="shrink-0"><line x1="12" y1="5" x2="12" y2="19" /><line x1="5" y1="12" x2="19" y2="12" /></svg>
+                      <span class="truncate text-left">Add Category</span>
+                    </button>
+                  }
                 </div>
+                @if (addCategoryError()) {
+                  <p class="text-xs font-medium text-[var(--color-danger-text)] flex items-center gap-1" role="alert">
+                    <svg class="h-3.5 w-3.5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+                    {{ addCategoryError() }}
+                  </p>
+                }
                 @if (errors()['categoryId']) {
                   <p class="text-xs font-medium text-[var(--color-danger-text)] flex items-center gap-1" role="alert">
                     <svg class="h-3.5 w-3.5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
@@ -503,6 +556,68 @@ const STEP_ITEMS = [
       box-shadow: 0 1px 3px rgba(0,0,0,0.05);
     }
 
+    .proj-category-card--add {
+      border-style: dashed;
+      color: var(--color-text-secondary);
+      justify-content: flex-start;
+      gap: 0.5rem;
+    }
+    .proj-category-card--add:hover {
+      color: var(--color-accent);
+    }
+
+    .proj-category-add-form {
+      display: flex;
+      align-items: center;
+      gap: 0.375rem;
+      padding: 0.375rem 0.5rem;
+    }
+    .proj-category-add-input {
+      min-width: 0;
+      flex: 1;
+      border: 1px solid var(--color-border);
+      border-radius: 6px;
+      background: var(--color-surface);
+      color: var(--color-text-primary);
+      font-size: 0.75rem;
+      font-weight: 500;
+      padding: 0.3rem 0.5rem;
+      outline: none;
+    }
+    .proj-category-add-input:focus {
+      border-color: var(--color-accent);
+    }
+    .proj-category-add-actions {
+      display: flex;
+      align-items: center;
+      gap: 0.25rem;
+      flex-shrink: 0;
+    }
+    .proj-category-add-btn {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      width: 22px;
+      height: 22px;
+      border-radius: 6px;
+      cursor: pointer;
+      flex-shrink: 0;
+    }
+    .proj-category-add-btn:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+    }
+    .proj-category-add-btn--confirm {
+      border: none;
+      background: var(--color-accent);
+      color: white;
+    }
+    .proj-category-add-btn--cancel {
+      border: 1px solid var(--color-border);
+      background: var(--color-surface);
+      color: var(--color-text-secondary);
+    }
+
     .proj-file-input {
       position: relative;
       display: flex;
@@ -600,6 +715,11 @@ export class ProjectFormModalComponent implements OnInit {
   pickerOpen = signal(false);
   errors = signal<Record<string, string>>({});
 
+  addingCategory = signal(false);
+  newCategoryName = signal('');
+  creatingCategory = signal(false);
+  addCategoryError = signal('');
+
   constructor() {
     effect(() => {
       if (this.open()) {
@@ -617,6 +737,10 @@ export class ProjectFormModalComponent implements OnInit {
         this.memberEmployeeIds.set([]);
         this.pickerOpen.set(false);
         this.errors.set({});
+        this.addingCategory.set(false);
+        this.newCategoryName.set('');
+        this.creatingCategory.set(false);
+        this.addCategoryError.set('');
       }
     });
   }
@@ -633,6 +757,39 @@ export class ProjectFormModalComponent implements OnInit {
 
   selectedCategoryName(): string {
     return this.categoryStore.categories().find((c) => c.id === this.categoryId())?.name ?? '';
+  }
+
+  startAddCategory(): void {
+    this.addingCategory.set(true);
+    this.newCategoryName.set('');
+    this.addCategoryError.set('');
+  }
+
+  cancelAddCategory(): void {
+    this.addingCategory.set(false);
+    this.newCategoryName.set('');
+    this.addCategoryError.set('');
+  }
+
+  async confirmAddCategory(): Promise<void> {
+    const name = this.newCategoryName().trim();
+    if (!name) {
+      this.addCategoryError.set('Category name is required.');
+      return;
+    }
+
+    this.creatingCategory.set(true);
+    this.addCategoryError.set('');
+    try {
+      const category = await this.categoryStore.createCategory(name);
+      this.categoryId.set(category.id);
+      this.addingCategory.set(false);
+      this.newCategoryName.set('');
+    } catch (err: any) {
+      this.addCategoryError.set(err?.error?.detail || err?.error?.message || err?.message || 'Failed to create category.');
+    } finally {
+      this.creatingCategory.set(false);
+    }
   }
 
   allocatedHoursDisplay(): string {

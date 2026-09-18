@@ -31,4 +31,14 @@ describe('ProjectCategoryApiService', () => {
     expect(req.request.method).toBe('GET');
     req.flush(mockCategories);
   });
+
+  it('creates a project category', () => {
+    const created: ProjectCategoryDto = { id: 'cat3', name: 'Design' };
+    service.create('Design').subscribe((category) => expect(category).toEqual(created));
+
+    const req = httpMock.expectOne(`${environment.apiUrl}/work/project-categories`);
+    expect(req.request.method).toBe('POST');
+    expect(req.request.body).toEqual({ name: 'Design' });
+    req.flush(created);
+  });
 });
