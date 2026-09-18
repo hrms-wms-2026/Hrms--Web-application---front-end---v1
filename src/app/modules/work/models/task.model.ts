@@ -1,10 +1,15 @@
+export type TaskStatusCategory = 'not_started' | 'active' | 'done';
+
 export interface TaskStatusColumn {
   id: string;
   name: string;
   displayOrder: number;
   requiresApproval: boolean;
+  approverId?: string | null;
   marksTaskComplete: boolean;
   visibility: 'public' | 'private';
+  category: TaskStatusCategory;
+  color: string;
 }
 
 export interface TaskAttachment {

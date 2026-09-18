@@ -24,9 +24,9 @@ describe('TaskCardComponent', () => {
   };
 
   const statuses: TaskStatusColumn[] = [
-    { id: 's1', name: 'To Do', displayOrder: 0, requiresApproval: false, marksTaskComplete: false, visibility: 'public' },
-    { id: 's2', name: 'Done', displayOrder: 1, requiresApproval: false, marksTaskComplete: true, visibility: 'public' },
-    { id: 's3', name: 'Internal Review', displayOrder: 2, requiresApproval: false, marksTaskComplete: false, visibility: 'private' }
+    { id: 's1', name: 'To Do', displayOrder: 0, requiresApproval: false, marksTaskComplete: false, category: 'active', color: '#2563EB', visibility: 'public' },
+    { id: 's2', name: 'Done', displayOrder: 1, requiresApproval: false, marksTaskComplete: true, category: 'done', color: '#2563EB', visibility: 'public' },
+    { id: 's3', name: 'Internal Review', displayOrder: 2, requiresApproval: false, marksTaskComplete: false, category: 'active', color: '#2563EB', visibility: 'private' }
   ];
 
     function setup(overrides: { employeeNames?: Record<string, string>; task?: WorkTask; currentEmployeeId?: string } = {}): void {

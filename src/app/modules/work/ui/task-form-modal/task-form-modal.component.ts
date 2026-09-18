@@ -971,7 +971,7 @@ export const ALL_SLASH_COMMANDS: SlashCommandItem[] = [
                             [compact]="true"
                             [hasOpenSessionMine]="hasOpenSessionMine()"
                             [hasOpenSessionOtherEmployee]="hasOpenSessionOtherEmployee()"
-                            (clockedIn)="reloadHistory()"
+                            (clockedIn)="onTaskClockedIn()"
                             (pushed)="onTaskPushed($event)"
                           />
                         } @else {
@@ -2113,6 +2113,16 @@ export class TaskFormModalComponent {
     } catch {
       /* keep the current feed */
     }
+  }
+
+  async onTaskClockedIn(): Promise<void> {
+    this.saved.emit();
+    try {
+      this.task.set(toWorkTask(await firstValueFrom(this.taskApi.getTaskById(this.taskId()))));
+    } catch {
+      this.errorMessage.set('Time tracking started, but the task could not be refreshed. Reopen it to see the latest status.');
+    }
+    await this.reloadHistory();
   }
 
   async onTaskPushed(updated: WorkTask): Promise<void> {
