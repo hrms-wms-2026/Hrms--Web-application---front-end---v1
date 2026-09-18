@@ -8,7 +8,8 @@ const WORK_RELATED_TYPES = new Set([
   'task',
   'task_creation_request',
   'objective_change_request',
-  'allocation_extend'
+  'allocation_extend',
+  'project_member_invitation'
 ]);
 
 /** Where a notification click should take the viewer - shared by the top-navbar bell dropdown
@@ -42,7 +43,7 @@ export class NotificationNavigationService {
     try {
       const nav = await firstValueFrom(this.taskApi.getNotificationNavigation(type, id));
       // 'board' is a sibling of 'milestones/:milestoneId' (/work/:id/board), not nested under
-      // it - only 'approvals' actually lives under milestones/:objectiveId.
+      // it - only 'approvals'/'tree' actually live under milestones/:objectiveId.
       const commands =
         nav.targetTab === 'board'
           ? ['/work', nav.projectId, 'board']
@@ -50,7 +51,9 @@ export class NotificationNavigationService {
       const extras =
         nav.targetTab === 'board' && nav.taskId
           ? { queryParams: { highlightTaskId: nav.taskId } }
-          : {};
+          : nav.targetTab === 'tree'
+            ? { queryParams: { openMembers: '1' } }
+            : {};
       await this.router.navigate(commands, extras);
     } catch {
       await this.router.navigate(['/work']);

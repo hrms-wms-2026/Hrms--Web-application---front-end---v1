@@ -4,7 +4,7 @@ import { firstValueFrom } from 'rxjs';
 import { WorkApprovalsStore } from '../../state/work-approvals.store';
 import { WorkPageToolbarStore } from '../../state/work-page-toolbar.store';
 import { ApprovalItem } from '../../models/approval.model';
-import { AllocationRequestDto } from '../../models/dto/allocation-request.dto';
+import { AllocationRequestDto, EditObjectiveRequestPayloadDto } from '../../models/dto/allocation-request.dto';
 import { ApprovalRequestRowComponent } from '../../ui/approval-request-row/approval-request-row.component';
 import { WorkApprovalsApiService } from '../../data-access/work-approvals-api.service';
 import { ProjectApiService } from '../../data-access/project-api.service';
@@ -187,9 +187,9 @@ export class WorkApprovalsComponent implements OnInit, AfterViewInit, OnDestroy 
     return null;
   }
 
-  async onApprove(item: ApprovalItem, approvedAdditionalHours?: number): Promise<void> {
+  async onApprove(item: ApprovalItem, override?: number | EditObjectiveRequestPayloadDto): Promise<void> {
     this.lastFailedId = null;
-    const ok = await this.store.approve(item, approvedAdditionalHours);
+    const ok = await this.store.approve(item, override);
     if (!ok) this.lastFailedId = item.id;
   }
 

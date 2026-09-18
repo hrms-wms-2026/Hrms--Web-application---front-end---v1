@@ -1,5 +1,5 @@
 import { ApprovalItem } from '../models/approval.model';
-import { AllocationRequestDto, AllocationRequestPayloadDto, ObjectiveChangeRequestDto } from '../models/dto/allocation-request.dto';
+import { AllocationRequestDto, AllocationRequestPayloadDto, EditObjectiveRequestPayloadDto, ObjectiveChangeRequestDto } from '../models/dto/allocation-request.dto';
 import { ObjectiveInvitationDto } from '../models/dto/objective-invitation.dto';
 import { TaskCreationRequestDto } from '../models/dto/task-creation-request.dto';
 
@@ -70,6 +70,26 @@ export function toApprovalItem(
     };
   }
 
+  if (change.requestType === 'edit') {
+    const payload = parseEditPayload(change.payloadJson);
+    return {
+      id: change.id,
+      kind: 'objective_edit',
+      title: payload ? `Edit: ${payload.title}` : 'Milestone edit',
+      description: `Objective ${change.objectiveId}`,
+      requestedByName: null,
+      createdAt: change.createdAt,
+      raw: {
+        id: change.id,
+        objectiveId: change.objectiveId,
+        requestType: 'edit',
+        status: change.status,
+        payload: payload ?? { title: '', description: null, startDate: '', endDate: '', allocatedHours: 0 },
+        createdAt: change.createdAt
+      }
+    };
+  }
+
   return {
     id: change.id,
     kind: 'objective_change',
@@ -86,6 +106,20 @@ function parseAllocationPayload(payloadJson: string | null): AllocationRequestPa
   try {
     const parsed = JSON.parse(payloadJson) as AllocationRequestPayloadDto;
     if (typeof parsed.requestedAdditionalHours === 'number' && typeof parsed.reason === 'string') {
+      return parsed;
+    }
+  } catch {
+    /* ignore */
+  }
+  return null;
+}
+
+function parseEditPayload(payloadJson: string | null): EditObjectiveRequestPayloadDto | null {
+  if (!payloadJson) return null;
+  try {
+    const parsed = JSON.parse(payloadJson) as EditObjectiveRequestPayloadDto;
+    if (typeof parsed.title === 'string' && typeof parsed.startDate === 'string'
+      && typeof parsed.endDate === 'string' && typeof parsed.allocatedHours === 'number') {
       return parsed;
     }
   } catch {

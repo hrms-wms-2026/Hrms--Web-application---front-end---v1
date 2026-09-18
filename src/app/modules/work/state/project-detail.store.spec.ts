@@ -314,29 +314,6 @@ describe('ProjectDetailStore', () => {
     expect(result).toEqual({ success: true, applied: false, viaInvitation: true });
   });
 
-  it('loadMyInvitations populates myInvitations', async () => {
-    const memberApi = { getMyInvitations: vi.fn().mockReturnValue(of([{ id: 'i1' } as ObjectiveInvitationDto])) };
-    const store = createStoreWithMemberApi(memberApi);
-
-    await store.loadMyInvitations();
-
-    expect(store.myInvitations()).toEqual([{ id: 'i1' }]);
-  });
-
-  it('acceptInvitation returns success:true and clears the accepted invitation from myInvitations', async () => {
-    const memberApi = {
-      getMyInvitations: vi.fn().mockReturnValue(of([{ id: 'i1' } as ObjectiveInvitationDto])),
-      acceptInvitation: vi.fn().mockReturnValue(of(new HttpResponse<void>({ status: 204 })))
-    };
-    const store = createStoreWithMemberApi(memberApi);
-    await store.loadMyInvitations();
-
-    const result = await store.acceptInvitation('i1');
-
-    expect(result).toEqual({ success: true });
-    expect(store.myInvitations()).toEqual([]);
-  });
-
   describe('loadSprintsAndTasksForLeaf', () => {
 
     const sprintDto: SprintDto = {

@@ -3,7 +3,7 @@ import { patchState, signalStore, withComputed, withMethods, withState } from '@
 import { firstValueFrom } from 'rxjs';
 import { WorkApprovalsApiService } from '../data-access/work-approvals-api.service';
 import { ApprovalItem } from '../models/approval.model';
-import { AllocationRequestDto } from '../models/dto/allocation-request.dto';
+import { AllocationRequestDto, EditObjectiveRequestPayloadDto } from '../models/dto/allocation-request.dto';
 import { toApprovalItem } from '../utils/approval.mapper';
 
 interface WorkApprovalsState {
@@ -61,7 +61,7 @@ export const WorkApprovalsStore = signalStore(
       }
     },
 
-    async approve(item: ApprovalItem, approvedAdditionalHours?: number): Promise<boolean> {
+    async approve(item: ApprovalItem, override?: number | EditObjectiveRequestPayloadDto): Promise<boolean> {
       patchState(store, { error: null });
       try {
         switch (item.kind) {
@@ -75,7 +75,7 @@ export const WorkApprovalsStore = signalStore(
             const allocation = item.raw as AllocationRequestDto;
             await firstValueFrom(api.approveAllocationRequest(
               item.id,
-              approvedAdditionalHours ?? allocation.payload.requestedAdditionalHours
+              typeof override === 'number' ? override : allocation.payload.requestedAdditionalHours
             ));
             patchState(store, {
               allocationRequests: store.allocationRequests().filter((i) => i.id !== item.id)
@@ -84,6 +84,15 @@ export const WorkApprovalsStore = signalStore(
           }
           case 'objective_change':
             await firstValueFrom(api.approveObjectiveChangeRequest(item.id));
+            patchState(store, {
+              objectiveChangeRequests: store.objectiveChangeRequests().filter((i) => i.id !== item.id)
+            });
+            break;
+          case 'objective_edit':
+            await firstValueFrom(api.approveObjectiveChangeRequest(
+              item.id,
+              typeof override === 'object' ? override : undefined
+            ));
             patchState(store, {
               objectiveChangeRequests: store.objectiveChangeRequests().filter((i) => i.id !== item.id)
             });
@@ -119,6 +128,7 @@ export const WorkApprovalsStore = signalStore(
             });
             break;
           case 'objective_change':
+          case 'objective_edit':
             await firstValueFrom(api.rejectObjectiveChangeRequest(item.id));
             patchState(store, {
               objectiveChangeRequests: store.objectiveChangeRequests().filter((i) => i.id !== item.id)

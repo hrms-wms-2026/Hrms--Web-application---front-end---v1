@@ -24,6 +24,11 @@ describe('WorkApprovalsStore', () => {
         id: 'c1', objectiveId: 'obj-1', requestType: 'edit_fields', requestedById: 'e1',
         reportingManagerId: 'e2', status: 'pending' as const, payloadJson: null,
         decidedAt: null, decidedById: null, createdAt: '2026-08-17T00:00:00Z'
+      }, {
+        id: 'e1', objectiveId: 'obj-1', requestType: 'edit', requestedById: 'e1',
+        reportingManagerId: 'e2', status: 'pending' as const,
+        payloadJson: JSON.stringify({ title: 'New Title', description: null, startDate: '2026-01-10', endDate: '2026-02-10', allocatedHours: 15 }),
+        decidedAt: null, decidedById: null, createdAt: '2026-08-17T00:00:00Z'
       }]),
       getMyObjectiveInvitations: () => of([{
         id: 'i1', projectId: 'p1', objectiveId: 'obj-1', invitedEmployeeId: 'e3',
@@ -53,9 +58,9 @@ describe('WorkApprovalsStore', () => {
 
     expect(store.taskCreationRequests().length).toBe(1);
     expect(store.allocationRequests().length).toBe(1);
-    expect(store.objectiveChangeRequests().length).toBe(1);
+    expect(store.objectiveChangeRequests().length).toBe(2);
     expect(store.objectiveInvitations().length).toBe(1);
-    expect(store.pendingCount()).toBe(4);
+    expect(store.pendingCount()).toBe(5);
   });
 
   it('approve removes the item from the matching list', async () => {
@@ -93,5 +98,41 @@ describe('WorkApprovalsStore', () => {
 
     expect(store.error()).toContain("You don't have enough allocation yourself");
     expect(store.allocationRequests().length).toBe(1);
+  });
+
+  it('approve on an objective_edit item approves as-is when the approver made no changes', async () => {
+    const approveObjectiveChangeRequest = vi.fn().mockReturnValue(of(undefined));
+    const store = setup({ approveObjectiveChangeRequest });
+    await store.loadAll();
+    const item = store.objectiveChangeRequests().find((i) => i.kind === 'objective_edit')!;
+
+    await store.approve(item);
+
+    expect(approveObjectiveChangeRequest).toHaveBeenCalledWith('e1', undefined);
+    expect(store.objectiveChangeRequests().some((i) => i.id === 'e1')).toBe(false);
+  });
+
+  it('approve on an objective_edit item passes the approver-edited fields when provided', async () => {
+    const approveObjectiveChangeRequest = vi.fn().mockReturnValue(of(undefined));
+    const store = setup({ approveObjectiveChangeRequest });
+    await store.loadAll();
+    const item = store.objectiveChangeRequests().find((i) => i.kind === 'objective_edit')!;
+    const approvedEdit = { title: 'Approver Title', description: null, startDate: '2026-01-12', endDate: '2026-02-05', allocatedHours: 10 };
+
+    await store.approve(item, approvedEdit);
+
+    expect(approveObjectiveChangeRequest).toHaveBeenCalledWith('e1', approvedEdit);
+  });
+
+  it('reject on an objective_edit item routes through the change-request reject endpoint', async () => {
+    const rejectObjectiveChangeRequest = vi.fn().mockReturnValue(of(undefined));
+    const store = setup({ rejectObjectiveChangeRequest });
+    await store.loadAll();
+    const item = store.objectiveChangeRequests().find((i) => i.kind === 'objective_edit')!;
+
+    await store.reject(item);
+
+    expect(rejectObjectiveChangeRequest).toHaveBeenCalledWith('e1');
+    expect(store.objectiveChangeRequests().some((i) => i.id === 'e1')).toBe(false);
   });
 });

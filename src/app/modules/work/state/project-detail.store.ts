@@ -10,7 +10,7 @@ import { toTaskStatusColumn } from '../utils/task.mapper';
 import { ProjectDetail } from '../models/project.model';
 import { Milestone, MilestoneTreeNode, ObjectiveDetail } from '../models/milestone.model';
 import { EditObjectiveRequestDto, CreateObjectiveRequestDto, ObjectiveAssetDto } from '../models/dto/milestone.dto';
-import { ObjectiveMemberItemDto, ObjectiveInvitationDto } from '../models/dto/objective-invitation.dto';
+import { ObjectiveMemberItemDto } from '../models/dto/objective-invitation.dto';
 
 interface ProjectDetailState {
   readonly project: ProjectDetail | null;
@@ -26,7 +26,6 @@ interface ProjectDetailState {
   readonly objectiveMembers: readonly ObjectiveMemberItemDto[];
   readonly objectiveMembersLoading: boolean;
   readonly objectiveMembersError: string | null;
-  readonly myInvitations: readonly ObjectiveInvitationDto[];
   /** Union of every member across every module the caller can reach in this project (deduped
    *  by employeeId) - the assignee source for task-create flows everywhere (Tree/Board/Backlog),
    *  rather than whichever specific module a create-task click happened to be scoped to. Not
@@ -42,7 +41,6 @@ const initialState: ProjectDetailState = {
   selectedSubtree: null, subtreeLoading: false, subtreeError: null,
   milestoneActionError: null,
   objectiveMembers: [], objectiveMembersLoading: false, objectiveMembersError: null,
-  myInvitations: [],
   projectMembers: [], projectMembersLoading: false
 };
 
@@ -259,37 +257,6 @@ export const ProjectDetailStore = signalStore(
       } catch (err) {
         patchState(store, { milestoneActionError: extractError(err, 'Failed to transfer leadership.') });
         return { success: false, applied: false, viaInvitation: false };
-      }
-    },
-
-    async loadMyInvitations(): Promise<void> {
-      try {
-        const dtos = await firstValueFrom(memberApi.getMyInvitations());
-        patchState(store, { myInvitations: dtos });
-      } catch (err) {
-        patchState(store, { milestoneActionError: extractError(err, 'Failed to load invitations.') });
-      }
-    },
-
-    async acceptInvitation(invitationId: string): Promise<{ success: boolean }> {
-      try {
-        await firstValueFrom(memberApi.acceptInvitation(invitationId));
-        patchState(store, { myInvitations: store.myInvitations().filter((i) => i.id !== invitationId), milestoneActionError: null });
-        return { success: true };
-      } catch (err) {
-        patchState(store, { milestoneActionError: extractError(err, 'Failed to accept invitation.') });
-        return { success: false };
-      }
-    },
-
-    async rejectInvitation(invitationId: string): Promise<{ success: boolean }> {
-      try {
-        await firstValueFrom(memberApi.rejectInvitation(invitationId));
-        patchState(store, { myInvitations: store.myInvitations().filter((i) => i.id !== invitationId), milestoneActionError: null });
-        return { success: true };
-      } catch (err) {
-        patchState(store, { milestoneActionError: extractError(err, 'Failed to reject invitation.') });
-        return { success: false };
       }
     },
 
