@@ -24,6 +24,7 @@ describe('WorkApprovalsComponent', () => {
       error: () => null,
       pendingCount: () => 0,
       taskCreationRequests: () => [],
+      taskEditRequests: () => [],
       allocationRequests: () => [],
       objectiveChangeRequests: () => [],
       objectiveInvitations: () => [],
@@ -118,6 +119,7 @@ describe('WorkApprovalsComponent', () => {
     const item: ApprovalItem = {
       id: 'allocation-1',
       kind: 'allocation_extend',
+      objectiveId: 'obj-1',
       title: '+20h requested',
       description: 'Need more',
       requestedByName: null,

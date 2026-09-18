@@ -1,4 +1,4 @@
-import { AfterViewInit, Component, inject, OnDestroy, OnInit, signal, TemplateRef, viewChild } from '@angular/core';
+import { AfterViewInit, Component, computed, inject, OnDestroy, OnInit, signal, TemplateRef, viewChild } from '@angular/core';
 import { ActivatedRoute } from '@angular/router';
 import { firstValueFrom } from 'rxjs';
 import { WorkApprovalsStore } from '../../state/work-approvals.store';
@@ -34,10 +34,10 @@ import { ButtonComponent } from '../../../../shared/ui/button/button.component';
           <h1>Approvals</h1>
         </div>
 
-        @if (store.taskCreationRequests().length > 0) {
+        @if (taskCreationRequests().length > 0) {
         <section>
-          <h2>Task Creation Requests <span>{{ store.taskCreationRequests().length }}</span></h2>
-          @for (item of store.taskCreationRequests(); track item.id) {
+          <h2>Task Creation Requests <span>{{ taskCreationRequests().length }}</span></h2>
+          @for (item of taskCreationRequests(); track item.id) {
             <app-approval-request-row
               [item]="item"
               (approved)="onApprove(item, $event)"
@@ -47,10 +47,23 @@ import { ButtonComponent } from '../../../../shared/ui/button/button.component';
         </section>
         }
 
-        @if (store.allocationRequests().length > 0) {
+        @if (taskEditRequests().length > 0) {
         <section>
-          <h2>Allocation Requests <span>{{ store.allocationRequests().length }}</span></h2>
-          @for (item of store.allocationRequests(); track item.id) {
+          <h2>Task Edit Requests <span>{{ taskEditRequests().length }}</span></h2>
+          @for (item of taskEditRequests(); track item.id) {
+            <app-approval-request-row
+              [item]="item"
+              (approved)="onApprove(item, $event)"
+              (rejected)="onReject(item, $event)"
+            />
+          }
+        </section>
+        }
+
+        @if (allocationRequests().length > 0) {
+        <section>
+          <h2>Allocation Requests <span>{{ allocationRequests().length }}</span></h2>
+          @for (item of allocationRequests(); track item.id) {
             <app-approval-request-row
               [item]="item"
               [inlineError]="activeErrorFor(item)"
@@ -62,10 +75,10 @@ import { ButtonComponent } from '../../../../shared/ui/button/button.component';
         </section>
         }
 
-        @if (store.objectiveChangeRequests().length > 0) {
+        @if (objectiveChangeRequests().length > 0) {
         <section>
-          <h2>Objective Change Requests <span>{{ store.objectiveChangeRequests().length }}</span></h2>
-          @for (item of store.objectiveChangeRequests(); track item.id) {
+          <h2>Objective Change Requests <span>{{ objectiveChangeRequests().length }}</span></h2>
+          @for (item of objectiveChangeRequests(); track item.id) {
             <app-approval-request-row
               [item]="item"
               (approved)="onApprove(item, $event)"
@@ -75,10 +88,10 @@ import { ButtonComponent } from '../../../../shared/ui/button/button.component';
         </section>
         }
 
-        @if (store.objectiveInvitations().length > 0) {
+        @if (objectiveInvitations().length > 0) {
         <section>
-          <h2>Objective Invitations <span>{{ store.objectiveInvitations().length }}</span></h2>
-          @for (item of store.objectiveInvitations(); track item.id) {
+          <h2>Objective Invitations <span>{{ objectiveInvitations().length }}</span></h2>
+          @for (item of objectiveInvitations(); track item.id) {
             <app-approval-request-row
               [item]="item"
               (approved)="onApprove(item, $event)"
@@ -168,6 +181,18 @@ export class WorkApprovalsComponent implements OnInit, AfterViewInit, OnDestroy 
   protected readonly modules = signal<readonly { objectiveId: string; title: string; isOwner?: boolean }[]>([]);
   protected readonly moduleOptions = signal<readonly WorkDropdownOption[]>([]);
   private prefillObjectiveId: string | null = null;
+
+  // The store's "mine" lists span every project the caller owns modules in; scope each one down
+  // to this project's modules so a project's Approvals page only shows that project's requests.
+  private readonly moduleIds = computed(() => new Set(this.modules().map((m) => m.objectiveId)));
+  private readonly scopedToProject = (items: readonly ApprovalItem[]) =>
+    items.filter((item) => this.moduleIds().has(item.objectiveId));
+
+  protected readonly taskCreationRequests = computed(() => this.scopedToProject(this.store.taskCreationRequests()));
+  protected readonly taskEditRequests = computed(() => this.scopedToProject(this.store.taskEditRequests()));
+  protected readonly allocationRequests = computed(() => this.scopedToProject(this.store.allocationRequests()));
+  protected readonly objectiveChangeRequests = computed(() => this.scopedToProject(this.store.objectiveChangeRequests()));
+  protected readonly objectiveInvitations = computed(() => this.scopedToProject(this.store.objectiveInvitations()));
 
   ngOnInit(): void {
     void this.store.loadAll();

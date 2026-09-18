@@ -42,11 +42,12 @@ export class NotificationNavigationService {
 
     try {
       const nav = await firstValueFrom(this.taskApi.getNotificationNavigation(type, id));
-      // 'board' is a sibling of 'milestones/:milestoneId' (/work/:id/board), not nested under
-      // it - only 'approvals'/'tree' actually live under milestones/:objectiveId.
+      // 'board' and 'approvals' are project-level siblings of 'milestones/:milestoneId'
+      // (/work/:id/board, /work/:id/approvals) - only 'tree' actually lives under
+      // milestones/:objectiveId.
       const commands =
-        nav.targetTab === 'board'
-          ? ['/work', nav.projectId, 'board']
+        nav.targetTab === 'board' || nav.targetTab === 'approvals'
+          ? ['/work', nav.projectId, nav.targetTab]
           : ['/work', nav.projectId, 'milestones', nav.objectiveId, nav.targetTab];
       const extras =
         nav.targetTab === 'board' && nav.taskId

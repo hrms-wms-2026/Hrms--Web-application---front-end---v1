@@ -15,6 +15,14 @@ describe('WorkApprovalsStore', () => {
         },
         createdAt: '2026-08-17T00:00:00Z'
       }]),
+      getMyTaskEditRequests: () => of([{
+        id: 'te1', taskId: 'task-1', objectiveId: 'obj-1', status: 'pending' as const,
+        payload: {
+          title: 'Update estimate', description: null, priority: 'medium',
+          dueDate: null, estimatedHours: 8, storyPoints: null
+        },
+        requestedByName: 'Abitha Devendran', createdAt: '2026-08-17T00:00:00Z'
+      }]),
       getMyAllocationRequests: () => of([{
         id: 'a1', objectiveId: 'obj-1', requestType: 'extend_allocation' as const, status: 'pending' as const,
         payload: { requestedAdditionalHours: 8, reason: 'Need more' },
@@ -37,6 +45,8 @@ describe('WorkApprovalsStore', () => {
       }]),
       approveTaskCreationRequest: () => of({}),
       rejectTaskCreationRequest: () => of(undefined),
+      approveTaskEditRequest: () => of({}),
+      rejectTaskEditRequest: () => of(undefined),
       approveAllocationRequest: () => of(undefined),
       rejectAllocationRequest: () => of(undefined),
       approveObjectiveChangeRequest: () => of(undefined),
@@ -52,15 +62,40 @@ describe('WorkApprovalsStore', () => {
     return TestBed.inject(WorkApprovalsStore);
   }
 
-  it('loadAll populates all four approval lists', async () => {
+  it('loadAll populates all five approval lists', async () => {
     const store = setup();
     await store.loadAll();
 
     expect(store.taskCreationRequests().length).toBe(1);
+    expect(store.taskEditRequests().length).toBe(1);
     expect(store.allocationRequests().length).toBe(1);
     expect(store.objectiveChangeRequests().length).toBe(2);
     expect(store.objectiveInvitations().length).toBe(1);
-    expect(store.pendingCount()).toBe(5);
+    expect(store.pendingCount()).toBe(6);
+  });
+
+  it('approve on a task_edit item routes through the task-edit-request approve endpoint', async () => {
+    const approveTaskEditRequest = vi.fn().mockReturnValue(of({}));
+    const store = setup({ approveTaskEditRequest });
+    await store.loadAll();
+    const item = store.taskEditRequests()[0];
+
+    await store.approve(item);
+
+    expect(approveTaskEditRequest).toHaveBeenCalledWith('te1');
+    expect(store.taskEditRequests().length).toBe(0);
+  });
+
+  it('reject on a task_edit item routes through the task-edit-request reject endpoint with the comment', async () => {
+    const rejectTaskEditRequest = vi.fn().mockReturnValue(of(undefined));
+    const store = setup({ rejectTaskEditRequest });
+    await store.loadAll();
+    const item = store.taskEditRequests()[0];
+
+    await store.reject(item, 'Not now');
+
+    expect(rejectTaskEditRequest).toHaveBeenCalledWith('te1', 'Not now');
+    expect(store.taskEditRequests().length).toBe(0);
   });
 
   it('approve removes the item from the matching list', async () => {

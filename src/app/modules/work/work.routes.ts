@@ -19,17 +19,13 @@ export const WORK_ROUTES: Routes = [
             path: 'tree',
             loadComponent: () =>
               import('./feature/milestone-tree-tab/milestone-tree-tab.component').then((m) => m.MilestoneTreeTabComponent)
-          },
-
-          {
-            path: 'approvals',
-            loadComponent: () =>
-              import('./feature/work-approvals/work-approvals.component').then((m) => m.WorkApprovalsComponent)
-          },
-          
-          
-          
+          }
         ]
+      },
+      {
+        path: 'approvals',
+        loadComponent: () =>
+          import('./feature/work-approvals/work-approvals.component').then((m) => m.WorkApprovalsComponent)
       },
       {
         path: 'board',

@@ -17,6 +17,7 @@ function allocationItem(requestedAdditionalHours = 20): ApprovalItem {
   return {
     id: raw.id,
     kind: 'allocation_extend',
+    objectiveId: raw.objectiveId,
     title: `+${requestedAdditionalHours}h requested`,
     description: raw.payload.reason,
     requestedByName: null,
@@ -37,6 +38,7 @@ function objectiveEditItem(): ApprovalItem {
   return {
     id: raw.id,
     kind: 'objective_edit',
+    objectiveId: raw.objectiveId,
     title: `Edit: ${raw.payload.title}`,
     description: `Objective ${raw.objectiveId}`,
     requestedByName: null,

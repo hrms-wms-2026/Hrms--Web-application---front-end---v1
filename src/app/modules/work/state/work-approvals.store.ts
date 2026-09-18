@@ -8,6 +8,7 @@ import { toApprovalItem } from '../utils/approval.mapper';
 
 interface WorkApprovalsState {
   readonly taskCreationRequests: readonly ApprovalItem[];
+  readonly taskEditRequests: readonly ApprovalItem[];
   readonly allocationRequests: readonly ApprovalItem[];
   readonly objectiveChangeRequests: readonly ApprovalItem[];
   readonly objectiveInvitations: readonly ApprovalItem[];
@@ -17,6 +18,7 @@ interface WorkApprovalsState {
 
 const initialState: WorkApprovalsState = {
   taskCreationRequests: [],
+  taskEditRequests: [],
   allocationRequests: [],
   objectiveChangeRequests: [],
   objectiveInvitations: [],
@@ -34,6 +36,7 @@ export const WorkApprovalsStore = signalStore(
   withComputed((store) => ({
     pendingCount: computed(() =>
       store.taskCreationRequests().length
+      + store.taskEditRequests().length
       + store.allocationRequests().length
       + store.objectiveChangeRequests().length
       + store.objectiveInvitations().length
@@ -43,14 +46,16 @@ export const WorkApprovalsStore = signalStore(
     async loadAll(): Promise<void> {
       patchState(store, { loading: true, error: null });
       try {
-        const [taskCreation, allocation, objectiveChange, invitations] = await Promise.all([
+        const [taskCreation, taskEdit, allocation, objectiveChange, invitations] = await Promise.all([
           firstValueFrom(api.getMyTaskCreationRequests()),
+          firstValueFrom(api.getMyTaskEditRequests()),
           firstValueFrom(api.getMyAllocationRequests()),
           firstValueFrom(api.getMyObjectiveChangeRequests()),
           firstValueFrom(api.getMyObjectiveInvitations())
         ]);
         patchState(store, {
           taskCreationRequests: taskCreation.map(toApprovalItem),
+          taskEditRequests: taskEdit.map(toApprovalItem),
           allocationRequests: allocation.map(toApprovalItem),
           objectiveChangeRequests: objectiveChange.map(toApprovalItem),
           objectiveInvitations: invitations.map(toApprovalItem),
@@ -69,6 +74,12 @@ export const WorkApprovalsStore = signalStore(
             await firstValueFrom(api.approveTaskCreationRequest(item.id));
             patchState(store, {
               taskCreationRequests: store.taskCreationRequests().filter((i) => i.id !== item.id)
+            });
+            break;
+          case 'task_edit':
+            await firstValueFrom(api.approveTaskEditRequest(item.id));
+            patchState(store, {
+              taskEditRequests: store.taskEditRequests().filter((i) => i.id !== item.id)
             });
             break;
           case 'allocation_extend': {
@@ -119,6 +130,12 @@ export const WorkApprovalsStore = signalStore(
             await firstValueFrom(api.rejectTaskCreationRequest(item.id, comment ?? ''));
             patchState(store, {
               taskCreationRequests: store.taskCreationRequests().filter((i) => i.id !== item.id)
+            });
+            break;
+          case 'task_edit':
+            await firstValueFrom(api.rejectTaskEditRequest(item.id, comment ?? ''));
+            patchState(store, {
+              taskEditRequests: store.taskEditRequests().filter((i) => i.id !== item.id)
             });
             break;
           case 'allocation_extend':
