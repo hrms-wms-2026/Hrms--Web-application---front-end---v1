@@ -36,4 +36,14 @@ describe('toWorkTask', () => {
     const dto: WorkTaskDto = { ...baseDto, totalLoggedMinutes: 145 };
     expect(toWorkTask(dto).totalLoggedMinutes).toBe(145);
   });
+
+  it('maps attachments through, defaulting to an empty array when absent', () => {
+    expect(toWorkTask(baseDto).attachments).toEqual([]);
+
+    const withAttachments: WorkTaskDto = {
+      ...baseDto,
+      attachments: [{ fileId: 'f1', fileName: 'a.pdf', fileSizeBytes: 100, contentType: 'application/pdf' }]
+    };
+    expect(toWorkTask(withAttachments).attachments).toEqual([{ fileId: 'f1', name: 'a.pdf', sizeBytes: 100 }]);
+  });
 });

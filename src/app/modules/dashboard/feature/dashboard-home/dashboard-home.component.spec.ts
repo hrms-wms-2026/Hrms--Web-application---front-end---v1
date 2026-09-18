@@ -74,7 +74,7 @@ describe('DashboardHomeComponent', () => {
 
     const text = fixture.nativeElement.textContent as string;
     expect(text).toContain('Arjun Kumar');
-    expect(text).toContain('View full timeline');
+    expect(text).toContain('Activity Timeline');
     expect(text).toContain('Quick Actions');
     expect(text).toContain('My Tasks');
     expect(text).toContain('Notifications');

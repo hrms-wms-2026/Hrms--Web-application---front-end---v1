@@ -172,28 +172,56 @@
       </div>
 
       <!-- Threshold settings row -->
-      <div class="threshold-field threshold-card">
-        <div class="threshold-card__icon">
-          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-            <circle cx="12" cy="12" r="10"/>
-            <polyline points="12 6 12 12 16 14"/>
-          </svg>
+      <div class="threshold-grid">
+        <div class="threshold-field threshold-card">
+          <div class="threshold-card__icon">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <circle cx="12" cy="12" r="10"/>
+              <polyline points="12 6 12 12 16 14"/>
+            </svg>
+          </div>
+          <div class="threshold-card__info">
+            <span class="threshold-card__title">Activity check threshold</span>
+            <small class="threshold-card__desc">Minutes of continuous inactivity before the existing check flow.</small>
+          </div>
+          <div class="threshold-card__input-group">
+            <input
+              type="number"
+              class="threshold-input"
+              min="1"
+              max="1440"
+              [value]="company.idleThresholdMinutes"
+              [disabled]="!hasWriteAccess()"
+              (change)="setCompanyThreshold($any($event.target).value)"
+            />
+            <span class="threshold-card__unit">minutes</span>
+          </div>
         </div>
-        <div class="threshold-card__info">
-          <span class="threshold-card__title">Activity check threshold</span>
-          <small class="threshold-card__desc">Minutes of continuous inactivity before the existing check flow.</small>
-        </div>
-        <div class="threshold-card__input-group">
-          <input
-            type="number"
-            class="threshold-input"
-            min="1"
-            max="1440"
-            [value]="company.idleThresholdMinutes"
-            [disabled]="!hasWriteAccess()"
-            (change)="setCompanyThreshold($any($event.target).value)"
-          />
-          <span class="threshold-card__unit">minutes</span>
+
+        <!-- Allowed range -->
+        <div class="threshold-field threshold-card">
+          <div class="threshold-card__icon">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0 1 16 0Z"/>
+              <circle cx="12" cy="10" r="3"/>
+            </svg>
+          </div>
+          <div class="threshold-card__info">
+            <span class="threshold-card__title">Allowed range</span>
+            <small class="threshold-card__desc">Maximum distance from the verified location permitted for location tracking checks.</small>
+          </div>
+          <div class="threshold-card__input-group">
+            <input
+              type="number"
+              class="threshold-input"
+              min="0"
+              [value]="company.allowedRadiusMeters ?? ''"
+              [disabled]="!hasWriteAccess()"
+              (change)="setCompanyAllowedRadius($any($event.target).value)"
+              placeholder="No limit"
+            />
+            <span class="threshold-card__unit">meters</span>
+          </div>
         </div>
       </div>
     </section>
@@ -275,6 +303,21 @@
               </div>
             </div>
 
+            <div class="form-group threshold-input-field">
+              <span class="form-label">Allowed range</span>
+              <div class="input-with-unit">
+                <input
+                  type="number"
+                  min="0"
+                  [value]="overrideForm().allowedRadiusMeters ?? ''"
+                  [disabled]="!hasWriteAccess()"
+                  (change)="setOverrideAllowedRadius($any($event.target).value)"
+                  placeholder="Inherited"
+                />
+                <span class="input-unit">m</span>
+              </div>
+            </div>
+
             @for (field of overrideFieldList; track field.key) {
               <div class="form-group override-feature-group">
                 <span class="form-label">{{ field.label }}</span>
@@ -326,7 +369,14 @@
 
             <label class="reason-field form-group">
               <span class="form-label">Reason <small>Optional note for administrators.</small></span>
-              <input type="text" maxlength="500" placeholder="e.g. Specific team policy requirements" [value]="overrideForm().overrideReason ?? ''" [disabled]="!hasWriteAccess()" (input)="setOverrideReason($any($event.target).value)" />
+              <textarea
+                rows="2"
+                maxlength="500"
+                placeholder="e.g. Specific team policy requirements"
+                [value]="overrideForm().overrideReason ?? ''"
+                [disabled]="!hasWriteAccess()"
+                (input)="setOverrideReason($any($event.target).value)"
+              ></textarea>
             </label>
           </div>
 

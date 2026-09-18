@@ -9,7 +9,8 @@ import {
   EmployeeListItemResponse,
   EmployeeListPageResponse,
   EmployeeListParams,
-  ResendInvitationResponse
+  ResendInvitationResponse,
+  UpdateEmployeeJobDetailsRequest
 } from '../models/employee.model';
 import { PendingAccessGrantRequestResponse } from '../models/access-grant-request.model';
 import { ChecklistAssignee } from '../models/checklist-template.model';
@@ -70,6 +71,10 @@ export class PeopleApiService {
     return this.http.post<ChangePositionResponse>(`${environment.apiUrl}/employees/${id}/change-position`, payload);
   }
 
+  updateJobDetails(id: string, payload: UpdateEmployeeJobDetailsRequest): Observable<void> {
+    return this.http.put<void>(`${environment.apiUrl}/employees/${id}/job-details`, payload);
+  }
+
   listDrafts(params: DraftListParams): Observable<DraftListPageResponse> {
     return this.http.get<DraftListPageResponse>(`${environment.apiUrl}/onboarding/drafts`, {
       params: this.toHttpParams(params)
@@ -108,10 +113,13 @@ export class PeopleApiService {
     );
   }
 
-  checkEmployeeNumberAvailability(employeeNumber: string): Observable<EmployeeNumberAvailabilityResponse> {
+  checkEmployeeNumberAvailability(
+    employeeNumber: string,
+    excludeEmployeeId?: string
+  ): Observable<EmployeeNumberAvailabilityResponse> {
     return this.http.get<EmployeeNumberAvailabilityResponse>(
       `${environment.apiUrl}/onboarding/employee-number-availability`,
-      { params: this.toHttpParams({ employeeNumber }) }
+      { params: this.toHttpParams({ employeeNumber, excludeEmployeeId }) }
     );
   }
 

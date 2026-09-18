@@ -1,3 +1,4 @@
+import { signal } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
 import { ActivatedRoute, Router, provideRouter } from '@angular/router';
 import { of, throwError, Subject } from 'rxjs';
@@ -9,6 +10,7 @@ import { PositionApiService } from '../../../organization/data-access/position-a
 import { PermissionService } from '../../../../core/auth/state/permission.service';
 import { AuthStore } from '../../../../core/auth/state/auth.store';
 import { OffboardingApiService } from '../../data-access/offboarding-api.service';
+import { WorkModeStore } from '../../../settings/state/work-mode.store';
 
 describe('EmployeeDetailComponent', () => {
   const detailFixture: EmployeeDetailResponse = {
@@ -25,7 +27,9 @@ describe('EmployeeDetailComponent', () => {
       status: 'active',
       hireDate: '2024-01-15',
       probationEndDate: null,
-      workModeLabel: 'Remote'
+      workModeLabel: 'Remote',
+      employmentTypeCode: 'full_time',
+      workModeId: 'wm-1'
     },
     personalInformation: {
       firstName: 'Ada',
@@ -62,6 +66,21 @@ describe('EmployeeDetailComponent', () => {
     // opens; stub it out so opening the modal in these tests never issues a real HTTP request.
     const positionApiStub = { listFlat: vi.fn().mockReturnValue(of({ items: [], page: 1, pageSize: 25, totalCount: 0, totalPages: 0 })) };
     const permissionServiceStub = { hasPermission: (p: string) => (p === 'employees:write' ? hasWritePermission : true) };
+    // EmployeeJobInfoComponent (rendered as a real child on the Job tab) injects the real,
+    // providedIn: 'root' WorkModeStore, which would otherwise pull in WorkModeApiService ->
+    // HttpClient - neither is provided in this spec file, so every test would fail to construct
+    // the component tree without this stub.
+    const workModeStoreStub = {
+      items: signal([]) as any,
+      atCap: signal(false) as any,
+      loading: signal(false) as any,
+      saving: signal(false) as any,
+      error: signal(null) as any,
+      load: vi.fn() as any,
+      create: vi.fn() as any,
+      update: vi.fn() as any,
+      deactivate: vi.fn() as any
+    };
 
     TestBed.configureTestingModule({
       imports: [EmployeeDetailComponent],
@@ -73,7 +92,8 @@ describe('EmployeeDetailComponent', () => {
         { provide: PermissionService, useValue: permissionServiceStub },
         { provide: AuthStore, useValue: { employeeId: () => currentEmployeeId } },
         { provide: ActivatedRoute, useValue: { snapshot: { paramMap: { get: () => 'emp-1' } } } },
-        { provide: OffboardingApiService, useValue: { getOffboarding: () => of(null) } }
+        { provide: OffboardingApiService, useValue: { getOffboarding: () => of(null) } },
+        { provide: WorkModeStore, useValue: workModeStoreStub }
       ]
     });
 
@@ -256,6 +276,39 @@ describe('EmployeeDetailComponent', () => {
     expect(fixture.componentInstance.changePositionOpen()).toBe(false);
     expect(notificationsStub.success).toHaveBeenCalledWith('Position updated.');
     expect(apiStub.getEmployeeDetail).toHaveBeenCalledTimes(2);
+  });
+
+  it('reloads and shows a success toast when job details are saved', () => {
+    const { fixture, apiStub, notificationsStub } = setup(detailFixture, {
+      updateJobDetails: vi.fn().mockReturnValue(of(undefined))
+    });
+    fixture.detectChanges();
+
+    fixture.componentInstance.onJobDetailsSave({
+      employeeNumber: 'E-002', employmentTypeCode: 'part_time', workModeId: 'wm-2'
+    });
+
+    expect(apiStub.updateJobDetails).toHaveBeenCalledWith('emp-1', {
+      employeeNumber: 'E-002', employmentTypeCode: 'part_time', workModeId: 'wm-2'
+    });
+    expect(fixture.componentInstance.savingJobDetails()).toBe(false);
+    expect(notificationsStub.success).toHaveBeenCalledWith('Job details updated.');
+    expect(apiStub.getEmployeeDetail).toHaveBeenCalledTimes(2);
+  });
+
+  it('surfaces an error toast and stops the saving state when the job details save fails', () => {
+    const { fixture, apiStub, notificationsStub } = setup(detailFixture, {
+      updateJobDetails: vi.fn().mockReturnValue(throwError(() => new Error('boom')))
+    });
+    fixture.detectChanges();
+
+    fixture.componentInstance.onJobDetailsSave({
+      employeeNumber: 'E-002', employmentTypeCode: 'part_time', workModeId: null
+    });
+
+    expect(fixture.componentInstance.savingJobDetails()).toBe(false);
+    expect(notificationsStub.error).toHaveBeenCalledWith('boom');
+    expect(apiStub.getEmployeeDetail).toHaveBeenCalledTimes(1);
   });
 
   it('does not show the resend button when the invitation is pending', () => {

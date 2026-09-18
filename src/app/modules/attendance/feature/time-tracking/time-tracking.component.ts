@@ -12,6 +12,8 @@ import { CorrectionApprovalsComponent } from '../correction-approvals/correction
 import { WorkAreaApprovalsComponent } from '../work-area-approvals/work-area-approvals.component';
 import { LocationChangeApprovalsComponent } from '../location-change-approvals/location-change-approvals.component';
 import { LocationChangeRequestsStore } from '../../state/location-change-requests.store';
+import { DeviceChangeApprovalsComponent } from '../device-change-approvals/device-change-approvals.component';
+import { DeviceChangeRequestsStore } from '../../state/device-change-requests.store';
 import { NotificationService } from '../../../../core/services/notification.service';
 import {
   AttendanceCorrectionBreakRequest,
@@ -53,7 +55,7 @@ type AttendanceViewMode = 'my' | 'team';
 @Component({
   selector: 'app-time-tracking',
   standalone: true,
-  imports: [AttendanceCorrectionModalComponent, AttendanceDetailDrawerComponent, AttendanceHistoryListComponent, AttendanceStatusCardComponent, AttendanceTodayTimelineComponent, BreadcrumbHeaderComponent, ButtonComponent, CorrectionApprovalsComponent, DateRangePickerComponent, FormsModule, ModalComponent, MyRequestsPanelComponent, PopoverComponent, WorkAreaApprovalsComponent, LocationChangeApprovalsComponent],
+  imports: [AttendanceCorrectionModalComponent, AttendanceDetailDrawerComponent, AttendanceHistoryListComponent, AttendanceStatusCardComponent, AttendanceTodayTimelineComponent, BreadcrumbHeaderComponent, ButtonComponent, CorrectionApprovalsComponent, DateRangePickerComponent, FormsModule, ModalComponent, MyRequestsPanelComponent, PopoverComponent, WorkAreaApprovalsComponent, LocationChangeApprovalsComponent, DeviceChangeApprovalsComponent],
   templateUrl: './time-tracking.component.html',
   styleUrl: './time-tracking.component.css',
   changeDetection: ChangeDetectionStrategy.OnPush
@@ -61,6 +63,7 @@ type AttendanceViewMode = 'my' | 'team';
 export class TimeTrackingComponent implements OnInit {
   readonly store = inject(TimeTrackingStore);
   readonly locationChangeStore = inject(LocationChangeRequestsStore);
+  readonly deviceChangeStore = inject(DeviceChangeRequestsStore);
   private readonly permissionService = inject(PermissionService);
   private readonly notifications = inject(NotificationService);
   private readonly route = inject(ActivatedRoute);
@@ -91,15 +94,16 @@ export class TimeTrackingComponent implements OnInit {
     return 'my';
   });
 
-  readonly approvalType = computed<'corrections' | 'work-area' | 'location'>(() => {
+  readonly approvalType = computed<'corrections' | 'work-area' | 'location' | 'device-change'>(() => {
     const requested = this.queryParams().get('type');
-    return requested === 'work-area' || requested === 'location' ? requested : 'corrections';
+    return requested === 'work-area' || requested === 'location' || requested === 'device-change' ? requested : 'corrections';
   });
 
   readonly deepLinkRequestId = computed(() => this.queryParams().get('requestId'));
   readonly approvalBadgeCorrections = computed(() => this.store.approvalInbox().length);
   readonly approvalBadgeWorkArea = computed(() => this.store.workAreaApprovalInboxTotalCount());
   readonly approvalBadgeLocation = computed(() => this.locationChangeStore.approvalInboxTotalCount());
+  readonly approvalBadgeDeviceChange = computed(() => this.deviceChangeStore.approvalInboxTotalCount());
 
   readonly historyFrom = signal('');
   readonly historyTo = signal('');
@@ -149,7 +153,7 @@ export class TimeTrackingComponent implements OnInit {
    * approval type (corrections vs work-area) loads within Approvals.
    */
   private teamAttendanceRangeKey: string | null = null;
-  private attemptedApprovalType: 'corrections' | 'work-area' | 'location' | null = null;
+  private attemptedApprovalType: 'corrections' | 'work-area' | 'location' | 'device-change' | null = null;
 
   constructor() {
     effect(() => {
@@ -182,6 +186,9 @@ export class TimeTrackingComponent implements OnInit {
           }
           if (type === 'location' && !this.locationChangeStore.approvalInboxLoaded()) {
             void this.locationChangeStore.loadApprovalInbox(1);
+          }
+          if (type === 'device-change' && !this.deviceChangeStore.approvalInboxLoaded()) {
+            void this.deviceChangeStore.loadApprovalInbox(1);
           }
         }
       } else {
@@ -274,7 +281,7 @@ export class TimeTrackingComponent implements OnInit {
     this.navigateState({ view: 'team', type: this.hasApproveAccess() ? this.approvalType() : null, requestId: null });
   }
 
-  selectApprovalType(type: 'corrections' | 'work-area' | 'location'): void {
+  selectApprovalType(type: 'corrections' | 'work-area' | 'location' | 'device-change'): void {
     this.navigateState({ view: 'team', type, requestId: null });
   }
 

@@ -60,8 +60,8 @@
                     <span>Wellbeing Reminder</span>
                   </div>
                 }
-                <h3 class="flex items-center gap-1 text-xs font-bold text-slate-800" data-testid="wellbeing-card-title">
-                  <span>{{ card.title }}</span>
+                <h3 class="flex items-center gap-1 text-xs font-bold text-slate-800">
+                  <span data-testid="wellbeing-card-title">{{ card.title }}</span>
                   <span class="text-[11px]">{{ card.kind === 'hydration' ? '💧' : card.kind === 'eye-rest' ? '👀' : card.kind === 'posture' ? '🧘' : '✨' }}</span>
                 </h3>
                 <p class="mt-1 text-[11px] leading-relaxed text-slate-500 line-clamp-2" data-testid="wellbeing-card-description">
@@ -99,8 +99,7 @@
             class="h-1.5 rounded-full transition-all duration-300 cursor-pointer"
             [class.w-4]="$index === currentIndex() % cards().length"
             [class.w-1.5]="$index !== currentIndex() % cards().length"
-            [class.bg-blue-600]="$index === currentIndex() % cards().length"
-            [class.bg-slate-300]="$index !== currentIndex() % cards().length"
+            [style.background-color]="$index === currentIndex() % cards().length ? 'var(--color-accent)' : 'var(--color-border)'"
             (click)="goTo($index)"
           ></button>
         }

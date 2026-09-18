@@ -444,6 +444,18 @@ describe('TimeTrackingComponent', () => {
     expect(fixture.nativeElement.querySelectorAll('app-work-area-approvals').length).toBe(1);
   });
 
+  it('shows the device-change tab alongside corrections, work-area, and location', async () => {
+    const { fixture } = await setup({ canViewCoveredEmployees: true }, false, [], [], [], {}, ['attendance:approve']);
+    const component = fixture.componentInstance;
+    expect(component.approvalType()).toBeDefined();
+    component.selectApprovalType('device-change');
+    await fixture.whenStable();
+    fixture.detectChanges();
+    expect(component.approvalType()).toBe('device-change');
+    expect(fixture.nativeElement.querySelectorAll('app-device-change-approvals').length).toBe(1);
+    expect(fixture.nativeElement.querySelectorAll('app-correction-approvals').length).toBe(0);
+  });
+
   it('formats Today clock-in and clock-out using the backend timezone', async () => {
     const clockIn = '2026-08-22T09:00:00Z';
     const clockOut = '2026-08-22T17:00:00Z';
