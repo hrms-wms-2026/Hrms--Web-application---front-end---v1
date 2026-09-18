@@ -226,14 +226,22 @@ export class ApprovalRequestRowComponent {
     this.approved.emit(undefined);
   }
 
+  private requiresRejectComment(): boolean {
+    // Mirrors the backend: RejectTaskCreationRequestCommandValidator and
+    // RejectTaskEditRequestCommandValidator both require a non-empty comment; the other
+    // request types (allocation, objective change/edit, invitations) don't.
+    const kind = this.item().kind;
+    return kind === 'task_creation' || kind === 'task_edit';
+  }
+
   onRejectClick(): void {
-    if (this.item().kind === 'task_creation' && !this.showRejectComment()) {
+    if (this.requiresRejectComment() && !this.showRejectComment()) {
       this.showRejectComment.set(true);
       return;
     }
-    if (this.item().kind === 'task_creation' && !this.rejectComment().trim()) {
+    if (this.requiresRejectComment() && !this.rejectComment().trim()) {
       return;
     }
-    this.rejected.emit(this.item().kind === 'task_creation' ? this.rejectComment().trim() : undefined);
+    this.rejected.emit(this.requiresRejectComment() ? this.rejectComment().trim() : undefined);
   }
 }

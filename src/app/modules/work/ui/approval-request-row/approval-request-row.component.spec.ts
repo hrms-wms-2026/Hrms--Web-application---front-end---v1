@@ -4,6 +4,7 @@ import { vi } from 'vitest';
 import { ApprovalRequestRowComponent } from './approval-request-row.component';
 import { ApprovalItem } from '../../models/approval.model';
 import { AllocationRequestDto, ObjectiveEditRequestDto } from '../../models/dto/allocation-request.dto';
+import { TaskEditRequestDto } from '../../models/dto/task-edit-request.dto';
 
 function allocationItem(requestedAdditionalHours = 20): ApprovalItem {
   const raw: AllocationRequestDto = {
@@ -42,6 +43,35 @@ function objectiveEditItem(): ApprovalItem {
     title: `Edit: ${raw.payload.title}`,
     description: `Objective ${raw.objectiveId}`,
     requestedByName: null,
+    createdAt: raw.createdAt,
+    raw
+  };
+}
+
+function taskEditItem(): ApprovalItem {
+  const raw: TaskEditRequestDto = {
+    id: 'edit-req-1',
+    taskId: 'task-1',
+    objectiveId: 'objective-1',
+    status: 'pending',
+    payload: {
+      title: 'Portal Dashboard And Monitoring — Kickoff',
+      description: null,
+      priority: 'medium',
+      dueDate: null,
+      estimatedHours: 75,
+      storyPoints: null
+    },
+    requestedByName: 'Abitha Devendran',
+    createdAt: '2026-09-18T00:00:00Z'
+  };
+  return {
+    id: raw.id,
+    kind: 'task_edit',
+    objectiveId: raw.objectiveId,
+    title: `Edit: ${raw.payload.title}`,
+    description: `Requested by ${raw.requestedByName}`,
+    requestedByName: raw.requestedByName,
     createdAt: raw.createdAt,
     raw
   };
@@ -137,6 +167,44 @@ describe('ApprovalRequestRowComponent', () => {
       expect(approved).toHaveBeenCalledWith({
         title: 'Requested Title', description: 'Requested desc', startDate: '2026-01-10', endDate: '2026-02-10', allocatedHours: 15
       });
+    });
+  });
+
+  describe('task_edit', () => {
+    beforeEach(() => {
+      fixture.componentRef.setInput('item', taskEditItem());
+      fixture.detectChanges();
+    });
+
+    it('emits approved with no override on the first click', () => {
+      const approved = vi.fn();
+      fixture.componentInstance.approved.subscribe(approved);
+
+      (fixture.nativeElement.querySelector('app-button[variant="primary"] button') as HTMLButtonElement).click();
+
+      expect(approved).toHaveBeenCalledWith(undefined);
+    });
+
+    it('requires a comment before emitting rejected, matching RejectTaskEditRequestCommandValidator', () => {
+      const rejected = vi.fn();
+      fixture.componentInstance.rejected.subscribe(rejected);
+      const rejectButton = fixture.nativeElement.querySelector('app-button[variant="secondary"] button') as HTMLButtonElement;
+
+      rejectButton.click();
+      fixture.detectChanges();
+      expect(rejected).not.toHaveBeenCalled();
+      const comment = fixture.nativeElement.querySelector('.approval-row__comment') as HTMLTextAreaElement;
+      expect(comment).not.toBeNull();
+
+      rejectButton.click();
+      expect(rejected).not.toHaveBeenCalled();
+
+      comment.value = 'Estimate looks too high for this phase';
+      comment.dispatchEvent(new Event('input'));
+      fixture.detectChanges();
+      rejectButton.click();
+
+      expect(rejected).toHaveBeenCalledWith('Estimate looks too high for this phase');
     });
   });
 });
