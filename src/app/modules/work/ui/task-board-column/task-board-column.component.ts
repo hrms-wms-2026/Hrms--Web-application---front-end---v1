@@ -25,6 +25,8 @@ export interface QuickTaskCreatedEvent {
       <!-- Status Header with hover '+' button -->
       <div class="task-board-column__header">
         <h3 class="task-board-column__title">
+          <span class="task-board-column__status-dot" [style.color]="status().color" [class.task-board-column__status-dot--not-started]="status().category === 'not_started'"
+            [class.task-board-column__status-dot--done]="status().category === 'done'" aria-hidden="true">@if(status().category === 'done'){<svg viewBox="0 0 12 12"><path d="m3 6 2 2 4-4" fill="none" stroke="white" stroke-width="1.5" /></svg>}</span>
           <span class="task-board-column__title-text">{{ status().name }}</span>
           <span class="task-board-column__count">{{ tasks().length }}</span>
         </h3>
@@ -324,6 +326,10 @@ export interface QuickTaskCreatedEvent {
       color: var(--color-text-primary);
       margin: 0;
     }
+    .task-board-column__status-dot { display: inline-flex; width: 12px; height: 12px; border-radius: 999px; margin-right: 4px; background: currentColor; border: 2px solid currentColor; box-sizing: border-box; flex-shrink: 0; }
+    .task-board-column__status-dot--not-started { background: transparent; }
+    .task-board-column__status-dot--done { border: 0; }
+    .task-board-column__status-dot svg { width: 12px; height: 12px; }
     .task-board-column__count {
       font-size: 12px;
       font-weight: 500;

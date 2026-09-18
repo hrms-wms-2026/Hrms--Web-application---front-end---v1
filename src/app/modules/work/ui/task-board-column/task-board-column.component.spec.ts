@@ -16,7 +16,7 @@ const task: WorkTask = {
 
 const status: TaskStatusColumn = {
   id: 's1', name: 'To Do', displayOrder: 0, requiresApproval: false,
-  marksTaskComplete: false, visibility: 'public'
+  marksTaskComplete: false, category: 'active', color: '#2563EB', visibility: 'public'
 };
 
 describe('TaskBoardColumnComponent', () => {
@@ -116,5 +116,16 @@ describe('TaskBoardColumnComponent', () => {
     fixture.detectChanges();
     expect(fixture.componentInstance.isQuickCreateOpen()).toBe(false);
   });
+
+  it('renders configured color and distinct ring, filled dot and check-circle indicators', () => {
+    for (const category of ['not_started','active','done'] as const) {
+      fixture.componentRef.setInput('status',{...status,category,color:'#123456'});fixture.detectChanges();
+      const dot=fixture.nativeElement.querySelector('.task-board-column__status-dot') as HTMLElement;
+      expect(dot.style.color).toBe('rgb(18, 52, 86)');
+      expect(dot.classList.contains('task-board-column__status-dot--not-started')).toBe(category==='not_started');
+      expect(dot.querySelector('svg')!==null).toBe(category==='done');
+    }
+  });
+
 });
 
