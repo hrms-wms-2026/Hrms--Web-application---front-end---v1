@@ -1,6 +1,7 @@
 import { Component, DestroyRef, computed, inject, input, output, signal } from '@angular/core';
 import { firstValueFrom } from 'rxjs';
 import { TaskApiService } from '../../data-access/task-api.service';
+import { NotificationService } from '../../../../core/services/notification.service';
 import { WorkTask } from '../../models/task.model';
 import { toWorkTask } from '../../utils/task.mapper';
 
@@ -107,6 +108,7 @@ import { toWorkTask } from '../../utils/task.mapper';
 })
 export class TaskClockWidgetComponent {
   private readonly taskApi = inject(TaskApiService);
+  private readonly notificationService = inject(NotificationService);
   private readonly destroyRef = inject(DestroyRef);
   private tickTimer: ReturnType<typeof setInterval> | null = null;
 
@@ -164,8 +166,16 @@ export class TaskClockWidgetComponent {
   });
 
   async onClockIn(): Promise<void> {
-    await firstValueFrom(this.taskApi.clockIn(this.task().id));
-    this.clockedIn.emit();
+    try {
+      const response = await firstValueFrom(this.taskApi.clockIn(this.task().id));
+      if (response?.movedToStatus) {
+        this.notificationService.success(`Moved to "${response.movedToStatus.name}" to start tracking time.`);
+      }
+      this.clockedIn.emit();
+    } catch (err: unknown) {
+      const detail = (err as { error?: { detail?: string } })?.error?.detail;
+      this.notificationService.error(detail || 'Failed to clock in.');
+    }
   }
 
   openPushPopup(): void {
