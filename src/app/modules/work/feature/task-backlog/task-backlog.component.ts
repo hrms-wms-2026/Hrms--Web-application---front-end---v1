@@ -22,11 +22,13 @@ import { WorkDropdownOption } from '../../ui/work-dropdown/work-dropdown.compone
 import { TaskFilterBarComponent, TaskFilterFieldConfig } from '../../ui/task-filter-bar/task-filter-bar.component';
 import { TaskAssigneeAvatarFilterComponent } from '../../ui/task-assignee-avatar-filter/task-assignee-avatar-filter.component';
 import { TaskFormModalComponent } from '../../ui/task-form-modal/task-form-modal.component';
+import { SprintStartDialogComponent } from '../../ui/sprint-start-dialog/sprint-start-dialog.component';
+import { SprintCompleteDialogComponent } from '../../ui/sprint-complete-dialog/sprint-complete-dialog.component';
 
 @Component({
   selector: 'app-task-backlog',
   standalone: true,
-  imports: [SprintTabComponent, SprintFormComponent, TaskTableComponent, ButtonComponent, ErrorStateComponent, TaskFilterBarComponent, TaskAssigneeAvatarFilterComponent, TaskFormModalComponent],
+  imports: [SprintTabComponent, SprintFormComponent, TaskTableComponent, ButtonComponent, ErrorStateComponent, TaskFilterBarComponent, TaskAssigneeAvatarFilterComponent, TaskFormModalComponent, SprintStartDialogComponent, SprintCompleteDialogComponent],
   template: `
     <ng-template #toolbarTpl>
       <div class="task-backlog__toolbar">
@@ -65,6 +67,28 @@ import { TaskFormModalComponent } from '../../ui/task-form-modal/task-form-modal
         (cancelled)="editingSprint.set(null)"
       />
     }
+    @if (startingSprint(); as sprint) {
+      <app-sprint-start-dialog
+        [open]="true"
+        [sprint]="sprint"
+        [tasks]="tasksForSprint(sprint.id)"
+        [objectiveId]="sprint.objectiveId"
+        (started)="onSprintStarted()"
+        (cancelled)="startingSprint.set(null)"
+      />
+    }
+    @if (completingSprint(); as sprint) {
+      <app-sprint-complete-dialog
+        [open]="true"
+        [sprint]="sprint"
+        [tasks]="tasksForSprint(sprint.id)"
+        [otherSprints]="otherSprintsForCompleting()"
+        [objectiveId]="sprint.objectiveId"
+        [completeStatusIds]="completeStatusIds()"
+        (completed)="onSprintCompleted()"
+        (cancelled)="completingSprint.set(null)"
+      />
+    }
 
     @if (sprintStore.error()) {
       <p class="task-backlog__sprint-message" role="alert">{{ sprintStore.error() }}</p>
@@ -90,7 +114,8 @@ import { TaskFormModalComponent } from '../../ui/task-form-modal/task-form-modal
               [expanded]="expandedSprintId() === sprint.id"
               (toggled)="toggleExpanded(sprint.id)"
               (editRequested)="editingSprint.set(sprint)"
-              (statusChangeRequested)="onSprintStatusChangeRequested(sprint, $event)"
+              (startRequested)="startingSprint.set(sprint)"
+              (completeRequested)="completingSprint.set(sprint)"
               (createTaskRequested)="openCreateTask()"
               (taskViewed)="onTaskViewed($event)"
               (taskStatusChangeRequested)="onTaskStatusChangeRequested($event)"
@@ -151,6 +176,8 @@ export class TaskBacklogComponent implements OnInit, AfterViewInit, OnDestroy {
 
   protected readonly createSprintOpen = signal(false);
   protected readonly editingSprint = signal<Sprint | null>(null);
+  protected readonly startingSprint = signal<Sprint | null>(null);
+  protected readonly completingSprint = signal<Sprint | null>(null);
   protected readonly projectId = signal('');
   protected readonly expandedSprintId = signal<string | null>(null);
   protected readonly assignableMembers = signal<{ employeeId: string; name: string }[]>([]);
@@ -163,10 +190,9 @@ export class TaskBacklogComponent implements OnInit, AfterViewInit, OnDestroy {
   protected readonly categories = signal<TaskCategoryColumn[]>([]);
   protected readonly sprintStatusOptions: readonly WorkDropdownOption[] = [
     { value: 'all', label: 'All sprint statuses' },
-    { value: 'future', label: 'Future' },
+    { value: 'draft', label: 'Draft' },
     { value: 'active', label: 'Active' },
     { value: 'complete', label: 'Complete' },
-    { value: 'incomplete', label: 'Incomplete' },
     { value: 'achieved', label: 'Achieved' }
   ];
 
@@ -233,9 +259,21 @@ export class TaskBacklogComponent implements OnInit, AfterViewInit, OnDestroy {
   // ever be offered here, or SprintApiService.create would just fail for a non-owner's pick.
   protected readonly ownedModuleOptions = computed(() => this.moduleOptions().filter((m) => m.isOwner));
   protected readonly statusNames = computed(() => Object.fromEntries(this.store.statuses().map((status) => [status.id, status.name])));
+  protected readonly completeStatusIds = computed(() =>
+    new Set(this.store.statuses().filter((s) => s.marksTaskComplete).map((s) => s.id))
+  );
+  protected readonly otherSprintsForCompleting = computed(() => {
+    const target = this.completingSprint();
+    if (!target) return [];
+    return this.sprintStore.sprints().filter((s) =>
+      s.objectiveId === target.objectiveId && s.id !== target.id && s.status !== 'complete' && s.status !== 'achieved'
+    );
+  });
   protected readonly filteredSprints = computed(() => {
     const filter = this.sprintStatusFilter();
-    return filter === 'all' ? this.sprintStore.sprints() : this.sprintStore.sprints().filter((sprint) => sprint.status === filter);
+    const statusOrder: Record<string, number> = { active: 0, draft: 1, complete: 2, achieved: 3 };
+    const list = filter === 'all' ? this.sprintStore.sprints() : this.sprintStore.sprints().filter((sprint) => sprint.status === filter);
+    return [...list].sort((a, b) => (statusOrder[a.status] ?? 9) - (statusOrder[b.status] ?? 9));
   });
   protected readonly unsortedTasks = computed(() => {
     const knownSprintIds = new Set(this.sprintStore.sprints().map((sprint) => sprint.id));
@@ -333,16 +371,14 @@ export class TaskBacklogComponent implements OnInit, AfterViewInit, OnDestroy {
     void this.reloadTasks();
   }
 
-  async onSprintStatusChangeRequested(sprintOrId: Sprint | string, newStatus: string): Promise<void> {
-    const sprint = typeof sprintOrId === 'string'
-      ? this.sprintStore.sprints().find((item) => item.id === sprintOrId)
-      : sprintOrId;
-    if (!sprint || !(this.objectiveOwners()[sprint.objectiveId] ?? false)) return;
-    if (this.projectId()) {
-      await this.sprintStore.setStatus(sprint.id, newStatus as SprintStatus, sprint.objectiveId, false, this.projectId());
-    } else {
-      await this.sprintStore.setStatus(sprint.id, newStatus as SprintStatus, sprint.objectiveId, false);
-    }
+  protected onSprintStarted(): void {
+    this.startingSprint.set(null);
+    void this.sprintStore.loadForProject(this.projectId());
+  }
+
+  protected onSprintCompleted(): void {
+    this.completingSprint.set(null);
+    void this.sprintStore.loadForProject(this.projectId());
   }
 
   onTaskStatusChangeRequested(event: { taskId: string; newStatusId: string }): void {

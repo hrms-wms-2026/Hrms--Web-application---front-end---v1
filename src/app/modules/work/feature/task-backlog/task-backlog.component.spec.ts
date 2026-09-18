@@ -20,6 +20,7 @@ describe('TaskBacklogComponent', () => {
     id: 'sp-1',
     objectiveId: 'milestone-1',
     name: 'Sprint One',
+    goal: null,
     startDate: new Date('2026-08-17'),
     endDate: new Date('2026-08-31'),
     status: 'active',
@@ -31,9 +32,10 @@ describe('TaskBacklogComponent', () => {
     id: 'sp-2',
     objectiveId: 'milestone-1',
     name: 'Sprint Two',
+    goal: null,
     startDate: new Date('2026-09-01'),
     endDate: new Date('2026-09-14'),
-    status: 'future',
+    status: 'draft',
     completedAt: null,
     achievedAt: null
   };
@@ -68,7 +70,6 @@ describe('TaskBacklogComponent', () => {
     sprintErrorSignal?: ReturnType<typeof signal<string | null>>;
     sprintComplete?: ReturnType<typeof vi.fn>;
     sprintAchieve?: ReturnType<typeof vi.fn>;
-    sprintSetStatus?: ReturnType<typeof vi.fn>;
     taskErrorSignal?: ReturnType<typeof signal<string | null>>;
   } = {}) {
     const isOwner = options.isOwner ?? true;
@@ -81,7 +82,7 @@ describe('TaskBacklogComponent', () => {
     const sprintCreate = options.sprintCreate ?? vi.fn().mockResolvedValue(true);
     const sprintComplete = options.sprintComplete ?? vi.fn().mockResolvedValue(true);
     const sprintAchieve = options.sprintAchieve ?? vi.fn().mockResolvedValue(true);
-    const sprintSetStatus = options.sprintSetStatus ?? vi.fn().mockResolvedValue(true);
+    const sprintStart = vi.fn().mockResolvedValue(true);
     const loadProjectMembers = vi.fn().mockResolvedValue(undefined);
     const navigate = vi.fn().mockResolvedValue(true);
 
@@ -132,9 +133,9 @@ describe('TaskBacklogComponent', () => {
             loadForProject,
             create: sprintCreate,
             edit: vi.fn(),
+            start: sprintStart,
             complete: sprintComplete,
-            achieve: sprintAchieve,
-            setStatus: sprintSetStatus
+            achieve: sprintAchieve
           }
         },
         {
@@ -147,7 +148,7 @@ describe('TaskBacklogComponent', () => {
 
     const fixture = TestBed.createComponent(TaskBacklogComponent);
     fixture.detectChanges();
-    return { fixture, loadBoard, moveTask, loadForProject, sprintCreate, sprintsSignal, sprintErrorSignal, taskErrorSignal, sprintComplete, sprintAchieve, sprintSetStatus, loadProjectMembers, navigate };
+    return { fixture, loadBoard, moveTask, loadForProject, sprintCreate, sprintsSignal, sprintErrorSignal, taskErrorSignal, sprintComplete, sprintAchieve, sprintStart, loadProjectMembers, navigate };
   }
 
   it('renders one SprintTabComponent per sprint', async () => {
@@ -205,7 +206,7 @@ describe('TaskBacklogComponent', () => {
     createSprintButton?.click();
     fixture.detectChanges();
 
-    await fixture.componentInstance['sprintStore'].create('milestone-1', { name: 'x', startDate: '', endDate: '' }, false);
+    await fixture.componentInstance['sprintStore'].create('milestone-1', { name: 'x' }, false);
     fixture.detectChanges();
     await fixture.whenStable();
     fixture.detectChanges();
@@ -317,26 +318,34 @@ describe('TaskBacklogComponent', () => {
     expect(inst.taskModalTaskId()).toBe('t-1');
   });
 
-  it('routes any sprint-status pick from the sprint tab to sprintStore.setStatus - the owner override always wins', async () => {
-    const { fixture, sprintSetStatus } = setup();
+  it('opens the start dialog when a sprint requests start', async () => {
+    const { fixture } = setup({ sprints: [sprint2] });
     await fixture.whenStable();
     fixture.detectChanges();
 
-    await fixture.componentInstance['onSprintStatusChangeRequested']('sp-1', 'complete');
-    expect(sprintSetStatus).toHaveBeenCalledWith('sp-1', 'complete', 'milestone-1', false, 'project-1');
+    const tabs = fixture.debugElement.queryAll(By.directive(SprintTabComponent));
+    const tab = tabs.find((t) => (t.componentInstance as SprintTabComponent).sprint().id === 'sp-2')!;
+    (tab.componentInstance as SprintTabComponent).startRequested.emit();
+    fixture.detectChanges();
 
-    await fixture.componentInstance['onSprintStatusChangeRequested']('sp-1', 'active');
-    expect(sprintSetStatus).toHaveBeenCalledWith('sp-1', 'active', 'milestone-1', false, 'project-1');
+    const inst = fixture.componentInstance as unknown as { startingSprint: () => Sprint | null };
+    expect(inst.startingSprint()?.id).toBe('sp-2');
+    expect(fixture.nativeElement.querySelector('app-sprint-start-dialog')).not.toBeNull();
   });
 
-  it('does not call setStatus for a non-owner even if the handler is invoked directly', async () => {
-    const { fixture, sprintSetStatus } = setup({ isOwner: false });
+  it('opens the complete dialog when a sprint requests complete', async () => {
+    const { fixture } = setup({ sprints: [sprint1] });
     await fixture.whenStable();
     fixture.detectChanges();
 
-    await fixture.componentInstance['onSprintStatusChangeRequested']('sp-1', 'active');
+    const tabs = fixture.debugElement.queryAll(By.directive(SprintTabComponent));
+    const tab = tabs.find((t) => (t.componentInstance as SprintTabComponent).sprint().id === 'sp-1')!;
+    (tab.componentInstance as SprintTabComponent).completeRequested.emit();
+    fixture.detectChanges();
 
-    expect(sprintSetStatus).not.toHaveBeenCalled();
+    const inst = fixture.componentInstance as unknown as { completingSprint: () => Sprint | null };
+    expect(inst.completingSprint()?.id).toBe('sp-1');
+    expect(fixture.nativeElement.querySelector('app-sprint-complete-dialog')).not.toBeNull();
   });
 
   // Sprint creation has no pending/request path (SprintApiService.create has no member-request
@@ -371,7 +380,7 @@ describe('TaskBacklogComponent', () => {
     expect(fixture.componentInstance['sprintStatusFilter']()).toBe('all');
     expect(fixture.debugElement.queryAll(By.directive(SprintTabComponent)).length).toBe(2);
 
-    fixture.componentInstance['setSprintStatusFilter']('future');
+    fixture.componentInstance['setSprintStatusFilter']('draft');
     fixture.detectChanges();
 
     const tabs = fixture.debugElement.queryAll(By.directive(SprintTabComponent));
@@ -412,16 +421,6 @@ describe('TaskBacklogComponent', () => {
     const alert = fixture.nativeElement.querySelector('[role="alert"]');
     expect(alert).not.toBeNull();
     expect(alert.textContent).toContain('Every task in this sprint must be complete first.');
-  });
-
-  it('routes future/active/incomplete picks through to setStatus too, not just complete/achieved', async () => {
-    const { fixture, sprintSetStatus } = setup();
-    await fixture.whenStable();
-    fixture.detectChanges();
-
-    await fixture.componentInstance['onSprintStatusChangeRequested']('sp-1', 'future');
-
-    expect(sprintSetStatus).toHaveBeenCalledWith('sp-1', 'future', 'milestone-1', false, 'project-1');
   });
 
   it('shows store.error() as a retryable error state when the task load fails, instead of silently rendering empty sprint tabs', async () => {
