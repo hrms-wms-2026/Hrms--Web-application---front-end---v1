@@ -7,6 +7,7 @@ import { EmployeeDirectoryStore } from '../../state/employee-directory.store';
 import { EmployeePickerComponent } from '../employee-picker/employee-picker.component';
 import { validateProjectForm, ProjectFormFields } from '../../utils/project-form.validator';
 import { CreateProjectPayload } from '../../models/project.model';
+import { ColorSwatchPickerComponent } from '../color-swatch-picker/color-swatch-picker.component';
 
 const STEP_ITEMS = [
   { id: 1, label: 'Category', desc: 'Select category' },
@@ -18,7 +19,7 @@ const STEP_ITEMS = [
 @Component({
   selector: 'app-project-form-modal',
   standalone: true,
-  imports: [InputComponent, ButtonComponent, DateRangePickerComponent, EmployeePickerComponent],
+  imports: [InputComponent, ButtonComponent, DateRangePickerComponent, EmployeePickerComponent, ColorSwatchPickerComponent],
   template: `
     @if (open()) {
       <div class="proj-modal-backdrop" (click)="closed.emit()">
@@ -150,48 +151,9 @@ const STEP_ITEMS = [
                     <app-input label="Allocated Hours" type="number" [value]="allocatedHoursDisplay()" [error]="errors()['allocatedHours']" (valueChange)="onAllocatedHoursChange($event)" />
                   </span>
 
-                  <!-- Color Picker -->
                   <span data-testid="color-field" class="col-span-2 flex flex-col gap-1">
                     <label class="text-xs font-semibold text-[var(--color-text-secondary)]">Project Color</label>
-                    <div class="flex items-center gap-2 flex-wrap">
-                      @for (preset of colorPresets; track preset.value) {
-                        <button
-                          type="button"
-                          class="proj-color-swatch"
-                          [class.proj-color-swatch--active]="color() === preset.value && !showCustomColor()"
-                          [style.background]="preset.value"
-                          [title]="preset.label"
-                          (click)="selectPresetColor(preset.value)"
-                        ></button>
-                      }
-                      <!-- Customize button -->
-                      <div class="relative flex items-center">
-                        <button
-                          type="button"
-                          class="proj-color-swatch proj-color-swatch--custom"
-                          [class.proj-color-swatch--active]="showCustomColor()"
-                          [title]="'Custom color'"
-                          (click)="toggleCustomColor()"
-                        >
-                          <svg class="h-3 w-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 21a4 4 0 01-4-4V5a2 2 0 012-2h4a2 2 0 012 2v12a4 4 0 01-4 4zm0 0h12a2 2 0 002-2v-4a2 2 0 00-2-2h-2.343M11 7.343l1.657-1.657a2 2 0 012.828 0l2.829 2.829a2 2 0 010 2.828l-8.486 8.485M7 17h.01"/></svg>
-                        </button>
-                        @if (showCustomColor()) {
-                          <input
-                            type="color"
-                            class="proj-color-native"
-                            [value]="color() || '#2563eb'"
-                            (input)="color.set($any($event.target).value)"
-                            title="Pick a custom color"
-                          />
-                        }
-                      </div>
-                      @if (color()) {
-                        <div class="flex items-center gap-1 ml-1">
-                          <div class="h-4 w-4 rounded-full border border-[var(--color-border)] shrink-0" [style.background]="color()"></div>
-                          <span class="text-[10px] font-mono text-[var(--color-text-secondary)]">{{ color() }}</span>
-                        </div>
-                      }
-                    </div>
+                    <app-color-swatch-picker [presets]="colorPresets" [selected]="color()" (colorChange)="color.set($event)" />
                     <!-- Hidden input so tests or form helpers can set color-field input directly -->
                     <input
                       type="text"
@@ -571,47 +533,6 @@ const STEP_ITEMS = [
       flex-shrink: 0;
     }
 
-    .proj-color-swatch {
-      width: 1.625rem;
-      height: 1.625rem;
-      border-radius: 6px;
-      border: 2px solid transparent;
-      cursor: pointer;
-      transition: border-color 120ms ease, transform 120ms ease, box-shadow 120ms ease;
-      flex-shrink: 0;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-    }
-    .proj-color-swatch:hover {
-      transform: scale(1.1);
-      box-shadow: 0 2px 6px rgba(0,0,0,0.18);
-    }
-    .proj-color-swatch--active {
-      border-color: var(--color-text-primary) !important;
-      box-shadow: 0 0 0 2px var(--color-surface), 0 0 0 4px var(--color-text-primary);
-    }
-    .proj-color-swatch--custom {
-      background: conic-gradient(red, yellow, lime, cyan, blue, magenta, red);
-      color: white;
-    }
-    .proj-color-native {
-      position: absolute;
-      left: calc(100% + 0.375rem);
-      top: 50%;
-      transform: translateY(-50%);
-      width: 2rem;
-      height: 2rem;
-      border-radius: 6px;
-      border: 1px solid var(--color-border);
-      padding: 0;
-      cursor: pointer;
-      background: none;
-      z-index: 10;
-    }
-    .proj-color-native::-webkit-color-swatch-wrapper { padding: 0; border-radius: 4px; }
-    .proj-color-native::-webkit-color-swatch { border: none; border-radius: 4px; }
-
     ::ng-deep .proj-date-range-field app-date-range-picker {
       width: 100%;
       display: block;
@@ -673,7 +594,6 @@ export class ProjectFormModalComponent implements OnInit {
   targetDate = signal('');
   allocatedHours = signal(0);
   color = signal('');
-  showCustomColor = signal(false);
   logoFile = signal<File | null>(null);
   bannerFile = signal<File | null>(null);
   memberEmployeeIds = signal<readonly string[]>([]);
@@ -692,7 +612,6 @@ export class ProjectFormModalComponent implements OnInit {
         this.targetDate.set('');
         this.allocatedHours.set(0);
         this.color.set('');
-        this.showCustomColor.set(false);
         this.logoFile.set(null);
         this.bannerFile.set(null);
         this.memberEmployeeIds.set([]);
@@ -727,15 +646,6 @@ export class ProjectFormModalComponent implements OnInit {
   onDateRangeChange(range: { from: string; to: string }): void {
     this.startDate.set(range.from);
     this.targetDate.set(range.to);
-  }
-
-  selectPresetColor(value: string): void {
-    this.color.set(value);
-    this.showCustomColor.set(false);
-  }
-
-  toggleCustomColor(): void {
-    this.showCustomColor.update((v) => !v);
   }
 
   onLogoFileSelected(event: Event): void {
