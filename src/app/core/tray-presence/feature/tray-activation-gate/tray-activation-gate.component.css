@@ -14,6 +14,10 @@ button, .primary { display: inline-flex; min-height: 2.75rem; align-items: cente
 .primary { background: #2563eb; color: white; }
 .secondary { background: #e2e8f0; color: #1e293b; }
 .code { margin: 1.25rem 0; border: 1px dashed #93c5fd; border-radius: .75rem; padding: 1rem; background: #eff6ff; color: #1d4ed8; font: 700 1.8rem/1.2 ui-monospace, SFMono-Regular, Menlo, monospace; letter-spacing: .16em; text-align: center; }
+.step { margin: 1rem 0; }
+.step h2 { margin: 0 0 .5rem; color: #0f172a; font-size: 1rem; }
+.download { display: inline-block; text-decoration: none; }
+.hint { opacity: .75; font-size: .875rem; }
 .waiting { font-size: .9rem; }
 .error { color: #b91c1c; }
 .logout { margin-top: 1.25rem; background: transparent; color: #475569; padding-inline: 0; }
