@@ -9,7 +9,24 @@
       <p aria-live="polite">Generating your secure activation code…</p>
       <div class="code" aria-label="Activation code">--------</div>
     } @else if (presence.phase() === 'waiting' && presence.hasUsableCode()) {
-      <p>Open the already-installed ONEVO tray app, paste this code, and select <strong>Connect &amp; Login</strong>.</p>
+      <section class="step" aria-labelledby="step-download">
+        <h2 id="step-download">1. Install the ONEVO tray app</h2>
+        @if (installerState() === 'ready' && installer(); as info) {
+          <a class="primary download" [href]="info.download_url" target="_blank" rel="noopener noreferrer" download>
+            Download for Windows (v{{ info.version }}, {{ sizeLabel() }})
+          </a>
+          <p class="hint">Already installed? Skip to step 2.</p>
+        } @else if (installerState() === 'loading') {
+          <p class="hint" aria-live="polite">Checking for the latest installer…</p>
+        } @else {
+          <p class="hint">The installer isn't available yet. If the app is already installed, continue with step 2; otherwise contact your administrator.</p>
+        }
+      </section>
+
+      <section class="step" aria-labelledby="step-code">
+        <h2 id="step-code">2. Connect it to your account</h2>
+        <p>Open the ONEVO tray app, paste this code, and select <strong>Connect &amp; Login</strong>.</p>
+      </section>
       <div class="code" aria-label="Activation code">{{ presence.code() }}</div>
       <p class="expiry" aria-live="polite">
         Code expires in {{ presence.codeSecondsRemaining() }} seconds.
