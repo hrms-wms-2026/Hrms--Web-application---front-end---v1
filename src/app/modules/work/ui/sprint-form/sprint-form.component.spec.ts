@@ -83,4 +83,17 @@ describe('SprintFormComponent', () => {
 
     expect((fixture.componentInstance as any).name()).toBe('Sprint Two');
   });
+
+  it('renders date range picker in edit mode for active sprint and updates dates on rangeChange', async () => {
+    setup({ mode: 'edit', sprint });
+    const component = fixture.componentInstance as any;
+    expect(fixture.nativeElement.querySelector('app-date-range-picker')).not.toBeNull();
+
+    component.onDateRangeChange({ from: '2026-09-05', to: '2026-09-20' });
+    expect(component.startDate()).toBe('2026-09-05');
+    expect(component.endDate()).toBe('2026-09-20');
+
+    await component.submit();
+    expect(storeStub.edit).toHaveBeenCalledWith('sp-1', { name: 'Sprint One', goal: null, startDate: '2026-09-05', endDate: '2026-09-20' }, 'obj-1', false);
+  });
 });

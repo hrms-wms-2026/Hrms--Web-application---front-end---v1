@@ -3,6 +3,7 @@ import { ModalComponent } from '../../../../shared/ui/modal/modal.component';
 import { InputComponent } from '../../../../shared/ui/input/input.component';
 import { ButtonComponent } from '../../../../shared/ui/button/button.component';
 import { WorkDropdownComponent, WorkDropdownOption } from '../work-dropdown/work-dropdown.component';
+import { DateRangePickerComponent } from '../../../../shared/ui/date-range-picker/date-range-picker.component';
 import { SprintListStore } from '../../state/sprint-list.store';
 import { Sprint } from '../../models/sprint.model';
 
@@ -15,7 +16,7 @@ export interface SprintFormModuleOption {
 @Component({
   selector: 'app-sprint-form',
   standalone: true,
-  imports: [ModalComponent, InputComponent, ButtonComponent, WorkDropdownComponent],
+  imports: [ModalComponent, InputComponent, ButtonComponent, WorkDropdownComponent, DateRangePickerComponent],
   template: `
     <app-modal [open]="open()" [title]="mode() === 'edit' ? 'Edit sprint' : 'Create sprint'" (closed)="cancelled.emit()">
       <div class="sprint-form">
@@ -34,8 +35,15 @@ export interface SprintFormModuleOption {
         <app-input label="Sprint name" [value]="name()" (valueChange)="name.set($event)" />
         <app-input label="Sprint goal (optional)" [value]="goal()" (valueChange)="goal.set($event)" />
         @if (mode() === 'edit' && sprint()?.status === 'active') {
-          <app-input label="Start date" type="date" [value]="startDate()" (valueChange)="startDate.set($event)" />
-          <app-input label="End date" type="date" [value]="endDate()" (valueChange)="endDate.set($event)" />
+          <div class="sprint-form__date-range" data-testid="sprint-date-range">
+            <label class="sprint-form__label">Sprint dates</label>
+            <app-date-range-picker
+              [from]="startDate()"
+              [to]="endDate()"
+              placeholder="Select start and end date"
+              (rangeChange)="onDateRangeChange($event)"
+            />
+          </div>
         }
 
         @if (store.error()) {
@@ -58,6 +66,24 @@ export interface SprintFormModuleOption {
     .sprint-form { display: flex; flex-direction: column; gap: 8px; }
     .sprint-form__error { color: var(--color-danger-text); font-size: 12px; }
     .sprint-form__actions { display: flex; justify-content: flex-end; gap: 8px; }
+    .sprint-form__date-range { display: flex; flex-direction: column; gap: 4px; }
+    .sprint-form__label { font-size: 12px; font-weight: 500; color: var(--color-text-secondary); }
+    :host ::ng-deep .sprint-form__date-range app-date-range-picker { width: 100%; display: block; }
+    :host ::ng-deep .sprint-form__date-range .drp-container { width: 100%; display: flex; }
+    :host ::ng-deep .sprint-form__date-range .drp-trigger {
+      width: 100%;
+      min-height: 38px;
+      padding: 0.375rem 0.75rem;
+      border-radius: 6px;
+      font-size: 0.875rem;
+      font-weight: 400;
+      justify-content: flex-start;
+      gap: 0.5rem;
+      border: 1px solid var(--color-border);
+      background-color: var(--color-surface);
+      color: var(--color-text-primary);
+    }
+    :host ::ng-deep .sprint-form__date-range .drp-popover { z-index: 100; }
   `]
 })
 export class SprintFormComponent {
@@ -106,6 +132,11 @@ export class SprintFormComponent {
       }
       this.moduleError.set(null);
     });
+  }
+
+  onDateRangeChange(range: { from: string; to: string }): void {
+    this.startDate.set(range.from);
+    this.endDate.set(range.to);
   }
 
   async submit(): Promise<void> {

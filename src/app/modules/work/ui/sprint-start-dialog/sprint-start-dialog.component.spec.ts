@@ -90,9 +90,29 @@ describe('SprintStartDialogComponent', () => {
     setup();
     const component = fixture.componentInstance as any;
     component.startDate.set('2026-09-21');
+    component.endDate.set('');
     await component.submit();
 
     expect(storeStub.start).not.toHaveBeenCalled();
     expect(component.dateError()).toBeTruthy();
+  });
+
+  it('auto-calculates and pre-selects upcoming sprint start and end dates on open', () => {
+    setup();
+    const component = fixture.componentInstance as any;
+    expect(component.startDate()).toBeTruthy();
+    expect(component.endDate()).toBeTruthy();
+    expect(component.startDate() <= component.endDate()).toBe(true);
+  });
+
+  it('renders date range picker and updates dates via onDateRangeChange', async () => {
+    setup();
+    const component = fixture.componentInstance as any;
+    expect(fixture.nativeElement.querySelector('app-date-range-picker')).not.toBeNull();
+
+    component.onDateRangeChange({ from: '2026-09-25', to: '2026-10-05' });
+    expect(component.startDate()).toBe('2026-09-25');
+    expect(component.endDate()).toBe('2026-10-05');
+    expect(component.dateError()).toBeNull();
   });
 });

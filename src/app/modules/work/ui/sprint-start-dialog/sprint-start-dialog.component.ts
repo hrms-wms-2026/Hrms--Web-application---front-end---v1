@@ -2,14 +2,18 @@ import { Component, computed, effect, inject, input, output, signal } from '@ang
 import { ModalComponent } from '../../../../shared/ui/modal/modal.component';
 import { InputComponent } from '../../../../shared/ui/input/input.component';
 import { ButtonComponent } from '../../../../shared/ui/button/button.component';
+import { DateRangePickerComponent } from '../../../../shared/ui/date-range-picker/date-range-picker.component';
 import { SprintListStore } from '../../state/sprint-list.store';
 import { Sprint } from '../../models/sprint.model';
 import { WorkTask } from '../../models/task.model';
+import { calculateUpcomingSprintDates } from '../../utils/sprint-date.utils';
+import { LegalEntityStore, SELECTED_LEGAL_ENTITY_STORAGE_KEY } from '../../../organization/state/legal-entity.store';
+import { GeneralSettingsStore } from '../../../organization/state/general-settings.store';
 
 @Component({
   selector: 'app-sprint-start-dialog',
   standalone: true,
-  imports: [ModalComponent, InputComponent, ButtonComponent],
+  imports: [ModalComponent, InputComponent, ButtonComponent, DateRangePickerComponent],
   template: `
     <app-modal [open]="open()" [title]="'Start ' + (sprint()?.name ?? 'sprint')" (closed)="cancelled.emit()">
       <div class="sprint-start-dialog">
@@ -19,8 +23,15 @@ import { WorkTask } from '../../models/task.model';
           {{ assigneeCount() }} member{{ assigneeCount() === 1 ? '' : 's' }} assigned
         </p>
 
-        <app-input label="Start date" type="date" [value]="startDate()" (valueChange)="startDate.set($event)" />
-        <app-input label="End date" type="date" [value]="endDate()" (valueChange)="endDate.set($event)" />
+        <div class="sprint-start-dialog__date-range" data-testid="sprint-date-range">
+          <label class="sprint-start-dialog__label">Sprint dates *</label>
+          <app-date-range-picker
+            [from]="startDate()"
+            [to]="endDate()"
+            placeholder="Select start and end date"
+            (rangeChange)="onDateRangeChange($event)"
+          />
+        </div>
         <app-input label="Sprint goal (optional)" [value]="goal()" (valueChange)="goal.set($event)" />
 
         @if (hasUnestimatedTasks()) {
@@ -52,10 +63,30 @@ import { WorkTask } from '../../models/task.model';
     .sprint-start-dialog__hint { font-size: 12px; color: var(--color-text-secondary); margin: 0; }
     .sprint-start-dialog__error { color: var(--color-danger-text); font-size: 12px; }
     .sprint-start-dialog__actions { display: flex; justify-content: flex-end; gap: 8px; }
+    .sprint-start-dialog__date-range { display: flex; flex-direction: column; gap: 4px; }
+    .sprint-start-dialog__label { font-size: 12px; font-weight: 500; color: var(--color-text-secondary); }
+    :host ::ng-deep .sprint-start-dialog__date-range app-date-range-picker { width: 100%; display: block; }
+    :host ::ng-deep .sprint-start-dialog__date-range .drp-container { width: 100%; display: flex; }
+    :host ::ng-deep .sprint-start-dialog__date-range .drp-trigger {
+      width: 100%;
+      min-height: 38px;
+      padding: 0.375rem 0.75rem;
+      border-radius: 6px;
+      font-size: 0.875rem;
+      font-weight: 400;
+      justify-content: flex-start;
+      gap: 0.5rem;
+      border: 1px solid var(--color-border);
+      background-color: var(--color-surface);
+      color: var(--color-text-primary);
+    }
+    :host ::ng-deep .sprint-start-dialog__date-range .drp-popover { z-index: 100; }
   `]
 })
 export class SprintStartDialogComponent {
   protected readonly store = inject(SprintListStore);
+  protected readonly legalEntityStore = inject(LegalEntityStore);
+  protected readonly generalSettingsStore = inject(GeneralSettingsStore);
 
   open = input(false);
   sprint = input<Sprint | null>(null);
@@ -72,6 +103,7 @@ export class SprintStartDialogComponent {
   protected readonly goal = signal('');
   protected readonly submitting = signal(false);
   protected readonly dateError = signal<string | null>(null);
+  private userModifiedDates = false;
 
   protected readonly taskCount = computed(() => this.tasks().length);
   protected readonly totalEstimatedHours = computed(() =>
@@ -89,12 +121,39 @@ export class SprintStartDialogComponent {
 
   constructor() {
     effect(() => {
-      this.open();
-      this.goal.set(this.sprint()?.goal ?? '');
-      this.startDate.set('');
-      this.endDate.set('');
+      if (!this.open()) {
+        this.userModifiedDates = false;
+        return;
+      }
+      const current = this.sprint();
+      this.goal.set(current?.goal ?? '');
       this.dateError.set(null);
+
+      // Trigger legal entity settings load if needed
+      const legalEntityId =
+        this.legalEntityStore.selectedLegalEntityId() ||
+        (typeof localStorage !== 'undefined' ? localStorage.getItem(SELECTED_LEGAL_ENTITY_STORAGE_KEY) : null);
+      if (legalEntityId && !this.generalSettingsStore.settings() && !this.generalSettingsStore.loading()) {
+        void this.generalSettingsStore.load(legalEntityId);
+      }
+
+      if (current?.startDate && current?.endDate) {
+        this.startDate.set(current.startDate.toISOString().slice(0, 10));
+        this.endDate.set(current.endDate.toISOString().slice(0, 10));
+      } else if (!this.userModifiedDates) {
+        const settings = this.generalSettingsStore.settings();
+        const { startDate, endDate } = calculateUpcomingSprintDates(settings);
+        this.startDate.set(startDate);
+        this.endDate.set(endDate);
+      }
     });
+  }
+
+  onDateRangeChange(range: { from: string; to: string }): void {
+    this.userModifiedDates = true;
+    this.startDate.set(range.from);
+    this.endDate.set(range.to);
+    this.dateError.set(null);
   }
 
   async submit(): Promise<void> {
