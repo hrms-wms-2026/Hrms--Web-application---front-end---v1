@@ -1,3 +1,4 @@
+import { NgTemplateOutlet } from '@angular/common';
 import { ChangeDetectionStrategy, Component, OnInit, computed, inject, signal } from '@angular/core';
 import { firstValueFrom } from 'rxjs';
 import { AuthStore } from '../../../auth/state/auth.store';
@@ -8,6 +9,7 @@ import { TrayPresenceStore } from '../../state/tray-presence.store';
 @Component({
   selector: 'app-tray-activation-gate',
   standalone: true,
+  imports: [NgTemplateOutlet],
   templateUrl: './tray-activation-gate.component.html',
   styleUrl: './tray-activation-gate.component.css',
   changeDetection: ChangeDetectionStrategy.OnPush
@@ -41,6 +43,10 @@ export class TrayActivationGateComponent implements OnInit {
 
   async copyCode(): Promise<void> {
     await this.presence.copyCode();
+  }
+
+  generate(): void {
+    void this.presence.generateCode();
   }
 
   regenerate(): void {

@@ -22,15 +22,21 @@ const installer: TrayInstallerInfo = {
 describe('TrayActivationGateComponent installer step', () => {
   const getLatest = vi.fn();
 
-  async function render(settle = true): Promise<ComponentFixture<TrayActivationGateComponent>> {
+  const generateCode = vi.fn();
+
+  async function render(
+    settle = true,
+    phase: 'waiting' | 'needs-code' = 'waiting'
+  ): Promise<ComponentFixture<TrayActivationGateComponent>> {
     const presence = {
-      phase: signal('waiting'),
-      hasUsableCode: signal(true),
+      phase: signal(phase),
+      hasUsableCode: signal(phase === 'waiting'),
       code: signal('BCDF2345'),
       codeSecondsRemaining: signal(600),
       copyState: signal('idle'),
       generationError: signal<string | null>(null),
       copyCode: vi.fn(),
+      generateCode,
       retry: vi.fn()
     };
 
@@ -54,6 +60,22 @@ describe('TrayActivationGateComponent installer step', () => {
 
   beforeEach(() => {
     getLatest.mockReset();
+    generateCode.mockReset();
+  });
+
+  it('asks for a code only when the Generate button is clicked, and still offers the download', async () => {
+    getLatest.mockReturnValue(of(installer));
+    const fixture = await render(true, 'needs-code');
+
+    expect(generateCode).not.toHaveBeenCalled();
+    expect(fixture.nativeElement.querySelector('a.download')).not.toBeNull();
+    expect(fixture.nativeElement.textContent).not.toContain('BCDF2345');
+
+    const button = Array.from<HTMLButtonElement>(fixture.nativeElement.querySelectorAll('button'))
+      .find(b => b.textContent?.trim() === 'Generate activation code')!;
+    button.click();
+
+    expect(generateCode).toHaveBeenCalledOnce();
   });
 
   it('shows the download link with version and size when an installer is published', async () => {
