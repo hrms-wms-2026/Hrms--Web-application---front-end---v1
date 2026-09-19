@@ -205,6 +205,22 @@ describe('TaskFormModalComponent - create mode', () => {
     expect(fixture.componentInstance.selectedObjectiveId()).toBe('o1');
   });
 
+  it('inherits the module from the prefillSprintId input when prefillModuleId is not specified', async () => {
+    await build({ sprint: 'sp1' });
+    expect(fixture.componentInstance.sprintId()).toBe('sp1');
+    expect(fixture.componentInstance.selectedObjectiveId()).toBe('o1');
+    expect(fixture.componentInstance.errors()['objectiveId']).toBeFalsy();
+  });
+
+  it('inherits the module when a sprint is selected via selectSprint', async () => {
+    await build();
+    fixture.componentInstance.selectedObjectiveId.set('');
+    fixture.componentInstance.selectSprint('sp1');
+    expect(fixture.componentInstance.sprintId()).toBe('sp1');
+    expect(fixture.componentInstance.selectedObjectiveId()).toBe('o1');
+    expect(fixture.componentInstance.errors()['objectiveId']).toBeFalsy();
+  });
+
   it('creates with no sprint selected — sprint is optional', async () => {
     await build();
     fixture.componentInstance.title.set('New task');

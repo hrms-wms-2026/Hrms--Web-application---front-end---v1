@@ -677,14 +677,48 @@ describe('MilestoneTreeTabComponent', () => {
     expect(storeStub.unachieveMilestone).toHaveBeenCalledWith('o1');
   });
 
-  it('forwards sprint achieve and complete to the store', async () => {
+  it('forwards sprint achieve to the store', async () => {
     setup('o1');
     fixture.detectChanges();
     const sprint: MilestoneTreeNode = { ...child, id: 'spr-1', kind: 'sprint' };
     await fixture.componentInstance.onAchieveSprintRequested(sprint);
-    await fixture.componentInstance.onCompleteSprintRequested(sprint);
     expect(storeStub.achieveSprint).toHaveBeenCalledWith('spr-1');
-    expect(storeStub.completeSprint).toHaveBeenCalledWith('spr-1');
+  });
+
+  it('opens the complete-sprint dialog instead of completing directly, so a disposition is always confirmed', () => {
+    setup('o1');
+    fixture.detectChanges();
+    const sprint: MilestoneTreeNode = { ...child, id: 'spr-1', kind: 'sprint' };
+
+    fixture.componentInstance.onCompleteSprintRequested(sprint);
+    fixture.detectChanges();
+
+    expect(storeStub.completeSprint).not.toHaveBeenCalled();
+    expect(fixture.componentInstance.completingSprintNode()?.id).toBe('spr-1');
+    expect(fixture.nativeElement.querySelector('app-sprint-complete-dialog')).not.toBeNull();
+  });
+
+  it('closes the complete-sprint dialog on cancel', () => {
+    setup('o1');
+    fixture.detectChanges();
+    const sprint: MilestoneTreeNode = { ...child, id: 'spr-1', kind: 'sprint' };
+
+    fixture.componentInstance.onCompleteSprintRequested(sprint);
+    fixture.componentInstance.onSprintCompleteDialogClosed();
+
+    expect(fixture.componentInstance.completingSprintNode()).toBeNull();
+  });
+
+  it('closes the complete-sprint dialog and refreshes the tree once completion succeeds', async () => {
+    setup('o1');
+    fixture.detectChanges();
+    const sprint: MilestoneTreeNode = { ...child, id: 'spr-1', kind: 'sprint' };
+    fixture.componentInstance.onCompleteSprintRequested(sprint);
+
+    await fixture.componentInstance.onSprintCompleteDialogCompleted();
+
+    expect(fixture.componentInstance.completingSprintNode()).toBeNull();
+    expect(storeStub.loadProjectTree).toHaveBeenCalledTimes(2);
   });
 
   it('opens a confirmation dialog then deletes the task on confirm', async () => {

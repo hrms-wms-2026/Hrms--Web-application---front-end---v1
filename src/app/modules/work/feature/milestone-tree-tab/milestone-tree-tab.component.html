@@ -78,6 +78,13 @@
   [sprint]="sprintFromNode(sprintNode)" (saved)="onSprintSaved()" (cancelled)="onSprintEditCancelled()" />
 }
 
+@if (completingSprintNode(); as node) {
+<app-sprint-complete-dialog [open]="true"
+  [sprint]="{ id: node.id, objectiveId: node.parentObjectiveId ?? '', name: node.title, goal: null, startDate: null, endDate: null, status: 'active', completedAt: null, achievedAt: null }"
+  [tasks]="[]" [otherSprints]="[]" [objectiveId]="node.parentObjectiveId ?? ''"
+  (completed)="onSprintCompleteDialogCompleted()" (cancelled)="onSprintCompleteDialogClosed()" />
+}
+
 <app-confirm-modal [open]="deleteConfirmOpen()" title="Delete task" message="Delete this task? This cannot be undone."
   confirmLabel="Delete" [errorMessage]="store.milestoneActionError() ?? ''" (confirmed)="onDeleteConfirmed()"
   (cancelled)="onDeleteCancelled()" />

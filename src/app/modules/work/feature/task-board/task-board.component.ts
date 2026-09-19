@@ -282,8 +282,13 @@ export class TaskBoardComponent implements OnInit, AfterViewChecked, AfterViewIn
     const objectiveMatches = objectiveFilter.length === 0 || objectiveFilter.includes(task.objectiveId);
     const sprintFilter = this.sprintFilter();
     const activeSprintIds = new Set(this.sprints().filter((sprint) => sprint.status === 'active').map((sprint) => sprint.id));
+    // A Draft sprint hasn't been started yet, so its tasks stay off the Board under 'All sprints'
+    // until the sprint starts - otherwise creating a task in an unstarted sprint would confusingly
+    // put it in front of the team as if work were already underway. Explicitly picking that sprint
+    // from the filter still shows it (the branch below, unaffected).
+    const draftSprintIds = new Set(this.sprints().filter((sprint) => sprint.status === 'draft').map((sprint) => sprint.id));
     const sprintMatches = sprintFilter === 'all'
-      ? true
+      ? !draftSprintIds.has(task.sprintId ?? '')
       : sprintFilter === 'active'
         ? activeSprintIds.has(task.sprintId ?? '')
         : sprintFilter === 'individual'

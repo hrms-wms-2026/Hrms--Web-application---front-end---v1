@@ -54,7 +54,7 @@ import { MilestoneTreeNode } from '../../models/milestone.model';
       </span>
 
       <span data-testid="owner-cell"></span>
-      <span class="text-xs {{ selected() ? 'text-white' : 'text-[var(--color-text-secondary)]' }}" data-testid="due-date-cell">{{ node().endDate }}</span>
+      <span class="text-xs {{ selected() ? 'text-white' : 'text-[var(--color-text-secondary)]' }}" data-testid="due-date-cell">{{ node().endDate || 'No dates set' }}</span>
 
       <span class="flex items-center justify-end gap-px" data-testid="row-actions">
         @if (node().isOwner) {

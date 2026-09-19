@@ -10,7 +10,7 @@ describe('SprintFormComponent', () => {
   let storeStub: { error: ReturnType<typeof signal>; create: ReturnType<typeof vi.fn>; edit: ReturnType<typeof vi.fn> };
 
   const sprint: Sprint = {
-    id: 'sp-1', objectiveId: 'obj-1', name: 'Sprint One',
+    id: 'sp-1', objectiveId: 'obj-1', name: 'Sprint One', goal: null,
     startDate: new Date('2026-09-01T00:00:00.000Z'),
     endDate: new Date('2026-09-14T00:00:00.000Z'), status: 'active', completedAt: null, achievedAt: null
   };
@@ -40,14 +40,13 @@ describe('SprintFormComponent', () => {
     const component = fixture.componentInstance as any;
     component.selectedObjectiveId.set('obj-1');
     component.name.set('Sprint X');
-    component.startDate.set('2026-09-01');
-    component.endDate.set('2026-09-14');
+    component.goal.set('Ship it');
     const created = vi.fn();
     component.created.subscribe(created);
 
     await component.submit();
 
-    expect(storeStub.create).toHaveBeenCalledWith('obj-1', { name: 'Sprint X', startDate: '2026-09-01', endDate: '2026-09-14' }, false);
+    expect(storeStub.create).toHaveBeenCalledWith('obj-1', { name: 'Sprint X', goal: 'Ship it' }, false);
     expect(created).toHaveBeenCalledTimes(1);
   });
 
@@ -72,7 +71,7 @@ describe('SprintFormComponent', () => {
     expect(fixture.nativeElement.querySelector('app-select')).toBeNull();
     await component.submit();
 
-    expect(storeStub.edit).toHaveBeenCalledWith('sp-1', { name: 'Sprint One Renamed', startDate: '2026-09-01', endDate: '2026-09-14' }, 'obj-1', false);
+    expect(storeStub.edit).toHaveBeenCalledWith('sp-1', { name: 'Sprint One Renamed', goal: null, startDate: '2026-09-01', endDate: '2026-09-14' }, 'obj-1', false);
     expect(saved).toHaveBeenCalledTimes(1);
   });
 
@@ -83,5 +82,18 @@ describe('SprintFormComponent', () => {
     fixture.detectChanges();
 
     expect((fixture.componentInstance as any).name()).toBe('Sprint Two');
+  });
+
+  it('renders date range picker in edit mode for active sprint and updates dates on rangeChange', async () => {
+    setup({ mode: 'edit', sprint });
+    const component = fixture.componentInstance as any;
+    expect(fixture.nativeElement.querySelector('app-date-range-picker')).not.toBeNull();
+
+    component.onDateRangeChange({ from: '2026-09-05', to: '2026-09-20' });
+    expect(component.startDate()).toBe('2026-09-05');
+    expect(component.endDate()).toBe('2026-09-20');
+
+    await component.submit();
+    expect(storeStub.edit).toHaveBeenCalledWith('sp-1', { name: 'Sprint One', goal: null, startDate: '2026-09-05', endDate: '2026-09-20' }, 'obj-1', false);
   });
 });
