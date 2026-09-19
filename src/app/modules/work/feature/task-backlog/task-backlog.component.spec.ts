@@ -71,6 +71,7 @@ describe('TaskBacklogComponent', () => {
     sprintComplete?: ReturnType<typeof vi.fn>;
     sprintAchieve?: ReturnType<typeof vi.fn>;
     taskErrorSignal?: ReturnType<typeof signal<string | null>>;
+    milestones?: { objectiveId: string; title: string; isOwner: boolean }[];
   } = {}) {
     const isOwner = options.isOwner ?? true;
     const sprintsSignal = options.sprintsSignal ?? signal<Sprint[]>(options.sprints ?? [sprint1, sprint2]);
@@ -104,7 +105,7 @@ describe('TaskBacklogComponent', () => {
         {
           provide: ProjectDetailStore,
           useValue: {
-            milestones: () => [{ objectiveId: 'milestone-1', title: 'Milestone One', isOwner }],
+            milestones: () => options.milestones ?? [{ objectiveId: 'milestone-1', title: 'Milestone One', isOwner }],
             getMilestoneDetail: vi.fn().mockResolvedValue(null),
             loadProjectMembers,
             projectMembers: () => []
@@ -184,9 +185,16 @@ describe('TaskBacklogComponent', () => {
 
     (sprint1Tab.componentInstance as SprintTabComponent).createTaskRequested.emit();
 
-    const inst = fixture.componentInstance as unknown as { taskModalOpen: () => boolean; taskModalMode: () => string };
+    const inst = fixture.componentInstance as unknown as {
+      taskModalOpen: () => boolean;
+      taskModalMode: () => string;
+      modalPrefillSprintId: () => string;
+      modalPrefillModuleId: () => string;
+    };
     expect(inst.taskModalOpen()).toBe(true);
     expect(inst.taskModalMode()).toBe('create');
+    expect(inst.modalPrefillSprintId()).toBe('sp-1');
+    expect(inst.modalPrefillModuleId()).toBe('milestone-1');
   });
 
   it("creating a sprint immediately reflects in this component's own sprint list without a page reload", async () => {
@@ -453,7 +461,7 @@ describe('TaskBacklogComponent', () => {
 
     const unsortedSection = fixture.nativeElement.querySelector('.task-backlog__unsorted');
     expect(unsortedSection).not.toBeNull();
-    expect(unsortedSection.textContent).toContain('Unsorted');
+    expect(unsortedSection.textContent).toContain('Backlog');
 
     const row = fixture.nativeElement.querySelector('[data-testid="task-row-t-unsorted"]');
     expect(row).not.toBeNull();
@@ -475,5 +483,133 @@ describe('TaskBacklogComponent', () => {
     fixture.detectChanges();
 
     expect(fixture.nativeElement.querySelector('.task-backlog__unsorted')).toBeNull();
+  });
+
+  describe('bulk select and move to sprint', () => {
+    function makeTaskWithHours(id: string, estimatedHours: number | null, objectiveId = 'milestone-1'): WorkTask {
+      return { ...makeTask(id, null), objectiveId, estimatedHours };
+    }
+
+    it('selecting a Backlog row replaces the title with a selection toolbar', async () => {
+      const tasks = [makeTaskWithHours('t-a', 4), makeTaskWithHours('t-b', 6)];
+      const { fixture } = setup({ tasks });
+      await fixture.whenStable();
+      fixture.detectChanges();
+
+      expect(fixture.nativeElement.textContent).toContain('Backlog');
+      expect(fixture.nativeElement.querySelector('.task-backlog__selection-toolbar')).toBeNull();
+
+      (fixture.nativeElement.querySelector('[data-testid="task-select-t-a"]') as HTMLInputElement).click();
+      fixture.detectChanges();
+
+      const toolbar = fixture.nativeElement.querySelector('.task-backlog__selection-toolbar');
+      expect(toolbar).not.toBeNull();
+      expect(toolbar.textContent).toContain('1 task selected');
+    });
+
+    it('clearing the selection restores the plain title', async () => {
+      const tasks = [makeTaskWithHours('t-a', 4)];
+      const { fixture } = setup({ tasks });
+      await fixture.whenStable();
+      fixture.detectChanges();
+
+      (fixture.nativeElement.querySelector('[data-testid="task-select-t-a"]') as HTMLInputElement).click();
+      fixture.detectChanges();
+      (fixture.nativeElement.querySelector('.task-backlog__selection-clear') as HTMLButtonElement).click();
+      fixture.detectChanges();
+
+      expect(fixture.nativeElement.querySelector('.task-backlog__selection-toolbar')).toBeNull();
+      expect(fixture.nativeElement.textContent).toContain('Backlog');
+    });
+
+    it('offers the Draft sprint in the same module as a target, with its current task count and hours', async () => {
+      const backlogTasks = [makeTaskWithHours('t-a', 4), makeTaskWithHours('t-b', 6)];
+      const sprintTasks = [makeTask('t-in-sprint2', 'sp-2')];
+      const { fixture } = setup({ tasks: [...backlogTasks, ...sprintTasks] });
+      await fixture.whenStable();
+      fixture.detectChanges();
+
+      (fixture.nativeElement.querySelector('[data-testid="task-select-t-a"]') as HTMLInputElement).click();
+      fixture.detectChanges();
+
+      const inst = fixture.componentInstance as unknown as {
+        moveTargets: () => { sprint: Sprint; currentTaskCount: number; currentHours: number }[];
+        moveBlockedReason: () => string | null;
+      };
+      expect(inst.moveBlockedReason()).toBeNull();
+      const targets = inst.moveTargets();
+      expect(targets).toHaveLength(1);
+      expect(targets[0].sprint.id).toBe('sp-2');
+      expect(targets[0].currentTaskCount).toBe(1);
+    });
+
+    it('blocks the move when the selection spans more than one module', async () => {
+      const tasks = [makeTaskWithHours('t-a', 4, 'milestone-1'), makeTaskWithHours('t-b', 2, 'milestone-2')];
+      const { fixture } = setup({
+        tasks,
+        milestones: [
+          { objectiveId: 'milestone-1', title: 'Milestone One', isOwner: true },
+          { objectiveId: 'milestone-2', title: 'Milestone Two', isOwner: true }
+        ]
+      });
+      await fixture.whenStable();
+      fixture.detectChanges();
+
+      (fixture.nativeElement.querySelector('[data-testid="task-select-t-a"]') as HTMLInputElement).click();
+      (fixture.nativeElement.querySelector('[data-testid="task-select-t-b"]') as HTMLInputElement).click();
+      fixture.detectChanges();
+
+      const inst = fixture.componentInstance as unknown as { moveBlockedReason: () => string | null };
+      expect(inst.moveBlockedReason()).toContain('single module');
+    });
+
+    it('moving tasks edits each one with the target sprint, clears selection, and shows an undo banner', async () => {
+      const tasks = [makeTaskWithHours('t-a', 4), makeTaskWithHours('t-b', 6)];
+      const { fixture, loadBoard } = setup({ tasks });
+      await fixture.whenStable();
+      fixture.detectChanges();
+      loadBoard.mockClear();
+
+      (fixture.nativeElement.querySelector('[data-testid="task-select-t-a"]') as HTMLInputElement).click();
+      (fixture.nativeElement.querySelector('[data-testid="task-select-t-b"]') as HTMLInputElement).click();
+      fixture.detectChanges();
+
+      const inst = fixture.componentInstance as unknown as {
+        selectedTaskIds: () => ReadonlySet<string>;
+        moveUndoBanner: () => { message: string } | null;
+        onTasksMoved: (sprintId: string) => Promise<void>;
+      };
+      await inst.onTasksMoved('sp-2');
+      fixture.detectChanges();
+
+      const taskApi = TestBed.inject(TaskApiService) as unknown as { editTask: ReturnType<typeof vi.fn> };
+      expect(taskApi.editTask).toHaveBeenCalledWith('t-a', expect.objectContaining({ sprintId: 'sp-2' }));
+      expect(taskApi.editTask).toHaveBeenCalledWith('t-b', expect.objectContaining({ sprintId: 'sp-2' }));
+      expect(inst.selectedTaskIds().size).toBe(0);
+      expect(inst.moveUndoBanner()?.message).toContain('2 tasks moved to Sprint Two');
+      expect(loadBoard).toHaveBeenCalledWith('project-1');
+    });
+
+    it('undo re-applies each task\'s previous sprintId', async () => {
+      const tasks = [makeTaskWithHours('t-a', 4)];
+      const { fixture } = setup({ tasks });
+      await fixture.whenStable();
+      fixture.detectChanges();
+
+      const inst = fixture.componentInstance as unknown as {
+        selectedTaskIds: { (): ReadonlySet<string> };
+        onTasksMoved: (sprintId: string) => Promise<void>;
+        undoMove: () => Promise<void>;
+      };
+      (fixture.nativeElement.querySelector('[data-testid="task-select-t-a"]') as HTMLInputElement).click();
+      fixture.detectChanges();
+
+      await inst.onTasksMoved('sp-2');
+      fixture.detectChanges();
+      await inst.undoMove();
+
+      const taskApi = TestBed.inject(TaskApiService) as unknown as { editTask: ReturnType<typeof vi.fn> };
+      expect(taskApi.editTask).toHaveBeenCalledWith('t-a', expect.objectContaining({ sprintId: null }));
+    });
   });
 });

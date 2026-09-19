@@ -24,11 +24,13 @@ import { TaskAssigneeAvatarFilterComponent } from '../../ui/task-assignee-avatar
 import { TaskFormModalComponent } from '../../ui/task-form-modal/task-form-modal.component';
 import { SprintStartDialogComponent } from '../../ui/sprint-start-dialog/sprint-start-dialog.component';
 import { SprintCompleteDialogComponent } from '../../ui/sprint-complete-dialog/sprint-complete-dialog.component';
+import { MoveTasksToSprintDialogComponent, SprintMoveTarget } from '../../ui/move-tasks-to-sprint-dialog/move-tasks-to-sprint-dialog.component';
+import { toEditTaskRequest } from '../../utils/task.mapper';
 
 @Component({
   selector: 'app-task-backlog',
   standalone: true,
-  imports: [SprintTabComponent, SprintFormComponent, TaskTableComponent, ButtonComponent, ErrorStateComponent, TaskFilterBarComponent, TaskAssigneeAvatarFilterComponent, TaskFormModalComponent, SprintStartDialogComponent, SprintCompleteDialogComponent],
+  imports: [SprintTabComponent, SprintFormComponent, TaskTableComponent, ButtonComponent, ErrorStateComponent, TaskFilterBarComponent, TaskAssigneeAvatarFilterComponent, TaskFormModalComponent, SprintStartDialogComponent, SprintCompleteDialogComponent, MoveTasksToSprintDialogComponent],
   template: `
     <ng-template #toolbarTpl>
       <div class="task-backlog__toolbar">
@@ -116,7 +118,7 @@ import { SprintCompleteDialogComponent } from '../../ui/sprint-complete-dialog/s
               (editRequested)="editingSprint.set(sprint)"
               (startRequested)="startingSprint.set(sprint)"
               (completeRequested)="completingSprint.set(sprint)"
-              (createTaskRequested)="openCreateTask()"
+              (createTaskRequested)="openCreateTask(sprint)"
               (taskViewed)="onTaskViewed($event)"
               (taskStatusChangeRequested)="onTaskStatusChangeRequested($event)"
               (taskChanged)="reloadTasks()"
@@ -127,20 +129,51 @@ import { SprintCompleteDialogComponent } from '../../ui/sprint-complete-dialog/s
 
       @if (unsortedTasks().length > 0) {
         <div class="task-backlog__unsorted">
-          <h3 class="task-backlog__unsorted-title">Unsorted</h3>
+          @if (selectedTaskIds().size > 0) {
+            <div class="task-backlog__selection-toolbar">
+              <span class="task-backlog__selection-count">{{ selectedTaskIds().size }} task{{ selectedTaskIds().size === 1 ? '' : 's' }} selected</span>
+              <app-button variant="primary" (pressed)="moveDialogOpen.set(true)">Move to sprint</app-button>
+              <button type="button" class="task-backlog__selection-clear" aria-label="Clear selection" title="Clear selection" (click)="clearSelection()">&#x2715;</button>
+            </div>
+          } @else {
+            <h3 class="task-backlog__unsorted-title">Backlog</h3>
+          }
           <app-task-table
             [tasks]="unsortedTasks()"
             [statusNames]="statusNames()"
             [statuses]="store.statuses()"
             [objectiveOwners]="objectiveOwners()"
             [currentEmployeeId]="currentEmployee.id()"
+            [selectable]="true"
+            [selectedIds]="selectedTaskIds()"
             (viewed)="onTaskViewed($event)"
             (taskChanged)="reloadTasks()"
             (statusChangeRequested)="onTaskStatusChangeRequested($event)"
+            (selectionChanged)="onTaskSelectionChanged($event)"
+            (selectAllChanged)="onSelectAllChanged($event)"
           />
         </div>
       }
     }
+
+    @if (moveUndoBanner(); as banner) {
+      <div class="task-backlog__undo-banner" role="status">
+        <span>{{ banner.message }}</span>
+        <button type="button" class="task-backlog__undo-action" (click)="undoMove()">Undo</button>
+      </div>
+    }
+
+    <app-move-tasks-to-sprint-dialog
+      [open]="moveDialogOpen()"
+      [taskCount]="selectedTaskIds().size"
+      [totalEstimatedHours]="selectedTasksTotalHours()"
+      [targets]="moveTargets()"
+      [blockedReason]="moveBlockedReason()"
+      [submitting]="movingTasks()"
+      [error]="moveError()"
+      (moved)="onTasksMoved($event)"
+      (cancelled)="moveDialogOpen.set(false)"
+    />
 
     <app-task-form-modal
       [open]="taskModalOpen()"
@@ -151,7 +184,7 @@ import { SprintCompleteDialogComponent } from '../../ui/sprint-complete-dialog/s
       [prefillSprintId]="modalPrefillSprintId()"
       (created)="onTaskModalDone()"
       (saved)="onTaskModalDone()"
-      (closed)="taskModalOpen.set(false)"
+      (closed)="closeTaskModal()"
     />
   `,
   styles: [`
@@ -162,6 +195,14 @@ import { SprintCompleteDialogComponent } from '../../ui/sprint-complete-dialog/s
     .task-backlog__sprints-title { font-size: 13px; font-weight: 600; color: var(--color-text-primary); margin: 0 0 10px; }
     .task-backlog__unsorted { margin-top: 18px; }
     .task-backlog__unsorted-title { font-size: 13px; font-weight: 600; color: var(--color-text-primary); margin: 0 0 10px; }
+    .task-backlog__selection-toolbar { display: flex; align-items: center; gap: 10px; margin: 0 0 10px; padding: 8px 12px; border: 1px solid var(--color-accent); border-radius: 10px; background: var(--color-surface-secondary); }
+    .task-backlog__selection-toolbar ::ng-deep app-button > button { width: auto; }
+    .task-backlog__selection-count { font-size: 13px; font-weight: 600; color: var(--color-text-primary); }
+    .task-backlog__selection-clear { margin-left: auto; border: none; background: none; color: var(--color-text-secondary); cursor: pointer; font-size: 14px; line-height: 1; padding: 4px; }
+    .task-backlog__selection-clear:hover { color: var(--color-text-primary); }
+    .task-backlog__undo-banner { display: flex; align-items: center; gap: 12px; margin-top: 12px; padding: 10px 14px; border-radius: 10px; background: var(--color-text-primary); color: var(--color-surface); font-size: 13px; }
+    .task-backlog__undo-action { border: none; background: none; color: var(--color-accent-light, var(--color-accent)); font-weight: 600; cursor: pointer; font-size: 13px; padding: 0; }
+    .task-backlog__undo-action:hover { text-decoration: underline; }
   `]
 })
 export class TaskBacklogComponent implements OnInit, AfterViewInit, OnDestroy {
@@ -178,6 +219,13 @@ export class TaskBacklogComponent implements OnInit, AfterViewInit, OnDestroy {
   protected readonly editingSprint = signal<Sprint | null>(null);
   protected readonly startingSprint = signal<Sprint | null>(null);
   protected readonly completingSprint = signal<Sprint | null>(null);
+  protected readonly selectedTaskIds = signal<ReadonlySet<string>>(new Set());
+  protected readonly moveDialogOpen = signal(false);
+  protected readonly movingTasks = signal(false);
+  protected readonly moveError = signal<string | null>(null);
+  protected readonly moveUndoBanner = signal<{ message: string } | null>(null);
+  private undoBannerTimer: ReturnType<typeof setTimeout> | null = null;
+  private lastMove: { taskId: string; previousSprintId: string | null }[] = [];
   protected readonly projectId = signal('');
   protected readonly expandedSprintId = signal<string | null>(null);
   protected readonly assignableMembers = signal<{ employeeId: string; name: string }[]>([]);
@@ -280,6 +328,36 @@ export class TaskBacklogComponent implements OnInit, AfterViewInit, OnDestroy {
     return this.filteredTasks().filter((task) => task.sprintId == null || !knownSprintIds.has(task.sprintId));
   });
 
+  protected readonly selectedTasks = computed(() => {
+    const ids = this.selectedTaskIds();
+    return this.unsortedTasks().filter((task) => ids.has(task.id));
+  });
+  protected readonly selectedTasksTotalHours = computed(() =>
+    this.selectedTasks().reduce((sum, task) => sum + (task.estimatedHours ?? 0), 0)
+  );
+  // A sprint belongs to exactly one module, so a single "move to sprint" pick can't offer a
+  // coherent target list once the selection spans more than one module.
+  protected readonly moveBlockedReason = computed(() => {
+    const objectiveIds = new Set(this.selectedTasks().map((task) => task.objectiveId));
+    return objectiveIds.size > 1 ? 'Select tasks from a single module to move them together.' : null;
+  });
+  protected readonly moveTargets = computed<SprintMoveTarget[]>(() => {
+    const tasks = this.selectedTasks();
+    const objectiveIds = new Set(tasks.map((task) => task.objectiveId));
+    if (tasks.length === 0 || objectiveIds.size !== 1) return [];
+    const [objectiveId] = objectiveIds;
+    return this.sprintStore.sprints()
+      .filter((sprint) => sprint.objectiveId === objectiveId && sprint.status === 'draft')
+      .map((sprint) => {
+        const sprintTasks = this.tasksForSprint(sprint.id);
+        return {
+          sprint,
+          currentTaskCount: sprintTasks.length,
+          currentHours: sprintTasks.reduce((sum, task) => sum + (task.estimatedHours ?? 0), 0)
+        };
+      });
+  });
+
   ngOnInit(): void {
     const assignee = this.route.snapshot?.queryParamMap?.get('assignee');
     if (assignee) this.assigneeFilter.set([assignee]);
@@ -292,6 +370,7 @@ export class TaskBacklogComponent implements OnInit, AfterViewInit, OnDestroy {
 
   ngOnDestroy(): void {
     this.toolbarStore.setTemplate(null);
+    if (this.undoBannerTimer) clearTimeout(this.undoBannerTimer);
   }
 
   private filteredTasks(): WorkTask[] {
@@ -317,6 +396,73 @@ export class TaskBacklogComponent implements OnInit, AfterViewInit, OnDestroy {
     this.expandedSprintId.set(this.expandedSprintId() === sprintId ? null : sprintId);
   }
 
+  protected onTaskSelectionChanged(event: { taskId: string; selected: boolean }): void {
+    const next = new Set(this.selectedTaskIds());
+    if (event.selected) next.add(event.taskId); else next.delete(event.taskId);
+    this.selectedTaskIds.set(next);
+  }
+
+  protected onSelectAllChanged(event: { taskIds: string[]; selected: boolean }): void {
+    const next = new Set(this.selectedTaskIds());
+    for (const id of event.taskIds) {
+      if (event.selected) next.add(id); else next.delete(id);
+    }
+    this.selectedTaskIds.set(next);
+  }
+
+  protected clearSelection(): void {
+    this.selectedTaskIds.set(new Set());
+  }
+
+  protected async onTasksMoved(targetSprintId: string): Promise<void> {
+    const tasks = this.selectedTasks();
+    if (tasks.length === 0) return;
+
+    this.movingTasks.set(true);
+    this.moveError.set(null);
+    try {
+      await Promise.all(tasks.map((task) =>
+        firstValueFrom(this.taskApi.editTask(task.id, toEditTaskRequest(task, { sprintId: targetSprintId })))
+      ));
+      this.lastMove = tasks.map((task) => ({ taskId: task.id, previousSprintId: task.sprintId }));
+      const targetName = this.sprintStore.sprints().find((s) => s.id === targetSprintId)?.name ?? 'the sprint';
+      this.showUndoBanner(`${tasks.length} task${tasks.length === 1 ? '' : 's'} moved to ${targetName}`);
+      this.moveDialogOpen.set(false);
+      this.clearSelection();
+      await this.reloadTasks();
+    } catch (err: unknown) {
+      const detail = (err as { error?: { detail?: string } })?.error?.detail;
+      this.moveError.set(detail || 'Failed to move the selected tasks.');
+    } finally {
+      this.movingTasks.set(false);
+    }
+  }
+
+  protected async undoMove(): Promise<void> {
+    const moves = this.lastMove;
+    if (moves.length === 0) return;
+    this.lastMove = [];
+    this.moveUndoBanner.set(null);
+    if (this.undoBannerTimer) clearTimeout(this.undoBannerTimer);
+
+    const currentTasks = this.store.tasks();
+    await Promise.all(moves.map((move) => {
+      const task = currentTasks.find((t) => t.id === move.taskId);
+      if (!task) return Promise.resolve();
+      return firstValueFrom(this.taskApi.editTask(task.id, toEditTaskRequest(task, { sprintId: move.previousSprintId })));
+    }));
+    await this.reloadTasks();
+  }
+
+  private showUndoBanner(message: string): void {
+    if (this.undoBannerTimer) clearTimeout(this.undoBannerTimer);
+    this.moveUndoBanner.set({ message });
+    this.undoBannerTimer = setTimeout(() => {
+      this.moveUndoBanner.set(null);
+      this.lastMove = [];
+    }, 8000);
+  }
+
   protected readonly assigneeFilterOptions = computed<WorkDropdownOption[]>(() =>
     this.assignableMembers().map((member) => ({ value: member.employeeId, label: member.name }))
   );
@@ -340,20 +486,36 @@ export class TaskBacklogComponent implements OnInit, AfterViewInit, OnDestroy {
   protected readonly taskModalOpen = signal(false);
   protected readonly taskModalMode = signal<'create' | 'edit'>('create');
   protected readonly taskModalTaskId = signal('');
+  protected readonly targetSprintForCreate = signal<Sprint | null>(null);
 
   protected readonly modalPrefillModuleId = computed(() => {
+    const target = this.targetSprintForCreate();
+    if (target?.objectiveId) return target.objectiveId;
+    const expandedId = this.expandedSprintId();
+    if (expandedId) {
+      const expandedSprint = this.sprintStore.sprints().find((s) => s.id === expandedId);
+      if (expandedSprint?.objectiveId) return expandedSprint.objectiveId;
+    }
     const filter = this.objectiveFilter();
     return filter.length === 1 ? filter[0] : '';
   });
 
   protected readonly modalPrefillSprintId = computed(() => {
+    const target = this.targetSprintForCreate();
+    if (target) return target.id;
     return this.expandedSprintId() ?? '';
   });
 
-  protected openCreateTask(): void {
+  protected openCreateTask(sprint?: Sprint): void {
+    this.targetSprintForCreate.set(sprint ?? null);
     this.taskModalMode.set('create');
     this.taskModalTaskId.set('');
     this.taskModalOpen.set(true);
+  }
+
+  protected closeTaskModal(): void {
+    this.targetSprintForCreate.set(null);
+    this.taskModalOpen.set(false);
   }
 
   async reloadTasks(): Promise<void> {
@@ -367,6 +529,7 @@ export class TaskBacklogComponent implements OnInit, AfterViewInit, OnDestroy {
   }
 
   protected onTaskModalDone(): void {
+    this.targetSprintForCreate.set(null);
     this.taskModalOpen.set(false);
     void this.reloadTasks();
   }
