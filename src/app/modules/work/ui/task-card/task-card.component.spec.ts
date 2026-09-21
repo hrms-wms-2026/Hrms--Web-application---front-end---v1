@@ -8,6 +8,7 @@ import { TaskClockWidgetComponent } from '../task-clock-widget/task-clock-widget
 import { EmployeeAvatarComponent } from '../employee-avatar/employee-avatar.component';
 import { AvatarComponent } from '../../../../shared/ui/avatar/avatar.component';
 import { EmployeeDirectoryStore } from '../../state/employee-directory.store';
+import { TaskBoardStore } from '../../state/task-board.store';
 
 import { TaskStatusColumn, WorkTask } from '../../models/task.model';
 import { environment } from '../../../../../environments/environment';
@@ -16,6 +17,14 @@ describe('TaskCardComponent', () => {
   let fixture: ComponentFixture<TaskCardComponent>;
   let httpMock: HttpTestingController;
   let directoryStore: { get: ReturnType<typeof vi.fn>; ensureLoaded: ReturnType<typeof vi.fn> };
+  let boardStore: { subtasksByParentId: ReturnType<typeof vi.fn>; loadSubtasks: ReturnType<typeof vi.fn> };
+
+  beforeEach(() => {
+    boardStore = {
+      subtasksByParentId: vi.fn().mockReturnValue({}),
+      loadSubtasks: vi.fn().mockResolvedValue(undefined)
+    };
+  });
 
   afterEach(() => httpMock.verify());
 
@@ -24,7 +33,8 @@ describe('TaskCardComponent', () => {
     categoryId: 'task', statusId: 's1', priority: 'high', storyPoints: null, dueDate: null,
     estimatedHours: 5, completedHours: 0, progressPercent: 0, sprintId: null,
     assigneeEmployeeIds: ['emp-1', 'emp-2'], openClockSessionEmployeeId: null, openClockSessionClockInAt: null, totalLoggedMinutes: 0,
-    attachments: [], assignees: []
+    attachments: [], assignees: [],
+    parentTaskId: null, subtaskTotalCount: 0, subtaskCompletedCount: 0
   };
 
   const assignableMembers = [
@@ -51,9 +61,18 @@ describe('TaskCardComponent', () => {
       get: vi.fn().mockImplementation(overrides.directoryGet ?? (() => undefined)),
       ensureLoaded: vi.fn().mockResolvedValue(undefined)
     };
-        TestBed.configureTestingModule({
+    if (!boardStore) {
+      boardStore = {
+        subtasksByParentId: vi.fn().mockReturnValue({}),
+        loadSubtasks: vi.fn().mockResolvedValue(undefined)
+      };
+    }
+    TestBed.configureTestingModule({
       imports: [TaskCardComponent, HttpClientTestingModule],
-      providers: [{ provide: EmployeeDirectoryStore, useValue: directoryStore }]
+      providers: [
+        { provide: EmployeeDirectoryStore, useValue: directoryStore },
+        { provide: TaskBoardStore, useValue: boardStore }
+      ]
     });
     fixture = TestBed.createComponent(TaskCardComponent);
     httpMock = TestBed.inject(HttpTestingController);
@@ -290,5 +309,54 @@ describe('TaskCardComponent', () => {
   it('hides the clock widget for a non-assignee', () => {
     setup({ task: { ...task, assigneeEmployeeIds: ['e2'] }, currentEmployeeId: 'e1' });
     expect(fixture.nativeElement.querySelector('app-task-clock-widget')).toBeNull();
+  });
+
+  it('does not show a subtask toggle when the task has no subtasks', () => {
+    setup({ task: { ...task, subtaskTotalCount: 0, subtaskCompletedCount: 0 } });
+    expect(fixture.nativeElement.querySelector('[data-testid="task-card-subtask-toggle"]')).toBeNull();
+  });
+
+  it('shows the completed/total badge when the task has subtasks', () => {
+    setup({ task: { ...task, subtaskTotalCount: 3, subtaskCompletedCount: 1 } });
+    const toggle = fixture.nativeElement.querySelector('[data-testid="task-card-subtask-toggle"]') as HTMLElement;
+    expect(toggle.textContent).toContain('1/3');
+  });
+
+  it('lazy-loads subtasks on first expand and does not reload on collapse/re-expand', () => {
+    setup({ task: { ...task, subtaskTotalCount: 1, subtaskCompletedCount: 0 } });
+    const toggle = fixture.nativeElement.querySelector('[data-testid="task-card-subtask-toggle"]') as HTMLButtonElement;
+
+    toggle.click();
+    expect(boardStore.loadSubtasks).toHaveBeenCalledWith('t-1');
+    expect(boardStore.loadSubtasks).toHaveBeenCalledTimes(1);
+
+    toggle.click(); // collapse
+    toggle.click(); // re-expand
+    expect(boardStore.loadSubtasks).toHaveBeenCalledTimes(1);
+  });
+
+  it('expanding does not emit viewed for the parent card', () => {
+    setup({ task: { ...task, subtaskTotalCount: 1, subtaskCompletedCount: 0 } });
+    const viewedSpy = vi.fn();
+    fixture.componentInstance.viewed.subscribe(viewedSpy);
+
+    (fixture.nativeElement.querySelector('[data-testid="task-card-subtask-toggle"]') as HTMLButtonElement).click();
+
+    expect(viewedSpy).not.toHaveBeenCalled();
+  });
+
+  it('clicking a nested subtask row emits viewed with the subtask, not the parent', () => {
+    boardStore.subtasksByParentId.mockReturnValue({
+      't-1': [{ ...task, id: 'sub-1', title: 'Sub thing', subtaskTotalCount: 0, subtaskCompletedCount: 0 }]
+    });
+    setup({ task: { ...task, subtaskTotalCount: 1, subtaskCompletedCount: 0 } });
+    const viewedSpy = vi.fn();
+    fixture.componentInstance.viewed.subscribe(viewedSpy);
+
+    (fixture.nativeElement.querySelector('[data-testid="task-card-subtask-toggle"]') as HTMLButtonElement).click();
+    fixture.detectChanges();
+    (fixture.nativeElement.querySelector('[data-testid="task-card-subtask-sub-1"]') as HTMLElement).click();
+
+    expect(viewedSpy).toHaveBeenCalledWith(expect.objectContaining({ id: 'sub-1' }));
   });
 });

@@ -8,6 +8,7 @@ import { EmployeeAvatarComponent } from '../employee-avatar/employee-avatar.comp
 import { AvatarComponent } from '../../../../shared/ui/avatar/avatar.component';
 import { TaskApiService } from '../../data-access/task-api.service';
 import { EmployeeDirectoryStore } from '../../state/employee-directory.store';
+import { TaskBoardStore } from '../../state/task-board.store';
 
 const ASSIGNEE_POPOVER_POSITIONS: ConnectionPositionPair[] = [
   { originX: 'start', originY: 'bottom', overlayX: 'start', overlayY: 'top', offsetY: 6 },
@@ -131,7 +132,36 @@ function initialsOf(name: string): string {
         @if (task().activeEventName) {
           <span class="task-card__event" data-testid="task-event-chip" [title]="'In milestone: ' + task().activeEventName">{{ task().activeEventName }}</span>
         }
+        @if (task().subtaskTotalCount > 0) {
+          <button
+            type="button"
+            class="task-card__subtask-toggle"
+            data-testid="task-card-subtask-toggle"
+            [attr.aria-expanded]="subtasksExpanded()"
+            (click)="toggleSubtasks($event)"
+          >
+            <svg class="task-card__subtask-chevron" [class.task-card__subtask-chevron--open]="subtasksExpanded()" viewBox="0 0 24 24" aria-hidden="true"><polyline points="6 9 12 15 18 9" /></svg>
+            <span>{{ task().subtaskCompletedCount }}/{{ task().subtaskTotalCount }}</span>
+          </button>
+        }
       </div>
+
+      @if (subtasksExpanded()) {
+        <div class="task-card__subtasks" data-testid="task-card-subtasks">
+          @for (subtask of subtasks(); track subtask.id) {
+            <div
+              class="task-card__subtask-row"
+              [attr.data-testid]="'task-card-subtask-' + subtask.id"
+              (click)="onSubtaskRowClick($event, subtask)"
+            >
+              <span class="task-card__subtask-title">{{ subtask.title }}</span>
+              @if (subtask.assigneeEmployeeIds.length > 0) {
+                <app-employee-avatar [employeeId]="subtask.assigneeEmployeeIds[0]" [showName]="false" />
+              }
+            </div>
+          }
+        </div>
+      }
 
       @if (isAssignee()) {
         <div class="task-card__footer">
@@ -181,6 +211,13 @@ function initialsOf(name: string): string {
     .task-card__priority[data-priority="high"] { color: var(--color-danger); }
     .task-card__event { overflow: hidden; max-width: 120px; border-radius: 999px; background: var(--color-surface-secondary); padding: 1px 8px; color: var(--color-text-secondary); font-size: 10px; font-weight: 600; text-overflow: ellipsis; white-space: nowrap; }
     .task-card__footer { display: flex; align-items: center; justify-content: flex-end; gap: 8px; min-width: 0; margin-top: 8px; }
+    .task-card__subtask-toggle { display: inline-flex; align-items: center; gap: 4px; border: 0; background: transparent; padding: 0; color: var(--color-text-secondary); font-size: 11px; font-weight: 600; cursor: pointer; }
+    .task-card__subtask-chevron { width: 12px; height: 12px; stroke: currentColor; fill: none; stroke-width: 2; transition: transform 120ms ease; }
+    .task-card__subtask-chevron--open { transform: rotate(180deg); }
+    .task-card__subtasks { display: flex; flex-direction: column; gap: 4px; margin-top: 8px; padding-top: 8px; border-top: 1px dashed var(--color-border); }
+    .task-card__subtask-row { display: flex; align-items: center; justify-content: space-between; gap: 8px; padding: 4px 6px; border-radius: 6px; cursor: pointer; }
+    .task-card__subtask-row:hover { background: var(--color-surface-secondary); }
+    .task-card__subtask-title { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 12px; color: var(--color-text-primary); }
     .task-card__clock { min-width: 0; margin-left: auto; }
 
     .task-card__assignee-anchor { display: inline-flex; }
@@ -274,6 +311,7 @@ function initialsOf(name: string): string {
 export class TaskCardComponent {
   private readonly taskApi = inject(TaskApiService);
   private readonly directory = inject(EmployeeDirectoryStore);
+  private readonly store = inject(TaskBoardStore);
 
   task = input.required<WorkTask>();
   statuses = input<readonly TaskStatusColumn[]>([]);
@@ -286,6 +324,9 @@ export class TaskCardComponent {
   protected readonly assigneePopoverOpen = signal(false);
   protected readonly assigneeSearch = signal('');
   protected readonly assigneePopoverPositions = ASSIGNEE_POPOVER_POSITIONS;
+
+  protected readonly subtasksExpanded = signal(false);
+  protected readonly subtasks = computed(() => this.store.subtasksByParentId()[this.task().id] ?? []);
 
   protected readonly isAssignee = computed(() => this.task().assigneeEmployeeIds.includes(this.currentEmployeeId()));
   protected readonly hasOpenSessionMine = computed(() =>
@@ -348,6 +389,23 @@ export class TaskCardComponent {
     event.stopPropagation();
     this.assigneeSearch.set('');
     this.assigneePopoverOpen.update((open) => !open);
+  }
+
+  private subtasksLoaded = false;
+
+  protected toggleSubtasks(event: MouseEvent): void {
+    event.stopPropagation();
+    const wasExpanded = this.subtasksExpanded();
+    this.subtasksExpanded.set(!wasExpanded);
+    if (!wasExpanded && !this.subtasksLoaded && this.subtasks().length === 0) {
+      this.subtasksLoaded = true;
+      void this.store.loadSubtasks(this.task().id);
+    }
+  }
+
+  protected onSubtaskRowClick(event: MouseEvent, subtask: WorkTask): void {
+    event.stopPropagation();
+    this.viewed.emit(subtask);
   }
 
   protected async selectAssignee(employeeId: string | null): Promise<void> {
