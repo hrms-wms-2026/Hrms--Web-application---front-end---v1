@@ -38,19 +38,6 @@ function initialsOf(name: string): string {
         </div>
         <p class="task-card__title">
           <span>{{ task().title }}</span>
-          @if (task().subtaskTotalCount > 0) {
-            <span
-              class="task-card__title-subtask-progress"
-              [title]="task().subtaskCompletedCount + '/' + task().subtaskTotalCount + ' subtasks completed'"
-              (click)="toggleSubtasks($event)"
-            >
-              <svg class="task-card__subtask-check-icon" viewBox="0 0 24 24" aria-hidden="true">
-                <circle cx="12" cy="12" r="9" />
-                <polyline points="9 12 11 14 15 10" />
-              </svg>
-              <span>{{ task().subtaskCompletedCount }}/{{ task().subtaskTotalCount }}</span>
-            </span>
-          }
         </p>
 
         <div class="task-card__meta">
@@ -279,37 +266,6 @@ function initialsOf(name: string): string {
     .task-card__event { overflow: hidden; max-width: 120px; border-radius: 999px; background: var(--color-surface-secondary); padding: 1px 8px; color: var(--color-text-secondary); font-size: 10px; font-weight: 600; text-overflow: ellipsis; white-space: nowrap; }
     .task-card__clock { min-width: 0; margin-left: auto; }
 
-    .task-card__title-subtask-progress {
-      display: inline-flex;
-      align-items: center;
-      gap: 3.5px;
-      margin-left: 6px;
-      vertical-align: middle;
-      padding: 1px 6px;
-      border-radius: 999px;
-      font-size: 10.5px;
-      font-weight: 600;
-      color: var(--color-text-secondary);
-      background: var(--color-surface-secondary);
-      border: 1px solid var(--color-border);
-      cursor: pointer;
-      line-height: 1.3;
-      transition: all 120ms ease;
-    }
-    .task-card__title-subtask-progress:hover {
-      background: var(--color-surface);
-      border-color: var(--color-accent);
-      color: var(--color-text-primary);
-    }
-    .task-card__subtask-check-icon {
-      width: 11px;
-      height: 11px;
-      fill: none;
-      stroke: currentColor;
-      stroke-width: 2;
-      stroke-linecap: round;
-      stroke-linejoin: round;
-    }
 
     .task-card__subtask-bar {
       margin-top: 9px;
