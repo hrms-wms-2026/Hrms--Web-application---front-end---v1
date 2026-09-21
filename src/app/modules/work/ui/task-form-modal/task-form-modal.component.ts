@@ -6,7 +6,7 @@ import { WorkDropdownOption } from '../work-dropdown/work-dropdown.component';
 import { TaskStatusColumn, WorkTask } from '../../models/task.model';
 import { TaskCategoryColumn } from '../../models/task-category.model';
 import { Sprint } from '../../models/sprint.model';
-import { CreateTaskRequestDto, InsufficientAllocationErrorDto } from '../../models/dto/task.dto';
+import { CreateSubtaskRequestDto, CreateTaskRequestDto, InsufficientAllocationErrorDto } from '../../models/dto/task.dto';
 import { toTaskCategoryColumn } from '../../utils/task-category.mapper';
 import { toWorkTask } from '../../utils/task.mapper';
 import { toSprint } from '../../utils/sprint.mapper';
@@ -20,6 +20,8 @@ import { TaskHistoryFeedComponent } from '../task-history-feed/task-history-feed
 import { TaskClockWidgetComponent } from '../task-clock-widget/task-clock-widget.component';
 import { TaskAttachmentListComponent, AttachmentPill } from '../task-attachment-list/task-attachment-list.component';
 import { ColorSwatchPopoverComponent } from '../color-swatch-popover/color-swatch-popover.component';
+import { EmployeePickerComponent } from '../employee-picker/employee-picker.component';
+import { EmployeeAvatarComponent } from '../employee-avatar/employee-avatar.component';
 import { TaskHistoryEntryDto } from '../../models/dto/task-history.dto';
 
 export type TaskFormMode = 'create' | 'edit';
@@ -53,7 +55,7 @@ export const ALL_SLASH_COMMANDS: SlashCommandItem[] = [
 @Component({
   selector: 'app-task-form-modal',
   standalone: true,
-  imports: [NgTemplateOutlet, ButtonComponent, TaskHistoryFeedComponent, TaskClockWidgetComponent, TaskAttachmentListComponent, ColorSwatchPopoverComponent],
+  imports: [NgTemplateOutlet, ButtonComponent, TaskHistoryFeedComponent, TaskClockWidgetComponent, TaskAttachmentListComponent, ColorSwatchPopoverComponent, EmployeePickerComponent, EmployeeAvatarComponent],
   template: `
     @if (open()) {
       <div class="tfm-scrim" (click)="onBackdrop()">
@@ -1209,6 +1211,69 @@ export const ALL_SLASH_COMMANDS: SlashCommandItem[] = [
                   />
                 </div>
 
+                <!-- Subtasks Section -->
+                @if (currentEffectiveMode() === 'edit' && task(); as t) {
+                  <div class="tfm-doc-section">
+                    <div class="tfm-doc-section-head">
+                      <span class="tfm-doc-section-icon">
+                        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 11l3 3L22 4" /><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11" /></svg>
+                      </span>
+                      <span class="tfm-doc-section-title">Subtasks</span>
+                      <span class="tfm-doc-count">{{ subtaskCompletedCount() }}/{{ subtasks().length }}</span>
+                    </div>
+
+                    <div class="tfm-subtask-list">
+                      @for (subtask of subtasks(); track subtask.id) {
+                        <div class="tfm-subtask-row" [attr.data-testid]="'subtask-row-' + subtask.id">
+                          <span class="tfm-subtask-title">{{ subtask.title }}</span>
+                          @if (subtask.assigneeEmployeeIds.length > 0) {
+                            <app-employee-avatar [employeeId]="subtask.assigneeEmployeeIds[0]" [showName]="true" />
+                          }
+                          <span class="tfm-subtask-priority" [attr.data-priority]="subtask.priority">{{ subtask.priority }}</span>
+                        </div>
+                      }
+                    </div>
+
+                    @if (addingSubtask()) {
+                      <div class="tfm-subtask-add-row">
+                        <input
+                          type="text"
+                          class="tfm-subtask-add-title"
+                          placeholder="Subtask name"
+                          data-testid="subtask-add-title"
+                          [value]="newSubtaskTitle()"
+                          (input)="newSubtaskTitle.set($any($event.target).value)"
+                        />
+                        <button type="button" class="tfm-chip tfm-chip--clean" data-testid="subtask-add-assignee-button" (click)="newSubtaskPickerOpen.set(true)">
+                          @if (newSubtaskAssigneeId(); as assigneeId) {
+                            <app-employee-avatar [employeeId]="assigneeId" [showName]="true" />
+                          } @else {
+                            <span>Assignee</span>
+                          }
+                        </button>
+                        <app-employee-picker
+                          [open]="newSubtaskPickerOpen()"
+                          (selected)="onNewSubtaskAssigneeSelected($event)"
+                          (closed)="newSubtaskPickerOpen.set(false)"
+                        />
+                        <input
+                          type="date"
+                          class="tfm-subtask-add-date"
+                          data-testid="subtask-add-due-date"
+                          [value]="newSubtaskDueDate()"
+                          (input)="newSubtaskDueDate.set($any($event.target).value)"
+                        />
+                        <button type="button" class="tfm__cancel" data-testid="subtask-add-cancel" (click)="cancelAddSubtask()">Cancel</button>
+                        <button type="button" class="tfm__save" data-testid="subtask-add-save" [disabled]="!newSubtaskTitle().trim()" (click)="saveNewSubtask(t.id)">Save</button>
+                      </div>
+                    } @else {
+                      <button type="button" class="tfm-doc-section-toggle" data-testid="add-subtask-button" (click)="startAddSubtask()">
+                        + Add subtask
+                      </button>
+                    }
+                  </div>
+                }
+
                 <!-- Activity Log Section -->
                 <div class="tfm-doc-section tfm-doc-section--collapsible">
                   <button
@@ -1387,6 +1452,16 @@ export const ALL_SLASH_COMMANDS: SlashCommandItem[] = [
     .tfm-doc-section--collapsible { border: 1px solid var(--color-border); border-radius: 8px; padding: 12px 14px; background: var(--color-surface); }
     .tfm-doc-section-toggle { display: flex; align-items: center; justify-content: space-between; width: 100%; border: 0; background: transparent; padding: 0; cursor: pointer; color: var(--color-text-primary); }
     .tfm-doc-activity-body { padding-top: 12px; margin-top: 8px; border-top: 1px solid var(--color-border); }
+    .tfm-subtask-list { display: flex; flex-direction: column; gap: 6px; }
+    .tfm-subtask-row { display: flex; align-items: center; gap: 10px; padding: 6px 8px; border-radius: 8px; border: 1px solid var(--color-border); }
+    .tfm-subtask-title { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 13px; color: var(--color-text-primary); }
+    .tfm-subtask-priority { font-size: 11px; font-weight: 600; text-transform: capitalize; color: var(--color-text-secondary); }
+    .tfm-subtask-priority[data-priority="critical"], .tfm-subtask-priority[data-priority="high"] { color: var(--color-danger); }
+    .tfm-subtask-add-row { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin-top: 8px; }
+    .tfm-subtask-add-title { flex: 1; min-width: 160px; border: 1px solid var(--color-border); border-radius: 6px; padding: 6px 8px; font-size: 13px; background: var(--color-surface); color: var(--color-text-primary); }
+    .tfm-subtask-add-date { border: 1px solid var(--color-border); border-radius: 6px; padding: 6px 8px; font-size: 12px; background: var(--color-surface); color: var(--color-text-primary); }
+    .tfm__save { display: inline-flex; align-items: center; justify-content: center; gap: 6px; height: 36px; padding: 0 16px; border: 0; border-radius: 6px; background: var(--color-accent); color: var(--color-primary-contrast, #fff); font: inherit; font-size: 14px; font-weight: 500; cursor: pointer; transition: opacity 160ms ease; }
+    .tfm__save:disabled { opacity: 0.5; cursor: not-allowed; }
     .tfm__error { margin: 0; font-size: 13px; color: var(--color-danger-text, var(--color-danger)); }
     .tfm__foot { display: flex; align-items: center; justify-content: flex-end; gap: 10px; padding: 16px 30px; border-top: 1px solid var(--color-border); background: var(--color-surface); }
     .tfm--create .tfm__foot { border-bottom-left-radius: 8px; border-bottom-right-radius: 8px; position: relative; z-index: 10; }
@@ -1631,6 +1706,21 @@ export class TaskFormModalComponent {
   currentEffectiveMode = computed(() => this.internalMode() ?? this.mode());
 
   task = signal<WorkTask | null>(null);
+  subtasks = computed(() => {
+    const map = this.boardStore.subtasksByParentId?.();
+    const id = this.task()?.id;
+    return map && id ? (map[id] ?? []) : [];
+  });
+  subtaskCompletedCount = computed(() =>
+    this.subtasks().filter((s) => this.statuses().find((st) => st.id === s.statusId)?.marksTaskComplete).length
+  );
+
+  addingSubtask = signal(false);
+  newSubtaskTitle = signal('');
+  newSubtaskDueDate = signal('');
+  newSubtaskAssigneeId = signal<string | null>(null);
+  newSubtaskPickerOpen = signal(false);
+
   statuses = signal<TaskStatusColumn[]>([]);
   categories = signal<TaskCategoryColumn[]>([]);
   history = signal<TaskHistoryEntryDto[]>([]);
@@ -2003,6 +2093,9 @@ export class TaskFormModalComponent {
       ]);
       const t = toWorkTask(taskDto);
       this.task.set(t);
+      if (this.boardStore.loadSubtasks) {
+        void this.boardStore.loadSubtasks(t.id);
+      }
       this.statuses.set(statusDtos);
       this.categories.set(categoryDtos.map(toTaskCategoryColumn));
       this.sprints.set(sprintDtos.map(toSprint));
@@ -2029,6 +2122,9 @@ export class TaskFormModalComponent {
       ]);
       const t = toWorkTask(taskDto);
       this.task.set(t);
+      if (this.boardStore.loadSubtasks) {
+        void this.boardStore.loadSubtasks(t.id);
+      }
       this.statuses.set(statusDtos);
       this.categories.set(categoryDtos.map(toTaskCategoryColumn));
       this.sprints.set(sprintDtos.map(toSprint));
@@ -3684,6 +3780,37 @@ export class TaskFormModalComponent {
     if (this.currentEffectiveMode() !== 'create') return;
     for (const file of this.attachedFiles()) {
       firstValueFrom(this.taskApi.deletePendingFile(file.fileId)).catch(() => {});
+    }
+  }
+
+  startAddSubtask(): void {
+    this.addingSubtask.set(true);
+  }
+
+  cancelAddSubtask(): void {
+    this.addingSubtask.set(false);
+    this.newSubtaskTitle.set('');
+    this.newSubtaskDueDate.set('');
+    this.newSubtaskAssigneeId.set(null);
+    this.newSubtaskPickerOpen.set(false);
+  }
+
+  onNewSubtaskAssigneeSelected(employeeId: string): void {
+    this.newSubtaskAssigneeId.set(employeeId);
+    this.newSubtaskPickerOpen.set(false);
+  }
+
+  async saveNewSubtask(parentTaskId: string): Promise<void> {
+    const title = this.newSubtaskTitle().trim();
+    if (!title) return;
+    const request: CreateSubtaskRequestDto = {
+      title,
+      dueDate: this.newSubtaskDueDate() || undefined,
+      assigneeEmployeeId: this.newSubtaskAssigneeId() ?? undefined
+    };
+    const created = await this.boardStore.createSubtask(parentTaskId, request);
+    if (created) {
+      this.cancelAddSubtask();
     }
   }
 
