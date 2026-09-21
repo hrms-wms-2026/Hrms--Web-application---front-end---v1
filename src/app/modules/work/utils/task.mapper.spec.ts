@@ -59,6 +59,24 @@ describe('toWorkTask', () => {
       { employeeId: 'e1', name: 'Nevi Peiris', avatarUrl: 'https://files.example.test/nevi' }
     ]);
   });
+
+  it('maps subtask fields through, defaulting counts to 0 and parentTaskId to null when absent', () => {
+    const task = toWorkTask(baseDto);
+    expect(task.parentTaskId).toBeNull();
+    expect(task.subtaskTotalCount).toBe(0);
+    expect(task.subtaskCompletedCount).toBe(0);
+
+    const withSubtasks: WorkTaskDto = {
+      ...baseDto,
+      parentTaskId: 'p-1',
+      subtaskTotalCount: 5,
+      subtaskCompletedCount: 2
+    };
+    const mapped = toWorkTask(withSubtasks);
+    expect(mapped.parentTaskId).toBe('p-1');
+    expect(mapped.subtaskTotalCount).toBe(5);
+    expect(mapped.subtaskCompletedCount).toBe(2);
+  });
 });
 
 describe('toEditTaskRequest', () => {
@@ -68,7 +86,8 @@ describe('toEditTaskRequest', () => {
     dueDate: new Date('2026-09-01T00:00:00.000Z'), estimatedHours: 5, completedHours: 0,
     progressPercent: 40, sprintId: 'sp-1', assigneeEmployeeIds: [], openClockSessionEmployeeId: null,
     openClockSessionClockInAt: null, totalLoggedMinutes: 0,
-    attachments: [{ fileId: 'f1', name: 'a.pdf', sizeBytes: 100 }], assignees: []
+    attachments: [{ fileId: 'f1', name: 'a.pdf', sizeBytes: 100 }], assignees: [],
+    parentTaskId: null, subtaskTotalCount: 0, subtaskCompletedCount: 0
   };
 
   it('reproduces every current field so nothing is silently cleared', () => {

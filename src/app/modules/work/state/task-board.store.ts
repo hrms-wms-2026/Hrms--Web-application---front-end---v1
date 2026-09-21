@@ -4,16 +4,17 @@ import { firstValueFrom } from 'rxjs';
 import { TaskApiService } from '../data-access/task-api.service';
 import { toTaskStatusColumn, toWorkTask } from '../utils/task.mapper';
 import { TaskStatusColumn, WorkTask } from '../models/task.model';
-import { CreateTaskRequestDto, EditTaskRequestDto, InsufficientAllocationErrorDto } from '../models/dto/task.dto';
+import { CreateSubtaskRequestDto, CreateTaskRequestDto, EditTaskRequestDto, InsufficientAllocationErrorDto } from '../models/dto/task.dto';
 
 interface TaskBoardState {
   readonly statuses: readonly TaskStatusColumn[];
   readonly tasks: readonly WorkTask[];
+  readonly subtasksByParentId: Readonly<Record<string, readonly WorkTask[]>>;
   readonly loading: boolean;
   readonly error: string | null;
 }
 
-const initialState: TaskBoardState = { statuses: [], tasks: [], loading: false, error: null };
+const initialState: TaskBoardState = { statuses: [], tasks: [], subtasksByParentId: {}, loading: false, error: null };
 
 function extractError(err: any, fallback: string): string {
   return err?.error?.detail || err?.error?.message || err?.message || fallback;
@@ -110,6 +111,32 @@ export const TaskBoardStore = signalStore(
         await firstValueFrom(api.moveTaskStatus(taskId, newStatusId));
       } catch (err) {
         patchState(store, { tasks: previous, error: extractError(err, 'Failed to move the task.') });
+      }
+    },
+
+    async loadSubtasks(parentTaskId: string): Promise<void> {
+      try {
+        const dtos = await firstValueFrom(api.getSubtasks(parentTaskId));
+        patchState(store, { subtasksByParentId: { ...store.subtasksByParentId(), [parentTaskId]: dtos.map(toWorkTask) } });
+      } catch (err) {
+        patchState(store, { error: extractError(err, 'Failed to load subtasks.') });
+      }
+    },
+
+    async createSubtask(parentTaskId: string, request: CreateSubtaskRequestDto): Promise<WorkTask | null> {
+      patchState(store, { error: null });
+      try {
+        const dto = await firstValueFrom(api.createSubtask(parentTaskId, request));
+        const subtask = toWorkTask(dto);
+        const existing = store.subtasksByParentId()[parentTaskId] ?? [];
+        patchState(store, {
+          subtasksByParentId: { ...store.subtasksByParentId(), [parentTaskId]: [...existing, subtask] },
+          tasks: store.tasks().map((t) => (t.id === parentTaskId ? { ...t, subtaskTotalCount: t.subtaskTotalCount + 1 } : t))
+        });
+        return subtask;
+      } catch (err) {
+        patchState(store, { error: extractError(err, 'Failed to create the subtask.') });
+        return null;
       }
     }
   }))
