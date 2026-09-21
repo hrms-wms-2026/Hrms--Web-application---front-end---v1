@@ -5,6 +5,7 @@ import { vi } from 'vitest';
 import { TaskTableComponent } from './task-table.component';
 import { TaskClockWidgetComponent } from '../task-clock-widget/task-clock-widget.component';
 import { TaskStatusColumn, WorkTask } from '../../models/task.model';
+import { TaskBoardStore } from '../../state/task-board.store';
 import { environment } from '../../../../../environments/environment';
 
 const task: WorkTask = {
@@ -12,7 +13,8 @@ const task: WorkTask = {
   categoryId: 'c1', statusId: 's1', priority: 'medium', storyPoints: null, dueDate: null,
   estimatedHours: null, completedHours: 0, progressPercent: 30, sprintId: null,
   assigneeEmployeeIds: ['e1'], openClockSessionEmployeeId: null, openClockSessionClockInAt: null, totalLoggedMinutes: 0,
-  attachments: [], assignees: []
+  attachments: [], assignees: [],
+  parentTaskId: null, subtaskTotalCount: 0, subtaskCompletedCount: 0
 };
 
 const status: TaskStatusColumn = {
@@ -23,12 +25,20 @@ const status: TaskStatusColumn = {
 describe('TaskTableComponent', () => {
   let fixture: ComponentFixture<TaskTableComponent>;
   let httpMock: HttpTestingController;
+  let boardStore: { subtasksByParentId: ReturnType<typeof vi.fn>; loadSubtasks: ReturnType<typeof vi.fn> };
 
   afterEach(() => httpMock.verify());
 
   beforeEach(() => {
     TestBed.resetTestingModule();
-    TestBed.configureTestingModule({ imports: [TaskTableComponent, HttpClientTestingModule] });
+    boardStore = {
+      subtasksByParentId: vi.fn().mockReturnValue({}),
+      loadSubtasks: vi.fn().mockResolvedValue(undefined)
+    };
+    TestBed.configureTestingModule({
+      imports: [TaskTableComponent, HttpClientTestingModule],
+      providers: [{ provide: TaskBoardStore, useValue: boardStore }]
+    });
     fixture = TestBed.createComponent(TaskTableComponent);
     httpMock = TestBed.inject(HttpTestingController);
     fixture.componentRef.setInput('tasks', [task]);
@@ -82,6 +92,44 @@ describe('TaskTableComponent', () => {
     fixture.componentRef.setInput('tasks', [{ ...task, assigneeEmployeeIds: ['e2'] }]);
     fixture.detectChanges();
     expect(fixture.nativeElement.querySelector('app-task-clock-widget')).toBeNull();
+  });
+
+  it('shows a subtask toggle row only for tasks that have subtasks', () => {
+    fixture.componentRef.setInput('tasks', [
+      { ...task, id: 't1', subtaskTotalCount: 0 },
+      { ...task, id: 't2', shortId: 'T-2', subtaskTotalCount: 2, subtaskCompletedCount: 1 }
+    ]);
+    fixture.detectChanges();
+
+    expect(fixture.nativeElement.querySelector('[data-testid="task-row-t1-subtask-toggle"]')).toBeNull();
+    const toggle = fixture.nativeElement.querySelector('[data-testid="task-row-t2-subtask-toggle"]') as HTMLElement;
+    expect(toggle).not.toBeNull();
+    expect(toggle.textContent).toContain('1/2');
+  });
+
+  it('lazy-loads subtasks on first expand of a task row', () => {
+    fixture.componentRef.setInput('tasks', [{ ...task, subtaskTotalCount: 1, subtaskCompletedCount: 0 }]);
+    fixture.detectChanges();
+
+    (fixture.nativeElement.querySelector('[data-testid="task-row-t1-subtask-toggle"]') as HTMLButtonElement).click();
+
+    expect(boardStore.loadSubtasks).toHaveBeenCalledWith('t1');
+    expect(boardStore.loadSubtasks).toHaveBeenCalledTimes(1);
+  });
+
+  it('clicking a nested subtask row emits viewed with the subtask, not the parent', () => {
+    const subtask = { ...task, id: 'sub-1', title: 'Sub thing', subtaskTotalCount: 0 };
+    boardStore.subtasksByParentId.mockReturnValue({ t1: [subtask] });
+    fixture.componentRef.setInput('tasks', [{ ...task, subtaskTotalCount: 1, subtaskCompletedCount: 0 }]);
+    fixture.detectChanges();
+    const viewedSpy = vi.fn();
+    fixture.componentInstance.viewed.subscribe(viewedSpy);
+
+    (fixture.nativeElement.querySelector('[data-testid="task-row-t1-subtask-toggle"]') as HTMLButtonElement).click();
+    fixture.detectChanges();
+    (fixture.nativeElement.querySelector('[data-testid="task-row-sub-1"]') as HTMLElement).click();
+
+    expect(viewedSpy).toHaveBeenCalledWith(expect.objectContaining({ id: 'sub-1' }));
   });
 
   it('renders no checkbox column when selectable is false (the default)', () => {
