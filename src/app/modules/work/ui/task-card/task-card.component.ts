@@ -1,4 +1,3 @@
-import { DatePipe } from '@angular/common';
 import { Component, computed, inject, input, output, signal } from '@angular/core';
 import { ConnectionPositionPair, OverlayModule } from '@angular/cdk/overlay';
 import { firstValueFrom } from 'rxjs';
@@ -10,6 +9,7 @@ import { TaskApiService } from '../../data-access/task-api.service';
 import { EmployeeDirectoryStore } from '../../state/employee-directory.store';
 import { TaskBoardStore } from '../../state/task-board.store';
 import { toEditTaskRequest } from '../../utils/task.mapper';
+import { getTaskDueDateInfo } from '../../utils/task-date.util';
 
 const ASSIGNEE_POPOVER_POSITIONS: ConnectionPositionPair[] = [
   { originX: 'start', originY: 'bottom', overlayX: 'start', overlayY: 'top', offsetY: 6 },
@@ -31,7 +31,7 @@ function initialsOf(name: string): string {
 @Component({
   selector: 'app-task-card',
   standalone: true,
-  imports: [DatePipe, TaskClockWidgetComponent, EmployeeAvatarComponent, AvatarComponent, OverlayModule],
+  imports: [TaskClockWidgetComponent, EmployeeAvatarComponent, AvatarComponent, OverlayModule],
   template: `
       <div class="task-card" [attr.data-testid]="'task-card-' + task().id" (click)="viewed.emit(task())">
         <div class="task-card__header">
@@ -181,16 +181,18 @@ function initialsOf(name: string): string {
             type="button"
             class="task-card__due-date task-card__meta-btn"
             [class.task-card__meta-btn--icon-only]="!task().dueDate"
+            [class.task-card__due-date--overdue]="dueDateInfo()?.isOverdue"
+            [class.task-card__due-date--today]="dueDateInfo()?.isToday"
             data-testid="task-card-due-date-btn"
             cdkOverlayOrigin
             #dueDateOrigin="cdkOverlayOrigin"
             [attr.aria-expanded]="dueDatePopoverOpen()"
-            [title]="task().dueDate ? 'Change due date' : 'Set due date'"
+            [title]="dueDateInfo()?.tooltip ?? (task().dueDate ? 'Change due date' : 'Set due date')"
             (click)="toggleDueDatePopover($event)"
           >
             <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="4" width="18" height="17" rx="2" /><path d="M16 2v4M8 2v4M3 10h18" /></svg>
-            @if (task().dueDate) {
-              <span>{{ task().dueDate | date: 'MMM d' }}</span>
+            @if (dueDateInfo(); as info) {
+              <span>{{ info.label }}</span>
             }
           </button>
 
@@ -295,9 +297,13 @@ function initialsOf(name: string): string {
                   </div>
                 }
                 @if (subtask.dueDate) {
-                  <span class="task-card__due-date">
+                  <span
+                    class="task-card__due-date"
+                    [class.task-card__due-date--overdue]="isSubtaskOverdue(subtask)"
+                    [class.task-card__due-date--today]="isSubtaskToday(subtask)"
+                  >
                     <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="4" width="18" height="17" rx="2" /><path d="M16 2v4M8 2v4M3 10h18" /></svg>
-                    <span>{{ subtask.dueDate | date: 'MMM d' }}</span>
+                    <span>{{ formatSubtaskDueDate(subtask.dueDate) }}</span>
                   </span>
                 }
                 <span class="task-card__priority" [attr.data-priority]="subtask.priority">
@@ -347,46 +353,70 @@ function initialsOf(name: string): string {
     }
     .task-card__short-id { font-size: 11px; color: var(--color-text-secondary); }
     .task-card__title { margin: 5px 0 7px; font-size: 13px; font-weight: 500; color: var(--color-text-primary); line-height: 1.4; }
-    .task-card__meta { display: flex; align-items: center; gap: 6px; font-size: 11px; color: var(--color-text-secondary); }
+    .task-card__meta { display: flex; align-items: center; gap: 6px; font-size: 11.5px; color: var(--color-text-secondary); }
     .task-card__meta-btn {
       display: inline-flex;
       align-items: center;
       gap: 4px;
       border: 1px solid var(--color-border);
-      background: var(--color-surface-secondary);
-      border-radius: 5px;
-      padding: 1.5px 6px;
+      background: var(--color-surface);
+      border-radius: 6px;
+      padding: 2px 7px;
       font: inherit;
-      font-size: 11px;
-      color: var(--color-text-secondary);
+      font-size: 11.5px;
+      font-weight: 500;
+      color: var(--color-text-primary);
       cursor: pointer;
       line-height: 1.3;
       transition: all 120ms ease;
+      box-shadow: 0 0.5px 1.5px rgb(15 23 42 / 0.04);
     }
     .task-card__meta-btn:hover,
     .task-card__meta-btn[aria-expanded="true"] {
-      background: var(--color-surface);
+      background: var(--color-surface-secondary);
       border-color: var(--color-accent);
       color: var(--color-text-primary);
       box-shadow: 0 1px 3px rgb(15 23 42 / 0.08);
     }
     .task-card__meta-btn--icon-only {
-      padding: 2px 5px;
+      padding: 2.5px 5.5px;
       min-width: 22px;
       justify-content: center;
+      background: transparent;
+      border-style: dashed;
+      color: var(--color-text-secondary);
+      box-shadow: none;
     }
-    .task-card__due-date svg, .task-card__hours svg { width: 13px; height: 13px; flex: 0 0 auto; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
-    .task-card__due-date, .task-card__hours { display: inline-flex; align-items: center; gap: 4px; }
-    .task-card__priority { display: inline-flex; align-items: center; gap: 3.5px; text-transform: capitalize; }
-    .task-card__priority-icon { width: 11px; height: 11px; fill: currentColor; stroke: currentColor; stroke-width: 1.2; flex-shrink: 0; }
-    .task-card__priority[data-priority="critical"],
-    .task-card__priority[data-priority="high"],
-    .task-card__priority-icon[data-priority="critical"],
-    .task-card__priority-icon[data-priority="high"] { color: var(--color-danger); }
-    .task-card__priority[data-priority="medium"],
-    .task-card__priority-icon[data-priority="medium"] { color: var(--color-warning, #d97706); }
-    .task-card__priority[data-priority="low"],
-    .task-card__priority-icon[data-priority="low"] { color: var(--color-text-secondary); }
+    .task-card__meta-btn--icon-only:hover {
+      background: var(--color-surface-secondary);
+      border-style: solid;
+      border-color: var(--color-accent);
+      color: var(--color-text-primary);
+    }
+    .task-card__due-date svg, .task-card__hours svg { width: 12.5px; height: 12.5px; flex: 0 0 auto; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; color: var(--color-text-secondary); }
+    .task-card__due-date, .task-card__hours { display: inline-flex; align-items: center; gap: 4px; color: var(--color-text-primary); }
+    .task-card__due-date--overdue {
+      color: var(--color-danger, #ef4444);
+      border-color: color-mix(in srgb, var(--color-danger) 40%, var(--color-border));
+      background: color-mix(in srgb, var(--color-danger) 5%, var(--color-surface));
+    }
+    .task-card__due-date--overdue svg { color: var(--color-danger, #ef4444); }
+    .task-card__due-date--today {
+      color: var(--color-warning-text, #d97706);
+      border-color: color-mix(in srgb, var(--color-warning) 40%, var(--color-border));
+      background: color-mix(in srgb, var(--color-warning) 5%, var(--color-surface));
+    }
+    .task-card__due-date--today svg { color: var(--color-warning-text, #d97706); }
+    .task-card__priority { display: inline-flex; align-items: center; gap: 4px; text-transform: capitalize; color: var(--color-text-primary); }
+    .task-card__priority-icon { width: 12px; height: 12px; fill: currentColor; stroke: currentColor; stroke-width: 1.2; flex-shrink: 0; }
+    .task-card__priority[data-priority="critical"] .task-card__priority-icon,
+    .task-card__priority-icon[data-priority="critical"] { color: #ef4444; fill: #ef4444; }
+    .task-card__priority[data-priority="high"] .task-card__priority-icon,
+    .task-card__priority-icon[data-priority="high"] { color: #f59e0b; fill: #f59e0b; }
+    .task-card__priority[data-priority="medium"] .task-card__priority-icon,
+    .task-card__priority-icon[data-priority="medium"] { color: #3b82f6; fill: #3b82f6; }
+    .task-card__priority[data-priority="low"] .task-card__priority-icon,
+    .task-card__priority-icon[data-priority="low"] { color: #94a3b8; fill: #94a3b8; }
     .task-card__event { overflow: hidden; max-width: 120px; border-radius: 999px; background: var(--color-surface-secondary); padding: 1px 8px; color: var(--color-text-secondary); font-size: 10px; font-weight: 600; text-overflow: ellipsis; white-space: nowrap; }
     .task-card__clock { min-width: 0; margin-left: auto; flex-shrink: 0; }
 
@@ -627,11 +657,11 @@ function initialsOf(name: string): string {
       justify-content: center;
       width: 22px;
       height: 22px;
-      border-radius: 8px;
+      border-radius: 9999px;
       border: 1.5px dashed var(--color-border);
       color: var(--color-text-secondary);
-      background: var(--color-surface-secondary);
-      transition: border-color 120ms ease, color 120ms ease;
+      background: transparent;
+      transition: border-color 120ms ease, color 120ms ease, background-color 120ms ease;
     }
     .task-card__assignee-btn:hover .task-card__assignee-placeholder {
       border-color: var(--color-accent);
@@ -782,6 +812,29 @@ export class TaskCardComponent {
     { value: 'medium', label: 'Medium' },
     { value: 'low', label: 'Low' }
   ] as const;
+
+  protected readonly isTaskCompleted = computed(() => {
+    const status = this.statuses().find((s) => s.id === this.task().statusId);
+    return Boolean(status && (status.marksTaskComplete || status.category === 'done'));
+  });
+
+  protected readonly dueDateInfo = computed(() =>
+    getTaskDueDateInfo(this.task().dueDate, this.isTaskCompleted())
+  );
+
+  protected formatSubtaskDueDate(dueDate: Date | string | null | undefined): string {
+    return getTaskDueDateInfo(dueDate, false)?.label ?? '';
+  }
+
+  protected isSubtaskOverdue(subtask: WorkTask): boolean {
+    const status = this.statuses().find((s) => s.id === subtask.statusId);
+    const completed = Boolean(status && (status.marksTaskComplete || status.category === 'done'));
+    return getTaskDueDateInfo(subtask.dueDate, completed)?.isOverdue ?? false;
+  }
+
+  protected isSubtaskToday(subtask: WorkTask): boolean {
+    return getTaskDueDateInfo(subtask.dueDate, false)?.isToday ?? false;
+  }
 
   protected readonly taskDueDateIso = computed(() => {
     const d = this.task().dueDate;

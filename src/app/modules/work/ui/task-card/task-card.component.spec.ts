@@ -437,4 +437,27 @@ describe('TaskCardComponent', () => {
     expect(dateBtn.querySelector('span')?.textContent).toContain('Sep 17');
     expect(dateBtn.classList.contains('task-card__meta-btn--icon-only')).toBe(false);
   });
+
+  it('shows weekday name when date is in the current week', () => {
+    // Pick Saturday of the current week
+    const now = new Date();
+    const dayOfWeek = now.getDay();
+    const diffToMonday = dayOfWeek === 0 ? -6 : 1 - dayOfWeek;
+    const saturday = new Date(now);
+    saturday.setDate(now.getDate() + diffToMonday + 5);
+
+    setup({ task: { ...task, dueDate: saturday } });
+    const dateBtn = fixture.nativeElement.querySelector('[data-testid="task-card-due-date-btn"]') as HTMLButtonElement;
+
+    // In current week, it shows 'Sat' (or 'Today'/'Tomorrow' if Saturday happens to be today/tomorrow)
+    expect(dateBtn.querySelector('span')?.textContent?.trim()).toMatch(/^(Sat|Today|Tomorrow)$/);
+  });
+
+  it('applies overdue class when date is in the past and task is not completed', () => {
+    const pastDate = new Date(Date.now() - 3 * 24 * 60 * 60 * 1000);
+    setup({ task: { ...task, dueDate: pastDate, statusId: 's1' } }); // s1 is not complete
+    const dateBtn = fixture.nativeElement.querySelector('[data-testid="task-card-due-date-btn"]') as HTMLButtonElement;
+
+    expect(dateBtn.classList.contains('task-card__due-date--overdue')).toBe(true);
+  });
 });
