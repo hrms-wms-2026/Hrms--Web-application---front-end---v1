@@ -26,7 +26,7 @@ describe('ProjectDetailComponent', () => {
     ownerId: 'u1', ownerName: 'Jane Doe', reportingManagerId: null, reportingManagerName: null,
     startDate: '2026-08-01', endDate: '2026-12-01', allocatedHours: 40, completedHours: 0,
     objectiveIsActive: true, isAchieved: false, achievedAt: null, membershipIsActive: true, membershipRemovedAt: null,
-    isOwner: true
+    isOwner: true, isEffectiveOwner: true
   };
 
   const milestone2: Milestone = { ...milestone, objectiveId: 'o2', title: 'Second', isDefault: false };

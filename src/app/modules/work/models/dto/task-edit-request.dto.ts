@@ -12,6 +12,7 @@ export interface TaskEditRequestPayloadDto {
 export interface TaskEditRequestDto {
   id: string;
   taskId: string;
+  objectiveId: string;
   status: 'pending' | 'approved' | 'rejected' | 'cancelled';
   payload: TaskEditRequestPayloadDto;
   requestedByName: string;

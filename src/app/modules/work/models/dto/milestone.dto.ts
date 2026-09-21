@@ -18,6 +18,7 @@ export interface MyProjectMilestoneDto {
   membershipIsActive: boolean;
   membershipRemovedAt: string | null;
   isOwner: boolean;
+  isEffectiveOwner: boolean;
 }
 
 export interface ObjectiveDetailDto {

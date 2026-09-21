@@ -1764,7 +1764,7 @@ export class TaskFormModalComponent {
   statusOptions = computed<WorkDropdownOption[]>(() => this.availableStatuses().map((status) => ({ value: status.id, label: status.name })));
   primaryLabel = computed(() => {
     if (this.currentEffectiveMode() === 'create') return this.selectedModuleIsOwner() ? 'Create task' : 'Create request';
-    return this.isObjectiveOwner() ? 'Save changes' : 'Request changes';
+    return this.canEditTaskDirectly() ? 'Save changes' : 'Request changes';
   });
 
   currentEmployeeId = computed(() => this.currentEmployee.id());
@@ -1772,6 +1772,14 @@ export class TaskFormModalComponent {
     const t = this.task();
     if (!t) return false;
     return this.projectStore.milestones().find((m) => m.objectiveId === t.objectiveId)?.isOwner ?? false;
+  });
+  // Stricter than isObjectiveOwner (effective-manager - owner OR active member): matches the
+  // backend's IsEffectiveOwnerAsync gate on EditTaskCommandHandler, so a plain member can't get
+  // routed into the direct-edit call that endpoint now rejects with 403.
+  canEditTaskDirectly = computed(() => {
+    const t = this.task();
+    if (!t) return false;
+    return this.projectStore.milestones().find((m) => m.objectiveId === t.objectiveId)?.isEffectiveOwner ?? false;
   });
   isAssignee = computed(() => {
     const t = this.task();
@@ -3723,15 +3731,18 @@ export class TaskFormModalComponent {
       if (newStatusId && newStatusId !== this.task()?.statusId) {
         await firstValueFrom(this.taskApi.moveTaskStatus(this.taskId(), newStatusId));
       }
-      if (this.isObjectiveOwner()) {
+      if (this.canEditTaskDirectly()) {
         await firstValueFrom(this.taskApi.editTask(this.taskId(), {
           ...fields,
           attachmentFileIds: this.attachedFiles().map((f) => f.fileId)
         }));
-        await this.applyReassignment();
       } else {
         await firstValueFrom(this.taskApi.createTaskEditRequest(this.taskId(), fields));
       }
+      // Reassignment is its own broadly-permitted action (AssignTask/UnassignTask use the
+      // effective-manager check, not the owner-only edit-task gate above), so it applies
+      // regardless of whether the field edits above saved directly or went out as a request.
+      await this.applyReassignment();
       this.saved.emit();
       this.closed.emit();
     } catch (err: unknown) {

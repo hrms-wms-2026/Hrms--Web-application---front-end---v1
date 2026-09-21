@@ -118,11 +118,11 @@ export class TaskApiService {
   getNotificationNavigation(
     relatedEntityType: string,
     relatedEntityId: string
-  ): Observable<{ projectId: string; objectiveId: string; taskId: string | null; targetTab: 'board' | 'approvals' }> {
+  ): Observable<{ projectId: string; objectiveId: string; taskId: string | null; targetTab: 'board' | 'approvals' | 'tree' }> {
     const params = new HttpParams()
       .set('relatedEntityType', relatedEntityType)
       .set('relatedEntityId', relatedEntityId);
-    return this.http.get<{ projectId: string; objectiveId: string; taskId: string | null; targetTab: 'board' | 'approvals' }>(
+    return this.http.get<{ projectId: string; objectiveId: string; taskId: string | null; targetTab: 'board' | 'approvals' | 'tree' }>(
       `${this.baseUrl}/notification-navigation`,
       { params }
     );
