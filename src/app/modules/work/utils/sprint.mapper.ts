@@ -6,8 +6,9 @@ export function toSprint(dto: SprintDto): Sprint {
     id: dto.id,
     objectiveId: dto.objectiveId,
     name: dto.name,
-    startDate: new Date(dto.startDate),
-    endDate: new Date(dto.endDate),
+    goal: dto.goal,
+    startDate: dto.startDate ? new Date(dto.startDate) : null,
+    endDate: dto.endDate ? new Date(dto.endDate) : null,
     status: dto.status,
     completedAt: dto.completedAt ? new Date(dto.completedAt) : null,
     achievedAt: dto.achievedAt ? new Date(dto.achievedAt) : null

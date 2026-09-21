@@ -1,4 +1,4 @@
-import { TaskStatusDto, WorkTaskDto } from '../models/dto/task.dto';
+import { EditTaskRequestDto, TaskStatusDto, WorkTaskDto } from '../models/dto/task.dto';
 import { TaskStatusColumn, WorkTask } from '../models/task.model';
 
 export function toTaskStatusColumn(dto: TaskStatusDto): TaskStatusColumn {
@@ -39,5 +39,26 @@ export function toWorkTask(dto: WorkTaskDto): WorkTask {
     activeEventName: dto.activeEventName ?? null,
     attachments: (dto.attachments ?? []).map((a) => ({ fileId: a.fileId, name: a.fileName, sizeBytes: a.fileSizeBytes }))
 
+  };
+}
+
+/**
+ * EditTaskRequestDto is a full-record replace, not a sparse patch - the backend resets any
+ * omitted optional field (title/priority are required; attachmentFileIds omitted clears every
+ * attachment). Build the request from the task's current values so a caller only needs to
+ * specify what it's actually changing (e.g. sprintId) without risking data loss on the rest.
+ */
+export function toEditTaskRequest(task: WorkTask, overrides: Partial<EditTaskRequestDto> = {}): EditTaskRequestDto {
+  return {
+    title: task.title,
+    description: task.description || undefined,
+    priority: task.priority,
+    dueDate: task.dueDate ? task.dueDate.toISOString().slice(0, 10) : undefined,
+    estimatedHours: task.estimatedHours ?? undefined,
+    storyPoints: task.storyPoints ?? undefined,
+    progressPercent: task.progressPercent,
+    sprintId: task.sprintId,
+    attachmentFileIds: task.attachments.map((a) => a.fileId),
+    ...overrides
   };
 }

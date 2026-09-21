@@ -111,6 +111,7 @@ it('getStatuses fetches task statuses for a project', () => {
     const mockResponse: TaskEditRequestDto = {
       id: 'ter-1',
       taskId,
+      objectiveId: 'obj-1',
       status: 'pending',
       payload: {
         title: 'Updated Title',
@@ -177,7 +178,7 @@ it('getStatuses fetches task statuses for a project', () => {
 
   it('getMyTaskEditRequests fetches task edit requests', () => {
     const mockRequests: TaskEditRequestDto[] = [{
-      id: 'ter-1', taskId: 't-1', status: 'pending',
+      id: 'ter-1', taskId: 't-1', objectiveId: 'obj-1', status: 'pending',
       payload: {
         title: 'Updated Title', description: null, priority: 'high', dueDate: null, estimatedHours: 10, storyPoints: null
       },

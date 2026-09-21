@@ -3,8 +3,8 @@ import { patchState, signalStore, withMethods, withState } from '@ngrx/signals';
 import { firstValueFrom } from 'rxjs';
 import { SprintApiService } from '../data-access/sprint-api.service';
 import { toSprint } from '../utils/sprint.mapper';
-import { Sprint, SprintStatus } from '../models/sprint.model';
-import { CreateSprintRequestDto, EditSprintRequestDto } from '../models/dto/sprint.dto';
+import { Sprint } from '../models/sprint.model';
+import { CompleteSprintRequestDto, CreateSprintRequestDto, EditSprintRequestDto, StartSprintRequestDto } from '../models/dto/sprint.dto';
 
 interface SprintListState {
   readonly sprints: readonly Sprint[];
@@ -54,6 +54,18 @@ export const SprintListStore = signalStore(
       }
     },
 
+    async start(sprintId: string, request: StartSprintRequestDto, objectiveId: string, activeOnly: boolean, projectId?: string): Promise<boolean> {
+      patchState(store, { error: null });
+      try {
+        await firstValueFrom(api.start(sprintId, request));
+        await (projectId ? this.loadForProject(projectId) : this.load(objectiveId, activeOnly));
+        return true;
+      } catch (err) {
+        patchState(store, { error: extractError(err, 'Failed to start the sprint.') });
+        return false;
+      }
+    },
+
     async edit(sprintId: string, request: EditSprintRequestDto, objectiveId: string, activeOnly: boolean, projectId?: string): Promise<boolean> {
       patchState(store, { error: null });
       try {
@@ -66,10 +78,10 @@ export const SprintListStore = signalStore(
       }
     },
 
-    async complete(sprintId: string, objectiveId: string, activeOnly: boolean, projectId?: string): Promise<boolean> {
+    async complete(sprintId: string, request: CompleteSprintRequestDto, objectiveId: string, activeOnly: boolean, projectId?: string): Promise<boolean> {
       patchState(store, { error: null });
       try {
-        await firstValueFrom(api.complete(sprintId));
+        await firstValueFrom(api.complete(sprintId, request));
         await (projectId ? this.loadForProject(projectId) : this.load(objectiveId, activeOnly));
         return true;
       } catch (err) {
@@ -86,18 +98,6 @@ export const SprintListStore = signalStore(
         return true;
       } catch (err) {
         patchState(store, { error: extractError(err, 'Failed to achieve the sprint.') });
-        return false;
-      }
-    },
-
-    async setStatus(sprintId: string, status: SprintStatus, objectiveId: string, activeOnly: boolean, projectId?: string): Promise<boolean> {
-      patchState(store, { error: null });
-      try {
-        await firstValueFrom(api.setStatus(sprintId, status));
-        await (projectId ? this.loadForProject(projectId) : this.load(objectiveId, activeOnly));
-        return true;
-      } catch (err) {
-        patchState(store, { error: extractError(err, 'Failed to change the sprint status.') });
         return false;
       }
     }

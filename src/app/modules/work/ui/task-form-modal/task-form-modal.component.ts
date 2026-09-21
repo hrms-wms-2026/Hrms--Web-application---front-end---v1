@@ -629,7 +629,7 @@ export const ALL_SLASH_COMMANDS: SlashCommandItem[] = [
                             type="button"
                             class="tfm-popover__item"
                             [class.tfm-popover__item--selected]="!sprintId()"
-                            (click)="sprintId.set(''); activePopover.set(null)"
+                            (click)="selectSprint('')"
                           >
                             <svg class="tfm-chip-svg tfm-popover-item-icon" viewBox="0 0 24 24" aria-hidden="true"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2" /></svg>
                             <span class="tfm-popover__name">No sprint</span>
@@ -639,7 +639,7 @@ export const ALL_SLASH_COMMANDS: SlashCommandItem[] = [
                               type="button"
                               class="tfm-popover__item"
                               [class.tfm-popover__item--selected]="sprintId() === s.id"
-                              (click)="sprintId.set(s.id); activePopover.set(null)"
+                              (click)="selectSprint(s.id)"
                             >
                               <svg class="tfm-chip-svg tfm-popover-item-icon" viewBox="0 0 24 24" aria-hidden="true"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2" /></svg>
                               <span class="tfm-popover__name">{{ s.name }}</span>
@@ -1764,7 +1764,7 @@ export class TaskFormModalComponent {
   statusOptions = computed<WorkDropdownOption[]>(() => this.availableStatuses().map((status) => ({ value: status.id, label: status.name })));
   primaryLabel = computed(() => {
     if (this.currentEffectiveMode() === 'create') return this.selectedModuleIsOwner() ? 'Create task' : 'Create request';
-    return this.isObjectiveOwner() ? 'Save changes' : 'Request changes';
+    return this.canEditTaskDirectly() ? 'Save changes' : 'Request changes';
   });
 
   currentEmployeeId = computed(() => this.currentEmployee.id());
@@ -1772,6 +1772,14 @@ export class TaskFormModalComponent {
     const t = this.task();
     if (!t) return false;
     return this.projectStore.milestones().find((m) => m.objectiveId === t.objectiveId)?.isOwner ?? false;
+  });
+  // Stricter than isObjectiveOwner (effective-manager - owner OR active member): matches the
+  // backend's IsEffectiveOwnerAsync gate on EditTaskCommandHandler, so a plain member can't get
+  // routed into the direct-edit call that endpoint now rejects with 403.
+  canEditTaskDirectly = computed(() => {
+    const t = this.task();
+    if (!t) return false;
+    return this.projectStore.milestones().find((m) => m.objectiveId === t.objectiveId)?.isEffectiveOwner ?? false;
   });
   isAssignee = computed(() => {
     const t = this.task();
@@ -1908,6 +1916,13 @@ export class TaskFormModalComponent {
   selectSprint(sprintId: string): void {
     this.sprintId.set(sprintId);
     this.activePopover.set(null);
+    if (sprintId) {
+      const sp = this.sprints().find((s) => s.id === sprintId);
+      if (sp?.objectiveId) {
+        this.selectedObjectiveId.set(sp.objectiveId);
+        this.clearError('objectiveId');
+      }
+    }
   }
 
   selectCategory(categoryId: string): void {
@@ -2044,7 +2059,16 @@ export class TaskFormModalComponent {
         firstValueFrom(this.sprintApi.getByProject(this.projectId())),
         firstValueFrom(this.taskApi.getCategories(this.projectId()))
       ]);
-      this.modules.set(milestones.map((m) => ({ objectiveId: m.objectiveId, title: m.title, isOwner: m.isOwner })));
+      const knownModules = new Map<string, { objectiveId: string; title: string; isOwner: boolean }>();
+      for (const m of milestones) {
+        knownModules.set(m.objectiveId, { objectiveId: m.objectiveId, title: m.title, isOwner: m.isOwner });
+      }
+      for (const m of this.projectStore.milestones()) {
+        if (!knownModules.has(m.objectiveId)) {
+          knownModules.set(m.objectiveId, { objectiveId: m.objectiveId, title: m.title, isOwner: m.isOwner });
+        }
+      }
+      this.modules.set(Array.from(knownModules.values()));
       this.sprints.set(sprintDtos.map(toSprint));
       this.categories.set(categoryDtos.map(toTaskCategoryColumn));
       this.categoryId.set(this.categories()[0]?.id ?? '');
@@ -2064,6 +2088,15 @@ export class TaskFormModalComponent {
         const activeSprints = this.sprints().filter((s) => s.status === 'active' && (!objId || s.objectiveId === objId));
         if (activeSprints.length === 1) {
           this.sprintId.set(activeSprints[0].id);
+        }
+      }
+
+      // If sprint is selected (via prefill or auto active), ensure module is inherited
+      if (this.sprintId()) {
+        const matchingSprint = this.sprints().find((s) => s.id === this.sprintId());
+        if (matchingSprint?.objectiveId && (!this.selectedObjectiveId() || !this.prefillModuleId())) {
+          this.selectedObjectiveId.set(matchingSprint.objectiveId);
+          this.clearError('objectiveId');
         }
       }
 
@@ -3698,15 +3731,18 @@ export class TaskFormModalComponent {
       if (newStatusId && newStatusId !== this.task()?.statusId) {
         await firstValueFrom(this.taskApi.moveTaskStatus(this.taskId(), newStatusId));
       }
-      if (this.isObjectiveOwner()) {
+      if (this.canEditTaskDirectly()) {
         await firstValueFrom(this.taskApi.editTask(this.taskId(), {
           ...fields,
           attachmentFileIds: this.attachedFiles().map((f) => f.fileId)
         }));
-        await this.applyReassignment();
       } else {
         await firstValueFrom(this.taskApi.createTaskEditRequest(this.taskId(), fields));
       }
+      // Reassignment is its own broadly-permitted action (AssignTask/UnassignTask use the
+      // effective-manager check, not the owner-only edit-task gate above), so it applies
+      // regardless of whether the field edits above saved directly or went out as a request.
+      await this.applyReassignment();
       this.saved.emit();
       this.closed.emit();
     } catch (err: unknown) {

@@ -2,7 +2,6 @@ import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { of } from 'rxjs';
 import { vi } from 'vitest';
 import { MemberManagementPopupComponent } from './member-management-popup.component';
-import { EmployeeDirectoryStore } from '../../state/employee-directory.store';
 import { PeopleApiService } from '../../../people/data-access/people-api.service';
 
 describe('MemberManagementPopupComponent', () => {
@@ -12,7 +11,6 @@ describe('MemberManagementPopupComponent', () => {
     TestBed.configureTestingModule({
       imports: [MemberManagementPopupComponent],
       providers: [
-        { provide: EmployeeDirectoryStore, useValue: { get: () => ({ name: 'Objective Member' }), ensureLoaded: vi.fn() } },
         { provide: PeopleApiService, useValue: { listEmployees: vi.fn().mockReturnValue(of({ items: [] })) } }
       ]
     });
@@ -74,5 +72,70 @@ describe('MemberManagementPopupComponent', () => {
 
     expect(removeRequested).toHaveBeenCalledWith('e2');
     expect(transferRequested).toHaveBeenCalledWith('e3');
+  });
+
+  it('renders each objective member\'s name straight from the DTO, not a coverage-scoped directory lookup', () => {
+    fixture.componentRef.setInput('scope', 'objective');
+    fixture.componentRef.setInput('objectiveMembers', [
+      { employeeId: 'e1', name: 'Arun Kumar', isHead: true, pending: false },
+      { employeeId: 'e2', name: null, isHead: false, pending: false }
+    ]);
+    fixture.detectChanges();
+
+    expect(fixture.nativeElement.textContent).toContain('Arun Kumar');
+    expect(fixture.nativeElement.textContent).toContain('Unknown employee');
+  });
+
+  it('shows the objective name in the modal title when provided, and falls back to "Members" otherwise', () => {
+    fixture.componentRef.setInput('scope', 'objective');
+    fixture.componentRef.setInput('objectiveMembers', []);
+    fixture.componentRef.setInput('objectiveName', 'Backend Revamp');
+    fixture.detectChanges();
+
+    expect(fixture.nativeElement.textContent).toContain('Members — Backend Revamp');
+
+    fixture.componentRef.setInput('objectiveName', null);
+    fixture.detectChanges();
+
+    expect(fixture.nativeElement.querySelector('h2')?.textContent?.trim()).toBe('Members');
+  });
+
+  it('shows Accept/Decline for my own pending invitation instead of the manager Cancel button', () => {
+    fixture.componentRef.setInput('scope', 'objective');
+    fixture.componentRef.setInput('objectiveMembers', [
+      { employeeId: 'e1', isHead: true, pending: false },
+      { employeeId: 'me', isHead: false, pending: true, invitationId: 'inv-1' }
+    ]);
+    fixture.componentRef.setInput('currentEmployeeId', 'me');
+    fixture.componentRef.setInput('canManage', false);
+    fixture.detectChanges();
+
+    expect(fixture.nativeElement.querySelector('[data-testid="accept-invitation-button"]')).not.toBeNull();
+    expect(fixture.nativeElement.querySelector('[data-testid="decline-invitation-button"]')).not.toBeNull();
+    expect(fixture.nativeElement.querySelector('[data-testid="remove-button"]')).toBeNull();
+
+    const acceptRequested = vi.fn();
+    const declineRequested = vi.fn();
+    fixture.componentInstance.invitationAcceptRequested.subscribe(acceptRequested);
+    fixture.componentInstance.invitationDeclineRequested.subscribe(declineRequested);
+
+    fixture.nativeElement.querySelector('[data-testid="accept-invitation-button"]').click();
+    fixture.nativeElement.querySelector('[data-testid="decline-invitation-button"]').click();
+
+    expect(acceptRequested).toHaveBeenCalledWith('inv-1');
+    expect(declineRequested).toHaveBeenCalledWith('inv-1');
+  });
+
+  it('still shows Cancel (not Accept/Decline) for a pending invitation you sent to someone else', () => {
+    fixture.componentRef.setInput('scope', 'objective');
+    fixture.componentRef.setInput('objectiveMembers', [
+      { employeeId: 'e2', isHead: false, pending: true, invitationId: 'inv-2' }
+    ]);
+    fixture.componentRef.setInput('currentEmployeeId', 'me');
+    fixture.componentRef.setInput('canManage', true);
+    fixture.detectChanges();
+
+    expect(fixture.nativeElement.querySelector('[data-testid="remove-button"]')).not.toBeNull();
+    expect(fixture.nativeElement.querySelector('[data-testid="accept-invitation-button"]')).toBeNull();
   });
 });

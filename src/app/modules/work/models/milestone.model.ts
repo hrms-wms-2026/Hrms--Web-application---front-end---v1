@@ -20,6 +20,10 @@ export interface Milestone {
   membershipIsActive: boolean;
   membershipRemovedAt: string | null;
   isOwner: boolean;
+  /** True only for the actual owner (or an ancestor's owner), never a plain member - unlike
+   *  isOwner (which is effective-manager: owner OR active member). Use this wherever a check
+   *  must match the backend's IsEffectiveOwnerAsync gate (e.g. task edit save-vs-request). */
+  isEffectiveOwner: boolean;
 }
 
 export type MilestoneTreeNodeKind = 'objective' | 'sprint' | 'task';
@@ -29,8 +33,8 @@ export interface MilestoneTreeNode {
   id: string;
   title: string;
   description: string | null;
-  startDate: string;
-  endDate: string;
+  startDate: string | null;
+  endDate: string | null;
   progress: number;
   allocatedHours: number;
   completedHours: number;

@@ -101,4 +101,21 @@ describe('WorkApprovalsApiService', () => {
     expect(req.request.body).toEqual({ approvedAdditionalHours: 12 });
     req.flush(null);
   });
+
+  it('approveObjectiveChangeRequest posts an empty body when approving as-is', () => {
+    service.approveObjectiveChangeRequest('c1').subscribe();
+    const req = httpMock.expectOne(`${environment.apiUrl}/work/objectives/change-requests/c1/approve`);
+    expect(req.request.method).toBe('POST');
+    expect(req.request.body).toEqual({});
+    req.flush(null);
+  });
+
+  it('approveObjectiveChangeRequest posts the approver-edited fields when overriding an Edit request', () => {
+    const approvedEdit = { title: 'New Title', description: 'desc', startDate: '2026-01-10', endDate: '2026-02-10', allocatedHours: 15 };
+    service.approveObjectiveChangeRequest('c1', approvedEdit).subscribe();
+    const req = httpMock.expectOne(`${environment.apiUrl}/work/objectives/change-requests/c1/approve`);
+    expect(req.request.method).toBe('POST');
+    expect(req.request.body).toEqual(approvedEdit);
+    req.flush(null);
+  });
 });
