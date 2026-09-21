@@ -32,155 +32,220 @@ function initialsOf(name: string): string {
   standalone: true,
   imports: [DatePipe, TaskClockWidgetComponent, EmployeeAvatarComponent, AvatarComponent, OverlayModule],
   template: `
-    <div class="task-card" [attr.data-testid]="'task-card-' + task().id" (click)="viewed.emit(task())">
-      <div class="task-card__header">
-        <span class="task-card__short-id">{{ task().shortId }}</span>
-      </div>
-      <p class="task-card__title">
-        <span>{{ task().title }}</span>
-        @if (task().subtaskTotalCount > 0) {
-          <button
-            type="button"
-            class="task-card__subtask-toggle"
-            data-testid="task-card-subtask-toggle"
-            [attr.aria-expanded]="subtasksExpanded()"
-            (click)="toggleSubtasks($event)"
-          >
-            <svg class="task-card__subtask-chevron" [class.task-card__subtask-chevron--open]="subtasksExpanded()" viewBox="0 0 24 24" aria-hidden="true"><polyline points="6 9 12 15 18 9" /></svg>
-            <span>{{ task().subtaskCompletedCount }}/{{ task().subtaskTotalCount }}</span>
-          </button>
-        }
-      </p>
+      <div class="task-card" [attr.data-testid]="'task-card-' + task().id" (click)="viewed.emit(task())">
+        <div class="task-card__header">
+          <span class="task-card__short-id">{{ task().shortId }}</span>
+        </div>
+        <p class="task-card__title">
+          <span>{{ task().title }}</span>
+          @if (task().subtaskTotalCount > 0) {
+            <span
+              class="task-card__title-subtask-progress"
+              [title]="task().subtaskCompletedCount + '/' + task().subtaskTotalCount + ' subtasks completed'"
+              (click)="toggleSubtasks($event)"
+            >
+              <svg class="task-card__subtask-check-icon" viewBox="0 0 24 24" aria-hidden="true">
+                <circle cx="12" cy="12" r="9" />
+                <polyline points="9 12 11 14 15 10" />
+              </svg>
+              <span>{{ task().subtaskCompletedCount }}/{{ task().subtaskTotalCount }}</span>
+            </span>
+          }
+        </p>
 
-      <div class="task-card__meta">
-        <div class="task-card__assignee-anchor">
-          <button
-            type="button"
-            class="task-card__assignee-btn"
-            data-testid="task-card-assignee-btn"
-            cdkOverlayOrigin
-            #assigneeOrigin="cdkOverlayOrigin"
-            [attr.aria-expanded]="assigneePopoverOpen()"
-            [attr.aria-label]="assigneeTooltip()"
-            [title]="assigneeTooltip()"
-            (click)="toggleAssigneePopover($event)"
-          >
-            @if (task().assigneeEmployeeIds.length > 0) {
-              @for (employeeId of task().assigneeEmployeeIds; track employeeId) {
-                @if (resolvedAssigneeAvatars()[employeeId]; as identity) {
-                  <app-avatar class="task-card__assignee-avatar" size="sm" [avatarUrl]="identity.avatarUrl" [userName]="identity.name" />
-                } @else {
-                  <app-employee-avatar class="task-card__assignee-avatar" [employeeId]="employeeId" [showName]="false" />
-                }
-              }
-            } @else {
-              <span class="task-card__assignee-placeholder" aria-hidden="true">
-                <svg viewBox="0 0 24 24"><path d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z" /></svg>
-              </span>
-            }
-          </button>
-
-          <ng-template
-            cdkConnectedOverlay
-            [cdkConnectedOverlayOrigin]="assigneeOrigin"
-            [cdkConnectedOverlayOpen]="assigneePopoverOpen()"
-            [cdkConnectedOverlayPositions]="assigneePopoverPositions"
-            [cdkConnectedOverlayHasBackdrop]="true"
-            cdkConnectedOverlayBackdropClass="cdk-overlay-transparent-backdrop"
-            (backdropClick)="assigneePopoverOpen.set(false)"
-            (detach)="assigneePopoverOpen.set(false)"
-          >
-            <div class="task-card__assignee-popover" role="dialog" aria-label="Change assignee" (click)="$event.stopPropagation()">
-              <div class="task-card__assignee-search">
-                <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="8" /><path d="m21 21-4.3-4.3" /></svg>
-                <input
-                  type="text"
-                  placeholder="Search people…"
-                  [value]="assigneeSearch()"
-                  (input)="assigneeSearch.set($any($event.target).value)"
-                />
-              </div>
-              <div class="task-card__assignee-list">
-                <button
-                  type="button"
-                  class="task-card__assignee-option"
-                  [class.task-card__assignee-option--selected]="task().assigneeEmployeeIds.length === 0"
-                  (click)="selectAssignee(null)"
-                >
-                  <span class="task-card__assignee-option-avatar task-card__assignee-option-avatar--unassigned" aria-hidden="true">
-                    <svg viewBox="0 0 24 24"><line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" /></svg>
-                  </span>
-                  <span class="task-card__assignee-option-name">Unassigned</span>
-                  @if (task().assigneeEmployeeIds.length === 0) {
-                    <svg class="task-card__assignee-check" viewBox="0 0 24 24" aria-hidden="true"><path d="m5 12 4 4L19 7" /></svg>
+        <div class="task-card__meta">
+          <div class="task-card__assignee-anchor">
+            <button
+              type="button"
+              class="task-card__assignee-btn"
+              data-testid="task-card-assignee-btn"
+              cdkOverlayOrigin
+              #assigneeOrigin="cdkOverlayOrigin"
+              [attr.aria-expanded]="assigneePopoverOpen()"
+              [attr.aria-label]="assigneeTooltip()"
+              [title]="assigneeTooltip()"
+              (click)="toggleAssigneePopover($event)"
+            >
+              @if (task().assigneeEmployeeIds.length > 0) {
+                @for (employeeId of task().assigneeEmployeeIds; track employeeId) {
+                  @if (resolvedAssigneeAvatars()[employeeId]; as identity) {
+                    <app-avatar class="task-card__assignee-avatar" size="sm" [avatarUrl]="identity.avatarUrl" [userName]="identity.name" />
+                  } @else {
+                    <app-employee-avatar class="task-card__assignee-avatar" [employeeId]="employeeId" [showName]="false" />
                   }
-                </button>
-                @for (member of filteredAssignableMembers(); track member.employeeId) {
+                }
+              } @else {
+                <span class="task-card__assignee-placeholder" aria-hidden="true">
+                  <svg viewBox="0 0 24 24"><path d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z" /></svg>
+                </span>
+              }
+            </button>
+
+            <ng-template
+              cdkConnectedOverlay
+              [cdkConnectedOverlayOrigin]="assigneeOrigin"
+              [cdkConnectedOverlayOpen]="assigneePopoverOpen()"
+              [cdkConnectedOverlayPositions]="assigneePopoverPositions"
+              [cdkConnectedOverlayHasBackdrop]="true"
+              cdkConnectedOverlayBackdropClass="cdk-overlay-transparent-backdrop"
+              (backdropClick)="assigneePopoverOpen.set(false)"
+              (detach)="assigneePopoverOpen.set(false)"
+            >
+              <div class="task-card__assignee-popover" role="dialog" aria-label="Change assignee" (click)="$event.stopPropagation()">
+                <div class="task-card__assignee-search">
+                  <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="8" /><path d="m21 21-4.3-4.3" /></svg>
+                  <input
+                    type="text"
+                    placeholder="Search people…"
+                    [value]="assigneeSearch()"
+                    (input)="assigneeSearch.set($any($event.target).value)"
+                  />
+                </div>
+                <div class="task-card__assignee-list">
                   <button
                     type="button"
                     class="task-card__assignee-option"
-                    [class.task-card__assignee-option--selected]="isAssigned(member.employeeId)"
-                    (click)="selectAssignee(member.employeeId)"
+                    [class.task-card__assignee-option--selected]="task().assigneeEmployeeIds.length === 0"
+                    (click)="selectAssignee(null)"
                   >
-                    <span class="task-card__assignee-option-avatar">{{ initials(member.name) }}</span>
-                    <span class="task-card__assignee-option-name">{{ member.name }}</span>
-                    @if (isAssigned(member.employeeId)) {
+                    <span class="task-card__assignee-option-avatar task-card__assignee-option-avatar--unassigned" aria-hidden="true">
+                      <svg viewBox="0 0 24 24"><line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" /></svg>
+                    </span>
+                    <span class="task-card__assignee-option-name">Unassigned</span>
+                    @if (task().assigneeEmployeeIds.length === 0) {
                       <svg class="task-card__assignee-check" viewBox="0 0 24 24" aria-hidden="true"><path d="m5 12 4 4L19 7" /></svg>
                     }
                   </button>
-                } @empty {
-                  <p class="task-card__assignee-empty">No matching people</p>
-                }
+                  @for (member of filteredAssignableMembers(); track member.employeeId) {
+                    <button
+                      type="button"
+                      class="task-card__assignee-option"
+                      [class.task-card__assignee-option--selected]="isAssigned(member.employeeId)"
+                      (click)="selectAssignee(member.employeeId)"
+                    >
+                      <span class="task-card__assignee-option-avatar">{{ initials(member.name) }}</span>
+                      <span class="task-card__assignee-option-name">{{ member.name }}</span>
+                      @if (isAssigned(member.employeeId)) {
+                        <svg class="task-card__assignee-check" viewBox="0 0 24 24" aria-hidden="true"><path d="m5 12 4 4L19 7" /></svg>
+                      }
+                    </button>
+                  } @empty {
+                    <p class="task-card__assignee-empty">No matching people</p>
+                  }
+                </div>
               </div>
+            </ng-template>
+          </div>
+
+          <span class="task-card__priority" [attr.data-priority]="task().priority">
+            <svg class="task-card__priority-icon" viewBox="0 0 24 24" aria-hidden="true">
+              <path d="M4 15s1-1 4-1 5 2 8 2 4-1 4-1V3s-1 1-4 1-5-2-8-2-4 1-4 1z" />
+              <line x1="4" y1="22" x2="4" y2="15" />
+            </svg>
+            <span>{{ task().priority }}</span>
+          </span>
+          @if (task().dueDate) {
+            <span class="task-card__due-date"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="4" width="18" height="17" rx="2" /><path d="M16 2v4M8 2v4M3 10h18" /></svg><span>{{ task().dueDate | date: 'MMM d' }}</span></span>
+          }
+          @if (task().estimatedHours) {
+            <span class="task-card__hours"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9" /><path d="M12 7v5l3 2" /></svg><span>{{ task().estimatedHours }}h</span></span>
+          }
+          @if (task().activeEventName) {
+            <span class="task-card__event" data-testid="task-event-chip" [title]="'In milestone: ' + task().activeEventName">{{ task().activeEventName }}</span>
+          }
+          @if (isAssignee()) {
+            <div class="task-card__clock" (click)="$event.stopPropagation()">
+              <app-task-clock-widget
+                [task]="task()"
+                [isAssignee]="isAssignee()"
+                [compact]="true"
+                [hasOpenSessionMine]="hasOpenSessionMine()"
+                [hasOpenSessionOtherEmployee]="hasOpenSessionOtherEmployee()"
+                (clockedIn)="taskChanged.emit()"
+                (pushed)="taskChanged.emit()"
+              />
             </div>
-          </ng-template>
+          }
         </div>
 
-        <span class="task-card__priority" [attr.data-priority]="task().priority">{{ task().priority }}</span>
-        @if (task().dueDate) {
-          <span class="task-card__due-date"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="4" width="18" height="17" rx="2" /><path d="M16 2v4M8 2v4M3 10h18" /></svg><span>{{ task().dueDate | date: 'MMM d' }}</span></span>
-        }
-        @if (task().estimatedHours) {
-          <span class="task-card__hours"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9" /><path d="M12 7v5l3 2" /></svg><span>{{ task().estimatedHours }}h</span></span>
-        }
-        @if (task().activeEventName) {
-          <span class="task-card__event" data-testid="task-event-chip" [title]="'In milestone: ' + task().activeEventName">{{ task().activeEventName }}</span>
-        }
-        @if (isAssignee()) {
-          <div class="task-card__clock" (click)="$event.stopPropagation()">
-            <app-task-clock-widget
-              [task]="task()"
-              [isAssignee]="isAssignee()"
-              [compact]="true"
-              [hasOpenSessionMine]="hasOpenSessionMine()"
-              [hasOpenSessionOtherEmployee]="hasOpenSessionOtherEmployee()"
-              (clockedIn)="taskChanged.emit()"
-              (pushed)="taskChanged.emit()"
-            />
+        @if (task().subtaskTotalCount > 0) {
+          <div class="task-card__subtask-bar">
+            <button
+              type="button"
+              class="task-card__subtask-toggle"
+              data-testid="task-card-subtask-toggle"
+              [attr.aria-expanded]="subtasksExpanded()"
+              (click)="toggleSubtasks($event)"
+            >
+              <svg class="task-card__subtask-chevron" [class.task-card__subtask-chevron--open]="subtasksExpanded()" viewBox="0 0 24 24" aria-hidden="true">
+                <polyline points="6 9 12 15 18 9" />
+              </svg>
+              <span>{{ task().subtaskTotalCount === 1 ? '1 subtask' : task().subtaskTotalCount + ' subtasks' }}</span>
+              <span class="task-card__subtask-count-pill">{{ task().subtaskCompletedCount }}/{{ task().subtaskTotalCount }}</span>
+            </button>
           </div>
         }
       </div>
 
       @if (subtasksExpanded()) {
-        <div class="task-card__subtasks" data-testid="task-card-subtasks">
+        <div class="task-card__subtask-cards" data-testid="task-card-subtasks">
           @for (subtask of subtasks(); track subtask.id) {
             <div
-              class="task-card__subtask-row"
+              class="task-card task-card--subtask"
               [attr.data-testid]="'task-card-subtask-' + subtask.id"
               (click)="onSubtaskRowClick($event, subtask)"
             >
-              <span class="task-card__subtask-title">{{ subtask.title }}</span>
-              @if (subtask.assigneeEmployeeIds.length > 0) {
-                <app-employee-avatar [employeeId]="subtask.assigneeEmployeeIds[0]" [showName]="false" />
+              @if (subtask.shortId) {
+                <div class="task-card__header">
+                  <span class="task-card__short-id">{{ subtask.shortId }}</span>
+                </div>
               }
+              <p class="task-card__title">
+                <span>{{ subtask.title }}</span>
+              </p>
+              <div class="task-card__meta">
+                @if (subtask.assigneeEmployeeIds.length > 0) {
+                  <div class="task-card__assignee-anchor">
+                    @for (employeeId of subtask.assigneeEmployeeIds; track employeeId) {
+                      @if (resolveSubtaskAssignee(employeeId, subtask); as identity) {
+                        <app-avatar class="task-card__assignee-avatar" size="sm" [avatarUrl]="identity.avatarUrl" [userName]="identity.name" />
+                      } @else {
+                        <app-employee-avatar class="task-card__assignee-avatar" [employeeId]="employeeId" [showName]="false" />
+                      }
+                    }
+                  </div>
+                }
+                @if (subtask.dueDate) {
+                  <span class="task-card__due-date">
+                    <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="4" width="18" height="17" rx="2" /><path d="M16 2v4M8 2v4M3 10h18" /></svg>
+                    <span>{{ subtask.dueDate | date: 'MMM d' }}</span>
+                  </span>
+                }
+                <span class="task-card__priority" [attr.data-priority]="subtask.priority">
+                  <svg class="task-card__priority-icon" viewBox="0 0 24 24" aria-hidden="true">
+                    <path d="M4 15s1-1 4-1 5 2 8 2 4-1 4-1V3s-1 1-4 1-5-2-8-2-4 1-4 1z" />
+                    <line x1="4" y1="22" x2="4" y2="15" />
+                  </svg>
+                  <span>{{ subtask.priority }}</span>
+                </span>
+                @if (subtask.estimatedHours) {
+                  <span class="task-card__hours">
+                    <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9" /><path d="M12 7v5l3 2" /></svg>
+                    <span>{{ subtask.estimatedHours }}h</span>
+                  </span>
+                }
+              </div>
             </div>
+          } @empty {
+            <div class="task-card__subtask-loading">Loading subtasks…</div>
           }
         </div>
       }
-
-    </div>
   `,
   styles: [`
+    :host {
+      display: block;
+    }
     .task-card {
       background: var(--color-surface);
       border: 1px solid var(--color-border);
@@ -206,37 +271,120 @@ function initialsOf(name: string): string {
     .task-card__meta { display: flex; align-items: center; flex-wrap: wrap; gap: 8px; font-size: 11px; color: var(--color-text-secondary); }
     .task-card__due-date svg, .task-card__hours svg { width: 13px; height: 13px; flex: 0 0 auto; fill: none; stroke: var(--color-accent); stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
     .task-card__due-date, .task-card__hours { display: inline-flex; align-items: center; gap: 4px; }
+    .task-card__priority { display: inline-flex; align-items: center; gap: 3.5px; text-transform: capitalize; }
+    .task-card__priority-icon { width: 11px; height: 11px; fill: currentColor; stroke: currentColor; stroke-width: 1.2; flex-shrink: 0; }
     .task-card__priority[data-priority="critical"],
     .task-card__priority[data-priority="high"] { color: var(--color-danger); }
+    .task-card__priority[data-priority="medium"] { color: var(--color-warning, #d97706); }
     .task-card__event { overflow: hidden; max-width: 120px; border-radius: 999px; background: var(--color-surface-secondary); padding: 1px 8px; color: var(--color-text-secondary); font-size: 10px; font-weight: 600; text-overflow: ellipsis; white-space: nowrap; }
-    .task-card__subtask-toggle {
+    .task-card__clock { min-width: 0; margin-left: auto; }
+
+    .task-card__title-subtask-progress {
       display: inline-flex;
       align-items: center;
-      gap: 3px;
+      gap: 3.5px;
       margin-left: 6px;
       vertical-align: middle;
-      border: 1px solid var(--color-border);
-      background: var(--color-surface-secondary);
-      border-radius: 4px;
-      padding: 1px 5px;
-      color: var(--color-text-secondary);
-      font-size: 10px;
+      padding: 1px 6px;
+      border-radius: 999px;
+      font-size: 10.5px;
       font-weight: 600;
+      color: var(--color-text-secondary);
+      background: var(--color-surface-secondary);
+      border: 1px solid var(--color-border);
       cursor: pointer;
       line-height: 1.3;
       transition: all 120ms ease;
     }
-    .task-card__subtask-toggle:hover {
+    .task-card__title-subtask-progress:hover {
       background: var(--color-surface);
       border-color: var(--color-accent);
       color: var(--color-text-primary);
     }
-    .task-card__subtask-chevron { width: 10px; height: 10px; stroke: currentColor; fill: none; stroke-width: 2.2; transition: transform 120ms ease; }
-    .task-card__subtask-chevron--open { transform: rotate(180deg); }
-    .task-card__subtasks { display: flex; flex-direction: column; gap: 4px; margin-top: 8px; padding-top: 8px; border-top: 1px dashed var(--color-border); }
-    .task-card__subtask-row { display: flex; align-items: center; justify-content: space-between; gap: 8px; padding: 4px 6px; border-radius: 6px; cursor: pointer; }
-    .task-card__subtask-row:hover { background: var(--color-surface-secondary); }
-    .task-card__subtask-title { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 12px; color: var(--color-text-primary); }
+    .task-card__subtask-check-icon {
+      width: 11px;
+      height: 11px;
+      fill: none;
+      stroke: currentColor;
+      stroke-width: 2;
+      stroke-linecap: round;
+      stroke-linejoin: round;
+    }
+
+    .task-card__subtask-bar {
+      margin-top: 9px;
+      padding-top: 7px;
+      border-top: 1px solid color-mix(in srgb, var(--color-border) 60%, transparent);
+    }
+    .task-card__subtask-toggle {
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+      padding: 2px 4px;
+      border: 0;
+      background: transparent;
+      border-radius: 4px;
+      color: var(--color-text-secondary);
+      font-size: 11px;
+      font-weight: 500;
+      cursor: pointer;
+      line-height: 1.3;
+      transition: color 120ms ease, background-color 120ms ease;
+    }
+    .task-card__subtask-toggle:hover {
+      background: var(--color-surface-secondary);
+      color: var(--color-text-primary);
+    }
+    .task-card__subtask-chevron {
+      width: 10px;
+      height: 10px;
+      stroke: currentColor;
+      fill: none;
+      stroke-width: 2.2;
+      stroke-linecap: round;
+      stroke-linejoin: round;
+      transform: rotate(-90deg);
+      transition: transform 140ms ease;
+    }
+    .task-card__subtask-chevron--open {
+      transform: rotate(0deg);
+    }
+    .task-card__subtask-count-pill {
+      font-size: 10px;
+      font-weight: 600;
+      padding: 0 4px;
+      border-radius: 999px;
+      background: var(--color-surface-secondary);
+      border: 1px solid var(--color-border);
+      color: var(--color-text-secondary);
+    }
+
+    .task-card__subtask-cards {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+      margin-top: 6px;
+      margin-left: 12px;
+    }
+    .task-card--subtask {
+      border-radius: 10px;
+      padding: 9px 12px;
+    }
+    .task-card--subtask .task-card__title {
+      margin: 2px 0 5px;
+      font-size: 12.5px;
+      font-weight: 500;
+    }
+    .task-card--subtask .task-card__meta {
+      gap: 6px;
+      font-size: 10.5px;
+    }
+    .task-card__subtask-loading {
+      padding: 6px 10px;
+      font-size: 11px;
+      color: var(--color-text-secondary);
+      font-style: italic;
+    }
     .task-card__clock { min-width: 0; margin-left: auto; }
 
     .task-card__assignee-anchor { display: inline-flex; }
@@ -425,6 +573,18 @@ export class TaskCardComponent {
   protected onSubtaskRowClick(event: MouseEvent, subtask: WorkTask): void {
     event.stopPropagation();
     this.viewed.emit(subtask);
+  }
+
+  protected resolveSubtaskAssignee(employeeId: string, subtask: WorkTask): { name: string; avatarUrl: string | null } | null {
+    const fromParent = this.resolvedAssigneeAvatars()[employeeId];
+    if (fromParent) return fromParent;
+    const fromAssignees = subtask.assignees?.find((a) => a.employeeId === employeeId);
+    if (fromAssignees) return { name: fromAssignees.name, avatarUrl: fromAssignees.avatarUrl };
+    const fromMembers = this.assignableMembers().find((m) => m.employeeId === employeeId);
+    if (fromMembers) return { name: fromMembers.name, avatarUrl: null };
+    const fromDir = this.directory.get(employeeId);
+    if (fromDir) return { name: fromDir.name, avatarUrl: fromDir.avatarUrl ?? null };
+    return null;
   }
 
   protected async selectAssignee(employeeId: string | null): Promise<void> {
