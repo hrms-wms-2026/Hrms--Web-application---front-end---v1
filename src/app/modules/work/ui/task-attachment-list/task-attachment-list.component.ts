@@ -32,12 +32,13 @@ export interface AttachmentPill {
     </label>
   `,
   styles: [`
-    :host { display: block; width: 100%; }
+    :host { display: block; width: 100%; margin: 0; padding: 0; }
     .tal-action-row {
       display: flex;
       align-items: center;
       gap: 8px;
       width: 100%;
+      margin: 0;
       padding: 6px 10px;
       border-radius: 6px;
       border: none;

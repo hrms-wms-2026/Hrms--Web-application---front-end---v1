@@ -1195,10 +1195,10 @@ export const ALL_SLASH_COMMANDS: SlashCommandItem[] = [
                   <ng-container [ngTemplateOutlet]="descriptionEditorTpl" />
                 </div>
 
-                <!-- Subtasks Section -->
+                <!-- Subtasks Section (when subtasks exist) -->
                 @if (currentEffectiveMode() === 'edit' && task(); as t) {
-                  <div class="tfm-doc-section">
-                    @if (subtasks().length > 0) {
+                  @if (subtasks().length > 0) {
+                    <div class="tfm-doc-section">
                       <div class="tfm-doc-section-head">
                         <span class="tfm-doc-section-icon">
                           <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 11l3 3L22 4" /><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11" /></svg>
@@ -1225,61 +1225,61 @@ export const ALL_SLASH_COMMANDS: SlashCommandItem[] = [
                           </div>
                         }
                       </div>
-                    }
 
-                    @if (addingSubtask()) {
-                      <div class="tfm-subtask-add-row">
-                        <input
-                          type="text"
-                          class="tfm-subtask-add-title"
-                          placeholder="Subtask name"
-                          data-testid="subtask-add-title"
-                          [value]="newSubtaskTitle()"
-                          (input)="newSubtaskTitle.set($any($event.target).value)"
-                          (keydown.enter)="newSubtaskTitle().trim() && saveNewSubtask(t.id)"
-                          (keydown.escape)="cancelAddSubtask()"
-                        />
-                        <button type="button" class="tfm-chip tfm-chip--clean" data-testid="subtask-add-assignee-button" (click)="newSubtaskPickerOpen.set(true)">
-                          @if (newSubtaskAssigneeId(); as assigneeId) {
-                            <app-employee-avatar [employeeId]="assigneeId" [showName]="true" />
-                          } @else {
-                            <span>Assignee</span>
-                          }
+                      @if (addingSubtask()) {
+                        <div class="tfm-subtask-add-row">
+                          <input
+                            type="text"
+                            class="tfm-subtask-add-title"
+                            placeholder="Subtask name"
+                            data-testid="subtask-add-title"
+                            [value]="newSubtaskTitle()"
+                            (input)="newSubtaskTitle.set($any($event.target).value)"
+                            (keydown.enter)="newSubtaskTitle().trim() && saveNewSubtask(t.id)"
+                            (keydown.escape)="cancelAddSubtask()"
+                          />
+                          <button type="button" class="tfm-chip tfm-chip--clean" data-testid="subtask-add-assignee-button" (click)="newSubtaskPickerOpen.set(true)">
+                            @if (newSubtaskAssigneeId(); as assigneeId) {
+                              <app-employee-avatar [employeeId]="assigneeId" [showName]="true" />
+                            } @else {
+                              <span>Assignee</span>
+                            }
+                          </button>
+                          <app-employee-picker
+                            [open]="newSubtaskPickerOpen()"
+                            (selected)="onNewSubtaskAssigneeSelected($event)"
+                            (closed)="newSubtaskPickerOpen.set(false)"
+                          />
+                          <input
+                            type="date"
+                            class="tfm-subtask-add-date"
+                            data-testid="subtask-add-due-date"
+                            [value]="newSubtaskDueDate()"
+                            (input)="newSubtaskDueDate.set($any($event.target).value)"
+                          />
+                          <button type="button" class="tfm__cancel" data-testid="subtask-add-cancel" (click)="cancelAddSubtask()">Cancel</button>
+                          <button type="button" class="tfm__save" data-testid="subtask-add-save" [disabled]="!newSubtaskTitle().trim()" (click)="saveNewSubtask(t.id)">Save</button>
+                        </div>
+                      } @else {
+                        <button type="button" class="tfm-action-row" data-testid="add-subtask-button" (click)="startAddSubtask()">
+                          <span class="tfm-action-icon">
+                            <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                              <circle cx="3.5" cy="4.5" r="1.75"/>
+                              <circle cx="11.5" cy="11.5" r="1.75"/>
+                              <path d="M3.5 6.25v2.25a2.5 2.5 0 0 0 2.5 2.5h3.75"/>
+                              <path d="M11.5 2.5v3.5M9.75 4.25h3.5"/>
+                            </svg>
+                          </span>
+                          <span>Add subtask</span>
                         </button>
-                        <app-employee-picker
-                          [open]="newSubtaskPickerOpen()"
-                          (selected)="onNewSubtaskAssigneeSelected($event)"
-                          (closed)="newSubtaskPickerOpen.set(false)"
-                        />
-                        <input
-                          type="date"
-                          class="tfm-subtask-add-date"
-                          data-testid="subtask-add-due-date"
-                          [value]="newSubtaskDueDate()"
-                          (input)="newSubtaskDueDate.set($any($event.target).value)"
-                        />
-                        <button type="button" class="tfm__cancel" data-testid="subtask-add-cancel" (click)="cancelAddSubtask()">Cancel</button>
-                        <button type="button" class="tfm__save" data-testid="subtask-add-save" [disabled]="!newSubtaskTitle().trim()" (click)="saveNewSubtask(t.id)">Save</button>
-                      </div>
-                    } @else {
-                      <button type="button" class="tfm-action-row" data-testid="add-subtask-button" (click)="startAddSubtask()">
-                        <span class="tfm-action-icon">
-                          <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-                            <circle cx="3.5" cy="4.5" r="1.75"/>
-                            <circle cx="11.5" cy="11.5" r="1.75"/>
-                            <path d="M3.5 6.25v2.25a2.5 2.5 0 0 0 2.5 2.5h3.75"/>
-                            <path d="M11.5 2.5v3.5M9.75 4.25h3.5"/>
-                          </svg>
-                        </span>
-                        <span>Add subtask</span>
-                      </button>
-                    }
-                  </div>
+                      }
+                    </div>
+                  }
                 }
 
-                <!-- Attachments Section -->
-                <div class="tfm-doc-section">
-                  @if (attachedFiles().length > 0) {
+                <!-- Attachments Section (when files exist) -->
+                @if (attachedFiles().length > 0) {
+                  <div class="tfm-doc-section">
                     <div class="tfm-doc-section-head">
                       <span class="tfm-doc-section-icon">
                         <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m21.44 11.05-9.19 9.19a6 6 0 0 1-8.49-8.49l8.57-8.57A4 4 0 1 1 18 8.84l-8.59 8.57a2 2 0 0 1-2.83-2.83l8.49-8.48" /></svg>
@@ -1287,13 +1287,78 @@ export const ALL_SLASH_COMMANDS: SlashCommandItem[] = [
                       <span class="tfm-doc-section-title">Attachments</span>
                       <span class="tfm-doc-count">{{ attachedFiles().length }}</span>
                     </div>
-                  }
-                  <app-task-attachment-list
-                    [files]="attachedFiles()"
-                    (fileSelected)="onAttachmentFilesSelected($event)"
-                    (removed)="removeAttachedFile($event)"
-                  />
-                </div>
+                    <app-task-attachment-list
+                      [files]="attachedFiles()"
+                      (fileSelected)="onAttachmentFilesSelected($event)"
+                      (removed)="removeAttachedFile($event)"
+                    />
+                  </div>
+                }
+
+                <!-- Quick Actions List (Add Subtask & Attach File tightly grouped when empty) -->
+                @if ((currentEffectiveMode() === 'edit' && task() && subtasks().length === 0) || attachedFiles().length === 0) {
+                  <div class="tfm-actions-list">
+                    @if (currentEffectiveMode() === 'edit' && task(); as t) {
+                      @if (subtasks().length === 0) {
+                        @if (addingSubtask()) {
+                          <div class="tfm-subtask-add-row">
+                            <input
+                              type="text"
+                              class="tfm-subtask-add-title"
+                              placeholder="Subtask name"
+                              data-testid="subtask-add-title"
+                              [value]="newSubtaskTitle()"
+                              (input)="newSubtaskTitle.set($any($event.target).value)"
+                              (keydown.enter)="newSubtaskTitle().trim() && saveNewSubtask(t.id)"
+                              (keydown.escape)="cancelAddSubtask()"
+                            />
+                            <button type="button" class="tfm-chip tfm-chip--clean" data-testid="subtask-add-assignee-button" (click)="newSubtaskPickerOpen.set(true)">
+                              @if (newSubtaskAssigneeId(); as assigneeId) {
+                                <app-employee-avatar [employeeId]="assigneeId" [showName]="true" />
+                              } @else {
+                                <span>Assignee</span>
+                              }
+                            </button>
+                            <app-employee-picker
+                              [open]="newSubtaskPickerOpen()"
+                              (selected)="onNewSubtaskAssigneeSelected($event)"
+                              (closed)="newSubtaskPickerOpen.set(false)"
+                            />
+                            <input
+                              type="date"
+                              class="tfm-subtask-add-date"
+                              data-testid="subtask-add-due-date"
+                              [value]="newSubtaskDueDate()"
+                              (input)="newSubtaskDueDate.set($any($event.target).value)"
+                            />
+                            <button type="button" class="tfm__cancel" data-testid="subtask-add-cancel" (click)="cancelAddSubtask()">Cancel</button>
+                            <button type="button" class="tfm__save" data-testid="subtask-add-save" [disabled]="!newSubtaskTitle().trim()" (click)="saveNewSubtask(t.id)">Save</button>
+                          </div>
+                        } @else {
+                          <button type="button" class="tfm-action-row" data-testid="add-subtask-button" (click)="startAddSubtask()">
+                            <span class="tfm-action-icon">
+                              <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                                <circle cx="3.5" cy="4.5" r="1.75"/>
+                                <circle cx="11.5" cy="11.5" r="1.75"/>
+                                <path d="M3.5 6.25v2.25a2.5 2.5 0 0 0 2.5 2.5h3.75"/>
+                                <path d="M11.5 2.5v3.5M9.75 4.25h3.5"/>
+                              </svg>
+                            </span>
+                            <span>Add subtask</span>
+                          </button>
+                        }
+                      }
+                    }
+
+                    @if (attachedFiles().length === 0) {
+                      <app-task-attachment-list
+                        [files]="attachedFiles()"
+                        (fileSelected)="onAttachmentFilesSelected($event)"
+                        (removed)="removeAttachedFile($event)"
+                      />
+                    }
+                  </div>
+                }
 
                 <!-- Activity Log Section -->
                 <div class="tfm-doc-section tfm-doc-section--collapsible">
@@ -1473,11 +1538,13 @@ export const ALL_SLASH_COMMANDS: SlashCommandItem[] = [
     .tfm-doc-section--collapsible { border: 1px solid var(--color-border); border-radius: 8px; padding: 12px 14px; background: var(--color-surface); }
     .tfm-doc-section-toggle { display: flex; align-items: center; justify-content: space-between; width: 100%; border: 0; background: transparent; padding: 0; cursor: pointer; color: var(--color-text-primary); }
     .tfm-doc-activity-body { padding-top: 12px; margin-top: 8px; border-top: 1px solid var(--color-border); }
+    .tfm-actions-list { display: flex; flex-direction: column; gap: 2px; }
     .tfm-action-row {
       display: flex;
       align-items: center;
       gap: 8px;
       width: 100%;
+      margin: 0;
       padding: 6px 10px;
       border-radius: 6px;
       border: none;
