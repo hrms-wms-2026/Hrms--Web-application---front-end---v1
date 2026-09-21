@@ -180,7 +180,7 @@ function initialsOf(name: string): string {
           <button
             type="button"
             class="task-card__due-date task-card__meta-btn"
-            [class.task-card__meta-btn--placeholder]="!task().dueDate"
+            [class.task-card__meta-btn--icon-only]="!task().dueDate"
             data-testid="task-card-due-date-btn"
             cdkOverlayOrigin
             #dueDateOrigin="cdkOverlayOrigin"
@@ -189,7 +189,9 @@ function initialsOf(name: string): string {
             (click)="toggleDueDatePopover($event)"
           >
             <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="4" width="18" height="17" rx="2" /><path d="M16 2v4M8 2v4M3 10h18" /></svg>
-            <span>{{ task().dueDate ? (task().dueDate | date: 'MMM d') : 'Date' }}</span>
+            @if (task().dueDate) {
+              <span>{{ task().dueDate | date: 'MMM d' }}</span>
+            }
           </button>
 
           <ng-template
@@ -230,7 +232,7 @@ function initialsOf(name: string): string {
           <button
             type="button"
             class="task-card__hours task-card__meta-btn"
-            [class.task-card__meta-btn--placeholder]="!task().estimatedHours"
+            [class.task-card__meta-btn--icon-only]="!task().estimatedHours"
             data-testid="task-card-hours-btn"
             cdkOverlayOrigin
             #hoursOrigin="cdkOverlayOrigin"
@@ -239,7 +241,9 @@ function initialsOf(name: string): string {
             (click)="toggleHoursPopover($event)"
           >
             <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9" /><path d="M12 7v5l3 2" /></svg>
-            <span>{{ task().estimatedHours ? task().estimatedHours + 'h' : 'Hours' }}</span>
+            @if (task().estimatedHours) {
+              <span>{{ task().estimatedHours }}h</span>
+            }
           </button>
 
           <ng-template
@@ -423,14 +427,10 @@ function initialsOf(name: string): string {
       color: var(--color-text-primary);
       box-shadow: 0 1px 3px rgb(15 23 42 / 0.08);
     }
-    .task-card__meta-btn--placeholder {
-      display: none;
-      opacity: 0.55;
-      border-style: dashed;
-    }
-    .task-card:hover .task-card__meta-btn--placeholder,
-    .task-card__meta-btn--placeholder[aria-expanded="true"] {
-      display: inline-flex;
+    .task-card__meta-btn--icon-only {
+      padding: 2px 5px;
+      min-width: 22px;
+      justify-content: center;
     }
     .task-card__due-date svg, .task-card__hours svg { width: 13px; height: 13px; flex: 0 0 auto; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
     .task-card__due-date, .task-card__hours { display: inline-flex; align-items: center; gap: 4px; }

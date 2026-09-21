@@ -443,4 +443,32 @@ describe('TaskCardComponent', () => {
     expect(changedSpy).toHaveBeenCalled();
     expect(viewedSpy).not.toHaveBeenCalled();
   });
+
+  it('shows only the icon and no text label when date or hours is not assigned', () => {
+    setup({ task: { ...task, dueDate: null, estimatedHours: null } });
+    const dateBtn = fixture.nativeElement.querySelector('[data-testid="task-card-due-date-btn"]') as HTMLButtonElement;
+    const hoursBtn = fixture.nativeElement.querySelector('[data-testid="task-card-hours-btn"]') as HTMLButtonElement;
+
+    expect(dateBtn.querySelector('svg')).not.toBeNull();
+    expect(dateBtn.querySelector('span')).toBeNull();
+    expect(dateBtn.textContent?.trim()).toBe('');
+    expect(dateBtn.classList.contains('task-card__meta-btn--icon-only')).toBe(true);
+
+    expect(hoursBtn.querySelector('svg')).not.toBeNull();
+    expect(hoursBtn.querySelector('span')).toBeNull();
+    expect(hoursBtn.textContent?.trim()).toBe('');
+    expect(hoursBtn.classList.contains('task-card__meta-btn--icon-only')).toBe(true);
+  });
+
+  it('shows text label alongside the icon when date or hours is assigned', () => {
+    setup({ task: { ...task, dueDate: new Date('2026-09-17T00:00:00.000Z'), estimatedHours: 46 } });
+    const dateBtn = fixture.nativeElement.querySelector('[data-testid="task-card-due-date-btn"]') as HTMLButtonElement;
+    const hoursBtn = fixture.nativeElement.querySelector('[data-testid="task-card-hours-btn"]') as HTMLButtonElement;
+
+    expect(dateBtn.querySelector('span')?.textContent).toContain('Sep 17');
+    expect(dateBtn.classList.contains('task-card__meta-btn--icon-only')).toBe(false);
+
+    expect(hoursBtn.querySelector('span')?.textContent).toContain('46h');
+    expect(hoursBtn.classList.contains('task-card__meta-btn--icon-only')).toBe(false);
+  });
 });
