@@ -146,6 +146,19 @@ function initialsOf(name: string): string {
         @if (task().activeEventName) {
           <span class="task-card__event" data-testid="task-event-chip" [title]="'In milestone: ' + task().activeEventName">{{ task().activeEventName }}</span>
         }
+        @if (isAssignee()) {
+          <div class="task-card__clock" (click)="$event.stopPropagation()">
+            <app-task-clock-widget
+              [task]="task()"
+              [isAssignee]="isAssignee()"
+              [compact]="true"
+              [hasOpenSessionMine]="hasOpenSessionMine()"
+              [hasOpenSessionOtherEmployee]="hasOpenSessionOtherEmployee()"
+              (clockedIn)="taskChanged.emit()"
+              (pushed)="taskChanged.emit()"
+            />
+          </div>
+        }
       </div>
 
       @if (subtasksExpanded()) {
@@ -162,22 +175,6 @@ function initialsOf(name: string): string {
               }
             </div>
           }
-        </div>
-      }
-
-      @if (isAssignee()) {
-        <div class="task-card__footer">
-          <div class="task-card__clock" (click)="$event.stopPropagation()">
-            <app-task-clock-widget
-              [task]="task()"
-              [isAssignee]="isAssignee()"
-              [compact]="true"
-              [hasOpenSessionMine]="hasOpenSessionMine()"
-              [hasOpenSessionOtherEmployee]="hasOpenSessionOtherEmployee()"
-              (clockedIn)="taskChanged.emit()"
-              (pushed)="taskChanged.emit()"
-            />
-          </div>
         </div>
       }
 
@@ -212,7 +209,6 @@ function initialsOf(name: string): string {
     .task-card__priority[data-priority="critical"],
     .task-card__priority[data-priority="high"] { color: var(--color-danger); }
     .task-card__event { overflow: hidden; max-width: 120px; border-radius: 999px; background: var(--color-surface-secondary); padding: 1px 8px; color: var(--color-text-secondary); font-size: 10px; font-weight: 600; text-overflow: ellipsis; white-space: nowrap; }
-    .task-card__footer { display: flex; align-items: center; justify-content: flex-end; gap: 8px; min-width: 0; margin-top: 8px; }
     .task-card__subtask-toggle {
       display: inline-flex;
       align-items: center;
