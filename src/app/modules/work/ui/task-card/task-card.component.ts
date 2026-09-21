@@ -229,63 +229,6 @@ function initialsOf(name: string): string {
             </div>
           </ng-template>
 
-          <button
-            type="button"
-            class="task-card__hours task-card__meta-btn"
-            [class.task-card__meta-btn--icon-only]="!task().estimatedHours"
-            data-testid="task-card-hours-btn"
-            cdkOverlayOrigin
-            #hoursOrigin="cdkOverlayOrigin"
-            [attr.aria-expanded]="hoursPopoverOpen()"
-            [title]="task().estimatedHours ? 'Change estimated hours' : 'Set estimated hours'"
-            (click)="toggleHoursPopover($event)"
-          >
-            <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9" /><path d="M12 7v5l3 2" /></svg>
-            @if (task().estimatedHours) {
-              <span>{{ task().estimatedHours }}h</span>
-            }
-          </button>
-
-          <ng-template
-            cdkConnectedOverlay
-            [cdkConnectedOverlayOrigin]="hoursOrigin"
-            [cdkConnectedOverlayOpen]="hoursPopoverOpen()"
-            [cdkConnectedOverlayPositions]="assigneePopoverPositions"
-            [cdkConnectedOverlayHasBackdrop]="true"
-            cdkConnectedOverlayBackdropClass="cdk-overlay-transparent-backdrop"
-            (backdropClick)="hoursPopoverOpen.set(false)"
-            (detach)="hoursPopoverOpen.set(false)"
-          >
-            <div class="task-card__popover task-card__hours-popover" role="dialog" aria-label="Change estimated hours" (click)="$event.stopPropagation()">
-              <div class="task-card__popover-title">Estimated Hours</div>
-              <div class="task-card__hours-input-row">
-                <input
-                  type="number"
-                  min="0"
-                  max="999"
-                  step="0.5"
-                  class="task-card__hours-input"
-                  placeholder="Hours"
-                  [value]="hoursInput()"
-                  (input)="hoursInput.set($any($event.target).value)"
-                  (keydown.enter)="saveHours()"
-                />
-                <span class="task-card__hours-unit">hrs</span>
-              </div>
-              <div class="task-card__quick-row">
-                <button type="button" class="task-card__quick-btn" (click)="setQuickHours(1)">1h</button>
-                <button type="button" class="task-card__quick-btn" (click)="setQuickHours(2)">2h</button>
-                <button type="button" class="task-card__quick-btn" (click)="setQuickHours(4)">4h</button>
-                <button type="button" class="task-card__quick-btn" (click)="setQuickHours(8)">8h</button>
-              </div>
-              <div class="task-card__popover-footer">
-                @if (task().estimatedHours) {
-                  <button type="button" class="task-card__popover-clear-btn" (click)="clearHours()">Clear</button>
-                }
-                <button type="button" class="task-card__popover-save-btn" (click)="saveHours()">Save</button>
-              </div>
-            </div>
-          </ng-template>
           @if (task().activeEventName) {
             <span class="task-card__event" data-testid="task-event-chip" [title]="'In milestone: ' + task().activeEventName">{{ task().activeEventName }}</span>
           }
@@ -404,7 +347,7 @@ function initialsOf(name: string): string {
     }
     .task-card__short-id { font-size: 11px; color: var(--color-text-secondary); }
     .task-card__title { margin: 5px 0 7px; font-size: 13px; font-weight: 500; color: var(--color-text-primary); line-height: 1.4; }
-    .task-card__meta { display: flex; align-items: center; flex-wrap: wrap; gap: 6px; font-size: 11px; color: var(--color-text-secondary); }
+    .task-card__meta { display: flex; align-items: center; gap: 6px; font-size: 11px; color: var(--color-text-secondary); }
     .task-card__meta-btn {
       display: inline-flex;
       align-items: center;
@@ -445,7 +388,7 @@ function initialsOf(name: string): string {
     .task-card__priority[data-priority="low"],
     .task-card__priority-icon[data-priority="low"] { color: var(--color-text-secondary); }
     .task-card__event { overflow: hidden; max-width: 120px; border-radius: 999px; background: var(--color-surface-secondary); padding: 1px 8px; color: var(--color-text-secondary); font-size: 10px; font-weight: 600; text-overflow: ellipsis; white-space: nowrap; }
-    .task-card__clock { min-width: 0; margin-left: auto; }
+    .task-card__clock { min-width: 0; margin-left: auto; flex-shrink: 0; }
 
     .task-card__popover {
       min-width: 175px;
@@ -548,33 +491,6 @@ function initialsOf(name: string): string {
     }
     .task-card__date-input:focus {
       border-color: var(--color-accent);
-    }
-    .task-card__hours-input-row {
-      display: flex;
-      align-items: center;
-      gap: 6px;
-      margin-bottom: 6px;
-    }
-    .task-card__hours-input {
-      flex: 1;
-      width: 100%;
-      padding: 4px 6px;
-      border: 1px solid var(--color-border);
-      border-radius: 4px;
-      background: var(--color-surface);
-      font: inherit;
-      font-size: 12px;
-      color: var(--color-text-primary);
-      outline: none;
-      box-sizing: border-box;
-    }
-    .task-card__hours-input:focus {
-      border-color: var(--color-accent);
-    }
-    .task-card__hours-unit {
-      font-size: 11px;
-      color: var(--color-text-secondary);
-      font-weight: 500;
     }
     .task-card__popover-footer {
       display: flex;
@@ -859,8 +775,6 @@ export class TaskCardComponent {
 
   protected readonly priorityPopoverOpen = signal(false);
   protected readonly dueDatePopoverOpen = signal(false);
-  protected readonly hoursPopoverOpen = signal(false);
-  protected readonly hoursInput = signal('');
 
   protected readonly priorityOptions = [
     { value: 'critical', label: 'Critical' },
@@ -879,7 +793,6 @@ export class TaskCardComponent {
     event.stopPropagation();
     this.priorityPopoverOpen.set(false);
     this.dueDatePopoverOpen.set(false);
-    this.hoursPopoverOpen.set(false);
     this.assigneeSearch.set('');
     this.assigneePopoverOpen.update((open) => !open);
   }
@@ -888,7 +801,6 @@ export class TaskCardComponent {
     event.stopPropagation();
     this.assigneePopoverOpen.set(false);
     this.dueDatePopoverOpen.set(false);
-    this.hoursPopoverOpen.set(false);
     this.priorityPopoverOpen.update((v) => !v);
   }
 
@@ -896,18 +808,7 @@ export class TaskCardComponent {
     event.stopPropagation();
     this.assigneePopoverOpen.set(false);
     this.priorityPopoverOpen.set(false);
-    this.hoursPopoverOpen.set(false);
     this.dueDatePopoverOpen.update((v) => !v);
-  }
-
-  protected toggleHoursPopover(event: MouseEvent): void {
-    event.stopPropagation();
-    this.assigneePopoverOpen.set(false);
-    this.priorityPopoverOpen.set(false);
-    this.dueDatePopoverOpen.set(false);
-    const h = this.task().estimatedHours;
-    this.hoursInput.set(h !== null && h !== undefined ? String(h) : '');
-    this.hoursPopoverOpen.update((v) => !v);
   }
 
   protected async selectPriority(priority: WorkTask['priority']): Promise<void> {
@@ -935,23 +836,6 @@ export class TaskCardComponent {
   protected clearDueDate(): void {
     this.dueDatePopoverOpen.set(false);
     void this.applyTaskEdit({ dueDate: undefined });
-  }
-
-  protected setQuickHours(h: number): void {
-    this.hoursInput.set(String(h));
-    void this.saveHours();
-  }
-
-  protected clearHours(): void {
-    this.hoursInput.set('');
-    void this.saveHours();
-  }
-
-  protected async saveHours(): Promise<void> {
-    this.hoursPopoverOpen.set(false);
-    const raw = this.hoursInput().trim();
-    const parsed = raw === '' ? undefined : Math.max(0, Number(raw));
-    await this.applyTaskEdit({ estimatedHours: parsed });
   }
 
   private async applyTaskEdit(overrides: Partial<{ priority: WorkTask['priority']; dueDate: string; estimatedHours: number }>): Promise<void> {
