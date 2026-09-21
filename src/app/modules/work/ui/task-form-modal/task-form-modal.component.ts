@@ -629,7 +629,7 @@ export const ALL_SLASH_COMMANDS: SlashCommandItem[] = [
                             type="button"
                             class="tfm-popover__item"
                             [class.tfm-popover__item--selected]="!sprintId()"
-                            (click)="sprintId.set(''); activePopover.set(null)"
+                            (click)="selectSprint('')"
                           >
                             <svg class="tfm-chip-svg tfm-popover-item-icon" viewBox="0 0 24 24" aria-hidden="true"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2" /></svg>
                             <span class="tfm-popover__name">No sprint</span>
@@ -639,7 +639,7 @@ export const ALL_SLASH_COMMANDS: SlashCommandItem[] = [
                               type="button"
                               class="tfm-popover__item"
                               [class.tfm-popover__item--selected]="sprintId() === s.id"
-                              (click)="sprintId.set(s.id); activePopover.set(null)"
+                              (click)="selectSprint(s.id)"
                             >
                               <svg class="tfm-chip-svg tfm-popover-item-icon" viewBox="0 0 24 24" aria-hidden="true"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2" /></svg>
                               <span class="tfm-popover__name">{{ s.name }}</span>
@@ -971,7 +971,7 @@ export const ALL_SLASH_COMMANDS: SlashCommandItem[] = [
                             [compact]="true"
                             [hasOpenSessionMine]="hasOpenSessionMine()"
                             [hasOpenSessionOtherEmployee]="hasOpenSessionOtherEmployee()"
-                            (clockedIn)="reloadHistory()"
+                            (clockedIn)="onTaskClockedIn()"
                             (pushed)="onTaskPushed($event)"
                           />
                         } @else {
@@ -1916,6 +1916,13 @@ export class TaskFormModalComponent {
   selectSprint(sprintId: string): void {
     this.sprintId.set(sprintId);
     this.activePopover.set(null);
+    if (sprintId) {
+      const sp = this.sprints().find((s) => s.id === sprintId);
+      if (sp?.objectiveId) {
+        this.selectedObjectiveId.set(sp.objectiveId);
+        this.clearError('objectiveId');
+      }
+    }
   }
 
   selectCategory(categoryId: string): void {
@@ -2052,7 +2059,16 @@ export class TaskFormModalComponent {
         firstValueFrom(this.sprintApi.getByProject(this.projectId())),
         firstValueFrom(this.taskApi.getCategories(this.projectId()))
       ]);
-      this.modules.set(milestones.map((m) => ({ objectiveId: m.objectiveId, title: m.title, isOwner: m.isOwner })));
+      const knownModules = new Map<string, { objectiveId: string; title: string; isOwner: boolean }>();
+      for (const m of milestones) {
+        knownModules.set(m.objectiveId, { objectiveId: m.objectiveId, title: m.title, isOwner: m.isOwner });
+      }
+      for (const m of this.projectStore.milestones()) {
+        if (!knownModules.has(m.objectiveId)) {
+          knownModules.set(m.objectiveId, { objectiveId: m.objectiveId, title: m.title, isOwner: m.isOwner });
+        }
+      }
+      this.modules.set(Array.from(knownModules.values()));
       this.sprints.set(sprintDtos.map(toSprint));
       this.categories.set(categoryDtos.map(toTaskCategoryColumn));
       this.categoryId.set(this.categories()[0]?.id ?? '');
@@ -2072,6 +2088,15 @@ export class TaskFormModalComponent {
         const activeSprints = this.sprints().filter((s) => s.status === 'active' && (!objId || s.objectiveId === objId));
         if (activeSprints.length === 1) {
           this.sprintId.set(activeSprints[0].id);
+        }
+      }
+
+      // If sprint is selected (via prefill or auto active), ensure module is inherited
+      if (this.sprintId()) {
+        const matchingSprint = this.sprints().find((s) => s.id === this.sprintId());
+        if (matchingSprint?.objectiveId && (!this.selectedObjectiveId() || !this.prefillModuleId())) {
+          this.selectedObjectiveId.set(matchingSprint.objectiveId);
+          this.clearError('objectiveId');
         }
       }
 
@@ -2121,6 +2146,16 @@ export class TaskFormModalComponent {
     } catch {
       /* keep the current feed */
     }
+  }
+
+  async onTaskClockedIn(): Promise<void> {
+    this.saved.emit();
+    try {
+      this.task.set(toWorkTask(await firstValueFrom(this.taskApi.getTaskById(this.taskId()))));
+    } catch {
+      this.errorMessage.set('Time tracking started, but the task could not be refreshed. Reopen it to see the latest status.');
+    }
+    await this.reloadHistory();
   }
 
   async onTaskPushed(updated: WorkTask): Promise<void> {

@@ -26,7 +26,9 @@ export class LoginComponent implements OnInit {
 
   ngOnInit(): void {
     if (isTenantHostname(window.location.hostname)) {
-      window.location.href = buildRootUrl('/auth/login');
+      // Keep ?returnUrl= so /device/activate can resume after the root-host login.
+      const search = window.location.search || '';
+      window.location.href = buildRootUrl(`/auth/login${search}`);
     }
   }
 

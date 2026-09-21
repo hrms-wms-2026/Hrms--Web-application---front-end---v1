@@ -280,12 +280,12 @@ describe('project.mapper', () => {
       ownerName: 'Arun', isOwner: true, children: [], kind: 'objective',
       taskStatuses: [{
         id: 'st-1', name: 'To Do', displayOrder: 0, requiresApproval: false,
-        marksTaskComplete: false, visibility: 'public'
+        marksTaskComplete: false, category: 'active', color: '#2563EB', visibility: 'public'
       }]
     };
     const sprintDto: SprintDto = {
       id: 'spr-1', objectiveId: 'o1', name: 'Sprint 1', startDate: '2026-08-01', endDate: '2026-08-14',
-      status: 'active', completedAt: null, achievedAt: null
+      status: 'active', completedAt: null, achievedAt: null, goal: null
     };
     const taskDto: WorkTaskDto = {
       id: 't1', objectiveId: 'o1', shortId: 'WEB-9', title: 'Do it', description: null,

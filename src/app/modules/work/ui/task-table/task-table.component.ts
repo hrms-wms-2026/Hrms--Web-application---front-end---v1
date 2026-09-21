@@ -15,6 +15,18 @@ type SortKey = 'title' | 'statusId' | 'dueDate' | 'estimatedHours';
     <table class="task-table">
       <thead>
         <tr>
+          @if (selectable()) {
+            <th class="task-table__select-cell">
+              <input
+                type="checkbox"
+                data-testid="task-table-select-all"
+                [checked]="allSelected()"
+                [indeterminate]="someSelected()"
+                (click)="$event.stopPropagation()"
+                (change)="onSelectAllChanged($event)"
+              />
+            </th>
+          }
           <th>ID</th>
           <th (click)="toggleSort('title')">Title</th>
           <th (click)="toggleSort('statusId')">Status</th>
@@ -27,7 +39,19 @@ type SortKey = 'title' | 'statusId' | 'dueDate' | 'estimatedHours';
       </thead>
       <tbody>
         @for (task of sortedTasks(); track task.id) {
-          <tr [attr.data-testid]="'task-row-' + task.id" (click)="viewed.emit(task)">
+          <tr [attr.data-testid]="'task-row-' + task.id" [class.task-table__row--selected]="isSelected(task.id)" (click)="viewed.emit(task)">
+            @if (selectable()) {
+              <td class="task-table__select-cell" (click)="$event.stopPropagation()">
+                @if (isRowSelectable(task)) {
+                  <input
+                    type="checkbox"
+                    [attr.data-testid]="'task-select-' + task.id"
+                    [checked]="isSelected(task.id)"
+                    (change)="onRowSelectChanged(task.id, $event)"
+                  />
+                }
+              </td>
+            }
             <td>{{ task.shortId }}</td>
             <td>{{ task.title }}</td>
             <td>
@@ -83,6 +107,9 @@ type SortKey = 'title' | 'statusId' | 'dueDate' | 'estimatedHours';
     .task-table__view-btn { display: inline-flex; align-items: center; gap: 6px; border: 1px solid var(--color-border); border-radius: 8px; padding: 7px 10px; background: var(--color-surface); color: var(--color-text-secondary); font-size: 12px; font-weight: 500; cursor: pointer; transition: background-color 160ms ease, border-color 160ms ease, color 160ms ease; }
     .task-table__view-btn:hover { border-color: var(--color-accent); background: var(--color-surface-secondary); color: var(--color-text-primary); }
     .task-table__view-btn svg { width: 14px; height: 14px; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
+    .task-table__select-cell { width: 1%; white-space: nowrap; }
+    .task-table__select-cell input[type="checkbox"] { width: 15px; height: 15px; cursor: pointer; accent-color: var(--color-accent); }
+    .task-table tbody tr.task-table__row--selected { background: var(--color-surface-secondary); }
   `]
 })
 export class TaskTableComponent {
@@ -91,9 +118,47 @@ export class TaskTableComponent {
   statuses = input<readonly TaskStatusColumn[]>([]);
   objectiveOwners = input<Record<string, boolean>>({});
   currentEmployeeId = input('');
+  // Opt-in: sprint-tab's task tables don't pass this, so they render unchanged with no checkbox column.
+  selectable = input(false);
+  selectedIds = input<ReadonlySet<string>>(new Set());
   viewed = output<WorkTask>();
   taskChanged = output<void>();
   statusChangeRequested = output<{ taskId: string; newStatusId: string }>();
+  selectionChanged = output<{ taskId: string; selected: boolean }>();
+  selectAllChanged = output<{ taskIds: string[]; selected: boolean }>();
+
+  isSelected(taskId: string): boolean {
+    return this.selectedIds().has(taskId);
+  }
+
+  // Moving a task requires owning its module (the same gate task-form-modal uses to route
+  // between a direct edit and a request-for-approval) - a row for a module the caller doesn't
+  // own gets no checkbox at all, rather than letting selection attempt a move that would fail.
+  isRowSelectable(task: WorkTask): boolean {
+    return this.objectiveOwners()[task.objectiveId] ?? false;
+  }
+
+  protected readonly selectableTasks = computed(() => this.tasks().filter((t) => this.isRowSelectable(t)));
+
+  protected readonly allSelected = computed(() => {
+    const tasks = this.selectableTasks();
+    return tasks.length > 0 && tasks.every((t) => this.selectedIds().has(t.id));
+  });
+
+  protected readonly someSelected = computed(() => {
+    const tasks = this.selectableTasks();
+    const selected = this.selectedIds();
+    return tasks.some((t) => selected.has(t.id)) && !this.allSelected();
+  });
+
+  onRowSelectChanged(taskId: string, event: Event): void {
+    this.selectionChanged.emit({ taskId, selected: (event.target as HTMLInputElement).checked });
+  }
+
+  onSelectAllChanged(event: Event): void {
+    const selected = (event.target as HTMLInputElement).checked;
+    this.selectAllChanged.emit({ taskIds: this.selectableTasks().map((t) => t.id), selected });
+  }
 
   isAssignee(task: WorkTask): boolean {
     return task.assigneeEmployeeIds.includes(this.currentEmployeeId());

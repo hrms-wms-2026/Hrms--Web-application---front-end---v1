@@ -1,3 +1,19 @@
+<ng-template #downloadStep>
+  <section class="step" aria-labelledby="step-download">
+    <h2 id="step-download">1. Install the ONEVO tray app</h2>
+    @if (installerState() === 'ready' && installer(); as info) {
+      <a class="primary download" [href]="info.download_url" target="_blank" rel="noopener noreferrer" download>
+        Download for Windows (v{{ info.version }}, {{ sizeLabel() }})
+      </a>
+      <p class="hint">Already installed? Skip to step 2.</p>
+    } @else if (installerState() === 'loading') {
+      <p class="hint" aria-live="polite">Checking for the latest installer…</p>
+    } @else {
+      <p class="hint">The installer isn't available yet. If the app is already installed, continue with step 2; otherwise contact your administrator.</p>
+    }
+  </section>
+</ng-template>
+
 <section class="gate" role="dialog" aria-modal="true" aria-labelledby="gate-title">
   <div class="gate__card">
     <p class="eyebrow">Workspace protection</p>
@@ -5,11 +21,24 @@
 
     @if (presence.phase() === 'checking') {
       <p aria-live="polite">Checking the ONEVO tray connection…</p>
+    } @else if (presence.phase() === 'needs-code') {
+      <ng-container *ngTemplateOutlet="downloadStep" />
+      <section class="step" aria-labelledby="step-code">
+        <h2 id="step-code">2. Connect it to your account</h2>
+        <p>When the tray app is installed, generate a one-time code and paste it into the app.</p>
+        <div class="actions">
+          <button class="primary" type="button" (click)="generate()">Generate activation code</button>
+        </div>
+      </section>
     } @else if (presence.phase() === 'code-loading') {
       <p aria-live="polite">Generating your secure activation code…</p>
       <div class="code" aria-label="Activation code">--------</div>
     } @else if (presence.phase() === 'waiting' && presence.hasUsableCode()) {
-      <p>Open the already-installed ONEVO tray app, paste this code, and select <strong>Connect &amp; Login</strong>.</p>
+      <ng-container *ngTemplateOutlet="downloadStep" />
+      <section class="step" aria-labelledby="step-code">
+        <h2 id="step-code">2. Connect it to your account</h2>
+        <p>Open the ONEVO tray app, paste this code, and select <strong>Connect &amp; Login</strong>.</p>
+      </section>
       <div class="code" aria-label="Activation code">{{ presence.code() }}</div>
       <p class="expiry" aria-live="polite">
         Code expires in {{ presence.codeSecondsRemaining() }} seconds.
@@ -22,7 +51,7 @@
       </div>
       <p class="waiting" aria-live="polite">This page unlocks automatically after the tray sends its first heartbeat.</p>
     } @else if (presence.phase() === 'expired') {
-      <p>The activation code has expired. Generate a new code in the web portal and paste it into the installed tray app.</p>
+      <p>The activation code has expired. Generate a new code and paste it into the installed tray app.</p>
       <button class="primary" type="button" (click)="regenerate()">Generate a new code</button>
     } @else if (presence.phase() === 'offline') {
       <p aria-live="polite">The ONEVO service is temporarily unavailable. The page will retry automatically.</p>

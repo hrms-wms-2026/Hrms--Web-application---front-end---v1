@@ -14,6 +14,7 @@ import { MemberManagementPopupComponent } from '../../ui/member-management-popup
 import { SprintFormComponent } from '../../ui/sprint-form/sprint-form.component';
 import { WorkApprovalsApiService } from '../../data-access/work-approvals-api.service';
 import { EmployeeDirectoryStore } from '../../state/employee-directory.store';
+import { SprintCompleteDialogComponent } from '../../ui/sprint-complete-dialog/sprint-complete-dialog.component';
 import { LoaderComponent } from '../../../../shared/ui/loader/loader.component';
 import { ErrorStateComponent } from '../../../../shared/ui/error-state/error-state.component';
 import { EmptyStateComponent } from '../../../../shared/ui/empty-state/empty-state.component';
@@ -30,7 +31,7 @@ import { Sprint, SprintStatus } from '../../models/sprint.model';
   standalone: true,
   imports: [
     MilestoneTreeNodeComponent, WorkDropdownComponent, TreeExplanationPanelComponent, SubModuleFormComponent,
-    MemberManagementPopupComponent, SprintFormComponent, TaskFormModalComponent,
+    MemberManagementPopupComponent, SprintFormComponent, SprintCompleteDialogComponent, TaskFormModalComponent,
     LoaderComponent, ErrorStateComponent, EmptyStateComponent, ConfirmModalComponent
   ],
   templateUrl: './milestone-tree-tab.component.html'
@@ -124,6 +125,7 @@ export class MilestoneTreeTabComponent {
   pendingDeleteNode = signal<MilestoneTreeNode | null>(null);
   editSprintOpen = signal(false);
   editSprintNode = signal<MilestoneTreeNode | null>(null);
+  completingSprintNode = signal<MilestoneTreeNode | null>(null);
 
   constructor() {
     this.route.paramMap.pipe(takeUntilDestroyed()).subscribe((paramMap) => {
@@ -300,8 +302,9 @@ export class MilestoneTreeTabComponent {
       id: node.id,
       objectiveId: node.parentObjectiveId ?? '',
       name: node.title,
-      startDate: new Date(node.startDate),
-      endDate: new Date(node.endDate),
+      goal: null,
+      startDate: node.startDate ? new Date(node.startDate) : null,
+      endDate: node.endDate ? new Date(node.endDate) : null,
       status: (node.status as SprintStatus) ?? 'active',
       completedAt: null,
       achievedAt: null
@@ -423,8 +426,17 @@ export class MilestoneTreeTabComponent {
     await this.store.achieveSprint(node.id);
   }
 
-  async onCompleteSprintRequested(node: MilestoneTreeNode): Promise<void> {
-    await this.store.completeSprint(node.id);
+  onCompleteSprintRequested(node: MilestoneTreeNode): void {
+    this.completingSprintNode.set(node);
+  }
+
+  onSprintCompleteDialogClosed(): void {
+    this.completingSprintNode.set(null);
+  }
+
+  async onSprintCompleteDialogCompleted(): Promise<void> {
+    this.completingSprintNode.set(null);
+    await this.loadTree({ force: true });
   }
 
   onDeleteRequested(node: MilestoneTreeNode): void {

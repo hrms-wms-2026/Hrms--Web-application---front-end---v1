@@ -1,175 +1,243 @@
 import { TestBed } from '@angular/core/testing';
 import { vi } from 'vitest';
-import { of } from 'rxjs';
+import { of, throwError } from 'rxjs';
 import { BoardStructureEditorComponent } from './board-structure-editor.component';
 import { TaskApiService } from '../../data-access/task-api.service';
-import { TaskStatusColumn } from '../../models/task.model';
-import { TaskStatusDto } from '../../models/dto/task.dto';
+import { TaskStatusCategory, TaskStatusColumn } from '../../models/task.model';
 
 describe('BoardStructureEditorComponent', () => {
-  // Deliberately out of DisplayOrder in the source array (Done comes first, Review comes last) to
-  // prove the component sorts by displayOrder rather than trusting input array order.
   const statuses: TaskStatusColumn[] = [
-    { id: 's4', name: 'Done', displayOrder: 3, requiresApproval: false, marksTaskComplete: true, visibility: 'public' },
-    { id: 's1', name: 'To Do', displayOrder: 0, requiresApproval: false, marksTaskComplete: false, visibility: 'public' },
-    { id: 's3', name: 'Review', displayOrder: 2, requiresApproval: false, marksTaskComplete: false, visibility: 'private' },
-    { id: 's2', name: 'In Process', displayOrder: 1, requiresApproval: false, marksTaskComplete: false, visibility: 'public' }
+    {
+      id: 's4',
+      name: 'Done',
+      displayOrder: 3,
+      requiresApproval: false,
+      marksTaskComplete: true,
+      visibility: 'private',
+      category: 'done',
+      color: '#16A34A',
+    },
+    {
+      id: 's1',
+      name: 'To Do',
+      displayOrder: 0,
+      requiresApproval: false,
+      marksTaskComplete: false,
+      visibility: 'public',
+      category: 'not_started',
+      color: '#94A3B8',
+    },
+    {
+      id: 's3',
+      name: 'Review',
+      displayOrder: 2,
+      requiresApproval: true,
+      approverId: 'approver',
+      marksTaskComplete: false,
+      visibility: 'private',
+      category: 'active',
+      color: '#7C3AED',
+    },
+    {
+      id: 's2',
+      name: 'In Process',
+      displayOrder: 1,
+      requiresApproval: false,
+      marksTaskComplete: false,
+      visibility: 'public',
+      category: 'active',
+      color: '#2563EB',
+    },
   ];
-
   function setup() {
-    const reorderTaskStatuses = vi.fn().mockReturnValue(of([] as TaskStatusDto[]));
-    const createStatus = vi.fn().mockReturnValue(of({
-      id: 's5', name: 'Blocked', displayOrder: 4, requiresApproval: false, approverId: null, marksTaskComplete: false, visibility: 'public'
-    } as TaskStatusDto));
-    const deleteStatus = vi.fn().mockReturnValue(of(undefined));
+    const api = {
+      reorderTaskStatuses: vi.fn().mockReturnValue(of([])),
+      editStatus: vi.fn().mockReturnValue(of(undefined)),
+      createStatus: vi.fn().mockReturnValue(of({ ...statuses[3], id: 's5', name: 'Blocked' })),
+      deleteStatus: vi.fn().mockReturnValue(of(undefined)),
+    };
     TestBed.configureTestingModule({
       imports: [BoardStructureEditorComponent],
-      providers: [{ provide: TaskApiService, useValue: { reorderTaskStatuses, createStatus, deleteStatus } }]
+      providers: [{ provide: TaskApiService, useValue: api }],
     });
     const fixture = TestBed.createComponent(BoardStructureEditorComponent);
-    fixture.componentRef.setInput('open', true);
     fixture.componentRef.setInput('projectId', 'project-1');
+    fixture.componentRef.setInput('open', true);
     fixture.componentRef.setInput('statuses', statuses);
-    return { fixture, reorderTaskStatuses, createStatus, deleteStatus };
+    fixture.detectChanges();
+    return { fixture, component: fixture.componentInstance, api };
   }
-
-  it('renders one row per status, in DisplayOrder, with a checkbox for private and a radio for complete', () => {
+  function drop(
+    component: BoardStructureEditorComponent,
+    source: TaskStatusCategory,
+    target: TaskStatusCategory,
+    index = 0,
+  ) {
+    const previousContainer = {
+      id: 'board-structure-drop-' + source,
+      data: component.rowsFor(source)(),
+    };
+    const container =
+      source === target
+        ? previousContainer
+        : { id: 'board-structure-drop-' + target, data: component.rowsFor(target)() };
+    component.onDrop(
+      { previousContainer, container, previousIndex: index, currentIndex: 0 } as Parameters<
+        typeof component.onDrop
+      >[0],
+      target,
+    );
+  }
+  it('renders groups, names, lock toggles and no Done add button', () => {
     const { fixture } = setup();
-    fixture.detectChanges();
-
-    const rows = fixture.nativeElement.querySelectorAll('.board-structure__row');
-    expect(rows.length).toBe(4);
-
-    const names = Array.from(rows as NodeListOf<HTMLElement>).map((row) => row.querySelector('.board-structure__name')?.textContent?.trim());
-    expect(names).toEqual(['To Do', 'In Process', 'Review', 'Done']);
-
-    const checkboxes = Array.from(rows as NodeListOf<HTMLElement>).map((row) => (row.querySelector('input[type="checkbox"]') as HTMLInputElement).checked);
-    expect(checkboxes).toEqual([false, false, true, false]);
-
-    const radios = Array.from(rows as NodeListOf<HTMLElement>).map((row) => (row.querySelector('input[type="radio"]') as HTMLInputElement).checked);
-    expect(radios).toEqual([false, false, false, true]);
-    expect(radios.filter(Boolean).length).toBe(1);
+    expect(fixture.nativeElement.querySelectorAll('.board-structure__group')).toHaveLength(3);
+    expect(
+      Array.from(
+        fixture.nativeElement.querySelectorAll(
+          '.board-structure__name',
+        ) as NodeListOf<HTMLInputElement>,
+      ).map((input) => input.value),
+    ).toEqual(['To Do', 'In Process', 'Review', 'Done']);
+    expect(fixture.nativeElement.querySelector('[aria-label="Add Done status"]')).toBeNull();
+    expect(fixture.nativeElement.querySelectorAll('[aria-pressed="true"]')).toHaveLength(2);
+    expect(fixture.nativeElement.querySelector('input[type="radio"]')).toBeNull();
   });
-
-  it('save button posts the current row order/visibility/complete-flag as one reorderTaskStatuses call', async () => {
-    const { fixture, reorderTaskStatuses } = setup();
-    fixture.detectChanges();
-
-    const rows = fixture.nativeElement.querySelectorAll('.board-structure__row');
-    const reviewCheckbox = rows[2].querySelector('input[type="checkbox"]') as HTMLInputElement;
-    reviewCheckbox.click();
-    fixture.detectChanges();
-
-    const saveButton = Array.from(fixture.nativeElement.querySelectorAll('button') as NodeListOf<HTMLButtonElement>)
-      .find((b) => b.textContent?.includes('Update'))!;
-    saveButton.click();
-    await fixture.whenStable();
-
-    expect(reorderTaskStatuses).toHaveBeenCalledTimes(1);
-    expect(reorderTaskStatuses).toHaveBeenCalledWith('project-1', [
-      { statusId: 's1', displayOrder: 0, visibility: 'public', marksTaskComplete: false },
-      { statusId: 's2', displayOrder: 1, visibility: 'public', marksTaskComplete: false },
-      { statusId: 's3', displayOrder: 2, visibility: 'public', marksTaskComplete: false },
-      { statusId: 's4', displayOrder: 3, visibility: 'public', marksTaskComplete: true }
-    ]);
+  it('moves between groups and persists category, color and visibility without a completion flag', async () => {
+    const { component, api } = setup();
+    drop(component, 'not_started', 'active');
+    component.setColor('s1', '#123456');
+    component.toggleVisibility('s1');
+    await component.save();
+    expect(api.reorderTaskStatuses.mock.calls[0][1][0]).toEqual({
+      statusId: 's1',
+      displayOrder: 0,
+      category: 'active',
+      color: '#123456',
+      visibility: 'private',
+    });
   });
-
-  it('onDrop reorders the rows and save posts the new order, not the original sorted order', async () => {
-    const { fixture, reorderTaskStatuses } = setup();
-    fixture.detectChanges();
-
-    // Move the row at index 0 ('To Do', s1) to index 2, landing after 'Review' (s3):
-    // starting order [s1, s2, s3, s4] -> [s2, s3, s1, s4]
-    fixture.componentInstance.onDrop({ previousIndex: 0, currentIndex: 2 } as Parameters<typeof fixture.componentInstance.onDrop>[0]);
-    fixture.detectChanges();
-
-    const rows = fixture.nativeElement.querySelectorAll('.board-structure__row');
-    const names = Array.from(rows as NodeListOf<HTMLElement>).map((row) => row.querySelector('.board-structure__name')?.textContent?.trim());
-    expect(names).toEqual(['In Process', 'Review', 'To Do', 'Done']);
-
-    const saveButton = Array.from(fixture.nativeElement.querySelectorAll('button') as NodeListOf<HTMLButtonElement>)
-      .find((b) => b.textContent?.includes('Update'))!;
-    saveButton.click();
-    await fixture.whenStable();
-
-    expect(reorderTaskStatuses).toHaveBeenCalledTimes(1);
-    expect(reorderTaskStatuses).toHaveBeenCalledWith('project-1', [
-      { statusId: 's2', displayOrder: 0, visibility: 'public', marksTaskComplete: false },
-      { statusId: 's3', displayOrder: 1, visibility: 'private', marksTaskComplete: false },
-      { statusId: 's1', displayOrder: 2, visibility: 'public', marksTaskComplete: false },
-      { statusId: 's4', displayOrder: 3, visibility: 'public', marksTaskComplete: true }
-    ]);
+  it('guards Done transfers and the last Active row in both drag and delete methods', async () => {
+    const { component, api } = setup();
+    drop(component, 'active', 'not_started');
+    drop(component, 'active', 'not_started');
+    drop(component, 'done', 'active');
+    drop(component, 'not_started', 'done');
+    expect(component.rowsFor('active')()).toHaveLength(1);
+    expect(component.rowsFor('done')()).toHaveLength(1);
+    await component.deleteRow('s3');
+    await component.deleteRow('s4');
+    component.startAdd('done');
+    await component.confirmAdd();
+    expect(api.deleteStatus).not.toHaveBeenCalled();
+    expect(api.createStatus).not.toHaveBeenCalled();
   });
-
-  it('changing which radio is checked moves MarksTaskComplete to exactly the new selection', () => {
-    const { fixture } = setup();
-    fixture.detectChanges();
-
-    const rows = fixture.nativeElement.querySelectorAll('.board-structure__row');
-    const toDoRadio = rows[0].querySelector('input[type="radio"]') as HTMLInputElement;
-    toDoRadio.click();
-    fixture.detectChanges();
-
-    const radios = Array.from(rows as NodeListOf<HTMLElement>).map((row) => (row.querySelector('input[type="radio"]') as HTMLInputElement).checked);
-    expect(radios).toEqual([true, false, false, false]);
-    expect(radios.filter(Boolean).length).toBe(1);
+  it('persists inline renames while retaining approval settings and excluding server-owned fields', async () => {
+    const { component, api, fixture } = setup();
+    const input = fixture.nativeElement.querySelectorAll(
+      '.board-structure__name',
+    )[2] as HTMLInputElement;
+    input.value = 'Approval';
+    input.dispatchEvent(new Event('input'));
+    await component.save();
+    expect(api.editStatus).toHaveBeenCalledWith('project-1', 's3', {
+      name: 'Approval',
+      displayOrder: 2,
+      requiresApproval: true,
+      approverId: 'approver',
+      visibility: 'private',
+      category: 'active',
+      color: '#7C3AED',
+    });
   });
-
-  it('the + icon reveals a name field, and confirming creates the status and appends a row', async () => {
-    const { fixture, createStatus } = setup();
+  it('retains unsaved edits after add/delete causes the parent to refresh inputs', async () => {
+    const { component, fixture, api } = setup();
+    component.rename('s1', 'Ready');
+    component.setColor('s1', '#123456');
+    component.startAdd('active');
     fixture.detectChanges();
-
-    const addIcon = fixture.nativeElement.querySelector('.board-structure__add-icon') as HTMLButtonElement;
-    addIcon.click();
-    fixture.detectChanges();
-
-    const input = fixture.nativeElement.querySelector('.board-structure__new-input') as HTMLInputElement;
+    const input = fixture.nativeElement.querySelector(
+      '[aria-label="New status name"]',
+    ) as HTMLInputElement;
     input.value = 'Blocked';
     input.dispatchEvent(new Event('input'));
+    await component.confirmAdd();
+    fixture.componentRef.setInput('statuses', [
+      ...statuses,
+      { ...statuses[3], id: 's5', name: 'Blocked' },
+    ]);
     fixture.detectChanges();
-
-    const addButton = Array.from(fixture.nativeElement.querySelectorAll('button') as NodeListOf<HTMLButtonElement>)
-      .find((b) => b.textContent?.trim() === 'Add')!;
-    addButton.click();
-    await fixture.whenStable();
+    await component.deleteRow('s3');
+    fixture.componentRef.setInput(
+      'statuses',
+      statuses.filter((row) => row.id !== 's3'),
+    );
     fixture.detectChanges();
-
-    expect(createStatus).toHaveBeenCalledWith('project-1', {
-      name: 'Blocked', displayOrder: 4, visibility: 'public', marksTaskComplete: false, requiresApproval: false
+    expect(component.rowsFor('not_started')()[0]).toMatchObject({
+      name: 'Ready',
+      color: '#123456',
     });
-    const names = Array.from(fixture.nativeElement.querySelectorAll('.board-structure__name') as NodeListOf<HTMLElement>)
-      .map((el) => el.textContent?.trim());
-    expect(names).toContain('Blocked');
-    // The inline add form collapses back to the + icon after a successful add.
-    expect(fixture.nativeElement.querySelector('.board-structure__new-input')).toBeNull();
+    await component.save();
+    expect(api.reorderTaskStatuses.mock.calls[0][1]).toHaveLength(4);
   });
-
-  it('the delete icon on a row deletes that status and removes its row', async () => {
-    const { fixture, deleteStatus } = setup();
+  it('reinitializes on reopening and exposes backend errors without closing', async () => {
+    const { component, fixture, api } = setup();
+    const closed = vi.fn();
+    component.closed.subscribe(closed);
+    component.rename('s1', 'Draft');
+    fixture.componentRef.setInput('open', false);
     fixture.detectChanges();
-
-    const rows = fixture.nativeElement.querySelectorAll('.board-structure__row');
-    const reviewDelete = rows[2].querySelector('.board-structure__delete-icon') as HTMLButtonElement;
-    reviewDelete.click();
-    await fixture.whenStable();
+    fixture.componentRef.setInput('open', true);
     fixture.detectChanges();
-
-    expect(deleteStatus).toHaveBeenCalledWith('s3');
-    const names = Array.from(fixture.nativeElement.querySelectorAll('.board-structure__name') as NodeListOf<HTMLElement>)
-      .map((el) => el.textContent?.trim());
-    expect(names).toEqual(['To Do', 'In Process', 'Done']);
+    expect(component.rowsFor('not_started')()[0].name).toBe('To Do');
+    api.reorderTaskStatuses.mockReturnValue(
+      throwError(() => ({ error: { detail: 'Changed by another manager.' } })),
+    );
+    await component.save();
+    fixture.detectChanges();
+    expect(fixture.nativeElement.querySelector('[role="alert"]').textContent).toContain(
+      'Changed by another manager.',
+    );
+    expect(closed).not.toHaveBeenCalled();
   });
-
-  it('emits saved after a create or delete, so the parent reloads its own statuses list', async () => {
-    const { fixture } = setup();
+  it('opens the shared swatch picker and applies its selection', () => {
+    const { fixture, component } = setup();
+    (fixture.nativeElement.querySelector('.board-structure__color') as HTMLButtonElement).click();
     fixture.detectChanges();
-    const saved = vi.fn();
-    fixture.componentInstance.saved.subscribe(saved);
+    (
+      fixture.nativeElement.querySelector(
+        'app-color-swatch-picker [title="Red"]',
+      ) as HTMLButtonElement
+    ).click();
+    expect(component.rowsFor('not_started')()[0].color).toBe('#dc2626');
+  });
+  it('shows add button on Done and allows adding when Done has 0 rows', async () => {
+    const noDoneStatuses = statuses.filter((s) => s.category !== 'done');
+    const api = {
+      reorderTaskStatuses: vi.fn().mockReturnValue(of([])),
+      editStatus: vi.fn().mockReturnValue(of(undefined)),
+      createStatus: vi.fn().mockReturnValue(
+        of({ ...statuses[0], id: 's5', name: 'Finished', category: 'done' }),
+      ),
+      deleteStatus: vi.fn().mockReturnValue(of(undefined)),
+    };
+    TestBed.configureTestingModule({
+      imports: [BoardStructureEditorComponent],
+      providers: [{ provide: TaskApiService, useValue: api }],
+    });
+    const fixture = TestBed.createComponent(BoardStructureEditorComponent);
+    fixture.componentRef.setInput('projectId', 'project-1');
+    fixture.componentRef.setInput('open', true);
+    fixture.componentRef.setInput('statuses', noDoneStatuses);
+    fixture.detectChanges();
+    const component = fixture.componentInstance;
 
-    const rows = fixture.nativeElement.querySelectorAll('.board-structure__row');
-    (rows[0].querySelector('.board-structure__delete-icon') as HTMLButtonElement).click();
-    await fixture.whenStable();
-
-    expect(saved).toHaveBeenCalledTimes(1);
+    expect(fixture.nativeElement.querySelector('[aria-label="Add Done status"]')).not.toBeNull();
+    component.startAdd('done');
+    component['newStatusName'].set('Finished');
+    await component.confirmAdd();
+    expect(api.createStatus).toHaveBeenCalledWith(
+      'project-1',
+      expect.objectContaining({ category: 'done', name: 'Finished' }),
+    );
   });
 });

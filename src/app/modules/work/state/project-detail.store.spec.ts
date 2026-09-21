@@ -317,7 +317,7 @@ describe('ProjectDetailStore', () => {
   describe('loadSprintsAndTasksForLeaf', () => {
 
     const sprintDto: SprintDto = {
-      id: 'spr-1', objectiveId: 'o1', name: 'Sprint 1', startDate: '2026-08-01', endDate: '2026-08-14',
+      id: 'spr-1', objectiveId: 'o1', name: 'Sprint 1', goal: null, startDate: '2026-08-01', endDate: '2026-08-14',
       status: 'active', completedAt: null, achievedAt: null
     };
 
@@ -333,7 +333,7 @@ describe('ProjectDetailStore', () => {
 
     const statuses: TaskStatusDto[] = [{
       id: 'st-1', name: 'To Do', displayOrder: 0, requiresApproval: false, approverId: null,
-      marksTaskComplete: false, visibility: 'public'
+      marksTaskComplete: false, category: 'active', color: '#2563EB', visibility: 'public'
     }];
 
     it('fetches sprints, tasks, and statuses once and nests sprint plus direct-task children', async () => {
@@ -434,7 +434,7 @@ describe('ProjectDetailStore', () => {
   describe('loadTasksForSprint', () => {
 
     const sprintDto: SprintDto = {
-      id: 'spr-1', objectiveId: 'o1', name: 'Sprint 1', startDate: '2026-08-01', endDate: '2026-08-14',
+      id: 'spr-1', objectiveId: 'o1', name: 'Sprint 1', goal: null, startDate: '2026-08-01', endDate: '2026-08-14',
       status: 'active', completedAt: null, achievedAt: null
     };
 
@@ -446,7 +446,7 @@ describe('ProjectDetailStore', () => {
 
     const statuses: TaskStatusDto[] = [{
       id: 'st-1', name: 'To Do', displayOrder: 0, requiresApproval: false, approverId: null,
-      marksTaskComplete: false, visibility: 'public'
+      marksTaskComplete: false, category: 'active', color: '#2563EB', visibility: 'public'
     }];
 
     async function loadLeafWithSprint(
@@ -519,12 +519,12 @@ describe('ProjectDetailStore', () => {
   describe('achieveSprint and completeSprint', () => {
     it('patches the sprint node after a successful achieve', async () => {
       const achieved: SprintDto = { ...{
-        id: 'spr-1', objectiveId: 'o1', name: 'Sprint 1', startDate: '2026-08-01', endDate: '2026-08-14',
+        id: 'spr-1', objectiveId: 'o1', name: 'Sprint 1', goal: null, startDate: '2026-08-01', endDate: '2026-08-14',
         status: 'achieved' as const, completedAt: null, achievedAt: '2026-08-21'
       } };
       const sprintApi = {
         getByObjective: vi.fn().mockReturnValue(of([{
-          id: 'spr-1', objectiveId: 'o1', name: 'Sprint 1', startDate: '2026-08-01', endDate: '2026-08-14',
+          id: 'spr-1', objectiveId: 'o1', name: 'Sprint 1', goal: null, startDate: '2026-08-01', endDate: '2026-08-14',
           status: 'active' as const, completedAt: null, achievedAt: null
         }])),
         achieve: vi.fn().mockReturnValue(of(achieved))
@@ -533,7 +533,7 @@ describe('ProjectDetailStore', () => {
         getTasks: vi.fn().mockReturnValue(of([])),
         getStatuses: vi.fn().mockReturnValue(of([{
           id: 'st-1', name: 'To Do', displayOrder: 0, requiresApproval: false, approverId: null,
-          marksTaskComplete: false, visibility: 'public'
+          marksTaskComplete: false, category: 'active', color: '#2563EB', visibility: 'public'
         }]))
       };
       const store = setup({ getProjectTree: () => of(leafTree) }, sprintApi, taskApi);
@@ -550,12 +550,12 @@ describe('ProjectDetailStore', () => {
 
     it('patches the sprint node after a successful complete', async () => {
       const completed: SprintDto = {
-        id: 'spr-1', objectiveId: 'o1', name: 'Sprint 1', startDate: '2026-08-01', endDate: '2026-08-14',
+        id: 'spr-1', objectiveId: 'o1', name: 'Sprint 1', goal: null, startDate: '2026-08-01', endDate: '2026-08-14',
         status: 'complete', completedAt: '2026-08-21', achievedAt: null
       };
       const sprintApi = {
         getByObjective: vi.fn().mockReturnValue(of([{
-          id: 'spr-1', objectiveId: 'o1', name: 'Sprint 1', startDate: '2026-08-01', endDate: '2026-08-14',
+          id: 'spr-1', objectiveId: 'o1', name: 'Sprint 1', goal: null, startDate: '2026-08-01', endDate: '2026-08-14',
           status: 'active' as const, completedAt: null, achievedAt: null
         }])),
         complete: vi.fn().mockReturnValue(of(completed))
@@ -564,17 +564,18 @@ describe('ProjectDetailStore', () => {
         getTasks: vi.fn().mockReturnValue(of([])),
         getStatuses: vi.fn().mockReturnValue(of([{
           id: 'st-1', name: 'To Do', displayOrder: 0, requiresApproval: false, approverId: null,
-          marksTaskComplete: false, visibility: 'public'
+          marksTaskComplete: false, category: 'active', color: '#2563EB', visibility: 'public'
         }]))
       };
       const store = setup({ getProjectTree: () => of(leafTree) }, sprintApi, taskApi);
       await store.loadProjectTree('p1');
       await store.loadSprintsAndTasksForLeaf('o1');
 
-      const result = await store.completeSprint('spr-1');
+      const result = await store.completeSprint('spr-1', { disposition: 'backlog' });
 
       expect(result.success).toBe(true);
       expect(store.selectedSubtree()?.children[0].status).toBe('complete');
+      expect(sprintApi.complete).toHaveBeenCalledWith('spr-1', { disposition: 'backlog' });
     });
 
     it('sets milestoneActionError when achieveSprint fails', async () => {
@@ -587,14 +588,14 @@ describe('ProjectDetailStore', () => {
 
   it('deleteTask removes the node from the tree on success', async () => {
     const sprintApi = { getByObjective: vi.fn().mockReturnValue(of([{
-      id: 'spr-1', objectiveId: 'o1', name: 'Sprint 1', startDate: '2026-08-01', endDate: '2026-08-14',
+      id: 'spr-1', objectiveId: 'o1', name: 'Sprint 1', goal: null, startDate: '2026-08-01', endDate: '2026-08-14',
       status: 'active' as const, completedAt: null, achievedAt: null
     }])) };
     const taskApi = {
       getTasks: vi.fn().mockReturnValue(of([])),
       getStatuses: vi.fn().mockReturnValue(of([{
         id: 'st-1', name: 'To Do', displayOrder: 0, requiresApproval: false, approverId: null,
-        marksTaskComplete: false, visibility: 'public'
+        marksTaskComplete: false, category: 'active', color: '#2563EB', visibility: 'public'
       }])),
       getBySprintId: vi.fn().mockReturnValue(of([{
         id: 't-sprint', objectiveId: 'o1', shortId: 'WEB-2', title: 'Sprint task', description: null,

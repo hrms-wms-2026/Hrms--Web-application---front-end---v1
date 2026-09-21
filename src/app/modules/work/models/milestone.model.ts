@@ -33,8 +33,8 @@ export interface MilestoneTreeNode {
   id: string;
   title: string;
   description: string | null;
-  startDate: string;
-  endDate: string;
+  startDate: string | null;
+  endDate: string | null;
   progress: number;
   allocatedHours: number;
   completedHours: number;
