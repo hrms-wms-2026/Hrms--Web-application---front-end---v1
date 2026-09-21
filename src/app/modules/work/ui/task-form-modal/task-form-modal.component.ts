@@ -1195,44 +1195,37 @@ export const ALL_SLASH_COMMANDS: SlashCommandItem[] = [
                   <ng-container [ngTemplateOutlet]="descriptionEditorTpl" />
                 </div>
 
-                <!-- Attachments Section -->
-                <div class="tfm-doc-section">
-                  <div class="tfm-doc-section-head">
-                    <span class="tfm-doc-section-icon">
-                      <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m21.44 11.05-9.19 9.19a6 6 0 0 1-8.49-8.49l8.57-8.57A4 4 0 1 1 18 8.84l-8.59 8.57a2 2 0 0 1-2.83-2.83l8.49-8.48" /></svg>
-                    </span>
-                    <span class="tfm-doc-section-title">Attachments</span>
-                    <span class="tfm-doc-count">{{ attachedFiles().length }}</span>
-                  </div>
-                  <app-task-attachment-list
-                    [files]="attachedFiles()"
-                    (fileSelected)="onAttachmentFilesSelected($event)"
-                    (removed)="removeAttachedFile($event)"
-                  />
-                </div>
-
                 <!-- Subtasks Section -->
                 @if (currentEffectiveMode() === 'edit' && task(); as t) {
                   <div class="tfm-doc-section">
-                    <div class="tfm-doc-section-head">
-                      <span class="tfm-doc-section-icon">
-                        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 11l3 3L22 4" /><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11" /></svg>
-                      </span>
-                      <span class="tfm-doc-section-title">Subtasks</span>
-                      <span class="tfm-doc-count">{{ subtaskCompletedCount() }}/{{ subtasks().length }}</span>
-                    </div>
+                    @if (subtasks().length > 0) {
+                      <div class="tfm-doc-section-head">
+                        <span class="tfm-doc-section-icon">
+                          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 11l3 3L22 4" /><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11" /></svg>
+                        </span>
+                        <span class="tfm-doc-section-title">Subtasks</span>
+                        <span class="tfm-doc-count">{{ subtaskCompletedCount() }}/{{ subtasks().length }}</span>
+                      </div>
 
-                    <div class="tfm-subtask-list">
-                      @for (subtask of subtasks(); track subtask.id) {
-                        <div class="tfm-subtask-row" [attr.data-testid]="'subtask-row-' + subtask.id">
-                          <span class="tfm-subtask-title">{{ subtask.title }}</span>
-                          @if (subtask.assigneeEmployeeIds.length > 0) {
-                            <app-employee-avatar [employeeId]="subtask.assigneeEmployeeIds[0]" [showName]="true" />
-                          }
-                          <span class="tfm-subtask-priority" [attr.data-priority]="subtask.priority">{{ subtask.priority }}</span>
-                        </div>
-                      }
-                    </div>
+                      <div class="tfm-subtask-list">
+                        @for (subtask of subtasks(); track subtask.id) {
+                          <div class="tfm-subtask-row" [attr.data-testid]="'subtask-row-' + subtask.id">
+                            <span class="tfm-subtask-row-icon">
+                              <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                                <circle cx="3.5" cy="4.5" r="1.75"/>
+                                <circle cx="11.5" cy="11.5" r="1.75"/>
+                                <path d="M3.5 6.25v2.25a2.5 2.5 0 0 0 2.5 2.5h3.75"/>
+                              </svg>
+                            </span>
+                            <span class="tfm-subtask-title">{{ subtask.title }}</span>
+                            @if (subtask.assigneeEmployeeIds.length > 0) {
+                              <app-employee-avatar [employeeId]="subtask.assigneeEmployeeIds[0]" [showName]="true" />
+                            }
+                            <span class="tfm-subtask-priority" [attr.data-priority]="subtask.priority">{{ subtask.priority }}</span>
+                          </div>
+                        }
+                      </div>
+                    }
 
                     @if (addingSubtask()) {
                       <div class="tfm-subtask-add-row">
@@ -1243,6 +1236,8 @@ export const ALL_SLASH_COMMANDS: SlashCommandItem[] = [
                           data-testid="subtask-add-title"
                           [value]="newSubtaskTitle()"
                           (input)="newSubtaskTitle.set($any($event.target).value)"
+                          (keydown.enter)="newSubtaskTitle().trim() && saveNewSubtask(t.id)"
+                          (keydown.escape)="cancelAddSubtask()"
                         />
                         <button type="button" class="tfm-chip tfm-chip--clean" data-testid="subtask-add-assignee-button" (click)="newSubtaskPickerOpen.set(true)">
                           @if (newSubtaskAssigneeId(); as assigneeId) {
@@ -1267,12 +1262,38 @@ export const ALL_SLASH_COMMANDS: SlashCommandItem[] = [
                         <button type="button" class="tfm__save" data-testid="subtask-add-save" [disabled]="!newSubtaskTitle().trim()" (click)="saveNewSubtask(t.id)">Save</button>
                       </div>
                     } @else {
-                      <button type="button" class="tfm-doc-section-toggle" data-testid="add-subtask-button" (click)="startAddSubtask()">
-                        + Add subtask
+                      <button type="button" class="tfm-action-row" data-testid="add-subtask-button" (click)="startAddSubtask()">
+                        <span class="tfm-action-icon">
+                          <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                            <circle cx="3.5" cy="4.5" r="1.75"/>
+                            <circle cx="11.5" cy="11.5" r="1.75"/>
+                            <path d="M3.5 6.25v2.25a2.5 2.5 0 0 0 2.5 2.5h3.75"/>
+                            <path d="M11.5 2.5v3.5M9.75 4.25h3.5"/>
+                          </svg>
+                        </span>
+                        <span>Add subtask</span>
                       </button>
                     }
                   </div>
                 }
+
+                <!-- Attachments Section -->
+                <div class="tfm-doc-section">
+                  @if (attachedFiles().length > 0) {
+                    <div class="tfm-doc-section-head">
+                      <span class="tfm-doc-section-icon">
+                        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m21.44 11.05-9.19 9.19a6 6 0 0 1-8.49-8.49l8.57-8.57A4 4 0 1 1 18 8.84l-8.59 8.57a2 2 0 0 1-2.83-2.83l8.49-8.48" /></svg>
+                      </span>
+                      <span class="tfm-doc-section-title">Attachments</span>
+                      <span class="tfm-doc-count">{{ attachedFiles().length }}</span>
+                    </div>
+                  }
+                  <app-task-attachment-list
+                    [files]="attachedFiles()"
+                    (fileSelected)="onAttachmentFilesSelected($event)"
+                    (removed)="removeAttachedFile($event)"
+                  />
+                </div>
 
                 <!-- Activity Log Section -->
                 <div class="tfm-doc-section tfm-doc-section--collapsible">
@@ -1444,20 +1465,63 @@ export const ALL_SLASH_COMMANDS: SlashCommandItem[] = [
 
     .tfm-doc-divider { height: 1px; background: var(--color-border); margin: 6px 0 10px; }
     .tfm-doc-section { display: flex; flex-direction: column; gap: 8px; }
-    .tfm-doc-section-title { font-size: 12px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; color: var(--color-text-secondary); }
+    .tfm-doc-section-title { font-size: 12px; font-weight: 600; color: var(--color-text-secondary); }
     .tfm-doc-section-head { display: flex; align-items: center; gap: 8px; }
     .tfm-doc-section-icon { display: inline-flex; align-items: center; justify-content: center; }
-    .tfm-doc-section-icon svg { width: 15px; height: 15px; stroke: var(--color-accent); fill: none; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
-    .tfm-doc-count { display: inline-flex; min-width: 20px; height: 20px; align-items: center; justify-content: center; padding: 0 6px; border-radius: 999px; background: var(--color-surface-secondary); color: var(--color-text-secondary); font-size: 11px; font-weight: 650; }
+    .tfm-doc-section-icon svg { width: 15px; height: 15px; stroke: var(--color-text-secondary); fill: none; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
+    .tfm-doc-count { display: inline-flex; min-width: 18px; height: 18px; align-items: center; justify-content: center; padding: 0 5px; border-radius: 999px; background: var(--color-surface-secondary); color: var(--color-text-secondary); font-size: 11px; font-weight: 600; }
     .tfm-doc-section--collapsible { border: 1px solid var(--color-border); border-radius: 8px; padding: 12px 14px; background: var(--color-surface); }
     .tfm-doc-section-toggle { display: flex; align-items: center; justify-content: space-between; width: 100%; border: 0; background: transparent; padding: 0; cursor: pointer; color: var(--color-text-primary); }
     .tfm-doc-activity-body { padding-top: 12px; margin-top: 8px; border-top: 1px solid var(--color-border); }
-    .tfm-subtask-list { display: flex; flex-direction: column; gap: 6px; }
-    .tfm-subtask-row { display: flex; align-items: center; gap: 10px; padding: 6px 8px; border-radius: 8px; border: 1px solid var(--color-border); }
+    .tfm-action-row {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      width: 100%;
+      padding: 6px 10px;
+      border-radius: 6px;
+      border: none;
+      background: transparent;
+      color: var(--color-text-secondary);
+      font-size: 13px;
+      font-weight: 500;
+      font-family: inherit;
+      cursor: pointer;
+      box-sizing: border-box;
+      text-align: left;
+      transition: background-color 140ms ease, color 140ms ease;
+    }
+    .tfm-action-row:hover {
+      background: var(--color-surface-secondary);
+      color: var(--color-text-primary);
+    }
+    .tfm-action-icon {
+      width: 15px;
+      height: 15px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      flex-shrink: 0;
+      color: inherit;
+    }
+    .tfm-action-icon svg {
+      width: 15px;
+      height: 15px;
+      stroke: currentColor;
+      fill: none;
+      stroke-width: 1.8;
+      stroke-linecap: round;
+      stroke-linejoin: round;
+    }
+    .tfm-subtask-list { display: flex; flex-direction: column; gap: 4px; }
+    .tfm-subtask-row { display: flex; align-items: center; gap: 10px; padding: 6px 10px; border-radius: 6px; border: 1px solid var(--color-border); background: var(--color-surface); transition: background-color 140ms ease; }
+    .tfm-subtask-row:hover { background: var(--color-surface-secondary); }
+    .tfm-subtask-row-icon { display: inline-flex; align-items: center; justify-content: center; width: 15px; height: 15px; color: var(--color-text-secondary); flex-shrink: 0; }
+    .tfm-subtask-row-icon svg { width: 15px; height: 15px; stroke: currentColor; fill: none; }
     .tfm-subtask-title { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 13px; color: var(--color-text-primary); }
     .tfm-subtask-priority { font-size: 11px; font-weight: 600; text-transform: capitalize; color: var(--color-text-secondary); }
     .tfm-subtask-priority[data-priority="critical"], .tfm-subtask-priority[data-priority="high"] { color: var(--color-danger); }
-    .tfm-subtask-add-row { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin-top: 8px; }
+    .tfm-subtask-add-row { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin-top: 4px; }
     .tfm-subtask-add-title { flex: 1; min-width: 160px; border: 1px solid var(--color-border); border-radius: 6px; padding: 6px 8px; font-size: 13px; background: var(--color-surface); color: var(--color-text-primary); }
     .tfm-subtask-add-date { border: 1px solid var(--color-border); border-radius: 6px; padding: 6px 8px; font-size: 12px; background: var(--color-surface); color: var(--color-text-primary); }
     .tfm__save { display: inline-flex; align-items: center; justify-content: center; gap: 6px; height: 36px; padding: 0 16px; border: 0; border-radius: 6px; background: var(--color-accent); color: var(--color-primary-contrast, #fff); font: inherit; font-size: 14px; font-weight: 500; cursor: pointer; transition: opacity 160ms ease; }
