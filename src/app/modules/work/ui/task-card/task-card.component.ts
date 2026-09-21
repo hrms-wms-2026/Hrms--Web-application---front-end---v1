@@ -36,7 +36,21 @@ function initialsOf(name: string): string {
       <div class="task-card__header">
         <span class="task-card__short-id">{{ task().shortId }}</span>
       </div>
-      <p class="task-card__title">{{ task().title }}</p>
+      <p class="task-card__title">
+        <span>{{ task().title }}</span>
+        @if (task().subtaskTotalCount > 0) {
+          <button
+            type="button"
+            class="task-card__subtask-toggle"
+            data-testid="task-card-subtask-toggle"
+            [attr.aria-expanded]="subtasksExpanded()"
+            (click)="toggleSubtasks($event)"
+          >
+            <svg class="task-card__subtask-chevron" [class.task-card__subtask-chevron--open]="subtasksExpanded()" viewBox="0 0 24 24" aria-hidden="true"><polyline points="6 9 12 15 18 9" /></svg>
+            <span>{{ task().subtaskCompletedCount }}/{{ task().subtaskTotalCount }}</span>
+          </button>
+        }
+      </p>
 
       <div class="task-card__meta">
         <div class="task-card__assignee-anchor">
@@ -132,18 +146,6 @@ function initialsOf(name: string): string {
         @if (task().activeEventName) {
           <span class="task-card__event" data-testid="task-event-chip" [title]="'In milestone: ' + task().activeEventName">{{ task().activeEventName }}</span>
         }
-        @if (task().subtaskTotalCount > 0) {
-          <button
-            type="button"
-            class="task-card__subtask-toggle"
-            data-testid="task-card-subtask-toggle"
-            [attr.aria-expanded]="subtasksExpanded()"
-            (click)="toggleSubtasks($event)"
-          >
-            <svg class="task-card__subtask-chevron" [class.task-card__subtask-chevron--open]="subtasksExpanded()" viewBox="0 0 24 24" aria-hidden="true"><polyline points="6 9 12 15 18 9" /></svg>
-            <span>{{ task().subtaskCompletedCount }}/{{ task().subtaskTotalCount }}</span>
-          </button>
-        }
       </div>
 
       @if (subtasksExpanded()) {
@@ -211,8 +213,29 @@ function initialsOf(name: string): string {
     .task-card__priority[data-priority="high"] { color: var(--color-danger); }
     .task-card__event { overflow: hidden; max-width: 120px; border-radius: 999px; background: var(--color-surface-secondary); padding: 1px 8px; color: var(--color-text-secondary); font-size: 10px; font-weight: 600; text-overflow: ellipsis; white-space: nowrap; }
     .task-card__footer { display: flex; align-items: center; justify-content: flex-end; gap: 8px; min-width: 0; margin-top: 8px; }
-    .task-card__subtask-toggle { display: inline-flex; align-items: center; gap: 4px; border: 0; background: transparent; padding: 0; color: var(--color-text-secondary); font-size: 11px; font-weight: 600; cursor: pointer; }
-    .task-card__subtask-chevron { width: 12px; height: 12px; stroke: currentColor; fill: none; stroke-width: 2; transition: transform 120ms ease; }
+    .task-card__subtask-toggle {
+      display: inline-flex;
+      align-items: center;
+      gap: 3px;
+      margin-left: 6px;
+      vertical-align: middle;
+      border: 1px solid var(--color-border);
+      background: var(--color-surface-secondary);
+      border-radius: 4px;
+      padding: 1px 5px;
+      color: var(--color-text-secondary);
+      font-size: 10px;
+      font-weight: 600;
+      cursor: pointer;
+      line-height: 1.3;
+      transition: all 120ms ease;
+    }
+    .task-card__subtask-toggle:hover {
+      background: var(--color-surface);
+      border-color: var(--color-accent);
+      color: var(--color-text-primary);
+    }
+    .task-card__subtask-chevron { width: 10px; height: 10px; stroke: currentColor; fill: none; stroke-width: 2.2; transition: transform 120ms ease; }
     .task-card__subtask-chevron--open { transform: rotate(180deg); }
     .task-card__subtasks { display: flex; flex-direction: column; gap: 4px; margin-top: 8px; padding-top: 8px; border-top: 1px dashed var(--color-border); }
     .task-card__subtask-row { display: flex; align-items: center; justify-content: space-between; gap: 8px; padding: 4px 6px; border-radius: 6px; cursor: pointer; }
