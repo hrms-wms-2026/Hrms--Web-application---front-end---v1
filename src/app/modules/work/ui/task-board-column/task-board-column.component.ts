@@ -450,8 +450,8 @@ export interface QuickTaskCreatedEvent {
             <app-task-card
               [task]="task"
               [statuses]="allStatuses()"
-              [employeeNames]="employeeNames()"
               [currentEmployeeId]="currentEmployeeId()"
+              [assignableMembers]="assignableMembers()"
               (viewed)="taskViewed.emit($event)"
               (taskChanged)="taskChanged.emit()"
             />
@@ -1314,7 +1314,6 @@ export class TaskBoardColumnComponent {
   tasks = input.required<WorkTask[]>();
   connectedListIds = input<string[]>([]);
   allStatuses = input<readonly TaskStatusColumn[]>([]);
-  employeeNames = input<Record<string, string>>({});
   currentEmployeeId = input('');
 
   // Context passed from parent for task creation

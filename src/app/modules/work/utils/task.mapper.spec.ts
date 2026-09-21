@@ -47,6 +47,18 @@ describe('toWorkTask', () => {
     };
     expect(toWorkTask(withAttachments).attachments).toEqual([{ fileId: 'f1', name: 'a.pdf', sizeBytes: 100 }]);
   });
+
+  it('maps assignees through, defaulting to an empty array when absent', () => {
+    expect(toWorkTask(baseDto).assignees).toEqual([]);
+
+    const withAssignees: WorkTaskDto = {
+      ...baseDto,
+      assignees: [{ employeeId: 'e1', name: 'Nevi Peiris', avatarUrl: 'https://files.example.test/nevi' }]
+    };
+    expect(toWorkTask(withAssignees).assignees).toEqual([
+      { employeeId: 'e1', name: 'Nevi Peiris', avatarUrl: 'https://files.example.test/nevi' }
+    ]);
+  });
 });
 
 describe('toEditTaskRequest', () => {
@@ -56,7 +68,7 @@ describe('toEditTaskRequest', () => {
     dueDate: new Date('2026-09-01T00:00:00.000Z'), estimatedHours: 5, completedHours: 0,
     progressPercent: 40, sprintId: 'sp-1', assigneeEmployeeIds: [], openClockSessionEmployeeId: null,
     openClockSessionClockInAt: null, totalLoggedMinutes: 0,
-    attachments: [{ fileId: 'f1', name: 'a.pdf', sizeBytes: 100 }]
+    attachments: [{ fileId: 'f1', name: 'a.pdf', sizeBytes: 100 }], assignees: []
   };
 
   it('reproduces every current field so nothing is silently cleared', () => {

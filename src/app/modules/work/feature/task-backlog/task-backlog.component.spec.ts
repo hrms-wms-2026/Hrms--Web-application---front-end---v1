@@ -57,7 +57,7 @@ describe('TaskBacklogComponent', () => {
       progressPercent: 0,
       sprintId,
       assigneeEmployeeIds: [], openClockSessionEmployeeId: null, openClockSessionClockInAt: null, totalLoggedMinutes: 0,
-      attachments: []
+      attachments: [], assignees: []
     };
   }
 

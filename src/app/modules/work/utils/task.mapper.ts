@@ -37,7 +37,8 @@ export function toWorkTask(dto: WorkTaskDto): WorkTask {
     totalLoggedMinutes: dto.totalLoggedMinutes,
     activeEventId: dto.activeEventId ?? null,
     activeEventName: dto.activeEventName ?? null,
-    attachments: (dto.attachments ?? []).map((a) => ({ fileId: a.fileId, name: a.fileName, sizeBytes: a.fileSizeBytes }))
+    attachments: (dto.attachments ?? []).map((a) => ({ fileId: a.fileId, name: a.fileName, sizeBytes: a.fileSizeBytes })),
+    assignees: (dto.assignees ?? []).map((a) => ({ employeeId: a.employeeId, name: a.name, avatarUrl: a.avatarUrl }))
 
   };
 }

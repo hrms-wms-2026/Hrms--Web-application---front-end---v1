@@ -19,6 +19,12 @@ export interface TaskAttachmentDto {
   contentType: string;
 }
 
+export interface TaskAssigneeIdentityDto {
+  employeeId: string;
+  name: string;
+  avatarUrl: string | null;
+}
+
 export interface PendingUploadDto {
   fileId: string;
   originalFileName: string;
@@ -48,6 +54,7 @@ export interface WorkTaskDto {
   activeEventId?: string | null;
   activeEventName?: string | null;
   attachments?: TaskAttachmentDto[];
+  assignees?: TaskAssigneeIdentityDto[];
 
 }
 

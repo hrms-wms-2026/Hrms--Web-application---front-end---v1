@@ -5,6 +5,9 @@ import { By } from '@angular/platform-browser';
 import { vi } from 'vitest';
 import { TaskCardComponent } from './task-card.component';
 import { TaskClockWidgetComponent } from '../task-clock-widget/task-clock-widget.component';
+import { EmployeeAvatarComponent } from '../employee-avatar/employee-avatar.component';
+import { AvatarComponent } from '../../../../shared/ui/avatar/avatar.component';
+import { EmployeeDirectoryStore } from '../../state/employee-directory.store';
 
 import { TaskStatusColumn, WorkTask } from '../../models/task.model';
 import { environment } from '../../../../../environments/environment';
@@ -12,6 +15,7 @@ import { environment } from '../../../../../environments/environment';
 describe('TaskCardComponent', () => {
   let fixture: ComponentFixture<TaskCardComponent>;
   let httpMock: HttpTestingController;
+  let directoryStore: { get: ReturnType<typeof vi.fn>; ensureLoaded: ReturnType<typeof vi.fn> };
 
   afterEach(() => httpMock.verify());
 
@@ -20,8 +24,14 @@ describe('TaskCardComponent', () => {
     categoryId: 'task', statusId: 's1', priority: 'high', storyPoints: null, dueDate: null,
     estimatedHours: 5, completedHours: 0, progressPercent: 0, sprintId: null,
     assigneeEmployeeIds: ['emp-1', 'emp-2'], openClockSessionEmployeeId: null, openClockSessionClockInAt: null, totalLoggedMinutes: 0,
-    attachments: []
+    attachments: [], assignees: []
   };
+
+  const assignableMembers = [
+    { employeeId: 'emp-1', name: 'Nevi Peiris' },
+    { employeeId: 'emp-2', name: 'Sam Perera' },
+    { employeeId: 'emp-3', name: 'Amal Silva' }
+  ];
 
   const statuses: TaskStatusColumn[] = [
     { id: 's1', name: 'To Do', displayOrder: 0, requiresApproval: false, marksTaskComplete: false, category: 'active', color: '#2563EB', visibility: 'public' },
@@ -29,10 +39,22 @@ describe('TaskCardComponent', () => {
     { id: 's3', name: 'Internal Review', displayOrder: 2, requiresApproval: false, marksTaskComplete: false, category: 'active', color: '#2563EB', visibility: 'private' }
   ];
 
-    function setup(overrides: { employeeNames?: Record<string, string>; task?: WorkTask; currentEmployeeId?: string } = {}): void {
+    function setup(overrides: {
+      task?: WorkTask;
+      currentEmployeeId?: string;
+      assignableMembers?: { employeeId: string; name: string }[];
+      directoryGet?: (id: string) => any;
+    } = {}): void {
 
     TestBed.resetTestingModule();
-        TestBed.configureTestingModule({ imports: [TaskCardComponent, HttpClientTestingModule] });
+    directoryStore = {
+      get: vi.fn().mockImplementation(overrides.directoryGet ?? (() => undefined)),
+      ensureLoaded: vi.fn().mockResolvedValue(undefined)
+    };
+        TestBed.configureTestingModule({
+      imports: [TaskCardComponent, HttpClientTestingModule],
+      providers: [{ provide: EmployeeDirectoryStore, useValue: directoryStore }]
+    });
     fixture = TestBed.createComponent(TaskCardComponent);
     httpMock = TestBed.inject(HttpTestingController);
 
@@ -40,22 +62,173 @@ describe('TaskCardComponent', () => {
     fixture.componentRef.setInput('currentEmployeeId', overrides.currentEmployeeId ?? '');
 
     fixture.componentRef.setInput('statuses', statuses);
-    fixture.componentRef.setInput('employeeNames', overrides.employeeNames ?? { 'emp-1': 'Nevi Peiris', 'emp-2': 'Sam Perera' });
+    fixture.componentRef.setInput('assignableMembers', overrides.assignableMembers ?? assignableMembers);
     fixture.detectChanges();
   }
 
-  it('shows the resolved assignee names, not the raw employee ids', () => {
+  it('renders one avatar per assignee instead of a name', () => {
     setup();
-    const text = fixture.nativeElement.querySelector('.task-card__assignees').textContent as string;
-    expect(text).toContain('Nevi Peiris');
-    expect(text).toContain('Sam Perera');
+    const avatars = fixture.debugElement.queryAll(By.directive(AvatarComponent));
+    expect(avatars.length).toBe(2);
+    const text = fixture.nativeElement.querySelector('.task-card__meta').textContent as string;
     expect(text).not.toContain('emp-1');
   });
 
-  it('falls back to "Unknown employee" for an id missing from employeeNames', () => {
-    setup({ employeeNames: {} });
-    const text = fixture.nativeElement.querySelector('.task-card__assignees').textContent as string;
-    expect(text).toContain('Unknown employee');
+  it('prefers the coverage-free project-member name over the management-coverage-scoped directory lookup, so it shows real initials instead of "Unknown employee"', () => {
+    setup(); // both emp-1 and emp-2 are known assignable project members
+    const avatars = fixture.debugElement.queryAll(By.directive(AvatarComponent));
+    expect(avatars.map((a) => a.componentInstance.userName())).toEqual(['Nevi Peiris', 'Sam Perera']);
+    expect(fixture.debugElement.queryAll(By.directive(EmployeeAvatarComponent)).length).toBe(0);
+    expect(directoryStore.ensureLoaded).not.toHaveBeenCalled();
+  });
+
+  it('prefers the task\'s own server-resolved assignee identity (with a real avatar photo) over the project-members name-only fallback', () => {
+    setup({
+      task: {
+        ...task,
+        assigneeEmployeeIds: ['emp-1', 'emp-2'],
+        assignees: [
+          { employeeId: 'emp-1', name: 'Nevi Peiris', avatarUrl: 'https://files.example.test/nevi-avatar' },
+          { employeeId: 'emp-2', name: 'Sam Perera', avatarUrl: null }
+        ]
+      }
+    });
+    const avatars = fixture.debugElement.queryAll(By.directive(AvatarComponent));
+    expect(avatars.map((a) => a.componentInstance.avatarUrl())).toEqual(['https://files.example.test/nevi-avatar', null]);
+    expect(avatars.map((a) => a.componentInstance.userName())).toEqual(['Nevi Peiris', 'Sam Perera']);
+  });
+
+  it('falls back to the directory-based avatar for an assignee who is not a current project member', () => {
+    setup({ task: { ...task, assigneeEmployeeIds: ['emp-9'] } });
+    const fallback = fixture.debugElement.query(By.directive(EmployeeAvatarComponent));
+    expect(fallback.componentInstance.employeeId()).toBe('emp-9');
+    expect(directoryStore.ensureLoaded).toHaveBeenCalledWith(['emp-9']);
+  });
+
+  it('shows a placeholder assignee icon, not nothing, when no one is assigned', () => {
+    setup({ task: { ...task, assigneeEmployeeIds: [] } });
+    expect(fixture.debugElement.queryAll(By.directive(EmployeeAvatarComponent)).length).toBe(0);
+    expect(fixture.nativeElement.querySelector('.task-card__assignee-placeholder')).not.toBeNull();
+  });
+
+  it('shows the employee name in the tooltip instead of "Change assignee" when an assignee is assigned', () => {
+    setup({ task: { ...task, assigneeEmployeeIds: ['emp-1'] } });
+    const btn = fixture.nativeElement.querySelector('[data-testid="task-card-assignee-btn"]') as HTMLButtonElement;
+    expect(btn.getAttribute('title')).toBe('Nevi Peiris');
+  });
+
+  it('shows comma-separated employee names in the tooltip when multiple assignees are assigned', () => {
+    setup({ task: { ...task, assigneeEmployeeIds: ['emp-1', 'emp-2'] } });
+    const btn = fixture.nativeElement.querySelector('[data-testid="task-card-assignee-btn"]') as HTMLButtonElement;
+    expect(btn.getAttribute('title')).toBe('Nevi Peiris, Sam Perera');
+  });
+
+  it('shows "Add assignee" in the tooltip when no one is assigned', () => {
+    setup({ task: { ...task, assigneeEmployeeIds: [] } });
+    const btn = fixture.nativeElement.querySelector('[data-testid="task-card-assignee-btn"]') as HTMLButtonElement;
+    expect(btn.getAttribute('title')).toBe('Add assignee');
+  });
+
+  it('falls back to directory store name in tooltip if assignee is not in assignableMembers or assignees', () => {
+    setup({
+      task: { ...task, assigneeEmployeeIds: ['emp-9'] },
+      directoryGet: (id: string) => (id === 'emp-9' ? { id: 'emp-9', name: 'External User', initials: 'EU', avatarUrl: null } : undefined)
+    });
+    const btn = fixture.nativeElement.querySelector('[data-testid="task-card-assignee-btn"]') as HTMLButtonElement;
+    expect(btn.getAttribute('title')).toBe('External User');
+  });
+
+  it('renders the assignee control and the priority/date/hours meta in a single row', () => {
+    setup();
+    const meta = fixture.nativeElement.querySelector('.task-card__meta') as HTMLElement;
+    const anchor = meta.querySelector('.task-card__assignee-anchor');
+    const priority = meta.querySelector('.task-card__priority');
+    expect(anchor).not.toBeNull();
+    expect(priority).not.toBeNull();
+    expect(anchor?.parentElement).toBe(meta);
+    expect(priority?.parentElement).toBe(meta);
+  });
+
+  it('opens the assignee popover on click without navigating to the task detail', () => {
+    setup();
+    const viewedSpy = vi.fn();
+    fixture.componentInstance.viewed.subscribe(viewedSpy);
+
+    (fixture.nativeElement.querySelector('[data-testid="task-card-assignee-btn"]') as HTMLButtonElement).click();
+    fixture.detectChanges();
+
+    expect(viewedSpy).not.toHaveBeenCalled();
+    expect(document.body.querySelector('.task-card__assignee-popover')).not.toBeNull();
+  });
+
+  it('picking someone replaces every previously-assigned person instead of adding a second assignee', async () => {
+    setup(); // fixture task starts with two assignees: ['emp-1', 'emp-2']
+    const viewedSpy = vi.fn();
+    const changedSpy = vi.fn();
+    fixture.componentInstance.viewed.subscribe(viewedSpy);
+    fixture.componentInstance.taskChanged.subscribe(changedSpy);
+
+    (fixture.nativeElement.querySelector('[data-testid="task-card-assignee-btn"]') as HTMLButtonElement).click();
+    fixture.detectChanges();
+
+    const options = document.body.querySelectorAll('.task-card__assignee-option');
+    const emp3Option = Array.from(options).find((el) => (el as HTMLElement).textContent?.includes('Amal Silva')) as HTMLButtonElement;
+    emp3Option.click();
+    fixture.detectChanges();
+
+    // Popover closes immediately, matching the task detail modal's single-assignee UX.
+    expect(document.body.querySelector('.task-card__assignee-popover')).toBeNull();
+
+    const unassign1 = httpMock.expectOne(`${environment.apiUrl}/work/tasks/t-1/assignments/emp-1`);
+    expect(unassign1.request.method).toBe('DELETE');
+    unassign1.flush(null);
+    await fixture.whenStable();
+
+    const unassign2 = httpMock.expectOne(`${environment.apiUrl}/work/tasks/t-1/assignments/emp-2`);
+    expect(unassign2.request.method).toBe('DELETE');
+    unassign2.flush(null);
+    await fixture.whenStable();
+
+    const assign3 = httpMock.expectOne(`${environment.apiUrl}/work/tasks/t-1/assignments`);
+    expect(assign3.request.method).toBe('POST');
+    expect(assign3.request.body).toEqual({ employeeId: 'emp-3' });
+    assign3.flush(null);
+    await fixture.whenStable();
+
+    expect(changedSpy).toHaveBeenCalled();
+    expect(viewedSpy).not.toHaveBeenCalled();
+  });
+
+  it('picking "Unassigned" clears everyone currently assigned and assigns no one', async () => {
+    setup();
+    (fixture.nativeElement.querySelector('[data-testid="task-card-assignee-btn"]') as HTMLButtonElement).click();
+    fixture.detectChanges();
+
+    const unassignedOption = Array.from(document.body.querySelectorAll('.task-card__assignee-option'))
+      .find((el) => (el as HTMLElement).textContent?.includes('Unassigned')) as HTMLButtonElement;
+    unassignedOption.click();
+
+    const unassign1 = httpMock.expectOne(`${environment.apiUrl}/work/tasks/t-1/assignments/emp-1`);
+    unassign1.flush(null);
+    await fixture.whenStable();
+    const unassign2 = httpMock.expectOne(`${environment.apiUrl}/work/tasks/t-1/assignments/emp-2`);
+    unassign2.flush(null);
+    await fixture.whenStable();
+
+    httpMock.expectNone(`${environment.apiUrl}/work/tasks/t-1/assignments`);
+  });
+
+  it('clicking the current sole assignee again is a no-op, not a second assignment', () => {
+    setup({ task: { ...task, assigneeEmployeeIds: ['emp-1'] } });
+    (fixture.nativeElement.querySelector('[data-testid="task-card-assignee-btn"]') as HTMLButtonElement).click();
+    fixture.detectChanges();
+
+    const emp1Option = Array.from(document.body.querySelectorAll('.task-card__assignee-option'))
+      .find((el) => (el as HTMLElement).textContent?.includes('Nevi Peiris')) as HTMLButtonElement;
+    emp1Option.click();
+
+    httpMock.expectNone(`${environment.apiUrl}/work/tasks/t-1/assignments/emp-1`);
+    httpMock.expectNone(`${environment.apiUrl}/work/tasks/t-1/assignments`);
   });
 
   it('clicking anywhere on the card emits viewed with the task', () => {

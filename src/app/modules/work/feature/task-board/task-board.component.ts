@@ -12,7 +12,6 @@ import { ButtonComponent } from '../../../../shared/ui/button/button.component';
 import { ErrorStateComponent } from '../../../../shared/ui/error-state/error-state.component';
 import { SprintApiService } from '../../data-access/sprint-api.service';
 import { TaskApiService } from '../../data-access/task-api.service';
-import { EmployeeDirectoryStore } from '../../state/employee-directory.store';
 import { toSprint } from '../../utils/sprint.mapper';
 import { Sprint } from '../../models/sprint.model';
 import { WorkTask } from '../../models/task.model';
@@ -57,7 +56,6 @@ import { CreateTaskRequestDto } from '../../models/dto/task.dto';
             [tasks]="column.tasks"
             [connectedListIds]="columnIds()"
             [allStatuses]="store.statuses()"
-            [employeeNames]="employeeNames()"
             [currentEmployeeId]="currentEmployee.id()"
             [assignableMembers]="assignableMembers()"
             [modules]="moduleOptions()"
@@ -110,7 +108,6 @@ export class TaskBoardComponent implements OnInit, AfterViewChecked, AfterViewIn
   private readonly route = inject(ActivatedRoute);
   private readonly sprintApi = inject(SprintApiService);
   private readonly taskApi = inject(TaskApiService);
-  private readonly directory = inject(EmployeeDirectoryStore);
   protected readonly currentEmployee = inject(CurrentEmployeeStore);
   private readonly toolbarStore = inject(WorkPageToolbarStore);
   private readonly toolbarTpl = viewChild.required<TemplateRef<unknown>>('toolbarTpl');
@@ -212,15 +209,6 @@ export class TaskBoardComponent implements OnInit, AfterViewChecked, AfterViewIn
       tasks: column.tasks.filter((task) => this.matchesFilters(task))
     }))
   );
-  protected readonly employeeNames = computed(() =>
-    Object.fromEntries(
-      this.store.tasks()
-        .flatMap((task) => task.assigneeEmployeeIds)
-        .filter((id, index, all) => all.indexOf(id) === index)
-        .map((id) => [id, this.directory.get(id)?.name ?? 'Unknown employee'])
-    )
-  );
-
   protected readonly assigneeFilterOptions = computed<WorkDropdownOption[]>(() =>
     this.assignableMembers().map((member) => ({ value: member.employeeId, label: member.name }))
   );
@@ -326,11 +314,6 @@ export class TaskBoardComponent implements OnInit, AfterViewChecked, AfterViewIn
     try {
       await this.projectStore.loadProjectMembers(projectId);
       const members = this.projectStore.projectMembers();
-      // Still needed here even though the dropdown itself now uses member.name directly
-      // (server-resolved): employeeNames above resolves *existing task* assignees, which
-      // WorkTaskResponse only carries as raw EmployeeId GUIDs, and this is the only call in
-      // this component that populates the shared directory cache those names come from.
-      await this.directory.ensureLoaded(members.map((member) => member.employeeId));
       this.assignableMembers.set(members.map((member) => ({
         employeeId: member.employeeId,
         name: member.name ?? 'Unknown employee'
