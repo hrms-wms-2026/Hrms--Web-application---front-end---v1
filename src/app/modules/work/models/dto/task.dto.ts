@@ -55,7 +55,9 @@ export interface WorkTaskDto {
   activeEventName?: string | null;
   attachments?: TaskAttachmentDto[];
   assignees?: TaskAssigneeIdentityDto[];
-
+  parentTaskId?: string | null;
+  subtaskTotalCount?: number;
+  subtaskCompletedCount?: number;
 }
 
 export interface CreateTaskRequestDto {
@@ -68,6 +70,13 @@ export interface CreateTaskRequestDto {
   storyPoints?: number;
   sprintId: string | null;
   attachmentFileIds?: string[];
+}
+
+export interface CreateSubtaskRequestDto {
+  title: string;
+  priority?: WorkTaskDto['priority'];
+  dueDate?: string;
+  assigneeEmployeeId?: string;
 }
 
 export interface EditTaskRequestDto {

@@ -47,5 +47,7 @@ export interface WorkTask {
   activeEventName?: string | null;
   attachments: TaskAttachment[];
   assignees: TaskAssigneeIdentity[];
-
+  parentTaskId: string | null;
+  subtaskTotalCount: number;
+  subtaskCompletedCount: number;
 }

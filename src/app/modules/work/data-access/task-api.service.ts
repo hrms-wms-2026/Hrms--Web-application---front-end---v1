@@ -3,6 +3,7 @@ import { Injectable, inject } from '@angular/core';
 import { Observable } from 'rxjs';
 import { environment } from '../../../../environments/environment';
 import {
+  CreateSubtaskRequestDto,
   CreateTaskRequestDto,
   CreateTaskStatusRequestDto,
   ClockInResponseDto,
@@ -12,7 +13,6 @@ import {
   PushTaskRequestDto,
   TaskStatusDto,
   WorkTaskDto
-
 } from '../models/dto/task.dto';
 import { TaskStatusCategory } from '../models/task.model';
 import {
@@ -73,6 +73,14 @@ export class TaskApiService {
 
   createTask(objectiveId: string, request: CreateTaskRequestDto): Observable<WorkTaskDto> {
     return this.http.post<WorkTaskDto>(`${this.baseUrl}/objectives/${objectiveId}/tasks`, request);
+  }
+
+  createSubtask(parentTaskId: string, request: CreateSubtaskRequestDto): Observable<WorkTaskDto> {
+    return this.http.post<WorkTaskDto>(`${this.baseUrl}/tasks/${parentTaskId}/subtasks`, request);
+  }
+
+  getSubtasks(parentTaskId: string): Observable<WorkTaskDto[]> {
+    return this.http.get<WorkTaskDto[]>(`${this.baseUrl}/tasks/${parentTaskId}/subtasks`);
   }
 
   deleteTask(taskId: string): Observable<void> {
