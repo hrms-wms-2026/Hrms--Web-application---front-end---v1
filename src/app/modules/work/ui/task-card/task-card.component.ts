@@ -9,6 +9,7 @@ import { AvatarComponent } from '../../../../shared/ui/avatar/avatar.component';
 import { TaskApiService } from '../../data-access/task-api.service';
 import { EmployeeDirectoryStore } from '../../state/employee-directory.store';
 import { TaskBoardStore } from '../../state/task-board.store';
+import { toEditTaskRequest } from '../../utils/task.mapper';
 
 const ASSIGNEE_POPOVER_POSITIONS: ConnectionPositionPair[] = [
   { originX: 'start', originY: 'bottom', overlayX: 'start', overlayY: 'top', offsetY: 6 },
@@ -124,19 +125,163 @@ function initialsOf(name: string): string {
             </ng-template>
           </div>
 
-          <span class="task-card__priority" [attr.data-priority]="task().priority">
+          <button
+            type="button"
+            class="task-card__priority task-card__meta-btn"
+            [attr.data-priority]="task().priority"
+            data-testid="task-card-priority-btn"
+            cdkOverlayOrigin
+            #priorityOrigin="cdkOverlayOrigin"
+            [attr.aria-expanded]="priorityPopoverOpen()"
+            title="Change priority"
+            (click)="togglePriorityPopover($event)"
+          >
             <svg class="task-card__priority-icon" viewBox="0 0 24 24" aria-hidden="true">
               <path d="M4 15s1-1 4-1 5 2 8 2 4-1 4-1V3s-1 1-4 1-5-2-8-2-4 1-4 1z" />
               <line x1="4" y1="22" x2="4" y2="15" />
             </svg>
             <span>{{ task().priority }}</span>
-          </span>
-          @if (task().dueDate) {
-            <span class="task-card__due-date"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="4" width="18" height="17" rx="2" /><path d="M16 2v4M8 2v4M3 10h18" /></svg><span>{{ task().dueDate | date: 'MMM d' }}</span></span>
-          }
-          @if (task().estimatedHours) {
-            <span class="task-card__hours"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9" /><path d="M12 7v5l3 2" /></svg><span>{{ task().estimatedHours }}h</span></span>
-          }
+          </button>
+
+          <ng-template
+            cdkConnectedOverlay
+            [cdkConnectedOverlayOrigin]="priorityOrigin"
+            [cdkConnectedOverlayOpen]="priorityPopoverOpen()"
+            [cdkConnectedOverlayPositions]="assigneePopoverPositions"
+            [cdkConnectedOverlayHasBackdrop]="true"
+            cdkConnectedOverlayBackdropClass="cdk-overlay-transparent-backdrop"
+            (backdropClick)="priorityPopoverOpen.set(false)"
+            (detach)="priorityPopoverOpen.set(false)"
+          >
+            <div class="task-card__popover task-card__priority-popover" role="dialog" aria-label="Change priority" (click)="$event.stopPropagation()">
+              <div class="task-card__popover-title">Priority</div>
+              <div class="task-card__popover-list">
+                @for (opt of priorityOptions; track opt.value) {
+                  <button
+                    type="button"
+                    class="task-card__popover-option"
+                    [class.task-card__popover-option--selected]="task().priority === opt.value"
+                    (click)="selectPriority(opt.value)"
+                  >
+                    <svg class="task-card__priority-icon" [attr.data-priority]="opt.value" viewBox="0 0 24 24" aria-hidden="true">
+                      <path d="M4 15s1-1 4-1 5 2 8 2 4-1 4-1V3s-1 1-4 1-5-2-8-2-4 1-4 1z" />
+                      <line x1="4" y1="22" x2="4" y2="15" />
+                    </svg>
+                    <span>{{ opt.label }}</span>
+                    @if (task().priority === opt.value) {
+                      <svg class="task-card__popover-check" viewBox="0 0 24 24" aria-hidden="true"><polyline points="20 6 9 17 4 12" /></svg>
+                    }
+                  </button>
+                }
+              </div>
+            </div>
+          </ng-template>
+
+          <button
+            type="button"
+            class="task-card__due-date task-card__meta-btn"
+            [class.task-card__meta-btn--placeholder]="!task().dueDate"
+            data-testid="task-card-due-date-btn"
+            cdkOverlayOrigin
+            #dueDateOrigin="cdkOverlayOrigin"
+            [attr.aria-expanded]="dueDatePopoverOpen()"
+            [title]="task().dueDate ? 'Change due date' : 'Set due date'"
+            (click)="toggleDueDatePopover($event)"
+          >
+            <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="4" width="18" height="17" rx="2" /><path d="M16 2v4M8 2v4M3 10h18" /></svg>
+            <span>{{ task().dueDate ? (task().dueDate | date: 'MMM d') : 'Date' }}</span>
+          </button>
+
+          <ng-template
+            cdkConnectedOverlay
+            [cdkConnectedOverlayOrigin]="dueDateOrigin"
+            [cdkConnectedOverlayOpen]="dueDatePopoverOpen()"
+            [cdkConnectedOverlayPositions]="assigneePopoverPositions"
+            [cdkConnectedOverlayHasBackdrop]="true"
+            cdkConnectedOverlayBackdropClass="cdk-overlay-transparent-backdrop"
+            (backdropClick)="dueDatePopoverOpen.set(false)"
+            (detach)="dueDatePopoverOpen.set(false)"
+          >
+            <div class="task-card__popover task-card__due-date-popover" role="dialog" aria-label="Change due date" (click)="$event.stopPropagation()">
+              <div class="task-card__popover-title">Due Date</div>
+              <div class="task-card__quick-row">
+                <button type="button" class="task-card__quick-btn" (click)="setQuickDueDate('today')">Today</button>
+                <button type="button" class="task-card__quick-btn" (click)="setQuickDueDate('tomorrow')">Tomorrow</button>
+                <button type="button" class="task-card__quick-btn" (click)="setQuickDueDate('nextWeek')">Next wk</button>
+              </div>
+              <div class="task-card__date-picker-row">
+                <input
+                  type="date"
+                  class="task-card__date-input"
+                  [value]="taskDueDateIso()"
+                  (change)="onDateChange($any($event.target).value)"
+                />
+              </div>
+              @if (task().dueDate) {
+                <div class="task-card__popover-footer">
+                  <button type="button" class="task-card__popover-clear-btn" (click)="clearDueDate()">
+                    Remove date
+                  </button>
+                </div>
+              }
+            </div>
+          </ng-template>
+
+          <button
+            type="button"
+            class="task-card__hours task-card__meta-btn"
+            [class.task-card__meta-btn--placeholder]="!task().estimatedHours"
+            data-testid="task-card-hours-btn"
+            cdkOverlayOrigin
+            #hoursOrigin="cdkOverlayOrigin"
+            [attr.aria-expanded]="hoursPopoverOpen()"
+            [title]="task().estimatedHours ? 'Change estimated hours' : 'Set estimated hours'"
+            (click)="toggleHoursPopover($event)"
+          >
+            <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9" /><path d="M12 7v5l3 2" /></svg>
+            <span>{{ task().estimatedHours ? task().estimatedHours + 'h' : 'Hours' }}</span>
+          </button>
+
+          <ng-template
+            cdkConnectedOverlay
+            [cdkConnectedOverlayOrigin]="hoursOrigin"
+            [cdkConnectedOverlayOpen]="hoursPopoverOpen()"
+            [cdkConnectedOverlayPositions]="assigneePopoverPositions"
+            [cdkConnectedOverlayHasBackdrop]="true"
+            cdkConnectedOverlayBackdropClass="cdk-overlay-transparent-backdrop"
+            (backdropClick)="hoursPopoverOpen.set(false)"
+            (detach)="hoursPopoverOpen.set(false)"
+          >
+            <div class="task-card__popover task-card__hours-popover" role="dialog" aria-label="Change estimated hours" (click)="$event.stopPropagation()">
+              <div class="task-card__popover-title">Estimated Hours</div>
+              <div class="task-card__hours-input-row">
+                <input
+                  type="number"
+                  min="0"
+                  max="999"
+                  step="0.5"
+                  class="task-card__hours-input"
+                  placeholder="Hours"
+                  [value]="hoursInput()"
+                  (input)="hoursInput.set($any($event.target).value)"
+                  (keydown.enter)="saveHours()"
+                />
+                <span class="task-card__hours-unit">hrs</span>
+              </div>
+              <div class="task-card__quick-row">
+                <button type="button" class="task-card__quick-btn" (click)="setQuickHours(1)">1h</button>
+                <button type="button" class="task-card__quick-btn" (click)="setQuickHours(2)">2h</button>
+                <button type="button" class="task-card__quick-btn" (click)="setQuickHours(4)">4h</button>
+                <button type="button" class="task-card__quick-btn" (click)="setQuickHours(8)">8h</button>
+              </div>
+              <div class="task-card__popover-footer">
+                @if (task().estimatedHours) {
+                  <button type="button" class="task-card__popover-clear-btn" (click)="clearHours()">Clear</button>
+                }
+                <button type="button" class="task-card__popover-save-btn" (click)="saveHours()">Save</button>
+              </div>
+            </div>
+          </ng-template>
           @if (task().activeEventName) {
             <span class="task-card__event" data-testid="task-event-chip" [title]="'In milestone: ' + task().activeEventName">{{ task().activeEventName }}</span>
           }
@@ -255,16 +400,220 @@ function initialsOf(name: string): string {
     }
     .task-card__short-id { font-size: 11px; color: var(--color-text-secondary); }
     .task-card__title { margin: 5px 0 7px; font-size: 13px; font-weight: 500; color: var(--color-text-primary); line-height: 1.4; }
-    .task-card__meta { display: flex; align-items: center; flex-wrap: wrap; gap: 8px; font-size: 11px; color: var(--color-text-secondary); }
-    .task-card__due-date svg, .task-card__hours svg { width: 13px; height: 13px; flex: 0 0 auto; fill: none; stroke: var(--color-accent); stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
+    .task-card__meta { display: flex; align-items: center; flex-wrap: wrap; gap: 6px; font-size: 11px; color: var(--color-text-secondary); }
+    .task-card__meta-btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      border: 1px solid var(--color-border);
+      background: var(--color-surface-secondary);
+      border-radius: 5px;
+      padding: 1.5px 6px;
+      font: inherit;
+      font-size: 11px;
+      color: var(--color-text-secondary);
+      cursor: pointer;
+      line-height: 1.3;
+      transition: all 120ms ease;
+    }
+    .task-card__meta-btn:hover,
+    .task-card__meta-btn[aria-expanded="true"] {
+      background: var(--color-surface);
+      border-color: var(--color-accent);
+      color: var(--color-text-primary);
+      box-shadow: 0 1px 3px rgb(15 23 42 / 0.08);
+    }
+    .task-card__meta-btn--placeholder {
+      display: none;
+      opacity: 0.55;
+      border-style: dashed;
+    }
+    .task-card:hover .task-card__meta-btn--placeholder,
+    .task-card__meta-btn--placeholder[aria-expanded="true"] {
+      display: inline-flex;
+    }
+    .task-card__due-date svg, .task-card__hours svg { width: 13px; height: 13px; flex: 0 0 auto; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
     .task-card__due-date, .task-card__hours { display: inline-flex; align-items: center; gap: 4px; }
     .task-card__priority { display: inline-flex; align-items: center; gap: 3.5px; text-transform: capitalize; }
     .task-card__priority-icon { width: 11px; height: 11px; fill: currentColor; stroke: currentColor; stroke-width: 1.2; flex-shrink: 0; }
     .task-card__priority[data-priority="critical"],
-    .task-card__priority[data-priority="high"] { color: var(--color-danger); }
-    .task-card__priority[data-priority="medium"] { color: var(--color-warning, #d97706); }
+    .task-card__priority[data-priority="high"],
+    .task-card__priority-icon[data-priority="critical"],
+    .task-card__priority-icon[data-priority="high"] { color: var(--color-danger); }
+    .task-card__priority[data-priority="medium"],
+    .task-card__priority-icon[data-priority="medium"] { color: var(--color-warning, #d97706); }
+    .task-card__priority[data-priority="low"],
+    .task-card__priority-icon[data-priority="low"] { color: var(--color-text-secondary); }
     .task-card__event { overflow: hidden; max-width: 120px; border-radius: 999px; background: var(--color-surface-secondary); padding: 1px 8px; color: var(--color-text-secondary); font-size: 10px; font-weight: 600; text-overflow: ellipsis; white-space: nowrap; }
     .task-card__clock { min-width: 0; margin-left: auto; }
+
+    .task-card__popover {
+      min-width: 175px;
+      border-radius: 8px;
+      border: 1px solid var(--color-border);
+      background: var(--color-surface);
+      padding: 8px;
+      box-shadow: 0 10px 25px rgb(15 23 42 / 0.16);
+      cursor: default;
+      font-size: 12px;
+      color: var(--color-text-primary);
+    }
+    .task-card__popover-title {
+      font-size: 10.5px;
+      font-weight: 600;
+      color: var(--color-text-secondary);
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+      margin-bottom: 6px;
+      padding: 0 4px;
+    }
+    .task-card__popover-list {
+      display: flex;
+      flex-direction: column;
+      gap: 2px;
+    }
+    .task-card__popover-option {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      width: 100%;
+      padding: 5px 8px;
+      border: 0;
+      border-radius: 5px;
+      background: transparent;
+      color: var(--color-text-primary);
+      font: inherit;
+      font-size: 12px;
+      font-weight: 500;
+      cursor: pointer;
+      text-align: left;
+      transition: background-color 100ms ease;
+    }
+    .task-card__popover-option:hover {
+      background: var(--color-surface-secondary);
+    }
+    .task-card__popover-option--selected {
+      background: color-mix(in srgb, var(--color-accent) 12%, var(--color-surface));
+      color: var(--color-accent);
+      font-weight: 600;
+    }
+    .task-card__popover-check {
+      width: 13px;
+      height: 13px;
+      stroke: currentColor;
+      fill: none;
+      stroke-width: 2.2;
+      stroke-linecap: round;
+      stroke-linejoin: round;
+      margin-left: auto;
+      flex-shrink: 0;
+    }
+    .task-card__quick-row {
+      display: flex;
+      gap: 4px;
+      margin-bottom: 6px;
+    }
+    .task-card__quick-btn {
+      flex: 1;
+      padding: 3px 4px;
+      font-size: 10px;
+      font-weight: 500;
+      border: 1px solid var(--color-border);
+      border-radius: 4px;
+      background: var(--color-surface-secondary);
+      color: var(--color-text-primary);
+      cursor: pointer;
+      text-align: center;
+      transition: all 120ms ease;
+    }
+    .task-card__quick-btn:hover {
+      border-color: var(--color-accent);
+      background: var(--color-surface);
+      color: var(--color-accent);
+    }
+    .task-card__date-picker-row {
+      margin-top: 4px;
+    }
+    .task-card__date-input {
+      width: 100%;
+      padding: 4px 6px;
+      border: 1px solid var(--color-border);
+      border-radius: 4px;
+      background: var(--color-surface);
+      font: inherit;
+      font-size: 11.5px;
+      color: var(--color-text-primary);
+      outline: none;
+      box-sizing: border-box;
+    }
+    .task-card__date-input:focus {
+      border-color: var(--color-accent);
+    }
+    .task-card__hours-input-row {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      margin-bottom: 6px;
+    }
+    .task-card__hours-input {
+      flex: 1;
+      width: 100%;
+      padding: 4px 6px;
+      border: 1px solid var(--color-border);
+      border-radius: 4px;
+      background: var(--color-surface);
+      font: inherit;
+      font-size: 12px;
+      color: var(--color-text-primary);
+      outline: none;
+      box-sizing: border-box;
+    }
+    .task-card__hours-input:focus {
+      border-color: var(--color-accent);
+    }
+    .task-card__hours-unit {
+      font-size: 11px;
+      color: var(--color-text-secondary);
+      font-weight: 500;
+    }
+    .task-card__popover-footer {
+      display: flex;
+      align-items: center;
+      justify-content: flex-end;
+      gap: 6px;
+      margin-top: 8px;
+      padding-top: 6px;
+      border-top: 1px solid var(--color-border);
+    }
+    .task-card__popover-clear-btn {
+      border: 0;
+      background: transparent;
+      padding: 3px 6px;
+      font: inherit;
+      font-size: 11px;
+      color: var(--color-danger);
+      cursor: pointer;
+      border-radius: 4px;
+      margin-right: auto;
+    }
+    .task-card__popover-clear-btn:hover {
+      background: color-mix(in srgb, var(--color-danger) 10%, transparent);
+    }
+    .task-card__popover-save-btn {
+      border: 0;
+      background: var(--color-accent);
+      color: #fff;
+      padding: 3px 10px;
+      font: inherit;
+      font-size: 11px;
+      font-weight: 500;
+      border-radius: 4px;
+      cursor: pointer;
+      transition: opacity 120ms ease;
+    }
+    .task-card__popover-save-btn:hover {
+      opacity: 0.9;
+    }
 
 
     .task-card__subtask-bar {
@@ -508,10 +857,116 @@ export class TaskCardComponent {
     return this.task().assigneeEmployeeIds.includes(employeeId);
   }
 
+  protected readonly priorityPopoverOpen = signal(false);
+  protected readonly dueDatePopoverOpen = signal(false);
+  protected readonly hoursPopoverOpen = signal(false);
+  protected readonly hoursInput = signal('');
+
+  protected readonly priorityOptions = [
+    { value: 'critical', label: 'Critical' },
+    { value: 'high', label: 'High' },
+    { value: 'medium', label: 'Medium' },
+    { value: 'low', label: 'Low' }
+  ] as const;
+
+  protected readonly taskDueDateIso = computed(() => {
+    const d = this.task().dueDate;
+    if (!d) return '';
+    return d instanceof Date ? d.toISOString().slice(0, 10) : String(d).slice(0, 10);
+  });
+
   protected toggleAssigneePopover(event: MouseEvent): void {
     event.stopPropagation();
+    this.priorityPopoverOpen.set(false);
+    this.dueDatePopoverOpen.set(false);
+    this.hoursPopoverOpen.set(false);
     this.assigneeSearch.set('');
     this.assigneePopoverOpen.update((open) => !open);
+  }
+
+  protected togglePriorityPopover(event: MouseEvent): void {
+    event.stopPropagation();
+    this.assigneePopoverOpen.set(false);
+    this.dueDatePopoverOpen.set(false);
+    this.hoursPopoverOpen.set(false);
+    this.priorityPopoverOpen.update((v) => !v);
+  }
+
+  protected toggleDueDatePopover(event: MouseEvent): void {
+    event.stopPropagation();
+    this.assigneePopoverOpen.set(false);
+    this.priorityPopoverOpen.set(false);
+    this.hoursPopoverOpen.set(false);
+    this.dueDatePopoverOpen.update((v) => !v);
+  }
+
+  protected toggleHoursPopover(event: MouseEvent): void {
+    event.stopPropagation();
+    this.assigneePopoverOpen.set(false);
+    this.priorityPopoverOpen.set(false);
+    this.dueDatePopoverOpen.set(false);
+    const h = this.task().estimatedHours;
+    this.hoursInput.set(h !== null && h !== undefined ? String(h) : '');
+    this.hoursPopoverOpen.update((v) => !v);
+  }
+
+  protected async selectPriority(priority: WorkTask['priority']): Promise<void> {
+    this.priorityPopoverOpen.set(false);
+    if (this.task().priority === priority) return;
+    await this.applyTaskEdit({ priority });
+  }
+
+  protected setQuickDueDate(preset: 'today' | 'tomorrow' | 'nextWeek'): void {
+    const d = new Date();
+    if (preset === 'tomorrow') d.setDate(d.getDate() + 1);
+    if (preset === 'nextWeek') d.setDate(d.getDate() + 7);
+    const yyyy = d.getFullYear();
+    const mm = String(d.getMonth() + 1).padStart(2, '0');
+    const dd = String(d.getDate()).padStart(2, '0');
+    this.dueDatePopoverOpen.set(false);
+    void this.applyTaskEdit({ dueDate: `${yyyy}-${mm}-${dd}` });
+  }
+
+  protected onDateChange(value: string): void {
+    this.dueDatePopoverOpen.set(false);
+    void this.applyTaskEdit({ dueDate: value || undefined });
+  }
+
+  protected clearDueDate(): void {
+    this.dueDatePopoverOpen.set(false);
+    void this.applyTaskEdit({ dueDate: undefined });
+  }
+
+  protected setQuickHours(h: number): void {
+    this.hoursInput.set(String(h));
+    void this.saveHours();
+  }
+
+  protected clearHours(): void {
+    this.hoursInput.set('');
+    void this.saveHours();
+  }
+
+  protected async saveHours(): Promise<void> {
+    this.hoursPopoverOpen.set(false);
+    const raw = this.hoursInput().trim();
+    const parsed = raw === '' ? undefined : Math.max(0, Number(raw));
+    await this.applyTaskEdit({ estimatedHours: parsed });
+  }
+
+  private async applyTaskEdit(overrides: Partial<{ priority: WorkTask['priority']; dueDate: string; estimatedHours: number }>): Promise<void> {
+    const currentTask = this.task();
+    const req = toEditTaskRequest(currentTask, overrides);
+    try {
+      if (typeof this.store.editTask === 'function') {
+        await this.store.editTask(currentTask.id, req);
+      } else {
+        await firstValueFrom(this.taskApi.editTask(currentTask.id, req));
+      }
+      this.taskChanged.emit();
+    } catch {
+      // Swallowed: reopening lets user retry
+    }
   }
 
   private subtasksLoaded = false;

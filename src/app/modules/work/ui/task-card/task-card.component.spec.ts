@@ -17,12 +17,17 @@ describe('TaskCardComponent', () => {
   let fixture: ComponentFixture<TaskCardComponent>;
   let httpMock: HttpTestingController;
   let directoryStore: { get: ReturnType<typeof vi.fn>; ensureLoaded: ReturnType<typeof vi.fn> };
-  let boardStore: { subtasksByParentId: ReturnType<typeof vi.fn>; loadSubtasks: ReturnType<typeof vi.fn> };
+  let boardStore: {
+    subtasksByParentId: ReturnType<typeof vi.fn>;
+    loadSubtasks: ReturnType<typeof vi.fn>;
+    editTask: ReturnType<typeof vi.fn>;
+  };
 
   beforeEach(() => {
     boardStore = {
       subtasksByParentId: vi.fn().mockReturnValue({}),
-      loadSubtasks: vi.fn().mockResolvedValue(undefined)
+      loadSubtasks: vi.fn().mockResolvedValue(undefined),
+      editTask: vi.fn().mockResolvedValue(true)
     };
   });
 
@@ -64,7 +69,8 @@ describe('TaskCardComponent', () => {
     if (!boardStore) {
       boardStore = {
         subtasksByParentId: vi.fn().mockReturnValue({}),
-        loadSubtasks: vi.fn().mockResolvedValue(undefined)
+        loadSubtasks: vi.fn().mockResolvedValue(undefined),
+        editTask: vi.fn().mockResolvedValue(true)
       };
     }
     TestBed.configureTestingModule({
@@ -358,5 +364,83 @@ describe('TaskCardComponent', () => {
     (fixture.nativeElement.querySelector('[data-testid="task-card-subtask-sub-1"]') as HTMLElement).click();
 
     expect(viewedSpy).toHaveBeenCalledWith(expect.objectContaining({ id: 'sub-1' }));
+  });
+
+  it('opens priority popover on click and selecting a new priority updates task and emits taskChanged without opening task detail', async () => {
+    setup({ task: { ...task, priority: 'medium' } });
+    const viewedSpy = vi.fn();
+    const changedSpy = vi.fn();
+    fixture.componentInstance.viewed.subscribe(viewedSpy);
+    fixture.componentInstance.taskChanged.subscribe(changedSpy);
+
+    const btn = fixture.nativeElement.querySelector('[data-testid="task-card-priority-btn"]') as HTMLButtonElement;
+    btn.click();
+    fixture.detectChanges();
+
+    expect(viewedSpy).not.toHaveBeenCalled();
+    const popover = document.body.querySelector('.task-card__priority-popover');
+    expect(popover).not.toBeNull();
+
+    const options = Array.from(popover!.querySelectorAll('.task-card__popover-option')) as HTMLButtonElement[];
+    const criticalOpt = options.find((opt) => opt.textContent?.includes('Critical'))!;
+    criticalOpt.click();
+    fixture.detectChanges();
+    await fixture.whenStable();
+
+    expect(boardStore.editTask).toHaveBeenCalledWith('t-1', expect.objectContaining({ priority: 'critical' }));
+    expect(changedSpy).toHaveBeenCalled();
+    expect(viewedSpy).not.toHaveBeenCalled();
+  });
+
+  it('opens due date popover on click and quick option sets due date without opening task detail', async () => {
+    setup();
+    const viewedSpy = vi.fn();
+    const changedSpy = vi.fn();
+    fixture.componentInstance.viewed.subscribe(viewedSpy);
+    fixture.componentInstance.taskChanged.subscribe(changedSpy);
+
+    const btn = fixture.nativeElement.querySelector('[data-testid="task-card-due-date-btn"]') as HTMLButtonElement;
+    btn.click();
+    fixture.detectChanges();
+
+    expect(viewedSpy).not.toHaveBeenCalled();
+    const popover = document.body.querySelector('.task-card__due-date-popover');
+    expect(popover).not.toBeNull();
+
+    const quickBtns = Array.from(popover!.querySelectorAll('.task-card__quick-btn')) as HTMLButtonElement[];
+    const todayBtn = quickBtns.find((b) => b.textContent?.includes('Today'))!;
+    todayBtn.click();
+    fixture.detectChanges();
+    await fixture.whenStable();
+
+    expect(boardStore.editTask).toHaveBeenCalledWith('t-1', expect.objectContaining({ dueDate: expect.stringMatching(/^\d{4}-\d{2}-\d{2}$/) }));
+    expect(changedSpy).toHaveBeenCalled();
+    expect(viewedSpy).not.toHaveBeenCalled();
+  });
+
+  it('opens hours popover on click and saving hours updates estimated hours without opening task detail', async () => {
+    setup({ task: { ...task, estimatedHours: 5 } });
+    const viewedSpy = vi.fn();
+    const changedSpy = vi.fn();
+    fixture.componentInstance.viewed.subscribe(viewedSpy);
+    fixture.componentInstance.taskChanged.subscribe(changedSpy);
+
+    const btn = fixture.nativeElement.querySelector('[data-testid="task-card-hours-btn"]') as HTMLButtonElement;
+    btn.click();
+    fixture.detectChanges();
+
+    expect(viewedSpy).not.toHaveBeenCalled();
+    const popover = document.body.querySelector('.task-card__hours-popover');
+    expect(popover).not.toBeNull();
+
+    const quickBtns = Array.from(popover!.querySelectorAll('.task-card__quick-btn')) as HTMLButtonElement[];
+    const h8Btn = quickBtns.find((b) => b.textContent?.includes('8h'))!;
+    h8Btn.click();
+    fixture.detectChanges();
+    await fixture.whenStable();
+
+    expect(boardStore.editTask).toHaveBeenCalledWith('t-1', expect.objectContaining({ estimatedHours: 8 }));
+    expect(changedSpy).toHaveBeenCalled();
+    expect(viewedSpy).not.toHaveBeenCalled();
   });
 });

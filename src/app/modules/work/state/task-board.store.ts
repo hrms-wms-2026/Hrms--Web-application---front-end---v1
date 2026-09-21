@@ -94,6 +94,16 @@ export const TaskBoardStore = signalStore(
         const dto = await firstValueFrom(api.editTask(taskId, request));
         const updated = toWorkTask(dto);
         patchState(store, { tasks: store.tasks().map((t) => (t.id === taskId ? updated : t)) });
+        if (updated.parentTaskId) {
+          const parentId = updated.parentTaskId;
+          const current = store.subtasksByParentId()[parentId] ?? [];
+          patchState(store, {
+            subtasksByParentId: {
+              ...store.subtasksByParentId(),
+              [parentId]: current.map((s) => (s.id === taskId ? updated : s))
+            }
+          });
+        }
         return true;
       } catch (err) {
         patchState(store, { error: extractError(err, 'Failed to update the task.') });
