@@ -1,3 +1,5 @@
+import { readFileSync } from 'node:fs';
+import { join } from 'node:path';
 import { TestBed } from '@angular/core/testing';
 import { LeaveTypeResponse } from '../../models/leave-type.model';
 import { LeavePolicyFormWizardComponent } from './leave-policy-form-wizard.component';
@@ -78,5 +80,21 @@ describe('LeavePolicyFormWizardComponent', () => {
     expect(fixture.componentInstance.draft().leaveTypes).toEqual([
       { leaveTypeId: 'lt1', annualEntitlementDays: 14, monthlyAccrualDays: null, carryForwardMaxDays: 5, carryForwardExpiryMonths: 3 }
     ]);
+  });
+
+  it('shows Create policy on the last step', () => {
+    const fixture = TestBed.createComponent(LeavePolicyFormWizardComponent);
+    fixture.componentInstance.setStep(3);
+    fixture.detectChanges();
+    const submit = fixture.nativeElement.querySelector('[data-testid="create-policy-submit"]') as HTMLButtonElement;
+    expect(submit).toBeTruthy();
+    expect(submit.textContent).toContain('Create policy');
+  });
+
+  it('keeps the rules pane scrollable so the footer is not clipped', () => {
+    const css = readFileSync(join(__dirname, 'leave-policy-form-wizard.component.css'), 'utf8');
+    expect(css).toContain('.lpw-panel{display:flex;flex-direction:column');
+    expect(css).toContain('.lpw-footer');
+    expect(css).toMatch(/\.lpw-content main\{flex:1 1 auto;min-height:0;overflow:auto/);
   });
 });

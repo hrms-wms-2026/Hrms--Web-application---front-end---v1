@@ -8,6 +8,7 @@ import { NavigationStateService } from './nav/navigation-state.service';
 
 const authStoreStub = {
   email: () => 'asha@onevo.test',
+  authenticated: () => true,
   permissions: () => [] as string[],
   activeModules: () => [] as string[]
 };
@@ -22,7 +23,7 @@ const connectedTrayPresenceStub = {
 class BlankRouteComponent {}
 
 function authStoreWith(permissions: string[], activeModules: string[]) {
-  return { email: () => 'asha@onevo.test', permissions: () => permissions, activeModules: () => activeModules };
+  return { email: () => 'asha@onevo.test', authenticated: () => true, permissions: () => permissions, activeModules: () => activeModules };
 }
 
 describe('MainLayoutComponent', () => {

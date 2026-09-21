@@ -1,6 +1,6 @@
-.lpw-backdrop{position:fixed;z-index:75;inset:0;display:grid;place-items:center;padding:1rem;background:rgba(0,0,0,.4);backdrop-filter:blur(2px)}
-.lpw-modal{display:grid;grid-template-columns:220px 1fr;width:min(960px,100%);height:min(88vh,760px);overflow:hidden;border:1px solid var(--color-border);border-radius:12px;background:var(--color-surface);box-shadow:0 12px 32px var(--color-card-shadow)}
-.lpw-steps{display:flex;flex-direction:column;padding:1.25rem .85rem;background:var(--color-surface-secondary);border-right:1px solid var(--color-border)}
+.lpw-backdrop{position:fixed;z-index:75;inset:0;display:grid;place-items:center;padding:1.5rem;background:rgba(0,0,0,.4);backdrop-filter:blur(2px)}
+.lpw-modal{display:grid;grid-template-columns:220px minmax(0,1fr);grid-template-rows:minmax(0,1fr);width:min(960px,100%);height:min(82vh,720px);max-height:82vh;overflow:hidden;border:1px solid var(--color-border);border-radius:12px;background:var(--color-surface);box-shadow:0 12px 32px var(--color-card-shadow)}
+.lpw-steps{display:flex;flex-direction:column;min-height:0;overflow:auto;padding:1.25rem .85rem;background:var(--color-surface-secondary);border-right:1px solid var(--color-border)}
 .lpw-brand{padding:0 .4rem 1rem}.lpw-brand p{margin:0 0 .35rem;color:var(--color-accent);font-size:.65rem;font-weight:750;letter-spacing:.08em}.lpw-brand h2{margin:0;color:var(--color-text-primary);font-size:1.05rem;font-weight:650}
 .lpw-steps ol{display:grid;gap:.15rem;margin:0;padding:0;list-style:none}
 .lpw-steps button{display:flex;align-items:center;gap:.65rem;width:100%;padding:.55rem .5rem;border:0;border-left:2px solid transparent;background:transparent;color:var(--color-text-secondary);text-align:left;font:inherit;font-size:.8rem;cursor:pointer}
@@ -10,12 +10,13 @@
 .lpw-steps .is-active button span{background:var(--color-accent);color:var(--color-accent-contrast)}
 .lpw-steps .is-complete button span{background:color-mix(in srgb,var(--color-success) 18%,var(--color-surface));color:var(--color-success)}
 .lpw-rail-note{margin-top:auto;padding:.9rem .4rem 0;color:var(--color-text-secondary);font-size:.68rem}
-.lpw-content{display:grid;grid-template-rows:auto 1fr auto;min-width:0}
-.lpw-content header{display:flex;align-items:flex-start;justify-content:space-between;gap:1rem;padding:1.2rem 1.5rem 1rem;border-bottom:1px solid var(--color-border)}
+.lpw-panel{display:flex;flex-direction:column;min-width:0;min-height:0;height:100%;overflow:hidden}
+.lpw-content{display:flex;flex-direction:column;flex:1 1 auto;min-width:0;min-height:0;overflow:hidden}
+.lpw-content header{flex:0 0 auto;display:flex;align-items:flex-start;justify-content:space-between;gap:1rem;padding:1.2rem 1.5rem 1rem;border-bottom:1px solid var(--color-border)}
 .lpw-content h1{margin:0;color:var(--color-text-primary);font-size:1.2rem;font-weight:650}
 .lpw-close{width:2rem;height:2rem;border:0;border-radius:6px;background:transparent;color:var(--color-text-secondary);font-size:1.4rem;cursor:pointer}
 .lpw-close:hover{background:var(--color-surface-secondary);color:var(--color-text-primary)}
-.lpw-content main{overflow:auto;padding:1.25rem 1.5rem 1.5rem}
+.lpw-content main{flex:1 1 auto;min-height:0;overflow:auto;padding:1.25rem 1.5rem 1.25rem}
 .lpw-hint,.lpw-subhead{margin:0 0 .85rem;color:var(--color-text-secondary);font-size:.8rem;line-height:1.45}
 .lpw-subhead{margin:1.35rem 0 .7rem;color:var(--color-text-primary);font-size:.85rem;font-weight:650}
 .lpw-subhead em{font-style:normal;color:var(--color-danger)}
@@ -50,7 +51,7 @@
 .lpw-review strong{color:var(--color-text-primary);text-align:right}
 .lpw-errors{max-width:620px;margin-top:.9rem;padding:.75rem;border:1px solid var(--color-danger);border-radius:8px;background:var(--color-danger-subtle);color:var(--color-danger-text);font-size:.74rem}
 .lpw-errors ul{margin:.35rem 0 0;padding-left:1rem}
-.lpw-content footer{display:flex;align-items:center;gap:.65rem;padding:.9rem 1.5rem;border-top:1px solid var(--color-border)}
+.lpw-footer,.lpw-content footer{flex:0 0 auto;display:flex;align-items:center;gap:.65rem;padding:.9rem 1.5rem;border-top:1px solid var(--color-border);background:var(--color-surface)}
 .lpw-footer-spacer{flex:1}
 .lpw-secondary,.lpw-primary{border-radius:7px;padding:.55rem .9rem;font:650 .8rem inherit;cursor:pointer}
 .lpw-secondary{border:1px solid var(--color-border);background:var(--color-surface);color:var(--color-text-primary)}

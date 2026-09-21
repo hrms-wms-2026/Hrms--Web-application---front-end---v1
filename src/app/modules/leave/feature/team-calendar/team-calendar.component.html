@@ -1,18 +1,18 @@
-<section class="tc-page">
-  <header class="tc-header">
+<section class="to-page">
+  <header class="to-header">
     <div>
-      <p class="tc-kicker">TIME OFF</p>
-      <h1>Team Calendar</h1>
-      <p class="tc-subtitle">Who is off this month.</p>
+      <p class="to-kicker">TIME OFF</p>
+      <h1 class="to-title">Team Calendar</h1>
+      <p class="to-subtitle">Who is off this month.</p>
     </div>
-    <div class="tc-header-actions">
-      <select data-testid="calendar-department" [value]="store.departmentId() ?? ''" (change)="onDepartmentChange($any($event.target).value)" aria-label="Department">
-        <option value="">All departments</option>
-        @for (dept of departmentOptions(); track dept.id) {
-          <option [value]="dept.id">{{ dept.name }}</option>
-        }
-      </select>
-      <label class="tc-pending">
+    <div class="to-header-actions">
+      <app-select
+        data-testid="calendar-department"
+        [options]="departmentSelectOptions()"
+        [value]="store.departmentId() ?? ''"
+        (valueChange)="onDepartmentChange($event)"
+      />
+      <label class="to-filter">
         <input type="checkbox" data-testid="calendar-include-pending" [checked]="store.includeTentative()" (change)="store.setIncludeTentative($any($event.target).checked)" />
         Include pending
       </label>
@@ -27,20 +27,19 @@
     </div>
   </header>
   @if (store.loading()) {
-    <div class="tc-loading" aria-busy="true" aria-label="Loading team calendar"><span></span><span></span><span></span></div>
+    <div class="to-loading" aria-busy="true" aria-label="Loading team calendar"><span></span><span></span><span></span></div>
   } @else if (store.error()) {
     <app-error-state [message]="store.error()!" [retryable]="true" (retry)="store.load()" />
   } @else if (store.month()?.isEmpty) {
-    <div class="tc-empty">
-      <h2>No leave this month</h2>
-      <p>Nobody has approved or pending leave in this range.</p>
+    <div class="to-empty">
+      <app-empty-state title="No leave this month" description="Nobody has approved or pending leave in this range." />
     </div>
   } @else if (store.month(); as month) {
-    <section class="tc-summary" aria-label="Month totals">
-      <article class="tc-metric"><p>People off</p><strong>{{ monthStats().people }}</strong></article>
-      <article class="tc-metric"><p>Days with leave</p><strong>{{ monthStats().days }}</strong></article>
+    <section class="to-metrics" aria-label="Month totals">
+      <article class="to-metric"><p class="to-metric__label">People off</p><p class="to-metric__value">{{ monthStats().people }}</p></article>
+      <article class="to-metric"><p class="to-metric__label">Days with leave</p><p class="to-metric__value">{{ monthStats().days }}</p></article>
     </section>
-    <div class="tc-card">
+    <div class="to-table-card">
       <app-leave-calendar-grid [days]="month.days" (dayClicked)="onDayClicked($event)" />
     </div>
   }

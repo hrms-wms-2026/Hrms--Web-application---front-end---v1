@@ -3,6 +3,7 @@ import { HttpTestingController, provideHttpClientTesting } from '@angular/common
 import { TestBed } from '@angular/core/testing';
 import { vi } from 'vitest';
 import { PermissionService } from '../../../../core/auth/state/permission.service';
+import { TrayPresenceStore } from '../../../../core/tray-presence/state/tray-presence.store';
 import { AuthStore } from '../../../../core/auth/state/auth.store';
 import { NotificationService } from '../../../../core/services/notification.service';
 import { LegalEntityListItem } from '../../../../modules/organization/models/legal-entity.model';
@@ -41,7 +42,7 @@ describe('CompanySelectorComponent', () => {
         NotificationService,
         provideHttpClient(),
         provideHttpClientTesting(),
-        { provide: AuthStore, useValue: { checkSession: vi.fn().mockResolvedValue(true) } },
+        { provide: AuthStore, useValue: { checkSession: vi.fn().mockResolvedValue(true), authenticated: () => true } },
         {
           provide: PermissionService,
           useValue: {
@@ -60,6 +61,39 @@ describe('CompanySelectorComponent', () => {
 
     return { fixture, legalEntityStore, notificationService, httpMock };
   }
+
+  it('does not load companies while the tray activation gate is blocking', async () => {
+    await TestBed.configureTestingModule({
+      imports: [CompanySelectorComponent],
+      providers: [
+        LegalEntityStore,
+        NotificationService,
+        provideHttpClient(),
+        provideHttpClientTesting(),
+        { provide: AuthStore, useValue: { checkSession: vi.fn().mockResolvedValue(true), authenticated: () => true } },
+        {
+          provide: PermissionService,
+          useValue: {
+            hasModule: (m: string) => m === 'activity_monitoring',
+            hasAnyPermission: () => false,
+            hasPermission: () => false
+          }
+        },
+        {
+          provide: TrayPresenceStore,
+          useValue: { canRenderProtectedContent: () => false }
+        }
+      ]
+    }).compileComponents();
+
+    const httpMock = TestBed.inject(HttpTestingController);
+    const fixture = TestBed.createComponent(CompanySelectorComponent);
+    fixture.detectChanges();
+    await fixture.whenStable();
+
+    httpMock.expectNone((r) => r.url.includes('/session/companies'));
+    httpMock.verify();
+  });
 
   it('renders selector and loads accessible companies without org module or org:read', async () => {
     const { fixture, httpMock } = await setup([], []);

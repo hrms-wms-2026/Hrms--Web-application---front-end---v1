@@ -54,6 +54,10 @@ export const errorInterceptor: HttpInterceptorFn = (req, next) => {
         return throwError(() => error);
       }
 
+      if (error.status === 429 && req.url.includes('/monitoring/activation/generate')) {
+        return throwError(() => error);
+      }
+
       if (error.status === 401 && isSessionExempt(req.url)) {
 
         return throwError(() => error);

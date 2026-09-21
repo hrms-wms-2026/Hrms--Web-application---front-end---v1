@@ -21,6 +21,7 @@
       </div>
     </aside>
 
+    <div class="lpw-panel">
     <form class="lpw-content" (ngSubmit)="submit()">
       <header>
         <div>
@@ -198,15 +199,16 @@
         }
       </main>
 
-      <footer>
+      <footer class="lpw-footer">
         <button type="button" class="lpw-secondary" (click)="step() === 1 ? cancel.emit() : back()">{{ step() === 1 ? 'Cancel' : 'Back' }}</button>
         <div class="lpw-footer-spacer"></div>
         @if (step() < totalSteps) {
           <button type="button" class="lpw-primary" (click)="next()">Continue</button>
         } @else {
-          <button type="submit" class="lpw-primary" [disabled]="saving">{{ saving ? 'Saving…' : 'Create policy' }}</button>
+          <button type="submit" class="lpw-primary" data-testid="create-policy-submit" [disabled]="saving">{{ saving ? 'Saving…' : 'Create policy' }}</button>
         }
       </footer>
     </form>
+    </div>
   </section>
 </div>

@@ -2,7 +2,9 @@
 import { ChangeDetectionStrategy, Component, computed, inject, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { ButtonComponent } from '../../../../shared/ui/button/button.component';
+import { EmptyStateComponent } from '../../../../shared/ui/empty-state/empty-state.component';
 import { ErrorStateComponent } from '../../../../shared/ui/error-state/error-state.component';
+import { SelectComponent, SelectOption } from '../../../../shared/ui/select/select.component';
 import { PermissionService } from '../../../../core/auth/state/permission.service';
 import { LeaveCalendarStore } from '../../state/leave-calendar.store';
 import { LeaveBalanceStore } from '../../state/leave-balance.store';
@@ -19,9 +21,9 @@ import { NotificationService } from '../../../../core/services/notification.serv
 @Component({
   selector: 'app-team-calendar',
   standalone: true,
-  imports: [CommonModule, ButtonComponent, ErrorStateComponent, LeaveCalendarGridComponent, LeaveCalendarDayDetailComponent, NewLeaveRequestWizardComponent, LeaveHolidayModalComponent],
+  imports: [CommonModule, ButtonComponent, EmptyStateComponent, ErrorStateComponent, SelectComponent, LeaveCalendarGridComponent, LeaveCalendarDayDetailComponent, NewLeaveRequestWizardComponent, LeaveHolidayModalComponent],
   templateUrl: './team-calendar.component.html',
-  styleUrl: './team-calendar.component.css',
+  styleUrls: ['../../ui/time-off-chrome.css', './team-calendar.component.css'],
   changeDetection: ChangeDetectionStrategy.OnPush
 })
 export class TeamCalendarComponent {
@@ -43,6 +45,10 @@ export class TeamCalendarComponent {
   readonly selectedDay = computed(() =>
     this.store.month()?.days.find((d) => d.date === this.selectedDate()) ?? null
   );
+  readonly departmentSelectOptions = computed<SelectOption[]>(() => [
+    { value: '', label: 'All departments' },
+    ...this.departmentOptions().map((dept) => ({ value: dept.id, label: dept.name }))
+  ]);
   readonly departmentOptions = computed(() => {
     const map = new Map<string, string>();
     for (const day of this.store.month()?.days ?? []) {

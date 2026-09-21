@@ -7,6 +7,7 @@ import { NotificationService } from '../../../../core/services/notification.serv
 import { ButtonComponent } from '../../../../shared/ui/button/button.component';
 import { EmptyStateComponent } from '../../../../shared/ui/empty-state/empty-state.component';
 import { ErrorStateComponent } from '../../../../shared/ui/error-state/error-state.component';
+import { InputComponent } from '../../../../shared/ui/input/input.component';
 import { SelectComponent, SelectOption } from '../../../../shared/ui/select/select.component';
 import { LegalEntityApiService } from '../../../organization/data-access/legal-entity-api.service';
 import { LegalEntityListItem } from '../../../organization/models/legal-entity.model';
@@ -32,9 +33,9 @@ type Tab = 'entitlements' | 'all-balances' | 'audit';
 @Component({
   selector: 'app-entitlements-management',
   standalone: true,
-  imports: [CommonModule, ButtonComponent, EmptyStateComponent, ErrorStateComponent, SelectComponent, LeaveEntitlementListTableComponent, LeaveEntitlementGenerateModalComponent, LeaveEntitlementManualFormModalComponent, LeaveEntitlementAdjustModalComponent, LeaveBalanceListTableComponent, LeaveBalanceAuditTableComponent, NewLeaveRequestWizardComponent],
+  imports: [CommonModule, ButtonComponent, EmptyStateComponent, ErrorStateComponent, InputComponent, SelectComponent, LeaveEntitlementListTableComponent, LeaveEntitlementGenerateModalComponent, LeaveEntitlementManualFormModalComponent, LeaveEntitlementAdjustModalComponent, LeaveBalanceListTableComponent, LeaveBalanceAuditTableComponent, NewLeaveRequestWizardComponent],
   templateUrl: './entitlements-management.component.html',
-  styleUrl: './entitlements-management.component.css',
+  styleUrls: ['../../ui/time-off-chrome.css', './entitlements-management.component.css'],
   changeDetection: ChangeDetectionStrategy.OnPush
 })
 export class EntitlementsManagementComponent {
@@ -80,6 +81,10 @@ export class EntitlementsManagementComponent {
   onYearChange(year: string): void {
     this.entitlementStore.setYear(Number(year));
     if (this.activeTab() === 'all-balances') void this.balanceStore.loadAll(Number(year));
+  }
+
+  onSearchChange(search: string): void {
+    this.entitlementStore.setFilters({ ...this.entitlementStore.filters(), search: search || undefined });
   }
 
   onSearchInput(event: Event): void {

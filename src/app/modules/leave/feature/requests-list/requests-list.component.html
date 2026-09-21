@@ -1,36 +1,32 @@
-<section class="rl-page">
-  <header class="rl-header">
+<section class="to-page">
+  <header class="to-header">
     <div>
-      <p class="rl-kicker">TIME OFF</p>
-      <h1>All Requests</h1>
-      <p class="rl-subtitle">Every leave request across the organization.</p>
+      <p class="to-kicker">TIME OFF</p>
+      <h1 class="to-title">All Requests</h1>
+      <p class="to-subtitle">Every leave request across the organization.</p>
     </div>
   </header>
-  <div class="rl-tabs" role="tablist" aria-label="Request status">
-    <button type="button" class="rl-tab" [class.rl-tab--active]="statusFilter() === ''" (click)="setStatusFilter(undefined)">All</button>
-    <button type="button" class="rl-tab" [class.rl-tab--active]="statusFilter() === 'pending'" (click)="setStatusFilter('pending')">Pending</button>
-    <button type="button" class="rl-tab" [class.rl-tab--active]="statusFilter() === 'approved'" (click)="setStatusFilter('approved')">Approved</button>
-    <button type="button" class="rl-tab" [class.rl-tab--active]="statusFilter() === 'rejected'" (click)="setStatusFilter('rejected')">Rejected</button>
+  <div class="to-tabs" role="tablist" aria-label="Request status">
+    <button type="button" class="to-tab" [class.to-tab--active]="statusFilter() === ''" (click)="setStatusFilter(undefined)">All</button>
+    <button type="button" class="to-tab" [class.to-tab--active]="statusFilter() === 'pending'" (click)="setStatusFilter('pending')">Pending</button>
+    <button type="button" class="to-tab" [class.to-tab--active]="statusFilter() === 'approved'" (click)="setStatusFilter('approved')">Approved</button>
+    <button type="button" class="to-tab" [class.to-tab--active]="statusFilter() === 'rejected'" (click)="setStatusFilter('rejected')">Rejected</button>
   </div>
-  <div class="rl-toolbar">
-    <select (change)="onLeaveTypeFilterChange($any($event.target).value)">
-      <option value="">All leave types</option>
-      @for (type of leaveTypeStore.items(); track type.id) { <option [value]="type.id">{{ type.name }}</option> }
-    </select>
-    <input type="date" aria-label="From date" (change)="onFromDateChange($any($event.target).value)" />
-    <input type="date" aria-label="To date" (change)="onToDateChange($any($event.target).value)" />
+  <div class="to-toolbar">
+    <app-select [options]="leaveTypeOptions()" [value]="store.allFilter().leaveTypeId ?? ''" (valueChange)="onLeaveTypeFilterChange($event)" />
+    <app-date-picker placeholder="From" [value]="store.allFilter().fromDate ?? ''" (valueChange)="onFromDateChange($event)" />
+    <app-date-picker placeholder="To" [value]="store.allFilter().toDate ?? ''" (valueChange)="onToDateChange($event)" />
   </div>
   @if (store.allLoading()) {
-    <div class="rl-loading" aria-busy="true"><span></span><span></span><span></span></div>
+    <div class="to-loading" aria-busy="true"><span></span><span></span><span></span></div>
   } @else if (store.allError()) {
     <app-error-state [message]="store.allError()!" [retryable]="true" (retry)="store.loadAll()" />
   } @else if (store.all().length === 0) {
-    <div class="rl-empty">
-      <h2>No leave requests found</h2>
-      <p>No requests match the current filters.</p>
+    <div class="to-empty">
+      <app-empty-state title="No leave requests found" description="No requests match the current filters." />
     </div>
   } @else {
-    <div class="rl-table-card">
+    <div class="to-table-card">
       <app-leave-request-all-table [rows]="store.all()" (rowClicked)="onRowClicked($event)" (cancelRequested)="onCancelRequested($event)" />
     </div>
   }

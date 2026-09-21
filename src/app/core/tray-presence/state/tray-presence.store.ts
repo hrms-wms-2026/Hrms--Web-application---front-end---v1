@@ -40,8 +40,20 @@ export const TrayPresenceStore = signalStore(
     let started = false;
     let wasConnected = false;
     let generationStarted = false;
+    let generateCooldownUntil = 0;
     let statusRequestGeneration = 0;
     let activationRequestGeneration = 0;
+
+    const GENERATE_429_COOLDOWN_MS = 120_000;
+
+    const retryAfterMs = (error: unknown): number => {
+      if (!(error instanceof HttpErrorResponse) || error.status !== 429)
+        return 0;
+      const header = error.headers?.get('Retry-After');
+      if (header && /^\d+$/.test(header.trim()))
+        return Number(header) * 1000;
+      return GENERATE_429_COOLDOWN_MS;
+    };
 
     const clearTimers = (): void => {
       if (pollTimer) clearTimeout(pollTimer);
@@ -101,8 +113,9 @@ export const TrayPresenceStore = signalStore(
       return 'Could not generate an activation code. Please try again.';
     };
 
-    const generateCode = async (): Promise<void> => {
+    const generateCode = async (options?: { force?: boolean }): Promise<void> => {
       if (!started || generationStarted) return;
+      if (!options?.force && Date.now() < generateCooldownUntil) return;
       generationStarted = true;
       const requestGeneration = ++activationRequestGeneration;
       patchState(store, {
@@ -125,6 +138,7 @@ export const TrayPresenceStore = signalStore(
       } catch (error) {
         if (!started || requestGeneration !== activationRequestGeneration) return;
         generationStarted = false;
+        generateCooldownUntil = Date.now() + retryAfterMs(error);
         patchState(store, {
           phase: 'offline',
           generationError: generationErrorMessage(error),
@@ -150,8 +164,18 @@ export const TrayPresenceStore = signalStore(
           generationStarted = false;
         }
 
+        const coolingDown = Date.now() < generateCooldownUntil;
+        const nextPhase = connected
+          ? 'connected'
+          : !status.required
+            ? 'connected'
+            : store.code()
+              ? 'waiting'
+              : coolingDown
+                ? 'offline'
+                : 'code-loading';
         patchState(store, {
-          phase: connected ? 'connected' : status.required ? (store.code() ? 'waiting' : 'code-loading') : 'connected',
+          phase: nextPhase,
           required: status.required,
           checkedOnce: true,
           presenceValidUntil: status.presence_valid_until,
@@ -178,8 +202,6 @@ export const TrayPresenceStore = signalStore(
         wasConnected = false;
         if (transitionedToLocked) reload.reloadCurrentUrl();
         schedulePoll(5_000);
-        if (!store.code() && !generationStarted)
-          void generateCode();
       }
     };
 
@@ -193,8 +215,9 @@ export const TrayPresenceStore = signalStore(
       statusRequestGeneration += 1;
       const shouldReload = wasConnected;
       wasConnected = false;
+      const coolingDown = Date.now() < generateCooldownUntil;
       patchState(store, {
-        phase: store.hasUsableCode() ? 'waiting' : 'code-loading',
+        phase: store.hasUsableCode() ? 'waiting' : coolingDown ? 'offline' : 'code-loading',
         required: true,
         checkedOnce: true,
         presenceValidUntil: null,
@@ -220,8 +243,9 @@ export const TrayPresenceStore = signalStore(
     const retry = (): void => {
       if (store.phase() === 'expired' || !store.hasUsableCode()) {
         generationStarted = false;
-        patchState(store, { code: null, codeSecondsRemaining: null });
-        void generateCode();
+        generateCooldownUntil = 0;
+        patchState(store, { code: null, codeSecondsRemaining: null, generationError: null });
+        void generateCode({ force: true });
         return;
       }
       void poll();
@@ -232,6 +256,7 @@ export const TrayPresenceStore = signalStore(
       statusRequestGeneration += 1;
       activationRequestGeneration += 1;
       generationStarted = false;
+      generateCooldownUntil = 0;
       clearTimers();
     };
 

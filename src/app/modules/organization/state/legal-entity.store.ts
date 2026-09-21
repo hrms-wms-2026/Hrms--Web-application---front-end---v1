@@ -1,3 +1,4 @@
+import { HttpErrorResponse } from '@angular/common/http';
 import { computed, inject } from '@angular/core';
 import { patchState, signalStore, withComputed, withMethods, withState } from '@ngrx/signals';
 import { firstValueFrom } from 'rxjs';
@@ -75,10 +76,11 @@ export const LegalEntityStore = signalStore(
           loaded: true
         });
       } catch (err: unknown) {
+        const trayLocked = err instanceof HttpErrorResponse && err.status === 428;
         patchState(store, {
-          error: toSafeErrorMessage(err, 'Failed to load companies list.'),
+          error: trayLocked ? null : toSafeErrorMessage(err, 'Failed to load companies list.'),
           loading: false,
-          loaded: true
+          loaded: trayLocked ? false : true
         });
       }
     },

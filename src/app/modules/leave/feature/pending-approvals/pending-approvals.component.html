@@ -1,47 +1,43 @@
-<section class="pa-page">
-  <header class="pa-header">
+<section class="to-page">
+  <header class="to-header">
     <div>
-      <p class="pa-kicker">TIME OFF</p>
-      <h1>Pending Approvals</h1>
-      <p class="pa-subtitle">Requests waiting on your decision.</p>
+      <p class="to-kicker">TIME OFF</p>
+      <h1 class="to-title">Pending Approvals</h1>
+      <p class="to-subtitle">Requests waiting on your decision.</p>
     </div>
-    <div class="pa-header-actions">
+    <div class="to-header-actions">
       @if (canApprove()) {
         <app-button variant="secondary" data-testid="cover-approvals" (click)="openCover()">Cover my approvals</app-button>
       }
     </div>
-    @if (selectedIds().size > 0) {
-      <div class="pa-bulk">
-        <span>{{ selectedIds().size }} selected</span>
-        <app-button (click)="onBulkApprove()">Bulk approve</app-button>
-        <app-button variant="secondary" data-testid="bulk-reject" (click)="bulkRejectOpen.set(true)">Bulk reject</app-button>
-      </div>
-    }
   </header>
-  <div class="pa-toolbar">
-    <input type="search" placeholder="Search by name" aria-label="Search by employee name" (input)="onSearchInput($event)" />
-    <select aria-label="Leave type" (change)="onLeaveTypeFilterChange($any($event.target).value)">
-      <option value="">All leave types</option>
-      @for (type of leaveTypeStore.items(); track type.id) { <option [value]="type.id">{{ type.name }}</option> }
-    </select>
-    <input type="date" aria-label="From date" (change)="onFromDateChange($any($event.target).value)" />
-    <input type="date" aria-label="To date" (change)="onToDateChange($any($event.target).value)" />
+  @if (selectedIds().size > 0) {
+    <div class="to-bulk">
+      <span>{{ selectedIds().size }} selected</span>
+      <app-button (click)="onBulkApprove()">Bulk approve</app-button>
+      <app-button variant="secondary" data-testid="bulk-reject" (click)="bulkRejectOpen.set(true)">Bulk reject</app-button>
+    </div>
+  }
+  <div class="to-toolbar">
+    <app-input type="search" placeholder="Search by name" [value]="store.pendingFilter().search ?? ''" (valueChange)="onSearchChange($event)" />
+    <app-select label="Leave type" [options]="leaveTypeOptions()" [value]="store.pendingFilter().leaveTypeId ?? ''" (valueChange)="onLeaveTypeFilterChange($event)" />
+    <app-date-picker placeholder="From" [value]="store.pendingFilter().fromDate ?? ''" (valueChange)="onFromDateChange($event)" />
+    <app-date-picker placeholder="To" [value]="store.pendingFilter().toDate ?? ''" (valueChange)="onToDateChange($event)" />
   </div>
   @if (store.pendingLoading()) {
-    <div class="pa-loading" aria-busy="true" aria-label="Loading pending approvals"><span></span><span></span><span></span></div>
+    <div class="to-loading" aria-busy="true" aria-label="Loading pending approvals"><span></span><span></span><span></span></div>
   } @else if (store.pendingError()) {
     <app-error-state [message]="store.pendingError()!" [retryable]="true" (retry)="store.loadPending()" />
   } @else if (store.pending().length === 0) {
-    <div class="pa-empty">
-      <h2>No pending leave requests</h2>
-      <p>You’re all caught up. New requests will show here.</p>
+    <div class="to-empty">
+      <app-empty-state title="No pending leave requests" description="You’re all caught up. New requests will show here." />
     </div>
   } @else {
-    <section class="pa-summary" aria-label="Approval totals">
-      <article class="pa-metric"><p>Waiting</p><strong>{{ store.pending().length }}</strong></article>
-      <article class="pa-metric"><p>Selected</p><strong>{{ selectedIds().size }}</strong></article>
+    <section class="to-metrics" aria-label="Approval totals">
+      <article class="to-metric"><p class="to-metric__label">Waiting</p><p class="to-metric__value">{{ store.pending().length }}</p></article>
+      <article class="to-metric"><p class="to-metric__label">Selected</p><p class="to-metric__value">{{ selectedIds().size }}</p></article>
     </section>
-    <div class="pa-table-card">
+    <div class="to-table-card">
       <app-leave-pending-approvals-table [rows]="store.pending()" [selectedIds]="selectedIds()" (rowClicked)="onRowClicked($event)" (selectionChanged)="onSelectionChanged($event)" />
     </div>
   }
@@ -57,21 +53,16 @@
   (closed)="closeDetail()"
 />
 
-@if (bulkRejectOpen()) {
-  <div class="pa-reject-backdrop" (click)="bulkRejectOpen.set(false)">
-    <section class="pa-reject-modal" (click)="$event.stopPropagation()" role="dialog" aria-modal="true" aria-label="Bulk reject leave requests">
-      <h2>Reject {{ selectedIds().size }} requests?</h2>
-      <label class="pa-reject-field">
-        <span>Reason (required)</span>
-        <textarea rows="3" [value]="bulkRejectReason()" (input)="bulkRejectReason.set($any($event.target).value)" aria-label="Bulk reject reason"></textarea>
-      </label>
-      <div class="pa-reject-actions">
-        <app-button variant="secondary" (click)="bulkRejectOpen.set(false)">Cancel</app-button>
-        <app-button data-testid="bulk-reject-confirm" [disabled]="!bulkRejectReason().trim() || store.deciding()" (click)="onBulkReject()">Reject selected</app-button>
-      </div>
-    </section>
+<app-modal [open]="bulkRejectOpen()" title="Reject {{ selectedIds().size }} requests?" (closed)="bulkRejectOpen.set(false)">
+  <label class="to-filter" style="display:grid;gap:.4rem;align-items:stretch;">
+    <span>Reason (required)</span>
+    <textarea rows="3" [value]="bulkRejectReason()" (input)="bulkRejectReason.set($any($event.target).value)" aria-label="Bulk reject reason"></textarea>
+  </label>
+  <div class="to-modal-actions">
+    <app-button variant="secondary" (click)="bulkRejectOpen.set(false)">Cancel</app-button>
+    <app-button data-testid="bulk-reject-confirm" [disabled]="!bulkRejectReason().trim() || store.deciding()" (click)="onBulkReject()">Reject selected</app-button>
   </div>
-}
+</app-modal>
 
 <app-leave-approval-delegate-modal
   [open]="coverOpen()"

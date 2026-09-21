@@ -4,7 +4,9 @@ import { CommonModule } from '@angular/common';
 import { PermissionService } from '../../../../core/auth/state/permission.service';
 import { NotificationService } from '../../../../core/services/notification.service';
 import { ButtonComponent } from '../../../../shared/ui/button/button.component';
+import { EmptyStateComponent } from '../../../../shared/ui/empty-state/empty-state.component';
 import { ErrorStateComponent } from '../../../../shared/ui/error-state/error-state.component';
+import { ModalComponent } from '../../../../shared/ui/modal/modal.component';
 import { LeaveTypeStore } from '../../state/leave-type.store';
 import { LeaveTypeResponse, UpdateLeaveTypeRequest } from '../../models/leave-type.model';
 import { LeaveTypeListTableComponent } from '../../ui/leave-type-list-table/leave-type-list-table.component';
@@ -13,9 +15,9 @@ import { LeaveTypeFormModalComponent, LeaveTypeFormValue } from '../../ui/leave-
 @Component({
   selector: 'app-leave-types-management',
   standalone: true,
-  imports: [CommonModule, ButtonComponent, ErrorStateComponent, LeaveTypeListTableComponent, LeaveTypeFormModalComponent],
+  imports: [CommonModule, ButtonComponent, EmptyStateComponent, ErrorStateComponent, ModalComponent, LeaveTypeListTableComponent, LeaveTypeFormModalComponent],
   templateUrl: './leave-types-management.component.html',
-  styleUrl: './leave-types-management.component.css',
+  styleUrls: ['../../ui/time-off-chrome.css', './leave-types-management.component.css'],
   changeDetection: ChangeDetectionStrategy.OnPush
 })
 export class LeaveTypesManagementComponent {

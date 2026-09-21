@@ -5,7 +5,11 @@ import { firstValueFrom } from 'rxjs';
 import { PermissionService } from '../../../../core/auth/state/permission.service';
 import { NotificationService } from '../../../../core/services/notification.service';
 import { ButtonComponent } from '../../../../shared/ui/button/button.component';
+import { DatePickerComponent } from '../../../../shared/ui/date-picker/date-picker.component';
+import { EmptyStateComponent } from '../../../../shared/ui/empty-state/empty-state.component';
 import { ErrorStateComponent } from '../../../../shared/ui/error-state/error-state.component';
+import { InputComponent } from '../../../../shared/ui/input/input.component';
+import { ModalComponent } from '../../../../shared/ui/modal/modal.component';
 import { LegalEntityApiService } from '../../../organization/data-access/legal-entity-api.service';
 import { LegalEntityListItem } from '../../../organization/models/legal-entity.model';
 import { GeneralSettingsStore } from '../../../organization/state/general-settings.store';
@@ -17,7 +21,7 @@ import { LeavePolicyListTableComponent } from '../../ui/leave-policy-list-table/
 import { LeavePolicyDetailPanelComponent } from '../../ui/leave-policy-detail-panel/leave-policy-detail-panel.component';
 import { LeavePolicyFormWizardComponent } from '../../ui/leave-policy-form-wizard/leave-policy-form-wizard.component';
 
-@Component({ selector: 'app-policy-management', standalone: true, imports: [CommonModule, ButtonComponent, ErrorStateComponent, LeavePolicyListTableComponent, LeavePolicyDetailPanelComponent, LeavePolicyFormWizardComponent], templateUrl: './policy-management.component.html', styleUrl: './policy-management.component.css', changeDetection: ChangeDetectionStrategy.OnPush })
+@Component({ selector: 'app-policy-management', standalone: true, imports: [CommonModule, ButtonComponent, DatePickerComponent, EmptyStateComponent, ErrorStateComponent, InputComponent, ModalComponent, LeavePolicyListTableComponent, LeavePolicyDetailPanelComponent, LeavePolicyFormWizardComponent], templateUrl: './policy-management.component.html', styleUrls: ['../../ui/time-off-chrome.css', './policy-management.component.css'], changeDetection: ChangeDetectionStrategy.OnPush })
 export class PolicyManagementComponent implements OnInit {
   private readonly permissionService = inject(PermissionService); private readonly notificationService = inject(NotificationService); private readonly legalEntityApi = inject(LegalEntityApiService);
   private readonly generalSettingsStore = inject(GeneralSettingsStore);

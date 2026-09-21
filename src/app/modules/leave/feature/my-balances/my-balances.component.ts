@@ -5,6 +5,7 @@ import { ActivatedRoute, Router } from '@angular/router';
 import { ButtonComponent } from '../../../../shared/ui/button/button.component';
 import { EmptyStateComponent } from '../../../../shared/ui/empty-state/empty-state.component';
 import { ErrorStateComponent } from '../../../../shared/ui/error-state/error-state.component';
+import { InputComponent } from '../../../../shared/ui/input/input.component';
 import { SelectComponent, SelectOption } from '../../../../shared/ui/select/select.component';
 import { PermissionService } from '../../../../core/auth/state/permission.service';
 import { NotificationService } from '../../../../core/services/notification.service';
@@ -27,9 +28,9 @@ export type BalanceViewMode = 'my' | 'team';
 @Component({
   selector: 'app-my-balances',
   standalone: true,
-  imports: [CommonModule, ButtonComponent, EmptyStateComponent, ErrorStateComponent, SelectComponent, LeaveBalanceListTableComponent, LeaveCancelConfirmDialogComponent, LeaveRespondInfoDialogComponent, LeaveRequestHistoryTableComponent, NewLeaveRequestWizardComponent],
+  imports: [CommonModule, ButtonComponent, EmptyStateComponent, ErrorStateComponent, InputComponent, SelectComponent, LeaveBalanceListTableComponent, LeaveCancelConfirmDialogComponent, LeaveRespondInfoDialogComponent, LeaveRequestHistoryTableComponent, NewLeaveRequestWizardComponent],
   templateUrl: './my-balances.component.html',
-  styleUrl: './my-balances.component.css',
+  styleUrls: ['../../ui/time-off-chrome.css', './my-balances.component.css'],
   changeDetection: ChangeDetectionStrategy.OnPush
 })
 export class MyBalancesComponent {
@@ -92,7 +93,10 @@ export class MyBalancesComponent {
   }
 
   onSearchInput(event: Event): void {
-    const search = (event.target as HTMLInputElement).value;
+    this.onSearchChange((event.target as HTMLInputElement).value);
+  }
+
+  onSearchChange(search: string): void {
     this.store.setTeamFilters({ ...this.store.teamFilters(), search: search || undefined });
   }
 

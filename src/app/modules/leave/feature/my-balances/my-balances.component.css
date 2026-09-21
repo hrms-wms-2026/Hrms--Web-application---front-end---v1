@@ -1,135 +1,10 @@
-/* Quiet Operations Desk: one Balances workspace, personal cards plus a team ledger. */
-.mbc-page {
-  max-width: 1320px;
-  margin: 0 auto;
-  padding: 1.75rem 2rem 2.5rem;
-}
-.mbc-header {
-  display: flex;
-  align-items: flex-start;
-  justify-content: space-between;
-  gap: 1.5rem;
-  padding-bottom: 1.4rem;
-  border-bottom: 1px solid var(--color-border);
-}
-.mbc-kicker {
-  margin: 0 0 0.4rem;
-  color: var(--color-accent);
-  font-size: 0.66rem;
-  font-weight: 750;
-  letter-spacing: 0.1em;
-}
-.mbc-header h1 {
-  margin: 0;
-  color: var(--color-text-primary);
-  font-size: 1.56rem;
-  line-height: 1.25;
-}
-.mbc-subtitle {
-  margin: 0.4rem 0 0;
-  color: var(--color-text-secondary);
-  font-size: 0.88rem;
-}
-.mbc-header-actions {
-  display: flex;
-  align-items: center;
-  flex-wrap: wrap;
-  justify-content: flex-end;
-  gap: 0.7rem;
-}
-.mbc-view-toggle {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.15rem;
-  padding: 0.2rem;
-  border: 1px solid var(--color-border);
-  border-radius: 999px;
-  background: var(--color-surface-secondary);
-}
-.mbc-view-toggle__option {
-  min-width: 3.5rem;
-  border: 0;
-  border-radius: 999px;
-  padding: 0.4rem 0.75rem;
-  background: transparent;
-  color: var(--color-text-secondary);
-  font: inherit;
-  font-size: 0.68rem;
-  font-weight: 750;
-  letter-spacing: 0.06em;
-  cursor: pointer;
-}
-.mbc-view-toggle__option--active {
-  background: var(--color-accent);
-  color: var(--color-accent-contrast);
-  font-weight: 800;
-}
-.mbc-view-toggle__option:focus-visible {
-  outline: 2px solid var(--color-focus-ring);
-  outline-offset: 2px;
-}
-.mbc-search {
-  min-width: 240px;
-  box-sizing: border-box;
-  border: 1px solid var(--color-border);
-  border-radius: 8px;
-  padding: 0.55rem 0.75rem;
-  background: var(--color-surface);
-  color: var(--color-text-primary);
-  font: inherit;
-  font-size: 0.8rem;
-}
-.mbc-search:focus {
-  outline: 2px solid var(--color-focus-ring);
-  border-color: var(--color-accent);
-}
-.mbc-summary {
-  display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 0.85rem;
-  margin: 1.25rem 0 1rem;
-}
-.mbc-metric,
+/* Balance type cards and request history — screen-only. Shared chrome is in time-off-chrome.css. */
 .mbc-card,
-.mbc-history,
-.mbc-table-card,
-.mbc-banner {
+.mbc-history {
   border: 1px solid var(--color-border);
   border-radius: var(--radius-content);
   background: var(--color-surface);
   box-shadow: 0 1px 2px var(--color-card-shadow);
-}
-.mbc-metric {
-  padding: 1rem 1.1rem 1.05rem;
-}
-.mbc-metric__label {
-  margin: 0;
-  color: var(--color-text-secondary);
-  font-size: 0.68rem;
-  font-weight: 750;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
-}
-.mbc-metric__value {
-  margin: 0.35rem 0 0;
-  color: var(--color-text-primary);
-  font-size: 1.55rem;
-  font-weight: 700;
-  letter-spacing: -0.03em;
-}
-.mbc-metric__hint {
-  margin: 0.2rem 0 0;
-  color: var(--color-text-secondary);
-  font-size: 0.75rem;
-}
-.mbc-banner {
-  margin: 0 0 1rem;
-  padding: 0.85rem 1rem;
-  border-color: var(--color-warning);
-  background: var(--color-warning-subtle);
-  color: var(--color-warning-text);
-  font-size: 0.82rem;
-  line-height: 1.45;
 }
 .mbc-card-grid {
   display: grid;
@@ -246,38 +121,6 @@
   color: var(--color-text-secondary);
   font-size: 0.8rem;
 }
-.mbc-table-card {
-  margin-top: 1.15rem;
-  overflow: hidden;
-}
-.mbc-loading {
-  display: flex;
-  gap: 0.42rem;
-  justify-content: center;
-  padding: 4rem;
-}
-.mbc-loading span {
-  width: 0.52rem;
-  height: 0.52rem;
-  border-radius: 50%;
-  background: var(--color-focus-ring);
-  animation: mbc-pulse 900ms ease-in-out infinite alternate;
-}
-.mbc-loading span:nth-child(2) { animation-delay: 160ms; }
-.mbc-loading span:nth-child(3) { animation-delay: 320ms; }
-@keyframes mbc-pulse {
-  to { opacity: 0.32; transform: translateY(-3px); }
-}
-@media (prefers-reduced-motion: reduce) {
-  .mbc-loading span { animation: none; }
-}
 @media (max-width: 860px) {
-  .mbc-summary { grid-template-columns: 1fr; }
   .mbc-card__stats { grid-template-columns: repeat(2, minmax(0, 1fr)); }
-}
-@media (max-width: 640px) {
-  .mbc-page { padding: 1.25rem 1rem 2rem; }
-  .mbc-header,
-  .mbc-header-actions { flex-direction: column; align-items: stretch; }
-  .mbc-search { min-width: 0; width: 100%; }
 }

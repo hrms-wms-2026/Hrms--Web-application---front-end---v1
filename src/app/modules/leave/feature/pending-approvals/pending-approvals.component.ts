@@ -1,10 +1,15 @@
 /** Quiet Operations Desk: Screen 6/8's queue - one place for a manager or HR to clear pending leave. */
-import { ChangeDetectionStrategy, Component, inject, signal } from '@angular/core';
+import { ChangeDetectionStrategy, Component, computed, inject, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { NotificationService } from '../../../../core/services/notification.service';
 import { PermissionService } from '../../../../core/auth/state/permission.service';
 import { ButtonComponent } from '../../../../shared/ui/button/button.component';
+import { DatePickerComponent } from '../../../../shared/ui/date-picker/date-picker.component';
+import { EmptyStateComponent } from '../../../../shared/ui/empty-state/empty-state.component';
 import { ErrorStateComponent } from '../../../../shared/ui/error-state/error-state.component';
+import { InputComponent } from '../../../../shared/ui/input/input.component';
+import { ModalComponent } from '../../../../shared/ui/modal/modal.component';
+import { SelectComponent, SelectOption } from '../../../../shared/ui/select/select.component';
 import { LeaveApprovalStore } from '../../state/leave-approval.store';
 import { LeaveTypeStore } from '../../state/leave-type.store';
 import { LeavePendingApprovalsTableComponent } from '../../ui/leave-pending-approvals-table/leave-pending-approvals-table.component';
@@ -15,9 +20,9 @@ import { LeaveApprovalDelegateModalComponent } from '../../ui/leave-approval-del
 @Component({
   selector: 'app-pending-approvals',
   standalone: true,
-  imports: [CommonModule, ButtonComponent, ErrorStateComponent, LeavePendingApprovalsTableComponent, LeaveApprovalDetailSheetComponent, LeaveApprovalDelegateModalComponent],
+  imports: [CommonModule, ButtonComponent, DatePickerComponent, EmptyStateComponent, ErrorStateComponent, InputComponent, ModalComponent, SelectComponent, LeavePendingApprovalsTableComponent, LeaveApprovalDetailSheetComponent, LeaveApprovalDelegateModalComponent],
   templateUrl: './pending-approvals.component.html',
-  styleUrl: './pending-approvals.component.css',
+  styleUrls: ['../../ui/time-off-chrome.css', './pending-approvals.component.css'],
   changeDetection: ChangeDetectionStrategy.OnPush
 })
 export class PendingApprovalsComponent {
@@ -26,6 +31,10 @@ export class PendingApprovalsComponent {
   readonly store = inject(LeaveApprovalStore);
   readonly leaveTypeStore = inject(LeaveTypeStore);
   readonly canApprove = () => this.permissionService.hasPermission('leave:approve');
+  readonly leaveTypeOptions = computed<SelectOption[]>(() => [
+    { value: '', label: 'All leave types' },
+    ...this.leaveTypeStore.items().map((type) => ({ value: type.id, label: type.name }))
+  ]);
 
   readonly detailOpen = signal(false);
   readonly selectedIds = signal<Set<string>>(new Set());
@@ -63,7 +72,10 @@ export class PendingApprovalsComponent {
   }
 
   onSearchInput(event: Event): void {
-    const search = (event.target as HTMLInputElement).value;
+    this.onSearchChange((event.target as HTMLInputElement).value);
+  }
+
+  onSearchChange(search: string): void {
     this.store.setPendingFilter({ ...this.store.pendingFilter(), search: search || undefined });
   }
 

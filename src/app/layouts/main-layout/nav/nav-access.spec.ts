@@ -89,6 +89,7 @@ describe('canAccessNavItem', () => {
       const balances = timeOff.children!.find((item) => item.id === 'time-off-balances')!;
       expect(balances.label).toBe('Balances');
       expect(timeOff.children!.some((item) => item.id === 'time-off-my-balances' || item.id === 'time-off-team-balances')).toBe(false);
+      expect(timeOff.children!.some((item) => item.id === 'time-off-calendar')).toBe(false);
     });
 
     it('grants Organization on the "org_structure" module key, not "org"', () => {
