@@ -76,7 +76,9 @@ export class CalendarParticipantPickerComponent {
   }
 
   private query(search: string): void {
-    this.peopleApi.listEmployees({ search, page: 1, pageSize: 20 }).subscribe((page) => {
+    // Someone on leave, suspended, offboarding, terminated, or resigned can't actually attend a
+    // future meeting - don't offer them as a pickable participant.
+    this.peopleApi.listEmployees({ search, page: 1, pageSize: 20, activeOnly: true }).subscribe((page) => {
       for (const e of page.items) this.namesById.set(e.id, e.fullName);
       this.results.set(page.items);
     });

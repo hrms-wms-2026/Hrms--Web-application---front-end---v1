@@ -173,7 +173,7 @@ export class PeopleApiService {
 
   private toHttpParams(params: object): HttpParams {
     let httpParams = new HttpParams();
-    for (const [key, value] of Object.entries(params as Record<string, string | number | undefined>)) {
+    for (const [key, value] of Object.entries(params as Record<string, string | number | boolean | undefined>)) {
       if (value !== undefined && value !== null && value !== '') {
         httpParams = httpParams.set(key, value);
       }
