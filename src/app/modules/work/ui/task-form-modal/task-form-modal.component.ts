@@ -80,6 +80,8 @@ export const ALL_SLASH_COMMANDS: SlashCommandItem[] = [
               <div class="tfm-breadcrumbs">
                 <span class="tfm-breadcrumb-proj">{{ projectTitle() || 'Project' }}</span>
                 <span class="tfm-breadcrumb-sep">/</span>
+                <span class="tfm-breadcrumb-proj">{{ selectedModuleTitle() }}</span>
+                <span class="tfm-breadcrumb-sep">/</span>
                 <span class="tfm-breadcrumb-id">{{ t.shortId || t.id }}</span>
                 <div class="tfm-type-pill">
                   <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="3" width="18" height="18" rx="3" /><path d="m9 12 2 2 4-4" /></svg>
