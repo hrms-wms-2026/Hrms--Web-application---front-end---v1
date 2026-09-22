@@ -18,6 +18,7 @@ import {
   AttendanceMonthlySummaryResponse,
   AttendanceTodayResponse,
   ClockInRequest,
+  EmployeeDailyReport,
   PagedResultDto
 } from '../models/time-tracking.model';
 import {
@@ -71,6 +72,12 @@ export class TimeTrackingApiService {
   getDayDetail(employeeId: string, date: string): Observable<AttendanceDayDetail> {
     const params = new HttpParams().set('employeeId', employeeId).set('date', date);
     return this.http.get<AttendanceDayDetail>(`${this.basePath}/history-detail`, { params });
+  }
+
+  /** MonitoringDailyReportController GET /api/v1/monitoring/daily-report. Requires monitoring:read. */
+  getEmployeeDailyReport(employeeId: string, date: string): Observable<EmployeeDailyReport> {
+    const params = new HttpParams().set('employeeId', employeeId).set('date', date);
+    return this.http.get<EmployeeDailyReport>(`${environment.apiUrl}/monitoring/daily-report`, { params });
   }
 
   clockIn(): Observable<AttendanceTodayResponse> {

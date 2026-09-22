@@ -72,6 +72,34 @@ export function formatDateTime(value: string | null, timezone?: string | null): 
   }
 }
 
+/** Clock time with AM/PM, used on the attendance detail drawer. */
+export function formatClockTime(value: string | null, timezone?: string | null): string {
+  if (!value) {
+    return '—';
+  }
+
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) {
+    return '—';
+  }
+
+  const displayTimezone = validDisplayTimezone(timezone);
+  if (!displayTimezone) {
+    return '—';
+  }
+
+  try {
+    return new Intl.DateTimeFormat(undefined, {
+      hour: 'numeric',
+      minute: '2-digit',
+      hour12: true,
+      timeZone: displayTimezone
+    }).format(date);
+  } catch {
+    return '—';
+  }
+}
+
 export function formatMinutes(value: number | null): string {
   if (value === null || value < 0) {
     return '—';

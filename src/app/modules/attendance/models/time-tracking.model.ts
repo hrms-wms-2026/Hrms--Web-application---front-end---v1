@@ -128,11 +128,35 @@ export interface CheckInLocation {
   locationAddress: string | null;
 }
 
+/** One captured frame from GET /api/v1/monitoring/daily-report. */
+export interface DayScreenshot {
+  id: string;
+  capturedAt: string;
+  evidenceType: string;
+  triggerType: string;
+  url: string | null;
+}
+
+export interface EmployeeDailyReport {
+  employeeId: string;
+  date: string;
+  screenshots: DayScreenshot[];
+}
+
+export interface ActivityCheck {
+  id: string;
+  promptedAt: string;
+  outcome: string;
+  url: string | null;
+}
+
 export interface AttendanceDayDetail {
   summary: AttendanceHistoryRow;
   timelineEvents: TimelineEvent[];
   dailyActivity: ActivityDailySummary | null;
   checkIns: CheckInLocation[];
+  screenshots?: DayScreenshot[];
+  activityChecks?: ActivityCheck[];
 }
 
 export interface ClockInRequest {

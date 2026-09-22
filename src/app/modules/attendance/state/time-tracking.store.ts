@@ -19,6 +19,7 @@ import {
   AttendanceHistoryRow,
   AttendanceMonthlySummaryResponse,
   AttendanceTodayResponse,
+  DayScreenshot,
   TimelineEvent,
   TimeTrackingRange
 } from '../models/time-tracking.model';
@@ -198,6 +199,19 @@ const initialState: TimeTrackingState = {
   workAreaApprovalFilters: { pageNumber: 1, pageSize: DEFAULT_PAGE_SIZE }
 };
 
+async function loadDayScreenshots(
+  api: TimeTrackingApiService,
+  employeeId: string,
+  workDate: string
+): Promise<DayScreenshot[]> {
+  try {
+    const report = await firstValueFrom(api.getEmployeeDailyReport(employeeId, workDate));
+    return report.screenshots ?? [];
+  } catch {
+    return [];
+  }
+}
+
 export const TimeTrackingStore = signalStore(
   { providedIn: 'root' },
   withState<TimeTrackingState>(initialState),
@@ -345,9 +359,22 @@ export const TimeTrackingStore = signalStore(
         patchState(store, { dayDetailLoading: true, dayDetailError: null, dayDetail: null });
         try {
           const detail = await firstValueFrom(api.getDayDetail(employeeId, workDate));
-          patchState(store, { dayDetail: detail, dayDetailLoading: false, dayDetailError: null });
+          // history-detail now returns signed Cloudflare links for the viewer's own day.
+          // Older servers omit the field; only then fall back to the HR daily-report call.
+          const screenshots = detail.screenshots ?? await loadDayScreenshots(api, employeeId, workDate);
+          patchState(store, { dayDetail: { ...detail, screenshots }, dayDetailLoading: false, dayDetailError: null });
         } catch (error) {
           patchState(store, { dayDetailLoading: false, dayDetailError: errors.toSafeMessage(error, TIME_TRACKING_DAY_DETAIL_ERROR) });
+        }
+      },
+
+      async refreshDayDetail(employeeId: string, workDate: string): Promise<void> {
+        try {
+          const detail = await firstValueFrom(api.getDayDetail(employeeId, workDate));
+          const screenshots = detail.screenshots ?? await loadDayScreenshots(api, employeeId, workDate);
+          patchState(store, { dayDetail: { ...detail, screenshots }, dayDetailError: null });
+        } catch {
+          // A later screenshot arrived after the panel opened. Keep the detail already on screen.
         }
       },
 
