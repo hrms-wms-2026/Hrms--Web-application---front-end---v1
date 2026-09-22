@@ -78,7 +78,9 @@ export class CalendarParticipantPickerComponent {
   }
 
   private query(search: string): void {
-    this.peopleApi.listEmployees({ search, page: 1, pageSize: 20 }).subscribe((page) => {
+    // Someone on leave, suspended, offboarding, terminated, or resigned can't actually attend a
+    // future meeting - don't offer them as a pickable participant.
+    this.peopleApi.listEmployees({ search, page: 1, pageSize: 20, activeOnly: true }).subscribe((page) => {
       // The organizer is already on the event by definition - offering them as a pickable
       // "participant" of their own event is meaningless and would let them add themselves twice.
       const currentEmployeeId = this.authStore.employeeId();

@@ -31,7 +31,7 @@ describe('CalendarParticipantPickerComponent', () => {
 
   it('queries employees when opened', () => {
     setup();
-    expect(peopleApi.listEmployees).toHaveBeenCalledWith({ search: '', page: 1, pageSize: 20 });
+    expect(peopleApi.listEmployees).toHaveBeenCalledWith({ search: '', page: 1, pageSize: 20, activeOnly: true });
   });
 
   it('renders a row per result with the already-selected one marked', () => {
