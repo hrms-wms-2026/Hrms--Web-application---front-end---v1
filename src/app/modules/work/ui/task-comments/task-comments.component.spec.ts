@@ -84,4 +84,27 @@ describe('TaskCommentsComponent', () => {
     expect(commentApi.postReply).toHaveBeenCalledWith('c1', { content: 'a reply', attachmentFileIds: [] });
     expect(component.replyingToId()).toBeNull();
   });
+
+  it('toggleReaction adds a reaction the caller has not made yet', async () => {
+    const comment = authorComment({ reactions: [] });
+
+    await component.toggleReaction(comment, '👍');
+
+    expect(commentApi.addReaction).toHaveBeenCalledWith('c1', '👍');
+  });
+
+  it('toggleReaction removes a reaction the caller already made', async () => {
+    const comment = authorComment({ reactions: [{ emoji: '👍', employeeIds: ['me'] }] });
+
+    await component.toggleReaction(comment, '👍');
+
+    expect(commentApi.removeReaction).toHaveBeenCalledWith('c1', '👍');
+  });
+
+  it('hasReacted reflects whether the current employee is in the reaction', () => {
+    const comment = authorComment({ reactions: [{ emoji: '👍', employeeIds: ['me'] }] });
+
+    expect(component.hasReacted(comment, '👍')).toBe(true);
+    expect(component.hasReacted(comment, '🎉')).toBe(false);
+  });
 });
