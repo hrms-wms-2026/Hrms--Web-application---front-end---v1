@@ -1,4 +1,4 @@
-**Last updated:** 2026-08-27
+**Last updated:** 2026-09-21
 
 ## Files
 
@@ -19,5 +19,6 @@
 - `2026-08-10-project-detail-inline-milestone-layout-design.md` moved to `specs/finished/2026-08-10/` on 2026-08-10 — its plan (4 tasks) finished the same day. See `specs/SUMMARY.md`.
 - `2026-08-10-milestone-card-uniform-height-and-default-select-design.md` moved to `specs/finished/2026-08-10/` on 2026-08-10 — its plan (3 tasks) finished the same day. See `specs/SUMMARY.md`.
 - `2026-08-20-work-management-project-page-redesign-design.md` moved to `specs/finished/2026-08-21/` on 2026-08-21 — see `specs/SUMMARY.md`.
+- `2026-09-21-task-subtasks-design.md` moved to `specs/finished/2026-09-21/` on 2026-09-21 — both backend and frontend plans finished. See `specs/SUMMARY.md`.
 
 This folder exists ready for the next not-yet-implemented design, per the finished/next convention in `../../rules/FILE_CREATION_RULES.md`.

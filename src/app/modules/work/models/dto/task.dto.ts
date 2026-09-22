@@ -19,6 +19,12 @@ export interface TaskAttachmentDto {
   contentType: string;
 }
 
+export interface TaskAssigneeIdentityDto {
+  employeeId: string;
+  name: string;
+  avatarUrl: string | null;
+}
+
 export interface PendingUploadDto {
   fileId: string;
   originalFileName: string;
@@ -48,7 +54,10 @@ export interface WorkTaskDto {
   activeEventId?: string | null;
   activeEventName?: string | null;
   attachments?: TaskAttachmentDto[];
-
+  assignees?: TaskAssigneeIdentityDto[];
+  parentTaskId?: string | null;
+  subtaskTotalCount?: number;
+  subtaskCompletedCount?: number;
 }
 
 export interface CreateTaskRequestDto {
@@ -61,6 +70,13 @@ export interface CreateTaskRequestDto {
   storyPoints?: number;
   sprintId: string | null;
   attachmentFileIds?: string[];
+}
+
+export interface CreateSubtaskRequestDto {
+  title: string;
+  priority?: WorkTaskDto['priority'];
+  dueDate?: string;
+  assigneeEmployeeId?: string;
 }
 
 export interface EditTaskRequestDto {

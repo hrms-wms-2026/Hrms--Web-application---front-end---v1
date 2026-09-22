@@ -6,7 +6,7 @@ import { WorkDropdownOption } from '../work-dropdown/work-dropdown.component';
 import { TaskStatusColumn, WorkTask } from '../../models/task.model';
 import { TaskCategoryColumn } from '../../models/task-category.model';
 import { Sprint } from '../../models/sprint.model';
-import { CreateTaskRequestDto, InsufficientAllocationErrorDto } from '../../models/dto/task.dto';
+import { CreateSubtaskRequestDto, CreateTaskRequestDto, InsufficientAllocationErrorDto } from '../../models/dto/task.dto';
 import { toTaskCategoryColumn } from '../../utils/task-category.mapper';
 import { toWorkTask } from '../../utils/task.mapper';
 import { toSprint } from '../../utils/sprint.mapper';
@@ -20,6 +20,8 @@ import { TaskHistoryFeedComponent } from '../task-history-feed/task-history-feed
 import { TaskClockWidgetComponent } from '../task-clock-widget/task-clock-widget.component';
 import { TaskAttachmentListComponent, AttachmentPill } from '../task-attachment-list/task-attachment-list.component';
 import { ColorSwatchPopoverComponent } from '../color-swatch-popover/color-swatch-popover.component';
+import { EmployeePickerComponent } from '../employee-picker/employee-picker.component';
+import { EmployeeAvatarComponent } from '../employee-avatar/employee-avatar.component';
 import { TaskHistoryEntryDto } from '../../models/dto/task-history.dto';
 
 export type TaskFormMode = 'create' | 'edit';
@@ -53,7 +55,7 @@ export const ALL_SLASH_COMMANDS: SlashCommandItem[] = [
 @Component({
   selector: 'app-task-form-modal',
   standalone: true,
-  imports: [NgTemplateOutlet, ButtonComponent, TaskHistoryFeedComponent, TaskClockWidgetComponent, TaskAttachmentListComponent, ColorSwatchPopoverComponent],
+  imports: [NgTemplateOutlet, ButtonComponent, TaskHistoryFeedComponent, TaskClockWidgetComponent, TaskAttachmentListComponent, ColorSwatchPopoverComponent, EmployeePickerComponent, EmployeeAvatarComponent],
   template: `
     @if (open()) {
       <div class="tfm-scrim" (click)="onBackdrop()">
@@ -501,8 +503,11 @@ export const ALL_SLASH_COMMANDS: SlashCommandItem[] = [
                     <button
                       type="button"
                       class="tfm-chip"
+                      [class.tfm-chip--error]="errors()['priority']"
+                      [class.tfm-chip--active]="priority()"
                       [attr.aria-expanded]="activePopover() === 'priority'"
                       (click)="togglePopover('priority', $event)"
+                      [title]="errors()['priority'] || priorityDetails().label"
                     >
                       <span class="tfm-dot" [class]="priorityDetails().dotClass"></span>
                       <span class="tfm-chip-label">{{ priorityDetails().label }}</span>
@@ -515,7 +520,7 @@ export const ALL_SLASH_COMMANDS: SlashCommandItem[] = [
                               type="button"
                               class="tfm-popover__item"
                               [class.tfm-popover__item--selected]="priority() === opt.value"
-                              (click)="setPriority(opt.value); activePopover.set(null)"
+                              (click)="setPriority(opt.value); clearError('priority'); activePopover.set(null)"
                             >
                               <span class="tfm-dot" [class]="opt.dotClass"></span>
                               <span class="tfm-popover__name">{{ opt.label }}</span>
@@ -1193,21 +1198,170 @@ export const ALL_SLASH_COMMANDS: SlashCommandItem[] = [
                   <ng-container [ngTemplateOutlet]="descriptionEditorTpl" />
                 </div>
 
-                <!-- Attachments Section -->
-                <div class="tfm-doc-section">
-                  <div class="tfm-doc-section-head">
-                    <span class="tfm-doc-section-icon">
-                      <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m21.44 11.05-9.19 9.19a6 6 0 0 1-8.49-8.49l8.57-8.57A4 4 0 1 1 18 8.84l-8.59 8.57a2 2 0 0 1-2.83-2.83l8.49-8.48" /></svg>
-                    </span>
-                    <span class="tfm-doc-section-title">Attachments</span>
-                    <span class="tfm-doc-count">{{ attachedFiles().length }}</span>
+                <!-- Subtasks Section (when subtasks exist) -->
+                @if (currentEffectiveMode() === 'edit' && task(); as t) {
+                  @if (subtasks().length > 0) {
+                    <div class="tfm-doc-section">
+                      <div class="tfm-doc-section-head">
+                        <span class="tfm-doc-section-icon">
+                          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 11l3 3L22 4" /><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11" /></svg>
+                        </span>
+                        <span class="tfm-doc-section-title">Subtasks</span>
+                        <span class="tfm-doc-count">{{ subtaskCompletedCount() }}/{{ subtasks().length }}</span>
+                      </div>
+
+                      <div class="tfm-subtask-list">
+                        @for (subtask of subtasks(); track subtask.id) {
+                          <div class="tfm-subtask-row" [attr.data-testid]="'subtask-row-' + subtask.id">
+                            <span class="tfm-subtask-row-icon">
+                              <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                                <circle cx="3.5" cy="4.5" r="1.75"/>
+                                <circle cx="11.5" cy="11.5" r="1.75"/>
+                                <path d="M3.5 6.25v2.25a2.5 2.5 0 0 0 2.5 2.5h3.75"/>
+                              </svg>
+                            </span>
+                            <span class="tfm-subtask-title">{{ subtask.title }}</span>
+                            @if (subtask.assigneeEmployeeIds.length > 0) {
+                              <app-employee-avatar [employeeId]="subtask.assigneeEmployeeIds[0]" [showName]="true" />
+                            }
+                            <span class="tfm-subtask-priority" [attr.data-priority]="subtask.priority">{{ subtask.priority }}</span>
+                          </div>
+                        }
+                      </div>
+
+                      @if (addingSubtask()) {
+                        <div class="tfm-subtask-add-row">
+                          <input
+                            type="text"
+                            class="tfm-subtask-add-title"
+                            placeholder="Subtask name"
+                            data-testid="subtask-add-title"
+                            [value]="newSubtaskTitle()"
+                            (input)="newSubtaskTitle.set($any($event.target).value)"
+                            (keydown.enter)="newSubtaskTitle().trim() && saveNewSubtask(t.id)"
+                            (keydown.escape)="cancelAddSubtask()"
+                          />
+                          <button type="button" class="tfm-chip tfm-chip--clean" data-testid="subtask-add-assignee-button" (click)="newSubtaskPickerOpen.set(true)">
+                            @if (newSubtaskAssigneeId(); as assigneeId) {
+                              <app-employee-avatar [employeeId]="assigneeId" [showName]="true" />
+                            } @else {
+                              <span>Assignee</span>
+                            }
+                          </button>
+                          <app-employee-picker
+                            [open]="newSubtaskPickerOpen()"
+                            (selected)="onNewSubtaskAssigneeSelected($event)"
+                            (closed)="newSubtaskPickerOpen.set(false)"
+                          />
+                          <input
+                            type="date"
+                            class="tfm-subtask-add-date"
+                            data-testid="subtask-add-due-date"
+                            [value]="newSubtaskDueDate()"
+                            (input)="newSubtaskDueDate.set($any($event.target).value)"
+                          />
+                          <button type="button" class="tfm__cancel" data-testid="subtask-add-cancel" (click)="cancelAddSubtask()">Cancel</button>
+                          <button type="button" class="tfm__save" data-testid="subtask-add-save" [disabled]="!newSubtaskTitle().trim()" (click)="saveNewSubtask(t.id)">Save</button>
+                        </div>
+                      } @else {
+                        <button type="button" class="tfm-action-row" data-testid="add-subtask-button" (click)="startAddSubtask()">
+                          <span class="tfm-action-icon">
+                            <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                              <circle cx="3.5" cy="4.5" r="1.75"/>
+                              <circle cx="11.5" cy="11.5" r="1.75"/>
+                              <path d="M3.5 6.25v2.25a2.5 2.5 0 0 0 2.5 2.5h3.75"/>
+                              <path d="M11.5 2.5v3.5M9.75 4.25h3.5"/>
+                            </svg>
+                          </span>
+                          <span>Add subtask</span>
+                        </button>
+                      }
+                    </div>
+                  }
+                }
+
+                <!-- Attachments Section (when files exist) -->
+                @if (attachedFiles().length > 0) {
+                  <div class="tfm-doc-section">
+                    <div class="tfm-doc-section-head">
+                      <span class="tfm-doc-section-icon">
+                        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m21.44 11.05-9.19 9.19a6 6 0 0 1-8.49-8.49l8.57-8.57A4 4 0 1 1 18 8.84l-8.59 8.57a2 2 0 0 1-2.83-2.83l8.49-8.48" /></svg>
+                      </span>
+                      <span class="tfm-doc-section-title">Attachments</span>
+                      <span class="tfm-doc-count">{{ attachedFiles().length }}</span>
+                    </div>
+                    <app-task-attachment-list
+                      [files]="attachedFiles()"
+                      (fileSelected)="onAttachmentFilesSelected($event)"
+                      (removed)="removeAttachedFile($event)"
+                    />
                   </div>
-                  <app-task-attachment-list
-                    [files]="attachedFiles()"
-                    (fileSelected)="onAttachmentFilesSelected($event)"
-                    (removed)="removeAttachedFile($event)"
-                  />
-                </div>
+                }
+
+                <!-- Quick Actions List (Add Subtask & Attach File tightly grouped when empty) -->
+                @if ((currentEffectiveMode() === 'edit' && task() && subtasks().length === 0) || attachedFiles().length === 0) {
+                  <div class="tfm-actions-list">
+                    @if (currentEffectiveMode() === 'edit' && task(); as t) {
+                      @if (subtasks().length === 0) {
+                        @if (addingSubtask()) {
+                          <div class="tfm-subtask-add-row">
+                            <input
+                              type="text"
+                              class="tfm-subtask-add-title"
+                              placeholder="Subtask name"
+                              data-testid="subtask-add-title"
+                              [value]="newSubtaskTitle()"
+                              (input)="newSubtaskTitle.set($any($event.target).value)"
+                              (keydown.enter)="newSubtaskTitle().trim() && saveNewSubtask(t.id)"
+                              (keydown.escape)="cancelAddSubtask()"
+                            />
+                            <button type="button" class="tfm-chip tfm-chip--clean" data-testid="subtask-add-assignee-button" (click)="newSubtaskPickerOpen.set(true)">
+                              @if (newSubtaskAssigneeId(); as assigneeId) {
+                                <app-employee-avatar [employeeId]="assigneeId" [showName]="true" />
+                              } @else {
+                                <span>Assignee</span>
+                              }
+                            </button>
+                            <app-employee-picker
+                              [open]="newSubtaskPickerOpen()"
+                              (selected)="onNewSubtaskAssigneeSelected($event)"
+                              (closed)="newSubtaskPickerOpen.set(false)"
+                            />
+                            <input
+                              type="date"
+                              class="tfm-subtask-add-date"
+                              data-testid="subtask-add-due-date"
+                              [value]="newSubtaskDueDate()"
+                              (input)="newSubtaskDueDate.set($any($event.target).value)"
+                            />
+                            <button type="button" class="tfm__cancel" data-testid="subtask-add-cancel" (click)="cancelAddSubtask()">Cancel</button>
+                            <button type="button" class="tfm__save" data-testid="subtask-add-save" [disabled]="!newSubtaskTitle().trim()" (click)="saveNewSubtask(t.id)">Save</button>
+                          </div>
+                        } @else {
+                          <button type="button" class="tfm-action-row" data-testid="add-subtask-button" (click)="startAddSubtask()">
+                            <span class="tfm-action-icon">
+                              <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                                <circle cx="3.5" cy="4.5" r="1.75"/>
+                                <circle cx="11.5" cy="11.5" r="1.75"/>
+                                <path d="M3.5 6.25v2.25a2.5 2.5 0 0 0 2.5 2.5h3.75"/>
+                                <path d="M11.5 2.5v3.5M9.75 4.25h3.5"/>
+                              </svg>
+                            </span>
+                            <span>Add subtask</span>
+                          </button>
+                        }
+                      }
+                    }
+
+                    @if (attachedFiles().length === 0) {
+                      <app-task-attachment-list
+                        [files]="attachedFiles()"
+                        (fileSelected)="onAttachmentFilesSelected($event)"
+                        (removed)="removeAttachedFile($event)"
+                      />
+                    }
+                  </div>
+                }
 
                 <!-- Activity Log Section -->
                 <div class="tfm-doc-section tfm-doc-section--collapsible">
@@ -1379,14 +1533,69 @@ export const ALL_SLASH_COMMANDS: SlashCommandItem[] = [
 
     .tfm-doc-divider { height: 1px; background: var(--color-border); margin: 6px 0 10px; }
     .tfm-doc-section { display: flex; flex-direction: column; gap: 8px; }
-    .tfm-doc-section-title { font-size: 12px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; color: var(--color-text-secondary); }
+    .tfm-doc-section-title { font-size: 12px; font-weight: 600; color: var(--color-text-secondary); }
     .tfm-doc-section-head { display: flex; align-items: center; gap: 8px; }
     .tfm-doc-section-icon { display: inline-flex; align-items: center; justify-content: center; }
-    .tfm-doc-section-icon svg { width: 15px; height: 15px; stroke: var(--color-accent); fill: none; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
-    .tfm-doc-count { display: inline-flex; min-width: 20px; height: 20px; align-items: center; justify-content: center; padding: 0 6px; border-radius: 999px; background: var(--color-surface-secondary); color: var(--color-text-secondary); font-size: 11px; font-weight: 650; }
+    .tfm-doc-section-icon svg { width: 15px; height: 15px; stroke: var(--color-text-secondary); fill: none; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
+    .tfm-doc-count { display: inline-flex; min-width: 18px; height: 18px; align-items: center; justify-content: center; padding: 0 5px; border-radius: 999px; background: var(--color-surface-secondary); color: var(--color-text-secondary); font-size: 11px; font-weight: 600; }
     .tfm-doc-section--collapsible { border: 1px solid var(--color-border); border-radius: 8px; padding: 12px 14px; background: var(--color-surface); }
     .tfm-doc-section-toggle { display: flex; align-items: center; justify-content: space-between; width: 100%; border: 0; background: transparent; padding: 0; cursor: pointer; color: var(--color-text-primary); }
     .tfm-doc-activity-body { padding-top: 12px; margin-top: 8px; border-top: 1px solid var(--color-border); }
+    .tfm-actions-list { display: flex; flex-direction: column; gap: 2px; }
+    .tfm-action-row {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      width: 100%;
+      margin: 0;
+      padding: 6px 10px;
+      border-radius: 6px;
+      border: none;
+      background: transparent;
+      color: var(--color-text-secondary);
+      font-size: 13px;
+      font-weight: 500;
+      font-family: inherit;
+      cursor: pointer;
+      box-sizing: border-box;
+      text-align: left;
+      transition: background-color 140ms ease, color 140ms ease;
+    }
+    .tfm-action-row:hover {
+      background: var(--color-surface-secondary);
+      color: var(--color-text-primary);
+    }
+    .tfm-action-icon {
+      width: 15px;
+      height: 15px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      flex-shrink: 0;
+      color: inherit;
+    }
+    .tfm-action-icon svg {
+      width: 15px;
+      height: 15px;
+      stroke: currentColor;
+      fill: none;
+      stroke-width: 1.8;
+      stroke-linecap: round;
+      stroke-linejoin: round;
+    }
+    .tfm-subtask-list { display: flex; flex-direction: column; gap: 4px; }
+    .tfm-subtask-row { display: flex; align-items: center; gap: 10px; padding: 6px 10px; border-radius: 6px; border: 1px solid var(--color-border); background: var(--color-surface); transition: background-color 140ms ease; }
+    .tfm-subtask-row:hover { background: var(--color-surface-secondary); }
+    .tfm-subtask-row-icon { display: inline-flex; align-items: center; justify-content: center; width: 15px; height: 15px; color: var(--color-text-secondary); flex-shrink: 0; }
+    .tfm-subtask-row-icon svg { width: 15px; height: 15px; stroke: currentColor; fill: none; }
+    .tfm-subtask-title { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 13px; color: var(--color-text-primary); }
+    .tfm-subtask-priority { font-size: 11px; font-weight: 600; text-transform: capitalize; color: var(--color-text-secondary); }
+    .tfm-subtask-priority[data-priority="critical"], .tfm-subtask-priority[data-priority="high"] { color: var(--color-danger); }
+    .tfm-subtask-add-row { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin-top: 4px; }
+    .tfm-subtask-add-title { flex: 1; min-width: 160px; border: 1px solid var(--color-border); border-radius: 6px; padding: 6px 8px; font-size: 13px; background: var(--color-surface); color: var(--color-text-primary); }
+    .tfm-subtask-add-date { border: 1px solid var(--color-border); border-radius: 6px; padding: 6px 8px; font-size: 12px; background: var(--color-surface); color: var(--color-text-primary); }
+    .tfm__save { display: inline-flex; align-items: center; justify-content: center; gap: 6px; height: 36px; padding: 0 16px; border: 0; border-radius: 6px; background: var(--color-accent); color: var(--color-primary-contrast, #fff); font: inherit; font-size: 14px; font-weight: 500; cursor: pointer; transition: opacity 160ms ease; }
+    .tfm__save:disabled { opacity: 0.5; cursor: not-allowed; }
     .tfm__error { margin: 0; font-size: 13px; color: var(--color-danger-text, var(--color-danger)); }
     .tfm__foot { display: flex; align-items: center; justify-content: flex-end; gap: 10px; padding: 16px 30px; border-top: 1px solid var(--color-border); background: var(--color-surface); }
     .tfm--create .tfm__foot { border-bottom-left-radius: 8px; border-bottom-right-radius: 8px; position: relative; z-index: 10; }
@@ -1550,6 +1759,7 @@ export const ALL_SLASH_COMMANDS: SlashCommandItem[] = [
     .tfm-dot--med { background: #eab308; }
     .tfm-dot--high { background: #f97316; }
     .tfm-dot--crit { background: #ef4444; }
+    .tfm-dot--unset { background: transparent; border: 1.5px solid var(--color-border, #94a3b8); }
 
     /* Date Popover */
     .tfm-date-presets { display: flex; gap: 6px; margin-bottom: 10px; }
@@ -1631,6 +1841,21 @@ export class TaskFormModalComponent {
   currentEffectiveMode = computed(() => this.internalMode() ?? this.mode());
 
   task = signal<WorkTask | null>(null);
+  subtasks = computed(() => {
+    const map = this.boardStore.subtasksByParentId?.();
+    const id = this.task()?.id;
+    return map && id ? (map[id] ?? []) : [];
+  });
+  subtaskCompletedCount = computed(() =>
+    this.subtasks().filter((s) => this.statuses().find((st) => st.id === s.statusId)?.marksTaskComplete).length
+  );
+
+  addingSubtask = signal(false);
+  newSubtaskTitle = signal('');
+  newSubtaskDueDate = signal('');
+  newSubtaskAssigneeId = signal<string | null>(null);
+  newSubtaskPickerOpen = signal(false);
+
   statuses = signal<TaskStatusColumn[]>([]);
   categories = signal<TaskCategoryColumn[]>([]);
   history = signal<TaskHistoryEntryDto[]>([]);
@@ -1639,7 +1864,7 @@ export class TaskFormModalComponent {
 
   title = signal('');
   description = signal('');
-  priority = signal<WorkTask['priority']>('medium');
+  priority = signal<WorkTask['priority'] | null>(null);
   dueDate = signal('');
   estimatedHours = signal<number | null>(null);
   storyPoints = signal<number | null>(null);
@@ -1797,7 +2022,7 @@ export class TaskFormModalComponent {
       case 'medium': return { label: 'Medium', dotClass: 'tfm-dot--med' };
       case 'high': return { label: 'High', dotClass: 'tfm-dot--high' };
       case 'critical': return { label: 'Critical', dotClass: 'tfm-dot--crit' };
-      default: return { label: 'Medium', dotClass: 'tfm-dot--med' };
+      default: return { label: 'Priority', dotClass: 'tfm-dot--unset' };
     }
   });
 
@@ -1969,7 +2194,7 @@ export class TaskFormModalComponent {
     this.description.set('');
     const editorEl = this.descEditor()?.nativeElement;
     if (editorEl) editorEl.innerHTML = '';
-    this.priority.set('medium');
+    this.priority.set(null);
     this.dueDate.set('');
     this.estimatedHours.set(null);
     this.storyPoints.set(null);
@@ -2011,6 +2236,9 @@ export class TaskFormModalComponent {
       ]);
       const t = toWorkTask(taskDto);
       this.task.set(t);
+      if (this.boardStore.loadSubtasks) {
+        void this.boardStore.loadSubtasks(t.id);
+      }
       this.statuses.set(statusDtos);
       this.categories.set(categoryDtos.map(toTaskCategoryColumn));
       this.sprints.set(sprintDtos.map(toSprint));
@@ -2037,6 +2265,9 @@ export class TaskFormModalComponent {
       ]);
       const t = toWorkTask(taskDto);
       this.task.set(t);
+      if (this.boardStore.loadSubtasks) {
+        void this.boardStore.loadSubtasks(t.id);
+      }
       this.statuses.set(statusDtos);
       this.categories.set(categoryDtos.map(toTaskCategoryColumn));
       this.sprints.set(sprintDtos.map(toSprint));
@@ -3695,6 +3926,37 @@ export class TaskFormModalComponent {
     }
   }
 
+  startAddSubtask(): void {
+    this.addingSubtask.set(true);
+  }
+
+  cancelAddSubtask(): void {
+    this.addingSubtask.set(false);
+    this.newSubtaskTitle.set('');
+    this.newSubtaskDueDate.set('');
+    this.newSubtaskAssigneeId.set(null);
+    this.newSubtaskPickerOpen.set(false);
+  }
+
+  onNewSubtaskAssigneeSelected(employeeId: string): void {
+    this.newSubtaskAssigneeId.set(employeeId);
+    this.newSubtaskPickerOpen.set(false);
+  }
+
+  async saveNewSubtask(parentTaskId: string): Promise<void> {
+    const title = this.newSubtaskTitle().trim();
+    if (!title) return;
+    const request: CreateSubtaskRequestDto = {
+      title,
+      dueDate: this.newSubtaskDueDate() || undefined,
+      assigneeEmployeeId: this.newSubtaskAssigneeId() ?? undefined
+    };
+    const created = await this.boardStore.createSubtask(parentTaskId, request);
+    if (created) {
+      this.cancelAddSubtask();
+    }
+  }
+
   onCancel(): void {
     this.cleanupUnsavedAttachments();
     this.closed.emit();
@@ -3718,7 +3980,7 @@ export class TaskFormModalComponent {
     const fields = {
       title: this.title().trim(),
       description: this.description() || undefined,
-      priority: this.priority(),
+      priority: this.priority() ?? 'medium',
       dueDate: this.dueDate() || undefined,
       estimatedHours: this.estimatedHours() ?? undefined,
       storyPoints: this.storyPoints() ?? undefined,
@@ -3766,6 +4028,7 @@ export class TaskFormModalComponent {
     if (!this.title().trim()) errs['title'] = 'Title is required.';
     if (!this.selectedObjectiveId()) errs['objectiveId'] = 'Module is required.';
     if (!this.categoryId()) errs['categoryId'] = 'Category is required.';
+    if (!this.priority()) errs['priority'] = 'Priority is required.';
     this.errors.set(errs);
     if (Object.keys(errs).length > 0) return;
 
@@ -3773,7 +4036,7 @@ export class TaskFormModalComponent {
       title: this.title().trim(),
       description: this.description() || undefined,
       categoryId: this.categoryId(),
-      priority: this.priority(),
+      priority: this.priority()!,
       dueDate: this.dueDate() || undefined,
       estimatedHours: this.estimatedHours() ?? undefined,
       storyPoints: this.storyPoints() ?? undefined,

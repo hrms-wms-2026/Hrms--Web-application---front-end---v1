@@ -10,7 +10,8 @@ const baseTask: WorkTask = {
   id: 't1', objectiveId: 'o1', shortId: 'T-1', title: 'Task', description: null,
   categoryId: 'c1', statusId: 'st1', priority: 'medium', storyPoints: null, dueDate: null,
   estimatedHours: null, completedHours: 0, progressPercent: 30, sprintId: null, assigneeEmployeeIds: ['e1'], openClockSessionEmployeeId: null, openClockSessionClockInAt: null, totalLoggedMinutes: 0,
-  attachments: []
+  attachments: [], assignees: [],
+  parentTaskId: null, subtaskTotalCount: 0, subtaskCompletedCount: 0
 };
 
 describe('TaskClockWidgetComponent', () => {

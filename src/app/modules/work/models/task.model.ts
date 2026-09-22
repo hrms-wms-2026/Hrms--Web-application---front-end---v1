@@ -18,6 +18,12 @@ export interface TaskAttachment {
   sizeBytes: number;
 }
 
+export interface TaskAssigneeIdentity {
+  employeeId: string;
+  name: string;
+  avatarUrl: string | null;
+}
+
 export interface WorkTask {
   id: string;
   objectiveId: string;
@@ -40,5 +46,8 @@ export interface WorkTask {
   activeEventId?: string | null;
   activeEventName?: string | null;
   attachments: TaskAttachment[];
-
+  assignees: TaskAssigneeIdentity[];
+  parentTaskId: string | null;
+  subtaskTotalCount: number;
+  subtaskCompletedCount: number;
 }

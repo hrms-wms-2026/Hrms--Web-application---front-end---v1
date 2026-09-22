@@ -360,10 +360,6 @@ describe('TaskBoardComponent', () => {
       moveTask: vi.fn(),
       statuses: () => []
     };
-    // Still exercised: employeeNames (existing task-card assignees, a separate concern from the
-    // create-task dropdown) still resolves via the directory, since WorkTaskResponse only carries
-    // raw EmployeeId GUIDs.
-    const directoryEnsureLoaded = vi.fn().mockResolvedValue(undefined);
     const loadProjectMembers = vi.fn().mockResolvedValue(undefined);
 
     TestBed.configureTestingModule({
@@ -385,7 +381,6 @@ describe('TaskBoardComponent', () => {
         },
         { provide: SprintApiService, useValue: { getByProject: vi.fn().mockReturnValue(of([])) } },
         { provide: TaskApiService, useValue: { createTaskCreationRequest: vi.fn(), assignTask: vi.fn(), getCategories: vi.fn().mockReturnValue(of([])) } },
-        { provide: EmployeeDirectoryStore, useValue: { get: vi.fn(), ensureLoaded: directoryEnsureLoaded } },
         { provide: ActivatedRoute, useValue: routeStub() },
         { provide: Router, useValue: { navigate: vi.fn() } }
       ]
@@ -397,7 +392,6 @@ describe('TaskBoardComponent', () => {
     await fixture.whenStable();
 
     expect(loadProjectMembers).toHaveBeenCalledWith('project-1');
-    expect(directoryEnsureLoaded).toHaveBeenCalledWith(['emp-1', 'emp-2']);
     const members = (fixture.componentInstance as unknown as { assignableMembers: () => { employeeId: string; name: string }[] }).assignableMembers();
     expect(members).toEqual([
       { employeeId: 'emp-1', name: 'Nevi Peiris' },

@@ -19,6 +19,10 @@ export class TrayActivationGateComponent implements OnInit {
   private readonly auth = inject(AuthStore);
   private readonly installerApi = inject(TrayInstallerApiService);
 
+  readonly authEmail = computed(() => {
+    const fn = (this.auth as unknown as { email?: () => string | null }).email;
+    return typeof fn === 'function' ? fn() : null;
+  });
   readonly installer = signal<TrayInstallerInfo | null>(null);
   readonly installerState = signal<'loading' | 'ready' | 'unavailable'>('loading');
   readonly sizeLabel = computed(() => {

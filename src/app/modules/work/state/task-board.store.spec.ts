@@ -13,6 +13,8 @@ describe('TaskBoardStore', () => {
         dueDate: null, estimatedHours: 5, completedHours: 0, progressPercent: 0, sprintId: null
       }]),
       moveTaskStatus: () => of(undefined),
+      getSubtasks: () => of([]),
+      createSubtask: () => of({} as any),
       ...apiOverrides
     };
 
@@ -48,5 +50,39 @@ describe('TaskBoardStore', () => {
 
     expect(store.tasks()[0].statusId).toBe('s-1');
     expect(store.error()).toBe('nope');
+  });
+
+  it('loadSubtasks populates subtasksByParentId for that parent', async () => {
+    const store = setup({
+      getSubtasks: () => of([{
+        id: 'sub-1', objectiveId: 'obj-1', shortId: 'PRJ-2', title: 'Sub', description: null,
+        categoryId: 'task', statusId: 's-1', priority: 'medium', storyPoints: null,
+        dueDate: null, estimatedHours: null, completedHours: 0, progressPercent: 0, sprintId: null,
+        parentTaskId: 't-1', subtaskTotalCount: 0, subtaskCompletedCount: 0
+      }] as any)
+    });
+
+    await store.loadSubtasks('t-1');
+
+    expect(store.subtasksByParentId()['t-1'].length).toBe(1);
+    expect(store.subtasksByParentId()['t-1'][0].title).toBe('Sub');
+  });
+
+  it('createSubtask increments the parent task subtaskTotalCount using the real response', async () => {
+    const store = setup({
+      createSubtask: () => of({
+        id: 'sub-1', objectiveId: 'obj-1', shortId: 'PRJ-2', title: 'Sub', description: null,
+        categoryId: 'task', statusId: 's-1', priority: 'medium', storyPoints: null,
+        dueDate: null, estimatedHours: null, completedHours: 0, progressPercent: 0, sprintId: null,
+        parentTaskId: 't-1', subtaskTotalCount: 0, subtaskCompletedCount: 0
+      } as any)
+    });
+    await store.loadBoard('proj-1');
+
+    const created = await store.createSubtask('t-1', { title: 'Sub' } as any);
+
+    expect(created?.title).toBe('Sub');
+    expect(store.subtasksByParentId()['t-1'].length).toBe(1);
+    expect(store.tasks().find((t) => t.id === 't-1')?.subtaskTotalCount).toBe(1);
   });
 });

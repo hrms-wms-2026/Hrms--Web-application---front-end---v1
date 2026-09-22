@@ -13,7 +13,8 @@ const task: WorkTask = {
   categoryId: 'c1', statusId: 's1', priority: 'medium', storyPoints: null, dueDate: null,
   estimatedHours: null, completedHours: 0, progressPercent: 30, sprintId: null,
   assigneeEmployeeIds: ['e1'], openClockSessionEmployeeId: null, openClockSessionClockInAt: null, totalLoggedMinutes: 0,
-  attachments: []
+  attachments: [], assignees: [],
+  parentTaskId: null, subtaskTotalCount: 0, subtaskCompletedCount: 0
 };
 
 const status: TaskStatusColumn = {
@@ -90,7 +91,7 @@ describe('TaskBoardColumnComponent', () => {
     });
 
     fixture.componentInstance.quickTitle.set('My quick task');
-    fixture.componentInstance.quickPriority.set('high');
+    fixture.componentInstance.setPriority('high');
     fixture.detectChanges();
 
     const saveBtn = fixture.debugElement.query(By.css('.quick-task-card__save-btn'));

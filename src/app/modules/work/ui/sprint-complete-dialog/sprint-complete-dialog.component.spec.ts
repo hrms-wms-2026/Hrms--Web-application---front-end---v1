@@ -38,6 +38,10 @@ describe('SprintCompleteDialogComponent', () => {
       activeEventId: null,
       activeEventName: null,
       attachments: [],
+      assignees: [],
+      parentTaskId: null,
+      subtaskTotalCount: 0,
+      subtaskCompletedCount: 0,
       ...overrides
     };
   }

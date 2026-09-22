@@ -110,6 +110,39 @@
   overflow: hidden;
 }
 
+.main-content:has(app-tray-activation-gate),
+.main-content--gated {
+  position: relative;
+  overflow: hidden !important;
+  padding: 0 !important;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.main-content:has(app-tray-activation-gate) app-locked-workspace-preview,
+.main-content--gated app-locked-workspace-preview {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  pointer-events: none;
+  user-select: none;
+  filter: blur(8px);
+  opacity: 0.25;
+  z-index: 1;
+}
+
+.main-content:has(app-tray-activation-gate) app-tray-activation-gate,
+.main-content--gated app-tray-activation-gate {
+  position: relative;
+  z-index: 10;
+  width: 100%;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
 .main-content > * {
   display: block;
 }
