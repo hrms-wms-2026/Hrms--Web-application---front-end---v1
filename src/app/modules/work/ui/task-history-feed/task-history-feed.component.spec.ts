@@ -74,4 +74,26 @@ describe('TaskHistoryFeedComponent', () => {
     expect(fixture.nativeElement.querySelector('[data-testid="add-note-p1"]')).toBeNull();
     expect(fixture.nativeElement.textContent).toContain('already explained');
   });
+
+  it('summarizes an edited-comment entry', () => {
+    const commentEditedEntry: TaskHistoryEntryDto = {
+      type: 'comment', occurredAt: '2026-08-25T10:00:00Z', employeeId: 'e1', employeeName: 'Priya',
+      edit: null, statusChange: null, clockSession: null, percentageChange: null,
+      comment: { commentId: 'c1', action: 'edited' }
+    };
+    setup([commentEditedEntry]);
+
+    expect(fixture.componentInstance.summaryFor(commentEditedEntry)).toBe('edited a comment');
+  });
+
+  it('summarizes a deleted-comment entry', () => {
+    const commentDeletedEntry: TaskHistoryEntryDto = {
+      type: 'comment', occurredAt: '2026-08-25T10:00:00Z', employeeId: 'e1', employeeName: 'Priya',
+      edit: null, statusChange: null, clockSession: null, percentageChange: null,
+      comment: { commentId: 'c1', action: 'deleted' }
+    };
+    setup([commentDeletedEntry]);
+
+    expect(fixture.componentInstance.summaryFor(commentDeletedEntry)).toBe('deleted a comment');
+  });
 });
