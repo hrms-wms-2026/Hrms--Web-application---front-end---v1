@@ -8,7 +8,7 @@ const sampleProfile: MyProfile = {
   personalInformation: {
     firstName: 'Jane', lastName: 'Doe', email: 'jane@example.com', phone: null,
     dateOfBirth: null, gender: null, nationalityId: null, countryName: null,
-    displayTimezone: null, legalEntityTimezone: null, avatarUrl: null, addresses: [], version: '1'
+    displayTimezone: null, legalEntityTimezone: null, avatarFileId: null, addresses: [], version: '1'
   },
   jobInformation: {
     employeeNumber: 'EMP-001', legalEntityName: 'Acme', departmentName: null, positionName: null,
@@ -23,10 +23,10 @@ const sampleProfile: MyProfile = {
 
 describe('ProfileStore', () => {
   let store: InstanceType<typeof ProfileStore>;
-  let apiMock: { getMyProfile: ReturnType<typeof vi.fn> };
+  let apiMock: { getMyProfile: ReturnType<typeof vi.fn>; uploadAvatar: ReturnType<typeof vi.fn> };
 
   beforeEach(() => {
-    apiMock = { getMyProfile: vi.fn() };
+    apiMock = { getMyProfile: vi.fn(), uploadAvatar: vi.fn() };
     TestBed.configureTestingModule({
       providers: [ProfileStore, { provide: ProfileApiService, useValue: apiMock }]
     });
@@ -49,5 +49,39 @@ describe('ProfileStore', () => {
     expect(store.loading()).toBe(false);
     expect(store.error()).toBe('Failed to load profile.');
     expect(store.profile()).toBeNull();
+  });
+
+  it('uploads the avatar then refetches the profile so the resolved avatarFileId is used', async () => {
+    apiMock.getMyProfile.mockReturnValueOnce(of(sampleProfile));
+    await store.loadProfile();
+
+    const updatedProfile = {
+      ...sampleProfile,
+      personalInformation: { ...sampleProfile.personalInformation, avatarFileId: 'new-file-id' }
+    };
+    apiMock.uploadAvatar.mockReturnValue(of({ avatarFileId: 'new-file-id' }));
+    apiMock.getMyProfile.mockReturnValueOnce(of(updatedProfile));
+
+    const file = new File(['x'], 'avatar.png', { type: 'image/png' });
+    const result = await store.uploadAvatar(file);
+
+    expect(result).toBe(true);
+    expect(apiMock.getMyProfile).toHaveBeenCalledTimes(2);
+    expect(store.profile()?.personalInformation.avatarFileId).toBe('new-file-id');
+    expect(store.saving()).toBe(false);
+  });
+
+  it('sets saveError and does not refetch when the avatar upload fails', async () => {
+    apiMock.getMyProfile.mockReturnValueOnce(of(sampleProfile));
+    await store.loadProfile();
+
+    apiMock.uploadAvatar.mockReturnValue(throwError(() => new Error('Upload failed')));
+
+    const file = new File(['x'], 'avatar.png', { type: 'image/png' });
+    const result = await store.uploadAvatar(file);
+
+    expect(result).toBe(false);
+    expect(store.saveError()).toBe('Upload failed');
+    expect(apiMock.getMyProfile).toHaveBeenCalledTimes(1);
   });
 });

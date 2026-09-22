@@ -57,16 +57,9 @@ export const ProfileStore = signalStore(
     async uploadAvatar(file: File): Promise<boolean> {
       patchState(store, { saving: true, saveError: null });
       try {
-        const result = await firstValueFrom(api.uploadAvatar(file));
-        const current = store.profile();
-        if (current) {
-          patchState(store, {
-            profile: { ...current, personalInformation: { ...current.personalInformation, avatarUrl: result.avatarFileId } },
-            saving: false
-          });
-        } else {
-          patchState(store, { saving: false });
-        }
+        await firstValueFrom(api.uploadAvatar(file));
+        await this.loadProfile();
+        patchState(store, { saving: false });
         return true;
       } catch (err) {
         patchState(store, { saving: false, saveError: toSafeErrorMessage(err, 'Failed to upload avatar.') });
