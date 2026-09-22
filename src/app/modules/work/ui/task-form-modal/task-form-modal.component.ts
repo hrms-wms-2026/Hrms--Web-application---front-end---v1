@@ -20,7 +20,6 @@ import { TaskHistoryFeedComponent } from '../task-history-feed/task-history-feed
 import { TaskClockWidgetComponent } from '../task-clock-widget/task-clock-widget.component';
 import { TaskAttachmentListComponent, AttachmentPill } from '../task-attachment-list/task-attachment-list.component';
 import { ColorSwatchPopoverComponent } from '../color-swatch-popover/color-swatch-popover.component';
-import { EmployeePickerComponent } from '../employee-picker/employee-picker.component';
 import { AvatarComponent } from '../../../../shared/ui/avatar/avatar.component';
 import { TaskHistoryEntryDto } from '../../models/dto/task-history.dto';
 
@@ -55,7 +54,7 @@ export const ALL_SLASH_COMMANDS: SlashCommandItem[] = [
 @Component({
   selector: 'app-task-form-modal',
   standalone: true,
-  imports: [NgTemplateOutlet, ButtonComponent, TaskHistoryFeedComponent, TaskClockWidgetComponent, TaskAttachmentListComponent, ColorSwatchPopoverComponent, EmployeePickerComponent, AvatarComponent],
+  imports: [NgTemplateOutlet, ButtonComponent, TaskHistoryFeedComponent, TaskClockWidgetComponent, TaskAttachmentListComponent, ColorSwatchPopoverComponent, AvatarComponent],
   template: `
     @if (open()) {
       <div class="tfm-scrim" (click)="onBackdrop()">
@@ -1326,7 +1325,7 @@ export const ALL_SLASH_COMMANDS: SlashCommandItem[] = [
                                     class="tfm-subtask-cell-btn tfm-subtask-assignee-btn"
                                     [attr.data-testid]="'subtask-assignee-' + subtask.id"
                                     (click)="toggleSubtaskPopover(subtask.id, 'assignee', $event)"
-                                    [title]="subtask.assigneeEmployeeIds.length > 0 ? getSubtaskAssigneeName(subtask.assigneeEmployeeIds[0]) : 'Assign employee'"
+                                    [title]="subtask.assigneeEmployeeIds.length > 0 ? getSubtaskAssigneeName(subtask.assigneeEmployeeIds[0]) : 'Add assignee'"
                                   >
                                     @if (subtask.assigneeEmployeeIds.length > 0) {
                                       <app-avatar
@@ -1336,40 +1335,51 @@ export const ALL_SLASH_COMMANDS: SlashCommandItem[] = [
                                       />
                                     } @else {
                                       <span class="tfm-subtask-unassigned-icon" title="Unassigned">
-                                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" class="tfm-subtask-inline-icon" aria-hidden="true"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+                                        <svg viewBox="0 0 24 24"><path d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z" /></svg>
                                       </span>
                                     }
                                   </button>
                                   @if (activeSubtaskPopover()?.id === subtask.id && activeSubtaskPopover()?.type === 'assignee') {
-                                    <div class="tfm-subtask-popover tfm-subtask-popover--assignee" (click)="$event.stopPropagation()">
-                                      <div class="tfm-subtask-popover-list">
+                                    <div class="tfm-popover" role="dialog" aria-label="Change assignee" (click)="$event.stopPropagation()">
+                                      <div class="tfm-popover__search-box">
+                                        <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="8" /><path d="m21 21-4.3-4.3" /></svg>
+                                        <input
+                                          type="text"
+                                          placeholder="Search people..."
+                                          [value]="assigneeSearchQuery()"
+                                          (input)="assigneeSearchQuery.set($any($event.target).value)"
+                                        />
+                                      </div>
+                                      <div class="tfm-popover__list">
                                         <button
                                           type="button"
-                                          class="tfm-subtask-popover-item"
-                                          [class.tfm-subtask-popover-item--active]="subtask.assigneeEmployeeIds.length === 0"
+                                          class="tfm-popover__item"
+                                          [class.tfm-popover__item--selected]="subtask.assigneeEmployeeIds.length === 0"
                                           (click)="changeSubtaskAssignee(subtask, '')"
                                         >
-                                          <span class="tfm-subtask-unassigned-avatar">
-                                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+                                          <span class="tfm-popover__avatar tfm-popover__avatar--unassigned" aria-hidden="true">
+                                            <svg class="tfm-chip-svg" viewBox="0 0 24 24" aria-hidden="true"><line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" /></svg>
                                           </span>
-                                          <span class="tfm-subtask-popover-label">Unassigned</span>
+                                          <span class="tfm-popover__name">Unassigned</span>
                                           @if (subtask.assigneeEmployeeIds.length === 0) {
-                                            <svg class="tfm-subtask-check-icon" viewBox="0 0 24 24"><path d="m5 12 4 4L19 7" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                                            <svg class="tfm-popover__check" viewBox="0 0 24 24" aria-hidden="true"><path d="m5 12 4 4L19 7" /></svg>
                                           }
                                         </button>
-                                        @for (m of assignableMembers(); track m.employeeId) {
+                                        @for (member of filteredAssignees(); track member.employeeId) {
                                           <button
                                             type="button"
-                                            class="tfm-subtask-popover-item"
-                                            [class.tfm-subtask-popover-item--active]="subtask.assigneeEmployeeIds.includes(m.employeeId)"
-                                            (click)="changeSubtaskAssignee(subtask, m.employeeId)"
+                                            class="tfm-popover__item"
+                                            [class.tfm-popover__item--selected]="subtask.assigneeEmployeeIds.includes(member.employeeId)"
+                                            (click)="changeSubtaskAssignee(subtask, member.employeeId)"
                                           >
-                                            <app-avatar [avatarUrl]="m.avatarUrl" [userName]="m.name" size="sm" />
-                                            <span class="tfm-subtask-popover-label">{{ m.name }}</span>
-                                            @if (subtask.assigneeEmployeeIds.includes(m.employeeId)) {
-                                              <svg class="tfm-subtask-check-icon" viewBox="0 0 24 24"><path d="m5 12 4 4L19 7" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                                            <app-avatar class="tfm-popover__avatar" [avatarUrl]="member.avatarUrl" [userName]="member.name" size="sm" />
+                                            <span class="tfm-popover__name">{{ member.name }}</span>
+                                            @if (subtask.assigneeEmployeeIds.includes(member.employeeId)) {
+                                              <svg class="tfm-popover__check" viewBox="0 0 24 24" aria-hidden="true"><path d="m5 12 4 4L19 7" /></svg>
                                             }
                                           </button>
+                                        } @empty {
+                                          <p style="margin: 6px 0 2px; color: var(--color-text-secondary); font-size: 12px; text-align: center;">No matching people</p>
                                         }
                                       </div>
                                     </div>
@@ -1401,21 +1411,19 @@ export const ALL_SLASH_COMMANDS: SlashCommandItem[] = [
                                     }
                                   </button>
                                   @if (activeSubtaskPopover()?.id === subtask.id && activeSubtaskPopover()?.type === 'priority') {
-                                    <div class="tfm-subtask-popover tfm-subtask-popover--priority" (click)="$event.stopPropagation()">
-                                      <div class="tfm-subtask-popover-list">
-                                        @for (p of subtaskPriorityOptions; track p.value) {
+                                    <div class="tfm-popover" role="dialog" aria-label="Change priority" (click)="$event.stopPropagation()">
+                                      <div class="tfm-popover__list">
+                                        @for (opt of priorityOptionsList; track opt.value) {
                                           <button
                                             type="button"
-                                            class="tfm-subtask-popover-item"
-                                            [class.tfm-subtask-popover-item--active]="subtask.priority === p.value"
-                                            (click)="changeSubtaskPriority(subtask, p.value)"
+                                            class="tfm-popover__item"
+                                            [class.tfm-popover__item--selected]="subtask.priority === opt.value"
+                                            (click)="changeSubtaskPriority(subtask, opt.value)"
                                           >
-                                            <svg class="tfm-subtask-flag-icon" [attr.data-priority]="p.value" viewBox="0 0 16 16" fill="currentColor" aria-hidden="true">
-                                              <path d="M3 2v12h1.5V9.5h6l.5 1.5h4V4h-4.5L10 2.5H3z"/>
-                                            </svg>
-                                            <span class="tfm-subtask-popover-label">{{ p.label }}</span>
-                                            @if (subtask.priority === p.value) {
-                                              <svg class="tfm-subtask-check-icon" viewBox="0 0 24 24"><path d="m5 12 4 4L19 7" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                                            <span class="tfm-dot" [class]="opt.dotClass"></span>
+                                            <span class="tfm-popover__name">{{ opt.label }}</span>
+                                            @if (subtask.priority === opt.value) {
+                                              <svg class="tfm-popover__check" viewBox="0 0 24 24" aria-hidden="true"><path d="m5 12 4 4L19 7" /></svg>
                                             }
                                           </button>
                                         }
@@ -1439,19 +1447,19 @@ export const ALL_SLASH_COMMANDS: SlashCommandItem[] = [
                                     </svg>
                                   </button>
                                   @if (activeSubtaskPopover()?.id === subtask.id && activeSubtaskPopover()?.type === 'status') {
-                                    <div class="tfm-subtask-popover tfm-subtask-popover--status" (click)="$event.stopPropagation()">
-                                      <div class="tfm-subtask-popover-list">
+                                    <div class="tfm-popover tfm-popover--right" role="dialog" aria-label="Change status" (click)="$event.stopPropagation()">
+                                      <div class="tfm-popover__list">
                                         @for (s of availableStatuses(); track s.id) {
                                           <button
                                             type="button"
-                                            class="tfm-subtask-popover-item"
-                                            [class.tfm-subtask-popover-item--active]="subtask.statusId === s.id"
+                                            class="tfm-popover__item"
+                                            [class.tfm-popover__item--selected]="subtask.statusId === s.id"
                                             (click)="changeSubtaskStatus(subtask, s.id)"
                                           >
                                             <span class="tfm-subtask-status-dot" [style.background-color]="s.color || '#64748b'"></span>
-                                            <span class="tfm-subtask-popover-label">{{ s.name }}</span>
+                                            <span class="tfm-popover__name">{{ s.name }}</span>
                                             @if (subtask.statusId === s.id) {
-                                              <svg class="tfm-subtask-check-icon" viewBox="0 0 24 24"><path d="m5 12 4 4L19 7" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                                              <svg class="tfm-popover__check" viewBox="0 0 24 24" aria-hidden="true"><path d="m5 12 4 4L19 7" /></svg>
                                             }
                                           </button>
                                         }
@@ -1518,32 +1526,74 @@ export const ALL_SLASH_COMMANDS: SlashCommandItem[] = [
                         </div>
 
                         <div class="tfm-subtask-create-controls">
-                          <button
-                            type="button"
-                            class="tfm-subtask-create-btn"
-                            data-testid="subtask-add-assignee-button"
-                            (click)="newSubtaskPickerOpen.set(true)"
-                            title="Assign employee"
-                          >
-                            @if (newSubtaskAssigneeId(); as assigneeId) {
-                              <app-avatar [avatarUrl]="getSubtaskAssigneeAvatarUrl(assigneeId)" [userName]="getSubtaskAssigneeName(assigneeId)" size="sm" />
-                              <span>{{ getSubtaskAssigneeName(assigneeId) }}</span>
-                            } @else {
-                              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" class="tfm-subtask-inline-icon" aria-hidden="true"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
-                              <span>Assignee</span>
-                            }
-                          </button>
-                          <app-employee-picker
-                            [open]="newSubtaskPickerOpen()"
-                            (selected)="onNewSubtaskAssigneeSelected($event)"
-                            (closed)="newSubtaskPickerOpen.set(false)"
-                          />
-
-                          <div class="tfm-subtask-create-priority-anchor">
+                          <div class="tfm-chip-anchor">
                             <button
                               type="button"
                               class="tfm-subtask-create-btn"
-                              (click)="toggleSubtaskPriorityPicker($event)"
+                              data-testid="subtask-add-assignee-button"
+                              (click)="toggleSubtaskPopover('new', 'assignee', $event)"
+                              title="Assign employee"
+                            >
+                              @if (newSubtaskAssigneeId(); as assigneeId) {
+                                <app-avatar [avatarUrl]="getSubtaskAssigneeAvatarUrl(assigneeId)" [userName]="getSubtaskAssigneeName(assigneeId)" size="sm" />
+                                <span>{{ getSubtaskAssigneeName(assigneeId) }}</span>
+                              } @else {
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" class="tfm-subtask-inline-icon" aria-hidden="true"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+                                <span>Assignee</span>
+                              }
+                            </button>
+                            @if (activeSubtaskPopover()?.id === 'new' && activeSubtaskPopover()?.type === 'assignee') {
+                              <div class="tfm-popover" role="dialog" aria-label="Change assignee" (click)="$event.stopPropagation()">
+                                <div class="tfm-popover__search-box">
+                                  <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="8" /><path d="m21 21-4.3-4.3" /></svg>
+                                  <input
+                                    type="text"
+                                    placeholder="Search people..."
+                                    [value]="assigneeSearchQuery()"
+                                    (input)="assigneeSearchQuery.set($any($event.target).value)"
+                                  />
+                                </div>
+                                <div class="tfm-popover__list">
+                                  <button
+                                    type="button"
+                                    class="tfm-popover__item"
+                                    [class.tfm-popover__item--selected]="!newSubtaskAssigneeId()"
+                                    (click)="selectNewSubtaskAssignee(null)"
+                                  >
+                                    <span class="tfm-popover__avatar tfm-popover__avatar--unassigned" aria-hidden="true">
+                                      <svg class="tfm-chip-svg" viewBox="0 0 24 24" aria-hidden="true"><line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" /></svg>
+                                    </span>
+                                    <span class="tfm-popover__name">Unassigned</span>
+                                    @if (!newSubtaskAssigneeId()) {
+                                      <svg class="tfm-popover__check" viewBox="0 0 24 24" aria-hidden="true"><path d="m5 12 4 4L19 7" /></svg>
+                                    }
+                                  </button>
+                                  @for (member of filteredAssignees(); track member.employeeId) {
+                                    <button
+                                      type="button"
+                                      class="tfm-popover__item"
+                                      [class.tfm-popover__item--selected]="newSubtaskAssigneeId() === member.employeeId"
+                                      (click)="selectNewSubtaskAssignee(member.employeeId)"
+                                    >
+                                      <app-avatar class="tfm-popover__avatar" [avatarUrl]="member.avatarUrl" [userName]="member.name" size="sm" />
+                                      <span class="tfm-popover__name">{{ member.name }}</span>
+                                      @if (newSubtaskAssigneeId() === member.employeeId) {
+                                        <svg class="tfm-popover__check" viewBox="0 0 24 24" aria-hidden="true"><path d="m5 12 4 4L19 7" /></svg>
+                                      }
+                                    </button>
+                                  } @empty {
+                                    <p style="margin: 6px 0 2px; color: var(--color-text-secondary); font-size: 12px; text-align: center;">No matching people</p>
+                                  }
+                                </div>
+                              </div>
+                            }
+                          </div>
+
+                          <div class="tfm-chip-anchor">
+                            <button
+                              type="button"
+                              class="tfm-subtask-create-btn"
+                              (click)="toggleSubtaskPopover('new', 'priority', $event)"
                               [title]="newSubtaskPriority() ? ('Priority: ' + formatSubtaskPriority(newSubtaskPriority())) : 'Priority'"
                             >
                               <svg class="tfm-subtask-flag-icon" [attr.data-priority]="newSubtaskPriority()" viewBox="0 0 16 16" fill="currentColor" aria-hidden="true">
@@ -1551,21 +1601,24 @@ export const ALL_SLASH_COMMANDS: SlashCommandItem[] = [
                               </svg>
                               <span>{{ formatSubtaskPriority(newSubtaskPriority()) }}</span>
                             </button>
-                            @if (subtaskPriorityPickerOpen()) {
-                              <div class="tfm-subtask-priority-popover" (click)="$event.stopPropagation()">
-                                @for (p of subtaskPriorityOptions; track p.value) {
-                                  <button
-                                    type="button"
-                                    class="tfm-subtask-priority-opt"
-                                    [class.tfm-subtask-priority-opt--active]="newSubtaskPriority() === p.value"
-                                    (click)="selectSubtaskPriority(p.value)"
-                                  >
-                                    <svg class="tfm-subtask-flag-icon" [attr.data-priority]="p.value" viewBox="0 0 16 16" fill="currentColor" aria-hidden="true">
-                                      <path d="M3 2v12h1.5V9.5h6l.5 1.5h4V4h-4.5L10 2.5H3z"/>
-                                    </svg>
-                                    <span>{{ p.label }}</span>
-                                  </button>
-                                }
+                            @if (activeSubtaskPopover()?.id === 'new' && activeSubtaskPopover()?.type === 'priority') {
+                              <div class="tfm-popover tfm-popover--up" role="dialog" aria-label="Choose priority" (click)="$event.stopPropagation()">
+                                <div class="tfm-popover__list">
+                                  @for (opt of priorityOptionsList; track opt.value) {
+                                    <button
+                                      type="button"
+                                      class="tfm-popover__item"
+                                      [class.tfm-popover__item--selected]="newSubtaskPriority() === opt.value"
+                                      (click)="selectSubtaskPriority(opt.value)"
+                                    >
+                                      <span class="tfm-dot" [class]="opt.dotClass"></span>
+                                      <span class="tfm-popover__name">{{ opt.label }}</span>
+                                      @if (newSubtaskPriority() === opt.value) {
+                                        <svg class="tfm-popover__check" viewBox="0 0 24 24" aria-hidden="true"><path d="m5 12 4 4L19 7" /></svg>
+                                      }
+                                    </button>
+                                  }
+                                </div>
                               </div>
                             }
                           </div>
@@ -1929,7 +1982,8 @@ export const ALL_SLASH_COMMANDS: SlashCommandItem[] = [
     .tfm-subtask-cell-btn { display: inline-flex; align-items: center; border: none; background: transparent; padding: 2px 4px; border-radius: 4px; cursor: pointer; font-family: inherit; transition: background-color 120ms ease, border-color 120ms ease; max-width: 100%; }
     .tfm-subtask-cell-btn:hover { background: color-mix(in srgb, var(--color-border) 40%, transparent); }
     .tfm-subtask-assignee-btn { padding: 2px; }
-    .tfm-subtask-unassigned-icon { display: inline-flex; align-items: center; justify-content: center; width: 22px; height: 22px; border-radius: 50%; background: color-mix(in srgb, var(--color-border) 40%, transparent); color: var(--color-text-secondary); opacity: 0.7; }
+    .tfm-subtask-unassigned-icon { display: inline-flex; align-items: center; justify-content: center; width: 20px; height: 20px; border-radius: 50%; border: 1px dashed var(--color-border); color: var(--color-text-secondary); }
+    .tfm-subtask-unassigned-icon svg { width: 12px; height: 12px; fill: currentColor; }
     .tfm-subtask-priority-btn { padding: 2px 4px; }
     .tfm-subtask-priority-tag { display: inline-flex; align-items: center; gap: 5px; font-size: 12px; font-weight: 500; }
     .tfm-subtask-priority-tag[data-priority="critical"] { color: #ef4444; }
@@ -1947,17 +2001,6 @@ export const ALL_SLASH_COMMANDS: SlashCommandItem[] = [
     .tfm-subtask-status-dot { width: 7px; height: 7px; border-radius: 50%; flex-shrink: 0; }
     .tfm-subtask-status-text { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 11.5px; font-weight: 500; color: var(--color-text-secondary); }
     .tfm-subtask-caret { width: 9px; height: 9px; color: var(--color-text-secondary); opacity: 0.7; flex-shrink: 0; }
-    .tfm-subtask-popover { position: absolute; top: calc(100% + 4px); left: 0; z-index: 1050; padding: 4px; border-radius: 6px; border: 1px solid var(--color-border); background: var(--color-surface); box-shadow: 0 10px 24px rgb(15 23 42 / .16); display: flex; flex-direction: column; gap: 2px; }
-    .tfm-subtask-popover--assignee { min-width: 170px; }
-    .tfm-subtask-popover--priority { min-width: 130px; }
-    .tfm-subtask-popover--status { min-width: 140px; }
-    .tfm-subtask-popover-list { max-height: 200px; overflow-y: auto; display: flex; flex-direction: column; gap: 2px; }
-    .tfm-subtask-popover-item { display: flex; align-items: center; gap: 7px; width: 100%; padding: 5px 8px; border: none; background: transparent; border-radius: 4px; font-family: inherit; font-size: 12px; font-weight: 500; color: var(--color-text-primary); cursor: pointer; text-align: left; transition: background-color 100ms ease; }
-    .tfm-subtask-popover-item:hover { background: var(--color-surface-secondary); }
-    .tfm-subtask-popover-item--active { background: color-mix(in srgb, var(--color-accent) 12%, var(--color-surface)); color: var(--color-accent); font-weight: 600; }
-    .tfm-subtask-popover-label { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-    .tfm-subtask-check-icon { width: 14px; height: 14px; stroke: currentColor; flex-shrink: 0; margin-left: auto; }
-    .tfm-subtask-unassigned-avatar { width: 22px; height: 22px; border-radius: 50%; display: inline-flex; align-items: center; justify-content: center; background: var(--color-surface-secondary); color: var(--color-text-secondary); flex-shrink: 0; }
     .tfm-subtask-cell-actions { display: flex; align-items: center; justify-content: flex-end; }
     .tfm-subtask-chevron { display: inline-flex; align-items: center; justify-content: center; width: 14px; height: 14px; color: var(--color-text-secondary); opacity: 0; transition: opacity 120ms ease, transform 120ms ease; }
     .tfm-subtask-chevron svg { width: 14px; height: 14px; }
@@ -1980,11 +2023,6 @@ export const ALL_SLASH_COMMANDS: SlashCommandItem[] = [
     .tfm-subtask-create-btn { display: inline-flex; align-items: center; gap: 5px; height: 26px; padding: 0 8px; border: 1px solid var(--color-border); border-radius: 4px; background: var(--color-surface); color: var(--color-text-secondary); font-family: inherit; font-size: 11.5px; font-weight: 500; cursor: pointer; transition: all 120ms ease; }
     .tfm-subtask-create-btn:hover { border-color: var(--color-accent); color: var(--color-text-primary); background: var(--color-surface-secondary); }
     .tfm-subtask-inline-icon { width: 13px; height: 13px; }
-    .tfm-subtask-create-priority-anchor { position: relative; display: inline-flex; }
-    .tfm-subtask-priority-popover { position: absolute; bottom: calc(100% + 4px); left: 0; z-index: 1050; width: 120px; padding: 4px; border-radius: 6px; border: 1px solid var(--color-border); background: var(--color-surface); box-shadow: 0 10px 24px rgb(15 23 42 / .16); display: flex; flex-direction: column; gap: 2px; }
-    .tfm-subtask-priority-opt { display: flex; align-items: center; gap: 6px; width: 100%; padding: 5px 8px; border: none; background: transparent; border-radius: 4px; font-family: inherit; font-size: 11.5px; font-weight: 500; color: var(--color-text-primary); cursor: pointer; text-align: left; transition: background-color 100ms ease; }
-    .tfm-subtask-priority-opt:hover { background: var(--color-surface-secondary); }
-    .tfm-subtask-priority-opt--active { background: color-mix(in srgb, var(--color-accent) 12%, var(--color-surface)); color: var(--color-accent); font-weight: 600; }
     .tfm-subtask-inline-date { height: 26px; padding: 0 6px; border: 1px solid var(--color-border); border-radius: 4px; background: var(--color-surface); color: var(--color-text-secondary); font-family: inherit; font-size: 11.5px; outline: none; }
     .tfm-subtask-create-actions { display: inline-flex; align-items: center; gap: 6px; margin-left: auto; }
     .tfm-subtask-btn-cancel { height: 26px; padding: 0 10px; border: 1px solid var(--color-border); border-radius: 4px; background: transparent; color: var(--color-text-secondary); font-family: inherit; font-size: 12px; font-weight: 500; cursor: pointer; transition: all 120ms ease; }
@@ -2135,6 +2173,7 @@ export const ALL_SLASH_COMMANDS: SlashCommandItem[] = [
     /* Popovers */
     .tfm-popover { position: absolute; top: calc(100% + 6px); left: 0; z-index: 1000; min-width: 220px; max-width: 320px; max-height: 280px; overflow-y: auto; border-radius: 10px; border: 1px solid var(--color-border); background: var(--color-surface); padding: 6px; box-shadow: 0 14px 34px rgb(15 23 42 / .18); animation: tfm-popover-in 120ms ease-out; }
     .tfm-popover--up { top: auto; bottom: calc(100% + 6px); box-shadow: 0 -10px 30px rgb(15 23 42 / .16); animation: tfm-popover-in-up 120ms ease-out; }
+    .tfm-popover--right { left: auto; right: 0; }
     @keyframes tfm-popover-in-up { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; transform: translateY(0); } }
     .tfm-popover--date { padding: 12px; min-width: 240px; }
     .tfm-popover__search-box { display: flex; align-items: center; gap: 6px; padding: 6px 8px; margin-bottom: 4px; border-bottom: 1px solid var(--color-border); }
@@ -2274,13 +2313,6 @@ export class TaskFormModalComponent {
   newSubtaskPickerOpen = signal(false);
   subtaskPriorityPickerOpen = signal(false);
   activeSubtaskPopover = signal<{ id: string; type: 'assignee' | 'priority' | 'status' } | null>(null);
-
-  readonly subtaskPriorityOptions: readonly { value: WorkTask['priority']; label: string }[] = [
-    { value: 'critical', label: 'Critical' },
-    { value: 'high', label: 'High' },
-    { value: 'medium', label: 'Medium' },
-    { value: 'low', label: 'Low' }
-  ];
 
   statuses = signal<TaskStatusColumn[]>([]);
   categories = signal<TaskCategoryColumn[]>([]);
@@ -2835,8 +2867,9 @@ export class TaskFormModalComponent {
   setPriority(value: string): void { this.priority.set(value as WorkTask['priority']); }
 
   onBackdrop(): void {
-    if (this.activePopover()) {
+    if (this.activePopover() || this.activeSubtaskPopover()) {
       this.activePopover.set(null);
+      this.activeSubtaskPopover.set(null);
     } else {
       this.cleanupUnsavedAttachments();
       this.closed.emit();
@@ -2848,8 +2881,9 @@ export class TaskFormModalComponent {
       this.closeSlashMenu();
       return;
     }
-    if (this.activePopover()) {
+    if (this.activePopover() || this.activeSubtaskPopover()) {
       this.activePopover.set(null);
+      this.activeSubtaskPopover.set(null);
     } else {
       this.cleanupUnsavedAttachments();
       this.closed.emit();
@@ -2858,17 +2892,17 @@ export class TaskFormModalComponent {
 
   togglePopover(name: 'assignee' | 'priority' | 'dueDate' | 'module' | 'sprint' | 'category' | 'splitMenu' | 'status', event: MouseEvent): void {
     event.stopPropagation();
+    this.activeSubtaskPopover.set(null);
     this.activePopover.update((curr) => (curr === name ? null : name));
   }
 
   closePopover(): void {
     this.activePopover.set(null);
+    this.activeSubtaskPopover.set(null);
     this.showLinkPopover.set(false);
     this.showTextColorPopover.set(false);
     this.showHighlightPopover.set(false);
     this.closeSlashMenu();
-    this.subtaskPriorityPickerOpen.set(false);
-    this.activeSubtaskPopover.set(null);
   }
 
   clearError(field: string): void {
@@ -4378,18 +4412,13 @@ export class TaskFormModalComponent {
     }
   }
 
-  toggleSubtaskPriorityPicker(event: MouseEvent): void {
-    event.stopPropagation();
-    this.subtaskPriorityPickerOpen.update((v) => !v);
-  }
-
   selectSubtaskPriority(p: WorkTask['priority']): void {
     if (this.newSubtaskPriority() === p) {
       this.newSubtaskPriority.set(null);
     } else {
       this.newSubtaskPriority.set(p);
     }
-    this.subtaskPriorityPickerOpen.set(false);
+    this.activeSubtaskPopover.set(null);
   }
 
   getSubtaskAssigneeName(employeeId: string): string {
@@ -4407,6 +4436,10 @@ export class TaskFormModalComponent {
     if (current && current.id === subtaskId && current.type === type) {
       this.activeSubtaskPopover.set(null);
     } else {
+      if (type === 'assignee') {
+        this.assigneeSearchQuery.set('');
+      }
+      this.activePopover.set(null);
       this.activeSubtaskPopover.set({ id: subtaskId, type });
     }
   }
@@ -4519,6 +4552,11 @@ export class TaskFormModalComponent {
   onNewSubtaskAssigneeSelected(employeeId: string): void {
     this.newSubtaskAssigneeId.set(employeeId);
     this.newSubtaskPickerOpen.set(false);
+  }
+
+  selectNewSubtaskAssignee(employeeId: string | null): void {
+    this.newSubtaskAssigneeId.set(employeeId);
+    this.activeSubtaskPopover.set(null);
   }
 
   async openSubtask(subtaskId: string): Promise<void> {
