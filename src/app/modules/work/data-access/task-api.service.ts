@@ -3,6 +3,7 @@ import { Injectable, inject } from '@angular/core';
 import { Observable } from 'rxjs';
 import { environment } from '../../../../environments/environment';
 import {
+  CreateSubtaskRequestDto,
   CreateTaskRequestDto,
   CreateTaskStatusRequestDto,
   ClockInResponseDto,
@@ -12,7 +13,6 @@ import {
   PushTaskRequestDto,
   TaskStatusDto,
   WorkTaskDto
-
 } from '../models/dto/task.dto';
 import { TaskStatusCategory } from '../models/task.model';
 import {
@@ -75,6 +75,14 @@ export class TaskApiService {
     return this.http.post<WorkTaskDto>(`${this.baseUrl}/objectives/${objectiveId}/tasks`, request);
   }
 
+  createSubtask(parentTaskId: string, request: CreateSubtaskRequestDto): Observable<WorkTaskDto> {
+    return this.http.post<WorkTaskDto>(`${this.baseUrl}/tasks/${parentTaskId}/subtasks`, request);
+  }
+
+  getSubtasks(parentTaskId: string): Observable<WorkTaskDto[]> {
+    return this.http.get<WorkTaskDto[]>(`${this.baseUrl}/tasks/${parentTaskId}/subtasks`);
+  }
+
   deleteTask(taskId: string): Observable<void> {
     return this.http.delete<void>(`${this.baseUrl}/tasks/${taskId}`);
   }
@@ -118,11 +126,11 @@ export class TaskApiService {
   getNotificationNavigation(
     relatedEntityType: string,
     relatedEntityId: string
-  ): Observable<{ projectId: string; objectiveId: string; taskId: string | null; targetTab: 'board' | 'approvals' }> {
+  ): Observable<{ projectId: string; objectiveId: string; taskId: string | null; targetTab: 'board' | 'approvals' | 'tree' }> {
     const params = new HttpParams()
       .set('relatedEntityType', relatedEntityType)
       .set('relatedEntityId', relatedEntityId);
-    return this.http.get<{ projectId: string; objectiveId: string; taskId: string | null; targetTab: 'board' | 'approvals' }>(
+    return this.http.get<{ projectId: string; objectiveId: string; taskId: string | null; targetTab: 'board' | 'approvals' | 'tree' }>(
       `${this.baseUrl}/notification-navigation`,
       { params }
     );

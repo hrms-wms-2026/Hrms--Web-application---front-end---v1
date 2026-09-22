@@ -3,8 +3,10 @@ import { ModalComponent } from '../../../../shared/ui/modal/modal.component';
 import { InputComponent } from '../../../../shared/ui/input/input.component';
 import { ButtonComponent } from '../../../../shared/ui/button/button.component';
 import { WorkDropdownComponent, WorkDropdownOption } from '../work-dropdown/work-dropdown.component';
+import { DateRangePickerComponent } from '../../../../shared/ui/date-range-picker/date-range-picker.component';
 import { SprintListStore } from '../../state/sprint-list.store';
 import { Sprint } from '../../models/sprint.model';
+
 export interface SprintFormModuleOption {
   objectiveId: string;
   title: string;
@@ -14,7 +16,7 @@ export interface SprintFormModuleOption {
 @Component({
   selector: 'app-sprint-form',
   standalone: true,
-  imports: [ModalComponent, InputComponent, ButtonComponent, WorkDropdownComponent],
+  imports: [ModalComponent, InputComponent, ButtonComponent, WorkDropdownComponent, DateRangePickerComponent],
   template: `
     <app-modal [open]="open()" [title]="mode() === 'edit' ? 'Edit sprint' : 'Create sprint'" (closed)="cancelled.emit()">
       <div class="sprint-form">
@@ -30,9 +32,19 @@ export interface SprintFormModuleOption {
             (selectionChanged)="selectedObjectiveId.set($event)"
           />
         }
-        <app-input label="Name" [value]="name()" (valueChange)="name.set($event)" />
-        <app-input label="Start date" type="date" [value]="startDate()" (valueChange)="startDate.set($event)" />
-        <app-input label="End date" type="date" [value]="endDate()" (valueChange)="endDate.set($event)" />
+        <app-input label="Sprint name" [value]="name()" (valueChange)="name.set($event)" />
+        <app-input label="Sprint goal (optional)" [value]="goal()" (valueChange)="goal.set($event)" />
+        @if (mode() === 'edit' && sprint()?.status === 'active') {
+          <div class="sprint-form__date-range" data-testid="sprint-date-range">
+            <label class="sprint-form__label">Sprint dates</label>
+            <app-date-range-picker
+              [from]="startDate()"
+              [to]="endDate()"
+              placeholder="Select start and end date"
+              (rangeChange)="onDateRangeChange($event)"
+            />
+          </div>
+        }
 
         @if (store.error()) {
           <p class="sprint-form__error" role="alert">{{ store.error() }}</p>
@@ -44,7 +56,7 @@ export interface SprintFormModuleOption {
         <div class="sprint-form__actions">
           <app-button variant="secondary" [disabled]="submitting()" (pressed)="cancelled.emit()">Cancel</app-button>
           <app-button variant="primary" [loading]="submitting()" (pressed)="submit()">
-            {{ mode() === 'edit' ? 'Save changes' : (effectiveIsObjectiveOwner() ? 'Create sprint' : 'Request sprint') }}
+            {{ mode() === 'edit' ? 'Save changes' : 'Create sprint' }}
           </app-button>
         </div>
       </div>
@@ -54,6 +66,24 @@ export interface SprintFormModuleOption {
     .sprint-form { display: flex; flex-direction: column; gap: 8px; }
     .sprint-form__error { color: var(--color-danger-text); font-size: 12px; }
     .sprint-form__actions { display: flex; justify-content: flex-end; gap: 8px; }
+    .sprint-form__date-range { display: flex; flex-direction: column; gap: 4px; }
+    .sprint-form__label { font-size: 12px; font-weight: 500; color: var(--color-text-secondary); }
+    :host ::ng-deep .sprint-form__date-range app-date-range-picker { width: 100%; display: block; }
+    :host ::ng-deep .sprint-form__date-range .drp-container { width: 100%; display: flex; }
+    :host ::ng-deep .sprint-form__date-range .drp-trigger {
+      width: 100%;
+      min-height: 38px;
+      padding: 0.375rem 0.75rem;
+      border-radius: 6px;
+      font-size: 0.875rem;
+      font-weight: 400;
+      justify-content: flex-start;
+      gap: 0.5rem;
+      border: 1px solid var(--color-border);
+      background-color: var(--color-surface);
+      color: var(--color-text-primary);
+    }
+    :host ::ng-deep .sprint-form__date-range .drp-popover { z-index: 100; }
   `]
 })
 export class SprintFormComponent {
@@ -71,6 +101,7 @@ export class SprintFormComponent {
   cancelled = output<void>();
 
   protected readonly name = signal('');
+  protected readonly goal = signal('');
   protected readonly startDate = signal('');
   protected readonly endDate = signal('');
   protected readonly submitting = signal(false);
@@ -85,27 +116,27 @@ export class SprintFormComponent {
     this.modules().length > 0 ? this.selectedObjectiveId() : this.objectiveId()
   );
 
-  protected readonly effectiveIsObjectiveOwner = computed(() => {
-    if (this.modules().length === 0) return this.isObjectiveOwner();
-    return this.modules().find((module) => module.objectiveId === this.selectedObjectiveId())?.isOwner ?? false;
-  });
-
   constructor() {
     effect(() => {
       this.open();
       const current = this.sprint();
       if (this.mode() === 'edit' && current) {
         this.name.set(current.name);
-        this.startDate.set(current.startDate.toISOString().slice(0, 10));
-        this.endDate.set(current.endDate.toISOString().slice(0, 10));
+        this.goal.set(current.goal ?? '');
+        this.startDate.set(current.startDate ? current.startDate.toISOString().slice(0, 10) : '');
+        this.endDate.set(current.endDate ? current.endDate.toISOString().slice(0, 10) : '');
       } else if (this.mode() === 'create') {
         this.name.set('');
-        this.startDate.set('');
-        this.endDate.set('');
+        this.goal.set('');
         this.selectedObjectiveId.set('');
       }
       this.moduleError.set(null);
     });
+  }
+
+  onDateRangeChange(range: { from: string; to: string }): void {
+    this.startDate.set(range.from);
+    this.endDate.set(range.to);
   }
 
   async submit(): Promise<void> {
@@ -121,13 +152,11 @@ export class SprintFormComponent {
       try {
         const ok = await this.store.create(objectiveId, {
           name: this.name().trim(),
-          startDate: this.startDate(),
-          endDate: this.endDate()
-        }, !this.effectiveIsObjectiveOwner());
+          goal: this.goal().trim() || undefined
+        }, false);
         if (ok) {
           this.name.set('');
-          this.startDate.set('');
-          this.endDate.set('');
+          this.goal.set('');
           this.selectedObjectiveId.set('');
           this.created.emit();
         }
@@ -141,10 +170,12 @@ export class SprintFormComponent {
     if (!current) return;
     this.submitting.set(true);
     try {
+      const isActive = current.status === 'active';
       const ok = await this.store.edit(current.id, {
         name: this.name().trim(),
-        startDate: this.startDate(),
-        endDate: this.endDate()
+        goal: this.goal().trim() || null,
+        startDate: isActive ? this.startDate() : undefined,
+        endDate: isActive ? this.endDate() : undefined
       }, this.objectiveId(), false);
       if (ok) this.saved.emit();
     } finally {

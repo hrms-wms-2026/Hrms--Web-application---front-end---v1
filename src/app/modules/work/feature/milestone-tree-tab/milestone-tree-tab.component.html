@@ -7,6 +7,15 @@
     (click)="dismissCreateAssetWarning()">&#x2715;</button>
 </div>
 }
+@if (editPendingNotice(); as notice) {
+<div data-testid="edit-pending-notice" role="status"
+  class="mb-4 flex items-start justify-between gap-3 rounded-lg border border-[var(--color-accent)]/30 bg-[var(--color-accent)]/10 px-3 py-2 text-sm text-[var(--color-text-primary)]">
+  <span>{{ notice }}</span>
+  <button type="button" data-testid="dismiss-edit-pending-notice" aria-label="Dismiss"
+    class="shrink-0 text-[var(--color-text-primary)] transition-opacity hover:opacity-70"
+    (click)="dismissEditPendingNotice()">&#x2715;</button>
+</div>
+}
 <div class="grid grid-cols-1 gap-4 lg:grid-cols-[minmax(0,1fr)_24rem] lg:items-start">
   <div
     class="w-full flex flex-col rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] p-4 shadow-sm min-h-[220px]">
@@ -64,9 +73,11 @@
   (created)="onCreateModalCreated($event)" (closed)="createModalOpen.set(false)" />
 
 <app-member-management-popup scope="objective" [open]="membersPopupOpen()" [objectiveMembers]="store.objectiveMembers()"
+  [objectiveName]="selectedNode()?.title ?? null" [currentEmployeeId]="currentEmployee.id()"
   [loading]="store.objectiveMembersLoading()" [canManage]="selectedNode()?.isOwner ?? false"
   (addRequested)="onAddMemberRequested($event)" (removeRequested)="onRemoveMemberRequested($event)"
-  (transferRequested)="onTransferRequested($event)" (closed)="onMembersPopupClosed()" />
+  (transferRequested)="onTransferRequested($event)" (invitationAcceptRequested)="onInvitationAcceptRequested($event)"
+  (invitationDeclineRequested)="onInvitationDeclineRequested($event)" (closed)="onMembersPopupClosed()" />
 
 @if (createSprintNode(); as sprintLeaf) {
 <app-sprint-form mode="create" [open]="createSprintOpen()" [objectiveId]="sprintLeaf.id"
@@ -76,6 +87,13 @@
 @if (editSprintNode(); as sprintNode) {
 <app-sprint-form mode="edit" [open]="editSprintOpen()" [objectiveId]="sprintNode.parentObjectiveId ?? ''"
   [sprint]="sprintFromNode(sprintNode)" (saved)="onSprintSaved()" (cancelled)="onSprintEditCancelled()" />
+}
+
+@if (completingSprintNode(); as node) {
+<app-sprint-complete-dialog [open]="true"
+  [sprint]="{ id: node.id, objectiveId: node.parentObjectiveId ?? '', name: node.title, goal: null, startDate: null, endDate: null, status: 'active', completedAt: null, achievedAt: null }"
+  [tasks]="[]" [otherSprints]="[]" [objectiveId]="node.parentObjectiveId ?? ''"
+  (completed)="onSprintCompleteDialogCompleted()" (cancelled)="onSprintCompleteDialogClosed()" />
 }
 
 <app-confirm-modal [open]="deleteConfirmOpen()" title="Delete task" message="Delete this task? This cannot be undone."

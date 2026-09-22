@@ -72,23 +72,24 @@ describe('project.mapper', () => {
       ownerId: 'u1', ownerName: 'Jane Doe', reportingManagerId: null, reportingManagerName: null,
       startDate: '2026-08-01', endDate: '2026-12-01', allocatedHours: 40, completedHours: 0,
       objectiveIsActive: true, isAchieved: false, achievedAt: null,
-      membershipIsActive: true, membershipRemovedAt: null, isOwner: false
+      membershipIsActive: true, membershipRemovedAt: null, isOwner: false, isEffectiveOwner: false
     };
     expect(toMilestone(dto).ownerName).toBe('Jane Doe');
   });
 
-  it('maps isOwner through unchanged', () => {
+  it('maps isOwner and isEffectiveOwner through unchanged', () => {
     const dto: MyProjectMilestoneDto = {
       objectiveId: 'o1', projectId: 'p1', parentObjectiveId: null, isDefault: true, title: 'Default',
       ownerId: 'u1', ownerName: 'Jane Doe', reportingManagerId: null, reportingManagerName: null,
       startDate: '2026-08-01', endDate: '2026-12-01', allocatedHours: 40, completedHours: 0,
       objectiveIsActive: true, isAchieved: false, achievedAt: null,
-      membershipIsActive: true, membershipRemovedAt: null, isOwner: true
+      membershipIsActive: true, membershipRemovedAt: null, isOwner: true, isEffectiveOwner: false
     };
 
     const result = toMilestone(dto);
 
     expect(result.isOwner).toBe(true);
+    expect(result.isEffectiveOwner).toBe(false);
   });
 
   it('maps an ObjectiveSubtreeNodeDto to a MilestoneTreeNode, recursively', () => {
@@ -284,7 +285,7 @@ describe('project.mapper', () => {
     };
     const sprintDto: SprintDto = {
       id: 'spr-1', objectiveId: 'o1', name: 'Sprint 1', startDate: '2026-08-01', endDate: '2026-08-14',
-      status: 'active', completedAt: null, achievedAt: null
+      status: 'active', completedAt: null, achievedAt: null, goal: null
     };
     const taskDto: WorkTaskDto = {
       id: 't1', objectiveId: 'o1', shortId: 'WEB-9', title: 'Do it', description: null,

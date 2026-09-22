@@ -49,4 +49,9 @@ describe('SprintTreeRowComponent', () => {
     setup({ ...sprint, status: 'active' });
     expect(fixture.nativeElement.querySelector('[data-testid="status-badge"]')?.textContent).toContain('active');
   });
+
+  it('shows "No dates set" for a draft sprint with no end date', () => {
+    setup({ ...sprint, endDate: null });
+    expect(fixture.nativeElement.textContent).toContain('No dates set');
+  });
 });

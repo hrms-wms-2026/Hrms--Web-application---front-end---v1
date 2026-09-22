@@ -3,6 +3,7 @@ import { CurrentEmployeeStore } from '../../state/current-employee.store';
 
 import { ActivatedRoute } from '@angular/router';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
+import { firstValueFrom } from 'rxjs';
 import { ProjectDetailStore } from '../../state/project-detail.store';
 import { MilestoneTreeNodeComponent } from '../../ui/milestone-tree-node/milestone-tree-node.component';
 import { WorkDropdownComponent, WorkDropdownOption } from '../../ui/work-dropdown/work-dropdown.component';
@@ -11,6 +12,9 @@ import { TreeExplanationPanelComponent } from '../../ui/tree-explanation-panel/t
 import { SubModuleFormComponent } from '../../ui/sub-module-form/sub-module-form.component';
 import { MemberManagementPopupComponent } from '../../ui/member-management-popup/member-management-popup.component';
 import { SprintFormComponent } from '../../ui/sprint-form/sprint-form.component';
+import { WorkApprovalsApiService } from '../../data-access/work-approvals-api.service';
+import { EmployeeDirectoryStore } from '../../state/employee-directory.store';
+import { SprintCompleteDialogComponent } from '../../ui/sprint-complete-dialog/sprint-complete-dialog.component';
 import { LoaderComponent } from '../../../../shared/ui/loader/loader.component';
 import { ErrorStateComponent } from '../../../../shared/ui/error-state/error-state.component';
 import { EmptyStateComponent } from '../../../../shared/ui/empty-state/empty-state.component';
@@ -27,7 +31,7 @@ import { Sprint, SprintStatus } from '../../models/sprint.model';
   standalone: true,
   imports: [
     MilestoneTreeNodeComponent, WorkDropdownComponent, TreeExplanationPanelComponent, SubModuleFormComponent,
-    MemberManagementPopupComponent, SprintFormComponent, TaskFormModalComponent,
+    MemberManagementPopupComponent, SprintFormComponent, SprintCompleteDialogComponent, TaskFormModalComponent,
     LoaderComponent, ErrorStateComponent, EmptyStateComponent, ConfirmModalComponent
   ],
   templateUrl: './milestone-tree-tab.component.html'
@@ -36,6 +40,8 @@ export class MilestoneTreeTabComponent {
   readonly store = inject(ProjectDetailStore);
     private readonly route = inject(ActivatedRoute);
   protected readonly currentEmployee = inject(CurrentEmployeeStore);
+  private readonly approvalsApi = inject(WorkApprovalsApiService);
+  private readonly directory = inject(EmployeeDirectoryStore);
 
   readonly taskModalOpen = signal(false);
   readonly taskModalMode = signal<'create' | 'edit'>('create');
@@ -106,6 +112,10 @@ export class MilestoneTreeTabComponent {
   // warn about partial asset-upload failures, so this renders inline in the tab itself
   // rather than inside any modal (which would already be closed by then).
   createAssetWarning = signal<string | null>(null);
+  // Every edit now always requires the Reporting Manager's approval (no more immediate-apply
+  // shortcut) - without this, the settings modal would just close with no visible change, which
+  // reads as "nothing happened" rather than "submitted for approval".
+  editPendingNotice = signal<string | null>(null);
 
   membersPopupOpen = signal(false);
 
@@ -115,6 +125,7 @@ export class MilestoneTreeTabComponent {
   pendingDeleteNode = signal<MilestoneTreeNode | null>(null);
   editSprintOpen = signal(false);
   editSprintNode = signal<MilestoneTreeNode | null>(null);
+  completingSprintNode = signal<MilestoneTreeNode | null>(null);
 
   constructor() {
     this.route.paramMap.pipe(takeUntilDestroyed()).subscribe((paramMap) => {
@@ -129,7 +140,10 @@ export class MilestoneTreeTabComponent {
       // available for voluntary narrowing.
       this.selectedModuleFilter.set('all');
       this.selectedNodeId.set(milestoneId);
-      void this.loadTree();
+      const openMembersOnLoad = this.route.snapshot.queryParamMap.get('openMembers') === '1';
+      void this.loadTree().then(() => {
+        if (openMembersOnLoad) this.onMembersRequested();
+      });
       void this.currentEmployee.ensureLoaded();
       if (this.currentProjectId && this.loadedMembersForProjectId !== this.currentProjectId) {
         this.loadedMembersForProjectId = this.currentProjectId;
@@ -142,6 +156,12 @@ export class MilestoneTreeTabComponent {
     try {
       await this.store.loadProjectMembers(projectId);
       const members = this.store.projectMembers();
+      // Pre-warms the shared EmployeeDirectoryStore cache with these server-resolved (coverage-safe)
+      // names so task-assignee avatars in the tree (<app-employee-avatar>, which otherwise falls back
+      // to the management-coverage-scoped GET /employees/{id}) resolve without 403-ing for assignees
+      // outside the viewer's reporting chain. Same fix as TaskBoardComponent's employeeNames/directory
+      // pre-warm - see project_hrms_board_backlog_project_wide memory, bug #5.
+      await this.directory.ensureLoaded(members.map((member) => member.employeeId));
       this.assignableMembers.set(members.map((member) => ({
         employeeId: member.employeeId,
         name: member.name ?? 'Unknown employee'
@@ -223,6 +243,10 @@ export class MilestoneTreeTabComponent {
     this.createAssetWarning.set(null);
   }
 
+  dismissEditPendingNotice(): void {
+    this.editPendingNotice.set(null);
+  }
+
   onExpandLeafRequested(node: MilestoneTreeNode): void {
     if (isLeafObjective(node)) {
       void this.store.loadSprintsAndTasksForLeaf(node.id);
@@ -278,8 +302,9 @@ export class MilestoneTreeTabComponent {
       id: node.id,
       objectiveId: node.parentObjectiveId ?? '',
       name: node.title,
-      startDate: new Date(node.startDate),
-      endDate: new Date(node.endDate),
+      goal: null,
+      startDate: node.startDate ? new Date(node.startDate) : null,
+      endDate: node.endDate ? new Date(node.endDate) : null,
       status: (node.status as SprintStatus) ?? 'active',
       completedAt: null,
       achievedAt: null
@@ -373,6 +398,9 @@ export class MilestoneTreeTabComponent {
       this.settingsSubmitting.set(false);
       return;
     }
+    if (editResult.pending) {
+      this.editPendingNotice.set(`Edit submitted for "${node.title}" — pending approval from the Reporting Manager.`);
+    }
 
     if (event.achievedChanged && event.achieved) {
       const achieveResult = await this.store.achieveMilestone(node.id);
@@ -398,8 +426,17 @@ export class MilestoneTreeTabComponent {
     await this.store.achieveSprint(node.id);
   }
 
-  async onCompleteSprintRequested(node: MilestoneTreeNode): Promise<void> {
-    await this.store.completeSprint(node.id);
+  onCompleteSprintRequested(node: MilestoneTreeNode): void {
+    this.completingSprintNode.set(node);
+  }
+
+  onSprintCompleteDialogClosed(): void {
+    this.completingSprintNode.set(null);
+  }
+
+  async onSprintCompleteDialogCompleted(): Promise<void> {
+    this.completingSprintNode.set(null);
+    await this.loadTree({ force: true });
   }
 
   onDeleteRequested(node: MilestoneTreeNode): void {
@@ -453,6 +490,20 @@ export class MilestoneTreeTabComponent {
     const node = this.selectedNode();
     if (!node) return;
     await this.store.transferObjectiveHead(node.id, employeeId);
+    await this.store.loadObjectiveMembers(node.id);
+  }
+
+  async onInvitationAcceptRequested(invitationId: string): Promise<void> {
+    const node = this.selectedNode();
+    if (!node) return;
+    await firstValueFrom(this.approvalsApi.acceptObjectiveInvitation(invitationId));
+    await this.store.loadObjectiveMembers(node.id);
+  }
+
+  async onInvitationDeclineRequested(invitationId: string): Promise<void> {
+    const node = this.selectedNode();
+    if (!node) return;
+    await firstValueFrom(this.approvalsApi.rejectObjectiveInvitation(invitationId));
     await this.store.loadObjectiveMembers(node.id);
   }
 }

@@ -1,10 +1,8 @@
-import { Component, effect, inject, input, output, signal, untracked } from '@angular/core';
+import { Component, computed, input, output, signal } from '@angular/core';
 import { ModalComponent } from '../../../../shared/ui/modal/modal.component';
 import { ButtonComponent } from '../../../../shared/ui/button/button.component';
 import { AvatarComponent } from '../../../../shared/ui/avatar/avatar.component';
 import { EmployeePickerComponent } from '../employee-picker/employee-picker.component';
-import { EmployeeAvatarComponent } from '../employee-avatar/employee-avatar.component';
-import { EmployeeDirectoryStore } from '../../state/employee-directory.store';
 import { ObjectiveMemberItemDto } from '../../models/dto/objective-invitation.dto';
 
 export interface ProjectMemberPopupItem {
@@ -15,9 +13,9 @@ export interface ProjectMemberPopupItem {
 @Component({
   selector: 'app-member-management-popup',
   standalone: true,
-  imports: [ModalComponent, ButtonComponent, AvatarComponent, EmployeePickerComponent, EmployeeAvatarComponent],
+  imports: [ModalComponent, ButtonComponent, AvatarComponent, EmployeePickerComponent],
   template: `
-    <app-modal [open]="open()" title="Members" (closed)="closed.emit()">
+    <app-modal [open]="open()" [title]="modalTitle()" (closed)="closed.emit()">
       @if (pickerOpen() !== null) {
         <div class="flex flex-col gap-2">
           <div class="flex items-center justify-between">
@@ -66,8 +64,8 @@ export interface ProjectMemberPopupItem {
               class="flex items-center justify-between gap-2 rounded-lg border border-[var(--color-border)] px-2.5 py-2"
             >
               <div class="flex items-center gap-2">
-                <app-employee-avatar [employeeId]="member.employeeId" />
-                <span class="text-xs font-medium text-[var(--color-text-primary)]">{{ directory.get(member.employeeId)?.name ?? 'Unknown employee' }}</span>
+                <app-avatar [userName]="member.name" size="sm" />
+                <span class="text-xs font-medium text-[var(--color-text-primary)]">{{ member.name ?? 'Unknown employee' }}</span>
                 @if (member.isHead) {
                   <span data-testid="leader-badge" class="rounded-full bg-[var(--color-accent)]/10 px-2 py-0.5 text-[10px] font-semibold text-[var(--color-accent)]">Leader</span>
                 }
@@ -85,7 +83,16 @@ export interface ProjectMemberPopupItem {
                   </span>
                 </div>
               }
-              @if (canManage() && member.pending) {
+              @if (member.pending && member.employeeId === currentEmployeeId()) {
+                <div class="flex items-center gap-1">
+                  <span data-testid="accept-invitation-button" (click)="invitationAcceptRequested.emit(member.invitationId!)">
+                    <app-button variant="primary" size="sm">Accept</app-button>
+                  </span>
+                  <span data-testid="decline-invitation-button" (click)="invitationDeclineRequested.emit(member.invitationId!)">
+                    <app-button variant="secondary" size="sm">Decline</app-button>
+                  </span>
+                </div>
+              } @else if (canManage() && member.pending) {
                 <span data-testid="remove-button" (click)="removeRequested.emit(member.employeeId)">
                   <app-button variant="secondary" size="sm">Cancel</app-button>
                 </span>
@@ -98,10 +105,10 @@ export interface ProjectMemberPopupItem {
   `
 })
 export class MemberManagementPopupComponent {
-  protected readonly directory = inject(EmployeeDirectoryStore);
-
   scope = input<'project' | 'objective'>('project');
   open = input(false);
+  objectiveName = input<string | null>(null);
+  currentEmployeeId = input<string | null>(null);
   projectMembers = input<readonly ProjectMemberPopupItem[]>([]);
   objectiveMembers = input<readonly ObjectiveMemberItemDto[]>([]);
   loading = input(false);
@@ -110,16 +117,15 @@ export class MemberManagementPopupComponent {
   addRequested = output<string>();
   removeRequested = output<string>();
   transferRequested = output<string>();
+  invitationAcceptRequested = output<string>();
+  invitationDeclineRequested = output<string>();
   closed = output<void>();
 
   protected readonly pickerOpen = signal<'member' | 'leader' | null>(null);
-
-  constructor() {
-    effect(() => {
-      const ids = this.objectiveMembers().map((member) => member.employeeId);
-      untracked(() => void this.directory.ensureLoaded(ids));
-    });
-  }
+  protected readonly modalTitle = computed(() => {
+    const name = this.objectiveName();
+    return name ? `Members — ${name}` : 'Members';
+  });
 
   onEmployeePicked(employeeId: string): void {
     const mode = this.pickerOpen();
