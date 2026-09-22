@@ -1619,6 +1619,12 @@ export class TaskBoardColumnComponent {
       return;
     }
 
+    if (!this.priorityUserChosen()) {
+      this.errorMessage.set('Please set a priority.');
+      this.activePopover.set('priority');
+      return;
+    }
+
     this.submitting.set(true);
     this.errorMessage.set(null);
 

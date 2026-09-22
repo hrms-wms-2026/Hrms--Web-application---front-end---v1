@@ -227,6 +227,7 @@ describe('TaskFormModalComponent - create mode', () => {
     fixture.componentInstance.selectedObjectiveId.set('o1');
     fixture.componentInstance.categoryId.set('c1');
     fixture.componentInstance.sprintId.set('');
+    fixture.componentInstance.setPriority('medium');
     await fixture.componentInstance.submit();
     expect(createTask).toHaveBeenCalledWith('o1', expect.objectContaining({ title: 'New task', sprintId: null }));
     expect(fixture.componentInstance.errors()['sprintId']).toBeFalsy();
@@ -239,6 +240,7 @@ describe('TaskFormModalComponent - create mode', () => {
     fixture.componentInstance.title.set('New task');
     fixture.componentInstance.selectedObjectiveId.set('o1');
     fixture.componentInstance.categoryId.set('c1');
+    fixture.componentInstance.setPriority('medium');
     await fixture.componentInstance.submit();
     expect(createdSpy).toHaveBeenCalledWith('t-new');
   });
@@ -248,6 +250,7 @@ describe('TaskFormModalComponent - create mode', () => {
     fixture.componentInstance.title.set('Ask');
     fixture.componentInstance.selectedObjectiveId.set('o1');
     fixture.componentInstance.categoryId.set('c1');
+    fixture.componentInstance.setPriority('medium');
     await fixture.componentInstance.submit();
     expect(api['createTaskCreationRequest']).toHaveBeenCalledWith('o1', expect.objectContaining({ title: 'Ask' }));
     expect(createTask).not.toHaveBeenCalled();
@@ -259,6 +262,7 @@ describe('TaskFormModalComponent - create mode', () => {
     fixture.componentInstance.title.set('Ask');
     fixture.componentInstance.selectedObjectiveId.set('o1');
     fixture.componentInstance.categoryId.set('c1');
+    fixture.componentInstance.setPriority('medium');
     await fixture.componentInstance.submit();
     expect(fixture.componentInstance.errorMessage()).toBe('Sprint is closed.');
     expect(fixture.componentInstance.submitting()).toBe(false);
@@ -270,6 +274,7 @@ describe('TaskFormModalComponent - create mode', () => {
     fixture.componentInstance.title.set('X');
     fixture.componentInstance.selectedObjectiveId.set('o1');
     fixture.componentInstance.categoryId.set('c1');
+    fixture.componentInstance.setPriority('medium');
     await fixture.componentInstance.submit();
     expect(fixture.componentInstance.allocationHint()?.availableSlackHours).toBe(3);
   });
@@ -279,9 +284,21 @@ describe('TaskFormModalComponent - create mode', () => {
     fixture.componentInstance.title.set('X');
     fixture.componentInstance.selectedObjectiveId.set('');
     fixture.componentInstance.categoryId.set('c1');
+    fixture.componentInstance.setPriority('medium');
     await fixture.componentInstance.submit();
     expect(createTask).not.toHaveBeenCalled();
     expect(fixture.componentInstance.errors()['objectiveId']).toBeTruthy();
+  });
+
+  it('blocks submit when priority is not chosen (priority is required, no more silent Medium default)', async () => {
+    await build();
+    fixture.componentInstance.title.set('X');
+    fixture.componentInstance.selectedObjectiveId.set('o1');
+    fixture.componentInstance.categoryId.set('c1');
+    expect(fixture.componentInstance.priority()).toBeNull();
+    await fixture.componentInstance.submit();
+    expect(createTask).not.toHaveBeenCalled();
+    expect(fixture.componentInstance.errors()['priority']).toBeTruthy();
   });
 
   it('automatically inherits module and active sprint when there is only one module in the project', async () => {
@@ -302,6 +319,7 @@ describe('TaskFormModalComponent - create mode', () => {
     fixture.componentInstance.description.set('Quick details');
     fixture.componentInstance.selectedObjectiveId.set('o1');
     fixture.componentInstance.categoryId.set('c1');
+    fixture.componentInstance.setPriority('medium');
 
     await fixture.componentInstance.submitCreateWithAction('create_and_add_another');
 
@@ -368,6 +386,7 @@ describe('TaskFormModalComponent - create mode', () => {
     fixture.componentInstance.title.set('New task');
     fixture.componentInstance.selectedObjectiveId.set('o1');
     fixture.componentInstance.categoryId.set('c1');
+    fixture.componentInstance.setPriority('medium');
     await fixture.componentInstance.submitCreateWithAction('create_and_close');
 
     expect(createTask).toHaveBeenCalledWith('o1', expect.objectContaining({ attachmentFileIds: ['f1'] }));

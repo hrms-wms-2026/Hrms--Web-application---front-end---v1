@@ -503,8 +503,11 @@ export const ALL_SLASH_COMMANDS: SlashCommandItem[] = [
                     <button
                       type="button"
                       class="tfm-chip"
+                      [class.tfm-chip--error]="errors()['priority']"
+                      [class.tfm-chip--active]="priority()"
                       [attr.aria-expanded]="activePopover() === 'priority'"
                       (click)="togglePopover('priority', $event)"
+                      [title]="errors()['priority'] || priorityDetails().label"
                     >
                       <span class="tfm-dot" [class]="priorityDetails().dotClass"></span>
                       <span class="tfm-chip-label">{{ priorityDetails().label }}</span>
@@ -517,7 +520,7 @@ export const ALL_SLASH_COMMANDS: SlashCommandItem[] = [
                               type="button"
                               class="tfm-popover__item"
                               [class.tfm-popover__item--selected]="priority() === opt.value"
-                              (click)="setPriority(opt.value); activePopover.set(null)"
+                              (click)="setPriority(opt.value); clearError('priority'); activePopover.set(null)"
                             >
                               <span class="tfm-dot" [class]="opt.dotClass"></span>
                               <span class="tfm-popover__name">{{ opt.label }}</span>
@@ -1756,6 +1759,7 @@ export const ALL_SLASH_COMMANDS: SlashCommandItem[] = [
     .tfm-dot--med { background: #eab308; }
     .tfm-dot--high { background: #f97316; }
     .tfm-dot--crit { background: #ef4444; }
+    .tfm-dot--unset { background: transparent; border: 1.5px solid var(--color-border, #94a3b8); }
 
     /* Date Popover */
     .tfm-date-presets { display: flex; gap: 6px; margin-bottom: 10px; }
@@ -1860,7 +1864,7 @@ export class TaskFormModalComponent {
 
   title = signal('');
   description = signal('');
-  priority = signal<WorkTask['priority']>('medium');
+  priority = signal<WorkTask['priority'] | null>(null);
   dueDate = signal('');
   estimatedHours = signal<number | null>(null);
   storyPoints = signal<number | null>(null);
@@ -2010,7 +2014,7 @@ export class TaskFormModalComponent {
       case 'medium': return { label: 'Medium', dotClass: 'tfm-dot--med' };
       case 'high': return { label: 'High', dotClass: 'tfm-dot--high' };
       case 'critical': return { label: 'Critical', dotClass: 'tfm-dot--crit' };
-      default: return { label: 'Medium', dotClass: 'tfm-dot--med' };
+      default: return { label: 'Priority', dotClass: 'tfm-dot--unset' };
     }
   });
 
@@ -2182,7 +2186,7 @@ export class TaskFormModalComponent {
     this.description.set('');
     const editorEl = this.descEditor()?.nativeElement;
     if (editorEl) editorEl.innerHTML = '';
-    this.priority.set('medium');
+    this.priority.set(null);
     this.dueDate.set('');
     this.estimatedHours.set(null);
     this.storyPoints.set(null);
@@ -3968,7 +3972,7 @@ export class TaskFormModalComponent {
     const fields = {
       title: this.title().trim(),
       description: this.description() || undefined,
-      priority: this.priority(),
+      priority: this.priority() ?? 'medium',
       dueDate: this.dueDate() || undefined,
       estimatedHours: this.estimatedHours() ?? undefined,
       storyPoints: this.storyPoints() ?? undefined,
@@ -4013,6 +4017,7 @@ export class TaskFormModalComponent {
     if (!this.title().trim()) errs['title'] = 'Title is required.';
     if (!this.selectedObjectiveId()) errs['objectiveId'] = 'Module is required.';
     if (!this.categoryId()) errs['categoryId'] = 'Category is required.';
+    if (!this.priority()) errs['priority'] = 'Priority is required.';
     this.errors.set(errs);
     if (Object.keys(errs).length > 0) return;
 
@@ -4020,7 +4025,7 @@ export class TaskFormModalComponent {
       title: this.title().trim(),
       description: this.description() || undefined,
       categoryId: this.categoryId(),
-      priority: this.priority(),
+      priority: this.priority()!,
       dueDate: this.dueDate() || undefined,
       estimatedHours: this.estimatedHours() ?? undefined,
       storyPoints: this.storyPoints() ?? undefined,

@@ -51,7 +51,11 @@ export const TaskBoardStore = signalStore(
   withMethods((store, api = inject(TaskApiService)) => ({
     async loadBoard(scopeId: string, projectId?: string): Promise<void> {
       const targetProjectId = projectId ?? scopeId;
-      patchState(store, { loading: true, error: null });
+      // Only the very first load should block the board with a spinner. A reload()
+      // triggered by an edit/drag/status change re-fetches in the background so the
+      // already-rendered columns don't flash away and get rebuilt from scratch.
+      const isInitialLoad = store.statuses().length === 0 && store.tasks().length === 0;
+      patchState(store, { loading: isInitialLoad, error: null });
       try {
         const [statusDtos, taskDtos] = await Promise.all([
           firstValueFrom(api.getStatuses(targetProjectId)),

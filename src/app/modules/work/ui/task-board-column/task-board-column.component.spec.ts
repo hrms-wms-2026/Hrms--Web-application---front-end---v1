@@ -91,7 +91,7 @@ describe('TaskBoardColumnComponent', () => {
     });
 
     fixture.componentInstance.quickTitle.set('My quick task');
-    fixture.componentInstance.quickPriority.set('high');
+    fixture.componentInstance.setPriority('high');
     fixture.detectChanges();
 
     const saveBtn = fixture.debugElement.query(By.css('.quick-task-card__save-btn'));
