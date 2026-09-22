@@ -13,6 +13,11 @@ import { ProjectCalendarStore } from '../../state/project-calendar.store';
 import { addCalendarDays, calendarDayDifference, calendarRange, parseCalendarDate, rangeToPercent } from '../../utils/calendar-date.utils';
 import { buildCalendarTreeOrder } from '../../utils/calendar-tree.utils';
 
+// Auto-assigned per-branch bar colors, same spirit as the calendar's own per-event
+// colors (calendar-event-modal) - distinct, muted hues that read well with white bar
+// text, cycling if there are more top-level modules than swatches.
+const BRANCH_PALETTE = ['#2563EB', '#0D9488', '#C026D3', '#EA580C', '#4F46E5', '#059669', '#DB2777', '#0891B2'];
+
 @Component({
   selector: 'app-project-calendar',
   standalone: true,
@@ -21,9 +26,7 @@ import { buildCalendarTreeOrder } from '../../utils/calendar-tree.utils';
     <section class="project-calendar" data-testid="project-calendar">
       <header class="project-calendar__header">
         <div class="project-calendar__heading">
-          <p class="project-calendar__eyebrow">Project calendar</p>
           <h1 class="project-calendar__title">Objective timeline</h1>
-          <p class="project-calendar__description">Drag an editable bar to shift it, or use its edges to resize the date range.</p>
         </div>
         <div class="project-calendar__actions">
           <div class="project-calendar__zoom" data-testid="zoom-controls">
@@ -80,12 +83,40 @@ import { buildCalendarTreeOrder } from '../../utils/calendar-tree.utils';
               }
               @for (row of rows(); track row.item.objectiveId) {
                 <div class="project-calendar__grid project-calendar__grid--row" [style.gridTemplateColumns]="LABEL_WIDTH + 'px ' + timelineWidth() + 'px'" [attr.data-testid]="'calendar-row-' + row.item.objectiveId">
-                  <div class="project-calendar__objective" [style.paddingLeft.px]="12 + row.depth * 18">
-                    <div class="project-calendar__objective-title" [title]="row.item.title">
-                      <svg class="project-calendar__folder-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M3.5 6.5h6l2 2h9v9a2 2 0 0 1-2 2h-15a2 2 0 0 1-2-2v-9a2 2 0 0 1 2-2Z" /><path d="M2.5 9h18" /></svg>
-                      <span>{{ row.item.title }}</span>
+                  <div class="project-calendar__objective">
+                    @if (row.depth > 0) {
+                      <div class="project-calendar__guides" [style.width.px]="row.depth * 18">
+                        @for (continues of row.ancestorLines; track $index) {
+                          <span class="project-calendar__guide-col" [class.project-calendar__guide-col--through]="continues"></span>
+                        }
+                        <span class="project-calendar__guide-col project-calendar__guide-col--elbow" [class.project-calendar__guide-col--elbow-through]="!row.isLast"></span>
+                      </div>
+                    }
+                    <div class="project-calendar__objective-body" [style.marginLeft.px]="row.depth * 18">
+                      <div class="project-calendar__objective-title" [title]="row.item.title">
+                        @if (row.hasChildren && row.depth > 0) {
+                          <button
+                            type="button"
+                            class="project-calendar__chevron"
+                            [style.transform]="isCollapsed(row.item.objectiveId) ? 'rotate(0deg)' : 'rotate(90deg)'"
+                            [attr.aria-label]="isCollapsed(row.item.objectiveId) ? 'Expand' : 'Collapse'"
+                            data-testid="calendar-chevron"
+                            (click)="toggleCollapsed(row.item.objectiveId, $event)"
+                          >
+                            <svg viewBox="0 0 24 24" aria-hidden="true"><polyline points="9 18 15 12 9 6" /></svg>
+                          </button>
+                        } @else {
+                          <span class="project-calendar__chevron-spacer"></span>
+                        }
+                        @if (row.depth === 0) {
+                          <svg class="project-calendar__folder-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M3.5 6.5h6l2 2h9v9a2 2 0 0 1-2 2h-15a2 2 0 0 1-2-2v-9a2 2 0 0 1 2-2Z" /><path d="M2.5 9h18" /></svg>
+                        } @else {
+                          <span class="project-calendar__branch-dot" [style.background]="branchColors().get(row.branchRootId)" aria-hidden="true"></span>
+                        }
+                        <span>{{ row.item.title }}</span>
+                      </div>
+                      <div class="project-calendar__objective-dates">{{ formatDateRange(row.item.startDate, row.item.endDate) }}</div>
                     </div>
-                    <div class="project-calendar__objective-dates">{{ formatDateRange(row.item.startDate, row.item.endDate) }}</div>
                   </div>
                   <div class="project-calendar__track" [style.width.px]="timelineWidth()">
                     <div class="project-calendar__grid-background" [style.background]="gridBackground()"></div>
@@ -97,6 +128,8 @@ import { buildCalendarTreeOrder } from '../../utils/calendar-tree.utils';
                       [saving]="store.saving()"
                       [pendingApproval]="store.pendingSet().has(row.item.objectiveId)"
                       [approvalMessage]="store.approvalMessages()[row.item.objectiveId] || 'Needs approval before this date change can be applied.'"
+                      [branchColor]="branchColors().get(row.branchRootId) ?? null"
+                      [isRoot]="row.depth === 0"
                       (dateChange)="saveDates($event)"
                     />
                   </div>
@@ -125,23 +158,21 @@ import { buildCalendarTreeOrder } from '../../utils/calendar-tree.utils';
   `,
   styles: [`
     :host { display: block; min-width: 0; }
-    .project-calendar { display: flex; min-width: 0; flex-direction: column; gap: 16px; padding: 8px 0 24px; color: var(--color-text-primary); }
-    .project-calendar__header { display: flex; flex-wrap: wrap; align-items: flex-end; justify-content: space-between; gap: 18px; }
+    .project-calendar { display: flex; min-width: 0; flex-direction: column; gap: 12px; padding: 0 0 24px; color: var(--color-text-primary); }
+    .project-calendar__header { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 18px; }
     .project-calendar__heading { min-width: 220px; }
-    .project-calendar__eyebrow { margin: 0 0 4px; color: var(--color-text-secondary); font-size: 11px; font-weight: 600; letter-spacing: .08em; text-transform: uppercase; }
     .project-calendar__title { margin: 0; font-size: 24px; font-weight: 700; letter-spacing: -.02em; }
-    .project-calendar__description { margin: 5px 0 0; color: var(--color-text-secondary); font-size: 13px; }
-    .project-calendar__actions { display: flex; flex-wrap: wrap; align-items: flex-end; justify-content: flex-end; gap: 16px; }
-    .project-calendar__zoom { display: flex; align-items: center; gap: 2px; height: 44px; border: 1px solid var(--color-border); border-radius: 9px; padding: 0 6px; background: var(--color-surface); }
-    .project-calendar__zoom-step { display: flex; height: 30px; width: 30px; flex: 0 0 auto; align-items: center; justify-content: center; border: 0; border-radius: 7px; background: transparent; color: var(--color-text-secondary); cursor: pointer; transition: background-color 140ms ease, color 140ms ease; }
+    .project-calendar__actions { display: flex; flex-wrap: wrap; align-items: center; justify-content: flex-end; gap: 12px; }
+    .project-calendar__zoom { display: flex; align-items: center; gap: 2px; height: 38px; border: 1px solid var(--color-border); border-radius: 9px; padding: 0 4px; background: var(--color-surface); }
+    .project-calendar__zoom-step { display: flex; height: 26px; width: 26px; flex: 0 0 auto; align-items: center; justify-content: center; border: 0; border-radius: 7px; background: transparent; color: var(--color-text-secondary); cursor: pointer; transition: background-color 140ms ease, color 140ms ease; }
     .project-calendar__zoom-step:hover:not(:disabled) { background: var(--color-surface-secondary); color: var(--color-text-primary); }
     .project-calendar__zoom-step:disabled { cursor: not-allowed; opacity: .35; }
     .project-calendar__zoom-step:focus-visible { outline: 2px solid var(--color-focus-ring); outline-offset: 2px; }
     .project-calendar__zoom-step svg { width: 16px; height: 16px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
-    .project-calendar__zoom-fit { height: 30px; flex: 0 0 auto; border: 0; border-left: 1px solid var(--color-border); border-right: 1px solid var(--color-border); margin: 0 2px; padding: 0 10px; background: transparent; color: var(--color-text-secondary); font: inherit; font-size: 11px; font-weight: 700; letter-spacing: .04em; text-transform: uppercase; cursor: pointer; transition: background-color 140ms ease, color 140ms ease; }
+    .project-calendar__zoom-fit { height: 26px; flex: 0 0 auto; border: 0; border-left: 1px solid var(--color-border); border-right: 1px solid var(--color-border); margin: 0 2px; padding: 0 10px; background: transparent; color: var(--color-text-secondary); font: inherit; font-size: 11px; font-weight: 700; letter-spacing: .04em; text-transform: uppercase; cursor: pointer; transition: background-color 140ms ease, color 140ms ease; }
     .project-calendar__zoom-fit:hover { background: var(--color-surface-secondary); color: var(--color-text-primary); }
     .project-calendar__zoom-fit:focus-visible { outline: 2px solid var(--color-focus-ring); outline-offset: 2px; }
-    .project-calendar__create { display: inline-flex; flex: 0 0 auto; height: 44px; align-items: center; gap: 7px; border: 0; border-radius: 9px; padding: 0 14px; background: var(--color-accent); color: var(--color-accent-contrast, #fff); font: inherit; font-size: 13px; font-weight: 600; cursor: pointer; box-shadow: 0 5px 12px color-mix(in srgb, var(--color-accent) 22%, transparent); transition: filter 160ms ease, transform 160ms ease; }
+    .project-calendar__create { display: inline-flex; flex: 0 0 auto; height: 38px; align-items: center; gap: 7px; border: 0; border-radius: 9px; padding: 0 12px; background: var(--color-accent); color: var(--color-accent-contrast, #fff); font: inherit; font-size: 13px; font-weight: 600; cursor: pointer; box-shadow: 0 5px 12px color-mix(in srgb, var(--color-accent) 22%, transparent); transition: filter 160ms ease, transform 160ms ease; }
     .project-calendar__create:hover:not(:disabled) { filter: brightness(.96); transform: translateY(-1px); }
     .project-calendar__create:disabled { cursor: not-allowed; opacity: .5; }
     .project-calendar__create:focus-visible { outline: 2px solid var(--color-focus-ring); outline-offset: 2px; }
@@ -158,16 +189,32 @@ import { buildCalendarTreeOrder } from '../../utils/calendar-tree.utils';
     .project-calendar__today-label { position: absolute; top: -17px; left: 50%; transform: translateX(-50%); border-radius: 4px; background: var(--color-danger); padding: 1px 5px; color: #fff; font-size: 9px; font-weight: 700; letter-spacing: .03em; text-transform: uppercase; white-space: nowrap; }
     .project-calendar__grid { display: grid; }
     .project-calendar__grid--header { min-height: 54px; border-bottom: 1px solid var(--color-border); }
-    .project-calendar__grid--row { min-height: 76px; border-bottom: 1px solid color-mix(in srgb, var(--color-border) 78%, transparent); }
+    .project-calendar__grid--row { min-height: 58px; border-bottom: 1px solid color-mix(in srgb, var(--color-border) 78%, transparent); animation: project-calendar-row-in 220ms ease; transition: background-color 140ms ease; }
+    .project-calendar__grid--row:hover { background: var(--color-surface-secondary); }
     .project-calendar__grid--row:last-child { border-bottom: 0; }
+    @keyframes project-calendar-row-in { from { opacity: 0; transform: translateY(-6px); } to { opacity: 1; transform: translateY(0); } }
+    @media (prefers-reduced-motion: reduce) { .project-calendar__grid--row { animation: none; } }
     .project-calendar__label-header { display: flex; align-items: center; padding: 0 14px; color: var(--color-text-secondary); font-size: 11px; font-weight: 600; letter-spacing: .05em; text-transform: uppercase; }
     .project-calendar__date-header { position: relative; overflow: hidden; border-left: 1px solid var(--color-border); background: var(--color-surface-secondary); }
     .project-calendar__date-marker { position: absolute; top: 0; bottom: 0; display: flex; overflow: hidden; align-items: center; padding-left: 8px; border-left: 1px solid color-mix(in srgb, var(--color-border) 85%, transparent); color: var(--color-text-secondary); font-size: 10px; font-weight: 600; white-space: nowrap; text-overflow: ellipsis; }
-    .project-calendar__objective { min-width: 0; overflow: hidden; padding: 12px 10px 10px 0; }
-    .project-calendar__objective-title { display: flex; min-width: 0; align-items: center; gap: 7px; overflow: hidden; font-size: 13px; font-weight: 600; line-height: 1.35; }
+    .project-calendar__objective { position: relative; min-width: 0; overflow: hidden; padding: 9px 10px 8px 12px; }
+    .project-calendar__guides { position: absolute; left: 12px; top: 0; bottom: 0; display: flex; pointer-events: none; }
+    .project-calendar__guide-col { position: relative; flex: 0 0 18px; width: 18px; }
+    .project-calendar__guide-col--through::before { content: ''; position: absolute; left: 8px; top: 0; bottom: 0; width: 2px; background: color-mix(in srgb, var(--color-text-secondary) 45%, transparent); border-radius: 1px; }
+    .project-calendar__guide-col--elbow::before { content: ''; position: absolute; left: 8px; top: 0; height: 50%; width: 2px; background: color-mix(in srgb, var(--color-text-secondary) 45%, transparent); border-radius: 1px; }
+    .project-calendar__guide-col--elbow.project-calendar__guide-col--elbow-through::before { height: 100%; }
+    .project-calendar__guide-col--elbow::after { content: ''; position: absolute; left: 8px; top: 50%; width: 11px; height: 2px; background: color-mix(in srgb, var(--color-text-secondary) 45%, transparent); border-radius: 1px; }
+    .project-calendar__objective-body { min-width: 0; }
+    .project-calendar__objective-title { display: flex; min-width: 0; align-items: center; gap: 6px; overflow: hidden; font-size: 13px; font-weight: 600; line-height: 1.35; }
     .project-calendar__objective-title span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .project-calendar__chevron, .project-calendar__chevron-spacer { flex: 0 0 auto; width: 16px; height: 16px; }
+    .project-calendar__chevron { display: flex; align-items: center; justify-content: center; border: 0; padding: 0; background: transparent; color: var(--color-text-secondary); cursor: pointer; transition: transform 140ms ease, color 140ms ease; }
+    .project-calendar__chevron:hover { color: var(--color-text-primary); }
+    .project-calendar__chevron:focus-visible { outline: 2px solid var(--color-focus-ring); outline-offset: 1px; }
+    .project-calendar__chevron svg { width: 12px; height: 12px; fill: none; stroke: currentColor; stroke-width: 2.5; stroke-linecap: round; stroke-linejoin: round; }
     .project-calendar__folder-icon { width: 16px; height: 16px; flex: 0 0 auto; fill: color-mix(in srgb, var(--color-accent) 12%, var(--color-surface)); stroke: var(--color-accent); stroke-width: 1.7; stroke-linecap: round; stroke-linejoin: round; }
-    .project-calendar__objective-dates { margin: 5px 0 0 23px; color: var(--color-text-secondary); font-size: 11px; white-space: nowrap; }
+    .project-calendar__branch-dot { width: 9px; height: 9px; flex: 0 0 auto; border-radius: 999px; }
+    .project-calendar__objective-dates { margin: 4px 0 0 22px; color: var(--color-text-secondary); font-size: 11px; white-space: nowrap; }
     .project-calendar__track { position: relative; min-width: 0; overflow: hidden; border-left: 1px solid var(--color-border); }
     .project-calendar__grid-background { position: absolute; inset: 0; opacity: .5; }
     @media (max-width: 900px) { .project-calendar__layout { grid-template-columns: minmax(0, 1fr); } .project-calendar__actions { width: 100%; justify-content: flex-start; } }
@@ -193,6 +240,9 @@ export class ProjectCalendarComponent implements OnInit, AfterViewInit, OnDestro
   // fit-to-screen floor and MAX_DAY_WIDTH by dayWidth() below - no separate "views"
   // that hide part of the range, just one continuous chart you zoom and scroll.
   readonly zoomDayWidth = signal(32);
+  // Objective ids collapsed via the tree chevron - their descendants are left out of
+  // rows() entirely, same as the Tree tab, so a collapsed branch's bars disappear too.
+  readonly collapsedIds = signal<ReadonlySet<string>>(new Set());
 
   readonly timelineStart = computed(() => {
     const dates = this.store.modules().map((item) => item.startDate).filter(Boolean).sort();
@@ -227,7 +277,21 @@ export class ProjectCalendarComponent implements OnInit, AfterViewInit, OnDestro
   // Caps each ruler label's box to the gap before the next tick, so dense ticks at
   // high zoom clip with an ellipsis instead of visually overlapping their neighbor.
   readonly markerBoxWidth = computed(() => Math.max(1, this.markerStep() * this.dayWidth()));
-  readonly rows = computed(() => buildCalendarTreeOrder(this.store.modules()));
+  readonly rows = computed(() => buildCalendarTreeOrder(this.store.modules(), this.collapsedIds()));
+  // Assigns each top-level module (and everything nested under it) a stable color from
+  // BRANCH_PALETTE, in the order branches first appear - so bars read as one colored
+  // family per branch instead of one flat gray, matching the connector-line grouping.
+  // The project-root row is excluded - it gets its own fixed summary color instead.
+  readonly branchColors = computed(() => {
+    const map = new Map<string, string>();
+    let next = 0;
+    for (const row of this.rows()) {
+      if (row.depth === 0 || map.has(row.branchRootId)) continue;
+      map.set(row.branchRootId, BRANCH_PALETTE[next % BRANCH_PALETTE.length]);
+      next++;
+    }
+    return map;
+  });
   readonly bandRects = computed(() => {
     const windowStart = this.timelineStart();
     const windowEnd = this.timelineEnd();
@@ -299,6 +363,20 @@ export class ProjectCalendarComponent implements OnInit, AfterViewInit, OnDestro
   gridBackground(): string {
     const width = this.dayWidth();
     return `repeating-linear-gradient(to right, transparent 0, transparent ${width - 1}px, var(--color-border) ${width - 1}px, var(--color-border) ${width}px)`;
+  }
+
+  isCollapsed(objectiveId: string): boolean {
+    return this.collapsedIds().has(objectiveId);
+  }
+
+  toggleCollapsed(objectiveId: string, event: Event): void {
+    event.stopPropagation();
+    this.collapsedIds.update((ids) => {
+      const next = new Set(ids);
+      if (next.has(objectiveId)) next.delete(objectiveId);
+      else next.add(objectiveId);
+      return next;
+    });
   }
 
   async saveDates(change: CalendarDateChange): Promise<void> { await this.store.saveDates(change); }
