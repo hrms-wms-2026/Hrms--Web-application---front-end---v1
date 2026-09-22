@@ -5,21 +5,14 @@ import { TaskCommentApiService } from '../../data-access/task-comment-api.servic
 import { TaskApiService } from '../../data-access/task-api.service';
 import { TaskCommentDto } from '../../models/dto/task-comment.dto';
 import { EmployeeAvatarComponent } from '../employee-avatar/employee-avatar.component';
+import { CommentComposerComponent } from '../comment-composer/comment-composer.component';
 
 @Component({
   selector: 'app-task-comments',
   standalone: true,
-  imports: [EmployeeAvatarComponent, NgTemplateOutlet, DatePipe],
+  imports: [EmployeeAvatarComponent, NgTemplateOutlet, DatePipe, CommentComposerComponent],
   template: `
-    <div class="tc-composer">
-      <textarea
-        class="tc-textarea"
-        placeholder="Write a comment..."
-        [value]="composerContent()"
-        (input)="composerContent.set($any($event.target).value)"
-      ></textarea>
-      <button type="button" class="tc-post-btn" [disabled]="!composerContent().trim()" (click)="submitComment()">Comment</button>
-    </div>
+    <app-comment-composer placeholder="Write a comment..." submitLabel="Comment" (submitted)="submitComment($event)" />
 
     @if (comments().length === 0) {
       <p class="tc-empty">No comments yet</p>
@@ -37,9 +30,8 @@ import { EmployeeAvatarComponent } from '../employee-avatar/employee-avatar.comp
             }
             @if (replyingToId() === comment.id) {
               <div class="tc-reply-composer">
-                <textarea class="tc-textarea" [value]="replyContent()" (input)="replyContent.set($any($event.target).value)"></textarea>
-                <button type="button" (click)="submitReply(comment.id)">Reply</button>
-                <button type="button" (click)="cancelReply()">Cancel</button>
+                <app-comment-composer placeholder="Write a reply..." submitLabel="Reply" [showCancel]="true"
+                  (submitted)="submitReply(comment.id, $event)" (cancelled)="cancelReply()" />
               </div>
             } @else if (!comment.parentCommentId) {
               <button type="button" class="tc-reply-link" (click)="startReply(comment.id)">Reply</button>
@@ -62,11 +54,10 @@ import { EmployeeAvatarComponent } from '../employee-avatar/employee-avatar.comp
           @if (comment.isDeleted) {
             <p class="tc-deleted">[comment deleted]</p>
           } @else if (editingCommentId() === comment.id) {
-            <textarea class="tc-textarea" [value]="editContent()" (input)="editContent.set($any($event.target).value)"></textarea>
-            <button type="button" (click)="saveEdit(comment.id)">Save</button>
-            <button type="button" (click)="cancelEdit()">Cancel</button>
+            <app-comment-composer [initialContent]="comment.content" [initialAttachments]="comment.attachments" submitLabel="Save" [showCancel]="true"
+              (submitted)="saveEdit(comment.id, $event)" (cancelled)="cancelEdit()" />
           } @else {
-            <p class="tc-content">{{ comment.content }}</p>
+            <p class="tc-content" [innerHTML]="comment.content"></p>
             @if (canModify(comment)) {
               <div class="tc-actions">
                 <button type="button" (click)="startEdit(comment)">Edit</button>
@@ -79,9 +70,6 @@ import { EmployeeAvatarComponent } from '../employee-avatar/employee-avatar.comp
     </ng-template>
   `,
   styles: [`
-    .tc-composer { display: flex; flex-direction: column; gap: 6px; margin-bottom: 12px; }
-    .tc-textarea { width: 100%; min-height: 60px; border: 1px solid var(--color-border); border-radius: 8px; padding: 8px; font: inherit; resize: vertical; box-sizing: border-box; }
-    .tc-post-btn { align-self: flex-end; }
     .tc-empty { color: var(--color-text-secondary); font-size: 13px; }
     .tc-list, .tc-replies { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 10px; }
     .tc-replies { margin-left: 32px; margin-top: 8px; }
@@ -94,6 +82,7 @@ import { EmployeeAvatarComponent } from '../employee-avatar/employee-avatar.comp
     .tc-content { margin: 2px 0; white-space: pre-wrap; }
     .tc-deleted { margin: 2px 0; color: var(--color-text-secondary); font-style: italic; }
     .tc-actions, .tc-reply-link { display: flex; gap: 8px; }
+    .tc-reply-composer { margin-top: 8px; }
   `]
 })
 export class TaskCommentsComponent implements OnInit {
@@ -104,11 +93,8 @@ export class TaskCommentsComponent implements OnInit {
 
   comments = signal<TaskCommentDto[]>([]);
   currentEmployeeId = signal<string | null>(null);
-  composerContent = signal('');
   editingCommentId = signal<string | null>(null);
-  editContent = signal('');
   replyingToId = signal<string | null>(null);
-  replyContent = signal('');
 
   async ngOnInit(): Promise<void> {
     const me = await firstValueFrom(this.taskApi.getCurrentEmployee());
@@ -124,30 +110,22 @@ export class TaskCommentsComponent implements OnInit {
     return comment.employeeId === this.currentEmployeeId();
   }
 
-  async submitComment(): Promise<void> {
-    const content = this.composerContent().trim();
-    if (!content) return;
-    await firstValueFrom(this.commentApi.postComment(this.taskId(), { content, attachmentFileIds: [] }));
-    this.composerContent.set('');
+  async submitComment(payload: { content: string; attachmentFileIds: string[] }): Promise<void> {
+    await firstValueFrom(this.commentApi.postComment(this.taskId(), payload));
     await this.reload();
   }
 
   startEdit(comment: TaskCommentDto): void {
     this.editingCommentId.set(comment.id);
-    this.editContent.set(comment.content);
   }
 
   cancelEdit(): void {
     this.editingCommentId.set(null);
-    this.editContent.set('');
   }
 
-  async saveEdit(commentId: string): Promise<void> {
-    const content = this.editContent().trim();
-    if (!content) return;
-    await firstValueFrom(this.commentApi.editComment(commentId, { content, attachmentFileIds: [] }));
+  async saveEdit(commentId: string, payload: { content: string; attachmentFileIds: string[] }): Promise<void> {
+    await firstValueFrom(this.commentApi.editComment(commentId, payload));
     this.editingCommentId.set(null);
-    this.editContent.set('');
     await this.reload();
   }
 
@@ -158,20 +136,15 @@ export class TaskCommentsComponent implements OnInit {
 
   startReply(commentId: string): void {
     this.replyingToId.set(commentId);
-    this.replyContent.set('');
   }
 
   cancelReply(): void {
     this.replyingToId.set(null);
-    this.replyContent.set('');
   }
 
-  async submitReply(parentCommentId: string): Promise<void> {
-    const content = this.replyContent().trim();
-    if (!content) return;
-    await firstValueFrom(this.commentApi.postReply(parentCommentId, { content, attachmentFileIds: [] }));
+  async submitReply(parentCommentId: string, payload: { content: string; attachmentFileIds: string[] }): Promise<void> {
+    await firstValueFrom(this.commentApi.postReply(parentCommentId, payload));
     this.replyingToId.set(null);
-    this.replyContent.set('');
     await this.reload();
   }
 }

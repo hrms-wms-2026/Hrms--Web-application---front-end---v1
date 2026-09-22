@@ -51,12 +51,10 @@ describe('TaskCommentsComponent', () => {
   });
 
   it('posts a new top-level comment and reloads the list', async () => {
-    component.composerContent.set('a new comment');
-    await component.submitComment();
+    await component.submitComment({ content: 'a new comment', attachmentFileIds: [] });
 
     expect(commentApi.postComment).toHaveBeenCalledWith('t1', { content: 'a new comment', attachmentFileIds: [] });
     expect(commentApi.getComments).toHaveBeenCalledTimes(2);
-    expect(component.composerContent()).toBe('');
   });
 
   it('shows edit/delete controls only for the caller\'s own comment', () => {
@@ -66,8 +64,7 @@ describe('TaskCommentsComponent', () => {
 
   it('editComment sends the update and exits edit mode', async () => {
     component.startEdit(authorComment());
-    component.editContent.set('edited');
-    await component.saveEdit('c1');
+    await component.saveEdit('c1', { content: 'edited', attachmentFileIds: [] });
 
     expect(commentApi.editComment).toHaveBeenCalledWith('c1', { content: 'edited', attachmentFileIds: [] });
     expect(component.editingCommentId()).toBeNull();
@@ -82,8 +79,7 @@ describe('TaskCommentsComponent', () => {
 
   it('postReply targets the parent comment id', async () => {
     component.startReply('c1');
-    component.replyContent.set('a reply');
-    await component.submitReply('c1');
+    await component.submitReply('c1', { content: 'a reply', attachmentFileIds: [] });
 
     expect(commentApi.postReply).toHaveBeenCalledWith('c1', { content: 'a reply', attachmentFileIds: [] });
     expect(component.replyingToId()).toBeNull();

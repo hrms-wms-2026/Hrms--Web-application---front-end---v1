@@ -26,6 +26,8 @@ import {
 } from '../models/dto/task-edit-request.dto';
 import { TaskHistoryEntryDto } from '../models/dto/task-history.dto';
 
+export type PendingUploadPurpose = 'task_attachment' | 'task_description_image' | 'comment_attachment' | 'comment_description_image';
+
 @Injectable({ providedIn: 'root' })
 export class TaskApiService {
   private readonly http = inject(HttpClient);
@@ -180,7 +182,7 @@ export class TaskApiService {
     return this.http.post<TaskCategoryDto[]>(`${this.baseUrl}/projects/${projectId}/task-categories/reorder`, { updates });
   }
 
-  uploadPendingFile(file: File, purpose: 'task_attachment' | 'task_description_image'): Observable<PendingUploadDto> {
+  uploadPendingFile(file: File, purpose: PendingUploadPurpose): Observable<PendingUploadDto> {
     const formData = new FormData();
     formData.set('purpose', purpose);
     formData.set('file', file);
