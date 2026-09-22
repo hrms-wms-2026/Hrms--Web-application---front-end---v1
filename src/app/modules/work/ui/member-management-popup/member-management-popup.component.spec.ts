@@ -1,21 +1,12 @@
 import { ComponentFixture, TestBed } from '@angular/core/testing';
-import { of } from 'rxjs';
 import { vi } from 'vitest';
 import { MemberManagementPopupComponent } from './member-management-popup.component';
-import { EmployeeDirectoryStore } from '../../state/employee-directory.store';
-import { PeopleApiService } from '../../../people/data-access/people-api.service';
 
 describe('MemberManagementPopupComponent', () => {
   let fixture: ComponentFixture<MemberManagementPopupComponent>;
 
   beforeEach(() => {
-    TestBed.configureTestingModule({
-      imports: [MemberManagementPopupComponent],
-      providers: [
-        { provide: EmployeeDirectoryStore, useValue: { get: () => ({ name: 'Objective Member' }), ensureLoaded: vi.fn() } },
-        { provide: PeopleApiService, useValue: { listEmployees: vi.fn().mockReturnValue(of({ items: [] })) } }
-      ]
-    });
+    TestBed.configureTestingModule({ imports: [MemberManagementPopupComponent] });
     fixture = TestBed.createComponent(MemberManagementPopupComponent);
     fixture.componentRef.setInput('open', true);
   });
@@ -55,8 +46,8 @@ describe('MemberManagementPopupComponent', () => {
   it('renders objective badges and routes remove and transfer actions', () => {
     fixture.componentRef.setInput('scope', 'objective');
     fixture.componentRef.setInput('objectiveMembers', [
-      { employeeId: 'e1', isHead: true, pending: false },
-      { employeeId: 'e2', isHead: false, pending: true }
+      { employeeId: 'e1', name: 'Employee One', avatarUrl: null, isHead: true, pending: false },
+      { employeeId: 'e2', name: 'Employee Two', avatarUrl: null, isHead: false, pending: true }
     ]);
     fixture.componentRef.setInput('canManage', true);
     fixture.detectChanges();
@@ -74,5 +65,17 @@ describe('MemberManagementPopupComponent', () => {
 
     expect(removeRequested).toHaveBeenCalledWith('e2');
     expect(transferRequested).toHaveBeenCalledWith('e3');
+  });
+
+  it('renders the member avatar image when an objective member has an avatarUrl', () => {
+    fixture.componentRef.setInput('scope', 'objective');
+    fixture.componentRef.setInput('objectiveMembers', [
+      { employeeId: 'e1', name: 'Employee One', avatarUrl: 'https://api.test/employees/e1/avatar', isHead: false, pending: false }
+    ]);
+    fixture.detectChanges();
+
+    const img = fixture.nativeElement.querySelector('.avatar__image') as HTMLImageElement;
+    expect(img).toBeTruthy();
+    expect(img.src).toBe('https://api.test/employees/e1/avatar');
   });
 });

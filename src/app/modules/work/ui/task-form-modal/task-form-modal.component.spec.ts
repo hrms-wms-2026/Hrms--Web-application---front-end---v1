@@ -50,12 +50,15 @@ describe('TaskFormModalComponent - edit mode', () => {
   let fixture: ComponentFixture<TaskFormModalComponent>;
   let api: Record<string, ReturnType<typeof vi.fn>>;
   let milestones: ReturnType<typeof signal<{ objectiveId: string; isOwner: boolean }[]>>;
-  let members: { employeeId: string; name: string }[];
+  let members: { employeeId: string; name: string; avatarUrl: string | null }[];
 
   beforeEach(async () => {
     api = baseApi();
     milestones = signal<{ objectiveId: string; isOwner: boolean }[]>([{ objectiveId: 'o1', isOwner: true }]);
-    members = [{ employeeId: 'e1', name: 'Ann' }, { employeeId: 'e2', name: 'Bob' }];
+    members = [
+      { employeeId: 'e1', name: 'Ann', avatarUrl: 'https://api.test/employees/e1/avatar' },
+      { employeeId: 'e2', name: 'Bob', avatarUrl: null }
+    ];
 
     await TestBed.configureTestingModule({
       imports: [TaskFormModalComponent],
@@ -115,6 +118,26 @@ describe('TaskFormModalComponent - edit mode', () => {
     await fixture.componentInstance.submit();
     expect(api['assignTask']).not.toHaveBeenCalled();
     expect(api['unassignTask']).not.toHaveBeenCalled();
+  });
+
+  it('renders the current assignee avatar image from the resolved avatarUrl', () => {
+    const img = fixture.nativeElement.querySelector('.tfm-avatar-circle .avatar__image') as HTMLImageElement;
+    expect(img).toBeTruthy();
+    expect(img.src).toBe('https://api.test/employees/e1/avatar');
+  });
+
+  it('renders avatar images (or initials fallback) for every member in the assignee picker list', () => {
+    fixture.componentInstance.togglePopover('assignee', new MouseEvent('click'));
+    fixture.detectChanges();
+
+    const rows = fixture.nativeElement.querySelectorAll('.tfm-popover__item');
+    const bobRow = Array.from(rows).find((el) => (el as HTMLElement).textContent?.includes('Bob')) as HTMLElement;
+    expect(bobRow.querySelector('.avatar__fallback, .avatar__icon')).toBeTruthy();
+    expect(bobRow.querySelector('.avatar__image')).toBeNull();
+
+    const annRow = Array.from(rows).find((el) => (el as HTMLElement).textContent?.includes('Ann')) as HTMLElement;
+    const annImg = annRow.querySelector('.avatar__image') as HTMLImageElement;
+    expect(annImg.src).toBe('https://api.test/employees/e1/avatar');
   });
 
   it('non-owner Save routes through createTaskEditRequest and skips reassignment', async () => {
@@ -958,6 +981,7 @@ describe('TaskFormModalComponent - description editor enter key & checklist hand
 describe('TaskFormModalComponent - subtasks section', () => {
   let fixture: ComponentFixture<TaskFormModalComponent>;
   let api: Record<string, ReturnType<typeof vi.fn>>;
+  let subtasksSignal: ReturnType<typeof signal<Record<string, any[]>>>;
   let boardStore: {
     createTask: ReturnType<typeof vi.fn>;
     error: () => string | null;
@@ -968,23 +992,24 @@ describe('TaskFormModalComponent - subtasks section', () => {
 
   beforeEach(async () => {
     api = baseApi();
+    subtasksSignal = signal({
+      t1: [
+        {
+          id: 'sub-1',
+          title: 'Subtask 1',
+          priority: 'high',
+          statusId: 's1',
+          assigneeEmployeeIds: ['e1'],
+          parentTaskId: 't1',
+          subtaskTotalCount: 0,
+          subtaskCompletedCount: 0
+        }
+      ]
+    });
     boardStore = {
       createTask: vi.fn(),
       error: () => null,
-      subtasksByParentId: vi.fn().mockReturnValue({
-        t1: [
-          {
-            id: 'sub-1',
-            title: 'Subtask 1',
-            priority: 'high',
-            statusId: 's1',
-            assigneeEmployeeIds: ['e1'],
-            parentTaskId: 't1',
-            subtaskTotalCount: 0,
-            subtaskCompletedCount: 0
-          }
-        ]
-      }),
+      subtasksByParentId: vi.fn().mockImplementation(() => subtasksSignal()),
       loadSubtasks: vi.fn().mockResolvedValue(undefined),
       createSubtask: vi.fn().mockResolvedValue({ id: 'sub-2', title: 'New Sub' })
     };
@@ -996,7 +1021,7 @@ describe('TaskFormModalComponent - subtasks section', () => {
         { provide: ProjectApiService, useValue: { getMyMilestones: vi.fn().mockReturnValue(of([])) } },
         { provide: SprintApiService, useValue: { getByProject: vi.fn().mockReturnValue(of([])) } },
         { provide: TaskBoardStore, useValue: boardStore },
-        { provide: ProjectDetailStore, useValue: { milestones: signal([]), loadProjectMembers: vi.fn().mockResolvedValue(undefined), projectMembers: () => [{ employeeId: 'e1', name: 'Ann' }] } },
+        { provide: ProjectDetailStore, useValue: { milestones: signal([{ objectiveId: 'o1', isOwner: true }]), loadProjectMembers: vi.fn().mockResolvedValue(undefined), projectMembers: () => [{ employeeId: 'e1', name: 'Ann', avatarUrl: null }] } },
         { provide: CurrentEmployeeStore, useValue: { id: signal('e1'), ensureLoaded: vi.fn() } }
       ]
     }).compileComponents();
@@ -1050,6 +1075,173 @@ describe('TaskFormModalComponent - subtasks section', () => {
       assigneeEmployeeId: 'e1'
     });
     expect(fixture.componentInstance.addingSubtask()).toBe(false);
+  });
+
+  it('navigates to subtask detail when clicking a subtask row and provides return breadcrumb', async () => {
+    const subTaskDto = {
+      ...taskDto,
+      id: 'sub-1',
+      shortId: 'P-1.1',
+      title: 'Subtask 1',
+      parentTaskId: 't1'
+    };
+    api['getTaskById'].mockImplementation((id: string) => {
+      if (id === 'sub-1') return of(subTaskDto);
+      return of(taskDto);
+    });
+
+    const selectedSpy = vi.fn();
+    fixture.componentInstance.taskSelected.subscribe(selectedSpy);
+
+    const subtaskRow = fixture.nativeElement.querySelector('[data-testid="subtask-row-sub-1"]') as HTMLElement;
+    expect(subtaskRow).not.toBeNull();
+    subtaskRow.click();
+    await flush(fixture);
+
+    expect(selectedSpy).toHaveBeenCalledWith('sub-1');
+    expect(fixture.componentInstance.currentTaskId()).toBe('sub-1');
+    expect(fixture.componentInstance.title()).toBe('Subtask 1');
+    expect(api['getTaskById']).toHaveBeenCalledWith('sub-1');
+
+    // Breadcrumb should show parent task link
+    const parentBreadcrumb = fixture.nativeElement.querySelector('[data-testid="breadcrumb-parent-task"]') as HTMLButtonElement;
+    expect(parentBreadcrumb).not.toBeNull();
+    expect(parentBreadcrumb.textContent).toContain('P-1');
+
+    // Subtasks section should not be visible when viewing a subtask
+    expect(fixture.nativeElement.querySelector('[data-testid="add-subtask-button"]')).toBeNull();
+
+    // Clicking parent link navigates back to parent task
+    parentBreadcrumb.click();
+    await flush(fixture);
+
+    expect(selectedSpy).toHaveBeenCalledWith('t1');
+    expect(fixture.componentInstance.currentTaskId()).toBe('t1');
+    expect(fixture.componentInstance.title()).toBe('First');
+  });
+
+  it('saves changes scoped to the subtask when viewing a subtask', async () => {
+    const subTaskDto = {
+      ...taskDto,
+      id: 'sub-1',
+      shortId: 'P-1.1',
+      title: 'Subtask 1',
+      parentTaskId: 't1'
+    };
+    api['getTaskById'].mockImplementation((id: string) => {
+      if (id === 'sub-1') return of(subTaskDto);
+      return of(taskDto);
+    });
+
+    await fixture.componentInstance.openSubtask('sub-1');
+    await flush(fixture);
+
+    fixture.componentInstance.title.set('Subtask 1 Edited');
+    fixture.componentInstance.statusId.set('s2');
+
+    await fixture.componentInstance.submit();
+
+    expect(api['moveTaskStatus']).toHaveBeenCalledWith('sub-1', 's2');
+    expect(api['editTask']).toHaveBeenCalledWith('sub-1', expect.objectContaining({ title: 'Subtask 1 Edited' }));
+  });
+
+  it('hides the table view and shows the action row button when no subtasks exist', () => {
+    subtasksSignal.set({ t1: [] });
+    fixture.detectChanges();
+
+    expect(fixture.componentInstance.subtasks().length).toBe(0);
+    expect(fixture.nativeElement.querySelector('.tfm-subtasks-section')).toBeNull();
+    expect(fixture.nativeElement.querySelector('.tfm-subtask-table-head')).toBeNull();
+
+    const addSubtaskBtn = fixture.nativeElement.querySelector('[data-testid="add-subtask-button"]') as HTMLButtonElement;
+    expect(addSubtaskBtn).not.toBeNull();
+    expect(addSubtaskBtn.classList.contains('tfm-action-row')).toBe(true);
+
+    addSubtaskBtn.click();
+    fixture.detectChanges();
+
+    expect(fixture.nativeElement.querySelector('.tfm-subtask-standalone-create')).not.toBeNull();
+    expect(fixture.nativeElement.querySelector('.tfm-subtask-table-head')).toBeNull();
+    expect(fixture.nativeElement.querySelector('[data-testid="subtask-add-title"]')).not.toBeNull();
+
+    // Priority button defaults to 'Priority' (not 'Normal')
+    expect(fixture.componentInstance.formatSubtaskPriority(null)).toBe('Priority');
+    expect(fixture.componentInstance.newSubtaskPriority()).toBeNull();
+
+    // Toggling priority
+    fixture.componentInstance.selectSubtaskPriority('critical');
+    expect(fixture.componentInstance.newSubtaskPriority()).toBe('critical');
+    expect(fixture.componentInstance.formatSubtaskPriority('critical')).toBe('Critical');
+
+    // Clicking again clears back to null ('Priority')
+    fixture.componentInstance.selectSubtaskPriority('critical');
+    expect(fixture.componentInstance.newSubtaskPriority()).toBeNull();
+    expect(fixture.componentInstance.formatSubtaskPriority(null)).toBe('Priority');
+  });
+
+  it('renders Status column header and subtask status pill', () => {
+    const statusCol = fixture.nativeElement.querySelector('.tfm-subtask-col-status');
+    expect(statusCol).not.toBeNull();
+    expect(statusCol.textContent).toContain('Status');
+
+    const statusBtn = fixture.nativeElement.querySelector('[data-testid="subtask-status-sub-1"]') as HTMLButtonElement;
+    expect(statusBtn).not.toBeNull();
+    expect(statusBtn.textContent).toContain('To Do');
+  });
+
+  it('allows opening assignee popover and changing subtask assignee', async () => {
+    const subtask = fixture.componentInstance.subtasks()[0];
+    const assigneeBtn = fixture.nativeElement.querySelector('[data-testid="subtask-assignee-sub-1"]') as HTMLButtonElement;
+    expect(assigneeBtn).not.toBeNull();
+
+    // Click to open popover
+    assigneeBtn.click();
+    fixture.detectChanges();
+    expect(fixture.componentInstance.activeSubtaskPopover()).toEqual({ id: 'sub-1', type: 'assignee' });
+
+    // Change assignee to Ann ('e1') -> no change since already 'e1'
+    await fixture.componentInstance.changeSubtaskAssignee(subtask, 'e1');
+    expect(api['assignTask']).not.toHaveBeenCalled();
+
+    // Change assignee to unassigned ('')
+    await fixture.componentInstance.changeSubtaskAssignee(subtask, '');
+    expect(api['unassignTask']).toHaveBeenCalledWith('sub-1', 'e1');
+    expect(boardStore.loadSubtasks).toHaveBeenCalledWith('t1');
+    expect(fixture.componentInstance.activeSubtaskPopover()).toBeNull();
+  });
+
+  it('allows opening priority popover and changing subtask priority', async () => {
+    const subtask = fixture.componentInstance.subtasks()[0];
+    const priorityBtn = fixture.nativeElement.querySelector('[data-testid="subtask-priority-sub-1"]') as HTMLButtonElement;
+    expect(priorityBtn).not.toBeNull();
+
+    // Click to open popover
+    priorityBtn.click();
+    fixture.detectChanges();
+    expect(fixture.componentInstance.activeSubtaskPopover()).toEqual({ id: 'sub-1', type: 'priority' });
+
+    // Change priority to critical
+    await fixture.componentInstance.changeSubtaskPriority(subtask, 'critical');
+    expect(api['editTask']).toHaveBeenCalledWith('sub-1', expect.objectContaining({ priority: 'critical', title: 'Subtask 1' }));
+    expect(boardStore.loadSubtasks).toHaveBeenCalledWith('t1');
+    expect(fixture.componentInstance.activeSubtaskPopover()).toBeNull();
+  });
+
+  it('allows opening status popover and changing subtask status', async () => {
+    const subtask = fixture.componentInstance.subtasks()[0];
+    const statusBtn = fixture.nativeElement.querySelector('[data-testid="subtask-status-sub-1"]') as HTMLButtonElement;
+    expect(statusBtn).not.toBeNull();
+
+    // Click to open popover
+    statusBtn.click();
+    fixture.detectChanges();
+    expect(fixture.componentInstance.activeSubtaskPopover()).toEqual({ id: 'sub-1', type: 'status' });
+
+    // Change status to s2
+    await fixture.componentInstance.changeSubtaskStatus(subtask, 's2');
+    expect(api['moveTaskStatus']).toHaveBeenCalledWith('sub-1', 's2');
+    expect(boardStore.loadSubtasks).toHaveBeenCalledWith('t1');
+    expect(fixture.componentInstance.activeSubtaskPopover()).toBeNull();
   });
 });
 
