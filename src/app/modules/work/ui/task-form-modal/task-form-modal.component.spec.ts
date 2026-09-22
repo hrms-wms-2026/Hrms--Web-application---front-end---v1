@@ -9,6 +9,19 @@ import { SprintApiService } from '../../data-access/sprint-api.service';
 import { ProjectDetailStore } from '../../state/project-detail.store';
 import { TaskBoardStore } from '../../state/task-board.store';
 import { CurrentEmployeeStore } from '../../state/current-employee.store';
+import { TaskCommentApiService } from '../../data-access/task-comment-api.service';
+
+function baseCommentApi(): Record<string, ReturnType<typeof vi.fn>> {
+  return {
+    getComments: vi.fn().mockReturnValue(of([])),
+    postComment: vi.fn().mockReturnValue(of({})),
+    postReply: vi.fn().mockReturnValue(of({})),
+    editComment: vi.fn().mockReturnValue(of({})),
+    deleteComment: vi.fn().mockReturnValue(of(undefined)),
+    addReaction: vi.fn().mockReturnValue(of(undefined)),
+    removeReaction: vi.fn().mockReturnValue(of(undefined))
+  };
+}
 
 const taskDto = {
   id: 't1', objectiveId: 'o1', shortId: 'P-1', title: 'First', description: 'desc',
@@ -35,7 +48,8 @@ function baseApi(): Record<string, ReturnType<typeof vi.fn>> {
     moveTaskStatus: vi.fn().mockReturnValue(of(undefined)),
     uploadPendingFile: vi.fn().mockReturnValue(of({ fileId: 'f1', originalFileName: 'a.png', fileSizeBytes: 100, contentType: 'image/png' })),
     deletePendingFile: vi.fn().mockReturnValue(of(undefined)),
-    getFileUrl: vi.fn((fileId: string) => `http://test/api/v1/work/tasks/files/${fileId}`)
+    getFileUrl: vi.fn((fileId: string) => `http://test/api/v1/work/tasks/files/${fileId}`),
+    getCurrentEmployee: vi.fn().mockReturnValue(of({ employeeId: 'e1' }))
   };
 }
 
@@ -63,6 +77,7 @@ describe('TaskFormModalComponent - edit mode', () => {
       imports: [TaskFormModalComponent],
       providers: [
         { provide: TaskApiService, useValue: api },
+        { provide: TaskCommentApiService, useValue: baseCommentApi() },
         { provide: ProjectApiService, useValue: { getMyMilestones: vi.fn().mockReturnValue(of([])) } },
         { provide: SprintApiService, useValue: { getByProject: vi.fn().mockReturnValue(of([])) } },
         { provide: TaskBoardStore, useValue: { createTask: vi.fn(), error: () => null } },
@@ -84,6 +99,13 @@ describe('TaskFormModalComponent - edit mode', () => {
     expect(fixture.componentInstance.title()).toBe('First');
     expect(fixture.componentInstance.statusId()).toBe('s1');
     expect(fixture.componentInstance.assigneeEmployeeId()).toBe('e1');
+  });
+
+  it('mounts app-task-comments with the current task id in edit mode', () => {
+    fixture.detectChanges();
+
+    const commentsEl: HTMLElement | null = fixture.nativeElement.querySelector('app-task-comments');
+    expect(commentsEl).not.toBeNull();
   });
 
   it('on Save Changes: moves status if changed, then edits the task (owner path)', async () => {
@@ -1011,6 +1033,7 @@ describe('TaskFormModalComponent - subtasks section', () => {
       imports: [TaskFormModalComponent],
       providers: [
         { provide: TaskApiService, useValue: api },
+        { provide: TaskCommentApiService, useValue: baseCommentApi() },
         { provide: ProjectApiService, useValue: { getMyMilestones: vi.fn().mockReturnValue(of([])) } },
         { provide: SprintApiService, useValue: { getByProject: vi.fn().mockReturnValue(of([])) } },
         { provide: TaskBoardStore, useValue: boardStore },
