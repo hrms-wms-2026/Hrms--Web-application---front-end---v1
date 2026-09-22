@@ -30,6 +30,11 @@ export class ProfileApiService {
     return this.http.put<{ avatarFileId: string | null }>(`${this.base}/avatar`, formData);
   }
 
+  /** Pure helper - no request. `?v=` busts the browser's image cache after a re-upload. */
+  getAvatarUrl(fileId: string): string {
+    return `${this.base}/avatar?v=${fileId}`;
+  }
+
   addEmergencyContact(payload: UpsertEmergencyContactRequest): Observable<{ id: string }> {
     return this.http.post<{ id: string }>(`${this.base}/emergency-contacts`, payload);
   }

@@ -40,4 +40,8 @@ describe('ProfileApiService', () => {
     expect(req.request.body instanceof FormData).toBe(true);
     req.flush({ avatarFileId: 'file-id' });
   });
+
+  it('builds a cache-busted avatar URL from the file id', () => {
+    expect(service.getAvatarUrl('file-abc')).toBe(`${environment.apiUrl}/employees/me/avatar?v=file-abc`);
+  });
 });
