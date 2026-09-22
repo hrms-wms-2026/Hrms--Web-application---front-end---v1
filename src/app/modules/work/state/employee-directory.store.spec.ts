@@ -33,6 +33,14 @@ describe('EmployeeDirectoryStore', () => {
     expect(summary?.avatarUrl).toBeNull();
   });
 
+  it('ensureLoaded carries the resolved avatarUrl through when the backend returns one', async () => {
+    getEmployeeSpy.mockReturnValue(of({ ...employee, avatarUrl: 'https://api.test/employees/emp-1/avatar' }));
+
+    await store.ensureLoaded(['emp-1']);
+
+    expect(store.get('emp-1')?.avatarUrl).toBe('https://api.test/employees/emp-1/avatar');
+  });
+
   it('ensureLoaded does not re-fetch an already-cached id', async () => {
     await store.ensureLoaded(['emp-1']);
     await store.ensureLoaded(['emp-1']);

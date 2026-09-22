@@ -48,7 +48,7 @@ export const EmployeeDirectoryStore = signalStore(
             // every fresh mount that needs this id (a new row, a new card) retries the same
             // doomed request forever, since there is no negative cache without this.
             additions[id] = employee
-              ? { id: employee.id, name: employee.fullName, initials: buildInitials(employee.fullName), avatarUrl: null }
+              ? { id: employee.id, name: employee.fullName, initials: buildInitials(employee.fullName), avatarUrl: employee.avatarUrl ?? null }
               : { id, name: 'Unknown employee', initials: '?', avatarUrl: null };
           });
 
