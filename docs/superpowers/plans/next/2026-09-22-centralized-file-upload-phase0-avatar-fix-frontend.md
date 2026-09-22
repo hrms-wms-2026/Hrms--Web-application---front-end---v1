@@ -43,7 +43,7 @@ the backend companion plan, which must ship first).
 - Produces: `ProfileApiService.getAvatarUrl(fileId: string): string` — Task 2's
   `PersonalInfoFormComponent` calls this exact method.
 
-- [ ] **Step 1: Write the failing test**
+- [x] **Step 1: Write the failing test**
 
 Add to `src/app/modules/profile/data-access/profile-api.service.spec.ts` (alongside the existing
 `uploadAvatar` test):
@@ -54,12 +54,12 @@ Add to `src/app/modules/profile/data-access/profile-api.service.spec.ts` (alongs
   });
 ```
 
-- [ ] **Step 2: Run the test to verify it fails**
+- [x] **Step 2: Run the test to verify it fails**
 
 Run: `npx vitest run src/app/modules/profile/data-access/profile-api.service.spec.ts`
 Expected: FAIL — `service.getAvatarUrl is not a function`.
 
-- [ ] **Step 3: Implement the helper**
+- [x] **Step 3: Implement the helper**
 
 In `src/app/modules/profile/data-access/profile-api.service.ts`, add this method (next to
 `uploadAvatar`, after line 31):
@@ -71,12 +71,12 @@ In `src/app/modules/profile/data-access/profile-api.service.ts`, add this method
   }
 ```
 
-- [ ] **Step 4: Run the test to verify it passes**
+- [x] **Step 4: Run the test to verify it passes**
 
 Run: `npx vitest run src/app/modules/profile/data-access/profile-api.service.spec.ts`
 Expected: PASS, all tests in the file green.
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add src/app/modules/profile/data-access/profile-api.service.ts src/app/modules/profile/data-access/profile-api.service.spec.ts
@@ -99,7 +99,7 @@ git commit -m "feat: add ProfileApiService.getAvatarUrl pure URL builder"
 - Produces: `PersonalInformation.avatarFileId: string | null` — Task 3's `profile.store.ts` and its
   spec both reference this exact field name instead of `avatarUrl`.
 
-- [ ] **Step 1: Rename the model field**
+- [x] **Step 1: Rename the model field**
 
 In `src/app/modules/profile/models/profile.model.ts`, change line 19 from:
 
@@ -113,7 +113,7 @@ to:
   avatarFileId: string | null;
 ```
 
-- [ ] **Step 2: Fix the now-broken fixtures (compile step, no behavior change)**
+- [x] **Step 2: Fix the now-broken fixtures (compile step, no behavior change)**
 
 In `src/app/modules/profile/state/profile.store.spec.ts:11`, change
 `legalEntityTimezone: null, avatarUrl: null, addresses: []` to
@@ -123,7 +123,7 @@ In `src/app/modules/profile/ui/personal-info-form/personal-info-form.component.s
 `legalEntityTimezone: 'Asia/Colombo', avatarUrl: null, addresses: []` to
 `legalEntityTimezone: 'Asia/Colombo', avatarFileId: null, addresses: []`.
 
-- [ ] **Step 3: Write the failing test for the computed display URL**
+- [x] **Step 3: Write the failing test for the computed display URL**
 
 In `src/app/modules/profile/ui/personal-info-form/personal-info-form.component.spec.ts`, add the
 import and a provider to each of the 3 existing `TestBed.configureTestingModule` calls, then add a
@@ -188,14 +188,14 @@ Then add this new test at the end of the `describe` block:
   });
 ```
 
-- [ ] **Step 4: Run the tests to verify they fail**
+- [x] **Step 4: Run the tests to verify they fail**
 
 Run: `npx vitest run src/app/modules/profile/ui/personal-info-form/personal-info-form.component.spec.ts`
 Expected: FAIL — compile error (`avatarFileId` doesn't exist on `PersonalInformation` output type
 until Step 1's rename propagates, and the component doesn't yet inject `ProfileApiService` or expose
 an `avatarUrl` computed).
 
-- [ ] **Step 5: Wire the component**
+- [x] **Step 5: Wire the component**
 
 In `src/app/modules/profile/ui/personal-info-form/personal-info-form.component.ts`:
 
@@ -219,7 +219,7 @@ Inside the class body, add the injected service and a computed URL (after the ex
   });
 ```
 
-- [ ] **Step 6: Wire the template**
+- [x] **Step 6: Wire the template**
 
 In `src/app/modules/profile/ui/personal-info-form/personal-info-form.component.html:10`, change:
 
@@ -233,12 +233,12 @@ to:
         [avatarUrl]="avatarUrl()"
 ```
 
-- [ ] **Step 7: Run the tests to verify they pass**
+- [x] **Step 7: Run the tests to verify they pass**
 
 Run: `npx vitest run src/app/modules/profile/ui/personal-info-form/personal-info-form.component.spec.ts src/app/modules/profile/state/profile.store.spec.ts`
 Expected: PASS, all tests in both files green.
 
-- [ ] **Step 8: Commit**
+- [x] **Step 8: Commit**
 
 ```bash
 git add src/app/modules/profile/models/profile.model.ts src/app/modules/profile/ui/personal-info-form/personal-info-form.component.ts src/app/modules/profile/ui/personal-info-form/personal-info-form.component.html src/app/modules/profile/ui/personal-info-form/personal-info-form.component.spec.ts src/app/modules/profile/state/profile.store.spec.ts
@@ -256,7 +256,7 @@ git commit -m "fix: build the profile avatar's display URL from a real file id i
 **Interfaces:**
 - Consumes: `ProfileApiService.uploadAvatar(file: File): Observable<{ avatarFileId: string | null }>` (unchanged), `this.loadProfile()` (existing store method).
 
-- [ ] **Step 1: Write the failing test**
+- [x] **Step 1: Write the failing test**
 
 Add to `src/app/modules/profile/state/profile.store.spec.ts` (needs `uploadAvatar` added to the
 `apiMock` shape declared at the top of the file — change
@@ -300,14 +300,14 @@ and add `uploadAvatar: vi.fn()` to the object built in `beforeEach`):
   });
 ```
 
-- [ ] **Step 2: Run the tests to verify they fail**
+- [x] **Step 2: Run the tests to verify they fail**
 
 Run: `npx vitest run src/app/modules/profile/state/profile.store.spec.ts`
 Expected: FAIL — `apiMock.uploadAvatar` is `undefined` (not yet added to the mock), and/or the first
 new test's `avatarFileId` assertion fails since the current implementation patches the raw id instead
 of refetching.
 
-- [ ] **Step 3: Fix the mock shape**
+- [x] **Step 3: Fix the mock shape**
 
 In `src/app/modules/profile/state/profile.store.spec.ts`, change:
 
@@ -327,7 +327,7 @@ to:
     apiMock = { getMyProfile: vi.fn(), uploadAvatar: vi.fn() };
 ```
 
-- [ ] **Step 4: Fix the store method**
+- [x] **Step 4: Fix the store method**
 
 In `src/app/modules/profile/state/profile.store.ts`, replace the `uploadAvatar` method (lines 57-75):
 
@@ -370,12 +370,12 @@ with:
     },
 ```
 
-- [ ] **Step 5: Run the tests to verify they pass**
+- [x] **Step 5: Run the tests to verify they pass**
 
 Run: `npx vitest run src/app/modules/profile/state/profile.store.spec.ts`
 Expected: PASS, all tests in the file green (the 2 pre-existing plus the 2 new ones).
 
-- [ ] **Step 6: Commit**
+- [x] **Step 6: Commit**
 
 ```bash
 git add src/app/modules/profile/state/profile.store.ts src/app/modules/profile/state/profile.store.spec.ts
@@ -388,12 +388,14 @@ git commit -m "fix: refetch profile after avatar upload instead of patching an u
 
 **Files:** none (verification only).
 
-- [ ] **Step 1: Run the full profile module test suite**
+- [x] **Step 1: Run the full profile module test suite**
 
 Run: `npx vitest run src/app/modules/profile`
 Expected: PASS, 0 failures.
 
-- [ ] **Step 2: Manual check against the dev servers**
+- [ ] **Step 2: Manual check against the dev servers** — skipped by explicit user decision
+  2026-09-22 (automated coverage judged sufficient; this dev environment's custom-domain auth flow
+  makes ad hoc manual verification costly — do this when next actually using the feature).
 
 Requires the backend companion plan (Task 3's `GET /employees/me/avatar` endpoint) already deployed.
 
