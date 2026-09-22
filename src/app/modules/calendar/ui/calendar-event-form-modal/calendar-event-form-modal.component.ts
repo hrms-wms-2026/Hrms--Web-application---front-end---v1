@@ -1,6 +1,6 @@
 import { ChangeDetectionStrategy, Component, EventEmitter, Input, OnChanges, Output, SimpleChanges, inject, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
+import { AbstractControl, FormBuilder, ReactiveFormsModule, ValidationErrors, ValidatorFn, Validators } from '@angular/forms';
 import { ButtonComponent } from '../../../../shared/ui/button/button.component';
 import { InputComponent } from '../../../../shared/ui/input/input.component';
 import { SelectComponent } from '../../../../shared/ui/select/select.component';
@@ -39,6 +39,20 @@ function addMinutes(hhmm: string, minutes: number): string {
   const total = ((h * 60 + m + minutes) % 1440 + 1440) % 1440;
   return `${String(Math.floor(total / 60)).padStart(2, '0')}:${String(total % 60).padStart(2, '0')}`;
 }
+
+/** Matches the backend's CalendarEventValidation.IsValidMeetingLink: blank is fine (the field is
+ * optional), but a non-blank value must be an absolute http(s) URL - catches a pasted room name,
+ * a bare domain with no scheme, or a non-http scheme like javascript:/data: before it's saved. */
+const meetingLinkValidator: ValidatorFn = (control: AbstractControl): ValidationErrors | null => {
+  const value = (control.value ?? '').trim();
+  if (!value) return null;
+  try {
+    const url = new URL(value);
+    return url.protocol === 'http:' || url.protocol === 'https:' ? null : { invalidMeetingLink: true };
+  } catch {
+    return { invalidMeetingLink: true };
+  }
+};
 
 export type CalendarEventFormSubmission =
   | { create: CreateCalendarEventRequest }
@@ -124,7 +138,7 @@ export class CalendarEventFormModalComponent implements OnChanges {
     endTime: ['09:30', Validators.required],
     isAllDay: [false],
     location: [''],
-    meetingLink: [''],
+    meetingLink: ['', meetingLinkValidator],
     color: ['#2563EB'],
     recurrenceFrequency: ['none' as RecurrenceFrequency],
     recurrenceEndMode: ['never' as RecurrenceEndMode],
@@ -317,7 +331,9 @@ export class CalendarEventFormModalComponent implements OnChanges {
 
   setMeetingLink(value: string): void {
     this.form.controls.meetingLink.setValue(value);
-    this.form.markAsDirty();
+    // markAsDirty only walks UP to ancestors, never down to children - form.markAsDirty() alone
+    // never marks this specific control dirty, so the invalid-link error below never showed.
+    this.form.controls.meetingLink.markAsDirty();
   }
 
   setRecurrenceFrequency(value: string): void {

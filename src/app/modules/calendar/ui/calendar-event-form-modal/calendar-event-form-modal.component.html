@@ -69,6 +69,11 @@
           </div>
           <app-input placeholder="Location" [value]="form.controls.location.value ?? ''" (valueChange)="setLocation($event)" />
           <app-input placeholder="Meeting link" [value]="form.controls.meetingLink.value ?? ''" (valueChange)="setMeetingLink($event)" />
+          @if (form.controls.meetingLink.invalid && form.controls.meetingLink.dirty) {
+            <p class="-mt-2 text-xs text-red-600" data-testid="calendar-form-meeting-link-error">
+              Enter a full link starting with http:// or https://
+            </p>
+          }
         </div>
       </div>
 
