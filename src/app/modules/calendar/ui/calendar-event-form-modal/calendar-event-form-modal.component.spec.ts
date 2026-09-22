@@ -29,6 +29,49 @@ describe('CalendarEventFormModalComponent', () => {
     expect(spy).not.toHaveBeenCalled();
   });
 
+  it('rejects a meeting link with no http(s) scheme', () => {
+    fixture.componentInstance.setMeetingLink('meet.google.com/abc-defg-hij');
+    fixture.detectChanges();
+
+    expect(fixture.componentInstance.form.controls.meetingLink.invalid).toBe(true);
+    expect(
+      fixture.nativeElement.querySelector('[data-testid="calendar-form-meeting-link-error"]')
+    ).not.toBeNull();
+  });
+
+  it('rejects a non-http(s) meeting link', () => {
+    fixture.componentInstance.setMeetingLink('javascript:alert(1)');
+    expect(fixture.componentInstance.form.controls.meetingLink.invalid).toBe(true);
+  });
+
+  it('accepts a blank meeting link - the field is optional', () => {
+    fixture.componentInstance.setMeetingLink('');
+    expect(fixture.componentInstance.form.controls.meetingLink.invalid).toBe(false);
+  });
+
+  it('accepts a valid https meeting link and does not show the error', () => {
+    fixture.componentInstance.setMeetingLink('https://meet.google.com/abc-defg-hij');
+    fixture.detectChanges();
+
+    expect(fixture.componentInstance.form.controls.meetingLink.invalid).toBe(false);
+    expect(
+      fixture.nativeElement.querySelector('[data-testid="calendar-form-meeting-link-error"]')
+    ).toBeNull();
+  });
+
+  it('does not emit save when the meeting link is invalid, even with title and dates filled', () => {
+    const spy = vi.fn();
+    fixture.componentInstance.save.subscribe(spy);
+    fixture.componentInstance.form.patchValue({
+      title: 'Standup', startDate: '2026-09-01', startTime: '09:00', endDate: '2026-09-01', endTime: '09:30'
+    });
+    fixture.componentInstance.setMeetingLink('not a url');
+
+    fixture.componentInstance.onSubmit(null);
+
+    expect(spy).not.toHaveBeenCalled();
+  });
+
   it('hides the recurrence-until control until "until" end mode is chosen', () => {
     expect(fixture.componentInstance.form.controls.recurrenceEndMode.value).toBe('never');
     const untilField = fixture.nativeElement.querySelector('[data-testid="calendar-form-recurrence-until"]');
