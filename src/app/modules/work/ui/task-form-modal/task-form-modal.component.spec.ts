@@ -245,6 +245,7 @@ describe('TaskFormModalComponent - create mode', () => {
     fixture.componentInstance.selectedObjectiveId.set('o1');
     fixture.componentInstance.categoryId.set('c1');
     fixture.componentInstance.sprintId.set('');
+    fixture.componentInstance.setPriority('medium');
     await fixture.componentInstance.submit();
     expect(createTask).toHaveBeenCalledWith('o1', expect.objectContaining({ title: 'New task', sprintId: null }));
     expect(fixture.componentInstance.errors()['sprintId']).toBeFalsy();
@@ -257,6 +258,7 @@ describe('TaskFormModalComponent - create mode', () => {
     fixture.componentInstance.title.set('New task');
     fixture.componentInstance.selectedObjectiveId.set('o1');
     fixture.componentInstance.categoryId.set('c1');
+    fixture.componentInstance.setPriority('medium');
     await fixture.componentInstance.submit();
     expect(createdSpy).toHaveBeenCalledWith('t-new');
   });
@@ -266,6 +268,7 @@ describe('TaskFormModalComponent - create mode', () => {
     fixture.componentInstance.title.set('Ask');
     fixture.componentInstance.selectedObjectiveId.set('o1');
     fixture.componentInstance.categoryId.set('c1');
+    fixture.componentInstance.setPriority('medium');
     await fixture.componentInstance.submit();
     expect(api['createTaskCreationRequest']).toHaveBeenCalledWith('o1', expect.objectContaining({ title: 'Ask' }));
     expect(createTask).not.toHaveBeenCalled();
@@ -277,6 +280,7 @@ describe('TaskFormModalComponent - create mode', () => {
     fixture.componentInstance.title.set('Ask');
     fixture.componentInstance.selectedObjectiveId.set('o1');
     fixture.componentInstance.categoryId.set('c1');
+    fixture.componentInstance.setPriority('medium');
     await fixture.componentInstance.submit();
     expect(fixture.componentInstance.errorMessage()).toBe('Sprint is closed.');
     expect(fixture.componentInstance.submitting()).toBe(false);
@@ -288,6 +292,7 @@ describe('TaskFormModalComponent - create mode', () => {
     fixture.componentInstance.title.set('X');
     fixture.componentInstance.selectedObjectiveId.set('o1');
     fixture.componentInstance.categoryId.set('c1');
+    fixture.componentInstance.setPriority('medium');
     await fixture.componentInstance.submit();
     expect(fixture.componentInstance.allocationHint()?.availableSlackHours).toBe(3);
   });
@@ -297,9 +302,21 @@ describe('TaskFormModalComponent - create mode', () => {
     fixture.componentInstance.title.set('X');
     fixture.componentInstance.selectedObjectiveId.set('');
     fixture.componentInstance.categoryId.set('c1');
+    fixture.componentInstance.setPriority('medium');
     await fixture.componentInstance.submit();
     expect(createTask).not.toHaveBeenCalled();
     expect(fixture.componentInstance.errors()['objectiveId']).toBeTruthy();
+  });
+
+  it('blocks submit when priority is not chosen (priority is required, no more silent Medium default)', async () => {
+    await build();
+    fixture.componentInstance.title.set('X');
+    fixture.componentInstance.selectedObjectiveId.set('o1');
+    fixture.componentInstance.categoryId.set('c1');
+    expect(fixture.componentInstance.priority()).toBeNull();
+    await fixture.componentInstance.submit();
+    expect(createTask).not.toHaveBeenCalled();
+    expect(fixture.componentInstance.errors()['priority']).toBeTruthy();
   });
 
   it('automatically inherits module and active sprint when there is only one module in the project', async () => {
@@ -320,6 +337,7 @@ describe('TaskFormModalComponent - create mode', () => {
     fixture.componentInstance.description.set('Quick details');
     fixture.componentInstance.selectedObjectiveId.set('o1');
     fixture.componentInstance.categoryId.set('c1');
+    fixture.componentInstance.setPriority('medium');
 
     await fixture.componentInstance.submitCreateWithAction('create_and_add_another');
 
@@ -386,6 +404,7 @@ describe('TaskFormModalComponent - create mode', () => {
     fixture.componentInstance.title.set('New task');
     fixture.componentInstance.selectedObjectiveId.set('o1');
     fixture.componentInstance.categoryId.set('c1');
+    fixture.componentInstance.setPriority('medium');
     await fixture.componentInstance.submitCreateWithAction('create_and_close');
 
     expect(createTask).toHaveBeenCalledWith('o1', expect.objectContaining({ attachmentFileIds: ['f1'] }));
@@ -951,6 +970,104 @@ describe('TaskFormModalComponent - description editor enter key & checklist hand
     expect(editor.querySelector('a')).toBeNull();
     expect(editor.textContent).toContain('Angular');
     expect(comp.activeFormats().link).toBe(false);
+  });
+});
+
+describe('TaskFormModalComponent - subtasks section', () => {
+  let fixture: ComponentFixture<TaskFormModalComponent>;
+  let api: Record<string, ReturnType<typeof vi.fn>>;
+  let boardStore: {
+    createTask: ReturnType<typeof vi.fn>;
+    error: () => string | null;
+    subtasksByParentId: ReturnType<typeof vi.fn>;
+    loadSubtasks: ReturnType<typeof vi.fn>;
+    createSubtask: ReturnType<typeof vi.fn>;
+  };
+
+  beforeEach(async () => {
+    api = baseApi();
+    boardStore = {
+      createTask: vi.fn(),
+      error: () => null,
+      subtasksByParentId: vi.fn().mockReturnValue({
+        t1: [
+          {
+            id: 'sub-1',
+            title: 'Subtask 1',
+            priority: 'high',
+            statusId: 's1',
+            assigneeEmployeeIds: ['e1'],
+            parentTaskId: 't1',
+            subtaskTotalCount: 0,
+            subtaskCompletedCount: 0
+          }
+        ]
+      }),
+      loadSubtasks: vi.fn().mockResolvedValue(undefined),
+      createSubtask: vi.fn().mockResolvedValue({ id: 'sub-2', title: 'New Sub' })
+    };
+
+    await TestBed.configureTestingModule({
+      imports: [TaskFormModalComponent],
+      providers: [
+        { provide: TaskApiService, useValue: api },
+        { provide: ProjectApiService, useValue: { getMyMilestones: vi.fn().mockReturnValue(of([])) } },
+        { provide: SprintApiService, useValue: { getByProject: vi.fn().mockReturnValue(of([])) } },
+        { provide: TaskBoardStore, useValue: boardStore },
+        { provide: ProjectDetailStore, useValue: { milestones: signal([]), loadProjectMembers: vi.fn().mockResolvedValue(undefined), projectMembers: () => [{ employeeId: 'e1', name: 'Ann' }] } },
+        { provide: CurrentEmployeeStore, useValue: { id: signal('e1'), ensureLoaded: vi.fn() } }
+      ]
+    }).compileComponents();
+
+    fixture = TestBed.createComponent(TaskFormModalComponent);
+    fixture.componentRef.setInput('projectId', 'p1');
+    fixture.componentRef.setInput('mode', 'edit');
+    fixture.componentRef.setInput('taskId', 't1');
+    fixture.componentRef.setInput('open', true);
+    await flush(fixture);
+  });
+
+  it('calls loadSubtasks on edit mode load', () => {
+    expect(boardStore.loadSubtasks).toHaveBeenCalledWith('t1');
+  });
+
+  it('renders existing subtasks and subtask progress count', () => {
+    expect(fixture.componentInstance.subtasks().length).toBe(1);
+    const subtaskRow = fixture.nativeElement.querySelector('[data-testid="subtask-row-sub-1"]');
+    expect(subtaskRow).not.toBeNull();
+    expect(subtaskRow.textContent).toContain('Subtask 1');
+  });
+
+  it('allows opening and cancelling subtask add form', () => {
+    expect(fixture.nativeElement.querySelector('[data-testid="subtask-add-title"]')).toBeNull();
+    (fixture.nativeElement.querySelector('[data-testid="add-subtask-button"]') as HTMLButtonElement).click();
+    fixture.detectChanges();
+
+    expect(fixture.nativeElement.querySelector('[data-testid="subtask-add-title"]')).not.toBeNull();
+
+    (fixture.nativeElement.querySelector('[data-testid="subtask-add-cancel"]') as HTMLButtonElement).click();
+    fixture.detectChanges();
+
+    expect(fixture.nativeElement.querySelector('[data-testid="subtask-add-title"]')).toBeNull();
+  });
+
+  it('creates a new subtask via boardStore.createSubtask', async () => {
+    (fixture.nativeElement.querySelector('[data-testid="add-subtask-button"]') as HTMLButtonElement).click();
+    fixture.detectChanges();
+
+    fixture.componentInstance.newSubtaskTitle.set('Fresh subtask');
+    fixture.componentInstance.newSubtaskDueDate.set('2026-10-01');
+    fixture.componentInstance.newSubtaskAssigneeId.set('e1');
+    fixture.detectChanges();
+
+    await fixture.componentInstance.saveNewSubtask('t1');
+
+    expect(boardStore.createSubtask).toHaveBeenCalledWith('t1', {
+      title: 'Fresh subtask',
+      dueDate: '2026-10-01',
+      assigneeEmployeeId: 'e1'
+    });
+    expect(fixture.componentInstance.addingSubtask()).toBe(false);
   });
 });
 

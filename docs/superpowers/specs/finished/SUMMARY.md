@@ -19,3 +19,6 @@ One subfolder per completion date. Master status table: `../SUMMARY.md`.
 
 ## 2026-08-21/
 - `2026-08-20-work-management-project-page-redesign-design.md` — design for Projects list rows + explanation panel, 4-step create wizard, project-level members. Status: Implemented. Companion to the backend repo's same-named design. Corresponding plan: `../../plans/finished/2026-08-21/2026-08-20-work-management-project-page-redesign/` (3 parts), shipped 2026-08-21, manual browser test passed.
+
+## 2026-09-21/
+- `2026-09-21-task-subtasks-design.md` — design for Task subtasks (Board, Backlog, and task detail panel). Corresponding frontend plan: `../../plans/finished/2026-09-21/2026-09-21-task-subtasks-frontend.md` (finished 2026-09-21). Companion backend plan: `HRMS-Backend-v1/docs/superpowers/plans/finished/2026-09-21/2026-09-21-task-subtasks-backend.md` (finished 2026-09-21).

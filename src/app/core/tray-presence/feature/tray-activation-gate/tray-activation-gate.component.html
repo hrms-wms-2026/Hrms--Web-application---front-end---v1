@@ -1,13 +1,31 @@
 <ng-template #downloadStep>
   <section class="step" aria-labelledby="step-download">
-    <h2 id="step-download">1. Install the ONEVO tray app</h2>
+    <div class="step__header">
+      <span class="step__badge" aria-hidden="true">1</span>
+      <h2 id="step-download" class="step__title">Install the ONEVO tray app</h2>
+    </div>
+
     @if (installerState() === 'ready' && installer(); as info) {
-      <a class="primary download" [href]="info.download_url" target="_blank" rel="noopener noreferrer" download>
-        Download for Windows (v{{ info.version }}, {{ sizeLabel() }})
-      </a>
+      <div class="download-card">
+        <a class="primary download" [href]="info.download_url" target="_blank" rel="noopener noreferrer" download>
+          <svg class="icon-windows" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+            <path d="M0 3.449L9.75 2.1v9.451H0m10.949-9.602L24 0v11.4H10.949M0 12.6h9.75v9.451L0 20.699M10.949 12.6H24V24l-12.9-1.801"/>
+          </svg>
+          <span class="download__text">
+            <span class="download__main">Download for Windows</span>
+            <span class="download__meta">(v{{ info.version }}, {{ sizeLabel() }})</span>
+          </span>
+          <svg class="icon-arrow" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
+            <path fill-rule="evenodd" d="M10 3a.75.75 0 01.75.75v10.638l3.96-4.158a.75.75 0 111.08 1.04l-5.25 5.5a.75.75 0 01-1.08 0l-5.25-5.5a.75.75 0 111.08-1.04l3.96 4.158V3.75A.75.75 0 0110 3z" clip-rule="evenodd"/>
+          </svg>
+        </a>
+      </div>
       <p class="hint">Already installed? Skip to step 2.</p>
     } @else if (installerState() === 'loading') {
-      <p class="hint" aria-live="polite">Checking for the latest installer…</p>
+      <div class="status-box">
+        <div class="spinner" aria-hidden="true"></div>
+        <p class="hint" aria-live="polite">Checking for the latest installer…</p>
+      </div>
     } @else {
       <p class="hint">The installer isn't available yet. If the app is already installed, continue with step 2; otherwise contact your administrator.</p>
     }
@@ -16,54 +34,97 @@
 
 <section class="gate" role="dialog" aria-modal="true" aria-labelledby="gate-title">
   <div class="gate__card">
-    <p class="eyebrow">Workspace protection</p>
-    <h1 id="gate-title">Connect the ONEVO tray app</h1>
+    <div class="gate__header">
+      <h1 id="gate-title">Connect the ONEVO tray app</h1>
+    </div>
 
     @if (presence.phase() === 'checking') {
-      <p aria-live="polite">Checking the ONEVO tray connection…</p>
+      <div class="status-box status-box--checking">
+        <div class="spinner spinner--lg" aria-hidden="true"></div>
+        <p class="status-text" aria-live="polite">Checking the ONEVO tray connection…</p>
+      </div>
     } @else if (presence.phase() === 'needs-code') {
       <ng-container *ngTemplateOutlet="downloadStep" />
       <section class="step" aria-labelledby="step-code">
-        <h2 id="step-code">2. Connect it to your account</h2>
-        <p>When the tray app is installed, generate a one-time code and paste it into the app.</p>
+        <div class="step__header">
+          <span class="step__badge" aria-hidden="true">2</span>
+          <h2 id="step-code" class="step__title">Connect it to your account</h2>
+        </div>
         <div class="actions">
           <button class="primary" type="button" (click)="generate()">Generate activation code</button>
         </div>
       </section>
     } @else if (presence.phase() === 'code-loading') {
-      <p aria-live="polite">Generating your secure activation code…</p>
+      <div class="status-box">
+        <div class="spinner" aria-hidden="true"></div>
+        <p aria-live="polite">Generating your secure activation code…</p>
+      </div>
       <div class="code" aria-label="Activation code">--------</div>
     } @else if (presence.phase() === 'waiting' && presence.hasUsableCode()) {
       <ng-container *ngTemplateOutlet="downloadStep" />
       <section class="step" aria-labelledby="step-code">
-        <h2 id="step-code">2. Connect it to your account</h2>
-        <p>Open the ONEVO tray app, paste this code, and select <strong>Connect &amp; Login</strong>.</p>
+        <div class="step__header">
+          <span class="step__badge" aria-hidden="true">2</span>
+          <h2 id="step-code" class="step__title">Connect it to your account</h2>
+        </div>
+        <p class="step__subtext">Paste this code in the tray app and select <strong>Connect &amp; Login</strong>.</p>
+        <div class="code-wrapper">
+          <div class="code" aria-label="Activation code">{{ presence.code() }}</div>
+        </div>
+        <div class="actions">
+          <button class="primary copy-btn" type="button" (click)="copyCode()">
+            @if (presence.copyState() === 'copied') {
+              <svg class="btn-icon" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true"><path fill-rule="evenodd" d="M16.704 4.153a.75.75 0 01.143 1.052l-8 10.5a.75.75 0 01-1.127.075l-4.5-4.5a.75.75 0 011.06-1.06l3.894 3.893 7.48-9.817a.75.75 0 011.05-.143z" clip-rule="evenodd"/></svg>
+              <span>Copied</span>
+            } @else {
+              <svg class="btn-icon" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true"><path d="M7 3.5A1.5 1.5 0 018.5 2h3.879a1.5 1.5 0 011.06.44l3.122 3.12a1.5 1.5 0 01.439 1.061V16.5A1.5 1.5 0 0115.5 18h-7A1.5 1.5 0 017 16.5v-13z"/><path d="M5.5 5A1.5 1.5 0 004 6.5v11A1.5 1.5 0 005.5 19h7a1.5 1.5 0 001.5-1.5V17H6.5A1.5 1.5 0 015 15.5V5h.5z"/></svg>
+              <span>Copy code</span>
+            }
+          </button>
+          <button class="secondary regen-btn" type="button" (click)="regenerate()">
+            <svg class="btn-icon" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true"><path fill-rule="evenodd" d="M15.312 11.424a5.5 5.5 0 01-9.201 2.466l-.312-.311h2.451a.75.75 0 000-1.5H4.5a.75.75 0 00-.75.75v3.75a.75.75 0 001.5 0v-2.09l.375.375a7 7 0 101.442-7.854.75.75 0 00-1.06 1.06 5.5 5.5 0 019.305 3.414z" clip-rule="evenodd"/></svg>
+            <span>Regenerate</span>
+          </button>
+        </div>
+        <p class="expiry" aria-live="polite">
+          Code expires in {{ presence.codeSecondsRemaining() }} seconds.
+        </p>
+        <div class="heartbeat-status">
+          <span class="pulse-dot" aria-hidden="true"></span>
+          <p class="waiting" aria-live="polite">This page unlocks automatically after the tray sends its first heartbeat.</p>
+        </div>
       </section>
-      <div class="code" aria-label="Activation code">{{ presence.code() }}</div>
-      <p class="expiry" aria-live="polite">
-        Code expires in {{ presence.codeSecondsRemaining() }} seconds.
-      </p>
-      <div class="actions">
-        <button class="primary" type="button" (click)="copyCode()">
-          {{ presence.copyState() === 'copied' ? 'Copied' : 'Copy code' }}
-        </button>
-        <button class="secondary" type="button" (click)="regenerate()">Regenerate</button>
-      </div>
-      <p class="waiting" aria-live="polite">This page unlocks automatically after the tray sends its first heartbeat.</p>
     } @else if (presence.phase() === 'expired') {
-      <p>The activation code has expired. Generate a new code and paste it into the installed tray app.</p>
+      <div class="notice-box notice-box--warning">
+        <p>The activation code has expired. Generate a new code and paste it into the installed tray app.</p>
+      </div>
       <button class="primary" type="button" (click)="regenerate()">Generate a new code</button>
     } @else if (presence.phase() === 'offline') {
-      <p aria-live="polite">The ONEVO service is temporarily unavailable. The page will retry automatically.</p>
-      @if (presence.generationError(); as message) {
-        <p class="error" role="alert">{{ message }}</p>
-      }
+      <div class="notice-box notice-box--error">
+        <p aria-live="polite">The ONEVO service is temporarily unavailable. The page will retry automatically.</p>
+        @if (presence.generationError(); as message) {
+          <p class="error" role="alert">{{ message }}</p>
+        }
+      </div>
       <button class="secondary" type="button" (click)="retry()">Retry</button>
     }
 
     @if (presence.generationError() && presence.phase() !== 'offline') {
       <p class="error" role="alert">{{ presence.generationError() }}</p>
     }
-    <button class="logout" type="button" (click)="logout()">Log out</button>
+
+    <footer class="gate__footer">
+      @if (authEmail(); as email) {
+        <span class="gate__user-info">Signed in as <strong>{{ email }}</strong></span>
+        <span class="gate__footer-divider" aria-hidden="true">&bull;</span>
+      }
+      <button class="logout" type="button" (click)="logout()">
+        <svg class="logout-icon" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
+          <path fill-rule="evenodd" d="M3 4.25A2.25 2.25 0 015.25 2h5.5A2.25 2.25 0 0113 4.25v2a.75.75 0 01-1.5 0v-2a.75.75 0 00-.75-.75h-5.5a.75.75 0 00-.75.75v11.5c0 .414.336.75.75.75h5.5a.75.75 0 00.75-.75v-2a.75.75 0 011.5 0v2A2.25 2.25 0 0110.75 18h-5.5A2.25 2.25 0 013 15.75V4.25z" clip-rule="evenodd"/>
+          <path fill-rule="evenodd" d="M19 10a.75.75 0 00-.75-.75H8.704l2.47-2.47a.75.75 0 10-1.06-1.06l-3.75 3.75a.75.75 0 000 1.06l3.75 3.75a.75.75 0 101.06-1.06l-2.47-2.47h9.546A.75.75 0 0019 10z" clip-rule="evenodd"/>
+        </svg>
+        <span>Log out</span>
+      </button>
+    </footer>
   </div>
 </section>
