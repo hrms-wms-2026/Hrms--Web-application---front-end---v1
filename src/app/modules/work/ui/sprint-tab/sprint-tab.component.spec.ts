@@ -1,9 +1,12 @@
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { By } from '@angular/platform-browser';
+import { of } from 'rxjs';
 import { vi } from 'vitest';
 import { SprintTabComponent } from './sprint-tab.component';
 import { Sprint } from '../../models/sprint.model';
 import { TaskStatusColumn, WorkTask } from '../../models/task.model';
+import { SprintApiService } from '../../data-access/sprint-api.service';
+import { EmployeeDirectoryStore } from '../../state/employee-directory.store';
 
 describe('SprintTabComponent', () => {
   let fixture: ComponentFixture<SprintTabComponent>;
@@ -35,7 +38,11 @@ describe('SprintTabComponent', () => {
     expanded?: boolean;
   } = {}): void {
     TestBed.configureTestingModule({
-      imports: [SprintTabComponent]
+      imports: [SprintTabComponent],
+      providers: [
+        { provide: SprintApiService, useValue: { getActivity: () => of([]) } },
+        { provide: EmployeeDirectoryStore, useValue: { ensureLoaded: () => Promise.resolve(), get: () => undefined } }
+      ]
     });
     fixture = TestBed.createComponent(SprintTabComponent);
     fixture.componentRef.setInput('sprint', overrides.sprint ?? baseSprint);

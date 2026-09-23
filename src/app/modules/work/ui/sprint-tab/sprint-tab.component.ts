@@ -1,6 +1,7 @@
 import { DatePipe } from '@angular/common';
 import { Component, ElementRef, HostListener, OutputEmitterRef, computed, inject, input, output, signal } from '@angular/core';
 import { TaskTableComponent } from '../task-table/task-table.component';
+import { SprintHistoryComponent } from '../sprint-history/sprint-history.component';
 import { Sprint } from '../../models/sprint.model';
 import { TaskStatusColumn, WorkTask } from '../../models/task.model';
 
@@ -10,7 +11,7 @@ const openSprintMenuId = signal<string | null>(null);
 @Component({
   selector: 'app-sprint-tab',
   standalone: true,
-  imports: [DatePipe, TaskTableComponent],
+  imports: [DatePipe, TaskTableComponent, SprintHistoryComponent],
   template: `
     <div class="sprint-tab" [attr.data-status]="sprint().status">
       <div class="sprint-tab__header">
@@ -105,9 +106,13 @@ const openSprintMenuId = signal<string | null>(null);
             <span class="sprint-tab__footer-add-icon" aria-hidden="true">+</span>
             <span>Add Task</span>
           </button>
+          <app-sprint-history [sprintId]="sprint().id" />
         </div>
       } @else if (expanded() && sprint().status === 'complete') {
-        <div class="sprint-tab__body sprint-tab__body--readonly">{{ tasks().length }} tasks in this completed sprint.</div>
+        <div class="sprint-tab__body sprint-tab__body--readonly">
+          {{ tasks().length }} tasks in this completed sprint.
+          <app-sprint-history [sprintId]="sprint().id" />
+        </div>
       }
     </div>
   `,
