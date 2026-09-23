@@ -514,6 +514,20 @@ describe('ProjectDetailStore', () => {
       expect(getBySprintId).toHaveBeenCalledTimes(2);
       expect(store.selectedSubtree()?.children[0].sprintTaskLoadState).toBe('loaded');
     });
+
+    it('only nests tasks belonging to the leaf module under its sprint node', async () => {
+      const otherModuleTask: WorkTaskDto = {
+        ...sprintTask, id: 't-other-module', objectiveId: 'o2', shortId: 'WEB-3', title: 'Other module task'
+      };
+      const getBySprintId = vi.fn().mockReturnValue(of([sprintTask, otherModuleTask]));
+      const { store } = await loadLeafWithSprint(getBySprintId);
+
+      await store.loadTasksForSprint('spr-1');
+
+      const sprintNode = store.selectedSubtree()?.children.find((c) => c.id === 'spr-1');
+      expect(sprintNode?.children).toHaveLength(1);
+      expect(sprintNode?.children[0].id).toBe('t-sprint');
+    });
   });
 
   describe('achieveSprint and completeSprint', () => {
