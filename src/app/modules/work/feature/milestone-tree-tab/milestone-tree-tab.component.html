@@ -107,6 +107,7 @@
   [taskId]="taskModalTaskId()"
   [prefillModuleId]="taskModalPrefillModule()"
   [prefillSprintId]="taskModalPrefillSprint()"
+  (taskSelected)="taskModalTaskId.set($event)"
   (created)="onTaskModalDone()"
   (saved)="onTaskModalDone()"
   (closed)="onTaskModalClosed()"

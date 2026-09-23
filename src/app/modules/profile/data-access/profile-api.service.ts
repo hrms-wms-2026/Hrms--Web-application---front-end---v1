@@ -24,10 +24,8 @@ export class ProfileApiService {
     return this.http.put<void>(`${this.base}/personal-information`, payload);
   }
 
-  uploadAvatar(file: File): Observable<{ avatarFileId: string | null }> {
-    const formData = new FormData();
-    formData.append('file', file);
-    return this.http.put<{ avatarFileId: string | null }>(`${this.base}/avatar`, formData);
+  linkAvatar(fileId: string): Observable<{ avatarFileId: string | null }> {
+    return this.http.put<{ avatarFileId: string | null }>(`${this.base}/avatar`, { fileId });
   }
 
   addEmergencyContact(payload: UpsertEmergencyContactRequest): Observable<{ id: string }> {

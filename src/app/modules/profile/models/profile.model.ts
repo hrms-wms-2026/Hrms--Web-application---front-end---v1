@@ -16,7 +16,7 @@ export interface PersonalInformation {
   countryName: string | null;
   displayTimezone: string | null;
   legalEntityTimezone: string | null;
-  avatarUrl: string | null;
+  avatarFileId: string | null;
   addresses: Address[];
   version: string;
 }

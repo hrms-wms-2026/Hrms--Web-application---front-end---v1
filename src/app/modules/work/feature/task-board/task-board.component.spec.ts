@@ -232,15 +232,16 @@ describe('TaskBoardComponent', () => {
       objectiveId: 'milestone-1', shortId: 'PRJ', title: 'T', description: null, categoryId: 'task' as const,
       statusId: 's-1', priority: 'medium' as const, storyPoints: null, dueDate: null, estimatedHours: 5,
       completedHours: 0, progressPercent: 0, sprintId: null, openClockSessionEmployeeId: null,
-      openClockSessionClockInAt: null, totalLoggedMinutes: 0
+      openClockSessionClockInAt: null, totalLoggedMinutes: 0, subtaskAssigneeEmployeeIds: [] as string[]
     };
     const t1 = { ...base, id: 't1', assigneeEmployeeIds: ['emp-a'] };
     const t2 = { ...base, id: 't2', assigneeEmployeeIds: ['emp-b'] };
     const t3 = { ...base, id: 't3', assigneeEmployeeIds: [] };
+    const t4 = { ...base, id: 't4', assigneeEmployeeIds: [], subtaskAssigneeEmployeeIds: ['emp-a'] };
     const storeStub = {
       loadBoard: vi.fn().mockResolvedValue(undefined),
-      columnsWithTasks: () => [{ status, tasks: [t1, t2, t3] }],
-      tasks: () => [t1, t2, t3],
+      columnsWithTasks: () => [{ status, tasks: [t1, t2, t3, t4] }],
+      tasks: () => [t1, t2, t3, t4],
       loading: () => false, error: () => null, moveTask: vi.fn(), statuses: () => []
     };
 
@@ -272,11 +273,13 @@ describe('TaskBoardComponent', () => {
 
     instance.setAssigneeFilter(['emp-a']);
     fixture.detectChanges();
-    expect(instance.columnsWithTasks().flatMap((c) => c.tasks.map((t) => t.id))).toEqual(['t1']);
+    // t4 isn't directly assigned to emp-a, but a subtask of it is - it should still surface
+    // under the filter since subtasks aren't independent board cards.
+    expect(instance.columnsWithTasks().flatMap((c) => c.tasks.map((t) => t.id))).toEqual(['t1', 't4']);
 
     instance.setAssigneeFilter([]);
     fixture.detectChanges();
-    expect(instance.columnsWithTasks().flatMap((c) => c.tasks.map((t) => t.id))).toEqual(['t1', 't2', 't3']);
+    expect(instance.columnsWithTasks().flatMap((c) => c.tasks.map((t) => t.id))).toEqual(['t1', 't2', 't3', 't4']);
   });
 
   it('sprint filter "Individual task" shows only tasks with no sprint assigned', async () => {
@@ -392,10 +395,63 @@ describe('TaskBoardComponent', () => {
     await fixture.whenStable();
 
     expect(loadProjectMembers).toHaveBeenCalledWith('project-1');
-    const members = (fixture.componentInstance as unknown as { assignableMembers: () => { employeeId: string; name: string }[] }).assignableMembers();
+    const members = (fixture.componentInstance as unknown as { assignableMembers: () => { employeeId: string; name: string; avatarUrl: string | null }[] }).assignableMembers();
     expect(members).toEqual([
-      { employeeId: 'emp-1', name: 'Nevi Peiris' },
-      { employeeId: 'emp-2', name: 'Unknown employee' }
+      { employeeId: 'emp-1', name: 'Nevi Peiris', avatarUrl: null },
+      { employeeId: 'emp-2', name: 'Unknown employee', avatarUrl: null }
+    ]);
+  });
+
+  it('enriches assignableMembers with avatarUrl from loaded tasks on the board', async () => {
+    const storeStub = {
+      loadBoard: vi.fn().mockResolvedValue(undefined),
+      columnsWithTasks: () => [],
+      tasks: () => [
+        {
+          id: 'task-10',
+          shortId: 'HWPORTAL-10',
+          title: 'A task',
+          assigneeEmployeeIds: ['emp-1'],
+          assignees: [{ employeeId: 'emp-1', name: 'Nevi Peiris', avatarUrl: 'https://files.example.test/nevi.png' }]
+        }
+      ],
+      subtasksByParentId: () => ({}),
+      loading: () => false,
+      error: () => null,
+      moveTask: vi.fn(),
+      statuses: () => []
+    };
+
+    TestBed.configureTestingModule({
+      imports: [TaskBoardComponent],
+      providers: [
+        { provide: TaskBoardStore, useValue: storeStub },
+        {
+          provide: ProjectDetailStore,
+          useValue: {
+            milestones: () => [],
+            getMilestoneDetail: vi.fn().mockResolvedValue(null),
+            loadMyMilestones: vi.fn().mockResolvedValue(undefined),
+            loadProjectMembers: vi.fn().mockResolvedValue(undefined),
+            projectMembers: () => [
+              { employeeId: 'emp-1', name: 'Nevi Peiris', pending: false, isHead: false }
+            ]
+          }
+        },
+        { provide: SprintApiService, useValue: { getByProject: vi.fn().mockReturnValue(of([])) } },
+        { provide: TaskApiService, useValue: { createTaskCreationRequest: vi.fn(), assignTask: vi.fn(), getCategories: vi.fn().mockReturnValue(of([])) } },
+        { provide: ActivatedRoute, useValue: routeStub() },
+        { provide: Router, useValue: { navigate: vi.fn() } }
+      ]
+    });
+
+    const fixture = TestBed.createComponent(TaskBoardComponent);
+    fixture.detectChanges();
+    await fixture.whenStable();
+
+    const members = (fixture.componentInstance as unknown as { assignableMembers: () => { employeeId: string; name: string; avatarUrl: string | null }[] }).assignableMembers();
+    expect(members).toEqual([
+      { employeeId: 'emp-1', name: 'Nevi Peiris', avatarUrl: 'https://files.example.test/nevi.png' }
     ]);
   });
 

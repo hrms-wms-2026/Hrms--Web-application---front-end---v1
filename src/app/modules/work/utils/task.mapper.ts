@@ -41,7 +41,8 @@ export function toWorkTask(dto: WorkTaskDto): WorkTask {
     assignees: (dto.assignees ?? []).map((a) => ({ employeeId: a.employeeId, name: a.name, avatarUrl: a.avatarUrl })),
     parentTaskId: dto.parentTaskId ?? null,
     subtaskTotalCount: dto.subtaskTotalCount ?? 0,
-    subtaskCompletedCount: dto.subtaskCompletedCount ?? 0
+    subtaskCompletedCount: dto.subtaskCompletedCount ?? 0,
+    subtaskAssigneeEmployeeIds: dto.subtaskAssigneeEmployeeIds ?? []
   };
 }
 

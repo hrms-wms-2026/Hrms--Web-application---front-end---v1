@@ -58,7 +58,7 @@ describe('TaskBacklogComponent', () => {
       sprintId,
       assigneeEmployeeIds: [], openClockSessionEmployeeId: null, openClockSessionClockInAt: null, totalLoggedMinutes: 0,
       attachments: [], assignees: [],
-      parentTaskId: null, subtaskTotalCount: 0, subtaskCompletedCount: 0
+      parentTaskId: null, subtaskTotalCount: 0, subtaskCompletedCount: 0, subtaskAssigneeEmployeeIds: []
     };
   }
 
@@ -290,10 +290,10 @@ describe('TaskBacklogComponent', () => {
     await fixture.whenStable();
 
     expect(loadProjectMembers).toHaveBeenCalledWith('project-1');
-    const members = (fixture.componentInstance as unknown as { assignableMembers: () => { employeeId: string; name: string }[] }).assignableMembers();
+    const members = (fixture.componentInstance as unknown as { assignableMembers: () => { employeeId: string; name: string; avatarUrl: string | null }[] }).assignableMembers();
     expect(members).toEqual([
-      { employeeId: 'emp-1', name: 'Nevi Peiris' },
-      { employeeId: 'emp-2', name: 'Unknown employee' }
+      { employeeId: 'emp-1', name: 'Nevi Peiris', avatarUrl: null },
+      { employeeId: 'emp-2', name: 'Unknown employee', avatarUrl: null }
     ]);
   });
 

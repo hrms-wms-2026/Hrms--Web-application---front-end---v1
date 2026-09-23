@@ -58,6 +58,7 @@ export interface WorkTaskDto {
   parentTaskId?: string | null;
   subtaskTotalCount?: number;
   subtaskCompletedCount?: number;
+  subtaskAssigneeEmployeeIds?: string[];
 }
 
 export interface CreateTaskRequestDto {
@@ -77,6 +78,7 @@ export interface CreateSubtaskRequestDto {
   priority?: WorkTaskDto['priority'];
   dueDate?: string;
   assigneeEmployeeId?: string;
+  objectiveId?: string;
 }
 
 export interface EditTaskRequestDto {

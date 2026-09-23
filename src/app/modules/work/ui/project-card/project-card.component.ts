@@ -3,6 +3,7 @@ import { ButtonComponent } from '../../../../shared/ui/button/button.component';
 import { AvatarComponent } from '../../../../shared/ui/avatar/avatar.component';
 import { AvatarStackComponent } from '../../../../shared/ui/avatar-stack/avatar-stack.component';
 import { ProjectApiService } from '../../data-access/project-api.service';
+import { FileApiService } from '../../../../shared/data-access/file-api.service';
 import { Project } from '../../models/project.model';
 import { formatRelativeTime } from '../../utils/relative-time.util';
 
@@ -138,7 +139,7 @@ const EXPANDED_AVATAR_LIMIT = 20;
           </div>
           @if (project().members.length > 0) {
             <app-avatar-stack
-              [members]="project().members"
+              [members]="avatarStackMembers()"
               [totalCount]="project().memberCount"
               [maxVisible]="avatarStackLimit()"
               size="sm"
@@ -162,7 +163,7 @@ const EXPANDED_AVATAR_LIMIT = 20;
           <div data-testid="member-list" class="mt-2.5 flex flex-col gap-1.5 border-t border-[var(--color-border)] pt-2.5">
             @for (member of project().members; track member.userId) {
               <div class="flex items-center gap-2 text-xs text-[var(--color-text-secondary)]">
-                <app-avatar [userName]="member.displayName" size="sm" />
+                <app-avatar [avatarUrl]="member.avatarFileId ? fileApi.getFileUrl(member.avatarFileId) : null" [userName]="member.displayName" size="sm" />
                 <span>{{ member.displayName }}</span>
               </div>
             }
@@ -181,6 +182,7 @@ const EXPANDED_AVATAR_LIMIT = 20;
 })
 export class ProjectCardComponent {
   private readonly projectApi = inject(ProjectApiService);
+  protected readonly fileApi = inject(FileApiService);
 
   project = input.required<Project>();
   expanded = input(false);
@@ -196,6 +198,12 @@ export class ProjectCardComponent {
   readonly bannerAccentColor = computed(() => this.project().color ?? DEFAULT_BANNER_COLOR);
   readonly updatedAtText = computed(() => formatRelativeTime(this.project().updatedAt));
   readonly avatarStackLimit = computed(() => (this.expanded() ? EXPANDED_AVATAR_LIMIT : COLLAPSED_AVATAR_LIMIT));
+  readonly avatarStackMembers = computed(() =>
+    this.project().members.map((member) => ({
+      ...member,
+      avatarUrl: member.avatarFileId ? this.fileApi.getFileUrl(member.avatarFileId) : null
+    }))
+  );
 
   onViewClick(event: MouseEvent): void {
     event.stopPropagation();

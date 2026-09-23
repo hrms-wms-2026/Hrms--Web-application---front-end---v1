@@ -4,6 +4,7 @@ import { AvatarComponent, AvatarSize } from '../avatar/avatar.component';
 export interface AvatarStackMember {
   userId: string;
   displayName: string;
+  avatarUrl?: string | null;
 }
 
 @Component({
@@ -14,7 +15,7 @@ export interface AvatarStackMember {
     <div class="flex items-center -space-x-2">
       @for (member of visibleMembers(); track member.userId) {
         <span class="rounded-full ring-2 ring-[var(--color-surface)]" style="--color-profile-bg: var(--color-accent); --color-text-primary: white;">
-          <app-avatar [userName]="member.displayName" [size]="size()" />
+          <app-avatar [avatarUrl]="member.avatarUrl ?? null" [userName]="member.displayName" [size]="size()" />
         </span>
       }
       @if (overflowCount() > 0) {

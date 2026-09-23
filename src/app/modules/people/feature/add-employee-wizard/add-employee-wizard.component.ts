@@ -135,8 +135,8 @@ export class AddEmployeeWizardComponent implements OnDestroy {
   /** True once a resumed draft turns out to be terminal - the backend rejects any further save/finalize call against it. */
   readonly resumedDraftIsFinalized = computed(() => isTerminalDraft(this.store.lastSaveStatus(), this.store.lastSaveReason()));
 
-  readonly workModeOptions = computed<readonly { value: string; label: string; code: string }[]>(() =>
-    this.store.workModes().map((wm) => ({ value: String(wm.id), label: wm.label, code: wm.code }))
+  readonly workModeOptions = computed<readonly { value: string; label: string }[]>(() =>
+    this.store.workModes().map((wm) => ({ value: wm.id, label: wm.label }))
   );
 
   readonly selectedWorkModeLabel = computed(() => {
@@ -301,7 +301,12 @@ export class AddEmployeeWizardComponent implements OnDestroy {
       this.employeeNumberGenerateError.set(null);
     }
 
-    void this.store.loadWorkModes();
+    effect(() => {
+      const companyId = this.store.companyId();
+      if (companyId) {
+        void this.store.loadWorkModes(companyId);
+      }
+    });
 
     this.availabilitySub = this.employeeNumberEdits$
       .pipe(
@@ -384,7 +389,7 @@ export class AddEmployeeWizardComponent implements OnDestroy {
         employmentType: value.employmentType ?? '',
         startDate: value.startDate ?? '',
         employeeNumber: value.employeeNumber ?? '',
-        workModeId: value.workModeId ? Number(value.workModeId) : null
+        workModeId: value.workModeId || null
       });
     });
   }
@@ -410,7 +415,7 @@ export class AddEmployeeWizardComponent implements OnDestroy {
       employmentType: formValue.employmentType,
       startDate: formValue.startDate,
       employeeNumber: formValue.employeeNumber,
-      workModeId: formValue.workModeId ? String(formValue.workModeId) : ''
+      workModeId: formValue.workModeId ?? ''
     });
     this.lastSuggestedEmployeeNumber = null;
     if (formValue.employeeNumber) {
@@ -483,6 +488,13 @@ export class AddEmployeeWizardComponent implements OnDestroy {
 
   onWorkModeChange(workModeIdStr: string): void {
     this.form.controls.workModeId.setValue(workModeIdStr);
+  }
+
+  retryLoadWorkModes(): void {
+    const companyId = this.store.companyId();
+    if (companyId) {
+      void this.store.loadWorkModes(companyId);
+    }
   }
 
   onDepartmentChange(departmentId: string): void {

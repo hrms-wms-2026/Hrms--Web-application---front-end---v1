@@ -1,13 +1,15 @@
-import { Component, computed, input, output, signal } from '@angular/core';
+import { Component, computed, inject, input, output, signal } from '@angular/core';
 import { ModalComponent } from '../../../../shared/ui/modal/modal.component';
 import { ButtonComponent } from '../../../../shared/ui/button/button.component';
 import { AvatarComponent } from '../../../../shared/ui/avatar/avatar.component';
 import { EmployeePickerComponent } from '../employee-picker/employee-picker.component';
 import { ObjectiveMemberItemDto } from '../../models/dto/objective-invitation.dto';
+import { FileApiService } from '../../../../shared/data-access/file-api.service';
 
 export interface ProjectMemberPopupItem {
   id: string;
   name: string;
+  avatarFileId: string | null;
 }
 
 @Component({
@@ -42,7 +44,7 @@ export interface ProjectMemberPopupItem {
           }
           @for (member of projectMembers(); track member.id) {
             <div data-testid="member-row" class="flex items-center gap-2 rounded-lg border border-[var(--color-border)] px-2.5 py-2">
-              <app-avatar [userName]="member.name" size="sm" />
+              <app-avatar [avatarUrl]="member.avatarFileId ? fileApi.getFileUrl(member.avatarFileId) : null" [userName]="member.name" size="sm" />
               <span class="text-xs font-medium text-[var(--color-text-primary)]">{{ member.name }}</span>
             </div>
           }
@@ -64,7 +66,7 @@ export interface ProjectMemberPopupItem {
               class="flex items-center justify-between gap-2 rounded-lg border border-[var(--color-border)] px-2.5 py-2"
             >
               <div class="flex items-center gap-2">
-                <app-avatar [userName]="member.name" size="sm" />
+                <app-avatar [avatarUrl]="member.avatarFileId ? fileApi.getFileUrl(member.avatarFileId) : null" [userName]="member.name" size="sm" />
                 <span class="text-xs font-medium text-[var(--color-text-primary)]">{{ member.name ?? 'Unknown employee' }}</span>
                 @if (member.isHead) {
                   <span data-testid="leader-badge" class="rounded-full bg-[var(--color-accent)]/10 px-2 py-0.5 text-[10px] font-semibold text-[var(--color-accent)]">Leader</span>
@@ -105,6 +107,8 @@ export interface ProjectMemberPopupItem {
   `
 })
 export class MemberManagementPopupComponent {
+  protected readonly fileApi = inject(FileApiService);
+
   scope = input<'project' | 'objective'>('project');
   open = input(false);
   objectiveName = input<string | null>(null);

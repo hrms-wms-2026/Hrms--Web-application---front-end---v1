@@ -1,4 +1,4 @@
-import { ChangeDetectionStrategy, Component, HostListener, inject, signal } from '@angular/core';
+import { ChangeDetectionStrategy, Component, HostListener, computed, inject, signal } from '@angular/core';
 import { RouterOutlet } from '@angular/router';
 import { TrayPresenceStore } from '../../core/tray-presence/state/tray-presence.store';
 import { TrayActivationGateComponent } from '../../core/tray-presence/feature/tray-activation-gate/tray-activation-gate.component';
@@ -10,6 +10,8 @@ import { NavigationStateService } from './nav/navigation-state.service';
 import { SideNavbarComponent } from './side-navbar/side-navbar.component';
 import { SubSidebarComponent } from './sub-sidebar/sub-sidebar.component';
 import { TopNavbarComponent } from './top-navbar/top-navbar.component';
+import { ProfileStore } from '@modules/profile/state/profile.store';
+import { FileApiService } from '../../shared/data-access/file-api.service';
 
 import { ToastHostComponent } from '../../shared/ui/toast/toast-host.component';
 import { MobileBottomNavComponent } from './mobile-bottom-nav/mobile-bottom-nav.component';
@@ -25,6 +27,8 @@ import { MobileBottomNavComponent } from './mobile-bottom-nav/mobile-bottom-nav.
 export class MainLayoutComponent {
   private readonly authStore = inject(AuthStore);
   private readonly permissionService = inject(PermissionService);
+  private readonly profileStore = inject(ProfileStore);
+  private readonly fileApi = inject(FileApiService);
   readonly trayPresence = inject(TrayPresenceStore);
 
   readonly navState = inject(NavigationStateService);
@@ -32,10 +36,22 @@ export class MainLayoutComponent {
   readonly email = this.authStore.email;
   readonly announcementMessage = signal('');
 
+  readonly userName = computed(() => {
+    const info = this.profileStore.profile()?.personalInformation;
+    if (!info) return null;
+    return [info.firstName, info.lastName].filter(Boolean).join(' ').trim() || null;
+  });
+
+  readonly avatarUrl = computed(() => {
+    const fileId = this.profileStore.profile()?.personalInformation.avatarFileId;
+    return fileId ? this.fileApi.getFileUrl(fileId) : null;
+  });
+
   /** Tenants that never enabled the monitoring module have no tray app to connect. */
   readonly monitoringEnabled = this.permissionService.hasModule('activity_monitoring');
 
   constructor() {
+    this.profileStore.loadProfile();
     if (this.monitoringEnabled) {
       this.trayPresence.start();
     }

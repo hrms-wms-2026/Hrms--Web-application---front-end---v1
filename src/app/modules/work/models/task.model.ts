@@ -50,4 +50,5 @@ export interface WorkTask {
   parentTaskId: string | null;
   subtaskTotalCount: number;
   subtaskCompletedCount: number;
+  subtaskAssigneeEmployeeIds: string[];
 }

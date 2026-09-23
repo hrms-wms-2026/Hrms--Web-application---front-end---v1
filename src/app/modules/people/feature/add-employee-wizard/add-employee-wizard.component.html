@@ -152,7 +152,7 @@
                 } @else if (store.workModesError()) {
                   <div class="md:col-span-1 rounded-lg border border-[var(--color-border)] p-3 text-sm text-[var(--color-text-primary)] flex items-center justify-between">
                     <span>{{ store.workModesError() }}</span>
-                    <app-button variant="secondary" size="sm" (pressed)="store.loadWorkModes()">Retry</app-button>
+                    <app-button variant="secondary" size="sm" (pressed)="retryLoadWorkModes()">Retry</app-button>
                   </div>
                 } @else if (store.workModes().length === 0) {
                   <div class="md:col-span-1">

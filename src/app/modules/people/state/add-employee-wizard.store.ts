@@ -38,7 +38,7 @@ export interface AddEmployeeFormValue {
   employmentType: string;
   startDate: string;
   employeeNumber: string;
-  workModeId: number | null;
+  workModeId: string | null;
 }
 
 export interface AddEmployeeWizardState {
@@ -411,10 +411,10 @@ export const AddEmployeeWizardStore = signalStore(
         void this.loadDepartmentsForCompany(companyId);
       },
 
-      async loadWorkModes(): Promise<void> {
+      async loadWorkModes(legalEntityId: string): Promise<void> {
         patchState(store, { loadingWorkModes: true, workModesError: null });
         try {
-          const modes = await firstValueFrom(peopleApi.getWorkModes());
+          const modes = await firstValueFrom(peopleApi.getWorkModes(legalEntityId));
           patchState(store, { workModes: modes, loadingWorkModes: false });
         } catch (err: unknown) {
           patchState(store, {
@@ -772,7 +772,7 @@ export const AddEmployeeWizardStore = signalStore(
         }
 
         const form = store.formValue();
-        if (!form.workModeId || form.workModeId <= 0) {
+        if (!form.workModeId) {
           patchState(store, { saveError: 'Work mode is required.' });
           return null;
         }

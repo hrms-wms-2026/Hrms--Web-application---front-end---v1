@@ -49,7 +49,7 @@ export type BulkOnboardingIssueAction =
 export interface UploadBulkOnboardingBatchPayload {
   file: File;
   legalEntityId: string;
-  defaultWorkModeId: number | null;
+  defaultWorkModeId: string | null;
   defaultEmploymentType: string | null;
   defaultChecklistTemplateId: string | null;
 }
@@ -134,7 +134,7 @@ export interface ResolveBulkOnboardingIssuesPayload {
   readonly action: BulkOnboardingIssueAction;
   readonly targetId?: string | null;
   readonly newValue?: string | null;
-  readonly workModeId?: number | null;
+  readonly workModeId?: string | null;
   readonly applyToRowNumbers?: readonly number[] | null;
   readonly create?: {
     readonly name: string;

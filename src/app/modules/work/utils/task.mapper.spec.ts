@@ -87,7 +87,7 @@ describe('toEditTaskRequest', () => {
     progressPercent: 40, sprintId: 'sp-1', assigneeEmployeeIds: [], openClockSessionEmployeeId: null,
     openClockSessionClockInAt: null, totalLoggedMinutes: 0,
     attachments: [{ fileId: 'f1', name: 'a.pdf', sizeBytes: 100 }], assignees: [],
-    parentTaskId: null, subtaskTotalCount: 0, subtaskCompletedCount: 0
+    parentTaskId: null, subtaskTotalCount: 0, subtaskCompletedCount: 0, subtaskAssigneeEmployeeIds: []
   };
 
   it('reproduces every current field so nothing is silently cleared', () => {

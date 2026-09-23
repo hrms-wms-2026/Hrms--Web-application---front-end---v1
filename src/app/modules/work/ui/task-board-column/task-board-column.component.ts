@@ -1317,7 +1317,7 @@ export class TaskBoardColumnComponent {
   currentEmployeeId = input('');
 
   // Context passed from parent for task creation
-  assignableMembers = input<readonly { employeeId: string; name: string }[]>([]);
+  assignableMembers = input<readonly { employeeId: string; name: string; avatarUrl?: string | null }[]>([]);
   modules = input<readonly { objectiveId: string; title: string; isOwner: boolean }[]>([]);
   categories = input<readonly TaskCategoryColumn[]>([]);
   defaultObjectiveId = input('');

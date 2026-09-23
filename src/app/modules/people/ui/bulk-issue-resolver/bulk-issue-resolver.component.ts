@@ -673,7 +673,7 @@ export class BulkIssueResolverComponent {
         this.apply.emit({
           issueKey: issue.issueKey,
           action: 'set_default',
-          workModeId: Number(this.selectedWorkModeId()),
+          workModeId: this.selectedWorkModeId() || null,
           applyToRowNumbers
         });
       }

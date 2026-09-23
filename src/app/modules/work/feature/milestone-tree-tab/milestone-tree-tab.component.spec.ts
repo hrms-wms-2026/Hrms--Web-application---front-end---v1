@@ -733,7 +733,7 @@ describe('MilestoneTreeTabComponent', () => {
         dueDate: null, estimatedHours: 3, completedHours: 0, progressPercent: 0,
         sprintId: 'spr-1', assigneeEmployeeIds: [], openClockSessionEmployeeId: null, openClockSessionClockInAt: null, totalLoggedMinutes: 0,
         attachments: [], assignees: [],
-        parentTaskId: null, subtaskTotalCount: 0, subtaskCompletedCount: 0
+        parentTaskId: null, subtaskTotalCount: 0, subtaskCompletedCount: 0, subtaskAssigneeEmployeeIds: []
       }
     };
 

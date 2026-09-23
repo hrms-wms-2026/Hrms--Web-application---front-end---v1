@@ -42,6 +42,7 @@ export interface EmployeeListItemResponse {
   readonly invitationStatus?: string | null;
   readonly invitationExpiresAt?: string | null;
   readonly attendanceSummary?: EmployeeListAttendanceSummaryResponse | null;
+  readonly avatarFileId?: string | null;
 }
 
 export interface ResendInvitationResponse {
