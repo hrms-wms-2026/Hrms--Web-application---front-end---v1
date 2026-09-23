@@ -468,8 +468,7 @@ describe('TaskBacklogComponent', () => {
     expect(row).not.toBeNull();
     expect(fixture.nativeElement.querySelector('[data-testid="task-row-t-1"]')).toBeNull();
 
-    const viewButton = row.querySelector('.task-table__view-btn') as HTMLButtonElement;
-    viewButton.click();
+    (row as HTMLElement).click();
     fixture.detectChanges();
 
     const inst = fixture.componentInstance as unknown as { taskModalOpen: () => boolean; taskModalTaskId: () => string };

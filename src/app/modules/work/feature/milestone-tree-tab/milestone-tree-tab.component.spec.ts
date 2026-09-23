@@ -8,12 +8,16 @@ import { PeopleApiService } from '../../../people/data-access/people-api.service
 import { SprintListStore } from '../../state/sprint-list.store';
 import { TaskBoardStore } from '../../state/task-board.store';
 import { TaskApiService } from '../../data-access/task-api.service';
+import { WorkApprovalsApiService } from '../../data-access/work-approvals-api.service';
+import { EmployeeDirectoryStore } from '../../state/employee-directory.store';
 
 describe('MilestoneTreeTabComponent', () => {
   let fixture: ComponentFixture<MilestoneTreeTabComponent>;
   let storeStub: any;
   let routeStub: any;
   let routerStub: { navigate: ReturnType<typeof vi.fn> };
+  let approvalsApiStub: { acceptObjectiveInvitation: ReturnType<typeof vi.fn>; rejectObjectiveInvitation: ReturnType<typeof vi.fn> };
+  let directoryStub: { ensureLoaded: ReturnType<typeof vi.fn>; get: ReturnType<typeof vi.fn> };
 
   const child: MilestoneTreeNode = {
     id: 'o2', title: 'Child', description: null, startDate: '2026-01-10', endDate: '2026-02-01',
@@ -39,18 +43,27 @@ describe('MilestoneTreeTabComponent', () => {
     ownerName: 'Arun Kumar', isOwner: true, children: [child, sibling, inactiveSibling]
   };
 
-  function setup(milestoneId: string | null): void {
+  function setup(milestoneId: string | null, queryParams: Record<string, string> = {}): void {
     const paramGet = (key: string) => {
       if (key === 'milestoneId') return milestoneId;
       if (key === 'id') return 'p1';
       return null;
     };
+    const queryParamGet = (key: string) => queryParams[key] ?? null;
     routeStub = {
       paramMap: of({ get: paramGet }),
-      snapshot: { paramMap: { get: paramGet } },
+      snapshot: { paramMap: { get: paramGet }, queryParamMap: { get: queryParamGet } },
       parent: null
     };
     routerStub = { navigate: vi.fn().mockResolvedValue(true) };
+    approvalsApiStub = {
+      acceptObjectiveInvitation: vi.fn().mockReturnValue(of(undefined)),
+      rejectObjectiveInvitation: vi.fn().mockReturnValue(of(undefined))
+    };
+    directoryStub = {
+      ensureLoaded: vi.fn().mockResolvedValue(undefined),
+      get: vi.fn().mockReturnValue(undefined)
+    };
 
     TestBed.configureTestingModule({
       imports: [MilestoneTreeTabComponent],
@@ -61,6 +74,8 @@ describe('MilestoneTreeTabComponent', () => {
         { provide: SprintListStore, useValue: { error: () => null, create: vi.fn(), edit: vi.fn() } },
         { provide: TaskBoardStore, useValue: { error: () => null, createTask: vi.fn(), statuses: () => [] } },
         { provide: TaskApiService, useValue: {} },
+        { provide: WorkApprovalsApiService, useValue: approvalsApiStub },
+        { provide: EmployeeDirectoryStore, useValue: directoryStub },
         { provide: Router, useValue: routerStub }
       ]
     }).compileComponents();
@@ -82,7 +97,7 @@ describe('MilestoneTreeTabComponent', () => {
       completeSprint: vi.fn().mockResolvedValue({ success: true }),
       deleteTask: vi.fn().mockResolvedValue({ success: true }),
       getMilestoneDetail: vi.fn().mockResolvedValue(null),
-      editMilestone: vi.fn().mockResolvedValue({ success: true, pending: false }),
+      editMilestone: vi.fn().mockResolvedValue({ success: true, pending: true }),
       achieveMilestone: vi.fn().mockResolvedValue({ success: true, pending: false }),
       unachieveMilestone: vi.fn().mockResolvedValue({ success: true, pending: false }),
       createSubModule: vi.fn().mockResolvedValue({ success: true, objectiveId: 'o1' }),
@@ -93,7 +108,9 @@ describe('MilestoneTreeTabComponent', () => {
       removeObjectiveMember: vi.fn().mockResolvedValue({ success: true }),
       transferObjectiveHead: vi.fn().mockResolvedValue({ success: true, applied: false, viaInvitation: true }),
       objectiveMembers: () => [],
-      objectiveMembersLoading: () => false
+      objectiveMembersLoading: () => false,
+      loadProjectMembers: vi.fn().mockResolvedValue(undefined),
+      projectMembers: () => [{ employeeId: 'e1', name: 'Arun Kumar' }, { employeeId: 'e2', name: 'Diya' }]
     };
   });
 
@@ -101,6 +118,17 @@ describe('MilestoneTreeTabComponent', () => {
     setup('o1');
     fixture.detectChanges();
     expect(storeStub.loadProjectTree).toHaveBeenCalledWith('p1');
+  });
+
+  it('pre-warms the employee directory with project members so task-assignee avatars resolve without the coverage-scoped lookup', async () => {
+    setup('o1');
+    fixture.detectChanges();
+    await fixture.whenStable();
+    await Promise.resolve();
+    await Promise.resolve();
+
+    expect(storeStub.loadProjectMembers).toHaveBeenCalledWith('p1');
+    expect(directoryStub.ensureLoaded).toHaveBeenCalledWith(['e1', 'e2']);
   });
 
   it('defaults the module filter to all so every member sees the full tree, regardless of the routed milestone', async () => {
@@ -459,6 +487,42 @@ describe('MilestoneTreeTabComponent', () => {
     expect((fixture.componentInstance.settingsInitialValue() as any)?.description).toBe('Full scope');
   });
 
+  it('shows a pending-approval notice when an edit is submitted for approval', async () => {
+    setup('o1');
+    fixture.detectChanges();
+    const rows = fixture.nativeElement.querySelectorAll('[data-testid="tree-row"]');
+    (rows[0] as HTMLElement).click();
+    fixture.detectChanges();
+
+    await fixture.componentInstance.onSettingsSaved({
+      fields: { title: 'Root', description: '', startDate: '2026-01-01', endDate: '2026-12-01', allocatedHours: 40 },
+      achievedChanged: false,
+      achieved: false
+    });
+    fixture.detectChanges();
+
+    expect(fixture.componentInstance.editPendingNotice()).toContain('pending approval');
+    expect(fixture.nativeElement.querySelector('[data-testid="edit-pending-notice"]')).not.toBeNull();
+  });
+
+  it('does not show a pending-approval notice when the edit applied immediately', async () => {
+    storeStub.editMilestone = vi.fn().mockResolvedValue({ success: true, pending: false });
+    setup('o1');
+    fixture.detectChanges();
+    const rows = fixture.nativeElement.querySelectorAll('[data-testid="tree-row"]');
+    (rows[0] as HTMLElement).click();
+    fixture.detectChanges();
+
+    await fixture.componentInstance.onSettingsSaved({
+      fields: { title: 'Root', description: '', startDate: '2026-01-01', endDate: '2026-12-01', allocatedHours: 40 },
+      achievedChanged: false,
+      achieved: false
+    });
+    fixture.detectChanges();
+
+    expect(fixture.componentInstance.editPendingNotice()).toBeNull();
+  });
+
   it('opens the members popup when a row requests it', () => {
     setup('o1');
     fixture.detectChanges();
@@ -518,6 +582,55 @@ describe('MilestoneTreeTabComponent', () => {
     await fixture.componentInstance.onTransferRequested('e9');
 
     expect(storeStub.transferObjectiveHead).toHaveBeenCalledWith('o1', 'e9');
+  });
+
+  it('calls acceptObjectiveInvitation and reloads members when the popup accepts my invitation', async () => {
+    setup('o1');
+    fixture.detectChanges();
+    const rows = fixture.nativeElement.querySelectorAll('[data-testid="tree-row"]');
+    (rows[0] as HTMLElement).click();
+    fixture.detectChanges();
+
+    await fixture.componentInstance.onInvitationAcceptRequested('inv-1');
+
+    expect(approvalsApiStub.acceptObjectiveInvitation).toHaveBeenCalledWith('inv-1');
+    expect(storeStub.loadObjectiveMembers).toHaveBeenCalledWith('o1');
+  });
+
+  it('calls rejectObjectiveInvitation and reloads members when the popup declines my invitation', async () => {
+    setup('o1');
+    fixture.detectChanges();
+    const rows = fixture.nativeElement.querySelectorAll('[data-testid="tree-row"]');
+    (rows[0] as HTMLElement).click();
+    fixture.detectChanges();
+
+    await fixture.componentInstance.onInvitationDeclineRequested('inv-1');
+
+    expect(approvalsApiStub.rejectObjectiveInvitation).toHaveBeenCalledWith('inv-1');
+    expect(storeStub.loadObjectiveMembers).toHaveBeenCalledWith('o1');
+  });
+
+  it('auto-opens the members popup when the route carries ?openMembers=1 (deep link from a notification)', async () => {
+    setup('o1', { openMembers: '1' });
+    fixture.detectChanges();
+    await fixture.whenStable();
+    await Promise.resolve();
+    await Promise.resolve();
+    fixture.detectChanges();
+
+    expect(fixture.componentInstance.membersPopupOpen()).toBe(true);
+    expect(storeStub.loadObjectiveMembers).toHaveBeenCalledWith('o1');
+  });
+
+  it('does not auto-open the members popup when ?openMembers is absent', async () => {
+    setup('o1');
+    fixture.detectChanges();
+    await fixture.whenStable();
+    await Promise.resolve();
+    await Promise.resolve();
+    fixture.detectChanges();
+
+    expect(fixture.componentInstance.membersPopupOpen()).toBe(false);
   });
 
   it('opens the members popup from a row without relying on prior selection', () => {

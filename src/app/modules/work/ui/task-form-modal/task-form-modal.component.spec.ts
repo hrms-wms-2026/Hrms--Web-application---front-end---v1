@@ -1058,9 +1058,11 @@ describe('TaskFormModalComponent - subtasks section', () => {
     expect(fixture.nativeElement.querySelector('[data-testid="subtask-add-title"]')).toBeNull();
   });
 
-  it('creates a new subtask via boardStore.createSubtask', async () => {
+  it('creates a new subtask via boardStore.createSubtask and inherits parent module', async () => {
     (fixture.nativeElement.querySelector('[data-testid="add-subtask-button"]') as HTMLButtonElement).click();
     fixture.detectChanges();
+
+    expect(fixture.componentInstance.newSubtaskModuleId()).toBe('o1');
 
     fixture.componentInstance.newSubtaskTitle.set('Fresh subtask');
     fixture.componentInstance.newSubtaskDueDate.set('2026-10-01');
@@ -1072,9 +1074,46 @@ describe('TaskFormModalComponent - subtasks section', () => {
     expect(boardStore.createSubtask).toHaveBeenCalledWith('t1', {
       title: 'Fresh subtask',
       dueDate: '2026-10-01',
-      assigneeEmployeeId: 'e1'
+      assigneeEmployeeId: 'e1',
+      objectiveId: 'o1'
     });
     expect(fixture.componentInstance.addingSubtask()).toBe(false);
+  });
+
+  it('allows changing subtask module via module popover without showing module text in row', async () => {
+    fixture.componentInstance.modules.set([
+      { objectiveId: 'o1', title: 'Module One', isOwner: true },
+      { objectiveId: 'o2', title: 'Module Two', isOwner: false }
+    ]);
+    (fixture.nativeElement.querySelector('[data-testid="add-subtask-button"]') as HTMLButtonElement).click();
+    fixture.detectChanges();
+
+    // Verify module button exists and displays icon only (no module name text in row)
+    const moduleBtn = fixture.nativeElement.querySelector('[data-testid="subtask-add-module-button"]') as HTMLButtonElement;
+    expect(moduleBtn).not.toBeNull();
+    expect(moduleBtn.textContent?.trim()).toBe('');
+
+    // Open module popover
+    moduleBtn.click();
+    fixture.detectChanges();
+
+    expect(fixture.componentInstance.activeSubtaskPopover()).toEqual({ id: 'new', type: 'module' });
+
+    // Select module o2
+    fixture.componentInstance.selectSubtaskModule('o2');
+    fixture.detectChanges();
+
+    expect(fixture.componentInstance.newSubtaskModuleId()).toBe('o2');
+    expect(fixture.componentInstance.activeSubtaskPopover()).toBeNull();
+
+    // Save and verify o2 is passed
+    fixture.componentInstance.newSubtaskTitle.set('Changed module subtask');
+    await fixture.componentInstance.saveNewSubtask('t1');
+
+    expect(boardStore.createSubtask).toHaveBeenCalledWith('t1', {
+      title: 'Changed module subtask',
+      objectiveId: 'o2'
+    });
   });
 
   it('navigates to subtask detail when clicking a subtask row and provides return breadcrumb', async () => {
@@ -1145,21 +1184,24 @@ describe('TaskFormModalComponent - subtasks section', () => {
     expect(api['editTask']).toHaveBeenCalledWith('sub-1', expect.objectContaining({ title: 'Subtask 1 Edited' }));
   });
 
-  it('renders the unified subtask table and allows adding subtasks even when no subtasks exist', () => {
+  it('hides the table view and shows the action row button when no subtasks exist', () => {
     subtasksSignal.set({ t1: [] });
     fixture.detectChanges();
 
     expect(fixture.componentInstance.subtasks().length).toBe(0);
-    expect(fixture.nativeElement.querySelector('.tfm-subtasks-section')).not.toBeNull();
-    expect(fixture.nativeElement.querySelector('.tfm-subtask-table-head')).not.toBeNull();
+    expect(fixture.nativeElement.querySelector('.tfm-subtasks-section')).toBeNull();
+    expect(fixture.nativeElement.querySelector('.tfm-subtask-table-head')).toBeNull();
 
     const addSubtaskBtn = fixture.nativeElement.querySelector('[data-testid="add-subtask-button"]') as HTMLButtonElement;
     expect(addSubtaskBtn).not.toBeNull();
+    expect(addSubtaskBtn.classList.contains('tfm-action-row')).toBe(true);
 
     addSubtaskBtn.click();
     fixture.detectChanges();
 
-    expect(fixture.nativeElement.querySelector('.tfm-subtask-inline-create')).not.toBeNull();
+    // Table view only appears when adding a subtask
+    expect(fixture.nativeElement.querySelector('.tfm-subtasks-section')).not.toBeNull();
+    expect(fixture.nativeElement.querySelector('.tfm-subtask-table-head')).not.toBeNull();
     expect(fixture.nativeElement.querySelector('[data-testid="subtask-add-title"]')).not.toBeNull();
 
     // Priority button defaults to 'Priority' (not 'Normal')
@@ -1175,38 +1217,12 @@ describe('TaskFormModalComponent - subtasks section', () => {
     fixture.componentInstance.selectSubtaskPriority('critical');
     expect(fixture.componentInstance.newSubtaskPriority()).toBeNull();
     expect(fixture.componentInstance.formatSubtaskPriority(null)).toBe('Priority');
-  });
 
-  it('supports creating and removing draft subtasks in create mode without requiring assignee or date', async () => {
-    fixture.componentInstance.internalMode.set('create');
-    fixture.componentInstance.selectedObjectiveId.set('obj-1');
-    fixture.componentInstance.categoryId.set('cat-1');
-    fixture.componentInstance.priority.set('medium');
-    fixture.componentInstance.title.set('New Parent Task');
+    // Cancelling hides the table view again when 0 subtasks exist
+    (fixture.nativeElement.querySelector('[data-testid="subtask-add-cancel"]') as HTMLButtonElement).click();
     fixture.detectChanges();
-
-    expect(fixture.nativeElement.querySelector('.tfm-subtasks-section')).not.toBeNull();
-    expect(fixture.componentInstance.displayedSubtasks().length).toBe(0);
-
-    // Open add subtask
-    (fixture.nativeElement.querySelector('[data-testid="add-subtask-button"]') as HTMLButtonElement).click();
-    fixture.detectChanges();
-
-    // Add subtask title only (no assignee, date, priority required)
-    fixture.componentInstance.newSubtaskTitle.set('Draft Subtask A');
-    await fixture.componentInstance.saveNewSubtask();
-    fixture.detectChanges();
-
-    expect(fixture.componentInstance.draftSubtasks().length).toBe(1);
-    expect(fixture.componentInstance.displayedSubtasks().length).toBe(1);
-    expect(fixture.componentInstance.displayedSubtasks()[0].title).toBe('Draft Subtask A');
-
-    // Remove draft subtask
-    fixture.componentInstance.removeDraftSubtask(fixture.componentInstance.draftSubtasks()[0].id);
-    fixture.detectChanges();
-
-    expect(fixture.componentInstance.draftSubtasks().length).toBe(0);
-    expect(fixture.componentInstance.displayedSubtasks().length).toBe(0);
+    expect(fixture.nativeElement.querySelector('.tfm-subtasks-section')).toBeNull();
+    expect(fixture.nativeElement.querySelector('.tfm-subtask-table-head')).toBeNull();
   });
 
   it('renders Status column header and subtask status pill', () => {

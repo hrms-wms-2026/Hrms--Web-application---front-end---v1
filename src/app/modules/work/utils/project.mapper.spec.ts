@@ -40,14 +40,14 @@ describe('project.mapper', () => {
       allocatedHours: 40, completedHours: 0, isLead: true, isAchieved: false, achievedAt: null,
       updatedAt: '2026-08-10T00:00:00Z', logoFileId: null,
       labels: [{ id: 'l1', name: 'Marketing', color: '#F59E0B' }],
-      members: [{ userId: 'u2', displayName: 'Arun Kumar' }],
+      members: [{ userId: 'u2', displayName: 'Arun Kumar', avatarFileId: null }],
       memberCount: 5
     };
     const result = toProject(dto);
     expect(result.description).toBe('Rebuild the site');
     expect(result.updatedAt).toBe('2026-08-10T00:00:00Z');
     expect(result.labels).toEqual([{ id: 'l1', name: 'Marketing', color: '#F59E0B' }]);
-    expect(result.members).toEqual([{ userId: 'u2', displayName: 'Arun Kumar' }]);
+    expect(result.members).toEqual([{ userId: 'u2', displayName: 'Arun Kumar', avatarFileId: null }]);
     expect(result.memberCount).toBe(5);
   });
 
@@ -72,23 +72,24 @@ describe('project.mapper', () => {
       ownerId: 'u1', ownerName: 'Jane Doe', reportingManagerId: null, reportingManagerName: null,
       startDate: '2026-08-01', endDate: '2026-12-01', allocatedHours: 40, completedHours: 0,
       objectiveIsActive: true, isAchieved: false, achievedAt: null,
-      membershipIsActive: true, membershipRemovedAt: null, isOwner: false
+      membershipIsActive: true, membershipRemovedAt: null, isOwner: false, isEffectiveOwner: false
     };
     expect(toMilestone(dto).ownerName).toBe('Jane Doe');
   });
 
-  it('maps isOwner through unchanged', () => {
+  it('maps isOwner and isEffectiveOwner through unchanged', () => {
     const dto: MyProjectMilestoneDto = {
       objectiveId: 'o1', projectId: 'p1', parentObjectiveId: null, isDefault: true, title: 'Default',
       ownerId: 'u1', ownerName: 'Jane Doe', reportingManagerId: null, reportingManagerName: null,
       startDate: '2026-08-01', endDate: '2026-12-01', allocatedHours: 40, completedHours: 0,
       objectiveIsActive: true, isAchieved: false, achievedAt: null,
-      membershipIsActive: true, membershipRemovedAt: null, isOwner: true
+      membershipIsActive: true, membershipRemovedAt: null, isOwner: true, isEffectiveOwner: false
     };
 
     const result = toMilestone(dto);
 
     expect(result.isOwner).toBe(true);
+    expect(result.isEffectiveOwner).toBe(false);
   });
 
   it('maps an ObjectiveSubtreeNodeDto to a MilestoneTreeNode, recursively', () => {

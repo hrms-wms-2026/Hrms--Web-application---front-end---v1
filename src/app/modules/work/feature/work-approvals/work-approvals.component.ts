@@ -1,10 +1,12 @@
-import { AfterViewInit, Component, inject, OnDestroy, OnInit, signal, TemplateRef, viewChild } from '@angular/core';
+import { AfterViewInit, Component, computed, inject, OnDestroy, OnInit, signal, TemplateRef, viewChild } from '@angular/core';
+import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { ActivatedRoute } from '@angular/router';
 import { firstValueFrom } from 'rxjs';
+import { distinctUntilChanged, map } from 'rxjs/operators';
 import { WorkApprovalsStore } from '../../state/work-approvals.store';
 import { WorkPageToolbarStore } from '../../state/work-page-toolbar.store';
 import { ApprovalItem } from '../../models/approval.model';
-import { AllocationRequestDto } from '../../models/dto/allocation-request.dto';
+import { AllocationRequestDto, EditObjectiveRequestPayloadDto } from '../../models/dto/allocation-request.dto';
 import { ApprovalRequestRowComponent } from '../../ui/approval-request-row/approval-request-row.component';
 import { WorkApprovalsApiService } from '../../data-access/work-approvals-api.service';
 import { ProjectApiService } from '../../data-access/project-api.service';
@@ -34,10 +36,10 @@ import { ButtonComponent } from '../../../../shared/ui/button/button.component';
           <h1>Approvals</h1>
         </div>
 
-        @if (store.taskCreationRequests().length > 0) {
+        @if (taskCreationRequests().length > 0) {
         <section>
-          <h2>Task Creation Requests <span>{{ store.taskCreationRequests().length }}</span></h2>
-          @for (item of store.taskCreationRequests(); track item.id) {
+          <h2>Task Creation Requests <span>{{ taskCreationRequests().length }}</span></h2>
+          @for (item of taskCreationRequests(); track item.id) {
             <app-approval-request-row
               [item]="item"
               (approved)="onApprove(item, $event)"
@@ -47,10 +49,23 @@ import { ButtonComponent } from '../../../../shared/ui/button/button.component';
         </section>
         }
 
-        @if (store.allocationRequests().length > 0) {
+        @if (taskEditRequests().length > 0) {
         <section>
-          <h2>Allocation Requests <span>{{ store.allocationRequests().length }}</span></h2>
-          @for (item of store.allocationRequests(); track item.id) {
+          <h2>Task Edit Requests <span>{{ taskEditRequests().length }}</span></h2>
+          @for (item of taskEditRequests(); track item.id) {
+            <app-approval-request-row
+              [item]="item"
+              (approved)="onApprove(item, $event)"
+              (rejected)="onReject(item, $event)"
+            />
+          }
+        </section>
+        }
+
+        @if (allocationRequests().length > 0) {
+        <section>
+          <h2>Allocation Requests <span>{{ allocationRequests().length }}</span></h2>
+          @for (item of allocationRequests(); track item.id) {
             <app-approval-request-row
               [item]="item"
               [inlineError]="activeErrorFor(item)"
@@ -62,10 +77,10 @@ import { ButtonComponent } from '../../../../shared/ui/button/button.component';
         </section>
         }
 
-        @if (store.objectiveChangeRequests().length > 0) {
+        @if (objectiveChangeRequests().length > 0) {
         <section>
-          <h2>Objective Change Requests <span>{{ store.objectiveChangeRequests().length }}</span></h2>
-          @for (item of store.objectiveChangeRequests(); track item.id) {
+          <h2>Objective Change Requests <span>{{ objectiveChangeRequests().length }}</span></h2>
+          @for (item of objectiveChangeRequests(); track item.id) {
             <app-approval-request-row
               [item]="item"
               (approved)="onApprove(item, $event)"
@@ -75,10 +90,10 @@ import { ButtonComponent } from '../../../../shared/ui/button/button.component';
         </section>
         }
 
-        @if (store.objectiveInvitations().length > 0) {
+        @if (objectiveInvitations().length > 0) {
         <section>
-          <h2>Objective Invitations <span>{{ store.objectiveInvitations().length }}</span></h2>
-          @for (item of store.objectiveInvitations(); track item.id) {
+          <h2>Objective Invitations <span>{{ objectiveInvitations().length }}</span></h2>
+          @for (item of objectiveInvitations(); track item.id) {
             <app-approval-request-row
               [item]="item"
               (approved)="onApprove(item, $event)"
@@ -155,7 +170,7 @@ export class WorkApprovalsComponent implements OnInit, AfterViewInit, OnDestroy 
   private readonly projectApi = inject(ProjectApiService);
   private readonly toolbarStore = inject(WorkPageToolbarStore);
   private readonly toolbarTpl = viewChild.required<TemplateRef<unknown>>('toolbarTpl');
-  private readonly projectId = this.resolveProjectId();
+  private readonly projectId = signal('');
   private lastFailedId: string | null = null;
 
   protected readonly createOpen = signal(false);
@@ -169,9 +184,43 @@ export class WorkApprovalsComponent implements OnInit, AfterViewInit, OnDestroy 
   protected readonly moduleOptions = signal<readonly WorkDropdownOption[]>([]);
   private prefillObjectiveId: string | null = null;
 
+  // The store's "mine" lists span every project the caller owns modules in; scope each one down
+  // to this project's modules so a project's Approvals page only shows that project's requests.
+  private readonly moduleIds = computed(() => new Set(this.modules().map((m) => m.objectiveId)));
+  private readonly scopedToProject = (items: readonly ApprovalItem[]) =>
+    items.filter((item) => this.moduleIds().has(item.objectiveId));
+
+  protected readonly taskCreationRequests = computed(() => this.scopedToProject(this.store.taskCreationRequests()));
+  protected readonly taskEditRequests = computed(() => this.scopedToProject(this.store.taskEditRequests()));
+  protected readonly allocationRequests = computed(() => this.scopedToProject(this.store.allocationRequests()));
+  protected readonly objectiveChangeRequests = computed(() => this.scopedToProject(this.store.objectiveChangeRequests()));
+  protected readonly objectiveInvitations = computed(() => this.scopedToProject(this.store.objectiveInvitations()));
+
+  constructor() {
+    // Switching projects via the breadcrumb switcher navigates to a sibling route matching the
+    // same path shape (/work/:id/approvals) - Angular reuses this component instance rather than
+    // re-instantiating it, so the :id param must be watched reactively, not just read once.
+    if (this.route.paramMap) {
+      this.route.paramMap
+        .pipe(
+          map((paramMap) => paramMap.get('id') ?? ''),
+          distinctUntilChanged(),
+          takeUntilDestroyed()
+        )
+        .subscribe((projectId) => {
+          this.projectId.set(projectId);
+          if (!projectId) return;
+          void this.loadModules();
+        });
+    } else {
+      const projectId = this.route.snapshot?.paramMap?.get('id') ?? '';
+      this.projectId.set(projectId);
+      if (projectId) void this.loadModules();
+    }
+  }
+
   ngOnInit(): void {
     void this.store.loadAll();
-    void this.loadModules();
   }
 
   ngAfterViewInit(): void {
@@ -187,9 +236,9 @@ export class WorkApprovalsComponent implements OnInit, AfterViewInit, OnDestroy 
     return null;
   }
 
-  async onApprove(item: ApprovalItem, approvedAdditionalHours?: number): Promise<void> {
+  async onApprove(item: ApprovalItem, override?: number | EditObjectiveRequestPayloadDto): Promise<void> {
     this.lastFailedId = null;
-    const ok = await this.store.approve(item, approvedAdditionalHours);
+    const ok = await this.store.approve(item, override);
     if (!ok) this.lastFailedId = item.id;
   }
 
@@ -252,16 +301,11 @@ export class WorkApprovalsComponent implements OnInit, AfterViewInit, OnDestroy 
     this.openCreateApproval(objectiveId);
   }
 
-  private resolveProjectId(): string {
-    return this.route.snapshot.paramMap.get('id')
-      ?? this.route.parent?.parent?.snapshot.paramMap.get('id')
-      ?? '';
-  }
-
   private async loadModules(): Promise<void> {
-    if (!this.projectId) return;
+    const projectId = this.projectId();
+    if (!projectId) return;
     try {
-      const modules = await firstValueFrom(this.projectApi.getMyMilestones(this.projectId));
+      const modules = await firstValueFrom(this.projectApi.getMyMilestones(projectId));
       const normalized = modules.map((module) => ({
         objectiveId: module.objectiveId,
         title: module.title,

@@ -116,6 +116,10 @@ export class TaskHistoryFeedComponent {
         const pc = entry.percentageChange!;
         return `changed progress from ${pc.previousPercent}% to ${pc.newPercent}%`;
       }
+      case 'comment': {
+        const c = entry.comment!;
+        return c.action === 'deleted' ? 'deleted a comment' : 'edited a comment';
+      }
     }
   }
 

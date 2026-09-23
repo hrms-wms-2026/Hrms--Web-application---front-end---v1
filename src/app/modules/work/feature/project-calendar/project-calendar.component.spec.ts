@@ -48,12 +48,83 @@ describe('ProjectCalendarComponent', () => {
     store.modules.set(treeItems);
     fixture.detectChanges();
 
-    const rootCell = fixture.nativeElement.querySelector('[data-testid="calendar-row-o1"] .project-calendar__objective') as HTMLElement;
-    const childCell = fixture.nativeElement.querySelector('[data-testid="calendar-row-o2"] .project-calendar__objective') as HTMLElement;
-    expect(childCell.style.paddingLeft).not.toBe(rootCell.style.paddingLeft);
-    // No collapse/expand - both bars stay on screen at once.
+    const rootBody = fixture.nativeElement.querySelector('[data-testid="calendar-row-o1"] .project-calendar__objective-body') as HTMLElement;
+    const childBody = fixture.nativeElement.querySelector('[data-testid="calendar-row-o2"] .project-calendar__objective-body') as HTMLElement;
+    expect(childBody.style.marginLeft).not.toBe(rootBody.style.marginLeft);
+    // Root has no ancestor, so it gets no connector guide; the child's single-level guide draws its own elbow.
+    expect(fixture.nativeElement.querySelector('[data-testid="calendar-row-o1"] .project-calendar__guides')).toBeNull();
+    expect(fixture.nativeElement.querySelector('[data-testid="calendar-row-o2"] .project-calendar__guide-col--elbow')).toBeTruthy();
+    // Expanded by default - both bars stay on screen until the parent's chevron is collapsed.
     expect(fixture.nativeElement.querySelector('[data-testid="timeline-bar-o1"]')).toBeTruthy();
     expect(fixture.nativeElement.querySelector('[data-testid="timeline-bar-o2"]')).toBeTruthy();
+  });
+
+  it('collapses a module via its chevron, hiding its children and their bars, without touching the rest of the tree', () => {
+    // o1 is the project root; o2 is a real top-level module (the one with the chevron);
+    // o3 is o2's own child, and o4 a sibling module - to prove collapsing o2 only affects o2's own branch.
+    const treeItems: ProjectCalendarModuleDto[] = [
+      { ...items[0] },
+      { objectiveId: 'o2', projectId: 'p1', parentObjectiveId: 'o1', title: 'Module',
+        startDate: '2026-01-02', endDate: '2026-01-04', isActive: true, isAchieved: false,
+        canEdit: true, events: [] },
+      { objectiveId: 'o3', projectId: 'p1', parentObjectiveId: 'o2', title: 'Sub module',
+        startDate: '2026-01-02', endDate: '2026-01-03', isActive: true, isAchieved: false,
+        canEdit: true, events: [] },
+      { objectiveId: 'o4', projectId: 'p1', parentObjectiveId: 'o1', title: 'Other module',
+        startDate: '2026-01-02', endDate: '2026-01-04', isActive: true, isAchieved: false,
+        canEdit: true, events: [] }
+    ];
+    store.modules.set(treeItems);
+    fixture.detectChanges();
+
+    // The project root itself has no chevron - collapsing it would hide the whole chart, so it's not collapsible.
+    expect(fixture.nativeElement.querySelector('[data-testid="calendar-row-o1"] [data-testid="calendar-chevron"]')).toBeNull();
+    const chevron = fixture.nativeElement.querySelector(
+      '[data-testid="calendar-row-o2"] [data-testid="calendar-chevron"]'
+    ) as HTMLButtonElement;
+    expect(chevron).toBeTruthy();
+    // A leaf objective (no children) gets no chevron at all.
+    expect(fixture.nativeElement.querySelector('[data-testid="calendar-row-o3"] [data-testid="calendar-chevron"]')).toBeNull();
+
+    chevron.click();
+    fixture.detectChanges();
+
+    expect(fixture.nativeElement.querySelector('[data-testid="calendar-row-o3"]')).toBeNull();
+    expect(fixture.nativeElement.querySelector('[data-testid="timeline-bar-o3"]')).toBeNull();
+    // Everything outside o2's own branch is untouched.
+    expect(fixture.nativeElement.querySelector('[data-testid="timeline-bar-o1"]')).toBeTruthy();
+    expect(fixture.nativeElement.querySelector('[data-testid="timeline-bar-o2"]')).toBeTruthy();
+    expect(fixture.nativeElement.querySelector('[data-testid="timeline-bar-o4"]')).toBeTruthy();
+
+    chevron.click();
+    fixture.detectChanges();
+
+    expect(fixture.nativeElement.querySelector('[data-testid="timeline-bar-o3"]')).toBeTruthy();
+  });
+
+  it('colors each top-level module bar distinctly, shares that color with its own children, and gives the root a fixed summary color', () => {
+    const treeItems: ProjectCalendarModuleDto[] = [
+      { ...items[0] },
+      { objectiveId: 'o2', projectId: 'p1', parentObjectiveId: 'o1', title: 'Module A',
+        startDate: '2026-01-02', endDate: '2026-01-04', isActive: true, isAchieved: false,
+        canEdit: true, events: [] },
+      { objectiveId: 'o3', projectId: 'p1', parentObjectiveId: 'o2', title: 'Sub of A',
+        startDate: '2026-01-02', endDate: '2026-01-03', isActive: true, isAchieved: false,
+        canEdit: true, events: [] },
+      { objectiveId: 'o4', projectId: 'p1', parentObjectiveId: 'o1', title: 'Module B',
+        startDate: '2026-01-02', endDate: '2026-01-04', isActive: true, isAchieved: false,
+        canEdit: true, events: [] }
+    ];
+    store.modules.set(treeItems);
+    fixture.detectChanges();
+
+    const colorOf = (id: string) =>
+      (fixture.nativeElement.querySelector(`[data-testid="timeline-bar-${id}"]`) as HTMLElement).style.getPropertyValue('--bar-color');
+
+    expect(colorOf('o1')).toBe('#1E293B'); // the fixed root/summary color
+    expect(colorOf('o2')).not.toBe(colorOf('o1'));
+    expect(colorOf('o4')).not.toBe(colorOf('o2')); // distinct top-level modules get distinct branch colors
+    expect(colorOf('o3')).toBe(colorOf('o2')); // a child inherits its top-level ancestor's branch color
   });
 
   describe('zoom - one continuous chart, no view-switching tabs', () => {

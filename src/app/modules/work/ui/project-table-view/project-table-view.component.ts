@@ -6,6 +6,7 @@ import { AvatarStackComponent } from '../../../../shared/ui/avatar-stack/avatar-
 import { ProgressBarComponent } from '../../../../shared/ui/progress-bar/progress-bar.component';
 import { PopoverComponent } from '../../../../shared/ui/popover/popover.component';
 import { ProjectApiService } from '../../data-access/project-api.service';
+import { FileApiService } from '../../../../shared/data-access/file-api.service';
 
 type SortField = 'name' | 'targetDate' | 'progress' | 'hours';
 type SortOrder = 'asc' | 'desc';
@@ -168,7 +169,7 @@ type SortOrder = 'asc' | 'desc';
                 <td class="py-3.5 px-4 whitespace-nowrap">
                   @if (project.members.length > 0) {
                     <app-avatar-stack
-                      [members]="project.members"
+                      [members]="avatarStackMembersFor(project)"
                       [totalCount]="project.memberCount"
                       [maxVisible]="3"
                       size="sm"
@@ -290,6 +291,8 @@ type SortOrder = 'asc' | 'desc';
   `
 })
 export class ProjectTableViewComponent {
+  private readonly fileApi = inject(FileApiService);
+
   projects = input.required<Project[]>();
   categories = input<readonly ProjectCategory[]>([]);
 
@@ -342,6 +345,13 @@ export class ProjectTableViewComponent {
 
   toggleMenu(projectId: string): void {
     this.openMenuProjectId.update((curr) => (curr === projectId ? null : projectId));
+  }
+
+  avatarStackMembersFor(project: Project) {
+    return project.members.map((member) => ({
+      ...member,
+      avatarUrl: member.avatarFileId ? this.fileApi.getFileUrl(member.avatarFileId) : null
+    }));
   }
 
   onRowClick(project: Project): void {

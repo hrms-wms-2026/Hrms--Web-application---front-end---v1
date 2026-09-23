@@ -25,7 +25,7 @@ const status: TaskStatusColumn = {
 describe('TaskTableComponent', () => {
   let fixture: ComponentFixture<TaskTableComponent>;
   let httpMock: HttpTestingController;
-  let boardStore: { subtasksByParentId: ReturnType<typeof vi.fn>; loadSubtasks: ReturnType<typeof vi.fn> };
+  let boardStore: { subtasksByParentId: ReturnType<typeof vi.fn>; loadSubtasks: ReturnType<typeof vi.fn>; editTask: ReturnType<typeof vi.fn> };
 
   afterEach(() => httpMock.verify());
 
@@ -33,7 +33,8 @@ describe('TaskTableComponent', () => {
     TestBed.resetTestingModule();
     boardStore = {
       subtasksByParentId: vi.fn().mockReturnValue({}),
-      loadSubtasks: vi.fn().mockResolvedValue(undefined)
+      loadSubtasks: vi.fn().mockResolvedValue(undefined),
+      editTask: vi.fn().mockResolvedValue(true)
     };
     TestBed.configureTestingModule({
       imports: [TaskTableComponent, HttpClientTestingModule],
@@ -190,6 +191,124 @@ describe('TaskTableComponent', () => {
       (fixture.nativeElement.querySelector('[data-testid="task-table-select-all"]') as HTMLInputElement).click();
 
       expect(selectAllSpy).toHaveBeenCalledWith({ taskIds: ['t1', 't2'], selected: true });
+    });
+  });
+
+  describe('priority popover', () => {
+    it('opens the priority popover on click without emitting viewed', () => {
+      const viewedSpy = vi.fn();
+      fixture.componentInstance.viewed.subscribe(viewedSpy);
+
+      (fixture.nativeElement.querySelector('[data-testid="task-priority-btn-t1"]') as HTMLButtonElement).click();
+      fixture.detectChanges();
+
+      expect(viewedSpy).not.toHaveBeenCalled();
+      expect(document.body.querySelector('.task-table__priority-popover')).not.toBeNull();
+    });
+
+    it('selecting a new priority edits the task and emits taskChanged, without opening task detail', async () => {
+      const viewedSpy = vi.fn();
+      const changedSpy = vi.fn();
+      fixture.componentInstance.viewed.subscribe(viewedSpy);
+      fixture.componentInstance.taskChanged.subscribe(changedSpy);
+
+      (fixture.nativeElement.querySelector('[data-testid="task-priority-btn-t1"]') as HTMLButtonElement).click();
+      fixture.detectChanges();
+
+      const popover = document.body.querySelector('.task-table__priority-popover');
+      const options = Array.from(popover!.querySelectorAll('.task-table__popover-option')) as HTMLButtonElement[];
+      const criticalOpt = options.find((opt) => opt.textContent?.includes('Critical'))!;
+      criticalOpt.click();
+      fixture.detectChanges();
+      await fixture.whenStable();
+
+      expect(boardStore.editTask).toHaveBeenCalledWith('t1', expect.objectContaining({ priority: 'critical' }));
+      expect(changedSpy).toHaveBeenCalled();
+      expect(viewedSpy).not.toHaveBeenCalled();
+      expect(document.body.querySelector('.task-table__priority-popover')).toBeNull();
+    });
+  });
+
+  describe('due date popover', () => {
+    it('opens the due date popover on click without emitting viewed', () => {
+      const viewedSpy = vi.fn();
+      fixture.componentInstance.viewed.subscribe(viewedSpy);
+
+      (fixture.nativeElement.querySelector('[data-testid="task-due-date-btn-t1"]') as HTMLButtonElement).click();
+      fixture.detectChanges();
+
+      expect(viewedSpy).not.toHaveBeenCalled();
+      expect(document.body.querySelector('.task-table__due-date-popover')).not.toBeNull();
+    });
+
+    it('picking a quick due date option edits the task and emits taskChanged, without opening task detail', async () => {
+      const viewedSpy = vi.fn();
+      const changedSpy = vi.fn();
+      fixture.componentInstance.viewed.subscribe(viewedSpy);
+      fixture.componentInstance.taskChanged.subscribe(changedSpy);
+
+      (fixture.nativeElement.querySelector('[data-testid="task-due-date-btn-t1"]') as HTMLButtonElement).click();
+      fixture.detectChanges();
+
+      const popover = document.body.querySelector('.task-table__due-date-popover');
+      const todayBtn = Array.from(popover!.querySelectorAll('.task-table__quick-btn')).find((b) => b.textContent?.includes('Today')) as HTMLButtonElement;
+      todayBtn.click();
+      fixture.detectChanges();
+      await fixture.whenStable();
+
+      expect(boardStore.editTask).toHaveBeenCalledWith('t1', expect.objectContaining({ dueDate: expect.stringMatching(/^\d{4}-\d{2}-\d{2}$/) }));
+      expect(changedSpy).toHaveBeenCalled();
+      expect(viewedSpy).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('status popover', () => {
+    it('shows the status trigger tinted with the backend-provided status color', () => {
+      const btn = fixture.nativeElement.querySelector('[data-testid="task-status-btn-t1"]') as HTMLElement;
+      expect(btn.style.color).toBe('rgb(37, 99, 235)');
+    });
+
+    it('opens the status popover on click, listing each option with its own color dot', () => {
+      const viewedSpy = vi.fn();
+      fixture.componentInstance.viewed.subscribe(viewedSpy);
+      fixture.componentRef.setInput('statuses', [
+        status,
+        { ...status, id: 's2', name: 'Done', color: '#16A34A' }
+      ]);
+      fixture.detectChanges();
+
+      (fixture.nativeElement.querySelector('[data-testid="task-status-btn-t1"]') as HTMLButtonElement).click();
+      fixture.detectChanges();
+
+      expect(viewedSpy).not.toHaveBeenCalled();
+      const popover = document.body.querySelector('.task-table__popover[aria-label="Change status"]');
+      expect(popover).not.toBeNull();
+      const dots = Array.from(popover!.querySelectorAll('.task-table__status-dot')) as HTMLElement[];
+      expect(dots.map((d) => d.style.background)).toEqual(['rgb(37, 99, 235)', 'rgb(22, 163, 74)']);
+    });
+
+    it('selecting a status option emits statusChangeRequested and closes the popover, without opening task detail', () => {
+      const viewedSpy = vi.fn();
+      const statusSpy = vi.fn();
+      fixture.componentInstance.viewed.subscribe(viewedSpy);
+      fixture.componentInstance.statusChangeRequested.subscribe(statusSpy);
+      fixture.componentRef.setInput('statuses', [
+        status,
+        { ...status, id: 's2', name: 'Done', color: '#16A34A' }
+      ]);
+      fixture.detectChanges();
+
+      (fixture.nativeElement.querySelector('[data-testid="task-status-btn-t1"]') as HTMLButtonElement).click();
+      fixture.detectChanges();
+
+      const popover = document.body.querySelector('.task-table__popover[aria-label="Change status"]');
+      const doneOpt = Array.from(popover!.querySelectorAll('.task-table__popover-option')).find((opt) => opt.textContent?.includes('Done')) as HTMLButtonElement;
+      doneOpt.click();
+      fixture.detectChanges();
+
+      expect(statusSpy).toHaveBeenCalledWith({ taskId: 't1', newStatusId: 's2' });
+      expect(viewedSpy).not.toHaveBeenCalled();
+      expect(document.body.querySelector('.task-table__popover[aria-label="Change status"]')).toBeNull();
     });
   });
 });

@@ -110,6 +110,8 @@ import { toEditTaskRequest } from '../../utils/task.mapper';
               [isObjectiveOwner]="objectiveOwners()[sprint.objectiveId] ?? false"
               [tasks]="tasksForSprint(sprint.id)"
               [statusNames]="statusNames()"
+              [categoryNames]="categoryNames()"
+              [moduleNames]="moduleNames()"
               [statuses]="store.statuses()"
               [objectiveOwners]="objectiveOwners()"
               [currentEmployeeId]="currentEmployee.id()"
@@ -132,15 +134,20 @@ import { toEditTaskRequest } from '../../utils/task.mapper';
           @if (selectedTaskIds().size > 0) {
             <div class="task-backlog__selection-toolbar">
               <span class="task-backlog__selection-count">{{ selectedTaskIds().size }} task{{ selectedTaskIds().size === 1 ? '' : 's' }} selected</span>
-              <app-button variant="primary" (pressed)="moveDialogOpen.set(true)">Move to sprint</app-button>
+              <app-button variant="primary" (pressed)="moveDialogOpen.set(true)">Move selected to sprint</app-button>
               <button type="button" class="task-backlog__selection-clear" aria-label="Clear selection" title="Clear selection" (click)="clearSelection()">&#x2715;</button>
             </div>
           } @else {
-            <h3 class="task-backlog__unsorted-title">Backlog</h3>
+            <div class="task-backlog__unsorted-header">
+              <svg class="task-backlog__unsorted-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 6h16M4 12h16M4 18h16" /></svg>
+              <h3 class="task-backlog__unsorted-title">Backlog</h3>
+              <span class="task-backlog__unsorted-summary">{{ unsortedTasks().length }} task{{ unsortedTasks().length === 1 ? '' : 's' }} · {{ unsortedTotalHours() }}h</span>            </div>
           }
           <app-task-table
             [tasks]="unsortedTasks()"
             [statusNames]="statusNames()"
+            [categoryNames]="categoryNames()"
+            [moduleNames]="moduleNames()"
             [statuses]="store.statuses()"
             [objectiveOwners]="objectiveOwners()"
             [currentEmployeeId]="currentEmployee.id()"
@@ -189,13 +196,16 @@ import { toEditTaskRequest } from '../../utils/task.mapper';
   `,
   styles: [`
     .task-backlog__toolbar { display: flex; flex-wrap: wrap; justify-content: flex-end; align-items: center; gap: 8px; }
-    .task-backlog__toolbar ::ng-deep app-button > button { width: auto; }
+    /* Match the Filter trigger (30px tall, 8px radius) so the toolbar reads as one row. */
+    .task-backlog__toolbar ::ng-deep app-button > button { width: auto; height: 30px; padding: 0 12px; border-radius: 8px; font-size: 13px; }
     .task-backlog__sprint-message { color: var(--color-danger-text, var(--color-danger)); font-size: 12px; margin-bottom: 8px; }
     .task-backlog__sprints { margin-top: 4px; }
     .task-backlog__sprints-title { font-size: 13px; font-weight: 600; color: var(--color-text-primary); margin: 0 0 10px; }
     .task-backlog__unsorted { margin-top: 18px; }
-    .task-backlog__unsorted-title { font-size: 13px; font-weight: 600; color: var(--color-text-primary); margin: 0 0 10px; }
-    .task-backlog__selection-toolbar { display: flex; align-items: center; gap: 10px; margin: 0 0 10px; padding: 8px 12px; border: 1px solid var(--color-accent); border-radius: 10px; background: var(--color-surface-secondary); }
+    .task-backlog__unsorted-header { display: flex; align-items: center; gap: 8px; margin: 0 0 10px; }
+    .task-backlog__unsorted-icon { width: 15px; height: 15px; flex: 0 0 auto; color: var(--color-text-secondary); fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; }
+    .task-backlog__unsorted-title { font-size: 13px; font-weight: 600; color: var(--color-text-primary); margin: 0; }
+    .task-backlog__unsorted-summary { font-size: 11px; color: var(--color-text-secondary); }    .task-backlog__selection-toolbar { display: flex; align-items: center; gap: 10px; margin: 0 0 10px; padding: 8px 12px; border: 1px solid var(--color-accent); border-radius: 10px; background: var(--color-surface-secondary); }
     .task-backlog__selection-toolbar ::ng-deep app-button > button { width: auto; }
     .task-backlog__selection-count { font-size: 13px; font-weight: 600; color: var(--color-text-primary); }
     .task-backlog__selection-clear { margin-left: auto; border: none; background: none; color: var(--color-text-secondary); cursor: pointer; font-size: 14px; line-height: 1; padding: 4px; }
@@ -307,6 +317,8 @@ export class TaskBacklogComponent implements OnInit, AfterViewInit, OnDestroy {
   // ever be offered here, or SprintApiService.create would just fail for a non-owner's pick.
   protected readonly ownedModuleOptions = computed(() => this.moduleOptions().filter((m) => m.isOwner));
   protected readonly statusNames = computed(() => Object.fromEntries(this.store.statuses().map((status) => [status.id, status.name])));
+  protected readonly categoryNames = computed(() => Object.fromEntries(this.categories().map((category) => [category.id, category.name])));
+  protected readonly moduleNames = computed(() => Object.fromEntries(this.modules().map((module) => [module.objectiveId, module.title])));
   protected readonly completeStatusIds = computed(() =>
     new Set(this.store.statuses().filter((s) => s.marksTaskComplete).map((s) => s.id))
   );
@@ -327,6 +339,9 @@ export class TaskBacklogComponent implements OnInit, AfterViewInit, OnDestroy {
     const knownSprintIds = new Set(this.sprintStore.sprints().map((sprint) => sprint.id));
     return this.filteredTasks().filter((task) => task.sprintId == null || !knownSprintIds.has(task.sprintId));
   });
+  protected readonly unsortedTotalHours = computed(() =>
+    this.unsortedTasks().reduce((sum, task) => sum + (task.estimatedHours ?? 0), 0)
+  );
 
   protected readonly selectedTasks = computed(() => {
     const ids = this.selectedTaskIds();

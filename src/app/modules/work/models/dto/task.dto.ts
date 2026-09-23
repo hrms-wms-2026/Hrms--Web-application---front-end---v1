@@ -78,6 +78,7 @@ export interface CreateSubtaskRequestDto {
   priority?: WorkTaskDto['priority'];
   dueDate?: string;
   assigneeEmployeeId?: string;
+  objectiveId?: string;
 }
 
 export interface EditTaskRequestDto {

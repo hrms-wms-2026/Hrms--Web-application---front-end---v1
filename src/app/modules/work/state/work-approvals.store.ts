@@ -3,11 +3,12 @@ import { patchState, signalStore, withComputed, withMethods, withState } from '@
 import { firstValueFrom } from 'rxjs';
 import { WorkApprovalsApiService } from '../data-access/work-approvals-api.service';
 import { ApprovalItem } from '../models/approval.model';
-import { AllocationRequestDto } from '../models/dto/allocation-request.dto';
+import { AllocationRequestDto, EditObjectiveRequestPayloadDto } from '../models/dto/allocation-request.dto';
 import { toApprovalItem } from '../utils/approval.mapper';
 
 interface WorkApprovalsState {
   readonly taskCreationRequests: readonly ApprovalItem[];
+  readonly taskEditRequests: readonly ApprovalItem[];
   readonly allocationRequests: readonly ApprovalItem[];
   readonly objectiveChangeRequests: readonly ApprovalItem[];
   readonly objectiveInvitations: readonly ApprovalItem[];
@@ -17,6 +18,7 @@ interface WorkApprovalsState {
 
 const initialState: WorkApprovalsState = {
   taskCreationRequests: [],
+  taskEditRequests: [],
   allocationRequests: [],
   objectiveChangeRequests: [],
   objectiveInvitations: [],
@@ -34,6 +36,7 @@ export const WorkApprovalsStore = signalStore(
   withComputed((store) => ({
     pendingCount: computed(() =>
       store.taskCreationRequests().length
+      + store.taskEditRequests().length
       + store.allocationRequests().length
       + store.objectiveChangeRequests().length
       + store.objectiveInvitations().length
@@ -43,14 +46,16 @@ export const WorkApprovalsStore = signalStore(
     async loadAll(): Promise<void> {
       patchState(store, { loading: true, error: null });
       try {
-        const [taskCreation, allocation, objectiveChange, invitations] = await Promise.all([
+        const [taskCreation, taskEdit, allocation, objectiveChange, invitations] = await Promise.all([
           firstValueFrom(api.getMyTaskCreationRequests()),
+          firstValueFrom(api.getMyTaskEditRequests()),
           firstValueFrom(api.getMyAllocationRequests()),
           firstValueFrom(api.getMyObjectiveChangeRequests()),
           firstValueFrom(api.getMyObjectiveInvitations())
         ]);
         patchState(store, {
           taskCreationRequests: taskCreation.map(toApprovalItem),
+          taskEditRequests: taskEdit.map(toApprovalItem),
           allocationRequests: allocation.map(toApprovalItem),
           objectiveChangeRequests: objectiveChange.map(toApprovalItem),
           objectiveInvitations: invitations.map(toApprovalItem),
@@ -61,7 +66,7 @@ export const WorkApprovalsStore = signalStore(
       }
     },
 
-    async approve(item: ApprovalItem, approvedAdditionalHours?: number): Promise<boolean> {
+    async approve(item: ApprovalItem, override?: number | EditObjectiveRequestPayloadDto): Promise<boolean> {
       patchState(store, { error: null });
       try {
         switch (item.kind) {
@@ -71,11 +76,17 @@ export const WorkApprovalsStore = signalStore(
               taskCreationRequests: store.taskCreationRequests().filter((i) => i.id !== item.id)
             });
             break;
+          case 'task_edit':
+            await firstValueFrom(api.approveTaskEditRequest(item.id));
+            patchState(store, {
+              taskEditRequests: store.taskEditRequests().filter((i) => i.id !== item.id)
+            });
+            break;
           case 'allocation_extend': {
             const allocation = item.raw as AllocationRequestDto;
             await firstValueFrom(api.approveAllocationRequest(
               item.id,
-              approvedAdditionalHours ?? allocation.payload.requestedAdditionalHours
+              typeof override === 'number' ? override : allocation.payload.requestedAdditionalHours
             ));
             patchState(store, {
               allocationRequests: store.allocationRequests().filter((i) => i.id !== item.id)
@@ -84,6 +95,15 @@ export const WorkApprovalsStore = signalStore(
           }
           case 'objective_change':
             await firstValueFrom(api.approveObjectiveChangeRequest(item.id));
+            patchState(store, {
+              objectiveChangeRequests: store.objectiveChangeRequests().filter((i) => i.id !== item.id)
+            });
+            break;
+          case 'objective_edit':
+            await firstValueFrom(api.approveObjectiveChangeRequest(
+              item.id,
+              typeof override === 'object' ? override : undefined
+            ));
             patchState(store, {
               objectiveChangeRequests: store.objectiveChangeRequests().filter((i) => i.id !== item.id)
             });
@@ -112,6 +132,12 @@ export const WorkApprovalsStore = signalStore(
               taskCreationRequests: store.taskCreationRequests().filter((i) => i.id !== item.id)
             });
             break;
+          case 'task_edit':
+            await firstValueFrom(api.rejectTaskEditRequest(item.id, comment ?? ''));
+            patchState(store, {
+              taskEditRequests: store.taskEditRequests().filter((i) => i.id !== item.id)
+            });
+            break;
           case 'allocation_extend':
             await firstValueFrom(api.rejectAllocationRequest(item.id));
             patchState(store, {
@@ -119,6 +145,7 @@ export const WorkApprovalsStore = signalStore(
             });
             break;
           case 'objective_change':
+          case 'objective_edit':
             await firstValueFrom(api.rejectObjectiveChangeRequest(item.id));
             patchState(store, {
               objectiveChangeRequests: store.objectiveChangeRequests().filter((i) => i.id !== item.id)

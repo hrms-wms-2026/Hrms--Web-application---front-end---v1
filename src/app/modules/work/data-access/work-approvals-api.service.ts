@@ -2,9 +2,10 @@ import { HttpClient } from '@angular/common/http';
 import { Injectable, inject } from '@angular/core';
 import { Observable, map } from 'rxjs';
 import { environment } from '../../../../environments/environment';
-import { AllocationRequestDto, ObjectiveChangeRequestDto } from '../models/dto/allocation-request.dto';
+import { AllocationRequestDto, EditObjectiveRequestPayloadDto, ObjectiveChangeRequestDto } from '../models/dto/allocation-request.dto';
 import { ObjectiveInvitationDto } from '../models/dto/objective-invitation.dto';
 import { TaskCreationRequestDto } from '../models/dto/task-creation-request.dto';
+import { TaskEditRequestDto } from '../models/dto/task-edit-request.dto';
 import { ObjectiveMemberApiService } from './objective-member-api.service';
 
 @Injectable({ providedIn: 'root' })
@@ -51,8 +52,8 @@ export class WorkApprovalsApiService {
     );
   }
 
-  approveObjectiveChangeRequest(id: string): Observable<void> {
-    return this.http.post<void>(`${this.workBase}/objectives/change-requests/${id}/approve`, {});
+  approveObjectiveChangeRequest(id: string, approvedEdit?: EditObjectiveRequestPayloadDto): Observable<void> {
+    return this.http.post<void>(`${this.workBase}/objectives/change-requests/${id}/approve`, approvedEdit ?? {});
   }
 
   rejectObjectiveChangeRequest(id: string): Observable<void> {
@@ -68,6 +69,18 @@ export class WorkApprovalsApiService {
 
   rejectAllocationRequest(id: string): Observable<void> {
     return this.rejectObjectiveChangeRequest(id);
+  }
+
+  getMyTaskEditRequests(): Observable<TaskEditRequestDto[]> {
+    return this.http.get<TaskEditRequestDto[]>(`${this.workBase}/task-edit-requests/mine`);
+  }
+
+  approveTaskEditRequest(id: string): Observable<unknown> {
+    return this.http.post(`${this.workBase}/task-edit-requests/${id}/approve`, {});
+  }
+
+  rejectTaskEditRequest(id: string, comment: string): Observable<void> {
+    return this.http.post<void>(`${this.workBase}/task-edit-requests/${id}/reject`, { comment });
   }
 
   getMyObjectiveInvitations(): Observable<ObjectiveInvitationDto[]> {

@@ -1,7 +1,6 @@
 import { Component, OnInit, computed, inject, signal } from '@angular/core';
 import { Router } from '@angular/router';
 import { ProjectListStore, AchievedFilter } from '../../state/project-list.store';
-import { ProjectDetailStore } from '../../state/project-detail.store';
 import { ProjectCategoryStore } from '../../state/project-category.store';
 import { ProjectFilterBarComponent } from '../../ui/project-filter-bar/project-filter-bar.component';
 import { ProjectFormModalComponent } from '../../ui/project-form-modal/project-form-modal.component';
@@ -11,7 +10,6 @@ import { ProjectExplanationCardComponent } from '../../ui/project-explanation-ca
 import { ProjectTableViewComponent } from '../../ui/project-table-view/project-table-view.component';
 import { ProjectCardComponent } from '../../ui/project-card/project-card.component';
 import { MemberManagementPopupComponent } from '../../ui/member-management-popup/member-management-popup.component';
-import { MyInvitationsPanelComponent } from '../../ui/my-invitations-panel/my-invitations-panel.component';
 import { ConfirmModalComponent } from '../../../../shared/ui/confirm-modal/confirm-modal.component';
 import { BreadcrumbHeaderComponent } from '../../../../shared/ui/breadcrumb-header/breadcrumb-header.component';
 import { ButtonComponent } from '../../../../shared/ui/button/button.component';
@@ -28,7 +26,7 @@ export type ProjectViewMode = 'table' | 'list' | 'card';
   imports: [
     ProjectFilterBarComponent, ProjectFormModalComponent, ProjectSettingsModalComponent, ConfirmModalComponent,
     ProjectListRowComponent, ProjectExplanationCardComponent, ProjectTableViewComponent, ProjectCardComponent,
-    MemberManagementPopupComponent, MyInvitationsPanelComponent, BreadcrumbHeaderComponent, ButtonComponent,
+    MemberManagementPopupComponent, BreadcrumbHeaderComponent, ButtonComponent,
     LoaderComponent, ErrorStateComponent, EmptyStateComponent
   ],
   templateUrl: './project-list.component.html',
@@ -36,7 +34,6 @@ export type ProjectViewMode = 'table' | 'list' | 'card';
 })
 export class ProjectListComponent implements OnInit {
   readonly store = inject(ProjectListStore);
-  readonly detailStore = inject(ProjectDetailStore);
   readonly categoryStore = inject(ProjectCategoryStore);
   private readonly router = inject(Router);
 
@@ -109,7 +106,11 @@ export class ProjectListComponent implements OnInit {
   }
 
   readonly projectMemberPopupItems = computed(() =>
-    (this.selectedProject()?.members ?? []).map((member) => ({ id: member.userId, name: member.displayName }))
+    (this.selectedProject()?.members ?? []).map((member) => ({
+      id: member.userId,
+      name: member.displayName,
+      avatarFileId: member.avatarFileId
+    }))
   );
 
   readonly selectedProject = computed(() => {
@@ -121,7 +122,6 @@ export class ProjectListComponent implements OnInit {
 
   ngOnInit(): void {
     this.store.loadProjects();
-    this.detailStore.loadMyInvitations();
   }
 
   onSelectProject(project: Project): void {
@@ -230,20 +230,5 @@ export class ProjectListComponent implements OnInit {
 
   onAchievedFilterChanged(filter: AchievedFilter): void {
     this.store.setAchievedFilter(filter);
-  }
-
-  async onAcceptInvitation(invitationId: string): Promise<void> {
-    const result = await this.detailStore.acceptInvitation(invitationId);
-    if (result.success) {
-      await this.detailStore.loadMyInvitations();
-      await this.store.loadProjects();
-    }
-  }
-
-  async onRejectInvitation(invitationId: string): Promise<void> {
-    const result = await this.detailStore.rejectInvitation(invitationId);
-    if (result.success) {
-      await this.detailStore.loadMyInvitations();
-    }
   }
 }
