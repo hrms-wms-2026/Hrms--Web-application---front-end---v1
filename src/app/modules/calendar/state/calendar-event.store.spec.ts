@@ -131,4 +131,51 @@ describe('CalendarEventStore', () => {
     expect(store.conflicts()).toEqual([]);
     expect(store.checkingConflicts()).toBe(false);
   });
+
+  it('loadMeetingConnectionStatus sets true when an active outlook_calendar connection exists', async () => {
+    const work = store.loadMeetingConnectionStatus();
+    http.expectOne(`${environment.apiUrl}/calendar/connections`).flush({
+      connections: [
+        { id: 'c1', provider: 'outlook_calendar', externalAccountEmail: 'me@acme.com', externalCalendarName: null, syncDirection: 'two_way', status: 'active', lastSyncedAt: null, lastError: null }
+      ]
+    });
+    await work;
+    expect(store.hasMeetingCapableConnection()).toBe(true);
+  });
+
+  it('loadMeetingConnectionStatus sets false when no connection is active', async () => {
+    const work = store.loadMeetingConnectionStatus();
+    http.expectOne(`${environment.apiUrl}/calendar/connections`).flush({ connections: [] });
+    await work;
+    expect(store.hasMeetingCapableConnection()).toBe(false);
+  });
+
+  it('createMeeting sets the returned joinUrl on the matching event', async () => {
+    const load = store.loadEvents('2026-09-01T00:00:00Z', '2026-09-30T00:00:00Z');
+    http.expectOne((r) => r.url === `${environment.apiUrl}/calendar`).flush({ events: [makeEvent({ id: 'e5' })] });
+    await load;
+
+    const work = store.createMeeting('e5');
+    http.expectOne(`${environment.apiUrl}/calendar/e5/meeting`).flush({ joinUrl: 'https://teams.microsoft.com/l/meetup-join/abc' });
+    expect(await work).toBe(true);
+    expect(store.events().find((e) => e.id === 'e5')?.meetingLink).toBe('https://teams.microsoft.com/l/meetup-join/abc');
+  });
+
+  it('createMeeting sets actionError on failure', async () => {
+    const work = store.createMeeting('e6');
+    http.expectOne(`${environment.apiUrl}/calendar/e6/meeting`).flush({ detail: 'meeting_provider_not_connected' }, { status: 409, statusText: 'Conflict' });
+    expect(await work).toBe(false);
+    expect(store.actionError()).toBeTruthy();
+  });
+
+  it('removeMeeting clears meetingLink on the matching event', async () => {
+    const load = store.loadEvents('2026-09-01T00:00:00Z', '2026-09-30T00:00:00Z');
+    http.expectOne((r) => r.url === `${environment.apiUrl}/calendar`).flush({ events: [makeEvent({ id: 'e7', meetingLink: 'https://teams.microsoft.com/l/meetup-join/abc' })] });
+    await load;
+
+    const work = store.removeMeeting('e7');
+    http.expectOne(`${environment.apiUrl}/calendar/e7/meeting`).flush(null);
+    expect(await work).toBe(true);
+    expect(store.events().find((e) => e.id === 'e7')?.meetingLink).toBeNull();
+  });
 });

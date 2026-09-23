@@ -1,4 +1,5 @@
 import { TestBed } from '@angular/core/testing';
+import { provideRouter } from '@angular/router';
 import { vi } from 'vitest';
 import { AuthStore } from '../../../../core/auth/state/auth.store';
 import { CalendarEventFormModalComponent } from './calendar-event-form-modal.component';
@@ -11,7 +12,7 @@ describe('CalendarEventFormModalComponent', () => {
     currentEmployeeId = null;
     await TestBed.configureTestingModule({
       imports: [CalendarEventFormModalComponent],
-      providers: [{ provide: AuthStore, useValue: { employeeId: () => currentEmployeeId } }]
+      providers: [{ provide: AuthStore, useValue: { employeeId: () => currentEmployeeId } }, provideRouter([])]
     }).compileComponents();
     fixture = TestBed.createComponent(CalendarEventFormModalComponent);
     fixture.componentRef.setInput('open', true);
@@ -567,5 +568,77 @@ describe('CalendarEventFormModalComponent', () => {
     expect(repeat).not.toBeNull();
     expect(repeat.tagName.toLowerCase()).toBe('app-calendar-select');
     expect(repeat.querySelector('select')).toBeNull();
+  });
+
+  const editingEvent = {
+    id: 'e1', title: 'Sprint planning', description: null, startDate: '2026-09-01T09:00:00Z', endDate: '2026-09-01T09:30:00Z',
+    sourceType: 'manual', color: null, recurrence: 'none', isAllDay: false, timezone: 'UTC', eventStatus: null,
+    isPrivate: false, location: null, meetingLink: null, externalSource: null, createdById: 'u1',
+    isRecurringOccurrence: false, recurrenceMasterId: null, originalStart: null, participants: null
+  };
+
+  it('shows "Add Teams meeting" when editing and a meeting-capable connection exists', () => {
+    fixture.componentRef.setInput('event', editingEvent);
+    fixture.componentRef.setInput('hasMeetingCapableConnection', true);
+    fixture.detectChanges();
+
+    expect(fixture.nativeElement.querySelector('[data-testid="calendar-form-add-teams-meeting"]')).not.toBeNull();
+    expect(fixture.nativeElement.querySelector('[data-testid="calendar-form-connect-microsoft-prompt"]')).toBeNull();
+  });
+
+  it('shows a Connect Microsoft prompt when editing without a meeting-capable connection', () => {
+    fixture.componentRef.setInput('event', editingEvent);
+    fixture.componentRef.setInput('hasMeetingCapableConnection', false);
+    fixture.detectChanges();
+
+    expect(fixture.nativeElement.querySelector('[data-testid="calendar-form-connect-microsoft-prompt"]')).not.toBeNull();
+    expect(fixture.nativeElement.querySelector('[data-testid="calendar-form-add-teams-meeting"]')).toBeNull();
+  });
+
+  it('does not show the Add-meeting control in create mode (no event id yet)', () => {
+    fixture.componentRef.setInput('hasMeetingCapableConnection', true);
+    fixture.detectChanges();
+
+    expect(fixture.nativeElement.querySelector('[data-testid="calendar-form-add-teams-meeting"]')).toBeNull();
+    expect(fixture.nativeElement.querySelector('[data-testid="calendar-form-connect-microsoft-prompt"]')).toBeNull();
+  });
+
+  it('clicking "Add Teams meeting" emits addMeeting', () => {
+    fixture.componentRef.setInput('event', editingEvent);
+    fixture.componentRef.setInput('hasMeetingCapableConnection', true);
+    fixture.detectChanges();
+    const spy = vi.fn();
+    fixture.componentInstance.addMeeting.subscribe(spy);
+
+    (fixture.nativeElement.querySelector('[data-testid="calendar-form-add-teams-meeting"]') as HTMLButtonElement).click();
+
+    expect(spy).toHaveBeenCalledTimes(1);
+  });
+
+  it('shows the auto-generated join link as read-only with a Remove action, not an editable input', () => {
+    fixture.componentRef.setInput('event', { ...editingEvent, meetingLink: 'https://teams.microsoft.com/l/meetup-join/abc' });
+    fixture.detectChanges();
+
+    expect(fixture.nativeElement.querySelector('[data-testid="calendar-form-teams-meeting-attached"]')).not.toBeNull();
+    expect(fixture.nativeElement.querySelector('app-input[placeholder="Meeting link"]')).toBeNull();
+  });
+
+  it('clicking Remove on an auto-generated meeting emits removeMeeting', () => {
+    fixture.componentRef.setInput('event', { ...editingEvent, meetingLink: 'https://teams.microsoft.com/l/meetup-join/abc' });
+    fixture.detectChanges();
+    const spy = vi.fn();
+    fixture.componentInstance.removeMeeting.subscribe(spy);
+
+    (fixture.nativeElement.querySelector('[data-testid="calendar-form-remove-meeting"]') as HTMLButtonElement).click();
+
+    expect(spy).toHaveBeenCalledTimes(1);
+  });
+
+  it('a manually-typed non-Teams meeting link still renders as a normal editable input', () => {
+    fixture.componentRef.setInput('event', { ...editingEvent, meetingLink: 'https://meet.google.com/abc-defg-hij' });
+    fixture.detectChanges();
+
+    expect(fixture.nativeElement.querySelector('[data-testid="calendar-form-teams-meeting-attached"]')).toBeNull();
+    expect(fixture.nativeElement.querySelector('app-input[placeholder="Meeting link"]')).not.toBeNull();
   });
 });

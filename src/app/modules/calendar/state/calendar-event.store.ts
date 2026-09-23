@@ -2,6 +2,7 @@ import { inject } from '@angular/core';
 import { patchState, signalStore, withMethods, withState } from '@ngrx/signals';
 import { firstValueFrom } from 'rxjs';
 import { toSafeErrorMessage } from '../../../core/services/error-handler.service';
+import { CalendarConnectionApiService } from '../../settings/data-access/calendar-connection-api.service';
 import { CalendarEventApiService } from '../data-access/calendar-event-api.service';
 import {
   CalendarConflict, CalendarEventResponse, CreateCalendarEventRequest, EditRecurringOccurrenceRequest,
@@ -18,15 +19,18 @@ interface CalendarEventState {
   readonly checkingConflicts: boolean;
   readonly myTimezone: string;
   readonly eligibleNominees: readonly EligibleNominee[];
+  readonly hasMeetingCapableConnection: boolean;
+  readonly meetingActionSaving: boolean;
 }
 
 export const CalendarEventStore = signalStore(
   { providedIn: 'root' },
   withState<CalendarEventState>({
     events: [], loading: false, loadError: null, saving: false, actionError: null,
-    conflicts: [], checkingConflicts: false, myTimezone: 'UTC', eligibleNominees: []
+    conflicts: [], checkingConflicts: false, myTimezone: 'UTC', eligibleNominees: [],
+    hasMeetingCapableConnection: false, meetingActionSaving: false
   }),
-  withMethods((store, api = inject(CalendarEventApiService)) => ({
+  withMethods((store, api = inject(CalendarEventApiService), connectionApi = inject(CalendarConnectionApiService)) => ({
     async loadEvents(from: string, to: string): Promise<void> {
       patchState(store, { loading: true, loadError: null });
       try {
@@ -147,6 +151,46 @@ export const CalendarEventStore = signalStore(
       } catch {
         // Falls back to the 'UTC' default already in state - a failed fetch should not block
         // the calendar from rendering, just leave times shown in UTC.
+      }
+    },
+    /** Whether the organizer has an active Microsoft connection to host a Teams meeting on -
+     * gates the "Add Teams meeting" control in the event form. A failed fetch leaves it false
+     * (same "fail closed, no alarming error" precedent as loadMyTimezone/checkConflicts above). */
+    async loadMeetingConnectionStatus(): Promise<void> {
+      try {
+        const response = await firstValueFrom(connectionApi.list());
+        const hasConnection = response.connections.some((c) => c.provider === 'outlook_calendar' && c.status === 'active');
+        patchState(store, { hasMeetingCapableConnection: hasConnection });
+      } catch {
+        patchState(store, { hasMeetingCapableConnection: false });
+      }
+    },
+    async createMeeting(eventId: string): Promise<boolean> {
+      patchState(store, { meetingActionSaving: true, actionError: null });
+      try {
+        const response = await firstValueFrom(api.createMeeting(eventId));
+        patchState(store, {
+          meetingActionSaving: false,
+          events: store.events().map((e) => (e.id === eventId ? { ...e, meetingLink: response.joinUrl } : e))
+        });
+        return true;
+      } catch (err) {
+        patchState(store, { meetingActionSaving: false, actionError: toSafeErrorMessage(err, 'Failed to add a Teams meeting.') });
+        return false;
+      }
+    },
+    async removeMeeting(eventId: string): Promise<boolean> {
+      patchState(store, { meetingActionSaving: true, actionError: null });
+      try {
+        await firstValueFrom(api.removeMeeting(eventId));
+        patchState(store, {
+          meetingActionSaving: false,
+          events: store.events().map((e) => (e.id === eventId ? { ...e, meetingLink: null } : e))
+        });
+        return true;
+      } catch (err) {
+        patchState(store, { meetingActionSaving: false, actionError: toSafeErrorMessage(err, 'Failed to remove the meeting.') });
+        return false;
       }
     }
   }))
