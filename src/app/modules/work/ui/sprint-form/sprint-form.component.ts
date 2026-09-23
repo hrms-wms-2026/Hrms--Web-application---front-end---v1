@@ -92,6 +92,7 @@ export class SprintFormComponent {
   mode = input<'create' | 'edit'>('create');
   open = input(false);
   objectiveId = input<string>('');
+  projectId = input<string>('');
   modules = input<readonly SprintFormModuleOption[]>([]);
   isObjectiveOwner = input(false);
   sprint = input<Sprint | null>(null);
@@ -150,10 +151,10 @@ export class SprintFormComponent {
 
       this.submitting.set(true);
       try {
-        const ok = await this.store.create(objectiveId, {
+        const ok = await this.store.create(this.projectId(), {
           name: this.name().trim(),
           goal: this.goal().trim() || undefined
-        }, false);
+        });
         if (ok) {
           this.name.set('');
           this.goal.set('');
@@ -176,7 +177,7 @@ export class SprintFormComponent {
         goal: this.goal().trim() || null,
         startDate: isActive ? this.startDate() : undefined,
         endDate: isActive ? this.endDate() : undefined
-      }, this.objectiveId(), false);
+      }, this.projectId());
       if (ok) this.saved.emit();
     } finally {
       this.submitting.set(false);

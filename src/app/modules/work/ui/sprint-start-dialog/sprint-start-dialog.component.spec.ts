@@ -35,8 +35,8 @@ describe('SprintStartDialogComponent', () => {
   }
 
   const sprint: Sprint = {
-    id: 'sp-1', objectiveId: 'obj-1', name: 'Sprint 1', goal: 'Old goal',
-    startDate: null, endDate: null, status: 'draft', completedAt: null, achievedAt: null
+    id: 'sp-1', projectId: 'p-1', name: 'Sprint 1', goal: 'Old goal',
+    startDate: null, endDate: null, status: 'draft', completedAt: null, achievedAt: null, canManage: true
   };
 
   const tasks: WorkTask[] = [
@@ -54,7 +54,7 @@ describe('SprintStartDialogComponent', () => {
     fixture.componentRef.setInput('open', true);
     fixture.componentRef.setInput('sprint', sprint);
     fixture.componentRef.setInput('tasks', tasks);
-    fixture.componentRef.setInput('objectiveId', 'obj-1');
+    fixture.componentRef.setInput('projectId', 'p-1');
     for (const [key, value] of Object.entries(overrides)) fixture.componentRef.setInput(key, value);
     fixture.detectChanges();
   }
@@ -81,7 +81,7 @@ describe('SprintStartDialogComponent', () => {
     await component.submit();
 
     expect(storeStub.start).toHaveBeenCalledWith(
-      'sp-1', { startDate: '2026-09-21', endDate: '2026-10-02', goal: 'Old goal' }, 'obj-1', false, undefined
+      'sp-1', { startDate: '2026-09-21', endDate: '2026-10-02', goal: 'Old goal' }, 'p-1'
     );
     expect(started).toHaveBeenCalledTimes(1);
   });

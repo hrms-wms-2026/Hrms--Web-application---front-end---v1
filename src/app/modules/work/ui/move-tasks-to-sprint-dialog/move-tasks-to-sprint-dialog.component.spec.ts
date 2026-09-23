@@ -7,8 +7,8 @@ describe('MoveTasksToSprintDialogComponent', () => {
   let fixture: ComponentFixture<MoveTasksToSprintDialogComponent>;
 
   const sprint: Sprint = {
-    id: 'sp-1', objectiveId: 'obj-1', name: 'Sprint 6', goal: 'Hardware Integration',
-    startDate: null, endDate: null, status: 'draft', completedAt: null, achievedAt: null
+    id: 'sp-1', projectId: 'p-1', name: 'Sprint 6', goal: 'Hardware Integration',
+    startDate: null, endDate: null, status: 'draft', completedAt: null, achievedAt: null, canManage: true
   };
   const target: SprintMoveTarget = { sprint, currentTaskCount: 5, currentHours: 31 };
 

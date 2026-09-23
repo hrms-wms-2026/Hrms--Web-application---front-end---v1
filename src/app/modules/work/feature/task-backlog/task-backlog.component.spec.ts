@@ -18,26 +18,28 @@ import { WorkTask } from '../../models/task.model';
 describe('TaskBacklogComponent', () => {
   const sprint1: Sprint = {
     id: 'sp-1',
-    objectiveId: 'milestone-1',
+    projectId: 'p-1',
     name: 'Sprint One',
     goal: null,
     startDate: new Date('2026-08-17'),
     endDate: new Date('2026-08-31'),
     status: 'active',
     completedAt: null,
-    achievedAt: null
+    achievedAt: null,
+    canManage: true
   };
 
   const sprint2: Sprint = {
     id: 'sp-2',
-    objectiveId: 'milestone-1',
+    projectId: 'p-1',
     name: 'Sprint Two',
     goal: null,
     startDate: new Date('2026-09-01'),
     endDate: new Date('2026-09-14'),
     status: 'draft',
     completedAt: null,
-    achievedAt: null
+    achievedAt: null,
+    canManage: true
   };
 
   function makeTask(id: string, sprintId: string | null): WorkTask {
@@ -195,7 +197,7 @@ describe('TaskBacklogComponent', () => {
     expect(inst.taskModalOpen()).toBe(true);
     expect(inst.taskModalMode()).toBe('create');
     expect(inst.modalPrefillSprintId()).toBe('sp-1');
-    expect(inst.modalPrefillModuleId()).toBe('milestone-1');
+    expect(inst.modalPrefillModuleId()).toBe('');
   });
 
   it("creating a sprint immediately reflects in this component's own sprint list without a page reload", async () => {
@@ -215,7 +217,7 @@ describe('TaskBacklogComponent', () => {
     createSprintButton?.click();
     fixture.detectChanges();
 
-    await fixture.componentInstance['sprintStore'].create('milestone-1', { name: 'x' }, false);
+    await fixture.componentInstance['sprintStore'].create('milestone-1', { name: 'x' });
     fixture.detectChanges();
     await fixture.whenStable();
     fixture.detectChanges();

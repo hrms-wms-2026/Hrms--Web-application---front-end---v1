@@ -10,14 +10,15 @@ describe('SprintTabComponent', () => {
 
   const baseSprint: Sprint = {
     id: 'sprint-1',
-    objectiveId: 'obj-1',
+    projectId: 'p-1',
     name: 'Sprint 1',
     goal: null,
     startDate: new Date('2026-08-18'),
     endDate: new Date('2026-08-25'),
     status: 'active',
     completedAt: null,
-    achievedAt: null
+    achievedAt: null,
+    canManage: true
   };
 
   const mockTasks: WorkTask[] = [];

@@ -300,14 +300,15 @@ export class MilestoneTreeTabComponent {
   sprintFromNode(node: MilestoneTreeNode): Sprint {
     return {
       id: node.id,
-      objectiveId: node.parentObjectiveId ?? '',
+      projectId: this.projectId(),
       name: node.title,
       goal: null,
       startDate: node.startDate ? new Date(node.startDate) : null,
       endDate: node.endDate ? new Date(node.endDate) : null,
       status: (node.status as SprintStatus) ?? 'active',
       completedAt: null,
-      achievedAt: null
+      achievedAt: null,
+      canManage: node.isOwner ?? false
     };
   }
 

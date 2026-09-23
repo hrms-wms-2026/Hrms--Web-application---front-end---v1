@@ -2600,10 +2600,7 @@ export class TaskFormModalComponent {
     return list.filter((m) => m.title.toLowerCase().includes(q));
   });
 
-  availableSprints = computed(() => {
-    const objId = this.selectedObjectiveId() || this.task()?.objectiveId;
-    return objId ? this.sprints().filter((s) => s.objectiveId === objId) : this.sprints();
-  });
+  availableSprints = computed(() => this.sprints().filter((s) => s.status === 'draft' || s.status === 'active'));
 
   private readonly openSessionEntry = computed(() =>
     this.history().find((e) => e.type === 'clock_session' && e.clockSession?.clockOutAt === null) ?? null
@@ -2664,13 +2661,6 @@ export class TaskFormModalComponent {
   selectSprint(sprintId: string): void {
     this.sprintId.set(sprintId);
     this.activePopover.set(null);
-    if (sprintId) {
-      const sp = this.sprints().find((s) => s.id === sprintId);
-      if (sp?.objectiveId) {
-        this.selectedObjectiveId.set(sp.objectiveId);
-        this.clearError('objectiveId');
-      }
-    }
   }
 
   selectCategory(categoryId: string): void {
@@ -2847,19 +2837,9 @@ export class TaskFormModalComponent {
       if (this.prefillSprintId()) {
         this.sprintId.set(this.prefillSprintId());
       } else {
-        const objId = this.selectedObjectiveId();
-        const activeSprints = this.sprints().filter((s) => s.status === 'active' && (!objId || s.objectiveId === objId));
+        const activeSprints = this.sprints().filter((s) => s.status === 'active');
         if (activeSprints.length === 1) {
           this.sprintId.set(activeSprints[0].id);
-        }
-      }
-
-      // If sprint is selected (via prefill or auto active), ensure module is inherited
-      if (this.sprintId()) {
-        const matchingSprint = this.sprints().find((s) => s.id === this.sprintId());
-        if (matchingSprint?.objectiveId && (!this.selectedObjectiveId() || !this.prefillModuleId())) {
-          this.selectedObjectiveId.set(matchingSprint.objectiveId);
-          this.clearError('objectiveId');
         }
       }
 

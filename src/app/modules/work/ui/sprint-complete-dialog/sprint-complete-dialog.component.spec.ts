@@ -10,8 +10,8 @@ describe('SprintCompleteDialogComponent', () => {
   let storeStub: { complete: ReturnType<typeof vi.fn>; error: ReturnType<typeof vi.fn> };
 
   const sprint: Sprint = {
-    id: 'sp-1', objectiveId: 'obj-1', name: 'Sprint 1', goal: null,
-    startDate: new Date('2026-09-01'), endDate: new Date('2026-09-14'), status: 'active', completedAt: null, achievedAt: null
+    id: 'sp-1', projectId: 'p-1', name: 'Sprint 1', goal: null,
+    startDate: new Date('2026-09-01'), endDate: new Date('2026-09-14'), status: 'active', completedAt: null, achievedAt: null, canManage: true
   };
   const otherSprint: Sprint = { ...sprint, id: 'sp-2', name: 'Sprint 2', status: 'draft' };
 
@@ -66,7 +66,7 @@ describe('SprintCompleteDialogComponent', () => {
     fixture.componentRef.setInput('sprint', sprint);
     fixture.componentRef.setInput('tasks', tasks);
     fixture.componentRef.setInput('otherSprints', [otherSprint]);
-    fixture.componentRef.setInput('objectiveId', 'obj-1');
+    fixture.componentRef.setInput('projectId', 'p-1');
     for (const [key, value] of Object.entries(overrides)) fixture.componentRef.setInput(key, value);
     fixture.detectChanges();
   }
@@ -80,7 +80,7 @@ describe('SprintCompleteDialogComponent', () => {
 
     await component.submit();
 
-    expect(storeStub.complete).toHaveBeenCalledWith('sp-1', { disposition: 'backlog' }, 'obj-1', false, undefined);
+    expect(storeStub.complete).toHaveBeenCalledWith('sp-1', { disposition: 'backlog' }, 'p-1');
     expect(completed).toHaveBeenCalledTimes(1);
   });
 
@@ -102,6 +102,6 @@ describe('SprintCompleteDialogComponent', () => {
 
     await component.submit();
 
-    expect(storeStub.complete).toHaveBeenCalledWith('sp-1', { disposition: 'sprint', targetSprintId: 'sp-2' }, 'obj-1', false, undefined);
+    expect(storeStub.complete).toHaveBeenCalledWith('sp-1', { disposition: 'sprint', targetSprintId: 'sp-2' }, 'p-1');
   });
 });

@@ -10,9 +10,9 @@ describe('SprintFormComponent', () => {
   let storeStub: { error: ReturnType<typeof signal>; create: ReturnType<typeof vi.fn>; edit: ReturnType<typeof vi.fn> };
 
   const sprint: Sprint = {
-    id: 'sp-1', objectiveId: 'obj-1', name: 'Sprint One', goal: null,
+    id: 'sp-1', projectId: 'p-1', name: 'Sprint One', goal: null,
     startDate: new Date('2026-09-01T00:00:00.000Z'),
-    endDate: new Date('2026-09-14T00:00:00.000Z'), status: 'active', completedAt: null, achievedAt: null
+    endDate: new Date('2026-09-14T00:00:00.000Z'), status: 'active', completedAt: null, achievedAt: null, canManage: true
   };
 
   function setup(overrides: Record<string, unknown> = {}): void {
@@ -28,6 +28,7 @@ describe('SprintFormComponent', () => {
     fixture = TestBed.createComponent(SprintFormComponent);
     fixture.componentRef.setInput('open', true);
     fixture.componentRef.setInput('objectiveId', 'obj-1');
+    fixture.componentRef.setInput('projectId', 'p-1');
     for (const [key, value] of Object.entries(overrides)) fixture.componentRef.setInput(key, value);
     fixture.detectChanges();
   }
@@ -46,7 +47,7 @@ describe('SprintFormComponent', () => {
 
     await component.submit();
 
-    expect(storeStub.create).toHaveBeenCalledWith('obj-1', { name: 'Sprint X', goal: 'Ship it' }, false);
+    expect(storeStub.create).toHaveBeenCalledWith('p-1', { name: 'Sprint X', goal: 'Ship it' });
     expect(created).toHaveBeenCalledTimes(1);
   });
 
@@ -71,7 +72,7 @@ describe('SprintFormComponent', () => {
     expect(fixture.nativeElement.querySelector('app-select')).toBeNull();
     await component.submit();
 
-    expect(storeStub.edit).toHaveBeenCalledWith('sp-1', { name: 'Sprint One Renamed', goal: null, startDate: '2026-09-01', endDate: '2026-09-14' }, 'obj-1', false);
+    expect(storeStub.edit).toHaveBeenCalledWith('sp-1', { name: 'Sprint One Renamed', goal: null, startDate: '2026-09-01', endDate: '2026-09-14' }, 'p-1');
     expect(saved).toHaveBeenCalledTimes(1);
   });
 
@@ -94,6 +95,6 @@ describe('SprintFormComponent', () => {
     expect(component.endDate()).toBe('2026-09-20');
 
     await component.submit();
-    expect(storeStub.edit).toHaveBeenCalledWith('sp-1', { name: 'Sprint One', goal: null, startDate: '2026-09-05', endDate: '2026-09-20' }, 'obj-1', false);
+    expect(storeStub.edit).toHaveBeenCalledWith('sp-1', { name: 'Sprint One', goal: null, startDate: '2026-09-05', endDate: '2026-09-20' }, 'p-1');
   });
 });

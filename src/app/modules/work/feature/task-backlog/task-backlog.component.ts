@@ -54,6 +54,7 @@ import { toEditTaskRequest } from '../../utils/task.mapper';
         <app-sprint-form
           mode="create"
           [open]="createSprintOpen()"
+          [projectId]="projectId()"
           [modules]="ownedModuleOptions()"
           (created)="onSprintCreated()"
           (cancelled)="createSprintOpen.set(false)"
@@ -63,7 +64,7 @@ import { toEditTaskRequest } from '../../utils/task.mapper';
       <app-sprint-form
         mode="edit"
         [open]="true"
-        [objectiveId]="sprint.objectiveId"
+        [projectId]="projectId()"
         [sprint]="sprint"
         (saved)="onSprintEdited()"
         (cancelled)="editingSprint.set(null)"
@@ -74,7 +75,7 @@ import { toEditTaskRequest } from '../../utils/task.mapper';
         [open]="true"
         [sprint]="sprint"
         [tasks]="tasksForSprint(sprint.id)"
-        [objectiveId]="sprint.objectiveId"
+        [projectId]="projectId()"
         (started)="onSprintStarted()"
         (cancelled)="startingSprint.set(null)"
       />
@@ -85,7 +86,7 @@ import { toEditTaskRequest } from '../../utils/task.mapper';
         [sprint]="sprint"
         [tasks]="tasksForSprint(sprint.id)"
         [otherSprints]="otherSprintsForCompleting()"
-        [objectiveId]="sprint.objectiveId"
+        [projectId]="projectId()"
         [completeStatusIds]="completeStatusIds()"
         (completed)="onSprintCompleted()"
         (cancelled)="completingSprint.set(null)"
@@ -107,7 +108,7 @@ import { toEditTaskRequest } from '../../utils/task.mapper';
           @for (sprint of filteredSprints(); track sprint.id) {
             <app-sprint-tab
               [sprint]="sprint"
-              [isObjectiveOwner]="objectiveOwners()[sprint.objectiveId] ?? false"
+              [isObjectiveOwner]="sprint.canManage"
               [tasks]="tasksForSprint(sprint.id)"
               [statusNames]="statusNames()"
               [categoryNames]="categoryNames()"
@@ -326,7 +327,7 @@ export class TaskBacklogComponent implements OnInit, AfterViewInit, OnDestroy {
     const target = this.completingSprint();
     if (!target) return [];
     return this.sprintStore.sprints().filter((s) =>
-      s.objectiveId === target.objectiveId && s.id !== target.id && s.status !== 'complete' && s.status !== 'achieved'
+      s.id !== target.id && s.status !== 'complete' && s.status !== 'achieved'
     );
   });
   protected readonly filteredSprints = computed(() => {
@@ -362,7 +363,7 @@ export class TaskBacklogComponent implements OnInit, AfterViewInit, OnDestroy {
     if (tasks.length === 0 || objectiveIds.size !== 1) return [];
     const [objectiveId] = objectiveIds;
     return this.sprintStore.sprints()
-      .filter((sprint) => sprint.objectiveId === objectiveId && sprint.status === 'draft')
+      .filter((sprint) => sprint.status === 'draft')
       .map((sprint) => {
         const sprintTasks = this.tasksForSprint(sprint.id);
         return {
@@ -504,13 +505,6 @@ export class TaskBacklogComponent implements OnInit, AfterViewInit, OnDestroy {
   protected readonly targetSprintForCreate = signal<Sprint | null>(null);
 
   protected readonly modalPrefillModuleId = computed(() => {
-    const target = this.targetSprintForCreate();
-    if (target?.objectiveId) return target.objectiveId;
-    const expandedId = this.expandedSprintId();
-    if (expandedId) {
-      const expandedSprint = this.sprintStore.sprints().find((s) => s.id === expandedId);
-      if (expandedSprint?.objectiveId) return expandedSprint.objectiveId;
-    }
     const filter = this.objectiveFilter();
     return filter.length === 1 ? filter[0] : '';
   });
