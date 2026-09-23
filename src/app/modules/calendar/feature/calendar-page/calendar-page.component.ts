@@ -74,6 +74,14 @@ export class CalendarPageComponent {
     this.store.loadEvents(from, to);
   });
 
+  // actionError was already tracked in store state but never surfaced anywhere - a failed
+  // create/update/delete/respond/meeting action silently did nothing visible. NotificationService
+  // already dedupes a repeated identical message, so this can't spam on unrelated re-renders.
+  private readonly actionErrorEffect = effect(() => {
+    const error = this.store.actionError();
+    if (error) this.notificationService.error(error);
+  });
+
   constructor() {
     this.store.loadMyTimezone();
     this.store.loadMeetingConnectionStatus();
