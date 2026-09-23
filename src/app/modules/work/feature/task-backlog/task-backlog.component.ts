@@ -281,7 +281,7 @@ export class TaskBacklogComponent implements OnInit, AfterViewInit, OnDestroy {
     Object.fromEntries(this.modules().map((module) => [module.objectiveId, module.isOwner]))
   );
   protected readonly moduleOptions = computed(() =>
-    this.modules().map((m) => ({ objectiveId: m.objectiveId, title: m.title, isOwner: m.isOwner }))
+    this.modules().map((m) => ({ objectiveId: m.objectiveId, title: m.title, isEffectiveOwner: m.isOwner }))
   );
   protected readonly objectiveOptions = computed<WorkDropdownOption[]>(() =>
     this.modules().map((module) => ({ value: module.objectiveId, label: module.title }))
@@ -316,7 +316,7 @@ export class TaskBacklogComponent implements OnInit, AfterViewInit, OnDestroy {
   }));
   // Sprint creation has no pending/request path (unlike tasks) - only modules the user owns may
   // ever be offered here, or SprintApiService.create would just fail for a non-owner's pick.
-  protected readonly ownedModuleOptions = computed(() => this.moduleOptions().filter((m) => m.isOwner));
+  protected readonly ownedModuleOptions = computed(() => this.moduleOptions().filter((m) => m.isEffectiveOwner));
   protected readonly statusNames = computed(() => Object.fromEntries(this.store.statuses().map((status) => [status.id, status.name])));
   protected readonly categoryNames = computed(() => Object.fromEntries(this.categories().map((category) => [category.id, category.name])));
   protected readonly moduleNames = computed(() => Object.fromEntries(this.modules().map((module) => [module.objectiveId, module.title])));
