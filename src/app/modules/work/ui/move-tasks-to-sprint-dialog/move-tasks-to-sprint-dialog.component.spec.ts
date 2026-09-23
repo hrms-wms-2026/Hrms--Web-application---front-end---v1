@@ -81,7 +81,7 @@ describe('MoveTasksToSprintDialogComponent', () => {
 
   it('shows an empty-state message when there are no eligible sprints', () => {
     setup({ targets: [] });
-    expect(fixture.nativeElement.textContent).toContain('No draft sprints available');
+    expect(fixture.nativeElement.textContent).toContain('No Draft or Active sprints in this project yet');
   });
 
   it('resets the selection each time the dialog opens', () => {

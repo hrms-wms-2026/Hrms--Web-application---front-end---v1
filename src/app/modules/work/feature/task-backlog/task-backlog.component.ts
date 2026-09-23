@@ -44,18 +44,19 @@ import { toEditTaskRequest } from '../../utils/task.mapper';
         @if (modules().length > 0) {
           <app-button variant="secondary" (pressed)="openCreateTask()">Create work item</app-button>
         }
-        @if (ownedModuleOptions().length > 0) {
+        @if (modules().length > 0) {
           <app-button variant="primary" (pressed)="createSprintOpen.set(true)">Create Sprint</app-button>
         }
       </div>
     </ng-template>
 
-    @if (createSprintOpen() && ownedModuleOptions().length > 0) {
+    @if (createSprintOpen() && modules().length > 0) {
         <app-sprint-form
           mode="create"
           [open]="createSprintOpen()"
           [projectId]="projectId()"
-          [modules]="ownedModuleOptions()"
+          [modules]="sprintFormModules()"
+          [allSprints]="sprintStore.sprints()"
           (created)="onSprintCreated()"
           (cancelled)="createSprintOpen.set(false)"
         />
@@ -65,6 +66,8 @@ import { toEditTaskRequest } from '../../utils/task.mapper';
         mode="edit"
         [open]="true"
         [projectId]="projectId()"
+        [modules]="sprintFormModules()"
+        [allSprints]="sprintStore.sprints()"
         [sprint]="sprint"
         (saved)="onSprintEdited()"
         (cancelled)="editingSprint.set(null)"
@@ -108,7 +111,7 @@ import { toEditTaskRequest } from '../../utils/task.mapper';
           @for (sprint of filteredSprints(); track sprint.id) {
             <app-sprint-tab
               [sprint]="sprint"
-              [isObjectiveOwner]="sprint.canManage"
+              [canManage]="sprint.canManage"
               [tasks]="tasksForSprint(sprint.id)"
               [statusNames]="statusNames()"
               [categoryNames]="categoryNames()"
@@ -280,8 +283,10 @@ export class TaskBacklogComponent implements OnInit, AfterViewInit, OnDestroy {
   protected readonly objectiveOwners = computed(() =>
     Object.fromEntries(this.modules().map((module) => [module.objectiveId, module.isOwner]))
   );
-  protected readonly moduleOptions = computed(() =>
-    this.modules().map((m) => ({ objectiveId: m.objectiveId, title: m.title, isEffectiveOwner: m.isOwner }))
+  // Sprints are project-level, so any member may create one; the module picker inside the form
+  // still restricts which modules' tasks can be added, per module ownership.
+  protected readonly sprintFormModules = computed(() =>
+    this.modules().map((m) => ({ objectiveId: m.objectiveId, title: m.title, isEffectiveOwner: m.isEffectiveOwner }))
   );
   protected readonly objectiveOptions = computed<WorkDropdownOption[]>(() =>
     this.modules().map((module) => ({ value: module.objectiveId, label: module.title }))
@@ -314,9 +319,6 @@ export class TaskBacklogComponent implements OnInit, AfterViewInit, OnDestroy {
     status: this.statusFilter(),
     priority: this.priorityFilter()
   }));
-  // Sprint creation has no pending/request path (unlike tasks) - only modules the user owns may
-  // ever be offered here, or SprintApiService.create would just fail for a non-owner's pick.
-  protected readonly ownedModuleOptions = computed(() => this.moduleOptions().filter((m) => m.isEffectiveOwner));
   protected readonly statusNames = computed(() => Object.fromEntries(this.store.statuses().map((status) => [status.id, status.name])));
   protected readonly categoryNames = computed(() => Object.fromEntries(this.categories().map((category) => [category.id, category.name])));
   protected readonly moduleNames = computed(() => Object.fromEntries(this.modules().map((module) => [module.objectiveId, module.title])));
@@ -351,19 +353,19 @@ export class TaskBacklogComponent implements OnInit, AfterViewInit, OnDestroy {
   protected readonly selectedTasksTotalHours = computed(() =>
     this.selectedTasks().reduce((sum, task) => sum + (task.estimatedHours ?? 0), 0)
   );
-  // A sprint belongs to exactly one module, so a single "move to sprint" pick can't offer a
-  // coherent target list once the selection spans more than one module.
-  protected readonly moveBlockedReason = computed(() => {
-    const objectiveIds = new Set(this.selectedTasks().map((task) => task.objectiveId));
-    return objectiveIds.size > 1 ? 'Select tasks from a single module to move them together.' : null;
-  });
+  private readonly ownedObjectiveIds = computed(() =>
+    new Set(this.modules().filter((m) => m.isEffectiveOwner).map((m) => m.objectiveId)));
+  // Sprints are project-level: any Draft/Active sprint is a valid target, but only for tasks
+  // whose module the user owns (backend SprintTaskAssignment/EditTask enforce the same rule).
+  protected readonly moveBlockedReason = computed(() =>
+    this.selectedTasks().some((task) => !this.ownedObjectiveIds().has(task.objectiveId))
+      ? 'You can only move tasks from modules you own.' : null);
   protected readonly moveTargets = computed<SprintMoveTarget[]>(() => {
-    const tasks = this.selectedTasks();
-    const objectiveIds = new Set(tasks.map((task) => task.objectiveId));
-    if (tasks.length === 0 || objectiveIds.size !== 1) return [];
-    const [objectiveId] = objectiveIds;
+    if (this.selectedTasks().length === 0) return [];
+    const order: Record<string, number> = { active: 0, draft: 1 };
     return this.sprintStore.sprints()
-      .filter((sprint) => sprint.status === 'draft')
+      .filter((sprint) => sprint.status === 'draft' || sprint.status === 'active')
+      .sort((a, b) => (order[a.status] - order[b.status]) || ((a.startDate?.getTime() ?? Infinity) - (b.startDate?.getTime() ?? Infinity)))
       .map((sprint) => {
         const sprintTasks = this.tasksForSprint(sprint.id);
         return {

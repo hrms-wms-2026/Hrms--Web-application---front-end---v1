@@ -26,7 +26,7 @@ describe('SprintTabComponent', () => {
 
   function setup(overrides: {
     sprint?: Sprint;
-    isObjectiveOwner?: boolean;
+    canManage?: boolean;
     tasks?: readonly WorkTask[];
     statusNames?: Record<string, string>;
     statuses?: readonly TaskStatusColumn[];
@@ -39,7 +39,7 @@ describe('SprintTabComponent', () => {
     });
     fixture = TestBed.createComponent(SprintTabComponent);
     fixture.componentRef.setInput('sprint', overrides.sprint ?? baseSprint);
-    fixture.componentRef.setInput('isObjectiveOwner', overrides.isObjectiveOwner ?? true);
+    fixture.componentRef.setInput('canManage', overrides.canManage ?? true);
     fixture.componentRef.setInput('tasks', overrides.tasks ?? mockTasks);
     fixture.componentRef.setInput('statusNames', overrides.statusNames ?? mockStatusNames);
     if (overrides.statuses !== undefined) {
@@ -56,10 +56,10 @@ describe('SprintTabComponent', () => {
   }
 
   it('shows Edit in the capsule to the owner (and only the owner), emitting editRequested when clicked', () => {
-    setup({ isObjectiveOwner: false });
+    setup({ canManage: false });
     expect(fixture.nativeElement.querySelector('.sprint-tab__edit')).toBeNull();
 
-    fixture.componentRef.setInput('isObjectiveOwner', true);
+    fixture.componentRef.setInput('canManage', true);
     fixture.detectChanges();
 
     const editButton = fixture.nativeElement.querySelector('.sprint-tab__edit') as HTMLButtonElement;
@@ -104,6 +104,11 @@ describe('SprintTabComponent', () => {
     setup({ sprint: { ...baseSprint, status: 'active' } });
     expect(fixture.nativeElement.querySelector('[data-testid="complete-sprint"]')).toBeTruthy();
     expect(fixture.nativeElement.querySelector('app-work-dropdown')).toBeNull();
+  });
+
+  it('hides Start when canManage is false', () => {
+    setup({ canManage: false, sprint: { ...baseSprint, status: 'draft', startDate: null, endDate: null } });
+    expect(fixture.nativeElement.querySelector('[data-testid="start-sprint"]')).toBeNull();
   });
 
   it('emits startRequested when Start sprint is clicked', () => {
@@ -184,7 +189,7 @@ describe('SprintTabComponent', () => {
   });
 
   it('non-owners only get Add task in the capsule, and no Start button', () => {
-    setup({ isObjectiveOwner: false, sprint: { ...baseSprint, status: 'draft', startDate: null, endDate: null } });
+    setup({ canManage: false, sprint: { ...baseSprint, status: 'draft', startDate: null, endDate: null } });
     expect(fixture.nativeElement.querySelector('[data-testid="start-sprint"]')).toBeNull();
     expect(fixture.nativeElement.querySelectorAll('.sprint-tab__capsule button').length).toBe(1);
     expect(fixture.nativeElement.querySelector('.sprint-tab__add-task')).not.toBeNull();
@@ -202,7 +207,7 @@ describe('SprintTabComponent', () => {
     setup();
     const other = TestBed.createComponent(SprintTabComponent);
     other.componentRef.setInput('sprint', { ...baseSprint, id: 'sprint-2' });
-    other.componentRef.setInput('isObjectiveOwner', true);
+    other.componentRef.setInput('canManage', true);
     other.componentRef.setInput('tasks', []);
     other.componentRef.setInput('statusNames', {});
     other.detectChanges();
