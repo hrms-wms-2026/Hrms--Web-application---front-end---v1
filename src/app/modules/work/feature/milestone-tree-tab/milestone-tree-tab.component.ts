@@ -11,7 +11,7 @@ import { TaskFormModalComponent } from '../../ui/task-form-modal/task-form-modal
 import { TreeExplanationPanelComponent } from '../../ui/tree-explanation-panel/tree-explanation-panel.component';
 import { SubModuleFormComponent } from '../../ui/sub-module-form/sub-module-form.component';
 import { MemberManagementPopupComponent } from '../../ui/member-management-popup/member-management-popup.component';
-import { SprintFormComponent } from '../../ui/sprint-form/sprint-form.component';
+import { SprintFormComponent, SprintFormModuleOption } from '../../ui/sprint-form/sprint-form.component';
 import { WorkApprovalsApiService } from '../../data-access/work-approvals-api.service';
 import { EmployeeDirectoryStore } from '../../state/employee-directory.store';
 import { SprintCompleteDialogComponent } from '../../ui/sprint-complete-dialog/sprint-complete-dialog.component';
@@ -295,6 +295,23 @@ export class MilestoneTreeTabComponent {
   async onTaskModalDone(): Promise<void> {
     this.taskModalOpen.set(false);
     await this.loadTree({ force: true });
+  }
+
+  // Sprints are now project-level (Independent Sprints), so <app-sprint-form> no longer takes
+  // a single objectiveId/isObjectiveOwner pair - it takes a `modules` list for its task picker
+  // to know which module(s) are pickable/owned. For create, node is the module (leaf objective)
+  // the sprint is being created under. For edit, node is the sprint itself, so we resolve its
+  // owning module via parentObjectiveId and look up that module's real title/ownership in the
+  // tree (falling back to the sprint node's own fields if the module can't be found).
+  sprintFormModules(node: MilestoneTreeNode): SprintFormModuleOption[] {
+    const objectiveId = node.kind === 'sprint' ? (node.parentObjectiveId ?? '') : node.id;
+    const tree = this.store.selectedSubtree();
+    const moduleNode = tree ? findTreeNode(tree, objectiveId) : null;
+    return [{
+      objectiveId,
+      title: moduleNode?.title ?? node.title,
+      isEffectiveOwner: (moduleNode?.isOwner ?? node.isOwner) ?? false
+    }];
   }
 
   sprintFromNode(node: MilestoneTreeNode): Sprint {

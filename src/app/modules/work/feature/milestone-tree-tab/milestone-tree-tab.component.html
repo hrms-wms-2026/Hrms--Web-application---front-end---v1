@@ -80,12 +80,12 @@
   (invitationDeclineRequested)="onInvitationDeclineRequested($event)" (closed)="onMembersPopupClosed()" />
 
 @if (createSprintNode(); as sprintLeaf) {
-<app-sprint-form mode="create" [open]="createSprintOpen()" [objectiveId]="sprintLeaf.id" [projectId]="projectId()"
-  [isObjectiveOwner]="sprintLeaf.isOwner" (created)="onSprintCreated()" (cancelled)="onSprintCreateCancelled()" />
+<app-sprint-form mode="create" [open]="createSprintOpen()" [modules]="sprintFormModules(sprintLeaf)" [projectId]="projectId()"
+  (created)="onSprintCreated()" (cancelled)="onSprintCreateCancelled()" />
 }
 
 @if (editSprintNode(); as sprintNode) {
-<app-sprint-form mode="edit" [open]="editSprintOpen()" [objectiveId]="sprintNode.parentObjectiveId ?? ''" [projectId]="projectId()"
+<app-sprint-form mode="edit" [open]="editSprintOpen()" [modules]="sprintFormModules(sprintNode)" [projectId]="projectId()"
   [sprint]="sprintFromNode(sprintNode)" (saved)="onSprintSaved()" (cancelled)="onSprintEditCancelled()" />
 }
 
