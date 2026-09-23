@@ -1145,23 +1145,21 @@ describe('TaskFormModalComponent - subtasks section', () => {
     expect(api['editTask']).toHaveBeenCalledWith('sub-1', expect.objectContaining({ title: 'Subtask 1 Edited' }));
   });
 
-  it('hides the table view and shows the action row button when no subtasks exist', () => {
+  it('renders the unified subtask table and allows adding subtasks even when no subtasks exist', () => {
     subtasksSignal.set({ t1: [] });
     fixture.detectChanges();
 
     expect(fixture.componentInstance.subtasks().length).toBe(0);
-    expect(fixture.nativeElement.querySelector('.tfm-subtasks-section')).toBeNull();
-    expect(fixture.nativeElement.querySelector('.tfm-subtask-table-head')).toBeNull();
+    expect(fixture.nativeElement.querySelector('.tfm-subtasks-section')).not.toBeNull();
+    expect(fixture.nativeElement.querySelector('.tfm-subtask-table-head')).not.toBeNull();
 
     const addSubtaskBtn = fixture.nativeElement.querySelector('[data-testid="add-subtask-button"]') as HTMLButtonElement;
     expect(addSubtaskBtn).not.toBeNull();
-    expect(addSubtaskBtn.classList.contains('tfm-action-row')).toBe(true);
 
     addSubtaskBtn.click();
     fixture.detectChanges();
 
-    expect(fixture.nativeElement.querySelector('.tfm-subtask-standalone-create')).not.toBeNull();
-    expect(fixture.nativeElement.querySelector('.tfm-subtask-table-head')).toBeNull();
+    expect(fixture.nativeElement.querySelector('.tfm-subtask-inline-create')).not.toBeNull();
     expect(fixture.nativeElement.querySelector('[data-testid="subtask-add-title"]')).not.toBeNull();
 
     // Priority button defaults to 'Priority' (not 'Normal')
@@ -1177,6 +1175,38 @@ describe('TaskFormModalComponent - subtasks section', () => {
     fixture.componentInstance.selectSubtaskPriority('critical');
     expect(fixture.componentInstance.newSubtaskPriority()).toBeNull();
     expect(fixture.componentInstance.formatSubtaskPriority(null)).toBe('Priority');
+  });
+
+  it('supports creating and removing draft subtasks in create mode without requiring assignee or date', async () => {
+    fixture.componentInstance.internalMode.set('create');
+    fixture.componentInstance.selectedObjectiveId.set('obj-1');
+    fixture.componentInstance.categoryId.set('cat-1');
+    fixture.componentInstance.priority.set('medium');
+    fixture.componentInstance.title.set('New Parent Task');
+    fixture.detectChanges();
+
+    expect(fixture.nativeElement.querySelector('.tfm-subtasks-section')).not.toBeNull();
+    expect(fixture.componentInstance.displayedSubtasks().length).toBe(0);
+
+    // Open add subtask
+    (fixture.nativeElement.querySelector('[data-testid="add-subtask-button"]') as HTMLButtonElement).click();
+    fixture.detectChanges();
+
+    // Add subtask title only (no assignee, date, priority required)
+    fixture.componentInstance.newSubtaskTitle.set('Draft Subtask A');
+    await fixture.componentInstance.saveNewSubtask();
+    fixture.detectChanges();
+
+    expect(fixture.componentInstance.draftSubtasks().length).toBe(1);
+    expect(fixture.componentInstance.displayedSubtasks().length).toBe(1);
+    expect(fixture.componentInstance.displayedSubtasks()[0].title).toBe('Draft Subtask A');
+
+    // Remove draft subtask
+    fixture.componentInstance.removeDraftSubtask(fixture.componentInstance.draftSubtasks()[0].id);
+    fixture.detectChanges();
+
+    expect(fixture.componentInstance.draftSubtasks().length).toBe(0);
+    expect(fixture.componentInstance.displayedSubtasks().length).toBe(0);
   });
 
   it('renders Status column header and subtask status pill', () => {

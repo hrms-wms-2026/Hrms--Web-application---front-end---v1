@@ -19,6 +19,7 @@ const ASSIGNEE_POPOVER_POSITIONS: ConnectionPositionPair[] = [
 export interface TaskCardAssignableMember {
   employeeId: string;
   name: string;
+  avatarUrl?: string | null;
 }
 
 function initialsOf(name: string): string {
@@ -250,7 +251,11 @@ function initialsOf(name: string): string {
         </div>
 
         @if (task().subtaskTotalCount > 0) {
-          <div class="task-card__subtask-bar">
+          <div
+            class="task-card__subtask-bar"
+            data-testid="task-card-subtask-bar"
+            (click)="toggleSubtasks($event)"
+          >
             <button
               type="button"
               class="task-card__subtask-toggle"
@@ -258,11 +263,14 @@ function initialsOf(name: string): string {
               [attr.aria-expanded]="subtasksExpanded()"
               (click)="toggleSubtasks($event)"
             >
-              <svg class="task-card__subtask-chevron" [class.task-card__subtask-chevron--open]="subtasksExpanded()" viewBox="0 0 24 24" aria-hidden="true">
-                <polyline points="6 9 12 15 18 9" />
+              <svg class="task-card__subtask-icon" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                <circle cx="3.5" cy="4.5" r="1.75"/>
+                <circle cx="11.5" cy="11.5" r="1.75"/>
+                <path d="M3.5 6.25v2.25a2.5 2.5 0 0 0 2.5 2.5h3.75"/>
+                <path d="M11.5 2.5v3.5M9.75 4.25h3.5"/>
               </svg>
-              <span>{{ task().subtaskTotalCount === 1 ? '1 subtask' : task().subtaskTotalCount + ' subtasks' }}</span>
-              <span class="task-card__subtask-count-pill">{{ task().subtaskCompletedCount }}/{{ task().subtaskTotalCount }}</span>
+              <span class="task-card__subtask-label">{{ task().subtaskTotalCount === 1 ? 'subtask' : 'subtasks' }}</span>
+              <span class="task-card__subtask-count">{{ task().subtaskCompletedCount }}/{{ task().subtaskTotalCount }}</span>
             </button>
           </div>
         }
@@ -318,6 +326,19 @@ function initialsOf(name: string): string {
                     <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9" /><path d="M12 7v5l3 2" /></svg>
                     <span>{{ subtask.estimatedHours }}h</span>
                   </span>
+                }
+                @if (isSubtaskAssignee(subtask)) {
+                  <div class="task-card__clock" (click)="$event.stopPropagation()">
+                    <app-task-clock-widget
+                      [task]="subtask"
+                      [isAssignee]="true"
+                      [compact]="true"
+                      [hasOpenSessionMine]="hasOpenSessionMineForSubtask(subtask)"
+                      [hasOpenSessionOtherEmployee]="hasOpenSessionOtherEmployeeForSubtask(subtask)"
+                      (clockedIn)="onSubtaskClockChanged()"
+                      (pushed)="onSubtaskClockChanged()"
+                    />
+                  </div>
                 }
               </div>
             </div>
@@ -379,21 +400,33 @@ function initialsOf(name: string): string {
       box-shadow: 0 1px 3px rgb(15 23 42 / 0.08);
     }
     .task-card__meta-btn--icon-only {
-      padding: 2.5px 5.5px;
-      min-width: 22px;
+      width: 26px;
+      height: 24px;
+      min-width: 26px;
+      padding: 0;
       justify-content: center;
       background: transparent;
       border-style: dashed;
       color: var(--color-text-secondary);
       box-shadow: none;
     }
-    .task-card__meta-btn--icon-only:hover {
+    .task-card__meta-btn--icon-only:hover,
+    .task-card__meta-btn--icon-only[aria-expanded="true"] {
       background: var(--color-surface-secondary);
       border-style: solid;
       border-color: var(--color-accent);
-      color: var(--color-text-primary);
+      color: var(--color-accent);
     }
-    .task-card__due-date svg, .task-card__hours svg { width: 12.5px; height: 12.5px; flex: 0 0 auto; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; color: var(--color-text-secondary); }
+    .task-card__meta-btn--icon-only:hover svg,
+    .task-card__meta-btn--icon-only[aria-expanded="true"] svg {
+      color: var(--color-accent);
+    }
+    .task-card__meta-btn--icon-only svg {
+      width: 16px;
+      height: 16px;
+      stroke-width: 2;
+    }
+    .task-card__due-date svg, .task-card__hours svg { width: 14px; height: 14px; flex: 0 0 auto; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; color: var(--color-text-secondary); }
     .task-card__due-date, .task-card__hours { display: inline-flex; align-items: center; gap: 4px; color: var(--color-text-primary); }
     .task-card__due-date--overdue {
       color: var(--color-danger, #ef4444);
@@ -564,50 +597,51 @@ function initialsOf(name: string): string {
 
     .task-card__subtask-bar {
       margin-top: 9px;
-      padding-top: 7px;
+      padding-top: 5px;
       border-top: 1px solid color-mix(in srgb, var(--color-border) 60%, transparent);
+      cursor: pointer;
     }
     .task-card__subtask-toggle {
-      display: inline-flex;
+      display: flex;
+      width: 100%;
       align-items: center;
-      gap: 5px;
-      padding: 2px 4px;
+      gap: 6px;
+      padding: 4px 6px;
+      margin: 0;
       border: 0;
       background: transparent;
-      border-radius: 4px;
+      border-radius: 5px;
       color: var(--color-text-secondary);
-      font-size: 11px;
+      font-size: 13px;
       font-weight: 500;
       cursor: pointer;
-      line-height: 1.3;
+      line-height: 1.35;
+      box-sizing: border-box;
       transition: color 120ms ease, background-color 120ms ease;
     }
-    .task-card__subtask-toggle:hover {
+    .task-card__subtask-toggle:hover,
+    .task-card__subtask-bar:hover .task-card__subtask-toggle {
       background: var(--color-surface-secondary);
       color: var(--color-text-primary);
     }
-    .task-card__subtask-chevron {
-      width: 10px;
-      height: 10px;
+    .task-card__subtask-icon {
+      width: 15px;
+      height: 15px;
       stroke: currentColor;
-      fill: none;
-      stroke-width: 2.2;
-      stroke-linecap: round;
-      stroke-linejoin: round;
-      transform: rotate(-90deg);
-      transition: transform 140ms ease;
+      flex-shrink: 0;
     }
-    .task-card__subtask-chevron--open {
-      transform: rotate(0deg);
+    .task-card__subtask-label {
+      font-size: 13px;
+      font-weight: 500;
     }
-    .task-card__subtask-count-pill {
-      font-size: 10px;
-      font-weight: 600;
-      padding: 0 4px;
-      border-radius: 999px;
-      background: var(--color-surface-secondary);
-      border: 1px solid var(--color-border);
+    .task-card__subtask-count {
+      font-size: 13px;
+      font-weight: 500;
       color: var(--color-text-secondary);
+    }
+    .task-card__subtask-toggle:hover .task-card__subtask-count,
+    .task-card__subtask-bar:hover .task-card__subtask-count {
+      color: var(--color-text-primary);
     }
 
     .task-card__subtask-cards {
@@ -767,7 +801,7 @@ export class TaskCardComponent {
   // employee") for most assignees outside the viewer's coverage.
   protected readonly resolvedAssigneeAvatars = computed(() => {
     const map: Record<string, { name: string; avatarUrl: string | null }> = {};
-    for (const member of this.assignableMembers()) map[member.employeeId] = { name: member.name, avatarUrl: null };
+    for (const member of this.assignableMembers()) map[member.employeeId] = { name: member.name, avatarUrl: member.avatarUrl ?? null };
     for (const assignee of this.task().assignees ?? []) map[assignee.employeeId] = { name: assignee.name, avatarUrl: assignee.avatarUrl };
     return map;
   });
@@ -923,13 +957,33 @@ export class TaskCardComponent {
     this.viewed.emit(subtask);
   }
 
+  protected isSubtaskAssignee(subtask: WorkTask): boolean {
+    return subtask.assigneeEmployeeIds.includes(this.currentEmployeeId());
+  }
+
+  protected hasOpenSessionMineForSubtask(subtask: WorkTask): boolean {
+    return subtask.openClockSessionEmployeeId === this.currentEmployeeId() && this.currentEmployeeId() !== '';
+  }
+
+  protected hasOpenSessionOtherEmployeeForSubtask(subtask: WorkTask): boolean {
+    const openBy = subtask.openClockSessionEmployeeId;
+    return openBy !== null && openBy !== this.currentEmployeeId();
+  }
+
+  protected async onSubtaskClockChanged(): Promise<void> {
+    await this.store.loadSubtasks(this.task().id);
+    this.taskChanged.emit();
+  }
+
   protected resolveSubtaskAssignee(employeeId: string, subtask: WorkTask): { name: string; avatarUrl: string | null } | null {
+    const fromSubtask = subtask.assignees?.find((a) => a.employeeId === employeeId);
+    if (fromSubtask && fromSubtask.avatarUrl) return { name: fromSubtask.name, avatarUrl: fromSubtask.avatarUrl };
     const fromParent = this.resolvedAssigneeAvatars()[employeeId];
+    if (fromParent && fromParent.avatarUrl) return fromParent;
+    if (fromSubtask) return { name: fromSubtask.name, avatarUrl: fromSubtask.avatarUrl };
     if (fromParent) return fromParent;
-    const fromAssignees = subtask.assignees?.find((a) => a.employeeId === employeeId);
-    if (fromAssignees) return { name: fromAssignees.name, avatarUrl: fromAssignees.avatarUrl };
     const fromMembers = this.assignableMembers().find((m) => m.employeeId === employeeId);
-    if (fromMembers) return { name: fromMembers.name, avatarUrl: null };
+    if (fromMembers) return { name: fromMembers.name, avatarUrl: fromMembers.avatarUrl ?? null };
     const fromDir = this.directory.get(employeeId);
     if (fromDir) return { name: fromDir.name, avatarUrl: fromDir.avatarUrl ?? null };
     return null;

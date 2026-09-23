@@ -14,7 +14,7 @@ const task: WorkTask = {
   estimatedHours: null, completedHours: 0, progressPercent: 30, sprintId: null,
   assigneeEmployeeIds: ['e1'], openClockSessionEmployeeId: null, openClockSessionClockInAt: null, totalLoggedMinutes: 0,
   attachments: [], assignees: [],
-  parentTaskId: null, subtaskTotalCount: 0, subtaskCompletedCount: 0
+  parentTaskId: null, subtaskTotalCount: 0, subtaskCompletedCount: 0, subtaskAssigneeEmployeeIds: []
 };
 
 const status: TaskStatusColumn = {

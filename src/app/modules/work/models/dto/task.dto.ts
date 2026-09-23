@@ -58,6 +58,7 @@ export interface WorkTaskDto {
   parentTaskId?: string | null;
   subtaskTotalCount?: number;
   subtaskCompletedCount?: number;
+  subtaskAssigneeEmployeeIds?: string[];
 }
 
 export interface CreateTaskRequestDto {

@@ -4,6 +4,7 @@ import { vi } from 'vitest';
 import { EmployeeDirectoryStore } from './employee-directory.store';
 import { PeopleApiService } from '../../people/data-access/people-api.service';
 import { EmployeeListItemResponse } from '../../people/models/employee.model';
+import { FileApiService } from '../../../shared/data-access/file-api.service';
 
 describe('EmployeeDirectoryStore', () => {
   let store: InstanceType<typeof EmployeeDirectoryStore>;
@@ -19,7 +20,10 @@ describe('EmployeeDirectoryStore', () => {
   beforeEach(() => {
     getEmployeeSpy = vi.fn(() => of(employee));
     TestBed.configureTestingModule({
-      providers: [{ provide: PeopleApiService, useValue: { getEmployee: getEmployeeSpy } }]
+      providers: [
+        { provide: PeopleApiService, useValue: { getEmployee: getEmployeeSpy } },
+        { provide: FileApiService, useValue: { getFileUrl: (id: string) => `https://api.test/files/${id}` } }
+      ]
     });
     store = TestBed.inject(EmployeeDirectoryStore);
   });
@@ -33,12 +37,12 @@ describe('EmployeeDirectoryStore', () => {
     expect(summary?.avatarUrl).toBeNull();
   });
 
-  it('ensureLoaded carries the resolved avatarUrl through when the backend returns one', async () => {
-    getEmployeeSpy.mockReturnValue(of({ ...employee, avatarUrl: 'https://api.test/employees/emp-1/avatar' }));
+  it('ensureLoaded resolves avatarFileId through FileApiService', async () => {
+    getEmployeeSpy.mockReturnValue(of({ ...employee, avatarFileId: 'file-1' }));
 
     await store.ensureLoaded(['emp-1']);
 
-    expect(store.get('emp-1')?.avatarUrl).toBe('https://api.test/employees/emp-1/avatar');
+    expect(store.get('emp-1')?.avatarUrl).toBe('https://api.test/files/file-1');
   });
 
   it('ensureLoaded does not re-fetch an already-cached id', async () => {

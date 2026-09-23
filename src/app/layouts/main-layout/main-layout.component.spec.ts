@@ -6,7 +6,7 @@ import { AuthStore } from '../../core/auth/state/auth.store';
 import { TrayPresenceStore } from '../../core/tray-presence/state/tray-presence.store';
 import { NavigationStateService } from './nav/navigation-state.service';
 import { ProfileStore } from '@modules/profile/state/profile.store';
-import { ProfileApiService } from '@modules/profile/data-access/profile-api.service';
+import { FileApiService } from '../../shared/data-access/file-api.service';
 import { MyProfile } from '@modules/profile/models/profile.model';
 
 const authStoreStub = {
@@ -26,8 +26,8 @@ const emptyProfileStoreStub = {
   loadProfile: vi.fn()
 };
 
-const profileApiStub = {
-  getAvatarUrl: (fileId: string) => `https://api.test/employees/me/avatar?v=${fileId}`
+const fileApiStub = {
+  getFileUrl: (fileId: string) => `https://api.test/files/${fileId}`
 };
 
 @Component({ standalone: true, template: '' })
@@ -46,7 +46,7 @@ describe('MainLayoutComponent', () => {
         { provide: AuthStore, useValue: authStoreStub },
         { provide: TrayPresenceStore, useValue: connectedTrayPresenceStub },
         { provide: ProfileStore, useValue: emptyProfileStoreStub },
-        { provide: ProfileApiService, useValue: profileApiStub }
+        { provide: FileApiService, useValue: fileApiStub }
       ]
     }).compileComponents();
 
@@ -68,7 +68,7 @@ describe('MainLayoutComponent', () => {
         { provide: AuthStore, useValue: authStoreStub },
         { provide: TrayPresenceStore, useValue: connectedTrayPresenceStub },
         { provide: ProfileStore, useValue: emptyProfileStoreStub },
-        { provide: ProfileApiService, useValue: profileApiStub }
+        { provide: FileApiService, useValue: fileApiStub }
       ]
     }).compileComponents();
 
@@ -100,7 +100,7 @@ describe('MainLayoutComponent', () => {
         { provide: AuthStore, useValue: authStoreStub },
         { provide: TrayPresenceStore, useValue: connectedTrayPresenceStub },
         { provide: ProfileStore, useValue: { profile: signal<MyProfile | null>(profile), loadProfile: vi.fn() } },
-        { provide: ProfileApiService, useValue: profileApiStub }
+        { provide: FileApiService, useValue: fileApiStub }
       ]
     }).compileComponents();
 
@@ -113,7 +113,7 @@ describe('MainLayoutComponent', () => {
 
     const img = fixture.nativeElement.querySelector('.avatar__image') as HTMLImageElement;
     expect(img).toBeTruthy();
-    expect(img.src).toBe('https://api.test/employees/me/avatar?v=file-77');
+    expect(img.src).toBe('https://api.test/files/file-77');
 
     const userName = fixture.nativeElement.querySelector('.profile-user-name');
     expect(userName.textContent?.trim()).toBe('Asha Kumar');
@@ -127,7 +127,7 @@ describe('MainLayoutComponent', () => {
         { provide: AuthStore, useValue: authStoreStub },
         { provide: TrayPresenceStore, useValue: connectedTrayPresenceStub },
         { provide: ProfileStore, useValue: emptyProfileStoreStub },
-        { provide: ProfileApiService, useValue: profileApiStub }
+        { provide: FileApiService, useValue: fileApiStub }
       ]
     }).compileComponents();
 
@@ -147,7 +147,7 @@ describe('MainLayoutComponent', () => {
         { provide: AuthStore, useValue: authStoreWith(['roles:manage'], []) },
         { provide: TrayPresenceStore, useValue: connectedTrayPresenceStub },
         { provide: ProfileStore, useValue: emptyProfileStoreStub },
-        { provide: ProfileApiService, useValue: profileApiStub }
+        { provide: FileApiService, useValue: fileApiStub }
       ]
     }).compileComponents();
 
@@ -172,7 +172,7 @@ describe('MainLayoutComponent', () => {
         { provide: AuthStore, useValue: authStoreWith(['org:read'], ['org_structure']) },
         { provide: TrayPresenceStore, useValue: connectedTrayPresenceStub },
         { provide: ProfileStore, useValue: emptyProfileStoreStub },
-        { provide: ProfileApiService, useValue: profileApiStub }
+        { provide: FileApiService, useValue: fileApiStub }
       ]
     }).compileComponents();
 
@@ -197,7 +197,7 @@ describe('MainLayoutComponent', () => {
         { provide: AuthStore, useValue: authStoreStub },
         { provide: TrayPresenceStore, useValue: connectedTrayPresenceStub },
         { provide: ProfileStore, useValue: emptyProfileStoreStub },
-        { provide: ProfileApiService, useValue: profileApiStub }
+        { provide: FileApiService, useValue: fileApiStub }
       ]
     }).compileComponents();
 
@@ -216,7 +216,7 @@ describe('MainLayoutComponent', () => {
         { provide: AuthStore, useValue: authStoreWith(['org:read'], ['org_structure']) },
         { provide: TrayPresenceStore, useValue: connectedTrayPresenceStub },
         { provide: ProfileStore, useValue: emptyProfileStoreStub },
-        { provide: ProfileApiService, useValue: profileApiStub }
+        { provide: FileApiService, useValue: fileApiStub }
       ]
     }).compileComponents();
 

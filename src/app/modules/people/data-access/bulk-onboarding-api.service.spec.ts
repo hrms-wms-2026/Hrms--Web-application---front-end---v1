@@ -20,7 +20,7 @@ describe('BulkOnboardingApiService', () => {
 
   it('upload() posts multipart form data to /onboarding/bulk-batches', () => {
     const file = new File(['a,b\n1,2'], 'employees.csv', { type: 'text/csv' });
-    service.upload({ file, legalEntityId: 'le-1', defaultWorkModeId: 1, defaultEmploymentType: 'full_time', defaultChecklistTemplateId: null })
+    service.upload({ file, legalEntityId: 'le-1', defaultWorkModeId: 'wm-1', defaultEmploymentType: 'full_time', defaultChecklistTemplateId: null })
       .subscribe();
 
     const req = httpMock.expectOne(`${environment.apiUrl}/onboarding/bulk-batches`);

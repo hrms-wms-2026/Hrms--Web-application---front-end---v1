@@ -98,7 +98,7 @@ import { AvatarComponent } from '../../../../shared/ui/avatar/avatar.component';
                 <span class="{{ menuIconClass() }}" aria-hidden="true">♙</span><span>Members</span>
               </button>
               <button type="button" class="{{ menuItemClass() }}" data-testid="menu-create-task-button" (click)="emit($event, createTaskRequested)">
-                <span class="{{ menuIconClass() }}" aria-hidden="true">+</span><span>Create task</span>
+                <span class="{{ menuIconClass() }}" aria-hidden="true">+</span><span>Create work item</span>
               </button>
               @if (isLeaf()) {
                 <button type="button" class="{{ menuItemClass() }}" data-testid="menu-create-sprint-button" (click)="emit($event, createSprintRequested)">

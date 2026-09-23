@@ -79,10 +79,15 @@ describe('AddEmployeeWizardComponent', () => {
     fixture = TestBed.createComponent(AddEmployeeWizardComponent);
     fixture.detectChanges();
 
-    httpMock.expectOne(`${environment.apiUrl}/work-modes`).flush([{ id: 1, code: 'on_site', label: 'On-Site' }]);
-    await fixture.whenStable();
-
     if (!queryParams['draftId']) {
+      // Only fires immediately when there's no draft to resume - resuming a draft sets companyId
+      // from the draft's own legalEntityId, so work modes load once that resolves (see
+      // flushWorkModesRequest, called by draftId-resume tests after they flush the draft GET).
+      httpMock
+        .expectOne((r) => r.url === `${environment.apiUrl}/work-modes` && r.params.get('legalEntityId') === 'le-1')
+        .flush([{ id: '1', label: 'On-Site' }]);
+      await fixture.whenStable();
+
       httpMock.expectOne((r) => r.url.includes('/departments')).flush({
         items: options.departments ?? [],
         page: 1,
@@ -112,6 +117,18 @@ describe('AddEmployeeWizardComponent', () => {
     });
     await fixture.whenStable();
     fixture.detectChanges();
+  }
+
+  /**
+   * Work modes load once companyId is set. On the non-draft path that happens immediately
+   * (see setupWithCompany); when resuming a draft, companyId is only set from the draft's own
+   * legalEntityId after the draft GET resolves, so draftId-resume tests call this themselves
+   * right after flushing that request.
+   */
+  function flushWorkModesRequest(): void {
+    httpMock
+      .expectOne((r) => r.url === `${environment.apiUrl}/work-modes` && r.params.get('legalEntityId') === 'le-1')
+      .flush([{ id: '1', label: 'On-Site' }]);
   }
 
   function flushEmployeeNumberSuggestionRequests(sequence = 1): void {
@@ -154,7 +171,6 @@ describe('AddEmployeeWizardComponent', () => {
     httpMock = TestBed.inject(HttpTestingController);
     fixture = TestBed.createComponent(AddEmployeeWizardComponent);
     fixture.detectChanges();
-    httpMock.expectOne(`${environment.apiUrl}/work-modes`).flush([]);
 
     expect(fixture.nativeElement.textContent).toContain('No company selected');
     expect(fixture.nativeElement.querySelector('form')).toBeNull();
@@ -297,7 +313,7 @@ describe('AddEmployeeWizardComponent', () => {
       employmentType: 'full_time',
       startDate: '2026-08-10',
       employeeNumber: null,
-      workModeId: 1,
+      workModeId: '1',
       selectedTemplateId: null,
       editedTasksJson: null,
       status: 'waiting_for_seat',
@@ -401,7 +417,7 @@ describe('AddEmployeeWizardComponent', () => {
       employmentType: 'full_time',
       startDate: '2026-08-10',
       employeeNumber: null,
-      workModeId: 1,
+      workModeId: '1',
       selectedTemplateId: null,
       editedTasksJson: null,
       status: 'draft',
@@ -659,7 +675,7 @@ describe('AddEmployeeWizardComponent', () => {
       employmentType: 'full_time',
       startDate: '2026-08-10',
       employeeNumber: 'ACME-0001',
-      workModeId: 1,
+      workModeId: '1',
       selectedTemplateId: null,
       editedTasksJson: null,
       status: 'draft',
@@ -682,6 +698,7 @@ describe('AddEmployeeWizardComponent', () => {
     httpMock.expectOne((r) => r.url.includes('/onboarding/checklist-templates/matches')).flush([]);
     await fixture.whenStable();
     await Promise.resolve();
+    flushWorkModesRequest();
     flushEmployeeNumberSuggestionRequests();
 
     fixture.componentInstance.form.patchValue({
@@ -733,7 +750,7 @@ describe('AddEmployeeWizardComponent', () => {
       employmentType: 'full_time',
       startDate: '2026-08-20',
       employeeNumber: 'ET231',
-      workModeId: 1,
+      workModeId: '1',
       workModeLabel: 'On-Site',
       selectedTemplateId: null,
       editedTasksJson: null,
@@ -760,6 +777,7 @@ describe('AddEmployeeWizardComponent', () => {
     await Promise.resolve();
     httpMock.expectOne((r) => r.url.includes('/onboarding/checklist-templates/matches')).flush([]);
     await fixture.whenStable();
+    flushWorkModesRequest();
     flushEmployeeNumberSuggestionRequests();
     fixture.detectChanges();
 
@@ -809,7 +827,6 @@ describe('AddEmployeeWizardComponent', () => {
 
     fixture = TestBed.createComponent(AddEmployeeWizardComponent);
     fixture.detectChanges();
-    httpMock.expectOne(`${environment.apiUrl}/work-modes`).flush([]);
 
     expect(store.finalizeResult()).toBeNull();
     expect(store.lastSaveReason()).toBeNull();
@@ -830,7 +847,7 @@ describe('AddEmployeeWizardComponent', () => {
       employmentType: 'full_time',
       startDate: '2026-08-10',
       employeeNumber: 'ACME-0001',
-      workModeId: 1,
+      workModeId: '1',
       selectedTemplateId: null,
       editedTasksJson: null,
       status: 'finalized',
@@ -851,6 +868,7 @@ describe('AddEmployeeWizardComponent', () => {
     await Promise.resolve();
     httpMock.expectOne((r) => r.url.includes('/onboarding/checklist-templates/matches')).flush([]);
     await fixture.whenStable();
+    flushWorkModesRequest();
     flushEmployeeNumberSuggestionRequests();
     fixture.detectChanges();
 
@@ -914,7 +932,7 @@ describe('AddEmployeeWizardComponent', () => {
       employmentType: 'full_time',
       startDate: '2026-08-10',
       employeeNumber: null,
-      workModeId: 1,
+      workModeId: '1',
       selectedTemplateId: null,
       editedTasksJson: null,
       status: 'draft',
@@ -1422,7 +1440,7 @@ describe('AddEmployeeWizardComponent', () => {
       employmentType: 'full_time',
       startDate: '2026-08-20',
       employeeNumber: 'ACME-0042',
-      workModeId: 1,
+      workModeId: '1',
       selectedTemplateId: null,
       editedTasksJson: null,
       status: 'draft',

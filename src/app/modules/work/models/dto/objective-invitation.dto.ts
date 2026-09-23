@@ -1,7 +1,7 @@
 export interface ObjectiveMemberItemDto {
   employeeId: string;
   name: string | null;
-  avatarUrl: string | null;
+  avatarFileId: string | null;
   isHead: boolean;
   pending: boolean;
   inviteType: 'member' | 'leader' | null;

@@ -42,6 +42,7 @@ describe('SprintCompleteDialogComponent', () => {
       parentTaskId: null,
       subtaskTotalCount: 0,
       subtaskCompletedCount: 0,
+      subtaskAssigneeEmployeeIds: [],
       ...overrides
     };
   }

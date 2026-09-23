@@ -9,7 +9,7 @@ import { TrayPresenceStore } from '../../core/tray-presence/state/tray-presence.
 import { NavigationStateService } from './nav/navigation-state.service';
 import { MainLayoutComponent } from './main-layout.component';
 import { ProfileStore } from '@modules/profile/state/profile.store';
-import { ProfileApiService } from '@modules/profile/data-access/profile-api.service';
+import { FileApiService } from '../../shared/data-access/file-api.service';
 import { MyProfile } from '@modules/profile/models/profile.model';
 
 @Component({ selector: 'app-side-navbar', standalone: true, template: '' })
@@ -23,7 +23,7 @@ class TopNavbarStubComponent {
 }
 
 const emptyProfileStoreStub = { profile: signal<MyProfile | null>(null), loadProfile: vi.fn() };
-const profileApiStub = { getAvatarUrl: (fileId: string) => `https://api.test/employees/me/avatar?v=${fileId}` };
+const fileApiStub = { getFileUrl: (fileId: string) => `https://api.test/files/${fileId}` };
 
 @Component({ selector: 'app-sub-sidebar', standalone: true, template: '' })
 class SubSidebarStubComponent {
@@ -94,7 +94,7 @@ describe('MainLayoutComponent tray activation gate', () => {
           useValue: { activeChildren: signal([]), activeItem: signal(null), hasVisibleSubSidebar: signal(false), hasSubSidebar: signal(false) }
         },
         { provide: ProfileStore, useValue: emptyProfileStoreStub },
-        { provide: ProfileApiService, useValue: profileApiStub }
+        { provide: FileApiService, useValue: fileApiStub }
       ]
     });
     TestBed.overrideComponent(MainLayoutComponent, {
@@ -177,7 +177,7 @@ describe('MainLayoutComponent tray activation gate when monitoring module is not
           useValue: { activeChildren: signal([]), activeItem: signal(null), hasVisibleSubSidebar: signal(false), hasSubSidebar: signal(false) }
         },
         { provide: ProfileStore, useValue: emptyProfileStoreStub },
-        { provide: ProfileApiService, useValue: profileApiStub }
+        { provide: FileApiService, useValue: fileApiStub }
       ]
     });
     TestBed.overrideComponent(MainLayoutComponent, {

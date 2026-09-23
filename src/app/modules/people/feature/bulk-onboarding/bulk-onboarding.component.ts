@@ -76,7 +76,7 @@ export class BulkOnboardingComponent implements OnInit, OnDestroy {
   readonly requiredMappingFields = REQUIRED_MAPPING_FIELDS;
   readonly rowStatusLabels = BULK_ROW_STATUS_LABELS;
 
-  readonly defaultWorkModeId = signal<number | null>(null);
+  readonly defaultWorkModeId = signal<string | null>(null);
   readonly defaultEmploymentType = signal<string | null>(null);
   readonly selectedFileName = signal<string | null>(null);
   readonly fileError = signal<string | null>(null);
@@ -89,10 +89,7 @@ export class BulkOnboardingComponent implements OnInit, OnDestroy {
 
   readonly selectedLegalEntityId = computed(() => this.legalEntityStore.selectedLegalEntity()?.id ?? '');
   readonly hasCompany = computed(() => !!this.selectedLegalEntityId());
-  readonly workModeSelectValue = computed(() => {
-    const id = this.defaultWorkModeId();
-    return id === null ? '' : String(id);
-  });
+  readonly workModeSelectValue = computed(() => this.defaultWorkModeId() ?? '');
   readonly workModeOptions = signal<readonly SelectOption[]>([]);
   readonly unresolvedIssueCount = computed(() => this.store.validationResult()?.issues?.length ?? 0);
   readonly canManageOrg = computed(() => this.permissionService.hasPermission('org:manage'));
@@ -108,9 +105,15 @@ export class BulkOnboardingComponent implements OnInit, OnDestroy {
   async ngOnInit(): Promise<void> {
     await this.legalEntityStore.loadCompanies();
 
+    const legalEntityId = this.selectedLegalEntityId();
+    if (!legalEntityId) {
+      this.workModeOptions.set([]);
+      return;
+    }
+
     try {
-      const modes = await firstValueFrom(this.peopleApi.getWorkModes());
-      this.workModeOptions.set(modes.map((mode) => ({ value: String(mode.id), label: mode.label })));
+      const modes = await firstValueFrom(this.peopleApi.getWorkModes(legalEntityId));
+      this.workModeOptions.set(modes.map((mode) => ({ value: mode.id, label: mode.label })));
     } catch {
       this.workModeOptions.set([]);
     }
@@ -121,7 +124,7 @@ export class BulkOnboardingComponent implements OnInit, OnDestroy {
   }
 
   onWorkModeChange(value: string): void {
-    this.defaultWorkModeId.set(value ? Number(value) : null);
+    this.defaultWorkModeId.set(value || null);
   }
 
   onEmploymentTypeChange(value: string): void {
@@ -131,7 +134,7 @@ export class BulkOnboardingComponent implements OnInit, OnDestroy {
   async onFileSelected(
     event: Event,
     legalEntityId: string,
-    defaultWorkModeId: number | null,
+    defaultWorkModeId: string | null,
     defaultEmploymentType: string | null
   ): Promise<void> {
     const input = event.target as HTMLInputElement;

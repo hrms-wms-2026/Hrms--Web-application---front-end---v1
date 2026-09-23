@@ -42,7 +42,7 @@ import { toEditTaskRequest } from '../../utils/task.mapper';
         />
         <app-task-filter-bar [fields]="filterFields()" [values]="filterValues()" (fieldChanged)="onFilterFieldChanged($event)" />
         @if (modules().length > 0) {
-          <app-button variant="secondary" (pressed)="openCreateTask()">Create task</app-button>
+          <app-button variant="secondary" (pressed)="openCreateTask()">Create work item</app-button>
         }
         @if (ownedModuleOptions().length > 0) {
           <app-button variant="primary" (pressed)="createSprintOpen.set(true)">Create Sprint</app-button>
@@ -228,7 +228,7 @@ export class TaskBacklogComponent implements OnInit, AfterViewInit, OnDestroy {
   private lastMove: { taskId: string; previousSprintId: string | null }[] = [];
   protected readonly projectId = signal('');
   protected readonly expandedSprintId = signal<string | null>(null);
-  protected readonly assignableMembers = signal<{ employeeId: string; name: string }[]>([]);
+  protected readonly assignableMembers = signal<{ employeeId: string; name: string; avatarUrl: string | null }[]>([]);
   protected readonly sprintStatusFilter = signal<'all' | SprintStatus>('all');
   protected readonly objectiveFilter = signal<string[]>([]);
   protected readonly categoryFilter = signal<string[]>([]);
@@ -564,7 +564,8 @@ export class TaskBacklogComponent implements OnInit, AfterViewInit, OnDestroy {
       const members = this.projectStore.projectMembers();
       this.assignableMembers.set(members.map((member) => ({
         employeeId: member.employeeId,
-        name: member.name ?? 'Unknown employee'
+        name: member.name ?? 'Unknown employee',
+        avatarUrl: (member as { avatarUrl?: string | null }).avatarUrl ?? null
       })));
     } catch {
       this.assignableMembers.set([]);

@@ -32,16 +32,11 @@ describe('ProfileApiService', () => {
     req.flush({ id: 'new-id' });
   });
 
-  it('uploadAvatar PUTs multipart form data to /employees/me/avatar', () => {
-    const file = new File(['x'], 'avatar.png', { type: 'image/png' });
-    service.uploadAvatar(file).subscribe();
+  it('linkAvatar PUTs the uploaded file id to /employees/me/avatar', () => {
+    service.linkAvatar('file-id').subscribe();
     const req = httpMock.expectOne(`${environment.apiUrl}/employees/me/avatar`);
     expect(req.request.method).toBe('PUT');
-    expect(req.request.body instanceof FormData).toBe(true);
+    expect(req.request.body).toEqual({ fileId: 'file-id' });
     req.flush({ avatarFileId: 'file-id' });
-  });
-
-  it('builds a cache-busted avatar URL from the file id', () => {
-    expect(service.getAvatarUrl('file-abc')).toBe(`${environment.apiUrl}/employees/me/avatar?v=file-abc`);
   });
 });

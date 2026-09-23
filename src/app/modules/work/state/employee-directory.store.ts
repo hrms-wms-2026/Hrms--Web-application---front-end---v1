@@ -3,6 +3,7 @@ import { patchState, signalStore, withMethods, withState } from '@ngrx/signals';
 import { firstValueFrom } from 'rxjs';
 import { PeopleApiService } from '../../people/data-access/people-api.service';
 import { EmployeeSummary, buildInitials } from '../models/employee-summary.model';
+import { FileApiService } from '../../../shared/data-access/file-api.service';
 
 interface EmployeeDirectoryState {
   readonly byId: Readonly<Record<string, EmployeeSummary>>;
@@ -13,7 +14,7 @@ const initialState: EmployeeDirectoryState = { byId: {} };
 export const EmployeeDirectoryStore = signalStore(
   { providedIn: 'root' },
   withState<EmployeeDirectoryState>(initialState),
-  withMethods((store, peopleApi = inject(PeopleApiService)) => {
+  withMethods((store, peopleApi = inject(PeopleApiService), fileApi = inject(FileApiService)) => {
     const inFlight = new Map<string, Promise<void>>();
 
     return {
@@ -48,7 +49,12 @@ export const EmployeeDirectoryStore = signalStore(
             // every fresh mount that needs this id (a new row, a new card) retries the same
             // doomed request forever, since there is no negative cache without this.
             additions[id] = employee
-              ? { id: employee.id, name: employee.fullName, initials: buildInitials(employee.fullName), avatarUrl: employee.avatarUrl ?? null }
+              ? {
+                  id: employee.id,
+                  name: employee.fullName,
+                  initials: buildInitials(employee.fullName),
+                  avatarUrl: employee.avatarFileId ? fileApi.getFileUrl(employee.avatarFileId) : null
+                }
               : { id, name: 'Unknown employee', initials: '?', avatarUrl: null };
           });
 

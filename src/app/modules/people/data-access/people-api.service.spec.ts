@@ -45,7 +45,7 @@ describe('PeopleApiService', () => {
     employmentType: 'full_time',
     startDate: '2026-08-10',
     employeeNumber: null,
-    workModeId: 1,
+    workModeId: '1',
     selectedTemplateId: null,
     editedTasksJson: null,
     status: 'waiting_for_seat',
@@ -69,15 +69,17 @@ describe('PeopleApiService', () => {
     httpMock.verify();
   });
 
-  it('fetches work modes from /work-modes', () => {
-    service.getWorkModes().subscribe((modes) => {
+  it('fetches work modes from /work-modes for a legal entity', () => {
+    service.getWorkModes('le-1').subscribe((modes) => {
       expect(modes.length).toBe(1);
-      expect(modes[0].code).toBe('on_site');
+      expect(modes[0].label).toBe('On-Site');
     });
 
-    const req = httpMock.expectOne(`${environment.apiUrl}/work-modes`);
+    const req = httpMock.expectOne(
+      (r) => r.url === `${environment.apiUrl}/work-modes` && r.params.get('legalEntityId') === 'le-1'
+    );
     expect(req.request.method).toBe('GET');
-    req.flush([{ id: 1, code: 'on_site', label: 'On-Site' }]);
+    req.flush([{ id: 'wm-1', label: 'On-Site' }]);
   });
 
   it('lists employees with query params', () => {
@@ -184,7 +186,7 @@ describe('PeopleApiService', () => {
       employmentType: 'full_time',
       startDate: '2026-08-10',
       employeeNumber: null,
-      workModeId: 1,
+      workModeId: '1',
       selectedTemplateId: null,
       editedTasksJson: null,
       lastSavedStep: 'employee_details'
@@ -197,7 +199,7 @@ describe('PeopleApiService', () => {
     expect(req.request.headers.has('Idempotency-Key')).toBe(true);
     expect(req.request.body.firstName).toBe('Ada');
     expect(req.request.body.lastName).toBe('Lovelace');
-    expect(req.request.body.workModeId).toBe(1);
+    expect(req.request.body.workModeId).toBe('1');
     expect(req.request.body.employeeName).toBeUndefined();
     expect(req.request.body.scheduleId).toBeUndefined();
     req.flush(mockDraft);
@@ -215,7 +217,7 @@ describe('PeopleApiService', () => {
       employmentType: 'full_time',
       startDate: '2026-08-10',
       employeeNumber: null,
-      workModeId: 1,
+      workModeId: '1',
       selectedTemplateId: null,
       editedTasksJson: null,
       lastSavedStep: 'checklist_template'
@@ -228,7 +230,7 @@ describe('PeopleApiService', () => {
     expect(req.request.headers.get('If-Match')).toBe('1');
     expect(req.request.body.firstName).toBe('Ada');
     expect(req.request.body.lastName).toBe('Lovelace');
-    expect(req.request.body.workModeId).toBe(1);
+    expect(req.request.body.workModeId).toBe('1');
     expect(req.request.body.employeeName).toBeUndefined();
     expect(req.request.body.scheduleId).toBeUndefined();
     req.flush(mockDraft);

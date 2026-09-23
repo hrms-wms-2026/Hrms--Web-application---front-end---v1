@@ -39,7 +39,7 @@ describe('TaskCardComponent', () => {
     estimatedHours: 5, completedHours: 0, progressPercent: 0, sprintId: null,
     assigneeEmployeeIds: ['emp-1', 'emp-2'], openClockSessionEmployeeId: null, openClockSessionClockInAt: null, totalLoggedMinutes: 0,
     attachments: [], assignees: [],
-    parentTaskId: null, subtaskTotalCount: 0, subtaskCompletedCount: 0
+    parentTaskId: null, subtaskTotalCount: 0, subtaskCompletedCount: 0, subtaskAssigneeEmployeeIds: []
   };
 
   const assignableMembers = [
@@ -322,10 +322,15 @@ describe('TaskCardComponent', () => {
     expect(fixture.nativeElement.querySelector('[data-testid="task-card-subtask-toggle"]')).toBeNull();
   });
 
-  it('shows the completed/total badge when the task has subtasks', () => {
+  it('shows the subtask icon and count when the task has subtasks', () => {
     setup({ task: { ...task, subtaskTotalCount: 3, subtaskCompletedCount: 1 } });
     const toggle = fixture.nativeElement.querySelector('[data-testid="task-card-subtask-toggle"]') as HTMLElement;
+    expect(toggle.textContent).toContain('subtasks');
     expect(toggle.textContent).toContain('1/3');
+    expect(toggle.textContent).not.toContain('3 subtasks');
+    expect(toggle.querySelector('.task-card__subtask-icon')).not.toBeNull();
+    expect(toggle.querySelector('.task-card__subtask-count')?.textContent).toBe('1/3');
+    expect(toggle.querySelector('.task-card__subtask-count-pill')).toBeNull();
   });
 
   it('lazy-loads subtasks on first expand and does not reload on collapse/re-expand', () => {
@@ -351,6 +356,20 @@ describe('TaskCardComponent', () => {
     expect(viewedSpy).not.toHaveBeenCalled();
   });
 
+  it('clicking anywhere on the subtask bar expands subtasks without emitting viewed for parent card', () => {
+    setup({ task: { ...task, subtaskTotalCount: 1, subtaskCompletedCount: 0 } });
+    const viewedSpy = vi.fn();
+    fixture.componentInstance.viewed.subscribe(viewedSpy);
+
+    const bar = fixture.nativeElement.querySelector('[data-testid="task-card-subtask-bar"]') as HTMLElement;
+    bar.click();
+    fixture.detectChanges();
+
+    expect(boardStore.loadSubtasks).toHaveBeenCalledWith('t-1');
+    expect(viewedSpy).not.toHaveBeenCalled();
+    expect(bar.querySelector('[data-testid="task-card-subtask-toggle"]')?.getAttribute('aria-expanded')).toBe('true');
+  });
+
   it('clicking a nested subtask row emits viewed with the subtask, not the parent', () => {
     boardStore.subtasksByParentId.mockReturnValue({
       't-1': [{ ...task, id: 'sub-1', title: 'Sub thing', subtaskTotalCount: 0, subtaskCompletedCount: 0 }]
@@ -364,6 +383,68 @@ describe('TaskCardComponent', () => {
     (fixture.nativeElement.querySelector('[data-testid="task-card-subtask-sub-1"]') as HTMLElement).click();
 
     expect(viewedSpy).toHaveBeenCalledWith(expect.objectContaining({ id: 'sub-1' }));
+  });
+
+  it('shows a Clock In widget on a subtask assigned to the current employee', () => {
+    boardStore.subtasksByParentId.mockReturnValue({
+      't-1': [{ ...task, id: 'sub-1', title: 'Sub thing', assigneeEmployeeIds: ['emp-1'], subtaskTotalCount: 0, subtaskCompletedCount: 0 }]
+    });
+    setup({ task: { ...task, subtaskTotalCount: 1, subtaskCompletedCount: 0 }, currentEmployeeId: 'emp-1' });
+
+    (fixture.nativeElement.querySelector('[data-testid="task-card-subtask-toggle"]') as HTMLButtonElement).click();
+    fixture.detectChanges();
+
+    const subtaskRow = fixture.nativeElement.querySelector('[data-testid="task-card-subtask-sub-1"]') as HTMLElement;
+    expect(subtaskRow.querySelector('app-task-clock-widget')).not.toBeNull();
+    expect(subtaskRow.querySelector('[data-testid="clock-in-button"]')).not.toBeNull();
+  });
+
+  it('hides the clock widget on a subtask the current employee is not assigned to', () => {
+    boardStore.subtasksByParentId.mockReturnValue({
+      't-1': [{ ...task, id: 'sub-1', title: 'Sub thing', assigneeEmployeeIds: ['emp-2'], subtaskTotalCount: 0, subtaskCompletedCount: 0 }]
+    });
+    setup({ task: { ...task, subtaskTotalCount: 1, subtaskCompletedCount: 0 }, currentEmployeeId: 'emp-1' });
+
+    (fixture.nativeElement.querySelector('[data-testid="task-card-subtask-toggle"]') as HTMLButtonElement).click();
+    fixture.detectChanges();
+
+    const subtaskRow = fixture.nativeElement.querySelector('[data-testid="task-card-subtask-sub-1"]') as HTMLElement;
+    expect(subtaskRow.querySelector('app-task-clock-widget')).toBeNull();
+  });
+
+  it('resolves subtask assignee avatarUrl from subtask assignees when parent task is assigned to someone else', () => {
+    boardStore.subtasksByParentId.mockReturnValue({
+      't-1': [
+        {
+          ...task,
+          id: 'sub-1',
+          title: 'Sub thing',
+          assigneeEmployeeIds: ['emp-2'],
+          assignees: [{ employeeId: 'emp-2', name: 'Sam Perera', avatarUrl: 'https://files.example.test/sam-avatar.jpg' }],
+          subtaskTotalCount: 0,
+          subtaskCompletedCount: 0
+        }
+      ]
+    });
+    // Parent task is assigned to emp-1 only; emp-2 is in assignableMembers without an avatar on the parent task
+    setup({
+      task: {
+        ...task,
+        assigneeEmployeeIds: ['emp-1'],
+        assignees: [{ employeeId: 'emp-1', name: 'Nevi Peiris', avatarUrl: null }],
+        subtaskTotalCount: 1,
+        subtaskCompletedCount: 0
+      },
+      currentEmployeeId: 'emp-1'
+    });
+
+    (fixture.nativeElement.querySelector('[data-testid="task-card-subtask-toggle"]') as HTMLButtonElement).click();
+    fixture.detectChanges();
+
+    const avatarComp = fixture.debugElement.query(By.css('[data-testid="task-card-subtask-sub-1"] app-avatar'));
+    expect(avatarComp).not.toBeNull();
+    expect(avatarComp.componentInstance.avatarUrl()).toBe('https://files.example.test/sam-avatar.jpg');
+    expect(avatarComp.componentInstance.userName()).toBe('Sam Perera');
   });
 
   it('opens priority popover on click and selecting a new priority updates task and emits taskChanged without opening task detail', async () => {

@@ -58,7 +58,7 @@ import { MilestoneTreeNode } from '../../models/milestone.model';
 
       <span class="flex items-center justify-end gap-px" data-testid="row-actions">
         @if (node().isOwner) {
-          <button type="button" class="{{ iconClass() }}" data-testid="create-task-button" aria-label="Create task" (click)="emit($event, createTaskRequested)">
+          <button type="button" class="{{ iconClass() }}" data-testid="create-task-button" aria-label="Create work item" (click)="emit($event, createTaskRequested)">
             <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" aria-hidden="true">
               <line x1="12" y1="5" x2="12" y2="19" />
               <line x1="5" y1="12" x2="19" y2="12" />

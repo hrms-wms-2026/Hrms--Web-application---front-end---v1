@@ -21,7 +21,7 @@ describe('AddEmployeeWizardStore', () => {
     employmentType: 'full_time',
     startDate: '2026-08-10',
     employeeNumber: null,
-    workModeId: 1,
+    workModeId: 'wm-1',
     selectedTemplateId: null,
     editedTasksJson: null,
     status: 'waiting_for_seat',
@@ -122,21 +122,25 @@ describe('AddEmployeeWizardStore', () => {
   });
 
   it('loadWorkModes stores active work mode options and handles error safely', async () => {
-    const loadPromise = store.loadWorkModes();
+    const loadPromise = store.loadWorkModes('le-1');
     expect(store.loadingWorkModes()).toBe(true);
 
-    const req = httpMock.expectOne(`${environment.apiUrl}/work-modes`);
-    req.flush([{ id: 1, code: 'on_site', label: 'On-Site' }]);
+    const req = httpMock.expectOne(
+      (r) => r.url === `${environment.apiUrl}/work-modes` && r.params.get('legalEntityId') === 'le-1'
+    );
+    req.flush([{ id: 'wm-1', label: 'On-Site' }]);
     await loadPromise;
 
     expect(store.loadingWorkModes()).toBe(false);
     expect(store.workModes().length).toBe(1);
-    expect(store.workModes()[0].code).toBe('on_site');
+    expect(store.workModes()[0].label).toBe('On-Site');
   });
 
   it('handles loadWorkModes failure with safe error message', async () => {
-    const loadPromise = store.loadWorkModes();
-    const req = httpMock.expectOne(`${environment.apiUrl}/work-modes`);
+    const loadPromise = store.loadWorkModes('le-1');
+    const req = httpMock.expectOne(
+      (r) => r.url === `${environment.apiUrl}/work-modes` && r.params.get('legalEntityId') === 'le-1'
+    );
     req.flush('Error', { status: 500, statusText: 'Internal Error' });
     await loadPromise;
 
@@ -165,7 +169,7 @@ describe('AddEmployeeWizardStore', () => {
     expect(store.positionId()).toBe('pos-1');
     expect(store.formValue().firstName).toBe('Ada');
     expect(store.formValue().lastName).toBe('Lovelace');
-    expect(store.formValue().workModeId).toBe(1);
+    expect(store.formValue().workModeId).toBe('wm-1');
     expect(store.version()).toBe('1');
   });
 
@@ -295,13 +299,13 @@ describe('AddEmployeeWizardStore', () => {
 
   it('saveDraft sends firstName, lastName, workModeId and never sends employeeName or scheduleId', async () => {
     store.syncSelectionFromForm('dept-1', 'pos-1');
-    store.updateFormValue({ firstName: 'Ada', lastName: 'Lovelace', workEmail: 'ada@test.dev', employmentType: 'full_time', startDate: '2026-08-10', workModeId: 1 });
+    store.updateFormValue({ firstName: 'Ada', lastName: 'Lovelace', workEmail: 'ada@test.dev', employmentType: 'full_time', startDate: '2026-08-10', workModeId: 'wm-1' });
     const savePromise = store.saveDraft('employee_details');
 
     const req = httpMock.expectOne(`${environment.apiUrl}/onboarding/drafts`);
     expect(req.request.body.firstName).toBe('Ada');
     expect(req.request.body.lastName).toBe('Lovelace');
-    expect(req.request.body.workModeId).toBe(1);
+    expect(req.request.body.workModeId).toBe('wm-1');
     expect(req.request.body.employeeName).toBeUndefined();
     expect(req.request.body.scheduleId).toBeUndefined();
     req.flush(mockDraft);
@@ -319,7 +323,7 @@ describe('AddEmployeeWizardStore', () => {
     await Promise.resolve();
     expect(store.selectedTemplateId()).toBe('tmpl-1');
 
-    store.updateFormValue({ firstName: 'Ada', lastName: 'Lovelace', workEmail: 'ada@test.dev', employmentType: 'full_time', startDate: '2026-08-10', workModeId: 1 });
+    store.updateFormValue({ firstName: 'Ada', lastName: 'Lovelace', workEmail: 'ada@test.dev', employmentType: 'full_time', startDate: '2026-08-10', workModeId: 'wm-1' });
     const savePromise = store.saveDraft('checklist_template');
 
     const req = httpMock.expectOne(`${environment.apiUrl}/onboarding/drafts`);
@@ -331,7 +335,7 @@ describe('AddEmployeeWizardStore', () => {
 
   it('saveDraft sends editedTasksJson null when no checklist selected', async () => {
     store.syncSelectionFromForm('dept-1', 'pos-1');
-    store.updateFormValue({ firstName: 'Ada', lastName: 'Lovelace', workEmail: 'ada@test.dev', employmentType: 'full_time', startDate: '2026-08-10', workModeId: 1 });
+    store.updateFormValue({ firstName: 'Ada', lastName: 'Lovelace', workEmail: 'ada@test.dev', employmentType: 'full_time', startDate: '2026-08-10', workModeId: 'wm-1' });
     const savePromise = store.saveDraft('employee_details');
 
     const req = httpMock.expectOne(`${environment.apiUrl}/onboarding/drafts`);
@@ -385,7 +389,7 @@ describe('AddEmployeeWizardStore', () => {
     });
     await Promise.resolve();
 
-    store.updateFormValue({ firstName: 'Ada', lastName: 'Lovelace', workEmail: 'ada@test.dev', employmentType: 'full_time', startDate: '2026-08-10', workModeId: 1 });
+    store.updateFormValue({ firstName: 'Ada', lastName: 'Lovelace', workEmail: 'ada@test.dev', employmentType: 'full_time', startDate: '2026-08-10', workModeId: 'wm-1' });
     const savePromise = store.saveDraft('checklist_template');
 
     const req = httpMock.expectOne(`${environment.apiUrl}/onboarding/drafts`);
@@ -610,7 +614,7 @@ describe('AddEmployeeWizardStore', () => {
     const clientId = store.draftTasks()[0].clientId;
     store.updateDraftTask(clientId, { title: 'Edited title' });
 
-    store.updateFormValue({ firstName: 'Ada', lastName: 'Lovelace', workEmail: 'ada@test.dev', employmentType: 'full_time', startDate: '2026-08-10', workModeId: 1 });
+    store.updateFormValue({ firstName: 'Ada', lastName: 'Lovelace', workEmail: 'ada@test.dev', employmentType: 'full_time', startDate: '2026-08-10', workModeId: 'wm-1' });
     const savePromise = store.saveDraft('checklist_template');
     httpMock.expectOne(`${environment.apiUrl}/onboarding/drafts`).flush(mockDraft);
     await savePromise;

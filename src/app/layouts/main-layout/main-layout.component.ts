@@ -11,7 +11,7 @@ import { SideNavbarComponent } from './side-navbar/side-navbar.component';
 import { SubSidebarComponent } from './sub-sidebar/sub-sidebar.component';
 import { TopNavbarComponent } from './top-navbar/top-navbar.component';
 import { ProfileStore } from '@modules/profile/state/profile.store';
-import { ProfileApiService } from '@modules/profile/data-access/profile-api.service';
+import { FileApiService } from '../../shared/data-access/file-api.service';
 
 import { ToastHostComponent } from '../../shared/ui/toast/toast-host.component';
 import { MobileBottomNavComponent } from './mobile-bottom-nav/mobile-bottom-nav.component';
@@ -28,7 +28,7 @@ export class MainLayoutComponent {
   private readonly authStore = inject(AuthStore);
   private readonly permissionService = inject(PermissionService);
   private readonly profileStore = inject(ProfileStore);
-  private readonly profileApi = inject(ProfileApiService);
+  private readonly fileApi = inject(FileApiService);
   readonly trayPresence = inject(TrayPresenceStore);
 
   readonly navState = inject(NavigationStateService);
@@ -44,7 +44,7 @@ export class MainLayoutComponent {
 
   readonly avatarUrl = computed(() => {
     const fileId = this.profileStore.profile()?.personalInformation.avatarFileId;
-    return fileId ? this.profileApi.getAvatarUrl(fileId) : null;
+    return fileId ? this.fileApi.getFileUrl(fileId) : null;
   });
 
   /** Tenants that never enabled the monitoring module have no tray app to connect. */
