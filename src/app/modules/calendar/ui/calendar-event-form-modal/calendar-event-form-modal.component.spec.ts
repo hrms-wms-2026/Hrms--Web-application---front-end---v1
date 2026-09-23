@@ -1,7 +1,9 @@
 import { TestBed } from '@angular/core/testing';
 import { provideRouter } from '@angular/router';
+import { of } from 'rxjs';
 import { vi } from 'vitest';
 import { AuthStore } from '../../../../core/auth/state/auth.store';
+import { CalendarEventApiService } from '../../data-access/calendar-event-api.service';
 import { CalendarEventFormModalComponent } from './calendar-event-form-modal.component';
 
 describe('CalendarEventFormModalComponent', () => {
@@ -12,7 +14,13 @@ describe('CalendarEventFormModalComponent', () => {
     currentEmployeeId = null;
     await TestBed.configureTestingModule({
       imports: [CalendarEventFormModalComponent],
-      providers: [{ provide: AuthStore, useValue: { employeeId: () => currentEmployeeId } }, provideRouter([])]
+      providers: [
+        { provide: AuthStore, useValue: { employeeId: () => currentEmployeeId } },
+        // Only the nested CalendarEventAttendanceComponent (rendered when the Attendance section
+        // shows) actually calls this - stubbed here so those tests don't need real HTTP infra.
+        { provide: CalendarEventApiService, useValue: { getMeetingAttendance: vi.fn().mockReturnValue(of({ available: false, attendees: [] })) } },
+        provideRouter([])
+      ]
     }).compileComponents();
     fixture = TestBed.createComponent(CalendarEventFormModalComponent);
     fixture.componentRef.setInput('open', true);
@@ -640,5 +648,30 @@ describe('CalendarEventFormModalComponent', () => {
 
     expect(fixture.nativeElement.querySelector('[data-testid="calendar-form-teams-meeting-attached"]')).toBeNull();
     expect(fixture.nativeElement.querySelector('app-input[placeholder="Meeting link"]')).not.toBeNull();
+  });
+
+  it('shows the Attendance section for a past event with an auto-generated Teams meeting', () => {
+    fixture.componentRef.setInput('event', {
+      ...editingEvent, endDate: '2020-01-01T10:00:00Z', meetingLink: 'https://teams.microsoft.com/l/meetup-join/abc'
+    });
+    fixture.detectChanges();
+
+    expect(fixture.nativeElement.querySelector('[data-testid="calendar-form-attendance-section"]')).not.toBeNull();
+  });
+
+  it('hides the Attendance section for a future event even with an auto-generated meeting', () => {
+    fixture.componentRef.setInput('event', {
+      ...editingEvent, endDate: '2099-01-01T10:00:00Z', meetingLink: 'https://teams.microsoft.com/l/meetup-join/abc'
+    });
+    fixture.detectChanges();
+
+    expect(fixture.nativeElement.querySelector('[data-testid="calendar-form-attendance-section"]')).toBeNull();
+  });
+
+  it('hides the Attendance section for a past event with no meeting attached', () => {
+    fixture.componentRef.setInput('event', { ...editingEvent, endDate: '2020-01-01T10:00:00Z' });
+    fixture.detectChanges();
+
+    expect(fixture.nativeElement.querySelector('[data-testid="calendar-form-attendance-section"]')).toBeNull();
   });
 });
