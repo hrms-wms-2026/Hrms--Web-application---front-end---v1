@@ -42,7 +42,7 @@ import { toEditTaskRequest } from '../../utils/task.mapper';
         />
         <app-task-filter-bar [fields]="filterFields()" [values]="filterValues()" (fieldChanged)="onFilterFieldChanged($event)" />
         @if (modules().length > 0) {
-          <app-button variant="secondary" (pressed)="openCreateTask()">Create task</app-button>
+          <app-button variant="primary" (pressed)="openCreateTask()">+ Task</app-button>
         }
         @if (ownedModuleOptions().length > 0) {
           <app-button variant="primary" (pressed)="createSprintOpen.set(true)">Create Sprint</app-button>
@@ -141,8 +141,7 @@ import { toEditTaskRequest } from '../../utils/task.mapper';
             <div class="task-backlog__unsorted-header">
               <svg class="task-backlog__unsorted-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 6h16M4 12h16M4 18h16" /></svg>
               <h3 class="task-backlog__unsorted-title">Backlog</h3>
-              <span class="task-backlog__unsorted-summary">{{ unsortedTasks().length }} task{{ unsortedTasks().length === 1 ? '' : 's' }} · {{ unsortedTotalHours() }}h</span>
-            </div>
+              <span class="task-backlog__unsorted-summary">{{ unsortedTasks().length }} task{{ unsortedTasks().length === 1 ? '' : 's' }} · {{ unsortedTotalHours() }}h</span>            </div>
           }
           <app-task-table
             [tasks]="unsortedTasks()"
@@ -197,7 +196,8 @@ import { toEditTaskRequest } from '../../utils/task.mapper';
   `,
   styles: [`
     .task-backlog__toolbar { display: flex; flex-wrap: wrap; justify-content: flex-end; align-items: center; gap: 8px; }
-    .task-backlog__toolbar ::ng-deep app-button > button { width: auto; }
+    /* Match the Filter trigger (30px tall, 8px radius) so the toolbar reads as one row. */
+    .task-backlog__toolbar ::ng-deep app-button > button { width: auto; height: 30px; padding: 0 12px; border-radius: 8px; font-size: 13px; }
     .task-backlog__sprint-message { color: var(--color-danger-text, var(--color-danger)); font-size: 12px; margin-bottom: 8px; }
     .task-backlog__sprints { margin-top: 4px; }
     .task-backlog__sprints-title { font-size: 13px; font-weight: 600; color: var(--color-text-primary); margin: 0 0 10px; }
@@ -205,8 +205,7 @@ import { toEditTaskRequest } from '../../utils/task.mapper';
     .task-backlog__unsorted-header { display: flex; align-items: center; gap: 8px; margin: 0 0 10px; }
     .task-backlog__unsorted-icon { width: 15px; height: 15px; flex: 0 0 auto; color: var(--color-text-secondary); fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; }
     .task-backlog__unsorted-title { font-size: 13px; font-weight: 600; color: var(--color-text-primary); margin: 0; }
-    .task-backlog__unsorted-summary { font-size: 11px; color: var(--color-text-secondary); }
-    .task-backlog__selection-toolbar { display: flex; align-items: center; gap: 10px; margin: 0 0 10px; padding: 8px 12px; border: 1px solid var(--color-accent); border-radius: 10px; background: var(--color-surface-secondary); }
+    .task-backlog__unsorted-summary { font-size: 11px; color: var(--color-text-secondary); }    .task-backlog__selection-toolbar { display: flex; align-items: center; gap: 10px; margin: 0 0 10px; padding: 8px 12px; border: 1px solid var(--color-accent); border-radius: 10px; background: var(--color-surface-secondary); }
     .task-backlog__selection-toolbar ::ng-deep app-button > button { width: auto; }
     .task-backlog__selection-count { font-size: 13px; font-weight: 600; color: var(--color-text-primary); }
     .task-backlog__selection-clear { margin-left: auto; border: none; background: none; color: var(--color-text-secondary); cursor: pointer; font-size: 14px; line-height: 1; padding: 4px; }
