@@ -107,6 +107,7 @@ describe('TimeTrackingStore', () => {
     getMyMonthlySummary: ReturnType<typeof vi.fn>;
         getCoveredHistory: ReturnType<typeof vi.fn>;
     getDayDetail: ReturnType<typeof vi.fn>;
+    getEmployeeDailyReport: ReturnType<typeof vi.fn>;
     getMyCorrections: ReturnType<typeof vi.fn>;
     getApprovalInbox: ReturnType<typeof vi.fn>;
     previewWorkAreaChange: ReturnType<typeof vi.fn>;
@@ -132,6 +133,7 @@ describe('TimeTrackingStore', () => {
       getMyMonthlySummary: vi.fn(() => of({ workingDays: 20, daysPresent: 18, lateArrivals: 2, earlyDepartures: 1, missingClockOuts: 0 })),
             getCoveredHistory: vi.fn(() => of({ items: [], pageNumber: 1, pageSize: 20, totalCount: 0 })),
       getDayDetail: vi.fn(() => of(dayDetail)),
+      getEmployeeDailyReport: vi.fn(() => of({ employeeId: 'employee-1', date: '2026-08-22', screenshots: [] })),
       getMyCorrections: vi.fn(() => of({ items: [], pageNumber: 1, pageSize: 20, totalCount: 0 })),
       getApprovalInbox: vi.fn(() => of([])),
       previewWorkAreaChange: vi.fn(() => of({ date: '2026-08-22', timezone: 'Asia/Colombo', currentExpectedWorkArea: 'onsite', requestedWorkArea: 'remote', reason: 'Client meeting', receiver: { employeeId: 'approver-1', userId: 'user-1', displayName: 'Approver', positionName: 'Manager' } })),
@@ -451,9 +453,63 @@ describe('TimeTrackingStore', () => {
     await store.loadDayDetail('employee-1', '2026-08-22');
 
     expect(api.getDayDetail).toHaveBeenCalledWith('employee-1', '2026-08-22');
-    expect(store.dayDetail()).toEqual(dayDetail);
+    expect(api.getEmployeeDailyReport).toHaveBeenCalledWith('employee-1', '2026-08-22');
+    expect(store.dayDetail()).toEqual({ ...dayDetail, screenshots: [] });
     expect(store.dayDetailLoading()).toBe(false);
     expect(store.dayDetailError()).toBeNull();
+  });
+
+  it('attaches daily-report screenshots and ignores a forbidden report', async () => {
+    const shot = {
+      id: 'shot-1',
+      capturedAt: '2026-08-22T04:15:00Z',
+      evidenceType: 'screenshot',
+      triggerType: 'periodic',
+      url: 'https://files.example/shot.jpg'
+    };
+    api.getEmployeeDailyReport.mockReturnValueOnce(of({ employeeId: 'employee-1', date: '2026-08-22', screenshots: [shot] }));
+
+    await store.loadDayDetail('employee-1', '2026-08-22');
+    expect(store.dayDetail()?.screenshots).toEqual([shot]);
+
+    api.getEmployeeDailyReport.mockReturnValueOnce(throwError(() => ({ status: 403 })));
+    await store.loadDayDetail('employee-1', '2026-08-22');
+    expect(store.dayDetailError()).toBeNull();
+    expect(store.dayDetail()?.screenshots).toEqual([]);
+  });
+
+  it('refreshDayDetail replaces screenshots without clearing the open detail when the next call fails', async () => {
+    const shot = {
+      id: 'shot-1',
+      capturedAt: '2026-08-22T04:15:00Z',
+      evidenceType: 'screenshot',
+      triggerType: 'periodic',
+      url: 'https://r2.example/shot.jpg'
+    };
+    api.getDayDetail.mockReturnValueOnce(of({ ...dayDetail, screenshots: [shot] }));
+    await store.loadDayDetail('employee-1', '2026-08-22');
+
+    api.getDayDetail.mockReturnValueOnce(throwError(() => new Error('network error')));
+    await store.refreshDayDetail('employee-1', '2026-08-22');
+
+    expect(store.dayDetail()?.screenshots).toEqual([shot]);
+    expect(store.dayDetailError()).toBeNull();
+  });
+
+  it('keeps signed screenshots from history-detail and does not call the HR daily report', async () => {
+    const shot = {
+      id: 'shot-1',
+      capturedAt: '2026-08-22T04:15:00Z',
+      evidenceType: 'screenshot',
+      triggerType: 'periodic',
+      url: 'https://r2.example/shot.jpg'
+    };
+    api.getDayDetail.mockReturnValueOnce(of({ ...dayDetail, screenshots: [shot] }));
+
+    await store.loadDayDetail('employee-1', '2026-08-22');
+
+    expect(api.getEmployeeDailyReport).not.toHaveBeenCalled();
+    expect(store.dayDetail()?.screenshots).toEqual([shot]);
   });
 
   it('clears any previous day detail before loading a new one', async () => {
