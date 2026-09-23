@@ -32,8 +32,13 @@ export interface TaskPercentageChangeEntryDetailsDto {
   reason: string | null;
 }
 
+export interface TaskCommentLogEntryDetailsDto {
+  commentId: string;
+  action: 'edited' | 'deleted';
+}
+
 export interface TaskHistoryEntryDto {
-  type: 'edit' | 'status_change' | 'clock_session' | 'percentage_change';
+  type: 'edit' | 'status_change' | 'clock_session' | 'percentage_change' | 'comment';
   occurredAt: string;
   employeeId: string;
   employeeName: string;
@@ -41,4 +46,5 @@ export interface TaskHistoryEntryDto {
   statusChange: TaskStatusChangeEntryDetailsDto | null;
   clockSession: TaskClockSessionEntryDetailsDto | null;
   percentageChange: TaskPercentageChangeEntryDetailsDto | null;
+  comment: TaskCommentLogEntryDetailsDto | null;
 }
