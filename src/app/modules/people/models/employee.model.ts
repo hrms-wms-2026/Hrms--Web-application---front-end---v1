@@ -62,6 +62,9 @@ export interface EmployeeListParams {
   legalEntityId?: string;
   page?: number;
   pageSize?: number;
+  /** Exclude on-leave/suspended/offboarding/terminated/resigned employees - for picker-style
+   * callers (e.g. calendar participants) where only someone who could actually attend belongs. */
+  activeOnly?: boolean;
 }
 
 export interface EmployeeDetailResponse {

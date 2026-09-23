@@ -2,6 +2,7 @@ import { Component, effect, inject, input, output, signal } from '@angular/core'
 import { ModalComponent } from '../../../../shared/ui/modal/modal.component';
 import { PeopleApiService } from '../../../people/data-access/people-api.service';
 import { EmployeeListItemResponse } from '../../../people/models/employee.model';
+import { AuthStore } from '../../../../core/auth/state/auth.store';
 
 @Component({
   selector: 'app-calendar-participant-picker',
@@ -40,6 +41,7 @@ import { EmployeeListItemResponse } from '../../../people/models/employee.model'
 })
 export class CalendarParticipantPickerComponent {
   private readonly peopleApi = inject(PeopleApiService);
+  private readonly authStore = inject(AuthStore);
 
   open = input(false);
   selectedIds = input<readonly string[]>([]);
@@ -76,9 +78,15 @@ export class CalendarParticipantPickerComponent {
   }
 
   private query(search: string): void {
-    this.peopleApi.listEmployees({ search, page: 1, pageSize: 20 }).subscribe((page) => {
-      for (const e of page.items) this.namesById.set(e.id, e.fullName);
-      this.results.set(page.items);
+    // Someone on leave, suspended, offboarding, terminated, or resigned can't actually attend a
+    // future meeting - don't offer them as a pickable participant.
+    this.peopleApi.listEmployees({ search, page: 1, pageSize: 20, activeOnly: true }).subscribe((page) => {
+      // The organizer is already on the event by definition - offering them as a pickable
+      // "participant" of their own event is meaningless and would let them add themselves twice.
+      const currentEmployeeId = this.authStore.employeeId();
+      const items = currentEmployeeId ? page.items.filter((e) => e.id !== currentEmployeeId) : page.items;
+      for (const e of items) this.namesById.set(e.id, e.fullName);
+      this.results.set(items);
     });
   }
 }

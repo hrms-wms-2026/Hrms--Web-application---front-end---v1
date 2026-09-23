@@ -94,6 +94,20 @@ describe('PeopleApiService', () => {
     req.flush(mockEmployeePage);
   });
 
+  it('sends activeOnly as a query param when set, and omits it when unset', () => {
+    service.listEmployees({ page: 1, pageSize: 25, activeOnly: true }).subscribe();
+    const withFlag = httpMock.expectOne(
+      (r) => r.url === `${environment.apiUrl}/employees` && r.params.has('activeOnly')
+    );
+    expect(withFlag.request.params.get('activeOnly')).toBe('true');
+    withFlag.flush(mockEmployeePage);
+
+    service.listEmployees({ page: 1, pageSize: 25 }).subscribe();
+    const withoutFlag = httpMock.expectOne(`${environment.apiUrl}/employees?page=1&pageSize=25`);
+    expect(withoutFlag.request.params.has('activeOnly')).toBe(false);
+    withoutFlag.flush(mockEmployeePage);
+  });
+
   it('preserves the backend attendance summary on the existing employee-list response', () => {
     const warningEmployee: EmployeeListItemResponse = {
       ...mockEmployee,
