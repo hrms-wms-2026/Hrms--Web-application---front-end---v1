@@ -151,6 +151,7 @@ const BRANCH_PALETTE = ['#2563EB', '#0D9488', '#C026D3', '#EA580C', '#4F46E5', '
       <app-calendar-event-modal
         [event]="editingEvent()"
         [modules]="store.modules()"
+        [projectId]="projectId() ?? ''"
         (cancel)="modalOpen.set(false)"
         (save)="saveEvent($event)"
       />

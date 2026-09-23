@@ -6,12 +6,13 @@ import {
   UpdateCalendarEventRequestDto
 } from '../../models/dto/calendar.dto';
 import { ModuleTaskPickerComponent } from '../module-task-picker/module-task-picker.component';
+import { SprintTaskPickerComponent } from '../sprint-task-picker/sprint-task-picker.component';
 import { toggleModuleLive } from '../../utils/module-task-selection';
 
 @Component({
   selector: 'app-calendar-event-modal',
   standalone: true,
-  imports: [ModuleTaskPickerComponent],
+  imports: [ModuleTaskPickerComponent, SprintTaskPickerComponent],
   template: `
     <div class="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4" role="presentation" (click)="cancel.emit()">
       <section class="w-full max-w-lg rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] p-5 shadow-xl" role="dialog" aria-modal="true" aria-labelledby="calendar-event-title" (click)="$event.stopPropagation()">
@@ -41,15 +42,30 @@ import { toggleModuleLive } from '../../utils/module-task-selection';
         </label>
 
         <div class="mb-4 max-h-72 overflow-y-auto rounded-md border border-[var(--color-border)] p-2">
-          <p class="mb-2 text-xs font-semibold uppercase tracking-wide text-[var(--color-text-secondary)]">Modules &amp; tasks</p>
-          <app-module-task-picker
-            moduleMode="live"
-            [modules]="modules()"
-            [selectedTaskIds]="selectedTaskIds()"
-            [selectedObjectiveIds]="selectedObjectiveIds()"
-            (selectedTaskIdsChange)="selectedTaskIds.set($event)"
-            (selectedObjectiveIdsChange)="selectedObjectiveIds.set($event)"
-          />
+          <div class="mb-2 inline-flex rounded-md border border-[var(--color-border)] p-0.5 text-xs" role="tablist" aria-label="Pick tasks by">
+            <button type="button" role="tab" data-testid="view-tree" [attr.aria-selected]="view() === 'tree'"
+                    class="rounded px-2 py-1" [class.bg-[var(--color-surface-muted)]]="view() === 'tree'" (click)="view.set('tree')">Tree view</button>
+            <button type="button" role="tab" data-testid="view-sprint" [attr.aria-selected]="view() === 'sprint'"
+                    class="rounded px-2 py-1" [class.bg-[var(--color-surface-muted)]]="view() === 'sprint'" (click)="view.set('sprint')">Sprint view</button>
+          </div>
+          <p class="mb-2 text-xs font-semibold uppercase tracking-wide text-[var(--color-text-secondary)]">{{ view() === 'tree' ? 'Modules & tasks' : 'Sprints & tasks' }}</p>
+          @if (view() === 'tree') {
+            <app-module-task-picker
+              moduleMode="live"
+              [modules]="modules()"
+              [selectedTaskIds]="selectedTaskIds()"
+              [selectedObjectiveIds]="selectedObjectiveIds()"
+              (selectedTaskIdsChange)="selectedTaskIds.set($event)"
+              (selectedObjectiveIdsChange)="selectedObjectiveIds.set($event)"
+            />
+          } @else {
+            <app-sprint-task-picker
+              [projectId]="projectId()"
+              [selectedTaskIds]="selectedTaskIds()"
+              [lockedObjectiveIds]="selectedObjectiveIds()"
+              (selectedTaskIdsChange)="selectedTaskIds.set($event)"
+            />
+          }
         </div>
 
         @if (error()) { <p class="mb-3 text-sm text-[var(--color-danger)]" role="alert" data-testid="event-error">{{ error() }}</p> }
@@ -64,9 +80,11 @@ import { toggleModuleLive } from '../../utils/module-task-selection';
 export class CalendarEventModalComponent {
   readonly event = input<CalendarEventDto | null>(null);
   readonly modules = input.required<readonly ProjectCalendarModuleDto[]>();
+  readonly projectId = input<string>('');
   readonly cancel = output<void>();
   readonly save = output<CreateCalendarEventRequestDto | UpdateCalendarEventRequestDto>();
 
+  readonly view = signal<'tree' | 'sprint'>('tree');
   readonly name = signal('');
   readonly color = signal('#2563EB');
   readonly startDate = signal('');
@@ -95,6 +113,7 @@ export class CalendarEventModalComponent {
       this.selectedObjectiveIds.set(new Set(event?.objectiveIds ?? []));
       this.selectedTaskIds.set(new Set(event?.taskIds ?? []));
       this.error.set(null);
+      this.view.set('tree');
     });
   }
 
