@@ -16,6 +16,7 @@ import {
   EligibleNominee, RecurrenceEditScope, RespondToCalendarEventStatus, UpdateCalendarEventRequest
 } from '../../models/calendar-event.model';
 import { RecurrenceEndMode, RecurrenceFrequency, buildRecurrenceRule } from '../../utils/recurrence-rule.util';
+import { CalendarEventAttendanceComponent } from '../calendar-event-attendance/calendar-event-attendance.component';
 import { CalendarParticipantPickerComponent } from '../calendar-participant-picker/calendar-participant-picker.component';
 import { CalendarSelectComponent } from '../calendar-select/calendar-select.component';
 
@@ -79,7 +80,7 @@ export interface RespondToCalendarEventPayload {
   imports: [
     CommonModule, ReactiveFormsModule, RouterLink, ButtonComponent, InputComponent, SelectComponent,
     ModalComponent, DatePickerComponent, AvatarComponent, ConfirmModalComponent, CalendarParticipantPickerComponent,
-    CalendarSelectComponent
+    CalendarSelectComponent, CalendarEventAttendanceComponent
   ],
   templateUrl: './calendar-event-form-modal.component.html',
   changeDetection: ChangeDetectionStrategy.OnPush
@@ -369,6 +370,13 @@ export class CalendarEventFormModalComponent implements OnChanges {
 
   onRemoveMeeting(): void {
     this.removeMeeting.emit();
+  }
+
+  /** Gates the Attendance section - attendance is only ever meaningful once the meeting has
+   * actually happened, and TeamsAttendanceSyncJob itself only starts polling after the event's
+   * end time has passed. */
+  hasEventEnded(): boolean {
+    return !!this.event && new Date(this.event.endDate).getTime() < Date.now();
   }
 
   setRecurrenceFrequency(value: string): void {
