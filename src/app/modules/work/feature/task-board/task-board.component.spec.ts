@@ -321,8 +321,8 @@ describe('TaskBoardComponent', () => {
           provide: SprintApiService,
           useValue: {
             getByProject: vi.fn().mockReturnValue(of([{
-              id: 'sp-active', objectiveId: 'milestone-1', name: 'Sprint 1',
-              startDate: '2026-09-01', endDate: '2026-09-14', status: 'active', completedAt: null, achievedAt: null
+              id: 'sp-active', projectId: 'p-1', name: 'Sprint 1',
+              startDate: '2026-09-01', endDate: '2026-09-14', status: 'active', completedAt: null, achievedAt: null, canManage: true
             }]))
           }
         },
