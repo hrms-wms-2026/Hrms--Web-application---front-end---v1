@@ -4,8 +4,8 @@ import { Observable } from 'rxjs';
 import { environment } from '../../../../environments/environment';
 import {
   CalendarConflictsResponse, CalendarEventResponse, CalendarEventsResponse, CheckCalendarConflictsRequest,
-  CreateCalendarEventRequest, EditRecurringOccurrenceRequest, GetEligibleNomineesResponse,
-  RespondToCalendarEventStatus, UpdateCalendarEventRequest
+  CreateCalendarEventRequest, CreateEventMeetingResponse, EditRecurringOccurrenceRequest, GetEligibleNomineesResponse,
+  MeetingAttendanceResponse, RespondToCalendarEventStatus, UpdateCalendarEventRequest
 } from '../models/calendar-event.model';
 
 @Injectable({ providedIn: 'root' })
@@ -54,5 +54,17 @@ export class CalendarEventApiService {
 
   getMyTimezone(): Observable<{ timezone: string }> {
     return this.http.get<{ timezone: string }>(`${this.baseUrl}/my-timezone`);
+  }
+
+  createMeeting(eventId: string): Observable<CreateEventMeetingResponse> {
+    return this.http.post<CreateEventMeetingResponse>(`${this.baseUrl}/${eventId}/meeting`, {});
+  }
+
+  removeMeeting(eventId: string): Observable<void> {
+    return this.http.delete<void>(`${this.baseUrl}/${eventId}/meeting`);
+  }
+
+  getMeetingAttendance(eventId: string): Observable<MeetingAttendanceResponse> {
+    return this.http.get<MeetingAttendanceResponse>(`${this.baseUrl}/${eventId}/meeting/attendance`);
   }
 }

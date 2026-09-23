@@ -108,3 +108,20 @@ export interface CheckCalendarConflictsRequest {
 export interface CalendarConflictsResponse {
   conflicts: readonly CalendarConflict[];
 }
+
+export interface CreateEventMeetingResponse {
+  joinUrl: string;
+}
+
+export interface MeetingAttendeeResponse {
+  name: string | null;
+  email: string | null;
+  joinedAt: string;
+  leftAt: string | null;
+  durationSeconds: number | null;
+}
+
+export interface MeetingAttendanceResponse {
+  available: boolean;
+  attendees: readonly MeetingAttendeeResponse[];
+}
