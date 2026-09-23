@@ -76,6 +76,7 @@ export class CalendarPageComponent {
 
   constructor() {
     this.store.loadMyTimezone();
+    this.store.loadMeetingConnectionStatus();
     this.handleCalendarConnectionRedirect();
   }
 
@@ -258,5 +259,19 @@ export class CalendarPageComponent {
     if (!editing) return;
     const eventId = editing.recurrenceMasterId ?? editing.id;
     this.store.loadEligibleNominees(eventId);
+  }
+
+  async onAddMeeting(): Promise<void> {
+    const editing = this.editingEvent();
+    if (!editing) return;
+    const ok = await this.store.createMeeting(editing.id);
+    if (ok) this.editingEvent.set(this.store.events().find((e) => e.id === editing.id) ?? null);
+  }
+
+  async onRemoveMeeting(): Promise<void> {
+    const editing = this.editingEvent();
+    if (!editing) return;
+    const ok = await this.store.removeMeeting(editing.id);
+    if (ok) this.editingEvent.set(this.store.events().find((e) => e.id === editing.id) ?? null);
   }
 }
