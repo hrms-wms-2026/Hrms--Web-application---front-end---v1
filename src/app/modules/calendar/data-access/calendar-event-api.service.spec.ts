@@ -90,4 +90,25 @@ describe('CalendarEventApiService', () => {
     expect(req.request.body).toEqual({ participantEmployeeIds: ['emp-1'], startDate: '2026-09-01T09:00:00Z', endDate: '2026-09-01T10:00:00Z' });
     req.flush({ conflicts: [] });
   });
+
+  it('createMeeting posts to {eventId}/meeting', () => {
+    service.createMeeting('event-1').subscribe();
+    const req = http.expectOne(`${environment.apiUrl}/calendar/event-1/meeting`);
+    expect(req.request.method).toBe('POST');
+    req.flush({ joinUrl: 'https://teams.microsoft.com/l/meetup-join/abc' });
+  });
+
+  it('removeMeeting deletes {eventId}/meeting', () => {
+    service.removeMeeting('event-1').subscribe();
+    const req = http.expectOne(`${environment.apiUrl}/calendar/event-1/meeting`);
+    expect(req.request.method).toBe('DELETE');
+    req.flush(null);
+  });
+
+  it('getMeetingAttendance requests {eventId}/meeting/attendance', () => {
+    service.getMeetingAttendance('event-1').subscribe();
+    const req = http.expectOne(`${environment.apiUrl}/calendar/event-1/meeting/attendance`);
+    expect(req.request.method).toBe('GET');
+    req.flush({ available: false, attendees: [] });
+  });
 });
