@@ -132,7 +132,7 @@ describe('CalendarEventStore', () => {
     expect(store.checkingConflicts()).toBe(false);
   });
 
-  it('loadMeetingConnectionStatus sets true when an active outlook_calendar connection exists', async () => {
+  it('loadMeetingConnectionStatus sets hasTeamsCapableConnection when an active outlook_calendar connection exists', async () => {
     const work = store.loadMeetingConnectionStatus();
     http.expectOne(`${environment.apiUrl}/calendar/connections`).flush({
       connections: [
@@ -140,14 +140,28 @@ describe('CalendarEventStore', () => {
       ]
     });
     await work;
-    expect(store.hasMeetingCapableConnection()).toBe(true);
+    expect(store.hasTeamsCapableConnection()).toBe(true);
+    expect(store.hasZoomCapableConnection()).toBe(false);
   });
 
-  it('loadMeetingConnectionStatus sets false when no connection is active', async () => {
+  it('loadMeetingConnectionStatus sets hasZoomCapableConnection from an active zoom connection', async () => {
+    const work = store.loadMeetingConnectionStatus();
+    http.expectOne(`${environment.apiUrl}/calendar/connections`).flush({
+      connections: [
+        { id: 'c1', provider: 'zoom', externalAccountEmail: 'me@acme.com', externalCalendarName: null, syncDirection: 'two_way', status: 'active', lastSyncedAt: null, lastError: null }
+      ]
+    });
+    await work;
+    expect(store.hasZoomCapableConnection()).toBe(true);
+    expect(store.hasTeamsCapableConnection()).toBe(false);
+  });
+
+  it('loadMeetingConnectionStatus sets both false when no connection is active', async () => {
     const work = store.loadMeetingConnectionStatus();
     http.expectOne(`${environment.apiUrl}/calendar/connections`).flush({ connections: [] });
     await work;
-    expect(store.hasMeetingCapableConnection()).toBe(false);
+    expect(store.hasTeamsCapableConnection()).toBe(false);
+    expect(store.hasZoomCapableConnection()).toBe(false);
   });
 
   it('createMeeting sets the returned joinUrl on the matching event', async () => {
@@ -155,14 +169,26 @@ describe('CalendarEventStore', () => {
     http.expectOne((r) => r.url === `${environment.apiUrl}/calendar`).flush({ events: [makeEvent({ id: 'e5' })] });
     await load;
 
-    const work = store.createMeeting('e5');
+    const work = store.createMeeting('e5', 'microsoft_teams');
     http.expectOne(`${environment.apiUrl}/calendar/e5/meeting`).flush({ joinUrl: 'https://teams.microsoft.com/l/meetup-join/abc' });
     expect(await work).toBe(true);
     expect(store.events().find((e) => e.id === 'e5')?.meetingLink).toBe('https://teams.microsoft.com/l/meetup-join/abc');
   });
 
+  it('createMeeting passes the provider through to the API and updates the event link', async () => {
+    const load = store.loadEvents('2026-09-01T00:00:00Z', '2026-09-30T00:00:00Z');
+    http.expectOne((r) => r.url === `${environment.apiUrl}/calendar`).flush({ events: [makeEvent({ id: 'e1' })] });
+    await load;
+
+    const work = store.createMeeting('e1', 'zoom');
+    http.expectOne((r) => r.url === `${environment.apiUrl}/calendar/e1/meeting` && (r.body as { provider: string })?.provider === 'zoom')
+      .flush({ joinUrl: 'https://us05web.zoom.us/j/123' });
+    expect(await work).toBe(true);
+    expect(store.events().find((e) => e.id === 'e1')?.meetingLink).toBe('https://us05web.zoom.us/j/123');
+  });
+
   it('createMeeting sets actionError on failure', async () => {
-    const work = store.createMeeting('e6');
+    const work = store.createMeeting('e6', 'microsoft_teams');
     http.expectOne(`${environment.apiUrl}/calendar/e6/meeting`).flush({ detail: 'meeting_provider_not_connected' }, { status: 409, statusText: 'Conflict' });
     expect(await work).toBe(false);
     expect(store.actionError()).toBeTruthy();

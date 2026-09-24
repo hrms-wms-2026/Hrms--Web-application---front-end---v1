@@ -272,7 +272,9 @@ export class CalendarPageComponent {
   async onAddMeeting(): Promise<void> {
     const editing = this.editingEvent();
     if (!editing) return;
-    const ok = await this.store.createMeeting(editing.id);
+    // Temporarily hardcoded to 'microsoft_teams' - Task 10 will let the form modal emit the
+    // organizer's chosen provider ('microsoft_teams' | 'zoom') instead.
+    const ok = await this.store.createMeeting(editing.id, 'microsoft_teams');
     if (ok) this.editingEvent.set(this.store.events().find((e) => e.id === editing.id) ?? null);
   }
 
