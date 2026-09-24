@@ -1,13 +1,14 @@
 import { DatePipe } from '@angular/common';
 import { Component, computed, input, output, signal } from '@angular/core';
 import { ButtonComponent } from '../../../../shared/ui/button/button.component';
+import { DatePickerComponent } from '../../../../shared/ui/date-picker/date-picker.component';
 import { ApprovalItem } from '../../models/approval.model';
 import { EditObjectiveRequestPayloadDto } from '../../models/dto/allocation-request.dto';
 
 @Component({
   selector: 'app-approval-request-row',
   standalone: true,
-  imports: [ButtonComponent, DatePipe],
+  imports: [ButtonComponent, DatePipe, DatePickerComponent],
   template: `
     <div class="approval-row" [attr.data-testid]="'approval-row-' + item().id">
       <div class="approval-row__body">
@@ -58,24 +59,18 @@ import { EditObjectiveRequestPayloadDto } from '../../models/dto/allocation-requ
               ></textarea>
             </label>
             <div class="approval-row__edit-dates">
-              <label>
-                <span>Start date</span>
-                <input
-                  data-testid="edit-start-date-input"
-                  type="date"
-                  [value]="editPayload().startDate"
-                  (input)="onEditFieldInput('startDate', $any($event.target).value)"
-                />
-              </label>
-              <label>
-                <span>End date</span>
-                <input
-                  data-testid="edit-end-date-input"
-                  type="date"
-                  [value]="editPayload().endDate"
-                  (input)="onEditFieldInput('endDate', $any($event.target).value)"
-                />
-              </label>
+              <app-date-picker
+                label="Start date"
+                inputTestId="edit-start-date-input"
+                [value]="editPayload().startDate"
+                (valueChange)="onEditFieldInput('startDate', $event)"
+              />
+              <app-date-picker
+                label="End date"
+                inputTestId="edit-end-date-input"
+                [value]="editPayload().endDate"
+                (valueChange)="onEditFieldInput('endDate', $event)"
+              />
             </div>
             <label>
               <span>Allocated hours</span>

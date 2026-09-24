@@ -1,4 +1,7 @@
-import { Component, effect, input, output, signal } from '@angular/core';
+import { Component, effect, inject, input, output, signal } from '@angular/core';
+import { firstValueFrom } from 'rxjs';
+import { DatePickerComponent } from '../../../../shared/ui/date-picker/date-picker.component';
+import { TaskApiService } from '../../data-access/task-api.service';
 import {
   CalendarEventDto,
   CreateCalendarEventRequestDto,
@@ -12,7 +15,7 @@ import { toggleModuleLive } from '../../utils/module-task-selection';
 @Component({
   selector: 'app-calendar-event-modal',
   standalone: true,
-  imports: [ModuleTaskPickerComponent, SprintTaskPickerComponent],
+  imports: [ModuleTaskPickerComponent, SprintTaskPickerComponent,DatePickerComponent],
   template: `
     <div class="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4" role="presentation" (click)="cancel.emit()">
       <section class="w-full max-w-lg rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] p-5 shadow-xl" role="dialog" aria-modal="true" aria-labelledby="calendar-event-title" (click)="$event.stopPropagation()">
@@ -26,12 +29,22 @@ import { toggleModuleLive } from '../../utils/module-task-selection';
         </label>
 
         <div class="mb-3 flex gap-3">
-          <label class="flex-1 text-sm text-[var(--color-text-secondary)]">Start date
-            <input type="date" class="mt-1 w-full rounded-md border border-[var(--color-border)] bg-transparent px-3 py-2 text-[var(--color-text-primary)]" [value]="startDate()" (input)="startDate.set($any($event.target).value)" data-testid="event-start-date" />
-          </label>
-          <label class="flex-1 text-sm text-[var(--color-text-secondary)]">End date
-            <input type="date" class="mt-1 w-full rounded-md border border-[var(--color-border)] bg-transparent px-3 py-2 text-[var(--color-text-primary)]" [value]="endDate()" (input)="endDate.set($any($event.target).value)" data-testid="event-end-date" />
-          </label>
+          <div class="flex-1">
+            <app-date-picker
+              label="Start date"
+              inputTestId="event-start-date"
+              [value]="startDate()"
+              (valueChange)="startDate.set($event)"
+            />
+          </div>
+          <div class="flex-1">
+            <app-date-picker
+              label="End date"
+              inputTestId="event-end-date"
+              [value]="endDate()"
+              (valueChange)="endDate.set($event)"
+            />
+          </div>
         </div>
 
         <label class="mb-4 block text-sm text-[var(--color-text-secondary)]">Color

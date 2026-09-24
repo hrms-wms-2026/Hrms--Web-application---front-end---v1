@@ -7,7 +7,7 @@ const baseDto: WorkTaskDto = {
   categoryId: 'c1', statusId: 's1', priority: 'medium', storyPoints: null, dueDate: null,
   estimatedHours: null, completedHours: 0, progressPercent: 30, sprintId: null,
   assigneeEmployeeIds: [], openClockSessionEmployeeId: null, openClockSessionClockInAt: null,
-  totalLoggedMinutes: 0
+  totalLoggedMinutes: 0, createdAt: '2026-08-26T10:30:00Z'
 };
 
 describe('toWorkTask', () => {
@@ -77,6 +77,12 @@ describe('toWorkTask', () => {
     expect(mapped.subtaskTotalCount).toBe(5);
     expect(mapped.subtaskCompletedCount).toBe(2);
   });
+
+  it('maps createdAt to a Date', () => {
+    const mapped = toWorkTask(baseDto).createdAt;
+    expect(mapped).toBeInstanceOf(Date);
+    expect(mapped.toISOString()).toBe('2026-08-26T10:30:00.000Z');
+  });
 });
 
 describe('toEditTaskRequest', () => {
@@ -87,7 +93,8 @@ describe('toEditTaskRequest', () => {
     progressPercent: 40, sprintId: 'sp-1', assigneeEmployeeIds: [], openClockSessionEmployeeId: null,
     openClockSessionClockInAt: null, totalLoggedMinutes: 0,
     attachments: [{ fileId: 'f1', name: 'a.pdf', sizeBytes: 100 }], assignees: [],
-    parentTaskId: null, subtaskTotalCount: 0, subtaskCompletedCount: 0, subtaskAssigneeEmployeeIds: []
+    parentTaskId: null, subtaskTotalCount: 0, subtaskCompletedCount: 0, subtaskAssigneeEmployeeIds: [],
+    createdAt: new Date('2026-01-01T00:00:00Z')
   };
 
   it('reproduces every current field so nothing is silently cleared', () => {

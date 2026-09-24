@@ -12,11 +12,12 @@ import { LeaveRequestAllListItemResponse } from '../../models/leave-approval.mod
 import { LeaveCancelConfirmDialogComponent } from '../../ui/leave-cancel-confirm-dialog/leave-cancel-confirm-dialog.component';
 import { LeaveRequestAllTableComponent } from '../../ui/leave-request-all-table/leave-request-all-table.component';
 import { LeaveApprovalDetailSheetComponent } from '../../ui/leave-approval-detail-sheet/leave-approval-detail-sheet.component';
+import { DatePickerComponent } from '../../../../shared/ui/date-picker/date-picker.component';
 
 @Component({
   selector: 'app-requests-list',
   standalone: true,
-  imports: [CommonModule, EmptyStateComponent, ErrorStateComponent, LeaveCancelConfirmDialogComponent, LeaveRequestAllTableComponent, LeaveApprovalDetailSheetComponent],
+  imports: [CommonModule, EmptyStateComponent, ErrorStateComponent, LeaveCancelConfirmDialogComponent, LeaveRequestAllTableComponent, LeaveApprovalDetailSheetComponent, DatePickerComponent],
   templateUrl: './requests-list.component.html',
   styleUrl: './requests-list.component.css',
   changeDetection: ChangeDetectionStrategy.OnPush

@@ -1,12 +1,13 @@
 import { ChangeDetectionStrategy, Component, EventEmitter, Input, Output, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { ModalComponent } from '../../../../shared/ui/modal/modal.component';
+import { DatePickerComponent } from '../../../../shared/ui/date-picker/date-picker.component';
 import { CancelLeaveRequestRequest } from '../../models/leave-request.model';
 
 @Component({
   selector: 'app-leave-cancel-confirm-dialog',
   standalone: true,
-  imports: [CommonModule, ModalComponent],
+  imports: [CommonModule, ModalComponent, DatePickerComponent],
   templateUrl: './leave-cancel-confirm-dialog.component.html',
   styleUrl: './leave-cancel-confirm-dialog.component.css',
   changeDetection: ChangeDetectionStrategy.OnPush

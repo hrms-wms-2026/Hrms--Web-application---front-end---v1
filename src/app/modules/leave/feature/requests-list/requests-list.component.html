@@ -13,8 +13,8 @@
       <option value="">All leave types</option>
       @for (type of leaveTypeStore.items(); track type.id) { <option [value]="type.id">{{ type.name }}</option> }
     </select>
-    <input type="date" aria-label="From date" (change)="onFromDateChange($any($event.target).value)" />
-    <input type="date" aria-label="To date" (change)="onToDateChange($any($event.target).value)" />
+    <app-date-picker ariaLabel="From date" placeholder="From date" [value]="store.allFilter().fromDate ?? ''" (valueChange)="onFromDateChange($event)" />
+    <app-date-picker ariaLabel="To date" placeholder="To date" [value]="store.allFilter().toDate ?? ''" (valueChange)="onToDateChange($event)" />
   </div>
   @if (store.allLoading()) {
     <div class="rl-loading" aria-busy="true"><span></span><span></span><span></span></div>

@@ -74,6 +74,14 @@ export interface SprintFormModuleOption {
     .sprint-form { display: flex; flex-direction: column; gap: 8px; }
     .sprint-form__error { color: var(--color-danger-text); font-size: 12px; }
     .sprint-form__actions { display: flex; justify-content: flex-end; gap: 8px; }
+    .sprint-form__actions ::ng-deep app-button > button {
+      width: auto;
+      height: 30px;
+      padding: 0 12px;
+      border-radius: 8px;
+      font-size: 13px;
+      font-weight: 500;
+    }
     .sprint-form__date-range { display: flex; flex-direction: column; gap: 4px; }
     .sprint-form__label { font-size: 12px; font-weight: 500; color: var(--color-text-secondary); }
     .sprint-form__tasks { display: flex; flex-direction: column; gap: 4px; }

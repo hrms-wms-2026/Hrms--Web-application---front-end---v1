@@ -48,6 +48,7 @@ import {
 
 import { AttendanceCorrectionModalComponent } from '../../ui/attendance-correction-modal/attendance-correction-modal.component';
 import { PopoverComponent } from '../../../../shared/ui/popover/popover.component';
+import { DatePickerComponent } from '../../../../shared/ui/date-picker/date-picker.component';
 
 const DAY_IN_MILLISECONDS = 24 * 60 * 60 * 1000;
 type AttendanceViewMode = 'my' | 'team';
@@ -55,7 +56,7 @@ type AttendanceViewMode = 'my' | 'team';
 @Component({
   selector: 'app-time-tracking',
   standalone: true,
-  imports: [AttendanceCorrectionModalComponent, AttendanceDetailDrawerComponent, AttendanceHistoryListComponent, AttendanceStatusCardComponent, AttendanceTodayTimelineComponent, BreadcrumbHeaderComponent, ButtonComponent, CorrectionApprovalsComponent, DateRangePickerComponent, FormsModule, ModalComponent, MyRequestsPanelComponent, PopoverComponent, WorkAreaApprovalsComponent, LocationChangeApprovalsComponent, DeviceChangeApprovalsComponent],
+  imports: [AttendanceCorrectionModalComponent, AttendanceDetailDrawerComponent, AttendanceHistoryListComponent, AttendanceStatusCardComponent, AttendanceTodayTimelineComponent, BreadcrumbHeaderComponent, ButtonComponent, CorrectionApprovalsComponent, DatePickerComponent, DateRangePickerComponent, FormsModule, ModalComponent, MyRequestsPanelComponent, PopoverComponent, WorkAreaApprovalsComponent, LocationChangeApprovalsComponent, DeviceChangeApprovalsComponent],
   templateUrl: './time-tracking.component.html',
   styleUrl: './time-tracking.component.css',
   changeDetection: ChangeDetectionStrategy.OnPush

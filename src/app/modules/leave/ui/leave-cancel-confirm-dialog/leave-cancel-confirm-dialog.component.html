@@ -8,10 +8,13 @@
     }
 
     @if (isInProgress()) {
-      <label class="lcc-field">
-        <span>Cancel from (leave already taken stays deducted)</span>
-        <input type="date" [value]="effectiveDate() ?? ''" (input)="effectiveDate.set($any($event.target).value || null)" />
-      </label>
+      <div class="lcc-field">
+        <app-date-picker
+          label="Cancel from (leave already taken stays deducted)"
+          [value]="effectiveDate() ?? ''"
+          (valueChange)="effectiveDate.set($event || null)"
+        />
+      </div>
     }
 
     <label class="lcc-field">

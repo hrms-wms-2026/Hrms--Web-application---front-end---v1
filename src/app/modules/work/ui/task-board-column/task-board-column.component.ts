@@ -5,6 +5,8 @@ import { TaskStatusColumn, WorkTask } from '../../models/task.model';
 import { TaskCategoryColumn } from '../../models/task-category.model';
 import { TaskApiService } from '../../data-access/task-api.service';
 import { TaskCardComponent } from '../task-card/task-card.component';
+import { TaskAssigneeDropdownComponent } from '../task-assignee-dropdown/task-assignee-dropdown.component';
+import { DatePickerComponent } from '../../../../shared/ui/date-picker/date-picker.component';
 
 export interface QuickTaskCreatedEvent {
   title: string;
@@ -21,7 +23,7 @@ export interface QuickTaskCreatedEvent {
 @Component({
   selector: 'app-task-board-column',
   standalone: true,
-  imports: [CdkDropList, CdkDrag, CdkDragPlaceholder, CdkDragPreview, TaskCardComponent],
+  imports: [CdkDropList, CdkDrag, CdkDragPlaceholder, CdkDragPreview, TaskCardComponent, TaskAssigneeDropdownComponent, DatePickerComponent],
   host: {
     '[class.task-board-column-host--collapsed]': 'isCollapsed()'
   },
@@ -273,83 +275,27 @@ export interface QuickTaskCreatedEvent {
               </button>
 
               @if (activePopover() === 'assignee') {
-                <div class="quick-popover" role="dialog" (click)="$event.stopPropagation()">
-                  <div class="quick-popover__search">
-                    <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="8" /><path d="m21 21-4.3-4.3" /></svg>
-                    <input
-                      type="text"
-                      placeholder="Search people..."
-                      [value]="assigneeSearch()"
-                      (input)="assigneeSearch.set($any($event.target).value)"
-                    />
-                  </div>
-                  <div class="quick-popover__list">
-                    <button
-                      type="button"
-                      class="quick-popover__item"
-                      [class.quick-popover__item--selected]="!quickAssigneeId()"
-                      (click)="selectAssignee('')"
-                    >
-                      <span class="quick-popover__avatar quick-popover__avatar--unassigned">
-                        <svg viewBox="0 0 24 24" aria-hidden="true"><line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" /></svg>
-                      </span>
-                      <span>Unassigned</span>
-                    </button>
-                    @for (member of filteredAssignees(); track member.employeeId) {
-                      <button
-                        type="button"
-                        class="quick-popover__item"
-                        [class.quick-popover__item--selected]="quickAssigneeId() === member.employeeId"
-                        (click)="selectAssignee(member.employeeId)"
-                      >
-                        <span class="quick-popover__avatar">{{ getInitials(member.name) }}</span>
-                        <span class="quick-popover__name">{{ member.name }}</span>
-                      </button>
-                    }
-                  </div>
+                <div class="quick-popover-container" (click)="$event.stopPropagation()">
+                  <app-task-assignee-dropdown
+                    [members]="assignableMembers()"
+                    [selectedId]="quickAssigneeId()"
+                    (selected)="selectAssignee($event ?? '')"
+                    (closed)="activePopover.set(null)"
+                  />
                 </div>
               }
             </div>
 
             <!-- 2. Dates Chip -->
             <div class="quick-task-chip-anchor">
-              <button
-                type="button"
-                class="quick-task-chip"
-                [class.quick-task-chip--active]="quickDueDate()"
-                [attr.aria-expanded]="activePopover() === 'dueDate'"
-                (click)="togglePopover('dueDate', $event)"
-                title="Due date"
-              >
-                <svg class="quick-task-chip__svg" viewBox="0 0 24 24" aria-hidden="true">
-                  <rect x="3" y="4" width="18" height="17" rx="2" />
-                  <path d="M16 2v4M8 2v4M3 10h18" />
-                </svg>
-                <span class="quick-task-chip__label">
-                  {{ formattedDueDate() }}
-                </span>
-              </button>
-
-              @if (activePopover() === 'dueDate') {
-                <div class="quick-popover quick-popover--date" role="dialog" (click)="$event.stopPropagation()">
-                  <div class="quick-date-presets">
-                    <button type="button" class="quick-date-preset-btn" (click)="setQuickDueDate(0)">Today</button>
-                    <button type="button" class="quick-date-preset-btn" (click)="setQuickDueDate(1)">Tomorrow</button>
-                    <button type="button" class="quick-date-preset-btn" (click)="setQuickDueDate(7)">Next week</button>
-                  </div>
-                  <div class="quick-date-input-wrap">
-                    <input
-                      type="date"
-                      class="quick-date-input"
-                      [value]="quickDueDate()"
-                      (change)="setDueDate($any($event.target).value)"
-                    />
-                  </div>
-                  @if (quickDueDate()) {
-                    <button type="button" class="quick-date-clear-btn" (click)="setDueDate('')">Clear date</button>
-                  }
-                </div>
-              }
+              <app-date-picker
+                variant="chip"
+                btnTestId="quick-task-due-date-btn"
+                chipClass="quick-task-chip"
+                emptyLabel="Due date"
+                [value]="quickDueDate()"
+                (valueChange)="setDueDate($event)"
+              />
             </div>
 
             <!-- 3. Priority Chip -->
@@ -1056,6 +1002,12 @@ export interface QuickTaskCreatedEvent {
     }
 
     /* Inline Popovers */
+    .quick-popover-container {
+      position: absolute;
+      top: calc(100% + 4px);
+      left: 0;
+      z-index: 1000;
+    }
     .quick-popover {
       position: absolute;
       top: calc(100% + 4px);
@@ -1070,35 +1022,6 @@ export interface QuickTaskCreatedEvent {
       background: var(--color-surface);
       padding: 6px;
       box-shadow: 0 10px 25px rgb(15 23 42 / 0.16);
-    }
-    .quick-popover--date {
-      padding: 10px;
-      min-width: 210px;
-    }
-    .quick-popover__search {
-      display: flex;
-      align-items: center;
-      gap: 6px;
-      padding: 4px 6px;
-      margin-bottom: 4px;
-      border-bottom: 1px solid var(--color-border);
-    }
-    .quick-popover__search svg {
-      width: 13px;
-      height: 13px;
-      stroke: var(--color-text-secondary);
-      fill: none;
-      stroke-width: 2;
-      flex-shrink: 0;
-    }
-    .quick-popover__search input {
-      width: 100%;
-      border: 0;
-      outline: none;
-      background: transparent;
-      font: inherit;
-      font-size: 11.5px;
-      color: var(--color-text-primary);
     }
     .quick-popover__list {
       display: flex;
@@ -1137,29 +1060,6 @@ export interface QuickTaskCreatedEvent {
       text-overflow: ellipsis;
       white-space: nowrap;
     }
-    .quick-popover__avatar {
-      width: 20px;
-      height: 20px;
-      border-radius: 9999px;
-      display: inline-flex;
-      align-items: center;
-      justify-content: center;
-      font-size: 9px;
-      font-weight: 700;
-      background: color-mix(in srgb, var(--color-accent) 18%, transparent);
-      color: var(--color-accent);
-      flex-shrink: 0;
-    }
-    .quick-popover__avatar--unassigned {
-      background: var(--color-surface-secondary);
-      color: var(--color-text-secondary);
-    }
-    .quick-popover__avatar--unassigned svg {
-      width: 12px;
-      height: 12px;
-      stroke: currentColor;
-      stroke-width: 2;
-    }
     .quick-popover__flag-icon {
       width: 14px;
       height: 14px;
@@ -1173,63 +1073,6 @@ export interface QuickTaskCreatedEvent {
       fill: none;
       stroke-width: 2.2;
       margin-left: auto;
-    }
-    .quick-date-presets {
-      display: flex;
-      gap: 4px;
-      margin-bottom: 8px;
-    }
-    .quick-date-preset-btn {
-      flex: 1;
-      padding: 4px 6px;
-      font: inherit;
-      font-size: 11px;
-      font-weight: 500;
-      border: 1px solid var(--color-border);
-      border-radius: 4px;
-      background: var(--color-surface-secondary);
-      color: var(--color-text-primary);
-      cursor: pointer;
-      transition: all 120ms ease;
-    }
-    .quick-date-preset-btn:hover {
-      border-color: var(--color-accent);
-      background: var(--color-surface);
-      color: var(--color-accent);
-    }
-    .quick-date-input-wrap {
-      margin-bottom: 6px;
-    }
-    .quick-date-input {
-      width: 100%;
-      height: 28px;
-      padding: 0 6px;
-      border: 1px solid var(--color-border);
-      border-radius: 4px;
-      font: inherit;
-      font-size: 11.5px;
-      color: var(--color-text-primary);
-      background: var(--color-surface-secondary);
-      outline: none;
-    }
-    .quick-date-input:focus {
-      border-color: var(--color-accent);
-      background: var(--color-surface);
-    }
-    .quick-date-clear-btn {
-      width: 100%;
-      padding: 4px;
-      border: 0;
-      border-radius: 4px;
-      font: inherit;
-      font-size: 11px;
-      color: var(--color-danger, #ef4444);
-      background: transparent;
-      cursor: pointer;
-      text-align: center;
-    }
-    .quick-date-clear-btn:hover {
-      background: color-mix(in srgb, var(--color-danger, #ef4444) 10%, transparent);
     }
 
     /* Tasks list */
@@ -1361,8 +1204,7 @@ export class TaskBoardColumnComponent {
   selectedModuleId = signal('');
   submitting = signal(false);
   errorMessage = signal<string | null>(null);
-  activePopover = signal<'assignee' | 'dueDate' | 'priority' | 'module' | null>(null);
-  assigneeSearch = signal('');
+  activePopover = signal<'assignee' | 'priority' | 'module' | null>(null);
 
   // Column collapse state
   isCollapsed = signal(false);
@@ -1404,13 +1246,6 @@ export class TaskBoardColumnComponent {
     const id = this.quickAssigneeId();
     if (!id) return 'Add assignee';
     return this.assignableMembers().find((m) => m.employeeId === id)?.name ?? 'Add assignee';
-  });
-
-  filteredAssignees = computed(() => {
-    const q = this.assigneeSearch().toLowerCase().trim();
-    const list = this.assignableMembers();
-    if (!q) return list;
-    return list.filter((m) => m.name.toLowerCase().includes(q));
   });
 
   formattedDueDate = computed(() => {
@@ -1565,7 +1400,7 @@ export class TaskBoardColumnComponent {
     }
   }
 
-  togglePopover(kind: 'assignee' | 'dueDate' | 'priority' | 'module', event: MouseEvent): void {
+  togglePopover(kind: 'assignee' | 'priority' | 'module', event: MouseEvent): void {
     event.stopPropagation();
     this.activePopover.update((curr) => (curr === kind ? null : kind));
   }
@@ -1577,30 +1412,12 @@ export class TaskBoardColumnComponent {
 
   setDueDate(val: string): void {
     this.quickDueDate.set(val);
-    this.activePopover.set(null);
-  }
-
-  setQuickDueDate(daysFromNow: number): void {
-    const d = new Date();
-    d.setDate(d.getDate() + daysFromNow);
-    const year = d.getFullYear();
-    const month = (d.getMonth() + 1).toString().padStart(2, '0');
-    const day = d.getDate().toString().padStart(2, '0');
-    this.quickDueDate.set(`${year}-${month}-${day}`);
-    this.activePopover.set(null);
   }
 
   setPriority(val: WorkTask['priority']): void {
     this.quickPriority.set(val);
     this.priorityUserChosen.set(true);
     this.activePopover.set(null);
-  }
-
-  getInitials(name: string): string {
-    if (!name) return '?';
-    const parts = name.trim().split(/\s+/);
-    if (parts.length >= 2) return (parts[0][0] + parts[1][0]).toUpperCase();
-    return name.slice(0, 2).toUpperCase();
   }
 
   async submitQuickTask(): Promise<void> {

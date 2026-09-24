@@ -52,4 +52,27 @@ describe('AvatarComponent', () => {
     const initialsSpan = fixture.nativeElement.querySelector('.avatar__initials');
     expect(initialsSpan?.textContent?.trim()).toBe('JD');
   });
+
+  it('renders circular shape by default and supports xs size', async () => {
+    await TestBed.configureTestingModule({ imports: [AvatarComponent] }).compileComponents();
+    const fixture = TestBed.createComponent(AvatarComponent);
+    fixture.componentRef.setInput('size', 'xs');
+    fixture.detectChanges();
+
+    const avatarDiv = fixture.nativeElement.querySelector('.avatar');
+    expect(avatarDiv.classList.contains('avatar--circle')).toBe(true);
+    expect(avatarDiv.classList.contains('avatar--xs')).toBe(true);
+  });
+
+  it('renders unassigned placeholder icon when unassigned is true', async () => {
+    await TestBed.configureTestingModule({ imports: [AvatarComponent] }).compileComponents();
+    const fixture = TestBed.createComponent(AvatarComponent);
+    fixture.componentRef.setInput('unassigned', true);
+    fixture.detectChanges();
+
+    const unassignedEl = fixture.nativeElement.querySelector('.avatar--unassigned');
+    expect(unassignedEl).toBeTruthy();
+    const unassignedIcon = fixture.nativeElement.querySelector('.avatar__icon--unassigned');
+    expect(unassignedIcon).toBeTruthy();
+  });
 });
