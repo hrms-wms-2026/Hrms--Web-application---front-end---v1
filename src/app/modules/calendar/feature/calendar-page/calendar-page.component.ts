@@ -269,12 +269,10 @@ export class CalendarPageComponent {
     this.store.loadEligibleNominees(eventId);
   }
 
-  async onAddMeeting(): Promise<void> {
+  async onAddMeeting(provider: 'microsoft_teams' | 'zoom'): Promise<void> {
     const editing = this.editingEvent();
     if (!editing) return;
-    // Temporarily hardcoded to 'microsoft_teams' - Task 10 will let the form modal emit the
-    // organizer's chosen provider ('microsoft_teams' | 'zoom') instead.
-    const ok = await this.store.createMeeting(editing.id, 'microsoft_teams');
+    const ok = await this.store.createMeeting(editing.id, provider);
     if (ok) this.editingEvent.set(this.store.events().find((e) => e.id === editing.id) ?? null);
   }
 
