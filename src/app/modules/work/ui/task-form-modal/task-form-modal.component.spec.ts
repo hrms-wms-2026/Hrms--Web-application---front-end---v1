@@ -448,7 +448,7 @@ describe('TaskFormModalComponent - create mode', () => {
           getMyMilestones: vi.fn().mockReturnValue(of([{ objectiveId: 'o1', title: 'Mod 1', isOwner: opts.isOwner ?? true }]))
         } },
         { provide: SprintApiService, useValue: { getByProject: vi.fn().mockReturnValue(of([
-          { id: 'sp1', objectiveId: 'o1', name: 'Sprint 1', startDate: '2026-09-01', endDate: '2026-09-14', status: 'active', completedAt: null, achievedAt: null }
+          { id: 'sp1', projectId: 'p1', name: 'Sprint 1', startDate: '2026-09-01', endDate: '2026-09-14', status: 'active', completedAt: null, achievedAt: null, canManage: true }
         ])) } },
         { provide: TaskBoardStore, useValue: { createTask, error: () => null } },
         { provide: ProjectDetailStore, useValue: { milestones: signal([]), loadProjectMembers: vi.fn().mockResolvedValue(undefined), projectMembers: () => [] } },
@@ -483,13 +483,12 @@ describe('TaskFormModalComponent - create mode', () => {
     expect(fixture.componentInstance.errors()['objectiveId']).toBeFalsy();
   });
 
-  it('inherits the module when a sprint is selected via selectSprint', async () => {
+  it('selectSprint sets the sprint without touching the module (sprints are project-scoped)', async () => {
     await build();
     fixture.componentInstance.selectedObjectiveId.set('');
     fixture.componentInstance.selectSprint('sp1');
     expect(fixture.componentInstance.sprintId()).toBe('sp1');
-    expect(fixture.componentInstance.selectedObjectiveId()).toBe('o1');
-    expect(fixture.componentInstance.errors()['objectiveId']).toBeFalsy();
+    expect(fixture.componentInstance.selectedObjectiveId()).toBe('');
   });
 
   it('creates with no sprint selected — sprint is optional', async () => {

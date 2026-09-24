@@ -1,23 +1,27 @@
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { By } from '@angular/platform-browser';
+import { of } from 'rxjs';
 import { vi } from 'vitest';
 import { SprintTabComponent } from './sprint-tab.component';
 import { Sprint } from '../../models/sprint.model';
 import { TaskStatusColumn, WorkTask } from '../../models/task.model';
+import { SprintApiService } from '../../data-access/sprint-api.service';
+import { EmployeeDirectoryStore } from '../../state/employee-directory.store';
 
 describe('SprintTabComponent', () => {
   let fixture: ComponentFixture<SprintTabComponent>;
 
   const baseSprint: Sprint = {
     id: 'sprint-1',
-    objectiveId: 'obj-1',
+    projectId: 'p-1',
     name: 'Sprint 1',
     goal: null,
     startDate: new Date('2026-08-18'),
     endDate: new Date('2026-08-25'),
     status: 'active',
     completedAt: null,
-    achievedAt: null
+    achievedAt: null,
+    canManage: true
   };
 
   const mockTasks: WorkTask[] = [];
@@ -25,7 +29,7 @@ describe('SprintTabComponent', () => {
 
   function setup(overrides: {
     sprint?: Sprint;
-    isObjectiveOwner?: boolean;
+    canManage?: boolean;
     tasks?: readonly WorkTask[];
     statusNames?: Record<string, string>;
     statuses?: readonly TaskStatusColumn[];
@@ -34,11 +38,15 @@ describe('SprintTabComponent', () => {
     expanded?: boolean;
   } = {}): void {
     TestBed.configureTestingModule({
-      imports: [SprintTabComponent]
+      imports: [SprintTabComponent],
+      providers: [
+        { provide: SprintApiService, useValue: { getActivity: () => of([]) } },
+        { provide: EmployeeDirectoryStore, useValue: { ensureLoaded: () => Promise.resolve(), get: () => undefined } }
+      ]
     });
     fixture = TestBed.createComponent(SprintTabComponent);
     fixture.componentRef.setInput('sprint', overrides.sprint ?? baseSprint);
-    fixture.componentRef.setInput('isObjectiveOwner', overrides.isObjectiveOwner ?? true);
+    fixture.componentRef.setInput('canManage', overrides.canManage ?? true);
     fixture.componentRef.setInput('tasks', overrides.tasks ?? mockTasks);
     fixture.componentRef.setInput('statusNames', overrides.statusNames ?? mockStatusNames);
     if (overrides.statuses !== undefined) {
@@ -55,10 +63,10 @@ describe('SprintTabComponent', () => {
   }
 
   it('shows Edit in the capsule to the owner (and only the owner), emitting editRequested when clicked', () => {
-    setup({ isObjectiveOwner: false });
+    setup({ canManage: false });
     expect(fixture.nativeElement.querySelector('.sprint-tab__edit')).toBeNull();
 
-    fixture.componentRef.setInput('isObjectiveOwner', true);
+    fixture.componentRef.setInput('canManage', true);
     fixture.detectChanges();
 
     const editButton = fixture.nativeElement.querySelector('.sprint-tab__edit') as HTMLButtonElement;
@@ -103,6 +111,11 @@ describe('SprintTabComponent', () => {
     setup({ sprint: { ...baseSprint, status: 'active' } });
     expect(fixture.nativeElement.querySelector('[data-testid="complete-sprint"]')).toBeTruthy();
     expect(fixture.nativeElement.querySelector('app-work-dropdown')).toBeNull();
+  });
+
+  it('hides Start when canManage is false', () => {
+    setup({ canManage: false, sprint: { ...baseSprint, status: 'draft', startDate: null, endDate: null } });
+    expect(fixture.nativeElement.querySelector('[data-testid="start-sprint"]')).toBeNull();
   });
 
   it('emits startRequested when Start sprint is clicked', () => {
@@ -183,7 +196,7 @@ describe('SprintTabComponent', () => {
   });
 
   it('non-owners only get Add task in the capsule, and no Start button', () => {
-    setup({ isObjectiveOwner: false, sprint: { ...baseSprint, status: 'draft', startDate: null, endDate: null } });
+    setup({ canManage: false, sprint: { ...baseSprint, status: 'draft', startDate: null, endDate: null } });
     expect(fixture.nativeElement.querySelector('[data-testid="start-sprint"]')).toBeNull();
     expect(fixture.nativeElement.querySelectorAll('.sprint-tab__capsule button').length).toBe(1);
     expect(fixture.nativeElement.querySelector('.sprint-tab__add-task')).not.toBeNull();
@@ -201,7 +214,7 @@ describe('SprintTabComponent', () => {
     setup();
     const other = TestBed.createComponent(SprintTabComponent);
     other.componentRef.setInput('sprint', { ...baseSprint, id: 'sprint-2' });
-    other.componentRef.setInput('isObjectiveOwner', true);
+    other.componentRef.setInput('canManage', true);
     other.componentRef.setInput('tasks', []);
     other.componentRef.setInput('statusNames', {});
     other.detectChanges();

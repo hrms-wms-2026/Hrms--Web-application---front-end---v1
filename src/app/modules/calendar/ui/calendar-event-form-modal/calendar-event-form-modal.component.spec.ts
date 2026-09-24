@@ -29,6 +29,49 @@ describe('CalendarEventFormModalComponent', () => {
     expect(spy).not.toHaveBeenCalled();
   });
 
+  it('rejects a meeting link with no http(s) scheme', () => {
+    fixture.componentInstance.setMeetingLink('meet.google.com/abc-defg-hij');
+    fixture.detectChanges();
+
+    expect(fixture.componentInstance.form.controls.meetingLink.invalid).toBe(true);
+    expect(
+      fixture.nativeElement.querySelector('[data-testid="calendar-form-meeting-link-error"]')
+    ).not.toBeNull();
+  });
+
+  it('rejects a non-http(s) meeting link', () => {
+    fixture.componentInstance.setMeetingLink('javascript:alert(1)');
+    expect(fixture.componentInstance.form.controls.meetingLink.invalid).toBe(true);
+  });
+
+  it('accepts a blank meeting link - the field is optional', () => {
+    fixture.componentInstance.setMeetingLink('');
+    expect(fixture.componentInstance.form.controls.meetingLink.invalid).toBe(false);
+  });
+
+  it('accepts a valid https meeting link and does not show the error', () => {
+    fixture.componentInstance.setMeetingLink('https://meet.google.com/abc-defg-hij');
+    fixture.detectChanges();
+
+    expect(fixture.componentInstance.form.controls.meetingLink.invalid).toBe(false);
+    expect(
+      fixture.nativeElement.querySelector('[data-testid="calendar-form-meeting-link-error"]')
+    ).toBeNull();
+  });
+
+  it('does not emit save when the meeting link is invalid, even with title and dates filled', () => {
+    const spy = vi.fn();
+    fixture.componentInstance.save.subscribe(spy);
+    fixture.componentInstance.form.patchValue({
+      title: 'Standup', startDate: '2026-09-01', startTime: '09:00', endDate: '2026-09-01', endTime: '09:30'
+    });
+    fixture.componentInstance.setMeetingLink('not a url');
+
+    fixture.componentInstance.onSubmit(null);
+
+    expect(spy).not.toHaveBeenCalled();
+  });
+
   it('hides the recurrence-until control until "until" end mode is chosen', () => {
     expect(fixture.componentInstance.form.controls.recurrenceEndMode.value).toBe('never');
     const untilField = fixture.nativeElement.querySelector('[data-testid="calendar-form-recurrence-until"]');
@@ -53,6 +96,9 @@ describe('CalendarEventFormModalComponent', () => {
     // Regression test: toggleAllDay only flips the isAllDay flag and never touches
     // startTime/endTime, so before this fix the submitted range stayed whatever narrow window was
     // in the time pickers - the event never actually blocked the rest of that day.
+    //
+    // The end is the day AFTER the picked day, at 00:00 (exclusive) - same convention a pulled
+    // Google/Outlook all-day event already uses, not 23:59 on the picked day itself.
     const spy = vi.fn();
     fixture.componentInstance.save.subscribe(spy);
     fixture.componentInstance.form.patchValue({
@@ -65,7 +111,58 @@ describe('CalendarEventFormModalComponent', () => {
     const submission = spy.mock.calls[0][0] as { create: { startDate: string; endDate: string; isAllDay: boolean } };
     expect(submission.create.isAllDay).toBe(true);
     expect(submission.create.startDate).toBe('2026-09-15T00:00:00.000Z');
-    expect(submission.create.endDate).toBe('2026-09-15T23:59:00.000Z');
+    expect(submission.create.endDate).toBe('2026-09-16T00:00:00.000Z');
+  });
+
+  it('spans through the day after the last picked day for a multi-day all-day event', () => {
+    const spy = vi.fn();
+    fixture.componentInstance.save.subscribe(spy);
+    fixture.componentInstance.form.patchValue({
+      title: 'Conference', startDate: '2026-09-15', startTime: '09:00', endDate: '2026-09-17', endTime: '17:00',
+      isAllDay: true
+    });
+    fixture.componentInstance.onSubmit(null);
+
+    const submission = spy.mock.calls[0][0] as { create: { startDate: string; endDate: string } };
+    expect(submission.create.startDate).toBe('2026-09-15T00:00:00.000Z');
+    expect(submission.create.endDate).toBe('2026-09-18T00:00:00.000Z');
+  });
+
+  it('rolls the exclusive end back over a month boundary', () => {
+    const spy = vi.fn();
+    fixture.componentInstance.save.subscribe(spy);
+    fixture.componentInstance.form.patchValue({
+      title: 'Month-end retreat', startDate: '2026-09-30', startTime: '09:00', endDate: '2026-09-30', endTime: '17:00',
+      isAllDay: true
+    });
+    fixture.componentInstance.onSubmit(null);
+
+    const submission = spy.mock.calls[0][0] as { create: { endDate: string } };
+    expect(submission.create.endDate).toBe('2026-10-01T00:00:00.000Z');
+  });
+
+  it('shows an existing all-day event\'s last real day in the End Date field, not the exclusive stored day after', () => {
+    // A pulled Google/Outlook all-day event (and now a manually created one, see above) stores its
+    // end as the day AFTER the last day at 00:00 - the edit form must show the day the event
+    // actually covers, or editing and re-saving without touching the date would silently shift it.
+    fixture.componentRef.setInput('event', {
+      id: 'e1', title: 'Wedding', description: null,
+      startDate: '2026-09-15T00:00:00Z', endDate: '2026-09-16T00:00:00Z',
+      sourceType: 'manual', color: null, recurrence: 'none', isAllDay: true, timezone: 'UTC', eventStatus: null,
+      isPrivate: false, location: null, meetingLink: null, externalSource: null, createdById: 'u1',
+      isRecurringOccurrence: false, recurrenceMasterId: null, originalStart: null, participants: null
+    });
+    fixture.detectChanges();
+
+    expect(fixture.componentInstance.form.controls.startDate.value).toBe('2026-09-15');
+    expect(fixture.componentInstance.form.controls.endDate.value).toBe('2026-09-15');
+
+    const spy = vi.fn();
+    fixture.componentInstance.save.subscribe(spy);
+    fixture.componentInstance.onSubmit(null);
+    const submission = spy.mock.calls[0][0] as { update: { startDate: string; endDate: string } };
+    expect(submission.update.startDate).toBe('2026-09-15T00:00:00.000Z');
+    expect(submission.update.endDate).toBe('2026-09-16T00:00:00.000Z');
   });
 
   it('pre-fills the form and emits an update payload with scope=null for a plain event', () => {

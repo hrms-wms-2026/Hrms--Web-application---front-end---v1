@@ -184,6 +184,15 @@ describe('TimeTrackingApiService', () => {
     request.flush(detail);
   });
 
+  it('getEmployeeDailyReport calls the monitoring daily-report endpoint', () => {
+    const report = { employeeId: 'employee-1', date: '2026-08-27', screenshots: [] };
+    service.getEmployeeDailyReport('employee-1', '2026-08-27').subscribe((response) => expect(response).toEqual(report));
+
+    const request = httpMock.expectOne(`${environment.apiUrl}/monitoring/daily-report?employeeId=employee-1&date=2026-08-27`);
+    expect(request.request.method).toBe('GET');
+    request.flush(report);
+  });
+
   it('getCoveredHistory passes range, paging, and optional employeeId', () => {
     service.getCoveredHistory('2026-08-17', '2026-08-23', 1, 20, 'employee-7').subscribe();
     const request = httpMock.expectOne(

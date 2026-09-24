@@ -1,6 +1,6 @@
 import { ChangeDetectionStrategy, Component, EventEmitter, Input, OnChanges, Output, SimpleChanges, inject, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
+import { AbstractControl, FormBuilder, ReactiveFormsModule, ValidationErrors, ValidatorFn, Validators } from '@angular/forms';
 import { ButtonComponent } from '../../../../shared/ui/button/button.component';
 import { InputComponent } from '../../../../shared/ui/input/input.component';
 import { SelectComponent } from '../../../../shared/ui/select/select.component';
@@ -39,6 +39,28 @@ function addMinutes(hhmm: string, minutes: number): string {
   const total = ((h * 60 + m + minutes) % 1440 + 1440) % 1440;
   return `${String(Math.floor(total / 60)).padStart(2, '0')}:${String(total % 60).padStart(2, '0')}`;
 }
+
+/** Adds whole days to a 'YYYY-MM-DD' string via UTC calendar-date arithmetic, so it never shifts
+ * across a local-timezone DST boundary the way constructing a plain `new Date(dateStr)` would. */
+function addDays(dateStr: string, days: number): string {
+  const [year, month, day] = dateStr.split('-').map(Number);
+  const shifted = new Date(Date.UTC(year, month - 1, day + days));
+  return `${shifted.getUTCFullYear()}-${String(shifted.getUTCMonth() + 1).padStart(2, '0')}-${String(shifted.getUTCDate()).padStart(2, '0')}`;
+}
+
+/** Matches the backend's CalendarEventValidation.IsValidMeetingLink: blank is fine (the field is
+ * optional), but a non-blank value must be an absolute http(s) URL - catches a pasted room name,
+ * a bare domain with no scheme, or a non-http scheme like javascript:/data: before it's saved. */
+const meetingLinkValidator: ValidatorFn = (control: AbstractControl): ValidationErrors | null => {
+  const value = (control.value ?? '').trim();
+  if (!value) return null;
+  try {
+    const url = new URL(value);
+    return url.protocol === 'http:' || url.protocol === 'https:' ? null : { invalidMeetingLink: true };
+  } catch {
+    return { invalidMeetingLink: true };
+  }
+};
 
 export type CalendarEventFormSubmission =
   | { create: CreateCalendarEventRequest }
@@ -124,7 +146,7 @@ export class CalendarEventFormModalComponent implements OnChanges {
     endTime: ['09:30', Validators.required],
     isAllDay: [false],
     location: [''],
-    meetingLink: [''],
+    meetingLink: ['', meetingLinkValidator],
     color: ['#2563EB'],
     recurrenceFrequency: ['none' as RecurrenceFrequency],
     recurrenceEndMode: ['never' as RecurrenceEndMode],
@@ -217,12 +239,15 @@ export class CalendarEventFormModalComponent implements OnChanges {
     if (this.event) {
       const start = utcIsoToLocalParts(this.event.startDate, this.currentTimezone());
       const end = utcIsoToLocalParts(this.event.endDate, this.currentTimezone());
+      // Stored all-day end is the day AFTER the last day, at 00:00 (exclusive) - show the last
+      // day the event actually covers, matching what onSubmit sends back if left unchanged.
+      const endDateDisplay = this.event.isAllDay ? addDays(end.date, -1) : end.date;
       this.form.patchValue({
         title: this.event.title,
         description: this.event.description ?? '',
         startDate: start.date,
         startTime: start.time,
-        endDate: end.date,
+        endDate: endDateDisplay,
         endTime: end.time,
         isAllDay: this.event.isAllDay,
         location: this.event.location ?? '',
@@ -273,7 +298,8 @@ export class CalendarEventFormModalComponent implements OnChanges {
       // Edit mode: the stored instant is fixed - re-show it in the newly chosen zone.
       const start = utcIsoToLocalParts(this.event.startDate, value);
       const end = utcIsoToLocalParts(this.event.endDate, value);
-      this.form.patchValue({ startDate: start.date, startTime: start.time, endDate: end.date, endTime: end.time });
+      const endDateDisplay = this.event.isAllDay ? addDays(end.date, -1) : end.date;
+      this.form.patchValue({ startDate: start.date, startTime: start.time, endDate: endDateDisplay, endTime: end.time });
     }
     this.form.markAsDirty();
     this.scheduleConflictCheck();
@@ -317,7 +343,9 @@ export class CalendarEventFormModalComponent implements OnChanges {
 
   setMeetingLink(value: string): void {
     this.form.controls.meetingLink.setValue(value);
-    this.form.markAsDirty();
+    // markAsDirty only walks UP to ancestors, never down to children - form.markAsDirty() alone
+    // never marks this specific control dirty, so the invalid-link error below never showed.
+    this.form.controls.meetingLink.markAsDirty();
   }
 
   setRecurrenceFrequency(value: string): void {
@@ -391,10 +419,15 @@ export class CalendarEventFormModalComponent implements OnChanges {
     // this the stored range stayed whatever narrow window was in the time pickers (e.g.
     // 11:30-13:00) even with "All day" on, meaning the event never actually blocked the rest of
     // that day for availability/conflict checks.
+    //
+    // The stored end is the day AFTER the last day the user picked, at 00:00 (exclusive) - the
+    // same convention Google/Outlook all-day events already use when pulled in, so a manually
+    // created all-day event lines up with a synced one instead of ending 1 minute before midnight.
     const startTime = raw.isAllDay ? '00:00' : raw.startTime!;
-    const endTime = raw.isAllDay ? '23:59' : raw.endTime!;
+    const endTime = raw.isAllDay ? '00:00' : raw.endTime!;
+    const endDateOnly = raw.isAllDay ? addDays(raw.endDate!, 1) : raw.endDate!;
     const startDate = localPartsToUtcIso(raw.startDate!, startTime, this.currentTimezone());
-    const endDate = localPartsToUtcIso(raw.endDate!, endTime, this.currentTimezone());
+    const endDate = localPartsToUtcIso(endDateOnly, endTime, this.currentTimezone());
     const recurrence = raw.recurrenceFrequency ?? 'none';
     const recurrenceRule = buildRecurrenceRule(recurrence as RecurrenceFrequency, raw.recurrenceEndMode as RecurrenceEndMode, raw.recurrenceUntilDate || null);
 

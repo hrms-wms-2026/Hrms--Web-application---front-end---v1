@@ -99,9 +99,7 @@ export class SprintStartDialogComponent {
   open = input(false);
   sprint = input<Sprint | null>(null);
   tasks = input<readonly WorkTask[]>([]);
-  objectiveId = input<string>('');
-  activeOnly = input(false);
-  projectId = input<string | undefined>(undefined);
+  projectId = input.required<string>();
 
   started = output<void>();
   cancelled = output<void>();
@@ -178,7 +176,7 @@ export class SprintStartDialogComponent {
         startDate: this.startDate(),
         endDate: this.endDate(),
         goal: this.goal().trim() || undefined
-      }, this.objectiveId(), this.activeOnly(), this.projectId());
+      }, this.projectId());
       if (ok) this.started.emit();
     } finally {
       this.submitting.set(false);
