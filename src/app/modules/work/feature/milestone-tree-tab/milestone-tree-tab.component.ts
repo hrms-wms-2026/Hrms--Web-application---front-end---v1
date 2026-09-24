@@ -11,7 +11,7 @@ import { TaskFormModalComponent } from '../../ui/task-form-modal/task-form-modal
 import { TreeExplanationPanelComponent } from '../../ui/tree-explanation-panel/tree-explanation-panel.component';
 import { SubModuleFormComponent } from '../../ui/sub-module-form/sub-module-form.component';
 import { MemberManagementPopupComponent } from '../../ui/member-management-popup/member-management-popup.component';
-import { SprintFormComponent } from '../../ui/sprint-form/sprint-form.component';
+import { SprintFormComponent, SprintFormModuleOption } from '../../ui/sprint-form/sprint-form.component';
 import { WorkApprovalsApiService } from '../../data-access/work-approvals-api.service';
 import { EmployeeDirectoryStore } from '../../state/employee-directory.store';
 import { SprintCompleteDialogComponent } from '../../ui/sprint-complete-dialog/sprint-complete-dialog.component';
@@ -297,17 +297,57 @@ export class MilestoneTreeTabComponent {
     await this.loadTree({ force: true });
   }
 
+  // Sprints are now project-level (Independent Sprints), so <app-sprint-form> no longer takes
+  // a single objectiveId/isObjectiveOwner pair - it takes a `modules` list for its task picker
+  // to know which module(s) are pickable/owned. For create, node is the module (leaf objective)
+  // the sprint is being created under. For edit, node is the sprint itself, so we resolve its
+  // owning module via parentObjectiveId and look up that module's real title/ownership in the
+  // tree (falling back to the sprint node's own fields if the module can't be found).
+  sprintFormModules(node: MilestoneTreeNode): SprintFormModuleOption[] {
+    const objectiveId = node.kind === 'sprint' ? (node.parentObjectiveId ?? '') : node.id;
+    const tree = this.store.selectedSubtree();
+    const moduleNode = tree ? findTreeNode(tree, objectiveId) : null;
+    return [{
+      objectiveId,
+      title: moduleNode?.title ?? node.title,
+      isEffectiveOwner: (moduleNode?.isOwner ?? node.isOwner) ?? false
+    }];
+  }
+
+  // `sprintFormModules`/`sprintFromNode` build a NEW array/object every call, so binding
+  // them directly in the template (e.g. `[modules]="sprintFormModules(sprintNode)"`) makes
+  // <app-sprint-form> see a new `sprint`/`modules` reference on every change-detection pass.
+  // In edit mode, SprintFormComponent's constructor effect resets its form and re-fetches
+  // current tasks whenever `sprint()` changes identity - so every CD tick was discarding
+  // in-progress form edits. These computeds only recompute when the underlying node signal
+  // actually changes identity, keeping the bound value referentially stable across CD passes.
+  createSprintModules = computed<SprintFormModuleOption[]>(() => {
+    const node = this.createSprintNode();
+    return node ? this.sprintFormModules(node) : [];
+  });
+
+  editSprintModel = computed<Sprint | null>(() => {
+    const node = this.editSprintNode();
+    return node ? this.sprintFromNode(node) : null;
+  });
+
+  editSprintModules = computed<SprintFormModuleOption[]>(() => {
+    const node = this.editSprintNode();
+    return node ? this.sprintFormModules(node) : [];
+  });
+
   sprintFromNode(node: MilestoneTreeNode): Sprint {
     return {
       id: node.id,
-      objectiveId: node.parentObjectiveId ?? '',
+      projectId: this.projectId(),
       name: node.title,
       goal: null,
       startDate: node.startDate ? new Date(node.startDate) : null,
       endDate: node.endDate ? new Date(node.endDate) : null,
       status: (node.status as SprintStatus) ?? 'active',
       completedAt: null,
-      achievedAt: null
+      achievedAt: null,
+      canManage: node.isOwner ?? false
     };
   }
 

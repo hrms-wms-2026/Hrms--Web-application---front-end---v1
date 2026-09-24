@@ -284,8 +284,8 @@ describe('project.mapper', () => {
       }]
     };
     const sprintDto: SprintDto = {
-      id: 'spr-1', objectiveId: 'o1', name: 'Sprint 1', startDate: '2026-08-01', endDate: '2026-08-14',
-      status: 'active', completedAt: null, achievedAt: null, goal: null
+      id: 'spr-1', projectId: 'p-1', name: 'Sprint 1', startDate: '2026-08-01', endDate: '2026-08-14',
+      status: 'active', completedAt: null, achievedAt: null, goal: null, canManage: true
     };
     const taskDto: WorkTaskDto = {
       id: 't1', objectiveId: 'o1', shortId: 'WEB-9', title: 'Do it', description: null,
