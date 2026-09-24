@@ -216,15 +216,17 @@ describe('TrayPresenceStore', () => {
     const store = createStore(getStatus, generateActivationCode);
 
     store.start();
+    await store.generateCode();
     await vi.waitFor(() => expect(generateActivationCode).toHaveBeenCalledOnce());
     await vi.waitFor(() => expect(store.generationError()).toMatch(/Too many/));
 
     await store.refresh();
     store.lockImmediately();
     await store.refresh();
+    await store.generateCode();
 
     expect(generateActivationCode).toHaveBeenCalledOnce();
-    expect(store.phase()).toBe('offline');
+    expect(store.phase()).toBe('needs-code');
   });
 
   it('lets an explicit retry request a new code after a 429', async () => {
@@ -234,6 +236,7 @@ describe('TrayPresenceStore', () => {
     const store = createStore(vi.fn().mockReturnValue(of(disconnected)), generateActivationCode);
 
     store.start();
+    await store.generateCode();
     await vi.waitFor(() => expect(generateActivationCode).toHaveBeenCalledOnce());
 
     store.retry();
