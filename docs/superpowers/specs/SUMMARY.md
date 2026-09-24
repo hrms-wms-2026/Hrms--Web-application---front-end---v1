@@ -16,6 +16,7 @@ Layout and rules: see `../rules/FILE_CREATION_RULES.md` §0 (specs follow the sa
 | Project Detail — Unified Tree-Table Redesign (Manager Mockup) Design | next (partially reverted same day — see doc's status line; Tree-tab styling only, card+sub-menu nav restored) | `next/2026-08-12-milestone-tree-mockup-redesign-design.md` | Approved | 2026-08-12 |
 | Work Management — Task Foundation (Task Board, Approvals, Notification) Design | next | `next/2026-08-16-work-management-task-foundation-design.md` | Approved | 2026-08-16 |
 | Attendance & Leave Management (Frontend) Design | next | `next/2026-08-17-attendance-leave-management-design.md` | Approved | 2026-08-17 |
+| Leave hourly ledger Design | next | `next/2026-09-09-leave-hourly-ledger-design.md` | Approved | 2026-09-09 |
 | Work Management — Project Page Redesign Design | finished | `finished/2026-08-21/2026-08-20-work-management-project-page-redesign-design.md` | Approved | 2026-08-20, shipped 2026-08-21 |
 | Task Subtasks Design | finished | `finished/2026-09-21/2026-09-21-task-subtasks-design.md` | Approved | 2026-09-21 |
 | Centralized File/Photo Upload System Design | next | `next/2026-09-22-centralized-file-upload-design.md` | Approved | 2026-09-22 |

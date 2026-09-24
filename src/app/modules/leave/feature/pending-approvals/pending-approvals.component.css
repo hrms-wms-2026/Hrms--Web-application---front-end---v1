@@ -1,3 +1,14 @@
+textarea {
+  width: 100%;
+  min-height: 5rem;
+  box-sizing: border-box;
+  border: 1px solid var(--color-border);
+  border-radius: 8px;
+  padding: 0.55rem 0.7rem;
+  background: var(--color-surface);
+  color: var(--color-text-primary);
+  font: inherit;
+}
 .pa-page { display: flex; flex-direction: column; gap: 1rem; }
 .pa-kicker { margin: 0; font-size: .72rem; letter-spacing: .06em; color: var(--color-text-secondary, #64748b); text-transform: uppercase; }
 .pa-header h1 { margin: .2rem 0; font-size: 1.3rem; }

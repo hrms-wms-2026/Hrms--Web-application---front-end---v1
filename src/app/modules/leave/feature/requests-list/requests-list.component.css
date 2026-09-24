@@ -1,3 +1,4 @@
+/* Shared chrome lives in time-off-chrome.css. */
 .rl-page { display: flex; flex-direction: column; gap: 1rem; }
 .rl-kicker { margin: 0; font-size: .72rem; letter-spacing: .06em; color: var(--color-text-secondary, #64748b); text-transform: uppercase; }
 .rl-header h1 { margin: .2rem 0; font-size: 1.3rem; }

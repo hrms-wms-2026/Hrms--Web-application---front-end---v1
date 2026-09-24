@@ -9,9 +9,9 @@ describe('LeaveCancelConfirmDialogComponent', () => {
     fixture = TestBed.createComponent(LeaveCancelConfirmDialogComponent);
     fixture.componentRef.setInput('open', true);
     fixture.componentRef.setInput('leaveTypeName', 'Annual Leave');
-    fixture.componentRef.setInput('startDate', '2026-09-10');
-    fixture.componentRef.setInput('endDate', '2026-09-12');
-    fixture.componentRef.setInput('totalDays', 3);
+    fixture.componentRef.setInput('startAt', '2026-09-10');
+    fixture.componentRef.setInput('endAt', '2026-09-12');
+    fixture.componentRef.setInput('totalHours', 3);
     fixture.componentRef.setInput('status', 'pending');
     fixture.componentRef.setInput('requireReason', false);
   });
@@ -22,7 +22,7 @@ describe('LeaveCancelConfirmDialogComponent', () => {
     expect(text).toContain('Annual Leave');
     expect(text).toContain('2026-09-10');
     expect(text).toContain('2026-09-12');
-    expect(text).toContain('3 days');
+    expect(text).toContain('3 hours');
   });
 
   it('shows the balance-restore line only when status is approved', () => {
@@ -30,18 +30,18 @@ describe('LeaveCancelConfirmDialogComponent', () => {
     expect(fixture.nativeElement.textContent).not.toContain('will be restored');
     fixture.componentRef.setInput('status', 'approved');
     fixture.detectChanges();
-    expect(fixture.nativeElement.textContent).toContain('Your balance of 3 days will be restored');
+    expect(fixture.nativeElement.textContent).toContain('Your balance of 3 hours will be restored');
   });
 
   it('shows the partial-cancel date field only when start is in the past and end is in the future', () => {
     const today = new Date().toISOString().slice(0, 10);
-    fixture.componentRef.setInput('startDate', '2020-01-01');
-    fixture.componentRef.setInput('endDate', '2099-01-01');
+    fixture.componentRef.setInput('startAt', '2020-01-01');
+    fixture.componentRef.setInput('endAt', '2099-01-01');
     fixture.componentRef.setInput('status', 'approved');
     fixture.detectChanges();
     expect(fixture.componentInstance.isInProgress()).toBe(true);
-    fixture.componentRef.setInput('startDate', '2099-01-01');
-    fixture.componentRef.setInput('endDate', '2099-01-05');
+    fixture.componentRef.setInput('startAt', '2099-01-01');
+    fixture.componentRef.setInput('endAt', '2099-01-05');
     fixture.detectChanges();
     expect(fixture.componentInstance.isInProgress()).toBe(false);
     void today;
@@ -68,8 +68,8 @@ describe('LeaveCancelConfirmDialogComponent', () => {
   });
 
   it('includes the effective date when the partial-cancel field is set', () => {
-    fixture.componentRef.setInput('startDate', '2020-01-01');
-    fixture.componentRef.setInput('endDate', '2099-01-01');
+    fixture.componentRef.setInput('startAt', '2020-01-01');
+    fixture.componentRef.setInput('endAt', '2099-01-01');
     fixture.detectChanges();
     fixture.componentInstance.effectiveDate.set('2026-08-30');
     const emitted: unknown[] = [];

@@ -6,7 +6,9 @@ import {
   ApproveLeaveRequestRequest,
   BulkApproveLeaveRequestsRequest,
   BulkRejectLeaveRequestsRequest,
+  CreateLeaveApprovalDelegateRequest,
   LeaveApprovalBulkResultResponse,
+  LeaveApprovalDelegateResponse,
   LeaveApprovalDecisionResponse,
   LeaveApprovalDetailResponse,
   LeaveApprovalListFilter,
@@ -65,6 +67,18 @@ export class LeaveApprovalApiService {
 
   cancel(requestId: string, payload: CancelLeaveRequestRequest): Observable<CancelLeaveRequestResponse> {
     return this.http.post<CancelLeaveRequestResponse>(`${environment.apiUrl}/leave/requests/${requestId}/cancel`, payload);
+  }
+
+  listDelegates(): Observable<LeaveApprovalDelegateResponse[]> {
+    return this.http.get<LeaveApprovalDelegateResponse[]>(`${environment.apiUrl}/leave/approval-delegates`);
+  }
+
+  createDelegate(payload: CreateLeaveApprovalDelegateRequest): Observable<LeaveApprovalDelegateResponse> {
+    return this.http.post<LeaveApprovalDelegateResponse>(`${environment.apiUrl}/leave/approval-delegates`, payload);
+  }
+
+  deleteDelegate(id: string): Observable<void> {
+    return this.http.delete<void>(`${environment.apiUrl}/leave/approval-delegates/${id}`);
   }
 
   private toParams(filter: LeaveApprovalListFilter): HttpParams {

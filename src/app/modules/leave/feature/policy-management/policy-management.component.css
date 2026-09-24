@@ -1,2 +1,25 @@
-/* Quiet Operations Desk: a decisive policy workspace with a contextual review panel. */
-.lpm-page { max-width:1360px; margin:0 auto; padding:1.75rem 2rem 2.5rem; }.lpm-header { display:flex; align-items:flex-start; justify-content:space-between; gap:1rem; padding-bottom:1.35rem; border-bottom:1px solid var(--color-border,#e4e8ee); }.lpm-header p,.lpm-clone > p,.lpm-confirm > p { margin:0 0 .38rem; color:#1e5eff; font-size:.65rem; font-weight:750; letter-spacing:.1em; }.lpm-header h1 { margin:0; color:#1c2939; font-size:1.55rem; }.lpm-header span { display:block; margin-top:.38rem; color:#718096; font-size:.84rem; }.lpm-loading { padding:4rem; color:#718096; text-align:center; }.lpm-workspace { display:grid; grid-template-columns:minmax(0,1fr) 330px; gap:1rem; margin-top:1.1rem; }.lpm-workspace:has(> app-leave-policy-list-table:only-child) { grid-template-columns:1fr; }.lpm-detail { position:relative; min-height:0; }.lpm-detail > button { position:absolute; z-index:2; top:.55rem; right:.65rem; width:1.7rem; height:1.7rem; border:0; border-radius:5px; background:#f2f6ff; color:#587096; font-size:1.2rem; }.lpm-overlay { position:fixed; z-index:82; inset:0; display:grid; place-items:center; padding:1rem; background:rgba(15,23,42,.46); backdrop-filter:blur(2px); }.lpm-clone,.lpm-confirm { width:min(490px,100%); padding:1.4rem; border:1px solid rgba(255,255,255,.7); border-radius:12px; background:#fff; box-shadow:0 24px 64px rgba(15,23,42,.22); }.lpm-clone h2,.lpm-confirm h2 { margin:0; color:#243247; font-size:1.08rem; }.lpm-clone > span,.lpm-confirm > span { display:block; margin:.4rem 0 1rem; color:#718096; font-size:.78rem; line-height:1.45; }.lpm-clone > label,.lpm-clone > div label { display:grid; gap:.32rem; color:#536274; font-size:.7rem; font-weight:650; }.lpm-clone > div { display:grid; grid-template-columns:1fr 1fr; gap:.7rem; margin-top:.75rem; }.lpm-clone input { padding:.55rem .6rem; border:1px solid #dbe2ec; border-radius:6px; color:#28374b; font:inherit; }.lpm-clone fieldset { display:grid; gap:.45rem; margin:1rem 0; padding:.8rem; border:1px solid #e1e7ef; border-radius:7px; }.lpm-clone legend { padding:0 .25rem; color:#66768b; font-size:.7rem; }.lpm-clone fieldset label { color:#526176; font-size:.75rem; }.lpm-clone fieldset input { margin-right:.4rem; accent-color:#1e5eff; }.lpm-clone footer,.lpm-confirm footer { display:flex; justify-content:flex-end; gap:.6rem; }.lpm-confirm > span { margin-bottom:1.25rem; }@media (max-width:900px) { .lpm-workspace { grid-template-columns:1fr; }.lpm-page { padding:1.25rem 1rem 2rem; } }@media (max-width:600px) { .lpm-header { flex-direction:column; }.lpm-clone > div { grid-template-columns:1fr; } }
+.lpm-detail { position: relative; min-height: 0; }
+.lpm-detail > button {
+  position: absolute;
+  z-index: 2;
+  top: 0.55rem;
+  right: 0.65rem;
+  width: 1.7rem;
+  height: 1.7rem;
+  border: 0;
+  border-radius: 6px;
+  background: var(--color-surface-secondary);
+  color: var(--color-text-secondary);
+  font-size: 1.2rem;
+  cursor: pointer;
+}
+.lpm-clone-fields { display: grid; gap: 0.75rem; margin-top: 0.85rem; }
+.lpm-clone-fields fieldset {
+  display: grid;
+  gap: 0.45rem;
+  margin: 0;
+  padding: 0.8rem;
+  border: 1px solid var(--color-border);
+  border-radius: 8px;
+}
+.lpm-clone-fields legend { padding: 0 0.25rem; color: var(--color-text-secondary); font-size: 0.7rem; }

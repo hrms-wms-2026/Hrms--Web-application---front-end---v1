@@ -1,10 +1,10 @@
 <app-modal [open]="open" title="Cancel leave request" (closed)="onClose()">
   <div class="lcc-body">
     <p>
-      Are you sure you want to cancel this leave request? {{ leaveTypeName }} from {{ startDate }} to {{ endDate }} ({{ totalDays }} days).
+      Are you sure you want to cancel this leave request? {{ leaveTypeName }} from {{ startAt | date:'yyyy-MM-dd HH:mm' }} to {{ endAt | date:'yyyy-MM-dd HH:mm' }} ({{ totalHours }} hours).
     </p>
     @if (status === 'approved') {
-      <p class="lcc-restore">Your balance of {{ totalDays }} days will be restored.</p>
+      <p class="lcc-restore">Your balance of {{ totalHours }} hours will be restored.</p>
     }
 
     @if (isInProgress()) {

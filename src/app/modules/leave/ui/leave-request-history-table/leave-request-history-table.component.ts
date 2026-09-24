@@ -6,12 +6,18 @@ import { LeaveRequestListItemResponse } from '../../models/leave-request.model';
 export class LeaveRequestHistoryTableComponent {
   @Input({ required: true }) requests: readonly LeaveRequestListItemResponse[] = [];
   @Output() cancelRequested = new EventEmitter<LeaveRequestListItemResponse>();
+  @Output() replyRequested = new EventEmitter<LeaveRequestListItemResponse>();
 
   statusLabel(status: string): string {
+    if (status === 'information_requested') return 'Information requested';
     return status.charAt(0).toUpperCase() + status.slice(1);
   }
 
   canCancel(request: LeaveRequestListItemResponse): boolean {
     return request.status === 'pending' || request.status === 'approved';
+  }
+
+  canReply(request: LeaveRequestListItemResponse): boolean {
+    return request.status === 'information_requested';
   }
 }

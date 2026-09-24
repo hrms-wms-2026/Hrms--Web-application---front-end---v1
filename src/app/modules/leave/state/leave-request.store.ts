@@ -9,6 +9,7 @@ import {
   LeaveRequestListFilter,
   LeaveRequestListItemResponse,
   LeaveRequestResponse,
+  LeaveUploadedDocument,
   SubmitLeaveRequestOnBehalfRequest,
   SubmitLeaveRequestRequest
 } from '../models/leave-request.model';
@@ -25,6 +26,8 @@ export interface LeaveRequestState {
   readonly submitError: string | null;
   readonly cancelling: boolean;
   readonly cancelError: string | null;
+  readonly uploadingDocument: boolean;
+  readonly documentUploadError: string | null;
 }
 
 const initialState: LeaveRequestState = {
@@ -38,7 +41,9 @@ const initialState: LeaveRequestState = {
   submitting: false,
   submitError: null,
   cancelling: false,
-  cancelError: null
+  cancelError: null,
+  uploadingDocument: false,
+  documentUploadError: null
 };
 
 export const LeaveRequestStore = signalStore(
@@ -69,6 +74,20 @@ export const LeaveRequestStore = signalStore(
     },
     clearPreview(): void {
       patchState(store, { previewResult: null, previewError: null });
+    },
+    async uploadDocument(file: File): Promise<LeaveUploadedDocument | null> {
+      patchState(store, { uploadingDocument: true, documentUploadError: null });
+      try {
+        const uploaded = await firstValueFrom(api.uploadDocument(file));
+        patchState(store, { uploadingDocument: false });
+        return uploaded;
+      } catch (err) {
+        patchState(store, {
+          uploadingDocument: false,
+          documentUploadError: toSafeErrorMessage(err, 'Failed to upload this document.')
+        });
+        return null;
+      }
     },
     async submit(payload: SubmitLeaveRequestRequest): Promise<LeaveRequestResponse | null> {
       patchState(store, { submitting: true, submitError: null });
