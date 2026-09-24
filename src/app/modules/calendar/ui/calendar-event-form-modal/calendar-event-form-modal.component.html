@@ -92,19 +92,31 @@
               </p>
             }
             @if (isEdit) {
-              @if (hasMeetingCapableConnection) {
+              @if (hasTeamsCapableConnection) {
                 <button
                   type="button"
                   class="-mt-1 self-start text-xs font-medium text-[var(--color-accent)] hover:underline disabled:opacity-50"
                   [disabled]="meetingActionSaving"
-                  (click)="onAddMeeting()"
+                  (click)="onAddMeeting('microsoft_teams')"
                   data-testid="calendar-form-add-teams-meeting"
                 >
                   + Add Teams meeting
                 </button>
-              } @else {
+              }
+              @if (hasZoomCapableConnection) {
+                <button
+                  type="button"
+                  class="-mt-1 self-start text-xs font-medium text-[var(--color-accent)] hover:underline disabled:opacity-50"
+                  [disabled]="meetingActionSaving"
+                  (click)="onAddMeeting('zoom')"
+                  data-testid="calendar-form-add-zoom-meeting"
+                >
+                  + Add Zoom meeting
+                </button>
+              }
+              @if (!hasTeamsCapableConnection && !hasZoomCapableConnection) {
                 <a routerLink="/settings/calendar-connections" class="-mt-1 text-xs text-[var(--color-text-secondary)] hover:underline" data-testid="calendar-form-connect-microsoft-prompt">
-                  Connect Microsoft to add a Teams meeting
+                  Connect Microsoft or Zoom to add a meeting
                 </a>
               }
             }
