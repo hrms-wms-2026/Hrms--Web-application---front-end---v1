@@ -1,4 +1,5 @@
 import { EmployeeListAttendanceSummaryResponse } from '../models/employee.model';
+import { getInitials } from '../../../shared/utils/avatar.utils';
 
 /** Anything carrying an attendance summary - list rows and the full employee detail read alike. */
 export interface HasAttendanceSummary {
@@ -6,12 +7,7 @@ export interface HasAttendanceSummary {
 }
 
 export function avatarInitials(name: string): string {
-  if (!name) return 'E';
-  const parts = name.trim().split(/\s+/);
-  if (parts.length >= 2) {
-    return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
-  }
-  return name.slice(0, 2).toUpperCase();
+  return getInitials(name) || 'E';
 }
 
 export function isOverBreak(employee: HasAttendanceSummary): boolean {

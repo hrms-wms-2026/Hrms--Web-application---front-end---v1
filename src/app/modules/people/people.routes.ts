@@ -61,21 +61,13 @@ export const PEOPLE_ROUTES: Routes = [
       },
       {
         path: 'new',
-        loadComponent: () =>
-          import('./feature/checklist-builder/checklist-builder.component').then(
-            (m) => m.ChecklistBuilderComponent
-          ),
-        canActivate: [permissionGuard],
-        data: { title: 'Create Checklist', permissions: ['employees:write'] }
+        redirectTo: () => '/people/checklists?create=true',
+        pathMatch: 'full'
       },
       {
         path: ':id/edit',
-        loadComponent: () =>
-          import('./feature/checklist-builder/checklist-builder.component').then(
-            (m) => m.ChecklistBuilderComponent
-          ),
-        canActivate: [permissionGuard],
-        data: { title: 'Edit Checklist', permissions: ['employees:write'] }
+        redirectTo: (route) => `/people/checklists?edit=${route.params['id']}`,
+        pathMatch: 'full'
       }
     ]
   },

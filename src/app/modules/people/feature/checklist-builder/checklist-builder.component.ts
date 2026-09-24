@@ -2,11 +2,14 @@ import {
   ChangeDetectionStrategy,
   ChangeDetectorRef,
   Component,
+  ElementRef,
   OnInit,
   computed,
   effect,
   inject,
+  input,
   linkedSignal,
+  output,
   signal
 } from '@angular/core';
 import {
@@ -22,8 +25,9 @@ import { ActivatedRoute, Router } from '@angular/router';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { firstValueFrom } from 'rxjs';
 
+import { CdkDrag, CdkDragDrop, CdkDragHandle, CdkDropList } from '@angular/cdk/drag-drop';
 import { PermissionService } from '../../../../core/auth/state/permission.service';
-import { BreadcrumbHeaderComponent } from '../../../../shared/ui/breadcrumb-header/breadcrumb-header.component';
+import { NotificationService } from '../../../../core/services/notification.service';
 import { ButtonComponent } from '../../../../shared/ui/button/button.component';
 import { InputComponent } from '../../../../shared/ui/input/input.component';
 import { LoaderComponent } from '../../../../shared/ui/loader/loader.component';
@@ -86,27 +90,37 @@ export interface ChecklistTaskFormValue {
   standalone: true,
   imports: [
     ReactiveFormsModule,
-    BreadcrumbHeaderComponent,
     ButtonComponent,
     InputComponent,
     LoaderComponent,
-    SelectComponent
+    SelectComponent,
+    CdkDropList,
+    CdkDrag,
+    CdkDragHandle
   ],
   templateUrl: './checklist-builder.component.html',
   styleUrl: './checklist-builder.component.css',
   changeDetection: ChangeDetectionStrategy.OnPush
 })
 export class ChecklistBuilderComponent implements OnInit {
+  readonly open = input<boolean>(true);
+  readonly templateIdInput = input<string | null>(null, { alias: 'templateId' });
+
+  readonly closed = output<void>();
+  readonly saved = output<void>();
+
   readonly store = inject(ChecklistTemplateStore);
   private readonly fb = inject(FormBuilder);
   private readonly router = inject(Router);
   private readonly route = inject(ActivatedRoute);
   private readonly cdr = inject(ChangeDetectorRef);
+  private readonly elRef = inject(ElementRef);
   private readonly legalEntityStore = inject(LegalEntityStore);
   private readonly departmentApi = inject(DepartmentApiService);
   private readonly positionApi = inject(PositionApiService);
   private readonly peopleApi = inject(PeopleApiService);
   private readonly permissionService = inject(PermissionService);
+  private readonly notificationService = inject(NotificationService);
 
   readonly canWrite = computed(() => this.permissionService.hasPermission('employees:write'));
   readonly selectedCompany = this.legalEntityStore.selectedLegalEntity;
@@ -180,8 +194,9 @@ export class ChecklistBuilderComponent implements OnInit {
     });
 
     effect(() => {
+      const isOpen = this.open();
       const company = this.selectedCompany();
-      if (company) {
+      if (isOpen && company) {
         void this.loadDepartments(company.id);
         void this.loadAssigneePositions(company.id);
         if (this.form.controls.departmentId.value) {
@@ -189,20 +204,47 @@ export class ChecklistBuilderComponent implements OnInit {
         }
       }
     });
+
+    effect(() => {
+      const isOpen = this.open();
+      const inputId = this.templateIdInput();
+      if (!isOpen) {
+        return;
+      }
+
+      const id = inputId ?? this.route.snapshot.paramMap.get('id');
+      if (id) {
+        this.isEdit.set(true);
+        this.templateId.set(id);
+        void this.loadTemplateForEdit(id);
+      } else {
+        this.isEdit.set(false);
+        this.templateId.set(null);
+        this.resetCreateForm();
+      }
+    });
   }
 
   async ngOnInit(): Promise<void> {
-    const id = this.route.snapshot.paramMap.get('id');
-    if (id) {
-      this.isEdit.set(true);
-      this.templateId.set(id);
-      await this.loadTemplateForEdit(id);
-    } else {
-      this.isEdit.set(false);
-      this.templateId.set(null);
-      this.applyScopeValidators('company');
-      this.addTask();
-    }
+    // Initial loading is reactively handled by constructor effect
+  }
+
+  private resetCreateForm(): void {
+    this.submitAttempted.set(false);
+    this.loadError.set(null);
+    this.form.reset({
+      name: '',
+      templateType: 'onboarding',
+      scopeLevel: 'company',
+      departmentId: '',
+      positionId: ''
+    });
+    this.scopeLevel.set('company');
+    this.applyScopeValidators('company');
+    this.tasksArray.clear();
+    this.addTask();
+    this.closeTaskPickers();
+    this.cdr.markForCheck();
   }
 
   private async loadTemplateForEdit(id: string): Promise<void> {
@@ -382,6 +424,8 @@ export class ChecklistBuilderComponent implements OnInit {
     if (this.tasksArray.length > 1) {
       this.tasksArray.removeAt(index);
       this.cdr.markForCheck();
+    } else {
+      this.notificationService.info('A checklist must have at least one task.');
     }
   }
 
@@ -403,8 +447,55 @@ export class ChecklistBuilderComponent implements OnInit {
     }
   }
 
+  onDropTask(event: CdkDragDrop<unknown>): void {
+    if (event.previousIndex === event.currentIndex) {
+      return;
+    }
+    const task = this.tasksArray.at(event.previousIndex);
+    this.tasksArray.removeAt(event.previousIndex);
+    this.tasksArray.insert(event.currentIndex, task);
+    this.cdr.markForCheck();
+  }
+
+  onTaskTitleEnter(index: number, event?: Event): void {
+    if (event) {
+      event.preventDefault();
+      event.stopPropagation();
+    }
+    const currentTask = this.tasksArray.at(index);
+    if (!currentTask?.get('title')?.value?.trim()) {
+      return;
+    }
+
+    if (index === this.tasksArray.length - 1) {
+      this.addTask();
+    }
+
+    setTimeout(() => {
+      this.focusTaskTitle(index + 1);
+    }, 50);
+  }
+
+  focusTaskTitle(index: number): void {
+    const el = this.elRef.nativeElement as HTMLElement;
+    const inputs = el.querySelectorAll<HTMLInputElement>('.cb-task-row .cb-task-list__col-title input');
+    if (inputs && inputs[index]) {
+      inputs[index].focus();
+    }
+  }
+
   cancel(): void {
+    this.closeTaskPickers();
+    this.closed.emit();
     void this.router.navigate(['/people/checklists']);
+  }
+
+  onBackdrop(event?: MouseEvent): void {
+    this.cancel();
+  }
+
+  onEscape(): void {
+    this.cancel();
   }
 
   async onSubmit(): Promise<void> {
@@ -413,11 +504,34 @@ export class ChecklistBuilderComponent implements OnInit {
     this.cdr.markForCheck();
 
     if (this.form.invalid || this.tasksArray.length === 0) {
+      if (!this.form.get('name')?.value?.trim()) {
+        this.notificationService.warning('Please enter a checklist name.');
+      } else if (this.tasksArray.length === 0) {
+        this.notificationService.warning('Please add at least one task to the checklist.');
+      } else {
+        const invalidTask = this.tasksArray.controls.find((c) => c.invalid);
+        if (invalidTask) {
+          if (!invalidTask.get('title')?.value?.trim()) {
+            this.notificationService.warning('Please enter a title for all tasks.');
+          } else if (invalidTask.get('assigneePositionId')?.invalid) {
+            this.notificationService.warning('Please choose who all tasks are assigned to.');
+          } else if (invalidTask.get('dueOffsetDays')?.invalid) {
+            this.notificationService.warning('Please enter a valid due offset (0 or more days).');
+          } else {
+            this.notificationService.warning('Please fill in all required checklist fields.');
+          }
+        } else {
+          this.notificationService.warning('Please fill in all required checklist fields.');
+        }
+      }
       return;
     }
 
     const company = this.selectedCompany();
-    if (!company) return;
+    if (!company) {
+      this.notificationService.warning('Please select a company to create the checklist.');
+      return;
+    }
 
     const val = this.form.value;
     const scope = this.scopeLevel();
@@ -438,6 +552,11 @@ export class ChecklistBuilderComponent implements OnInit {
         tasks: tasksPayload
       };
       success = await this.store.updateTemplate(this.templateId()!, updatePayload);
+      if (success) {
+        this.notificationService.success('Checklist updated successfully.');
+      } else {
+        this.notificationService.error(this.store.error() || 'Failed to update checklist.');
+      }
     } else {
       const createPayload: CreateChecklistTemplateRequest = {
         name: val.name!,
@@ -448,9 +567,16 @@ export class ChecklistBuilderComponent implements OnInit {
         tasks: tasksPayload
       };
       success = await this.store.createTemplate(createPayload);
+      if (success) {
+        this.notificationService.success('Checklist created successfully.');
+      } else {
+        this.notificationService.error(this.store.error() || 'Failed to create checklist.');
+      }
     }
 
     if (success) {
+      this.closeTaskPickers();
+      this.saved.emit();
       void this.router.navigate(['/people/checklists']);
     }
   }

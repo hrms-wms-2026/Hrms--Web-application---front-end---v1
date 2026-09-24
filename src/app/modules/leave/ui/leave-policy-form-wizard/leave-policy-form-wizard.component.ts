@@ -4,6 +4,7 @@ import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { EmptyStateComponent } from '../../../../shared/ui/empty-state/empty-state.component';
 import { ProgressBarComponent } from '../../../../shared/ui/progress-bar/progress-bar.component';
+import { DatePickerComponent } from '../../../../shared/ui/date-picker/date-picker.component';
 import { LegalEntityListItem } from '../../../organization/models/legal-entity.model';
 import { LeaveTypeResponse } from '../../models/leave-type.model';
 import { CreateLeavePolicyBlackoutPeriodRequest, CreateLeavePolicyTypeRuleRequest, LeavePolicyFormDraft } from '../../models/leave-policy.model';
@@ -17,6 +18,7 @@ import { createEmptyLeavePolicyFormDraft, validateLeavePolicyFormDraft } from '.
   styleUrl: './leave-policy-form-wizard.component.css',
   changeDetection: ChangeDetectionStrategy.OnPush
 })
+@Component({ selector: 'app-leave-policy-form-wizard', standalone: true, imports: [CommonModule, FormsModule, EmptyStateComponent, ProgressBarComponent, DatePickerComponent], templateUrl: './leave-policy-form-wizard.component.html', styleUrl: './leave-policy-form-wizard.component.css', changeDetection: ChangeDetectionStrategy.OnPush })
 export class LeavePolicyFormWizardComponent {
   @Input() leaveTypes: readonly LeaveTypeResponse[] = [];
   @Input() legalEntities: readonly LegalEntityListItem[] = [];

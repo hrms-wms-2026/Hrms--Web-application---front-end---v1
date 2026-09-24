@@ -17,7 +17,8 @@ describe('TaskTreeRowComponent', () => {
       dueDate: null, estimatedHours: 3, completedHours: 0, progressPercent: 0,
       sprintId: 'spr-1', assigneeEmployeeIds: ['e1'], openClockSessionEmployeeId: null, openClockSessionClockInAt: null, totalLoggedMinutes: 0,
       attachments: [], assignees: [],
-      parentTaskId: null, subtaskTotalCount: 0, subtaskCompletedCount: 0, subtaskAssigneeEmployeeIds: []
+      parentTaskId: null, subtaskTotalCount: 0, subtaskCompletedCount: 0, subtaskAssigneeEmployeeIds: [],
+      createdAt: new Date('2026-01-01T00:00:00Z')
     }
   };
 
