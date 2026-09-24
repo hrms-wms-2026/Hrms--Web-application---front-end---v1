@@ -5,7 +5,7 @@ import { environment } from '../../../../environments/environment';
 import {
   CalendarConflictsResponse, CalendarEventResponse, CalendarEventsResponse, CheckCalendarConflictsRequest,
   CreateCalendarEventRequest, CreateEventMeetingResponse, EditRecurringOccurrenceRequest, GetEligibleNomineesResponse,
-  MeetingAttendanceResponse, RespondToCalendarEventStatus, UpdateCalendarEventRequest
+  MeetingAttendanceResponse, MeetingProvider, RespondToCalendarEventStatus, UpdateCalendarEventRequest
 } from '../models/calendar-event.model';
 
 @Injectable({ providedIn: 'root' })
@@ -56,7 +56,7 @@ export class CalendarEventApiService {
     return this.http.get<{ timezone: string }>(`${this.baseUrl}/my-timezone`);
   }
 
-  createMeeting(eventId: string, provider: 'microsoft_teams' | 'zoom'): Observable<CreateEventMeetingResponse> {
+  createMeeting(eventId: string, provider: MeetingProvider): Observable<CreateEventMeetingResponse> {
     return this.http.post<CreateEventMeetingResponse>(`${this.baseUrl}/${eventId}/meeting`, { provider });
   }
 

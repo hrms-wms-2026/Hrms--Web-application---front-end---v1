@@ -13,7 +13,7 @@ import { AuthStore } from '../../../../core/auth/state/auth.store';
 import { localPartsToUtcIso, utcIsoToLocalParts } from '../../../../shared/utils/timezone.util';
 import {
   CalendarConflict, CalendarEventParticipant, CalendarEventResponse, CreateCalendarEventRequest,
-  EligibleNominee, RecurrenceEditScope, RespondToCalendarEventStatus, UpdateCalendarEventRequest
+  EligibleNominee, MeetingProvider, RecurrenceEditScope, RespondToCalendarEventStatus, UpdateCalendarEventRequest
 } from '../../models/calendar-event.model';
 import { RecurrenceEndMode, RecurrenceFrequency, buildRecurrenceRule } from '../../utils/recurrence-rule.util';
 import { CalendarEventAttendanceComponent } from '../calendar-event-attendance/calendar-event-attendance.component';
@@ -107,7 +107,7 @@ export class CalendarEventFormModalComponent implements OnChanges {
   @Output() respond = new EventEmitter<RespondToCalendarEventPayload>();
   @Output() checkConflicts = new EventEmitter<{ participantEmployeeIds: readonly string[]; startDate: string; endDate: string }>();
   @Output() loadEligibleNominees = new EventEmitter<void>();
-  @Output() addMeeting = new EventEmitter<'microsoft_teams' | 'zoom'>();
+  @Output() addMeeting = new EventEmitter<MeetingProvider>();
   @Output() removeMeeting = new EventEmitter<void>();
   @Output() cancel = new EventEmitter<void>();
 
@@ -365,7 +365,7 @@ export class CalendarEventFormModalComponent implements OnChanges {
     return /^https:\/\/teams\.microsoft\.com\//i.test(value) || /^https:\/\/([a-z0-9-]+\.)?zoom\.us\//i.test(value);
   }
 
-  onAddMeeting(provider: 'microsoft_teams' | 'zoom'): void {
+  onAddMeeting(provider: MeetingProvider): void {
     this.addMeeting.emit(provider);
   }
 
