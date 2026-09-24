@@ -1,7 +1,7 @@
 import { Component, ElementRef, HostListener, computed, inject, input, output, signal } from '@angular/core';
 import { WorkDropdownComponent, WorkDropdownOption } from '../work-dropdown/work-dropdown.component';
 
-export type TaskFilterFieldIcon = 'module' | 'status' | 'category' | 'sprint' | 'people' | 'priority';
+export type TaskFilterFieldIcon = 'module' | 'status' | 'category' | 'sprint' | 'people' | 'priority' | 'calendar';
 
 export interface TaskFilterFieldConfig {
   key: string;
@@ -12,6 +12,11 @@ export interface TaskFilterFieldConfig {
   /** Value considered "not filtering" for this field - what a removed/cleared row resets to. Defaults to []. */
   defaultValues?: readonly string[];
 }
+
+/** Preset highlight colors - mid-saturation so a translucent tint reads in both light and dark themes. */
+export const HIGHLIGHT_SWATCHES: readonly string[] = [
+  '#f59e0b', '#eab308', '#22c55e', '#14b8a6', '#3b82f6', '#8b5cf6', '#ec4899', '#ef4444'
+];
 
 function sameValues(a: readonly string[], b: readonly string[]): boolean {
   return a.length === b.length && a.every((v) => b.includes(v));
@@ -34,8 +39,13 @@ function sameValues(a: readonly string[], b: readonly string[]): boolean {
           [attr.aria-expanded]="open()"
           (click)="toggleOpen()"
         >
-          <svg class="tfb__trigger-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 6h16M7 12h10M10 18h4" /></svg>
-          <span>Filter</span>
+          @if (highlightColor(); as color) {
+            <span class="tfb__color-dot" data-testid="highlight-color-dot" [style.background]="color" aria-hidden="true"></span>
+            <span>Highlight</span>
+          } @else {
+            <svg class="tfb__trigger-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 6h16M7 12h10M10 18h4" /></svg>
+            <span>Filter</span>
+          }
         </button>
         @if (activeCount() > 0) {
           <button
@@ -51,13 +61,41 @@ function sameValues(a: readonly string[], b: readonly string[]): boolean {
       </div>
 
       @if (open()) {
-        <div class="tfb__panel" role="dialog" aria-label="Filters">
+        <div class="tfb__panel" [class.tfb__panel--left]="panelAlign() === 'left'" role="dialog" aria-label="Filters">
           <div class="tfb__panel-head">
             <span>Filters</span>
             @if (activeRows().length > 0) {
               <button type="button" class="tfb__clear-all" (click)="clearAll()">Clear all</button>
             }
           </div>
+
+          @if (highlightColor(); as current) {
+            <div class="tfb__color-row" data-testid="highlight-color-row">
+              <span class="tfb__row-label">Color</span>
+              <div class="tfb__swatches" role="group" aria-label="Highlight color">
+                @for (swatch of swatches; track swatch) {
+                  <button
+                    type="button"
+                    class="tfb__swatch"
+                    data-testid="highlight-swatch"
+                    [style.background]="swatch"
+                    [attr.aria-label]="'Highlight color ' + swatch"
+                    [attr.aria-pressed]="swatch === current"
+                    (click)="highlightColorChanged.emit(swatch)"
+                  ></button>
+                }
+                <label class="tfb__swatch tfb__swatch--custom" title="Custom color">
+                  <input
+                    type="color"
+                    data-testid="highlight-custom-color"
+                    aria-label="Custom highlight color"
+                    [value]="current"
+                    (input)="highlightColorChanged.emit($any($event.target).value)"
+                  />
+                </label>
+              </div>
+            </div>
+          }
 
           @for (field of activeRows(); track field.key) {
             <div class="tfb__row">
@@ -69,6 +107,7 @@ function sameValues(a: readonly string[], b: readonly string[]): boolean {
                   @case ('sprint') { <svg viewBox="0 0 24 24" aria-hidden="true"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2" /></svg> }
                   @case ('people') { <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="9" cy="8" r="3" /><path d="M4 20c0-3 2.5-5 5-5s5 2 5 5" /><path d="M15 7a3 3 0 0 1 0 6M20 20c0-2.5-1.7-4.3-4-4.8" /></svg> }
                   @case ('priority') { <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 3v18" /><path d="M5 4h11l-3 4 3 4H5" /></svg> }
+                  @case ('calendar') { <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="4" y="5" width="16" height="15" rx="2" /><path d="M4 10h16M9 3v4M15 3v4" /></svg> }
                 }
               </span>
               <span class="tfb__row-label">{{ field.label }}</span>
@@ -113,6 +152,7 @@ function sameValues(a: readonly string[], b: readonly string[]): boolean {
                         @case ('sprint') { <svg viewBox="0 0 24 24" aria-hidden="true"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2" /></svg> }
                         @case ('people') { <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="9" cy="8" r="3" /><path d="M4 20c0-3 2.5-5 5-5s5 2 5 5" /><path d="M15 7a3 3 0 0 1 0 6M20 20c0-2.5-1.7-4.3-4-4.8" /></svg> }
                         @case ('priority') { <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 3v18" /><path d="M5 4h11l-3 4 3 4H5" /></svg> }
+                        @case ('calendar') { <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="4" y="5" width="16" height="15" rx="2" /><path d="M4 10h16M9 3v4M15 3v4" /></svg> }
                       }
                     </span>
                     <span>{{ field.label }}</span>
@@ -146,6 +186,14 @@ function sameValues(a: readonly string[], b: readonly string[]): boolean {
     .tfb__badge:hover .tfb__badge-count { display: none; }
     .tfb__badge:hover .tfb__badge-clear { display: inline-flex; }
     .tfb__panel { position: absolute; top: calc(100% + 7px); right: 0; z-index: 80; width: 340px; max-width: 90vw; border: 1px solid var(--color-border); border-radius: 12px; background: var(--color-surface); box-shadow: 0 16px 36px rgb(15 23 42 / .18); padding: 12px; animation: tfb-panel-in 130ms ease-out; }
+    .tfb__panel--left { right: auto; left: 0; }
+    .tfb__color-dot { width: 12px; height: 12px; border-radius: 999px; box-shadow: 0 0 0 1px rgb(15 23 42 / .15); }
+    .tfb__color-row { display: flex; align-items: center; gap: 8px; margin-bottom: 10px; padding-bottom: 10px; border-bottom: 1px solid var(--color-border); }
+    .tfb__swatches { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; }
+    .tfb__swatch { position: relative; width: 20px; height: 20px; flex: 0 0 auto; border: 0; border-radius: 999px; padding: 0; cursor: pointer; box-shadow: 0 0 0 1px rgb(15 23 42 / .12); }
+    .tfb__swatch[aria-pressed="true"] { box-shadow: 0 0 0 2px var(--color-surface), 0 0 0 4px var(--color-text-primary); }
+    .tfb__swatch--custom { overflow: hidden; background: conic-gradient(#ef4444, #f59e0b, #22c55e, #3b82f6, #8b5cf6, #ef4444); }
+    .tfb__swatch--custom input { position: absolute; inset: 0; width: 100%; height: 100%; opacity: 0; cursor: pointer; }
     .tfb__panel-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 8px; font-size: 13px; font-weight: 700; color: var(--color-text-primary); }
     .tfb__clear-all { border: 0; background: transparent; color: var(--color-accent); font: inherit; font-size: 12px; font-weight: 600; cursor: pointer; }
     .tfb__clear-all:hover { text-decoration: underline; }
@@ -175,7 +223,13 @@ function sameValues(a: readonly string[], b: readonly string[]): boolean {
 export class TaskFilterBarComponent {
   fields = input.required<readonly TaskFilterFieldConfig[]>();
   values = input<Record<string, readonly string[]>>({});
+  /** Opt-in highlight mode (tree tab): non-null shows a color picker row and relabels the trigger. */
+  highlightColor = input<string | null>(null);
+  panelAlign = input<'left' | 'right'>('right');
   fieldChanged = output<{ key: string; values: string[] }>();
+  highlightColorChanged = output<string>();
+
+  protected readonly swatches = HIGHLIGHT_SWATCHES;
 
   protected readonly open = signal(false);
   protected readonly pickerOpen = signal(false);

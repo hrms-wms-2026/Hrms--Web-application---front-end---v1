@@ -103,15 +103,82 @@ describe('TaskCommentsComponent', () => {
   });
 
   it('toggleReaction removes a reaction the caller already made', async () => {
-    const comment = authorComment({ reactions: [{ emoji: '👍', employeeIds: ['me'] }] });
+    const comment = authorComment({ reactions: [{ emoji: '👍', employeeIds: ['me'], reactors: [] }] });
 
     await component.toggleReaction(comment, '👍');
 
     expect(commentApi.removeReaction).toHaveBeenCalledWith('c1', '👍');
   });
 
+  it('toggleReaction with a different emoji replaces the caller reaction (add only, backend swaps it)', async () => {
+    const comment = authorComment({ reactions: [{ emoji: '👍', employeeIds: ['me'], reactors: [] }] });
+
+    await component.toggleReaction(comment, '🎉');
+
+    expect(commentApi.addReaction).toHaveBeenCalledWith('c1', '🎉');
+    expect(commentApi.removeReaction).not.toHaveBeenCalled();
+  });
+
+  it('myReaction returns the caller single emoji or null', () => {
+    expect(component.myReaction(authorComment({ reactions: [{ emoji: '🎉', employeeIds: ['u1', 'me'], reactors: [] }] }))).toBe('🎉');
+    expect(component.myReaction(authorComment({ reactions: [{ emoji: '🎉', employeeIds: ['u1'], reactors: [] }] }))).toBeNull();
+  });
+
+  it('clicking a reaction pill opens the reactors popover listing who reacted, instead of toggling', async () => {
+    commentApi.getComments.mockReturnValue(of([authorComment({
+      reactions: [{ emoji: '👍', employeeIds: ['u1', 'me'], reactors: [{ employeeId: 'u1', name: 'Arun' }, { employeeId: 'me', name: 'Priya' }] }]
+    })]));
+    fixture = TestBed.createComponent(TaskCommentsComponent);
+    component = fixture.componentInstance;
+    fixture.componentRef.setInput('taskId', 't1');
+    fixture.detectChanges();
+    await fixture.whenStable();
+    fixture.detectChanges();
+
+    (fixture.nativeElement.querySelector('.tc-reaction-pill') as HTMLButtonElement).click();
+    fixture.detectChanges();
+
+    expect(commentApi.addReaction).not.toHaveBeenCalled();
+    expect(commentApi.removeReaction).not.toHaveBeenCalled();
+    const popover = document.querySelector('[data-testid="reactors-popover"]') as HTMLElement;
+    expect(popover).toBeTruthy();
+    const rows = Array.from(popover.querySelectorAll('[data-testid="reactor-row"] .tc-popover-name')).map(el => el.textContent?.trim());
+    expect(rows).toEqual(['Arun', 'Priya (you)']);
+    expect(popover.querySelector('[data-testid="reactors-popover-action"]')?.textContent?.trim()).toBe('Remove my reaction');
+  });
+
+  it('opens the emoji picker in a CDK overlay (outside the scrollable comment list) and closes it on pick', async () => {
+    await fixture.whenStable();
+    fixture.detectChanges();
+
+    (fixture.nativeElement.querySelector('button[aria-label="Add reaction"]') as HTMLButtonElement).click();
+    fixture.detectChanges();
+
+    const picker = document.querySelector('.cdk-overlay-container app-emoji-picker');
+    expect(picker).toBeTruthy();
+    expect(fixture.nativeElement.querySelector('app-emoji-picker')).toBeNull();
+
+    (picker!.querySelector('.ep-emoji') as HTMLButtonElement).click();
+    fixture.detectChanges();
+    await fixture.whenStable();
+
+    expect(component.emojiPickerOpenFor()).toBeNull();
+    expect(commentApi.addReaction).toHaveBeenCalledWith('c1', '😀');
+  });
+
+  it('reactFromPopover closes the popover and reacts', async () => {
+    const comment = authorComment({ reactions: [{ emoji: '❤️', employeeIds: ['u1'], reactors: [{ employeeId: 'u1', name: 'Arun' }] }] });
+    component.toggleReactors('c1', '❤️');
+    expect(component.isReactorsOpen('c1', '❤️')).toBe(true);
+
+    await component.reactFromPopover(comment, '❤️');
+
+    expect(component.reactorsOpenFor()).toBeNull();
+    expect(commentApi.addReaction).toHaveBeenCalledWith('c1', '❤️');
+  });
+
   it('hasReacted reflects whether the current employee is in the reaction', () => {
-    const comment = authorComment({ reactions: [{ emoji: '👍', employeeIds: ['me'] }] });
+    const comment = authorComment({ reactions: [{ emoji: '👍', employeeIds: ['me'], reactors: [] }] });
 
     expect(component.hasReacted(comment, '👍')).toBe(true);
     expect(component.hasReacted(comment, '🎉')).toBe(false);
@@ -120,9 +187,9 @@ describe('TaskCommentsComponent', () => {
   it('activeReactions only returns emojis with positive count', () => {
     const comment = authorComment({
       reactions: [
-        { emoji: '👍', employeeIds: ['u1', 'u2'] },
-        { emoji: '🎉', employeeIds: [] },
-        { emoji: '❤️', employeeIds: ['u3'] }
+        { emoji: '👍', employeeIds: ['u1', 'u2'], reactors: [] },
+        { emoji: '🎉', employeeIds: [], reactors: [] },
+        { emoji: '❤️', employeeIds: ['u3'], reactors: [] }
       ]
     });
 
@@ -150,17 +217,16 @@ describe('TaskCommentsComponent', () => {
     expect(component.formatTimeAgo(threeDaysAgo.toISOString())).toBe('3d ago');
   });
 
-  it('otherActiveReactions filters out thumbs up reaction', () => {
+  it('pillReactions puts thumbs up first and drops empty reactions', () => {
     const comment = authorComment({
       reactions: [
-        { emoji: '👍', employeeIds: ['u1'] },
-        { emoji: '❤️', employeeIds: ['u2', 'u3'] },
-        { emoji: '🎉', employeeIds: [] }
+        { emoji: '❤️', employeeIds: ['u2', 'u3'], reactors: [] },
+        { emoji: '👍', employeeIds: ['u1'], reactors: [] },
+        { emoji: '🎉', employeeIds: [], reactors: [] }
       ]
     });
 
-    const others = component.otherActiveReactions(comment);
-    expect(others).toEqual([{ emoji: '❤️', count: 2 }]);
+    expect(component.pillReactions(comment)).toEqual([{ emoji: '👍', count: 1 }, { emoji: '❤️', count: 2 }]);
   });
 
   it('copyCommentLink triggers notification and copies url', () => {

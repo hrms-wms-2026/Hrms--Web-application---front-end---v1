@@ -1,10 +1,11 @@
 import { Component, HostListener, computed, inject, input, signal, OnInit } from '@angular/core';
 import { DatePipe, NgTemplateOutlet } from '@angular/common';
+import { ConnectionPositionPair, OverlayModule } from '@angular/cdk/overlay';
 import { firstValueFrom } from 'rxjs';
 import { NotificationService } from '../../../../core/services/notification.service';
 import { TaskCommentApiService } from '../../data-access/task-comment-api.service';
 import { TaskApiService } from '../../data-access/task-api.service';
-import { TaskCommentDto, TaskCommentReactionDto } from '../../models/dto/task-comment.dto';
+import { TaskCommentDto, TaskCommentReactionDto, TaskCommentReactorDto } from '../../models/dto/task-comment.dto';
 import { EmployeeAvatarComponent } from '../employee-avatar/employee-avatar.component';
 import { CommentComposerComponent } from '../comment-composer/comment-composer.component';
 import { EmojiPickerComponent } from '../emoji-picker/emoji-picker.component';
@@ -12,7 +13,7 @@ import { EmojiPickerComponent } from '../emoji-picker/emoji-picker.component';
 @Component({
   selector: 'app-task-comments',
   standalone: true,
-  imports: [EmployeeAvatarComponent, NgTemplateOutlet, DatePipe, CommentComposerComponent, EmojiPickerComponent],
+  imports: [EmployeeAvatarComponent, NgTemplateOutlet, DatePipe, CommentComposerComponent, EmojiPickerComponent, OverlayModule],
   template: `
     <div class="tc-composer-row">
       <div class="tc-current-user-avatar">
@@ -126,19 +127,8 @@ import { EmojiPickerComponent } from '../emoji-picker/emoji-picker.component';
                 </button>
               }
 
-              <!-- Thumbs-up: Pill if count > 0, else outline icon -->
-              @if (reactionCount(comment, '👍') > 0) {
-                <button
-                  type="button"
-                  class="tc-reaction-pill"
-                  [class.tc-reaction-pill--active]="hasReacted(comment, '👍')"
-                  [title]="hasReacted(comment, '👍') ? 'You reacted with 👍' : '👍'"
-                  (click)="toggleReaction(comment, '👍')"
-                >
-                  <span class="tc-reaction-emoji">👍</span>
-                  <span class="tc-reaction-count">{{ reactionCount(comment, '👍') }}</span>
-                </button>
-              } @else {
+              <!-- Thumbs-up quick react: outline icon until someone reacts with 👍 (then it becomes a pill below) -->
+              @if (reactionCount(comment, '👍') === 0) {
                 <button
                   type="button"
                   class="tc-icon-btn"
@@ -152,18 +142,53 @@ import { EmojiPickerComponent } from '../emoji-picker/emoji-picker.component';
                 </button>
               }
 
-              <!-- Other reactions with count > 0 -->
-              @for (r of otherActiveReactions(comment); track r.emoji) {
+              <!-- Reaction pills (👍 first). Clicking one opens the list of who reacted - same popover
+                   look as the task Status dropdown. One reaction per person per comment. -->
+              @for (r of pillReactions(comment); track r.emoji) {
                 <button
                   type="button"
                   class="tc-reaction-pill"
                   [class.tc-reaction-pill--active]="hasReacted(comment, r.emoji)"
-                  [title]="hasReacted(comment, r.emoji) ? 'You reacted with ' + r.emoji : r.emoji"
-                  (click)="toggleReaction(comment, r.emoji)"
+                  [attr.data-testid]="'reaction-pill-' + r.emoji"
+                  [attr.aria-expanded]="isReactorsOpen(comment.id, r.emoji)"
+                  [title]="hasReacted(comment, r.emoji) ? 'You reacted with ' + r.emoji : 'See who reacted with ' + r.emoji"
+                  cdkOverlayOrigin
+                  #reactionOrigin="cdkOverlayOrigin"
+                  (click)="toggleReactors(comment.id, r.emoji, $event)"
                 >
                   <span class="tc-reaction-emoji">{{ r.emoji }}</span>
                   <span class="tc-reaction-count">{{ r.count }}</span>
                 </button>
+
+                <ng-template
+                  cdkConnectedOverlay
+                  [cdkConnectedOverlayOrigin]="reactionOrigin"
+                  [cdkConnectedOverlayOpen]="isReactorsOpen(comment.id, r.emoji)"
+                  [cdkConnectedOverlayPositions]="popoverPositions"
+                  [cdkConnectedOverlayHasBackdrop]="true"
+                  cdkConnectedOverlayBackdropClass="cdk-overlay-transparent-backdrop"
+                  (backdropClick)="closeReactors()"
+                  (detach)="closeReactors()"
+                >
+                  <div class="tc-popover" role="dialog" [attr.aria-label]="'People who reacted with ' + r.emoji" data-testid="reactors-popover" (click)="$event.stopPropagation()">
+                    <div class="tc-popover-title">{{ r.emoji }} Reactions · {{ r.count }}</div>
+                    <div class="tc-popover-list">
+                      @for (person of reactorsFor(comment, r.emoji); track person.employeeId) {
+                        <div class="tc-popover-option" [class.tc-popover-option--selected]="person.employeeId === currentEmployeeId()" data-testid="reactor-row">
+                          <app-employee-avatar [employeeId]="person.employeeId" />
+                          <span class="tc-popover-name">{{ person.name }}@if (person.employeeId === currentEmployeeId()) { (you)}</span>
+                          @if (person.employeeId === currentEmployeeId()) {
+                            <svg class="tc-popover-check" viewBox="0 0 24 24" aria-hidden="true"><polyline points="20 6 9 17 4 12" /></svg>
+                          }
+                        </div>
+                      }
+                    </div>
+                    <div class="tc-popover-divider"></div>
+                    <button type="button" class="tc-popover-action" data-testid="reactors-popover-action" (click)="reactFromPopover(comment, r.emoji)">
+                      {{ hasReacted(comment, r.emoji) ? 'Remove my reaction' : 'React with ' + r.emoji }}
+                    </button>
+                  </div>
+                </ng-template>
               }
 
               <!-- ☺+ Add reaction (smiley face with +) -->
@@ -173,6 +198,9 @@ import { EmojiPickerComponent } from '../emoji-picker/emoji-picker.component';
                   class="tc-icon-btn"
                   title="Add reaction"
                   aria-label="Add reaction"
+                  [attr.aria-expanded]="emojiPickerOpenFor() === comment.id"
+                  cdkOverlayOrigin
+                  #pickerOrigin="cdkOverlayOrigin"
                   (click)="toggleEmojiPicker(comment.id)"
                 >
                   <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
@@ -184,9 +212,20 @@ import { EmojiPickerComponent } from '../emoji-picker/emoji-picker.component';
                     <line x1="16" y1="5" x2="22" y2="5"></line>
                   </svg>
                 </button>
-                @if (emojiPickerOpenFor() === comment.id) {
+                <!-- Rendered in a CDK overlay so the modal's scroll area can't clip it; opens above the
+                     button by default and flips below only when there is no room on top. -->
+                <ng-template
+                  cdkConnectedOverlay
+                  [cdkConnectedOverlayOrigin]="pickerOrigin"
+                  [cdkConnectedOverlayOpen]="emojiPickerOpenFor() === comment.id"
+                  [cdkConnectedOverlayPositions]="pickerPositions"
+                  [cdkConnectedOverlayHasBackdrop]="true"
+                  cdkConnectedOverlayBackdropClass="cdk-overlay-transparent-backdrop"
+                  (backdropClick)="emojiPickerOpenFor.set(null)"
+                  (detach)="emojiPickerOpenFor.set(null)"
+                >
                   <app-emoji-picker (emojiSelected)="onEmojiPicked(comment, $event)" />
-                }
+                </ng-template>
               </div>
 
               <!-- ✏ Edit button -->
@@ -403,6 +442,75 @@ import { EmojiPickerComponent } from '../emoji-picker/emoji-picker.component';
     .tc-reaction-emoji { font-size: 13px; line-height: 1; }
     .tc-reaction-count { font-size: 12px; font-weight: 600; }
 
+    /* Reactors popover - mirrors task-table's .task-table__popover (task Status dropdown) */
+    .tc-popover {
+      min-width: 200px;
+      max-width: 280px;
+      border-radius: 8px;
+      border: 1px solid var(--color-border);
+      background: var(--color-surface);
+      padding: 8px;
+      box-shadow: 0 10px 25px rgb(15 23 42 / 0.16);
+      cursor: default;
+      font-size: 12px;
+      color: var(--color-text-primary);
+    }
+    .tc-popover-title {
+      font-size: 10.5px;
+      font-weight: 600;
+      color: var(--color-text-secondary);
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+      margin-bottom: 6px;
+      padding: 0 4px;
+    }
+    .tc-popover-list { display: flex; flex-direction: column; gap: 2px; max-height: 240px; overflow-y: auto; }
+    .tc-popover-option {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      width: 100%;
+      padding: 5px 8px;
+      border-radius: 5px;
+      font-size: 12px;
+      font-weight: 500;
+    }
+    .tc-popover-option--selected {
+      background: color-mix(in srgb, var(--color-accent) 12%, var(--color-surface));
+      color: var(--color-accent);
+      font-weight: 600;
+    }
+    .tc-popover-name { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .tc-popover-check {
+      width: 13px;
+      height: 13px;
+      stroke: currentColor;
+      fill: none;
+      stroke-width: 2.2;
+      stroke-linecap: round;
+      stroke-linejoin: round;
+      margin-left: auto;
+      flex-shrink: 0;
+    }
+    .tc-popover-divider { height: 1px; background: var(--color-border); margin: 6px 0; }
+    .tc-popover-action {
+      display: flex;
+      align-items: center;
+      width: 100%;
+      padding: 5px 8px;
+      border: 0;
+      border-radius: 5px;
+      background: transparent;
+      color: var(--color-text-primary);
+      font: inherit;
+      font-size: 12px;
+      font-weight: 500;
+      cursor: pointer;
+      text-align: left;
+      transition: background-color 100ms ease;
+    }
+    .tc-popover-action:hover { background: var(--color-surface-secondary); }
+
     /* Emoji Picker Anchor */
     .tc-picker-anchor { position: relative; display: inline-flex; }
 
@@ -449,8 +557,17 @@ export class TaskCommentsComponent implements OnInit {
   replyingToId = signal<string | null>(null);
   moreMenuOpenFor = signal<string | null>(null);
 
-  readonly defaultReactionEmojis = ['👍', '❤️', '😂', '🎉'];
   emojiPickerOpenFor = signal<string | null>(null);
+  reactorsOpenFor = signal<{ commentId: string; emoji: string } | null>(null);
+  protected readonly popoverPositions: ConnectionPositionPair[] = [
+    { originX: 'start', originY: 'bottom', overlayX: 'start', overlayY: 'top', offsetY: 6 },
+    { originX: 'start', originY: 'top', overlayX: 'start', overlayY: 'bottom', offsetY: -6 }
+  ];
+  /** Emoji picker prefers opening upward (the comment list sits at the bottom of the task modal). */
+  protected readonly pickerPositions: ConnectionPositionPair[] = [
+    { originX: 'start', originY: 'top', overlayX: 'start', overlayY: 'bottom', offsetY: -6 },
+    { originX: 'start', originY: 'bottom', overlayX: 'start', overlayY: 'top', offsetY: 6 }
+  ];
 
   async ngOnInit(): Promise<void> {
     const me = await firstValueFrom(this.taskApi.getCurrentEmployee());
@@ -513,12 +630,41 @@ export class TaskCommentsComponent implements OnInit {
   }
 
   hasReacted(comment: TaskCommentDto, emoji: string): boolean {
-    const me = this.currentEmployeeId();
-    return !!me && (this.reactionFor(comment, emoji)?.employeeIds.includes(me) ?? false);
+    return this.myReaction(comment) === emoji;
   }
 
-  otherReactions(comment: TaskCommentDto): TaskCommentReactionDto[] {
-    return comment.reactions.filter(r => !this.defaultReactionEmojis.includes(r.emoji));
+  /** The caller's single reaction on this comment (one per person), or null. */
+  myReaction(comment: TaskCommentDto): string | null {
+    const me = this.currentEmployeeId();
+    if (!me) return null;
+    return comment.reactions.find(r => r.employeeIds.includes(me))?.emoji ?? null;
+  }
+
+  reactorsFor(comment: TaskCommentDto, emoji: string): TaskCommentReactorDto[] {
+    const reaction = this.reactionFor(comment, emoji);
+    if (!reaction) return [];
+    return reaction.reactors?.length
+      ? reaction.reactors
+      : reaction.employeeIds.map(employeeId => ({ employeeId, name: 'A teammate' }));
+  }
+
+  isReactorsOpen(commentId: string, emoji: string): boolean {
+    const open = this.reactorsOpenFor();
+    return !!open && open.commentId === commentId && open.emoji === emoji;
+  }
+
+  toggleReactors(commentId: string, emoji: string, event?: Event): void {
+    event?.stopPropagation();
+    this.reactorsOpenFor.set(this.isReactorsOpen(commentId, emoji) ? null : { commentId, emoji });
+  }
+
+  closeReactors(): void {
+    this.reactorsOpenFor.set(null);
+  }
+
+  async reactFromPopover(comment: TaskCommentDto, emoji: string): Promise<void> {
+    this.closeReactors();
+    await this.toggleReaction(comment, emoji);
   }
 
   toggleEmojiPicker(commentId: string): void {
@@ -530,8 +676,12 @@ export class TaskCommentsComponent implements OnInit {
     await this.toggleReaction(comment, emoji);
   }
 
+  /**
+   * One reaction per person per comment: clicking your current emoji removes it; any other emoji
+   * replaces it (the backend swaps the existing row, so no separate remove call is needed).
+   */
   async toggleReaction(comment: TaskCommentDto, emoji: string): Promise<void> {
-    if (this.hasReacted(comment, emoji)) {
+    if (this.myReaction(comment) === emoji) {
       await firstValueFrom(this.commentApi.removeReaction(comment.id, emoji));
     } else {
       await firstValueFrom(this.commentApi.addReaction(comment.id, emoji));
@@ -597,7 +747,9 @@ export class TaskCommentsComponent implements OnInit {
     return list;
   }
 
-  otherActiveReactions(comment: TaskCommentDto): { emoji: string; count: number }[] {
-    return this.activeReactions(comment).filter(r => r.emoji !== '👍');
+  /** Reaction pills in display order: 👍 first, then the rest as the API returned them. */
+  pillReactions(comment: TaskCommentDto): { emoji: string; count: number }[] {
+    const active = this.activeReactions(comment);
+    return [...active.filter(r => r.emoji === '👍'), ...active.filter(r => r.emoji !== '👍')];
   }
 }
