@@ -88,6 +88,7 @@ import { NotificationService } from '../../../../core/services/notification.serv
       (taskSelected)="taskModalTaskId.set($event)"
       (created)="onTaskModalDone()"
       (saved)="onTaskModalDone()"
+      (changed)="reload()"
       (closed)="taskModalOpen.set(false)"
     />
 

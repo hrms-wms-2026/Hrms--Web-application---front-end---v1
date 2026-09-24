@@ -297,6 +297,11 @@ export class MilestoneTreeTabComponent {
     await this.loadTree({ force: true });
   }
 
+  /** In-place edit inside the still-open task modal (e.g. a subtask change): refresh, keep it open. */
+  async onTaskModalChanged(): Promise<void> {
+    await this.loadTree({ force: true });
+  }
+
   // Sprints are now project-level (Independent Sprints), so <app-sprint-form> no longer takes
   // a single objectiveId/isObjectiveOwner pair - it takes a `modules` list for its task picker
   // to know which module(s) are pickable/owned. For create, node is the module (leaf objective)

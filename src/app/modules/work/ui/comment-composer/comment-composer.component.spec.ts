@@ -86,8 +86,13 @@ describe('CommentComposerComponent', () => {
     expect(rte).toBeTruthy();
     expect(fixture.nativeElement.querySelector('.cc-editor')).toBeNull();
 
-    const editable = rte.querySelector('[contenteditable="true"]') as HTMLElement;
+    const editable = rte.querySelector('[contenteditable="false"]') as HTMLElement;
     expect(editable.getAttribute('data-placeholder')).toContain('Press / for commands');
+    expect(getComputedStyle(rte.querySelector('.tfm-editor__toolbar')).display).toBe('none');
+
+    editable.click();
+    fixture.detectChanges();
+    expect(editable.getAttribute('contenteditable')).toBe('true');
   });
 
   it('syncs editor HTML into editorHtml and routes /attach files to comment attachments', async () => {
@@ -108,7 +113,7 @@ describe('CommentComposerComponent', () => {
     editFixture.detectChanges();
 
     expect(editFixture.componentInstance.editorHtml()).toContain('existing');
-    const editable = editFixture.nativeElement.querySelector('[contenteditable="true"]') as HTMLElement;
+    const editable = editFixture.nativeElement.querySelector('[contenteditable="false"]') as HTMLElement;
     expect(editable.innerHTML).toContain('existing');
   });
 
