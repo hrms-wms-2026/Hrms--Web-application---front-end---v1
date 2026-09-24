@@ -16,13 +16,11 @@ import { LeavePendingApprovalsTableComponent } from '../../ui/leave-pending-appr
 import { CreateLeaveApprovalDelegateRequest } from '../../models/leave-approval.model';
 import { LeaveApprovalDecisionRequest, LeaveApprovalDetailSheetComponent } from '../../ui/leave-approval-detail-sheet/leave-approval-detail-sheet.component';
 import { LeaveApprovalDelegateModalComponent } from '../../ui/leave-approval-delegate-modal/leave-approval-delegate-modal.component';
-import { DatePickerComponent } from '../../../../shared/ui/date-picker/date-picker.component';
 
 @Component({
   selector: 'app-pending-approvals',
   standalone: true,
   imports: [CommonModule, ButtonComponent, DatePickerComponent, EmptyStateComponent, ErrorStateComponent, InputComponent, ModalComponent, SelectComponent, LeavePendingApprovalsTableComponent, LeaveApprovalDetailSheetComponent, LeaveApprovalDelegateModalComponent],
-  imports: [CommonModule, EmptyStateComponent, ErrorStateComponent, LeavePendingApprovalsTableComponent, LeaveApprovalDetailSheetComponent, DatePickerComponent],
   templateUrl: './pending-approvals.component.html',
   styleUrls: ['../../ui/time-off-chrome.css', './pending-approvals.component.css'],
   changeDetection: ChangeDetectionStrategy.OnPush

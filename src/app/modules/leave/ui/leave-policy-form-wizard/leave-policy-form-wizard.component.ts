@@ -13,12 +13,11 @@ import { createEmptyLeavePolicyFormDraft, validateLeavePolicyFormDraft } from '.
 @Component({
   selector: 'app-leave-policy-form-wizard',
   standalone: true,
-  imports: [CommonModule, FormsModule, EmptyStateComponent, ProgressBarComponent],
+  imports: [CommonModule, FormsModule, EmptyStateComponent, ProgressBarComponent, DatePickerComponent],
   templateUrl: './leave-policy-form-wizard.component.html',
   styleUrl: './leave-policy-form-wizard.component.css',
   changeDetection: ChangeDetectionStrategy.OnPush
 })
-@Component({ selector: 'app-leave-policy-form-wizard', standalone: true, imports: [CommonModule, FormsModule, EmptyStateComponent, ProgressBarComponent, DatePickerComponent], templateUrl: './leave-policy-form-wizard.component.html', styleUrl: './leave-policy-form-wizard.component.css', changeDetection: ChangeDetectionStrategy.OnPush })
 export class LeavePolicyFormWizardComponent {
   @Input() leaveTypes: readonly LeaveTypeResponse[] = [];
   @Input() legalEntities: readonly LegalEntityListItem[] = [];

@@ -16,19 +16,6 @@
     <app-select [options]="leaveTypeOptions()" [value]="store.allFilter().leaveTypeId ?? ''" (valueChange)="onLeaveTypeFilterChange($event)" />
     <app-date-picker placeholder="From" [value]="store.allFilter().fromDate ?? ''" (valueChange)="onFromDateChange($event)" />
     <app-date-picker placeholder="To" [value]="store.allFilter().toDate ?? ''" (valueChange)="onToDateChange($event)" />
-  <nav class="rl-filters">
-    <button type="button" (click)="setStatusFilter(undefined)">All</button>
-    <button type="button" (click)="setStatusFilter('pending')">Pending</button>
-    <button type="button" (click)="setStatusFilter('approved')">Approved</button>
-    <button type="button" (click)="setStatusFilter('rejected')">Rejected</button>
-  </nav>
-  <div class="rl-toolbar">
-    <select (change)="onLeaveTypeFilterChange($any($event.target).value)">
-      <option value="">All leave types</option>
-      @for (type of leaveTypeStore.items(); track type.id) { <option [value]="type.id">{{ type.name }}</option> }
-    </select>
-    <app-date-picker ariaLabel="From date" placeholder="From date" [value]="store.allFilter().fromDate ?? ''" (valueChange)="onFromDateChange($event)" />
-    <app-date-picker ariaLabel="To date" placeholder="To date" [value]="store.allFilter().toDate ?? ''" (valueChange)="onToDateChange($event)" />
   </div>
   @if (store.allLoading()) {
     <div class="to-loading" aria-busy="true"><span></span><span></span><span></span></div>

@@ -23,20 +23,6 @@
     <app-select label="Leave type" [options]="leaveTypeOptions()" [value]="store.pendingFilter().leaveTypeId ?? ''" (valueChange)="onLeaveTypeFilterChange($event)" />
     <app-date-picker placeholder="From" [value]="store.pendingFilter().fromDate ?? ''" (valueChange)="onFromDateChange($event)" />
     <app-date-picker placeholder="To" [value]="store.pendingFilter().toDate ?? ''" (valueChange)="onToDateChange($event)" />
-  <div class="pa-toolbar">
-    <input type="search" placeholder="Search by name" (input)="onSearchInput($event)" />
-    <select (change)="onLeaveTypeFilterChange($any($event.target).value)">
-      <option value="">All leave types</option>
-      @for (type of leaveTypeStore.items(); track type.id) { <option [value]="type.id">{{ type.name }}</option> }
-    </select>
-    <app-date-picker ariaLabel="From date" placeholder="From date" [value]="store.pendingFilter().fromDate ?? ''" (valueChange)="onFromDateChange($event)" />
-    <app-date-picker ariaLabel="To date" placeholder="To date" [value]="store.pendingFilter().toDate ?? ''" (valueChange)="onToDateChange($event)" />
-    @if (selectedIds().size > 0) {
-      <div class="pa-bulk">
-        <span>{{ selectedIds().size }} selected</span>
-        <button type="button" (click)="onBulkApprove()">Bulk approve</button>
-      </div>
-    }
   </div>
   @if (store.pendingLoading()) {
     <div class="to-loading" aria-busy="true" aria-label="Loading pending approvals"><span></span><span></span><span></span></div>
