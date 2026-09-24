@@ -19,7 +19,8 @@ interface CalendarEventState {
   readonly checkingConflicts: boolean;
   readonly myTimezone: string;
   readonly eligibleNominees: readonly EligibleNominee[];
-  readonly hasMeetingCapableConnection: boolean;
+  readonly hasTeamsCapableConnection: boolean;
+  readonly hasZoomCapableConnection: boolean;
   readonly meetingActionSaving: boolean;
 }
 
@@ -28,7 +29,7 @@ export const CalendarEventStore = signalStore(
   withState<CalendarEventState>({
     events: [], loading: false, loadError: null, saving: false, actionError: null,
     conflicts: [], checkingConflicts: false, myTimezone: 'UTC', eligibleNominees: [],
-    hasMeetingCapableConnection: false, meetingActionSaving: false
+    hasTeamsCapableConnection: false, hasZoomCapableConnection: false, meetingActionSaving: false
   }),
   withMethods((store, api = inject(CalendarEventApiService), connectionApi = inject(CalendarConnectionApiService)) => ({
     async loadEvents(from: string, to: string): Promise<void> {
@@ -153,29 +154,34 @@ export const CalendarEventStore = signalStore(
         // the calendar from rendering, just leave times shown in UTC.
       }
     },
-    /** Whether the organizer has an active Microsoft connection to host a Teams meeting on -
-     * gates the "Add Teams meeting" control in the event form. A failed fetch leaves it false
-     * (same "fail closed, no alarming error" precedent as loadMyTimezone/checkConflicts above). */
+    /** Whether the organizer has an active Microsoft/Zoom connection to host a meeting on -
+     * gates the "Add Teams meeting"/"Add Zoom meeting" controls in the event form. A failed
+     * fetch leaves both false (same "fail closed, no alarming error" precedent as
+     * loadMyTimezone/checkConflicts above). */
     async loadMeetingConnectionStatus(): Promise<void> {
       try {
         const response = await firstValueFrom(connectionApi.list());
-        const hasConnection = response.connections.some((c) => c.provider === 'outlook_calendar' && c.status === 'active');
-        patchState(store, { hasMeetingCapableConnection: hasConnection });
+        const hasTeams = response.connections.some((c) => c.provider === 'outlook_calendar' && c.status === 'active');
+        // CalendarConnectionProvider (calendar-connection.model.ts) doesn't yet list 'zoom' as a
+        // literal - widening that shared type (and the Settings > Calendar Connections UI that
+        // switches on it) is out of this task's scope, so the provider is compared as a string.
+        const hasZoom = response.connections.some((c) => (c.provider as string) === 'zoom' && c.status === 'active');
+        patchState(store, { hasTeamsCapableConnection: hasTeams, hasZoomCapableConnection: hasZoom });
       } catch {
-        patchState(store, { hasMeetingCapableConnection: false });
+        patchState(store, { hasTeamsCapableConnection: false, hasZoomCapableConnection: false });
       }
     },
-    async createMeeting(eventId: string): Promise<boolean> {
+    async createMeeting(eventId: string, provider: 'microsoft_teams' | 'zoom'): Promise<boolean> {
       patchState(store, { meetingActionSaving: true, actionError: null });
       try {
-        const response = await firstValueFrom(api.createMeeting(eventId, 'microsoft_teams'));
+        const response = await firstValueFrom(api.createMeeting(eventId, provider));
         patchState(store, {
           meetingActionSaving: false,
           events: store.events().map((e) => (e.id === eventId ? { ...e, meetingLink: response.joinUrl } : e))
         });
         return true;
       } catch (err) {
-        patchState(store, { meetingActionSaving: false, actionError: toSafeErrorMessage(err, 'Failed to add a Teams meeting.') });
+        patchState(store, { meetingActionSaving: false, actionError: toSafeErrorMessage(err, 'Failed to add the meeting.') });
         return false;
       }
     },
