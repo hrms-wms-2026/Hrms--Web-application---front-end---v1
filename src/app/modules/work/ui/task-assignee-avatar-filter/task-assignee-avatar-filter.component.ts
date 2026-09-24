@@ -1,4 +1,6 @@
 import { Component, ElementRef, HostListener, computed, inject, input, output, signal } from '@angular/core';
+import { AvatarComponent } from '../../../../shared/ui/avatar/avatar.component';
+import { getInitials } from '../../../../shared/utils/avatar.utils';
 
 export interface TaskAssigneeAvatarMember {
   employeeId: string;
@@ -8,13 +10,6 @@ export interface TaskAssigneeAvatarMember {
 
 const MAX_VISIBLE_AVATARS = 5;
 
-function getInitials(name: string): string {
-  if (!name) return '?';
-  const parts = name.trim().split(/\s+/);
-  if (parts.length >= 2) return (parts[0][0] + parts[1][0]).toUpperCase();
-  return name.slice(0, 2).toUpperCase();
-}
-
 /**
  * Jira-style assignee filter: an overlapping avatar stack (current user first) that opens a
  * checkbox dropdown for picking any combination of project members, instead of a single
@@ -23,6 +18,7 @@ function getInitials(name: string): string {
 @Component({
   selector: 'app-task-assignee-avatar-filter',
   standalone: true,
+  imports: [AvatarComponent],
   template: `
     <div class="taaf" (click)="$event.stopPropagation()">
       <div class="taaf__stack">
@@ -36,16 +32,13 @@ function getInitials(name: string): string {
             [title]="member.name + (member.employeeId === currentEmployeeId() ? ' (You)' : '')"
             (click)="toggleMember(member.employeeId)"
           >
-            @if (shouldShowAvatar(member)) {
-              <img
-                [src]="member.avatarUrl"
-                [alt]="member.name"
-                class="taaf__img"
-                (error)="onAvatarError(member.employeeId)"
-              />
-            } @else {
-              {{ initials(member.name) }}
-            }
+            <app-avatar
+              [avatarUrl]="member.avatarUrl"
+              [userName]="member.name"
+              size="sm"
+              shape="circle"
+              imageClass="taaf__img"
+            />
           </button>
         }
         @if (overflowCount() > 0) {
@@ -85,16 +78,13 @@ function getInitials(name: string): string {
                   @if (isSelected(member.employeeId)) { <svg viewBox="0 0 24 24"><path d="m5 12 4 4L19 7" /></svg> }
                 </span>
                 <span class="taaf__option-avatar">
-                  @if (shouldShowAvatar(member)) {
-                    <img
-                      [src]="member.avatarUrl"
-                      [alt]="member.name"
-                      class="taaf__img"
-                      (error)="onAvatarError(member.employeeId)"
-                    />
-                  } @else {
-                    {{ initials(member.name) }}
-                  }
+                  <app-avatar
+                    [avatarUrl]="member.avatarUrl"
+                    [userName]="member.name"
+                    size="xs"
+                    shape="circle"
+                    imageClass="taaf__img"
+                  />
                 </span>
                 <span class="taaf__option-name">{{ member.name }}@if (member.employeeId === currentEmployeeId()) { <span class="taaf__you"> (You)</span> }</span>
               </button>
@@ -116,6 +106,8 @@ function getInitials(name: string): string {
     .taaf__avatar--dimmed { opacity: .45; }
     .taaf__avatar--dimmed:hover { opacity: 1; }
     .taaf__avatar--overflow { background: var(--color-surface-secondary); color: var(--color-text-secondary); }
+    .taaf__avatar app-avatar { display: contents; }
+    .taaf__avatar .avatar { width: 100%; height: 100%; border: none; }
     .taaf__img { width: 100%; height: 100%; object-fit: cover; display: block; border-radius: 999px; }
     .taaf__panel { position: absolute; top: calc(100% + 7px); right: 0; z-index: 80; width: 260px; max-width: 90vw; border: 1px solid var(--color-border); border-radius: 12px; background: var(--color-surface); box-shadow: 0 16px 36px rgb(15 23 42 / .18); padding: 12px; animation: taaf-panel-in 130ms ease-out; }
     .taaf__panel-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 8px; font-size: 13px; font-weight: 700; color: var(--color-text-primary); }
@@ -131,6 +123,8 @@ function getInitials(name: string): string {
     .taaf__checkbox--on { border-color: var(--color-accent); background: var(--color-accent); }
     .taaf__checkbox svg { width: 11px; height: 11px; fill: none; stroke: var(--color-accent-contrast); stroke-width: 3; stroke-linecap: round; stroke-linejoin: round; }
     .taaf__option-avatar { display: inline-flex; align-items: center; justify-content: center; width: 22px; height: 22px; flex: 0 0 auto; border-radius: 999px; background: color-mix(in srgb, var(--color-accent) 18%, transparent); color: var(--color-accent); font-size: 9px; font-weight: 700; overflow: hidden; }
+    .taaf__option-avatar app-avatar { display: contents; }
+    .taaf__option-avatar .avatar { width: 100%; height: 100%; border: none; }
     .taaf__option-name { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
     .taaf__you { color: var(--color-text-secondary); font-weight: 400; }
     .taaf__empty { margin: 6px 0 2px; color: var(--color-text-secondary); font-size: 12.5px; text-align: center; }
@@ -146,7 +140,6 @@ export class TaskAssigneeAvatarFilterComponent {
 
   protected readonly open = signal(false);
   protected readonly search = signal('');
-  protected readonly failedAvatars = signal<Set<string>>(new Set());
   private readonly host = inject(ElementRef<HTMLElement>);
 
   protected readonly orderedMembers = computed(() => {
@@ -168,18 +161,6 @@ export class TaskAssigneeAvatarFilterComponent {
 
   protected initials(name: string): string {
     return getInitials(name);
-  }
-
-  protected onAvatarError(employeeId: string): void {
-    this.failedAvatars.update((prev) => {
-      const next = new Set(prev);
-      next.add(employeeId);
-      return next;
-    });
-  }
-
-  protected shouldShowAvatar(member: TaskAssigneeAvatarMember): boolean {
-    return !!member.avatarUrl && !this.failedAvatars().has(member.employeeId);
   }
 
   isSelected(employeeId: string): boolean {

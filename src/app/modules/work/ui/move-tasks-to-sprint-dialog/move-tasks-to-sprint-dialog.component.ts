@@ -103,6 +103,14 @@ export interface SprintMoveTarget {
     .move-tasks-dialog__workload-after { font-weight: 600; color: var(--color-text-primary); }
     .move-tasks-dialog__error { color: var(--color-danger-text, var(--color-danger)); font-size: 12px; margin: 0; }
     .move-tasks-dialog__actions { display: flex; justify-content: flex-end; gap: 8px; }
+    .move-tasks-dialog__actions ::ng-deep app-button > button {
+      width: auto;
+      height: 30px;
+      padding: 0 12px;
+      border-radius: 8px;
+      font-size: 13px;
+      font-weight: 500;
+    }
   `]
 })
 export class MoveTasksToSprintDialogComponent {

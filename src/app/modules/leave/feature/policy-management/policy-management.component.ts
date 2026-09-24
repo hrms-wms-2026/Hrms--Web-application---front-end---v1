@@ -16,8 +16,9 @@ import { toCreateLeavePolicyRequest } from '../../utils/leave-policy-form.mapper
 import { LeavePolicyListTableComponent } from '../../ui/leave-policy-list-table/leave-policy-list-table.component';
 import { LeavePolicyDetailPanelComponent } from '../../ui/leave-policy-detail-panel/leave-policy-detail-panel.component';
 import { LeavePolicyFormWizardComponent } from '../../ui/leave-policy-form-wizard/leave-policy-form-wizard.component';
+import { DatePickerComponent } from '../../../../shared/ui/date-picker/date-picker.component';
 
-@Component({ selector: 'app-policy-management', standalone: true, imports: [CommonModule, ButtonComponent, EmptyStateComponent, ErrorStateComponent, LeavePolicyListTableComponent, LeavePolicyDetailPanelComponent, LeavePolicyFormWizardComponent], templateUrl: './policy-management.component.html', styleUrl: './policy-management.component.css', changeDetection: ChangeDetectionStrategy.OnPush })
+@Component({ selector: 'app-policy-management', standalone: true, imports: [CommonModule, ButtonComponent, EmptyStateComponent, ErrorStateComponent, LeavePolicyListTableComponent, LeavePolicyDetailPanelComponent, LeavePolicyFormWizardComponent, DatePickerComponent], templateUrl: './policy-management.component.html', styleUrl: './policy-management.component.css', changeDetection: ChangeDetectionStrategy.OnPush })
 export class PolicyManagementComponent implements OnInit {
   private readonly permissionService = inject(PermissionService); private readonly notificationService = inject(NotificationService); private readonly legalEntityApi = inject(LegalEntityApiService);
   readonly policyStore = inject(LeavePolicyStore); readonly leaveTypeStore = inject(LeaveTypeStore);

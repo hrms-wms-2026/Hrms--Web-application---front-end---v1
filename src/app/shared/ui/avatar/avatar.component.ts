@@ -1,18 +1,31 @@
 import { ChangeDetectionStrategy, Component, computed, effect, input, signal } from '@angular/core';
+import { getInitials } from '../../utils/avatar.utils';
 
-export type AvatarSize = 'sm' | 'md' | 'lg';
+export type AvatarSize = 'xs' | 'sm' | 'md' | 'lg' | 'xl';
+export type AvatarShape = 'circle' | 'rounded';
 
 @Component({
   selector: 'app-avatar',
   standalone: true,
   host: { class: 'inline-flex shrink-0' },
   template: `
-    <div class="avatar avatar--{{ size() }}" [attr.aria-label]="altText()">
-      @if (showImage()) {
+    <div
+      class="avatar avatar--{{ size() }} avatar--{{ shape() }}"
+      [class.avatar--unassigned]="unassigned()"
+      [attr.aria-label]="altText()"
+    >
+      @if (unassigned()) {
+        <div class="avatar__fallback avatar__fallback--unassigned" role="img" aria-label="Unassigned">
+          <svg class="avatar__icon avatar__icon--unassigned" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <line x1="18" y1="6" x2="6" y2="18" />
+            <line x1="6" y1="6" x2="18" y2="18" />
+          </svg>
+        </div>
+      } @else if (showImage()) {
         <img
           [src]="avatarUrl()"
           [alt]="altText()"
-          class="avatar__image"
+          [class]="'avatar__image ' + (imageClass() || '')"
           (error)="onImageError()"
         />
       } @else {
@@ -43,6 +56,9 @@ export class AvatarComponent {
   readonly userName = input<string | null | undefined>(undefined);
   readonly email = input<string | null | undefined>(undefined);
   readonly size = input<AvatarSize>('md');
+  readonly shape = input<AvatarShape>('circle');
+  readonly unassigned = input<boolean>(false);
+  readonly imageClass = input<string>('');
 
   readonly imageError = signal(false);
 
@@ -60,6 +76,7 @@ export class AvatarComponent {
   });
 
   readonly altText = computed(() => {
+    if (this.unassigned()) return 'Unassigned';
     const name = this.userName()?.trim();
     if (name) return `${name}'s avatar`;
     const mail = this.email()?.trim();
@@ -69,16 +86,7 @@ export class AvatarComponent {
 
   readonly initials = computed(() => {
     const name = this.userName()?.trim();
-    if (name) {
-      const parts = name.split(/\s+/).filter(Boolean);
-      if (parts.length >= 2) {
-        return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
-      }
-      if (parts.length === 1 && parts[0].length >= 1) {
-        return parts[0].substring(0, 2).toUpperCase();
-      }
-    }
-    return null;
+    return name ? getInitials(name) || null : null;
   });
 
   onImageError(): void {

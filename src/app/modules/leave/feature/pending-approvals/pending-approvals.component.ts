@@ -9,11 +9,12 @@ import { LeaveApprovalStore } from '../../state/leave-approval.store';
 import { LeaveTypeStore } from '../../state/leave-type.store';
 import { LeavePendingApprovalsTableComponent } from '../../ui/leave-pending-approvals-table/leave-pending-approvals-table.component';
 import { LeaveApprovalDecisionRequest, LeaveApprovalDetailSheetComponent } from '../../ui/leave-approval-detail-sheet/leave-approval-detail-sheet.component';
+import { DatePickerComponent } from '../../../../shared/ui/date-picker/date-picker.component';
 
 @Component({
   selector: 'app-pending-approvals',
   standalone: true,
-  imports: [CommonModule, EmptyStateComponent, ErrorStateComponent, LeavePendingApprovalsTableComponent, LeaveApprovalDetailSheetComponent],
+  imports: [CommonModule, EmptyStateComponent, ErrorStateComponent, LeavePendingApprovalsTableComponent, LeaveApprovalDetailSheetComponent, DatePickerComponent],
   templateUrl: './pending-approvals.component.html',
   styleUrl: './pending-approvals.component.css',
   changeDetection: ChangeDetectionStrategy.OnPush

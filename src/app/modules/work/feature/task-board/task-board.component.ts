@@ -25,6 +25,7 @@ import { FileApiService } from '../../../../shared/data-access/file-api.service'
 import { TaskFormModalComponent } from '../../ui/task-form-modal/task-form-modal.component';
 import { BoardStructureEditorComponent } from '../../ui/board-structure-editor/board-structure-editor.component';
 import { CreateTaskRequestDto } from '../../models/dto/task.dto';
+import { NotificationService } from '../../../../core/services/notification.service';
 
 @Component({
   selector: 'app-task-board',
@@ -100,7 +101,8 @@ import { CreateTaskRequestDto } from '../../models/dto/task.dto';
   `,
   styles: [`
     .task-board__toolbar { display: flex; flex-wrap: wrap; align-items: center; justify-content: flex-end; gap: 8px; }
-    .task-board__toolbar ::ng-deep app-button > button { width: auto; }
+    /* Match the Filter trigger and Create Sprint button (30px tall, 8px radius) */
+    .task-board__toolbar ::ng-deep app-button > button { width: auto; height: 30px; padding: 0 12px; border-radius: 8px; font-size: 13px; }
     .task-board { display: flex; align-items: flex-start; gap: 16px; width: 100%; box-sizing: border-box; overflow-x: auto; padding: 0 0 10px; scroll-snap-type: x proximity; }
     :host ::ng-deep .task-card--highlighted { outline: 2px solid var(--color-focus-ring, var(--color-danger)); outline-offset: 2px; }
   `]
@@ -114,6 +116,7 @@ export class TaskBoardComponent implements OnInit, AfterViewChecked, AfterViewIn
   protected readonly currentEmployee = inject(CurrentEmployeeStore);
   private readonly profileStore = inject(ProfileStore, { optional: true });
   private readonly fileApi = inject(FileApiService, { optional: true });
+  private readonly notificationService = inject(NotificationService);
   private readonly toolbarStore = inject(WorkPageToolbarStore);
   private readonly toolbarTpl = viewChild.required<TemplateRef<unknown>>('toolbarTpl');
 
@@ -431,6 +434,7 @@ export class TaskBoardComponent implements OnInit, AfterViewChecked, AfterViewIn
     try {
       if (!isOwner) {
         await firstValueFrom(this.taskApi.createTaskCreationRequest(event.objectiveId, request));
+        this.notificationService.info('Task creation request submitted for approval.');
         event.resolve(true);
         this.reload();
         return;
@@ -441,19 +445,28 @@ export class TaskBoardComponent implements OnInit, AfterViewChecked, AfterViewIn
         if (event.assigneeId) {
           try {
             await firstValueFrom(this.taskApi.assignTask(result.id, event.assigneeId));
-          } catch {}
+          } catch {
+            this.notificationService.warning('Task created, but failed to assign employee.');
+          }
         }
         if (event.statusId && event.statusId !== result.statusId) {
           try {
             await firstValueFrom(this.taskApi.moveTaskStatus(result.id, event.statusId));
           } catch {}
         }
+        this.notificationService.success('Task created successfully.');
         event.resolve(true);
         this.reload();
         return;
       }
+      if (result && 'availableSlackHours' in result) {
+        this.notificationService.warning(`Insufficient allocation hours. Available slack: ${result.availableSlackHours ?? 0} hrs.`);
+      } else {
+        this.notificationService.error(this.store.error() ?? 'Failed to create task.');
+      }
       event.resolve(false);
     } catch {
+      this.notificationService.error('Failed to create task.');
       event.resolve(false);
     }
   }
