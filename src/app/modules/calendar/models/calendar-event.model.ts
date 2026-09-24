@@ -109,6 +109,9 @@ export interface CalendarConflictsResponse {
   conflicts: readonly CalendarConflict[];
 }
 
+/** Matches backend ONEVO.Domain.Features.Calendar.Entities.CalendarEventMeetingProviders. */
+export type MeetingProvider = 'microsoft_teams' | 'zoom';
+
 export interface CreateEventMeetingResponse {
   joinUrl: string;
 }

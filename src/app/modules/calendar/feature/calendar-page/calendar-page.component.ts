@@ -3,7 +3,7 @@ import { CommonModule } from '@angular/common';
 import { ActivatedRoute, Router } from '@angular/router';
 import { NotificationService } from '../../../../core/services/notification.service';
 import { ButtonComponent } from '../../../../shared/ui/button/button.component';
-import { CalendarEventResponse, RecurrenceEditScope } from '../../models/calendar-event.model';
+import { CalendarEventResponse, MeetingProvider, RecurrenceEditScope } from '../../models/calendar-event.model';
 import { CalendarEventStore } from '../../state/calendar-event.store';
 import { buildMonthGrid } from '../../utils/calendar-grid.util';
 import { CalendarMonthGridComponent } from '../../ui/calendar-month-grid/calendar-month-grid.component';
@@ -269,7 +269,7 @@ export class CalendarPageComponent {
     this.store.loadEligibleNominees(eventId);
   }
 
-  async onAddMeeting(provider: 'microsoft_teams' | 'zoom'): Promise<void> {
+  async onAddMeeting(provider: MeetingProvider): Promise<void> {
     const editing = this.editingEvent();
     if (!editing) return;
     const ok = await this.store.createMeeting(editing.id, provider);
