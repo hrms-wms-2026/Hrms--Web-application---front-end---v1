@@ -30,9 +30,9 @@
 }
 
 .work-view-cycle-btn {
-  width: 32px;
-  height: 32px;
-  border-radius: 6px;
+  width: 30px;
+  height: 30px;
+  border-radius: 8px;
   border: 1px solid var(--color-border);
   background: var(--color-surface);
   color: var(--color-text-secondary);
@@ -47,4 +47,15 @@
 .work-view-cycle-btn:hover {
   background: var(--color-surface-secondary);
   color: var(--color-text-primary);
+}
+
+/* Match the Filter trigger, Create work item, and Create Sprint buttons (30px tall, 8px radius) */
+.work-controls ::ng-deep app-button > button,
+.work-header-row ::ng-deep app-button > button {
+  width: auto;
+  height: 30px;
+  padding: 0 12px;
+  border-radius: 8px;
+  font-size: 13px;
+  font-weight: 500;
 }

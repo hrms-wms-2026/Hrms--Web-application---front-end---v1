@@ -42,6 +42,61 @@ describe('RichTextEditorComponent', () => {
     expect(comp.allSlashCommands().some((c) => c.id === 'attach')).toBe(false);
   });
 
+  it('applies the borderless host class when borderless mode is enabled', () => {
+    fixture.componentRef.setInput('borderless', true);
+    fixture.detectChanges();
+
+    expect(fixture.nativeElement.classList).toContain('rte--borderless');
+  });
+
+  it('starts with the toolbar hidden and activates editing when its content is clicked', async () => {
+    const content = comp.contentEditor()!.nativeElement;
+    const toolbar = fixture.nativeElement.querySelector('.tfm-editor__toolbar') as HTMLElement;
+
+    expect(comp.isReadOnlyMode()).toBe(true);
+    expect(content.getAttribute('contenteditable')).toBe('false');
+    expect(getComputedStyle(toolbar).display).toBe('none');
+
+    content.click();
+    fixture.detectChanges();
+    await fixture.whenStable();
+
+    expect(comp.editorActive()).toBe(true);
+    expect(comp.isReadOnlyMode()).toBe(false);
+    expect(content.getAttribute('contenteditable')).toBe('true');
+    expect(getComputedStyle(toolbar).display).not.toBe('none');
+  });
+
+  it('keeps the placeholder visible after an empty editor is activated', async () => {
+    const content = comp.contentEditor()!.nativeElement;
+    content.innerHTML = '<div><br></div>';
+    comp.onEditorInput();
+
+    content.click();
+    fixture.detectChanges();
+    await fixture.whenStable();
+
+    expect(comp.editorActive()).toBe(true);
+    expect(comp.contentEmpty()).toBe(true);
+    expect(content.classList).toContain('tfm-editor__content--empty');
+    expect(emitted.at(-1)).toBe('');
+  });
+
+  it('keeps formatted content visible but hides editing controls in read-only mode', () => {
+    comp.setHtml('<div><span style="color: red; font-style: italic;">Formatted</span></div>');
+    fixture.componentRef.setInput('readOnly', true);
+    fixture.detectChanges();
+
+    const content = comp.contentEditor()!.nativeElement;
+    const formatted = content.querySelector('span') as HTMLElement;
+    const toolbar = fixture.nativeElement.querySelector('.tfm-editor__toolbar') as HTMLElement;
+
+    expect(content.getAttribute('contenteditable')).toBe('false');
+    expect(getComputedStyle(toolbar).display).toBe('none');
+    expect(getComputedStyle(formatted).fontStyle).toBe('italic');
+    expect(getComputedStyle(formatted).color).toBe('rgb(255, 0, 0)');
+  });
+
   it('uploads inline images with the host-provided purpose', async () => {
     fixture.componentRef.setInput('imageUploadPurpose', 'comment_description_image');
     (document as unknown as { execCommand: () => boolean }).execCommand = vi.fn().mockReturnValue(true);
@@ -294,6 +349,69 @@ describe('RichTextEditorComponent', () => {
     expect(editor.children[1].tagName).toBe('DIV');
   });
 
+  it('toolbar H1 formats only the selected text and does not activate explicit Bold', () => {
+    const editor = comp.contentEditor()?.nativeElement;
+    if (!editor) return;
+
+    editor.innerHTML = '<div>First second third</div>';
+    const text = editor.querySelector('div')!.firstChild!;
+    const range = document.createRange();
+    range.setStart(text, 6);
+    range.setEnd(text, 12);
+    const sel = window.getSelection();
+    sel?.removeAllRanges();
+    sel?.addRange(range);
+
+    comp.formatSelectedHeading('h1');
+
+    const headingText = editor.querySelector('.tfm-inline-h1') as HTMLElement;
+    expect(headingText.textContent).toBe('second');
+    expect(editor.textContent).toBe('First second third');
+    expect(editor.querySelector('h1')).toBeNull();
+    expect(comp.activeFormats().h1).toBe(true);
+    expect(comp.activeFormats().bold).toBe(false);
+  });
+
+  it('slash H1 changes the current line so following text is entered as a block heading', () => {
+    const editor = comp.contentEditor()?.nativeElement;
+    if (!editor) return;
+
+    editor.innerHTML = '<div>/h1</div>';
+    const text = editor.querySelector('div')!.firstChild!;
+    const range = document.createRange();
+    range.setStart(text, 3);
+    range.collapse(true);
+    const sel = window.getSelection();
+    sel?.removeAllRanges();
+    sel?.addRange(range);
+
+    comp.executeSlashCommand('h1');
+
+    const heading = editor.querySelector('h1');
+    expect(heading).toBeTruthy();
+    expect(heading?.textContent).toBe('');
+  });
+
+  it('Ctrl+Z restores the previous editor state and Ctrl+Shift+Z reapplies it', () => {
+    const editor = comp.contentEditor()?.nativeElement;
+    if (!editor) return;
+
+    editor.innerHTML = '<div>Before</div>';
+    comp.onEditorInput();
+    editor.innerHTML = '<div>After</div>';
+    comp.onEditorInput();
+
+    const undoEvent = new KeyboardEvent('keydown', { key: 'z', ctrlKey: true, cancelable: true });
+    comp.onEditorKeydown(undoEvent);
+    expect(undoEvent.defaultPrevented).toBe(true);
+    expect(editor.textContent).toBe('Before');
+
+    const redoEvent = new KeyboardEvent('keydown', { key: 'z', ctrlKey: true, shiftKey: true, cancelable: true });
+    comp.onEditorKeydown(redoEvent);
+    expect(redoEvent.defaultPrevented).toBe(true);
+    expect(editor.textContent).toBe('After');
+  });
+
   it('toggling checkbox marks item with is-checked and updates description', () => {
     const editor = comp.contentEditor()?.nativeElement;
     if (!editor) return;
@@ -412,6 +530,25 @@ describe('RichTextEditorComponent', () => {
     expect(comp.activeFormats().h1).toBe(true);
     expect(comp.activeFormats().bold).toBe(true);
     expect(comp.activeFormats().italic).toBe(false);
+  });
+
+  it('does not mark Bold active for a heading unless bold was explicitly applied', () => {
+    const editor = comp.contentEditor()?.nativeElement;
+    if (!editor) return;
+
+    editor.innerHTML = '<h1>Heading only</h1>';
+    const headingText = editor.querySelector('h1')!.firstChild!;
+    const range = document.createRange();
+    range.setStart(headingText, 3);
+    range.collapse(true);
+    const sel = window.getSelection();
+    sel?.removeAllRanges();
+    sel?.addRange(range);
+
+    comp.updateActiveFormats();
+
+    expect(comp.activeFormats().h1).toBe(true);
+    expect(comp.activeFormats().bold).toBe(false);
   });
 
   it('toggleHeading on one line leaves sibling lines untouched', () => {
@@ -541,5 +678,59 @@ describe('RichTextEditorComponent', () => {
 
     expect(execSpy).toHaveBeenCalledWith('styleWithCSS', false, 'false');
     expect(execSpy).toHaveBeenCalledWith('foreColor', false, '#e03131');
+  });
+
+  it('opens slash menu upward when vertical space below is constrained', () => {
+    const editor = comp.contentEditor()?.nativeElement;
+    if (!editor) return;
+
+    editor.innerHTML = '<div>/test</div>';
+    comp.normalizeBlockLines(editor);
+
+    const range = document.createRange();
+    const textNode = editor.querySelector('div')!.firstChild!;
+    range.setStart(textNode, 5);
+    range.collapse(true);
+
+    range.getBoundingClientRect = () => ({
+      top: 730,
+      bottom: 750,
+      left: 100,
+      right: 100,
+      width: 0,
+      height: 20,
+      x: 100,
+      y: 730,
+      toJSON: () => {}
+    } as DOMRect);
+
+    comp.updateSlashMenuPosition(range);
+
+    const coords = comp.slashMenuCoords();
+    expect(coords).not.toBeNull();
+    expect(coords?.openUpward).toBe(true);
+    expect(coords?.top).toBeNull();
+    expect(coords?.bottom).toBeGreaterThanOrEqual(0);
+    expect(coords?.maxHeight).toBeLessThanOrEqual(310);
+  });
+
+  it('renders .tfm-slash-menu--upward and applies bottom positioning style when openUpward is true', () => {
+    comp.slashMenuCoords.set({
+      top: null,
+      bottom: 42,
+      left: 20,
+      openUpward: true,
+      maxHeight: 280
+    });
+    comp.showSlashMenu.set(true);
+    comp.slashQuery.set('');
+    fixture.detectChanges();
+
+    const menuEl = fixture.nativeElement.querySelector('.tfm-slash-menu') as HTMLElement;
+    expect(menuEl).toBeTruthy();
+    expect(menuEl.classList.contains('tfm-slash-menu--upward')).toBe(true);
+    expect(menuEl.style.bottom).toBe('42px');
+    expect(menuEl.style.top).toBe('auto');
+    expect(menuEl.style.maxHeight).toBe('280px');
   });
 });

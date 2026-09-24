@@ -29,6 +29,14 @@ export const ALL_SLASH_COMMANDS: SlashCommandItem[] = [
   { id: 'attach', label: 'Attach file', description: 'Upload a file attachment', category: 'MEDIA & EMBEDS', keywords: ['attach', 'file', 'document', 'pdf'] }
 ];
 
+export interface SlashMenuCoords {
+  top?: number | null;
+  bottom?: number | null;
+  left: number;
+  openUpward: boolean;
+  maxHeight?: number;
+}
+
 /**
  * Shared rich-text editor (toolbar + contenteditable + "/" command palette) used by the task
  * description and by task comments. Content class names (tfm-check-item, tfm-inline-code,
@@ -38,7 +46,11 @@ export const ALL_SLASH_COMMANDS: SlashCommandItem[] = [
   selector: 'app-rich-text-editor',
   standalone: true,
   imports: [ColorSwatchPopoverComponent],
-  host: { '[class.rte--compact]': 'compact()' },
+  host: {
+    '[class.rte--compact]': 'compact()',
+    '[class.rte--borderless]': 'borderless()',
+    '[class.rte--readonly]': 'isReadOnlyMode()'
+  },
   template: `
               <div class="tfm-editor">
                 <div class="tfm-editor__toolbar" (click)="$event.stopPropagation()">
@@ -47,9 +59,9 @@ export const ALL_SLASH_COMMANDS: SlashCommandItem[] = [
                       type="button"
                       class="tfm-editor__tool tfm-editor__tool--text"
                       [class.tfm-editor__tool--active]="activeFormats().h1"
-                      title="Heading 1 (22px) - Click to toggle on/off"
+                      title="Apply Heading 1 to selected text"
                       (mousedown)="$event.preventDefault()"
-                      (click)="toggleHeading('h1')"
+                      (click)="formatSelectedHeading('h1')"
                     >
                       <span class="tfm-tool-h-label">H1</span>
                     </button>
@@ -57,9 +69,9 @@ export const ALL_SLASH_COMMANDS: SlashCommandItem[] = [
                       type="button"
                       class="tfm-editor__tool tfm-editor__tool--text"
                       [class.tfm-editor__tool--active]="activeFormats().h2"
-                      title="Heading 2 (18px) - Click to toggle on/off"
+                      title="Apply Heading 2 to selected text"
                       (mousedown)="$event.preventDefault()"
-                      (click)="toggleHeading('h2')"
+                      (click)="formatSelectedHeading('h2')"
                     >
                       <span class="tfm-tool-h-label">H2</span>
                     </button>
@@ -239,28 +251,34 @@ export const ALL_SLASH_COMMANDS: SlashCommandItem[] = [
 
                 <div
                   #contentEditor
-                  contenteditable="true"
+                  [attr.contenteditable]="isReadOnlyMode() ? 'false' : 'true'"
+                  [attr.tabindex]="isReadOnlyMode() ? 0 : null"
+                  [attr.aria-readonly]="isReadOnlyMode()"
                   class="tfm-editor__content"
+                  [class.tfm-editor__content--empty]="contentEmpty()"
                   role="textbox"
                   aria-multiline="true"
                   [attr.aria-label]="ariaLabel()"
                   [attr.data-placeholder]="placeholder()"
                   (focus)="onEditorFocus()"
                   (change)="onEditorChange($event)"
-                  (keydown)="onEditorKeydown($event)"
+                  (keydown)="onEditorSurfaceKeydown($event)"
                   (keyup)="onEditorKeyup()"
                   (mouseup)="onEditorMouseup()"
                   (input)="onEditorInput()"
                   (blur)="onEditorBlur()"
-                  (click)="onEditorClick($event)"
+                  (click)="onEditorSurfaceClick($event)"
                 ></div>
 
                 @if (showSlashMenu() && filteredSlashCommands().length > 0) {
                   <div
                     #slashMenuRef
                     class="tfm-slash-menu"
-                    [style.top.px]="slashMenuCoords()?.top ?? 36"
+                    [class.tfm-slash-menu--upward]="slashMenuCoords()?.openUpward"
+                    [style.top]="slashMenuCoords()?.top !== null && slashMenuCoords()?.top !== undefined ? (slashMenuCoords()!.top + 'px') : 'auto'"
+                    [style.bottom]="slashMenuCoords()?.bottom !== null && slashMenuCoords()?.bottom !== undefined ? (slashMenuCoords()!.bottom + 'px') : 'auto'"
                     [style.left.px]="slashMenuCoords()?.left ?? 12"
+                    [style.max-height.px]="slashMenuCoords()?.maxHeight ?? 310"
                     (mousedown)="$event.preventDefault()"
                   >
                     <div class="tfm-slash-menu__head">
@@ -341,8 +359,11 @@ export const ALL_SLASH_COMMANDS: SlashCommandItem[] = [
                 } @else if (showSlashMenu() && filteredSlashCommands().length === 0) {
                   <div
                     class="tfm-slash-menu tfm-slash-menu--empty"
-                    [style.top.px]="slashMenuCoords()?.top ?? 36"
+                    [class.tfm-slash-menu--upward]="slashMenuCoords()?.openUpward"
+                    [style.top]="slashMenuCoords()?.top !== null && slashMenuCoords()?.top !== undefined ? (slashMenuCoords()!.top + 'px') : 'auto'"
+                    [style.bottom]="slashMenuCoords()?.bottom !== null && slashMenuCoords()?.bottom !== undefined ? (slashMenuCoords()!.bottom + 'px') : 'auto'"
                     [style.left.px]="slashMenuCoords()?.left ?? 12"
+                    [style.max-height.px]="slashMenuCoords()?.maxHeight ?? 310"
                     (mousedown)="$event.preventDefault()"
                   >
                     <span class="tfm-slash-empty-text">No matching commands</span>
@@ -377,7 +398,7 @@ export const ALL_SLASH_COMMANDS: SlashCommandItem[] = [
     .tfm-link-btn--apply:disabled { opacity: 0.4; cursor: not-allowed; }
     .tfm-editor__divider { width: 1px; height: 16px; background: var(--color-border); margin: 0 4px; }
     .tfm-editor__content { width: 100%; min-height: 96px; padding: 12px 14px; outline: none; font: inherit; font-size: 14px; line-height: 1.6; color: var(--color-text-primary); overflow-y: auto; word-break: break-word; border-bottom-left-radius: 8px; border-bottom-right-radius: 8px; }
-    .tfm-editor__content:empty::before { content: attr(data-placeholder); color: var(--color-text-secondary); opacity: 0.65; pointer-events: none; }
+    .tfm-editor__content--empty::before { content: attr(data-placeholder); color: var(--color-text-secondary); opacity: 0.65; pointer-events: none; }
     /*
      * The rules below style content that lands inside .tfm-editor__content and .tfm-editor__preview
      * via raw DOM APIs (execCommand/insertNode) or [innerHTML] - never through Angular's template
@@ -387,6 +408,8 @@ export const ALL_SLASH_COMMANDS: SlashCommandItem[] = [
      */
     .tfm-editor__content ::ng-deep h1 { display: block; font-size: 22px !important; font-weight: 750 !important; line-height: 1.3 !important; margin: 16px 0 6px !important; color: var(--color-text-primary); }
     .tfm-editor__content ::ng-deep h2 { display: block; font-size: 18px !important; font-weight: 700 !important; line-height: 1.35 !important; margin: 12px 0 4px !important; color: var(--color-text-primary); }
+    .tfm-editor__content ::ng-deep .tfm-inline-h1 { font-size: 22px !important; font-weight: inherit; line-height: 1.3; }
+    .tfm-editor__content ::ng-deep .tfm-inline-h2 { font-size: 18px !important; font-weight: inherit; line-height: 1.35; }
     .tfm-editor__content ::ng-deep h3 { display: block; font-size: 15px !important; font-weight: 650 !important; line-height: 1.4 !important; margin: 10px 0 4px !important; color: var(--color-text-primary); }
     .tfm-editor__content ::ng-deep p, .tfm-editor__content ::ng-deep div { font-size: 14px; line-height: 1.6; }
     .tfm-editor__content ::ng-deep strong, .tfm-editor__content ::ng-deep b { font-weight: 700 !important; font-size: inherit; }
@@ -437,7 +460,8 @@ export const ALL_SLASH_COMMANDS: SlashCommandItem[] = [
     ::ng-deep .tfm-preview-link { color: var(--color-accent); text-decoration: underline; cursor: pointer; }
 
     /* Slash Command Palette */
-    .tfm-slash-menu { position: absolute; z-index: 1100; width: 300px; max-height: 310px; overflow-y: auto; border-radius: 8px; border: 1px solid var(--color-border); background: var(--color-surface); box-shadow: 0 16px 36px -4px rgba(15, 23, 42, 0.18), 0 4px 12px -2px rgba(15, 23, 42, 0.08); animation: tfm-popover-in 120ms ease-out; display: flex; flex-direction: column; padding: 4px; }
+    .tfm-slash-menu { position: absolute; z-index: 1100; width: 300px; max-height: 310px; overflow-y: auto; border-radius: 8px; border: 1px solid var(--color-border); background: var(--color-surface); box-shadow: 0 16px 36px -4px rgba(15, 23, 42, 0.18), 0 4px 12px -2px rgba(15, 23, 42, 0.08); animation: tfm-popover-in 120ms ease-out; display: flex; flex-direction: column; padding: 4px; transform-origin: top left; }
+    .tfm-slash-menu--upward { animation: tfm-popover-in-up 120ms ease-out; transform-origin: bottom left; }
     .tfm-slash-menu--empty { padding: 14px; text-align: center; }
     .tfm-slash-empty-text { font-size: 12px; color: var(--color-text-secondary); font-style: italic; }
     .tfm-slash-menu__head { display: flex; align-items: center; justify-content: space-between; padding: 6px 8px 4px; font-size: 10.5px; font-weight: 700; color: var(--color-text-secondary); letter-spacing: .06em; text-transform: uppercase; border-bottom: 1px solid var(--color-border); margin-bottom: 4px; }
@@ -459,10 +483,22 @@ export const ALL_SLASH_COMMANDS: SlashCommandItem[] = [
     .tfm-slash-item--current .tfm-slash-icon { background: color-mix(in srgb, var(--color-accent) 15%, var(--color-surface)); color: var(--color-accent); }
     .tfm-slash-desc { font-size: 11px; color: var(--color-text-secondary); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
     @keyframes tfm-popover-in { from { opacity: 0; transform: translateY(-4px); } to { opacity: 1; transform: translateY(0); } }
+    @keyframes tfm-popover-in-up { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; transform: translateY(0); } }
 
     :host { display: block; }
     :host(.rte--compact) .tfm-editor { min-height: 0; }
     :host(.rte--compact) .tfm-editor__content { min-height: 64px; padding: 8px 12px; font-size: 13.5px; }
+    :host(.rte--borderless) .tfm-editor,
+    :host(.rte--borderless) .tfm-editor:focus-within { min-height: 0; border: 0; border-bottom: 1px solid var(--color-border); border-radius: 0; background: transparent; box-shadow: none; }
+    :host(.rte--borderless) .tfm-editor__toolbar { padding: 4px 8px; border: 0; border-radius: 0; background: transparent; }
+    :host(.rte--borderless) .tfm-editor__content { min-height: 88px; padding: 10px 8px 14px; border-radius: 0; }
+    :host(.rte--readonly) .tfm-editor { transition: background-color 140ms ease, border-radius 140ms ease; }
+    :host(.rte--readonly) .tfm-editor:hover { border-radius: 6px; background: var(--color-surface-secondary); }
+    :host(.rte--readonly) .tfm-editor__toolbar { display: none; }
+    :host(.rte--readonly) .tfm-editor__content { cursor: text; }
+    :host(.rte--readonly) .tfm-editor__content:focus { outline: none; }
+    :host(.rte--readonly) .tfm-editor__content ::ng-deep input[type="checkbox"] { pointer-events: none; }
+    :host(.rte--borderless.rte--compact) .tfm-editor__content { min-height: 64px; padding: 8px 8px 12px; }
   `]
 })
 export class RichTextEditorComponent {
@@ -476,6 +512,18 @@ export class RichTextEditorComponent {
   imageUploadPurpose = input<Extract<PendingUploadPurpose, 'task_description_image' | 'comment_description_image'>>('task_description_image');
   allowAttachments = input<boolean>(true);
   compact = input<boolean>(false);
+  /** Removes the editor chrome while preserving the toolbar and editable content. */
+  borderless = input<boolean>(true);
+  /** Permanently displays formatted content without allowing activation. */
+  readOnly = input<boolean>(false);
+  /** Starts as formatted content and reveals editing controls only after interaction. */
+  activateOnClick = input<boolean>(true);
+  editorActive = signal(false);
+  contentEmpty = signal(true);
+  isReadOnlyMode = computed(() => this.readOnly() || (this.activateOnClick() && !this.editorActive()));
+  private editHistory: string[] = [''];
+  private historyIndex = 0;
+  private restoringHistory = false;
   /**
    * When false, text color is written as <font color> instead of an inline style. Needed where the
    * saved HTML is later rendered through Angular's [innerHTML] sanitizer, which strips style attrs.
@@ -521,7 +569,7 @@ export class RichTextEditorComponent {
   showSlashMenu = signal(false);
   slashQuery = signal('');
   slashSelectedIndex = signal(0);
-  slashMenuCoords = signal<{ top: number; left: number } | null>(null);
+  slashMenuCoords = signal<SlashMenuCoords | null>(null);
 
   activeFormats = signal<{
     bold: boolean;
@@ -567,7 +615,12 @@ export class RichTextEditorComponent {
       if (el && !el.innerHTML && html) {
         el.innerHTML = html;
         this.normalizeBlockLines(el);
-        untracked(() => this.htmlChange.emit(el.innerHTML));
+        const empty = this.isElementVisuallyEmpty(el);
+        untracked(() => {
+          this.contentEmpty.set(empty);
+          this.resetHistory(empty ? '' : el.innerHTML);
+          this.htmlChange.emit(empty ? '' : el.innerHTML);
+        });
       }
     });
 
@@ -577,7 +630,28 @@ export class RichTextEditorComponent {
       if (!this.host.nativeElement.contains(event.target as Node)) this.closePopovers();
     };
     document.addEventListener('mousedown', onOutsidePress, true);
-    inject(DestroyRef).onDestroy(() => document.removeEventListener('mousedown', onOutsidePress, true));
+
+    // Reposition or dismiss slash menu on scroll in ancestors or the editor
+    const onScroll = (event: Event) => {
+      if (!this.showSlashMenu()) return;
+      const target = event.target as HTMLElement | null;
+      if (target && target.closest && target.closest('.tfm-slash-menu')) {
+        return;
+      }
+      const ctx = this.getSlashTriggerContext();
+      if (ctx) {
+        this.updateSlashMenuPosition(ctx.range);
+      } else {
+        this.closeSlashMenu();
+      }
+    };
+    window.addEventListener('scroll', onScroll, true);
+
+    const destroyRef = inject(DestroyRef);
+    destroyRef.onDestroy(() => {
+      document.removeEventListener('mousedown', onOutsidePress, true);
+      window.removeEventListener('scroll', onScroll, true);
+    });
   }
 
   /** Replaces the editor content (used when the host loads/switches the record being edited). */
@@ -586,20 +660,32 @@ export class RichTextEditorComponent {
     if (!el) return;
     el.innerHTML = html ?? '';
     if (html) this.normalizeBlockLines(el);
-    this.htmlChange.emit(html ? el.innerHTML : '');
+    const empty = this.isElementVisuallyEmpty(el);
+    this.contentEmpty.set(empty);
+    this.resetHistory(empty ? '' : el.innerHTML);
+    this.htmlChange.emit(empty ? '' : el.innerHTML);
   }
 
   clear(): void {
     const el = this.contentEditor()?.nativeElement;
     if (el) el.innerHTML = '';
+    this.contentEmpty.set(true);
+    this.resetHistory('');
     this.closePopovers();
     this.linkUrlInput.set('');
     this.linkTextInput.set('');
     this.savedLinkRange = null;
+    this.editorActive.set(false);
   }
 
   /** Focuses the editor and places the caret at the end of its content. */
   focus(): void {
+    if (this.readOnly()) return;
+    if (this.activateOnClick() && !this.editorActive()) {
+      this.editorActive.set(true);
+      setTimeout(() => this.focus());
+      return;
+    }
     const el = this.contentEditor()?.nativeElement;
     if (!el) return;
     el.focus();
@@ -943,6 +1029,57 @@ export class RichTextEditorComponent {
       sel.removeAllRanges();
       sel.addRange(r);
     }
+
+    this.onEditorInput();
+    this.updateActiveFormats();
+  }
+
+  /** Toolbar headings are inline and affect only the selected text. Slash headings remain block-level. */
+  formatSelectedHeading(tag: 'h1' | 'h2'): void {
+    const editor = this.contentEditor()?.nativeElement;
+    const sel = window.getSelection();
+    if (!editor || !sel || sel.rangeCount === 0 || sel.isCollapsed) return;
+
+    const range = sel.getRangeAt(0);
+    if (!editor.contains(range.startContainer) || !editor.contains(range.endContainer)) return;
+
+    const slices: Array<{ node: Text; start: number; end: number }> = [];
+    const walker = document.createTreeWalker(editor, NodeFilter.SHOW_TEXT);
+    let current = walker.nextNode();
+    while (current) {
+      const node = current as Text;
+      if (range.intersectsNode(node)) {
+        const start = node === range.startContainer ? range.startOffset : 0;
+        const end = node === range.endContainer ? range.endOffset : node.data.length;
+        if (end > start) slices.push({ node, start, end });
+      }
+      current = walker.nextNode();
+    }
+
+    if (slices.length === 0) return;
+
+    const wrappers: HTMLElement[] = [];
+    for (const slice of [...slices].reverse()) {
+      let selectedNode = slice.node;
+      if (slice.end < selectedNode.data.length) selectedNode.splitText(slice.end);
+      if (slice.start > 0) selectedNode = selectedNode.splitText(slice.start);
+
+      const wrapper = document.createElement('span');
+      wrapper.className = `tfm-inline-${tag}`;
+      selectedNode.parentNode?.insertBefore(wrapper, selectedNode);
+      wrapper.appendChild(selectedNode);
+      wrappers.push(wrapper);
+    }
+
+    wrappers.sort((a, b) => a.compareDocumentPosition(b) & Node.DOCUMENT_POSITION_FOLLOWING ? -1 : 1);
+    const firstWrapper = wrappers[0];
+    const lastWrapper = wrappers[wrappers.length - 1];
+    const selectionRange = document.createRange();
+    selectionRange.setStart(firstWrapper.firstChild ?? firstWrapper, 0);
+    const endNode = lastWrapper.lastChild ?? lastWrapper;
+    selectionRange.setEnd(endNode, endNode.textContent?.length ?? 0);
+    sel.removeAllRanges();
+    sel.addRange(selectionRange);
 
     this.onEditorInput();
     this.updateActiveFormats();
@@ -1464,8 +1601,68 @@ export class RichTextEditorComponent {
     const el = this.contentEditor()?.nativeElement;
     if (!el) return;
     const raw = el.innerHTML.trim();
-    this.htmlChange.emit(!raw || raw === '<br>' || raw === '<div><br></div>' ? '' : raw);
+    const empty = this.isElementVisuallyEmpty(el);
+    this.contentEmpty.set(empty);
+    const html = empty ? '' : raw;
+    if (!this.restoringHistory) this.recordHistory(html);
+    this.htmlChange.emit(html);
     this.checkSlashMenuTrigger();
+  }
+
+  private isElementVisuallyEmpty(el: HTMLElement): boolean {
+    const text = (el.textContent ?? '').replace(/\u00a0/g, ' ').trim();
+    const hasEmbeddedContent = el.querySelector('img, hr, input, video, audio, iframe') !== null;
+    return text.length === 0 && !hasEmbeddedContent;
+  }
+
+  private resetHistory(html: string): void {
+    this.editHistory = [html];
+    this.historyIndex = 0;
+  }
+
+  private recordHistory(html: string): void {
+    if (this.editHistory[this.historyIndex] === html) return;
+    this.editHistory = this.editHistory.slice(0, this.historyIndex + 1);
+    this.editHistory.push(html);
+    if (this.editHistory.length > 100) this.editHistory.shift();
+    this.historyIndex = this.editHistory.length - 1;
+  }
+
+  undo(): void {
+    if (this.historyIndex === 0) return;
+    this.restoreHistory(this.historyIndex - 1);
+  }
+
+  redo(): void {
+    if (this.historyIndex >= this.editHistory.length - 1) return;
+    this.restoreHistory(this.historyIndex + 1);
+  }
+
+  private restoreHistory(index: number): void {
+    const el = this.contentEditor()?.nativeElement;
+    if (!el) return;
+
+    this.historyIndex = index;
+    const html = this.editHistory[index] ?? '';
+    this.restoringHistory = true;
+    try {
+      el.innerHTML = html;
+      const empty = this.isElementVisuallyEmpty(el);
+      this.contentEmpty.set(empty);
+      this.htmlChange.emit(empty ? '' : el.innerHTML);
+      this.closeSlashMenu();
+
+      el.focus();
+      const range = document.createRange();
+      range.selectNodeContents(el);
+      range.collapse(false);
+      const sel = window.getSelection();
+      sel?.removeAllRanges();
+      sel?.addRange(range);
+      this.updateActiveFormats();
+    } finally {
+      this.restoringHistory = false;
+    }
   }
 
   onEditorFocus(): void {
@@ -1492,6 +1689,21 @@ export class RichTextEditorComponent {
   }
 
   onEditorKeydown(event: KeyboardEvent): void {
+    if ((event.ctrlKey || event.metaKey) && !event.altKey) {
+      const key = event.key.toLowerCase();
+      if (key === 'z') {
+        event.preventDefault();
+        if (event.shiftKey) this.redo();
+        else this.undo();
+        return;
+      }
+      if (key === 'y') {
+        event.preventDefault();
+        this.redo();
+        return;
+      }
+    }
+
     if (this.showSlashMenu()) {
       if (event.key === 'ArrowDown') {
         event.preventDefault();
@@ -1558,6 +1770,17 @@ export class RichTextEditorComponent {
     let curr: HTMLElement | null = node instanceof HTMLElement ? node : (node.parentElement ?? null);
     while (curr && curr !== editor) {
       if (/^H[1-6]$/i.test(curr.tagName)) return curr;
+      curr = curr.parentElement;
+    }
+    return null;
+  }
+
+  private findClosestInlineHeading(node: Node | null): HTMLElement | null {
+    const editor = this.contentEditor()?.nativeElement;
+    if (!editor || !node || !editor.contains(node) || node === editor) return null;
+    let curr: HTMLElement | null = node instanceof HTMLElement ? node : (node.parentElement ?? null);
+    while (curr && curr !== editor) {
+      if (curr.classList.contains('tfm-inline-h1') || curr.classList.contains('tfm-inline-h2')) return curr;
       curr = curr.parentElement;
     }
     return null;
@@ -1752,6 +1975,33 @@ export class RichTextEditorComponent {
     this.updateActiveFormats();
   }
 
+  onEditorSurfaceClick(event: MouseEvent): void {
+    if (!this.readOnly() && this.activateOnClick() && !this.editorActive()) {
+      this.editorActive.set(true);
+      setTimeout(() => this.focus());
+      return;
+    }
+    this.onEditorClick(event);
+  }
+
+  onEditorSurfaceKeydown(event: KeyboardEvent): void {
+    if (!this.readOnly() && this.activateOnClick() && !this.editorActive()) {
+      if (event.key === 'Enter' || event.key === ' ') {
+        event.preventDefault();
+        this.editorActive.set(true);
+        setTimeout(() => this.focus());
+      }
+      return;
+    }
+    if (!this.readOnly()) this.onEditorKeydown(event);
+  }
+
+  onEditorScroll(): void {
+    if (this.showSlashMenu()) {
+      this.closeSlashMenu();
+    }
+  }
+
   onEditorKeyup(): void {
     this.updateActiveFormats();
   }
@@ -1802,6 +2052,7 @@ export class RichTextEditorComponent {
     }
 
     let isBold = false;
+    let browserBold = false;
     let isItalic = false;
     let isUnderline = false;
     let isBullet = false;
@@ -1809,7 +2060,7 @@ export class RichTextEditorComponent {
 
     try {
       if (typeof document !== 'undefined' && typeof document.queryCommandState === 'function') {
-        isBold = document.queryCommandState('bold');
+        browserBold = document.queryCommandState('bold');
         isItalic = document.queryCommandState('italic');
         isUnderline = document.queryCommandState('underline');
         isBullet = document.queryCommandState('insertUnorderedList');
@@ -1819,8 +2070,9 @@ export class RichTextEditorComponent {
 
     const checkItem = this.findClosestCheckItem(anchor);
     const heading = this.findClosestHeading(anchor);
-    const isH1 = heading?.tagName.toLowerCase() === 'h1';
-    const isH2 = heading?.tagName.toLowerCase() === 'h2';
+    const inlineHeading = this.findClosestInlineHeading(anchor);
+    const isH1 = heading?.tagName.toLowerCase() === 'h1' || inlineHeading?.classList.contains('tfm-inline-h1') === true;
+    const isH2 = heading?.tagName.toLowerCase() === 'h2' || inlineHeading?.classList.contains('tfm-inline-h2') === true;
 
     let curr: HTMLElement | null = anchor instanceof HTMLElement ? anchor : (anchor?.parentElement ?? null);
     let isCode = false;
@@ -1843,6 +2095,10 @@ export class RichTextEditorComponent {
       }
       curr = curr.parentElement;
     }
+
+    // queryCommandState('bold') is true inside H1/H2 because headings are bold by default.
+    // Keep that from falsely activating B, while retaining native pending-bold state on normal text.
+    if (!isBold && browserBold && !heading) isBold = true;
 
     // Browsers natively return queryCommandState('underline') = true for <a> because links have default CSS underline.
     // Text in a link is only user-underlined if wrapped in <u> or having explicit inline text-decoration: underline.
@@ -1907,24 +2163,92 @@ export class RichTextEditorComponent {
     if (!editorEl) return;
 
     try {
+      const containerEl = (editorEl.closest('.tfm-editor') as HTMLElement) || editorEl;
+      const containerRect = containerEl.getBoundingClientRect();
       const editorRect = editorEl.getBoundingClientRect();
-      const rangeRect = range.getBoundingClientRect();
+      let rangeRect = range.getBoundingClientRect();
 
-      let top = 36;
-      let left = 12;
-
-      if (rangeRect.width || rangeRect.height || rangeRect.top || rangeRect.bottom) {
-        top = rangeRect.bottom - editorRect.top + editorEl.scrollTop + 6;
-        left = Math.max(8, rangeRect.left - editorRect.left + editorEl.scrollLeft);
-        const maxLeft = Math.max(8, editorRect.width - 300);
-        if (left > maxLeft) {
-          left = maxLeft;
+      // If rangeRect is collapsed or has 0 dimensions, fallback to client rects or editor bounds
+      if (!rangeRect.width && !rangeRect.height && !rangeRect.top && !rangeRect.bottom) {
+        const clientRects = range.getClientRects();
+        if (clientRects.length > 0) {
+          rangeRect = clientRects[0];
+        } else {
+          rangeRect = editorRect;
         }
       }
 
-      this.slashMenuCoords.set({ top, left });
+      // If caret is scrolled outside the visible content area of the editor, close slash menu
+      if (editorEl.scrollHeight > editorEl.clientHeight) {
+        if (rangeRect.bottom < editorRect.top || rangeRect.top > editorRect.bottom) {
+          this.closeSlashMenu();
+          return;
+        }
+      }
+
+      // Find clipping or scrollable ancestor (such as .tfm__body in task modal)
+      let clippingBottom = typeof window !== 'undefined' ? window.innerHeight : 800;
+      let clippingTop = 0;
+      if (typeof window !== 'undefined') {
+        let parent = containerEl.parentElement;
+        while (parent && parent !== document.body && parent !== document.documentElement) {
+          const style = window.getComputedStyle(parent);
+          const overflowY = style.overflowY;
+          if (overflowY === 'auto' || overflowY === 'scroll' || overflowY === 'hidden') {
+            const parentRect = parent.getBoundingClientRect();
+            clippingBottom = Math.min(clippingBottom, parentRect.bottom);
+            clippingTop = Math.max(clippingTop, parentRect.top);
+            break;
+          }
+          parent = parent.parentElement;
+        }
+      }
+
+      const caretBottom = rangeRect.bottom || editorRect.bottom;
+      const caretTop = rangeRect.top || editorRect.top;
+
+      const spaceBelow = clippingBottom - caretBottom;
+      const spaceAbove = caretTop - clippingTop;
+
+      // Normal slash menu desired height is ~310px. If space below is not enough and space above has more room, open upward!
+      const openUpward = spaceBelow < 310 && spaceAbove > spaceBelow;
+
+      let top: number | null = null;
+      let bottom: number | null = null;
+      let maxHeight = 310;
+
+      if (openUpward) {
+        // Position upward: bottom edge of slash menu sits 6px above caret line
+        bottom = Math.max(0, containerRect.bottom - caretTop + 6);
+        maxHeight = Math.min(310, Math.max(120, Math.floor(spaceAbove - 16)));
+      } else {
+        // Position downward: top edge sits 6px below caret line
+        top = Math.max(0, caretBottom - containerRect.top + 6);
+        maxHeight = Math.min(310, Math.max(120, Math.floor(spaceBelow - 16)));
+      }
+
+      // Horizontal position constrained within container
+      let left = Math.max(8, rangeRect.left - containerRect.left);
+      const maxLeft = Math.max(8, containerRect.width - 316);
+      if (left > maxLeft) {
+        left = maxLeft;
+      }
+
+      this.slashMenuCoords.set({
+        top,
+        bottom,
+        left,
+        openUpward,
+        maxHeight
+      });
     } catch {
-      this.slashMenuCoords.set({ top: 36, left: 12 });
+      this.slashMenuCoords.set({
+        top: 36,
+        bottom: null,
+        left: 12,
+        openUpward: false,
+        maxHeight: 310
+      });
     }
   }
 

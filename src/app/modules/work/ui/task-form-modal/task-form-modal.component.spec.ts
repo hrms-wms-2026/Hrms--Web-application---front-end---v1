@@ -120,6 +120,48 @@ describe('TaskFormModalComponent - edit mode', () => {
     expect(fixture.componentInstance.assigneeEmployeeId()).toBe('e1');
   });
 
+  it('shows a plain description until the description section is clicked', async () => {
+    expect(fixture.componentInstance.descRte()?.contentEditor()?.nativeElement.textContent).toContain('desc');
+    expect(fixture.componentInstance.descRte()?.isReadOnlyMode()).toBe(true);
+    const toolbar = fixture.nativeElement.querySelector('[data-testid="task-description-section"] .tfm-editor__toolbar') as HTMLElement;
+    expect(getComputedStyle(toolbar).display).toBe('none');
+
+    fixture.componentInstance.descRte()!.contentEditor()!.nativeElement.click();
+    await flush(fixture);
+
+    expect(fixture.componentInstance.descRte()?.editorActive()).toBe(true);
+    expect(fixture.componentInstance.descRte()?.isReadOnlyMode()).toBe(false);
+    expect(getComputedStyle(toolbar).display).not.toBe('none');
+    expect(fixture.nativeElement.querySelector('app-rich-text-editor')?.classList).toContain('rte--borderless');
+  });
+
+  it('keeps the rich-text editor mounted after focus moves so editing is not interrupted', async () => {
+    fixture.componentInstance.descRte()!.focus();
+    await flush(fixture);
+
+    const outsideButton = document.createElement('button');
+    document.body.appendChild(outsideButton);
+    outsideButton.focus();
+    await flush(fixture);
+    outsideButton.remove();
+
+    expect(fixture.componentInstance.descRte()?.editorActive()).toBe(true);
+    expect(fixture.componentInstance.descRte()).toBeTruthy();
+  });
+
+  it('preserves inline rich-text formatting while the toolbar is hidden', () => {
+    fixture.componentInstance.descRte()!.setHtml(
+      '<div><span style="color: red; font-style: italic; background-color: pink;">Formatted</span></div>'
+    );
+    fixture.detectChanges();
+
+    const formatted = fixture.componentInstance.descRte()!.contentEditor()!.nativeElement.querySelector('span') as HTMLElement;
+
+    expect(getComputedStyle(formatted).color).toBe('rgb(255, 0, 0)');
+    expect(getComputedStyle(formatted).fontStyle).toBe('italic');
+    expect(getComputedStyle(formatted).backgroundColor).toBe('rgb(255, 192, 203)');
+  });
+
   it('mounts app-task-comments with the current task id in edit mode', () => {
     fixture.detectChanges();
 
@@ -469,6 +511,38 @@ describe('TaskFormModalComponent - create mode', () => {
     await build();
     expect(fixture.componentInstance.title()).toBe('');
     expect(api['getTaskById']).not.toHaveBeenCalled();
+  });
+
+  it('uses the shared click-to-edit, borderless description in create mode', async () => {
+    await build();
+    const editor = fixture.componentInstance.descRte()!;
+    const toolbar = fixture.nativeElement.querySelector('.tfm-editor__toolbar') as HTMLElement;
+
+    expect(editor.isReadOnlyMode()).toBe(true);
+    expect(getComputedStyle(toolbar).display).toBe('none');
+    expect(fixture.nativeElement.querySelector('app-rich-text-editor')?.classList).toContain('rte--borderless');
+
+    editor.contentEditor()!.nativeElement.click();
+    fixture.detectChanges();
+
+    expect(editor.editorActive()).toBe(true);
+    expect(getComputedStyle(toolbar).display).not.toBe('none');
+    expect(editor.contentEmpty()).toBe(true);
+    expect(editor.contentEditor()!.nativeElement.classList).toContain('tfm-editor__content--empty');
+  });
+
+  it('aligns title and description text and uses a neutral focus line without glow', async () => {
+    await build();
+    const title = fixture.nativeElement.querySelector('.tfm-title-input') as HTMLInputElement;
+    const description = fixture.componentInstance.descRte()!.contentEditor()!.nativeElement;
+
+    expect(getComputedStyle(title).paddingLeft).toBe('8px');
+    expect(getComputedStyle(description).paddingLeft).toBe('8px');
+
+    title.focus();
+    fixture.detectChanges();
+
+    expect(['', 'none']).toContain(getComputedStyle(title).boxShadow);
   });
 
   it('prefills the module from the prefillModuleId input', async () => {
@@ -1062,6 +1136,25 @@ describe('TaskFormModalComponent - subtasks section', () => {
     expect(api['moveTaskStatus']).toHaveBeenCalledWith('sub-1', 's2');
     expect(boardStore.loadSubtasks).toHaveBeenCalledWith('t1');
     expect(fixture.componentInstance.activeSubtaskPopover()).toBeNull();
+  });
+
+  it('subtask edits emit changed (host refreshes, modal stays open) - never saved/closed', async () => {
+    const comp = fixture.componentInstance;
+    const subtask = comp.subtasks()[0];
+    const saved = vi.fn();
+    const closed = vi.fn();
+    const changed = vi.fn();
+    comp.saved.subscribe(saved);
+    comp.closed.subscribe(closed);
+    comp.changed.subscribe(changed);
+
+    await comp.changeSubtaskPriority(subtask, 'critical');
+    await comp.changeSubtaskStatus(subtask, 's2');
+    await comp.changeSubtaskAssignee(subtask, 'someone-else');
+
+    expect(changed).toHaveBeenCalledTimes(3);
+    expect(saved).not.toHaveBeenCalled();
+    expect(closed).not.toHaveBeenCalled();
   });
 
   it('renders header work item type button and allows changing category via popover', () => {

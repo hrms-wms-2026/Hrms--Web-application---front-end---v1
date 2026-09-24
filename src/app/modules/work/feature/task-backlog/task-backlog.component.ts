@@ -195,6 +195,7 @@ import { toEditTaskRequest } from '../../utils/task.mapper';
       [prefillSprintId]="modalPrefillSprintId()"
       (created)="onTaskModalDone()"
       (saved)="onTaskModalDone()"
+      (changed)="reloadTasks()"
       (closed)="closeTaskModal()"
     />
   `,

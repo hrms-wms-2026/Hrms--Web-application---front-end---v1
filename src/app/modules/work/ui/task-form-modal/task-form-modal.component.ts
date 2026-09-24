@@ -236,6 +236,7 @@ export type TaskFormMode = 'create' | 'edit';
               <app-rich-text-editor
                 #descRte
                 [initialHtml]="description()"
+                [cssStyles]="false"
                 (htmlChange)="description.set($event)"
                 (filesAttached)="onAttachmentFilesSelected($event)"
                 (uploadFailed)="errorMessage.set($event)"
@@ -963,10 +964,20 @@ export type TaskFormMode = 'create' | 'edit';
                 <!-- Subtle Divider -->
                 <div class="tfm-doc-divider"></div>
 
-                <!-- Description Area -->
-                <div class="tfm-doc-section">
-                  <span class="tfm-doc-section-title">Description</span>
-                  <ng-container [ngTemplateOutlet]="descriptionEditorTpl" />
+                <!-- Description Area: read mode until the user clicks into it -->
+                <div
+                  class="tfm-doc-section tfm-description-section"
+                  data-testid="task-description-section"
+                >
+                  <app-rich-text-editor
+                    #descRte
+                    [initialHtml]="description()"
+                    [cssStyles]="false"
+                    placeholder="Add description"
+                    (htmlChange)="description.set($event)"
+                    (filesAttached)="onAttachmentFilesSelected($event)"
+                    (uploadFailed)="errorMessage.set($event)"
+                  />
                 </div>
 
                 <!-- Subtasks Section (Edit Mode) -->
@@ -1735,9 +1746,9 @@ export type TaskFormMode = 'create' | 'edit';
     .tfm-header-module-btn svg { width: 15px; height: 15px; flex: 0 0 auto; }
 
     .tfm-doc-title-block { display: flex; flex-direction: column; gap: 4px; }
-    .tfm-doc-title-input { width: 100%; font-size: 24px; font-weight: 700; line-height: 1.3; color: var(--color-text-primary); border: 1px solid transparent; border-radius: 6px; padding: 4px 8px; margin-left: -8px; background: transparent; outline: none; transition: all 140ms ease; font-family: inherit; }
-    .tfm-doc-title-input:hover,
-    .tfm-doc-title-input:focus { background: var(--color-surface-secondary); border-color: transparent; box-shadow: none; outline: none; }
+    .tfm-doc-title-input { width: 100%; font-size: 24px; font-weight: 700; line-height: 1.3; color: var(--color-text-primary); border: 1px solid transparent; border-radius: 6px; padding: 4px 8px; background: transparent; outline: none; transition: background-color 140ms ease, border-color 140ms ease; font-family: inherit; }
+    .tfm-doc-title-input:hover:not(:focus) { background: var(--color-surface-secondary); border-color: transparent; }
+    .tfm-doc-title-input:focus { background: transparent; border-color: var(--color-border); box-shadow: none; outline: none; }
     .tfm-doc-title-input--error { border-color: var(--color-danger) !important; background: var(--color-danger-subtle) !important; }
 
     /* ClickUp Property Grid */
@@ -1806,6 +1817,7 @@ export type TaskFormMode = 'create' | 'edit';
     .tfm-doc-section-head { display: flex; align-items: center; gap: 8px; }
     .tfm-doc-section-icon { display: inline-flex; align-items: center; justify-content: center; }
     .tfm-doc-section-icon svg { width: 15px; height: 15px; stroke: var(--color-text-secondary); fill: none; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
+    .tfm-description-section { min-height: 88px; }
     .tfm-doc-count { display: inline-flex; min-width: 18px; height: 18px; align-items: center; justify-content: center; padding: 0 5px; border-radius: 999px; background: var(--color-surface-secondary); color: var(--color-text-secondary); font-size: 11px; font-weight: 600; }
     .tfm-doc-section--collapsible { border: 1px solid var(--color-border); border-radius: 8px; padding: 12px 14px; background: var(--color-surface); }
     .tfm-doc-section-toggle { display: flex; align-items: center; justify-content: space-between; width: 100%; border: 0; background: transparent; padding: 0; cursor: pointer; color: var(--color-text-primary); }
@@ -1989,8 +2001,9 @@ export type TaskFormMode = 'create' | 'edit';
     /* Task Editor - Level 1: Title & Description */
     .tfm-level1 { display: flex; flex-direction: column; gap: 14px; }
     .tfm-title-block { display: flex; flex-direction: column; gap: 4px; }
-    .tfm-title-input { width: 100%; border: 1px solid var(--color-border); border-radius: 8px; padding: 10px 14px; font-size: 18px; font-weight: 650; color: var(--color-text-primary); background: var(--color-surface); outline: none; transition: border-color 150ms ease, box-shadow 150ms ease; }
-    .tfm-title-input:focus { border-color: var(--color-accent); box-shadow: 0 0 0 2px color-mix(in srgb, var(--color-accent) 25%, transparent); }
+    .tfm-title-input { width: 100%; border: 1px solid transparent; border-radius: 8px; padding: 10px 8px; font-size: 18px; font-weight: 650; color: var(--color-text-primary); background: transparent; outline: none; transition: background-color 140ms ease, border-color 150ms ease; }
+    .tfm-title-input:hover:not(:focus) { background: var(--color-surface-secondary); border-color: transparent; }
+    .tfm-title-input:focus { background: transparent; border-color: var(--color-border); box-shadow: none; }
     .tfm-title-input--error { border-color: var(--color-danger); }
     .tfm-title-error { font-size: 12px; }
 
@@ -2102,6 +2115,11 @@ export class TaskFormModalComponent {
   readonly closed = output<void>();
   readonly created = output<string>();
   readonly saved = output<void>();
+  /**
+   * An in-place change made while the modal stays open (subtask edits, clock-in). Hosts should
+   * refresh their data but keep the modal open - unlike `saved`, which hosts treat as "done".
+   */
+  readonly changed = output<void>();
   readonly taskSelected = output<string>();
 
   internalMode = signal<TaskFormMode | null>(null);
@@ -2697,7 +2715,7 @@ export class TaskFormModalComponent {
   }
 
   async onTaskClockedIn(): Promise<void> {
-    this.saved.emit();
+    this.changed.emit();
     const id = this.currentTaskId();
     if (!id) return;
     try {
@@ -3010,7 +3028,7 @@ export class TaskFormModalComponent {
       if (this.task()) {
         void this.boardStore.loadSubtasks(this.task()!.id);
       }
-      this.saved.emit();
+      this.changed.emit();
     } catch {
       // ignore error
     }
@@ -3044,7 +3062,7 @@ export class TaskFormModalComponent {
       if (this.task()) {
         void this.boardStore.loadSubtasks(this.task()!.id);
       }
-      this.saved.emit();
+      this.changed.emit();
     } catch {
       // ignore error
     }
@@ -3061,7 +3079,7 @@ export class TaskFormModalComponent {
       if (this.task()) {
         void this.boardStore.loadSubtasks(this.task()!.id);
       }
-      this.saved.emit();
+      this.changed.emit();
     } catch {
       // ignore error
     }
@@ -3079,7 +3097,7 @@ export class TaskFormModalComponent {
     try {
       await firstValueFrom(this.taskApi.moveTaskStatus(subtask.id, targetStatus.id));
       if (this.task()) void this.boardStore.loadSubtasks(this.task()!.id);
-      this.saved.emit();
+      this.changed.emit();
     } catch {
       // ignore status toggle error
     }
