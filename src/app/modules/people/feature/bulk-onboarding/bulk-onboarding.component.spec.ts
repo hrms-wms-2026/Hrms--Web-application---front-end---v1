@@ -54,7 +54,7 @@ describe('BulkOnboardingComponent', () => {
         {
           provide: PeopleApiService,
           useValue: {
-            getWorkModes: () => of([{ id: 1, label: 'Hybrid', code: 'hybrid' }]),
+            getWorkModes: () => of([{ id: '1', label: 'Hybrid' }]),
             getActiveHolders: () => of([])
           }
         },

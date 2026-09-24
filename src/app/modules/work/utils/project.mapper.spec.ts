@@ -40,14 +40,14 @@ describe('project.mapper', () => {
       allocatedHours: 40, completedHours: 0, isLead: true, isAchieved: false, achievedAt: null,
       updatedAt: '2026-08-10T00:00:00Z', logoFileId: null,
       labels: [{ id: 'l1', name: 'Marketing', color: '#F59E0B' }],
-      members: [{ userId: 'u2', displayName: 'Arun Kumar' }],
+      members: [{ userId: 'u2', displayName: 'Arun Kumar', avatarFileId: null }],
       memberCount: 5
     };
     const result = toProject(dto);
     expect(result.description).toBe('Rebuild the site');
     expect(result.updatedAt).toBe('2026-08-10T00:00:00Z');
     expect(result.labels).toEqual([{ id: 'l1', name: 'Marketing', color: '#F59E0B' }]);
-    expect(result.members).toEqual([{ userId: 'u2', displayName: 'Arun Kumar' }]);
+    expect(result.members).toEqual([{ userId: 'u2', displayName: 'Arun Kumar', avatarFileId: null }]);
     expect(result.memberCount).toBe(5);
   });
 
@@ -284,8 +284,8 @@ describe('project.mapper', () => {
       }]
     };
     const sprintDto: SprintDto = {
-      id: 'spr-1', objectiveId: 'o1', name: 'Sprint 1', startDate: '2026-08-01', endDate: '2026-08-14',
-      status: 'active', completedAt: null, achievedAt: null, goal: null
+      id: 'spr-1', projectId: 'p-1', name: 'Sprint 1', startDate: '2026-08-01', endDate: '2026-08-14',
+      status: 'active', completedAt: null, achievedAt: null, goal: null, canManage: true
     };
     const taskDto: WorkTaskDto = {
       id: 't1', objectiveId: 'o1', shortId: 'WEB-9', title: 'Do it', description: null,

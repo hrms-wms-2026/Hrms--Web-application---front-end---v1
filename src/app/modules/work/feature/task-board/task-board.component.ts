@@ -12,7 +12,6 @@ import { ButtonComponent } from '../../../../shared/ui/button/button.component';
 import { ErrorStateComponent } from '../../../../shared/ui/error-state/error-state.component';
 import { SprintApiService } from '../../data-access/sprint-api.service';
 import { TaskApiService } from '../../data-access/task-api.service';
-import { EmployeeDirectoryStore } from '../../state/employee-directory.store';
 import { toSprint } from '../../utils/sprint.mapper';
 import { Sprint } from '../../models/sprint.model';
 import { WorkTask } from '../../models/task.model';
@@ -20,7 +19,9 @@ import { TaskCategoryColumn } from '../../models/task-category.model';
 import { toTaskCategoryColumn } from '../../utils/task-category.mapper';
 import { WorkDropdownOption } from '../../ui/work-dropdown/work-dropdown.component';
 import { TaskFilterBarComponent, TaskFilterFieldConfig } from '../../ui/task-filter-bar/task-filter-bar.component';
-import { TaskAssigneeAvatarFilterComponent } from '../../ui/task-assignee-avatar-filter/task-assignee-avatar-filter.component';
+import { TaskAssigneeAvatarFilterComponent, TaskAssigneeAvatarMember } from '../../ui/task-assignee-avatar-filter/task-assignee-avatar-filter.component';
+import { ProfileStore } from '../../../profile/state/profile.store';
+import { FileApiService } from '../../../../shared/data-access/file-api.service';
 import { TaskFormModalComponent } from '../../ui/task-form-modal/task-form-modal.component';
 import { BoardStructureEditorComponent } from '../../ui/board-structure-editor/board-structure-editor.component';
 import { CreateTaskRequestDto } from '../../models/dto/task.dto';
@@ -40,7 +41,7 @@ import { CreateTaskRequestDto } from '../../models/dto/task.dto';
         />
         <app-task-filter-bar [fields]="filterFields()" [values]="filterValues()" (fieldChanged)="onFilterFieldChanged($event)" />
         @if (modules().length > 0) {
-          <app-button variant="primary" (pressed)="goToCreate()">Create task</app-button>
+          <app-button variant="primary" (pressed)="goToCreate()">Create work item</app-button>
         }
       </div>
     </ng-template>
@@ -57,7 +58,6 @@ import { CreateTaskRequestDto } from '../../models/dto/task.dto';
             [tasks]="column.tasks"
             [connectedListIds]="columnIds()"
             [allStatuses]="store.statuses()"
-            [employeeNames]="employeeNames()"
             [currentEmployeeId]="currentEmployee.id()"
             [assignableMembers]="assignableMembers()"
             [modules]="moduleOptions()"
@@ -84,6 +84,7 @@ import { CreateTaskRequestDto } from '../../models/dto/task.dto';
       [taskId]="taskModalTaskId()"
       [prefillModuleId]="modalPrefillModuleId()"
       [prefillSprintId]="modalPrefillSprintId()"
+      (taskSelected)="taskModalTaskId.set($event)"
       (created)="onTaskModalDone()"
       (saved)="onTaskModalDone()"
       (closed)="taskModalOpen.set(false)"
@@ -110,15 +111,49 @@ export class TaskBoardComponent implements OnInit, AfterViewChecked, AfterViewIn
   private readonly route = inject(ActivatedRoute);
   private readonly sprintApi = inject(SprintApiService);
   private readonly taskApi = inject(TaskApiService);
-  private readonly directory = inject(EmployeeDirectoryStore);
   protected readonly currentEmployee = inject(CurrentEmployeeStore);
+  private readonly profileStore = inject(ProfileStore, { optional: true });
+  private readonly fileApi = inject(FileApiService, { optional: true });
   private readonly toolbarStore = inject(WorkPageToolbarStore);
   private readonly toolbarTpl = viewChild.required<TemplateRef<unknown>>('toolbarTpl');
 
   protected readonly projectId = signal('');
   protected readonly sprints = signal<Sprint[]>([]);
   protected readonly categories = signal<TaskCategoryColumn[]>([]);
-  protected readonly assignableMembers = signal<{ employeeId: string; name: string }[]>([]);
+  protected readonly rawAssignableMembers = signal<TaskAssigneeAvatarMember[]>([]);
+  protected readonly assignableMembers = computed<TaskAssigneeAvatarMember[]>(() => {
+    const raw = this.rawAssignableMembers();
+    const avatarMap = new Map<string, string>();
+    const tasks = typeof this.store.tasks === 'function' ? this.store.tasks() : [];
+    for (const task of tasks) {
+      for (const a of task.assignees ?? []) {
+        if (a.avatarUrl && !avatarMap.has(a.employeeId)) {
+          avatarMap.set(a.employeeId, a.avatarUrl);
+        }
+      }
+    }
+    const subtaskMap = typeof this.store.subtasksByParentId === 'function' ? this.store.subtasksByParentId() : {};
+    for (const subtasks of Object.values(subtaskMap)) {
+      for (const st of subtasks) {
+        for (const a of st.assignees ?? []) {
+          if (a.avatarUrl && !avatarMap.has(a.employeeId)) {
+            avatarMap.set(a.employeeId, a.avatarUrl);
+          }
+        }
+      }
+    }
+    const currentEmpId = this.currentEmployee.id();
+    const myAvatarFileId = this.profileStore?.profile()?.personalInformation?.avatarFileId;
+    if (currentEmpId && myAvatarFileId && !avatarMap.has(currentEmpId) && this.fileApi) {
+      avatarMap.set(currentEmpId, this.fileApi.getFileUrl(myAvatarFileId));
+    }
+
+    return raw.map((m) => ({
+      employeeId: m.employeeId,
+      name: m.name,
+      avatarUrl: m.avatarUrl ?? avatarMap.get(m.employeeId) ?? null
+    }));
+  });
   protected readonly objectiveFilter = signal<string[]>([]);
   // Defaults to 'all' so no sprint is auto-selected on load; only filtered when explicitly chosen by the user.
   protected readonly sprintFilter = signal('all');
@@ -212,15 +247,6 @@ export class TaskBoardComponent implements OnInit, AfterViewChecked, AfterViewIn
       tasks: column.tasks.filter((task) => this.matchesFilters(task))
     }))
   );
-  protected readonly employeeNames = computed(() =>
-    Object.fromEntries(
-      this.store.tasks()
-        .flatMap((task) => task.assigneeEmployeeIds)
-        .filter((id, index, all) => all.indexOf(id) === index)
-        .map((id) => [id, this.directory.get(id)?.name ?? 'Unknown employee'])
-    )
-  );
-
   protected readonly assigneeFilterOptions = computed<WorkDropdownOption[]>(() =>
     this.assignableMembers().map((member) => ({ value: member.employeeId, label: member.name }))
   );
@@ -297,7 +323,12 @@ export class TaskBoardComponent implements OnInit, AfterViewChecked, AfterViewIn
     const categoryFilter = this.categoryFilter();
     const categoryMatches = categoryFilter.length === 0 || categoryFilter.includes(task.categoryId);
     const assignees = this.assigneeFilter();
-    const assigneeMatches = assignees.length === 0 || task.assigneeEmployeeIds.some((id) => assignees.includes(id));
+    // A task also matches if one of its subtasks is assigned to a filtered person - subtasks
+    // aren't independent board cards, so without this the parent would vanish from "my tasks"
+    // even though the viewer owns a piece of the work underneath it.
+    const assigneeMatches = assignees.length === 0
+      || task.assigneeEmployeeIds.some((id) => assignees.includes(id))
+      || task.subtaskAssigneeEmployeeIds.some((id) => assignees.includes(id));
     const statuses = this.statusFilter();
     const statusMatches = statuses.length === 0 || statuses.includes(task.statusId);
     const priorities = this.priorityFilter();
@@ -326,17 +357,12 @@ export class TaskBoardComponent implements OnInit, AfterViewChecked, AfterViewIn
     try {
       await this.projectStore.loadProjectMembers(projectId);
       const members = this.projectStore.projectMembers();
-      // Still needed here even though the dropdown itself now uses member.name directly
-      // (server-resolved): employeeNames above resolves *existing task* assignees, which
-      // WorkTaskResponse only carries as raw EmployeeId GUIDs, and this is the only call in
-      // this component that populates the shared directory cache those names come from.
-      await this.directory.ensureLoaded(members.map((member) => member.employeeId));
-      this.assignableMembers.set(members.map((member) => ({
+      this.rawAssignableMembers.set(members.map((member) => ({
         employeeId: member.employeeId,
         name: member.name ?? 'Unknown employee'
       })));
     } catch {
-      this.assignableMembers.set([]);
+      this.rawAssignableMembers.set([]);
     }
   }
 

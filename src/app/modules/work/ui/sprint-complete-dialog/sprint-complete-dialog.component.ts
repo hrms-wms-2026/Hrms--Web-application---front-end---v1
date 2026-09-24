@@ -70,9 +70,7 @@ export class SprintCompleteDialogComponent {
   sprint = input<Sprint | null>(null);
   tasks = input<readonly WorkTask[]>([]);
   otherSprints = input<readonly Sprint[]>([]);
-  objectiveId = input<string>('');
-  activeOnly = input(false);
-  projectId = input<string | undefined>(undefined);
+  projectId = input.required<string>();
   completeStatusIds = input<ReadonlySet<string>>(new Set());
 
   completed = output<void>();
@@ -119,7 +117,7 @@ export class SprintCompleteDialogComponent {
       const ok = await this.store.complete(current.id, this.disposition() === 'sprint'
         ? { disposition: 'sprint', targetSprintId: this.targetSprintId() }
         : { disposition: 'backlog' },
-        this.objectiveId(), this.activeOnly(), this.projectId());
+        this.projectId());
       if (ok) this.completed.emit();
     } finally {
       this.submitting.set(false);

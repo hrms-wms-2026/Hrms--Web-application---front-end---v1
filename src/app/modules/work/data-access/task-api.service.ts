@@ -3,6 +3,7 @@ import { Injectable, inject } from '@angular/core';
 import { Observable } from 'rxjs';
 import { environment } from '../../../../environments/environment';
 import {
+  CreateSubtaskRequestDto,
   CreateTaskRequestDto,
   CreateTaskStatusRequestDto,
   ClockInResponseDto,
@@ -12,7 +13,6 @@ import {
   PushTaskRequestDto,
   TaskStatusDto,
   WorkTaskDto
-
 } from '../models/dto/task.dto';
 import { TaskStatusCategory } from '../models/task.model';
 import {
@@ -25,6 +25,8 @@ import {
   TaskEditRequestDto
 } from '../models/dto/task-edit-request.dto';
 import { TaskHistoryEntryDto } from '../models/dto/task-history.dto';
+
+export type PendingUploadPurpose = 'task_attachment' | 'task_description_image' | 'comment_attachment' | 'comment_description_image';
 
 @Injectable({ providedIn: 'root' })
 export class TaskApiService {
@@ -73,6 +75,14 @@ export class TaskApiService {
 
   createTask(objectiveId: string, request: CreateTaskRequestDto): Observable<WorkTaskDto> {
     return this.http.post<WorkTaskDto>(`${this.baseUrl}/objectives/${objectiveId}/tasks`, request);
+  }
+
+  createSubtask(parentTaskId: string, request: CreateSubtaskRequestDto): Observable<WorkTaskDto> {
+    return this.http.post<WorkTaskDto>(`${this.baseUrl}/tasks/${parentTaskId}/subtasks`, request);
+  }
+
+  getSubtasks(parentTaskId: string): Observable<WorkTaskDto[]> {
+    return this.http.get<WorkTaskDto[]>(`${this.baseUrl}/tasks/${parentTaskId}/subtasks`);
   }
 
   deleteTask(taskId: string): Observable<void> {
@@ -172,7 +182,7 @@ export class TaskApiService {
     return this.http.post<TaskCategoryDto[]>(`${this.baseUrl}/projects/${projectId}/task-categories/reorder`, { updates });
   }
 
-  uploadPendingFile(file: File, purpose: 'task_attachment' | 'task_description_image'): Observable<PendingUploadDto> {
+  uploadPendingFile(file: File, purpose: PendingUploadPurpose): Observable<PendingUploadDto> {
     const formData = new FormData();
     formData.set('purpose', purpose);
     formData.set('file', file);

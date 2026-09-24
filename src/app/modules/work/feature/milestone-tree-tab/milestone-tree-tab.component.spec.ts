@@ -732,7 +732,8 @@ describe('MilestoneTreeTabComponent', () => {
         categoryId: 'task', statusId: 'st-1', priority: 'medium', storyPoints: null,
         dueDate: null, estimatedHours: 3, completedHours: 0, progressPercent: 0,
         sprintId: 'spr-1', assigneeEmployeeIds: [], openClockSessionEmployeeId: null, openClockSessionClockInAt: null, totalLoggedMinutes: 0,
-        attachments: []
+        attachments: [], assignees: [],
+        parentTaskId: null, subtaskTotalCount: 0, subtaskCompletedCount: 0, subtaskAssigneeEmployeeIds: []
       }
     };
 
@@ -856,6 +857,46 @@ describe('MilestoneTreeTabComponent', () => {
     fixture.componentInstance.onDeleteCancelled();
     expect(storeStub.deleteTask).not.toHaveBeenCalled();
     expect(fixture.componentInstance.deleteConfirmOpen()).toBe(false);
+  });
+
+  describe('sprint form binding stability (Finding 1)', () => {
+    const sprintNode: MilestoneTreeNode = {
+      ...child, id: 'spr-1', title: 'Sprint 1', kind: 'sprint', parentObjectiveId: 'o1',
+      isOwner: true, children: [], startDate: '2026-08-01', endDate: '2026-08-14', status: 'active'
+    };
+
+    it('keeps editSprintModel/editSprintModules referentially stable across repeated change-detection passes', async () => {
+      setup('o1');
+      fixture.detectChanges();
+
+      await fixture.componentInstance.onEditRequested(sprintNode);
+      fixture.detectChanges();
+
+      const modelA = fixture.componentInstance.editSprintModel();
+      const modulesA = fixture.componentInstance.editSprintModules();
+      fixture.detectChanges();
+      fixture.detectChanges();
+      const modelB = fixture.componentInstance.editSprintModel();
+      const modulesB = fixture.componentInstance.editSprintModules();
+
+      expect(modelB).toBe(modelA);
+      expect(modulesB).toBe(modulesA);
+    });
+
+    it('keeps createSprintModules referentially stable across repeated change-detection passes', () => {
+      setup('o1');
+      fixture.detectChanges();
+
+      fixture.componentInstance.onCreateSprintRequested(tree);
+      fixture.detectChanges();
+
+      const modulesA = fixture.componentInstance.createSprintModules();
+      fixture.detectChanges();
+      fixture.detectChanges();
+      const modulesB = fixture.componentInstance.createSprintModules();
+
+      expect(modulesB).toBe(modulesA);
+    });
   });
 
   it('opens the task modal in create mode with just the module from a module row', () => {

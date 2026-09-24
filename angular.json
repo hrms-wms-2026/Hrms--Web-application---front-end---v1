@@ -26,7 +26,8 @@
               }
             ],
             "styles": [
-              "src/styles.css"
+              "src/styles.css",
+              "@angular/cdk/overlay-prebuilt.css"
             ],
             "allowedCommonJsDependencies": [
               "qrcode",
@@ -44,8 +45,8 @@
                 },
                 {
                   "type": "anyComponentStyle",
-                  "maximumWarning": "25kB",
-                  "maximumError": "35kB"
+                  "maximumWarning": "45kB",
+                  "maximumError": "55kB"
                 }
               ],
               "outputHashing": "all",

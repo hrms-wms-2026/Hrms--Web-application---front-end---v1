@@ -106,7 +106,11 @@ export class ProjectListComponent implements OnInit {
   }
 
   readonly projectMemberPopupItems = computed(() =>
-    (this.selectedProject()?.members ?? []).map((member) => ({ id: member.userId, name: member.displayName }))
+    (this.selectedProject()?.members ?? []).map((member) => ({
+      id: member.userId,
+      name: member.displayName,
+      avatarFileId: member.avatarFileId
+    }))
   );
 
   readonly selectedProject = computed(() => {

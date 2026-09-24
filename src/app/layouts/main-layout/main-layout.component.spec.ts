@@ -1,10 +1,13 @@
-import { Component } from '@angular/core';
+import { Component, signal } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
 import { Router, provideRouter } from '@angular/router';
 import { MainLayoutComponent } from './main-layout.component';
 import { AuthStore } from '../../core/auth/state/auth.store';
 import { TrayPresenceStore } from '../../core/tray-presence/state/tray-presence.store';
 import { NavigationStateService } from './nav/navigation-state.service';
+import { ProfileStore } from '@modules/profile/state/profile.store';
+import { FileApiService } from '../../shared/data-access/file-api.service';
+import { MyProfile } from '@modules/profile/models/profile.model';
 
 const authStoreStub = {
   email: () => 'asha@onevo.test',
@@ -17,6 +20,15 @@ const connectedTrayPresenceStub = {
   start: () => undefined,
   canRenderProtectedContent: () => true,
   isBlocking: () => false
+};
+
+const emptyProfileStoreStub = {
+  profile: signal<MyProfile | null>(null),
+  loadProfile: vi.fn()
+};
+
+const fileApiStub = {
+  getFileUrl: (fileId: string) => `https://api.test/files/${fileId}`
 };
 
 @Component({ standalone: true, template: '' })
@@ -33,7 +45,9 @@ describe('MainLayoutComponent', () => {
       providers: [
         provideRouter([]),
         { provide: AuthStore, useValue: authStoreStub },
-        { provide: TrayPresenceStore, useValue: connectedTrayPresenceStub }
+        { provide: TrayPresenceStore, useValue: connectedTrayPresenceStub },
+        { provide: ProfileStore, useValue: emptyProfileStoreStub },
+        { provide: FileApiService, useValue: fileApiStub }
       ]
     }).compileComponents();
 
@@ -53,7 +67,9 @@ describe('MainLayoutComponent', () => {
       providers: [
         provideRouter([]),
         { provide: AuthStore, useValue: authStoreStub },
-        { provide: TrayPresenceStore, useValue: connectedTrayPresenceStub }
+        { provide: TrayPresenceStore, useValue: connectedTrayPresenceStub },
+        { provide: ProfileStore, useValue: emptyProfileStoreStub },
+        { provide: FileApiService, useValue: fileApiStub }
       ]
     }).compileComponents();
 
@@ -73,13 +89,46 @@ describe('MainLayoutComponent', () => {
     expect(fixture.nativeElement.textContent).toContain('asha@onevo.test');
   });
 
+  it('passes the profile photo URL and name from ProfileStore down to the top navbar profile popover', async () => {
+    const profile = {
+      personalInformation: { firstName: 'Asha', lastName: 'Kumar', avatarFileId: 'file-77' }
+    } as MyProfile;
+
+    await TestBed.configureTestingModule({
+      imports: [MainLayoutComponent],
+      providers: [
+        provideRouter([]),
+        { provide: AuthStore, useValue: authStoreStub },
+        { provide: TrayPresenceStore, useValue: connectedTrayPresenceStub },
+        { provide: ProfileStore, useValue: { profile: signal<MyProfile | null>(profile), loadProfile: vi.fn() } },
+        { provide: FileApiService, useValue: fileApiStub }
+      ]
+    }).compileComponents();
+
+    const fixture = TestBed.createComponent(MainLayoutComponent);
+    fixture.detectChanges();
+
+    const trigger = fixture.nativeElement.querySelector('.profile-menu-trigger') as HTMLButtonElement;
+    trigger.click();
+    fixture.detectChanges();
+
+    const img = fixture.nativeElement.querySelector('.avatar__image') as HTMLImageElement;
+    expect(img).toBeTruthy();
+    expect(img.src).toBe('https://api.test/files/file-77');
+
+    const userName = fixture.nativeElement.querySelector('.profile-user-name');
+    expect(userName.textContent?.trim()).toBe('Asha Kumar');
+  });
+
   it('mounts app-toast-host inside global-notification-container', async () => {
     await TestBed.configureTestingModule({
       imports: [MainLayoutComponent],
       providers: [
         provideRouter([]),
         { provide: AuthStore, useValue: authStoreStub },
-        { provide: TrayPresenceStore, useValue: connectedTrayPresenceStub }
+        { provide: TrayPresenceStore, useValue: connectedTrayPresenceStub },
+        { provide: ProfileStore, useValue: emptyProfileStoreStub },
+        { provide: FileApiService, useValue: fileApiStub }
       ]
     }).compileComponents();
 
@@ -97,7 +146,9 @@ describe('MainLayoutComponent', () => {
       providers: [
         provideRouter([{ path: '**', component: BlankRouteComponent }]),
         { provide: AuthStore, useValue: authStoreWith(['roles:manage'], []) },
-        { provide: TrayPresenceStore, useValue: connectedTrayPresenceStub }
+        { provide: TrayPresenceStore, useValue: connectedTrayPresenceStub },
+        { provide: ProfileStore, useValue: emptyProfileStoreStub },
+        { provide: FileApiService, useValue: fileApiStub }
       ]
     }).compileComponents();
 
@@ -120,7 +171,9 @@ describe('MainLayoutComponent', () => {
       providers: [
         provideRouter([{ path: '**', component: BlankRouteComponent }]),
         { provide: AuthStore, useValue: authStoreWith(['org:read'], ['org_structure']) },
-        { provide: TrayPresenceStore, useValue: connectedTrayPresenceStub }
+        { provide: TrayPresenceStore, useValue: connectedTrayPresenceStub },
+        { provide: ProfileStore, useValue: emptyProfileStoreStub },
+        { provide: FileApiService, useValue: fileApiStub }
       ]
     }).compileComponents();
 
@@ -143,7 +196,9 @@ describe('MainLayoutComponent', () => {
       providers: [
         provideRouter([{ path: '**', component: BlankRouteComponent }]),
         { provide: AuthStore, useValue: authStoreStub },
-        { provide: TrayPresenceStore, useValue: connectedTrayPresenceStub }
+        { provide: TrayPresenceStore, useValue: connectedTrayPresenceStub },
+        { provide: ProfileStore, useValue: emptyProfileStoreStub },
+        { provide: FileApiService, useValue: fileApiStub }
       ]
     }).compileComponents();
 
@@ -160,7 +215,9 @@ describe('MainLayoutComponent', () => {
       providers: [
         provideRouter([{ path: '**', component: BlankRouteComponent }]),
         { provide: AuthStore, useValue: authStoreWith(['org:read'], ['org_structure']) },
-        { provide: TrayPresenceStore, useValue: connectedTrayPresenceStub }
+        { provide: TrayPresenceStore, useValue: connectedTrayPresenceStub },
+        { provide: ProfileStore, useValue: emptyProfileStoreStub },
+        { provide: FileApiService, useValue: fileApiStub }
       ]
     }).compileComponents();
 

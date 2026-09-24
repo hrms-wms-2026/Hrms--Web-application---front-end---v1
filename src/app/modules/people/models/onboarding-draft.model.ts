@@ -17,7 +17,7 @@ export interface OnboardingDraftResponse {
   readonly employmentType: string;
   readonly startDate: string;
   readonly employeeNumber: string | null;
-  readonly workModeId: number;
+  readonly workModeId: string | null;
   readonly workModeLabel?: string | null;
   readonly selectedTemplateId: string | null;
   readonly editedTasksJson: string | null;
@@ -110,7 +110,7 @@ export interface SaveOnboardingDraftPayload {
   employmentType: string;
   startDate: string;
   employeeNumber: string | null;
-  workModeId: number;
+  workModeId: string | null;
   selectedTemplateId: string | null;
   editedTasksJson: string | null;
   lastSavedStep: WizardStep;
@@ -118,8 +118,7 @@ export interface SaveOnboardingDraftPayload {
 }
 
 export interface WorkModeOption {
-  readonly id: number;
-  readonly code: string;
+  readonly id: string;
   readonly label: string;
 }
 

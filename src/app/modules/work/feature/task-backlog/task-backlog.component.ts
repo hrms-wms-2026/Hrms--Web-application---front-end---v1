@@ -42,19 +42,21 @@ import { toEditTaskRequest } from '../../utils/task.mapper';
         />
         <app-task-filter-bar [fields]="filterFields()" [values]="filterValues()" (fieldChanged)="onFilterFieldChanged($event)" />
         @if (modules().length > 0) {
-          <app-button variant="secondary" (pressed)="openCreateTask()">Create task</app-button>
+          <app-button variant="secondary" (pressed)="openCreateTask()">Create work item</app-button>
         }
-        @if (ownedModuleOptions().length > 0) {
+        @if (modules().length > 0) {
           <app-button variant="primary" (pressed)="createSprintOpen.set(true)">Create Sprint</app-button>
         }
       </div>
     </ng-template>
 
-    @if (createSprintOpen() && ownedModuleOptions().length > 0) {
+    @if (createSprintOpen() && modules().length > 0) {
         <app-sprint-form
           mode="create"
           [open]="createSprintOpen()"
-          [modules]="ownedModuleOptions()"
+          [projectId]="projectId()"
+          [modules]="sprintFormModules()"
+          [allSprints]="sprintStore.sprints()"
           (created)="onSprintCreated()"
           (cancelled)="createSprintOpen.set(false)"
         />
@@ -63,7 +65,9 @@ import { toEditTaskRequest } from '../../utils/task.mapper';
       <app-sprint-form
         mode="edit"
         [open]="true"
-        [objectiveId]="sprint.objectiveId"
+        [projectId]="projectId()"
+        [modules]="sprintFormModules()"
+        [allSprints]="sprintStore.sprints()"
         [sprint]="sprint"
         (saved)="onSprintEdited()"
         (cancelled)="editingSprint.set(null)"
@@ -74,7 +78,7 @@ import { toEditTaskRequest } from '../../utils/task.mapper';
         [open]="true"
         [sprint]="sprint"
         [tasks]="tasksForSprint(sprint.id)"
-        [objectiveId]="sprint.objectiveId"
+        [projectId]="projectId()"
         (started)="onSprintStarted()"
         (cancelled)="startingSprint.set(null)"
       />
@@ -85,7 +89,7 @@ import { toEditTaskRequest } from '../../utils/task.mapper';
         [sprint]="sprint"
         [tasks]="tasksForSprint(sprint.id)"
         [otherSprints]="otherSprintsForCompleting()"
-        [objectiveId]="sprint.objectiveId"
+        [projectId]="projectId()"
         [completeStatusIds]="completeStatusIds()"
         (completed)="onSprintCompleted()"
         (cancelled)="completingSprint.set(null)"
@@ -107,9 +111,11 @@ import { toEditTaskRequest } from '../../utils/task.mapper';
           @for (sprint of filteredSprints(); track sprint.id) {
             <app-sprint-tab
               [sprint]="sprint"
-              [isObjectiveOwner]="objectiveOwners()[sprint.objectiveId] ?? false"
+              [canManage]="sprint.canManage"
               [tasks]="tasksForSprint(sprint.id)"
               [statusNames]="statusNames()"
+              [categoryNames]="categoryNames()"
+              [moduleNames]="moduleNames()"
               [statuses]="store.statuses()"
               [objectiveOwners]="objectiveOwners()"
               [currentEmployeeId]="currentEmployee.id()"
@@ -132,15 +138,20 @@ import { toEditTaskRequest } from '../../utils/task.mapper';
           @if (selectedTaskIds().size > 0) {
             <div class="task-backlog__selection-toolbar">
               <span class="task-backlog__selection-count">{{ selectedTaskIds().size }} task{{ selectedTaskIds().size === 1 ? '' : 's' }} selected</span>
-              <app-button variant="primary" (pressed)="moveDialogOpen.set(true)">Move to sprint</app-button>
+              <app-button variant="primary" (pressed)="moveDialogOpen.set(true)">Move selected to sprint</app-button>
               <button type="button" class="task-backlog__selection-clear" aria-label="Clear selection" title="Clear selection" (click)="clearSelection()">&#x2715;</button>
             </div>
           } @else {
-            <h3 class="task-backlog__unsorted-title">Backlog</h3>
+            <div class="task-backlog__unsorted-header">
+              <svg class="task-backlog__unsorted-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 6h16M4 12h16M4 18h16" /></svg>
+              <h3 class="task-backlog__unsorted-title">Backlog</h3>
+              <span class="task-backlog__unsorted-summary">{{ unsortedTasks().length }} task{{ unsortedTasks().length === 1 ? '' : 's' }} · {{ unsortedTotalHours() }}h</span>            </div>
           }
           <app-task-table
             [tasks]="unsortedTasks()"
             [statusNames]="statusNames()"
+            [categoryNames]="categoryNames()"
+            [moduleNames]="moduleNames()"
             [statuses]="store.statuses()"
             [objectiveOwners]="objectiveOwners()"
             [currentEmployeeId]="currentEmployee.id()"
@@ -189,13 +200,16 @@ import { toEditTaskRequest } from '../../utils/task.mapper';
   `,
   styles: [`
     .task-backlog__toolbar { display: flex; flex-wrap: wrap; justify-content: flex-end; align-items: center; gap: 8px; }
-    .task-backlog__toolbar ::ng-deep app-button > button { width: auto; }
+    /* Match the Filter trigger (30px tall, 8px radius) so the toolbar reads as one row. */
+    .task-backlog__toolbar ::ng-deep app-button > button { width: auto; height: 30px; padding: 0 12px; border-radius: 8px; font-size: 13px; }
     .task-backlog__sprint-message { color: var(--color-danger-text, var(--color-danger)); font-size: 12px; margin-bottom: 8px; }
     .task-backlog__sprints { margin-top: 4px; }
     .task-backlog__sprints-title { font-size: 13px; font-weight: 600; color: var(--color-text-primary); margin: 0 0 10px; }
     .task-backlog__unsorted { margin-top: 18px; }
-    .task-backlog__unsorted-title { font-size: 13px; font-weight: 600; color: var(--color-text-primary); margin: 0 0 10px; }
-    .task-backlog__selection-toolbar { display: flex; align-items: center; gap: 10px; margin: 0 0 10px; padding: 8px 12px; border: 1px solid var(--color-accent); border-radius: 10px; background: var(--color-surface-secondary); }
+    .task-backlog__unsorted-header { display: flex; align-items: center; gap: 8px; margin: 0 0 10px; }
+    .task-backlog__unsorted-icon { width: 15px; height: 15px; flex: 0 0 auto; color: var(--color-text-secondary); fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; }
+    .task-backlog__unsorted-title { font-size: 13px; font-weight: 600; color: var(--color-text-primary); margin: 0; }
+    .task-backlog__unsorted-summary { font-size: 11px; color: var(--color-text-secondary); }    .task-backlog__selection-toolbar { display: flex; align-items: center; gap: 10px; margin: 0 0 10px; padding: 8px 12px; border: 1px solid var(--color-accent); border-radius: 10px; background: var(--color-surface-secondary); }
     .task-backlog__selection-toolbar ::ng-deep app-button > button { width: auto; }
     .task-backlog__selection-count { font-size: 13px; font-weight: 600; color: var(--color-text-primary); }
     .task-backlog__selection-clear { margin-left: auto; border: none; background: none; color: var(--color-text-secondary); cursor: pointer; font-size: 14px; line-height: 1; padding: 4px; }
@@ -228,7 +242,7 @@ export class TaskBacklogComponent implements OnInit, AfterViewInit, OnDestroy {
   private lastMove: { taskId: string; previousSprintId: string | null }[] = [];
   protected readonly projectId = signal('');
   protected readonly expandedSprintId = signal<string | null>(null);
-  protected readonly assignableMembers = signal<{ employeeId: string; name: string }[]>([]);
+  protected readonly assignableMembers = signal<{ employeeId: string; name: string; avatarUrl: string | null }[]>([]);
   protected readonly sprintStatusFilter = signal<'all' | SprintStatus>('all');
   protected readonly objectiveFilter = signal<string[]>([]);
   protected readonly categoryFilter = signal<string[]>([]);
@@ -269,8 +283,10 @@ export class TaskBacklogComponent implements OnInit, AfterViewInit, OnDestroy {
   protected readonly objectiveOwners = computed(() =>
     Object.fromEntries(this.modules().map((module) => [module.objectiveId, module.isOwner]))
   );
-  protected readonly moduleOptions = computed(() =>
-    this.modules().map((m) => ({ objectiveId: m.objectiveId, title: m.title, isOwner: m.isOwner }))
+  // Sprints are project-level, so any member may create one; the module picker inside the form
+  // still restricts which modules' tasks can be added, per module ownership.
+  protected readonly sprintFormModules = computed(() =>
+    this.modules().map((m) => ({ objectiveId: m.objectiveId, title: m.title, isEffectiveOwner: m.isEffectiveOwner }))
   );
   protected readonly objectiveOptions = computed<WorkDropdownOption[]>(() =>
     this.modules().map((module) => ({ value: module.objectiveId, label: module.title }))
@@ -303,10 +319,9 @@ export class TaskBacklogComponent implements OnInit, AfterViewInit, OnDestroy {
     status: this.statusFilter(),
     priority: this.priorityFilter()
   }));
-  // Sprint creation has no pending/request path (unlike tasks) - only modules the user owns may
-  // ever be offered here, or SprintApiService.create would just fail for a non-owner's pick.
-  protected readonly ownedModuleOptions = computed(() => this.moduleOptions().filter((m) => m.isOwner));
   protected readonly statusNames = computed(() => Object.fromEntries(this.store.statuses().map((status) => [status.id, status.name])));
+  protected readonly categoryNames = computed(() => Object.fromEntries(this.categories().map((category) => [category.id, category.name])));
+  protected readonly moduleNames = computed(() => Object.fromEntries(this.modules().map((module) => [module.objectiveId, module.title])));
   protected readonly completeStatusIds = computed(() =>
     new Set(this.store.statuses().filter((s) => s.marksTaskComplete).map((s) => s.id))
   );
@@ -314,7 +329,7 @@ export class TaskBacklogComponent implements OnInit, AfterViewInit, OnDestroy {
     const target = this.completingSprint();
     if (!target) return [];
     return this.sprintStore.sprints().filter((s) =>
-      s.objectiveId === target.objectiveId && s.id !== target.id && s.status !== 'complete' && s.status !== 'achieved'
+      s.id !== target.id && s.status !== 'complete' && s.status !== 'achieved'
     );
   });
   protected readonly filteredSprints = computed(() => {
@@ -327,6 +342,9 @@ export class TaskBacklogComponent implements OnInit, AfterViewInit, OnDestroy {
     const knownSprintIds = new Set(this.sprintStore.sprints().map((sprint) => sprint.id));
     return this.filteredTasks().filter((task) => task.sprintId == null || !knownSprintIds.has(task.sprintId));
   });
+  protected readonly unsortedTotalHours = computed(() =>
+    this.unsortedTasks().reduce((sum, task) => sum + (task.estimatedHours ?? 0), 0)
+  );
 
   protected readonly selectedTasks = computed(() => {
     const ids = this.selectedTaskIds();
@@ -335,19 +353,19 @@ export class TaskBacklogComponent implements OnInit, AfterViewInit, OnDestroy {
   protected readonly selectedTasksTotalHours = computed(() =>
     this.selectedTasks().reduce((sum, task) => sum + (task.estimatedHours ?? 0), 0)
   );
-  // A sprint belongs to exactly one module, so a single "move to sprint" pick can't offer a
-  // coherent target list once the selection spans more than one module.
-  protected readonly moveBlockedReason = computed(() => {
-    const objectiveIds = new Set(this.selectedTasks().map((task) => task.objectiveId));
-    return objectiveIds.size > 1 ? 'Select tasks from a single module to move them together.' : null;
-  });
+  private readonly ownedObjectiveIds = computed(() =>
+    new Set(this.modules().filter((m) => m.isEffectiveOwner).map((m) => m.objectiveId)));
+  // Sprints are project-level: any Draft/Active sprint is a valid target, but only for tasks
+  // whose module the user owns (backend SprintTaskAssignment/EditTask enforce the same rule).
+  protected readonly moveBlockedReason = computed(() =>
+    this.selectedTasks().some((task) => !this.ownedObjectiveIds().has(task.objectiveId))
+      ? 'You can only move tasks from modules you own.' : null);
   protected readonly moveTargets = computed<SprintMoveTarget[]>(() => {
-    const tasks = this.selectedTasks();
-    const objectiveIds = new Set(tasks.map((task) => task.objectiveId));
-    if (tasks.length === 0 || objectiveIds.size !== 1) return [];
-    const [objectiveId] = objectiveIds;
+    if (this.selectedTasks().length === 0) return [];
+    const order: Record<string, number> = { active: 0, draft: 1 };
     return this.sprintStore.sprints()
-      .filter((sprint) => sprint.objectiveId === objectiveId && sprint.status === 'draft')
+      .filter((sprint) => sprint.status === 'draft' || sprint.status === 'active')
+      .sort((a, b) => (order[a.status] - order[b.status]) || ((a.startDate?.getTime() ?? Infinity) - (b.startDate?.getTime() ?? Infinity)))
       .map((sprint) => {
         const sprintTasks = this.tasksForSprint(sprint.id);
         return {
@@ -489,13 +507,6 @@ export class TaskBacklogComponent implements OnInit, AfterViewInit, OnDestroy {
   protected readonly targetSprintForCreate = signal<Sprint | null>(null);
 
   protected readonly modalPrefillModuleId = computed(() => {
-    const target = this.targetSprintForCreate();
-    if (target?.objectiveId) return target.objectiveId;
-    const expandedId = this.expandedSprintId();
-    if (expandedId) {
-      const expandedSprint = this.sprintStore.sprints().find((s) => s.id === expandedId);
-      if (expandedSprint?.objectiveId) return expandedSprint.objectiveId;
-    }
     const filter = this.objectiveFilter();
     return filter.length === 1 ? filter[0] : '';
   });
@@ -564,7 +575,8 @@ export class TaskBacklogComponent implements OnInit, AfterViewInit, OnDestroy {
       const members = this.projectStore.projectMembers();
       this.assignableMembers.set(members.map((member) => ({
         employeeId: member.employeeId,
-        name: member.name ?? 'Unknown employee'
+        name: member.name ?? 'Unknown employee',
+        avatarUrl: (member as { avatarUrl?: string | null }).avatarUrl ?? null
       })));
     } catch {
       this.assignableMembers.set([]);

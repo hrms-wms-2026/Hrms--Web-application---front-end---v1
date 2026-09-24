@@ -8,6 +8,9 @@ import { TrayActivationGateComponent } from '../../core/tray-presence/feature/tr
 import { TrayPresenceStore } from '../../core/tray-presence/state/tray-presence.store';
 import { NavigationStateService } from './nav/navigation-state.service';
 import { MainLayoutComponent } from './main-layout.component';
+import { ProfileStore } from '@modules/profile/state/profile.store';
+import { FileApiService } from '../../shared/data-access/file-api.service';
+import { MyProfile } from '@modules/profile/models/profile.model';
 
 @Component({ selector: 'app-side-navbar', standalone: true, template: '' })
 class SideNavbarStubComponent {}
@@ -15,7 +18,12 @@ class SideNavbarStubComponent {}
 @Component({ selector: 'app-top-navbar', standalone: true, template: '' })
 class TopNavbarStubComponent {
   readonly email = input('');
+  readonly avatarUrl = input<string | null>(null);
+  readonly userName = input<string | null>(null);
 }
+
+const emptyProfileStoreStub = { profile: signal<MyProfile | null>(null), loadProfile: vi.fn() };
+const fileApiStub = { getFileUrl: (fileId: string) => `https://api.test/files/${fileId}` };
 
 @Component({ selector: 'app-sub-sidebar', standalone: true, template: '' })
 class SubSidebarStubComponent {
@@ -84,7 +92,9 @@ describe('MainLayoutComponent tray activation gate', () => {
         {
           provide: NavigationStateService,
           useValue: { activeChildren: signal([]), activeItem: signal(null), hasVisibleSubSidebar: signal(false), hasSubSidebar: signal(false) }
-        }
+        },
+        { provide: ProfileStore, useValue: emptyProfileStoreStub },
+        { provide: FileApiService, useValue: fileApiStub }
       ]
     });
     TestBed.overrideComponent(MainLayoutComponent, {
@@ -165,7 +175,9 @@ describe('MainLayoutComponent tray activation gate when monitoring module is not
         {
           provide: NavigationStateService,
           useValue: { activeChildren: signal([]), activeItem: signal(null), hasVisibleSubSidebar: signal(false), hasSubSidebar: signal(false) }
-        }
+        },
+        { provide: ProfileStore, useValue: emptyProfileStoreStub },
+        { provide: FileApiService, useValue: fileApiStub }
       ]
     });
     TestBed.overrideComponent(MainLayoutComponent, {

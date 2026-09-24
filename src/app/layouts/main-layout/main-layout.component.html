@@ -2,7 +2,7 @@
 
 <div class="main-layout" [class.main-layout--has-sub-sidebar]="navState.hasVisibleSubSidebar()">
   <app-side-navbar class="main-layout__rail" />
-  <app-top-navbar class="main-layout__topbar" [email]="email()" />
+  <app-top-navbar class="main-layout__topbar" [email]="email()" [avatarUrl]="avatarUrl()" [userName]="userName()" />
 
   @if (navState.hasVisibleSubSidebar()) {
     <app-sub-sidebar
@@ -12,7 +12,12 @@
     />
   }
 
-  <main id="main-content" class="main-content" tabindex="-1">
+  <main
+    id="main-content"
+    class="main-content"
+    [class.main-content--gated]="monitoringEnabled && !trayPresence.canRenderProtectedContent()"
+    tabindex="-1"
+  >
     @if (!monitoringEnabled || trayPresence.canRenderProtectedContent()) {
       <router-outlet />
     } @else {

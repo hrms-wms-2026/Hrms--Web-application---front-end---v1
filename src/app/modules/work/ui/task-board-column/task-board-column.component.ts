@@ -450,8 +450,8 @@ export interface QuickTaskCreatedEvent {
             <app-task-card
               [task]="task"
               [statuses]="allStatuses()"
-              [employeeNames]="employeeNames()"
               [currentEmployeeId]="currentEmployeeId()"
+              [assignableMembers]="assignableMembers()"
               (viewed)="taskViewed.emit($event)"
               (taskChanged)="taskChanged.emit()"
             />
@@ -1314,11 +1314,10 @@ export class TaskBoardColumnComponent {
   tasks = input.required<WorkTask[]>();
   connectedListIds = input<string[]>([]);
   allStatuses = input<readonly TaskStatusColumn[]>([]);
-  employeeNames = input<Record<string, string>>({});
   currentEmployeeId = input('');
 
   // Context passed from parent for task creation
-  assignableMembers = input<readonly { employeeId: string; name: string }[]>([]);
+  assignableMembers = input<readonly { employeeId: string; name: string; avatarUrl?: string | null }[]>([]);
   modules = input<readonly { objectiveId: string; title: string; isOwner: boolean }[]>([]);
   categories = input<readonly TaskCategoryColumn[]>([]);
   defaultObjectiveId = input('');
@@ -1617,6 +1616,12 @@ export class TaskBoardColumnComponent {
     const catId = this.categories()[0]?.id ?? '';
     if (!catId) {
       this.errorMessage.set('No task category found for this project.');
+      return;
+    }
+
+    if (!this.priorityUserChosen()) {
+      this.errorMessage.set('Please set a priority.');
+      this.activePopover.set('priority');
       return;
     }
 

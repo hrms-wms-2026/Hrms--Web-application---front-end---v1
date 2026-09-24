@@ -3,6 +3,7 @@ import { Component, ElementRef, HostListener, computed, inject, input, output, s
 export interface TaskAssigneeAvatarMember {
   employeeId: string;
   name: string;
+  avatarUrl?: string | null;
 }
 
 const MAX_VISIBLE_AVATARS = 5;
@@ -34,7 +35,18 @@ function getInitials(name: string): string {
             [attr.aria-pressed]="isSelected(member.employeeId)"
             [title]="member.name + (member.employeeId === currentEmployeeId() ? ' (You)' : '')"
             (click)="toggleMember(member.employeeId)"
-          >{{ initials(member.name) }}</button>
+          >
+            @if (shouldShowAvatar(member)) {
+              <img
+                [src]="member.avatarUrl"
+                [alt]="member.name"
+                class="taaf__img"
+                (error)="onAvatarError(member.employeeId)"
+              />
+            } @else {
+              {{ initials(member.name) }}
+            }
+          </button>
         }
         @if (overflowCount() > 0) {
           <button
@@ -72,7 +84,18 @@ function getInitials(name: string): string {
                 <span class="taaf__checkbox" [class.taaf__checkbox--on]="isSelected(member.employeeId)" aria-hidden="true">
                   @if (isSelected(member.employeeId)) { <svg viewBox="0 0 24 24"><path d="m5 12 4 4L19 7" /></svg> }
                 </span>
-                <span class="taaf__option-avatar">{{ initials(member.name) }}</span>
+                <span class="taaf__option-avatar">
+                  @if (shouldShowAvatar(member)) {
+                    <img
+                      [src]="member.avatarUrl"
+                      [alt]="member.name"
+                      class="taaf__img"
+                      (error)="onAvatarError(member.employeeId)"
+                    />
+                  } @else {
+                    {{ initials(member.name) }}
+                  }
+                </span>
                 <span class="taaf__option-name">{{ member.name }}@if (member.employeeId === currentEmployeeId()) { <span class="taaf__you"> (You)</span> }</span>
               </button>
             } @empty {
@@ -86,13 +109,14 @@ function getInitials(name: string): string {
   styles: [`
     .taaf { position: relative; display: inline-block; }
     .taaf__stack { display: inline-flex; align-items: center; height: 30px; }
-    .taaf__avatar { box-sizing: border-box; display: inline-flex; align-items: center; justify-content: center; width: 28px; height: 28px; flex: 0 0 auto; border-radius: 999px; margin-left: -5px; padding: 0; border: 2px solid var(--color-surface); background: color-mix(in srgb, var(--color-accent) 18%, transparent); color: var(--color-accent); font: inherit; font-size: 11px; font-weight: 700; cursor: pointer; transition: transform 120ms ease, opacity 120ms ease, box-shadow 120ms ease; }
+    .taaf__avatar { box-sizing: border-box; display: inline-flex; align-items: center; justify-content: center; width: 28px; height: 28px; flex: 0 0 auto; border-radius: 999px; margin-left: -5px; padding: 0; border: 2px solid var(--color-surface); background: color-mix(in srgb, var(--color-accent) 18%, transparent); color: var(--color-accent); font: inherit; font-size: 11px; font-weight: 700; cursor: pointer; transition: transform 120ms ease, opacity 120ms ease, box-shadow 120ms ease; overflow: hidden; }
     .taaf__avatar:first-child { margin-left: 0; }
     .taaf__avatar:hover { transform: translateY(-2px); z-index: 1; position: relative; }
     .taaf__avatar--selected { border-color: var(--color-accent); box-shadow: 0 0 0 1px var(--color-accent); }
     .taaf__avatar--dimmed { opacity: .45; }
     .taaf__avatar--dimmed:hover { opacity: 1; }
     .taaf__avatar--overflow { background: var(--color-surface-secondary); color: var(--color-text-secondary); }
+    .taaf__img { width: 100%; height: 100%; object-fit: cover; display: block; border-radius: 999px; }
     .taaf__panel { position: absolute; top: calc(100% + 7px); right: 0; z-index: 80; width: 260px; max-width: 90vw; border: 1px solid var(--color-border); border-radius: 12px; background: var(--color-surface); box-shadow: 0 16px 36px rgb(15 23 42 / .18); padding: 12px; animation: taaf-panel-in 130ms ease-out; }
     .taaf__panel-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 8px; font-size: 13px; font-weight: 700; color: var(--color-text-primary); }
     .taaf__clear { border: 0; background: transparent; color: var(--color-accent); font: inherit; font-size: 12px; font-weight: 600; cursor: pointer; }
@@ -106,7 +130,7 @@ function getInitials(name: string): string {
     .taaf__checkbox { display: inline-flex; width: 15px; height: 15px; flex: 0 0 auto; box-sizing: border-box; align-items: center; justify-content: center; border: 1px solid var(--color-border); border-radius: 4px; background: var(--color-surface); }
     .taaf__checkbox--on { border-color: var(--color-accent); background: var(--color-accent); }
     .taaf__checkbox svg { width: 11px; height: 11px; fill: none; stroke: var(--color-accent-contrast); stroke-width: 3; stroke-linecap: round; stroke-linejoin: round; }
-    .taaf__option-avatar { display: inline-flex; align-items: center; justify-content: center; width: 22px; height: 22px; flex: 0 0 auto; border-radius: 999px; background: color-mix(in srgb, var(--color-accent) 18%, transparent); color: var(--color-accent); font-size: 9px; font-weight: 700; }
+    .taaf__option-avatar { display: inline-flex; align-items: center; justify-content: center; width: 22px; height: 22px; flex: 0 0 auto; border-radius: 999px; background: color-mix(in srgb, var(--color-accent) 18%, transparent); color: var(--color-accent); font-size: 9px; font-weight: 700; overflow: hidden; }
     .taaf__option-name { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
     .taaf__you { color: var(--color-text-secondary); font-weight: 400; }
     .taaf__empty { margin: 6px 0 2px; color: var(--color-text-secondary); font-size: 12.5px; text-align: center; }
@@ -122,6 +146,7 @@ export class TaskAssigneeAvatarFilterComponent {
 
   protected readonly open = signal(false);
   protected readonly search = signal('');
+  protected readonly failedAvatars = signal<Set<string>>(new Set());
   private readonly host = inject(ElementRef<HTMLElement>);
 
   protected readonly orderedMembers = computed(() => {
@@ -143,6 +168,18 @@ export class TaskAssigneeAvatarFilterComponent {
 
   protected initials(name: string): string {
     return getInitials(name);
+  }
+
+  protected onAvatarError(employeeId: string): void {
+    this.failedAvatars.update((prev) => {
+      const next = new Set(prev);
+      next.add(employeeId);
+      return next;
+    });
+  }
+
+  protected shouldShowAvatar(member: TaskAssigneeAvatarMember): boolean {
+    return !!member.avatarUrl && !this.failedAvatars().has(member.employeeId);
   }
 
   isSelected(employeeId: string): boolean {

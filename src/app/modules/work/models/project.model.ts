@@ -7,6 +7,7 @@ export interface ProjectLabel {
 export interface ProjectMemberAvatar {
   userId: string;
   displayName: string;
+  avatarFileId: string | null;
 }
 
 export interface Project {

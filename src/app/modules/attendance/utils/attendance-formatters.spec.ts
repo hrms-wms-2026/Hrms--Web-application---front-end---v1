@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import {
+  formatClockTime,
   formatDate,
   formatDateTime,
   formatMinutes,
@@ -29,6 +30,12 @@ describe('attendance-formatters', () => {
 
   it('formatDateTime returns an em dash for a null value', () => {
     expect(formatDateTime(null)).toBe('—');
+  });
+
+  it('formatClockTime renders a 12-hour clock in the given timezone', () => {
+    const expected = new Intl.DateTimeFormat(undefined, { hour: 'numeric', minute: '2-digit', hour12: true, timeZone: 'UTC' }).format(new Date('2026-08-27T10:00:00Z'));
+    expect(formatClockTime('2026-08-27T10:00:00Z', 'UTC')).toBe(expected);
+    expect(formatClockTime(null)).toBe('—');
   });
 
   it('formatMinutes renders hours and minutes', () => {

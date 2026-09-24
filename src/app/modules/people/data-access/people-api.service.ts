@@ -34,15 +34,17 @@ import {
  * Targets HRMS-Backend-v1 EmployeesController (GET /api/v1/employees, GET /api/v1/employees/{id},
  * POST /api/v1/employees/{id}/resend-invitation),
  * OnboardingDraftsController (GET/POST/PUT /api/v1/onboarding/drafts, POST /api/v1/onboarding/drafts/{id}/finalize),
- * WorkModesController (GET /api/v1/work-modes), and AccessGrantRequestsController
+ * WorkModesController (GET /api/v1/work-modes?legalEntityId={id}), and AccessGrantRequestsController
  * (POST /api/v1/onboarding/access-grant-requests/{id}/approve-and-send-invite, POST /api/v1/onboarding/access-grant-requests/{id}/reject).
  */
 @Injectable({ providedIn: 'root' })
 export class PeopleApiService {
   private readonly http = inject(HttpClient);
 
-  getWorkModes(): Observable<readonly WorkModeOption[]> {
-    return this.http.get<readonly WorkModeOption[]>(`${environment.apiUrl}/work-modes`);
+  getWorkModes(legalEntityId: string): Observable<readonly WorkModeOption[]> {
+    return this.http.get<readonly WorkModeOption[]>(`${environment.apiUrl}/work-modes`, {
+      params: new HttpParams().set('legalEntityId', legalEntityId)
+    });
   }
 
   listEmployees(params: EmployeeListParams): Observable<EmployeeListPageResponse> {
@@ -173,7 +175,7 @@ export class PeopleApiService {
 
   private toHttpParams(params: object): HttpParams {
     let httpParams = new HttpParams();
-    for (const [key, value] of Object.entries(params as Record<string, string | number | undefined>)) {
+    for (const [key, value] of Object.entries(params as Record<string, string | number | boolean | undefined>)) {
       if (value !== undefined && value !== null && value !== '') {
         httpParams = httpParams.set(key, value);
       }

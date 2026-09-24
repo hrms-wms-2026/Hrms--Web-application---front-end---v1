@@ -11,7 +11,7 @@ describe('ProjectExplanationCardComponent', () => {
     startDate: '2026-08-01', targetDate: '2026-12-01', color: null, isActive: true,
     allocatedHours: 40, completedHours: 10, isLead: true, isAchieved: false, achievedAt: null, updatedAt: null,
     logoFileId: null, labels: [],
-    members: [{ userId: 'u2', displayName: 'Ada Lovelace' }], memberCount: 1
+    members: [{ userId: 'u2', displayName: 'Ada Lovelace', avatarFileId: null }], memberCount: 1
   };
 
   beforeEach(async () => {
