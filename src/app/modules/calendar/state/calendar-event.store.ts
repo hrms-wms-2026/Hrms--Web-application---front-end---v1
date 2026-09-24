@@ -6,7 +6,7 @@ import { CalendarConnectionApiService } from '../../settings/data-access/calenda
 import { CalendarEventApiService } from '../data-access/calendar-event-api.service';
 import {
   CalendarConflict, CalendarEventResponse, CreateCalendarEventRequest, EditRecurringOccurrenceRequest,
-  EligibleNominee, RespondToCalendarEventStatus, UpdateCalendarEventRequest
+  EligibleNominee, MeetingProvider, RespondToCalendarEventStatus, UpdateCalendarEventRequest
 } from '../models/calendar-event.model';
 
 interface CalendarEventState {
@@ -162,16 +162,13 @@ export const CalendarEventStore = signalStore(
       try {
         const response = await firstValueFrom(connectionApi.list());
         const hasTeams = response.connections.some((c) => c.provider === 'outlook_calendar' && c.status === 'active');
-        // CalendarConnectionProvider (calendar-connection.model.ts) doesn't yet list 'zoom' as a
-        // literal - widening that shared type (and the Settings > Calendar Connections UI that
-        // switches on it) is out of this task's scope, so the provider is compared as a string.
-        const hasZoom = response.connections.some((c) => (c.provider as string) === 'zoom' && c.status === 'active');
+        const hasZoom = response.connections.some((c) => c.provider === 'zoom' && c.status === 'active');
         patchState(store, { hasTeamsCapableConnection: hasTeams, hasZoomCapableConnection: hasZoom });
       } catch {
         patchState(store, { hasTeamsCapableConnection: false, hasZoomCapableConnection: false });
       }
     },
-    async createMeeting(eventId: string, provider: 'microsoft_teams' | 'zoom'): Promise<boolean> {
+    async createMeeting(eventId: string, provider: MeetingProvider): Promise<boolean> {
       patchState(store, { meetingActionSaving: true, actionError: null });
       try {
         const response = await firstValueFrom(api.createMeeting(eventId, provider));
