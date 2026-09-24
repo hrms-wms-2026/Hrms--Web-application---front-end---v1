@@ -1,7 +1,5 @@
-import { Component, effect, inject, input, output, signal } from '@angular/core';
-import { firstValueFrom } from 'rxjs';
+import { Component, effect, input, output, signal } from '@angular/core';
 import { DatePickerComponent } from '../../../../shared/ui/date-picker/date-picker.component';
-import { TaskApiService } from '../../data-access/task-api.service';
 import {
   CalendarEventDto,
   CreateCalendarEventRequestDto,
@@ -15,7 +13,7 @@ import { toggleModuleLive } from '../../utils/module-task-selection';
 @Component({
   selector: 'app-calendar-event-modal',
   standalone: true,
-  imports: [ModuleTaskPickerComponent, SprintTaskPickerComponent,DatePickerComponent],
+  imports: [DatePickerComponent, ModuleTaskPickerComponent, SprintTaskPickerComponent],
   template: `
     <div class="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4" role="presentation" (click)="cancel.emit()">
       <section class="w-full max-w-lg rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] p-5 shadow-xl" role="dialog" aria-modal="true" aria-labelledby="calendar-event-title" (click)="$event.stopPropagation()">
