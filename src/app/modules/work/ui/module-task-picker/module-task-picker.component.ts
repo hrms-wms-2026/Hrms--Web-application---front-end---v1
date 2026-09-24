@@ -2,7 +2,7 @@ import { Component, inject, input, output, signal } from '@angular/core';
 import { firstValueFrom } from 'rxjs';
 import { TaskApiService } from '../../data-access/task-api.service';
 import {
-  ModuleCheckState, PickerModule, PickerTask, moduleCheckState, toggleId, toggleModuleBulk, toggleModuleLive
+  ModuleCheckState, PickerModule, PickerTask, moduleCheckState, setModuleBulk, toggleId, toggleModuleLive
 } from '../../utils/module-task-selection';
 
 @Component({
@@ -95,8 +95,14 @@ export class ModuleTaskPickerComponent {
       this.selectedObjectiveIdsChange.emit(next.objectiveIds);
       return;
     }
+    // Capture the checkbox's shown state BEFORE loading tasks: an unexpanded module has no
+    // cached tasks yet, so checkState() sees none and shows 'unchecked' even when every
+    // pickable task is already selected. Acting on that shown state (rather than recomputing
+    // "all selected?" once the real tasks load) keeps the click's intent - add vs remove -
+    // consistent with what the user saw and clicked.
+    const before = this.checkState(objectiveId);
     const tasks = await this.ensureTasks(objectiveId);
-    this.selectedTaskIdsChange.emit(toggleModuleBulk(tasks, this.selectedTaskIds(), this.isPickable));
+    this.selectedTaskIdsChange.emit(setModuleBulk(tasks, this.selectedTaskIds(), this.isPickable, before !== 'checked'));
   }
 
   onTaskToggled(taskId: string): void {

@@ -3,7 +3,7 @@ import { firstValueFrom } from 'rxjs';
 import { SprintApiService } from '../../data-access/sprint-api.service';
 import { TaskApiService } from '../../data-access/task-api.service';
 import { SprintDto } from '../../models/dto/sprint.dto';
-import { ModuleCheckState, PickerTask, moduleCheckState, toggleId, toggleModuleBulk } from '../../utils/module-task-selection';
+import { ModuleCheckState, PickerTask, moduleCheckState, setModuleBulk, toggleId } from '../../utils/module-task-selection';
 
 // Timeline order for the Sprint view: sprints with a startDate come first, earliest
 // first; dateless (Draft) sprints have no position on a timeline, so they trail the
@@ -93,8 +93,13 @@ export class SprintTaskPickerComponent {
   }
 
   async onSprintToggled(sprintId: string): Promise<void> {
+    // Same show-then-act fix as ModuleTaskPickerComponent.onModuleToggled: capture the
+    // checkbox's shown state before ensureTasks loads the real task list, so an unexpanded
+    // sprint whose pickable tasks are already all selected doesn't get its tick read as
+    // "deselect everything" once the tasks load in.
+    const before = this.checkState(sprintId);
     const tasks = await this.ensureTasks(sprintId);
-    this.selectedTaskIdsChange.emit(toggleModuleBulk(tasks, this.selectedTaskIds(), this.isPickable));
+    this.selectedTaskIdsChange.emit(setModuleBulk(tasks, this.selectedTaskIds(), this.isPickable, before !== 'checked'));
   }
 
   onTaskToggled(taskId: string): void {

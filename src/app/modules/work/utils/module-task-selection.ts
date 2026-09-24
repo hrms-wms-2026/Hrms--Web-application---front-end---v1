@@ -36,6 +36,23 @@ export function toggleModuleBulk(
   return next;
 }
 
+// Bulk-select/deselect driven by an explicit `select` flag rather than recomputing "all
+// selected?" from the tasks passed in. Callers capture the checkbox's shown state (via
+// checkState/moduleCheckState) BEFORE loading tasks and pass that as `select` - this keeps
+// the click's outcome consistent with what the user saw and clicked, even when the tasks
+// were not yet loaded (unexpanded module/sprint) at click time. See toggleModuleBulk for the
+// older "infer from tasks" variant, kept for its existing callers/tests.
+export function setModuleBulk(
+  tasks: readonly PickerTask[], selectedTaskIds: ReadonlySet<string>, isPickable: (t: PickerTask) => boolean, select: boolean
+): Set<string> {
+  const pickable = tasks.filter(isPickable);
+  const next = new Set(selectedTaskIds);
+  for (const task of pickable) {
+    if (select) next.add(task.id); else next.delete(task.id);
+  }
+  return next;
+}
+
 export function moduleCheckState(
   mode: 'live' | 'bulk', objectiveId: string, tasks: readonly PickerTask[] | undefined,
   selectedTaskIds: ReadonlySet<string>, selectedObjectiveIds: ReadonlySet<string>, isPickable: (t: PickerTask) => boolean

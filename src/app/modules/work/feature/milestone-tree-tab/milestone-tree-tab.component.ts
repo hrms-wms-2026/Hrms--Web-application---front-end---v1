@@ -314,6 +314,28 @@ export class MilestoneTreeTabComponent {
     }];
   }
 
+  // `sprintFormModules`/`sprintFromNode` build a NEW array/object every call, so binding
+  // them directly in the template (e.g. `[modules]="sprintFormModules(sprintNode)"`) makes
+  // <app-sprint-form> see a new `sprint`/`modules` reference on every change-detection pass.
+  // In edit mode, SprintFormComponent's constructor effect resets its form and re-fetches
+  // current tasks whenever `sprint()` changes identity - so every CD tick was discarding
+  // in-progress form edits. These computeds only recompute when the underlying node signal
+  // actually changes identity, keeping the bound value referentially stable across CD passes.
+  createSprintModules = computed<SprintFormModuleOption[]>(() => {
+    const node = this.createSprintNode();
+    return node ? this.sprintFormModules(node) : [];
+  });
+
+  editSprintModel = computed<Sprint | null>(() => {
+    const node = this.editSprintNode();
+    return node ? this.sprintFromNode(node) : null;
+  });
+
+  editSprintModules = computed<SprintFormModuleOption[]>(() => {
+    const node = this.editSprintNode();
+    return node ? this.sprintFormModules(node) : [];
+  });
+
   sprintFromNode(node: MilestoneTreeNode): Sprint {
     return {
       id: node.id,

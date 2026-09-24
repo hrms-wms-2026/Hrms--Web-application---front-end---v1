@@ -79,14 +79,14 @@
   (transferRequested)="onTransferRequested($event)" (invitationAcceptRequested)="onInvitationAcceptRequested($event)"
   (invitationDeclineRequested)="onInvitationDeclineRequested($event)" (closed)="onMembersPopupClosed()" />
 
-@if (createSprintNode(); as sprintLeaf) {
-<app-sprint-form mode="create" [open]="createSprintOpen()" [modules]="sprintFormModules(sprintLeaf)" [projectId]="projectId()"
+@if (createSprintNode()) {
+<app-sprint-form mode="create" [open]="createSprintOpen()" [modules]="createSprintModules()" [projectId]="projectId()"
   (created)="onSprintCreated()" (cancelled)="onSprintCreateCancelled()" />
 }
 
-@if (editSprintNode(); as sprintNode) {
-<app-sprint-form mode="edit" [open]="editSprintOpen()" [modules]="sprintFormModules(sprintNode)" [projectId]="projectId()"
-  [sprint]="sprintFromNode(sprintNode)" (saved)="onSprintSaved()" (cancelled)="onSprintEditCancelled()" />
+@if (editSprintNode()) {
+<app-sprint-form mode="edit" [open]="editSprintOpen()" [modules]="editSprintModules()" [projectId]="projectId()"
+  [sprint]="editSprintModel()" (saved)="onSprintSaved()" (cancelled)="onSprintEditCancelled()" />
 }
 
 @if (completingSprintNode(); as node) {

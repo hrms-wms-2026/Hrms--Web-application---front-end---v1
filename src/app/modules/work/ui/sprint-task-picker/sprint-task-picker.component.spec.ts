@@ -30,4 +30,24 @@ describe('SprintTaskPickerComponent', () => {
     await fixture.componentInstance.onSprintToggled('sp1');
     expect([...(emitted ?? [])]).toEqual(['a']);
   });
+
+  it('ticking a not-yet-expanded sprint whose pickable tasks are already selected does not deselect them (Finding 3)', async () => {
+    // sp1 is never expanded here, so sprintTasks() has no cached entry at click time and
+    // checkState() reads 'unchecked' even though the one pickable task ('a') is already
+    // selected. The click should keep it selected rather than reading as a full deselect.
+    TestBed.configureTestingModule({ imports: [SprintTaskPickerComponent], providers: [
+      { provide: SprintApiService, useValue: { getByProject: () => of([s('sp1', '2026-09-01')]) } },
+      { provide: TaskApiService, useValue: { getBySprintId: () => of([
+        { id: 'a', title: 'A', objectiveId: 'o1', sprintId: 'sp1' }, { id: 'b', title: 'B', objectiveId: 'o2', sprintId: 'sp1' }]) } }] });
+    const fixture = TestBed.createComponent(SprintTaskPickerComponent);
+    fixture.componentRef.setInput('projectId', 'p1');
+    fixture.componentRef.setInput('lockedObjectiveIds', new Set(['o2']));
+    fixture.componentRef.setInput('selectedTaskIds', new Set(['a']));
+    fixture.detectChanges();
+    await fixture.whenStable();
+    let emitted: Set<string> | undefined;
+    fixture.componentInstance.selectedTaskIdsChange.subscribe((v) => (emitted = v));
+    await fixture.componentInstance.onSprintToggled('sp1');
+    expect([...(emitted ?? [])]).toEqual(['a']);
+  });
 });

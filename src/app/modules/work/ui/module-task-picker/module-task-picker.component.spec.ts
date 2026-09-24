@@ -58,4 +58,17 @@ describe('ModuleTaskPickerComponent', () => {
     await fixture.componentInstance.onModuleToggled('o1');
     expect([...(objectives ?? [])]).toEqual(['o1']);
   });
+
+  it('bulk: ticking an unexpanded module whose pickable tasks are already all selected does not deselect them (Finding 3)', async () => {
+    // Module 'o1' is never expanded here, so its tasks aren't cached at click time and
+    // checkState() reads 'unchecked' even though every pickable task is already selected.
+    // The click should still be read as "keep them selected", not "deselect everything".
+    setup({ moduleMode: 'bulk', selectedTaskIds: new Set(['a', 'b', 'c']) });
+    let emitted: Set<string> | undefined;
+    fixture.componentInstance.selectedTaskIdsChange.subscribe((v: Set<string>) => (emitted = v));
+
+    await fixture.componentInstance.onModuleToggled('o1');
+
+    expect([...(emitted ?? [])].sort()).toEqual(['a', 'b', 'c']);
+  });
 });
