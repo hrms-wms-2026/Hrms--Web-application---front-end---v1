@@ -631,6 +631,8 @@ describe('CalendarEventFormModalComponent', () => {
 
     const button = fixture.nativeElement.querySelector('[data-testid="calendar-form-add-zoom-meeting"]');
     expect(button).toBeTruthy();
+    expect(fixture.nativeElement.querySelector('[data-testid="calendar-form-add-teams-meeting"]')).toBeNull();
+    expect(fixture.nativeElement.querySelector('[data-testid="calendar-form-connect-microsoft-prompt"]')).toBeNull();
   });
 
   it('emits addMeeting with "zoom" when the Add Zoom meeting button is clicked', () => {
