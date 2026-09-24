@@ -56,8 +56,8 @@ export class CalendarEventApiService {
     return this.http.get<{ timezone: string }>(`${this.baseUrl}/my-timezone`);
   }
 
-  createMeeting(eventId: string): Observable<CreateEventMeetingResponse> {
-    return this.http.post<CreateEventMeetingResponse>(`${this.baseUrl}/${eventId}/meeting`, {});
+  createMeeting(eventId: string, provider: 'microsoft_teams' | 'zoom'): Observable<CreateEventMeetingResponse> {
+    return this.http.post<CreateEventMeetingResponse>(`${this.baseUrl}/${eventId}/meeting`, { provider });
   }
 
   removeMeeting(eventId: string): Observable<void> {

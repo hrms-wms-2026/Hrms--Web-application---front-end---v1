@@ -92,10 +92,11 @@ describe('CalendarEventApiService', () => {
   });
 
   it('createMeeting posts to {eventId}/meeting', () => {
-    service.createMeeting('event-1').subscribe();
+    service.createMeeting('event-1', 'zoom').subscribe();
     const req = http.expectOne(`${environment.apiUrl}/calendar/event-1/meeting`);
     expect(req.request.method).toBe('POST');
-    req.flush({ joinUrl: 'https://teams.microsoft.com/l/meetup-join/abc' });
+    expect(req.request.body).toEqual({ provider: 'zoom' });
+    req.flush({ joinUrl: 'https://us05web.zoom.us/j/123' });
   });
 
   it('removeMeeting deletes {eventId}/meeting', () => {

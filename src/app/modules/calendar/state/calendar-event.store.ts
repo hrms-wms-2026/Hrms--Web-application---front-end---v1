@@ -168,7 +168,7 @@ export const CalendarEventStore = signalStore(
     async createMeeting(eventId: string): Promise<boolean> {
       patchState(store, { meetingActionSaving: true, actionError: null });
       try {
-        const response = await firstValueFrom(api.createMeeting(eventId));
+        const response = await firstValueFrom(api.createMeeting(eventId, 'microsoft_teams'));
         patchState(store, {
           meetingActionSaving: false,
           events: store.events().map((e) => (e.id === eventId ? { ...e, meetingLink: response.joinUrl } : e))
