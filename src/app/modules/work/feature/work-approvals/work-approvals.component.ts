@@ -1,6 +1,7 @@
+import { DatePipe } from '@angular/common';
 import { AfterViewInit, Component, computed, inject, OnDestroy, OnInit, signal, TemplateRef, viewChild } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
-import { ActivatedRoute } from '@angular/router';
+import { ActivatedRoute, Router } from '@angular/router';
 import { firstValueFrom } from 'rxjs';
 import { distinctUntilChanged, map } from 'rxjs/operators';
 import { WorkApprovalsStore } from '../../state/work-approvals.store';
@@ -14,16 +15,25 @@ import { ModalComponent } from '../../../../shared/ui/modal/modal.component';
 import { InputComponent } from '../../../../shared/ui/input/input.component';
 import { WorkDropdownComponent, WorkDropdownOption } from '../../ui/work-dropdown/work-dropdown.component';
 import { ButtonComponent } from '../../../../shared/ui/button/button.component';
+import { ApprovalHistoryItemDto } from '../../models/dto/approval-history.dto';
+import { ApprovalHistoryModalComponent } from '../../ui/approval-history-modal/approval-history-modal.component';
+import { TaskFormModalComponent } from '../../ui/task-form-modal/task-form-modal.component';
+import { TaskStatusChangeRequestsPanelComponent } from '../../ui/task-status-change-requests-panel/task-status-change-requests-panel.component';
 
 @Component({
   selector: 'app-work-approvals',
   standalone: true,
-  imports: [ApprovalRequestRowComponent, ModalComponent, InputComponent, WorkDropdownComponent, ButtonComponent],
+  imports: [DatePipe, TaskStatusChangeRequestsPanelComponent, ApprovalRequestRowComponent, ApprovalHistoryModalComponent, TaskFormModalComponent, ModalComponent, InputComponent, WorkDropdownComponent, ButtonComponent],
   template: `
     <ng-template #toolbarTpl>
-      <app-button data-testid="create-approval-button" variant="primary" (pressed)="openCreateApproval()">
-        Create Approval
-      </app-button>
+      <div class="work-approvals__toolbar-actions">
+        <app-button data-testid="approval-history-button" variant="secondary" (pressed)="openHistory()">
+          History
+        </app-button>
+        <app-button data-testid="create-approval-button" variant="primary" (pressed)="openCreateApproval()">
+          Create Approval
+        </app-button>
+      </div>
     </ng-template>
 
     @if (store.loading()) {
@@ -32,9 +42,44 @@ import { ButtonComponent } from '../../../../shared/ui/button/button.component';
       <p class="work-approvals__error">{{ store.error() }}</p>
     } @else {
       <div class="work-approvals">
-        <div class="work-approvals__toolbar">
-          <h1>Approvals</h1>
-        </div>
+        @if (sentPendingRequests().length > 0) {
+        <section data-testid="my-pending-requests">
+          <h2>My Pending Requests <span>{{ sentPendingRequests().length }}</span></h2>
+          @for (item of sentPendingRequests(); track item.kind + '-' + item.id) {
+            <article class="sent-approval-row" [attr.data-testid]="'sent-pending-request-' + item.id">
+              <div class="sent-approval-row__body">
+                <p class="sent-approval-row__kind">{{ historyKindLabel(item.kind) }}</p>
+                <p class="sent-approval-row__title">{{ item.subjectTitle }}</p>
+                @if (item.detail) {
+                  <p class="sent-approval-row__detail">{{ item.detail }}</p>
+                }
+                <p class="sent-approval-row__meta">
+                  Sent to <strong>{{ item.approverName }}</strong>
+                  <span> · {{ item.createdAt | date: 'MMM d, y' }}</span>
+                </p>
+              </div>
+              <div class="sent-approval-row__status-wrap">
+                <span class="sent-approval-row__status">Pending</span>
+                <span>Awaiting {{ item.approverName }}</span>
+              </div>
+            </article>
+          }
+        </section>
+        } @else if (historyLoading()) {
+          <p class="work-approvals__supporting-state" aria-live="polite">Loading your pending requests…</p>
+        } @else if (historyError()) {
+          <div class="work-approvals__supporting-state work-approvals__supporting-state--error" role="alert">
+            <span>{{ historyError() }}</span>
+            <button type="button" (click)="loadHistory()">Try again</button>
+          </div>
+        }
+
+        @if (projectId()) {
+          <app-task-status-change-requests-panel
+            [projectId]="projectId()"
+            (countChange)="statusChangeRequestCount.set($event)"
+          />
+        }
 
         @if (taskCreationRequests().length > 0) {
         <section>
@@ -44,6 +89,7 @@ import { ButtonComponent } from '../../../../shared/ui/button/button.component';
               [item]="item"
               (approved)="onApprove(item, $event)"
               (rejected)="onReject(item, $event)"
+              (viewRequested)="onViewTarget($event)"
             />
           }
         </section>
@@ -57,6 +103,7 @@ import { ButtonComponent } from '../../../../shared/ui/button/button.component';
               [item]="item"
               (approved)="onApprove(item, $event)"
               (rejected)="onReject(item, $event)"
+              (viewRequested)="onViewTarget($event)"
             />
           }
         </section>
@@ -72,6 +119,7 @@ import { ButtonComponent } from '../../../../shared/ui/button/button.component';
               (approved)="onApprove(item, $event)"
               (rejected)="onReject(item, $event)"
               (requestOwnAllocation)="onRequestOwnAllocation(item)"
+              (viewRequested)="onViewTarget($event)"
             />
           }
         </section>
@@ -85,6 +133,7 @@ import { ButtonComponent } from '../../../../shared/ui/button/button.component';
               [item]="item"
               (approved)="onApprove(item, $event)"
               (rejected)="onReject(item, $event)"
+              (viewRequested)="onViewTarget($event)"
             />
           }
         </section>
@@ -98,9 +147,16 @@ import { ButtonComponent } from '../../../../shared/ui/button/button.component';
               [item]="item"
               (approved)="onApprove(item, $event)"
               (rejected)="onReject(item, $event)"
+              (viewRequested)="onViewTarget($event)"
             />
           }
         </section>
+        }
+
+        @if (visiblePendingCount() === 0 && !historyLoading() && !historyError()) {
+          <div class="work-approvals__empty" data-testid="approvals-empty-state">
+            <p>No pending approvals or requests.</p>
+          </div>
         }
       </div>
     }
@@ -148,29 +204,61 @@ import { ButtonComponent } from '../../../../shared/ui/button/button.component';
         </div>
       </app-modal>
     }
+
+    <app-approval-history-modal
+      [open]="historyOpen()"
+      [items]="historyItems()"
+      [loading]="historyLoading()"
+      [error]="historyError()"
+      (closed)="historyOpen.set(false)"
+      (retry)="loadHistory()"
+    />
+
+    <app-task-form-modal
+      [open]="selectedTaskId() !== null"
+      mode="edit"
+      [projectId]="projectId()"
+      [taskId]="selectedTaskId() ?? ''"
+      (changed)="store.loadAll()"
+      (saved)="onTaskDetailsClosed()"
+      (closed)="selectedTaskId.set(null)"
+    />
   `,
   styles: [`
     .work-approvals { display: flex; flex-direction: column; gap: 18px; width: min(100%, 1180px); margin: 0 auto; padding: 8px 20px 28px; }
-    .work-approvals__toolbar { display: flex; align-items: center; justify-content: space-between; gap: 16px; padding-bottom: 4px; border-bottom: 1px solid var(--color-border); }
-    .work-approvals h1, .work-approvals h2 { margin: 0; color: var(--color-text-primary); }
-    .work-approvals h1 { font-size: 22px; font-weight: 700; letter-spacing: -.02em; }
+    .work-approvals h2 { margin: 0; color: var(--color-text-primary); }
     .work-approvals h2 { display: flex; align-items: center; gap: 7px; font-size: 14px; font-weight: 650; }
     .work-approvals h2 span { display: inline-flex; min-width: 22px; height: 22px; align-items: center; justify-content: center; border-radius: 999px; background: var(--color-surface-secondary); color: var(--color-text-secondary); font-size: 11px; font-weight: 650; }
     .work-approvals section { display: flex; flex-direction: column; gap: 10px; }
-    @media (max-width: 680px) { .work-approvals { padding-inline: 12px; } .work-approvals__toolbar { align-items: flex-start; flex-direction: column; } }
+    @media (max-width: 680px) { .work-approvals { padding-inline: 12px; } }
     .work-approvals__error { color: var(--color-danger); }
     .work-approvals__form { display: flex; flex-direction: column; gap: 14px; }
     .work-approvals__form-actions { display: flex; justify-content: flex-end; gap: 8px; }
+    .work-approvals__toolbar-actions { display: flex; align-items: center; gap: 8px; }
+    .sent-approval-row { display: flex; align-items: center; justify-content: space-between; gap: 22px; min-height: 82px; padding: 12px 16px; border: 1px solid var(--color-border); border-radius: 12px; background: var(--color-surface); box-shadow: 0 2px 8px rgb(15 23 42 / .035); }
+    .sent-approval-row__body { min-width: 0; }
+    .sent-approval-row__kind { margin: 0 0 3px; color: var(--color-accent); font-size: 10px; font-weight: 700; letter-spacing: .04em; text-transform: uppercase; }
+    .sent-approval-row__title { margin: 0; color: var(--color-text-primary); font-size: 14px; font-weight: 650; }
+    .sent-approval-row__detail, .sent-approval-row__meta { margin: 3px 0 0; color: var(--color-text-secondary); font-size: 12px; line-height: 1.4; }
+    .sent-approval-row__meta strong { color: var(--color-text-primary); font-weight: 600; }
+    .sent-approval-row__status-wrap { display: flex; flex: 0 0 170px; flex-direction: column; align-items: flex-end; gap: 5px; color: var(--color-text-secondary); font-size: 11px; text-align: right; }
+    .sent-approval-row__status { display: inline-flex; padding: 4px 9px; border-radius: 999px; background: #fef3c7; color: #92400e; font-size: 11px; font-weight: 700; }
+    .work-approvals__supporting-state { display: flex; align-items: center; gap: 8px; margin: 0; color: var(--color-text-secondary); font-size: 12px; }
+    .work-approvals__supporting-state--error { color: var(--color-danger-text); }
+    .work-approvals__supporting-state button { padding: 0; border: 0; background: none; color: var(--color-accent); font: inherit; font-weight: 650; text-decoration: underline; cursor: pointer; }
+    .work-approvals__empty { display: flex; min-height: 180px; align-items: center; justify-content: center; color: var(--color-text-secondary); font-size: 13px; }
+    @media (max-width: 680px) { .sent-approval-row { align-items: flex-start; flex-direction: column; } .sent-approval-row__status-wrap { flex-basis: auto; align-items: flex-start; text-align: left; } }
   `]
 })
 export class WorkApprovalsComponent implements OnInit, AfterViewInit, OnDestroy {
   protected readonly store = inject(WorkApprovalsStore);
   private readonly route = inject(ActivatedRoute);
+  private readonly router = inject(Router);
   private readonly approvalsApi = inject(WorkApprovalsApiService);
   private readonly projectApi = inject(ProjectApiService);
   private readonly toolbarStore = inject(WorkPageToolbarStore);
   private readonly toolbarTpl = viewChild.required<TemplateRef<unknown>>('toolbarTpl');
-  private readonly projectId = signal('');
+  protected readonly projectId = signal('');
   private lastFailedId: string | null = null;
 
   protected readonly createOpen = signal(false);
@@ -183,18 +271,43 @@ export class WorkApprovalsComponent implements OnInit, AfterViewInit, OnDestroy 
   protected readonly modules = signal<readonly { objectiveId: string; title: string; isOwner?: boolean }[]>([]);
   protected readonly moduleOptions = signal<readonly WorkDropdownOption[]>([]);
   private prefillObjectiveId: string | null = null;
+  protected readonly historyOpen = signal(false);
+  protected readonly historyLoading = signal(false);
+  protected readonly historyError = signal<string | null>(null);
+  protected readonly historyItems = signal<readonly ApprovalHistoryItemDto[]>([]);
+  protected readonly selectedTaskId = signal<string | null>(null);
+  protected readonly statusChangeRequestCount = signal(0);
+  private historyLoadVersion = 0;
 
   // The store's "mine" lists span every project the caller owns modules in; scope each one down
   // to this project's modules so a project's Approvals page only shows that project's requests.
   private readonly moduleIds = computed(() => new Set(this.modules().map((m) => m.objectiveId)));
-  private readonly scopedToProject = (items: readonly ApprovalItem[]) =>
-    items.filter((item) => this.moduleIds().has(item.objectiveId));
+  private readonly scopedToProject = (items: readonly ApprovalItem[]) => {
+    const moduleTitles = new Map(this.modules().map((module) => [module.objectiveId, module.title]));
+    return items
+      .filter((item) => this.moduleIds().has(item.objectiveId))
+      .map((item) => item.targetType === 'module' && !item.targetTitle
+        ? { ...item, targetTitle: moduleTitles.get(item.objectiveId) ?? null }
+        : item);
+  };
 
   protected readonly taskCreationRequests = computed(() => this.scopedToProject(this.store.taskCreationRequests()));
   protected readonly taskEditRequests = computed(() => this.scopedToProject(this.store.taskEditRequests()));
   protected readonly allocationRequests = computed(() => this.scopedToProject(this.store.allocationRequests()));
   protected readonly objectiveChangeRequests = computed(() => this.scopedToProject(this.store.objectiveChangeRequests()));
   protected readonly objectiveInvitations = computed(() => this.scopedToProject(this.store.objectiveInvitations()));
+  protected readonly sentPendingRequests = computed(() =>
+    this.historyItems().filter(item => item.direction === 'sent' && item.status === 'pending')
+  );
+  protected readonly visiblePendingCount = computed(() =>
+    this.sentPendingRequests().length
+    + this.statusChangeRequestCount()
+    + this.taskCreationRequests().length
+    + this.taskEditRequests().length
+    + this.allocationRequests().length
+    + this.objectiveChangeRequests().length
+    + this.objectiveInvitations().length
+  );
 
   constructor() {
     // Switching projects via the breadcrumb switcher navigates to a sibling route matching the
@@ -209,8 +322,11 @@ export class WorkApprovalsComponent implements OnInit, AfterViewInit, OnDestroy 
         )
         .subscribe((projectId) => {
           this.projectId.set(projectId);
+          this.historyItems.set([]);
+          this.historyError.set(null);
           if (!projectId) return;
           void this.loadModules();
+          if (this.historyOpen()) void this.loadHistory();
         });
     } else {
       const projectId = this.route.snapshot?.paramMap?.get('id') ?? '';
@@ -220,7 +336,7 @@ export class WorkApprovalsComponent implements OnInit, AfterViewInit, OnDestroy 
   }
 
   ngOnInit(): void {
-    void this.store.loadAll();
+    void this.loadHistory();
   }
 
   ngAfterViewInit(): void {
@@ -299,6 +415,60 @@ export class WorkApprovalsComponent implements OnInit, AfterViewInit, OnDestroy 
       ? (item.raw as AllocationRequestDto).objectiveId
       : undefined;
     this.openCreateApproval(objectiveId);
+  }
+
+  onViewTarget(item: ApprovalItem): void {
+    if (item.targetType === 'task' && item.targetId) {
+      this.selectedTaskId.set(item.targetId);
+      return;
+    }
+    if (item.targetType === 'module' && item.targetId) {
+      void this.router.navigate(['/work', this.projectId(), 'milestones', item.targetId, 'tree']);
+    }
+  }
+
+  onTaskDetailsClosed(): void {
+    this.selectedTaskId.set(null);
+    void this.store.loadAll();
+  }
+
+  openHistory(): void {
+    this.historyOpen.set(true);
+    void this.loadHistory();
+  }
+
+  async loadHistory(): Promise<void> {
+    const projectId = this.projectId();
+    if (!projectId) return;
+    const loadVersion = ++this.historyLoadVersion;
+
+    this.historyLoading.set(true);
+    this.historyError.set(null);
+    try {
+      const items = await firstValueFrom(this.approvalsApi.getApprovalHistory(projectId));
+      if (loadVersion === this.historyLoadVersion) this.historyItems.set(items);
+    } catch (err: any) {
+      if (loadVersion === this.historyLoadVersion) {
+        this.historyError.set(
+          err?.error?.detail || err?.error?.message || err?.message || 'Failed to load approval history.'
+        );
+      }
+    } finally {
+      if (loadVersion === this.historyLoadVersion) this.historyLoading.set(false);
+    }
+  }
+
+  historyKindLabel(kind: string): string {
+    const labels: Record<string, string> = {
+      task_creation: 'Task creation',
+      task_edit: 'Task edit',
+      allocation_extend: 'Allocation request',
+      objective_edit: 'Module edit',
+      objective_change: 'Module change',
+      objective_invitation: 'Module invitation',
+      task_status_change: 'Task status change'
+    };
+    return labels[kind] ?? 'Approval request';
   }
 
   private async loadModules(): Promise<void> {

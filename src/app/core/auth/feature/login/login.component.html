@@ -1,6 +1,31 @@
 <div class="login-container">
   <h1 class="login-title">Welcome back!</h1>
 
+  @if (checkingRememberedAccount()) {
+    <p class="login-session-check" role="status">
+      <span class="login-session-check__spinner" aria-hidden="true"></span>
+      Checking for a signed-in account…
+    </p>
+  }
+
+  @if (rememberedAccount(); as account) {
+    <section class="login-remembered" aria-label="Signed-in account">
+      <p class="login-remembered__eyebrow">You’re already signed in</p>
+      <div class="login-remembered__identity">
+        <span class="login-remembered__details">
+          <strong>{{ account.displayName }}</strong>
+        </span>
+        <button type="button" class="login-remembered__continue" (click)="continueWithRememberedAccount()">
+          Continue to workspace
+        </button>
+      </div>
+    </section>
+
+    <div class="login-divider" aria-hidden="true">
+      <span>or use another account</span>
+    </div>
+  }
+
   <!-- Google SSO Button -->
   <button
     type="button"

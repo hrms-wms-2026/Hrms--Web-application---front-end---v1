@@ -20,7 +20,8 @@ import { TaskCategoryColumn } from '../../models/task-category.model';
 import { toTaskCategoryColumn } from '../../utils/task-category.mapper';
 import { WorkDropdownOption } from '../../ui/work-dropdown/work-dropdown.component';
 import { TaskFilterBarComponent, TaskFilterFieldConfig } from '../../ui/task-filter-bar/task-filter-bar.component';
-import { TaskAssigneeAvatarFilterComponent } from '../../ui/task-assignee-avatar-filter/task-assignee-avatar-filter.component';
+import { TaskAssigneeAvatarFilterComponent, TaskAssigneeAvatarMember } from '../../ui/task-assignee-avatar-filter/task-assignee-avatar-filter.component';
+import { FileApiService } from '../../../../shared/data-access/file-api.service';
 import { TaskFormModalComponent } from '../../ui/task-form-modal/task-form-modal.component';
 import { SprintStartDialogComponent } from '../../ui/sprint-start-dialog/sprint-start-dialog.component';
 import { SprintCompleteDialogComponent } from '../../ui/sprint-complete-dialog/sprint-complete-dialog.component';
@@ -35,7 +36,7 @@ import { toEditTaskRequest } from '../../utils/task.mapper';
     <ng-template #toolbarTpl>
       <div class="task-backlog__toolbar">
         <app-task-assignee-avatar-filter
-          [members]="assignableMembers()"
+          [members]="projectRosterMembers()"
           [currentEmployeeId]="currentEmployee.id()"
           [selected]="assigneeFilter()"
           (selectionChanged)="setAssigneeFilter($event)"
@@ -224,6 +225,7 @@ export class TaskBacklogComponent implements OnInit, AfterViewInit, OnDestroy {
   protected readonly store = inject(TaskBoardStore);
   protected readonly sprintStore = inject(SprintListStore);
   protected readonly projectStore = inject(ProjectDetailStore);
+  private readonly fileApi = inject(FileApiService, { optional: true });
   private readonly toolbarStore = inject(WorkPageToolbarStore);
   private readonly toolbarTpl = viewChild.required<TemplateRef<unknown>>('toolbarTpl');
   private readonly taskApi = inject(TaskApiService);
@@ -244,6 +246,16 @@ export class TaskBacklogComponent implements OnInit, AfterViewInit, OnDestroy {
   protected readonly projectId = signal('');
   protected readonly expandedSprintId = signal<string | null>(null);
   protected readonly assignableMembers = signal<{ employeeId: string; name: string; avatarUrl: string | null }[]>([]);
+  // Everyone on the project, unscoped by which milestones the viewer can reach - the roster
+  // shown in the toolbar avatar stack. Deliberately separate from assignableMembers above,
+  // which stays scoped for the actual task-assignment flows.
+  protected readonly projectRosterMembers = computed<TaskAssigneeAvatarMember[]>(() =>
+    (this.projectStore.project()?.members ?? []).map((member) => ({
+      employeeId: member.userId,
+      name: member.displayName,
+      avatarUrl: member.avatarFileId ? this.fileApi?.getFileUrl(member.avatarFileId) ?? null : null
+    }))
+  );
   protected readonly sprintStatusFilter = signal<'all' | SprintStatus>('all');
   protected readonly objectiveFilter = signal<string[]>([]);
   protected readonly categoryFilter = signal<string[]>([]);

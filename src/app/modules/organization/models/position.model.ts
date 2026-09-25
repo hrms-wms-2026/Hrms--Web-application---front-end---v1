@@ -6,8 +6,8 @@ export type PositionTypeKind = 'unique' | 'pooled' | 'Unique' | 'Pooled';
 
 /**
  * Single occupant preview item from backend PositionOccupantPreviewResponse.
- * `avatarUrl` is always null until a file-serving endpoint exists.
- * `avatarFileId` is a raw storage UUID — never use as an img src.
+ * `avatarFileId` is resolved through FileApiService/buildFileUrl before use as an img src.
+ * `avatarUrl` remains only as a temporary compatibility fallback.
  */
 export interface OccupantPreviewItem {
   readonly employeeId: string;

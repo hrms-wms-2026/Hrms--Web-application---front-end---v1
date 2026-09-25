@@ -3,7 +3,7 @@ import { NgTemplateOutlet } from '@angular/common';
 import { firstValueFrom } from 'rxjs';
 import { ButtonComponent } from '../../../../shared/ui/button/button.component';
 import { WorkDropdownOption } from '../work-dropdown/work-dropdown.component';
-import { TaskStatusColumn, WorkTask } from '../../models/task.model';
+import { TaskAssigneeIdentity, TaskStatusColumn, WorkTask } from '../../models/task.model';
 import { TaskCategoryColumn } from '../../models/task-category.model';
 import { Sprint } from '../../models/sprint.model';
 import { CreateSubtaskRequestDto, CreateTaskRequestDto, InsufficientAllocationErrorDto } from '../../models/dto/task.dto';
@@ -28,6 +28,7 @@ import { ConfirmModalComponent } from '../../../../shared/ui/confirm-modal/confi
 import { TaskDuplicateDialogComponent, TaskDuplicatePayload } from '../task-duplicate-dialog/task-duplicate-dialog.component';
 import { TaskConvertToSubtaskDialogComponent, TaskConvertToSubtaskCandidate, TaskConvertToSubtaskPayload } from '../task-convert-to-subtask-dialog/task-convert-to-subtask-dialog.component';
 import { DatePickerComponent } from '../../../../shared/ui/date-picker/date-picker.component';
+import { buildTaskDeepLink, copyTextToClipboard } from '../../utils/task-deep-link.util';
 import { TaskAssigneeDropdownComponent } from '../task-assignee-dropdown/task-assignee-dropdown.component';
 import { NotificationService } from '../../../../core/services/notification.service';
 
@@ -182,7 +183,7 @@ export type TaskFormMode = 'create' | 'edit';
             @if (currentEffectiveMode() === 'edit' && task(); as headerTask) {
               <div class="tfm-header-actions">
                 <span class="tfm-created-at" data-testid="task-created-at">{{ createdAtLabel() }}</span>
-                <button type="button" class="tfm-header-share-btn" aria-label="Share task">
+                <button type="button" class="tfm-header-share-btn" aria-label="Share task" (click)="shareTask()">
                   <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><line x1="8.59" y1="13.51" x2="15.42" y2="17.49"/><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"/></svg>
                   <span>Share</span>
                 </button>
@@ -593,6 +594,7 @@ export type TaskFormMode = 'create' | 'edit';
                         [files]="attachedFiles()"
                         (fileSelected)="onAttachmentFilesSelected($event)"
                         (removed)="removeAttachedFile($event)"
+                        (downloadRequested)="downloadAttachment($event)"
                       />
                     </div>
                   </div>
@@ -1027,6 +1029,7 @@ export type TaskFormMode = 'create' | 'edit';
                       [files]="attachedFiles()"
                       (fileSelected)="onAttachmentFilesSelected($event)"
                       (removed)="removeAttachedFile($event)"
+                      (downloadRequested)="downloadAttachment($event)"
                     />
                   }
                 </div>
@@ -1045,6 +1048,7 @@ export type TaskFormMode = 'create' | 'edit';
                       [files]="attachedFiles()"
                       (fileSelected)="onAttachmentFilesSelected($event)"
                       (removed)="removeAttachedFile($event)"
+                      (downloadRequested)="downloadAttachment($event)"
                     />
                   </div>
                 }
@@ -1120,7 +1124,7 @@ export type TaskFormMode = 'create' | 'edit';
 
                     <!-- Comments component: always mounted for test compatibility and state retention, visible on Comments & All tabs -->
                     <div [hidden]="activityTab() !== 'comments' && activityTab() !== 'all'">
-                      <app-task-comments [taskId]="tid" [sortOrder]="activitySortOrder()" />
+                      <app-task-comments [taskId]="tid" [projectId]="projectId()" [sortOrder]="activitySortOrder()" />
                     </div>
 
                     @if (activityTab() === 'history' || activityTab() === 'all') {
@@ -2260,6 +2264,9 @@ export class TaskFormModalComponent {
   assignableMembers = signal<readonly { employeeId: string; name: string; avatarUrl: string | null }[]>([]);
   assigneeEmployeeId = signal('');
   private originalAssigneeId = signal('');
+  // The task's own server-resolved assignee identities (name/avatar) - always correct regardless
+  // of the viewer's milestone scope, unlike assignableMembers() which is scoped for the picker.
+  private taskAssigneeIdentities = signal<readonly TaskAssigneeIdentity[]>([]);
   categoryId = signal('');
   allocationHint = signal<InsufficientAllocationErrorDto | null>(null);
 
@@ -2348,13 +2355,35 @@ export class TaskFormModalComponent {
     const t = this.task();
     return !!t && t.assigneeEmployeeIds.includes(this.currentEmployeeId());
   });
+  // The current assignee may sit in a milestone outside what the viewer's assignableMembers()
+  // scope reaches (e.g. assigned by someone with broader access), so the picker's option list
+  // alone can't be trusted to resolve the display name. Prefer the task's own server-resolved
+  // identity (always correct, whoever is viewing) and fall back to the full, unscoped project
+  // roster before giving up and showing the raw employeeId.
+  private readonly rosterAssignee = computed(() => {
+    const id = this.assigneeEmployeeId();
+    if (!id) return null;
+    return this.projectStore.project()?.members.find((m) => m.userId === id) ?? null;
+  });
   assigneeName = computed(() => {
     const id = this.assigneeEmployeeId();
-    return this.assignableMembers().find((m) => m.employeeId === id)?.name ?? (id ? id : 'Unassigned');
+    if (!id) return 'Unassigned';
+    return (
+      this.assignableMembers().find((m) => m.employeeId === id)?.name ??
+      this.taskAssigneeIdentities().find((a) => a.employeeId === id)?.name ??
+      this.rosterAssignee()?.displayName ??
+      id
+    );
   });
   assigneeAvatarUrl = computed(() => {
     const id = this.assigneeEmployeeId();
-    return this.assignableMembers().find((m) => m.employeeId === id)?.avatarUrl ?? null;
+    if (!id) return null;
+    const scopedUrl = this.assignableMembers().find((m) => m.employeeId === id)?.avatarUrl;
+    if (scopedUrl) return scopedUrl;
+    const taskUrl = this.taskAssigneeIdentities().find((a) => a.employeeId === id)?.avatarUrl;
+    if (taskUrl) return taskUrl;
+    const rosterFileId = this.rosterAssignee()?.avatarFileId;
+    return rosterFileId && this.fileApi ? this.fileApi.getFileUrl(rosterFileId) : null;
   });
 
   priorityDetails = computed(() => {
@@ -2558,6 +2587,7 @@ export class TaskFormModalComponent {
     this.sprintId.set('');
     this.assigneeEmployeeId.set('');
     this.originalAssigneeId.set('');
+    this.taskAssigneeIdentities.set([]);
     this.categoryId.set('');
     this.allocationHint.set(null);
     this.errors.set({});
@@ -2621,6 +2651,19 @@ export class TaskFormModalComponent {
     } finally {
       this.loading.set(false);
     }
+  }
+
+  async shareTask(): Promise<void> {
+    const taskId = this.currentTaskId();
+    const projectId = this.projectId();
+    if (!taskId || !projectId) {
+      this.notificationService.error('Unable to create a task link.');
+      return;
+    }
+
+    const copied = await copyTextToClipboard(buildTaskDeepLink(window.location.origin, projectId, taskId));
+    if (copied) this.notificationService.success('Task link copied to clipboard.');
+    else this.notificationService.error('Unable to copy the task link.');
   }
 
   private async loadCreateContext(): Promise<void> {
@@ -2699,6 +2742,7 @@ export class TaskFormModalComponent {
     const currentAssignee = t.assigneeEmployeeIds[0] ?? '';
     this.assigneeEmployeeId.set(currentAssignee);
     this.originalAssigneeId.set(currentAssignee);
+    this.taskAssigneeIdentities.set(t.assignees ?? []);
     this.attachedFiles.set(t.attachments.map((a) => ({ fileId: a.fileId, name: a.name, sizeBytes: a.sizeBytes })));
     this.errors.set({});
     this.errorMessage.set(null);
@@ -2891,6 +2935,23 @@ export class TaskFormModalComponent {
 
   async onAttachmentFilesSelected(files: FileList | File[]): Promise<void> {
     await this.uploadAttachmentFiles(files);
+  }
+
+  async downloadAttachment(file: AttachmentPill): Promise<void> {
+    try {
+      const blob = await firstValueFrom(this.taskApi.downloadFile(file.fileId));
+      const objectUrl = URL.createObjectURL(blob);
+      const anchor = document.createElement('a');
+      anchor.href = objectUrl;
+      anchor.download = file.name || 'attachment';
+      anchor.style.display = 'none';
+      document.body.appendChild(anchor);
+      anchor.click();
+      anchor.remove();
+      URL.revokeObjectURL(objectUrl);
+    } catch {
+      this.errorMessage.set(`Failed to download ${file.name}.`);
+    }
   }
 
   private async uploadAttachmentFiles(files: FileList | File[]): Promise<void> {

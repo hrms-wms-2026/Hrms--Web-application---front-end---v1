@@ -9,6 +9,7 @@ import { TaskCommentDto, TaskCommentReactionDto, TaskCommentReactorDto } from '.
 import { EmployeeAvatarComponent } from '../employee-avatar/employee-avatar.component';
 import { CommentComposerComponent } from '../comment-composer/comment-composer.component';
 import { EmojiPickerComponent } from '../emoji-picker/emoji-picker.component';
+import { buildTaskDeepLink, copyTextToClipboard } from '../../utils/task-deep-link.util';
 
 @Component({
   selector: 'app-task-comments',
@@ -57,7 +58,13 @@ import { EmojiPickerComponent } from '../emoji-picker/emoji-picker.component';
     }
 
     <ng-template #commentRow let-comment>
-      <div class="tc-comment-item" [class.tc-comment-item--reply]="comment.parentCommentId" data-testid="comment-card">
+      <div
+        class="tc-comment-item"
+        [class.tc-comment-item--reply]="comment.parentCommentId"
+        [class.tc-comment-item--linked]="linkedCommentId() === comment.id"
+        [attr.id]="'comment-' + comment.id"
+        data-testid="comment-card"
+      >
         <!-- Avatar Column -->
         <div class="tc-avatar-col">
           <app-employee-avatar [employeeId]="comment.employeeId" />
@@ -322,6 +329,7 @@ import { EmojiPickerComponent } from '../emoji-picker/emoji-picker.component';
     }
     .tc-comment-item:hover .tc-link-btn { opacity: 0.85; }
     .tc-link-btn:hover { opacity: 1; color: var(--color-accent, #2563eb); }
+    .tc-comment-item--linked { border-radius: 6px; background: color-mix(in srgb, var(--color-accent) 8%, transparent); }
 
     .tc-time-row { display: flex; align-items: center; gap: 4px; }
     .tc-time { font-size: 12px; color: var(--color-text-secondary, #64748b); line-height: 1.2; }
@@ -540,7 +548,9 @@ export class TaskCommentsComponent implements OnInit {
   private readonly notificationService = inject(NotificationService);
 
   taskId = input.required<string>();
+  projectId = input<string>('');
   sortOrder = input<'desc' | 'asc'>('desc');
+  protected readonly linkedCommentId = signal<string | null>(null);
 
   comments = signal<TaskCommentDto[]>([]);
   sortedComments = computed(() => {
@@ -573,6 +583,7 @@ export class TaskCommentsComponent implements OnInit {
     const me = await firstValueFrom(this.taskApi.getCurrentEmployee());
     this.currentEmployeeId.set(me.employeeId);
     await this.reload();
+    this.revealLinkedComment();
   }
 
   private async reload(): Promise<void> {
@@ -706,17 +717,24 @@ export class TaskCommentsComponent implements OnInit {
     }
   }
 
-  copyCommentLink(commentId: string): void {
-    const url = `${window.location.origin}${window.location.pathname}#comment-${commentId}`;
-    if (navigator?.clipboard?.writeText) {
-      navigator.clipboard.writeText(url).then(() => {
-        this.notificationService.success('Link copied to clipboard');
-      }).catch(() => {
-        this.notificationService.success('Link copied to clipboard');
-      });
-    } else {
-      this.notificationService.success('Link copied to clipboard');
+  async copyCommentLink(commentId: string): Promise<void> {
+    const projectId = this.projectId();
+    if (!projectId) {
+      this.notificationService.error('Unable to create a comment link.');
+      return;
     }
+    const url = buildTaskDeepLink(window.location.origin, projectId, this.taskId(), commentId);
+    const copied = await copyTextToClipboard(url);
+    if (copied) this.notificationService.success('Comment link copied to clipboard.');
+    else this.notificationService.error('Unable to copy the comment link.');
+  }
+
+  private revealLinkedComment(): void {
+    const hash = window.location.hash;
+    if (!hash.startsWith('#comment-')) return;
+    const commentId = decodeURIComponent(hash.slice('#comment-'.length));
+    this.linkedCommentId.set(commentId);
+    setTimeout(() => document.getElementById(`comment-${commentId}`)?.scrollIntoView({ block: 'center' }));
   }
 
   formatTimeAgo(isoString: string): string {

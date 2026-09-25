@@ -376,6 +376,15 @@ it('reorderTaskStatuses posts to projects/{projectId}/task-statuses/reorder', ()
     req.flush(null);
   });
 
+  it('downloadFile fetches the task file as a blob', () => {
+    const response = new Blob(['contents'], { type: 'text/plain' });
+    service.downloadFile('f1').subscribe((blob) => expect(blob).toBe(response));
+    const req = httpMock.expectOne(`${environment.apiUrl}/work/tasks/files/f1`);
+    expect(req.request.method).toBe('GET');
+    expect(req.request.responseType).toBe('blob');
+    req.flush(response);
+  });
+
   it('getFileUrl builds the content url', () => {
     expect(service.getFileUrl('f1')).toBe(`${environment.apiUrl}/work/tasks/files/f1`);
   });

@@ -24,6 +24,13 @@ describe('TaskAttachmentListComponent', () => {
     expect(emitted).toEqual(['f1']);
   });
 
+  it('emits the attachment when its file name is clicked', () => {
+    const emitted: { fileId: string; name: string }[] = [];
+    fixture.componentInstance.downloadRequested.subscribe((file) => emitted.push(file));
+    fixture.nativeElement.querySelector('.tal-pill-download').click();
+    expect(emitted).toEqual([{ fileId: 'f1', name: 'spec.pdf', sizeBytes: 2048 }]);
+  });
+
   it('emits fileSelected with the chosen FileList', () => {
     let emitted: FileList | null = null;
     fixture.componentInstance.fileSelected.subscribe((f) => (emitted = f));

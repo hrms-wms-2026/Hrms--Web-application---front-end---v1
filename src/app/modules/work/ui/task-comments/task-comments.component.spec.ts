@@ -229,9 +229,15 @@ describe('TaskCommentsComponent', () => {
     expect(component.pillReactions(comment)).toEqual([{ emoji: '👍', count: 1 }, { emoji: '❤️', count: 2 }]);
   });
 
-  it('copyCommentLink triggers notification and copies url', () => {
-    component.copyCommentLink('c1');
-    expect(notificationService.success).toHaveBeenCalledWith('Link copied to clipboard');
+  it('copyCommentLink copies a deep link that opens the task and targets the comment', async () => {
+    const writeText = vi.fn().mockResolvedValue(undefined);
+    Object.defineProperty(navigator, 'clipboard', { configurable: true, value: { writeText } });
+    fixture.componentRef.setInput('projectId', 'p1');
+
+    await component.copyCommentLink('c1');
+
+    expect(writeText).toHaveBeenCalledWith(expect.stringContaining('/work/p1/board?taskId=t1#comment-c1'));
+    expect(notificationService.success).toHaveBeenCalledWith('Comment link copied to clipboard.');
   });
 
   it('toggleMoreMenu and closeMoreMenu manage menu state', () => {

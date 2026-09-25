@@ -12,9 +12,12 @@ import { TaskApiService } from '../../data-access/task-api.service';
 import { EmployeeDirectoryStore } from '../../state/employee-directory.store';
 
 describe('TaskBoardComponent', () => {
-  function routeStub() {
+  function routeStub(taskId: string | null = null) {
     return {
-      snapshot: { paramMap: { get: (key: string) => (key === 'id' ? 'project-1' : null) }, queryParamMap: { get: () => null } }
+      snapshot: {
+        paramMap: { get: (key: string) => (key === 'id' ? 'project-1' : null) },
+        queryParamMap: { get: (key: string) => key === 'taskId' ? taskId : null }
+      }
     };
   }
 
@@ -58,6 +61,37 @@ describe('TaskBoardComponent', () => {
     await fixture.whenStable();
 
     expect(loadBoard).toHaveBeenCalledWith('project-1');
+  });
+
+  it('opens the task detail modal when a shared task link supplies taskId', () => {
+    const storeStub = {
+      loadBoard: vi.fn().mockResolvedValue(undefined), columnsWithTasks: () => [], tasks: () => [],
+      loading: () => false, error: () => null, moveTask: vi.fn(), statuses: () => []
+    };
+    TestBed.configureTestingModule({
+      imports: [TaskBoardComponent],
+      providers: [
+        { provide: TaskBoardStore, useValue: storeStub },
+        { provide: ProjectDetailStore, useValue: { milestones: () => [], loadProjectMembers: vi.fn().mockResolvedValue(undefined), projectMembers: () => [], project: () => null } },
+        { provide: SprintApiService, useValue: { getByProject: vi.fn().mockReturnValue(of([])) } },
+        { provide: TaskApiService, useValue: { getCategories: vi.fn().mockReturnValue(of([])) } },
+        { provide: EmployeeDirectoryStore, useValue: { get: vi.fn(), ensureLoaded: vi.fn().mockResolvedValue(undefined) } },
+        { provide: ActivatedRoute, useValue: routeStub('shared-task-1') },
+        { provide: Router, useValue: { navigate: vi.fn() } }
+      ]
+    });
+
+    const fixture = TestBed.createComponent(TaskBoardComponent);
+    fixture.componentInstance.ngOnInit();
+    const instance = fixture.componentInstance as unknown as {
+      taskModalOpen: () => boolean;
+      taskModalMode: () => string;
+      taskModalTaskId: () => string;
+    };
+
+    expect(instance.taskModalOpen()).toBe(true);
+    expect(instance.taskModalMode()).toBe('edit');
+    expect(instance.taskModalTaskId()).toBe('shared-task-1');
   });
 
   it('shows all tasks by default and only filters by sprint when explicitly selected', async () => {
@@ -399,6 +433,67 @@ describe('TaskBoardComponent', () => {
     expect(members).toEqual([
       { employeeId: 'emp-1', name: 'Nevi Peiris', avatarUrl: null },
       { employeeId: 'emp-2', name: 'Unknown employee', avatarUrl: null }
+    ]);
+  });
+
+  it('builds projectRosterMembers from the full project member list, independent of milestone-scoped assignableMembers', async () => {
+    const storeStub = {
+      loadBoard: vi.fn().mockResolvedValue(undefined),
+      columnsWithTasks: () => [],
+      tasks: () => [],
+      loading: () => false,
+      error: () => null,
+      moveTask: vi.fn(),
+      statuses: () => []
+    };
+    const loadProjectMembers = vi.fn().mockResolvedValue(undefined);
+
+    TestBed.configureTestingModule({
+      imports: [TaskBoardComponent],
+      providers: [
+        { provide: TaskBoardStore, useValue: storeStub },
+        {
+          provide: ProjectDetailStore,
+          useValue: {
+            milestones: () => [{ objectiveId: 'milestone-1', title: 'Milestone One', isOwner: true }],
+            getMilestoneDetail: vi.fn().mockResolvedValue(null),
+            loadMyMilestones: vi.fn().mockResolvedValue(undefined),
+            loadProjectMembers,
+            // Only one milestone-scoped member reachable by the current viewer.
+            projectMembers: () => [{ employeeId: 'emp-1', name: 'Nevi Peiris', pending: false, isHead: false }],
+            // The project as a whole has more members than the viewer's reachable milestones.
+            project: () => ({
+              members: [
+                { userId: 'emp-1', displayName: 'Nevi Peiris', avatarFileId: null },
+                { userId: 'emp-2', displayName: 'Kasun Ranasinghe', avatarFileId: null },
+                { userId: 'emp-3', displayName: 'Sithara Nimal', avatarFileId: null }
+              ],
+              memberCount: 3
+            })
+          }
+        },
+        { provide: SprintApiService, useValue: { getByProject: vi.fn().mockReturnValue(of([])) } },
+        { provide: TaskApiService, useValue: { createTaskCreationRequest: vi.fn(), assignTask: vi.fn(), getCategories: vi.fn().mockReturnValue(of([])) } },
+        { provide: ActivatedRoute, useValue: routeStub() },
+        { provide: Router, useValue: { navigate: vi.fn() } }
+      ]
+    });
+
+    const fixture = TestBed.createComponent(TaskBoardComponent);
+    fixture.detectChanges();
+    await fixture.whenStable();
+    await fixture.whenStable();
+
+    const instance = fixture.componentInstance as unknown as {
+      assignableMembers: () => { employeeId: string }[];
+      projectRosterMembers: () => { employeeId: string; name: string; avatarUrl: string | null }[];
+    };
+
+    expect(instance.assignableMembers().map((m) => m.employeeId)).toEqual(['emp-1']);
+    expect(instance.projectRosterMembers()).toEqual([
+      { employeeId: 'emp-1', name: 'Nevi Peiris', avatarUrl: null },
+      { employeeId: 'emp-2', name: 'Kasun Ranasinghe', avatarUrl: null },
+      { employeeId: 'emp-3', name: 'Sithara Nimal', avatarUrl: null }
     ]);
   });
 
