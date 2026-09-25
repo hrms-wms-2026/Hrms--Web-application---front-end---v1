@@ -22,7 +22,9 @@ export interface TaskAttachmentDto {
 export interface TaskAssigneeIdentityDto {
   employeeId: string;
   name: string;
-  avatarUrl: string | null;
+  avatarFileId?: string | null;
+  /** Temporary compatibility fallback for older API deployments. */
+  avatarUrl?: string | null;
 }
 
 export interface PendingUploadDto {

@@ -13,20 +13,10 @@ import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { DOCUMENT, NgOptimizedImage, isPlatformBrowser } from '@angular/common';
 import { NavigationEnd, Router, RouterLink } from '@angular/router';
 import { filter } from 'rxjs';
-import { buildTenantUrl } from '../../../../core/auth/utils/tenant-redirect';
+import { buildTenantUrl, readLastTenantSlug } from '../../../../core/auth/utils/tenant-redirect';
 
 const HIDE_AFTER = 120;
 const SCROLL_DELTA = 8;
-const LAST_TENANT_COOKIE = 'onevo_last_tenant';
-
-function readLastTenantSlug(document: Document): string | null {
-  const cookies = document.cookie.split(';').map((c) => c.trim());
-  const match = cookies.find((c) => c.startsWith(`${LAST_TENANT_COOKIE}=`));
-  if (!match) return null;
-  const value = decodeURIComponent(match.slice(LAST_TENANT_COOKIE.length + 1));
-  return value.length > 0 ? value : null;
-}
-
 /**
  * Presentational public-site header: brand mark, in-page section links, sign-in CTA and a
  * keyboard-operable mobile menu. Pure presentational component (no data-access calls of its own).
@@ -65,7 +55,7 @@ export class LandingHeaderComponent implements AfterViewInit, OnDestroy {
   private focusOutListener: ((event: FocusEvent) => void) | null = null;
 
   constructor() {
-    const lastTenantSlug = readLastTenantSlug(this.document);
+    const lastTenantSlug = readLastTenantSlug(this.document.cookie);
     this.workspaceUrl.set(lastTenantSlug ? buildTenantUrl(lastTenantSlug, '/dashboard') : null);
 
     this.router.events

@@ -3,7 +3,7 @@ import { NgTemplateOutlet } from '@angular/common';
 import { firstValueFrom } from 'rxjs';
 import { ButtonComponent } from '../../../../shared/ui/button/button.component';
 import { WorkDropdownOption } from '../work-dropdown/work-dropdown.component';
-import { TaskStatusColumn, WorkTask } from '../../models/task.model';
+import { TaskAssigneeIdentity, TaskStatusColumn, WorkTask } from '../../models/task.model';
 import { TaskCategoryColumn } from '../../models/task-category.model';
 import { Sprint } from '../../models/sprint.model';
 import { CreateSubtaskRequestDto, CreateTaskRequestDto, InsufficientAllocationErrorDto } from '../../models/dto/task.dto';
@@ -2260,6 +2260,9 @@ export class TaskFormModalComponent {
   assignableMembers = signal<readonly { employeeId: string; name: string; avatarUrl: string | null }[]>([]);
   assigneeEmployeeId = signal('');
   private originalAssigneeId = signal('');
+  // The task's own server-resolved assignee identities (name/avatar) - always correct regardless
+  // of the viewer's milestone scope, unlike assignableMembers() which is scoped for the picker.
+  private taskAssigneeIdentities = signal<readonly TaskAssigneeIdentity[]>([]);
   categoryId = signal('');
   allocationHint = signal<InsufficientAllocationErrorDto | null>(null);
 
@@ -2348,13 +2351,35 @@ export class TaskFormModalComponent {
     const t = this.task();
     return !!t && t.assigneeEmployeeIds.includes(this.currentEmployeeId());
   });
+  // The current assignee may sit in a milestone outside what the viewer's assignableMembers()
+  // scope reaches (e.g. assigned by someone with broader access), so the picker's option list
+  // alone can't be trusted to resolve the display name. Prefer the task's own server-resolved
+  // identity (always correct, whoever is viewing) and fall back to the full, unscoped project
+  // roster before giving up and showing the raw employeeId.
+  private readonly rosterAssignee = computed(() => {
+    const id = this.assigneeEmployeeId();
+    if (!id) return null;
+    return this.projectStore.project()?.members.find((m) => m.userId === id) ?? null;
+  });
   assigneeName = computed(() => {
     const id = this.assigneeEmployeeId();
-    return this.assignableMembers().find((m) => m.employeeId === id)?.name ?? (id ? id : 'Unassigned');
+    if (!id) return 'Unassigned';
+    return (
+      this.assignableMembers().find((m) => m.employeeId === id)?.name ??
+      this.taskAssigneeIdentities().find((a) => a.employeeId === id)?.name ??
+      this.rosterAssignee()?.displayName ??
+      id
+    );
   });
   assigneeAvatarUrl = computed(() => {
     const id = this.assigneeEmployeeId();
-    return this.assignableMembers().find((m) => m.employeeId === id)?.avatarUrl ?? null;
+    if (!id) return null;
+    const scopedUrl = this.assignableMembers().find((m) => m.employeeId === id)?.avatarUrl;
+    if (scopedUrl) return scopedUrl;
+    const taskUrl = this.taskAssigneeIdentities().find((a) => a.employeeId === id)?.avatarUrl;
+    if (taskUrl) return taskUrl;
+    const rosterFileId = this.rosterAssignee()?.avatarFileId;
+    return rosterFileId && this.fileApi ? this.fileApi.getFileUrl(rosterFileId) : null;
   });
 
   priorityDetails = computed(() => {
@@ -2558,6 +2583,7 @@ export class TaskFormModalComponent {
     this.sprintId.set('');
     this.assigneeEmployeeId.set('');
     this.originalAssigneeId.set('');
+    this.taskAssigneeIdentities.set([]);
     this.categoryId.set('');
     this.allocationHint.set(null);
     this.errors.set({});
@@ -2699,6 +2725,7 @@ export class TaskFormModalComponent {
     const currentAssignee = t.assigneeEmployeeIds[0] ?? '';
     this.assigneeEmployeeId.set(currentAssignee);
     this.originalAssigneeId.set(currentAssignee);
+    this.taskAssigneeIdentities.set(t.assignees ?? []);
     this.attachedFiles.set(t.attachments.map((a) => ({ fileId: a.fileId, name: a.name, sizeBytes: a.sizeBytes })));
     this.errors.set({});
     this.errorMessage.set(null);

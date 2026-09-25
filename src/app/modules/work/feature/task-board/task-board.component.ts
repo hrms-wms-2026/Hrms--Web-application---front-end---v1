@@ -35,7 +35,7 @@ import { NotificationService } from '../../../../core/services/notification.serv
     <ng-template #toolbarTpl>
       <div class="task-board__toolbar">
         <app-task-assignee-avatar-filter
-          [members]="assignableMembers()"
+          [members]="projectRosterMembers()"
           [currentEmployeeId]="currentEmployee.id()"
           [selected]="assigneeFilter()"
           (selectionChanged)="setAssigneeFilter($event)"
@@ -158,6 +158,16 @@ export class TaskBoardComponent implements OnInit, AfterViewChecked, AfterViewIn
       avatarUrl: m.avatarUrl ?? avatarMap.get(m.employeeId) ?? null
     }));
   });
+  // Everyone on the project, unscoped by which milestones the viewer can reach - the roster
+  // shown in the toolbar avatar stack. Deliberately separate from assignableMembers() above,
+  // which stays scoped for the actual task-assignment flows.
+  protected readonly projectRosterMembers = computed<TaskAssigneeAvatarMember[]>(() =>
+    (this.projectStore.project()?.members ?? []).map((member) => ({
+      employeeId: member.userId,
+      name: member.displayName,
+      avatarUrl: member.avatarFileId ? this.fileApi?.getFileUrl(member.avatarFileId) ?? null : null
+    }))
+  );
   protected readonly objectiveFilter = signal<string[]>([]);
   // Defaults to 'all' so no sprint is auto-selected on load; only filtered when explicitly chosen by the user.
   protected readonly sprintFilter = signal('all');

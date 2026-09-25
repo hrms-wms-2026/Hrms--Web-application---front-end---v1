@@ -302,6 +302,91 @@ describe('TaskBacklogComponent', () => {
     ]);
   });
 
+  it('builds projectRosterMembers from the full project member list, independent of milestone-scoped assignableMembers', async () => {
+    const loadProjectMembers = vi.fn().mockResolvedValue(undefined);
+
+    TestBed.configureTestingModule({
+      imports: [TaskBacklogComponent],
+      providers: [
+        {
+          provide: TaskBoardStore,
+          useValue: {
+            loadBoard: vi.fn().mockResolvedValue(undefined),
+            moveTask: vi.fn().mockResolvedValue(undefined),
+            tasks: () => [],
+            statuses: () => [],
+            loading: () => false,
+            error: () => null
+          }
+        },
+        {
+          provide: ProjectDetailStore,
+          useValue: {
+            milestones: () => [{ objectiveId: 'milestone-1', title: 'Milestone One', isOwner: true, isEffectiveOwner: true }],
+            getMilestoneDetail: vi.fn().mockResolvedValue(null),
+            loadProjectMembers,
+            // Only one milestone-scoped member reachable by the current viewer.
+            projectMembers: () => [{ employeeId: 'emp-1', name: 'Nevi Peiris', pending: false, isHead: false }],
+            // The project as a whole has more members than the viewer's reachable milestones.
+            project: () => ({
+              members: [
+                { userId: 'emp-1', displayName: 'Nevi Peiris', avatarFileId: null },
+                { userId: 'emp-2', displayName: 'Kasun Ranasinghe', avatarFileId: null },
+                { userId: 'emp-3', displayName: 'Sithara Nimal', avatarFileId: null }
+              ],
+              memberCount: 3
+            })
+          }
+        },
+        {
+          provide: TaskApiService,
+          useValue: {
+            createTaskCreationRequest: vi.fn().mockReturnValue(of({})),
+            assignTask: vi.fn().mockReturnValue(of(undefined)),
+            editTask: vi.fn().mockReturnValue(of({})),
+            createTaskEditRequest: vi.fn().mockReturnValue(of({})),
+            getCategories: vi.fn().mockReturnValue(of([]))
+          }
+        },
+        {
+          provide: SprintListStore,
+          useValue: {
+            sprints: signal([]),
+            error: signal(null),
+            loading: signal(false),
+            loadForProject: vi.fn().mockResolvedValue(undefined),
+            create: vi.fn(),
+            edit: vi.fn(),
+            complete: vi.fn(),
+            achieve: vi.fn()
+          }
+        },
+        {
+          provide: ActivatedRoute,
+          useValue: { snapshot: { paramMap: { get: (key: string) => (key === 'id' ? 'project-1' : null) } } }
+        },
+        { provide: Router, useValue: { navigate: vi.fn().mockResolvedValue(true) } }
+      ]
+    });
+
+    const fixture = TestBed.createComponent(TaskBacklogComponent);
+    fixture.detectChanges();
+    await fixture.whenStable();
+    await fixture.whenStable();
+
+    const instance = fixture.componentInstance as unknown as {
+      assignableMembers: () => { employeeId: string }[];
+      projectRosterMembers: () => { employeeId: string; name: string; avatarUrl: string | null }[];
+    };
+
+    expect(instance.assignableMembers().map((m) => m.employeeId)).toEqual(['emp-1']);
+    expect(instance.projectRosterMembers()).toEqual([
+      { employeeId: 'emp-1', name: 'Nevi Peiris', avatarUrl: null },
+      { employeeId: 'emp-2', name: 'Kasun Ranasinghe', avatarUrl: null },
+      { employeeId: 'emp-3', name: 'Sithara Nimal', avatarUrl: null }
+    ]);
+  });
+
   it('loads the board for the routed project id on init', async () => {
     const { loadBoard, loadForProject } = setup();
     expect(loadBoard).toHaveBeenCalledWith('project-1');

@@ -1,7 +1,11 @@
+import { inject } from '@angular/core';
 import { Routes } from '@angular/router';
 import { authGuard } from './core/guards/auth.guard';
 import { permissionGuard } from './core/guards/permission.guard';
 import { redirectIfAuthenticatedGuard } from './core/guards/redirect-if-authenticated.guard';
+import { PermissionService } from './core/auth/state/permission.service';
+import { canAccessNavItem } from './layouts/main-layout/nav/nav-access';
+import { NAV_ITEMS } from './layouts/main-layout/nav/nav-items.config';
 
 
 const loadPlaceholder = () =>
@@ -175,7 +179,24 @@ export const routes: Routes = [
             canActivate: [permissionGuard],
             data: { title: 'Calendar Sync', permissions: ['calendar:read'], modules: ['calendar'] }
           },
-          { path: '', pathMatch: 'full', redirectTo: 'general' }
+          {
+            // /settings has no permission of its own - it's reachable if ANY child page is
+            // (nav-access.ts "Part 2A" design), so a static redirectTo: 'general' sent every
+            // such user to General Settings first regardless of which child actually let them
+            // in - a user who only qualifies via, say, Calendar Sync would land here, fail its
+            // legal_entity:update guard, and bounce straight to /dashboard even though the
+            // sidebar correctly showed them a Settings page they could open. Land on the first
+            // child NAV_ITEMS says this user can actually reach, in the same order the sidebar
+            // uses, instead of hardcoding one page.
+            path: '',
+            pathMatch: 'full',
+            redirectTo: () => {
+              const permissionService = inject(PermissionService);
+              const settings = NAV_ITEMS.find((item) => item.id === 'settings');
+              const firstReachable = settings?.children?.find((child) => canAccessNavItem(child, permissionService));
+              return firstReachable?.path ?? '/dashboard';
+            }
+          }
         ]
       },
       { path: '', pathMatch: 'full', redirectTo: 'dashboard' }

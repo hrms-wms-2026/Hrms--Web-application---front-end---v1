@@ -88,6 +88,57 @@ describe('app routes - Settings', () => {
   });
 });
 
+describe('app routes - Settings redirect respects the viewer\'s actual permissions', () => {
+  let router: Router;
+
+  async function setUp(permissions: string[], modules: string[]) {
+    await TestBed.configureTestingModule({
+      providers: [
+        provideRouter(routes),
+        provideHttpClient(),
+        provideHttpClientTesting(),
+        { provide: AuthStore, useValue: { checkSession: () => Promise.resolve(true) } },
+        {
+          provide: PermissionService,
+          useValue: {
+            hasAnyPermission: (required: string[]) => required.some((p) => permissions.includes(p)),
+            hasAnyModule: (required: string[]) => required.some((m) => modules.includes(m)),
+            hasPermission: (p: string) => permissions.includes(p)
+          }
+        }
+      ]
+    }).compileComponents();
+    router = TestBed.inject(Router);
+  }
+
+  it('redirects a legal_entity:update holder to General Settings, unaffected by the new logic', async () => {
+    await setUp(['legal_entity:update'], []);
+
+    await router.navigateByUrl('/settings');
+
+    expect(router.url).toBe('/settings/general');
+  });
+
+  it('redirects a user without legal_entity:update but with calendar:read to Calendar Sync instead of bouncing to /dashboard', async () => {
+    // Regression: this permission set used to hit the hardcoded redirectTo: 'general', which
+    // then failed that page's own permissionGuard and bounced the user to /dashboard - even
+    // though the sidebar correctly showed "Settings" to them via the Calendar Sync child.
+    await setUp(['calendar:read'], ['calendar']);
+
+    await router.navigateByUrl('/settings');
+
+    expect(router.url).toBe('/settings/calendar-connections');
+  });
+
+  it('falls back to /dashboard when the user has no reachable settings child at all', async () => {
+    await setUp([], []);
+
+    await router.navigateByUrl('/settings');
+
+    expect(router.url).toBe('/dashboard');
+  });
+});
+
 describe('app routes - already-authenticated tabs skip the login form', () => {
   // Reproduces the "new tab asks me to log in again" bug: a tab landing on /auth/login (or an
   // unmatched URL, which redirects there) must not render the login form when the browser

@@ -1,6 +1,7 @@
 import { toEditTaskRequest, toWorkTask } from './task.mapper';
 import { WorkTaskDto } from '../models/dto/task.dto';
 import { WorkTask } from '../models/task.model';
+import { environment } from '../../../../environments/environment';
 
 const baseDto: WorkTaskDto = {
   id: 't1', objectiveId: 'o1', shortId: 'T-1', title: 'Task', description: null,
@@ -57,6 +58,21 @@ describe('toWorkTask', () => {
     };
     expect(toWorkTask(withAssignees).assignees).toEqual([
       { employeeId: 'e1', name: 'Nevi Peiris', avatarUrl: 'https://files.example.test/nevi' }
+    ]);
+  });
+
+  it('maps avatarFileId to the canonical authenticated file URL', () => {
+    const withAssignees: WorkTaskDto = {
+      ...baseDto,
+      assignees: [{ employeeId: 'e1', name: 'Nevi Peiris', avatarFileId: 'avatar-file-1' }]
+    };
+
+    expect(toWorkTask(withAssignees).assignees).toEqual([
+      {
+        employeeId: 'e1',
+        name: 'Nevi Peiris',
+        avatarUrl: `${environment.apiUrl}/files/avatar-file-1`
+      }
     ]);
   });
 

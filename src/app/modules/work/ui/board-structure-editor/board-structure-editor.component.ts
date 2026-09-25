@@ -49,21 +49,28 @@ const colors = { not_started: '#94A3B8', active: '#2563EB', done: '#16A34A' };
     ColorSwatchPickerComponent,
   ],
   template: `
-    <app-modal [open]="open()" title="Edit task statuses" (closed)="close()">
-      <div cdkDropListGroup>
+    <app-modal [open]="open()" title="Edit task statuses" (closed)="close()" customMaxWidth="max-w-lg">
+      <div cdkDropListGroup class="board-structure__container">
         @for (group of groups; track group) {
           <section class="board-structure__group">
-            <header>
-              <b>{{ label(group) }}</b
-              ><span>{{ rowsFor(group)().length }}</span>
+            <header class="board-structure__group-header">
+              <div class="board-structure__group-title">
+                <b>{{ label(group) }}</b>
+                <span class="board-structure__group-badge">{{ rowsFor(group)().length }}</span>
+              </div>
               @if (group !== 'done' || rowsFor('done')().length === 0) {
                 <button
                   type="button"
+                  class="board-structure__add-icon-btn"
                   [disabled]="busy()"
                   [attr.aria-label]="'Add ' + label(group) + ' status'"
                   (click)="startAdd(group)"
+                  title="Add status"
                 >
-                  +
+                  <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                    <line x1="12" y1="5" x2="12" y2="19" />
+                    <line x1="5" y1="12" x2="19" y2="12" />
+                  </svg>
                 </button>
               }
             </header>
@@ -81,79 +88,160 @@ const colors = { not_started: '#94A3B8', active: '#2563EB', done: '#16A34A' };
                   [cdkDragDisabled]="busy()"
                   class="board-structure__row"
                 >
-                  <span cdkDragHandle aria-hidden="true">⠿</span>
+                  <span class="board-structure__drag-handle" cdkDragHandle aria-hidden="true" title="Drag to reorder">
+                    <svg viewBox="0 0 24 24" width="15" height="15" fill="currentColor" stroke="none" aria-hidden="true">
+                      <circle cx="9" cy="6" r="1.5" />
+                      <circle cx="9" cy="12" r="1.5" />
+                      <circle cx="9" cy="18" r="1.5" />
+                      <circle cx="15" cy="6" r="1.5" />
+                      <circle cx="15" cy="12" r="1.5" />
+                      <circle cx="15" cy="18" r="1.5" />
+                    </svg>
+                  </span>
                   <button
                     type="button"
                     class="board-structure__color"
                     [style.background]="row.color"
                     [disabled]="busy()"
                     [attr.aria-label]="'Change color for ' + row.name"
+                    title="Change status color"
                     (click)="toggleColorPicker(row.id)"
                   ></button>
                   <input
                     class="board-structure__name"
                     aria-label="Status name"
                     maxlength="100"
+                    placeholder="Status name"
                     [disabled]="busy()"
                     [value]="row.name"
                     (input)="rename(row.id, $any($event.target).value)"
                   />
                   <button
                     type="button"
+                    class="board-structure__visibility-btn"
+                    [class.board-structure__visibility-btn--private]="row.visibility === 'private'"
                     [disabled]="busy()"
                     [attr.aria-label]="'Private status: ' + row.name"
                     [attr.aria-pressed]="row.visibility === 'private'"
+                    [title]="row.visibility === 'private' ? 'Private status: visible to assignees and project managers' : 'Public status: visible to everyone'"
                     (click)="toggleVisibility(row.id)"
                   >
-                    {{ row.visibility === 'private' ? '🔒' : '🔓' }}
+                    @if (row.visibility === 'private') {
+                      <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                        <rect x="3" y="11" width="18" height="11" rx="2" ry="2" />
+                        <path d="M7 11V7a5 5 0 0 1 10 0v4" />
+                      </svg>
+                    } @else {
+                      <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                        <rect x="3" y="11" width="18" height="11" rx="2" ry="2" />
+                        <path d="M7 11V7a5 5 0 0 1 9.9-1" />
+                      </svg>
+                    }
                   </button>
-                  <details>
-                    <summary aria-label="Status actions">⋯</summary>
-                    <button
-                      type="button"
-                      [disabled]="busy() || !canDelete(row)"
-                      (click)="deleteRow(row.id)"
-                    >
-                      Delete
-                    </button>
+                  <details class="board-structure__actions">
+                    <summary class="board-structure__actions-trigger" aria-label="Status actions" title="More options">
+                      <svg viewBox="0 0 24 24" width="15" height="15" fill="currentColor" stroke="none" aria-hidden="true">
+                        <circle cx="12" cy="12" r="1.75" />
+                        <circle cx="19" cy="12" r="1.75" />
+                        <circle cx="5" cy="12" r="1.75" />
+                      </svg>
+                    </summary>
+                    <div class="board-structure__menu">
+                      <button
+                        type="button"
+                        class="board-structure__menu-item"
+                        [disabled]="busy() || !canDelete(row)"
+                        (click)="deleteRow(row.id)"
+                      >
+                        <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                          <path d="M3 6h18" />
+                          <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6" />
+                          <path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" />
+                        </svg>
+                        <span>Delete</span>
+                      </button>
+                    </div>
                   </details>
                 </div>
                 @if (colorPickerFor() === row.id) {
-                  <app-color-swatch-picker
-                    [presets]="presets"
-                    [selected]="row.color"
-                    (colorChange)="setColor(row.id, $event)"
-                  />
+                  <div class="board-structure__color-picker-wrapper">
+                    <app-color-swatch-picker
+                      [presets]="presets"
+                      [selected]="row.color"
+                      (colorChange)="setColor(row.id, $event)"
+                    />
+                  </div>
                 }
               }
             </div>
             @if (addingTo() === group) {
               <div class="board-structure__add">
+                <button
+                  type="button"
+                  class="board-structure__color"
+                  [style.background]="newStatusColor()"
+                  [disabled]="busy()"
+                  aria-label="Change color for new status"
+                  title="Change status color"
+                  (click)="toggleAddColorPicker()"
+                ></button>
                 <input
+                  class="board-structure__add-input"
                   aria-label="New status name"
+                  placeholder="Status name"
                   maxlength="100"
                   [disabled]="busy()"
                   [value]="newStatusName()"
                   (input)="newStatusName.set($any($event.target).value)"
                   (keydown.enter)="confirmAdd()"
-                /><button
-                  type="button"
-                  [disabled]="busy() || !newStatusName().trim()"
-                  (click)="confirmAdd()"
-                >
-                  Add</button
-                ><button type="button" [disabled]="busy()" (click)="cancelAdd()">Cancel</button>
+                  (keydown.escape)="cancelAdd()"
+                  autofocus
+                />
+                <div class="board-structure__add-buttons">
+                  <button
+                    type="button"
+                    class="board-structure__btn-confirm"
+                    [disabled]="busy() || !newStatusName().trim()"
+                    (click)="confirmAdd()"
+                  >
+                    Add
+                  </button>
+                  <button
+                    type="button"
+                    class="board-structure__btn-cancel"
+                    [disabled]="busy()"
+                    (click)="cancelAdd()"
+                  >
+                    Cancel
+                  </button>
+                </div>
               </div>
+              @if (colorPickerFor() === 'new') {
+                <div class="board-structure__color-picker-wrapper">
+                  <app-color-swatch-picker
+                    [presets]="presets"
+                    [selected]="newStatusColor()"
+                    (colorChange)="setNewColor($event)"
+                  />
+                </div>
+              }
             }
           </section>
         }
       </div>
       @if (errorMessage()) {
-        <p role="alert">{{ errorMessage() }}</p>
+        <p class="board-structure__error" role="alert">
+          <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <circle cx="12" cy="12" r="10" />
+            <line x1="12" y1="8" x2="12" y2="12" />
+            <line x1="12" y1="16" x2="12.01" y2="16" />
+          </svg>
+          <span>{{ errorMessage() }}</span>
+        </p>
       }
-      <footer>
-        <app-button variant="secondary" [disabled]="busy()" (pressed)="close()">Cancel</app-button
-        ><app-button variant="primary" [disabled]="busy()" [loading]="saving()" (pressed)="save()"
+      <footer class="board-structure__footer">
+        <app-button variant="secondary" [disabled]="busy()" (pressed)="close()">Cancel</app-button>
+        <app-button variant="primary" [disabled]="busy()" [loading]="saving()" (pressed)="save()"
           >Update</app-button
         >
       </footer>
@@ -161,78 +249,346 @@ const colors = { not_started: '#94A3B8', active: '#2563EB', done: '#16A34A' };
   `,
   styles: [
     `
-      .board-structure__group {
-        margin-bottom: 18px;
-      }
-      header,
-      footer,
-      .board-structure__add {
+      .board-structure__container {
         display: flex;
-        gap: 8px;
+        flex-direction: column;
+        gap: 16px;
+      }
+      .board-structure__group {
+        display: flex;
+        flex-direction: column;
+      }
+      .board-structure__group-header {
+        display: flex;
         align-items: center;
-      }
-      header {
+        justify-content: space-between;
         margin-bottom: 8px;
+        padding-inline: 2px;
       }
-      header button {
-        margin-left: auto;
+      .board-structure__group-title {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        font-size: 13px;
+        color: var(--color-text-primary);
+      }
+      .board-structure__group-badge {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        min-width: 18px;
+        height: 18px;
+        padding: 0 5px;
+        border-radius: 9999px;
+        background: color-mix(in srgb, var(--color-text-secondary) 14%, transparent);
+        color: var(--color-text-secondary);
+        font-size: 11px;
+        font-weight: 600;
+        line-height: 1;
+      }
+      .board-structure__add-icon-btn {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        width: 26px;
+        height: 26px;
+        border-radius: 6px;
+        border: 1px solid transparent;
+        background: transparent;
+        color: var(--color-text-secondary);
+        cursor: pointer;
+        transition: all 120ms ease;
+        padding: 0;
+      }
+      .board-structure__add-icon-btn:hover:not(:disabled) {
+        background: color-mix(in srgb, var(--color-border) 35%, transparent);
+        color: var(--color-text-primary);
+        border-color: var(--color-border);
       }
       .board-structure__list {
         display: flex;
         flex-direction: column;
         gap: 6px;
-        min-height: 24px;
+        min-height: 28px;
+        padding: 2px;
+        border-radius: 8px;
       }
       .board-structure__row {
         display: flex;
         align-items: center;
-        gap: 10px;
-        padding: 8px;
+        gap: 8px;
+        padding: 6px 10px;
         border: 1px solid var(--color-border);
-        border-radius: 7px;
+        border-radius: 8px;
+        background: var(--color-surface);
+        box-shadow: 0 1px 2px rgba(15, 23, 42, 0.04);
+        transition: border-color 150ms ease, box-shadow 150ms ease, background-color 150ms ease;
+      }
+      .board-structure__row:hover {
+        border-color: color-mix(in srgb, var(--color-border) 60%, var(--color-accent, #2563eb));
+      }
+      .board-structure__row:focus-within {
+        border-color: var(--color-accent, #2563eb);
+        box-shadow: 0 0 0 1px var(--color-accent, #2563eb);
+      }
+      .board-structure__drag-handle {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        cursor: grab;
+        color: var(--color-text-secondary);
+        opacity: 0.6;
+        transition: opacity 120ms ease, color 120ms ease;
+        padding: 2px;
+        flex-shrink: 0;
+      }
+      .board-structure__drag-handle:hover {
+        opacity: 1;
+        color: var(--color-text-primary);
+      }
+      .board-structure__drag-handle:active {
+        cursor: grabbing;
+      }
+      .board-structure__color {
+        width: 16px;
+        height: 16px;
+        border-radius: 50%;
+        border: 2px solid var(--color-surface);
+        box-shadow: 0 0 0 1px var(--color-border), 0 1px 2px rgba(0, 0, 0, 0.08);
+        flex-shrink: 0;
+        cursor: pointer;
+        padding: 0;
+        transition: transform 120ms ease, box-shadow 120ms ease;
+      }
+      .board-structure__color:hover:not(:disabled) {
+        transform: scale(1.18);
+        box-shadow: 0 0 0 2px var(--color-accent, #2563eb), 0 2px 4px rgba(0, 0, 0, 0.15);
       }
       .board-structure__name {
         flex: 1;
         min-width: 0;
         background: transparent;
-        color: inherit;
-        border: 0;
-        padding: 4px;
+        color: var(--color-text-primary);
+        font-size: 13.5px;
+        font-weight: 500;
+        border: 1px solid transparent;
+        border-radius: 4px;
+        padding: 3px 6px;
+        outline: none;
+        transition: border-color 120ms ease, background 120ms ease;
       }
-      .board-structure__color {
-        width: 14px;
-        height: 14px;
-        border-radius: 50%;
-        border: 0;
+      .board-structure__name:hover:not(:disabled) {
+        border-color: var(--color-border);
+      }
+      .board-structure__name:focus {
+        border-color: var(--color-accent, #2563eb);
+        background: color-mix(in srgb, var(--color-accent, #2563eb) 4%, transparent);
+      }
+      .board-structure__visibility-btn {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        width: 28px;
+        height: 28px;
+        border-radius: 6px;
+        border: 1px solid transparent;
+        background: transparent;
+        color: var(--color-text-secondary);
+        flex-shrink: 0;
+        cursor: pointer;
+        transition: all 120ms ease;
+        padding: 0;
+      }
+      .board-structure__visibility-btn:hover:not(:disabled) {
+        background: color-mix(in srgb, var(--color-border) 35%, transparent);
+        color: var(--color-text-primary);
+      }
+      .board-structure__visibility-btn--private {
+        color: #d97706;
+        background: color-mix(in srgb, #f59e0b 12%, transparent);
+        border-color: color-mix(in srgb, #f59e0b 24%, transparent);
+      }
+      .board-structure__visibility-btn--private:hover:not(:disabled) {
+        background: color-mix(in srgb, #f59e0b 20%, transparent);
+        color: #b45309;
+      }
+      .board-structure__actions {
+        position: relative;
         flex-shrink: 0;
       }
-      button,
-      summary {
+      .board-structure__actions-trigger {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        width: 28px;
+        height: 28px;
+        border-radius: 6px;
+        border: none;
+        background: transparent;
+        color: var(--color-text-secondary);
         cursor: pointer;
+        list-style: none;
+        transition: all 120ms ease;
+      }
+      .board-structure__actions-trigger::-webkit-details-marker {
+        display: none;
+      }
+      .board-structure__actions-trigger:hover {
+        background: color-mix(in srgb, var(--color-border) 35%, transparent);
+        color: var(--color-text-primary);
+      }
+      .board-structure__menu {
+        position: absolute;
+        right: 0;
+        top: calc(100% + 4px);
+        z-index: 30;
+        min-width: 120px;
+        background: var(--color-surface);
+        border: 1px solid var(--color-border);
+        border-radius: 8px;
+        padding: 4px;
+        box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -4px rgba(0, 0, 0, 0.1);
+      }
+      .board-structure__menu-item {
+        display: flex;
+        width: 100%;
+        align-items: center;
+        gap: 8px;
+        padding: 6px 10px;
+        border: none;
+        border-radius: 5px;
+        background: transparent;
+        color: var(--color-danger-text, #ef4444);
+        font-size: 12.5px;
+        font-weight: 500;
+        cursor: pointer;
+        text-align: left;
+        transition: background 120ms ease;
+      }
+      .board-structure__menu-item:hover:not(:disabled) {
+        background: color-mix(in srgb, #ef4444 10%, transparent);
+      }
+      .board-structure__menu-item:disabled {
+        opacity: 0.45;
+        cursor: not-allowed;
+      }
+      .board-structure__color-picker-wrapper {
+        margin: 4px 0 8px 30px;
+        padding: 8px 12px;
+        background: color-mix(in srgb, var(--color-border) 15%, transparent);
+        border: 1px solid var(--color-border);
+        border-radius: 8px;
+      }
+      .board-structure__add {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        margin-top: 4px;
+        padding: 6px 10px;
+        border: 1px solid var(--color-border);
+        border-radius: 8px;
+        background: var(--color-surface);
+        box-shadow: 0 1px 2px rgba(15, 23, 42, 0.04);
+      }
+      .board-structure__add-input {
+        flex: 1;
+        min-width: 0;
+        background: transparent;
+        color: var(--color-text-primary);
+        font-size: 13.5px;
+        font-weight: 500;
+        border: 1px solid transparent;
+        border-radius: 4px;
+        padding: 3px 6px;
+        outline: none;
+        transition: border-color 120ms ease, background 120ms ease;
+      }
+      .board-structure__add-input:focus {
+        border-color: var(--color-accent, #2563eb);
+        background: color-mix(in srgb, var(--color-accent, #2563eb) 4%, transparent);
+      }
+      .board-structure__add-buttons {
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        flex-shrink: 0;
+      }
+      .board-structure__btn-confirm {
+        padding: 5px 12px;
+        border-radius: 6px;
+        border: none;
+        background: var(--color-accent, #2563eb);
+        color: #fff;
+        font-size: 12.5px;
+        font-weight: 500;
+        cursor: pointer;
+        transition: opacity 120ms ease;
+      }
+      .board-structure__btn-confirm:hover:not(:disabled) {
+        opacity: 0.9;
+      }
+      .board-structure__btn-cancel {
+        padding: 5px 10px;
+        border-radius: 6px;
+        border: 1px solid var(--color-border);
+        background: var(--color-surface);
+        color: var(--color-text-secondary);
+        font-size: 12.5px;
+        font-weight: 500;
+        cursor: pointer;
+        transition: all 120ms ease;
+      }
+      .board-structure__btn-cancel:hover:not(:disabled) {
+        background: color-mix(in srgb, var(--color-border) 25%, transparent);
+        color: var(--color-text-primary);
+      }
+      .board-structure__error {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        margin-top: 12px;
+        padding: 8px 12px;
+        border-radius: 8px;
+        background: color-mix(in srgb, var(--color-danger-text, #ef4444) 10%, transparent);
+        border: 1px solid color-mix(in srgb, var(--color-danger-text, #ef4444) 30%, transparent);
+        color: var(--color-danger-text, #ef4444);
+        font-size: 12.5px;
+      }
+      .board-structure__footer {
+        display: flex;
+        justify-content: flex-end;
+        gap: 8px;
+        margin-top: 20px;
+        padding-top: 14px;
+        border-top: 1px solid var(--color-border);
       }
       button:disabled {
         opacity: 0.45;
         cursor: not-allowed;
       }
-      details {
-        position: relative;
-      }
-      details button {
-        position: absolute;
-        right: 0;
-        z-index: 1;
+      .cdk-drag-preview {
+        box-sizing: border-box;
+        border-radius: 8px;
+        box-shadow: 0 14px 28px -4px rgba(0, 0, 0, 0.18), 0 6px 10px -2px rgba(0, 0, 0, 0.1);
         background: var(--color-surface);
-        padding: 8px;
         border: 1px solid var(--color-border);
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        padding: 6px 10px;
+        z-index: 1300;
       }
-      summary {
-        list-style: none;
+      .cdk-drag-placeholder {
+        opacity: 0.35;
+        border: 1.5px dashed var(--color-accent, #2563eb);
+        background: color-mix(in srgb, var(--color-accent, #2563eb) 6%, transparent);
+        border-radius: 8px;
       }
-      footer {
-        justify-content: flex-end;
+      .cdk-drag-animating {
+        transition: transform 180ms cubic-bezier(0, 0, 0.2, 1);
       }
-      p {
-        color: var(--color-danger-text);
+      .board-structure__list.cdk-drop-list-dragging .board-structure__row:not(.cdk-drag-placeholder) {
+        transition: transform 180ms cubic-bezier(0, 0, 0.2, 1);
       }
     `,
   ],
@@ -240,6 +596,7 @@ const colors = { not_started: '#94A3B8', active: '#2563EB', done: '#16A34A' };
 export class BoardStructureEditorComponent {
   private readonly taskApi = inject(TaskApiService);
   readonly groups = groups;
+  readonly categoryColors = colors;
   readonly presets = [
     { value: '#94a3b8', label: 'Gray' },
     { value: '#16a34a', label: 'Green' },
@@ -260,6 +617,7 @@ export class BoardStructureEditorComponent {
   protected readonly errorMessage = signal<string | null>(null);
   protected readonly addingTo = signal<TaskStatusCategory | null>(null);
   protected readonly newStatusName = signal('');
+  protected readonly newStatusColor = signal<string>('#94A3B8');
   protected readonly colorPickerFor = signal<string | null>(null);
   private originals = new Map<string, TaskStatusColumn>();
   private editingProject: string | null = null;
@@ -350,10 +708,23 @@ export class BoardStructureEditorComponent {
     if ((group === 'done' && this.done().length >= 1) || this.busy()) return;
     this.addingTo.set(group);
     this.newStatusName.set('');
+    this.newStatusColor.set(colors[group]);
+    if (this.colorPickerFor() === 'new') {
+      this.colorPickerFor.set(null);
+    }
   }
   cancelAdd() {
     this.addingTo.set(null);
     this.newStatusName.set('');
+    if (this.colorPickerFor() === 'new') {
+      this.colorPickerFor.set(null);
+    }
+  }
+  toggleAddColorPicker() {
+    this.colorPickerFor.update((value) => (value === 'new' ? null : 'new'));
+  }
+  setNewColor(color: string) {
+    this.newStatusColor.set(color);
   }
   async confirmAdd() {
     const group = this.addingTo(),
@@ -368,7 +739,7 @@ export class BoardStructureEditorComponent {
           displayOrder: this.flatten().length,
           visibility: 'public',
           category: group,
-          color: colors[group],
+          color: this.newStatusColor() || colors[group],
           requiresApproval: false,
         }),
       );

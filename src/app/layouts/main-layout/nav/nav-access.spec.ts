@@ -159,6 +159,19 @@ describe('canAccessNavItem', () => {
       expect(canAccessNavItem(attendance, checker(['attendance:read'], ['time_attendance']))).toBe(true);
       expect(canAccessNavItem(monitoring, checker(['attendance:read'], ['time_attendance']))).toBe(false);
     });
+
+    it('does not leak the parent People item to a bare Employee (core_hr module, no employees permission)', () => {
+      const people = NAV_ITEMS.find((item) => item.id === 'people')!;
+
+      // Regression: the "Employees" child used to declare no requiredPermissions at all, so
+      // any user with core_hr enabled saw "People" even without employees:read/write - matching
+      // the /people route guard's actual gate (app.routes.ts) closes that gap.
+      expect(canAccessNavItem(people, checker([], ['core_hr']))).toBe(false);
+      expect(canAccessNavItem(people, checker(['employees:read'], ['core_hr']))).toBe(true);
+      expect(canAccessNavItem(people, checker(['employees:write'], ['core_hr']))).toBe(true);
+      // A user who only has roles:manage still sees People, via the Approvals child.
+      expect(canAccessNavItem(people, checker(['roles:manage'], ['core_hr']))).toBe(true);
+    });
   });
 
   it('settings-bulk-onboarding requires both core_hr module and employees:write permission', () => {

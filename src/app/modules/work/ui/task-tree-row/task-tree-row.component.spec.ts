@@ -26,7 +26,7 @@ describe('TaskTreeRowComponent', () => {
     TestBed.configureTestingModule({
       imports: [TaskTreeRowComponent],
       providers: [
-        { provide: PeopleApiService, useValue: { getEmployee: vi.fn().mockReturnValue(of({ id: 'e1', fullName: 'Ada Lovelace' })) } }
+        { provide: PeopleApiService, useValue: { getEmployeeIdentity: vi.fn().mockReturnValue(of({ id: 'e1', name: 'Ada Lovelace', avatarFileId: null })) } }
       ]
     });
     fixture = TestBed.createComponent(TaskTreeRowComponent);

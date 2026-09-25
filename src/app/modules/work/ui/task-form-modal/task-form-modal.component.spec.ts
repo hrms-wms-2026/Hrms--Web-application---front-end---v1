@@ -100,7 +100,7 @@ describe('TaskFormModalComponent - edit mode', () => {
             ]
           }
         },
-        { provide: ProjectDetailStore, useValue: { milestones, loadProjectMembers: vi.fn().mockResolvedValue(undefined), projectMembers: () => members } },
+        { provide: ProjectDetailStore, useValue: { milestones, loadProjectMembers: vi.fn().mockResolvedValue(undefined), projectMembers: () => members, project: () => null } },
         { provide: CurrentEmployeeStore, useValue: { id: signal('e1'), ensureLoaded: vi.fn() } }
       ]
     }).compileComponents();
@@ -473,6 +473,62 @@ describe('TaskFormModalComponent - edit mode', () => {
   });
 });
 
+describe('TaskFormModalComponent - assignee display outside milestone scope', () => {
+  it('resolves the assignee name/avatar from the task\'s own identity when the assignee is missing from assignableMembers', async () => {
+    const scopedOutTaskDto = {
+      ...taskDto,
+      assigneeEmployeeIds: ['e3'],
+      assignees: [{ employeeId: 'e3', name: 'Chandra Silva', avatarFileId: null, avatarUrl: null }]
+    };
+    const api = { ...baseApi(), getTaskById: vi.fn().mockReturnValue(of(scopedOutTaskDto)) };
+
+    await TestBed.configureTestingModule({
+      imports: [TaskFormModalComponent],
+      providers: [
+        { provide: TaskApiService, useValue: api },
+        { provide: TaskCommentApiService, useValue: baseCommentApi() },
+        { provide: ProjectApiService, useValue: { getMyMilestones: vi.fn().mockReturnValue(of([])) } },
+        { provide: SprintApiService, useValue: { getByProject: vi.fn().mockReturnValue(of([])) } },
+        { provide: TaskBoardStore, useValue: { createTask: vi.fn(), error: () => null, tasks: () => [] } },
+        {
+          provide: ProjectDetailStore,
+          useValue: {
+            // The viewer's reachable milestones only surface e1/e2 - e3 (the actual assignee) is
+            // outside that scope, mirroring an admin-assigned task a lower-permission viewer opens.
+            milestones: signal([{ objectiveId: 'o1', title: 'Module 1', isOwner: true, isEffectiveOwner: true }]),
+            loadProjectMembers: vi.fn().mockResolvedValue(undefined),
+            projectMembers: () => [
+              { employeeId: 'e1', name: 'Ann', avatarUrl: null },
+              { employeeId: 'e2', name: 'Bob', avatarUrl: null }
+            ],
+            project: () => ({
+              members: [
+                { userId: 'e1', displayName: 'Ann', avatarFileId: null },
+                { userId: 'e2', displayName: 'Bob', avatarFileId: null },
+                { userId: 'e3', displayName: 'Chandra Silva (roster)', avatarFileId: null }
+              ],
+              memberCount: 3
+            })
+          }
+        },
+        { provide: CurrentEmployeeStore, useValue: { id: signal('e1'), ensureLoaded: vi.fn() } }
+      ]
+    }).compileComponents();
+
+    const fixture = TestBed.createComponent(TaskFormModalComponent);
+    fixture.componentRef.setInput('projectId', 'p1');
+    fixture.componentRef.setInput('mode', 'edit');
+    fixture.componentRef.setInput('taskId', 't1');
+    fixture.componentRef.setInput('open', true);
+    await flush(fixture);
+
+    expect(fixture.componentInstance.assigneeEmployeeId()).toBe('e3');
+    // Resolved from the task's own server-side identity, not the raw GUID and not the roster's
+    // (deliberately different) name, proving assignableMembers isn't the only source consulted.
+    expect(fixture.componentInstance.assigneeName()).toBe('Chandra Silva');
+  });
+});
+
 describe('TaskFormModalComponent - create mode', () => {
   let fixture: ComponentFixture<TaskFormModalComponent>;
   let api: Record<string, ReturnType<typeof vi.fn>>;
@@ -493,7 +549,7 @@ describe('TaskFormModalComponent - create mode', () => {
           { id: 'sp1', projectId: 'p1', name: 'Sprint 1', startDate: '2026-09-01', endDate: '2026-09-14', status: 'active', completedAt: null, achievedAt: null, canManage: true }
         ])) } },
         { provide: TaskBoardStore, useValue: { createTask, error: () => null } },
-        { provide: ProjectDetailStore, useValue: { milestones: signal([]), loadProjectMembers: vi.fn().mockResolvedValue(undefined), projectMembers: () => [] } },
+        { provide: ProjectDetailStore, useValue: { milestones: signal([]), loadProjectMembers: vi.fn().mockResolvedValue(undefined), projectMembers: () => [], project: () => null } },
         { provide: CurrentEmployeeStore, useValue: { id: signal('e1'), ensureLoaded: vi.fn() } }
       ]
     }).compileComponents();
@@ -823,7 +879,7 @@ describe('TaskFormModalComponent - subtasks section', () => {
         { provide: ProjectApiService, useValue: { getMyMilestones: vi.fn().mockReturnValue(of([])) } },
         { provide: SprintApiService, useValue: { getByProject: vi.fn().mockReturnValue(of([])) } },
         { provide: TaskBoardStore, useValue: boardStore },
-        { provide: ProjectDetailStore, useValue: { milestones: signal([{ objectiveId: 'o1', isOwner: true, isEffectiveOwner: true }]), loadProjectMembers: vi.fn().mockResolvedValue(undefined), projectMembers: () => [{ employeeId: 'e1', name: 'Ann', avatarUrl: null }] } },
+        { provide: ProjectDetailStore, useValue: { milestones: signal([{ objectiveId: 'o1', isOwner: true, isEffectiveOwner: true }]), loadProjectMembers: vi.fn().mockResolvedValue(undefined), projectMembers: () => [{ employeeId: 'e1', name: 'Ann', avatarUrl: null }], project: () => null } },
         { provide: CurrentEmployeeStore, useValue: { id: signal('e1'), ensureLoaded: vi.fn() } }
       ]
     }).compileComponents();
