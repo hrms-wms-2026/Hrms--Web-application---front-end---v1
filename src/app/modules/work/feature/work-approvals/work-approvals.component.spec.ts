@@ -8,6 +8,7 @@ import { WorkDropdownComponent } from '../../ui/work-dropdown/work-dropdown.comp
 import { WorkApprovalsStore } from '../../state/work-approvals.store';
 import { WorkApprovalsApiService } from '../../data-access/work-approvals-api.service';
 import { ProjectApiService } from '../../data-access/project-api.service';
+import { TaskStatusChangeRequestApiService } from '../../data-access/task-status-change-request-api.service';
 import { ApprovalItem } from '../../models/approval.model';
 import { AllocationRequestDto } from '../../models/dto/allocation-request.dto';
 
@@ -49,6 +50,10 @@ describe('WorkApprovalsComponent', () => {
         { provide: WorkApprovalsApiService, useValue: approvalsApi },
         { provide: ProjectApiService, useValue: projectApi },
         {
+          provide: TaskStatusChangeRequestApiService,
+          useValue: { getForProject: vi.fn().mockReturnValue(of({ canEditDirectly: false, canRequest: false, requests: [] })) }
+        },
+        {
           provide: ActivatedRoute,
           useValue: { snapshot: { paramMap: { get: (key: string) => key === 'id' ? 'project-1' : null } }, parent: null }
         }
@@ -58,11 +63,11 @@ describe('WorkApprovalsComponent', () => {
     fixture.detectChanges();
   }
 
-  it('loads all approvals and the current project modules on init', async () => {
+  it('uses the approval queue loaded by the project shell and loads current project modules', async () => {
     setup();
     await fixture.whenStable();
 
-    expect(storeStub.loadAll).toHaveBeenCalledTimes(1);
+    expect(storeStub.loadAll).not.toHaveBeenCalled();
     expect(projectApi.getMyMilestones).toHaveBeenCalledWith('project-1');
   });
 
@@ -126,7 +131,7 @@ describe('WorkApprovalsComponent', () => {
       requestedAdditionalHours: 12,
       reason: 'Need more delivery capacity'
     });
-    expect(storeStub.loadAll).toHaveBeenCalledTimes(2);
+    expect(storeStub.loadAll).toHaveBeenCalledTimes(1);
     expect(component.createOpen()).toBe(false);
   });
 

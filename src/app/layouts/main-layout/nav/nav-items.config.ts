@@ -2,7 +2,7 @@ import { NavItem } from './nav-item.model';
 
 export const NAV_ITEMS: readonly NavItem[] = [
   { id: 'home', label: 'Home', icon: 'home', path: '/dashboard' },
-  { id: 'work', label: 'Work', icon: 'work', path: '/work', requiredModules: ['worksync_foundation', 'projects', 'objectives_milestones', 'tasks', 'boards', 'planning_sprints'], requiredPermissions: ['projects:access'] },
+  { id: 'work', label: 'Work', icon: 'work', path: '/work', requiredModules: ['worksync_foundation', 'projects', 'objectives_milestones', 'tasks', 'boards', 'planning_sprints'] },
   {
     id: 'people', label: 'People', icon: 'people', path: '/people', requiredModules: ['core_hr'],
     children: [

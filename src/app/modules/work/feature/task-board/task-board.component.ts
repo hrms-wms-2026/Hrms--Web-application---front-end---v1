@@ -287,6 +287,12 @@ export class TaskBoardComponent implements OnInit, AfterViewChecked, AfterViewIn
 
   ngOnInit(): void {
     this.highlightTaskId = this.route.snapshot?.queryParamMap?.get('highlightTaskId') ?? null;
+    const linkedTaskId = this.route.snapshot?.queryParamMap?.get('taskId');
+    if (linkedTaskId) {
+      this.taskModalMode.set('edit');
+      this.taskModalTaskId.set(linkedTaskId);
+      this.taskModalOpen.set(true);
+    }
     const assignee = this.route.snapshot?.queryParamMap?.get('assignee');
     if (assignee) this.assigneeFilter.set([assignee]);
     void this.currentEmployee.ensureLoaded();

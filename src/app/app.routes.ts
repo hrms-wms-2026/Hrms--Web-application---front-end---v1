@@ -70,7 +70,7 @@ export const routes: Routes = [
       {
         path: 'work',
         canActivate: [permissionGuard],
-        data: { permissions: ['projects:access'] },
+        data: { modules: ['worksync_foundation', 'projects', 'objectives_milestones', 'tasks', 'boards', 'planning_sprints'] },
         loadChildren: () => import('./modules/work/work.routes').then((module) => module.WORK_ROUTES)
       },
       {

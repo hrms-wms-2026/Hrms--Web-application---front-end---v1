@@ -142,7 +142,8 @@ export class ApprovalHistoryModalComponent {
       allocation_extend: 'Allocation request',
       objective_edit: 'Module edit',
       objective_change: 'Module change',
-      objective_invitation: 'Module invitation'
+      objective_invitation: 'Module invitation',
+      task_status_change: 'Task status change'
     };
     return labels[kind] ?? 'Approval request';
   }
@@ -155,6 +156,7 @@ export class ApprovalHistoryModalComponent {
       accepted: 'Accepted',
       declined: 'Declined',
       cancelled: 'Cancelled',
+      outdated: 'Outdated',
       expired: 'Expired'
     };
     return labels[status] ?? status;

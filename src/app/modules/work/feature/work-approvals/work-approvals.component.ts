@@ -18,11 +18,12 @@ import { ButtonComponent } from '../../../../shared/ui/button/button.component';
 import { ApprovalHistoryItemDto } from '../../models/dto/approval-history.dto';
 import { ApprovalHistoryModalComponent } from '../../ui/approval-history-modal/approval-history-modal.component';
 import { TaskFormModalComponent } from '../../ui/task-form-modal/task-form-modal.component';
+import { TaskStatusChangeRequestsPanelComponent } from '../../ui/task-status-change-requests-panel/task-status-change-requests-panel.component';
 
 @Component({
   selector: 'app-work-approvals',
   standalone: true,
-  imports: [DatePipe, ApprovalRequestRowComponent, ApprovalHistoryModalComponent, TaskFormModalComponent, ModalComponent, InputComponent, WorkDropdownComponent, ButtonComponent],
+  imports: [DatePipe, TaskStatusChangeRequestsPanelComponent, ApprovalRequestRowComponent, ApprovalHistoryModalComponent, TaskFormModalComponent, ModalComponent, InputComponent, WorkDropdownComponent, ButtonComponent],
   template: `
     <ng-template #toolbarTpl>
       <div class="work-approvals__toolbar-actions">
@@ -71,6 +72,13 @@ import { TaskFormModalComponent } from '../../ui/task-form-modal/task-form-modal
             <span>{{ historyError() }}</span>
             <button type="button" (click)="loadHistory()">Try again</button>
           </div>
+        }
+
+        @if (projectId()) {
+          <app-task-status-change-requests-panel
+            [projectId]="projectId()"
+            (countChange)="statusChangeRequestCount.set($event)"
+          />
         }
 
         @if (taskCreationRequests().length > 0) {
@@ -268,6 +276,7 @@ export class WorkApprovalsComponent implements OnInit, AfterViewInit, OnDestroy 
   protected readonly historyError = signal<string | null>(null);
   protected readonly historyItems = signal<readonly ApprovalHistoryItemDto[]>([]);
   protected readonly selectedTaskId = signal<string | null>(null);
+  protected readonly statusChangeRequestCount = signal(0);
   private historyLoadVersion = 0;
 
   // The store's "mine" lists span every project the caller owns modules in; scope each one down
@@ -292,6 +301,7 @@ export class WorkApprovalsComponent implements OnInit, AfterViewInit, OnDestroy 
   );
   protected readonly visiblePendingCount = computed(() =>
     this.sentPendingRequests().length
+    + this.statusChangeRequestCount()
     + this.taskCreationRequests().length
     + this.taskEditRequests().length
     + this.allocationRequests().length
@@ -326,7 +336,6 @@ export class WorkApprovalsComponent implements OnInit, AfterViewInit, OnDestroy 
   }
 
   ngOnInit(): void {
-    void this.store.loadAll();
     void this.loadHistory();
   }
 
@@ -456,7 +465,8 @@ export class WorkApprovalsComponent implements OnInit, AfterViewInit, OnDestroy 
       allocation_extend: 'Allocation request',
       objective_edit: 'Module edit',
       objective_change: 'Module change',
-      objective_invitation: 'Module invitation'
+      objective_invitation: 'Module invitation',
+      task_status_change: 'Task status change'
     };
     return labels[kind] ?? 'Approval request';
   }

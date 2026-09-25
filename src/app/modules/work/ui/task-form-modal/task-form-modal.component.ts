@@ -28,6 +28,7 @@ import { ConfirmModalComponent } from '../../../../shared/ui/confirm-modal/confi
 import { TaskDuplicateDialogComponent, TaskDuplicatePayload } from '../task-duplicate-dialog/task-duplicate-dialog.component';
 import { TaskConvertToSubtaskDialogComponent, TaskConvertToSubtaskCandidate, TaskConvertToSubtaskPayload } from '../task-convert-to-subtask-dialog/task-convert-to-subtask-dialog.component';
 import { DatePickerComponent } from '../../../../shared/ui/date-picker/date-picker.component';
+import { buildTaskDeepLink, copyTextToClipboard } from '../../utils/task-deep-link.util';
 import { TaskAssigneeDropdownComponent } from '../task-assignee-dropdown/task-assignee-dropdown.component';
 import { NotificationService } from '../../../../core/services/notification.service';
 
@@ -182,7 +183,7 @@ export type TaskFormMode = 'create' | 'edit';
             @if (currentEffectiveMode() === 'edit' && task(); as headerTask) {
               <div class="tfm-header-actions">
                 <span class="tfm-created-at" data-testid="task-created-at">{{ createdAtLabel() }}</span>
-                <button type="button" class="tfm-header-share-btn" aria-label="Share task">
+                <button type="button" class="tfm-header-share-btn" aria-label="Share task" (click)="shareTask()">
                   <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><line x1="8.59" y1="13.51" x2="15.42" y2="17.49"/><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"/></svg>
                   <span>Share</span>
                 </button>
@@ -1123,7 +1124,7 @@ export type TaskFormMode = 'create' | 'edit';
 
                     <!-- Comments component: always mounted for test compatibility and state retention, visible on Comments & All tabs -->
                     <div [hidden]="activityTab() !== 'comments' && activityTab() !== 'all'">
-                      <app-task-comments [taskId]="tid" [sortOrder]="activitySortOrder()" />
+                      <app-task-comments [taskId]="tid" [projectId]="projectId()" [sortOrder]="activitySortOrder()" />
                     </div>
 
                     @if (activityTab() === 'history' || activityTab() === 'all') {
@@ -2650,6 +2651,19 @@ export class TaskFormModalComponent {
     } finally {
       this.loading.set(false);
     }
+  }
+
+  async shareTask(): Promise<void> {
+    const taskId = this.currentTaskId();
+    const projectId = this.projectId();
+    if (!taskId || !projectId) {
+      this.notificationService.error('Unable to create a task link.');
+      return;
+    }
+
+    const copied = await copyTextToClipboard(buildTaskDeepLink(window.location.origin, projectId, taskId));
+    if (copied) this.notificationService.success('Task link copied to clipboard.');
+    else this.notificationService.error('Unable to copy the task link.');
   }
 
   private async loadCreateContext(): Promise<void> {

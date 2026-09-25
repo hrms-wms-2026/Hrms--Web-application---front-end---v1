@@ -10,6 +10,7 @@ import { ProjectDetailStore } from '../../state/project-detail.store';
 import { TaskBoardStore } from '../../state/task-board.store';
 import { CurrentEmployeeStore } from '../../state/current-employee.store';
 import { TaskCommentApiService } from '../../data-access/task-comment-api.service';
+import { NotificationService } from '../../../../core/services/notification.service';
 
 function baseCommentApi(): Record<string, ReturnType<typeof vi.fn>> {
   return {
@@ -119,6 +120,19 @@ describe('TaskFormModalComponent - edit mode', () => {
     expect(fixture.componentInstance.title()).toBe('First');
     expect(fixture.componentInstance.statusId()).toBe('s1');
     expect(fixture.componentInstance.assigneeEmployeeId()).toBe('e1');
+  });
+
+  it('shares a deep link that identifies the open task', async () => {
+    const writeText = vi.fn().mockResolvedValue(undefined);
+    Object.defineProperty(navigator, 'clipboard', { configurable: true, value: { writeText } });
+    const notificationService = TestBed.inject(NotificationService);
+    const success = vi.spyOn(notificationService, 'success');
+
+    (fixture.nativeElement.querySelector('.tfm-header-share-btn') as HTMLButtonElement).click();
+    await fixture.whenStable();
+
+    expect(writeText).toHaveBeenCalledWith(expect.stringContaining('/work/p1/board?taskId=t1'));
+    expect(success).toHaveBeenCalledWith('Task link copied to clipboard.');
   });
 
   it('shows a plain description until the description section is clicked', async () => {

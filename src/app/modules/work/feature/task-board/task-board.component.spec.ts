@@ -12,9 +12,12 @@ import { TaskApiService } from '../../data-access/task-api.service';
 import { EmployeeDirectoryStore } from '../../state/employee-directory.store';
 
 describe('TaskBoardComponent', () => {
-  function routeStub() {
+  function routeStub(taskId: string | null = null) {
     return {
-      snapshot: { paramMap: { get: (key: string) => (key === 'id' ? 'project-1' : null) }, queryParamMap: { get: () => null } }
+      snapshot: {
+        paramMap: { get: (key: string) => (key === 'id' ? 'project-1' : null) },
+        queryParamMap: { get: (key: string) => key === 'taskId' ? taskId : null }
+      }
     };
   }
 
@@ -58,6 +61,37 @@ describe('TaskBoardComponent', () => {
     await fixture.whenStable();
 
     expect(loadBoard).toHaveBeenCalledWith('project-1');
+  });
+
+  it('opens the task detail modal when a shared task link supplies taskId', () => {
+    const storeStub = {
+      loadBoard: vi.fn().mockResolvedValue(undefined), columnsWithTasks: () => [], tasks: () => [],
+      loading: () => false, error: () => null, moveTask: vi.fn(), statuses: () => []
+    };
+    TestBed.configureTestingModule({
+      imports: [TaskBoardComponent],
+      providers: [
+        { provide: TaskBoardStore, useValue: storeStub },
+        { provide: ProjectDetailStore, useValue: { milestones: () => [], loadProjectMembers: vi.fn().mockResolvedValue(undefined), projectMembers: () => [], project: () => null } },
+        { provide: SprintApiService, useValue: { getByProject: vi.fn().mockReturnValue(of([])) } },
+        { provide: TaskApiService, useValue: { getCategories: vi.fn().mockReturnValue(of([])) } },
+        { provide: EmployeeDirectoryStore, useValue: { get: vi.fn(), ensureLoaded: vi.fn().mockResolvedValue(undefined) } },
+        { provide: ActivatedRoute, useValue: routeStub('shared-task-1') },
+        { provide: Router, useValue: { navigate: vi.fn() } }
+      ]
+    });
+
+    const fixture = TestBed.createComponent(TaskBoardComponent);
+    fixture.componentInstance.ngOnInit();
+    const instance = fixture.componentInstance as unknown as {
+      taskModalOpen: () => boolean;
+      taskModalMode: () => string;
+      taskModalTaskId: () => string;
+    };
+
+    expect(instance.taskModalOpen()).toBe(true);
+    expect(instance.taskModalMode()).toBe('edit');
+    expect(instance.taskModalTaskId()).toBe('shared-task-1');
   });
 
   it('shows all tasks by default and only filters by sprint when explicitly selected', async () => {

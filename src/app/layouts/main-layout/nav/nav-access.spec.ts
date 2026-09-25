@@ -72,12 +72,11 @@ describe('canAccessNavItem', () => {
   });
 
   describe('NAV_ITEMS (real config)', () => {
-    it('grants exactly the documented modules for Work, and requires projects:access', () => {
+    it('grants Work from module entitlement without a module-entry permission', () => {
       const work = NAV_ITEMS.find((item) => item.id === 'work')!;
-      expect(canAccessNavItem(work, checker(['projects:access'], ['tasks']))).toBe(true);
-      expect(canAccessNavItem(work, checker(['projects:access'], ['objectives_milestones']))).toBe(true);
-      expect(canAccessNavItem(work, checker(['projects:access'], ['core_hr']))).toBe(false);
-      expect(canAccessNavItem(work, checker([], ['tasks']))).toBe(false);
+      expect(canAccessNavItem(work, checker([], ['tasks']))).toBe(true);
+      expect(canAccessNavItem(work, checker([], ['objectives_milestones']))).toBe(true);
+      expect(canAccessNavItem(work, checker([], ['core_hr']))).toBe(false);
     });
 
     it('grants Time Off on the "leave" module key, not "time_off", once a child is reachable', () => {

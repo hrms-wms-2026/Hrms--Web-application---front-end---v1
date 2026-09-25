@@ -58,4 +58,17 @@ describe('MilestoneSubMenuComponent', () => {
     const settingsHref = (links[links.length - 1] as HTMLAnchorElement).getAttribute('href');
     expect(settingsHref).toBe('/settings');
   });
+
+  it('shows a red indicator on Approvals only when received approvals are pending', () => {
+    expect(fixture.nativeElement.querySelector('[data-testid="approvals-pending-indicator"]')).toBeNull();
+
+    fixture.componentRef.setInput('pendingApprovalCount', 2);
+    fixture.detectChanges();
+
+    const indicator = fixture.nativeElement.querySelector('[data-testid="approvals-pending-indicator"]');
+    const approvalsLink = Array.from(fixture.nativeElement.querySelectorAll('[data-testid="sub-menu-tab"]'))
+      .find((element: any) => element.textContent.includes('Approvals')) as HTMLAnchorElement;
+    expect(indicator).not.toBeNull();
+    expect(approvalsLink.getAttribute('aria-label')).toBe('Approvals, 2 pending');
+  });
 });
