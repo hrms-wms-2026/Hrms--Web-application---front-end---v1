@@ -203,6 +203,10 @@ export class TaskApiService {
     return this.http.delete<void>(`${this.baseUrl}/tasks/pending-uploads/${fileId}`);
   }
 
+  downloadFile(fileId: string): Observable<Blob> {
+    return this.http.get(`${this.baseUrl}/tasks/files/${fileId}`, { responseType: 'blob' });
+  }
+
   getFileUrl(fileId: string): string {
     return `${this.baseUrl}/tasks/files/${fileId}`;
   }

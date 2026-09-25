@@ -17,7 +17,10 @@ describe('WorkApprovalsComponent', () => {
   let approvalsApi: any;
   let projectApi: any;
 
-  function setup(createAllocationRequest = vi.fn().mockReturnValue(of({}))): void {
+  function setup(
+    createAllocationRequest = vi.fn().mockReturnValue(of({})),
+    getApprovalHistory = vi.fn().mockReturnValue(of([]))
+  ): void {
     storeStub = {
       loadAll: vi.fn().mockResolvedValue(undefined),
       loading: () => false,
@@ -31,7 +34,7 @@ describe('WorkApprovalsComponent', () => {
       approve: vi.fn().mockResolvedValue(true),
       reject: vi.fn().mockResolvedValue(true)
     };
-    approvalsApi = { createAllocationRequest };
+    approvalsApi = { createAllocationRequest, getApprovalHistory };
     projectApi = {
       getMyMilestones: vi.fn().mockReturnValue(of([
         { objectiveId: 'obj-1', title: 'Module One', isOwner: true },
@@ -74,6 +77,38 @@ describe('WorkApprovalsComponent', () => {
     expect(dropdown.options().map((option) => option.label)).toEqual(['Module One', 'Module Two']);
     const trigger = fixture.nativeElement.querySelector('[data-testid="create-approval-modal"] .work-dropdown__trigger');
     expect(trigger.textContent).toContain('Select a module');
+  });
+
+  it('opens History and loads this project\'s sent, pending, and decided approvals', async () => {
+    setup();
+    await fixture.whenStable();
+
+    fixture.componentInstance.openHistory();
+    await fixture.whenStable();
+    fixture.detectChanges();
+
+    expect(approvalsApi.getApprovalHistory).toHaveBeenCalledWith('project-1');
+    expect(fixture.nativeElement.querySelector('[data-testid="approval-history-modal"]')).not.toBeNull();
+  });
+
+  it('shows requests sent by the user that are still awaiting approval on the main page', async () => {
+    const getApprovalHistory = vi.fn().mockReturnValue(of([{
+      id: 'allocation-1', objectiveId: 'obj-1', kind: 'allocation_extend', status: 'pending',
+      direction: 'sent', subjectTitle: 'Module One', detail: '12 additional hours - Delivery work',
+      requestedById: 'employee-1', requestedByName: 'Alex Silva', approverId: 'employee-2',
+      approverName: 'Priya Nair', decidedById: null, decidedByName: null, decisionComment: null,
+      createdAt: '2026-09-25T08:00:00Z', decidedAt: null
+    }]));
+    setup(vi.fn().mockReturnValue(of({})), getApprovalHistory);
+    await fixture.whenStable();
+    fixture.detectChanges();
+
+    const row = fixture.nativeElement.querySelector('[data-testid="sent-pending-request-allocation-1"]');
+    expect(row).not.toBeNull();
+    expect(row.textContent).toContain('Module One');
+    expect(row.textContent).toContain('Priya Nair');
+    expect(row.textContent).toContain('Pending');
+    expect(fixture.nativeElement.querySelector('[data-testid="approvals-empty-state"]')).toBeNull();
   });
 
   it('submits a create allocation request and reloads approvals on success', async () => {

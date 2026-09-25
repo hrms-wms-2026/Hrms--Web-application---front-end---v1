@@ -6,6 +6,11 @@ export interface AllocationRequestPayloadDto {
 export interface AllocationRequestDto {
   id: string;
   objectiveId: string;
+  requestedById?: string;
+  requestedByName?: string | null;
+  objectiveTitle?: string | null;
+  projectId?: string | null;
+  currentAllocatedHours?: number | null;
   requestType: 'extend_allocation';
   status: 'pending' | 'approved' | 'rejected';
   payload: AllocationRequestPayloadDto;
@@ -35,6 +40,10 @@ export interface ObjectiveChangeRequestDto {
   objectiveId: string;
   requestType: string;
   requestedById: string;
+  requestedByName?: string | null;
+  objectiveTitle?: string | null;
+  projectId?: string | null;
+  currentAllocatedHours?: number | null;
   reportingManagerId: string;
   status: 'pending' | 'approved' | 'rejected';
   payloadJson: string | null;

@@ -53,6 +53,7 @@ function baseApi(): Record<string, ReturnType<typeof vi.fn>> {
     moveTaskStatus: vi.fn().mockReturnValue(of(undefined)),
     uploadPendingFile: vi.fn().mockReturnValue(of({ fileId: 'f1', originalFileName: 'a.png', fileSizeBytes: 100, contentType: 'image/png' })),
     deletePendingFile: vi.fn().mockReturnValue(of(undefined)),
+    downloadFile: vi.fn().mockReturnValue(of(new Blob(['file'], { type: 'application/pdf' }))),
     getFileUrl: vi.fn((fileId: string) => `http://test/api/v1/work/tasks/files/${fileId}`),
     getCurrentEmployee: vi.fn().mockReturnValue(of({ employeeId: 'e1' }))
   };
@@ -452,6 +453,25 @@ describe('TaskFormModalComponent - edit mode', () => {
     expect(fixture.componentInstance.attachedFiles()).toEqual([{ fileId: 'f1', name: 'spec.pdf', sizeBytes: 2048 }]);
     const pill = fixture.nativeElement.querySelector('.tal-pill');
     expect(pill.textContent).toContain('spec.pdf');
+  });
+
+  it('downloads an attachment when its file name is clicked', async () => {
+    const objectUrl = 'blob:task-attachment';
+    const createObjectUrl = vi.spyOn(URL, 'createObjectURL').mockReturnValue(objectUrl);
+    const revokeObjectUrl = vi.spyOn(URL, 'revokeObjectURL').mockImplementation(() => undefined);
+    const anchorClick = vi.spyOn(HTMLAnchorElement.prototype, 'click').mockImplementation(() => undefined);
+
+    (fixture.nativeElement.querySelector('.tal-pill-download') as HTMLButtonElement).click();
+    await fixture.whenStable();
+
+    expect(api['downloadFile']).toHaveBeenCalledWith('f1');
+    expect(createObjectUrl).toHaveBeenCalled();
+    expect(anchorClick).toHaveBeenCalled();
+    expect(revokeObjectUrl).toHaveBeenCalledWith(objectUrl);
+
+    createObjectUrl.mockRestore();
+    revokeObjectUrl.mockRestore();
+    anchorClick.mockRestore();
   });
 
   it('on Save Changes: includes the current attachedFiles ids in the edit payload', async () => {

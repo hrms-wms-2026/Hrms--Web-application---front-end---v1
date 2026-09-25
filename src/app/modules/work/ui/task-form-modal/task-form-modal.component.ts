@@ -593,6 +593,7 @@ export type TaskFormMode = 'create' | 'edit';
                         [files]="attachedFiles()"
                         (fileSelected)="onAttachmentFilesSelected($event)"
                         (removed)="removeAttachedFile($event)"
+                        (downloadRequested)="downloadAttachment($event)"
                       />
                     </div>
                   </div>
@@ -1027,6 +1028,7 @@ export type TaskFormMode = 'create' | 'edit';
                       [files]="attachedFiles()"
                       (fileSelected)="onAttachmentFilesSelected($event)"
                       (removed)="removeAttachedFile($event)"
+                      (downloadRequested)="downloadAttachment($event)"
                     />
                   }
                 </div>
@@ -1045,6 +1047,7 @@ export type TaskFormMode = 'create' | 'edit';
                       [files]="attachedFiles()"
                       (fileSelected)="onAttachmentFilesSelected($event)"
                       (removed)="removeAttachedFile($event)"
+                      (downloadRequested)="downloadAttachment($event)"
                     />
                   </div>
                 }
@@ -2918,6 +2921,23 @@ export class TaskFormModalComponent {
 
   async onAttachmentFilesSelected(files: FileList | File[]): Promise<void> {
     await this.uploadAttachmentFiles(files);
+  }
+
+  async downloadAttachment(file: AttachmentPill): Promise<void> {
+    try {
+      const blob = await firstValueFrom(this.taskApi.downloadFile(file.fileId));
+      const objectUrl = URL.createObjectURL(blob);
+      const anchor = document.createElement('a');
+      anchor.href = objectUrl;
+      anchor.download = file.name || 'attachment';
+      anchor.style.display = 'none';
+      document.body.appendChild(anchor);
+      anchor.click();
+      anchor.remove();
+      URL.revokeObjectURL(objectUrl);
+    } catch {
+      this.errorMessage.set(`Failed to download ${file.name}.`);
+    }
   }
 
   private async uploadAttachmentFiles(files: FileList | File[]): Promise<void> {
