@@ -119,6 +119,46 @@
                   Connect Microsoft or Zoom to add a meeting
                 </a>
               }
+            } @else {
+              @if (pendingMeetingProvider() === null) {
+                @if (hasTeamsCapableConnection) {
+                  <button
+                    type="button"
+                    class="-mt-1 self-start text-xs font-medium text-[var(--color-accent)] hover:underline"
+                    (click)="selectPendingMeeting('microsoft_teams')"
+                    data-testid="calendar-form-add-teams-meeting"
+                  >
+                    + Add Teams meeting
+                  </button>
+                }
+                @if (hasZoomCapableConnection) {
+                  <button
+                    type="button"
+                    class="-mt-1 self-start text-xs font-medium text-[var(--color-accent)] hover:underline"
+                    (click)="selectPendingMeeting('zoom')"
+                    data-testid="calendar-form-add-zoom-meeting"
+                  >
+                    + Add Zoom meeting
+                  </button>
+                }
+                @if (!hasTeamsCapableConnection && !hasZoomCapableConnection) {
+                  <a routerLink="/settings/calendar-connections" class="-mt-1 text-xs text-[var(--color-text-secondary)] hover:underline" data-testid="calendar-form-connect-microsoft-prompt">
+                    Connect Microsoft or Zoom to add a meeting
+                  </a>
+                }
+              } @else {
+                <div class="flex items-center justify-between rounded-md border border-[var(--color-border)] bg-[var(--color-surface)] px-2.5 py-1.5 text-xs" data-testid="calendar-form-pending-meeting">
+                  <span>{{ pendingMeetingProvider() === 'zoom' ? 'Zoom' : 'Teams' }} meeting will be created when you save</span>
+                  <button
+                    type="button"
+                    class="ml-2 shrink-0 text-[var(--color-text-secondary)] hover:text-red-600"
+                    (click)="clearPendingMeeting()"
+                    data-testid="calendar-form-remove-pending-meeting"
+                  >
+                    Remove
+                  </button>
+                </div>
+              }
             }
           }
         </div>
@@ -246,6 +286,10 @@
             }
           </div>
         }
+      } @else {
+        <div class="flex items-center justify-end">
+          <app-button type="button" variant="secondary" data-testid="calendar-form-add-participants-edit" (click)="openParticipantPicker()">Add participants</app-button>
+        </div>
       }
 
       @if (isEdit && event?.participants?.length) {
@@ -265,6 +309,13 @@
                 [class.bg-red-100]="participant.responseStatus === 'rejected'"
                 [class.text-red-700]="participant.responseStatus === 'rejected'"
               >{{ participant.responseStatus }}</span>
+              <button
+                type="button"
+                data-testid="calendar-form-existing-participant-remove"
+                class="text-[var(--color-text-secondary)] hover:text-red-600"
+                [attr.aria-label]="'Remove ' + participant.employeeName"
+                (click)="onRemoveExistingParticipant(participant.employeeId)"
+              >&times;</button>
             </div>
           }
         </div>
@@ -368,7 +419,7 @@
   [selectedIds]="participantIds()"
   (selectedIdsChange)="onParticipantIdsChange($event)"
   (selectedPeopleChange)="onParticipantPeopleChange($event)"
-  (closed)="participantPickerOpen.set(false)"
+  (closed)="onParticipantPickerClosed()"
 />
 
 <app-confirm-modal

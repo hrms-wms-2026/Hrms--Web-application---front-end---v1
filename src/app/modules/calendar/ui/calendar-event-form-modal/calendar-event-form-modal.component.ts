@@ -65,7 +65,7 @@ const meetingLinkValidator: ValidatorFn = (control: AbstractControl): Validation
 };
 
 export type CalendarEventFormSubmission =
-  | { create: CreateCalendarEventRequest }
+  | { create: CreateCalendarEventRequest; meetingProvider: MeetingProvider | null }
   | { update: UpdateCalendarEventRequest; scope: RecurrenceEditScope | null };
 
 export interface RespondToCalendarEventPayload {
@@ -109,6 +109,8 @@ export class CalendarEventFormModalComponent implements OnChanges {
   @Output() loadEligibleNominees = new EventEmitter<void>();
   @Output() addMeeting = new EventEmitter<MeetingProvider>();
   @Output() removeMeeting = new EventEmitter<void>();
+  @Output() addParticipantsToEvent = new EventEmitter<readonly string[]>();
+  @Output() removeExistingParticipant = new EventEmitter<string>();
   @Output() cancel = new EventEmitter<void>();
 
   private readonly authStore = inject(AuthStore);
@@ -126,6 +128,10 @@ export class CalendarEventFormModalComponent implements OnChanges {
   readonly participants = signal<readonly { id: string; name: string }[]>([]);
   readonly maxParticipantAvatars = 6;
   readonly discardConfirmOpen = signal(false);
+  /** Teams/Zoom provider picked while creating a new event - the meeting can't actually be
+   * created until the event itself has a real id, so this is just intent, resolved into a
+   * `createMeeting` call by the parent once `save` returns the new event's id. */
+  readonly pendingMeetingProvider = signal<MeetingProvider | null>(null);
 
   /** Zone the typed start/end times are read in. Falls back to the organizer's tenant
    * zone (`myTimezone`) until the user explicitly picks one; changing it re-converts
@@ -236,6 +242,13 @@ export class CalendarEventFormModalComponent implements OnChanges {
       this.endTimeTouched = false;
       this.timezoneTouched = false;
       this.pickedTimezone.set(this.myTimezone);
+      this.pendingMeetingProvider.set(null);
+      // Cleared for both edit and create: this is the participant *picker's* staging state
+      // (who's checked in the "Add participants" modal before it's submitted), not the event's
+      // actual saved participants - carrying over a previous session's picks (e.g. from create
+      // mode) made the picker show unrelated people as pre-selected the next time it opened.
+      this.participantIds.set([]);
+      this.participants.set([]);
     }
     if (justOpened || changes['myTimezone']) {
       this.timezoneOptions.set(
@@ -283,8 +296,6 @@ export class CalendarEventFormModalComponent implements OnChanges {
 
     if (justOpened) {
       this.form.markAsPristine();
-      this.participantIds.set([]);
-      this.participants.set([]);
     }
   }
 
@@ -369,6 +380,15 @@ export class CalendarEventFormModalComponent implements OnChanges {
     this.addMeeting.emit(provider);
   }
 
+  selectPendingMeeting(provider: MeetingProvider): void {
+    this.pendingMeetingProvider.set(provider);
+    this.form.markAsDirty();
+  }
+
+  clearPendingMeeting(): void {
+    this.pendingMeetingProvider.set(null);
+  }
+
   onRemoveMeeting(): void {
     this.removeMeeting.emit();
   }
@@ -392,6 +412,22 @@ export class CalendarEventFormModalComponent implements OnChanges {
 
   openParticipantPicker(): void {
     this.participantPickerOpen.set(true);
+  }
+
+  /** In edit mode the picker adds straight to the saved event (there's no pending "create"
+   * payload to attach the selection to) - closing it with a selection present submits that
+   * selection immediately and clears the picker's local staging state. */
+  onParticipantPickerClosed(): void {
+    this.participantPickerOpen.set(false);
+    if (this.isEdit && this.participantIds().length > 0) {
+      this.addParticipantsToEvent.emit(this.participantIds());
+      this.participantIds.set([]);
+      this.participants.set([]);
+    }
+  }
+
+  onRemoveExistingParticipant(employeeId: string): void {
+    this.removeExistingParticipant.emit(employeeId);
   }
 
   private isDirty(): boolean {
@@ -481,7 +517,8 @@ export class CalendarEventFormModalComponent implements OnChanges {
         isAllDay: !!raw.isAllDay, location: raw.location || null,
         meetingLink: raw.meetingLink || null, color: raw.color || null, recurrence,
         participantEmployeeIds: this.participantIds(), recurrenceRule
-      }
+      },
+      meetingProvider: this.pendingMeetingProvider()
     });
   }
 

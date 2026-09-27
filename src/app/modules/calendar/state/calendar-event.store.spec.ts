@@ -41,15 +41,26 @@ describe('CalendarEventStore', () => {
     expect(store.loadError()).toBeTruthy();
   });
 
-  it('createEvent appends the created event on success', async () => {
+  it('createEvent appends the created event on success and returns it', async () => {
     const work = store.createEvent({
       title: 'New', description: null, startDate: '2026-09-01T09:00:00Z', endDate: '2026-09-01T09:30:00Z',
       isAllDay: false, location: null, meetingLink: null, color: null,
       recurrence: 'none', participantEmployeeIds: [], recurrenceRule: null
     });
     http.expectOne(`${environment.apiUrl}/calendar`).flush(makeEvent({ id: 'e2', title: 'New' }));
-    expect(await work).toBe(true);
+    const created = await work;
+    expect(created?.id).toBe('e2');
     expect(store.events().map((e) => e.id)).toContain('e2');
+  });
+
+  it('createEvent returns null on failure', async () => {
+    const work = store.createEvent({
+      title: 'New', description: null, startDate: '2026-09-01T09:00:00Z', endDate: '2026-09-01T09:30:00Z',
+      isAllDay: false, location: null, meetingLink: null, color: null,
+      recurrence: 'none', participantEmployeeIds: [], recurrenceRule: null
+    });
+    http.expectOne(`${environment.apiUrl}/calendar`).flush({ detail: 'boom' }, { status: 500, statusText: 'Error' });
+    expect(await work).toBeNull();
   });
 
   it('deleteEvent removes the event from state on success', async () => {
@@ -203,5 +214,48 @@ describe('CalendarEventStore', () => {
     http.expectOne(`${environment.apiUrl}/calendar/e7/meeting`).flush(null);
     expect(await work).toBe(true);
     expect(store.events().find((e) => e.id === 'e7')?.meetingLink).toBeNull();
+  });
+
+  it('addParticipants replaces the event participants with the server-returned list', async () => {
+    const load = store.loadEvents('2026-09-01T00:00:00Z', '2026-09-30T00:00:00Z');
+    http.expectOne((r) => r.url === `${environment.apiUrl}/calendar`).flush({ events: [makeEvent({ id: 'e8' })] });
+    await load;
+
+    const work = store.addParticipants('e8', ['emp-1']);
+    http.expectOne(`${environment.apiUrl}/calendar/e8/participants`).flush({
+      participants: [{ employeeId: 'emp-1', employeeName: 'Kiru B', responseStatus: 'pending' }]
+    });
+    expect(await work).toBe(true);
+    expect(store.events().find((e) => e.id === 'e8')?.participants).toEqual([
+      { employeeId: 'emp-1', employeeName: 'Kiru B', responseStatus: 'pending' }
+    ]);
+  });
+
+  it('addParticipants sets actionError on failure', async () => {
+    const work = store.addParticipants('e9', ['emp-1']);
+    http.expectOne(`${environment.apiUrl}/calendar/e9/participants`).flush({ detail: 'boom' }, { status: 403, statusText: 'Forbidden' });
+    expect(await work).toBe(false);
+    expect(store.actionError()).toBeTruthy();
+  });
+
+  it('removeParticipant filters the removed employee out of the event participants', async () => {
+    const load = store.loadEvents('2026-09-01T00:00:00Z', '2026-09-30T00:00:00Z');
+    http.expectOne((r) => r.url === `${environment.apiUrl}/calendar`).flush({
+      events: [makeEvent({
+        id: 'e10',
+        participants: [
+          { employeeId: 'emp-1', employeeName: 'Kiru B', responseStatus: 'pending' },
+          { employeeId: 'emp-2', employeeName: 'Saif A', responseStatus: 'accepted' }
+        ]
+      })]
+    });
+    await load;
+
+    const work = store.removeParticipant('e10', 'emp-1');
+    http.expectOne(`${environment.apiUrl}/calendar/e10/participants/emp-1`).flush(null);
+    expect(await work).toBe(true);
+    expect(store.events().find((e) => e.id === 'e10')?.participants).toEqual([
+      { employeeId: 'emp-2', employeeName: 'Saif A', responseStatus: 'accepted' }
+    ]);
   });
 });
