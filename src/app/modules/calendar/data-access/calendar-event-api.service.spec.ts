@@ -112,4 +112,19 @@ describe('CalendarEventApiService', () => {
     expect(req.request.method).toBe('GET');
     req.flush({ available: false, attendees: [] });
   });
+
+  it('addParticipants posts to {eventId}/participants', () => {
+    service.addParticipants('event-1', ['emp-1', 'emp-2']).subscribe();
+    const req = http.expectOne(`${environment.apiUrl}/calendar/event-1/participants`);
+    expect(req.request.method).toBe('POST');
+    expect(req.request.body).toEqual({ employeeIds: ['emp-1', 'emp-2'] });
+    req.flush({ participants: [] });
+  });
+
+  it('removeParticipant deletes {eventId}/participants/{employeeId}', () => {
+    service.removeParticipant('event-1', 'emp-1').subscribe();
+    const req = http.expectOne(`${environment.apiUrl}/calendar/event-1/participants/emp-1`);
+    expect(req.request.method).toBe('DELETE');
+    req.flush(null);
+  });
 });

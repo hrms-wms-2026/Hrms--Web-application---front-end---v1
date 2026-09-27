@@ -3,9 +3,10 @@ import { Injectable, inject } from '@angular/core';
 import { Observable } from 'rxjs';
 import { environment } from '../../../../environments/environment';
 import {
-  CalendarConflictsResponse, CalendarEventResponse, CalendarEventsResponse, CheckCalendarConflictsRequest,
-  CreateCalendarEventRequest, CreateEventMeetingResponse, EditRecurringOccurrenceRequest, GetEligibleNomineesResponse,
-  MeetingAttendanceResponse, MeetingProvider, RespondToCalendarEventStatus, UpdateCalendarEventRequest
+  CalendarConflictsResponse, CalendarEventParticipantsResponse, CalendarEventResponse, CalendarEventsResponse,
+  CheckCalendarConflictsRequest, CreateCalendarEventRequest, CreateEventMeetingResponse,
+  EditRecurringOccurrenceRequest, GetEligibleNomineesResponse, MeetingAttendanceResponse, MeetingProvider,
+  RespondToCalendarEventStatus, UpdateCalendarEventRequest
 } from '../models/calendar-event.model';
 
 @Injectable({ providedIn: 'root' })
@@ -66,5 +67,13 @@ export class CalendarEventApiService {
 
   getMeetingAttendance(eventId: string): Observable<MeetingAttendanceResponse> {
     return this.http.get<MeetingAttendanceResponse>(`${this.baseUrl}/${eventId}/meeting/attendance`);
+  }
+
+  addParticipants(eventId: string, employeeIds: readonly string[]): Observable<CalendarEventParticipantsResponse> {
+    return this.http.post<CalendarEventParticipantsResponse>(`${this.baseUrl}/${eventId}/participants`, { employeeIds });
+  }
+
+  removeParticipant(eventId: string, employeeId: string): Observable<void> {
+    return this.http.delete<void>(`${this.baseUrl}/${eventId}/participants/${employeeId}`);
   }
 }

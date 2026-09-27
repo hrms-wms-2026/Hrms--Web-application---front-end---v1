@@ -4,6 +4,10 @@ export interface CalendarEventParticipant {
   responseStatus: string;
 }
 
+export interface CalendarEventParticipantsResponse {
+  participants: readonly CalendarEventParticipant[];
+}
+
 export interface CalendarEventResponse {
   id: string;
   title: string;

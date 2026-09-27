@@ -225,7 +225,11 @@ export class CalendarPageComponent {
         ok = await this.store.updateEvent(editing.id, submission.update);
       }
     } else if ('create' in submission) {
-      ok = await this.store.createEvent(submission.create);
+      const created = await this.store.createEvent(submission.create);
+      ok = !!created;
+      if (created && submission.meetingProvider) {
+        await this.store.createMeeting(created.id, submission.meetingProvider);
+      }
     } else {
       ok = false;
     }
@@ -280,6 +284,20 @@ export class CalendarPageComponent {
     const editing = this.editingEvent();
     if (!editing) return;
     const ok = await this.store.removeMeeting(editing.id);
+    if (ok) this.editingEvent.set(this.store.events().find((e) => e.id === editing.id) ?? null);
+  }
+
+  async onAddParticipantsToEvent(employeeIds: readonly string[]): Promise<void> {
+    const editing = this.editingEvent();
+    if (!editing) return;
+    const ok = await this.store.addParticipants(editing.id, employeeIds);
+    if (ok) this.editingEvent.set(this.store.events().find((e) => e.id === editing.id) ?? null);
+  }
+
+  async onRemoveExistingParticipant(employeeId: string): Promise<void> {
+    const editing = this.editingEvent();
+    if (!editing) return;
+    const ok = await this.store.removeParticipant(editing.id, employeeId);
     if (ok) this.editingEvent.set(this.store.events().find((e) => e.id === editing.id) ?? null);
   }
 }

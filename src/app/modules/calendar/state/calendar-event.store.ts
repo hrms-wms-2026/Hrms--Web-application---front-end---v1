@@ -5,8 +5,9 @@ import { toSafeErrorMessage } from '../../../core/services/error-handler.service
 import { CalendarConnectionApiService } from '../../settings/data-access/calendar-connection-api.service';
 import { CalendarEventApiService } from '../data-access/calendar-event-api.service';
 import {
-  CalendarConflict, CalendarEventResponse, CreateCalendarEventRequest, EditRecurringOccurrenceRequest,
-  EligibleNominee, MeetingProvider, RespondToCalendarEventStatus, UpdateCalendarEventRequest
+  CalendarConflict, CalendarEventParticipant, CalendarEventResponse, CreateCalendarEventRequest,
+  EditRecurringOccurrenceRequest, EligibleNominee, MeetingProvider, RespondToCalendarEventStatus,
+  UpdateCalendarEventRequest
 } from '../models/calendar-event.model';
 
 interface CalendarEventState {
@@ -22,6 +23,7 @@ interface CalendarEventState {
   readonly hasTeamsCapableConnection: boolean;
   readonly hasZoomCapableConnection: boolean;
   readonly meetingActionSaving: boolean;
+  readonly participantActionSaving: boolean;
 }
 
 export const CalendarEventStore = signalStore(
@@ -29,7 +31,8 @@ export const CalendarEventStore = signalStore(
   withState<CalendarEventState>({
     events: [], loading: false, loadError: null, saving: false, actionError: null,
     conflicts: [], checkingConflicts: false, myTimezone: 'UTC', eligibleNominees: [],
-    hasTeamsCapableConnection: false, hasZoomCapableConnection: false, meetingActionSaving: false
+    hasTeamsCapableConnection: false, hasZoomCapableConnection: false, meetingActionSaving: false,
+    participantActionSaving: false
   }),
   withMethods((store, api = inject(CalendarEventApiService), connectionApi = inject(CalendarConnectionApiService)) => ({
     async loadEvents(from: string, to: string): Promise<void> {
@@ -41,15 +44,15 @@ export const CalendarEventStore = signalStore(
         patchState(store, { loading: false, loadError: toSafeErrorMessage(err, 'Failed to load calendar events.') });
       }
     },
-    async createEvent(payload: CreateCalendarEventRequest): Promise<boolean> {
+    async createEvent(payload: CreateCalendarEventRequest): Promise<CalendarEventResponse | null> {
       patchState(store, { saving: true, actionError: null });
       try {
         const created = await firstValueFrom(api.create(payload));
         patchState(store, { saving: false, events: [...store.events(), created] });
-        return true;
+        return created;
       } catch (err) {
         patchState(store, { saving: false, actionError: toSafeErrorMessage(err, 'Failed to create event.') });
-        return false;
+        return null;
       }
     },
     async updateEvent(id: string, payload: UpdateCalendarEventRequest): Promise<boolean> {
@@ -193,6 +196,36 @@ export const CalendarEventStore = signalStore(
         return true;
       } catch (err) {
         patchState(store, { meetingActionSaving: false, actionError: toSafeErrorMessage(err, 'Failed to remove the meeting.') });
+        return false;
+      }
+    },
+    async addParticipants(eventId: string, employeeIds: readonly string[]): Promise<boolean> {
+      patchState(store, { participantActionSaving: true, actionError: null });
+      try {
+        const response = await firstValueFrom(api.addParticipants(eventId, employeeIds));
+        patchState(store, {
+          participantActionSaving: false,
+          events: store.events().map((e) => (e.id === eventId ? { ...e, participants: response.participants } : e))
+        });
+        return true;
+      } catch (err) {
+        patchState(store, { participantActionSaving: false, actionError: toSafeErrorMessage(err, 'Failed to add participants.') });
+        return false;
+      }
+    },
+    async removeParticipant(eventId: string, employeeId: string): Promise<boolean> {
+      patchState(store, { participantActionSaving: true, actionError: null });
+      try {
+        await firstValueFrom(api.removeParticipant(eventId, employeeId));
+        patchState(store, {
+          participantActionSaving: false,
+          events: store.events().map((e) => (e.id === eventId
+            ? { ...e, participants: (e.participants ?? []).filter((p: CalendarEventParticipant) => p.employeeId !== employeeId) }
+            : e))
+        });
+        return true;
+      } catch (err) {
+        patchState(store, { participantActionSaving: false, actionError: toSafeErrorMessage(err, 'Failed to remove the participant.') });
         return false;
       }
     }
