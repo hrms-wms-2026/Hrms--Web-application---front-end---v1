@@ -52,7 +52,8 @@ describe('EmployeeDetailComponent', () => {
     employee: EmployeeDetailResponse,
     apiOverrides: Partial<PeopleApiService> = {},
     hasWritePermission = true,
-    currentEmployeeId: string | null = 'emp-99'
+    currentEmployeeId: string | null = 'emp-99',
+    hasOffboardPermission = true
   ) {
     const apiStub = {
       getEmployeeDetail: vi.fn().mockReturnValue(of(employee)),
@@ -65,7 +66,9 @@ describe('EmployeeDetailComponent', () => {
     // The Change Position modal (Task 4) fetches positions for the legal entity as soon as it
     // opens; stub it out so opening the modal in these tests never issues a real HTTP request.
     const positionApiStub = { listFlat: vi.fn().mockReturnValue(of({ items: [], page: 1, pageSize: 25, totalCount: 0, totalPages: 0 })) };
-    const permissionServiceStub = { hasPermission: (p: string) => (p === 'employees:write' ? hasWritePermission : true) };
+    const permissionServiceStub = {
+      hasPermission: (p: string) => (p === 'employees:write' ? hasWritePermission : p === 'employees:offboard' ? hasOffboardPermission : true)
+    };
     // EmployeeJobInfoComponent (rendered as a real child on the Job tab) injects the real,
     // providedIn: 'root' WorkModeStore, which would otherwise pull in WorkModeApiService ->
     // HttpClient - neither is provided in this spec file, so every test would fail to construct
@@ -213,6 +216,28 @@ describe('EmployeeDetailComponent', () => {
     expect(text).toContain('Transfer');
     const offboardingButton = fixture.nativeElement.querySelector('[data-testid="offboarding-menu-item"]') as HTMLButtonElement | null;
     expect(offboardingButton?.disabled).toBe(false);
+  });
+
+  it('hides the Offboarding item from a user with employees:write but not employees:offboard', () => {
+    const { fixture } = setup(detailFixture, {}, true, 'emp-99', false);
+    fixture.detectChanges();
+    (fixture.nativeElement.querySelector('[data-testid="change-position-trigger"]') as HTMLElement).querySelector('button')!.click();
+    fixture.detectChanges();
+
+    expect(fixture.nativeElement.querySelector('[data-testid="offboarding-menu-item"]')).toBeNull();
+    expect(fixture.nativeElement.textContent).toContain('Promotion');
+  });
+
+  it('shows only the Offboarding item to a user with employees:offboard but not employees:write', () => {
+    const { fixture } = setup(detailFixture, {}, false, 'emp-99', true);
+    fixture.detectChanges();
+    const trigger = fixture.nativeElement.querySelector('[data-testid="change-position-trigger"]') as HTMLElement;
+    expect(trigger.textContent).toContain('Offboarding');
+    trigger.querySelector('button')!.click();
+    fixture.detectChanges();
+
+    expect(fixture.nativeElement.querySelector('[data-testid="offboarding-menu-item"]')).not.toBeNull();
+    expect(fixture.nativeElement.textContent).not.toContain('Promotion');
   });
 
   it('enables the Offboarding menu item and navigates to the wizard on click', () => {
