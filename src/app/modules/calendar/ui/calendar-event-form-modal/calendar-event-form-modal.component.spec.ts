@@ -4,6 +4,7 @@ import { of } from 'rxjs';
 import { vi } from 'vitest';
 import { AuthStore } from '../../../../core/auth/state/auth.store';
 import { CalendarEventApiService } from '../../data-access/calendar-event-api.service';
+import { CalendarEventResponse } from '../../models/calendar-event.model';
 import { CalendarEventFormModalComponent } from './calendar-event-form-modal.component';
 
 describe('CalendarEventFormModalComponent', () => {
@@ -15,7 +16,7 @@ describe('CalendarEventFormModalComponent', () => {
     await TestBed.configureTestingModule({
       imports: [CalendarEventFormModalComponent],
       providers: [
-        { provide: AuthStore, useValue: { employeeId: () => currentEmployeeId } },
+        { provide: AuthStore, useValue: { employeeId: () => currentEmployeeId, email: () => 'nadesh@dapi.test' } },
         // Only the nested CalendarEventAttendanceComponent (rendered when the Attendance section
         // shows) actually calls this - stubbed here so those tests don't need real HTTP infra.
         { provide: CalendarEventApiService, useValue: { getMeetingAttendance: vi.fn().mockReturnValue(of({ available: false, attendees: [] })) } },
@@ -495,6 +496,69 @@ describe('CalendarEventFormModalComponent', () => {
     expect(fixture.componentInstance.discardConfirmOpen()).toBe(false);
   });
 
+  it('opens a new event with an empty form after a previous event was edited', () => {
+    const previous = {
+      id: 'evt-9', title: 'zoom test 5', description: 'old notes', startDate: '2026-10-02T06:15:00Z',
+      endDate: '2026-10-02T09:15:00Z', isAllDay: false, location: 'via zoom',
+      meetingLink: 'https://us05web.zoom.us/j/85908732617', color: '#16A34A', participants: []
+    } as unknown as CalendarEventResponse;
+    fixture.componentRef.setInput('open', false);
+    fixture.detectChanges();
+    fixture.componentRef.setInput('event', previous);
+    fixture.componentRef.setInput('open', true);
+    fixture.detectChanges();
+    expect(fixture.componentInstance.form.controls.title.value).toBe('zoom test 5');
+
+    fixture.componentRef.setInput('open', false);
+    fixture.componentRef.setInput('event', null);
+    fixture.detectChanges();
+    fixture.componentRef.setInput('open', true);
+    fixture.detectChanges();
+
+    const form = fixture.componentInstance.form;
+    expect(form.controls.title.value).toBe('');
+    expect(form.controls.description.value).toBe('');
+    expect(form.controls.location.value).toBe('');
+    expect(form.controls.meetingLink.value).toBe('');
+    expect(form.controls.color.value).toBe('#2563EB');
+    expect(form.controls.isAllDay.value).toBe(false);
+    expect(form.pristine).toBe(true);
+    expect(fixture.nativeElement.querySelector('[data-testid="calendar-form-teams-meeting-attached"]')).toBeNull();
+  });
+
+  it('opens a new event with an empty form after a previous create was typed into and closed', () => {
+    fixture.componentInstance.setTitle('Half typed');
+    fixture.componentInstance.setLocation('Room 4');
+    fixture.componentInstance.setRecurrenceFrequency('weekly');
+
+    fixture.componentRef.setInput('open', false);
+    fixture.detectChanges();
+    fixture.componentRef.setInput('open', true);
+    fixture.detectChanges();
+
+    const form = fixture.componentInstance.form;
+    expect(form.controls.title.value).toBe('');
+    expect(form.controls.location.value).toBe('');
+    expect(form.controls.recurrenceFrequency.value).toBe('none');
+    expect(form.controls.startTime.value).toBe('09:00');
+    expect(form.controls.endTime.value).toBe('09:30');
+  });
+
+  it('applies the prefilled slot on top of the reset form', () => {
+    fixture.componentInstance.setTitle('Old title');
+    fixture.componentRef.setInput('open', false);
+    fixture.detectChanges();
+    fixture.componentRef.setInput('prefillStart', '2026-09-20T10:15');
+    fixture.componentRef.setInput('open', true);
+    fixture.detectChanges();
+
+    const form = fixture.componentInstance.form;
+    expect(form.controls.title.value).toBe('');
+    expect(form.controls.startDate.value).toBe('2026-09-20');
+    expect(form.controls.startTime.value).toBe('10:15');
+    expect(form.controls.endTime.value).toBe('10:45');
+  });
+
   it('defaults a new event to a 30-minute slot', () => {
     expect(fixture.componentInstance.form.controls.startTime.value).toBe('09:00');
     expect(fixture.componentInstance.form.controls.endTime.value).toBe('09:30');
@@ -527,24 +591,39 @@ describe('CalendarEventFormModalComponent', () => {
     expect(new Date(create.startDate).toISOString()).toBe('2026-06-10T13:00:00.000Z');
   });
 
-  it('renders participants as overlapping avatar circles with a removable overflow badge', () => {
+  it('lists every picked participant as a row with a name and an always-visible remove button', () => {
     const people = Array.from({ length: 8 }, (_, i) => ({ id: `e${i}`, name: `Person ${i}` }));
     fixture.componentInstance.onParticipantIdsChange(people.map((p) => p.id));
     fixture.componentInstance.onParticipantPeopleChange(people);
     fixture.detectChanges();
 
-    const cluster = fixture.nativeElement.querySelector('[data-testid="calendar-form-participant-avatars"]');
-    expect(cluster.className).toContain('-space-x-3');
+    const rows = fixture.nativeElement.querySelectorAll('[data-testid="calendar-form-participant-row"]');
+    expect(rows.length).toBe(8);
+    expect(rows[0].textContent).toContain('Person 0');
     const removes = fixture.nativeElement.querySelectorAll('[data-testid="calendar-form-participant-remove"]');
-    expect(removes.length).toBe(6);
-    const overflow = fixture.nativeElement.querySelector('[data-testid="calendar-form-participant-overflow"]');
-    expect(overflow.textContent.trim()).toBe('+2');
+    expect(removes.length).toBe(8);
+    for (const remove of Array.from(removes) as HTMLElement[]) {
+      expect(remove.className).not.toMatch(/(^|\s)hidden(\s|$)/);
+    }
+    expect(fixture.nativeElement.querySelector('[data-testid="calendar-form-participant-avatars"]')).toBeNull();
 
     (removes[0] as HTMLButtonElement).click();
     fixture.detectChanges();
     expect(fixture.componentInstance.participants().length).toBe(7);
     expect(fixture.componentInstance.participantIds().length).toBe(7);
     expect(fixture.componentInstance.participantIds()).not.toContain('e0');
+  });
+
+  it('shows the organizer as "You" first in the Who list when creating an event, with no remove button', () => {
+    fixture.componentInstance.onParticipantPeopleChange([{ id: 'e1', name: 'Person 1' }]);
+    fixture.detectChanges();
+
+    const organizer = fixture.nativeElement.querySelector('[data-testid="calendar-form-organizer"]');
+    expect(organizer.textContent).toContain('You');
+    expect(organizer.textContent).toContain('Organizer');
+    expect(organizer.querySelector('button')).toBeNull();
+    const rows = Array.from(fixture.nativeElement.querySelectorAll('[data-testid="calendar-form-organizer"], [data-testid="calendar-form-participant-row"]')) as HTMLElement[];
+    expect(rows[0]).toBe(organizer);
   });
 
   it('uses prefillEnd for the end fields when a dragged range provides one', () => {
@@ -561,14 +640,6 @@ describe('CalendarEventFormModalComponent', () => {
     // a later start-time nudge must not clobber the explicitly dragged end
     fixture.componentInstance.setStartTime('09:00');
     expect(fixture.componentInstance.form.controls.endTime.value).toBe('11:45');
-  });
-
-  it('opens the participant picker when the overflow badge is clicked', () => {
-    const people = Array.from({ length: 8 }, (_, i) => ({ id: `e${i}`, name: `Person ${i}` }));
-    fixture.componentInstance.onParticipantPeopleChange(people);
-    fixture.detectChanges();
-    (fixture.nativeElement.querySelector('[data-testid="calendar-form-participant-overflow"]') as HTMLButtonElement).click();
-    expect(fixture.componentInstance.participantPickerOpen()).toBe(true);
   });
 
   it('uses the calendar-module styled dropdown for Repeat, not a native select', () => {
@@ -745,6 +816,40 @@ describe('CalendarEventFormModalComponent', () => {
     expect(spy).toHaveBeenCalledTimes(1);
   });
 
+  describe('copy meeting link', () => {
+    const link = 'https://us05web.zoom.us/j/85718616083?pwd=abc';
+    let writeText: ReturnType<typeof vi.fn>;
+
+    beforeEach(() => {
+      writeText = vi.fn().mockResolvedValue(undefined);
+      Object.defineProperty(navigator, 'clipboard', { value: { writeText }, configurable: true });
+      fixture.componentRef.setInput('event', { ...editingEvent, meetingLink: link });
+      fixture.detectChanges();
+    });
+
+    it('copies the full join link to the clipboard in one click and confirms it', async () => {
+      const copy = fixture.nativeElement.querySelector('[data-testid="calendar-form-copy-meeting-link"]') as HTMLButtonElement;
+      copy.click();
+      await fixture.whenStable();
+      fixture.detectChanges();
+
+      expect(writeText).toHaveBeenCalledWith(link);
+      expect(copy.getAttribute('data-state')).toBe('copied');
+      expect(copy.getAttribute('aria-label')).toBe('Link copied');
+    });
+
+    it('says so when the browser refuses clipboard access', async () => {
+      writeText.mockRejectedValue(new Error('denied'));
+      const copy = fixture.nativeElement.querySelector('[data-testid="calendar-form-copy-meeting-link"]') as HTMLButtonElement;
+      copy.click();
+      await fixture.whenStable();
+      fixture.detectChanges();
+
+      expect(copy.getAttribute('data-state')).toBe('failed');
+      expect(copy.getAttribute('aria-label')).toBe('Could not copy the link');
+    });
+  });
+
   it('a manually-typed non-Teams meeting link still renders as a normal editable input', () => {
     fixture.componentRef.setInput('event', { ...editingEvent, meetingLink: 'https://meet.google.com/abc-defg-hij' });
     fixture.detectChanges();
@@ -840,5 +945,42 @@ describe('CalendarEventFormModalComponent', () => {
     (fixture.nativeElement.querySelector('[data-testid="calendar-form-existing-participant-remove"]') as HTMLButtonElement).click();
 
     expect(spy).toHaveBeenCalledWith('emp-1');
+  });
+
+  it('shows the viewer as "You · Organizer" when editing their own event', () => {
+    fixture.componentRef.setInput('event', { ...editingEvent, isOrganizer: true, organizerName: 'Nadesh C' });
+    fixture.detectChanges();
+
+    const organizer = fixture.nativeElement.querySelector('[data-testid="calendar-form-organizer"]');
+    expect(organizer.textContent).toContain('You');
+    expect(organizer.textContent).toContain('Organizer');
+    expect(fixture.nativeElement.querySelector('[data-testid="calendar-form-add-participants-edit"]')).toBeTruthy();
+  });
+
+  it('shows the organizer by name to another viewer and hides participant management from them', () => {
+    fixture.componentRef.setInput('event', {
+      ...editingEvent,
+      isOrganizer: false, organizerName: 'Nadesh C',
+      participants: [{ employeeId: 'emp-viewer', employeeName: 'Viewer V', responseStatus: 'pending' }]
+    });
+    fixture.detectChanges();
+
+    const organizer = fixture.nativeElement.querySelector('[data-testid="calendar-form-organizer"]');
+    expect(organizer.textContent).toContain('Nadesh C');
+    expect(organizer.textContent).not.toContain('You');
+    expect(fixture.nativeElement.querySelector('[data-testid="calendar-form-add-participants-edit"]')).toBeNull();
+    expect(fixture.nativeElement.querySelector('[data-testid="calendar-form-existing-participant-remove"]')).toBeNull();
+  });
+
+  it('keeps participant management available when the event carries no organizer information', () => {
+    fixture.componentRef.setInput('event', {
+      ...editingEvent,
+      participants: [{ employeeId: 'emp-1', employeeName: 'Kiru B', responseStatus: 'pending' }]
+    });
+    fixture.detectChanges();
+
+    expect(fixture.nativeElement.querySelector('[data-testid="calendar-form-organizer"]')).toBeNull();
+    expect(fixture.nativeElement.querySelector('[data-testid="calendar-form-add-participants-edit"]')).toBeTruthy();
+    expect(fixture.nativeElement.querySelector('[data-testid="calendar-form-existing-participant-remove"]')).toBeTruthy();
   });
 });

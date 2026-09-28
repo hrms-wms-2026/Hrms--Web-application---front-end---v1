@@ -64,6 +64,22 @@ const meetingLinkValidator: ValidatorFn = (control: AbstractControl): Validation
   }
 };
 
+const EMPTY_FORM_VALUES = {
+  title: '',
+  description: '',
+  startDate: '',
+  startTime: '09:00',
+  endDate: '',
+  endTime: '09:30',
+  isAllDay: false,
+  location: '',
+  meetingLink: '',
+  color: '#2563EB',
+  recurrenceFrequency: 'none' as RecurrenceFrequency,
+  recurrenceEndMode: 'never' as RecurrenceEndMode,
+  recurrenceUntilDate: ''
+};
+
 export type CalendarEventFormSubmission =
   | { create: CreateCalendarEventRequest; meetingProvider: MeetingProvider | null }
   | { update: UpdateCalendarEventRequest; scope: RecurrenceEditScope | null };
@@ -126,7 +142,6 @@ export class CalendarEventFormModalComponent implements OnChanges {
   readonly participantPickerOpen = signal(false);
   readonly participantIds = signal<readonly string[]>([]);
   readonly participants = signal<readonly { id: string; name: string }[]>([]);
-  readonly maxParticipantAvatars = 6;
   readonly discardConfirmOpen = signal(false);
   /** Teams/Zoom provider picked while creating a new event - the meeting can't actually be
    * created until the event itself has a real id, so this is just intent, resolved into a
@@ -178,6 +193,20 @@ export class CalendarEventFormModalComponent implements OnChanges {
     const employeeId = this.authStore.employeeId();
     if (!employeeId || !this.event?.participants) return null;
     return this.event.participants.find((p) => p.employeeId === employeeId) ?? null;
+  }
+
+  /** The "Organizer" row at the top of Who: the viewer while creating; when editing, "You" if the
+   * server says the viewer owns the event, else the organizer by name (absent when the API sent none). */
+  organizerRow(): { name: string; isYou: boolean } | null {
+    if (!this.event) return { name: (this.authStore.email() ?? '').split('@')[0] || 'You', isYou: true };
+    if (this.event.isOrganizer) return { name: this.event.organizerName ?? 'You', isYou: true };
+    return this.event.organizerName ? { name: this.event.organizerName, isYou: false } : null;
+  }
+
+  /** Only the organizer can add/remove participants (the backend rejects anyone else). The server
+   * flag decides; an event that doesn't carry it keeps the controls. */
+  canManageParticipants(): boolean {
+    return this.event?.isOrganizer !== false;
   }
 
   onRespond(status: RespondToCalendarEventStatus, reason: string | null = null, nomineeEmployeeId: string | null = null): void {
@@ -239,6 +268,8 @@ export class CalendarEventFormModalComponent implements OnChanges {
     const justOpened = !!changes['open'] && this.open;
 
     if (justOpened) {
+      // The modal instance is reused across sessions, so without this a new event opened with the previous event's values.
+      this.form.reset(EMPTY_FORM_VALUES);
       this.endTimeTouched = false;
       this.timezoneTouched = false;
       this.pickedTimezone.set(this.myTimezone);
@@ -391,6 +422,20 @@ export class CalendarEventFormModalComponent implements OnChanges {
 
   onRemoveMeeting(): void {
     this.removeMeeting.emit();
+  }
+
+  readonly linkCopyState = signal<'idle' | 'copied' | 'failed'>('idle');
+  private linkCopyTimer: ReturnType<typeof setTimeout> | null = null;
+
+  async copyMeetingLink(): Promise<void> {
+    try {
+      await navigator.clipboard.writeText(this.form.controls.meetingLink.value ?? '');
+      this.linkCopyState.set('copied');
+    } catch {
+      this.linkCopyState.set('failed');
+    }
+    if (this.linkCopyTimer) clearTimeout(this.linkCopyTimer);
+    this.linkCopyTimer = setTimeout(() => this.linkCopyState.set('idle'), 2000);
   }
 
   /** Gates the Attendance section - attendance is only ever meaningful once the meeting has

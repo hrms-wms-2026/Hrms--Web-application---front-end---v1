@@ -63,7 +63,7 @@
   [event]="editingEvent()"
   [prefillStart]="prefillStart()"
   [prefillEnd]="prefillEnd()"
-  [saving]="store.saving()"
+  [saving]="store.saving() || submitting()"
   [conflicts]="store.conflicts()"
   [checkingConflicts]="store.checkingConflicts()"
   [myTimezone]="store.myTimezone()"
