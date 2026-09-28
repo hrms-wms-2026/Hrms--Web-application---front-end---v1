@@ -4,6 +4,7 @@ import { of } from 'rxjs';
 import { vi } from 'vitest';
 import { AuthStore } from '../../../../core/auth/state/auth.store';
 import { CalendarEventApiService } from '../../data-access/calendar-event-api.service';
+import { PeopleApiService } from '../../../people/data-access/people-api.service';
 import { CalendarEventResponse } from '../../models/calendar-event.model';
 import { CalendarEventFormModalComponent } from './calendar-event-form-modal.component';
 
@@ -20,6 +21,7 @@ describe('CalendarEventFormModalComponent', () => {
         // Only the nested CalendarEventAttendanceComponent (rendered when the Attendance section
         // shows) actually calls this - stubbed here so those tests don't need real HTTP infra.
         { provide: CalendarEventApiService, useValue: { getMeetingAttendance: vi.fn().mockReturnValue(of({ available: false, attendees: [] })) } },
+        { provide: PeopleApiService, useValue: { listEmployees: vi.fn().mockReturnValue(of({ items: [], totalCount: 0, page: 1, pageSize: 20 })) } },
         provideRouter([])
       ]
     }).compileComponents();
@@ -1105,6 +1107,91 @@ describe('CalendarEventFormModalComponent', () => {
 
       expect(guestsSpy).not.toHaveBeenCalled();
       expect(fixture.componentInstance.guestEmails()).toEqual(['vendor@example.com']);
+    });
+  });
+
+  describe('add participants dropdown', () => {
+    const trigger = () => fixture.nativeElement.querySelector('[data-testid="calendar-form-add-participants"]') as HTMLElement;
+    const panel = () => fixture.nativeElement.querySelector('[data-testid="calendar-participant-dropdown"]') as HTMLElement | null;
+
+    it('opens an inline panel under the button, inside the event form, instead of a second modal or an overlay', () => {
+      expect(panel()).toBeNull();
+
+      trigger().click();
+      fixture.detectChanges();
+
+      expect(fixture.componentInstance.participantPickerOpen()).toBe(true);
+      expect(panel()).not.toBeNull();
+      expect(panel()!.querySelector('[data-testid="people-picker-search"]')).not.toBeNull();
+      expect(document.querySelectorAll('[role="dialog"]').length).toBe(1);
+      expect(panel()!.closest('[role="dialog"]')).not.toBeNull();
+      expect(getComputedStyle(panel()!).position).not.toBe('absolute');
+    });
+
+    it('toggles closed when the button is clicked again', () => {
+      trigger().click();
+      fixture.detectChanges();
+
+      trigger().click();
+      fixture.detectChanges();
+
+      expect(fixture.componentInstance.participantPickerOpen()).toBe(false);
+      expect(panel()).toBeNull();
+    });
+
+    it('closes when the user clicks elsewhere in the form, keeping the event form open', () => {
+      trigger().click();
+      fixture.detectChanges();
+      const cancelSpy = vi.fn();
+      fixture.componentInstance.cancel.subscribe(cancelSpy);
+
+      (fixture.nativeElement.querySelector('[data-testid="calendar-form-organizer"]') as HTMLElement).click();
+      fixture.detectChanges();
+
+      expect(fixture.componentInstance.participantPickerOpen()).toBe(false);
+      expect(cancelSpy).not.toHaveBeenCalled();
+    });
+
+    it('closes on Escape without also closing or discarding the event form', () => {
+      trigger().click();
+      fixture.detectChanges();
+      const cancelSpy = vi.fn();
+      fixture.componentInstance.cancel.subscribe(cancelSpy);
+      const search = panel()!.querySelector('[data-testid="people-picker-search"]') as HTMLInputElement;
+
+      search.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }));
+      fixture.detectChanges();
+
+      expect(fixture.componentInstance.participantPickerOpen()).toBe(false);
+      expect(cancelSpy).not.toHaveBeenCalled();
+      expect(fixture.componentInstance.discardConfirmOpen()).toBe(false);
+    });
+
+    it('stays open while people are picked inside it', () => {
+      trigger().click();
+      fixture.detectChanges();
+
+      fixture.componentInstance.onParticipantIdsChange(['emp-1']);
+      panel()!.click();
+      fixture.detectChanges();
+
+      expect(fixture.componentInstance.participantPickerOpen()).toBe(true);
+    });
+
+    it('in edit mode submits the picked people when the dropdown closes', () => {
+      fixture.componentRef.setInput('event', { ...editingEvent, isOrganizer: true });
+      fixture.detectChanges();
+      const spy = vi.fn();
+      fixture.componentInstance.addParticipantsToEvent.subscribe(spy);
+      (fixture.nativeElement.querySelector('[data-testid="calendar-form-add-participants-edit"]') as HTMLElement).click();
+      fixture.detectChanges();
+
+      fixture.componentInstance.onParticipantIdsChange(['emp-1']);
+      (fixture.nativeElement.querySelector('[data-testid="calendar-form-organizer"]') as HTMLElement).click();
+      fixture.detectChanges();
+
+      expect(spy).toHaveBeenCalledWith(['emp-1']);
+      expect(fixture.componentInstance.participantPickerOpen()).toBe(false);
     });
   });
 });
