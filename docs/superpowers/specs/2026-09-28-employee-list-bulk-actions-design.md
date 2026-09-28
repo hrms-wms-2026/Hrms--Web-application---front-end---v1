@@ -84,3 +84,17 @@ Onboarding Drafts tab (replaced in sub-project D), Add Employee button/wizard, s
 - Backend unit: scope guard (org:manage bypass, in-scope, out-of-scope); ChangePosition + UpdateJobDetails return 403 when guard forbids; ChangeEmploymentType handler; each bulk handler (mixed outcomes, pendingApproval mapping, exception → failed, ClearTracking per item, de-dup); validators (empty, >100); controller actions map to the right commands; list handler passes new filters/sort through.
 - Backend integration (real Postgres): list filter by position / employment type / manager and sort by department desc; bulk change-position with one out-of-scope employee.
 - Frontend (Vitest): directory table (columns, sort, selection, row menu stopPropagation), column picker persistence, filter popover staging, employee-list URL wiring + bulk action visibility by permission + result modal, CSV util, detail-screen gate fix.
+
+## Implementation notes (2026-09-28, divergences from the plan)
+- Row `⋯` menus on the last two rows open upward (when the page has more than 4 rows) up front, rather than waiting for the browser check to show clipping.
+- The old employee-table's attendance-warning tooltip CSS rule was not carried over (the new table has no tooltip element); all other employee-cell rules were copied.
+- `.emp-toolbar` / `.emp-pager` have no own margins — `.emp-section`'s existing `gap: 1rem` spaces them.
+- `List_FilterByEmploymentType_ReturnsOnlyMatchingRows` seeds its own `employment_types` row, because `EmployeesListIntegrationTests`' fixture never seeds that lookup (labels fell back to the raw id). It also asserts an unknown code returns nothing.
+- Employee-list spec: `flushEmployees` is async and awaits `whenStable()` (matching the spec's existing tests); one extra test confirms the view-cycle button is gone.
+- Detail spec: the permission stub gained a 5th `hasOffboardPermission` parameter; the new tests click the `<button>` inside the `app-button` trigger.
+- Not covered by automated tests (listed in Testing above but not in the plan): integration tests for filtering by position / manager, and for bulk change-position with an out-of-scope employee.
+
+### Open questions found while implementing
+- **Write scope vs. list visibility.** The list decides visibility with `IEmployeeAuthorityResolver`; the new `EmployeeManageScopeGuard` uses the legacy `IEmployeeVisibilityScopeResolver` + `GetVisibleByIdAsync` (same as the detail screen). A non-`org:manage` user could see a row in the list and still get "You do not have access to manage this employee." on a bulk action.
+- **Filter options vs. list company.** The filter popover loads departments/positions/managers for `LegalEntityStore.selectedLegalEntityId`, but the list request never sends `legalEntityId` (no interceptor adds it), so the backend lists the caller's *default* company. If the switcher is on a different company, filter options and rows disagree.
+- Pending-invitee rows appended by `ListEmployeesQueryHandler` bypass the new position/type/manager filters and sorting (pre-existing behaviour for search/department too).
