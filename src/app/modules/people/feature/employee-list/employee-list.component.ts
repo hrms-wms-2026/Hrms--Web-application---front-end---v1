@@ -1,22 +1,42 @@
-import { ChangeDetectionStrategy, Component, DestroyRef, computed, inject, signal } from '@angular/core';
+import { ChangeDetectionStrategy, Component, DestroyRef, computed, effect, inject, signal, untracked } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { RouterLink, ActivatedRoute, Router } from '@angular/router';
+import { AuthStore } from '../../../../core/auth/state/auth.store';
 import { NotificationService } from '../../../../core/services/notification.service';
 import { PermissionService } from '../../../../core/auth/state/permission.service';
 import { BreadcrumbHeaderComponent } from '../../../../shared/ui/breadcrumb-header/breadcrumb-header.component';
+import { BulkAction, BulkActionBarComponent } from '../../../../shared/ui/bulk-action-bar/bulk-action-bar.component';
 import { ButtonComponent } from '../../../../shared/ui/button/button.component';
+import { MenuItem } from '../../../../shared/ui/dropdown-menu/dropdown-menu.component';
 import { ErrorStateComponent } from '../../../../shared/ui/error-state/error-state.component';
 import { LoaderComponent } from '../../../../shared/ui/loader/loader.component';
+import { SelectionModel } from '../../../../shared/utils/selection-model';
+import { LegalEntityStore } from '../../../organization/state/legal-entity.store';
+import { EMPLOYEE_COLUMNS, EmployeeColumnKey, loadEmployeeColumns, saveEmployeeColumns } from '../../models/employee-columns';
+import { BulkEmployeeActionResponse, EmployeeListItemResponse, EmployeeSortKey, SortDirection } from '../../models/employee.model';
 import { PeopleStore } from '../../state/people.store';
+import { BulkActionResultModalComponent } from '../../ui/bulk-employee-actions/bulk-action-result-modal.component';
+import { BulkEmploymentTypeModalComponent } from '../../ui/bulk-employee-actions/bulk-employment-type-modal.component';
+import { BulkStartOffboardingModalComponent } from '../../ui/bulk-employee-actions/bulk-start-offboarding-modal.component';
+import { ChangePositionModalComponent } from '../../ui/change-position-modal/change-position-modal.component';
 import { DraftTableComponent } from '../../ui/draft-table/draft-table.component';
-import { EmployeeTableComponent } from '../../ui/employee-table/employee-table.component';
-import { EmployeeListViewComponent } from '../../ui/employee-list-view/employee-list-view.component';
-import { EmployeeCardViewComponent } from '../../ui/employee-card-view/employee-card-view.component';
+import { EmployeeColumnPickerComponent } from '../../ui/employee-column-picker/employee-column-picker.component';
+import { EmployeeDirectoryTableComponent } from '../../ui/employee-directory-table/employee-directory-table.component';
+import { EmployeeFilterPopoverComponent } from '../../ui/employee-filter-popover/employee-filter-popover.component';
+import { downloadCsv, toEmployeeCsv } from '../../utils/employee-csv';
+import {
+  EMPLOYEE_PAGE_SIZES,
+  EmployeeListFilters,
+  EmployeeListUrlState,
+  filtersToQueryParams,
+  parseEmployeeListState,
+  selectionScopeKey,
+  toEmployeeListParams
+} from '../../utils/employee-list-url-state';
 import { AddEmployeeWizardComponent } from '../add-employee-wizard/add-employee-wizard.component';
 
-export type EmployeeViewMode = 'table' | 'list' | 'card';
-
 const SEARCH_DEBOUNCE_MS = 300;
+const TERMINAL_STATUSES = ['resigned', 'terminated'];
 
 @Component({
   selector: 'app-employee-list',
@@ -28,9 +48,14 @@ const SEARCH_DEBOUNCE_MS = 300;
     ErrorStateComponent,
     LoaderComponent,
     DraftTableComponent,
-    EmployeeTableComponent,
-    EmployeeListViewComponent,
-    EmployeeCardViewComponent,
+    EmployeeDirectoryTableComponent,
+    EmployeeColumnPickerComponent,
+    EmployeeFilterPopoverComponent,
+    ChangePositionModalComponent,
+    BulkEmploymentTypeModalComponent,
+    BulkStartOffboardingModalComponent,
+    BulkActionResultModalComponent,
+    BulkActionBarComponent,
     AddEmployeeWizardComponent
   ],
   templateUrl: './employee-list.component.html',
@@ -43,61 +68,85 @@ export class EmployeeListComponent {
   private readonly permissionService = inject(PermissionService);
   private readonly notificationService = inject(NotificationService);
   private readonly destroyRef = inject(DestroyRef);
+  private readonly legalEntityStore = inject(LegalEntityStore);
+  private readonly authStore = inject(AuthStore);
 
   readonly store = inject(PeopleStore);
   readonly canAddEmployee = computed(() => this.permissionService.hasPermission('employees:write'));
+  readonly canWrite = computed(() => this.permissionService.hasPermission('employees:write'));
+  readonly canOffboard = computed(() => this.permissionService.hasPermission('employees:offboard'));
+  readonly legalEntityId = this.legalEntityStore.selectedLegalEntityId;
   readonly searchTerm = signal('');
   readonly searchExpanded = signal(false);
 
-  readonly viewMode = signal<EmployeeViewMode>(this.loadInitialViewMode());
+  readonly listState = signal<EmployeeListUrlState>(parseEmployeeListState(this.route.snapshot.queryParamMap));
+  readonly pageSizes = EMPLOYEE_PAGE_SIZES;
+  readonly visibleColumnKeys = signal<EmployeeColumnKey[]>(loadEmployeeColumns());
+  readonly visibleColumns = computed(() => EMPLOYEE_COLUMNS.filter((c) => this.visibleColumnKeys().includes(c.key)));
 
-  private loadInitialViewMode(): EmployeeViewMode {
-    try {
-      const saved = localStorage.getItem('employee_view_mode');
-      if (saved === 'list' || saved === 'card' || saved === 'table') {
-        return saved;
-      }
-    } catch {
-      // Ignore local storage errors
+  readonly selection = new SelectionModel<string>();
+  /** Every row seen while this selection was built, so selections survive paging. */
+  private readonly rowCache = signal<ReadonlyMap<string, EmployeeListItemResponse>>(new Map());
+  readonly selectedRows = computed(() =>
+    [...this.selection.selected()].map((id) => this.rowCache().get(id)).filter((r): r is EmployeeListItemResponse => !!r));
+  readonly selectedIdList = computed(() => [...this.selection.selected()]);
+  private lastSelectionScope = selectionScopeKey(this.listState());
+
+  readonly totalPages = computed(() => Math.max(1, Math.ceil(this.store.employeesTotalCount() / this.listState().pageSize)));
+  readonly pageNumbers = computed(() => {
+    const total = this.totalPages();
+    const current = Math.min(this.listState().page, total);
+    const start = Math.max(1, Math.min(current - 2, total - 4));
+    return Array.from({ length: Math.min(5, total) }, (_, i) => start + i);
+  });
+  readonly rangeStart = computed(() => this.store.employeesTotalCount() === 0 ? 0 : (this.listState().page - 1) * this.listState().pageSize + 1);
+  readonly rangeEnd = computed(() => Math.min(this.listState().page * this.listState().pageSize, this.store.employeesTotalCount()));
+
+  readonly positionChangeBlockedReason = computed(() => {
+    const companies = new Set(this.selectedRows().map((r) => r.legalEntityId));
+    if (companies.has(null)) return 'Some selected employees have no company assigned.';
+    if (companies.size > 1) return 'Select employees from a single company to change their position together.';
+    return null;
+  });
+  readonly bulkLegalEntityId = computed(() => this.selectedRows()[0]?.legalEntityId ?? '');
+
+  readonly bulkActions = computed<BulkAction[]>(() => {
+    const actions: BulkAction[] = [];
+    if (this.canWrite()) {
+      const blocked = this.positionChangeBlockedReason();
+      actions.push(
+        { id: 'promote', label: 'Promote', placement: 'primary', disabled: !!blocked, disabledReason: blocked ?? undefined },
+        { id: 'transfer', label: 'Transfer', placement: 'primary', disabled: !!blocked, disabledReason: blocked ?? undefined },
+        { id: 'employment-type', label: 'Change Employment Type', placement: 'more' }
+      );
     }
-    return 'table';
-  }
-
-  setViewMode(mode: EmployeeViewMode): void {
-    this.viewMode.set(mode);
-    try {
-      localStorage.setItem('employee_view_mode', mode);
-    } catch {
-      // Ignore local storage errors
+    actions.push({ id: 'export', label: 'Export Selected', placement: 'more' });
+    if (this.canOffboard()) {
+      actions.push({ id: 'offboard', label: 'Bulk Offboard', placement: 'more', danger: true });
     }
-  }
-
-  cycleViewMode(): void {
-    const current = this.viewMode();
-    let next: EmployeeViewMode = 'table';
-    if (current === 'table') {
-      next = 'list';
-    } else if (current === 'list') {
-      next = 'card';
-    } else {
-      next = 'table';
-    }
-    this.setViewMode(next);
-  }
-
-  readonly viewModeTitle = computed(() => {
-    const mode = this.viewMode();
-    if (mode === 'table') return 'Table view (click to switch to List)';
-    if (mode === 'list') return 'List view (click to switch to Card)';
-    return 'Card view (click to switch to Table)';
+    return actions;
   });
 
-  readonly viewModeAriaLabel = computed(() => {
-    const mode = this.viewMode();
-    if (mode === 'table') return 'Table view, switch to List view';
-    if (mode === 'list') return 'List view, switch to Card view';
-    return 'Card view, switch to Table view';
-  });
+  readonly bulkPositionReason = signal<'Promotion' | 'Transfer' | null>(null);
+  readonly bulkEmploymentTypeOpen = signal(false);
+  readonly bulkOffboardOpen = signal(false);
+  readonly bulkResult = signal<{ title: string; result: BulkEmployeeActionResponse } | null>(null);
+  readonly resultNames = computed(() => new Map([...this.rowCache().values()].map((r) => [r.id, r.fullName] as const)));
+  readonly rowPositionChange = signal<{ employee: EmployeeListItemResponse; reason: 'Promotion' | 'Transfer' } | null>(null);
+
+  readonly rowMenuItems = (employee: EmployeeListItemResponse): MenuItem[] => {
+    const own = employee.id === this.authStore.employeeId();
+    const terminal = TERMINAL_STATUSES.includes(employee.status.toLowerCase());
+    const invitationBlocked = employee.invitationStatus === 'pending' || employee.invitationStatus === 'expired';
+    const items: MenuItem[] = [];
+    if (this.canWrite() && !own && !terminal && !invitationBlocked && employee.legalEntityId) {
+      items.push({ id: 'promote', label: 'Promote' }, { id: 'transfer', label: 'Transfer' });
+    }
+    if (this.canOffboard() && !own && !terminal) {
+      items.push({ id: 'offboard', label: 'Offboard', danger: true, dividerBefore: items.length > 0 });
+    }
+    return items;
+  };
 
   toggleSearch(): void {
     this.searchExpanded.update((v) => !v);
@@ -106,7 +155,6 @@ export class EmployeeListComponent {
     }
   }
   readonly activeTab = signal<'employees' | 'drafts'>('employees');
-  readonly Math = Math;
 
   private searchDebounceHandle: ReturnType<typeof setTimeout> | null = null;
 
@@ -118,12 +166,27 @@ export class EmployeeListComponent {
     this.searchTerm.set(initialParams.get('search') ?? '');
 
     this.route.queryParamMap.pipe(takeUntilDestroyed(this.destroyRef)).subscribe((params) => {
-      const page = Number(params.get('page')) || 1;
-      this.store.loadEmployees({ search: params.get('search') ?? undefined, page, pageSize: 25 });
+      const state = parseEmployeeListState(params);
+      const scope = selectionScopeKey(state);
+      if (scope !== this.lastSelectionScope) {
+        this.selection.clear();
+        this.lastSelectionScope = scope;
+      }
+      this.listState.set(state);
+      this.store.loadEmployees(toEmployeeListParams(state));
       if ((params.get('addEmployee') === 'true' || params.has('draftId')) && this.canAddEmployee()) {
         this.activeDraftId.set(params.get('draftId'));
         this.isAddEmployeeModalOpen.set(true);
       }
+    });
+
+    effect(() => {
+      const rows = this.store.employees();
+      untracked(() => this.rowCache.update((cache) => {
+        const next = new Map(cache);
+        for (const row of rows) next.set(row.id, row);
+        return next;
+      }));
     });
 
     this.loadDrafts();
@@ -181,12 +244,7 @@ export class EmployeeListComponent {
   }
 
   loadEmployees(): void {
-    const params = this.route.snapshot.queryParamMap;
-    this.store.loadEmployees({
-      search: params.get('search') ?? undefined,
-      page: Number(params.get('page')) || 1,
-      pageSize: 25
-    });
+    this.store.loadEmployees(toEmployeeListParams(this.listState()));
   }
 
   loadDrafts(): void {
@@ -195,5 +253,55 @@ export class EmployeeListComponent {
 
   onContinueDraft(draftId: string): void {
     this.openAddEmployeeModal(draftId);
+  }
+
+  private navigate(queryParams: Record<string, string | number | null>): void {
+    void this.router.navigate([], { relativeTo: this.route, queryParams, queryParamsHandling: 'merge' });
+  }
+
+  onSortChanged(event: { sortBy: EmployeeSortKey; sortDir: SortDirection }): void {
+    this.navigate({ sortBy: event.sortBy, sortDir: event.sortDir, page: 1 });
+  }
+
+  onFiltersApplied(filters: EmployeeListFilters): void {
+    this.navigate({ ...filtersToQueryParams(filters), page: 1 });
+  }
+
+  onColumnsApplied(keys: EmployeeColumnKey[]): void {
+    this.visibleColumnKeys.set(keys);
+    saveEmployeeColumns(keys);
+  }
+
+  onPageSizeChange(value: string): void {
+    this.navigate({ pageSize: Number(value), page: 1 });
+  }
+
+  onBulkAction(actionId: string): void {
+    switch (actionId) {
+      case 'promote': this.bulkPositionReason.set('Promotion'); break;
+      case 'transfer': this.bulkPositionReason.set('Transfer'); break;
+      case 'employment-type': this.bulkEmploymentTypeOpen.set(true); break;
+      case 'offboard': this.bulkOffboardOpen.set(true); break;
+      case 'export': this.exportSelected(); break;
+    }
+  }
+
+  onBulkCompleted(title: string, result: BulkEmployeeActionResponse): void {
+    this.bulkResult.set({ title, result });
+    this.selection.clear();
+    this.loadEmployees();
+  }
+
+  onRowAction(event: { employee: EmployeeListItemResponse; actionId: string }): void {
+    if (event.actionId === 'offboard') {
+      void this.router.navigate(['/people/employees', event.employee.id, 'offboarding']);
+      return;
+    }
+    this.rowPositionChange.set({ employee: event.employee, reason: event.actionId === 'promote' ? 'Promotion' : 'Transfer' });
+  }
+
+  private exportSelected(): void {
+    const csv = toEmployeeCsv(this.selectedRows(), this.visibleColumns());
+    downloadCsv(`employees-${new Date().toISOString().slice(0, 10)}.csv`, csv);
   }
 }

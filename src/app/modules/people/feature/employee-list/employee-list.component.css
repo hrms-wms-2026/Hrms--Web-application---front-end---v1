@@ -51,17 +51,6 @@
   flex-wrap: wrap;
 }
 
-/* Single View Mode Toggle Button: Table -> List -> Card */
-.emp-view-cycle-btn {
-  flex-shrink: 0;
-}
-
-.view-icon {
-  width: 15px;
-  height: 15px;
-  flex-shrink: 0;
-}
-
 .emp-search-container {
   position: relative;
   display: flex;
@@ -203,24 +192,16 @@
   gap: 1rem;
 }
 
-.emp-pagination {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  margin-top: 0.875rem;
-  font-size: 0.8125rem;
-  color: var(--color-text-secondary);
-}
-
-.emp-pagination-info {
-  font-weight: 500;
-}
-
-.emp-pagination-buttons {
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-}
+/* .emp-section's gap already spaces the toolbar, table and pager apart. */
+.emp-toolbar { display: flex; justify-content: flex-end; gap: 8px; }
+.emp-pager { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 10px; }
+.emp-pager__range { font-size: 13px; color: var(--color-text-secondary); }
+.emp-pager__controls { display: flex; align-items: center; gap: 4px; }
+.emp-pager__btn { min-width: 32px; height: 32px; padding: 0 8px; border: 1px solid transparent; border-radius: 7px; background: transparent; color: var(--color-text-primary); font: inherit; font-size: 13px; cursor: pointer; }
+.emp-pager__btn:hover:not(:disabled) { background: var(--color-surface-secondary); }
+.emp-pager__btn:disabled { opacity: .4; cursor: not-allowed; }
+.emp-pager__btn--active { border-color: var(--color-accent); color: var(--color-accent); font-weight: 600; }
+.emp-pager__size { margin-left: 8px; padding: 5px 8px; border: 1px solid var(--color-border); border-radius: 7px; background: var(--color-surface); color: var(--color-text-primary); font: inherit; font-size: 13px; }
 
 .no-underline {
   text-decoration: none;
