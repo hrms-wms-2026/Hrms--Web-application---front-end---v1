@@ -3,6 +3,10 @@ import { Injectable, inject } from '@angular/core';
 import { Observable } from 'rxjs';
 import { environment } from '../../../../environments/environment';
 import {
+  BulkChangeEmploymentTypePayload,
+  BulkChangePositionPayload,
+  BulkEmployeeActionResponse,
+  BulkStartOffboardingPayload,
   ChangePositionPayload,
   ChangePositionResponse,
   EmployeeDetailResponse,
@@ -179,12 +183,31 @@ export class PeopleApiService {
     });
   }
 
+  bulkChangePosition(payload: BulkChangePositionPayload): Observable<BulkEmployeeActionResponse> {
+    return this.http.post<BulkEmployeeActionResponse>(`${environment.apiUrl}/employees/bulk/change-position`, payload);
+  }
+
+  bulkChangeEmploymentType(payload: BulkChangeEmploymentTypePayload): Observable<BulkEmployeeActionResponse> {
+    return this.http.post<BulkEmployeeActionResponse>(`${environment.apiUrl}/employees/bulk/employment-type`, payload);
+  }
+
+  bulkStartOffboarding(payload: BulkStartOffboardingPayload): Observable<BulkEmployeeActionResponse> {
+    return this.http.post<BulkEmployeeActionResponse>(`${environment.apiUrl}/employees/bulk/offboarding/start`, payload);
+  }
+
   private toHttpParams(params: object): HttpParams {
     let httpParams = new HttpParams();
-    for (const [key, value] of Object.entries(params as Record<string, string | number | boolean | undefined>)) {
-      if (value !== undefined && value !== null && value !== '') {
-        httpParams = httpParams.set(key, value);
+    for (const [key, value] of Object.entries(params as Record<string, unknown>)) {
+      if (value === undefined || value === null || value === '') {
+        continue;
       }
+      if (Array.isArray(value)) {
+        for (const item of value) {
+          httpParams = httpParams.append(key, String(item));
+        }
+        continue;
+      }
+      httpParams = httpParams.set(key, String(value));
     }
     return httpParams;
   }

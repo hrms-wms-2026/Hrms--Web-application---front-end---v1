@@ -42,6 +42,7 @@ export interface EmployeeListItemResponse {
   readonly invitationStatus?: string | null;
   readonly invitationExpiresAt?: string | null;
   readonly attendanceSummary?: EmployeeListAttendanceSummaryResponse | null;
+  readonly workModeLabel?: string | null;
   readonly avatarFileId?: string | null;
 }
 
@@ -77,6 +78,51 @@ export interface EmployeeListParams {
   /** Exclude on-leave/suspended/offboarding/terminated/resigned employees - for picker-style
    * callers (e.g. calendar participants) where only someone who could actually attend belongs. */
   activeOnly?: boolean;
+  positionId?: string;
+  employmentType?: readonly string[];
+  managerId?: string;
+  sortBy?: EmployeeSortKey;
+  sortDir?: SortDirection;
+}
+
+export type EmployeeSortKey = 'name' | 'employeeNumber' | 'position' | 'department' | 'employmentType' | 'manager';
+export type SortDirection = 'asc' | 'desc';
+
+export type BulkEmployeeActionOutcome = 'succeeded' | 'pendingApproval' | 'failed';
+
+export interface BulkEmployeeActionItem {
+  readonly employeeId: string;
+  readonly outcome: BulkEmployeeActionOutcome;
+  readonly reason: string | null;
+}
+
+export interface BulkEmployeeActionResponse {
+  readonly items: readonly BulkEmployeeActionItem[];
+  readonly succeeded: number;
+  readonly pendingApproval: number;
+  readonly failed: number;
+}
+
+export interface BulkChangePositionPayload {
+  readonly employeeIds: readonly string[];
+  readonly positionId: string;
+  readonly effectiveFrom: string;
+  readonly changeReason: 'Promotion' | 'Transfer';
+  readonly reportsToEmployeeId: string | null;
+}
+
+export interface BulkChangeEmploymentTypePayload {
+  readonly employeeIds: readonly string[];
+  readonly employmentTypeCode: string;
+}
+
+export interface BulkStartOffboardingPayload {
+  readonly employeeIds: readonly string[];
+  readonly reason: string;
+  readonly lastWorkingDate: string;
+  readonly knowledgeRiskLevel: string;
+  readonly rehireEligibility: string | null;
+  readonly notes: string | null;
 }
 
 export interface EmployeeDetailResponse {

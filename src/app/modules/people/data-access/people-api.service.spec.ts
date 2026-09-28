@@ -65,6 +65,23 @@ describe('PeopleApiService', () => {
     httpMock = TestBed.inject(HttpTestingController);
   });
 
+  it('sends repeated employmentType params for the list filter', () => {
+    service.listEmployees({ employmentType: ['full_time', 'intern'], sortBy: 'name', sortDir: 'desc' }).subscribe();
+    const req = httpMock.expectOne((r) => r.url.endsWith('/employees'));
+    expect(req.request.params.getAll('employmentType')).toEqual(['full_time', 'intern']);
+    expect(req.request.params.get('sortDir')).toBe('desc');
+    req.flush({ items: [], totalCount: 0, page: 1, pageSize: 25 });
+  });
+
+  it('posts bulk actions to the bulk endpoints', () => {
+    service.bulkChangeEmploymentType({ employeeIds: ['a'], employmentTypeCode: 'contract' }).subscribe();
+    httpMock.expectOne((r) => r.method === 'POST' && r.url.endsWith('/employees/bulk/employment-type')).flush({ items: [], succeeded: 0, pendingApproval: 0, failed: 0 });
+    service.bulkStartOffboarding({ employeeIds: ['a'], reason: 'resignation', lastWorkingDate: '2026-10-31', knowledgeRiskLevel: 'medium', rehireEligibility: null, notes: null }).subscribe();
+    httpMock.expectOne((r) => r.method === 'POST' && r.url.endsWith('/employees/bulk/offboarding/start')).flush({ items: [], succeeded: 0, pendingApproval: 0, failed: 0 });
+    service.bulkChangePosition({ employeeIds: ['a'], positionId: 'p', effectiveFrom: '2026-10-01', changeReason: 'Transfer', reportsToEmployeeId: null }).subscribe();
+    httpMock.expectOne((r) => r.method === 'POST' && r.url.endsWith('/employees/bulk/change-position')).flush({ items: [], succeeded: 0, pendingApproval: 0, failed: 0 });
+  });
+
   afterEach(() => {
     httpMock.verify();
   });
