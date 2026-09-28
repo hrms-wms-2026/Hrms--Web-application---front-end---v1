@@ -18,7 +18,7 @@
 - Single-spec run: `npx ng test --watch=false --include=<path-to-spec>` from the repo root. Full: `npx ng test --watch=false`. Build: `npx ng build`.
 - Icons: the codebase has **no icon component**; icons are inline `<svg viewBox="0 0 24 24">` with `<path d="…">`. Therefore `BulkAction.icon` / `MenuItem.icon` from the spec are implemented as **`iconPath?: string` (SVG path data)**.
 - Colors only via tokens: `--color-surface`, `--color-surface-secondary`, `--color-border`, `--color-text-primary`, `--color-text-secondary`, `--color-accent`, `--color-danger-text`, `--color-danger-subtle`.
-- `app-popover` z-index is 1300; the bulk bar uses z-index 1200 so its own dropdown sits above it.
+- z-index ladder (measured): `app-mobile-bottom-nav` 1000 < **bulk bar 1100** < `app-modal` overlay (`z-[1200]`) and `.global-dialog-container` 1200 < `app-popover` 1300 < toasts 2000. The bar must stay BELOW modals because the selection deliberately survives while the Move-to-sprint dialog is open. `.task-backlog__undo-banner` is in normal flow (not fixed), so it does not collide with the bar.
 - Bulk bar bottom offset: `calc(24px + var(--bottom-tray-offset, 0px))` desktop; `calc(88px + var(--bottom-tray-offset, 0px))` at `max-width: 768px` (clears `app-mobile-bottom-nav`).
 - `app-task-table` public inputs/outputs must NOT change.
 
@@ -525,7 +525,7 @@ export class DropdownMenuComponent implements OnDestroy {
         break;
       case 'ArrowUp':
         event.preventDefault();
-        items[(index - 1 + items.length) % items.length]?.focus();
+        items[index < 0 ? items.length - 1 : (index - 1 + items.length) % items.length]?.focus();
         break;
       case 'Escape':
         event.preventDefault();
@@ -891,7 +891,7 @@ Note: the loop variable is deliberately `item`, not `action` — `action` would 
   position: fixed;
   left: 50%;
   bottom: calc(24px + var(--bottom-tray-offset, 0px));
-  z-index: 1200;
+  z-index: 1100;
   display: flex;
   align-items: center;
   gap: 0.4rem;
