@@ -28,6 +28,6 @@ describe('employee columns', () => {
   it('employee is the only locked column and every sortable column maps to a backend sort key', () => {
     expect(EMPLOYEE_COLUMNS.filter((c) => c.locked).map((c) => c.key)).toEqual(['employee']);
     expect(EMPLOYEE_COLUMNS.filter((c) => c.sortKey).map((c) => c.sortKey))
-      .toEqual(['name', 'employeeNumber', 'position', 'department', 'employmentType', 'manager']);
+      .toEqual(['name', 'position', 'department', 'employmentType', 'manager']);
   });
 });

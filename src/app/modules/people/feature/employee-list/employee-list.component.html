@@ -43,6 +43,11 @@
         }
       </div>
 
+      @if (activeTab() === 'employees') {
+        <app-employee-filter-popover [value]="listState().filters" [legalEntityId]="legalEntityId()" (applied)="onFiltersApplied($event)" />
+        <app-employee-column-picker [visible]="visibleColumnKeys()" (applied)="onColumnsApplied($event)" />
+      }
+
       <!-- Right: Segmented Tabs & Add Button -->
       <div class="emp-controls-right">
         <div class="emp-segmented-tabs" role="tablist" aria-label="People views">
@@ -91,11 +96,6 @@
     } @else if (store.employeesError()) {
       <app-error-state [message]="store.employeesError()!" [retryable]="true" (retry)="loadEmployees()" />
     } @else {
-      <div class="emp-toolbar">
-        <app-employee-filter-popover [value]="listState().filters" [legalEntityId]="legalEntityId()" (applied)="onFiltersApplied($event)" />
-        <app-employee-column-picker [visible]="visibleColumnKeys()" (applied)="onColumnsApplied($event)" />
-      </div>
-
       <app-employee-directory-table
         [employees]="store.employees()"
         [columns]="visibleColumns()"

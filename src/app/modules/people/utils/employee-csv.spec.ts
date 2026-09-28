@@ -10,10 +10,10 @@ const row = (overrides: Partial<EmployeeListItemResponse> = {}): EmployeeListIte
 });
 
 describe('toEmployeeCsv', () => {
-  const cols = EMPLOYEE_COLUMNS.filter((c) => ['employee', 'employeeNumber', 'position'].includes(c.key));
+  const cols = EMPLOYEE_COLUMNS.filter((c) => ['employee', 'position', 'department'].includes(c.key));
 
   it('writes a header and one line per row using the column labels and values', () => {
-    expect(toEmployeeCsv([row()], cols)).toBe('Employee,ID,Position\r\nSaif Ahamed,DAPI-0015,Watercraft Engineer');
+    expect(toEmployeeCsv([row()], cols)).toBe('Employee,Position,Department\r\nSaif Ahamed,Watercraft Engineer,Watercraft Engineering');
   });
 
   it('quotes commas, quotes and newlines', () => {

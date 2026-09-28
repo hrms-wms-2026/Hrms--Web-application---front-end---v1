@@ -114,4 +114,35 @@ describe('EmployeeDirectoryTableComponent', () => {
     fixture.detectChanges();
     expect(el.textContent).toContain('No employees found');
   });
+
+  it('renders a red warning ring and friendly tooltip for an employee who has not clocked in', async () => {
+    const { fixture, el, host } = await setup();
+    host.employees.set([
+      emp('warn', {
+        attendanceSummary: {
+          showNotClockedInWarning: true,
+          shouldHaveClockedIn: true,
+          hasClockedInToday: false,
+          workDate: '2026-09-28',
+          timezone: 'Asia/Colombo',
+          scheduledStartTime: '09:00',
+          warningLabel: 'Still has not clocked in'
+        }
+      })
+    ]);
+    fixture.detectChanges();
+
+    const warningAvatar = el.querySelector('.emp-avatar-wrapper--warning') as HTMLElement;
+    expect(warningAvatar).not.toBeNull();
+    expect(warningAvatar.getAttribute('aria-label')).toBe('Still has not clocked in');
+    expect(warningAvatar.getAttribute('role')).toBe('img');
+    expect(warningAvatar.getAttribute('tabindex')).toBe('0');
+    expect(el.querySelector('.emp-attendance-warning-tooltip')?.textContent).toContain('Still has not clocked in');
+  });
+
+  it('does not render warning ring or tooltip when employee is not in warning state', async () => {
+    const { el } = await setup();
+    expect(el.querySelector('.emp-avatar-wrapper--warning')).toBeNull();
+    expect(el.querySelector('.emp-attendance-warning-tooltip')).toBeNull();
+  });
 });

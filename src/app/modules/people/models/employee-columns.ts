@@ -1,7 +1,7 @@
 import { EmployeeListItemResponse, EmployeeSortKey } from './employee.model';
 
 export type EmployeeColumnKey =
-  | 'employee' | 'employeeNumber' | 'position' | 'department' | 'employmentType'
+  | 'employee' | 'position' | 'department' | 'employmentType'
   | 'reportingManager' | 'company' | 'workMode' | 'email' | 'status';
 
 export interface EmployeeColumnDef {
@@ -14,7 +14,6 @@ export interface EmployeeColumnDef {
 
 export const EMPLOYEE_COLUMNS: readonly EmployeeColumnDef[] = [
   { key: 'employee', label: 'Employee', sortKey: 'name', locked: true, value: (e) => e.fullName },
-  { key: 'employeeNumber', label: 'ID', sortKey: 'employeeNumber', value: (e) => e.employeeNumber },
   { key: 'position', label: 'Position', sortKey: 'position', value: (e) => e.positionName ?? '' },
   { key: 'department', label: 'Department', sortKey: 'department', value: (e) => e.departmentName ?? '' },
   { key: 'employmentType', label: 'Employment', sortKey: 'employmentType', value: (e) => e.employmentTypeLabel },
@@ -26,7 +25,7 @@ export const EMPLOYEE_COLUMNS: readonly EmployeeColumnDef[] = [
 ];
 
 export const DEFAULT_EMPLOYEE_COLUMNS: readonly EmployeeColumnKey[] =
-  ['employee', 'employeeNumber', 'position', 'department', 'employmentType', 'reportingManager'];
+  ['employee', 'position', 'department', 'employmentType', 'reportingManager'];
 
 const STORAGE_KEY = 'employee_list_columns';
 

@@ -44,8 +44,13 @@
                     <div class="emp-identity">
                       <div class="emp-avatar-wrapper"
                         [class.emp-avatar-wrapper--warning]="attendanceWarningLabel(employee) !== null"
-                        [attr.aria-label]="attendanceWarningLabel(employee)" [attr.title]="attendanceWarningLabel(employee)">
+                        [attr.role]="attendanceWarningLabel(employee) !== null ? 'img' : null"
+                        [attr.tabindex]="attendanceWarningLabel(employee) !== null ? 0 : null"
+                        [attr.aria-label]="attendanceWarningLabel(employee)">
                         <app-avatar class="emp-avatar" [userName]="employee.fullName" size="md" shape="circle" />
+                        @if (attendanceWarningLabel(employee); as warningLabel) {
+                          <span class="emp-attendance-warning-tooltip" role="tooltip">{{ warningLabel }}</span>
+                        }
                         <span class="emp-status-dot-avatar"
                           [class.emp-status-dot-avatar--active]="employee.status.toLowerCase() === 'active'"
                           [class.emp-status-dot-avatar--inactive]="employee.status.toLowerCase() !== 'active'"
@@ -55,17 +60,12 @@
                         <span class="edt__name" [title]="employee.fullName">{{ employee.fullName }}</span>
                         @if (attendanceAttentionLabel(employee); as attentionLabel) {
                           <span class="emp-attention-indicator" [class]="attendanceSeverityClass(employee)" [attr.title]="attentionLabel">{{ attentionLabel }}</span>
-                        } @else if (attendanceStatusLabel(employee); as statusLabel) {
-                          <span class="emp-attendance-status-label" [attr.title]="statusLabel">{{ statusLabel }}</span>
                         }
                         @if (breakOverageLabel(employee); as breakLabel) {
                           <span class="emp-break-overage-marker emp-attention--critical" [attr.title]="breakLabel">{{ breakLabel }}</span>
                         }
                       </div>
                     </div>
-                  }
-                  @case ('employeeNumber') {
-                    <span class="edt__pill">{{ employee.employeeNumber || '—' }}</span>
                   }
                   @case ('reportingManager') {
                     @if (employee.reportingManagerName) {

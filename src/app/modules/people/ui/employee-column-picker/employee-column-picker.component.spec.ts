@@ -52,7 +52,7 @@ describe('EmployeeColumnPickerComponent', () => {
     q('columns-reset')!.click();
     fixture.detectChanges();
     q('columns-apply')!.click();
-    expect(host.applied[0]).toEqual(['employee', 'employeeNumber', 'position', 'department', 'employmentType', 'reportingManager']);
+    expect(host.applied[0]).toEqual(['employee', 'position', 'department', 'employmentType', 'reportingManager']);
   });
 
   it('search filters the list by label', async () => {
