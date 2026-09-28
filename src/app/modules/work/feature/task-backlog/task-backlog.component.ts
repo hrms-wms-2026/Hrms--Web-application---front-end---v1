@@ -27,11 +27,13 @@ import { SprintStartDialogComponent } from '../../ui/sprint-start-dialog/sprint-
 import { SprintCompleteDialogComponent } from '../../ui/sprint-complete-dialog/sprint-complete-dialog.component';
 import { MoveTasksToSprintDialogComponent, SprintMoveTarget } from '../../ui/move-tasks-to-sprint-dialog/move-tasks-to-sprint-dialog.component';
 import { toEditTaskRequest } from '../../utils/task.mapper';
+import { SelectionModel } from '../../../../shared/utils/selection-model';
+import { BulkAction, BulkActionBarComponent } from '../../../../shared/ui/bulk-action-bar/bulk-action-bar.component';
 
 @Component({
   selector: 'app-task-backlog',
   standalone: true,
-  imports: [SprintTabComponent, SprintFormComponent, TaskTableComponent, ButtonComponent, ErrorStateComponent, TaskFilterBarComponent, TaskAssigneeAvatarFilterComponent, TaskFormModalComponent, SprintStartDialogComponent, SprintCompleteDialogComponent, MoveTasksToSprintDialogComponent],
+  imports: [SprintTabComponent, SprintFormComponent, TaskTableComponent, ButtonComponent, ErrorStateComponent, TaskFilterBarComponent, TaskAssigneeAvatarFilterComponent, TaskFormModalComponent, SprintStartDialogComponent, SprintCompleteDialogComponent, MoveTasksToSprintDialogComponent, BulkActionBarComponent],
   template: `
     <ng-template #toolbarTpl>
       <div class="task-backlog__toolbar">
@@ -136,18 +138,11 @@ import { toEditTaskRequest } from '../../utils/task.mapper';
 
       @if (unsortedTasks().length > 0) {
         <div class="task-backlog__unsorted">
-          @if (selectedTaskIds().size > 0) {
-            <div class="task-backlog__selection-toolbar">
-              <span class="task-backlog__selection-count">{{ selectedTaskIds().size }} task{{ selectedTaskIds().size === 1 ? '' : 's' }} selected</span>
-              <app-button variant="primary" (pressed)="moveDialogOpen.set(true)">Move selected to sprint</app-button>
-              <button type="button" class="task-backlog__selection-clear" aria-label="Clear selection" title="Clear selection" (click)="clearSelection()">&#x2715;</button>
-            </div>
-          } @else {
-            <div class="task-backlog__unsorted-header">
-              <svg class="task-backlog__unsorted-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 6h16M4 12h16M4 18h16" /></svg>
-              <h3 class="task-backlog__unsorted-title">Backlog</h3>
-              <span class="task-backlog__unsorted-summary">{{ unsortedTasks().length }} task{{ unsortedTasks().length === 1 ? '' : 's' }} · {{ unsortedTotalHours() }}h</span>            </div>
-          }
+          <div class="task-backlog__unsorted-header">
+            <svg class="task-backlog__unsorted-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 6h16M4 12h16M4 18h16" /></svg>
+            <h3 class="task-backlog__unsorted-title">Backlog</h3>
+            <span class="task-backlog__unsorted-summary">{{ unsortedTasks().length }} task{{ unsortedTasks().length === 1 ? '' : 's' }} · {{ unsortedTotalHours() }}h</span>
+          </div>
           <app-task-table
             [tasks]="unsortedTasks()"
             [statusNames]="statusNames()"
@@ -167,6 +162,14 @@ import { toEditTaskRequest } from '../../utils/task.mapper';
         </div>
       }
     }
+
+    <app-bulk-action-bar
+      noun="task"
+      [count]="selection.count()"
+      [actions]="bulkActions"
+      (action)="onBulkAction($event)"
+      (cleared)="clearSelection()"
+    />
 
     @if (moveUndoBanner(); as banner) {
       <div class="task-backlog__undo-banner" role="status">
@@ -211,11 +214,7 @@ import { toEditTaskRequest } from '../../utils/task.mapper';
     .task-backlog__unsorted-header { display: flex; align-items: center; gap: 8px; margin: 0 0 10px; }
     .task-backlog__unsorted-icon { width: 15px; height: 15px; flex: 0 0 auto; color: var(--color-text-secondary); fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; }
     .task-backlog__unsorted-title { font-size: 13px; font-weight: 600; color: var(--color-text-primary); margin: 0; }
-    .task-backlog__unsorted-summary { font-size: 11px; color: var(--color-text-secondary); }    .task-backlog__selection-toolbar { display: flex; align-items: center; gap: 10px; margin: 0 0 10px; padding: 8px 12px; border: 1px solid var(--color-accent); border-radius: 10px; background: var(--color-surface-secondary); }
-    .task-backlog__selection-toolbar ::ng-deep app-button > button { width: auto; }
-    .task-backlog__selection-count { font-size: 13px; font-weight: 600; color: var(--color-text-primary); }
-    .task-backlog__selection-clear { margin-left: auto; border: none; background: none; color: var(--color-text-secondary); cursor: pointer; font-size: 14px; line-height: 1; padding: 4px; }
-    .task-backlog__selection-clear:hover { color: var(--color-text-primary); }
+    .task-backlog__unsorted-summary { font-size: 11px; color: var(--color-text-secondary); }
     .task-backlog__undo-banner { display: flex; align-items: center; gap: 12px; margin-top: 12px; padding: 10px 14px; border-radius: 10px; background: var(--color-text-primary); color: var(--color-surface); font-size: 13px; }
     .task-backlog__undo-action { border: none; background: none; color: var(--color-accent-light, var(--color-accent)); font-weight: 600; cursor: pointer; font-size: 13px; padding: 0; }
     .task-backlog__undo-action:hover { text-decoration: underline; }
@@ -236,7 +235,11 @@ export class TaskBacklogComponent implements OnInit, AfterViewInit, OnDestroy {
   protected readonly editingSprint = signal<Sprint | null>(null);
   protected readonly startingSprint = signal<Sprint | null>(null);
   protected readonly completingSprint = signal<Sprint | null>(null);
-  protected readonly selectedTaskIds = signal<ReadonlySet<string>>(new Set());
+  protected readonly selection = new SelectionModel<string>();
+  protected readonly selectedTaskIds = this.selection.selected;
+  protected readonly bulkActions: BulkAction[] = [
+    { id: 'move-to-sprint', label: 'Move to sprint', placement: 'primary' }
+  ];
   protected readonly moveDialogOpen = signal(false);
   protected readonly movingTasks = signal(false);
   protected readonly moveError = signal<string | null>(null);
@@ -428,21 +431,19 @@ export class TaskBacklogComponent implements OnInit, AfterViewInit, OnDestroy {
   }
 
   protected onTaskSelectionChanged(event: { taskId: string; selected: boolean }): void {
-    const next = new Set(this.selectedTaskIds());
-    if (event.selected) next.add(event.taskId); else next.delete(event.taskId);
-    this.selectedTaskIds.set(next);
+    this.selection.toggle(event.taskId, event.selected);
   }
 
   protected onSelectAllChanged(event: { taskIds: string[]; selected: boolean }): void {
-    const next = new Set(this.selectedTaskIds());
-    for (const id of event.taskIds) {
-      if (event.selected) next.add(id); else next.delete(id);
-    }
-    this.selectedTaskIds.set(next);
+    this.selection.setMany(event.taskIds, event.selected);
   }
 
   protected clearSelection(): void {
-    this.selectedTaskIds.set(new Set());
+    this.selection.clear();
+  }
+
+  protected onBulkAction(actionId: string): void {
+    if (actionId === 'move-to-sprint') this.moveDialogOpen.set(true);
   }
 
   protected async onTasksMoved(targetSprintId: string): Promise<void> {
@@ -500,10 +501,11 @@ export class TaskBacklogComponent implements OnInit, AfterViewInit, OnDestroy {
 
   protected setObjectiveFilter(ids: string[]): void { this.objectiveFilter.set(ids); }
   protected setCategoryFilter(ids: string[]): void { this.categoryFilter.set(ids); }
-  protected setAssigneeFilter(ids: string[]): void { this.assigneeFilter.set(ids); }
+  protected setAssigneeFilter(ids: string[]): void { this.clearSelection(); this.assigneeFilter.set(ids); }
   protected setSprintStatusFilter(value: string): void { this.sprintStatusFilter.set(value as 'all' | SprintStatus); }
 
   protected onFilterFieldChanged(event: { key: string; values: string[] }): void {
+    this.clearSelection();
     switch (event.key) {
       case 'module': this.setObjectiveFilter(event.values); break;
       case 'category': this.setCategoryFilter(event.values); break;

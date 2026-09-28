@@ -582,24 +582,25 @@ describe('TaskBacklogComponent', () => {
       return { ...makeTask(id, null), objectiveId, estimatedHours };
     }
 
-    it('selecting a Backlog row replaces the title with a selection toolbar', async () => {
+    it('selecting a Backlog row shows the floating bulk bar with the count; the Backlog title stays', async () => {
       const tasks = [makeTaskWithHours('t-a', 4), makeTaskWithHours('t-b', 6)];
       const { fixture } = setup({ tasks });
       await fixture.whenStable();
       fixture.detectChanges();
 
-      expect(fixture.nativeElement.textContent).toContain('Backlog');
-      expect(fixture.nativeElement.querySelector('.task-backlog__selection-toolbar')).toBeNull();
+      expect(fixture.nativeElement.querySelector('[data-testid="bulk-action-bar"]')).toBeNull();
 
       (fixture.nativeElement.querySelector('[data-testid="task-select-t-a"]') as HTMLInputElement).click();
       fixture.detectChanges();
 
-      const toolbar = fixture.nativeElement.querySelector('.task-backlog__selection-toolbar');
-      expect(toolbar).not.toBeNull();
-      expect(toolbar.textContent).toContain('1 task selected');
+      const bar = fixture.nativeElement.querySelector('[data-testid="bulk-action-bar"]');
+      expect(bar).not.toBeNull();
+      expect(bar.textContent).toContain('1 task selected');
+      expect(fixture.nativeElement.querySelector('.task-backlog__unsorted-title')?.textContent).toContain('Backlog');
+      expect(fixture.nativeElement.querySelector('.task-backlog__selection-toolbar')).toBeNull();
     });
 
-    it('clearing the selection restores the plain title', async () => {
+    it('clearing the selection from the bulk bar hides it', async () => {
       const tasks = [makeTaskWithHours('t-a', 4)];
       const { fixture } = setup({ tasks });
       await fixture.whenStable();
@@ -607,11 +608,43 @@ describe('TaskBacklogComponent', () => {
 
       (fixture.nativeElement.querySelector('[data-testid="task-select-t-a"]') as HTMLInputElement).click();
       fixture.detectChanges();
-      (fixture.nativeElement.querySelector('.task-backlog__selection-clear') as HTMLButtonElement).click();
+      (fixture.nativeElement.querySelector('[data-testid="bulk-action-clear"]') as HTMLButtonElement).click();
       fixture.detectChanges();
 
-      expect(fixture.nativeElement.querySelector('.task-backlog__selection-toolbar')).toBeNull();
-      expect(fixture.nativeElement.textContent).toContain('Backlog');
+      expect(fixture.nativeElement.querySelector('[data-testid="bulk-action-bar"]')).toBeNull();
+    });
+
+    it('"Move to sprint" in the bulk bar opens the move dialog', async () => {
+      const tasks = [makeTaskWithHours('t-a', 4)];
+      const { fixture } = setup({ tasks });
+      await fixture.whenStable();
+      fixture.detectChanges();
+
+      (fixture.nativeElement.querySelector('[data-testid="task-select-t-a"]') as HTMLInputElement).click();
+      fixture.detectChanges();
+      (fixture.nativeElement.querySelector('[data-testid="bulk-action-move-to-sprint"]') as HTMLButtonElement).click();
+      fixture.detectChanges();
+
+      const inst = fixture.componentInstance as unknown as { moveDialogOpen: () => boolean };
+      expect(inst.moveDialogOpen()).toBe(true);
+    });
+
+    it('changing a filter clears the selection', async () => {
+      const tasks = [makeTaskWithHours('t-a', 4)];
+      const { fixture } = setup({ tasks });
+      await fixture.whenStable();
+      fixture.detectChanges();
+
+      (fixture.nativeElement.querySelector('[data-testid="task-select-t-a"]') as HTMLInputElement).click();
+      fixture.detectChanges();
+
+      const inst = fixture.componentInstance as unknown as {
+        selectedTaskIds: () => ReadonlySet<string>;
+        onFilterFieldChanged: (event: { key: string; values: string[] }) => void;
+      };
+      expect(inst.selectedTaskIds().size).toBe(1);
+      inst.onFilterFieldChanged({ key: 'priority', values: ['high'] });
+      expect(inst.selectedTaskIds().size).toBe(0);
     });
 
     it('move targets include draft and active sprints across modules, exclude complete/achieved', async () => {
