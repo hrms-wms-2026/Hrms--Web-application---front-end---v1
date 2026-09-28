@@ -58,7 +58,7 @@ Semantics:
 export interface BulkAction {
   id: string;
   label: string;
-  icon?: string;              // existing icon name convention
+  iconPath?: string;          // SVG path data (24x24 stroke) - the codebase has no icon component
   placement: 'primary' | 'more';
   danger?: boolean;
   disabled?: boolean;
@@ -68,12 +68,12 @@ export interface BulkAction {
 
 - Inputs: `count: number`, `actions: BulkAction[]`, `noun?: string` (default `'item'`; renders "4 employees selected").
 - Outputs: `action: string` (action id), `cleared: void`.
-- Rendering: `position: fixed`, bottom-center, `bottom: calc(16px + var(--bottom-tray-offset, 0px))` so D's draft tray can reserve space. Hidden when `count === 0`; slides/fades in otherwise. Respects `prefers-reduced-motion`.
-- Layout: checked checkbox + "N {noun}(s) selected" · primary buttons · "More ▾" (`app-dropdown-menu` with `placement: 'more'` actions; omitted if none) · ✕ clear.
-- Escape (when no menu open) emits `cleared`.
+- Rendering: `position: fixed`, bottom-center, `bottom: calc(24px + var(--bottom-tray-offset, 0px))` (`88px` at `max-width: 768px` to clear `app-mobile-bottom-nav`) so D's draft tray can reserve space. `z-index: 1100` — above the mobile nav (1000), below modals (1200) so the selection survives under the Move-to-sprint dialog. Hidden when `count === 0`; slides/fades in otherwise. Respects `prefers-reduced-motion`.
+- Layout: checked checkbox + "N {noun}(s) selected" · primary buttons · "More ▾" (`app-dropdown-menu` with `placement: 'more'` actions, `direction="up"`; omitted if none) · ✕ clear.
+- Escape emits `cleared` **only when keyboard focus is inside the bar** (a document-level listener would also fire when Escape closes a modal, wiping the selection). Escape that closes the open "More" menu does not also clear (the menu panel stops propagation).
 - `role="toolbar"`, `aria-label="Bulk actions"`, count in an `aria-live="polite"` region.
 - **No permission logic** — the parent passes only actions the user may perform.
-- Must render correctly on mobile width (wraps / scrolls horizontally inside the bar, never the page) and above `app-mobile-bottom-nav`.
+- Must render correctly on mobile width (wraps inside the bar, never scrolls the page; no `overflow-x: auto`, which would clip the upward "More" menu) and above `app-mobile-bottom-nav`.
 
 ### 3. `<app-dropdown-menu>` — `src/app/shared/ui/dropdown-menu/`
 
@@ -81,7 +81,7 @@ export interface BulkAction {
 export interface MenuItem {
   id: string;
   label: string;
-  icon?: string;
+  iconPath?: string;   // SVG path data (24x24 stroke)
   danger?: boolean;
   disabled?: boolean;
   dividerBefore?: boolean;
@@ -89,7 +89,8 @@ export interface MenuItem {
 ```
 
 - Wraps `app-popover`; owns its own open state internally (unlike raw popover).
-- Inputs: `items: MenuItem[]`, `align: 'left' | 'right'` (default `'right'`), `ariaLabel`.
+- Inputs: `items: MenuItem[]`, `align: 'left' | 'right'` (default `'right'`), `direction: 'down' | 'up'` (default `'down'`; the bulk bar uses `'up'` since it sits at the viewport bottom), `ariaLabel`.
+- **Only one menu is open app-wide** (module-level signal): because trigger clicks stop propagation, the popover's document-click close never reaches other open menus, so opening one menu closes the rest.
 - Output: `selected: string` (item id). Menu closes after selection.
 - Trigger is projected via `[menu-trigger]` so the same component backs the bar's "More ▾" and the row "⋯" button.
 - Keyboard: ArrowUp/ArrowDown move focus across enabled items, Enter/Space select, Escape closes and returns focus to trigger.
