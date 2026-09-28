@@ -272,7 +272,7 @@
           }
 
           @if (!isEdit) {
-        @if (participants().length === 0) {
+        @if (participants().length === 0 && guestEmails().length === 0) {
           <span class="text-sm text-[var(--color-text-secondary)]">No participants yet</span>
         } @else {
           <div class="flex flex-col gap-2" data-testid="calendar-form-participant-list">
@@ -288,6 +288,22 @@
                   class="text-lg leading-none text-[var(--color-text-secondary)] hover:text-red-600"
                   [attr.aria-label]="'Remove ' + (participant.name || 'participant')"
                   (click)="removeParticipant(participant.id)"
+                >&times;</button>
+              </div>
+            }
+            @for (guest of guestEmails(); track guest) {
+              <div class="flex items-center gap-2.5" data-testid="calendar-form-guest-row">
+                <span style="--color-profile-bg: var(--color-surface-secondary); --color-text-primary: var(--color-text-secondary);">
+                  <app-avatar [userName]="guest" size="sm" />
+                </span>
+                <span class="flex-1 truncate text-sm text-[var(--color-text-primary)]">{{ guest }}</span>
+                <span class="rounded-full bg-[var(--color-surface-secondary)] px-2 py-0.5 text-xs font-medium text-[var(--color-text-secondary)]">Guest</span>
+                <button
+                  type="button"
+                  data-testid="calendar-form-guest-remove"
+                  class="text-lg leading-none text-[var(--color-text-secondary)] hover:text-red-600"
+                  [attr.aria-label]="'Remove ' + guest"
+                  (click)="removeGuest(guest)"
                 >&times;</button>
               </div>
             }
@@ -314,6 +330,30 @@
       } @else if (canManageParticipants()) {
         <div class="flex items-center justify-end">
           <app-button type="button" variant="secondary" data-testid="calendar-form-add-participants-edit" (click)="openParticipantPicker()">Add participants</app-button>
+        </div>
+      }
+
+
+      @if (isEdit && event?.guests?.length) {
+        <div class="flex flex-col gap-2">
+          @for (guest of event!.guests!; track guest.email) {
+            <div class="flex items-center gap-2.5" data-testid="calendar-form-existing-guest">
+              <span style="--color-profile-bg: var(--color-surface-secondary); --color-text-primary: var(--color-text-secondary);">
+                <app-avatar [userName]="guest.email" size="sm" />
+              </span>
+              <span class="flex-1 truncate text-sm text-[var(--color-text-primary)]">{{ guest.email }}</span>
+              <span class="rounded-full bg-[var(--color-surface-secondary)] px-2 py-0.5 text-xs font-medium text-[var(--color-text-secondary)]">Guest</span>
+              @if (canManageParticipants()) {
+                <button
+                  type="button"
+                  data-testid="calendar-form-existing-guest-remove"
+                  class="text-lg leading-none text-[var(--color-text-secondary)] hover:text-red-600"
+                  [attr.aria-label]="'Remove ' + guest.email"
+                  (click)="onRemoveExistingGuest(guest.email)"
+                >&times;</button>
+              }
+            </div>
+          }
         </div>
       }
 
@@ -445,7 +485,9 @@
   [open]="participantPickerOpen()"
   [selectedIds]="participantIds()"
   (selectedIdsChange)="onParticipantIdsChange($event)"
+  [guestEmails]="guestEmails()"
   (selectedPeopleChange)="onParticipantPeopleChange($event)"
+  (guestEmailsChange)="onGuestEmailsChange($event)"
   (closed)="onParticipantPickerClosed()"
 />
 

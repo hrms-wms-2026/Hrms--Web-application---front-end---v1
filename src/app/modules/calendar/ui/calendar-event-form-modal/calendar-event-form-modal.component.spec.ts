@@ -983,4 +983,128 @@ describe('CalendarEventFormModalComponent', () => {
     expect(fixture.nativeElement.querySelector('[data-testid="calendar-form-add-participants-edit"]')).toBeTruthy();
     expect(fixture.nativeElement.querySelector('[data-testid="calendar-form-existing-participant-remove"]')).toBeTruthy();
   });
+
+  describe('guests invited by email', () => {
+    const guestRows = () => Array.from(fixture.nativeElement.querySelectorAll('[data-testid="calendar-form-guest-row"]')) as HTMLElement[];
+
+    it('lists picked guests with a Guest badge in create mode and no "No participants yet" text', () => {
+      fixture.componentInstance.onGuestEmailsChange(['vendor@example.com']);
+      fixture.detectChanges();
+
+      expect(guestRows().length).toBe(1);
+      expect(guestRows()[0].textContent).toContain('vendor@example.com');
+      expect(guestRows()[0].textContent).toContain('Guest');
+      expect(fixture.nativeElement.textContent).not.toContain('No participants yet');
+    });
+
+    it('removes a picked guest with its remove button', () => {
+      fixture.componentInstance.onGuestEmailsChange(['a@x.co', 'b@x.co']);
+      fixture.detectChanges();
+
+      (guestRows()[0].querySelector('[data-testid="calendar-form-guest-remove"]') as HTMLButtonElement).click();
+      fixture.detectChanges();
+
+      expect(fixture.componentInstance.guestEmails()).toEqual(['b@x.co']);
+      expect(guestRows().length).toBe(1);
+    });
+
+    it('sends the picked guests in the create payload', () => {
+      fixture.componentInstance.form.patchValue({
+        title: 'Vendor sync', startDate: '2026-09-01', startTime: '09:00', endDate: '2026-09-01', endTime: '09:30'
+      });
+      fixture.componentInstance.onGuestEmailsChange(['vendor@example.com']);
+      const spy = vi.fn();
+      fixture.componentInstance.save.subscribe(spy);
+
+      fixture.componentInstance.onSubmit(null);
+
+      const { create } = spy.mock.calls[0][0] as { create: { guestEmails: string[] } };
+      expect(create.guestEmails).toEqual(['vendor@example.com']);
+    });
+
+    it('counts picked guests as unsaved changes', () => {
+      fixture.componentInstance.onGuestEmailsChange(['vendor@example.com']);
+      const spy = vi.fn();
+      fixture.componentInstance.cancel.subscribe(spy);
+
+      fixture.componentInstance.attemptClose();
+
+      expect(spy).not.toHaveBeenCalled();
+      expect(fixture.componentInstance.discardConfirmOpen()).toBe(true);
+    });
+
+    it('starts with no guests when the modal reopens', () => {
+      fixture.componentInstance.onGuestEmailsChange(['vendor@example.com']);
+
+      fixture.componentRef.setInput('open', false);
+      fixture.detectChanges();
+      fixture.componentRef.setInput('open', true);
+      fixture.detectChanges();
+
+      expect(fixture.componentInstance.guestEmails()).toEqual([]);
+    });
+
+    it('shows the event\'s existing guests when editing and emits removeExistingGuest from the remove button', () => {
+      fixture.componentRef.setInput('event', { ...editingEvent, isOrganizer: true, guests: [{ email: 'vendor@example.com' }] });
+      fixture.detectChanges();
+      const spy = vi.fn();
+      fixture.componentInstance.removeExistingGuest.subscribe(spy);
+
+      expect(fixture.nativeElement.querySelector('[data-testid="calendar-form-existing-guest"]').textContent).toContain('vendor@example.com');
+      (fixture.nativeElement.querySelector('[data-testid="calendar-form-existing-guest-remove"]') as HTMLButtonElement).click();
+
+      expect(spy).toHaveBeenCalledWith('vendor@example.com');
+    });
+
+    it('hides the remove button on existing guests from someone who is not the organizer', () => {
+      fixture.componentRef.setInput('event', { ...editingEvent, isOrganizer: false, organizerName: 'Nadesh C', guests: [{ email: 'vendor@example.com' }] });
+      fixture.detectChanges();
+
+      expect(fixture.nativeElement.querySelector('[data-testid="calendar-form-existing-guest"]')).not.toBeNull();
+      expect(fixture.nativeElement.querySelector('[data-testid="calendar-form-existing-guest-remove"]')).toBeNull();
+    });
+
+    it('closing the picker while editing emits addGuestsToEvent with the picked guests and clears them', () => {
+      fixture.componentRef.setInput('event', { ...editingEvent, isOrganizer: true });
+      fixture.detectChanges();
+      const guestsSpy = vi.fn();
+      const participantsSpy = vi.fn();
+      fixture.componentInstance.addGuestsToEvent.subscribe(guestsSpy);
+      fixture.componentInstance.addParticipantsToEvent.subscribe(participantsSpy);
+
+      fixture.componentInstance.onGuestEmailsChange(['vendor@example.com']);
+      fixture.componentInstance.onParticipantPickerClosed();
+
+      expect(guestsSpy).toHaveBeenCalledWith(['vendor@example.com']);
+      expect(participantsSpy).not.toHaveBeenCalled();
+      expect(fixture.componentInstance.guestEmails()).toEqual([]);
+    });
+
+    it('closing the picker while editing with both people and guests picked emits both', () => {
+      fixture.componentRef.setInput('event', { ...editingEvent, isOrganizer: true });
+      fixture.detectChanges();
+      const guestsSpy = vi.fn();
+      const participantsSpy = vi.fn();
+      fixture.componentInstance.addGuestsToEvent.subscribe(guestsSpy);
+      fixture.componentInstance.addParticipantsToEvent.subscribe(participantsSpy);
+
+      fixture.componentInstance.onParticipantIdsChange(['emp-1']);
+      fixture.componentInstance.onGuestEmailsChange(['vendor@example.com']);
+      fixture.componentInstance.onParticipantPickerClosed();
+
+      expect(participantsSpy).toHaveBeenCalledWith(['emp-1']);
+      expect(guestsSpy).toHaveBeenCalledWith(['vendor@example.com']);
+    });
+
+    it('closing the picker while creating keeps the picked guests for the create payload', () => {
+      const guestsSpy = vi.fn();
+      fixture.componentInstance.addGuestsToEvent.subscribe(guestsSpy);
+
+      fixture.componentInstance.onGuestEmailsChange(['vendor@example.com']);
+      fixture.componentInstance.onParticipantPickerClosed();
+
+      expect(guestsSpy).not.toHaveBeenCalled();
+      expect(fixture.componentInstance.guestEmails()).toEqual(['vendor@example.com']);
+    });
+  });
 });

@@ -238,6 +238,40 @@ describe('CalendarEventStore', () => {
     expect(store.actionError()).toBeTruthy();
   });
 
+  it('addGuests replaces the event guests with the server-returned list', async () => {
+    const load = store.loadEvents('2026-09-01T00:00:00Z', '2026-09-30T00:00:00Z');
+    http.expectOne((r) => r.url === `${environment.apiUrl}/calendar`).flush({ events: [makeEvent({ id: 'e11' })] });
+    await load;
+
+    const work = store.addGuests('e11', ['vendor@example.com']);
+    http.expectOne(`${environment.apiUrl}/calendar/e11/guests`).flush({ guests: [{ email: 'vendor@example.com' }] });
+
+    expect(await work).toBe(true);
+    expect(store.events().find((e) => e.id === 'e11')?.guests).toEqual([{ email: 'vendor@example.com' }]);
+  });
+
+  it('addGuests sets actionError and returns false on failure', async () => {
+    const work = store.addGuests('e12', ['vendor@example.com']);
+    http.expectOne(`${environment.apiUrl}/calendar/e12/guests`).flush({ detail: 'boom' }, { status: 400, statusText: 'Bad Request' });
+
+    expect(await work).toBe(false);
+    expect(store.actionError()).toBeTruthy();
+  });
+
+  it('removeGuest filters the removed email out of the event guests', async () => {
+    const load = store.loadEvents('2026-09-01T00:00:00Z', '2026-09-30T00:00:00Z');
+    http.expectOne((r) => r.url === `${environment.apiUrl}/calendar`).flush({
+      events: [makeEvent({ id: 'e13', guests: [{ email: 'a@x.co' }, { email: 'b@x.co' }] })]
+    });
+    await load;
+
+    const work = store.removeGuest('e13', 'a@x.co');
+    http.expectOne((r) => r.url === `${environment.apiUrl}/calendar/e13/guests`).flush(null);
+
+    expect(await work).toBe(true);
+    expect(store.events().find((e) => e.id === 'e13')?.guests).toEqual([{ email: 'b@x.co' }]);
+  });
+
   it('removeParticipant filters the removed employee out of the event participants', async () => {
     const load = store.loadEvents('2026-09-01T00:00:00Z', '2026-09-30T00:00:00Z');
     http.expectOne((r) => r.url === `${environment.apiUrl}/calendar`).flush({

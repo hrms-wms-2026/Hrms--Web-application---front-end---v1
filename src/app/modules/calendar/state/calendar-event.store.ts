@@ -228,6 +228,36 @@ export const CalendarEventStore = signalStore(
         patchState(store, { participantActionSaving: false, actionError: toSafeErrorMessage(err, 'Failed to remove the participant.') });
         return false;
       }
+    },
+    async addGuests(eventId: string, emails: readonly string[]): Promise<boolean> {
+      patchState(store, { participantActionSaving: true, actionError: null });
+      try {
+        const response = await firstValueFrom(api.addGuests(eventId, emails));
+        patchState(store, {
+          participantActionSaving: false,
+          events: store.events().map((e) => (e.id === eventId ? { ...e, guests: response.guests } : e))
+        });
+        return true;
+      } catch (err) {
+        patchState(store, { participantActionSaving: false, actionError: toSafeErrorMessage(err, 'Failed to invite guests.') });
+        return false;
+      }
+    },
+    async removeGuest(eventId: string, email: string): Promise<boolean> {
+      patchState(store, { participantActionSaving: true, actionError: null });
+      try {
+        await firstValueFrom(api.removeGuest(eventId, email));
+        patchState(store, {
+          participantActionSaving: false,
+          events: store.events().map((e) => (e.id === eventId
+            ? { ...e, guests: (e.guests ?? []).filter((g) => g.email !== email) }
+            : e))
+        });
+        return true;
+      } catch (err) {
+        patchState(store, { participantActionSaving: false, actionError: toSafeErrorMessage(err, 'Failed to remove the guest.') });
+        return false;
+      }
     }
   }))
 );

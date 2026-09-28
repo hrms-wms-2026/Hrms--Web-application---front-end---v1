@@ -1,5 +1,6 @@
-import { Component, effect, inject, input, output, signal } from '@angular/core';
+import { Component, computed, effect, inject, input, output, signal } from '@angular/core';
 import { ModalComponent } from '../../../../shared/ui/modal/modal.component';
+import { PeoplePickerComponent, PeoplePickerOption } from '../../../../shared/ui/people-picker/people-picker.component';
 import { PeopleApiService } from '../../../people/data-access/people-api.service';
 import { EmployeeListItemResponse } from '../../../people/models/employee.model';
 import { AuthStore } from '../../../../core/auth/state/auth.store';
@@ -7,35 +8,20 @@ import { AuthStore } from '../../../../core/auth/state/auth.store';
 @Component({
   selector: 'app-calendar-participant-picker',
   standalone: true,
-  imports: [ModalComponent],
+  imports: [ModalComponent, PeoplePickerComponent],
   template: `
     <app-modal [open]="open()" title="Add participants" (closed)="closed.emit()">
-      <input
-        data-testid="calendar-participant-picker-search"
-        type="text"
-        placeholder="Search by name or email"
-        class="mb-2 w-full rounded-md border border-[var(--color-border)] bg-[var(--color-surface)] px-2.5 py-1.5 text-xs text-[var(--color-text-primary)]"
-        (input)="onSearchInput($event)"
+      <app-people-picker
+        [options]="options()"
+        [selectedIds]="selectedIds()"
+        [guests]="guestEmails()"
+        [allowGuests]="true"
+        placeholder="Search people, or type an email to invite a guest"
+        (searchChange)="query($event)"
+        (toggled)="toggle($event)"
+        (guestAdded)="addGuest($event)"
+        (guestToggled)="removeGuest($event)"
       />
-      <div class="flex max-h-64 flex-col gap-1 overflow-y-auto">
-        @for (employee of results(); track employee.id) {
-          <button
-            type="button"
-            data-testid="calendar-participant-picker-row"
-            [attr.data-selected]="isSelected(employee.id)"
-            class="flex items-center justify-between rounded-md px-2 py-1.5 text-left text-xs hover:bg-[var(--color-surface-secondary)]"
-            (click)="toggle(employee.id)"
-          >
-            <span class="flex flex-col items-start">
-              <span class="font-medium text-[var(--color-text-primary)]">{{ employee.fullName }}</span>
-              <span class="text-[10px] text-[var(--color-text-secondary)]">{{ employee.email }} · {{ employee.departmentName }}</span>
-            </span>
-            @if (isSelected(employee.id)) {
-              <span class="text-[var(--color-accent)]">✓</span>
-            }
-          </button>
-        }
-      </div>
     </app-modal>
   `
 })
@@ -45,13 +31,20 @@ export class CalendarParticipantPickerComponent {
 
   open = input(false);
   selectedIds = input<readonly string[]>([]);
+  guestEmails = input<readonly string[]>([]);
   selectedIdsChange = output<readonly string[]>();
   /** Same selection as `selectedIdsChange`, paired with display names so callers can
    * render avatar chips without a second lookup. */
   selectedPeopleChange = output<readonly { id: string; name: string }[]>();
+  guestEmailsChange = output<readonly string[]>();
   closed = output<void>();
 
   results = signal<readonly EmployeeListItemResponse[]>([]);
+  protected readonly options = computed<readonly PeoplePickerOption[]>(() =>
+    this.results().map((e) => ({
+      id: e.id, name: e.fullName, email: e.email, detail: e.departmentName
+    }))
+  );
   private readonly namesById = new Map<string, string>();
 
   constructor() {
@@ -62,22 +55,7 @@ export class CalendarParticipantPickerComponent {
     });
   }
 
-  onSearchInput(event: Event): void {
-    this.query((event.target as HTMLInputElement).value);
-  }
-
-  isSelected(employeeId: string): boolean {
-    return this.selectedIds().includes(employeeId);
-  }
-
-  toggle(employeeId: string): void {
-    const current = this.selectedIds();
-    const next = current.includes(employeeId) ? current.filter((id) => id !== employeeId) : [...current, employeeId];
-    this.selectedIdsChange.emit(next);
-    this.selectedPeopleChange.emit(next.map((id) => ({ id, name: this.namesById.get(id) ?? '' })));
-  }
-
-  private query(search: string): void {
+  query(search: string): void {
     // Someone on leave, suspended, offboarding, terminated, or resigned can't actually attend a
     // future meeting - don't offer them as a pickable participant.
     this.peopleApi.listEmployees({ search, page: 1, pageSize: 20, activeOnly: true }).subscribe((page) => {
@@ -88,5 +66,21 @@ export class CalendarParticipantPickerComponent {
       for (const e of items) this.namesById.set(e.id, e.fullName);
       this.results.set(items);
     });
+  }
+
+  toggle(employeeId: string): void {
+    const current = this.selectedIds();
+    const next = current.includes(employeeId) ? current.filter((id) => id !== employeeId) : [...current, employeeId];
+    this.selectedIdsChange.emit(next);
+    this.selectedPeopleChange.emit(next.map((id) => ({ id, name: this.namesById.get(id) ?? '' })));
+  }
+
+  addGuest(email: string): void {
+    if (this.guestEmails().includes(email)) return;
+    this.guestEmailsChange.emit([...this.guestEmails(), email]);
+  }
+
+  removeGuest(email: string): void {
+    this.guestEmailsChange.emit(this.guestEmails().filter((g) => g !== email));
   }
 }

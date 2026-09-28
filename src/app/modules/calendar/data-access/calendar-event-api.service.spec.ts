@@ -127,4 +127,20 @@ describe('CalendarEventApiService', () => {
     expect(req.request.method).toBe('DELETE');
     req.flush(null);
   });
+
+  it('addGuests posts the emails to {eventId}/guests', () => {
+    service.addGuests('event-1', ['a@x.co', 'b@x.co']).subscribe();
+    const req = http.expectOne(`${environment.apiUrl}/calendar/event-1/guests`);
+    expect(req.request.method).toBe('POST');
+    expect(req.request.body).toEqual({ emails: ['a@x.co', 'b@x.co'] });
+    req.flush({ guests: [] });
+  });
+
+  it('removeGuest deletes {eventId}/guests with the email as a query param', () => {
+    service.removeGuest('event-1', 'a+b@x.co').subscribe();
+    const req = http.expectOne((r) => r.url === `${environment.apiUrl}/calendar/event-1/guests`);
+    expect(req.request.method).toBe('DELETE');
+    expect(req.request.params.get('email')).toBe('a+b@x.co');
+    req.flush(null);
+  });
 });

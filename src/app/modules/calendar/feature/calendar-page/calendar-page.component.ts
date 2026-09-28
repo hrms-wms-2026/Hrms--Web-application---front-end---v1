@@ -316,4 +316,18 @@ export class CalendarPageComponent {
     const ok = await this.store.removeParticipant(editing.id, employeeId);
     if (ok) this.editingEvent.set(this.store.events().find((e) => e.id === editing.id) ?? null);
   }
+
+  async onAddGuestsToEvent(emails: readonly string[]): Promise<void> {
+    const editing = this.editingEvent();
+    if (!editing) return;
+    const ok = await this.store.addGuests(editing.id, emails);
+    if (ok) this.editingEvent.set(this.store.events().find((e) => e.id === editing.id) ?? null);
+  }
+
+  async onRemoveExistingGuest(email: string): Promise<void> {
+    const editing = this.editingEvent();
+    if (!editing) return;
+    const ok = await this.store.removeGuest(editing.id, email);
+    if (ok) this.editingEvent.set(this.store.events().find((e) => e.id === editing.id) ?? null);
+  }
 }
