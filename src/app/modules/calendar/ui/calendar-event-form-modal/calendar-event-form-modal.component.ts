@@ -127,6 +127,8 @@ export class CalendarEventFormModalComponent implements OnChanges {
   @Output() removeMeeting = new EventEmitter<void>();
   @Output() addParticipantsToEvent = new EventEmitter<readonly string[]>();
   @Output() removeExistingParticipant = new EventEmitter<string>();
+  @Output() addGuestsToEvent = new EventEmitter<readonly string[]>();
+  @Output() removeExistingGuest = new EventEmitter<string>();
   @Output() cancel = new EventEmitter<void>();
 
   private readonly authStore = inject(AuthStore);
@@ -142,6 +144,8 @@ export class CalendarEventFormModalComponent implements OnChanges {
   readonly participantPickerOpen = signal(false);
   readonly participantIds = signal<readonly string[]>([]);
   readonly participants = signal<readonly { id: string; name: string }[]>([]);
+  /** Guest emails picked in the participant picker, not yet saved to the event. */
+  readonly guestEmails = signal<readonly string[]>([]);
   readonly discardConfirmOpen = signal(false);
   /** Teams/Zoom provider picked while creating a new event - the meeting can't actually be
    * created until the event itself has a real id, so this is just intent, resolved into a
@@ -280,6 +284,7 @@ export class CalendarEventFormModalComponent implements OnChanges {
       // mode) made the picker show unrelated people as pre-selected the next time it opened.
       this.participantIds.set([]);
       this.participants.set([]);
+      this.guestEmails.set([]);
     }
     if (justOpened || changes['myTimezone']) {
       this.timezoneOptions.set(
@@ -469,6 +474,22 @@ export class CalendarEventFormModalComponent implements OnChanges {
       this.participantIds.set([]);
       this.participants.set([]);
     }
+    if (this.isEdit && this.guestEmails().length > 0) {
+      this.addGuestsToEvent.emit(this.guestEmails());
+      this.guestEmails.set([]);
+    }
+  }
+
+  onGuestEmailsChange(emails: readonly string[]): void {
+    this.guestEmails.set(emails);
+  }
+
+  removeGuest(email: string): void {
+    this.guestEmails.set(this.guestEmails().filter((g) => g !== email));
+  }
+
+  onRemoveExistingGuest(email: string): void {
+    this.removeExistingGuest.emit(email);
   }
 
   onRemoveExistingParticipant(employeeId: string): void {
@@ -476,7 +497,7 @@ export class CalendarEventFormModalComponent implements OnChanges {
   }
 
   private isDirty(): boolean {
-    return this.form.dirty || this.participantIds().length > 0;
+    return this.form.dirty || this.participantIds().length > 0 || this.guestEmails().length > 0;
   }
 
   attemptClose(): void {
@@ -561,7 +582,7 @@ export class CalendarEventFormModalComponent implements OnChanges {
         title: raw.title!.trim(), description: raw.description || null, startDate, endDate,
         isAllDay: !!raw.isAllDay, location: raw.location || null,
         meetingLink: raw.meetingLink || null, color: raw.color || null, recurrence,
-        participantEmployeeIds: this.participantIds(), recurrenceRule
+        participantEmployeeIds: this.participantIds(), recurrenceRule, guestEmails: this.guestEmails()
       },
       meetingProvider: this.pendingMeetingProvider()
     });
