@@ -537,7 +537,7 @@ public sealed class ChangeEmployeeEmploymentTypeCommandHandler(
 }
 ```
 
-- [ ] **Step 4: Run tests** — Expected: 5 passed.
+- [ ] **Step 4: Run tests** — Expected: 5 passed (Task 4) / 6 passed (Task 5 runner).
 
 - [ ] **Step 5: Commit**
 ```bash
@@ -649,6 +649,21 @@ public class BulkEmployeeActionRunnerTests
     }
 
     [Fact]
+    public async Task InnerValidationException_BecomesFailedItem_WithTheValidationMessage()
+    {
+        var a = Guid.NewGuid();
+
+        var response = await BulkEmployeeActionRunner.RunAsync(
+            new[] { a },
+            (_, _) => throw new FluentValidation.ValidationException(new[] { new FluentValidation.Results.ValidationFailure("EmploymentTypeCode", "'Employment Type Code' must not be empty.") }),
+            _uow, NullLogger.Instance, CancellationToken.None);
+
+        Assert.Equal("failed", response.Items[0].Outcome);
+        Assert.Equal("'Employment Type Code' must not be empty.", response.Items[0].Reason);
+        Assert.Equal(1, _uow.ClearTrackingCallCount);
+    }
+
+    [Fact]
     public async Task Cancellation_Propagates()
     {
         using var cts = new CancellationTokenSource();
@@ -733,6 +748,13 @@ public static class BulkEmployeeActionRunner
                         null)
                     : new BulkEmployeeActionItemResponse(employeeId, BulkEmployeeActionOutcomes.Failed, outcome.Error));
             }
+            catch (FluentValidation.ValidationException ex)
+            {
+                // ValidationBehavior throws (it does not return a failed Result) - surface the
+                // inner command's validation messages as this item's reason.
+                items.Add(new BulkEmployeeActionItemResponse(employeeId, BulkEmployeeActionOutcomes.Failed,
+                    string.Join(" ", ex.Errors.Select(e => e.ErrorMessage))));
+            }
             catch (Exception ex) when (ex is not OperationCanceledException)
             {
                 logger.LogError(ex, "Bulk employee action failed for employee {EmployeeId}", employeeId);
@@ -749,7 +771,7 @@ public static class BulkEmployeeActionRunner
 }
 ```
 
-- [ ] **Step 4: Run tests** — Expected: 5 passed.
+- [ ] **Step 4: Run tests** — Expected: 5 passed (Task 4) / 6 passed (Task 5 runner).
 
 - [ ] **Step 5: Commit**
 ```bash
@@ -1957,6 +1979,16 @@ describe('EmployeeDirectoryTableComponent', () => {
     expect(router.navigate).not.toHaveBeenCalled();
   });
 
+  it('Enter on the row opens the employee, but Enter bubbling from the row menu or checkbox does not', async () => {
+    const { q, router } = await setup();
+    const trigger = q('employee-row-menu-a')!.querySelector('button')!;
+    trigger.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true }));
+    q('employee-select-a')!.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true }));
+    expect(router.navigate).not.toHaveBeenCalled();
+    q('employee-row-a')!.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true }));
+    expect(router.navigate).toHaveBeenCalledWith(['/people/employees', 'a']);
+  });
+
   it('emits selection and select-all over the visible rows; header reflects partial selection', async () => {
     const { fixture, q, host } = await setup();
     (q('employee-select-a') as HTMLInputElement).click();
@@ -2116,7 +2148,7 @@ export class EmployeeDirectoryTableComponent {
         @for (employee of employees(); track employee.id) {
           <tr class="edt__row" tabindex="0" [attr.data-testid]="'employee-row-' + employee.id"
             [class.edt__row--selected]="selectedIds().has(employee.id)"
-            (click)="openEmployee(employee)" (keydown.enter)="openEmployee(employee)">
+            (click)="openEmployee(employee)" (keydown.enter)="$event.target === $event.currentTarget && openEmployee(employee)">
             <td class="edt__select-cell" (click)="$event.stopPropagation()">
               <input type="checkbox" [attr.data-testid]="'employee-select-' + employee.id" [attr.aria-label]="'Select ' + employee.fullName"
                 [checked]="selectedIds().has(employee.id)" (change)="onRowSelect(employee.id, $event)" />
@@ -2220,7 +2252,7 @@ export class EmployeeDirectoryTableComponent {
 ```
 Note: `td { overflow: hidden }` would clip the row menu's popover panel, hence `.edt__menu-cell { overflow: visible !important; }`; the scroll container's `overflow-x: auto` can still clip a menu on the last rows — if the browser check (Task 17) shows clipping, set `direction="up"` on the row menu for the last two rows (`$last`/`$index >= employees().length - 2`).
 
-- [ ] **Step 4: Run tests** — same command → 8 passed.
+- [ ] **Step 4: Run tests** — same command → 9 passed.
 
 - [ ] **Step 5: Commit**
 ```bash
