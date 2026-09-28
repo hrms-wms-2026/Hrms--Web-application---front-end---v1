@@ -53,6 +53,7 @@ export class CalendarPageComponent {
   readonly editingEvent = signal<CalendarEventResponse | null>(null);
   readonly prefillStart = signal<string | null>(null);
   readonly prefillEnd = signal<string | null>(null);
+  readonly submitting = signal(false);
 
   readonly year = computed(() => this.cursor().getFullYear());
   readonly month = computed(() => this.cursor().getMonth() + 1);
@@ -210,31 +211,46 @@ export class CalendarPageComponent {
   }
 
   async onSave(submission: CalendarEventFormSubmission): Promise<void> {
-    const editing = this.editingEvent();
-    let ok: boolean;
+    // store.saving ends after the event POST, so the follow-up meeting call left Create clickable and a 2nd click duplicated the event.
+    if (this.submitting()) return;
+    this.submitting.set(true);
+    try {
+      const editing = this.editingEvent();
+      let ok: boolean;
 
-    if ('update' in submission && editing) {
-      if (submission.scope && editing.recurrenceMasterId) {
-        const { from, to } = this.currentRange();
-        ok = await this.store.editOccurrence(
-          editing.recurrenceMasterId,
-          { originalStart: editing.originalStart!, scope: submission.scope, ...submission.update },
-          from, to
-        );
+      if ('update' in submission && editing) {
+        if (submission.scope && editing.recurrenceMasterId) {
+          const { from, to } = this.currentRange();
+          ok = await this.store.editOccurrence(
+            editing.recurrenceMasterId,
+            { originalStart: editing.originalStart!, scope: submission.scope, ...submission.update },
+            from, to
+          );
+        } else {
+          ok = await this.store.updateEvent(editing.id, submission.update);
+          if (ok) await this.reloadEvents();
+        }
+      } else if ('create' in submission) {
+        const created = await this.store.createEvent(submission.create);
+        ok = !!created;
+        if (created && submission.meetingProvider) {
+          await this.store.createMeeting(created.id, submission.meetingProvider);
+        }
+        if (created) await this.reloadEvents();
       } else {
-        ok = await this.store.updateEvent(editing.id, submission.update);
+        ok = false;
       }
-    } else if ('create' in submission) {
-      const created = await this.store.createEvent(submission.create);
-      ok = !!created;
-      if (created && submission.meetingProvider) {
-        await this.store.createMeeting(created.id, submission.meetingProvider);
-      }
-    } else {
-      ok = false;
-    }
 
-    if (ok) this.closeForm();
+      if (ok) this.closeForm();
+    } finally {
+      this.submitting.set(false);
+    }
+  }
+
+  /** The create/update responses carry no participants, organizer or conflict flags, so the saved event is re-read from the server. */
+  private reloadEvents(): Promise<void> {
+    const { from, to } = this.currentRange();
+    return this.store.loadEvents(from, to);
   }
 
   async onDelete(scope: RecurrenceEditScope | null): Promise<void> {

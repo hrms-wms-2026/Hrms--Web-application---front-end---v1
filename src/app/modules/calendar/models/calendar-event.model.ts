@@ -30,6 +30,8 @@ export interface CalendarEventResponse {
   originalStart: string | null;
   participants: readonly CalendarEventParticipant[] | null;
   hasConflict: boolean;
+  isOrganizer?: boolean;
+  organizerName?: string | null;
 }
 
 export interface CalendarEventsResponse {

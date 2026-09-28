@@ -76,12 +76,39 @@
               </a>
               <button
                 type="button"
-                class="ml-2 shrink-0 text-[var(--color-text-secondary)] hover:text-red-600"
+                class="ml-2 inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-md text-[var(--color-text-secondary)] hover:bg-[var(--color-surface-secondary)] hover:text-[var(--color-accent)]"
+                data-testid="calendar-form-copy-meeting-link"
+                [attr.data-state]="linkCopyState()"
+                [attr.aria-label]="linkCopyState() === 'copied' ? 'Link copied' : linkCopyState() === 'failed' ? 'Could not copy the link' : 'Copy meeting link'"
+                [title]="linkCopyState() === 'copied' ? 'Copied' : linkCopyState() === 'failed' ? 'Could not copy' : 'Copy link'"
+                (click)="copyMeetingLink()"
+              >
+                @if (linkCopyState() === 'copied') {
+                  <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="text-green-600" aria-hidden="true">
+                    <path d="M20 6 9 17l-5-5" />
+                  </svg>
+                } @else {
+                  <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                    <rect x="9" y="9" width="13" height="13" rx="2" />
+                    <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1" />
+                  </svg>
+                }
+              </button>
+              <button
+                type="button"
+                class="ml-1 inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-md text-[var(--color-text-secondary)] hover:bg-[var(--color-surface-secondary)] hover:text-red-600 disabled:opacity-50"
                 [disabled]="meetingActionSaving"
+                aria-label="Remove meeting"
+                title="Remove meeting"
                 (click)="onRemoveMeeting()"
                 data-testid="calendar-form-remove-meeting"
               >
-                Remove
+                <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                  <path d="M3 6h18" />
+                  <path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" />
+                  <path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6" />
+                  <path d="M10 11v6M14 11v6" />
+                </svg>
               </button>
             </div>
           } @else {
@@ -234,41 +261,39 @@
             Who
           </div>
 
-          @if (!isEdit) {
-        <div class="flex items-center justify-between gap-3">
-          @if (participants().length === 0) {
-            <span class="text-sm text-[var(--color-text-secondary)]">No participants yet</span>
-          } @else {
-            <div class="z-10 flex -space-x-3" data-testid="calendar-form-participant-avatars">
-              @for (participant of participants().slice(0, maxParticipantAvatars); track participant.id) {
-                <span
-                  class="group relative inline-flex rounded-full border-2 border-[var(--color-surface)] bg-[var(--color-surface)]"
-                  [title]="participant.name || 'Unknown'"
-                  [attr.aria-label]="participant.name || 'Participant'"
-                >
-                  <span style="--color-profile-bg: var(--color-accent-subtle); --color-text-primary: var(--color-accent);">
-                    <app-avatar [userName]="participant.name" size="sm" />
-                  </span>
-                  <button
-                    type="button"
-                    data-testid="calendar-form-participant-remove"
-                    class="absolute -right-1 -top-1 hidden h-4 w-4 items-center justify-center rounded-full border border-[var(--color-surface)] bg-[var(--color-danger)] text-[10px] leading-none text-white group-hover:flex group-focus-within:flex"
-                    [attr.aria-label]="'Remove ' + (participant.name || 'participant')"
-                    (click)="removeParticipant(participant.id)"
-                  >&times;</button>
-                </span>
-              }
-              @if (participants().length > maxParticipantAvatars) {
-                <button
-                  type="button"
-                  data-testid="calendar-form-participant-overflow"
-                  class="inline-flex h-8 w-8 items-center justify-center rounded-full border-2 border-[var(--color-surface)] bg-[var(--color-surface-secondary)] text-xs font-medium text-[var(--color-text-secondary)] hover:bg-[var(--color-border)]"
-                  aria-label="Show all participants"
-                  (click)="openParticipantPicker()"
-                >+{{ participants().length - maxParticipantAvatars }}</button>
-              }
+          @if (organizerRow(); as organizer) {
+            <div class="flex items-center gap-2.5" data-testid="calendar-form-organizer">
+              <span style="--color-profile-bg: var(--color-accent-subtle); --color-text-primary: var(--color-accent);">
+                <app-avatar [userName]="organizer.name" size="sm" />
+              </span>
+              <span class="flex-1 truncate text-sm text-[var(--color-text-primary)]">{{ organizer.isYou ? 'You' : organizer.name }}</span>
+              <span class="rounded-full bg-[var(--color-surface-secondary)] px-2 py-0.5 text-xs font-medium text-[var(--color-text-secondary)]">Organizer</span>
             </div>
           }
+
+          @if (!isEdit) {
+        @if (participants().length === 0) {
+          <span class="text-sm text-[var(--color-text-secondary)]">No participants yet</span>
+        } @else {
+          <div class="flex flex-col gap-2" data-testid="calendar-form-participant-list">
+            @for (participant of participants(); track participant.id) {
+              <div class="flex items-center gap-2.5" data-testid="calendar-form-participant-row">
+                <span style="--color-profile-bg: var(--color-accent-subtle); --color-text-primary: var(--color-accent);">
+                  <app-avatar [userName]="participant.name" size="sm" />
+                </span>
+                <span class="flex-1 truncate text-sm text-[var(--color-text-primary)]">{{ participant.name || 'Unknown' }}</span>
+                <button
+                  type="button"
+                  data-testid="calendar-form-participant-remove"
+                  class="text-lg leading-none text-[var(--color-text-secondary)] hover:text-red-600"
+                  [attr.aria-label]="'Remove ' + (participant.name || 'participant')"
+                  (click)="removeParticipant(participant.id)"
+                >&times;</button>
+              </div>
+            }
+          </div>
+        }
+        <div class="flex items-center justify-end">
           <app-button type="button" variant="secondary" (click)="openParticipantPicker()">Add participants</app-button>
         </div>
 
@@ -286,7 +311,7 @@
             }
           </div>
         }
-      } @else {
+      } @else if (canManageParticipants()) {
         <div class="flex items-center justify-end">
           <app-button type="button" variant="secondary" data-testid="calendar-form-add-participants-edit" (click)="openParticipantPicker()">Add participants</app-button>
         </div>
@@ -309,13 +334,15 @@
                 [class.bg-red-100]="participant.responseStatus === 'rejected'"
                 [class.text-red-700]="participant.responseStatus === 'rejected'"
               >{{ participant.responseStatus }}</span>
-              <button
-                type="button"
-                data-testid="calendar-form-existing-participant-remove"
-                class="text-[var(--color-text-secondary)] hover:text-red-600"
-                [attr.aria-label]="'Remove ' + participant.employeeName"
-                (click)="onRemoveExistingParticipant(participant.employeeId)"
-              >&times;</button>
+              @if (canManageParticipants()) {
+                <button
+                  type="button"
+                  data-testid="calendar-form-existing-participant-remove"
+                  class="text-lg leading-none text-[var(--color-text-secondary)] hover:text-red-600"
+                  [attr.aria-label]="'Remove ' + participant.employeeName"
+                  (click)="onRemoveExistingParticipant(participant.employeeId)"
+                >&times;</button>
+              }
             </div>
           }
         </div>
