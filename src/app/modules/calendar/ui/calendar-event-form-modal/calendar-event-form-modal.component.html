@@ -309,9 +309,7 @@
             }
           </div>
         }
-        <div class="flex items-center justify-end">
-          <app-button type="button" variant="secondary" (click)="openParticipantPicker()">Add participants</app-button>
-        </div>
+        <ng-container *ngTemplateOutlet="participantPickerTpl" />
 
         @if (conflicts.length > 0) {
           <div class="flex flex-col gap-1.5 rounded-md bg-[var(--color-warning-subtle)] p-2.5 text-xs text-[var(--color-warning-text)]" role="alert">
@@ -328,9 +326,7 @@
           </div>
         }
       } @else if (canManageParticipants()) {
-        <div class="flex items-center justify-end">
-          <app-button type="button" variant="secondary" data-testid="calendar-form-add-participants-edit" (click)="openParticipantPicker()">Add participants</app-button>
-        </div>
+        <ng-container *ngTemplateOutlet="participantPickerTpl" />
       }
 
 
@@ -481,15 +477,6 @@
   </form>
 </app-modal>
 
-<app-calendar-participant-picker
-  [open]="participantPickerOpen()"
-  [selectedIds]="participantIds()"
-  (selectedIdsChange)="onParticipantIdsChange($event)"
-  [guestEmails]="guestEmails()"
-  (selectedPeopleChange)="onParticipantPeopleChange($event)"
-  (guestEmailsChange)="onGuestEmailsChange($event)"
-  (closed)="onParticipantPickerClosed()"
-/>
 
 <app-confirm-modal
   [open]="discardConfirmOpen()"
@@ -500,3 +487,29 @@
   (confirmed)="confirmDiscard()"
   (cancelled)="cancelDiscard()"
 />
+
+<ng-template #participantPickerTpl>
+  <div #pickerWrap class="flex flex-col gap-2" (keydown.escape)="onParticipantPickerEscape($event)">
+    <div class="flex items-center justify-end">
+      <app-button
+        type="button"
+        variant="secondary"
+        [attr.data-testid]="isEdit ? 'calendar-form-add-participants-edit' : 'calendar-form-add-participants'"
+        [attr.aria-expanded]="participantPickerOpen()"
+        (click)="toggleParticipantPicker()"
+      >Add participants</app-button>
+    </div>
+    @if (participantPickerOpen()) {
+      <div data-testid="calendar-participant-dropdown" class="rounded-lg border border-[var(--color-border)] bg-[var(--color-surface)] p-2">
+        <app-calendar-participant-picker
+          [open]="participantPickerOpen()"
+          [selectedIds]="participantIds()"
+          [guestEmails]="guestEmails()"
+          (selectedIdsChange)="onParticipantIdsChange($event)"
+          (selectedPeopleChange)="onParticipantPeopleChange($event)"
+          (guestEmailsChange)="onGuestEmailsChange($event)"
+        />
+      </div>
+    }
+  </div>
+</ng-template>

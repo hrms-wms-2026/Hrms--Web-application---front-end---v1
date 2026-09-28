@@ -1,16 +1,16 @@
-import { Component, computed, effect, inject, input, output, signal } from '@angular/core';
-import { ModalComponent } from '../../../../shared/ui/modal/modal.component';
+import { Component, ElementRef, computed, effect, inject, input, output, signal } from '@angular/core';
 import { PeoplePickerComponent, PeoplePickerOption } from '../../../../shared/ui/people-picker/people-picker.component';
 import { PeopleApiService } from '../../../people/data-access/people-api.service';
 import { EmployeeListItemResponse } from '../../../people/models/employee.model';
 import { AuthStore } from '../../../../core/auth/state/auth.store';
-
+/** Search-and-pick list shown inline under "Add participants" in the event form. Created only while the
+ * panel is open, so it queries the directory (and takes focus) each time it opens. */
 @Component({
   selector: 'app-calendar-participant-picker',
   standalone: true,
-  imports: [ModalComponent, PeoplePickerComponent],
+  imports: [PeoplePickerComponent],
   template: `
-    <app-modal [open]="open()" title="Add participants" (closed)="closed.emit()">
+    <div class="w-full" data-testid="calendar-participant-picker">
       <app-people-picker
         [options]="options()"
         [selectedIds]="selectedIds()"
@@ -22,12 +22,13 @@ import { AuthStore } from '../../../../core/auth/state/auth.store';
         (guestAdded)="addGuest($event)"
         (guestToggled)="removeGuest($event)"
       />
-    </app-modal>
+    </div>
   `
 })
 export class CalendarParticipantPickerComponent {
   private readonly peopleApi = inject(PeopleApiService);
   private readonly authStore = inject(AuthStore);
+  private readonly host = inject<ElementRef<HTMLElement>>(ElementRef);
 
   open = input(false);
   selectedIds = input<readonly string[]>([]);
@@ -37,7 +38,6 @@ export class CalendarParticipantPickerComponent {
    * render avatar chips without a second lookup. */
   selectedPeopleChange = output<readonly { id: string; name: string }[]>();
   guestEmailsChange = output<readonly string[]>();
-  closed = output<void>();
 
   results = signal<readonly EmployeeListItemResponse[]>([]);
   protected readonly options = computed<readonly PeoplePickerOption[]>(() =>
@@ -51,6 +51,7 @@ export class CalendarParticipantPickerComponent {
     effect(() => {
       if (this.open()) {
         this.query('');
+        setTimeout(() => this.host.nativeElement.querySelector<HTMLInputElement>('[data-testid="people-picker-search"]')?.focus());
       }
     });
   }

@@ -1,4 +1,4 @@
-import { ChangeDetectionStrategy, Component, EventEmitter, Input, OnChanges, Output, SimpleChanges, inject, signal } from '@angular/core';
+import { ChangeDetectionStrategy, Component, ElementRef, EventEmitter, HostListener, Input, OnChanges, Output, SimpleChanges, ViewChild, inject, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { RouterLink } from '@angular/router';
 import { AbstractControl, FormBuilder, ReactiveFormsModule, ValidationErrors, ValidatorFn, Validators } from '@angular/forms';
@@ -142,6 +142,7 @@ export class CalendarEventFormModalComponent implements OnChanges {
   ];
 
   readonly participantPickerOpen = signal(false);
+  @ViewChild('pickerWrap') private pickerWrap?: ElementRef<HTMLElement>;
   readonly participantIds = signal<readonly string[]>([]);
   readonly participants = signal<readonly { id: string; name: string }[]>([]);
   /** Guest emails picked in the participant picker, not yet saved to the event. */
@@ -460,8 +461,30 @@ export class CalendarEventFormModalComponent implements OnChanges {
     this.form.markAsDirty();
   }
 
+  /** Clicking anywhere outside the picker section closes it (submitting picks in edit mode). composedPath is
+   * used because the clicked row may already be re-rendered away by the time this document listener runs. */
+  @HostListener('document:click', ['$event'])
+  onDocumentClick(event: MouseEvent): void {
+    const wrap = this.pickerWrap?.nativeElement;
+    if (!this.participantPickerOpen() || !wrap || event.composedPath().includes(wrap)) return;
+    this.onParticipantPickerClosed();
+  }
+
+  toggleParticipantPicker(): void {
+    if (this.participantPickerOpen()) this.onParticipantPickerClosed();
+    else this.openParticipantPicker();
+  }
+
+  /** Escape closes just the dropdown; without stopping it the modal's own Escape handler would also close (and discard) the event form. */
+  onParticipantPickerEscape(event: Event): void {
+    if (!this.participantPickerOpen()) return;
+    event.stopPropagation();
+    this.onParticipantPickerClosed();
+  }
+
   openParticipantPicker(): void {
     this.participantPickerOpen.set(true);
+    setTimeout(() => this.pickerWrap?.nativeElement.scrollIntoView?.({ block: 'nearest' }));
   }
 
   /** In edit mode the picker adds straight to the saved event (there's no pending "create"
