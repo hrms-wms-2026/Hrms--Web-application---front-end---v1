@@ -24,6 +24,7 @@
 }
 
 .main-layout {
+  --nav-rail-width: 5.25rem;
   display: grid;
   grid-template-columns: auto minmax(0, 1fr);
   grid-template-rows: auto minmax(0, 1fr);
@@ -160,6 +161,7 @@
 
 @media (max-width: 768px) {
   .main-layout {
+    --nav-rail-width: 0px;
     display: flex;
     flex-direction: column;
     height: 100vh;

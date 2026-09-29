@@ -6,7 +6,8 @@ import { DraftsBarComponent } from './drafts-bar.component';
 describe('DraftsBarComponent', () => {
   let fixture: ComponentFixture<DraftsBarComponent>;
   const chips = signal<DraftChip[]>([]);
-  const store = { chips, load: vi.fn(async () => {}), removeChip: vi.fn(async () => true), openDraft: vi.fn() };
+  const activeDraft = signal<DraftChip | null>(null);
+  const store = { chips, activeDraft, load: vi.fn(async () => {}), removeChip: vi.fn(async () => true), openDraft: vi.fn() };
   const el = () => fixture.nativeElement as HTMLElement;
   const offset = () => document.documentElement.style.getPropertyValue('--bottom-tray-offset');
 
@@ -17,6 +18,7 @@ describe('DraftsBarComponent', () => {
 
   beforeEach(() => {
     chips.set([]);
+    activeDraft.set(null);
     store.load.mockClear();
     store.removeChip.mockClear();
     store.openDraft.mockClear();
@@ -42,7 +44,7 @@ describe('DraftsBarComponent', () => {
     fixture.detectChanges();
     expect(el().querySelector('[data-testid="draft-chip-task-t1"]')!.textContent).toContain('Fix login');
     expect(el().querySelector('[data-testid="draft-chip-employee-e1"]')!.textContent).toContain('Awaiting approval');
-    expect(offset()).toBe('56px');
+    expect(offset()).toBe('40px');
   });
 
   it('opens the draft in-place via the store', () => {
@@ -52,6 +54,14 @@ describe('DraftsBarComponent', () => {
     expect(store.openDraft).toHaveBeenCalledWith(TWO_CHIPS[0]);
     (el().querySelector('[data-testid="draft-chip-employee-e1"]') as HTMLElement).click();
     expect(store.openDraft).toHaveBeenCalledWith(TWO_CHIPS[1]);
+  });
+
+  it('highlights the chip when it is the active draft', () => {
+    chips.set(TWO_CHIPS);
+    activeDraft.set(TWO_CHIPS[0]);
+    fixture.detectChanges();
+    const chipEl = el().querySelector('[data-testid="draft-chip-task-t1"]')?.closest('.drafts-bar__chip');
+    expect(chipEl?.classList.contains('drafts-bar__chip--active')).toBe(true);
   });
 
   it('asks before deleting, then removes via the store', async () => {

@@ -170,7 +170,7 @@ describe('NotificationBellComponent', () => {
     fixture.nativeElement.querySelector('.notification-dropdown__item').click();
     await fixture.whenStable();
 
-    expect(navigate).toHaveBeenCalledWith(['/work', 'p1', 'milestones', 'o1', 'approvals'], {});
+    expect(navigate).toHaveBeenCalledWith(['/work', 'p1', 'approvals'], {});
   });
 
   it('navigates an attendance correction approval notification to the approval inbox with its request id', async () => {
