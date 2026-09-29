@@ -3,26 +3,21 @@ import { of, throwError } from 'rxjs';
 import { vi } from 'vitest';
 import { WorkApprovalsStore } from './work-approvals.store';
 import { WorkApprovalsApiService } from '../data-access/work-approvals-api.service';
+import { WorkApprovalRequestDto } from '../models/dto/work-approval.dto';
+
+function workApproval(overrides: Partial<WorkApprovalRequestDto> = {}): WorkApprovalRequestDto {
+  return {
+    id: 'w1', projectId: 'p1', actionType: 'task.edit', targetType: 'task', targetId: 'task-1',
+    targetTitle: 'Update estimate', status: 'pending', requestedByEmployeeId: 'e1', requestedByName: 'Abitha Devendran',
+    approverEmployeeId: 'e2', approverName: 'Owner', payloadJson: '{}', decisionComment: null,
+    createdAt: '2026-08-17T00:00:00Z', decidedAt: null, ...overrides
+  };
+}
 
 describe('WorkApprovalsStore', () => {
   function setup(apiOverrides: Partial<WorkApprovalsApiService> = {}) {
     const api = {
-      getMyTaskCreationRequests: () => of([{
-        id: 't1', objectiveId: 'obj-1', status: 'pending',
-        payload: {
-          title: 'Build login', description: null, categoryId: 'task', priority: 'medium',
-          dueDate: null, estimatedHours: 5, storyPoints: null
-        },
-        createdAt: '2026-08-17T00:00:00Z'
-      }]),
-      getMyTaskEditRequests: () => of([{
-        id: 'te1', taskId: 'task-1', objectiveId: 'obj-1', status: 'pending' as const,
-        payload: {
-          title: 'Update estimate', description: null, priority: 'medium',
-          dueDate: null, estimatedHours: 8, storyPoints: null
-        },
-        requestedByName: 'Abitha Devendran', createdAt: '2026-08-17T00:00:00Z'
-      }]),
+      getProjectApprovals: vi.fn().mockReturnValue(of([workApproval()])),
       getMyAllocationRequests: () => of([{
         id: 'a1', objectiveId: 'obj-1', requestType: 'extend_allocation' as const, status: 'pending' as const,
         payload: { requestedAdditionalHours: 8, reason: 'Need more' },
@@ -43,10 +38,8 @@ describe('WorkApprovalsStore', () => {
         inviteType: 'member' as const, status: 'pending' as const, invitedById: 'e1',
         decidedAt: null, createdAt: '2026-08-17T00:00:00Z'
       }]),
-      approveTaskCreationRequest: () => of({}),
-      rejectTaskCreationRequest: () => of(undefined),
-      approveTaskEditRequest: () => of({}),
-      rejectTaskEditRequest: () => of(undefined),
+      approveWorkApproval: () => of(workApproval({ status: 'approved' })),
+      rejectWorkApproval: () => of(workApproval({ status: 'rejected' })),
       approveAllocationRequest: () => of(undefined),
       rejectAllocationRequest: () => of(undefined),
       approveObjectiveChangeRequest: () => of(undefined),
@@ -62,50 +55,51 @@ describe('WorkApprovalsStore', () => {
     return TestBed.inject(WorkApprovalsStore);
   }
 
-  it('loadAll populates all five approval lists', async () => {
-    const store = setup();
-    await store.loadAll();
+  it('loadAll(projectId) also loads getProjectApprovals(projectId, inbox) into workApprovals', async () => {
+    const getProjectApprovals = vi.fn().mockReturnValue(of([workApproval()]));
+    const store = setup({ getProjectApprovals });
+    await store.loadAll('p1');
 
-    expect(store.taskCreationRequests().length).toBe(1);
-    expect(store.taskEditRequests().length).toBe(1);
+    expect(getProjectApprovals).toHaveBeenCalledWith('p1', 'inbox');
+    expect(store.workApprovals().length).toBe(1);
+    expect(store.workApprovals()[0].kind).toBe('work_approval');
     expect(store.allocationRequests().length).toBe(1);
     expect(store.objectiveChangeRequests().length).toBe(2);
     expect(store.objectiveInvitations().length).toBe(1);
-    expect(store.pendingCount()).toBe(6);
+    expect(store.pendingCount()).toBe(5);
   });
 
-  it('approve on a task_edit item routes through the task-edit-request approve endpoint', async () => {
-    const approveTaskEditRequest = vi.fn().mockReturnValue(of({}));
-    const store = setup({ approveTaskEditRequest });
+  it('loadAll without a project leaves workApprovals empty and never calls the per-project inbox', async () => {
+    const getProjectApprovals = vi.fn().mockReturnValue(of([workApproval()]));
+    const store = setup({ getProjectApprovals });
     await store.loadAll();
-    const item = store.taskEditRequests()[0];
+
+    expect(getProjectApprovals).not.toHaveBeenCalled();
+    expect(store.workApprovals().length).toBe(0);
+  });
+
+  it('approve(work_approval item) calls approveWorkApproval and removes it', async () => {
+    const approveWorkApproval = vi.fn().mockReturnValue(of(workApproval({ status: 'approved' })));
+    const store = setup({ approveWorkApproval });
+    await store.loadAll('p1');
+    const item = store.workApprovals()[0];
 
     await store.approve(item);
 
-    expect(approveTaskEditRequest).toHaveBeenCalledWith('te1');
-    expect(store.taskEditRequests().length).toBe(0);
+    expect(approveWorkApproval).toHaveBeenCalledWith('w1');
+    expect(store.workApprovals().length).toBe(0);
   });
 
-  it('reject on a task_edit item routes through the task-edit-request reject endpoint with the comment', async () => {
-    const rejectTaskEditRequest = vi.fn().mockReturnValue(of(undefined));
-    const store = setup({ rejectTaskEditRequest });
-    await store.loadAll();
-    const item = store.taskEditRequests()[0];
+  it('reject(work_approval item, comment) calls rejectWorkApproval with the comment', async () => {
+    const rejectWorkApproval = vi.fn().mockReturnValue(of(workApproval({ status: 'rejected' })));
+    const store = setup({ rejectWorkApproval });
+    await store.loadAll('p1');
+    const item = store.workApprovals()[0];
 
     await store.reject(item, 'Not now');
 
-    expect(rejectTaskEditRequest).toHaveBeenCalledWith('te1', 'Not now');
-    expect(store.taskEditRequests().length).toBe(0);
-  });
-
-  it('approve removes the item from the matching list', async () => {
-    const store = setup();
-    await store.loadAll();
-    const item = store.taskCreationRequests()[0];
-
-    await store.approve(item);
-
-    expect(store.taskCreationRequests().length).toBe(0);
+    expect(rejectWorkApproval).toHaveBeenCalledWith('w1', 'Not now');
+    expect(store.workApprovals().length).toBe(0);
   });
 
     it('approve passes the edited additional hours for an allocation request', async () => {

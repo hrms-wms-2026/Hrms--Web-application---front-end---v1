@@ -60,8 +60,7 @@ describe('ProjectDetailComponent', () => {
 
   beforeEach(() => {
     approvalsStoreStub = {
-      taskCreationRequests: () => [],
-      taskEditRequests: () => [],
+      workApprovals: () => [],
       allocationRequests: () => [],
       objectiveChangeRequests: () => [],
       objectiveInvitations: () => [],
@@ -90,7 +89,7 @@ describe('ProjectDetailComponent', () => {
     await fixture.whenStable();
     expect(storeStub.loadProject).toHaveBeenCalledWith('p1');
     expect(storeStub.loadMyMilestones).toHaveBeenCalledWith('p1');
-    expect(approvalsStoreStub.loadAll).toHaveBeenCalledTimes(1);
+    expect(approvalsStoreStub.loadAll).toHaveBeenCalledWith('p1');
   });
 
   it('renders the project name without the Modules carousel', async () => {

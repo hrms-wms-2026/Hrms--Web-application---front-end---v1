@@ -7,8 +7,8 @@ import { AllocationRequestDto, EditObjectiveRequestPayloadDto } from '../models/
 import { toApprovalItem } from '../utils/approval.mapper';
 
 interface WorkApprovalsState {
-  readonly taskCreationRequests: readonly ApprovalItem[];
-  readonly taskEditRequests: readonly ApprovalItem[];
+  /** Task requests from the unified approval engine inbox, already scoped to one project. */
+  readonly workApprovals: readonly ApprovalItem[];
   readonly allocationRequests: readonly ApprovalItem[];
   readonly objectiveChangeRequests: readonly ApprovalItem[];
   readonly objectiveInvitations: readonly ApprovalItem[];
@@ -17,8 +17,7 @@ interface WorkApprovalsState {
 }
 
 const initialState: WorkApprovalsState = {
-  taskCreationRequests: [],
-  taskEditRequests: [],
+  workApprovals: [],
   allocationRequests: [],
   objectiveChangeRequests: [],
   objectiveInvitations: [],
@@ -35,27 +34,26 @@ export const WorkApprovalsStore = signalStore(
   withState<WorkApprovalsState>(initialState),
   withComputed((store) => ({
     pendingCount: computed(() =>
-      store.taskCreationRequests().length
-      + store.taskEditRequests().length
+      store.workApprovals().length
       + store.allocationRequests().length
       + store.objectiveChangeRequests().length
       + store.objectiveInvitations().length
     )
   })),
   withMethods((store, api = inject(WorkApprovalsApiService)) => ({
-    async loadAll(): Promise<void> {
+    /** projectId loads the approval-engine inbox for that project; without it the task
+     *  requests list is empty (the engine inbox is per project). */
+    async loadAll(projectId?: string): Promise<void> {
       patchState(store, { loading: true, error: null });
       try {
-        const [taskCreation, taskEdit, allocation, objectiveChange, invitations] = await Promise.all([
-          firstValueFrom(api.getMyTaskCreationRequests()),
-          firstValueFrom(api.getMyTaskEditRequests()),
+        const [workApprovals, allocation, objectiveChange, invitations] = await Promise.all([
+          projectId ? firstValueFrom(api.getProjectApprovals(projectId, 'inbox')) : Promise.resolve([]),
           firstValueFrom(api.getMyAllocationRequests()),
           firstValueFrom(api.getMyObjectiveChangeRequests()),
           firstValueFrom(api.getMyObjectiveInvitations())
         ]);
         patchState(store, {
-          taskCreationRequests: taskCreation.map(toApprovalItem),
-          taskEditRequests: taskEdit.map(toApprovalItem),
+          workApprovals: workApprovals.map(toApprovalItem),
           allocationRequests: allocation.map(toApprovalItem),
           objectiveChangeRequests: objectiveChange.map(toApprovalItem),
           objectiveInvitations: invitations.map(toApprovalItem),
@@ -70,17 +68,9 @@ export const WorkApprovalsStore = signalStore(
       patchState(store, { error: null });
       try {
         switch (item.kind) {
-          case 'task_creation':
-            await firstValueFrom(api.approveTaskCreationRequest(item.id));
-            patchState(store, {
-              taskCreationRequests: store.taskCreationRequests().filter((i) => i.id !== item.id)
-            });
-            break;
-          case 'task_edit':
-            await firstValueFrom(api.approveTaskEditRequest(item.id));
-            patchState(store, {
-              taskEditRequests: store.taskEditRequests().filter((i) => i.id !== item.id)
-            });
+          case 'work_approval':
+            await firstValueFrom(api.approveWorkApproval(item.id));
+            patchState(store, { workApprovals: store.workApprovals().filter((i) => i.id !== item.id) });
             break;
           case 'allocation_extend': {
             const allocation = item.raw as AllocationRequestDto;
@@ -126,17 +116,9 @@ export const WorkApprovalsStore = signalStore(
       patchState(store, { error: null });
       try {
         switch (item.kind) {
-          case 'task_creation':
-            await firstValueFrom(api.rejectTaskCreationRequest(item.id, comment ?? ''));
-            patchState(store, {
-              taskCreationRequests: store.taskCreationRequests().filter((i) => i.id !== item.id)
-            });
-            break;
-          case 'task_edit':
-            await firstValueFrom(api.rejectTaskEditRequest(item.id, comment ?? ''));
-            patchState(store, {
-              taskEditRequests: store.taskEditRequests().filter((i) => i.id !== item.id)
-            });
+          case 'work_approval':
+            await firstValueFrom(api.rejectWorkApproval(item.id, comment));
+            patchState(store, { workApprovals: store.workApprovals().filter((i) => i.id !== item.id) });
             break;
           case 'allocation_extend':
             await firstValueFrom(api.rejectAllocationRequest(item.id));

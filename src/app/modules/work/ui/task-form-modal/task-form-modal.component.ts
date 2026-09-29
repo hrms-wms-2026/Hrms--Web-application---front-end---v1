@@ -7,6 +7,7 @@ import { TaskAssigneeIdentity, TaskStatusColumn, WorkTask } from '../../models/t
 import { TaskCategoryColumn } from '../../models/task-category.model';
 import { Sprint } from '../../models/sprint.model';
 import { CreateSubtaskRequestDto, CreateTaskRequestDto, InsufficientAllocationErrorDto } from '../../models/dto/task.dto';
+import { isPendingApproval } from '../../models/dto/work-approval.dto';
 import { toTaskCategoryColumn } from '../../utils/task-category.mapper';
 import { toWorkTask } from '../../utils/task.mapper';
 import { toSprint } from '../../utils/sprint.mapper';
@@ -2343,9 +2344,8 @@ export class TaskFormModalComponent {
     if (!t) return false;
     return this.projectStore.milestones().find((m) => m.objectiveId === t.objectiveId)?.isOwner ?? false;
   });
-  // Stricter than isObjectiveOwner (effective-manager - owner OR active member): matches the
-  // backend's IsEffectiveOwnerAsync gate on EditTaskCommandHandler, so a plain member can't get
-  // routed into the direct-edit call that endpoint now rejects with 403.
+  // Label hint only ("Save changes" vs "Request changes"): the backend's approval engine decides
+  // whether an edit applies now or needs approval, and the save always calls editTask.
   canEditTaskDirectly = computed(() => {
     const t = this.task();
     if (!t) return false;
@@ -2831,9 +2831,14 @@ export class TaskFormModalComponent {
     this.deleteLoading.set(true);
     this.deleteError.set('');
     try {
-      await firstValueFrom(this.taskApi.deleteTask(t.id));
+      const res = await firstValueFrom(this.taskApi.deleteTask(t.id));
       this.deleteLoading.set(false);
       this.deleteConfirmOpen.set(false);
+      if (isPendingApproval(res)) {
+        // 202: the task stays until the approver says yes, so keep the modal open.
+        this.notificationService.info('Task deletion sent for approval.');
+        return;
+      }
       this.notificationService.success('Task deleted successfully.');
       this.saved.emit();
       this.closed.emit();
@@ -3293,19 +3298,20 @@ export class TaskFormModalComponent {
       if (newStatusId && newStatusId !== this.task()?.statusId) {
         await firstValueFrom(this.taskApi.moveTaskStatus(taskId, newStatusId));
       }
-      if (this.canEditTaskDirectly()) {
-        await firstValueFrom(this.taskApi.editTask(taskId, {
-          ...fields,
-          attachmentFileIds: this.attachedFiles().map((f) => f.fileId)
-        }));
-        this.notificationService.success('Task updated successfully.');
+      // Always the normal endpoint: the backend's approval engine decides whether the edit
+      // applies now (200) or goes out for approval (202).
+      const edited = await firstValueFrom(this.taskApi.editTask(taskId, {
+        ...fields,
+        attachmentFileIds: this.attachedFiles().map((f) => f.fileId)
+      }));
+      if (isPendingApproval(edited)) {
+        this.notificationService.info('Task edit sent for approval.');
       } else {
-        await firstValueFrom(this.taskApi.createTaskEditRequest(taskId, fields));
-        this.notificationService.info('Task edit request submitted for approval.');
+        this.notificationService.success('Task updated successfully.');
       }
       // Reassignment is its own broadly-permitted action (AssignTask/UnassignTask use the
-      // effective-manager check, not the owner-only edit-task gate above), so it applies
-      // regardless of whether the field edits above saved directly or went out as a request.
+      // effective-manager check, not the edit approval), so it applies regardless of whether
+      // the field edits above saved directly or went out for approval.
       await this.applyReassignment();
       this.saved.emit();
       this.closed.emit();
@@ -3360,33 +3366,25 @@ export class TaskFormModalComponent {
 
     try {
       const objectiveId = this.selectedObjectiveId();
-      if (!this.selectedModuleIsOwner()) {
-        try {
-          await firstValueFrom(this.taskApi.createTaskCreationRequest(objectiveId, request));
-          this.created.emit('');
-          this.notificationService.info('Task creation request submitted for approval.');
-          if (action === 'create_and_add_another') {
-            this.title.set('');
-            this.description.set('');
-            this.descRte()?.clear();
-            this.attachedFiles.set([]);
-            this.draftSubtasks.set([]);
-            this.cancelAddSubtask();
-            this.successToastMessage.set('Creation request submitted! You can enter another task below.');
-            setTimeout(() => this.taskTitleInput()?.nativeElement?.focus());
-          } else {
-            this.closed.emit();
-          }
-        } catch (err: unknown) {
-          const detail = (err as { error?: { detail?: string } })?.error?.detail;
-          const msg = detail || 'Failed to submit task creation request.';
-          this.errorMessage.set(msg);
-          this.notificationService.error(msg);
+      // Always the normal endpoint: owners get the task now (201), members a 202 "sent for approval".
+      const result = await this.boardStore.createTask(objectiveId, request);
+      if (isPendingApproval(result)) {
+        this.created.emit('');
+        this.notificationService.info('Task sent for approval.');
+        if (action === 'create_and_add_another') {
+          this.title.set('');
+          this.description.set('');
+          this.descRte()?.clear();
+          this.attachedFiles.set([]);
+          this.draftSubtasks.set([]);
+          this.cancelAddSubtask();
+          this.successToastMessage.set('Sent for approval! You can enter another task below.');
+          setTimeout(() => this.taskTitleInput()?.nativeElement?.focus());
+        } else {
+          this.closed.emit();
         }
         return;
       }
-
-      const result = await this.boardStore.createTask(objectiveId, request);
       if (result && 'availableSlackHours' in result) {
         this.allocationHint.set(result);
         this.notificationService.warning(`Insufficient allocation hours. Available slack: ${result.availableSlackHours ?? 0} hrs.`);

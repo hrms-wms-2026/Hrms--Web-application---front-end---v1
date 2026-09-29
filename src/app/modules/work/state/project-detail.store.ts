@@ -11,6 +11,7 @@ import { ProjectDetail } from '../models/project.model';
 import { Milestone, MilestoneTreeNode, ObjectiveDetail } from '../models/milestone.model';
 import { EditObjectiveRequestDto, CreateObjectiveRequestDto, ObjectiveAssetDto } from '../models/dto/milestone.dto';
 import { CompleteSprintRequestDto } from '../models/dto/sprint.dto';
+import { isPendingApproval } from '../models/dto/work-approval.dto';
 import { ObjectiveMemberItemDto, ObjectiveInvitationDto } from '../models/dto/objective-invitation.dto';
 
 interface ProjectDetailState {
@@ -399,9 +400,14 @@ export const ProjectDetailStore = signalStore(
       }
     },
 
-    async deleteTask(taskId: string): Promise<{ success: boolean }> {
+    /** pendingApproval = the deletion was sent for approval; the task stays until it is approved. */
+    async deleteTask(taskId: string): Promise<{ success: boolean; pendingApproval?: boolean }> {
       try {
-        await firstValueFrom(taskApi.deleteTask(taskId));
+        const res = await firstValueFrom(taskApi.deleteTask(taskId));
+        if (isPendingApproval(res)) {
+          patchState(store, { milestoneActionError: null });
+          return { success: true, pendingApproval: true };
+        }
         const tree = store.selectedSubtree();
         if (tree) {
           patchState(store, {

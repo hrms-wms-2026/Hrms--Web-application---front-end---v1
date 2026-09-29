@@ -4,8 +4,7 @@ import { Observable, map } from 'rxjs';
 import { environment } from '../../../../environments/environment';
 import { AllocationRequestDto, EditObjectiveRequestPayloadDto, ObjectiveChangeRequestDto } from '../models/dto/allocation-request.dto';
 import { ObjectiveInvitationDto } from '../models/dto/objective-invitation.dto';
-import { TaskCreationRequestDto } from '../models/dto/task-creation-request.dto';
-import { TaskEditRequestDto } from '../models/dto/task-edit-request.dto';
+import { WorkApprovalRequestDto } from '../models/dto/work-approval.dto';
 import { ObjectiveMemberApiService } from './objective-member-api.service';
 import { ApprovalHistoryItemDto } from '../models/dto/approval-history.dto';
 
@@ -21,16 +20,21 @@ export class WorkApprovalsApiService {
     );
   }
 
-  getMyTaskCreationRequests(): Observable<TaskCreationRequestDto[]> {
-    return this.http.get<TaskCreationRequestDto[]>(`${this.workBase}/task-creation-requests/mine`);
+  /** Unified approval engine: requests waiting on the caller (inbox) or made by the caller (mine). */
+  getProjectApprovals(projectId: string, scope: 'inbox' | 'mine' = 'inbox'): Observable<WorkApprovalRequestDto[]> {
+    return this.http.get<WorkApprovalRequestDto[]>(`${this.workBase}/projects/${projectId}/approvals`, { params: { scope } });
   }
 
-  approveTaskCreationRequest(id: string): Observable<unknown> {
-    return this.http.post(`${this.workBase}/task-creation-requests/${id}/approve`, {});
+  approveWorkApproval(id: string, editedPayloadJson?: string, comment?: string): Observable<WorkApprovalRequestDto> {
+    return this.http.post<WorkApprovalRequestDto>(`${this.workBase}/approvals/${id}/approve`, { editedPayloadJson, comment });
   }
 
-  rejectTaskCreationRequest(id: string, comment: string): Observable<void> {
-    return this.http.post<void>(`${this.workBase}/task-creation-requests/${id}/reject`, { comment });
+  rejectWorkApproval(id: string, comment?: string): Observable<WorkApprovalRequestDto> {
+    return this.http.post<WorkApprovalRequestDto>(`${this.workBase}/approvals/${id}/reject`, { comment });
+  }
+
+  cancelWorkApproval(id: string): Observable<WorkApprovalRequestDto> {
+    return this.http.post<WorkApprovalRequestDto>(`${this.workBase}/approvals/${id}/cancel`, {});
   }
 
   getMyObjectiveChangeRequests(): Observable<ObjectiveChangeRequestDto[]> {
@@ -76,18 +80,6 @@ export class WorkApprovalsApiService {
 
   rejectAllocationRequest(id: string): Observable<void> {
     return this.rejectObjectiveChangeRequest(id);
-  }
-
-  getMyTaskEditRequests(): Observable<TaskEditRequestDto[]> {
-    return this.http.get<TaskEditRequestDto[]>(`${this.workBase}/task-edit-requests/mine`);
-  }
-
-  approveTaskEditRequest(id: string): Observable<unknown> {
-    return this.http.post(`${this.workBase}/task-edit-requests/${id}/approve`, {});
-  }
-
-  rejectTaskEditRequest(id: string, comment: string): Observable<void> {
-    return this.http.post<void>(`${this.workBase}/task-edit-requests/${id}/reject`, { comment });
   }
 
   getMyObjectiveInvitations(): Observable<ObjectiveInvitationDto[]> {

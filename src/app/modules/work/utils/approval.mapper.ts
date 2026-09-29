@@ -1,46 +1,33 @@
 import { ApprovalItem } from '../models/approval.model';
 import { AllocationRequestDto, AllocationRequestPayloadDto, EditObjectiveRequestPayloadDto, ObjectiveChangeRequestDto } from '../models/dto/allocation-request.dto';
 import { ObjectiveInvitationDto } from '../models/dto/objective-invitation.dto';
-import { TaskCreationRequestDto } from '../models/dto/task-creation-request.dto';
-import { TaskEditRequestDto } from '../models/dto/task-edit-request.dto';
+import { WorkApprovalRequestDto } from '../models/dto/work-approval.dto';
 
-export function toApprovalItem(dto: TaskCreationRequestDto): ApprovalItem;
-export function toApprovalItem(dto: TaskEditRequestDto): ApprovalItem;
+const WORK_ACTION_LABELS: Record<string, string> = {
+  'task.create': 'New task',
+  'task.edit': 'Edit task',
+  'task.delete': 'Delete task',
+};
+
+export function toApprovalItem(dto: WorkApprovalRequestDto): ApprovalItem;
 export function toApprovalItem(dto: AllocationRequestDto): ApprovalItem;
 export function toApprovalItem(dto: ObjectiveChangeRequestDto): ApprovalItem;
 export function toApprovalItem(dto: ObjectiveInvitationDto): ApprovalItem;
 export function toApprovalItem(
-  dto: TaskCreationRequestDto | TaskEditRequestDto | AllocationRequestDto | ObjectiveChangeRequestDto | ObjectiveInvitationDto
+  dto: WorkApprovalRequestDto | AllocationRequestDto | ObjectiveChangeRequestDto | ObjectiveInvitationDto
 ): ApprovalItem {
-  if ('taskId' in dto) {
-    const request = dto as TaskEditRequestDto;
+  if ('actionType' in dto) {
+    const request = dto as WorkApprovalRequestDto;
     return {
       id: request.id,
-      kind: 'task_edit',
-      objectiveId: request.objectiveId,
-      title: `Edit: ${request.payload.title}`,
-      description: request.payload.description ?? '',
+      kind: 'work_approval',
+      objectiveId: '',                       // already project-scoped by the endpoint
+      title: `${WORK_ACTION_LABELS[request.actionType] ?? 'Change'}: ${request.targetTitle}`,
+      description: '',
       requestedByName: request.requestedByName,
-      targetTitle: request.payload.title,
-      targetType: 'task',
-      targetId: request.taskId,
-      createdAt: request.createdAt,
-      raw: request
-    };
-  }
-
-  if ('payload' in dto && 'categoryId' in dto.payload) {
-    const request = dto as TaskCreationRequestDto;
-    return {
-      id: request.id,
-      kind: 'task_creation',
-      objectiveId: request.objectiveId,
-      title: request.payload.title,
-      description: request.payload.description ?? '',
-      requestedByName: request.requestedByName ?? null,
-      targetTitle: request.payload.title,
-      targetType: 'request',
-      targetId: null,
+      targetTitle: request.targetTitle,
+      targetType: request.targetType === 'sprint' || request.targetType === 'project' ? 'request' : request.targetType,
+      targetId: request.targetId,
       createdAt: request.createdAt,
       raw: request
     };

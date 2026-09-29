@@ -27,6 +27,7 @@ import { MilestoneTreeNode, ObjectiveDetail } from '../../models/milestone.model
 import { EditObjectiveRequestDto, CreateObjectiveRequestDto } from '../../models/dto/milestone.dto';
 import { findTreeNode, isLeafObjective, collectObjectiveOptions } from '../../utils/project.mapper';
 import { Sprint, SprintStatus } from '../../models/sprint.model';
+import { NotificationService } from '../../../../core/services/notification.service';
 
 const ACTIVE_STATUS_OPTIONS: readonly WorkDropdownOption[] = [
   { value: 'active', label: 'Active' },
@@ -80,6 +81,7 @@ export class MilestoneTreeTabComponent {
   private readonly approvalsApi = inject(WorkApprovalsApiService);
   private readonly directory = inject(EmployeeDirectoryStore);
   private readonly taskApi = inject(TaskApiService);
+  private readonly notificationService = inject(NotificationService);
 
   readonly taskModalOpen = signal(false);
   readonly taskModalMode = signal<'create' | 'edit'>('create');
@@ -568,6 +570,12 @@ export class MilestoneTreeTabComponent {
     if (!node) return;
     const result = await this.store.deleteTask(node.id);
     if (!result.success) return;
+    if (result.pendingApproval) {
+      this.notificationService.info('Task deletion sent for approval.');
+      this.deleteConfirmOpen.set(false);
+      this.pendingDeleteNode.set(null);
+      return;
+    }
     if (this.selectedNodeId() === node.id) this.selectedNodeId.set(null);
     this.deleteConfirmOpen.set(false);
     this.pendingDeleteNode.set(null);

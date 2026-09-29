@@ -165,7 +165,7 @@ export class ApprovalRequestRowComponent {
 
   private requiresRejectComment(): boolean {
     const kind = this.item().kind;
-    return kind === 'task_creation' || kind === 'task_edit';
+    return kind === 'work_approval';
   }
 
   onRejectClick(): void {

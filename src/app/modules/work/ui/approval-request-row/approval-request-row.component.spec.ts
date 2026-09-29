@@ -4,7 +4,7 @@ import { vi } from 'vitest';
 import { ApprovalRequestRowComponent } from './approval-request-row.component';
 import { ApprovalItem } from '../../models/approval.model';
 import { AllocationRequestDto, ObjectiveEditRequestDto } from '../../models/dto/allocation-request.dto';
-import { TaskEditRequestDto } from '../../models/dto/task-edit-request.dto';
+import { WorkApprovalRequestDto } from '../../models/dto/work-approval.dto';
 
 function allocationItem(requestedAdditionalHours = 20): ApprovalItem {
   const raw: AllocationRequestDto = {
@@ -53,32 +53,33 @@ function objectiveEditItem(): ApprovalItem {
 }
 
 function taskEditItem(): ApprovalItem {
-  const raw: TaskEditRequestDto = {
+  const raw: WorkApprovalRequestDto = {
     id: 'edit-req-1',
-    taskId: 'task-1',
-    objectiveId: 'objective-1',
+    projectId: 'project-1',
+    actionType: 'task.edit',
+    targetType: 'task',
+    targetId: 'task-1',
+    targetTitle: 'Portal Dashboard And Monitoring — Kickoff',
     status: 'pending',
-    payload: {
-      title: 'Portal Dashboard And Monitoring — Kickoff',
-      description: null,
-      priority: 'medium',
-      dueDate: null,
-      estimatedHours: 75,
-      storyPoints: null
-    },
+    requestedByEmployeeId: 'employee-1',
     requestedByName: 'Abitha Devendran',
-    createdAt: '2026-09-18T00:00:00Z'
+    approverEmployeeId: 'employee-2',
+    approverName: 'Owner',
+    payloadJson: '{"Title":"Portal Dashboard And Monitoring — Kickoff","EstimatedHours":75}',
+    decisionComment: null,
+    createdAt: '2026-09-18T00:00:00Z',
+    decidedAt: null
   };
   return {
     id: raw.id,
-    kind: 'task_edit',
-    objectiveId: raw.objectiveId,
-    title: `Edit: ${raw.payload.title}`,
-    description: `Requested by ${raw.requestedByName}`,
+    kind: 'work_approval',
+    objectiveId: '',
+    title: `Edit task: ${raw.targetTitle}`,
+    description: '',
     requestedByName: raw.requestedByName,
-    targetTitle: raw.payload.title,
+    targetTitle: raw.targetTitle,
     targetType: 'task',
-    targetId: raw.taskId,
+    targetId: raw.targetId,
     createdAt: raw.createdAt,
     raw
   };
@@ -184,7 +185,7 @@ describe('ApprovalRequestRowComponent', () => {
     });
   });
 
-  describe('task_edit', () => {
+  describe('work_approval (task edit)', () => {
     beforeEach(() => {
       fixture.componentRef.setInput('item', taskEditItem());
       fixture.detectChanges();
@@ -208,7 +209,7 @@ describe('ApprovalRequestRowComponent', () => {
       expect(viewRequested).toHaveBeenCalledWith(expect.objectContaining({ targetId: 'task-1' }));
     });
 
-    it('requires a comment before emitting rejected, matching RejectTaskEditRequestCommandValidator', () => {
+    it('requires a comment before emitting rejected, as task requests always did', () => {
       const rejected = vi.fn();
       fixture.componentInstance.rejected.subscribe(rejected);
       const rejectButton = fixture.nativeElement.querySelector('app-button[variant="secondary"] button') as HTMLButtonElement;

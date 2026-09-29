@@ -139,6 +139,7 @@ export class ApprovalHistoryModalComponent {
     const labels: Record<string, string> = {
       task_creation: 'Task creation',
       task_edit: 'Task edit',
+      task_delete: 'Task deletion',
       allocation_extend: 'Allocation request',
       objective_edit: 'Module edit',
       objective_change: 'Module change',
@@ -157,6 +158,7 @@ export class ApprovalHistoryModalComponent {
       declined: 'Declined',
       cancelled: 'Cancelled',
       outdated: 'Outdated',
+      stale: 'Outdated',
       expired: 'Expired'
     };
     return labels[status] ?? status;

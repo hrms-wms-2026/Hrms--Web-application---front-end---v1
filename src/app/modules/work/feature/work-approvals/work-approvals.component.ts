@@ -81,24 +81,10 @@ import { TaskStatusChangeRequestsPanelComponent } from '../../ui/task-status-cha
           />
         }
 
-        @if (taskCreationRequests().length > 0) {
+        @if (workApprovals().length > 0) {
         <section>
-          <h2>Task Creation Requests <span>{{ taskCreationRequests().length }}</span></h2>
-          @for (item of taskCreationRequests(); track item.id) {
-            <app-approval-request-row
-              [item]="item"
-              (approved)="onApprove(item, $event)"
-              (rejected)="onReject(item, $event)"
-              (viewRequested)="onViewTarget($event)"
-            />
-          }
-        </section>
-        }
-
-        @if (taskEditRequests().length > 0) {
-        <section>
-          <h2>Task Edit Requests <span>{{ taskEditRequests().length }}</span></h2>
-          @for (item of taskEditRequests(); track item.id) {
+          <h2>Task Requests <span>{{ workApprovals().length }}</span></h2>
+          @for (item of workApprovals(); track item.id) {
             <app-approval-request-row
               [item]="item"
               (approved)="onApprove(item, $event)"
@@ -219,7 +205,7 @@ import { TaskStatusChangeRequestsPanelComponent } from '../../ui/task-status-cha
       mode="edit"
       [projectId]="projectId()"
       [taskId]="selectedTaskId() ?? ''"
-      (changed)="store.loadAll()"
+      (changed)="store.loadAll(projectId())"
       (saved)="onTaskDetailsClosed()"
       (closed)="selectedTaskId.set(null)"
     />
@@ -291,8 +277,8 @@ export class WorkApprovalsComponent implements OnInit, AfterViewInit, OnDestroy 
         : item);
   };
 
-  protected readonly taskCreationRequests = computed(() => this.scopedToProject(this.store.taskCreationRequests()));
-  protected readonly taskEditRequests = computed(() => this.scopedToProject(this.store.taskEditRequests()));
+  // No module scoping: the approval-engine inbox endpoint is already per project.
+  protected readonly workApprovals = computed(() => this.store.workApprovals());
   protected readonly allocationRequests = computed(() => this.scopedToProject(this.store.allocationRequests()));
   protected readonly objectiveChangeRequests = computed(() => this.scopedToProject(this.store.objectiveChangeRequests()));
   protected readonly objectiveInvitations = computed(() => this.scopedToProject(this.store.objectiveInvitations()));
@@ -302,8 +288,7 @@ export class WorkApprovalsComponent implements OnInit, AfterViewInit, OnDestroy 
   protected readonly visiblePendingCount = computed(() =>
     this.sentPendingRequests().length
     + this.statusChangeRequestCount()
-    + this.taskCreationRequests().length
-    + this.taskEditRequests().length
+    + this.workApprovals().length
     + this.allocationRequests().length
     + this.objectiveChangeRequests().length
     + this.objectiveInvitations().length
@@ -402,7 +387,7 @@ export class WorkApprovalsComponent implements OnInit, AfterViewInit, OnDestroy 
         reason: this.createReason().trim()
       }));
       this.closeCreateApproval();
-      await this.store.loadAll();
+      await this.store.loadAll(this.projectId());
     } catch (err: any) {
       this.createError.set(err?.error?.detail || err?.error?.message || err?.message || 'Failed to create approval request.');
     } finally {
@@ -429,7 +414,7 @@ export class WorkApprovalsComponent implements OnInit, AfterViewInit, OnDestroy 
 
   onTaskDetailsClosed(): void {
     this.selectedTaskId.set(null);
-    void this.store.loadAll();
+    void this.store.loadAll(this.projectId());
   }
 
   openHistory(): void {
@@ -462,6 +447,7 @@ export class WorkApprovalsComponent implements OnInit, AfterViewInit, OnDestroy 
     const labels: Record<string, string> = {
       task_creation: 'Task creation',
       task_edit: 'Task edit',
+      task_delete: 'Task deletion',
       allocation_extend: 'Allocation request',
       objective_edit: 'Module edit',
       objective_change: 'Module change',

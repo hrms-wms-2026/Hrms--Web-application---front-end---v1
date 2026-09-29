@@ -25,6 +25,7 @@ import { FileApiService } from '../../../../shared/data-access/file-api.service'
 import { TaskFormModalComponent } from '../../ui/task-form-modal/task-form-modal.component';
 import { BoardStructureEditorComponent } from '../../ui/board-structure-editor/board-structure-editor.component';
 import { CreateTaskRequestDto } from '../../models/dto/task.dto';
+import { isPendingApproval } from '../../models/dto/work-approval.dto';
 import { NotificationService } from '../../../../core/services/notification.service';
 
 @Component({
@@ -439,7 +440,6 @@ export class TaskBoardComponent implements OnInit, AfterViewChecked, AfterViewIn
     sprintId?: string | null;
     resolve: (ok: boolean) => void;
   }): Promise<void> {
-    const isOwner = this.modules().find((m) => m.objectiveId === event.objectiveId)?.isOwner ?? true;
     const request: CreateTaskRequestDto = {
       title: event.title,
       categoryId: event.categoryId,
@@ -449,15 +449,14 @@ export class TaskBoardComponent implements OnInit, AfterViewChecked, AfterViewIn
     };
 
     try {
-      if (!isOwner) {
-        await firstValueFrom(this.taskApi.createTaskCreationRequest(event.objectiveId, request));
-        this.notificationService.info('Task creation request submitted for approval.');
+      // The backend decides: owners get the task now, members get a 202 "sent for approval".
+      const result = await this.store.createTask(event.objectiveId, request);
+      if (isPendingApproval(result)) {
+        this.notificationService.info('Task sent for approval.');
         event.resolve(true);
         this.reload();
         return;
       }
-
-      const result = await this.store.createTask(event.objectiveId, request);
       if (result && 'id' in result) {
         if (event.assigneeId) {
           try {

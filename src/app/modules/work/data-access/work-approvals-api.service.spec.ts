@@ -5,7 +5,6 @@ import { of } from 'rxjs';
 import { environment } from '../../../../environments/environment';
 import { WorkApprovalsApiService } from './work-approvals-api.service';
 import { ObjectiveMemberApiService } from './objective-member-api.service';
-import { TaskCreationRequestDto } from '../models/dto/task-creation-request.dto';
 import { ObjectiveChangeRequestDto } from '../models/dto/allocation-request.dto';
 
 describe('WorkApprovalsApiService', () => {
@@ -34,25 +33,6 @@ describe('WorkApprovalsApiService', () => {
 
   afterEach(() => httpMock.verify());
 
-  it('getMyTaskCreationRequests fetches the owner queue', () => {
-    const mock: TaskCreationRequestDto[] = [{
-      id: 'r1',
-      objectiveId: 'obj-1',
-      status: 'pending',
-      payload: {
-        title: 'Build login', description: null, categoryId: 'task', priority: 'medium',
-        dueDate: null, estimatedHours: 5, storyPoints: null
-      },
-      createdAt: '2026-08-17T00:00:00Z'
-    }];
-
-    service.getMyTaskCreationRequests().subscribe((res) => expect(res).toEqual(mock));
-
-    const req = httpMock.expectOne(`${environment.apiUrl}/work/task-creation-requests/mine`);
-    expect(req.request.method).toBe('GET');
-    req.flush(mock);
-  });
-
   it('getApprovalHistory fetches project-scoped sent and received history', () => {
     service.getApprovalHistory('project-1').subscribe((res) => expect(res).toEqual([]));
 
@@ -61,19 +41,37 @@ describe('WorkApprovalsApiService', () => {
     req.flush([]);
   });
 
-  it('approveTaskCreationRequest posts approve', () => {
-    service.approveTaskCreationRequest('r1').subscribe();
-    const req = httpMock.expectOne(`${environment.apiUrl}/work/task-creation-requests/r1/approve`);
+  it('getProjectApprovals GETs /work/projects/p1/approvals?scope=inbox', () => {
+    service.getProjectApprovals('p1').subscribe((res) => expect(res).toEqual([]));
+
+    const req = httpMock.expectOne((r) => r.url === `${environment.apiUrl}/work/projects/p1/approvals`);
+    expect(req.request.method).toBe('GET');
+    expect(req.request.params.get('scope')).toBe('inbox');
+    req.flush([]);
+  });
+
+  it('approveWorkApproval POSTs editedPayloadJson + comment', () => {
+    service.approveWorkApproval('r1', '{"Title":"x"}', 'ok').subscribe();
+    const req = httpMock.expectOne(`${environment.apiUrl}/work/approvals/r1/approve`);
     expect(req.request.method).toBe('POST');
+    expect(req.request.body).toEqual({ editedPayloadJson: '{"Title":"x"}', comment: 'ok' });
     req.flush({});
   });
 
-  it('rejectTaskCreationRequest posts reject with comment', () => {
-    service.rejectTaskCreationRequest('r1', 'Not needed').subscribe();
-    const req = httpMock.expectOne(`${environment.apiUrl}/work/task-creation-requests/r1/reject`);
+  it('rejectWorkApproval POSTs the comment', () => {
+    service.rejectWorkApproval('r1', 'Not needed').subscribe();
+    const req = httpMock.expectOne(`${environment.apiUrl}/work/approvals/r1/reject`);
     expect(req.request.method).toBe('POST');
     expect(req.request.body).toEqual({ comment: 'Not needed' });
-    req.flush(null);
+    req.flush({});
+  });
+
+  it('cancelWorkApproval POSTs to approvals/{id}/cancel', () => {
+    service.cancelWorkApproval('r1').subscribe();
+    const req = httpMock.expectOne(`${environment.apiUrl}/work/approvals/r1/cancel`);
+    expect(req.request.method).toBe('POST');
+    expect(req.request.body).toEqual({});
+    req.flush({});
   });
 
   it('getMyAllocationRequests filters extend_allocation from change-requests/mine', () => {

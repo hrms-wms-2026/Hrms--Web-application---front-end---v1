@@ -20,15 +20,15 @@ describe('WorkApprovalsComponent', () => {
 
   function setup(
     createAllocationRequest = vi.fn().mockReturnValue(of({})),
-    getApprovalHistory = vi.fn().mockReturnValue(of([]))
+    getApprovalHistory = vi.fn().mockReturnValue(of([])),
+    workApprovals: ApprovalItem[] = []
   ): void {
     storeStub = {
       loadAll: vi.fn().mockResolvedValue(undefined),
       loading: () => false,
       error: () => null,
       pendingCount: () => 0,
-      taskCreationRequests: () => [],
-      taskEditRequests: () => [],
+      workApprovals: () => workApprovals,
       allocationRequests: () => [],
       objectiveChangeRequests: () => [],
       objectiveInvitations: () => [],
@@ -62,6 +62,28 @@ describe('WorkApprovalsComponent', () => {
     fixture = TestBed.createComponent(WorkApprovalsComponent);
     fixture.detectChanges();
   }
+
+  it('renders one Task Requests section from workApprovals; no Task Creation/Task Edit sections', async () => {
+    const item: ApprovalItem = {
+      id: 'w1', kind: 'work_approval', objectiveId: '', title: 'Edit task: Fix login', description: '',
+      requestedByName: 'Sam Lee', targetTitle: 'Fix login', targetType: 'task', targetId: 't-1',
+      createdAt: '2026-09-28T00:00:00Z',
+      raw: {
+        id: 'w1', projectId: 'project-1', actionType: 'task.edit', targetType: 'task', targetId: 't-1',
+        targetTitle: 'Fix login', status: 'pending', requestedByEmployeeId: 'e1', requestedByName: 'Sam Lee',
+        approverEmployeeId: 'e2', approverName: 'Owner', payloadJson: '{}', decisionComment: null,
+        createdAt: '2026-09-28T00:00:00Z', decidedAt: null
+      }
+    };
+    setup(undefined, undefined, [item]);
+    await fixture.whenStable();
+    fixture.detectChanges();
+
+    const headings = Array.from(fixture.nativeElement.querySelectorAll('h2') as NodeListOf<HTMLElement>)
+      .map((h) => h.textContent?.trim() ?? '');
+    expect(headings.some((h) => h.startsWith('Task Requests') && h.includes('1'))).toBe(true);
+    expect(headings.some((h) => h.includes('Task Creation') || h.includes('Task Edit'))).toBe(false);
+  });
 
   it('uses the approval queue loaded by the project shell and loads current project modules', async () => {
     setup();
@@ -131,7 +153,7 @@ describe('WorkApprovalsComponent', () => {
       requestedAdditionalHours: 12,
       reason: 'Need more delivery capacity'
     });
-    expect(storeStub.loadAll).toHaveBeenCalledTimes(1);
+    expect(storeStub.loadAll).toHaveBeenCalledWith('project-1');
     expect(component.createOpen()).toBe(false);
   });
 

@@ -1,11 +1,9 @@
 import { AllocationRequestDto, ObjectiveChangeRequestDto, ObjectiveEditRequestDto } from './dto/allocation-request.dto';
 import { ObjectiveInvitationDto } from './dto/objective-invitation.dto';
-import { TaskCreationRequestDto } from './dto/task-creation-request.dto';
-import { TaskEditRequestDto } from './dto/task-edit-request.dto';
+import { WorkApprovalRequestDto } from './dto/work-approval.dto';
 
 export type ApprovalKind =
-  | 'task_creation'
-  | 'task_edit'
+  | 'work_approval'
   | 'allocation_extend'
   | 'objective_change'
   | 'objective_edit'
@@ -27,5 +25,5 @@ export interface ApprovalItem {
   targetId?: string | null;
   currentAllocatedHours?: number | null;
   createdAt: string;
-  raw: TaskCreationRequestDto | TaskEditRequestDto | AllocationRequestDto | ObjectiveChangeRequestDto | ObjectiveEditRequestDto | ObjectiveInvitationDto;
+  raw: WorkApprovalRequestDto | AllocationRequestDto | ObjectiveChangeRequestDto | ObjectiveEditRequestDto | ObjectiveInvitationDto;
 }

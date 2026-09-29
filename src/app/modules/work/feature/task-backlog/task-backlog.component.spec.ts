@@ -120,10 +120,8 @@ describe('TaskBacklogComponent', () => {
         {
           provide: TaskApiService,
           useValue: {
-            createTaskCreationRequest: vi.fn().mockReturnValue(of({})),
             assignTask: vi.fn().mockReturnValue(of(undefined)),
             editTask: vi.fn().mockReturnValue(of({})),
-            createTaskEditRequest: vi.fn().mockReturnValue(of({})),
             getCategories: vi.fn().mockReturnValue(of([]))
           }
         },
@@ -261,10 +259,8 @@ describe('TaskBacklogComponent', () => {
         {
           provide: TaskApiService,
           useValue: {
-            createTaskCreationRequest: vi.fn().mockReturnValue(of({})),
             assignTask: vi.fn().mockReturnValue(of(undefined)),
             editTask: vi.fn().mockReturnValue(of({})),
-            createTaskEditRequest: vi.fn().mockReturnValue(of({})),
             getCategories: vi.fn().mockReturnValue(of([]))
           }
         },
@@ -341,10 +337,8 @@ describe('TaskBacklogComponent', () => {
         {
           provide: TaskApiService,
           useValue: {
-            createTaskCreationRequest: vi.fn().mockReturnValue(of({})),
             assignTask: vi.fn().mockReturnValue(of(undefined)),
             editTask: vi.fn().mockReturnValue(of({})),
-            createTaskEditRequest: vi.fn().mockReturnValue(of({})),
             getCategories: vi.fn().mockReturnValue(of([]))
           }
         },

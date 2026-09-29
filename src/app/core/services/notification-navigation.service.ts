@@ -7,6 +7,8 @@ import { NotificationItem } from './notification-api.service';
 const WORK_RELATED_TYPES = new Set([
   'task',
   'task_creation_request',
+  'task_edit_request',
+  'work_approval_request',
   'objective_change_request',
   'allocation_extend',
   'project_member_invitation',

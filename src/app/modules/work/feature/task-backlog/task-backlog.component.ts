@@ -27,6 +27,7 @@ import { SprintStartDialogComponent } from '../../ui/sprint-start-dialog/sprint-
 import { SprintCompleteDialogComponent } from '../../ui/sprint-complete-dialog/sprint-complete-dialog.component';
 import { MoveTasksToSprintDialogComponent, SprintMoveTarget } from '../../ui/move-tasks-to-sprint-dialog/move-tasks-to-sprint-dialog.component';
 import { toEditTaskRequest } from '../../utils/task.mapper';
+import { isPendingApproval } from '../../models/dto/work-approval.dto';
 
 @Component({
   selector: 'app-task-backlog',
@@ -452,12 +453,18 @@ export class TaskBacklogComponent implements OnInit, AfterViewInit, OnDestroy {
     this.movingTasks.set(true);
     this.moveError.set(null);
     try {
-      await Promise.all(tasks.map((task) =>
+      const results = await Promise.all(tasks.map((task) =>
         firstValueFrom(this.taskApi.editTask(task.id, toEditTaskRequest(task, { sprintId: targetSprintId })))
       ));
-      this.lastMove = tasks.map((task) => ({ taskId: task.id, previousSprintId: task.sprintId }));
+      // A 202 means that task's move went out for approval instead of applying - it can't be undone here.
+      const moved = tasks.filter((_, i) => !isPendingApproval(results[i]));
+      const pendingCount = tasks.length - moved.length;
+      this.lastMove = moved.map((task) => ({ taskId: task.id, previousSprintId: task.sprintId }));
       const targetName = this.sprintStore.sprints().find((s) => s.id === targetSprintId)?.name ?? 'the sprint';
-      this.showUndoBanner(`${tasks.length} task${tasks.length === 1 ? '' : 's'} moved to ${targetName}`);
+      const parts: string[] = [];
+      if (moved.length > 0) parts.push(`${moved.length} task${moved.length === 1 ? '' : 's'} moved to ${targetName}`);
+      if (pendingCount > 0) parts.push(`${pendingCount} sent for approval`);
+      this.showUndoBanner(parts.join(', '));
       this.moveDialogOpen.set(false);
       this.clearSelection();
       await this.reloadTasks();

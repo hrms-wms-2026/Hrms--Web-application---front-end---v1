@@ -55,9 +55,9 @@ export class ProjectDetailComponent {
   });
   protected readonly pendingApprovalCount = computed(() => {
     const moduleIds = new Set(this.store.milestones().map((milestone) => milestone.objectiveId));
-    return [
-      ...this.approvalsStore.taskCreationRequests(),
-      ...this.approvalsStore.taskEditRequests(),
+    // Engine task requests are already project-scoped (loaded for this project); the rest are
+    // "mine" lists across projects, so they are narrowed to this project's modules.
+    return this.approvalsStore.workApprovals().length + [
       ...this.approvalsStore.allocationRequests(),
       ...this.approvalsStore.objectiveChangeRequests(),
       ...this.approvalsStore.objectiveInvitations()
@@ -88,10 +88,10 @@ export class ProjectDetailComponent {
       .subscribe((id) => {
         this.projectId = id;
         void this.loadProject(id);
+        void this.approvalsStore.loadAll(id);
       });
 
     void this.projectListStore.loadProjects();
-    void this.approvalsStore.loadAll();
   }
 
   private syncChildRouteState(): void {

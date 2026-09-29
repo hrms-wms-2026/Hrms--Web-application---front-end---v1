@@ -5,6 +5,8 @@ import { WorkTask, TaskStatusColumn } from '../../models/task.model';
 import { TaskClockWidgetComponent } from '../task-clock-widget/task-clock-widget.component';
 import { TaskBoardStore } from '../../state/task-board.store';
 import { TaskApiService } from '../../data-access/task-api.service';
+import { isPendingApproval } from '../../models/dto/work-approval.dto';
+import { NotificationService } from '../../../../core/services/notification.service';
 import { toEditTaskRequest } from '../../utils/task.mapper';
 import { AvatarComponent } from '../../../../shared/ui/avatar/avatar.component';
 import { DatePickerComponent } from '../../../../shared/ui/date-picker/date-picker.component';
@@ -409,6 +411,7 @@ const TABLE_POPOVER_POSITIONS: ConnectionPositionPair[] = [
 export class TaskTableComponent {
   private readonly store = inject(TaskBoardStore);
   private readonly taskApi = inject(TaskApiService);
+  private readonly notificationService = inject(NotificationService);
 
   protected readonly popoverPositions = TABLE_POPOVER_POSITIONS;
   protected readonly priorityOptions = [
@@ -506,9 +509,11 @@ export class TaskTableComponent {
     const req = toEditTaskRequest(task, overrides);
     try {
       if (typeof this.store.editTask === 'function') {
-        await this.store.editTask(task.id, req);
+        const outcome = await this.store.editTask(task.id, req);
+        if (outcome === 'pending') this.notificationService.info('Task edit sent for approval.');
       } else {
-        await firstValueFrom(this.taskApi.editTask(task.id, req));
+        const res = await firstValueFrom(this.taskApi.editTask(task.id, req));
+        if (isPendingApproval(res)) this.notificationService.info('Task edit sent for approval.');
       }
       this.taskChanged.emit();
     } catch {
