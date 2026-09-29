@@ -16,6 +16,7 @@ import { InputComponent } from '../../../../shared/ui/input/input.component';
 import { WorkDropdownComponent, WorkDropdownOption } from '../../ui/work-dropdown/work-dropdown.component';
 import { ButtonComponent } from '../../../../shared/ui/button/button.component';
 import { ApprovalHistoryItemDto } from '../../models/dto/approval-history.dto';
+import { ObjectiveInvitationDto } from '../../models/dto/objective-invitation.dto';
 import { ApprovalHistoryModalComponent } from '../../ui/approval-history-modal/approval-history-modal.component';
 import { TaskFormModalComponent } from '../../ui/task-form-modal/task-form-modal.component';
 import { TaskStatusChangeRequestsPanelComponent } from '../../ui/task-status-change-requests-panel/task-status-change-requests-panel.component';
@@ -265,13 +266,13 @@ export class WorkApprovalsComponent implements OnInit, AfterViewInit, OnDestroy 
   protected readonly statusChangeRequestCount = signal(0);
   private historyLoadVersion = 0;
 
-  // The invitations list spans every project the caller was invited into; scope it down to this
-  // project's modules so a project's Approvals page only shows that project's invitations.
-  private readonly moduleIds = computed(() => new Set(this.modules().map((m) => m.objectiveId)));
+  // The invitations list spans every project the caller was invited into; scope it down by the
+  // invitation's own projectId. Not by this.modules(): an invitee is not a member of the invited
+  // module until they accept, so it is never in their "my modules" list.
   private readonly scopedToProject = (items: readonly ApprovalItem[]) => {
     const moduleTitles = new Map(this.modules().map((module) => [module.objectiveId, module.title]));
     return items
-      .filter((item) => this.moduleIds().has(item.objectiveId))
+      .filter((item) => (item.raw as ObjectiveInvitationDto).projectId === this.projectId())
       .map((item) => item.targetType === 'module' && !item.targetTitle
         ? { ...item, targetTitle: moduleTitles.get(item.objectiveId) ?? null }
         : item);

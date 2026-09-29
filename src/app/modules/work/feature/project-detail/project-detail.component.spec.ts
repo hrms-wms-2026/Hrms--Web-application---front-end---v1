@@ -155,6 +155,20 @@ describe('ProjectDetailComponent', () => {
     expect(approvalsLink.getAttribute('aria-label')).toBe('Approvals, 1 pending');
   });
 
+  it('counts an invitation to a module the invitee is not a member of yet in the Approvals indicator', () => {
+    // 'invited-module' is not in milestones(): the invitee only becomes a member after accepting.
+    approvalsStoreStub.objectiveInvitations = () => [
+      { id: 'inv-1', objectiveId: 'invited-module', raw: { projectId: 'p1' } },
+      { id: 'inv-2', objectiveId: 'other-objective', raw: { projectId: 'other-project' } }
+    ];
+    setup('o1');
+    fixture.detectChanges();
+
+    const approvalsLink = Array.from(fixture.nativeElement.querySelectorAll('[data-testid="sub-menu-tab"]'))
+      .find((element: any) => element.textContent.includes('Approvals')) as HTMLAnchorElement;
+    expect(approvalsLink.getAttribute('aria-label')).toBe('Approvals, 1 pending');
+  });
+
   it('reflects the active milestone id from the route on init, and updates it on NavigationEnd', () => {
     setup('o1');
     fixture.detectChanges();

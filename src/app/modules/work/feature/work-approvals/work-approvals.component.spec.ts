@@ -32,7 +32,8 @@ describe('WorkApprovalsComponent', () => {
     getApprovalHistory = vi.fn().mockReturnValue(of([])),
     workApprovals: ApprovalItem[] = [],
     allocationRequests: ApprovalItem[] = [],
-    objectiveChangeRequests: ApprovalItem[] = []
+    objectiveChangeRequests: ApprovalItem[] = [],
+    objectiveInvitations: ApprovalItem[] = []
   ): void {
     storeStub = {
       loadAll: vi.fn().mockResolvedValue(undefined),
@@ -42,7 +43,7 @@ describe('WorkApprovalsComponent', () => {
       workApprovals: () => workApprovals,
       allocationRequests: () => allocationRequests,
       objectiveChangeRequests: () => objectiveChangeRequests,
-      objectiveInvitations: () => [],
+      objectiveInvitations: () => objectiveInvitations,
       approve: vi.fn().mockResolvedValue(true),
       reject: vi.fn().mockResolvedValue(true)
     };
@@ -95,6 +96,31 @@ describe('WorkApprovalsComponent', () => {
     expect(headings.some((h) => h.startsWith('Task Requests') && h.includes('1'))).toBe(true);
     expect(headings.some((h) => h.includes('Task Creation') || h.includes('Task Edit'))).toBe(false);
   }, 15000); // this component renders slowly when the whole suite runs in parallel
+
+  it('shows an invitation to a module the invitee is not a member of yet, and hides other projects\' invitations', async () => {
+    const invitation = (id: string, projectId: string, objectiveId: string): ApprovalItem => ({
+      id, kind: 'objective_invitation', objectiveId, title: 'Invited as member', description: '',
+      requestedByName: null, targetType: 'module', targetId: objectiveId, createdAt: '2026-09-28T00:00:00Z',
+      raw: {
+        id, projectId, objectiveId, invitedEmployeeId: 'me', inviteType: 'member', status: 'pending',
+        invitedById: 'e2', decidedAt: null, createdAt: '2026-09-28T00:00:00Z'
+      }
+    });
+    // obj-9 is not in getMyMilestones: the invitee only becomes a member after accepting.
+    setup(undefined, undefined, [], [], [], [
+      invitation('inv-1', 'project-1', 'obj-9'),
+      invitation('inv-2', 'other-project', 'obj-7')
+    ]);
+    await fixture.whenStable();
+    fixture.detectChanges();
+
+    const headings = Array.from(fixture.nativeElement.querySelectorAll('h2') as NodeListOf<HTMLElement>)
+      .map((h) => h.textContent?.trim() ?? '');
+    const invitationHeading = headings.find((h) => h.startsWith('Objective Invitations'));
+    expect(invitationHeading).toBeDefined();
+    expect(invitationHeading).toContain('1');
+    expect(fixture.nativeElement.querySelector('[data-testid="approvals-empty-state"]')).toBeNull();
+  }, 15000);
 
   it('uses the approval queue loaded by the project shell and loads current project modules', async () => {
     setup();
