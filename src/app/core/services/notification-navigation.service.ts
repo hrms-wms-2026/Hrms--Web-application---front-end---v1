@@ -1,6 +1,7 @@
 import { Injectable, inject } from '@angular/core';
 import { Router } from '@angular/router';
 import { firstValueFrom } from 'rxjs';
+import { EXCEPTION_ALERT_ENTITY_TYPE } from '../../modules/attendance/models/exception-alert.model';
 import { TaskApiService } from '../../modules/work/data-access/task-api.service';
 import { NotificationItem } from './notification-api.service';
 
@@ -37,6 +38,12 @@ export class NotificationNavigationService {
 
     const type = item.relatedEntityType;
     const id = item.relatedEntityId;
+
+    if (type === EXCEPTION_ALERT_ENTITY_TYPE && id) {
+      await this.router.navigate(['/attendance/alerts'], { queryParams: { alertId: id } });
+      return;
+    }
+
     if (!type || !id || !WORK_RELATED_TYPES.has(type)) {
       return;
     }
