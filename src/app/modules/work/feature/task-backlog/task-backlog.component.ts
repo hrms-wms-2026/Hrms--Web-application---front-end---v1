@@ -1,7 +1,7 @@
 import { AfterViewInit, Component, OnDestroy, OnInit, TemplateRef, computed, inject, signal, viewChild } from '@angular/core';
 import { CurrentEmployeeStore } from '../../state/current-employee.store';
 import { ActivatedRoute } from '@angular/router';
-import { firstValueFrom, of } from 'rxjs';
+import { firstValueFrom, Observable, of } from 'rxjs';
 import { distinctUntilChanged, map } from 'rxjs/operators';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { ButtonComponent } from '../../../../shared/ui/button/button.component';
@@ -11,10 +11,11 @@ import { WorkPageToolbarStore } from '../../state/work-page-toolbar.store';
 import { TaskBoardStore } from '../../state/task-board.store';
 import { SprintListStore } from '../../state/sprint-list.store';
 import { TaskApiService } from '../../data-access/task-api.service';
+import { SprintApiService } from '../../data-access/sprint-api.service';
 import { SprintTabComponent } from '../../ui/sprint-tab/sprint-tab.component';
 import { SprintFormComponent } from '../../ui/sprint-form/sprint-form.component';
 import { TaskTableComponent } from '../../ui/task-table/task-table.component';
-import { WorkTask } from '../../models/task.model';
+import { BulkTaskActionResponse, toBulkResultSummary, WorkTask } from '../../models/task.model';
 import { Sprint, SprintStatus } from '../../models/sprint.model';
 import { TaskCategoryColumn } from '../../models/task-category.model';
 import { toTaskCategoryColumn } from '../../utils/task-category.mapper';
@@ -26,14 +27,17 @@ import { TaskFormModalComponent } from '../../ui/task-form-modal/task-form-modal
 import { SprintStartDialogComponent } from '../../ui/sprint-start-dialog/sprint-start-dialog.component';
 import { SprintCompleteDialogComponent } from '../../ui/sprint-complete-dialog/sprint-complete-dialog.component';
 import { MoveTasksToSprintDialogComponent, SprintMoveTarget } from '../../ui/move-tasks-to-sprint-dialog/move-tasks-to-sprint-dialog.component';
-import { toEditTaskRequest } from '../../utils/task.mapper';
 import { SelectionModel } from '../../../../shared/utils/selection-model';
 import { BulkAction, BulkActionBarComponent } from '../../../../shared/ui/bulk-action-bar/bulk-action-bar.component';
+import { BulkActionResultModalComponent, BulkResultSummary } from '../../../../shared/ui/bulk-action-result-modal/bulk-action-result-modal.component';
+import { ConfirmModalComponent } from '../../../../shared/ui/confirm-modal/confirm-modal.component';
+import { SelectOption } from '../../../../shared/ui/select/select.component';
+import { BulkTaskPickerDialogComponent, BulkTaskPickerMode } from '../../ui/bulk-task-picker-dialog/bulk-task-picker-dialog.component';
 
 @Component({
   selector: 'app-task-backlog',
   standalone: true,
-  imports: [SprintTabComponent, SprintFormComponent, TaskTableComponent, ButtonComponent, ErrorStateComponent, TaskFilterBarComponent, TaskAssigneeAvatarFilterComponent, TaskFormModalComponent, SprintStartDialogComponent, SprintCompleteDialogComponent, MoveTasksToSprintDialogComponent, BulkActionBarComponent],
+  imports: [SprintTabComponent, SprintFormComponent, TaskTableComponent, ButtonComponent, ErrorStateComponent, TaskFilterBarComponent, TaskAssigneeAvatarFilterComponent, TaskFormModalComponent, SprintStartDialogComponent, SprintCompleteDialogComponent, MoveTasksToSprintDialogComponent, BulkActionBarComponent, BulkTaskPickerDialogComponent, ConfirmModalComponent, BulkActionResultModalComponent],
   template: `
     <ng-template #toolbarTpl>
       <div class="task-backlog__toolbar">
@@ -123,6 +127,8 @@ import { BulkAction, BulkActionBarComponent } from '../../../../shared/ui/bulk-a
               [objectiveOwners]="objectiveOwners()"
               [currentEmployeeId]="currentEmployee.id()"
               [expanded]="expandedSprintId() === sprint.id"
+              [selectable]="true"
+              [selectedIds]="selectedTaskIds()"
               (toggled)="toggleExpanded(sprint.id)"
               (editRequested)="editingSprint.set(sprint)"
               (startRequested)="startingSprint.set(sprint)"
@@ -131,6 +137,8 @@ import { BulkAction, BulkActionBarComponent } from '../../../../shared/ui/bulk-a
               (taskViewed)="onTaskViewed($event)"
               (taskStatusChangeRequested)="onTaskStatusChangeRequested($event)"
               (taskChanged)="reloadTasks()"
+              (taskSelectionChanged)="onTaskSelectionChanged($event)"
+              (taskSelectAllChanged)="onSelectAllChanged($event)"
             />
           }
         </div>
@@ -166,10 +174,44 @@ import { BulkAction, BulkActionBarComponent } from '../../../../shared/ui/bulk-a
     <app-bulk-action-bar
       noun="task"
       [count]="selection.count()"
-      [actions]="bulkActions"
+      [actions]="bulkActions()"
       (action)="onBulkAction($event)"
       (cleared)="clearSelection()"
     />
+
+    <app-bulk-task-picker-dialog
+      [mode]="pickerMode()"
+      [count]="selectedTasks().length"
+      [options]="pickerOptions()"
+      [submitting]="bulkSubmitting()"
+      [error]="bulkError()"
+      (confirmed)="onPickerConfirmed($event)"
+      (closed)="pickerMode.set(null)"
+    />
+
+    <app-confirm-modal
+      [open]="deleteConfirmOpen()"
+      [title]="'Delete ' + selectedTasks().length + ' task' + (selectedTasks().length === 1 ? '' : 's') + '?'"
+      message="Deleted tasks are removed from the board. Tasks that still have subtasks are skipped."
+      confirmLabel="Delete"
+      [loading]="bulkSubmitting()"
+      [errorMessage]="bulkError() ?? ''"
+      (confirmed)="onDeleteConfirmed()"
+      (cancelled)="deleteConfirmOpen.set(false)"
+    />
+
+    <app-bulk-action-result-modal
+      [result]="bulkResult()?.summary ?? null"
+      [title]="bulkResult()?.title ?? ''"
+      [names]="taskNames()"
+      noun="task"
+      [showApprovals]="false"
+      (closed)="bulkResult.set(null)"
+    />
+
+    @if (bulkError() && !pickerMode() && !deleteConfirmOpen()) {
+      <p class="task-backlog__sprint-message" role="alert">{{ bulkError() }}</p>
+    }
 
     @if (moveUndoBanner(); as banner) {
       <div class="task-backlog__undo-banner" role="status">
@@ -221,6 +263,14 @@ import { BulkAction, BulkActionBarComponent } from '../../../../shared/ui/bulk-a
   `]
 })
 export class TaskBacklogComponent implements OnInit, AfterViewInit, OnDestroy {
+  private static readonly OWNER_ONLY_REASON = 'You can only do this for tasks in modules you own.';
+  private static readonly PICKER_TITLES: Record<BulkTaskPickerMode, string> = {
+    status: 'Change status',
+    assignee: 'Add assignee',
+    priority: 'Set priority',
+    dueDate: 'Set due date',
+    parent: 'Convert to subtask'
+  };
   protected readonly store = inject(TaskBoardStore);
   protected readonly sprintStore = inject(SprintListStore);
   protected readonly projectStore = inject(ProjectDetailStore);
@@ -228,6 +278,7 @@ export class TaskBacklogComponent implements OnInit, AfterViewInit, OnDestroy {
   private readonly toolbarStore = inject(WorkPageToolbarStore);
   private readonly toolbarTpl = viewChild.required<TemplateRef<unknown>>('toolbarTpl');
   private readonly taskApi = inject(TaskApiService);
+  private readonly sprintApi = inject(SprintApiService);
   private readonly route = inject(ActivatedRoute);
   protected readonly currentEmployee = inject(CurrentEmployeeStore);
 
@@ -237,15 +288,17 @@ export class TaskBacklogComponent implements OnInit, AfterViewInit, OnDestroy {
   protected readonly completingSprint = signal<Sprint | null>(null);
   protected readonly selection = new SelectionModel<string>();
   protected readonly selectedTaskIds = this.selection.selected;
-  protected readonly bulkActions: BulkAction[] = [
-    { id: 'move-to-sprint', label: 'Move to sprint', placement: 'primary' }
-  ];
   protected readonly moveDialogOpen = signal(false);
   protected readonly movingTasks = signal(false);
   protected readonly moveError = signal<string | null>(null);
   protected readonly moveUndoBanner = signal<{ message: string } | null>(null);
   private undoBannerTimer: ReturnType<typeof setTimeout> | null = null;
-  private lastMove: { taskId: string; previousSprintId: string | null }[] = [];
+  private lastMove: { taskId: string; previousSprintId: string | null; newSprintId: string | null }[] = [];
+  protected readonly pickerMode = signal<BulkTaskPickerMode | null>(null);
+  protected readonly bulkSubmitting = signal(false);
+  protected readonly bulkError = signal<string | null>(null);
+  protected readonly bulkResult = signal<{ title: string; summary: BulkResultSummary } | null>(null);
+  protected readonly deleteConfirmOpen = signal(false);
   protected readonly projectId = signal('');
   protected readonly expandedSprintId = signal<string | null>(null);
   protected readonly assignableMembers = signal<{ employeeId: string; name: string; avatarUrl: string | null }[]>([]);
@@ -310,7 +363,7 @@ export class TaskBacklogComponent implements OnInit, AfterViewInit, OnDestroy {
   protected readonly categoryOptions = computed<WorkDropdownOption[]>(() =>
     this.categories().map((category) => ({ value: category.id, label: category.name }))
   );
-  protected readonly statusOptions = computed<WorkDropdownOption[]>(() =>
+  protected readonly statusFilterOptions = computed<WorkDropdownOption[]>(() =>
     this.store.statuses().map((status) => ({ value: status.id, label: status.name }))
   );
   protected readonly priorityOptions: readonly WorkDropdownOption[] = [
@@ -324,7 +377,7 @@ export class TaskBacklogComponent implements OnInit, AfterViewInit, OnDestroy {
     { key: 'category', label: 'Category', icon: 'category', kind: 'multi', options: this.categoryOptions() },
     { key: 'assignee', label: 'Assignee', icon: 'people', kind: 'multi', options: this.assigneeFilterOptions() },
     { key: 'sprintStatus', label: 'Sprint status', icon: 'sprint', kind: 'single', options: this.sprintStatusOptions, defaultValues: ['all'] },
-    { key: 'status', label: 'Status', icon: 'status', kind: 'multi', options: this.statusOptions() },
+    { key: 'status', label: 'Status', icon: 'status', kind: 'multi', options: this.statusFilterOptions() },
     { key: 'priority', label: 'Priority', icon: 'priority', kind: 'multi', options: this.priorityOptions }
   ]);
   protected readonly filterValues = computed<Record<string, string[]>>(() => ({
@@ -364,13 +417,60 @@ export class TaskBacklogComponent implements OnInit, AfterViewInit, OnDestroy {
 
   protected readonly selectedTasks = computed(() => {
     const ids = this.selectedTaskIds();
-    return this.unsortedTasks().filter((task) => ids.has(task.id));
+    return this.filteredTasks().filter((task) => ids.has(task.id));
   });
   protected readonly selectedTasksTotalHours = computed(() =>
     this.selectedTasks().reduce((sum, task) => sum + (task.estimatedHours ?? 0), 0)
   );
   private readonly ownedObjectiveIds = computed(() =>
     new Set(this.modules().filter((m) => m.isEffectiveOwner).map((m) => m.objectiveId)));
+  protected readonly selectionAllOwned = computed(() => {
+    const owned = this.ownedObjectiveIds();
+    return this.selectedTasks().every((task) => owned.has(task.objectiveId));
+  });
+  protected readonly bulkActions = computed<BulkAction[]>(() => {
+    const ownerBlocked = this.selectionAllOwned()
+      ? undefined
+      : TaskBacklogComponent.OWNER_ONLY_REASON;
+    const ownerOnly = { disabled: !!ownerBlocked, disabledReason: ownerBlocked };
+    const actions: BulkAction[] = [
+      { id: 'status', label: 'Status', placement: 'primary' },
+      { id: 'assign', label: 'Assign', placement: 'primary' },
+      { id: 'priority', label: 'Priority', placement: 'primary', ...ownerOnly },
+      { id: 'due-date', label: 'Due date', placement: 'more', ...ownerOnly },
+      { id: 'move-to-sprint', label: 'Move to sprint', placement: 'more', ...ownerOnly }
+    ];
+    if (this.selectedTasks().some((task) => task.sprintId)) {
+      actions.push({ id: 'move-to-backlog', label: 'Move to backlog', placement: 'more', ...ownerOnly });
+    }
+    actions.push(
+      { id: 'convert-to-subtask', label: 'Convert to subtask', placement: 'more' },
+      { id: 'delete', label: 'Delete', placement: 'more', danger: true }
+    );
+    return actions;
+  });
+  protected readonly taskNames = computed(() =>
+    new Map(this.store.tasks().map((task) => [task.id, task.title] as const)));
+  protected readonly statusOptions = computed<SelectOption[]>(() => {
+    const includePrivate = this.selectionAllOwned();
+    return this.store.statuses()
+      .filter((status) => includePrivate || status.visibility !== 'private')
+      .map((status) => ({ value: status.id, label: status.name }));
+  });
+  protected readonly parentOptions = computed<SelectOption[]>(() => {
+    const selected = this.selectedTaskIds();
+    return this.store.tasks()
+      .filter((task) => task.parentTaskId === null && !selected.has(task.id))
+      .map((task) => ({ value: task.id, label: task.title }));
+  });
+  protected readonly pickerOptions = computed<SelectOption[]>(() => {
+    switch (this.pickerMode()) {
+      case 'status': return this.statusOptions();
+      case 'assignee': return this.assignableMembers().map((member) => ({ value: member.employeeId, label: member.name }));
+      case 'parent': return this.parentOptions();
+      default: return [];
+    }
+  });
   // Sprints are project-level: any Draft/Active sprint is a valid target, but only for tasks
   // whose module the user owns (backend SprintTaskAssignment/EditTask enforce the same rule).
   protected readonly moveBlockedReason = computed(() =>
@@ -443,7 +543,74 @@ export class TaskBacklogComponent implements OnInit, AfterViewInit, OnDestroy {
   }
 
   protected onBulkAction(actionId: string): void {
-    if (actionId === 'move-to-sprint') this.moveDialogOpen.set(true);
+    this.bulkError.set(null);
+    switch (actionId) {
+      case 'status': this.pickerMode.set('status'); break;
+      case 'assign': this.pickerMode.set('assignee'); break;
+      case 'priority': this.pickerMode.set('priority'); break;
+      case 'due-date': this.pickerMode.set('dueDate'); break;
+      case 'convert-to-subtask': this.pickerMode.set('parent'); break;
+      case 'move-to-sprint': this.moveDialogOpen.set(true); break;
+      case 'move-to-backlog': void this.onMoveToBacklog(); break;
+      case 'delete': this.deleteConfirmOpen.set(true); break;
+    }
+  }
+
+  protected async onPickerConfirmed(value: string | null): Promise<void> {
+    const mode = this.pickerMode();
+    if (!mode) return;
+    const ids = this.selectedTasks().map((task) => task.id);
+    const call = {
+      status: () => this.taskApi.bulkMoveStatus(ids, value!),
+      assignee: () => this.taskApi.bulkAssign(ids, value!),
+      priority: () => this.taskApi.bulkSetPriority(ids, value as WorkTask['priority']),
+      dueDate: () => this.taskApi.bulkSetDueDate(ids, value),
+      parent: () => this.taskApi.bulkConvertToSubtask(ids, value!)
+    }[mode];
+    await this.runBulk(TaskBacklogComponent.PICKER_TITLES[mode], call, () => this.pickerMode.set(null));
+  }
+
+  protected async onDeleteConfirmed(): Promise<void> {
+    const ids = this.selectedTasks().map((task) => task.id);
+    await this.runBulk('Delete', () => this.taskApi.bulkDelete(ids), () => this.deleteConfirmOpen.set(false));
+  }
+
+  private async runBulk(
+    title: string,
+    call: () => Observable<BulkTaskActionResponse>,
+    close: () => void
+  ): Promise<void> {
+    this.bulkSubmitting.set(true);
+    this.bulkError.set(null);
+    try {
+      const response = await firstValueFrom(call());
+      close();
+      this.bulkResult.set({ title, summary: toBulkResultSummary(response) });
+      this.clearSelection();
+      await this.reloadTasks();
+    } catch (error: unknown) {
+      const detail = (error as { error?: { detail?: string } })?.error?.detail;
+      this.bulkError.set(detail || 'The bulk action failed. Nothing was changed.');
+    } finally {
+      this.bulkSubmitting.set(false);
+    }
+  }
+
+  /** Applies sprint changes through the one API that supports both sprint assignment and backlog removal. */
+  private async applySprintMoves(
+    moves: { taskId: string; from: string | null; to: string | null }[]
+  ): Promise<void> {
+    const bySprint = new Map<string, { addTaskIds: string[]; removeTaskIds: string[] }>();
+    const bucket = (id: string) =>
+      bySprint.get(id) ?? bySprint.set(id, { addTaskIds: [], removeTaskIds: [] }).get(id)!;
+    for (const move of moves) {
+      if (move.to) bucket(move.to).addTaskIds.push(move.taskId);
+      else if (move.from) bucket(move.from).removeTaskIds.push(move.taskId);
+    }
+    for (const [sprintId, request] of bySprint) {
+      await firstValueFrom(this.sprintApi.setTasks(sprintId, request));
+    }
+    await this.sprintStore.loadForProject(this.projectId());
   }
 
   protected async onTasksMoved(targetSprintId: string): Promise<void> {
@@ -453,10 +620,12 @@ export class TaskBacklogComponent implements OnInit, AfterViewInit, OnDestroy {
     this.movingTasks.set(true);
     this.moveError.set(null);
     try {
-      await Promise.all(tasks.map((task) =>
-        firstValueFrom(this.taskApi.editTask(task.id, toEditTaskRequest(task, { sprintId: targetSprintId })))
-      ));
-      this.lastMove = tasks.map((task) => ({ taskId: task.id, previousSprintId: task.sprintId }));
+      await this.applySprintMoves(tasks.map((task) => ({ taskId: task.id, from: task.sprintId, to: targetSprintId })));
+      this.lastMove = tasks.map((task) => ({
+        taskId: task.id,
+        previousSprintId: task.sprintId,
+        newSprintId: targetSprintId
+      }));
       const targetName = this.sprintStore.sprints().find((s) => s.id === targetSprintId)?.name ?? 'the sprint';
       this.showUndoBanner(`${tasks.length} task${tasks.length === 1 ? '' : 's'} moved to ${targetName}`);
       this.moveDialogOpen.set(false);
@@ -470,6 +639,26 @@ export class TaskBacklogComponent implements OnInit, AfterViewInit, OnDestroy {
     }
   }
 
+  protected async onMoveToBacklog(): Promise<void> {
+    const tasks = this.selectedTasks().filter((task) => task.sprintId);
+    if (tasks.length === 0) return;
+    this.bulkError.set(null);
+    try {
+      await this.applySprintMoves(tasks.map((task) => ({ taskId: task.id, from: task.sprintId, to: null })));
+      this.lastMove = tasks.map((task) => ({
+        taskId: task.id,
+        previousSprintId: task.sprintId,
+        newSprintId: null
+      }));
+      this.showUndoBanner(`${tasks.length} task${tasks.length === 1 ? '' : 's'} moved to the backlog`);
+      this.clearSelection();
+      await this.reloadTasks();
+    } catch (error: unknown) {
+      const detail = (error as { error?: { detail?: string } })?.error?.detail;
+      this.bulkError.set(detail || 'Failed to move the selected tasks to the backlog.');
+    }
+  }
+
   protected async undoMove(): Promise<void> {
     const moves = this.lastMove;
     if (moves.length === 0) return;
@@ -477,12 +666,11 @@ export class TaskBacklogComponent implements OnInit, AfterViewInit, OnDestroy {
     this.moveUndoBanner.set(null);
     if (this.undoBannerTimer) clearTimeout(this.undoBannerTimer);
 
-    const currentTasks = this.store.tasks();
-    await Promise.all(moves.map((move) => {
-      const task = currentTasks.find((t) => t.id === move.taskId);
-      if (!task) return Promise.resolve();
-      return firstValueFrom(this.taskApi.editTask(task.id, toEditTaskRequest(task, { sprintId: move.previousSprintId })));
-    }));
+    await this.applySprintMoves(moves.map((move) => ({
+      taskId: move.taskId,
+      from: move.newSprintId,
+      to: move.previousSprintId
+    })));
     await this.reloadTasks();
   }
 

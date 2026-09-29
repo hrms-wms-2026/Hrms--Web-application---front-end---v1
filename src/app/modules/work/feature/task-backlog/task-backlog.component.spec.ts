@@ -8,12 +8,13 @@ import { TaskBacklogComponent } from './task-backlog.component';
 import { TaskBoardStore } from '../../state/task-board.store';
 import { ProjectDetailStore } from '../../state/project-detail.store';
 import { TaskApiService } from '../../data-access/task-api.service';
+import { SprintApiService } from '../../data-access/sprint-api.service';
 import { SprintListStore } from '../../state/sprint-list.store';
 import { SprintTabComponent } from '../../ui/sprint-tab/sprint-tab.component';
 import { EmployeeDirectoryStore } from '../../state/employee-directory.store';
 import { WorkPageToolbarStore } from '../../state/work-page-toolbar.store';
 import { Sprint } from '../../models/sprint.model';
-import { WorkTask } from '../../models/task.model';
+import { TaskStatusColumn, WorkTask } from '../../models/task.model';
 
 describe('TaskBacklogComponent', () => {
   const sprint1: Sprint = {
@@ -77,6 +78,7 @@ describe('TaskBacklogComponent', () => {
     sprintAchieve?: ReturnType<typeof vi.fn>;
     taskErrorSignal?: ReturnType<typeof signal<string | null>>;
     milestones?: { objectiveId: string; title: string; isOwner: boolean; isEffectiveOwner: boolean }[];
+    statuses?: TaskStatusColumn[];
   } = {}) {
     const isOwner = options.isOwner ?? true;
     const isEffectiveOwner = options.isEffectiveOwner ?? isOwner;
@@ -103,7 +105,7 @@ describe('TaskBacklogComponent', () => {
             loadBoard,
             moveTask,
             tasks: () => options.tasks ?? [],
-            statuses: () => [],
+            statuses: () => options.statuses ?? [],
             loading: () => false,
             error: taskErrorSignal
           }
@@ -125,8 +127,15 @@ describe('TaskBacklogComponent', () => {
             editTask: vi.fn().mockReturnValue(of({})),
             createTaskEditRequest: vi.fn().mockReturnValue(of({})),
             getCategories: vi.fn().mockReturnValue(of([]))
+            , bulkMoveStatus: vi.fn(() => of({ items: [], succeeded: 1, failed: 0 }))
+            , bulkAssign: vi.fn(() => of({ items: [], succeeded: 1, failed: 0 }))
+            , bulkSetPriority: vi.fn(() => of({ items: [], succeeded: 1, failed: 0 }))
+            , bulkSetDueDate: vi.fn(() => of({ items: [], succeeded: 1, failed: 0 }))
+            , bulkConvertToSubtask: vi.fn(() => of({ items: [], succeeded: 1, failed: 0 }))
+            , bulkDelete: vi.fn(() => of({ items: [], succeeded: 1, failed: 0 }))
           }
         },
+        { provide: SprintApiService, useValue: { setTasks: vi.fn(() => of({})) } },
         {
           provide: EmployeeDirectoryStore,
           useValue: { get: vi.fn().mockReturnValue(undefined), ensureLoaded: vi.fn().mockResolvedValue(undefined) }
@@ -268,6 +277,7 @@ describe('TaskBacklogComponent', () => {
             getCategories: vi.fn().mockReturnValue(of([]))
           }
         },
+        { provide: SprintApiService, useValue: { setTasks: vi.fn(() => of({})) } },
         {
           provide: SprintListStore,
           useValue: {
@@ -348,6 +358,7 @@ describe('TaskBacklogComponent', () => {
             getCategories: vi.fn().mockReturnValue(of([]))
           }
         },
+        { provide: SprintApiService, useValue: { setTasks: vi.fn(() => of({})) } },
         {
           provide: SprintListStore,
           useValue: {
@@ -577,7 +588,7 @@ describe('TaskBacklogComponent', () => {
     expect(fixture.nativeElement.querySelector('.task-backlog__unsorted')).toBeNull();
   });
 
-  describe('bulk select and move to sprint', () => {
+  describe('bulk actions', () => {
     function makeTaskWithHours(id: string, estimatedHours: number | null, objectiveId = 'milestone-1'): WorkTask {
       return { ...makeTask(id, null), objectiveId, estimatedHours };
     }
@@ -622,7 +633,7 @@ describe('TaskBacklogComponent', () => {
 
       (fixture.nativeElement.querySelector('[data-testid="task-select-t-a"]') as HTMLInputElement).click();
       fixture.detectChanges();
-      (fixture.nativeElement.querySelector('[data-testid="bulk-action-move-to-sprint"]') as HTMLButtonElement).click();
+      (fixture.componentInstance as unknown as { onBulkAction(id: string): void }).onBulkAction('move-to-sprint');
       fixture.detectChanges();
 
       const inst = fixture.componentInstance as unknown as { moveDialogOpen: () => boolean };
@@ -725,7 +736,7 @@ describe('TaskBacklogComponent', () => {
       expect(inst.moveBlockedReason()).toBeNull();
     });
 
-    it('moving tasks edits each one with the target sprint, clears selection, and shows an undo banner', async () => {
+    it('moving tasks uses one sprint setTasks call, clears selection, and shows an undo banner', async () => {
       const tasks = [makeTaskWithHours('t-a', 4), makeTaskWithHours('t-b', 6)];
       const { fixture, loadBoard } = setup({ tasks });
       await fixture.whenStable();
@@ -744,15 +755,16 @@ describe('TaskBacklogComponent', () => {
       await inst.onTasksMoved('sp-2');
       fixture.detectChanges();
 
-      const taskApi = TestBed.inject(TaskApiService) as unknown as { editTask: ReturnType<typeof vi.fn> };
-      expect(taskApi.editTask).toHaveBeenCalledWith('t-a', expect.objectContaining({ sprintId: 'sp-2' }));
-      expect(taskApi.editTask).toHaveBeenCalledWith('t-b', expect.objectContaining({ sprintId: 'sp-2' }));
+      const sprintApi = TestBed.inject(SprintApiService) as unknown as { setTasks: ReturnType<typeof vi.fn> };
+      expect(sprintApi.setTasks).toHaveBeenCalledWith('sp-2', {
+        addTaskIds: ['t-a', 't-b'], removeTaskIds: []
+      });
       expect(inst.selectedTaskIds().size).toBe(0);
       expect(inst.moveUndoBanner()?.message).toContain('2 tasks moved to Sprint Two');
       expect(loadBoard).toHaveBeenCalledWith('project-1');
     });
 
-    it('undo re-applies each task\'s previous sprintId', async () => {
+    it('undo after moving backlog tasks removes them from the target sprint', async () => {
       const tasks = [makeTaskWithHours('t-a', 4)];
       const { fixture } = setup({ tasks });
       await fixture.whenStable();
@@ -770,8 +782,156 @@ describe('TaskBacklogComponent', () => {
       fixture.detectChanges();
       await inst.undoMove();
 
-      const taskApi = TestBed.inject(TaskApiService) as unknown as { editTask: ReturnType<typeof vi.fn> };
-      expect(taskApi.editTask).toHaveBeenCalledWith('t-a', expect.objectContaining({ sprintId: null }));
+      const sprintApi = TestBed.inject(SprintApiService) as unknown as { setTasks: ReturnType<typeof vi.fn> };
+      expect(sprintApi.setTasks).toHaveBeenLastCalledWith('sp-2', {
+        addTaskIds: [], removeTaskIds: ['t-a']
+      });
+    });
+
+    it('rows inside an expanded sprint are selectable and count toward the bulk bar', async () => {
+      const sprintTask = makeTask('t-in-sprint', 'sp-1');
+      const backlogTask = makeTask('t-a', null);
+      const { fixture } = setup({ tasks: [sprintTask, backlogTask], sprints: [sprint1] });
+      await fixture.whenStable();
+      const inst = fixture.componentInstance as unknown as { toggleExpanded(id: string): void };
+      inst.toggleExpanded('sp-1');
+      fixture.detectChanges();
+
+      (fixture.nativeElement.querySelector('[data-testid="task-select-t-in-sprint"]') as HTMLInputElement).click();
+      (fixture.nativeElement.querySelector('[data-testid="task-select-t-a"]') as HTMLInputElement).click();
+      fixture.detectChanges();
+
+      expect(fixture.nativeElement.querySelector('[data-testid="bulk-action-bar"]').textContent)
+        .toContain('2 tasks selected');
+    });
+
+    it('owner-only actions are disabled with a reason when a selected module is not effectively owned', async () => {
+      const task = makeTaskWithHours('t-a', 4, 'milestone-2');
+      const { fixture } = setup({
+        tasks: [task],
+        milestones: [{ objectiveId: 'milestone-2', title: 'Milestone Two', isOwner: true, isEffectiveOwner: false }]
+      });
+      await fixture.whenStable();
+      fixture.detectChanges();
+
+      (fixture.nativeElement.querySelector('[data-testid="task-select-t-a"]') as HTMLInputElement).click();
+      fixture.detectChanges();
+
+      const priority = fixture.nativeElement.querySelector('[data-testid="bulk-action-priority"]') as HTMLButtonElement;
+      expect(priority.disabled).toBe(true);
+      expect(priority.title).toBe('You can only do this for tasks in modules you own.');
+      expect((fixture.nativeElement.querySelector('[data-testid="bulk-action-status"]') as HTMLButtonElement).disabled)
+        .toBe(false);
+    });
+
+    it('status picker hides private statuses unless every selected module is owned', async () => {
+      const statuses: TaskStatusColumn[] = [
+        { id: 'pub', name: 'Public', displayOrder: 0, requiresApproval: false, marksTaskComplete: false, visibility: 'public', category: 'active', color: '#000' },
+        { id: 'priv', name: 'Private', displayOrder: 1, requiresApproval: false, marksTaskComplete: false, visibility: 'private', category: 'active', color: '#111' }
+      ];
+      const { fixture } = setup({
+        tasks: [makeTaskWithHours('t-a', 4, 'milestone-2')],
+        statuses,
+        milestones: [{ objectiveId: 'milestone-2', title: 'Milestone Two', isOwner: true, isEffectiveOwner: false }]
+      });
+      await fixture.whenStable();
+      fixture.detectChanges();
+      (fixture.nativeElement.querySelector('[data-testid="task-select-t-a"]') as HTMLInputElement).click();
+      fixture.detectChanges();
+
+      const inst = fixture.componentInstance as unknown as { statusOptions(): { value: string }[] };
+      expect(inst.statusOptions().map((option) => option.value)).toEqual(['pub']);
+    });
+
+    it('applying a picker calls the matching bulk endpoint, shows results, and clears selection', async () => {
+      const { fixture } = setup({ tasks: [makeTaskWithHours('t-a', 4), makeTaskWithHours('t-b', 6)] });
+      await fixture.whenStable();
+      fixture.detectChanges();
+      (fixture.nativeElement.querySelector('[data-testid="task-select-t-a"]') as HTMLInputElement).click();
+      (fixture.nativeElement.querySelector('[data-testid="task-select-t-b"]') as HTMLInputElement).click();
+      fixture.detectChanges();
+
+      const inst = fixture.componentInstance as unknown as {
+        onBulkAction(id: string): void;
+        onPickerConfirmed(value: string | null): Promise<void>;
+        selection: { count(): number };
+        bulkResult(): { title: string } | null;
+      };
+      inst.onBulkAction('priority');
+      await inst.onPickerConfirmed('high');
+
+      const taskApi = TestBed.inject(TaskApiService) as unknown as { bulkSetPriority: ReturnType<typeof vi.fn> };
+      expect(taskApi.bulkSetPriority).toHaveBeenCalledWith(['t-a', 't-b'], 'high');
+      expect(inst.selection.count()).toBe(0);
+      expect(inst.bulkResult()?.title).toBe('Set priority');
+    });
+
+    it('due date picker clear sends null', async () => {
+      const { fixture } = setup({ tasks: [makeTaskWithHours('t-a', 4)] });
+      await fixture.whenStable();
+      fixture.detectChanges();
+      (fixture.nativeElement.querySelector('[data-testid="task-select-t-a"]') as HTMLInputElement).click();
+
+      const inst = fixture.componentInstance as unknown as {
+        onBulkAction(id: string): void;
+        onPickerConfirmed(value: string | null): Promise<void>;
+      };
+      inst.onBulkAction('due-date');
+      await inst.onPickerConfirmed(null);
+
+      const taskApi = TestBed.inject(TaskApiService) as unknown as { bulkSetDueDate: ReturnType<typeof vi.fn> };
+      expect(taskApi.bulkSetDueDate).toHaveBeenCalledWith(['t-a'], null);
+    });
+
+    it('delete asks for confirmation before calling the API', async () => {
+      const { fixture } = setup({ tasks: [makeTaskWithHours('t-a', 4)] });
+      await fixture.whenStable();
+      fixture.detectChanges();
+      (fixture.nativeElement.querySelector('[data-testid="task-select-t-a"]') as HTMLInputElement).click();
+
+      const inst = fixture.componentInstance as unknown as {
+        onBulkAction(id: string): void;
+        onDeleteConfirmed(): Promise<void>;
+        deleteConfirmOpen(): boolean;
+      };
+      const taskApi = TestBed.inject(TaskApiService) as unknown as { bulkDelete: ReturnType<typeof vi.fn> };
+      inst.onBulkAction('delete');
+      expect(taskApi.bulkDelete).not.toHaveBeenCalled();
+      expect(inst.deleteConfirmOpen()).toBe(true);
+      await inst.onDeleteConfirmed();
+      expect(taskApi.bulkDelete).toHaveBeenCalledWith(['t-a']);
+    });
+
+    it('move to backlog groups removals by source sprint and hides when only backlog tasks are selected', async () => {
+      const tasks = [
+        makeTask('sp1-a', 'sp-1'),
+        makeTask('sp1-b', 'sp-1'),
+        makeTask('sp2-a', 'sp-2'),
+        makeTask('backlog', null)
+      ];
+      const { fixture } = setup({ tasks });
+      await fixture.whenStable();
+      const inst = fixture.componentInstance as unknown as {
+        onTaskSelectionChanged(event: { taskId: string; selected: boolean }): void;
+        onMoveToBacklog(): Promise<void>;
+        bulkActions(): { id: string }[];
+      };
+      for (const taskId of ['sp1-a', 'sp1-b', 'sp2-a']) {
+        inst.onTaskSelectionChanged({ taskId, selected: true });
+      }
+
+      await inst.onMoveToBacklog();
+
+      const sprintApi = TestBed.inject(SprintApiService) as unknown as { setTasks: ReturnType<typeof vi.fn> };
+      expect(sprintApi.setTasks).toHaveBeenCalledWith('sp-1', {
+        addTaskIds: [], removeTaskIds: ['sp1-a', 'sp1-b']
+      });
+      expect(sprintApi.setTasks).toHaveBeenCalledWith('sp-2', {
+        addTaskIds: [], removeTaskIds: ['sp2-a']
+      });
+
+      inst.onTaskSelectionChanged({ taskId: 'backlog', selected: true });
+      expect(inst.bulkActions().map((action) => action.id)).not.toContain('move-to-backlog');
     });
   });
 });
