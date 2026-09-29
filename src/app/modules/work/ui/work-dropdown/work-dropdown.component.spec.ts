@@ -120,4 +120,24 @@ describe('WorkDropdownComponent', () => {
       expect(trigger.classList).toContain('work-dropdown__trigger--sm');
     });
   });
+
+  it('does not open while disabled', () => {
+    fixture.componentRef.setInput('disabled', true);
+    fixture.detectChanges();
+
+    const trigger = fixture.nativeElement.querySelector('.work-dropdown__trigger') as HTMLButtonElement;
+    trigger.click();
+
+    expect(trigger.disabled).toBe(true);
+    expect(fixture.componentInstance.open()).toBe(false);
+  });
+
+  it('opens the existing menu upward when requested', () => {
+    fixture.componentRef.setInput('direction', 'up');
+    fixture.componentInstance.open.set(true);
+    fixture.detectChanges();
+
+    expect(fixture.nativeElement.querySelector('.work-dropdown__menu').classList)
+      .toContain('work-dropdown__menu--up');
+  });
 });

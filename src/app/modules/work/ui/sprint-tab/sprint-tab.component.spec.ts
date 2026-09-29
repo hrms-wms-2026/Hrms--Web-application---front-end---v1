@@ -242,4 +242,27 @@ describe('SprintTabComponent', () => {
     setup({ sprint: { ...baseSprint, status: 'complete' }, expanded: true });
     expect(fixture.nativeElement.querySelector('[data-testid="sprint-footer-add-task"]')).toBeNull();
   });
+
+  it('passes selection through to its task table and re-emits changes', () => {
+    const task: WorkTask = {
+      id: 't1', objectiveId: 'o1', shortId: 'T-1', title: 'Selected task', description: null,
+      categoryId: 'c1', statusId: 'st1', priority: 'medium', storyPoints: null, dueDate: null,
+      estimatedHours: 1, completedHours: 0, progressPercent: 0, sprintId: baseSprint.id,
+      assigneeEmployeeIds: [], openClockSessionEmployeeId: null, openClockSessionClockInAt: null,
+      totalLoggedMinutes: 0, attachments: [], assignees: [], parentTaskId: null,
+      subtaskTotalCount: 0, subtaskCompletedCount: 0, subtaskAssigneeEmployeeIds: [], createdAt: new Date()
+    };
+    setup({ tasks: [task], objectiveOwners: { o1: true }, expanded: true });
+    fixture.componentRef.setInput('selectable', true);
+    fixture.componentRef.setInput('selectedIds', new Set(['t1']));
+    fixture.detectChanges();
+
+    const box = fixture.nativeElement.querySelector('[data-testid="task-select-t1"]') as HTMLInputElement;
+    expect(box.checked).toBe(true);
+    const emitted = vi.fn();
+    fixture.componentInstance.taskSelectionChanged.subscribe(emitted);
+    box.click();
+
+    expect(emitted).toHaveBeenCalledWith({ taskId: 't1', selected: false });
+  });
 });

@@ -24,6 +24,9 @@ export type WorkDropdownSize = 'md' | 'sm';
           class="work-dropdown__trigger"
           [class.work-dropdown__trigger--sm]="size() === 'sm'"
           [class.work-dropdown__trigger--active]="multiple() && values().length > 0"
+          [disabled]="disabled()"
+          [attr.data-testid]="testId() || null"
+          [attr.title]="tooltip() || null"
           [attr.aria-expanded]="open()"
           aria-haspopup="listbox"
           [attr.aria-label]="accessibleLabel() || fieldLabel() || triggerLabel()"
@@ -44,7 +47,7 @@ export type WorkDropdownSize = 'md' | 'sm';
         </button>
         @if (error()) { <span class="work-dropdown__error" role="alert">{{ error() }}</span> }
         @if (open()) {
-          <div class="work-dropdown__menu" role="listbox" [attr.aria-multiselectable]="multiple() ? 'true' : null" [attr.aria-label]="accessibleLabel() || fieldLabel() || 'Options'">
+          <div class="work-dropdown__menu" [class.work-dropdown__menu--up]="direction() === 'up'" role="listbox" [attr.aria-multiselectable]="multiple() ? 'true' : null" [attr.aria-label]="accessibleLabel() || fieldLabel() || 'Options'">
             @if (multiple() && values().length > 0) {
               <button type="button" class="work-dropdown__clear" (click)="clearValues($event)">Clear</button>
             }
@@ -83,6 +86,8 @@ export type WorkDropdownSize = 'md' | 'sm';
     .work-dropdown__trigger--sm { height: 30px; gap: 7px; border-radius: 8px; padding: 0 10px; font-size: 13px; }
     .work-dropdown__trigger--sm .work-dropdown__leading-icon, .work-dropdown__trigger--sm .work-dropdown__chevron { width: 15px; height: 15px; }
     .work-dropdown__trigger:hover, .work-dropdown__trigger[aria-expanded="true"] { border-color: var(--color-accent); }
+    .work-dropdown__trigger:disabled { cursor: not-allowed; opacity: .5; }
+    .work-dropdown__trigger:disabled:hover { border-color: var(--color-border); }
     .work-dropdown__trigger--active { border-color: var(--color-accent); color: var(--color-accent); }
     .work-dropdown__trigger--active .work-dropdown__chevron { stroke: var(--color-accent); }
     .work-dropdown__trigger[aria-invalid="true"] { border-color: var(--color-danger); }
@@ -92,6 +97,7 @@ export type WorkDropdownSize = 'md' | 'sm';
     .work-dropdown__chevron { width: 16px; height: 16px; flex: 0 0 auto; fill: none; stroke: var(--color-text-secondary); stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; transition: transform 160ms ease; }
     .work-dropdown__chevron--open { transform: rotate(180deg); }
     .work-dropdown__menu { position: absolute; left: 0; right: 0; top: calc(100% + 7px); z-index: 60; max-height: 16rem; overflow-y: auto; border: 1px solid var(--color-border); border-radius: 10px; padding: 6px; background: var(--color-surface); box-shadow: 0 14px 30px rgb(15 23 42 / .14); animation: work-dropdown-menu-in 140ms ease-out; }
+    .work-dropdown__menu--up { top: auto; bottom: calc(100% + 7px); }
     .work-dropdown__clear { display: block; width: 100%; margin-bottom: 2px; border: 0; border-radius: 6px; padding: 5px 9px; background: transparent; color: var(--color-accent); font: inherit; font-size: 11px; font-weight: 600; text-align: left; cursor: pointer; }
     .work-dropdown__clear:hover { background: var(--color-surface-secondary); }
     .work-dropdown__option { display: flex; width: 100%; min-height: 36px; align-items: center; gap: 8px; border: 0; border-radius: 7px; padding: 7px 9px; background: transparent; color: var(--color-text-primary); font: inherit; font-size: 13px; font-weight: 500; text-align: left; cursor: pointer; }
@@ -117,6 +123,10 @@ export class WorkDropdownComponent {
   leadingIcon = input<WorkDropdownIcon>('filter');
   fullWidth = input(false);
   size = input<WorkDropdownSize>('md');
+  disabled = input(false);
+  direction = input<'down' | 'up'>('down');
+  testId = input<string>('');
+  tooltip = input<string>('');
 
   multiple = input(false);
   values = input<readonly string[]>([]);
@@ -143,7 +153,7 @@ export class WorkDropdownComponent {
     return this.multiple() ? this.values().includes(value) : value === this.selected();
   }
 
-  toggle(event: Event): void { event.stopPropagation(); this.open.update((value) => !value); if (this.open()) this.syncActiveIndex(); }
+  toggle(event: Event): void { event.stopPropagation(); if (this.disabled()) return; this.open.update((value) => !value); if (this.open()) this.syncActiveIndex(); }
 
   onOptionClick(value: string, event: Event): void {
     if (this.multiple()) { this.toggleValue(value); return; }
@@ -161,6 +171,7 @@ export class WorkDropdownComponent {
   clearValues(event?: Event): void { event?.stopPropagation(); this.valuesChanged.emit([]); }
 
   onTriggerKeydown(event: KeyboardEvent): void {
+    if (this.disabled()) return;
     if (event.key === 'Escape') { this.open.set(false); return; }
     if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); this.open.update((value) => !value); if (this.open()) this.syncActiveIndex(); return; }
     if (event.key !== 'ArrowDown' && event.key !== 'ArrowUp') return;

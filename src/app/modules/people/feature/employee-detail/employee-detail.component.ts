@@ -98,17 +98,21 @@ import {
           </div>
 
           <div class="flex items-center gap-3">
-            @if (canChangePosition() && !isOwnRecord() && employee.jobInformation.legalEntityId && !isReadOnly() && employee.invitationStatus !== 'pending' && employee.invitationStatus !== 'expired') {
+            @if ((canChangePosition() || canOffboard()) && !isOwnRecord() && employee.jobInformation.legalEntityId && !isReadOnly() && employee.invitationStatus !== 'pending' && employee.invitationStatus !== 'expired') {
               <app-popover [open]="changePositionMenuOpen()" ariaLabel="Change position actions" align="right" (closed)="changePositionMenuOpen.set(false)">
                 <app-button popover-trigger data-testid="change-position-trigger" (pressed)="changePositionMenuOpen.set(!changePositionMenuOpen())">
-                  Transfer / Promote
+                  {{ canChangePosition() ? 'Transfer / Promote' : 'Offboarding' }}
                 </app-button>
                 <div popover-panel class="change-position-menu">
-                  <button type="button" class="profile-action-btn" (click)="openChangePosition('Promotion')">Promotion</button>
-                  <button type="button" class="profile-action-btn" (click)="openChangePosition('Transfer')">Transfer</button>
-                  <button type="button" class="profile-action-btn" data-testid="offboarding-menu-item" (click)="navigateToOffboarding(employee.id)">
-                    {{ offboardingStatus() && offboardingStatus() !== 'cancelled' ? (isReadOnly() ? 'View Offboarding' : 'Continue Offboarding') : 'Offboarding' }}
-                  </button>
+                  @if (canChangePosition()) {
+                    <button type="button" class="profile-action-btn" (click)="openChangePosition('Promotion')">Promotion</button>
+                    <button type="button" class="profile-action-btn" (click)="openChangePosition('Transfer')">Transfer</button>
+                  }
+                  @if (canOffboard()) {
+                    <button type="button" class="profile-action-btn" data-testid="offboarding-menu-item" (click)="navigateToOffboarding(employee.id)">
+                      {{ offboardingStatus() && offboardingStatus() !== 'cancelled' ? (isReadOnly() ? 'View Offboarding' : 'Continue Offboarding') : 'Offboarding' }}
+                    </button>
+                  }
                 </div>
               </app-popover>
             }
@@ -328,6 +332,7 @@ export class EmployeeDetailComponent {
   readonly breakOverageLabel = breakOverageLabel;
 
   readonly canChangePosition = computed(() => this.permissionService.hasPermission('employees:write'));
+  readonly canOffboard = computed(() => this.permissionService.hasPermission('employees:offboard'));
   readonly isOwnRecord = computed(() => this.employee()?.id === this.authStore.employeeId());
   readonly offboardingStatus = computed(() => this.offboardingStore.record()?.status ?? null);
   readonly isReadOnly = computed(() => this.offboardingStatus() === 'completed');

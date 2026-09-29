@@ -18,17 +18,22 @@
     [class.main-content--gated]="monitoringEnabled && !trayPresence.canRenderProtectedContent()"
     tabindex="-1"
   >
-    @if (!monitoringEnabled || trayPresence.canRenderProtectedContent()) {
-      <router-outlet />
-    } @else {
-      <app-locked-workspace-preview />
-      @if (trayPresence.isBlocking()) {
-        <app-tray-activation-gate />
+    <div class="main-content__viewport">
+      @if (!monitoringEnabled || trayPresence.canRenderProtectedContent()) {
+        <router-outlet />
+      } @else {
+        <app-locked-workspace-preview />
+        @if (trayPresence.isBlocking()) {
+          <app-tray-activation-gate />
+        }
       }
-    }
+    </div>
+    <app-drafts-bar />
   </main>
 
   <app-mobile-bottom-nav />
+  <app-draft-modal-host />
+  <app-unsaved-changes-dialog />
 </div>
 
 <div

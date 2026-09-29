@@ -1,5 +1,6 @@
 import { Routes } from '@angular/router';
 import { permissionGuard } from '../../core/guards/permission.guard';
+import { unsavedChangesGuard } from '../../core/guards/unsaved-changes.guard';
 
 export const PEOPLE_ROUTES: Routes = [
   {
@@ -9,12 +10,14 @@ export const PEOPLE_ROUTES: Routes = [
   },
   {
     path: 'employees',
+    canDeactivate: [unsavedChangesGuard],
     children: [
       {
         path: '',
         loadComponent: () =>
           import('./feature/employee-list/employee-list.component').then((m) => m.EmployeeListComponent),
         canActivate: [permissionGuard],
+        canDeactivate: [unsavedChangesGuard],
         data: { title: 'Employees', permissions: ['employees:read'] }
       },
       {
