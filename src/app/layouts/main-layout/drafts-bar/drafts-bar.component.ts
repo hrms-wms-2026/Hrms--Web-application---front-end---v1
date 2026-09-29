@@ -1,5 +1,4 @@
 import { ChangeDetectionStrategy, Component, DestroyRef, HostListener, effect, inject, signal } from '@angular/core';
-import { Router } from '@angular/router';
 import { ConfirmModalComponent } from '../../../shared/ui/confirm-modal/confirm-modal.component';
 import { DraftChip, DraftsStore } from '../../../shared/state/drafts.store';
 
@@ -50,7 +49,6 @@ const BAR_OFFSET = '56px';
 })
 export class DraftsBarComponent {
   protected readonly store = inject(DraftsStore);
-  private readonly router = inject(Router);
 
   protected readonly pendingDelete = signal<DraftChip | null>(null);
   protected readonly deleting = signal(false);
@@ -69,11 +67,7 @@ export class DraftsBarComponent {
   }
 
   protected open(chip: DraftChip): void {
-    if (chip.kind === 'task') {
-      void this.router.navigate(['/work', chip.projectId, 'backlog'], { queryParams: { taskDraftId: chip.id } });
-    } else {
-      void this.router.navigate(['/people/employees'], { queryParams: { draftId: chip.id } });
-    }
+    this.store.openDraft(chip);
   }
 
   protected async confirmDelete(): Promise<void> {

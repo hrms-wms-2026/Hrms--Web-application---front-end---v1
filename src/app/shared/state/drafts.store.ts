@@ -17,6 +17,7 @@ export interface DraftChip {
 
 interface DraftsState {
   readonly chips: readonly DraftChip[];
+  readonly activeDraft: DraftChip | null;
 }
 
 function employeeBadge(status: string): string | null {
@@ -28,7 +29,7 @@ function employeeBadge(status: string): string | null {
 /** The current user's own unsaved work (task drafts + onboarding drafts) shown in the drafts bar. */
 export const DraftsStore = signalStore(
   { providedIn: 'root' },
-  withState<DraftsState>({ chips: [] }),
+  withState<DraftsState>({ chips: [], activeDraft: null }),
   withMethods((
     store,
     taskDrafts = inject(TaskDraftApiService),
@@ -69,10 +70,21 @@ export const DraftsStore = signalStore(
         patchState(store, { chips: [...taskChips, ...employeeChips] });
       },
 
+      openDraft(chip: DraftChip): void {
+        patchState(store, { activeDraft: chip });
+      },
+
+      closeDraft(): void {
+        patchState(store, { activeDraft: null });
+      },
+
       async removeChip(chip: DraftChip): Promise<boolean> {
         try {
           await firstValueFrom(chip.kind === 'task' ? taskDrafts.remove(chip.id) : peopleApi.cancelDraft(chip.id));
-          patchState(store, { chips: store.chips().filter((c) => !(c.kind === chip.kind && c.id === chip.id)) });
+          patchState(store, {
+            chips: store.chips().filter((c) => !(c.kind === chip.kind && c.id === chip.id)),
+            activeDraft: store.activeDraft()?.id === chip.id ? null : store.activeDraft()
+          });
           return true;
         } catch {
           return false;

@@ -91,4 +91,25 @@ describe('DraftsStore', () => {
     expect(await store.removeChip(store.chips()[0])).toBe(false);
     expect(store.chips()).toHaveLength(1);
   });
+
+  it('manages activeDraft on openDraft, closeDraft, and removeChip', async () => {
+    expect(store.activeDraft()).toBeNull();
+
+    const chip = { kind: 'task' as const, id: 't1', label: 'Fix', badge: null, projectId: 'p1' };
+    store.openDraft(chip);
+    expect(store.activeDraft()).toEqual(chip);
+
+    store.closeDraft();
+    expect(store.activeDraft()).toBeNull();
+
+    taskApi.list.mockReturnValue(of([{ id: 't1', projectId: 'p1', title: 'Fix', updatedAt: '' }]));
+    peopleApi.listDrafts.mockReturnValue(of({ items: [], totalCount: 0, page: 1, pageSize: 50 }));
+    await store.load();
+
+    store.openDraft(store.chips()[0]);
+    expect(store.activeDraft()).not.toBeNull();
+
+    await store.removeChip(store.chips()[0]);
+    expect(store.activeDraft()).toBeNull();
+  });
 });

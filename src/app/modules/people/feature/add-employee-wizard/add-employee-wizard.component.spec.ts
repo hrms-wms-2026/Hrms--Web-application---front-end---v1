@@ -1573,6 +1573,6 @@ describe('AddEmployeeWizardComponent', () => {
 
     expect(unsaved.prompt()).toBeNull();
     expect(closedSpy).toHaveBeenCalled();
-    expect(router.navigate).toHaveBeenCalledWith(['/people/employees']);
+    expect(router.navigate).not.toHaveBeenCalled();
   });
 });

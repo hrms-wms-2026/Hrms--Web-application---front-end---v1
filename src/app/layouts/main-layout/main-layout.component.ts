@@ -17,11 +17,12 @@ import { ToastHostComponent } from '../../shared/ui/toast/toast-host.component';
 import { MobileBottomNavComponent } from './mobile-bottom-nav/mobile-bottom-nav.component';
 import { UnsavedChangesDialogComponent } from '../../shared/ui/unsaved-changes-dialog/unsaved-changes-dialog.component';
 import { DraftsBarComponent } from './drafts-bar/drafts-bar.component';
+import { DraftModalHostComponent } from './draft-modal-host/draft-modal-host.component';
 
 @Component({
   selector: 'app-main-layout',
   standalone: true,
-  imports: [RouterOutlet, SideNavbarComponent, TopNavbarComponent, SubSidebarComponent, ToastHostComponent, MobileBottomNavComponent, DraftsBarComponent, UnsavedChangesDialogComponent, TrayActivationGateComponent, LockedWorkspacePreviewComponent],
+  imports: [RouterOutlet, SideNavbarComponent, TopNavbarComponent, SubSidebarComponent, ToastHostComponent, MobileBottomNavComponent, DraftsBarComponent, DraftModalHostComponent, UnsavedChangesDialogComponent, TrayActivationGateComponent, LockedWorkspacePreviewComponent],
   templateUrl: './main-layout.component.html',
   styleUrl: './main-layout.component.css',
   changeDetection: ChangeDetectionStrategy.OnPush

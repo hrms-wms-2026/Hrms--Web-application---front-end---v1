@@ -947,7 +947,9 @@ export class AddEmployeeWizardComponent implements OnDestroy {
   async onCancel(): Promise<void> {
     if (!(await this.unsaved.requestClose(this.guardHandle))) return;
     this.closed.emit();
-    void this.router.navigate(['/people/employees']);
+    if (!this.isModal()) {
+      void this.router.navigate(['/people/employees']);
+    }
   }
 
   canJumpToStep(targetIndex: number): boolean {

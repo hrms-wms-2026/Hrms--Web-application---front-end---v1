@@ -1,14 +1,12 @@
 import { signal } from '@angular/core';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
-import { Router } from '@angular/router';
 import { DraftChip, DraftsStore } from '../../../shared/state/drafts.store';
 import { DraftsBarComponent } from './drafts-bar.component';
 
 describe('DraftsBarComponent', () => {
   let fixture: ComponentFixture<DraftsBarComponent>;
   const chips = signal<DraftChip[]>([]);
-  const store = { chips, load: vi.fn(async () => {}), removeChip: vi.fn(async () => true) };
-  const router = { navigate: vi.fn() };
+  const store = { chips, load: vi.fn(async () => {}), removeChip: vi.fn(async () => true), openDraft: vi.fn() };
   const el = () => fixture.nativeElement as HTMLElement;
   const offset = () => document.documentElement.style.getPropertyValue('--bottom-tray-offset');
 
@@ -21,10 +19,10 @@ describe('DraftsBarComponent', () => {
     chips.set([]);
     store.load.mockClear();
     store.removeChip.mockClear();
-    router.navigate.mockClear();
+    store.openDraft.mockClear();
     TestBed.configureTestingModule({
       imports: [DraftsBarComponent],
-      providers: [{ provide: DraftsStore, useValue: store }, { provide: Router, useValue: router }]
+      providers: [{ provide: DraftsStore, useValue: store }]
     });
     fixture = TestBed.createComponent(DraftsBarComponent);
     fixture.detectChanges();
@@ -47,13 +45,13 @@ describe('DraftsBarComponent', () => {
     expect(offset()).toBe('56px');
   });
 
-  it('opens the right screen for each kind', () => {
+  it('opens the draft in-place via the store', () => {
     chips.set(TWO_CHIPS);
     fixture.detectChanges();
     (el().querySelector('[data-testid="draft-chip-task-t1"]') as HTMLElement).click();
-    expect(router.navigate).toHaveBeenCalledWith(['/work', 'p1', 'backlog'], { queryParams: { taskDraftId: 't1' } });
+    expect(store.openDraft).toHaveBeenCalledWith(TWO_CHIPS[0]);
     (el().querySelector('[data-testid="draft-chip-employee-e1"]') as HTMLElement).click();
-    expect(router.navigate).toHaveBeenCalledWith(['/people/employees'], { queryParams: { draftId: 'e1' } });
+    expect(store.openDraft).toHaveBeenCalledWith(TWO_CHIPS[1]);
   });
 
   it('asks before deleting, then removes via the store', async () => {
