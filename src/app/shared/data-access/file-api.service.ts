@@ -3,6 +3,10 @@ import { Injectable, inject } from '@angular/core';
 import { Observable } from 'rxjs';
 import { environment } from '../../../environments/environment';
 
+export function buildFileUrl(fileId: string): string {
+  return `${environment.apiUrl}/files/${fileId}`;
+}
+
 export interface UploadedFile {
   fileId: string;
   originalFileName: string;
@@ -17,7 +21,7 @@ export class FileApiService {
 
   /** Pure helper - no request. Streams through our own API, never object storage directly. */
   getFileUrl(fileId: string): string {
-    return `${this.base}/${fileId}`;
+    return buildFileUrl(fileId);
   }
 
   upload(file: File, purpose: string): Observable<UploadedFile> {

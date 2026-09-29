@@ -3,7 +3,7 @@ import { CommonModule } from '@angular/common';
 import { ActivatedRoute, Router } from '@angular/router';
 import { NotificationService } from '../../../../core/services/notification.service';
 import { ButtonComponent } from '../../../../shared/ui/button/button.component';
-import { CalendarEventResponse, MeetingProvider, RecurrenceEditScope } from '../../models/calendar-event.model';
+import { CalendarEventResponse, RecurrenceEditScope } from '../../models/calendar-event.model';
 import { CalendarEventStore } from '../../state/calendar-event.store';
 import { buildMonthGrid } from '../../utils/calendar-grid.util';
 import { CalendarMonthGridComponent } from '../../ui/calendar-month-grid/calendar-month-grid.component';
@@ -53,7 +53,6 @@ export class CalendarPageComponent {
   readonly editingEvent = signal<CalendarEventResponse | null>(null);
   readonly prefillStart = signal<string | null>(null);
   readonly prefillEnd = signal<string | null>(null);
-  readonly submitting = signal(false);
 
   readonly year = computed(() => this.cursor().getFullYear());
   readonly month = computed(() => this.cursor().getMonth() + 1);
@@ -75,17 +74,8 @@ export class CalendarPageComponent {
     this.store.loadEvents(from, to);
   });
 
-  // actionError was already tracked in store state but never surfaced anywhere - a failed
-  // create/update/delete/respond/meeting action silently did nothing visible. NotificationService
-  // already dedupes a repeated identical message, so this can't spam on unrelated re-renders.
-  private readonly actionErrorEffect = effect(() => {
-    const error = this.store.actionError();
-    if (error) this.notificationService.error(error);
-  });
-
   constructor() {
     this.store.loadMyTimezone();
-    this.store.loadMeetingConnectionStatus();
     this.handleCalendarConnectionRedirect();
   }
 
@@ -211,46 +201,27 @@ export class CalendarPageComponent {
   }
 
   async onSave(submission: CalendarEventFormSubmission): Promise<void> {
-    // store.saving ends after the event POST, so the follow-up meeting call left Create clickable and a 2nd click duplicated the event.
-    if (this.submitting()) return;
-    this.submitting.set(true);
-    try {
-      const editing = this.editingEvent();
-      let ok: boolean;
+    const editing = this.editingEvent();
+    let ok: boolean;
 
-      if ('update' in submission && editing) {
-        if (submission.scope && editing.recurrenceMasterId) {
-          const { from, to } = this.currentRange();
-          ok = await this.store.editOccurrence(
-            editing.recurrenceMasterId,
-            { originalStart: editing.originalStart!, scope: submission.scope, ...submission.update },
-            from, to
-          );
-        } else {
-          ok = await this.store.updateEvent(editing.id, submission.update);
-          if (ok) await this.reloadEvents();
-        }
-      } else if ('create' in submission) {
-        const created = await this.store.createEvent(submission.create);
-        ok = !!created;
-        if (created && submission.meetingProvider) {
-          await this.store.createMeeting(created.id, submission.meetingProvider);
-        }
-        if (created) await this.reloadEvents();
+    if ('update' in submission && editing) {
+      if (submission.scope && editing.recurrenceMasterId) {
+        const { from, to } = this.currentRange();
+        ok = await this.store.editOccurrence(
+          editing.recurrenceMasterId,
+          { originalStart: editing.originalStart!, scope: submission.scope, ...submission.update },
+          from, to
+        );
       } else {
-        ok = false;
+        ok = await this.store.updateEvent(editing.id, submission.update);
       }
-
-      if (ok) this.closeForm();
-    } finally {
-      this.submitting.set(false);
+    } else if ('create' in submission) {
+      ok = await this.store.createEvent(submission.create);
+    } else {
+      ok = false;
     }
-  }
 
-  /** The create/update responses carry no participants, organizer or conflict flags, so the saved event is re-read from the server. */
-  private reloadEvents(): Promise<void> {
-    const { from, to } = this.currentRange();
-    return this.store.loadEvents(from, to);
+    if (ok) this.closeForm();
   }
 
   async onDelete(scope: RecurrenceEditScope | null): Promise<void> {
@@ -287,47 +258,5 @@ export class CalendarPageComponent {
     if (!editing) return;
     const eventId = editing.recurrenceMasterId ?? editing.id;
     this.store.loadEligibleNominees(eventId);
-  }
-
-  async onAddMeeting(provider: MeetingProvider): Promise<void> {
-    const editing = this.editingEvent();
-    if (!editing) return;
-    const ok = await this.store.createMeeting(editing.id, provider);
-    if (ok) this.editingEvent.set(this.store.events().find((e) => e.id === editing.id) ?? null);
-  }
-
-  async onRemoveMeeting(): Promise<void> {
-    const editing = this.editingEvent();
-    if (!editing) return;
-    const ok = await this.store.removeMeeting(editing.id);
-    if (ok) this.editingEvent.set(this.store.events().find((e) => e.id === editing.id) ?? null);
-  }
-
-  async onAddParticipantsToEvent(employeeIds: readonly string[]): Promise<void> {
-    const editing = this.editingEvent();
-    if (!editing) return;
-    const ok = await this.store.addParticipants(editing.id, employeeIds);
-    if (ok) this.editingEvent.set(this.store.events().find((e) => e.id === editing.id) ?? null);
-  }
-
-  async onRemoveExistingParticipant(employeeId: string): Promise<void> {
-    const editing = this.editingEvent();
-    if (!editing) return;
-    const ok = await this.store.removeParticipant(editing.id, employeeId);
-    if (ok) this.editingEvent.set(this.store.events().find((e) => e.id === editing.id) ?? null);
-  }
-
-  async onAddGuestsToEvent(emails: readonly string[]): Promise<void> {
-    const editing = this.editingEvent();
-    if (!editing) return;
-    const ok = await this.store.addGuests(editing.id, emails);
-    if (ok) this.editingEvent.set(this.store.events().find((e) => e.id === editing.id) ?? null);
-  }
-
-  async onRemoveExistingGuest(email: string): Promise<void> {
-    const editing = this.editingEvent();
-    if (!editing) return;
-    const ok = await this.store.removeGuest(editing.id, email);
-    if (ok) this.editingEvent.set(this.store.events().find((e) => e.id === editing.id) ?? null);
   }
 }

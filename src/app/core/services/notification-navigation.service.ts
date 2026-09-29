@@ -10,7 +10,8 @@ const WORK_RELATED_TYPES = new Set([
   'task_creation_request',
   'objective_change_request',
   'allocation_extend',
-  'project_member_invitation'
+  'project_member_invitation',
+  'task_status_change_request'
 ]);
 
 /** Where a notification click should take the viewer - shared by the top-navbar bell dropdown

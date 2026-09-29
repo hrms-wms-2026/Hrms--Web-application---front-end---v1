@@ -65,7 +65,7 @@ describe('LeaveEntitlementStore', () => {
   });
 
   it('createManual triggers a reload and returns true', async () => {
-    const work = store.createManual({ employeeId: 'emp-1', leaveTypeId: 'type-1', year: 2026, totalDays: 5, carriedForwardDays: 0, reason: 'Manual grant' });
+    const work = store.createManual({ employeeId: 'emp-1', leaveTypeId: 'type-1', year: 2026, totalHours: 5, carriedForwardHours: 0, reason: 'Manual grant' });
     http.expectOne(`${environment.apiUrl}/leave/entitlements/manual`).flush({});
     await Promise.resolve();
     http.expectOne((r) => r.url === `${environment.apiUrl}/leave/entitlements`).flush([]);
@@ -74,14 +74,14 @@ describe('LeaveEntitlementStore', () => {
   });
 
   it('sets actionError and returns false when createManual fails', async () => {
-    const work = store.createManual({ employeeId: 'emp-1', leaveTypeId: 'type-1', year: 2026, totalDays: 5, carriedForwardDays: 0, reason: 'Grant' });
+    const work = store.createManual({ employeeId: 'emp-1', leaveTypeId: 'type-1', year: 2026, totalHours: 5, carriedForwardHours: 0, reason: 'Grant' });
     http.expectOne(`${environment.apiUrl}/leave/entitlements/manual`).flush('Server error', { status: 500, statusText: 'Internal Server Error' });
     expect(await work).toBe(false);
     expect(store.actionError()).toBeTruthy();
   });
 
   it('adjust succeeds, reloads, and returns success', async () => {
-    const work = store.adjust('ent-1', { totalDays: 18, carriedForwardDays: 2, reason: 'Correction', confirmNegativeRemaining: true });
+    const work = store.adjust('ent-1', { totalHours: 18, carriedForwardHours: 2, reason: 'Correction', confirmNegativeRemaining: true });
     http.expectOne(`${environment.apiUrl}/leave/entitlements/ent-1/adjust`).flush({});
     await Promise.resolve();
     http.expectOne((r) => r.url === `${environment.apiUrl}/leave/entitlements`).flush([]);
@@ -90,14 +90,14 @@ describe('LeaveEntitlementStore', () => {
   });
 
   it('keeps a 409 adjustment available for confirmation', async () => {
-    const work = store.adjust('ent-1', { totalDays: 5, carriedForwardDays: 0, reason: 'Correction', confirmNegativeRemaining: false });
+    const work = store.adjust('ent-1', { totalHours: 5, carriedForwardHours: 0, reason: 'Correction', confirmNegativeRemaining: false });
     http.expectOne(`${environment.apiUrl}/leave/entitlements/ent-1/adjust`).flush({ detail: 'Remaining would go negative' }, { status: 409, statusText: 'Conflict' });
     expect(await work).toBe('confirm');
     expect(store.actionError()).toBeNull();
   });
 
   it('sets actionError and returns error when adjust fails with non-409', async () => {
-    const work = store.adjust('ent-1', { totalDays: 18, carriedForwardDays: 2, reason: 'x', confirmNegativeRemaining: false });
+    const work = store.adjust('ent-1', { totalHours: 18, carriedForwardHours: 2, reason: 'x', confirmNegativeRemaining: false });
     http.expectOne(`${environment.apiUrl}/leave/entitlements/ent-1/adjust`).flush('Server error', { status: 500, statusText: 'Internal Server Error' });
     expect(await work).toBe('error');
     expect(store.actionError()).toBeTruthy();

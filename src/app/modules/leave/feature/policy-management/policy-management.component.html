@@ -1,5 +1,69 @@
-<!-- Quiet Operations Desk: policy ledger on the left, selected policy evidence on the right. -->
-<section class="lpm-page"><header class="lpm-header"><div><p>TIME OFF / ADMINISTRATION</p><h1>Leave Policies</h1><span>Define entitlements, eligibility, request controls, and legal-entity assignments.</span></div><app-button (click)="openWizard()">+ New policy</app-button></header>@if (policyStore.loading() && !policyStore.items().length) { <div class="lpm-loading">Loading leave policies…</div> } @else if (policyStore.loadError()) { <app-error-state [message]="policyStore.loadError()!" [retryable]="true" (retry)="loadInitialData()" /> } @else if (!policyStore.items().length) { <app-empty-state title="No leave policies configured" description="Create a policy to define how time off applies to each legal entity." /> } @else { <div class="lpm-workspace"><app-leave-policy-list-table [policies]="policyStore.items()" [canManage]="hasManageAccess()" (viewPolicy)="viewPolicy($event)" (clonePolicy)="openClone($event)" />@if (detailOpen()) { <div class="lpm-detail"><button type="button" (click)="closeDetail()" aria-label="Close policy detail">×</button><app-leave-policy-detail-panel [policy]="policyStore.selectedPolicy()" /></div> }</div> }</section>
+<section class="to-page">
+  <header class="to-header">
+    <div>
+      <p class="to-kicker">TIME OFF</p>
+      <h1 class="to-title">Leave Policies</h1>
+      <p class="to-subtitle">Who gets which leave, and the rules that apply.</p>
+    </div>
+    @if (hasManageAccess()) {
+      <div class="to-header-actions">
+        <app-button (click)="openWizard()">+ New policy</app-button>
+      </div>
+    }
+  </header>
+  @if (policyStore.loading() && !policyStore.items().length) {
+    <div class="to-loading" aria-busy="true"><span></span><span></span><span></span></div>
+  } @else if (policyStore.loadError()) {
+    <app-error-state [message]="policyStore.loadError()!" [retryable]="true" (retry)="loadInitialData()" />
+  } @else if (!policyStore.items().length) {
+    <div class="to-empty">
+      <app-empty-state title="No leave policies yet" description="Create a policy to assign leave types to each company.">
+        @if (hasManageAccess()) {
+          <app-button (click)="openWizard()">+ New policy</app-button>
+        }
+      </app-empty-state>
+    </div>
+  } @else {
+    <section class="to-metrics" aria-label="Policy totals">
+      <article class="to-metric"><p class="to-metric__label">Policies</p><p class="to-metric__value">{{ policySummary().total }}</p></article>
+      <article class="to-metric"><p class="to-metric__label">Active</p><p class="to-metric__value">{{ policySummary().active }}</p></article>
+      <article class="to-metric"><p class="to-metric__label">Companies</p><p class="to-metric__value">{{ policySummary().entities }}</p></article>
+    </section>
+    <div class="to-workspace" [class.to-workspace--detail]="detailOpen()">
+      <div class="to-table-card">
+        <app-leave-policy-list-table [policies]="policyStore.items()" [canManage]="hasManageAccess()" (viewPolicy)="viewPolicy($event)" (clonePolicy)="openClone($event)" />
+      </div>
+      @if (detailOpen()) {
+        <div class="lpm-detail">
+          <button type="button" (click)="closeDetail()" aria-label="Close policy detail">×</button>
+          <app-leave-policy-detail-panel [policy]="policyStore.selectedPolicy()" />
+        </div>
+      }
+    </div>
+  }
+</section>
 @if (wizardOpen()) { <app-leave-policy-form-wizard [leaveTypes]="leaveTypeStore.items()" [legalEntities]="legalEntities()" [saving]="policyStore.saving()" (save)="onSavePolicy($event)" (cancel)="closeWizard()" /> }
-@if (cloneSource()) { <div class="lpm-overlay" (click)="closeClone()"><section class="lpm-clone" (click)="$event.stopPropagation()" role="dialog" aria-modal="true" aria-label="Clone leave policy"><p>CLONE POLICY</p><h2>Copy {{ cloneSource()!.name }}</h2><span>Choose new assignment values for the cloned policy.</span><label>Name *<input [value]="cloneName()" (input)="cloneName.set($any($event.target).value)" /></label><div><label>Country *<input maxlength="2" [value]="cloneCountry()" (input)="cloneCountry.set($any($event.target).value)" /></label><label>Effective from *<input type="date" [value]="cloneEffectiveFrom()" (input)="cloneEffectiveFrom.set($any($event.target).value)" /></label></div><fieldset><legend>Legal entities *</legend>@for (entity of legalEntities(); track entity.id) { <label><input type="checkbox" [checked]="cloneLegalEntityIds().includes(entity.id)" (change)="toggleCloneEntity(entity.id, $any($event.target).checked)" />{{ entity.name }}</label> }</fieldset><footer><app-button variant="secondary" (click)="closeClone()">Cancel</app-button><app-button [loading]="policyStore.saving()" (click)="submitClone()">Clone policy</app-button></footer></section></div> }
-@if (replaceConfirmOpen()) { <div class="lpm-overlay" (click)="cancelReplacement()"><section class="lpm-confirm" (click)="$event.stopPropagation()" role="dialog" aria-modal="true" aria-label="Confirm policy replacement"><p>REPLACEMENT CONFIRMATION</p><h2>Replace an existing assignment?</h2><span>{{ policyStore.replacementConfirmationMessage() || 'One or more selected legal entities already have an active policy.' }}</span><footer><app-button variant="secondary" (click)="cancelReplacement()">Cancel</app-button><app-button [loading]="policyStore.saving()" (click)="confirmReplacement()">Replace and continue</app-button></footer></section></div> }
+<app-modal [open]="cloneSource() !== null" title="Clone leave policy" (closed)="closeClone()">
+  <p class="to-subtitle">Copy {{ cloneSource()?.name }}. Choose a name, start date, and companies.</p>
+  <div class="lpm-clone-fields">
+    <app-input label="Name *" [value]="cloneName()" (valueChange)="cloneName.set($event)" />
+    <app-date-picker label="Effective from *" [value]="cloneEffectiveFrom()" (valueChange)="cloneEffectiveFrom.set($event)" />
+    <fieldset>
+      <legend>Legal entities *</legend>
+      @for (entity of legalEntities(); track entity.id) {
+        <label class="to-filter"><input type="checkbox" [checked]="cloneLegalEntityIds().includes(entity.id)" (change)="toggleCloneEntity(entity.id, $any($event.target).checked)" />{{ entity.name }}</label>
+      }
+    </fieldset>
+  </div>
+  <div class="to-modal-actions">
+    <app-button variant="secondary" (click)="closeClone()">Cancel</app-button>
+    <app-button [loading]="policyStore.saving()" (click)="submitClone()">Clone policy</app-button>
+  </div>
+</app-modal>
+<app-modal [open]="replaceConfirmOpen()" title="Replace an existing assignment?" (closed)="cancelReplacement()">
+  <p>{{ policyStore.replacementConfirmationMessage() || 'One or more selected companies already have an active policy.' }}</p>
+  <div class="to-modal-actions">
+    <app-button variant="secondary" (click)="cancelReplacement()">Cancel</app-button>
+    <app-button [loading]="policyStore.saving()" (click)="confirmReplacement()">Replace and continue</app-button>
+  </div>
+</app-modal>

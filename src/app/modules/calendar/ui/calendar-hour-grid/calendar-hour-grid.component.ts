@@ -12,12 +12,6 @@ interface DayColumnViewModel {
   readonly allDayEvents: readonly CalendarEventResponse[];
   readonly positioned: readonly PositionedEvent[];
   readonly nowFraction: number | null; // 0-1, only set when isToday
-  readonly nowLabel: string | null; // e.g. "9:36 AM", only set when isToday
-}
-
-/** 12-hour clock text for the current-time pill, e.g. 9:36 AM / 12:07 AM. */
-function formatClock(hour: number, minute: number): string {
-  return `${hour % 12 || 12}:${String(minute).padStart(2, '0')} ${hour < 12 ? "AM" : "PM"}`;
 }
 
 const HOURS = Array.from({ length: 24 }, (_, h) => h);
@@ -135,14 +129,10 @@ export class CalendarHourGridComponent {
         dayNumber: d,
         allDayEvents: dayEvents.filter((e) => e.isAllDay),
         positioned: layoutDayEvents(dayEvents, dayStart),
-        nowFraction: isToday ? (nowHour * 60 + nowMinute) / 1440 : null,
-        nowLabel: isToday ? formatClock(nowHour, nowMinute) : null
+        nowFraction: isToday ? (nowHour * 60 + nowMinute) / 1440 : null
       };
     });
   });
-
-  /** Today's column, if shown: drives the time pill in the hour gutter. */
-  readonly nowMarker = computed(() => this.columns().find((c) => c.nowFraction !== null) ?? null);
 
   onSlotPointerDown(date: string, event: PointerEvent, columnEl: HTMLElement): void {
     if (event.button !== 0) return;

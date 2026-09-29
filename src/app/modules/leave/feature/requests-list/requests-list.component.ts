@@ -1,10 +1,12 @@
 /** Quiet Operations Desk: Screen 6's HR-wide filterable ledger, counts + status filter chips. */
-import { ChangeDetectionStrategy, Component, inject, signal } from '@angular/core';
+import { ChangeDetectionStrategy, Component, computed, inject, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { PermissionService } from '../../../../core/auth/state/permission.service';
 import { NotificationService } from '../../../../core/services/notification.service';
+import { DatePickerComponent } from '../../../../shared/ui/date-picker/date-picker.component';
 import { EmptyStateComponent } from '../../../../shared/ui/empty-state/empty-state.component';
 import { ErrorStateComponent } from '../../../../shared/ui/error-state/error-state.component';
+import { SelectComponent, SelectOption } from '../../../../shared/ui/select/select.component';
 import { LeaveApprovalStore } from '../../state/leave-approval.store';
 import { LeaveTypeStore } from '../../state/leave-type.store';
 import { CancelLeaveRequestRequest } from '../../models/leave-request.model';
@@ -16,9 +18,9 @@ import { LeaveApprovalDetailSheetComponent } from '../../ui/leave-approval-detai
 @Component({
   selector: 'app-requests-list',
   standalone: true,
-  imports: [CommonModule, EmptyStateComponent, ErrorStateComponent, LeaveCancelConfirmDialogComponent, LeaveRequestAllTableComponent, LeaveApprovalDetailSheetComponent],
+  imports: [CommonModule, DatePickerComponent, EmptyStateComponent, ErrorStateComponent, SelectComponent, LeaveCancelConfirmDialogComponent, LeaveRequestAllTableComponent, LeaveApprovalDetailSheetComponent],
   templateUrl: './requests-list.component.html',
-  styleUrl: './requests-list.component.css',
+  styleUrls: ['../../ui/time-off-chrome.css', './requests-list.component.css'],
   changeDetection: ChangeDetectionStrategy.OnPush
 })
 export class RequestsListComponent {
@@ -29,6 +31,11 @@ export class RequestsListComponent {
   readonly canApprove = () => this.permissionService.hasPermission('leave:approve');
   readonly detailOpen = signal(false);
   readonly cancelTarget = signal<LeaveRequestAllListItemResponse | null>(null);
+  readonly statusFilter = computed(() => this.store.allFilter().status ?? '');
+  readonly leaveTypeOptions = computed<SelectOption[]>(() => [
+    { value: '', label: 'All leave types' },
+    ...this.leaveTypeStore.items().map((type) => ({ value: type.id, label: type.name }))
+  ]);
 
   constructor() {
     void this.store.loadAll();

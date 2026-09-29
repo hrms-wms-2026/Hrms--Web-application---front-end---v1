@@ -42,9 +42,7 @@ export const errorInterceptor: HttpInterceptorFn = (req, next) => {
     retry({
       count: 3,
       delay: (error: HttpErrorResponse, attempt: number) => {
-        // A 5xx/dropped connection on a write doesn't prove it wasn't applied - retrying it duplicated calendar events.
-        const isSafeToRetry = req.method === 'GET' || req.method === 'HEAD';
-        if (isSafeToRetry && (error.status >= 500 || error.status === 0)) {
+        if (error.status >= 500 || error.status === 0) {
           return timer(RETRY_DELAYS_MS[attempt - 1] ?? 1000);
         }
         throw error;
@@ -53,6 +51,10 @@ export const errorInterceptor: HttpInterceptorFn = (req, next) => {
     catchError((error: HttpErrorResponse) => {
             if (isActiveTrayRequired(error)) {
         trayPresenceEvents.publish();
+        return throwError(() => error);
+      }
+
+      if (error.status === 429 && req.url.includes('/monitoring/activation/generate')) {
         return throwError(() => error);
       }
 

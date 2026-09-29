@@ -145,4 +145,13 @@
   }
 </div>
 
+@if (isModalOpen()) {
+  <app-checklist-builder
+    [open]="isModalOpen()"
+    [templateId]="selectedTemplateId()"
+    (closed)="onModalClose()"
+    (saved)="onModalSaved()"
+  />
+}
+
 

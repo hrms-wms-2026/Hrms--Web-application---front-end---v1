@@ -25,11 +25,14 @@ export type ModalSize = 'md' | 'lg' | 'xl' | '2xl';
             }
             <button
               type="button"
-              class="text-[var(--color-text-secondary)] transition-colors hover:text-[var(--color-text-primary)]"
+              class="flex h-7 w-7 items-center justify-center rounded-lg text-[var(--color-text-secondary)] transition-colors hover:bg-[var(--color-border)]/20 hover:text-[var(--color-text-primary)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-accent)]"
               aria-label="Close"
               (click)="closed.emit()"
             >
-              &#x2715;
+              <svg class="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                <line x1="18" y1="6" x2="6" y2="18"></line>
+                <line x1="6" y1="6" x2="18" y2="18"></line>
+              </svg>
             </button>
           </div>
           <ng-content />

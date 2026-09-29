@@ -7,6 +7,8 @@ import {
   CreateTaskRequestDto,
   CreateTaskStatusRequestDto,
   ClockInResponseDto,
+    ConvertTaskToSubtaskRequestDto,
+    DuplicateTaskRequestDto,
     EditTaskRequestDto,
   EditTaskStatusRequestDto,
   PendingUploadDto,
@@ -87,6 +89,14 @@ export class TaskApiService {
 
   deleteTask(taskId: string): Observable<void> {
     return this.http.delete<void>(`${this.baseUrl}/tasks/${taskId}`);
+  }
+
+  duplicateTask(taskId: string, request: DuplicateTaskRequestDto): Observable<WorkTaskDto> {
+    return this.http.post<WorkTaskDto>(`${this.baseUrl}/tasks/${taskId}/duplicate`, request);
+  }
+
+  convertToSubtask(taskId: string, request: ConvertTaskToSubtaskRequestDto): Observable<WorkTaskDto> {
+    return this.http.post<WorkTaskDto>(`${this.baseUrl}/tasks/${taskId}/convert-to-subtask`, request);
   }
 
   editTask(taskId: string, request: EditTaskRequestDto): Observable<WorkTaskDto> {
@@ -191,6 +201,10 @@ export class TaskApiService {
 
   deletePendingFile(fileId: string): Observable<void> {
     return this.http.delete<void>(`${this.baseUrl}/tasks/pending-uploads/${fileId}`);
+  }
+
+  downloadFile(fileId: string): Observable<Blob> {
+    return this.http.get(`${this.baseUrl}/tasks/files/${fileId}`, { responseType: 'blob' });
   }
 
   getFileUrl(fileId: string): string {

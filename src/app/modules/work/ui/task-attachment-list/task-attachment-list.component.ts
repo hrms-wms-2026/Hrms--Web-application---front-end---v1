@@ -16,7 +16,16 @@ export interface AttachmentPill {
         @for (file of files(); track file.fileId) {
           <span class="tal-pill" [class.tal-pill--uploading]="file.uploading">
             <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m21.44 11.05-9.19 9.19a6 6 0 0 1-8.49-8.49l8.57-8.57A4 4 0 1 1 18 8.84l-8.59 8.57a2 2 0 0 1-2.83-2.83l8.49-8.48" /></svg>
-            <span>{{ file.name }}</span>
+            <button
+              type="button"
+              class="tal-pill-download"
+              [disabled]="file.uploading"
+              [attr.aria-label]="'Download ' + file.name"
+              [title]="'Download ' + file.name"
+              (click)="downloadRequested.emit(file)"
+            >
+              {{ file.name }}
+            </button>
             <button type="button" class="tal-pill-remove" (click)="removed.emit(file.fileId)" aria-label="Remove attachment">×</button>
           </span>
         }
@@ -78,6 +87,10 @@ export interface AttachmentPill {
     .tal-pill { display: inline-flex; align-items: center; gap: 6px; padding: 4px 8px; border-radius: 6px; background: var(--color-surface-secondary); color: var(--color-text-primary); font-size: 12px; }
     .tal-pill--uploading { opacity: 0.6; }
     .tal-pill svg { width: 14px; height: 14px; fill: none; stroke: currentColor; stroke-width: 1.8; }
+    .tal-pill-download { border: none; background: none; color: inherit; cursor: pointer; font: inherit; padding: 0; text-align: left; }
+    .tal-pill-download:hover:not(:disabled) { color: var(--color-primary); text-decoration: underline; }
+    .tal-pill-download:focus-visible { outline: 2px solid var(--color-primary); outline-offset: 2px; border-radius: 2px; }
+    .tal-pill-download:disabled { cursor: default; }
     .tal-pill-remove { border: none; background: none; cursor: pointer; font-size: 14px; line-height: 1; padding: 0 2px; color: var(--color-text-secondary); }
     .tal-pill-remove:hover { color: var(--color-danger); }
   `]
@@ -86,6 +99,7 @@ export class TaskAttachmentListComponent {
   files = input.required<AttachmentPill[]>();
   fileSelected = output<FileList>();
   removed = output<string>();
+  downloadRequested = output<AttachmentPill>();
 
   onFilesSelected(event: Event): void {
     const input = event.target as HTMLInputElement;

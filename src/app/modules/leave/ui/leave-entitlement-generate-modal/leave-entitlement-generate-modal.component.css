@@ -1,2 +1,19 @@
-/* Quiet Operations Desk: dialog content is compact, procedural, and clear about impact. */
-.egm-body{display:flex;flex-direction:column;gap:.9rem;min-width:320px}.egm-field{display:flex;flex-direction:column;gap:.35rem;color:#536274;font-size:.78rem;font-weight:650}.egm-field em{color:#7b8797;font-weight:400}.egm-field select{border:1px solid #dbe2ec;border-radius:6px;padding:.52rem .6rem;font:inherit}.egm-primary,.egm-secondary{border-radius:6px;padding:.55rem .85rem;font-size:.78rem;font-weight:700}.egm-primary{border:1px solid #1e5eff;background:#1e5eff;color:#fff}.egm-secondary{border:1px solid #dbe2ec;background:#fff;color:#536274}.egm-summary{border-radius:8px;background:#f5f8fd;padding:.8rem;color:#384961;font-size:.8rem}.egm-summary p{margin:.35rem 0 0}.egm-warning{color:#8a5a12}.egm-error{margin:0;color:#a3271d;font-size:.78rem}.egm-actions{display:flex;justify-content:flex-end;gap:.5rem}
+.egm-body { display: flex; flex-direction: column; gap: 0.9rem; min-width: 320px; }
+.egm-field { display: flex; flex-direction: column; gap: 0.35rem; color: var(--color-text-secondary); font-size: 0.78rem; font-weight: 650; }
+.egm-field em { color: var(--color-text-secondary); font-weight: 400; }
+.egm-field select {
+  border: 1px solid var(--color-border);
+  border-radius: 8px;
+  padding: 0.52rem 0.6rem;
+  background: var(--color-surface);
+  color: var(--color-text-primary);
+  font: inherit;
+}
+.egm-primary, .egm-secondary { border-radius: 8px; padding: 0.55rem 0.85rem; font-size: 0.78rem; font-weight: 700; cursor: pointer; }
+.egm-primary { border: 0; background: var(--color-accent); color: var(--color-accent-contrast); }
+.egm-secondary { border: 1px solid var(--color-border); background: var(--color-surface); color: var(--color-text-primary); }
+.egm-summary { border-radius: 10px; background: var(--color-surface-secondary); padding: 0.8rem; color: var(--color-text-primary); font-size: 0.8rem; }
+.egm-summary p { margin: 0.35rem 0 0; }
+.egm-warning { color: var(--color-warning-text); }
+.egm-error { margin: 0; color: var(--color-danger); font-size: 0.78rem; }
+.egm-actions { display: flex; justify-content: flex-end; gap: 0.5rem; }

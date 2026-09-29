@@ -25,9 +25,12 @@
                   [attr.aria-label]="attendanceWarningLabel(employee)"
                   [attr.title]="attendanceWarningLabel(employee)"
                 >
-                  <div class="emp-avatar">
-                    {{ avatarInitials(employee.fullName) }}
-                  </div>
+                  <app-avatar
+                    class="emp-avatar"
+                    [userName]="employee.fullName"
+                    size="md"
+                    shape="circle"
+                  />
                   @if (attendanceWarningLabel(employee); as warningLabel) {
                     <span class="emp-attendance-warning-tooltip" role="tooltip">{{ warningLabel }}</span>
                   }
@@ -95,9 +98,12 @@
             <td class="col-manager">
               <div class="emp-manager-wrap">
                 @if (employee.reportingManagerName) {
-                  <span class="emp-manager-avatar">
-                    {{ avatarInitials(employee.reportingManagerName) }}
-                  </span>
+                  <app-avatar
+                    class="emp-manager-avatar"
+                    [userName]="employee.reportingManagerName"
+                    size="xs"
+                    shape="circle"
+                  />
                 }
                 <span class="emp-manager-text" [title]="employee.reportingManagerName || 'Unassigned'">
                   {{ employee.reportingManagerName || 'Unassigned' }}

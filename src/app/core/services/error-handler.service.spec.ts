@@ -23,11 +23,6 @@ describe('ErrorHandlerService & Safe Error Mapper', () => {
     expect(toSafeErrorMessage(err)).toBe('This feature is not included in your current plan.');
   });
 
-  it('maps meeting_provider_not_connected to a Connect-Microsoft prompt, not the generic 409 message', () => {
-    const err = makeError(409, { detail: 'meeting_provider_not_connected' });
-    expect(toSafeErrorMessage(err)).toBe('Connect a Microsoft account under Settings → Calendar Connections to add a Teams meeting.');
-  });
-
   it('maps not_entitled to plan feature error', () => {
     const err = makeError(403, { detail: 'not_entitled' });
     expect(toSafeErrorMessage(err)).toBe('This feature is not included in your current plan.');

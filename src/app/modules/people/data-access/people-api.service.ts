@@ -6,6 +6,7 @@ import {
   ChangePositionPayload,
   ChangePositionResponse,
   EmployeeDetailResponse,
+  EmployeeIdentityResponse,
   EmployeeListItemResponse,
   EmployeeListPageResponse,
   EmployeeListParams,
@@ -55,6 +56,11 @@ export class PeopleApiService {
 
   getEmployee(id: string): Observable<EmployeeListItemResponse> {
     return this.http.get<EmployeeListItemResponse>(`${environment.apiUrl}/employees/${id}`);
+  }
+
+  /** Name + avatar only, for any employee in the tenant - no employees:read required. */
+  getEmployeeIdentity(id: string): Observable<EmployeeIdentityResponse> {
+    return this.http.get<EmployeeIdentityResponse>(`${environment.apiUrl}/employees/${id}/identity`);
   }
 
   resendInvitation(id: string): Observable<ResendInvitationResponse> {

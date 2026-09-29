@@ -20,7 +20,8 @@ import { TaskCategoryColumn } from '../../models/task-category.model';
 import { toTaskCategoryColumn } from '../../utils/task-category.mapper';
 import { WorkDropdownOption } from '../../ui/work-dropdown/work-dropdown.component';
 import { TaskFilterBarComponent, TaskFilterFieldConfig } from '../../ui/task-filter-bar/task-filter-bar.component';
-import { TaskAssigneeAvatarFilterComponent } from '../../ui/task-assignee-avatar-filter/task-assignee-avatar-filter.component';
+import { TaskAssigneeAvatarFilterComponent, TaskAssigneeAvatarMember } from '../../ui/task-assignee-avatar-filter/task-assignee-avatar-filter.component';
+import { FileApiService } from '../../../../shared/data-access/file-api.service';
 import { TaskFormModalComponent } from '../../ui/task-form-modal/task-form-modal.component';
 import { SprintStartDialogComponent } from '../../ui/sprint-start-dialog/sprint-start-dialog.component';
 import { SprintCompleteDialogComponent } from '../../ui/sprint-complete-dialog/sprint-complete-dialog.component';
@@ -35,7 +36,7 @@ import { toEditTaskRequest } from '../../utils/task.mapper';
     <ng-template #toolbarTpl>
       <div class="task-backlog__toolbar">
         <app-task-assignee-avatar-filter
-          [members]="assignableMembers()"
+          [members]="projectRosterMembers()"
           [currentEmployeeId]="currentEmployee.id()"
           [selected]="assigneeFilter()"
           (selectionChanged)="setAssigneeFilter($event)"
@@ -44,17 +45,19 @@ import { toEditTaskRequest } from '../../utils/task.mapper';
         @if (modules().length > 0) {
           <app-button variant="secondary" (pressed)="openCreateTask()">Create work item</app-button>
         }
-        @if (ownedModuleOptions().length > 0) {
+        @if (modules().length > 0) {
           <app-button variant="primary" (pressed)="createSprintOpen.set(true)">Create Sprint</app-button>
         }
       </div>
     </ng-template>
 
-    @if (createSprintOpen() && ownedModuleOptions().length > 0) {
+    @if (createSprintOpen() && modules().length > 0) {
         <app-sprint-form
           mode="create"
           [open]="createSprintOpen()"
-          [modules]="ownedModuleOptions()"
+          [projectId]="projectId()"
+          [modules]="sprintFormModules()"
+          [allSprints]="sprintStore.sprints()"
           (created)="onSprintCreated()"
           (cancelled)="createSprintOpen.set(false)"
         />
@@ -63,7 +66,9 @@ import { toEditTaskRequest } from '../../utils/task.mapper';
       <app-sprint-form
         mode="edit"
         [open]="true"
-        [objectiveId]="sprint.objectiveId"
+        [projectId]="projectId()"
+        [modules]="sprintFormModules()"
+        [allSprints]="sprintStore.sprints()"
         [sprint]="sprint"
         (saved)="onSprintEdited()"
         (cancelled)="editingSprint.set(null)"
@@ -74,7 +79,7 @@ import { toEditTaskRequest } from '../../utils/task.mapper';
         [open]="true"
         [sprint]="sprint"
         [tasks]="tasksForSprint(sprint.id)"
-        [objectiveId]="sprint.objectiveId"
+        [projectId]="projectId()"
         (started)="onSprintStarted()"
         (cancelled)="startingSprint.set(null)"
       />
@@ -85,7 +90,7 @@ import { toEditTaskRequest } from '../../utils/task.mapper';
         [sprint]="sprint"
         [tasks]="tasksForSprint(sprint.id)"
         [otherSprints]="otherSprintsForCompleting()"
-        [objectiveId]="sprint.objectiveId"
+        [projectId]="projectId()"
         [completeStatusIds]="completeStatusIds()"
         (completed)="onSprintCompleted()"
         (cancelled)="completingSprint.set(null)"
@@ -107,7 +112,7 @@ import { toEditTaskRequest } from '../../utils/task.mapper';
           @for (sprint of filteredSprints(); track sprint.id) {
             <app-sprint-tab
               [sprint]="sprint"
-              [isObjectiveOwner]="objectiveOwners()[sprint.objectiveId] ?? false"
+              [canManage]="sprint.canManage"
               [tasks]="tasksForSprint(sprint.id)"
               [statusNames]="statusNames()"
               [categoryNames]="categoryNames()"
@@ -191,6 +196,7 @@ import { toEditTaskRequest } from '../../utils/task.mapper';
       [prefillSprintId]="modalPrefillSprintId()"
       (created)="onTaskModalDone()"
       (saved)="onTaskModalDone()"
+      (changed)="reloadTasks()"
       (closed)="closeTaskModal()"
     />
   `,
@@ -219,6 +225,7 @@ export class TaskBacklogComponent implements OnInit, AfterViewInit, OnDestroy {
   protected readonly store = inject(TaskBoardStore);
   protected readonly sprintStore = inject(SprintListStore);
   protected readonly projectStore = inject(ProjectDetailStore);
+  private readonly fileApi = inject(FileApiService, { optional: true });
   private readonly toolbarStore = inject(WorkPageToolbarStore);
   private readonly toolbarTpl = viewChild.required<TemplateRef<unknown>>('toolbarTpl');
   private readonly taskApi = inject(TaskApiService);
@@ -239,6 +246,16 @@ export class TaskBacklogComponent implements OnInit, AfterViewInit, OnDestroy {
   protected readonly projectId = signal('');
   protected readonly expandedSprintId = signal<string | null>(null);
   protected readonly assignableMembers = signal<{ employeeId: string; name: string; avatarUrl: string | null }[]>([]);
+  // Everyone on the project, unscoped by which milestones the viewer can reach - the roster
+  // shown in the toolbar avatar stack. Deliberately separate from assignableMembers above,
+  // which stays scoped for the actual task-assignment flows.
+  protected readonly projectRosterMembers = computed<TaskAssigneeAvatarMember[]>(() =>
+    (this.projectStore.project()?.members ?? []).map((member) => ({
+      employeeId: member.userId,
+      name: member.displayName,
+      avatarUrl: member.avatarFileId ? this.fileApi?.getFileUrl(member.avatarFileId) ?? null : null
+    }))
+  );
   protected readonly sprintStatusFilter = signal<'all' | SprintStatus>('all');
   protected readonly objectiveFilter = signal<string[]>([]);
   protected readonly categoryFilter = signal<string[]>([]);
@@ -279,8 +296,10 @@ export class TaskBacklogComponent implements OnInit, AfterViewInit, OnDestroy {
   protected readonly objectiveOwners = computed(() =>
     Object.fromEntries(this.modules().map((module) => [module.objectiveId, module.isOwner]))
   );
-  protected readonly moduleOptions = computed(() =>
-    this.modules().map((m) => ({ objectiveId: m.objectiveId, title: m.title, isOwner: m.isOwner }))
+  // Sprints are project-level, so any member may create one; the module picker inside the form
+  // still restricts which modules' tasks can be added, per module ownership.
+  protected readonly sprintFormModules = computed(() =>
+    this.modules().map((m) => ({ objectiveId: m.objectiveId, title: m.title, isEffectiveOwner: m.isEffectiveOwner }))
   );
   protected readonly objectiveOptions = computed<WorkDropdownOption[]>(() =>
     this.modules().map((module) => ({ value: module.objectiveId, label: module.title }))
@@ -313,9 +332,6 @@ export class TaskBacklogComponent implements OnInit, AfterViewInit, OnDestroy {
     status: this.statusFilter(),
     priority: this.priorityFilter()
   }));
-  // Sprint creation has no pending/request path (unlike tasks) - only modules the user owns may
-  // ever be offered here, or SprintApiService.create would just fail for a non-owner's pick.
-  protected readonly ownedModuleOptions = computed(() => this.moduleOptions().filter((m) => m.isOwner));
   protected readonly statusNames = computed(() => Object.fromEntries(this.store.statuses().map((status) => [status.id, status.name])));
   protected readonly categoryNames = computed(() => Object.fromEntries(this.categories().map((category) => [category.id, category.name])));
   protected readonly moduleNames = computed(() => Object.fromEntries(this.modules().map((module) => [module.objectiveId, module.title])));
@@ -326,7 +342,7 @@ export class TaskBacklogComponent implements OnInit, AfterViewInit, OnDestroy {
     const target = this.completingSprint();
     if (!target) return [];
     return this.sprintStore.sprints().filter((s) =>
-      s.objectiveId === target.objectiveId && s.id !== target.id && s.status !== 'complete' && s.status !== 'achieved'
+      s.id !== target.id && s.status !== 'complete' && s.status !== 'achieved'
     );
   });
   protected readonly filteredSprints = computed(() => {
@@ -350,19 +366,19 @@ export class TaskBacklogComponent implements OnInit, AfterViewInit, OnDestroy {
   protected readonly selectedTasksTotalHours = computed(() =>
     this.selectedTasks().reduce((sum, task) => sum + (task.estimatedHours ?? 0), 0)
   );
-  // A sprint belongs to exactly one module, so a single "move to sprint" pick can't offer a
-  // coherent target list once the selection spans more than one module.
-  protected readonly moveBlockedReason = computed(() => {
-    const objectiveIds = new Set(this.selectedTasks().map((task) => task.objectiveId));
-    return objectiveIds.size > 1 ? 'Select tasks from a single module to move them together.' : null;
-  });
+  private readonly ownedObjectiveIds = computed(() =>
+    new Set(this.modules().filter((m) => m.isEffectiveOwner).map((m) => m.objectiveId)));
+  // Sprints are project-level: any Draft/Active sprint is a valid target, but only for tasks
+  // whose module the user owns (backend SprintTaskAssignment/EditTask enforce the same rule).
+  protected readonly moveBlockedReason = computed(() =>
+    this.selectedTasks().some((task) => !this.ownedObjectiveIds().has(task.objectiveId))
+      ? 'You can only move tasks from modules you own.' : null);
   protected readonly moveTargets = computed<SprintMoveTarget[]>(() => {
-    const tasks = this.selectedTasks();
-    const objectiveIds = new Set(tasks.map((task) => task.objectiveId));
-    if (tasks.length === 0 || objectiveIds.size !== 1) return [];
-    const [objectiveId] = objectiveIds;
+    if (this.selectedTasks().length === 0) return [];
+    const order: Record<string, number> = { active: 0, draft: 1 };
     return this.sprintStore.sprints()
-      .filter((sprint) => sprint.objectiveId === objectiveId && sprint.status === 'draft')
+      .filter((sprint) => sprint.status === 'draft' || sprint.status === 'active')
+      .sort((a, b) => (order[a.status] - order[b.status]) || ((a.startDate?.getTime() ?? Infinity) - (b.startDate?.getTime() ?? Infinity)))
       .map((sprint) => {
         const sprintTasks = this.tasksForSprint(sprint.id);
         return {
@@ -504,13 +520,6 @@ export class TaskBacklogComponent implements OnInit, AfterViewInit, OnDestroy {
   protected readonly targetSprintForCreate = signal<Sprint | null>(null);
 
   protected readonly modalPrefillModuleId = computed(() => {
-    const target = this.targetSprintForCreate();
-    if (target?.objectiveId) return target.objectiveId;
-    const expandedId = this.expandedSprintId();
-    if (expandedId) {
-      const expandedSprint = this.sprintStore.sprints().find((s) => s.id === expandedId);
-      if (expandedSprint?.objectiveId) return expandedSprint.objectiveId;
-    }
     const filter = this.objectiveFilter();
     return filter.length === 1 ? filter[0] : '';
   });

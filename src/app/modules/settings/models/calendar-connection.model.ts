@@ -10,10 +10,10 @@ export type CalendarConnectionStatus = 'active' | 'reauth_required' | 'paused' |
  * Distinct from CalendarConnectionProvider below - the connect route and the stored/returned
  * connection use two different vocabularies on the backend.
  */
-export type CalendarOAuthProviderSlug = 'google' | 'microsoft' | 'zoom';
+export type CalendarOAuthProviderSlug = 'google' | 'microsoft';
 
 /** Provider value returned on a CalendarConnection (backend CalendarExternalSources). */
-export type CalendarConnectionProvider = 'google_calendar' | 'outlook_calendar' | 'zoom';
+export type CalendarConnectionProvider = 'google_calendar' | 'outlook_calendar';
 
 export interface CalendarConnection {
   id: string;

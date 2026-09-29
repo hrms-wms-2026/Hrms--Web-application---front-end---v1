@@ -47,18 +47,11 @@
   </div>
 
   <div class="flex max-h-[70vh] overflow-y-auto">
-    <div class="relative h-[72rem] w-14 shrink-0 border-r border-[var(--color-border)] bg-[var(--color-surface)]">
+    <div class="h-[72rem] w-14 shrink-0 border-r border-[var(--color-border)] bg-[var(--color-surface)]">
       @for (hour of hours; track hour) {
         <div data-testid="calendar-hour-label" class="h-12 border-b border-[var(--color-border)] px-1 text-[10px] text-[var(--color-text-secondary)]">
           {{ hour === 0 ? '12 AM' : hour < 12 ? hour + ' AM' : hour === 12 ? '12 PM' : (hour - 12) + ' PM' }}
         </div>
-      }
-      @if (nowMarker(); as marker) {
-        <span
-          data-testid="calendar-now-label"
-          class="pointer-events-none absolute right-1 z-20 -translate-y-1/2 whitespace-nowrap rounded-full bg-red-500 px-1.5 py-0.5 text-[10px] font-semibold leading-none text-white"
-          [style.top.%]="marker.nowFraction! * 100"
-        >{{ marker.nowLabel }}</span>
       }
     </div>
 
@@ -86,9 +79,7 @@
         }
 
         @if (column.nowFraction !== null) {
-          <div data-testid="calendar-now-line" class="pointer-events-none absolute left-0 right-0 z-10 border-t-2 border-red-500" [style.top.%]="column.nowFraction * 100">
-            <span data-testid="calendar-now-dot" class="absolute -left-1.5 -top-[6px] h-2.5 w-2.5 rounded-full bg-red-500"></span>
-          </div>
+          <div data-testid="calendar-now-line" class="pointer-events-none absolute left-0 right-0 z-10 border-t-2 border-red-500" [style.top.%]="column.nowFraction * 100"></div>
         }
 
         @for (positioned of column.positioned; track positioned.event.id) {

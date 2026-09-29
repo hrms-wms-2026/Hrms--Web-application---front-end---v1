@@ -207,4 +207,40 @@ describe('TrayPresenceStore', () => {
     expect(store.phase()).toBe('connected');
     expect(store.canRenderProtectedContent()).toBe(true);
   });
+
+  it('does not request another activation code while a 429 cooldown is active', async () => {
+    const generateActivationCode = vi.fn(() =>
+      throwError(() => new HttpErrorResponse({ status: 429, statusText: 'Too Many Requests' }))
+    );
+    const getStatus = vi.fn().mockReturnValue(of(disconnected));
+    const store = createStore(getStatus, generateActivationCode);
+
+    store.start();
+    await store.generateCode();
+    await vi.waitFor(() => expect(generateActivationCode).toHaveBeenCalledOnce());
+    await vi.waitFor(() => expect(store.generationError()).toMatch(/Too many/));
+
+    await store.refresh();
+    store.lockImmediately();
+    await store.refresh();
+    await store.generateCode();
+
+    expect(generateActivationCode).toHaveBeenCalledOnce();
+    expect(store.phase()).toBe('needs-code');
+  });
+
+  it('lets an explicit retry request a new code after a 429', async () => {
+    const generateActivationCode = vi.fn()
+      .mockReturnValueOnce(throwError(() => new HttpErrorResponse({ status: 429, statusText: 'Too Many Requests' })))
+      .mockReturnValueOnce(of({ code: 'BCDF2345', expires_in_seconds: 600 }));
+    const store = createStore(vi.fn().mockReturnValue(of(disconnected)), generateActivationCode);
+
+    store.start();
+    await store.generateCode();
+    await vi.waitFor(() => expect(generateActivationCode).toHaveBeenCalledOnce());
+
+    store.retry();
+    await vi.waitFor(() => expect(generateActivationCode).toHaveBeenCalledTimes(2));
+    await vi.waitFor(() => expect(store.code()).toBe('BCDF2345'));
+  });
 });
