@@ -777,8 +777,11 @@ describe('CalendarEventFormModalComponent', () => {
     fixture.componentInstance.onSubmit(null);
 
     expect(spy).toHaveBeenCalledTimes(1);
-    const submission = spy.mock.calls[0][0] as { meetingProvider: string | null };
+    const submission = spy.mock.calls[0][0] as { meetingProvider: string | null; create: { pendingMeetingProvider: string | null } };
     expect(submission.meetingProvider).toBe('zoom');
+    // Also carried in the create request body itself, so the backend can defer the participant/
+    // guest invite email until the follow-up createMeeting call succeeds and the link exists.
+    expect(submission.create.pendingMeetingProvider).toBe('zoom');
   });
 
   it('emits a null meetingProvider when no Teams/Zoom meeting was selected', () => {

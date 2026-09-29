@@ -60,6 +60,11 @@ export interface CreateCalendarEventRequest {
   participantEmployeeIds: readonly string[];
   recurrenceRule: string | null;
   guestEmails?: readonly string[];
+  /** Set when a Teams/Zoom meeting is about to be attached via a separate createMeeting call right
+   * after this one - lets the backend defer the participant/guest invite email until that call
+   * succeeds and the join link exists, instead of sending a link-less invite immediately followed
+   * by a near-duplicate one with the link. */
+  pendingMeetingProvider?: MeetingProvider | null;
 }
 
 export interface UpdateCalendarEventRequest {
