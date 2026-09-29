@@ -29,6 +29,20 @@ describe('ModuleTreeRowComponent', () => {
       .filter((id) => id.endsWith('-button'));
   }
 
+  it('shows a red alert mark listing the project monitor problems, and none without alerts', () => {
+    setup(child);
+    expect(fixture.nativeElement.querySelector('[data-testid="tree-row-alert"]')).toBeNull();
+
+    fixture.componentRef.setInput('alerts', [{
+      id: 'a1', targetType: 'module', targetId: 'o2', targetTitle: 'Child', ruleCode: 'module_capacity_shortfall',
+      subjectEmployeeId: null, message: '200 h of work remain, but the team can produce only 120 h.', firstDetectedAt: '2026-10-05T09:00:00Z'
+    }]);
+    fixture.detectChanges();
+
+    const mark = fixture.nativeElement.querySelector('[data-testid="tree-row-alert"]') as HTMLElement;
+    expect(mark.getAttribute('title')).toContain('only 120 h');
+  });
+
   it('shows the plus shortcut and an overflow button on an owned leaf', () => {
     setup({ ...child, isOwner: true });
     expect(testIds()).toEqual([

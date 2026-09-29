@@ -27,7 +27,8 @@ import { MilestoneTreeNode, ObjectiveDetail } from '../../models/milestone.model
 import { EditObjectiveRequestDto, CreateObjectiveRequestDto } from '../../models/dto/milestone.dto';
 import { findTreeNode, isLeafObjective, collectObjectiveOptions } from '../../utils/project.mapper';
 import { Sprint, SprintStatus } from '../../models/sprint.model';
-import { NotificationService } from '../../../../core/services/notification.service';
+import { NotificationService } from '../../../../core/services/notification.service';
+import { ProjectMonitorStore } from '../../state/project-monitor.store';
 
 const ACTIVE_STATUS_OPTIONS: readonly WorkDropdownOption[] = [
   { value: 'active', label: 'Active' },
@@ -82,6 +83,7 @@ export class MilestoneTreeTabComponent {
   private readonly directory = inject(EmployeeDirectoryStore);
   private readonly taskApi = inject(TaskApiService);
   private readonly notificationService = inject(NotificationService);
+  protected readonly monitor = inject(ProjectMonitorStore);
 
   readonly taskModalOpen = signal(false);
   readonly taskModalMode = signal<'create' | 'edit'>('create');
@@ -302,6 +304,8 @@ export class MilestoneTreeTabComponent {
       if (tree && !findTreeNode(tree, this.selectedNodeId() ?? '')) this.selectedNodeId.set(tree.id);
       return;
     }
+    // Project monitor alerts (red marks) are advisory; load them alongside the tree without waiting.
+    void this.monitor.load(projectId);
     await this.store.loadProjectTree(projectId);
     this.loadedProjectId = projectId;
     const tree = this.store.selectedSubtree();

@@ -1,10 +1,11 @@
-import { Component, OnInit, computed, effect, input, output, signal, untracked } from '@angular/core';
+import { Component, OnInit, computed, effect, inject, input, output, signal, untracked } from '@angular/core';
 import { MilestoneTreeNode } from '../../models/milestone.model';
 import { isLeafObjective } from '../../utils/project.mapper';
 import { treeNodeKey } from '../../utils/tree-highlight.utils';
 import { ModuleTreeRowComponent } from '../module-tree-row/module-tree-row.component';
 import { SprintTreeRowComponent } from '../sprint-tree-row/sprint-tree-row.component';
 import { TaskTreeRowComponent } from '../task-tree-row/task-tree-row.component';
+import { ProjectMonitorStore } from '../../state/project-monitor.store';
 
 export type TreeExpandCommand =
   | { seq: number; mode: 'all' | 'none' }
@@ -28,7 +29,8 @@ const NO_KEYS: ReadonlySet<string> = new Set();
       @if ((node().kind ?? 'objective') === 'objective') {
         <app-module-tree-row
           [node]="node()"
-          [selected]="isSelected()"
+          [selected]="isSelected()"
+          [alerts]="monitor.alertsFor(node().id)"
           [depth]="depth()"
           [showChevron]="showChevron()"
           [expanded]="expanded()"
@@ -45,7 +47,8 @@ const NO_KEYS: ReadonlySet<string> = new Set();
       } @else if (node().kind === 'sprint') {
         <app-sprint-tree-row
           [node]="node()"
-          [selected]="isSelected()"
+          [selected]="isSelected()"
+          [alerts]="monitor.alertsFor(node().id)"
           [depth]="depth()"
           [showChevron]="showChevron()"
           [expanded]="expanded()"
@@ -61,7 +64,8 @@ const NO_KEYS: ReadonlySet<string> = new Set();
       } @else {
         <app-task-tree-row
           [node]="node()"
-          [selected]="isSelected()"
+          [selected]="isSelected()"
+          [alerts]="monitor.alertsFor(node().id)"
           [depth]="depth()"
           (selectedRow)="selected.emit($event)"
           (viewRequested)="viewRequested.emit($event)"
@@ -109,6 +113,7 @@ const NO_KEYS: ReadonlySet<string> = new Set();
   `]
 })
 export class MilestoneTreeNodeComponent implements OnInit {
+  protected readonly monitor = inject(ProjectMonitorStore);
   node = input.required<MilestoneTreeNode>();
   selectedId = input<string | null>(null);
   expandedByDefault = input(true);

@@ -1,9 +1,12 @@
 import { Component, input, output } from '@angular/core';
 import { MilestoneTreeNode } from '../../models/milestone.model';
+import { MonitorAlertDto } from '../../models/dto/monitor.dto';
+import { TreeAlertMarkComponent } from '../tree-alert-mark/tree-alert-mark.component';
 
 @Component({
   selector: 'app-sprint-tree-row',
   standalone: true,
+  imports: [TreeAlertMarkComponent],
   template: `
     <div
       class="grid grid-cols-[1fr_112px_40px_88px_140px] items-center gap-3 rounded-md px-2 py-1.5 cursor-pointer tree-row {{ selected() ? 'bg-[var(--color-accent)]' : '' }}"
@@ -33,6 +36,7 @@ import { MilestoneTreeNode } from '../../models/milestone.model';
           <path d="M8 14l2 2 4-4" />
         </svg>
         <span data-testid="title-text" class="min-w-0 truncate text-sm {{ selected() ? 'text-white' : 'text-[var(--color-text-primary)]' }}">{{ node().title }}</span>
+        <app-tree-alert-mark [alerts]="alerts()" />
         @if (node().status; as status) {
           <span data-testid="status-badge" class="shrink-0 rounded-full px-2 py-0.5 text-xs font-medium {{ selected() ? 'bg-white/15 text-white' : 'bg-[var(--color-surface-secondary)] text-[var(--color-text-secondary)]' }}">{{ status }}</span>
         }
@@ -98,6 +102,8 @@ export class SprintTreeRowComponent {
   node = input.required<MilestoneTreeNode>();
   selected = input(false);
   depth = input(0);
+  /** Open project-monitor alerts on this row's module/sprint/task (red mark). */
+  alerts = input<readonly MonitorAlertDto[]>([]);
   showChevron = input(false);
   expanded = input(false);
 
