@@ -86,7 +86,7 @@
             }
           </div>
           @if (selectedProject(); as selected) {
-            <div class="lg:self-start">
+            <div class="lg:self-start lg:max-h-full lg:overflow-y-auto lg:pr-1 [scrollbar-width:none]">
               <app-project-explanation-card
                 [project]="selected"
                 (viewed)="onView(selected)"

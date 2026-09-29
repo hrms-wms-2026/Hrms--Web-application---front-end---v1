@@ -10,6 +10,10 @@ const BAR_OFFSET = '40px';
   standalone: true,
   imports: [ConfirmModalComponent],
   changeDetection: ChangeDetectionStrategy.OnPush,
+  host: {
+    '[class.drafts-bar--visible]': 'store.chips().length > 0',
+    '[class.drafts-bar--hidden]': 'store.chips().length === 0'
+  },
   template: `
     @if (store.chips().length > 0) {
       <nav class="drafts-bar" data-testid="drafts-bar" aria-label="Your drafts">
@@ -63,13 +67,17 @@ const BAR_OFFSET = '40px';
       (confirmed)="confirmDelete()" (cancelled)="pendingDelete.set(null)" />
   `,
   styles: [`
+    :host {
+      display: block;
+      flex-shrink: 0;
+      width: 100%;
+    }
+    :host(.drafts-bar--hidden) {
+      display: none;
+    }
     .drafts-bar {
-      position: fixed;
-      left: var(--nav-rail-width, 5.25rem);
-      right: 0;
-      bottom: 0;
+      width: 100%;
       height: 38px;
-      z-index: 1050;
       display: flex;
       align-items: center;
       background: var(--color-surface);
@@ -88,6 +96,7 @@ const BAR_OFFSET = '40px';
       overflow-y: hidden;
       scrollbar-width: none;
       -ms-overflow-style: none;
+      scroll-behavior: smooth;
     }
     .drafts-bar__scroll-track::-webkit-scrollbar {
       display: none;
@@ -176,10 +185,16 @@ const BAR_OFFSET = '40px';
       color: var(--color-danger-text, #ef4444);
     }
     @media (max-width: 768px) {
-      .drafts-bar {
+      :host {
+        position: fixed;
         left: 0;
+        right: 0;
         bottom: 84px;
+        z-index: 1050;
+      }
+      .drafts-bar {
         border-bottom: 1px solid var(--color-border);
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
       }
     }
   `]
