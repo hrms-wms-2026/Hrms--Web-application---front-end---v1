@@ -28,6 +28,9 @@ export interface BulkAction {
           {{ label() }}
         </span>
         <span class="bulk-bar__sep" aria-hidden="true"></span>
+        <div class="bulk-bar__projected-controls">
+          <ng-content select="[bulk-action-controls]" />
+        </div>
         @for (item of primaryActions(); track item.id) {
           <button
             type="button"

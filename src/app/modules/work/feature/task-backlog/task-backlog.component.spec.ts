@@ -876,7 +876,7 @@ describe('TaskBacklogComponent', () => {
       expect(inst.statusOptions().map((option) => option.value)).toEqual(['pub']);
     });
 
-    it('applying a picker calls the matching bulk endpoint, shows results, and clears selection', async () => {
+    it('applying the existing priority dropdown calls the bulk endpoint, shows results, and clears selection', async () => {
       const { fixture } = setup({ tasks: [makeTaskWithHours('t-a', 4), makeTaskWithHours('t-b', 6)] });
       await fixture.whenStable();
       fixture.detectChanges();
@@ -885,13 +885,11 @@ describe('TaskBacklogComponent', () => {
       fixture.detectChanges();
 
       const inst = fixture.componentInstance as unknown as {
-        onBulkAction(id: string): void;
-        onPickerConfirmed(value: string | null): Promise<void>;
+        applyBulkPriority(value: string): Promise<void>;
         selection: { count(): number };
         bulkResult(): { title: string } | null;
       };
-      inst.onBulkAction('priority');
-      await inst.onPickerConfirmed('high');
+      await inst.applyBulkPriority('high');
 
       const taskApi = TestBed.inject(TaskApiService) as unknown as { bulkSetPriority: ReturnType<typeof vi.fn> };
       expect(taskApi.bulkSetPriority).toHaveBeenCalledWith(['t-a', 't-b'], 'high');
@@ -899,21 +897,39 @@ describe('TaskBacklogComponent', () => {
       expect(inst.bulkResult()?.title).toBe('Set priority');
     });
 
-    it('due date picker clear sends null', async () => {
+    it('clearing the existing date picker sends null', async () => {
       const { fixture } = setup({ tasks: [makeTaskWithHours('t-a', 4)] });
       await fixture.whenStable();
       fixture.detectChanges();
       (fixture.nativeElement.querySelector('[data-testid="task-select-t-a"]') as HTMLInputElement).click();
 
       const inst = fixture.componentInstance as unknown as {
-        onBulkAction(id: string): void;
-        onPickerConfirmed(value: string | null): Promise<void>;
+        applyBulkDueDate(value: string): Promise<void>;
       };
-      inst.onBulkAction('due-date');
-      await inst.onPickerConfirmed(null);
+      await inst.applyBulkDueDate('');
 
       const taskApi = TestBed.inject(TaskApiService) as unknown as { bulkSetDueDate: ReturnType<typeof vi.fn> };
       expect(taskApi.bulkSetDueDate).toHaveBeenCalledWith(['t-a'], null);
+    });
+
+    it('uses the existing inline controls and replaces assignees through the bulk endpoint', async () => {
+      const task = { ...makeTaskWithHours('t-a', 4), assigneeEmployeeIds: ['old-employee'] };
+      const { fixture } = setup({ tasks: [task] });
+      await fixture.whenStable();
+      fixture.detectChanges();
+      (fixture.nativeElement.querySelector('[data-testid="task-select-t-a"]') as HTMLInputElement).click();
+      fixture.detectChanges();
+
+      expect(fixture.nativeElement.querySelector('app-bulk-task-picker-dialog')).toBeNull();
+      expect(fixture.nativeElement.querySelector('app-work-dropdown')).not.toBeNull();
+
+      const inst = fixture.componentInstance as unknown as {
+        applyBulkAssignee(employeeId: string): Promise<void>;
+      };
+      await inst.applyBulkAssignee('new-employee');
+
+      const taskApi = TestBed.inject(TaskApiService) as unknown as { bulkAssign: ReturnType<typeof vi.fn> };
+      expect(taskApi.bulkAssign).toHaveBeenCalledWith(['t-a'], 'new-employee');
     });
 
     it('delete asks for confirmation before calling the API', async () => {

@@ -56,6 +56,12 @@
   background: var(--color-border);
 }
 
+.bulk-bar__projected-controls {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+}
+
 .bulk-bar__action {
   display: inline-flex;
   align-items: center;

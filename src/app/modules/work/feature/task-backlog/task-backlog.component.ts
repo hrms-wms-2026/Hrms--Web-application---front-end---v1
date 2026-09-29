@@ -4,6 +4,7 @@ import { ActivatedRoute, Router } from '@angular/router';
 import { firstValueFrom, Observable, of } from 'rxjs';
 import { distinctUntilChanged, map } from 'rxjs/operators';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
+import { ConnectionPositionPair, OverlayModule } from '@angular/cdk/overlay';
 import { ButtonComponent } from '../../../../shared/ui/button/button.component';
 import { ErrorStateComponent } from '../../../../shared/ui/error-state/error-state.component';
 import { ProjectDetailStore } from '../../state/project-detail.store';
@@ -19,7 +20,7 @@ import { BulkTaskActionResponse, toBulkResultSummary, WorkTask } from '../../mod
 import { Sprint, SprintStatus } from '../../models/sprint.model';
 import { TaskCategoryColumn } from '../../models/task-category.model';
 import { toTaskCategoryColumn } from '../../utils/task-category.mapper';
-import { WorkDropdownOption } from '../../ui/work-dropdown/work-dropdown.component';
+import { WorkDropdownComponent, WorkDropdownOption } from '../../ui/work-dropdown/work-dropdown.component';
 import { TaskFilterBarComponent, TaskFilterFieldConfig } from '../../ui/task-filter-bar/task-filter-bar.component';
 import { TaskAssigneeAvatarFilterComponent, TaskAssigneeAvatarMember } from '../../ui/task-assignee-avatar-filter/task-assignee-avatar-filter.component';
 import { FileApiService } from '../../../../shared/data-access/file-api.service';
@@ -31,13 +32,18 @@ import { SelectionModel } from '../../../../shared/utils/selection-model';
 import { BulkAction, BulkActionBarComponent } from '../../../../shared/ui/bulk-action-bar/bulk-action-bar.component';
 import { BulkActionResultModalComponent, BulkResultSummary } from '../../../../shared/ui/bulk-action-result-modal/bulk-action-result-modal.component';
 import { ConfirmModalComponent } from '../../../../shared/ui/confirm-modal/confirm-modal.component';
-import { SelectOption } from '../../../../shared/ui/select/select.component';
-import { BulkTaskPickerDialogComponent, BulkTaskPickerMode } from '../../ui/bulk-task-picker-dialog/bulk-task-picker-dialog.component';
+import { TaskAssigneeDropdownComponent } from '../../ui/task-assignee-dropdown/task-assignee-dropdown.component';
+import { DatePickerComponent } from '../../../../shared/ui/date-picker/date-picker.component';
+
+const BULK_POPOVER_POSITIONS: ConnectionPositionPair[] = [
+  { originX: 'start', originY: 'top', overlayX: 'start', overlayY: 'bottom', offsetY: -7 },
+  { originX: 'end', originY: 'top', overlayX: 'end', overlayY: 'bottom', offsetY: -7 }
+];
 
 @Component({
   selector: 'app-task-backlog',
   standalone: true,
-  imports: [SprintTabComponent, SprintFormComponent, TaskTableComponent, ButtonComponent, ErrorStateComponent, TaskFilterBarComponent, TaskAssigneeAvatarFilterComponent, TaskFormModalComponent, SprintStartDialogComponent, SprintCompleteDialogComponent, MoveTasksToSprintDialogComponent, BulkActionBarComponent, BulkTaskPickerDialogComponent, ConfirmModalComponent, BulkActionResultModalComponent],
+  imports: [SprintTabComponent, SprintFormComponent, TaskTableComponent, ButtonComponent, ErrorStateComponent, TaskFilterBarComponent, TaskAssigneeAvatarFilterComponent, TaskFormModalComponent, SprintStartDialogComponent, SprintCompleteDialogComponent, MoveTasksToSprintDialogComponent, BulkActionBarComponent, ConfirmModalComponent, BulkActionResultModalComponent, WorkDropdownComponent, TaskAssigneeDropdownComponent, DatePickerComponent, OverlayModule],
   template: `
     <ng-template #toolbarTpl>
       <div class="task-backlog__toolbar">
@@ -177,17 +183,86 @@ import { BulkTaskPickerDialogComponent, BulkTaskPickerMode } from '../../ui/bulk
       [actions]="bulkActions()"
       (action)="onBulkAction($event)"
       (cleared)="clearSelection()"
-    />
+    >
+      <div bulk-action-controls class="task-backlog__bulk-controls">
+        <app-work-dropdown
+          [options]="statusOptions()"
+          placeholder="Status"
+          accessibleLabel="Change selected tasks status"
+          leadingIcon="status"
+          size="sm"
+          direction="up"
+          testId="bulk-action-status"
+          [disabled]="bulkSubmitting()"
+          (selectionChanged)="applyBulkStatus($event)"
+        />
 
-    <app-bulk-task-picker-dialog
-      [mode]="pickerMode()"
-      [count]="selectedTasks().length"
-      [options]="pickerOptions()"
-      [submitting]="bulkSubmitting()"
-      [error]="bulkError()"
-      (confirmed)="onPickerConfirmed($event)"
-      (closed)="pickerMode.set(null)"
-    />
+        <div class="task-backlog__bulk-assignee">
+          <button
+            type="button"
+            class="task-backlog__bulk-button"
+            data-testid="bulk-action-assign"
+            cdkOverlayOrigin
+            #bulkAssigneeOrigin="cdkOverlayOrigin"
+            [disabled]="bulkSubmitting()"
+            [attr.aria-expanded]="assigneePickerOpen()"
+            (click)="assigneePickerOpen.update(open => !open)"
+          >
+            Assign
+          </button>
+          <ng-template
+            cdkConnectedOverlay
+            [cdkConnectedOverlayOrigin]="bulkAssigneeOrigin"
+            [cdkConnectedOverlayOpen]="assigneePickerOpen()"
+            [cdkConnectedOverlayPositions]="bulkPopoverPositions"
+            [cdkConnectedOverlayHasBackdrop]="true"
+            cdkConnectedOverlayBackdropClass="cdk-overlay-transparent-backdrop"
+            (backdropClick)="assigneePickerOpen.set(false)"
+            (detach)="assigneePickerOpen.set(false)"
+          >
+            <app-task-assignee-dropdown
+              [members]="assignableMembers()"
+              [allowUnassigned]="false"
+              placeholder="Search assignee..."
+              (selected)="applyBulkAssignee($event)"
+              (closed)="assigneePickerOpen.set(false)"
+            />
+          </ng-template>
+        </div>
+
+        <app-work-dropdown
+          [options]="priorityOptions"
+          placeholder="Priority"
+          accessibleLabel="Change selected tasks priority"
+          size="sm"
+          direction="up"
+          testId="bulk-action-priority"
+          [disabled]="bulkSubmitting() || !selectionAllOwned()"
+          [tooltip]="selectionAllOwned() ? '' : ownerOnlyReason"
+          (selectionChanged)="applyBulkPriority($event)"
+        />
+
+        <app-date-picker
+          variant="chip"
+          emptyLabel="Due date"
+          chipClass="task-backlog__bulk-date"
+          btnTestId="bulk-action-due-date"
+          [disabled]="bulkSubmitting() || !selectionAllOwned()"
+          (valueChange)="applyBulkDueDate($event)"
+        />
+
+        <app-work-dropdown
+          [options]="parentOptions()"
+          placeholder="Convert to subtask"
+          accessibleLabel="Convert selected tasks to subtasks"
+          size="sm"
+          direction="up"
+          testId="bulk-action-convert-to-subtask"
+          [disabled]="bulkSubmitting()"
+          (selectionChanged)="applyBulkParent($event)"
+        />
+      </div>
+    </app-bulk-action-bar>
 
     <app-confirm-modal
       [open]="deleteConfirmOpen()"
@@ -209,7 +284,7 @@ import { BulkTaskPickerDialogComponent, BulkTaskPickerMode } from '../../ui/bulk
       (closed)="bulkResult.set(null)"
     />
 
-    @if (bulkError() && !pickerMode() && !deleteConfirmOpen()) {
+    @if (bulkError() && !deleteConfirmOpen()) {
       <p class="task-backlog__sprint-message" role="alert">{{ bulkError() }}</p>
     }
 
@@ -261,17 +336,22 @@ import { BulkTaskPickerDialogComponent, BulkTaskPickerMode } from '../../ui/bulk
     .task-backlog__undo-banner { display: flex; align-items: center; gap: 12px; margin-top: 12px; padding: 10px 14px; border-radius: 10px; background: var(--color-text-primary); color: var(--color-surface); font-size: 13px; }
     .task-backlog__undo-action { border: none; background: none; color: var(--color-accent-light, var(--color-accent)); font-weight: 600; cursor: pointer; font-size: 13px; padding: 0; }
     .task-backlog__undo-action:hover { text-decoration: underline; }
+    .task-backlog__bulk-controls { display: inline-flex; align-items: center; gap: 6px; }
+    .task-backlog__bulk-assignee { display: inline-flex; }
+    .task-backlog__bulk-button { height: 30px; border: 1px solid var(--color-border); border-radius: 8px; padding: 0 10px; background: var(--color-surface); color: var(--color-text-primary); font: inherit; font-size: 13px; font-weight: 500; cursor: pointer; }
+    .task-backlog__bulk-button:hover:not(:disabled), .task-backlog__bulk-button[aria-expanded="true"] { border-color: var(--color-accent); background: var(--color-surface-secondary); }
+    .task-backlog__bulk-button:disabled { cursor: not-allowed; opacity: .5; }
+    :host ::ng-deep .task-backlog__bulk-controls app-work-dropdown { min-width: 0; }
+    :host ::ng-deep .task-backlog__bulk-controls .work-dropdown { min-width: 0; }
+    :host ::ng-deep .task-backlog__bulk-controls .work-dropdown__trigger { width: auto; }
+    :host ::ng-deep .task-backlog__bulk-controls .work-dropdown__menu { right: auto; min-width: 190px; }
+    :host ::ng-deep .task-backlog__bulk-date { height: 30px; border: 1px solid var(--color-border); border-radius: 8px; padding: 0 10px; color: var(--color-text-primary); font-size: 13px; font-weight: 500; }
+    :host ::ng-deep .task-backlog__bulk-date:hover:not(:disabled), :host ::ng-deep .task-backlog__bulk-date[aria-expanded="true"] { border-color: var(--color-accent); }
   `]
 })
 export class TaskBacklogComponent implements OnInit, AfterViewInit, OnDestroy {
   private static readonly OWNER_ONLY_REASON = 'You can only do this for tasks in modules you own.';
-  private static readonly PICKER_TITLES: Record<BulkTaskPickerMode, string> = {
-    status: 'Change status',
-    assignee: 'Add assignee',
-    priority: 'Set priority',
-    dueDate: 'Set due date',
-    parent: 'Convert to subtask'
-  };
+  protected readonly ownerOnlyReason = TaskBacklogComponent.OWNER_ONLY_REASON;
   protected readonly store = inject(TaskBoardStore);
   protected readonly sprintStore = inject(SprintListStore);
   protected readonly projectStore = inject(ProjectDetailStore);
@@ -296,7 +376,8 @@ export class TaskBacklogComponent implements OnInit, AfterViewInit, OnDestroy {
   protected readonly moveUndoBanner = signal<{ message: string } | null>(null);
   private undoBannerTimer: ReturnType<typeof setTimeout> | null = null;
   private lastMove: { taskId: string; previousSprintId: string | null; newSprintId: string | null }[] = [];
-  protected readonly pickerMode = signal<BulkTaskPickerMode | null>(null);
+  protected readonly assigneePickerOpen = signal(false);
+  protected readonly bulkPopoverPositions = BULK_POPOVER_POSITIONS;
   protected readonly bulkSubmitting = signal(false);
   protected readonly bulkError = signal<string | null>(null);
   protected readonly bulkResult = signal<{ title: string; summary: BulkResultSummary } | null>(null);
@@ -453,42 +534,29 @@ export class TaskBacklogComponent implements OnInit, AfterViewInit, OnDestroy {
       : TaskBacklogComponent.OWNER_ONLY_REASON;
     const ownerOnly = { disabled: !!ownerBlocked, disabledReason: ownerBlocked };
     const actions: BulkAction[] = [
-      { id: 'status', label: 'Status', placement: 'primary' },
-      { id: 'assign', label: 'Assign', placement: 'primary' },
-      { id: 'priority', label: 'Priority', placement: 'primary', ...ownerOnly },
-      { id: 'due-date', label: 'Due date', placement: 'more', ...ownerOnly },
       { id: 'move-to-sprint', label: 'Move to sprint', placement: 'more', ...ownerOnly }
     ];
     if (this.selectedTasks().some((task) => task.sprintId)) {
       actions.push({ id: 'move-to-backlog', label: 'Move to backlog', placement: 'more', ...ownerOnly });
     }
     actions.push(
-      { id: 'convert-to-subtask', label: 'Convert to subtask', placement: 'more' },
       { id: 'delete', label: 'Delete', placement: 'more', danger: true }
     );
     return actions;
   });
   protected readonly taskNames = computed(() =>
     new Map(this.store.tasks().map((task) => [task.id, task.title] as const)));
-  protected readonly statusOptions = computed<SelectOption[]>(() => {
+  protected readonly statusOptions = computed<WorkDropdownOption[]>(() => {
     const includePrivate = this.selectionAllOwned();
     return this.store.statuses()
       .filter((status) => includePrivate || status.visibility !== 'private')
       .map((status) => ({ value: status.id, label: status.name }));
   });
-  protected readonly parentOptions = computed<SelectOption[]>(() => {
+  protected readonly parentOptions = computed<WorkDropdownOption[]>(() => {
     const selected = this.selectedTaskIds();
     return this.store.tasks()
       .filter((task) => task.parentTaskId === null && !selected.has(task.id))
       .map((task) => ({ value: task.id, label: task.title }));
-  });
-  protected readonly pickerOptions = computed<SelectOption[]>(() => {
-    switch (this.pickerMode()) {
-      case 'status': return this.statusOptions();
-      case 'assignee': return this.assignableMembers().map((member) => ({ value: member.employeeId, label: member.name }));
-      case 'parent': return this.parentOptions();
-      default: return [];
-    }
   });
   // Sprints are project-level: any Draft/Active sprint is a valid target, but only for tasks
   // whose module the user owns (backend SprintTaskAssignment/EditTask enforce the same rule).
@@ -558,35 +626,44 @@ export class TaskBacklogComponent implements OnInit, AfterViewInit, OnDestroy {
   }
 
   protected clearSelection(): void {
+    this.assigneePickerOpen.set(false);
     this.selection.clear();
   }
 
   protected onBulkAction(actionId: string): void {
     this.bulkError.set(null);
     switch (actionId) {
-      case 'status': this.pickerMode.set('status'); break;
-      case 'assign': this.pickerMode.set('assignee'); break;
-      case 'priority': this.pickerMode.set('priority'); break;
-      case 'due-date': this.pickerMode.set('dueDate'); break;
-      case 'convert-to-subtask': this.pickerMode.set('parent'); break;
       case 'move-to-sprint': this.moveDialogOpen.set(true); break;
       case 'move-to-backlog': void this.onMoveToBacklog(); break;
       case 'delete': this.deleteConfirmOpen.set(true); break;
     }
   }
 
-  protected async onPickerConfirmed(value: string | null): Promise<void> {
-    const mode = this.pickerMode();
-    if (!mode) return;
+  protected async applyBulkStatus(statusId: string): Promise<void> {
     const ids = this.selectedTasks().map((task) => task.id);
-    const call = {
-      status: () => this.taskApi.bulkMoveStatus(ids, value!),
-      assignee: () => this.taskApi.bulkAssign(ids, value!),
-      priority: () => this.taskApi.bulkSetPriority(ids, value as WorkTask['priority']),
-      dueDate: () => this.taskApi.bulkSetDueDate(ids, value),
-      parent: () => this.taskApi.bulkConvertToSubtask(ids, value!)
-    }[mode];
-    await this.runBulk(TaskBacklogComponent.PICKER_TITLES[mode], call, () => this.pickerMode.set(null));
+    await this.runBulk('Change status', () => this.taskApi.bulkMoveStatus(ids, statusId));
+  }
+
+  protected async applyBulkAssignee(employeeId: string | null): Promise<void> {
+    if (!employeeId) return;
+    this.assigneePickerOpen.set(false);
+    const ids = this.selectedTasks().map((task) => task.id);
+    await this.runBulk('Change assignee', () => this.taskApi.bulkAssign(ids, employeeId));
+  }
+
+  protected async applyBulkPriority(priority: string): Promise<void> {
+    const ids = this.selectedTasks().map((task) => task.id);
+    await this.runBulk('Set priority', () => this.taskApi.bulkSetPriority(ids, priority as WorkTask['priority']));
+  }
+
+  protected async applyBulkDueDate(value: string): Promise<void> {
+    const ids = this.selectedTasks().map((task) => task.id);
+    await this.runBulk('Set due date', () => this.taskApi.bulkSetDueDate(ids, value || null));
+  }
+
+  protected async applyBulkParent(parentTaskId: string): Promise<void> {
+    const ids = this.selectedTasks().map((task) => task.id);
+    await this.runBulk('Convert to subtask', () => this.taskApi.bulkConvertToSubtask(ids, parentTaskId));
   }
 
   protected async onDeleteConfirmed(): Promise<void> {
@@ -597,7 +674,7 @@ export class TaskBacklogComponent implements OnInit, AfterViewInit, OnDestroy {
   private async runBulk(
     title: string,
     call: () => Observable<BulkTaskActionResponse>,
-    close: () => void
+    close: () => void = () => undefined
   ): Promise<void> {
     this.bulkSubmitting.set(true);
     this.bulkError.set(null);
