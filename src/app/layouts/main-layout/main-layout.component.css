@@ -156,7 +156,7 @@
   position: fixed;
   bottom: 1.5rem;
   right: 1.5rem;
-  z-index: 2000;
+  z-index: 1100;
 }
 
 .global-dialog-container {

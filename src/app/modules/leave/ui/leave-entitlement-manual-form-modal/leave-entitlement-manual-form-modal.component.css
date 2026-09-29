@@ -1,27 +1,2 @@
-.emm-body { display: flex; flex-direction: column; gap: 0.8rem; min-width: 320px; }
-.emm-picker-trigger {
-  text-align: left;
-  border: 1px dashed var(--color-border);
-  border-radius: 8px;
-  padding: 0.6rem 0.7rem;
-  background: var(--color-surface-secondary);
-  color: var(--color-text-primary);
-  font-size: 0.8rem;
-  cursor: pointer;
-}
-.emm-field { display: flex; flex-direction: column; gap: 0.32rem; color: var(--color-text-secondary); font-size: 0.75rem; font-weight: 650; }
-.emm-field select, .emm-field input, .emm-field textarea {
-  border: 1px solid var(--color-border);
-  border-radius: 8px;
-  padding: 0.5rem 0.6rem;
-  background: var(--color-surface);
-  color: var(--color-text-primary);
-  font: inherit;
-  font-size: 0.8rem;
-}
-.emm-two { display: grid; grid-template-columns: 1fr 1fr; gap: 0.7rem; }
-.emm-primary, .emm-secondary { border-radius: 8px; padding: 0.55rem 0.85rem; font-size: 0.78rem; font-weight: 700; cursor: pointer; }
-.emm-primary { border: 0; background: var(--color-accent); color: var(--color-accent-contrast); }
-.emm-secondary { border: 1px solid var(--color-border); background: var(--color-surface); color: var(--color-text-primary); }
-.emm-error { margin: 0; color: var(--color-danger); font-size: 0.78rem; }
-.emm-actions { display: flex; justify-content: flex-end; gap: 0.5rem; }
+/* Quiet Operations Desk: exceptional assignment form with a compact reason-first layout. */
+.emm-body{display:flex;flex-direction:column;gap:.8rem;min-width:320px}.emm-picker-trigger{text-align:left;border:1px dashed #b7c6da;border-radius:6px;padding:.6rem .7rem;background:#fafcff;color:#3c5370;font-size:.8rem}.emm-field{display:flex;flex-direction:column;gap:.32rem;color:#536274;font-size:.75rem;font-weight:650}.emm-field select,.emm-field input,.emm-field textarea{border:1px solid #dbe2ec;border-radius:6px;padding:.5rem .6rem;font:inherit;font-size:.8rem}.emm-two{display:grid;grid-template-columns:1fr 1fr;gap:.7rem}.emm-primary,.emm-secondary{border-radius:6px;padding:.55rem .85rem;font-size:.78rem;font-weight:700}.emm-primary{border:1px solid #1e5eff;background:#1e5eff;color:#fff}.emm-secondary{border:1px solid #dbe2ec;background:#fff;color:#536274}.emm-error{margin:0;color:#a3271d;font-size:.78rem}.emm-actions{display:flex;justify-content:flex-end;gap:.5rem}

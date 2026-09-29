@@ -45,18 +45,6 @@ export interface EmployeeListItemResponse {
   readonly avatarFileId?: string | null;
 }
 
-/**
- * Matches backend EmployeeIdentityResponse DTO (GET /api/v1/employees/{id}/identity) - name and
- * avatar only, deliberately gated on nothing beyond authentication (unlike EmployeeListItemResponse
- * above, which requires employees:read). Use this for resolving any employee's display identity
- * elsewhere in the app (project owner, task assignee, ...), never the full employees:read record.
- */
-export interface EmployeeIdentityResponse {
-  readonly id: string;
-  readonly name: string;
-  readonly avatarFileId: string | null;
-}
-
 export interface ResendInvitationResponse {
   readonly expiresAt: string;
 }

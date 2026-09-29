@@ -1,7 +1,6 @@
 import { ChangeDetectionStrategy, Component, Input } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { OccupantPreviewItem } from '../../models/position.model';
-import { buildFileUrl } from '../../../../shared/data-access/file-api.service';
 
 /**
  * A rendered slot in the seat-stack. Discriminated union:
@@ -26,9 +25,9 @@ export type SeatSlot =
  *  Assigned employees fill visible circles first; empty gray circles fill the rest.
  *
  * Avatar rule:
- *  - Prefer avatarFileId and resolve it through the authenticated file endpoint.
- *  - Fall back to avatarUrl while older API deployments are still supported.
- *  - If neither value is present: render initials text inside the circle.
+ *  - Use avatarUrl only if backend explicitly provides a non-null, non-empty string.
+ *  - avatarFileId is NEVER used as an image URL.
+ *  - If no avatarUrl: render initials text inside the circle.
  *  - Empty seat: gray circle with "Empty seat" aria-label.
  */
 @Component({
@@ -84,19 +83,9 @@ export class PositionSeatPreviewComponent {
     return slots;
   }
 
-  /** Resolves every file id to the same canonical URL used throughout the app. */
-  avatarUrl(item: OccupantPreviewItem): string | null {
-    if (typeof item.avatarFileId === 'string' && item.avatarFileId.trim().length > 0) {
-      return buildFileUrl(item.avatarFileId);
-    }
-
-    return typeof item.avatarUrl === 'string' && item.avatarUrl.trim().length > 0
-      ? item.avatarUrl
-      : null;
-  }
-
+  /** True if backend provided a usable avatar URL (never derives one from avatarFileId). */
   hasAvatarUrl(item: OccupantPreviewItem): boolean {
-    return this.avatarUrl(item) !== null;
+    return typeof item.avatarUrl === 'string' && item.avatarUrl.trim().length > 0;
   }
 
   /** Safe initials to display (falls back to '?' which backend also sends as its defensive default). */

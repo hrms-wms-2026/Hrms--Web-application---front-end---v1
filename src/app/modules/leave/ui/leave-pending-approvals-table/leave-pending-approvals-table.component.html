@@ -1,24 +1,18 @@
 <table class="lpa-table">
-  <caption class="sr-only">Pending leave approvals</caption>
   <thead>
-    <tr><th></th><th>Name</th><th>Type</th><th>From</th><th>To</th><th>Hours</th><th>Status</th></tr>
+    <tr><th></th><th>Name</th><th>Type</th><th>From</th><th>To</th><th>Days</th><th>Status</th></tr>
   </thead>
   <tbody>
     @for (row of rows; track row.requestId) {
       <tr data-testid="approval-row" (click)="rowClicked.emit(row.requestId)">
         <td (click)="$event.stopPropagation()">
-          <input type="checkbox" data-testid="approval-select" [checked]="selectedIds.has(row.requestId)" [attr.aria-label]="'Select request from ' + row.employeeName" (click)="onCheckboxClick($event, row.requestId)" />
+          <input type="checkbox" data-testid="approval-select" [checked]="selectedIds.has(row.requestId)" (click)="onCheckboxClick($event, row.requestId)" />
         </td>
-        <td>
-          <div class="lpa-person">
-            <span class="lpa-avatar" aria-hidden="true">{{ initials(row.employeeName) }}</span>
-            <span>{{ row.employeeName }}</span>
-          </div>
-        </td>
+        <td>{{ row.employeeName }}</td>
         <td>{{ row.leaveTypeName }}</td>
-        <td>{{ row.startAt | date:'yyyy-MM-dd HH:mm' }}</td>
-        <td>{{ row.endAt | date:'yyyy-MM-dd HH:mm' }}</td>
-        <td>{{ row.totalHours.toFixed(2) }}</td>
+        <td>{{ row.startDate }}</td>
+        <td>{{ row.endDate }}</td>
+        <td>{{ row.totalDays }}</td>
         <td><span class="lpa-status" [class.lpa-status-info]="row.status === 'information_requested'">{{ statusLabel(row.status) }}</span></td>
       </tr>
     }

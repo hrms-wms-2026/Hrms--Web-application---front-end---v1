@@ -1,20 +1,17 @@
 <app-modal [open]="open" title="Cancel leave request" (closed)="onClose()">
   <div class="lcc-body">
     <p>
-      Are you sure you want to cancel this leave request? {{ leaveTypeName }} from {{ startAt | date:'yyyy-MM-dd HH:mm' }} to {{ endAt | date:'yyyy-MM-dd HH:mm' }} ({{ totalHours }} hours).
+      Are you sure you want to cancel this leave request? {{ leaveTypeName }} from {{ startDate }} to {{ endDate }} ({{ totalDays }} days).
     </p>
     @if (status === 'approved') {
-      <p class="lcc-restore">Your balance of {{ totalHours }} hours will be restored.</p>
+      <p class="lcc-restore">Your balance of {{ totalDays }} days will be restored.</p>
     }
 
     @if (isInProgress()) {
-      <div class="lcc-field">
-        <app-date-picker
-          label="Cancel from (leave already taken stays deducted)"
-          [value]="effectiveDate() ?? ''"
-          (valueChange)="effectiveDate.set($event || null)"
-        />
-      </div>
+      <label class="lcc-field">
+        <span>Cancel from (leave already taken stays deducted)</span>
+        <input type="date" [value]="effectiveDate() ?? ''" (input)="effectiveDate.set($any($event.target).value || null)" />
+      </label>
     }
 
     <label class="lcc-field">

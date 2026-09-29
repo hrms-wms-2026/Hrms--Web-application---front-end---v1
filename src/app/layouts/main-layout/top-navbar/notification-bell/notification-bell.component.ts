@@ -1,9 +1,5 @@
-import { Component, OnDestroy, effect, inject, signal, untracked } from '@angular/core';
-import { AuthStore } from '../../../../core/auth/state/auth.store';
-import { PermissionService } from '../../../../core/auth/state/permission.service';
+import { Component, OnDestroy, OnInit, inject, signal } from '@angular/core';
 import { NotificationsStore } from '../../../../core/state/notifications.store';
-import { TrayPresenceStore } from '../../../../core/tray-presence/state/tray-presence.store';
-import { tenantWorkspaceReady } from '../../../../core/tray-presence/utils/tenant-workspace-ready';
 import { NotificationItem } from '../../../../core/services/notification-api.service';
 import { NotificationNavigationService } from '../../../../core/services/notification-navigation.service';
 import { PopoverComponent } from '../../../../shared/ui/popover/popover.component';
@@ -79,41 +75,20 @@ import { NotificationDropdownComponent } from './notification-dropdown/notificat
     }
   `]
 })
-export class NotificationBellComponent implements OnDestroy {
+export class NotificationBellComponent implements OnInit, OnDestroy {
   protected readonly store = inject(NotificationsStore);
   private readonly navigation = inject(NotificationNavigationService);
-  private readonly permissionService = inject(PermissionService);
-  private readonly trayPresence = inject(TrayPresenceStore);
-  private readonly authStore = inject(AuthStore);
 
   protected readonly isOpen = signal(false);
   private pollId: ReturnType<typeof setInterval> | null = null;
 
-  constructor() {
-    effect(() => {
-      const unlocked = tenantWorkspaceReady(this.authStore, this.permissionService, this.trayPresence);
-      untracked(() => {
-        if (unlocked) this.startPolling();
-        else this.stopPolling();
-      });
-    });
-  }
-
-  ngOnDestroy(): void {
-    this.stopPolling();
-  }
-
-  private startPolling(): void {
-    if (this.pollId) return;
+  ngOnInit(): void {
     void this.store.refreshUnreadCount();
     this.pollId = setInterval(() => void this.store.refreshUnreadCount(), 60_000);
   }
 
-  private stopPolling(): void {
-    if (this.pollId) {
-      clearInterval(this.pollId);
-      this.pollId = null;
-    }
+  ngOnDestroy(): void {
+    if (this.pollId) clearInterval(this.pollId);
   }
 
   toggle(): void {

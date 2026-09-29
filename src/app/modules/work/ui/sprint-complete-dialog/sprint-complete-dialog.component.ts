@@ -61,14 +61,6 @@ import { WorkTask } from '../../models/task.model';
     .sprint-complete-dialog__radio { display: flex; align-items: center; gap: 6px; font-size: 13px; color: var(--color-text-primary); }
     .sprint-complete-dialog__error { color: var(--color-danger-text); font-size: 12px; }
     .sprint-complete-dialog__actions { display: flex; justify-content: flex-end; gap: 8px; }
-    .sprint-complete-dialog__actions ::ng-deep app-button > button {
-      width: auto;
-      height: 30px;
-      padding: 0 12px;
-      border-radius: 8px;
-      font-size: 13px;
-      font-weight: 500;
-    }
   `]
 })
 export class SprintCompleteDialogComponent {
@@ -78,7 +70,9 @@ export class SprintCompleteDialogComponent {
   sprint = input<Sprint | null>(null);
   tasks = input<readonly WorkTask[]>([]);
   otherSprints = input<readonly Sprint[]>([]);
-  projectId = input.required<string>();
+  objectiveId = input<string>('');
+  activeOnly = input(false);
+  projectId = input<string | undefined>(undefined);
   completeStatusIds = input<ReadonlySet<string>>(new Set());
 
   completed = output<void>();
@@ -125,7 +119,7 @@ export class SprintCompleteDialogComponent {
       const ok = await this.store.complete(current.id, this.disposition() === 'sprint'
         ? { disposition: 'sprint', targetSprintId: this.targetSprintId() }
         : { disposition: 'backlog' },
-        this.projectId());
+        this.objectiveId(), this.activeOnly(), this.projectId());
       if (ok) this.completed.emit();
     } finally {
       this.submitting.set(false);

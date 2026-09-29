@@ -1,73 +1,36 @@
-import { Component, computed, effect, inject, signal, untracked } from '@angular/core';
+import { Component, computed, inject, signal } from '@angular/core';
 import { CurrentEmployeeStore } from '../../state/current-employee.store';
 
 import { ActivatedRoute } from '@angular/router';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { firstValueFrom } from 'rxjs';
 import { ProjectDetailStore } from '../../state/project-detail.store';
-import { MilestoneTreeNodeComponent, TreeExpandCommand } from '../../ui/milestone-tree-node/milestone-tree-node.component';
-import { WorkDropdownOption } from '../../ui/work-dropdown/work-dropdown.component';
-import { HIGHLIGHT_SWATCHES, TaskFilterBarComponent, TaskFilterFieldConfig } from '../../ui/task-filter-bar/task-filter-bar.component';
-import { TaskApiService } from '../../data-access/task-api.service';
-import { collectNodes, computeTreeHighlight, hasActiveHighlight } from '../../utils/tree-highlight.utils';
+import { MilestoneTreeNodeComponent } from '../../ui/milestone-tree-node/milestone-tree-node.component';
+import { WorkDropdownComponent, WorkDropdownOption } from '../../ui/work-dropdown/work-dropdown.component';
 import { TaskFormModalComponent } from '../../ui/task-form-modal/task-form-modal.component';
 import { TreeExplanationPanelComponent } from '../../ui/tree-explanation-panel/tree-explanation-panel.component';
 import { SubModuleFormComponent } from '../../ui/sub-module-form/sub-module-form.component';
 import { MemberManagementPopupComponent } from '../../ui/member-management-popup/member-management-popup.component';
-import { SprintFormComponent, SprintFormModuleOption } from '../../ui/sprint-form/sprint-form.component';
+import { SprintFormComponent } from '../../ui/sprint-form/sprint-form.component';
 import { WorkApprovalsApiService } from '../../data-access/work-approvals-api.service';
 import { EmployeeDirectoryStore } from '../../state/employee-directory.store';
 import { SprintCompleteDialogComponent } from '../../ui/sprint-complete-dialog/sprint-complete-dialog.component';
 import { LoaderComponent } from '../../../../shared/ui/loader/loader.component';
-import { InputComponent } from '../../../../shared/ui/input/input.component';
 import { ErrorStateComponent } from '../../../../shared/ui/error-state/error-state.component';
 import { EmptyStateComponent } from '../../../../shared/ui/empty-state/empty-state.component';
 import { ConfirmModalComponent } from '../../../../shared/ui/confirm-modal/confirm-modal.component';
 import { MilestoneTreeNode, ObjectiveDetail } from '../../models/milestone.model';
 import { EditObjectiveRequestDto, CreateObjectiveRequestDto } from '../../models/dto/milestone.dto';
-import { findTreeNode, isLeafObjective, collectObjectiveOptions } from '../../utils/project.mapper';
+import {
+  findTreeNode, isLeafObjective, collectObjectiveOptions, pruneTreeToModule, filterTreeByActivity, ActivityFilter
+} from '../../utils/project.mapper';
 import { Sprint, SprintStatus } from '../../models/sprint.model';
-
-const ACTIVE_STATUS_OPTIONS: readonly WorkDropdownOption[] = [
-  { value: 'active', label: 'Active' },
-  { value: 'inactive', label: 'Inactive' },
-  { value: 'achieved', label: 'Achieved' }
-];
-const DUE_DATE_OPTIONS: readonly WorkDropdownOption[] = [
-  { value: 'overdue', label: 'Overdue' },
-  { value: 'due7', label: 'Due in 7 days' },
-  { value: 'due30', label: 'Due in 30 days' },
-  { value: 'none', label: 'No due date' }
-];
-const DURATION_OPTIONS: readonly WorkDropdownOption[] = [
-  { value: 'lt2w', label: 'Under 2 weeks' },
-  { value: '2w1m', label: '2 weeks - 1 month' },
-  { value: '1m3m', label: '1 - 3 months' },
-  { value: 'gt3m', label: 'Over 3 months' }
-];
-const ITEM_TYPE_OPTIONS: readonly WorkDropdownOption[] = [
-  { value: 'objective', label: 'Module' },
-  { value: 'sprint', label: 'Sprint' },
-  { value: 'task', label: 'Task' }
-];
-const PRIORITY_OPTIONS: readonly WorkDropdownOption[] = [
-  { value: 'low', label: 'Low' },
-  { value: 'medium', label: 'Medium' },
-  { value: 'high', label: 'High' },
-  { value: 'critical', label: 'Critical' }
-];
-const PROGRESS_OPTIONS: readonly WorkDropdownOption[] = [
-  { value: '0', label: 'Not started (0%)' },
-  { value: '1-50', label: '1 - 50%' },
-  { value: '51-99', label: '51 - 99%' },
-  { value: '100', label: 'Done (100%)' }
-];
 
 @Component({
   selector: 'app-milestone-tree-tab',
   standalone: true,
   imports: [
-    MilestoneTreeNodeComponent, TaskFilterBarComponent, InputComponent, TreeExplanationPanelComponent, SubModuleFormComponent,
+    MilestoneTreeNodeComponent, WorkDropdownComponent, TreeExplanationPanelComponent, SubModuleFormComponent,
     MemberManagementPopupComponent, SprintFormComponent, SprintCompleteDialogComponent, TaskFormModalComponent,
     LoaderComponent, ErrorStateComponent, EmptyStateComponent, ConfirmModalComponent
   ],
@@ -79,7 +42,6 @@ export class MilestoneTreeTabComponent {
   protected readonly currentEmployee = inject(CurrentEmployeeStore);
   private readonly approvalsApi = inject(WorkApprovalsApiService);
   private readonly directory = inject(EmployeeDirectoryStore);
-  private readonly taskApi = inject(TaskApiService);
 
   readonly taskModalOpen = signal(false);
   readonly taskModalMode = signal<'create' | 'edit'>('create');
@@ -94,49 +56,42 @@ export class MilestoneTreeTabComponent {
   private loadedProjectId: string | null = null;
   private loadedMembersForProjectId: string | null = null;
 
-  // Highlight mode: every member always sees the FULL tree - filters never prune, they only
-  // tint the matching rows (and auto-expand the branches that contain them).
-  readonly filterValues = signal<Record<string, string[]>>({});
-  readonly highlightColor = signal<string>(HIGHLIGHT_SWATCHES[0]);
-  readonly allExpanded = signal(false);
-  readonly expandCommand = signal<TreeExpandCommand | null>(null);
-  private expandSeq = 0;
-  private readonly taskStatusOptions = signal<WorkDropdownOption[]>([]);
-  private readonly categoryOptions = signal<WorkDropdownOption[]>([]);
+  selectedModuleFilter = signal<string>('all');
+  selectedActivityFilter = signal<ActivityFilter>('all');
 
-  renderedTree = computed(() => this.store.selectedSubtree());
-
-  readonly filterFields = computed<TaskFilterFieldConfig[]>(() => {
+  private activityFilteredTree = computed(() => {
     const tree = this.store.selectedSubtree();
-    const modules = tree ? collectObjectiveOptions(tree).map((o) => ({ value: o.id, label: o.title })) : [];
-    const sprints = tree ? collectNodes(tree, (n) => n.kind === 'sprint').map((n) => ({ value: n.id, label: n.title })) : [];
-    const sprintOptions = [...new Map(sprints.map((s) => [s.value, s])).values()];
-    const people = this.assignableMembers().map((m) => ({ value: m.employeeId, label: m.name }));
-    return [
-      { key: 'module', label: 'Module', icon: 'module', kind: 'multi', options: modules },
-      { key: 'owner', label: 'Owner', icon: 'people', kind: 'multi', options: people },
-      { key: 'activeStatus', label: 'Active', icon: 'status', kind: 'multi', options: ACTIVE_STATUS_OPTIONS },
-      { key: 'dueDate', label: 'Due date', icon: 'calendar', kind: 'multi', options: DUE_DATE_OPTIONS },
-      { key: 'duration', label: 'Duration', icon: 'calendar', kind: 'multi', options: DURATION_OPTIONS },
-      { key: 'itemType', label: 'Item type', icon: 'category', kind: 'multi', options: ITEM_TYPE_OPTIONS },
-      { key: 'sprint', label: 'Sprint', icon: 'sprint', kind: 'multi', options: sprintOptions },
-      { key: 'taskStatus', label: 'Task status', icon: 'status', kind: 'multi', options: this.taskStatusOptions() },
-      { key: 'priority', label: 'Priority', icon: 'priority', kind: 'multi', options: PRIORITY_OPTIONS },
-      { key: 'category', label: 'Category', icon: 'category', kind: 'multi', options: this.categoryOptions() },
-      { key: 'progress', label: 'Progress', icon: 'status', kind: 'multi', options: PROGRESS_OPTIONS }
-    ];
+    if (!tree) return null;
+    return filterTreeByActivity(tree, this.selectedActivityFilter());
   });
 
-  readonly searchTerm = signal('');
-  // Search is just one more highlight criterion (title contains), ANDed with the filter bar.
-  private readonly highlightValues = computed(() => ({ ...this.filterValues(), search: [this.searchTerm()] }));
-  readonly highlightActive = computed(() => hasActiveHighlight(this.highlightValues()));
-  readonly highlight = computed(() => {
+  // Intentionally independent of activityFilteredTree: the dropdown is a flat list, so it filters
+  // directly by isActive rather than inheriting the tree's ancestor-path-preservation semantics
+  // (which legitimately keep a non-matching ancestor visible in the tree for connectivity).
+  moduleFilterOptions = computed(() => {
     const tree = this.store.selectedSubtree();
-    if (!tree) return { matchedKeys: new Set<string>(), ancestorKeys: new Set<string>() };
-    return computeTreeHighlight(tree, this.highlightValues(), new Date());
+    if (!tree) return [];
+    return this.filterOptionsByActivity(collectObjectiveOptions(tree), this.selectedActivityFilter());
   });
-  readonly matchCount = computed(() => this.highlight().matchedKeys.size);
+
+  // Adapts moduleFilterOptions to the shared dropdown's { value, label } shape, with the
+  // synthetic "all" entry the tree-prune filter needs. Single-select by design: it drives
+  // pruneTreeToModule (one subtree). Defaults to "all" - the routed milestone never scopes it.
+  moduleDropdownOptions = computed<WorkDropdownOption[]>(() => [
+    { value: 'all', label: 'All modules' },
+    ...this.moduleFilterOptions().map((option) => ({ value: option.id, label: option.title }))
+  ]);
+  readonly activityFilterOptions: readonly WorkDropdownOption[] = [
+    { value: 'all', label: 'All' },
+    { value: 'active', label: 'Active' },
+    { value: 'inactive', label: 'Inactive' }
+  ];
+
+  renderedTree = computed(() => {
+    const tree = this.activityFilteredTree();
+    if (!tree) return null;
+    return pruneTreeToModule(tree, this.selectedModuleFilter()) ?? tree;
+  });
 
   selectedNodeId = signal<string | null>(null);
   selectedNode = computed<MilestoneTreeNode | null>(() => {
@@ -181,7 +136,9 @@ export class MilestoneTreeTabComponent {
       this.projectId.set(this.currentProjectId);
       // Every active project member sees the FULL objective tree. The routed milestone only
       // preselects a node for the detail panel - it does NOT scope what the tree shows. The
-      // per-node isOwner flag still gates the editing tools.
+      // per-node isOwner flag still gates the editing tools; the module dropdown stays
+      // available for voluntary narrowing.
+      this.selectedModuleFilter.set('all');
       this.selectedNodeId.set(milestoneId);
       const openMembersOnLoad = this.route.snapshot.queryParamMap.get('openMembers') === '1';
       void this.loadTree().then(() => {
@@ -191,18 +148,7 @@ export class MilestoneTreeTabComponent {
       if (this.currentProjectId && this.loadedMembersForProjectId !== this.currentProjectId) {
         this.loadedMembersForProjectId = this.currentProjectId;
         void this.loadAssignableMembers(this.currentProjectId);
-        void this.loadFilterOptions(this.currentProjectId);
       }
-    });
-
-    // Reveal matches hidden in collapsed branches. Skipped while "Expand all" is on - everything is open anyway.
-    effect(() => {
-      const { matchedKeys, ancestorKeys } = this.highlight();
-      if (matchedKeys.size === 0) return;
-      untracked(() => {
-        if (this.allExpanded()) return;
-        this.expandCommand.set({ seq: ++this.expandSeq, mode: 'keys', keys: ancestorKeys });
-      });
     });
   }
 
@@ -225,50 +171,30 @@ export class MilestoneTreeTabComponent {
     }
   }
 
-  onFilterFieldChanged(event: { key: string; values: string[] }): void {
-    this.filterValues.update((current) => ({ ...current, [event.key]: event.values }));
-    // Sprints/tasks are lazy-loaded per leaf; task-level fields (status, priority, assignee...)
-    // can only match what's loaded, so an active filter pulls the whole tree in once.
-    if (this.highlightActive()) void this.loadWholeTree();
+  onModuleFilterChanged(moduleId: string): void {
+    this.selectedModuleFilter.set(moduleId);
   }
 
-  onSearchChanged(term: string): void {
-    this.searchTerm.set(term);
-    if (this.highlightActive()) void this.loadWholeTree();
-  }
+  onActivityFilterChanged(value: string): void {
+    const filter = value as ActivityFilter;
+    this.selectedActivityFilter.set(filter);
 
-  onHighlightColorChanged(color: string): void {
-    this.highlightColor.set(color);
-  }
-
-  toggleExpandAll(): void {
-    const expand = !this.allExpanded();
-    this.allExpanded.set(expand);
-    this.expandCommand.set({ seq: ++this.expandSeq, mode: expand ? 'all' : 'none' });
-    if (expand) void this.loadWholeTree();
-  }
-
-  private async loadWholeTree(): Promise<void> {
+    const currentModuleId = this.selectedModuleFilter();
+    if (currentModuleId === 'all') return;
     const tree = this.store.selectedSubtree();
-    if (!tree) return;
-    await Promise.all(collectNodes(tree, isLeafObjective).map((leaf) => this.store.loadSprintsAndTasksForLeaf(leaf.id)));
-    const loaded = this.store.selectedSubtree();
-    if (!loaded) return;
-    await Promise.all(collectNodes(loaded, (n) => n.kind === 'sprint').map((sprint) => this.store.loadTasksForSprint(sprint.id)));
+    const options = tree ? this.filterOptionsByActivity(collectObjectiveOptions(tree), filter) : [];
+    if (!options.some((option) => option.id === currentModuleId)) {
+      this.selectedModuleFilter.set('all');
+    }
   }
 
-  private async loadFilterOptions(projectId: string): Promise<void> {
-    try {
-      const [statuses, categories] = await Promise.all([
-        firstValueFrom(this.taskApi.getStatuses(projectId)),
-        firstValueFrom(this.taskApi.getCategories(projectId))
-      ]);
-      this.taskStatusOptions.set(statuses.map((s) => ({ value: s.id, label: s.name })));
-      this.categoryOptions.set(categories.map((c) => ({ value: c.id, label: c.name })));
-    } catch {
-      this.taskStatusOptions.set([]);
-      this.categoryOptions.set([]);
-    }
+  private filterOptionsByActivity(
+    options: { id: string; title: string; isActive: boolean }[],
+    filter: ActivityFilter
+  ): { id: string; title: string; isActive: boolean }[] {
+    if (filter === 'all') return options;
+    const wantActive = filter === 'active';
+    return options.filter((option) => option.isActive === wantActive);
   }
 
   onNodeSelected(node: MilestoneTreeNode): void {
@@ -371,62 +297,17 @@ export class MilestoneTreeTabComponent {
     await this.loadTree({ force: true });
   }
 
-  /** In-place edit inside the still-open task modal (e.g. a subtask change): refresh, keep it open. */
-  async onTaskModalChanged(): Promise<void> {
-    await this.loadTree({ force: true });
-  }
-
-  // Sprints are now project-level (Independent Sprints), so <app-sprint-form> no longer takes
-  // a single objectiveId/isObjectiveOwner pair - it takes a `modules` list for its task picker
-  // to know which module(s) are pickable/owned. For create, node is the module (leaf objective)
-  // the sprint is being created under. For edit, node is the sprint itself, so we resolve its
-  // owning module via parentObjectiveId and look up that module's real title/ownership in the
-  // tree (falling back to the sprint node's own fields if the module can't be found).
-  sprintFormModules(node: MilestoneTreeNode): SprintFormModuleOption[] {
-    const objectiveId = node.kind === 'sprint' ? (node.parentObjectiveId ?? '') : node.id;
-    const tree = this.store.selectedSubtree();
-    const moduleNode = tree ? findTreeNode(tree, objectiveId) : null;
-    return [{
-      objectiveId,
-      title: moduleNode?.title ?? node.title,
-      isEffectiveOwner: (moduleNode?.isOwner ?? node.isOwner) ?? false
-    }];
-  }
-
-  // `sprintFormModules`/`sprintFromNode` build a NEW array/object every call, so binding
-  // them directly in the template (e.g. `[modules]="sprintFormModules(sprintNode)"`) makes
-  // <app-sprint-form> see a new `sprint`/`modules` reference on every change-detection pass.
-  // In edit mode, SprintFormComponent's constructor effect resets its form and re-fetches
-  // current tasks whenever `sprint()` changes identity - so every CD tick was discarding
-  // in-progress form edits. These computeds only recompute when the underlying node signal
-  // actually changes identity, keeping the bound value referentially stable across CD passes.
-  createSprintModules = computed<SprintFormModuleOption[]>(() => {
-    const node = this.createSprintNode();
-    return node ? this.sprintFormModules(node) : [];
-  });
-
-  editSprintModel = computed<Sprint | null>(() => {
-    const node = this.editSprintNode();
-    return node ? this.sprintFromNode(node) : null;
-  });
-
-  editSprintModules = computed<SprintFormModuleOption[]>(() => {
-    const node = this.editSprintNode();
-    return node ? this.sprintFormModules(node) : [];
-  });
-
   sprintFromNode(node: MilestoneTreeNode): Sprint {
     return {
       id: node.id,
-      projectId: this.projectId(),
+      objectiveId: node.parentObjectiveId ?? '',
       name: node.title,
       goal: null,
       startDate: node.startDate ? new Date(node.startDate) : null,
       endDate: node.endDate ? new Date(node.endDate) : null,
       status: (node.status as SprintStatus) ?? 'active',
       completedAt: null,
-      achievedAt: null,
-      canManage: node.isOwner ?? false
+      achievedAt: null
     };
   }
 

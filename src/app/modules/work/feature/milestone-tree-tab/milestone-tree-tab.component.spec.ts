@@ -73,7 +73,7 @@ describe('MilestoneTreeTabComponent', () => {
         { provide: PeopleApiService, useValue: { listEmployees: vi.fn().mockReturnValue(of({ items: [], totalCount: 0, page: 1, pageSize: 20 })) } },
         { provide: SprintListStore, useValue: { error: () => null, create: vi.fn(), edit: vi.fn() } },
         { provide: TaskBoardStore, useValue: { error: () => null, createTask: vi.fn(), statuses: () => [] } },
-        { provide: TaskApiService, useValue: { getStatuses: vi.fn().mockReturnValue(of([])), getCategories: vi.fn().mockReturnValue(of([])) } },
+        { provide: TaskApiService, useValue: {} },
         { provide: WorkApprovalsApiService, useValue: approvalsApiStub },
         { provide: EmployeeDirectoryStore, useValue: directoryStub },
         { provide: Router, useValue: routerStub }
@@ -131,6 +131,17 @@ describe('MilestoneTreeTabComponent', () => {
     expect(directoryStub.ensureLoaded).toHaveBeenCalledWith(['e1', 'e2']);
   });
 
+  it('defaults the module filter to all so every member sees the full tree, regardless of the routed milestone', async () => {
+    setup('o2');
+    fixture.detectChanges();
+    await fixture.whenStable();
+    fixture.detectChanges();
+    expect(fixture.componentInstance.selectedModuleFilter()).toBe('all');
+    const trigger = fixture.nativeElement.querySelector('[data-testid="module-filter-dropdown"] .work-dropdown__trigger') as HTMLElement;
+    expect(trigger.textContent).toContain('All modules');
+    expect(fixture.componentInstance.moduleDropdownOptions()[0]).toEqual({ value: 'all', label: 'All modules' });
+  });
+
   it('keeps sibling branches visible and highlights the routed node when a member lands on their own non-root module', async () => {
     setup('o2');
     fixture.detectChanges();
@@ -143,175 +154,175 @@ describe('MilestoneTreeTabComponent', () => {
     expect(fixture.componentInstance.selectedNode()?.id).toBe('o2');
   });
 
-  describe('highlight filter + expand all', () => {
-    const grandchild: MilestoneTreeNode = {
-      id: 'g1', title: 'Grandchild', description: null, startDate: '2026-01-12', endDate: '2026-01-20',
-      progress: 0, allocatedHours: 0, completedHours: 0, isActive: true, isAchieved: false,
-      ownerName: null, ownerId: 'e9', isOwner: true, children: [], kind: 'objective'
-    };
-    const deepTree: MilestoneTreeNode = {
-      ...tree,
-      children: [{ ...child, ownerId: 'e2', kind: 'objective', children: [grandchild] }, sibling, inactiveSibling]
-    };
-
-    const titles = (): string[] =>
+  it('prunes the rendered tree on filter change without refetching', () => {
+    setup('o1');
+    fixture.detectChanges();
+    const titles = () =>
       Array.from(fixture.nativeElement.querySelectorAll('[data-testid="title-text"]') as NodeListOf<HTMLElement>)
-        .map((el) => el.textContent?.trim() ?? '');
-    const highlightedTitles = (): string[] =>
-      Array.from(fixture.nativeElement.querySelectorAll('[data-highlighted] [data-testid="title-text"]') as NodeListOf<HTMLElement>)
-        .map((el) => el.textContent?.trim() ?? '');
+        .map((el) => el.textContent?.trim());
+    expect(titles()).toContain('Other');
+    expect(storeStub.loadProjectTree).toHaveBeenCalledTimes(1);
 
-    it('replaces the old prune dropdowns with the highlight filter bar and an expand-all toggle', () => {
+    fixture.componentInstance.onModuleFilterChanged('o2');
+    fixture.detectChanges();
+
+    expect(titles()).toContain('Child');
+    expect(titles()).not.toContain('Other');
+    expect(storeStub.loadProjectTree).toHaveBeenCalledTimes(1);
+  });
+
+  describe('activity filter', () => {
+    it('defaults selectedActivityFilter to all and leaves moduleFilterOptions/renderedTree provably unchanged', () => {
       setup('o1');
       fixture.detectChanges();
-      expect(fixture.nativeElement.querySelector('[data-testid="module-filter-dropdown"]')).toBeNull();
-      expect(fixture.nativeElement.querySelector('[data-testid="module-activity-filter-dropdown"]')).toBeNull();
-      expect(fixture.nativeElement.querySelector('app-task-filter-bar')).not.toBeNull();
-      expect(fixture.nativeElement.querySelector('[data-testid="expand-all-toggle"]')).not.toBeNull();
+
+      expect(fixture.componentInstance.selectedActivityFilter()).toBe('all');
+      expect(fixture.componentInstance.moduleFilterOptions().map((o) => o.id)).toEqual(['o1', 'o2', 'o3', 'o4']);
+      expect(fixture.componentInstance.renderedTree()).toEqual(tree);
     });
 
-    it('offers every approved highlight field', () => {
+    it('includes isActive on each moduleFilterOptions entry', () => {
       setup('o1');
       fixture.detectChanges();
-      expect(fixture.componentInstance.filterFields().map((f) => f.key)).toEqual([
-        'module', 'owner', 'activeStatus', 'dueDate', 'duration', 'itemType',
-        'sprint', 'taskStatus', 'priority', 'category', 'progress'
+
+      expect(fixture.componentInstance.moduleFilterOptions()).toEqual([
+        { id: 'o1', title: 'Root', isActive: true },
+        { id: 'o2', title: 'Child', isActive: true },
+        { id: 'o3', title: 'Other', isActive: true },
+        { id: 'o4', title: 'Retired Module', isActive: false }
       ]);
     });
 
-    it('never prunes: a filter keeps every row rendered and only marks the matches', () => {
+    it('excludes the inactive module from moduleFilterOptions when the filter is active', () => {
       setup('o1');
       fixture.detectChanges();
-      fixture.componentInstance.onFilterFieldChanged({ key: 'activeStatus', values: ['inactive'] });
+
+      fixture.componentInstance.onActivityFilterChanged('active');
       fixture.detectChanges();
 
-      expect(titles()).toEqual(expect.arrayContaining(['Root', 'Child', 'Other', 'Retired Module']));
-      expect(highlightedTitles()).toEqual(['Retired Module']);
-      expect(fixture.nativeElement.querySelector('[data-testid="highlight-match-count"]').textContent.trim()).toBe('1 match');
+      const ids = fixture.componentInstance.moduleFilterOptions().map((o) => o.id);
+      expect(ids).not.toContain('o4');
+      expect(ids).toEqual(['o1', 'o2', 'o3']);
     });
 
-    it('clears all highlighting when the filter is removed', () => {
+    it('includes the inactive module in moduleFilterOptions when the filter is inactive', () => {
       setup('o1');
       fixture.detectChanges();
-      fixture.componentInstance.onFilterFieldChanged({ key: 'activeStatus', values: ['inactive'] });
-      fixture.componentInstance.onFilterFieldChanged({ key: 'activeStatus', values: [] });
+
+      fixture.componentInstance.onActivityFilterChanged('inactive');
       fixture.detectChanges();
-      expect(highlightedTitles()).toEqual([]);
-      expect(fixture.nativeElement.querySelector('[data-testid="highlight-match-count"]')).toBeNull();
+
+      expect(fixture.componentInstance.moduleFilterOptions().map((o) => o.id)).toContain('o4');
     });
 
-    it('paints matched rows with the chosen highlight color', () => {
+    it('includes the inactive module in moduleFilterOptions when the filter is all', () => {
       setup('o1');
       fixture.detectChanges();
-      fixture.componentInstance.onFilterFieldChanged({ key: 'activeStatus', values: ['inactive'] });
-      fixture.componentInstance.onHighlightColorChanged('#ef4444');
+
+      fixture.componentInstance.onActivityFilterChanged('all');
       fixture.detectChanges();
-      const row = fixture.nativeElement.querySelector('[data-highlighted]') as HTMLElement;
-      expect(row.style.getPropertyValue('--tree-highlight')).toBe('#ef4444');
+
+      expect(fixture.componentInstance.moduleFilterOptions().map((o) => o.id)).toContain('o4');
     });
 
-    it('searches module, sprint and task titles through the shared search input, highlighting (never hiding) matches', () => {
-      storeStub.selectedSubtree = () => deepTree;
+    it('prunes renderedTree to only inactive modules when inactive is selected', () => {
       setup('o1');
       fixture.detectChanges();
-      const input = fixture.nativeElement.querySelector('[data-testid="tree-search"] input') as HTMLInputElement;
-      expect(input.type).toBe('search');
 
-      storeStub.loadSprintsAndTasksForLeaf.mockClear();
-      input.value = 'grand';
-      input.dispatchEvent(new Event('input'));
+      fixture.componentInstance.onActivityFilterChanged('inactive');
       fixture.detectChanges();
 
-      expect(titles()).toEqual(expect.arrayContaining(['Root', 'Child', 'Other', 'Grandchild']));
-      expect(highlightedTitles()).toEqual(['Grandchild']);
-      expect(storeStub.loadSprintsAndTasksForLeaf).toHaveBeenCalled();
+      const rendered = fixture.componentInstance.renderedTree();
+      expect(rendered?.id).toBe('o1');
+      expect(rendered?.children.map((c) => c.id)).toEqual(['o4']);
     });
 
-    it('uses a border glow on hover instead of the gray background, tinted with the highlight color on matches', () => {
+    it('prunes renderedTree to only active modules when active is selected', () => {
       setup('o1');
       fixture.detectChanges();
-      fixture.componentInstance.onFilterFieldChanged({ key: 'activeStatus', values: ['inactive'] });
-      fixture.componentInstance.onHighlightColorChanged('#22c55e');
+
+      fixture.componentInstance.onActivityFilterChanged('active');
       fixture.detectChanges();
-      const rows = Array.from(fixture.nativeElement.querySelectorAll('[data-testid="tree-row"]') as NodeListOf<HTMLElement>);
-      expect(rows.every((row) => row.classList.contains('tree-row'))).toBe(true);
-      expect(rows.some((row) => row.className.includes('hover:bg-'))).toBe(false);
-      const highlighted = fixture.nativeElement.querySelector('[data-highlighted]') as HTMLElement;
-      expect(highlighted.style.getPropertyValue('--tree-row-glow')).toBe('#22c55e');
+
+      const rendered = fixture.componentInstance.renderedTree();
+      expect(rendered?.id).toBe('o1');
+      expect(rendered?.children.map((c) => c.id)).toEqual(['o2', 'o3']);
     });
 
-    it('labels the first column "Module"', () => {
+    it('wires the activity filter select to selectedActivityFilter and onActivityFilterChanged', async () => {
       setup('o1');
       fixture.detectChanges();
-      expect(fixture.nativeElement.querySelector('[data-testid="tree-column-header"]').textContent).toContain('Module');
-      expect(fixture.nativeElement.querySelector('[data-testid="tree-column-header"]').textContent).not.toContain('Work item');
+      await fixture.whenStable();
+      fixture.detectChanges();
+
+      const trigger = fixture.nativeElement.querySelector('[data-testid="module-activity-filter-dropdown"] .work-dropdown__trigger') as HTMLElement;
+      expect(trigger.textContent).toContain('All');
+
+      fixture.componentInstance.onActivityFilterChanged('inactive');
+      fixture.detectChanges();
+
+      expect(fixture.componentInstance.selectedActivityFilter()).toBe('inactive');
     });
 
-    it('counts every highlighted row, including a shared sprint rendered under two modules', () => {
-      const sharedTask = (): MilestoneTreeNode => ({
-        ...child, id: 't1', title: 'Shared Task', kind: 'task', children: [],
-        taskSource: { id: 't1', priority: 'high', statusId: 's', categoryId: 'c', dueDate: null, assigneeEmployeeIds: [] } as any
-      });
-      const sharedSprint = (): MilestoneTreeNode => ({
-        ...child, id: 'sp1', title: 'Shared Sprint', kind: 'sprint', sprintTaskLoadState: 'loaded', children: [sharedTask()]
-      });
-      storeStub.selectedSubtree = () => ({
-        ...tree,
-        children: [
-          { ...child, kind: 'objective', sprintTaskLoadState: 'loaded', children: [sharedSprint()] },
-          { ...sibling, kind: 'objective', sprintTaskLoadState: 'loaded', children: [sharedSprint()] }
-        ]
-      });
+    it('resets selectedModuleFilter to all when the activity filter evicts the currently selected module', () => {
       setup('o1');
       fixture.detectChanges();
 
-      fixture.componentInstance.onFilterFieldChanged({ key: 'priority', values: ['high'] });
+      // o2 ("Child") is active with no inactive descendants, so it disappears from the
+      // inactive-filtered option list entirely.
+      fixture.componentInstance.onModuleFilterChanged('o2');
+      fixture.detectChanges();
+      expect(fixture.componentInstance.selectedModuleFilter()).toBe('o2');
+
+      fixture.componentInstance.onActivityFilterChanged('inactive');
       fixture.detectChanges();
 
-      expect(highlightedTitles()).toEqual(['Shared Task', 'Shared Task']);
-      expect(fixture.nativeElement.querySelector('[data-testid="highlight-match-count"]').textContent.trim()).toBe('2 matches');
+      expect(fixture.componentInstance.selectedModuleFilter()).toBe('all');
+      const rendered = fixture.componentInstance.renderedTree();
+      expect(rendered?.children.map((c) => c.id)).toEqual(['o4']);
     });
 
-    it('loads every leaf module\'s sprints and tasks once a filter is active, so task-level fields can match', () => {
+    it('keeps selectedModuleFilter unchanged when the newly selected activity filter still includes the selected module', () => {
       setup('o1');
       fixture.detectChanges();
-      storeStub.loadSprintsAndTasksForLeaf.mockClear();
-      fixture.componentInstance.onFilterFieldChanged({ key: 'priority', values: ['high'] });
-      const loaded = storeStub.loadSprintsAndTasksForLeaf.mock.calls.map((call: unknown[]) => call[0]).sort();
-      expect(loaded).toEqual(['o2', 'o3', 'o4']);
+
+      fixture.componentInstance.onModuleFilterChanged('o2');
+      fixture.detectChanges();
+
+      fixture.componentInstance.onActivityFilterChanged('active');
+      fixture.detectChanges();
+
+      expect(fixture.componentInstance.selectedModuleFilter()).toBe('o2');
     });
+  });
 
-    it('auto-expands the ancestors of a match hidden in a collapsed branch', () => {
-      storeStub.selectedSubtree = () => deepTree;
-      setup('o1');
-      fixture.detectChanges();
-      expect(titles()).not.toContain('Grandchild');
+  describe('moduleFilterOptions ancestor independence (Finding 3)', () => {
+    const inactiveGrandchild: MilestoneTreeNode = {
+      id: 'g1', title: 'Inactive Grandchild', description: null, startDate: '2026-01-10', endDate: '2026-02-01',
+      progress: 0, allocatedHours: 0, completedHours: 0, isActive: false, isAchieved: false,
+      ownerName: null, isOwner: true, children: [], kind: 'objective'
+    };
+    const activeRootWithInactiveDescendant: MilestoneTreeNode = {
+      id: 'r1', title: 'Active Root', description: null, startDate: '2026-01-01', endDate: '2026-12-01',
+      progress: 0, allocatedHours: 0, completedHours: 0, isActive: true, isAchieved: false,
+      ownerName: null, isOwner: true, children: [inactiveGrandchild], kind: 'objective'
+    };
 
-      fixture.componentInstance.onFilterFieldChanged({ key: 'owner', values: ['e9'] });
+    it('excludes an active ancestor from moduleFilterOptions under the inactive filter, even though it would remain visible in the tree for path preservation', () => {
+      setup('r1');
+      storeStub.selectedSubtree = () => activeRootWithInactiveDescendant;
       fixture.detectChanges();
-      expect(titles()).toContain('Grandchild');
-      expect(highlightedTitles()).toEqual(['Grandchild']);
-    });
 
-    it('expand all opens every branch and loads the whole tree; clicking again collapses it', async () => {
-      storeStub.selectedSubtree = () => deepTree;
-      setup('o1');
+      fixture.componentInstance.onActivityFilterChanged('inactive');
       fixture.detectChanges();
-      storeStub.loadSprintsAndTasksForLeaf.mockClear();
-      const toggle = () => fixture.nativeElement.querySelector('[data-testid="expand-all-toggle"]') as HTMLButtonElement;
-      expect(toggle().textContent).toContain('Expand all');
 
-      toggle().click();
-      fixture.detectChanges();
-      expect(titles()).toContain('Grandchild');
-      expect(storeStub.loadSprintsAndTasksForLeaf).toHaveBeenCalled();
-      expect(toggle().textContent).toContain('Collapse all');
+      const ids = fixture.componentInstance.moduleFilterOptions().map((o) => o.id);
+      expect(ids).toEqual(['g1']);
+      expect(ids).not.toContain('r1');
 
-      toggle().click();
-      fixture.detectChanges();
-      // The root stays open so the first level remains visible.
-      expect(titles()).not.toContain('Grandchild');
-      expect(titles()).toEqual(expect.arrayContaining(['Root', 'Child']));
+      // Meanwhile renderedTree legitimately keeps the active root visible as a path-preserving ancestor.
+      const rendered = fixture.componentInstance.renderedTree();
+      expect(rendered?.id).toBe('r1');
     });
   });
 
@@ -722,8 +733,7 @@ describe('MilestoneTreeTabComponent', () => {
         dueDate: null, estimatedHours: 3, completedHours: 0, progressPercent: 0,
         sprintId: 'spr-1', assigneeEmployeeIds: [], openClockSessionEmployeeId: null, openClockSessionClockInAt: null, totalLoggedMinutes: 0,
         attachments: [], assignees: [],
-        parentTaskId: null, subtaskTotalCount: 0, subtaskCompletedCount: 0, subtaskAssigneeEmployeeIds: [],
-        createdAt: new Date('2026-01-01T00:00:00Z')
+        parentTaskId: null, subtaskTotalCount: 0, subtaskCompletedCount: 0, subtaskAssigneeEmployeeIds: []
       }
     };
 
@@ -847,46 +857,6 @@ describe('MilestoneTreeTabComponent', () => {
     fixture.componentInstance.onDeleteCancelled();
     expect(storeStub.deleteTask).not.toHaveBeenCalled();
     expect(fixture.componentInstance.deleteConfirmOpen()).toBe(false);
-  });
-
-  describe('sprint form binding stability (Finding 1)', () => {
-    const sprintNode: MilestoneTreeNode = {
-      ...child, id: 'spr-1', title: 'Sprint 1', kind: 'sprint', parentObjectiveId: 'o1',
-      isOwner: true, children: [], startDate: '2026-08-01', endDate: '2026-08-14', status: 'active'
-    };
-
-    it('keeps editSprintModel/editSprintModules referentially stable across repeated change-detection passes', async () => {
-      setup('o1');
-      fixture.detectChanges();
-
-      await fixture.componentInstance.onEditRequested(sprintNode);
-      fixture.detectChanges();
-
-      const modelA = fixture.componentInstance.editSprintModel();
-      const modulesA = fixture.componentInstance.editSprintModules();
-      fixture.detectChanges();
-      fixture.detectChanges();
-      const modelB = fixture.componentInstance.editSprintModel();
-      const modulesB = fixture.componentInstance.editSprintModules();
-
-      expect(modelB).toBe(modelA);
-      expect(modulesB).toBe(modulesA);
-    });
-
-    it('keeps createSprintModules referentially stable across repeated change-detection passes', () => {
-      setup('o1');
-      fixture.detectChanges();
-
-      fixture.componentInstance.onCreateSprintRequested(tree);
-      fixture.detectChanges();
-
-      const modulesA = fixture.componentInstance.createSprintModules();
-      fixture.detectChanges();
-      fixture.detectChanges();
-      const modulesB = fixture.componentInstance.createSprintModules();
-
-      expect(modulesB).toBe(modulesA);
-    });
   });
 
   it('opens the task modal in create mode with just the module from a module row', () => {

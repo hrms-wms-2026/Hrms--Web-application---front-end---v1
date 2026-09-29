@@ -11,15 +11,16 @@ describe('LeaveRequestStore', () => {
 
   const mockResponse: LeaveRequestResponse = {
     id: 'req-1', employeeId: 'emp-1', leaveTypeId: 'type-1', leaveTypeName: 'Annual Leave', leaveTypeCode: 'ANNUAL',
-    startAt: '2026-09-10T09:00:00.000Z', endAt: '2026-09-12T18:00:00.000Z', totalHours: 24, paidHours: 24, unpaidHours: 0,
+    startDate: '2026-09-10', endDate: '2026-09-12', halfDayPeriod: null, totalDays: 3, paidDays: 3, unpaidDays: 0,
     status: 'pending', noticePeriodMissed: false, submittedOnBehalfOfBy: null,
-    balanceImpact: { currentRemainingHours: 17, pendingAfterSubmitHours: 3, remainingAfterSubmitHours: 14 },
+    balanceImpact: { currentRemainingDays: 17, pendingAfterSubmitDays: 3, remainingAfterSubmitDays: 14 },
     approvers: [], conflictSnapshot: { warnings: [], calendarConflicts: [], teamAbsencePercent: null },
     createdAt: '2026-08-25T00:00:00Z'
   };
 
   const payload: SubmitLeaveRequestRequest = {
-    leaveTypeId: 'type-1', startAt: '2026-09-10T09:00:00.000Z', endAt: '2026-09-12T18:00:00.000Z', reason: 'Trip', fileRecordIds: []
+    leaveTypeId: 'type-1', startDate: '2026-09-10', endDate: '2026-09-12',
+    halfDayPeriod: null, reason: 'Trip', fileRecordIds: []
   };
 
   beforeEach(() => {
@@ -104,7 +105,7 @@ describe('LeaveRequestStore', () => {
   it('cancels a request and reloads my requests', async () => {
     const cancelResponse: CancelLeaveRequestResponse = {
       requestId: 'req-1', status: 'cancelled', isPartialCancellation: false, effectiveDate: null,
-      releasedPendingHours: 3, restoredUsedHours: 0, remainingHours: 17, reason: 'Plans changed', cancelledAt: '2026-08-30T00:00:00Z'
+      releasedPendingDays: 3, restoredUsedDays: 0, remainingDays: 17, reason: 'Plans changed', cancelledAt: '2026-08-30T00:00:00Z'
     };
     const cancelling = store.cancel('req-1', { reason: 'Plans changed', effectiveDate: null, expectedVersion: null });
     httpMock.expectOne(`${environment.apiUrl}/leave/requests/req-1/cancel`).flush(cancelResponse);

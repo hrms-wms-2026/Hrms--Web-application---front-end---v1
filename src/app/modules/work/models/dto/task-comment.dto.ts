@@ -1,14 +1,8 @@
 import { AttachmentPill } from '../../ui/task-attachment-list/task-attachment-list.component';
 
-export interface TaskCommentReactorDto {
-  employeeId: string;
-  name: string;
-}
-
 export interface TaskCommentReactionDto {
   emoji: string;
   employeeIds: string[];
-  reactors: TaskCommentReactorDto[];
 }
 
 export interface TaskCommentDto {

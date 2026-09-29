@@ -26,7 +26,7 @@ export interface SprintMoveTarget {
         @if (blockedReason(); as reason) {
           <p class="move-tasks-dialog__blocked" role="alert">{{ reason }}</p>
         } @else if (targets().length === 0) {
-          <p class="move-tasks-dialog__empty">No Draft or Active sprints in this project yet. Create one first.</p>
+          <p class="move-tasks-dialog__empty">No draft sprints available in this module yet. Create one first.</p>
         } @else {
           <div class="move-tasks-dialog__list" role="radiogroup" aria-label="Select a sprint">
             @for (target of targets(); track target.sprint.id) {
@@ -44,7 +44,7 @@ export interface SprintMoveTarget {
                 <div class="move-tasks-dialog__option-body">
                   <div class="move-tasks-dialog__option-header">
                     <span class="move-tasks-dialog__option-name">{{ target.sprint.name }}</span>
-                    <span class="move-tasks-dialog__option-badge">{{ target.sprint.status === 'active' ? 'ACTIVE' : 'DRAFT' }}</span>
+                    <span class="move-tasks-dialog__option-badge">DRAFT</span>
                   </div>
                   @if (target.sprint.goal) {
                     <p class="move-tasks-dialog__option-goal">{{ target.sprint.goal }}</p>
@@ -103,14 +103,6 @@ export interface SprintMoveTarget {
     .move-tasks-dialog__workload-after { font-weight: 600; color: var(--color-text-primary); }
     .move-tasks-dialog__error { color: var(--color-danger-text, var(--color-danger)); font-size: 12px; margin: 0; }
     .move-tasks-dialog__actions { display: flex; justify-content: flex-end; gap: 8px; }
-    .move-tasks-dialog__actions ::ng-deep app-button > button {
-      width: auto;
-      height: 30px;
-      padding: 0 12px;
-      border-radius: 8px;
-      font-size: 13px;
-      font-weight: 500;
-    }
   `]
 })
 export class MoveTasksToSprintDialogComponent {

@@ -29,6 +29,4 @@ export interface CreateTaskEditRequestDto {
   progressPercent?: number;
   reason?: string;
   sprintId?: string | null;
-  categoryId?: string;
-  objectiveId?: string;
 }

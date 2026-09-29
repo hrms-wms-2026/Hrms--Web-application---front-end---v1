@@ -2,7 +2,7 @@ export type SprintStatus = 'draft' | 'active' | 'complete' | 'achieved';
 
 export interface Sprint {
   id: string;
-  projectId: string;
+  objectiveId: string;
   name: string;
   goal: string | null;
   startDate: Date | null;
@@ -10,5 +10,4 @@ export interface Sprint {
   status: SprintStatus;
   completedAt: Date | null;
   achievedAt: Date | null;
-  canManage: boolean;
 }

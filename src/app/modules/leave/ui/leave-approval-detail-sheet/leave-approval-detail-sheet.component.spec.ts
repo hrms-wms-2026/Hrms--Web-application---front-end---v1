@@ -7,15 +7,15 @@ describe('LeaveApprovalDetailSheetComponent', () => {
 
   const detail: LeaveApprovalDetailResponse = {
     requestId: 'req-1', employeeId: 'emp-1', employeeName: 'Anu Raman', leaveTypeId: 'type-1',
-    leaveTypeName: 'Annual Leave', leaveTypeCode: 'ANNUAL', startAt: '2026-09-10', endAt: '2026-09-12',
-    totalHours: 3, paidHours: 3, unpaidHours: 0, status: 'pending', reason: 'Family trip',
+    leaveTypeName: 'Annual Leave', leaveTypeCode: 'ANNUAL', startDate: '2026-09-10', endDate: '2026-09-12',
+    totalDays: 3, paidDays: 3, unpaidDays: 0, status: 'pending', reason: 'Family trip',
     approvers: [
-      { approverEmployeeId: 'mgr-1', approverName: 'Priya Nair', sequenceOrder: 1, status: 'pending', comment: null, delegatedFromApproverId: null, decidedAt: null }
+      { approverEmployeeId: 'mgr-1', sequenceOrder: 1, status: 'pending', comment: null, delegatedFromApproverId: null, decidedAt: null }
     ],
     infoMessages: [],
     submissionConflictSnapshotJson: JSON.stringify({ warnings: [], calendarConflicts: [], teamAbsencePercent: null }),
     currentWarnings: [{ code: 'blackout_period', message: 'Overlaps a configured blackout period.' }],
-    remainingHours: 17
+    remainingDays: 17
   };
 
   beforeEach(async () => {
@@ -37,20 +37,6 @@ describe('LeaveApprovalDetailSheetComponent', () => {
   it('renders current warnings', () => {
     fixture.detectChanges();
     expect(fixture.nativeElement.textContent).toContain('Overlaps a configured blackout period.');
-  });
-
-  it('marks a current warning as NEW when it was not in the submission snapshot', () => {
-    fixture.detectChanges();
-    expect(fixture.nativeElement.querySelector('[data-testid="warning-new"]')?.textContent?.trim()).toBe('NEW');
-  });
-
-  it('shows team coverage when the submission snapshot includes a percent', () => {
-    fixture.componentRef.setInput('detail', {
-      ...detail,
-      submissionConflictSnapshotJson: JSON.stringify({ warnings: [], calendarConflicts: [], teamAbsencePercent: 40 })
-    });
-    fixture.detectChanges();
-    expect(fixture.nativeElement.querySelector('[data-testid="team-coverage"]')?.textContent).toContain('40%');
   });
 
   it('opens the reject form and requires a reason before emitting', () => {

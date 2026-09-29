@@ -22,7 +22,7 @@ const CURATED_EMOJI = [
     </div>
   `,
   styles: [`
-    .ep-popover { padding: 8px; border-radius: 8px; background: var(--color-surface); box-shadow: 0 8px 24px rgb(15 23 42 / .18); border: 1px solid var(--color-border); max-width: 260px; }
+    .ep-popover { position: absolute; z-index: 20; margin-top: 4px; padding: 8px; border-radius: 8px; background: var(--color-surface); box-shadow: 0 8px 24px rgb(15 23 42 / .18); border: 1px solid var(--color-border); max-width: 260px; }
     .ep-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 4px; max-height: 200px; overflow-y: auto; }
     .ep-emoji { border: none; background: none; cursor: pointer; font-size: 18px; padding: 4px; border-radius: 6px; }
     .ep-emoji:hover { background: var(--color-surface-secondary); }

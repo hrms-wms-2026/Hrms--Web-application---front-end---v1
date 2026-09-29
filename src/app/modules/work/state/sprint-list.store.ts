@@ -4,10 +4,7 @@ import { firstValueFrom } from 'rxjs';
 import { SprintApiService } from '../data-access/sprint-api.service';
 import { toSprint } from '../utils/sprint.mapper';
 import { Sprint } from '../models/sprint.model';
-import {
-  CompleteSprintRequestDto, CreateSprintRequestDto, EditSprintRequestDto, SetSprintTasksRequestDto,
-  StartSprintRequestDto
-} from '../models/dto/sprint.dto';
+import { CompleteSprintRequestDto, CreateSprintRequestDto, EditSprintRequestDto, StartSprintRequestDto } from '../models/dto/sprint.dto';
 
 interface SprintListState {
   readonly sprints: readonly Sprint[];
@@ -35,11 +32,21 @@ export const SprintListStore = signalStore(
       }
     },
 
-    async create(projectId: string, request: CreateSprintRequestDto): Promise<boolean> {
+    async load(objectiveId: string, activeOnly: boolean): Promise<void> {
+      patchState(store, { loading: true, error: null });
+      try {
+        const dtos = await firstValueFrom(api.getByObjective(objectiveId, activeOnly));
+        patchState(store, { sprints: dtos.map(toSprint), loading: false });
+      } catch (err) {
+        patchState(store, { error: extractError(err, 'Failed to load sprints.'), loading: false });
+      }
+    },
+
+    async create(objectiveId: string, request: CreateSprintRequestDto, activeOnly: boolean, projectId?: string): Promise<boolean> {
       patchState(store, { error: null });
       try {
-        await firstValueFrom(api.create(projectId, request));
-        await this.loadForProject(projectId);
+        await firstValueFrom(api.create(objectiveId, request));
+        await (projectId ? this.loadForProject(projectId) : this.load(objectiveId, activeOnly));
         return true;
       } catch (err) {
         patchState(store, { error: extractError(err, 'Failed to create the sprint.') });
@@ -47,23 +54,11 @@ export const SprintListStore = signalStore(
       }
     },
 
-    async setTasks(sprintId: string, request: SetSprintTasksRequestDto, projectId: string): Promise<boolean> {
-      patchState(store, { error: null });
-      try {
-        await firstValueFrom(api.setTasks(sprintId, request));
-        await this.loadForProject(projectId);
-        return true;
-      } catch (err) {
-        patchState(store, { error: extractError(err, 'Failed to update the sprint tasks.') });
-        return false;
-      }
-    },
-
-    async start(sprintId: string, request: StartSprintRequestDto, projectId: string): Promise<boolean> {
+    async start(sprintId: string, request: StartSprintRequestDto, objectiveId: string, activeOnly: boolean, projectId?: string): Promise<boolean> {
       patchState(store, { error: null });
       try {
         await firstValueFrom(api.start(sprintId, request));
-        await this.loadForProject(projectId);
+        await (projectId ? this.loadForProject(projectId) : this.load(objectiveId, activeOnly));
         return true;
       } catch (err) {
         patchState(store, { error: extractError(err, 'Failed to start the sprint.') });
@@ -71,11 +66,11 @@ export const SprintListStore = signalStore(
       }
     },
 
-    async edit(sprintId: string, request: EditSprintRequestDto, projectId: string): Promise<boolean> {
+    async edit(sprintId: string, request: EditSprintRequestDto, objectiveId: string, activeOnly: boolean, projectId?: string): Promise<boolean> {
       patchState(store, { error: null });
       try {
         await firstValueFrom(api.edit(sprintId, request));
-        await this.loadForProject(projectId);
+        await (projectId ? this.loadForProject(projectId) : this.load(objectiveId, activeOnly));
         return true;
       } catch (err) {
         patchState(store, { error: extractError(err, 'Failed to update the sprint.') });
@@ -83,11 +78,11 @@ export const SprintListStore = signalStore(
       }
     },
 
-    async complete(sprintId: string, request: CompleteSprintRequestDto, projectId: string): Promise<boolean> {
+    async complete(sprintId: string, request: CompleteSprintRequestDto, objectiveId: string, activeOnly: boolean, projectId?: string): Promise<boolean> {
       patchState(store, { error: null });
       try {
         await firstValueFrom(api.complete(sprintId, request));
-        await this.loadForProject(projectId);
+        await (projectId ? this.loadForProject(projectId) : this.load(objectiveId, activeOnly));
         return true;
       } catch (err) {
         patchState(store, { error: extractError(err, 'Every task in this sprint must be complete first.') });
@@ -95,11 +90,11 @@ export const SprintListStore = signalStore(
       }
     },
 
-    async achieve(sprintId: string, projectId: string): Promise<boolean> {
+    async achieve(sprintId: string, objectiveId: string, activeOnly: boolean, projectId?: string): Promise<boolean> {
       patchState(store, { error: null });
       try {
         await firstValueFrom(api.achieve(sprintId));
-        await this.loadForProject(projectId);
+        await (projectId ? this.loadForProject(projectId) : this.load(objectiveId, activeOnly));
         return true;
       } catch (err) {
         patchState(store, { error: extractError(err, 'Failed to achieve the sprint.') });

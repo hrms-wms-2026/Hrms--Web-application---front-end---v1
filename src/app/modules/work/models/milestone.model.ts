@@ -41,8 +41,6 @@ export interface MilestoneTreeNode {
   isActive: boolean;
   isAchieved: boolean;
   ownerName: string | null;
-  /** Module owner's employee id; absent on sprint/task nodes (tasks use taskSource.assigneeEmployeeIds). */
-  ownerId?: string | null;
   isOwner: boolean;
   children: MilestoneTreeNode[];
   kind?: MilestoneTreeNodeKind;

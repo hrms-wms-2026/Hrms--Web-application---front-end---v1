@@ -4,7 +4,6 @@ Layout and rules: see `../rules/FILE_CREATION_RULES.md`.
 
 | Plan / Report | Status | Location | Date |
 |---|---|---|---|
-| Time Off remaining gaps | pending | `next/2026-09-10-time-off-remaining-gaps.md` | 2026-09-10 |
 | Core Auth: Login + Legal Consent Gate | finished | `finished/2026-07-28/2026-07-28-core-auth-login-legal-consent.md` | 2026-07-28 |
 | Dashboard Skeleton Redesign | finished | `finished/2026-07-30/2026-07-30-dashboard-skeleton-redesign.md` | 2026-07-30 |
 | Frontend Auth HTTPS + Tenant-Subdomain Redirect Fix Report | finished | `finished/2026-08-03/FRONTEND_AUTH_HTTPS_TENANT_REDIRECT_FIX_REPORT.md` | 2026-08-03 (inferred from git history) |

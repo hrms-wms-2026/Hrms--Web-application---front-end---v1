@@ -3,20 +3,25 @@ import { of } from 'rxjs';
 import { vi } from 'vitest';
 import { EmployeeDirectoryStore } from './employee-directory.store';
 import { PeopleApiService } from '../../people/data-access/people-api.service';
-import { EmployeeIdentityResponse } from '../../people/models/employee.model';
+import { EmployeeListItemResponse } from '../../people/models/employee.model';
 import { FileApiService } from '../../../shared/data-access/file-api.service';
 
 describe('EmployeeDirectoryStore', () => {
   let store: InstanceType<typeof EmployeeDirectoryStore>;
-  let getEmployeeIdentitySpy: ReturnType<typeof vi.fn>;
+  let getEmployeeSpy: ReturnType<typeof vi.fn>;
 
-  const identity: EmployeeIdentityResponse = { id: 'emp-1', name: 'Nevi Peiris', avatarFileId: null };
+  const employee: EmployeeListItemResponse = {
+    id: 'emp-1', employeeNumber: 'E1', fullName: 'Nevi Peiris', email: 'nevi@dapi.test',
+    departmentId: null, departmentName: null, positionId: null, positionName: null,
+    legalEntityId: null, legalEntityName: null, employmentTypeLabel: 'Full-time', status: 'active',
+    reportingManagerId: null, reportingManagerName: null
+  };
 
   beforeEach(() => {
-    getEmployeeIdentitySpy = vi.fn(() => of(identity));
+    getEmployeeSpy = vi.fn(() => of(employee));
     TestBed.configureTestingModule({
       providers: [
-        { provide: PeopleApiService, useValue: { getEmployeeIdentity: getEmployeeIdentitySpy } },
+        { provide: PeopleApiService, useValue: { getEmployee: getEmployeeSpy } },
         { provide: FileApiService, useValue: { getFileUrl: (id: string) => `https://api.test/files/${id}` } }
       ]
     });
@@ -33,7 +38,7 @@ describe('EmployeeDirectoryStore', () => {
   });
 
   it('ensureLoaded resolves avatarFileId through FileApiService', async () => {
-    getEmployeeIdentitySpy.mockReturnValue(of({ ...identity, avatarFileId: 'file-1' }));
+    getEmployeeSpy.mockReturnValue(of({ ...employee, avatarFileId: 'file-1' }));
 
     await store.ensureLoaded(['emp-1']);
 
@@ -44,7 +49,7 @@ describe('EmployeeDirectoryStore', () => {
     await store.ensureLoaded(['emp-1']);
     await store.ensureLoaded(['emp-1']);
 
-    expect(getEmployeeIdentitySpy).toHaveBeenCalledTimes(1);
+    expect(getEmployeeSpy).toHaveBeenCalledTimes(1);
   });
 
   it('get() returns undefined for an id never loaded', () => {
@@ -57,22 +62,23 @@ describe('EmployeeDirectoryStore', () => {
 
     await Promise.all([p1, p2]);
 
-    expect(getEmployeeIdentitySpy).toHaveBeenCalledTimes(1);
+    expect(getEmployeeSpy).toHaveBeenCalledTimes(1);
     expect(store.get('emp-1')?.name).toBe('Nevi Peiris');
   });
 
-  // GET /employees/{id}/identity requires only authentication (no employees:read), so a failure
-  // here should just mean the employee no longer exists (404) - still cached as an unresolved
-  // placeholder instead of left re-fetchable forever, guarding the same request-storm as before.
+  // A 403 from the coverage-scoped GET /employees/{id} is the common case for an assignee outside
+  // the viewer's management coverage, not a rare error - without caching it as an unresolved
+  // placeholder, every fresh component mount that needs this id would retry the same doomed
+  // request forever (the request-storm this test guards against).
   it('caches a failed lookup as an unresolved placeholder instead of leaving it re-fetchable forever', async () => {
     const { throwError } = await import('rxjs');
-    getEmployeeIdentitySpy.mockReturnValue(throwError(() => ({ status: 404 })));
+    getEmployeeSpy.mockReturnValue(throwError(() => ({ status: 403 })));
 
-    await store.ensureLoaded(['emp-404']);
-    expect(store.get('emp-404')?.name).toBe('Unknown employee');
-    expect(getEmployeeIdentitySpy).toHaveBeenCalledTimes(1);
+    await store.ensureLoaded(['emp-403']);
+    expect(store.get('emp-403')?.name).toBe('Unknown employee');
+    expect(getEmployeeSpy).toHaveBeenCalledTimes(1);
 
-    await store.ensureLoaded(['emp-404']);
-    expect(getEmployeeIdentitySpy).toHaveBeenCalledTimes(1);
+    await store.ensureLoaded(['emp-403']);
+    expect(getEmployeeSpy).toHaveBeenCalledTimes(1);
   });
 });

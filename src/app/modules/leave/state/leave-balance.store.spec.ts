@@ -36,15 +36,5 @@ describe('LeaveBalanceStore', () => { let store: InstanceType<typeof LeaveBalanc
     expect(store.allError()).toBeTruthy();
     expect(store.allLoading()).toBe(false);
   });
-
-  it('loads the work window for request defaults', async () => {
-    const work = store.loadWorkWindow();
-    http.expectOne(`${environment.apiUrl}/leave/balances/work-window`).flush({
-      workStartTime: '09:00', workEndTime: '18:00', breakDurationMinutes: 60, timezone: 'UTC'
-    });
-    await work;
-    expect(store.workWindow()?.workStartTime).toBe('09:00');
-    expect(store.workWindow()?.timezone).toBe('UTC');
-  });
 });
 

@@ -26,8 +26,7 @@ describe('TaskApiService', () => {
     const mockTasks: WorkTaskDto[] = [{
       id: 't-1', objectiveId, shortId: 'PRJ-1', title: 'Do it', description: null,
       categoryId: 'task', statusId: 's-1', priority: 'medium', storyPoints: null,
-      dueDate: null, estimatedHours: 5, completedHours: 0, progressPercent: 0, sprintId: null, assigneeEmployeeIds: [], openClockSessionEmployeeId: null, openClockSessionClockInAt: null, totalLoggedMinutes: 0,
-      createdAt: '2026-01-01T00:00:00Z'
+      dueDate: null, estimatedHours: 5, completedHours: 0, progressPercent: 0, sprintId: null, assigneeEmployeeIds: [], openClockSessionEmployeeId: null, openClockSessionClockInAt: null, totalLoggedMinutes: 0
     }];
 
     service.getTasks(objectiveId).subscribe((tasks) => {
@@ -44,8 +43,7 @@ describe('TaskApiService', () => {
     const mockTasks: WorkTaskDto[] = [{
       id: 't-1', objectiveId: 'obj-1', shortId: 'PRJ-1', title: 'Do it', description: null,
       categoryId: 'task', statusId: 's-1', priority: 'medium', storyPoints: null,
-      dueDate: null, estimatedHours: 5, completedHours: 0, progressPercent: 0, sprintId, assigneeEmployeeIds: [], openClockSessionEmployeeId: null, openClockSessionClockInAt: null, totalLoggedMinutes: 0,
-      createdAt: '2026-01-01T00:00:00Z'
+      dueDate: null, estimatedHours: 5, completedHours: 0, progressPercent: 0, sprintId, assigneeEmployeeIds: [], openClockSessionEmployeeId: null, openClockSessionClockInAt: null, totalLoggedMinutes: 0
     }];
 
     service.getBySprintId(sprintId).subscribe((tasks) => {
@@ -62,48 +60,6 @@ describe('TaskApiService', () => {
     const req = httpMock.expectOne(`${environment.apiUrl}/work/tasks/t-1`);
     expect(req.request.method).toBe('DELETE');
     req.flush(null);
-  });
-
-  it('duplicateTask POSTs the duplicate payload and returns the new task', () => {
-    const mockTask: WorkTaskDto = {
-      id: 't-2', objectiveId: 'obj-1', shortId: 'PRJ-2', title: 'Do it (copy)', description: null,
-      categoryId: 'task', statusId: 's-1', priority: 'medium', storyPoints: null,
-      dueDate: null, estimatedHours: 5, completedHours: 0, progressPercent: 0, sprintId: null,
-      assigneeEmployeeIds: [], openClockSessionEmployeeId: null, openClockSessionClockInAt: null, totalLoggedMinutes: 0,
-      createdAt: '2026-01-01T00:00:00Z'
-    };
-    const payload = {
-      destinationObjectiveId: 'obj-1', title: 'Do it (copy)',
-      copyAttachments: true, copyAssignees: true, copyComments: false, copyDueDate: true
-    };
-
-    service.duplicateTask('t-1', payload).subscribe((task) => {
-      expect(task).toEqual(mockTask);
-    });
-
-    const req = httpMock.expectOne(`${environment.apiUrl}/work/tasks/t-1/duplicate`);
-    expect(req.request.method).toBe('POST');
-    expect(req.request.body).toEqual(payload);
-    req.flush(mockTask);
-  });
-
-  it('convertToSubtask POSTs the new parent task id and returns the updated task', () => {
-    const mockTask: WorkTaskDto = {
-      id: 't-1', objectiveId: 'obj-2', shortId: 'PRJ-1', title: 'Task 2', description: null,
-      categoryId: 'task', statusId: 's-1', priority: 'medium', storyPoints: null,
-      dueDate: null, estimatedHours: null, completedHours: 0, progressPercent: 0, sprintId: null,
-      assigneeEmployeeIds: [], openClockSessionEmployeeId: null, openClockSessionClockInAt: null, totalLoggedMinutes: 0,
-      parentTaskId: 't-3', createdAt: '2026-01-01T00:00:00Z'
-    };
-
-    service.convertToSubtask('t-1', { newParentTaskId: 't-3' }).subscribe((task) => {
-      expect(task).toEqual(mockTask);
-    });
-
-    const req = httpMock.expectOne(`${environment.apiUrl}/work/tasks/t-1/convert-to-subtask`);
-    expect(req.request.method).toBe('POST');
-    expect(req.request.body).toEqual({ newParentTaskId: 't-3' });
-    req.flush(mockTask);
   });
 
 it('getStatuses fetches task statuses for a project', () => {
@@ -184,8 +140,7 @@ it('getStatuses fetches task statuses for a project', () => {
     const mockTask: WorkTaskDto = {
       id: 't-1', objectiveId: 'obj-1', shortId: 'PRJ-1', title: 'Updated Title', description: 'Updated Description',
       categoryId: 'task', statusId: 's-1', priority: 'high', storyPoints: 5,
-      dueDate: '2024-12-31', estimatedHours: 10, completedHours: 0, progressPercent: 0, sprintId: null, assigneeEmployeeIds: [], openClockSessionEmployeeId: null, openClockSessionClockInAt: null, totalLoggedMinutes: 0,
-      createdAt: '2026-01-01T00:00:00Z'
+      dueDate: '2024-12-31', estimatedHours: 10, completedHours: 0, progressPercent: 0, sprintId: null, assigneeEmployeeIds: [], openClockSessionEmployeeId: null, openClockSessionClockInAt: null, totalLoggedMinutes: 0
     };
 
     service.approveTaskEditRequest(editRequestId).subscribe((response) => {
@@ -374,15 +329,6 @@ it('reorderTaskStatuses posts to projects/{projectId}/task-statuses/reorder', ()
     const req = httpMock.expectOne(`${environment.apiUrl}/work/tasks/pending-uploads/f1`);
     expect(req.request.method).toBe('DELETE');
     req.flush(null);
-  });
-
-  it('downloadFile fetches the task file as a blob', () => {
-    const response = new Blob(['contents'], { type: 'text/plain' });
-    service.downloadFile('f1').subscribe((blob) => expect(blob).toBe(response));
-    const req = httpMock.expectOne(`${environment.apiUrl}/work/tasks/files/f1`);
-    expect(req.request.method).toBe('GET');
-    expect(req.request.responseType).toBe('blob');
-    req.flush(response);
   });
 
   it('getFileUrl builds the content url', () => {

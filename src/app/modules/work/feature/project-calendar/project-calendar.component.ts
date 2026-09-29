@@ -1,10 +1,8 @@
-import { AfterViewInit, Component, ElementRef, OnDestroy, OnInit, TemplateRef, computed, inject, signal, viewChild } from '@angular/core';
+import { AfterViewInit, Component, ElementRef, OnDestroy, OnInit, computed, inject, signal, viewChild } from '@angular/core';
 import { ActivatedRoute } from '@angular/router';
 import { CalendarEventLegendComponent } from '../../ui/calendar-event-legend/calendar-event-legend.component';
 import { CalendarEventModalComponent } from '../../ui/calendar-event-modal/calendar-event-modal.component';
 import { ObjectiveTimelineBarComponent } from '../../ui/objective-timeline-bar/objective-timeline-bar.component';
-import { ButtonComponent } from '../../../../shared/ui/button/button.component';
-import { WorkPageToolbarStore } from '../../state/work-page-toolbar.store';
 import {
   CalendarDateChange,
   CalendarEventDto,
@@ -23,30 +21,29 @@ const BRANCH_PALETTE = ['#2563EB', '#0D9488', '#C026D3', '#EA580C', '#4F46E5', '
 @Component({
   selector: 'app-project-calendar',
   standalone: true,
-  imports: [ObjectiveTimelineBarComponent, CalendarEventModalComponent, CalendarEventLegendComponent, ButtonComponent],
+  imports: [ObjectiveTimelineBarComponent, CalendarEventModalComponent, CalendarEventLegendComponent],
   template: `
-    <ng-template #toolbarTpl>
-      <div class="project-calendar__toolbar">
-        <div class="project-calendar__zoom" data-testid="zoom-controls">
-          <button type="button" class="project-calendar__zoom-step" aria-label="Zoom out" [disabled]="isAtMinZoom()" (click)="zoomOut()">
-            <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="7" /><path d="m21 21-4.3-4.3M8 11h6" /></svg>
-          </button>
-          <button type="button" class="project-calendar__zoom-fit" data-testid="fit-to-screen" (click)="fitToScreen()">Fit</button>
-          <button type="button" class="project-calendar__zoom-step" aria-label="Zoom in" [disabled]="isAtMaxZoom()" (click)="zoomIn()">
-            <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="7" /><path d="m21 21-4.3-4.3M11 8v6M8 11h6" /></svg>
+    <section class="project-calendar" data-testid="project-calendar">
+      <header class="project-calendar__header">
+        <div class="project-calendar__heading">
+          <h1 class="project-calendar__title">Objective timeline</h1>
+        </div>
+        <div class="project-calendar__actions">
+          <div class="project-calendar__zoom" data-testid="zoom-controls">
+            <button type="button" class="project-calendar__zoom-step" aria-label="Zoom out" [disabled]="isAtMinZoom()" (click)="zoomOut()">
+              <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="7" /><path d="m21 21-4.3-4.3M8 11h6" /></svg>
+            </button>
+            <button type="button" class="project-calendar__zoom-fit" data-testid="fit-to-screen" (click)="fitToScreen()">Fit</button>
+            <button type="button" class="project-calendar__zoom-step" aria-label="Zoom in" [disabled]="isAtMaxZoom()" (click)="zoomIn()">
+              <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="7" /><path d="m21 21-4.3-4.3M11 8v6M8 11h6" /></svg>
+            </button>
+          </div>
+          <button type="button" class="project-calendar__create" [disabled]="store.loading() || !store.modules().length" (click)="openCreateEvent()">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M5 12h14" /></svg>
+            <span>Create milestone</span>
           </button>
         </div>
-        <app-button
-          variant="primary"
-          [disabled]="store.loading() || !store.modules().length"
-          (pressed)="openCreateEvent()"
-        >
-          Create milestone
-        </app-button>
-      </div>
-    </ng-template>
-
-    <section class="project-calendar" data-testid="project-calendar">
+      </header>
 
       @if (store.error()) {
         <div class="project-calendar__error" role="alert">{{ store.error() }}</div>
@@ -154,7 +151,6 @@ const BRANCH_PALETTE = ['#2563EB', '#0D9488', '#C026D3', '#EA580C', '#4F46E5', '
       <app-calendar-event-modal
         [event]="editingEvent()"
         [modules]="store.modules()"
-        [projectId]="projectId() ?? ''"
         (cancel)="modalOpen.set(false)"
         (save)="saveEvent($event)"
       />
@@ -162,17 +158,25 @@ const BRANCH_PALETTE = ['#2563EB', '#0D9488', '#C026D3', '#EA580C', '#4F46E5', '
   `,
   styles: [`
     :host { display: block; min-width: 0; }
-    .project-calendar__toolbar { display: flex; flex-wrap: wrap; align-items: center; justify-content: flex-end; gap: 8px; }
-    .project-calendar__toolbar ::ng-deep app-button > button { width: auto; height: 30px; padding: 0 12px; border-radius: 8px; font-size: 13px; }
-    .project-calendar__zoom { display: flex; align-items: center; gap: 2px; height: 30px; border: 1px solid var(--color-border); border-radius: 8px; padding: 0 3px; background: var(--color-surface); box-sizing: border-box; }
-    .project-calendar__zoom-step { display: flex; height: 22px; width: 22px; flex: 0 0 auto; align-items: center; justify-content: center; border: 0; border-radius: 6px; background: transparent; color: var(--color-text-secondary); cursor: pointer; transition: background-color 140ms ease, color 140ms ease; }
+    .project-calendar { display: flex; min-width: 0; flex-direction: column; gap: 12px; padding: 0 0 24px; color: var(--color-text-primary); }
+    .project-calendar__header { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 18px; }
+    .project-calendar__heading { min-width: 220px; }
+    .project-calendar__title { margin: 0; font-size: 24px; font-weight: 700; letter-spacing: -.02em; }
+    .project-calendar__actions { display: flex; flex-wrap: wrap; align-items: center; justify-content: flex-end; gap: 12px; }
+    .project-calendar__zoom { display: flex; align-items: center; gap: 2px; height: 38px; border: 1px solid var(--color-border); border-radius: 9px; padding: 0 4px; background: var(--color-surface); }
+    .project-calendar__zoom-step { display: flex; height: 26px; width: 26px; flex: 0 0 auto; align-items: center; justify-content: center; border: 0; border-radius: 7px; background: transparent; color: var(--color-text-secondary); cursor: pointer; transition: background-color 140ms ease, color 140ms ease; }
     .project-calendar__zoom-step:hover:not(:disabled) { background: var(--color-surface-secondary); color: var(--color-text-primary); }
     .project-calendar__zoom-step:disabled { cursor: not-allowed; opacity: .35; }
     .project-calendar__zoom-step:focus-visible { outline: 2px solid var(--color-focus-ring); outline-offset: 2px; }
-    .project-calendar__zoom-step svg { width: 14px; height: 14px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
-    .project-calendar__zoom-fit { height: 22px; flex: 0 0 auto; border: 0; border-left: 1px solid var(--color-border); border-right: 1px solid var(--color-border); margin: 0 2px; padding: 0 8px; background: transparent; color: var(--color-text-secondary); font: inherit; font-size: 11px; font-weight: 700; letter-spacing: .04em; text-transform: uppercase; cursor: pointer; transition: background-color 140ms ease, color 140ms ease; }
+    .project-calendar__zoom-step svg { width: 16px; height: 16px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+    .project-calendar__zoom-fit { height: 26px; flex: 0 0 auto; border: 0; border-left: 1px solid var(--color-border); border-right: 1px solid var(--color-border); margin: 0 2px; padding: 0 10px; background: transparent; color: var(--color-text-secondary); font: inherit; font-size: 11px; font-weight: 700; letter-spacing: .04em; text-transform: uppercase; cursor: pointer; transition: background-color 140ms ease, color 140ms ease; }
     .project-calendar__zoom-fit:hover { background: var(--color-surface-secondary); color: var(--color-text-primary); }
     .project-calendar__zoom-fit:focus-visible { outline: 2px solid var(--color-focus-ring); outline-offset: 2px; }
+    .project-calendar__create { display: inline-flex; flex: 0 0 auto; height: 38px; align-items: center; gap: 7px; border: 0; border-radius: 9px; padding: 0 12px; background: var(--color-accent); color: var(--color-accent-contrast, #fff); font: inherit; font-size: 13px; font-weight: 600; cursor: pointer; box-shadow: 0 5px 12px color-mix(in srgb, var(--color-accent) 22%, transparent); transition: filter 160ms ease, transform 160ms ease; }
+    .project-calendar__create:hover:not(:disabled) { filter: brightness(.96); transform: translateY(-1px); }
+    .project-calendar__create:disabled { cursor: not-allowed; opacity: .5; }
+    .project-calendar__create:focus-visible { outline: 2px solid var(--color-focus-ring); outline-offset: 2px; }
+    .project-calendar__create svg { width: 16px; height: 16px; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
     .project-calendar__error { border: 1px solid color-mix(in srgb, var(--color-danger) 30%, transparent); border-radius: 9px; padding: 11px 13px; background: color-mix(in srgb, var(--color-danger) 8%, var(--color-surface)); color: var(--color-danger); font-size: 13px; }
     .project-calendar__empty { border: 1px dashed var(--color-border); border-radius: 11px; padding: 42px 20px; color: var(--color-text-secondary); font-size: 13px; text-align: center; }
     .project-calendar__layout { display: grid; min-width: 0; grid-template-columns: minmax(0, 1fr) 220px; align-items: start; gap: 14px; }
@@ -213,13 +217,12 @@ const BRANCH_PALETTE = ['#2563EB', '#0D9488', '#C026D3', '#EA580C', '#4F46E5', '
     .project-calendar__objective-dates { margin: 4px 0 0 22px; color: var(--color-text-secondary); font-size: 11px; white-space: nowrap; }
     .project-calendar__track { position: relative; min-width: 0; overflow: hidden; border-left: 1px solid var(--color-border); }
     .project-calendar__grid-background { position: absolute; inset: 0; opacity: .5; }
-    @media (max-width: 900px) { .project-calendar__layout { grid-template-columns: minmax(0, 1fr); } }
+    @media (max-width: 900px) { .project-calendar__layout { grid-template-columns: minmax(0, 1fr); } .project-calendar__actions { width: 100%; justify-content: flex-start; } }
+    @media (max-width: 560px) { .project-calendar__actions { gap: 10px; } .project-calendar__create { flex: 1 1 150px; justify-content: center; } }
   `]
 })
 export class ProjectCalendarComponent implements OnInit, AfterViewInit, OnDestroy {
   readonly store = inject(ProjectCalendarStore);
-  private readonly toolbarStore = inject(WorkPageToolbarStore);
-  private readonly toolbarTpl = viewChild<TemplateRef<unknown>>('toolbarTpl');
   private readonly route = inject(ActivatedRoute);
   private readonly scrollContainer = viewChild<ElementRef<HTMLElement>>('scrollContainer');
   private resizeObserver?: ResizeObserver;
@@ -318,10 +321,6 @@ export class ProjectCalendarComponent implements OnInit, AfterViewInit, OnDestro
   }
 
   ngAfterViewInit(): void {
-    const tpl = this.toolbarTpl();
-    if (tpl) {
-      this.toolbarStore.setTemplate(tpl);
-    }
     const el = this.scrollContainer()?.nativeElement;
     if (!el || typeof ResizeObserver === 'undefined') return;
     this.containerWidth.set(el.clientWidth);
@@ -333,7 +332,6 @@ export class ProjectCalendarComponent implements OnInit, AfterViewInit, OnDestro
   }
 
   ngOnDestroy(): void {
-    this.toolbarStore.setTemplate(null);
     this.resizeObserver?.disconnect();
   }
 

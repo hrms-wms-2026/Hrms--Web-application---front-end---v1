@@ -12,7 +12,6 @@ export interface TaskCreationRequestDto {
   id: string;
   objectiveId: string;
   status: 'pending' | 'approved' | 'rejected' | 'cancelled';
-  requestedByName?: string | null;
   payload: TaskCreationRequestPayloadDto;
   createdAt: string;
 }

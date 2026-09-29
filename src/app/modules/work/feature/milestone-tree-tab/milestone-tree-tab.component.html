@@ -25,33 +25,16 @@
     <app-error-state [message]="store.subtreeError()!" [retryable]="true" (retry)="retryTree()" />
     } @else if (store.selectedSubtree()) {
     <div class="mb-4 flex flex-wrap items-center gap-3 px-1">
-      <app-input type="search" class="w-64" data-testid="tree-search" placeholder="Search modules, sprints, tasks…"
-        [value]="searchTerm()" (valueChange)="onSearchChanged($event)" />
-      <app-task-filter-bar [fields]="filterFields()" [values]="filterValues()" [highlightColor]="highlightColor()"
-        panelAlign="left" (fieldChanged)="onFilterFieldChanged($event)"
-        (highlightColorChanged)="onHighlightColorChanged($event)" />
-      <button type="button" data-testid="expand-all-toggle" [attr.aria-pressed]="allExpanded()"
-        class="inline-flex h-[30px] items-center gap-1.5 rounded-lg border border-[var(--color-border)] bg-[var(--color-surface)] px-2.5 text-[13px] font-medium text-[var(--color-text-primary)] transition-colors hover:border-[var(--color-accent)]"
-        (click)="toggleExpandAll()">
-        <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="1.8"
-          stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-          @if (allExpanded()) {
-          <path d="m7 20 5-5 5 5M7 4l5 5 5-5" />
-          } @else {
-          <path d="m7 15 5 5 5-5M7 9l5-5 5 5" />
-          }
-        </svg>
-        {{ allExpanded() ? 'Collapse all' : 'Expand all' }}
-      </button>
-      @if (highlightActive()) {
-      <span data-testid="highlight-match-count" class="text-xs text-[var(--color-text-secondary)]">
-        {{ matchCount() }} {{ matchCount() === 1 ? 'match' : 'matches' }}
-      </span>
-      }
+      <app-work-dropdown [options]="moduleDropdownOptions()" [selected]="selectedModuleFilter()" size="sm"
+        accessibleLabel="Module filter" leadingIcon="module" data-testid="module-filter-dropdown"
+        (selectionChanged)="onModuleFilterChanged($event)" />
+      <app-work-dropdown [options]="activityFilterOptions" [selected]="selectedActivityFilter()" size="sm"
+        accessibleLabel="Activity status filter" leadingIcon="status" data-testid="module-activity-filter-dropdown"
+        (selectionChanged)="onActivityFilterChanged($event)" />
     </div>
     <div
       class="grid grid-cols-[minmax(0,1fr)_112px_40px_88px_140px] items-center gap-3 border-b border-[var(--color-border)] px-2 pb-2 text-xs font-medium text-[var(--color-text-secondary)]">
-      <span data-testid="tree-column-header">Module</span>
+      <span>Work item</span>
       <span>Progress</span>
       <span>Owner</span>
       <span>Due date</span>
@@ -59,8 +42,6 @@
     </div>
     @if (renderedTree(); as tree) {
     <app-milestone-tree-node [node]="tree" [selectedId]="selectedNodeId()" [expandedByDefault]="true"
-      [highlightedKeys]="highlight().matchedKeys" [highlightColor]="highlightActive() ? highlightColor() : null"
-      [expandCommand]="expandCommand()"
       (selected)="onNodeSelected($event)" (createRequested)="onCreateSubRequested($event)"
       (expandLeafRequested)="onExpandLeafRequested($event)" (createSprintRequested)="onCreateSprintRequested($event)"
       (createTaskRequested)="onCreateTaskRequested($event)" (viewRequested)="onViewRequested($event)" (editRequested)="onEditRequested($event)"
@@ -98,20 +79,20 @@
   (transferRequested)="onTransferRequested($event)" (invitationAcceptRequested)="onInvitationAcceptRequested($event)"
   (invitationDeclineRequested)="onInvitationDeclineRequested($event)" (closed)="onMembersPopupClosed()" />
 
-@if (createSprintNode()) {
-<app-sprint-form mode="create" [open]="createSprintOpen()" [modules]="createSprintModules()" [projectId]="projectId()"
-  (created)="onSprintCreated()" (cancelled)="onSprintCreateCancelled()" />
+@if (createSprintNode(); as sprintLeaf) {
+<app-sprint-form mode="create" [open]="createSprintOpen()" [objectiveId]="sprintLeaf.id"
+  [isObjectiveOwner]="sprintLeaf.isOwner" (created)="onSprintCreated()" (cancelled)="onSprintCreateCancelled()" />
 }
 
-@if (editSprintNode()) {
-<app-sprint-form mode="edit" [open]="editSprintOpen()" [modules]="editSprintModules()" [projectId]="projectId()"
-  [sprint]="editSprintModel()" (saved)="onSprintSaved()" (cancelled)="onSprintEditCancelled()" />
+@if (editSprintNode(); as sprintNode) {
+<app-sprint-form mode="edit" [open]="editSprintOpen()" [objectiveId]="sprintNode.parentObjectiveId ?? ''"
+  [sprint]="sprintFromNode(sprintNode)" (saved)="onSprintSaved()" (cancelled)="onSprintEditCancelled()" />
 }
 
 @if (completingSprintNode(); as node) {
 <app-sprint-complete-dialog [open]="true"
-  [sprint]="{ id: node.id, projectId: projectId(), name: node.title, goal: null, startDate: null, endDate: null, status: 'active', completedAt: null, achievedAt: null, canManage: node.isOwner ?? false }"
-  [tasks]="[]" [otherSprints]="[]" [projectId]="projectId()"
+  [sprint]="{ id: node.id, objectiveId: node.parentObjectiveId ?? '', name: node.title, goal: null, startDate: null, endDate: null, status: 'active', completedAt: null, achievedAt: null }"
+  [tasks]="[]" [otherSprints]="[]" [objectiveId]="node.parentObjectiveId ?? ''"
   (completed)="onSprintCompleteDialogCompleted()" (cancelled)="onSprintCompleteDialogClosed()" />
 }
 
@@ -129,6 +110,5 @@
   (taskSelected)="taskModalTaskId.set($event)"
   (created)="onTaskModalDone()"
   (saved)="onTaskModalDone()"
-  (changed)="onTaskModalChanged()"
   (closed)="onTaskModalClosed()"
 />

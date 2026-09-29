@@ -51,5 +51,4 @@ export interface WorkTask {
   subtaskTotalCount: number;
   subtaskCompletedCount: number;
   subtaskAssigneeEmployeeIds: string[];
-  createdAt: Date;
 }

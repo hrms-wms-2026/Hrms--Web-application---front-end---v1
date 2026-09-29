@@ -6,7 +6,6 @@ import { of } from 'rxjs';
 
 import { environment } from '../../../../../environments/environment';
 import { PermissionService } from '../../../../core/auth/state/permission.service';
-import { NotificationService } from '../../../../core/services/notification.service';
 import { LegalEntityStore } from '../../../organization/state/legal-entity.store';
 import { ChecklistTemplateDetailResponse } from '../../models/checklist-template.model';
 import { ChecklistTemplateStore } from '../../state/checklist-template.store';
@@ -146,8 +145,7 @@ describe('ChecklistBuilderComponent', () => {
 
   it('renders required HR-facing builder labels and compact task-list structure', () => {
     const text = fixture.nativeElement.textContent;
-    expect(text).not.toContain('Checklist details');
-    expect(text).toContain('Create checklist');
+    expect(text).toContain('Checklist details');
     expect(text).toContain('Use this checklist for');
     expect(text).toContain('Tasks');
     expect(text).toContain('Company default');
@@ -474,109 +472,6 @@ describe('ChecklistBuilderComponent', () => {
     expect(request.isBypassable).toBe(true);
     expect(request.bypassPenaltyDescription).toBe('Deduct from settlement');
     expect(request.category).toBe('asset_return');
-  });
-
-  it('adds a new task row when Enter is pressed on the last row with a non-empty title', () => {
-    expect(component.tasksArray.length).toBe(1);
-    component.tasksArray.at(0).get('title')?.setValue('First Task');
-    
-    component.onTaskTitleEnter(0);
-    expect(component.tasksArray.length).toBe(2);
-  });
-
-  it('does not add a new task row when Enter is pressed on a row with an empty title', () => {
-    expect(component.tasksArray.length).toBe(1);
-    component.tasksArray.at(0).get('title')?.setValue('   ');
-    
-    component.onTaskTitleEnter(0);
-    expect(component.tasksArray.length).toBe(1);
-  });
-
-  it('renders relative due caption for start date and offset days', () => {
-    fixture.detectChanges();
-    const caption = fixture.nativeElement.querySelector('.cb-due-caption');
-    expect(caption).not.toBeNull();
-    expect(caption?.textContent?.trim()).toBe('Start date');
-
-    component.tasksArray.at(0).get('dueOffsetDays')?.setValue(3);
-    component['cdr'].markForCheck();
-    fixture.detectChanges();
-    expect(fixture.nativeElement.querySelector('.cb-due-caption')?.textContent?.trim()).toBe('+3d');
-  });
-
-  it('renders drag handles for reordering on task rows', () => {
-    fixture.detectChanges();
-    const handle = fixture.nativeElement.querySelector('.cb-task-row__drag-handle');
-    expect(handle).not.toBeNull();
-    expect(handle?.getAttribute('title')).toBe('Drag to reorder');
-  });
-
-  it('reorders tasks via onDropTask', () => {
-    component.tasksArray.clear();
-    component.addTask({ title: 'Task A' });
-    component.addTask({ title: 'Task B' });
-    component.addTask({ title: 'Task C' });
-    expect(component.tasksArray.length).toBe(3);
-
-    // Reorder task from index 0 to index 2
-    component.onDropTask({ previousIndex: 0, currentIndex: 2 } as any);
-    expect(component.tasksArray.at(0).get('title')?.value).toBe('Task B');
-    expect(component.tasksArray.at(1).get('title')?.value).toBe('Task C');
-    expect(component.tasksArray.at(2).get('title')?.value).toBe('Task A');
-
-    // No-op when dropped at same position
-    component.onDropTask({ previousIndex: 1, currentIndex: 1 } as any);
-    expect(component.tasksArray.at(0).get('title')?.value).toBe('Task B');
-    expect(component.tasksArray.at(1).get('title')?.value).toBe('Task C');
-    expect(component.tasksArray.at(2).get('title')?.value).toBe('Task A');
-  });
-
-  it('dispatches warning toast when submitting without checklist name', async () => {
-    const notifyService = TestBed.inject(NotificationService);
-    const warnSpy = vi.spyOn(notifyService, 'warning');
-
-    component.form.patchValue({ name: '' });
-    await component.onSubmit();
-
-    expect(warnSpy).toHaveBeenCalledWith('Please enter a checklist name.');
-  });
-
-  it('dispatches warning toast when submitting with zero tasks', async () => {
-    const notifyService = TestBed.inject(NotificationService);
-    const warnSpy = vi.spyOn(notifyService, 'warning');
-
-    component.form.patchValue({ name: 'Valid Name' });
-    component.tasksArray.clear();
-    await component.onSubmit();
-
-    expect(warnSpy).toHaveBeenCalledWith('Please add at least one task to the checklist.');
-  });
-
-  it('dispatches success toast when creating checklist template successfully', async () => {
-    const notifyService = TestBed.inject(NotificationService);
-    const successSpy = vi.spyOn(notifyService, 'success');
-    vi.spyOn(checklistStore, 'createTemplate').mockResolvedValue(true);
-
-    component.form.patchValue({ name: 'Valid Onboarding Checklist' });
-    component.tasksArray.clear();
-    component.addTask({ title: 'Task 1', ownerType: 'employee' });
-
-    await component.onSubmit();
-
-    expect(successSpy).toHaveBeenCalledWith('Checklist created successfully.');
-  });
-
-  it('dispatches info toast when attempting to delete the only task', () => {
-    const notifyService = TestBed.inject(NotificationService);
-    const infoSpy = vi.spyOn(notifyService, 'info');
-
-    component.tasksArray.clear();
-    component.addTask({ title: 'Only Task' });
-    expect(component.tasksArray.length).toBe(1);
-
-    component.removeTask(0);
-    expect(component.tasksArray.length).toBe(1);
-    expect(infoSpy).toHaveBeenCalledWith('A checklist must have at least one task.');
   });
 });
 

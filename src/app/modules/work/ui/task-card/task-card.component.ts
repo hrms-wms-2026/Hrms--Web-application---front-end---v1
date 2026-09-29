@@ -5,8 +5,6 @@ import { TaskStatusColumn, WorkTask } from '../../models/task.model';
 import { TaskClockWidgetComponent } from '../task-clock-widget/task-clock-widget.component';
 import { EmployeeAvatarComponent } from '../employee-avatar/employee-avatar.component';
 import { AvatarComponent } from '../../../../shared/ui/avatar/avatar.component';
-import { DatePickerComponent } from '../../../../shared/ui/date-picker/date-picker.component';
-import { TaskAssigneeDropdownComponent } from '../task-assignee-dropdown/task-assignee-dropdown.component';
 import { TaskApiService } from '../../data-access/task-api.service';
 import { EmployeeDirectoryStore } from '../../state/employee-directory.store';
 import { TaskBoardStore } from '../../state/task-board.store';
@@ -24,10 +22,17 @@ export interface TaskCardAssignableMember {
   avatarUrl?: string | null;
 }
 
+function initialsOf(name: string): string {
+  const parts = name.trim().split(/\s+/).filter(Boolean);
+  if (parts.length === 0) return '?';
+  if (parts.length === 1) return parts[0]!.slice(0, 2).toUpperCase();
+  return (parts[0]![0] + parts[parts.length - 1]![0]).toUpperCase();
+}
+
 @Component({
   selector: 'app-task-card',
   standalone: true,
-  imports: [TaskClockWidgetComponent, EmployeeAvatarComponent, AvatarComponent, OverlayModule, DatePickerComponent, TaskAssigneeDropdownComponent],
+  imports: [TaskClockWidgetComponent, EmployeeAvatarComponent, AvatarComponent, OverlayModule],
   template: `
       <div class="task-card" [attr.data-testid]="'task-card-' + task().id" (click)="viewed.emit(task())">
         <div class="task-card__header">
@@ -53,14 +58,14 @@ export interface TaskCardAssignableMember {
               @if (task().assigneeEmployeeIds.length > 0) {
                 @for (employeeId of task().assigneeEmployeeIds; track employeeId) {
                   @if (resolvedAssigneeAvatars()[employeeId]; as identity) {
-                    <app-avatar class="task-card__assignee-avatar" size="sm" shape="circle" [avatarUrl]="identity.avatarUrl" [userName]="identity.name" />
+                    <app-avatar class="task-card__assignee-avatar" size="sm" [avatarUrl]="identity.avatarUrl" [userName]="identity.name" />
                   } @else {
                     <app-employee-avatar class="task-card__assignee-avatar" [employeeId]="employeeId" [showName]="false" />
                   }
                 }
               } @else {
                 <span class="task-card__assignee-placeholder" aria-hidden="true">
-                  <app-avatar size="sm" shape="circle" [unassigned]="true" />
+                  <svg viewBox="0 0 24 24"><path d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z" /></svg>
                 </span>
               }
             </button>
@@ -75,12 +80,49 @@ export interface TaskCardAssignableMember {
               (backdropClick)="assigneePopoverOpen.set(false)"
               (detach)="assigneePopoverOpen.set(false)"
             >
-              <app-task-assignee-dropdown
-                [members]="assignableMembers()"
-                [selectedId]="task().assigneeEmployeeIds[0]"
-                (selected)="selectAssignee($event)"
-                (closed)="assigneePopoverOpen.set(false)"
-              />
+              <div class="task-card__assignee-popover" role="dialog" aria-label="Change assignee" (click)="$event.stopPropagation()">
+                <div class="task-card__assignee-search">
+                  <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="8" /><path d="m21 21-4.3-4.3" /></svg>
+                  <input
+                    type="text"
+                    placeholder="Search people…"
+                    [value]="assigneeSearch()"
+                    (input)="assigneeSearch.set($any($event.target).value)"
+                  />
+                </div>
+                <div class="task-card__assignee-list">
+                  <button
+                    type="button"
+                    class="task-card__assignee-option"
+                    [class.task-card__assignee-option--selected]="task().assigneeEmployeeIds.length === 0"
+                    (click)="selectAssignee(null)"
+                  >
+                    <span class="task-card__assignee-option-avatar task-card__assignee-option-avatar--unassigned" aria-hidden="true">
+                      <svg viewBox="0 0 24 24"><line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" /></svg>
+                    </span>
+                    <span class="task-card__assignee-option-name">Unassigned</span>
+                    @if (task().assigneeEmployeeIds.length === 0) {
+                      <svg class="task-card__assignee-check" viewBox="0 0 24 24" aria-hidden="true"><path d="m5 12 4 4L19 7" /></svg>
+                    }
+                  </button>
+                  @for (member of filteredAssignableMembers(); track member.employeeId) {
+                    <button
+                      type="button"
+                      class="task-card__assignee-option"
+                      [class.task-card__assignee-option--selected]="isAssigned(member.employeeId)"
+                      (click)="selectAssignee(member.employeeId)"
+                    >
+                      <span class="task-card__assignee-option-avatar">{{ initials(member.name) }}</span>
+                      <span class="task-card__assignee-option-name">{{ member.name }}</span>
+                      @if (isAssigned(member.employeeId)) {
+                        <svg class="task-card__assignee-check" viewBox="0 0 24 24" aria-hidden="true"><path d="m5 12 4 4L19 7" /></svg>
+                      }
+                    </button>
+                  } @empty {
+                    <p class="task-card__assignee-empty">No matching people</p>
+                  }
+                </div>
+              </div>
             </ng-template>
           </div>
 
@@ -136,12 +178,59 @@ export interface TaskCardAssignableMember {
             </div>
           </ng-template>
 
-          <app-date-picker
-            variant="chip"
-            [value]="taskDueDateIso()"
-            [isCompleted]="isTaskCompleted()"
-            (valueChange)="onDateChange($event)"
-          />
+          <button
+            type="button"
+            class="task-card__due-date task-card__meta-btn"
+            [class.task-card__meta-btn--icon-only]="!task().dueDate"
+            [class.task-card__due-date--overdue]="dueDateInfo()?.isOverdue"
+            [class.task-card__due-date--today]="dueDateInfo()?.isToday"
+            data-testid="task-card-due-date-btn"
+            cdkOverlayOrigin
+            #dueDateOrigin="cdkOverlayOrigin"
+            [attr.aria-expanded]="dueDatePopoverOpen()"
+            [title]="dueDateInfo()?.tooltip ?? (task().dueDate ? 'Change due date' : 'Set due date')"
+            (click)="toggleDueDatePopover($event)"
+          >
+            <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="4" width="18" height="17" rx="2" /><path d="M16 2v4M8 2v4M3 10h18" /></svg>
+            @if (dueDateInfo(); as info) {
+              <span>{{ info.label }}</span>
+            }
+          </button>
+
+          <ng-template
+            cdkConnectedOverlay
+            [cdkConnectedOverlayOrigin]="dueDateOrigin"
+            [cdkConnectedOverlayOpen]="dueDatePopoverOpen()"
+            [cdkConnectedOverlayPositions]="assigneePopoverPositions"
+            [cdkConnectedOverlayHasBackdrop]="true"
+            cdkConnectedOverlayBackdropClass="cdk-overlay-transparent-backdrop"
+            (backdropClick)="dueDatePopoverOpen.set(false)"
+            (detach)="dueDatePopoverOpen.set(false)"
+          >
+            <div class="task-card__popover task-card__due-date-popover" role="dialog" aria-label="Change due date" (click)="$event.stopPropagation()">
+              <div class="task-card__popover-title">Due Date</div>
+              <div class="task-card__quick-row">
+                <button type="button" class="task-card__quick-btn" (click)="setQuickDueDate('today')">Today</button>
+                <button type="button" class="task-card__quick-btn" (click)="setQuickDueDate('tomorrow')">Tomorrow</button>
+                <button type="button" class="task-card__quick-btn" (click)="setQuickDueDate('nextWeek')">Next wk</button>
+              </div>
+              <div class="task-card__date-picker-row">
+                <input
+                  type="date"
+                  class="task-card__date-input"
+                  [value]="taskDueDateIso()"
+                  (change)="onDateChange($any($event.target).value)"
+                />
+              </div>
+              @if (task().dueDate) {
+                <div class="task-card__popover-footer">
+                  <button type="button" class="task-card__popover-clear-btn" (click)="clearDueDate()">
+                    Remove date
+                  </button>
+                </div>
+              }
+            </div>
+          </ng-template>
 
           @if (task().activeEventName) {
             <span class="task-card__event" data-testid="task-event-chip" [title]="'In milestone: ' + task().activeEventName">{{ task().activeEventName }}</span>
@@ -174,10 +263,11 @@ export interface TaskCardAssignableMember {
               [attr.aria-expanded]="subtasksExpanded()"
               (click)="toggleSubtasks($event)"
             >
-              <svg class="task-card__subtask-icon" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+              <svg class="task-card__subtask-icon" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
                 <circle cx="3.5" cy="4.5" r="1.75"/>
                 <circle cx="11.5" cy="11.5" r="1.75"/>
                 <path d="M3.5 6.25v2.25a2.5 2.5 0 0 0 2.5 2.5h3.75"/>
+                <path d="M11.5 2.5v3.5M9.75 4.25h3.5"/>
               </svg>
               <span class="task-card__subtask-label">{{ task().subtaskTotalCount === 1 ? 'subtask' : 'subtasks' }}</span>
               <span class="task-card__subtask-count">{{ task().subtaskCompletedCount }}/{{ task().subtaskTotalCount }}</span>
@@ -447,10 +537,6 @@ export interface TaskCardAssignableMember {
       background: var(--color-surface);
       color: var(--color-accent);
     }
-    .task-card__due-date-popover {
-      width: 275px;
-      padding: 10px;
-    }
     .task-card__date-picker-row {
       margin-top: 4px;
     }
@@ -617,6 +703,61 @@ export interface TaskCardAssignableMember {
     }
     .task-card__assignee-placeholder svg { width: 13px; height: 13px; fill: currentColor; }
 
+    .task-card__assignee-popover {
+      min-width: 190px;
+      max-width: 250px;
+      max-height: 240px;
+      overflow-y: auto;
+      border-radius: 8px;
+      border: 1px solid var(--color-border);
+      background: var(--color-surface);
+      padding: 6px;
+      box-shadow: 0 10px 25px rgb(15 23 42 / 0.16);
+      cursor: default;
+    }
+    .task-card__assignee-search {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      padding: 4px 6px;
+      margin-bottom: 4px;
+      border-bottom: 1px solid var(--color-border);
+    }
+    .task-card__assignee-search svg { width: 13px; height: 13px; stroke: var(--color-text-secondary); fill: none; stroke-width: 2; flex-shrink: 0; }
+    .task-card__assignee-search input { width: 100%; border: 0; outline: none; background: transparent; font: inherit; font-size: 11.5px; color: var(--color-text-primary); }
+    .task-card__assignee-list { display: flex; flex-direction: column; gap: 2px; }
+    .task-card__assignee-option {
+      display: flex;
+      align-items: center;
+      gap: 7px;
+      width: 100%;
+      padding: 5px 7px;
+      border: 0;
+      border-radius: 5px;
+      background: transparent;
+      color: var(--color-text-primary);
+      font: inherit;
+      font-size: 12px;
+      font-weight: 500;
+      cursor: pointer;
+      text-align: left;
+      transition: background-color 100ms ease;
+    }
+    .task-card__assignee-option:hover { background: var(--color-surface-secondary); }
+    .task-card__assignee-option--selected { background: color-mix(in srgb, var(--color-accent) 12%, var(--color-surface)); color: var(--color-accent); font-weight: 600; }
+    .task-card__assignee-option-avatar {
+      width: 20px; height: 20px; border-radius: 9999px;
+      display: inline-flex; align-items: center; justify-content: center;
+      font-size: 9px; font-weight: 700;
+      background: color-mix(in srgb, var(--color-accent) 18%, transparent);
+      color: var(--color-accent);
+      flex-shrink: 0;
+    }
+    .task-card__assignee-option-avatar--unassigned { background: var(--color-surface-secondary); color: var(--color-text-secondary); }
+    .task-card__assignee-option-avatar--unassigned svg { width: 12px; height: 12px; stroke: currentColor; fill: none; stroke-width: 2; }
+    .task-card__assignee-option-name { min-width: 0; flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .task-card__assignee-check { width: 13px; height: 13px; stroke: currentColor; fill: none; stroke-width: 2.2; margin-left: auto; flex-shrink: 0; }
+    .task-card__assignee-empty { margin: 6px 0 2px; color: var(--color-text-secondary); font-size: 12px; text-align: center; }
   `]
 })
 export class TaskCardComponent {
@@ -633,6 +774,7 @@ export class TaskCardComponent {
   taskChanged = output<void>();
 
   protected readonly assigneePopoverOpen = signal(false);
+  protected readonly assigneeSearch = signal('');
   protected readonly assigneePopoverPositions = ASSIGNEE_POPOVER_POSITIONS;
 
   protected readonly subtasksExpanded = signal(false);
@@ -680,11 +822,23 @@ export class TaskCardComponent {
     return 'Assigned';
   });
 
+  protected readonly filteredAssignableMembers = computed(() => {
+    const q = this.assigneeSearch().trim().toLowerCase();
+    const members = this.assignableMembers();
+    if (!q) return members;
+    return members.filter((m) => m.name.toLowerCase().includes(q));
+  });
+
+  protected initials(name: string): string {
+    return initialsOf(name);
+  }
+
   protected isAssigned(employeeId: string): boolean {
     return this.task().assigneeEmployeeIds.includes(employeeId);
   }
 
   protected readonly priorityPopoverOpen = signal(false);
+  protected readonly dueDatePopoverOpen = signal(false);
 
   protected readonly priorityOptions = [
     { value: 'critical', label: 'Critical' },
@@ -725,13 +879,23 @@ export class TaskCardComponent {
   protected toggleAssigneePopover(event: MouseEvent): void {
     event.stopPropagation();
     this.priorityPopoverOpen.set(false);
+    this.dueDatePopoverOpen.set(false);
+    this.assigneeSearch.set('');
     this.assigneePopoverOpen.update((open) => !open);
   }
 
   protected togglePriorityPopover(event: MouseEvent): void {
     event.stopPropagation();
     this.assigneePopoverOpen.set(false);
+    this.dueDatePopoverOpen.set(false);
     this.priorityPopoverOpen.update((v) => !v);
+  }
+
+  protected toggleDueDatePopover(event: MouseEvent): void {
+    event.stopPropagation();
+    this.assigneePopoverOpen.set(false);
+    this.priorityPopoverOpen.set(false);
+    this.dueDatePopoverOpen.update((v) => !v);
   }
 
   protected async selectPriority(priority: WorkTask['priority']): Promise<void> {
@@ -740,8 +904,25 @@ export class TaskCardComponent {
     await this.applyTaskEdit({ priority });
   }
 
+  protected setQuickDueDate(preset: 'today' | 'tomorrow' | 'nextWeek'): void {
+    const d = new Date();
+    if (preset === 'tomorrow') d.setDate(d.getDate() + 1);
+    if (preset === 'nextWeek') d.setDate(d.getDate() + 7);
+    const yyyy = d.getFullYear();
+    const mm = String(d.getMonth() + 1).padStart(2, '0');
+    const dd = String(d.getDate()).padStart(2, '0');
+    this.dueDatePopoverOpen.set(false);
+    void this.applyTaskEdit({ dueDate: `${yyyy}-${mm}-${dd}` });
+  }
+
   protected onDateChange(value: string): void {
+    this.dueDatePopoverOpen.set(false);
     void this.applyTaskEdit({ dueDate: value || undefined });
+  }
+
+  protected clearDueDate(): void {
+    this.dueDatePopoverOpen.set(false);
+    void this.applyTaskEdit({ dueDate: undefined });
   }
 
   private async applyTaskEdit(overrides: Partial<{ priority: WorkTask['priority']; dueDate: string; estimatedHours: number }>): Promise<void> {

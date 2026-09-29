@@ -3,7 +3,6 @@ import { ActivatedRoute } from '@angular/router';
 import { signal } from '@angular/core';
 import { ProjectCalendarComponent } from './project-calendar.component';
 import { ProjectCalendarStore } from '../../state/project-calendar.store';
-import { WorkPageToolbarStore } from '../../state/work-page-toolbar.store';
 import { ProjectCalendarModuleDto } from '../../models/dto/calendar.dto';
 
 const items: ProjectCalendarModuleDto[] = [{
@@ -173,29 +172,11 @@ describe('ProjectCalendarComponent', () => {
     it('the Fit button jumps straight to the fit-to-screen day width', () => {
       fixture.componentInstance.containerWidth.set(940); // 700px available after the 240px label column
       fixture.detectChanges();
-      const toolbarStore = TestBed.inject(WorkPageToolbarStore);
-      const embeddedView = toolbarStore.template()?.createEmbeddedView(null);
-      embeddedView?.detectChanges();
-      const fitButton = (embeddedView?.rootNodes[0] as HTMLElement)?.querySelector('[data-testid="fit-to-screen"]') as HTMLButtonElement | null;
-      if (fitButton) {
-        fitButton.click();
-      } else {
-        fixture.componentInstance.fitToScreen();
-      }
+      fixture.nativeElement.querySelector('[data-testid="fit-to-screen"]').click();
       fixture.detectChanges();
 
       // 5-day project, 700px / 5 = 140px/day
       expect(fixture.componentInstance.dayWidth()).toBe(140);
-    });
-
-    it('registers the calendar toolbar with zoom controls and create milestone button in the toolbarStore', () => {
-      const toolbarStore = TestBed.inject(WorkPageToolbarStore);
-      expect(toolbarStore.template()).not.toBeNull();
-      const embeddedView = toolbarStore.template()?.createEmbeddedView(null);
-      embeddedView?.detectChanges();
-      const root = embeddedView?.rootNodes[0] as HTMLElement;
-      expect(root.querySelector('[data-testid="zoom-controls"]')).toBeTruthy();
-      expect(root.textContent).toContain('Create milestone');
     });
 
     it('scales the fit floor down with a sane minimum for a very long project', () => {

@@ -7,19 +7,12 @@ import { ObjectiveInvitationDto } from '../models/dto/objective-invitation.dto';
 import { TaskCreationRequestDto } from '../models/dto/task-creation-request.dto';
 import { TaskEditRequestDto } from '../models/dto/task-edit-request.dto';
 import { ObjectiveMemberApiService } from './objective-member-api.service';
-import { ApprovalHistoryItemDto } from '../models/dto/approval-history.dto';
 
 @Injectable({ providedIn: 'root' })
 export class WorkApprovalsApiService {
   private readonly http = inject(HttpClient);
   private readonly memberApi = inject(ObjectiveMemberApiService);
   private readonly workBase = `${environment.apiUrl}/work`;
-
-  getApprovalHistory(projectId: string): Observable<ApprovalHistoryItemDto[]> {
-    return this.http.get<ApprovalHistoryItemDto[]>(
-      `${this.workBase}/projects/${projectId}/approval-history`
-    );
-  }
 
   getMyTaskCreationRequests(): Observable<TaskCreationRequestDto[]> {
     return this.http.get<TaskCreationRequestDto[]>(`${this.workBase}/task-creation-requests/mine`);
@@ -106,15 +99,10 @@ export class WorkApprovalsApiService {
     let payload = { requestedAdditionalHours: 0, reason: '' };
     if (dto.payloadJson) {
       try {
-        const parsed = JSON.parse(dto.payloadJson) as {
-          requestedAdditionalHours?: number;
-          RequestedAdditionalHours?: number;
-          reason?: string;
-          Reason?: string;
-        };
+        const parsed = JSON.parse(dto.payloadJson) as { requestedAdditionalHours?: number; reason?: string };
         payload = {
-          requestedAdditionalHours: parsed.requestedAdditionalHours ?? parsed.RequestedAdditionalHours ?? 0,
-          reason: parsed.reason ?? parsed.Reason ?? ''
+          requestedAdditionalHours: parsed.requestedAdditionalHours ?? 0,
+          reason: parsed.reason ?? ''
         };
       } catch {
         /* keep defaults */
@@ -123,11 +111,6 @@ export class WorkApprovalsApiService {
     return {
       id: dto.id,
       objectiveId: dto.objectiveId,
-      requestedById: dto.requestedById,
-      requestedByName: dto.requestedByName ?? null,
-      objectiveTitle: dto.objectiveTitle ?? null,
-      projectId: dto.projectId ?? null,
-      currentAllocatedHours: dto.currentAllocatedHours ?? null,
       requestType: 'extend_allocation',
       status: dto.status,
       payload,

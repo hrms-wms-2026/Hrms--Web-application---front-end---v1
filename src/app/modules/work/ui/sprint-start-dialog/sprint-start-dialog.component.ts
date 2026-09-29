@@ -63,14 +63,6 @@ import { GeneralSettingsStore } from '../../../organization/state/general-settin
     .sprint-start-dialog__hint { font-size: 12px; color: var(--color-text-secondary); margin: 0; }
     .sprint-start-dialog__error { color: var(--color-danger-text); font-size: 12px; }
     .sprint-start-dialog__actions { display: flex; justify-content: flex-end; gap: 8px; }
-    .sprint-start-dialog__actions ::ng-deep app-button > button {
-      width: auto;
-      height: 30px;
-      padding: 0 12px;
-      border-radius: 8px;
-      font-size: 13px;
-      font-weight: 500;
-    }
     .sprint-start-dialog__date-range { display: flex; flex-direction: column; gap: 4px; }
     .sprint-start-dialog__label { font-size: 12px; font-weight: 500; color: var(--color-text-secondary); }
     :host ::ng-deep .sprint-start-dialog__date-range app-date-range-picker { width: 100%; display: block; }
@@ -99,7 +91,9 @@ export class SprintStartDialogComponent {
   open = input(false);
   sprint = input<Sprint | null>(null);
   tasks = input<readonly WorkTask[]>([]);
-  projectId = input.required<string>();
+  objectiveId = input<string>('');
+  activeOnly = input(false);
+  projectId = input<string | undefined>(undefined);
 
   started = output<void>();
   cancelled = output<void>();
@@ -176,7 +170,7 @@ export class SprintStartDialogComponent {
         startDate: this.startDate(),
         endDate: this.endDate(),
         goal: this.goal().trim() || undefined
-      }, this.projectId());
+      }, this.objectiveId(), this.activeOnly(), this.projectId());
       if (ok) this.started.emit();
     } finally {
       this.submitting.set(false);

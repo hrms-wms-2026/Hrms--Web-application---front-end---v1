@@ -6,20 +6,14 @@
           @for (holiday of day.holidays; track holiday.name) { <p>{{ holiday.name }}</p> }
         </section>
       }
-      @if (canRequestLeave && day.date) {
-        <button type="button" class="lcd-request" data-testid="request-leave-from-day" (click)="requestLeave.emit(day.date)">Request leave</button>
-      }
       @if (day.absences.length === 0) {
         <p class="lcd-muted">No one is on leave this day.</p>
       } @else {
         <ul class="lcd-list">
           @for (absence of day.absences; track absence.requestId) {
             <li>
-              <span class="lcd-avatar" aria-hidden="true">{{ initials(absence.employeeName) }}</span>
-              <div>
-                <span class="lcd-name">{{ absence.employeeName }}</span>
-                <span class="lcd-meta">{{ absence.departmentName ?? '-' }} · {{ absence.leaveTypeName }}</span>
-              </div>
+              <span class="lcd-name">{{ absence.employeeName }}</span>
+              <span class="lcd-meta">{{ absence.departmentName ?? '-' }} &middot; {{ absence.leaveTypeName }}</span>
               @if (absence.isTentative) { <span class="lcd-badge">Tentative</span> }
             </li>
           }

@@ -15,9 +15,10 @@ export interface LeaveCalendarAbsenceResponse {
   status: string;
   isTentative: boolean;
   isPartialCancellationHistory: boolean;
-  startAt: string;
-  endAt: string;
-  totalHours: number;
+  startDate: string;
+  endDate: string;
+  totalDays: number;
+  halfDayPeriod: 'am' | 'pm' | null;
 }
 
 export interface LeaveCalendarHolidayResponse {
@@ -50,18 +51,4 @@ export interface LeaveCalendarFilter {
   month: number;
   departmentId?: string;
   includeTentative?: boolean;
-}
-
-/** Matches ONEVO.Application.Features.Leave.Calendar.DTOs.Responses.LeaveHolidayResponse. */
-export interface LeaveHolidayResponse {
-  id: string;
-  name: string;
-  date: string;
-  endDate: string;
-}
-
-export interface CreateLeaveHolidayRequest {
-  name: string;
-  date: string;
-  endDate: string | null;
 }

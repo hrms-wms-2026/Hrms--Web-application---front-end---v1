@@ -1,8 +1,7 @@
 import { Component, OnInit, computed, inject, output, signal } from '@angular/core';
-import { WorkDropdownOption } from '../work-dropdown/work-dropdown.component';
+import { WorkDropdownComponent, WorkDropdownOption } from '../work-dropdown/work-dropdown.component';
 import { ProjectCategoryStore } from '../../state/project-category.store';
 import { AchievedFilter } from '../../state/project-list.store';
-import { TaskFilterBarComponent, TaskFilterFieldConfig } from '../task-filter-bar/task-filter-bar.component';
 
 const STATUS_OPTIONS: readonly WorkDropdownOption[] = [
   { value: 'all', label: 'All statuses' },
@@ -13,13 +12,28 @@ const STATUS_OPTIONS: readonly WorkDropdownOption[] = [
 @Component({
   selector: 'app-project-filter-bar',
   standalone: true,
-  imports: [TaskFilterBarComponent],
+  imports: [WorkDropdownComponent],
   template: `
-    <app-task-filter-bar
-      [fields]="filterFields()"
-      [values]="filterValues()"
-      (fieldChanged)="onFieldChanged($event)"
-    />
+    <div class="flex flex-wrap items-center justify-end gap-2">
+      <app-work-dropdown
+        [options]="categoryOptions()"
+        [multiple]="true"
+        [values]="selectedCategories()"
+        allLabel="All categories"
+        size="sm"
+        accessibleLabel="Project category filter"
+        leadingIcon="category"
+        (valuesChanged)="selectCategories($event)"
+      />
+      <app-work-dropdown
+        [options]="statusOptions"
+        [selected]="selectedStatus()"
+        size="sm"
+        accessibleLabel="Project status filter"
+        leadingIcon="status"
+        (selectionChanged)="selectStatus($event)"
+      />
+    </div>
   `
 })
 export class ProjectFilterBarComponent implements OnInit {
@@ -30,32 +44,14 @@ export class ProjectFilterBarComponent implements OnInit {
     this.categoryStore.categories().map((category) => ({ value: category.id, label: category.name }))
   );
 
-  readonly filterFields = computed<TaskFilterFieldConfig[]>(() => [
-    { key: 'category', label: 'Category', icon: 'category', kind: 'multi', options: this.categoryOptions() },
-    { key: 'status', label: 'Status', icon: 'status', kind: 'single', options: this.statusOptions, defaultValues: ['all'] }
-  ]);
-
   categoriesChanged = output<string[]>();
   achievedFilterChanged = output<AchievedFilter>();
 
   selectedCategories = signal<string[]>([]);
   selectedStatus = signal<string>('all');
 
-  readonly filterValues = computed<Record<string, string[]>>(() => ({
-    category: this.selectedCategories(),
-    status: [this.selectedStatus()]
-  }));
-
   ngOnInit(): void {
     this.categoryStore.loadCategories();
-  }
-
-  onFieldChanged(event: { key: string; values: string[] }): void {
-    if (event.key === 'category') {
-      this.selectCategories(event.values);
-    } else if (event.key === 'status') {
-      this.selectStatus(event.values[0] ?? 'all');
-    }
   }
 
   selectCategories(values: string[]): void {

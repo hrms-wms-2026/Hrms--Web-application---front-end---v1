@@ -20,12 +20,7 @@
     </div>
 
     @if (!store.milestonesLoading() && !store.milestonesError() && store.milestones().length > 0) {
-      <app-milestone-sub-menu
-        [milestoneId]="subMenuMilestoneId()"
-        [milestoneTitle]="subMenuMilestoneTitle()"
-        [isOwner]="subMenuIsOwner()"
-        [pendingApprovalCount]="pendingApprovalCount()"
-      />
+      <app-milestone-sub-menu [milestoneId]="subMenuMilestoneId()" [milestoneTitle]="subMenuMilestoneTitle()" [isOwner]="subMenuIsOwner()" />
     }
   </header>
 }

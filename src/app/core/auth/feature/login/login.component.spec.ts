@@ -1,35 +1,14 @@
 import { Component } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
 import { ActivatedRoute, Router, provideRouter } from '@angular/router';
-import { of, throwError } from 'rxjs';
 import { LoginComponent } from './login.component';
 import { AuthStore } from '../../state/auth.store';
-import { AuthApiService } from '../../data-access/auth-api.service';
-import { AuthResponseDto } from '../../models/dto/auth-response.dto';
 
 @Component({ standalone: true, template: '' })
 class RouteTargetStubComponent {}
 
 describe('LoginComponent', () => {
-  const authenticatedResponse: AuthResponseDto = {
-    authenticated: true,
-    user: { email: 'alex@acme.test', display_name: 'Alex Morgan' },
-    permissions: [],
-    active_modules: [],
-    must_change_password: false,
-    mfa_required: false,
-    legal_acceptance_required: false,
-    pending_legal_documents: null,
-    expires_at: null,
-    continue_url: null,
-    workspace: { slug: 'acme', display_name: 'Acme Workspace' }
-  };
-
-  function setup(
-    authStoreOverrides: Record<string, unknown>,
-    returnUrl: string | null = null,
-    authApiOverrides: Record<string, unknown> = { meForTenant: vi.fn() }
-  ) {
+  function setup(authStoreOverrides: Record<string, unknown>, returnUrl: string | null = null) {
     TestBed.configureTestingModule({
       imports: [LoginComponent],
       providers: [
@@ -40,7 +19,6 @@ describe('LoginComponent', () => {
           { path: '**', component: RouteTargetStubComponent }
         ]),
         { provide: AuthStore, useValue: authStoreOverrides },
-        { provide: AuthApiService, useValue: authApiOverrides },
         {
           provide: ActivatedRoute,
           useValue: {
@@ -53,22 +31,6 @@ describe('LoginComponent', () => {
     fixture.detectChanges();
     return fixture;
   }
-
-  function setLastTenantCookie(value: string): void {
-    document.cookie = `onevo_last_tenant=${value}; path=/`;
-  }
-
-  function clearLastTenantCookie(): void {
-    document.cookie = 'onevo_last_tenant=; expires=Thu, 01 Jan 1970 00:00:00 GMT; path=/';
-  }
-
-  async function settleRememberedAccountCheck(): Promise<void> {
-    await Promise.resolve();
-    await Promise.resolve();
-  }
-
-  beforeEach(clearLastTenantCookie);
-  afterEach(clearLastTenantCookie);
 
   function stubLocation(hostname: string, search = '') {
     const originalLocation = window.location;
@@ -167,106 +129,6 @@ describe('LoginComponent', () => {
 
       expect(loginSpy).not.toHaveBeenCalled();
       restore();
-    });
-  });
-
-  describe('remembered account', () => {
-    const store = {
-      login: vi.fn(),
-      legalAcceptanceRequired: () => false,
-      redirectRequired: () => false,
-      continueUrl: () => null,
-      loading: () => false,
-      error: () => null
-    };
-
-    it('validates the tenant hint and renders the confirmed account', async () => {
-      setLastTenantCookie('acme');
-      const meForTenant = vi.fn().mockReturnValue(of(authenticatedResponse));
-      const fixture = setup(store, null, { meForTenant });
-
-      await settleRememberedAccountCheck();
-      fixture.detectChanges();
-
-      expect(meForTenant).toHaveBeenCalledWith('acme');
-      const cardText = fixture.nativeElement.querySelector('.login-remembered').textContent;
-      expect(cardText).toContain('You’re already signed in');
-      expect(cardText).toContain('Alex Morgan');
-      expect(cardText).not.toContain('Acme Workspace');
-      expect(cardText).not.toContain('alex@acme.test');
-      expect(cardText).toContain('Continue to workspace');
-    });
-
-    it('does not present the cookie hint as an account when session validation fails', async () => {
-      setLastTenantCookie('acme');
-      const fixture = setup(store, null, {
-        meForTenant: vi.fn().mockReturnValue(throwError(() => new Error('401')))
-      });
-
-      await settleRememberedAccountCheck();
-      fixture.detectChanges();
-
-      expect(fixture.nativeElement.querySelector('.login-remembered')).toBeNull();
-      expect(fixture.nativeElement.querySelector('.login-form')).not.toBeNull();
-    });
-
-    it('rejects a validated response for a different workspace than the cookie hint', async () => {
-      setLastTenantCookie('acme');
-      const fixture = setup(store, null, {
-        meForTenant: vi.fn().mockReturnValue(
-          of({ ...authenticatedResponse, workspace: { slug: 'other', display_name: 'Other' } })
-        )
-      });
-
-      await settleRememberedAccountCheck();
-      fixture.detectChanges();
-
-      expect(fixture.nativeElement.querySelector('.login-remembered')).toBeNull();
-    });
-
-    it('does not use the email as a fallback when the session has no display name', async () => {
-      setLastTenantCookie('acme');
-      const fixture = setup(store, null, {
-        meForTenant: vi.fn().mockReturnValue(
-          of({ ...authenticatedResponse, user: { email: 'alex@acme.test', display_name: null } })
-        )
-      });
-
-      await settleRememberedAccountCheck();
-      fixture.detectChanges();
-
-      expect(fixture.nativeElement.querySelector('.login-remembered')).toBeNull();
-      expect(fixture.nativeElement.textContent).not.toContain('alex@acme.test');
-    });
-
-    it('does not make a session request when no valid tenant hint exists', () => {
-      setLastTenantCookie('acme.evil.test');
-      const meForTenant = vi.fn();
-
-      setup(store, null, { meForTenant });
-
-      expect(meForTenant).not.toHaveBeenCalled();
-    });
-
-    it('continues to the validated tenant dashboard without requesting credentials', async () => {
-      setLastTenantCookie('acme');
-      const restore = stubLocation('localhost');
-
-      try {
-        const fixture = setup(store, null, {
-          meForTenant: vi.fn().mockReturnValue(of(authenticatedResponse))
-        });
-        await settleRememberedAccountCheck();
-        fixture.detectChanges();
-
-        const button = fixture.nativeElement.querySelector('.login-remembered__continue') as HTMLButtonElement;
-        button.click();
-
-        const portSuffix = window.location.port ? `:${window.location.port}` : '';
-        expect(window.location.href).toBe(`${window.location.protocol}//acme.localhost${portSuffix}/dashboard`);
-      } finally {
-        restore();
-      }
     });
   });
 

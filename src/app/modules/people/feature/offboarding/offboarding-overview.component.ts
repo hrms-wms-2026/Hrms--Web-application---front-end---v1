@@ -5,19 +5,17 @@ import { PermissionService } from '../../../../core/auth/state/permission.servic
 import { toSafeErrorMessage } from '../../../../core/services/error-handler.service';
 import { BreadcrumbHeaderComponent } from '../../../../shared/ui/breadcrumb-header/breadcrumb-header.component';
 import { ButtonComponent } from '../../../../shared/ui/button/button.component';
-import { DatePickerComponent } from '../../../../shared/ui/date-picker/date-picker.component';
 import { InputComponent } from '../../../../shared/ui/input/input.component';
 import { LoaderComponent } from '../../../../shared/ui/loader/loader.component';
 import { SelectComponent } from '../../../../shared/ui/select/select.component';
 import { OffboardingApiService } from '../../data-access/offboarding-api.service';
 import { OffboardingOverviewItemResponse } from '../../models/offboarding.model';
 import { OffboardingWizardStore } from '../../state/offboarding-wizard.store';
-import { AvatarComponent } from '../../../../shared/ui/avatar/avatar.component';
 
 @Component({
   selector: 'app-app-offboarding-overview',
   standalone: true,
-  imports: [ReactiveFormsModule, BreadcrumbHeaderComponent, ButtonComponent, DatePickerComponent, InputComponent, LoaderComponent, SelectComponent, AvatarComponent],
+  imports: [ReactiveFormsModule, BreadcrumbHeaderComponent, ButtonComponent, InputComponent, LoaderComponent, SelectComponent],
   template: `
     <header class="ob-page-header">
       <div class="ob-header-row">
@@ -76,8 +74,9 @@ import { AvatarComponent } from '../../../../shared/ui/avatar/avatar.component';
             [value]="form.controls.reason.value || ''"
             (valueChange)="form.controls.reason.setValue($any($event))"
           />
-          <app-date-picker
+          <app-input
             label="Last working day *"
+            type="date"
             [value]="form.controls.lastWorkingDate.value || ''"
             (valueChange)="form.controls.lastWorkingDate.setValue($event)"
           />
@@ -129,7 +128,7 @@ import { AvatarComponent } from '../../../../shared/ui/avatar/avatar.component';
         @for (item of items(); track item.employeeId) {
           <div class="ob-employee-card rounded-lg">
             <div class="ob-employee-card__main">
-              <app-avatar size="md" shape="circle" [userName]="item.employeeName" />
+              <div class="ob-avatar">{{ getInitials(item.employeeName) }}</div>
               <div class="ob-employee-card__info">
                 <div class="ob-employee-card__name-row">
                   <h4 class="ob-employee-card__name">{{ item.employeeName }}</h4>
@@ -269,6 +268,19 @@ import { AvatarComponent } from '../../../../shared/ui/avatar/avatar.component';
       align-items: center;
       gap: 0.875rem;
     }
+    .ob-avatar {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      width: 2.5rem;
+      height: 2.5rem;
+      border-radius: 50%;
+      background: color-mix(in srgb, var(--color-primary) 12%, var(--color-surface));
+      color: var(--color-primary);
+      font-size: 0.875rem;
+      font-weight: 700;
+      flex-shrink: 0;
+    }
     .ob-employee-card__info {
       display: flex;
       flex-direction: column;
@@ -376,6 +388,13 @@ export class OffboardingOverviewComponent implements OnInit {
 
   ngOnInit(): void {
     this.load();
+  }
+
+  getInitials(name: string): string {
+    if (!name) return 'EO';
+    const parts = name.trim().split(' ');
+    if (parts.length >= 2) return `${parts[0][0]}${parts[1][0]}`.toUpperCase();
+    return name.substring(0, 2).toUpperCase();
   }
 
   load(): void {

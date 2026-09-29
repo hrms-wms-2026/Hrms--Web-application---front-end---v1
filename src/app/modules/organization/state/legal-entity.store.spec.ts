@@ -64,18 +64,6 @@ describe('LegalEntityStore', () => {
     expect(localStorage.getItem(SELECTED_LEGAL_ENTITY_STORAGE_KEY)).toBe('comp-1');
   });
 
-  it('does not mark companies loaded when tray presence returns 428', async () => {
-    const loadPromise = store.loadCompanies();
-    httpMock
-      .expectOne(`${environment.apiUrl}/session/companies`)
-      .flush({ code: 'active_tray_required' }, { status: 428, statusText: 'Precondition Required' });
-    await loadPromise;
-
-    expect(store.loaded()).toBe(false);
-    expect(store.error()).toBeNull();
-    expect(store.loading()).toBe(false);
-  });
-
   it('reuses valid persisted selectedLegalEntityId', async () => {
     localStorage.setItem(SELECTED_LEGAL_ENTITY_STORAGE_KEY, 'comp-2');
 

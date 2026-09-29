@@ -1,6 +1,5 @@
 import { EditTaskRequestDto, TaskStatusDto, WorkTaskDto } from '../models/dto/task.dto';
 import { TaskStatusColumn, WorkTask } from '../models/task.model';
-import { buildFileUrl } from '../../../shared/data-access/file-api.service';
 
 export function toTaskStatusColumn(dto: TaskStatusDto): TaskStatusColumn {
   return {
@@ -39,16 +38,11 @@ export function toWorkTask(dto: WorkTaskDto): WorkTask {
     activeEventId: dto.activeEventId ?? null,
     activeEventName: dto.activeEventName ?? null,
     attachments: (dto.attachments ?? []).map((a) => ({ fileId: a.fileId, name: a.fileName, sizeBytes: a.fileSizeBytes })),
-    assignees: (dto.assignees ?? []).map((a) => ({
-      employeeId: a.employeeId,
-      name: a.name,
-      avatarUrl: a.avatarFileId ? buildFileUrl(a.avatarFileId) : (a.avatarUrl ?? null)
-    })),
+    assignees: (dto.assignees ?? []).map((a) => ({ employeeId: a.employeeId, name: a.name, avatarUrl: a.avatarUrl })),
     parentTaskId: dto.parentTaskId ?? null,
     subtaskTotalCount: dto.subtaskTotalCount ?? 0,
     subtaskCompletedCount: dto.subtaskCompletedCount ?? 0,
-    subtaskAssigneeEmployeeIds: dto.subtaskAssigneeEmployeeIds ?? [],
-    createdAt: new Date(dto.createdAt)
+    subtaskAssigneeEmployeeIds: dto.subtaskAssigneeEmployeeIds ?? []
   };
 }
 

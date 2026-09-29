@@ -19,11 +19,8 @@ export function toApprovalItem(
       kind: 'task_edit',
       objectiveId: request.objectiveId,
       title: `Edit: ${request.payload.title}`,
-      description: request.payload.description ?? '',
+      description: `Requested by ${request.requestedByName}`,
       requestedByName: request.requestedByName,
-      targetTitle: request.payload.title,
-      targetType: 'task',
-      targetId: request.taskId,
       createdAt: request.createdAt,
       raw: request
     };
@@ -36,11 +33,8 @@ export function toApprovalItem(
       kind: 'task_creation',
       objectiveId: request.objectiveId,
       title: request.payload.title,
-      description: request.payload.description ?? '',
-      requestedByName: request.requestedByName ?? null,
-      targetTitle: request.payload.title,
-      targetType: 'request',
-      targetId: null,
+      description: `Requested for objective ${request.objectiveId}`,
+      requestedByName: null,
       createdAt: request.createdAt,
       raw: request
     };
@@ -54,11 +48,7 @@ export function toApprovalItem(
       objectiveId: request.objectiveId,
       title: `+${request.payload.requestedAdditionalHours}h requested`,
       description: request.payload.reason,
-      requestedByName: request.requestedByName ?? null,
-      targetTitle: request.objectiveTitle ?? null,
-      targetType: 'module',
-      targetId: request.objectiveId,
-      currentAllocatedHours: request.currentAllocatedHours ?? null,
+      requestedByName: null,
       createdAt: request.createdAt,
       raw: request
     };
@@ -73,8 +63,6 @@ export function toApprovalItem(
       title: `Invited as ${invitation.inviteType}`,
       description: `Milestone ${invitation.objectiveId}`,
       requestedByName: null,
-      targetType: 'module',
-      targetId: invitation.objectiveId,
       createdAt: invitation.createdAt,
       raw: invitation
     };
@@ -89,20 +77,11 @@ export function toApprovalItem(
       objectiveId: change.objectiveId,
       title: payload ? `+${payload.requestedAdditionalHours}h requested` : 'Allocation extension',
       description: payload?.reason ?? 'Extend allocation',
-      requestedByName: change.requestedByName ?? null,
-      targetTitle: change.objectiveTitle ?? null,
-      targetType: 'module',
-      targetId: change.objectiveId,
-      currentAllocatedHours: change.currentAllocatedHours ?? null,
+      requestedByName: null,
       createdAt: change.createdAt,
       raw: {
         id: change.id,
         objectiveId: change.objectiveId,
-        requestedById: change.requestedById,
-        requestedByName: change.requestedByName ?? null,
-        objectiveTitle: change.objectiveTitle ?? null,
-        projectId: change.projectId ?? null,
-        currentAllocatedHours: change.currentAllocatedHours ?? null,
         requestType: 'extend_allocation',
         status: change.status,
         payload: payload ?? { requestedAdditionalHours: 0, reason: '' },
@@ -118,11 +97,8 @@ export function toApprovalItem(
       kind: 'objective_edit',
       objectiveId: change.objectiveId,
       title: payload ? `Edit: ${payload.title}` : 'Milestone edit',
-      description: change.objectiveTitle ? `Module: ${change.objectiveTitle}` : '',
-      requestedByName: change.requestedByName ?? null,
-      targetTitle: change.objectiveTitle ?? null,
-      targetType: 'module',
-      targetId: change.objectiveId,
+      description: `Objective ${change.objectiveId}`,
+      requestedByName: null,
       createdAt: change.createdAt,
       raw: {
         id: change.id,
@@ -140,11 +116,8 @@ export function toApprovalItem(
     kind: 'objective_change',
     objectiveId: change.objectiveId,
     title: change.requestType.replaceAll('_', ' '),
-    description: change.objectiveTitle ? `Module: ${change.objectiveTitle}` : '',
-    requestedByName: change.requestedByName ?? null,
-    targetTitle: change.objectiveTitle ?? null,
-    targetType: 'module',
-    targetId: change.objectiveId,
+    description: `Objective ${change.objectiveId}`,
+    requestedByName: null,
     createdAt: change.createdAt,
     raw: change
   };
@@ -153,14 +126,9 @@ export function toApprovalItem(
 function parseAllocationPayload(payloadJson: string | null): AllocationRequestPayloadDto | null {
   if (!payloadJson) return null;
   try {
-    const parsed = JSON.parse(payloadJson) as AllocationRequestPayloadDto & {
-      RequestedAdditionalHours?: number;
-      Reason?: string;
-    };
-    const requestedAdditionalHours = parsed.requestedAdditionalHours ?? parsed.RequestedAdditionalHours;
-    const reason = parsed.reason ?? parsed.Reason;
-    if (typeof requestedAdditionalHours === 'number' && typeof reason === 'string') {
-      return { requestedAdditionalHours, reason };
+    const parsed = JSON.parse(payloadJson) as AllocationRequestPayloadDto;
+    if (typeof parsed.requestedAdditionalHours === 'number' && typeof parsed.reason === 'string') {
+      return parsed;
     }
   } catch {
     /* ignore */

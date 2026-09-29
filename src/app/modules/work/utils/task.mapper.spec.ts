@@ -1,14 +1,13 @@
 import { toEditTaskRequest, toWorkTask } from './task.mapper';
 import { WorkTaskDto } from '../models/dto/task.dto';
 import { WorkTask } from '../models/task.model';
-import { environment } from '../../../../environments/environment';
 
 const baseDto: WorkTaskDto = {
   id: 't1', objectiveId: 'o1', shortId: 'T-1', title: 'Task', description: null,
   categoryId: 'c1', statusId: 's1', priority: 'medium', storyPoints: null, dueDate: null,
   estimatedHours: null, completedHours: 0, progressPercent: 30, sprintId: null,
   assigneeEmployeeIds: [], openClockSessionEmployeeId: null, openClockSessionClockInAt: null,
-  totalLoggedMinutes: 0, createdAt: '2026-08-26T10:30:00Z'
+  totalLoggedMinutes: 0
 };
 
 describe('toWorkTask', () => {
@@ -61,21 +60,6 @@ describe('toWorkTask', () => {
     ]);
   });
 
-  it('maps avatarFileId to the canonical authenticated file URL', () => {
-    const withAssignees: WorkTaskDto = {
-      ...baseDto,
-      assignees: [{ employeeId: 'e1', name: 'Nevi Peiris', avatarFileId: 'avatar-file-1' }]
-    };
-
-    expect(toWorkTask(withAssignees).assignees).toEqual([
-      {
-        employeeId: 'e1',
-        name: 'Nevi Peiris',
-        avatarUrl: `${environment.apiUrl}/files/avatar-file-1`
-      }
-    ]);
-  });
-
   it('maps subtask fields through, defaulting counts to 0 and parentTaskId to null when absent', () => {
     const task = toWorkTask(baseDto);
     expect(task.parentTaskId).toBeNull();
@@ -93,12 +77,6 @@ describe('toWorkTask', () => {
     expect(mapped.subtaskTotalCount).toBe(5);
     expect(mapped.subtaskCompletedCount).toBe(2);
   });
-
-  it('maps createdAt to a Date', () => {
-    const mapped = toWorkTask(baseDto).createdAt;
-    expect(mapped).toBeInstanceOf(Date);
-    expect(mapped.toISOString()).toBe('2026-08-26T10:30:00.000Z');
-  });
 });
 
 describe('toEditTaskRequest', () => {
@@ -109,8 +87,7 @@ describe('toEditTaskRequest', () => {
     progressPercent: 40, sprintId: 'sp-1', assigneeEmployeeIds: [], openClockSessionEmployeeId: null,
     openClockSessionClockInAt: null, totalLoggedMinutes: 0,
     attachments: [{ fileId: 'f1', name: 'a.pdf', sizeBytes: 100 }], assignees: [],
-    parentTaskId: null, subtaskTotalCount: 0, subtaskCompletedCount: 0, subtaskAssigneeEmployeeIds: [],
-    createdAt: new Date('2026-01-01T00:00:00Z')
+    parentTaskId: null, subtaskTotalCount: 0, subtaskCompletedCount: 0, subtaskAssigneeEmployeeIds: []
   };
 
   it('reproduces every current field so nothing is silently cleared', () => {

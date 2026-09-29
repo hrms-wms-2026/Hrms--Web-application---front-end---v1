@@ -10,7 +10,7 @@ describe('LeaveBalanceAuditStore', () => {
   let httpMock: HttpTestingController;
 
   function row(id: string): LeaveBalanceAuditResponse {
-    return { id, employeeId: 'emp-1', employeeNumber: 'EMP-001', employeeName: 'Anu Raman', leaveTypeId: 'type-1', leaveTypeName: 'Annual Leave', leaveTypeCode: 'ANNUAL', changeType: 'accrual', hoursChanged: 20, balanceAfter: 20, reason: 'Auto-generated', relatedRequestId: null, createdAt: '2026-08-25T00:00:00Z' };
+    return { id, employeeId: 'emp-1', employeeNumber: 'EMP-001', employeeName: 'Anu Raman', leaveTypeId: 'type-1', leaveTypeName: 'Annual Leave', leaveTypeCode: 'ANNUAL', changeType: 'accrual', daysChanged: 20, balanceAfter: 20, reason: 'Auto-generated', relatedRequestId: null, createdAt: '2026-08-25T00:00:00Z' };
   }
 
   beforeEach(() => {

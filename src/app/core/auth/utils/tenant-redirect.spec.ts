@@ -1,30 +1,4 @@
-import {
-  buildRootUrl,
-  buildTenantUrl,
-  getRootHostname,
-  isTenantHostname,
-  isValidTenantSlug,
-  readLastTenantSlug
-} from './tenant-redirect';
-
-describe('remembered tenant hint', () => {
-  it('reads a valid tenant slug from a cookie header', () => {
-    expect(readLastTenantSlug('theme=dark; onevo_last_tenant=acme-team; other=value')).toBe('acme-team');
-  });
-
-  it('rejects malformed and encoded-host tenant values', () => {
-    expect(readLastTenantSlug('onevo_last_tenant=acme.evil.test')).toBeNull();
-    expect(readLastTenantSlug('onevo_last_tenant=acme%2Eevil%2Etest')).toBeNull();
-    expect(readLastTenantSlug('onevo_last_tenant=%E0%A4%A')).toBeNull();
-  });
-
-  it('accepts DNS-label tenant slugs only', () => {
-    expect(isValidTenantSlug('acme')).toBe(true);
-    expect(isValidTenantSlug('acme-team')).toBe(true);
-    expect(isValidTenantSlug('-acme')).toBe(false);
-    expect(isValidTenantSlug('acme-')).toBe(false);
-  });
-});
+import { buildRootUrl, buildTenantUrl, getRootHostname, isTenantHostname } from './tenant-redirect';
 
 describe('buildTenantUrl', () => {
   it('prepends the slug to the current hostname, keeping protocol and port', () => {

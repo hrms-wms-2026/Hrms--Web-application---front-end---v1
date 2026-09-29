@@ -1,21 +1,8 @@
 import { Component, OnInit, inject, signal } from '@angular/core';
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
-import { firstValueFrom, timeout } from 'rxjs';
 import { AuthStore } from '../../state/auth.store';
-import { AuthApiService } from '../../data-access/auth-api.service';
-import {
-  buildRootUrl,
-  buildTenantUrl,
-  isTenantHostname,
-  readLastTenantSlug
-} from '../../utils/tenant-redirect';
-import { parseSafeReturnPath } from '../../utils/safe-return-path';
-
-interface RememberedAccount {
-  displayName: string;
-  workspaceSlug: string;
-}
+import { buildRootUrl, isTenantHostname } from '../../utils/tenant-redirect';
 
 @Component({
   selector: 'app-login',
@@ -28,12 +15,9 @@ export class LoginComponent implements OnInit {
   private fb = inject(FormBuilder);
   private router = inject(Router);
   private route = inject(ActivatedRoute);
-  private authApi = inject(AuthApiService);
   store = inject(AuthStore);
 
   readonly showPassword = signal(false);
-  readonly checkingRememberedAccount = signal(false);
-  readonly rememberedAccount = signal<RememberedAccount | null>(null);
 
   form = this.fb.nonNullable.group({
     email: ['', [Validators.required, Validators.email]],
@@ -45,39 +29,7 @@ export class LoginComponent implements OnInit {
       // Keep ?returnUrl= so /device/activate can resume after the root-host login.
       const search = window.location.search || '';
       window.location.href = buildRootUrl(`/auth/login${search}`);
-      return;
     }
-
-    void this.loadRememberedAccount();
-  }
-
-  private async loadRememberedAccount(): Promise<void> {
-    const hintedSlug = readLastTenantSlug(document.cookie);
-    if (!hintedSlug) return;
-
-    this.checkingRememberedAccount.set(true);
-    try {
-      const dto = await firstValueFrom(this.authApi.meForTenant(hintedSlug).pipe(timeout(3000)));
-      const displayName = dto.user?.display_name?.trim();
-      if (!dto.authenticated || dto.workspace?.slug !== hintedSlug || !displayName) return;
-
-      this.rememberedAccount.set({
-        displayName,
-        workspaceSlug: dto.workspace.slug
-      });
-    } catch {
-      // A missing, expired, or unreachable tenant session simply falls back to credential login.
-    } finally {
-      this.checkingRememberedAccount.set(false);
-    }
-  }
-
-  continueWithRememberedAccount(): void {
-    const account = this.rememberedAccount();
-    if (!account) return;
-
-    const returnPath = parseSafeReturnPath(this.route.snapshot.queryParamMap.get('returnUrl'));
-    window.location.href = buildTenantUrl(account.workspaceSlug, returnPath ?? '/dashboard');
   }
 
   toggleShowPassword(): void {

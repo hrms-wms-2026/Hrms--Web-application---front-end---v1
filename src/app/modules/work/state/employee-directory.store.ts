@@ -36,27 +36,24 @@ export const EmployeeDirectoryStore = signalStore(
         }
 
         const fetchPromise = (async () => {
-          // GET /employees/{id}/identity - name + avatar only, gated on nothing beyond
-          // authentication (unlike the full employees:read-gated GET /employees/{id}), since
-          // resolving who owns/is assigned to something is universal display data, not an HR
-          // record. Still caught defensively: a genuinely-deleted employeeId 404s.
           const fetched = await Promise.all(
-            missing.map((id) => firstValueFrom(peopleApi.getEmployeeIdentity(id)).catch(() => null))
+            missing.map((id) => firstValueFrom(peopleApi.getEmployee(id)).catch(() => null))
           );
 
           const additions: Record<string, EmployeeSummary> = {};
-          fetched.forEach((identity, index) => {
+          fetched.forEach((employee, index) => {
             const id = missing[index]!;
-            // A failed lookup (404, employee no longer exists) is cached as an unresolved
-            // placeholder too, not left "missing" - otherwise every fresh mount that needs this
-            // id (a new row, a new card) retries the same doomed request forever, since there is
-            // no negative cache without this.
-            additions[id] = identity
+            // A failed lookup (403 from the management-coverage-scoped GET /employees/{id} is the
+            // common case - most task assignees are outside the viewer's coverage, not a real
+            // error) is cached as an unresolved placeholder too, not left "missing" - otherwise
+            // every fresh mount that needs this id (a new row, a new card) retries the same
+            // doomed request forever, since there is no negative cache without this.
+            additions[id] = employee
               ? {
-                  id: identity.id,
-                  name: identity.name,
-                  initials: buildInitials(identity.name),
-                  avatarUrl: identity.avatarFileId ? fileApi.getFileUrl(identity.avatarFileId) : null
+                  id: employee.id,
+                  name: employee.fullName,
+                  initials: buildInitials(employee.fullName),
+                  avatarUrl: employee.avatarFileId ? fileApi.getFileUrl(employee.avatarFileId) : null
                 }
               : { id, name: 'Unknown employee', initials: '?', avatarUrl: null };
           });

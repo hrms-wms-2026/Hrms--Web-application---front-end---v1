@@ -4,162 +4,7 @@
   flex-direction: column;
   gap: 0.25rem;
   width: 100%;
-  max-width: 100%;
-}
-
-.dp-container--inline {
-  width: auto;
-  max-width: none;
-}
-
-.dp-container--chip {
-  display: inline-flex;
-  width: auto;
-  max-width: none;
-  vertical-align: middle;
-}
-
-.dp-chip {
-  display: inline-flex;
-  align-items: center;
-  gap: 4px;
-  font-family: inherit;
-  font-size: 11.5px;
-  font-weight: 500;
-  border-radius: 4px;
-  border: none;
-  background: transparent;
-  color: var(--color-text-secondary);
-  cursor: pointer;
-  padding: 2px 4px;
-  transition: all 120ms ease;
-  line-height: 1;
-}
-
-.dp-chip:hover:not(:disabled) {
-  background: var(--color-surface-secondary);
-  color: var(--color-text-primary);
-}
-
-.dp-chip svg {
-  width: 14px;
-  height: 14px;
-  stroke: currentColor;
-  fill: none;
-  stroke-width: 1.8;
-  flex-shrink: 0;
-}
-
-.dp-chip--active {
-  color: var(--color-text-primary);
-}
-
-/* Custom styling when variant="chip" is used inside task-form-modal (tfm-chip) */
-.dp-chip.tfm-chip {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  height: 34px;
-  padding: 0 12px;
-  border-radius: 9999px;
-  border: 1px solid var(--color-border);
-  background: var(--color-surface-secondary);
-  color: var(--color-text-primary);
-  font-size: 13px;
-  font-weight: 500;
-  white-space: nowrap;
-  user-select: none;
-  line-height: 1;
-}
-
-.dp-chip.tfm-chip:hover:not(:disabled) {
-  background: var(--color-surface);
-  border-color: color-mix(in srgb, var(--color-accent) 45%, var(--color-border));
-  box-shadow: 0 1px 3px rgb(15 23 42 / .06);
-}
-
-.dp-chip.tfm-chip.dp-chip--active {
-  border-color: color-mix(in srgb, var(--color-accent) 40%, var(--color-border));
-  background: var(--color-surface);
-}
-
-.dp-chip.tfm-chip.tfm-chip--clean {
-  width: 100%;
-  height: 32px;
-  padding: 0 8px;
-  border-radius: 6px;
-  border: 1px solid transparent;
-  background: transparent;
-  box-shadow: none;
-  gap: 8px;
-}
-
-.dp-chip.tfm-chip.tfm-chip--clean:hover:not(:disabled),
-.dp-chip.tfm-chip.tfm-chip--clean[aria-expanded="true"] {
-  background: var(--color-surface-secondary);
-  border-color: transparent;
-  box-shadow: none;
-}
-
-.dp-chip.tfm-chip svg {
-  width: 14px;
-  height: 14px;
-  stroke: currentColor;
-  fill: none;
-  stroke-width: 2;
-  stroke-linecap: round;
-  stroke-linejoin: round;
-  flex-shrink: 0;
-}
-
-.dp-chip.tfm-chip span {
-  max-width: 180px;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-/* Edit mode clean chip in task properties */
-.dp-chip.tfm-chip--clean {
-  border: 1px solid transparent !important;
-  background: transparent !important;
-  height: 30px !important;
-  padding: 0 8px !important;
-  border-radius: 6px !important;
-  box-shadow: none !important;
-  font-size: 13px;
-  font-weight: 500;
-  color: var(--color-text-primary);
-}
-
-.dp-chip.tfm-chip--clean:hover:not(:disabled),
-.dp-chip.tfm-chip--clean[aria-expanded="true"] {
-  background: var(--color-surface-secondary) !important;
-  border-color: var(--color-border) !important;
-}
-
-.dp-chip.tfm-chip--clean:not(.dp-chip--active) {
-  color: var(--color-text-secondary) !important;
-}
-
-.task-card__meta-btn--icon-only span {
-  display: none;
-}
-
-.task-card__due-date--overdue {
-  color: var(--color-danger, #ef4444);
-}
-
-.task-card__due-date--overdue svg {
-  color: var(--color-danger, #ef4444);
-}
-
-.task-card__due-date--today {
-  color: var(--color-warning-text, #d97706);
-}
-
-.task-card__due-date--today svg {
-  color: var(--color-warning-text, #d97706);
+  max-width: 260px;
 }
 
 .dp-label {
@@ -240,31 +85,22 @@
 
 /* Comfortable Apple-style Calendar Popover */
 .dp-popover {
-  position: relative;
+  position: absolute;
+  top: calc(100% + 0.25rem);
+  left: 0;
   z-index: 50;
   width: 260px;
-  box-sizing: border-box;
   padding: 0.625rem;
   border-radius: 12px;
   border: 1px solid var(--color-border);
   background-color: var(--color-surface);
   box-shadow: 0 10px 25px rgba(0, 0, 0, 0.12), 0 4px 10px rgba(0, 0, 0, 0.05);
   animation: dpFadeIn 0.12s cubic-bezier(0.16, 1, 0.3, 1);
-  overscroll-behavior: contain;
-}
-
-.dp-popover--inline {
-  position: static;
-  box-shadow: none;
-  border: none;
-  animation: none;
-  padding: 0;
-  width: 100%;
-  max-width: 260px;
-  background: transparent;
 }
 
 .dp-popover--up {
+  top: auto;
+  bottom: calc(100% + 0.25rem);
   animation: dpFadeInUp 0.12s cubic-bezier(0.16, 1, 0.3, 1);
 }
 
@@ -288,34 +124,6 @@
     opacity: 1;
     transform: translateY(0) scale(1);
   }
-}
-
-.dp-quick-row {
-  display: flex;
-  gap: 4px;
-  margin-bottom: 0.5rem;
-}
-
-.dp-quick-btn {
-  flex: 1;
-  padding: 4px 6px;
-  font-family: inherit;
-  font-size: 0.6875rem;
-  font-weight: 500;
-  border: 1px solid var(--color-border);
-  border-radius: 4px;
-  background: var(--color-surface-secondary);
-  color: var(--color-text-primary);
-  cursor: pointer;
-  text-align: center;
-  transition: all 120ms ease;
-  line-height: 1.2;
-}
-
-.dp-quick-btn:hover {
-  border-color: var(--color-accent);
-  background: var(--color-surface);
-  color: var(--color-accent);
 }
 
 .dp-header {
@@ -364,11 +172,11 @@
 }
 
 .dp-weekday {
-  font-size: 0.6875rem;
+  font-size: 0.65rem;
   font-weight: 600;
   color: var(--color-text-secondary);
-  text-transform: none;
-  letter-spacing: 0.02em;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
   padding: 0.125rem 0;
   user-select: none;
 }
@@ -438,42 +246,13 @@
   background-color: var(--color-accent-hover);
 }
 
-.dp-day-btn:disabled,
-.dp-day-btn--disabled {
-  opacity: 0.3;
-  cursor: not-allowed !important;
-  pointer-events: none;
-}
-
 .dp-footer {
   display: flex;
   align-items: center;
-  justify-content: space-between;
+  justify-content: flex-end;
   margin-top: 0.375rem;
   padding-top: 0.375rem;
   border-top: 1px solid var(--color-border);
-}
-
-.dp-clear-link {
-  border: none;
-  background: transparent;
-  font-size: 0.75rem;
-  font-weight: 500;
-  color: var(--color-text-secondary);
-  cursor: pointer;
-  padding: 0.125rem 0.375rem;
-  border-radius: 4px;
-  transition: background-color 0.15s ease, color 0.15s ease;
-}
-
-.dp-clear-link:hover {
-  background-color: var(--color-surface-secondary);
-  color: var(--color-danger, #ef4444);
-}
-
-.dp-clear-link:focus-visible {
-  outline: none;
-  box-shadow: 0 0 0 2px var(--color-focus-ring);
 }
 
 .dp-today-link {

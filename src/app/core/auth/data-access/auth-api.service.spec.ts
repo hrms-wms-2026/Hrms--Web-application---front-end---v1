@@ -1,7 +1,7 @@
 import { TestBed } from '@angular/core/testing';
 import { provideHttpClient } from '@angular/common/http';
 import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
-import { AuthApiService, getSystemApiUrl, getTenantApiUrl } from './auth-api.service';
+import { AuthApiService, getSystemApiUrl } from './auth-api.service';
 import { environment } from '@environments/environment';
 import { AuthResponseDto } from '../models/dto/auth-response.dto';
 
@@ -16,26 +16,6 @@ describe('getSystemApiUrl', () => {
 
   it('leaves an already-root apiUrl unchanged', () => {
     expect(getSystemApiUrl('https://localhost:7229/api/v1')).toBe('https://localhost:7229/api/v1');
-  });
-});
-
-describe('getTenantApiUrl', () => {
-  it('retargets the root apiUrl to the remembered tenant hostname', () => {
-    expect(getTenantApiUrl('https://localhost:7229/api/v1', 'acme')).toBe(
-      'https://acme.localhost:7229/api/v1'
-    );
-  });
-
-  it('replaces an existing tenant label instead of stacking subdomains', () => {
-    expect(getTenantApiUrl('https://old.onevo.com/api/v1', 'acme')).toBe(
-      'https://acme.onevo.com/api/v1'
-    );
-  });
-
-  it('rejects a malformed cookie value before constructing a URL', () => {
-    expect(() => getTenantApiUrl('https://onevo.com/api/v1', 'acme.evil.test')).toThrow(
-      'Invalid tenant slug.'
-    );
   });
 });
 
@@ -87,14 +67,6 @@ describe('AuthApiService', () => {
   it('GETs /auth/me', () => {
     service.me().subscribe();
     const req = httpMock.expectOne(`${environment.apiUrl}/auth/me`);
-    expect(req.request.method).toBe('GET');
-    req.flush(sampleResponse);
-  });
-
-  it('validates a remembered session against the tenant-host /auth/me endpoint', () => {
-    service.meForTenant('acme').subscribe();
-    const expectedUrl = `${getTenantApiUrl(environment.apiUrl, 'acme')}/auth/me`;
-    const req = httpMock.expectOne(expectedUrl);
     expect(req.request.method).toBe('GET');
     req.flush(sampleResponse);
   });

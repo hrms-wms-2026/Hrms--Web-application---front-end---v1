@@ -10,7 +10,7 @@
         @if (hasAvatarUrl(slot.item)) {
           <img
             class="psp-avatar-img"
-            [src]="avatarUrl(slot.item)!"
+            [src]="slot.item.avatarUrl!"
             [alt]="slot.item.displayName || 'Employee avatar'"
             loading="lazy"
           />

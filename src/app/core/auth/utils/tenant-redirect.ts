@@ -1,30 +1,3 @@
-const LAST_TENANT_COOKIE = 'onevo_last_tenant';
-const TENANT_SLUG_PATTERN = /^[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?$/;
-
-export function isValidTenantSlug(value: string): boolean {
-  return TENANT_SLUG_PATTERN.test(value);
-}
-
-/**
- * Reads the cross-subdomain tenant hint. The cookie is deliberately non-authoritative: callers
- * must still validate the real tenant session before treating the visitor as authenticated.
- */
-export function readLastTenantSlug(cookieHeader: string): string | null {
-  const match = cookieHeader
-    .split(';')
-    .map((cookie) => cookie.trim())
-    .find((cookie) => cookie.startsWith(`${LAST_TENANT_COOKIE}=`));
-
-  if (!match) return null;
-
-  try {
-    const value = decodeURIComponent(match.slice(LAST_TENANT_COOKIE.length + 1));
-    return isValidTenantSlug(value) ? value : null;
-  } catch {
-    return null;
-  }
-}
-
 export function getRootHostname(hostname: string): string {
   if (hostname.endsWith('.localhost')) {
     return 'localhost';

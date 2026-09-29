@@ -14,13 +14,6 @@ export class LeavePendingApprovalsTableComponent {
     return status === 'information_requested' ? 'Awaiting your info' : 'Pending';
   }
 
-  initials(name: string): string {
-    const parts = name.trim().split(/\s+/).filter(Boolean);
-    if (parts.length === 0) return '?';
-    if (parts.length === 1) return parts[0].slice(0, 2).toUpperCase();
-    return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
-  }
-
   onCheckboxClick(event: Event, requestId: string): void {
     event.stopPropagation();
     const checked = (event.target as HTMLInputElement).checked;

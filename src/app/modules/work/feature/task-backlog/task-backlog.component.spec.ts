@@ -18,28 +18,26 @@ import { WorkTask } from '../../models/task.model';
 describe('TaskBacklogComponent', () => {
   const sprint1: Sprint = {
     id: 'sp-1',
-    projectId: 'p-1',
+    objectiveId: 'milestone-1',
     name: 'Sprint One',
     goal: null,
     startDate: new Date('2026-08-17'),
     endDate: new Date('2026-08-31'),
     status: 'active',
     completedAt: null,
-    achievedAt: null,
-    canManage: true
+    achievedAt: null
   };
 
   const sprint2: Sprint = {
     id: 'sp-2',
-    projectId: 'p-1',
+    objectiveId: 'milestone-1',
     name: 'Sprint Two',
     goal: null,
     startDate: new Date('2026-09-01'),
     endDate: new Date('2026-09-14'),
     status: 'draft',
     completedAt: null,
-    achievedAt: null,
-    canManage: true
+    achievedAt: null
   };
 
   function makeTask(id: string, sprintId: string | null): WorkTask {
@@ -60,14 +58,12 @@ describe('TaskBacklogComponent', () => {
       sprintId,
       assigneeEmployeeIds: [], openClockSessionEmployeeId: null, openClockSessionClockInAt: null, totalLoggedMinutes: 0,
       attachments: [], assignees: [],
-      parentTaskId: null, subtaskTotalCount: 0, subtaskCompletedCount: 0, subtaskAssigneeEmployeeIds: [],
-      createdAt: new Date('2026-01-01T00:00:00Z')
+      parentTaskId: null, subtaskTotalCount: 0, subtaskCompletedCount: 0, subtaskAssigneeEmployeeIds: []
     };
   }
 
   function setup(options: {
     isOwner?: boolean;
-    isEffectiveOwner?: boolean;
     sprints?: Sprint[];
     tasks?: WorkTask[];
     sprintCreate?: ReturnType<typeof vi.fn>;
@@ -76,10 +72,9 @@ describe('TaskBacklogComponent', () => {
     sprintComplete?: ReturnType<typeof vi.fn>;
     sprintAchieve?: ReturnType<typeof vi.fn>;
     taskErrorSignal?: ReturnType<typeof signal<string | null>>;
-    milestones?: { objectiveId: string; title: string; isOwner: boolean; isEffectiveOwner: boolean }[];
+    milestones?: { objectiveId: string; title: string; isOwner: boolean }[];
   } = {}) {
     const isOwner = options.isOwner ?? true;
-    const isEffectiveOwner = options.isEffectiveOwner ?? isOwner;
     const sprintsSignal = options.sprintsSignal ?? signal<Sprint[]>(options.sprints ?? [sprint1, sprint2]);
     const sprintErrorSignal = options.sprintErrorSignal ?? signal<string | null>(null);
     const taskErrorSignal = options.taskErrorSignal ?? signal<string | null>(null);
@@ -111,7 +106,7 @@ describe('TaskBacklogComponent', () => {
         {
           provide: ProjectDetailStore,
           useValue: {
-            milestones: () => options.milestones ?? [{ objectiveId: 'milestone-1', title: 'Milestone One', isOwner, isEffectiveOwner }],
+            milestones: () => options.milestones ?? [{ objectiveId: 'milestone-1', title: 'Milestone One', isOwner }],
             getMilestoneDetail: vi.fn().mockResolvedValue(null),
             loadProjectMembers,
             projectMembers: () => []
@@ -200,7 +195,7 @@ describe('TaskBacklogComponent', () => {
     expect(inst.taskModalOpen()).toBe(true);
     expect(inst.taskModalMode()).toBe('create');
     expect(inst.modalPrefillSprintId()).toBe('sp-1');
-    expect(inst.modalPrefillModuleId()).toBe('');
+    expect(inst.modalPrefillModuleId()).toBe('milestone-1');
   });
 
   it("creating a sprint immediately reflects in this component's own sprint list without a page reload", async () => {
@@ -220,7 +215,7 @@ describe('TaskBacklogComponent', () => {
     createSprintButton?.click();
     fixture.detectChanges();
 
-    await fixture.componentInstance['sprintStore'].create('milestone-1', { name: 'x' });
+    await fixture.componentInstance['sprintStore'].create('milestone-1', { name: 'x' }, false);
     fixture.detectChanges();
     await fixture.whenStable();
     fixture.detectChanges();
@@ -249,7 +244,7 @@ describe('TaskBacklogComponent', () => {
         {
           provide: ProjectDetailStore,
           useValue: {
-            milestones: () => [{ objectiveId: 'milestone-1', title: 'Milestone One', isOwner: true, isEffectiveOwner: true }],
+            milestones: () => [{ objectiveId: 'milestone-1', title: 'Milestone One', isOwner: true }],
             getMilestoneDetail: vi.fn().mockResolvedValue(null),
             loadProjectMembers,
             projectMembers: () => [
@@ -299,91 +294,6 @@ describe('TaskBacklogComponent', () => {
     expect(members).toEqual([
       { employeeId: 'emp-1', name: 'Nevi Peiris', avatarUrl: null },
       { employeeId: 'emp-2', name: 'Unknown employee', avatarUrl: null }
-    ]);
-  });
-
-  it('builds projectRosterMembers from the full project member list, independent of milestone-scoped assignableMembers', async () => {
-    const loadProjectMembers = vi.fn().mockResolvedValue(undefined);
-
-    TestBed.configureTestingModule({
-      imports: [TaskBacklogComponent],
-      providers: [
-        {
-          provide: TaskBoardStore,
-          useValue: {
-            loadBoard: vi.fn().mockResolvedValue(undefined),
-            moveTask: vi.fn().mockResolvedValue(undefined),
-            tasks: () => [],
-            statuses: () => [],
-            loading: () => false,
-            error: () => null
-          }
-        },
-        {
-          provide: ProjectDetailStore,
-          useValue: {
-            milestones: () => [{ objectiveId: 'milestone-1', title: 'Milestone One', isOwner: true, isEffectiveOwner: true }],
-            getMilestoneDetail: vi.fn().mockResolvedValue(null),
-            loadProjectMembers,
-            // Only one milestone-scoped member reachable by the current viewer.
-            projectMembers: () => [{ employeeId: 'emp-1', name: 'Nevi Peiris', pending: false, isHead: false }],
-            // The project as a whole has more members than the viewer's reachable milestones.
-            project: () => ({
-              members: [
-                { userId: 'emp-1', displayName: 'Nevi Peiris', avatarFileId: null },
-                { userId: 'emp-2', displayName: 'Kasun Ranasinghe', avatarFileId: null },
-                { userId: 'emp-3', displayName: 'Sithara Nimal', avatarFileId: null }
-              ],
-              memberCount: 3
-            })
-          }
-        },
-        {
-          provide: TaskApiService,
-          useValue: {
-            createTaskCreationRequest: vi.fn().mockReturnValue(of({})),
-            assignTask: vi.fn().mockReturnValue(of(undefined)),
-            editTask: vi.fn().mockReturnValue(of({})),
-            createTaskEditRequest: vi.fn().mockReturnValue(of({})),
-            getCategories: vi.fn().mockReturnValue(of([]))
-          }
-        },
-        {
-          provide: SprintListStore,
-          useValue: {
-            sprints: signal([]),
-            error: signal(null),
-            loading: signal(false),
-            loadForProject: vi.fn().mockResolvedValue(undefined),
-            create: vi.fn(),
-            edit: vi.fn(),
-            complete: vi.fn(),
-            achieve: vi.fn()
-          }
-        },
-        {
-          provide: ActivatedRoute,
-          useValue: { snapshot: { paramMap: { get: (key: string) => (key === 'id' ? 'project-1' : null) } } }
-        },
-        { provide: Router, useValue: { navigate: vi.fn().mockResolvedValue(true) } }
-      ]
-    });
-
-    const fixture = TestBed.createComponent(TaskBacklogComponent);
-    fixture.detectChanges();
-    await fixture.whenStable();
-    await fixture.whenStable();
-
-    const instance = fixture.componentInstance as unknown as {
-      assignableMembers: () => { employeeId: string }[];
-      projectRosterMembers: () => { employeeId: string; name: string; avatarUrl: string | null }[];
-    };
-
-    expect(instance.assignableMembers().map((m) => m.employeeId)).toEqual(['emp-1']);
-    expect(instance.projectRosterMembers()).toEqual([
-      { employeeId: 'emp-1', name: 'Nevi Peiris', avatarUrl: null },
-      { employeeId: 'emp-2', name: 'Kasun Ranasinghe', avatarUrl: null },
-      { employeeId: 'emp-3', name: 'Sithara Nimal', avatarUrl: null }
     ]);
   });
 
@@ -447,20 +357,18 @@ describe('TaskBacklogComponent', () => {
     expect(fixture.nativeElement.querySelector('app-sprint-complete-dialog')).not.toBeNull();
   });
 
-  // Sprints are project-level: any member of the project may create one, even one who owns no
-  // module - only the module task picker inside the form itself is scoped by ownership.
-  it('Create Sprint button shows for a member who owns no module', async () => {
-    const { fixture } = setup({
-      milestones: [{ objectiveId: 'milestone-1', title: 'Milestone One', isOwner: false, isEffectiveOwner: false }]
-    });
+  // Sprint creation has no pending/request path (SprintApiService.create has no member-request
+  // variant), so the button - and the form it opens - must not be shown to a non-owner.
+  it('does not show the Create Sprint button (or form) to a non-owner', async () => {
+    const { fixture } = setup({ isOwner: false });
     await fixture.whenStable();
     fixture.detectChanges();
 
-    expect(fixture.componentInstance['modules']().length).toBeGreaterThan(0);
+    expect(fixture.componentInstance['ownedModuleOptions']().length).toBe(0);
 
     fixture.componentInstance['createSprintOpen'].set(true);
     fixture.detectChanges();
-    expect(fixture.nativeElement.querySelector('app-sprint-form')).not.toBeNull();
+    expect(fixture.nativeElement.querySelector('app-sprint-form')).toBeNull();
   });
 
   it('shows the Create Sprint button to an owner', async () => {
@@ -468,7 +376,7 @@ describe('TaskBacklogComponent', () => {
     await fixture.whenStable();
     fixture.detectChanges();
 
-    expect(fixture.componentInstance['modules']().length).toBeGreaterThan(0);
+    expect(fixture.componentInstance['ownedModuleOptions']().length).toBeGreaterThan(0);
     const toolbarStore = TestBed.inject(WorkPageToolbarStore);
     expect(toolbarStore.template()).not.toBeNull();
   });
@@ -614,19 +522,10 @@ describe('TaskBacklogComponent', () => {
       expect(fixture.nativeElement.textContent).toContain('Backlog');
     });
 
-    it('move targets include draft and active sprints across modules, exclude complete/achieved', async () => {
-      const completeSprint: Sprint = { ...sprint1, id: 'sp-3', name: 'Sprint Three', status: 'complete' };
-      const achievedSprint: Sprint = { ...sprint1, id: 'sp-4', name: 'Sprint Four', status: 'achieved' };
-      const backlogTasks = [makeTaskWithHours('t-a', 4, 'milestone-2')];
+    it('offers the Draft sprint in the same module as a target, with its current task count and hours', async () => {
+      const backlogTasks = [makeTaskWithHours('t-a', 4), makeTaskWithHours('t-b', 6)];
       const sprintTasks = [makeTask('t-in-sprint2', 'sp-2')];
-      const { fixture } = setup({
-        tasks: [...backlogTasks, ...sprintTasks],
-        sprints: [sprint1, sprint2, completeSprint, achievedSprint],
-        milestones: [
-          { objectiveId: 'milestone-1', title: 'Milestone One', isOwner: true, isEffectiveOwner: true },
-          { objectiveId: 'milestone-2', title: 'Milestone Two', isOwner: true, isEffectiveOwner: true }
-        ]
-      });
+      const { fixture } = setup({ tasks: [...backlogTasks, ...sprintTasks] });
       await fixture.whenStable();
       fixture.detectChanges();
 
@@ -639,46 +538,18 @@ describe('TaskBacklogComponent', () => {
       };
       expect(inst.moveBlockedReason()).toBeNull();
       const targets = inst.moveTargets();
-      const targetIds = targets.map((t) => t.sprint.id);
-      expect(targetIds).toEqual(['sp-1', 'sp-2']);
-      expect(targetIds).not.toContain('sp-3');
-      expect(targetIds).not.toContain('sp-4');
-      const sp2Target = targets.find((t) => t.sprint.id === 'sp-2')!;
-      expect(sp2Target.currentTaskCount).toBe(1);
+      expect(targets).toHaveLength(1);
+      expect(targets[0].sprint.id).toBe('sp-2');
+      expect(targets[0].currentTaskCount).toBe(1);
     });
 
-    // A row for a module the caller doesn't own has no checkbox at all (TaskTableComponent's
-    // isRowSelectable gate), so this exercises moveBlockedReason's own backstop directly via the
-    // selection-changed handler rather than a checkbox click.
-    it("move is blocked when a selected task's module is not effectively owned", async () => {
-      const tasks = [makeTaskWithHours('t-a', 4, 'milestone-2')];
-      const { fixture } = setup({
-        tasks,
-        milestones: [
-          { objectiveId: 'milestone-1', title: 'Milestone One', isOwner: true, isEffectiveOwner: true },
-          { objectiveId: 'milestone-2', title: 'Milestone Two', isOwner: false, isEffectiveOwner: false }
-        ]
-      });
-      await fixture.whenStable();
-      fixture.detectChanges();
-
-      const inst = fixture.componentInstance as unknown as {
-        onTaskSelectionChanged: (event: { taskId: string; selected: boolean }) => void;
-        moveBlockedReason: () => string | null;
-      };
-      inst.onTaskSelectionChanged({ taskId: 't-a', selected: true });
-      fixture.detectChanges();
-
-      expect(inst.moveBlockedReason()).toContain('own');
-    });
-
-    it('move is not blocked when a mixed-module selection is owned in every module', async () => {
+    it('blocks the move when the selection spans more than one module', async () => {
       const tasks = [makeTaskWithHours('t-a', 4, 'milestone-1'), makeTaskWithHours('t-b', 2, 'milestone-2')];
       const { fixture } = setup({
         tasks,
         milestones: [
-          { objectiveId: 'milestone-1', title: 'Milestone One', isOwner: true, isEffectiveOwner: true },
-          { objectiveId: 'milestone-2', title: 'Milestone Two', isOwner: true, isEffectiveOwner: true }
+          { objectiveId: 'milestone-1', title: 'Milestone One', isOwner: true },
+          { objectiveId: 'milestone-2', title: 'Milestone Two', isOwner: true }
         ]
       });
       await fixture.whenStable();
@@ -689,7 +560,7 @@ describe('TaskBacklogComponent', () => {
       fixture.detectChanges();
 
       const inst = fixture.componentInstance as unknown as { moveBlockedReason: () => string | null };
-      expect(inst.moveBlockedReason()).toBeNull();
+      expect(inst.moveBlockedReason()).toContain('single module');
     });
 
     it('moving tasks edits each one with the target sprint, clears selection, and shows an undo banner', async () => {

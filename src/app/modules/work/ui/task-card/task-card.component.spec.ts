@@ -39,8 +39,7 @@ describe('TaskCardComponent', () => {
     estimatedHours: 5, completedHours: 0, progressPercent: 0, sprintId: null,
     assigneeEmployeeIds: ['emp-1', 'emp-2'], openClockSessionEmployeeId: null, openClockSessionClockInAt: null, totalLoggedMinutes: 0,
     attachments: [], assignees: [],
-    parentTaskId: null, subtaskTotalCount: 0, subtaskCompletedCount: 0, subtaskAssigneeEmployeeIds: [],
-    createdAt: new Date('2026-01-01T00:00:00Z')
+    parentTaskId: null, subtaskTotalCount: 0, subtaskCompletedCount: 0, subtaskAssigneeEmployeeIds: []
   };
 
   const assignableMembers = [

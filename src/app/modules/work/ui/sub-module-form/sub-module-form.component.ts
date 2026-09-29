@@ -90,7 +90,7 @@ interface SelectedMember {
           <p class="text-sm text-[var(--color-danger-text)]" role="alert">{{ errorMessage() }}</p>
         }
 
-        <div class="sub-module-form__actions mt-2 flex justify-end gap-2">
+        <div class="mt-2 flex justify-end gap-2">
           <span data-testid="cancel-button">
             <app-button variant="secondary" [disabled]="submitting()" (pressed)="closed.emit()">Cancel</app-button>
           </span>
@@ -102,17 +102,7 @@ interface SelectedMember {
         </div>
       </div>
     </app-modal>
-  `,
-  styles: [`
-    .sub-module-form__actions ::ng-deep app-button > button {
-      width: auto;
-      height: 30px;
-      padding: 0 12px;
-      border-radius: 8px;
-      font-size: 13px;
-      font-weight: 500;
-    }
-  `]
+  `
 })
 export class SubModuleFormComponent {
   private readonly store = inject(ProjectDetailStore);

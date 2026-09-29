@@ -1,41 +1,48 @@
-@if (open()) {
-  <div class="tfm-scrim" (click)="onBackdrop($event)">
-    <div
-      class="tfm tfm--create"
-      role="dialog"
-      aria-modal="true"
-      tabindex="-1"
-      [attr.aria-label]="isEdit() ? 'Edit checklist' : 'Create checklist'"
-      (click)="$event.stopPropagation()"
-      (keydown.escape)="onEscape()"
-    >
-      <header class="tfm__head">
-        <div class="tfm__title">
-          <h2>{{ isEdit() ? 'Edit checklist' : 'Create checklist' }}</h2>
-          <p>Create reusable tasks for employee onboarding or offboarding.</p>
-        </div>
-        <button type="button" class="tfm__x" aria-label="Close" (click)="cancel()">
-          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M18 6 6 18" /></svg>
-        </button>
-      </header>
+<header class="cb-page-header">
+  <div class="cb-header-row">
+    <app-breadcrumb-header
+      parentLabel="Checklists"
+      [currentLabel]="isEdit() ? 'Edit checklist' : 'Create checklist'"
+      parentUrl="/people/checklists"
+      icon="people"
+    />
+    <div class="flex items-center gap-3">
+      <app-button variant="secondary" type="button" (pressed)="cancel()">
+        Cancel
+      </app-button>
+      <app-button variant="primary" type="button" [loading]="store.saving()" (pressed)="onSubmit()">
+        {{ isEdit() ? 'Save checklist' : 'Create checklist' }}
+      </app-button>
+    </div>
+  </div>
+</header>
 
-      <div class="tfm__body">
-        @if (initialLoading()) {
-          <div class="p-6 flex justify-center items-center">
-            <app-loader label="Loading checklist template..." />
-          </div>
-        } @else if (loadError()) {
-          <div class="p-5 bg-[var(--color-surface-secondary)] border border-[var(--color-border)] rounded-md text-center space-y-3">
-            <p class="text-sm text-[var(--color-danger-text)]">{{ loadError() }}</p>
-            <app-button variant="secondary" (pressed)="cancel()">
-              Back to Checklists
-            </app-button>
-          </div>
-        } @else {
-          <form [formGroup]="form" (ngSubmit)="onSubmit()" class="space-y-5">
-      <!-- Section 1: Checklist Configuration (Compact 2-Column Grid) -->
+<div class="cb-container max-w-4xl mx-auto py-1 md:py-3">
+
+  @if (initialLoading()) {
+    <div class="p-6 flex justify-center items-center">
+      <app-loader label="Loading checklist template..." />
+    </div>
+  } @else if (loadError()) {
+    <div class="p-5 bg-[var(--color-surface-secondary)] border border-[var(--color-border)] rounded-lg text-center space-y-3">
+      <p class="text-sm text-[var(--color-danger-text)]">{{ loadError() }}</p>
+      <app-button variant="secondary" (pressed)="cancel()">
+        Back to Checklists
+      </app-button>
+    </div>
+  } @else {
+    <form [formGroup]="form" (ngSubmit)="onSubmit()" class="bg-[var(--color-surface)] border border-[var(--color-border)] rounded-xl p-5 space-y-5">
+      <!-- Section 1: Checklist Configuration -->
       <div class="space-y-4">
-        <!-- Row 1: Checklist Name & Checklist Type -->
+        <div>
+          <h2 class="text-base font-semibold text-[var(--color-text-primary)]">
+            Checklist details
+          </h2>
+          <p class="text-xs text-[var(--color-text-secondary)] mt-0.5">
+            Create reusable tasks for employee onboarding or offboarding.
+          </p>
+        </div>
+
         <div class="grid grid-cols-1 md:grid-cols-2 gap-4 items-start">
           <!-- Checklist Name -->
           <div class="space-y-1">
@@ -48,185 +55,118 @@
             />
           </div>
 
-          <!-- Checklist Type Segmented Control -->
+          <!-- Checklist Type -->
           <div class="flex flex-col gap-1">
             <label class="text-xs font-semibold text-[var(--color-text-secondary)]">Checklist type *</label>
-            <div class="cb-segmented" role="radiogroup" aria-label="Checklist type">
+            <div class="flex gap-2">
               <button
                 type="button"
-                class="cb-segmented__btn"
-                [class.cb-segmented__btn--active]="form.controls.templateType.value === 'onboarding'"
+                class="cb-chip"
+                [class.cb-chip--active]="form.controls.templateType.value === 'onboarding'"
                 [disabled]="isEdit()"
                 (click)="setTemplateType('onboarding')"
               >
-                <svg class="cb-segmented__icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                  <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2" />
-                  <circle cx="9" cy="7" r="4" />
-                  <line x1="19" y1="8" x2="19" y2="14" />
-                  <line x1="22" y1="11" x2="16" y2="11" />
-                </svg>
                 <span>Onboarding</span>
               </button>
               <button
                 type="button"
-                class="cb-segmented__btn"
-                [class.cb-segmented__btn--active]="form.controls.templateType.value === 'offboarding'"
+                class="cb-chip"
+                [class.cb-chip--active]="form.controls.templateType.value === 'offboarding'"
                 [disabled]="isEdit()"
                 (click)="setTemplateType('offboarding')"
               >
-                <svg class="cb-segmented__icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                  <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" />
-                  <polyline points="16 17 21 12 16 7" />
-                  <line x1="21" y1="12" x2="9" y2="12" />
-                </svg>
                 <span>Offboarding</span>
               </button>
             </div>
             @if (isEdit()) {
-              <p class="text-[11px] text-[var(--color-text-secondary)]">Checklist type cannot be changed after creation.</p>
+              <p class="text-xs text-[var(--color-text-secondary)]">Checklist type cannot be changed after creation.</p>
             }
           </div>
         </div>
 
-        <!-- Row 2: Applicability Scope & Dependent Target Selection (Side-by-side) -->
-        <div class="pt-3 border-t border-[var(--color-border)]">
-          <div class="grid grid-cols-1 md:grid-cols-2 gap-4 items-start">
-            <!-- Scope Selector (Left Column) -->
-            <div class="flex flex-col gap-1">
-              <label class="text-xs font-semibold text-[var(--color-text-secondary)]">
-                Use this checklist for
-              </label>
-              <div class="cb-segmented" role="radiogroup" aria-label="Use this checklist for">
-                <button
-                  type="button"
-                  class="cb-segmented__btn"
-                  [class.cb-segmented__btn--active]="scopeLevel() === 'company'"
-                  (click)="setScopeLevel('company')"
-                >
-                  <svg class="cb-segmented__icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                    <rect x="4" y="2" width="16" height="20" rx="2" />
-                    <path d="M9 22v-4h6v4" />
-                    <path d="M8 6h.01M16 6h.01M8 10h.01M16 10h.01M8 14h.01M16 14h.01" />
-                  </svg>
-                  <span>Company default</span>
-                </button>
-                <button
-                  type="button"
-                  class="cb-segmented__btn"
-                  [class.cb-segmented__btn--active]="scopeLevel() === 'department'"
-                  (click)="setScopeLevel('department')"
-                >
-                  <svg class="cb-segmented__icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                    <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" />
-                    <circle cx="9" cy="7" r="4" />
-                    <path d="M23 21v-2a4 4 0 0 0-3-3.87" />
-                    <path d="M16 3.13a4 4 0 0 1 0 7.75" />
-                  </svg>
-                  <span>Department</span>
-                </button>
-                <button
-                  type="button"
-                  class="cb-segmented__btn"
-                  [class.cb-segmented__btn--active]="scopeLevel() === 'position'"
-                  (click)="setScopeLevel('position')"
-                >
-                  <svg class="cb-segmented__icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                    <circle cx="12" cy="12" r="10" />
-                    <circle cx="12" cy="12" r="6" />
-                    <circle cx="12" cy="12" r="2" />
-                  </svg>
-                  <span>Position</span>
-                </button>
-              </div>
+        <!-- Applicability Scope -->
+        <div class="pt-3 border-t border-[var(--color-border)] space-y-3">
+          <div>
+            <h3 class="text-xs font-semibold text-[var(--color-text-primary)]">
+              Use this checklist for
+            </h3>
+          </div>
 
-              <!-- Contextual Scope Hint -->
-              <p class="text-[11px] text-[var(--color-text-secondary)] mt-1 flex items-center gap-1">
-                <svg class="w-3.5 h-3.5 shrink-0 opacity-70" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                  <circle cx="12" cy="12" r="10" />
-                  <line x1="12" y1="16" x2="12" y2="12" />
-                  <line x1="12" y1="8" x2="12.01" y2="8" />
-                </svg>
-                @if (scopeLevel() === 'company') {
-                  <span>Applies to all employees in this company as the default checklist.</span>
-                } @else if (scopeLevel() === 'department') {
-                  <span>Applies automatically to employees in this specific department.</span>
+          <div class="flex flex-wrap gap-2">
+            <button
+              type="button"
+              class="cb-chip"
+              [class.cb-chip--active]="scopeLevel() === 'company'"
+              (click)="setScopeLevel('company')"
+            >
+              <span>Company default</span>
+            </button>
+            <button
+              type="button"
+              class="cb-chip"
+              [class.cb-chip--active]="scopeLevel() === 'department'"
+              (click)="setScopeLevel('department')"
+            >
+              <span>Department</span>
+            </button>
+            <button
+              type="button"
+              class="cb-chip"
+              [class.cb-chip--active]="scopeLevel() === 'position'"
+              (click)="setScopeLevel('position')"
+            >
+              <span>Position</span>
+            </button>
+          </div>
+
+          @if (scopeLevel() === 'department' || scopeLevel() === 'position') {
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4 pt-1">
+              @if (loadingDepartments()) {
+                <app-loader label="Loading departments..." />
+              } @else {
+                <app-select
+                  label="Department *"
+                  placeholder="Select a department"
+                  [options]="departments()"
+                  [value]="form.controls.departmentId.value || ''"
+                  [error]="submitAttempted() && (scopeLevel() === 'department' || scopeLevel() === 'position') && !form.controls.departmentId.value ? 'Department is required.' : ''"
+                  (valueChange)="onDepartmentChange($event)"
+                />
+              }
+
+              @if (scopeLevel() === 'position') {
+                @if (!form.controls.departmentId.value) {
+                  <app-select
+                    label="Position *"
+                    placeholder="Select a department first"
+                    [options]="[]"
+                    [disabled]="true"
+                  />
+                } @else if (loadingPositions()) {
+                  <app-loader label="Loading positions..." />
                 } @else {
-                  <span>Targeted specifically to employees in this exact position.</span>
+                  <app-select
+                    label="Position *"
+                    placeholder="Select a position"
+                    [options]="positions()"
+                    [value]="form.controls.positionId.value || ''"
+                    [error]="submitAttempted() && scopeLevel() === 'position' && !form.controls.positionId.value ? 'Position is required.' : ''"
+                    (valueChange)="form.controls.positionId.setValue($event)"
+                  />
                 }
-              </p>
-            </div>
-
-            <!-- Target Selection Dropdown(s) (Inline Right Column) -->
-            <div>
-              @if (scopeLevel() === 'department') {
-                <div class="space-y-1">
-                  @if (loadingDepartments()) {
-                    <app-loader label="Loading departments..." />
-                  } @else {
-                    <app-select
-                      label="Department *"
-                      placeholder="Select a department"
-                      [options]="departments()"
-                      [value]="form.controls.departmentId.value || ''"
-                      [error]="submitAttempted() && !form.controls.departmentId.value ? 'Department is required.' : ''"
-                      (valueChange)="onDepartmentChange($event)"
-                    />
-                  }
-                </div>
-              } @else if (scopeLevel() === 'position') {
-                <div class="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                  <div class="space-y-1">
-                    @if (loadingDepartments()) {
-                      <app-loader label="Loading departments..." />
-                    } @else {
-                      <app-select
-                        label="Department *"
-                        placeholder="Select department"
-                        [options]="departments()"
-                        [value]="form.controls.departmentId.value || ''"
-                        [error]="submitAttempted() && !form.controls.departmentId.value ? 'Department is required.' : ''"
-                        (valueChange)="onDepartmentChange($event)"
-                      />
-                    }
-                  </div>
-                  <div class="space-y-1">
-                    @if (!form.controls.departmentId.value) {
-                      <app-select
-                        label="Position *"
-                        placeholder="Select department first"
-                        [options]="[]"
-                        [disabled]="true"
-                      />
-                    } @else if (loadingPositions()) {
-                      <app-loader label="Loading positions..." />
-                    } @else {
-                      <app-select
-                        label="Position *"
-                        placeholder="Select position"
-                        [options]="positions()"
-                        [value]="form.controls.positionId.value || ''"
-                        [error]="submitAttempted() && !form.controls.positionId.value ? 'Position is required.' : ''"
-                        (valueChange)="form.controls.positionId.setValue($event)"
-                      />
-                    }
-                  </div>
-                </div>
               }
             </div>
-          </div>
+          }
         </div>
       </div>
 
       <!-- Section 2: Task List -->
       <div class="pt-4 border-t border-[var(--color-border)] space-y-3">
-        <div class="flex items-center justify-between flex-wrap gap-2">
-          <div class="flex items-baseline gap-2">
+        <div class="flex items-center justify-between">
+          <div>
             <h2 class="text-base font-semibold text-[var(--color-text-primary)]">
               Tasks
             </h2>
-            <span class="text-xs text-[var(--color-text-secondary)]">
-              ({{ tasksArray.length }}) • Press <kbd class="px-1.5 py-0.5 text-[10px] font-mono bg-[var(--color-surface-secondary)] border border-[var(--color-border)] rounded">Enter</kbd> to add next task
-            </span>
           </div>
           <app-button variant="secondary" size="sm" type="button" (pressed)="addTask()">
             + Add Task
@@ -237,7 +177,7 @@
           <p class="text-xs text-[var(--color-danger-text)]">At least one task is required in the checklist.</p>
         }
 
-        <div cdkDropList (cdkDropListDropped)="onDropTask($event)" class="cb-task-list">
+        <div class="cb-task-list">
           <div class="cb-task-list__header" [class.cb-task-list__header--with-bypass]="isOffboardingTemplate()" aria-hidden="true">
             <span class="cb-task-list__col-order"></span>
             <span class="cb-task-list__col-title">Task</span>
@@ -250,35 +190,10 @@
           </div>
 
           @for (taskGroup of tasksArray.controls; track $index; let idx = $index) {
-            <div
-              cdkDrag
-              [cdkDragDisabled]="tasksArray.length <= 1"
-              class="cb-task-row"
-              [class.cb-task-row--with-bypass]="isOffboardingTemplate()"
-              [formGroup]="$any(taskGroup)"
-            >
-              <div class="cb-task-list__col-order cb-task-row__order-col">
-                <button
-                  type="button"
-                  class="cb-task-row__drag-handle"
-                  cdkDragHandle
-                  [disabled]="tasksArray.length <= 1"
-                  [attr.aria-label]="'Drag to reorder task ' + (idx + 1)"
-                  title="Drag to reorder"
-                >
-                  <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
-                    <circle cx="9" cy="5" r="1.5" />
-                    <circle cx="15" cy="5" r="1.5" />
-                    <circle cx="9" cy="12" r="1.5" />
-                    <circle cx="15" cy="12" r="1.5" />
-                    <circle cx="9" cy="19" r="1.5" />
-                    <circle cx="15" cy="19" r="1.5" />
-                  </svg>
-                </button>
-                <span class="cb-task-row__order" aria-hidden="true">
-                  {{ idx + 1 }}
-                </span>
-              </div>
+            <div class="cb-task-row" [class.cb-task-row--with-bypass]="isOffboardingTemplate()" [formGroup]="$any(taskGroup)">
+              <span class="cb-task-list__col-order cb-task-row__order" aria-hidden="true">
+                {{ idx + 1 }}
+              </span>
 
               <div class="cb-task-list__col-title">
                 <span class="cb-task-row__mobile-label">Task</span>
@@ -286,7 +201,6 @@
                   [placeholder]="'e.g. ' + getTaskPlaceholder(idx)"
                   [value]="taskGroup.value.title || ''"
                   (valueChange)="taskGroup.get('title')?.setValue($event)"
-                  (keydown.enter)="onTaskTitleEnter(idx, $event)"
                   [error]="submitAttempted() && taskGroup.get('title')?.invalid ? 'Task title is required.' : ''"
                 />
               </div>
@@ -479,24 +393,15 @@
               <div class="cb-task-list__col-due">
                 <span class="cb-task-row__mobile-label">Due</span>
                 <div class="cb-due-field">
-                  <div class="cb-due-input-group">
-                    <input
-                      type="number"
-                      min="0"
-                      step="1"
-                      class="cb-due-field__input"
-                      [attr.aria-label]="'Due for task ' + (idx + 1)"
-                      [value]="taskGroup.get('dueOffsetDays')?.value ?? 0"
-                      (input)="taskGroup.get('dueOffsetDays')?.setValue($any($event.target).value)"
-                    />
-                    <span class="cb-due-caption">
-                      @if (+taskGroup.get('dueOffsetDays')?.value === 0) {
-                        {{ isOffboardingTemplate() ? 'Exit date' : 'Start date' }}
-                      } @else {
-                        +{{ taskGroup.get('dueOffsetDays')?.value }}d
-                      }
-                    </span>
-                  </div>
+                  <input
+                    type="number"
+                    min="0"
+                    step="1"
+                    class="cb-due-field__input"
+                    [attr.aria-label]="'Due for task ' + (idx + 1)"
+                    [value]="taskGroup.value.dueOffsetDays"
+                    (input)="taskGroup.get('dueOffsetDays')?.setValue($any($event.target).value)"
+                  />
                 </div>
                 @if (submitAttempted() && taskGroup.get('dueOffsetDays')?.invalid) {
                   <span class="cb-task-row__error">Enter a whole number of 0 or more.</span>
@@ -589,15 +494,3 @@
     </form>
   }
 </div>
-
-      <footer class="tfm__foot">
-        <app-button variant="secondary" type="button" (pressed)="cancel()">
-          Cancel
-        </app-button>
-        <app-button variant="primary" type="button" [loading]="store.saving()" (pressed)="onSubmit()">
-          {{ isEdit() ? 'Save checklist' : 'Create checklist' }}
-        </app-button>
-      </footer>
-    </div>
-  </div>
-}

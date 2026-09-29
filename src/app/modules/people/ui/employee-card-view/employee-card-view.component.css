@@ -45,7 +45,16 @@
 }
 
 .emp-avatar {
-  display: inline-flex;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  background: color-mix(in srgb, var(--color-sidebar-active-bg, #2563eb) 12%, transparent);
+  color: var(--color-sidebar-active-bg, #2563eb);
+  font-weight: 700;
+  font-size: 0.9375rem;
   flex-shrink: 0;
 }
 

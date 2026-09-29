@@ -46,7 +46,16 @@
 }
 
 .emp-avatar {
-  display: inline-flex;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 38px;
+  height: 38px;
+  border-radius: 50%;
+  background: color-mix(in srgb, var(--color-sidebar-active-bg, #2563eb) 12%, transparent);
+  color: var(--color-sidebar-active-bg, #2563eb);
+  font-weight: 700;
+  font-size: 0.8125rem;
   flex-shrink: 0;
 }
 
@@ -198,7 +207,17 @@
 }
 
 .emp-manager-avatar {
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  background: var(--color-surface-secondary);
+  border: 1px solid var(--color-border);
+  font-size: 0.625rem;
+  font-weight: 650;
   display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--color-text-secondary);
   flex-shrink: 0;
 }
 

@@ -6,7 +6,7 @@ describe('LeaveRequestAllTableComponent', () => {
   let fixture: ComponentFixture<LeaveRequestAllTableComponent>;
 
   const rows: LeaveRequestAllListItemResponse[] = [
-    { requestId: 'req-1', employeeId: 'emp-1', employeeName: 'Anu Raman', departmentId: 'dept-1', departmentName: 'Engineering', leaveTypeId: 'type-1', leaveTypeName: 'Annual Leave', startAt: '2026-09-10', endAt: '2026-09-12', totalHours: 3, status: 'approved', submittedAt: '2026-08-25T00:00:00Z' }
+    { requestId: 'req-1', employeeId: 'emp-1', employeeName: 'Anu Raman', departmentId: 'dept-1', departmentName: 'Engineering', leaveTypeId: 'type-1', leaveTypeName: 'Annual Leave', startDate: '2026-09-10', endDate: '2026-09-12', totalDays: 3, status: 'approved', submittedAt: '2026-08-25T00:00:00Z' }
   ];
 
   beforeEach(async () => {

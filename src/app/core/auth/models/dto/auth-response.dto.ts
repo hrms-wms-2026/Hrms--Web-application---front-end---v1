@@ -3,7 +3,7 @@ import { WorkspaceDto } from './workspace.dto';
 
 export interface AuthResponseDto {
   authenticated: boolean;
-  user: { email: string; employeeId?: string | null; display_name?: string | null };
+  user: { email: string; employeeId?: string | null };
   permissions: string[];
   active_modules: string[];
   must_change_password: boolean;

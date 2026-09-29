@@ -1,7 +1,6 @@
 import { DatePipe } from '@angular/common';
 import { Component, ElementRef, HostListener, OutputEmitterRef, computed, inject, input, output, signal } from '@angular/core';
 import { TaskTableComponent } from '../task-table/task-table.component';
-import { SprintHistoryComponent } from '../sprint-history/sprint-history.component';
 import { Sprint } from '../../models/sprint.model';
 import { TaskStatusColumn, WorkTask } from '../../models/task.model';
 
@@ -11,7 +10,7 @@ const openSprintMenuId = signal<string | null>(null);
 @Component({
   selector: 'app-sprint-tab',
   standalone: true,
-  imports: [DatePipe, TaskTableComponent, SprintHistoryComponent],
+  imports: [DatePipe, TaskTableComponent],
   template: `
     <div class="sprint-tab" [attr.data-status]="sprint().status">
       <div class="sprint-tab__header">
@@ -106,13 +105,9 @@ const openSprintMenuId = signal<string | null>(null);
             <span class="sprint-tab__footer-add-icon" aria-hidden="true">+</span>
             <span>Add Task</span>
           </button>
-          <app-sprint-history [sprintId]="sprint().id" />
         </div>
       } @else if (expanded() && sprint().status === 'complete') {
-        <div class="sprint-tab__body sprint-tab__body--readonly">
-          {{ tasks().length }} tasks in this completed sprint.
-          <app-sprint-history [sprintId]="sprint().id" />
-        </div>
+        <div class="sprint-tab__body sprint-tab__body--readonly">{{ tasks().length }} tasks in this completed sprint.</div>
       }
     </div>
   `,
@@ -169,7 +164,7 @@ const openSprintMenuId = signal<string | null>(null);
 })
 export class SprintTabComponent {
   sprint = input.required<Sprint>();
-  canManage = input.required<boolean>();
+  isObjectiveOwner = input.required<boolean>();
   tasks = input.required<readonly WorkTask[]>();
   statusNames = input.required<Record<string, string>>();
   categoryNames = input<Record<string, string>>({});
@@ -193,9 +188,9 @@ export class SprintTabComponent {
   protected readonly menuOpen = computed(() => openSprintMenuId() === this.sprint().id);
 
   // Same permission rules the old text buttons used — only the access point moved.
-  protected readonly canStart = computed(() => this.canManage() && this.sprint().status === 'draft');
-  protected readonly canEdit = computed(() => this.canManage() && (this.sprint().status === 'draft' || this.sprint().status === 'active'));
-  protected readonly canClose = computed(() => this.canManage() && this.sprint().status === 'active');
+  protected readonly canStart = computed(() => this.isObjectiveOwner() && this.sprint().status === 'draft');
+  protected readonly canEdit = computed(() => this.isObjectiveOwner() && (this.sprint().status === 'draft' || this.sprint().status === 'active'));
+  protected readonly canClose = computed(() => this.isObjectiveOwner() && this.sprint().status === 'active');
   protected readonly canAddTask = computed(() => this.sprint().status !== 'complete');
   protected readonly hasMenuActions = computed(() => this.canEdit() || this.canAddTask() || this.canClose());
   protected readonly hasActions = computed(() => this.canStart() || this.hasMenuActions());

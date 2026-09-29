@@ -21,11 +21,6 @@ export interface ApprovalItem {
   title: string;
   description: string;
   requestedByName: string | null;
-  /** Human-readable context for the object affected by this request. */
-  targetTitle?: string | null;
-  targetType?: 'task' | 'module' | 'request';
-  targetId?: string | null;
-  currentAllocatedHours?: number | null;
   createdAt: string;
   raw: TaskCreationRequestDto | TaskEditRequestDto | AllocationRequestDto | ObjectiveChangeRequestDto | ObjectiveEditRequestDto | ObjectiveInvitationDto;
 }

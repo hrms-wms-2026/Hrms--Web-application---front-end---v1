@@ -24,7 +24,7 @@ describe('MilestoneTreeNodeComponent', () => {
     TestBed.configureTestingModule({
       imports: [MilestoneTreeNodeComponent],
       providers: [
-        { provide: PeopleApiService, useValue: { getEmployeeIdentity: vi.fn().mockReturnValue(of({ id: 'e1', name: 'Ada Lovelace', avatarFileId: null })) } }
+        { provide: PeopleApiService, useValue: { getEmployee: vi.fn().mockReturnValue(of({ id: 'e1', fullName: 'Ada Lovelace' })) } }
       ]
     });
     fixture = TestBed.createComponent(MilestoneTreeNodeComponent);

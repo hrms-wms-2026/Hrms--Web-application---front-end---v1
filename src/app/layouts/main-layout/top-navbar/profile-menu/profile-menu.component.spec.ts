@@ -57,18 +57,6 @@ describe('ProfileMenuComponent', () => {
     expect(fixture.nativeElement.querySelector('[role="menu"]')).toBeFalsy();
   });
 
-  it('keeps the closed profile trigger flat and the avatar-to-chevron spacing compact', async () => {
-    const { fixture } = await setup();
-    const trigger = fixture.nativeElement.querySelector('.profile-menu-trigger') as HTMLButtonElement;
-    const chevron = trigger.querySelector('.profile-menu-chevron') as SVGElement;
-    const styles = getComputedStyle(trigger);
-
-    expect(styles.gap).toBe('2px');
-    expect(styles.backgroundColor).toBe('rgba(0, 0, 0, 0)');
-    expect(['', 'none']).toContain(styles.boxShadow);
-    expect(getComputedStyle(chevron).width).toBe('12px');
-  });
-
   it('renders a generic circular avatar fallback when no avatarUrl is provided', async () => {
     const { fixture } = await setup();
     const svg = fixture.nativeElement.querySelector('.avatar__icon, .avatar__fallback');

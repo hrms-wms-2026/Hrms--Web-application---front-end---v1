@@ -26,8 +26,7 @@ describe('TreeExplanationPanelComponent', () => {
       dueDate: null, estimatedHours: 3, completedHours: 0, progressPercent: 0,
       sprintId: 'spr-1', assigneeEmployeeIds: ['e1'], openClockSessionEmployeeId: null, openClockSessionClockInAt: null, totalLoggedMinutes: 0,
       attachments: [], assignees: [],
-      parentTaskId: null, subtaskTotalCount: 0, subtaskCompletedCount: 0, subtaskAssigneeEmployeeIds: [],
-      createdAt: new Date('2026-01-01T00:00:00Z')
+      parentTaskId: null, subtaskTotalCount: 0, subtaskCompletedCount: 0, subtaskAssigneeEmployeeIds: []
     }
   };
 
@@ -36,7 +35,7 @@ describe('TreeExplanationPanelComponent', () => {
     TestBed.configureTestingModule({
       imports: [TreeExplanationPanelComponent],
       providers: [
-        { provide: PeopleApiService, useValue: { getEmployeeIdentity: vi.fn().mockReturnValue(of({ id: 'e1', name: 'Ada Lovelace', avatarFileId: null })) } }
+        { provide: PeopleApiService, useValue: { getEmployee: vi.fn().mockReturnValue(of({ id: 'e1', fullName: 'Ada Lovelace' })) } }
       ]
     });
     fixture = TestBed.createComponent(TreeExplanationPanelComponent);

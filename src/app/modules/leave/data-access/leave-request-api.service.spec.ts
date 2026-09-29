@@ -18,16 +18,17 @@ describe('LeaveRequestApiService', () => {
 
   const mockResponse: LeaveRequestResponse = {
     id: 'req-1', employeeId: 'emp-1', leaveTypeId: 'type-1', leaveTypeName: 'Annual Leave', leaveTypeCode: 'ANNUAL',
-    startAt: '2026-09-10T09:00:00.000Z', endAt: '2026-09-12T18:00:00.000Z', totalHours: 24, paidHours: 24, unpaidHours: 0,
+    startDate: '2026-09-10', endDate: '2026-09-12', halfDayPeriod: null, totalDays: 3, paidDays: 3, unpaidDays: 0,
     status: 'pending', noticePeriodMissed: false, submittedOnBehalfOfBy: null,
-    balanceImpact: { currentRemainingHours: 17, pendingAfterSubmitHours: 3, remainingAfterSubmitHours: 14 },
-    approvers: [{ approverEmployeeId: 'mgr-1', approverName: 'Priya Nair', sequenceOrder: 1, status: 'pending', delegatedFromApproverId: null }],
+    balanceImpact: { currentRemainingDays: 17, pendingAfterSubmitDays: 3, remainingAfterSubmitDays: 14 },
+    approvers: [{ approverEmployeeId: 'mgr-1', sequenceOrder: 1, status: 'pending', delegatedFromApproverId: null }],
     conflictSnapshot: { warnings: [], calendarConflicts: [], teamAbsencePercent: null },
     createdAt: '2026-08-25T00:00:00Z'
   };
 
   const payload: SubmitLeaveRequestRequest = {
-    leaveTypeId: 'type-1', startAt: '2026-09-10T09:00:00.000Z', endAt: '2026-09-12T18:00:00.000Z', reason: 'Trip', fileRecordIds: []
+    leaveTypeId: 'type-1', startDate: '2026-09-10', endDate: '2026-09-12',
+    halfDayPeriod: null, reason: 'Trip', fileRecordIds: []
   };
 
   beforeEach(() => {
@@ -37,15 +38,6 @@ describe('LeaveRequestApiService', () => {
   });
 
   afterEach(() => httpMock.verify());
-
-  it('uploads a supporting document as multipart', () => {
-    const file = new File(['note'], 'note.pdf', { type: 'application/pdf' });
-    service.uploadDocument(file).subscribe((res) => expect(res.id).toBe('file-1'));
-    const req = httpMock.expectOne(`${environment.apiUrl}/leave/requests/documents`);
-    expect(req.request.method).toBe('POST');
-    expect(req.request.body).toBeInstanceOf(FormData);
-    req.flush({ id: 'file-1', originalFileName: 'note.pdf' });
-  });
 
   it('previews a request', () => {
     service.preview(payload).subscribe((res) => expect(res).toEqual(mockResponse));
@@ -90,7 +82,7 @@ describe('LeaveRequestApiService', () => {
   it('cancels a request', () => {
     const cancelResponse: CancelLeaveRequestResponse = {
       requestId: 'req-1', status: 'cancelled', isPartialCancellation: false, effectiveDate: null,
-      releasedPendingHours: 3, restoredUsedHours: 0, remainingHours: 17, reason: 'Plans changed', cancelledAt: '2026-08-30T00:00:00Z'
+      releasedPendingDays: 3, restoredUsedDays: 0, remainingDays: 17, reason: 'Plans changed', cancelledAt: '2026-08-30T00:00:00Z'
     };
     const payload: CancelLeaveRequestRequest = { reason: 'Plans changed', effectiveDate: null, expectedVersion: null };
     service.cancel('req-1', payload).subscribe((res) => expect(res).toEqual(cancelResponse));

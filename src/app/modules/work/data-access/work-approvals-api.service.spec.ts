@@ -53,14 +53,6 @@ describe('WorkApprovalsApiService', () => {
     req.flush(mock);
   });
 
-  it('getApprovalHistory fetches project-scoped sent and received history', () => {
-    service.getApprovalHistory('project-1').subscribe((res) => expect(res).toEqual([]));
-
-    const req = httpMock.expectOne(`${environment.apiUrl}/work/projects/project-1/approval-history`);
-    expect(req.request.method).toBe('GET');
-    req.flush([]);
-  });
-
   it('approveTaskCreationRequest posts approve', () => {
     service.approveTaskCreationRequest('r1').subscribe();
     const req = httpMock.expectOne(`${environment.apiUrl}/work/task-creation-requests/r1/approve`);
@@ -100,25 +92,6 @@ describe('WorkApprovalsApiService', () => {
     const req = httpMock.expectOne(`${environment.apiUrl}/work/objectives/change-requests/mine`);
     expect(req.request.method).toBe('GET');
     req.flush(mine);
-  });
-
-  it('maps PascalCase allocation payloads and preserves requester and module context', () => {
-    const mine: ObjectiveChangeRequestDto[] = [{
-      id: 'a2', objectiveId: 'obj-2', requestType: 'extend_allocation', requestedById: 'employee-1',
-      requestedByName: 'Nimal Perera', objectiveTitle: 'Hardware integration', projectId: 'project-1',
-      currentAllocatedHours: 24, reportingManagerId: 'manager-1', status: 'pending',
-      payloadJson: JSON.stringify({ RequestedAdditionalHours: 6, Reason: 'Integration testing' }),
-      decidedAt: null, decidedById: null, createdAt: '2026-09-25T00:00:00Z'
-    }];
-
-    service.getMyAllocationRequests().subscribe((res) => {
-      expect(res[0].payload).toEqual({ requestedAdditionalHours: 6, reason: 'Integration testing' });
-      expect(res[0].requestedByName).toBe('Nimal Perera');
-      expect(res[0].objectiveTitle).toBe('Hardware integration');
-      expect(res[0].currentAllocatedHours).toBe(24);
-    });
-
-    httpMock.expectOne(`${environment.apiUrl}/work/objectives/change-requests/mine`).flush(mine);
   });
 
   it('approveAllocationRequest posts the edited additional hours to change-request approve', () => {

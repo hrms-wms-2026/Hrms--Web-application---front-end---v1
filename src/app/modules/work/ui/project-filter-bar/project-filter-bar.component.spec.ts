@@ -39,25 +39,4 @@ describe('ProjectFilterBarComponent', () => {
 
     expect(emitted).toBe('archived');
   });
-
-  it('handles fieldChanged for category and status correctly', () => {
-    fixture.detectChanges();
-    let catEmitted: string[] | undefined;
-    let statusEmitted: string | undefined;
-
-    fixture.componentInstance.categoriesChanged.subscribe((v) => (catEmitted = v));
-    fixture.componentInstance.achievedFilterChanged.subscribe((v: string) => (statusEmitted = v));
-
-    fixture.componentInstance.onFieldChanged({ key: 'category', values: ['cat1'] });
-    expect(catEmitted).toEqual(['cat1']);
-    expect(fixture.componentInstance.selectedCategories()).toEqual(['cat1']);
-
-    fixture.componentInstance.onFieldChanged({ key: 'status', values: ['active'] });
-    expect(statusEmitted).toBe('active');
-    expect(fixture.componentInstance.selectedStatus()).toBe('active');
-
-    fixture.componentInstance.onFieldChanged({ key: 'status', values: [] });
-    expect(statusEmitted).toBe('all');
-    expect(fixture.componentInstance.selectedStatus()).toBe('all');
-  });
 });

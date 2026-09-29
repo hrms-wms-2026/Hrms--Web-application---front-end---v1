@@ -1,13 +1,12 @@
 /** Matches ONEVO.Application.Features.Leave.Request.DTOs.Responses.* verbatim. */
 export interface LeaveRequestBalanceImpactResponse {
-  currentRemainingHours: number;
-  pendingAfterSubmitHours: number;
-  remainingAfterSubmitHours: number;
+  currentRemainingDays: number;
+  pendingAfterSubmitDays: number;
+  remainingAfterSubmitDays: number;
 }
 
 export interface LeaveRequestApproverResponse {
   approverEmployeeId: string;
-  approverName: string;
   sequenceOrder: number;
   status: 'pending' | 'approved' | 'rejected' | 'skipped';
   delegatedFromApproverId: string | null;
@@ -37,11 +36,12 @@ export interface LeaveRequestResponse {
   leaveTypeId: string;
   leaveTypeName: string;
   leaveTypeCode: string;
-  startAt: string;
-  endAt: string;
-  totalHours: number;
-  paidHours: number;
-  unpaidHours: number;
+  startDate: string;
+  endDate: string;
+  halfDayPeriod: 'am' | 'pm' | null;
+  totalDays: number;
+  paidDays: number;
+  unpaidDays: number;
   status: 'pending' | 'approved' | 'rejected' | 'cancelled';
   noticePeriodMissed: boolean;
   submittedOnBehalfOfBy: string | null;
@@ -57,30 +57,23 @@ export interface LeaveRequestListItemResponse {
   leaveTypeId: string;
   leaveTypeName: string;
   leaveTypeCode: string;
-  startAt: string;
-  endAt: string;
-  totalHours: number;
-  paidHours: number;
-  unpaidHours: number;
-  status: 'pending' | 'approved' | 'rejected' | 'cancelled' | 'information_requested';
+  startDate: string;
+  endDate: string;
+  totalDays: number;
+  paidDays: number;
+  unpaidDays: number;
+  status: 'pending' | 'approved' | 'rejected' | 'cancelled';
   noticePeriodMissed: boolean;
-  approvedByName: string | null;
-  infoQuestion: string | null;
   createdAt: string;
   updatedAt: string | null;
-}
-
-/** Matches ONEVO.Application.Features.Storage.File.DTOs.Responses.FileRecordDto (camelCase). */
-export interface LeaveUploadedDocument {
-  id: string;
-  originalFileName: string;
 }
 
 /** Matches ONEVO.Api.Contracts.Leave.Requests.SubmitLeaveRequestRequest verbatim. Shared by preview and submit. */
 export interface SubmitLeaveRequestRequest {
   leaveTypeId: string;
-  startAt: string;
-  endAt: string;
+  startDate: string;
+  endDate: string;
+  halfDayPeriod: 'am' | 'pm' | null;
   reason: string | null;
   fileRecordIds: string[] | null;
 }
@@ -110,9 +103,9 @@ export interface CancelLeaveRequestResponse {
   status: string;
   isPartialCancellation: boolean;
   effectiveDate: string | null;
-  releasedPendingHours: number;
-  restoredUsedHours: number;
-  remainingHours: number;
+  releasedPendingDays: number;
+  restoredUsedDays: number;
+  remainingDays: number;
   reason: string | null;
   cancelledAt: string;
 }

@@ -1,90 +1,21 @@
-<section class="to-page">
-  <header class="to-header">
-    <div>
-      <p class="to-kicker">TIME OFF</p>
-      <h1 class="to-title">Team Calendar</h1>
-      <p class="to-subtitle">Who is off this month.</p>
-    </div>
-    <div class="to-header-actions">
-      <app-select
-        data-testid="calendar-department"
-        [options]="departmentSelectOptions()"
-        [value]="store.departmentId() ?? ''"
-        (valueChange)="onDepartmentChange($event)"
-      />
-      <label class="to-filter">
-        <input type="checkbox" data-testid="calendar-include-pending" [checked]="store.includeTentative()" (change)="store.setIncludeTentative($any($event.target).checked)" />
-        Include pending
-      </label>
-      @if (canManageHolidays()) {
-        <app-button variant="secondary" data-testid="manage-holidays" (click)="openHolidays()">Holidays</app-button>
-      }
-      <nav class="tc-nav" aria-label="Month">
-        <button type="button" aria-label="Previous month" (click)="store.goToPreviousMonth()">‹</button>
-        <button type="button" class="tc-nav__current" (click)="store.goToToday()">{{ monthLabel() || 'Today' }}</button>
-        <button type="button" aria-label="Next month" (click)="store.goToNextMonth()">›</button>
-      </nav>
-    </div>
+<section class="tc-page">
+  <header class="tc-header">
+    <div><p class="tc-kicker">TIME OFF / CALENDAR</p><h1>Team Calendar</h1></div>
+    <nav class="tc-nav">
+      <button type="button" (click)="store.goToPreviousMonth()">&lsaquo; Prev</button>
+      <button type="button" (click)="store.goToToday()">{{ monthLabel() }}</button>
+      <button type="button" (click)="store.goToNextMonth()">Next &rsaquo;</button>
+    </nav>
   </header>
   @if (store.loading()) {
-    <div class="to-loading" aria-busy="true" aria-label="Loading team calendar"><span></span><span></span><span></span></div>
+    <div class="tc-loading" aria-busy="true"><span></span><span></span><span></span></div>
   } @else if (store.error()) {
     <app-error-state [message]="store.error()!" [retryable]="true" (retry)="store.load()" />
   } @else if (store.month()?.isEmpty) {
-    <div class="to-empty">
-      <app-empty-state title="No leave this month" description="Nobody has approved or pending leave in this range." />
-    </div>
+    <app-empty-state title="No leave scheduled for this month" description="Nobody has approved or pending leave in this range." />
   } @else if (store.month(); as month) {
-    <section class="to-metrics" aria-label="Month totals">
-      <article class="to-metric"><p class="to-metric__label">People off</p><p class="to-metric__value">{{ monthStats().people }}</p></article>
-      <article class="to-metric"><p class="to-metric__label">Days with leave</p><p class="to-metric__value">{{ monthStats().days }}</p></article>
-    </section>
-    <div class="to-table-card">
-      <app-leave-calendar-grid [days]="month.days" (dayClicked)="onDayClicked($event)" />
-    </div>
+    <app-leave-calendar-grid [days]="month.days" (dayClicked)="onDayClicked($event)" />
   }
 </section>
 
-<app-leave-calendar-day-detail
-  [open]="detailOpen()"
-  [day]="selectedDay()"
-  [canRequestLeave]="canRequestLeave()"
-  (requestLeave)="onRequestLeave($event)"
-  (closed)="closeDetail()"
-/>
-
-@if (wizardOpen()) {
-  <app-new-leave-request-wizard
-    [open]="true"
-    [leaveTypes]="leaveTypeStore.items()"
-    [balances]="balanceStore.my()"
-    [initialStartDate]="requestDate() ?? ''"
-    [initialEndDate]="requestDate() ?? ''"
-    [workStartTime]="balanceStore.workWindow()?.workStartTime ?? null"
-    [workEndTime]="balanceStore.workWindow()?.workEndTime ?? null"
-    [timezone]="balanceStore.workWindow()?.timezone ?? 'UTC'"
-    [previewing]="requestStore.previewing()"
-    [previewResult]="requestStore.previewResult()"
-    [previewError]="requestStore.previewError()"
-    [submitting]="requestStore.submitting()"
-    [submitError]="requestStore.submitError()"
-    [uploadedDocuments]="uploadedDocuments()"
-    [uploadingDocument]="requestStore.uploadingDocument()"
-    [documentUploadError]="requestStore.documentUploadError()"
-    (previewRequested)="onPreviewRequested($event)"
-    (submitRequested)="onSubmitRequested($event)"
-    (documentSelected)="onDocumentSelected($event)"
-    (documentRemoved)="onDocumentRemoved($event)"
-    (closed)="closeWizard()"
-  />
-}
-
-<app-leave-holiday-modal
-  [open]="holidayOpen()"
-  [holidays]="store.holidays()"
-  [saving]="holidaySaving()"
-  [actionError]="store.holidaysError()"
-  (save)="onSaveHoliday($event)"
-  (remove)="onRemoveHoliday($event)"
-  (closed)="closeHolidays()"
-/>
+<app-leave-calendar-day-detail [open]="detailOpen()" [day]="selectedDay()" (closed)="closeDetail()" />

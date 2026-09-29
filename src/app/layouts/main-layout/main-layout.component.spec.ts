@@ -11,7 +11,6 @@ import { MyProfile } from '@modules/profile/models/profile.model';
 
 const authStoreStub = {
   email: () => 'asha@onevo.test',
-  authenticated: () => true,
   permissions: () => [] as string[],
   activeModules: () => [] as string[]
 };
@@ -35,7 +34,7 @@ const fileApiStub = {
 class BlankRouteComponent {}
 
 function authStoreWith(permissions: string[], activeModules: string[]) {
-  return { email: () => 'asha@onevo.test', authenticated: () => true, permissions: () => permissions, activeModules: () => activeModules };
+  return { email: () => 'asha@onevo.test', permissions: () => permissions, activeModules: () => activeModules };
 }
 
 describe('MainLayoutComponent', () => {

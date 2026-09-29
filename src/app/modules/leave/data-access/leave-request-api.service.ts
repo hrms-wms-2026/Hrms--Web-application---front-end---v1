@@ -8,7 +8,6 @@ import {
   LeaveRequestListFilter,
   LeaveRequestListItemResponse,
   LeaveRequestResponse,
-  LeaveUploadedDocument,
   SubmitLeaveRequestOnBehalfRequest,
   SubmitLeaveRequestRequest
 } from '../models/leave-request.model';
@@ -17,12 +16,6 @@ import {
 @Injectable({ providedIn: 'root' })
 export class LeaveRequestApiService {
   private readonly http = inject(HttpClient);
-
-  uploadDocument(file: File): Observable<LeaveUploadedDocument> {
-    const form = new FormData();
-    form.append('file', file, file.name);
-    return this.http.post<LeaveUploadedDocument>(`${environment.apiUrl}/leave/requests/documents`, form);
-  }
 
   preview(payload: SubmitLeaveRequestRequest): Observable<LeaveRequestResponse> {
     return this.http.post<LeaveRequestResponse>(`${environment.apiUrl}/leave/requests/preview`, payload);

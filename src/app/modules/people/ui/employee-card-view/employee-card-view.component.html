@@ -14,12 +14,9 @@
             [attr.aria-label]="attendanceWarningLabel(employee)"
             [attr.title]="attendanceWarningLabel(employee)"
           >
-            <app-avatar
-              class="emp-avatar"
-              [userName]="employee.fullName"
-              size="lg"
-              shape="circle"
-            />
+            <div class="emp-avatar">
+              {{ avatarInitials(employee.fullName) }}
+            </div>
             @if (attendanceWarningLabel(employee); as warningLabel) {
               <span class="emp-attendance-warning-tooltip" role="tooltip">{{ warningLabel }}</span>
             }

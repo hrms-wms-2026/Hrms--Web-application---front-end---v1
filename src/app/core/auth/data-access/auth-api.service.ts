@@ -14,7 +14,7 @@ import { ForgotPasswordRequestDto } from '../models/dto/forgot-password-request.
 import { ResetPasswordRequestDto } from '../models/dto/reset-password-request.dto';
 import { MessageResponseDto } from '../models/dto/message-response.dto';
 
-import { getRootHostname, isValidTenantSlug } from '../utils/tenant-redirect';
+import { getRootHostname } from '../utils/tenant-redirect';
 
 export function getSystemApiUrl(apiUrl: string): string {
   try {
@@ -24,16 +24,6 @@ export function getSystemApiUrl(apiUrl: string): string {
   } catch {
     return apiUrl;
   }
-}
-
-export function getTenantApiUrl(apiUrl: string, tenantSlug: string): string {
-  if (!isValidTenantSlug(tenantSlug)) {
-    throw new Error('Invalid tenant slug.');
-  }
-
-  const url = new URL(apiUrl);
-  url.hostname = `${tenantSlug}.${getRootHostname(url.hostname)}`;
-  return url.toString().replace(/\/$/, '');
 }
 
 @Injectable({ providedIn: 'root' })
@@ -99,15 +89,6 @@ export class AuthApiService {
    */
   me(): Observable<AuthResponseDto> {
     return this.http.get<AuthResponseDto>(`${environment.apiUrl}${API_ENDPOINTS.auth.me}`);
-  }
-
-  /**
-   * Validates a remembered session from the root login page against the hinted tenant host.
-   * The hint itself is not proof of authentication; only a successful /auth/me response is.
-   */
-  meForTenant(tenantSlug: string): Observable<AuthResponseDto> {
-    const baseUrl = getTenantApiUrl(environment.apiUrl, tenantSlug);
-    return this.http.get<AuthResponseDto>(`${baseUrl}${API_ENDPOINTS.auth.me}`);
   }
 
   /**

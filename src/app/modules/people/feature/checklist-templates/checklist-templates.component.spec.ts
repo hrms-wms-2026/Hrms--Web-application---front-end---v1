@@ -37,7 +37,6 @@ describe('ChecklistTemplatesComponent', () => {
   };
 
   beforeEach(async () => {
-    TestBed.resetTestingModule();
     await TestBed.configureTestingModule({
       imports: [ChecklistTemplatesComponent],
       providers: [
@@ -179,14 +178,14 @@ describe('ChecklistTemplatesComponent', () => {
     httpMock.expectNone((r) => r.url === listUrl);
   });
 
-  it('opens the create checklist pop-up modal when openCreateModal is called', () => {
-    expect(component.isModalOpen()).toBe(false);
+  it('navigates to /people/checklists/new when openCreateModal is called', () => {
+    const navigateSpy = vi.spyOn(router, 'navigate').mockResolvedValue(true);
     component.openCreateModal();
-    expect(component.isModalOpen()).toBe(true);
-    expect(component.selectedTemplateId()).toBeNull();
+    expect(navigateSpy).toHaveBeenCalledWith(['/people/checklists/new']);
   });
 
-  it('opens the edit checklist pop-up modal when openEditModal is called', () => {
+  it('navigates to /people/checklists/:id/edit when openEditModal is called', () => {
+    const navigateSpy = vi.spyOn(router, 'navigate').mockResolvedValue(true);
     const mockTmpl: ChecklistTemplateListItemResponse = {
       id: 'tmpl-123',
       name: 'Onboarding Checklist',
@@ -200,27 +199,8 @@ describe('ChecklistTemplatesComponent', () => {
       taskCount: 3
     };
 
-    expect(component.isModalOpen()).toBe(false);
     component.openEditModal(mockTmpl);
-    expect(component.isModalOpen()).toBe(true);
-    expect(component.selectedTemplateId()).toBe('tmpl-123');
-  });
-
-  it('closes the checklist pop-up modal on onModalClose', () => {
-    component.openCreateModal();
-    expect(component.isModalOpen()).toBe(true);
-    component.onModalClose();
-    expect(component.isModalOpen()).toBe(false);
-    expect(component.selectedTemplateId()).toBeNull();
-  });
-
-  it('closes modal and reloads templates on onModalSaved', () => {
-    const loadSpy = vi.spyOn(component, 'loadTemplates');
-    component.openCreateModal();
-    component.onModalSaved();
-    expect(component.isModalOpen()).toBe(false);
-    expect(loadSpy).toHaveBeenCalled();
-    httpMock.expectOne((r) => r.url === listUrl).flush(emptyPage);
+    expect(navigateSpy).toHaveBeenCalledWith(['/people/checklists', 'tmpl-123', 'edit']);
   });
 
   it('renders scope label "Company default" instead of "All employees in this company"', () => {
@@ -241,7 +221,9 @@ describe('ChecklistTemplatesComponent', () => {
     expect(component.getScopeBadgeLabel(mockCompanyTmpl)).not.toContain('All employees in this company');
   });
 
-  it('does NOT render legacy app-modal component', () => {
+  it('does NOT render modal component or old modal state', () => {
     expect(fixture.nativeElement.querySelector('app-modal')).toBeNull();
+    expect((component as any).isModalOpen).toBeUndefined();
+    expect((component as any).editingTemplate).toBeUndefined();
   });
 });

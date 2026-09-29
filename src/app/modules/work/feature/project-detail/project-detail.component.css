@@ -36,15 +36,6 @@
   border-bottom: none !important;
 }
 
-.work-header-row ::ng-deep app-button > button {
-  width: auto;
-  height: 30px;
-  padding: 0 12px;
-  border-radius: 8px;
-  font-size: 13px;
-  font-weight: 500;
-}
-
 .work-page-header app-milestone-sub-menu {
   display: block;
   width: 100%;

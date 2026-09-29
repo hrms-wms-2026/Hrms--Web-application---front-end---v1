@@ -11,7 +11,6 @@ import { LoaderComponent } from '../../../../shared/ui/loader/loader.component';
 import { ErrorStateComponent } from '../../../../shared/ui/error-state/error-state.component';
 import { EmptyStateComponent } from '../../../../shared/ui/empty-state/empty-state.component';
 import { BreadcrumbHeaderComponent } from '../../../../shared/ui/breadcrumb-header/breadcrumb-header.component';
-import { WorkApprovalsStore } from '../../state/work-approvals.store';
 
 @Component({
   selector: 'app-project-detail',
@@ -27,7 +26,6 @@ export class ProjectDetailComponent {
   readonly store = inject(ProjectDetailStore);
   protected readonly toolbarStore = inject(WorkPageToolbarStore);
   protected readonly projectListStore = inject(ProjectListStore);
-  protected readonly approvalsStore = inject(WorkApprovalsStore);
   private readonly route = inject(ActivatedRoute);
   private readonly router = inject(Router);
   private projectId = '';
@@ -52,16 +50,6 @@ export class ProjectDetailComponent {
     const id = this.subMenuMilestoneId();
     if (!id) return false;
     return this.store.milestones().find((m) => m.objectiveId === id)?.isOwner ?? false;
-  });
-  protected readonly pendingApprovalCount = computed(() => {
-    const moduleIds = new Set(this.store.milestones().map((milestone) => milestone.objectiveId));
-    return [
-      ...this.approvalsStore.taskCreationRequests(),
-      ...this.approvalsStore.taskEditRequests(),
-      ...this.approvalsStore.allocationRequests(),
-      ...this.approvalsStore.objectiveChangeRequests(),
-      ...this.approvalsStore.objectiveInvitations()
-    ].filter((request) => moduleIds.has(request.objectiveId)).length;
   });
 
   constructor() {
@@ -91,7 +79,6 @@ export class ProjectDetailComponent {
       });
 
     void this.projectListStore.loadProjects();
-    void this.approvalsStore.loadAll();
   }
 
   private syncChildRouteState(): void {

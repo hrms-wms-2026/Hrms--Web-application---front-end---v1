@@ -169,17 +169,6 @@ describe('PeopleApiService', () => {
     req.flush(mockEmployee);
   });
 
-  it('fetches an employee identity (name + avatar only) by id', () => {
-    const identity = { id: 'emp-1', name: 'Ada Lovelace', avatarFileId: null };
-    service.getEmployeeIdentity('emp-1').subscribe((result) => {
-      expect(result).toEqual(identity);
-    });
-
-    const req = httpMock.expectOne(`${environment.apiUrl}/employees/emp-1/identity`);
-    expect(req.request.method).toBe('GET');
-    req.flush(identity);
-  });
-
   it('lists onboarding drafts', () => {
     service.listDrafts({ page: 1, pageSize: 25 }).subscribe();
 
