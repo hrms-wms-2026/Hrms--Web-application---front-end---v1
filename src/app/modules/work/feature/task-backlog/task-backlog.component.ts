@@ -1,6 +1,6 @@
 import { AfterViewInit, Component, OnDestroy, OnInit, TemplateRef, computed, inject, signal, viewChild } from '@angular/core';
 import { CurrentEmployeeStore } from '../../state/current-employee.store';
-import { ActivatedRoute } from '@angular/router';
+import { ActivatedRoute, Router } from '@angular/router';
 import { firstValueFrom, Observable, of } from 'rxjs';
 import { distinctUntilChanged, map } from 'rxjs/operators';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
@@ -239,6 +239,7 @@ import { BulkTaskPickerDialogComponent, BulkTaskPickerMode } from '../../ui/bulk
       [taskId]="taskModalTaskId()"
       [prefillModuleId]="modalPrefillModuleId()"
       [prefillSprintId]="modalPrefillSprintId()"
+      [draftId]="taskModalDraftId()"
       (created)="onTaskModalDone()"
       (saved)="onTaskModalDone()"
       (changed)="reloadTasks()"
@@ -280,6 +281,7 @@ export class TaskBacklogComponent implements OnInit, AfterViewInit, OnDestroy {
   private readonly taskApi = inject(TaskApiService);
   private readonly sprintApi = inject(SprintApiService);
   private readonly route = inject(ActivatedRoute);
+  private readonly router = inject(Router);
   protected readonly currentEmployee = inject(CurrentEmployeeStore);
 
   protected readonly createSprintOpen = signal(false);
@@ -345,6 +347,23 @@ export class TaskBacklogComponent implements OnInit, AfterViewInit, OnDestroy {
         void this.sprintStore.loadForProject(projectId);
         void this.loadCategories(projectId);
         void this.loadAssignableMembers(projectId);
+      });
+
+    // The drafts bar links here with ?taskDraftId=<id> to resume a saved create-task form.
+    const queryParamMap$ = this.route.queryParamMap ?? of(this.route.snapshot?.queryParamMap);
+    queryParamMap$
+      .pipe(
+        map((params) => params?.get('taskDraftId') ?? ''),
+        distinctUntilChanged(),
+        takeUntilDestroyed()
+      )
+      .subscribe((draftId) => {
+        if (!draftId) return;
+        this.targetSprintForCreate.set(null);
+        this.taskModalMode.set('create');
+        this.taskModalTaskId.set('');
+        this.taskModalDraftId.set(draftId);
+        this.taskModalOpen.set(true);
       });
   }
 
@@ -707,6 +726,7 @@ export class TaskBacklogComponent implements OnInit, AfterViewInit, OnDestroy {
   protected readonly taskModalOpen = signal(false);
   protected readonly taskModalMode = signal<'create' | 'edit'>('create');
   protected readonly taskModalTaskId = signal('');
+  protected readonly taskModalDraftId = signal('');
   protected readonly targetSprintForCreate = signal<Sprint | null>(null);
 
   protected readonly modalPrefillModuleId = computed(() => {
@@ -724,12 +744,21 @@ export class TaskBacklogComponent implements OnInit, AfterViewInit, OnDestroy {
     this.targetSprintForCreate.set(sprint ?? null);
     this.taskModalMode.set('create');
     this.taskModalTaskId.set('');
+    this.taskModalDraftId.set('');
     this.taskModalOpen.set(true);
   }
 
   protected closeTaskModal(): void {
     this.targetSprintForCreate.set(null);
     this.taskModalOpen.set(false);
+    this.clearDraftParam();
+  }
+
+  /** Drop ?taskDraftId= so reloading or revisiting the page does not reopen a finished draft. */
+  private clearDraftParam(): void {
+    if (!this.taskModalDraftId()) return;
+    this.taskModalDraftId.set('');
+    void this.router.navigate([], { queryParams: { taskDraftId: null }, queryParamsHandling: 'merge', replaceUrl: true });
   }
 
   async reloadTasks(): Promise<void> {
@@ -739,12 +768,14 @@ export class TaskBacklogComponent implements OnInit, AfterViewInit, OnDestroy {
   onTaskViewed(task: WorkTask): void {
     this.taskModalMode.set('edit');
     this.taskModalTaskId.set(task.id);
+    this.taskModalDraftId.set('');
     this.taskModalOpen.set(true);
   }
 
   protected onTaskModalDone(): void {
     this.targetSprintForCreate.set(null);
     this.taskModalOpen.set(false);
+    this.clearDraftParam();
     void this.reloadTasks();
   }
 

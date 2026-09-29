@@ -15,6 +15,12 @@ import { EmployeeDirectoryStore } from '../../state/employee-directory.store';
 import { WorkPageToolbarStore } from '../../state/work-page-toolbar.store';
 import { Sprint } from '../../models/sprint.model';
 import { TaskStatusColumn, WorkTask } from '../../models/task.model';
+import { TaskDraftApiService } from '../../data-access/task-draft-api.service';
+import { DraftsStore } from '../../../../shared/state/drafts.store';
+import { TaskFormModalComponent } from '../../ui/task-form-modal/task-form-modal.component';
+
+const draftApiStub = { get: vi.fn(), create: vi.fn(), update: vi.fn(), remove: vi.fn() };
+const draftsStoreStub = { load: vi.fn() };
 
 describe('TaskBacklogComponent', () => {
   const sprint1: Sprint = {
@@ -73,6 +79,7 @@ describe('TaskBacklogComponent', () => {
     tasks?: WorkTask[];
     sprintCreate?: ReturnType<typeof vi.fn>;
     sprintsSignal?: ReturnType<typeof signal<Sprint[]>>;
+    queryParams?: Record<string, string>;
     sprintErrorSignal?: ReturnType<typeof signal<string | null>>;
     sprintComplete?: ReturnType<typeof vi.fn>;
     sprintAchieve?: ReturnType<typeof vi.fn>;
@@ -156,9 +163,16 @@ describe('TaskBacklogComponent', () => {
         },
         {
           provide: ActivatedRoute,
-          useValue: { snapshot: { paramMap: { get: (key: string) => (key === 'id' ? 'project-1' : null) } } }
+          useValue: {
+            snapshot: {
+              paramMap: { get: (key: string) => (key === 'id' ? 'project-1' : null) },
+              queryParamMap: { get: (key: string) => options.queryParams?.[key] ?? null }
+            }
+          }
         },
-        { provide: Router, useValue: { navigate } }
+        { provide: Router, useValue: { navigate } },
+        { provide: TaskDraftApiService, useValue: draftApiStub },
+        { provide: DraftsStore, useValue: draftsStoreStub }
       ]
     });
 
@@ -166,6 +180,21 @@ describe('TaskBacklogComponent', () => {
     fixture.detectChanges();
     return { fixture, loadBoard, moveTask, loadForProject, sprintCreate, sprintsSignal, sprintErrorSignal, taskErrorSignal, sprintComplete, sprintAchieve, sprintStart, loadProjectMembers, navigate };
   }
+
+  it('opens the create modal hydrated from ?taskDraftId and clears the param on close', async () => {
+    const { fixture, navigate } = setup({ queryParams: { taskDraftId: 'd1' } });
+    await fixture.whenStable();
+    fixture.detectChanges();
+
+    const modal = fixture.debugElement.query(By.directive(TaskFormModalComponent)).componentInstance as TaskFormModalComponent;
+    expect(modal.open()).toBe(true);
+    expect(modal.mode()).toBe('create');
+    expect(modal.draftId()).toBe('d1');
+
+    modal.closed.emit();
+
+    expect(navigate).toHaveBeenCalledWith([], expect.objectContaining({ queryParams: { taskDraftId: null }, replaceUrl: true }));
+  });
 
   it('renders one SprintTabComponent per sprint', async () => {
     const { fixture } = setup();
@@ -295,7 +324,9 @@ describe('TaskBacklogComponent', () => {
           provide: ActivatedRoute,
           useValue: { snapshot: { paramMap: { get: (key: string) => (key === 'id' ? 'project-1' : null) } } }
         },
-        { provide: Router, useValue: { navigate: vi.fn().mockResolvedValue(true) } }
+        { provide: Router, useValue: { navigate: vi.fn().mockResolvedValue(true) } },
+        { provide: TaskDraftApiService, useValue: draftApiStub },
+        { provide: DraftsStore, useValue: draftsStoreStub }
       ]
     });
 
@@ -376,7 +407,9 @@ describe('TaskBacklogComponent', () => {
           provide: ActivatedRoute,
           useValue: { snapshot: { paramMap: { get: (key: string) => (key === 'id' ? 'project-1' : null) } } }
         },
-        { provide: Router, useValue: { navigate: vi.fn().mockResolvedValue(true) } }
+        { provide: Router, useValue: { navigate: vi.fn().mockResolvedValue(true) } },
+        { provide: TaskDraftApiService, useValue: draftApiStub },
+        { provide: DraftsStore, useValue: draftsStoreStub }
       ]
     });
 
