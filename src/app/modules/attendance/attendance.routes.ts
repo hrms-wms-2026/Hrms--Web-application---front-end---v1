@@ -64,6 +64,21 @@ export const ATTENDANCE_ROUTES: Routes = [
       )
   },
   {
+    // Reporting managers (attendance:approve) and HR (employees:write) - the backend narrows the
+    // list to the employees each caller covers via IEmployeeAuthorityResolver.
+    path: 'alerts',
+    canActivate: [permissionGuard],
+    data: {
+      title: 'Alerts',
+      permissions: ['attendance:approve', 'employees:write', 'exceptions:view'],
+      modules: ['time_attendance']
+    },
+    loadComponent: () =>
+      import('./feature/exception-alerts/exception-alerts.component').then(
+        (module) => module.ExceptionAlertsComponent
+      )
+  },
+  {
     path: 'corrections/approvals',
     canActivate: [permissionGuard],
     data: { title: 'Attendance correction approvals', permissions: ['attendance:approve'], modules: ['time_attendance'], approvalType: 'corrections' },

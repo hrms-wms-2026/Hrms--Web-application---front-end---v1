@@ -17,7 +17,8 @@ const KNOWN_CODE_MAPPINGS: Record<string, string> = {
   quota_exceeded: 'Storage limit reached. Please upgrade your plan or free up space.',
   storage_quota_exceeded: 'Storage limit reached. Please upgrade your plan or free up space.',
   tenant_context_missing: 'Session context missing. Please try signing in again.',
-  invalid_file_size: 'The selected file exceeds the maximum allowed size.'
+  invalid_file_size: 'The selected file exceeds the maximum allowed size.',
+  meeting_provider_not_connected: 'Connect a Microsoft account under Settings → Calendar Connections to add a Teams meeting.'
 };
 
 const HTTP_STATUS_MAPPINGS: Record<number, string> = {

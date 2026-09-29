@@ -34,7 +34,7 @@ describe('NavigationStateService', () => {
 
     expect(service.activeItem()?.id).toBe('time-attendance');
     const childIds = service.activeChildren().map((c) => c.id);
-    expect(childIds).toEqual(['time-attendance-overview', 'time-attendance-tracking', 'time-attendance-requests', 'time-attendance-monitoring']);
+    expect(childIds).toEqual(['time-attendance-overview', 'time-attendance-tracking', 'time-attendance-requests', 'time-attendance-alerts', 'time-attendance-monitoring']);
   });
 
   it('keeps Attendance active and sub-sidebar visible when navigating with query parameters', async () => {
@@ -42,7 +42,7 @@ describe('NavigationStateService', () => {
 
     expect(service.activeItem()?.id).toBe('time-attendance');
     const childIds = service.activeChildren().map((c) => c.id);
-    expect(childIds).toEqual(['time-attendance-overview', 'time-attendance-tracking', 'time-attendance-requests', 'time-attendance-monitoring']);
+    expect(childIds).toEqual(['time-attendance-overview', 'time-attendance-tracking', 'time-attendance-requests', 'time-attendance-alerts', 'time-attendance-monitoring']);
   });
 
   it('manages sub-sidebar collapsed and expanded states and persists to localStorage', async () => {
