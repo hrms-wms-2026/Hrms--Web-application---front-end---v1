@@ -85,6 +85,7 @@ const BAR_OFFSET = '40px';
       box-shadow: 0 -1px 3px rgba(0, 0, 0, 0.04);
       padding: 0 12px;
       box-sizing: border-box;
+      border-radius: 0 0 16px 16px;
     }
     .drafts-bar__scroll-track {
       display: flex;
