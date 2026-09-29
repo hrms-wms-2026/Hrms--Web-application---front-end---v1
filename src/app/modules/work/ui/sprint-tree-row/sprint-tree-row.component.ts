@@ -82,6 +82,13 @@ import { MilestoneTreeNode } from '../../models/milestone.model';
               <path d="M20 6L9 17l-5-5" />
             </svg>
           </button>
+          @if (node().status === 'complete' || node().status === 'achieved') {
+            <button type="button" class="{{ iconClass() }}" data-testid="delete-sprint-button" aria-label="Delete sprint" (click)="emit($event, deleteSprintRequested)">
+              <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                <path d="M4 7h16M10 11v6M14 11v6M6 7l1 13h10l1-13M9 7V4h6v3" />
+              </svg>
+            </button>
+          }
         }
       </span>
     </div>
@@ -101,6 +108,8 @@ export class SprintTreeRowComponent {
   editRequested = output<MilestoneTreeNode>();
   achieveSprintRequested = output<MilestoneTreeNode>();
   completeSprintRequested = output<MilestoneTreeNode>();
+  /** Only offered for a complete or achieved sprint. */
+  deleteSprintRequested = output<MilestoneTreeNode>();
 
   iconClass(): string {
     return this.selected()

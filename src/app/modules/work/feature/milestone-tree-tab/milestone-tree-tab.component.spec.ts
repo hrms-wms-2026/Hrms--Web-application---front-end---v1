@@ -1,3 +1,4 @@
+import { NotificationService } from '../../../../core/services/notification.service';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { ActivatedRoute, Router } from '@angular/router';
 import { of } from 'rxjs';
@@ -96,6 +97,7 @@ describe('MilestoneTreeTabComponent', () => {
       achieveSprint: vi.fn().mockResolvedValue({ success: true }),
       completeSprint: vi.fn().mockResolvedValue({ success: true }),
       deleteTask: vi.fn().mockResolvedValue({ success: true }),
+      deleteSprint: vi.fn().mockResolvedValue({ success: true }),
       getMilestoneDetail: vi.fn().mockResolvedValue(null),
       editMilestone: vi.fn().mockResolvedValue({ success: true, pending: true }),
       achieveMilestone: vi.fn().mockResolvedValue({ success: true, pending: false }),
@@ -787,6 +789,33 @@ describe('MilestoneTreeTabComponent', () => {
     const sprint: MilestoneTreeNode = { ...child, id: 'spr-1', kind: 'sprint' };
     await fixture.componentInstance.onAchieveSprintRequested(sprint);
     expect(storeStub.achieveSprint).toHaveBeenCalledWith('spr-1');
+  });
+
+  it('deleting a sprint uses the shared confirm, titled for a sprint, and calls store.deleteSprint (not deleteTask)', async () => {
+    setup('o1');
+    fixture.detectChanges();
+    const sprint: MilestoneTreeNode = { ...child, id: 'spr-1', kind: 'sprint', status: 'complete' };
+
+    fixture.componentInstance.onDeleteRequested(sprint);
+    fixture.detectChanges();
+    expect((fixture.componentInstance as any).deletingSprint()).toBe(true);
+    await fixture.componentInstance.onDeleteConfirmed();
+
+    expect(storeStub.deleteSprint).toHaveBeenCalledWith('spr-1');
+    expect(storeStub.deleteTask).not.toHaveBeenCalled();
+    expect(fixture.componentInstance.deleteConfirmOpen()).toBe(false);
+  });
+
+  it('a sprint deletion sent for approval shows "Sprint deletion sent for approval."', async () => {
+    setup('o1');
+    fixture.detectChanges();
+    storeStub.deleteSprint.mockResolvedValue({ success: true, pending: true });
+    const info = vi.spyOn(TestBed.inject(NotificationService), 'info');
+
+    fixture.componentInstance.onDeleteRequested({ ...child, id: 'spr-1', kind: 'sprint', status: 'achieved' });
+    await fixture.componentInstance.onDeleteConfirmed();
+
+    expect(info).toHaveBeenCalledWith('Sprint deletion sent for approval.');
   });
 
   it('opens the complete-sprint dialog instead of completing directly, so a disposition is always confirmed', () => {

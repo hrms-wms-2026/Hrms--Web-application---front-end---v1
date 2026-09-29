@@ -77,7 +77,7 @@ describe('ObjectiveMemberApiService', () => {
   });
 
   it('transfers head and returns the outcome with response status', () => {
-    const outcome: TransferObjectiveHeadOutcomeDto = { applied: false, pendingChangeRequest: null, pendingInvitation: { id: 'i2' } as ObjectiveInvitationDto };
+    const outcome: TransferObjectiveHeadOutcomeDto = { applied: false, approvalRequestId: null, pendingInvitation: { id: 'i2' } as ObjectiveInvitationDto };
     service.transferHead('o1', 'e2').subscribe((res) => {
       expect(res.status).toBe(202);
       expect(res.body).toEqual(outcome);

@@ -56,6 +56,7 @@ const NO_KEYS: ReadonlySet<string> = new Set();
           (editRequested)="editRequested.emit($event)"
           (achieveSprintRequested)="achieveSprintRequested.emit($event)"
           (completeSprintRequested)="completeSprintRequested.emit($event)"
+          (deleteSprintRequested)="deleteSprintRequested.emit($event)"
         />
       } @else {
         <app-task-tree-row
@@ -93,6 +94,7 @@ const NO_KEYS: ReadonlySet<string> = new Set();
               (achieveRequested)="achieveRequested.emit($event)"
               (achieveSprintRequested)="achieveSprintRequested.emit($event)"
               (completeSprintRequested)="completeSprintRequested.emit($event)"
+              (deleteSprintRequested)="deleteSprintRequested.emit($event)"
               (deleteRequested)="deleteRequested.emit($event)"
             />
           }
@@ -129,6 +131,7 @@ export class MilestoneTreeNodeComponent implements OnInit {
   achieveRequested = output<MilestoneTreeNode>();
   achieveSprintRequested = output<MilestoneTreeNode>();
   completeSprintRequested = output<MilestoneTreeNode>();
+  deleteSprintRequested = output<MilestoneTreeNode>();
   deleteRequested = output<MilestoneTreeNode>();
 
   expanded = signal(true);

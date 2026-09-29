@@ -306,12 +306,30 @@ describe('ProjectDetailStore', () => {
   });
 
   it('transferObjectiveHead reports applied:false with a pendingInvitation on 202', async () => {
-    const memberApi = { transferHead: vi.fn().mockReturnValue(of(new HttpResponse<TransferObjectiveHeadOutcomeDto>({ body: { applied: false, pendingChangeRequest: null, pendingInvitation: { id: 'i2' } as ObjectiveInvitationDto }, status: 202 }))) };
+    const memberApi = { transferHead: vi.fn().mockReturnValue(of(new HttpResponse<TransferObjectiveHeadOutcomeDto>({ body: { applied: false, approvalRequestId: null, pendingInvitation: { id: 'i2' } as ObjectiveInvitationDto }, status: 202 }))) };
     const store = createStoreWithMemberApi(memberApi);
 
     const result = await store.transferObjectiveHead('o1', 'e3');
 
     expect(result).toEqual({ success: true, applied: false, viaInvitation: true });
+  });
+
+  it('transferObjectiveHead reports applied:true on 204 (ASP.NET drops the body of a 204)', async () => {
+    const memberApi = { transferHead: vi.fn().mockReturnValue(of(new HttpResponse<TransferObjectiveHeadOutcomeDto>({ body: null, status: 204 }))) };
+    const store = createStoreWithMemberApi(memberApi);
+
+    const result = await store.transferObjectiveHead('o1', 'e3');
+
+    expect(result).toEqual({ success: true, applied: true, viaInvitation: false });
+  });
+
+  it('transferObjectiveHead reports applied:false (sent for approval) on a 202 with approvalRequestId', async () => {
+    const memberApi = { transferHead: vi.fn().mockReturnValue(of(new HttpResponse<TransferObjectiveHeadOutcomeDto>({ body: { applied: false, approvalRequestId: 'ar-3', pendingInvitation: null }, status: 202 }))) };
+    const store = createStoreWithMemberApi(memberApi);
+
+    const result = await store.transferObjectiveHead('o1', 'e3');
+
+    expect(result).toEqual({ success: true, applied: false, viaInvitation: false });
   });
 
   describe('loadSprintsAndTasksForLeaf', () => {
@@ -599,6 +617,57 @@ describe('ProjectDetailStore', () => {
       const result = await store.achieveSprint('spr-1');
       expect(result.success).toBe(false);
       expect(store.milestoneActionError()).toBe('blocked');
+    });
+
+    const activeSprintList = () => of([{
+      id: 'spr-1', projectId: 'p1', name: 'Sprint 1', goal: null, startDate: '2026-08-01', endDate: '2026-08-14',
+      status: 'active' as const, completedAt: null, achievedAt: null, canManage: true
+    }]);
+    const statusApi = () => ({
+      getTasks: vi.fn().mockReturnValue(of([])),
+      getStatuses: vi.fn().mockReturnValue(of([{
+        id: 'st-1', name: 'To Do', displayOrder: 0, requiresApproval: false, approverId: null,
+        marksTaskComplete: false, category: 'active', color: '#2563EB', visibility: 'public'
+      }]))
+    });
+
+    it('achieveSprint pending returns {success:true, pending:true} and leaves the tree node unchanged', async () => {
+      const sprintApi = { getByObjective: vi.fn().mockReturnValue(activeSprintList()), achieve: vi.fn().mockReturnValue(of({ approvalRequestId: 'ar-1' })) };
+      const store = setup({ getProjectTree: () => of(leafTree) }, sprintApi, statusApi());
+      await store.loadProjectTree('p1');
+      await store.loadSprintsAndTasksForLeaf('o1');
+
+      const result = await store.achieveSprint('spr-1');
+
+      expect(result).toEqual({ success: true, pending: true });
+      expect(store.selectedSubtree()?.children[0].status).toBe('active');
+    });
+
+    it('deleteSprint applied removes the sprint node and reloads the leaf (its tasks return to the backlog)', async () => {
+      const getByObjective = vi.fn().mockReturnValueOnce(activeSprintList()).mockReturnValue(of([]));
+      const sprintApi = { getByObjective, delete: vi.fn().mockReturnValue(of(null)) };
+      const store = setup({ getProjectTree: () => of(leafTree) }, sprintApi, statusApi());
+      await store.loadProjectTree('p1');
+      await store.loadSprintsAndTasksForLeaf('o1');
+
+      const result = await store.deleteSprint('spr-1');
+
+      expect(result).toEqual({ success: true });
+      expect(sprintApi.delete).toHaveBeenCalledWith('spr-1');
+      expect(getByObjective).toHaveBeenCalledTimes(2);
+      expect(store.selectedSubtree()?.children.some((c) => c.id === 'spr-1')).toBe(false);
+    });
+
+    it('deleteSprint pending returns {success:true, pending:true} and keeps the node', async () => {
+      const sprintApi = { getByObjective: vi.fn().mockReturnValue(activeSprintList()), delete: vi.fn().mockReturnValue(of({ approvalRequestId: 'ar-2' })) };
+      const store = setup({ getProjectTree: () => of(leafTree) }, sprintApi, statusApi());
+      await store.loadProjectTree('p1');
+      await store.loadSprintsAndTasksForLeaf('o1');
+
+      const result = await store.deleteSprint('spr-1');
+
+      expect(result).toEqual({ success: true, pending: true });
+      expect(store.selectedSubtree()?.children.some((c) => c.id === 'spr-1')).toBe(true);
     });
   });
 

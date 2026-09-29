@@ -80,4 +80,17 @@ describe('TreeExplanationPanelComponent', () => {
     setup({ ...task, isOwner: true });
     expect(fixture.nativeElement.querySelector('[data-testid="panel-delete"]')).not.toBeNull();
   });
+  it('shows "Delete sprint" only for complete or achieved sprints and emits deleteSprintRequested', () => {
+    setup(sprint);
+    expect(fixture.nativeElement.querySelector('[data-testid="panel-delete-sprint"]')).toBeNull();
+
+    setup({ ...sprint, status: 'complete' });
+    const emitted: MilestoneTreeNode[] = [];
+    fixture.componentInstance.deleteSprintRequested.subscribe((n) => emitted.push(n));
+    (fixture.nativeElement.querySelector('[data-testid="panel-delete-sprint"]') as HTMLButtonElement).click();
+    expect(emitted.map((n) => n.id)).toEqual(['spr-1']);
+
+    setup({ ...sprint, status: 'achieved' });
+    expect(fixture.nativeElement.querySelector('[data-testid="panel-delete-sprint"]')).not.toBeNull();
+  });
 });

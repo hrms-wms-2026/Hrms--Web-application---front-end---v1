@@ -170,6 +170,8 @@ export class MilestoneTreeTabComponent {
   createSprintNode = signal<MilestoneTreeNode | null>(null);
   deleteConfirmOpen = signal(false);
   pendingDeleteNode = signal<MilestoneTreeNode | null>(null);
+  /** The shared delete confirm is showing for a sprint (not a task). */
+  protected readonly deletingSprint = computed(() => this.pendingDeleteNode()?.kind === 'sprint');
   editSprintOpen = signal(false);
   editSprintNode = signal<MilestoneTreeNode | null>(null);
   completingSprintNode = signal<MilestoneTreeNode | null>(null);
@@ -544,7 +546,8 @@ export class MilestoneTreeTabComponent {
   }
 
   async onAchieveSprintRequested(node: MilestoneTreeNode): Promise<void> {
-    await this.store.achieveSprint(node.id);
+    const result = await this.store.achieveSprint(node.id);
+    if (result.pending) this.notificationService.info('Sprint change sent for approval.');
   }
 
   onCompleteSprintRequested(node: MilestoneTreeNode): void {
@@ -568,6 +571,15 @@ export class MilestoneTreeTabComponent {
   async onDeleteConfirmed(): Promise<void> {
     const node = this.pendingDeleteNode();
     if (!node) return;
+    if (node.kind === 'sprint') {
+      const sprintResult = await this.store.deleteSprint(node.id);
+      if (!sprintResult.success) return;
+      if (sprintResult.pending) this.notificationService.info('Sprint deletion sent for approval.');
+      else if (this.selectedNodeId() === node.id) this.selectedNodeId.set(null);
+      this.deleteConfirmOpen.set(false);
+      this.pendingDeleteNode.set(null);
+      return;
+    }
     const result = await this.store.deleteTask(node.id);
     if (!result.success) return;
     if (result.pendingApproval) {
