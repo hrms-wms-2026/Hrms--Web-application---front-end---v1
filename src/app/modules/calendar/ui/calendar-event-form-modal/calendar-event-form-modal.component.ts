@@ -1,4 +1,4 @@
-import { ChangeDetectionStrategy, Component, EventEmitter, Input, OnChanges, Output, SimpleChanges, inject, signal } from '@angular/core';
+import { ChangeDetectionStrategy, Component, EventEmitter, Input, OnChanges, OnDestroy, Output, SimpleChanges, inject, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { AbstractControl, FormBuilder, ReactiveFormsModule, ValidationErrors, ValidatorFn, Validators } from '@angular/forms';
 import { ButtonComponent } from '../../../../shared/ui/button/button.component';
@@ -7,7 +7,7 @@ import { SelectComponent } from '../../../../shared/ui/select/select.component';
 import { ModalComponent } from '../../../../shared/ui/modal/modal.component';
 import { DatePickerComponent } from '../../../../shared/ui/date-picker/date-picker.component';
 import { AvatarComponent } from '../../../../shared/ui/avatar/avatar.component';
-import { ConfirmModalComponent } from '../../../../shared/ui/confirm-modal/confirm-modal.component';
+import { DirtyFormHandle, UnsavedChangesService } from '../../../../shared/services/unsaved-changes.service';
 import { AuthStore } from '../../../../core/auth/state/auth.store';
 import { localPartsToUtcIso, utcIsoToLocalParts } from '../../../../shared/utils/timezone.util';
 import {
@@ -77,14 +77,15 @@ export interface RespondToCalendarEventPayload {
   standalone: true,
   imports: [
     CommonModule, ReactiveFormsModule, ButtonComponent, InputComponent, SelectComponent,
-    ModalComponent, DatePickerComponent, AvatarComponent, ConfirmModalComponent, CalendarParticipantPickerComponent,
+    ModalComponent, DatePickerComponent, AvatarComponent, CalendarParticipantPickerComponent,
     CalendarSelectComponent
   ],
   templateUrl: './calendar-event-form-modal.component.html',
   changeDetection: ChangeDetectionStrategy.OnPush
 })
-export class CalendarEventFormModalComponent implements OnChanges {
+export class CalendarEventFormModalComponent implements OnChanges, OnDestroy {
   private readonly fb = inject(FormBuilder);
+  private readonly unsaved = inject(UnsavedChangesService);
 
   @Input() open = false;
   @Input() event: CalendarEventResponse | null = null;
@@ -116,7 +117,6 @@ export class CalendarEventFormModalComponent implements OnChanges {
   readonly participantIds = signal<readonly string[]>([]);
   readonly participants = signal<readonly { id: string; name: string }[]>([]);
   readonly maxParticipantAvatars = 6;
-  readonly discardConfirmOpen = signal(false);
 
   /** Zone the typed start/end times are read in. Falls back to the organizer's tenant
    * zone (`myTimezone`) until the user explicitly picks one; changing it re-converts
@@ -217,7 +217,21 @@ export class CalendarEventFormModalComponent implements OnChanges {
     this.onRespond('ReplacementNominated', null, nomineeId);
   }
 
+  ngOnDestroy(): void {
+    this.unregisterGuard?.();
+    this.unregisterGuard = null;
+  }
+
   ngOnChanges(changes: SimpleChanges): void {
+    if (changes['open']) {
+      if (this.open && !this.unregisterGuard) {
+        this.unregisterGuard = this.unsaved.register(this.guardHandle);
+      } else if (!this.open && this.unregisterGuard) {
+        this.unregisterGuard();
+        this.unregisterGuard = null;
+      }
+    }
+
     // Only reset dirty/participant state when the modal is *freshly opened* for a new session -
     // this same input also toggles on every debounced conflict-check update while a create form
     // is mid-use, and resetting on every ngOnChanges call would wipe out in-progress typing.
@@ -366,21 +380,19 @@ export class CalendarEventFormModalComponent implements OnChanges {
     return this.form.dirty || this.participantIds().length > 0;
   }
 
+  /** Calendar events have no draft storage - the shared dialog only offers Discard / Keep editing. */
+  private readonly guardHandle: DirtyFormHandle = {
+    isDirty: () => this.isDirty(),
+    canSaveDraft: () => false,
+    saveDraft: async () => false,
+    discard: () => {}
+  };
+  private unregisterGuard: (() => void) | null = null;
+
   attemptClose(): void {
-    if (this.isDirty()) {
-      this.discardConfirmOpen.set(true);
-      return;
-    }
-    this.cancel.emit();
-  }
-
-  confirmDiscard(): void {
-    this.discardConfirmOpen.set(false);
-    this.cancel.emit();
-  }
-
-  cancelDiscard(): void {
-    this.discardConfirmOpen.set(false);
+    void this.unsaved.requestClose(this.guardHandle).then((ok) => {
+      if (ok) this.cancel.emit();
+    });
   }
 
   toggleAllDay(): void {

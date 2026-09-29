@@ -309,13 +309,3 @@
   (selectedPeopleChange)="onParticipantPeopleChange($event)"
   (closed)="participantPickerOpen.set(false)"
 />
-
-<app-confirm-modal
-  [open]="discardConfirmOpen()"
-  title="Discard changes?"
-  message="You have unsaved changes. Discard them?"
-  confirmLabel="Discard"
-  cancelLabel="Keep editing"
-  (confirmed)="confirmDiscard()"
-  (cancelled)="cancelDiscard()"
-/>

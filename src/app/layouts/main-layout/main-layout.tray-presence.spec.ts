@@ -37,6 +37,9 @@ class ToastHostStubComponent {}
 @Component({ selector: 'app-mobile-bottom-nav', standalone: true, template: '' })
 class MobileBottomNavStubComponent {}
 
+@Component({ selector: 'app-unsaved-changes-dialog', standalone: true, template: '' })
+class UnsavedChangesDialogStubComponent {}
+
 @Component({ selector: 'app-locked-workspace-preview', standalone: true, template: '' })
 class LockedWorkspacePreviewStubComponent {}
 
@@ -106,6 +109,7 @@ describe('MainLayoutComponent tray activation gate', () => {
           SubSidebarStubComponent,
           ToastHostStubComponent,
           MobileBottomNavStubComponent,
+          UnsavedChangesDialogStubComponent,
           TrayActivationGateComponent,
           LockedWorkspacePreviewStubComponent
         ]
@@ -189,6 +193,7 @@ describe('MainLayoutComponent tray activation gate when monitoring module is not
           SubSidebarStubComponent,
           ToastHostStubComponent,
           MobileBottomNavStubComponent,
+          UnsavedChangesDialogStubComponent,
           TrayActivationGateComponent,
           LockedWorkspacePreviewStubComponent
         ]

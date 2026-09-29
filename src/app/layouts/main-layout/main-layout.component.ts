@@ -15,11 +15,12 @@ import { FileApiService } from '../../shared/data-access/file-api.service';
 
 import { ToastHostComponent } from '../../shared/ui/toast/toast-host.component';
 import { MobileBottomNavComponent } from './mobile-bottom-nav/mobile-bottom-nav.component';
+import { UnsavedChangesDialogComponent } from '../../shared/ui/unsaved-changes-dialog/unsaved-changes-dialog.component';
 
 @Component({
   selector: 'app-main-layout',
   standalone: true,
-  imports: [RouterOutlet, SideNavbarComponent, TopNavbarComponent, SubSidebarComponent, ToastHostComponent, MobileBottomNavComponent, TrayActivationGateComponent, LockedWorkspacePreviewComponent],
+  imports: [RouterOutlet, SideNavbarComponent, TopNavbarComponent, SubSidebarComponent, ToastHostComponent, MobileBottomNavComponent, UnsavedChangesDialogComponent, TrayActivationGateComponent, LockedWorkspacePreviewComponent],
   templateUrl: './main-layout.component.html',
   styleUrl: './main-layout.component.css',
   changeDetection: ChangeDetectionStrategy.OnPush
