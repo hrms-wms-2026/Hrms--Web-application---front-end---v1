@@ -1,11 +1,24 @@
-:host { display: block; }
+:host {
+  display: block;
+  max-width: 100%;
+  min-width: 0;
+}
 .edt__scroll {
   border-radius: 12px;
   background: var(--color-surface-secondary);
   padding: 2px 4px 6px;
-  overflow: visible;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+  max-width: 100%;
+  width: 100%;
 }
-.edt { width: 100%; border-collapse: separate; border-spacing: 0 5px; color: var(--color-text-primary); }
+.edt {
+  width: 100%;
+  min-width: 700px;
+  border-collapse: separate;
+  border-spacing: 0 5px;
+  color: var(--color-text-primary);
+}
 .edt th, .edt td { text-align: left; white-space: nowrap; vertical-align: middle; }
 .edt td { overflow: hidden; text-overflow: ellipsis; max-width: 260px; padding: 7px 14px; font-size: 13px; }
 .edt thead tr { background: var(--color-surface-secondary); }
