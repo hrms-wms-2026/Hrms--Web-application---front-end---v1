@@ -605,7 +605,8 @@ export class CalendarEventFormModalComponent implements OnChanges {
         title: raw.title!.trim(), description: raw.description || null, startDate, endDate,
         isAllDay: !!raw.isAllDay, location: raw.location || null,
         meetingLink: raw.meetingLink || null, color: raw.color || null, recurrence,
-        participantEmployeeIds: this.participantIds(), recurrenceRule, guestEmails: this.guestEmails()
+        participantEmployeeIds: this.participantIds(), recurrenceRule, guestEmails: this.guestEmails(),
+        pendingMeetingProvider: this.pendingMeetingProvider()
       },
       meetingProvider: this.pendingMeetingProvider()
     });
