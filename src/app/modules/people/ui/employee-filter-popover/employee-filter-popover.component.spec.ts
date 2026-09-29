@@ -44,7 +44,7 @@ describe('EmployeeFilterPopoverComponent', () => {
     expect(q('filter-count')!.textContent!.trim()).toBe('1');
   });
 
-  it('loads options for the selected company once', async () => {
+  it('loads options for the selected company once when opened', async () => {
     const { open, departments, positions, people } = await setup();
     open(); open(); open();
     expect(departments.listFlat).toHaveBeenCalledTimes(1);
@@ -53,27 +53,53 @@ describe('EmployeeFilterPopoverComponent', () => {
     expect(people.listEmployees).toHaveBeenCalledWith(expect.objectContaining({ legalEntityId: 'le-1', pageSize: 100 }));
   });
 
-  it('stages employment types and emits the full filter object on Apply', async () => {
+  it('adds employment type on demand and emits updated filters on selection', async () => {
     const { fixture, q, open, host } = await setup();
     open();
-    q<HTMLInputElement>('filter-type-contract')!.click();
-    q<HTMLInputElement>('filter-type-intern')!.click();
+    q('filter-add-btn')!.click();
     fixture.detectChanges();
-    expect(host.applied).toEqual([]);
-    q('filter-apply')!.click();
-    expect(host.applied).toEqual([{ departmentId: 'd1', positionId: null, employmentTypes: ['contract', 'intern'], managerId: null }]);
+
+    q('filter-picker-employmentTypes')!.click();
+    fixture.detectChanges();
+
+    const row = q('filter-row-employmentTypes')!;
+    const dropdownTrigger = row.querySelector('.work-dropdown__trigger') as HTMLElement;
+    dropdownTrigger.click();
+    fixture.detectChanges();
+
+    q('dropdown-option-contract')!.click();
+    fixture.detectChanges();
+
+    expect(host.applied).toContainEqual({
+      departmentId: 'd1',
+      positionId: null,
+      employmentTypes: ['contract'],
+      managerId: null
+    });
   });
 
-  it('Reset then Apply emits empty filters', async () => {
+  it('Clear all resets active filters and emits empty filters', async () => {
     const { fixture, q, open, host } = await setup();
     open();
     q('filter-reset')!.click();
     fixture.detectChanges();
-    q('filter-apply')!.click();
     expect(host.applied).toEqual([EMPTY_EMPLOYEE_FILTERS]);
   });
 
-  it('without a selected company shows a hint and does not call the APIs', async () => {
+  it('removing a filter field clears it and emits updated filters', async () => {
+    const { fixture, q, open, host } = await setup();
+    open();
+    q('filter-remove-departmentId')!.click();
+    fixture.detectChanges();
+    expect(host.applied).toContainEqual({
+      departmentId: null,
+      positionId: null,
+      employmentTypes: [],
+      managerId: null
+    });
+  });
+
+  it('without a selected company shows a hint and does not call company-scoped APIs', async () => {
     const { fixture, q, open, host, departments } = await setup();
     host.le.set(null);
     fixture.detectChanges();
