@@ -1,4 +1,4 @@
-import { Component, ElementRef, computed, effect, inject, input, output, signal, untracked, viewChild } from '@angular/core';
+import { Component, DestroyRef, ElementRef, computed, effect, inject, input, output, signal, untracked, viewChild } from '@angular/core';
 import { NgTemplateOutlet } from '@angular/common';
 import { firstValueFrom } from 'rxjs';
 import { ButtonComponent } from '../../../../shared/ui/button/button.component';
@@ -32,13 +32,17 @@ import { DatePickerComponent } from '../../../../shared/ui/date-picker/date-pick
 import { buildTaskDeepLink, copyTextToClipboard } from '../../utils/task-deep-link.util';
 import { TaskAssigneeDropdownComponent } from '../task-assignee-dropdown/task-assignee-dropdown.component';
 import { NotificationService } from '../../../../core/services/notification.service';
+import { ProjectMonitorApiService } from '../../data-access/project-monitor-api.service';
+import { MonitorWarningDto } from '../../models/dto/monitor.dto';
+import { MonitorWarningCalloutComponent } from '../monitor-warning-callout/monitor-warning-callout.component';
+import { MONITOR_CHECK_DEBOUNCE_MS } from '../sub-module-form/sub-module-form.component';
 
 export type TaskFormMode = 'create' | 'edit';
 
 @Component({
   selector: 'app-task-form-modal',
   standalone: true,
-  imports: [NgTemplateOutlet, ButtonComponent, DatePickerComponent, TaskHistoryFeedComponent, TaskClockWidgetComponent, TaskAttachmentListComponent, RichTextEditorComponent, AvatarComponent, TaskCommentsComponent, ConfirmModalComponent, TaskDuplicateDialogComponent, TaskConvertToSubtaskDialogComponent, TaskAssigneeDropdownComponent],
+  imports: [NgTemplateOutlet, ButtonComponent, DatePickerComponent, TaskHistoryFeedComponent, TaskClockWidgetComponent, TaskAttachmentListComponent, RichTextEditorComponent, AvatarComponent, TaskCommentsComponent, ConfirmModalComponent, TaskDuplicateDialogComponent, TaskConvertToSubtaskDialogComponent, TaskAssigneeDropdownComponent, MonitorWarningCalloutComponent],
   template: `
     @if (open()) {
       <div class="tfm-scrim" (click)="onBackdrop()">
@@ -602,6 +606,8 @@ export type TaskFormMode = 'create' | 'edit';
                 }
               </div>
 
+              <app-monitor-warning-callout [warnings]="loadWarnings()" />
+
               @if (allocationHint()) {
                 <p class="tfm__error tfm-banner-error" role="alert" data-testid="allocation-hint">
                   Not enough allocation ({{ allocationHint()!.availableSlackHours }}h available). Edit the module's allocated hours, then try again.
@@ -1150,6 +1156,8 @@ export type TaskFormMode = 'create' | 'edit';
                     }
                   </div>
                 }
+
+                <app-monitor-warning-callout [warnings]="loadWarnings()" />
 
                 @if (errorMessage()) {
                   <p class="tfm__error tfm-banner-error" role="alert">{{ errorMessage() }}</p>
@@ -2273,6 +2281,48 @@ export class TaskFormModalComponent {
 
   submitting = signal(false);
   errors = signal<Record<string, string>>({});
+
+  // Project monitor: "can the assignee still finish everything due by this date?" Advisory only -
+  // it never disables saving.
+  private readonly monitorApi = inject(ProjectMonitorApiService);
+  readonly loadWarnings = signal<readonly MonitorWarningDto[]>([]);
+  private loadCheckTimer: ReturnType<typeof setTimeout> | null = null;
+  private loadCheckVersion = 0;
+  private readonly loadCheckEffect = effect(() => {
+    const projectId = this.open() ? this.projectId() : '';
+    const request = {
+      taskId: this.mode() === 'create' ? null : this.activeTaskId() || null,
+      assigneeEmployeeIds: this.assigneeEmployeeId() ? [this.assigneeEmployeeId()] : [],
+      dueDate: this.dueDate() || null,
+      estimatedHours: this.estimatedHours()
+    };
+    untracked(() => this.scheduleLoadCheck(projectId, request));
+  });
+  private readonly loadCheckCleanup = inject(DestroyRef).onDestroy(() => this.clearLoadCheckTimer());
+
+  private scheduleLoadCheck(projectId: string, request: {
+    taskId: string | null; assigneeEmployeeIds: string[]; dueDate: string | null; estimatedHours: number | null;
+  }): void {
+    this.clearLoadCheckTimer();
+    const version = ++this.loadCheckVersion;
+    if (!projectId || request.assigneeEmployeeIds.length === 0 || !request.dueDate || !(Number(request.estimatedHours) > 0)) {
+      this.loadWarnings.set([]);
+      return;
+    }
+    this.loadCheckTimer = setTimeout(async () => {
+      try {
+        const result = await firstValueFrom(this.monitorApi.checkTask(projectId, request));
+        if (version === this.loadCheckVersion) this.loadWarnings.set(result.warnings ?? []);
+      } catch {
+        if (version === this.loadCheckVersion) this.loadWarnings.set([]);
+      }
+    }, MONITOR_CHECK_DEBOUNCE_MS);
+  }
+
+  private clearLoadCheckTimer(): void {
+    if (this.loadCheckTimer !== null) clearTimeout(this.loadCheckTimer);
+    this.loadCheckTimer = null;
+  }
   errorMessage = signal<string | null>(null);
 
   activePopover = signal<'assignee' | 'priority' | 'dueDate' | 'module' | 'sprint' | 'category' | 'splitMenu' | 'status' | 'headerCategory' | 'headerModule' | 'headerMore' | null>(null);

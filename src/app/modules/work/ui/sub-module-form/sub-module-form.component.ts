@@ -1,4 +1,5 @@
-import { Component, effect, inject, input, output, signal } from '@angular/core';
+import { Component, DestroyRef, effect, inject, input, output, signal, untracked } from '@angular/core';
+import { firstValueFrom } from 'rxjs';
 import { ModalComponent } from '../../../../shared/ui/modal/modal.component';
 import { InputComponent } from '../../../../shared/ui/input/input.component';
 import { ButtonComponent } from '../../../../shared/ui/button/button.component';
@@ -9,6 +10,12 @@ import { ProjectDetailStore } from '../../state/project-detail.store';
 import { EmployeeDirectoryStore } from '../../state/employee-directory.store';
 import { ObjectiveDetail } from '../../models/milestone.model';
 import { CreateObjectiveRequestDto, EditObjectiveRequestDto } from '../../models/dto/milestone.dto';
+import { MonitorWarningDto } from '../../models/dto/monitor.dto';
+import { ProjectMonitorApiService } from '../../data-access/project-monitor-api.service';
+import { MonitorWarningCalloutComponent } from '../monitor-warning-callout/monitor-warning-callout.component';
+
+/** How long the form waits after the last change before asking the monitor for warnings. */
+export const MONITOR_CHECK_DEBOUNCE_MS = 400;
 
 interface SelectedMember {
   employeeId: string;
@@ -18,7 +25,7 @@ interface SelectedMember {
 @Component({
   selector: 'app-sub-module-form',
   standalone: true,
-  imports: [ModalComponent, InputComponent, ButtonComponent, DateRangePickerComponent, EmployeePickerComponent, AssetUploadListComponent],
+  imports: [ModalComponent, InputComponent, ButtonComponent, DateRangePickerComponent, EmployeePickerComponent, AssetUploadListComponent, MonitorWarningCalloutComponent],
   template: `
     <app-modal [open]="open()" [title]="mode() === 'edit' ? 'Module settings' : 'Create sub Module'" size="lg" (closed)="closed.emit()">
       <div class="flex flex-col gap-3">
@@ -86,6 +93,8 @@ interface SelectedMember {
           />
         </div>
 
+        <app-monitor-warning-callout [warnings]="capacityWarnings()" />
+
         @if (errorMessage()) {
           <p class="text-sm text-[var(--color-danger-text)]" role="alert">{{ errorMessage() }}</p>
         }
@@ -116,11 +125,14 @@ interface SelectedMember {
 })
 export class SubModuleFormComponent {
   private readonly store = inject(ProjectDetailStore);
+  private readonly monitorApi = inject(ProjectMonitorApiService);
   protected readonly directory = inject(EmployeeDirectoryStore);
 
   mode = input<'create' | 'edit'>('create');
   open = input(false);
   parentObjectiveId = input('');
+  /** Enables the live capacity check (advisory only - it never blocks saving). */
+  projectId = input('');
   initialValue = input<ObjectiveDetail | null>(null);
   submitting = input(false);
   errorMessage = input('');
@@ -151,6 +163,11 @@ export class SubModuleFormComponent {
   // retry action instead of silently dropping the row.
   private failedDeleteIds = new Set<string>();
 
+  /** Project monitor warnings for the current dates/hours/members, e.g. "more hours than the team can produce". */
+  readonly capacityWarnings = signal<readonly MonitorWarningDto[]>([]);
+  private capacityCheckTimer: ReturnType<typeof setTimeout> | null = null;
+  private capacityCheckVersion = 0;
+
   constructor() {
     effect(() => {
       this.open();
@@ -179,6 +196,46 @@ export class SubModuleFormComponent {
       this.failedDeleteIds.clear();
       this.errors.set({});
     });
+
+    // Live capacity check: re-run (debounced) whenever the planning inputs change.
+    effect(() => {
+      const projectId = this.projectId();
+      const request = {
+        moduleId: this.mode() === 'edit' ? this.initialValue()?.id ?? null : null,
+        startDate: this.startDate(),
+        endDate: this.endDate(),
+        allocatedHours: this.allocatedHours(),
+        memberEmployeeIds: this.members().map((member) => member.employeeId)
+      };
+      const open = this.open();
+      untracked(() => this.scheduleCapacityCheck(open ? projectId : '', request));
+    });
+    inject(DestroyRef).onDestroy(() => this.clearCapacityTimer());
+  }
+
+  private scheduleCapacityCheck(projectId: string, request: {
+    moduleId: string | null; startDate: string; endDate: string; allocatedHours: number; memberEmployeeIds: string[];
+  }): void {
+    this.clearCapacityTimer();
+    const version = ++this.capacityCheckVersion;
+    if (!projectId || !request.startDate || !request.endDate || request.endDate < request.startDate || !(request.allocatedHours > 0)) {
+      this.capacityWarnings.set([]);
+      return;
+    }
+    this.capacityCheckTimer = setTimeout(async () => {
+      try {
+        const result = await firstValueFrom(this.monitorApi.checkModule(projectId, request));
+        if (version === this.capacityCheckVersion) this.capacityWarnings.set(result.warnings ?? []);
+      } catch {
+        // Advisory only: if the check fails, just show no warning.
+        if (version === this.capacityCheckVersion) this.capacityWarnings.set([]);
+      }
+    }, MONITOR_CHECK_DEBOUNCE_MS);
+  }
+
+  private clearCapacityTimer(): void {
+    if (this.capacityCheckTimer !== null) clearTimeout(this.capacityCheckTimer);
+    this.capacityCheckTimer = null;
   }
 
   allocatedHoursDisplay(): string {

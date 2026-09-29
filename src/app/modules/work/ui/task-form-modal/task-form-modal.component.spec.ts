@@ -3,6 +3,8 @@ import { signal } from '@angular/core';
 import { of, throwError } from 'rxjs';
 import { vi } from 'vitest';
 import { TaskFormModalComponent } from './task-form-modal.component';
+import { ProjectMonitorApiService } from '../../data-access/project-monitor-api.service';
+import { MONITOR_CHECK_DEBOUNCE_MS } from '../sub-module-form/sub-module-form.component';
 import { TaskApiService } from '../../data-access/task-api.service';
 import { ProjectApiService } from '../../data-access/project-api.service';
 import { SprintApiService } from '../../data-access/sprint-api.service';
@@ -111,6 +113,25 @@ describe('TaskFormModalComponent - edit mode', () => {
     fixture.componentRef.setInput('taskId', 't1');
     fixture.componentRef.setInput('open', true);
     await flush(fixture);
+  });
+
+  it('warns (without blocking) when the assignee cannot finish their work by the due date', async () => {
+    const monitor = TestBed.inject(ProjectMonitorApiService);
+    const checkTask = vi.spyOn(monitor, 'checkTask').mockReturnValue(of({
+      warnings: [{ code: 'employee_deadline_overload', message: 'Ann has 30 h of work due by Oct 7 but only 24 h of working time.', employeeId: 'e1' }]
+    }));
+
+    fixture.componentInstance.dueDate.set('2026-10-07');
+    fixture.componentInstance.estimatedHours.set(10);
+    fixture.detectChanges();
+    await new Promise((r) => setTimeout(r, MONITOR_CHECK_DEBOUNCE_MS + 50));
+    await flush(fixture);
+
+    expect(checkTask).toHaveBeenLastCalledWith('p1', {
+      taskId: 't1', assigneeEmployeeIds: ['e1'], dueDate: '2026-10-07', estimatedHours: 10
+    });
+    expect(fixture.nativeElement.querySelector('[data-testid="monitor-warnings"]').textContent)
+      .toContain('Ann has 30 h of work due by Oct 7');
   });
 
   it('loads the task by its id input and seeds the form', () => {

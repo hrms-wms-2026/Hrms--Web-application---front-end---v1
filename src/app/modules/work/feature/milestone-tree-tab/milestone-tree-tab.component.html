@@ -85,11 +85,11 @@
   </div>
 </div>
 
-<app-sub-module-form mode="edit" [open]="settingsOpen()" [initialValue]="settingsInitialValue()"
+<app-sub-module-form [projectId]="projectId()" mode="edit" [open]="settingsOpen()" [initialValue]="settingsInitialValue()"
   [submitting]="settingsSubmitting()" [errorMessage]="store.milestoneActionError() ?? ''"
   (saved)="onSettingsSaved($event)" (closed)="settingsOpen.set(false)" />
 
-<app-sub-module-form mode="create" [open]="createModalOpen()" [parentObjectiveId]="createModalParentId()"
+<app-sub-module-form [projectId]="projectId()" mode="create" [open]="createModalOpen()" [parentObjectiveId]="createModalParentId()"
   [submitting]="createModalSubmitting()" [errorMessage]="store.milestoneActionError() ?? ''"
   (created)="onCreateModalCreated($event)" (closed)="createModalOpen.set(false)" />
 
