@@ -143,17 +143,40 @@ describe('WorkApprovalsComponent', () => {
     expect(trigger.textContent).toContain('Select a module');
   });
 
-  it('opens History and loads this project\'s sent, pending, and decided approvals', async () => {
+  it('shows Requests and History tabs; History lists this project\'s approval history inline', async () => {
     setup();
-    await fixture.whenStable();
-
-    fixture.componentInstance.openHistory();
     await fixture.whenStable();
     fixture.detectChanges();
 
+    const tabs = Array.from(fixture.nativeElement.querySelectorAll('[role="tab"]') as NodeListOf<HTMLButtonElement>);
+    expect(tabs.map((tab) => tab.textContent?.trim())).toEqual(['Requests', 'History']);
+    expect(fixture.nativeElement.querySelector('[data-testid="approval-history-list"]')).toBeNull();
+
+    tabs[1].click();
+    fixture.detectChanges();
+
+    // History reuses the list already loaded for "My Pending Requests" - no second request.
+    expect(fixture.nativeElement.querySelector('[data-testid="approval-history-list"]')).not.toBeNull();
+    expect(approvalsApi.getApprovalHistory).toHaveBeenCalledTimes(1);
     expect(approvalsApi.getApprovalHistory).toHaveBeenCalledWith('project-1');
-    expect(fixture.nativeElement.querySelector('[data-testid="approval-history-modal"]')).not.toBeNull();
-  });
+  }, 15000);
+
+  it('lists sprint requests in their own Sprint Requests section, not under Task Requests', async () => {
+    const sprintItem: ApprovalItem = {
+      id: 's1', kind: 'work_approval', objectiveId: '', title: 'Start sprint: Sprint 4', description: 'Start sprint',
+      requestedByName: 'Sam Lee', targetTitle: 'Sprint 4', targetType: 'request', targetId: 'sp-4',
+      createdAt: '2026-09-28T00:00:00Z',
+      raw: engineRaw({ id: 's1', actionType: 'sprint.start', targetType: 'sprint', targetId: 'sp-4', targetTitle: 'Sprint 4' })
+    };
+    setup(undefined, undefined, [sprintItem]);
+    await fixture.whenStable();
+    fixture.detectChanges();
+
+    const headings = Array.from(fixture.nativeElement.querySelectorAll('h2') as NodeListOf<HTMLElement>)
+      .map((h) => h.textContent?.trim() ?? '');
+    expect(headings.some((h) => h.startsWith('Sprint Requests') && h.includes('1'))).toBe(true);
+    expect(headings.some((h) => h.startsWith('Task Requests'))).toBe(false);
+  }, 15000);
 
   it('shows requests sent by the user that are still awaiting approval on the main page', async () => {
     const getApprovalHistory = vi.fn().mockReturnValue(of([{

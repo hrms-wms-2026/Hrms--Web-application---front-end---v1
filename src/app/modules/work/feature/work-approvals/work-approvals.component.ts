@@ -17,20 +17,24 @@ import { WorkDropdownComponent, WorkDropdownOption } from '../../ui/work-dropdow
 import { ButtonComponent } from '../../../../shared/ui/button/button.component';
 import { ApprovalHistoryItemDto } from '../../models/dto/approval-history.dto';
 import { ObjectiveInvitationDto } from '../../models/dto/objective-invitation.dto';
-import { ApprovalHistoryModalComponent } from '../../ui/approval-history-modal/approval-history-modal.component';
+import { ApprovalHistoryListComponent } from '../../ui/approval-history-list/approval-history-list.component';
+import { TabOption, TabsComponent } from '../../../../shared/ui/tabs/tabs.component';
 import { TaskFormModalComponent } from '../../ui/task-form-modal/task-form-modal.component';
 import { TaskStatusChangeRequestsPanelComponent } from '../../ui/task-status-change-requests-panel/task-status-change-requests-panel.component';
+
+type ApprovalsTab = 'requests' | 'history';
+
+function isSprintRequest(item: ApprovalItem): boolean {
+  return (item.raw as { targetType?: string }).targetType === 'sprint';
+}
 
 @Component({
   selector: 'app-work-approvals',
   standalone: true,
-  imports: [DatePipe, TaskStatusChangeRequestsPanelComponent, ApprovalRequestRowComponent, ApprovalHistoryModalComponent, TaskFormModalComponent, ModalComponent, InputComponent, WorkDropdownComponent, ButtonComponent],
+  imports: [DatePipe, TaskStatusChangeRequestsPanelComponent, ApprovalRequestRowComponent, ApprovalHistoryListComponent, TabsComponent, TaskFormModalComponent, ModalComponent, InputComponent, WorkDropdownComponent, ButtonComponent],
   template: `
     <ng-template #toolbarTpl>
       <div class="work-approvals__toolbar-actions">
-        <app-button data-testid="approval-history-button" variant="secondary" (pressed)="openHistory()">
-          History
-        </app-button>
         <app-button data-testid="create-approval-button" variant="primary" (pressed)="openCreateApproval()">
           Create Approval
         </app-button>
@@ -43,6 +47,16 @@ import { TaskStatusChangeRequestsPanelComponent } from '../../ui/task-status-cha
       <p class="work-approvals__error">{{ store.error() }}</p>
     } @else {
       <div class="work-approvals">
+        <app-tabs data-testid="approvals-tabs" ariaLabel="Approvals" [tabs]="tabs" [value]="activeTab()" (valueChange)="onTabChange($event)" />
+
+        @if (activeTab() === 'history') {
+          <app-approval-history-list
+            [items]="historyItems()"
+            [loading]="historyLoading()"
+            [error]="historyError()"
+            (retry)="loadHistory()"
+          />
+        } @else {
         @if (sentPendingRequests().length > 0) {
         <section data-testid="my-pending-requests">
           <h2>My Pending Requests <span>{{ sentPendingRequests().length }}</span></h2>
@@ -82,10 +96,24 @@ import { TaskStatusChangeRequestsPanelComponent } from '../../ui/task-status-cha
           />
         }
 
-        @if (workApprovals().length > 0) {
+        @if (taskApprovals().length > 0) {
         <section>
-          <h2>Task Requests <span>{{ workApprovals().length }}</span></h2>
-          @for (item of workApprovals(); track item.id) {
+          <h2>Task Requests <span>{{ taskApprovals().length }}</span></h2>
+          @for (item of taskApprovals(); track item.id) {
+            <app-approval-request-row
+              [item]="item"
+              (approved)="onApprove(item, $event)"
+              (rejected)="onReject(item, $event)"
+              (viewRequested)="onViewTarget($event)"
+            />
+          }
+        </section>
+        }
+
+        @if (sprintApprovals().length > 0) {
+        <section data-testid="sprint-requests">
+          <h2>Sprint Requests <span>{{ sprintApprovals().length }}</span></h2>
+          @for (item of sprintApprovals(); track item.id) {
             <app-approval-request-row
               [item]="item"
               (approved)="onApprove(item, $event)"
@@ -145,6 +173,7 @@ import { TaskStatusChangeRequestsPanelComponent } from '../../ui/task-status-cha
             <p>No pending approvals or requests.</p>
           </div>
         }
+        }
       </div>
     }
 
@@ -191,15 +220,6 @@ import { TaskStatusChangeRequestsPanelComponent } from '../../ui/task-status-cha
         </div>
       </app-modal>
     }
-
-    <app-approval-history-modal
-      [open]="historyOpen()"
-      [items]="historyItems()"
-      [loading]="historyLoading()"
-      [error]="historyError()"
-      (closed)="historyOpen.set(false)"
-      (retry)="loadHistory()"
-    />
 
     <app-task-form-modal
       [open]="selectedTaskId() !== null"
@@ -258,7 +278,13 @@ export class WorkApprovalsComponent implements OnInit, AfterViewInit, OnDestroy 
   protected readonly modules = signal<readonly { objectiveId: string; title: string; isOwner?: boolean }[]>([]);
   protected readonly moduleOptions = signal<readonly WorkDropdownOption[]>([]);
   private prefillObjectiveId: string | null = null;
-  protected readonly historyOpen = signal(false);
+  protected readonly tabs: readonly TabOption[] = [
+    { value: 'requests', label: 'Requests' },
+    { value: 'history', label: 'History' }
+  ];
+  protected readonly activeTab = signal<ApprovalsTab>(
+    this.route.snapshot?.queryParamMap?.get('tab') === 'history' ? 'history' : 'requests'
+  );
   protected readonly historyLoading = signal(false);
   protected readonly historyError = signal<string | null>(null);
   protected readonly historyItems = signal<readonly ApprovalHistoryItemDto[]>([]);
@@ -281,6 +307,9 @@ export class WorkApprovalsComponent implements OnInit, AfterViewInit, OnDestroy 
   // No module scoping: the approval-engine inbox endpoint is already per project (task, sprint and
   // module requests all come from it).
   protected readonly workApprovals = computed(() => this.store.workApprovals());
+  // Sprint requests come from the same engine inbox but get their own section.
+  protected readonly taskApprovals = computed(() => this.workApprovals().filter((item) => !isSprintRequest(item)));
+  protected readonly sprintApprovals = computed(() => this.workApprovals().filter(isSprintRequest));
   protected readonly allocationRequests = computed(() => this.store.allocationRequests());
   protected readonly objectiveChangeRequests = computed(() => this.store.objectiveChangeRequests());
   protected readonly objectiveInvitations = computed(() => this.scopedToProject(this.store.objectiveInvitations()));
@@ -313,7 +342,8 @@ export class WorkApprovalsComponent implements OnInit, AfterViewInit, OnDestroy 
           this.historyError.set(null);
           if (!projectId) return;
           void this.loadModules();
-          if (this.historyOpen()) void this.loadHistory();
+          // The first load happens in ngOnInit; later project switches reload the (shared) history.
+          if (this.historyLoadVersion > 0) void this.loadHistory();
         });
     } else {
       const projectId = this.route.snapshot?.paramMap?.get('id') ?? '';
@@ -417,9 +447,14 @@ export class WorkApprovalsComponent implements OnInit, AfterViewInit, OnDestroy 
     void this.store.loadAll(this.projectId());
   }
 
-  openHistory(): void {
-    this.historyOpen.set(true);
-    void this.loadHistory();
+  onTabChange(tab: string): void {
+    const next: ApprovalsTab = tab === 'history' ? 'history' : 'requests';
+    this.activeTab.set(next);
+    // Keep the tab in the URL so a refresh or a shared link reopens it.
+    void this.router.navigate([], {
+      relativeTo: this.route, queryParams: { tab: next === 'history' ? next : null },
+      queryParamsHandling: 'merge', replaceUrl: true
+    }).catch(() => undefined);
   }
 
   async loadHistory(): Promise<void> {

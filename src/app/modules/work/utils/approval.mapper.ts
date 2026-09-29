@@ -52,6 +52,7 @@ export function toApprovalItem(dto: WorkApprovalRequestDto | ObjectiveInvitation
         id: request.id, kind: 'allocation_extend', objectiveId: request.targetId ?? '', engine: true,
         title: `+${hours}h requested`, description: reason, requestedByName: request.requestedByName,
         targetTitle: request.targetTitle, targetType: 'module', targetId: request.targetId,
+        currentAllocatedHours: request.currentAllocatedHours ?? null,
         createdAt: request.createdAt, raw: { ...request, payload: { requestedAdditionalHours: hours, reason } }
       };
     }

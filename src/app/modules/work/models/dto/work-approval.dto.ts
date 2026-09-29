@@ -16,6 +16,8 @@ export interface WorkApprovalRequestDto {
   decisionComment: string | null;
   createdAt: string;
   decidedAt: string | null;
+  /** The target module's allocated hours right now; only set for module.allocation_extend. */
+  currentAllocatedHours?: number | null;
 }
 
 /** Body of a 202 from create/edit/delete: the change was sent for approval instead of applied. */

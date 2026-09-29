@@ -16,14 +16,10 @@ function engineModuleRequest(overrides: Partial<WorkApprovalRequestDto>): WorkAp
 }
 
 function allocationItem(requestedAdditionalHours = 20): ApprovalItem {
-  // The engine inbox has no current-hours field; the row shows it whenever an item carries it.
-  return {
-    ...toApprovalItem(engineModuleRequest({
-      id: 'allocation-1', actionType: 'module.allocation_extend',
-      payloadJson: JSON.stringify({ requestedAdditionalHours, reason: 'Need more capacity' })
-    })),
-    currentAllocatedHours: 24
-  };
+  return toApprovalItem(engineModuleRequest({
+    id: 'allocation-1', actionType: 'module.allocation_extend', currentAllocatedHours: 24,
+    payloadJson: JSON.stringify({ requestedAdditionalHours, reason: 'Need more capacity' })
+  }));
 }
 
 function objectiveEditItem(): ApprovalItem {
@@ -86,7 +82,8 @@ describe('ApprovalRequestRowComponent', () => {
   it('shows the requester, affected module, and allocation impact', () => {
     expect(fixture.nativeElement.textContent).toContain('Nimal Perera');
     expect(fixture.nativeElement.textContent).toContain('Hardware integration');
-    expect(fixture.nativeElement.textContent).toContain('24h');
+    expect(fixture.nativeElement.querySelector('[data-testid="allocation-current-hours"]').textContent)
+      .toContain('Current 24h');
     expect(fixture.nativeElement.textContent).not.toContain('44h');
   });
 

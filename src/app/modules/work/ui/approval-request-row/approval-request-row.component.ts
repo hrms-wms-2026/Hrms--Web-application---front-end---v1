@@ -19,7 +19,7 @@ import { EditObjectiveRequestPayloadDto } from '../../models/dto/allocation-requ
             @if (item().kind === 'allocation_extend') {
               <span> requested +{{ requestedAdditionalHours() }}h</span>
               @if (item().currentAllocatedHours != null) {
-                <span> · Current {{ item().currentAllocatedHours }}h</span>
+                <span data-testid="allocation-current-hours"> · Current {{ item().currentAllocatedHours }}h</span>
               }
             }
             <span aria-hidden="true"> · </span>

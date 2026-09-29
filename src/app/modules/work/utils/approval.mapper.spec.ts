@@ -82,6 +82,12 @@ describe('toApprovalItem (module requests from the engine)', () => {
     expect((item.raw as { payload: unknown }).payload).toEqual({ requestedAdditionalHours: 8, reason: 'Finish integration' });
   });
 
+  it('module.allocation_extend carries the current allocated hours of its module from the inbox row', () => {
+    const item = toApprovalItem(moduleDto({ actionType: 'module.allocation_extend', payloadJson: '{}', currentAllocatedHours: 120 }));
+
+    expect(item.currentAllocatedHours).toBe(120);
+  });
+
   it('module.achieve → kind objective_change', () => {
     const item = toApprovalItem(moduleDto({ actionType: 'module.achieve' }));
 
