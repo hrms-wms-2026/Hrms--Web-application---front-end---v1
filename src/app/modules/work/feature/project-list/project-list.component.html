@@ -47,7 +47,7 @@
     </div>
   </header>
 
-  <div class="mt-2 min-h-0 flex-1 overflow-hidden">
+  <div class="mt-2 min-h-0 flex-1">
     @if (store.loading()) {
       <app-loader label="Loading projects…" />
     } @else if (store.error()) {
@@ -86,7 +86,7 @@
             }
           </div>
           @if (selectedProject(); as selected) {
-            <div class="lg:self-start lg:max-h-full lg:overflow-y-auto lg:pr-1 [scrollbar-width:none]">
+            <div class="lg:self-start">
               <app-project-explanation-card
                 [project]="selected"
                 (viewed)="onView(selected)"
