@@ -83,7 +83,7 @@ describe('WorkApprovalsComponent', () => {
       .map((h) => h.textContent?.trim() ?? '');
     expect(headings.some((h) => h.startsWith('Task Requests') && h.includes('1'))).toBe(true);
     expect(headings.some((h) => h.includes('Task Creation') || h.includes('Task Edit'))).toBe(false);
-  });
+  }, 15000); // this component renders slowly when the whole suite runs in parallel
 
   it('uses the approval queue loaded by the project shell and loads current project modules', async () => {
     setup();

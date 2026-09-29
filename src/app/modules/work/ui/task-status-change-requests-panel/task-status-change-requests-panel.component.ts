@@ -124,7 +124,8 @@ export class TaskStatusChangeRequestsPanelComponent {
     this.setError(request.id, null);
     try {
       await firstValueFrom(this.api.approve(request.id));
-      // Approving can close other overlapping requests as outdated, so refetch rather than filter.
+      // Approving can close other overlapping requests as stale (and a stale approve closes this
+      // one), so refetch rather than filter.
       await this.load();
     } catch (error) {
       this.setError(request.id, this.errorText(error, 'Failed to approve.'));

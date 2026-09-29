@@ -69,6 +69,17 @@ describe('WorkApprovalsStore', () => {
     expect(store.pendingCount()).toBe(5);
   });
 
+  it('loadAll(projectId) leaves project.status_template_change items out of workApprovals', async () => {
+    const getProjectApprovals = vi.fn().mockReturnValue(of([
+      workApproval(),
+      workApproval({ id: 'st1', actionType: 'project.status_template_change', targetType: 'project', targetId: null })
+    ]));
+    const store = setup({ getProjectApprovals });
+    await store.loadAll('p1');
+
+    expect(store.workApprovals().map((i) => i.id)).toEqual(['w1']);
+  });
+
   it('loadAll without a project leaves workApprovals empty and never calls the per-project inbox', async () => {
     const getProjectApprovals = vi.fn().mockReturnValue(of([workApproval()]));
     const store = setup({ getProjectApprovals });

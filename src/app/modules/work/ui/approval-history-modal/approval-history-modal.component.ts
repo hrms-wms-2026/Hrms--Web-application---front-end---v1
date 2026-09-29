@@ -157,7 +157,6 @@ export class ApprovalHistoryModalComponent {
       accepted: 'Accepted',
       declined: 'Declined',
       cancelled: 'Cancelled',
-      outdated: 'Outdated',
       stale: 'Outdated',
       expired: 'Expired'
     };

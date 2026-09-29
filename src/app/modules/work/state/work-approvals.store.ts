@@ -53,7 +53,11 @@ export const WorkApprovalsStore = signalStore(
           firstValueFrom(api.getMyObjectiveInvitations())
         ]);
         patchState(store, {
-          workApprovals: workApprovals.map(toApprovalItem),
+          // Status-template requests are listed (and decided) by the task-status panel on the same
+          // page, so they are left out here to avoid showing them twice.
+          workApprovals: workApprovals
+            .filter((i) => i.actionType !== 'project.status_template_change')
+            .map(toApprovalItem),
           allocationRequests: allocation.map(toApprovalItem),
           objectiveChangeRequests: objectiveChange.map(toApprovalItem),
           objectiveInvitations: invitations.map(toApprovalItem),
