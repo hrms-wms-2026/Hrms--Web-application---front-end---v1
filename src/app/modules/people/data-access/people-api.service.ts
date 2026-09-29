@@ -114,6 +114,11 @@ export class PeopleApiService {
     return this.http.post<OnboardingDraftResponse>(`${environment.apiUrl}/onboarding/drafts`, body, { headers });
   }
 
+  /** Discards a draft (server marks it cancelled); idempotent. */
+  cancelDraft(id: string): Observable<void> {
+    return this.http.delete<void>(`${environment.apiUrl}/onboarding/drafts/${id}`);
+  }
+
   finalizeDraft(id: string): Observable<FinalizeOnboardingDraftResponse> {
     return this.http.post<FinalizeOnboardingDraftResponse>(`${environment.apiUrl}/onboarding/drafts/${id}/finalize`, {});
   }

@@ -207,6 +207,22 @@ describe('PeopleApiService', () => {
     req.flush({ items: [], totalCount: 0, page: 1, pageSize: 25 });
   });
 
+  it('lists only my open drafts when mine is set', () => {
+    service.listDrafts({ mine: true, page: 1, pageSize: 50 }).subscribe();
+
+    const req = httpMock.expectOne((r) => r.url === `${environment.apiUrl}/onboarding/drafts` && r.params.get('mine') === 'true');
+    expect(req.request.method).toBe('GET');
+    req.flush({ items: [], totalCount: 0, page: 1, pageSize: 50 });
+  });
+
+  it('cancels a draft with DELETE', () => {
+    service.cancelDraft('draft-9').subscribe();
+
+    const req = httpMock.expectOne(`${environment.apiUrl}/onboarding/drafts/draft-9`);
+    expect(req.request.method).toBe('DELETE');
+    req.flush(null);
+  });
+
   it('fetches a single draft by id', () => {
     service.getDraft('draft-1').subscribe((draft) => {
       expect(draft).toEqual(mockDraft);

@@ -67,6 +67,8 @@ export interface DraftListPageResponse {
 export interface DraftListParams {
   page?: number;
   pageSize?: number;
+  /** Only the caller's own open drafts (excludes cancelled, finalized and invitation-sent). */
+  mine?: boolean;
 }
 
 export type DraftStatus = 'draft' | 'waiting_for_seat' | 'waiting_for_position_approval' | 'cancelled' | 'finalized';
