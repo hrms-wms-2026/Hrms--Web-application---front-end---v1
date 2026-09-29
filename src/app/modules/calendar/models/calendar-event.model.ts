@@ -4,6 +4,18 @@ export interface CalendarEventParticipant {
   responseStatus: string;
 }
 
+export interface CalendarEventGuest {
+  email: string;
+}
+
+export interface CalendarEventGuestsResponse {
+  guests: readonly CalendarEventGuest[];
+}
+
+export interface CalendarEventParticipantsResponse {
+  participants: readonly CalendarEventParticipant[];
+}
+
 export interface CalendarEventResponse {
   id: string;
   title: string;
@@ -26,6 +38,9 @@ export interface CalendarEventResponse {
   originalStart: string | null;
   participants: readonly CalendarEventParticipant[] | null;
   hasConflict: boolean;
+  isOrganizer?: boolean;
+  organizerName?: string | null;
+  guests?: readonly CalendarEventGuest[] | null;
 }
 
 export interface CalendarEventsResponse {
@@ -44,6 +59,7 @@ export interface CreateCalendarEventRequest {
   recurrence: string;
   participantEmployeeIds: readonly string[];
   recurrenceRule: string | null;
+  guestEmails?: readonly string[];
 }
 
 export interface UpdateCalendarEventRequest {
@@ -107,4 +123,24 @@ export interface CheckCalendarConflictsRequest {
 
 export interface CalendarConflictsResponse {
   conflicts: readonly CalendarConflict[];
+}
+
+/** Matches backend ONEVO.Domain.Features.Calendar.Entities.CalendarEventMeetingProviders. */
+export type MeetingProvider = 'microsoft_teams' | 'zoom';
+
+export interface CreateEventMeetingResponse {
+  joinUrl: string;
+}
+
+export interface MeetingAttendeeResponse {
+  name: string | null;
+  email: string | null;
+  joinedAt: string;
+  leftAt: string | null;
+  durationSeconds: number | null;
+}
+
+export interface MeetingAttendanceResponse {
+  available: boolean;
+  attendees: readonly MeetingAttendeeResponse[];
 }

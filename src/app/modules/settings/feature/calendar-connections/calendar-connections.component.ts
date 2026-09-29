@@ -42,7 +42,8 @@ const STATUS_CLASSES: Record<CalendarConnectionStatus, string> = {
 
 const PROVIDER_LABELS: Record<CalendarConnectionProvider, string> = {
   google_calendar: 'Google Calendar',
-  outlook_calendar: 'Outlook Calendar'
+  outlook_calendar: 'Outlook Calendar',
+  zoom: 'Zoom'
 };
 
 @Component({
@@ -55,14 +56,19 @@ const PROVIDER_LABELS: Record<CalendarConnectionProvider, string> = {
     </header>
 
     <div class="mb-6 flex flex-wrap gap-3">
-      <div class="w-56">
+      <div class="w-56" data-testid="connect-google">
         <app-button variant="secondary" [loading]="store.connectingProvider() === 'google'" [disabled]="isGoogleConnected()" (pressed)="connect('google')">
           {{ isGoogleConnected() ? 'Google Calendar connected' : 'Connect Google Calendar' }}
         </app-button>
       </div>
-      <div class="w-56">
+      <div class="w-56" data-testid="connect-microsoft">
         <app-button variant="secondary" [loading]="store.connectingProvider() === 'microsoft'" [disabled]="isOutlookConnected()" (pressed)="connect('microsoft')">
           {{ isOutlookConnected() ? 'Outlook connected' : 'Connect Outlook' }}
+        </app-button>
+      </div>
+      <div class="w-56" data-testid="connect-zoom">
+        <app-button variant="secondary" [loading]="store.connectingProvider() === 'zoom'" [disabled]="isZoomConnected()" (pressed)="connect('zoom')">
+          {{ isZoomConnected() ? 'Zoom connected' : 'Connect Zoom' }}
         </app-button>
       </div>
     </div>
@@ -155,6 +161,9 @@ export class CalendarConnectionsComponent {
   );
   readonly isOutlookConnected = computed(() =>
     this.store.connections().some((c) => c.provider === 'outlook_calendar')
+  );
+  readonly isZoomConnected = computed(() =>
+    this.store.connections().some((c) => c.provider === 'zoom')
   );
 
   readonly disconnectMessage = computed(() => {

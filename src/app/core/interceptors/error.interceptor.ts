@@ -42,7 +42,9 @@ export const errorInterceptor: HttpInterceptorFn = (req, next) => {
     retry({
       count: 3,
       delay: (error: HttpErrorResponse, attempt: number) => {
-        if (error.status >= 500 || error.status === 0) {
+        // A 5xx/dropped connection on a write doesn't prove it wasn't applied - retrying it duplicated calendar events.
+        const isSafeToRetry = req.method === 'GET' || req.method === 'HEAD';
+        if (isSafeToRetry && (error.status >= 500 || error.status === 0)) {
           return timer(RETRY_DELAYS_MS[attempt - 1] ?? 1000);
         }
         throw error;

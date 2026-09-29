@@ -45,6 +45,31 @@ describe('errorInterceptor', () => {
     expect(errored).toBe(true);
   });
 
+  it.each(['POST', 'PUT', 'PATCH', 'DELETE'] as const)('never retries a %s after a 500 (a retried write can be applied twice)', async (method) => {
+    vi.useFakeTimers();
+    let errored = false;
+    http.request(method, '/api/v1/calendar', { body: {} }).subscribe({ error: () => (errored = true) });
+
+    const req = httpMock.expectOne('/api/v1/calendar');
+    req.flush({}, { status: 500, statusText: 'Server Error' });
+    await vi.advanceTimersByTimeAsync(2000);
+
+    expect(errored).toBe(true);
+    httpMock.expectNone('/api/v1/calendar');
+  });
+
+  it('never retries a POST that failed with status 0 (the server may have already applied it)', async () => {
+    vi.useFakeTimers();
+    let errored = false;
+    http.post('/api/v1/calendar', {}).subscribe({ error: () => (errored = true) });
+
+    httpMock.expectOne('/api/v1/calendar').error(new ProgressEvent('error'));
+    await vi.advanceTimersByTimeAsync(2000);
+
+    expect(errored).toBe(true);
+    httpMock.expectNone('/api/v1/calendar');
+  });
+
   it('does not retry a 404', () => {
     let errored = false;
     http.get('/api/v1/employees/9').subscribe({ error: () => (errored = true) });
