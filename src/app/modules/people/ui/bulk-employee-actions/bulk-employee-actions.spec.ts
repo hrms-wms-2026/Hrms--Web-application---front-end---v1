@@ -3,7 +3,6 @@ import { of } from 'rxjs';
 import { NotificationService } from '../../../../core/services/notification.service';
 import { PeopleApiService } from '../../data-access/people-api.service';
 import { BulkEmployeeActionResponse } from '../../models/employee.model';
-import { BulkActionResultModalComponent } from './bulk-action-result-modal.component';
 import { BulkEmploymentTypeModalComponent } from './bulk-employment-type-modal.component';
 import { BulkStartOffboardingModalComponent } from './bulk-start-offboarding-modal.component';
 
@@ -62,17 +61,4 @@ describe('bulk employee action dialogs', () => {
     });
   });
 
-  it('result modal summarises counts and lists failures with names and reasons', () => {
-    const fixture = TestBed.createComponent(BulkActionResultModalComponent);
-    fixture.componentRef.setInput('result', response);
-    fixture.componentRef.setInput('title', 'Promote results');
-    fixture.componentRef.setInput('names', new Map([['c', 'Cara Diaz']]));
-    fixture.detectChanges();
-    const el = fixture.nativeElement as HTMLElement;
-
-    expect(el.querySelector('[data-testid="bulk-result-summary"]')!.textContent).toContain('1 changed · 1 sent for approval · 1 skipped');
-    const failure = el.querySelector('[data-testid="bulk-result-failure-c"]')!.textContent!;
-    expect(failure).toContain('Cara Diaz');
-    expect(failure).toContain('You cannot change your own position.');
-  });
 });

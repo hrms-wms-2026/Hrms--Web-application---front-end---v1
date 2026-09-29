@@ -13,9 +13,9 @@ import { LoaderComponent } from '../../../../shared/ui/loader/loader.component';
 import { SelectionModel } from '../../../../shared/utils/selection-model';
 import { LegalEntityStore } from '../../../organization/state/legal-entity.store';
 import { EMPLOYEE_COLUMNS, EmployeeColumnKey, loadEmployeeColumns, saveEmployeeColumns } from '../../models/employee-columns';
-import { BulkEmployeeActionResponse, EmployeeListItemResponse, EmployeeSortKey, SortDirection } from '../../models/employee.model';
+import { BulkEmployeeActionResponse, EmployeeListItemResponse, EmployeeSortKey, SortDirection, toEmployeeBulkSummary } from '../../models/employee.model';
 import { PeopleStore } from '../../state/people.store';
-import { BulkActionResultModalComponent } from '../../ui/bulk-employee-actions/bulk-action-result-modal.component';
+import { BulkActionResultModalComponent } from '../../../../shared/ui/bulk-action-result-modal/bulk-action-result-modal.component';
 import { BulkEmploymentTypeModalComponent } from '../../ui/bulk-employee-actions/bulk-employment-type-modal.component';
 import { BulkStartOffboardingModalComponent } from '../../ui/bulk-employee-actions/bulk-start-offboarding-modal.component';
 import { ChangePositionModalComponent } from '../../ui/change-position-modal/change-position-modal.component';
@@ -63,6 +63,7 @@ const TERMINAL_STATUSES = ['resigned', 'terminated'];
   changeDetection: ChangeDetectionStrategy.OnPush
 })
 export class EmployeeListComponent {
+  readonly toEmployeeBulkSummary = toEmployeeBulkSummary;
   private readonly route = inject(ActivatedRoute);
   private readonly router = inject(Router);
   private readonly permissionService = inject(PermissionService);

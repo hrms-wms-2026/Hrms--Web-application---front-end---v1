@@ -159,7 +159,7 @@
   (completed)="onBulkCompleted('Change employment type', $event)" (closed)="bulkEmploymentTypeOpen.set(false)" />
 <app-bulk-start-offboarding-modal [open]="bulkOffboardOpen()" [employeeIds]="selectedIdList()"
   (completed)="onBulkCompleted('Start offboarding', $event)" (closed)="bulkOffboardOpen.set(false)" />
-<app-bulk-action-result-modal [result]="bulkResult()?.result ?? null" [title]="bulkResult()?.title ?? ''" [names]="resultNames()" (closed)="bulkResult.set(null)" />
+<app-bulk-action-result-modal [result]="bulkResult() ? toEmployeeBulkSummary(bulkResult()!.result) : null" [title]="bulkResult()?.title ?? ''" [names]="resultNames()" noun="employee" (closed)="bulkResult.set(null)" />
 
 @if (isAddEmployeeModalOpen()) {
   <app-add-employee-wizard

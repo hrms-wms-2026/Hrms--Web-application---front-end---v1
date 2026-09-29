@@ -16,7 +16,7 @@ import {
   TaskStatusDto,
   WorkTaskDto
 } from '../models/dto/task.dto';
-import { TaskStatusCategory } from '../models/task.model';
+import { BulkTaskActionResponse, TaskStatusCategory, WorkTask } from '../models/task.model';
 import {
   CreateTaskCategoryRequestDto,
   EditTaskCategoryRequestDto,
@@ -129,6 +129,30 @@ export class TaskApiService {
 
   unassignTask(taskId: string, employeeId: string): Observable<void> {
     return this.http.delete<void>(`${this.baseUrl}/tasks/${taskId}/assignments/${employeeId}`);
+  }
+
+  bulkMoveStatus(taskIds: string[], newStatusId: string): Observable<BulkTaskActionResponse> {
+    return this.http.post<BulkTaskActionResponse>(`${this.baseUrl}/tasks/bulk/status`, { taskIds, newStatusId });
+  }
+
+  bulkAssign(taskIds: string[], employeeId: string): Observable<BulkTaskActionResponse> {
+    return this.http.post<BulkTaskActionResponse>(`${this.baseUrl}/tasks/bulk/assign`, { taskIds, employeeId });
+  }
+
+  bulkSetPriority(taskIds: string[], priority: WorkTask['priority']): Observable<BulkTaskActionResponse> {
+    return this.http.post<BulkTaskActionResponse>(`${this.baseUrl}/tasks/bulk/priority`, { taskIds, priority });
+  }
+
+  bulkSetDueDate(taskIds: string[], dueDate: string | null): Observable<BulkTaskActionResponse> {
+    return this.http.post<BulkTaskActionResponse>(`${this.baseUrl}/tasks/bulk/due-date`, { taskIds, dueDate });
+  }
+
+  bulkConvertToSubtask(taskIds: string[], newParentTaskId: string): Observable<BulkTaskActionResponse> {
+    return this.http.post<BulkTaskActionResponse>(`${this.baseUrl}/tasks/bulk/convert-to-subtask`, { taskIds, newParentTaskId });
+  }
+
+  bulkDelete(taskIds: string[]): Observable<BulkTaskActionResponse> {
+    return this.http.post<BulkTaskActionResponse>(`${this.baseUrl}/tasks/bulk/delete`, { taskIds });
   }
 
   createTaskCreationRequest(objectiveId: string, request: CreateTaskRequestDto): Observable<unknown> {

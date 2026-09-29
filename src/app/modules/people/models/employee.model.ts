@@ -103,6 +103,17 @@ export interface BulkEmployeeActionResponse {
   readonly failed: number;
 }
 
+export function toEmployeeBulkSummary(response: BulkEmployeeActionResponse): BulkResultSummary {
+  return {
+    ...response,
+    items: response.items.map((item) => ({
+      id: item.employeeId,
+      outcome: item.outcome,
+      reason: item.reason
+    }))
+  };
+}
+
 export interface BulkChangePositionPayload {
   readonly employeeIds: readonly string[];
   readonly positionId: string;
@@ -204,3 +215,5 @@ export interface UpdateEmployeeJobDetailsRequest {
   readonly employmentTypeCode: string;
   readonly workModeId: string | null;
 }
+import { BulkResultSummary } from '../../../shared/ui/bulk-action-result-modal/bulk-action-result-modal.component';
+
