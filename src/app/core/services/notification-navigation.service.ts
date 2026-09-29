@@ -12,7 +12,10 @@ const WORK_RELATED_TYPES = new Set([
   'objective_change_request',
   'allocation_extend',
   'project_member_invitation',
-  'task_status_change_request'
+  'task_status_change_request',
+  // The approval engine's direct-change notices point at the module or sprint itself.
+  'module',
+  'sprint'
 ]);
 
 /** Where a notification click should take the viewer - shared by the top-navbar bell dropdown
@@ -55,7 +58,7 @@ export class NotificationNavigationService {
       const extras =
         nav.targetTab === 'board' && nav.taskId
           ? { queryParams: { highlightTaskId: nav.taskId } }
-          : nav.targetTab === 'tree'
+          : nav.targetTab === 'tree' && type === 'project_member_invitation'
             ? { queryParams: { openMembers: '1' } }
             : {};
       await this.router.navigate(commands, extras);

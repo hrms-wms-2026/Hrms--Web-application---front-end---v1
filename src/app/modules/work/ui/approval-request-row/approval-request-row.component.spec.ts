@@ -3,53 +3,34 @@ import { By } from '@angular/platform-browser';
 import { vi } from 'vitest';
 import { ApprovalRequestRowComponent } from './approval-request-row.component';
 import { ApprovalItem } from '../../models/approval.model';
-import { AllocationRequestDto, ObjectiveEditRequestDto } from '../../models/dto/allocation-request.dto';
+import { toApprovalItem } from '../../utils/approval.mapper';
 import { WorkApprovalRequestDto } from '../../models/dto/work-approval.dto';
 
-function allocationItem(requestedAdditionalHours = 20): ApprovalItem {
-  const raw: AllocationRequestDto = {
-    id: 'allocation-1',
-    objectiveId: 'objective-1',
-    requestType: 'extend_allocation',
-    status: 'pending',
-    payload: { requestedAdditionalHours, reason: 'Need more capacity' },
-    createdAt: '2026-08-27T00:00:00Z'
-  };
+function engineModuleRequest(overrides: Partial<WorkApprovalRequestDto>): WorkApprovalRequestDto {
   return {
-    id: raw.id,
-    kind: 'allocation_extend',
-    objectiveId: raw.objectiveId,
-    title: `+${requestedAdditionalHours}h requested`,
-    description: raw.payload.reason,
-    requestedByName: 'Nimal Perera',
-    targetTitle: 'Hardware integration',
-    targetType: 'module',
-    targetId: raw.objectiveId,
-    currentAllocatedHours: 24,
-    createdAt: raw.createdAt,
-    raw
+    id: 'r1', projectId: 'project-1', actionType: 'module.edit', targetType: 'module', targetId: 'objective-1',
+    targetTitle: 'Hardware integration', status: 'pending', requestedByEmployeeId: 'employee-1', requestedByName: 'Nimal Perera',
+    approverEmployeeId: 'employee-2', approverName: 'Owner', payloadJson: '{}', decisionComment: null,
+    createdAt: '2026-08-27T00:00:00Z', decidedAt: null, ...overrides
+  };
+}
+
+function allocationItem(requestedAdditionalHours = 20): ApprovalItem {
+  // The engine inbox has no current-hours field; the row shows it whenever an item carries it.
+  return {
+    ...toApprovalItem(engineModuleRequest({
+      id: 'allocation-1', actionType: 'module.allocation_extend',
+      payloadJson: JSON.stringify({ requestedAdditionalHours, reason: 'Need more capacity' })
+    })),
+    currentAllocatedHours: 24
   };
 }
 
 function objectiveEditItem(): ApprovalItem {
-  const raw: ObjectiveEditRequestDto = {
-    id: 'edit-1',
-    objectiveId: 'objective-1',
-    requestType: 'edit',
-    status: 'pending',
-    payload: { title: 'Requested Title', description: 'Requested desc', startDate: '2026-01-10', endDate: '2026-02-10', allocatedHours: 15 },
-    createdAt: '2026-08-27T00:00:00Z'
-  };
-  return {
-    id: raw.id,
-    kind: 'objective_edit',
-    objectiveId: raw.objectiveId,
-    title: `Edit: ${raw.payload.title}`,
-    description: `Objective ${raw.objectiveId}`,
-    requestedByName: null,
-    createdAt: raw.createdAt,
-    raw
-  };
+  return toApprovalItem(engineModuleRequest({
+    id: 'edit-1', actionType: 'module.edit',
+    payloadJson: JSON.stringify({ title: 'Requested Title', description: 'Requested desc', startDate: '2026-01-10', endDate: '2026-02-10', allocatedHours: 15 })
+  }));
 }
 
 function taskEditItem(): ApprovalItem {

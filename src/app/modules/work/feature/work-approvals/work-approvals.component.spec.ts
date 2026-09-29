@@ -10,7 +10,16 @@ import { WorkApprovalsApiService } from '../../data-access/work-approvals-api.se
 import { ProjectApiService } from '../../data-access/project-api.service';
 import { TaskStatusChangeRequestApiService } from '../../data-access/task-status-change-request-api.service';
 import { ApprovalItem } from '../../models/approval.model';
-import { AllocationRequestDto } from '../../models/dto/allocation-request.dto';
+import { WorkApprovalRequestDto } from '../../models/dto/work-approval.dto';
+
+function engineRaw(overrides: Partial<WorkApprovalRequestDto> = {}): WorkApprovalRequestDto {
+  return {
+    id: 'r1', projectId: 'project-1', actionType: 'module.allocation_extend', targetType: 'module', targetId: 'obj-1',
+    targetTitle: 'Module One', status: 'pending', requestedByEmployeeId: 'e1', requestedByName: 'Sam Lee',
+    approverEmployeeId: 'e2', approverName: 'Owner', payloadJson: '{}', decisionComment: null,
+    createdAt: '2026-09-28T00:00:00Z', decidedAt: null, ...overrides
+  };
+}
 
 describe('WorkApprovalsComponent', () => {
   let fixture: ComponentFixture<WorkApprovalsComponent>;
@@ -21,7 +30,9 @@ describe('WorkApprovalsComponent', () => {
   function setup(
     createAllocationRequest = vi.fn().mockReturnValue(of({})),
     getApprovalHistory = vi.fn().mockReturnValue(of([])),
-    workApprovals: ApprovalItem[] = []
+    workApprovals: ApprovalItem[] = [],
+    allocationRequests: ApprovalItem[] = [],
+    objectiveChangeRequests: ApprovalItem[] = []
   ): void {
     storeStub = {
       loadAll: vi.fn().mockResolvedValue(undefined),
@@ -29,8 +40,8 @@ describe('WorkApprovalsComponent', () => {
       error: () => null,
       pendingCount: () => 0,
       workApprovals: () => workApprovals,
-      allocationRequests: () => [],
-      objectiveChangeRequests: () => [],
+      allocationRequests: () => allocationRequests,
+      objectiveChangeRequests: () => objectiveChangeRequests,
       objectiveInvitations: () => [],
       approve: vi.fn().mockResolvedValue(true),
       reject: vi.fn().mockResolvedValue(true)
@@ -186,10 +197,8 @@ describe('WorkApprovalsComponent', () => {
       description: 'Need more',
       requestedByName: null,
       createdAt: '2026-08-27T00:00:00Z',
-      raw: {
-        id: 'allocation-1', objectiveId: 'obj-1', requestType: 'extend_allocation', status: 'pending',
-        payload: { requestedAdditionalHours: 20, reason: 'Need more' }, createdAt: '2026-08-27T00:00:00Z'
-      } satisfies AllocationRequestDto
+      engine: true,
+      raw: { ...engineRaw({ id: 'allocation-1' }), payload: { requestedAdditionalHours: 20, reason: 'Need more' } }
     };
 
     fixture.componentInstance.onRequestOwnAllocation(item);
@@ -198,4 +207,56 @@ describe('WorkApprovalsComponent', () => {
     expect((fixture.componentInstance as any).createOpen()).toBe(true);
     expect((fixture.componentInstance as any).createModuleId()).toBe('obj-1');
   });
+});
+
+describe('WorkApprovalsComponent (module requests from the engine inbox)', () => {
+  it('allocation and objective-change sections render from the store lists by kind, with no module scoping', async () => {
+    const allocation: ApprovalItem = {
+      id: 'a1', kind: 'allocation_extend', objectiveId: 'obj-9', title: '+8h requested', description: 'Need more',
+      requestedByName: 'Sam Lee', targetTitle: 'Other Module', targetType: 'module', targetId: 'obj-9',
+      createdAt: '2026-09-28T00:00:00Z', engine: true,
+      raw: { ...engineRaw({ id: 'a1', targetId: 'obj-9' }), payload: { requestedAdditionalHours: 8, reason: 'Need more' } }
+    };
+    const achieve: ApprovalItem = {
+      id: 'c1', kind: 'objective_change', objectiveId: 'obj-9', title: 'Achieve module: Other Module', description: 'Achieve module',
+      requestedByName: 'Sam Lee', targetTitle: 'Other Module', targetType: 'module', targetId: 'obj-9',
+      createdAt: '2026-09-28T00:00:00Z', engine: true,
+      raw: engineRaw({ id: 'c1', actionType: 'module.achieve', targetId: 'obj-9' })
+    };
+    TestBed.configureTestingModule({
+      imports: [WorkApprovalsComponent],
+      providers: [
+        {
+          provide: WorkApprovalsStore,
+          useValue: {
+            loadAll: vi.fn().mockResolvedValue(undefined), loading: () => false, error: () => null, pendingCount: () => 2,
+            workApprovals: () => [], allocationRequests: () => [allocation], objectiveChangeRequests: () => [achieve],
+            objectiveInvitations: () => [], approve: vi.fn(), reject: vi.fn()
+          }
+        },
+        { provide: WorkApprovalsApiService, useValue: { createAllocationRequest: vi.fn(), getApprovalHistory: vi.fn().mockReturnValue(of([])) } },
+        // obj-9 is not in the caller's own milestone list: engine items must still show.
+        { provide: ProjectApiService, useValue: { getMyMilestones: vi.fn().mockReturnValue(of([{ objectiveId: 'obj-1', title: 'Module One' }])) } },
+        {
+          provide: TaskStatusChangeRequestApiService,
+          useValue: { getForProject: vi.fn().mockReturnValue(of({ canEditDirectly: false, canRequest: false, requests: [] })) }
+        },
+        {
+          provide: ActivatedRoute,
+          useValue: { snapshot: { paramMap: { get: (key: string) => key === 'id' ? 'project-1' : null } }, parent: null }
+        }
+      ]
+    });
+    const fixture = TestBed.createComponent(WorkApprovalsComponent);
+    fixture.detectChanges();
+    await fixture.whenStable();
+    fixture.detectChanges();
+
+    const headings = Array.from(fixture.nativeElement.querySelectorAll('h2') as NodeListOf<HTMLElement>)
+      .map((h) => h.textContent?.trim() ?? '');
+    expect(headings.some((h) => h.startsWith('Allocation Requests') && h.includes('1'))).toBe(true);
+    expect(headings.some((h) => h.startsWith('Objective Change Requests') && h.includes('1'))).toBe(true);
+    expect(fixture.nativeElement.textContent).toContain('Other Module');
+    expect(fixture.nativeElement.textContent).toContain('Achieve module');
+  }, 15000);
 });

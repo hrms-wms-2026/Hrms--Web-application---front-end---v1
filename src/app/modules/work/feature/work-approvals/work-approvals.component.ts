@@ -7,7 +7,7 @@ import { distinctUntilChanged, map } from 'rxjs/operators';
 import { WorkApprovalsStore } from '../../state/work-approvals.store';
 import { WorkPageToolbarStore } from '../../state/work-page-toolbar.store';
 import { ApprovalItem } from '../../models/approval.model';
-import { AllocationRequestDto, EditObjectiveRequestPayloadDto } from '../../models/dto/allocation-request.dto';
+import { EditObjectiveRequestPayloadDto } from '../../models/dto/allocation-request.dto';
 import { ApprovalRequestRowComponent } from '../../ui/approval-request-row/approval-request-row.component';
 import { WorkApprovalsApiService } from '../../data-access/work-approvals-api.service';
 import { ProjectApiService } from '../../data-access/project-api.service';
@@ -265,8 +265,8 @@ export class WorkApprovalsComponent implements OnInit, AfterViewInit, OnDestroy 
   protected readonly statusChangeRequestCount = signal(0);
   private historyLoadVersion = 0;
 
-  // The store's "mine" lists span every project the caller owns modules in; scope each one down
-  // to this project's modules so a project's Approvals page only shows that project's requests.
+  // The invitations list spans every project the caller was invited into; scope it down to this
+  // project's modules so a project's Approvals page only shows that project's invitations.
   private readonly moduleIds = computed(() => new Set(this.modules().map((m) => m.objectiveId)));
   private readonly scopedToProject = (items: readonly ApprovalItem[]) => {
     const moduleTitles = new Map(this.modules().map((module) => [module.objectiveId, module.title]));
@@ -277,10 +277,11 @@ export class WorkApprovalsComponent implements OnInit, AfterViewInit, OnDestroy 
         : item);
   };
 
-  // No module scoping: the approval-engine inbox endpoint is already per project.
+  // No module scoping: the approval-engine inbox endpoint is already per project (task, sprint and
+  // module requests all come from it).
   protected readonly workApprovals = computed(() => this.store.workApprovals());
-  protected readonly allocationRequests = computed(() => this.scopedToProject(this.store.allocationRequests()));
-  protected readonly objectiveChangeRequests = computed(() => this.scopedToProject(this.store.objectiveChangeRequests()));
+  protected readonly allocationRequests = computed(() => this.store.allocationRequests());
+  protected readonly objectiveChangeRequests = computed(() => this.store.objectiveChangeRequests());
   protected readonly objectiveInvitations = computed(() => this.scopedToProject(this.store.objectiveInvitations()));
   protected readonly sentPendingRequests = computed(() =>
     this.historyItems().filter(item => item.direction === 'sent' && item.status === 'pending')
@@ -396,9 +397,7 @@ export class WorkApprovalsComponent implements OnInit, AfterViewInit, OnDestroy 
   }
 
   onRequestOwnAllocation(item: ApprovalItem): void {
-    const objectiveId = item.kind === 'allocation_extend'
-      ? (item.raw as AllocationRequestDto).objectiveId
-      : undefined;
+    const objectiveId = item.kind === 'allocation_extend' ? item.objectiveId : undefined;
     this.openCreateApproval(objectiveId);
   }
 
