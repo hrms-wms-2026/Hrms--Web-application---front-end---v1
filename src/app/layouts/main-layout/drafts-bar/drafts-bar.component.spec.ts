@@ -1,6 +1,7 @@
 import { signal } from '@angular/core';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { DraftChip, DraftsStore } from '../../../shared/state/drafts.store';
+import { NavigationStateService } from '../nav/navigation-state.service';
 import { DraftsBarComponent } from './drafts-bar.component';
 
 describe('DraftsBarComponent', () => {
@@ -94,5 +95,22 @@ describe('DraftsBarComponent', () => {
     store.load.mockClear();
     window.dispatchEvent(new Event('focus'));
     expect(store.load).toHaveBeenCalled();
+  });
+
+  it('applies has-sub-nav host class and 80px offset when sub-navigation is present', () => {
+    TestBed.resetTestingModule();
+    const navStateMock = { activeChildren: signal([{ id: 'c1', label: 'Child 1', path: '/child1' }]) };
+    TestBed.configureTestingModule({
+      imports: [DraftsBarComponent],
+      providers: [
+        { provide: DraftsStore, useValue: store },
+        { provide: NavigationStateService, useValue: navStateMock }
+      ]
+    });
+    const subFixture = TestBed.createComponent(DraftsBarComponent);
+    chips.set(TWO_CHIPS);
+    subFixture.detectChanges();
+    expect(subFixture.nativeElement.classList.contains('drafts-bar--has-sub-nav')).toBe(true);
+    expect(offset()).toBe('80px');
   });
 });
