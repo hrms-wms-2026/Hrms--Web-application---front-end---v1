@@ -15,7 +15,7 @@ export interface OnboardingDraftResponse {
   readonly positionId: string | null;
   readonly positionName?: string | null;
   readonly employmentType: string;
-  readonly startDate: string;
+  readonly startDate: string | null;
   readonly employeeNumber: string | null;
   readonly workModeId: string | null;
   readonly workModeLabel?: string | null;
@@ -103,14 +103,15 @@ export const DRAFT_STATUS_LABELS: Record<DraftStatus, string> = {
 
 export interface SaveOnboardingDraftPayload {
   draftId?: string;
-  firstName: string;
-  lastName: string;
-  workEmail: string;
+  /** Saving is lenient: everything but the company may be blank (null). Finalize enforces the rest. */
+  firstName: string | null;
+  lastName: string | null;
+  workEmail: string | null;
   legalEntityId: string;
   departmentId: string | null;
   positionId: string | null;
-  employmentType: string;
-  startDate: string;
+  employmentType: string | null;
+  startDate: string | null;
   employeeNumber: string | null;
   workModeId: string | null;
   selectedTemplateId: string | null;

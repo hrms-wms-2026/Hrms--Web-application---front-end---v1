@@ -12,6 +12,7 @@ import { PositionApiService } from '../../../organization/data-access/position-a
 import { LegalEntityStore } from '../../../organization/state/legal-entity.store';
 import { EmployeeListItemResponse } from '../../models/employee.model';
 import { EmployeeListComponent } from './employee-list.component';
+import { DraftsStore } from '../../../../shared/state/drafts.store';
 
 describe('EmployeeListComponent', () => {
   let fixture: ComponentFixture<EmployeeListComponent>;
@@ -20,8 +21,10 @@ describe('EmployeeListComponent', () => {
   let queryParams: BehaviorSubject<ReturnType<typeof convertToParamMap>>;
   let permissionService: { hasPermission: (p: string) => boolean };
   let hasOffboardPermission = true;
+  let draftsStore: { load: ReturnType<typeof vi.fn> };
 
   beforeEach(() => {
+    TestBed.resetTestingModule();
     hasOffboardPermission = true;
     localStorage.removeItem('employee_list_columns');
   });
@@ -33,7 +36,6 @@ describe('EmployeeListComponent', () => {
       status: 'active', reportingManagerId: null, reportingManagerName: null, ...i
     }));
     httpMock.match((r) => r.url.includes('/employees') && !r.url.includes('/bulk')).forEach((r) => r.flush({ items: full, totalCount, page: 1, pageSize: 25 }));
-    httpMock.match((r) => r.url.includes('/onboarding/drafts')).forEach((r) => r.flush({ items: [], totalCount: 0, page: 1, pageSize: 25 }));
     await fixture.whenStable();
     fixture.detectChanges();
   }
@@ -44,8 +46,6 @@ describe('EmployeeListComponent', () => {
     httpMock.match(() => true).forEach((req) => {
       if (req.request.url.includes('/employees')) {
         req.flush({ items: [], totalCount: 0, page: 1, pageSize: 25 });
-      } else if (req.request.url.includes('/onboarding/drafts')) {
-        req.flush({ items: [], totalCount: 0, page: 1, pageSize: 25 });
       }
     });
   }
@@ -55,6 +55,7 @@ describe('EmployeeListComponent', () => {
     permissionService = {
       hasPermission: (p) => (p === 'employees:write' ? hasWritePermission : p === 'employees:offboard' ? hasOffboardPermission : true)
     };
+    draftsStore = { load: vi.fn().mockResolvedValue(undefined) };
 
     await TestBed.configureTestingModule({
       imports: [EmployeeListComponent],
@@ -66,6 +67,7 @@ describe('EmployeeListComponent', () => {
         { provide: AuthStore, useValue: { employeeId: signal('me') } },
         { provide: DepartmentApiService, useValue: { listFlat: () => of({ items: [] }) } },
         { provide: PositionApiService, useValue: { listFlat: () => of({ items: [] }) } },
+        { provide: DraftsStore, useValue: draftsStore },
         {
           provide: ActivatedRoute,
           useValue: {
@@ -148,12 +150,6 @@ describe('EmployeeListComponent', () => {
       page: 1,
       pageSize: 25
     });
-    httpMock.expectOne((r) => r.url.includes('/onboarding/drafts')).flush({
-      items: [],
-      totalCount: 0,
-      page: 1,
-      pageSize: 25
-    });
 
     await fixture.whenStable();
     fixture.detectChanges();
@@ -166,7 +162,6 @@ describe('EmployeeListComponent', () => {
   it('shows the error state with a retry action that reissues the request', async () => {
     await setup(true);
     httpMock.expectOne((r) => r.url.includes('/employees')).flush('error', { status: 500, statusText: 'Server Error' });
-    httpMock.expectOne((r) => r.url.includes('/onboarding/drafts')).flush({ items: [], totalCount: 0, page: 1, pageSize: 25 });
     await fixture.whenStable();
     fixture.detectChanges();
 
@@ -223,58 +218,22 @@ describe('EmployeeListComponent', () => {
     }
   });
 
-  it('excludes finalized and invitation-sent drafts from the Onboarding Drafts count and table', async () => {
+  it('has no Onboarding Drafts tab', async () => {
     await setup(true);
     httpMock.expectOne((r) => r.url.includes('/employees')).flush({ items: [], totalCount: 0, page: 1, pageSize: 25 });
-    httpMock.expectOne((r) => r.url.includes('/onboarding/drafts')).flush({
-      items: [
-        {
-          id: 'd1',
-          displayName: 'Active One',
-          positionName: null,
-          departmentName: null,
-          status: 'draft',
-          draftReason: 'saved_manually',
-          lastSavedStep: 'employee_details',
-          startedByName: 'HR Starter'
-        },
-        {
-          id: 'd2',
-          displayName: 'Finalized Two',
-          positionName: null,
-          departmentName: null,
-          status: 'finalized',
-          draftReason: 'invitation_sent',
-          lastSavedStep: 'review_and_submit',
-          startedByName: 'HR Starter'
-        },
-        {
-          id: 'd3',
-          displayName: 'Invited Three',
-          positionName: null,
-          departmentName: null,
-          status: 'draft',
-          draftReason: 'invitation_sent',
-          lastSavedStep: 'review_and_submit',
-          startedByName: 'HR Starter'
-        }
-      ],
-      totalCount: 3,
-      page: 1,
-      pageSize: 25
-    });
     await fixture.whenStable();
     fixture.detectChanges();
+    expect(fixture.nativeElement.textContent).not.toContain('Onboarding Drafts');
+  });
 
-    const badge = fixture.nativeElement.querySelector('.emp-count-badge--amber');
-    expect(badge?.textContent?.trim()).toBe('1');
-
-    fixture.componentInstance.setTab('drafts');
-    fixture.detectChanges();
-
-    expect(fixture.nativeElement.textContent).toContain('Active One');
-    expect(fixture.nativeElement.textContent).not.toContain('Finalized Two');
-    expect(fixture.nativeElement.textContent).not.toContain('Invited Three');
+  it('saving from the wizard refreshes the drafts bar', async () => {
+    await setup(true);
+    httpMock.expectOne((r) => r.url.includes('/employees')).flush({ items: [], totalCount: 0, page: 1, pageSize: 25 });
+    await fixture.whenStable();
+    fixture.componentInstance.onEmployeeSaved({ finalized: false, draftId: 'd1' });
+    httpMock.expectOne((r) => r.url.includes('/employees')).flush({ items: [], totalCount: 0, page: 1, pageSize: 25 });
+    await fixture.whenStable();
+    expect(draftsStore.load).toHaveBeenCalled();
   });
 
   it('the Add Employee link never carries a draftId query param', async () => {
@@ -292,7 +251,6 @@ describe('EmployeeListComponent', () => {
     await setup(true, { search: 'grace' });
     const req = httpMock.expectOne((r) => r.url.includes('/employees') && r.params.get('search') === 'grace');
     req.flush({ items: [], totalCount: 0, page: 1, pageSize: 25 });
-    httpMock.expectOne((r) => r.url.includes('/onboarding/drafts')).flush({ items: [], totalCount: 0, page: 1, pageSize: 25 });
     await fixture.whenStable();
 
     expect(req.request.params.get('search')).toBe('grace');

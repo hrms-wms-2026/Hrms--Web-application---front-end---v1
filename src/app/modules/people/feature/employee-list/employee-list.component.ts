@@ -19,7 +19,6 @@ import { BulkActionResultModalComponent } from '../../../../shared/ui/bulk-actio
 import { BulkEmploymentTypeModalComponent } from '../../ui/bulk-employee-actions/bulk-employment-type-modal.component';
 import { BulkStartOffboardingModalComponent } from '../../ui/bulk-employee-actions/bulk-start-offboarding-modal.component';
 import { ChangePositionModalComponent } from '../../ui/change-position-modal/change-position-modal.component';
-import { DraftTableComponent } from '../../ui/draft-table/draft-table.component';
 import { EmployeeColumnPickerComponent } from '../../ui/employee-column-picker/employee-column-picker.component';
 import { EmployeeDirectoryTableComponent } from '../../ui/employee-directory-table/employee-directory-table.component';
 import { EmployeeFilterPopoverComponent } from '../../ui/employee-filter-popover/employee-filter-popover.component';
@@ -34,6 +33,7 @@ import {
   toEmployeeListParams
 } from '../../utils/employee-list-url-state';
 import { AddEmployeeWizardComponent } from '../add-employee-wizard/add-employee-wizard.component';
+import { DraftsStore } from '../../../../shared/state/drafts.store';
 
 const SEARCH_DEBOUNCE_MS = 300;
 const TERMINAL_STATUSES = ['resigned', 'terminated'];
@@ -47,7 +47,6 @@ const TERMINAL_STATUSES = ['resigned', 'terminated'];
     ButtonComponent,
     ErrorStateComponent,
     LoaderComponent,
-    DraftTableComponent,
     EmployeeDirectoryTableComponent,
     EmployeeColumnPickerComponent,
     EmployeeFilterPopoverComponent,
@@ -73,6 +72,7 @@ export class EmployeeListComponent {
   private readonly authStore = inject(AuthStore);
 
   readonly store = inject(PeopleStore);
+  private readonly draftsStore = inject(DraftsStore);
   readonly canAddEmployee = computed(() => this.permissionService.hasPermission('employees:write'));
   readonly canWrite = computed(() => this.permissionService.hasPermission('employees:write'));
   readonly canOffboard = computed(() => this.permissionService.hasPermission('employees:offboard'));
@@ -189,12 +189,6 @@ export class EmployeeListComponent {
         return next;
       }));
     });
-
-    this.loadDrafts();
-  }
-
-  setTab(tab: 'employees' | 'drafts'): void {
-    this.activeTab.set(tab);
   }
 
   openAddEmployeeModal(draftId?: string): void {
@@ -215,15 +209,10 @@ export class EmployeeListComponent {
     }
   }
 
-  onEmployeeSaved(result: { finalized: boolean; draftId?: string }): void {
+  onEmployeeSaved(_result: { finalized: boolean; draftId?: string }): void {
     this.closeAddEmployeeModal();
     this.loadEmployees();
-    this.loadDrafts();
-    if (result.finalized) {
-      this.setTab('employees');
-    } else {
-      this.setTab('drafts');
-    }
+    void this.draftsStore.load();
   }
 
   onSearchInput(value: string): void {
@@ -246,14 +235,6 @@ export class EmployeeListComponent {
 
   loadEmployees(): void {
     this.store.loadEmployees(toEmployeeListParams(this.listState()));
-  }
-
-  loadDrafts(): void {
-    this.store.loadDrafts({ page: 1, pageSize: 25 });
-  }
-
-  onContinueDraft(draftId: string): void {
-    this.openAddEmployeeModal(draftId);
   }
 
   private navigate(queryParams: Record<string, string | number | null>): void {

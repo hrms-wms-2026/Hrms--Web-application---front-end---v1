@@ -1,4 +1,4 @@
-import { ChangeDetectionStrategy, Component, computed, effect, inject, input, OnDestroy, output, signal } from '@angular/core';
+import { ChangeDetectionStrategy, Component, DestroyRef, computed, effect, inject, input, OnDestroy, output, signal } from '@angular/core';
 import { FormBuilder, Validators } from '@angular/forms';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { Subject, Subscription, catchError, debounceTime, distinctUntilChanged, firstValueFrom, map, of, switchMap } from 'rxjs';
@@ -17,6 +17,8 @@ import { AddEmployeeWizardStore } from '../../state/add-employee-wizard.store';
 import { ReportsToPickerComponent } from '../../ui/reports-to-picker/reports-to-picker.component';
 import { DRAFT_REASON_LABELS, WizardStep } from '../../models/onboarding-draft.model';
 import { ChecklistTemplateMatchLevel, ChecklistTemplateType, DraftChecklistTask } from '../../models/checklist-template.model';
+import { UnsavedChangesService, DirtyFormHandle } from '../../../../shared/services/unsaved-changes.service';
+import { DraftsStore } from '../../../../shared/state/drafts.store';
 import { isTerminalDraft } from '../../utils/draft-status.utils';
 import { validateDraftTaskFields, validateDraftTasks } from '../../utils/draft-checklist-task.utils';
 import {
@@ -78,6 +80,9 @@ export class AddEmployeeWizardComponent implements OnDestroy {
   private readonly router = inject(Router);
   private readonly notificationService = inject(NotificationService);
   private readonly peopleApi = inject(PeopleApiService);
+  private readonly unsaved = inject(UnsavedChangesService);
+  private readonly draftsStore = inject(DraftsStore);
+  private readonly destroyRef = inject(DestroyRef);
 
   readonly store = inject(AddEmployeeWizardStore);
   readonly legalEntityStore = inject(LegalEntityStore);
@@ -86,6 +91,38 @@ export class AddEmployeeWizardComponent implements OnDestroy {
   readonly initialDraftId = input<string | null>(null);
   readonly closed = output<void>();
   readonly saved = output<{ finalized: boolean; draftId?: string }>();
+
+  private baseline: string | null = null;
+
+  private snapshot(): string {
+    return JSON.stringify([
+      this.form.getRawValue(),
+      this.store.companyId(),
+      this.store.departmentId(),
+      this.store.positionId(),
+      this.store.selectedTemplateId(),
+      this.store.selectedReportsToEmployeeId()
+    ]);
+  }
+
+  private markClean(): void {
+    this.baseline = this.snapshot();
+  }
+
+  private readonly guardHandle: DirtyFormHandle = {
+    isDirty: () => this.baseline !== null && this.snapshot() !== this.baseline,
+    canSaveDraft: () => !!this.store.companyId(),
+    saveDraft: async () => {
+      const res = await this.store.saveDraft(this.store.step(), { partial: true });
+      if (res) {
+        this.markClean();
+        void this.draftsStore.load();
+        return true;
+      }
+      return false;
+    },
+    discard: () => {}
+  };
 
   readonly employmentTypeOptions = EMPLOYMENT_TYPE_OPTIONS;
   readonly stepOrder = STEP_ORDER;
@@ -350,6 +387,9 @@ export class AddEmployeeWizardComponent implements OnDestroy {
       const company = this.legalEntityStore.selectedLegalEntity();
       if (company && this.store.companyId() !== company.id) {
         this.store.setCompany(company.id);
+        if (!this.form.dirty) {
+          this.markClean();
+        }
       }
     });
 
@@ -392,6 +432,10 @@ export class AddEmployeeWizardComponent implements OnDestroy {
         workModeId: value.workModeId || null
       });
     });
+
+    this.markClean();
+    const unregisterGuard = this.unsaved.register(this.guardHandle);
+    this.destroyRef.onDestroy(() => unregisterGuard());
   }
 
   ngOnDestroy(): void {
@@ -426,6 +470,7 @@ export class AddEmployeeWizardComponent implements OnDestroy {
       this.employeeNumberSuggestionRequestKey = null;
       await this.maybeSuggestEmployeeNumber(this.store.companyId()!);
     }
+    this.markClean();
   }
 
   onEmployeeNumberChange(value: string): void {
@@ -469,6 +514,9 @@ export class AddEmployeeWizardComponent implements OnDestroy {
       this.lastSuggestedEmployeeNumber = suggestion.employeeNumber;
       this.form.controls.employeeNumber.setValue(suggestion.employeeNumber);
       this.employeeNumberAvailability.set('available');
+      if (!this.form.dirty) {
+        this.markClean();
+      }
     } catch {
       if (!normalizeEmployeeNumber(this.form.controls.employeeNumber.value)) {
         this.employeeNumberGenerateError.set(EMPLOYEE_NUMBER_GENERATE_FAILED_MESSAGE);
@@ -819,18 +867,13 @@ export class AddEmployeeWizardComponent implements OnDestroy {
     if (this.store.saving()) {
       return;
     }
-    this.submitAttempted.set(true);
-    if (!this.validateSelectedPosition() || this.form.invalid || this.hasBlockingReportsToPick() || this.hasBlockingEmployeeNumber()) {
-      return;
-    }
-    if (this.store.selectedTemplateId()) {
-      this.taskSubmitAttempted.set(true);
-    }
 
-    const result = await this.store.saveDraft(this.store.step());
+    const result = await this.store.saveDraft(this.store.step(), { partial: true });
     if (result) {
       this.notificationService.success('Draft saved.');
       this.saved.emit({ finalized: false, draftId: result.id });
+      this.markClean();
+      void this.draftsStore.load();
     } else {
       this.notificationService.error(this.store.saveError() ?? 'Something went wrong while saving the employee.');
     }
@@ -868,26 +911,31 @@ export class AddEmployeeWizardComponent implements OnDestroy {
         this.notificationService.success('Employee onboarding invitation was queued.');
         this.saved.emit({ finalized: true, draftId });
         this.closed.emit();
+        void this.draftsStore.load();
         await this.router.navigate(['/people/employees']);
         this.store.reset();
       } else if (response.positionApprovalPending) {
         this.notificationService.info('Position approval was requested before the invitation can be sent.');
         this.saved.emit({ finalized: true, draftId });
         this.closed.emit();
+        void this.draftsStore.load();
         await this.router.navigate(['/people/employees']);
         this.store.reset();
       } else if (response.status === 'waiting_for_seat' || response.draftReason === 'waiting_for_seat') {
         this.notificationService.info('No seat is available. The draft was saved for follow-up.');
         this.saved.emit({ finalized: false, draftId });
+        void this.draftsStore.load();
       } else if (response.draftReason === 'seat_configuration_required') {
         this.notificationService.warning('Seat policy is not configured. The draft was saved, but invitation cannot be sent yet.');
         this.saved.emit({ finalized: false, draftId });
+        void this.draftsStore.load();
       } else if (response.draftReason === 'position_approval_rejected') {
         this.notificationService.error('Position approval was rejected.');
       } else {
         this.notificationService.success('Employee onboarding draft updated.');
         this.saved.emit({ finalized: true, draftId });
         this.closed.emit();
+        void this.draftsStore.load();
         await this.router.navigate(['/people/employees']);
         this.store.reset();
       }
@@ -896,9 +944,10 @@ export class AddEmployeeWizardComponent implements OnDestroy {
     }
   }
 
-  onCancel(): void {
+  async onCancel(): Promise<void> {
+    if (!(await this.unsaved.requestClose(this.guardHandle))) return;
     this.closed.emit();
-    this.router.navigate(['/people/employees']);
+    void this.router.navigate(['/people/employees']);
   }
 
   canJumpToStep(targetIndex: number): boolean {
