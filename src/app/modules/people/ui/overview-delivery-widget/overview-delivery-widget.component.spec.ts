@@ -67,15 +67,15 @@ describe('OverviewDeliveryWidgetComponent', () => {
     expect(pointsDelta.classList.contains('delta--bad')).toBe(true);
   });
 
-  it('asks the API for the previous period once comparison is switched on', () => {
+  it('keeps legacy previous-period comparison off until explicit compare ranges are wired', () => {
     const get = vi.fn().mockReturnValue(of(response));
     const { fixture, store } = setup(get);
 
-    store.setCompare('previous');
+    store.setCompareMonth('2026-08');
     fixture.detectChanges();
 
-    expect(get).toHaveBeenLastCalledWith('emp-1', '2026-09-01', '2026-09-30', true);
-    expect(get).toHaveBeenCalledTimes(2);
+    expect(get).toHaveBeenLastCalledWith('emp-1', '2026-09-01', '2026-09-30', false);
+    expect(get).toHaveBeenCalledTimes(1);
   });
 
   it('refetches when the month changes', () => {

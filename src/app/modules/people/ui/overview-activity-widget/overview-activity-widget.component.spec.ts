@@ -77,17 +77,18 @@ describe('OverviewActivityWidgetComponent', () => {
     expect(el.querySelector('[data-testid="widget-empty"]')!.textContent).toContain('No activity recorded');
   });
 
-  it('asks for the previous period once comparison is on, and refetches on a month change', () => {
+  it('keeps legacy previous-period comparison off until explicit compare ranges are wired, and refetches on a month change', () => {
     const get = vi.fn().mockReturnValue(of(response));
     const { fixture, store } = setup(get);
 
-    store.setCompare('previous');
+    store.setCompareMonth('2026-08');
     fixture.detectChanges();
-    expect(get).toHaveBeenLastCalledWith('emp-1', '2026-09-01', '2026-09-30', true);
+    expect(get).toHaveBeenLastCalledWith('emp-1', '2026-09-01', '2026-09-30', false);
+    expect(get).toHaveBeenCalledTimes(1);
 
     store.setMonth('2026-08');
     fixture.detectChanges();
-    expect(get).toHaveBeenLastCalledWith('emp-1', '2026-08-01', '2026-08-31', true);
+    expect(get).toHaveBeenLastCalledWith('emp-1', '2026-08-01', '2026-08-31', false);
   });
 
   it('shows the no-access state on 403', () => {

@@ -63,12 +63,13 @@ describe('OverviewDisciplineWidgetComponent comparison', () => {
     expect(delta(el, 'location')).toBeNull();
   });
 
-  it('asks the API for the previous period once comparison is on', () => {
+  it('keeps legacy previous-period comparison off until explicit compare ranges are wired', () => {
     const { fixture, get } = setup(current);
 
-    TestBed.inject(EmployeePeriodStore).setCompare('previous');
+    TestBed.inject(EmployeePeriodStore).setCompareMonth('2026-08');
     fixture.detectChanges();
 
-    expect(get).toHaveBeenLastCalledWith('emp-1', '2026-09-01', '2026-09-30', true);
+    expect(get).toHaveBeenLastCalledWith('emp-1', '2026-09-01', '2026-09-30', false);
+    expect(get).toHaveBeenCalledTimes(1);
   });
 });
