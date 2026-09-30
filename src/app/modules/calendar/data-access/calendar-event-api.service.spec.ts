@@ -90,4 +90,57 @@ describe('CalendarEventApiService', () => {
     expect(req.request.body).toEqual({ participantEmployeeIds: ['emp-1'], startDate: '2026-09-01T09:00:00Z', endDate: '2026-09-01T10:00:00Z' });
     req.flush({ conflicts: [] });
   });
+
+  it('createMeeting posts to {eventId}/meeting', () => {
+    service.createMeeting('event-1', 'zoom').subscribe();
+    const req = http.expectOne(`${environment.apiUrl}/calendar/event-1/meeting`);
+    expect(req.request.method).toBe('POST');
+    expect(req.request.body).toEqual({ provider: 'zoom' });
+    req.flush({ joinUrl: 'https://us05web.zoom.us/j/123' });
+  });
+
+  it('removeMeeting deletes {eventId}/meeting', () => {
+    service.removeMeeting('event-1').subscribe();
+    const req = http.expectOne(`${environment.apiUrl}/calendar/event-1/meeting`);
+    expect(req.request.method).toBe('DELETE');
+    req.flush(null);
+  });
+
+  it('getMeetingAttendance requests {eventId}/meeting/attendance', () => {
+    service.getMeetingAttendance('event-1').subscribe();
+    const req = http.expectOne(`${environment.apiUrl}/calendar/event-1/meeting/attendance`);
+    expect(req.request.method).toBe('GET');
+    req.flush({ available: false, attendees: [] });
+  });
+
+  it('addParticipants posts to {eventId}/participants', () => {
+    service.addParticipants('event-1', ['emp-1', 'emp-2']).subscribe();
+    const req = http.expectOne(`${environment.apiUrl}/calendar/event-1/participants`);
+    expect(req.request.method).toBe('POST');
+    expect(req.request.body).toEqual({ employeeIds: ['emp-1', 'emp-2'] });
+    req.flush({ participants: [] });
+  });
+
+  it('removeParticipant deletes {eventId}/participants/{employeeId}', () => {
+    service.removeParticipant('event-1', 'emp-1').subscribe();
+    const req = http.expectOne(`${environment.apiUrl}/calendar/event-1/participants/emp-1`);
+    expect(req.request.method).toBe('DELETE');
+    req.flush(null);
+  });
+
+  it('addGuests posts the emails to {eventId}/guests', () => {
+    service.addGuests('event-1', ['a@x.co', 'b@x.co']).subscribe();
+    const req = http.expectOne(`${environment.apiUrl}/calendar/event-1/guests`);
+    expect(req.request.method).toBe('POST');
+    expect(req.request.body).toEqual({ emails: ['a@x.co', 'b@x.co'] });
+    req.flush({ guests: [] });
+  });
+
+  it('removeGuest deletes {eventId}/guests with the email as a query param', () => {
+    service.removeGuest('event-1', 'a+b@x.co').subscribe();
+    const req = http.expectOne((r) => r.url === `${environment.apiUrl}/calendar/event-1/guests`);
+    expect(req.request.method).toBe('DELETE');
+    expect(req.request.params.get('email')).toBe('a+b@x.co');
+    req.flush(null);
+  });
 });

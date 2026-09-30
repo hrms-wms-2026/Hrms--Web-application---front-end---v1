@@ -1,4 +1,5 @@
 import { Routes } from '@angular/router';
+import { unsavedChangesGuard } from '../../core/guards/unsaved-changes.guard';
 
 export const WORK_ROUTES: Routes = [
   {
@@ -13,10 +14,12 @@ export const WORK_ROUTES: Routes = [
     children: [
       {
         path: 'milestones/:milestoneId',
+        canDeactivate: [unsavedChangesGuard],
         children: [
           { path: '', redirectTo: 'tree', pathMatch: 'full' },
           {
             path: 'tree',
+            canDeactivate: [unsavedChangesGuard],
             loadComponent: () =>
               import('./feature/milestone-tree-tab/milestone-tree-tab.component').then((m) => m.MilestoneTreeTabComponent)
           }
@@ -29,11 +32,13 @@ export const WORK_ROUTES: Routes = [
       },
       {
         path: 'board',
+        canDeactivate: [unsavedChangesGuard],
         loadComponent: () =>
           import('./feature/task-board/task-board.component').then((m) => m.TaskBoardComponent)
       },
       {
         path: 'backlog',
+        canDeactivate: [unsavedChangesGuard],
         loadComponent: () =>
           import('./feature/task-backlog/task-backlog.component').then((m) => m.TaskBacklogComponent)
       },

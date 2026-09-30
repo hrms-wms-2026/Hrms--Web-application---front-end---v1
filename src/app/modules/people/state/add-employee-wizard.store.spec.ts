@@ -287,17 +287,52 @@ describe('AddEmployeeWizardStore', () => {
     httpMock.expectNone((r) => r.url.includes('/onboarding/checklist-templates/matches'));
   });
 
-  it('saveDraft refuses to call API when workModeId is missing or invalid', async () => {
-    store.updateFormValue({ firstName: 'Ada', lastName: 'Lovelace', workEmail: 'ada@test.dev', employmentType: 'full_time', startDate: '2026-08-10', workModeId: null });
-    const savePromise = store.saveDraft('employee_details');
-    const result = await savePromise;
-
+  it('saveDraft refuses to call API when companyId is missing', async () => {
+    store.updateFormValue({ firstName: 'Ada', lastName: 'Lovelace', workEmail: 'ada@test.dev', employmentType: 'full_time', startDate: '2026-08-10', workModeId: 'wm-1' });
+    const result = await store.saveDraft('employee_details');
     expect(result).toBeNull();
-    expect(store.saveError()).toBe('Work mode is required.');
+    expect(store.saveError()).toBe('Select a company before saving a draft.');
     httpMock.expectNone(`${environment.apiUrl}/onboarding/drafts`);
   });
 
+  it('partial save sends only what is filled and skips the full-form pre-checks', async () => {
+    store.setCompany('le-1');
+    httpMock.expectOne((r) => r.url.includes('/departments')).flush({ items: [], page: 1, pageSize: 25, totalCount: 0, totalPages: 0 });
+    await Promise.resolve();
+
+    store.updateFormValue({ firstName: 'Jane', lastName: '', workEmail: '', employmentType: '', startDate: '', workModeId: null });
+    const savePromise = store.saveDraft('employee_details', { partial: true });
+
+    const req = httpMock.expectOne(`${environment.apiUrl}/onboarding/drafts`);
+    expect(req.request.body).toEqual(expect.objectContaining({
+      firstName: 'Jane',
+      lastName: null,
+      workEmail: null,
+      employmentType: null,
+      startDate: null,
+      workModeId: null,
+      editedTasksJson: null
+    }));
+    req.flush(mockDraft);
+    const response = await savePromise;
+    expect(response).not.toBeNull();
+  });
+
+  it('non-partial save still requires a work mode', async () => {
+    store.setCompany('le-1');
+    httpMock.expectOne((r) => r.url.includes('/departments')).flush({ items: [], page: 1, pageSize: 25, totalCount: 0, totalPages: 0 });
+    await Promise.resolve();
+
+    store.updateFormValue({ firstName: 'Jane', lastName: '', workEmail: '', employmentType: '', startDate: '', workModeId: null });
+    const result = await store.saveDraft('employee_details');
+    expect(result).toBeNull();
+    expect(store.saveError()).toBe('Work mode is required.');
+  });
+
   it('saveDraft sends firstName, lastName, workModeId and never sends employeeName or scheduleId', async () => {
+    store.setCompany('le-1');
+    httpMock.expectOne((r) => r.url.includes('/departments')).flush({ items: [], page: 1, pageSize: 25, totalCount: 0, totalPages: 0 });
+    await Promise.resolve();
     store.syncSelectionFromForm('dept-1', 'pos-1');
     store.updateFormValue({ firstName: 'Ada', lastName: 'Lovelace', workEmail: 'ada@test.dev', employmentType: 'full_time', startDate: '2026-08-10', workModeId: 'wm-1' });
     const savePromise = store.saveDraft('employee_details');
@@ -334,6 +369,9 @@ describe('AddEmployeeWizardStore', () => {
   });
 
   it('saveDraft sends editedTasksJson null when no checklist selected', async () => {
+    store.setCompany('le-1');
+    httpMock.expectOne((r) => r.url.includes('/departments')).flush({ items: [], page: 1, pageSize: 25, totalCount: 0, totalPages: 0 });
+    await Promise.resolve();
     store.syncSelectionFromForm('dept-1', 'pos-1');
     store.updateFormValue({ firstName: 'Ada', lastName: 'Lovelace', workEmail: 'ada@test.dev', employmentType: 'full_time', startDate: '2026-08-10', workModeId: 'wm-1' });
     const savePromise = store.saveDraft('employee_details');
@@ -381,6 +419,9 @@ describe('AddEmployeeWizardStore', () => {
   });
 
   it('saveDraft sends selectedTemplateId and editedTasksJson reflecting draft-local task edits', async () => {
+    store.setCompany('le-1');
+    httpMock.expectOne((r) => r.url.includes('/departments')).flush({ items: [], page: 1, pageSize: 25, totalCount: 0, totalPages: 0 });
+    await Promise.resolve();
     store.syncSelectionFromForm('dept-1', 'pos-1');
     store.selectChecklistTemplate('tmpl-1');
     httpMock.expectOne(`${environment.apiUrl}/people/checklist-templates/tmpl-1`).flush({
@@ -603,6 +644,9 @@ describe('AddEmployeeWizardStore', () => {
   });
 
   it('never calls the checklist template create/update APIs while selecting, editing, or saving a checklist', async () => {
+    store.setCompany('le-1');
+    httpMock.expectOne((r) => r.url.includes('/departments')).flush({ items: [], page: 1, pageSize: 25, totalCount: 0, totalPages: 0 });
+    await Promise.resolve();
     store.syncSelectionFromForm('dept-1', 'pos-1');
     store.selectChecklistTemplate('tmpl-1');
     httpMock.expectOne(`${environment.apiUrl}/people/checklist-templates/tmpl-1`).flush({

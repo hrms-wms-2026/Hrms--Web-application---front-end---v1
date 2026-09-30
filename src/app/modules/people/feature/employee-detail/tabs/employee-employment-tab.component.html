@@ -1,0 +1,103 @@
+@if (store.employee(); as employee) {
+  <div class="employment">
+    <app-detail-card class="employment__full">
+      <div class="intro">
+        <span class="intro__icon" aria-hidden="true"><app-detail-icon name="building" [size]="26" /></span>
+        <div class="flex-1 min-w-0">
+          <h2 class="intro__title">Employment</h2>
+          <p class="intro__sub">Detailed job, organization and employment record for this employee.</p>
+        </div>
+        @if (canEdit() && !isEditing()) {
+          <button type="button" class="outline-btn" data-testid="edit-employment-details" (click)="startEdit()">
+            <app-detail-icon name="pencil" [size]="18" />Edit details
+          </button>
+        }
+      </div>
+    </app-detail-card>
+
+    <div class="employment__row employment__row--three">
+      <app-detail-card icon="building" title="Job & Organizational Details" class="@container">
+        <app-employee-job-info
+          [jobInformation]="employee.jobInformation"
+          [employeeId]="employee.id"
+          [canEdit]="canEdit()"
+          [saving]="store.savingJobDetails()"
+          [showHeader]="false"
+          [showReadView]="false"
+          (save)="onJobDetailsSave($event)"
+        />
+        @if (!isEditing()) {
+          <app-kv-row label="Employee number" [divided]="true">{{ employee.jobInformation.employeeNumber }}</app-kv-row>
+          <app-kv-row label="Position" [divided]="true">{{ employee.jobInformation.positionName || 'Unassigned' }}</app-kv-row>
+          <app-kv-row label="Department" [divided]="true">{{ employee.jobInformation.departmentName || '—' }}</app-kv-row>
+          <app-kv-row label="Reporting manager" [divided]="true">{{ employee.jobInformation.reportingManagerName || 'Unassigned' }}</app-kv-row>
+          <app-kv-row label="Company" [divided]="true">{{ employee.jobInformation.legalEntityName || '—' }}</app-kv-row>
+          <app-kv-row label="Employment type" [divided]="true">{{ employee.jobInformation.employmentTypeLabel || '—' }}</app-kv-row>
+          <app-kv-row label="Status" [divided]="true">
+            <app-status-badge [tone]="employee.jobInformation.status.toLowerCase() === 'active' ? 'success' : 'neutral'">
+              <span class="capitalize">{{ employee.jobInformation.status || '—' }}</span>
+            </app-status-badge>
+          </app-kv-row>
+        }
+      </app-detail-card>
+
+      <app-detail-card icon="pin" title="Work Arrangement">
+        <app-kv-row label="Work mode" [divided]="true">{{ employee.jobInformation.workModeLabel || '—' }}</app-kv-row>
+        <app-kv-row label="Primary location" [divided]="true">{{ location() }}</app-kv-row>
+        <app-kv-row label="Time zone" [divided]="true"><span data-testid="employment-timezone">{{ employee.jobInformation.timezone || '—' }}</span></app-kv-row>
+      </app-detail-card>
+
+      <app-detail-card icon="calendar" title="Employment Record">
+        <app-kv-row label="Hire date" [divided]="true">{{ employee.jobInformation.hireDate ? (employee.jobInformation.hireDate | date: 'dd MMM yyyy') : '—' }}</app-kv-row>
+        <app-kv-row label="Tenure" [divided]="true">{{ tenure() }}</app-kv-row>
+        <app-kv-row label="Probation" [divided]="true">
+          <span data-testid="probation-status">
+            @switch (probation()) {
+              @case ('completed') { <app-status-badge tone="success">Completed</app-status-badge> }
+              @case ('in_progress') { <app-status-badge tone="warning">In progress</app-status-badge> }
+              @default { — }
+            }
+          </span>
+        </app-kv-row>
+        @if (employee.jobInformation.probationEndDate; as probationEnd) {
+          <app-kv-row label="Probation ends" [divided]="true">{{ probationEnd | date: 'dd MMM yyyy' }}</app-kv-row>
+        }
+      </app-detail-card>
+    </div>
+
+    <div class="employment__row employment__row--two">
+      <app-detail-card icon="users" title="Project Memberships">
+        @if (projects().length === 0) {
+          <p class="text-sm text-[var(--color-text-secondary)]" data-testid="no-shared-projects">
+            No projects you share with this employee.
+          </p>
+        } @else {
+          <table class="membership">
+            <thead>
+              <tr><th scope="col">Project</th><th scope="col">Since</th><th scope="col">Status</th></tr>
+            </thead>
+            <tbody>
+              @for (project of projects(); track project.projectId) {
+                <tr data-testid="project-membership-row">
+                  <td>{{ project.projectName }}</td>
+                  <td>{{ project.memberSince | date: 'dd MMM yyyy' }}</td>
+                  <td>
+                    <app-status-badge [tone]="project.isActive ? 'success' : 'neutral'">{{ project.isActive ? 'Active' : 'Removed' }}</app-status-badge>
+                  </td>
+                </tr>
+              }
+            </tbody>
+          </table>
+        }
+      </app-detail-card>
+
+      <app-detail-card icon="history" title="Employment History">
+        @if (history().length === 0) {
+          <p class="text-sm text-[var(--color-text-secondary)]">No position history recorded yet.</p>
+        } @else {
+          <app-timeline [items]="history()" [rail]="true" />
+        }
+      </app-detail-card>
+    </div>
+  </div>
+}
