@@ -42,3 +42,6 @@ Pending plans and raw not-yet-brainstormed future-feature context. Stays flat �
   status text/icon overlap (root cause not yet confirmed, needs repro first), Module filter missing an
   Active/Inactive/All dimension (confirmed real gap in `collectObjectiveOptions` — no code reads
   `isActive` at all today).
+- `2026-09-30-employee-detail-tabs.md` — status: Phase 1 implemented (tabbed shell, profile header,
+  routed tabs, `EmployeeDetailStore`, period filter); Phases 2-5 pending. Phase 3 needs new employee-scoped
+  backend aggregates, and Phase 5 (Attendance tab) is blocked on a design.

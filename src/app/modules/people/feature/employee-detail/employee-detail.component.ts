@@ -1,5 +1,7 @@
 import { ChangeDetectionStrategy, Component, computed, inject, signal } from '@angular/core';
-import { ActivatedRoute, Router } from '@angular/router';
+import { takeUntilDestroyed, toSignal } from '@angular/core/rxjs-interop';
+import { ActivatedRoute, NavigationEnd, Router, RouterLink, RouterLinkActive, RouterOutlet } from '@angular/router';
+import { filter, map } from 'rxjs';
 import { toSafeErrorMessage } from '../../../../core/services/error-handler.service';
 import { NotificationService } from '../../../../core/services/notification.service';
 import { AuthStore } from '../../../../core/auth/state/auth.store';
@@ -9,245 +11,135 @@ import { ErrorStateComponent } from '../../../../shared/ui/error-state/error-sta
 import { LoaderComponent } from '../../../../shared/ui/loader/loader.component';
 import { BreadcrumbHeaderComponent } from '../../../../shared/ui/breadcrumb-header/breadcrumb-header.component';
 import { PopoverComponent } from '../../../../shared/ui/popover/popover.component';
+import { SelectComponent, SelectOption } from '../../../../shared/ui/select/select.component';
 import { PeopleApiService } from '../../data-access/people-api.service';
-import { EmployeeDetailAddress, EmployeeDetailResponse, UpdateEmployeeJobDetailsRequest } from '../../models/employee.model';
-import { EmployeeJobInfoComponent } from '../../ui/employee-job-info/employee-job-info.component';
-import { EmployeePersonalInfoComponent } from '../../ui/employee-personal-info/employee-personal-info.component';
-import { EmployeeEmergencyContactsComponent } from '../../ui/employee-emergency-contacts/employee-emergency-contacts.component';
-import { EmployeePayrollComponent } from '../../ui/employee-payroll/employee-payroll.component';
-import { ChangePositionModalComponent } from '../../ui/change-position-modal/change-position-modal.component';
-import { EmployeeJobJourneyComponent } from '../../ui/employee-job-journey/employee-job-journey.component';
-import { PositionHistoryEntryResponse } from '../../models/position-history.model';
+import { EmployeeDetailStore } from '../../state/employee-detail.store';
 import { OffboardingWizardStore } from '../../state/offboarding-wizard.store';
-import {
-  attendanceWarningLabel,
-  attendanceAttentionLabel,
-  attendanceStatusLabel,
-  attendanceSeverityClass,
-  breakOverageLabel
-} from '../../utils/employee-view.utils';
+import { ChangePositionModalComponent } from '../../ui/change-position-modal/change-position-modal.component';
+import { EmployeeProfileHeaderComponent } from '../../ui/employee-profile-header/employee-profile-header.component';
+import { shiftPeriodMonth, toPeriodMonth } from '../../utils/employee-detail.utils';
+
+export interface EmployeeDetailTab {
+  readonly path: string;
+  readonly label: string;
+  /** Tabs whose content depends on the reporting period show the period filter. */
+  readonly usesPeriod: boolean;
+}
+
+export const EMPLOYEE_DETAIL_TABS: readonly EmployeeDetailTab[] = [
+  { path: 'overview', label: 'Overview', usesPeriod: true },
+  { path: 'employment', label: 'Employment', usesPeriod: false },
+  { path: 'attendance', label: 'Attendance', usesPeriod: true },
+  { path: 'work-activity', label: 'Work & Activity', usesPeriod: true },
+  { path: 'personal', label: 'Personal', usesPeriod: false }
+];
+
+const PERIOD_OPTIONS: readonly SelectOption[] = [
+  { value: 'this_month', label: 'This month' },
+  { value: 'last_month', label: 'Last month' },
+  { value: 'custom', label: 'Custom month' }
+];
 
 /**
- * Full section-by-section employee detail view backed by GET /api/v1/employees/{id}/detail.
- * Composes the Task 2 presentational sections (Job Information, Personal Information,
- * Emergency Contacts, Payroll & Statutory) and offers a Change Position action that opens
- * the Task 4 modal. Also preserves the resend-invitation flow for employees whose onboarding
- * invitation expired before they accepted it.
+ * Tabbed employee detail shell backed by GET /api/v1/employees/{id}/detail (plus
+ * GET /employees/{id}/position-history). Owns the profile header, header actions
+ * (Transfer / Promote, Offboarding, resend invitation), the tab bar and the period filter;
+ * each tab is a child route rendered through the outlet and reads the shared
+ * EmployeeDetailStore provided here.
  */
 @Component({
   selector: 'app-employee-detail',
   standalone: true,
   imports: [
+    RouterOutlet,
+    RouterLink,
+    RouterLinkActive,
     BreadcrumbHeaderComponent,
     ButtonComponent,
     ErrorStateComponent,
     LoaderComponent,
-    EmployeeJobInfoComponent,
-    EmployeePersonalInfoComponent,
-    EmployeeEmergencyContactsComponent,
-    EmployeePayrollComponent,
+    SelectComponent,
     ChangePositionModalComponent,
     PopoverComponent,
-    EmployeeJobJourneyComponent
+    EmployeeProfileHeaderComponent
   ],
+  providers: [EmployeeDetailStore],
   template: `
-    @if (loading()) {
+    @if (loading() && !employee()) {
       <app-loader label="Loading employee…" />
-    } @else if (error()) {
+    } @else if (error() && !employee()) {
       <app-error-state [message]="error()!" [retryable]="true" (retry)="load()" />
     } @else if (employee(); as employee) {
       <header class="emp-detail-header">
         <app-breadcrumb-header
           parentLabel="Employees"
-          currentLabel="Employee Detail"
+          [currentLabel]="store.fullName() || 'Employee Detail'"
           parentUrl="/people/employees"
           icon="people"
         />
       </header>
 
-      <!-- Hero Profile Banner -->
-      <div class="rounded-2xl border border-[var(--color-border)] bg-[var(--color-surface)] p-6 mb-6">
-        <div class="flex flex-col md:flex-row md:items-center justify-between gap-6">
-          <div class="flex items-center gap-5">
-            <div class="relative flex-shrink-0">
-              <div class="w-16 h-16 rounded-full bg-blue-100 text-blue-700 flex items-center justify-center font-bold text-xl shadow-inner border border-blue-200">
-                {{ getInitials(employee.personalInformation.firstName, employee.personalInformation.lastName) }}
-              </div>
-              <span class="absolute bottom-0 right-0 w-4 h-4 rounded-full border-2 border-white"
-                    [class.bg-green-500]="employee.jobInformation.status.toLowerCase() === 'active'"
-                    [class.bg-red-500]="employee.jobInformation.status.toLowerCase() === 'inactive'"></span>
-            </div>
-
-            <div>
-              <div class="flex items-center gap-3 flex-wrap">
-                <h1 class="text-2xl font-bold text-[var(--color-text-primary)]">
-                  {{ employee.personalInformation.firstName }} {{ employee.personalInformation.lastName }}
-                </h1>
-                <span class="inline-flex items-center font-mono text-xs font-semibold px-2.5 py-0.5 rounded-full bg-[var(--color-surface-secondary)] text-[var(--color-text-secondary)] border border-[var(--color-border)]">
-                  {{ employee.jobInformation.employeeNumber }}
-                </span>
-              </div>
-              <p class="text-sm text-[var(--color-text-secondary)] mt-1 flex items-center gap-2 flex-wrap">
-                <span>{{ employee.personalInformation.email }}</span>
-                <span>•</span>
-                <span class="font-medium text-[var(--color-text-primary)]">{{ employee.jobInformation.positionName || 'Unassigned Position' }}</span>
-                <span>•</span>
-                <span>{{ employee.jobInformation.legalEntityName || 'Company' }}</span>
-              </p>
-            </div>
-          </div>
-
-          <div class="flex items-center gap-3">
-            @if ((canChangePosition() || canOffboard()) && !isOwnRecord() && employee.jobInformation.legalEntityId && !isReadOnly() && employee.invitationStatus !== 'pending' && employee.invitationStatus !== 'expired') {
-              <app-popover [open]="changePositionMenuOpen()" ariaLabel="Change position actions" align="right" (closed)="changePositionMenuOpen.set(false)">
-                <app-button popover-trigger data-testid="change-position-trigger" (pressed)="changePositionMenuOpen.set(!changePositionMenuOpen())">
-                  {{ canChangePosition() ? 'Transfer / Promote' : 'Offboarding' }}
-                </app-button>
-                <div popover-panel class="change-position-menu">
-                  @if (canChangePosition()) {
-                    <button type="button" class="profile-action-btn" (click)="openChangePosition('Promotion')">Promotion</button>
-                    <button type="button" class="profile-action-btn" (click)="openChangePosition('Transfer')">Transfer</button>
-                  }
-                  @if (canOffboard()) {
-                    <button type="button" class="profile-action-btn" data-testid="offboarding-menu-item" (click)="navigateToOffboarding(employee.id)">
-                      {{ offboardingStatus() && offboardingStatus() !== 'cancelled' ? (isReadOnly() ? 'View Offboarding' : 'Continue Offboarding') : 'Offboarding' }}
-                    </button>
-                  }
-                </div>
-              </app-popover>
-            }
-            @if (employee.invitationStatus === 'expired') {
-              <app-button variant="secondary" [loading]="resending()" [disabled]="resending()" (pressed)="resendInvitation(employee.id)">
-                Resend invitation
+      <app-employee-profile-header [employee]="employee">
+        <ng-container header-actions>
+          @if ((canChangePosition() || canOffboard()) && !isOwnRecord() && employee.jobInformation.legalEntityId && !isReadOnly() && employee.invitationStatus !== 'pending' && employee.invitationStatus !== 'expired') {
+            <app-popover [open]="changePositionMenuOpen()" ariaLabel="Change position actions" align="right" (closed)="changePositionMenuOpen.set(false)">
+              <app-button popover-trigger data-testid="change-position-trigger" (pressed)="changePositionMenuOpen.set(!changePositionMenuOpen())">
+                {{ canChangePosition() ? 'Transfer / Promote' : 'Offboarding' }}
               </app-button>
-            }
-          </div>
-        </div>
-      </div>
+              <div popover-panel class="change-position-menu">
+                @if (canChangePosition()) {
+                  <button type="button" class="profile-action-btn" (click)="openChangePosition('Promotion')">Promotion</button>
+                  <button type="button" class="profile-action-btn" (click)="openChangePosition('Transfer')">Transfer</button>
+                }
+                @if (canOffboard()) {
+                  <button type="button" class="profile-action-btn" data-testid="offboarding-menu-item" (click)="navigateToOffboarding(employee.id)">
+                    {{ offboardingStatus() && offboardingStatus() !== 'cancelled' ? (isReadOnly() ? 'View Offboarding' : 'Continue Offboarding') : 'Offboarding' }}
+                  </button>
+                }
+              </div>
+            </app-popover>
+          }
+          @if (employee.invitationStatus === 'expired') {
+            <app-button variant="secondary" [loading]="resending()" [disabled]="resending()" (pressed)="resendInvitation(employee.id)">
+              Resend invitation
+            </app-button>
+          }
+        </ng-container>
+      </app-employee-profile-header>
 
-      <!-- Non-Duplicate Insights Metric Cards Grid -->
-      <div class="grid grid-cols-2 sm:grid-cols-4 gap-4 mb-6">
-        <div class="rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] p-4">
-          <span class="text-xs font-medium text-[var(--color-text-secondary)] block mb-1">Tenure</span>
-          <span class="text-sm font-semibold text-[var(--color-text-primary)] block">
-            {{ calculateTenure(employee.jobInformation.hireDate) }}
-          </span>
-        </div>
+      <div class="emp-detail-tabbar">
+        <nav class="emp-detail-tabs" aria-label="Employee detail sections">
+          @for (tab of tabs; track tab.path) {
+            <a
+              class="emp-detail-tab"
+              [routerLink]="tab.path"
+              routerLinkActive="emp-detail-tab--active"
+              ariaCurrentWhenActive="page"
+              [attr.data-testid]="'employee-tab-' + tab.path"
+            >{{ tab.label }}</a>
+          }
+        </nav>
 
-        <div class="rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] p-4">
-          <span class="text-xs font-medium text-[var(--color-text-secondary)] block mb-1">Reporting Manager</span>
-          <span class="text-sm font-semibold text-[var(--color-text-primary)] block truncate">
-            {{ employee.jobInformation.reportingManagerName || 'Unassigned' }}
-          </span>
-        </div>
-
-        <div class="rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] p-4">
-          <span class="text-xs font-medium text-[var(--color-text-secondary)] block mb-1">Primary Location</span>
-          <span class="text-sm font-semibold text-[var(--color-text-primary)] block truncate">
-            {{ getPrimaryLocation(employee.personalInformation.addresses) }}
-          </span>
-        </div>
-
-        @if (employee.attendanceSummary) {
-          <div class="rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] p-4">
-            <span class="text-xs font-medium text-[var(--color-text-secondary)] block mb-1">Attendance today</span>
-            @if (employee.attendanceSummary.showNotClockedInWarning && attendanceWarningLabel(employee); as warningLabel) {
-              <span class="inline-flex items-center gap-1.5 text-sm font-semibold text-red-600">
-                <span class="w-2 h-2 rounded-full bg-red-500"></span>
-                {{ warningLabel }}
-              </span>
-            } @else {
-              <span class="text-sm font-semibold text-[var(--color-text-primary)] block truncate">
-                {{ attendanceStatusLabel(employee) || 'Not specified' }}
-              </span>
-              @if (attendanceAttentionLabel(employee); as attentionLabel) {
-                <span class="mt-1 inline-block text-xs font-medium px-2 py-0.5 rounded-full" [class]="severityBadgeClass(employee)">
-                  {{ attentionLabel }}
-                </span>
-              }
-            }
-            @if (breakOverageLabel(employee); as breakLabel) {
-              <span class="mt-1 block text-xs font-medium text-red-600">{{ breakLabel }}</span>
-            }
+        @if (activeTab()?.usesPeriod) {
+          <div class="emp-detail-period" data-testid="employee-period-filter">
+            <app-select
+              ariaLabel="Reporting period"
+              [options]="periodOptions"
+              [value]="periodPreset()"
+              (valueChange)="onPeriodPresetChange($event)"
+            />
+            <input
+              type="month"
+              class="emp-detail-month"
+              aria-label="Reporting month"
+              [value]="store.periodMonth()"
+              (change)="onPeriodMonthChange($event)"
+            />
           </div>
         }
       </div>
 
-      <!-- Navigation Tabs -->
-      <div class="border-b border-[var(--color-border)] mb-6">
-        <nav class="flex gap-2" aria-label="Employee Detail Sections">
-          <button
-            type="button"
-            class="px-4 py-2.5 text-sm font-medium border-b-2 transition-colors -mb-px whitespace-nowrap cursor-pointer"
-            [class.border-[var(--color-accent)]]="activeTab() === 'job'"
-            [class.text-[var(--color-accent)]]="activeTab() === 'job'"
-            [class.font-semibold]="activeTab() === 'job'"
-            [class.border-transparent]="activeTab() !== 'job'"
-            [class.text-[var(--color-text-secondary)]]="activeTab() !== 'job'"
-            (click)="activeTab.set('job')"
-          >
-            Job Information
-          </button>
-          <button
-            type="button"
-            class="px-4 py-2.5 text-sm font-medium border-b-2 transition-colors -mb-px whitespace-nowrap cursor-pointer"
-            [class.border-[var(--color-accent)]]="activeTab() === 'personal'"
-            [class.text-[var(--color-accent)]]="activeTab() === 'personal'"
-            [class.font-semibold]="activeTab() === 'personal'"
-            [class.border-transparent]="activeTab() !== 'personal'"
-            [class.text-[var(--color-text-secondary)]]="activeTab() !== 'personal'"
-            (click)="activeTab.set('personal')"
-          >
-            Personal Information
-          </button>
-          <button
-            type="button"
-            class="px-4 py-2.5 text-sm font-medium border-b-2 transition-colors -mb-px whitespace-nowrap cursor-pointer"
-            [class.border-[var(--color-accent)]]="activeTab() === 'emergency'"
-            [class.text-[var(--color-accent)]]="activeTab() === 'emergency'"
-            [class.font-semibold]="activeTab() === 'emergency'"
-            [class.border-transparent]="activeTab() !== 'emergency'"
-            [class.text-[var(--color-text-secondary)]]="activeTab() !== 'emergency'"
-            (click)="activeTab.set('emergency')"
-          >
-            Emergency Contacts
-          </button>
-          @if (employee.payroll) {
-            <button
-              type="button"
-              class="px-4 py-2.5 text-sm font-medium border-b-2 transition-colors -mb-px whitespace-nowrap cursor-pointer"
-              [class.border-[var(--color-accent)]]="activeTab() === 'payroll'"
-              [class.text-[var(--color-accent)]]="activeTab() === 'payroll'"
-              [class.font-semibold]="activeTab() === 'payroll'"
-              [class.border-transparent]="activeTab() !== 'payroll'"
-              [class.text-[var(--color-text-secondary)]]="activeTab() !== 'payroll'"
-              (click)="activeTab.set('payroll')"
-            >
-              Payroll & Statutory
-            </button>
-          }
-        </nav>
-      </div>
-
-      <!-- Tab Content Section -->
-      @if (activeTab() === 'job') {
-        <div class="rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] p-6 space-y-6">
-          <app-employee-job-info
-            [jobInformation]="employee.jobInformation"
-            [employeeId]="employee.id"
-            [canEdit]="canChangePosition() && !isReadOnly()"
-            [saving]="savingJobDetails()"
-            (save)="onJobDetailsSave($event)"
-          />
-          <app-employee-job-journey [entries]="jobJourney()" />
-        </div>
-      } @else if (activeTab() === 'personal') {
-        <app-employee-personal-info [personalInformation]="employee.personalInformation" />
-      } @else if (activeTab() === 'emergency') {
-        <app-employee-emergency-contacts [emergencyContacts]="employee.emergencyContacts" />
-      } @else if (activeTab() === 'payroll' && employee.payroll; as payroll) {
-        <app-employee-payroll [payroll]="payroll" />
-      }
+      <router-outlet />
 
       @if (employee.jobInformation.legalEntityId; as legalEntityId) {
         <app-change-position-modal
@@ -264,11 +156,68 @@ import {
     }
   `,
   styles: [`
+    :host { display: flex; flex-direction: column; gap: 1rem; }
+
     .emp-detail-header {
       margin-top: -1.25rem;
-      margin-bottom: 1.25rem;
       padding-bottom: 0.625rem;
       border-bottom: 1px solid var(--color-border);
+    }
+
+    .emp-detail-tabbar {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      justify-content: space-between;
+      gap: 0.75rem;
+      padding: 0 0.5rem;
+      border: 1px solid var(--color-border);
+      border-radius: 0.75rem;
+      background: var(--color-surface);
+    }
+
+    .emp-detail-tabs {
+      display: flex;
+      gap: 0.25rem;
+      overflow-x: auto;
+      max-width: 100%;
+    }
+
+    .emp-detail-tab {
+      padding: 0.875rem 1rem;
+      border-bottom: 2px solid transparent;
+      color: var(--color-text-secondary);
+      font-size: 0.9375rem;
+      font-weight: 500;
+      text-decoration: none;
+      white-space: nowrap;
+    }
+
+    .emp-detail-tab:hover { color: var(--color-text-primary); }
+    .emp-detail-tab:focus-visible { outline: 2px solid var(--color-focus-ring); outline-offset: -2px; }
+
+    .emp-detail-tab--active {
+      border-bottom-color: var(--color-accent);
+      color: var(--color-accent);
+      font-weight: 600;
+    }
+
+    .emp-detail-period {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      padding: 0.5rem 0;
+    }
+
+    .emp-detail-month {
+      height: 2.25rem;
+      padding: 0 0.625rem;
+      border: 1px solid var(--color-border);
+      border-radius: 0.5rem;
+      background: var(--color-surface);
+      color: var(--color-text-primary);
+      font: inherit;
+      font-size: 0.875rem;
     }
 
     .change-position-menu {
@@ -314,22 +263,18 @@ export class EmployeeDetailComponent {
   private readonly permissionService = inject(PermissionService);
   private readonly authStore = inject(AuthStore);
   private readonly offboardingStore = inject(OffboardingWizardStore);
+  protected readonly store = inject(EmployeeDetailStore);
 
-  readonly employee = signal<EmployeeDetailResponse | null>(null);
-  readonly loading = signal(false);
-  readonly error = signal<string | null>(null);
+  readonly tabs = EMPLOYEE_DETAIL_TABS;
+  readonly periodOptions = PERIOD_OPTIONS;
+
+  readonly employee = this.store.employee;
+  readonly loading = this.store.loading;
+  readonly error = this.store.error;
   readonly resending = signal(false);
-  readonly savingJobDetails = signal(false);
   readonly changePositionMenuOpen = signal(false);
   readonly changePositionOpen = signal(false);
   readonly changePositionReason = signal<'Promotion' | 'Transfer'>('Promotion');
-  readonly activeTab = signal<'job' | 'personal' | 'emergency' | 'payroll'>('job');
-  readonly jobJourney = signal<readonly PositionHistoryEntryResponse[]>([]);
-
-  readonly attendanceWarningLabel = attendanceWarningLabel;
-  readonly attendanceAttentionLabel = attendanceAttentionLabel;
-  readonly attendanceStatusLabel = attendanceStatusLabel;
-  readonly breakOverageLabel = breakOverageLabel;
 
   readonly canChangePosition = computed(() => this.permissionService.hasPermission('employees:write'));
   readonly canOffboard = computed(() => this.permissionService.hasPermission('employees:offboard'));
@@ -337,56 +282,45 @@ export class EmployeeDetailComponent {
   readonly offboardingStatus = computed(() => this.offboardingStore.record()?.status ?? null);
   readonly isReadOnly = computed(() => this.offboardingStatus() === 'completed');
 
-  constructor() {
-    this.load();
-  }
+  private readonly activeTabPath = toSignal(
+    this.router.events.pipe(
+      filter((event) => event instanceof NavigationEnd),
+      map(() => this.currentTabPath())
+    ),
+    { initialValue: this.currentTabPath() }
+  );
+  readonly activeTab = computed(() => this.tabs.find((tab) => tab.path === this.activeTabPath()) ?? null);
 
-  getInitials(firstName?: string, lastName?: string): string {
-    const f = firstName?.trim().charAt(0) || '';
-    const l = lastName?.trim().charAt(0) || '';
-    return (f + l).toUpperCase() || 'EM';
+  readonly periodPreset = computed(() => {
+    const month = this.store.periodMonth();
+    const current = toPeriodMonth(new Date());
+    if (month === current) return 'this_month';
+    if (month === shiftPeriodMonth(current, -1)) return 'last_month';
+    return 'custom';
+  });
+
+  constructor() {
+    // Drive loading from the param stream, not the snapshot: moving between employees while on a
+    // child tab (e.g. /employees/A/employment -> /employees/B/employment) reuses this shell.
+    this.route.paramMap.pipe(takeUntilDestroyed()).subscribe((params) => {
+      const id = params.get('id');
+      if (id) this.loadEmployee(id);
+    });
   }
 
   load(): void {
-    const id = this.route.snapshot.paramMap.get('id');
-    if (!id) {
-      return;
-    }
-
-    this.loading.set(true);
-    this.error.set(null);
-    this.api.getEmployeeDetail(id).subscribe({
-      next: (employee) => {
-        this.employee.set(employee);
-        this.loading.set(false);
-      },
-      error: (err) => {
-        this.loading.set(false);
-        this.error.set(toSafeErrorMessage(err, 'The employee or selected organization record could not be found.'));
-      }
-    });
-    this.api.getJobJourney(id).subscribe({
-      next: (entries) => this.jobJourney.set(entries),
-      error: () => this.jobJourney.set([])
-    });
-    void this.offboardingStore.loadOffboarding(id);
+    const id = this.store.employeeId() ?? this.route.snapshot?.paramMap.get('id');
+    if (id) this.loadEmployee(id);
   }
 
-  onJobDetailsSave(payload: UpdateEmployeeJobDetailsRequest): void {
-    const id = this.employee()?.id;
-    if (!id) return;
-    this.savingJobDetails.set(true);
-    this.api.updateJobDetails(id, payload).subscribe({
-      next: () => {
-        this.savingJobDetails.set(false);
-        this.notifications.success('Job details updated.');
-        this.load();
-      },
-      error: (err) => {
-        this.savingJobDetails.set(false);
-        this.notifications.error(toSafeErrorMessage(err, 'Could not update job details.'));
-      }
-    });
+  onPeriodPresetChange(preset: string): void {
+    const current = toPeriodMonth(new Date());
+    if (preset === 'this_month') this.store.setPeriodMonth(current);
+    if (preset === 'last_month') this.store.setPeriodMonth(shiftPeriodMonth(current, -1));
+  }
+
+  onPeriodMonthChange(event: Event): void {
+    this.store.setPeriodMonth((event.target as HTMLInputElement).value);
   }
 
   resendInvitation(employeeId: string): void {
@@ -427,59 +361,12 @@ export class EmployeeDetailComponent {
     this.load();
   }
 
-  calculateTenure(hireDateStr?: string): string {
-    if (!hireDateStr) return '—';
-    const hireDate = new Date(hireDateStr);
-    if (isNaN(hireDate.getTime())) return '—';
-
-    const now = new Date();
-    let years = now.getFullYear() - hireDate.getFullYear();
-    let months = now.getMonth() - hireDate.getMonth();
-
-    if (months < 0) {
-      years -= 1;
-      months += 12;
-    }
-
-    if (years <= 0 && months <= 0) {
-      return 'New Joiner';
-    }
-
-    const yearPart = years > 0 ? `${years} yr${years > 1 ? 's' : ''}` : '';
-    const monthPart = months > 0 ? `${months} mo${months > 1 ? 's' : ''}` : '';
-
-    if (yearPart && monthPart) return `${yearPart} ${monthPart}`;
-    return yearPart || monthPart || 'New Joiner';
+  private loadEmployee(id: string): void {
+    void this.store.load(id);
+    void this.offboardingStore.loadOffboarding(id);
   }
 
-  getPrimaryLocation(addresses?: readonly EmployeeDetailAddress[]): string {
-    if (!addresses || addresses.length === 0) return 'Not specified';
-    const primary = addresses.find(a => a.isPrimary) || addresses[0];
-    if (!primary || !primary.addressJson) return 'Not specified';
-
-    try {
-      const parsed: unknown = JSON.parse(primary.addressJson);
-      if (parsed && typeof parsed === 'object') {
-        const p = parsed as Record<string, unknown>;
-        const city = p['city'] || p['town'];
-        const country = p['country'] || p['countryCode'];
-        if (city && country) return `${city}, ${country}`;
-        if (city) return String(city);
-        if (country) return String(country);
-        const firstVal = Object.values(p).find(v => typeof v === 'string' && v.trim().length > 0);
-        if (firstVal) return String(firstVal);
-      }
-    } catch {
-      return primary.addressJson.substring(0, 30);
-    }
-    return 'Not specified';
+  private currentTabPath(): string | null {
+    return this.route.firstChild?.snapshot?.url[0]?.path ?? null;
   }
-
-  severityBadgeClass(employee: EmployeeDetailResponse): string {
-    const severity = attendanceSeverityClass(employee);
-    if (severity === 'emp-attention--critical') return 'bg-red-50 text-red-700';
-    if (severity === 'emp-attention--warning') return 'bg-amber-50 text-amber-700';
-    return 'bg-[var(--color-surface-secondary)] text-[var(--color-text-secondary)]';
-  }
-
 }
