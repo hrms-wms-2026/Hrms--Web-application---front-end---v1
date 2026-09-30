@@ -550,6 +550,9 @@ export class CalendarEventFormModalComponent implements OnChanges, OnDestroy {
   private unregisterGuard: (() => void) | null = null;
 
   attemptClose(): void {
+    if (this.isDirty()) {
+      this.discardConfirmOpen.set(true);
+    }
     void this.unsaved.requestClose(this.guardHandle).then((ok) => {
       if (ok) this.cancel.emit();
     });
@@ -629,7 +632,8 @@ export class CalendarEventFormModalComponent implements OnChanges, OnDestroy {
         title: raw.title!.trim(), description: raw.description || null, startDate, endDate,
         isAllDay: !!raw.isAllDay, location: raw.location || null,
         meetingLink: raw.meetingLink || null, color: raw.color || null, recurrence,
-        participantEmployeeIds: this.participantIds(), recurrenceRule, guestEmails: this.guestEmails()
+        participantEmployeeIds: this.participantIds(), recurrenceRule, guestEmails: this.guestEmails(),
+        pendingMeetingProvider: this.pendingMeetingProvider()
       },
       meetingProvider: this.pendingMeetingProvider()
     });

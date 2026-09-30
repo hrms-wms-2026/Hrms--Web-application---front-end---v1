@@ -59,13 +59,9 @@ export const PEOPLE_ROUTES: Routes = [
           {
             path: 'attendance',
             loadComponent: () =>
-              import('./feature/employee-detail/tabs/employee-upcoming-tab.component').then(
-                (m) => m.EmployeeUpcomingTabComponent
-              ),
-            data: {
-              placeholderTitle: 'Attendance insights are coming soon',
-              placeholderDescription: 'Monthly attendance, late arrivals and missing clock-outs for this employee will appear here.'
-            }
+              import('./feature/employee-detail/tabs/employee-attendance-tab.component').then(
+                (m) => m.EmployeeAttendanceTabComponent
+              )
           },
           {
             path: 'work-activity',

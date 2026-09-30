@@ -1,11 +1,47 @@
-:host { display: block; }
+:host {
+  display: block;
+}
+
 .edt__scroll {
   border-radius: 12px;
   background: var(--color-surface-secondary);
   padding: 2px 4px 6px;
   overflow: visible;
+  scrollbar-width: none;
+  -ms-overflow-style: none;
 }
-.edt { width: 100%; border-collapse: separate; border-spacing: 0 5px; color: var(--color-text-primary); }
+
+.edt__scroll::-webkit-scrollbar {
+  display: none;
+  width: 0;
+  height: 0;
+}
+
+.edt {
+  width: 100%;
+  border-collapse: separate;
+  border-spacing: 0 5px;
+  color: var(--color-text-primary);
+}
+
+@media (max-width: 768px) {
+  :host {
+    max-width: 100%;
+    min-width: 0;
+  }
+
+  .edt__scroll {
+    overflow-x: auto;
+    overflow-y: hidden;
+    -webkit-overflow-scrolling: touch;
+    max-width: 100%;
+    width: 100%;
+  }
+
+  .edt {
+    min-width: 700px;
+  }
+}
 .edt th, .edt td { text-align: left; white-space: nowrap; vertical-align: middle; }
 .edt td { overflow: hidden; text-overflow: ellipsis; max-width: 260px; padding: 7px 14px; font-size: 13px; }
 .edt thead tr { background: var(--color-surface-secondary); }

@@ -7,6 +7,7 @@ import { UpdateEmployeeJobDetailsRequest } from '../../../models/employee.model'
 import { EmployeeDetailStore } from '../../../state/employee-detail.store';
 import { OffboardingWizardStore } from '../../../state/offboarding-wizard.store';
 import { EmployeeJobInfoComponent } from '../../../ui/employee-job-info/employee-job-info.component';
+import { EmployeeWorkNetworkComponent } from '../../../ui/employee-work-network/employee-work-network.component';
 import { DetailCardComponent } from '../../../ui/detail-kit/detail-card.component';
 import { DetailIconComponent } from '../../../ui/detail-kit/detail-icon.component';
 import { KvRowComponent } from '../../../ui/detail-kit/kv-row.component';
@@ -16,8 +17,8 @@ import { calculateTenure, employmentHistory, formatDayMonth, primaryLocation, pr
 
 /**
  * Employment tab: job & organizational details (with the inline job-details edit form),
- * work arrangement, employment record, the projects the viewer shares with this employee, and
- * the employment history timeline built from position history.
+ * work arrangement, employment record, the Work Network graph, the projects the viewer shares
+ * with this employee, and the employment history timeline built from position history.
  */
 @Component({
   selector: 'app-employee-employment-tab',
@@ -25,6 +26,7 @@ import { calculateTenure, employmentHistory, formatDayMonth, primaryLocation, pr
   imports: [
     DatePipe,
     EmployeeJobInfoComponent,
+    EmployeeWorkNetworkComponent,
     DetailCardComponent,
     DetailIconComponent,
     KvRowComponent,

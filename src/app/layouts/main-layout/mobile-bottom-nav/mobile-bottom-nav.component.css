@@ -65,6 +65,14 @@
       0 12px 30px rgba(0, 0, 0, 0.35),
       0 2px 8px rgba(0, 0, 0, 0.2);
     backdrop-filter: blur(16px);
+    max-width: calc(100vw - 1.5rem);
+    overflow-x: auto;
+    scrollbar-width: none;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .mobile-bottom-nav__bar::-webkit-scrollbar {
+    display: none;
   }
 
   .mobile-nav-item {

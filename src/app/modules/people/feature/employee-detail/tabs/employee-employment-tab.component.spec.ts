@@ -23,6 +23,7 @@ describe('EmployeeEmploymentTabComponent', () => {
     const apiStub: Record<string, ReturnType<typeof vi.fn>> = {
       getEmployeeDetail: vi.fn().mockReturnValue(of(employee)),
       getJobJourney: vi.fn().mockReturnValue(of([])),
+      getWorkGraph: vi.fn().mockReturnValue(of({ nodes: [], links: [], hiddenTaskCount: 0 })),
       ...apiOverrides
     };
     const notificationsStub = { success: vi.fn(), error: vi.fn() };

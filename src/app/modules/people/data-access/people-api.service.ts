@@ -20,6 +20,12 @@ import {
 import { PendingAccessGrantRequestResponse } from '../models/access-grant-request.model';
 import { ChecklistAssignee } from '../models/checklist-template.model';
 import { PositionHistoryEntryResponse } from '../models/position-history.model';
+import { EmployeeWorkGraphResponse } from '../models/work-graph.model';
+import {
+  EmployeeAttendanceDisciplineResponse,
+  EmployeeAttendanceOverviewResponse,
+  EmployeeTimeOffResponse
+} from '../models/employee-overview.model';
 import {
   ApproveAccessGrantRequestResponse,
   DraftListPageResponse,
@@ -166,6 +172,41 @@ export class PeopleApiService {
   getJobJourney(employeeId: string): Observable<PositionHistoryEntryResponse[]> {
     return this.http.get<PositionHistoryEntryResponse[]>(
       `${environment.apiUrl}/employees/${employeeId}/position-history`
+    );
+  }
+
+  getWorkGraph(employeeId: string): Observable<EmployeeWorkGraphResponse> {
+    return this.http.get<EmployeeWorkGraphResponse>(
+      `${environment.apiUrl}/employees/${employeeId}/work-graph`
+    );
+  }
+
+  getOverviewAttendance(employeeId: string, from: string, to: string): Observable<EmployeeAttendanceOverviewResponse> {
+    return this.http.get<EmployeeAttendanceOverviewResponse>(
+      `${environment.apiUrl}/employees/${employeeId}/overview/attendance`,
+      { params: new HttpParams().set('from', from).set('to', to) }
+    );
+  }
+
+  getOverviewAttendanceDiscipline(
+    employeeId: string,
+    from: string,
+    to: string
+  ): Observable<EmployeeAttendanceDisciplineResponse> {
+    return this.http.get<EmployeeAttendanceDisciplineResponse>(
+      `${environment.apiUrl}/employees/${employeeId}/overview/attendance-discipline`,
+      { params: new HttpParams().set('from', from).set('to', to) }
+    );
+  }
+
+  getOverviewTimeOff(employeeId: string, year?: number): Observable<EmployeeTimeOffResponse> {
+    let params = new HttpParams();
+    if (year !== undefined) {
+      params = params.set('year', String(year));
+    }
+    return this.http.get<EmployeeTimeOffResponse>(
+      `${environment.apiUrl}/employees/${employeeId}/overview/time-off`,
+      { params }
     );
   }
 

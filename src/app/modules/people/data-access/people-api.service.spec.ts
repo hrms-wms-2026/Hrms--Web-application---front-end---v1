@@ -86,6 +86,55 @@ describe('PeopleApiService', () => {
     httpMock.verify();
   });
 
+  it('getWorkGraph GETs /employees/{id}/work-graph', () => {
+    const response = { nodes: [], links: [], hiddenTaskCount: 0 };
+    let received: unknown;
+
+    service.getWorkGraph('emp-1').subscribe((r) => (received = r));
+
+    const req = httpMock.expectOne(`${environment.apiUrl}/employees/emp-1/work-graph`);
+    expect(req.request.method).toBe('GET');
+    req.flush(response);
+    expect(received).toEqual(response);
+  });
+
+  it('getOverviewAttendance GETs /employees/{id}/overview/attendance with from and to', () => {
+    let received: unknown;
+    service.getOverviewAttendance('emp-1', '2026-09-01', '2026-09-30').subscribe((r) => (received = r));
+
+    const req = httpMock.expectOne(
+      (r) => r.url === `${environment.apiUrl}/employees/emp-1/overview/attendance`
+    );
+    expect(req.request.method).toBe('GET');
+    expect(req.request.params.get('from')).toBe('2026-09-01');
+    expect(req.request.params.get('to')).toBe('2026-09-30');
+    req.flush({ days: [] });
+    expect(received).toEqual({ days: [] });
+  });
+
+  it('getOverviewAttendanceDiscipline GETs /employees/{id}/overview/attendance-discipline with from and to', () => {
+    service.getOverviewAttendanceDiscipline('emp-1', '2026-09-01', '2026-09-30').subscribe();
+
+    const req = httpMock.expectOne(
+      (r) => r.url === `${environment.apiUrl}/employees/emp-1/overview/attendance-discipline`
+    );
+    expect(req.request.params.get('from')).toBe('2026-09-01');
+    expect(req.request.params.get('to')).toBe('2026-09-30');
+    req.flush({});
+  });
+
+  it('getOverviewTimeOff GETs /employees/{id}/overview/time-off and sends year only when given', () => {
+    service.getOverviewTimeOff('emp-1').subscribe();
+    const noYear = httpMock.expectOne((r) => r.url === `${environment.apiUrl}/employees/emp-1/overview/time-off`);
+    expect(noYear.request.params.has('year')).toBe(false);
+    noYear.flush({});
+
+    service.getOverviewTimeOff('emp-1', 2025).subscribe();
+    const withYear = httpMock.expectOne((r) => r.url === `${environment.apiUrl}/employees/emp-1/overview/time-off`);
+    expect(withYear.request.params.get('year')).toBe('2025');
+    withYear.flush({});
+  });
+
   it('fetches work modes from /work-modes for a legal entity', () => {
     service.getWorkModes('le-1').subscribe((modes) => {
       expect(modes.length).toBe(1);

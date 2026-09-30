@@ -24,10 +24,9 @@
   gap: 0.75rem;
   width: 100%;
   min-height: 36px;
-  flex-wrap: wrap;
 }
 
-.emp-header-row app-breadcrumb-header {
+.emp-header-breadcrumb {
   display: inline-flex;
   align-items: center;
   flex-shrink: 0;
@@ -47,7 +46,13 @@
   align-items: center;
   gap: 0.75rem;
   margin-left: auto;
-  flex-wrap: wrap;
+}
+
+.emp-header-actions,
+.emp-controls-right {
+  display: flex;
+  align-items: center;
+  flex-shrink: 0;
 }
 
 .emp-search-container {
@@ -189,6 +194,8 @@
   display: flex;
   flex-direction: column;
   gap: 1rem;
+  min-width: 0;
+  max-width: 100%;
 }
 
 .emp-pager { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 10px; }
@@ -212,20 +219,82 @@
     margin-right: -1rem;
     padding-left: 1rem;
     padding-right: 1rem;
+    margin-bottom: 0.75rem;
   }
 
-  .emp-controls-bar {
+  .emp-header-row {
+    display: grid;
+    grid-template-columns: 1fr auto;
+    grid-template-areas:
+      "breadcrumb actions"
+      "controls controls";
+    row-gap: 0.75rem;
+    column-gap: 0.5rem;
+    align-items: center;
+  }
+
+  .emp-header-breadcrumb {
+    grid-area: breadcrumb;
+    min-width: 0;
+  }
+
+  .emp-header-actions {
+    grid-area: actions;
+    justify-self: end;
+  }
+
+  .emp-controls {
+    grid-area: controls;
+    margin-left: 0;
+    width: 100%;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+  }
+
+  .emp-search-container {
+    flex: 0 0 auto;
+  }
+
+  .emp-controls--search-open .emp-search-container {
+    flex: 1 1 auto;
+    min-width: 0;
+  }
+
+  .emp-search-expandable {
+    width: 100%;
+    animation: empSearchExpandMobile 0.15s ease-out;
+  }
+
+  .emp-search-input {
+    width: 100%;
+    max-width: 100%;
+    box-sizing: border-box;
+  }
+
+  .emp-pager {
     flex-direction: column;
     align-items: stretch;
+    gap: 0.75rem;
   }
 
-  .emp-search-wrap {
-    max-width: 100%;
+  .emp-pager__range {
+    font-size: 0.75rem;
+    text-align: center;
   }
 
-  .emp-controls-right {
-    margin-left: 0;
-    justify-content: space-between;
+  .emp-pager__controls {
+    justify-content: center;
     flex-wrap: wrap;
+    gap: 0.25rem;
+  }
+}
+
+@keyframes empSearchExpandMobile {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
   }
 }

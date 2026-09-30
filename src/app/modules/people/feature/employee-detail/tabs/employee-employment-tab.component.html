@@ -65,6 +65,8 @@
       </app-detail-card>
     </div>
 
+    <app-employee-work-network class="employment__full" [employeeId]="employee.id" />
+
     <div class="employment__row employment__row--two">
       <app-detail-card icon="users" title="Project Memberships">
         @if (projects().length === 0) {
