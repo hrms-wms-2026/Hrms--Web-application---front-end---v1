@@ -85,6 +85,19 @@ describe('OverviewWorkWidgetComponent', () => {
     expect(get).toHaveBeenLastCalledWith('emp-1', '2026-08-01', '2026-08-31');
   });
 
+  it('shows a good completed delta against the picked compare month', () => {
+    const compare = { ...response, from: '2026-08-01', to: '2026-08-31', completed: 15 };
+    const get = vi.fn((_id: string, from: string) => of(from === '2026-08-01' ? compare : response));
+    const { fixture, store, el } = setup(get);
+
+    store.setCompareMonth('2026-08');
+    fixture.detectChanges();
+
+    const delta = el.querySelector('[data-testid="delta"]')!;
+    expect(delta.textContent).toContain('▲ +3');
+    expect(delta.classList.contains('delta--good')).toBe(true);
+  });
+
   it('shows the no-access state on 403', () => {
     const { el } = setup(vi.fn().mockReturnValue(throwError(() => new HttpErrorResponse({ status: 403 }))));
 

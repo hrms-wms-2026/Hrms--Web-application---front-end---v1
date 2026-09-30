@@ -1,15 +1,17 @@
-import { ChangeDetectionStrategy, Component, inject, input } from '@angular/core';
+import { ChangeDetectionStrategy, Component, computed, inject, input } from '@angular/core';
 import { WidgetCardComponent } from '../../../../shared/ui/widget-card/widget-card.component';
 import { createWidgetLoader } from '../../../../shared/ui/widget-card/widget-loader';
 import { PeopleApiService } from '../../data-access/people-api.service';
 import { EmployeeAttendanceDay } from '../../models/employee-overview.model';
 import { EmployeePeriodStore } from '../../state/employee-period.store';
 import { attendanceDayLabel } from '../../utils/employee-overview.utils';
+import { createCompareLoader, deltaIf } from '../../utils/overview-compare';
+import { DeltaBadgeComponent } from '../delta-badge/delta-badge.component';
 
 @Component({
   selector: 'app-overview-attendance-widget',
   standalone: true,
-  imports: [WidgetCardComponent],
+  imports: [WidgetCardComponent, DeltaBadgeComponent],
   host: { class: 'block h-full' },
   template: `
     <app-widget-card
@@ -29,19 +31,19 @@ import { attendanceDayLabel } from '../../utils/employee-overview.utils';
           <div>
             <dl class="grid grid-cols-4 gap-2 text-center" data-testid="attendance-stats">
               <div>
-                <dd class="text-xl font-bold text-slate-900" data-testid="stat-present">{{ d.present }}</dd>
+                <dd class="flex flex-col items-center text-xl font-bold text-slate-900"><span data-testid="stat-present">{{ d.present }}</span><app-delta-badge [delta]="presentDelta()" [against]="period.compareLabel()" /></dd>
                 <dt class="text-[11px] text-slate-500 mt-0.5">Present</dt>
               </div>
               <div>
-                <dd class="text-xl font-bold text-rose-600" data-testid="stat-late">{{ d.late }}</dd>
+                <dd class="flex flex-col items-center text-xl font-bold text-rose-600"><span data-testid="stat-late">{{ d.late }}</span><app-delta-badge [delta]="lateDelta()" [against]="period.compareLabel()" /></dd>
                 <dt class="text-[11px] text-slate-500 mt-0.5">Late</dt>
               </div>
               <div>
-                <dd class="text-xl font-bold text-orange-600" data-testid="stat-missing">{{ d.missingClockOuts }}</dd>
+                <dd class="flex flex-col items-center text-xl font-bold text-orange-600"><span data-testid="stat-missing">{{ d.missingClockOuts }}</span><app-delta-badge [delta]="missingDelta()" [against]="period.compareLabel()" /></dd>
                 <dt class="text-[11px] text-slate-500 mt-0.5">Missing clock-out</dt>
               </div>
               <div>
-                <dd class="text-xl font-bold text-slate-900" data-testid="stat-leave">{{ d.leaveDays }}</dd>
+                <dd class="flex flex-col items-center text-xl font-bold text-slate-900"><span data-testid="stat-leave">{{ d.leaveDays }}</span><app-delta-badge [delta]="leaveDelta()" [against]="period.compareLabel()" /></dd>
                 <dt class="text-[11px] text-slate-500 mt-0.5">Leave</dt>
               </div>
             </dl>
@@ -91,13 +93,28 @@ import { attendanceDayLabel } from '../../utils/employee-overview.utils';
 })
 export class OverviewAttendanceWidgetComponent {
   private readonly api = inject(PeopleApiService);
-  private readonly period = inject(EmployeePeriodStore);
+  readonly period = inject(EmployeePeriodStore);
 
   readonly employeeId = input.required<string>();
 
   readonly loader = createWidgetLoader(
     () => this.api.getOverviewAttendance(this.employeeId(), this.period.from(), this.period.to()),
     { isEmpty: (v) => v.days.length === 0 }
+  );
+  readonly compareLoader = createCompareLoader(this.period, (from, to) =>
+    this.api.getOverviewAttendance(this.employeeId(), from, to)
+  );
+  readonly presentDelta = computed(() =>
+    deltaIf(this.period.isComparing(), this.loader.data()?.present, this.compareLoader.data()?.present, 'higher-better')
+  );
+  readonly lateDelta = computed(() =>
+    deltaIf(this.period.isComparing(), this.loader.data()?.late, this.compareLoader.data()?.late, 'lower-better')
+  );
+  readonly missingDelta = computed(() =>
+    deltaIf(this.period.isComparing(), this.loader.data()?.missingClockOuts, this.compareLoader.data()?.missingClockOuts, 'lower-better')
+  );
+  readonly leaveDelta = computed(() =>
+    deltaIf(this.period.isComparing(), this.loader.data()?.leaveDays, this.compareLoader.data()?.leaveDays, 'neutral')
   );
 
   label = attendanceDayLabel;

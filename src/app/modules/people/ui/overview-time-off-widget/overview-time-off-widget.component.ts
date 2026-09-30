@@ -1,15 +1,19 @@
-import { ChangeDetectionStrategy, Component, inject, input, signal } from '@angular/core';
+import { ChangeDetectionStrategy, Component, computed, inject, input, signal } from '@angular/core';
+import { map } from 'rxjs';
 import { WidgetCardComponent } from '../../../../shared/ui/widget-card/widget-card.component';
 import { createWidgetLoader } from '../../../../shared/ui/widget-card/widget-loader';
 import { PeopleApiService } from '../../data-access/people-api.service';
 import { EmployeeTimeOffBalance } from '../../models/employee-overview.model';
+import { EmployeePeriodStore } from '../../state/employee-period.store';
 import { formatHours, formatLeaveRange } from '../../utils/employee-overview.utils';
+import { createCompareLoader, deltaIf } from '../../utils/overview-compare';
+import { DeltaBadgeComponent } from '../delta-badge/delta-badge.component';
 
 /** Year-based: intentionally independent of the month period, so it never refetches on a month change. */
 @Component({
   selector: 'app-overview-time-off-widget',
   standalone: true,
-  imports: [WidgetCardComponent],
+  imports: [WidgetCardComponent, DeltaBadgeComponent],
   host: { class: 'block h-full' },
   template: `
     <app-widget-card
@@ -32,6 +36,12 @@ import { formatHours, formatLeaveRange } from '../../utils/employee-overview.uti
         }
 
         <div class="flex-1 flex flex-col justify-between">
+          @if (monthLeave.data() !== null) {
+            <p class="flex items-center gap-2 text-xs text-slate-500" data-testid="month-leave">
+              Leave in {{ period.label() }}: {{ monthLeave.data() }} {{ monthLeave.data() === 1 ? 'day' : 'days' }}
+              <app-delta-badge [delta]="leaveDelta()" [against]="period.compareLabel()" />
+            </p>
+          }
           <!-- 3 Circular Balance Rings (Shows 3 normally, all if expanded) -->
           <div class="grid grid-cols-3 gap-2 py-3">
             @for (b of displayedBalances(d.balances); track b.leaveTypeId; let idx = $index) {
@@ -86,6 +96,7 @@ import { formatHours, formatLeaveRange } from '../../utils/employee-overview.uti
 })
 export class OverviewTimeOffWidgetComponent {
   private readonly api = inject(PeopleApiService);
+  readonly period = inject(EmployeePeriodStore);
 
   readonly employeeId = input.required<string>();
   readonly showAll = signal(false);
@@ -93,6 +104,15 @@ export class OverviewTimeOffWidgetComponent {
   readonly loader = createWidgetLoader(() => this.api.getOverviewTimeOff(this.employeeId()), {
     isEmpty: (v) => v.balances.length === 0 && v.nextLeave === null
   });
+  readonly monthLeave = createWidgetLoader(() =>
+    this.api.getOverviewAttendance(this.employeeId(), this.period.from(), this.period.to()).pipe(map((r) => r.leaveDays))
+  );
+  readonly compareLoader = createCompareLoader(this.period, (from, to) =>
+    this.api.getOverviewAttendance(this.employeeId(), from, to).pipe(map((r) => r.leaveDays))
+  );
+  readonly leaveDelta = computed(() =>
+    deltaIf(this.period.isComparing(), this.monthLeave.data(), this.compareLoader.data(), 'neutral')
+  );
 
   hours = formatHours;
   range = formatLeaveRange;

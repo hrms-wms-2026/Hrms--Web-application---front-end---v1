@@ -93,6 +93,20 @@ describe('OverviewAttendanceWidgetComponent', () => {
     expect(getOverviewAttendance).toHaveBeenCalledTimes(2);
   });
 
+  it('shows a bad late delta against the picked compare month', () => {
+    const compare = { ...response, from: '2026-08-01', to: '2026-08-31', late: 1 };
+    const get = vi.fn((_id: string, from: string) => of(from === '2026-08-01' ? compare : response));
+    const { fixture, store, el } = setup(get);
+
+    store.setCompareMonth('2026-08');
+    fixture.detectChanges();
+
+    const delta = el.querySelector('[data-testid="stat-late"] + app-delta-badge [data-testid="delta"]')!;
+    expect(delta.textContent).toContain('▲ +1');
+    expect(delta.classList.contains('delta--bad')).toBe(true);
+    expect(delta.getAttribute('aria-label')).toContain('Aug 2026');
+  });
+
   it('shows the empty state when the period has no attendance days', () => {
     const { el } = setup(vi.fn().mockReturnValue(of({ ...response, days: [] })));
 

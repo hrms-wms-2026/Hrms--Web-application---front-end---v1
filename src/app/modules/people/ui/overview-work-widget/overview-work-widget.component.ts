@@ -1,14 +1,16 @@
-import { ChangeDetectionStrategy, Component, inject, input } from '@angular/core';
+import { ChangeDetectionStrategy, Component, computed, inject, input } from '@angular/core';
 import { WidgetCardComponent } from '../../../../shared/ui/widget-card/widget-card.component';
 import { createWidgetLoader } from '../../../../shared/ui/widget-card/widget-loader';
 import { PeopleApiService } from '../../data-access/people-api.service';
 import { EmployeeWorkOverviewResponse } from '../../models/employee-overview.model';
 import { EmployeePeriodStore } from '../../state/employee-period.store';
+import { createCompareLoader, deltaIf } from '../../utils/overview-compare';
+import { DeltaBadgeComponent } from '../delta-badge/delta-badge.component';
 
 @Component({
   selector: 'app-overview-work-widget',
   standalone: true,
-  imports: [WidgetCardComponent],
+  imports: [WidgetCardComponent, DeltaBadgeComponent],
   host: { class: 'block h-full' },
   template: `
     <app-widget-card
@@ -72,19 +74,19 @@ import { EmployeePeriodStore } from '../../state/employee-period.store';
               <span class="flex items-center gap-1.5 text-slate-600">
                 <span class="w-2 h-2 rounded-full bg-emerald-500"></span> Completed
               </span>
-              <span class="font-bold text-slate-900">{{ d.completed }}</span>
+              <span class="flex items-center gap-1 font-bold text-slate-900">{{ d.completed }} <app-delta-badge [delta]="completedDelta()" [against]="period.compareLabel()" /></span>
             </div>
             <div class="flex items-center justify-between">
               <span class="flex items-center gap-1.5 text-slate-600">
                 <span class="w-2 h-2 rounded-full bg-blue-500"></span> In progress
               </span>
-              <span class="font-bold text-slate-900">{{ d.inProgress }}</span>
+              <span class="flex items-center gap-1 font-bold text-slate-900">{{ d.inProgress }} <app-delta-badge [delta]="inProgressDelta()" [against]="period.compareLabel()" /></span>
             </div>
             <div class="flex items-center justify-between">
               <span class="flex items-center gap-1.5 text-slate-600">
                 <span class="w-2 h-2 rounded-full bg-rose-500"></span> Overdue
               </span>
-              <span class="font-bold text-rose-600">{{ d.overdue }}</span>
+              <span class="flex items-center gap-1 font-bold text-rose-600">{{ d.overdue }} <app-delta-badge [delta]="overdueDelta()" [against]="period.compareLabel()" /></span>
             </div>
             <div class="flex items-center justify-between">
               <span class="flex items-center gap-1.5 text-slate-600">
@@ -112,7 +114,7 @@ import { EmployeePeriodStore } from '../../state/employee-period.store';
             <div class="mt-3 grid grid-cols-2 gap-4 border-t border-slate-100 pt-3 text-xs">
               <div>
                 <p class="text-[11px] text-slate-500">Completion rate</p>
-                <p class="text-sm font-bold text-slate-900 mt-0.5" data-testid="work-completion-rate">{{ d.completionRatePercent }}%</p>
+                <p class="flex items-center gap-1 text-sm font-bold text-slate-900 mt-0.5" data-testid="work-completion-rate">{{ d.completionRatePercent }}% <app-delta-badge [delta]="completionRateDelta()" [against]="period.compareLabel()" /></p>
               </div>
               <div>
                 <p class="text-[11px] text-slate-500">On-time completion</p>
@@ -145,13 +147,34 @@ import { EmployeePeriodStore } from '../../state/employee-period.store';
 })
 export class OverviewWorkWidgetComponent {
   private readonly api = inject(PeopleApiService);
-  private readonly period = inject(EmployeePeriodStore);
+  readonly period = inject(EmployeePeriodStore);
 
   readonly employeeId = input.required<string>();
 
   readonly loader = createWidgetLoader(
     () => this.api.getOverviewWork(this.employeeId(), this.period.from(), this.period.to()),
     { isEmpty: (v) => v.assigned === 0 }
+  );
+  readonly compareLoader = createCompareLoader(this.period, (from, to) =>
+    this.api.getOverviewWork(this.employeeId(), from, to)
+  );
+  readonly completedDelta = computed(() =>
+    deltaIf(this.period.isComparing(), this.loader.data()?.completed, this.compareLoader.data()?.completed, 'higher-better')
+  );
+  readonly inProgressDelta = computed(() =>
+    deltaIf(this.period.isComparing(), this.loader.data()?.inProgress, this.compareLoader.data()?.inProgress, 'neutral')
+  );
+  readonly overdueDelta = computed(() =>
+    deltaIf(this.period.isComparing(), this.loader.data()?.overdue, this.compareLoader.data()?.overdue, 'lower-better')
+  );
+  readonly completionRateDelta = computed(() =>
+    deltaIf(
+      this.period.isComparing(),
+      this.loader.data()?.completionRatePercent,
+      this.compareLoader.data()?.completionRatePercent,
+      'higher-better',
+      (n) => `${n}%`
+    )
   );
 
   share(count: number, d: EmployeeWorkOverviewResponse): number {
