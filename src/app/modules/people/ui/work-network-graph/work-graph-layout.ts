@@ -97,3 +97,60 @@ export function layoutWorkGraph(graph: EmployeeWorkGraphResponse, ticks = 300): 
 
   return { nodes, links };
 }
+
+export type WorkGraphModuleScope = 'all' | 'owner';
+
+export interface WorkGraphFilterOptions {
+  readonly moduleScope: WorkGraphModuleScope;
+  readonly showTasks: boolean;
+}
+
+export function filterWorkGraph(
+  graph: EmployeeWorkGraphResponse,
+  options: WorkGraphFilterOptions
+): EmployeeWorkGraphResponse {
+  const { moduleScope, showTasks } = options;
+
+  const keptNodes: WorkGraphNode[] = [];
+  const keptModuleIds = new Set<string>();
+
+  for (const node of graph.nodes) {
+    if (node.kind === 'employee' || node.kind === 'project') {
+      keptNodes.push(node);
+    } else if (node.kind === 'module') {
+      if (moduleScope === 'all' || node.role === 'owner') {
+        keptNodes.push(node);
+        keptModuleIds.add(node.id);
+      }
+    }
+  }
+
+  if (showTasks) {
+    for (const node of graph.nodes) {
+      if (node.kind === 'task') {
+        const isLinkedToKeptModule = graph.links.some(
+          (l) => l.kind === 'has_task' && ((l.target === node.id && keptModuleIds.has(l.source)) || (l.source === node.id && keptModuleIds.has(l.target)))
+        );
+        const matchesObjective =
+          node.objectiveId != null &&
+          graph.nodes.some((m) => m.kind === 'module' && keptModuleIds.has(m.id) && m.objectiveId === node.objectiveId);
+
+        if (isLinkedToKeptModule || matchesObjective) {
+          keptNodes.push(node);
+        }
+      }
+    }
+  }
+
+  const keptIds = new Set(keptNodes.map((n) => n.id));
+
+  const keptLinks = graph.links.filter(
+    (l) => keptIds.has(l.source) && keptIds.has(l.target)
+  );
+
+  return {
+    nodes: keptNodes,
+    links: keptLinks,
+    hiddenTaskCount: graph.hiddenTaskCount
+  };
+}
