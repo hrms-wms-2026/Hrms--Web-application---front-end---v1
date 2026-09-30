@@ -25,14 +25,16 @@ import {
 import { EmployeeEmploymentTabComponent } from './employment-tab.component';
 import { EmployeePersonalTabComponent } from './personal-tab.component';
 import { EmployeeOverviewTabComponent } from './overview-tab.component';
+import { EmployeeWorkActivityTabComponent } from './work-activity-tab.component';
 
-type DetailTab = 'overview' | 'employment' | 'personal';
+type DetailTab = 'overview' | 'employment' | 'work-activity' | 'personal';
 
 /**
  * Employee detail page shell backed by GET /api/v1/employees/{id}/detail: header (identity, key
  * facts, Transfer/Promote/Offboarding actions, resend-invitation), today's attendance strip, and
- * three tabs - Overview (per-widget attendance/discipline/time-off), Employment (job details,
- * Work Network, history) and Personal
+ * four tabs - Overview (per-widget attendance/discipline/time-off), Employment (job details,
+ * Work Network, history), Work & Activity (task summary, needs-attention, delivery, recorded
+ * activity, application usage, work pattern) and Personal
  * (personal info, emergency contacts, payroll when the server includes it).
  */
 @Component({
@@ -48,7 +50,8 @@ type DetailTab = 'overview' | 'employment' | 'personal';
     PopoverComponent,
     EmployeeEmploymentTabComponent,
     EmployeePersonalTabComponent,
-    EmployeeOverviewTabComponent
+    EmployeeOverviewTabComponent,
+    EmployeeWorkActivityTabComponent
   ],
   template: `
     @if (loading()) {
@@ -193,6 +196,9 @@ type DetailTab = 'overview' | 'employment' | 'personal';
         [saving]="savingJobDetails()"
         (save)="onJobDetailsSave($event)"
       />
+      @if (activeTab() === 'work-activity') {
+        <app-employee-work-activity-tab [employeeId]="employee.id" />
+      }
       @if (activeTab() === 'personal') {
         <app-employee-personal-tab [employee]="employee" />
       }
@@ -274,6 +280,7 @@ export class EmployeeDetailComponent {
   readonly tabs: readonly { readonly id: DetailTab; readonly label: string }[] = [
     { id: 'overview', label: 'Overview' },
     { id: 'employment', label: 'Employment' },
+    { id: 'work-activity', label: 'Work & Activity' },
     { id: 'personal', label: 'Personal' }
   ];
   readonly activeTab = signal<DetailTab>('overview');
