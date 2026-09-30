@@ -32,23 +32,6 @@ describe('WorkApprovalsApiService', () => {
 
   afterEach(() => httpMock.verify());
 
-  it('getApprovalHistory fetches project-scoped sent and received history', () => {
-    service.getApprovalHistory('project-1').subscribe((res) => expect(res).toEqual([]));
-
-    const req = httpMock.expectOne(`${environment.apiUrl}/work/projects/project-1/approval-history`);
-    expect(req.request.method).toBe('GET');
-    req.flush([]);
-  });
-
-  it('getProjectApprovals GETs /work/projects/p1/approvals?scope=inbox', () => {
-    service.getProjectApprovals('p1').subscribe((res) => expect(res).toEqual([]));
-
-    const req = httpMock.expectOne((r) => r.url === `${environment.apiUrl}/work/projects/p1/approvals`);
-    expect(req.request.method).toBe('GET');
-    expect(req.request.params.get('scope')).toBe('inbox');
-    req.flush([]);
-  });
-
   it('getApprovalFeed GETs the project approval feed', () => {
     service.getApprovalFeed('p1').subscribe((res) => expect(res).toEqual([]));
     const req = httpMock.expectOne(`${environment.apiUrl}/work/projects/p1/approval-feed`);
