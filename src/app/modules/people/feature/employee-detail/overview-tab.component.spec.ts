@@ -12,7 +12,19 @@ describe('EmployeeOverviewTabComponent', () => {
       getOverviewAttendanceDiscipline: vi.fn().mockReturnValue(
         of({ from: '2026-09-01', to: '2026-09-30', lateClockIns: 0, earlyClockOuts: 0, missingClockOuts: 0, overBreakDays: 0, overBreakMinutes: 0, locationTrackingEnabled: false, locationViolations: null })
       ),
-      getOverviewTimeOff: vi.fn().mockReturnValue(of({ year: 2026, balances: [], nextLeave: null }))
+      getOverviewTimeOff: vi.fn().mockReturnValue(of({ year: 2026, balances: [], nextLeave: null })),
+      getOverviewWork: vi.fn().mockReturnValue(
+        of({ from: '', to: '', assigned: 0, completed: 0, inProgress: 0, overdue: 0, notStarted: 0, completionRatePercent: 0, onTimeRatePercent: null })
+      ),
+      getOverviewDelivery: vi.fn().mockReturnValue(
+        of({ from: '', to: '', tasksAssigned: 0, tasksCompleted: 0, onTimeCompleted: 0, completedWithDueDate: 0, storyPointsAssigned: 0, storyPointsCompleted: 0, previous: null })
+      ),
+      getOverviewActivity: vi.fn().mockReturnValue(
+        of({ from: '', to: '', activityMonitoringEnabled: true, activeMinutes: 0, idleMinutes: 0, meetingMinutes: 0, daysWithData: 0, previous: null })
+      ),
+      getOverviewApprovals: vi.fn().mockReturnValue(
+        of({ from: '', to: '', pending: 0, approved: 0, rejected: 0, total: 0, items: [] })
+      )
     };
     TestBed.configureTestingModule({
       imports: [EmployeeOverviewTabComponent],
@@ -37,7 +49,7 @@ describe('EmployeeOverviewTabComponent', () => {
     const { api } = setup();
 
     expect(api.getOverviewAttendance).toHaveBeenCalledWith('emp-1', expect.any(String), expect.any(String));
-    expect(api.getOverviewAttendanceDiscipline).toHaveBeenCalledWith('emp-1', expect.any(String), expect.any(String));
+    expect(api.getOverviewAttendanceDiscipline).toHaveBeenCalledWith('emp-1', expect.any(String), expect.any(String), false);
     expect(api.getOverviewTimeOff).toHaveBeenCalledWith('emp-1');
   });
 
@@ -52,7 +64,7 @@ describe('EmployeeOverviewTabComponent', () => {
     fixture.detectChanges();
 
     expect(api.getOverviewAttendance).toHaveBeenLastCalledWith('emp-1', '2026-05-01', '2026-05-31');
-    expect(api.getOverviewAttendanceDiscipline).toHaveBeenLastCalledWith('emp-1', '2026-05-01', '2026-05-31');
+    expect(api.getOverviewAttendanceDiscipline).toHaveBeenLastCalledWith('emp-1', '2026-05-01', '2026-05-31', false);
     expect(api.getOverviewAttendance).toHaveBeenCalledTimes(2);
     expect(api.getOverviewTimeOff).toHaveBeenCalledTimes(1);
   });
