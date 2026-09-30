@@ -1,10 +1,11 @@
-import { ChangeDetectionStrategy, Component, computed, inject, input, output } from '@angular/core';
+import { ChangeDetectionStrategy, Component, computed, effect, inject, input, output, untracked } from '@angular/core';
 import { Router } from '@angular/router';
 import { AvatarComponent } from '../../../../shared/ui/avatar/avatar.component';
 import { DropdownMenuComponent, MenuItem } from '../../../../shared/ui/dropdown-menu/dropdown-menu.component';
 import { EmptyStateComponent } from '../../../../shared/ui/empty-state/empty-state.component';
 import { EmployeeColumnDef } from '../../models/employee-columns';
 import { EmployeeListItemResponse, EmployeeSortKey, SortDirection } from '../../models/employee.model';
+import { EmployeeDirectoryStore } from '../../../work/state/employee-directory.store';
 import {
   attendanceAttentionLabel,
   attendanceSeverityClass,
@@ -23,6 +24,7 @@ import {
 })
 export class EmployeeDirectoryTableComponent {
   private readonly router = inject(Router);
+  protected readonly directory = inject(EmployeeDirectoryStore);
 
   readonly employees = input.required<readonly EmployeeListItemResponse[]>();
   readonly columns = input.required<readonly EmployeeColumnDef[]>();
@@ -54,6 +56,24 @@ export class EmployeeDirectoryTableComponent {
   });
   protected readonly someSelected = computed(() =>
     !this.allSelected() && this.visibleIds().some((id) => this.selectedIds().has(id)));
+
+  constructor() {
+    effect(() => {
+      const employees = this.employees();
+      untracked(() => {
+        this.directory.seed(employees.map((employee) => ({
+          id: employee.id,
+          name: employee.fullName,
+          avatarFileId: employee.avatarFileId ?? null
+        })));
+
+        const managerIds = employees
+          .map((employee) => employee.reportingManagerId)
+          .filter((id): id is string => id !== null);
+        void this.directory.ensureLoaded(managerIds);
+      });
+    });
+  }
 
   protected ariaSort(column: EmployeeColumnDef): 'ascending' | 'descending' | 'none' {
     if (!column.sortKey || column.sortKey !== this.sortBy()) return 'none';

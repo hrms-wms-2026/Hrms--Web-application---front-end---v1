@@ -1,4 +1,4 @@
-import { ChangeDetectionStrategy, Component, input } from '@angular/core';
+import { ChangeDetectionStrategy, Component, computed, input, signal } from '@angular/core';
 import {
   EmployeeSignal,
   EmployeeSignalCategory,
@@ -27,8 +27,8 @@ import { DeltaBadgeComponent } from '../delta-badge/delta-badge.component';
           </span>
         </div>
 
-        <div class="divide-y divide-amber-200/70">
-          @for (signal of signals(); track signal.key; let i = $index) {
+        <div class="divide-y divide-amber-200/70" id="needs-attention-list">
+          @for (signal of displayedSignals(); track signal.key; let i = $index) {
             <div
               class="flex items-center justify-between gap-3 py-3"
               data-testid="attention-row"
@@ -55,15 +55,39 @@ import { DeltaBadgeComponent } from '../delta-badge/delta-badge.component';
             </div>
           }
         </div>
+
+        @if (signals().length > collapsedLimit) {
+          <div class="flex justify-end border-t border-amber-200/70 pt-3">
+            <button
+              type="button"
+              class="text-xs font-semibold text-blue-600 hover:text-blue-700 hover:underline cursor-pointer"
+              data-testid="attention-toggle"
+              aria-controls="needs-attention-list"
+              [attr.aria-expanded]="showAll()"
+              (click)="toggleShowAll()"
+            >
+              {{ showAll() ? 'Show less' : 'View all' }}
+            </button>
+          </div>
+        }
       </div>
     }
   `,
   changeDetection: ChangeDetectionStrategy.OnPush
 })
 export class OverviewNeedsAttentionComponent {
+  readonly collapsedLimit = 4;
   readonly signals = input.required<readonly EmployeeSignal[]>();
   readonly deltas = input<readonly (Delta | null)[]>([]);
   readonly against = input<string | null>(null);
+  readonly showAll = signal(false);
+  readonly displayedSignals = computed(() =>
+    this.showAll() ? this.signals() : this.signals().slice(0, this.collapsedLimit)
+  );
+
+  toggleShowAll(): void {
+    this.showAll.update((value) => !value);
+  }
 
   readonly dotClass: Record<EmployeeSignalSeverity, string> = {
     critical: 'bg-red-500',

@@ -110,7 +110,7 @@ function buildChartData(raw: ChartSources | null) {
     } @else if (data(); as d) {
       <div>
         <!-- Attendance vs. Delivery Trend Card -->
-        <div class="rounded-2xl border border-slate-200/80 bg-white p-6 shadow-xs">
+        <div class="rounded-2xl border border-slate-200/80 bg-white p-6 shadow-xs overflow-hidden">
           <!-- Chart Header -->
           <div class="flex flex-wrap items-center justify-between gap-3 mb-6">
             <div class="flex items-center gap-3">
@@ -172,10 +172,8 @@ function buildChartData(raw: ChartSources | null) {
 
             <!-- Bars Container -->
             <div class="relative flex items-end justify-around h-48 border-b border-slate-200 pb-0.5">
-              <!-- Thin Clean Connecting Line Overlay for Productivity -->
-              <svg class="absolute inset-0 w-full h-full pointer-events-none z-20" viewBox="0 0 100 100" preserveAspectRatio="none">
-                <polyline data-testid="trend-current" [attr.points]="svgPolylinePoints" fill="none" stroke="#2563eb" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" />
-                @if (compareData()) {
+              @if (compareData()) {
+                <svg class="absolute inset-0 w-full h-full pointer-events-none z-[5]" viewBox="0 0 100 100" preserveAspectRatio="none">
                   <polyline
                     data-testid="trend-compare"
                     [attr.points]="compareSvgPolylinePoints"
@@ -187,11 +185,8 @@ function buildChartData(raw: ChartSources | null) {
                     stroke-linecap="round"
                     stroke-linejoin="round"
                   />
-                }
-                @for (pt of svgPoints; track pt.x) {
-                  <circle [attr.cx]="pt.x" [attr.cy]="pt.y" r="2.5" fill="#2563eb" stroke="#ffffff" stroke-width="1.5" />
-                }
-              </svg>
+                </svg>
+              }
 
               @for (group of d.weeklyGroups; track group.label) {
                 <div class="flex-1 max-w-[130px] flex flex-col items-center h-full justify-end group cursor-pointer relative z-10">
@@ -291,21 +286,6 @@ export class OverviewProductivityDisciplineChartComponent {
       ? buildChartData({ attendance: raw.attendance, work: raw.work, discipline: null, delivery: null })
       : null;
   });
-
-  get svgPoints(): { x: number; y: number }[] {
-    const d = this.data();
-    if (!d || !d.weeklyGroups.length) return [];
-    return d.weeklyGroups.map((g, i) => {
-      const x = i * 25 + 16.5;
-      const clampedPct = Math.max(0, Math.min(100, g.productivityPercent));
-      const y = 100 - clampedPct;
-      return { x, y };
-    });
-  }
-
-  get svgPolylinePoints(): string {
-    return this.svgPoints.map((p) => `${p.x.toFixed(1)},${p.y.toFixed(1)}`).join(' ');
-  }
 
   get compareSvgPoints(): { x: number; y: number }[] {
     const data = this.compareData();

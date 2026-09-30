@@ -43,4 +43,37 @@ describe('OverviewNeedsAttentionComponent', () => {
     expect(rows.map((row: HTMLElement) => row.dataset['key'])).toEqual(['absent_days', 'pending_approvals']);
     expect(fixture.nativeElement.textContent).toContain('2 items');
   });
+
+  it('shows four alerts initially and expands or collapses the full list on request', () => {
+    const signals = [
+      signal('absent_days', 1, 'critical'),
+      signal('missing_clock_outs', 2, 'critical'),
+      signal('late_clock_ins', 3, 'warning'),
+      signal('early_clock_outs', 4, 'warning'),
+      signal('over_break', 5, 'warning'),
+      signal('pending_approvals', 6, 'info')
+    ];
+    const fixture = setup(signals);
+    const el = fixture.nativeElement as HTMLElement;
+
+    expect(el.querySelectorAll('[data-testid="attention-row"]')).toHaveLength(4);
+    expect(el.textContent).toContain('6 items');
+
+    const toggle = el.querySelector('[data-testid="attention-toggle"]') as HTMLButtonElement;
+    expect(toggle.textContent?.trim()).toBe('View all');
+    expect(toggle.getAttribute('aria-expanded')).toBe('false');
+
+    toggle.click();
+    fixture.detectChanges();
+
+    expect(el.querySelectorAll('[data-testid="attention-row"]')).toHaveLength(6);
+    expect(toggle.textContent?.trim()).toBe('Show less');
+    expect(toggle.getAttribute('aria-expanded')).toBe('true');
+
+    toggle.click();
+    fixture.detectChanges();
+
+    expect(el.querySelectorAll('[data-testid="attention-row"]')).toHaveLength(4);
+    expect(toggle.textContent?.trim()).toBe('View all');
+  });
 });

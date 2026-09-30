@@ -14,7 +14,7 @@ import { DeltaBadgeComponent } from '../delta-badge/delta-badge.component';
   selector: 'app-overview-time-off-widget',
   standalone: true,
   imports: [WidgetCardComponent, DeltaBadgeComponent],
-  host: { class: 'block h-full' },
+  host: { class: 'block' },
   template: `
     <app-widget-card
       title="Time Off Balance"

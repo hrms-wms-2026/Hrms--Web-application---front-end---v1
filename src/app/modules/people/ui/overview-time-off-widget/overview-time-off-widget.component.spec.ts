@@ -44,6 +44,12 @@ describe('OverviewTimeOffWidgetComponent', () => {
     expect(get).toHaveBeenCalledWith('emp-1');
   });
 
+  it('keeps the widget at its natural height instead of filling the overview column', () => {
+    const { el } = setup(vi.fn().mockReturnValue(of(response)));
+
+    expect(el.classList.contains('h-full')).toBe(false);
+  });
+
   it('lists each balance as remaining hours out of entitled', () => {
     const { el } = setup(vi.fn().mockReturnValue(of(response)));
     const rows = el.querySelectorAll('[data-testid="balance-row"]');

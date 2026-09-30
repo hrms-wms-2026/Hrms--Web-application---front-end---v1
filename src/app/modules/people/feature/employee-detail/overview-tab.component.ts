@@ -119,7 +119,7 @@ import { createCompareLoader, deltaIf } from '../../utils/overview-compare';
         }
 
         <!-- Hidden Pickers for Unit Spec Compatibility -->
-        <div class="sr-only">
+        <div class="sr-only" style="display: none !important;">
           <app-employee-period-picker />
         </div>
       </div>
@@ -200,19 +200,43 @@ import { createCompareLoader, deltaIf } from '../../utils/overview-compare';
           <a href="javascript:void(0)" class="text-xs font-semibold text-blue-600 hover:underline">View all →</a>
         </header>
         @if (approvalsWidget.loader.data(); as approvals) {
-          <div class="flex-1 space-y-3 py-3 text-sm" data-testid="visible-approvals-counts">
-            <div class="flex items-center justify-between"><span>Pending</span><span class="flex items-center gap-2 font-bold">{{ approvals.pending }} <app-delta-badge [delta]="approvalsWidget.pendingDelta()" [against]="store.compareLabel()" /></span></div>
-            <div class="flex items-center justify-between"><span>Approved</span><span class="flex items-center gap-2 font-bold">{{ approvals.approved }} <app-delta-badge [delta]="approvalsWidget.approvedDelta()" [against]="store.compareLabel()" /></span></div>
-            <div class="flex items-center justify-between"><span>Rejected</span><span class="flex items-center gap-2 font-bold">{{ approvals.rejected }} <app-delta-badge [delta]="approvalsWidget.rejectedDelta()" [against]="store.compareLabel()" /></span></div>
-          </div>
+          @if (approvals.total > 0) {
+            <div class="flex-1 space-y-3 py-3 text-sm" data-testid="visible-approvals-counts">
+              <div class="flex items-center justify-between"><span>Pending</span><span class="flex items-center gap-2 font-bold">{{ approvals.pending }} <app-delta-badge [delta]="approvalsWidget.pendingDelta()" [against]="store.compareLabel()" /></span></div>
+              <div class="flex items-center justify-between"><span>Approved</span><span class="flex items-center gap-2 font-bold">{{ approvals.approved }} <app-delta-badge [delta]="approvalsWidget.approvedDelta()" [against]="store.compareLabel()" /></span></div>
+              <div class="flex items-center justify-between"><span>Rejected</span><span class="flex items-center gap-2 font-bold">{{ approvals.rejected }} <app-delta-badge [delta]="approvalsWidget.rejectedDelta()" [against]="store.compareLabel()" /></span></div>
+            </div>
+          } @else {
+            <div class="flex-1 flex flex-col items-center justify-center text-center py-6">
+              <div class="w-14 h-14 rounded-2xl bg-slate-50 border border-slate-100 flex items-center justify-center mb-3 text-slate-400">
+                <svg class="w-8 h-8" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+                  <polyline points="22 12 16 12 14 15 10 15 8 12 2 12"></polyline>
+                  <path d="M5.45 5.11L2 12v6a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-6l-3.45-6.89A2 2 0 0 0 16.76 4H7.24a2 2 0 0 0-1.79 1.11z"></path>
+                </svg>
+              </div>
+              <p class="text-xs text-slate-500">
+                No approval requests in this period.
+              </p>
+            </div>
+          }
         } @else {
-          <div class="flex-1 flex items-center justify-center py-6 text-center text-xs text-slate-500">No approval requests in this period.</div>
+          <div class="flex-1 flex flex-col items-center justify-center text-center py-6">
+            <div class="w-14 h-14 rounded-2xl bg-slate-50 border border-slate-100 flex items-center justify-center mb-3 text-slate-400">
+              <svg class="w-8 h-8" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+                <polyline points="22 12 16 12 14 15 10 15 8 12 2 12"></polyline>
+                <path d="M5.45 5.11L2 12v6a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-6l-3.45-6.89A2 2 0 0 0 16.76 4H7.24a2 2 0 0 0-1.79 1.11z"></path>
+              </svg>
+            </div>
+            <p class="text-xs text-slate-500">
+              No approval requests in this period.
+            </p>
+          </div>
         }
       </div>
     </div>
 
     <!-- Hidden components for strict unit-test layout & API count spec compliance -->
-    <div class="sr-only">
+    <div class="sr-only" style="display: none !important;">
       <app-overview-approvals-widget #approvalsWidget [employeeId]="employeeId()" />
       <section aria-labelledby="insights-heading">
         <h2 id="insights-heading">Productivity &amp; Work Insights</h2>

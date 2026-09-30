@@ -11,6 +11,7 @@ import { PermissionService } from '../../../../core/auth/state/permission.servic
 import { AuthStore } from '../../../../core/auth/state/auth.store';
 import { OffboardingApiService } from '../../data-access/offboarding-api.service';
 import { WorkModeStore } from '../../../settings/state/work-mode.store';
+import { EmployeeDirectoryStore } from '../../../work/state/employee-directory.store';
 
 describe('EmployeeDetailComponent', () => {
   const detailFixture: EmployeeDetailResponse = {
@@ -105,6 +106,13 @@ describe('EmployeeDetailComponent', () => {
       update: vi.fn() as any,
       deactivate: vi.fn() as any
     };
+    const employeeDirectoryStub = {
+      get: vi.fn((id: string) => id === employee.id
+        ? { id, name: `${employee.personalInformation.firstName} ${employee.personalInformation.lastName}`, initials: 'AL', avatarUrl: 'https://api.test/files/avatar-1' }
+        : undefined),
+      ensureLoaded: vi.fn().mockResolvedValue(undefined),
+      seed: vi.fn()
+    };
 
     TestBed.configureTestingModule({
       imports: [EmployeeDetailComponent],
@@ -117,12 +125,13 @@ describe('EmployeeDetailComponent', () => {
         { provide: AuthStore, useValue: { employeeId: () => currentEmployeeId } },
         { provide: ActivatedRoute, useValue: { snapshot: { paramMap: { get: () => 'emp-1' } } } },
         { provide: OffboardingApiService, useValue: { getOffboarding: () => of(null) } },
-        { provide: WorkModeStore, useValue: workModeStoreStub }
+        { provide: WorkModeStore, useValue: workModeStoreStub },
+        { provide: EmployeeDirectoryStore, useValue: employeeDirectoryStub }
       ]
     });
 
     const fixture = TestBed.createComponent(EmployeeDetailComponent);
-    return { fixture, apiStub, notificationsStub };
+    return { fixture, apiStub, notificationsStub, employeeDirectoryStub };
   }
 
   it('shows the loader while the employee is loading', () => {
@@ -240,15 +249,78 @@ describe('EmployeeDetailComponent', () => {
     expect(fixture.nativeElement.querySelector('app-employee-payroll')).toBeFalsy();
   });
 
-  it('shows the key facts (manager, employment type, work mode, hire date) in the header', () => {
+  it('removes the marked metadata and outer border from the profile header', () => {
     const { fixture } = setup(detailFixture);
     fixture.detectChanges();
 
-    const facts = (fixture.nativeElement.querySelector('[data-testid="employee-key-facts"]') as HTMLElement).textContent as string;
-    expect(facts).toContain('Grace Hopper');
-    expect(facts).toContain('Full time');
-    expect(facts).toContain('Remote');
-    expect(facts).toContain('15 Jan 2024');
+    const header = fixture.nativeElement.querySelector('[data-testid="employee-profile-header"]') as HTMLElement;
+    expect(header.classList.contains('border')).toBe(false);
+    expect(header.textContent).not.toContain('E-001');
+    expect(header.textContent).not.toContain('Acme Corp');
+    expect(header.querySelector('[data-testid="employee-key-facts"]')).toBeNull();
+  });
+
+  it('renders the cached employee photo and requests a cache fill for deep links', () => {
+    const { fixture, employeeDirectoryStub } = setup(detailFixture);
+    fixture.detectChanges();
+
+    const image = fixture.nativeElement.querySelector('[data-testid="employee-profile-header"] app-avatar img') as HTMLImageElement;
+    const avatar = fixture.nativeElement.querySelector('[data-testid="employee-avatar"]') as HTMLElement;
+    expect(image.src).toBe('https://api.test/files/avatar-1');
+    expect(avatar.classList.contains('employee-detail-avatar')).toBe(true);
+    expect(employeeDirectoryStub.ensureLoaded).toHaveBeenCalledWith(['emp-1']);
+  });
+
+  it('orders identity details as name, email, then side-by-side position and department', () => {
+    const { fixture } = setup(detailFixture);
+    fixture.detectChanges();
+
+    const name = fixture.nativeElement.querySelector('[data-testid="employee-name"]') as HTMLElement;
+    const email = fixture.nativeElement.querySelector('[data-testid="employee-email"]') as HTMLElement;
+    const roleContext = fixture.nativeElement.querySelector('[data-testid="employee-role-context"]') as HTMLElement;
+
+    expect(name.compareDocumentPosition(email) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    expect(email.compareDocumentPosition(roleContext) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    expect(roleContext.classList.contains('flex')).toBe(true);
+    expect(roleContext.textContent).toContain('Software Engineer');
+    expect(roleContext.textContent).toContain('Engineering');
+  });
+
+  it('places attendance directly after the name and email without using the role width', () => {
+    const { fixture } = setup({
+      ...detailFixture,
+      attendanceSummary: {
+        showNotClockedInWarning: true,
+        shouldHaveClockedIn: true,
+        hasClockedInToday: false,
+        workDate: '2026-08-15',
+        timezone: 'UTC',
+        scheduledStartTime: '09:00',
+        warningLabel: 'Still has not clocked in',
+        attendanceStatus: 'not_clocked_in',
+        attendanceStatusLabel: 'Not clocked in',
+        attentionType: 'not_clocked_in',
+        attentionSeverity: 'critical',
+        attentionLabel: 'Still has not clocked in'
+      }
+    });
+    fixture.detectChanges();
+
+    const primaryRow = fixture.nativeElement.querySelector('[data-testid="employee-primary-row"]') as HTMLElement;
+    const primaryDetails = fixture.nativeElement.querySelector('[data-testid="employee-primary-details"]') as HTMLElement;
+    const status = fixture.nativeElement.querySelector('[data-testid="employee-attendance-status"]') as HTMLElement;
+    const roleContext = fixture.nativeElement.querySelector('[data-testid="employee-role-context"]') as HTMLElement;
+
+    expect(primaryDetails.parentElement).toBe(primaryRow);
+    expect(status.parentElement).toBe(primaryRow);
+    expect(primaryDetails.compareDocumentPosition(status) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    expect(status.compareDocumentPosition(roleContext) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    expect(primaryRow.classList.contains('flex-wrap')).toBe(true);
+    expect(status.classList.contains('flex-shrink-0')).toBe(true);
+    expect(status.classList.contains('border')).toBe(false);
+    expect(status.classList.contains('bg-rose-50')).toBe(true);
+    expect(status.textContent).toContain('Attendance today');
+    expect(status.textContent).toContain('Still has not clocked in');
   });
 
   it('shows a Transfer / Promote button and opens the modal when the employee has a legal entity', () => {
