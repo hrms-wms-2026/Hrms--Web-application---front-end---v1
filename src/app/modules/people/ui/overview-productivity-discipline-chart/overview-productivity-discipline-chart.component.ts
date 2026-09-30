@@ -1,7 +1,6 @@
 import { ChangeDetectionStrategy, Component, computed, inject, input } from '@angular/core';
 import { forkJoin, of } from 'rxjs';
 import { catchError } from 'rxjs/operators';
-import { WidgetCardComponent } from '../../../../shared/ui/widget-card/widget-card.component';
 import { createWidgetLoader } from '../../../../shared/ui/widget-card/widget-loader';
 import { PeopleApiService } from '../../data-access/people-api.service';
 import {
@@ -11,6 +10,7 @@ import {
   EmployeeWorkOverviewResponse
 } from '../../models/employee-overview.model';
 import { EmployeePeriodStore } from '../../state/employee-period.store';
+import { createCompareLoader } from '../../utils/overview-compare';
 
 export interface WeeklyBarGroup {
   readonly label: string;
@@ -19,6 +19,75 @@ export interface WeeklyBarGroup {
   readonly productivityPercent: number;
   readonly disciplineDetails: string;
   readonly productivityDetails: string;
+}
+
+interface ChartSources {
+  readonly attendance: EmployeeAttendanceOverviewResponse | null;
+  readonly discipline: EmployeeAttendanceDisciplineResponse | null;
+  readonly work: EmployeeWorkOverviewResponse | null;
+  readonly delivery: EmployeeDeliveryResponse | null;
+}
+
+function buildChartData(raw: ChartSources | null) {
+  if (!raw) return null;
+
+  const att = raw.attendance;
+  const disc = raw.discipline;
+  const wrk = raw.work;
+  const del = raw.delivery;
+  const attendedDays = att?.present ?? 0;
+  const lateClockIns = disc?.lateClockIns ?? att?.late ?? 0;
+  const onTimeDays = Math.max(0, attendedDays - lateClockIns);
+  const punctualityRate = attendedDays > 0 ? Math.min(100, Math.round((onTimeDays / attendedDays) * 100)) : 100;
+  const tasksAssigned = wrk?.assigned ?? del?.tasksAssigned ?? 0;
+  const tasksCompleted = wrk?.completed ?? del?.tasksCompleted ?? 0;
+  const completionRate = wrk?.completionRatePercent ?? (tasksAssigned > 0 ? Math.round((tasksCompleted / tasksAssigned) * 100) : 0);
+  const onTimeDeliveryRate =
+    wrk?.onTimeRatePercent ??
+    (del && del.completedWithDueDate > 0 ? Math.round((del.onTimeCompleted / del.completedWithDueDate) * 100) : completionRate);
+  const days = att?.days ?? [];
+  const weekRanges = [
+    { label: 'Week 1', periodLabel: 'Day 1–7', start: 1, end: 7 },
+    { label: 'Week 2', periodLabel: 'Day 8–14', start: 8, end: 14 },
+    { label: 'Week 3', periodLabel: 'Day 15–21', start: 15, end: 21 },
+    { label: 'Week 4', periodLabel: 'Day 22–31', start: 22, end: 31 }
+  ];
+  const weeklyGroups: WeeklyBarGroup[] = weekRanges.map((range) => {
+    const weekDays = days.filter((day) => {
+      const dayNumber = parseInt(day.date.split('-')[2] || '0', 10);
+      return dayNumber >= range.start && dayNumber <= range.end;
+    });
+    const eligibleDays = weekDays.filter(
+      (day) => day.status !== 'off' && day.status !== 'none' && day.status !== 'leave'
+    );
+    const attendedInWeek = eligibleDays.filter(
+      (day) => day.status === 'present' || day.status === 'late' || day.status === 'missing_clock_out'
+    ).length;
+    const disciplinePercent = eligibleDays.length > 0
+      ? Math.round((attendedInWeek / eligibleDays.length) * 100)
+      : null;
+    return {
+      label: range.label,
+      periodLabel: range.periodLabel,
+      disciplinePercent,
+      productivityPercent: tasksAssigned > 0 ? completionRate : 100,
+      disciplineDetails: eligibleDays.length > 0
+        ? `${attendedInWeek}/${eligibleDays.length} scheduled days attended`
+        : 'No scheduled employment days',
+      productivityDetails: `${tasksCompleted}/${tasksAssigned} tasks completed (${onTimeDeliveryRate}% on-time)`
+    };
+  });
+
+  return {
+    punctualityRate,
+    attendedDays,
+    tasksAssigned,
+    tasksCompleted,
+    completionRate,
+    onTimeDeliveryRate,
+    weeklyGroups,
+    summaryLine: `${attendedDays} days attended (${punctualityRate}% punctuality) · ${tasksCompleted} of ${tasksAssigned} tasks completed (${completionRate}% delivery rate)`
+  };
 }
 
 @Component({
@@ -46,9 +115,9 @@ export interface WeeklyBarGroup {
           <div class="flex flex-wrap items-center justify-between gap-3 mb-6">
             <div class="flex items-center gap-3">
               <h3 class="text-base font-bold text-slate-900">Attendance vs. Delivery Trend</h3>
-              @if (d.compareActive) {
+              @if (period.isComparing()) {
                 <span class="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-semibold bg-blue-50 text-blue-700 border border-blue-200">
-                  <span class="w-1.5 h-1.5 rounded-full bg-blue-600"></span> Comparing with previous period
+                  <span class="w-1.5 h-1.5 rounded-full bg-blue-600"></span> Comparing with {{ period.compareLabel() }}
                 </span>
               }
             </div>
@@ -61,6 +130,11 @@ export interface WeeklyBarGroup {
               <span class="flex items-center gap-1.5">
                 <span class="w-2.5 h-2.5 rounded-full bg-blue-600 inline-block"></span> Work Productivity
               </span>
+              @if (period.isComparing()) {
+                <span class="flex items-center gap-1.5">
+                  <span class="w-3.5 h-0.5 border-t-2 border-dashed border-blue-600 opacity-50 inline-block"></span> {{ period.compareLabel() }}
+                </span>
+              }
               <span class="flex items-center gap-1.5">
                 <span class="w-3.5 h-0.5 border-t-2 border-dashed border-slate-400 inline-block"></span> Target (80%)
               </span>
@@ -100,7 +174,20 @@ export interface WeeklyBarGroup {
             <div class="relative flex items-end justify-around h-48 border-b border-slate-200 pb-0.5">
               <!-- Thin Clean Connecting Line Overlay for Productivity -->
               <svg class="absolute inset-0 w-full h-full pointer-events-none z-20" viewBox="0 0 100 100" preserveAspectRatio="none">
-                <polyline [attr.points]="svgPolylinePoints" fill="none" stroke="#2563eb" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" />
+                <polyline data-testid="trend-current" [attr.points]="svgPolylinePoints" fill="none" stroke="#2563eb" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" />
+                @if (compareData()) {
+                  <polyline
+                    data-testid="trend-compare"
+                    [attr.points]="compareSvgPolylinePoints"
+                    fill="none"
+                    stroke="#2563eb"
+                    stroke-width="2"
+                    stroke-dasharray="4 4"
+                    opacity="0.5"
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                  />
+                }
                 @for (pt of svgPoints; track pt.x) {
                   <circle [attr.cx]="pt.x" [attr.cy]="pt.y" r="2.5" fill="#2563eb" stroke="#ffffff" stroke-width="1.5" />
                 }
@@ -150,7 +237,7 @@ export interface WeeklyBarGroup {
 })
 export class OverviewProductivityDisciplineChartComponent {
   private readonly api = inject(PeopleApiService);
-  private readonly period = inject(EmployeePeriodStore);
+  readonly period = inject(EmployeePeriodStore);
 
   readonly employeeId = input.required<string>();
 
@@ -190,89 +277,19 @@ export class OverviewProductivityDisciplineChartComponent {
             data.discipline.missingClockOuts === 0))
     }
   );
+  readonly compareLoader = createCompareLoader(this.period, (from, to) =>
+    forkJoin({
+      attendance: this.api.getOverviewAttendance(this.employeeId(), from, to),
+      work: this.api.getOverviewWork(this.employeeId(), from, to)
+    })
+  );
 
-  readonly data = computed(() => {
-    const raw = this.loader.data();
-    if (!raw) return null;
-
-    const att = raw.attendance;
-    const disc = raw.discipline;
-    const wrk = raw.work;
-    const del = raw.delivery;
-
-    const attendedDays = att?.present ?? 0;
-    const lateClockIns = disc?.lateClockIns ?? att?.late ?? 0;
-
-    const onTimeDays = Math.max(0, attendedDays - lateClockIns);
-    const punctualityRate = attendedDays > 0 ? Math.min(100, Math.round((onTimeDays / attendedDays) * 100)) : 100;
-
-    const tasksAssigned = wrk?.assigned ?? del?.tasksAssigned ?? 0;
-    const tasksCompleted = wrk?.completed ?? del?.tasksCompleted ?? 0;
-    const completionRate = wrk?.completionRatePercent ?? (tasksAssigned > 0 ? Math.round((tasksCompleted / tasksAssigned) * 100) : 0);
-    const onTimeDeliveryRate =
-      wrk?.onTimeRatePercent ??
-      (del && del.completedWithDueDate > 0 ? Math.round((del.onTimeCompleted / del.completedWithDueDate) * 100) : completionRate);
-
-    // Build Weekly Cohort Performance Groups
-    const days = att?.days ?? [];
-    const getWeekDays = (startDay: number, endDay: number) => {
-      return days.filter((d) => {
-        const dayNum = parseInt(d.date.split('-')[2] || '0', 10);
-        return dayNum >= startDay && dayNum <= endDay;
-      });
-    };
-
-    const weekRanges = [
-      { label: 'Week 1', periodLabel: 'Day 1–7', start: 1, end: 7 },
-      { label: 'Week 2', periodLabel: 'Day 8–14', start: 8, end: 14 },
-      { label: 'Week 3', periodLabel: 'Day 15–21', start: 15, end: 21 },
-      { label: 'Week 4', periodLabel: 'Day 22–31', start: 22, end: 31 }
-    ];
-
-    const weeklyGroups: WeeklyBarGroup[] = weekRanges.map((range) => {
-      const weekDays = getWeekDays(range.start, range.end);
-      const eligibleDays = weekDays.filter(
-        (day) => day.status !== 'off' && day.status !== 'none' && day.status !== 'leave'
-      );
-      const attendedInWeek = eligibleDays.filter(
-        (day) => day.status === 'present' || day.status === 'late' || day.status === 'missing_clock_out'
-      ).length;
-      const discPercent = eligibleDays.length > 0
-        ? Math.round((attendedInWeek / eligibleDays.length) * 100)
-        : null;
-      const discDetails = eligibleDays.length > 0
-        ? `${attendedInWeek}/${eligibleDays.length} scheduled days attended`
-        : 'No scheduled employment days';
-
-      // Distribute tasks or show overall period pacing
-      const prodPercent = tasksAssigned > 0 ? completionRate : 100;
-      const prodDetails = `${tasksCompleted}/${tasksAssigned} tasks completed (${onTimeDeliveryRate}% on-time)`;
-
-      return {
-        label: range.label,
-        periodLabel: range.periodLabel,
-        disciplinePercent: discPercent,
-        productivityPercent: prodPercent,
-        disciplineDetails: discDetails,
-        productivityDetails: prodDetails
-      };
-    });
-
-    const summaryLine = `${attendedDays} days attended (${punctualityRate}% punctuality) · ${tasksCompleted} of ${tasksAssigned} tasks completed (${completionRate}% delivery rate)`;
-
-    const compareActive = this.period.comparePrevious();
-
-    return {
-      punctualityRate,
-      attendedDays,
-      tasksAssigned,
-      tasksCompleted,
-      completionRate,
-      onTimeDeliveryRate,
-      weeklyGroups,
-      summaryLine,
-      compareActive
-    };
+  readonly data = computed(() => buildChartData(this.loader.data()));
+  readonly compareData = computed(() => {
+    const raw = this.compareLoader.data();
+    return raw
+      ? buildChartData({ attendance: raw.attendance, work: raw.work, discipline: null, delivery: null })
+      : null;
   });
 
   get svgPoints(): { x: number; y: number }[] {
@@ -288,5 +305,18 @@ export class OverviewProductivityDisciplineChartComponent {
 
   get svgPolylinePoints(): string {
     return this.svgPoints.map((p) => `${p.x.toFixed(1)},${p.y.toFixed(1)}`).join(' ');
+  }
+
+  get compareSvgPoints(): { x: number; y: number }[] {
+    const data = this.compareData();
+    if (!data) return [];
+    return data.weeklyGroups.map((group, index) => ({
+      x: index * 25 + 16.5,
+      y: 100 - Math.max(0, Math.min(100, group.productivityPercent))
+    }));
+  }
+
+  get compareSvgPolylinePoints(): string {
+    return this.compareSvgPoints.map((point) => `${point.x.toFixed(1)},${point.y.toFixed(1)}`).join(' ');
   }
 }

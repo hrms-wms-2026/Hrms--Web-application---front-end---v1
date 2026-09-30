@@ -3,7 +3,7 @@ import {
   EmployeeSignal,
   EmployeeWorkOverviewResponse
 } from '../models/employee-overview.model';
-import { buildKpiCards } from './overview-kpi-cards';
+import { buildKpiCards, kpiValue } from './overview-kpi-cards';
 
 describe('buildKpiCards', () => {
   const sig = (
@@ -92,5 +92,16 @@ describe('buildKpiCards', () => {
       suffix: 'min',
       denominator: null
     });
+  });
+
+  it('kpiValue reads a signal value, or 0 when the signal is absent that month', () => {
+    expect(kpiValue('over_break', [sig('over_break', 3)], attendance, work)).toBe(2);
+    expect(kpiValue('over_break', [], attendance, work)).toBe(0);
+    expect(kpiValue('over_break', null, attendance, work)).toBeNull();
+  });
+
+  it('kpiValue reads baselines and reports an unavailable source as null', () => {
+    expect(kpiValue('days_attended', [], attendance, work)).toBe(18);
+    expect(kpiValue('tasks_completed', [], attendance, null)).toBeNull();
   });
 });

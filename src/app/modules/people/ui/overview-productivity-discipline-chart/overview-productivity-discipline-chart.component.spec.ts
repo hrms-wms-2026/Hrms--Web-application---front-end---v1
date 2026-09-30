@@ -68,11 +68,13 @@ describe('OverviewProductivityDisciplineChartComponent', () => {
       ]
     });
 
+    const store = TestBed.inject(EmployeePeriodStore);
+    store.setMonth('2026-09');
     const fixture = TestBed.createComponent(OverviewProductivityDisciplineChartComponent);
     fixture.componentRef.setInput('employeeId', 'emp-1');
     fixture.detectChanges();
 
-    return { fixture, api, el: fixture.nativeElement as HTMLElement };
+    return { fixture, api, store, el: fixture.nativeElement as HTMLElement };
   }
 
   it('renders title, radial scores and correlation insight', () => {
@@ -101,5 +103,19 @@ describe('OverviewProductivityDisciplineChartComponent', () => {
     const { fixture } = setup(days);
 
     expect(fixture.componentInstance.data()?.weeklyGroups[0].disciplinePercent).toBeNull();
+  });
+
+  it('renders the picked compare month as a dashed second trend series', () => {
+    const { fixture, api, store, el } = setup();
+
+    store.setCompareMonth('2026-08');
+    fixture.detectChanges();
+
+    const compare = el.querySelector('[data-testid="trend-compare"]')!;
+    expect(compare).toBeTruthy();
+    expect(compare.getAttribute('stroke-dasharray')).toBe('4 4');
+    expect(el.textContent).toContain('Aug 2026');
+    expect(api.getOverviewAttendance).toHaveBeenCalledWith('emp-1', '2026-08-01', '2026-08-31');
+    expect(api.getOverviewWork).toHaveBeenCalledWith('emp-1', '2026-08-01', '2026-08-31');
   });
 });

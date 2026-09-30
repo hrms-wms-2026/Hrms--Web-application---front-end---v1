@@ -137,8 +137,30 @@ describe('EmployeeOverviewTabComponent', () => {
 
     expect(api.getOverviewAttendance).toHaveBeenLastCalledWith('emp-1', '2026-05-01', '2026-05-31');
     expect(api.getOverviewAttendanceDiscipline).toHaveBeenLastCalledWith('emp-1', '2026-05-01', '2026-05-31', false);
-    // 2 on initial load (attendance widget + chart widget), 2 after month change
-    expect(api.getOverviewAttendance).toHaveBeenCalledTimes(4);
+    // Attendance widget, chart, and Time Off monthly-leave line all follow the selected month.
+    expect(api.getOverviewAttendance).toHaveBeenCalledTimes(6);
     expect(api.getOverviewTimeOff).toHaveBeenCalledTimes(1);
+  });
+
+  it('loads the picked compare month for signals and visible widget deltas', () => {
+    const { fixture, api, el } = setup('2026-01-01');
+    const compareButton = [...el.querySelectorAll('button')].find((button) => button.textContent?.includes('Compare'))!;
+
+    compareButton.click();
+    fixture.detectChanges();
+    const picker = fixture.debugElement.query((element) => element.name === 'app-employee-compare-picker');
+    const select = picker.query((element) => element.name === 'app-select').componentInstance;
+    select.valueChange.emit('2026-08');
+    fixture.detectChanges();
+
+    for (const method of [
+      api.getOverviewSignals,
+      api.getOverviewAttendance,
+      api.getOverviewWork,
+      api.getOverviewApprovals
+    ]) {
+      expect(method).toHaveBeenCalledWith('emp-1', '2026-08-01', '2026-08-31');
+    }
+    expect(el.querySelector('app-overview-kpi-strip [data-testid="delta"]')).toBeTruthy();
   });
 });

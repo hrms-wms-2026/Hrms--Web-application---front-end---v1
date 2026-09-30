@@ -3,7 +3,11 @@ import { catchError, map, of } from 'rxjs';
 import { WidgetState } from '../../../../shared/ui/widget-card/widget-card.component';
 import { createWidgetLoader } from '../../../../shared/ui/widget-card/widget-loader';
 import { PeopleApiService } from '../../data-access/people-api.service';
-import { EmployeeSignal } from '../../models/employee-overview.model';
+import {
+  EmployeeAttendanceOverviewResponse,
+  EmployeeSignal,
+  EmployeeWorkOverviewResponse
+} from '../../models/employee-overview.model';
 import { EmployeePeriodStore } from '../../state/employee-period.store';
 import { EmployeeComparePickerComponent } from '../../ui/employee-compare-picker/employee-compare-picker.component';
 import { EmployeePeriodPickerComponent } from '../../ui/employee-period-picker/employee-period-picker.component';
@@ -12,12 +16,15 @@ import { OverviewApprovalsWidgetComponent } from '../../ui/overview-approvals-wi
 import { OverviewAttendanceWidgetComponent } from '../../ui/overview-attendance-widget/overview-attendance-widget.component';
 import { OverviewDeliveryWidgetComponent } from '../../ui/overview-delivery-widget/overview-delivery-widget.component';
 import { OverviewDisciplineWidgetComponent } from '../../ui/overview-discipline-widget/overview-discipline-widget.component';
+import { DeltaBadgeComponent } from '../../ui/delta-badge/delta-badge.component';
 import { OverviewKpiStripComponent } from '../../ui/overview-kpi-strip/overview-kpi-strip.component';
 import { OverviewNeedsAttentionComponent } from '../../ui/overview-needs-attention/overview-needs-attention.component';
 import { OverviewProductivityDisciplineChartComponent } from '../../ui/overview-productivity-discipline-chart/overview-productivity-discipline-chart.component';
 import { OverviewTimeOffWidgetComponent } from '../../ui/overview-time-off-widget/overview-time-off-widget.component';
 import { OverviewWorkWidgetComponent } from '../../ui/overview-work-widget/overview-work-widget.component';
-import { buildKpiCards } from '../../utils/overview-kpi-cards';
+import { Delta } from '../../utils/employee-overview.utils';
+import { KpiCard, buildKpiCards, kpiValue } from '../../utils/overview-kpi-cards';
+import { createCompareLoader, deltaIf } from '../../utils/overview-compare';
 
 /**
  * Overview tab. Owns the bounded month selection and optional comparison month (its own
@@ -40,7 +47,8 @@ import { buildKpiCards } from '../../utils/overview-kpi-cards';
     OverviewApprovalsWidgetComponent,
     OverviewActivityWidgetComponent,
     OverviewDisciplineWidgetComponent,
-    OverviewDeliveryWidgetComponent
+    OverviewDeliveryWidgetComponent,
+    DeltaBadgeComponent
   ],
   template: `
     <!-- Top Header Bar with Month Stepper & Compare Button -->
@@ -122,9 +130,12 @@ import { buildKpiCards } from '../../utils/overview-kpi-cards';
       <!-- Left Column (65%): signal-driven KPI strip + Attendance vs Delivery Trend Chart -->
       <div class="lg:col-span-2">
         @if (settled(signalsLoader.state(), attendanceWidget.loader.state(), workWidget.loader.state())) {
+          @let cards = kpiCards(signals(), attendanceWidget.loader.data() ?? null, workWidget.loader.data() ?? null);
           <app-overview-kpi-strip
             class="mb-6 block"
-            [cards]="kpiCards(signals(), attendanceWidget.loader.data() ?? null, workWidget.loader.data() ?? null)"
+            [cards]="cards"
+            [deltas]="kpiDeltas(cards, attendanceWidget.compareLoader.data() ?? null, workWidget.compareLoader.data() ?? null)"
+            [against]="store.compareLabel()"
           />
         } @else {
           <div class="mb-6 grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
@@ -141,7 +152,11 @@ import { buildKpiCards } from '../../utils/overview-kpi-cards';
         <app-overview-time-off-widget [employeeId]="employeeId()" />
 
         @if (signalsLoader.state() !== 'loading') {
-          <app-overview-needs-attention [signals]="signals()" />
+          <app-overview-needs-attention
+            [signals]="signals()"
+            [deltas]="attentionDeltas()"
+            [against]="store.compareLabel()"
+          />
         }
       </div>
     </div>
@@ -184,17 +199,15 @@ import { buildKpiCards } from '../../utils/overview-kpi-cards';
           <h2 class="text-base font-bold text-slate-900">Approval Activity</h2>
           <a href="javascript:void(0)" class="text-xs font-semibold text-blue-600 hover:underline">View all →</a>
         </header>
-        <div class="flex-1 flex flex-col items-center justify-center text-center py-6">
-          <div class="w-14 h-14 rounded-2xl bg-slate-50 border border-slate-100 flex items-center justify-center mb-3 text-slate-400">
-            <svg class="w-8 h-8" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
-              <polyline points="22 12 16 12 14 15 10 15 8 12 2 12"></polyline>
-              <path d="M5.45 5.11L2 12v6a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-6l-3.45-6.89A2 2 0 0 0 16.76 4H7.24a2 2 0 0 0-1.79 1.11z"></path>
-            </svg>
+        @if (approvalsWidget.loader.data(); as approvals) {
+          <div class="flex-1 space-y-3 py-3 text-sm" data-testid="visible-approvals-counts">
+            <div class="flex items-center justify-between"><span>Pending</span><span class="flex items-center gap-2 font-bold">{{ approvals.pending }} <app-delta-badge [delta]="approvalsWidget.pendingDelta()" [against]="store.compareLabel()" /></span></div>
+            <div class="flex items-center justify-between"><span>Approved</span><span class="flex items-center gap-2 font-bold">{{ approvals.approved }} <app-delta-badge [delta]="approvalsWidget.approvedDelta()" [against]="store.compareLabel()" /></span></div>
+            <div class="flex items-center justify-between"><span>Rejected</span><span class="flex items-center gap-2 font-bold">{{ approvals.rejected }} <app-delta-badge [delta]="approvalsWidget.rejectedDelta()" [against]="store.compareLabel()" /></span></div>
           </div>
-          <p class="text-xs text-slate-500">
-            No approval requests in this period.
-          </p>
-        </div>
+        } @else {
+          <div class="flex-1 flex items-center justify-center py-6 text-center text-xs text-slate-500">No approval requests in this period.</div>
+        }
       </div>
     </div>
 
@@ -223,6 +236,9 @@ export class EmployeeOverviewTabComponent {
       catchError(() => of([] as readonly EmployeeSignal[]))
     )
   );
+  readonly compareSignalsLoader = createCompareLoader(this.store, (from, to) =>
+    this.api.getOverviewSignals(this.employeeId(), from, to).pipe(map((response) => response.signals))
+  );
   readonly signals = computed(() => this.signalsLoader.data() ?? []);
   protected readonly kpiCards = buildKpiCards;
 
@@ -232,5 +248,32 @@ export class EmployeeOverviewTabComponent {
 
   protected settled(...states: WidgetState[]): boolean {
     return states.every((state) => state !== 'loading');
+  }
+
+  protected kpiDeltas(
+    cards: readonly KpiCard[],
+    compareAttendance: EmployeeAttendanceOverviewResponse | null,
+    compareWork: EmployeeWorkOverviewResponse | null
+  ): readonly (Delta | null)[] {
+    return cards.map((card) =>
+      deltaIf(
+        this.store.isComparing(),
+        card.value,
+        kpiValue(card.key, this.compareSignalsLoader.data() ?? null, compareAttendance, compareWork),
+        card.polarity
+      )
+    );
+  }
+
+  protected attentionDeltas(): readonly (Delta | null)[] {
+    const compare = this.compareSignalsLoader.data() ?? null;
+    return this.signals().map((signal) =>
+      deltaIf(
+        this.store.isComparing(),
+        signal.value,
+        compare ? compare.find((item) => item.key === signal.key)?.value ?? 0 : null,
+        'lower-better'
+      )
+    );
   }
 }

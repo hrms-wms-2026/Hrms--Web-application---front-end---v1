@@ -33,6 +33,28 @@ const SIGNAL_TITLES: Record<string, string> = {
   monitoring_exceptions: 'Monitoring exceptions'
 };
 
+const BASELINE_READERS: Record<
+  string,
+  (attendance: EmployeeAttendanceOverviewResponse | null, work: EmployeeWorkOverviewResponse | null) => number | null
+> = {
+  days_attended: (attendance) => attendance?.present ?? null,
+  tasks_completed: (_attendance, work) => work?.completed ?? null,
+  on_time_delivery: (_attendance, work) => (work ? work.onTimeRatePercent ?? 0 : null),
+  leave_days: (attendance) => attendance?.leaveDays ?? null
+};
+
+export function kpiValue(
+  key: string,
+  signals: readonly EmployeeSignal[] | null,
+  attendance: EmployeeAttendanceOverviewResponse | null,
+  work: EmployeeWorkOverviewResponse | null
+): number | null {
+  const baseline = BASELINE_READERS[key];
+  if (baseline) return baseline(attendance, work);
+  if (!signals) return null;
+  return signals.find((signal) => signal.key === key)?.value ?? 0;
+}
+
 export function buildKpiCards(
   signals: readonly EmployeeSignal[],
   attendance: EmployeeAttendanceOverviewResponse | null,

@@ -46,7 +46,7 @@ import { DeltaBadgeComponent } from '../delta-badge/delta-badge.component';
                 </div>
               </div>
               <div class="flex shrink-0 items-center gap-2">
-                <app-delta-badge [delta]="deltas()[i] ?? null" />
+                <app-delta-badge [delta]="deltas()[i] ?? null" [against]="against()" />
                 <span
                   class="rounded px-2 py-0.5 text-[11px] font-semibold"
                   [class]="chipClass[signal.severity]"
@@ -63,6 +63,7 @@ import { DeltaBadgeComponent } from '../delta-badge/delta-badge.component';
 export class OverviewNeedsAttentionComponent {
   readonly signals = input.required<readonly EmployeeSignal[]>();
   readonly deltas = input<readonly (Delta | null)[]>([]);
+  readonly against = input<string | null>(null);
 
   readonly dotClass: Record<EmployeeSignalSeverity, string> = {
     critical: 'bg-red-500',

@@ -31,7 +31,7 @@ import { DeltaBadgeComponent } from '../delta-badge/delta-badge.component';
             <span class="block text-sm font-medium text-slate-700">{{ card.label }}</span>
             <div class="mt-0.5 flex items-center justify-between gap-2">
               <span class="text-xs font-semibold">{{ card.detail }}</span>
-              <app-delta-badge [delta]="deltas()[i] ?? null" />
+              <app-delta-badge [delta]="deltas()[i] ?? null" [against]="against()" />
             </div>
           </div>
         </div>
@@ -43,6 +43,7 @@ import { DeltaBadgeComponent } from '../delta-badge/delta-badge.component';
 export class OverviewKpiStripComponent {
   readonly cards = input.required<readonly KpiCard[]>();
   readonly deltas = input<readonly (Delta | null)[]>([]);
+  readonly against = input<string | null>(null);
 
   readonly toneClass: Record<KpiTone, string> = {
     critical: 'bg-red-50 border-red-100 text-red-600',
