@@ -6,6 +6,13 @@ import { ObjectiveInvitationDto } from '../models/dto/objective-invitation.dto';
 import { PendingApprovalDto, WorkApprovalRequestDto } from '../models/dto/work-approval.dto';
 import { ObjectiveMemberApiService } from './objective-member-api.service';
 import { ApprovalHistoryItemDto } from '../models/dto/approval-history.dto';
+import {
+  ApprovalCommentDto,
+  ApprovalCommentSubjectType,
+  ApprovalDetailDto,
+  ApprovalFeedItemDto,
+  ApprovalFeedSource
+} from '../models/dto/approval-feed.dto';
 
 @Injectable({ providedIn: 'root' })
 export class WorkApprovalsApiService {
@@ -22,6 +29,31 @@ export class WorkApprovalsApiService {
   /** Unified approval engine: requests waiting on the caller (inbox) or made by the caller (mine). */
   getProjectApprovals(projectId: string, scope: 'inbox' | 'mine' = 'inbox'): Observable<WorkApprovalRequestDto[]> {
     return this.http.get<WorkApprovalRequestDto[]>(`${this.workBase}/projects/${projectId}/approvals`, { params: { scope } });
+  }
+
+  /** Every request the caller sent or received in the project (engine requests + module invitations), pending first. */
+  getApprovalFeed(projectId: string): Observable<ApprovalFeedItemDto[]> {
+    return this.http.get<ApprovalFeedItemDto[]>(`${this.workBase}/projects/${projectId}/approval-feed`);
+  }
+
+  getApprovalDetail(id: string, source: ApprovalFeedSource): Observable<ApprovalDetailDto> {
+    return this.http.get<ApprovalDetailDto>(`${this.workBase}/approvals/${id}`, { params: { source } });
+  }
+
+  getApprovalComments(subjectType: ApprovalCommentSubjectType, subjectId: string): Observable<ApprovalCommentDto[]> {
+    return this.http.get<ApprovalCommentDto[]>(`${this.workBase}/approval-comments`, { params: { subjectType, subjectId } });
+  }
+
+  createApprovalComment(subjectType: ApprovalCommentSubjectType, subjectId: string, content: string): Observable<ApprovalCommentDto> {
+    return this.http.post<ApprovalCommentDto>(`${this.workBase}/approval-comments`, { subjectType, subjectId, content });
+  }
+
+  replyApprovalComment(parentId: string, content: string): Observable<ApprovalCommentDto> {
+    return this.http.post<ApprovalCommentDto>(`${this.workBase}/approval-comments/${parentId}/replies`, { content });
+  }
+
+  editApprovalComment(id: string, content: string): Observable<ApprovalCommentDto> {
+    return this.http.patch<ApprovalCommentDto>(`${this.workBase}/approval-comments/${id}`, { content });
   }
 
   approveWorkApproval(id: string, editedPayloadJson?: string, comment?: string): Observable<WorkApprovalRequestDto> {
