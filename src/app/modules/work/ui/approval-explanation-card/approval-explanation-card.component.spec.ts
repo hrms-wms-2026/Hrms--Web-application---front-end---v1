@@ -80,19 +80,29 @@ describe('ApprovalExplanationCardComponent', () => {
     expect(rows[0].classList).toContain('approval-card__row--changed');
     expect(rows[1].classList).not.toContain('approval-card__row--changed');
     expect(rows[2].textContent).toContain('4h');
-    expect(q('approval-card-last-col')!.textContent!.trim()).toBe('Approve value');
     expect(q('approval-card-note')!.textContent).toContain('client asked');
     expect(el.textContent).toContain('Update task details');
+    // Only Current and Requested - no separate "Approve value" / "Approved" column.
+    expect(el.textContent).not.toContain('Approve value');
   });
 
-  it('shows editable inputs only when the caller can edit the payload', () => {
+  it('the Requested value is the editable input for the approver', () => {
+    render(detail());
+    const input = q('approval-edit-Title') as HTMLInputElement;
+    expect(input.value).toBe('A');
+    expect(q('approval-card-requested')).toBeNull();
+  });
+
+  it('once decided the Requested value is read-only and shows what was applied', () => {
     render(detail({ canEditPayload: false, fields: fields.map((f) => ({ ...f, editable: false })) }));
     expect(q('approval-edit-Title')).toBeNull();
-    expect(q('approval-card-last-col')).toBeNull();
+    expect(q('approval-card-requested')!.textContent!.trim()).toBe('A');
 
     render(detail({ canEditPayload: false, appliedPayloadJson: '{"Title":"B"}', fields: fields.map((f) => ({ ...f, editable: false, applied: f.key === 'Title' ? 'B' : null })) },
       { status: 'approved', canDecide: false }));
-    expect(q('approval-card-last-col')!.textContent!.trim()).toBe('Approved');
+    expect(q('approval-edit-Title')).toBeNull();
+    expect(q('approval-card-requested')!.textContent!.trim()).toBe('B');
+    expect(q('approval-card-originally')!.textContent).toContain('Requested A');
   });
 
   it('Approve emits the edited payload; without edits it emits undefined', () => {

@@ -156,10 +156,7 @@ const PRIORITY_OPTIONS: readonly WorkDropdownOption[] = [
 
           @if (d.fields.length > 0) {
             <section>
-              <div class="approval-card__label flex items-center justify-between gap-2">
-                <span>Changes</span>
-                @if (lastColumn()) { <span class="approval-card__tag" data-testid="approval-card-last-col">{{ lastColumn() }}</span> }
-              </div>
+              <div class="approval-card__label">Changes</div>
               @if (d.currentAllocatedHours !== null && allocationField(); as f) {
                 <div class="mb-2 grid grid-cols-2 gap-2" data-testid="approval-card-allocation">
                   <div class="approval-card__stat"><div class="approval-card__stat-value">{{ d.currentAllocatedHours }}h</div><div class="approval-card__stat-label">Current allocation</div></div>
@@ -172,11 +169,10 @@ const PRIORITY_OPTIONS: readonly WorkDropdownOption[] = [
                     <div class="approval-card__field-label">{{ f.label }}</div>
                     <div class="grid grid-cols-2 gap-2">
                       <div class="min-w-0"><div class="approval-card__mini">Current</div><div class="approval-card__field-value">{{ display(f, f.current) }}</div></div>
-                      <div class="min-w-0"><div class="approval-card__mini">Requested</div><div class="approval-card__field-value approval-card__requested">{{ display(f, f.requested) }}</div></div>
-                    </div>
-                    @if (lastColumn() === 'Approve value' && f.editable) {
-                      <div class="mt-2 min-w-0">
-                        <div class="approval-card__mini">Approve value</div>
+                      <div class="min-w-0">
+                        <div class="approval-card__mini">Requested</div>
+                        <!-- The approver edits the requested value in place; once decided it is read-only again. -->
+                        @if (d.canEditPayload && f.editable) {
                         @switch (f.kind) {
                           @case ('date') {
                             <app-date-picker class="block min-w-0" [value]="editValue(f)" [showQuickPresets]="false" [ariaLabel]="f.label" [inputTestId]="'approval-edit-' + f.key"
@@ -198,10 +194,14 @@ const PRIORITY_OPTIONS: readonly WorkDropdownOption[] = [
                         @if (fieldErrors()[f.key]; as err) {
                           <span class="approval-card__field-error" role="alert" [attr.data-testid]="'approval-edit-error-' + f.key">{{ err }}</span>
                         }
+                        } @else {
+                          <div class="approval-card__field-value approval-card__requested" data-testid="approval-card-requested">{{ display(f, f.applied ?? f.requested) }}</div>
+                          @if (f.applied !== null && f.applied !== f.requested) {
+                            <div class="approval-card__was" data-testid="approval-card-originally">Requested {{ display(f, f.requested) }}, changed by the approver</div>
+                          }
+                        }
                       </div>
-                    } @else if (lastColumn() === 'Approved') {
-                      <div class="mt-2"><div class="approval-card__mini">Approved</div><div class="approval-card__field-value font-semibold">{{ display(f, f.applied ?? f.requested) }}</div></div>
-                    }
+                    </div>
                   </div>
                 }
               </div>
@@ -277,7 +277,7 @@ const PRIORITY_OPTIONS: readonly WorkDropdownOption[] = [
     .approval-card__muted { margin: 0; padding: 24px 20px; color: var(--color-text-secondary); font-size: 13px; }
     .approval-card__error { margin: 0; padding: 8px 10px; border-radius: 8px; background: color-mix(in srgb, var(--color-danger) 8%, transparent); color: var(--color-danger); font-size: 12px; }
     .approval-card__label { margin-bottom: 8px; color: var(--color-text-secondary); font-size: 11px; font-weight: 700; letter-spacing: .05em; text-transform: uppercase; }
-    .approval-card__tag { padding: 2px 8px; border-radius: 999px; background: color-mix(in srgb, var(--color-accent) 12%, transparent); color: var(--color-accent); font-size: 10px; letter-spacing: .02em; text-transform: none; }
+    .approval-card__was { margin-top: 2px; color: var(--color-text-secondary); font-size: 10px; overflow-wrap: anywhere; }
     .approval-card__box { display: flex; flex-direction: column; padding: 4px 12px; border: 1px solid var(--color-border); border-radius: 12px; background: color-mix(in srgb, var(--color-surface-secondary) 30%, transparent); font-size: 12px; }
     .approval-card__row { display: flex; min-width: 0; align-items: center; justify-content: space-between; gap: 12px; padding: 8px 0; border-bottom: 1px solid color-mix(in srgb, var(--color-border) 50%, transparent); }
     .approval-card__row:last-child { border-bottom: 0; }
@@ -354,14 +354,6 @@ export class ApprovalExplanationCardComponent {
     return !!item?.targetId && (item.targetType === 'task' || item.targetType === 'module');
   });
 
-  /** "Approve value" while the caller may edit, "Approved" once an edited payload was applied, else hidden. */
-  protected readonly lastColumn = computed<'Approve value' | 'Approved' | null>(() => {
-    const d = this.detail();
-    if (!d) return null;
-    if (d.canEditPayload) return 'Approve value';
-    if (d.appliedPayloadJson) return 'Approved';
-    return null;
-  });
 
   protected readonly allocationField = computed(() =>
     this.item()?.actionType === 'module.allocation_extend' ? this.detail()!.fields.find((f) => f.kind === 'hours') ?? null : null);
