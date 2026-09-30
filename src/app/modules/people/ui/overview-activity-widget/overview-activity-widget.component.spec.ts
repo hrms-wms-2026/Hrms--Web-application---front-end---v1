@@ -48,23 +48,6 @@ describe('OverviewActivityWidgetComponent', () => {
     expect(text(el, 'activity-meeting')).toContain('1h 05m');
   });
 
-  it('shows deltas with the right tone: more active is good, more idle is bad, meetings are neutral', () => {
-    const previous = { activeMinutes: 100, idleMinutes: 50, meetingMinutes: 30, daysWithData: 10 };
-    const { el } = setup(vi.fn().mockReturnValue(of({ ...response, previous })));
-    const delta = (id: string) => el.querySelector(`[data-testid="${id}"] [data-testid="delta"]`)!;
-
-    expect(delta('activity-active-delta').textContent).toContain('+0h 50m');
-    expect(delta('activity-active-delta').classList.contains('delta--good')).toBe(true);
-    expect(delta('activity-idle-delta').classList.contains('delta--bad')).toBe(true);
-    expect(delta('activity-meeting-delta').classList.contains('delta--neutral')).toBe(true);
-  });
-
-  it('shows no deltas without previous data', () => {
-    const { el } = setup(vi.fn().mockReturnValue(of(response)));
-
-    expect(el.querySelector('[data-testid="delta"]')).toBeNull();
-  });
-
   it('says monitoring is not enabled when the employee is not monitored', () => {
     const { el } = setup(vi.fn().mockReturnValue(of({ ...response, activityMonitoringEnabled: false, activeMinutes: 0, idleMinutes: 0, meetingMinutes: 0, daysWithData: 0 })));
 
@@ -77,14 +60,9 @@ describe('OverviewActivityWidgetComponent', () => {
     expect(el.querySelector('[data-testid="widget-empty"]')!.textContent).toContain('No activity recorded');
   });
 
-  it('keeps legacy previous-period comparison off until explicit compare ranges are wired, and refetches on a month change', () => {
+  it('refetches on a month change', () => {
     const get = vi.fn().mockReturnValue(of(response));
     const { fixture, store } = setup(get);
-
-    store.setCompareMonth('2026-08');
-    fixture.detectChanges();
-    expect(get).toHaveBeenLastCalledWith('emp-1', '2026-09-01', '2026-09-30', false);
-    expect(get).toHaveBeenCalledTimes(1);
 
     store.setMonth('2026-08');
     fixture.detectChanges();

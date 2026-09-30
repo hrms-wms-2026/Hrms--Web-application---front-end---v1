@@ -49,9 +49,7 @@ export const EmployeePeriodStore = signalStore(
       canGoPrevious: computed(() => !minMonth() || month() > minMonth()!),
       canGoNext: computed(() => !maxMonth() || month() < maxMonth()!),
       monthOptions,
-      compareOptions: computed(() => monthOptions().filter((option) => option.value !== month())),
-      /** @deprecated Backend "previous period" compare is no longer used; removed in Part 2. */
-      comparePrevious: computed(() => false)
+      compareOptions: computed(() => monthOptions().filter((option) => option.value !== month()))
     };
   }),
   withMethods((store) => {
