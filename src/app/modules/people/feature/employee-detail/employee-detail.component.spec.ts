@@ -80,6 +80,7 @@ describe('EmployeeDetailComponent', () => {
       getOverviewApprovals: vi.fn().mockReturnValue(
         of({ from: '', to: '', pending: 0, approved: 0, rejected: 0, total: 0, items: [] })
       ),
+      getOverviewSignals: vi.fn().mockReturnValue(of({ from: '', to: '', signals: [] })),
       ...apiOverrides
     };
     const notificationsStub = { success: vi.fn(), error: vi.fn() };

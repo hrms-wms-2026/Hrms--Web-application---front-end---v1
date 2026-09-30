@@ -1,6 +1,7 @@
 import { TestBed } from '@angular/core/testing';
-import { of } from 'rxjs';
+import { Observable, Subject, of } from 'rxjs';
 import { PeopleApiService } from '../../data-access/people-api.service';
+import { EmployeeOverviewSignalsResponse, EmployeeSignal } from '../../models/employee-overview.model';
 import { EmployeeOverviewTabComponent } from './overview-tab.component';
 
 describe('EmployeeOverviewTabComponent', () => {
@@ -11,7 +12,27 @@ describe('EmployeeOverviewTabComponent', () => {
 
   afterEach(() => vi.useRealTimers());
 
-  function setup(hireDate: string | null = null) {
+  const signal = (
+    key: string,
+    rank: number,
+    severity: EmployeeSignal['severity'],
+    category: EmployeeSignal['category']
+  ): EmployeeSignal => ({
+    key,
+    rank,
+    severity,
+    category,
+    value: 2,
+    unit: 'count',
+    denominator: null,
+    label: `2 ${key}`,
+    detail: `${key} detail`
+  });
+
+  function setup(
+    hireDate: string | null = null,
+    signalsSource: Observable<EmployeeOverviewSignalsResponse> = of({ from: '', to: '', signals: [] })
+  ) {
     const api = {
       getOverviewAttendance: vi.fn().mockReturnValue(
         of({ from: '2026-09-01', to: '2026-09-30', workingDays: 0, present: 0, late: 0, missingClockOuts: 0, leaveDays: 0, days: [] })
@@ -31,7 +52,8 @@ describe('EmployeeOverviewTabComponent', () => {
       ),
       getOverviewApprovals: vi.fn().mockReturnValue(
         of({ from: '', to: '', pending: 0, approved: 0, rejected: 0, total: 0, items: [] })
-      )
+      ),
+      getOverviewSignals: vi.fn().mockReturnValue(signalsSource)
     };
     TestBed.configureTestingModule({
       imports: [EmployeeOverviewTabComponent],
@@ -59,6 +81,41 @@ describe('EmployeeOverviewTabComponent', () => {
     expect(api.getOverviewAttendance).toHaveBeenCalledWith('emp-1', expect.any(String), expect.any(String));
     expect(api.getOverviewAttendanceDiscipline).toHaveBeenCalledWith('emp-1', expect.any(String), expect.any(String), false);
     expect(api.getOverviewTimeOff).toHaveBeenCalledWith('emp-1');
+  });
+
+  it('shows four KPI skeletons until signals settle', () => {
+    const pending = new Subject<EmployeeOverviewSignalsResponse>();
+    const { el } = setup(null, pending);
+
+    expect(el.querySelectorAll('[data-testid="kpi-skeleton"]')).toHaveLength(4);
+    expect(el.querySelector('[data-testid="kpi-card"]')).toBeNull();
+  });
+
+  it('renders four baseline KPI cards and no Needs Attention card without signals', () => {
+    const { el } = setup();
+
+    expect(el.querySelector('app-overview-kpi-strip')).toBeTruthy();
+    expect(el.querySelectorAll('[data-testid="kpi-card"]')).toHaveLength(4);
+    expect(el.querySelector('[data-testid="needs-attention"]')).toBeNull();
+  });
+
+  it('keeps signal order in the KPI strip and Needs Attention rows', () => {
+    const signals = [
+      signal('overdue_tasks', 1, 'critical', 'work'),
+      signal('late_clock_ins', 2, 'warning', 'attendance')
+    ];
+    const { el } = setup(null, of({ from: '2026-09-01', to: '2026-09-30', signals }));
+    const cards = el.querySelectorAll('[data-testid="kpi-card"]');
+    const rows = Array.from(el.querySelectorAll<HTMLElement>('[data-testid="attention-row"]'));
+
+    expect(cards[0].textContent).toContain('Overdue tasks');
+    expect(rows.map((row) => row.dataset['key'])).toEqual(['overdue_tasks', 'late_clock_ins']);
+  });
+
+  it('requests signals for the employee and selected period', () => {
+    const { api } = setup();
+
+    expect(api.getOverviewSignals).toHaveBeenCalledWith('emp-1', '2026-09-01', '2026-09-30');
   });
 
   it('disables both month-stepper buttons when employment starts in the current month', () => {

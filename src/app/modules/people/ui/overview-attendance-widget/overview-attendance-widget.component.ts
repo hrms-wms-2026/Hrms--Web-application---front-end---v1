@@ -60,7 +60,7 @@ import { attendanceDayLabel } from '../../utils/employee-overview.utils';
 
           <div class="mt-4 pt-3 border-t border-slate-100">
             <div class="flex h-2 items-end gap-[2px] rounded-full overflow-hidden" role="img" [attr.aria-label]="stripLabel(d.days)" data-testid="attendance-strip">
-              @for (day of d.days; track day.date) {
+              @for (day of stripDays(d.days); track day.date) {
                 <span
                   data-testid="day-bar"
                   class="day flex-1"
@@ -105,6 +105,10 @@ export class OverviewAttendanceWidgetComponent {
   stripLabel(days: readonly EmployeeAttendanceDay[]): string {
     const count = (status: EmployeeAttendanceDay['status']) => days.filter((d) => d.status === status).length;
     return `Daily attendance: ${count('present')} present, ${count('late')} late, ${count('missing_clock_out')} missing clock-out, ${count('leave')} on leave, ${count('absent')} absent`;
+  }
+
+  stripDays(days: readonly EmployeeAttendanceDay[]): readonly EmployeeAttendanceDay[] {
+    return days.filter((day) => day.status !== 'none' && day.status !== 'off');
   }
 
   recentWeekDays(days: readonly EmployeeAttendanceDay[]) {

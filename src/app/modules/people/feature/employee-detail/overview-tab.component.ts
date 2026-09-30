@@ -1,4 +1,9 @@
-import { ChangeDetectionStrategy, Component, effect, inject, input } from '@angular/core';
+import { ChangeDetectionStrategy, Component, computed, effect, inject, input } from '@angular/core';
+import { catchError, map, of } from 'rxjs';
+import { WidgetState } from '../../../../shared/ui/widget-card/widget-card.component';
+import { createWidgetLoader } from '../../../../shared/ui/widget-card/widget-loader';
+import { PeopleApiService } from '../../data-access/people-api.service';
+import { EmployeeSignal } from '../../models/employee-overview.model';
 import { EmployeePeriodStore } from '../../state/employee-period.store';
 import { EmployeeComparePickerComponent } from '../../ui/employee-compare-picker/employee-compare-picker.component';
 import { EmployeePeriodPickerComponent } from '../../ui/employee-period-picker/employee-period-picker.component';
@@ -7,9 +12,12 @@ import { OverviewApprovalsWidgetComponent } from '../../ui/overview-approvals-wi
 import { OverviewAttendanceWidgetComponent } from '../../ui/overview-attendance-widget/overview-attendance-widget.component';
 import { OverviewDeliveryWidgetComponent } from '../../ui/overview-delivery-widget/overview-delivery-widget.component';
 import { OverviewDisciplineWidgetComponent } from '../../ui/overview-discipline-widget/overview-discipline-widget.component';
+import { OverviewKpiStripComponent } from '../../ui/overview-kpi-strip/overview-kpi-strip.component';
+import { OverviewNeedsAttentionComponent } from '../../ui/overview-needs-attention/overview-needs-attention.component';
 import { OverviewProductivityDisciplineChartComponent } from '../../ui/overview-productivity-discipline-chart/overview-productivity-discipline-chart.component';
 import { OverviewTimeOffWidgetComponent } from '../../ui/overview-time-off-widget/overview-time-off-widget.component';
 import { OverviewWorkWidgetComponent } from '../../ui/overview-work-widget/overview-work-widget.component';
+import { buildKpiCards } from '../../utils/overview-kpi-cards';
 
 /**
  * Overview tab. Owns the bounded month selection and optional comparison month (its own
@@ -24,6 +32,8 @@ import { OverviewWorkWidgetComponent } from '../../ui/overview-work-widget/overv
     EmployeePeriodPickerComponent,
     EmployeeComparePickerComponent,
     OverviewProductivityDisciplineChartComponent,
+    OverviewKpiStripComponent,
+    OverviewNeedsAttentionComponent,
     OverviewAttendanceWidgetComponent,
     OverviewTimeOffWidgetComponent,
     OverviewWorkWidgetComponent,
@@ -109,8 +119,20 @@ import { OverviewWorkWidgetComponent } from '../../ui/overview-work-widget/overv
 
     <!-- TIER 1: Executive Analytics & Summary Hero (65% / 35% Split) -->
     <div class="grid gap-6 lg:grid-cols-3 mb-6">
-      <!-- Left Column (65%): 4 Pastel Metric Cards + Attendance vs Delivery Trend Chart -->
+      <!-- Left Column (65%): signal-driven KPI strip + Attendance vs Delivery Trend Chart -->
       <div class="lg:col-span-2">
+        @if (settled(signalsLoader.state(), attendanceWidget.loader.state(), workWidget.loader.state())) {
+          <app-overview-kpi-strip
+            class="mb-6 block"
+            [cards]="kpiCards(signals(), attendanceWidget.loader.data() ?? null, workWidget.loader.data() ?? null)"
+          />
+        } @else {
+          <div class="mb-6 grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+            @for (i of [0, 1, 2, 3]; track i) {
+              <div data-testid="kpi-skeleton" class="h-36 animate-pulse rounded-2xl bg-slate-100"></div>
+            }
+          </div>
+        }
         <app-overview-productivity-discipline-chart [employeeId]="employeeId()" />
       </div>
 
@@ -118,173 +140,9 @@ import { OverviewWorkWidgetComponent } from '../../ui/overview-work-widget/overv
       <div class="lg:col-span-1 flex flex-col gap-6">
         <app-overview-time-off-widget [employeeId]="employeeId()" />
 
-        <!-- Needs Attention Action Card (100% Data-Driven & Dynamic) -->
-        @let wData = workWidget.loader.data();
-        @let aData = attendanceWidget.loader.data();
-        @let apData = approvalsWidget.loader.data();
-
-        @let overdueCount = wData?.overdue ?? 0;
-        @let assignedCount = wData?.assigned ?? 0;
-        @let overduePct = assignedCount > 0 ? ((overdueCount / assignedCount) * 100).toFixed(0) : '0';
-        @let lateCount = aData?.late ?? 0;
-        @let attendedCount = (aData?.present ?? 0) + lateCount;
-        @let missingCount = aData?.missingClockOuts ?? 0;
-        @let pendingCount = apData?.pending ?? 0;
-        @let activeAlerts = (overdueCount > 0 ? 1 : 0) + (lateCount > 0 ? 1 : 0) + (missingCount > 0 ? 1 : 0) + (pendingCount > 0 ? 1 : 0);
-
-        <div class="rounded-2xl border border-[#fef08a] bg-[#fefce8] p-5 shadow-xs">
-          <div class="flex items-center justify-between mb-4">
-            <div class="flex items-center gap-2">
-              <span class="text-amber-600">
-                <svg class="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                  <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"></path>
-                  <line x1="12" y1="9" x2="12" y2="13"></line>
-                  <line x1="12" y1="17" x2="12.01" y2="17"></line>
-                </svg>
-              </span>
-              <h3 class="text-base font-bold text-slate-900">Needs Attention</h3>
-            </div>
-            @if (activeAlerts > 0) {
-              <span class="px-2 py-0.5 rounded-full text-[11px] font-bold bg-amber-100/80 text-amber-800">
-                {{ activeAlerts }} {{ activeAlerts === 1 ? 'item' : 'items' }}
-              </span>
-            } @else {
-              <span class="px-2 py-0.5 rounded-full text-[11px] font-bold bg-emerald-100 text-emerald-800">
-                All clear
-              </span>
-            }
-          </div>
-
-          <div class="divide-y divide-[#fef08a]/80 text-xs">
-            <!-- Row 1: Overdue Tasks -->
-            <div class="py-3 flex items-center justify-between">
-              <div class="flex items-center gap-3">
-                @if (overdueCount > 0) {
-                  <span class="w-7 h-7 rounded-full bg-red-500 text-white flex items-center justify-center font-bold text-xs shadow-xs flex-shrink-0">
-                    !
-                  </span>
-                  <div>
-                    <p class="font-bold text-slate-900 text-xs">{{ overdueCount }} overdue {{ overdueCount === 1 ? 'task' : 'tasks' }}</p>
-                    <p class="text-[11px] text-slate-500 mt-0.5">{{ overduePct }}% of assigned work overdue</p>
-                  </div>
-                } @else {
-                  <span class="w-7 h-7 rounded-full bg-emerald-500 text-white flex items-center justify-center font-bold text-xs shadow-xs flex-shrink-0">
-                    <svg class="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3">
-                      <polyline points="20 6 9 17 4 12"></polyline>
-                    </svg>
-                  </span>
-                  <div>
-                    <p class="font-bold text-slate-900 text-xs">No overdue tasks</p>
-                    <p class="text-[11px] text-slate-500 mt-0.5">All assigned tasks on track</p>
-                  </div>
-                }
-              </div>
-              @if (overdueCount > 0) {
-                <span class="px-2 py-0.5 rounded text-[11px] font-semibold bg-red-100 text-red-700">Urgent</span>
-              } @else {
-                <span class="text-xs text-slate-400 font-bold">—</span>
-              }
-            </div>
-
-            <!-- Row 2: Late Arrivals -->
-            <div class="py-3 flex items-center justify-between">
-              <div class="flex items-center gap-3">
-                @if (lateCount > 0) {
-                  <span class="w-7 h-7 rounded-full bg-amber-500 text-white flex items-center justify-center font-bold text-xs shadow-xs flex-shrink-0">
-                    <svg class="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
-                      <circle cx="12" cy="12" r="10"></circle>
-                      <polyline points="12 6 12 12 16 14"></polyline>
-                    </svg>
-                  </span>
-                  <div>
-                    <p class="font-bold text-slate-900 text-xs">{{ lateCount }} late {{ lateCount === 1 ? 'arrival' : 'arrivals' }}</p>
-                    <p class="text-[11px] text-slate-500 mt-0.5">Across {{ attendedCount }} attended {{ attendedCount === 1 ? 'day' : 'days' }}</p>
-                  </div>
-                } @else {
-                  <span class="w-7 h-7 rounded-full bg-emerald-500 text-white flex items-center justify-center font-bold text-xs shadow-xs flex-shrink-0">
-                    <svg class="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3">
-                      <polyline points="20 6 9 17 4 12"></polyline>
-                    </svg>
-                  </span>
-                  <div>
-                    <p class="font-bold text-slate-900 text-xs">No late arrivals</p>
-                    <p class="text-[11px] text-slate-500 mt-0.5">Punctual attendance records</p>
-                  </div>
-                }
-              </div>
-              @if (lateCount > 0) {
-                <span class="px-2 py-0.5 rounded text-[11px] font-semibold bg-amber-100 text-amber-700">Warning</span>
-              } @else {
-                <span class="text-xs text-slate-400 font-bold">—</span>
-              }
-            </div>
-
-            <!-- Row 3: Missing Clock-outs -->
-            <div class="py-3 flex items-center justify-between">
-              <div class="flex items-center gap-3">
-                @if (missingCount > 0) {
-                  <span class="w-7 h-7 rounded-full bg-orange-500 text-white flex items-center justify-center font-bold text-xs shadow-xs flex-shrink-0">
-                    <svg class="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
-                      <path d="M14 5l7 7m0 0l-7 7m7-7H3"></path>
-                    </svg>
-                  </span>
-                  <div>
-                    <p class="font-bold text-slate-900 text-xs">{{ missingCount }} missing clock-out{{ missingCount === 1 ? '' : 's' }}</p>
-                    <p class="text-[11px] text-slate-500 mt-0.5">Records need review</p>
-                  </div>
-                } @else {
-                  <span class="w-7 h-7 rounded-full bg-emerald-500 text-white flex items-center justify-center font-bold text-xs shadow-xs flex-shrink-0">
-                    <svg class="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3">
-                      <polyline points="20 6 9 17 4 12"></polyline>
-                    </svg>
-                  </span>
-                  <div>
-                    <p class="font-bold text-slate-900 text-xs">No missing clock-outs</p>
-                    <p class="text-[11px] text-slate-500 mt-0.5">All time entries complete</p>
-                  </div>
-                }
-              </div>
-              @if (missingCount > 0) {
-                <span class="px-2 py-0.5 rounded text-[11px] font-semibold bg-orange-100 text-orange-700">Action</span>
-              } @else {
-                <span class="text-xs text-slate-400 font-bold">—</span>
-              }
-            </div>
-
-            <!-- Row 4: Pending Approvals -->
-            <div class="py-3 flex items-center justify-between">
-              <div class="flex items-center gap-3">
-                @if (pendingCount > 0) {
-                  <span class="w-7 h-7 rounded-full bg-blue-500 text-white flex items-center justify-center font-bold text-xs shadow-xs flex-shrink-0">
-                    <svg class="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
-                      <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
-                      <polyline points="14 2 14 8 20 8"></polyline>
-                    </svg>
-                  </span>
-                  <div>
-                    <p class="font-bold text-slate-900 text-xs">{{ pendingCount }} pending approval {{ pendingCount === 1 ? 'request' : 'requests' }}</p>
-                    <p class="text-[11px] text-slate-500 mt-0.5">Awaiting review</p>
-                  </div>
-                } @else {
-                  <span class="w-7 h-7 rounded-full bg-slate-300 text-white flex items-center justify-center font-bold text-xs shadow-xs flex-shrink-0">
-                    <svg class="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3">
-                      <polyline points="20 6 9 17 4 12"></polyline>
-                    </svg>
-                  </span>
-                  <div>
-                    <p class="font-bold text-slate-900 text-xs">No pending approval requests</p>
-                    <p class="text-[11px] text-slate-500 mt-0.5">All clear</p>
-                  </div>
-                }
-              </div>
-              @if (pendingCount > 0) {
-                <span class="px-2 py-0.5 rounded text-[11px] font-semibold bg-blue-100 text-blue-700">Review</span>
-              } @else {
-                <span class="text-xs text-slate-400 font-bold">—</span>
-              }
-            </div>
-          </div>
-        </div>
+        @if (signalsLoader.state() !== 'loading') {
+          <app-overview-needs-attention [signals]="signals()" />
+        }
       </div>
     </div>
 
@@ -357,9 +215,22 @@ export class EmployeeOverviewTabComponent {
   readonly employeeId = input.required<string>();
   readonly hireDate = input<string | null>(null);
   readonly terminationDate = input<string | null>(null);
+  private readonly api = inject(PeopleApiService);
   protected readonly store = inject(EmployeePeriodStore);
+  readonly signalsLoader = createWidgetLoader(() =>
+    this.api.getOverviewSignals(this.employeeId(), this.store.from(), this.store.to()).pipe(
+      map((response) => response.signals),
+      catchError(() => of([] as readonly EmployeeSignal[]))
+    )
+  );
+  readonly signals = computed(() => this.signalsLoader.data() ?? []);
+  protected readonly kpiCards = buildKpiCards;
 
   constructor() {
     effect(() => this.store.setBounds(this.hireDate(), this.terminationDate()));
+  }
+
+  protected settled(...states: WidgetState[]): boolean {
+    return states.every((state) => state !== 'loading');
   }
 }

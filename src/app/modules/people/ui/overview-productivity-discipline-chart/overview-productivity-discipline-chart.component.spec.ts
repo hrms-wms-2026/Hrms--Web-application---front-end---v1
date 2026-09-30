@@ -5,7 +5,7 @@ import { EmployeePeriodStore } from '../../state/employee-period.store';
 import { OverviewProductivityDisciplineChartComponent } from './overview-productivity-discipline-chart.component';
 
 describe('OverviewProductivityDisciplineChartComponent', () => {
-  function setup() {
+  function setup(days: readonly { date: string; status: string }[] = []) {
     const api = {
       getOverviewAttendance: vi.fn().mockReturnValue(
         of({
@@ -16,7 +16,7 @@ describe('OverviewProductivityDisciplineChartComponent', () => {
           late: 1,
           missingClockOuts: 0,
           leaveDays: 1,
-          days: []
+          days
         })
       ),
       getOverviewAttendanceDiscipline: vi.fn().mockReturnValue(
@@ -91,5 +91,15 @@ describe('OverviewProductivityDisciplineChartComponent', () => {
     expect(api.getOverviewAttendanceDiscipline).toHaveBeenCalledWith('emp-1', expect.any(String), expect.any(String), false);
     expect(api.getOverviewWork).toHaveBeenCalledWith('emp-1', expect.any(String), expect.any(String));
     expect(api.getOverviewDelivery).toHaveBeenCalledWith('emp-1', expect.any(String), expect.any(String), false);
+  });
+
+  it('plots a gap for a week containing only pre-hire days', () => {
+    const days = Array.from({ length: 7 }, (_, index) => ({
+      date: `2026-09-0${index + 1}`,
+      status: 'none'
+    }));
+    const { fixture } = setup(days);
+
+    expect(fixture.componentInstance.data()?.weeklyGroups[0].disciplinePercent).toBeNull();
   });
 });

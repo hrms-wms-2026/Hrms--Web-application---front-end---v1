@@ -11,12 +11,11 @@ import {
   EmployeeWorkOverviewResponse
 } from '../../models/employee-overview.model';
 import { EmployeePeriodStore } from '../../state/employee-period.store';
-import { Delta, computeDelta } from '../../utils/employee-overview.utils';
 
 export interface WeeklyBarGroup {
   readonly label: string;
   readonly periodLabel: string;
-  readonly disciplinePercent: number;
+  readonly disciplinePercent: number | null;
   readonly productivityPercent: number;
   readonly disciplineDetails: string;
   readonly productivityDetails: string;
@@ -38,130 +37,9 @@ export interface WeeklyBarGroup {
     </div>
 
     @if (loader.state() === 'loading') {
-      <div class="animate-pulse space-y-6">
-        <div class="grid grid-cols-2 sm:grid-cols-4 gap-4">
-          <div class="h-28 rounded-2xl bg-slate-100"></div>
-          <div class="h-28 rounded-2xl bg-slate-100"></div>
-          <div class="h-28 rounded-2xl bg-slate-100"></div>
-          <div class="h-28 rounded-2xl bg-slate-100"></div>
-        </div>
-        <div class="h-72 rounded-2xl bg-slate-100"></div>
-      </div>
+      <div class="h-72 animate-pulse rounded-2xl bg-slate-100"></div>
     } @else if (data(); as d) {
-      <div class="space-y-6">
-        <!-- 4 Pastel Top Metric Cards -->
-        <div class="grid grid-cols-2 sm:grid-cols-4 gap-4">
-          <!-- Card 1: Days Attended (Pastel Green) -->
-          <div class="bg-[#f0fdf4] border border-emerald-100/80 rounded-2xl p-4 sm:p-5 flex flex-col justify-between shadow-xs">
-            <div class="flex items-start justify-between">
-              <span class="w-8 h-8 rounded-lg bg-emerald-100 text-emerald-600 flex items-center justify-center font-bold">
-                <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                  <rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect>
-                  <line x1="16" y1="2" x2="16" y2="6"></line>
-                  <line x1="8" y1="2" x2="8" y2="6"></line>
-                  <line x1="3" y1="10" x2="21" y2="10"></line>
-                </svg>
-              </span>
-              <div class="text-2xl sm:text-3xl font-bold tracking-tight text-slate-900">
-                {{ d.attendedDays }} <span class="text-lg font-normal text-slate-400">/ {{ d.workingDays }}</span>
-              </div>
-            </div>
-            <div class="mt-3">
-              <span class="text-sm font-medium text-slate-600 block">Days attended</span>
-              <span class="text-xs font-semibold text-emerald-600 flex items-center gap-1 mt-0.5">
-                ● {{ d.attendanceRate }}% of working days
-              </span>
-            </div>
-          </div>
-
-          <!-- Card 2: Late Arrivals (Pastel Rose) -->
-          <div class="bg-[#fff1f2] border border-rose-100/80 rounded-2xl p-4 sm:p-5 flex flex-col justify-between shadow-xs">
-            <div class="flex items-start justify-between">
-              <span class="w-8 h-8 rounded-lg bg-rose-100 text-rose-600 flex items-center justify-center font-bold">
-                <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                  <circle cx="12" cy="12" r="10"></circle>
-                  <polyline points="12 6 12 12 16 14"></polyline>
-                </svg>
-              </span>
-              <div class="text-2xl sm:text-3xl font-bold tracking-tight text-rose-600">
-                {{ d.lateClockIns }}
-              </div>
-            </div>
-            <div class="mt-3 flex items-center justify-between">
-              <div>
-                <span class="text-sm font-medium text-slate-600 block">Late arrivals</span>
-                <span class="text-xs font-semibold text-rose-600 flex items-center gap-1 mt-0.5">
-                  ● {{ d.lateRate }}% late rate
-                </span>
-              </div>
-              @if (d.lateDelta; as delta) {
-                <span class="text-[11px] font-bold px-2 py-0.5 rounded-full" [class]="deltaClass(delta)">
-                  {{ delta.text }}
-                </span>
-              }
-            </div>
-          </div>
-
-          <!-- Card 3: Missing Clock-outs (Pastel Orange) -->
-          <div class="bg-[#fff7ed] border border-orange-100/80 rounded-2xl p-4 sm:p-5 flex flex-col justify-between shadow-xs">
-            <div class="flex items-start justify-between">
-              <span class="w-8 h-8 rounded-lg bg-orange-100 text-orange-600 flex items-center justify-center font-bold">
-                <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                  <path d="M14 5l7 7m0 0l-7 7m7-7H3"></path>
-                </svg>
-              </span>
-              <div class="text-2xl sm:text-3xl font-bold tracking-tight text-orange-600">
-                {{ d.missingClockOuts }}
-              </div>
-            </div>
-            <div class="mt-3 flex items-center justify-between">
-              <div>
-                <span class="text-sm font-medium text-slate-600 block">Missing clock-outs</span>
-                <span class="text-xs font-semibold text-orange-600 flex items-center gap-1 mt-0.5">
-                  ● Needs review
-                </span>
-              </div>
-              @if (d.missingDelta; as delta) {
-                <span class="text-[11px] font-bold px-2 py-0.5 rounded-full" [class]="deltaClass(delta)">
-                  {{ delta.text }}
-                </span>
-              }
-            </div>
-          </div>
-
-          <!-- Card 4: Tasks Completed (Pastel Blue) -->
-          <div class="bg-[#eff6ff] border border-blue-100/80 rounded-2xl p-4 sm:p-5 flex flex-col justify-between shadow-xs">
-            <div class="flex items-start justify-between">
-              <span class="w-8 h-8 rounded-lg bg-blue-100 text-blue-600 flex items-center justify-center font-bold">
-                <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
-                  <polyline points="20 6 9 17 4 12"></polyline>
-                </svg>
-              </span>
-              <div class="text-2xl sm:text-3xl font-bold tracking-tight text-slate-900">
-                {{ d.tasksCompleted }} <span class="text-lg font-normal text-slate-400">/ {{ d.tasksAssigned }}</span>
-              </div>
-            </div>
-            <div class="mt-3">
-              <div class="flex items-center justify-between">
-                <div>
-                  <span class="text-sm font-medium text-slate-600 block">Tasks completed</span>
-                  <span class="text-xs font-semibold text-blue-600 flex items-center gap-1 mt-0.5">
-                    {{ d.completionRate }}% completion rate
-                  </span>
-                </div>
-                @if (d.tasksDelta; as delta) {
-                  <span class="text-[11px] font-bold px-2 py-0.5 rounded-full" [class]="deltaClass(delta)">
-                    {{ delta.text }}
-                  </span>
-                }
-              </div>
-              <div class="w-full bg-blue-200/60 rounded-full h-1 mt-1.5 overflow-hidden">
-                <div class="bg-blue-600 h-1 rounded-full transition-all duration-300" [style.width.%]="d.completionRate"></div>
-              </div>
-            </div>
-          </div>
-        </div>
-
+      <div>
         <!-- Attendance vs. Delivery Trend Card -->
         <div class="rounded-2xl border border-slate-200/80 bg-white p-6 shadow-xs">
           <!-- Chart Header -->
@@ -237,7 +115,7 @@ export interface WeeklyBarGroup {
                       <div
                         class="w-full rounded-t-sm bg-emerald-500 transition-all duration-300 hover:brightness-110"
                         [style.height.%]="group.disciplinePercent"
-                        [style.minHeight.px]="group.disciplinePercent > 0 ? 6 : 0"
+                        [style.minHeight.px]="group.disciplinePercent !== null && group.disciplinePercent > 0 ? 6 : 0"
                       ></div>
                     </div>
 
@@ -324,23 +202,16 @@ export class OverviewProductivityDisciplineChartComponent {
 
     const attendedDays = att?.present ?? 0;
     const lateClockIns = disc?.lateClockIns ?? att?.late ?? 0;
-    const earlyClockOuts = disc?.earlyClockOuts ?? 0;
-    const missingClockOuts = disc?.missingClockOuts ?? att?.missingClockOuts ?? 0;
-    const overBreakMinutes = disc?.overBreakMinutes ?? 0;
 
     const onTimeDays = Math.max(0, attendedDays - lateClockIns);
     const punctualityRate = attendedDays > 0 ? Math.min(100, Math.round((onTimeDays / attendedDays) * 100)) : 100;
 
     const tasksAssigned = wrk?.assigned ?? del?.tasksAssigned ?? 0;
     const tasksCompleted = wrk?.completed ?? del?.tasksCompleted ?? 0;
-    const overdueTasks = wrk?.overdue ?? 0;
     const completionRate = wrk?.completionRatePercent ?? (tasksAssigned > 0 ? Math.round((tasksCompleted / tasksAssigned) * 100) : 0);
     const onTimeDeliveryRate =
       wrk?.onTimeRatePercent ??
       (del && del.completedWithDueDate > 0 ? Math.round((del.onTimeCompleted / del.completedWithDueDate) * 100) : completionRate);
-
-    const storyPointsAssigned = del?.storyPointsAssigned ?? 0;
-    const storyPointsCompleted = del?.storyPointsCompleted ?? 0;
 
     // Build Weekly Cohort Performance Groups
     const days = att?.days ?? [];
@@ -358,23 +229,20 @@ export class OverviewProductivityDisciplineChartComponent {
       { label: 'Week 4', periodLabel: 'Day 22–31', start: 22, end: 31 }
     ];
 
-    const weeklyGroups: WeeklyBarGroup[] = weekRanges.map((range, index) => {
+    const weeklyGroups: WeeklyBarGroup[] = weekRanges.map((range) => {
       const weekDays = getWeekDays(range.start, range.end);
-      const attendedInWeek = weekDays.filter((d) => d.status === 'present' || d.status === 'late').length;
-      const onTimeInWeek = weekDays.filter((d) => d.status === 'present').length;
-      const lateInWeek = weekDays.filter((d) => d.status === 'late').length;
-
-      let discPercent = punctualityRate;
-      let discDetails = `${onTimeDays}/${attendedDays} on time`;
-      if (weekDays.length > 0) {
-        if (attendedInWeek > 0) {
-          discPercent = Math.round((onTimeInWeek / attendedInWeek) * 100);
-          discDetails = `${onTimeInWeek}/${attendedInWeek} on time (${lateInWeek} late)`;
-        } else {
-          discPercent = 100;
-          discDetails = 'No working days recorded';
-        }
-      }
+      const eligibleDays = weekDays.filter(
+        (day) => day.status !== 'off' && day.status !== 'none' && day.status !== 'leave'
+      );
+      const attendedInWeek = eligibleDays.filter(
+        (day) => day.status === 'present' || day.status === 'late' || day.status === 'missing_clock_out'
+      ).length;
+      const discPercent = eligibleDays.length > 0
+        ? Math.round((attendedInWeek / eligibleDays.length) * 100)
+        : null;
+      const discDetails = eligibleDays.length > 0
+        ? `${attendedInWeek}/${eligibleDays.length} scheduled days attended`
+        : 'No scheduled employment days';
 
       // Distribute tasks or show overall period pacing
       const prodPercent = tasksAssigned > 0 ? completionRate : 100;
@@ -390,60 +258,22 @@ export class OverviewProductivityDisciplineChartComponent {
       };
     });
 
-    const workingDays = att?.workingDays ?? (attendedDays > 0 ? attendedDays : 22);
-    const attendanceRate = workingDays > 0 ? Math.min(100, Math.round((attendedDays / workingDays) * 100)) : 100;
-    const lateRate = attendedDays > 0 ? Math.min(100, Math.round((lateClockIns / attendedDays) * 100)) : 0;
     const summaryLine = `${attendedDays} days attended (${punctualityRate}% punctuality) · ${tasksCompleted} of ${tasksAssigned} tasks completed (${completionRate}% delivery rate)`;
 
     const compareActive = this.period.comparePrevious();
-    const prevDisc = disc?.previous;
-    const prevDel = del?.previous;
-
-    const lateDelta = prevDisc && compareActive
-      ? computeDelta(lateClockIns, prevDisc.lateClockIns, 'lower-better')
-      : null;
-
-    const missingDelta = prevDisc && compareActive
-      ? computeDelta(missingClockOuts, prevDisc.missingClockOuts, 'lower-better')
-      : null;
-
-    const tasksDelta = prevDel && compareActive
-      ? computeDelta(tasksCompleted, prevDel.tasksCompleted, 'higher-better')
-      : null;
 
     return {
       punctualityRate,
-      onTimeDays,
       attendedDays,
-      workingDays,
-      attendanceRate,
-      lateClockIns,
-      lateRate,
-      earlyClockOuts,
-      missingClockOuts,
-      overBreakMinutes,
       tasksAssigned,
       tasksCompleted,
-      overdueTasks,
       completionRate,
       onTimeDeliveryRate,
-      storyPointsAssigned,
-      storyPointsCompleted,
       weeklyGroups,
       summaryLine,
-      compareActive,
-      lateDelta,
-      missingDelta,
-      tasksDelta
+      compareActive
     };
   });
-
-  deltaClass(delta: Delta | null): string {
-    if (!delta) return '';
-    if (delta.tone === 'good') return 'bg-emerald-100 text-emerald-800';
-    if (delta.tone === 'bad') return 'bg-rose-100 text-rose-800';
-    return 'bg-slate-100 text-slate-700';
-  }
 
   get svgPoints(): { x: number; y: number }[] {
     const d = this.data();
