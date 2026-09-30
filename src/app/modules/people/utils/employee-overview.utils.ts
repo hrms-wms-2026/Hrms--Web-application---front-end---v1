@@ -21,6 +21,24 @@ export function monthLabel(month: string): string {
   return `${MONTH_NAMES[monthNumber - 1]} ${year}`;
 }
 
+export function monthKeyOf(isoDate: string): string {
+  return isoDate.slice(0, 7);
+}
+
+export function shiftMonth(month: string, delta: number): string {
+  const [year, monthNumber] = month.split('-').map(Number);
+  return currentMonthKey(new Date(year, monthNumber - 1 + delta, 1));
+}
+
+/** Inclusive, newest first. */
+export function monthsBetween(min: string, max: string): readonly { value: string; label: string }[] {
+  const months: { value: string; label: string }[] = [];
+  for (let month = max; month >= min; month = shiftMonth(month, -1)) {
+    months.push({ value: month, label: monthLabel(month) });
+  }
+  return months;
+}
+
 /** Newest first, starting at the month containing `now`. */
 export function recentMonths(now: Date = new Date(), count = 12): readonly { value: string; label: string }[] {
   const months: { value: string; label: string }[] = [];

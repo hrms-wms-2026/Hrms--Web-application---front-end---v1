@@ -8,8 +8,11 @@ import {
   formatMinutes,
   formatShortDate,
   monthBounds,
+  monthKeyOf,
   monthLabel,
-  recentMonths
+  monthsBetween,
+  recentMonths,
+  shiftMonth
 } from './employee-overview.utils';
 
 describe('employee-overview.utils', () => {
@@ -105,4 +108,19 @@ describe('formatShortDate', () => {
     expect(formatShortDate('2026-09-01T23:30:00+00:00')).toBe('Sep 1');
     expect(formatShortDate('2026-12-31T00:00:00Z')).toBe('Dec 31');
   });
+});
+
+describe('month range helpers', () => {
+  it('monthKeyOf takes the YYYY-MM prefix', () => expect(monthKeyOf('2024-02-01')).toBe('2024-02'));
+
+  it('shiftMonth crosses year boundaries', () => {
+    expect(shiftMonth('2026-01', -1)).toBe('2025-12');
+    expect(shiftMonth('2025-12', 1)).toBe('2026-01');
+  });
+
+  it('monthsBetween is inclusive and newest first', () => {
+    expect(monthsBetween('2026-07', '2026-09').map((m) => m.value)).toEqual(['2026-09', '2026-08', '2026-07']);
+  });
+
+  it('monthsBetween is empty when inverted', () => expect(monthsBetween('2026-10', '2026-09')).toEqual([]));
 });
