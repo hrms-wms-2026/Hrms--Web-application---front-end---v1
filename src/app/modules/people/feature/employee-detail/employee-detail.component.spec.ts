@@ -149,7 +149,20 @@ describe('EmployeeDetailComponent', () => {
     expect(fixture.nativeElement.querySelector('app-employee-personal-tab')).toBeTruthy();
     expect(fixture.nativeElement.querySelector('app-employee-personal-info')).toBeTruthy();
     expect(fixture.nativeElement.querySelector('app-employee-emergency-contacts')).toBeTruthy();
-    expect(fixture.nativeElement.querySelector('app-employee-employment-tab')).toBeFalsy();
+    expect(fixture.nativeElement.querySelector('app-employee-employment-tab')?.hasAttribute('hidden')).toBe(true);
+  });
+
+  it('does not reload the work graph when switching to Personal and back to Employment', () => {
+    const { fixture, apiStub } = setup(detailFixture);
+    fixture.detectChanges();
+    expect(apiStub.getWorkGraph).toHaveBeenCalledTimes(1);
+
+    fixture.componentInstance.activeTab.set('personal');
+    fixture.detectChanges();
+    fixture.componentInstance.activeTab.set('employment');
+    fixture.detectChanges();
+
+    expect(apiStub.getWorkGraph).toHaveBeenCalledTimes(1);
   });
 
   it('switches tabs when a tab button is clicked', () => {

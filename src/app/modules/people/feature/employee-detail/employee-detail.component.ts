@@ -179,15 +179,15 @@ type DetailTab = 'employment' | 'personal';
         </nav>
       </div>
 
-      @if (activeTab() === 'employment') {
-        <app-employee-employment-tab
-          [employee]="employee"
-          [jobJourney]="jobJourney()"
-          [canEdit]="canChangePosition() && !isReadOnly()"
-          [saving]="savingJobDetails()"
-          (save)="onJobDetailsSave($event)"
-        />
-      } @else {
+      <app-employee-employment-tab
+        [hidden]="activeTab() !== 'employment'"
+        [employee]="employee"
+        [jobJourney]="jobJourney()"
+        [canEdit]="canChangePosition() && !isReadOnly()"
+        [saving]="savingJobDetails()"
+        (save)="onJobDetailsSave($event)"
+      />
+      @if (activeTab() === 'personal') {
         <app-employee-personal-tab [employee]="employee" />
       }
 
