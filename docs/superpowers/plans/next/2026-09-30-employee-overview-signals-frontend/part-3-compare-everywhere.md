@@ -48,19 +48,27 @@ describe('deltaIf', () => {
   it('treats a missing current value as 0', () => expect(deltaIf(true, undefined, 2, 'lower-better')!.tone).toBe('good'));
 });
 
+// Same host-component + fixture.detectChanges() pattern as shared/ui/widget-card/widget-loader.spec.ts
+// (the repo does not use TestBed.flushEffects/tick).
+const load = vi.fn((_from: string, _to: string) => of(1));
+
+@Component({ standalone: true, template: '', providers: [EmployeePeriodStore] })
+class HostComponent {
+  readonly store = inject(EmployeePeriodStore);
+  readonly loader = createCompareLoader(this.store, load);
+}
+
 describe('createCompareLoader', () => {
   it('does not call the API while compare is off and calls it with the compare bounds when on', () => {
-    TestBed.configureTestingModule({ providers: [EmployeePeriodStore] });
-    const store = TestBed.inject(EmployeePeriodStore);
-    store.setBounds('2026-01-01', null, new Date(2026, 8, 30));
-    const load = vi.fn(() => of(1));
-    const loader = TestBed.runInInjectionContext(() => createCompareLoader(store, load));
-    TestBed.flushEffects();
+    const fixture = TestBed.createComponent(HostComponent);
+    const host = fixture.componentInstance;
+    host.store.setBounds('2026-01-01', null, new Date(2026, 8, 30));
+    fixture.detectChanges();
     expect(load).not.toHaveBeenCalled();
-    store.setCompareMonth('2026-06');
-    TestBed.flushEffects();
+    host.store.setCompareMonth('2026-06');
+    fixture.detectChanges();
     expect(load).toHaveBeenCalledWith('2026-06-01', '2026-06-30');
-    expect(loader.data()).toBe(1);
+    expect(host.loader.data()).toBe(1);
   });
 });
 ```
@@ -163,7 +171,12 @@ const BASELINE_READERS: Record<string, (a: EmployeeAttendanceOverviewResponse | 
   on_time_delivery: (_a, w) => (w ? w.onTimeRatePercent ?? 0 : null),
   leave_days: (a) => a?.leaveDays ?? null
 };
-export function kpiValue(key, signals, attendance, work): number | null {
+export function kpiValue(
+  key: string,
+  signals: readonly EmployeeSignal[] | null,
+  attendance: EmployeeAttendanceOverviewResponse | null,
+  work: EmployeeWorkOverviewResponse | null
+): number | null {
   const baseline = BASELINE_READERS[key];
   if (baseline) return baseline(attendance, work);
   if (!signals) return null;

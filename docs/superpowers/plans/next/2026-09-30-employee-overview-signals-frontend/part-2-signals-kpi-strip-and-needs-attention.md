@@ -131,18 +131,30 @@ it('days attended baseline uses present / workingDays', () => {
 it('missing sources still yield four cards with zeros', () => {
   expect(buildKpiCards([], null, null)).toHaveLength(4);
 });
-it('over_break card shows minutes', () => {
+it('over_break card shows minutes under a short title', () => {
   const s = { ...sig('over_break', 3), unit: 'minutes' as const, value: 40, denominator: 2 };
-  expect(buildKpiCards([s], att, work)[0]).toMatchObject({ value: 40, suffix: 'min', denominator: null });
+  expect(buildKpiCards([s], att, work)[0]).toMatchObject({ label: 'Over-break', value: 40, suffix: 'min', denominator: null });
 });
 ```
 - [ ] **Step 2:** run → fails.
 - [ ] **Step 3: Implement `buildKpiCards`**
 ```ts
-export function buildKpiCards(signals, attendance, work): readonly KpiCard[] {
+/** Short card titles; the API's `label` ("40 min over break allowance") is a sentence for Needs Attention rows. */
+const SIGNAL_TITLES: Record<string, string> = {
+  absent_days: 'Absent days', missing_clock_outs: 'Missing clock-outs', over_break: 'Over-break',
+  late_clock_ins: 'Late arrivals', early_clock_outs: 'Early clock-outs', short_hours_days: 'Short-hours days',
+  location_violations: 'Location alerts', overdue_tasks: 'Overdue tasks', pending_approvals: 'Pending approvals',
+  off_schedule_work: 'Off-schedule work', idle_activity_alerts: 'Idle alerts', monitoring_exceptions: 'Monitoring exceptions'
+};
+
+export function buildKpiCards(
+  signals: readonly EmployeeSignal[],
+  attendance: EmployeeAttendanceOverviewResponse | null,
+  work: EmployeeWorkOverviewResponse | null
+): readonly KpiCard[] {
   const fromSignal = (s: EmployeeSignal): KpiCard => ({
     key: s.key, tone: s.severity,
-    label: s.label.replace(/^\d+\s*/, ''),
+    label: SIGNAL_TITLES[s.key] ?? s.label,
     value: s.value,
     denominator: s.unit === 'minutes' ? null : s.denominator,
     suffix: s.unit === 'minutes' ? 'min' : s.unit === 'percent' ? '%' : '',
@@ -244,7 +256,20 @@ Template, at the top of the left column above the chart:
 <app-overview-kpi-strip class="block mb-6"
   [cards]="kpiCards(signals(), attendanceWidget.loader.data() ?? null, workWidget.loader.data() ?? null)" />
 ```
-(`protected readonly kpiCards = buildKpiCards;`). In the right column replace the whole hardcoded Needs Attention block **and** its `@let wData/aData/apData/...` lines with `<app-overview-needs-attention [signals]="signals()" />`. Add imports.
+(`protected readonly kpiCards = buildKpiCards;`). **No reshuffle:** wrap it so the strip renders only once all three sources have settled, and 4 grey skeleton cards (`animate-pulse rounded-2xl bg-slate-100 h-36`, `data-testid="kpi-skeleton"`) before that:
+```ts
+  protected settled(...states: WidgetState[]): boolean {
+    return states.every((s) => s !== 'loading');
+  }
+```
+```html
+@if (settled(signalsLoader.state(), attendanceWidget.loader.state(), workWidget.loader.state())) { <app-overview-kpi-strip … /> }
+@else { <div class="grid gap-4 sm:grid-cols-2 xl:grid-cols-4 mb-6">@for (i of [0,1,2,3]; track i) { <div data-testid="kpi-skeleton" class="animate-pulse rounded-2xl bg-slate-100 h-36"></div> }</div> }
+```
+Needs Attention likewise renders only when `signalsLoader.state() !== 'loading'`. In the right column replace the whole hardcoded Needs Attention block **and** its `@let wData/aData/apData/...` lines with `<app-overview-needs-attention [signals]="signals()" />`. Add imports.
 - [ ] **Step 2: Chart** — delete the 4-card KPI grid (the block rendering "Days attended", "Late arrivals", "Missing clock-outs", "Tasks completed") and any computed fields used only by it; keep the trend chart. Update the chart spec to drop assertions about those cards.
-- [ ] **Step 3: Tab spec** — tests: (a) with signals `[]` the tab renders `app-overview-kpi-strip` with 4 cards and no `[data-testid=needs-attention]`; (b) with two signals the first KPI card is the first signal and Needs Attention has 2 rows; (c) `getOverviewSignals` is called with `('emp-1', from, to)`.
+- [ ] **Step 2b: Full-month `days` list** — after backend Part 1, `/overview/attendance` `days` contains **every** date of the month (`none` = pre-hire / future / today-not-yet, `off` = weekend/holiday, `absent`), not only dates with rows. Re-read `ui/overview-attendance-widget` (its day strip) and the chart's weekly-cohort code (`getWeekDays` in `overview-productivity-discipline-chart`), then:
+  - Attendance widget day strip: render only `absent | present | late | missing_clock_out | leave` days — filter out `none` and `off` — so it doesn't show 30 empty cells. Add a spec: a 30-day list with 22 `off/none` entries renders 8 cells.
+  - Chart weekly cohorts: the attendance-discipline percentage per week = `(present + late + missing_clock_out) / (days that are not off/none/leave)`; weeks with zero such days plot as a gap, not 0%. Add a spec for a week that is entirely pre-hire.
+- [ ] **Step 3: Tab spec** — tests: (a) while `getOverviewSignals` has not emitted (use a `Subject`), 4 `[data-testid=kpi-skeleton]` render and no kpi cards; (a2) with signals `[]` the tab renders `app-overview-kpi-strip` with 4 cards and no `[data-testid=needs-attention]`; (b) with two signals the first KPI card is the first signal and Needs Attention has 2 rows; (c) `getOverviewSignals` is called with `('emp-1', from, to)`.
 - [ ] **Step 4:** `npx ng test --include="src/app/modules/people/**/*.spec.ts" --watch=false` + `npx ng build` → paste raw totals. **Commit** — `feat(people): overview KPI strip and Needs Attention driven by ranked signals`.
