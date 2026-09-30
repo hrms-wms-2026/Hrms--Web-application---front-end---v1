@@ -65,4 +65,4 @@ Blocked on a design.
   the redirect, the period filter visibility and reload on id change.
 - `ng build`: 0 errors.
 - The full suite still has pre-existing failures in the attendance, calendar and date-range-picker specs. The same 7
-  fail on the base commit. `flip-animate` flakes only in full parallel runs.
+  fail on the base commit. `flip-animate` failed once in a full run and passed on two reruns (and on the base commit).

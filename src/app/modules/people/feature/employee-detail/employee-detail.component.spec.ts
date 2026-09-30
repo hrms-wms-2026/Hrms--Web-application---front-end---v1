@@ -4,6 +4,8 @@ import { ActivatedRoute, Router, Routes, convertToParamMap, provideRouter } from
 import { RouterTestingHarness } from '@angular/router/testing';
 import { BehaviorSubject, of, throwError, Subject } from 'rxjs';
 import { EmployeeDetailComponent } from './employee-detail.component';
+import { EmployeeOverviewTabComponent } from './tabs/employee-overview-tab.component';
+import { EmployeePersonalTabComponent } from './tabs/employee-personal-tab.component';
 import { PeopleApiService } from '../../data-access/people-api.service';
 import { NotificationService } from '../../../../core/services/notification.service';
 import { EmployeeDetailResponse } from '../../models/employee.model';
@@ -365,7 +367,9 @@ describe('EmployeeDetailComponent', () => {
         component: EmployeeDetailComponent,
         children: [
           { path: '', pathMatch: 'full', redirectTo: 'overview' },
-          ...['overview', 'employment', 'attendance', 'work-activity', 'personal'].map((path) => ({ path, component: TabStubComponent }))
+          { path: 'overview', component: EmployeeOverviewTabComponent },
+          { path: 'personal', component: EmployeePersonalTabComponent },
+          ...['employment', 'attendance', 'work-activity'].map((path) => ({ path, component: TabStubComponent }))
         ]
       }
     ];
@@ -393,7 +397,6 @@ describe('EmployeeDetailComponent', () => {
         '/people/employees/emp-1/personal'
       ]);
       expect(links[0].getAttribute('aria-current')).toBe('page');
-      expect(harness.routeNativeElement!.textContent).toContain('tab content');
     });
 
     it('shows the period filter only on period-based tabs', async () => {
@@ -403,6 +406,20 @@ describe('EmployeeDetailComponent', () => {
       await harness.navigateByUrl('/people/employees/emp-1/personal');
       harness.detectChanges();
       expect(harness.routeNativeElement!.querySelector('[data-testid="employee-period-filter"]')).toBeNull();
+    });
+
+    it('renders real tabs through the outlet with the shell-provided store', async () => {
+      const harness = await navigate('/people/employees/emp-1/overview');
+      const root = harness.routeNativeElement!;
+
+      expect(root.textContent).toContain('Employment & Organization');
+      const viewDetails = Array.from(root.querySelectorAll('a')).find((a) => a.textContent?.trim() === 'View details');
+      expect(viewDetails?.getAttribute('href')).toBe('/people/employees/emp-1/employment');
+
+      await harness.navigateByUrl('/people/employees/emp-1/personal');
+      harness.detectChanges();
+      expect(root.querySelector('app-employee-personal-info')).toBeTruthy();
+      expect(root.querySelector('[data-testid="employee-tab-personal"]')?.getAttribute('aria-current')).toBe('page');
     });
   });
 });
