@@ -1,4 +1,5 @@
 import { ChangeDetectionStrategy, Component, input } from '@angular/core';
+import { DatePipe } from '@angular/common';
 import { EmployeeDetailPersonalInformation } from '../../models/employee.model';
 
 function formatAddress(addressJson: string): string {
@@ -19,69 +20,80 @@ function formatAddress(addressJson: string): string {
   return addressJson;
 }
 
+/**
+ * Personal, contact and address sections of the employee Personal tab, each rendered as its own
+ * card. Fields the backend does not store yet (marital status, national ID, work vs personal
+ * phone) are intentionally not shown.
+ */
 @Component({
   selector: 'app-employee-personal-info',
   standalone: true,
+  imports: [DatePipe],
   template: `
-    <div class="rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] p-6 space-y-6">
-      <!-- Section 1: Personal Information -->
-      <div>
-        <h3 class="text-sm font-semibold text-[var(--color-text-primary)] pb-3 mb-4 border-b border-[var(--color-border)]">
-          Personal Information
-        </h3>
-        <dl class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-6 text-sm">
-          <div>
-            <dt class="text-xs font-medium text-[var(--color-text-secondary)] mb-1">First Name</dt>
-            <dd class="font-semibold text-[var(--color-text-primary)]">{{ personalInformation().firstName }}</dd>
-          </div>
-          <div>
-            <dt class="text-xs font-medium text-[var(--color-text-secondary)] mb-1">Last Name</dt>
-            <dd class="font-semibold text-[var(--color-text-primary)]">{{ personalInformation().lastName }}</dd>
-          </div>
-          <div>
-            <dt class="text-xs font-medium text-[var(--color-text-secondary)] mb-1">Email</dt>
-            <dd class="font-semibold text-[var(--color-text-primary)]">{{ personalInformation().email }}</dd>
-          </div>
-          <div>
-            <dt class="text-xs font-medium text-[var(--color-text-secondary)] mb-1">Phone</dt>
-            <dd class="font-semibold text-[var(--color-text-primary)]">{{ personalInformation().phone || '—' }}</dd>
-          </div>
-          <div>
-            <dt class="text-xs font-medium text-[var(--color-text-secondary)] mb-1">Date of Birth</dt>
-            <dd class="font-semibold text-[var(--color-text-primary)]">{{ personalInformation().dateOfBirth || '—' }}</dd>
-          </div>
-          <div>
-            <dt class="text-xs font-medium text-[var(--color-text-secondary)] mb-1">Gender</dt>
-            <dd class="font-semibold text-[var(--color-text-primary)] capitalize">{{ personalInformation().gender || '—' }}</dd>
-          </div>
-        </dl>
-      </div>
+    <section class="info-card" aria-labelledby="personal-info-heading">
+      <header class="info-card__head">
+        <h3 id="personal-info-heading" class="info-card__title">Personal Information</h3>
+        <p class="info-card__subtitle">Basic personal details of the employee.</p>
+      </header>
+      <dl class="info-grid">
+        <div><dt>First Name</dt><dd>{{ personalInformation().firstName }}</dd></div>
+        <div><dt>Last Name</dt><dd>{{ personalInformation().lastName }}</dd></div>
+        <div><dt>Email</dt><dd>{{ personalInformation().email }}</dd></div>
+        <div><dt>Phone</dt><dd>{{ personalInformation().phone || '—' }}</dd></div>
+        <div>
+          <dt>Date of Birth</dt>
+          <dd>{{ personalInformation().dateOfBirth ? (personalInformation().dateOfBirth | date: 'dd MMM yyyy') : '—' }}</dd>
+        </div>
+        <div><dt>Gender</dt><dd class="capitalize">{{ personalInformation().gender || '—' }}</dd></div>
+      </dl>
+    </section>
 
-      <!-- Section 2: Address Information -->
-      <div class="pt-6 border-t border-[var(--color-border)]">
-        <h3 class="text-sm font-semibold text-[var(--color-text-primary)] pb-3 mb-4 border-b border-[var(--color-border)]">
-          Address Information
-        </h3>
-        @if (personalInformation().addresses.length === 0) {
-          <p class="text-xs text-[var(--color-text-secondary)] italic">No addresses on file.</p>
-        } @else {
-          <ul class="grid grid-cols-1 md:grid-cols-2 gap-4">
-            @for (address of personalInformation().addresses; track address.id) {
-              <li class="rounded-lg border border-[var(--color-border)] bg-[var(--color-surface-secondary)] p-4 text-sm">
-                <div class="flex items-center justify-between mb-2">
-                  <span class="font-semibold text-[var(--color-text-primary)] text-xs">{{ address.addressType }}</span>
-                  @if (address.isPrimary) {
-                    <span class="text-[10px] font-semibold uppercase px-2 py-0.5 rounded-full bg-blue-100 text-blue-800">Primary</span>
-                  }
-                </div>
-                <p class="text-xs text-[var(--color-text-secondary)] leading-relaxed">{{ formatAddress(address.addressJson) }}</p>
-              </li>
-            }
-          </ul>
-        }
-      </div>
-    </div>
+    <section class="info-card" aria-labelledby="contact-info-heading">
+      <header class="info-card__head">
+        <h3 id="contact-info-heading" class="info-card__title">Contact Information</h3>
+        <p class="info-card__subtitle">Work and personal contact details.</p>
+      </header>
+      <dl class="info-grid">
+        <div><dt>Work Email</dt><dd>{{ personalInformation().email }}</dd></div>
+        <div><dt>Phone</dt><dd>{{ personalInformation().phone || '—' }}</dd></div>
+      </dl>
+    </section>
+
+    <section class="info-card" aria-labelledby="address-info-heading">
+      <header class="info-card__head">
+        <h3 id="address-info-heading" class="info-card__title">Address Information</h3>
+        <p class="info-card__subtitle">Current residential address.</p>
+      </header>
+      @if (personalInformation().addresses.length === 0) {
+        <p class="info-empty">No address information available.</p>
+      } @else {
+        <ul class="grid grid-cols-1 md:grid-cols-2 gap-3">
+          @for (address of personalInformation().addresses; track address.id) {
+            <li class="rounded-lg border border-[var(--color-border)] bg-[var(--color-surface-secondary)] p-4 text-sm">
+              <div class="flex items-center justify-between mb-2">
+                <span class="font-semibold text-[var(--color-text-primary)] text-xs capitalize">{{ address.addressType }}</span>
+                @if (address.isPrimary) {
+                  <span class="text-[10px] font-semibold uppercase px-2 py-0.5 rounded-full bg-blue-100 text-blue-800">Primary</span>
+                }
+              </div>
+              <p class="text-xs text-[var(--color-text-secondary)] leading-relaxed">{{ formatAddress(address.addressJson) }}</p>
+            </li>
+          }
+        </ul>
+      }
+    </section>
   `,
+  styles: [`
+    :host { display: flex; flex-direction: column; gap: 1rem; }
+    .info-card { border: 1px solid var(--color-border); border-radius: 0.75rem; background: var(--color-surface); padding: 1.25rem; }
+    .info-card__head { margin-bottom: 1rem; }
+    .info-card__title { margin: 0; font-size: 1rem; font-weight: 600; color: var(--color-text-primary); }
+    .info-card__subtitle { margin: 0.125rem 0 0; font-size: 0.8125rem; color: var(--color-text-secondary); }
+    .info-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(12rem, 1fr)); gap: 1rem 1.5rem; margin: 0; }
+    .info-grid dt { font-size: 0.8125rem; color: var(--color-text-secondary); }
+    .info-grid dd { margin: 0.125rem 0 0; font-size: 0.9375rem; font-weight: 600; color: var(--color-text-primary); overflow-wrap: anywhere; }
+    .info-empty { margin: 0; padding: 0.875rem 1rem; border-radius: 0.5rem; background: var(--color-surface-secondary); font-size: 0.875rem; color: var(--color-text-secondary); }
+  `],
   changeDetection: ChangeDetectionStrategy.OnPush
 })
 export class EmployeePersonalInfoComponent {

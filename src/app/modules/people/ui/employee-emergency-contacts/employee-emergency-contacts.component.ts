@@ -5,13 +5,14 @@ import { EmployeeDetailEmergencyContact } from '../../models/employee.model';
   selector: 'app-employee-emergency-contacts',
   standalone: true,
   template: `
-    <div class="rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] p-6">
-      <h3 class="text-sm font-semibold text-[var(--color-text-primary)] pb-3 mb-4 border-b border-[var(--color-border)]">
-        Emergency Contacts
-      </h3>
+    <section class="rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] p-5" aria-labelledby="emergency-contact-heading">
+      <header class="mb-4">
+        <h3 id="emergency-contact-heading" class="text-base font-semibold text-[var(--color-text-primary)]">Emergency Contact</h3>
+        <p class="text-[0.8125rem] text-[var(--color-text-secondary)]">Person to contact in case of emergency.</p>
+      </header>
       @if (emergencyContacts().length === 0) {
-        <p class="text-xs text-[var(--color-text-secondary)] italic">
-          No emergency contacts on file.
+        <p class="rounded-lg bg-[var(--color-surface-secondary)] px-4 py-3.5 text-sm text-[var(--color-text-secondary)]">
+          No emergency contact information available.
         </p>
       } @else {
         <ul class="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -35,7 +36,7 @@ import { EmployeeDetailEmergencyContact } from '../../models/employee.model';
           }
         </ul>
       }
-    </div>
+    </section>
   `,
   changeDetection: ChangeDetectionStrategy.OnPush
 })

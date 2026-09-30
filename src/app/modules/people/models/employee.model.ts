@@ -146,6 +146,15 @@ export interface EmployeeDetailResponse {
   readonly invitationExpiresAt: string | null;
   readonly trayAppAccessEnabled: boolean;
   readonly attendanceSummary?: EmployeeListAttendanceSummaryResponse | null;
+  /** Projects this employee belongs to that the viewer also belongs to (relationship-based visibility). */
+  readonly projectMemberships?: readonly EmployeeDetailProjectMembership[] | null;
+}
+
+export interface EmployeeDetailProjectMembership {
+  readonly projectId: string;
+  readonly projectName: string;
+  readonly memberSince: string;
+  readonly isActive: boolean;
 }
 
 export interface EmployeeDetailJobInformation {
@@ -163,6 +172,8 @@ export interface EmployeeDetailJobInformation {
   readonly workModeLabel: string | null;
   readonly employmentTypeCode: string;
   readonly workModeId: string | null;
+  /** IANA time zone: the employee's display time zone, else their legal entity's. */
+  readonly timezone?: string | null;
 }
 
 export interface EmployeeDetailPersonalInformation {

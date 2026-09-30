@@ -1,4 +1,4 @@
-import { EmployeeDetailAddress } from '../models/employee.model';
+import { EmployeeDetailAddress, EmployeeDetailResponse } from '../models/employee.model';
 
 export function employeeInitials(firstName?: string | null, lastName?: string | null): string {
   const f = firstName?.trim().charAt(0) || '';
@@ -62,4 +62,67 @@ export function toPeriodMonth(date: Date): string {
 export function shiftPeriodMonth(month: string, delta: number): string {
   const [year, m] = month.split('-').map(Number);
   return toPeriodMonth(new Date(year, m - 1 + delta, 1));
+}
+
+export interface ProfileCompletionItem {
+  readonly label: string;
+  readonly complete: boolean;
+}
+
+export interface ProfileCompletion {
+  readonly percent: number;
+  readonly items: readonly ProfileCompletionItem[];
+}
+
+/**
+ * Completion across the profile sections the detail response actually carries. Sections the
+ * backend has no data for yet (documents, preferences) are deliberately not counted.
+ */
+export function profileCompletion(employee: EmployeeDetailResponse): ProfileCompletion {
+  const info = employee.personalInformation;
+  const items: ProfileCompletionItem[] = [
+    { label: 'Basic Information', complete: !!(info.firstName && info.lastName && info.dateOfBirth && info.gender) },
+    { label: 'Contact Information', complete: !!(info.email && info.phone) },
+    { label: 'Address Information', complete: info.addresses.length > 0 },
+    { label: 'Emergency Contact', complete: employee.emergencyContacts.length > 0 }
+  ];
+  const done = items.filter((item) => item.complete).length;
+  return { percent: Math.round((done / items.length) * 100), items };
+}
+
+function parseDateOnly(value: string): Date | null {
+  const match = /^(\d{4})-(\d{2})-(\d{2})/.exec(value);
+  if (!match) return null;
+  return new Date(Number(match[1]), Number(match[2]) - 1, Number(match[3]));
+}
+
+function startOfDay(date: Date): Date {
+  return new Date(date.getFullYear(), date.getMonth(), date.getDate());
+}
+
+const DAY_MS = 24 * 60 * 60 * 1000;
+
+/** Next anniversary of the hire date strictly after today, with the whole days until it. */
+export function nextWorkAnniversary(
+  hireDateStr: string | null | undefined,
+  now: Date = new Date()
+): { readonly date: Date; readonly daysUntil: number; readonly years: number } | null {
+  const hire = hireDateStr ? parseDateOnly(hireDateStr) : null;
+  if (!hire) return null;
+  const today = startOfDay(now);
+  let years = Math.max(1, today.getFullYear() - hire.getFullYear());
+  let next = new Date(hire.getFullYear() + years, hire.getMonth(), hire.getDate());
+  while (next <= today) {
+    years += 1;
+    next = new Date(hire.getFullYear() + years, hire.getMonth(), hire.getDate());
+  }
+  return { date: next, daysUntil: Math.round((next.getTime() - today.getTime()) / DAY_MS), years };
+}
+
+export type ProbationStatus = 'completed' | 'in_progress' | 'none';
+
+export function probationStatus(probationEndDate: string | null | undefined, now: Date = new Date()): ProbationStatus {
+  const end = probationEndDate ? parseDateOnly(probationEndDate) : null;
+  if (!end) return 'none';
+  return end < startOfDay(now) ? 'completed' : 'in_progress';
 }

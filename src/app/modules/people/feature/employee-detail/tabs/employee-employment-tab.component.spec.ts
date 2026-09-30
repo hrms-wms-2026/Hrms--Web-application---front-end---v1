@@ -3,6 +3,7 @@ import { TestBed } from '@angular/core/testing';
 import { of, throwError } from 'rxjs';
 import { PermissionService } from '../../../../../core/auth/state/permission.service';
 import { WorkModeStore } from '../../../../settings/state/work-mode.store';
+import { EmployeeDetailResponse } from '../../../models/employee.model';
 import { OffboardingWizardStore } from '../../../state/offboarding-wizard.store';
 import { EmployeeEmploymentTabComponent } from './employee-employment-tab.component';
 import { detailFixture, setupTabTestBed } from './employee-detail-tab.testing';
@@ -17,10 +18,10 @@ describe('EmployeeEmploymentTabComponent', () => {
 
   async function render(
     apiOverrides: Record<string, unknown> = {},
-    { canWrite = true, offboardingStatus = null as string | null } = {}
+    { canWrite = true, offboardingStatus = null as string | null, employee = detailFixture as EmployeeDetailResponse } = {}
   ) {
     const apiStub: Record<string, ReturnType<typeof vi.fn>> = {
-      getEmployeeDetail: vi.fn().mockReturnValue(of(detailFixture)),
+      getEmployeeDetail: vi.fn().mockReturnValue(of(employee)),
       getJobJourney: vi.fn().mockReturnValue(of([])),
       ...apiOverrides
     };
@@ -74,5 +75,40 @@ describe('EmployeeEmploymentTabComponent', () => {
     expect(store.savingJobDetails()).toBe(false);
     expect(notificationsStub.error).toHaveBeenCalledWith('boom');
     expect(apiStub['getEmployeeDetail']).toHaveBeenCalledTimes(1);
+  });
+
+  it('shows work arrangement time zone and probation status', async () => {
+    const { fixture } = await render({}, {
+      employee: {
+        ...detailFixture,
+        jobInformation: { ...detailFixture.jobInformation, timezone: 'Asia/Colombo', probationEndDate: '2024-05-01' }
+      }
+    });
+    const root = fixture.nativeElement as HTMLElement;
+
+    expect(root.querySelector('[data-testid="employment-timezone"]')?.textContent).toContain('Asia/Colombo');
+    expect(root.querySelector('[data-testid="probation-status"]')?.textContent).toContain('Completed');
+    expect(root.textContent).toContain('Probation Ends');
+  });
+
+  it('lists shared project memberships, and says so when there are none', async () => {
+    const withProjects = await render({}, {
+      employee: {
+        ...detailFixture,
+        projectMemberships: [
+          { projectId: 'p1', projectName: 'Watercraft Platform', memberSince: '2025-08-15T00:00:00Z', isActive: true },
+          { projectId: 'p2', projectName: 'Legacy Portal', memberSince: '2024-02-01T00:00:00Z', isActive: false }
+        ]
+      }
+    });
+    const rows = Array.from(withProjects.fixture.nativeElement.querySelectorAll('[data-testid="project-membership-row"]')) as HTMLElement[];
+    expect(rows.map((row) => row.textContent)).toEqual([
+      expect.stringMatching(/Watercraft Platform.*Active/),
+      expect.stringMatching(/Legacy Portal.*Removed/)
+    ]);
+
+    TestBed.resetTestingModule();
+    const empty = await render();
+    expect(empty.fixture.nativeElement.querySelector('[data-testid="no-shared-projects"]')).toBeTruthy();
   });
 });

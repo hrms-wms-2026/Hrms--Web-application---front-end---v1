@@ -5,9 +5,9 @@ import { PositionHistoryEntryResponse } from '../../models/position-history.mode
   selector: 'app-employee-job-journey',
   standalone: true,
   template: `
-    <div class="pt-6 border-t border-[var(--color-border)] space-y-4">
-      <h3 class="text-sm font-semibold text-[var(--color-text-primary)]">
-        Job Journey
+    <div class="space-y-4">
+      <h3 class="text-base font-semibold text-[var(--color-text-primary)]">
+        Employment History
       </h3>
 
       @if (entries().length === 0) {

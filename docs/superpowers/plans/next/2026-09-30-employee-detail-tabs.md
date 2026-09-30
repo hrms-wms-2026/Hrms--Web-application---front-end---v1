@@ -1,7 +1,7 @@
 # Employee Detail — Tabbed Redesign
 
 **Date:** 2026-09-30
-**Status:** Phase 1 implemented; Phases 2–5 pending
+**Status:** Phases 1–2 implemented; Phases 3–5 pending
 **Design source:** four mockups (Overview, Employment, Work & Activity, Personal) supplied by the product owner.
 There is no Attendance tab mockup yet.
 
@@ -34,13 +34,33 @@ for the period-based tabs.
   back them yet. Job details stay editable inline on the Employment tab.
 - Shared helpers (`initials`, `tenure`, `primary location`, period month maths) are in `utils/employee-detail.utils.ts`.
 
-## Phase 2 — Employment & Personal tab parity with the design
+## Phase 2 — Employment & Personal tab parity with the design — implemented (read-only)
 
-- Work Arrangement card (primary location, time zone, schedule), Team Memberships (plus Add to team), probation
-  status/confirmation date.
-- Personal tab edit per section, Contact/Address sections, Profile Completion %, Important Dates, Additional Info.
-- Needs backend fields that `/employees/{id}/detail` does not return today: team memberships, time zone, schedule,
-  confirmation date, work/personal phone, marital status, national ID, and profile completion.
+Decisions (2026-09-30, product owner):
+- The first pass is read-only. Per-section **Edit** on the Personal tab needs admin-scoped personal, contact, address and
+  emergency-contact commands, and today only `me/...` exists. That work moves to a later phase.
+- **Team Memberships** becomes **Project Memberships**, backed by Work Management `project_members`. There is no Teams
+  entity.
+- Fields the backend doesn't store are skipped, with no placeholders: marital status, national ID/passport,
+  work vs personal phone, confirmation date, documents, preferences.
+
+Backend (`HRMS-Backend-v1`, branch `feature/employee-detail-phase2`):
+- `GET /employees/{id}/detail` adds `jobInformation.timezone`. It uses the employee's `DisplayTimezone` and falls back
+  to the legal entity's timezone.
+- It also adds `projectMemberships[]` (`projectId`, `projectName`, `memberSince`, `isActive`). These are **limited to
+  projects the viewer is also an active member of**, through
+  `IProjectMemberRepository.ListSharedProjectMembershipsAsync`. Work Management project visibility is
+  relationship-based, and `ListProjectsQueryHandler` refuses to list another employee's projects.
+
+Frontend:
+- **Employment tab:** section header; Job & Organizational Details (inline edit unchanged); Work Arrangement (work
+  mode, primary location, time zone); Employment Record (status, hire date, tenure, probation status badge and end
+  date); Project Memberships table; Employment History timeline.
+- **Personal tab:** Personal, Contact and Address cards; the Emergency Contact card; Payroll (only when returned).
+  The side column has Profile Completion (ring plus checklist), Important Dates (hire date, next work anniversary with
+  days until) and Additional Information (employee ID, department, position, employment type, work mode, time zone).
+- Profile completion counts only the sections the response carries: basic (first and last name, date of birth,
+  gender), contact (email and phone), at least one address, and at least one emergency contact.
 
 ## Phase 3 — Backend employee-scoped aggregates (HRMS-Backend-v1)
 
@@ -57,6 +77,14 @@ Wire the period-based cards to Phase 3 endpoints through `EmployeeDetailStore.pe
 ## Phase 5 — Attendance tab
 
 Blocked on a design.
+
+## Verification (Phase 2)
+
+- Backend: 4759/4759 unit tests (13 detail-handler tests, 5 of them new) and 695/695 architecture tests. The integration
+  test project builds.
+  `ListSharedProjectMembershipsAsync` has **no integration test yet**: Docker wasn't running, so its EF translation and
+  RLS behaviour haven't been exercised against PostgreSQL.
+- Frontend: people module 427/427, `ng build` 0 errors.
 
 ## Verification (Phase 1)
 
