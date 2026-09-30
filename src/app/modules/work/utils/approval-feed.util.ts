@@ -10,12 +10,12 @@ export type ApprovalTone = 'accent' | 'success' | 'warning' | 'danger' | 'neutra
 
 /** tone picks a theme token; icon is an ApprovalTypeIconComponent name. */
 export const APPROVAL_TYPE_META: Record<ApprovalTypeKey, { label: string; tone: ApprovalTone; icon: string }> = {
-  task_creation:   { label: 'Task Creation',     tone: 'success', icon: 'task-plus' },
-  task_update:     { label: 'Task Update',       tone: 'success', icon: 'task' },
-  task_deletion:   { label: 'Task Deletion',     tone: 'danger',  icon: 'trash' },
+  task_creation:   { label: 'Task Creation',     tone: 'accent',  icon: 'task-plus' },
+  task_update:     { label: 'Task Update',       tone: 'accent',  icon: 'task' },
+  task_deletion:   { label: 'Task Deletion',     tone: 'neutral', icon: 'trash' },
   allocation:      { label: 'Allocation',        tone: 'accent',  icon: 'clock' },
   module_update:   { label: 'Module Update',     tone: 'accent',  icon: 'module' },
-  invitation:      { label: 'Module Invitation', tone: 'warning', icon: 'user-plus' },
+  invitation:      { label: 'Module Invitation', tone: 'accent',  icon: 'user-plus' },
   sprint:          { label: 'Sprint',            tone: 'neutral', icon: 'sprint' },
   status_template: { label: 'Status Template',   tone: 'neutral', icon: 'status' }
 };
@@ -61,13 +61,9 @@ export function statusLabel(item: ApprovalFeedItemDto): string {
   }
 }
 
+/** Theme colour + gray only: pending (needs attention) uses the accent, every decided state is gray. */
 export function statusTone(item: ApprovalFeedItemDto): ApprovalTone {
-  switch (item.status) {
-    case 'pending': return 'warning';
-    case 'approved': return 'success';
-    case 'rejected': return 'danger';
-    default: return 'neutral';
-  }
+  return item.status === 'pending' ? 'accent' : 'neutral';
 }
 
 export function sortFeed(items: readonly ApprovalFeedItemDto[]): ApprovalFeedItemDto[] {

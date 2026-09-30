@@ -110,7 +110,8 @@ describe('WorkApprovalsComponent', () => {
     expect(toolbar.setTemplate).toHaveBeenCalledWith(expect.anything());
     expect(store.loadAll).not.toHaveBeenCalled();
     expect(projectApi.getMyMilestones).toHaveBeenCalledWith('project-1');
-    expect(fixture.nativeElement.querySelector('h1').textContent).toBe('Approvals');
+    // No page heading: the sub-menu tab already names the page.
+    expect(fixture.nativeElement.querySelector('h1')).toBeNull();
   });
 
   it('loads the feed itself when the store holds another project', () => {
@@ -151,6 +152,21 @@ describe('WorkApprovalsComponent', () => {
       queryParams: { request: 'received-1', tab: null }, queryParamsHandling: 'merge', replaceUrl: true
     }));
     expect(fixture.debugElement.query(By.directive(ApprovalExplanationCardComponent))).not.toBeNull();
+  });
+
+  it('selects the first visible request by default', () => {
+    setup();
+    expect(store.select).toHaveBeenLastCalledWith(sent);
+    expect(fixture.debugElement.query(By.directive(ApprovalExplanationCardComponent))).not.toBeNull();
+  });
+
+  it('selects the first visible request again when a filter hides the selected one', () => {
+    setup();
+    table().rowSelected.emit(decided);
+    fixture.detectChanges();
+    (fixture.componentInstance as any).onFilterChanged({ key: 'status', values: ['pending'] });
+    fixture.detectChanges();
+    expect(store.select).toHaveBeenLastCalledWith(sent);
   });
 
   it('?request=<id> on load selects that item', () => {

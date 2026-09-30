@@ -27,7 +27,7 @@ import { ButtonComponent } from '../../../../shared/ui/button/button.component';
               {{ confirmLabel() }} without reason
             </app-button>
           }
-          <app-button variant="danger" data-testid="approval-reject-confirm" (pressed)="confirm()">{{ confirmLabel() }}</app-button>
+          <app-button variant="primary" data-testid="approval-reject-confirm" (pressed)="confirm()">{{ confirmLabel() }}</app-button>
         </div>
       </div>
     </app-modal>

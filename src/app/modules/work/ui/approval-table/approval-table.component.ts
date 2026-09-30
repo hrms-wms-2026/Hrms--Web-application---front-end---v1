@@ -33,12 +33,10 @@ const PAGE_SIZES = [10, 20, 50];
           <table>
             <thead>
               <tr>
-                <th scope="col">Title</th>
-                <th scope="col">Type</th>
-                <th scope="col">Module / Project</th>
-                <th scope="col">Requested by</th>
-                <th scope="col">Requested on</th>
-                <th scope="col">Status</th>
+                <th scope="col" class="approval-table__col-title">Title</th>
+                <th scope="col" class="approval-table__col-type">Type</th>
+                <th scope="col" class="approval-table__col-person">Requested by</th>
+                <th scope="col" class="approval-table__col-status">Status</th>
                 <th scope="col" class="approval-table__actions-col"><span class="approval-table__sr">Actions</span></th>
               </tr>
             </thead>
@@ -74,18 +72,13 @@ const PAGE_SIZES = [10, 20, 50];
                   </td>
                   <td><span class="approval-pill" [class]="'approval-pill approval-pill--' + meta(item).tone">{{ meta(item).label }}</span></td>
                   <td>
-                    <span class="approval-table__primary">{{ item.moduleTitle ?? '—' }}</span>
-                    <span class="approval-table__secondary">{{ item.projectName }}</span>
-                  </td>
-                  <td>
                     <span class="approval-table__person">
                       <app-avatar [userName]="item.requestedByName" size="sm" />
-                      <span>{{ item.requestedByName }}</span>
+                      <span class="approval-table__person-text">
+                        <span class="approval-table__primary">{{ item.requestedByName }}</span>
+                        <span class="approval-table__secondary">{{ item.createdAt | date: 'MMM d, y · h:mm a' }}</span>
+                      </span>
                     </span>
-                  </td>
-                  <td>
-                    <span class="approval-table__primary">{{ item.createdAt | date: 'MMM d, y' }}</span>
-                    <span class="approval-table__secondary">{{ item.createdAt | date: 'h:mm a' }}</span>
                   </td>
                   <td>
                     <span data-testid="approval-status" [class]="'approval-pill approval-pill--' + tone(item)">{{ status(item) }}</span>
@@ -135,10 +128,13 @@ const PAGE_SIZES = [10, 20, 50];
   styles: [`
     :host { display: block; min-width: 0; }
     .approval-table { display: flex; flex-direction: column; border: 1px solid var(--color-border); border-radius: 14px; background: var(--color-surface); overflow: hidden; }
-    .approval-table__scroll { overflow-x: auto; }
-    table { width: 100%; border-collapse: separate; border-spacing: 0; font-size: 13px; }
+    .approval-table__scroll { overflow: hidden; }
+    table { width: 100%; table-layout: fixed; border-collapse: separate; border-spacing: 0; font-size: 13px; }
+    .approval-table__col-type { width: 132px; }
+    .approval-table__col-person { width: 30%; }
+    .approval-table__col-status { width: 100px; }
     th { position: sticky; top: 0; padding: 11px 14px; border-bottom: 1px solid var(--color-border); background: var(--color-surface-secondary); color: var(--color-text-secondary); font-size: 12px; font-weight: 600; text-align: left; white-space: nowrap; }
-    td { padding: 10px 14px; border-bottom: 1px solid var(--color-border); color: var(--color-text-primary); vertical-align: middle; }
+    td { overflow: hidden; padding: 10px 14px; border-bottom: 1px solid var(--color-border); color: var(--color-text-primary); vertical-align: middle; }
     tbody tr:last-child td { border-bottom: 0; }
     .approval-table__row { cursor: pointer; transition: background-color .12s ease; }
     .approval-table__row:hover td { background: color-mix(in srgb, var(--color-accent) 4%, transparent); }
@@ -147,20 +143,19 @@ const PAGE_SIZES = [10, 20, 50];
     .approval-table__row--selected td:first-child { box-shadow: inset 1px 1px 0 var(--color-accent), inset 0 -1px 0 var(--color-accent); }
     .approval-table__row--selected td:last-child { box-shadow: inset -1px 1px 0 var(--color-accent), inset 0 -1px 0 var(--color-accent); }
     .approval-table__row--busy { opacity: .6; }
-    .approval-table__title-cell { display: flex; align-items: center; gap: 11px; min-width: 220px; }
+    .approval-table__title-cell { display: flex; align-items: center; gap: 11px; min-width: 0; }
     .approval-table__title-text { display: flex; flex-direction: column; min-width: 0; }
-    .approval-table__title { display: inline-flex; align-items: center; gap: 8px; font-weight: 600; }
-    .approval-table__subtitle, .approval-table__secondary { overflow: hidden; max-width: 280px; color: var(--color-text-secondary); font-size: 12px; text-overflow: ellipsis; white-space: nowrap; }
-    .approval-table__primary, .approval-table__secondary { display: block; white-space: nowrap; }
+    .approval-table__title { display: flex; align-items: center; gap: 8px; min-width: 0; font-weight: 600; white-space: nowrap; }
+    .approval-table__subtitle, .approval-table__secondary { color: var(--color-text-secondary); font-size: 12px; }
+    .approval-table__subtitle, .approval-table__primary, .approval-table__secondary { display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
     .approval-table__comments { display: inline-flex; align-items: center; gap: 3px; color: var(--color-text-secondary); font-size: 11px; font-weight: 600; }
     .approval-table__comments svg { width: 13px; height: 13px; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linejoin: round; }
-    .approval-table__person { display: inline-flex; align-items: center; gap: 8px; white-space: nowrap; }
-    .approval-pill { --tone: var(--color-accent); display: inline-flex; padding: 3px 10px; border-radius: 999px; background: color-mix(in srgb, var(--tone) 14%, transparent); color: color-mix(in srgb, var(--tone) 78%, var(--color-text-primary)); font-size: 12px; font-weight: 600; white-space: nowrap; }
-    .approval-pill--success { --tone: var(--color-success); }
-    .approval-pill--warning { --tone: var(--color-warning); }
-    .approval-pill--danger { --tone: var(--color-danger); }
+    .approval-table__person { display: flex; align-items: center; gap: 8px; min-width: 0; }
+    .approval-table__person app-avatar { flex: 0 0 auto; }
+    .approval-table__person-text { display: flex; min-width: 0; flex-direction: column; }
+    .approval-pill { --tone: var(--color-accent); display: inline-block; max-width: 100%; overflow: hidden; padding: 3px 10px; border-radius: 999px; background: color-mix(in srgb, var(--tone) 12%, transparent); color: var(--tone); font-size: 12px; font-weight: 600; text-overflow: ellipsis; white-space: nowrap; }
     .approval-pill--neutral { --tone: var(--color-text-secondary); }
-    .approval-table__actions-col { width: 56px; text-align: right; }
+    .approval-table__actions-col { width: 48px; padding-inline: 4px; text-align: right; }
     .approval-table__kebab { display: inline-flex; width: 30px; height: 30px; align-items: center; justify-content: center; border: 0; border-radius: 8px; background: transparent; color: var(--color-text-secondary); cursor: pointer; }
     .approval-table__kebab:hover { background: var(--color-surface-secondary); color: var(--color-text-primary); }
     .approval-table__kebab svg, .approval-table__page-btn svg { width: 18px; height: 18px; fill: none; stroke: currentColor; stroke-width: 2.4; stroke-linecap: round; stroke-linejoin: round; }

@@ -37,9 +37,10 @@ describe('ApprovalTableComponent', () => {
     expect(el.querySelector('[data-testid="approval-table-range"]')!.textContent!.trim()).toBe('Showing 1 - 10 of 12 requests');
     expect(el.textContent).toContain('Update task details');
     expect(el.textContent).toContain('Task Update');
-    expect(el.textContent).toContain('Payments');
-    expect(el.textContent).toContain('Apollo');
     expect(el.textContent).toContain('Bala Kumar');
+    // Module / Project and Requested on moved to the explanation card, so the list fits beside it.
+    const headers = Array.from(el.querySelectorAll('th')).map((th) => th.textContent!.trim());
+    expect(headers).toEqual(['Title', 'Type', 'Requested by', 'Status', 'Actions']);
   });
 
   it('next page shows rows 11-12', () => {

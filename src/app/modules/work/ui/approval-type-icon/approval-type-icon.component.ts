@@ -27,9 +27,6 @@ const ICON_PATHS: Record<string, string[]> = {
   `,
   styles: [`
     :host { --tone: var(--color-accent); display: inline-flex; flex: 0 0 auto; width: 32px; height: 32px; align-items: center; justify-content: center; border-radius: 9px; background: color-mix(in srgb, var(--tone) 14%, transparent); color: var(--tone); }
-    :host(.ati--success) { --tone: var(--color-success); }
-    :host(.ati--warning) { --tone: var(--color-warning); }
-    :host(.ati--danger) { --tone: var(--color-danger); }
     :host(.ati--neutral) { --tone: var(--color-text-secondary); }
     svg { width: 17px; height: 17px; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
   `]

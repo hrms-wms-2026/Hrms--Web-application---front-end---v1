@@ -46,11 +46,6 @@ const DEFAULT_FILTERS: ApprovalFilterValues = { direction: ['all'], requestedOn:
 
     <div class="work-approvals" [class.work-approvals--with-card]="store.selectedId() !== null">
       <div class="work-approvals__main">
-        <header class="work-approvals__header">
-          <h1>Approvals</h1>
-          <p>Review and take action on all requests.</p>
-        </header>
-
         @if (store.loading() && store.items().length === 0) {
           <p class="work-approvals__state" data-testid="approvals-loading" aria-live="polite">Loading approvals…</p>
         } @else if (store.error() && store.items().length === 0) {
@@ -152,12 +147,11 @@ const DEFAULT_FILTERS: ApprovalFilterValues = { direction: ['all'], requestedOn:
   `,
   styles: [`
     :host { display: block; }
-    .work-approvals { display: grid; grid-template-columns: minmax(0, 1fr); gap: 20px; width: 100%; max-width: 1600px; margin: 0 auto; padding: 8px 20px 28px; }
-    .work-approvals--with-card { grid-template-columns: minmax(0, 1fr) 480px; }
+    /* Same split as the Tree tab: list + a 24rem explanation card. */
+    .work-approvals { display: grid; grid-template-columns: minmax(0, 1fr); align-items: start; gap: 16px; width: 100%; margin: 0 auto; padding: 8px 20px 28px; }
+    .work-approvals--with-card { grid-template-columns: minmax(0, 1fr) 24rem; }
     .work-approvals__main { display: flex; min-width: 0; flex-direction: column; gap: 16px; }
-    .work-approvals__header h1 { margin: 0; color: var(--color-text-primary); font-size: 26px; font-weight: 700; letter-spacing: -.01em; }
-    .work-approvals__header p { margin: 4px 0 0; color: var(--color-text-secondary); font-size: 14px; }
-    .work-approvals__card { position: sticky; top: 12px; align-self: start; min-width: 0; }
+    .work-approvals__card { position: sticky; top: 16px; align-self: start; min-width: 0; }
     .work-approvals__scrim { display: none; }
     .work-approvals__state { display: flex; align-items: center; gap: 8px; margin: 0; padding: 24px 0; color: var(--color-text-secondary); font-size: 13px; }
     .work-approvals__state--error { color: var(--color-danger); }
@@ -167,10 +161,10 @@ const DEFAULT_FILTERS: ApprovalFilterValues = { direction: ['all'], requestedOn:
     .work-approvals__form-actions { display: flex; justify-content: flex-end; gap: 8px; }
     .work-approvals__toolbar-actions { display: flex; align-items: center; gap: 8px; }
     .work-approvals__btn-icon { width: 16px; height: 16px; margin-right: 4px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; }
-    @media (max-width: 1100px) {
+    @media (max-width: 1023px) {
       .work-approvals--with-card { grid-template-columns: minmax(0, 1fr); }
       .work-approvals__scrim { position: fixed; inset: 0; z-index: 1000; display: block; background: color-mix(in srgb, var(--color-text-primary) 35%, transparent); }
-      .work-approvals__card { position: fixed; top: 0; right: 0; bottom: 0; z-index: 1001; width: min(480px, 100vw); padding: 8px; }
+      .work-approvals__card { position: fixed; top: 0; right: 0; bottom: 0; z-index: 1001; width: min(24rem, 100vw); padding: 8px; }
       .work-approvals__card app-approval-explanation-card ::ng-deep .approval-card { max-height: calc(100vh - 16px); }
     }
     @media (max-width: 680px) { .work-approvals { padding-inline: 12px; } }
@@ -192,6 +186,8 @@ export class WorkApprovalsComponent implements AfterViewInit, OnDestroy {
   protected readonly visible = computed(() => this.store.items().filter((i) => matchesApprovalFilters(i, this.filterValues())));
   protected readonly busyId = signal<string | null>(null);
   protected readonly selectedTaskId = signal<string | null>(null);
+  /** On narrow screens the card is a drawer the user closes; don't reopen it on its own. */
+  private readonly userClosedCard = signal(false);
   /** ?request=<id> waiting for the feed to load. */
   private readonly pendingDeepLink = signal<string | null>(this.route.snapshot?.queryParamMap?.get('request') ?? null);
 
@@ -222,13 +218,24 @@ export class WorkApprovalsComponent implements AfterViewInit, OnDestroy {
       this.onProjectChanged(this.route.snapshot?.paramMap?.get('id') ?? '');
     }
 
-    // Deep link: open the card for ?request=<id> once the feed holding it has loaded.
+    // Once the feed has loaded: open ?request=<id> if given, otherwise keep a row selected -
+    // the first visible one by default, or when a filter hides the selected row.
     effect(() => {
-      const id = this.pendingDeepLink();
-      if (!id || this.store.loading() || this.store.projectId() !== this.projectId()) return;
-      const item = this.store.items().find((i) => i.id === id);
-      if (item) void this.store.select(item);
-      this.pendingDeepLink.set(null);
+      if (this.store.loading() || this.store.projectId() !== this.projectId()) return;
+      const deepLink = this.pendingDeepLink();
+      if (deepLink) {
+        this.pendingDeepLink.set(null);
+        const item = this.store.items().find((i) => i.id === deepLink);
+        if (item) {
+          void this.store.select(item);
+          return;
+        }
+      }
+      const visible = this.visible();
+      const selectedId = this.store.selectedId();
+      if (visible.length === 0 || visible.some((i) => i.id === selectedId)) return;
+      if (selectedId === null && (this.userClosedCard() || !this.isWideScreen())) return;
+      void this.store.select(visible[0]);
     });
   }
 
@@ -263,13 +270,21 @@ export class WorkApprovalsComponent implements AfterViewInit, OnDestroy {
   }
 
   protected onSelect(item: ApprovalFeedItemDto): void {
+    this.userClosedCard.set(false);
     void this.store.select(item);
     this.setRequestParam(item.id);
   }
 
   protected closeCard(): void {
+    this.userClosedCard.set(true);
     void this.store.select(null);
     this.setRequestParam(null);
+  }
+
+  /** Wide screens show the card beside the list (always open); narrow ones use a drawer. */
+  private isWideScreen(): boolean {
+    return typeof window === 'undefined' || typeof window.matchMedia !== 'function'
+      || window.matchMedia('(min-width: 1024px)').matches;
   }
 
   private setRequestParam(id: string | null): void {
