@@ -20,7 +20,8 @@ import {
   attendanceAttentionLabel,
   attendanceStatusLabel,
   attendanceSeverityClass,
-  breakOverageLabel
+  breakOverageLabel,
+  formatTenure
 } from '../../utils/employee-view.utils';
 import { EmployeeEmploymentTabComponent } from './employment-tab.component';
 import { EmployeePersonalTabComponent } from './personal-tab.component';
@@ -65,52 +66,112 @@ type DetailTab = 'overview' | 'employment' | 'personal';
         />
       </header>
 
-      <!-- Header card: identity, key facts, actions -->
+      <!-- Header card: identity, live attendance status, key facts, actions -->
       <div class="rounded-2xl border border-[var(--color-border)] bg-[var(--color-surface)] p-6 mb-4">
         <div class="flex flex-col xl:flex-row xl:items-start justify-between gap-6">
-          <div class="flex items-center gap-5 min-w-0">
+          
+          <!-- Identity block: Avatar, Name, Employee ID, Live Attendance Status, Title, Dept, Email -->
+          <div class="flex items-start gap-4 sm:gap-5 min-w-0">
             <div class="relative flex-shrink-0">
               <div class="w-16 h-16 rounded-full bg-blue-100 text-blue-700 flex items-center justify-center font-bold text-xl shadow-inner border border-blue-200">
                 {{ getInitials(employee.personalInformation.firstName, employee.personalInformation.lastName) }}
               </div>
-              <span class="absolute bottom-0 right-0 w-4 h-4 rounded-full border-2 border-white"
-                    [class.bg-green-500]="employee.jobInformation.status.toLowerCase() === 'active'"
-                    [class.bg-red-500]="employee.jobInformation.status.toLowerCase() === 'inactive'"></span>
+              <span
+                class="absolute bottom-0 right-0 w-4 h-4 rounded-full border-2 border-white"
+                [class.bg-green-500]="employee.jobInformation.status.toLowerCase() === 'active'"
+                [class.bg-red-500]="employee.jobInformation.status.toLowerCase() !== 'active'"
+              ></span>
             </div>
 
             <div class="min-w-0">
-              <div class="flex items-center gap-3 flex-wrap">
+              <div class="flex items-center gap-2.5 flex-wrap">
                 <h1 class="text-2xl font-bold text-[var(--color-text-primary)]">
                   {{ employee.personalInformation.firstName }} {{ employee.personalInformation.lastName }}
                 </h1>
                 <span class="inline-flex items-center font-mono text-xs font-semibold px-2.5 py-0.5 rounded-full bg-[var(--color-surface-secondary)] text-[var(--color-text-secondary)] border border-[var(--color-border)]">
                   {{ employee.jobInformation.employeeNumber }}
                 </span>
+
+                <!-- Live Attendance Status Alert Badge -->
+                @if (employee.attendanceSummary) {
+                  <div class="inline-flex items-center gap-1.5 px-3 py-0.5 rounded-full text-xs font-medium border" [class]="todayStatusClass(employee)">
+                    <span class="w-2 h-2 rounded-full" [class]="todayStatusDotClass(employee)"></span>
+                    <span class="text-[var(--color-text-secondary)] font-normal">Attendance today ·</span>
+                    @if (employee.attendanceSummary.showNotClockedInWarning && attendanceWarningLabel(employee); as warningLabel) {
+                      <span class="font-semibold text-red-600">{{ warningLabel }}</span>
+                    } @else {
+                      <span class="font-semibold">{{ attendanceStatusLabel(employee) || 'Not specified' }}</span>
+                      @if (attendanceAttentionLabel(employee); as attentionLabel) {
+                        <span class="text-xs" [class]="severityBadgeClass(employee)">{{ attentionLabel }}</span>
+                      }
+                    }
+                    @if (breakOverageLabel(employee); as breakLabel) {
+                      <span class="font-semibold text-red-600">· {{ breakLabel }}</span>
+                    }
+                  </div>
+                }
               </div>
+
               <p class="text-base font-medium text-[var(--color-text-primary)] mt-1">
                 {{ employee.jobInformation.positionName || 'Unassigned Position' }}
               </p>
+
               <p class="text-sm text-[var(--color-text-secondary)] mt-0.5 flex items-center gap-2 flex-wrap">
                 <span>{{ employee.jobInformation.departmentName || 'No department' }}</span>
                 <span>•</span>
                 <span>{{ employee.jobInformation.legalEntityName || 'Company' }}</span>
               </p>
+
               <p class="text-sm text-[var(--color-text-secondary)] mt-0.5">{{ employee.personalInformation.email }}</p>
             </div>
           </div>
 
-          <dl class="grid grid-cols-[auto_1fr] gap-x-6 gap-y-2 text-sm xl:mx-6" data-testid="employee-key-facts">
-            <dt class="text-[var(--color-text-secondary)]">Reporting Manager</dt>
-            <dd class="font-medium text-[var(--color-text-primary)]">{{ employee.jobInformation.reportingManagerName || 'Unassigned' }}</dd>
-            <dt class="text-[var(--color-text-secondary)]">Employment Type</dt>
-            <dd class="font-medium text-[var(--color-text-primary)]">{{ employee.jobInformation.employmentTypeLabel }}</dd>
-            <dt class="text-[var(--color-text-secondary)]">Work Mode</dt>
-            <dd class="font-medium text-[var(--color-text-primary)]">{{ employee.jobInformation.workModeLabel || '—' }}</dd>
-            <dt class="text-[var(--color-text-secondary)]">Hire Date</dt>
-            <dd class="font-medium text-[var(--color-text-primary)]">{{ employee.jobInformation.hireDate | date: 'dd MMM yyyy' }}</dd>
+          <!-- Key Facts List with Icons -->
+          <dl class="grid grid-cols-[auto_1fr] gap-x-4 gap-y-2.5 text-sm xl:mx-6 items-center" data-testid="employee-key-facts">
+            <dt class="text-[var(--color-text-secondary)] flex items-center gap-1.5 font-medium">
+              <svg class="w-4 h-4 text-slate-400 flex-shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path>
+                <circle cx="9" cy="7" r="4"></circle>
+                <path d="M23 21v-2a4 4 0 0 0-3-3.87"></path>
+                <path d="M16 3.13a4 4 0 0 1 0 7.75"></path>
+              </svg>
+              <span>Reporting Manager</span>
+            </dt>
+            <dd class="font-semibold text-[var(--color-text-primary)]">{{ employee.jobInformation.reportingManagerName || 'Unassigned' }}</dd>
+
+            <dt class="text-[var(--color-text-secondary)] flex items-center gap-1.5 font-medium">
+              <svg class="w-4 h-4 text-slate-400 flex-shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <rect x="2" y="7" width="20" height="14" rx="2" ry="2"></rect>
+                <path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16"></path>
+              </svg>
+              <span>Employment Type</span>
+            </dt>
+            <dd class="font-semibold text-[var(--color-text-primary)]">{{ employee.jobInformation.employmentTypeLabel }}</dd>
+
+            <dt class="text-[var(--color-text-secondary)] flex items-center gap-1.5 font-medium">
+              <svg class="w-4 h-4 text-slate-400 flex-shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <circle cx="12" cy="12" r="10"></circle>
+                <line x1="2" y1="12" x2="22" y2="12"></line>
+                <path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"></path>
+              </svg>
+              <span>Work Mode</span>
+            </dt>
+            <dd class="font-semibold text-[var(--color-text-primary)]">{{ employee.jobInformation.workModeLabel || '—' }}</dd>
+
+            <dt class="text-[var(--color-text-secondary)] flex items-center gap-1.5 font-medium">
+              <svg class="w-4 h-4 text-slate-400 flex-shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect>
+                <line x1="16" y1="2" x2="16" y2="6"></line>
+                <line x1="8" y1="2" x2="8" y2="6"></line>
+                <line x1="3" y1="10" x2="21" y2="10"></line>
+              </svg>
+              <span>Hire Date</span>
+            </dt>
+            <dd class="font-semibold text-[var(--color-text-primary)]">{{ employee.jobInformation.hireDate | date: 'dd MMM yyyy' }}</dd>
           </dl>
 
-          <div class="flex items-center gap-3 xl:self-start">
+          <!-- Actions -->
+          <div class="flex items-center gap-2 xl:self-start">
             @if ((canChangePosition() || canOffboard()) && !isOwnRecord() && employee.jobInformation.legalEntityId && !isReadOnly() && employee.invitationStatus !== 'pending' && employee.invitationStatus !== 'expired') {
               <app-popover [open]="changePositionMenuOpen()" ariaLabel="Change position actions" align="right" (closed)="changePositionMenuOpen.set(false)">
                 <app-button popover-trigger data-testid="change-position-trigger" (pressed)="changePositionMenuOpen.set(!changePositionMenuOpen())">
@@ -128,6 +189,20 @@ type DetailTab = 'overview' | 'employment' | 'personal';
                   }
                 </div>
               </app-popover>
+
+              <!-- Overflow Menu Button (⋮) -->
+              <button
+                type="button"
+                class="p-2 rounded-lg border border-[var(--color-border)] hover:bg-[var(--color-surface-secondary)] text-[var(--color-text-secondary)] hover:text-[var(--color-text-primary)] transition-colors cursor-pointer"
+                title="More actions"
+                (click)="changePositionMenuOpen.set(!changePositionMenuOpen())"
+              >
+                <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                  <circle cx="12" cy="12" r="1"></circle>
+                  <circle cx="12" cy="5" r="1"></circle>
+                  <circle cx="12" cy="19" r="1"></circle>
+                </svg>
+              </button>
             }
             @if (employee.invitationStatus === 'expired') {
               <app-button variant="secondary" [loading]="resending()" [disabled]="resending()" (pressed)="resendInvitation(employee.id)">
@@ -137,30 +212,6 @@ type DetailTab = 'overview' | 'employment' | 'personal';
           </div>
         </div>
       </div>
-
-      @if (employee.attendanceSummary) {
-        <div class="rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] p-4 mb-4">
-          <span class="text-xs font-medium text-[var(--color-text-secondary)] block mb-1">Attendance today</span>
-          @if (employee.attendanceSummary.showNotClockedInWarning && attendanceWarningLabel(employee); as warningLabel) {
-            <span class="inline-flex items-center gap-1.5 text-sm font-semibold text-red-600">
-              <span class="w-2 h-2 rounded-full bg-red-500"></span>
-              {{ warningLabel }}
-            </span>
-          } @else {
-            <span class="text-sm font-semibold text-[var(--color-text-primary)] block truncate">
-              {{ attendanceStatusLabel(employee) || 'Not specified' }}
-            </span>
-            @if (attendanceAttentionLabel(employee); as attentionLabel) {
-              <span class="mt-1 inline-block text-xs font-medium px-2 py-0.5 rounded-full" [class]="severityBadgeClass(employee)">
-                {{ attentionLabel }}
-              </span>
-            }
-          }
-          @if (breakOverageLabel(employee); as breakLabel) {
-            <span class="mt-1 block text-xs font-medium text-red-600">{{ breakLabel }}</span>
-          }
-        </div>
-      }
 
       <!-- Navigation Tabs -->
       <div class="border-b border-[var(--color-border)] mb-4">
@@ -283,6 +334,7 @@ export class EmployeeDetailComponent {
   readonly attendanceAttentionLabel = attendanceAttentionLabel;
   readonly attendanceStatusLabel = attendanceStatusLabel;
   readonly breakOverageLabel = breakOverageLabel;
+  readonly formatTenure = formatTenure;
 
   readonly canChangePosition = computed(() => this.permissionService.hasPermission('employees:write'));
   readonly canOffboard = computed(() => this.permissionService.hasPermission('employees:offboard'));
@@ -385,5 +437,47 @@ export class EmployeeDetailComponent {
     if (severity === 'emp-attention--critical') return 'bg-red-50 text-red-700';
     if (severity === 'emp-attention--warning') return 'bg-amber-50 text-amber-700';
     return 'bg-[var(--color-surface-secondary)] text-[var(--color-text-secondary)]';
+  }
+
+  todayStatusClass(employee: EmployeeDetailResponse): string {
+    const status = employee.attendanceSummary?.attendanceStatus?.toLowerCase() || '';
+    const label = attendanceStatusLabel(employee)?.toLowerCase() || '';
+    if (status === 'present' || status === 'working' || label.includes('present') || label.includes('clocked in') || label.includes('working')) {
+      return 'bg-emerald-50 text-emerald-800 border-emerald-200';
+    }
+    if (status === 'late' || label.includes('late')) {
+      return 'bg-amber-50 text-amber-800 border-amber-200';
+    }
+    if (status === 'on_break' || label.includes('break')) {
+      return 'bg-sky-50 text-sky-800 border-sky-200';
+    }
+    if (status === 'on_leave' || label.includes('leave')) {
+      return 'bg-purple-50 text-purple-800 border-purple-200';
+    }
+    if (status === 'missing_clock_out' || status === 'absent' || label.includes('missing') || label.includes('absent')) {
+      return 'bg-rose-50 text-rose-800 border-rose-200';
+    }
+    return 'bg-[var(--color-surface-secondary)] text-[var(--color-text-primary)] border-[var(--color-border)]';
+  }
+
+  todayStatusDotClass(employee: EmployeeDetailResponse): string {
+    const status = employee.attendanceSummary?.attendanceStatus?.toLowerCase() || '';
+    const label = attendanceStatusLabel(employee)?.toLowerCase() || '';
+    if (status === 'present' || status === 'working' || label.includes('present') || label.includes('clocked in') || label.includes('working')) {
+      return 'bg-emerald-500';
+    }
+    if (status === 'late' || label.includes('late')) {
+      return 'bg-amber-500';
+    }
+    if (status === 'on_break' || label.includes('break')) {
+      return 'bg-sky-500';
+    }
+    if (status === 'on_leave' || label.includes('leave')) {
+      return 'bg-purple-500';
+    }
+    if (status === 'missing_clock_out' || status === 'absent' || label.includes('missing') || label.includes('absent')) {
+      return 'bg-rose-500';
+    }
+    return 'bg-[var(--color-text-secondary)]';
   }
 }

@@ -1,0 +1,95 @@
+import { TestBed } from '@angular/core/testing';
+import { of } from 'rxjs';
+import { PeopleApiService } from '../../data-access/people-api.service';
+import { EmployeePeriodStore } from '../../state/employee-period.store';
+import { OverviewProductivityDisciplineChartComponent } from './overview-productivity-discipline-chart.component';
+
+describe('OverviewProductivityDisciplineChartComponent', () => {
+  function setup() {
+    const api = {
+      getOverviewAttendance: vi.fn().mockReturnValue(
+        of({
+          from: '2026-09-01',
+          to: '2026-09-30',
+          workingDays: 20,
+          present: 19,
+          late: 1,
+          missingClockOuts: 0,
+          leaveDays: 1,
+          days: []
+        })
+      ),
+      getOverviewAttendanceDiscipline: vi.fn().mockReturnValue(
+        of({
+          from: '2026-09-01',
+          to: '2026-09-30',
+          lateClockIns: 1,
+          earlyClockOuts: 0,
+          missingClockOuts: 0,
+          overBreakDays: 0,
+          overBreakMinutes: 0,
+          locationTrackingEnabled: false,
+          locationViolations: null
+        })
+      ),
+      getOverviewWork: vi.fn().mockReturnValue(
+        of({
+          from: '2026-09-01',
+          to: '2026-09-30',
+          assigned: 10,
+          completed: 8,
+          inProgress: 2,
+          overdue: 0,
+          notStarted: 0,
+          completionRatePercent: 80,
+          onTimeRatePercent: 85
+        })
+      ),
+      getOverviewDelivery: vi.fn().mockReturnValue(
+        of({
+          from: '2026-09-01',
+          to: '2026-09-30',
+          tasksAssigned: 10,
+          tasksCompleted: 8,
+          onTimeCompleted: 7,
+          completedWithDueDate: 8,
+          storyPointsAssigned: 20,
+          storyPointsCompleted: 16,
+          previous: null
+        })
+      )
+    };
+
+    TestBed.configureTestingModule({
+      imports: [OverviewProductivityDisciplineChartComponent],
+      providers: [
+        EmployeePeriodStore,
+        { provide: PeopleApiService, useValue: api }
+      ]
+    });
+
+    const fixture = TestBed.createComponent(OverviewProductivityDisciplineChartComponent);
+    fixture.componentRef.setInput('employeeId', 'emp-1');
+    fixture.detectChanges();
+
+    return { fixture, api, el: fixture.nativeElement as HTMLElement };
+  }
+
+  it('renders title, radial scores and correlation insight', () => {
+    const { el } = setup();
+
+    expect(el.textContent).toContain('Productivity & Attendance Discipline');
+    expect(el.querySelector('[data-testid="discipline-score"]')).toBeTruthy();
+    expect(el.querySelector('[data-testid="productivity-score"]')).toBeTruthy();
+    expect(el.querySelector('[data-testid="correlation-insight"]')).toBeTruthy();
+  });
+
+  it('calls all required APIs to construct correlation', () => {
+    const { api } = setup();
+
+    expect(api.getOverviewAttendance).toHaveBeenCalledWith('emp-1', expect.any(String), expect.any(String));
+    expect(api.getOverviewAttendanceDiscipline).toHaveBeenCalledWith('emp-1', expect.any(String), expect.any(String), false);
+    expect(api.getOverviewWork).toHaveBeenCalledWith('emp-1', expect.any(String), expect.any(String));
+    expect(api.getOverviewDelivery).toHaveBeenCalledWith('emp-1', expect.any(String), expect.any(String), false);
+  });
+});

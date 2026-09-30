@@ -46,7 +46,7 @@ export type WidgetState = 'loading' | 'ready' | 'empty' | 'error' | 'forbidden';
       }
     </section>
   `,
-  host: { class: 'block' },
+  host: { class: 'block h-full' },
   changeDetection: ChangeDetectionStrategy.OnPush
 })
 export class WidgetCardComponent {

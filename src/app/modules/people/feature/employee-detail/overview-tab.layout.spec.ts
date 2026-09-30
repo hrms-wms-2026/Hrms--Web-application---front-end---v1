@@ -24,12 +24,13 @@ describe('EmployeeOverviewTabComponent layout', () => {
     return { fixture, api, el: fixture.nativeElement as HTMLElement };
   }
 
-  it('renders both pickers and all seven widgets', () => {
+  it('renders both pickers and all widgets including productivity discipline chart', () => {
     const { el } = setup();
 
     for (const tag of [
       'app-employee-period-picker',
       'app-employee-compare-picker',
+      'app-overview-productivity-discipline-chart',
       'app-overview-attendance-widget',
       'app-overview-time-off-widget',
       'app-overview-work-widget',
@@ -73,8 +74,9 @@ describe('EmployeeOverviewTabComponent layout', () => {
     expect(api.getOverviewActivity).toHaveBeenLastCalledWith('emp-1', expect.any(String), expect.any(String), true);
     expect(api.getOverviewDelivery).toHaveBeenLastCalledWith('emp-1', expect.any(String), expect.any(String), true);
     expect(api.getOverviewAttendanceDiscipline).toHaveBeenLastCalledWith('emp-1', expect.any(String), expect.any(String), true);
-    expect(api.getOverviewAttendance).toHaveBeenCalledTimes(1);
-    expect(api.getOverviewWork).toHaveBeenCalledTimes(1);
+    // Attendance and work are called initially by both their dedicated widgets and the chart widget (2 calls), but neither refetches on compare
+    expect(api.getOverviewAttendance).toHaveBeenCalledTimes(2);
+    expect(api.getOverviewWork).toHaveBeenCalledTimes(2);
     expect(api.getOverviewApprovals).toHaveBeenCalledTimes(1);
     expect(api.getOverviewTimeOff).toHaveBeenCalledTimes(1);
   });

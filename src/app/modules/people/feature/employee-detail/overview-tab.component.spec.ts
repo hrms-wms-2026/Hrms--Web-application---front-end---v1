@@ -65,7 +65,8 @@ describe('EmployeeOverviewTabComponent', () => {
 
     expect(api.getOverviewAttendance).toHaveBeenLastCalledWith('emp-1', '2026-05-01', '2026-05-31');
     expect(api.getOverviewAttendanceDiscipline).toHaveBeenLastCalledWith('emp-1', '2026-05-01', '2026-05-31', false);
-    expect(api.getOverviewAttendance).toHaveBeenCalledTimes(2);
+    // 2 on initial load (attendance widget + chart widget), 2 after month change
+    expect(api.getOverviewAttendance).toHaveBeenCalledTimes(4);
     expect(api.getOverviewTimeOff).toHaveBeenCalledTimes(1);
   });
 });
