@@ -1,9 +1,9 @@
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { ApprovalHistoryItemDto } from '../../models/dto/approval-history.dto';
-import { ApprovalHistoryModalComponent } from './approval-history-modal.component';
+import { ApprovalHistoryListComponent } from './approval-history-list.component';
 
-describe('ApprovalHistoryModalComponent', () => {
-  let fixture: ComponentFixture<ApprovalHistoryModalComponent>;
+describe('ApprovalHistoryListComponent', () => {
+  let fixture: ComponentFixture<ApprovalHistoryListComponent>;
 
   const items: ApprovalHistoryItemDto[] = [
     {
@@ -23,9 +23,8 @@ describe('ApprovalHistoryModalComponent', () => {
   ];
 
   beforeEach(() => {
-    TestBed.configureTestingModule({ imports: [ApprovalHistoryModalComponent] });
-    fixture = TestBed.createComponent(ApprovalHistoryModalComponent);
-    fixture.componentRef.setInput('open', true);
+    TestBed.configureTestingModule({ imports: [ApprovalHistoryListComponent] });
+    fixture = TestBed.createComponent(ApprovalHistoryListComponent);
     fixture.componentRef.setInput('items', items);
     fixture.detectChanges();
   });

@@ -5,7 +5,7 @@ import { environment } from '../../../../environments/environment';
 import { TaskApiService } from './task-api.service';
 import { WorkTaskDto, TaskStatusDto } from '../models/dto/task.dto';
 import { TaskCategoryDto } from '../models/dto/task-category.dto';
-import { TaskEditRequestDto, CreateTaskEditRequestDto } from '../models/dto/task-edit-request.dto';
+import { isPendingApproval } from '../models/dto/work-approval.dto';
 
 describe('TaskApiService', () => {
   let service: TaskApiService;
@@ -158,101 +158,38 @@ it('getStatuses fetches task statuses for a project', () => {
     req.flush(null);
   });
 
-  it('createTaskEditRequest posts to tasks/{taskId}/edit-requests', () => {
-    const taskId = 't-1';
-    const request: CreateTaskEditRequestDto = {
-      title: 'Updated Title',
-      description: 'Updated Description',
-      priority: 'high',
-      dueDate: '2024-12-31',
-      estimatedHours: 10,
-      storyPoints: 5
-    };
-    const mockResponse: TaskEditRequestDto = {
-      id: 'ter-1',
-      taskId,
-      objectiveId: 'obj-1',
-      status: 'pending',
-      payload: {
-        title: 'Updated Title',
-        description: 'Updated Description',
-        priority: 'high',
-        dueDate: '2024-12-31',
-        estimatedHours: 10,
-        storyPoints: 5
-      },
-      requestedByName: 'John Doe',
-      createdAt: '2024-01-01T00:00:00Z'
-    };
+  it('createTask returns PendingApprovalDto on 202', () => {
+    let result: unknown;
+    service.createTask('obj-1', { title: 'T', categoryId: 'c-1', priority: 'medium', sprintId: null }).subscribe((r) => (result = r));
 
-    service.createTaskEditRequest(taskId, request).subscribe((response) => {
-      expect(response).toEqual(mockResponse);
-    });
-
-    const req = httpMock.expectOne(`${environment.apiUrl}/work/tasks/${taskId}/edit-requests`);
+    const req = httpMock.expectOne(`${environment.apiUrl}/work/objectives/obj-1/tasks`);
     expect(req.request.method).toBe('POST');
-    expect(req.request.body).toEqual(request);
-    req.flush(mockResponse);
+    req.flush({ approvalRequestId: 'r1' }, { status: 202, statusText: 'Accepted' });
+
+    expect(result).toEqual({ approvalRequestId: 'r1' });
+    expect(isPendingApproval(result)).toBe(true);
   });
 
-  it('approveTaskEditRequest posts to task-edit-requests/{id}/approve', () => {
-    const editRequestId = 'ter-1';
-    const mockTask: WorkTaskDto = {
-      id: 't-1', objectiveId: 'obj-1', shortId: 'PRJ-1', title: 'Updated Title', description: 'Updated Description',
-      categoryId: 'task', statusId: 's-1', priority: 'high', storyPoints: 5,
-      dueDate: '2024-12-31', estimatedHours: 10, completedHours: 0, progressPercent: 0, sprintId: null, assigneeEmployeeIds: [], openClockSessionEmployeeId: null, openClockSessionClockInAt: null, totalLoggedMinutes: 0,
-      createdAt: '2026-01-01T00:00:00Z'
-    };
+  it('editTask returns PendingApprovalDto on 202', () => {
+    let result: unknown;
+    service.editTask('t-1', { title: 'T', priority: 'high' }).subscribe((r) => (result = r));
 
-    service.approveTaskEditRequest(editRequestId).subscribe((response) => {
-      expect(response).toEqual(mockTask);
-    });
+    const req = httpMock.expectOne(`${environment.apiUrl}/work/tasks/t-1`);
+    expect(req.request.method).toBe('PATCH');
+    req.flush({ approvalRequestId: 'r2' }, { status: 202, statusText: 'Accepted' });
 
-    const req = httpMock.expectOne(`${environment.apiUrl}/work/task-edit-requests/${editRequestId}/approve`);
-    expect(req.request.method).toBe('POST');
-    expect(req.request.body).toEqual({});
-    req.flush(mockTask);
+    expect(isPendingApproval(result)).toBe(true);
   });
 
-  it('rejectTaskEditRequest posts to task-edit-requests/{id}/reject with comment', () => {
-    const editRequestId = 'ter-1';
-    const comment = 'Need more information';
+  it('deleteTask returns PendingApprovalDto on 202', () => {
+    let result: unknown = 'unset';
+    service.deleteTask('t-1').subscribe((r) => (result = r));
 
-    service.rejectTaskEditRequest(editRequestId, comment).subscribe();
+    const req = httpMock.expectOne(`${environment.apiUrl}/work/tasks/t-1`);
+    expect(req.request.method).toBe('DELETE');
+    req.flush({ approvalRequestId: 'r3' }, { status: 202, statusText: 'Accepted' });
 
-    const req = httpMock.expectOne(`${environment.apiUrl}/work/task-edit-requests/${editRequestId}/reject`);
-    expect(req.request.method).toBe('POST');
-    expect(req.request.body).toEqual({ comment });
-    req.flush(null);
-  });
-
-  it('cancelTaskEditRequest posts to task-edit-requests/{id}/cancel', () => {
-    const editRequestId = 'ter-1';
-
-    service.cancelTaskEditRequest(editRequestId).subscribe();
-
-    const req = httpMock.expectOne(`${environment.apiUrl}/work/task-edit-requests/${editRequestId}/cancel`);
-    expect(req.request.method).toBe('POST');
-    expect(req.request.body).toEqual({});
-    req.flush(null);
-  });
-
-  it('getMyTaskEditRequests fetches task edit requests', () => {
-    const mockRequests: TaskEditRequestDto[] = [{
-      id: 'ter-1', taskId: 't-1', objectiveId: 'obj-1', status: 'pending',
-      payload: {
-        title: 'Updated Title', description: null, priority: 'high', dueDate: null, estimatedHours: 10, storyPoints: null
-      },
-      requestedByName: 'John Doe', createdAt: '2024-01-01T00:00:00Z'
-    }];
-
-    service.getMyTaskEditRequests().subscribe((requests) => {
-      expect(requests).toEqual(mockRequests);
-    });
-
-    const req = httpMock.expectOne(`${environment.apiUrl}/work/task-edit-requests/mine`);
-    expect(req.request.method).toBe('GET');
-    req.flush(mockRequests);
+    expect(result).toEqual({ approvalRequestId: 'r3' });
   });
 
 it('reorderTaskStatuses posts to projects/{projectId}/task-statuses/reorder', () => {

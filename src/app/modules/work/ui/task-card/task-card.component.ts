@@ -8,6 +8,8 @@ import { AvatarComponent } from '../../../../shared/ui/avatar/avatar.component';
 import { DatePickerComponent } from '../../../../shared/ui/date-picker/date-picker.component';
 import { TaskAssigneeDropdownComponent } from '../task-assignee-dropdown/task-assignee-dropdown.component';
 import { TaskApiService } from '../../data-access/task-api.service';
+import { isPendingApproval } from '../../models/dto/work-approval.dto';
+import { NotificationService } from '../../../../core/services/notification.service';
 import { EmployeeDirectoryStore } from '../../state/employee-directory.store';
 import { TaskBoardStore } from '../../state/task-board.store';
 import { toEditTaskRequest } from '../../utils/task.mapper';
@@ -621,6 +623,7 @@ export interface TaskCardAssignableMember {
 })
 export class TaskCardComponent {
   private readonly taskApi = inject(TaskApiService);
+  private readonly notificationService = inject(NotificationService);
   private readonly directory = inject(EmployeeDirectoryStore);
   private readonly store = inject(TaskBoardStore);
 
@@ -749,9 +752,11 @@ export class TaskCardComponent {
     const req = toEditTaskRequest(currentTask, overrides);
     try {
       if (typeof this.store.editTask === 'function') {
-        await this.store.editTask(currentTask.id, req);
+        const outcome = await this.store.editTask(currentTask.id, req);
+        if (outcome === 'pending') this.notificationService.info('Task edit sent for approval.');
       } else {
-        await firstValueFrom(this.taskApi.editTask(currentTask.id, req));
+        const res = await firstValueFrom(this.taskApi.editTask(currentTask.id, req));
+        if (isPendingApproval(res)) this.notificationService.info('Task edit sent for approval.');
       }
       this.taskChanged.emit();
     } catch {

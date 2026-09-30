@@ -48,6 +48,13 @@
         {{ matchCount() }} {{ matchCount() === 1 ? 'match' : 'matches' }}
       </span>
       }
+      @if (monitor.count() > 0) {
+      <span data-testid="monitor-alert-count" role="status"
+        title="Problems the project monitor found (capacity, deadlines, clocked hours). Red dots mark the rows; faded dots on achieved modules are not counted."
+        class="text-xs text-[var(--color-text-secondary)]">
+        {{ monitor.count() }} {{ monitor.count() === 1 ? 'alert' : 'alerts' }}
+      </span>
+      }
     </div>
     <div
       class="grid grid-cols-[minmax(0,1fr)_112px_40px_88px_140px] items-center gap-3 border-b border-[var(--color-border)] px-2 pb-2 text-xs font-medium text-[var(--color-text-secondary)]">
@@ -66,28 +73,30 @@
       (createTaskRequested)="onCreateTaskRequested($event)" (viewRequested)="onViewRequested($event)" (editRequested)="onEditRequested($event)"
       (membersRequested)="onMembersRequested($event)" (achieveRequested)="onAchieveRequested($event)"
       (achieveSprintRequested)="onAchieveSprintRequested($event)"
-      (completeSprintRequested)="onCompleteSprintRequested($event)" (deleteRequested)="onDeleteRequested($event)" />
+      (completeSprintRequested)="onCompleteSprintRequested($event)" (deleteRequested)="onDeleteRequested($event)"
+      (deleteSprintRequested)="onDeleteRequested($event)" />
     }
     }
   </div>
   <div class="lg:sticky lg:top-4">
     @if (selectedNode(); as node) {
-    <app-tree-explanation-panel [node]="node" (editRequested)="onEditRequested($event)"
+    <app-tree-explanation-panel [node]="node" [alerts]="monitor.alertsFor(node.id)" (editRequested)="onEditRequested($event)"
       (membersRequested)="onMembersRequested($event)" (achieveRequested)="onAchieveRequested($event)"
       (createRequested)="onCreateSubRequested($event)" (createSprintRequested)="onCreateSprintRequested($event)"
       (createTaskRequested)="onCreateTaskRequested($event)" (achieveSprintRequested)="onAchieveSprintRequested($event)"
-      (completeSprintRequested)="onCompleteSprintRequested($event)" (deleteRequested)="onDeleteRequested($event)" />
+      (completeSprintRequested)="onCompleteSprintRequested($event)" (deleteRequested)="onDeleteRequested($event)"
+      (deleteSprintRequested)="onDeleteRequested($event)" />
     } @else {
     <app-empty-state title="No selection" description="Select a module, sprint, or task to see its details" />
     }
   </div>
 </div>
 
-<app-sub-module-form mode="edit" [open]="settingsOpen()" [initialValue]="settingsInitialValue()"
+<app-sub-module-form [projectId]="projectId()" mode="edit" [open]="settingsOpen()" [initialValue]="settingsInitialValue()"
   [submitting]="settingsSubmitting()" [errorMessage]="store.milestoneActionError() ?? ''"
   (saved)="onSettingsSaved($event)" (closed)="settingsOpen.set(false)" />
 
-<app-sub-module-form mode="create" [open]="createModalOpen()" [parentObjectiveId]="createModalParentId()"
+<app-sub-module-form [projectId]="projectId()" mode="create" [open]="createModalOpen()" [parentObjectiveId]="createModalParentId()"
   [submitting]="createModalSubmitting()" [errorMessage]="store.milestoneActionError() ?? ''"
   (created)="onCreateModalCreated($event)" (closed)="createModalOpen.set(false)" />
 
@@ -115,7 +124,8 @@
   (completed)="onSprintCompleteDialogCompleted()" (cancelled)="onSprintCompleteDialogClosed()" />
 }
 
-<app-confirm-modal [open]="deleteConfirmOpen()" title="Delete task" message="Delete this task? This cannot be undone."
+<app-confirm-modal [open]="deleteConfirmOpen()" [title]="deletingSprint() ? 'Delete sprint' : 'Delete task'"
+  [message]="deletingSprint() ? 'Delete this sprint? Its tasks go back to the backlog.' : 'Delete this task? This cannot be undone.'"
   confirmLabel="Delete" [errorMessage]="store.milestoneActionError() ?? ''" (confirmed)="onDeleteConfirmed()"
   (cancelled)="onDeleteCancelled()" />
 

@@ -4,11 +4,15 @@ import { SubModuleFormComponent } from './sub-module-form.component';
 import { ObjectiveDetail } from '../../models/milestone.model';
 import { ProjectDetailStore } from '../../state/project-detail.store';
 import { EmployeeDirectoryStore } from '../../state/employee-directory.store';
+import { of } from 'rxjs';
+import { ProjectMonitorApiService } from '../../data-access/project-monitor-api.service';
+import { MONITOR_CHECK_DEBOUNCE_MS } from './sub-module-form.component';
 
 describe('SubModuleFormComponent', () => {
   let fixture: ComponentFixture<SubModuleFormComponent>;
   let store: { uploadMilestoneAsset: ReturnType<typeof vi.fn>; deleteMilestoneAsset: ReturnType<typeof vi.fn>; milestoneActionError: ReturnType<typeof vi.fn> };
   let currentActionError: string | null;
+  let monitorApi: { checkModule: ReturnType<typeof vi.fn> };
 
   const detail: ObjectiveDetail = {
     id: 'o1', projectId: 'p1', parentObjectiveId: 'parent-1', isDefault: false,
@@ -27,15 +31,67 @@ describe('SubModuleFormComponent', () => {
       deleteMilestoneAsset: vi.fn(),
       milestoneActionError: vi.fn(() => currentActionError)
     };
+    monitorApi = { checkModule: vi.fn().mockReturnValue(of({ warnings: [] })) };
     TestBed.configureTestingModule({
       imports: [SubModuleFormComponent],
       providers: [
         { provide: ProjectDetailStore, useValue: store },
+        { provide: ProjectMonitorApiService, useValue: monitorApi },
         { provide: EmployeeDirectoryStore, useValue: { get: () => ({ name: 'Nadia Shah' }), ensureLoaded: vi.fn() } }
       ]
     });
     fixture = TestBed.createComponent(SubModuleFormComponent);
     fixture.componentRef.setInput('open', true);
+  });
+
+  describe('live capacity warning (advisory)', () => {
+    afterEach(() => vi.useRealTimers());
+
+    it('checks the planned hours after a pause and shows the warning, and Create still emits', async () => {
+      vi.useFakeTimers();
+      monitorApi.checkModule.mockReturnValue(of({
+        dailyHours: 8, workingDays: 10, memberCount: 5, capacityHours: 400, allocatedHours: 500,
+        warnings: [{ code: 'module_over_capacity', message: 'Allocated 500 h, but 5 member(s) can produce at most 400 h.' }]
+      }));
+      fixture.componentRef.setInput('mode', 'create');
+      fixture.componentRef.setInput('projectId', 'p1');
+      fixture.componentRef.setInput('parentObjectiveId', 'parent-1');
+      fixture.detectChanges();
+      const component = fixture.componentInstance as any;
+      component.title.set('Payments');
+      component.startDate.set('2026-10-05');
+      component.endDate.set('2026-10-16');
+      component.allocatedHours.set(500);
+      component.onMemberPicked('emp-1');
+      fixture.detectChanges();
+
+      expect(monitorApi.checkModule).not.toHaveBeenCalled();
+      await vi.advanceTimersByTimeAsync(MONITOR_CHECK_DEBOUNCE_MS);
+      fixture.detectChanges();
+
+      expect(monitorApi.checkModule).toHaveBeenCalledTimes(1);
+      expect(monitorApi.checkModule).toHaveBeenCalledWith('p1', {
+        moduleId: null, startDate: '2026-10-05', endDate: '2026-10-16', allocatedHours: 500, memberEmployeeIds: ['emp-1']
+      });
+      expect(fixture.nativeElement.querySelector('[data-testid="monitor-warnings"]').textContent).toContain('at most 400 h');
+
+      const created = vi.fn();
+      component.created.subscribe(created);
+      component.submit();
+      expect(created).toHaveBeenCalled();
+    });
+
+    it('does not call the monitor until dates and hours are filled in', async () => {
+      vi.useFakeTimers();
+      fixture.componentRef.setInput('mode', 'create');
+      fixture.componentRef.setInput('projectId', 'p1');
+      fixture.detectChanges();
+
+      await vi.advanceTimersByTimeAsync(MONITOR_CHECK_DEBOUNCE_MS * 2);
+
+      expect(monitorApi.checkModule).not.toHaveBeenCalled();
+      expect(fixture.nativeElement.querySelector('[data-testid="monitor-warnings"]')).toBeNull();
+    });
   });
 
   it('emits the create payload with headEmployeeId/memberInvitations built from picked members', () => {

@@ -5,6 +5,7 @@ import { TaskApiService } from '../data-access/task-api.service';
 import { toTaskStatusColumn, toWorkTask } from '../utils/task.mapper';
 import { TaskStatusColumn, WorkTask } from '../models/task.model';
 import { CreateSubtaskRequestDto, CreateTaskRequestDto, EditTaskRequestDto, InsufficientAllocationErrorDto } from '../models/dto/task.dto';
+import { PendingApprovalDto, isPendingApproval } from '../models/dto/work-approval.dto';
 
 interface TaskBoardState {
   readonly statuses: readonly TaskStatusColumn[];
@@ -74,10 +75,12 @@ export const TaskBoardStore = signalStore(
     async createTask(
       objectiveId: string,
       request: CreateTaskRequestDto
-    ): Promise<WorkTask | InsufficientAllocationErrorDto | null> {
+    ): Promise<WorkTask | InsufficientAllocationErrorDto | PendingApprovalDto | null> {
       patchState(store, { error: null });
       try {
         const dto = await firstValueFrom(api.createTask(objectiveId, request));
+        // 202: sent for approval - there is no task yet, so nothing goes into the list.
+        if (isPendingApproval(dto)) return dto;
         const task = toWorkTask(dto);
         patchState(store, { tasks: [...store.tasks(), task] });
         return task;
@@ -92,10 +95,12 @@ export const TaskBoardStore = signalStore(
       }
     },
 
-    async editTask(taskId: string, request: EditTaskRequestDto): Promise<boolean> {
+    /** true = edited, 'pending' = sent for approval (task unchanged for now), false = failed. */
+    async editTask(taskId: string, request: EditTaskRequestDto): Promise<boolean | 'pending'> {
       patchState(store, { error: null });
       try {
         const dto = await firstValueFrom(api.editTask(taskId, request));
+        if (isPendingApproval(dto)) return 'pending';
         const updated = toWorkTask(dto);
         patchState(store, { tasks: store.tasks().map((t) => (t.id === taskId ? updated : t)) });
         if (updated.parentTaskId) {

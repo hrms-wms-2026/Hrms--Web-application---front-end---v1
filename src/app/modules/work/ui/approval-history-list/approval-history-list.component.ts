@@ -1,23 +1,16 @@
 import { DatePipe } from '@angular/common';
 import { Component, computed, input, output, signal } from '@angular/core';
 import { ButtonComponent } from '../../../../shared/ui/button/button.component';
-import { ModalComponent } from '../../../../shared/ui/modal/modal.component';
 import { ApprovalHistoryDirection, ApprovalHistoryItemDto } from '../../models/dto/approval-history.dto';
 
 type HistoryFilter = 'all' | ApprovalHistoryDirection;
 
 @Component({
-  selector: 'app-approval-history-modal',
+  selector: 'app-approval-history-list',
   standalone: true,
-  imports: [DatePipe, ModalComponent, ButtonComponent],
+  imports: [DatePipe, ButtonComponent],
   template: `
-    <app-modal
-      data-testid="approval-history-modal"
-      [open]="open()"
-      title="Approval history"
-      size="xl"
-      (closed)="closed.emit()"
-    >
+    <section data-testid="approval-history-list" aria-label="Approval history">
       <div class="approval-history__filters" role="group" aria-label="Filter approval history">
         @for (option of filters; track option.value) {
           <button
@@ -82,7 +75,7 @@ type HistoryFilter = 'all' | ApprovalHistoryDirection;
           }
         </div>
       }
-    </app-modal>
+    </section>
   `,
   styles: [`
     .approval-history__filters { display: flex; gap: 6px; margin-bottom: 18px; padding: 4px; border-radius: 10px; background: var(--color-surface-secondary); width: fit-content; }
@@ -112,12 +105,11 @@ type HistoryFilter = 'all' | ApprovalHistoryDirection;
     @media (max-width: 680px) { .approval-history__filters { width: 100%; } .approval-history__filter { flex: 1; justify-content: center; } .approval-history__item { flex-direction: column; } .approval-history__outcome { flex-basis: auto; align-items: flex-start; text-align: left; } }
   `]
 })
-export class ApprovalHistoryModalComponent {
-  open = input(false);
+/** The decided/sent approval history, shown inline in the Approvals page History tab. */
+export class ApprovalHistoryListComponent {
   items = input<readonly ApprovalHistoryItemDto[]>([]);
   loading = input(false);
   error = input<string | null>(null);
-  closed = output<void>();
   retry = output<void>();
 
   protected readonly filter = signal<HistoryFilter>('all');
@@ -139,6 +131,7 @@ export class ApprovalHistoryModalComponent {
     const labels: Record<string, string> = {
       task_creation: 'Task creation',
       task_edit: 'Task edit',
+      task_delete: 'Task deletion',
       allocation_extend: 'Allocation request',
       objective_edit: 'Module edit',
       objective_change: 'Module change',
@@ -156,7 +149,7 @@ export class ApprovalHistoryModalComponent {
       accepted: 'Accepted',
       declined: 'Declined',
       cancelled: 'Cancelled',
-      outdated: 'Outdated',
+      stale: 'Outdated',
       expired: 'Expired'
     };
     return labels[status] ?? status;

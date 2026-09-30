@@ -10,6 +10,7 @@ import { ProjectDetailStore } from '../../state/project-detail.store';
 import { SprintApiService } from '../../data-access/sprint-api.service';
 import { TaskApiService } from '../../data-access/task-api.service';
 import { EmployeeDirectoryStore } from '../../state/employee-directory.store';
+import { NotificationService } from '../../../../core/services/notification.service';
 
 describe('TaskBoardComponent', () => {
   function routeStub(taskId: string | null = null) {
@@ -46,7 +47,7 @@ describe('TaskBoardComponent', () => {
         { provide: TaskBoardStore, useValue: storeStub },
         { provide: ProjectDetailStore, useValue: projectStoreStub },
         { provide: SprintApiService, useValue: { getByProject: vi.fn().mockReturnValue(of([])) } },
-        { provide: TaskApiService, useValue: { createTaskCreationRequest: vi.fn(), assignTask: vi.fn(), getCategories: vi.fn().mockReturnValue(of([])) } },
+        { provide: TaskApiService, useValue: { assignTask: vi.fn(), getCategories: vi.fn().mockReturnValue(of([])) } },
         {
           provide: EmployeeDirectoryStore,
           useValue: { get: vi.fn().mockReturnValue(undefined), ensureLoaded: vi.fn().mockResolvedValue(undefined) }
@@ -144,7 +145,7 @@ describe('TaskBoardComponent', () => {
             }]))
           }
         },
-        { provide: TaskApiService, useValue: { createTaskCreationRequest: vi.fn(), assignTask: vi.fn(), getCategories: vi.fn().mockReturnValue(of([])) } },
+        { provide: TaskApiService, useValue: { assignTask: vi.fn(), getCategories: vi.fn().mockReturnValue(of([])) } },
         {
           provide: EmployeeDirectoryStore,
           useValue: { get: vi.fn().mockReturnValue(undefined), ensureLoaded: vi.fn().mockResolvedValue(undefined) }
@@ -226,7 +227,7 @@ describe('TaskBoardComponent', () => {
             }]))
           }
         },
-        { provide: TaskApiService, useValue: { createTaskCreationRequest: vi.fn(), assignTask: vi.fn(), getCategories: vi.fn().mockReturnValue(of([])) } },
+        { provide: TaskApiService, useValue: { assignTask: vi.fn(), getCategories: vi.fn().mockReturnValue(of([])) } },
         {
           provide: EmployeeDirectoryStore,
           useValue: { get: vi.fn().mockReturnValue(undefined), ensureLoaded: vi.fn().mockResolvedValue(undefined) }
@@ -289,7 +290,7 @@ describe('TaskBoardComponent', () => {
           loadProjectMembers: vi.fn().mockResolvedValue(undefined), projectMembers: () => []
         }},
         { provide: SprintApiService, useValue: { getByProject: vi.fn().mockReturnValue(of([])) } },
-        { provide: TaskApiService, useValue: { createTaskCreationRequest: vi.fn(), assignTask: vi.fn(), getCategories: vi.fn().mockReturnValue(of([])) } },
+        { provide: TaskApiService, useValue: { assignTask: vi.fn(), getCategories: vi.fn().mockReturnValue(of([])) } },
         { provide: EmployeeDirectoryStore, useValue: { get: vi.fn().mockReturnValue(undefined), ensureLoaded: vi.fn().mockResolvedValue(undefined) } },
         { provide: ActivatedRoute, useValue: routeStub() },
         { provide: Router, useValue: { navigate: vi.fn() } }
@@ -360,7 +361,7 @@ describe('TaskBoardComponent', () => {
             }]))
           }
         },
-        { provide: TaskApiService, useValue: { createTaskCreationRequest: vi.fn(), assignTask: vi.fn(), getCategories: vi.fn().mockReturnValue(of([])) } },
+        { provide: TaskApiService, useValue: { assignTask: vi.fn(), getCategories: vi.fn().mockReturnValue(of([])) } },
         {
           provide: EmployeeDirectoryStore,
           useValue: { get: vi.fn().mockReturnValue(undefined), ensureLoaded: vi.fn().mockResolvedValue(undefined) }
@@ -417,7 +418,7 @@ describe('TaskBoardComponent', () => {
           }
         },
         { provide: SprintApiService, useValue: { getByProject: vi.fn().mockReturnValue(of([])) } },
-        { provide: TaskApiService, useValue: { createTaskCreationRequest: vi.fn(), assignTask: vi.fn(), getCategories: vi.fn().mockReturnValue(of([])) } },
+        { provide: TaskApiService, useValue: { assignTask: vi.fn(), getCategories: vi.fn().mockReturnValue(of([])) } },
         { provide: ActivatedRoute, useValue: routeStub() },
         { provide: Router, useValue: { navigate: vi.fn() } }
       ]
@@ -473,7 +474,7 @@ describe('TaskBoardComponent', () => {
           }
         },
         { provide: SprintApiService, useValue: { getByProject: vi.fn().mockReturnValue(of([])) } },
-        { provide: TaskApiService, useValue: { createTaskCreationRequest: vi.fn(), assignTask: vi.fn(), getCategories: vi.fn().mockReturnValue(of([])) } },
+        { provide: TaskApiService, useValue: { assignTask: vi.fn(), getCategories: vi.fn().mockReturnValue(of([])) } },
         { provide: ActivatedRoute, useValue: routeStub() },
         { provide: Router, useValue: { navigate: vi.fn() } }
       ]
@@ -534,7 +535,7 @@ describe('TaskBoardComponent', () => {
           }
         },
         { provide: SprintApiService, useValue: { getByProject: vi.fn().mockReturnValue(of([])) } },
-        { provide: TaskApiService, useValue: { createTaskCreationRequest: vi.fn(), assignTask: vi.fn(), getCategories: vi.fn().mockReturnValue(of([])) } },
+        { provide: TaskApiService, useValue: { assignTask: vi.fn(), getCategories: vi.fn().mockReturnValue(of([])) } },
         { provide: ActivatedRoute, useValue: routeStub() },
         { provide: Router, useValue: { navigate: vi.fn() } }
       ]
@@ -577,7 +578,7 @@ describe('TaskBoardComponent', () => {
         { provide: TaskBoardStore, useValue: storeStub },
         { provide: ProjectDetailStore, useValue: projectStoreStub },
         { provide: SprintApiService, useValue: { getByProject: vi.fn().mockReturnValue(of([])) } },
-        { provide: TaskApiService, useValue: { createTaskCreationRequest: vi.fn(), assignTask: vi.fn(), getCategories: vi.fn().mockReturnValue(of([])) } },
+        { provide: TaskApiService, useValue: { assignTask: vi.fn(), getCategories: vi.fn().mockReturnValue(of([])) } },
         {
           provide: EmployeeDirectoryStore,
           useValue: { get: vi.fn().mockReturnValue(undefined), ensureLoaded: vi.fn().mockResolvedValue(undefined) }
@@ -629,7 +630,7 @@ describe('TaskBoardComponent', () => {
           }
         },
         { provide: SprintApiService, useValue: { getByProject: vi.fn().mockReturnValue(of([])) } },
-        { provide: TaskApiService, useValue: { createTaskCreationRequest: vi.fn(), assignTask: vi.fn(), getCategories: vi.fn().mockReturnValue(of([])) } },
+        { provide: TaskApiService, useValue: { assignTask: vi.fn(), getCategories: vi.fn().mockReturnValue(of([])) } },
         { provide: EmployeeDirectoryStore, useValue: { get: vi.fn().mockReturnValue(undefined), ensureLoaded: vi.fn().mockResolvedValue(undefined) } },
         { provide: ActivatedRoute, useValue: routeStub() },
         { provide: Router, useValue: { navigate: vi.fn() } }
@@ -673,7 +674,6 @@ describe('TaskBoardComponent', () => {
       statuses: () => []
     };
     const taskApiStub = {
-      createTaskCreationRequest: vi.fn(),
       assignTask: vi.fn().mockReturnValue(of(undefined)),
       moveTaskStatus: vi.fn().mockReturnValue(of(undefined)),
       getCategories: vi.fn().mockReturnValue(of([]))
@@ -726,6 +726,65 @@ describe('TaskBoardComponent', () => {
     expect(resolveSpy).toHaveBeenCalledWith(true);
   });
 
+  it('quick-create by non-owner calls store.createTask; a PendingApprovalDto result shows the info toast and does not assign/move status', async () => {
+    const createTask = vi.fn().mockResolvedValue({ approvalRequestId: 'r1' });
+    const storeStub = {
+      loadBoard: vi.fn().mockResolvedValue(undefined),
+      createTask,
+      columnsWithTasks: () => [],
+      tasks: () => [],
+      loading: () => false,
+      error: () => null,
+      moveTask: vi.fn(),
+      statuses: () => []
+    };
+    const taskApiStub = {
+      assignTask: vi.fn().mockReturnValue(of(undefined)),
+      moveTaskStatus: vi.fn().mockReturnValue(of(undefined)),
+      getCategories: vi.fn().mockReturnValue(of([]))
+    };
+    const notifications = { info: vi.fn(), success: vi.fn(), warning: vi.fn(), error: vi.fn() };
+
+    TestBed.configureTestingModule({
+      imports: [TaskBoardComponent],
+      providers: [
+        { provide: TaskBoardStore, useValue: storeStub },
+        {
+          provide: ProjectDetailStore,
+          useValue: {
+            milestones: () => [{ objectiveId: 'milestone-1', title: 'Milestone One', isOwner: false }],
+            getMilestoneDetail: vi.fn().mockResolvedValue(null),
+            loadMyMilestones: vi.fn().mockResolvedValue(undefined),
+            loadProjectMembers: vi.fn().mockResolvedValue(undefined),
+            projectMembers: () => []
+          }
+        },
+        { provide: SprintApiService, useValue: { getByProject: vi.fn().mockReturnValue(of([])) } },
+        { provide: TaskApiService, useValue: taskApiStub },
+        { provide: NotificationService, useValue: notifications },
+        { provide: EmployeeDirectoryStore, useValue: { get: vi.fn().mockReturnValue(undefined), ensureLoaded: vi.fn().mockResolvedValue(undefined) } },
+        { provide: ActivatedRoute, useValue: routeStub() },
+        { provide: Router, useValue: { navigate: vi.fn() } }
+      ]
+    });
+
+    const fixture = TestBed.createComponent(TaskBoardComponent);
+    fixture.detectChanges();
+    await fixture.whenStable();
+
+    const resolveSpy = vi.fn();
+    await fixture.componentInstance.onQuickTaskCreated({
+      title: 'Member task', statusId: 's-custom', priority: 'high', assigneeId: 'emp-1',
+      objectiveId: 'milestone-1', categoryId: 'cat-1', resolve: resolveSpy
+    });
+
+    expect(createTask).toHaveBeenCalledWith('milestone-1', expect.objectContaining({ title: 'Member task' }));
+    expect(notifications.info).toHaveBeenCalledWith('Task sent for approval.');
+    expect(taskApiStub.assignTask).not.toHaveBeenCalled();
+    expect(taskApiStub.moveTaskStatus).not.toHaveBeenCalled();
+    expect(resolveSpy).toHaveBeenCalledWith(true);
+  });
+
   it('opens BoardStructureEditorComponent when editStatusesClicked is emitted from column', async () => {
     const status = {
       id: 's-1', name: 'To Do', displayOrder: 0, requiresApproval: false, marksTaskComplete: false, visibility: 'public'
@@ -755,7 +814,7 @@ describe('TaskBoardComponent', () => {
           }
         },
         { provide: SprintApiService, useValue: { getByProject: vi.fn().mockReturnValue(of([])) } },
-        { provide: TaskApiService, useValue: { getStatuses: vi.fn().mockReturnValue(of([])), createTaskCreationRequest: vi.fn(), assignTask: vi.fn(), getCategories: vi.fn().mockReturnValue(of([])) } },
+        { provide: TaskApiService, useValue: { getStatuses: vi.fn().mockReturnValue(of([])), assignTask: vi.fn(), getCategories: vi.fn().mockReturnValue(of([])) } },
         { provide: EmployeeDirectoryStore, useValue: { get: vi.fn().mockReturnValue(undefined), ensureLoaded: vi.fn().mockResolvedValue(undefined) } },
         { provide: ActivatedRoute, useValue: routeStub() },
         { provide: Router, useValue: { navigate: vi.fn() } }

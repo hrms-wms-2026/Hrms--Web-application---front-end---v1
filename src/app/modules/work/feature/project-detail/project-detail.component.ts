@@ -12,6 +12,7 @@ import { ErrorStateComponent } from '../../../../shared/ui/error-state/error-sta
 import { EmptyStateComponent } from '../../../../shared/ui/empty-state/empty-state.component';
 import { BreadcrumbHeaderComponent } from '../../../../shared/ui/breadcrumb-header/breadcrumb-header.component';
 import { WorkApprovalsStore } from '../../state/work-approvals.store';
+import { ObjectiveInvitationDto } from '../../models/dto/objective-invitation.dto';
 
 @Component({
   selector: 'app-project-detail',
@@ -55,12 +56,15 @@ export class ProjectDetailComponent {
   });
   protected readonly pendingApprovalCount = computed(() => {
     const moduleIds = new Set(this.store.milestones().map((milestone) => milestone.objectiveId));
-    return [
-      ...this.approvalsStore.taskCreationRequests(),
-      ...this.approvalsStore.taskEditRequests(),
+    // Engine task requests are already project-scoped (loaded for this project); the rest are
+    // "mine" lists across projects, so they are narrowed to this project's modules.
+    // Invitations are matched by their own projectId: an invitee is not a member of the invited
+    // module until they accept, so it is never in milestones().
+    const invitations = this.approvalsStore.objectiveInvitations()
+      .filter((invitation) => (invitation.raw as ObjectiveInvitationDto).projectId === this.projectId);
+    return this.approvalsStore.workApprovals().length + invitations.length + [
       ...this.approvalsStore.allocationRequests(),
-      ...this.approvalsStore.objectiveChangeRequests(),
-      ...this.approvalsStore.objectiveInvitations()
+      ...this.approvalsStore.objectiveChangeRequests()
     ].filter((request) => moduleIds.has(request.objectiveId)).length;
   });
 
@@ -88,10 +92,10 @@ export class ProjectDetailComponent {
       .subscribe((id) => {
         this.projectId = id;
         void this.loadProject(id);
+        void this.approvalsStore.loadAll(id);
       });
 
     void this.projectListStore.loadProjects();
-    void this.approvalsStore.loadAll();
   }
 
   private syncChildRouteState(): void {
