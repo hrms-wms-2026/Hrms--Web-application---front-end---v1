@@ -237,17 +237,17 @@ const BULK_POPOVER_POSITIONS: ConnectionPositionPair[] = [
           size="sm"
           direction="up"
           testId="bulk-action-priority"
-          [disabled]="bulkSubmitting() || !selectionAllOwned()"
-          [tooltip]="selectionAllOwned() ? '' : ownerOnlyReason"
+          [disabled]="bulkSubmitting()"
           (selectionChanged)="applyBulkPriority($event)"
         />
 
+        <!-- Members may use priority/due date too: their changes go for approval (task.edit). -->
         <app-date-picker
           variant="chip"
           emptyLabel="Due date"
           chipClass="task-backlog__bulk-date"
           btnTestId="bulk-action-due-date"
-          [disabled]="bulkSubmitting() || !selectionAllOwned()"
+          [disabled]="bulkSubmitting()"
           (valueChange)="applyBulkDueDate($event)"
         />
 
@@ -280,7 +280,7 @@ const BULK_POPOVER_POSITIONS: ConnectionPositionPair[] = [
       [title]="bulkResult()?.title ?? ''"
       [names]="taskNames()"
       noun="task"
-      [showApprovals]="false"
+      [showApprovals]="(bulkResult()?.summary?.pendingApproval ?? 0) > 0"
       (closed)="bulkResult.set(null)"
     />
 

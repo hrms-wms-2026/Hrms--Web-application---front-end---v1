@@ -832,7 +832,7 @@ describe('TaskBacklogComponent', () => {
         .toContain('2 tasks selected');
     });
 
-    it('owner-only actions are disabled with a reason when a selected module is not effectively owned', async () => {
+    it('a non-owner can still bulk-change priority (it goes for approval); only sprint moves stay owner-only', async () => {
       const task = makeTaskWithHours('t-a', 4, 'milestone-2');
       const { fixture } = setup({
         tasks: [task],
@@ -845,10 +845,13 @@ describe('TaskBacklogComponent', () => {
       fixture.detectChanges();
 
       const priority = fixture.nativeElement.querySelector('[data-testid="bulk-action-priority"]') as HTMLButtonElement;
-      expect(priority.disabled).toBe(true);
-      expect(priority.title).toBe('You can only do this for tasks in modules you own.');
+      expect(priority.disabled).toBe(false);
       expect((fixture.nativeElement.querySelector('[data-testid="bulk-action-status"]') as HTMLButtonElement).disabled)
         .toBe(false);
+      const inst = fixture.componentInstance as unknown as { bulkActions(): { id: string; disabled?: boolean; disabledReason?: string }[] };
+      const moveToSprint = inst.bulkActions().find((action) => action.id === 'move-to-sprint')!;
+      expect(moveToSprint.disabled).toBe(true);
+      expect(moveToSprint.disabledReason).toBe('You can only do this for tasks in modules you own.');
     });
 
     it('status picker hides private statuses unless every selected module is owned', async () => {
