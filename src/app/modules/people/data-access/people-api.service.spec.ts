@@ -178,6 +178,15 @@ describe('PeopleApiService', () => {
     req.flush({});
   });
 
+  it('getOverviewSignals GETs /employees/{id}/overview/signals with the period', () => {
+    service.getOverviewSignals('emp-1', '2026-09-01', '2026-09-30').subscribe();
+
+    const req = httpMock.expectOne((r) => r.url.endsWith('/employees/emp-1/overview/signals'));
+    expect(req.request.params.get('from')).toBe('2026-09-01');
+    expect(req.request.params.get('to')).toBe('2026-09-30');
+    req.flush({ from: '2026-09-01', to: '2026-09-30', signals: [] });
+  });
+
   it('fetches work modes from /work-modes for a legal entity', () => {
     service.getWorkModes('le-1').subscribe((modes) => {
       expect(modes.length).toBe(1);

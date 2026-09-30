@@ -146,3 +146,25 @@ export interface EmployeeApprovalActivityResponse {
   readonly total: number;
   readonly items: readonly EmployeeApprovalItem[];
 }
+
+export type EmployeeSignalSeverity = 'critical' | 'warning' | 'info';
+
+export type EmployeeSignalCategory = 'attendance' | 'work' | 'approvals' | 'monitoring';
+
+export interface EmployeeSignal {
+  readonly key: string;
+  readonly rank: number;
+  readonly severity: EmployeeSignalSeverity;
+  readonly category: EmployeeSignalCategory;
+  readonly value: number;
+  readonly unit: 'days' | 'minutes' | 'count' | 'percent';
+  readonly denominator: number | null;
+  readonly label: string;
+  readonly detail: string;
+}
+
+export interface EmployeeOverviewSignalsResponse {
+  readonly from: string;
+  readonly to: string;
+  readonly signals: readonly EmployeeSignal[];
+}
