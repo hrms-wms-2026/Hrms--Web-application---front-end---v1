@@ -317,6 +317,15 @@ describe('MilestoneTreeTabComponent', () => {
     });
   });
 
+  it('always shows achieved modules in the tree', () => {
+    const achieved: MilestoneTreeNode = { ...sibling, id: 'o5', title: 'Shipped Module', isAchieved: true };
+    storeStub.selectedSubtree = () => ({ ...tree, children: [child, achieved] });
+    setup('o1');
+    fixture.detectChanges();
+
+    expect(fixture.nativeElement.textContent).toContain('Shipped Module');
+  });
+
   it('renders the root tree node', () => {
     setup('o1');
     fixture.detectChanges();

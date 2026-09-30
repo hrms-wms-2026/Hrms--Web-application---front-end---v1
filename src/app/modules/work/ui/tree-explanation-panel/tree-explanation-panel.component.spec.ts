@@ -44,6 +44,34 @@ describe('TreeExplanationPanelComponent', () => {
     fixture.detectChanges();
   }
 
+  it('explains each monitor alert on the node inside the card', () => {
+    setup(objective);
+    expect(fixture.nativeElement.querySelector('[data-testid="panel-alerts"]')).toBeNull();
+
+    fixture.componentRef.setInput('alerts', [{
+      id: 'a1', targetType: 'module', targetId: 'o1', targetTitle: 'Design', ruleCode: 'module_overload',
+      subjectEmployeeId: null, message: 'Allocated 200h exceeds capacity of 24h.', firstDetectedAt: '2026-09-29T00:00:00Z'
+    }]);
+    fixture.detectChanges();
+
+    const messages = fixture.nativeElement.querySelectorAll('[data-testid="panel-alert-message"]');
+    expect(messages.length).toBe(1);
+    expect(messages[0].textContent).toContain('Allocated 200h exceeds capacity of 24h.');
+    expect(fixture.nativeElement.querySelector('[data-testid="panel-alerts-muted"]')).toBeNull();
+  });
+
+  it('fades an achieved module\'s alerts and says no action is needed', () => {
+    setup({ ...objective, isAchieved: true });
+    fixture.componentRef.setInput('alerts', [{
+      id: 'a1', targetType: 'module', targetId: 'o1', targetTitle: 'Design', ruleCode: 'module_over_capacity',
+      subjectEmployeeId: null, message: 'Over capacity.', firstDetectedAt: '2026-09-29T00:00:00Z', inAchievedModule: true
+    }]);
+    fixture.detectChanges();
+
+    expect(fixture.nativeElement.querySelector('[data-testid="panel-alerts"]').classList).toContain('opacity-50');
+    expect(fixture.nativeElement.querySelector('[data-testid="panel-alerts-muted"]')).not.toBeNull();
+  });
+
   it('renders objective fields and hides actions when the caller is not the owner', () => {
     setup({ ...objective, isOwner: false });
     expect(fixture.nativeElement.textContent).toContain('Design');

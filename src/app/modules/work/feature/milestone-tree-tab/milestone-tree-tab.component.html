@@ -50,9 +50,8 @@
       }
       @if (monitor.count() > 0) {
       <span data-testid="monitor-alert-count" role="status"
-        title="Problems the project monitor found (capacity, deadlines, clocked hours). Red dots mark the rows."
-        class="inline-flex items-center gap-1.5 rounded-full bg-[var(--color-danger)]/10 px-2.5 py-1 text-xs font-semibold text-[var(--color-danger)]">
-        <span class="inline-block h-2 w-2 rounded-full bg-[var(--color-danger)]" aria-hidden="true"></span>
+        title="Problems the project monitor found (capacity, deadlines, clocked hours). Red dots mark the rows; faded dots on achieved modules are not counted."
+        class="text-xs text-[var(--color-text-secondary)]">
         {{ monitor.count() }} {{ monitor.count() === 1 ? 'alert' : 'alerts' }}
       </span>
       }
@@ -81,7 +80,7 @@
   </div>
   <div class="lg:sticky lg:top-4">
     @if (selectedNode(); as node) {
-    <app-tree-explanation-panel [node]="node" (editRequested)="onEditRequested($event)"
+    <app-tree-explanation-panel [node]="node" [alerts]="monitor.alertsFor(node.id)" (editRequested)="onEditRequested($event)"
       (membersRequested)="onMembersRequested($event)" (achieveRequested)="onAchieveRequested($event)"
       (createRequested)="onCreateSubRequested($event)" (createSprintRequested)="onCreateSprintRequested($event)"
       (createTaskRequested)="onCreateTaskRequested($event)" (achieveSprintRequested)="onAchieveSprintRequested($event)"

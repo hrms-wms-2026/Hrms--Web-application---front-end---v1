@@ -27,7 +27,7 @@ import { MilestoneTreeNode, ObjectiveDetail } from '../../models/milestone.model
 import { EditObjectiveRequestDto, CreateObjectiveRequestDto } from '../../models/dto/milestone.dto';
 import { findTreeNode, isLeafObjective, collectObjectiveOptions } from '../../utils/project.mapper';
 import { Sprint, SprintStatus } from '../../models/sprint.model';
-import { NotificationService } from '../../../../core/services/notification.service';
+import { NotificationService } from '../../../../core/services/notification.service';
 import { ProjectMonitorStore } from '../../state/project-monitor.store';
 
 const ACTIVE_STATUS_OPTIONS: readonly WorkDropdownOption[] = [
@@ -136,7 +136,7 @@ export class MilestoneTreeTabComponent {
   private readonly highlightValues = computed(() => ({ ...this.filterValues(), search: [this.searchTerm()] }));
   readonly highlightActive = computed(() => hasActiveHighlight(this.highlightValues()));
   readonly highlight = computed(() => {
-    const tree = this.store.selectedSubtree();
+    const tree = this.renderedTree();
     if (!tree) return { matchedKeys: new Set<string>(), ancestorKeys: new Set<string>() };
     return computeTreeHighlight(tree, this.highlightValues(), new Date());
   });

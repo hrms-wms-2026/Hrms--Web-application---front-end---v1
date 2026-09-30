@@ -3,6 +3,7 @@ import { CardComponent } from '../../../../shared/ui/card/card.component';
 import { EmployeeAvatarComponent } from '../employee-avatar/employee-avatar.component';
 import { MilestoneTreeNode } from '../../models/milestone.model';
 import { isLeafObjective } from '../../utils/project.mapper';
+import { MonitorAlertDto } from '../../models/dto/monitor.dto';
 
 @Component({
   selector: 'app-tree-explanation-panel',
@@ -31,6 +32,24 @@ import { isLeafObjective } from '../../utils/project.mapper';
             }
           </div>
         </div>
+
+        @if (alerts().length > 0) {
+          <div data-testid="panel-alerts" role="status" [class.opacity-50]="alertsMuted()"
+            class="flex flex-col gap-2 rounded-xl border border-[var(--color-danger)]/30 bg-[var(--color-danger)]/5 px-3 py-2.5">
+            <div class="flex items-center gap-2 text-[11px] font-bold uppercase tracking-wider text-[var(--color-danger)]">
+              <span class="h-2 w-2 shrink-0 rounded-full bg-[var(--color-danger)]" aria-hidden="true"></span>
+              {{ alerts().length === 1 ? 'Alert' : alerts().length + ' alerts' }}
+            </div>
+            @if (alertsMuted()) {
+              <p data-testid="panel-alerts-muted" class="text-[11px] text-[var(--color-text-secondary)]">Achieved module - for information only, no action needed.</p>
+            }
+            <ul class="flex flex-col gap-1.5">
+              @for (alert of alerts(); track alert.id) {
+                <li data-testid="panel-alert-message" class="text-xs leading-relaxed text-[var(--color-text-primary)]">{{ alert.message }}</li>
+              }
+            </ul>
+          </div>
+        }
 
         @if (node().description; as description) {
           <p data-testid="panel-description" class="text-xs leading-relaxed text-[var(--color-text-secondary)]">{{ description }}</p>
@@ -130,6 +149,9 @@ import { isLeafObjective } from '../../utils/project.mapper';
 })
 export class TreeExplanationPanelComponent {
   node = input.required<MilestoneTreeNode>();
+  /** Open project-monitor alerts on this node (e.g. overload), explained in full here. */
+  alerts = input<readonly MonitorAlertDto[]>([]);
+  readonly alertsMuted = computed(() => this.alerts().every((alert) => alert.inAchievedModule));
 
   editRequested = output<MilestoneTreeNode>();
   membersRequested = output<MilestoneTreeNode>();

@@ -36,6 +36,15 @@ describe('ProjectMonitorStore', () => {
     expect(store.alertsFor('unknown')).toEqual([]);
   });
 
+  it('does not count alerts on achieved modules, but still indexes them for the faded mark', async () => {
+    refreshAlerts.mockReturnValue(of([alert('a1', 'm1'), { ...alert('a2', 'm2'), inAchievedModule: true }]));
+
+    await store.load('p1');
+
+    expect(store.count()).toBe(1);
+    expect(store.alertsFor('m2').map((a) => a.id)).toEqual(['a2']);
+  });
+
   it('falls back to the stored alerts when the re-check fails', async () => {
     refreshAlerts.mockReturnValue(throwError(() => new Error('busy')));
     listAlerts.mockReturnValue(of([alert('a1', 'm1')]));

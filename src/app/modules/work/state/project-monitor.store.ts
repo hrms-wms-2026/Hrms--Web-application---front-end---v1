@@ -12,7 +12,8 @@ export class ProjectMonitorStore {
   private loadVersion = 0;
 
   readonly alerts = signal<readonly MonitorAlertDto[]>([]);
-  readonly count = computed(() => this.alerts().length);
+  /** Actionable alerts only - those on achieved modules are shown faded but never counted. */
+  readonly count = computed(() => this.alerts().filter((alert) => !alert.inAchievedModule).length);
   private readonly byTarget = computed(() => {
     const map = new Map<string, MonitorAlertDto[]>();
     for (const alert of this.alerts()) {

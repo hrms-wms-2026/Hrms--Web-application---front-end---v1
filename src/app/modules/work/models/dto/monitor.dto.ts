@@ -45,4 +45,6 @@ export interface MonitorAlertDto {
   subjectEmployeeId: string | null;
   message: string;
   firstDetectedAt: string;
+  /** On an achieved module (or under one): informational only - faded, not counted, no action. */
+  inAchievedModule?: boolean;
 }
