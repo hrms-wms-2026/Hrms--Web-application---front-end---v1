@@ -5,7 +5,7 @@ export interface WorkDropdownOption {
   label: string;
 }
 
-export type WorkDropdownIcon = 'module' | 'status' | 'category' | 'sprint' | 'people' | 'filter';
+export type WorkDropdownIcon = 'module' | 'status' | 'category' | 'sprint' | 'people' | 'filter' | 'department' | 'position' | 'type';
 
 export type WorkDropdownSize = 'md' | 'sm';
 
@@ -40,6 +40,9 @@ export type WorkDropdownSize = 'md' | 'sm';
             @case ('category') { <svg class="work-dropdown__leading-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 6h16M7 12h10M10 18h4" /></svg> }
             @case ('sprint') { <svg class="work-dropdown__leading-icon" viewBox="0 0 24 24" aria-hidden="true"><rect x="4" y="5" width="16" height="14" rx="2" /><path d="M8 9h8M8 13h5" /></svg> }
             @case ('people') { <svg class="work-dropdown__leading-icon" viewBox="0 0 24 24" aria-hidden="true"><circle cx="9" cy="8" r="3" /><path d="M4 20c0-3 2.5-5 5-5s5 2 5 5" /><path d="M15 7a3 3 0 0 1 0 6M20 20c0-2.5-1.7-4.3-4-4.8" /></svg> }
+            @case ('department') { <svg class="work-dropdown__leading-icon" viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="3" width="7" height="9" rx="1" /><rect x="14" y="3" width="7" height="5" rx="1" /><rect x="14" y="12" width="7" height="9" rx="1" /><rect x="3" y="16" width="7" height="5" rx="1" /></svg> }
+            @case ('position') { <svg class="work-dropdown__leading-icon" viewBox="0 0 24 24" aria-hidden="true"><rect x="2" y="7" width="20" height="14" rx="2" /><path d="M16 7V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v2" /></svg> }
+            @case ('type') { <svg class="work-dropdown__leading-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M20.59 13.41l-7.17 7.17a2 2 0 0 1-2.83 0L2 12V2h10l8.59 8.59a2 2 0 0 1 0 2.82z" /><line x1="7" y1="7" x2="7.01" y2="7" /></svg> }
             @default { <svg class="work-dropdown__leading-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M3 7h18M6 7v10M18 7v10M9 17h6" /></svg> }
           }
           <span class="work-dropdown__value">{{ triggerLabel() }}</span>
@@ -59,6 +62,7 @@ export type WorkDropdownSize = 'md' | 'sm';
                 [class.work-dropdown__option--active]="index === activeIndex()"
                 role="option"
                 [attr.aria-selected]="isSelected(option.value)"
+                [attr.data-testid]="'dropdown-option-' + option.value"
                 (mouseenter)="activeIndex.set(index)"
                 (click)="onOptionClick(option.value, $event)"
               >
@@ -145,6 +149,10 @@ export class WorkDropdownComponent {
     if (!this.multiple()) return this.selectedLabel();
     const count = this.values().length;
     if (count === 0) return this.allLabel() || this.placeholder() || this.options()[0]?.label || 'All';
+    if (count === 1) {
+      const match = this.options().find((option) => option.value === this.values()[0]);
+      if (match) return match.label;
+    }
     return `${count} selected`;
   });
   private readonly host = inject(ElementRef<HTMLElement>);

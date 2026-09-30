@@ -1,8 +1,8 @@
 <header class="emp-page-header">
   <div class="emp-header-row">
-    <app-breadcrumb-header parentLabel="People" currentLabel="Employees" icon="people" />
+    <app-breadcrumb-header class="emp-header-breadcrumb" parentLabel="People" currentLabel="Employees" icon="people" />
 
-    <div class="emp-controls">
+    <div class="emp-controls" [class.emp-controls--search-open]="searchExpanded()">
       <!-- Expandable Search (Icon Click Toggle) -->
       <div class="emp-search-container">
         @if (searchExpanded()) {
@@ -45,15 +45,15 @@
 
       <app-employee-filter-popover [value]="listState().filters" [legalEntityId]="legalEntityId()" (applied)="onFiltersApplied($event)" />
       <app-employee-column-picker [visible]="visibleColumnKeys()" (applied)="onColumnsApplied($event)" />
+    </div>
 
-      <!-- Right: Add Button -->
-      <div class="emp-controls-right">
-        @if (canAddEmployee()) {
-          <a routerLink="/people/employees/new" class="no-underline" (click)="$event.preventDefault(); openAddEmployeeModal()">
-            <app-button variant="primary">+ Add Employee</app-button>
-          </a>
-        }
-      </div>
+    <!-- Right: Add Button -->
+    <div class="emp-header-actions">
+      @if (canAddEmployee()) {
+        <a routerLink="/people/employees/new" class="no-underline" (click)="$event.preventDefault(); openAddEmployeeModal()">
+          <app-button variant="primary">+ Add Employee</app-button>
+        </a>
+      }
     </div>
   </div>
 </header>

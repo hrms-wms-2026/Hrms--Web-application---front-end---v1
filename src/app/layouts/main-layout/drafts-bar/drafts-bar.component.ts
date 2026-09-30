@@ -1,6 +1,7 @@
-import { ChangeDetectionStrategy, Component, DestroyRef, HostListener, effect, inject, signal } from '@angular/core';
+import { ChangeDetectionStrategy, Component, DestroyRef, HostListener, computed, effect, inject, signal } from '@angular/core';
 import { ConfirmModalComponent } from '../../../shared/ui/confirm-modal/confirm-modal.component';
 import { DraftChip, DraftsStore } from '../../../shared/state/drafts.store';
+import { NavigationStateService } from '../nav/navigation-state.service';
 
 const BAR_OFFSET = '40px';
 
@@ -12,7 +13,8 @@ const BAR_OFFSET = '40px';
   changeDetection: ChangeDetectionStrategy.OnPush,
   host: {
     '[class.drafts-bar--visible]': 'store.chips().length > 0',
-    '[class.drafts-bar--hidden]': 'store.chips().length === 0'
+    '[class.drafts-bar--hidden]': 'store.chips().length === 0',
+    '[class.drafts-bar--has-sub-nav]': 'hasSubNav()'
   },
   template: `
     @if (store.chips().length > 0) {
@@ -188,20 +190,51 @@ const BAR_OFFSET = '40px';
     @media (max-width: 768px) {
       :host {
         position: fixed;
-        left: 0;
-        right: 0;
-        bottom: 84px;
+        left: 50%;
+        transform: translateX(-50%);
+        bottom: 74px;
         z-index: 1050;
+        width: auto;
+        max-width: calc(100vw - 1.5rem);
+        pointer-events: none;
+      }
+      :host(.drafts-bar--has-sub-nav) {
+        bottom: 116px;
       }
       .drafts-bar {
-        border-bottom: 1px solid var(--color-border);
-        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+        width: auto;
+        max-width: 100%;
+        height: 34px;
+        padding: 0 6px;
+        border: 1px solid var(--color-border);
+        border-radius: 9999px;
+        box-shadow: 0 4px 16px rgba(0, 0, 0, 0.12);
+        background: var(--color-surface);
+        pointer-events: auto;
+      }
+      .drafts-bar__chip {
+        height: 26px;
+        border-radius: 9999px;
+        box-shadow: none;
+        border-color: transparent;
+        background: var(--color-surface-secondary);
+      }
+      .drafts-bar__chip:hover {
+        background: var(--color-surface);
+        border-color: var(--color-border);
+      }
+      .drafts-bar__chip--active {
+        background: var(--color-surface);
+        border-color: var(--color-accent);
       }
     }
   `]
 })
 export class DraftsBarComponent {
   protected readonly store = inject(DraftsStore);
+  private readonly navState = inject(NavigationStateService, { optional: true });
+
+  protected readonly hasSubNav = computed(() => !!this.navState && this.navState.activeChildren().length > 0);
 
   protected readonly pendingDelete = signal<DraftChip | null>(null);
   protected readonly deleting = signal(false);
@@ -210,7 +243,12 @@ export class DraftsBarComponent {
   constructor() {
     void this.store.load();
     const root = document.documentElement;
-    effect(() => root.style.setProperty('--bottom-tray-offset', this.store.chips().length > 0 ? BAR_OFFSET : '0px'));
+    effect(() => {
+      const hasChips = this.store.chips().length > 0;
+      const subNav = this.hasSubNav();
+      const offset = hasChips ? (subNav ? '80px' : BAR_OFFSET) : '0px';
+      root.style.setProperty('--bottom-tray-offset', offset);
+    });
     inject(DestroyRef).onDestroy(() => root.style.setProperty('--bottom-tray-offset', '0px'));
   }
 
