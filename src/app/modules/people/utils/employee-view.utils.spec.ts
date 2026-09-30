@@ -1,12 +1,14 @@
 import { describe, it, expect } from 'vitest';
-import { EmployeeListItemResponse } from '../models/employee.model';
+import { EmployeeDetailAddress, EmployeeListItemResponse } from '../models/employee.model';
 import {
   avatarInitials,
   attendanceWarningLabel,
   attendanceSeverityClass,
   attendanceAttentionLabel,
   attendanceStatusLabel,
-  breakOverageLabel
+  breakOverageLabel,
+  formatTenure,
+  primaryLocationLabel
 } from './employee-view.utils';
 
 describe('employee-view.utils', () => {
@@ -228,5 +230,62 @@ describe('employee-view.utils', () => {
       };
       expect(breakOverageLabel(emp)).toBe('Break exceeded by 20 min');
     });
+  });
+});
+
+describe('formatTenure', () => {
+  const now = new Date('2026-09-30T12:00:00Z');
+
+  it('returns an em dash for a missing or invalid hire date', () => {
+    expect(formatTenure(undefined, now)).toBe('—');
+    expect(formatTenure(null, now)).toBe('—');
+    expect(formatTenure('not-a-date', now)).toBe('—');
+  });
+
+  it('returns New Joiner inside the first month', () => {
+    expect(formatTenure('2026-09-15', now)).toBe('New Joiner');
+  });
+
+  it('formats months only', () => {
+    expect(formatTenure('2026-06-15', now)).toBe('3 mos');
+  });
+
+  it('formats years and months with plurals', () => {
+    // Mid-month dates on purpose: 'YYYY-MM-DD' parses as UTC midnight, so a 1st-of-month date
+    // would land in the previous month in negative-UTC-offset timezones.
+    expect(formatTenure('2024-02-15', now)).toBe('2 yrs 7 mos');
+    expect(formatTenure('2025-08-15', now)).toBe('1 yr 1 mo');
+  });
+
+  it('formats whole years', () => {
+    expect(formatTenure('2024-09-15', now)).toBe('2 yrs');
+  });
+});
+
+describe('primaryLocationLabel', () => {
+  const addr = (json: string, isPrimary = true): EmployeeDetailAddress =>
+    ({ id: 'a1', addressType: 'current', addressJson: json, isPrimary }) as EmployeeDetailAddress;
+
+  it('returns Not specified when there are no addresses', () => {
+    expect(primaryLocationLabel(undefined)).toBe('Not specified');
+    expect(primaryLocationLabel([])).toBe('Not specified');
+  });
+
+  it('prefers the primary address and formats city, country', () => {
+    expect(primaryLocationLabel([addr('{"city":"Kandy"}', false), addr('{"city":"Colombo","country":"Sri Lanka"}')])).toBe('Colombo, Sri Lanka');
+  });
+
+  it('falls back to city only, then country only', () => {
+    expect(primaryLocationLabel([addr('{"city":"Colombo"}')])).toBe('Colombo');
+    expect(primaryLocationLabel([addr('{"countryCode":"LK"}')])).toBe('LK');
+  });
+
+  it('falls back to the first non-empty string value', () => {
+    expect(primaryLocationLabel([addr('{"line1":"12 Galle Road"}')])).toBe('12 Galle Road');
+  });
+
+  it('truncates unparseable address text to 30 characters', () => {
+    const raw = 'this is definitely not json and is quite long';
+    expect(primaryLocationLabel([addr(raw)])).toBe(raw.substring(0, 30));
   });
 });
