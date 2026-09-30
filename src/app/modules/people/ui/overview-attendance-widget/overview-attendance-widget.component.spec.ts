@@ -60,13 +60,26 @@ describe('OverviewAttendanceWidgetComponent', () => {
     const { el } = setup(vi.fn().mockReturnValue(of(response)));
     const bars = el.querySelectorAll('[data-testid="day-bar"]');
 
-    expect(bars).toHaveLength(5);
+    expect(bars).toHaveLength(4);
     expect(bars[0].classList.contains('day--present')).toBe(true);
     expect(bars[1].classList.contains('day--late')).toBe(true);
     expect(bars[2].classList.contains('day--missing_clock_out')).toBe(true);
     expect(bars[3].classList.contains('day--leave')).toBe(true);
-    expect(bars[4].classList.contains('day--off')).toBe(true);
     expect(bars[1].getAttribute('title')).toBe('2026-09-02 · Late');
+  });
+
+  it('filters off and none entries from a full-month day strip', () => {
+    const activeDays = Array.from({ length: 8 }, (_, index) => ({
+      date: `2026-09-${String(index + 1).padStart(2, '0')}`,
+      status: 'present' as const
+    }));
+    const inactiveDays = Array.from({ length: 22 }, (_, index) => ({
+      date: `2026-09-${String(index + 9).padStart(2, '0')}`,
+      status: index % 2 === 0 ? 'off' as const : 'none' as const
+    }));
+    const { el } = setup(vi.fn().mockReturnValue(of({ ...response, days: [...activeDays, ...inactiveDays] })));
+
+    expect(el.querySelectorAll('[data-testid="day-bar"]')).toHaveLength(8);
   });
 
   it('refetches when the month changes', () => {
@@ -78,6 +91,20 @@ describe('OverviewAttendanceWidgetComponent', () => {
 
     expect(getOverviewAttendance).toHaveBeenLastCalledWith('emp-1', '2026-08-01', '2026-08-31');
     expect(getOverviewAttendance).toHaveBeenCalledTimes(2);
+  });
+
+  it('shows a bad late delta against the picked compare month', () => {
+    const compare = { ...response, from: '2026-08-01', to: '2026-08-31', late: 1 };
+    const get = vi.fn((_id: string, from: string) => of(from === '2026-08-01' ? compare : response));
+    const { fixture, store, el } = setup(get);
+
+    store.setCompareMonth('2026-08');
+    fixture.detectChanges();
+
+    const delta = el.querySelector('[data-testid="stat-late"] + app-delta-badge [data-testid="delta"]')!;
+    expect(delta.textContent).toContain('▲ +1');
+    expect(delta.classList.contains('delta--bad')).toBe(true);
+    expect(delta.getAttribute('aria-label')).toContain('Aug 2026');
   });
 
   it('shows the empty state when the period has no attendance days', () => {

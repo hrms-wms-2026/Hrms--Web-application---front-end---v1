@@ -2,6 +2,7 @@ import { inject } from '@angular/core';
 import { patchState, signalStore, withMethods, withState } from '@ngrx/signals';
 import { firstValueFrom } from 'rxjs';
 import { PeopleApiService } from '../../people/data-access/people-api.service';
+import { EmployeeIdentityResponse } from '../../people/models/employee.model';
 import { EmployeeSummary, buildInitials } from '../models/employee-summary.model';
 import { FileApiService } from '../../../shared/data-access/file-api.service';
 
@@ -16,10 +17,23 @@ export const EmployeeDirectoryStore = signalStore(
   withState<EmployeeDirectoryState>(initialState),
   withMethods((store, peopleApi = inject(PeopleApiService), fileApi = inject(FileApiService)) => {
     const inFlight = new Map<string, Promise<void>>();
+    const toSummary = (identity: EmployeeIdentityResponse): EmployeeSummary => ({
+      id: identity.id,
+      name: identity.name,
+      initials: buildInitials(identity.name),
+      avatarUrl: identity.avatarFileId ? fileApi.getFileUrl(identity.avatarFileId) : null
+    });
 
     return {
       get(employeeId: string): EmployeeSummary | undefined {
         return store.byId()[employeeId];
+      },
+
+      /** Seeds identities already returned by another endpoint, avoiding duplicate identity requests. */
+      seed(identities: readonly EmployeeIdentityResponse[]): void {
+        if (identities.length === 0) return;
+        const additions = Object.fromEntries(identities.map((identity) => [identity.id, toSummary(identity)]));
+        patchState(store, { byId: { ...store.byId(), ...additions } });
       },
 
       async ensureLoaded(employeeIds: readonly string[]): Promise<void> {
@@ -52,12 +66,7 @@ export const EmployeeDirectoryStore = signalStore(
             // id (a new row, a new card) retries the same doomed request forever, since there is
             // no negative cache without this.
             additions[id] = identity
-              ? {
-                  id: identity.id,
-                  name: identity.name,
-                  initials: buildInitials(identity.name),
-                  avatarUrl: identity.avatarFileId ? fileApi.getFileUrl(identity.avatarFileId) : null
-                }
+              ? toSummary(identity)
               : { id, name: 'Unknown employee', initials: '?', avatarUrl: null };
           });
 

@@ -27,6 +27,7 @@ import {
   EmployeeAttendanceDisciplineResponse,
   EmployeeAttendanceOverviewResponse,
   EmployeeDeliveryResponse,
+  EmployeeOverviewSignalsResponse,
   EmployeeTimeOffResponse,
   EmployeeWorkOverviewResponse
 } from '../models/employee-overview.model';
@@ -239,6 +240,13 @@ export class PeopleApiService {
     return this.http.get<EmployeeApprovalActivityResponse>(
       `${environment.apiUrl}/employees/${employeeId}/overview/approvals`,
       { params: this.periodParams(from, to, false) }
+    );
+  }
+
+  getOverviewSignals(employeeId: string, from: string, to: string): Observable<EmployeeOverviewSignalsResponse> {
+    return this.http.get<EmployeeOverviewSignalsResponse>(
+      `${environment.apiUrl}/employees/${employeeId}/overview/signals`,
+      { params: new HttpParams().set('from', from).set('to', to) }
     );
   }
 

@@ -1,10 +1,12 @@
-import { ChangeDetectionStrategy, Component, inject, input } from '@angular/core';
+import { ChangeDetectionStrategy, Component, computed, inject, input } from '@angular/core';
 import { WidgetCardComponent } from '../../../../shared/ui/widget-card/widget-card.component';
 import { createWidgetLoader } from '../../../../shared/ui/widget-card/widget-loader';
 import { PeopleApiService } from '../../data-access/people-api.service';
 import { ApprovalStatus, EmployeeApprovalItem } from '../../models/employee-overview.model';
 import { EmployeePeriodStore } from '../../state/employee-period.store';
 import { formatShortDate } from '../../utils/employee-overview.utils';
+import { createCompareLoader, deltaIf } from '../../utils/overview-compare';
+import { DeltaBadgeComponent } from '../delta-badge/delta-badge.component';
 
 const STATUS_LABELS: Record<ApprovalStatus, string> = {
   pending: 'Pending',
@@ -16,7 +18,7 @@ const STATUS_LABELS: Record<ApprovalStatus, string> = {
 @Component({
   selector: 'app-overview-approvals-widget',
   standalone: true,
-  imports: [WidgetCardComponent],
+  imports: [WidgetCardComponent, DeltaBadgeComponent],
   template: `
     <app-widget-card
       title="Approval Activity"
@@ -27,9 +29,9 @@ const STATUS_LABELS: Record<ApprovalStatus, string> = {
     >
       @if (loader.data(); as d) {
         <p class="mb-3 flex flex-wrap gap-x-4 gap-y-1 text-xs text-[var(--color-text-secondary)]" data-testid="approvals-counts">
-          <span><strong class="text-[var(--color-text-primary)]">{{ d.pending }}</strong> Pending</span>
-          <span><strong class="text-[var(--color-text-primary)]">{{ d.approved }}</strong> Approved</span>
-          <span><strong class="text-[var(--color-text-primary)]">{{ d.rejected }}</strong> Rejected</span>
+          <span><strong class="text-[var(--color-text-primary)]">{{ d.pending }}</strong> Pending <app-delta-badge [delta]="pendingDelta()" [against]="period.compareLabel()" /></span>
+          <span><strong class="text-[var(--color-text-primary)]">{{ d.approved }}</strong> Approved <app-delta-badge [delta]="approvedDelta()" [against]="period.compareLabel()" /></span>
+          <span><strong class="text-[var(--color-text-primary)]">{{ d.rejected }}</strong> Rejected <app-delta-badge [delta]="rejectedDelta()" [against]="period.compareLabel()" /></span>
         </p>
 
         <ul class="divide-y divide-[var(--color-border)]">
@@ -69,13 +71,25 @@ const STATUS_LABELS: Record<ApprovalStatus, string> = {
 })
 export class OverviewApprovalsWidgetComponent {
   private readonly api = inject(PeopleApiService);
-  private readonly period = inject(EmployeePeriodStore);
+  readonly period = inject(EmployeePeriodStore);
 
   readonly employeeId = input.required<string>();
 
   readonly loader = createWidgetLoader(
     () => this.api.getOverviewApprovals(this.employeeId(), this.period.from(), this.period.to()),
     { isEmpty: (v) => v.total === 0 }
+  );
+  readonly compareLoader = createCompareLoader(this.period, (from, to) =>
+    this.api.getOverviewApprovals(this.employeeId(), from, to)
+  );
+  readonly pendingDelta = computed(() =>
+    deltaIf(this.period.isComparing(), this.loader.data()?.pending, this.compareLoader.data()?.pending, 'neutral')
+  );
+  readonly approvedDelta = computed(() =>
+    deltaIf(this.period.isComparing(), this.loader.data()?.approved, this.compareLoader.data()?.approved, 'neutral')
+  );
+  readonly rejectedDelta = computed(() =>
+    deltaIf(this.period.isComparing(), this.loader.data()?.rejected, this.compareLoader.data()?.rejected, 'neutral')
   );
 
   shortDate = formatShortDate;

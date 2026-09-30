@@ -2,7 +2,7 @@ import { HttpErrorResponse } from '@angular/common/http';
 import { TestBed } from '@angular/core/testing';
 import { of, throwError } from 'rxjs';
 import { PeopleApiService } from '../../data-access/people-api.service';
-import { EmployeeTimeOffResponse } from '../../models/employee-overview.model';
+import { EmployeeAttendanceOverviewResponse, EmployeeTimeOffResponse } from '../../models/employee-overview.model';
 import { EmployeePeriodStore } from '../../state/employee-period.store';
 import { OverviewTimeOffWidgetComponent } from './overview-time-off-widget.component';
 
@@ -16,15 +16,25 @@ describe('OverviewTimeOffWidgetComponent', () => {
     nextLeave: { leaveTypeId: 't1', leaveTypeName: 'Annual leave', startDate: '2026-09-23', endDate: '2026-09-25', totalHours: 24 }
   };
 
-  function setup(getOverviewTimeOff: ReturnType<typeof vi.fn>) {
+  const attendance: EmployeeAttendanceOverviewResponse = {
+    from: '2026-09-01', to: '2026-09-30', workingDays: 22, present: 18, late: 1,
+    missingClockOuts: 0, leaveDays: 3, days: []
+  };
+
+  function setup(
+    getOverviewTimeOff: ReturnType<typeof vi.fn>,
+    getOverviewAttendance: ReturnType<typeof vi.fn> = vi.fn().mockReturnValue(of(attendance))
+  ) {
     TestBed.configureTestingModule({
       imports: [OverviewTimeOffWidgetComponent],
-      providers: [{ provide: PeopleApiService, useValue: { getOverviewTimeOff } }, EmployeePeriodStore]
+      providers: [{ provide: PeopleApiService, useValue: { getOverviewTimeOff, getOverviewAttendance } }, EmployeePeriodStore]
     });
+    const store = TestBed.inject(EmployeePeriodStore);
+    store.setMonth('2026-09');
     const fixture = TestBed.createComponent(OverviewTimeOffWidgetComponent);
     fixture.componentRef.setInput('employeeId', 'emp-1');
     fixture.detectChanges();
-    return { fixture, store: TestBed.inject(EmployeePeriodStore), el: fixture.nativeElement as HTMLElement };
+    return { fixture, store, el: fixture.nativeElement as HTMLElement };
   }
 
   it('requests time off for the employee without a period', () => {
@@ -32,6 +42,12 @@ describe('OverviewTimeOffWidgetComponent', () => {
     setup(get);
 
     expect(get).toHaveBeenCalledWith('emp-1');
+  });
+
+  it('keeps the widget at its natural height instead of filling the overview column', () => {
+    const { el } = setup(vi.fn().mockReturnValue(of(response)));
+
+    expect(el.classList.contains('h-full')).toBe(false);
   });
 
   it('lists each balance as remaining hours out of entitled', () => {
@@ -84,6 +100,20 @@ describe('OverviewTimeOffWidgetComponent', () => {
     fixture.detectChanges();
 
     expect(get).toHaveBeenCalledTimes(1);
+  });
+
+  it('shows monthly leave and a neutral delta against the picked compare month', () => {
+    const compare = { ...attendance, from: '2026-08-01', to: '2026-08-31', leaveDays: 1 };
+    const getAttendance = vi.fn((_id: string, from: string) => of(from === '2026-08-01' ? compare : attendance));
+    const { fixture, store, el } = setup(vi.fn().mockReturnValue(of(response)), getAttendance);
+
+    store.setCompareMonth('2026-08');
+    fixture.detectChanges();
+
+    expect(el.querySelector('[data-testid="month-leave"]')!.textContent).toContain('Leave in Sep 2026: 3 days');
+    const delta = el.querySelector('[data-testid="month-leave"] [data-testid="delta"]')!;
+    expect(delta.textContent).toContain('▲ +2');
+    expect(delta.classList.contains('delta--neutral')).toBe(true);
   });
 
   it('shows the no-access state on 403', () => {

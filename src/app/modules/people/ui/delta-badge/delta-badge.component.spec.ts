@@ -3,10 +3,11 @@ import { Delta } from '../../utils/employee-overview.utils';
 import { DeltaBadgeComponent } from './delta-badge.component';
 
 describe('DeltaBadgeComponent', () => {
-  function render(delta: Delta | null) {
+  function render(delta: Delta | null, against: string | null = null) {
     TestBed.configureTestingModule({ imports: [DeltaBadgeComponent] });
     const fixture = TestBed.createComponent(DeltaBadgeComponent);
     fixture.componentRef.setInput('delta', delta);
+    fixture.componentRef.setInput('against', against);
     fixture.detectChanges();
     return fixture.nativeElement as HTMLElement;
   }
@@ -35,8 +36,8 @@ describe('DeltaBadgeComponent', () => {
   });
 
   it('exposes a readable label for assistive technology', () => {
-    const el = badge(render({ text: '+2', direction: 'up', tone: 'bad' }))!;
+    const el = badge(render({ text: '+2', direction: 'up', tone: 'bad' }, 'Aug 2026'))!;
 
-    expect(el.getAttribute('aria-label')).toBe('Up +2 versus the previous period');
+    expect(el.getAttribute('aria-label')).toBe('Up +2 versus Aug 2026');
   });
 });

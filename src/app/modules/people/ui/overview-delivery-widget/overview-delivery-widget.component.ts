@@ -2,15 +2,12 @@ import { ChangeDetectionStrategy, Component, inject, input } from '@angular/core
 import { WidgetCardComponent } from '../../../../shared/ui/widget-card/widget-card.component';
 import { createWidgetLoader } from '../../../../shared/ui/widget-card/widget-loader';
 import { PeopleApiService } from '../../data-access/people-api.service';
-import { EmployeeDeliveryResponse } from '../../models/employee-overview.model';
 import { EmployeePeriodStore } from '../../state/employee-period.store';
-import { DeltaBadgeComponent } from '../delta-badge/delta-badge.component';
-import { Delta, computeDelta } from '../../utils/employee-overview.utils';
 
 @Component({
   selector: 'app-overview-delivery-widget',
   standalone: true,
-  imports: [WidgetCardComponent, DeltaBadgeComponent],
+  imports: [WidgetCardComponent],
   template: `
     <app-widget-card
       title="Delivery"
@@ -23,10 +20,7 @@ import { Delta, computeDelta } from '../../utils/employee-overview.utils';
         <dl class="space-y-3 text-sm">
           <div class="flex items-center justify-between gap-3">
             <dt class="text-[var(--color-text-secondary)]">Tasks completed</dt>
-            <dd class="flex items-center gap-2 font-semibold text-[var(--color-text-primary)]">
-              <span data-testid="delivery-tasks">{{ d.tasksCompleted }} / {{ d.tasksAssigned }}</span>
-              <span data-testid="delivery-tasks-delta"><app-delta-badge [delta]="tasksDelta(d)" /></span>
-            </dd>
+            <dd class="font-semibold text-[var(--color-text-primary)]" data-testid="delivery-tasks">{{ d.tasksCompleted }} / {{ d.tasksAssigned }}</dd>
           </div>
           <div class="flex items-center justify-between gap-3">
             <dt class="text-[var(--color-text-secondary)]">On-time completion</dt>
@@ -34,10 +28,7 @@ import { Delta, computeDelta } from '../../utils/employee-overview.utils';
           </div>
           <div class="flex items-center justify-between gap-3">
             <dt class="text-[var(--color-text-secondary)]">Story points</dt>
-            <dd class="flex items-center gap-2 font-semibold text-[var(--color-text-primary)]">
-              <span data-testid="delivery-points">{{ d.storyPointsCompleted }} / {{ d.storyPointsAssigned }}</span>
-              <span data-testid="delivery-points-delta"><app-delta-badge [delta]="pointsDelta(d)" /></span>
-            </dd>
+            <dd class="font-semibold text-[var(--color-text-primary)]" data-testid="delivery-points">{{ d.storyPointsCompleted }} / {{ d.storyPointsAssigned }}</dd>
           </div>
         </dl>
       }
@@ -52,15 +43,7 @@ export class OverviewDeliveryWidgetComponent {
   readonly employeeId = input.required<string>();
 
   readonly loader = createWidgetLoader(
-    () => this.api.getOverviewDelivery(this.employeeId(), this.period.from(), this.period.to(), this.period.comparePrevious()),
+    () => this.api.getOverviewDelivery(this.employeeId(), this.period.from(), this.period.to(), false),
     { isEmpty: (v) => v.tasksAssigned === 0 }
   );
-
-  tasksDelta(d: EmployeeDeliveryResponse): Delta | null {
-    return d.previous ? computeDelta(d.tasksCompleted, d.previous.tasksCompleted, 'higher-better') : null;
-  }
-
-  pointsDelta(d: EmployeeDeliveryResponse): Delta | null {
-    return d.previous ? computeDelta(d.storyPointsCompleted, d.previous.storyPointsCompleted, 'higher-better') : null;
-  }
 }

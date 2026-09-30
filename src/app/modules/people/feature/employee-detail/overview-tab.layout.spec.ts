@@ -12,7 +12,8 @@ describe('EmployeeOverviewTabComponent layout', () => {
       getOverviewWork: vi.fn().mockReturnValue(of({ from: '', to: '', assigned: 0, completed: 0, inProgress: 0, overdue: 0, notStarted: 0, completionRatePercent: 0, onTimeRatePercent: null })),
       getOverviewDelivery: vi.fn().mockReturnValue(of({ from: '', to: '', tasksAssigned: 0, tasksCompleted: 0, onTimeCompleted: 0, completedWithDueDate: 0, storyPointsAssigned: 0, storyPointsCompleted: 0, previous: null })),
       getOverviewActivity: vi.fn().mockReturnValue(of({ from: '', to: '', activityMonitoringEnabled: true, activeMinutes: 0, idleMinutes: 0, meetingMinutes: 0, daysWithData: 0, previous: null })),
-      getOverviewApprovals: vi.fn().mockReturnValue(of({ from: '', to: '', pending: 0, approved: 0, rejected: 0, total: 0, items: [] }))
+      getOverviewApprovals: vi.fn().mockReturnValue(of({ from: '', to: '', pending: 0, approved: 0, rejected: 0, total: 0, items: [] })),
+      getOverviewSignals: vi.fn().mockReturnValue(of({ from: '', to: '', signals: [] }))
     };
     TestBed.configureTestingModule({
       imports: [EmployeeOverviewTabComponent],
@@ -20,16 +21,17 @@ describe('EmployeeOverviewTabComponent layout', () => {
     });
     const fixture = TestBed.createComponent(EmployeeOverviewTabComponent);
     fixture.componentRef.setInput('employeeId', 'emp-1');
+    fixture.componentRef.setInput('hireDate', '2020-01-01');
     fixture.detectChanges();
     return { fixture, api, el: fixture.nativeElement as HTMLElement };
   }
 
-  it('renders both pickers and all seven widgets', () => {
+  it('renders the period picker and all widgets including productivity discipline chart', () => {
     const { el } = setup();
 
     for (const tag of [
       'app-employee-period-picker',
-      'app-employee-compare-picker',
+      'app-overview-productivity-discipline-chart',
       'app-overview-attendance-widget',
       'app-overview-time-off-widget',
       'app-overview-work-widget',
@@ -62,20 +64,13 @@ describe('EmployeeOverviewTabComponent layout', () => {
     expect(api.getOverviewDelivery).toHaveBeenCalledWith('emp-1', expect.any(String), expect.any(String), false);
   });
 
-  it('switching comparison on refetches only the comparison-capable widgets, with compare=true', () => {
-    const { fixture, api, el } = setup();
-    const picker = fixture.debugElement.query((d) => d.name === 'app-employee-compare-picker').componentInstance;
-    expect(el.querySelector('app-employee-compare-picker')).toBeTruthy();
+  it('renders the compare-month picker after clicking Compare', () => {
+    const { fixture, el } = setup();
+    const compareButton = [...el.querySelectorAll('button')].find((button) => button.textContent?.includes('Compare'))!;
 
-    picker.onChange('previous');
+    compareButton.click();
     fixture.detectChanges();
 
-    expect(api.getOverviewActivity).toHaveBeenLastCalledWith('emp-1', expect.any(String), expect.any(String), true);
-    expect(api.getOverviewDelivery).toHaveBeenLastCalledWith('emp-1', expect.any(String), expect.any(String), true);
-    expect(api.getOverviewAttendanceDiscipline).toHaveBeenLastCalledWith('emp-1', expect.any(String), expect.any(String), true);
-    expect(api.getOverviewAttendance).toHaveBeenCalledTimes(1);
-    expect(api.getOverviewWork).toHaveBeenCalledTimes(1);
-    expect(api.getOverviewApprovals).toHaveBeenCalledTimes(1);
-    expect(api.getOverviewTimeOff).toHaveBeenCalledTimes(1);
+    expect(el.querySelector('app-employee-compare-picker')).toBeTruthy();
   });
 });

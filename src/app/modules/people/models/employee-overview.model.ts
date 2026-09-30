@@ -21,6 +21,10 @@ export interface EmployeeAttendanceOverviewResponse {
   readonly late: number;
   readonly missingClockOuts: number;
   readonly leaveDays: number;
+  readonly absent?: number;
+  readonly shortHours?: number;
+  readonly workedOnNonWorkingDay?: number;
+  readonly workedDuringTimeOff?: number;
   readonly days: readonly EmployeeAttendanceDay[];
 }
 
@@ -141,4 +145,26 @@ export interface EmployeeApprovalActivityResponse {
   readonly rejected: number;
   readonly total: number;
   readonly items: readonly EmployeeApprovalItem[];
+}
+
+export type EmployeeSignalSeverity = 'critical' | 'warning' | 'info';
+
+export type EmployeeSignalCategory = 'attendance' | 'work' | 'approvals' | 'monitoring';
+
+export interface EmployeeSignal {
+  readonly key: string;
+  readonly rank: number;
+  readonly severity: EmployeeSignalSeverity;
+  readonly category: EmployeeSignalCategory;
+  readonly value: number;
+  readonly unit: 'days' | 'minutes' | 'count' | 'percent';
+  readonly denominator: number | null;
+  readonly label: string;
+  readonly detail: string;
+}
+
+export interface EmployeeOverviewSignalsResponse {
+  readonly from: string;
+  readonly to: string;
+  readonly signals: readonly EmployeeSignal[];
 }
