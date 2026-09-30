@@ -1,249 +1,206 @@
-import { ChangeDetectionStrategy, Component, ElementRef, computed, input, output, signal, viewChild } from '@angular/core';
+import { ChangeDetectionStrategy, Component, ElementRef, computed, effect, input, output, signal, viewChild } from '@angular/core';
 import { EmployeeWorkGraphResponse, WorkGraphNode } from '../../models/work-graph.model';
-import { GraphLink, GraphNode, layoutWorkGraph, nodeClass } from './work-graph-layout';
+import { WorkNetworkCanvasComponent } from './work-network-canvas.component';
 
-interface Point {
-  readonly x: number;
-  readonly y: number;
-}
+const MAX_PREVIEW_NODES = 8;
 
-const VIEW_PADDING = 60;
-const CLICK_DRAG_THRESHOLD_PX = 4;
-
-/**
- * Obsidian-style network centred on one employee: he is pinned in the middle, projects orbit him,
- * modules hang off projects (solid = owns, outlined = member, dashed = only has tasks there),
- * and his open tasks hang off their module. Layout is a synchronous d3-force settle; nodes can be
- * dragged and stay where dropped. Rendered as Angular-owned SVG so nodes are focusable.
- */
 @Component({
   selector: 'app-work-network-graph',
   standalone: true,
+  imports: [WorkNetworkCanvasComponent],
   template: `
-    <div class="wg-wrap">
-      <svg
-        #svg
-        class="wg-svg"
-        [attr.viewBox]="viewBox()"
-        preserveAspectRatio="xMidYMid meet"
-        role="group"
-        aria-label="Work network: projects, modules and open tasks"
-        (pointermove)="onPointerMove($event)"
-        (pointerup)="endDrag()"
-        (pointerleave)="endDrag()"
+    <div class="wg-preview">
+      <div class="wg-preview__bar">
+        <p>{{ previewSummary() }}</p>
+        <button type="button" class="wg-icon-button wg-expand-button" aria-label="Open full work network" (click)="openExpanded()">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <path d="M8 3H3v5M16 3h5v5M8 21H3v-5M16 21h5v-5" />
+          </svg>
+          <span>View full graph</span>
+        </button>
+      </div>
+
+      <button
+        type="button"
+        class="wg-preview__canvas"
+        data-testid="work-network-preview"
+        aria-label="Open the full interactive work network"
+        (click)="openExpanded()"
       >
-        @for (link of links(); track $index) {
-          <line
-            class="wg-link"
-            [class.wg-link--dim]="isLinkDimmed(link)"
-            [attr.x1]="pos(link.source).x"
-            [attr.y1]="pos(link.source).y"
-            [attr.x2]="pos(link.target).x"
-            [attr.y2]="pos(link.target).y"
-          />
-        }
-        @for (node of nodes(); track node.id) {
-          <g
-            class="wg-node"
-            [class]="nodeClassOf(node)"
-            [class.wg-node--dim]="isDimmed(node.id)"
-            [attr.data-node-id]="node.id"
-            [attr.transform]="transformOf(node)"
-            tabindex="0"
-            role="button"
-            [attr.aria-label]="ariaLabel(node.data)"
-            (pointerenter)="hovered.set(node.id)"
-            (pointerleave)="hovered.set(null)"
-            (focus)="hovered.set(node.id)"
-            (blur)="hovered.set(null)"
-            (pointerdown)="startDrag($event, node)"
-            (click)="onNodeClick(node)"
-            (keydown.enter)="onNodeClick(node)"
-          >
-            <circle [attr.r]="node.radius" />
-            @if (node.data.kind === 'employee') {
-              <text class="wg-initials" text-anchor="middle" dy="0.35em">{{ initials(node.data.label) }}</text>
-              <text class="wg-label wg-label--strong" text-anchor="middle" [attr.y]="node.radius + 16">{{ node.data.label }}</text>
-              @if (node.data.sublabel) {
-                <text class="wg-sublabel" text-anchor="middle" [attr.y]="node.radius + 31">{{ node.data.sublabel }}</text>
-              }
-            } @else {
-              <text class="wg-label" text-anchor="middle" [attr.y]="node.radius + 13">{{ shortLabel(node.data.label) }}</text>
-            }
-          </g>
-        }
-      </svg>
-
-      <ul class="wg-legend" aria-label="Legend">
-        <li><span class="wg-key wg-key--project"></span>Project</li>
-        <li><span class="wg-key wg-key--owner"></span>Module you own</li>
-        <li><span class="wg-key wg-key--member"></span>Module member</li>
-        <li><span class="wg-key wg-key--active"></span>Active task</li>
-        <li><span class="wg-key wg-key--not-started"></span>Not started task</li>
-      </ul>
-
-      @if (graph().hiddenTaskCount > 0) {
-        <p class="wg-note">+{{ graph().hiddenTaskCount }} more tasks not shown</p>
-      }
+        <app-work-network-canvas [graph]="previewGraph()" [compact]="true" />
+      </button>
     </div>
+
+    @if (expanded()) {
+      <div class="wg-overlay" data-testid="work-network-overlay" (pointerdown)="onBackdropPointerDown($event)">
+        <section
+          #dialog
+          class="wg-dialog"
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="work-network-dialog-title"
+          tabindex="-1"
+          (keydown.escape)="closeExpanded()"
+        >
+          <header class="wg-dialog__header">
+            <div>
+              <h2 id="work-network-dialog-title">Work Network</h2>
+              <p>Drag the canvas to move around, scroll to zoom, or drag a node to pin it.</p>
+            </div>
+            <div class="wg-dialog__actions" aria-label="Graph controls">
+              <button type="button" class="wg-icon-button" aria-label="Zoom out" title="Zoom out" (click)="fullCanvas.zoomOut()">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="M8 11h6M16 16l5 5"/></svg>
+              </button>
+              <button type="button" class="wg-icon-button" aria-label="Reset graph view" title="Reset view" (click)="fullCanvas.resetView()">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 12a9 9 0 1 0 3-6.7L3 8"/><path d="M3 3v5h5"/></svg>
+              </button>
+              <button type="button" class="wg-icon-button" aria-label="Zoom in" title="Zoom in" (click)="fullCanvas.zoomIn()">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="M8 11h6M11 8v6M16 16l5 5"/></svg>
+              </button>
+              <span class="wg-action-divider" aria-hidden="true"></span>
+              <button type="button" class="wg-icon-button" aria-label="Close full work network" title="Close" (click)="closeExpanded()">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M6 6l12 12M18 6 6 18"/></svg>
+              </button>
+            </div>
+          </header>
+
+          <div class="wg-dialog__canvas">
+            <app-work-network-canvas
+              #fullCanvas
+              [graph]="graph()"
+              [interactive]="true"
+              [animated]="true"
+              (nodeSelected)="selectNode($event)"
+            />
+          </div>
+
+          <footer class="wg-dialog__footer">
+            <ul class="wg-legend" aria-label="Legend">
+              <li><span class="wg-key wg-key--project"></span>Project</li>
+              <li><span class="wg-key wg-key--owner"></span>Module you own</li>
+              <li><span class="wg-key wg-key--member"></span>Module member</li>
+              <li><span class="wg-key wg-key--active"></span>Active task</li>
+              <li><span class="wg-key wg-key--not-started"></span>Not started task</li>
+            </ul>
+            @if (graph().hiddenTaskCount > 0) {
+              <p>+{{ graph().hiddenTaskCount }} more tasks are not included in this graph.</p>
+            }
+          </footer>
+        </section>
+      </div>
+    }
   `,
   styles: [`
-    .wg-wrap { display: flex; flex-direction: column; gap: 0.5rem; }
-    .wg-svg { width: 100%; height: 460px; touch-action: none; user-select: none; }
-    .wg-link { stroke: var(--color-border); stroke-width: 1.5; transition: opacity 120ms; }
-    .wg-link--dim { opacity: 0.12; }
-    .wg-node { cursor: pointer; outline: none; transition: opacity 120ms; }
-    .wg-node--dim { opacity: 0.18; }
-    .wg-node:focus-visible circle { stroke: var(--color-accent); stroke-width: 3; }
-    .wg-node circle { stroke-width: 2; }
-    .wg-node--employee circle { fill: var(--color-accent); stroke: var(--color-surface); }
-    .wg-node--project circle { fill: #1d4ed8; stroke: var(--color-surface); }
-    .wg-node--module-owner circle { fill: #7c3aed; stroke: var(--color-surface); }
-    .wg-node--module-member circle { fill: var(--color-surface); stroke: #7c3aed; stroke-width: 3; }
-    .wg-node--module-contributor circle { fill: var(--color-surface); stroke: #7c3aed; stroke-width: 2; stroke-dasharray: 3 3; }
-    .wg-node--task-active circle { fill: #16a34a; stroke: var(--color-surface); }
-    .wg-node--task-not-started circle { fill: #94a3b8; stroke: var(--color-surface); }
-    .wg-initials { fill: #fff; font-size: 16px; font-weight: 700; pointer-events: none; }
-    .wg-label { fill: var(--color-text-secondary); font-size: 11px; pointer-events: none; }
-    .wg-label--strong { fill: var(--color-text-primary); font-size: 13px; font-weight: 600; }
-    .wg-sublabel { fill: var(--color-text-secondary); font-size: 11px; pointer-events: none; }
-    .wg-legend { display: flex; flex-wrap: wrap; gap: 0.75rem 1.25rem; font-size: 0.75rem; color: var(--color-text-secondary); list-style: none; padding: 0; margin: 0; }
-    .wg-legend li { display: inline-flex; align-items: center; gap: 0.375rem; }
-    .wg-key { width: 0.75rem; height: 0.75rem; border-radius: 9999px; display: inline-block; border: 2px solid transparent; }
+    .wg-preview { overflow: hidden; border-radius: 0.75rem; border: 1px solid var(--color-border); background: var(--color-surface-secondary); }
+    .wg-preview__bar { display: flex; min-height: 2.75rem; align-items: center; justify-content: space-between; gap: 1rem; border-bottom: 1px solid var(--color-border); padding: 0.5rem 0.75rem; }
+    .wg-preview__bar p { margin: 0; color: var(--color-text-secondary); font-size: 0.75rem; }
+    .wg-preview__canvas { display: block; width: 100%; border: 0; background: transparent; padding: 0; cursor: zoom-in; }
+    .wg-preview__canvas:focus-visible { outline: 2px solid var(--color-accent); outline-offset: -2px; }
+    .wg-icon-button { display: inline-flex; min-height: 2.25rem; align-items: center; justify-content: center; gap: 0.4rem; border: 1px solid var(--color-border); border-radius: 0.5rem; background: var(--color-surface); padding: 0.45rem 0.65rem; color: var(--color-text-secondary); font: inherit; font-size: 0.75rem; font-weight: 600; cursor: pointer; transition: background-color 120ms, color 120ms, border-color 120ms; }
+    .wg-icon-button:hover { border-color: color-mix(in srgb, var(--color-accent) 45%, var(--color-border)); color: var(--color-text-primary); }
+    .wg-icon-button:focus-visible { outline: 2px solid var(--color-accent); outline-offset: 2px; }
+    .wg-icon-button svg { width: 1rem; height: 1rem; flex: none; }
+    .wg-overlay { position: fixed; inset: 0; z-index: 1400; display: flex; background: rgb(15 23 42 / 0.58); padding: 1rem; backdrop-filter: blur(3px); }
+    .wg-dialog { display: flex; width: 100%; min-width: 0; height: 100%; min-height: 0; flex-direction: column; overflow: hidden; border: 1px solid var(--color-border); border-radius: 1rem; background: var(--color-surface); box-shadow: 0 24px 80px rgb(0 0 0 / 0.3); outline: none; }
+    .wg-dialog__header { display: flex; flex: none; align-items: center; justify-content: space-between; gap: 1rem; border-bottom: 1px solid var(--color-border); padding: 0.85rem 1rem; }
+    .wg-dialog__header h2 { margin: 0; color: var(--color-text-primary); font-size: 1rem; font-weight: 700; }
+    .wg-dialog__header p { margin: 0.2rem 0 0; color: var(--color-text-secondary); font-size: 0.75rem; }
+    .wg-dialog__actions { display: flex; align-items: center; gap: 0.4rem; }
+    .wg-dialog__actions .wg-icon-button { width: 2.25rem; padding: 0; }
+    .wg-action-divider { width: 1px; height: 1.5rem; margin: 0 0.15rem; background: var(--color-border); }
+    .wg-dialog__canvas { min-height: 0; flex: 1; overflow: hidden; background: color-mix(in srgb, var(--color-surface-secondary) 55%, var(--color-surface)); }
+    .wg-dialog__footer { display: flex; flex: none; align-items: center; justify-content: space-between; gap: 1rem; border-top: 1px solid var(--color-border); padding: 0.65rem 1rem; }
+    .wg-dialog__footer p { margin: 0; color: var(--color-text-secondary); font-size: 0.75rem; }
+    .wg-legend { display: flex; flex-wrap: wrap; gap: 0.6rem 1rem; margin: 0; padding: 0; color: var(--color-text-secondary); font-size: 0.72rem; list-style: none; }
+    .wg-legend li { display: inline-flex; align-items: center; gap: 0.35rem; }
+    .wg-key { display: inline-block; width: 0.7rem; height: 0.7rem; border: 2px solid transparent; border-radius: 9999px; }
     .wg-key--project { background: #1d4ed8; }
     .wg-key--owner { background: #7c3aed; }
     .wg-key--member { border-color: #7c3aed; }
     .wg-key--active { background: #16a34a; }
     .wg-key--not-started { background: #94a3b8; }
-    .wg-note { font-size: 0.75rem; color: var(--color-text-secondary); margin: 0; }
+    @media (max-width: 640px) {
+      .wg-overlay { padding: 0; }
+      .wg-dialog { border: 0; border-radius: 0; }
+      .wg-dialog__header p, .wg-expand-button span, .wg-dialog__footer { display: none; }
+    }
   `],
   changeDetection: ChangeDetectionStrategy.OnPush
 })
 export class WorkNetworkGraphComponent {
   readonly graph = input.required<EmployeeWorkGraphResponse>();
   readonly nodeSelected = output<WorkGraphNode>();
+  readonly expanded = signal(false);
 
-  readonly hovered = signal<string | null>(null);
-  private readonly overrides = signal<Readonly<Record<string, Point>>>({});
-  private readonly svg = viewChild<ElementRef<SVGSVGElement>>('svg');
+  private readonly dialog = viewChild<ElementRef<HTMLElement>>('dialog');
+  private previouslyFocused: HTMLElement | null = null;
 
-  private drag: { node: GraphNode; startClient: Point; moved: boolean } | null = null;
-  private suppressNextClick = false;
-
-  private readonly layout = computed(() => layoutWorkGraph(this.graph()));
-  readonly nodes = computed(() => this.layout().nodes);
-  readonly links = computed(() => this.layout().links);
-
-  /** Fixed to the settled layout (not drag overrides) so dragging never rescales the view. */
-  readonly viewBox = computed(() => {
-    const nodes = this.nodes();
-    if (nodes.length === 0) return '-200 -150 400 300';
-    const minX = Math.min(...nodes.map((n) => (n.x ?? 0) - n.radius)) - VIEW_PADDING;
-    const maxX = Math.max(...nodes.map((n) => (n.x ?? 0) + n.radius)) + VIEW_PADDING;
-    const minY = Math.min(...nodes.map((n) => (n.y ?? 0) - n.radius)) - VIEW_PADDING;
-    const maxY = Math.max(...nodes.map((n) => (n.y ?? 0) + n.radius)) + VIEW_PADDING + 24;
-    return `${minX} ${minY} ${maxX - minX} ${maxY - minY}`;
+  readonly previewGraph = computed(() => this.buildPreviewGraph(this.graph()));
+  readonly previewSummary = computed(() => {
+    const shown = this.previewGraph().nodes.length;
+    const total = this.graph().nodes.length;
+    return shown < total ? `${shown} of ${total} nodes shown` : `${total} nodes`;
   });
 
-  private readonly neighbours = computed(() => {
-    const id = this.hovered();
-    if (id === null) return null;
-    const set = new Set<string>([id]);
-    for (const link of this.links()) {
-      if (link.source.id === id) set.add(link.target.id);
-      if (link.target.id === id) set.add(link.source.id);
+  constructor() {
+    effect((onCleanup) => {
+      if (!this.expanded()) return;
+      this.previouslyFocused = document.activeElement as HTMLElement | null;
+      const originalOverflow = document.body.style.overflow;
+      document.body.style.overflow = 'hidden';
+      queueMicrotask(() => this.dialog()?.nativeElement.focus());
+      onCleanup(() => {
+        document.body.style.overflow = originalOverflow;
+        this.previouslyFocused?.focus();
+        this.previouslyFocused = null;
+      });
+    });
+  }
+
+  openExpanded(): void {
+    this.expanded.set(true);
+  }
+
+  closeExpanded(): void {
+    this.expanded.set(false);
+  }
+
+  onBackdropPointerDown(event: PointerEvent): void {
+    if (event.target === event.currentTarget) this.closeExpanded();
+  }
+
+  selectNode(node: WorkGraphNode): void {
+    this.closeExpanded();
+    this.nodeSelected.emit(node);
+  }
+
+  private buildPreviewGraph(graph: EmployeeWorkGraphResponse): EmployeeWorkGraphResponse {
+    if (graph.nodes.length <= MAX_PREVIEW_NODES) return graph;
+
+    const nodesById = new Map(graph.nodes.map((node) => [node.id, node] as const));
+    const employee = graph.nodes.find((node) => node.kind === 'employee') ?? graph.nodes[0];
+    const selectedIds = new Set<string>();
+    const queue: string[] = employee ? [employee.id] : [];
+
+    while (queue.length > 0 && selectedIds.size < MAX_PREVIEW_NODES) {
+      const id = queue.shift()!;
+      if (selectedIds.has(id) || !nodesById.has(id)) continue;
+      selectedIds.add(id);
+      for (const link of graph.links) {
+        if (link.source === id && !selectedIds.has(link.target)) queue.push(link.target);
+        if (link.target === id && !selectedIds.has(link.source)) queue.push(link.source);
+      }
     }
-    return set;
-  });
 
-  nodeClassOf(node: GraphNode): string {
-    return nodeClass(node.data);
-  }
-
-  pos(node: GraphNode): Point {
-    return this.overrides()[node.id] ?? { x: node.x ?? 0, y: node.y ?? 0 };
-  }
-
-  transformOf(node: GraphNode): string {
-    const p = this.pos(node);
-    return `translate(${p.x},${p.y})`;
-  }
-
-  isDimmed(id: string): boolean {
-    const n = this.neighbours();
-    return n !== null && !n.has(id);
-  }
-
-  isLinkDimmed(link: GraphLink): boolean {
-    const id = this.hovered();
-    return id !== null && link.source.id !== id && link.target.id !== id;
-  }
-
-  initials(name: string): string {
-    const parts = name.trim().split(/\s+/).filter(Boolean);
-    return ((parts[0]?.[0] ?? '') + (parts.length > 1 ? parts[parts.length - 1][0] : '')).toUpperCase() || 'EM';
-  }
-
-  shortLabel(label: string, max = 22): string {
-    return label.length > max ? `${label.slice(0, max - 1)}…` : label;
-  }
-
-  ariaLabel(node: WorkGraphNode): string {
-    switch (node.kind) {
-      case 'employee':
-        return `${node.label}, ${node.sublabel ?? 'no position'}`;
-      case 'project':
-        return `Project ${node.label}`;
-      case 'module':
-        return `Module ${node.label}, ${node.role ?? 'contributor'}`;
-      default:
-        return `Task ${node.sublabel ?? ''} ${node.label}, ${node.status === 'active' ? 'active' : 'not started'}`.trim();
+    for (const node of graph.nodes) {
+      if (selectedIds.size >= MAX_PREVIEW_NODES) break;
+      selectedIds.add(node.id);
     }
-  }
 
-  onNodeClick(node: GraphNode): void {
-    if (this.suppressNextClick) {
-      this.suppressNextClick = false;
-      return;
-    }
-    if (node.data.kind === 'employee') return;
-    this.nodeSelected.emit(node.data);
-  }
-
-  startDrag(event: PointerEvent, node: GraphNode): void {
-    if (node.data.kind === 'employee') return;
-    this.drag = { node, startClient: { x: event.clientX, y: event.clientY }, moved: false };
-    this.suppressNextClick = false;
-  }
-
-  onPointerMove(event: PointerEvent): void {
-    const drag = this.drag;
-    if (!drag) return;
-
-    if (!drag.moved) {
-      const dx = event.clientX - drag.startClient.x;
-      const dy = event.clientY - drag.startClient.y;
-      if (Math.hypot(dx, dy) < CLICK_DRAG_THRESHOLD_PX) return;
-      drag.moved = true;
-    }
-    const point = this.toSvgPoint(event);
-    if (!point) return;
-    this.overrides.update((current) => ({ ...current, [drag.node.id]: point }));
-  }
-
-  endDrag(): void {
-    if (this.drag?.moved) this.suppressNextClick = true;
-    this.drag = null;
-  }
-
-  private toSvgPoint(event: PointerEvent): Point | null {
-    const svg = this.svg()?.nativeElement;
-    const ctm = svg?.getScreenCTM();
-    if (!svg || !ctm) return null;
-    const p = svg.createSVGPoint();
-    p.x = event.clientX;
-    p.y = event.clientY;
-    const local = p.matrixTransform(ctm.inverse());
-    return { x: local.x, y: local.y };
+    return {
+      nodes: graph.nodes.filter((node) => selectedIds.has(node.id)),
+      links: graph.links.filter((link) => selectedIds.has(link.source) && selectedIds.has(link.target)),
+      hiddenTaskCount: graph.hiddenTaskCount
+    };
   }
 }

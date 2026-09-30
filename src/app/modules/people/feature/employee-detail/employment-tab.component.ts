@@ -6,16 +6,13 @@ import { PeopleApiService } from '../../data-access/people-api.service';
 import { EmployeeDetailResponse, UpdateEmployeeJobDetailsRequest } from '../../models/employee.model';
 import { PositionHistoryEntryResponse } from '../../models/position-history.model';
 import { EmployeeWorkGraphResponse, WorkGraphNode } from '../../models/work-graph.model';
-import { EmployeeEmploymentRecordComponent } from '../../ui/employee-employment-record/employee-employment-record.component';
 import { EmployeeJobInfoComponent } from '../../ui/employee-job-info/employee-job-info.component';
 import { EmployeeJobJourneyComponent } from '../../ui/employee-job-journey/employee-job-journey.component';
-import { EmployeeWorkArrangementComponent } from '../../ui/employee-work-arrangement/employee-work-arrangement.component';
 import { WorkNetworkGraphComponent } from '../../ui/work-network-graph/work-network-graph.component';
-import { primaryLocationLabel } from '../../utils/employee-view.utils';
 
 /**
  * Employment tab. The Work Network widget owns its own fetch and states, so a failure or 403
- * there never affects the job details, arrangement, record or history cards around it.
+ * there never affects the job details or history cards around it.
  */
 @Component({
   selector: 'app-employee-employment-tab',
@@ -24,33 +21,17 @@ import { primaryLocationLabel } from '../../utils/employee-view.utils';
     WidgetCardComponent,
     EmployeeJobInfoComponent,
     EmployeeJobJourneyComponent,
-    EmployeeEmploymentRecordComponent,
-    EmployeeWorkArrangementComponent,
     WorkNetworkGraphComponent
   ],
   template: `
-    <div class="grid gap-4 lg:grid-cols-3">
-      <div class="rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] p-6 lg:col-span-2">
-        <app-employee-job-info
-          [jobInformation]="employee().jobInformation"
-          [employeeId]="employee().id"
-          [canEdit]="canEdit()"
-          [saving]="saving()"
-          (save)="save.emit($event)"
-        />
-      </div>
-      <div class="flex flex-col gap-4">
-        <app-employee-work-arrangement
-          [workModeLabel]="employee().jobInformation.workModeLabel"
-          [legalEntityName]="employee().jobInformation.legalEntityName"
-          [primaryLocation]="primaryLocation()"
-        />
-        <app-employee-employment-record
-          [hireDate]="employee().jobInformation.hireDate"
-          [probationEndDate]="employee().jobInformation.probationEndDate"
-          [status]="employee().jobInformation.status"
-        />
-      </div>
+    <div class="rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] p-6">
+      <app-employee-job-info
+        [jobInformation]="employee().jobInformation"
+        [employeeId]="employee().id"
+        [canEdit]="canEdit()"
+        [saving]="saving()"
+        (save)="save.emit($event)"
+      />
     </div>
 
     <div class="mt-4">
@@ -87,7 +68,6 @@ export class EmployeeEmploymentTabComponent {
   readonly graphState = signal<WidgetState>('loading');
 
   private readonly employeeId = computed(() => this.employee().id);
-  readonly primaryLocation = computed(() => primaryLocationLabel(this.employee().personalInformation.addresses));
 
   constructor() {
     // employeeId is a memoised computed, so a parent reload that re-emits the same id

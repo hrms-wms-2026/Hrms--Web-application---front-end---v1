@@ -30,7 +30,7 @@ type DetailTab = 'employment' | 'personal';
 /**
  * Employee detail page shell backed by GET /api/v1/employees/{id}/detail: header (identity, key
  * facts, Transfer/Promote/Offboarding actions, resend-invitation), today's attendance strip, and
- * two tabs - Employment (job details, arrangement, record, Work Network, history) and Personal
+ * two tabs - Employment (job details, Work Network, history) and Personal
  * (personal info, emergency contacts, payroll when the server includes it).
  */
 @Component({

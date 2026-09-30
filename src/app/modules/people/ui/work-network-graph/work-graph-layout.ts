@@ -1,4 +1,4 @@
-import { SimulationNodeDatum, forceCollide, forceLink, forceManyBody, forceSimulation, forceX, forceY } from 'd3-force';
+import { Simulation, SimulationNodeDatum, forceCollide, forceLink, forceManyBody, forceSimulation, forceX, forceY } from 'd3-force';
 import { EmployeeWorkGraphResponse, WorkGraphLinkKind, WorkGraphNode } from '../../models/work-graph.model';
 
 export interface GraphNode extends SimulationNodeDatum {
@@ -58,6 +58,21 @@ function linkDistance(kind: WorkGraphLinkKind): number {
   }
 }
 
+export function createWorkGraphSimulation(layout: GraphLayout): Simulation<GraphNode, GraphLink> {
+  return forceSimulation<GraphNode>(layout.nodes as GraphNode[])
+    .force(
+      'link',
+      forceLink<GraphNode, GraphLink>(layout.links as GraphLink[])
+        .id((node) => node.id)
+        .distance((link) => linkDistance(link.kind))
+        .strength(0.9)
+    )
+    .force('charge', forceManyBody<GraphNode>().strength(-260))
+    .force('collide', forceCollide<GraphNode>().radius((node) => node.radius + 8))
+    .force('x', forceX<GraphNode>(0).strength(0.03))
+    .force('y', forceY<GraphNode>(0).strength(0.03));
+}
+
 /**
  * Settles a force-directed layout synchronously (no animation loop), so rendering is
  * deterministic-enough for tests and needs no running simulation afterwards. The employee node
@@ -78,20 +93,7 @@ export function layoutWorkGraph(graph: EmployeeWorkGraphResponse, ticks = 300): 
     return source && target ? [{ source, target, kind: l.kind }] : [];
   });
 
-  forceSimulation<GraphNode>(nodes)
-    .force(
-      'link',
-      forceLink<GraphNode, GraphLink>(links)
-        .id((n) => n.id)
-        .distance((l) => linkDistance(l.kind))
-        .strength(0.9)
-    )
-    .force('charge', forceManyBody<GraphNode>().strength(-260))
-    .force('collide', forceCollide<GraphNode>().radius((n) => n.radius + 8))
-    .force('x', forceX<GraphNode>(0).strength(0.03))
-    .force('y', forceY<GraphNode>(0).strength(0.03))
-    .stop()
-    .tick(ticks);
+  createWorkGraphSimulation({ nodes, links }).stop().tick(ticks);
 
   return { nodes, links };
 }

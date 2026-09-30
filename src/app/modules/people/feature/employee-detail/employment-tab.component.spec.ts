@@ -76,13 +76,13 @@ describe('EmployeeEmploymentTabComponent', () => {
     return { fixture, navigate, el: fixture.nativeElement as HTMLElement };
   }
 
-  it('renders the job details, work arrangement and employment record cards', () => {
+  it('renders job details and history without duplicate arrangement and employment record cards', () => {
     const { fixture, el } = setup(vi.fn().mockReturnValue(of(fullGraph)));
     fixture.detectChanges();
 
     expect(el.querySelector('app-employee-job-info')).toBeTruthy();
-    expect(el.querySelector('app-employee-work-arrangement')).toBeTruthy();
-    expect(el.querySelector('app-employee-employment-record')).toBeTruthy();
+    expect(el.querySelector('app-employee-work-arrangement')).toBeFalsy();
+    expect(el.querySelector('app-employee-employment-record')).toBeFalsy();
     expect(el.querySelector('app-employee-job-journey')).toBeTruthy();
   });
 
