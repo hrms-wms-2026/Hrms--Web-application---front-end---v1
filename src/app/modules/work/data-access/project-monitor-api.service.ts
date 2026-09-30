@@ -23,4 +23,9 @@ export class ProjectMonitorApiService {
   listAlerts(projectId: string): Observable<MonitorAlertDto[]> {
     return this.http.get<MonitorAlertDto[]>(`${this.workBase}/projects/${projectId}/monitor/alerts`);
   }
+
+  /** Re-checks the project now (instead of waiting for the hourly monitor) and returns the open alerts. */
+  refreshAlerts(projectId: string): Observable<MonitorAlertDto[]> {
+    return this.http.post<MonitorAlertDto[]>(`${this.workBase}/projects/${projectId}/monitor/refresh`, {});
+  }
 }

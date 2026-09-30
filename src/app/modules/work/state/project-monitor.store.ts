@@ -26,7 +26,9 @@ export class ProjectMonitorStore {
     return this.byTarget().get(targetId) ?? NO_ALERTS;
   }
 
-  /** Loads the project's open alerts. Failures just leave the tree unmarked - alerts are advisory. */
+  /** Re-checks the project and loads its open alerts, so a save shows its red mark straight away
+   *  (the hourly monitor is only a fallback). If the re-check fails, falls back to the stored alerts;
+   *  if that fails too the tree is just left unmarked - alerts are advisory. */
   async load(projectId: string): Promise<void> {
     const version = ++this.loadVersion;
     if (!projectId) {
@@ -34,7 +36,8 @@ export class ProjectMonitorStore {
       return;
     }
     try {
-      const alerts = await firstValueFrom(this.api.listAlerts(projectId));
+      const alerts = await firstValueFrom(this.api.refreshAlerts(projectId))
+        .catch(() => firstValueFrom(this.api.listAlerts(projectId)));
       if (version === this.loadVersion) this.alerts.set(alerts ?? []);
     } catch {
       if (version === this.loadVersion) this.alerts.set([]);

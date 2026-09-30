@@ -34,6 +34,13 @@ describe('ProjectMonitorApiService', () => {
     req.flush({ warnings: [] });
   });
 
+  it('posts to refresh to re-check the project now', () => {
+    service.refreshAlerts('p1').subscribe();
+    const req = http.expectOne(`${base}/refresh`);
+    expect(req.request.method).toBe('POST');
+    req.flush([]);
+  });
+
   it('gets the open alerts', () => {
     service.listAlerts('p1').subscribe();
     const req = http.expectOne(`${base}/alerts`);
