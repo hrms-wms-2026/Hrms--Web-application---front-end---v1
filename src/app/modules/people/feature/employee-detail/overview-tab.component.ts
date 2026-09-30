@@ -1,4 +1,4 @@
-import { ChangeDetectionStrategy, Component, computed, inject, input } from '@angular/core';
+import { ChangeDetectionStrategy, Component, effect, inject, input } from '@angular/core';
 import { EmployeePeriodStore } from '../../state/employee-period.store';
 import { EmployeeComparePickerComponent } from '../../ui/employee-compare-picker/employee-compare-picker.component';
 import { EmployeePeriodPickerComponent } from '../../ui/employee-period-picker/employee-period-picker.component';
@@ -12,10 +12,9 @@ import { OverviewTimeOffWidgetComponent } from '../../ui/overview-time-off-widge
 import { OverviewWorkWidgetComponent } from '../../ui/overview-work-widget/overview-work-widget.component';
 
 /**
- * Overview tab. Owns the month selection and the optional previous-period comparison (its own
+ * Overview tab. Owns the bounded month selection and optional comparison month (its own
  * EmployeePeriodStore instance, so both reset per employee page). Every widget loads independently.
- * All read the month except Time Off (year-based); only Activity, Attendance Discipline and Delivery
- * use the comparison.
+ * All read the month except Time Off (year-based); widgets consume the explicit comparison month in Part 2.
  */
 @Component({
   selector: 'app-employee-overview-tab',
@@ -39,7 +38,7 @@ import { OverviewWorkWidgetComponent } from '../../ui/overview-work-widget/overv
       <div>
         <h2 class="text-xl font-bold text-slate-900">Performance Overview</h2>
         <p class="text-sm text-slate-500 mt-0.5">
-          Attendance, productivity and work discipline for {{ selectedMonthLabel() }}
+          Attendance, productivity and work discipline for {{ store.label() }}
         </p>
       </div>
 
@@ -48,8 +47,9 @@ import { OverviewWorkWidgetComponent } from '../../ui/overview-work-widget/overv
         <div class="inline-flex items-center rounded-xl border border-slate-200 bg-white shadow-xs overflow-hidden">
           <button
             type="button"
-            class="px-2.5 py-1.5 hover:bg-slate-50 text-slate-400 hover:text-slate-600 transition-colors cursor-pointer"
-            (click)="previousMonth()"
+            class="px-2.5 py-1.5 hover:bg-slate-50 text-slate-400 hover:text-slate-600 transition-colors cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed"
+            (click)="store.previousMonth()"
+            [disabled]="!store.canGoPrevious()"
             title="Previous month"
           >
             <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
@@ -63,12 +63,13 @@ import { OverviewWorkWidgetComponent } from '../../ui/overview-work-widget/overv
               <line x1="8" y1="2" x2="8" y2="6"></line>
               <line x1="3" y1="10" x2="21" y2="10"></line>
             </svg>
-            <span>{{ selectedMonthLabel() }}</span>
+            <span>{{ store.label() }}</span>
           </div>
           <button
             type="button"
-            class="px-2.5 py-1.5 hover:bg-slate-50 text-slate-400 hover:text-slate-600 transition-colors cursor-pointer"
-            (click)="nextMonth()"
+            class="px-2.5 py-1.5 hover:bg-slate-50 text-slate-400 hover:text-slate-600 transition-colors cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed"
+            (click)="store.nextMonth()"
+            [disabled]="!store.canGoNext()"
             title="Next month"
           >
             <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
@@ -81,11 +82,12 @@ import { OverviewWorkWidgetComponent } from '../../ui/overview-work-widget/overv
         <button
           type="button"
           class="inline-flex items-center gap-2 px-3 py-1.5 rounded-xl border border-slate-200 bg-white hover:bg-slate-50 text-xs font-semibold shadow-xs transition-colors cursor-pointer"
-          [class.text-blue-600]="store.compare() !== 'none'"
-          [class.border-blue-300]="store.compare() !== 'none'"
-          [class.bg-blue-50]="store.compare() !== 'none'"
-          [class.text-slate-700]="store.compare() === 'none'"
-          (click)="toggleCompare()"
+          [class.text-blue-600]="store.isComparing()"
+          [class.border-blue-300]="store.isComparing()"
+          [class.bg-blue-50]="store.isComparing()"
+          [class.text-slate-700]="!store.isComparing()"
+          (click)="store.toggleCompare()"
+          [disabled]="store.compareOptions().length === 0"
         >
           <svg class="w-4 h-4 text-blue-600" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
             <polyline points="23 6 13.5 15.5 8.5 10.5 1 18"></polyline>
@@ -94,10 +96,13 @@ import { OverviewWorkWidgetComponent } from '../../ui/overview-work-widget/overv
           <span>Compare</span>
         </button>
 
+        @if (store.isComparing()) {
+          <app-employee-compare-picker />
+        }
+
         <!-- Hidden Pickers for Unit Spec Compatibility -->
         <div class="sr-only">
           <app-employee-period-picker />
-          <app-employee-compare-picker />
         </div>
       </div>
     </div>
@@ -350,35 +355,11 @@ import { OverviewWorkWidgetComponent } from '../../ui/overview-work-widget/overv
 })
 export class EmployeeOverviewTabComponent {
   readonly employeeId = input.required<string>();
+  readonly hireDate = input<string | null>(null);
+  readonly terminationDate = input<string | null>(null);
   protected readonly store = inject(EmployeePeriodStore);
 
-  readonly selectedMonthLabel = computed(() => {
-    const raw = this.store.month();
-    if (!raw) return 'September 2026';
-    const [y, m] = raw.split('-');
-    const date = new Date(parseInt(y, 10), parseInt(m, 10) - 1, 1);
-    return date.toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
-  });
-
-  previousMonth(): void {
-    const raw = this.store.month();
-    if (!raw) return;
-    const [y, m] = raw.split('-').map(Number);
-    const d = new Date(y, m - 2, 1);
-    const newMonth = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
-    this.store.setMonth(newMonth);
-  }
-
-  nextMonth(): void {
-    const raw = this.store.month();
-    if (!raw) return;
-    const [y, m] = raw.split('-').map(Number);
-    const d = new Date(y, m, 1);
-    const newMonth = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
-    this.store.setMonth(newMonth);
-  }
-
-  toggleCompare(): void {
-    this.store.setCompare(this.store.compare() === 'none' ? 'previous' : 'none');
+  constructor() {
+    effect(() => this.store.setBounds(this.hireDate(), this.terminationDate()));
   }
 }

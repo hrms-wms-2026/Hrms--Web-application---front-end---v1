@@ -21,6 +21,10 @@ export interface EmployeeAttendanceOverviewResponse {
   readonly late: number;
   readonly missingClockOuts: number;
   readonly leaveDays: number;
+  readonly absent?: number;
+  readonly shortHours?: number;
+  readonly workedOnNonWorkingDay?: number;
+  readonly workedDuringTimeOff?: number;
   readonly days: readonly EmployeeAttendanceDay[];
 }
 

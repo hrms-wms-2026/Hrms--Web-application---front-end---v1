@@ -1,7 +1,6 @@
 import { ChangeDetectionStrategy, Component, inject } from '@angular/core';
-import { SelectComponent, SelectOption } from '../../../../shared/ui/select/select.component';
+import { SelectComponent } from '../../../../shared/ui/select/select.component';
 import { EmployeePeriodStore } from '../../state/employee-period.store';
-import { recentMonths } from '../../utils/employee-overview.utils';
 
 @Component({
   selector: 'app-employee-period-picker',
@@ -10,7 +9,7 @@ import { recentMonths } from '../../utils/employee-overview.utils';
   template: `
     <app-select
       ariaLabel="Select month"
-      [options]="options"
+      [options]="store.monthOptions()"
       [value]="store.month()"
       (valueChange)="onChange($event)"
     />
@@ -19,8 +18,6 @@ import { recentMonths } from '../../utils/employee-overview.utils';
 })
 export class EmployeePeriodPickerComponent {
   protected readonly store = inject(EmployeePeriodStore);
-
-  readonly options: readonly SelectOption[] = recentMonths();
 
   onChange(month: string): void {
     this.store.setMonth(month);

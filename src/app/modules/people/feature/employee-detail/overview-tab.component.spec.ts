@@ -4,7 +4,14 @@ import { PeopleApiService } from '../../data-access/people-api.service';
 import { EmployeeOverviewTabComponent } from './overview-tab.component';
 
 describe('EmployeeOverviewTabComponent', () => {
-  function setup() {
+  beforeEach(() => {
+    vi.useFakeTimers({ toFake: ['Date'] });
+    vi.setSystemTime(new Date(2026, 8, 30));
+  });
+
+  afterEach(() => vi.useRealTimers());
+
+  function setup(hireDate: string | null = null) {
     const api = {
       getOverviewAttendance: vi.fn().mockReturnValue(
         of({ from: '2026-09-01', to: '2026-09-30', workingDays: 0, present: 0, late: 0, missingClockOuts: 0, leaveDays: 0, days: [] })
@@ -32,6 +39,7 @@ describe('EmployeeOverviewTabComponent', () => {
     });
     const fixture = TestBed.createComponent(EmployeeOverviewTabComponent);
     fixture.componentRef.setInput('employeeId', 'emp-1');
+    fixture.componentRef.setInput('hireDate', hireDate);
     fixture.detectChanges();
     return { fixture, api, el: fixture.nativeElement as HTMLElement };
   }
@@ -51,6 +59,13 @@ describe('EmployeeOverviewTabComponent', () => {
     expect(api.getOverviewAttendance).toHaveBeenCalledWith('emp-1', expect.any(String), expect.any(String));
     expect(api.getOverviewAttendanceDiscipline).toHaveBeenCalledWith('emp-1', expect.any(String), expect.any(String), false);
     expect(api.getOverviewTimeOff).toHaveBeenCalledWith('emp-1');
+  });
+
+  it('disables both month-stepper buttons when employment starts in the current month', () => {
+    const { el } = setup('2026-09-03');
+
+    expect((el.querySelector('button[title="Previous month"]') as HTMLButtonElement).disabled).toBe(true);
+    expect((el.querySelector('button[title="Next month"]') as HTMLButtonElement).disabled).toBe(true);
   });
 
   it('changing the month refetches the period-aware widgets but not time off', () => {

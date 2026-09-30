@@ -234,7 +234,11 @@ type DetailTab = 'overview' | 'employment' | 'personal';
       </div>
 
       @if (activeTab() === 'overview') {
-        <app-employee-overview-tab [employeeId]="employee.id" />
+        <app-employee-overview-tab
+          [employeeId]="employee.id"
+          [hireDate]="employee.jobInformation.hireDate"
+          [terminationDate]="employee.jobInformation.terminationDate ?? null"
+        />
       }
       <app-employee-employment-tab
         [hidden]="activeTab() !== 'employment'"

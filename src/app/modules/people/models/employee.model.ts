@@ -159,6 +159,7 @@ export interface EmployeeDetailJobInformation {
   readonly employmentTypeLabel: string;
   readonly status: string;
   readonly hireDate: string;
+  readonly terminationDate?: string | null;
   readonly probationEndDate: string | null;
   readonly workModeLabel: string | null;
   readonly employmentTypeCode: string;
