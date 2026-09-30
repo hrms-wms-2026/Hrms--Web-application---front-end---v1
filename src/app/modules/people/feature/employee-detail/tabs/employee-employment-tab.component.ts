@@ -24,8 +24,8 @@ import { calculateTenure, primaryLocation, probationStatus } from '../../../util
           <p class="m-0 text-sm text-[var(--color-text-secondary)]">Detailed job, organization and employment record for this employee.</p>
         </header>
 
-        <div class="grid gap-4 lg:grid-cols-3">
-          <section class="detail-card" aria-label="Job and organizational details">
+        <div class="grid gap-4 lg:grid-cols-[minmax(0,1.5fr)_minmax(0,1fr)_minmax(0,1fr)]">
+          <section class="detail-card @container" aria-label="Job and organizational details">
             <app-employee-job-info
               [jobInformation]="employee.jobInformation"
               [employeeId]="employee.id"

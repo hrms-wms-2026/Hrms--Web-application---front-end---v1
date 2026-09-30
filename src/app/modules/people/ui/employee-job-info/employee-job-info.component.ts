@@ -43,7 +43,7 @@ const EMPLOYMENT_TYPE_OPTIONS: readonly SelectOption[] = [
 
       @if (isEditing()) {
         <form [formGroup]="form" (ngSubmit)="onSubmit()" class="space-y-4">
-          <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-6">
+          <div class="grid grid-cols-1 @md:grid-cols-2 @2xl:grid-cols-3 gap-6">
             <app-input
               label="Employee number"
               [maxlength]="employeeNumberMaxLength"
@@ -78,7 +78,7 @@ const EMPLOYMENT_TYPE_OPTIONS: readonly SelectOption[] = [
           </div>
         </form>
       } @else {
-        <dl class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-6 text-sm">
+        <dl class="grid grid-cols-1 @xs:grid-cols-2 @2xl:grid-cols-4 gap-6 text-sm">
           <div>
             <dt class="text-xs font-medium text-[var(--color-text-secondary)] mb-1">Employee Number</dt>
             <dd class="font-semibold text-[var(--color-text-primary)] font-mono text-xs bg-[var(--color-surface-secondary)] px-2.5 py-1 rounded-md inline-block">
