@@ -60,6 +60,7 @@ describe('EmployeeDetailComponent', () => {
       resendInvitation: vi.fn().mockReturnValue(of({ expiresAt: '2026-08-25T00:00:00Z' })),
       changePosition: vi.fn().mockReturnValue(of({ pendingApproval: false })),
       getJobJourney: vi.fn().mockReturnValue(of([])),
+      getWorkGraph: vi.fn().mockReturnValue(of({ nodes: [], links: [], hiddenTaskCount: 0 })),
       ...apiOverrides
     };
     const notificationsStub = { success: vi.fn(), error: vi.fn() };
@@ -134,29 +135,44 @@ describe('EmployeeDetailComponent', () => {
     expect(fixture.nativeElement.textContent).toContain('Ada Lovelace');
   });
 
-  it('renders the Job Information component on initial load, and switches tabs when clicked', () => {
+  it('renders the Employment tab first and switches to the Personal tab', () => {
     const { fixture } = setup(detailFixture);
     fixture.detectChanges();
 
+    expect(fixture.componentInstance.activeTab()).toBe('employment');
+    expect(fixture.nativeElement.querySelector('app-employee-employment-tab')).toBeTruthy();
     expect(fixture.nativeElement.querySelector('app-employee-job-info')).toBeTruthy();
+    expect(fixture.nativeElement.querySelector('app-employee-personal-tab')).toBeFalsy();
 
     fixture.componentInstance.activeTab.set('personal');
     fixture.detectChanges();
+    expect(fixture.nativeElement.querySelector('app-employee-personal-tab')).toBeTruthy();
     expect(fixture.nativeElement.querySelector('app-employee-personal-info')).toBeTruthy();
-
-    fixture.componentInstance.activeTab.set('emergency');
-    fixture.detectChanges();
     expect(fixture.nativeElement.querySelector('app-employee-emergency-contacts')).toBeTruthy();
+    expect(fixture.nativeElement.querySelector('app-employee-employment-tab')).toBeFalsy();
   });
 
-  it('renders the Payroll section when selected tab is payroll and response includes it', () => {
+  it('switches tabs when a tab button is clicked', () => {
+    const { fixture } = setup(detailFixture);
+    fixture.detectChanges();
+
+    const personalButton = Array.from(
+      fixture.nativeElement.querySelectorAll('nav[aria-label="Employee Detail Sections"] button')
+    ).find((b) => (b as HTMLElement).textContent?.trim() === 'Personal') as HTMLButtonElement;
+    personalButton.click();
+    fixture.detectChanges();
+
+    expect(fixture.componentInstance.activeTab()).toBe('personal');
+  });
+
+  it('renders the Payroll section in the Personal tab when the response includes it', () => {
     const { fixture } = setup({
       ...detailFixture,
       payroll: { hasBankDetailsOnFile: true, bankName: 'Test Bank', maskedAccountNumber: '****1234', accountType: 'checking' }
     });
     fixture.detectChanges();
 
-    fixture.componentInstance.activeTab.set('payroll');
+    fixture.componentInstance.activeTab.set('personal');
     fixture.detectChanges();
 
     expect(fixture.nativeElement.querySelector('app-employee-payroll')).toBeTruthy();
@@ -166,7 +182,21 @@ describe('EmployeeDetailComponent', () => {
     const { fixture } = setup({ ...detailFixture, payroll: null });
     fixture.detectChanges();
 
+    fixture.componentInstance.activeTab.set('personal');
+    fixture.detectChanges();
+
     expect(fixture.nativeElement.querySelector('app-employee-payroll')).toBeFalsy();
+  });
+
+  it('shows the key facts (manager, employment type, work mode, hire date) in the header', () => {
+    const { fixture } = setup(detailFixture);
+    fixture.detectChanges();
+
+    const facts = (fixture.nativeElement.querySelector('[data-testid="employee-key-facts"]') as HTMLElement).textContent as string;
+    expect(facts).toContain('Grace Hopper');
+    expect(facts).toContain('Full time');
+    expect(facts).toContain('Remote');
+    expect(facts).toContain('15 Jan 2024');
   });
 
   it('shows a Transfer / Promote button and opens the modal when the employee has a legal entity', () => {
