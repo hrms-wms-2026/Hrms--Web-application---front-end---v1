@@ -1,6 +1,8 @@
 import { ChangeDetectionStrategy, Component, computed, inject } from '@angular/core';
 import { DatePipe } from '@angular/common';
 import { EmployeeDetailStore } from '../../../state/employee-detail.store';
+import { DetailCardComponent } from '../../../ui/detail-kit/detail-card.component';
+import { KvRowComponent } from '../../../ui/detail-kit/kv-row.component';
 import { EmployeeEmergencyContactsComponent } from '../../../ui/employee-emergency-contacts/employee-emergency-contacts.component';
 import { EmployeePayrollComponent } from '../../../ui/employee-payroll/employee-payroll.component';
 import { EmployeePersonalInfoComponent } from '../../../ui/employee-personal-info/employee-personal-info.component';
@@ -17,6 +19,8 @@ import { nextWorkAnniversary, profileCompletion } from '../../../utils/employee-
   standalone: true,
   imports: [
     DatePipe,
+    DetailCardComponent,
+    KvRowComponent,
     EmployeePersonalInfoComponent,
     EmployeeEmergencyContactsComponent,
     EmployeePayrollComponent,
@@ -24,61 +28,62 @@ import { nextWorkAnniversary, profileCompletion } from '../../../utils/employee-
   ],
   template: `
     @if (store.employee(); as employee) {
-      <div class="grid gap-4 xl:grid-cols-[minmax(0,1fr)_22rem]">
-        <div class="flex min-w-0 flex-col gap-4">
+      <div class="personal">
+        <div class="personal__main">
           <app-employee-personal-info [personalInformation]="employee.personalInformation" />
           <app-employee-emergency-contacts [emergencyContacts]="employee.emergencyContacts" />
           @if (employee.payroll; as payroll) {
-            <section class="detail-card" aria-label="Payroll and statutory">
+            <app-detail-card icon="briefcase" title="Payroll & Statutory">
               <app-employee-payroll [payroll]="payroll" />
-            </section>
+            </app-detail-card>
           }
         </div>
 
-        <aside class="flex min-w-0 flex-col gap-4" aria-label="Profile summary">
+        <aside class="personal__side" aria-label="Profile summary">
           <app-employee-profile-completion [completion]="completion()!" />
 
-          <section class="detail-card" aria-labelledby="important-dates-heading">
-            <h2 id="important-dates-heading" class="detail-card__title">Important Dates</h2>
-            <dl class="grid grid-cols-2 gap-4 m-0">
+          <app-detail-card icon="calendar" title="Important Dates">
+            <dl class="dates">
               <div>
-                <dt class="text-xs text-[var(--color-text-secondary)]">Hire Date</dt>
-                <dd class="m-0 text-sm font-semibold text-[var(--color-text-primary)]">
-                  {{ employee.jobInformation.hireDate ? (employee.jobInformation.hireDate | date: 'dd MMM yyyy') : '—' }}
-                </dd>
+                <dt>Hire Date</dt>
+                <dd>{{ employee.jobInformation.hireDate ? (employee.jobInformation.hireDate | date: 'dd MMM yyyy') : '—' }}</dd>
               </div>
               <div>
-                <dt class="text-xs text-[var(--color-text-secondary)]">Work Anniversary</dt>
+                <dt>Work Anniversary</dt>
                 @if (anniversary(); as next) {
-                  <dd class="m-0 text-sm font-semibold text-[var(--color-text-primary)]" data-testid="work-anniversary">
+                  <dd data-testid="work-anniversary">
                     {{ next.date | date: 'dd MMM yyyy' }}
-                    <span class="block text-xs font-normal text-[var(--color-text-secondary)]">
-                      {{ next.daysUntil === 0 ? 'today' : 'in ' + next.daysUntil + (next.daysUntil === 1 ? ' day' : ' days') }}
-                    </span>
+                    <span class="dates__hint">{{ next.daysUntil === 0 ? 'today' : 'in ' + next.daysUntil + (next.daysUntil === 1 ? ' day' : ' days') }}</span>
                   </dd>
                 } @else {
-                  <dd class="m-0 text-sm font-semibold text-[var(--color-text-primary)]">—</dd>
+                  <dd>—</dd>
                 }
               </div>
             </dl>
-          </section>
+          </app-detail-card>
 
-          <section class="detail-card" aria-labelledby="additional-info-heading">
-            <h2 id="additional-info-heading" class="detail-card__title">Additional Information</h2>
-            <dl class="detail-list">
-              <dt>Employee ID</dt><dd>{{ employee.jobInformation.employeeNumber }}</dd>
-              <dt>Department</dt><dd>{{ employee.jobInformation.departmentName || '—' }}</dd>
-              <dt>Position</dt><dd>{{ employee.jobInformation.positionName || 'Unassigned' }}</dd>
-              <dt>Employment Type</dt><dd>{{ employee.jobInformation.employmentTypeLabel || '—' }}</dd>
-              <dt>Work Mode</dt><dd>{{ employee.jobInformation.workModeLabel || '—' }}</dd>
-              <dt>Time Zone</dt><dd>{{ employee.jobInformation.timezone || '—' }}</dd>
-            </dl>
-          </section>
+          <app-detail-card icon="info" title="Additional Information">
+            <app-kv-row label="Employee ID">{{ employee.jobInformation.employeeNumber }}</app-kv-row>
+            <app-kv-row label="Department">{{ employee.jobInformation.departmentName || '—' }}</app-kv-row>
+            <app-kv-row label="Position">{{ employee.jobInformation.positionName || 'Unassigned' }}</app-kv-row>
+            <app-kv-row label="Employment Type">{{ employee.jobInformation.employmentTypeLabel || '—' }}</app-kv-row>
+            <app-kv-row label="Work Mode">{{ employee.jobInformation.workModeLabel || '—' }}</app-kv-row>
+            <app-kv-row label="Time Zone">{{ employee.jobInformation.timezone || '—' }}</app-kv-row>
+          </app-detail-card>
         </aside>
       </div>
     }
   `,
-  styleUrl: './employee-detail-tab.css',
+  styles: [`
+    :host { display: block; }
+    .personal { display: grid; gap: 1rem; grid-template-columns: minmax(0, 1fr); }
+    @media (min-width: 1100px) { .personal { grid-template-columns: minmax(0, 1fr) 23rem; align-items: start; } }
+    .personal__main, .personal__side { display: flex; flex-direction: column; gap: 1rem; min-width: 0; }
+    .dates { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin: 0; }
+    .dates dt { font-size: 0.8125rem; color: var(--color-text-secondary); }
+    .dates dd { margin: 0.25rem 0 0; font-size: 1rem; font-weight: 600; color: var(--color-text-primary); }
+    .dates__hint { display: block; font-size: 0.8125rem; font-weight: 400; color: var(--color-text-secondary); }
+  `],
   changeDetection: ChangeDetectionStrategy.OnPush
 })
 export class EmployeePersonalTabComponent {

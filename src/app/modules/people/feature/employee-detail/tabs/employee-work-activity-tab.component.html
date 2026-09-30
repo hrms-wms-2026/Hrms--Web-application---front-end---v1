@@ -1,0 +1,166 @@
+<div class="work">
+  <!-- Work Summary -->
+  <app-detail-card class="work__full">
+    <div class="summary">
+      <div class="summary__title">
+        <span class="summary__icon" aria-hidden="true"><app-detail-icon name="document" [size]="20" /></span>
+        <div>
+          <h2 class="summary__heading">Work Summary</h2>
+          <p class="summary__sub">Track progress for the selected period</p>
+        </div>
+      </div>
+      @if (insights(); as data) {
+        <div class="summary__tiles">
+          <app-stat-tile icon="list" tone="default" [value]="data.summary.assigned" label="Assigned" [large]="true" />
+          <app-stat-tile icon="check-circle" tone="success" [value]="data.summary.completed" label="Completed" [large]="true" [divider]="true" />
+          <app-stat-tile icon="timer" tone="info" [value]="data.summary.inProgress" label="In Progress" [large]="true" [divider]="true" />
+          <app-stat-tile icon="alert" tone="danger" [value]="data.summary.overdue" label="Overdue" [large]="true" [divider]="true" />
+          <app-stat-tile icon="layers" tone="purple" [value]="data.summary.storyPointsCompleted + ' / ' + data.summary.storyPointsTotal" label="Story Points" [large]="true" [divider]="true" />
+        </div>
+      } @else {
+        <div class="flex-1"><app-insight-placeholder [loading]="insightsStore.workLoading()" description="Work and activity insights will appear once the data is available for this employee." /></div>
+      }
+    </div>
+  </app-detail-card>
+
+  <div class="work__row work__row--attention">
+    <!-- Needs Attention -->
+    <app-detail-card icon="alert" title="Needs Attention" subtitle="Tasks that may require your action or follow-up" iconTone="danger">
+      @if (insights(); as data) {
+        @if (data.needsAttention.length === 0) {
+          <app-empty-note icon="check-circle" title="Nothing needs attention" />
+        } @else {
+          <div class="table-wrap">
+            <table class="table">
+              <thead><tr><th scope="col">Task</th><th scope="col">Project</th><th scope="col">Issue</th><th scope="col">Status</th><th scope="col" class="num">SP</th></tr></thead>
+              <tbody>
+                @for (task of data.needsAttention; track task.taskId) {
+                  <tr>
+                    <td class="table__strong">{{ task.taskName }}</td>
+                    <td>{{ task.projectName }}</td>
+                    <td [attr.data-severity]="task.issueSeverity" class="table__issue">{{ task.issue }}</td>
+                    <td><app-status-badge [tone]="taskStatus[task.status].tone">{{ taskStatus[task.status].label }}</app-status-badge></td>
+                    <td class="num">{{ task.storyPoints }}</td>
+                  </tr>
+                }
+              </tbody>
+            </table>
+          </div>
+        }
+      } @else {
+        <app-insight-placeholder [loading]="insightsStore.workLoading()" description="Work and activity insights will appear once the data is available for this employee." />
+      }
+    </app-detail-card>
+
+    <!-- Delivery Health -->
+    <app-detail-card icon="chart" title="Delivery Health" subtitle="Task completion and delivery performance">
+      @if (insights(); as data) {
+        <div class="kpis">
+          <div><span class="kpis__value kpis__value--success">{{ data.delivery.completionRate }}%</span><span class="kpis__label">Completion rate</span></div>
+          <div><span class="kpis__value kpis__value--accent">{{ data.delivery.onTimeRate }}%</span><span class="kpis__label">On-time completion</span></div>
+          <div><span class="kpis__value">{{ data.delivery.tasksCompleted }} / {{ data.delivery.tasksTotal }}</span><span class="kpis__label">Tasks completed</span></div>
+          <div><span class="kpis__value">{{ data.delivery.storyPointsCompleted }} / {{ data.delivery.storyPointsTotal }}</span><span class="kpis__label">Story points completed</span></div>
+        </div>
+        <p class="chart-title">Tasks completed (monthly)</p>
+        <app-bar-chart [bars]="monthlyBars()" [axisLabels]="monthlyLabels()" [yTicks]="monthlyTicks()" [height]="80" [gap]="40" ariaLabel="Tasks completed per month" />
+      } @else {
+        <app-insight-placeholder [loading]="insightsStore.workLoading()" description="Work and activity insights will appear once the data is available for this employee." />
+      }
+    </app-detail-card>
+  </div>
+
+  <div class="work__row work__row--activity">
+    <!-- Recorded Activity -->
+    <app-detail-card icon="clock" title="Recorded Activity" subtitle="Based on device activity for the selected period">
+      @if (insights(); as data) {
+        <div class="activity">
+        <div class="activity-tiles">
+          <app-stat-tile [compact]="true" icon="monitor" tone="success" [value]="formatMinutes(data.recordedActivity.activeMinutes)" label="Active time" />
+          <app-stat-tile [compact]="true" icon="coffee" tone="warning" [value]="formatMinutes(data.recordedActivity.idleMinutes)" label="Idle time" [divider]="true" />
+          <app-stat-tile [compact]="true" icon="users" tone="info" [value]="formatMinutes(data.recordedActivity.meetingMinutes)" label="Meeting time" [divider]="true" />
+          <app-stat-tile [compact]="true" icon="clock" tone="purple" [value]="data.recordedActivity.lastActivityAt ? formatClock(data.recordedActivity.lastActivityAt) : '—'" label="Last activity" [divider]="true" />
+        </div>
+        <p class="chart-title">Activity by time of day</p>
+        <app-bar-chart [bars]="hourlyBars()" [axisLabels]="hourlyLabels()" [yTicks]="[0, 15, 30, 45]" [height]="100" [gap]="6" ariaLabel="Active minutes by time of day" />
+        </div>
+      } @else {
+        <app-insight-placeholder [loading]="insightsStore.workLoading()" description="Work and activity insights will appear once the data is available for this employee." />
+      }
+    </app-detail-card>
+
+    <!-- Recent Tasks -->
+    <app-detail-card icon="document" title="Recent Tasks">
+      @if (insights(); as data) {
+        <div class="table-wrap">
+          <table class="table table--compact">
+            <thead><tr><th scope="col">Task</th><th scope="col">Project</th><th scope="col">Status</th><th scope="col">Priority</th><th scope="col">Due</th><th scope="col" class="num">SP</th></tr></thead>
+            <tbody>
+              @for (task of data.recentTasks; track task.taskId) {
+                <tr>
+                  <td class="table__strong table__clip" [attr.title]="task.taskName">{{ task.taskName }}</td>
+                  <td class="table__clip" [attr.title]="task.projectName">{{ task.projectName }}</td>
+                  <td><app-status-badge [tone]="taskStatus[task.status].tone">{{ taskStatus[task.status].label }}</app-status-badge></td>
+                  <td><app-status-badge [tone]="priority[task.priority].tone">{{ priority[task.priority].label }}</app-status-badge></td>
+                  <td class="whitespace-nowrap">{{ task.dueDate | date: 'MMM d' }}</td>
+                  <td class="num">{{ task.storyPoints }}</td>
+                </tr>
+              }
+            </tbody>
+          </table>
+        </div>
+      } @else {
+        <app-insight-placeholder [loading]="insightsStore.workLoading()" description="Work and activity insights will appear once the data is available for this employee." />
+      }
+    </app-detail-card>
+
+    <div class="work__stack">
+      <!-- Application Usage -->
+      <app-detail-card icon="list" title="Application Usage">
+        @if (insights(); as data) {
+          <table class="table table--compact">
+            <thead><tr><th scope="col">Application</th><th scope="col">Active time</th><th scope="col" class="num">Sessions</th><th scope="col">Last used</th></tr></thead>
+            <tbody>
+              @for (app of data.appUsage; track app.application) {
+                <tr>
+                  <td class="table__strong">{{ app.application }}</td>
+                  <td>{{ formatMinutes(app.activeMinutes) }}</td>
+                  <td class="num">{{ app.sessions }}</td>
+                  <td class="whitespace-nowrap">{{ formatRelativeDayTime(app.lastUsedAt) }}</td>
+                </tr>
+              }
+            </tbody>
+          </table>
+        } @else {
+          <app-insight-placeholder [loading]="insightsStore.workLoading()" description="Work and activity insights will appear once the data is available for this employee." />
+        }
+      </app-detail-card>
+
+      <!-- Work Pattern -->
+      <app-detail-card icon="clock" title="Work Pattern">
+        @if (insights(); as data) {
+          <div class="pattern">
+            <div>
+              <span class="pattern__label">Focused work blocks</span>
+              <span class="pattern__value">{{ data.workPattern.focusedBlocks }}</span>
+              <span class="pattern__hint">(≥ 30 min)</span>
+            </div>
+            <div>
+              <span class="pattern__label">Top application</span>
+              <span class="pattern__value">{{ data.workPattern.topApplication || '—' }}</span>
+              <span class="pattern__value pattern__value--sub">{{ formatMinutes(data.workPattern.topApplicationMinutes) }}</span>
+            </div>
+            <div>
+              <span class="pattern__label">Longest idle period</span>
+              <span class="pattern__value">{{ formatMinutes(data.workPattern.longestIdleMinutes) }}</span>
+              @if (data.workPattern.longestIdleFrom && data.workPattern.longestIdleTo) {
+                <span class="pattern__hint">({{ formatClock(data.workPattern.longestIdleFrom) }} – {{ formatClock(data.workPattern.longestIdleTo) }})</span>
+              }
+            </div>
+          </div>
+        } @else {
+          <app-insight-placeholder [loading]="insightsStore.workLoading()" description="Work and activity insights will appear once the data is available for this employee." />
+        }
+      </app-detail-card>
+    </div>
+  </div>
+</div>

@@ -2,6 +2,8 @@ import { TestBed } from '@angular/core/testing';
 import { of } from 'rxjs';
 import { EmployeeDetailResponse } from '../../../models/employee.model';
 import { PositionHistoryEntryResponse } from '../../../models/position-history.model';
+import { EmployeeInsightsApiService } from '../../../data-access/employee-insights-api.service';
+import { mockOverviewInsights } from '../../../data-access/employee-insights.mock';
 import { EmployeeOverviewTabComponent } from './employee-overview-tab.component';
 import { detailFixture, setupTabTestBed } from './employee-detail-tab.testing';
 
@@ -36,10 +38,10 @@ describe('EmployeeOverviewTabComponent', () => {
       jobJourney: [entry('2024-01-15', 'Junior Engineer'), entry('2025-06-01', 'Software Engineer')]
     });
 
-    const entries = Array.from(fixture.nativeElement.querySelectorAll('[data-testid="overview-history-entry"]')) as HTMLElement[];
+    const entries = Array.from(fixture.nativeElement.querySelectorAll('[data-testid="timeline-item"]')) as HTMLElement[];
     expect(entries.map((e) => e.textContent)).toEqual([
-      expect.stringContaining('Software Engineer'),
-      expect.stringContaining('Junior Engineer')
+      expect.stringMatching(/Jun 1, 2025.*Position changed.*Junior Engineer → Software Engineer/),
+      expect.stringMatching(/Jan 15, 2024.*Joined company.*Joined as Junior Engineer/)
     ]);
   });
 
@@ -99,5 +101,47 @@ describe('EmployeeOverviewTabComponent', () => {
     const text = fixture.nativeElement.textContent as string;
     expect(text).toContain('On break');
     expect(text).toContain('Break exceeded by 15 min');
+  });
+
+  describe('period insights', () => {
+    async function renderWithInsights(overview: ReturnType<typeof mockOverviewInsights> | null) {
+      await setupTabTestBed(
+        detailFixture.id,
+        { getEmployeeDetail: vi.fn().mockReturnValue(of(detailFixture)), getJobJourney: vi.fn().mockReturnValue(of([])) },
+        { success: vi.fn(), error: vi.fn() },
+        [{ provide: EmployeeInsightsApiService, useValue: { getOverview: vi.fn(() => of(overview)), getWorkActivity: vi.fn(() => of(null)) } }]
+      );
+      const fixture = TestBed.createComponent(EmployeeOverviewTabComponent);
+      fixture.detectChanges();
+      await fixture.whenStable();
+      fixture.detectChanges();
+      // The insights effect resolves through a promise the zone does not track; let it settle.
+      await new Promise((resolve) => setTimeout(resolve));
+      fixture.detectChanges();
+      return fixture.nativeElement as HTMLElement;
+    }
+
+    it('renders the attendance, work, time off, approvals, productivity and checklist cards', async () => {
+      const root = await renderWithInsights(mockOverviewInsights('2025-09'));
+      const text = root.textContent ?? '';
+
+      for (const heading of ['Attendance', 'Work Management', 'Time Off', 'Approval Activity', 'Recent Activity', 'Productivity & Work Insights', 'Upcoming Items', 'Checklists']) {
+        expect(text).toContain(heading);
+      }
+      expect(text).toContain('Missing clock-out');
+      expect(text).toContain('12 days');
+      expect(text).toContain('Sep 23 – 25');
+      expect(text).toContain('Work insight index');
+      expect(text).toContain('6 / 8');
+      expect(root.querySelectorAll('.chart__bar').length).toBe(30);
+    });
+
+    it('shows "No data yet" instead of numbers when insights are unavailable, keeping the real cards', async () => {
+      const root = await renderWithInsights(null);
+
+      expect(root.querySelectorAll('[data-testid="empty-note"]').length).toBe(8);
+      expect(root.textContent).toContain('Employment & Organization');
+      expect(root.textContent).not.toContain('Work insight index');
+    });
   });
 });

@@ -46,7 +46,7 @@ describe('EmployeePersonalTabComponent', () => {
     });
     const root = fixture.nativeElement as HTMLElement;
 
-    expect(root.querySelector('[data-testid="profile-completion-text"]')?.textContent).toContain('25%');
+    expect(root.querySelector('[data-testid="profile-completion-text"]')?.textContent).toContain('75%');
     expect(root.textContent).toContain('15 Jan 2024');
     expect(root.querySelector('[data-testid="work-anniversary"]')).toBeTruthy();
     expect(root.textContent).toContain('Asia/Colombo');

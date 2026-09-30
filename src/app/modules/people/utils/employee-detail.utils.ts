@@ -1,4 +1,5 @@
 import { EmployeeDetailAddress, EmployeeDetailResponse } from '../models/employee.model';
+import { PositionHistoryEntryResponse } from '../models/position-history.model';
 
 export function employeeInitials(firstName?: string | null, lastName?: string | null): string {
   const f = firstName?.trim().charAt(0) || '';
@@ -76,13 +77,14 @@ export interface ProfileCompletion {
 
 /**
  * Completion across the profile sections the detail response actually carries. Sections the
- * backend has no data for yet (documents, preferences) are deliberately not counted.
+ * backend has no data for yet (documents, preferences) are deliberately not counted. As in the
+ * design, basic = name on file and contact = at least one way to reach the employee.
  */
 export function profileCompletion(employee: EmployeeDetailResponse): ProfileCompletion {
   const info = employee.personalInformation;
   const items: ProfileCompletionItem[] = [
-    { label: 'Basic Information', complete: !!(info.firstName && info.lastName && info.dateOfBirth && info.gender) },
-    { label: 'Contact Information', complete: !!(info.email && info.phone) },
+    { label: 'Basic Information', complete: !!(info.firstName && info.lastName) },
+    { label: 'Contact Information', complete: !!(info.email || info.phone) },
     { label: 'Address Information', complete: info.addresses.length > 0 },
     { label: 'Emergency Contact', complete: employee.emergencyContacts.length > 0 }
   ];
@@ -125,4 +127,90 @@ export function probationStatus(probationEndDate: string | null | undefined, now
   const end = probationEndDate ? parseDateOnly(probationEndDate) : null;
   if (!end) return 'none';
   return end < startOfDay(now) ? 'completed' : 'in_progress';
+}
+
+/** "1 Sep" / "10 Sep 2025" (en-GB's short month is "Sept", which the design does not use). */
+export function formatDayMonth(value: string, withYear = false): string {
+  const date = parseDateOnly(value);
+  if (!date) return '';
+  const month = date.toLocaleDateString('en-US', { month: 'short' });
+  const day = String(date.getDate()).padStart(withYear ? 2 : 1, '0');
+  return withYear ? `${day} ${month} ${date.getFullYear()}` : `${day} ${month}`;
+}
+
+/** 150 -> "2h 30m", 65 -> "1h 05m", 12 -> "12m". */
+export function formatMinutes(total: number): string {
+  const minutes = Math.max(0, Math.round(total));
+  const h = Math.floor(minutes / 60);
+  const m = minutes % 60;
+  if (h === 0) return `${m}m`;
+  return `${h}h ${String(m).padStart(2, '0')}m`;
+}
+
+/** Local wall-clock time, e.g. "2:41 PM". */
+export function formatClock(value: string | Date): string {
+  const date = typeof value === 'string' ? new Date(value) : value;
+  return date.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' });
+}
+
+/** "Today, 2:41 PM" / "Yesterday, 6:12 PM" / "Sep 16, 4:32 PM". */
+export function formatRelativeDayTime(value: string, now: Date = new Date()): string {
+  const date = new Date(value);
+  const dayDiff = Math.round((startOfDay(now).getTime() - startOfDay(date).getTime()) / DAY_MS);
+  const clock = formatClock(date);
+  if (dayDiff === 0) return `Today, ${clock}`;
+  if (dayDiff === 1) return `Yesterday, ${clock}`;
+  return `${date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}, ${clock}`;
+}
+
+/** "Sep 23 – 25" within a month, "Sep 30 – Oct 2" across months. */
+export function formatDateRange(start: string, end: string): string {
+  const a = parseDateOnly(start);
+  const b = parseDateOnly(end);
+  if (!a || !b) return '';
+  const month = (d: Date) => d.toLocaleDateString('en-US', { month: 'short' });
+  if (a.getTime() === b.getTime()) return `${month(a)} ${a.getDate()}`;
+  if (a.getMonth() === b.getMonth() && a.getFullYear() === b.getFullYear()) return `${month(a)} ${a.getDate()} – ${b.getDate()}`;
+  return `${month(a)} ${a.getDate()} – ${month(b)} ${b.getDate()}`;
+}
+
+export interface HistoryEvent {
+  readonly date: string;
+  readonly title: string;
+  readonly description: string | null;
+}
+
+const CHANGE_REASON_TITLES: Record<string, string> = {
+  Promotion: 'Promoted',
+  Transfer: 'Transferred',
+  LateralMove: 'Position changed'
+};
+
+/**
+ * Employment history built only from real records: position history entries (the earliest,
+ * reason-less entry is the joining event) plus probation completion once its end date has passed.
+ * Newest first.
+ */
+export function employmentHistory(
+  entries: readonly PositionHistoryEntryResponse[],
+  probationEndDate: string | null | undefined,
+  now: Date = new Date()
+): HistoryEvent[] {
+  const ordered = [...entries].sort((a, b) => a.effectiveFrom.localeCompare(b.effectiveFrom));
+  const events: HistoryEvent[] = ordered.map((entry, index) => {
+    const where = [entry.positionName, entry.departmentName].filter(Boolean).join(' · ');
+    if (index === 0 && !entry.changeReason) {
+      return { date: entry.effectiveFrom, title: 'Joined company', description: `Joined as ${where}.` };
+    }
+    const previous = ordered[index - 1];
+    const title = entry.changeReason ? CHANGE_REASON_TITLES[entry.changeReason] ?? 'Position changed' : 'Position changed';
+    const description = previous && previous.positionName !== entry.positionName
+      ? `${previous.positionName} → ${entry.positionName}`
+      : where;
+    return { date: entry.effectiveFrom, title, description };
+  });
+  if (probationStatus(probationEndDate, now) === 'completed' && probationEndDate) {
+    events.push({ date: probationEndDate, title: 'Probation completed', description: 'Probation period completed.' });
+  }
+  return events.sort((a, b) => b.date.localeCompare(a.date));
 }

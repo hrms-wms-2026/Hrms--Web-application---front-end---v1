@@ -1,7 +1,7 @@
 # Employee Detail — Tabbed Redesign
 
 **Date:** 2026-09-30
-**Status:** Phases 1–2 implemented; Phases 3–5 pending
+**Status:** Phases 1–2 and the design-parity pass implemented; Phases 3–5 pending
 **Design source:** four mockups (Overview, Employment, Work & Activity, Personal) supplied by the product owner.
 There is no Attendance tab mockup yet.
 
@@ -61,6 +61,32 @@ Frontend:
   days until) and Additional Information (employee ID, department, position, employment type, work mode, time zone).
 - Profile completion counts only the sections the response carries: basic (first and last name, date of birth,
   gender), contact (email and phone), at least one address, and at least one emergency contact.
+
+## Design parity pass (component kit) — implemented
+
+The product owner asked for all four screens to match the mockups exactly (2026-09-30):
+- A reusable kit lives in `modules/people/ui/detail-kit/`: `detail-icon`, `detail-card`, `kv-row`, `stat-tile`,
+  `status-badge`, `segmented-bar`, `bar-chart`, `line-chart`, `timeline`, `empty-note` and `insight-placeholder`.
+  The header, tab bar (with icons), period select and month button, and all tabs are rebuilt on it.
+- **Overview** and **Work & Activity** are fully built. The real-data cards are Employment & Organization, Employee
+  History and Attendance today. The period cards read `EmployeeInsightsStore` → `EmployeeInsightsApiService`, which
+  serves `employee-insights.mock.ts` (the designed Phase 3 response shape, `models/employee-insights.model.ts`) **only
+  in the development environment**. Every other environment gets `null`, and the cards show "No data yet", so
+  production never shows invented numbers. The period filter now drives these loads.
+- Header actions: **Edit Employee** opens the Employment tab's job-details form (`?edit=job`). **Transfer / Promote**
+  keeps the Promotion/Transfer menu. **More** (…) holds Offboarding and Resend invitation, with the same gating as
+  before. Buttons with no backend are left out: Personal "Edit", "Add to team", "View task", and the productivity
+  compare selects.
+- Employment history is derived from real position history: the earliest entry is "Joined company",
+  Promotion/Transfer entries become "Promoted"/"Transferred", and a passed probation end date adds "Probation
+  completed". `employee-job-journey` was removed.
+- Profile completion follows the design's rule: a name on file means basic is complete, and an email or phone means
+  contact is complete.
+- Bug found and fixed while testing: the insights load effect tracked store signals, so a `null` result re-triggered
+  the load forever. The loads are now `untracked`, and a regression test covers it.
+- Checked visually in a local preview at the mockups' 1672px width with stubbed services (not committed).
+- In Phase 3, swap `EmployeeInsightsApiService` for HttpClient calls to
+  `GET /employees/{id}/overview-insights?month=` and `GET /employees/{id}/work-activity-insights?month=`.
 
 ## Phase 3 — Backend employee-scoped aggregates (HRMS-Backend-v1)
 

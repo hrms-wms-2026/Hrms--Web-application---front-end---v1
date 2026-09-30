@@ -40,7 +40,7 @@ describe('EmployeeEmploymentTabComponent', () => {
     const { fixture } = await render();
 
     expect(fixture.nativeElement.querySelector('app-employee-job-info')).toBeTruthy();
-    expect(fixture.nativeElement.querySelector('app-employee-job-journey')).toBeTruthy();
+    expect(fixture.nativeElement.textContent).toContain('Employment History');
     expect(fixture.nativeElement.textContent).toContain('Employment Record');
   });
 
@@ -88,7 +88,7 @@ describe('EmployeeEmploymentTabComponent', () => {
 
     expect(root.querySelector('[data-testid="employment-timezone"]')?.textContent).toContain('Asia/Colombo');
     expect(root.querySelector('[data-testid="probation-status"]')?.textContent).toContain('Completed');
-    expect(root.textContent).toContain('Probation Ends');
+    expect(root.textContent).toContain('Probation ends');
   });
 
   it('lists shared project memberships, and says so when there are none', async () => {
@@ -110,5 +110,33 @@ describe('EmployeeEmploymentTabComponent', () => {
     TestBed.resetTestingModule();
     const empty = await render();
     expect(empty.fixture.nativeElement.querySelector('[data-testid="no-shared-projects"]')).toBeTruthy();
+  });
+
+  it('opens the job details form from "Edit details" and hides the read-only rows', async () => {
+    const { fixture } = await render();
+    const root = fixture.nativeElement as HTMLElement;
+
+    (root.querySelector('[data-testid="edit-employment-details"]') as HTMLButtonElement).click();
+    fixture.detectChanges();
+
+    expect(fixture.componentInstance.isEditing()).toBe(true);
+    expect(root.querySelector('form')).toBeTruthy();
+    expect(root.querySelector('[data-testid="edit-employment-details"]')).toBeNull();
+  });
+
+  it('closes the form after a successful save', async () => {
+    const { fixture } = await render({ updateJobDetails: vi.fn().mockReturnValue(of(undefined)) });
+    fixture.componentInstance.startEdit();
+    fixture.detectChanges();
+
+    await fixture.componentInstance.onJobDetailsSave({ employeeNumber: 'E-001', employmentTypeCode: 'full_time', workModeId: null });
+    fixture.detectChanges();
+
+    expect(fixture.componentInstance.isEditing()).toBe(false);
+  });
+
+  it('hides "Edit details" without employees:write', async () => {
+    const { fixture } = await render({}, { canWrite: false });
+    expect(fixture.nativeElement.querySelector('[data-testid="edit-employment-details"]')).toBeNull();
   });
 });

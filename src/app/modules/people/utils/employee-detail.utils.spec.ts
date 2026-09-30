@@ -1,6 +1,11 @@
 import {
   calculateTenure,
   employeeInitials,
+  employmentHistory,
+  formatDateRange,
+  formatDayMonth,
+  formatMinutes,
+  formatRelativeDayTime,
   nextWorkAnniversary,
   primaryLocation,
   probationStatus,
@@ -41,10 +46,10 @@ describe('employee-detail utils', () => {
 
   it('scores profile completion over the sections the response carries', () => {
     expect(profileCompletion(detailFixture)).toEqual({
-      percent: 0,
+      percent: 50,
       items: [
-        { label: 'Basic Information', complete: false },
-        { label: 'Contact Information', complete: false },
+        { label: 'Basic Information', complete: true },
+        { label: 'Contact Information', complete: true },
         { label: 'Address Information', complete: false },
         { label: 'Emergency Contact', complete: false }
       ]
@@ -76,5 +81,44 @@ describe('employee-detail utils', () => {
     expect(probationStatus('2024-05-01', now)).toBe('completed');
     expect(probationStatus('2026-09-30', now)).toBe('in_progress');
     expect(probationStatus(null, now)).toBe('none');
+  });
+
+  it('formats minutes, day-month and date ranges like the design', () => {
+    expect(formatMinutes(150)).toBe('2h 30m');
+    expect(formatMinutes(65)).toBe('1h 05m');
+    expect(formatMinutes(12)).toBe('12m');
+    expect(formatDayMonth('2025-09-01')).toBe('1 Sep');
+    expect(formatDayMonth('2025-09-10', true)).toBe('10 Sep 2025');
+    expect(formatDateRange('2025-09-23', '2025-09-25')).toBe('Sep 23 – 25');
+    expect(formatDateRange('2025-09-30', '2025-10-02')).toBe('Sep 30 – Oct 2');
+  });
+
+  it('labels relative days for activity timestamps', () => {
+    const now = new Date(2025, 8, 20, 18, 0);
+    expect(formatRelativeDayTime('2025-09-20T14:41:00', now)).toMatch(/^Today, 2:41\sPM$/);
+    expect(formatRelativeDayTime('2025-09-19T18:12:00', now)).toMatch(/^Yesterday, 6:12\sPM$/);
+    expect(formatRelativeDayTime('2025-09-16T16:32:00', now)).toMatch(/^Sep 16, 4:32\sPM$/);
+  });
+
+  it('builds employment history from position history and a completed probation, newest first', () => {
+    const entry = (effectiveFrom: string, positionName: string, departmentName: string | null, changeReason: 'Promotion' | 'Transfer' | null) => ({
+      positionName, departmentName, effectiveFrom, effectiveTo: null, changeReason, initiatedByName: 'HR', approvedByName: null
+    });
+    const events = employmentHistory(
+      [
+        entry('2025-09-10', 'Watercraft Engineer', 'Engineering', 'Promotion'),
+        entry('2024-02-01', 'Junior Watercraft Engineer', 'Watercraft Engineering', null),
+        entry('2025-08-15', 'Junior Watercraft Engineer', 'Engineering', 'Transfer')
+      ],
+      '2024-05-01',
+      new Date(2026, 8, 30)
+    );
+
+    expect(events).toEqual([
+      { date: '2025-09-10', title: 'Promoted', description: 'Junior Watercraft Engineer → Watercraft Engineer' },
+      { date: '2025-08-15', title: 'Transferred', description: 'Junior Watercraft Engineer · Engineering' },
+      { date: '2024-05-01', title: 'Probation completed', description: 'Probation period completed.' },
+      { date: '2024-02-01', title: 'Joined company', description: 'Joined as Junior Watercraft Engineer · Watercraft Engineering.' }
+    ]);
   });
 });

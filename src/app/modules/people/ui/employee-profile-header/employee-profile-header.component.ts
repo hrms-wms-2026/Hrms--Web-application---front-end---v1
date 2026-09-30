@@ -2,6 +2,7 @@ import { ChangeDetectionStrategy, Component, computed, input } from '@angular/co
 import { DatePipe } from '@angular/common';
 import { EmployeeDetailResponse } from '../../models/employee.model';
 import { employeeInitials } from '../../utils/employee-detail.utils';
+import { DetailIconComponent } from '../detail-kit/detail-icon.component';
 
 /**
  * Identity banner shared by every employee detail tab: avatar, name, employee number,
@@ -11,94 +12,102 @@ import { employeeInitials } from '../../utils/employee-detail.utils';
 @Component({
   selector: 'app-employee-profile-header',
   standalone: true,
-  imports: [DatePipe],
+  imports: [DatePipe, DetailIconComponent],
   template: `
-    <section class="profile-header" aria-label="Employee profile">
-      <div class="profile-identity">
-        <div class="profile-avatar" aria-hidden="true">{{ initials() }}</div>
+    <section class="header" aria-label="Employee profile">
+      <div class="identity">
+        <div class="avatar" aria-hidden="true">{{ initials() }}</div>
         <div class="min-w-0">
-          <div class="flex items-center gap-3 flex-wrap">
-            <h1 class="text-2xl font-bold text-[var(--color-text-primary)]" data-testid="employee-name">{{ fullName() }}</h1>
-            <span class="profile-number">{{ job().employeeNumber }}</span>
+          <div class="name-row">
+            <h1 class="name" data-testid="employee-name">{{ fullName() }}</h1>
+            <span class="number">{{ job().employeeNumber }}</span>
           </div>
-          <p class="text-base font-medium text-[var(--color-text-primary)] mt-0.5">
-            {{ job().positionName || 'Unassigned Position' }}
-          </p>
-          <p class="text-sm text-[var(--color-accent)] mt-0.5 flex items-center gap-2 flex-wrap">
+          <p class="position">{{ job().positionName || 'Unassigned Position' }}</p>
+          <p class="org">
             <span>{{ job().departmentName || 'No department' }}</span>
-            <span aria-hidden="true">•</span>
+            <span class="org__dot" aria-hidden="true">•</span>
             <span>{{ job().legalEntityName || 'Company' }}</span>
           </p>
-          <p class="text-sm text-[var(--color-text-secondary)] mt-1 truncate">{{ employee().personalInformation.email }}</p>
+          <p class="email">
+            <app-detail-icon name="mail" [size]="18" />
+            <span class="truncate">{{ employee().personalInformation.email }}</span>
+          </p>
         </div>
       </div>
 
-      <dl class="profile-facts">
-        <dt>Reporting Manager</dt>
-        <dd>{{ job().reportingManagerName || 'Unassigned' }}</dd>
-        <dt>Employment Type</dt>
-        <dd>{{ job().employmentTypeLabel || '—' }}</dd>
-        <dt>Work Mode</dt>
-        <dd>{{ job().workModeLabel || '—' }}</dd>
-        <dt>Hire Date</dt>
-        <dd>{{ job().hireDate ? (job().hireDate | date: 'dd MMM yyyy') : '—' }}</dd>
+      <dl class="facts">
+        <div class="fact">
+          <dt><app-detail-icon name="users" [size]="18" />Reporting Manager</dt>
+          <dd>
+            @if (job().reportingManagerName; as manager) {
+              <span class="manager-avatar" aria-hidden="true">{{ managerInitials() }}</span>{{ manager }}
+            } @else {
+              Unassigned
+            }
+          </dd>
+        </div>
+        <div class="fact">
+          <dt><app-detail-icon name="id-card" [size]="18" />Employment Type</dt>
+          <dd>{{ job().employmentTypeLabel || '—' }}</dd>
+        </div>
+        <div class="fact">
+          <dt><app-detail-icon name="building" [size]="18" />Work Mode</dt>
+          <dd>{{ job().workModeLabel || '—' }}</dd>
+        </div>
+        <div class="fact">
+          <dt><app-detail-icon name="calendar" [size]="18" />Hire Date</dt>
+          <dd>{{ job().hireDate ? (job().hireDate | date: 'dd MMM yyyy') : '—' }}</dd>
+        </div>
       </dl>
 
-      <div class="profile-actions">
+      <div class="actions">
         <ng-content select="[header-actions]" />
       </div>
     </section>
   `,
   styles: [`
-    .profile-header {
+    .header {
       display: grid;
       grid-template-columns: minmax(0, 1fr);
       gap: 1.25rem;
-      padding: 1.5rem;
+      padding: 1.5rem 1.75rem;
       border: 1px solid var(--color-border);
-      border-radius: 1rem;
+      border-radius: 0.875rem;
       background: var(--color-surface);
+      box-shadow: 0 1px 2px rgb(15 23 42 / 0.04);
     }
-    @media (min-width: 1024px) {
-      .profile-header { grid-template-columns: minmax(0, 1.2fr) minmax(0, 1fr) auto; align-items: center; }
-      .profile-facts { border-left: 1px solid var(--color-border); padding-left: 1.5rem; }
+    @media (min-width: 1100px) {
+      .header { grid-template-columns: minmax(0, 1.15fr) minmax(0, 1fr) auto; align-items: center; }
+      .facts { border-left: 1px solid var(--color-border); padding-left: 1.75rem; }
     }
-    .profile-identity { display: flex; align-items: center; gap: 1.25rem; min-width: 0; }
-    .profile-avatar {
-      flex-shrink: 0;
-      width: 5.5rem;
-      height: 5.5rem;
-      border-radius: 9999px;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      font-size: 1.75rem;
-      font-weight: 700;
-      background: color-mix(in srgb, var(--color-accent) 12%, var(--color-surface));
-      color: var(--color-accent);
+    .identity { display: flex; align-items: center; gap: 1.75rem; min-width: 0; }
+    .avatar {
+      flex-shrink: 0; width: 6rem; height: 6rem; border-radius: 9999px;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 2rem; font-weight: 700; letter-spacing: 0.02em;
+      background: #dbe7fd; color: #1d4ed8;
     }
-    .profile-number {
-      font-family: ui-monospace, monospace;
-      font-size: 0.75rem;
-      font-weight: 600;
-      padding: 0.125rem 0.625rem;
-      border-radius: 0.375rem;
-      background: var(--color-surface-secondary);
-      color: var(--color-text-secondary);
-      border: 1px solid var(--color-border);
+    .name-row { display: flex; align-items: center; flex-wrap: wrap; gap: 0.875rem; }
+    .name { margin: 0; font-size: 1.75rem; font-weight: 700; line-height: 1.2; color: var(--color-text-primary); }
+    .number {
+      font-size: 0.8125rem; font-weight: 600; padding: 0.1875rem 0.625rem; border-radius: 0.375rem;
+      background: #eef4ff; color: #1e3a8a; border: 1px solid #c7d7fb;
     }
-    .profile-facts {
-      display: grid;
-      grid-template-columns: auto minmax(0, 1fr);
-      column-gap: 1.5rem;
-      row-gap: 0.375rem;
-      margin: 0;
-      font-size: 0.875rem;
+    .position { margin: 0.25rem 0 0; font-size: 1.125rem; font-weight: 500; color: var(--color-text-primary); }
+    .org { margin: 0.25rem 0 0; display: flex; flex-wrap: wrap; align-items: center; gap: 0.5rem; font-size: 0.9375rem; color: #5b6b86; }
+    .org__dot { color: #94a3b8; }
+    .email { margin: 0.5rem 0 0; display: flex; align-items: center; gap: 0.625rem; font-size: 0.9375rem; color: var(--color-text-primary); min-width: 0; }
+    .email app-detail-icon { color: var(--color-accent); }
+    .facts { margin: 0; display: grid; gap: 0.5rem; font-size: 0.9375rem; }
+    .fact { display: grid; grid-template-columns: minmax(10rem, auto) minmax(0, 1fr); align-items: center; gap: 1.5rem; }
+    .fact dt { display: flex; align-items: center; gap: 0.75rem; color: #5b6b86; }
+    .fact dd { margin: 0; display: flex; align-items: center; gap: 0.5rem; font-weight: 600; color: var(--color-text-primary); min-width: 0; }
+    .manager-avatar {
+      display: inline-flex; align-items: center; justify-content: center; width: 1.75rem; height: 1.75rem; border-radius: 9999px;
+      font-size: 0.6875rem; font-weight: 700; background: #dbe7fd; color: #1d4ed8; flex-shrink: 0;
     }
-    .profile-facts dt { color: var(--color-text-secondary); }
-    .profile-facts dd { margin: 0; font-weight: 500; color: var(--color-text-primary); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-    .profile-actions { display: flex; align-items: center; gap: 0.75rem; flex-wrap: wrap; align-self: start; }
-    @media (min-width: 1024px) { .profile-actions { justify-content: flex-end; } }
+    .actions { display: flex; align-items: center; gap: 0.75rem; flex-wrap: wrap; align-self: start; }
+    @media (min-width: 1100px) { .actions { justify-content: flex-end; } }
   `],
   changeDetection: ChangeDetectionStrategy.OnPush
 })
@@ -113,5 +122,9 @@ export class EmployeeProfileHeaderComponent {
   readonly initials = computed(() => {
     const info = this.employee().personalInformation;
     return employeeInitials(info.firstName, info.lastName);
+  });
+  readonly managerInitials = computed(() => {
+    const [first, ...rest] = (this.job().reportingManagerName ?? '').trim().split(/\s+/);
+    return employeeInitials(first, rest.pop());
   });
 }

@@ -70,13 +70,9 @@ export const PEOPLE_ROUTES: Routes = [
           {
             path: 'work-activity',
             loadComponent: () =>
-              import('./feature/employee-detail/tabs/employee-upcoming-tab.component').then(
-                (m) => m.EmployeeUpcomingTabComponent
-              ),
-            data: {
-              placeholderTitle: 'Work & activity insights are coming soon',
-              placeholderDescription: 'Task delivery, recorded activity and application usage for this employee will appear here.'
-            }
+              import('./feature/employee-detail/tabs/employee-work-activity-tab.component').then(
+                (m) => m.EmployeeWorkActivityTabComponent
+              )
           },
           {
             path: 'personal',

@@ -172,10 +172,11 @@ describe('EmployeeDetailComponent', () => {
     expect(fixture.nativeElement.querySelector('[data-testid="change-position-trigger"]')).toBeFalsy();
   });
 
-  it('shows the action menu with Promotion, Transfer, and Offboarding for another employee', async () => {
+  it('shows Promotion/Transfer under Transfer / Promote and Offboarding under More actions for another employee', async () => {
     const { fixture } = setup(detailFixture, {}, true, 'emp-99');
     await render(fixture);
     fixture.componentInstance.changePositionMenuOpen.set(true);
+    fixture.componentInstance.moreMenuOpen.set(true);
     await render(fixture);
 
     const text = fixture.nativeElement.textContent as string;
@@ -185,12 +186,27 @@ describe('EmployeeDetailComponent', () => {
     expect(offboardingButton?.disabled).toBe(false);
   });
 
+  it('shows Edit Employee linking to the Employment tab edit form for a user with employees:write', async () => {
+    const { fixture } = setup(detailFixture, {}, true, 'emp-1');
+    await render(fixture);
+
+    expect(fixture.nativeElement.querySelector('[data-testid="edit-employee"]')).toBeTruthy();
+  });
+
+  it('hides Edit Employee without employees:write', async () => {
+    const { fixture } = setup(detailFixture, {}, false, 'emp-99');
+    await render(fixture);
+
+    expect(fixture.nativeElement.querySelector('[data-testid="edit-employee"]')).toBeNull();
+  });
+
   it('hides the Offboarding item from a user with employees:write but not employees:offboard', async () => {
     const { fixture } = setup(detailFixture, {}, true, 'emp-99', false);
     await render(fixture);
-    (fixture.nativeElement.querySelector('[data-testid="change-position-trigger"]') as HTMLElement).querySelector('button')!.click();
+    (fixture.nativeElement.querySelector('[data-testid="change-position-trigger"]') as HTMLButtonElement).click();
     await render(fixture);
 
+    expect(fixture.nativeElement.querySelector('[data-testid="more-actions-trigger"]')).toBeNull();
     expect(fixture.nativeElement.querySelector('[data-testid="offboarding-menu-item"]')).toBeNull();
     expect(fixture.nativeElement.textContent).toContain('Promotion');
   });
@@ -198,9 +214,8 @@ describe('EmployeeDetailComponent', () => {
   it('shows only the Offboarding item to a user with employees:offboard but not employees:write', async () => {
     const { fixture } = setup(detailFixture, {}, false, 'emp-99', true);
     await render(fixture);
-    const trigger = fixture.nativeElement.querySelector('[data-testid="change-position-trigger"]') as HTMLElement;
-    expect(trigger.textContent).toContain('Offboarding');
-    trigger.querySelector('button')!.click();
+    expect(fixture.nativeElement.querySelector('[data-testid="change-position-trigger"]')).toBeNull();
+    (fixture.nativeElement.querySelector('[data-testid="more-actions-trigger"]') as HTMLButtonElement).click();
     await render(fixture);
 
     expect(fixture.nativeElement.querySelector('[data-testid="offboarding-menu-item"]')).not.toBeNull();
@@ -210,7 +225,7 @@ describe('EmployeeDetailComponent', () => {
   it('enables the Offboarding menu item and navigates to the wizard on click', async () => {
     const { fixture } = setup(detailFixture, {}, true, 'emp-99');
     await render(fixture);
-    fixture.componentInstance.changePositionMenuOpen.set(true);
+    fixture.componentInstance.moreMenuOpen.set(true);
     await render(fixture);
 
     const router = TestBed.inject(Router);
@@ -293,8 +308,10 @@ describe('EmployeeDetailComponent', () => {
   it('shows the resend button only when the invitation expired unaccepted', async () => {
     const { fixture } = setup({ ...detailFixture, invitationStatus: 'expired' });
     await render(fixture);
+    fixture.componentInstance.moreMenuOpen.set(true);
+    await render(fixture);
 
-    expect(fixture.nativeElement.textContent).toContain('Resend invitation');
+    expect(fixture.nativeElement.querySelector('[data-testid="resend-invitation"]')?.textContent).toContain('Resend invitation');
   });
 
   it('resends the invitation, shows a success toast, and reloads the employee', async () => {
@@ -387,7 +404,7 @@ describe('EmployeeDetailComponent', () => {
       const harness = await navigate('/people/employees/emp-1');
 
       expect(TestBed.inject(Router).url).toBe('/people/employees/emp-1/overview');
-      const links = Array.from(harness.routeNativeElement!.querySelectorAll('.emp-detail-tab')) as HTMLAnchorElement[];
+      const links = Array.from(harness.routeNativeElement!.querySelectorAll('[data-testid^="employee-tab-"]')) as HTMLAnchorElement[];
       expect(links.map((link) => link.textContent?.trim())).toEqual(['Overview', 'Employment', 'Attendance', 'Work & Activity', 'Personal']);
       expect(links.map((link) => link.getAttribute('href'))).toEqual([
         '/people/employees/emp-1/overview',
@@ -397,6 +414,8 @@ describe('EmployeeDetailComponent', () => {
         '/people/employees/emp-1/personal'
       ]);
       expect(links[0].getAttribute('aria-current')).toBe('page');
+      expect(harness.routeNativeElement!.querySelector('[data-testid="edit-employee"]')?.getAttribute('href'))
+        .toBe('/people/employees/emp-1/employment?edit=job');
     });
 
     it('shows the period filter only on period-based tabs', async () => {

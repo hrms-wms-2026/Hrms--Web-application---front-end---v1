@@ -1,9 +1,28 @@
-import { ChangeDetectionStrategy, Component, computed, inject } from '@angular/core';
+import { ChangeDetectionStrategy, Component, computed, effect, inject, untracked } from '@angular/core';
 import { DatePipe } from '@angular/common';
-import { RouterLink } from '@angular/router';
 import { EmployeeDetailResponse } from '../../../models/employee.model';
+import { AttendanceDayStatus, InsightStatus } from '../../../models/employee-insights.model';
 import { EmployeeDetailStore } from '../../../state/employee-detail.store';
-import { calculateTenure, primaryLocation } from '../../../utils/employee-detail.utils';
+import { EmployeeInsightsStore } from '../../../state/employee-insights.store';
+import { BarChartComponent, BarTone, ChartBar } from '../../../ui/detail-kit/bar-chart.component';
+import { DetailCardComponent } from '../../../ui/detail-kit/detail-card.component';
+import { DetailIconComponent } from '../../../ui/detail-kit/detail-icon.component';
+import { InsightPlaceholderComponent } from '../../../ui/detail-kit/insight-placeholder.component';
+import { KvRowComponent } from '../../../ui/detail-kit/kv-row.component';
+import { LineChartComponent } from '../../../ui/detail-kit/line-chart.component';
+import { BarSegment, SegmentedBarComponent } from '../../../ui/detail-kit/segmented-bar.component';
+import { StatTileComponent } from '../../../ui/detail-kit/stat-tile.component';
+import { BadgeTone, StatusBadgeComponent } from '../../../ui/detail-kit/status-badge.component';
+import { TimelineComponent, TimelineItem } from '../../../ui/detail-kit/timeline.component';
+import {
+  calculateTenure,
+  employmentHistory,
+  formatDateRange,
+  formatDayMonth,
+  formatMinutes,
+  formatRelativeDayTime,
+  toPeriodMonth
+} from '../../../utils/employee-detail.utils';
 import {
   attendanceAttentionLabel,
   attendanceSeverityClass,
@@ -12,105 +31,106 @@ import {
   breakOverageLabel
 } from '../../../utils/employee-view.utils';
 
-const HISTORY_PREVIEW_LIMIT = 5;
+const DAY_TONES: Record<AttendanceDayStatus, BarTone> = {
+  present: 'success',
+  late: 'warning',
+  missing_clock_out: 'danger',
+  leave: 'success-soft',
+  none: 'muted'
+};
+
+const STATUS_TONES: Record<InsightStatus, BadgeTone> = { pending: 'warning', approved: 'success', rejected: 'danger' };
+const HISTORY_PREVIEW_LIMIT = 4;
 
 /**
- * Overview tab. Phase 1 shows the cards that existing endpoints already back (attendance today,
- * employment & organization, employee history). The period-based cards from the design
- * (attendance month, work management, time off, productivity) arrive with their backend
- * aggregates in a later phase.
+ * Overview tab. Header, Employment & Organization and Employee History use the real detail
+ * response; the period cards (attendance, work, time off, approvals, activity, productivity,
+ * upcoming items, checklists) come from EmployeeInsightsStore, which only has data in
+ * development until the Phase 3 endpoints exist - elsewhere those cards show "no data yet".
  */
 @Component({
   selector: 'app-employee-overview-tab',
   standalone: true,
-  imports: [DatePipe, RouterLink],
-  template: `
-    @if (store.employee(); as employee) {
-      <div class="grid gap-4 lg:grid-cols-3">
-        @if (employee.attendanceSummary) {
-          <section class="detail-card" aria-labelledby="overview-attendance-today">
-            <h2 id="overview-attendance-today" class="detail-card__title">Attendance today</h2>
-            @if (employee.attendanceSummary.showNotClockedInWarning && attendanceWarningLabel(employee); as warningLabel) {
-              <span class="inline-flex items-center gap-1.5 text-sm font-semibold text-red-600">
-                <span class="w-2 h-2 rounded-full bg-red-500"></span>
-                {{ warningLabel }}
-              </span>
-            } @else {
-              <span class="text-sm font-semibold text-[var(--color-text-primary)] block">
-                {{ attendanceStatusLabel(employee) || 'Not specified' }}
-              </span>
-              @if (attendanceAttentionLabel(employee); as attentionLabel) {
-                <span class="mt-1 inline-block text-xs font-medium px-2 py-0.5 rounded-full" [class]="severityBadgeClass(employee)">
-                  {{ attentionLabel }}
-                </span>
-              }
-            }
-            @if (breakOverageLabel(employee); as breakLabel) {
-              <span class="mt-1 block text-xs font-medium text-red-600">{{ breakLabel }}</span>
-            }
-          </section>
-        }
-
-        <section class="detail-card" [class.lg:col-span-2]="!employee.attendanceSummary" aria-labelledby="overview-employment">
-          <div class="detail-card__head">
-            <h2 id="overview-employment" class="detail-card__title">Employment &amp; Organization</h2>
-            <a routerLink="../employment" class="detail-card__link">View details</a>
-          </div>
-          <dl class="detail-list">
-            <dt>Position</dt><dd>{{ employee.jobInformation.positionName || 'Unassigned' }}</dd>
-            <dt>Department</dt><dd>{{ employee.jobInformation.departmentName || '—' }}</dd>
-            <dt>Company</dt><dd>{{ employee.jobInformation.legalEntityName || '—' }}</dd>
-            <dt>Reporting Manager</dt><dd>{{ employee.jobInformation.reportingManagerName || 'Unassigned' }}</dd>
-            <dt>Employment Type</dt><dd>{{ employee.jobInformation.employmentTypeLabel || '—' }}</dd>
-            <dt>Work Mode</dt><dd>{{ employee.jobInformation.workModeLabel || '—' }}</dd>
-            <dt>Primary Location</dt><dd>{{ location() }}</dd>
-            <dt>Hire Date</dt><dd>{{ employee.jobInformation.hireDate ? (employee.jobInformation.hireDate | date: 'dd MMM yyyy') : '—' }}</dd>
-            <dt>Tenure</dt><dd data-testid="overview-tenure">{{ tenure() }}</dd>
-          </dl>
-        </section>
-
-        <section class="detail-card" aria-labelledby="overview-history">
-          <div class="detail-card__head">
-            <h2 id="overview-history" class="detail-card__title">Employee History</h2>
-            <a routerLink="../employment" class="detail-card__link">View all</a>
-          </div>
-          @if (historyPreview().length === 0) {
-            <p class="text-sm text-[var(--color-text-secondary)]">No position history recorded yet.</p>
-          } @else {
-            <ol class="space-y-3">
-              @for (entry of historyPreview(); track $index) {
-                <li data-testid="overview-history-entry" class="grid grid-cols-[6.5rem_1fr] gap-3 text-sm">
-                  <span class="text-[var(--color-text-secondary)]">{{ entry.effectiveFrom | date: 'MMM d, yyyy' }}</span>
-                  <span>
-                    <span class="block font-medium text-[var(--color-text-primary)]">{{ entry.changeReason || 'Position assigned' }}</span>
-                    <span class="block text-xs text-[var(--color-text-secondary)]">{{ entry.positionName }}</span>
-                  </span>
-                </li>
-              }
-            </ol>
-          }
-        </section>
-      </div>
-    }
-  `,
-  styleUrl: './employee-detail-tab.css',
+  imports: [
+    DatePipe,
+    BarChartComponent,
+    DetailCardComponent,
+    DetailIconComponent,
+    InsightPlaceholderComponent,
+    KvRowComponent,
+    LineChartComponent,
+    SegmentedBarComponent,
+    StatTileComponent,
+    StatusBadgeComponent,
+    TimelineComponent
+  ],
+  templateUrl: './employee-overview-tab.component.html',
+  styleUrl: './employee-overview-tab.component.css',
   changeDetection: ChangeDetectionStrategy.OnPush
 })
 export class EmployeeOverviewTabComponent {
   protected readonly store = inject(EmployeeDetailStore);
+  protected readonly insightsStore = inject(EmployeeInsightsStore);
 
   readonly attendanceWarningLabel = attendanceWarningLabel;
   readonly attendanceAttentionLabel = attendanceAttentionLabel;
   readonly attendanceStatusLabel = attendanceStatusLabel;
   readonly breakOverageLabel = breakOverageLabel;
+  readonly formatMinutes = formatMinutes;
+  readonly formatRelativeDayTime = formatRelativeDayTime;
+  readonly formatDateRange = formatDateRange;
+  readonly statusTones = STATUS_TONES;
+
+  readonly insights = this.insightsStore.overview;
+  readonly periodSubtitle = computed(() => {
+    const month = this.store.periodMonth();
+    if (month === toPeriodMonth(new Date())) return 'This month';
+    const [y, m] = month.split('-').map(Number);
+    return new Date(y, m - 1, 1).toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
+  });
 
   readonly tenure = computed(() => calculateTenure(this.store.employee()?.jobInformation.hireDate));
-  readonly location = computed(() => primaryLocation(this.store.employee()?.personalInformation.addresses));
-  readonly historyPreview = computed(() =>
-    [...this.store.jobJourney()]
-      .sort((a, b) => b.effectiveFrom.localeCompare(a.effectiveFrom))
+  readonly history = computed<TimelineItem[]>(() =>
+    employmentHistory(this.store.jobJourney(), this.store.employee()?.jobInformation.probationEndDate)
       .slice(0, HISTORY_PREVIEW_LIMIT)
+      .map((event) => ({ date: formatShortDate(event.date), title: event.title, description: event.description }))
   );
+
+  readonly attendanceBars = computed<ChartBar[]>(() =>
+    (this.insights()?.attendance.days ?? []).map((day) => ({ value: 1, label: day.date, tone: DAY_TONES[day.status] }))
+  );
+  readonly attendanceAxis = computed(() => {
+    const days = this.insights()?.attendance.days ?? [];
+    if (!days.length) return [];
+    const picks = [1, 8, 15, 22, days.length];
+    return picks.map((d) => formatShortDay(days[d - 1].date));
+  });
+
+  readonly workSegments = computed<BarSegment[]>(() => {
+    const work = this.insights()?.work;
+    if (!work) return [];
+    const other = Math.max(0, work.assigned - work.completed - work.inProgress - work.overdue);
+    return [
+      { value: work.completed, tone: 'success', label: 'Completed' },
+      { value: work.inProgress, tone: 'info', label: 'In progress' },
+      { value: other, tone: 'neutral', label: 'Not started' },
+      { value: work.overdue, tone: 'danger', label: 'Overdue' }
+    ];
+  });
+
+  readonly trend = computed(() =>
+    (this.insights()?.productivity.trend ?? []).map((point) => ({ label: formatMonthShort(point.month), value: point.value }))
+  );
+
+  constructor() {
+    effect(() => {
+      const employeeId = this.store.employeeId();
+      const month = this.store.periodMonth();
+      // untracked: the load reads store signals that must not become dependencies of this effect,
+      // or finishing a load (loading -> false) would re-trigger it forever when there is no data.
+      if (employeeId) untracked(() => void this.insightsStore.loadOverview(employeeId, month));
+    });
+  }
 
   severityBadgeClass(employee: EmployeeDetailResponse): string {
     const severity = attendanceSeverityClass(employee);
@@ -118,4 +138,22 @@ export class EmployeeOverviewTabComponent {
     if (severity === 'emp-attention--warning') return 'bg-amber-50 text-amber-700';
     return 'bg-[var(--color-surface-secondary)] text-[var(--color-text-secondary)]';
   }
+
+  statusLabel(status: string): string {
+    return status.charAt(0).toUpperCase() + status.slice(1).replace(/_/g, ' ');
+  }
+}
+
+function formatShortDate(value: string): string {
+  const [y, m, d] = value.slice(0, 10).split('-').map(Number);
+  return new Date(y, m - 1, d).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+}
+
+function formatShortDay(value: string): string {
+  return formatDayMonth(value);
+}
+
+function formatMonthShort(value: string): string {
+  const [y, m] = value.split('-').map(Number);
+  return new Date(y, m - 1, 1).toLocaleDateString('en-US', { month: 'short' });
 }

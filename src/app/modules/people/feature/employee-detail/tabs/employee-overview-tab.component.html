@@ -1,0 +1,240 @@
+@if (store.employee(); as employee) {
+  <div class="overview">
+    <div class="overview__main">
+      <!-- Attendance -->
+      <app-detail-card icon="calendar-check" title="Attendance" [subtitle]="periodSubtitle()" linkLabel="View attendance" linkUrl="../attendance">
+        @if (insights(); as data) {
+          <div class="tiles">
+            <app-stat-tile [value]="data.attendance.present" label="Present" />
+            <app-stat-tile [value]="data.attendance.late" label="Late" [divider]="true" [valueTone]="data.attendance.late ? 'danger' : 'default'" />
+            <app-stat-tile [value]="data.attendance.missingClockOut" label="Missing clock-out" [divider]="true" [valueTone]="data.attendance.missingClockOut ? 'danger' : 'default'" />
+            <app-stat-tile [value]="data.attendance.leave" label="Leave" [divider]="true" />
+          </div>
+          <app-bar-chart class="mt-4 block" [bars]="attendanceBars()" [axisLabels]="attendanceAxis()" [height]="40" [gap]="5" ariaLabel="Daily attendance" />
+        } @else {
+          <app-insight-placeholder [loading]="insightsStore.overviewLoading()" />
+        }
+        @if (employee.attendanceSummary) {
+          <div class="today" data-testid="attendance-today">
+            <span class="today__label">Attendance today</span>
+            @if (employee.attendanceSummary.showNotClockedInWarning && attendanceWarningLabel(employee); as warningLabel) {
+              <span class="inline-flex items-center gap-1.5 font-semibold text-red-600">
+                <span class="w-2 h-2 rounded-full bg-red-500"></span>{{ warningLabel }}
+              </span>
+            } @else {
+              <span class="font-semibold text-[var(--color-text-primary)]">{{ attendanceStatusLabel(employee) || 'Not specified' }}</span>
+              @if (attendanceAttentionLabel(employee); as attentionLabel) {
+                <span class="text-xs font-medium px-2 py-0.5 rounded-full" [class]="severityBadgeClass(employee)">{{ attentionLabel }}</span>
+              }
+            }
+            @if (breakOverageLabel(employee); as breakLabel) {
+              <span class="text-xs font-medium text-red-600">{{ breakLabel }}</span>
+            }
+          </div>
+        }
+      </app-detail-card>
+
+      <!-- Work Management -->
+      <app-detail-card icon="list" title="Work Management" [subtitle]="periodSubtitle()" linkLabel="View work" linkUrl="../work-activity">
+        @if (insights(); as data) {
+          <div class="tiles">
+            <app-stat-tile [value]="data.work.assigned" label="Assigned" />
+            <app-stat-tile [value]="data.work.completed" label="Completed" [divider]="true" />
+            <app-stat-tile [value]="data.work.inProgress" label="In progress" [divider]="true" />
+            <app-stat-tile [value]="data.work.overdue" label="Overdue" [divider]="true" [valueTone]="data.work.overdue ? 'danger' : 'default'" />
+          </div>
+          <app-segmented-bar class="mt-4 block" [segments]="workSegments()" [height]="12" />
+          <div class="rates">
+            <div><span class="rates__label">Completion rate</span><span class="rates__value">{{ data.work.completionRate }}%</span></div>
+            <div class="rates__divided"><span class="rates__label">On-time rate</span><span class="rates__value">{{ data.work.onTimeRate }}%</span></div>
+          </div>
+        } @else {
+          <app-insight-placeholder [loading]="insightsStore.overviewLoading()" />
+        }
+      </app-detail-card>
+
+      <!-- Productivity -->
+      <app-detail-card class="overview__wide" icon="chart" title="Productivity & Work Insights"
+                       inlineSubtitle="A period-based view of activity, attendance discipline and delivery.">
+        @if (insights(); as data) {
+          <div class="productivity">
+            <div class="productivity__index">
+              <span class="productivity__index-label">Work insight index</span>
+              <div class="productivity__index-row">
+                <span class="productivity__index-value">{{ data.productivity.index }}</span>
+                <span class="productivity__delta" [class.productivity__delta--down]="data.productivity.deltaVsPrevious < 0">
+                  <app-detail-icon name="arrow-up" [size]="16" />{{ data.productivity.deltaVsPrevious }} vs previous period
+                </span>
+              </div>
+            </div>
+            <app-line-chart class="productivity__chart" [points]="trend()" ariaLabel="Work insight index trend" />
+          </div>
+          <div class="subcards">
+            <div class="subcard">
+              <div class="subcard__head"><app-detail-icon name="pulse" [size]="22" /><span>Activity</span></div>
+              <div class="subcard__body">
+                <span class="subcard__score">{{ data.productivity.activity.score }}</span>
+                <dl class="subcard__rows">
+                  <dt>Active time</dt><dd>{{ formatMinutes(data.productivity.activity.activeMinutes) }}</dd>
+                  <dt>Idle time</dt><dd>{{ formatMinutes(data.productivity.activity.idleMinutes) }}</dd>
+                  <dt>Meeting time</dt><dd>{{ formatMinutes(data.productivity.activity.meetingMinutes) }}</dd>
+                </dl>
+              </div>
+            </div>
+            <div class="subcard">
+              <div class="subcard__head"><app-detail-icon name="calendar-check" [size]="22" /><span>Attendance Discipline</span></div>
+              <div class="subcard__body">
+                <span class="subcard__score">{{ data.productivity.discipline.score }}</span>
+                <dl class="subcard__rows subcard__rows--alert">
+                  <dt>Late clock-ins</dt><dd>{{ data.productivity.discipline.lateClockIns }}</dd>
+                  <dt>Early clock-outs</dt><dd>{{ data.productivity.discipline.earlyClockOuts }}</dd>
+                  <dt>Missing clock-outs</dt><dd>{{ data.productivity.discipline.missingClockOuts }}</dd>
+                </dl>
+              </div>
+            </div>
+            <div class="subcard">
+              <div class="subcard__head"><app-detail-icon name="check-circle" [size]="22" /><span>Delivery</span></div>
+              <div class="subcard__body">
+                <span class="subcard__score">{{ data.productivity.delivery.score }}</span>
+                <dl class="subcard__rows">
+                  <dt>Tasks completed</dt><dd>{{ data.productivity.delivery.tasksCompleted }} / {{ data.productivity.delivery.tasksTotal }}</dd>
+                  <dt>On-time completion</dt><dd>{{ data.productivity.delivery.onTimeCompleted }} / {{ data.productivity.delivery.onTimeTotal }}</dd>
+                  <dt>Story points</dt><dd>{{ data.productivity.delivery.storyPointsCompleted }} / {{ data.productivity.delivery.storyPointsTotal }}</dd>
+                </dl>
+              </div>
+            </div>
+          </div>
+        } @else {
+          <app-insight-placeholder [loading]="insightsStore.overviewLoading()" />
+        }
+      </app-detail-card>
+    </div>
+
+    <div class="overview__side">
+      <!-- Time Off -->
+      <app-detail-card icon="plane" title="Time Off" linkLabel="View time off" linkUrl="/time-off">
+        @if (insights(); as data) {
+          <div class="timeoff">
+            @for (balance of data.timeOff.balances; track balance.leaveTypeName) {
+              <div class="timeoff__col">
+                <span class="timeoff__label">{{ balance.leaveTypeName }}</span>
+                <span class="timeoff__value">{{ balance.remainingDays }} days</span>
+                <span class="timeoff__label">remaining</span>
+              </div>
+            }
+            <div class="timeoff__col">
+              <span class="timeoff__label">Upcoming leave</span>
+              @if (data.timeOff.upcoming; as upcoming) {
+                <span class="timeoff__value">{{ formatDateRange(upcoming.startDate, upcoming.endDate) }}</span>
+                <app-status-badge [tone]="upcoming.status === 'approved' ? 'success' : 'warning'">{{ statusLabel(upcoming.status) }}</app-status-badge>
+              } @else {
+                <span class="timeoff__value">—</span>
+              }
+            </div>
+          </div>
+        } @else {
+          <app-insight-placeholder [loading]="insightsStore.overviewLoading()" />
+        }
+      </app-detail-card>
+
+      <!-- Approval Activity -->
+      <app-detail-card icon="check-circle" title="Approval Activity">
+        @if (insights(); as data) {
+          <ul class="rows">
+            @for (item of data.approvals; track $index) {
+              <li class="rows__item rows__item--approval">
+                <span class="rows__main">{{ item.requestType }}</span>
+                <app-status-badge [tone]="statusTones[item.status]">{{ statusLabel(item.status) }}</app-status-badge>
+                <span class="rows__muted truncate">{{ item.note }}</span>
+              </li>
+            }
+          </ul>
+        } @else {
+          <app-insight-placeholder [loading]="insightsStore.overviewLoading()" />
+        }
+      </app-detail-card>
+
+      <!-- Recent Activity -->
+      <app-detail-card icon="clock" title="Recent Activity">
+        @if (insights(); as data) {
+          <ul class="rows">
+            @for (item of data.recentActivity; track $index) {
+              <li class="rows__item rows__item--activity">
+                <span class="rows__muted">{{ formatRelativeDayTime(item.occurredAt) }}</span>
+                <span class="rows__main">{{ item.action }}</span>
+                <span class="rows__muted truncate">{{ item.subject }}</span>
+              </li>
+            }
+          </ul>
+        } @else {
+          <app-insight-placeholder [loading]="insightsStore.overviewLoading()" />
+        }
+      </app-detail-card>
+    </div>
+
+    <div class="overview__bottom">
+      <!-- Employment & Organization (real data) -->
+      <app-detail-card icon="document" title="Employment & Organization" linkLabel="View details" linkUrl="../employment">
+        <app-kv-row label="Position" [compact]="true">{{ employee.jobInformation.positionName || 'Unassigned' }}</app-kv-row>
+        <app-kv-row label="Department" [compact]="true">{{ employee.jobInformation.departmentName || '—' }}</app-kv-row>
+        <app-kv-row label="Company" [compact]="true">{{ employee.jobInformation.legalEntityName || '—' }}</app-kv-row>
+        <app-kv-row label="Reporting Manager" [compact]="true">{{ employee.jobInformation.reportingManagerName || 'Unassigned' }}</app-kv-row>
+        <app-kv-row label="Employment Type" [compact]="true">{{ employee.jobInformation.employmentTypeLabel || '—' }}</app-kv-row>
+        <app-kv-row label="Work Mode" [compact]="true">{{ employee.jobInformation.workModeLabel || '—' }}</app-kv-row>
+        <app-kv-row label="Hire Date" [compact]="true">{{ employee.jobInformation.hireDate ? (employee.jobInformation.hireDate | date: 'dd MMM yyyy') : '—' }}</app-kv-row>
+        <app-kv-row label="Tenure" [compact]="true"><span data-testid="overview-tenure">{{ tenure() }}</span></app-kv-row>
+      </app-detail-card>
+
+      <!-- Upcoming Items -->
+      <app-detail-card icon="calendar" title="Upcoming Items">
+        @if (insights(); as data) {
+          <ul class="rows">
+            @for (item of data.upcomingItems; track $index) {
+              <li class="rows__item rows__item--upcoming">
+                <span class="rows__date">{{ item.date | date: 'MMM dd' }}</span>
+                <span class="rows__muted truncate">{{ item.title }}</span>
+                @if (item.kind === 'leave') {
+                  <app-status-badge [tone]="item.status === 'approved' ? 'success' : 'warning'">{{ statusLabel(item.status) }}</app-status-badge>
+                } @else {
+                  <app-status-badge tone="info">Calendar</app-status-badge>
+                }
+              </li>
+            }
+          </ul>
+        } @else {
+          <app-insight-placeholder [loading]="insightsStore.overviewLoading()" />
+        }
+      </app-detail-card>
+
+      <!-- Checklists -->
+      <app-detail-card icon="list" title="Checklists">
+        @if (insights(); as data) {
+          <ul class="rows">
+            @for (checklist of data.checklists; track checklist.name) {
+              <li class="rows__item rows__item--checklist">
+                <span class="rows__main">{{ checklist.name }}</span>
+                <app-segmented-bar
+                  [segments]="[{ value: checklist.completed, tone: checklist.completed === checklist.total ? 'success' : 'info', label: checklist.name }]"
+                  [total]="checklist.total"
+                  [height]="8"
+                />
+                <span class="rows__muted text-right">{{ checklist.completed }} / {{ checklist.total }}</span>
+              </li>
+            }
+          </ul>
+        } @else {
+          <app-insight-placeholder [loading]="insightsStore.overviewLoading()" />
+        }
+      </app-detail-card>
+
+      <!-- Employee History (real data) -->
+      <app-detail-card icon="history" title="Employee History" linkLabel="View all" linkUrl="../employment">
+        @if (history().length === 0) {
+          <p class="text-sm text-[var(--color-text-secondary)]">No history recorded yet.</p>
+        } @else {
+          <app-timeline [items]="history()" />
+        }
+      </app-detail-card>
+    </div>
+  </div>
+}

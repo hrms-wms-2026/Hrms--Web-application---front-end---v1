@@ -4,6 +4,7 @@ import { NotificationService } from '../../../../../core/services/notification.s
 import { PeopleApiService } from '../../../data-access/people-api.service';
 import { EmployeeDetailResponse } from '../../../models/employee.model';
 import { EmployeeDetailStore } from '../../../state/employee-detail.store';
+import { EmployeeInsightsStore } from '../../../state/employee-insights.store';
 
 export const detailFixture: EmployeeDetailResponse = {
   id: 'emp-1',
@@ -55,6 +56,7 @@ export async function setupTabTestBed(
     providers: [
       provideRouter([]),
       EmployeeDetailStore,
+      EmployeeInsightsStore,
       { provide: PeopleApiService, useValue: apiStub },
       { provide: NotificationService, useValue: notificationsStub },
       ...(providers as never[])
