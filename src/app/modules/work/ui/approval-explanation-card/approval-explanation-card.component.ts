@@ -169,7 +169,7 @@ const PRIORITY_OPTIONS: readonly WorkDropdownOption[] = [
                     <div class="approval-card__field-label">{{ f.label }}</div>
                     <div class="grid grid-cols-2 gap-2">
                       <div class="min-w-0"><div class="approval-card__mini">Current</div><div class="approval-card__field-value">{{ display(f, f.current) }}</div></div>
-                      <div class="min-w-0">
+                      <div class="approval-card__edit min-w-0">
                         <div class="approval-card__mini">Requested</div>
                         <!-- The approver edits the requested value in place; once decided it is read-only again. -->
                         @if (d.canEditPayload && f.editable) {
@@ -267,7 +267,7 @@ const PRIORITY_OPTIONS: readonly WorkDropdownOption[] = [
   `,
   styles: [`
     /* Same shell as app-card (Tree tab explanation panel), but a fixed height so the actions stay at the bottom. */
-    .approval-card { position: relative; display: flex; height: calc(100vh - 170px); min-height: 440px; overflow: hidden; flex-direction: column; border: 1px solid var(--color-border); border-radius: 12px; background: var(--color-surface); color: var(--color-text-primary); box-shadow: 0 1px 2px rgb(0 0 0 / .05); }
+    .approval-card { position: relative; display: flex; height: calc(100vh - 310px); min-height: 420px; overflow: hidden; flex-direction: column; border: 1px solid var(--color-border); border-radius: 12px; background: var(--color-surface); color: var(--color-text-primary); box-shadow: 0 1px 2px rgb(0 0 0 / .05); }
     .approval-card__scroll { flex: 1; min-height: 0; overflow-x: hidden; overflow-y: auto; padding: 20px; }
     .approval-card__close { display: inline-flex; flex: 0 0 auto; width: 28px; height: 28px; align-items: center; justify-content: center; border: 0; border-radius: 8px; background: transparent; color: var(--color-text-secondary); cursor: pointer; }
     .approval-card__close:hover { background: var(--color-surface-secondary); color: var(--color-text-primary); }
@@ -297,7 +297,14 @@ const PRIORITY_OPTIONS: readonly WorkDropdownOption[] = [
     .approval-card__mini { margin-bottom: 2px; color: var(--color-text-secondary); font-size: 10px; font-weight: 600; text-transform: uppercase; letter-spacing: .04em; }
     .approval-card__field-value { color: var(--color-text-primary); font-size: 12px; overflow-wrap: anywhere; }
     .approval-card__row--changed .approval-card__requested { color: var(--color-accent); font-weight: 650; }
-    .approval-card__input-wrap { display: flex; min-width: 0; align-items: center; width: 100%; border: 1px solid var(--color-border); border-radius: 8px; background: var(--color-surface); }
+    /* Every editable control (text, number, date, priority) gets the same full-width 32px box. */
+    .approval-card__edit app-date-picker, .approval-card__edit app-work-dropdown { display: block; width: 100%; min-width: 0; }
+    .approval-card__edit ::ng-deep .work-dropdown { min-width: 0; width: 100%; }
+    .approval-card__edit ::ng-deep .work-dropdown__trigger { height: 32px; padding: 0 8px; gap: 6px; border-radius: 8px; font-size: 12px; box-shadow: none; }
+    .approval-card__edit ::ng-deep .dp-input { height: 32px; padding: 0 30px 0 8px; border-radius: 8px; font-size: 12px; }
+    .approval-card__edit ::ng-deep .dp-icon-trigger { right: 6px; }
+    .approval-card__edit ::ng-deep .work-dropdown__leading-icon { display: none; }
+    .approval-card__input-wrap { display: flex; height: 32px; min-width: 0; align-items: center; width: 100%; border: 1px solid var(--color-border); border-radius: 8px; background: var(--color-surface); }
     .approval-card__input-wrap:focus-within { border-color: var(--color-accent); box-shadow: 0 0 0 3px color-mix(in srgb, var(--color-accent) 18%, transparent); }
     .approval-card__input { width: 100%; min-width: 0; padding: 6px 8px; border: 0; background: transparent; color: var(--color-text-primary); font: inherit; font-size: 12px; outline: none; }
     .approval-card__suffix { padding-right: 8px; color: var(--color-text-secondary); font-size: 12px; }
