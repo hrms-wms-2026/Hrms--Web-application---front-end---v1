@@ -46,7 +46,8 @@ export type WidgetState = 'loading' | 'ready' | 'empty' | 'error' | 'forbidden';
       }
     </section>
   `,
-  host: { class: 'block' },
+  // `title` is an input; clear the native attribute Angular also leaves on the host so it does not show a hover tooltip.
+  host: { class: 'block', '[attr.title]': 'null' },
   changeDetection: ChangeDetectionStrategy.OnPush
 })
 export class WidgetCardComponent {
