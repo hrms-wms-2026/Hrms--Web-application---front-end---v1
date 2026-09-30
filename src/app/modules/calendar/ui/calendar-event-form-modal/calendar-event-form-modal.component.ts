@@ -6,6 +6,7 @@ import { ButtonComponent } from '../../../../shared/ui/button/button.component';
 import { InputComponent } from '../../../../shared/ui/input/input.component';
 import { SelectComponent } from '../../../../shared/ui/select/select.component';
 import { ModalComponent } from '../../../../shared/ui/modal/modal.component';
+import { ConfirmModalComponent } from '../../../../shared/ui/confirm-modal/confirm-modal.component';
 import { DatePickerComponent } from '../../../../shared/ui/date-picker/date-picker.component';
 import { AvatarComponent } from '../../../../shared/ui/avatar/avatar.component';
 import { DirtyFormHandle, UnsavedChangesService } from '../../../../shared/services/unsaved-changes.service';
@@ -552,6 +553,15 @@ export class CalendarEventFormModalComponent implements OnChanges, OnDestroy {
     void this.unsaved.requestClose(this.guardHandle).then((ok) => {
       if (ok) this.cancel.emit();
     });
+  }
+
+  confirmDiscard(): void {
+    this.discardConfirmOpen.set(false);
+    this.cancel.emit();
+  }
+
+  cancelDiscard(): void {
+    this.discardConfirmOpen.set(false);
   }
 
   toggleAllDay(): void {
