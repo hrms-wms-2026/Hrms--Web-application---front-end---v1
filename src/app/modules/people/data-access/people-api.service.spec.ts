@@ -86,6 +86,18 @@ describe('PeopleApiService', () => {
     httpMock.verify();
   });
 
+  it('getWorkGraph GETs /employees/{id}/work-graph', () => {
+    const response = { nodes: [], links: [], hiddenTaskCount: 0 };
+    let received: unknown;
+
+    service.getWorkGraph('emp-1').subscribe((r) => (received = r));
+
+    const req = httpMock.expectOne(`${environment.apiUrl}/employees/emp-1/work-graph`);
+    expect(req.request.method).toBe('GET');
+    req.flush(response);
+    expect(received).toEqual(response);
+  });
+
   it('fetches work modes from /work-modes for a legal entity', () => {
     service.getWorkModes('le-1').subscribe((modes) => {
       expect(modes.length).toBe(1);

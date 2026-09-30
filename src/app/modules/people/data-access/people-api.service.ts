@@ -20,6 +20,7 @@ import {
 import { PendingAccessGrantRequestResponse } from '../models/access-grant-request.model';
 import { ChecklistAssignee } from '../models/checklist-template.model';
 import { PositionHistoryEntryResponse } from '../models/position-history.model';
+import { EmployeeWorkGraphResponse } from '../models/work-graph.model';
 import {
   ApproveAccessGrantRequestResponse,
   DraftListPageResponse,
@@ -166,6 +167,12 @@ export class PeopleApiService {
   getJobJourney(employeeId: string): Observable<PositionHistoryEntryResponse[]> {
     return this.http.get<PositionHistoryEntryResponse[]>(
       `${environment.apiUrl}/employees/${employeeId}/position-history`
+    );
+  }
+
+  getWorkGraph(employeeId: string): Observable<EmployeeWorkGraphResponse> {
+    return this.http.get<EmployeeWorkGraphResponse>(
+      `${environment.apiUrl}/employees/${employeeId}/work-graph`
     );
   }
 
