@@ -1,9 +1,12 @@
 import { describe, it, expect } from 'vitest';
 import {
   attendanceDayLabel,
+  computeDelta,
   currentMonthKey,
   formatHours,
   formatLeaveRange,
+  formatMinutes,
+  formatShortDate,
   monthBounds,
   monthLabel,
   recentMonths
@@ -59,5 +62,47 @@ describe('employee-overview.utils', () => {
     expect(attendanceDayLabel('off')).toBe('Day off');
     expect(attendanceDayLabel('absent')).toBe('Absent');
     expect(attendanceDayLabel('none')).toBe('Upcoming');
+  });
+});
+
+describe('formatMinutes', () => {
+  it('formats hours and zero-padded minutes', () => {
+    expect(formatMinutes(0)).toBe('0h 00m');
+    expect(formatMinutes(65)).toBe('1h 05m');
+    expect(formatMinutes(150)).toBe('2h 30m');
+    expect(formatMinutes(4999)).toBe('83h 19m');
+  });
+
+  it('clamps negatives and rounds fractions', () => {
+    expect(formatMinutes(-5)).toBe('0h 00m');
+    expect(formatMinutes(59.6)).toBe('1h 00m');
+  });
+});
+
+describe('computeDelta', () => {
+  it('reports no change as flat and neutral', () => {
+    expect(computeDelta(5, 5, 'higher-better')).toEqual({ text: 'No change', direction: 'flat', tone: 'neutral' });
+  });
+
+  it('marks an increase good when higher is better and bad when lower is better', () => {
+    expect(computeDelta(10, 8, 'higher-better')).toEqual({ text: '+2', direction: 'up', tone: 'good' });
+    expect(computeDelta(10, 8, 'lower-better')).toEqual({ text: '+2', direction: 'up', tone: 'bad' });
+  });
+
+  it('marks a decrease bad when higher is better and good when lower is better', () => {
+    expect(computeDelta(3, 8, 'higher-better')).toEqual({ text: '-5', direction: 'down', tone: 'bad' });
+    expect(computeDelta(3, 8, 'lower-better')).toEqual({ text: '-5', direction: 'down', tone: 'good' });
+  });
+
+  it('keeps the tone neutral for neutral polarity, and formats the magnitude with the given formatter', () => {
+    expect(computeDelta(90, 60, 'neutral', formatMinutes)).toEqual({ text: '+0h 30m', direction: 'up', tone: 'neutral' });
+  });
+});
+
+describe('formatShortDate', () => {
+  it('formats an ISO date or datetime from its string parts', () => {
+    expect(formatShortDate('2026-09-12')).toBe('Sep 12');
+    expect(formatShortDate('2026-09-01T23:30:00+00:00')).toBe('Sep 1');
+    expect(formatShortDate('2026-12-31T00:00:00Z')).toBe('Dec 31');
   });
 });
