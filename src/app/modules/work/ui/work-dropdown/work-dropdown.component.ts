@@ -5,7 +5,7 @@ export interface WorkDropdownOption {
   label: string;
 }
 
-export type WorkDropdownIcon = 'module' | 'status' | 'category' | 'sprint' | 'people' | 'filter';
+export type WorkDropdownIcon = 'module' | 'status' | 'category' | 'sprint' | 'people' | 'filter' | 'department' | 'position' | 'type';
 
 export type WorkDropdownSize = 'md' | 'sm';
 
@@ -24,6 +24,9 @@ export type WorkDropdownSize = 'md' | 'sm';
           class="work-dropdown__trigger"
           [class.work-dropdown__trigger--sm]="size() === 'sm'"
           [class.work-dropdown__trigger--active]="multiple() && values().length > 0"
+          [disabled]="disabled()"
+          [attr.data-testid]="testId() || null"
+          [attr.title]="tooltip() || null"
           [attr.aria-expanded]="open()"
           aria-haspopup="listbox"
           [attr.aria-label]="accessibleLabel() || fieldLabel() || triggerLabel()"
@@ -37,6 +40,9 @@ export type WorkDropdownSize = 'md' | 'sm';
             @case ('category') { <svg class="work-dropdown__leading-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 6h16M7 12h10M10 18h4" /></svg> }
             @case ('sprint') { <svg class="work-dropdown__leading-icon" viewBox="0 0 24 24" aria-hidden="true"><rect x="4" y="5" width="16" height="14" rx="2" /><path d="M8 9h8M8 13h5" /></svg> }
             @case ('people') { <svg class="work-dropdown__leading-icon" viewBox="0 0 24 24" aria-hidden="true"><circle cx="9" cy="8" r="3" /><path d="M4 20c0-3 2.5-5 5-5s5 2 5 5" /><path d="M15 7a3 3 0 0 1 0 6M20 20c0-2.5-1.7-4.3-4-4.8" /></svg> }
+            @case ('department') { <svg class="work-dropdown__leading-icon" viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="3" width="7" height="9" rx="1" /><rect x="14" y="3" width="7" height="5" rx="1" /><rect x="14" y="12" width="7" height="9" rx="1" /><rect x="3" y="16" width="7" height="5" rx="1" /></svg> }
+            @case ('position') { <svg class="work-dropdown__leading-icon" viewBox="0 0 24 24" aria-hidden="true"><rect x="2" y="7" width="20" height="14" rx="2" /><path d="M16 7V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v2" /></svg> }
+            @case ('type') { <svg class="work-dropdown__leading-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M20.59 13.41l-7.17 7.17a2 2 0 0 1-2.83 0L2 12V2h10l8.59 8.59a2 2 0 0 1 0 2.82z" /><line x1="7" y1="7" x2="7.01" y2="7" /></svg> }
             @default { <svg class="work-dropdown__leading-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M3 7h18M6 7v10M18 7v10M9 17h6" /></svg> }
           }
           <span class="work-dropdown__value">{{ triggerLabel() }}</span>
@@ -44,7 +50,7 @@ export type WorkDropdownSize = 'md' | 'sm';
         </button>
         @if (error()) { <span class="work-dropdown__error" role="alert">{{ error() }}</span> }
         @if (open()) {
-          <div class="work-dropdown__menu" role="listbox" [attr.aria-multiselectable]="multiple() ? 'true' : null" [attr.aria-label]="accessibleLabel() || fieldLabel() || 'Options'">
+          <div class="work-dropdown__menu" [class.work-dropdown__menu--up]="direction() === 'up'" role="listbox" [attr.aria-multiselectable]="multiple() ? 'true' : null" [attr.aria-label]="accessibleLabel() || fieldLabel() || 'Options'">
             @if (multiple() && values().length > 0) {
               <button type="button" class="work-dropdown__clear" (click)="clearValues($event)">Clear</button>
             }
@@ -56,6 +62,7 @@ export type WorkDropdownSize = 'md' | 'sm';
                 [class.work-dropdown__option--active]="index === activeIndex()"
                 role="option"
                 [attr.aria-selected]="isSelected(option.value)"
+                [attr.data-testid]="'dropdown-option-' + option.value"
                 (mouseenter)="activeIndex.set(index)"
                 (click)="onOptionClick(option.value, $event)"
               >
@@ -83,6 +90,8 @@ export type WorkDropdownSize = 'md' | 'sm';
     .work-dropdown__trigger--sm { height: 30px; gap: 7px; border-radius: 8px; padding: 0 10px; font-size: 13px; }
     .work-dropdown__trigger--sm .work-dropdown__leading-icon, .work-dropdown__trigger--sm .work-dropdown__chevron { width: 15px; height: 15px; }
     .work-dropdown__trigger:hover, .work-dropdown__trigger[aria-expanded="true"] { border-color: var(--color-accent); }
+    .work-dropdown__trigger:disabled { cursor: not-allowed; opacity: .5; }
+    .work-dropdown__trigger:disabled:hover { border-color: var(--color-border); }
     .work-dropdown__trigger--active { border-color: var(--color-accent); color: var(--color-accent); }
     .work-dropdown__trigger--active .work-dropdown__chevron { stroke: var(--color-accent); }
     .work-dropdown__trigger[aria-invalid="true"] { border-color: var(--color-danger); }
@@ -92,6 +101,7 @@ export type WorkDropdownSize = 'md' | 'sm';
     .work-dropdown__chevron { width: 16px; height: 16px; flex: 0 0 auto; fill: none; stroke: var(--color-text-secondary); stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; transition: transform 160ms ease; }
     .work-dropdown__chevron--open { transform: rotate(180deg); }
     .work-dropdown__menu { position: absolute; left: 0; right: 0; top: calc(100% + 7px); z-index: 60; max-height: 16rem; overflow-y: auto; border: 1px solid var(--color-border); border-radius: 10px; padding: 6px; background: var(--color-surface); box-shadow: 0 14px 30px rgb(15 23 42 / .14); animation: work-dropdown-menu-in 140ms ease-out; }
+    .work-dropdown__menu--up { top: auto; bottom: calc(100% + 7px); }
     .work-dropdown__clear { display: block; width: 100%; margin-bottom: 2px; border: 0; border-radius: 6px; padding: 5px 9px; background: transparent; color: var(--color-accent); font: inherit; font-size: 11px; font-weight: 600; text-align: left; cursor: pointer; }
     .work-dropdown__clear:hover { background: var(--color-surface-secondary); }
     .work-dropdown__option { display: flex; width: 100%; min-height: 36px; align-items: center; gap: 8px; border: 0; border-radius: 7px; padding: 7px 9px; background: transparent; color: var(--color-text-primary); font: inherit; font-size: 13px; font-weight: 500; text-align: left; cursor: pointer; }
@@ -117,6 +127,10 @@ export class WorkDropdownComponent {
   leadingIcon = input<WorkDropdownIcon>('filter');
   fullWidth = input(false);
   size = input<WorkDropdownSize>('md');
+  disabled = input(false);
+  direction = input<'down' | 'up'>('down');
+  testId = input<string>('');
+  tooltip = input<string>('');
 
   multiple = input(false);
   values = input<readonly string[]>([]);
@@ -135,6 +149,10 @@ export class WorkDropdownComponent {
     if (!this.multiple()) return this.selectedLabel();
     const count = this.values().length;
     if (count === 0) return this.allLabel() || this.placeholder() || this.options()[0]?.label || 'All';
+    if (count === 1) {
+      const match = this.options().find((option) => option.value === this.values()[0]);
+      if (match) return match.label;
+    }
     return `${count} selected`;
   });
   private readonly host = inject(ElementRef<HTMLElement>);
@@ -143,7 +161,7 @@ export class WorkDropdownComponent {
     return this.multiple() ? this.values().includes(value) : value === this.selected();
   }
 
-  toggle(event: Event): void { event.stopPropagation(); this.open.update((value) => !value); if (this.open()) this.syncActiveIndex(); }
+  toggle(event: Event): void { event.stopPropagation(); if (this.disabled()) return; this.open.update((value) => !value); if (this.open()) this.syncActiveIndex(); }
 
   onOptionClick(value: string, event: Event): void {
     if (this.multiple()) { this.toggleValue(value); return; }
@@ -161,6 +179,7 @@ export class WorkDropdownComponent {
   clearValues(event?: Event): void { event?.stopPropagation(); this.valuesChanged.emit([]); }
 
   onTriggerKeydown(event: KeyboardEvent): void {
+    if (this.disabled()) return;
     if (event.key === 'Escape') { this.open.set(false); return; }
     if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); this.open.update((value) => !value); if (this.open()) this.syncActiveIndex(); return; }
     if (event.key !== 'ArrowDown' && event.key !== 'ArrowUp') return;

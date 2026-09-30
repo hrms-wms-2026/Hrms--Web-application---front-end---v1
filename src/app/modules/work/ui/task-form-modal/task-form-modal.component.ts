@@ -36,6 +36,10 @@ import { ProjectMonitorApiService } from '../../data-access/project-monitor-api.
 import { MonitorWarningDto } from '../../models/dto/monitor.dto';
 import { MonitorWarningCalloutComponent } from '../monitor-warning-callout/monitor-warning-callout.component';
 import { MONITOR_CHECK_DEBOUNCE_MS } from '../sub-module-form/sub-module-form.component';
+import { DirtyFormHandle, UnsavedChangesService } from '../../../../shared/services/unsaved-changes.service';
+import { DraftsStore } from '../../../../shared/state/drafts.store';
+import { TaskDraftApiService } from '../../data-access/task-draft-api.service';
+import { TaskDraft, TaskDraftPayload } from '../../models/task-draft.model';
 
 export type TaskFormMode = 'create' | 'edit';
 
@@ -2117,6 +2121,9 @@ export class TaskFormModalComponent {
   private readonly currentEmployee = inject(CurrentEmployeeStore);
   private readonly fileApi = inject(FileApiService, { optional: true });
   private readonly notificationService = inject(NotificationService);
+  private readonly unsaved = inject(UnsavedChangesService);
+  private readonly taskDraftApi = inject(TaskDraftApiService);
+  private readonly draftsStore = inject(DraftsStore);
 
   readonly open = input(false);
   readonly mode = input<TaskFormMode>('create');
@@ -2124,6 +2131,8 @@ export class TaskFormModalComponent {
   readonly taskId = input<string>('');
   readonly prefillModuleId = input<string>('');
   readonly prefillSprintId = input<string>('');
+  /** Create mode only: resume this saved draft instead of starting from a blank form. */
+  readonly draftId = input<string>('');
 
   readonly closed = output<void>();
   readonly created = output<string>();
@@ -2591,7 +2600,7 @@ export class TaskFormModalComponent {
         }
       }
       const effectiveId = this.activeTaskId() || inputId;
-      const key = `${this.mode()}:${effectiveId}:${isOpen}`;
+      const key = `${this.mode()}:${effectiveId}:${this.draftId()}:${isOpen}`;
       if (key === this.loadedKey) return;
       this.loadedKey = key;
       untracked(() => {
@@ -2600,6 +2609,17 @@ export class TaskFormModalComponent {
         else void this.loadForTaskId(effectiveId);
       });
     });
+    effect(() => {
+      const shouldGuard = this.open() && this.mode() === 'create';
+      untracked(() => {
+        if (shouldGuard && !this.unregisterGuard) this.unregisterGuard = this.unsaved.register(this.guardHandle);
+        if (!shouldGuard && this.unregisterGuard) {
+          this.unregisterGuard();
+          this.unregisterGuard = null;
+        }
+      });
+    });
+    inject(DestroyRef).onDestroy(() => this.unregisterGuard?.());
     effect(() => {
       if (this.open()) {
         this.previouslyFocused = document.activeElement as HTMLElement;
@@ -2650,6 +2670,9 @@ export class TaskFormModalComponent {
     this.showMoreFields.set(true);
     this.draftSubtasks.set([]);
     this.cancelAddSubtask();
+    this.activeDraftId.set(null);
+    this.savedDraftAttachmentIds = new Set();
+    this.baseline = null;
   }
 
   private async load(): Promise<void> {
@@ -2757,11 +2780,134 @@ export class TaskFormModalComponent {
       }
 
       await this.loadMembers();
+
+      const draftId = this.draftId();
+      if (draftId) {
+        try {
+          this.applyDraft(await firstValueFrom(this.taskDraftApi.get(draftId)));
+        } catch {
+          this.errorMessage.set('This draft could not be loaded. It may have been deleted.');
+        }
+      }
     } catch {
       this.loadError.set('Failed to load the task form.');
     } finally {
       this.loading.set(false);
+      this.markClean();
     }
+  }
+
+  private applyDraft(draft: TaskDraft): void {
+    const p = draft.payload;
+    this.activeDraftId.set(draft.id);
+    this.title.set(draft.title);
+    this.description.set(p.description ?? '');
+    this.descRte()?.setHtml(p.description ?? '');
+    if (p.objectiveId) this.selectedObjectiveId.set(p.objectiveId);
+    this.sprintId.set(p.sprintId ?? '');
+    if (p.categoryId) this.categoryId.set(p.categoryId);
+    this.statusId.set(p.statusId ?? '');
+    this.priority.set(p.priority ?? null);
+    this.dueDate.set(p.dueDate ?? '');
+    this.estimatedHours.set(p.estimatedHours ?? null);
+    this.storyPoints.set(p.storyPoints ?? null);
+    this.assigneeEmployeeId.set(p.assigneeEmployeeId ?? '');
+    this.draftSubtasks.set([...(p.subtasks ?? [])]);
+    this.attachedFiles.set((p.attachments ?? []).map((a) => ({ ...a })));
+    this.savedDraftAttachmentIds = new Set(p.attachmentFileIds ?? []);
+  }
+
+  // ---- Drafts + unsaved-changes guard (create mode) ----
+
+  private readonly activeDraftId = signal<string | null>(null);
+  private savedDraftAttachmentIds = new Set<string>();
+  private baseline: string | null = null;
+  private unregisterGuard: (() => void) | null = null;
+
+  /** The rich-text editor can leave empty markup behind; treat that as no description. */
+  private normalizeDescription(html: string): string {
+    if (/<(img|video|iframe|table)\b/i.test(html)) return html;
+    const text = html.replace(/<[^>]*>/g, '').replace(/&nbsp;/gi, ' ').trim();
+    return text ? html : '';
+  }
+
+  private buildDraftPayload(): TaskDraftPayload {
+    const settled = this.attachedFiles().filter((f) => !f.uploading);
+    return {
+      version: 1,
+      description: this.normalizeDescription(this.description()),
+      objectiveId: this.selectedObjectiveId(),
+      sprintId: this.sprintId(),
+      categoryId: this.categoryId(),
+      statusId: this.statusId(),
+      priority: this.priority(),
+      dueDate: this.dueDate(),
+      estimatedHours: this.estimatedHours(),
+      storyPoints: this.storyPoints(),
+      assigneeEmployeeId: this.assigneeEmployeeId(),
+      subtasks: this.draftSubtasks(),
+      attachments: settled.map(({ fileId, name, sizeBytes }) => ({ fileId, name, sizeBytes })),
+      attachmentFileIds: settled.map((f) => f.fileId)
+    };
+  }
+
+  private snapshot(): string {
+    return JSON.stringify([this.title().trim(), this.buildDraftPayload()]);
+  }
+
+  private markClean(): void {
+    this.baseline = this.snapshot();
+  }
+
+  private readonly guardHandle: DirtyFormHandle = {
+    isDirty: () => this.currentEffectiveMode() === 'create' && this.baseline !== null && this.snapshot() !== this.baseline,
+    canSaveDraft: () => this.currentEffectiveMode() === 'create',
+    saveDraft: () => this.saveAsDraft(),
+    discard: () => this.cleanupUnsavedAttachments()
+  };
+
+  private async saveAsDraft(): Promise<boolean> {
+    const payload = this.buildDraftPayload();
+    const title = this.title().trim();
+    try {
+      const id = this.activeDraftId();
+      const saved = await firstValueFrom(id
+        ? this.taskDraftApi.update(id, this.projectId(), title, payload)
+        : this.taskDraftApi.create(this.projectId(), title, payload));
+      this.activeDraftId.set(saved.id);
+      this.savedDraftAttachmentIds = new Set(payload.attachmentFileIds);
+      this.markClean();
+      void this.draftsStore.load();
+      return true;
+    } catch {
+      return false;
+    }
+  }
+
+  private async attemptClose(): Promise<void> {
+    const dirty = this.guardHandle.isDirty();
+    if (!(await this.unsaved.requestClose(this.guardHandle))) return;
+    if (!dirty) this.cleanupUnsavedAttachments(); // dirty paths already discarded or saved the files into a draft
+    this.closed.emit();
+  }
+
+  /** After a successful create the draft it came from is obsolete. Best effort, never blocks the create. */
+  private async finishDraftAfterCreate(detachFiles: boolean): Promise<void> {
+    const id = this.activeDraftId();
+    if (!id) return;
+    const detached: TaskDraftPayload = { ...this.buildDraftPayload(), attachments: [], attachmentFileIds: [] };
+    const title = this.title().trim();
+    this.activeDraftId.set(null);
+    this.savedDraftAttachmentIds = new Set();
+    try {
+      // A creation *request* has no task yet, so its files are still plain pending uploads; deleting the
+      // draft would delete them. Detach them from the draft first.
+      if (detachFiles) await firstValueFrom(this.taskDraftApi.update(id, this.projectId(), title, detached));
+      await firstValueFrom(this.taskDraftApi.remove(id));
+    } catch {
+      /* the draft lingers in the bar; the user can delete it there */
+    }
+    void this.draftsStore.load();
   }
 
   private async loadMembers(): Promise<void> {
@@ -2838,8 +2984,7 @@ export class TaskFormModalComponent {
       this.activePopover.set(null);
       this.activeSubtaskPopover.set(null);
     } else {
-      this.cleanupUnsavedAttachments();
-      this.closed.emit();
+      void this.attemptClose();
     }
   }
 
@@ -2848,8 +2993,7 @@ export class TaskFormModalComponent {
       this.activePopover.set(null);
       this.activeSubtaskPopover.set(null);
     } else {
-      this.cleanupUnsavedAttachments();
-      this.closed.emit();
+      void this.attemptClose();
     }
   }
 
@@ -3038,6 +3182,7 @@ export class TaskFormModalComponent {
   private cleanupUnsavedAttachments(): void {
     if (this.currentEffectiveMode() !== 'create') return;
     for (const file of this.attachedFiles()) {
+      if (this.savedDraftAttachmentIds.has(file.fileId)) continue;
       firstValueFrom(this.taskApi.deletePendingFile(file.fileId)).catch(() => {});
     }
   }
@@ -3307,8 +3452,7 @@ export class TaskFormModalComponent {
   }
 
   onCancel(): void {
-    this.cleanupUnsavedAttachments();
-    this.closed.emit();
+    void this.attemptClose();
   }
 
   async submit(): Promise<void> {
@@ -3419,6 +3563,7 @@ export class TaskFormModalComponent {
       // Always the normal endpoint: owners get the task now (201), members a 202 "sent for approval".
       const result = await this.boardStore.createTask(objectiveId, request);
       if (isPendingApproval(result)) {
+        void this.finishDraftAfterCreate(true);
         this.created.emit('');
         this.notificationService.info('Task sent for approval.');
         if (action === 'create_and_add_another') {
@@ -3428,6 +3573,7 @@ export class TaskFormModalComponent {
           this.attachedFiles.set([]);
           this.draftSubtasks.set([]);
           this.cancelAddSubtask();
+          this.markClean();
           this.successToastMessage.set('Sent for approval! You can enter another task below.');
           setTimeout(() => this.taskTitleInput()?.nativeElement?.focus());
         } else {
@@ -3462,6 +3608,7 @@ export class TaskFormModalComponent {
           }
           this.draftSubtasks.set([]);
         }
+        void this.finishDraftAfterCreate(false);
         this.created.emit(result.id);
         this.notificationService.success('Task created successfully.');
         if (action === 'create_and_add_another') {
@@ -3471,6 +3618,7 @@ export class TaskFormModalComponent {
           this.attachedFiles.set([]);
           this.draftSubtasks.set([]);
           this.cancelAddSubtask();
+          this.markClean();
           this.successToastMessage.set('Task created! You can enter another task below.');
           setTimeout(() => this.taskTitleInput()?.nativeElement?.focus());
         } else if (action === 'create_and_open') {

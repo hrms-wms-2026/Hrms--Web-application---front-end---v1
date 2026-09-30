@@ -292,13 +292,13 @@ const TABLE_POPOVER_POSITIONS: ConnectionPositionPair[] = [
     }
     .task-table__row-card td:first-child { border-left: 1px solid var(--color-border); border-top-left-radius: 8px; border-bottom-left-radius: 8px; }
     .task-table__row-card td:last-child { border-right: 1px solid var(--color-border); border-top-right-radius: 8px; border-bottom-right-radius: 8px; }
-    .task-table__row-card:hover td { background: var(--color-surface-secondary); border-color: color-mix(in srgb, var(--color-accent) 22%, var(--color-border)); }
+    .task-table__row-card:hover td { border-color: color-mix(in srgb, var(--color-accent) 22%, var(--color-border)); }
     .task-table__row-card.task-table__row--selected td { background: color-mix(in srgb, var(--color-accent) 7%, var(--color-surface)); border-color: color-mix(in srgb, var(--color-accent) 38%, var(--color-border)); }
     .task-table__subtask-toggle-row td { padding: 4px 14px 4px 34px; }
     .task-table__subtask-toggle { display: inline-flex; align-items: center; gap: 5px; border: 0; background: transparent; padding: 0; color: var(--color-text-secondary); font-size: 11px; font-weight: 600; cursor: pointer; }
     .task-table__subtask-chevron { width: 12px; height: 12px; stroke: currentColor; fill: none; stroke-width: 2; transition: transform 120ms ease; }
     .task-table__subtask-chevron--open { transform: rotate(180deg); }
-    .task-table__subtask-row:hover { background: var(--color-surface-secondary); }
+    .task-table__subtask-row:hover { background: transparent; }
     .task-table__subtask-cell { padding: 8px 14px 8px 34px !important; display: flex; align-items: center; justify-content: space-between; gap: 12px; }
     .task-table__subtask-title { font-size: 13px; color: var(--color-text-primary); }
     .task-table__subtask-status { font-size: 11px; color: var(--color-text-secondary); }

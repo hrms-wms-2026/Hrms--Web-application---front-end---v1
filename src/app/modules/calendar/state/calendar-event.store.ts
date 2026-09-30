@@ -2,10 +2,12 @@ import { inject } from '@angular/core';
 import { patchState, signalStore, withMethods, withState } from '@ngrx/signals';
 import { firstValueFrom } from 'rxjs';
 import { toSafeErrorMessage } from '../../../core/services/error-handler.service';
+import { CalendarConnectionApiService } from '../../settings/data-access/calendar-connection-api.service';
 import { CalendarEventApiService } from '../data-access/calendar-event-api.service';
 import {
-  CalendarConflict, CalendarEventResponse, CreateCalendarEventRequest, EditRecurringOccurrenceRequest,
-  EligibleNominee, RespondToCalendarEventStatus, UpdateCalendarEventRequest
+  CalendarConflict, CalendarEventParticipant, CalendarEventResponse, CreateCalendarEventRequest,
+  EditRecurringOccurrenceRequest, EligibleNominee, MeetingProvider, RespondToCalendarEventStatus,
+  UpdateCalendarEventRequest
 } from '../models/calendar-event.model';
 
 interface CalendarEventState {
@@ -18,15 +20,21 @@ interface CalendarEventState {
   readonly checkingConflicts: boolean;
   readonly myTimezone: string;
   readonly eligibleNominees: readonly EligibleNominee[];
+  readonly hasTeamsCapableConnection: boolean;
+  readonly hasZoomCapableConnection: boolean;
+  readonly meetingActionSaving: boolean;
+  readonly participantActionSaving: boolean;
 }
 
 export const CalendarEventStore = signalStore(
   { providedIn: 'root' },
   withState<CalendarEventState>({
     events: [], loading: false, loadError: null, saving: false, actionError: null,
-    conflicts: [], checkingConflicts: false, myTimezone: 'UTC', eligibleNominees: []
+    conflicts: [], checkingConflicts: false, myTimezone: 'UTC', eligibleNominees: [],
+    hasTeamsCapableConnection: false, hasZoomCapableConnection: false, meetingActionSaving: false,
+    participantActionSaving: false
   }),
-  withMethods((store, api = inject(CalendarEventApiService)) => ({
+  withMethods((store, api = inject(CalendarEventApiService), connectionApi = inject(CalendarConnectionApiService)) => ({
     async loadEvents(from: string, to: string): Promise<void> {
       patchState(store, { loading: true, loadError: null });
       try {
@@ -36,15 +44,15 @@ export const CalendarEventStore = signalStore(
         patchState(store, { loading: false, loadError: toSafeErrorMessage(err, 'Failed to load calendar events.') });
       }
     },
-    async createEvent(payload: CreateCalendarEventRequest): Promise<boolean> {
+    async createEvent(payload: CreateCalendarEventRequest): Promise<CalendarEventResponse | null> {
       patchState(store, { saving: true, actionError: null });
       try {
         const created = await firstValueFrom(api.create(payload));
         patchState(store, { saving: false, events: [...store.events(), created] });
-        return true;
+        return created;
       } catch (err) {
         patchState(store, { saving: false, actionError: toSafeErrorMessage(err, 'Failed to create event.') });
-        return false;
+        return null;
       }
     },
     async updateEvent(id: string, payload: UpdateCalendarEventRequest): Promise<boolean> {
@@ -147,6 +155,108 @@ export const CalendarEventStore = signalStore(
       } catch {
         // Falls back to the 'UTC' default already in state - a failed fetch should not block
         // the calendar from rendering, just leave times shown in UTC.
+      }
+    },
+    /** Whether the organizer has an active Microsoft/Zoom connection to host a meeting on -
+     * gates the "Add Teams meeting"/"Add Zoom meeting" controls in the event form. A failed
+     * fetch leaves both false (same "fail closed, no alarming error" precedent as
+     * loadMyTimezone/checkConflicts above). */
+    async loadMeetingConnectionStatus(): Promise<void> {
+      try {
+        const response = await firstValueFrom(connectionApi.list());
+        const hasTeams = response.connections.some((c) => c.provider === 'outlook_calendar' && c.status === 'active');
+        const hasZoom = response.connections.some((c) => c.provider === 'zoom' && c.status === 'active');
+        patchState(store, { hasTeamsCapableConnection: hasTeams, hasZoomCapableConnection: hasZoom });
+      } catch {
+        patchState(store, { hasTeamsCapableConnection: false, hasZoomCapableConnection: false });
+      }
+    },
+    async createMeeting(eventId: string, provider: MeetingProvider): Promise<boolean> {
+      patchState(store, { meetingActionSaving: true, actionError: null });
+      try {
+        const response = await firstValueFrom(api.createMeeting(eventId, provider));
+        patchState(store, {
+          meetingActionSaving: false,
+          events: store.events().map((e) => (e.id === eventId ? { ...e, meetingLink: response.joinUrl } : e))
+        });
+        return true;
+      } catch (err) {
+        patchState(store, { meetingActionSaving: false, actionError: toSafeErrorMessage(err, 'Failed to add the meeting.') });
+        return false;
+      }
+    },
+    async removeMeeting(eventId: string): Promise<boolean> {
+      patchState(store, { meetingActionSaving: true, actionError: null });
+      try {
+        await firstValueFrom(api.removeMeeting(eventId));
+        patchState(store, {
+          meetingActionSaving: false,
+          events: store.events().map((e) => (e.id === eventId ? { ...e, meetingLink: null } : e))
+        });
+        return true;
+      } catch (err) {
+        patchState(store, { meetingActionSaving: false, actionError: toSafeErrorMessage(err, 'Failed to remove the meeting.') });
+        return false;
+      }
+    },
+    async addParticipants(eventId: string, employeeIds: readonly string[]): Promise<boolean> {
+      patchState(store, { participantActionSaving: true, actionError: null });
+      try {
+        const response = await firstValueFrom(api.addParticipants(eventId, employeeIds));
+        patchState(store, {
+          participantActionSaving: false,
+          events: store.events().map((e) => (e.id === eventId ? { ...e, participants: response.participants } : e))
+        });
+        return true;
+      } catch (err) {
+        patchState(store, { participantActionSaving: false, actionError: toSafeErrorMessage(err, 'Failed to add participants.') });
+        return false;
+      }
+    },
+    async removeParticipant(eventId: string, employeeId: string): Promise<boolean> {
+      patchState(store, { participantActionSaving: true, actionError: null });
+      try {
+        await firstValueFrom(api.removeParticipant(eventId, employeeId));
+        patchState(store, {
+          participantActionSaving: false,
+          events: store.events().map((e) => (e.id === eventId
+            ? { ...e, participants: (e.participants ?? []).filter((p: CalendarEventParticipant) => p.employeeId !== employeeId) }
+            : e))
+        });
+        return true;
+      } catch (err) {
+        patchState(store, { participantActionSaving: false, actionError: toSafeErrorMessage(err, 'Failed to remove the participant.') });
+        return false;
+      }
+    },
+    async addGuests(eventId: string, emails: readonly string[]): Promise<boolean> {
+      patchState(store, { participantActionSaving: true, actionError: null });
+      try {
+        const response = await firstValueFrom(api.addGuests(eventId, emails));
+        patchState(store, {
+          participantActionSaving: false,
+          events: store.events().map((e) => (e.id === eventId ? { ...e, guests: response.guests } : e))
+        });
+        return true;
+      } catch (err) {
+        patchState(store, { participantActionSaving: false, actionError: toSafeErrorMessage(err, 'Failed to invite guests.') });
+        return false;
+      }
+    },
+    async removeGuest(eventId: string, email: string): Promise<boolean> {
+      patchState(store, { participantActionSaving: true, actionError: null });
+      try {
+        await firstValueFrom(api.removeGuest(eventId, email));
+        patchState(store, {
+          participantActionSaving: false,
+          events: store.events().map((e) => (e.id === eventId
+            ? { ...e, guests: (e.guests ?? []).filter((g) => g.email !== email) }
+            : e))
+        });
+        return true;
+      } catch (err) {
+        patchState(store, { participantActionSaving: false, actionError: toSafeErrorMessage(err, 'Failed to remove the guest.') });
+        return false;
       }
     }
   }))

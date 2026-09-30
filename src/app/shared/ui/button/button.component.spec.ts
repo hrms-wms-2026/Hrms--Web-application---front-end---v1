@@ -45,13 +45,16 @@ describe('ButtonComponent', () => {
     expect(button.type).toBe('button');
   });
 
-  it('defaults to the md size padding', async () => {
+  it('defaults to the standardized md size (30px height, 12px padding, 8px radius)', async () => {
     await TestBed.configureTestingModule({ imports: [ButtonComponent] }).compileComponents();
     const fixture = TestBed.createComponent(ButtonComponent);
     fixture.detectChanges();
     const button = fixture.debugElement.query(By.css('button')).nativeElement as HTMLButtonElement;
-    expect(button.className).toContain('px-4');
-    expect(button.className).toContain('py-2');
+    expect(button.className).toContain('px-3');
+    expect(button.className).toContain('h-[30px]');
+    expect(button.className).toContain('text-[13px]');
+    expect(button.className).toContain('rounded-lg');
+    expect(button.className).toContain('w-auto');
   });
 
   it('applies compact padding/font when size is sm', async () => {
@@ -61,8 +64,19 @@ describe('ButtonComponent', () => {
     fixture.detectChanges();
     const button = fixture.debugElement.query(By.css('button')).nativeElement as HTMLButtonElement;
     expect(button.className).toContain('px-2.5');
-    expect(button.className).toContain('py-1.5');
+    expect(button.className).toContain('h-[26px]');
     expect(button.className).toContain('text-xs');
-    expect(button.className).not.toContain('px-4');
+    expect(button.className).toContain('rounded-lg');
+    expect(button.className).not.toContain('px-3');
+  });
+
+  it('supports fullWidth when requested', async () => {
+    await TestBed.configureTestingModule({ imports: [ButtonComponent] }).compileComponents();
+    const fixture = TestBed.createComponent(ButtonComponent);
+    fixture.componentRef.setInput('fullWidth', true);
+    fixture.detectChanges();
+    const button = fixture.debugElement.query(By.css('button')).nativeElement as HTMLButtonElement;
+    expect(button.className).toContain('w-full');
+    expect(fixture.nativeElement.className).toContain('w-full');
   });
 });

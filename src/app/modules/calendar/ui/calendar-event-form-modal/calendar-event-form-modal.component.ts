@@ -1,5 +1,6 @@
-import { ChangeDetectionStrategy, Component, EventEmitter, Input, OnChanges, Output, SimpleChanges, inject, signal } from '@angular/core';
+import { ChangeDetectionStrategy, Component, ElementRef, EventEmitter, HostListener, Input, OnChanges, OnDestroy, Output, SimpleChanges, ViewChild, inject, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
+import { RouterLink } from '@angular/router';
 import { AbstractControl, FormBuilder, ReactiveFormsModule, ValidationErrors, ValidatorFn, Validators } from '@angular/forms';
 import { ButtonComponent } from '../../../../shared/ui/button/button.component';
 import { InputComponent } from '../../../../shared/ui/input/input.component';
@@ -8,13 +9,15 @@ import { ModalComponent } from '../../../../shared/ui/modal/modal.component';
 import { DatePickerComponent } from '../../../../shared/ui/date-picker/date-picker.component';
 import { AvatarComponent } from '../../../../shared/ui/avatar/avatar.component';
 import { ConfirmModalComponent } from '../../../../shared/ui/confirm-modal/confirm-modal.component';
+import { DirtyFormHandle, UnsavedChangesService } from '../../../../shared/services/unsaved-changes.service';
 import { AuthStore } from '../../../../core/auth/state/auth.store';
 import { localPartsToUtcIso, utcIsoToLocalParts } from '../../../../shared/utils/timezone.util';
 import {
   CalendarConflict, CalendarEventParticipant, CalendarEventResponse, CreateCalendarEventRequest,
-  EligibleNominee, RecurrenceEditScope, RespondToCalendarEventStatus, UpdateCalendarEventRequest
+  EligibleNominee, MeetingProvider, RecurrenceEditScope, RespondToCalendarEventStatus, UpdateCalendarEventRequest
 } from '../../models/calendar-event.model';
 import { RecurrenceEndMode, RecurrenceFrequency, buildRecurrenceRule } from '../../utils/recurrence-rule.util';
+import { CalendarEventAttendanceComponent } from '../calendar-event-attendance/calendar-event-attendance.component';
 import { CalendarParticipantPickerComponent } from '../calendar-participant-picker/calendar-participant-picker.component';
 import { CalendarSelectComponent } from '../calendar-select/calendar-select.component';
 
@@ -62,8 +65,24 @@ const meetingLinkValidator: ValidatorFn = (control: AbstractControl): Validation
   }
 };
 
+const EMPTY_FORM_VALUES = {
+  title: '',
+  description: '',
+  startDate: '',
+  startTime: '09:00',
+  endDate: '',
+  endTime: '09:30',
+  isAllDay: false,
+  location: '',
+  meetingLink: '',
+  color: '#2563EB',
+  recurrenceFrequency: 'none' as RecurrenceFrequency,
+  recurrenceEndMode: 'never' as RecurrenceEndMode,
+  recurrenceUntilDate: ''
+};
+
 export type CalendarEventFormSubmission =
-  | { create: CreateCalendarEventRequest }
+  | { create: CreateCalendarEventRequest; meetingProvider: MeetingProvider | null }
   | { update: UpdateCalendarEventRequest; scope: RecurrenceEditScope | null };
 
 export interface RespondToCalendarEventPayload {
@@ -76,15 +95,16 @@ export interface RespondToCalendarEventPayload {
   selector: 'app-calendar-event-form-modal',
   standalone: true,
   imports: [
-    CommonModule, ReactiveFormsModule, ButtonComponent, InputComponent, SelectComponent,
+    CommonModule, ReactiveFormsModule, RouterLink, ButtonComponent, InputComponent, SelectComponent,
     ModalComponent, DatePickerComponent, AvatarComponent, ConfirmModalComponent, CalendarParticipantPickerComponent,
-    CalendarSelectComponent
+    CalendarSelectComponent, CalendarEventAttendanceComponent
   ],
   templateUrl: './calendar-event-form-modal.component.html',
   changeDetection: ChangeDetectionStrategy.OnPush
 })
-export class CalendarEventFormModalComponent implements OnChanges {
+export class CalendarEventFormModalComponent implements OnChanges, OnDestroy {
   private readonly fb = inject(FormBuilder);
+  private readonly unsaved = inject(UnsavedChangesService);
 
   @Input() open = false;
   @Input() event: CalendarEventResponse | null = null;
@@ -95,11 +115,22 @@ export class CalendarEventFormModalComponent implements OnChanges {
   @Input() checkingConflicts = false;
   @Input() myTimezone = 'UTC';
   @Input() eligibleNominees: readonly EligibleNominee[] = [];
+  /** Whether the organizer has an active Microsoft connection that can host a Teams meeting. */
+  @Input() hasTeamsCapableConnection = false;
+  /** Whether the organizer has an active Zoom connection that can host a Zoom meeting. */
+  @Input() hasZoomCapableConnection = false;
+  @Input() meetingActionSaving = false;
   @Output() save = new EventEmitter<CalendarEventFormSubmission>();
   @Output() delete = new EventEmitter<RecurrenceEditScope | null>();
   @Output() respond = new EventEmitter<RespondToCalendarEventPayload>();
   @Output() checkConflicts = new EventEmitter<{ participantEmployeeIds: readonly string[]; startDate: string; endDate: string }>();
   @Output() loadEligibleNominees = new EventEmitter<void>();
+  @Output() addMeeting = new EventEmitter<MeetingProvider>();
+  @Output() removeMeeting = new EventEmitter<void>();
+  @Output() addParticipantsToEvent = new EventEmitter<readonly string[]>();
+  @Output() removeExistingParticipant = new EventEmitter<string>();
+  @Output() addGuestsToEvent = new EventEmitter<readonly string[]>();
+  @Output() removeExistingGuest = new EventEmitter<string>();
   @Output() cancel = new EventEmitter<void>();
 
   private readonly authStore = inject(AuthStore);
@@ -113,10 +144,17 @@ export class CalendarEventFormModalComponent implements OnChanges {
   ];
 
   readonly participantPickerOpen = signal(false);
+  @ViewChild('pickerWrap') private pickerWrap?: ElementRef<HTMLElement>;
   readonly participantIds = signal<readonly string[]>([]);
   readonly participants = signal<readonly { id: string; name: string }[]>([]);
   readonly maxParticipantAvatars = 6;
+  /** Guest emails picked in the participant picker, not yet saved to the event. */
+  readonly guestEmails = signal<readonly string[]>([]);
   readonly discardConfirmOpen = signal(false);
+  /** Teams/Zoom provider picked while creating a new event - the meeting can't actually be
+   * created until the event itself has a real id, so this is just intent, resolved into a
+   * `createMeeting` call by the parent once `save` returns the new event's id. */
+  readonly pendingMeetingProvider = signal<MeetingProvider | null>(null);
 
   /** Zone the typed start/end times are read in. Falls back to the organizer's tenant
    * zone (`myTimezone`) until the user explicitly picks one; changing it re-converts
@@ -163,6 +201,20 @@ export class CalendarEventFormModalComponent implements OnChanges {
     const employeeId = this.authStore.employeeId();
     if (!employeeId || !this.event?.participants) return null;
     return this.event.participants.find((p) => p.employeeId === employeeId) ?? null;
+  }
+
+  /** The "Organizer" row at the top of Who: the viewer while creating; when editing, "You" if the
+   * server says the viewer owns the event, else the organizer by name (absent when the API sent none). */
+  organizerRow(): { name: string; isYou: boolean } | null {
+    if (!this.event) return { name: (this.authStore.email() ?? '').split('@')[0] || 'You', isYou: true };
+    if (this.event.isOrganizer) return { name: this.event.organizerName ?? 'You', isYou: true };
+    return this.event.organizerName ? { name: this.event.organizerName, isYou: false } : null;
+  }
+
+  /** Only the organizer can add/remove participants (the backend rejects anyone else). The server
+   * flag decides; an event that doesn't carry it keeps the controls. */
+  canManageParticipants(): boolean {
+    return this.event?.isOrganizer !== false;
   }
 
   onRespond(status: RespondToCalendarEventStatus, reason: string | null = null, nomineeEmployeeId: string | null = null): void {
@@ -217,16 +269,40 @@ export class CalendarEventFormModalComponent implements OnChanges {
     this.onRespond('ReplacementNominated', null, nomineeId);
   }
 
+  ngOnDestroy(): void {
+    this.unregisterGuard?.();
+    this.unregisterGuard = null;
+  }
+
   ngOnChanges(changes: SimpleChanges): void {
+    if (changes['open']) {
+      if (this.open && !this.unregisterGuard) {
+        this.unregisterGuard = this.unsaved.register(this.guardHandle);
+      } else if (!this.open && this.unregisterGuard) {
+        this.unregisterGuard();
+        this.unregisterGuard = null;
+      }
+    }
+
     // Only reset dirty/participant state when the modal is *freshly opened* for a new session -
     // this same input also toggles on every debounced conflict-check update while a create form
     // is mid-use, and resetting on every ngOnChanges call would wipe out in-progress typing.
     const justOpened = !!changes['open'] && this.open;
 
     if (justOpened) {
+      // The modal instance is reused across sessions, so without this a new event opened with the previous event's values.
+      this.form.reset(EMPTY_FORM_VALUES);
       this.endTimeTouched = false;
       this.timezoneTouched = false;
       this.pickedTimezone.set(this.myTimezone);
+      this.pendingMeetingProvider.set(null);
+      // Cleared for both edit and create: this is the participant *picker's* staging state
+      // (who's checked in the "Add participants" modal before it's submitted), not the event's
+      // actual saved participants - carrying over a previous session's picks (e.g. from create
+      // mode) made the picker show unrelated people as pre-selected the next time it opened.
+      this.participantIds.set([]);
+      this.participants.set([]);
+      this.guestEmails.set([]);
     }
     if (justOpened || changes['myTimezone']) {
       this.timezoneOptions.set(
@@ -274,8 +350,6 @@ export class CalendarEventFormModalComponent implements OnChanges {
 
     if (justOpened) {
       this.form.markAsPristine();
-      this.participantIds.set([]);
-      this.participants.set([]);
     }
   }
 
@@ -348,6 +422,52 @@ export class CalendarEventFormModalComponent implements OnChanges {
     this.form.controls.meetingLink.markAsDirty();
   }
 
+  /** An auto-generated join link is always a real teams.microsoft.com or *.zoom.us URL - using
+   * that as the "was this attached via Add Teams/Zoom meeting, not typed in" signal avoids
+   * needing a separate flag threaded through the event API just for this display choice. */
+  isAutoGeneratedMeetingLink(): boolean {
+    const value = this.form.controls.meetingLink.value ?? '';
+    return /^https:\/\/teams\.microsoft\.com\//i.test(value) || /^https:\/\/([a-z0-9-]+\.)?zoom\.us\//i.test(value);
+  }
+
+  onAddMeeting(provider: MeetingProvider): void {
+    this.addMeeting.emit(provider);
+  }
+
+  selectPendingMeeting(provider: MeetingProvider): void {
+    this.pendingMeetingProvider.set(provider);
+    this.form.markAsDirty();
+  }
+
+  clearPendingMeeting(): void {
+    this.pendingMeetingProvider.set(null);
+  }
+
+  onRemoveMeeting(): void {
+    this.removeMeeting.emit();
+  }
+
+  readonly linkCopyState = signal<'idle' | 'copied' | 'failed'>('idle');
+  private linkCopyTimer: ReturnType<typeof setTimeout> | null = null;
+
+  async copyMeetingLink(): Promise<void> {
+    try {
+      await navigator.clipboard.writeText(this.form.controls.meetingLink.value ?? '');
+      this.linkCopyState.set('copied');
+    } catch {
+      this.linkCopyState.set('failed');
+    }
+    if (this.linkCopyTimer) clearTimeout(this.linkCopyTimer);
+    this.linkCopyTimer = setTimeout(() => this.linkCopyState.set('idle'), 2000);
+  }
+
+  /** Gates the Attendance section - attendance is only ever meaningful once the meeting has
+   * actually happened, and TeamsAttendanceSyncJob itself only starts polling after the event's
+   * end time has passed. */
+  hasEventEnded(): boolean {
+    return !!this.event && new Date(this.event.endDate).getTime() < Date.now();
+  }
+
   setRecurrenceFrequency(value: string): void {
     this.form.controls.recurrenceFrequency.setValue(value as RecurrenceFrequency);
     this.form.markAsDirty();
@@ -358,20 +478,84 @@ export class CalendarEventFormModalComponent implements OnChanges {
     this.form.markAsDirty();
   }
 
+  /** Clicking anywhere outside the picker section closes it (submitting picks in edit mode). composedPath is
+   * used because the clicked row may already be re-rendered away by the time this document listener runs. */
+  @HostListener('document:click', ['$event'])
+  onDocumentClick(event: MouseEvent): void {
+    const wrap = this.pickerWrap?.nativeElement;
+    if (!this.participantPickerOpen() || !wrap || event.composedPath().includes(wrap)) return;
+    this.onParticipantPickerClosed();
+  }
+
+  toggleParticipantPicker(): void {
+    if (this.participantPickerOpen()) this.onParticipantPickerClosed();
+    else this.openParticipantPicker();
+  }
+
+  /** Escape closes just the dropdown; without stopping it the modal's own Escape handler would also close (and discard) the event form. */
+  onParticipantPickerEscape(event: Event): void {
+    if (!this.participantPickerOpen()) return;
+    event.stopPropagation();
+    this.onParticipantPickerClosed();
+  }
+
   openParticipantPicker(): void {
     this.participantPickerOpen.set(true);
+    setTimeout(() => this.pickerWrap?.nativeElement.scrollIntoView?.({ block: 'nearest' }));
+  }
+
+  /** In edit mode the picker adds straight to the saved event (there's no pending "create"
+   * payload to attach the selection to) - closing it with a selection present submits that
+   * selection immediately and clears the picker's local staging state. */
+  onParticipantPickerClosed(): void {
+    this.participantPickerOpen.set(false);
+    if (this.isEdit && this.participantIds().length > 0) {
+      this.addParticipantsToEvent.emit(this.participantIds());
+      this.participantIds.set([]);
+      this.participants.set([]);
+    }
+    if (this.isEdit && this.guestEmails().length > 0) {
+      this.addGuestsToEvent.emit(this.guestEmails());
+      this.guestEmails.set([]);
+    }
+  }
+
+  onGuestEmailsChange(emails: readonly string[]): void {
+    this.guestEmails.set(emails);
+  }
+
+  removeGuest(email: string): void {
+    this.guestEmails.set(this.guestEmails().filter((g) => g !== email));
+  }
+
+  onRemoveExistingGuest(email: string): void {
+    this.removeExistingGuest.emit(email);
+  }
+
+  onRemoveExistingParticipant(employeeId: string): void {
+    this.removeExistingParticipant.emit(employeeId);
   }
 
   private isDirty(): boolean {
-    return this.form.dirty || this.participantIds().length > 0;
+    return this.form.dirty || this.participantIds().length > 0 || this.guestEmails().length > 0;
   }
+
+  /** Calendar events have no draft storage - the shared dialog only offers Discard / Keep editing. */
+  private readonly guardHandle: DirtyFormHandle = {
+    isDirty: () => this.isDirty(),
+    canSaveDraft: () => false,
+    saveDraft: async () => false,
+    discard: () => {}
+  };
+  private unregisterGuard: (() => void) | null = null;
 
   attemptClose(): void {
     if (this.isDirty()) {
       this.discardConfirmOpen.set(true);
-      return;
     }
-    this.cancel.emit();
+    void this.unsaved.requestClose(this.guardHandle).then((ok) => {
+      if (ok) this.cancel.emit();
+    });
   }
 
   confirmDiscard(): void {
@@ -448,8 +632,10 @@ export class CalendarEventFormModalComponent implements OnChanges {
         title: raw.title!.trim(), description: raw.description || null, startDate, endDate,
         isAllDay: !!raw.isAllDay, location: raw.location || null,
         meetingLink: raw.meetingLink || null, color: raw.color || null, recurrence,
-        participantEmployeeIds: this.participantIds(), recurrenceRule
-      }
+        participantEmployeeIds: this.participantIds(), recurrenceRule, guestEmails: this.guestEmails(),
+        pendingMeetingProvider: this.pendingMeetingProvider()
+      },
+      meetingProvider: this.pendingMeetingProvider()
     });
   }
 

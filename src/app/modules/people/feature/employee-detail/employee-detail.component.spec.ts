@@ -52,20 +52,31 @@ describe('EmployeeDetailComponent', () => {
     employee: EmployeeDetailResponse,
     apiOverrides: Partial<PeopleApiService> = {},
     hasWritePermission = true,
-    currentEmployeeId: string | null = 'emp-99'
+    currentEmployeeId: string | null = 'emp-99',
+    hasOffboardPermission = true
   ) {
     const apiStub = {
       getEmployeeDetail: vi.fn().mockReturnValue(of(employee)),
       resendInvitation: vi.fn().mockReturnValue(of({ expiresAt: '2026-08-25T00:00:00Z' })),
       changePosition: vi.fn().mockReturnValue(of({ pendingApproval: false })),
       getJobJourney: vi.fn().mockReturnValue(of([])),
+      getWorkGraph: vi.fn().mockReturnValue(of({ nodes: [], links: [], hiddenTaskCount: 0 })),
+      getOverviewAttendance: vi.fn().mockReturnValue(
+        of({ from: '2026-09-01', to: '2026-09-30', workingDays: 0, present: 0, late: 0, missingClockOuts: 0, leaveDays: 0, days: [] })
+      ),
+      getOverviewAttendanceDiscipline: vi.fn().mockReturnValue(
+        of({ from: '2026-09-01', to: '2026-09-30', lateClockIns: 0, earlyClockOuts: 0, missingClockOuts: 0, overBreakDays: 0, overBreakMinutes: 0, locationTrackingEnabled: false, locationViolations: null })
+      ),
+      getOverviewTimeOff: vi.fn().mockReturnValue(of({ year: 2026, balances: [], nextLeave: null })),
       ...apiOverrides
     };
     const notificationsStub = { success: vi.fn(), error: vi.fn() };
     // The Change Position modal (Task 4) fetches positions for the legal entity as soon as it
     // opens; stub it out so opening the modal in these tests never issues a real HTTP request.
     const positionApiStub = { listFlat: vi.fn().mockReturnValue(of({ items: [], page: 1, pageSize: 25, totalCount: 0, totalPages: 0 })) };
-    const permissionServiceStub = { hasPermission: (p: string) => (p === 'employees:write' ? hasWritePermission : true) };
+    const permissionServiceStub = {
+      hasPermission: (p: string) => (p === 'employees:write' ? hasWritePermission : p === 'employees:offboard' ? hasOffboardPermission : true)
+    };
     // EmployeeJobInfoComponent (rendered as a real child on the Job tab) injects the real,
     // providedIn: 'root' WorkModeStore, which would otherwise pull in WorkModeApiService ->
     // HttpClient - neither is provided in this spec file, so every test would fail to construct
@@ -131,29 +142,76 @@ describe('EmployeeDetailComponent', () => {
     expect(fixture.nativeElement.textContent).toContain('Ada Lovelace');
   });
 
-  it('renders the Job Information component on initial load, and switches tabs when clicked', () => {
+  it('renders the Overview tab first, then Employment and Personal on request', () => {
     const { fixture } = setup(detailFixture);
     fixture.detectChanges();
+    const el = fixture.nativeElement as HTMLElement;
 
-    expect(fixture.nativeElement.querySelector('app-employee-job-info')).toBeTruthy();
+    expect(fixture.componentInstance.activeTab()).toBe('overview');
+    expect(el.querySelector('app-employee-overview-tab')).toBeTruthy();
+    // Employment stays mounted (hidden) so the Work Network is not reloaded on tab switches.
+    expect(el.querySelector('app-employee-employment-tab')?.hasAttribute('hidden')).toBe(true);
+    expect(el.querySelector('app-employee-personal-tab')).toBeFalsy();
+
+    fixture.componentInstance.activeTab.set('employment');
+    fixture.detectChanges();
+    expect(el.querySelector('app-employee-employment-tab')?.hasAttribute('hidden')).toBe(false);
+    expect(el.querySelector('app-employee-job-info')).toBeTruthy();
+    expect(el.querySelector('app-employee-overview-tab')).toBeFalsy();
 
     fixture.componentInstance.activeTab.set('personal');
     fixture.detectChanges();
-    expect(fixture.nativeElement.querySelector('app-employee-personal-info')).toBeTruthy();
-
-    fixture.componentInstance.activeTab.set('emergency');
-    fixture.detectChanges();
-    expect(fixture.nativeElement.querySelector('app-employee-emergency-contacts')).toBeTruthy();
+    expect(el.querySelector('app-employee-personal-tab')).toBeTruthy();
+    expect(el.querySelector('app-employee-personal-info')).toBeTruthy();
+    expect(el.querySelector('app-employee-emergency-contacts')).toBeTruthy();
+    expect(el.querySelector('app-employee-employment-tab')?.hasAttribute('hidden')).toBe(true);
   });
 
-  it('renders the Payroll section when selected tab is payroll and response includes it', () => {
+  it('lists the tabs in the order Overview, Employment, Personal', () => {
+    const { fixture } = setup(detailFixture);
+    fixture.detectChanges();
+
+    const labels = Array.from(
+      fixture.nativeElement.querySelectorAll('nav[aria-label="Employee Detail Sections"] button')
+    ).map((b) => (b as HTMLElement).textContent?.trim());
+
+    expect(labels).toEqual(['Overview', 'Employment', 'Personal']);
+  });
+
+  it('does not reload the work graph when switching to Personal and back to Employment', () => {
+    const { fixture, apiStub } = setup(detailFixture);
+    fixture.detectChanges();
+    expect(apiStub.getWorkGraph).toHaveBeenCalledTimes(1);
+
+    fixture.componentInstance.activeTab.set('personal');
+    fixture.detectChanges();
+    fixture.componentInstance.activeTab.set('employment');
+    fixture.detectChanges();
+
+    expect(apiStub.getWorkGraph).toHaveBeenCalledTimes(1);
+  });
+
+  it('switches tabs when a tab button is clicked', () => {
+    const { fixture } = setup(detailFixture);
+    fixture.detectChanges();
+
+    const personalButton = Array.from(
+      fixture.nativeElement.querySelectorAll('nav[aria-label="Employee Detail Sections"] button')
+    ).find((b) => (b as HTMLElement).textContent?.trim() === 'Personal') as HTMLButtonElement;
+    personalButton.click();
+    fixture.detectChanges();
+
+    expect(fixture.componentInstance.activeTab()).toBe('personal');
+  });
+
+  it('renders the Payroll section in the Personal tab when the response includes it', () => {
     const { fixture } = setup({
       ...detailFixture,
       payroll: { hasBankDetailsOnFile: true, bankName: 'Test Bank', maskedAccountNumber: '****1234', accountType: 'checking' }
     });
     fixture.detectChanges();
 
-    fixture.componentInstance.activeTab.set('payroll');
+    fixture.componentInstance.activeTab.set('personal');
     fixture.detectChanges();
 
     expect(fixture.nativeElement.querySelector('app-employee-payroll')).toBeTruthy();
@@ -163,7 +221,21 @@ describe('EmployeeDetailComponent', () => {
     const { fixture } = setup({ ...detailFixture, payroll: null });
     fixture.detectChanges();
 
+    fixture.componentInstance.activeTab.set('personal');
+    fixture.detectChanges();
+
     expect(fixture.nativeElement.querySelector('app-employee-payroll')).toBeFalsy();
+  });
+
+  it('shows the key facts (manager, employment type, work mode, hire date) in the header', () => {
+    const { fixture } = setup(detailFixture);
+    fixture.detectChanges();
+
+    const facts = (fixture.nativeElement.querySelector('[data-testid="employee-key-facts"]') as HTMLElement).textContent as string;
+    expect(facts).toContain('Grace Hopper');
+    expect(facts).toContain('Full time');
+    expect(facts).toContain('Remote');
+    expect(facts).toContain('15 Jan 2024');
   });
 
   it('shows a Transfer / Promote button and opens the modal when the employee has a legal entity', () => {
@@ -213,6 +285,28 @@ describe('EmployeeDetailComponent', () => {
     expect(text).toContain('Transfer');
     const offboardingButton = fixture.nativeElement.querySelector('[data-testid="offboarding-menu-item"]') as HTMLButtonElement | null;
     expect(offboardingButton?.disabled).toBe(false);
+  });
+
+  it('hides the Offboarding item from a user with employees:write but not employees:offboard', () => {
+    const { fixture } = setup(detailFixture, {}, true, 'emp-99', false);
+    fixture.detectChanges();
+    (fixture.nativeElement.querySelector('[data-testid="change-position-trigger"]') as HTMLElement).querySelector('button')!.click();
+    fixture.detectChanges();
+
+    expect(fixture.nativeElement.querySelector('[data-testid="offboarding-menu-item"]')).toBeNull();
+    expect(fixture.nativeElement.textContent).toContain('Promotion');
+  });
+
+  it('shows only the Offboarding item to a user with employees:offboard but not employees:write', () => {
+    const { fixture } = setup(detailFixture, {}, false, 'emp-99', true);
+    fixture.detectChanges();
+    const trigger = fixture.nativeElement.querySelector('[data-testid="change-position-trigger"]') as HTMLElement;
+    expect(trigger.textContent).toContain('Offboarding');
+    trigger.querySelector('button')!.click();
+    fixture.detectChanges();
+
+    expect(fixture.nativeElement.querySelector('[data-testid="offboarding-menu-item"]')).not.toBeNull();
+    expect(fixture.nativeElement.textContent).not.toContain('Promotion');
   });
 
   it('enables the Offboarding menu item and navigates to the wizard on click', () => {

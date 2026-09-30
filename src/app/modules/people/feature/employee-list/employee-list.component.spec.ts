@@ -1,11 +1,18 @@
 import { provideHttpClient } from '@angular/common/http';
 import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
+import { signal } from '@angular/core';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { convertToParamMap, ActivatedRoute, Router } from '@angular/router';
-import { BehaviorSubject } from 'rxjs';
+import { BehaviorSubject, of } from 'rxjs';
 import { vi } from 'vitest';
+import { AuthStore } from '../../../../core/auth/state/auth.store';
 import { PermissionService } from '../../../../core/auth/state/permission.service';
+import { DepartmentApiService } from '../../../organization/data-access/department-api.service';
+import { PositionApiService } from '../../../organization/data-access/position-api.service';
+import { LegalEntityStore } from '../../../organization/state/legal-entity.store';
+import { EmployeeListItemResponse } from '../../models/employee.model';
 import { EmployeeListComponent } from './employee-list.component';
+import { DraftsStore } from '../../../../shared/state/drafts.store';
 
 describe('EmployeeListComponent', () => {
   let fixture: ComponentFixture<EmployeeListComponent>;
@@ -13,12 +20,31 @@ describe('EmployeeListComponent', () => {
   let router: Router;
   let queryParams: BehaviorSubject<ReturnType<typeof convertToParamMap>>;
   let permissionService: { hasPermission: (p: string) => boolean };
+  let hasOffboardPermission = true;
+  let draftsStore: { load: ReturnType<typeof vi.fn> };
+
+  beforeEach(() => {
+    TestBed.resetTestingModule();
+    hasOffboardPermission = true;
+    localStorage.removeItem('employee_list_columns');
+  });
+
+  async function flushEmployees(items: Partial<EmployeeListItemResponse>[], totalCount = items.length): Promise<void> {
+    const full = items.map((i, n) => ({
+      id: `e${n}`, employeeNumber: `N${n}`, fullName: `Person ${n}`, email: `p${n}@x.com`, departmentId: null, departmentName: null,
+      positionId: null, positionName: null, legalEntityId: 'le-1', legalEntityName: 'Co', employmentTypeLabel: 'Full-time',
+      status: 'active', reportingManagerId: null, reportingManagerName: null, ...i
+    }));
+    httpMock.match((r) => r.url.includes('/employees') && !r.url.includes('/bulk')).forEach((r) => r.flush({ items: full, totalCount, page: 1, pageSize: 25 }));
+    await fixture.whenStable();
+    fixture.detectChanges();
+  }
+
+  const q = <T extends HTMLElement = HTMLElement>(selector: string) => fixture.nativeElement.querySelector(selector) as T | null;
 
   function flushEmployeesAndDrafts(): void {
     httpMock.match(() => true).forEach((req) => {
       if (req.request.url.includes('/employees')) {
-        req.flush({ items: [], totalCount: 0, page: 1, pageSize: 25 });
-      } else if (req.request.url.includes('/onboarding/drafts')) {
         req.flush({ items: [], totalCount: 0, page: 1, pageSize: 25 });
       }
     });
@@ -26,7 +52,10 @@ describe('EmployeeListComponent', () => {
 
   async function setup(hasWritePermission: boolean, initialQuery: Record<string, string> = {}) {
     queryParams = new BehaviorSubject(convertToParamMap(initialQuery));
-    permissionService = { hasPermission: (p) => (p === 'employees:write' ? hasWritePermission : true) };
+    permissionService = {
+      hasPermission: (p) => (p === 'employees:write' ? hasWritePermission : p === 'employees:offboard' ? hasOffboardPermission : true)
+    };
+    draftsStore = { load: vi.fn().mockResolvedValue(undefined) };
 
     await TestBed.configureTestingModule({
       imports: [EmployeeListComponent],
@@ -34,6 +63,11 @@ describe('EmployeeListComponent', () => {
         provideHttpClient(),
         provideHttpClientTesting(),
         { provide: PermissionService, useValue: permissionService },
+        { provide: LegalEntityStore, useValue: { selectedLegalEntityId: signal('le-1') } },
+        { provide: AuthStore, useValue: { employeeId: signal('me') } },
+        { provide: DepartmentApiService, useValue: { listFlat: () => of({ items: [] }) } },
+        { provide: PositionApiService, useValue: { listFlat: () => of({ items: [] }) } },
+        { provide: DraftsStore, useValue: draftsStore },
         {
           provide: ActivatedRoute,
           useValue: {
@@ -116,25 +150,18 @@ describe('EmployeeListComponent', () => {
       page: 1,
       pageSize: 25
     });
-    httpMock.expectOne((r) => r.url.includes('/onboarding/drafts')).flush({
-      items: [],
-      totalCount: 0,
-      page: 1,
-      pageSize: 25
-    });
 
     await fixture.whenStable();
     fixture.detectChanges();
 
-    expect(fixture.nativeElement.querySelectorAll('.emp-name')[0]?.textContent).toContain('Zoe Warning');
-    expect(fixture.nativeElement.querySelectorAll('.emp-name')[1]?.textContent).toContain('Ada Normal');
+    expect(fixture.nativeElement.querySelectorAll('.edt__name')[0]?.textContent).toContain('Zoe Warning');
+    expect(fixture.nativeElement.querySelectorAll('.edt__name')[1]?.textContent).toContain('Ada Normal');
     expect(httpMock.match((r) => /\/attendance|\/time-tracking/.test(r.url)).length).toBe(0);
   });
 
   it('shows the error state with a retry action that reissues the request', async () => {
     await setup(true);
     httpMock.expectOne((r) => r.url.includes('/employees')).flush('error', { status: 500, statusText: 'Server Error' });
-    httpMock.expectOne((r) => r.url.includes('/onboarding/drafts')).flush({ items: [], totalCount: 0, page: 1, pageSize: 25 });
     await fixture.whenStable();
     fixture.detectChanges();
 
@@ -191,58 +218,22 @@ describe('EmployeeListComponent', () => {
     }
   });
 
-  it('excludes finalized and invitation-sent drafts from the Onboarding Drafts count and table', async () => {
+  it('has no Onboarding Drafts tab', async () => {
     await setup(true);
     httpMock.expectOne((r) => r.url.includes('/employees')).flush({ items: [], totalCount: 0, page: 1, pageSize: 25 });
-    httpMock.expectOne((r) => r.url.includes('/onboarding/drafts')).flush({
-      items: [
-        {
-          id: 'd1',
-          displayName: 'Active One',
-          positionName: null,
-          departmentName: null,
-          status: 'draft',
-          draftReason: 'saved_manually',
-          lastSavedStep: 'employee_details',
-          startedByName: 'HR Starter'
-        },
-        {
-          id: 'd2',
-          displayName: 'Finalized Two',
-          positionName: null,
-          departmentName: null,
-          status: 'finalized',
-          draftReason: 'invitation_sent',
-          lastSavedStep: 'review_and_submit',
-          startedByName: 'HR Starter'
-        },
-        {
-          id: 'd3',
-          displayName: 'Invited Three',
-          positionName: null,
-          departmentName: null,
-          status: 'draft',
-          draftReason: 'invitation_sent',
-          lastSavedStep: 'review_and_submit',
-          startedByName: 'HR Starter'
-        }
-      ],
-      totalCount: 3,
-      page: 1,
-      pageSize: 25
-    });
     await fixture.whenStable();
     fixture.detectChanges();
+    expect(fixture.nativeElement.textContent).not.toContain('Onboarding Drafts');
+  });
 
-    const badge = fixture.nativeElement.querySelector('.emp-count-badge--amber');
-    expect(badge?.textContent?.trim()).toBe('1');
-
-    fixture.componentInstance.setTab('drafts');
-    fixture.detectChanges();
-
-    expect(fixture.nativeElement.textContent).toContain('Active One');
-    expect(fixture.nativeElement.textContent).not.toContain('Finalized Two');
-    expect(fixture.nativeElement.textContent).not.toContain('Invited Three');
+  it('saving from the wizard refreshes the drafts bar', async () => {
+    await setup(true);
+    httpMock.expectOne((r) => r.url.includes('/employees')).flush({ items: [], totalCount: 0, page: 1, pageSize: 25 });
+    await fixture.whenStable();
+    fixture.componentInstance.onEmployeeSaved({ finalized: false, draftId: 'd1' });
+    httpMock.expectOne((r) => r.url.includes('/employees')).flush({ items: [], totalCount: 0, page: 1, pageSize: 25 });
+    await fixture.whenStable();
+    expect(draftsStore.load).toHaveBeenCalled();
   });
 
   it('the Add Employee link never carries a draftId query param', async () => {
@@ -260,72 +251,107 @@ describe('EmployeeListComponent', () => {
     await setup(true, { search: 'grace' });
     const req = httpMock.expectOne((r) => r.url.includes('/employees') && r.params.get('search') === 'grace');
     req.flush({ items: [], totalCount: 0, page: 1, pageSize: 25 });
-    httpMock.expectOne((r) => r.url.includes('/onboarding/drafts')).flush({ items: [], totalCount: 0, page: 1, pageSize: 25 });
     await fixture.whenStable();
 
     expect(req.request.params.get('search')).toBe('grace');
   });
 
-  it('toggles viewMode between table, list, and card and persists to localStorage', async () => {
+  it('no longer renders the view-cycle button', async () => {
     await setup(true);
-    flushEmployeesAndDrafts();
-    await fixture.whenStable();
-    fixture.detectChanges();
-
-    expect(fixture.componentInstance.viewMode()).toBe('table');
-    expect(fixture.nativeElement.querySelector('app-employee-table')).not.toBeNull();
-    expect(fixture.nativeElement.querySelector('app-employee-list-view')).toBeNull();
-    expect(fixture.nativeElement.querySelector('app-employee-card-view')).toBeNull();
-
-    // Switch to List view
-    fixture.componentInstance.setViewMode('list');
-    fixture.detectChanges();
-
-    expect(fixture.componentInstance.viewMode()).toBe('list');
-    expect(fixture.nativeElement.querySelector('app-employee-table')).toBeNull();
-    expect(fixture.nativeElement.querySelector('app-employee-list-view')).not.toBeNull();
-    expect(localStorage.getItem('employee_view_mode')).toBe('list');
-
-    // Switch to Card view
-    fixture.componentInstance.setViewMode('card');
-    fixture.detectChanges();
-
-    expect(fixture.componentInstance.viewMode()).toBe('card');
-    expect(fixture.nativeElement.querySelector('app-employee-card-view')).not.toBeNull();
-    expect(localStorage.getItem('employee_view_mode')).toBe('card');
-
-    localStorage.removeItem('employee_view_mode');
+    await flushEmployees([{}]);
+    expect(q('[data-testid="emp-view-cycle-btn"]')).toBeNull();
+    expect(q('app-employee-directory-table')).not.toBeNull();
   });
 
-  it('cycles viewMode sequentially (table -> list -> card -> table) when clicking view cycle button', async () => {
+  it('passes sort, page size and filters from the URL to the API', async () => {
     await setup(true);
+    queryParams.next(convertToParamMap({ sortBy: 'department', sortDir: 'desc', pageSize: '50', employmentType: 'contract,intern', managerId: 'm1' }));
+    const req = httpMock.match((r) => r.url.endsWith('/employees')).at(-1)!;
+    expect(req.request.params.get('sortBy')).toBe('department');
+    expect(req.request.params.get('sortDir')).toBe('desc');
+    expect(req.request.params.get('pageSize')).toBe('50');
+    expect(req.request.params.getAll('employmentType')).toEqual(['contract', 'intern']);
+    expect(req.request.params.get('managerId')).toBe('m1');
+    req.flush({ items: [], totalCount: 0, page: 1, pageSize: 50 });
     flushEmployeesAndDrafts();
-    await fixture.whenStable();
+  });
+
+  it('sorting from the table header writes sortBy/sortDir and resets to page 1', async () => {
+    await setup(true);
+    await flushEmployees([{}]);
+    q('[data-testid="employee-sort-department"]')!.click();
+    expect(router.navigate).toHaveBeenCalledWith([], expect.objectContaining({
+      queryParams: expect.objectContaining({ sortBy: 'department', sortDir: 'asc', page: 1 }), queryParamsHandling: 'merge'
+    }));
+  });
+
+  it('shows the bulk bar with actions gated by permission', async () => {
+    hasOffboardPermission = false;
+    await setup(true);
+    await flushEmployees([{}, {}]);
+    q<HTMLInputElement>('[data-testid="employee-select-e0"]')!.click();
     fixture.detectChanges();
-
-    const cycleBtn: HTMLButtonElement | null = fixture.nativeElement.querySelector('[data-testid="emp-view-cycle-btn"]');
-    expect(cycleBtn).toBeTruthy();
-    expect(fixture.componentInstance.viewMode()).toBe('table');
-
-    // 1st click: table -> list
-    cycleBtn!.click();
+    const bar = q('[data-testid="bulk-action-bar"]')!;
+    expect(bar.textContent).toContain('1 employee selected');
+    expect(bar.querySelector('[data-testid="bulk-action-promote"]')).not.toBeNull();
+    (bar.querySelector('[data-testid="bulk-action-more"]') as HTMLElement).click();
     fixture.detectChanges();
-    expect(fixture.componentInstance.viewMode()).toBe('list');
-    expect(localStorage.getItem('employee_view_mode')).toBe('list');
+    expect(q('[data-testid="menu-item-export"]')).not.toBeNull();
+    expect(q('[data-testid="menu-item-offboard"]')).toBeNull();
+  });
 
-    // 2nd click: list -> card
-    cycleBtn!.click();
+  it('without employees:write only Export is offered', async () => {
+    await setup(false);
+    await flushEmployees([{}]);
+    q<HTMLInputElement>('[data-testid="employee-select-e0"]')!.click();
     fixture.detectChanges();
-    expect(fixture.componentInstance.viewMode()).toBe('card');
-    expect(localStorage.getItem('employee_view_mode')).toBe('card');
+    expect(q('[data-testid="bulk-action-bar"]')).not.toBeNull();
+    expect(q('[data-testid="bulk-action-promote"]')).toBeNull();
+  });
 
-    // 3rd click: card -> table
-    cycleBtn!.click();
+  it('Promote is disabled when the selection spans companies', async () => {
+    await setup(true);
+    await flushEmployees([{ legalEntityId: 'le-1' }, { legalEntityId: 'le-2' }]);
+    q<HTMLInputElement>('[data-testid="employee-select-all"]')!.click();
     fixture.detectChanges();
-    expect(fixture.componentInstance.viewMode()).toBe('table');
-    expect(localStorage.getItem('employee_view_mode')).toBe('table');
+    const promote = q<HTMLButtonElement>('[data-testid="bulk-action-promote"]')!;
+    expect(promote.disabled).toBe(true);
+    expect(promote.title).toContain('single company');
+  });
 
-    localStorage.removeItem('employee_view_mode');
+  it('changing a filter clears the selection; changing page keeps it', async () => {
+    await setup(true);
+    await flushEmployees([{}]);
+    q<HTMLInputElement>('[data-testid="employee-select-e0"]')!.click();
+    queryParams.next(convertToParamMap({ page: '2' }));
+    await flushEmployees([{ id: 'x' }]);
+    expect(q('[data-testid="bulk-action-bar"]')).not.toBeNull();
+    queryParams.next(convertToParamMap({ page: '2', departmentId: 'd1' }));
+    await flushEmployees([{ id: 'x' }]);
+    expect(q('[data-testid="bulk-action-bar"]')).toBeNull();
+  });
+
+  it('row menu hides Promote/Transfer on the caller\'s own row and offers Offboard to employees:offboard holders', async () => {
+    await setup(true);
+    await flushEmployees([{ id: 'me' }, { id: 'other' }]);
+    expect(q('[data-testid="employee-row-menu-me"] button')).toBeNull();
+    q('[data-testid="employee-row-menu-other"] button')!.click();
+    fixture.detectChanges();
+    expect(q('[data-testid="menu-item-promote"]')).not.toBeNull();
+    q('[data-testid="menu-item-offboard"]')!.click();
+    expect(router.navigate).toHaveBeenCalledWith(['/people/employees', 'other', 'offboarding']);
+  });
+
+  it('bulk result shows the summary, reloads and clears the selection', async () => {
+    await setup(true);
+    await flushEmployees([{}]);
+    q<HTMLInputElement>('[data-testid="employee-select-e0"]')!.click();
+    fixture.detectChanges();
+    const inst = fixture.componentInstance;
+    inst.onBulkCompleted('Change employment type', { items: [{ employeeId: 'e0', outcome: 'succeeded', reason: null }], succeeded: 1, pendingApproval: 0, failed: 0 });
+    fixture.detectChanges();
+    expect(inst.selection.count()).toBe(0);
+    expect(fixture.nativeElement.textContent).toContain('1 changed · 0 sent for approval · 0 skipped');
+    expect(httpMock.match((r) => r.url.endsWith('/employees')).length).toBeGreaterThan(0);
   });
 });
-

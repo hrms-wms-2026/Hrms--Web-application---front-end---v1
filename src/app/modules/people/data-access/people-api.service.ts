@@ -3,6 +3,10 @@ import { Injectable, inject } from '@angular/core';
 import { Observable } from 'rxjs';
 import { environment } from '../../../../environments/environment';
 import {
+  BulkChangeEmploymentTypePayload,
+  BulkChangePositionPayload,
+  BulkEmployeeActionResponse,
+  BulkStartOffboardingPayload,
   ChangePositionPayload,
   ChangePositionResponse,
   EmployeeDetailResponse,
@@ -16,6 +20,12 @@ import {
 import { PendingAccessGrantRequestResponse } from '../models/access-grant-request.model';
 import { ChecklistAssignee } from '../models/checklist-template.model';
 import { PositionHistoryEntryResponse } from '../models/position-history.model';
+import { EmployeeWorkGraphResponse } from '../models/work-graph.model';
+import {
+  EmployeeAttendanceDisciplineResponse,
+  EmployeeAttendanceOverviewResponse,
+  EmployeeTimeOffResponse
+} from '../models/employee-overview.model';
 import {
   ApproveAccessGrantRequestResponse,
   DraftListPageResponse,
@@ -110,6 +120,11 @@ export class PeopleApiService {
     return this.http.post<OnboardingDraftResponse>(`${environment.apiUrl}/onboarding/drafts`, body, { headers });
   }
 
+  /** Discards a draft (server marks it cancelled); idempotent. */
+  cancelDraft(id: string): Observable<void> {
+    return this.http.delete<void>(`${environment.apiUrl}/onboarding/drafts/${id}`);
+  }
+
   finalizeDraft(id: string): Observable<FinalizeOnboardingDraftResponse> {
     return this.http.post<FinalizeOnboardingDraftResponse>(`${environment.apiUrl}/onboarding/drafts/${id}/finalize`, {});
   }
@@ -160,6 +175,41 @@ export class PeopleApiService {
     );
   }
 
+  getWorkGraph(employeeId: string): Observable<EmployeeWorkGraphResponse> {
+    return this.http.get<EmployeeWorkGraphResponse>(
+      `${environment.apiUrl}/employees/${employeeId}/work-graph`
+    );
+  }
+
+  getOverviewAttendance(employeeId: string, from: string, to: string): Observable<EmployeeAttendanceOverviewResponse> {
+    return this.http.get<EmployeeAttendanceOverviewResponse>(
+      `${environment.apiUrl}/employees/${employeeId}/overview/attendance`,
+      { params: new HttpParams().set('from', from).set('to', to) }
+    );
+  }
+
+  getOverviewAttendanceDiscipline(
+    employeeId: string,
+    from: string,
+    to: string
+  ): Observable<EmployeeAttendanceDisciplineResponse> {
+    return this.http.get<EmployeeAttendanceDisciplineResponse>(
+      `${environment.apiUrl}/employees/${employeeId}/overview/attendance-discipline`,
+      { params: new HttpParams().set('from', from).set('to', to) }
+    );
+  }
+
+  getOverviewTimeOff(employeeId: string, year?: number): Observable<EmployeeTimeOffResponse> {
+    let params = new HttpParams();
+    if (year !== undefined) {
+      params = params.set('year', String(year));
+    }
+    return this.http.get<EmployeeTimeOffResponse>(
+      `${environment.apiUrl}/employees/${employeeId}/overview/time-off`,
+      { params }
+    );
+  }
+
   getActiveHolders(legalEntityId: string, positionId: string): Observable<readonly ActiveHolder[]> {
     return this.http.get<readonly ActiveHolder[]>(
       `${environment.apiUrl}/org/legal-entities/${legalEntityId}/positions/${positionId}/active-holders`
@@ -179,12 +229,31 @@ export class PeopleApiService {
     });
   }
 
+  bulkChangePosition(payload: BulkChangePositionPayload): Observable<BulkEmployeeActionResponse> {
+    return this.http.post<BulkEmployeeActionResponse>(`${environment.apiUrl}/employees/bulk/change-position`, payload);
+  }
+
+  bulkChangeEmploymentType(payload: BulkChangeEmploymentTypePayload): Observable<BulkEmployeeActionResponse> {
+    return this.http.post<BulkEmployeeActionResponse>(`${environment.apiUrl}/employees/bulk/employment-type`, payload);
+  }
+
+  bulkStartOffboarding(payload: BulkStartOffboardingPayload): Observable<BulkEmployeeActionResponse> {
+    return this.http.post<BulkEmployeeActionResponse>(`${environment.apiUrl}/employees/bulk/offboarding/start`, payload);
+  }
+
   private toHttpParams(params: object): HttpParams {
     let httpParams = new HttpParams();
-    for (const [key, value] of Object.entries(params as Record<string, string | number | boolean | undefined>)) {
-      if (value !== undefined && value !== null && value !== '') {
-        httpParams = httpParams.set(key, value);
+    for (const [key, value] of Object.entries(params as Record<string, unknown>)) {
+      if (value === undefined || value === null || value === '') {
+        continue;
       }
+      if (Array.isArray(value)) {
+        for (const item of value) {
+          httpParams = httpParams.append(key, String(item));
+        }
+        continue;
+      }
+      httpParams = httpParams.set(key, String(value));
     }
     return httpParams;
   }

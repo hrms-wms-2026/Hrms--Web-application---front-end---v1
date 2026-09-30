@@ -8,14 +8,15 @@ import { NotificationService } from '../../../../core/services/notification.serv
 describe('ChangePositionModalComponent', () => {
   let fixture: ComponentFixture<ChangePositionModalComponent>;
   let component: ChangePositionModalComponent;
-  let peopleApi: { changePosition: ReturnType<typeof vi.fn>; getActiveHolders: ReturnType<typeof vi.fn> };
+  let peopleApi: { changePosition: ReturnType<typeof vi.fn>; getActiveHolders: ReturnType<typeof vi.fn>; bulkChangePosition: ReturnType<typeof vi.fn> };
   let positionApi: { listFlat: ReturnType<typeof vi.fn> };
   let notificationsStub: { success: ReturnType<typeof vi.fn>; error: ReturnType<typeof vi.fn> };
 
   beforeEach(async () => {
     peopleApi = {
       changePosition: vi.fn(),
-      getActiveHolders: vi.fn().mockReturnValue(of([]))
+      getActiveHolders: vi.fn().mockReturnValue(of([])),
+      bulkChangePosition: vi.fn(() => of({ items: [], succeeded: 2, pendingApproval: 0, failed: 0 }))
     };
     positionApi = {
       listFlat: vi.fn().mockReturnValue(
@@ -60,6 +61,29 @@ describe('ChangePositionModalComponent', () => {
     fixture.componentRef.setInput('currentPositionId', 'pos-1');
     fixture.componentRef.setInput('changeReason', 'Promotion');
     fixture.detectChanges();
+  });
+
+  it('bulk mode posts all employee ids once and emits bulkCompleted instead of changed', () => {
+    fixture.componentRef.setInput('employeeIds', ['a', 'b']);
+    fixture.componentRef.setInput('employeeId', '');
+    fixture.detectChanges();
+    const completed = vi.fn(); const changed = vi.fn();
+    component.bulkCompleted.subscribe(completed);
+    component.changed.subscribe(changed);
+
+    component.selectedPositionId.set('pos-2');
+    component.submit();
+
+    expect(peopleApi.bulkChangePosition).toHaveBeenCalledWith(expect.objectContaining({ employeeIds: ['a', 'b'], changeReason: 'Promotion' }));
+    expect(peopleApi.changePosition).not.toHaveBeenCalled();
+    expect(completed).toHaveBeenCalledWith({ items: [], succeeded: 2, pendingApproval: 0, failed: 0 });
+    expect(changed).not.toHaveBeenCalled();
+  });
+
+  it('bulk mode title names the employee count', () => {
+    fixture.componentRef.setInput('employeeIds', ['a', 'b', 'c']);
+    fixture.detectChanges();
+    expect(component.modalTitle()).toBe('Promotion · 3 employees');
   });
 
   it('emits changed and calls changePosition on submit', () => {

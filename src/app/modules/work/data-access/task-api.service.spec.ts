@@ -57,6 +57,22 @@ describe('TaskApiService', () => {
     req.flush(mockTasks);
   });
 
+  it('posts each bulk action to its endpoint', () => {
+    const ok = { items: [], succeeded: 0, failed: 0 };
+    service.bulkMoveStatus(['a'], 's').subscribe();
+    httpMock.expectOne((r) => r.method === 'POST' && r.url.endsWith('/work/tasks/bulk/status') && r.body.newStatusId === 's').flush(ok);
+    service.bulkAssign(['a'], 'e').subscribe();
+    httpMock.expectOne((r) => r.url.endsWith('/work/tasks/bulk/assign') && r.body.employeeId === 'e').flush(ok);
+    service.bulkSetPriority(['a'], 'high').subscribe();
+    httpMock.expectOne((r) => r.url.endsWith('/work/tasks/bulk/priority') && r.body.priority === 'high').flush(ok);
+    service.bulkSetDueDate(['a'], null).subscribe();
+    httpMock.expectOne((r) => r.url.endsWith('/work/tasks/bulk/due-date') && r.body.dueDate === null).flush(ok);
+    service.bulkConvertToSubtask(['a'], 'p').subscribe();
+    httpMock.expectOne((r) => r.url.endsWith('/work/tasks/bulk/convert-to-subtask') && r.body.newParentTaskId === 'p').flush(ok);
+    service.bulkDelete(['a']).subscribe();
+    httpMock.expectOne((r) => r.url.endsWith('/work/tasks/bulk/delete') && r.body.taskIds[0] === 'a').flush(ok);
+  });
+
   it('deleteTask DELETEs the task by id', () => {
     service.deleteTask('t-1').subscribe();
     const req = httpMock.expectOne(`${environment.apiUrl}/work/tasks/t-1`);

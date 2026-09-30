@@ -4,6 +4,18 @@ export interface CalendarEventParticipant {
   responseStatus: string;
 }
 
+export interface CalendarEventGuest {
+  email: string;
+}
+
+export interface CalendarEventGuestsResponse {
+  guests: readonly CalendarEventGuest[];
+}
+
+export interface CalendarEventParticipantsResponse {
+  participants: readonly CalendarEventParticipant[];
+}
+
 export interface CalendarEventResponse {
   id: string;
   title: string;
@@ -26,6 +38,9 @@ export interface CalendarEventResponse {
   originalStart: string | null;
   participants: readonly CalendarEventParticipant[] | null;
   hasConflict: boolean;
+  isOrganizer?: boolean;
+  organizerName?: string | null;
+  guests?: readonly CalendarEventGuest[] | null;
 }
 
 export interface CalendarEventsResponse {
@@ -44,6 +59,12 @@ export interface CreateCalendarEventRequest {
   recurrence: string;
   participantEmployeeIds: readonly string[];
   recurrenceRule: string | null;
+  guestEmails?: readonly string[];
+  /** Set when a Teams/Zoom meeting is about to be attached via a separate createMeeting call right
+   * after this one - lets the backend defer the participant/guest invite email until that call
+   * succeeds and the join link exists, instead of sending a link-less invite immediately followed
+   * by a near-duplicate one with the link. */
+  pendingMeetingProvider?: MeetingProvider | null;
 }
 
 export interface UpdateCalendarEventRequest {
@@ -107,4 +128,24 @@ export interface CheckCalendarConflictsRequest {
 
 export interface CalendarConflictsResponse {
   conflicts: readonly CalendarConflict[];
+}
+
+/** Matches backend ONEVO.Domain.Features.Calendar.Entities.CalendarEventMeetingProviders. */
+export type MeetingProvider = 'microsoft_teams' | 'zoom';
+
+export interface CreateEventMeetingResponse {
+  joinUrl: string;
+}
+
+export interface MeetingAttendeeResponse {
+  name: string | null;
+  email: string | null;
+  joinedAt: string;
+  leftAt: string | null;
+  durationSeconds: number | null;
+}
+
+export interface MeetingAttendanceResponse {
+  available: boolean;
+  attendees: readonly MeetingAttendeeResponse[];
 }

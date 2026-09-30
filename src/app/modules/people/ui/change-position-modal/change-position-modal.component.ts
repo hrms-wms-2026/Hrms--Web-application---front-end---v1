@@ -7,6 +7,7 @@ import { ModalComponent } from '../../../../shared/ui/modal/modal.component';
 import { PositionApiService } from '../../../organization/data-access/position-api.service';
 import { PositionListItemResponse } from '../../../organization/models/position.model';
 import { PeopleApiService } from '../../data-access/people-api.service';
+import { BulkEmployeeActionResponse } from '../../models/employee.model';
 import { ActiveHolder } from '../../models/onboarding-draft.model';
 import { ReportsToPickerComponent } from '../reports-to-picker/reports-to-picker.component';
 
@@ -41,7 +42,7 @@ import { ReportsToPickerComponent } from '../reports-to-picker/reports-to-picker
           <div class="flex flex-col gap-1 text-sm">
             <span class="text-[var(--color-text-secondary)]">Reports to</span>
             <p class="text-xs text-[var(--color-text-secondary)]">
-              More than one person holds the reporting position — choose who this employee reports to.
+              More than one person holds the reporting position — choose who {{ isBulk() ? 'these employees report' : 'this employee reports' }} to.
             </p>
             <app-reports-to-picker
               [holders]="activeHolders()"
@@ -79,15 +80,22 @@ export class ChangePositionModalComponent {
   private readonly notifications = inject(NotificationService);
 
   readonly open = input.required<boolean>();
-  readonly employeeId = input.required<string>();
+  readonly employeeId = input<string>('');
+  /** Non-empty switches the modal to bulk mode: one position applied to every id. */
+  readonly employeeIds = input<readonly string[]>([]);
   readonly legalEntityId = input.required<string>();
   readonly currentPositionId = input<string | null>(null);
   readonly changeReason = input.required<'Promotion' | 'Transfer'>();
   readonly closed = output<void>();
   readonly changed = output<void>();
   readonly pendingApproval = output<void>();
+  readonly bulkCompleted = output<BulkEmployeeActionResponse>();
 
-  readonly modalTitle = computed(() => (this.changeReason() === 'Promotion' ? 'Promotion' : 'Transfer'));
+  readonly isBulk = computed(() => this.employeeIds().length > 0);
+  readonly modalTitle = computed(() => {
+    const base = this.changeReason() === 'Promotion' ? 'Promotion' : 'Transfer';
+    return this.isBulk() ? `${base} · ${this.employeeIds().length} employees` : base;
+  });
   readonly positions = signal<readonly PositionListItemResponse[]>([]);
   readonly selectedPositionId = signal('');
   readonly effectiveFrom = signal(new Date().toISOString().slice(0, 10));
@@ -167,6 +175,21 @@ export class ChangePositionModalComponent {
       changeReason: this.changeReason(),
       reportsToEmployeeId: this.selectedReportsToEmployeeId()
     };
+
+    if (this.isBulk()) {
+      this.peopleApi.bulkChangePosition({ ...payload, employeeIds: [...this.employeeIds()] }).subscribe({
+        next: (res) => {
+          this.submitting.set(false);
+          this.bulkCompleted.emit(res);
+          this.onClose();
+        },
+        error: (err) => {
+          this.submitting.set(false);
+          this.notifications.error(toSafeErrorMessage(err, 'Failed to change positions.'));
+        }
+      });
+      return;
+    }
 
     this.peopleApi.changePosition(this.employeeId(), payload).subscribe({
       next: (res) => {

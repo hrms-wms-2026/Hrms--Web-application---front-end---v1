@@ -1,3 +1,4 @@
+import { unsavedChangesGuard } from '../../core/guards/unsaved-changes.guard';
 import { WORK_ROUTES } from './work.routes';
 
 describe('WORK_ROUTES', () => {
@@ -37,5 +38,20 @@ describe('WORK_ROUTES', () => {
     const idRoute = WORK_ROUTES.find((r) => r.path === ':id')!;
     const milestoneRoute = idRoute.children!.find((r) => r.path === 'milestones/:milestoneId')!;
     expect(milestoneRoute.children!.map((r) => r.path)).toEqual(['', 'tree']);
+  });
+
+  it('board, backlog, and milestone tree routes are protected by the unsaved-changes guard', () => {
+    const idRoute = WORK_ROUTES.find((r) => r.path === ':id')!;
+    const board = idRoute.children!.find((r) => r.path === 'board');
+    const backlog = idRoute.children!.find((r) => r.path === 'backlog');
+    const milestone = idRoute.children!.find((r) => r.path === 'milestones/:milestoneId');
+    const tree = milestone?.children?.find((r) => r.path === 'tree');
+
+    expect(board?.canDeactivate).toBeDefined();
+    expect(board?.canDeactivate).toContain(unsavedChangesGuard);
+    expect(backlog?.canDeactivate).toBeDefined();
+    expect(backlog?.canDeactivate).toContain(unsavedChangesGuard);
+    expect(tree?.canDeactivate).toBeDefined();
+    expect(tree?.canDeactivate).toContain(unsavedChangesGuard);
   });
 });

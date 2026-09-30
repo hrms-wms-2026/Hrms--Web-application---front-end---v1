@@ -65,8 +65,74 @@ describe('PeopleApiService', () => {
     httpMock = TestBed.inject(HttpTestingController);
   });
 
+  it('sends repeated employmentType params for the list filter', () => {
+    service.listEmployees({ employmentType: ['full_time', 'intern'], sortBy: 'name', sortDir: 'desc' }).subscribe();
+    const req = httpMock.expectOne((r) => r.url.endsWith('/employees'));
+    expect(req.request.params.getAll('employmentType')).toEqual(['full_time', 'intern']);
+    expect(req.request.params.get('sortDir')).toBe('desc');
+    req.flush({ items: [], totalCount: 0, page: 1, pageSize: 25 });
+  });
+
+  it('posts bulk actions to the bulk endpoints', () => {
+    service.bulkChangeEmploymentType({ employeeIds: ['a'], employmentTypeCode: 'contract' }).subscribe();
+    httpMock.expectOne((r) => r.method === 'POST' && r.url.endsWith('/employees/bulk/employment-type')).flush({ items: [], succeeded: 0, pendingApproval: 0, failed: 0 });
+    service.bulkStartOffboarding({ employeeIds: ['a'], reason: 'resignation', lastWorkingDate: '2026-10-31', knowledgeRiskLevel: 'medium', rehireEligibility: null, notes: null }).subscribe();
+    httpMock.expectOne((r) => r.method === 'POST' && r.url.endsWith('/employees/bulk/offboarding/start')).flush({ items: [], succeeded: 0, pendingApproval: 0, failed: 0 });
+    service.bulkChangePosition({ employeeIds: ['a'], positionId: 'p', effectiveFrom: '2026-10-01', changeReason: 'Transfer', reportsToEmployeeId: null }).subscribe();
+    httpMock.expectOne((r) => r.method === 'POST' && r.url.endsWith('/employees/bulk/change-position')).flush({ items: [], succeeded: 0, pendingApproval: 0, failed: 0 });
+  });
+
   afterEach(() => {
     httpMock.verify();
+  });
+
+  it('getWorkGraph GETs /employees/{id}/work-graph', () => {
+    const response = { nodes: [], links: [], hiddenTaskCount: 0 };
+    let received: unknown;
+
+    service.getWorkGraph('emp-1').subscribe((r) => (received = r));
+
+    const req = httpMock.expectOne(`${environment.apiUrl}/employees/emp-1/work-graph`);
+    expect(req.request.method).toBe('GET');
+    req.flush(response);
+    expect(received).toEqual(response);
+  });
+
+  it('getOverviewAttendance GETs /employees/{id}/overview/attendance with from and to', () => {
+    let received: unknown;
+    service.getOverviewAttendance('emp-1', '2026-09-01', '2026-09-30').subscribe((r) => (received = r));
+
+    const req = httpMock.expectOne(
+      (r) => r.url === `${environment.apiUrl}/employees/emp-1/overview/attendance`
+    );
+    expect(req.request.method).toBe('GET');
+    expect(req.request.params.get('from')).toBe('2026-09-01');
+    expect(req.request.params.get('to')).toBe('2026-09-30');
+    req.flush({ days: [] });
+    expect(received).toEqual({ days: [] });
+  });
+
+  it('getOverviewAttendanceDiscipline GETs /employees/{id}/overview/attendance-discipline with from and to', () => {
+    service.getOverviewAttendanceDiscipline('emp-1', '2026-09-01', '2026-09-30').subscribe();
+
+    const req = httpMock.expectOne(
+      (r) => r.url === `${environment.apiUrl}/employees/emp-1/overview/attendance-discipline`
+    );
+    expect(req.request.params.get('from')).toBe('2026-09-01');
+    expect(req.request.params.get('to')).toBe('2026-09-30');
+    req.flush({});
+  });
+
+  it('getOverviewTimeOff GETs /employees/{id}/overview/time-off and sends year only when given', () => {
+    service.getOverviewTimeOff('emp-1').subscribe();
+    const noYear = httpMock.expectOne((r) => r.url === `${environment.apiUrl}/employees/emp-1/overview/time-off`);
+    expect(noYear.request.params.has('year')).toBe(false);
+    noYear.flush({});
+
+    service.getOverviewTimeOff('emp-1', 2025).subscribe();
+    const withYear = httpMock.expectOne((r) => r.url === `${environment.apiUrl}/employees/emp-1/overview/time-off`);
+    expect(withYear.request.params.get('year')).toBe('2025');
+    withYear.flush({});
   });
 
   it('fetches work modes from /work-modes for a legal entity', () => {
@@ -188,6 +254,22 @@ describe('PeopleApiService', () => {
     );
     expect(req.request.method).toBe('GET');
     req.flush({ items: [], totalCount: 0, page: 1, pageSize: 25 });
+  });
+
+  it('lists only my open drafts when mine is set', () => {
+    service.listDrafts({ mine: true, page: 1, pageSize: 50 }).subscribe();
+
+    const req = httpMock.expectOne((r) => r.url === `${environment.apiUrl}/onboarding/drafts` && r.params.get('mine') === 'true');
+    expect(req.request.method).toBe('GET');
+    req.flush({ items: [], totalCount: 0, page: 1, pageSize: 50 });
+  });
+
+  it('cancels a draft with DELETE', () => {
+    service.cancelDraft('draft-9').subscribe();
+
+    const req = httpMock.expectOne(`${environment.apiUrl}/onboarding/drafts/draft-9`);
+    expect(req.request.method).toBe('DELETE');
+    req.flush(null);
   });
 
   it('fetches a single draft by id', () => {

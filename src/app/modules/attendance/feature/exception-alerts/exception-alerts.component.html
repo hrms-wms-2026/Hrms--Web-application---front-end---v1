@@ -1,0 +1,125 @@
+<div class="alerts-page">
+  <header class="alerts-header"><app-breadcrumb-header parentLabel="Attendance" currentLabel="Alerts" icon="time-attendance" /></header>
+
+  <section class="alerts-card" aria-labelledby="alerts-heading">
+    <div class="section-heading">
+      <div>
+        <p class="eyebrow">Review queue</p>
+        <h1 id="alerts-heading">Attendance &amp; activity alerts</h1>
+        <p class="section-sub">Patterns detected for the people you manage. Check the context, then acknowledge, resolve, or escalate to HR.</p>
+      </div>
+      <span class="queue-count">{{ store.totalCount() }} alert(s)</span>
+    </div>
+
+    <div class="filters">
+      <label class="filter-field">
+        <span>Status</span>
+        <select data-testid="alerts-status-filter" [ngModel]="store.statusFilter() ?? ''" (ngModelChange)="onStatusFilter($event)" name="statusFilter">
+          <option value="">All statuses</option>
+          @for (option of statusOptions; track option[0]) { <option [value]="option[0]">{{ option[1] }}</option> }
+        </select>
+      </label>
+      <label class="filter-field">
+        <span>Type</span>
+        <select data-testid="alerts-type-filter" [ngModel]="store.typeFilter() ?? ''" (ngModelChange)="onTypeFilter($event)" name="typeFilter">
+          <option value="">All types</option>
+          @for (option of typeOptions; track option[0]) { <option [value]="option[0]">{{ option[1] }}</option> }
+        </select>
+      </label>
+    </div>
+
+    @if (store.loading() && store.items().length === 0) {
+      <div class="alerts-skeleton" aria-busy="true" aria-label="Loading alerts"></div>
+    } @else if (store.error()) {
+      <div class="error-message" role="alert"><p>{{ store.error() }}</p><app-button type="button" variant="secondary" size="sm" (pressed)="load()">Try again</app-button></div>
+    } @else if (store.items().length === 0) {
+      <p class="empty-copy">No alerts match these filters. You're all caught up.</p>
+    } @else {
+      <div class="alert-list">
+        @for (alert of store.items(); track alert.id) {
+          <article
+            class="alert-item"
+            [attr.data-alert-id]="alert.id"
+            [class.alert-item--highlighted]="alert.id === highlightedId()"
+            [class.alert-item--resolved]="alert.status === 'Resolved'">
+            <div class="alert-item__heading">
+              <div>
+                <h2>{{ alert.employeeName || 'Employee' }}</h2>
+                <p>{{ typeLabel(alert.type) }} · detected {{ formatDateTime(alert.detectedAt) }}</p>
+              </div>
+              <span class="status-pill" [attr.data-status]="alert.status">{{ statusLabel(alert.status) }}</span>
+            </div>
+
+            <p class="alert-description">{{ alert.description }}</p>
+
+            <dl class="alert-timeline">
+              @if (alert.acknowledgedAt) { <div><dt>Acknowledged</dt><dd>{{ formatDateTime(alert.acknowledgedAt) }}</dd></div> }
+              @if (alert.escalatedAt) { <div><dt>Escalated</dt><dd>{{ formatDateTime(alert.escalatedAt) }}</dd></div> }
+              @if (alert.resolvedAt) { <div><dt>Resolved</dt><dd>{{ formatDateTime(alert.resolvedAt) }}</dd></div> }
+              @if (alert.resolutionNote) { <div class="alert-timeline__note"><dt>Note</dt><dd>{{ alert.resolutionNote }}</dd></div> }
+            </dl>
+
+            @if (evidenceOpenId() === alert.id) {
+              <app-exception-evidence-panel [alertId]="alert.id" />
+            }
+
+            <div class="alert-item__actions">
+              <button
+                type="button"
+                class="evidence-toggle"
+                data-testid="evidence-toggle"
+                [attr.aria-expanded]="evidenceOpenId() === alert.id"
+                (click)="toggleEvidence(alert)">
+                {{ evidenceOpenId() === alert.id ? 'Hide evidence' : 'View evidence' }}
+              </button>
+              @if (canResolve(alert)) {
+                @if (canAcknowledge(alert)) {
+                  <app-button type="button" variant="secondary" size="sm" [disabled]="store.actionLoading()" (pressed)="acknowledge(alert)">Acknowledge</app-button>
+                }
+                @if (canEscalate(alert)) {
+                  <app-button type="button" variant="secondary" size="sm" [disabled]="store.actionLoading()" (pressed)="openAction(alert, 'escalate')">Escalate to HR</app-button>
+                }
+                <app-button type="button" size="sm" [disabled]="store.actionLoading()" (pressed)="openAction(alert, 'resolve')">Resolve</app-button>
+              }
+            </div>
+          </article>
+        }
+      </div>
+
+      @if (totalPages() > 1) {
+        <nav class="pager" aria-label="Alert pages">
+          <app-button type="button" variant="secondary" size="sm" [disabled]="store.page() <= 1 || store.loading()" (pressed)="load(store.page() - 1)">Previous</app-button>
+          <span>Page {{ store.page() }} of {{ totalPages() }}</span>
+          <app-button type="button" variant="secondary" size="sm" [disabled]="store.page() >= totalPages() || store.loading()" (pressed)="load(store.page() + 1)">Next</app-button>
+        </nav>
+      }
+    }
+  </section>
+
+  @if (selected(); as alert) {
+    <app-modal
+      [open]="true"
+      [title]="pendingAction() === 'escalate' ? 'Escalate alert to HR' : 'Resolve alert'"
+      size="md"
+      [closeOnBackdropClick]="false"
+      (closed)="closeAction()">
+      <div class="action-panel">
+        <div class="action-summary">
+          <strong>{{ alert.employeeName || 'Employee' }}</strong>
+          <span>{{ typeLabel(alert.type) }}</span>
+          <p>{{ alert.description }}</p>
+        </div>
+        <label class="form-field">
+          <span>{{ pendingAction() === 'escalate' ? 'Why does HR need to look at this?' : 'What did you find?' }} <small>(optional)</small></span>
+          <textarea rows="4" maxlength="1000" name="note" [ngModel]="note()" (ngModelChange)="note.set($event)"></textarea>
+        </label>
+        <div class="action-buttons">
+          <app-button type="button" variant="secondary" [disabled]="store.actionLoading()" (pressed)="closeAction()">Cancel</app-button>
+          <app-button type="button" [loading]="store.actionLoading()" [disabled]="store.actionLoading()" (pressed)="confirmAction()">
+            {{ pendingAction() === 'escalate' ? 'Escalate to HR' : 'Resolve' }}
+          </app-button>
+        </div>
+      </div>
+    </app-modal>
+  }
+</div>

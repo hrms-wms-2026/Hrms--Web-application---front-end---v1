@@ -13,6 +13,9 @@ import { TaskBoardStore } from '../../state/task-board.store';
 import { CurrentEmployeeStore } from '../../state/current-employee.store';
 import { TaskCommentApiService } from '../../data-access/task-comment-api.service';
 import { NotificationService } from '../../../../core/services/notification.service';
+import { UnsavedChangesService } from '../../../../shared/services/unsaved-changes.service';
+import { DraftsStore } from '../../../../shared/state/drafts.store';
+import { TaskDraftApiService } from '../../data-access/task-draft-api.service';
 
 function baseCommentApi(): Record<string, ReturnType<typeof vi.fn>> {
   return {
@@ -60,6 +63,24 @@ function baseApi(): Record<string, ReturnType<typeof vi.fn>> {
   };
 }
 
+const taskDraftApiStub = {
+  get: vi.fn(),
+  create: vi.fn(),
+  update: vi.fn(),
+  remove: vi.fn()
+};
+const draftsStoreStub = { load: vi.fn() };
+
+beforeEach(() => {
+  taskDraftApiStub.get.mockReset();
+  taskDraftApiStub.create.mockReset().mockImplementation((projectId: string, title: string) =>
+    of({ id: 'd-new', projectId, title, payload: {}, updatedAt: '' }));
+  taskDraftApiStub.update.mockReset().mockImplementation((id: string, projectId: string, title: string) =>
+    of({ id, projectId, title, payload: {}, updatedAt: '' }));
+  taskDraftApiStub.remove.mockReset().mockReturnValue(of(undefined));
+  draftsStoreStub.load.mockReset();
+});
+
 async function flush(fixture: ComponentFixture<unknown>): Promise<void> {
   fixture.detectChanges();
   await fixture.whenStable();
@@ -103,7 +124,9 @@ describe('TaskFormModalComponent - edit mode', () => {
           }
         },
         { provide: ProjectDetailStore, useValue: { milestones, loadProjectMembers: vi.fn().mockResolvedValue(undefined), projectMembers: () => members, project: () => null } },
-        { provide: CurrentEmployeeStore, useValue: { id: signal('e1'), ensureLoaded: vi.fn() } }
+        { provide: CurrentEmployeeStore, useValue: { id: signal('e1'), ensureLoaded: vi.fn() } },
+        { provide: TaskDraftApiService, useValue: taskDraftApiStub },
+        { provide: DraftsStore, useValue: draftsStoreStub }
       ]
     }).compileComponents();
 
@@ -577,7 +600,9 @@ describe('TaskFormModalComponent - assignee display outside milestone scope', ()
             })
           }
         },
-        { provide: CurrentEmployeeStore, useValue: { id: signal('e1'), ensureLoaded: vi.fn() } }
+        { provide: CurrentEmployeeStore, useValue: { id: signal('e1'), ensureLoaded: vi.fn() } },
+        { provide: TaskDraftApiService, useValue: taskDraftApiStub },
+        { provide: DraftsStore, useValue: draftsStoreStub }
       ]
     }).compileComponents();
 
@@ -600,7 +625,7 @@ describe('TaskFormModalComponent - create mode', () => {
   let api: Record<string, ReturnType<typeof vi.fn>>;
   let createTask: ReturnType<typeof vi.fn>;
 
-  async function build(opts: { module?: string; sprint?: string; isOwner?: boolean } = {}): Promise<void> {
+  async function build(opts: { module?: string; sprint?: string; isOwner?: boolean; draftId?: string } = {}): Promise<void> {
     api = baseApi();
     createTask = vi.fn().mockResolvedValue({ id: 't-new', objectiveId: 'o1' });
 
@@ -614,9 +639,11 @@ describe('TaskFormModalComponent - create mode', () => {
         { provide: SprintApiService, useValue: { getByProject: vi.fn().mockReturnValue(of([
           { id: 'sp1', projectId: 'p1', name: 'Sprint 1', startDate: '2026-09-01', endDate: '2026-09-14', status: 'active', completedAt: null, achievedAt: null, canManage: true }
         ])) } },
-        { provide: TaskBoardStore, useValue: { createTask, error: () => null } },
+        { provide: TaskBoardStore, useValue: { createTask, createSubtask: vi.fn().mockResolvedValue({}), error: () => null } },
         { provide: ProjectDetailStore, useValue: { milestones: signal([]), loadProjectMembers: vi.fn().mockResolvedValue(undefined), projectMembers: () => [], project: () => null } },
-        { provide: CurrentEmployeeStore, useValue: { id: signal('e1'), ensureLoaded: vi.fn() } }
+        { provide: CurrentEmployeeStore, useValue: { id: signal('e1'), ensureLoaded: vi.fn() } },
+        { provide: TaskDraftApiService, useValue: taskDraftApiStub },
+        { provide: DraftsStore, useValue: draftsStoreStub }
       ]
     }).compileComponents();
 
@@ -625,6 +652,7 @@ describe('TaskFormModalComponent - create mode', () => {
     fixture.componentRef.setInput('mode', 'create');
     if (opts.module) fixture.componentRef.setInput('prefillModuleId', opts.module);
     if (opts.sprint) fixture.componentRef.setInput('prefillSprintId', opts.sprint);
+    if (opts.draftId) fixture.componentRef.setInput('draftId', opts.draftId);
     fixture.componentRef.setInput('open', true);
     await flush(fixture);
   }
@@ -633,6 +661,134 @@ describe('TaskFormModalComponent - create mode', () => {
     await build();
     expect(fixture.componentInstance.title()).toBe('');
     expect(api['getTaskById']).not.toHaveBeenCalled();
+  });
+
+  const savedDraft = {
+    id: 'd1', projectId: 'p1', title: 'Saved title', updatedAt: '',
+    payload: {
+      version: 1, description: '<p>hi</p>', objectiveId: 'o1', sprintId: '', categoryId: 'c1', statusId: '',
+      priority: 'high', dueDate: '2026-10-01', estimatedHours: 3, storyPoints: null, assigneeEmployeeId: '',
+      subtasks: [{ id: 's1', title: 'Sub' }],
+      attachments: [{ fileId: 'f1', name: 'x.pdf', sizeBytes: 10 }], attachmentFileIds: ['f1']
+    }
+  };
+  const settle = () => new Promise<void>((resolve) => setTimeout(resolve));
+
+  it('closing an untouched create form closes immediately (prefills are not changes)', async () => {
+    await build({ module: 'o1' });
+    const closedSpy = vi.fn();
+    fixture.componentInstance.closed.subscribe(closedSpy);
+
+    fixture.componentInstance.onCancel();
+    await settle();
+
+    expect(closedSpy).toHaveBeenCalled();
+    expect(TestBed.inject(UnsavedChangesService).prompt()).toBeNull();
+  });
+
+  it('closing after typing asks; Save draft creates the draft, refreshes the bar and closes', async () => {
+    await build();
+    const closedSpy = vi.fn();
+    fixture.componentInstance.closed.subscribe(closedSpy);
+    fixture.componentInstance.title.set('Fix login');
+
+    fixture.componentInstance.onCancel();
+    const unsaved = TestBed.inject(UnsavedChangesService);
+    await settle();
+    expect(unsaved.prompt()?.canSaveDraft).toBe(true);
+    unsaved.choose('save');
+    await settle();
+
+    expect(taskDraftApiStub.create).toHaveBeenCalledWith('p1', 'Fix login', expect.objectContaining({ version: 1 }));
+    expect(draftsStoreStub.load).toHaveBeenCalled();
+    expect(closedSpy).toHaveBeenCalled();
+  });
+
+  it('Keep editing leaves the modal open', async () => {
+    await build();
+    const closedSpy = vi.fn();
+    fixture.componentInstance.closed.subscribe(closedSpy);
+    fixture.componentInstance.title.set('Typed');
+
+    fixture.componentInstance.onCancel();
+    await settle();
+    TestBed.inject(UnsavedChangesService).choose('keep');
+    await settle();
+
+    expect(closedSpy).not.toHaveBeenCalled();
+    expect(taskDraftApiStub.create).not.toHaveBeenCalled();
+  });
+
+  it('Discard deletes pending attachments that are not part of a saved draft', async () => {
+    await build();
+    fixture.componentInstance.attachedFiles.set([{ fileId: 'f-new', name: 'a.png', sizeBytes: 1 }]);
+
+    fixture.componentInstance.onCancel();
+    await settle();
+    TestBed.inject(UnsavedChangesService).choose('discard');
+    await settle();
+
+    expect(api['deletePendingFile']).toHaveBeenCalledWith('f-new');
+  });
+
+  it('opening with draftId hydrates the form and is not dirty until edited', async () => {
+    taskDraftApiStub.get.mockReturnValue(of(savedDraft));
+    await build({ draftId: 'd1' });
+    const comp = fixture.componentInstance;
+    const closedSpy = vi.fn();
+    comp.closed.subscribe(closedSpy);
+
+    expect(comp.title()).toBe('Saved title');
+    expect(comp.priority()).toBe('high');
+    expect(comp.draftSubtasks().map((st) => st.title)).toEqual(['Sub']);
+    expect(comp.attachedFiles().map((f) => f.fileId)).toEqual(['f1']);
+
+    comp.onCancel();
+    await settle();
+
+    expect(closedSpy).toHaveBeenCalled();
+    expect(api['deletePendingFile']).not.toHaveBeenCalledWith('f1');
+  });
+
+  it('saving again from a resumed draft updates instead of creating', async () => {
+    taskDraftApiStub.get.mockReturnValue(of(savedDraft));
+    await build({ draftId: 'd1' });
+    fixture.componentInstance.title.set('Changed');
+
+    fixture.componentInstance.onCancel();
+    await settle();
+    TestBed.inject(UnsavedChangesService).choose('save');
+    await settle();
+
+    expect(taskDraftApiStub.update).toHaveBeenCalledWith('d1', 'p1', 'Changed', expect.anything());
+    expect(taskDraftApiStub.create).not.toHaveBeenCalled();
+  });
+
+  it('creating the task deletes the draft it came from', async () => {
+    taskDraftApiStub.get.mockReturnValue(of(savedDraft));
+    await build({ draftId: 'd1' });
+
+    await fixture.componentInstance.submitCreateWithAction('create_and_close');
+    await settle();
+
+    expect(createTask).toHaveBeenCalled();
+    expect(taskDraftApiStub.update).not.toHaveBeenCalled();
+    expect(taskDraftApiStub.remove).toHaveBeenCalledWith('d1');
+    expect(draftsStoreStub.load).toHaveBeenCalled();
+  });
+
+  it('a create sent for approval detaches the draft attachments before deleting the draft', async () => {
+    taskDraftApiStub.get.mockReturnValue(of(savedDraft));
+    await build({ draftId: 'd1', isOwner: false });
+    createTask.mockResolvedValue({ approvalRequestId: 'r1' });
+
+    await fixture.componentInstance.submitCreateWithAction('create_and_close');
+    await settle();
+
+    expect(createTask).toHaveBeenCalled();
+    expect(taskDraftApiStub.update).toHaveBeenCalledWith(
+      'd1', 'p1', 'Saved title', expect.objectContaining({ attachments: [], attachmentFileIds: [] }));
+    expect(taskDraftApiStub.remove).toHaveBeenCalledWith('d1');
   });
 
   it('uses the shared click-to-edit, borderless description in create mode', async () => {
@@ -871,6 +1027,9 @@ describe('TaskFormModalComponent - create mode', () => {
     await build();
     fixture.componentInstance.attachedFiles.set([{ fileId: 'f1', name: 'a.png', sizeBytes: 100 }]);
     fixture.componentInstance.onBackdrop();
+    await new Promise<void>((resolve) => setTimeout(resolve));
+    TestBed.inject(UnsavedChangesService).choose('discard');
+    await new Promise<void>((resolve) => setTimeout(resolve));
 
     expect(api['deletePendingFile']).toHaveBeenCalledWith('f1');
   });
@@ -943,7 +1102,9 @@ describe('TaskFormModalComponent - subtasks section', () => {
         { provide: SprintApiService, useValue: { getByProject: vi.fn().mockReturnValue(of([])) } },
         { provide: TaskBoardStore, useValue: boardStore },
         { provide: ProjectDetailStore, useValue: { milestones: signal([{ objectiveId: 'o1', isOwner: true, isEffectiveOwner: true }]), loadProjectMembers: vi.fn().mockResolvedValue(undefined), projectMembers: () => [{ employeeId: 'e1', name: 'Ann', avatarUrl: null }], project: () => null } },
-        { provide: CurrentEmployeeStore, useValue: { id: signal('e1'), ensureLoaded: vi.fn() } }
+        { provide: CurrentEmployeeStore, useValue: { id: signal('e1'), ensureLoaded: vi.fn() } },
+        { provide: TaskDraftApiService, useValue: taskDraftApiStub },
+        { provide: DraftsStore, useValue: draftsStoreStub }
       ]
     }).compileComponents();
 
