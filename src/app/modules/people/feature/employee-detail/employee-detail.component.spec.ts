@@ -61,6 +61,13 @@ describe('EmployeeDetailComponent', () => {
       changePosition: vi.fn().mockReturnValue(of({ pendingApproval: false })),
       getJobJourney: vi.fn().mockReturnValue(of([])),
       getWorkGraph: vi.fn().mockReturnValue(of({ nodes: [], links: [], hiddenTaskCount: 0 })),
+      getOverviewAttendance: vi.fn().mockReturnValue(
+        of({ from: '2026-09-01', to: '2026-09-30', workingDays: 0, present: 0, late: 0, missingClockOuts: 0, leaveDays: 0, days: [] })
+      ),
+      getOverviewAttendanceDiscipline: vi.fn().mockReturnValue(
+        of({ from: '2026-09-01', to: '2026-09-30', lateClockIns: 0, earlyClockOuts: 0, missingClockOuts: 0, overBreakDays: 0, overBreakMinutes: 0, locationTrackingEnabled: false, locationViolations: null })
+      ),
+      getOverviewTimeOff: vi.fn().mockReturnValue(of({ year: 2026, balances: [], nextLeave: null })),
       ...apiOverrides
     };
     const notificationsStub = { success: vi.fn(), error: vi.fn() };
@@ -135,21 +142,40 @@ describe('EmployeeDetailComponent', () => {
     expect(fixture.nativeElement.textContent).toContain('Ada Lovelace');
   });
 
-  it('renders the Employment tab first and switches to the Personal tab', () => {
+  it('renders the Overview tab first, then Employment and Personal on request', () => {
     const { fixture } = setup(detailFixture);
     fixture.detectChanges();
+    const el = fixture.nativeElement as HTMLElement;
 
-    expect(fixture.componentInstance.activeTab()).toBe('employment');
-    expect(fixture.nativeElement.querySelector('app-employee-employment-tab')).toBeTruthy();
-    expect(fixture.nativeElement.querySelector('app-employee-job-info')).toBeTruthy();
-    expect(fixture.nativeElement.querySelector('app-employee-personal-tab')).toBeFalsy();
+    expect(fixture.componentInstance.activeTab()).toBe('overview');
+    expect(el.querySelector('app-employee-overview-tab')).toBeTruthy();
+    // Employment stays mounted (hidden) so the Work Network is not reloaded on tab switches.
+    expect(el.querySelector('app-employee-employment-tab')?.hasAttribute('hidden')).toBe(true);
+    expect(el.querySelector('app-employee-personal-tab')).toBeFalsy();
+
+    fixture.componentInstance.activeTab.set('employment');
+    fixture.detectChanges();
+    expect(el.querySelector('app-employee-employment-tab')?.hasAttribute('hidden')).toBe(false);
+    expect(el.querySelector('app-employee-job-info')).toBeTruthy();
+    expect(el.querySelector('app-employee-overview-tab')).toBeFalsy();
 
     fixture.componentInstance.activeTab.set('personal');
     fixture.detectChanges();
-    expect(fixture.nativeElement.querySelector('app-employee-personal-tab')).toBeTruthy();
-    expect(fixture.nativeElement.querySelector('app-employee-personal-info')).toBeTruthy();
-    expect(fixture.nativeElement.querySelector('app-employee-emergency-contacts')).toBeTruthy();
-    expect(fixture.nativeElement.querySelector('app-employee-employment-tab')?.hasAttribute('hidden')).toBe(true);
+    expect(el.querySelector('app-employee-personal-tab')).toBeTruthy();
+    expect(el.querySelector('app-employee-personal-info')).toBeTruthy();
+    expect(el.querySelector('app-employee-emergency-contacts')).toBeTruthy();
+    expect(el.querySelector('app-employee-employment-tab')?.hasAttribute('hidden')).toBe(true);
+  });
+
+  it('lists the tabs in the order Overview, Employment, Personal', () => {
+    const { fixture } = setup(detailFixture);
+    fixture.detectChanges();
+
+    const labels = Array.from(
+      fixture.nativeElement.querySelectorAll('nav[aria-label="Employee Detail Sections"] button')
+    ).map((b) => (b as HTMLElement).textContent?.trim());
+
+    expect(labels).toEqual(['Overview', 'Employment', 'Personal']);
   });
 
   it('does not reload the work graph when switching to Personal and back to Employment', () => {

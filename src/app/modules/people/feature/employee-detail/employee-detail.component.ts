@@ -24,13 +24,15 @@ import {
 } from '../../utils/employee-view.utils';
 import { EmployeeEmploymentTabComponent } from './employment-tab.component';
 import { EmployeePersonalTabComponent } from './personal-tab.component';
+import { EmployeeOverviewTabComponent } from './overview-tab.component';
 
-type DetailTab = 'employment' | 'personal';
+type DetailTab = 'overview' | 'employment' | 'personal';
 
 /**
  * Employee detail page shell backed by GET /api/v1/employees/{id}/detail: header (identity, key
  * facts, Transfer/Promote/Offboarding actions, resend-invitation), today's attendance strip, and
- * two tabs - Employment (job details, Work Network, history) and Personal
+ * three tabs - Overview (per-widget attendance/discipline/time-off), Employment (job details,
+ * Work Network, history) and Personal
  * (personal info, emergency contacts, payroll when the server includes it).
  */
 @Component({
@@ -45,7 +47,8 @@ type DetailTab = 'employment' | 'personal';
     ChangePositionModalComponent,
     PopoverComponent,
     EmployeeEmploymentTabComponent,
-    EmployeePersonalTabComponent
+    EmployeePersonalTabComponent,
+    EmployeeOverviewTabComponent
   ],
   template: `
     @if (loading()) {
@@ -179,6 +182,9 @@ type DetailTab = 'employment' | 'personal';
         </nav>
       </div>
 
+      @if (activeTab() === 'overview') {
+        <app-employee-overview-tab [employeeId]="employee.id" />
+      }
       <app-employee-employment-tab
         [hidden]="activeTab() !== 'employment'"
         [employee]="employee"
@@ -266,10 +272,11 @@ export class EmployeeDetailComponent {
   readonly changePositionOpen = signal(false);
   readonly changePositionReason = signal<'Promotion' | 'Transfer'>('Promotion');
   readonly tabs: readonly { readonly id: DetailTab; readonly label: string }[] = [
+    { id: 'overview', label: 'Overview' },
     { id: 'employment', label: 'Employment' },
     { id: 'personal', label: 'Personal' }
   ];
-  readonly activeTab = signal<DetailTab>('employment');
+  readonly activeTab = signal<DetailTab>('overview');
   readonly jobJourney = signal<readonly PositionHistoryEntryResponse[]>([]);
 
   readonly attendanceWarningLabel = attendanceWarningLabel;
