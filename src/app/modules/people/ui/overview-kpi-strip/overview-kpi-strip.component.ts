@@ -1,54 +1,136 @@
-import { ChangeDetectionStrategy, Component, input } from '@angular/core';
+import { ChangeDetectionStrategy, Component, input, output } from '@angular/core';
 import { Delta } from '../../utils/employee-overview.utils';
 import { KpiCard, KpiTone } from '../../utils/overview-kpi-cards';
 import { DeltaBadgeComponent } from '../delta-badge/delta-badge.component';
+
+type KpiIcon = 'check' | 'alert' | 'calendar' | 'target' | 'clock' | 'pin' | 'inbox' | 'activity';
+
+/** Colours for one card: tinted icon tile, value and detail line. */
+interface KpiPalette {
+  readonly tile: string;
+  readonly value: string;
+  readonly detail: string;
+}
+
+const ICONS: Record<string, KpiIcon> = {
+  tasks_completed: 'check',
+  overdue_tasks: 'alert',
+  days_attended: 'calendar',
+  absent_days: 'calendar',
+  leave_days: 'calendar',
+  on_time_delivery: 'target',
+  late_clock_ins: 'clock',
+  missing_clock_outs: 'clock',
+  early_clock_outs: 'clock',
+  short_hours_days: 'clock',
+  over_break: 'clock',
+  off_schedule_work: 'clock',
+  location_violations: 'pin',
+  pending_approvals: 'inbox',
+  idle_activity_alerts: 'activity',
+  monitoring_exceptions: 'activity'
+};
+
+const TONE_PALETTES: Record<KpiTone, KpiPalette> = {
+  critical: { tile: 'bg-red-50 text-red-600', value: 'text-red-600', detail: 'text-red-600' },
+  warning: { tile: 'bg-amber-50 text-amber-600', value: 'text-amber-600', detail: 'text-amber-600' },
+  info: { tile: 'bg-blue-50 text-blue-600', value: 'text-blue-600', detail: 'text-blue-600' },
+  baseline: { tile: 'bg-emerald-50 text-emerald-600', value: 'text-emerald-600', detail: 'text-emerald-600' }
+};
+
+/** Baseline cards are told apart by colour; signal cards always take their severity colour. */
+const BASELINE_PALETTES: Record<string, KpiPalette> = {
+  days_attended: { tile: 'bg-blue-50 text-blue-600', value: 'text-blue-600', detail: 'text-blue-600' },
+  on_time_delivery: { tile: 'bg-violet-50 text-violet-600', value: 'text-slate-900', detail: 'text-emerald-600' },
+  leave_days: { tile: 'bg-sky-50 text-sky-600', value: 'text-sky-600', detail: 'text-slate-500' }
+};
 
 @Component({
   selector: 'app-overview-kpi-strip',
   standalone: true,
   imports: [DeltaBadgeComponent],
   template: `
-    <div class="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+    <div
+      class="grid rounded-2xl border border-slate-200/80 bg-white shadow-xs sm:grid-cols-2 xl:grid-cols-4"
+      data-testid="kpi-strip"
+    >
       @for (card of cards(); track card.key; let i = $index) {
+        @let tone = palette(card);
         <div
           data-testid="kpi-card"
-          class="rounded-2xl border p-4 sm:p-5 flex min-h-36 flex-col justify-between shadow-xs"
-          [class]="toneClass[card.tone]"
+          class="kpi-cell flex items-center gap-3 rounded-2xl px-4 py-3 transition-colors"
+          [attr.role]="card.tone === 'baseline' ? null : 'button'"
+          [attr.tabindex]="card.tone === 'baseline' ? null : 0"
+          [class.kpi-cell--clickable]="card.tone !== 'baseline'"
+          (click)="select(card)"
+          (keydown.enter)="select(card)"
         >
-          <div class="flex items-start justify-between gap-3">
-            <span
-              class="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-white/70 text-sm font-bold"
-              aria-hidden="true"
-            >●</span>
-            <div class="text-right text-2xl font-bold tracking-tight sm:text-3xl">
-              {{ card.value }}{{ card.suffix }}
-              @if (card.denominator !== null) {
-                <span class="text-lg font-normal text-slate-400">/{{ card.denominator }}</span>
+          <span
+            data-testid="kpi-icon"
+            [class]="'flex h-10 w-10 shrink-0 items-center justify-center rounded-xl ' + tone.tile"
+            aria-hidden="true"
+          >
+            <svg class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              @switch (icon(card)) {
+                @case ('check') { <circle cx="12" cy="12" r="9"></circle><path d="m8 12 3 3 5-6"></path> }
+                @case ('alert') { <circle cx="12" cy="12" r="9"></circle><path d="M12 7.5v5.5M12 16.5h.01"></path> }
+                @case ('calendar') { <rect x="3.5" y="5" width="17" height="15.5" rx="2"></rect><path d="M16 3v4M8 3v4M3.5 10h17M8 14h.01M12 14h.01M16 14h.01M8 17h.01M12 17h.01"></path> }
+                @case ('target') { <circle cx="12" cy="12" r="9"></circle><circle cx="12" cy="12" r="5"></circle><circle cx="12" cy="12" r="1"></circle> }
+                @case ('pin') { <path d="M12 21s-7-6.2-7-11.5a7 7 0 0 1 14 0C19 14.8 12 21 12 21z"></path><circle cx="12" cy="9.5" r="2.5"></circle> }
+                @case ('inbox') { <path d="M22 12h-6l-2 3h-4l-2-3H2"></path><path d="M5.45 5.11 2 12v6a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-6l-3.45-6.89A2 2 0 0 0 16.76 4H7.24a2 2 0 0 0-1.79 1.11z"></path> }
+                @case ('activity') { <path d="M22 12h-4l-3 9L9 3l-3 9H2"></path> }
+                @default { <circle cx="12" cy="12" r="9"></circle><path d="M12 7v5l3 2"></path> }
               }
+            </svg>
+          </span>
+
+          <div class="min-w-0 flex-1">
+            <div class="flex items-baseline gap-1.5">
+              <span [class]="'text-xl font-bold leading-none tracking-tight ' + tone.value" data-testid="kpi-value">
+                {{ card.value }}{{ card.suffix }}
+              </span>
+              @if (card.denominator !== null) {
+                <span class="text-sm font-medium text-slate-400">/{{ card.denominator }}</span>
+              }
+              <app-delta-badge class="ml-auto" [delta]="deltas()[i] ?? null" [against]="against()" />
             </div>
-          </div>
-          <div class="mt-3">
-            <span class="block text-sm font-medium text-slate-700">{{ card.label }}</span>
-            <div class="mt-0.5 flex items-center justify-between gap-2">
-              <span class="text-xs font-semibold">{{ card.detail }}</span>
-              <app-delta-badge [delta]="deltas()[i] ?? null" [against]="against()" />
-            </div>
+            <p class="mt-1 truncate text-xs font-medium text-slate-700">{{ card.label }}</p>
+            <p [class]="'truncate text-xs ' + tone.detail" [title]="card.detail">{{ card.detail }}</p>
           </div>
         </div>
       }
     </div>
   `,
+  // Hairline dividers between cells: vertical on wide screens, horizontal when the strip stacks.
+  styles: [`
+    .kpi-cell { position: relative; }
+    .kpi-cell--clickable { cursor: pointer; }
+    .kpi-cell--clickable:hover { background: rgb(248 250 252); }
+    .kpi-cell + .kpi-cell::before {
+      content: ''; position: absolute; background: rgb(226 232 240);
+      left: 1rem; right: 1rem; top: 0; height: 1px;
+    }
+    @media (min-width: 1280px) {
+      .kpi-cell + .kpi-cell::before { left: 0; right: auto; top: 0.875rem; bottom: 0.875rem; width: 1px; height: auto; }
+    }
+  `],
   changeDetection: ChangeDetectionStrategy.OnPush
 })
 export class OverviewKpiStripComponent {
   readonly cards = input.required<readonly KpiCard[]>();
   readonly deltas = input<readonly (Delta | null)[]>([]);
   readonly against = input<string | null>(null);
+  readonly cardSelected = output<string>();
 
-  readonly toneClass: Record<KpiTone, string> = {
-    critical: 'bg-red-50 border-red-100 text-red-600',
-    warning: 'bg-amber-50 border-amber-100 text-amber-600',
-    info: 'bg-blue-50 border-blue-100 text-blue-600',
-    baseline: 'bg-emerald-50 border-emerald-100 text-emerald-600'
-  };
+  select(card: KpiCard): void {
+    if (card.tone !== 'baseline') this.cardSelected.emit(card.key);
+  }
+
+  palette(card: KpiCard): KpiPalette {
+    return (card.tone === 'baseline' ? BASELINE_PALETTES[card.key] : undefined) ?? TONE_PALETTES[card.tone];
+  }
+
+  icon(card: KpiCard): KpiIcon | null {
+    return ICONS[card.key] ?? (card.tone === 'baseline' ? null : 'alert');
+  }
 }

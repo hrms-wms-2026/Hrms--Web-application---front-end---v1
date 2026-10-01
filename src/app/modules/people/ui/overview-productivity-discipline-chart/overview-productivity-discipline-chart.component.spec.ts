@@ -86,6 +86,16 @@ describe('OverviewProductivityDisciplineChartComponent', () => {
     expect(el.querySelector('[data-testid="correlation-insight"]')).toBeTruthy();
   });
 
+  it('keeps the percentage grid inside the bar plot and the week labels outside it', () => {
+    const { el } = setup();
+    const plot = el.querySelector('[data-testid="weekly-chart-plot"]')!;
+
+    expect(plot.querySelector('[data-testid="chart-grid-100"]')).toBeTruthy();
+    expect(plot.querySelector('[data-testid="chart-grid-0"]')).toBeTruthy();
+    expect(plot.querySelector('[data-testid="chart-x-labels"]')).toBeNull();
+    expect(el.querySelector('[data-testid="chart-x-labels"]')).toBeTruthy();
+  });
+
   it('calls all required APIs to construct correlation', () => {
     const { api } = setup();
 

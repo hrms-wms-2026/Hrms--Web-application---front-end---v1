@@ -12,6 +12,37 @@ export interface EmployeeAttendanceDay {
   readonly status: AttendanceDayStatus;
 }
 
+/** One day on the Attendance card's day list. Mirrors HRMS-Backend-v1 EmployeeAttendanceDayDetail. */
+export interface EmployeeAttendanceDayDetail {
+  readonly date: string;
+  readonly status: AttendanceDayStatus;
+  readonly expectedWorkingDay: boolean;
+  readonly holidayName: string | null;
+  /** 'HH:mm' in the employee's attendance timezone. */
+  readonly scheduledStart: string | null;
+  readonly scheduledEnd: string | null;
+  readonly clockInAt: string | null;
+  readonly clockOutAt: string | null;
+  readonly clockInLocal: string | null;
+  readonly clockOutLocal: string | null;
+  readonly workedMinutes: number;
+  readonly requiredWorkMinutes: number | null;
+  readonly breakMinutes: number;
+  readonly lateMinutes: number;
+  readonly earlyLeaveMinutes: number;
+  readonly shortHours: boolean;
+  readonly overBreakMinutes: number;
+  readonly workMode: string | null;
+}
+
+/** Days up to today, newest first. */
+export interface EmployeeAttendanceDaysResponse {
+  readonly from: string;
+  readonly to: string;
+  readonly timezone: string;
+  readonly days: readonly EmployeeAttendanceDayDetail[];
+}
+
 /** Mirrors HRMS-Backend-v1 EmployeeAttendanceOverviewResponse. */
 export interface EmployeeAttendanceOverviewResponse {
   readonly from: string;
@@ -67,6 +98,34 @@ export interface EmployeeTimeOffResponse {
   readonly year: number;
   readonly balances: readonly EmployeeTimeOffBalance[];
   readonly nextLeave: EmployeeUpcomingLeave | null;
+}
+
+export type EmployeeWorkTaskBucket = 'overdue' | 'not_started' | 'in_progress' | 'completed';
+
+/** One task behind the Work card. Mirrors HRMS-Backend-v1 EmployeeWorkTaskItem. */
+export interface EmployeeWorkTaskItem {
+  readonly taskId: string;
+  readonly shortId: string;
+  readonly title: string;
+  readonly bucket: EmployeeWorkTaskBucket;
+  /** critical | high | medium | low */
+  readonly priority: string;
+  readonly statusName: string;
+  readonly statusColor: string;
+  readonly dueDate: string | null;
+  readonly daysOverdue: number;
+  readonly isCarriedOver: boolean;
+  readonly projectId: string;
+  readonly projectName: string;
+  readonly objectiveId: string;
+  readonly moduleName: string;
+}
+
+/** Already ordered: overdue, not started, in progress, completed; then priority; then due date. */
+export interface EmployeeWorkTasksResponse {
+  readonly from: string;
+  readonly to: string;
+  readonly items: readonly EmployeeWorkTaskItem[];
 }
 
 /** Mirrors HRMS-Backend-v1 EmployeeWorkOverviewResponse. onTimeRatePercent is null when no completed task has both dates. */
@@ -167,4 +226,104 @@ export interface EmployeeOverviewSignalsResponse {
   readonly from: string;
   readonly to: string;
   readonly signals: readonly EmployeeSignal[];
+}
+
+export type EmployeeSignalItemKind = 'attendance_day' | 'monitoring_alert' | 'exception_case' | 'task' | 'approval';
+
+export interface EmployeeSignalItem {
+  readonly kind: EmployeeSignalItemKind;
+  readonly id: string;
+  readonly date: string;
+  readonly title: string;
+  readonly subtitle: string | null;
+  readonly occurredAt: string | null;
+  readonly projectId: string | null;
+  readonly projectName: string | null;
+  readonly dueDate: string | null;
+  readonly approvalKind: string | null;
+  readonly requestedAt: string | null;
+  readonly approverName: string | null;
+  /** Task items only: due before the selected period and still unfinished when it began. */
+  readonly carriedOver?: boolean | null;
+  /** Task items only: whole days past due as of the period end (or today). */
+  readonly daysOverdue?: number | null;
+}
+
+export interface EmployeeSignalItemsResponse {
+  readonly key: string;
+  readonly total: number;
+  readonly timezone: string | null;
+  readonly items: readonly EmployeeSignalItem[];
+}
+
+export type EmployeeUpcomingKind = 'calendar' | 'leave' | 'release';
+
+/**
+ * All-day items (leave, releases) carry UTC-based timestamps; calendar events are real instants.
+ * The optional fields feed the item detail popup: calendar events fill description/meetingLink/
+ * organizerName/timezone/participants (display names), approved leave fills hours.
+ */
+export interface EmployeeUpcomingItem {
+  readonly kind: EmployeeUpcomingKind;
+  readonly title: string;
+  readonly start: string;
+  readonly end: string | null;
+  readonly isAllDay: boolean;
+  readonly detail: string | null;
+  readonly description?: string | null;
+  readonly meetingLink?: string | null;
+  readonly organizerName?: string | null;
+  readonly timezone?: string | null;
+  readonly hours?: number | null;
+  readonly participants?: readonly string[] | null;
+}
+
+/** Mirrors HRMS-Backend-v1 EmployeeUpcomingResponse: the earliest `limit` items, and the window's total count. */
+export interface EmployeeUpcomingResponse {
+  readonly from: string;
+  readonly to: string;
+  readonly items: readonly EmployeeUpcomingItem[];
+  readonly total: number;
+}
+
+/** Bypassed tasks count in total but not in completed. */
+export interface EmployeeChecklistGroup {
+  readonly name: string;
+  readonly lifecycleType: string;
+  readonly completed: number;
+  readonly bypassed: number;
+  readonly total: number;
+}
+
+export interface EmployeeChecklistOverviewResponse {
+  readonly groups: readonly EmployeeChecklistGroup[];
+}
+
+/** kind: joined | probation_completed | position_changed | manager_changed | leave_approved | checklist_completed | terminated. date is a UTC YYYY-MM-DD. */
+export interface EmployeeHistoryEvent {
+  readonly kind: string;
+  readonly title: string;
+  readonly detail: string | null;
+  readonly date: string;
+}
+
+export interface EmployeeHistoryResponse {
+  readonly events: readonly EmployeeHistoryEvent[];
+}
+
+/** One thing the employee did. Never contains text the employee typed. */
+export interface EmployeeActivityItem {
+  readonly id: string;
+  readonly kind: string;
+  readonly action: string;
+  readonly target: string | null;
+  readonly detail: string | null;
+  readonly at: string;
+}
+
+/** nextBefore is the cursor for the next (older) page; isPartial is true while the feed is a union over existing tables. */
+export interface EmployeeRecentActivityResponse {
+  readonly items: readonly EmployeeActivityItem[];
+  readonly nextBefore: string | null;
+  readonly isPartial: boolean;
 }

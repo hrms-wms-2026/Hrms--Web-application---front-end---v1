@@ -9,7 +9,7 @@ export type ModalSize = 'md' | 'lg' | 'xl' | '2xl';
   template: `
     @if (open()) {
       <div class="fixed inset-0 z-[1200] flex items-center justify-center p-4">
-        <div class="absolute inset-0 bg-black/50" (click)="onBackdropClick()"></div>
+        <div class="ui-fade-in absolute inset-0 bg-black/50" (click)="onBackdropClick()"></div>
         <div
           #dialog
           [class]="dialogClass()"
@@ -58,10 +58,10 @@ export class ModalComponent {
 
   readonly dialogClass = computed(() => {
     const sizeMap: Record<ModalSize, string> = {
-      md: 'relative z-10 w-full max-w-md rounded-xl bg-[var(--color-surface)] p-6 shadow-lg outline-none',
-      lg: 'relative z-10 w-full max-w-xl rounded-xl bg-[var(--color-surface)] p-6 shadow-lg outline-none modal-dialog--constrained',
-      xl: 'relative z-10 w-full max-w-5xl rounded-xl bg-[var(--color-surface)] p-8 shadow-lg outline-none modal-dialog--constrained',
-      '2xl': 'relative z-10 w-full max-w-6xl rounded-xl bg-[var(--color-surface)] p-8 shadow-lg outline-none modal-dialog--constrained',
+      md: 'ui-pop-in relative z-10 w-full max-w-md rounded-xl bg-[var(--color-surface)] p-6 shadow-lg outline-none',
+      lg: 'ui-pop-in relative z-10 w-full max-w-xl rounded-xl bg-[var(--color-surface)] p-6 shadow-lg outline-none modal-dialog--constrained',
+      xl: 'ui-pop-in relative z-10 w-full max-w-5xl rounded-xl bg-[var(--color-surface)] p-8 shadow-lg outline-none modal-dialog--constrained',
+      '2xl': 'ui-pop-in relative z-10 w-full max-w-6xl rounded-xl bg-[var(--color-surface)] p-8 shadow-lg outline-none modal-dialog--constrained',
     };
     let cls = sizeMap[this.size()];
     const custom = this.customMaxWidth().trim();
