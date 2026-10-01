@@ -12,8 +12,14 @@ import {
   monthLabel,
   monthsBetween,
   recentMonths,
-  shiftMonth
+  shiftMonth,
+  formatActivityWhen,
+  formatDateWithYear,
+  formatEventTime,
+  formatUpcomingWhen,
+  progressPercent
 } from './employee-overview.utils';
+import { EmployeeUpcomingItem } from '../models/employee-overview.model';
 
 describe('employee-overview.utils', () => {
   it('currentMonthKey zero-pads the month', () => {
@@ -123,4 +129,69 @@ describe('month range helpers', () => {
   });
 
   it('monthsBetween is empty when inverted', () => expect(monthsBetween('2026-10', '2026-09')).toEqual([]));
+});
+
+describe('formatEventTime', () => {
+  it('formats a 24-hour time in the given time zone', () => {
+    expect(formatEventTime('2026-09-30T09:05:00+00:00', 'UTC')).toBe('09:05');
+    expect(formatEventTime('2026-09-30T09:05:00+00:00', 'Asia/Colombo')).toBe('14:35');
+  });
+});
+
+describe('formatUpcomingWhen', () => {
+  const item = (over: Partial<EmployeeUpcomingItem>): EmployeeUpcomingItem => ({
+    kind: 'calendar', title: 't', start: '2026-09-30T09:00:00+00:00', end: '2026-09-30T10:00:00+00:00', isAllDay: false, detail: null, ...over
+  });
+
+  it('shows date and time for a timed event', () => {
+    expect(formatUpcomingWhen(item({}), 'UTC')).toBe('Sep 30 · 09:00');
+  });
+
+  it('shows a single date for an all-day item with no end', () => {
+    expect(formatUpcomingWhen(item({ kind: 'release', isAllDay: true, start: '2026-10-01T00:00:00+00:00', end: null }))).toBe('Oct 1');
+  });
+
+  it('shows a range for multi-day leave, collapsing same-month ranges, by UTC date parts', () => {
+    expect(formatUpcomingWhen(item({ kind: 'leave', isAllDay: true, start: '2026-09-23T00:00:00+00:00', end: '2026-09-25T23:59:59+00:00' }))).toBe('Sep 23 – 25');
+    expect(formatUpcomingWhen(item({ kind: 'leave', isAllDay: true, start: '2026-09-30T00:00:00+00:00', end: '2026-10-02T23:59:59+00:00' }))).toBe('Sep 30 – Oct 2');
+  });
+
+  it('shows one date for a one-day all-day item', () => {
+    expect(formatUpcomingWhen(item({ kind: 'leave', isAllDay: true, start: '2026-09-23T00:00:00+00:00', end: '2026-09-23T23:59:59+00:00' }))).toBe('Sep 23');
+  });
+});
+
+describe('formatActivityWhen', () => {
+  const now = new Date('2026-09-30T12:00:00Z');
+
+  it('says Today and Yesterday, then falls back to the date', () => {
+    expect(formatActivityWhen('2026-09-30T08:41:00+00:00', now, 'UTC')).toBe('Today, 08:41');
+    expect(formatActivityWhen('2026-09-29T18:12:00+00:00', now, 'UTC')).toBe('Yesterday, 18:12');
+    expect(formatActivityWhen('2026-09-16T16:32:00+00:00', now, 'UTC')).toBe('Sep 16, 16:32');
+  });
+
+  it('decides today/yesterday in the given time zone', () => {
+    // 20:00Z on the 29th is already the 30th in Colombo (UTC+5:30).
+    expect(formatActivityWhen('2026-09-29T20:00:00+00:00', now, 'Asia/Colombo')).toBe('Today, 01:30');
+  });
+
+  it('handles month boundaries when working out yesterday', () => {
+    expect(formatActivityWhen('2026-09-30T23:00:00+00:00', new Date('2026-10-01T05:00:00Z'), 'UTC')).toBe('Yesterday, 23:00');
+  });
+});
+
+describe('formatDateWithYear', () => {
+  it('formats a date with its year from string parts', () => {
+    expect(formatDateWithYear('2026-09-10')).toBe('Sep 10, 2026');
+    expect(formatDateWithYear('2024-02-01')).toBe('Feb 1, 2024');
+  });
+});
+
+describe('progressPercent', () => {
+  it('returns 0 for an empty whole and clamps to 0..100', () => {
+    expect(progressPercent(0, 0)).toBe(0);
+    expect(progressPercent(1, 4)).toBe(25);
+    expect(progressPercent(5, 4)).toBe(100);
+    expect(progressPercent(-1, 4)).toBe(0);
+  });
 });
