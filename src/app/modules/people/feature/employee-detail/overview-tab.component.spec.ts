@@ -2,6 +2,8 @@ import { TestBed } from '@angular/core/testing';
 import { Observable, Subject, of } from 'rxjs';
 import { PeopleApiService } from '../../data-access/people-api.service';
 import { EmployeeOverviewSignalsResponse, EmployeeSignal } from '../../models/employee-overview.model';
+import { EmployeePeriodStore } from '../../state/employee-period.store';
+import { ProjectDetailStore } from '../../../work/state/project-detail.store';
 import { EmployeeOverviewTabComponent } from './overview-tab.component';
 
 describe('EmployeeOverviewTabComponent', () => {
@@ -54,6 +56,7 @@ describe('EmployeeOverviewTabComponent', () => {
         of({ from: '', to: '', pending: 0, approved: 0, rejected: 0, total: 0, items: [] })
       ),
       getOverviewSignals: vi.fn().mockReturnValue(signalsSource),
+      getOverviewSignalItems: vi.fn(() => of({ key: 'over_break', total: 0, timezone: null, items: [] })),
       getOverviewUpcoming: vi.fn().mockReturnValue(of({ from: '', to: '', items: [] })),
       getOverviewChecklists: vi.fn().mockReturnValue(of({ groups: [] })),
       getOverviewHistory: vi.fn().mockReturnValue(of({ events: [] })),
@@ -61,7 +64,12 @@ describe('EmployeeOverviewTabComponent', () => {
     };
     TestBed.configureTestingModule({
       imports: [EmployeeOverviewTabComponent],
-      providers: [{ provide: PeopleApiService, useValue: api }]
+      providers: [
+        { provide: PeopleApiService, useValue: api },
+        { provide: ProjectDetailStore, useValue: {
+          loadProject: vi.fn(), loadMyMilestones: vi.fn(), projectError: vi.fn(() => null)
+        } }
+      ]
     });
     const fixture = TestBed.createComponent(EmployeeOverviewTabComponent);
     fixture.componentRef.setInput('employeeId', 'emp-1');
@@ -70,12 +78,16 @@ describe('EmployeeOverviewTabComponent', () => {
     return { fixture, api, el: fixture.nativeElement as HTMLElement };
   }
 
+  function setupWithSignals(signals: readonly EmployeeSignal[]) {
+    return setup(null, of({ from: '2026-09-01', to: '2026-09-30', signals }));
+  }
+
   it('renders the period picker and the three widgets', () => {
     const { el } = setup();
 
     expect(el.querySelector('app-employee-period-picker')).toBeTruthy();
     expect(el.querySelector('app-overview-attendance-widget')).toBeTruthy();
-    expect(el.querySelector('app-overview-discipline-widget')).toBeTruthy();
+    expect(el.querySelector('app-overview-discipline-widget')).toBeNull();
     expect(el.querySelector('app-overview-time-off-widget')).toBeTruthy();
   });
 
@@ -96,11 +108,36 @@ describe('EmployeeOverviewTabComponent', () => {
   });
 
   it('renders four baseline KPI cards and no Needs Attention card without signals', () => {
-    const { el } = setup();
+    const { fixture, el } = setup();
+    fixture.detectChanges();
 
     expect(el.querySelector('app-overview-kpi-strip')).toBeTruthy();
     expect(el.querySelectorAll('[data-testid="kpi-card"]')).toHaveLength(4);
     expect(el.querySelector('[data-testid="needs-attention"]')).toBeNull();
+  });
+
+  it('moves Attendance beside the chart and expands the remaining operations when there are no attention signals', () => {
+    const { fixture, el } = setup();
+    fixture.detectChanges();
+    const summarySide = el.querySelector('[data-testid="overview-summary-side"]')!;
+    const operations = el.querySelector('[data-testid="overview-operations"]')!;
+
+    expect(summarySide.querySelector('app-overview-attendance-widget')).toBeTruthy();
+    expect(operations.querySelector('app-overview-attendance-widget')).toBeNull();
+    expect(operations.classList.contains('lg:grid-cols-3')).toBe(true);
+  });
+
+  it('keeps Attendance in the four-column operations row when Needs Attention is present', () => {
+    const signals = [signal('late_clock_ins', 1, 'warning', 'attendance')];
+    const { fixture, el } = setup(null, of({ from: '2026-09-01', to: '2026-09-30', signals }));
+    fixture.detectChanges();
+    const summarySide = el.querySelector('[data-testid="overview-summary-side"]')!;
+    const operations = el.querySelector('[data-testid="overview-operations"]')!;
+
+    expect(summarySide.querySelector('[data-testid="needs-attention"]')).toBeTruthy();
+    expect(summarySide.querySelector('app-overview-attendance-widget')).toBeNull();
+    expect(operations.querySelector('app-overview-attendance-widget')).toBeTruthy();
+    expect(operations.classList.contains('lg:grid-cols-4')).toBe(true);
   });
 
   it('keeps signal order in the KPI strip and Needs Attention rows', () => {
@@ -166,5 +203,35 @@ describe('EmployeeOverviewTabComponent', () => {
       expect(method).toHaveBeenCalledWith('emp-1', '2026-08-01', '2026-08-31');
     }
     expect(el.querySelector('app-overview-kpi-strip [data-testid="delta"]')).toBeTruthy();
+  });
+
+  it('opens the matching Needs Attention row when a coloured KPI card is clicked', () => {
+    const { fixture } = setupWithSignals([signal('over_break', 3, 'warning', 'attendance')]);
+    const scroll = vi.fn();
+    const attention = fixture.nativeElement.querySelector('app-overview-needs-attention') as HTMLElement;
+    attention.scrollIntoView = scroll;
+
+    (fixture.nativeElement.querySelector('[data-testid="kpi-card"][role="button"]') as HTMLElement).click();
+    fixture.detectChanges();
+
+    expect(fixture.nativeElement.querySelector('[data-key="over_break"]')!.getAttribute('aria-expanded')).toBe('true');
+    expect(scroll).toHaveBeenCalled();
+  });
+
+  it('closes the open row when the month changes', () => {
+    const { fixture } = setupWithSignals([signal('over_break', 3, 'warning', 'attendance')]);
+    (fixture.nativeElement.querySelector('[data-key="over_break"]') as HTMLButtonElement).click();
+    fixture.detectChanges();
+
+    fixture.debugElement.injector.get(EmployeePeriodStore).setMonth('2026-08');
+    fixture.detectChanges();
+
+    expect(fixture.nativeElement.querySelector('[data-key="over_break"]')?.getAttribute('aria-expanded') ?? 'false').toBe('false');
+  });
+
+  it('no longer renders the Discipline widget but keeps the approvals widget', () => {
+    const { fixture } = setupWithSignals([]);
+    expect(fixture.nativeElement.querySelector('app-overview-discipline-widget')).toBeNull();
+    expect(fixture.nativeElement.querySelector('app-overview-approvals-widget')).toBeTruthy();
   });
 });

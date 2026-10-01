@@ -1,5 +1,6 @@
 import { TestBed } from '@angular/core/testing';
 import { of } from 'rxjs';
+import { ProjectDetailStore } from '../../../work/state/project-detail.store';
 import { PeopleApiService } from '../../data-access/people-api.service';
 import { EmployeeOverviewTabComponent } from './overview-tab.component';
 
@@ -21,6 +22,7 @@ describe('EmployeeOverviewTabComponent plan 4 widgets', () => {
       getOverviewActivity: vi.fn().mockReturnValue(of({ from: '', to: '', activityMonitoringEnabled: true, activeMinutes: 0, idleMinutes: 0, meetingMinutes: 0, daysWithData: 0, previous: null })),
       getOverviewApprovals: vi.fn().mockReturnValue(of({ from: '', to: '', pending: 0, approved: 0, rejected: 0, total: 0, items: [] })),
       getOverviewSignals: vi.fn().mockReturnValue(of({ from: '', to: '', signals: [] })),
+      getOverviewSignalItems: vi.fn(() => of({ key: '', total: 0, timezone: null, items: [] })),
       getOverviewUpcoming: vi.fn().mockReturnValue(of({ from: '', to: '', items: [] })),
       getOverviewChecklists: vi.fn().mockReturnValue(of({ groups: [] })),
       getOverviewHistory: vi.fn().mockReturnValue(of({ events: [] })),
@@ -28,7 +30,12 @@ describe('EmployeeOverviewTabComponent plan 4 widgets', () => {
     };
     TestBed.configureTestingModule({
       imports: [EmployeeOverviewTabComponent],
-      providers: [{ provide: PeopleApiService, useValue: api }]
+      providers: [
+        { provide: PeopleApiService, useValue: api },
+        { provide: ProjectDetailStore, useValue: {
+          loadProject: vi.fn(), loadMyMilestones: vi.fn(), projectError: vi.fn(() => null)
+        } }
+      ]
     });
     const fixture = TestBed.createComponent(EmployeeOverviewTabComponent);
     fixture.componentRef.setInput('employeeId', 'emp-1');
@@ -50,18 +57,29 @@ describe('EmployeeOverviewTabComponent plan 4 widgets', () => {
     }
   });
 
-  it('places Upcoming, Checklists and History together, and Recent Activity after the insights section', () => {
+  it('places Upcoming in the operations row and keeps the lifetime widgets below it', () => {
     const { el } = setup();
     const upcoming = el.querySelector('app-overview-upcoming-widget')!;
-    const row = upcoming.parentElement!;
+    const operations = el.querySelector('[data-testid="overview-operations"]')!;
+    const lifetime = el.querySelector('[data-testid="overview-lifetime"]')!;
 
-    expect(row.querySelector('app-overview-checklists-widget')).toBeTruthy();
-    expect(row.querySelector('app-overview-history-widget')).toBeTruthy();
+    expect(operations.querySelector('app-overview-upcoming-widget')).toBe(upcoming);
+    expect(operations.textContent).not.toContain('Activity monitoring is not enabled');
+    expect(lifetime.querySelector('app-overview-upcoming-widget')).toBeNull();
+    expect(lifetime.querySelector('app-overview-checklists-widget')).toBeTruthy();
+    expect(lifetime.querySelector('app-overview-history-widget')).toBeTruthy();
     expect(el.querySelector('section[aria-labelledby="insights-heading"] app-overview-upcoming-widget')).toBeNull();
 
     const insights = el.querySelector('section[aria-labelledby="insights-heading"]')!;
     const activity = el.querySelector('app-overview-recent-activity-widget')!;
     expect(insights.compareDocumentPosition(activity) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+  });
+
+  it('does not display the Checklists card when there are no checklist groups', () => {
+    const { el } = setup();
+    const checklists = el.querySelector('app-overview-checklists-widget') as HTMLElement;
+
+    expect(checklists.style.display).toBe('none');
   });
 
   it('loads each new widget once for the employee, with the documented page sizes', () => {

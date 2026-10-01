@@ -1,4 +1,4 @@
-import { ChangeDetectionStrategy, Component, computed, effect, inject, input } from '@angular/core';
+import { ChangeDetectionStrategy, Component, computed, effect, ElementRef, inject, input, untracked, viewChild } from '@angular/core';
 import { catchError, map, of } from 'rxjs';
 import { WidgetState } from '../../../../shared/ui/widget-card/widget-card.component';
 import { createWidgetLoader } from '../../../../shared/ui/widget-card/widget-loader';
@@ -9,13 +9,12 @@ import {
   EmployeeWorkOverviewResponse
 } from '../../models/employee-overview.model';
 import { EmployeePeriodStore } from '../../state/employee-period.store';
+import { SignalDrilldownStore } from '../../state/signal-drilldown.store';
 import { EmployeeComparePickerComponent } from '../../ui/employee-compare-picker/employee-compare-picker.component';
 import { EmployeePeriodPickerComponent } from '../../ui/employee-period-picker/employee-period-picker.component';
-import { OverviewActivityWidgetComponent } from '../../ui/overview-activity-widget/overview-activity-widget.component';
 import { OverviewApprovalsWidgetComponent } from '../../ui/overview-approvals-widget/overview-approvals-widget.component';
 import { OverviewAttendanceWidgetComponent } from '../../ui/overview-attendance-widget/overview-attendance-widget.component';
 import { OverviewDeliveryWidgetComponent } from '../../ui/overview-delivery-widget/overview-delivery-widget.component';
-import { OverviewDisciplineWidgetComponent } from '../../ui/overview-discipline-widget/overview-discipline-widget.component';
 import { DeltaBadgeComponent } from '../../ui/delta-badge/delta-badge.component';
 import { OverviewKpiStripComponent } from '../../ui/overview-kpi-strip/overview-kpi-strip.component';
 import { OverviewNeedsAttentionComponent } from '../../ui/overview-needs-attention/overview-needs-attention.component';
@@ -26,6 +25,7 @@ import { OverviewChecklistsWidgetComponent } from '../../ui/overview-checklists-
 import { OverviewHistoryWidgetComponent } from '../../ui/overview-history-widget/overview-history-widget.component';
 import { OverviewRecentActivityWidgetComponent } from '../../ui/overview-recent-activity-widget/overview-recent-activity-widget.component';
 import { OverviewUpcomingWidgetComponent } from '../../ui/overview-upcoming-widget/overview-upcoming-widget.component';
+import { SignalItemDetailComponent } from '../../ui/signal-item-detail/signal-item-detail.component';
 import { Delta } from '../../utils/employee-overview.utils';
 import { KpiCard, buildKpiCards, kpiValue } from '../../utils/overview-kpi-cards';
 import { createCompareLoader, deltaIf } from '../../utils/overview-compare';
@@ -40,7 +40,7 @@ import { createCompareLoader, deltaIf } from '../../utils/overview-compare';
 @Component({
   selector: 'app-employee-overview-tab',
   standalone: true,
-  providers: [EmployeePeriodStore],
+  providers: [EmployeePeriodStore, SignalDrilldownStore],
   imports: [
     EmployeePeriodPickerComponent,
     EmployeeComparePickerComponent,
@@ -51,14 +51,13 @@ import { createCompareLoader, deltaIf } from '../../utils/overview-compare';
     OverviewTimeOffWidgetComponent,
     OverviewWorkWidgetComponent,
     OverviewApprovalsWidgetComponent,
-    OverviewActivityWidgetComponent,
-    OverviewDisciplineWidgetComponent,
     OverviewDeliveryWidgetComponent,
     DeltaBadgeComponent,
     OverviewUpcomingWidgetComponent,
     OverviewChecklistsWidgetComponent,
     OverviewHistoryWidgetComponent,
-    OverviewRecentActivityWidgetComponent
+    OverviewRecentActivityWidgetComponent,
+    SignalItemDetailComponent
   ],
   template: `
     <!-- Top Header Bar with Month Stepper & Compare Button -->
@@ -139,13 +138,14 @@ import { createCompareLoader, deltaIf } from '../../utils/overview-compare';
     <div class="grid gap-6 lg:grid-cols-3 mb-6">
       <!-- Left Column (65%): signal-driven KPI strip + Attendance vs Delivery Trend Chart -->
       <div class="lg:col-span-2">
-        @if (settled(signalsLoader.state(), attendanceWidget.loader.state(), workWidget.loader.state())) {
-          @let cards = kpiCards(signals(), attendanceWidget.loader.data() ?? null, workWidget.loader.data() ?? null);
+        @if (settled(signalsLoader.state(), attendanceState(), workWidget.loader.state())) {
+          @let cards = kpiCards(signals(), attendanceData(), workWidget.loader.data() ?? null);
           <app-overview-kpi-strip
             class="mb-6 block"
             [cards]="cards"
-            [deltas]="kpiDeltas(cards, attendanceWidget.compareLoader.data() ?? null, workWidget.compareLoader.data() ?? null)"
+            [deltas]="kpiDeltas(cards, attendanceCompareData(), workWidget.compareLoader.data() ?? null)"
             [against]="store.compareLabel()"
+            (cardSelected)="openSignal($event)"
           />
         } @else {
           <div class="mb-6 grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
@@ -157,51 +157,41 @@ import { createCompareLoader, deltaIf } from '../../utils/overview-compare';
         <app-overview-productivity-discipline-chart [employeeId]="employeeId()" />
       </div>
 
-      <!-- Right Column (35%): Time Off Balance Rings + Needs Attention Card -->
-      <div class="lg:col-span-1 flex flex-col gap-6">
+      <!-- Right Column (35%): Time Off plus Needs Attention, or Attendance when there are no signals -->
+      <div data-testid="overview-summary-side" class="lg:col-span-1 flex flex-col gap-6">
         <app-overview-time-off-widget [employeeId]="employeeId()" />
 
         @if (signalsLoader.state() !== 'loading') {
-          <app-overview-needs-attention
-            [signals]="signals()"
-            [deltas]="attentionDeltas()"
-            [against]="store.compareLabel()"
-          />
+          @if (signals().length > 0) {
+            <app-overview-needs-attention
+              [signals]="signals()"
+              [deltas]="attentionDeltas()"
+              [against]="store.compareLabel()"
+            />
+          } @else {
+            <app-overview-attendance-widget [employeeId]="employeeId()" class="block h-full" />
+          }
         }
       </div>
     </div>
 
-    <!-- TIER 2: Execution & Operations (4 Cards Across, Equal Height) -->
-    <div class="grid gap-6 sm:grid-cols-2 lg:grid-cols-4 mb-6 items-stretch">
+    <!-- TIER 2: Operations use four columns with Attendance, or three wider columns without it -->
+    <div
+      data-testid="overview-operations"
+      [class]="signals().length > 0
+        ? 'grid gap-6 sm:grid-cols-2 lg:grid-cols-4 mb-6 items-stretch'
+        : 'grid gap-6 sm:grid-cols-2 lg:grid-cols-3 mb-6 items-stretch'"
+    >
       <!-- Card 1: Work Management -->
       <app-overview-work-widget #workWidget [employeeId]="employeeId()" class="block h-full" />
 
-      <!-- Card 2: Attendance -->
-      <app-overview-attendance-widget #attendanceWidget [employeeId]="employeeId()" class="block h-full" />
+      @if (signalsLoader.state() !== 'loading' && signals().length > 0) {
+        <!-- Card 2: Attendance stays in Operations when Needs Attention occupies the summary side -->
+        <app-overview-attendance-widget [employeeId]="employeeId()" class="block h-full" />
+      }
 
-      <!-- Card 3: Activity Monitoring Card -->
-      <div class="flex flex-col h-full rounded-2xl border border-slate-200/80 bg-white p-5 shadow-xs">
-        <header class="mb-4 flex items-center justify-between">
-          <h2 class="text-base font-bold text-slate-900">Activity</h2>
-          <a href="javascript:void(0)" class="text-xs font-semibold text-blue-600 hover:underline">View activity →</a>
-        </header>
-        <div class="flex-1 flex flex-col items-center justify-center text-center py-6">
-          <div class="w-14 h-14 rounded-2xl bg-slate-50 border border-slate-100 flex items-center justify-center mb-3 text-slate-400">
-            <svg class="w-8 h-8" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
-              <rect x="2" y="3" width="20" height="14" rx="2"></rect>
-              <polyline points="7 10 10 7 13 11 17 8"></polyline>
-              <line x1="8" y1="21" x2="16" y2="21"></line>
-              <line x1="12" y1="17" x2="12" y2="21"></line>
-            </svg>
-          </div>
-          <p class="text-xs text-slate-500 max-w-[200px] mb-4">
-            Activity monitoring is not enabled for this employee.
-          </p>
-          <button type="button" class="text-xs font-semibold text-blue-600 bg-white hover:bg-blue-50 border border-blue-300 px-4 py-1.5 rounded-lg transition-colors cursor-pointer">
-            Enable monitoring
-          </button>
-        </div>
-      </div>
+      <!-- Card 3: Upcoming Items replaces Activity Monitoring -->
+      <app-overview-upcoming-widget [employeeId]="employeeId()" class="block h-full" />
 
       <!-- Card 4: Approval Activity -->
       <div class="flex flex-col h-full rounded-2xl border border-slate-200/80 bg-white p-5 shadow-xs">
@@ -250,15 +240,17 @@ import { createCompareLoader, deltaIf } from '../../utils/overview-compare';
       <app-overview-approvals-widget #approvalsWidget [employeeId]="employeeId()" />
       <section aria-labelledby="insights-heading">
         <h2 id="insights-heading">Productivity &amp; Work Insights</h2>
-        <app-overview-activity-widget [employeeId]="employeeId()" />
-        <app-overview-discipline-widget [employeeId]="employeeId()" />
         <app-overview-delivery-widget [employeeId]="employeeId()" />
       </section>
     </div>
 
     <!-- TIER 3: Lifetime / forward-looking (ignore the month and the comparison) -->
-    <div class="grid gap-6 lg:grid-cols-3 mb-6 items-stretch">
-      <app-overview-upcoming-widget [employeeId]="employeeId()" />
+    <div
+      data-testid="overview-lifetime"
+      [class]="checklistsVisible()
+        ? 'grid gap-6 lg:grid-cols-2 mb-6 items-stretch'
+        : 'grid gap-6 mb-6 items-stretch'"
+    >
       <app-overview-checklists-widget [employeeId]="employeeId()" />
       <app-overview-history-widget [employeeId]="employeeId()" />
     </div>
@@ -266,6 +258,8 @@ import { createCompareLoader, deltaIf } from '../../utils/overview-compare';
     <div class="mb-6">
       <app-overview-recent-activity-widget [employeeId]="employeeId()" />
     </div>
+
+    <app-signal-item-detail [employeeId]="employeeId()" (changed)="signalsLoader.reload()" />
   `,
   changeDetection: ChangeDetectionStrategy.OnPush
 })
@@ -275,6 +269,16 @@ export class EmployeeOverviewTabComponent {
   readonly terminationDate = input<string | null>(null);
   private readonly api = inject(PeopleApiService);
   protected readonly store = inject(EmployeePeriodStore);
+  protected readonly drilldown = inject(SignalDrilldownStore);
+  private readonly needsAttention = viewChild(OverviewNeedsAttentionComponent, { read: ElementRef });
+  protected readonly attendanceWidget = viewChild(OverviewAttendanceWidgetComponent);
+  protected readonly checklistsWidget = viewChild(OverviewChecklistsWidgetComponent);
+  protected readonly attendanceState = computed<WidgetState>(() =>
+    this.attendanceWidget()?.loader.state() ?? 'loading'
+  );
+  protected readonly attendanceData = computed(() => this.attendanceWidget()?.loader.data() ?? null);
+  protected readonly attendanceCompareData = computed(() => this.attendanceWidget()?.compareLoader.data() ?? null);
+  protected readonly checklistsVisible = computed(() => this.checklistsWidget()?.loader.state() !== 'empty');
   readonly signalsLoader = createWidgetLoader(() =>
     this.api.getOverviewSignals(this.employeeId(), this.store.from(), this.store.to()).pipe(
       map((response) => response.signals),
@@ -289,6 +293,21 @@ export class EmployeeOverviewTabComponent {
 
   constructor() {
     effect(() => this.store.setBounds(this.hireDate(), this.terminationDate()));
+    effect(() => this.drilldown.setEmployee(this.employeeId()));
+    effect(() => {
+      this.store.from();
+      this.store.to();
+      this.store.compareMonth();
+      untracked(() => this.drilldown.reset());
+    });
+  }
+
+  protected openSignal(key: string): void {
+    this.drilldown.open(key);
+    (this.needsAttention()?.nativeElement as HTMLElement | undefined)?.scrollIntoView?.({
+      behavior: 'smooth',
+      block: 'start'
+    });
   }
 
   protected settled(...states: WidgetState[]): boolean {
