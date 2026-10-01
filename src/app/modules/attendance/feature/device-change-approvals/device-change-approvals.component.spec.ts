@@ -1,5 +1,6 @@
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { signal } from '@angular/core';
+import { ActivatedRoute, provideRouter } from '@angular/router';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { DeviceChangeRequestResponse } from '../../models/device-change-request.model';
 import { DeviceChangeRequestsStore } from '../../state/device-change-requests.store';
@@ -42,6 +43,7 @@ describe('DeviceChangeApprovalsComponent', () => {
     error?: string | null;
     approveResult?: DeviceChangeRequestResponse | null;
     rejectResult?: DeviceChangeRequestResponse | null;
+    requestId?: string | null;
   } = {}): Promise<{ fixture: ComponentFixture<DeviceChangeApprovalsComponent>; component: DeviceChangeApprovalsComponent; store: ApprovalStoreMock }> {
     const items = options.items ?? [pending];
     const store: ApprovalStoreMock = {
@@ -60,7 +62,11 @@ describe('DeviceChangeApprovalsComponent', () => {
 
     await TestBed.configureTestingModule({
       imports: [DeviceChangeApprovalsComponent],
-      providers: [{ provide: DeviceChangeRequestsStore, useValue: store }]
+      providers: [
+        provideRouter([]),
+        { provide: DeviceChangeRequestsStore, useValue: store },
+        { provide: ActivatedRoute, useValue: { snapshot: { queryParamMap: { get: () => options.requestId ?? null } } } }
+      ]
     }).compileComponents();
 
     const fixture = TestBed.createComponent(DeviceChangeApprovalsComponent);
@@ -135,5 +141,25 @@ describe('DeviceChangeApprovalsComponent', () => {
     fixture.detectChanges();
     expect(fixture.nativeElement.querySelector('app-breadcrumb-header')).toBeNull();
     expect(fixture.nativeElement.querySelector('#device-change-approvals-heading')).toBeNull();
+  });
+
+  it('opens a matching pending request from a deep link without extra lookups', async () => {
+    const { component, store } = await setup({ requestId: 'dc-1' });
+
+    expect(component.reviewRequest()).toEqual(pending);
+    expect(store.loadApprovalInbox).toHaveBeenCalledTimes(1);
+    expect(store.loadApprovalInbox).toHaveBeenCalledWith(1);
+  });
+
+  it('shows a neutral message when a deep-linked request is absent from the loaded page', async () => {
+    const { component, fixture } = await setup({ requestId: 'not-on-current-page' });
+
+    expect(component.reviewRequest()).toBeNull();
+    expect((fixture.nativeElement as HTMLElement).textContent).toContain('Open the pending requests list to review this request.');
+  });
+
+  it('does not attempt a deep link when no requestId query param is present', async () => {
+    const { component } = await setup();
+    expect(component.reviewRequest()).toBeNull();
   });
 });

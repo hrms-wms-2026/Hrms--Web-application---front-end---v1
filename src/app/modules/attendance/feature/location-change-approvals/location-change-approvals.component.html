@@ -16,6 +16,9 @@
       </div>
     }
 
+    @if (pageMessage()) {
+      <div class="stale-message" role="status"><p>{{ pageMessage() }}</p><button type="button" class="text-action" (click)="pageMessage.set('')">Dismiss</button></div>
+    }
     @if (store.approvalInboxLoading() && store.approvalInbox().length === 0) {
       <div class="table-skeleton" aria-busy="true" aria-label="Loading location change approvals"></div>
     } @else if (store.approvalInboxError()) {

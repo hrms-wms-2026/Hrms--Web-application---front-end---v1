@@ -1,6 +1,7 @@
 import { DecimalPipe } from '@angular/common';
-import { ChangeDetectionStrategy, Component, inject, input, signal } from '@angular/core';
+import { ChangeDetectionStrategy, Component, OnInit, inject, input, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
+import { ActivatedRoute } from '@angular/router';
 import { ButtonComponent } from '../../../../shared/ui/button/button.component';
 import { BreadcrumbHeaderComponent } from '../../../../shared/ui/breadcrumb-header/breadcrumb-header.component';
 import { ModalComponent } from '../../../../shared/ui/modal/modal.component';
@@ -15,9 +16,12 @@ import { LocationChangeRequestsStore } from '../../state/location-change-request
   styleUrl: './location-change-approvals.component.css',
   changeDetection: ChangeDetectionStrategy.OnPush
 })
-export class LocationChangeApprovalsComponent {
+export class LocationChangeApprovalsComponent implements OnInit {
   readonly store = inject(LocationChangeRequestsStore);
+  private readonly route = inject(ActivatedRoute);
   readonly embedded = input(false);
+  readonly requestedId = signal<string | null>(null);
+  readonly pageMessage = signal('');
   readonly reviewRequest = signal<LocationChangeRequestResponse | null>(null);
   readonly reviewComment = signal('');
   readonly reviewActionError = signal('');
@@ -27,14 +31,35 @@ export class LocationChangeApprovalsComponent {
   readonly locationChangeStatusLabel = locationChangeStatusLabel;
   readonly Math = Math;
 
-  constructor() {
-    if (!this.store.approvalInboxLoaded()) {
+  ngOnInit(): void {
+    this.requestedId.set(this.route.snapshot.queryParamMap.get('requestId'));
+    if (this.store.approvalInboxLoaded()) {
+      this.tryOpenDeepLink();
+    } else {
       void this.load();
     }
   }
 
   async load(): Promise<void> {
+    this.pageMessage.set('');
     await this.store.loadApprovalInbox(1);
+    this.tryOpenDeepLink();
+  }
+
+  private tryOpenDeepLink(): void {
+    const id = this.requestedId();
+    if (!id) return;
+    const match = this.store.approvalInbox().find((request) => request.id === id && request.status === 'pending');
+    if (match) {
+      this.openReview(match);
+      setTimeout(() => {
+        const row = Array.from(document.querySelectorAll<HTMLElement>('[data-request-id]'))
+          .find((element) => element.dataset['requestId'] === id);
+        row?.scrollIntoView({ block: 'center', behavior: 'smooth' });
+      }, 0);
+      return;
+    }
+    this.pageMessage.set('Open the pending requests list to review this request.');
   }
 
   openReview(request: LocationChangeRequestResponse): void {
