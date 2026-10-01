@@ -47,6 +47,24 @@ describe('MemberManagementPopupComponent', () => {
     expect(fixture.nativeElement.textContent).not.toContain('Choose a person');
   });
 
+  it('reopening the popup lands back on the member list, not wherever the add/transfer picker was left open', () => {
+    fixture.componentRef.setInput('scope', 'objective');
+    fixture.componentRef.setInput('objectiveMembers', []);
+    fixture.componentRef.setInput('canManage', true);
+    fixture.detectChanges();
+    (fixture.componentInstance as any).pickerOpen.set('member');
+    fixture.detectChanges();
+    expect(fixture.nativeElement.querySelector('[data-testid="employee-picker-search"]')).not.toBeNull();
+
+    fixture.componentRef.setInput('open', false);
+    fixture.detectChanges();
+    fixture.componentRef.setInput('open', true);
+    fixture.detectChanges();
+
+    expect(fixture.nativeElement.querySelector('[data-testid="employee-picker-search"]')).toBeNull();
+    expect(fixture.nativeElement.querySelector('[data-testid="add-member-button"]')).not.toBeNull();
+  });
+
   it('renders objective badges and routes remove and transfer actions', () => {
     fixture.componentRef.setInput('scope', 'objective');
     fixture.componentRef.setInput('objectiveMembers', [
