@@ -1,6 +1,7 @@
 /** Quiet Operations Desk: Screen 6/8's queue - one place for a manager or HR to clear pending leave. */
-import { ChangeDetectionStrategy, Component, computed, inject, signal } from '@angular/core';
+import { ChangeDetectionStrategy, Component, OnInit, computed, inject, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
+import { ActivatedRoute } from '@angular/router';
 import { NotificationService } from '../../../../core/services/notification.service';
 import { PermissionService } from '../../../../core/auth/state/permission.service';
 import { ButtonComponent } from '../../../../shared/ui/button/button.component';
@@ -25,9 +26,10 @@ import { LeaveApprovalDelegateModalComponent } from '../../ui/leave-approval-del
   styleUrls: ['../../ui/time-off-chrome.css', './pending-approvals.component.css'],
   changeDetection: ChangeDetectionStrategy.OnPush
 })
-export class PendingApprovalsComponent {
+export class PendingApprovalsComponent implements OnInit {
   private readonly notificationService = inject(NotificationService);
   private readonly permissionService = inject(PermissionService);
+  private readonly route = inject(ActivatedRoute);
   readonly store = inject(LeaveApprovalStore);
   readonly leaveTypeStore = inject(LeaveTypeStore);
   readonly canApprove = () => this.permissionService.hasPermission('leave:approve');
@@ -46,6 +48,11 @@ export class PendingApprovalsComponent {
   constructor() {
     void this.store.loadPending();
     void this.leaveTypeStore.load();
+  }
+
+  ngOnInit(): void {
+    const deepLinkRequestId = this.route.snapshot.queryParamMap.get('requestId');
+    if (deepLinkRequestId) this.onRowClicked(deepLinkRequestId);
   }
 
   openCover(): void {
