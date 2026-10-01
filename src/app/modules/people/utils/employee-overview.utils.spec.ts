@@ -16,7 +16,7 @@ import {
   formatActivityWhen,
   formatDateWithYear,
   formatEventTime,
-  formatUpcomingWhen,
+  upcomingDateBlock,
   progressPercent
 } from './employee-overview.utils';
 import { EmployeeUpcomingItem } from '../models/employee-overview.model';
@@ -138,26 +138,27 @@ describe('formatEventTime', () => {
   });
 });
 
-describe('formatUpcomingWhen', () => {
+describe('upcomingDateBlock', () => {
   const item = (over: Partial<EmployeeUpcomingItem>): EmployeeUpcomingItem => ({
     kind: 'calendar', title: 't', start: '2026-09-30T09:00:00+00:00', end: '2026-09-30T10:00:00+00:00', isAllDay: false, detail: null, ...over
   });
 
-  it('shows date and time for a timed event', () => {
-    expect(formatUpcomingWhen(item({}), 'UTC')).toBe('Sep 30 · 09:00');
+  it('gives the date tile and start time for a timed event, in the given zone', () => {
+    expect(upcomingDateBlock(item({}), 'UTC')).toEqual({ month: 'SEP', day: 30, time: '09:00' });
   });
 
-  it('shows a single date for an all-day item with no end', () => {
-    expect(formatUpcomingWhen(item({ kind: 'release', isAllDay: true, start: '2026-10-01T00:00:00+00:00', end: null }))).toBe('Oct 1');
+  it('takes the date tile from the zoned day, not the UTC date', () => {
+    expect(upcomingDateBlock(item({ start: '2026-09-30T20:00:00+00:00' }), 'Asia/Colombo')).toEqual({ month: 'OCT', day: 1, time: '01:30' });
   });
 
-  it('shows a range for multi-day leave, collapsing same-month ranges, by UTC date parts', () => {
-    expect(formatUpcomingWhen(item({ kind: 'leave', isAllDay: true, start: '2026-09-23T00:00:00+00:00', end: '2026-09-25T23:59:59+00:00' }))).toBe('Sep 23 – 25');
-    expect(formatUpcomingWhen(item({ kind: 'leave', isAllDay: true, start: '2026-09-30T00:00:00+00:00', end: '2026-10-02T23:59:59+00:00' }))).toBe('Sep 30 – Oct 2');
+  it('says All day for a one-day all-day item, by UTC date parts', () => {
+    expect(upcomingDateBlock(item({ kind: 'release', isAllDay: true, start: '2026-10-01T00:00:00+00:00', end: null }))).toEqual({ month: 'OCT', day: 1, time: 'All day' });
+    expect(upcomingDateBlock(item({ kind: 'leave', isAllDay: true, start: '2026-09-23T00:00:00+00:00', end: '2026-09-23T23:59:59+00:00' })).time).toBe('All day');
   });
 
-  it('shows one date for a one-day all-day item', () => {
-    expect(formatUpcomingWhen(item({ kind: 'leave', isAllDay: true, start: '2026-09-23T00:00:00+00:00', end: '2026-09-23T23:59:59+00:00' }))).toBe('Sep 23');
+  it('shows the range for multi-day leave', () => {
+    expect(upcomingDateBlock(item({ kind: 'leave', isAllDay: true, start: '2026-09-23T00:00:00+00:00', end: '2026-09-25T23:59:59+00:00' })).time).toBe('Sep 23 – 25');
+    expect(upcomingDateBlock(item({ kind: 'leave', isAllDay: true, start: '2026-09-30T00:00:00+00:00', end: '2026-10-02T23:59:59+00:00' })).time).toBe('Sep 30 – Oct 2');
   });
 });
 

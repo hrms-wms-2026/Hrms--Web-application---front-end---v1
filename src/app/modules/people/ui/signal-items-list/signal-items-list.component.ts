@@ -29,7 +29,13 @@ interface TaskGroup { readonly projectName: string; readonly items: readonly Emp
               @for (item of group.items; track item.id) {
                 <button type="button" data-testid="signal-item" class="item-row" (click)="itemSelected.emit(item)">
                   <span class="truncate">{{ item.title }}</span>
-                  <span class="shrink-0 text-slate-400">due {{ short(item.dueDate) }} ›</span>
+                  <span class="flex shrink-0 items-center gap-1.5 text-slate-400">
+                    @if (item.carriedOver) {
+                      <span data-testid="signal-item-carried-over"
+                            class="rounded bg-amber-100 px-1.5 py-0.5 text-[10px] font-semibold text-amber-800">{{ carriedOverLabel(item) }}</span>
+                    }
+                    due {{ short(item.dueDate) }} ›
+                  </span>
                 </button>
               }
             </div>
@@ -98,6 +104,16 @@ export class SignalItemsListComponent {
       return;
     }
     this.itemSelected.emit(item);
+  }
+
+  /** "Carried over from Sep · 11 days late" - the month comes from the task's own due date. */
+  carriedOverLabel(item: EmployeeSignalItem): string {
+    const month = item.dueDate
+      ? new Date(`${item.dueDate.slice(0, 10)}T00:00:00Z`).toLocaleString('en-US', { month: 'short', timeZone: 'UTC' })
+      : null;
+    const days = item.daysOverdue ?? 0;
+    const late = days > 0 ? ` · ${days} ${days === 1 ? 'day' : 'days'} late` : '';
+    return `Carried over${month ? ` from ${month}` : ''}${late}`;
   }
 
   short(iso: string | null): string {

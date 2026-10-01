@@ -54,6 +54,18 @@ describe('SignalItemsListComponent', () => {
       .toEqual(['Apollo (2)', 'Zeus (1)']);
   });
 
+  it('labels carried-over tasks with their due month and days late, and leaves current tasks unlabelled', () => {
+    const task = (id: string, extra: Partial<EmployeeSignalItem>): EmployeeSignalItem =>
+      ({ ...base, kind: 'task', id, title: `Task ${id}`, projectName: 'Apollo', dueDate: '2026-09-20', ...extra });
+    const { el } = setup({ response: res([
+      task('1', { carriedOver: true, daysOverdue: 11 }),
+      task('2', { dueDate: '2026-10-01', carriedOver: false, daysOverdue: 3 })
+    ]) });
+    const badges = el.querySelectorAll('[data-testid="signal-item-carried-over"]');
+    expect(badges.length).toBe(1);
+    expect(badges[0].textContent!.trim()).toBe('Carried over from Sep · 11 days late');
+  });
+
   it('expands an approval inline with a review link instead of emitting itemSelected', () => {
     const approval: EmployeeSignalItem = { ...base, kind: 'approval', id: 'r-1', title: 'Leave request',
       subtitle: 'Annual · 2026-10-03 → 2026-10-05', approvalKind: 'leave', requestedAt: '2026-09-28T05:00:00Z' };

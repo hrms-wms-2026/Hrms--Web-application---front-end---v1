@@ -71,6 +71,47 @@ describe('OverviewChecklistsWidgetComponent', () => {
     const { el } = setup(vi.fn().mockReturnValue(of({ groups: [] })));
 
     expect(el.querySelector('[data-testid="widget-empty"]')).toBeTruthy();
+    expect(el.style.display).toBe('none');
+  });
+
+  it('keeps the host visible when checklist content exists', () => {
+    const { el } = setup(vi.fn().mockReturnValue(of(response)));
+
+    expect(el.style.display).not.toBe('none');
+  });
+
+  it('shows all groups without View all when there are three or fewer', () => {
+    const { fixture, el } = setup(vi.fn().mockReturnValue(of(response)));
+
+    (el.querySelector('app-widget-card') as HTMLElement).click();
+    fixture.detectChanges();
+
+    expect(el.querySelectorAll('[data-testid="checklist-group"]')).toHaveLength(3);
+    expect(el.querySelector('[data-testid="checklists-toggle"]')).toBeNull();
+    expect(el.querySelector('[data-testid="popout-panel"]')!.classList.contains('popout-panel--open')).toBe(false);
+  });
+
+  it('shows three groups, then pops out with all of them on a card click - without another request', () => {
+    const get = vi.fn().mockReturnValue(of({
+      groups: [
+        ...response.groups,
+        { name: 'Offboarding', lifecycleType: 'offboarding', completed: 0, bypassed: 0, total: 4 },
+        { name: 'Policies', lifecycleType: 'onboarding', completed: 1, bypassed: 0, total: 1 }
+      ]
+    }));
+    const { fixture, el } = setup(get);
+    expect(el.querySelectorAll('[data-testid="checklist-group"]')).toHaveLength(3);
+
+    (el.querySelector('app-widget-card') as HTMLElement).click();
+    fixture.detectChanges();
+
+    expect(el.querySelector('[data-testid="popout-panel"]')!.classList.contains('popout-panel--open')).toBe(true);
+    expect(el.querySelectorAll('[data-testid="checklist-group"]')).toHaveLength(5);
+
+    (el.querySelector('[data-testid="checklists-toggle"]') as HTMLButtonElement).click();
+    fixture.detectChanges();
+    expect(el.querySelectorAll('[data-testid="checklist-group"]')).toHaveLength(3);
+    expect(get).toHaveBeenCalledTimes(1);
   });
 
   it('shows the no-access state on 403', () => {

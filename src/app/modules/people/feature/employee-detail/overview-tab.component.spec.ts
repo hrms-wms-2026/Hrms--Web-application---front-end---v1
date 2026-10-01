@@ -3,6 +3,7 @@ import { Observable, Subject, of } from 'rxjs';
 import { PeopleApiService } from '../../data-access/people-api.service';
 import { EmployeeOverviewSignalsResponse, EmployeeSignal } from '../../models/employee-overview.model';
 import { EmployeePeriodStore } from '../../state/employee-period.store';
+import { SignalDrilldownStore } from '../../state/signal-drilldown.store';
 import { ProjectDetailStore } from '../../../work/state/project-detail.store';
 import { EmployeeOverviewTabComponent } from './overview-tab.component';
 
@@ -57,6 +58,8 @@ describe('EmployeeOverviewTabComponent', () => {
       ),
       getOverviewSignals: vi.fn().mockReturnValue(signalsSource),
       getOverviewSignalItems: vi.fn(() => of({ key: 'over_break', total: 0, timezone: null, items: [] })),
+      getOverviewAttendanceDays: vi.fn().mockReturnValue(of({ from: '', to: '', timezone: 'UTC', days: [] })),
+      getOverviewWorkTasks: vi.fn().mockReturnValue(of({ from: '', to: '', items: [] })),
       getOverviewUpcoming: vi.fn().mockReturnValue(of({ from: '', to: '', items: [] })),
       getOverviewChecklists: vi.fn().mockReturnValue(of({ groups: [] })),
       getOverviewHistory: vi.fn().mockReturnValue(of({ events: [] })),
@@ -65,6 +68,8 @@ describe('EmployeeOverviewTabComponent', () => {
     TestBed.configureTestingModule({
       imports: [EmployeeOverviewTabComponent],
       providers: [
+        // Provided by the employee detail page in the app; the tab only reads it and sets its bounds.
+        EmployeePeriodStore,
         { provide: PeopleApiService, useValue: api },
         { provide: ProjectDetailStore, useValue: {
           loadProject: vi.fn(), loadMyMilestones: vi.fn(), projectError: vi.fn(() => null)
@@ -75,17 +80,19 @@ describe('EmployeeOverviewTabComponent', () => {
     fixture.componentRef.setInput('employeeId', 'emp-1');
     fixture.componentRef.setInput('hireDate', hireDate);
     fixture.detectChanges();
-    return { fixture, api, el: fixture.nativeElement as HTMLElement };
+    return { fixture, api, el: fixture.nativeElement as HTMLElement, store: TestBed.inject(EmployeePeriodStore) };
   }
 
   function setupWithSignals(signals: readonly EmployeeSignal[]) {
     return setup(null, of({ from: '2026-09-01', to: '2026-09-30', signals }));
   }
 
-  it('renders the period picker and the three widgets', () => {
+  it('renders the widgets without its own title or month controls (those live in the page header)', () => {
     const { el } = setup();
 
-    expect(el.querySelector('app-employee-period-picker')).toBeTruthy();
+    expect(el.querySelector('app-employee-period-picker')).toBeNull();
+    expect(el.querySelector('button[title="Previous month"]')).toBeNull();
+    expect(el.textContent).not.toContain('Performance Overview');
     expect(el.querySelector('app-overview-attendance-widget')).toBeTruthy();
     expect(el.querySelector('app-overview-discipline-widget')).toBeNull();
     expect(el.querySelector('app-overview-time-off-widget')).toBeTruthy();
@@ -116,7 +123,7 @@ describe('EmployeeOverviewTabComponent', () => {
     expect(el.querySelector('[data-testid="needs-attention"]')).toBeNull();
   });
 
-  it('moves Attendance beside the chart and expands the remaining operations when there are no attention signals', () => {
+  it('moves Attendance beside the chart and leaves Work and Upcoming in two columns when there are no attention signals', () => {
     const { fixture, el } = setup();
     fixture.detectChanges();
     const summarySide = el.querySelector('[data-testid="overview-summary-side"]')!;
@@ -124,10 +131,11 @@ describe('EmployeeOverviewTabComponent', () => {
 
     expect(summarySide.querySelector('app-overview-attendance-widget')).toBeTruthy();
     expect(operations.querySelector('app-overview-attendance-widget')).toBeNull();
-    expect(operations.classList.contains('lg:grid-cols-3')).toBe(true);
+    expect(operations.classList.contains('md:grid-cols-2')).toBe(true);
+    expect(operations.classList.contains('lg:grid-cols-3')).toBe(false);
   });
 
-  it('keeps Attendance in the four-column operations row when Needs Attention is present', () => {
+  it('keeps Attendance in the three-column operations row when Needs Attention is present', () => {
     const signals = [signal('late_clock_ins', 1, 'warning', 'attendance')];
     const { fixture, el } = setup(null, of({ from: '2026-09-01', to: '2026-09-30', signals }));
     fixture.detectChanges();
@@ -137,7 +145,7 @@ describe('EmployeeOverviewTabComponent', () => {
     expect(summarySide.querySelector('[data-testid="needs-attention"]')).toBeTruthy();
     expect(summarySide.querySelector('app-overview-attendance-widget')).toBeNull();
     expect(operations.querySelector('app-overview-attendance-widget')).toBeTruthy();
-    expect(operations.classList.contains('lg:grid-cols-4')).toBe(true);
+    expect(operations.classList.contains('lg:grid-cols-3')).toBe(true);
   });
 
   it('keeps signal order in the KPI strip and Needs Attention rows', () => {
@@ -159,39 +167,30 @@ describe('EmployeeOverviewTabComponent', () => {
     expect(api.getOverviewSignals).toHaveBeenCalledWith('emp-1', '2026-09-01', '2026-09-30');
   });
 
-  it('disables both month-stepper buttons when employment starts in the current month', () => {
-    const { el } = setup('2026-09-03');
+  it('bounds the shared month store by the hire date, so the header stepper cannot go back', () => {
+    const { store } = setup('2026-09-03');
 
-    expect((el.querySelector('button[title="Previous month"]') as HTMLButtonElement).disabled).toBe(true);
-    expect((el.querySelector('button[title="Next month"]') as HTMLButtonElement).disabled).toBe(true);
+    expect(store.canGoPrevious()).toBe(false);
+    expect(store.canGoNext()).toBe(false);
   });
 
   it('changing the month refetches the period-aware widgets but not time off', () => {
-    const { fixture, api, el } = setup();
-    const picker = el.querySelector('app-employee-period-picker') as HTMLElement;
-    expect(picker).toBeTruthy();
+    const { fixture, api, store } = setup();
 
-    // The picker's onChange writes the tab-scoped store; drive it the same way the select does.
-    const pickerInstance = fixture.debugElement.query((d) => d.name === 'app-employee-period-picker').componentInstance;
-    pickerInstance.onChange('2026-05');
+    store.setMonth('2026-05');
     fixture.detectChanges();
 
     expect(api.getOverviewAttendance).toHaveBeenLastCalledWith('emp-1', '2026-05-01', '2026-05-31');
     expect(api.getOverviewAttendanceDiscipline).toHaveBeenLastCalledWith('emp-1', '2026-05-01', '2026-05-31', false);
-    // Attendance widget, chart, and Time Off monthly-leave line all follow the selected month.
-    expect(api.getOverviewAttendance).toHaveBeenCalledTimes(6);
+    // Attendance widget and chart follow the selected month; Time Off is year-based and makes no attendance call.
+    expect(api.getOverviewAttendance).toHaveBeenCalledTimes(4);
     expect(api.getOverviewTimeOff).toHaveBeenCalledTimes(1);
   });
 
   it('loads the picked compare month for signals and visible widget deltas', () => {
-    const { fixture, api, el } = setup('2026-01-01');
-    const compareButton = [...el.querySelectorAll('button')].find((button) => button.textContent?.includes('Compare'))!;
+    const { fixture, api, el, store } = setup('2026-01-01');
 
-    compareButton.click();
-    fixture.detectChanges();
-    const picker = fixture.debugElement.query((element) => element.name === 'app-employee-compare-picker');
-    const select = picker.query((element) => element.name === 'app-select').componentInstance;
-    select.valueChange.emit('2026-08');
+    store.setCompareMonth('2026-08');
     fixture.detectChanges();
 
     for (const method of [
@@ -223,10 +222,50 @@ describe('EmployeeOverviewTabComponent', () => {
     (fixture.nativeElement.querySelector('[data-key="over_break"]') as HTMLButtonElement).click();
     fixture.detectChanges();
 
-    fixture.debugElement.injector.get(EmployeePeriodStore).setMonth('2026-08');
+    TestBed.inject(EmployeePeriodStore).setMonth('2026-08');
     fixture.detectChanges();
 
     expect(fixture.nativeElement.querySelector('[data-key="over_break"]')?.getAttribute('aria-expanded') ?? 'false').toBe('false');
+  });
+
+  it('places Time Off beside Approvals and drops the employment history widget', () => {
+    const { el } = setup();
+    const balances = el.querySelector('[data-testid="overview-balances"]')!;
+
+    expect(balances.querySelector('app-overview-time-off-widget')).toBeTruthy();
+    expect(balances.querySelector('[data-testid="approvals-card"]')).toBeTruthy();
+    expect(el.querySelector('[data-testid="approvals-empty"]')!.textContent).toContain('All caught up');
+    expect(el.querySelector('app-overview-history-widget')).toBeNull();
+  });
+
+  it('opens an Attendance card day in the shared day drawer, in the employee timezone', () => {
+    const { fixture } = setup();
+    const attendance = fixture.debugElement.query((d) => d.name === 'app-overview-attendance-widget').componentInstance;
+
+    attendance.daySelected.emit({ day: { date: '2026-09-02' }, timezone: 'Asia/Colombo' });
+    fixture.detectChanges();
+
+    const selected = fixture.debugElement.injector.get(SignalDrilldownStore).selected()!;
+    expect(selected.item.kind).toBe('attendance_day');
+    expect(selected.item.date).toBe('2026-09-02');
+    expect(selected.timezone).toBe('Asia/Colombo');
+  });
+
+  it('opens a Work card task in the shared task detail (drill-down selection)', () => {
+    const { fixture } = setup();
+    const work = fixture.debugElement.query((d) => d.name === 'app-overview-work-widget').componentInstance;
+
+    work.taskSelected.emit({
+      taskId: 't1', shortId: 'WEB-1', title: 'Fix cart', bucket: 'overdue', priority: 'high', statusName: 'To do',
+      statusColor: '#000', dueDate: '2026-09-10', daysOverdue: 3, isCarriedOver: false, projectId: 'p1',
+      projectName: 'Website', objectiveId: 'o1', moduleName: 'Checkout'
+    });
+    fixture.detectChanges();
+
+    const selected = fixture.debugElement.injector.get(SignalDrilldownStore).selected()!;
+    expect(selected.item.kind).toBe('task');
+    expect(selected.item.id).toBe('t1');
+    expect(selected.item.projectId).toBe('p1');
   });
 
   it('no longer renders the Discipline widget but keeps the approvals widget', () => {

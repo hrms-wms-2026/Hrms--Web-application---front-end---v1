@@ -2,6 +2,7 @@ import { TestBed } from '@angular/core/testing';
 import { of } from 'rxjs';
 import { ProjectDetailStore } from '../../../work/state/project-detail.store';
 import { PeopleApiService } from '../../data-access/people-api.service';
+import { EmployeePeriodStore } from '../../state/employee-period.store';
 import { EmployeeOverviewTabComponent } from './overview-tab.component';
 
 describe('EmployeeOverviewTabComponent plan 4 widgets', () => {
@@ -23,6 +24,8 @@ describe('EmployeeOverviewTabComponent plan 4 widgets', () => {
       getOverviewApprovals: vi.fn().mockReturnValue(of({ from: '', to: '', pending: 0, approved: 0, rejected: 0, total: 0, items: [] })),
       getOverviewSignals: vi.fn().mockReturnValue(of({ from: '', to: '', signals: [] })),
       getOverviewSignalItems: vi.fn(() => of({ key: '', total: 0, timezone: null, items: [] })),
+      getOverviewAttendanceDays: vi.fn().mockReturnValue(of({ from: '', to: '', timezone: 'UTC', days: [] })),
+      getOverviewWorkTasks: vi.fn().mockReturnValue(of({ from: '', to: '', items: [] })),
       getOverviewUpcoming: vi.fn().mockReturnValue(of({ from: '', to: '', items: [] })),
       getOverviewChecklists: vi.fn().mockReturnValue(of({ groups: [] })),
       getOverviewHistory: vi.fn().mockReturnValue(of({ events: [] })),
@@ -31,6 +34,7 @@ describe('EmployeeOverviewTabComponent plan 4 widgets', () => {
     TestBed.configureTestingModule({
       imports: [EmployeeOverviewTabComponent],
       providers: [
+        EmployeePeriodStore,
         { provide: PeopleApiService, useValue: api },
         { provide: ProjectDetailStore, useValue: {
           loadProject: vi.fn(), loadMyMilestones: vi.fn(), projectError: vi.fn(() => null)
@@ -44,20 +48,20 @@ describe('EmployeeOverviewTabComponent plan 4 widgets', () => {
     return { fixture, api, el: fixture.nativeElement as HTMLElement };
   }
 
-  it('renders the four new widgets', () => {
+  it('renders Upcoming, Checklists and Recent Activity, but not the employment history (it lives on the Employment tab)', () => {
     const { el } = setup();
 
     for (const tag of [
       'app-overview-upcoming-widget',
       'app-overview-checklists-widget',
-      'app-overview-history-widget',
       'app-overview-recent-activity-widget'
     ]) {
       expect(el.querySelector(tag), tag).toBeTruthy();
     }
+    expect(el.querySelector('app-overview-history-widget')).toBeNull();
   });
 
-  it('places Upcoming in the operations row and keeps the lifetime widgets below it', () => {
+  it('places Upcoming in the operations row and puts Checklists and Recent Activity side by side below it', () => {
     const { el } = setup();
     const upcoming = el.querySelector('app-overview-upcoming-widget')!;
     const operations = el.querySelector('[data-testid="overview-operations"]')!;
@@ -67,7 +71,7 @@ describe('EmployeeOverviewTabComponent plan 4 widgets', () => {
     expect(operations.textContent).not.toContain('Activity monitoring is not enabled');
     expect(lifetime.querySelector('app-overview-upcoming-widget')).toBeNull();
     expect(lifetime.querySelector('app-overview-checklists-widget')).toBeTruthy();
-    expect(lifetime.querySelector('app-overview-history-widget')).toBeTruthy();
+    expect(lifetime.querySelector('app-overview-recent-activity-widget')).toBeTruthy();
     expect(el.querySelector('section[aria-labelledby="insights-heading"] app-overview-upcoming-widget')).toBeNull();
 
     const insights = el.querySelector('section[aria-labelledby="insights-heading"]')!;
@@ -75,33 +79,40 @@ describe('EmployeeOverviewTabComponent plan 4 widgets', () => {
     expect(insights.compareDocumentPosition(activity) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
   });
 
-  it('does not display the Checklists card when there are no checklist groups', () => {
+  it('hides an empty Checklists card and lets Recent Activity take the full row', () => {
     const { el } = setup();
     const checklists = el.querySelector('app-overview-checklists-widget') as HTMLElement;
+    const lifetime = el.querySelector('[data-testid="overview-lifetime"]')!;
 
     expect(checklists.style.display).toBe('none');
+    expect(lifetime.classList.contains('lg:grid-cols-2')).toBe(false);
+  });
+
+  it('shows Checklists and Recent Activity in two columns when there are checklist groups', () => {
+    const { fixture, api, el } = setup();
+    api.getOverviewChecklists.mockReturnValue(of({ groups: [{ name: 'Onboarding', lifecycleType: 'onboarding', completed: 1, bypassed: 0, total: 3 }] }));
+    fixture.debugElement.query((d) => d.name === 'app-overview-checklists-widget').componentInstance.loader.reload();
+    fixture.detectChanges();
+
+    expect(el.querySelector('[data-testid="overview-lifetime"]')!.classList.contains('lg:grid-cols-2')).toBe(true);
   });
 
   it('loads each new widget once for the employee, with the documented page sizes', () => {
     const { api } = setup();
 
-    expect(api.getOverviewUpcoming).toHaveBeenCalledWith('emp-1', 14);
+    expect(api.getOverviewUpcoming).toHaveBeenCalledWith('emp-1', 14, 4);
     expect(api.getOverviewChecklists).toHaveBeenCalledWith('emp-1');
-    expect(api.getOverviewHistory).toHaveBeenCalledWith('emp-1', 10);
-    expect(api.getOverviewRecentActivity).toHaveBeenCalledWith('emp-1', null, 20);
+    expect(api.getOverviewHistory).not.toHaveBeenCalled();
+    expect(api.getOverviewRecentActivity).toHaveBeenCalledWith('emp-1', null, 3);
   });
 
   it('does not refetch any of them when the month or the comparison changes', () => {
-    const { fixture, api, el } = setup();
+    const { fixture, api } = setup();
+    const store = TestBed.inject(EmployeePeriodStore);
 
-    fixture.debugElement.query((d) => d.name === 'app-employee-period-picker').componentInstance.onChange('2026-05');
+    store.setMonth('2026-05');
     fixture.detectChanges();
-
-    const compareButton = [...el.querySelectorAll('button')].find((button) => button.textContent?.includes('Compare'))!;
-    compareButton.click();
-    fixture.detectChanges();
-    const compare = fixture.debugElement.query((d) => d.name === 'app-employee-compare-picker');
-    compare.query((d) => d.name === 'app-select').componentInstance.valueChange.emit('2026-04');
+    store.setCompareMonth('2026-04');
     fixture.detectChanges();
 
     // The period-aware widgets did follow both changes...
@@ -110,7 +121,6 @@ describe('EmployeeOverviewTabComponent plan 4 widgets', () => {
     // ...while the lifetime/forward-looking ones loaded exactly once.
     expect(api.getOverviewUpcoming).toHaveBeenCalledTimes(1);
     expect(api.getOverviewChecklists).toHaveBeenCalledTimes(1);
-    expect(api.getOverviewHistory).toHaveBeenCalledTimes(1);
     expect(api.getOverviewRecentActivity).toHaveBeenCalledTimes(1);
   });
 });

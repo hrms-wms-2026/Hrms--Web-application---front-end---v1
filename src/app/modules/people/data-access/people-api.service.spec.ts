@@ -178,16 +178,18 @@ describe('PeopleApiService', () => {
     req.flush({});
   });
 
-  it('getOverviewUpcoming sends days, defaulting to 14', () => {
+  it('getOverviewUpcoming sends days and limit, defaulting to 14 and 10', () => {
     service.getOverviewUpcoming('emp-1').subscribe();
     const byDefault = httpMock.expectOne(overviewUrl('upcoming'));
     expect(byDefault.request.method).toBe('GET');
     expect(byDefault.request.params.get('days')).toBe('14');
+    expect(byDefault.request.params.get('limit')).toBe('10');
     byDefault.flush({});
 
-    service.getOverviewUpcoming('emp-1', 30).subscribe();
+    service.getOverviewUpcoming('emp-1', 30, 3).subscribe();
     const custom = httpMock.expectOne(overviewUrl('upcoming'));
     expect(custom.request.params.get('days')).toBe('30');
+    expect(custom.request.params.get('limit')).toBe('3');
     custom.flush({});
   });
 

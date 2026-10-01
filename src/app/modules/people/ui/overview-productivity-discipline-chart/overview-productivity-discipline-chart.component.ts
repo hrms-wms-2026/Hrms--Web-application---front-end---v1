@@ -92,6 +92,7 @@ function buildChartData(raw: ChartSources | null) {
 
 @Component({
   selector: 'app-overview-productivity-discipline-chart',
+  host: { class: 'block h-full' },
   standalone: true,
   imports: [],
   template: `
@@ -106,13 +107,13 @@ function buildChartData(raw: ChartSources | null) {
     </div>
 
     @if (loader.state() === 'loading') {
-      <div class="h-72 animate-pulse rounded-2xl bg-slate-100"></div>
+      <div class="h-60 animate-pulse rounded-2xl bg-slate-100"></div>
     } @else if (data(); as d) {
-      <div>
+      <div class="h-full">
         <!-- Attendance vs. Delivery Trend Card -->
-        <div class="rounded-2xl border border-slate-200/80 bg-white p-6 shadow-xs overflow-hidden">
+        <div class="flex h-full flex-col rounded-2xl border border-slate-200/80 bg-white p-5 shadow-xs overflow-hidden">
           <!-- Chart Header -->
-          <div class="flex flex-wrap items-center justify-between gap-3 mb-6">
+          <div class="flex flex-wrap items-center justify-between gap-3 mb-3">
             <div class="flex items-center gap-3">
               <h3 class="text-base font-bold text-slate-900">Attendance vs. Delivery Trend</h3>
               @if (period.isComparing()) {
@@ -142,36 +143,33 @@ function buildChartData(raw: ChartSources | null) {
           </div>
 
           <!-- Chart Area -->
-          <div class="relative pt-2 pb-6 pl-10 pr-2">
-            <!-- Y-Axis Grid Lines & Labels -->
-            <div class="absolute inset-y-2 left-0 right-2 pointer-events-none flex flex-col justify-between text-[11px] font-mono text-slate-400">
-              <div class="flex items-center w-full">
-                <span class="w-8 text-right pr-2">100%</span>
-                <div class="flex-1 border-t border-slate-100"></div>
+          <div class="relative mt-auto pb-1 pt-2">
+            <!-- Keep the grid, target line and bars in the same fixed-height plot so their percentages align. -->
+            <div data-testid="weekly-chart-plot" class="relative ml-10 mr-2 h-36">
+              <!-- Y-Axis Grid Lines & Labels -->
+              <div class="pointer-events-none absolute inset-0 text-[11px] font-mono text-slate-400">
+                <div data-testid="chart-grid-100" class="absolute left-0 right-0 top-0 border-t border-slate-100">
+                  <span class="absolute right-full mr-2 w-8 -translate-y-1/2 text-right">100%</span>
+                </div>
+                <div class="absolute left-0 right-0 top-1/4 border-t border-slate-100">
+                  <span class="absolute right-full mr-2 w-8 -translate-y-1/2 text-right">75%</span>
+                </div>
+                <div class="absolute left-0 right-0 top-1/2 border-t border-slate-100">
+                  <span class="absolute right-full mr-2 w-8 -translate-y-1/2 text-right">50%</span>
+                </div>
+                <div class="absolute left-0 right-0 top-3/4 border-t border-slate-100">
+                  <span class="absolute right-full mr-2 w-8 -translate-y-1/2 text-right">25%</span>
+                </div>
+                <div data-testid="chart-grid-0" class="absolute bottom-0 left-0 right-0 border-t border-slate-200">
+                  <span class="absolute right-full mr-2 w-8 -translate-y-1/2 text-right">0%</span>
+                </div>
               </div>
-              <div class="flex items-center w-full relative">
-                <span class="w-8 text-right pr-2">75%</span>
-                <div class="flex-1 border-t border-slate-100"></div>
-              </div>
-              <div class="flex items-center w-full">
-                <span class="w-8 text-right pr-2">50%</span>
-                <div class="flex-1 border-t border-slate-100"></div>
-              </div>
-              <div class="flex items-center w-full">
-                <span class="w-8 text-right pr-2">25%</span>
-                <div class="flex-1 border-t border-slate-100"></div>
-              </div>
-              <div class="flex items-center w-full">
-                <span class="w-8 text-right pr-2">0%</span>
-                <div class="flex-1 border-t border-slate-200"></div>
-              </div>
-            </div>
 
-            <!-- 80% Target Reference Line -->
-            <div class="absolute left-8 right-2 top-[20%] border-t border-dashed border-slate-400 pointer-events-none z-10"></div>
+              <!-- 80% Target Reference Line -->
+              <div class="pointer-events-none absolute left-0 right-0 top-[20%] z-20 border-t border-dashed border-slate-400"></div>
 
-            <!-- Bars Container -->
-            <div class="relative flex items-end justify-around h-48 border-b border-slate-200 pb-0.5">
+              <!-- Bars Container -->
+              <div class="relative z-10 flex h-full items-end justify-around border-b border-slate-200">
               @if (compareData()) {
                 <svg class="absolute inset-0 w-full h-full pointer-events-none z-[5]" viewBox="0 0 100 100" preserveAspectRatio="none">
                   <polyline
@@ -213,9 +211,10 @@ function buildChartData(raw: ChartSources | null) {
                 </div>
               }
             </div>
+            </div>
 
             <!-- X-Axis Labels -->
-            <div class="flex justify-around items-center mt-3 text-xs text-slate-500 font-medium">
+            <div data-testid="chart-x-labels" class="ml-10 mr-2 mt-2 flex items-center justify-around text-xs font-medium text-slate-500">
               @for (group of d.weeklyGroups; track group.label) {
                 <div class="flex-1 max-w-[130px] text-center">
                   <span class="font-bold text-slate-800 block text-xs">{{ group.label }}</span>

@@ -49,7 +49,7 @@ describe('OverviewNeedsAttentionComponent', () => {
     expect(fixture.nativeElement.querySelector('[data-testid="needs-attention"]')).toBeNull();
   });
 
-  it('renders one row per signal in the given order with the item count', () => {
+  it('renders one row per signal in the given order', () => {
     const fixture = setup([
       signal('absent_days', 1, 'critical'),
       signal('pending_approvals', 9, 'info')
@@ -57,7 +57,6 @@ describe('OverviewNeedsAttentionComponent', () => {
     const rows = [...fixture.nativeElement.querySelectorAll('[data-testid="attention-row"]')];
 
     expect(rows.map((row: HTMLElement) => row.dataset['key'])).toEqual(['absent_days', 'pending_approvals']);
-    expect(fixture.nativeElement.textContent).toContain('2 items');
   });
 
   it('shows three alerts initially and expands or collapses the full list on request', () => {
@@ -73,7 +72,6 @@ describe('OverviewNeedsAttentionComponent', () => {
     const el = fixture.nativeElement as HTMLElement;
 
     expect(el.querySelectorAll('[data-testid="attention-row"]')).toHaveLength(3);
-    expect(el.textContent).toContain('6 items');
 
     const toggle = el.querySelector('[data-testid="attention-toggle"]') as HTMLButtonElement;
     expect(toggle.textContent?.trim()).toBe('View all');
@@ -93,7 +91,7 @@ describe('OverviewNeedsAttentionComponent', () => {
     expect(toggle.textContent?.trim()).toBe('View all');
   });
 
-  it('expands the full list when the card is clicked anywhere', () => {
+  it('pops out with the full list when the card is clicked anywhere', () => {
     const fixture = setup([
       signal('absent_days', 1, 'critical'),
       signal('missing_clock_outs', 2, 'critical'),
@@ -107,7 +105,66 @@ describe('OverviewNeedsAttentionComponent', () => {
     fixture.detectChanges();
 
     expect(el.querySelectorAll('[data-testid="attention-row"]')).toHaveLength(5);
-    expect(el.querySelector('[data-testid="attention-toggle"]')!.textContent?.trim()).toBe('Show less');
+    expect(el.querySelector('[data-testid="popout-panel"]')!.classList.contains('popout-panel--open')).toBe(true);
+  });
+
+  it('collapses back to three rows and folds the open row when the popup is closed from outside', () => {
+    const fixture = setup([
+      signal('absent_days', 1, 'critical'), signal('missing_clock_outs', 2, 'critical'),
+      signal('over_break', 3, 'warning'), signal('late_clock_ins', 4, 'warning')
+    ]);
+    const el = fixture.nativeElement as HTMLElement;
+    (el.querySelector('[data-key="absent_days"]') as HTMLButtonElement).click();
+    fixture.detectChanges();
+    expect(el.querySelector('[data-testid="popout-panel"]')!.classList.contains('popout-panel--open')).toBe(true);
+
+    document.body.dispatchEvent(new Event('pointerdown', { bubbles: true }));
+    fixture.detectChanges();
+
+    expect(el.querySelector('[data-testid="popout-panel"]')!.classList.contains('popout-panel--open')).toBe(false);
+    expect(el.querySelectorAll('[data-testid="attention-row"]')).toHaveLength(3);
+    expect(TestBed.inject(SignalDrilldownStore).openKey()).toBeNull();
+  });
+
+  it('shows refresh and close while popped out; refresh is handed to the Overview, close folds the card', () => {
+    const fixture = setup([
+      signal('absent_days', 1, 'critical'), signal('missing_clock_outs', 2, 'critical'),
+      signal('over_break', 3, 'warning'), signal('late_clock_ins', 4, 'warning')
+    ]);
+    const el = fixture.nativeElement as HTMLElement;
+    const refresh = vi.fn();
+    fixture.componentInstance.refresh.subscribe(refresh);
+    // On the card the controls are hover-revealed, with expand instead of close.
+    expect(el.querySelector('[data-testid="popout-header-actions"]')!.classList.contains('reveal')).toBe(true);
+    expect(el.querySelector('[data-testid="popout-expand"]')).toBeTruthy();
+
+    (el.querySelector('[data-testid="needs-attention"]') as HTMLElement).click();
+    fixture.detectChanges();
+    (el.querySelector('[data-testid="popout-refresh"]') as HTMLButtonElement).click();
+    expect(refresh).toHaveBeenCalledTimes(1);
+
+    (el.querySelector('[data-testid="popout-close"]') as HTMLButtonElement).click();
+    fixture.detectChanges();
+    expect(el.querySelectorAll('[data-testid="attention-row"]')).toHaveLength(3);
+  });
+
+  it('offers no expand button on hover when there are three or fewer items', () => {
+    const fixture = setup([signal('absent_days', 1, 'critical')]);
+    const el = fixture.nativeElement as HTMLElement;
+
+    expect(el.querySelector('[data-testid="popout-refresh"]')).toBeTruthy();
+    expect(el.querySelector('[data-testid="popout-expand"]')).toBeNull();
+  });
+
+  it('has no View all and does not pop out from a card click with three or fewer items', () => {
+    const fixture = setup([signal('absent_days', 1, 'critical'), signal('late_clock_ins', 2, 'warning')]);
+    const el = fixture.nativeElement as HTMLElement;
+
+    (el.querySelector('[data-testid="needs-attention"]') as HTMLElement).click();
+    fixture.detectChanges();
+
+    expect(el.querySelector('[data-testid="attention-toggle"]')).toBeNull();
+    expect(el.querySelector('[data-testid="popout-panel"]')!.classList.contains('popout-panel--open')).toBe(false);
   });
 
   it('expands a row into its items and collapses it on a second click', async () => {
@@ -121,6 +178,8 @@ describe('OverviewNeedsAttentionComponent', () => {
     expect(row.getAttribute('aria-expanded')).toBe('true');
     expect(getItems).toHaveBeenCalledWith('emp-1', 'late_clock_ins', '2026-09-01', '2026-09-30');
     expect(fixture.nativeElement.querySelector('app-signal-items-list')).toBeTruthy();
+    // A row's items only ever open inside the popup, even with a single signal.
+    expect(fixture.nativeElement.querySelector('[data-testid="popout-panel"]')!.classList.contains('popout-panel--open')).toBe(true);
 
     row.click();
     fixture.detectChanges();

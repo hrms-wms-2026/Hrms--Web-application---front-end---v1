@@ -1,4 +1,4 @@
-import { ChangeDetectionStrategy, Component, computed, effect, inject, input, signal } from '@angular/core';
+import { ChangeDetectionStrategy, Component, computed, inject, input, output, signal } from '@angular/core';
 import {
   EmployeeSignal,
   EmployeeSignalCategory,
@@ -8,29 +8,42 @@ import { EmployeePeriodStore } from '../../state/employee-period.store';
 import { SignalDrilldownStore } from '../../state/signal-drilldown.store';
 import { Delta } from '../../utils/employee-overview.utils';
 import { signalFullListUrl } from '../../utils/signal-item-links';
+import { PopoutPanelComponent } from '../../../../shared/ui/popout-panel/popout-panel.component';
+import { PopoutHeaderActionsComponent } from '../../../../shared/ui/popout-header-actions/popout-header-actions.component';
 import { DeltaBadgeComponent } from '../delta-badge/delta-badge.component';
 import { SignalItemsListComponent } from '../signal-items-list/signal-items-list.component';
 
 @Component({
   selector: 'app-overview-needs-attention',
   standalone: true,
-  imports: [DeltaBadgeComponent, SignalItemsListComponent],
+  imports: [DeltaBadgeComponent, SignalItemsListComponent, PopoutPanelComponent, PopoutHeaderActionsComponent],
   template: `
     @if (signals().length > 0) {
+      <app-popout-panel [open]="popped()" label="Needs Attention" (closed)="collapse()">
       <div
         data-testid="needs-attention"
-        class="rounded-2xl border border-[#fef08a] bg-[#fefce8] p-5"
-        [class.cursor-pointer]="!showAll() && signals().length > collapsedLimit"
-        (click)="expand()"
+        class="group rounded-2xl border border-[#fef08a] bg-[#fefce8] p-5"
+        [class.cursor-pointer]="!popped() && signals().length > collapsedLimit"
+        (click)="openAll()"
       >
         <div class="mb-2 flex items-center justify-between gap-3">
           <div class="flex items-center gap-2">
             <span class="flex h-8 w-8 items-center justify-center rounded-lg bg-amber-100 text-amber-700" aria-hidden="true">!</span>
             <h3 class="text-sm font-bold text-slate-900">Needs Attention</h3>
           </div>
-          <span class="rounded-full bg-amber-100 px-2.5 py-1 text-[11px] font-semibold text-amber-800">
-            {{ signals().length }} {{ signals().length === 1 ? 'item' : 'items' }}
-          </span>
+          <div class="flex items-center gap-2">
+            <app-popout-header-actions
+              style="--popout-actions-bg: #fefce8"
+              [refreshedAt]="refreshedAt()"
+              [refreshing]="refreshing()"
+              [expanded]="popped()"
+              [canExpand]="signals().length > collapsedLimit"
+              [revealOnHover]="!popped()"
+              (refresh)="refresh.emit()"
+              (expand)="openAll()"
+              (closed)="collapse()"
+            />
+          </div>
         </div>
 
         <div class="divide-y divide-amber-200/70" id="needs-attention-list">
@@ -84,14 +97,15 @@ import { SignalItemsListComponent } from '../signal-items-list/signal-items-list
               class="text-xs font-semibold text-blue-600 hover:text-blue-700 hover:underline cursor-pointer"
               data-testid="attention-toggle"
               aria-controls="needs-attention-list"
-              [attr.aria-expanded]="showAll()"
+              [attr.aria-expanded]="popped()"
               (click)="onToggleClick($event)"
             >
-              {{ showAll() ? 'Show less' : 'View all' }}
+              {{ popped() ? 'Show less' : 'View all' }}
             </button>
           </div>
         }
       </div>
+      </app-popout-panel>
     }
   `,
   changeDetection: ChangeDetectionStrategy.OnPush
@@ -104,31 +118,36 @@ export class OverviewNeedsAttentionComponent {
   readonly signals = input.required<readonly EmployeeSignal[]>();
   readonly deltas = input<readonly (Delta | null)[]>([]);
   readonly against = input<string | null>(null);
+  /** When the signals last came from the backend (owned by the Overview, which loads them). */
+  readonly refreshedAt = input<Date | null>(null);
+  readonly refreshing = input(false);
+  /** The popup's refresh button; the Overview refetches the signals and any open row. */
+  readonly refresh = output<void>();
   readonly showAll = signal(false);
+  /**
+   * Anything beyond the compact card - the full list or an opened row's items - only ever shows
+   * in the popup, so the card never grows inside the grid (which would stretch the chart beside it).
+   */
+  readonly popped = computed(() => this.showAll() || this.drilldown.openKey() !== null);
   readonly displayedSignals = computed(() =>
-    this.showAll() ? this.signals() : this.signals().slice(0, this.collapsedLimit)
+    this.popped() ? this.signals() : this.signals().slice(0, this.collapsedLimit)
   );
 
-  constructor() {
-    effect(() => {
-      const key = this.drilldown.openKey();
-      if (!key) return;
-      const index = this.signals().findIndex((item) => item.key === key);
-      if (index >= this.collapsedLimit) this.showAll.set(true);
-    });
+  /** A click anywhere on the card opens the full list - only when there is more to show. */
+  openAll(): void {
+    if (!this.popped() && this.signals().length > this.collapsedLimit) this.showAll.set(true);
   }
 
-  toggleShowAll(): void {
-    this.showAll.update((value) => !value);
-  }
-
-  expand(): void {
-    this.showAll.set(true);
+  /** Closing the popup also folds any opened row, returning the card to its compact form. */
+  collapse(): void {
+    this.showAll.set(false);
+    this.drilldown.close();
   }
 
   onToggleClick(event: Event): void {
     event.stopPropagation();
-    this.toggleShowAll();
+    if (this.popped()) this.collapse();
+    else this.showAll.set(true);
   }
 
   onRowClick(event: Event, key: string): void {

@@ -130,14 +130,26 @@ function zonedDateKey(iso: string | Date, timeZone?: string): string {
   return new Date(iso).toLocaleDateString('en-CA', { timeZone });
 }
 
-/** When an upcoming item happens: all-day items by UTC date parts, timed items in the viewer's zone. */
-export function formatUpcomingWhen(item: EmployeeUpcomingItem, timeZone?: string): string {
+/** Date tile + time line for an upcoming item: 'SEP' / 30 / '18:00' (or 'All day', or the range for multi-day). */
+export interface UpcomingDateBlock {
+  readonly month: string;
+  readonly day: number;
+  readonly time: string;
+}
+
+export function upcomingDateBlock(item: EmployeeUpcomingItem, timeZone?: string): UpcomingDateBlock {
+  let day: string;
+  let time: string;
   if (item.isAllDay) {
-    const startDay = item.start.slice(0, 10);
-    const endDay = item.end ? item.end.slice(0, 10) : startDay;
-    return startDay === endDay ? formatShortDate(startDay) : formatLeaveRange(startDay, endDay);
+    day = item.start.slice(0, 10);
+    const endDay = item.end ? item.end.slice(0, 10) : day;
+    time = day === endDay ? 'All day' : formatLeaveRange(day, endDay);
+  } else {
+    day = zonedDateKey(item.start, timeZone);
+    time = formatEventTime(item.start, timeZone);
   }
-  return `${formatShortDate(zonedDateKey(item.start, timeZone))} · ${formatEventTime(item.start, timeZone)}`;
+  const [, month, dayOfMonth] = day.split('-').map(Number);
+  return { month: MONTH_NAMES[month - 1].toUpperCase(), day: dayOfMonth, time };
 }
 
 /** 'Today, 14:41' / 'Yesterday, 18:12' / 'Sep 16, 16:32', deciding the day in the given zone. */

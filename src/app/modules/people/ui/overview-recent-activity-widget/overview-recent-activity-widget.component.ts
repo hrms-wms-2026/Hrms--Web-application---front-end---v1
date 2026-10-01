@@ -1,43 +1,85 @@
-import { ChangeDetectionStrategy, Component, DestroyRef, computed, inject, input, signal } from '@angular/core';
+import { ChangeDetectionStrategy, Component, DestroyRef, computed, effect, inject, input, signal, untracked } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
+import { PopoutHeaderActionsComponent, latestDate } from '../../../../shared/ui/popout-header-actions/popout-header-actions.component';
+import { PopoutPanelComponent } from '../../../../shared/ui/popout-panel/popout-panel.component';
 import { WidgetCardComponent } from '../../../../shared/ui/widget-card/widget-card.component';
 import { createWidgetLoader } from '../../../../shared/ui/widget-card/widget-loader';
 import { PeopleApiService } from '../../data-access/people-api.service';
 import { EmployeeActivityItem, EmployeeRecentActivityResponse } from '../../models/employee-overview.model';
 import { formatActivityWhen } from '../../utils/employee-overview.utils';
 
+/** Rows on the compact card; the page load asks the API for only these. */
+export const ACTIVITY_PREVIEW_LIMIT = 3;
+/** Page size for everything after the preview, fetched only once the card is popped out. */
 const PAGE_SIZE = 20;
 
 /**
  * What the employee did, newest first. Lifetime (not period-aware) and partial by design: the API
  * builds it from existing tables, so some actions are not recorded - the widget says so.
+ * The page load fetches only the newest three. Clicking the card (or View all) pops it out in place
+ * and continues from the preview's cursor - the first three are never fetched twice - with
+ * "Load older activity" paging further inside the popup.
  */
 @Component({
   selector: 'app-overview-recent-activity-widget',
   standalone: true,
-  imports: [WidgetCardComponent],
+  imports: [WidgetCardComponent, PopoutPanelComponent, PopoutHeaderActionsComponent],
   template: `
+    <app-popout-panel class="block h-full" [open]="showAll()" label="Recent Activity" (closed)="showAll.set(false)">
     <app-widget-card
+      class="group"
       title="Recent Activity"
+      [class.cursor-pointer]="canExpand() && !showAll()"
       [state]="loader.state()"
       errorMessage="Could not load recent activity."
       emptyMessage="No recorded activity yet."
       (retry)="loader.reload()"
+      (click)="expand()"
     >
+      @if (loader.data(); as summary) {
+        <div widget-actions class="flex items-center gap-2">
+          <span data-testid="activity-count" class="rounded-full bg-slate-100 px-2.5 py-1 text-[11px] font-semibold text-slate-600">
+            {{ items().length }}{{ hasMore() ? '+' : '' }} {{ items().length === 1 && !hasMore() ? 'update' : 'updates' }}
+          </span>
+          <app-popout-header-actions
+            [refreshedAt]="loader.loadedAt()"
+            [refreshing]="loader.refreshing() || loadingOlder()"
+            [expanded]="showAll()"
+            [canExpand]="canExpand()"
+            [revealOnHover]="!showAll()"
+            (refresh)="refreshAll()"
+            (expand)="expand()"
+            (closed)="showAll.set(false)"
+          />
+        </div>
+      }
       @if (loader.data(); as d) {
-        <ul class="divide-y divide-[var(--color-border)]">
-          @for (item of items(); track item.id) {
-            <li class="flex items-start justify-between gap-4 py-2 text-sm" data-testid="activity-item">
-              <div class="min-w-0">
-                <p class="text-[var(--color-text-primary)]">
-                  <span class="font-medium">{{ item.action }}</span>
-                  @if (item.target) { <span> {{ item.target }}</span> }
+        <ul class="space-y-0" data-testid="activity-timeline" aria-label="Recent employee activity">
+          @for (item of displayedItems(); track item.id; let last = $last) {
+            <li class="relative grid grid-cols-[2.5rem_minmax(0,1fr)_auto] items-start gap-3 pb-5 text-sm last:pb-1" data-testid="activity-item">
+              <div
+                data-testid="activity-marker"
+                class="relative z-10 flex h-9 w-9 items-center justify-center rounded-xl ring-4 ring-white"
+                [class]="'relative z-10 flex h-9 w-9 items-center justify-center rounded-xl ring-4 ring-white ' + activityTone(item.kind)"
+              >
+                <svg class="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+                  <path d="M5 12l4 4L19 6"></path>
+                </svg>
+              </div>
+              @if (!last) {
+                <span class="absolute bottom-0 left-[17px] top-9 w-px bg-slate-200" aria-hidden="true"></span>
+              }
+
+              <div class="min-w-0 pt-1">
+                <p class="leading-5 text-slate-700">
+                  <span class="font-semibold text-slate-900">{{ item.action }}</span>
+                  @if (item.target) { <span class="font-medium"> {{ item.target }}</span> }
                 </p>
                 @if (item.detail) {
-                  <p class="text-xs text-[var(--color-text-secondary)]">{{ item.detail }}</p>
+                  <p class="mt-1 inline-flex rounded-md bg-slate-50 px-2 py-1 text-xs text-slate-500">{{ item.detail }}</p>
                 }
               </div>
-              <span class="shrink-0 text-xs text-[var(--color-text-secondary)]">{{ when(item) }}</span>
+              <time class="mt-1 shrink-0 self-start rounded-full bg-slate-50 px-2.5 py-1 text-[11px] font-medium text-slate-500">{{ when(item) }}</time>
             </li>
           }
         </ul>
@@ -46,26 +88,44 @@ const PAGE_SIZE = 20;
           <p class="mt-2 text-xs text-[var(--color-danger-text)]" role="alert" data-testid="older-error">Could not load older activity. Try again.</p>
         }
 
-        @if (hasMore()) {
-          <button
-            type="button"
-            class="mt-3 rounded-md border border-[var(--color-border)] px-3 py-1.5 text-sm font-medium text-[var(--color-text-primary)] hover:bg-[var(--color-surface-secondary)] disabled:cursor-not-allowed disabled:opacity-60"
-            data-testid="load-older"
-            [disabled]="loadingOlder()"
-            (click)="loadOlder()"
-          >
-            {{ loadingOlder() ? 'Loading…' : 'Load older activity' }}
-          </button>
+        @if (showAll() && hasMore()) {
+          <div class="mt-2 flex justify-center border-t border-slate-100 pt-4">
+            <button
+              type="button"
+              class="rounded-lg border border-slate-200 bg-white px-4 py-2 text-xs font-semibold text-blue-600 shadow-xs transition-colors hover:bg-blue-50 disabled:cursor-not-allowed disabled:opacity-60"
+              data-testid="load-older"
+              [disabled]="loadingOlder()"
+              (click)="onLoadOlderClick($event)"
+            >
+              {{ loadingOlder() ? 'Loading…' : 'Load older activity' }}
+            </button>
+          </div>
         }
 
         @if (d.isPartial) {
-          <p class="mt-3 text-xs text-[var(--color-text-secondary)]" data-testid="partial-note">
+          <p class="mt-4 rounded-lg border border-blue-100 bg-blue-50/60 px-3 py-2 text-xs text-blue-700" data-testid="partial-note">
             Showing key activity — some actions are not recorded yet.
           </p>
         }
+
+        @if (canExpand()) {
+          <div class="mt-3 flex justify-end border-t border-slate-100 pt-3">
+            <button
+              type="button"
+              class="text-xs font-semibold text-blue-600 hover:text-blue-700 hover:underline cursor-pointer"
+              data-testid="activity-toggle"
+              [attr.aria-expanded]="showAll()"
+              (click)="onToggleClick($event)"
+            >
+              {{ showAll() ? 'Show less' : 'View all' }}
+            </button>
+          </div>
+        }
       }
     </app-widget-card>
+    </app-popout-panel>
   `,
+  host: { class: 'block h-full' },
   changeDetection: ChangeDetectionStrategy.OnPush
 })
 export class OverviewRecentActivityWidgetComponent {
@@ -75,7 +135,7 @@ export class OverviewRecentActivityWidgetComponent {
   readonly employeeId = input.required<string>();
 
   readonly loader = createWidgetLoader(
-    () => this.api.getOverviewRecentActivity(this.employeeId(), null, PAGE_SIZE),
+    () => this.api.getOverviewRecentActivity(this.employeeId(), null, ACTIVITY_PREVIEW_LIMIT),
     { isEmpty: (v) => v.items.length === 0 }
   );
 
@@ -91,6 +151,18 @@ export class OverviewRecentActivityWidgetComponent {
   } | null>(null);
   readonly loadingOlder = signal(false);
   readonly olderError = signal(false);
+
+  constructor() {
+    // After a popup refresh lands, page past the preview again.
+    effect(() => {
+      const first = this.loader.data();
+      untracked(() => {
+        if (!first || !this.refillAfterRefresh) return;
+        this.refillAfterRefresh = false;
+        if (this.showAll() && this.hasMore()) this.loadOlder();
+      });
+    });
+  }
 
   /** Fixed at construction so "Today"/"Yesterday" do not change while the widget is open. */
   private readonly now = new Date();
@@ -110,8 +182,50 @@ export class OverviewRecentActivityWidgetComponent {
   });
   readonly hasMore = computed(() => this.cursor() !== null);
 
+  readonly showAll = signal(false);
+  private refillAfterRefresh = false;
+  /** More than the compact card shows - either already loaded or still on the server. */
+  readonly canExpand = computed(() => this.items().length > ACTIVITY_PREVIEW_LIMIT || this.hasMore());
+  readonly displayedItems = computed(() =>
+    this.showAll() ? this.items() : this.items().slice(0, ACTIVITY_PREVIEW_LIMIT)
+  );
+
+  /** A click anywhere on the card pops it out; the first pop-out fetches the next page once. */
+  expand(): void {
+    if (this.showAll() || !this.canExpand()) return;
+    this.showAll.set(true);
+    if (this.items().length <= ACTIVITY_PREVIEW_LIMIT && this.hasMore()) this.loadOlder();
+  }
+
+  onToggleClick(event: Event): void {
+    event.stopPropagation();
+    if (this.showAll()) this.showAll.set(false);
+    else this.expand();
+  }
+
+  /**
+   * Popup refresh: refetches the newest page (the current list stays until it lands), then the next
+   * page again so the popup keeps showing more than the preview.
+   */
+  refreshAll(): void {
+    this.refillAfterRefresh = true;
+    this.loader.refresh();
+  }
+
+  onLoadOlderClick(event: Event): void {
+    event.stopPropagation();
+    this.loadOlder();
+  }
+
   when(item: EmployeeActivityItem): string {
     return formatActivityWhen(item.at, this.now);
+  }
+
+  activityTone(kind: string): string {
+    if (kind.startsWith('attendance_')) return 'bg-emerald-50 text-emerald-600';
+    if (kind.startsWith('leave_')) return 'bg-violet-50 text-violet-600';
+    if (kind.startsWith('task_')) return 'bg-blue-50 text-blue-600';
+    return 'bg-slate-100 text-slate-600';
   }
 
   loadOlder(): void {

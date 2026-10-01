@@ -24,6 +24,7 @@ import { EmployeeWorkGraphResponse } from '../models/work-graph.model';
 import {
   EmployeeActivityOverviewResponse,
   EmployeeApprovalActivityResponse,
+  EmployeeAttendanceDaysResponse,
   EmployeeAttendanceDisciplineResponse,
   EmployeeAttendanceOverviewResponse,
   EmployeeChecklistOverviewResponse,
@@ -34,7 +35,8 @@ import {
   EmployeeSignalItemsResponse,
   EmployeeTimeOffResponse,
   EmployeeUpcomingResponse,
-  EmployeeWorkOverviewResponse
+  EmployeeWorkOverviewResponse,
+  EmployeeWorkTasksResponse
 } from '../models/employee-overview.model';
 import {
   ApproveAccessGrantRequestResponse,
@@ -217,6 +219,22 @@ export class PeopleApiService {
     );
   }
 
+  /** Every day of the period up to today with clock times, hours and breaks (newest first). */
+  getOverviewAttendanceDays(employeeId: string, from: string, to: string): Observable<EmployeeAttendanceDaysResponse> {
+    return this.http.get<EmployeeAttendanceDaysResponse>(
+      `${environment.apiUrl}/employees/${employeeId}/overview/attendance/days`,
+      { params: this.periodParams(from, to, false) }
+    );
+  }
+
+  /** Every task behind the Work card for the period, grouped and ordered by the API. */
+  getOverviewWorkTasks(employeeId: string, from: string, to: string): Observable<EmployeeWorkTasksResponse> {
+    return this.http.get<EmployeeWorkTasksResponse>(
+      `${environment.apiUrl}/employees/${employeeId}/overview/work/tasks`,
+      { params: this.periodParams(from, to, false) }
+    );
+  }
+
   getOverviewDelivery(
     employeeId: string,
     from: string,
@@ -267,10 +285,10 @@ export class PeopleApiService {
     );
   }
 
-  getOverviewUpcoming(employeeId: string, days = 14): Observable<EmployeeUpcomingResponse> {
+  getOverviewUpcoming(employeeId: string, days = 14, limit = 10): Observable<EmployeeUpcomingResponse> {
     return this.http.get<EmployeeUpcomingResponse>(
       `${environment.apiUrl}/employees/${employeeId}/overview/upcoming`,
-      { params: new HttpParams().set('days', String(days)) }
+      { params: new HttpParams().set('days', String(days)).set('limit', String(limit)) }
     );
   }
 

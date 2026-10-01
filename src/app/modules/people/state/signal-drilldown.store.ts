@@ -63,6 +63,12 @@ export const SignalDrilldownStore = signalStore(
         if (store.openKey() === key) close();
         else open(key);
       },
+      /** Drops every cached item list and refetches the open row (the popup's refresh button). */
+      refreshOpen(): void {
+        patchState(store, { cache: {} });
+        const key = store.openKey();
+        if (key) void load(key);
+      },
       retry(): void {
         const key = store.openKey();
         if (key) void load(key);
@@ -70,8 +76,9 @@ export const SignalDrilldownStore = signalStore(
       reset(): void {
         patchState(store, { openKey: null, cache: {}, loadingKey: null, errorKey: null, selected: null });
       },
-      select(item: EmployeeSignalItem): void {
-        patchState(store, { selected: { item, timezone: store.openResponse()?.timezone ?? null } });
+      /** Timezone: pass it when the item did not come from the open drill-down list (e.g. the Attendance card). */
+      select(item: EmployeeSignalItem, timezone?: string | null): void {
+        patchState(store, { selected: { item, timezone: timezone ?? store.openResponse()?.timezone ?? null } });
       },
       clearSelection(): void {
         patchState(store, { selected: null });
