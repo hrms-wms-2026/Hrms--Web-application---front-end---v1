@@ -1,12 +1,14 @@
 import { Component, ElementRef, OnDestroy, OnInit, input, output, signal, viewChild } from '@angular/core';
 import { MilestoneTreeNode } from '../../models/milestone.model';
+import { MonitorAlertDto } from '../../models/dto/monitor.dto';
+import { TreeAlertMarkComponent } from '../tree-alert-mark/tree-alert-mark.component';
 import { isLeafObjective } from '../../utils/project.mapper';
 import { AvatarComponent } from '../../../../shared/ui/avatar/avatar.component';
 
 @Component({
   selector: 'app-module-tree-row',
   standalone: true,
-  imports: [AvatarComponent],
+  imports: [AvatarComponent, TreeAlertMarkComponent],
   template: `
     <div
       class="grid grid-cols-[1fr_112px_40px_88px_140px] items-center gap-3 rounded-md px-2 py-1.5 cursor-pointer tree-row {{ selected() ? 'bg-[var(--color-accent)]' : '' }}"
@@ -34,6 +36,7 @@ import { AvatarComponent } from '../../../../shared/ui/avatar/avatar.component';
           <path d="M3 6a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2H5a4 4 0 0 1-2-2V6Z" />
         </svg>
         <span data-testid="title-text" class="min-w-0 truncate text-sm {{ selected() ? 'text-white' : 'text-[var(--color-text-primary)]' }}">{{ node().title }}</span>
+        <app-tree-alert-mark [alerts]="alerts()" />
         @if (node().isAchieved) {
           <span data-testid="achieved-badge" class="shrink-0 rounded-full px-2 py-0.5 text-xs font-medium {{ selected() ? 'bg-white/15 text-white' : 'bg-[var(--color-surface-secondary)] text-[var(--color-text-secondary)]' }}">Achieved</span>
         }
@@ -119,6 +122,8 @@ export class ModuleTreeRowComponent implements OnInit, OnDestroy {
   node = input.required<MilestoneTreeNode>();
   selected = input(false);
   depth = input(0);
+  /** Open project-monitor alerts on this row's module/sprint/task (red mark). */
+  alerts = input<readonly MonitorAlertDto[]>([]);
   showChevron = input(false);
     expanded = input(false);
   actionsOpen = signal(false);

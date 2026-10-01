@@ -89,7 +89,8 @@ export interface AddObjectiveMemberOutcomeDto {
 
 export interface TransferObjectiveHeadOutcomeDto {
   applied: boolean;
-  pendingChangeRequest: unknown | null;
+  /** Set when the transfer was sent for approval instead of applied. */
+  approvalRequestId?: string | null;
   pendingInvitation: import('./objective-invitation.dto').ObjectiveInvitationDto | null;
 }
 

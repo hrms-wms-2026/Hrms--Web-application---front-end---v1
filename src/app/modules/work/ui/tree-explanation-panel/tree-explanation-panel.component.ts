@@ -3,6 +3,7 @@ import { CardComponent } from '../../../../shared/ui/card/card.component';
 import { EmployeeAvatarComponent } from '../employee-avatar/employee-avatar.component';
 import { MilestoneTreeNode } from '../../models/milestone.model';
 import { isLeafObjective } from '../../utils/project.mapper';
+import { MonitorAlertDto } from '../../models/dto/monitor.dto';
 
 @Component({
   selector: 'app-tree-explanation-panel',
@@ -31,6 +32,24 @@ import { isLeafObjective } from '../../utils/project.mapper';
             }
           </div>
         </div>
+
+        @if (alerts().length > 0) {
+          <div data-testid="panel-alerts" role="status" [class.opacity-50]="alertsMuted()"
+            class="flex flex-col gap-2 rounded-xl border border-[var(--color-danger)]/30 bg-[var(--color-danger)]/5 px-3 py-2.5">
+            <div class="flex items-center gap-2 text-[11px] font-bold uppercase tracking-wider text-[var(--color-danger)]">
+              <span class="h-2 w-2 shrink-0 rounded-full bg-[var(--color-danger)]" aria-hidden="true"></span>
+              {{ alerts().length === 1 ? 'Alert' : alerts().length + ' alerts' }}
+            </div>
+            @if (alertsMuted()) {
+              <p data-testid="panel-alerts-muted" class="text-[11px] text-[var(--color-text-secondary)]">Achieved module - for information only, no action needed.</p>
+            }
+            <ul class="flex flex-col gap-1.5">
+              @for (alert of alerts(); track alert.id) {
+                <li data-testid="panel-alert-message" class="text-xs leading-relaxed text-[var(--color-text-primary)]">{{ alert.message }}</li>
+              }
+            </ul>
+          </div>
+        }
 
         @if (node().description; as description) {
           <p data-testid="panel-description" class="text-xs leading-relaxed text-[var(--color-text-secondary)]">{{ description }}</p>
@@ -112,6 +131,9 @@ import { isLeafObjective } from '../../utils/project.mapper';
             <button type="button" class="{{ secondaryBtn }}" data-testid="panel-edit" (click)="editRequested.emit(node())"><svg class="h-4 w-4 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 20h9" /><path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4Z" /></svg><span>Edit sprint</span></button>
             <button type="button" class="{{ primaryBtn }}" data-testid="panel-achieve-sprint" (click)="achieveSprintRequested.emit(node())"><svg class="h-4 w-4 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M8 21h8M12 17v4M7 4h10v5a5 5 0 0 1-10 0V4ZM17 4h3v3a3 3 0 0 1-3 3" /></svg><span>Achieve sprint</span></button>
             <button type="button" class="{{ secondaryBtn }}" data-testid="panel-complete-sprint" (click)="completeSprintRequested.emit(node())"><svg class="h-4 w-4 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9" /><path d="m8 12 2.5 2.5L16 9" /></svg><span>Complete sprint</span></button>
+            @if (node().status === 'complete' || node().status === 'achieved') {
+              <button type="button" class="{{ secondaryBtn }}" data-testid="panel-delete-sprint" (click)="deleteSprintRequested.emit(node())"><svg class="h-4 w-4 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 7h16M10 11v6M14 11v6M6 7l1 13h10l1-13M9 7V4h6v3" /></svg><span>Delete sprint</span></button>
+            }
           }
           @if (kind() === 'task') {
             <button type="button" class="{{ secondaryBtn }}" data-testid="panel-edit" (click)="editRequested.emit(node())"><svg class="h-4 w-4 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 20h9" /><path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4Z" /></svg><span>Edit task</span></button>
@@ -127,6 +149,9 @@ import { isLeafObjective } from '../../utils/project.mapper';
 })
 export class TreeExplanationPanelComponent {
   node = input.required<MilestoneTreeNode>();
+  /** Open project-monitor alerts on this node (e.g. overload), explained in full here. */
+  alerts = input<readonly MonitorAlertDto[]>([]);
+  readonly alertsMuted = computed(() => this.alerts().every((alert) => alert.inAchievedModule));
 
   editRequested = output<MilestoneTreeNode>();
   membersRequested = output<MilestoneTreeNode>();
@@ -136,6 +161,8 @@ export class TreeExplanationPanelComponent {
   createTaskRequested = output<MilestoneTreeNode>();
   achieveSprintRequested = output<MilestoneTreeNode>();
   completeSprintRequested = output<MilestoneTreeNode>();
+  /** Only offered for a complete or achieved sprint. */
+  deleteSprintRequested = output<MilestoneTreeNode>();
   deleteRequested = output<MilestoneTreeNode>();
 
 readonly primaryBtn = 'inline-flex w-full items-center justify-center gap-2 rounded-lg bg-[var(--color-accent)] px-3 py-2.5 text-center text-sm font-medium text-white shadow-sm transition-[filter,transform] hover:brightness-95 active:translate-y-px focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-focus-ring)]';

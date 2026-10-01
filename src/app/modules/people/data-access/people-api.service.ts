@@ -22,9 +22,21 @@ import { ChecklistAssignee } from '../models/checklist-template.model';
 import { PositionHistoryEntryResponse } from '../models/position-history.model';
 import { EmployeeWorkGraphResponse } from '../models/work-graph.model';
 import {
+  EmployeeActivityByHourResponse,
+  EmployeeAppUsageResponse,
+  EmployeeDeliveryTrendResponse,
+  EmployeeNeedsAttentionResponse,
+  EmployeeRecentTasksResponse,
+  EmployeeWorkPatternSummaryResponse
+} from '../models/employee-work-activity.model';
+import {
+  EmployeeActivityOverviewResponse,
+  EmployeeApprovalActivityResponse,
   EmployeeAttendanceDisciplineResponse,
   EmployeeAttendanceOverviewResponse,
-  EmployeeTimeOffResponse
+  EmployeeDeliveryResponse,
+  EmployeeTimeOffResponse,
+  EmployeeWorkOverviewResponse
 } from '../models/employee-overview.model';
 import {
   ApproveAccessGrantRequestResponse,
@@ -191,11 +203,90 @@ export class PeopleApiService {
   getOverviewAttendanceDiscipline(
     employeeId: string,
     from: string,
-    to: string
+    to: string,
+    comparePrevious = false
   ): Observable<EmployeeAttendanceDisciplineResponse> {
     return this.http.get<EmployeeAttendanceDisciplineResponse>(
       `${environment.apiUrl}/employees/${employeeId}/overview/attendance-discipline`,
-      { params: new HttpParams().set('from', from).set('to', to) }
+      { params: this.periodParams(from, to, comparePrevious) }
+    );
+  }
+
+  getOverviewWork(employeeId: string, from: string, to: string): Observable<EmployeeWorkOverviewResponse> {
+    return this.http.get<EmployeeWorkOverviewResponse>(
+      `${environment.apiUrl}/employees/${employeeId}/overview/work`,
+      { params: this.periodParams(from, to, false) }
+    );
+  }
+
+  getOverviewDelivery(
+    employeeId: string,
+    from: string,
+    to: string,
+    comparePrevious = false
+  ): Observable<EmployeeDeliveryResponse> {
+    return this.http.get<EmployeeDeliveryResponse>(
+      `${environment.apiUrl}/employees/${employeeId}/overview/delivery`,
+      { params: this.periodParams(from, to, comparePrevious) }
+    );
+  }
+
+  getOverviewActivity(
+    employeeId: string,
+    from: string,
+    to: string,
+    comparePrevious = false
+  ): Observable<EmployeeActivityOverviewResponse> {
+    return this.http.get<EmployeeActivityOverviewResponse>(
+      `${environment.apiUrl}/employees/${employeeId}/overview/activity`,
+      { params: this.periodParams(from, to, comparePrevious) }
+    );
+  }
+
+  getOverviewApprovals(employeeId: string, from: string, to: string): Observable<EmployeeApprovalActivityResponse> {
+    return this.http.get<EmployeeApprovalActivityResponse>(
+      `${environment.apiUrl}/employees/${employeeId}/overview/approvals`,
+      { params: this.periodParams(from, to, false) }
+    );
+  }
+
+  getWorkActivityNeedsAttention(employeeId: string): Observable<EmployeeNeedsAttentionResponse> {
+    return this.http.get<EmployeeNeedsAttentionResponse>(
+      `${environment.apiUrl}/employees/${employeeId}/work-activity/needs-attention`
+    );
+  }
+
+  getWorkActivityRecentTasks(employeeId: string): Observable<EmployeeRecentTasksResponse> {
+    return this.http.get<EmployeeRecentTasksResponse>(
+      `${environment.apiUrl}/employees/${employeeId}/work-activity/recent-tasks`
+    );
+  }
+
+  getWorkActivityDeliveryTrend(employeeId: string, to: string): Observable<EmployeeDeliveryTrendResponse> {
+    return this.http.get<EmployeeDeliveryTrendResponse>(
+      `${environment.apiUrl}/employees/${employeeId}/work-activity/delivery-trend`,
+      { params: new HttpParams().set('to', to) }
+    );
+  }
+
+  getWorkActivityByHour(employeeId: string, from: string, to: string): Observable<EmployeeActivityByHourResponse> {
+    return this.http.get<EmployeeActivityByHourResponse>(
+      `${environment.apiUrl}/employees/${employeeId}/work-activity/activity-by-hour`,
+      { params: this.periodParams(from, to, false) }
+    );
+  }
+
+  getWorkActivityAppUsage(employeeId: string, from: string, to: string): Observable<EmployeeAppUsageResponse> {
+    return this.http.get<EmployeeAppUsageResponse>(
+      `${environment.apiUrl}/employees/${employeeId}/work-activity/app-usage`,
+      { params: this.periodParams(from, to, false) }
+    );
+  }
+
+  getWorkActivityWorkPattern(employeeId: string, from: string, to: string): Observable<EmployeeWorkPatternSummaryResponse> {
+    return this.http.get<EmployeeWorkPatternSummaryResponse>(
+      `${environment.apiUrl}/employees/${employeeId}/work-activity/work-pattern`,
+      { params: this.periodParams(from, to, false) }
     );
   }
 
@@ -256,5 +347,10 @@ export class PeopleApiService {
       httpParams = httpParams.set(key, String(value));
     }
     return httpParams;
+  }
+
+  private periodParams(from: string, to: string, comparePrevious: boolean): HttpParams {
+    const params = new HttpParams().set('from', from).set('to', to);
+    return comparePrevious ? params.set('compare', 'previous') : params;
   }
 }

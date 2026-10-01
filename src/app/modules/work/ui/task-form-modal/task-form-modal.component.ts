@@ -7,6 +7,7 @@ import { TaskAssigneeIdentity, TaskStatusColumn, WorkTask } from '../../models/t
 import { TaskCategoryColumn } from '../../models/task-category.model';
 import { Sprint } from '../../models/sprint.model';
 import { CreateSubtaskRequestDto, CreateTaskRequestDto, InsufficientAllocationErrorDto } from '../../models/dto/task.dto';
+import { isPendingApproval } from '../../models/dto/work-approval.dto';
 import { toTaskCategoryColumn } from '../../utils/task-category.mapper';
 import { toWorkTask } from '../../utils/task.mapper';
 import { toSprint } from '../../utils/sprint.mapper';
@@ -31,6 +32,10 @@ import { DatePickerComponent } from '../../../../shared/ui/date-picker/date-pick
 import { buildTaskDeepLink, copyTextToClipboard } from '../../utils/task-deep-link.util';
 import { TaskAssigneeDropdownComponent } from '../task-assignee-dropdown/task-assignee-dropdown.component';
 import { NotificationService } from '../../../../core/services/notification.service';
+import { ProjectMonitorApiService } from '../../data-access/project-monitor-api.service';
+import { MonitorWarningDto } from '../../models/dto/monitor.dto';
+import { MonitorWarningCalloutComponent } from '../monitor-warning-callout/monitor-warning-callout.component';
+import { MONITOR_CHECK_DEBOUNCE_MS } from '../sub-module-form/sub-module-form.component';
 import { DirtyFormHandle, UnsavedChangesService } from '../../../../shared/services/unsaved-changes.service';
 import { DraftsStore } from '../../../../shared/state/drafts.store';
 import { TaskDraftApiService } from '../../data-access/task-draft-api.service';
@@ -41,7 +46,7 @@ export type TaskFormMode = 'create' | 'edit';
 @Component({
   selector: 'app-task-form-modal',
   standalone: true,
-  imports: [NgTemplateOutlet, ButtonComponent, DatePickerComponent, TaskHistoryFeedComponent, TaskClockWidgetComponent, TaskAttachmentListComponent, RichTextEditorComponent, AvatarComponent, TaskCommentsComponent, ConfirmModalComponent, TaskDuplicateDialogComponent, TaskConvertToSubtaskDialogComponent, TaskAssigneeDropdownComponent],
+  imports: [NgTemplateOutlet, ButtonComponent, DatePickerComponent, TaskHistoryFeedComponent, TaskClockWidgetComponent, TaskAttachmentListComponent, RichTextEditorComponent, AvatarComponent, TaskCommentsComponent, ConfirmModalComponent, TaskDuplicateDialogComponent, TaskConvertToSubtaskDialogComponent, TaskAssigneeDropdownComponent, MonitorWarningCalloutComponent],
   template: `
     @if (open()) {
       <div class="tfm-scrim" (click)="onBackdrop()">
@@ -605,6 +610,8 @@ export type TaskFormMode = 'create' | 'edit';
                 }
               </div>
 
+              <app-monitor-warning-callout [warnings]="loadWarnings()" />
+
               @if (allocationHint()) {
                 <p class="tfm__error tfm-banner-error" role="alert" data-testid="allocation-hint">
                   Not enough allocation ({{ allocationHint()!.availableSlackHours }}h available). Edit the module's allocated hours, then try again.
@@ -1153,6 +1160,8 @@ export type TaskFormMode = 'create' | 'edit';
                     }
                   </div>
                 }
+
+                <app-monitor-warning-callout [warnings]="loadWarnings()" />
 
                 @if (errorMessage()) {
                   <p class="tfm__error tfm-banner-error" role="alert">{{ errorMessage() }}</p>
@@ -2281,6 +2290,48 @@ export class TaskFormModalComponent {
 
   submitting = signal(false);
   errors = signal<Record<string, string>>({});
+
+  // Project monitor: "can the assignee still finish everything due by this date?" Advisory only -
+  // it never disables saving.
+  private readonly monitorApi = inject(ProjectMonitorApiService);
+  readonly loadWarnings = signal<readonly MonitorWarningDto[]>([]);
+  private loadCheckTimer: ReturnType<typeof setTimeout> | null = null;
+  private loadCheckVersion = 0;
+  private readonly loadCheckEffect = effect(() => {
+    const projectId = this.open() ? this.projectId() : '';
+    const request = {
+      taskId: this.mode() === 'create' ? null : this.activeTaskId() || null,
+      assigneeEmployeeIds: this.assigneeEmployeeId() ? [this.assigneeEmployeeId()] : [],
+      dueDate: this.dueDate() || null,
+      estimatedHours: this.estimatedHours()
+    };
+    untracked(() => this.scheduleLoadCheck(projectId, request));
+  });
+  private readonly loadCheckCleanup = inject(DestroyRef).onDestroy(() => this.clearLoadCheckTimer());
+
+  private scheduleLoadCheck(projectId: string, request: {
+    taskId: string | null; assigneeEmployeeIds: string[]; dueDate: string | null; estimatedHours: number | null;
+  }): void {
+    this.clearLoadCheckTimer();
+    const version = ++this.loadCheckVersion;
+    if (!projectId || request.assigneeEmployeeIds.length === 0 || !request.dueDate || !(Number(request.estimatedHours) > 0)) {
+      this.loadWarnings.set([]);
+      return;
+    }
+    this.loadCheckTimer = setTimeout(async () => {
+      try {
+        const result = await firstValueFrom(this.monitorApi.checkTask(projectId, request));
+        if (version === this.loadCheckVersion) this.loadWarnings.set(result.warnings ?? []);
+      } catch {
+        if (version === this.loadCheckVersion) this.loadWarnings.set([]);
+      }
+    }, MONITOR_CHECK_DEBOUNCE_MS);
+  }
+
+  private clearLoadCheckTimer(): void {
+    if (this.loadCheckTimer !== null) clearTimeout(this.loadCheckTimer);
+    this.loadCheckTimer = null;
+  }
   errorMessage = signal<string | null>(null);
 
   activePopover = signal<'assignee' | 'priority' | 'dueDate' | 'module' | 'sprint' | 'category' | 'splitMenu' | 'status' | 'headerCategory' | 'headerModule' | 'headerMore' | null>(null);
@@ -2352,9 +2403,8 @@ export class TaskFormModalComponent {
     if (!t) return false;
     return this.projectStore.milestones().find((m) => m.objectiveId === t.objectiveId)?.isOwner ?? false;
   });
-  // Stricter than isObjectiveOwner (effective-manager - owner OR active member): matches the
-  // backend's IsEffectiveOwnerAsync gate on EditTaskCommandHandler, so a plain member can't get
-  // routed into the direct-edit call that endpoint now rejects with 403.
+  // Label hint only ("Save changes" vs "Request changes"): the backend's approval engine decides
+  // whether an edit applies now or needs approval, and the save always calls editTask.
   canEditTaskDirectly = computed(() => {
     const t = this.task();
     if (!t) return false;
@@ -2975,9 +3025,14 @@ export class TaskFormModalComponent {
     this.deleteLoading.set(true);
     this.deleteError.set('');
     try {
-      await firstValueFrom(this.taskApi.deleteTask(t.id));
+      const res = await firstValueFrom(this.taskApi.deleteTask(t.id));
       this.deleteLoading.set(false);
       this.deleteConfirmOpen.set(false);
+      if (isPendingApproval(res)) {
+        // 202: the task stays until the approver says yes, so keep the modal open.
+        this.notificationService.info('Task deletion sent for approval.');
+        return;
+      }
       this.notificationService.success('Task deleted successfully.');
       this.saved.emit();
       this.closed.emit();
@@ -3437,19 +3492,20 @@ export class TaskFormModalComponent {
       if (newStatusId && newStatusId !== this.task()?.statusId) {
         await firstValueFrom(this.taskApi.moveTaskStatus(taskId, newStatusId));
       }
-      if (this.canEditTaskDirectly()) {
-        await firstValueFrom(this.taskApi.editTask(taskId, {
-          ...fields,
-          attachmentFileIds: this.attachedFiles().map((f) => f.fileId)
-        }));
-        this.notificationService.success('Task updated successfully.');
+      // Always the normal endpoint: the backend's approval engine decides whether the edit
+      // applies now (200) or goes out for approval (202).
+      const edited = await firstValueFrom(this.taskApi.editTask(taskId, {
+        ...fields,
+        attachmentFileIds: this.attachedFiles().map((f) => f.fileId)
+      }));
+      if (isPendingApproval(edited)) {
+        this.notificationService.info('Task edit sent for approval.');
       } else {
-        await firstValueFrom(this.taskApi.createTaskEditRequest(taskId, fields));
-        this.notificationService.info('Task edit request submitted for approval.');
+        this.notificationService.success('Task updated successfully.');
       }
       // Reassignment is its own broadly-permitted action (AssignTask/UnassignTask use the
-      // effective-manager check, not the owner-only edit-task gate above), so it applies
-      // regardless of whether the field edits above saved directly or went out as a request.
+      // effective-manager check, not the edit approval), so it applies regardless of whether
+      // the field edits above saved directly or went out for approval.
       await this.applyReassignment();
       this.saved.emit();
       this.closed.emit();
@@ -3504,35 +3560,27 @@ export class TaskFormModalComponent {
 
     try {
       const objectiveId = this.selectedObjectiveId();
-      if (!this.selectedModuleIsOwner()) {
-        try {
-          await firstValueFrom(this.taskApi.createTaskCreationRequest(objectiveId, request));
-          void this.finishDraftAfterCreate(true);
-          this.created.emit('');
-          this.notificationService.info('Task creation request submitted for approval.');
-          if (action === 'create_and_add_another') {
-            this.title.set('');
-            this.description.set('');
-            this.descRte()?.clear();
-            this.attachedFiles.set([]);
-            this.draftSubtasks.set([]);
-            this.cancelAddSubtask();
-            this.markClean();
-            this.successToastMessage.set('Creation request submitted! You can enter another task below.');
-            setTimeout(() => this.taskTitleInput()?.nativeElement?.focus());
-          } else {
-            this.closed.emit();
-          }
-        } catch (err: unknown) {
-          const detail = (err as { error?: { detail?: string } })?.error?.detail;
-          const msg = detail || 'Failed to submit task creation request.';
-          this.errorMessage.set(msg);
-          this.notificationService.error(msg);
+      // Always the normal endpoint: owners get the task now (201), members a 202 "sent for approval".
+      const result = await this.boardStore.createTask(objectiveId, request);
+      if (isPendingApproval(result)) {
+        void this.finishDraftAfterCreate(true);
+        this.created.emit('');
+        this.notificationService.info('Task sent for approval.');
+        if (action === 'create_and_add_another') {
+          this.title.set('');
+          this.description.set('');
+          this.descRte()?.clear();
+          this.attachedFiles.set([]);
+          this.draftSubtasks.set([]);
+          this.cancelAddSubtask();
+          this.markClean();
+          this.successToastMessage.set('Sent for approval! You can enter another task below.');
+          setTimeout(() => this.taskTitleInput()?.nativeElement?.focus());
+        } else {
+          this.closed.emit();
         }
         return;
       }
-
-      const result = await this.boardStore.createTask(objectiveId, request);
       if (result && 'availableSlackHours' in result) {
         this.allocationHint.set(result);
         this.notificationService.warning(`Insufficient allocation hours. Available slack: ${result.availableSlackHours ?? 0} hrs.`);

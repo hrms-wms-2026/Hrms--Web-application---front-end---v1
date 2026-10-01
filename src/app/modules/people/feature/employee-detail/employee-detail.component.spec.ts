@@ -68,6 +68,30 @@ describe('EmployeeDetailComponent', () => {
         of({ from: '2026-09-01', to: '2026-09-30', lateClockIns: 0, earlyClockOuts: 0, missingClockOuts: 0, overBreakDays: 0, overBreakMinutes: 0, locationTrackingEnabled: false, locationViolations: null })
       ),
       getOverviewTimeOff: vi.fn().mockReturnValue(of({ year: 2026, balances: [], nextLeave: null })),
+      getOverviewWork: vi.fn().mockReturnValue(
+        of({ from: '', to: '', assigned: 0, completed: 0, inProgress: 0, overdue: 0, notStarted: 0, completionRatePercent: 0, onTimeRatePercent: null })
+      ),
+      getOverviewDelivery: vi.fn().mockReturnValue(
+        of({ from: '', to: '', tasksAssigned: 0, tasksCompleted: 0, onTimeCompleted: 0, completedWithDueDate: 0, storyPointsAssigned: 0, storyPointsCompleted: 0, previous: null })
+      ),
+      getOverviewActivity: vi.fn().mockReturnValue(
+        of({ from: '', to: '', activityMonitoringEnabled: true, activeMinutes: 0, idleMinutes: 0, meetingMinutes: 0, daysWithData: 0, previous: null })
+      ),
+      getOverviewApprovals: vi.fn().mockReturnValue(
+        of({ from: '', to: '', pending: 0, approved: 0, rejected: 0, total: 0, items: [] })
+      ),
+      getWorkActivityNeedsAttention: vi.fn().mockReturnValue(of({ asOf: '2026-09-15', totalCount: 0, items: [] })),
+      getWorkActivityRecentTasks: vi.fn().mockReturnValue(of({ items: [] })),
+      getWorkActivityDeliveryTrend: vi.fn().mockReturnValue(of({ months: [] })),
+      getWorkActivityByHour: vi.fn().mockReturnValue(
+        of({ from: '', to: '', activityMonitoringEnabled: false, timezone: 'UTC', lastActivityAt: null, hours: [] })
+      ),
+      getWorkActivityAppUsage: vi.fn().mockReturnValue(
+        of({ from: '', to: '', applicationTrackingEnabled: false, totalMinutes: 0, apps: [] })
+      ),
+      getWorkActivityWorkPattern: vi.fn().mockReturnValue(
+        of({ from: '', to: '', activityMonitoringEnabled: false, focusBlocks: 0, topApp: null, topAppMinutes: 0, longestIdle: null })
+      ),
       ...apiOverrides
     };
     const notificationsStub = { success: vi.fn(), error: vi.fn() };
@@ -167,7 +191,7 @@ describe('EmployeeDetailComponent', () => {
     expect(el.querySelector('app-employee-employment-tab')?.hasAttribute('hidden')).toBe(true);
   });
 
-  it('lists the tabs in the order Overview, Employment, Personal', () => {
+  it('lists the tabs in the order Overview, Employment, Work & Activity, Personal', () => {
     const { fixture } = setup(detailFixture);
     fixture.detectChanges();
 
@@ -175,7 +199,22 @@ describe('EmployeeDetailComponent', () => {
       fixture.nativeElement.querySelectorAll('nav[aria-label="Employee Detail Sections"] button')
     ).map((b) => (b as HTMLElement).textContent?.trim());
 
-    expect(labels).toEqual(['Overview', 'Employment', 'Personal']);
+    expect(labels).toEqual(['Overview', 'Employment', 'Work & Activity', 'Personal']);
+  });
+
+  it('renders the Work & Activity tab when selected, and only loads its data then', () => {
+    const { fixture, apiStub } = setup(detailFixture);
+    fixture.detectChanges();
+    expect(apiStub.getWorkActivityNeedsAttention).not.toHaveBeenCalled();
+
+    const buttons = Array.from(
+      fixture.nativeElement.querySelectorAll('nav[aria-label="Employee Detail Sections"] button')
+    ) as HTMLButtonElement[];
+    buttons.find((b) => b.textContent?.trim() === 'Work & Activity')!.click();
+    fixture.detectChanges();
+
+    expect(fixture.nativeElement.querySelector('app-employee-work-activity-tab')).toBeTruthy();
+    expect(apiStub.getWorkActivityNeedsAttention).toHaveBeenCalledWith('emp-1');
   });
 
   it('does not reload the work graph when switching to Personal and back to Employment', () => {

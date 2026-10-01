@@ -38,7 +38,7 @@ describe('OverviewDisciplineWidgetComponent', () => {
     const get = vi.fn().mockReturnValue(of(response));
     setup(get);
 
-    expect(get).toHaveBeenCalledWith('emp-1', '2026-09-01', '2026-09-30');
+    expect(get).toHaveBeenCalledWith('emp-1', '2026-09-01', '2026-09-30', false);
   });
 
   it('shows each discipline measure', () => {
@@ -80,7 +80,7 @@ describe('OverviewDisciplineWidgetComponent', () => {
     store.setMonth('2026-08');
     fixture.detectChanges();
 
-    expect(get).toHaveBeenLastCalledWith('emp-1', '2026-08-01', '2026-08-31');
+    expect(get).toHaveBeenLastCalledWith('emp-1', '2026-08-01', '2026-08-31', false);
   });
 
   it('shows the no-access state on 403', () => {

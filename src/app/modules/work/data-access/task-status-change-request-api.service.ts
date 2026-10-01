@@ -8,8 +8,9 @@ import {
   TaskStatusChangeSetDto,
 } from '../models/dto/task-status-change-request.dto';
 
-/** Requests from non-top-module members to change a project's task statuses, decided by the
- *  project's top (default) module owner or its members. */
+/** Requests from project members to change the project's task statuses. Listing and creating use
+ *  the status-template endpoints; deciding goes through the unified work approvals API, and only
+ *  the project's top (root) module owner can decide. */
 @Injectable({ providedIn: 'root' })
 export class TaskStatusChangeRequestApiService {
   private readonly http = inject(HttpClient);
@@ -29,14 +30,14 @@ export class TaskStatusChangeRequestApiService {
   }
 
   approve(id: string): Observable<unknown> {
-    return this.http.post(`${this.baseUrl}/task-status-change-requests/${id}/approve`, {});
+    return this.http.post(`${this.baseUrl}/approvals/${id}/approve`, {});
   }
 
-  reject(id: string, comment: string | null): Observable<void> {
-    return this.http.post<void>(`${this.baseUrl}/task-status-change-requests/${id}/reject`, { comment });
+  reject(id: string, comment: string | null): Observable<unknown> {
+    return this.http.post(`${this.baseUrl}/approvals/${id}/reject`, { comment });
   }
 
-  cancel(id: string): Observable<void> {
-    return this.http.post<void>(`${this.baseUrl}/task-status-change-requests/${id}/cancel`, {});
+  cancel(id: string): Observable<unknown> {
+    return this.http.post(`${this.baseUrl}/approvals/${id}/cancel`, {});
   }
 }

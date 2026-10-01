@@ -135,6 +135,84 @@ describe('PeopleApiService', () => {
     withYear.flush({});
   });
 
+  const overviewUrl = (path: string) => (r: { url: string }) =>
+    r.url === `${environment.apiUrl}/employees/emp-1/overview/${path}`;
+
+  it('getOverviewWork GETs overview/work with from and to only', () => {
+    service.getOverviewWork('emp-1', '2026-09-01', '2026-09-30').subscribe();
+
+    const req = httpMock.expectOne(overviewUrl('work'));
+    expect(req.request.params.get('from')).toBe('2026-09-01');
+    expect(req.request.params.get('to')).toBe('2026-09-30');
+    expect(req.request.params.has('compare')).toBe(false);
+    req.flush({});
+  });
+
+  it.each([
+    ['getOverviewDelivery', 'delivery'],
+    ['getOverviewActivity', 'activity'],
+    ['getOverviewAttendanceDiscipline', 'attendance-discipline']
+  ] as const)('%s sends compare=previous only when asked', (method, path) => {
+    const call = (compare?: boolean) =>
+      (service[method] as (id: string, from: string, to: string, compare?: boolean) => any)
+        .call(service, 'emp-1', '2026-09-01', '2026-09-30', compare);
+
+    call().subscribe();
+    const off = httpMock.expectOne(overviewUrl(path));
+    expect(off.request.params.has('compare')).toBe(false);
+    off.flush({});
+
+    call(true).subscribe();
+    const on = httpMock.expectOne(overviewUrl(path));
+    expect(on.request.params.get('compare')).toBe('previous');
+    expect(on.request.params.get('from')).toBe('2026-09-01');
+    on.flush({});
+  });
+
+  it('getOverviewApprovals GETs overview/approvals with from and to', () => {
+    service.getOverviewApprovals('emp-1', '2026-09-01', '2026-09-30').subscribe();
+
+    const req = httpMock.expectOne(overviewUrl('approvals'));
+    expect(req.request.method).toBe('GET');
+    expect(req.request.params.get('from')).toBe('2026-09-01');
+    req.flush({});
+  });
+
+  const workActivityUrl = (path: string) => (r: { url: string }) =>
+    r.url === `${environment.apiUrl}/employees/emp-1/work-activity/${path}`;
+
+  it.each([
+    ['getWorkActivityByHour', 'activity-by-hour'],
+    ['getWorkActivityAppUsage', 'app-usage'],
+    ['getWorkActivityWorkPattern', 'work-pattern']
+  ] as const)('%s sends the month as from/to', (method, path) => {
+    (service[method] as (id: string, from: string, to: string) => { subscribe(): void })
+      .call(service, 'emp-1', '2026-09-01', '2026-09-30')
+      .subscribe();
+
+    const req = httpMock.expectOne(workActivityUrl(path));
+    expect(req.request.method).toBe('GET');
+    expect(req.request.params.get('from')).toBe('2026-09-01');
+    expect(req.request.params.get('to')).toBe('2026-09-30');
+    req.flush({});
+  });
+
+  it('getWorkActivityNeedsAttention and getWorkActivityRecentTasks take no period', () => {
+    service.getWorkActivityNeedsAttention('emp-1').subscribe();
+    service.getWorkActivityRecentTasks('emp-1').subscribe();
+
+    httpMock.expectOne(workActivityUrl('needs-attention')).flush({ asOf: '2026-09-15', totalCount: 0, items: [] });
+    httpMock.expectOne(workActivityUrl('recent-tasks')).flush({ items: [] });
+  });
+
+  it('getWorkActivityDeliveryTrend GETs work-activity/delivery-trend with to only', () => {
+    service.getWorkActivityDeliveryTrend('emp-1', '2026-09-30').subscribe();
+
+    const req = httpMock.expectOne(workActivityUrl('delivery-trend'));
+    expect(req.request.params.get('to')).toBe('2026-09-30');
+    req.flush({ months: [] });
+  });
+
   it('fetches work modes from /work-modes for a legal entity', () => {
     service.getWorkModes('le-1').subscribe((modes) => {
       expect(modes.length).toBe(1);

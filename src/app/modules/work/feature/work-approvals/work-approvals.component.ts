@@ -7,7 +7,7 @@ import { distinctUntilChanged, map } from 'rxjs/operators';
 import { WorkApprovalsStore } from '../../state/work-approvals.store';
 import { WorkPageToolbarStore } from '../../state/work-page-toolbar.store';
 import { ApprovalItem } from '../../models/approval.model';
-import { AllocationRequestDto, EditObjectiveRequestPayloadDto } from '../../models/dto/allocation-request.dto';
+import { EditObjectiveRequestPayloadDto } from '../../models/dto/allocation-request.dto';
 import { ApprovalRequestRowComponent } from '../../ui/approval-request-row/approval-request-row.component';
 import { WorkApprovalsApiService } from '../../data-access/work-approvals-api.service';
 import { ProjectApiService } from '../../data-access/project-api.service';
@@ -16,20 +16,25 @@ import { InputComponent } from '../../../../shared/ui/input/input.component';
 import { WorkDropdownComponent, WorkDropdownOption } from '../../ui/work-dropdown/work-dropdown.component';
 import { ButtonComponent } from '../../../../shared/ui/button/button.component';
 import { ApprovalHistoryItemDto } from '../../models/dto/approval-history.dto';
-import { ApprovalHistoryModalComponent } from '../../ui/approval-history-modal/approval-history-modal.component';
+import { ObjectiveInvitationDto } from '../../models/dto/objective-invitation.dto';
+import { ApprovalHistoryListComponent } from '../../ui/approval-history-list/approval-history-list.component';
+import { TabOption, TabsComponent } from '../../../../shared/ui/tabs/tabs.component';
 import { TaskFormModalComponent } from '../../ui/task-form-modal/task-form-modal.component';
 import { TaskStatusChangeRequestsPanelComponent } from '../../ui/task-status-change-requests-panel/task-status-change-requests-panel.component';
+
+type ApprovalsTab = 'requests' | 'history';
+
+function isSprintRequest(item: ApprovalItem): boolean {
+  return (item.raw as { targetType?: string }).targetType === 'sprint';
+}
 
 @Component({
   selector: 'app-work-approvals',
   standalone: true,
-  imports: [DatePipe, TaskStatusChangeRequestsPanelComponent, ApprovalRequestRowComponent, ApprovalHistoryModalComponent, TaskFormModalComponent, ModalComponent, InputComponent, WorkDropdownComponent, ButtonComponent],
+  imports: [DatePipe, TaskStatusChangeRequestsPanelComponent, ApprovalRequestRowComponent, ApprovalHistoryListComponent, TabsComponent, TaskFormModalComponent, ModalComponent, InputComponent, WorkDropdownComponent, ButtonComponent],
   template: `
     <ng-template #toolbarTpl>
       <div class="work-approvals__toolbar-actions">
-        <app-button data-testid="approval-history-button" variant="secondary" (pressed)="openHistory()">
-          History
-        </app-button>
         <app-button data-testid="create-approval-button" variant="primary" (pressed)="openCreateApproval()">
           Create Approval
         </app-button>
@@ -42,6 +47,16 @@ import { TaskStatusChangeRequestsPanelComponent } from '../../ui/task-status-cha
       <p class="work-approvals__error">{{ store.error() }}</p>
     } @else {
       <div class="work-approvals">
+        <app-tabs data-testid="approvals-tabs" ariaLabel="Approvals" [tabs]="tabs" [value]="activeTab()" (valueChange)="onTabChange($event)" />
+
+        @if (activeTab() === 'history') {
+          <app-approval-history-list
+            [items]="historyItems()"
+            [loading]="historyLoading()"
+            [error]="historyError()"
+            (retry)="loadHistory()"
+          />
+        } @else {
         @if (sentPendingRequests().length > 0) {
         <section data-testid="my-pending-requests">
           <h2>My Pending Requests <span>{{ sentPendingRequests().length }}</span></h2>
@@ -81,10 +96,10 @@ import { TaskStatusChangeRequestsPanelComponent } from '../../ui/task-status-cha
           />
         }
 
-        @if (taskCreationRequests().length > 0) {
+        @if (taskApprovals().length > 0) {
         <section>
-          <h2>Task Creation Requests <span>{{ taskCreationRequests().length }}</span></h2>
-          @for (item of taskCreationRequests(); track item.id) {
+          <h2>Task Requests <span>{{ taskApprovals().length }}</span></h2>
+          @for (item of taskApprovals(); track item.id) {
             <app-approval-request-row
               [item]="item"
               (approved)="onApprove(item, $event)"
@@ -95,10 +110,10 @@ import { TaskStatusChangeRequestsPanelComponent } from '../../ui/task-status-cha
         </section>
         }
 
-        @if (taskEditRequests().length > 0) {
-        <section>
-          <h2>Task Edit Requests <span>{{ taskEditRequests().length }}</span></h2>
-          @for (item of taskEditRequests(); track item.id) {
+        @if (sprintApprovals().length > 0) {
+        <section data-testid="sprint-requests">
+          <h2>Sprint Requests <span>{{ sprintApprovals().length }}</span></h2>
+          @for (item of sprintApprovals(); track item.id) {
             <app-approval-request-row
               [item]="item"
               (approved)="onApprove(item, $event)"
@@ -158,6 +173,7 @@ import { TaskStatusChangeRequestsPanelComponent } from '../../ui/task-status-cha
             <p>No pending approvals or requests.</p>
           </div>
         }
+        }
       </div>
     }
 
@@ -205,21 +221,12 @@ import { TaskStatusChangeRequestsPanelComponent } from '../../ui/task-status-cha
       </app-modal>
     }
 
-    <app-approval-history-modal
-      [open]="historyOpen()"
-      [items]="historyItems()"
-      [loading]="historyLoading()"
-      [error]="historyError()"
-      (closed)="historyOpen.set(false)"
-      (retry)="loadHistory()"
-    />
-
     <app-task-form-modal
       [open]="selectedTaskId() !== null"
       mode="edit"
       [projectId]="projectId()"
       [taskId]="selectedTaskId() ?? ''"
-      (changed)="store.loadAll()"
+      (changed)="store.loadAll(projectId())"
       (saved)="onTaskDetailsClosed()"
       (closed)="selectedTaskId.set(null)"
     />
@@ -271,7 +278,13 @@ export class WorkApprovalsComponent implements OnInit, AfterViewInit, OnDestroy 
   protected readonly modules = signal<readonly { objectiveId: string; title: string; isOwner?: boolean }[]>([]);
   protected readonly moduleOptions = signal<readonly WorkDropdownOption[]>([]);
   private prefillObjectiveId: string | null = null;
-  protected readonly historyOpen = signal(false);
+  protected readonly tabs: readonly TabOption[] = [
+    { value: 'requests', label: 'Requests' },
+    { value: 'history', label: 'History' }
+  ];
+  protected readonly activeTab = signal<ApprovalsTab>(
+    this.route.snapshot?.queryParamMap?.get('tab') === 'history' ? 'history' : 'requests'
+  );
   protected readonly historyLoading = signal(false);
   protected readonly historyError = signal<string | null>(null);
   protected readonly historyItems = signal<readonly ApprovalHistoryItemDto[]>([]);
@@ -279,22 +292,26 @@ export class WorkApprovalsComponent implements OnInit, AfterViewInit, OnDestroy 
   protected readonly statusChangeRequestCount = signal(0);
   private historyLoadVersion = 0;
 
-  // The store's "mine" lists span every project the caller owns modules in; scope each one down
-  // to this project's modules so a project's Approvals page only shows that project's requests.
-  private readonly moduleIds = computed(() => new Set(this.modules().map((m) => m.objectiveId)));
+  // The invitations list spans every project the caller was invited into; scope it down by the
+  // invitation's own projectId. Not by this.modules(): an invitee is not a member of the invited
+  // module until they accept, so it is never in their "my modules" list.
   private readonly scopedToProject = (items: readonly ApprovalItem[]) => {
     const moduleTitles = new Map(this.modules().map((module) => [module.objectiveId, module.title]));
     return items
-      .filter((item) => this.moduleIds().has(item.objectiveId))
+      .filter((item) => (item.raw as ObjectiveInvitationDto).projectId === this.projectId())
       .map((item) => item.targetType === 'module' && !item.targetTitle
         ? { ...item, targetTitle: moduleTitles.get(item.objectiveId) ?? null }
         : item);
   };
 
-  protected readonly taskCreationRequests = computed(() => this.scopedToProject(this.store.taskCreationRequests()));
-  protected readonly taskEditRequests = computed(() => this.scopedToProject(this.store.taskEditRequests()));
-  protected readonly allocationRequests = computed(() => this.scopedToProject(this.store.allocationRequests()));
-  protected readonly objectiveChangeRequests = computed(() => this.scopedToProject(this.store.objectiveChangeRequests()));
+  // No module scoping: the approval-engine inbox endpoint is already per project (task, sprint and
+  // module requests all come from it).
+  protected readonly workApprovals = computed(() => this.store.workApprovals());
+  // Sprint requests come from the same engine inbox but get their own section.
+  protected readonly taskApprovals = computed(() => this.workApprovals().filter((item) => !isSprintRequest(item)));
+  protected readonly sprintApprovals = computed(() => this.workApprovals().filter(isSprintRequest));
+  protected readonly allocationRequests = computed(() => this.store.allocationRequests());
+  protected readonly objectiveChangeRequests = computed(() => this.store.objectiveChangeRequests());
   protected readonly objectiveInvitations = computed(() => this.scopedToProject(this.store.objectiveInvitations()));
   protected readonly sentPendingRequests = computed(() =>
     this.historyItems().filter(item => item.direction === 'sent' && item.status === 'pending')
@@ -302,8 +319,7 @@ export class WorkApprovalsComponent implements OnInit, AfterViewInit, OnDestroy 
   protected readonly visiblePendingCount = computed(() =>
     this.sentPendingRequests().length
     + this.statusChangeRequestCount()
-    + this.taskCreationRequests().length
-    + this.taskEditRequests().length
+    + this.workApprovals().length
     + this.allocationRequests().length
     + this.objectiveChangeRequests().length
     + this.objectiveInvitations().length
@@ -326,7 +342,8 @@ export class WorkApprovalsComponent implements OnInit, AfterViewInit, OnDestroy 
           this.historyError.set(null);
           if (!projectId) return;
           void this.loadModules();
-          if (this.historyOpen()) void this.loadHistory();
+          // The first load happens in ngOnInit; later project switches reload the (shared) history.
+          if (this.historyLoadVersion > 0) void this.loadHistory();
         });
     } else {
       const projectId = this.route.snapshot?.paramMap?.get('id') ?? '';
@@ -402,7 +419,7 @@ export class WorkApprovalsComponent implements OnInit, AfterViewInit, OnDestroy 
         reason: this.createReason().trim()
       }));
       this.closeCreateApproval();
-      await this.store.loadAll();
+      await this.store.loadAll(this.projectId());
     } catch (err: any) {
       this.createError.set(err?.error?.detail || err?.error?.message || err?.message || 'Failed to create approval request.');
     } finally {
@@ -411,9 +428,7 @@ export class WorkApprovalsComponent implements OnInit, AfterViewInit, OnDestroy 
   }
 
   onRequestOwnAllocation(item: ApprovalItem): void {
-    const objectiveId = item.kind === 'allocation_extend'
-      ? (item.raw as AllocationRequestDto).objectiveId
-      : undefined;
+    const objectiveId = item.kind === 'allocation_extend' ? item.objectiveId : undefined;
     this.openCreateApproval(objectiveId);
   }
 
@@ -429,12 +444,17 @@ export class WorkApprovalsComponent implements OnInit, AfterViewInit, OnDestroy 
 
   onTaskDetailsClosed(): void {
     this.selectedTaskId.set(null);
-    void this.store.loadAll();
+    void this.store.loadAll(this.projectId());
   }
 
-  openHistory(): void {
-    this.historyOpen.set(true);
-    void this.loadHistory();
+  onTabChange(tab: string): void {
+    const next: ApprovalsTab = tab === 'history' ? 'history' : 'requests';
+    this.activeTab.set(next);
+    // Keep the tab in the URL so a refresh or a shared link reopens it.
+    void this.router.navigate([], {
+      relativeTo: this.route, queryParams: { tab: next === 'history' ? next : null },
+      queryParamsHandling: 'merge', replaceUrl: true
+    }).catch(() => undefined);
   }
 
   async loadHistory(): Promise<void> {
@@ -462,6 +482,7 @@ export class WorkApprovalsComponent implements OnInit, AfterViewInit, OnDestroy 
     const labels: Record<string, string> = {
       task_creation: 'Task creation',
       task_edit: 'Task edit',
+      task_delete: 'Task deletion',
       allocation_extend: 'Allocation request',
       objective_edit: 'Module edit',
       objective_change: 'Module change',
