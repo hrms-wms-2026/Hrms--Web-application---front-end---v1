@@ -1,4 +1,4 @@
-import { ChangeDetectionStrategy, Component, OnInit, computed, inject } from '@angular/core';
+import { ChangeDetectionStrategy, Component, DestroyRef, OnInit, computed, inject } from '@angular/core';
 import { Router } from '@angular/router';
 import { EmptyStateComponent } from '../../../../shared/ui/empty-state/empty-state.component';
 import { ErrorStateComponent } from '../../../../shared/ui/error-state/error-state.component';
@@ -7,6 +7,8 @@ import { MyTeamLedProgressStore } from '../../state/my-team-led-progress.store';
 import { LedOverdueTask, LedProjectProgress, LedWorkTotals } from '../../models/my-team-led-progress.model';
 
 type TotalsSegmentKey = 'completed' | 'inProgress' | 'notStarted' | 'overdue';
+
+const REFRESH_INTERVAL_MS = 60_000;
 
 @Component({
   selector: 'app-team-progress-card',
@@ -19,6 +21,10 @@ type TotalsSegmentKey = 'completed' | 'inProgress' | 'notStarted' | 'overdue';
 export class TeamProgressCardComponent implements OnInit {
   protected readonly store = inject(MyTeamLedProgressStore);
   private readonly router = inject(Router);
+  private readonly destroyRef = inject(DestroyRef);
+
+  private pollId: ReturnType<typeof setInterval> | null = null;
+  private visibilityHandler = (): void => this.onVisibilityChange();
 
   protected readonly segments = computed(() => {
     const totals = this.store.data()?.totals;
@@ -38,6 +44,33 @@ export class TeamProgressCardComponent implements OnInit {
 
   ngOnInit(): void {
     void this.store.load();
+    document.addEventListener('visibilitychange', this.visibilityHandler);
+    if (document.visibilityState === 'visible') this.startPolling();
+    this.destroyRef.onDestroy(() => {
+      document.removeEventListener('visibilitychange', this.visibilityHandler);
+      this.stopPolling();
+    });
+  }
+
+  private onVisibilityChange(): void {
+    if (document.visibilityState === 'visible') {
+      void this.store.load();
+      this.startPolling();
+    } else {
+      this.stopPolling();
+    }
+  }
+
+  private startPolling(): void {
+    if (this.pollId) return;
+    this.pollId = setInterval(() => void this.store.load(), REFRESH_INTERVAL_MS);
+  }
+
+  private stopPolling(): void {
+    if (this.pollId) {
+      clearInterval(this.pollId);
+      this.pollId = null;
+    }
   }
 
   retry(): void {

@@ -4,7 +4,15 @@
     <p class="text-xs text-slate-400">What to look at first</p>
   </div>
 
-  @if (items().length === 0) {
+  @if (siblingsLoading()) {
+    <div class="flex flex-col gap-2" data-testid="priority-actions-skeleton">
+      @for (i of [1, 2, 3]; track i) {
+        <div class="h-9 animate-pulse rounded-lg bg-slate-100"></div>
+      }
+    </div>
+  } @else if (siblingsErrored()) {
+    <app-error-state message="Couldn't load priority actions." [retryable]="true" (retry)="retry()" />
+  } @else if (items().length === 0) {
     <app-empty-state title="You're all caught up" />
   } @else {
     <ul class="flex flex-col gap-1" data-testid="priority-actions-list">

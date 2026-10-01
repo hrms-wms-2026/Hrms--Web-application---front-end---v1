@@ -1,5 +1,5 @@
 import { NgTemplateOutlet } from '@angular/common';
-import { ChangeDetectionStrategy, Component, OnInit, computed, inject } from '@angular/core';
+import { ChangeDetectionStrategy, Component, DestroyRef, OnInit, computed, inject } from '@angular/core';
 import { Router } from '@angular/router';
 import { EmptyStateComponent } from '../../../../shared/ui/empty-state/empty-state.component';
 import { MyTeamActionItemsStore } from '../../state/my-team-action-items.store';
@@ -19,6 +19,8 @@ const SOURCE_LABEL: Record<string, string> = {
   'work.objective_change': 'Objective changes',
   'work.status_template_change': 'Status template changes'
 };
+
+const REFRESH_INTERVAL_MS = 60_000;
 
 const PEOPLE_LIST_ROUTE: Record<string, { commands: string[]; queryParams?: Record<string, string> }> = {
   'leave.approval': { commands: ['/time-off/team-approvals'] },
@@ -41,6 +43,10 @@ export class ApprovalsExceptionsCardComponent implements OnInit {
   protected readonly store = inject(MyTeamActionItemsStore);
   private readonly router = inject(Router);
   private readonly deepLink = inject(MyTeamDeepLinkService);
+  private readonly destroyRef = inject(DestroyRef);
+
+  private pollId: ReturnType<typeof setInterval> | null = null;
+  private visibilityHandler = (): void => this.onVisibilityChange();
 
   protected readonly peopleSources = computed(
     () => this.store.data()?.sources.filter((s) => s.domain === 'people') ?? []
@@ -57,6 +63,33 @@ export class ApprovalsExceptionsCardComponent implements OnInit {
 
   ngOnInit(): void {
     void this.store.load();
+    document.addEventListener('visibilitychange', this.visibilityHandler);
+    if (document.visibilityState === 'visible') this.startPolling();
+    this.destroyRef.onDestroy(() => {
+      document.removeEventListener('visibilitychange', this.visibilityHandler);
+      this.stopPolling();
+    });
+  }
+
+  private onVisibilityChange(): void {
+    if (document.visibilityState === 'visible') {
+      void this.store.load();
+      this.startPolling();
+    } else {
+      this.stopPolling();
+    }
+  }
+
+  private startPolling(): void {
+    if (this.pollId) return;
+    this.pollId = setInterval(() => void this.store.load(), REFRESH_INTERVAL_MS);
+  }
+
+  private stopPolling(): void {
+    if (this.pollId) {
+      clearInterval(this.pollId);
+      this.pollId = null;
+    }
   }
 
   retry(): void {

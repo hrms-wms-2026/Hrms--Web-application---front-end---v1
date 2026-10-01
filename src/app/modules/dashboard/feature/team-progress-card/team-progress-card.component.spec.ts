@@ -10,11 +10,22 @@ import { TeamProgressCardComponent } from './team-progress-card.component';
 describe('TeamProgressCardComponent', () => {
   let navigate: ReturnType<typeof vi.fn>;
 
-  afterEach(() => TestBed.resetTestingModule());
+  afterEach(() => {
+    TestBed.resetTestingModule();
+    vi.useRealTimers();
+    vi.restoreAllMocks();
+  });
 
   async function setup(
     result: LedWorkProgressResponse | 'error'
   ): Promise<ComponentFixture<TeamProgressCardComponent>> {
+    const { fixture } = await setupWithApi(result);
+    return fixture;
+  }
+
+  async function setupWithApi(
+    result: LedWorkProgressResponse | 'error'
+  ): Promise<{ fixture: ComponentFixture<TeamProgressCardComponent>; getLedProgress: ReturnType<typeof vi.fn> }> {
     const getLedProgress = vi.fn(() => (result === 'error' ? throwError(() => new Error('fail')) : of(result)));
     navigate = vi.fn();
 
@@ -31,7 +42,7 @@ describe('TeamProgressCardComponent', () => {
     fixture.detectChanges();
     await fixture.whenStable();
     fixture.detectChanges();
-    return fixture;
+    return { fixture, getLedProgress };
   }
 
   it('shows "you don\'t lead any active modules" when there are no projects', async () => {
@@ -114,5 +125,55 @@ describe('TeamProgressCardComponent', () => {
     expect(navigate).toHaveBeenCalledWith(['/work', 'p1', 'milestones', 'o1', 'board'], {
       queryParams: { highlightTaskId: 't1' }
     });
+  });
+
+  const EMPTY: LedWorkProgressResponse = {
+    totals: { total: 0, completed: 0, inProgress: 0, notStarted: 0, overdue: 0 },
+    projects: [], overdueTasks: [], overdueTotal: 0
+  };
+
+  it('polls every 60 seconds while the document is visible', async () => {
+    vi.useFakeTimers();
+    Object.defineProperty(document, 'visibilityState', { value: 'visible', configurable: true });
+    const { getLedProgress } = await setupWithApi(EMPTY);
+    expect(getLedProgress).toHaveBeenCalledTimes(1);
+
+    await vi.advanceTimersByTimeAsync(60_000);
+    expect(getLedProgress).toHaveBeenCalledTimes(2);
+
+    await vi.advanceTimersByTimeAsync(60_000);
+    expect(getLedProgress).toHaveBeenCalledTimes(3);
+  });
+
+  it('stops polling while hidden and refetches immediately when visible again', async () => {
+    vi.useFakeTimers();
+    Object.defineProperty(document, 'visibilityState', { value: 'visible', configurable: true, writable: true });
+    const { getLedProgress } = await setupWithApi(EMPTY);
+    expect(getLedProgress).toHaveBeenCalledTimes(1);
+
+    Object.defineProperty(document, 'visibilityState', { value: 'hidden', configurable: true, writable: true });
+    document.dispatchEvent(new Event('visibilitychange'));
+    await vi.advanceTimersByTimeAsync(120_000);
+    expect(getLedProgress).toHaveBeenCalledTimes(1);
+
+    Object.defineProperty(document, 'visibilityState', { value: 'visible', configurable: true, writable: true });
+    document.dispatchEvent(new Event('visibilitychange'));
+    expect(getLedProgress).toHaveBeenCalledTimes(2);
+
+    await vi.advanceTimersByTimeAsync(60_000);
+    expect(getLedProgress).toHaveBeenCalledTimes(3);
+  });
+
+  it('removes the visibilitychange listener and clears the interval on destroy', async () => {
+    vi.useFakeTimers();
+    Object.defineProperty(document, 'visibilityState', { value: 'visible', configurable: true, writable: true });
+    const removeSpy = vi.spyOn(document, 'removeEventListener');
+    const { fixture, getLedProgress } = await setupWithApi(EMPTY);
+
+    fixture.destroy();
+    expect(removeSpy).toHaveBeenCalledWith('visibilitychange', expect.any(Function));
+
+    await vi.advanceTimersByTimeAsync(120_000);
+    expect(getLedProgress).toHaveBeenCalledTimes(1);
   });
 });

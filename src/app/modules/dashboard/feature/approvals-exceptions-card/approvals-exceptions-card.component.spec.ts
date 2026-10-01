@@ -25,11 +25,22 @@ describe('ApprovalsExceptionsCardComponent', () => {
   let navigate: ReturnType<typeof vi.fn>;
   let deepLinkNavigate: ReturnType<typeof vi.fn>;
 
-  afterEach(() => TestBed.resetTestingModule());
+  afterEach(() => {
+    TestBed.resetTestingModule();
+    vi.useRealTimers();
+    vi.restoreAllMocks();
+  });
 
   async function setup(
     result: TeamActionItemsResponse | 'error'
   ): Promise<ComponentFixture<ApprovalsExceptionsCardComponent>> {
+    const { fixture } = await setupWithApi(result);
+    return fixture;
+  }
+
+  async function setupWithApi(
+    result: TeamActionItemsResponse | 'error'
+  ): Promise<{ fixture: ComponentFixture<ApprovalsExceptionsCardComponent>; getActionItems: ReturnType<typeof vi.fn> }> {
     const getActionItems = vi.fn(() =>
       result === 'error' ? throwError(() => new Error('fail')) : of(result)
     );
@@ -50,7 +61,7 @@ describe('ApprovalsExceptionsCardComponent', () => {
     fixture.detectChanges();
     await fixture.whenStable();
     fixture.detectChanges();
-    return fixture;
+    return { fixture, getActionItems };
   }
 
   it('shows the empty state when every source has zero pending', async () => {
@@ -133,5 +144,50 @@ describe('ApprovalsExceptionsCardComponent', () => {
     });
     const dot: HTMLElement = fixture.nativeElement.querySelector('.approvals-severity-dot--critical');
     expect(dot).toBeTruthy();
+  });
+
+  it('polls every 60 seconds while the document is visible', async () => {
+    vi.useFakeTimers();
+    Object.defineProperty(document, 'visibilityState', { value: 'visible', configurable: true });
+    const { getActionItems } = await setupWithApi({ legalEntityId: 'le-1', sources: [] });
+    expect(getActionItems).toHaveBeenCalledTimes(1);
+
+    await vi.advanceTimersByTimeAsync(60_000);
+    expect(getActionItems).toHaveBeenCalledTimes(2);
+
+    await vi.advanceTimersByTimeAsync(60_000);
+    expect(getActionItems).toHaveBeenCalledTimes(3);
+  });
+
+  it('stops polling while hidden and refetches immediately when visible again', async () => {
+    vi.useFakeTimers();
+    Object.defineProperty(document, 'visibilityState', { value: 'visible', configurable: true, writable: true });
+    const { getActionItems } = await setupWithApi({ legalEntityId: 'le-1', sources: [] });
+    expect(getActionItems).toHaveBeenCalledTimes(1);
+
+    Object.defineProperty(document, 'visibilityState', { value: 'hidden', configurable: true, writable: true });
+    document.dispatchEvent(new Event('visibilitychange'));
+    await vi.advanceTimersByTimeAsync(120_000);
+    expect(getActionItems).toHaveBeenCalledTimes(1);
+
+    Object.defineProperty(document, 'visibilityState', { value: 'visible', configurable: true, writable: true });
+    document.dispatchEvent(new Event('visibilitychange'));
+    expect(getActionItems).toHaveBeenCalledTimes(2);
+
+    await vi.advanceTimersByTimeAsync(60_000);
+    expect(getActionItems).toHaveBeenCalledTimes(3);
+  });
+
+  it('removes the visibilitychange listener and clears the interval on destroy', async () => {
+    vi.useFakeTimers();
+    Object.defineProperty(document, 'visibilityState', { value: 'visible', configurable: true, writable: true });
+    const removeSpy = vi.spyOn(document, 'removeEventListener');
+    const { fixture, getActionItems } = await setupWithApi({ legalEntityId: 'le-1', sources: [] });
+
+    fixture.destroy();
+    expect(removeSpy).toHaveBeenCalledWith('visibilitychange', expect.any(Function));
+
+    await vi.advanceTimersByTimeAsync(120_000);
+    expect(getActionItems).toHaveBeenCalledTimes(1);
   });
 });
