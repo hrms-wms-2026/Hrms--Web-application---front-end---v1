@@ -1,15 +1,13 @@
-export type MyTeamWidgetKey = 'priorityActions' | 'teamStatus' | 'approvalsExceptions' | 'teamProgress';
+export type MyTeamWidgetKey = 'teamStatus' | 'actionCenter' | 'teamProgress';
 
 export const ALL_MY_TEAM_WIDGET_KEYS: readonly MyTeamWidgetKey[] = [
-  'priorityActions',
   'teamStatus',
-  'approvalsExceptions',
+  'actionCenter',
   'teamProgress'
 ];
 
 export const MY_TEAM_WIDGET_LABEL: Record<MyTeamWidgetKey, string> = {
-  priorityActions: 'Priority Actions',
   teamStatus: 'Team Status',
-  approvalsExceptions: 'Approvals & Exceptions',
+  actionCenter: 'Action Center',
   teamProgress: 'Team Progress'
 };

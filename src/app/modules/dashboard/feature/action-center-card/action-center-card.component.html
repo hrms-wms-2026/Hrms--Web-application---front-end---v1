@@ -1,0 +1,135 @@
+<section class="rounded-2xl border border-slate-200/80 bg-white p-5 shadow-xs" data-testid="action-center-card">
+  <div class="mb-4">
+    <h2 class="text-sm font-bold text-slate-800">Action Center</h2>
+    <p class="text-xs text-slate-400">{{ subtitle() }}</p>
+  </div>
+
+  @if (showRail()) {
+    <div data-testid="action-center-rail">
+      @if (store.loading() && !store.data()) {
+        <div class="mb-4 flex flex-col gap-2" data-testid="action-center-rail-skeleton">
+          @for (i of [1, 2, 3]; track i) {
+            <div class="h-8 animate-pulse rounded-lg bg-slate-100"></div>
+          }
+        </div>
+      } @else if (store.error() && !store.data()) {
+        <div class="mb-4">
+          <app-error-state message="Couldn't load the category rail." [retryable]="true" (retry)="retry()" />
+        </div>
+      } @else {
+        @if (peopleRail().visibleCategories.length > 0 || peopleRail().collapsedCount > 0) {
+          <div class="mb-3" data-testid="action-center-rail-people">
+            <p class="mb-1.5 text-xs font-semibold uppercase tracking-wide text-slate-400">People I manage</p>
+            <div class="flex flex-wrap gap-1.5">
+              @for (category of peopleRail().visibleCategories; track category.sourceKey) {
+                <button
+                  type="button"
+                  class="action-center-chip"
+                  [class.action-center-chip--unavailable]="category.status === 'unavailable'"
+                  (click)="openCategory(category)"
+                >
+                  @if (exceptionSeverityDot(category); as severity) {
+                    <span class="approvals-severity-dot" [class.approvals-severity-dot--critical]="severity === 'critical'"></span>
+                  }
+                  {{ sourceLabel(category) }}
+                  @if (category.status === 'unavailable') {
+                    <span>— couldn't load</span>
+                  } @else {
+                    <span class="action-center-chip-count">{{ category.pendingCount }}</span>
+                  }
+                </button>
+              }
+              @if (peopleRail().collapsedCount > 0) {
+                <button type="button" class="action-center-chip action-center-chip--summary" (click)="toggleRailExpanded('people')">
+                  +{{ peopleRail().collapsedCount }} all clear
+                </button>
+              }
+            </div>
+          </div>
+        }
+        @if (workRail().visibleCategories.length > 0 || workRail().collapsedCount > 0) {
+          <div class="mb-4" data-testid="action-center-rail-work">
+            <p class="mb-1.5 text-xs font-semibold uppercase tracking-wide text-slate-400">Work I lead</p>
+            <div class="flex flex-wrap gap-1.5">
+              @for (category of workRail().visibleCategories; track category.sourceKey) {
+                <button
+                  type="button"
+                  class="action-center-chip"
+                  [class.action-center-chip--unavailable]="category.status === 'unavailable'"
+                  (click)="openCategory(category)"
+                >
+                  {{ sourceLabel(category) }}
+                  @if (category.status === 'unavailable') {
+                    <span>— couldn't load</span>
+                  } @else {
+                    <span class="action-center-chip-count">{{ category.pendingCount }}</span>
+                  }
+                </button>
+              }
+              @if (workRail().collapsedCount > 0) {
+                <button type="button" class="action-center-chip action-center-chip--summary" (click)="toggleRailExpanded('work')">
+                  +{{ workRail().collapsedCount }} all clear
+                </button>
+              }
+            </div>
+          </div>
+        }
+      }
+    </div>
+  }
+
+  @if (siblingsLoading()) {
+    <div class="flex flex-col gap-2" data-testid="action-center-queue-skeleton">
+      @for (i of [1, 2, 3]; track i) {
+        <div class="h-9 animate-pulse rounded-lg bg-slate-100"></div>
+      }
+    </div>
+  } @else if (siblingsErrored()) {
+    <app-error-state message="Couldn't load priority actions." [retryable]="true" (retry)="retry()" />
+  } @else if (items().length === 0) {
+    <app-empty-state title="You're all caught up" />
+  } @else {
+    <ul class="flex flex-col gap-1" data-testid="action-center-queue">
+      @for (item of visibleQueueItems(); track item.group + ':' + item.sourceKey + ':' + item.entityId) {
+        <li>
+          <button
+            type="button"
+            class="flex w-full items-center gap-2.5 rounded-lg px-2 py-2 text-left hover:bg-slate-50"
+            (click)="openQueueItem(item)"
+          >
+            <span class="priority-action-dot" [ngClass]="dotClass(item)"></span>
+            <span class="min-w-0 flex-1">
+              <span class="block truncate text-sm text-slate-700">
+                {{ item.title }}
+                @if (item.subjectName) {
+                  <span class="text-slate-400">· {{ item.subjectName }}</span>
+                }
+              </span>
+            </span>
+            <span class="shrink-0 text-[11px] text-slate-400">{{ item.captionLabel }}</span>
+          </button>
+        </li>
+      }
+    </ul>
+
+    @if (hiddenQueueItemCount() > 0 && !queueExpanded()) {
+      <button
+        type="button"
+        class="mt-2 w-full text-center text-xs font-semibold text-[var(--color-accent)] hover:underline"
+        data-testid="action-center-show-more"
+        (click)="toggleQueueExpanded()"
+      >
+        Show {{ hiddenQueueItemCount() }} more priority items
+      </button>
+    } @else if (queueExpanded() && items().length > 5) {
+      <button
+        type="button"
+        class="mt-2 w-full text-center text-xs font-semibold text-[var(--color-accent)] hover:underline"
+        data-testid="action-center-show-less"
+        (click)="toggleQueueExpanded()"
+      >
+        Show less
+      </button>
+    }
+  }
+</section>

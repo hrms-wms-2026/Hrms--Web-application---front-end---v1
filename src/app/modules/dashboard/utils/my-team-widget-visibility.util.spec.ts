@@ -1,5 +1,5 @@
 import { MyTeamCapabilitiesResponse } from '../models/my-team-capabilities.model';
-import { allowedWidgetKeys, resolveVisibleWidgets } from './my-team-widget-visibility.util';
+import { actionCenterRailVisible, allowedWidgetKeys, resolveVisibleWidgets } from './my-team-widget-visibility.util';
 
 function capabilities(overrides: Partial<MyTeamCapabilitiesResponse> = {}): MyTeamCapabilitiesResponse {
   return {
@@ -23,30 +23,48 @@ describe('allowedWidgetKeys', () => {
     expect(allowedWidgetKeys(capabilities({ canViewPeopleStatus: true }))).toEqual(['teamStatus']);
   });
 
-  it('allows Priority Actions plus Approvals & Exceptions from canReviewPeopleApprovals alone', () => {
-    expect(allowedWidgetKeys(capabilities({ canReviewPeopleApprovals: true })))
-      .toEqual(['priorityActions', 'approvalsExceptions']);
+  it('allows Action Center from canReviewPeopleApprovals alone', () => {
+    expect(allowedWidgetKeys(capabilities({ canReviewPeopleApprovals: true }))).toEqual(['actionCenter']);
   });
 
-  it('allows Priority Actions plus Approvals & Exceptions from canReviewExceptions alone', () => {
-    expect(allowedWidgetKeys(capabilities({ canReviewExceptions: true })))
-      .toEqual(['priorityActions', 'approvalsExceptions']);
+  it('allows Action Center from canReviewExceptions alone', () => {
+    expect(allowedWidgetKeys(capabilities({ canReviewExceptions: true }))).toEqual(['actionCenter']);
   });
 
-  it('allows Priority Actions plus Approvals & Exceptions from hasWorkApprovals alone', () => {
-    expect(allowedWidgetKeys(capabilities({ hasWorkApprovals: true })))
-      .toEqual(['priorityActions', 'approvalsExceptions']);
+  it('allows Action Center from hasWorkApprovals alone', () => {
+    expect(allowedWidgetKeys(capabilities({ hasWorkApprovals: true }))).toEqual(['actionCenter']);
   });
 
-  it('allows Priority Actions plus Team Progress for a module owner with no permissions and no coverage (AC-2)', () => {
-    expect(allowedWidgetKeys(capabilities({ leadsWork: true })))
-      .toEqual(['priorityActions', 'teamProgress']);
+  it('allows Action Center plus Team Progress for a module owner with no approval permissions (AC-2)', () => {
+    expect(allowedWidgetKeys(capabilities({ leadsWork: true }))).toEqual(['actionCenter', 'teamProgress']);
   });
 
   it('allows everything, in the canonical order, when every flag is true', () => {
     expect(allowedWidgetKeys(capabilities({
       canViewPeopleStatus: true, canReviewPeopleApprovals: true, hasWorkApprovals: true, leadsWork: true
-    }))).toEqual(['priorityActions', 'teamStatus', 'approvalsExceptions', 'teamProgress']);
+    }))).toEqual(['teamStatus', 'actionCenter', 'teamProgress']);
+  });
+});
+
+describe('actionCenterRailVisible', () => {
+  it('is false when capabilities is null', () => {
+    expect(actionCenterRailVisible(null)).toBe(false);
+  });
+
+  it('is false for a leadsWork-only viewer (no approval/exception capability at all)', () => {
+    expect(actionCenterRailVisible(capabilities({ leadsWork: true }))).toBe(false);
+  });
+
+  it('is true when canReviewPeopleApprovals is set, even without leadsWork', () => {
+    expect(actionCenterRailVisible(capabilities({ canReviewPeopleApprovals: true }))).toBe(true);
+  });
+
+  it('is true when canReviewExceptions is set', () => {
+    expect(actionCenterRailVisible(capabilities({ canReviewExceptions: true }))).toBe(true);
+  });
+
+  it('is true when hasWorkApprovals is set', () => {
+    expect(actionCenterRailVisible(capabilities({ hasWorkApprovals: true }))).toBe(true);
   });
 });
 
@@ -76,11 +94,11 @@ describe('resolveVisibleWidgets', () => {
   it('keeps a deliberately hidden widget hidden even though its capability is still allowed', () => {
     const caps = capabilities({ canViewPeopleStatus: true, leadsWork: true });
     // teamStatus is allowed but was left out of the saved preference on purpose.
-    expect(resolveVisibleWidgets(caps, ['teamProgress', 'priorityActions'])).toEqual(['teamProgress', 'priorityActions']);
+    expect(resolveVisibleWidgets(caps, ['teamProgress', 'actionCenter'])).toEqual(['teamProgress', 'actionCenter']);
   });
 
   it('never surfaces a widget the capabilities forbid, even if it is in the stored preference', () => {
     const caps = capabilities({ canViewPeopleStatus: true });
-    expect(resolveVisibleWidgets(caps, ['teamStatus', 'teamProgress', 'priorityActions'])).toEqual(['teamStatus']);
+    expect(resolveVisibleWidgets(caps, ['teamStatus', 'teamProgress', 'actionCenter'])).toEqual(['teamStatus']);
   });
 });

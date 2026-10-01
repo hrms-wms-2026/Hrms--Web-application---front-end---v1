@@ -67,7 +67,7 @@ describe('MyTeamSectionComponent', () => {
     expect(fixture.nativeElement.querySelector('[data-testid="my-team-section"]')).toBeTruthy();
     expect(fixture.nativeElement.querySelector('app-team-status-card')).toBeTruthy();
     expect(fixture.nativeElement.querySelector('app-team-progress-card')).toBeNull();
-    expect(fixture.nativeElement.querySelector('app-approvals-exceptions-card')).toBeNull();
+    expect(fixture.nativeElement.querySelector('app-action-center-card')).toBeNull();
   });
 
   it('hides the Customize control when only one widget is allowed', async () => {

@@ -56,22 +56,17 @@
       </div>
     }
 
-    <div class="grid grid-cols-1 gap-3 xl:grid-cols-2" data-testid="my-team-widgets">
+    <div class="grid grid-cols-1 items-start gap-3 xl:grid-cols-2" data-testid="my-team-widgets">
       @for (key of visibleKeys(); track key) {
         @switch (key) {
           @case ('teamStatus') {
             <app-team-status-card />
           }
-          @case ('approvalsExceptions') {
-            <app-approvals-exceptions-card />
+          @case ('actionCenter') {
+            <app-action-center-card />
           }
           @case ('teamProgress') {
             <app-team-progress-card />
-          }
-          @case ('priorityActions') {
-            <div class="xl:col-span-2">
-              <app-priority-actions-card />
-            </div>
           }
         }
       }

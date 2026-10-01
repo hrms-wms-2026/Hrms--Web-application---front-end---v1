@@ -2,8 +2,7 @@ import { CdkDrag, CdkDragDrop, CdkDragHandle, CdkDropList, moveItemInArray } fro
 import { ChangeDetectionStrategy, Component, OnInit, computed, inject, signal } from '@angular/core';
 import { AuthStore } from '../../../../core/auth/state/auth.store';
 import { MyTeamCapabilitiesStore } from '../../state/my-team-capabilities.store';
-import { ApprovalsExceptionsCardComponent } from '../approvals-exceptions-card/approvals-exceptions-card.component';
-import { PriorityActionsCardComponent } from '../priority-actions-card/priority-actions-card.component';
+import { ActionCenterCardComponent } from '../action-center-card/action-center-card.component';
 import { TeamProgressCardComponent } from '../team-progress-card/team-progress-card.component';
 import { TeamStatusCardComponent } from '../team-status-card/team-status-card.component';
 import { MY_TEAM_WIDGET_LABEL, MyTeamWidgetKey } from '../../models/my-team-widget-key.model';
@@ -22,9 +21,8 @@ import { loadMyTeamWidgetPreference, saveMyTeamWidgetPreference } from '../../ut
     CdkDrag,
     CdkDragHandle,
     TeamStatusCardComponent,
-    ApprovalsExceptionsCardComponent,
-    TeamProgressCardComponent,
-    PriorityActionsCardComponent
+    ActionCenterCardComponent,
+    TeamProgressCardComponent
   ],
   templateUrl: './my-team-section.component.html',
   styleUrl: './my-team-section.component.css',
