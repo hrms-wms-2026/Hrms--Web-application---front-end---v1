@@ -1,21 +1,27 @@
-import { ChangeDetectionStrategy, Component, computed, input, signal } from '@angular/core';
+import { ChangeDetectionStrategy, Component, computed, effect, inject, input, signal } from '@angular/core';
 import {
   EmployeeSignal,
   EmployeeSignalCategory,
   EmployeeSignalSeverity
 } from '../../models/employee-overview.model';
+import { EmployeePeriodStore } from '../../state/employee-period.store';
+import { SignalDrilldownStore } from '../../state/signal-drilldown.store';
 import { Delta } from '../../utils/employee-overview.utils';
+import { signalFullListUrl } from '../../utils/signal-item-links';
 import { DeltaBadgeComponent } from '../delta-badge/delta-badge.component';
+import { SignalItemsListComponent } from '../signal-items-list/signal-items-list.component';
 
 @Component({
   selector: 'app-overview-needs-attention',
   standalone: true,
-  imports: [DeltaBadgeComponent],
+  imports: [DeltaBadgeComponent, SignalItemsListComponent],
   template: `
     @if (signals().length > 0) {
       <div
         data-testid="needs-attention"
         class="rounded-2xl border border-[#fef08a] bg-[#fefce8] p-5"
+        [class.cursor-pointer]="!showAll() && signals().length > collapsedLimit"
+        (click)="expand()"
       >
         <div class="mb-2 flex items-center justify-between gap-3">
           <div class="flex items-center gap-2">
@@ -29,10 +35,13 @@ import { DeltaBadgeComponent } from '../delta-badge/delta-badge.component';
 
         <div class="divide-y divide-amber-200/70" id="needs-attention-list">
           @for (signal of displayedSignals(); track signal.key; let i = $index) {
-            <div
-              class="flex items-center justify-between gap-3 py-3"
+            <button
+              type="button"
+              class="flex w-full items-center justify-between gap-3 py-3 text-left cursor-pointer"
               data-testid="attention-row"
               [attr.data-key]="signal.key"
+              [attr.aria-expanded]="drilldown.openKey() === signal.key"
+              (click)="onRowClick($event, signal.key)"
             >
               <div class="flex min-w-0 items-center gap-3">
                 <span
@@ -51,8 +60,20 @@ import { DeltaBadgeComponent } from '../delta-badge/delta-badge.component';
                   class="rounded px-2 py-0.5 text-[11px] font-semibold"
                   [class]="chipClass[signal.severity]"
                 >{{ chipText[signal.severity] }}</span>
+                <span class="text-slate-400" aria-hidden="true">{{ drilldown.openKey() === signal.key ? '▾' : '▸' }}</span>
               </div>
-            </div>
+            </button>
+            @if (drilldown.openKey() === signal.key) {
+              <app-signal-items-list
+                (click)="$event.stopPropagation()"
+                [response]="drilldown.openResponse()"
+                [loading]="drilldown.loadingKey() === signal.key"
+                [error]="drilldown.errorKey() === signal.key"
+                [fullListUrl]="fullListUrl(signal.key)"
+                (itemSelected)="drilldown.select($event)"
+                (retry)="drilldown.retry()"
+              />
+            }
           }
         </div>
 
@@ -64,7 +85,7 @@ import { DeltaBadgeComponent } from '../delta-badge/delta-badge.component';
               data-testid="attention-toggle"
               aria-controls="needs-attention-list"
               [attr.aria-expanded]="showAll()"
-              (click)="toggleShowAll()"
+              (click)="onToggleClick($event)"
             >
               {{ showAll() ? 'Show less' : 'View all' }}
             </button>
@@ -76,7 +97,10 @@ import { DeltaBadgeComponent } from '../delta-badge/delta-badge.component';
   changeDetection: ChangeDetectionStrategy.OnPush
 })
 export class OverviewNeedsAttentionComponent {
-  readonly collapsedLimit = 4;
+  protected readonly drilldown = inject(SignalDrilldownStore);
+  private readonly period = inject(EmployeePeriodStore);
+
+  readonly collapsedLimit = 3;
   readonly signals = input.required<readonly EmployeeSignal[]>();
   readonly deltas = input<readonly (Delta | null)[]>([]);
   readonly against = input<string | null>(null);
@@ -85,8 +109,36 @@ export class OverviewNeedsAttentionComponent {
     this.showAll() ? this.signals() : this.signals().slice(0, this.collapsedLimit)
   );
 
+  constructor() {
+    effect(() => {
+      const key = this.drilldown.openKey();
+      if (!key) return;
+      const index = this.signals().findIndex((item) => item.key === key);
+      if (index >= this.collapsedLimit) this.showAll.set(true);
+    });
+  }
+
   toggleShowAll(): void {
     this.showAll.update((value) => !value);
+  }
+
+  expand(): void {
+    this.showAll.set(true);
+  }
+
+  onToggleClick(event: Event): void {
+    event.stopPropagation();
+    this.toggleShowAll();
+  }
+
+  onRowClick(event: Event, key: string): void {
+    event.stopPropagation();
+    this.drilldown.toggle(key);
+  }
+
+  fullListUrl(key: string): string | null {
+    const employeeId = this.drilldown.employeeId();
+    return employeeId ? signalFullListUrl(key, employeeId, this.period.from(), this.period.to()) : null;
   }
 
   readonly dotClass: Record<EmployeeSignalSeverity, string> = {
