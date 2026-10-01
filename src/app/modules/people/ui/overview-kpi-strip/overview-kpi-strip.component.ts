@@ -1,4 +1,4 @@
-import { ChangeDetectionStrategy, Component, input } from '@angular/core';
+import { ChangeDetectionStrategy, Component, input, output } from '@angular/core';
 import { Delta } from '../../utils/employee-overview.utils';
 import { KpiCard, KpiTone } from '../../utils/overview-kpi-cards';
 import { DeltaBadgeComponent } from '../delta-badge/delta-badge.component';
@@ -14,6 +14,11 @@ import { DeltaBadgeComponent } from '../delta-badge/delta-badge.component';
           data-testid="kpi-card"
           class="rounded-2xl border p-4 sm:p-5 flex min-h-36 flex-col justify-between shadow-xs"
           [class]="toneClass[card.tone]"
+          [attr.role]="card.tone === 'baseline' ? null : 'button'"
+          [attr.tabindex]="card.tone === 'baseline' ? null : 0"
+          [class.cursor-pointer]="card.tone !== 'baseline'"
+          (click)="select(card)"
+          (keydown.enter)="select(card)"
         >
           <div class="flex items-start justify-between gap-3">
             <span
@@ -44,6 +49,11 @@ export class OverviewKpiStripComponent {
   readonly cards = input.required<readonly KpiCard[]>();
   readonly deltas = input<readonly (Delta | null)[]>([]);
   readonly against = input<string | null>(null);
+  readonly cardSelected = output<string>();
+
+  select(card: KpiCard): void {
+    if (card.tone !== 'baseline') this.cardSelected.emit(card.key);
+  }
 
   readonly toneClass: Record<KpiTone, string> = {
     critical: 'bg-red-50 border-red-100 text-red-600',
