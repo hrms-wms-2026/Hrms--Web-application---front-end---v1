@@ -40,7 +40,7 @@ describe('DashboardHomeComponent', () => {
         { provide: WorkPatternApiService, useValue: { getMyWorkPattern: () => of({ days: [] }) } },
         { provide: FocusStatusApiService, useValue: { getMyFocusStatus: () => of({ isBreakReminderDue: false, continuousFocusMinutes: 0 }) } },
         { provide: CalendarEventApiService, useValue: { getEvents: () => of({ events: [] }), getMyTimezone: () => of({ timezone: 'UTC' }) } },
-        { provide: AuthStore, useValue: { email: signal('arjun.kumar@onevo.dev') } },
+        { provide: AuthStore, useValue: { email: signal('arjun.kumar@onevo.dev'), employeeId: signal(null) } },
         {
           provide: NotificationsStore,
           useValue: {

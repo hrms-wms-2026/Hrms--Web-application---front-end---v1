@@ -1,5 +1,6 @@
 import { CdkDrag, CdkDragDrop, CdkDragHandle, CdkDropList, moveItemInArray } from '@angular/cdk/drag-drop';
 import { ChangeDetectionStrategy, Component, OnInit, computed, inject, signal } from '@angular/core';
+import { AuthStore } from '../../../../core/auth/state/auth.store';
 import { MyTeamCapabilitiesStore } from '../../state/my-team-capabilities.store';
 import { ApprovalsExceptionsCardComponent } from '../approvals-exceptions-card/approvals-exceptions-card.component';
 import { PriorityActionsCardComponent } from '../priority-actions-card/priority-actions-card.component';
@@ -31,10 +32,11 @@ import { loadMyTeamWidgetPreference, saveMyTeamWidgetPreference } from '../../ut
 })
 export class MyTeamSectionComponent implements OnInit {
   protected readonly capabilitiesStore = inject(MyTeamCapabilitiesStore);
+  private readonly authStore = inject(AuthStore);
 
   protected readonly widgetLabel = MY_TEAM_WIDGET_LABEL;
   protected readonly pickerOpen = signal(false);
-  private readonly storedPreference = signal<MyTeamWidgetKey[]>(loadMyTeamWidgetPreference());
+  private readonly storedPreference = signal<MyTeamWidgetKey[]>(loadMyTeamWidgetPreference(this.authStore.employeeId()));
 
   protected readonly allowedKeys = computed(() => allowedWidgetKeys(this.capabilitiesStore.capabilities()));
   protected readonly visibleKeys = computed(() =>
@@ -57,13 +59,13 @@ export class MyTeamSectionComponent implements OnInit {
     const current = this.visibleKeys();
     const next = current.includes(key) ? current.filter((k) => k !== key) : [...current, key];
     this.storedPreference.set(next);
-    saveMyTeamWidgetPreference(next);
+    saveMyTeamWidgetPreference(next, this.authStore.employeeId());
   }
 
   onDrop(event: CdkDragDrop<MyTeamWidgetKey[]>): void {
     const next = [...this.visibleKeys()];
     moveItemInArray(next, event.previousIndex, event.currentIndex);
     this.storedPreference.set(next);
-    saveMyTeamWidgetPreference(next);
+    saveMyTeamWidgetPreference(next, this.authStore.employeeId());
   }
 }

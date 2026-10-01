@@ -38,4 +38,24 @@ describe('my-team-widget-preference.util', () => {
     saveMyTeamWidgetPreference([]);
     expect(loadMyTeamWidgetPreference()).toEqual([]);
   });
+
+  it('keeps two employees\' preferences on the same browser independent', () => {
+    saveMyTeamWidgetPreference(['teamStatus'], 'emp-1');
+    saveMyTeamWidgetPreference(['teamProgress', 'priorityActions'], 'emp-2');
+
+    expect(loadMyTeamWidgetPreference('emp-1')).toEqual(['teamStatus']);
+    expect(loadMyTeamWidgetPreference('emp-2')).toEqual(['teamProgress', 'priorityActions']);
+  });
+
+  it('does not let an employee-scoped save leak into the unscoped default', () => {
+    saveMyTeamWidgetPreference(['teamStatus'], 'emp-1');
+    expect(loadMyTeamWidgetPreference(null)).toEqual([...ALL_MY_TEAM_WIDGET_KEYS]);
+    expect(loadMyTeamWidgetPreference()).toEqual([...ALL_MY_TEAM_WIDGET_KEYS]);
+  });
+
+  it('falls back sensibly when employeeId is null or omitted', () => {
+    saveMyTeamWidgetPreference(['approvalsExceptions']);
+    expect(loadMyTeamWidgetPreference()).toEqual(['approvalsExceptions']);
+    expect(loadMyTeamWidgetPreference(null)).toEqual(['approvalsExceptions']);
+  });
 });

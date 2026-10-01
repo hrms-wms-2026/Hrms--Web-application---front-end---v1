@@ -31,7 +31,11 @@ describe('MyTeamSectionComponent', () => {
     localStorage.clear();
   });
 
-  async function setup(caps: MyTeamCapabilitiesResponse | null): Promise<ComponentFixture<MyTeamSectionComponent>> {
+  async function setup(
+    caps: MyTeamCapabilitiesResponse | null,
+    employeeId: string | null = null
+  ): Promise<ComponentFixture<MyTeamSectionComponent>> {
+    TestBed.resetTestingModule();
     await TestBed.configureTestingModule({
       imports: [MyTeamSectionComponent],
       providers: [
@@ -41,7 +45,7 @@ describe('MyTeamSectionComponent', () => {
         { provide: MyTeamLedProgressApiService, useValue: { getLedProgress: () => of(EMPTY_LED_PROGRESS) } },
         { provide: Router, useValue: { navigate: vi.fn() } },
         { provide: MyTeamDeepLinkService, useValue: { navigate: vi.fn() } },
-        { provide: AuthStore, useValue: { employeeId: () => null } }
+        { provide: AuthStore, useValue: { employeeId: () => employeeId } }
       ]
     }).compileComponents();
 
@@ -117,5 +121,28 @@ describe('MyTeamSectionComponent', () => {
     fixture.detectChanges();
 
     expect(fixture.nativeElement.querySelector('app-team-status-card')).toBeTruthy();
+  });
+
+  it('persists widget preference under an employee-scoped storage key', async () => {
+    const fixture = await setup(capabilities({ isAvailable: true, canViewPeopleStatus: true, leadsWork: true }), 'emp-1');
+    fixture.nativeElement.querySelector('[data-testid="my-team-customize-toggle"]').click();
+    fixture.detectChanges();
+
+    findRowButton(fixture, 'Team Status', 'Hide').click();
+    fixture.detectChanges();
+
+    expect(localStorage.getItem('onexso.my_team_widget_order:emp-1')).toContain('teamProgress');
+    expect(localStorage.getItem('onexso.my_team_widget_order')).toBeNull();
+  });
+
+  it('keeps two employees\' widget preferences independent on the same browser', async () => {
+    const empOne = await setup(capabilities({ isAvailable: true, canViewPeopleStatus: true, leadsWork: true }), 'emp-1');
+    empOne.nativeElement.querySelector('[data-testid="my-team-customize-toggle"]').click();
+    empOne.detectChanges();
+    findRowButton(empOne, 'Team Status', 'Hide').click();
+    empOne.detectChanges();
+
+    const empTwo = await setup(capabilities({ isAvailable: true, canViewPeopleStatus: true, leadsWork: true }), 'emp-2');
+    expect(empTwo.nativeElement.querySelector('app-team-status-card')).toBeTruthy();
   });
 });
