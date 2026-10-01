@@ -40,17 +40,15 @@ describe('EmployeeWorkActivityTabComponent', () => {
     return { fixture, api, el: fixture.nativeElement as HTMLElement };
   }
 
-  it('renders the period picker and all seven cards', () => {
+  it('renders the period picker and all cards', () => {
     const { el } = setup();
 
     for (const selector of [
       'app-employee-period-picker',
-      'app-overview-work-widget',
+      'app-work-summary-widget',
       'app-needs-attention-widget',
-      'app-overview-delivery-widget',
-      'app-delivery-trend-widget',
-      'app-overview-activity-widget',
-      'app-activity-by-hour-widget',
+      'app-delivery-health-widget',
+      'app-recorded-activity-widget',
       'app-recent-tasks-widget',
       'app-app-usage-widget',
       'app-work-pattern-widget'

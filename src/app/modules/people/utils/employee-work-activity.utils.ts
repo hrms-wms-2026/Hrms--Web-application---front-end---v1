@@ -26,6 +26,16 @@ export function hourLabel(hour: number): string {
   return `${h}${hour < 12 ? 'AM' : 'PM'}`;
 }
 
+/** '2h 30m' with hours, or just '12m' when under an hour - the compact form used by the device-activity
+ * cards (Recorded Activity, Application Usage, Work Pattern), as opposed to formatMinutes' always-'Xh Ym'
+ * form used by the Overview tab's Activity widget. */
+export function formatDurationCompact(totalMinutes: number): string {
+  const safe = Math.max(0, Math.round(totalMinutes));
+  const hours = Math.floor(safe / 60);
+  const minutes = safe % 60;
+  return hours > 0 ? `${hours}h ${String(minutes).padStart(2, '0')}m` : `${minutes}m`;
+}
+
 /** '2:41 PM' in the given zone (or the viewer's own zone when omitted); '—' for a missing timestamp. */
 export function formatClock(iso: string | null, timeZone?: string): string {
   if (!iso) return '—';

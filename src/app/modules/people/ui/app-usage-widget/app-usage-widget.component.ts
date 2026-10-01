@@ -4,8 +4,7 @@ import { createWidgetLoader } from '../../../../shared/ui/widget-card/widget-loa
 import { PeopleApiService } from '../../data-access/people-api.service';
 import { EmployeeAppUsageResponse } from '../../models/employee-work-activity.model';
 import { EmployeePeriodStore } from '../../state/employee-period.store';
-import { formatMinutes } from '../../utils/employee-overview.utils';
-import { formatClock } from '../../utils/employee-work-activity.utils';
+import { formatClock, formatDurationCompact } from '../../utils/employee-work-activity.utils';
 
 @Component({
   selector: 'app-app-usage-widget',
@@ -13,7 +12,7 @@ import { formatClock } from '../../utils/employee-work-activity.utils';
   imports: [WidgetCardComponent],
   template: `
     <app-widget-card
-      title="Application usage"
+      title="Application Usage"
       [state]="loader.state()"
       [emptyMessage]="emptyMessage()"
       errorMessage="Could not load application usage."
@@ -64,7 +63,7 @@ export class AppUsageWidgetComponent {
   }
 
   fmt(minutes: number): string {
-    return formatMinutes(minutes);
+    return formatDurationCompact(minutes);
   }
 
   clock(iso: string): string {

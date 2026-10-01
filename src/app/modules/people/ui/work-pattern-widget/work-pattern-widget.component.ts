@@ -3,8 +3,7 @@ import { WidgetCardComponent } from '../../../../shared/ui/widget-card/widget-ca
 import { createWidgetLoader } from '../../../../shared/ui/widget-card/widget-loader';
 import { PeopleApiService } from '../../data-access/people-api.service';
 import { EmployeePeriodStore } from '../../state/employee-period.store';
-import { formatMinutes } from '../../utils/employee-overview.utils';
-import { formatClock } from '../../utils/employee-work-activity.utils';
+import { formatClock, formatDurationCompact } from '../../utils/employee-work-activity.utils';
 
 @Component({
   selector: 'app-work-pattern-widget',
@@ -12,7 +11,7 @@ import { formatClock } from '../../utils/employee-work-activity.utils';
   imports: [WidgetCardComponent],
   template: `
     <app-widget-card
-      title="Work pattern"
+      title="Work Pattern"
       [state]="loader.state()"
       emptyMessage="Activity monitoring is off for this employee."
       errorMessage="Could not load the work pattern."
@@ -23,7 +22,7 @@ import { formatClock } from '../../utils/employee-work-activity.utils';
           <div data-testid="pattern-focus">
             <dt class="text-xs text-[var(--color-text-secondary)]">Focused work blocks</dt>
             <dd class="text-lg font-semibold text-[var(--color-text-primary)]">{{ d.focusBlocks }}</dd>
-            <dd class="text-xs text-[var(--color-text-secondary)]">(30 min or longer)</dd>
+            <dd class="text-xs text-[var(--color-text-secondary)]">(&ge; 30 min)</dd>
           </div>
           <div data-testid="pattern-top-app">
             <dt class="text-xs text-[var(--color-text-secondary)]">Top application</dt>
@@ -59,7 +58,7 @@ export class WorkPatternWidgetComponent {
   );
 
   fmt(minutes: number): string {
-    return formatMinutes(minutes);
+    return formatDurationCompact(minutes);
   }
 
   clock(iso: string): string {

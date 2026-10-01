@@ -12,7 +12,7 @@ import { priorityLabel } from '../../utils/employee-work-activity.utils';
   imports: [WidgetCardComponent, RouterLink],
   template: `
     <app-widget-card
-      title="Recent tasks"
+      title="Recent Tasks"
       [state]="loader.state()"
       emptyMessage="No tasks assigned yet."
       errorMessage="Could not load recent tasks."
@@ -22,7 +22,7 @@ import { priorityLabel } from '../../utils/employee-work-activity.utils';
         <table class="w-full table-fixed text-sm">
           <thead class="text-left text-[var(--color-text-secondary)]">
             <tr>
-              <th class="w-[30%] py-1 font-normal">Task</th>
+              <th class="w-[28%] py-1 font-normal">Task</th>
               <th class="py-1 font-normal">Project</th>
               <th class="py-1 font-normal">Status</th>
               <th class="py-1 font-normal">Priority</th>
@@ -34,13 +34,23 @@ import { priorityLabel } from '../../utils/employee-work-activity.utils';
             @for (t of d.items; track t.taskId) {
               <tr data-testid="recent-row" class="border-t border-[var(--color-border)]">
                 <td class="truncate py-2">
-                  <a [routerLink]="['/work', t.projectId, 'board']" [queryParams]="{ highlightTaskId: t.taskId }" [title]="t.title">{{ t.title }}</a>
+                  <a class="hover:underline" [routerLink]="['/work', t.projectId, 'board']" [queryParams]="{ highlightTaskId: t.taskId }" [title]="t.title">{{ t.title }}</a>
                 </td>
                 <td class="truncate py-2">{{ t.projectName }}</td>
                 <td class="py-2">
-                  <span class="rounded-full border px-2 py-0.5 text-xs" [style.borderColor]="t.statusColor" [style.color]="t.statusColor">{{ t.statusName }}</span>
+                  <span
+                    class="rounded-full px-2 py-0.5 text-xs font-medium"
+                    [style.backgroundColor]="statusBackground(t.statusColor)"
+                    [style.color]="t.statusColor"
+                  >
+                    {{ t.statusName }}
+                  </span>
                 </td>
-                <td class="py-2">{{ priority(t.priority) }}</td>
+                <td class="py-2">
+                  <span class="rounded-full px-2 py-0.5 text-xs font-medium" [style.backgroundColor]="priorityBackground(t.priority)" [style.color]="priorityColor(t.priority)">
+                    {{ priority(t.priority) }}
+                  </span>
+                </td>
                 <td class="py-2">{{ due(t.dueDate) }}</td>
                 <td class="py-2">{{ t.storyPoints ?? '—' }}</td>
               </tr>
@@ -65,5 +75,25 @@ export class RecentTasksWidgetComponent {
 
   due(dueDate: string | null): string {
     return dueDate ? formatShortDate(dueDate) : '—';
+  }
+
+  statusBackground(hex: string): string {
+    return `color-mix(in srgb, ${hex} 15%, transparent)`;
+  }
+
+  priorityColor(priority: string): string {
+    switch (priority.toLowerCase()) {
+      case 'urgent':
+      case 'high':
+        return 'var(--color-danger)';
+      case 'medium':
+        return 'var(--color-warning)';
+      default:
+        return 'var(--color-success)';
+    }
+  }
+
+  priorityBackground(priority: string): string {
+    return `color-mix(in srgb, ${this.priorityColor(priority)} 15%, transparent)`;
   }
 }

@@ -1,4 +1,4 @@
-import { attentionLabel, formatClock, hourLabel, shortMonth, visibleHours } from './employee-work-activity.utils';
+import { attentionLabel, formatClock, formatDurationCompact, hourLabel, shortMonth, visibleHours } from './employee-work-activity.utils';
 
 describe('employee-work-activity utils', () => {
   it('attentionLabel', () => {
@@ -17,6 +17,14 @@ describe('employee-work-activity utils', () => {
     expect(hourLabel(0)).toBe('12AM');
     expect(hourLabel(9)).toBe('9AM');
     expect(hourLabel(13)).toBe('1PM');
+  });
+
+  it('formatDurationCompact omits the hours part under an hour', () => {
+    expect(formatDurationCompact(150)).toBe('2h 30m');
+    expect(formatDurationCompact(65)).toBe('1h 05m');
+    expect(formatDurationCompact(12)).toBe('12m');
+    expect(formatDurationCompact(0)).toBe('0m');
+    expect(formatDurationCompact(-5)).toBe('0m');
   });
 
   it('formatClock renders a time or a dash', () => {

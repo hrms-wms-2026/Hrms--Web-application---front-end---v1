@@ -41,6 +41,7 @@ describe('NeedsAttentionWidgetComponent', () => {
     expect(row.textContent).toContain('Watercraft Platform');
     expect(row.textContent).toContain('2 days overdue');
     expect(row.textContent).toContain('In Progress');
+    expect(row.textContent).toContain('5');
     const link = row.querySelector('a')!;
     expect(link.getAttribute('href')).toContain('/work/p-1/board');
     expect(link.getAttribute('href')).toContain('highlightTaskId=t-1');
