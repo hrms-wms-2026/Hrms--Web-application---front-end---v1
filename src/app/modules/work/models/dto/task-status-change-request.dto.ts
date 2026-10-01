@@ -17,7 +17,7 @@ export interface TaskStatusChangeSetDto {
   order: string[];
 }
 
-export type TaskStatusChangeRequestStatus = 'pending' | 'approved' | 'rejected' | 'cancelled' | 'outdated';
+export type TaskStatusChangeRequestStatus = 'pending' | 'approved' | 'rejected' | 'cancelled' | 'stale';
 
 export interface TaskStatusChangeRequestDto {
   id: string;

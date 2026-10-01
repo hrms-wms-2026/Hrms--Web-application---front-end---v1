@@ -21,6 +21,24 @@ export function monthLabel(month: string): string {
   return `${MONTH_NAMES[monthNumber - 1]} ${year}`;
 }
 
+export function monthKeyOf(isoDate: string): string {
+  return isoDate.slice(0, 7);
+}
+
+export function shiftMonth(month: string, delta: number): string {
+  const [year, monthNumber] = month.split('-').map(Number);
+  return currentMonthKey(new Date(year, monthNumber - 1 + delta, 1));
+}
+
+/** Inclusive, newest first. */
+export function monthsBetween(min: string, max: string): readonly { value: string; label: string }[] {
+  const months: { value: string; label: string }[] = [];
+  for (let month = max; month >= min; month = shiftMonth(month, -1)) {
+    months.push({ value: month, label: monthLabel(month) });
+  }
+  return months;
+}
+
 /** Newest first, starting at the month containing `now`. */
 export function recentMonths(now: Date = new Date(), count = 12): readonly { value: string; label: string }[] {
   const months: { value: string; label: string }[] = [];
@@ -62,4 +80,42 @@ const DAY_LABELS: Record<AttendanceDayStatus, string> = {
 
 export function attendanceDayLabel(status: AttendanceDayStatus): string {
   return DAY_LABELS[status];
+}
+
+/** '83h 20m' style duration from whole minutes (negatives clamp to 0). */
+export function formatMinutes(total: number): string {
+  const safe = Math.max(0, Math.round(total));
+  return `${Math.floor(safe / 60)}h ${String(safe % 60).padStart(2, '0')}m`;
+}
+
+export type DeltaPolarity = 'higher-better' | 'lower-better' | 'neutral';
+
+export interface Delta {
+  readonly text: string;
+  readonly direction: 'up' | 'down' | 'flat';
+  readonly tone: 'good' | 'bad' | 'neutral';
+}
+
+/** Difference of a metric against the previous period, with a tone that respects which direction is good. */
+export function computeDelta(
+  current: number,
+  previous: number,
+  polarity: DeltaPolarity,
+  format: (n: number) => string = String
+): Delta {
+  const diff = current - previous;
+  if (diff === 0) return { text: 'No change', direction: 'flat', tone: 'neutral' };
+
+  const improved = polarity === 'higher-better' ? diff > 0 : polarity === 'lower-better' ? diff < 0 : null;
+  return {
+    text: `${diff > 0 ? '+' : '-'}${format(Math.abs(diff))}`,
+    direction: diff > 0 ? 'up' : 'down',
+    tone: improved === null ? 'neutral' : improved ? 'good' : 'bad'
+  };
+}
+
+/** 'Sep 12' from an ISO date or datetime, using its leading YYYY-MM-DD parts (UTC date). */
+export function formatShortDate(iso: string): string {
+  const [, month, day] = iso.slice(0, 10).split('-').map(Number);
+  return `${MONTH_NAMES[month - 1]} ${day}`;
 }

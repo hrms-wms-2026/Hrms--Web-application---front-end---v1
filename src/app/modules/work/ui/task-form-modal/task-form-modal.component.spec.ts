@@ -3,6 +3,8 @@ import { signal } from '@angular/core';
 import { of, throwError } from 'rxjs';
 import { vi } from 'vitest';
 import { TaskFormModalComponent } from './task-form-modal.component';
+import { ProjectMonitorApiService } from '../../data-access/project-monitor-api.service';
+import { MONITOR_CHECK_DEBOUNCE_MS } from '../sub-module-form/sub-module-form.component';
 import { TaskApiService } from '../../data-access/task-api.service';
 import { ProjectApiService } from '../../data-access/project-api.service';
 import { SprintApiService } from '../../data-access/sprint-api.service';
@@ -50,8 +52,6 @@ function baseApi(): Record<string, ReturnType<typeof vi.fn>> {
     deleteTask: vi.fn().mockReturnValue(of(undefined)),
     duplicateTask: vi.fn().mockReturnValue(of(taskDto)),
     convertToSubtask: vi.fn().mockReturnValue(of(taskDto)),
-    createTaskEditRequest: vi.fn().mockReturnValue(of({})),
-    createTaskCreationRequest: vi.fn().mockReturnValue(of({})),
     assignTask: vi.fn().mockReturnValue(of(undefined)),
     unassignTask: vi.fn().mockReturnValue(of(undefined)),
     moveTaskStatus: vi.fn().mockReturnValue(of(undefined)),
@@ -136,6 +136,25 @@ describe('TaskFormModalComponent - edit mode', () => {
     fixture.componentRef.setInput('taskId', 't1');
     fixture.componentRef.setInput('open', true);
     await flush(fixture);
+  });
+
+  it('warns (without blocking) when the assignee cannot finish their work by the due date', async () => {
+    const monitor = TestBed.inject(ProjectMonitorApiService);
+    const checkTask = vi.spyOn(monitor, 'checkTask').mockReturnValue(of({
+      warnings: [{ code: 'employee_deadline_overload', message: 'Ann has 30 h of work due by Oct 7 but only 24 h of working time.', employeeId: 'e1' }]
+    }));
+
+    fixture.componentInstance.dueDate.set('2026-10-07');
+    fixture.componentInstance.estimatedHours.set(10);
+    fixture.detectChanges();
+    await new Promise((r) => setTimeout(r, MONITOR_CHECK_DEBOUNCE_MS + 50));
+    await flush(fixture);
+
+    expect(checkTask).toHaveBeenLastCalledWith('p1', {
+      taskId: 't1', assigneeEmployeeIds: ['e1'], dueDate: '2026-10-07', estimatedHours: 10
+    });
+    expect(fixture.nativeElement.querySelector('[data-testid="monitor-warnings"]').textContent)
+      .toContain('Ann has 30 h of work due by Oct 7');
   });
 
   it('loads the task by its id input and seeds the form', () => {
@@ -290,6 +309,21 @@ describe('TaskFormModalComponent - edit mode', () => {
     expect(api['deleteTask']).toHaveBeenCalledWith('t1');
     expect(savedSpy).toHaveBeenCalled();
     expect(closedSpy).toHaveBeenCalled();
+    expect(fixture.componentInstance.deleteConfirmOpen()).toBe(false);
+  });
+
+  it('Delete answered with 202 shows "sent for approval" and keeps the modal open', async () => {
+    api['deleteTask'].mockReturnValue(of({ approvalRequestId: 'r1' }));
+    const info = vi.spyOn(TestBed.inject(NotificationService), 'info');
+    fixture.detectChanges();
+    const closedSpy = vi.fn();
+    fixture.componentInstance.closed.subscribe(closedSpy);
+
+    fixture.componentInstance.openDeleteConfirm();
+    await fixture.componentInstance.onDeleteConfirmed();
+
+    expect(info).toHaveBeenCalledWith('Task deletion sent for approval.');
+    expect(closedSpy).not.toHaveBeenCalled();
     expect(fixture.componentInstance.deleteConfirmOpen()).toBe(false);
   });
 
@@ -452,29 +486,27 @@ describe('TaskFormModalComponent - edit mode', () => {
     expect(annImg.src).toBe('https://api.test/employees/e1/avatar');
   });
 
-  it('non-owner Save routes through createTaskEditRequest and does not call editTask', async () => {
+  it('edit by non-owner calls editTask (not an edit request) and shows the "sent for approval" info toast on 202', async () => {
     milestones.set([{ objectiveId: 'o1', title: 'Module 1', isOwner: false, isEffectiveOwner: false }]);
+    api['editTask'].mockReturnValue(of({ approvalRequestId: 'r1' }));
+    const info = vi.spyOn(TestBed.inject(NotificationService), 'info');
     fixture.detectChanges();
     fixture.componentInstance.title.set('Edited');
     await fixture.componentInstance.submit();
-    expect(api['createTaskEditRequest']).toHaveBeenCalledWith('t1', expect.objectContaining({ title: 'Edited' }));
-    expect(api['editTask']).not.toHaveBeenCalled();
+    expect(api['editTask']).toHaveBeenCalledWith('t1', expect.objectContaining({ title: 'Edited' }));
+    expect(info).toHaveBeenCalledWith('Task edit sent for approval.');
   });
 
-  it('a member who can reassign but not edit directly (isOwner true, isEffectiveOwner false) still routes field edits through createTaskEditRequest, and reassignment still applies', async () => {
-    // Regression for the bug where isObjectiveOwner (isOwner - owner OR active member) was used
-    // to decide both the button label and the direct-edit call: a plain member with broad
-    // effective-manager rights (can see/use the assignee picker, isOwner true) but who is not the
-    // milestone's actual owner (isEffectiveOwner false) must still get routed through the edit
-    // request flow for field changes - but reassignment (its own, separately-permitted action) is
-    // unaffected and still applies.
+  it('a member whose field edits go for approval still gets the reassignment applied', async () => {
+    // Reassignment is its own, separately-permitted action: it applies even when the backend
+    // answers the field edit with a 202 "sent for approval".
     milestones.set([{ objectiveId: 'o1', title: 'Module 1', isOwner: true, isEffectiveOwner: false }]);
+    api['editTask'].mockReturnValue(of({ approvalRequestId: 'r1' }));
     fixture.detectChanges();
     fixture.componentInstance.title.set('Edited');
     fixture.componentInstance.assigneeEmployeeId.set('e2');
     await fixture.componentInstance.submit();
-    expect(api['createTaskEditRequest']).toHaveBeenCalledWith('t1', expect.objectContaining({ title: 'Edited' }));
-    expect(api['editTask']).not.toHaveBeenCalled();
+    expect(api['editTask']).toHaveBeenCalledWith('t1', expect.objectContaining({ title: 'Edited' }));
     expect(api['unassignTask']).toHaveBeenCalledWith('t1', 'e1');
     expect(api['assignTask']).toHaveBeenCalledWith('t1', 'e2');
   });
@@ -745,14 +777,15 @@ describe('TaskFormModalComponent - create mode', () => {
     expect(draftsStoreStub.load).toHaveBeenCalled();
   });
 
-  it('a creation request detaches the draft attachments before deleting the draft', async () => {
+  it('a create sent for approval detaches the draft attachments before deleting the draft', async () => {
     taskDraftApiStub.get.mockReturnValue(of(savedDraft));
     await build({ draftId: 'd1', isOwner: false });
+    createTask.mockResolvedValue({ approvalRequestId: 'r1' });
 
     await fixture.componentInstance.submitCreateWithAction('create_and_close');
     await settle();
 
-    expect(api['createTaskCreationRequest']).toHaveBeenCalled();
+    expect(createTask).toHaveBeenCalled();
     expect(taskDraftApiStub.update).toHaveBeenCalledWith(
       'd1', 'p1', 'Saved title', expect.objectContaining({ attachments: [], attachmentFileIds: [] }));
     expect(taskDraftApiStub.remove).toHaveBeenCalledWith('d1');
@@ -834,26 +867,23 @@ describe('TaskFormModalComponent - create mode', () => {
     expect(createdSpy).toHaveBeenCalledWith('t-new');
   });
 
-  it('non-owner submit routes through createTaskCreationRequest', async () => {
+  it('create by non-owner calls createTask and shows "sent for approval" on 202', async () => {
     await build({ isOwner: false });
+    createTask.mockResolvedValue({ approvalRequestId: 'r1' });
+    const info = vi.spyOn(TestBed.inject(NotificationService), 'info');
+    const createdSpy = vi.fn();
+    const closedSpy = vi.fn();
+    fixture.componentInstance.created.subscribe(createdSpy);
+    fixture.componentInstance.closed.subscribe(closedSpy);
     fixture.componentInstance.title.set('Ask');
     fixture.componentInstance.selectedObjectiveId.set('o1');
     fixture.componentInstance.categoryId.set('c1');
     fixture.componentInstance.setPriority('medium');
     await fixture.componentInstance.submit();
-    expect(api['createTaskCreationRequest']).toHaveBeenCalledWith('o1', expect.objectContaining({ title: 'Ask' }));
-    expect(createTask).not.toHaveBeenCalled();
-  });
-
-  it('surfaces an error and clears submitting when a non-owner create request fails', async () => {
-    await build({ isOwner: false });
-    api['createTaskCreationRequest'].mockReturnValue(throwError(() => ({ error: { detail: 'Sprint is closed.' } })));
-    fixture.componentInstance.title.set('Ask');
-    fixture.componentInstance.selectedObjectiveId.set('o1');
-    fixture.componentInstance.categoryId.set('c1');
-    fixture.componentInstance.setPriority('medium');
-    await fixture.componentInstance.submit();
-    expect(fixture.componentInstance.errorMessage()).toBe('Sprint is closed.');
+    expect(createTask).toHaveBeenCalledWith('o1', expect.objectContaining({ title: 'Ask' }));
+    expect(info).toHaveBeenCalledWith('Task sent for approval.');
+    expect(createdSpy).toHaveBeenCalledWith('');
+    expect(closedSpy).toHaveBeenCalled();
     expect(fixture.componentInstance.submitting()).toBe(false);
   });
 

@@ -62,4 +62,17 @@ describe('SprintApiService', () => {
     expect(req.request.body).toEqual({ disposition: 'backlog' });
     req.flush({});
   });
+  it('delete DELETEs /work/sprints/sp-1', () => {
+    service.delete('sp-1').subscribe((res) => expect(res).toBeNull());
+    const req = httpMock.expectOne(`${environment.apiUrl}/work/sprints/sp-1`);
+    expect(req.request.method).toBe('DELETE');
+    req.flush(null, { status: 204, statusText: 'No Content' });
+  });
+
+  it('edit returns PendingApprovalDto on 202', () => {
+    service.edit('sp-1', { name: 'Renamed', goal: null }).subscribe((res) => expect(res).toEqual({ approvalRequestId: 'ar-1' }));
+    const req = httpMock.expectOne(`${environment.apiUrl}/work/sprints/sp-1`);
+    expect(req.request.method).toBe('PATCH');
+    req.flush({ approvalRequestId: 'ar-1' }, { status: 202, statusText: 'Accepted' });
+  });
 });

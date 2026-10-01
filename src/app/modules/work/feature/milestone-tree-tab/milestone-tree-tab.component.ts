@@ -27,6 +27,8 @@ import { MilestoneTreeNode, ObjectiveDetail } from '../../models/milestone.model
 import { EditObjectiveRequestDto, CreateObjectiveRequestDto } from '../../models/dto/milestone.dto';
 import { findTreeNode, isLeafObjective, collectObjectiveOptions } from '../../utils/project.mapper';
 import { Sprint, SprintStatus } from '../../models/sprint.model';
+import { NotificationService } from '../../../../core/services/notification.service';
+import { ProjectMonitorStore } from '../../state/project-monitor.store';
 
 const ACTIVE_STATUS_OPTIONS: readonly WorkDropdownOption[] = [
   { value: 'active', label: 'Active' },
@@ -80,6 +82,8 @@ export class MilestoneTreeTabComponent {
   private readonly approvalsApi = inject(WorkApprovalsApiService);
   private readonly directory = inject(EmployeeDirectoryStore);
   private readonly taskApi = inject(TaskApiService);
+  private readonly notificationService = inject(NotificationService);
+  protected readonly monitor = inject(ProjectMonitorStore);
 
   readonly taskModalOpen = signal(false);
   readonly taskModalMode = signal<'create' | 'edit'>('create');
@@ -132,7 +136,7 @@ export class MilestoneTreeTabComponent {
   private readonly highlightValues = computed(() => ({ ...this.filterValues(), search: [this.searchTerm()] }));
   readonly highlightActive = computed(() => hasActiveHighlight(this.highlightValues()));
   readonly highlight = computed(() => {
-    const tree = this.store.selectedSubtree();
+    const tree = this.renderedTree();
     if (!tree) return { matchedKeys: new Set<string>(), ancestorKeys: new Set<string>() };
     return computeTreeHighlight(tree, this.highlightValues(), new Date());
   });
@@ -168,6 +172,8 @@ export class MilestoneTreeTabComponent {
   createSprintNode = signal<MilestoneTreeNode | null>(null);
   deleteConfirmOpen = signal(false);
   pendingDeleteNode = signal<MilestoneTreeNode | null>(null);
+  /** The shared delete confirm is showing for a sprint (not a task). */
+  protected readonly deletingSprint = computed(() => this.pendingDeleteNode()?.kind === 'sprint');
   editSprintOpen = signal(false);
   editSprintNode = signal<MilestoneTreeNode | null>(null);
   completingSprintNode = signal<MilestoneTreeNode | null>(null);
@@ -298,6 +304,8 @@ export class MilestoneTreeTabComponent {
       if (tree && !findTreeNode(tree, this.selectedNodeId() ?? '')) this.selectedNodeId.set(tree.id);
       return;
     }
+    // Project monitor alerts (red marks) are advisory; load them alongside the tree without waiting.
+    void this.monitor.load(projectId);
     await this.store.loadProjectTree(projectId);
     this.loadedProjectId = projectId;
     const tree = this.store.selectedSubtree();
@@ -542,7 +550,8 @@ export class MilestoneTreeTabComponent {
   }
 
   async onAchieveSprintRequested(node: MilestoneTreeNode): Promise<void> {
-    await this.store.achieveSprint(node.id);
+    const result = await this.store.achieveSprint(node.id);
+    if (result.pending) this.notificationService.info('Sprint change sent for approval.');
   }
 
   onCompleteSprintRequested(node: MilestoneTreeNode): void {
@@ -566,8 +575,23 @@ export class MilestoneTreeTabComponent {
   async onDeleteConfirmed(): Promise<void> {
     const node = this.pendingDeleteNode();
     if (!node) return;
+    if (node.kind === 'sprint') {
+      const sprintResult = await this.store.deleteSprint(node.id);
+      if (!sprintResult.success) return;
+      if (sprintResult.pending) this.notificationService.info('Sprint deletion sent for approval.');
+      else if (this.selectedNodeId() === node.id) this.selectedNodeId.set(null);
+      this.deleteConfirmOpen.set(false);
+      this.pendingDeleteNode.set(null);
+      return;
+    }
     const result = await this.store.deleteTask(node.id);
     if (!result.success) return;
+    if (result.pendingApproval) {
+      this.notificationService.info('Task deletion sent for approval.');
+      this.deleteConfirmOpen.set(false);
+      this.pendingDeleteNode.set(null);
+      return;
+    }
     if (this.selectedNodeId() === node.id) this.selectedNodeId.set(null);
     this.deleteConfirmOpen.set(false);
     this.pendingDeleteNode.set(null);

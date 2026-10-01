@@ -19,7 +19,7 @@ import { EditObjectiveRequestPayloadDto } from '../../models/dto/allocation-requ
             @if (item().kind === 'allocation_extend') {
               <span> requested +{{ requestedAdditionalHours() }}h</span>
               @if (item().currentAllocatedHours != null) {
-                <span> · Current {{ item().currentAllocatedHours }}h</span>
+                <span data-testid="allocation-current-hours"> · Current {{ item().currentAllocatedHours }}h</span>
               }
             }
             <span aria-hidden="true"> · </span>
@@ -125,7 +125,7 @@ export class ApprovalRequestRowComponent {
 
   protected requestedAdditionalHours(): number {
     const raw = this.item().raw;
-    if ('payload' in raw && 'requestedAdditionalHours' in raw.payload) return raw.payload.requestedAdditionalHours;
+    if ('payload' in raw && raw.payload && 'requestedAdditionalHours' in raw.payload) return raw.payload.requestedAdditionalHours;
     return 0;
   }
 
@@ -139,7 +139,7 @@ export class ApprovalRequestRowComponent {
 
   private requestedEditPayload(): EditObjectiveRequestPayloadDto {
     const raw = this.item().raw;
-    if ('payload' in raw && 'title' in raw.payload && 'startDate' in raw.payload) return raw.payload as EditObjectiveRequestPayloadDto;
+    if ('payload' in raw && raw.payload && 'title' in raw.payload && 'startDate' in raw.payload) return raw.payload as EditObjectiveRequestPayloadDto;
     return { title: '', description: null, startDate: '', endDate: '', allocatedHours: 0 };
   }
 
@@ -165,7 +165,7 @@ export class ApprovalRequestRowComponent {
 
   private requiresRejectComment(): boolean {
     const kind = this.item().kind;
-    return kind === 'task_creation' || kind === 'task_edit';
+    return kind === 'work_approval';
   }
 
   onRejectClick(): void {

@@ -17,7 +17,7 @@ import { EmployeePeriodStore } from '../../state/employee-period.store';
       (retry)="loader.reload()"
     >
       @if (loader.data(); as d) {
-        <dl class="grid grid-cols-1 gap-x-8 gap-y-3 text-sm sm:grid-cols-2 lg:grid-cols-3">
+        <dl class="grid grid-cols-1 gap-y-3 text-sm">
           <div class="flex items-center justify-between gap-4 border-b border-[var(--color-border)] pb-2">
             <dt class="text-[var(--color-text-secondary)]">Late clock-ins</dt>
             <dd class="font-semibold" [class.text-[var(--color-danger-text)]]="d.lateClockIns > 0" data-testid="discipline-late">{{ d.lateClockIns }}</dd>
@@ -34,7 +34,7 @@ import { EmployeePeriodStore } from '../../state/employee-period.store';
             <dt class="text-[var(--color-text-secondary)]">Over break</dt>
             <dd class="font-semibold" [class.text-[var(--color-danger-text)]]="d.overBreakDays > 0" data-testid="discipline-over-break">{{ overBreakText(d) }}</dd>
           </div>
-          <div class="flex items-center justify-between gap-4 border-b border-[var(--color-border)] pb-2">
+          <div class="flex items-center justify-between gap-4 pb-2">
             <dt class="text-[var(--color-text-secondary)]">Outside work location</dt>
             <dd class="font-semibold" [class.text-[var(--color-danger-text)]]="(d.locationViolations ?? 0) > 0" data-testid="discipline-location">{{ locationText(d) }}</dd>
           </div>
@@ -51,7 +51,9 @@ export class OverviewDisciplineWidgetComponent {
   readonly employeeId = input.required<string>();
 
   readonly loader = createWidgetLoader(() =>
-    this.api.getOverviewAttendanceDiscipline(this.employeeId(), this.period.from(), this.period.to())
+    this.api.getOverviewAttendanceDiscipline(
+      this.employeeId(), this.period.from(), this.period.to(), false
+    )
   );
 
   overBreakText(d: EmployeeAttendanceDisciplineResponse): string {

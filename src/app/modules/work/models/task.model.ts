@@ -58,7 +58,7 @@ import { BulkResultSummary } from '../../../shared/ui/bulk-action-result-modal/b
 
 export interface BulkTaskActionItem {
   readonly taskId: string;
-  readonly outcome: 'succeeded' | 'failed';
+  readonly outcome: 'succeeded' | 'pendingApproval' | 'failed';
   readonly reason: string | null;
 }
 
@@ -66,6 +66,8 @@ export interface BulkTaskActionResponse {
   readonly items: readonly BulkTaskActionItem[];
   readonly succeeded: number;
   readonly failed: number;
+  /** Items sent for approval instead of applied (bulk delete by a non-owner). */
+  readonly pendingApproval?: number;
 }
 
 export function toBulkResultSummary(response: BulkTaskActionResponse): BulkResultSummary {
@@ -76,7 +78,7 @@ export function toBulkResultSummary(response: BulkTaskActionResponse): BulkResul
       reason: item.reason
     })),
     succeeded: response.succeeded,
-    pendingApproval: 0,
+    pendingApproval: response.pendingApproval ?? 0,
     failed: response.failed
   };
 }

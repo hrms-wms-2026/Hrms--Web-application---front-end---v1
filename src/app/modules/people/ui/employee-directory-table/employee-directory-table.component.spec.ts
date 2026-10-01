@@ -5,6 +5,7 @@ import { EMPLOYEE_COLUMNS, EmployeeColumnDef } from '../../models/employee-colum
 import { EmployeeListItemResponse } from '../../models/employee.model';
 import { MenuItem } from '../../../../shared/ui/dropdown-menu/dropdown-menu.component';
 import { EmployeeDirectoryTableComponent } from './employee-directory-table.component';
+import { EmployeeDirectoryStore } from '../../../work/state/employee-directory.store';
 
 const emp = (id: string, overrides: Partial<EmployeeListItemResponse> = {}): EmployeeListItemResponse => ({
   id, employeeNumber: `N-${id}`, fullName: `Person ${id}`, email: `${id}@x.com`, departmentId: null, departmentName: 'Dept',
@@ -32,12 +33,33 @@ class HostComponent {
 }
 
 async function setup() {
-  await TestBed.configureTestingModule({ imports: [HostComponent], providers: [{ provide: Router, useValue: { navigate: vi.fn() } }] }).compileComponents();
+  const cached = new Map<string, { id: string; name: string; initials: string; avatarUrl: string | null }>();
+  const directory = {
+    get: vi.fn((id: string) => cached.get(id)),
+    seed: vi.fn((identities: readonly { id: string; name: string; avatarFileId: string | null }[]) => {
+      identities.forEach((identity) => cached.set(identity.id, {
+        id: identity.id,
+        name: identity.name,
+        initials: identity.name.slice(0, 2).toUpperCase(),
+        avatarUrl: identity.avatarFileId ? `https://api.test/files/${identity.avatarFileId}` : null
+      }));
+    }),
+    ensureLoaded: vi.fn(async (ids: readonly string[]) => {
+      ids.forEach((id) => cached.set(id, { id, name: 'Boss', initials: 'BO', avatarUrl: `https://api.test/identity/${id}` }));
+    })
+  };
+  await TestBed.configureTestingModule({
+    imports: [HostComponent],
+    providers: [
+      { provide: Router, useValue: { navigate: vi.fn() } },
+      { provide: EmployeeDirectoryStore, useValue: directory }
+    ]
+  }).compileComponents();
   const fixture = TestBed.createComponent(HostComponent);
   fixture.detectChanges();
   const el = fixture.nativeElement as HTMLElement;
   const q = (id: string) => el.querySelector(`[data-testid="${id}"]`) as HTMLElement | null;
-  return { fixture, el, q, host: fixture.componentInstance, router: TestBed.inject(Router) as unknown as { navigate: ReturnType<typeof vi.fn> } };
+  return { fixture, el, q, host: fixture.componentInstance, directory, router: TestBed.inject(Router) as unknown as { navigate: ReturnType<typeof vi.fn> } };
 }
 
 describe('EmployeeDirectoryTableComponent', () => {
@@ -144,5 +166,25 @@ describe('EmployeeDirectoryTableComponent', () => {
     const { el } = await setup();
     expect(el.querySelector('.emp-avatar-wrapper--warning')).toBeNull();
     expect(el.querySelector('.emp-attendance-warning-tooltip')).toBeNull();
+  });
+
+  it('renders cached employee and reporting-manager photos instead of fake avatars', async () => {
+    const { fixture, host, q, directory } = await setup();
+    host.employees.set([
+      emp('photo', {
+        avatarFileId: 'employee-avatar',
+        reportingManagerId: 'manager-1',
+        reportingManagerName: 'Manager One'
+      })
+    ]);
+    fixture.detectChanges();
+    await fixture.whenStable();
+    fixture.detectChanges();
+
+    const images = q('employee-row-photo')!.querySelectorAll('app-avatar img');
+    expect(images).toHaveLength(2);
+    expect((images[0] as HTMLImageElement).src).toBe('https://api.test/files/employee-avatar');
+    expect((images[1] as HTMLImageElement).src).toBe('https://api.test/identity/manager-1');
+    expect(directory.ensureLoaded).toHaveBeenCalledWith(['manager-1']);
   });
 });

@@ -4,6 +4,7 @@ import { vi } from 'vitest';
 import { SprintListStore } from './sprint-list.store';
 import { SprintApiService } from '../data-access/sprint-api.service';
 import { SprintDto } from '../models/dto/sprint.dto';
+import { NotificationService } from '../../../core/services/notification.service';
 
 describe('SprintListStore', () => {
   const dto: SprintDto = {
@@ -21,12 +22,18 @@ describe('SprintListStore', () => {
       edit: vi.fn(),
       complete: vi.fn(),
       achieve: vi.fn(),
+      delete: vi.fn(),
       ...apiOverrides
     };
+    const notifications = { info: vi.fn() };
     TestBed.configureTestingModule({
-      providers: [SprintListStore, { provide: SprintApiService, useValue: api }]
+      providers: [
+        SprintListStore,
+        { provide: SprintApiService, useValue: api },
+        { provide: NotificationService, useValue: notifications }
+      ]
     });
-    return { store: TestBed.inject(SprintListStore), api };
+    return { store: TestBed.inject(SprintListStore), api, notifications };
   }
 
   it('loadForProject populates sprints from the API', async () => {
@@ -80,5 +87,29 @@ describe('SprintListStore', () => {
     expect(ok).toBe(true);
     expect(api.achieve).toHaveBeenCalledWith('s1');
     expect(api.getByProject).toHaveBeenCalledWith('p-1');
+  });
+  it('edit pending (202) sets approvalNotice, shows "Sent for approval." and still reloads', async () => {
+    const { store, api, notifications } = setup({ edit: vi.fn().mockReturnValue(of({ approvalRequestId: 'ar-1' })) });
+    const ok = await store.edit('s1', { name: 'Renamed', goal: null }, 'p-1');
+    expect(ok).toBe(true);
+    expect(store.approvalNotice()).toBe('Sent for approval.');
+    expect(notifications.info).toHaveBeenCalledWith('Sent for approval.');
+    expect(api.getByProject).toHaveBeenCalledWith('p-1');
+  });
+
+  it('an applied edit clears approvalNotice and shows no toast', async () => {
+    const { store, notifications } = setup({ edit: vi.fn().mockReturnValue(of(dto)) });
+    await store.edit('s1', { name: 'Renamed', goal: null }, 'p-1');
+    expect(store.approvalNotice()).toBeNull();
+    expect(notifications.info).not.toHaveBeenCalled();
+  });
+
+  it('remove(sprintId, projectId) calls api.delete and reloads', async () => {
+    const { store, api } = setup({ delete: vi.fn().mockReturnValue(of(null)) });
+    const ok = await store.remove('s1', 'p-1');
+    expect(ok).toBe(true);
+    expect(api.delete).toHaveBeenCalledWith('s1');
+    expect(api.getByProject).toHaveBeenCalledWith('p-1');
+    expect(store.approvalNotice()).toBeNull();
   });
 });
