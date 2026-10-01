@@ -31,7 +31,7 @@ describe('ObjectiveMemberApiService', () => {
   });
 
   it('adds a member and returns the outcome with response status', () => {
-    const outcome: AddObjectiveMemberOutcomeDto = { alreadyMember: false, invitation: { id: 'i1' } as ObjectiveInvitationDto };
+    const outcome: AddObjectiveMemberOutcomeDto = { applied: true, alreadyMember: false, invitation: { id: 'i1' } as ObjectiveInvitationDto };
     service.addMember('o1', 'e1').subscribe((res) => {
       expect(res.status).toBe(202);
       expect(res.body).toEqual(outcome);

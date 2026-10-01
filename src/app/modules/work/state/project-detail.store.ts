@@ -229,25 +229,28 @@ export const ProjectDetailStore = signalStore(
       }
     },
 
-    async addObjectiveMember(objectiveId: string, employeeId: string): Promise<{ success: boolean; alreadyMember: boolean }> {
+    async addObjectiveMember(objectiveId: string, employeeId: string): Promise<{ success: boolean; alreadyMember: boolean; applied: boolean; pending: boolean }> {
       try {
         const res = await firstValueFrom(memberApi.addMember(objectiveId, employeeId));
         patchState(store, { milestoneActionError: null });
-        return { success: true, alreadyMember: res.body!.alreadyMember };
+        const body = res.body!;
+        return { success: true, alreadyMember: body.alreadyMember, applied: body.applied, pending: !body.alreadyMember && !body.applied };
       } catch (err) {
         patchState(store, { milestoneActionError: extractError(err, 'Failed to add member.') });
-        return { success: false, alreadyMember: false };
+        return { success: false, alreadyMember: false, applied: false, pending: false };
       }
     },
 
-    async removeObjectiveMember(objectiveId: string, employeeId: string): Promise<{ success: boolean }> {
+    async removeObjectiveMember(objectiveId: string, employeeId: string): Promise<{ success: boolean; applied: boolean; pending: boolean }> {
       try {
-        await firstValueFrom(memberApi.removeMember(objectiveId, employeeId));
+        const res = await firstValueFrom(memberApi.removeMember(objectiveId, employeeId));
         patchState(store, { milestoneActionError: null });
-        return { success: true };
+        // 204 = applied (ASP.NET drops a 204's body); 202 = sent for approval.
+        const applied = res.status === 204 || !!res.body?.applied;
+        return { success: true, applied, pending: !applied };
       } catch (err) {
         patchState(store, { milestoneActionError: extractError(err, 'Failed to remove member.') });
-        return { success: false };
+        return { success: false, applied: false, pending: false };
       }
     },
 
