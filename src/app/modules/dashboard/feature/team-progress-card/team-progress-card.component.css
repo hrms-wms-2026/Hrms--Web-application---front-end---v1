@@ -1,0 +1,15 @@
+.team-progress-segment--completed {
+  background: var(--color-success);
+}
+
+.team-progress-segment--in-progress {
+  background: var(--color-accent);
+}
+
+.team-progress-segment--not-started {
+  background: #cbd5e1;
+}
+
+.team-progress-segment--overdue {
+  background: var(--color-danger);
+}

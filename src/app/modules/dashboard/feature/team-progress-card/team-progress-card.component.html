@@ -1,0 +1,89 @@
+<section class="rounded-2xl border border-slate-200/80 bg-white p-5 shadow-xs" data-testid="team-progress-card">
+  <div class="mb-4">
+    <h2 class="text-sm font-bold text-slate-800">Team Progress</h2>
+    <p class="text-xs text-slate-400">Work I lead</p>
+  </div>
+
+  @if (store.loading() && !store.data()) {
+    <div class="flex flex-col gap-3" data-testid="team-progress-skeleton">
+      <div class="h-3 animate-pulse rounded-full bg-slate-100"></div>
+      <div class="h-10 animate-pulse rounded-lg bg-slate-100"></div>
+      <div class="h-10 animate-pulse rounded-lg bg-slate-100"></div>
+    </div>
+  } @else if (store.error() && !store.data()) {
+    <app-error-state message="Couldn't load team progress." [retryable]="true" (retry)="retry()" />
+  } @else if (store.data(); as data) {
+    @if (data.projects.length === 0) {
+      <app-empty-state title="You don't lead any active modules" />
+    } @else if (data.totals.total === 0) {
+      <app-empty-state title="No open tasks in the modules you lead" />
+    } @else {
+      <div class="mb-2 flex items-baseline gap-2">
+        <span class="text-2xl font-bold text-slate-800">{{ data.totals.total }}</span>
+        <span class="text-xs text-slate-400">tasks across the modules you lead</span>
+      </div>
+
+      <div class="mb-1 flex h-2.5 w-full overflow-hidden rounded-full bg-slate-100" data-testid="team-progress-bar">
+        @for (segment of segments(); track segment.key) {
+          @if (segment.count > 0) {
+            <span [class]="segment.cssClass" [style.width.%]="segment.percent"></span>
+          }
+        }
+      </div>
+      <div class="mb-4 flex flex-wrap gap-3">
+        @for (segment of segments(); track segment.key) {
+          <div class="flex items-center gap-1.5 text-xs text-slate-600">
+            <span class="h-2 w-2 rounded-full" [class]="segment.cssClass"></span>
+            <span class="font-semibold text-slate-800">{{ segment.count }}</span>
+            <span>{{ segment.label }}</span>
+          </div>
+        }
+      </div>
+
+      <ul class="mb-4 flex flex-col gap-2" data-testid="team-progress-projects">
+        @for (project of data.projects; track project.projectId) {
+          <li>
+            <div class="mb-1 flex items-center justify-between">
+              <span class="truncate text-xs font-medium text-slate-700">{{ project.projectName }}</span>
+              <span class="text-[11px] text-slate-400">{{ project.totals.completed }}/{{ project.totals.total }}</span>
+            </div>
+            <app-progress-bar [progress]="projectCompletionPercent(project)" />
+            @for (module of project.modules; track module.objectiveId) {
+              <button
+                type="button"
+                class="mt-1 block w-full truncate text-left text-[11px] text-[var(--color-accent)] hover:underline"
+                (click)="openModule(project.projectId, module.objectiveId)"
+              >
+                {{ module.title }}
+              </button>
+            }
+          </li>
+        }
+      </ul>
+
+      @if (data.overdueTasks.length > 0) {
+        <div>
+          <h3 class="mb-2 text-xs font-semibold uppercase tracking-wide text-slate-400">
+            Overdue tasks ({{ data.overdueTotal }})
+          </h3>
+          <ul class="flex flex-col gap-1" data-testid="team-progress-overdue">
+            @for (task of data.overdueTasks; track task.taskId) {
+              <li>
+                <button
+                  type="button"
+                  class="flex w-full items-center justify-between rounded-lg px-2 py-1.5 text-left hover:bg-slate-50"
+                  (click)="openOverdueTask(task)"
+                >
+                  <span class="min-w-0 flex-1 truncate text-xs text-slate-700">{{ task.title }}</span>
+                  <span class="shrink-0 text-[11px] font-semibold text-[var(--color-danger)]">
+                    {{ task.daysOverdue }}d overdue
+                  </span>
+                </button>
+              </li>
+            }
+          </ul>
+        </div>
+      }
+    }
+  }
+</section>
