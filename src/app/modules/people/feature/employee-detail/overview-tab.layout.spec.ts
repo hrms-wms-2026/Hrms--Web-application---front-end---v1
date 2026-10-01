@@ -13,7 +13,11 @@ describe('EmployeeOverviewTabComponent layout', () => {
       getOverviewDelivery: vi.fn().mockReturnValue(of({ from: '', to: '', tasksAssigned: 0, tasksCompleted: 0, onTimeCompleted: 0, completedWithDueDate: 0, storyPointsAssigned: 0, storyPointsCompleted: 0, previous: null })),
       getOverviewActivity: vi.fn().mockReturnValue(of({ from: '', to: '', activityMonitoringEnabled: true, activeMinutes: 0, idleMinutes: 0, meetingMinutes: 0, daysWithData: 0, previous: null })),
       getOverviewApprovals: vi.fn().mockReturnValue(of({ from: '', to: '', pending: 0, approved: 0, rejected: 0, total: 0, items: [] })),
-      getOverviewSignals: vi.fn().mockReturnValue(of({ from: '', to: '', signals: [] }))
+      getOverviewSignals: vi.fn().mockReturnValue(of({ from: '', to: '', signals: [] })),
+      getOverviewUpcoming: vi.fn().mockReturnValue(of({ from: '', to: '', items: [] })),
+      getOverviewChecklists: vi.fn().mockReturnValue(of({ groups: [] })),
+      getOverviewHistory: vi.fn().mockReturnValue(of({ events: [] })),
+      getOverviewRecentActivity: vi.fn().mockReturnValue(of({ items: [], nextBefore: null, isPartial: true }))
     };
     TestBed.configureTestingModule({
       imports: [EmployeeOverviewTabComponent],

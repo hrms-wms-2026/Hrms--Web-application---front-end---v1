@@ -22,6 +22,10 @@ import { OverviewNeedsAttentionComponent } from '../../ui/overview-needs-attenti
 import { OverviewProductivityDisciplineChartComponent } from '../../ui/overview-productivity-discipline-chart/overview-productivity-discipline-chart.component';
 import { OverviewTimeOffWidgetComponent } from '../../ui/overview-time-off-widget/overview-time-off-widget.component';
 import { OverviewWorkWidgetComponent } from '../../ui/overview-work-widget/overview-work-widget.component';
+import { OverviewChecklistsWidgetComponent } from '../../ui/overview-checklists-widget/overview-checklists-widget.component';
+import { OverviewHistoryWidgetComponent } from '../../ui/overview-history-widget/overview-history-widget.component';
+import { OverviewRecentActivityWidgetComponent } from '../../ui/overview-recent-activity-widget/overview-recent-activity-widget.component';
+import { OverviewUpcomingWidgetComponent } from '../../ui/overview-upcoming-widget/overview-upcoming-widget.component';
 import { Delta } from '../../utils/employee-overview.utils';
 import { KpiCard, buildKpiCards, kpiValue } from '../../utils/overview-kpi-cards';
 import { createCompareLoader, deltaIf } from '../../utils/overview-compare';
@@ -30,6 +34,8 @@ import { createCompareLoader, deltaIf } from '../../utils/overview-compare';
  * Overview tab. Owns the bounded month selection and optional comparison month (its own
  * EmployeePeriodStore instance, so both reset per employee page). Every widget loads independently.
  * All read the month except Time Off (year-based); widgets consume the explicit comparison month in Part 2.
+ * Upcoming Items, Checklists, Employee History and Recent Activity are lifetime/forward-looking and ignore
+ * both the month and the comparison.
  */
 @Component({
   selector: 'app-employee-overview-tab',
@@ -48,7 +54,11 @@ import { createCompareLoader, deltaIf } from '../../utils/overview-compare';
     OverviewActivityWidgetComponent,
     OverviewDisciplineWidgetComponent,
     OverviewDeliveryWidgetComponent,
-    DeltaBadgeComponent
+    DeltaBadgeComponent,
+    OverviewUpcomingWidgetComponent,
+    OverviewChecklistsWidgetComponent,
+    OverviewHistoryWidgetComponent,
+    OverviewRecentActivityWidgetComponent
   ],
   template: `
     <!-- Top Header Bar with Month Stepper & Compare Button -->
@@ -244,6 +254,17 @@ import { createCompareLoader, deltaIf } from '../../utils/overview-compare';
         <app-overview-discipline-widget [employeeId]="employeeId()" />
         <app-overview-delivery-widget [employeeId]="employeeId()" />
       </section>
+    </div>
+
+    <!-- TIER 3: Lifetime / forward-looking (ignore the month and the comparison) -->
+    <div class="grid gap-6 lg:grid-cols-3 mb-6 items-stretch">
+      <app-overview-upcoming-widget [employeeId]="employeeId()" />
+      <app-overview-checklists-widget [employeeId]="employeeId()" />
+      <app-overview-history-widget [employeeId]="employeeId()" />
+    </div>
+
+    <div class="mb-6">
+      <app-overview-recent-activity-widget [employeeId]="employeeId()" />
     </div>
   `,
   changeDetection: ChangeDetectionStrategy.OnPush

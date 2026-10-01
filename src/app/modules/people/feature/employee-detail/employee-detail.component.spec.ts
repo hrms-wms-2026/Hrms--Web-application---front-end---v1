@@ -82,6 +82,10 @@ describe('EmployeeDetailComponent', () => {
         of({ from: '', to: '', pending: 0, approved: 0, rejected: 0, total: 0, items: [] })
       ),
       getOverviewSignals: vi.fn().mockReturnValue(of({ from: '', to: '', signals: [] })),
+      getOverviewUpcoming: vi.fn().mockReturnValue(of({ from: '', to: '', items: [] })),
+      getOverviewChecklists: vi.fn().mockReturnValue(of({ groups: [] })),
+      getOverviewHistory: vi.fn().mockReturnValue(of({ events: [] })),
+      getOverviewRecentActivity: vi.fn().mockReturnValue(of({ items: [], nextBefore: null, isPartial: true })),
       ...apiOverrides
     };
     const notificationsStub = { success: vi.fn(), error: vi.fn() };
