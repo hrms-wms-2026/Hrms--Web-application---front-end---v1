@@ -1,0 +1,19 @@
+.priority-action-dot {
+  display: inline-block;
+  width: 8px;
+  height: 8px;
+  border-radius: 999px;
+  flex-shrink: 0;
+}
+
+.priority-action-dot--critical {
+  background: var(--color-danger);
+}
+
+.priority-action-dot--warning {
+  background: var(--color-warning);
+}
+
+.priority-action-dot--info {
+  background: var(--color-accent);
+}
