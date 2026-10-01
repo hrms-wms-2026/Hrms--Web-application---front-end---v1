@@ -169,6 +169,30 @@ export interface EmployeeOverviewSignalsResponse {
   readonly signals: readonly EmployeeSignal[];
 }
 
+export type EmployeeSignalItemKind = 'attendance_day' | 'monitoring_alert' | 'exception_case' | 'task' | 'approval';
+
+export interface EmployeeSignalItem {
+  readonly kind: EmployeeSignalItemKind;
+  readonly id: string;
+  readonly date: string;
+  readonly title: string;
+  readonly subtitle: string | null;
+  readonly occurredAt: string | null;
+  readonly projectId: string | null;
+  readonly projectName: string | null;
+  readonly dueDate: string | null;
+  readonly approvalKind: string | null;
+  readonly requestedAt: string | null;
+  readonly approverName: string | null;
+}
+
+export interface EmployeeSignalItemsResponse {
+  readonly key: string;
+  readonly total: number;
+  readonly timezone: string | null;
+  readonly items: readonly EmployeeSignalItem[];
+}
+
 export type EmployeeUpcomingKind = 'calendar' | 'leave' | 'release';
 
 /** All-day items (leave, releases) carry UTC-based timestamps; calendar events are real instants. */

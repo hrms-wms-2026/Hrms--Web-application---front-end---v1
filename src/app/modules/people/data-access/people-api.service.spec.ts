@@ -239,6 +239,16 @@ describe('PeopleApiService', () => {
     req.flush({ from: '2026-09-01', to: '2026-09-30', signals: [] });
   });
 
+  it('getOverviewSignalItems GETs /employees/{id}/overview/signals/{key}/items with the period', () => {
+    service.getOverviewSignalItems('emp-1', 'over_break', '2026-09-01', '2026-09-30').subscribe();
+
+    const req = httpMock.expectOne((r) => r.url.endsWith('/employees/emp-1/overview/signals/over_break/items'));
+    expect(req.request.method).toBe('GET');
+    expect(req.request.params.get('from')).toBe('2026-09-01');
+    expect(req.request.params.get('to')).toBe('2026-09-30');
+    req.flush({ key: 'over_break', total: 0, timezone: null, items: [] });
+  });
+
   it('fetches work modes from /work-modes for a legal entity', () => {
     service.getWorkModes('le-1').subscribe((modes) => {
       expect(modes.length).toBe(1);

@@ -31,6 +31,7 @@ import {
   EmployeeHistoryResponse,
   EmployeeOverviewSignalsResponse,
   EmployeeRecentActivityResponse,
+  EmployeeSignalItemsResponse,
   EmployeeTimeOffResponse,
   EmployeeUpcomingResponse,
   EmployeeWorkOverviewResponse
@@ -250,6 +251,18 @@ export class PeopleApiService {
   getOverviewSignals(employeeId: string, from: string, to: string): Observable<EmployeeOverviewSignalsResponse> {
     return this.http.get<EmployeeOverviewSignalsResponse>(
       `${environment.apiUrl}/employees/${employeeId}/overview/signals`,
+      { params: new HttpParams().set('from', from).set('to', to) }
+    );
+  }
+
+  getOverviewSignalItems(
+    employeeId: string,
+    key: string,
+    from: string,
+    to: string
+  ): Observable<EmployeeSignalItemsResponse> {
+    return this.http.get<EmployeeSignalItemsResponse>(
+      `${environment.apiUrl}/employees/${employeeId}/overview/signals/${encodeURIComponent(key)}/items`,
       { params: new HttpParams().set('from', from).set('to', to) }
     );
   }
