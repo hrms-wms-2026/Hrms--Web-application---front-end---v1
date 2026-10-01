@@ -178,6 +178,56 @@ describe('PeopleApiService', () => {
     req.flush({});
   });
 
+  it('getOverviewUpcoming sends days, defaulting to 14', () => {
+    service.getOverviewUpcoming('emp-1').subscribe();
+    const byDefault = httpMock.expectOne(overviewUrl('upcoming'));
+    expect(byDefault.request.method).toBe('GET');
+    expect(byDefault.request.params.get('days')).toBe('14');
+    byDefault.flush({});
+
+    service.getOverviewUpcoming('emp-1', 30).subscribe();
+    const custom = httpMock.expectOne(overviewUrl('upcoming'));
+    expect(custom.request.params.get('days')).toBe('30');
+    custom.flush({});
+  });
+
+  it('getOverviewChecklists GETs overview/checklists with no parameters', () => {
+    service.getOverviewChecklists('emp-1').subscribe();
+
+    const req = httpMock.expectOne(overviewUrl('checklists'));
+    expect(req.request.params.keys()).toEqual([]);
+    req.flush({});
+  });
+
+  it('getOverviewHistory sends limit, defaulting to 10', () => {
+    service.getOverviewHistory('emp-1').subscribe();
+    const byDefault = httpMock.expectOne(overviewUrl('history'));
+    expect(byDefault.request.params.get('limit')).toBe('10');
+    byDefault.flush({});
+
+    service.getOverviewHistory('emp-1', 25).subscribe();
+    const custom = httpMock.expectOne(overviewUrl('history'));
+    expect(custom.request.params.get('limit')).toBe('25');
+    custom.flush({});
+  });
+
+  it('getOverviewRecentActivity sends limit, and before only when given', () => {
+    service.getOverviewRecentActivity('emp-1').subscribe();
+    const first = httpMock.expectOne(overviewUrl('recent-activity'));
+    expect(first.request.params.get('limit')).toBe('20');
+    expect(first.request.params.has('before')).toBe(false);
+    first.flush({});
+
+    service.getOverviewRecentActivity('emp-1', '2026-09-20T00:00:00+00:00', 5).subscribe();
+    const older = httpMock.expectOne(overviewUrl('recent-activity'));
+    expect(older.request.params.get('before')).toBe('2026-09-20T00:00:00+00:00');
+    expect(older.request.params.get('limit')).toBe('5');
+    older.flush({});
+
+    service.getOverviewRecentActivity('emp-1', null).subscribe();
+    expect(httpMock.expectOne(overviewUrl('recent-activity')).request.params.has('before')).toBe(false);
+  });
+
   it('getOverviewSignals GETs /employees/{id}/overview/signals with the period', () => {
     service.getOverviewSignals('emp-1', '2026-09-01', '2026-09-30').subscribe();
 

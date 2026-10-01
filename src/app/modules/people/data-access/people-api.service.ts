@@ -26,9 +26,13 @@ import {
   EmployeeApprovalActivityResponse,
   EmployeeAttendanceDisciplineResponse,
   EmployeeAttendanceOverviewResponse,
+  EmployeeChecklistOverviewResponse,
   EmployeeDeliveryResponse,
+  EmployeeHistoryResponse,
   EmployeeOverviewSignalsResponse,
+  EmployeeRecentActivityResponse,
   EmployeeTimeOffResponse,
+  EmployeeUpcomingResponse,
   EmployeeWorkOverviewResponse
 } from '../models/employee-overview.model';
 import {
@@ -247,6 +251,41 @@ export class PeopleApiService {
     return this.http.get<EmployeeOverviewSignalsResponse>(
       `${environment.apiUrl}/employees/${employeeId}/overview/signals`,
       { params: new HttpParams().set('from', from).set('to', to) }
+    );
+  }
+
+  getOverviewUpcoming(employeeId: string, days = 14): Observable<EmployeeUpcomingResponse> {
+    return this.http.get<EmployeeUpcomingResponse>(
+      `${environment.apiUrl}/employees/${employeeId}/overview/upcoming`,
+      { params: new HttpParams().set('days', String(days)) }
+    );
+  }
+
+  getOverviewChecklists(employeeId: string): Observable<EmployeeChecklistOverviewResponse> {
+    return this.http.get<EmployeeChecklistOverviewResponse>(
+      `${environment.apiUrl}/employees/${employeeId}/overview/checklists`
+    );
+  }
+
+  getOverviewHistory(employeeId: string, limit = 10): Observable<EmployeeHistoryResponse> {
+    return this.http.get<EmployeeHistoryResponse>(
+      `${environment.apiUrl}/employees/${employeeId}/overview/history`,
+      { params: new HttpParams().set('limit', String(limit)) }
+    );
+  }
+
+  getOverviewRecentActivity(
+    employeeId: string,
+    before?: string | null,
+    limit = 20
+  ): Observable<EmployeeRecentActivityResponse> {
+    let params = new HttpParams().set('limit', String(limit));
+    if (before) {
+      params = params.set('before', before);
+    }
+    return this.http.get<EmployeeRecentActivityResponse>(
+      `${environment.apiUrl}/employees/${employeeId}/overview/recent-activity`,
+      { params }
     );
   }
 

@@ -168,3 +168,64 @@ export interface EmployeeOverviewSignalsResponse {
   readonly to: string;
   readonly signals: readonly EmployeeSignal[];
 }
+
+export type EmployeeUpcomingKind = 'calendar' | 'leave' | 'release';
+
+/** All-day items (leave, releases) carry UTC-based timestamps; calendar events are real instants. */
+export interface EmployeeUpcomingItem {
+  readonly kind: EmployeeUpcomingKind;
+  readonly title: string;
+  readonly start: string;
+  readonly end: string | null;
+  readonly isAllDay: boolean;
+  readonly detail: string | null;
+}
+
+/** Mirrors HRMS-Backend-v1 EmployeeUpcomingResponse (max 10 items, earliest first). */
+export interface EmployeeUpcomingResponse {
+  readonly from: string;
+  readonly to: string;
+  readonly items: readonly EmployeeUpcomingItem[];
+}
+
+/** Bypassed tasks count in total but not in completed. */
+export interface EmployeeChecklistGroup {
+  readonly name: string;
+  readonly lifecycleType: string;
+  readonly completed: number;
+  readonly bypassed: number;
+  readonly total: number;
+}
+
+export interface EmployeeChecklistOverviewResponse {
+  readonly groups: readonly EmployeeChecklistGroup[];
+}
+
+/** kind: joined | probation_completed | position_changed | manager_changed | leave_approved | checklist_completed | terminated. date is a UTC YYYY-MM-DD. */
+export interface EmployeeHistoryEvent {
+  readonly kind: string;
+  readonly title: string;
+  readonly detail: string | null;
+  readonly date: string;
+}
+
+export interface EmployeeHistoryResponse {
+  readonly events: readonly EmployeeHistoryEvent[];
+}
+
+/** One thing the employee did. Never contains text the employee typed. */
+export interface EmployeeActivityItem {
+  readonly id: string;
+  readonly kind: string;
+  readonly action: string;
+  readonly target: string | null;
+  readonly detail: string | null;
+  readonly at: string;
+}
+
+/** nextBefore is the cursor for the next (older) page; isPartial is true while the feed is a union over existing tables. */
+export interface EmployeeRecentActivityResponse {
+  readonly items: readonly EmployeeActivityItem[];
+  readonly nextBefore: string | null;
+  readonly isPartial: boolean;
+}
