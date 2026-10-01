@@ -1,0 +1,75 @@
+<section class="rounded-2xl border border-slate-200/80 bg-white p-5 shadow-xs" data-testid="team-status-card">
+  <div class="mb-4 flex items-center justify-between">
+    <div>
+      <h2 class="text-sm font-bold text-slate-800">Team Status</h2>
+      <p class="text-xs text-slate-400">People I manage</p>
+    </div>
+    <button
+      type="button"
+      class="text-xs font-semibold text-[var(--color-accent)] hover:underline"
+      data-testid="team-status-view-all"
+      (click)="viewAll()"
+    >
+      View all
+    </button>
+  </div>
+
+  @if (store.loading() && !store.data()) {
+    <div class="flex flex-col gap-3" data-testid="team-status-skeleton">
+      @for (i of [1, 2, 3]; track i) {
+        <div class="h-12 animate-pulse rounded-lg bg-slate-100"></div>
+      }
+    </div>
+  } @else if (store.error() && !store.data()) {
+    <app-error-state message="Couldn't load team status." [retryable]="true" (retry)="retry()" />
+  } @else if (store.data()?.totalMembers === 0) {
+    <app-empty-state title="No one in your coverage is scheduled today" />
+  } @else if (store.data(); as data) {
+    <div class="mb-4 flex flex-wrap gap-3" data-testid="team-status-summary">
+      @for (stat of summaryStats(); track stat.key) {
+        <div class="flex items-center gap-1.5 text-xs text-slate-600">
+          <span class="h-2 w-2 rounded-full" [ngClass]="dotClass(stat.key)"></span>
+          <span class="font-semibold text-slate-800">{{ stat.count }}</span>
+          <span>{{ stat.label }}</span>
+        </div>
+      }
+    </div>
+
+    <ul class="flex max-h-80 flex-col gap-1 overflow-y-auto" data-testid="team-status-members">
+      @for (member of data.members; track member.employeeId) {
+        <li>
+          <button
+            type="button"
+            class="flex w-full items-center gap-3 rounded-lg px-2 py-2 text-left hover:bg-slate-50"
+            (click)="openMember(member)"
+          >
+            <app-avatar [avatarUrl]="avatarUrl(member)" [userName]="member.displayName" size="sm" />
+            <div class="min-w-0 flex-1">
+              <div class="flex items-center gap-1.5">
+                <span class="truncate text-sm font-medium text-slate-800">{{ member.displayName }}</span>
+                @if (member.attentionSeverity) {
+                  <span
+                    class="team-status-attention-dot"
+                    [class.team-status-attention-dot--critical]="member.attentionSeverity === 'critical'"
+                    [attr.title]="member.attentionLabel"
+                  ></span>
+                }
+              </div>
+              @if (member.positionTitle) {
+                <p class="truncate text-xs text-slate-400">{{ member.positionTitle }}</p>
+              }
+            </div>
+            <div class="flex shrink-0 flex-col items-end gap-0.5">
+              <span class="team-status-pill" [ngClass]="pillClass(member.status)">
+                {{ member.statusLabel }}{{ member.isLate ? ' · Late' : '' }}
+              </span>
+              @if (sinceOrEndsLabel(member); as caption) {
+                <span class="text-[11px] text-slate-400">{{ caption }}</span>
+              }
+            </div>
+          </button>
+        </li>
+      }
+    </ul>
+  }
+</section>

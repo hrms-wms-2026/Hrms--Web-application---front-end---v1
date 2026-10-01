@@ -1,0 +1,68 @@
+.team-status-pill {
+  display: inline-flex;
+  align-items: center;
+  border-radius: 999px;
+  padding: 2px 8px;
+  font-size: 11px;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.team-status-pill--working {
+  background: color-mix(in srgb, var(--color-success) 14%, white);
+  color: var(--color-success);
+}
+
+.team-status-pill--on-break {
+  background: color-mix(in srgb, var(--color-warning) 16%, white);
+  color: var(--color-warning);
+}
+
+.team-status-pill--clocked-out,
+.team-status-pill--not-started,
+.team-status-pill--not-scheduled {
+  background: #f1f5f9;
+  color: #64748b;
+}
+
+.team-status-pill--absent {
+  background: color-mix(in srgb, var(--color-danger) 14%, white);
+  color: var(--color-danger);
+}
+
+.team-status-pill--on-leave {
+  background: #ede9fe;
+  color: #6d28d9;
+}
+
+.team-status-dot--working {
+  background: var(--color-success);
+}
+
+.team-status-dot--on-break {
+  background: var(--color-warning);
+}
+
+.team-status-dot--absent {
+  background: var(--color-danger);
+}
+
+.team-status-dot--on-leave {
+  background: #7c3aed;
+}
+
+.team-status-dot--not-started {
+  background: #94a3b8;
+}
+
+.team-status-attention-dot {
+  display: inline-block;
+  width: 6px;
+  height: 6px;
+  border-radius: 999px;
+  background: var(--color-warning);
+}
+
+.team-status-attention-dot--critical {
+  background: var(--color-danger);
+}
