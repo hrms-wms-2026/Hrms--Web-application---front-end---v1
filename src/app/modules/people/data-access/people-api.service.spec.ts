@@ -221,6 +221,8 @@ describe('PeopleApiService', () => {
     service.getOverviewRecentActivity('emp-1', '2026-09-20T00:00:00+00:00', 5).subscribe();
     const older = httpMock.expectOne(overviewUrl('recent-activity'));
     expect(older.request.params.get('before')).toBe('2026-09-20T00:00:00+00:00');
+    // A literal '+' would reach ASP.NET as a space; the cursor's offset must be percent-encoded.
+    expect(older.request.urlWithParams).toContain('before=2026-09-20T00:00:00%2B00:00');
     expect(older.request.params.get('limit')).toBe('5');
     older.flush({});
 
