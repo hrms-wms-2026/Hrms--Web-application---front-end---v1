@@ -179,7 +179,7 @@ All detail views open over the profile; closing returns to Needs Attention with 
 | Item kind | Opens (existing component) | Wiring |
 |---|---|---|
 | attendance_day | `app-attendance-detail-drawer` | `selection = { employeeId, workDate: item.date }`, `displayTimezone = response.timezone`. `TimeTrackingStore` is root-provided, so it loads outside Time Tracking. The `requestCorrection` output is not bound on the profile (a reviewer is not the requester). |
-| monitoring_alert | `app-attendance-detail-drawer` | Same, for the alert's date; the alert time is shown above the drawer content via the drawer's existing header area (no new component). |
+| monitoring_alert | `app-attendance-detail-drawer` | Same, for the alert's date. The alert's time is shown on its row in the items list; the drawer is reused unchanged. |
 | exception_case | `app-exception-evidence-panel` inside `app-modal` | Same inputs the Alerts page passes. |
 | task | `app-task-form-modal` | `mode = 'edit'`, `projectId = item.projectId`, `taskId = item.id`. `ProjectDetailStore` is loaded for that project before opening (the modal reads members/statuses from it). Edits allowed per the user's existing permissions. If the project cannot be loaded for the viewer (403), the item shows **"Open on board →"** to `/work/{projectId}/board?taskId={id}` instead. |
 | approval | *inline* | Row expands to show type, title, requested date, waiting approver, plus **"Review in approvals →"** to the matching approvals inbox. |
