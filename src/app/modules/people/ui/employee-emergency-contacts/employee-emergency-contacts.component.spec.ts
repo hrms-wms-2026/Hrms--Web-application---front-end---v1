@@ -23,7 +23,7 @@ describe('EmployeeEmergencyContactsComponent', () => {
 
   it('renders the empty state when there are no emergency contacts', async () => {
     await setup([]);
-    expect(fixture.nativeElement.textContent).toContain('No emergency contact information available.');
+    expect(fixture.nativeElement.textContent).toContain('No emergency contacts on file.');
   });
 
   it('renders contact details', async () => {

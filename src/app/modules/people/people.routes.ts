@@ -28,56 +28,18 @@ export const PEOPLE_ROUTES: Routes = [
         }
       },
       {
+        path: ':id',
+        loadComponent: () =>
+          import('./feature/employee-detail/employee-detail.component').then((m) => m.EmployeeDetailComponent),
+        canActivate: [permissionGuard],
+        data: { title: 'Employee Detail', permissions: ['employees:read'] }
+      },
+      {
         path: ':id/offboarding',
         loadComponent: () =>
           import('./feature/offboarding/offboarding-wizard.component').then((m) => m.OffboardingWizardComponent),
         canActivate: [permissionGuard],
         data: { title: 'Offboard Employee', permissions: ['employees:offboard'] }
-      },
-      {
-        path: ':id',
-        loadComponent: () =>
-          import('./feature/employee-detail/employee-detail.component').then((m) => m.EmployeeDetailComponent),
-        canActivate: [permissionGuard],
-        data: { title: 'Employee Detail', permissions: ['employees:read'] },
-        children: [
-          { path: '', pathMatch: 'full', redirectTo: 'overview' },
-          {
-            path: 'overview',
-            loadComponent: () =>
-              import('./feature/employee-detail/tabs/employee-overview-tab.component').then(
-                (m) => m.EmployeeOverviewTabComponent
-              )
-          },
-          {
-            path: 'employment',
-            loadComponent: () =>
-              import('./feature/employee-detail/tabs/employee-employment-tab.component').then(
-                (m) => m.EmployeeEmploymentTabComponent
-              )
-          },
-          {
-            path: 'attendance',
-            loadComponent: () =>
-              import('./feature/employee-detail/tabs/employee-attendance-tab.component').then(
-                (m) => m.EmployeeAttendanceTabComponent
-              )
-          },
-          {
-            path: 'work-activity',
-            loadComponent: () =>
-              import('./feature/employee-detail/tabs/employee-work-activity-tab.component').then(
-                (m) => m.EmployeeWorkActivityTabComponent
-              )
-          },
-          {
-            path: 'personal',
-            loadComponent: () =>
-              import('./feature/employee-detail/tabs/employee-personal-tab.component').then(
-                (m) => m.EmployeePersonalTabComponent
-              )
-          }
-        ]
       }
     ]
   },

@@ -37,5 +37,6 @@ Layout and rules: see `../rules/FILE_CREATION_RULES.md`.
 | Task Subtasks (Frontend) | finished (all 5 tasks) | `finished/2026-09-21/2026-09-21-task-subtasks-frontend.md` | 2026-09-21 |
 | Centralized File Upload — Phase 0 Avatar URL Fix (4 tasks) | implemented (3/4 automated tasks; manual browser check skipped by user decision) | `next/2026-09-22-centralized-file-upload-phase0-avatar-fix-frontend.md` | 2026-09-22 |
 | Employee Detail — Tabbed Redesign (5 phases; shell/header/tabs) | Phases 1-2 implemented, Phases 3-5 pending | `next/2026-09-30-employee-detail-tabs.md` | 2026-09-30 |
+| Employee Detail — Work & Activity tab (7 real-data cards, no mocks; 7 tasks) | pending | `next/2026-09-30-employee-work-activity-tab.md` | 2026-09-30 |
 
 **Note on "finished" here:** all of the above are implementation reports or already-executed plans as of the 2026-08-06 restructure — cross-checked against `src/app/` (auth, dashboard-home, organization/general-settings are all present in code). None were currently in-progress/pending at restructure time except the Project Management context file.

@@ -30,22 +30,20 @@ const EMPLOYMENT_TYPE_OPTIONS: readonly SelectOption[] = [
   imports: [ReactiveFormsModule, InputComponent, ButtonComponent, CustomSelectComponent],
   template: `
     <div>
-      @if (showHeader()) {
-        <div class="flex items-center justify-between pb-3 mb-4 border-b border-[var(--color-border)]">
-          <h3 class="text-sm font-semibold text-[var(--color-text-primary)]">
-            Job & Organizational Details
-          </h3>
-          @if (canEdit() && !isEditing()) {
-            <app-button data-testid="edit-job-details" variant="secondary" size="sm" (pressed)="startEdit()">
-              Edit
-            </app-button>
-          }
-        </div>
-      }
+      <div class="flex items-center justify-between pb-3 mb-4 border-b border-[var(--color-border)]">
+        <h3 class="text-sm font-semibold text-[var(--color-text-primary)]">
+          Job & Organizational Details
+        </h3>
+        @if (canEdit() && !isEditing()) {
+          <app-button data-testid="edit-job-details" variant="secondary" size="sm" (pressed)="startEdit()">
+            Edit
+          </app-button>
+        }
+      </div>
 
       @if (isEditing()) {
         <form [formGroup]="form" (ngSubmit)="onSubmit()" class="space-y-4">
-          <div class="grid grid-cols-1 @md:grid-cols-2 @2xl:grid-cols-3 gap-6">
+          <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-6">
             <app-input
               label="Employee number"
               [maxlength]="employeeNumberMaxLength"
@@ -79,8 +77,8 @@ const EMPLOYMENT_TYPE_OPTIONS: readonly SelectOption[] = [
             </app-button>
           </div>
         </form>
-      } @else if (showReadView()) {
-        <dl class="grid grid-cols-1 @xs:grid-cols-2 @2xl:grid-cols-4 gap-6 text-sm">
+      } @else {
+        <dl class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-6 text-sm">
           <div>
             <dt class="text-xs font-medium text-[var(--color-text-secondary)] mb-1">Employee Number</dt>
             <dd class="font-semibold text-[var(--color-text-primary)] font-mono text-xs bg-[var(--color-surface-secondary)] px-2.5 py-1 rounded-md inline-block">
@@ -161,9 +159,6 @@ export class EmployeeJobInfoComponent implements OnDestroy {
   readonly employeeId = input.required<string>();
   readonly canEdit = input<boolean>(false);
   readonly saving = input<boolean>(false);
-  /** Hosts that render their own card heading/read view (Employment tab) use only the edit form. */
-  readonly showHeader = input<boolean>(true);
-  readonly showReadView = input<boolean>(true);
   readonly save = output<UpdateEmployeeJobDetailsRequest>();
 
   private readonly peopleApi = inject(PeopleApiService);

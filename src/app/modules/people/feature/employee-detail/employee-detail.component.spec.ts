@@ -1,11 +1,8 @@
-import { Component, signal } from '@angular/core';
+import { signal } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
-import { ActivatedRoute, Router, Routes, convertToParamMap, provideRouter } from '@angular/router';
-import { RouterTestingHarness } from '@angular/router/testing';
-import { BehaviorSubject, of, throwError, Subject } from 'rxjs';
+import { ActivatedRoute, Router, provideRouter } from '@angular/router';
+import { of, throwError, Subject } from 'rxjs';
 import { EmployeeDetailComponent } from './employee-detail.component';
-import { EmployeeOverviewTabComponent } from './tabs/employee-overview-tab.component';
-import { EmployeePersonalTabComponent } from './tabs/employee-personal-tab.component';
 import { PeopleApiService } from '../../data-access/people-api.service';
 import { NotificationService } from '../../../../core/services/notification.service';
 import { EmployeeDetailResponse } from '../../models/employee.model';
@@ -13,6 +10,7 @@ import { PositionApiService } from '../../../organization/data-access/position-a
 import { PermissionService } from '../../../../core/auth/state/permission.service';
 import { AuthStore } from '../../../../core/auth/state/auth.store';
 import { OffboardingApiService } from '../../data-access/offboarding-api.service';
+import { WorkModeStore } from '../../../settings/state/work-mode.store';
 
 describe('EmployeeDetailComponent', () => {
   const detailFixture: EmployeeDetailResponse = {
@@ -55,16 +53,21 @@ describe('EmployeeDetailComponent', () => {
     apiOverrides: Partial<PeopleApiService> = {},
     hasWritePermission = true,
     currentEmployeeId: string | null = 'emp-99',
-    hasOffboardPermission = true,
-    childPath: string | null = null,
-    routeStub?: object,
-    routes: Routes = []
+    hasOffboardPermission = true
   ) {
     const apiStub = {
       getEmployeeDetail: vi.fn().mockReturnValue(of(employee)),
       resendInvitation: vi.fn().mockReturnValue(of({ expiresAt: '2026-08-25T00:00:00Z' })),
       changePosition: vi.fn().mockReturnValue(of({ pendingApproval: false })),
       getJobJourney: vi.fn().mockReturnValue(of([])),
+      getWorkGraph: vi.fn().mockReturnValue(of({ nodes: [], links: [], hiddenTaskCount: 0 })),
+      getOverviewAttendance: vi.fn().mockReturnValue(
+        of({ from: '2026-09-01', to: '2026-09-30', workingDays: 0, present: 0, late: 0, missingClockOuts: 0, leaveDays: 0, days: [] })
+      ),
+      getOverviewAttendanceDiscipline: vi.fn().mockReturnValue(
+        of({ from: '2026-09-01', to: '2026-09-30', lateClockIns: 0, earlyClockOuts: 0, missingClockOuts: 0, overBreakDays: 0, overBreakMinutes: 0, locationTrackingEnabled: false, locationViolations: null })
+      ),
+      getOverviewTimeOff: vi.fn().mockReturnValue(of({ year: 2026, balances: [], nextLeave: null })),
       ...apiOverrides
     };
     const notificationsStub = { success: vi.fn(), error: vi.fn() };
@@ -74,26 +77,34 @@ describe('EmployeeDetailComponent', () => {
     const permissionServiceStub = {
       hasPermission: (p: string) => (p === 'employees:write' ? hasWritePermission : p === 'employees:offboard' ? hasOffboardPermission : true)
     };
+    // EmployeeJobInfoComponent (rendered as a real child on the Job tab) injects the real,
+    // providedIn: 'root' WorkModeStore, which would otherwise pull in WorkModeApiService ->
+    // HttpClient - neither is provided in this spec file, so every test would fail to construct
+    // the component tree without this stub.
+    const workModeStoreStub = {
+      items: signal([]) as any,
+      atCap: signal(false) as any,
+      loading: signal(false) as any,
+      saving: signal(false) as any,
+      error: signal(null) as any,
+      load: vi.fn() as any,
+      create: vi.fn() as any,
+      update: vi.fn() as any,
+      deactivate: vi.fn() as any
+    };
+
     TestBed.configureTestingModule({
       imports: [EmployeeDetailComponent],
       providers: [
-        provideRouter(routes),
+        provideRouter([]),
         { provide: PeopleApiService, useValue: apiStub },
         { provide: NotificationService, useValue: notificationsStub },
         { provide: PositionApiService, useValue: positionApiStub },
         { provide: PermissionService, useValue: permissionServiceStub },
         { provide: AuthStore, useValue: { employeeId: () => currentEmployeeId } },
-        ...(routes.length
-          ? []
-          : [{
-              provide: ActivatedRoute,
-              useValue: routeStub ?? {
-                paramMap: of(convertToParamMap({ id: 'emp-1' })),
-                snapshot: { paramMap: convertToParamMap({ id: 'emp-1' }) },
-                firstChild: childPath ? { snapshot: { url: [{ path: childPath }] } } : null
-              }
-            }]),
-        { provide: OffboardingApiService, useValue: { getOffboarding: () => of(null) } }
+        { provide: ActivatedRoute, useValue: { snapshot: { paramMap: { get: () => 'emp-1' } } } },
+        { provide: OffboardingApiService, useValue: { getOffboarding: () => of(null) } },
+        { provide: WorkModeStore, useValue: workModeStoreStub }
       ]
     });
 
@@ -101,46 +112,135 @@ describe('EmployeeDetailComponent', () => {
     return { fixture, apiStub, notificationsStub };
   }
 
-  /** The store loads via firstValueFrom, so let the microtasks settle before asserting. */
-  async function render(fixture: ReturnType<typeof setup>['fixture']): Promise<void> {
-    fixture.detectChanges();
-    await fixture.whenStable();
-    fixture.detectChanges();
-  }
-
-  it('shows the loader while the employee is loading', async () => {
+  it('shows the loader while the employee is loading', () => {
     const subject = new Subject<EmployeeDetailResponse>();
     const { fixture } = setup(detailFixture, { getEmployeeDetail: vi.fn().mockReturnValue(subject.asObservable()) });
-    await render(fixture);
+    fixture.detectChanges();
 
     expect(fixture.nativeElement.textContent).toContain('Loading employee');
 
     subject.next(detailFixture);
-    await render(fixture);
+    fixture.detectChanges();
 
     expect(fixture.nativeElement.textContent).not.toContain('Loading employee');
   });
 
-  it('shows the error state with a retry action that reissues the request', async () => {
+  it('shows the error state with a retry action that reissues the request', () => {
     const getEmployeeDetail = vi.fn()
       .mockReturnValueOnce(throwError(() => new Error('boom')))
       .mockReturnValueOnce(of(detailFixture));
     const { fixture } = setup(detailFixture, { getEmployeeDetail });
-    await render(fixture);
+    fixture.detectChanges();
 
     expect(fixture.nativeElement.textContent).toContain('boom');
 
     const retryButton: HTMLButtonElement | null = fixture.nativeElement.querySelector('button');
     retryButton?.click();
-    await render(fixture);
+    fixture.detectChanges();
 
     expect(getEmployeeDetail).toHaveBeenCalledTimes(2);
     expect(fixture.nativeElement.textContent).toContain('Ada Lovelace');
   });
 
-  it('shows a Transfer / Promote button and opens the modal when the employee has a legal entity', async () => {
+  it('renders the Overview tab first, then Employment and Personal on request', () => {
     const { fixture } = setup(detailFixture);
-    await render(fixture);
+    fixture.detectChanges();
+    const el = fixture.nativeElement as HTMLElement;
+
+    expect(fixture.componentInstance.activeTab()).toBe('overview');
+    expect(el.querySelector('app-employee-overview-tab')).toBeTruthy();
+    // Employment stays mounted (hidden) so the Work Network is not reloaded on tab switches.
+    expect(el.querySelector('app-employee-employment-tab')?.hasAttribute('hidden')).toBe(true);
+    expect(el.querySelector('app-employee-personal-tab')).toBeFalsy();
+
+    fixture.componentInstance.activeTab.set('employment');
+    fixture.detectChanges();
+    expect(el.querySelector('app-employee-employment-tab')?.hasAttribute('hidden')).toBe(false);
+    expect(el.querySelector('app-employee-job-info')).toBeTruthy();
+    expect(el.querySelector('app-employee-overview-tab')).toBeFalsy();
+
+    fixture.componentInstance.activeTab.set('personal');
+    fixture.detectChanges();
+    expect(el.querySelector('app-employee-personal-tab')).toBeTruthy();
+    expect(el.querySelector('app-employee-personal-info')).toBeTruthy();
+    expect(el.querySelector('app-employee-emergency-contacts')).toBeTruthy();
+    expect(el.querySelector('app-employee-employment-tab')?.hasAttribute('hidden')).toBe(true);
+  });
+
+  it('lists the tabs in the order Overview, Employment, Personal', () => {
+    const { fixture } = setup(detailFixture);
+    fixture.detectChanges();
+
+    const labels = Array.from(
+      fixture.nativeElement.querySelectorAll('nav[aria-label="Employee Detail Sections"] button')
+    ).map((b) => (b as HTMLElement).textContent?.trim());
+
+    expect(labels).toEqual(['Overview', 'Employment', 'Personal']);
+  });
+
+  it('does not reload the work graph when switching to Personal and back to Employment', () => {
+    const { fixture, apiStub } = setup(detailFixture);
+    fixture.detectChanges();
+    expect(apiStub.getWorkGraph).toHaveBeenCalledTimes(1);
+
+    fixture.componentInstance.activeTab.set('personal');
+    fixture.detectChanges();
+    fixture.componentInstance.activeTab.set('employment');
+    fixture.detectChanges();
+
+    expect(apiStub.getWorkGraph).toHaveBeenCalledTimes(1);
+  });
+
+  it('switches tabs when a tab button is clicked', () => {
+    const { fixture } = setup(detailFixture);
+    fixture.detectChanges();
+
+    const personalButton = Array.from(
+      fixture.nativeElement.querySelectorAll('nav[aria-label="Employee Detail Sections"] button')
+    ).find((b) => (b as HTMLElement).textContent?.trim() === 'Personal') as HTMLButtonElement;
+    personalButton.click();
+    fixture.detectChanges();
+
+    expect(fixture.componentInstance.activeTab()).toBe('personal');
+  });
+
+  it('renders the Payroll section in the Personal tab when the response includes it', () => {
+    const { fixture } = setup({
+      ...detailFixture,
+      payroll: { hasBankDetailsOnFile: true, bankName: 'Test Bank', maskedAccountNumber: '****1234', accountType: 'checking' }
+    });
+    fixture.detectChanges();
+
+    fixture.componentInstance.activeTab.set('personal');
+    fixture.detectChanges();
+
+    expect(fixture.nativeElement.querySelector('app-employee-payroll')).toBeTruthy();
+  });
+
+  it('omits the Payroll section when the response does not include it', () => {
+    const { fixture } = setup({ ...detailFixture, payroll: null });
+    fixture.detectChanges();
+
+    fixture.componentInstance.activeTab.set('personal');
+    fixture.detectChanges();
+
+    expect(fixture.nativeElement.querySelector('app-employee-payroll')).toBeFalsy();
+  });
+
+  it('shows the key facts (manager, employment type, work mode, hire date) in the header', () => {
+    const { fixture } = setup(detailFixture);
+    fixture.detectChanges();
+
+    const facts = (fixture.nativeElement.querySelector('[data-testid="employee-key-facts"]') as HTMLElement).textContent as string;
+    expect(facts).toContain('Grace Hopper');
+    expect(facts).toContain('Full time');
+    expect(facts).toContain('Remote');
+    expect(facts).toContain('15 Jan 2024');
+  });
+
+  it('shows a Transfer / Promote button and opens the modal when the employee has a legal entity', () => {
+    const { fixture } = setup(detailFixture);
+    fixture.detectChanges();
 
     const buttons: HTMLElement[] = Array.from(fixture.nativeElement.querySelectorAll('button'));
     const changePositionButton = buttons.find((b) => b.textContent?.includes('Transfer / Promote'));
@@ -148,36 +248,37 @@ describe('EmployeeDetailComponent', () => {
 
     expect(fixture.componentInstance.changePositionOpen()).toBe(false);
     changePositionButton?.click();
-    await render(fixture);
+    fixture.detectChanges();
 
     expect(fixture.componentInstance.changePositionMenuOpen()).toBe(true);
     expect(fixture.nativeElement.querySelector('app-change-position-modal')).toBeTruthy();
   });
 
-  it('hides the Transfer / Promote button when employee invitationStatus is pending or expired', async () => {
+  it('hides the Transfer / Promote button when employee invitationStatus is pending or expired', () => {
     const { fixture } = setup({
       ...detailFixture,
       invitationStatus: 'pending'
     });
-    await render(fixture);
+    fixture.detectChanges();
 
     const buttons: HTMLElement[] = Array.from(fixture.nativeElement.querySelectorAll('button'));
     const changePositionButton = buttons.find((b) => b.textContent?.includes('Transfer / Promote'));
     expect(changePositionButton).toBeFalsy();
   });
 
-  it('hides the Change Position menu entirely when viewing your own record', async () => {
+  it('hides the Change Position menu entirely when viewing your own record', () => {
     const { fixture } = setup(detailFixture, {}, true, 'emp-1');
-    await render(fixture);
+    fixture.componentInstance.load();
+    fixture.detectChanges();
     expect(fixture.nativeElement.querySelector('[data-testid="change-position-trigger"]')).toBeFalsy();
   });
 
-  it('shows Promotion/Transfer under Transfer / Promote and Offboarding under More actions for another employee', async () => {
+  it('shows the action menu with Promotion, Transfer, and Offboarding for another employee', () => {
     const { fixture } = setup(detailFixture, {}, true, 'emp-99');
-    await render(fixture);
+    fixture.componentInstance.load();
+    fixture.detectChanges();
     fixture.componentInstance.changePositionMenuOpen.set(true);
-    fixture.componentInstance.moreMenuOpen.set(true);
-    await render(fixture);
+    fixture.detectChanges();
 
     const text = fixture.nativeElement.textContent as string;
     expect(text).toContain('Promotion');
@@ -186,47 +287,33 @@ describe('EmployeeDetailComponent', () => {
     expect(offboardingButton?.disabled).toBe(false);
   });
 
-  it('shows Edit Employee linking to the Employment tab edit form for a user with employees:write', async () => {
-    const { fixture } = setup(detailFixture, {}, true, 'emp-1');
-    await render(fixture);
-
-    expect(fixture.nativeElement.querySelector('[data-testid="edit-employee"]')).toBeTruthy();
-  });
-
-  it('hides Edit Employee without employees:write', async () => {
-    const { fixture } = setup(detailFixture, {}, false, 'emp-99');
-    await render(fixture);
-
-    expect(fixture.nativeElement.querySelector('[data-testid="edit-employee"]')).toBeNull();
-  });
-
-  it('hides the Offboarding item from a user with employees:write but not employees:offboard', async () => {
+  it('hides the Offboarding item from a user with employees:write but not employees:offboard', () => {
     const { fixture } = setup(detailFixture, {}, true, 'emp-99', false);
-    await render(fixture);
-    (fixture.nativeElement.querySelector('[data-testid="change-position-trigger"]') as HTMLButtonElement).click();
-    await render(fixture);
+    fixture.detectChanges();
+    (fixture.nativeElement.querySelector('[data-testid="change-position-trigger"]') as HTMLElement).querySelector('button')!.click();
+    fixture.detectChanges();
 
-    expect(fixture.nativeElement.querySelector('[data-testid="more-actions-trigger"]')).toBeNull();
     expect(fixture.nativeElement.querySelector('[data-testid="offboarding-menu-item"]')).toBeNull();
     expect(fixture.nativeElement.textContent).toContain('Promotion');
   });
 
-  it('shows only the Offboarding item to a user with employees:offboard but not employees:write', async () => {
+  it('shows only the Offboarding item to a user with employees:offboard but not employees:write', () => {
     const { fixture } = setup(detailFixture, {}, false, 'emp-99', true);
-    await render(fixture);
-    expect(fixture.nativeElement.querySelector('[data-testid="change-position-trigger"]')).toBeNull();
-    (fixture.nativeElement.querySelector('[data-testid="more-actions-trigger"]') as HTMLButtonElement).click();
-    await render(fixture);
+    fixture.detectChanges();
+    const trigger = fixture.nativeElement.querySelector('[data-testid="change-position-trigger"]') as HTMLElement;
+    expect(trigger.textContent).toContain('Offboarding');
+    trigger.querySelector('button')!.click();
+    fixture.detectChanges();
 
     expect(fixture.nativeElement.querySelector('[data-testid="offboarding-menu-item"]')).not.toBeNull();
     expect(fixture.nativeElement.textContent).not.toContain('Promotion');
   });
 
-  it('enables the Offboarding menu item and navigates to the wizard on click', async () => {
+  it('enables the Offboarding menu item and navigates to the wizard on click', () => {
     const { fixture } = setup(detailFixture, {}, true, 'emp-99');
-    await render(fixture);
-    fixture.componentInstance.moreMenuOpen.set(true);
-    await render(fixture);
+    fixture.detectChanges();
+    fixture.componentInstance.changePositionMenuOpen.set(true);
+    fixture.detectChanges();
 
     const router = TestBed.inject(Router);
     const navigateSpy = vi.spyOn(router, 'navigate').mockResolvedValue(true);
@@ -234,14 +321,15 @@ describe('EmployeeDetailComponent', () => {
     const button = fixture.nativeElement.querySelector('[data-testid="offboarding-menu-item"]') as HTMLButtonElement;
     expect(button.disabled).toBe(false);
     button.click();
-    await render(fixture);
+    fixture.detectChanges();
 
     expect(navigateSpy).toHaveBeenCalledWith(['/people/employees', expect.any(String), 'offboarding']);
   });
 
-  it('opens the modal with changeReason=Promotion when Promotion is clicked', async () => {
+  it('opens the modal with changeReason=Promotion when Promotion is clicked', () => {
     const { fixture } = setup(detailFixture, {}, true, 'emp-99');
-    await render(fixture);
+    fixture.componentInstance.load();
+    fixture.detectChanges();
 
     fixture.componentInstance.openChangePosition('Promotion');
 
@@ -249,9 +337,9 @@ describe('EmployeeDetailComponent', () => {
     expect(fixture.componentInstance.changePositionReason()).toBe('Promotion');
   });
 
-  it('does not render a Transfer / Promote button when the user lacks employees:write', async () => {
+  it('does not render a Transfer / Promote button when the user lacks employees:write', () => {
     const { fixture } = setup(detailFixture, {}, false);
-    await render(fixture);
+    fixture.detectChanges();
 
     const buttons: HTMLElement[] = Array.from(fixture.nativeElement.querySelectorAll('button'));
     const changePositionButton = buttons.find((b) => b.textContent?.includes('Transfer / Promote'));
@@ -259,23 +347,23 @@ describe('EmployeeDetailComponent', () => {
     expect(fixture.componentInstance.canChangePosition()).toBe(false);
   });
 
-  it('does not render a Transfer / Promote control when the employee has no legal entity', async () => {
+  it('does not render a Transfer / Promote control when the employee has no legal entity', () => {
     const { fixture } = setup({
       ...detailFixture,
       jobInformation: { ...detailFixture.jobInformation, legalEntityId: null }
     });
-    await render(fixture);
+    fixture.detectChanges();
 
     const buttons: HTMLElement[] = Array.from(fixture.nativeElement.querySelectorAll('button'));
     const changePositionButton = buttons.find((b) => b.textContent?.includes('Transfer / Promote'));
     expect(changePositionButton).toBeFalsy();
   });
 
-  it('reloads and shows a success toast when the position is changed', async () => {
+  it('reloads and shows a success toast when the position is changed', () => {
     const { fixture, apiStub, notificationsStub } = setup(detailFixture);
-    await render(fixture);
+    fixture.detectChanges();
     fixture.componentInstance.changePositionOpen.set(true);
-    await render(fixture);
+    fixture.detectChanges();
 
     fixture.componentInstance.onPositionChanged();
 
@@ -284,39 +372,70 @@ describe('EmployeeDetailComponent', () => {
     expect(apiStub.getEmployeeDetail).toHaveBeenCalledTimes(2);
   });
 
-  it('does not show the resend button when the invitation is pending', async () => {
+  it('reloads and shows a success toast when job details are saved', () => {
+    const { fixture, apiStub, notificationsStub } = setup(detailFixture, {
+      updateJobDetails: vi.fn().mockReturnValue(of(undefined))
+    });
+    fixture.detectChanges();
+
+    fixture.componentInstance.onJobDetailsSave({
+      employeeNumber: 'E-002', employmentTypeCode: 'part_time', workModeId: 'wm-2'
+    });
+
+    expect(apiStub.updateJobDetails).toHaveBeenCalledWith('emp-1', {
+      employeeNumber: 'E-002', employmentTypeCode: 'part_time', workModeId: 'wm-2'
+    });
+    expect(fixture.componentInstance.savingJobDetails()).toBe(false);
+    expect(notificationsStub.success).toHaveBeenCalledWith('Job details updated.');
+    expect(apiStub.getEmployeeDetail).toHaveBeenCalledTimes(2);
+  });
+
+  it('surfaces an error toast and stops the saving state when the job details save fails', () => {
+    const { fixture, apiStub, notificationsStub } = setup(detailFixture, {
+      updateJobDetails: vi.fn().mockReturnValue(throwError(() => new Error('boom')))
+    });
+    fixture.detectChanges();
+
+    fixture.componentInstance.onJobDetailsSave({
+      employeeNumber: 'E-002', employmentTypeCode: 'part_time', workModeId: null
+    });
+
+    expect(fixture.componentInstance.savingJobDetails()).toBe(false);
+    expect(notificationsStub.error).toHaveBeenCalledWith('boom');
+    expect(apiStub.getEmployeeDetail).toHaveBeenCalledTimes(1);
+  });
+
+  it('does not show the resend button when the invitation is pending', () => {
     const { fixture } = setup({ ...detailFixture, invitationStatus: 'pending' });
-    await render(fixture);
+    fixture.detectChanges();
 
     expect(fixture.nativeElement.textContent).not.toContain('Resend invitation');
   });
 
-  it('does not show the resend button when the invitation was accepted', async () => {
+  it('does not show the resend button when the invitation was accepted', () => {
     const { fixture } = setup({ ...detailFixture, invitationStatus: 'accepted' });
-    await render(fixture);
+    fixture.detectChanges();
 
     expect(fixture.nativeElement.textContent).not.toContain('Resend invitation');
   });
 
-  it('does not show the resend button when no invitation was ever issued', async () => {
+  it('does not show the resend button when no invitation was ever issued', () => {
     const { fixture } = setup({ ...detailFixture, invitationStatus: null });
-    await render(fixture);
+    fixture.detectChanges();
 
     expect(fixture.nativeElement.textContent).not.toContain('Resend invitation');
   });
 
-  it('shows the resend button only when the invitation expired unaccepted', async () => {
+  it('shows the resend button only when the invitation expired unaccepted', () => {
     const { fixture } = setup({ ...detailFixture, invitationStatus: 'expired' });
-    await render(fixture);
-    fixture.componentInstance.moreMenuOpen.set(true);
-    await render(fixture);
+    fixture.detectChanges();
 
-    expect(fixture.nativeElement.querySelector('[data-testid="resend-invitation"]')?.textContent).toContain('Resend invitation');
+    expect(fixture.nativeElement.textContent).toContain('Resend invitation');
   });
 
   it('resends the invitation, shows a success toast, and reloads the employee', async () => {
     const { fixture, apiStub, notificationsStub } = setup({ ...detailFixture, invitationStatus: 'expired' });
-    await render(fixture);
+    fixture.detectChanges();
 
     fixture.componentInstance.resendInvitation('emp-1');
     await fixture.whenStable();
@@ -332,7 +451,7 @@ describe('EmployeeDetailComponent', () => {
       { ...detailFixture, invitationStatus: 'expired' },
       { resendInvitation: vi.fn().mockReturnValue(throwError(() => new Error('failed'))) }
     );
-    await render(fixture);
+    fixture.detectChanges();
 
     fixture.componentInstance.resendInvitation('emp-1');
     await fixture.whenStable();
@@ -341,104 +460,72 @@ describe('EmployeeDetailComponent', () => {
     expect(fixture.componentInstance.resending()).toBe(false);
   });
 
-  it('renders breadcrumb header and does not render Back to Employees link', async () => {
+  it('renders breadcrumb header and does not render Back to Employees link', () => {
     const { fixture } = setup(detailFixture);
-    await render(fixture);
+    fixture.detectChanges();
 
     expect(fixture.nativeElement.querySelector('app-breadcrumb-header')).toBeTruthy();
     expect(fixture.nativeElement.textContent).not.toContain('Back to Employees');
   });
 
-  it('shows the employee name in the breadcrumb and profile header', async () => {
-    const { fixture } = setup(detailFixture);
-    await render(fixture);
+  it('omits the Attendance today card when the response has no attendance summary (caller lacks attendance:read)', () => {
+    const { fixture } = setup({ ...detailFixture, attendanceSummary: null });
+    fixture.detectChanges();
 
-    expect(fixture.nativeElement.querySelector('[data-testid="employee-name"]').textContent).toContain('Ada Lovelace');
-    expect(fixture.nativeElement.textContent).toContain('Grace Hopper');
+    expect(fixture.nativeElement.textContent).not.toContain('Attendance today');
   });
 
-  it('reloads the employee when the route id changes while the shell is reused', async () => {
-    const params = new BehaviorSubject(convertToParamMap({ id: 'emp-1' }));
-    const getEmployeeDetail = vi.fn((id: string) => of({ ...detailFixture, id }));
-    const { fixture } = setup(detailFixture, { getEmployeeDetail }, true, 'emp-99', true, null, {
-      paramMap: params.asObservable(),
-      snapshot: { paramMap: params.value },
-      firstChild: null
-    });
-    await render(fixture);
-
-    params.next(convertToParamMap({ id: 'emp-2' }));
-    await render(fixture);
-
-    expect(getEmployeeDetail).toHaveBeenNthCalledWith(1, 'emp-1');
-    expect(getEmployeeDetail).toHaveBeenNthCalledWith(2, 'emp-2');
-    expect(fixture.componentInstance.employee()?.id).toBe('emp-2');
-  });
-  describe('with real child routes', () => {
-    @Component({ standalone: true, template: 'tab content' })
-    class TabStubComponent {}
-
-    const routes: Routes = [
-      {
-        path: 'people/employees/:id',
-        component: EmployeeDetailComponent,
-        children: [
-          { path: '', pathMatch: 'full', redirectTo: 'overview' },
-          { path: 'overview', component: EmployeeOverviewTabComponent },
-          { path: 'personal', component: EmployeePersonalTabComponent },
-          ...['employment', 'attendance', 'work-activity'].map((path) => ({ path, component: TabStubComponent }))
-        ]
+  it('shows the not-clocked-in warning in the Attendance today card', () => {
+    const { fixture } = setup({
+      ...detailFixture,
+      attendanceSummary: {
+        showNotClockedInWarning: true,
+        shouldHaveClockedIn: true,
+        hasClockedInToday: false,
+        workDate: '2026-08-15',
+        timezone: 'UTC',
+        scheduledStartTime: '09:00',
+        warningLabel: 'Still has not clocked in',
+        attendanceStatus: 'not_clocked_in',
+        attendanceStatusLabel: 'Not clocked in',
+        attentionType: 'not_clocked_in',
+        attentionSeverity: 'critical',
+        attentionLabel: 'Still has not clocked in'
       }
-    ];
-
-    async function navigate(url: string) {
-      setup(detailFixture, {}, true, 'emp-99', true, null, undefined, routes);
-      const harness = await RouterTestingHarness.create();
-      await harness.navigateByUrl(url);
-      await harness.fixture.whenStable();
-      harness.detectChanges();
-      return harness;
-    }
-
-    it('redirects to the Overview tab and links every tab under the employee route', async () => {
-      const harness = await navigate('/people/employees/emp-1');
-
-      expect(TestBed.inject(Router).url).toBe('/people/employees/emp-1/overview');
-      const links = Array.from(harness.routeNativeElement!.querySelectorAll('[data-testid^="employee-tab-"]')) as HTMLAnchorElement[];
-      expect(links.map((link) => link.textContent?.trim())).toEqual(['Overview', 'Employment', 'Attendance', 'Work & Activity', 'Personal']);
-      expect(links.map((link) => link.getAttribute('href'))).toEqual([
-        '/people/employees/emp-1/overview',
-        '/people/employees/emp-1/employment',
-        '/people/employees/emp-1/attendance',
-        '/people/employees/emp-1/work-activity',
-        '/people/employees/emp-1/personal'
-      ]);
-      expect(links[0].getAttribute('aria-current')).toBe('page');
-      expect(harness.routeNativeElement!.querySelector('[data-testid="edit-employee"]')?.getAttribute('href'))
-        .toBe('/people/employees/emp-1/employment?edit=job');
     });
+    fixture.detectChanges();
 
-    it('shows the period filter only on period-based tabs', async () => {
-      const harness = await navigate('/people/employees/emp-1/overview');
-      expect(harness.routeNativeElement!.querySelector('[data-testid="employee-period-filter"]')).toBeTruthy();
+    const text = fixture.nativeElement.textContent as string;
+    expect(text).toContain('Attendance today');
+    expect(text).toContain('Still has not clocked in');
+  });
 
-      await harness.navigateByUrl('/people/employees/emp-1/personal');
-      harness.detectChanges();
-      expect(harness.routeNativeElement!.querySelector('[data-testid="employee-period-filter"]')).toBeNull();
+  it('shows the status label and break-overage marker in the Attendance today card', () => {
+    const { fixture } = setup({
+      ...detailFixture,
+      attendanceSummary: {
+        showNotClockedInWarning: false,
+        shouldHaveClockedIn: true,
+        hasClockedInToday: true,
+        workDate: '2026-08-15',
+        timezone: 'UTC',
+        scheduledStartTime: '09:00',
+        warningLabel: null,
+        attendanceStatus: 'on_break',
+        attendanceStatusLabel: 'On break',
+        attentionType: null,
+        attentionSeverity: null,
+        attentionLabel: null,
+        breakUsedMinutes: 75,
+        breakAllowanceMinutes: 60,
+        breakOverageMinutes: 15,
+        isOverBreakAllowance: true
+      }
     });
+    fixture.detectChanges();
 
-    it('renders real tabs through the outlet with the shell-provided store', async () => {
-      const harness = await navigate('/people/employees/emp-1/overview');
-      const root = harness.routeNativeElement!;
-
-      expect(root.textContent).toContain('Employment & Organization');
-      const viewDetails = Array.from(root.querySelectorAll('a')).find((a) => a.textContent?.trim() === 'View details');
-      expect(viewDetails?.getAttribute('href')).toBe('/people/employees/emp-1/employment');
-
-      await harness.navigateByUrl('/people/employees/emp-1/personal');
-      harness.detectChanges();
-      expect(root.querySelector('app-employee-personal-info')).toBeTruthy();
-      expect(root.querySelector('[data-testid="employee-tab-personal"]')?.getAttribute('aria-current')).toBe('page');
-    });
+    const text = fixture.nativeElement.textContent as string;
+    expect(text).toContain('On break');
+    expect(text).toContain('Break exceeded by 15 min');
   });
 });

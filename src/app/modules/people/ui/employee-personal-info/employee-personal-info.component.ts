@@ -1,7 +1,4 @@
 import { ChangeDetectionStrategy, Component, input } from '@angular/core';
-import { DatePipe } from '@angular/common';
-import { DetailCardComponent } from '../detail-kit/detail-card.component';
-import { EmptyNoteComponent } from '../detail-kit/empty-note.component';
 import { EmployeeDetailPersonalInformation } from '../../models/employee.model';
 
 function formatAddress(addressJson: string): string {
@@ -22,72 +19,69 @@ function formatAddress(addressJson: string): string {
   return addressJson;
 }
 
-/**
- * Personal, contact and address sections of the employee Personal tab, each rendered as its own
- * card. Fields the backend does not store yet (marital status, national ID, work vs personal
- * phone) are intentionally not shown.
- */
-/**
- * Personal, contact and address sections of the employee Personal tab, each rendered as its own
- * card. Fields the backend does not store yet (marital status, national ID, work vs personal
- * phone) are intentionally not shown.
- */
 @Component({
   selector: 'app-employee-personal-info',
   standalone: true,
-  imports: [DatePipe, DetailCardComponent, EmptyNoteComponent],
   template: `
-    <app-detail-card icon="user" title="Personal Information" subtitle="Basic personal details of the employee.">
-      <dl class="field-grid">
-        <div><dt>First Name</dt><dd>{{ personalInformation().firstName }}</dd></div>
-        <div><dt>Last Name</dt><dd>{{ personalInformation().lastName }}</dd></div>
-        <div><dt>Email</dt><dd>{{ personalInformation().email }}</dd></div>
-        <div><dt>Phone</dt><dd>{{ personalInformation().phone || '—' }}</dd></div>
-        <div>
-          <dt>Date of Birth</dt>
-          <dd>{{ personalInformation().dateOfBirth ? (personalInformation().dateOfBirth | date: 'dd MMM yyyy') : '—' }}</dd>
-        </div>
-        <div><dt>Gender</dt><dd class="capitalize">{{ personalInformation().gender || '—' }}</dd></div>
-      </dl>
-    </app-detail-card>
+    <div class="rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] p-6 space-y-6">
+      <!-- Section 1: Personal Information -->
+      <div>
+        <h3 class="text-sm font-semibold text-[var(--color-text-primary)] pb-3 mb-4 border-b border-[var(--color-border)]">
+          Personal Information
+        </h3>
+        <dl class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-6 text-sm">
+          <div>
+            <dt class="text-xs font-medium text-[var(--color-text-secondary)] mb-1">First Name</dt>
+            <dd class="font-semibold text-[var(--color-text-primary)]">{{ personalInformation().firstName }}</dd>
+          </div>
+          <div>
+            <dt class="text-xs font-medium text-[var(--color-text-secondary)] mb-1">Last Name</dt>
+            <dd class="font-semibold text-[var(--color-text-primary)]">{{ personalInformation().lastName }}</dd>
+          </div>
+          <div>
+            <dt class="text-xs font-medium text-[var(--color-text-secondary)] mb-1">Email</dt>
+            <dd class="font-semibold text-[var(--color-text-primary)]">{{ personalInformation().email }}</dd>
+          </div>
+          <div>
+            <dt class="text-xs font-medium text-[var(--color-text-secondary)] mb-1">Phone</dt>
+            <dd class="font-semibold text-[var(--color-text-primary)]">{{ personalInformation().phone || '—' }}</dd>
+          </div>
+          <div>
+            <dt class="text-xs font-medium text-[var(--color-text-secondary)] mb-1">Date of Birth</dt>
+            <dd class="font-semibold text-[var(--color-text-primary)]">{{ personalInformation().dateOfBirth || '—' }}</dd>
+          </div>
+          <div>
+            <dt class="text-xs font-medium text-[var(--color-text-secondary)] mb-1">Gender</dt>
+            <dd class="font-semibold text-[var(--color-text-primary)] capitalize">{{ personalInformation().gender || '—' }}</dd>
+          </div>
+        </dl>
+      </div>
 
-    <app-detail-card icon="phone" title="Contact Information" subtitle="Work and personal contact details.">
-      <dl class="field-grid">
-        <div><dt>Work Email</dt><dd>{{ personalInformation().email }}</dd></div>
-        <div><dt>Phone</dt><dd>{{ personalInformation().phone || '—' }}</dd></div>
-      </dl>
-    </app-detail-card>
-
-    <app-detail-card icon="home" title="Address Information" subtitle="Current residential address.">
-      @if (personalInformation().addresses.length === 0) {
-        <app-empty-note icon="pin" title="No address information available." description="Address details have not been added yet." />
-      } @else {
-        <ul class="grid grid-cols-1 md:grid-cols-2 gap-3">
-          @for (address of personalInformation().addresses; track address.id) {
-            <li class="rounded-lg border border-[var(--color-border)] bg-[#f7f9fc] p-4 text-sm">
-              <div class="flex items-center justify-between mb-2">
-                <span class="font-semibold text-[var(--color-text-primary)] text-xs capitalize">{{ address.addressType }}</span>
-                @if (address.isPrimary) {
-                  <span class="text-[10px] font-semibold uppercase px-2 py-0.5 rounded-full bg-blue-100 text-blue-800">Primary</span>
-                }
-              </div>
-              <p class="text-sm text-[var(--color-text-secondary)] leading-relaxed">{{ formatAddress(address.addressJson) }}</p>
-            </li>
-          }
-        </ul>
-      }
-    </app-detail-card>
+      <!-- Section 2: Address Information -->
+      <div class="pt-6 border-t border-[var(--color-border)]">
+        <h3 class="text-sm font-semibold text-[var(--color-text-primary)] pb-3 mb-4 border-b border-[var(--color-border)]">
+          Address Information
+        </h3>
+        @if (personalInformation().addresses.length === 0) {
+          <p class="text-xs text-[var(--color-text-secondary)] italic">No addresses on file.</p>
+        } @else {
+          <ul class="grid grid-cols-1 md:grid-cols-2 gap-4">
+            @for (address of personalInformation().addresses; track address.id) {
+              <li class="rounded-lg border border-[var(--color-border)] bg-[var(--color-surface-secondary)] p-4 text-sm">
+                <div class="flex items-center justify-between mb-2">
+                  <span class="font-semibold text-[var(--color-text-primary)] text-xs">{{ address.addressType }}</span>
+                  @if (address.isPrimary) {
+                    <span class="text-[10px] font-semibold uppercase px-2 py-0.5 rounded-full bg-blue-100 text-blue-800">Primary</span>
+                  }
+                </div>
+                <p class="text-xs text-[var(--color-text-secondary)] leading-relaxed">{{ formatAddress(address.addressJson) }}</p>
+              </li>
+            }
+          </ul>
+        }
+      </div>
+    </div>
   `,
-  styles: [`
-    :host { display: flex; flex-direction: column; gap: 1rem; }
-    .field-grid {
-      display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 1.125rem 1.5rem; margin: 0;
-      padding: 1rem 0.875rem; border: 1px solid var(--color-border); border-radius: 0.625rem;
-    }
-    @media (max-width: 640px) { .field-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
-    .field-grid dt { font-size: 0.875rem; color: var(--color-text-secondary); }
-    .field-grid dd { margin: 0.25rem 0 0; font-size: 1rem; font-weight: 600; color: var(--color-text-primary); overflow-wrap: anywhere; }
-  `],
   changeDetection: ChangeDetectionStrategy.OnPush
 })
 export class EmployeePersonalInfoComponent {
