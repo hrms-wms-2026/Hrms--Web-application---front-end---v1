@@ -4,7 +4,8 @@ import { signal } from '@angular/core';
 import { ProjectCalendarComponent } from './project-calendar.component';
 import { ProjectCalendarStore } from '../../state/project-calendar.store';
 import { WorkPageToolbarStore } from '../../state/work-page-toolbar.store';
-import { ProjectCalendarModuleDto } from '../../models/dto/calendar.dto';
+import { CalendarEventDto, ProjectCalendarEventBandDto, ProjectCalendarModuleDto } from '../../models/dto/calendar.dto';
+import { ProjectMonitorStore } from '../../state/project-monitor.store';
 
 const items: ProjectCalendarModuleDto[] = [{
   objectiveId: 'o1', projectId: 'p1', parentObjectiveId: null, title: 'Design',
@@ -14,18 +15,32 @@ const items: ProjectCalendarModuleDto[] = [{
 
 describe('ProjectCalendarComponent', () => {
   let fixture: ComponentFixture<ProjectCalendarComponent>;
-  const store = {
-    modules: signal(items), bands: signal([]), events: signal([]), activeEvents: signal([]), loading: signal(false), saving: signal(false),
-    error: signal<string | null>(null), pendingSet: signal(new Set<string>()), approvalMessages: signal<Record<string, string>>({}),
-    load: vi.fn().mockResolvedValue(undefined), saveDates: vi.fn().mockResolvedValue({ success: true, applied: true, pendingApproval: false }),
-    createEvent: vi.fn().mockResolvedValue(true), updateEvent: vi.fn().mockResolvedValue(true), closeEvent: vi.fn().mockResolvedValue(true)
+  const band: ProjectCalendarEventBandDto = { eventId: 'e1', name: 'R1', color: '#2563EB', startDate: '2026-01-01', endDate: '2026-01-05', canEdit: true };
+  const detail: CalendarEventDto = {
+    id: 'e1', projectId: 'p1', name: 'R1', color: '#2563EB', status: 'active', startDate: '2026-01-01', endDate: '2026-01-05',
+    objectiveIds: ['o1'], taskIds: ['t1', 't2']
   };
+  const store = {
+    modules: signal(items), bands: signal([]), events: signal([]), activeEvents: signal<ProjectCalendarEventBandDto[]>([]), loading: signal(false), saving: signal(false),
+    error: signal<string | null>(null), pendingSet: signal(new Set<string>()), approvalMessages: signal<Record<string, string>>({}),
+    eventDetail: signal<CalendarEventDto | null>(null), eventTasks: signal([]), eventActivity: signal([]),
+    load: vi.fn().mockResolvedValue(undefined), saveDates: vi.fn().mockResolvedValue({ success: true, applied: true, pendingApproval: false }),
+    createEvent: vi.fn().mockResolvedValue(true), updateEvent: vi.fn().mockResolvedValue(true), closeEvent: vi.fn().mockResolvedValue(true),
+    loadEventDetail: vi.fn(), loadEventTasks: vi.fn().mockResolvedValue(undefined), loadEventActivity: vi.fn().mockResolvedValue(undefined),
+    clearEventPanel: vi.fn()
+  };
+  const monitor = { load: vi.fn().mockResolvedValue(undefined), alertsFor: vi.fn().mockReturnValue([]) };
 
   beforeEach(() => {
+    store.activeEvents.set([]);
+    store.eventDetail.set(null);
+    store.loadEventDetail.mockReset().mockImplementation(async () => { store.eventDetail.set(detail); return detail; });
+    monitor.alertsFor.mockReturnValue([]);
     TestBed.configureTestingModule({
       imports: [ProjectCalendarComponent],
       providers: [
         { provide: ProjectCalendarStore, useValue: store },
+        { provide: ProjectMonitorStore, useValue: monitor },
         { provide: ActivatedRoute, useValue: { snapshot: { parent: { paramMap: { get: () => 'p1' } }, paramMap: { get: () => null } } } }
       ]
     });
@@ -37,6 +52,53 @@ describe('ProjectCalendarComponent', () => {
     expect(store.load).toHaveBeenCalledWith('p1');
     expect(fixture.nativeElement.querySelector('[data-testid="timeline-bar-o1"]')).toBeTruthy();
     expect(fixture.nativeElement.textContent).toContain('Design');
+  });
+
+  describe('milestone panel and edit', () => {
+    beforeEach(() => {
+      store.activeEvents.set([band]);
+      fixture.detectChanges();
+    });
+
+    it('clicking a milestone opens the explanation panel and fetches its detail', async () => {
+      fixture.nativeElement.querySelector('.calendar-event').click();
+      await fixture.whenStable();
+      fixture.detectChanges();
+      expect(store.loadEventDetail).toHaveBeenCalledWith('e1');
+      expect(fixture.nativeElement.querySelector('[data-testid="milestone-explanation-panel"]')).toBeTruthy();
+    });
+
+    it('Edit fetches the real event detail (actual taskIds) before opening the modal, instead of reusing the zero-taskIds band stub', async () => {
+      fixture.nativeElement.querySelector('.calendar-event__action').click();
+      await fixture.whenStable();
+      fixture.detectChanges();
+      expect(fixture.componentInstance.editingEvent()?.taskIds).toEqual(['t1', 't2']);
+      expect(fixture.componentInstance.modalOpen()).toBe(true);
+    });
+
+    it('Edit does NOT open the modal if the detail fetch fails - a blank modal would save as Create and wipe links', async () => {
+      store.loadEventDetail.mockImplementation(async () => null);
+      fixture.nativeElement.querySelector('.calendar-event__action').click();
+      await fixture.whenStable();
+      fixture.detectChanges();
+      expect(fixture.componentInstance.modalOpen()).toBe(false);
+    });
+
+    it('does not derive at-risk from alerts on an achieved module', () => {
+      store.eventDetail.set(detail);
+      monitor.alertsFor.mockReturnValue([{ id: 'a1', inAchievedModule: true }]);
+      expect(fixture.componentInstance.hasOpenAlertForEvent('e1')).toBe(false);
+      monitor.alertsFor.mockReturnValue([{ id: 'a2', inAchievedModule: false }]);
+      expect(fixture.componentInstance.hasOpenAlertForEvent('e1')).toBe(true);
+    });
+
+    it('closing the open milestone also closes its panel', async () => {
+      fixture.nativeElement.querySelector('.calendar-event').click();
+      await fixture.whenStable();
+      await fixture.componentInstance.closeEvent('e1');
+      expect(fixture.componentInstance.panelEventId()).toBeNull();
+      expect(store.clearEventPanel).toHaveBeenCalled();
+    });
   });
 
   it('renders each objective label via the shared compact tree row, not bespoke markup', () => {
@@ -271,6 +333,7 @@ describe('ProjectCalendarComponent', () => {
         imports: [ProjectCalendarComponent],
         providers: [
           { provide: ProjectCalendarStore, useValue: store },
+          { provide: ProjectMonitorStore, useValue: monitor },
           { provide: ActivatedRoute, useValue: { snapshot: { parent: { paramMap: { get: () => 'p1' } }, paramMap: { get: () => null } } } }
         ]
       });
@@ -295,6 +358,7 @@ describe('ProjectCalendarComponent', () => {
         imports: [ProjectCalendarComponent],
         providers: [
           { provide: ProjectCalendarStore, useValue: store },
+          { provide: ProjectMonitorStore, useValue: monitor },
           { provide: ActivatedRoute, useValue: { snapshot: { parent: { paramMap: { get: () => 'p1' } }, paramMap: { get: () => null } } } }
         ]
       });

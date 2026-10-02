@@ -19,7 +19,7 @@ import { ProjectCalendarEventBandDto } from '../../models/dto/calendar.dto';
 
       <div class="calendar-events__list">
         @for (event of events(); track event.eventId) {
-          <article class="calendar-event">
+          <article class="calendar-event" (click)="select.emit(event.eventId)">
             <div class="calendar-event__accent" [style.backgroundColor]="event.color" aria-hidden="true"></div>
             <div class="calendar-event__body">
               <div class="calendar-event__name" [title]="event.name">{{ event.name }}</div>
@@ -27,8 +27,8 @@ import { ProjectCalendarEventBandDto } from '../../models/dto/calendar.dto';
             </div>
             @if (event.canEdit) {
               <div class="calendar-event__actions">
-                <button type="button" class="calendar-event__action" [attr.aria-label]="'Edit ' + event.name" title="Edit milestone" (click)="edit.emit(event.eventId)"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 20h9" /><path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1-1-4Z" /></svg></button>
-                <button type="button" class="calendar-event__action calendar-event__action--danger" [attr.aria-label]="'Close ' + event.name" title="Close milestone" (click)="close.emit(event.eventId)"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M18 6 6 18" /></svg></button>
+                <button type="button" class="calendar-event__action" [attr.aria-label]="'Edit ' + event.name" title="Edit milestone" (click)="$event.stopPropagation(); edit.emit(event.eventId)"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 20h9" /><path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1-1-4Z" /></svg></button>
+                <button type="button" class="calendar-event__action calendar-event__action--danger" [attr.aria-label]="'Close ' + event.name" title="Close milestone" (click)="$event.stopPropagation(); close.emit(event.eventId)"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M18 6 6 18" /></svg></button>
               </div>
             }
           </article>
@@ -49,7 +49,7 @@ import { ProjectCalendarEventBandDto } from '../../models/dto/calendar.dto';
     .calendar-events__subtitle { margin: 2px 0 0; color: var(--color-text-secondary); font-size: 10px; }
     .calendar-events__count { display: inline-flex; min-width: 24px; height: 24px; align-items: center; justify-content: center; border-radius: 999px; background: var(--color-surface-secondary); color: var(--color-text-secondary); font-size: 11px; font-weight: 600; }
     .calendar-events__list { display: flex; flex-direction: column; gap: 8px; padding-top: 11px; }
-    .calendar-event { position: relative; display: flex; min-width: 0; align-items: center; gap: 9px; border: 1px solid color-mix(in srgb, var(--color-border) 80%, transparent); border-radius: 9px; padding: 9px 8px 9px 12px; background: var(--color-surface); transition: border-color 140ms ease, background-color 140ms ease; }
+    .calendar-event { cursor: pointer; position: relative; display: flex; min-width: 0; align-items: center; gap: 9px; border: 1px solid color-mix(in srgb, var(--color-border) 80%, transparent); border-radius: 9px; padding: 9px 8px 9px 12px; background: var(--color-surface); transition: border-color 140ms ease, background-color 140ms ease; }
     .calendar-event:hover { border-color: var(--color-accent); background: var(--color-surface-secondary); }
     .calendar-event__accent { position: absolute; top: 9px; bottom: 9px; left: 4px; width: 3px; border-radius: 999px; }
     .calendar-event__body { min-width: 0; flex: 1; }
@@ -68,6 +68,7 @@ import { ProjectCalendarEventBandDto } from '../../models/dto/calendar.dto';
 })
 export class CalendarEventLegendComponent {
   readonly events = input.required<readonly ProjectCalendarEventBandDto[]>();
+  readonly select = output<string>();
   readonly edit = output<string>();
   readonly close = output<string>();
 }

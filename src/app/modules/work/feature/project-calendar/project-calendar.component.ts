@@ -14,7 +14,9 @@ import {
   UpdateCalendarEventRequestDto
 } from '../../models/dto/calendar.dto';
 import { MilestoneTreeNode } from '../../models/milestone.model';
+import { MilestoneExplanationPanelComponent } from '../../ui/milestone-explanation-panel/milestone-explanation-panel.component';
 import { ProjectCalendarStore } from '../../state/project-calendar.store';
+import { ProjectMonitorStore } from '../../state/project-monitor.store';
 import { addCalendarDays, calendarDayDifference, calendarRange, parseCalendarDate } from '../../utils/calendar-date.utils';
 import { buildCalendarTreeOrder } from '../../utils/calendar-tree.utils';
 
@@ -23,7 +25,7 @@ interface MilestoneMarker { objectiveId: string; eventId: string; name: string; 
 @Component({
   selector: 'app-project-calendar',
   standalone: true,
-  imports: [ObjectiveTimelineBarComponent, ModuleTreeRowComponent, CalendarEventModalComponent, CalendarEventLegendComponent, ButtonComponent],
+  imports: [ObjectiveTimelineBarComponent, ModuleTreeRowComponent, CalendarEventModalComponent, CalendarEventLegendComponent, MilestoneExplanationPanelComponent, ButtonComponent],
   template: `
     <ng-template #toolbarTpl>
       <div class="project-calendar__toolbar">
@@ -56,7 +58,7 @@ interface MilestoneMarker { objectiveId: string; eventId: string; name: string; 
       } @else if (!store.modules().length) {
         <div class="project-calendar__empty">No objectives are available for this project.</div>
       } @else {
-        <div class="project-calendar__layout">
+        <div class="project-calendar__layout" [class.project-calendar__layout--panel-open]="panelEventId()">
           <div class="project-calendar__timeline-scroll" #scrollContainer>
             <div class="project-calendar__timeline" [style.minWidth.px]="timelineWidth() + LABEL_WIDTH">
               <div class="project-calendar__grid project-calendar__grid--header" [style.gridTemplateColumns]="LABEL_WIDTH + 'px ' + timelineWidth() + 'px'">
@@ -122,7 +124,26 @@ interface MilestoneMarker { objectiveId: string; eventId: string; name: string; 
               }
             </div>
           </div>
-          <app-calendar-event-legend [events]="store.activeEvents()" (edit)="openEditEvent($event)" (close)="closeEvent($event)" />
+          <div class="project-calendar__side">
+            @if (panelEventId(); as eventId) {
+              @if (store.eventDetail(); as detail) {
+                @if (detail.id === eventId) {
+                  <app-milestone-explanation-panel
+                    [event]="detail"
+                    [modules]="store.modules()"
+                    [tasks]="store.eventTasks()"
+                    [activity]="store.eventActivity()"
+                    [hasOpenAlert]="hasOpenAlertForEvent(eventId)"
+                    (tabActivated)="onPanelTabActivated(eventId, $event)"
+                    (editRequested)="openEditEvent($event)"
+                    (closeRequested)="closeEvent($event)"
+                    (dismissed)="closeMilestonePanel()"
+                  />
+                }
+              }
+            }
+            <app-calendar-event-legend [events]="store.activeEvents()" (select)="openMilestonePanel($event)" (edit)="openEditEvent($event)" (close)="closeEvent($event)" />
+          </div>
         </div>
       }
     </section>
@@ -153,6 +174,8 @@ interface MilestoneMarker { objectiveId: string; eventId: string; name: string; 
     .project-calendar__error { border: 1px solid color-mix(in srgb, var(--color-danger) 30%, transparent); border-radius: 9px; padding: 11px 13px; background: color-mix(in srgb, var(--color-danger) 8%, var(--color-surface)); color: var(--color-danger); font-size: 13px; }
     .project-calendar__empty { border: 1px dashed var(--color-border); border-radius: 11px; padding: 42px 20px; color: var(--color-text-secondary); font-size: 13px; text-align: center; }
     .project-calendar__layout { display: grid; min-width: 0; grid-template-columns: minmax(0, 1fr) 220px; align-items: start; gap: 14px; }
+    .project-calendar__layout--panel-open { grid-template-columns: minmax(0, 1fr) 340px; }
+    .project-calendar__side { display: flex; min-width: 0; flex-direction: column; gap: 14px; }
     .project-calendar__timeline-scroll { min-width: 0; overflow-x: auto; border: 1px solid var(--color-border); border-radius: 11px; background: var(--color-surface); }
     .project-calendar__timeline { position: relative; min-height: 100%; }
     .project-calendar__milestone-marker { position: absolute; top: 50%; z-index: 4; width: 9px; height: 9px; transform: translate(-50%, -50%) rotate(45deg); border-radius: 2px; box-shadow: 0 0 0 1.5px var(--color-surface); }
@@ -183,6 +206,8 @@ interface MilestoneMarker { objectiveId: string; eventId: string; name: string; 
 })
 export class ProjectCalendarComponent implements OnInit, AfterViewInit, OnDestroy {
   readonly store = inject(ProjectCalendarStore);
+  private readonly monitor = inject(ProjectMonitorStore);
+  readonly panelEventId = signal<string | null>(null);
   private readonly toolbarStore = inject(WorkPageToolbarStore);
   private readonly toolbarTpl = viewChild<TemplateRef<unknown>>('toolbarTpl');
   private readonly route = inject(ActivatedRoute);
@@ -265,6 +290,7 @@ export class ProjectCalendarComponent implements OnInit, AfterViewInit, OnDestro
     if (id) {
       this.projectId.set(id);
       void this.store.load(id);
+      void this.monitor.load(id);
     }
   }
 
@@ -365,9 +391,36 @@ export class ProjectCalendarComponent implements OnInit, AfterViewInit, OnDestro
     this.modalOpen.set(true);
   }
 
-  openEditEvent(eventId: string): void {
-    const event = this.store.events().find((e) => e.id === eventId) ?? null;
-    this.editingEvent.set(event);
+  openMilestonePanel(eventId: string): void {
+    this.panelEventId.set(eventId);
+    void this.store.loadEventDetail(eventId);
+  }
+
+  closeMilestonePanel(): void {
+    this.panelEventId.set(null);
+    this.store.clearEventPanel();
+  }
+
+  onPanelTabActivated(eventId: string, tab: 'overview' | 'modules' | 'tasks' | 'activity'): void {
+    if (tab === 'tasks') void this.store.loadEventTasks(eventId);
+    if (tab === 'activity') void this.store.loadEventActivity(eventId);
+  }
+
+  /** Design §5's "at risk" input: an open alert on a linked module, excluding alerts the Tree tab
+   *  treats as informational-only (achieved modules - faded, never counted). */
+  hasOpenAlertForEvent(eventId: string): boolean {
+    const detail = this.store.eventDetail();
+    if (!detail || detail.id !== eventId) return false;
+    return detail.objectiveIds.some((id) => this.monitor.alertsFor(id).some((a) => !a.inAchievedModule));
+  }
+
+  async openEditEvent(eventId: string): Promise<void> {
+    // Real taskIds (Design §7): the legend stub always has taskIds [], so saving it silently deleted
+    // every hand-picked task link. Act on the RETURN value - after a failed refresh of an open panel,
+    // store state still holds the old matching detail and would look like success.
+    const detail = await this.store.loadEventDetail(eventId);
+    if (!detail) return; // never open a blank modal: it would save as a new event and drop existing links
+    this.editingEvent.set(detail);
     this.modalOpen.set(true);
   }
 
@@ -379,5 +432,8 @@ export class ProjectCalendarComponent implements OnInit, AfterViewInit, OnDestro
     if (success) this.modalOpen.set(false);
   }
 
-  async closeEvent(id: string): Promise<void> { await this.store.closeEvent(id); }
+  async closeEvent(id: string): Promise<void> {
+    await this.store.closeEvent(id);
+    if (this.panelEventId() === id) this.closeMilestonePanel();
+  }
 }
