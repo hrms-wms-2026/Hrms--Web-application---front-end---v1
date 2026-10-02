@@ -29,6 +29,12 @@ interface FillSegment { color: string; leftPct: number; widthPct: number; }
       [attr.data-testid]="'timeline-bar-' + item().objectiveId"
       (pointerdown)="startDrag($event, 'move')"
     >
+      <div
+        class="timeline-bar__progress"
+        data-testid="timeline-bar-progress"
+        [style.width.%]="progressWidth()"
+        [style.--bar-progress-color]="progressColor()"
+      ></div>
       @for (segment of fillSegments(); track segment.color + segment.leftPct) {
         <div
           class="timeline-bar__fill"
@@ -65,9 +71,9 @@ interface FillSegment { color: string; leftPct: number; widthPct: number; }
     /* A light "pill" bar tinted by --bar-color, close to the GitHub Projects roadmap look -
        the color lives on the border/dot/text instead of filling the whole bar solid. */
     .timeline-bar {
-      position: absolute; top: 20px; height: 30px; min-width: 30px; overflow: hidden;
-      border: 1.5px solid var(--bar-color); border-radius: 999px;
-      background: color-mix(in srgb, var(--bar-color) 10%, var(--color-surface));
+      position: absolute; top: 50%; height: 16px; min-width: 16px; margin-top: -8px; overflow: hidden;
+      border: 0; border-radius: 999px;
+      background: color-mix(in srgb, var(--bar-color) 22%, var(--color-surface));
       color: var(--color-text-primary);
       box-shadow: 0 1px 2px rgb(15 23 42 / .05);
       transition: left 180ms ease, width 180ms ease, opacity 160ms ease, box-shadow 140ms ease;
@@ -79,7 +85,12 @@ interface FillSegment { color: string; leftPct: number; widthPct: number; }
     .timeline-bar--readonly { cursor: not-allowed; }
     /* The single project-root bar reads as a bold summary capsule, not another branch pill. */
     .timeline-bar--root { background: var(--bar-color); color: #fff; border-color: var(--bar-color); }
-    .timeline-bar__fill { position: absolute; top: 0; bottom: 0; z-index: 0; opacity: .85; }
+    .timeline-bar__fill { position: absolute; top: 0; bottom: 0; z-index: 0; opacity: .35; }
+    .timeline-bar__progress { position: absolute; top: 0; bottom: 0; left: 0; z-index: 0; border-radius: 999px; background: var(--bar-progress-color, var(--color-accent)); }
+    .timeline-bar__title, .timeline-bar__dot { display: none; }
+    .timeline-bar--root { background: color-mix(in srgb, var(--bar-color) 35%, var(--color-surface)); }
+    .timeline-bar--root .timeline-bar__progress { background: var(--bar-color); }
+    .timeline-bar__content { padding: 0 8px; }
     .timeline-bar__content { position: relative; z-index: 1; display: flex; height: 100%; min-width: 0; align-items: center; gap: 7px; padding: 0 12px; font-size: 12px; font-weight: 600; }
     .timeline-bar__title { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
     .timeline-bar__dot { width: 8px; height: 8px; flex: 0 0 auto; border-radius: 999px; background: var(--bar-color); }
@@ -135,6 +146,13 @@ export class ObjectiveTimelineBarComponent {
       cursor += width;
     }
     return segments;
+  });
+
+  /** Darker "done" portion of the bar, from the subtree task-completion rollup (null/no tasks = none). */
+  readonly progressWidth = computed(() => Math.max(0, Math.min(100, this.item().progressPercent ?? 0)));
+  readonly progressColor = computed(() => {
+    const whole = (this.item().events ?? []).find((l) => l.membership === 'whole');
+    return whole?.eventColor ?? (this.item().events ?? [])[0]?.eventColor ?? null;
   });
 
   readonly barColor = () => {

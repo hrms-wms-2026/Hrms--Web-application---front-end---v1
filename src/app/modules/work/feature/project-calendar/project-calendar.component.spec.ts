@@ -266,7 +266,7 @@ describe('ProjectCalendarComponent', () => {
     });
 
     it('the Fit button jumps straight to the fit-to-screen day width', () => {
-      fixture.componentInstance.containerWidth.set(940); // 700px available after the 240px label column
+      fixture.componentInstance.containerWidth.set(1020); // 500px available after the 320px label column and 200px trailing label space
       fixture.detectChanges();
       const toolbarStore = TestBed.inject(WorkPageToolbarStore);
       const embeddedView = toolbarStore.template()?.createEmbeddedView(null);
@@ -279,18 +279,18 @@ describe('ProjectCalendarComponent', () => {
       }
       fixture.detectChanges();
 
-      // 5-day project, 700px / 5 = 140px/day
-      expect(fixture.componentInstance.dayWidth()).toBe(140);
+      // 5-day project, 500px / 5 = 100px/day
+      expect(fixture.componentInstance.dayWidth()).toBe(100);
     });
 
-    it('registers the calendar toolbar with zoom controls and create milestone button in the toolbarStore', () => {
+    it('registers the Add Milestone button in the toolbarStore and renders zoom controls in the page footer', () => {
       const toolbarStore = TestBed.inject(WorkPageToolbarStore);
       expect(toolbarStore.template()).not.toBeNull();
       const embeddedView = toolbarStore.template()?.createEmbeddedView(null);
       embeddedView?.detectChanges();
       const root = embeddedView?.rootNodes[0] as HTMLElement;
-      expect(root.querySelector('[data-testid="zoom-controls"]')).toBeTruthy();
-      expect(root.textContent).toContain('Create milestone');
+      expect(root.textContent).toContain('Add Milestone');
+      expect(fixture.nativeElement.querySelector('[data-testid="zoom-controls"]')).toBeTruthy();
     });
 
     it('scales the fit floor down with a sane minimum for a very long project', () => {
@@ -302,26 +302,19 @@ describe('ProjectCalendarComponent', () => {
   });
 
   describe('month navigation', () => {
-    const toolbarRoot = (): HTMLElement => {
-      const embeddedView = TestBed.inject(WorkPageToolbarStore).template()?.createEmbeddedView(null);
-      embeddedView?.detectChanges();
-      return embeddedView?.rootNodes[0] as HTMLElement;
-    };
-
     beforeEach(() => {
       store.modules.set(items); // starts 2026-01-01
       fixture.detectChanges();
     });
 
-    it('shows the month at the current scroll position in the toolbar', () => {
-      const label = toolbarRoot().querySelector('[data-testid="calendar-month-label"]');
-      expect(label?.textContent?.trim()).toBe('January 2026');
+    it('shows the project date range beside the month arrows', () => {
+      const label = fixture.nativeElement.querySelector('[data-testid="calendar-range-label"]');
+      expect(label?.textContent?.trim()).toBe('Jan 2026 – Jan 2026');
     });
 
-    it('label tracks the scroll offset, discounting the label column', () => {
-      fixture.componentInstance.zoomDayWidth.set(20);
-      fixture.componentInstance.scrollLeft.set(fixture.componentInstance.LABEL_WIDTH + 40 * fixture.componentInstance.dayWidth());
-      expect(fixture.componentInstance.currentMonthLabel()).toBe('February 2026');
+    it('granularity select changes the zoom preset', () => {
+      fixture.componentInstance.setGranularity('week');
+      expect(fixture.componentInstance.zoomDayWidth()).toBe(48);
     });
 
     it('scrollMonth scrolls the timeline container by ~30 days of width, forward or back', () => {
@@ -342,9 +335,7 @@ describe('ProjectCalendarComponent', () => {
     });
 
     const switchToList = () => {
-      const view = TestBed.inject(WorkPageToolbarStore).template()!.createEmbeddedView(null);
-      view.detectChanges();
-      ((view.rootNodes[0] as HTMLElement).querySelector('[data-testid="view-toggle-list"]') as HTMLButtonElement).click();
+      (fixture.nativeElement.querySelector('[data-testid="view-toggle-list"]') as HTMLButtonElement).click();
       fixture.detectChanges();
     };
 

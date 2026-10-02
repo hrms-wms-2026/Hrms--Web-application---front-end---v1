@@ -50,7 +50,6 @@ describe('MilestoneExplanationPanelComponent', () => {
       { id: 't3', shortId: 'T-3', title: 'C', statusId: 's3', marksTaskComplete: false, statusCategory: 'not_started', progressPercent: 0, objectiveId: 'o1', objectiveTitle: 'M' }
     ]);
     fixture.detectChanges();
-    clickTab('tasks');
     expect(fixture.nativeElement.querySelector('[data-testid="panel-metric-total"]').textContent).toContain('3');
     expect(fixture.nativeElement.querySelector('[data-testid="panel-metric-completed"]').textContent).toContain('1');
     expect(fixture.nativeElement.querySelector('[data-testid="panel-metric-in-progress"]').textContent).toContain('1');

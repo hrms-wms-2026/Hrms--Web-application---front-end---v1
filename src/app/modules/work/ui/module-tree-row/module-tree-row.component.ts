@@ -144,7 +144,6 @@ import { AvatarComponent } from '../../../../shared/ui/avatar/avatar.component';
         </svg>
         <span class="min-w-0 flex-1">
           <span data-testid="title-text" class="block min-w-0 truncate text-sm {{ selected() ? 'text-white' : 'text-[var(--color-text-primary)]' }}">{{ node().title }}</span>
-          <span class="block text-[11px] {{ selected() ? 'text-white/80' : 'text-[var(--color-text-secondary)]' }}">{{ node().startDate }} → {{ node().endDate }}</span>
         </span>
         @if (progressLabel(); as label) {
           <span data-testid="compact-progress-label" class="shrink-0 text-xs font-medium {{ selected() ? 'text-white' : 'text-[var(--color-text-secondary)]' }}">{{ label }}</span>

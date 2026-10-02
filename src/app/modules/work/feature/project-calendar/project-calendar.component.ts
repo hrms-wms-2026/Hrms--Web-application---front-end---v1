@@ -36,30 +36,12 @@ interface MilestoneMarker { objectiveId: string; eventId: string; name: string; 
   template: `
     <ng-template #toolbarTpl>
       <div class="project-calendar__toolbar">
-        <div class="project-calendar__month-nav" data-testid="calendar-month-nav">
-          <button type="button" class="project-calendar__month-step" aria-label="Previous month" (click)="scrollMonth(-1)">‹</button>
-          <span data-testid="calendar-month-label">{{ currentMonthLabel() }}</span>
-          <button type="button" class="project-calendar__month-step" aria-label="Next month" (click)="scrollMonth(1)">›</button>
-        </div>
-        <div class="project-calendar__view-toggle" role="tablist" aria-label="View mode">
-          <button type="button" role="tab" data-testid="view-toggle-timeline" [attr.aria-selected]="viewMode() === 'timeline'" (click)="viewMode.set('timeline')">Timeline</button>
-          <button type="button" role="tab" data-testid="view-toggle-list" [attr.aria-selected]="viewMode() === 'list'" (click)="viewMode.set('list')">List</button>
-        </div>
-        <div class="project-calendar__zoom" data-testid="zoom-controls">
-          <button type="button" class="project-calendar__zoom-step" aria-label="Zoom out" [disabled]="isAtMinZoom()" (click)="zoomOut()">
-            <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="7" /><path d="m21 21-4.3-4.3M8 11h6" /></svg>
-          </button>
-          <button type="button" class="project-calendar__zoom-fit" data-testid="fit-to-screen" (click)="fitToScreen()">Fit</button>
-          <button type="button" class="project-calendar__zoom-step" aria-label="Zoom in" [disabled]="isAtMaxZoom()" (click)="zoomIn()">
-            <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="7" /><path d="m21 21-4.3-4.3M11 8v6M8 11h6" /></svg>
-          </button>
-        </div>
         <app-button
           variant="primary"
           [disabled]="store.loading() || !store.modules().length"
           (pressed)="openCreateEvent()"
         >
-          Create milestone
+          + Add Milestone
         </app-button>
       </div>
     </ng-template>
@@ -85,6 +67,33 @@ interface MilestoneMarker { objectiveId: string; eventId: string; name: string; 
     </ng-template>
 
     <section class="project-calendar" data-testid="project-calendar">
+      <header class="project-calendar__page-header">
+        <div class="project-calendar__title-wrap">
+          <span class="project-calendar__title-icon" aria-hidden="true">
+            <svg viewBox="0 0 24 24"><path d="M6 3v18" /><path d="M6 4h11l-2.5 4L17 12H6" /></svg>
+          </span>
+          <div>
+            <h1 class="project-calendar__title">Milestones</h1>
+            <p class="project-calendar__subtitle">Track key delivery points and releases for this project</p>
+          </div>
+        </div>
+        <div class="project-calendar__controls">
+          <div class="project-calendar__view-toggle" role="tablist" aria-label="View mode">
+            <button type="button" role="tab" data-testid="view-toggle-list" [attr.aria-selected]="viewMode() === 'list'" (click)="viewMode.set('list')">List</button>
+            <button type="button" role="tab" data-testid="view-toggle-timeline" [attr.aria-selected]="viewMode() === 'timeline'" (click)="viewMode.set('timeline')">Timeline</button>
+          </div>
+          <select class="project-calendar__granularity" aria-label="Zoom granularity" data-testid="granularity-select" [value]="granularity()" (change)="setGranularity($any($event.target).value)">
+            <option value="week">Week</option>
+            <option value="month">Month</option>
+            <option value="quarter">Quarter</option>
+          </select>
+          <div class="project-calendar__month-nav" data-testid="calendar-month-nav">
+            <button type="button" class="project-calendar__month-step" aria-label="Previous month" (click)="scrollMonth(-1)">‹</button>
+            <span data-testid="calendar-range-label">{{ rangeLabel() }}</span>
+            <button type="button" class="project-calendar__month-step" aria-label="Next month" (click)="scrollMonth(1)">›</button>
+          </div>
+        </div>
+      </header>
 
       @if (store.error()) {
         <div class="project-calendar__error" role="alert">{{ store.error() }}</div>
@@ -95,18 +104,19 @@ interface MilestoneMarker { objectiveId: string; eventId: string; name: string; 
         <div class="project-calendar__empty">No objectives are available for this project.</div>
       } @else {
         <div class="project-calendar__layout" data-testid="project-calendar-timeline" [hidden]="viewMode() !== 'timeline'" [class.project-calendar__layout--panel-open]="panelEventId()">
-          <div class="project-calendar__timeline-scroll" #scrollContainer (scroll)="onTimelineScroll($event)">
-            <div class="project-calendar__timeline" [style.minWidth.px]="timelineWidth() + LABEL_WIDTH">
-              <div class="project-calendar__grid project-calendar__grid--header" [style.gridTemplateColumns]="LABEL_WIDTH + 'px ' + timelineWidth() + 'px'">
-                <div class="project-calendar__label-header">Objective</div>
-                <div class="project-calendar__date-header" [style.width.px]="timelineWidth()">
+          <div class="project-calendar__main">
+          <div class="project-calendar__timeline-scroll" #scrollContainer>
+            <div class="project-calendar__timeline" [style.minWidth.px]="trackWidth() + LABEL_WIDTH">
+              <div class="project-calendar__grid project-calendar__grid--header" [style.gridTemplateColumns]="LABEL_WIDTH + 'px ' + trackWidth() + 'px'">
+                <div class="project-calendar__label-header"><span>Project Structure</span><span class="project-calendar__progress-header">Progress</span></div>
+                <div class="project-calendar__date-header" [style.width.px]="trackWidth()">
                   @for (day of dateMarkers(); track day) {
                     <div class="project-calendar__date-marker" [style.left.px]="dayIndex(day) * dayWidth()" [style.width.px]="markerBoxWidth()">{{ formatDayLabel(day) }}</div>
                   }
                 </div>
               </div>
               @for (row of rows(); track row.item.objectiveId) {
-                <div class="project-calendar__grid project-calendar__grid--row" [style.gridTemplateColumns]="LABEL_WIDTH + 'px ' + timelineWidth() + 'px'" [attr.data-testid]="'calendar-row-' + row.item.objectiveId">
+                <div class="project-calendar__grid project-calendar__grid--row" [style.gridTemplateColumns]="LABEL_WIDTH + 'px ' + trackWidth() + 'px'" [attr.data-testid]="'calendar-row-' + row.item.objectiveId">
                   <div class="project-calendar__objective">
                     @if (row.depth > 0) {
                       <div class="project-calendar__guides" [style.width.px]="row.depth * 18">
@@ -120,15 +130,15 @@ interface MilestoneMarker { objectiveId: string; eventId: string; name: string; 
                       <app-module-tree-row
                         [compact]="true"
                         [node]="toTreeNode(row.item)"
-                        [progressLabel]="progressLabelFor(row.item)"
                         [depth]="row.depth"
                         [showChevron]="row.hasChildren && row.depth > 0"
                         [expanded]="!isCollapsed(row.item.objectiveId)"
                         (chevronClicked)="toggleCollapsed(row.item.objectiveId, $event)"
                       />
                     </div>
+                    <span class="project-calendar__progress-cell" data-testid="calendar-progress-cell">{{ progressLabelFor(row.item) }}</span>
                   </div>
-                  <div class="project-calendar__track" [style.width.px]="timelineWidth()">
+                  <div class="project-calendar__track" [style.width.px]="trackWidth()">
                     <div class="project-calendar__grid-background" [style.background]="gridBackground()"></div>
                     <app-objective-timeline-bar
                       [item]="row.item"
@@ -144,11 +154,15 @@ interface MilestoneMarker { objectiveId: string; eventId: string; name: string; 
                     @for (marker of markersForRow(row.item.objectiveId); track marker.eventId) {
                       <span
                         class="project-calendar__milestone-marker"
-                        data-testid="calendar-milestone-marker"
+                        data-testid="calendar-milestone-marker" (click)="openMilestonePanel(marker.eventId)"
                         [style.left.px]="marker.left"
                         [style.background]="marker.color"
                         [title]="marker.name + '  ' + marker.startDate + ' → ' + marker.endDate"
                       ></span>
+                      <span class="project-calendar__milestone-label" data-testid="calendar-milestone-label" (click)="openMilestonePanel(marker.eventId)" [style.left.px]="marker.left + 14">
+                        <strong>{{ marker.name }}</strong>
+                        <span>{{ formatLongDate(marker.endDate) }}</span>
+                      </span>
                     }
                   </div>
                 </div>
@@ -160,9 +174,29 @@ interface MilestoneMarker { objectiveId: string; eventId: string; name: string; 
               }
             </div>
           </div>
+          <footer class="project-calendar__footer">
+            <ul class="project-calendar__legend" aria-label="Status legend">
+              @for (item of statusLegend; track item.label) {
+                <li><span class="project-calendar__legend-diamond" [style.background]="item.color"></span>{{ item.label }}</li>
+              }
+            </ul>
+            <div class="project-calendar__zoom" data-testid="zoom-controls">
+              <button type="button" class="project-calendar__zoom-fit" data-testid="fit-to-screen" (click)="fitToScreen()">Fit to view</button>
+              <button type="button" class="project-calendar__zoom-step" aria-label="Zoom out" [disabled]="isAtMinZoom()" (click)="zoomOut()">−</button>
+              <input type="range" class="project-calendar__zoom-slider" aria-label="Zoom" data-testid="zoom-slider"
+                [min]="fitDayWidth()" [max]="MAX_DAY_WIDTH" step="0.5" [value]="dayWidth()" (input)="zoomDayWidth.set(+$any($event.target).value)" />
+              <button type="button" class="project-calendar__zoom-step" aria-label="Zoom in" [disabled]="isAtMaxZoom()" (click)="zoomIn()">+</button>
+              <button type="button" class="project-calendar__zoom-step" aria-label="Toggle full screen" data-testid="fullscreen-toggle" (click)="toggleFullscreen()">
+                <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5" /></svg>
+              </button>
+            </div>
+          </footer>
+          </div>
           <div class="project-calendar__side">
             <ng-container *ngTemplateOutlet="panelTpl" />
-            <app-calendar-event-legend [events]="store.activeEvents()" (select)="openMilestonePanel($event)" (edit)="openEditEvent($event)" (close)="closeEvent($event)" />
+            @if (!panelEventId()) {
+              <app-calendar-event-legend [events]="store.activeEvents()" (select)="openMilestonePanel($event)" (edit)="openEditEvent($event)" (close)="closeEvent($event)" />
+            }
           </div>
         </div>
         @if (viewMode() === 'list') {
@@ -218,10 +252,10 @@ interface MilestoneMarker { objectiveId: string; eventId: string; name: string; 
     .project-calendar__error { border: 1px solid color-mix(in srgb, var(--color-danger) 30%, transparent); border-radius: 9px; padding: 11px 13px; background: color-mix(in srgb, var(--color-danger) 8%, var(--color-surface)); color: var(--color-danger); font-size: 13px; }
     .project-calendar__empty { border: 1px dashed var(--color-border); border-radius: 11px; padding: 42px 20px; color: var(--color-text-secondary); font-size: 13px; text-align: center; }
     .project-calendar__layout { display: grid; min-width: 0; grid-template-columns: minmax(0, 1fr) 220px; align-items: start; gap: 14px; }
-    .project-calendar__layout--panel-open { grid-template-columns: minmax(0, 1fr) 340px; }
+    .project-calendar__layout--panel-open { grid-template-columns: minmax(0, 1fr) 360px; }
     .project-calendar__layout[hidden] { display: none; }
     .project-calendar__list-layout { display: grid; min-width: 0; grid-template-columns: minmax(0, 1fr); align-items: start; gap: 14px; }
-    .project-calendar__list-layout--panel-open { grid-template-columns: minmax(0, 1fr) 340px; }
+    .project-calendar__list-layout--panel-open { grid-template-columns: minmax(0, 1fr) 360px; }
     .project-calendar__view-toggle { display: flex; height: 30px; align-items: center; gap: 2px; border: 1px solid var(--color-border); border-radius: 8px; padding: 0 3px; background: var(--color-surface); box-sizing: border-box; }
     .project-calendar__view-toggle button { height: 22px; border: 0; border-radius: 6px; padding: 0 9px; background: transparent; color: var(--color-text-secondary); font: inherit; font-size: 11px; font-weight: 600; cursor: pointer; }
     .project-calendar__view-toggle button[aria-selected='true'] { background: var(--color-surface-secondary); color: var(--color-text-primary); }
@@ -252,10 +286,42 @@ interface MilestoneMarker { objectiveId: string; eventId: string; name: string; 
     .project-calendar__track { position: relative; min-width: 0; overflow: hidden; border-left: 1px solid var(--color-border); }
     .project-calendar__grid-background { position: absolute; inset: 0; opacity: .5; }
     @media (max-width: 900px) { .project-calendar__layout { grid-template-columns: minmax(0, 1fr); } }
+    .project-calendar__page-header { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 14px; }
+    .project-calendar__title-wrap { display: flex; align-items: center; gap: 12px; }
+    .project-calendar__title-icon { display: inline-flex; width: 38px; height: 38px; align-items: center; justify-content: center; border-radius: 10px; background: color-mix(in srgb, var(--color-accent) 10%, var(--color-surface)); color: var(--color-accent); }
+    .project-calendar__title-icon svg { width: 22px; height: 22px; fill: none; stroke: currentColor; stroke-width: 1.7; stroke-linecap: round; stroke-linejoin: round; }
+    .project-calendar__title { margin: 0; color: var(--color-text-primary); font-size: 18px; font-weight: 700; line-height: 1.2; }
+    .project-calendar__subtitle { margin: 2px 0 0; color: var(--color-text-secondary); font-size: 11px; }
+    .project-calendar__controls { display: flex; align-items: center; gap: 10px; }
+    .project-calendar__granularity { height: 32px; border: 1px solid var(--color-border); border-radius: 8px; padding: 0 10px; background: var(--color-surface); color: var(--color-text-primary); font: inherit; font-size: 12px; cursor: pointer; }
+    .project-calendar__main { min-width: 0; display: flex; flex-direction: column; gap: 12px; }
+    .project-calendar__view-toggle { height: 32px; padding: 2px; border-radius: 8px; }
+    .project-calendar__view-toggle button { height: 26px; padding: 0 14px; font-size: 12px; }
+    .project-calendar__view-toggle button[aria-selected='true'] { background: color-mix(in srgb, var(--color-accent) 12%, var(--color-surface)); color: var(--color-accent); }
+    .project-calendar__label-header { justify-content: space-between; padding: 0 14px; text-transform: none; letter-spacing: 0; font-size: 12px; color: var(--color-text-secondary); }
+    .project-calendar__progress-header { width: 56px; text-align: right; }
+    .project-calendar__progress-cell { flex: 0 0 56px; text-align: right; color: var(--color-text-primary); font-size: 12px; font-weight: 600; }
+    .project-calendar__date-marker { color: var(--color-text-primary); font-size: 12px; font-weight: 500; justify-content: center; padding-left: 0; }
+    .project-calendar__track { overflow: visible; }
+    .project-calendar__milestone-marker { width: 14px; height: 14px; border-radius: 3px; cursor: pointer; z-index: 6; }
+    .project-calendar__milestone-label { position: absolute; top: 50%; z-index: 5; display: flex; flex-direction: column; transform: translateY(-50%); cursor: pointer; white-space: nowrap; pointer-events: auto; }
+    .project-calendar__milestone-label strong { color: var(--color-text-primary); font-size: 12px; font-weight: 600; line-height: 1.2; }
+    .project-calendar__milestone-label span { color: var(--color-text-secondary); font-size: 11px; }
+    .project-calendar__today-line { border-left: 2px dashed var(--color-danger); background: transparent; width: 0; top: 54px; }
+    .project-calendar__today-label { top: auto; bottom: -22px; padding: 4px 10px; border-radius: 6px; font-size: 12px; text-transform: none; }
+    .project-calendar__footer { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 12px; padding-top: 10px; }
+    .project-calendar__legend { display: flex; flex-wrap: wrap; align-items: center; gap: 18px; margin: 0; padding: 0; list-style: none; color: var(--color-text-primary); font-size: 12px; }
+    .project-calendar__legend li { display: flex; align-items: center; gap: 7px; }
+    .project-calendar__legend-diamond { width: 11px; height: 11px; border-radius: 2px; transform: rotate(45deg); }
+    .project-calendar__footer .project-calendar__zoom { gap: 8px; height: 34px; padding: 0 6px; border: 0; background: transparent; }
+    .project-calendar__footer .project-calendar__zoom-fit { height: 32px; border: 1px solid var(--color-border); border-radius: 8px; margin: 0; padding: 0 14px; text-transform: none; letter-spacing: 0; font-size: 12px; font-weight: 500; background: var(--color-surface); color: var(--color-text-primary); }
+    .project-calendar__footer .project-calendar__zoom-step { width: 32px; height: 32px; border: 1px solid var(--color-border); border-radius: 8px; background: var(--color-surface); font-size: 16px; }
+    .project-calendar__zoom-slider { width: 110px; accent-color: var(--color-accent); }
   `]
 })
 export class ProjectCalendarComponent implements OnInit, AfterViewInit, OnDestroy {
   readonly store = inject(ProjectCalendarStore);
+  private readonly host = inject<ElementRef<HTMLElement>>(ElementRef);
   private readonly monitor = inject(ProjectMonitorStore);
   readonly panelEventId = signal<string | null>(null);
   private readonly toolbarStore = inject(WorkPageToolbarStore);
@@ -263,9 +329,10 @@ export class ProjectCalendarComponent implements OnInit, AfterViewInit, OnDestro
   private readonly route = inject(ActivatedRoute);
   private readonly scrollContainer = viewChild<ElementRef<HTMLElement>>('scrollContainer');
   private resizeObserver?: ResizeObserver;
-  readonly LABEL_WIDTH = 240;
+  readonly LABEL_WIDTH = 320;
+  private readonly TRAIL_WIDTH = 200;
   private readonly MIN_FIT_DAY_WIDTH = 3;
-  private readonly MAX_DAY_WIDTH = 160;
+  readonly MAX_DAY_WIDTH = 160;
   private readonly ZOOM_STEP = 1.3;
   private readonly MARKER_TARGET_PX = 60;
   readonly today = new Date().toISOString().slice(0, 10);
@@ -295,7 +362,7 @@ export class ProjectCalendarComponent implements OnInit, AfterViewInit, OnDestro
   // and what the "Fit" button jumps straight to.
   readonly fitDayWidth = computed(() => {
     const totalDays = Math.max(1, calendarDayDifference(this.timelineStart(), this.timelineEnd()) + 1);
-    const available = this.containerWidth() - this.LABEL_WIDTH;
+    const available = this.containerWidth() - this.LABEL_WIDTH - this.TRAIL_WIDTH;
     return available > 0 ? Math.max(this.MIN_FIT_DAY_WIDTH, available / totalDays) : this.MIN_FIT_DAY_WIDTH;
   });
   readonly dayWidth = computed(() => Math.min(this.MAX_DAY_WIDTH, Math.max(this.fitDayWidth(), this.zoomDayWidth())));
@@ -363,14 +430,18 @@ export class ProjectCalendarComponent implements OnInit, AfterViewInit, OnDestro
       };
     });
   });
-  readonly scrollLeft = signal(0);
-  /** The label column scrolls inside the same container, so the day at the left edge of the date
-   *  area is offset by LABEL_WIDTH, not raw scrollLeft. */
-  readonly currentMonthLabel = computed(() => {
-    const dayIndexAtLeftEdge = Math.floor(Math.max(0, this.scrollLeft() - this.LABEL_WIDTH) / this.dayWidth());
-    const day = addCalendarDays(this.timelineStart(), dayIndexAtLeftEdge);
-    return parseCalendarDate(day).toLocaleDateString('en-US', { month: 'long', year: 'numeric', timeZone: 'UTC' });
+  readonly trackWidth = computed(() => this.timelineWidth() + this.TRAIL_WIDTH);
+  /** "May 2026 – Dec 2026": the project's full date span, shown beside the month prev/next arrows. */
+  readonly rangeLabel = computed(() => {
+    const month = (day: string) => parseCalendarDate(day).toLocaleDateString('en-US', { month: 'short', year: 'numeric', timeZone: 'UTC' });
+    return `${month(this.timelineStart())} – ${month(this.timelineEnd())}`;
   });
+  readonly granularity = signal<'week' | 'month' | 'quarter'>('month');
+  readonly statusLegend = [
+    { label: 'On Track', color: '#16A34A' }, { label: 'At Risk', color: '#EF4444' },
+    { label: 'Upcoming', color: '#F59E0B' }, { label: 'Completed', color: '#2563EB' },
+    { label: 'Not Started', color: '#CBD5E1' }
+  ];
   readonly todayVisible = computed(() => this.today >= this.timelineStart() && this.today <= this.timelineEnd());
   readonly todayOffset = computed(() => this.dayIndex(this.today) * this.dayWidth());
 
@@ -403,8 +474,19 @@ export class ProjectCalendarComponent implements OnInit, AfterViewInit, OnDestro
     this.resizeObserver?.disconnect();
   }
 
-  onTimelineScroll(event: Event): void {
-    this.scrollLeft.set((event.target as HTMLElement).scrollLeft);
+  setGranularity(value: 'week' | 'month' | 'quarter'): void {
+    this.granularity.set(value);
+    this.zoomDayWidth.set({ week: 48, month: 14, quarter: 5 }[value]);
+  }
+
+  formatLongDate(day: string): string {
+    return parseCalendarDate(day).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric', timeZone: 'UTC' });
+  }
+
+  toggleFullscreen(): void {
+    if (typeof document === 'undefined') return;
+    if (document.fullscreenElement) void document.exitFullscreen?.();
+    else void this.host.nativeElement.requestFullscreen?.();
   }
 
   scrollMonth(direction: 1 | -1): void {
@@ -491,6 +573,7 @@ export class ProjectCalendarComponent implements OnInit, AfterViewInit, OnDestro
   openMilestonePanel(eventId: string): void {
     this.panelEventId.set(eventId);
     void this.store.loadEventDetail(eventId);
+    void this.store.loadEventTasks(eventId); // feeds the Tasks (n) tab count, progress and Key Metrics on Overview
   }
 
   closeMilestonePanel(): void {
