@@ -1,4 +1,5 @@
-import { Component, computed, inject, input, output } from '@angular/core';
+import { Component, computed, effect, inject, input, output, signal } from '@angular/core';
+import { ProjectApiService } from '../../data-access/project-api.service';
 import { Project } from '../../models/project.model';
 import { ProjectCategoryStore } from '../../state/project-category.store';
 import { getDeadlineStatus } from '../../utils/deadline.util';
@@ -27,12 +28,22 @@ import { MemberButtonComponent } from '../member-button/member-button.component'
 
       <!-- Project Logo & Title -->
       <div class="flex items-center gap-3 border-b border-[var(--color-border)] pb-2.5">
-        <div
-          class="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl font-bold text-white text-sm shadow-sm"
-          [style.background]="project().color || 'linear-gradient(135deg, #2563eb, #4f46e5)'"
-        >
-          {{ projectLogoInitial() }}
-        </div>
+        @if (logoUrl(); as url) {
+          <img
+            data-testid="project-details-logo"
+            class="h-10 w-10 shrink-0 rounded-xl object-cover shadow-sm border border-[var(--color-border)]"
+            [src]="url"
+            alt=""
+            (error)="logoBroken.set(true)"
+          />
+        } @else {
+          <div
+            class="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl font-bold text-white text-sm shadow-sm"
+            [style.background]="project().color || 'linear-gradient(135deg, #2563eb, #4f46e5)'"
+          >
+            {{ projectLogoInitial() }}
+          </div>
+        }
         <div class="min-w-0 flex-1">
           <h2 class="text-sm font-bold text-[var(--color-text-primary)] leading-tight truncate">
             {{ project().name }}
@@ -146,12 +157,27 @@ import { MemberButtonComponent } from '../member-button/member-button.component'
 })
 export class ProjectExplanationCardComponent {
   private readonly categoryStore = inject(ProjectCategoryStore);
+  private readonly projectApi = inject(ProjectApiService);
 
   project = input.required<Project>();
   viewed = output<void>();
   achieveRequested = output<void>();
   settingsRequested = output<void>();
   membersRequested = output<void>();
+
+  /** Set when the image fails to load; reset when a different project is shown. */
+  readonly logoBroken = signal(false);
+  readonly logoUrl = computed(() => {
+    const { id, logoFileId } = this.project();
+    return logoFileId && !this.logoBroken() ? this.projectApi.getLogoUrl(id, logoFileId) : null;
+  });
+
+  constructor() {
+    effect(() => {
+      this.project().id;
+      this.logoBroken.set(false);
+    });
+  }
 
   readonly projectLogoInitial = computed(() => {
     const name = this.project().name?.trim();

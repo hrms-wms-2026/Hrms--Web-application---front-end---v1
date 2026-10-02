@@ -1,6 +1,7 @@
-import { Component, computed, input, output } from '@angular/core';
+import { Component, computed, inject, input, output, signal } from '@angular/core';
 import { EmployeeAvatarComponent } from '../employee-avatar/employee-avatar.component';
 import { ProgressBarComponent } from '../../../../shared/ui/progress-bar/progress-bar.component';
+import { ProjectApiService } from '../../data-access/project-api.service';
 import { Project } from '../../models/project.model';
 
 @Component({
@@ -17,15 +18,27 @@ import { Project } from '../../models/project.model';
       (click)="selectedChange.emit()"
     >
       <!-- Logo Box -->
-      <div
-        class="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl font-bold text-base transition-all"
-        [class]="selected()
-          ? 'bg-[var(--color-accent)] text-white shadow-sm'
-          : 'border border-[var(--color-border)] bg-[var(--color-surface-secondary)] text-[var(--color-accent)]'"
-        [style.background]="selected() && project().color ? project().color : null"
-      >
-        {{ projectLogoInitial() }}
-      </div>
+      @if (logoUrl(); as url) {
+        <img
+          data-testid="project-row-logo"
+          class="h-11 w-11 shrink-0 rounded-xl object-cover border border-[var(--color-border)]"
+          [class.ring-2]="selected()"
+          [class.ring-[var(--color-accent)]]="selected()"
+          [src]="url"
+          alt=""
+          (error)="logoBroken.set(true)"
+        />
+      } @else {
+        <div
+          class="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl font-bold text-base transition-all"
+          [class]="selected()
+            ? 'bg-[var(--color-accent)] text-white shadow-sm'
+            : 'border border-[var(--color-border)] bg-[var(--color-surface-secondary)] text-[var(--color-accent)]'"
+          [style.background]="selected() && project().color ? project().color : null"
+        >
+          {{ projectLogoInitial() }}
+        </div>
+      }
 
       <!-- Title & Key -->
       <div class="min-w-0 flex-1">
@@ -58,7 +71,17 @@ import { Project } from '../../models/project.model';
   `
 })
 export class ProjectListRowComponent {
+  private readonly projectApi = inject(ProjectApiService);
+
   project = input.required<Project>();
+  /** Set when the image fails to load (no access, file gone): the initial shows instead. */
+  readonly logoBroken = signal(false);
+
+  /** Same URL as the project grid card, so a logo loaded there comes from the browser cache. */
+  readonly logoUrl = computed(() => {
+    const { id, logoFileId } = this.project();
+    return logoFileId && !this.logoBroken() ? this.projectApi.getLogoUrl(id, logoFileId) : null;
+  });
   selected = input(false);
   selectedChange = output<void>();
 

@@ -53,4 +53,20 @@ describe('ProjectListRowComponent', () => {
     (fixture.nativeElement.querySelector('[data-testid="project-list-row"]') as HTMLButtonElement).click();
     expect(emitted).toBe(true);
   });
+
+  it('shows the project logo when one is set, from the same URL as the project cards', () => {
+    fixture.componentRef.setInput('project', { ...project, logoFileId: 'logo-9' });
+    fixture.detectChanges();
+    const img = fixture.nativeElement.querySelector('[data-testid="project-row-logo"]') as HTMLImageElement;
+    expect(img.getAttribute('src')).toContain('/work/projects/' + project.id + '/logo?v=logo-9');
+  });
+
+  it('falls back to the initial when there is no logo or it fails to load', () => {
+    fixture.componentRef.setInput('project', { ...project, logoFileId: 'logo-9' });
+    fixture.detectChanges();
+    (fixture.nativeElement.querySelector('[data-testid="project-row-logo"]') as HTMLImageElement).dispatchEvent(new Event('error'));
+    fixture.detectChanges();
+    expect(fixture.nativeElement.querySelector('[data-testid="project-row-logo"]')).toBeNull();
+    expect(fixture.nativeElement.textContent).toContain(project.name.charAt(0).toUpperCase());
+  });
 });
