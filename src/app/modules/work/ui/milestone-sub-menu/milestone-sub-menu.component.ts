@@ -14,7 +14,7 @@ const BASE_TABS: SubMenuTab[] = [
   { label: 'Board', segment: 'board', projectLevel: true },
   { label: 'Backlog', segment: 'backlog', projectLevel: true },
   { label: 'Approvals', segment: 'approvals', projectLevel: true },
-  { label: 'Calendar', segment: 'calendar', projectLevel: true }
+  { label: 'Milestones', segment: 'calendar', projectLevel: true }
 
 
 ];
