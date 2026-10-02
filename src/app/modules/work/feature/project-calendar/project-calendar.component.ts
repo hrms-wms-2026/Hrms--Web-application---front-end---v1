@@ -29,6 +29,11 @@ interface MilestoneMarker { objectiveId: string; eventId: string; name: string; 
   template: `
     <ng-template #toolbarTpl>
       <div class="project-calendar__toolbar">
+        <div class="project-calendar__month-nav" data-testid="calendar-month-nav">
+          <button type="button" class="project-calendar__month-step" aria-label="Previous month" (click)="scrollMonth(-1)">‹</button>
+          <span data-testid="calendar-month-label">{{ currentMonthLabel() }}</span>
+          <button type="button" class="project-calendar__month-step" aria-label="Next month" (click)="scrollMonth(1)">›</button>
+        </div>
         <div class="project-calendar__zoom" data-testid="zoom-controls">
           <button type="button" class="project-calendar__zoom-step" aria-label="Zoom out" [disabled]="isAtMinZoom()" (click)="zoomOut()">
             <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="7" /><path d="m21 21-4.3-4.3M8 11h6" /></svg>
@@ -59,7 +64,7 @@ interface MilestoneMarker { objectiveId: string; eventId: string; name: string; 
         <div class="project-calendar__empty">No objectives are available for this project.</div>
       } @else {
         <div class="project-calendar__layout" [class.project-calendar__layout--panel-open]="panelEventId()">
-          <div class="project-calendar__timeline-scroll" #scrollContainer>
+          <div class="project-calendar__timeline-scroll" #scrollContainer (scroll)="onTimelineScroll($event)">
             <div class="project-calendar__timeline" [style.minWidth.px]="timelineWidth() + LABEL_WIDTH">
               <div class="project-calendar__grid project-calendar__grid--header" [style.gridTemplateColumns]="LABEL_WIDTH + 'px ' + timelineWidth() + 'px'">
                 <div class="project-calendar__label-header">Objective</div>
@@ -162,6 +167,9 @@ interface MilestoneMarker { objectiveId: string; eventId: string; name: string; 
     :host { display: block; min-width: 0; }
     .project-calendar__toolbar { display: flex; flex-wrap: wrap; align-items: center; justify-content: flex-end; gap: 8px; }
     .project-calendar__toolbar ::ng-deep app-button > button { width: auto; height: 30px; padding: 0 12px; border-radius: 8px; font-size: 13px; }
+    .project-calendar__month-nav { display: flex; align-items: center; gap: 6px; height: 30px; padding: 0 4px; font-size: 12px; font-weight: 600; color: var(--color-text-primary); }
+    .project-calendar__month-step { display: flex; height: 22px; width: 22px; align-items: center; justify-content: center; border: 0; border-radius: 6px; background: transparent; color: var(--color-text-secondary); cursor: pointer; }
+    .project-calendar__month-step:hover { background: var(--color-surface-secondary); color: var(--color-text-primary); }
     .project-calendar__zoom { display: flex; align-items: center; gap: 2px; height: 30px; border: 1px solid var(--color-border); border-radius: 8px; padding: 0 3px; background: var(--color-surface); box-sizing: border-box; }
     .project-calendar__zoom-step { display: flex; height: 22px; width: 22px; flex: 0 0 auto; align-items: center; justify-content: center; border: 0; border-radius: 6px; background: transparent; color: var(--color-text-secondary); cursor: pointer; transition: background-color 140ms ease, color 140ms ease; }
     .project-calendar__zoom-step:hover:not(:disabled) { background: var(--color-surface-secondary); color: var(--color-text-primary); }
@@ -282,6 +290,14 @@ export class ProjectCalendarComponent implements OnInit, AfterViewInit, OnDestro
     }
     return markers;
   });
+  readonly scrollLeft = signal(0);
+  /** The label column scrolls inside the same container, so the day at the left edge of the date
+   *  area is offset by LABEL_WIDTH, not raw scrollLeft. */
+  readonly currentMonthLabel = computed(() => {
+    const dayIndexAtLeftEdge = Math.floor(Math.max(0, this.scrollLeft() - this.LABEL_WIDTH) / this.dayWidth());
+    const day = addCalendarDays(this.timelineStart(), dayIndexAtLeftEdge);
+    return parseCalendarDate(day).toLocaleDateString('en-US', { month: 'long', year: 'numeric', timeZone: 'UTC' });
+  });
   readonly todayVisible = computed(() => this.today >= this.timelineStart() && this.today <= this.timelineEnd());
   readonly todayOffset = computed(() => this.dayIndex(this.today) * this.dayWidth());
 
@@ -312,6 +328,14 @@ export class ProjectCalendarComponent implements OnInit, AfterViewInit, OnDestro
   ngOnDestroy(): void {
     this.toolbarStore.setTemplate(null);
     this.resizeObserver?.disconnect();
+  }
+
+  onTimelineScroll(event: Event): void {
+    this.scrollLeft.set((event.target as HTMLElement).scrollLeft);
+  }
+
+  scrollMonth(direction: 1 | -1): void {
+    this.scrollContainer()?.nativeElement.scrollBy({ left: direction * 30 * this.dayWidth(), behavior: 'smooth' });
   }
 
   zoomIn(): void {

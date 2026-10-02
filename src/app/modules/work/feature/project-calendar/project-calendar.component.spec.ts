@@ -301,6 +301,40 @@ describe('ProjectCalendarComponent', () => {
     });
   });
 
+  describe('month navigation', () => {
+    const toolbarRoot = (): HTMLElement => {
+      const embeddedView = TestBed.inject(WorkPageToolbarStore).template()?.createEmbeddedView(null);
+      embeddedView?.detectChanges();
+      return embeddedView?.rootNodes[0] as HTMLElement;
+    };
+
+    beforeEach(() => {
+      store.modules.set(items); // starts 2026-01-01
+      fixture.detectChanges();
+    });
+
+    it('shows the month at the current scroll position in the toolbar', () => {
+      const label = toolbarRoot().querySelector('[data-testid="calendar-month-label"]');
+      expect(label?.textContent?.trim()).toBe('January 2026');
+    });
+
+    it('label tracks the scroll offset, discounting the label column', () => {
+      fixture.componentInstance.zoomDayWidth.set(20);
+      fixture.componentInstance.scrollLeft.set(fixture.componentInstance.LABEL_WIDTH + 40 * fixture.componentInstance.dayWidth());
+      expect(fixture.componentInstance.currentMonthLabel()).toBe('February 2026');
+    });
+
+    it('scrollMonth scrolls the timeline container by ~30 days of width, forward or back', () => {
+      const el = fixture.nativeElement.querySelector('.project-calendar__timeline-scroll') as HTMLElement;
+      const scrollBy = vi.fn();
+      (el as any).scrollBy = scrollBy;
+      fixture.componentInstance.scrollMonth(1);
+      expect(scrollBy).toHaveBeenCalledWith(expect.objectContaining({ left: 30 * fixture.componentInstance.dayWidth() }));
+      fixture.componentInstance.scrollMonth(-1);
+      expect(scrollBy).toHaveBeenLastCalledWith(expect.objectContaining({ left: -30 * fixture.componentInstance.dayWidth() }));
+    });
+  });
+
   describe('ruler tick spacing', () => {
     beforeEach(() => {
       store.modules.set(items); // '2026-01-01' -> '2026-01-05', 5 days
