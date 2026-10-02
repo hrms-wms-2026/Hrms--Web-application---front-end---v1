@@ -1,7 +1,8 @@
-**Last updated:** 2026-08-27
+**Last updated:** 2026-09-22
 
 ## Files
 
+- `2026-09-22-centralized-file-upload-design.md` — status: approved 2026-09-22 (chat brainstorm), no plan written yet. Fixes the profile-photo bug (avatar upload succeeds but `avatarUrl` never resolves to a viewable URL) as an isolated Phase 0, then adds a shared `UploadService` + `<app-file-upload>` component (immediate vs. staged modes) that all 5 existing upload sites (avatar, legal entity logo, project logo/banner, task attachments, objective assets) migrate to, backed by a new generic backend upload endpoint. Companion: `HRMS-Backend-v1/docs/superpowers/specs/next/2026-09-22-centralized-file-upload-design.md`.
 - `2026-08-27-attendance-history-redesign-frontend-design.md` — status: approved 2026-08-27, no plan written yet. Trims "My attendance history" rows to Date/Clock in/Clock out/Worked time/Status, moves detail fields (break, work mode, source) into a new shared `AttendanceDetailDrawerComponent` (Summary/Timeline/Daily activity from TrayApp), puts "My attendance history" and "My requests" side by side instead of stacked, extracts `AttendanceHistoryListComponent`/`MyRequestsPanelComponent` out of the 736-line `time-tracking.component`, and wires Team attendance rows to the same drawer. Companion: `HRMS-Backend-v1/docs/superpowers/specs/next/2026-08-27-attendance-history-redesign-backend-design.md`.
 - `2026-08-10-project-identifier-autosuggest-design.md` — status: approved 2026-08-10, no plan written yet. Auto-derives the Create Project form's Identifier field from the Name field (first word + 8-digit random suffix), stops once the user manually edits Identifier.
 - `2026-08-11-project-detail-milestone-tree-explorer-design.md` — status: approved 2026-08-11 (visual mockup), **implemented 2026-08-12** (see below — its card+sub-menu navigation shape was restored after a same-day detour). Adds a milestone sub-menu (Tree/Board/Backlog/My Task/List, nested routes under `/work/:id/milestones/:milestoneId`), reworks the milestone tree into an explorer/folder style (expand/collapse, root expanded/children collapsed by default) with a side-by-side detail panel fetched via the existing `getObjectiveById`, stub pages for the other 4 tabs, and a 1-line `app.config.ts` scroll-restoration fix. Reconciles with — does not reverse — the 2026-08-10 decision to remove the standalone milestone route (see the design doc's "Prior-decision reconciliation" section).
@@ -19,5 +20,6 @@
 - `2026-08-10-project-detail-inline-milestone-layout-design.md` moved to `specs/finished/2026-08-10/` on 2026-08-10 — its plan (4 tasks) finished the same day. See `specs/SUMMARY.md`.
 - `2026-08-10-milestone-card-uniform-height-and-default-select-design.md` moved to `specs/finished/2026-08-10/` on 2026-08-10 — its plan (3 tasks) finished the same day. See `specs/SUMMARY.md`.
 - `2026-08-20-work-management-project-page-redesign-design.md` moved to `specs/finished/2026-08-21/` on 2026-08-21 — see `specs/SUMMARY.md`.
+- `2026-09-21-task-subtasks-design.md` moved to `specs/finished/2026-09-21/` on 2026-09-21 — both backend and frontend plans finished. See `specs/SUMMARY.md`.
 
 This folder exists ready for the next not-yet-implemented design, per the finished/next convention in `../../rules/FILE_CREATION_RULES.md`.

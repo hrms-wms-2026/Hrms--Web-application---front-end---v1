@@ -1,10 +1,10 @@
 <a class="skip-link" href="#main-content">Skip to main content</a>
 
-<div class="main-layout" [class.main-layout--has-sub-sidebar]="navState.activeChildren().length > 0">
+<div class="main-layout" [class.main-layout--has-sub-sidebar]="navState.hasVisibleSubSidebar()">
   <app-side-navbar class="main-layout__rail" />
-  <app-top-navbar class="main-layout__topbar" [email]="email()" />
+  <app-top-navbar class="main-layout__topbar" [email]="email()" [avatarUrl]="avatarUrl()" [userName]="userName()" />
 
-  @if (navState.activeChildren().length > 0) {
+  @if (navState.hasVisibleSubSidebar()) {
     <app-sub-sidebar
       class="main-layout__sub-sidebar"
       [sectionLabel]="navState.activeItem()!.label"
@@ -12,18 +12,28 @@
     />
   }
 
-  <main id="main-content" class="main-content" tabindex="-1">
-    @if (!monitoringEnabled || trayPresence.canRenderProtectedContent()) {
-      <router-outlet />
-    } @else {
-      <app-locked-workspace-preview />
-      @if (trayPresence.isBlocking()) {
-        <app-tray-activation-gate />
+  <main
+    id="main-content"
+    class="main-content"
+    [class.main-content--gated]="monitoringEnabled && !trayPresence.canRenderProtectedContent()"
+    tabindex="-1"
+  >
+    <div class="main-content__viewport">
+      @if (!monitoringEnabled || trayPresence.canRenderProtectedContent()) {
+        <router-outlet />
+      } @else {
+        <app-locked-workspace-preview />
+        @if (trayPresence.isBlocking()) {
+          <app-tray-activation-gate />
+        }
       }
-    }
+    </div>
+    <app-drafts-bar />
   </main>
 
   <app-mobile-bottom-nav />
+  <app-draft-modal-host />
+  <app-unsaved-changes-dialog />
 </div>
 
 <div

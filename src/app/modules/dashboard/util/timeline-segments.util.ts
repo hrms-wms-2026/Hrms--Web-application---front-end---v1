@@ -17,8 +17,8 @@ export const SEGMENT_LABELS: Record<TimelineSegment['type'], string> = {
  * Glance strip and the full Activity Timeline page so the two never visually disagree. */
 export const SEGMENT_COLORS: Record<TimelineSegment['type'], string> = {
   working: 'var(--color-accent)',
-  break: 'var(--color-border)',
-  focus: 'var(--color-accent)',
+  break: 'var(--color-warning)',
+  focus: '#6366f1',
   idle: 'var(--color-border)'
 };
 
@@ -78,7 +78,50 @@ export function buildTimelineSegments(
     segments.push(...subdivideWorking(cursor, end, activityIntervals));
   }
 
-  return segments.map((s) => ({ type: s.type, widthPercent: ((s.end - s.start) / totalMs) * 100 }));
+  return applyMinimumVisibleWidth(
+    segments.map((s) => ({ type: s.type, widthPercent: ((s.end - s.start) / totalMs) * 100 }))
+  );
+}
+
+/** Below this width a segment renders as a sliver too thin to see (or to pick a color out of) in
+ * the ~2px strip both timeline views use - real time that occurred still deserves a visible dab
+ * of color instead of silently vanishing into its neighbor. Someone who starts and stops a break
+ * a handful of times in quick succession (exactly what happens while manually testing the clock
+ * in/break flow) previously rendered as one solid block of whichever type happened to end up
+ * widest, because every in-between "working" gap was a fraction of a percent wide. */
+const MIN_VISIBLE_WIDTH_PERCENT = 1.5;
+
+/** Bumps every non-zero-duration segment up to `MIN_VISIBLE_WIDTH_PERCENT`, taking the extra
+ * width proportionally from segments that have width to spare so the row still sums to 100%. */
+function applyMinimumVisibleWidth(
+  segments: { type: TimelineSegment['type']; widthPercent: number }[]
+): TimelineSegment[] {
+  const tooThin = segments.filter((s) => s.widthPercent > 0 && s.widthPercent < MIN_VISIBLE_WIDTH_PERCENT);
+  if (tooThin.length === 0) {
+    return segments;
+  }
+
+  const deficit = tooThin.reduce((sum, s) => sum + (MIN_VISIBLE_WIDTH_PERCENT - s.widthPercent), 0);
+  const donorPool = segments
+    .filter((s) => s.widthPercent >= MIN_VISIBLE_WIDTH_PERCENT)
+    .reduce((sum, s) => sum + s.widthPercent, 0);
+
+  // Every segment is already below the floor (e.g. a burst of very short activity blips) -
+  // nothing to borrow width from, so leave the proportions as computed rather than distorting
+  // them further.
+  if (donorPool <= 0) {
+    return segments;
+  }
+
+  return segments.map((s) => {
+    if (s.widthPercent > 0 && s.widthPercent < MIN_VISIBLE_WIDTH_PERCENT) {
+      return { type: s.type, widthPercent: MIN_VISIBLE_WIDTH_PERCENT };
+    }
+    if (s.widthPercent >= MIN_VISIBLE_WIDTH_PERCENT) {
+      return { type: s.type, widthPercent: s.widthPercent - deficit * (s.widthPercent / donorPool) };
+    }
+    return s;
+  });
 }
 
 /** Fills [rangeStart, rangeEnd) with focus/idle activity data where available, 'working' elsewhere. */

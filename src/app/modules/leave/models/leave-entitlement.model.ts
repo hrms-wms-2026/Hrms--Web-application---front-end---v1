@@ -1,12 +1,87 @@
 /** Matches the Leave Entitlements backend response and mutation contracts exactly. */
-export interface LeaveEntitlementResponse { id: string; employeeId: string; employeeNumber: string; employeeName: string; leaveTypeId: string; leaveTypeName: string; leaveTypeCode: string; year: number; totalDays: number; carriedForwardDays: number; usedDays: number; pendingDays: number; remainingDays: number; source: 'auto' | 'manual'; manualReason: string | null; isOverUtilized: boolean; warning: string | null; createdAt: string; updatedAt: string | null; }
+export interface LeaveEntitlementResponse {
+  id: string;
+  employeeId: string;
+  employeeNumber: string;
+  employeeName: string;
+  leaveTypeId: string;
+  leaveTypeName: string;
+  leaveTypeCode: string;
+  year: number;
+  totalHours: number;
+  carriedForwardHours: number;
+  usedHours: number;
+  pendingHours: number;
+  remainingHours: number;
+  source: 'auto' | 'manual';
+  manualReason: string | null;
+  isOverUtilized: boolean;
+  warning: string | null;
+  createdAt: string;
+  updatedAt: string | null;
+}
 export interface LeaveEntitlementListFilter { legalEntityId?: string; departmentId?: string; leaveTypeId?: string; search?: string; }
 export interface GenerateEntitlementsRequest { year: number; legalEntityId: string | null; }
-export interface LeaveEntitlementGenerationLineResponse { employeeId: string; employeeNumber: string; employeeName: string; leaveTypeId: string; leaveTypeName: string; totalDays: number; carriedForwardDays: number; remainingDays: number; probationRestrictionApplied: boolean; forfeitedDays: number; carryForwardExpiresOn: string | null; warning: string | null; }
+export interface LeaveEntitlementGenerationLineResponse {
+  employeeId: string;
+  employeeNumber: string;
+  employeeName: string;
+  leaveTypeId: string;
+  leaveTypeName: string;
+  totalHours: number;
+  carriedForwardHours: number;
+  remainingHours: number;
+  probationRestrictionApplied: boolean;
+  forfeitedHours: number;
+  carryForwardExpiresOn: string | null;
+  warning: string | null;
+}
 export interface LeaveEntitlementGenerationSkipResponse { employeeId: string | null; employeeName: string | null; reason: string; }
 export interface LeaveEntitlementGenerationErrorResponse { employeeId: string | null; employeeName: string | null; reason: string; }
-export interface LeaveEntitlementGenerationPreviewResponse { year: number; employeeCount: number; entitlementLineCount: number; lines: LeaveEntitlementGenerationLineResponse[]; skipped: LeaveEntitlementGenerationSkipResponse[]; }
-export interface LeaveEntitlementGenerationResultResponse { year: number; createdCount: number; skippedCount: number; errorCount: number; created: LeaveEntitlementGenerationLineResponse[]; skipped: LeaveEntitlementGenerationSkipResponse[]; errors: LeaveEntitlementGenerationErrorResponse[]; }
-export interface CreateManualEntitlementRequest { employeeId: string; leaveTypeId: string; year: number; totalDays: number; carriedForwardDays: number; reason: string; }
-export interface AdjustEntitlementRequest { totalDays: number; carriedForwardDays: number; reason: string; confirmNegativeRemaining: boolean; }
+export interface LeaveEntitlementGenerationPreviewResponse {
+  year: number;
+  employeeCount: number;
+  entitlementLineCount: number;
+  lines: LeaveEntitlementGenerationLineResponse[];
+  skipped: LeaveEntitlementGenerationSkipResponse[];
+}
+export interface LeaveEntitlementGenerationResultResponse {
+  year: number;
+  createdCount: number;
+  skippedCount: number;
+  errorCount: number;
+  created: LeaveEntitlementGenerationLineResponse[];
+  skipped: LeaveEntitlementGenerationSkipResponse[];
+  errors: LeaveEntitlementGenerationErrorResponse[];
+}
+export interface CreateManualEntitlementRequest {
+  employeeId: string;
+  leaveTypeId: string;
+  year: number;
+  totalHours: number;
+  carriedForwardHours: number;
+  reason: string;
+}
+export interface AdjustEntitlementRequest {
+  totalHours: number;
+  carriedForwardHours: number;
+  reason: string;
+  confirmNegativeRemaining: boolean;
+}
 export interface RecalculateEntitlementRequest { confirmNegativeRemaining: boolean; }
+export interface LeaveBalanceAuditResponse {
+  id: string;
+  employeeId: string;
+  employeeNumber: string;
+  employeeName: string;
+  leaveTypeId: string;
+  leaveTypeName: string;
+  leaveTypeCode: string;
+  changeType: 'accrual' | 'deduction' | 'carry_forward' | 'forfeiture' | 'adjustment';
+  hoursChanged: number;
+  balanceAfter: number;
+  reason: string | null;
+  relatedRequestId: string | null;
+  createdAt: string;
+}
+export interface LeaveBalanceAuditListFilter { employeeId?: string; leaveTypeId?: string; changeType?: string; fromDate?: string; toDate?: string; }

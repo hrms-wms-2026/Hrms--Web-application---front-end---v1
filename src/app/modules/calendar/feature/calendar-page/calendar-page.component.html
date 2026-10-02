@@ -47,10 +47,10 @@
       <app-calendar-month-grid [year]="year()" [month]="month()" [events]="store.events()" [timezone]="store.myTimezone()" (eventClick)="openEdit($event)" />
     }
     @case ('week') {
-      <app-calendar-week-view [weekStart]="weekStart()" [events]="store.events()" [timezone]="store.myTimezone()" (eventClick)="openEdit($event)" (slotClick)="onSlotClick($event)" />
+      <app-calendar-week-view [weekStart]="weekStart()" [events]="store.events()" [timezone]="store.myTimezone()" (eventClick)="openEdit($event)" (slotClick)="onSlotClick($event)" (slotRange)="onSlotRange($event)" />
     }
     @case ('day') {
-      <app-calendar-day-view [date]="dayDate()" [events]="store.events()" [timezone]="store.myTimezone()" (eventClick)="openEdit($event)" (slotClick)="onSlotClick($event)" />
+      <app-calendar-day-view [date]="dayDate()" [events]="store.events()" [timezone]="store.myTimezone()" (eventClick)="openEdit($event)" (slotClick)="onSlotClick($event)" (slotRange)="onSlotRange($event)" />
     }
     @case ('agenda') {
       <app-calendar-agenda-view [events]="store.events()" [timezone]="store.myTimezone()" (eventClick)="openEdit($event)" />
@@ -62,13 +62,25 @@
   [open]="formOpen()"
   [event]="editingEvent()"
   [prefillStart]="prefillStart()"
-  [saving]="store.saving()"
+  [prefillEnd]="prefillEnd()"
+  [saving]="store.saving() || submitting()"
   [conflicts]="store.conflicts()"
   [checkingConflicts]="store.checkingConflicts()"
   [myTimezone]="store.myTimezone()"
+  [eligibleNominees]="store.eligibleNominees()"
+  [hasTeamsCapableConnection]="store.hasTeamsCapableConnection()"
+  [hasZoomCapableConnection]="store.hasZoomCapableConnection()"
+  [meetingActionSaving]="store.meetingActionSaving()"
   (save)="onSave($event)"
   (delete)="onDelete($event)"
   (respond)="onRespond($event)"
   (checkConflicts)="onCheckConflicts($event)"
+  (loadEligibleNominees)="onLoadEligibleNominees()"
+  (addMeeting)="onAddMeeting($event)"
+  (removeMeeting)="onRemoveMeeting()"
+  (addParticipantsToEvent)="onAddParticipantsToEvent($event)"
+  (removeExistingParticipant)="onRemoveExistingParticipant($event)"
+  (addGuestsToEvent)="onAddGuestsToEvent($event)"
+  (removeExistingGuest)="onRemoveExistingGuest($event)"
   (cancel)="closeForm()"
 />

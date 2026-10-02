@@ -1,18 +1,13 @@
-import { Component, OnDestroy, OnInit, inject, signal } from '@angular/core';
-import { Router } from '@angular/router';
-import { firstValueFrom } from 'rxjs';
+import { Component, OnDestroy, effect, inject, signal, untracked } from '@angular/core';
+import { AuthStore } from '../../../../core/auth/state/auth.store';
+import { PermissionService } from '../../../../core/auth/state/permission.service';
 import { NotificationsStore } from '../../../../core/state/notifications.store';
+import { TrayPresenceStore } from '../../../../core/tray-presence/state/tray-presence.store';
+import { tenantWorkspaceReady } from '../../../../core/tray-presence/utils/tenant-workspace-ready';
 import { NotificationItem } from '../../../../core/services/notification-api.service';
+import { NotificationNavigationService } from '../../../../core/services/notification-navigation.service';
 import { PopoverComponent } from '../../../../shared/ui/popover/popover.component';
-import { TaskApiService } from '../../../../modules/work/data-access/task-api.service';
 import { NotificationDropdownComponent } from './notification-dropdown/notification-dropdown.component';
-
-const WORK_RELATED_TYPES = new Set([
-  'task',
-  'task_creation_request',
-  'objective_change_request',
-  'allocation_extend'
-]);
 
 @Component({
   selector: 'app-notification-bell',
@@ -84,21 +79,41 @@ const WORK_RELATED_TYPES = new Set([
     }
   `]
 })
-export class NotificationBellComponent implements OnInit, OnDestroy {
+export class NotificationBellComponent implements OnDestroy {
   protected readonly store = inject(NotificationsStore);
-  private readonly router = inject(Router);
-  private readonly taskApi = inject(TaskApiService);
+  private readonly navigation = inject(NotificationNavigationService);
+  private readonly permissionService = inject(PermissionService);
+  private readonly trayPresence = inject(TrayPresenceStore);
+  private readonly authStore = inject(AuthStore);
 
   protected readonly isOpen = signal(false);
   private pollId: ReturnType<typeof setInterval> | null = null;
 
-  ngOnInit(): void {
+  constructor() {
+    effect(() => {
+      const unlocked = tenantWorkspaceReady(this.authStore, this.permissionService, this.trayPresence);
+      untracked(() => {
+        if (unlocked) this.startPolling();
+        else this.stopPolling();
+      });
+    });
+  }
+
+  ngOnDestroy(): void {
+    this.stopPolling();
+  }
+
+  private startPolling(): void {
+    if (this.pollId) return;
     void this.store.refreshUnreadCount();
     this.pollId = setInterval(() => void this.store.refreshUnreadCount(), 60_000);
   }
 
-  ngOnDestroy(): void {
-    if (this.pollId) clearInterval(this.pollId);
+  private stopPolling(): void {
+    if (this.pollId) {
+      clearInterval(this.pollId);
+      this.pollId = null;
+    }
   }
 
   toggle(): void {
@@ -114,44 +129,10 @@ export class NotificationBellComponent implements OnInit, OnDestroy {
   async onItemClicked(item: NotificationItem): Promise<void> {
     await this.store.markRead(item.id);
     this.close();
-    await this.navigateFromNotification(item);
+    await this.navigation.navigate(item);
   }
 
   async onMarkAllRead(): Promise<void> {
     await this.store.markAllRead();
-  }
-
-  private async navigateFromNotification(item: NotificationItem): Promise<void> {
-    if (item.isNavigable && item.destinationKey === 'attendance_correction_approval' && item.attendanceCorrectionId) {
-      await this.router.navigate(['/attendance/time-tracking'], {
-        queryParams: { view: 'team', type: 'corrections', requestId: item.attendanceCorrectionId }
-      });
-      return;
-    }
-
-    if (item.isNavigable && item.destinationKey === 'work_area_change_approval' && item.workAreaChangeRequestId) {
-      await this.router.navigate(['/attendance/time-tracking'], {
-        queryParams: { view: 'team', type: 'work-area', requestId: item.workAreaChangeRequestId }
-      });
-      return;
-    }
-
-    const type = item.relatedEntityType;
-    const id = item.relatedEntityId;
-    if (!type || !id || !WORK_RELATED_TYPES.has(type)) {
-      return;
-    }
-
-    try {
-      const nav = await firstValueFrom(this.taskApi.getNotificationNavigation(type, id));
-      const commands = ['/work', nav.projectId, 'milestones', nav.objectiveId, nav.targetTab];
-      const extras =
-        nav.targetTab === 'board' && nav.taskId
-          ? { queryParams: { highlightTaskId: nav.taskId } }
-          : {};
-      await this.router.navigate(commands, extras);
-    } catch {
-      await this.router.navigate(['/work']);
-    }
   }
 }

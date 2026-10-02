@@ -1,3 +1,4 @@
+import { unsavedChangesGuard } from '../../core/guards/unsaved-changes.guard';
 import { WORK_ROUTES } from './work.routes';
 
 describe('WORK_ROUTES', () => {
@@ -14,28 +15,43 @@ describe('WORK_ROUTES', () => {
     const emptyChild = milestoneRoute.children!.find((r) => r.path === '')!;
     expect(emptyChild.redirectTo).toBe('tree');
     expect(emptyChild.pathMatch).toBe('full');
-    expect(milestoneRoute.children!.map((route) => route.path)).toEqual(['', 'tree', 'approvals']);
+    expect(milestoneRoute.children!.map((route) => route.path)).toEqual(['', 'tree']);
   });
 
-  it('registers Board, Backlog, My Task, Calendar, Settings, and the task pages as project-level siblings', () => {
+  it('registers Approvals, Board, Backlog, Calendar, and Settings as project-level siblings', () => {
     const idRoute = WORK_ROUTES.find((r) => r.path === ':id')!;
-    expect(idRoute.children!.map((route) => route.path)).toEqual(['milestones/:milestoneId', 'board', 'backlog', 'my-task', 'calendar', 'settings', 'task/new', 'task/:taskId']);
+    expect(idRoute.children!.map((route) => route.path)).toEqual(['milestones/:milestoneId', 'approvals', 'board', 'backlog', 'calendar', 'settings']);
+    expect(idRoute.children!.find((r) => r.path === 'approvals')!.loadComponent).toBeTruthy();
     expect(idRoute.children!.find((r) => r.path === 'board')!.loadComponent).toBeTruthy();
     expect(idRoute.children!.find((r) => r.path === 'backlog')!.loadComponent).toBeTruthy();
-    expect(idRoute.children!.find((r) => r.path === 'my-task')!.loadComponent).toBeTruthy();
     expect(idRoute.children!.find((r) => r.path === 'calendar')!.loadComponent).toBeTruthy();
     expect(idRoute.children!.find((r) => r.path === 'settings')!.loadComponent).toBeTruthy();
-    expect(idRoute.children!.find((r) => r.path === 'task/:taskId')!.loadComponent).toBeTruthy();
-    const createRoute = idRoute.children!.find((r) => r.path === 'task/new')!;
-    expect(createRoute.loadComponent).toBeTruthy();
-    expect(createRoute.data).toEqual({ mode: 'create' });
-    expect(idRoute.children!.indexOf(createRoute)).toBeLessThan(idRoute.children!.findIndex((r) => r.path === 'task/:taskId'));
+  });
+
+  it('no longer registers standalone task routes — task create/edit is an in-page modal', () => {
+    const idRoute = WORK_ROUTES.find((r) => r.path === ':id')!;
+    expect(idRoute.children!.find((r) => r.path === 'task/new')).toBeUndefined();
+    expect(idRoute.children!.find((r) => r.path === 'task/:taskId')).toBeUndefined();
   });
 
   it('has no remaining milestone-scoped stub routes', () => {
     const idRoute = WORK_ROUTES.find((r) => r.path === ':id')!;
     const milestoneRoute = idRoute.children!.find((r) => r.path === 'milestones/:milestoneId')!;
-    expect(milestoneRoute.children!.map((r) => r.path)).toEqual(['', 'tree', 'approvals']);
-    expect(milestoneRoute.children!.find((r) => r.path === 'approvals')!.loadComponent).toBeTruthy();
+    expect(milestoneRoute.children!.map((r) => r.path)).toEqual(['', 'tree']);
+  });
+
+  it('board, backlog, and milestone tree routes are protected by the unsaved-changes guard', () => {
+    const idRoute = WORK_ROUTES.find((r) => r.path === ':id')!;
+    const board = idRoute.children!.find((r) => r.path === 'board');
+    const backlog = idRoute.children!.find((r) => r.path === 'backlog');
+    const milestone = idRoute.children!.find((r) => r.path === 'milestones/:milestoneId');
+    const tree = milestone?.children?.find((r) => r.path === 'tree');
+
+    expect(board?.canDeactivate).toBeDefined();
+    expect(board?.canDeactivate).toContain(unsavedChangesGuard);
+    expect(backlog?.canDeactivate).toBeDefined();
+    expect(backlog?.canDeactivate).toContain(unsavedChangesGuard);
+    expect(tree?.canDeactivate).toBeDefined();
+    expect(tree?.canDeactivate).toContain(unsavedChangesGuard);
   });
 });

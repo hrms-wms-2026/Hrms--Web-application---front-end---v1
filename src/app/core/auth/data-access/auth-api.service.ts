@@ -10,8 +10,11 @@ import { SessionExchangeRequestDto } from '../models/dto/session-exchange-reques
 import { InvitationPreviewDto } from '../models/dto/invitation-preview.dto';
 import { PublishedLegalDocumentDto } from '../models/dto/published-legal-document.dto';
 import { AcceptEmployeeInvitationRequestDto } from '../models/dto/accept-employee-invitation-request.dto';
+import { ForgotPasswordRequestDto } from '../models/dto/forgot-password-request.dto';
+import { ResetPasswordRequestDto } from '../models/dto/reset-password-request.dto';
+import { MessageResponseDto } from '../models/dto/message-response.dto';
 
-import { getRootHostname } from '../utils/tenant-redirect';
+import { getRootHostname, isValidTenantSlug } from '../utils/tenant-redirect';
 
 export function getSystemApiUrl(apiUrl: string): string {
   try {
@@ -21,6 +24,16 @@ export function getSystemApiUrl(apiUrl: string): string {
   } catch {
     return apiUrl;
   }
+}
+
+export function getTenantApiUrl(apiUrl: string, tenantSlug: string): string {
+  if (!isValidTenantSlug(tenantSlug)) {
+    throw new Error('Invalid tenant slug.');
+  }
+
+  const url = new URL(apiUrl);
+  url.hostname = `${tenantSlug}.${getRootHostname(url.hostname)}`;
+  return url.toString().replace(/\/$/, '');
 }
 
 @Injectable({ providedIn: 'root' })
@@ -89,10 +102,39 @@ export class AuthApiService {
   }
 
   /**
+   * Validates a remembered session from the root login page against the hinted tenant host.
+   * The hint itself is not proof of authentication; only a successful /auth/me response is.
+   */
+  meForTenant(tenantSlug: string): Observable<AuthResponseDto> {
+    const baseUrl = getTenantApiUrl(environment.apiUrl, tenantSlug);
+    return this.http.get<AuthResponseDto>(`${baseUrl}${API_ENDPOINTS.auth.me}`);
+  }
+
+  /**
    * Confirmed against AuthSessionController: POST /auth/logout, [Authorize(TenantPolicy)],
    * calls SignOutAsync and returns 204 No Content — no response body, matching Observable<void>.
    */
   logout(): Observable<void> {
     return this.http.post<void>(`${environment.apiUrl}${API_ENDPOINTS.auth.logout}`, {});
+  }
+
+  /**
+   * Anonymous, whatever host it's called from: AuthPasswordController branches server-side on
+   * tenant vs. base host context, so unlike login() this must NOT retarget to the root/system host.
+   * Always resolves with the same generic message regardless of whether the email exists.
+   */
+  forgotPassword(email: string): Observable<MessageResponseDto> {
+    const payload: ForgotPasswordRequestDto = { email };
+    return this.http.post<MessageResponseDto>(`${environment.apiUrl}${API_ENDPOINTS.auth.forgotPassword}`, payload);
+  }
+
+  /**
+   * Anonymous, tenant-host-only in practice: the emailed reset link lands on the tenant's own
+   * subdomain (see EmailTemplateRenderer.ApplyTenantSlug), so this deliberately does not retarget
+   * to the root/system host like login() does.
+   */
+  resetPassword(token: string, newPassword: string): Observable<MessageResponseDto> {
+    const payload: ResetPasswordRequestDto = { token, newPassword };
+    return this.http.post<MessageResponseDto>(`${environment.apiUrl}${API_ENDPOINTS.auth.resetPassword}`, payload);
   }
 }

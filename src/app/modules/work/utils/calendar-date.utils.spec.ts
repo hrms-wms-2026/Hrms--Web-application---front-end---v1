@@ -1,19 +1,14 @@
-import { addCalendarMonths } from './calendar-date.utils';
+import { rangeToPercent } from './calendar-date.utils';
 
-describe('addCalendarMonths', () => {
-  it('adds months within the same year', () => {
-    expect(addCalendarMonths('2026-05-01', 2)).toBe('2026-07-01');
+describe('rangeToPercent', () => {
+  it('places a range as left/width percentages of the window, clamped to [0,100]', () => {
+    const r = rangeToPercent('2026-03-11', '2026-03-20', '2026-03-01', '2026-03-31');
+    expect(Math.round(r.leftPct)).toBe(32);
+    expect(Math.round(r.widthPct)).toBe(32);
   });
 
-  it('rolls over into the next year', () => {
-    expect(addCalendarMonths('2026-11-15', 3)).toBe('2027-02-15');
-  });
-
-  it('rolls back into the previous year', () => {
-    expect(addCalendarMonths('2026-02-10', -3)).toBe('2025-11-10');
-  });
-
-  it('supports a zero-month no-op', () => {
-    expect(addCalendarMonths('2026-05-01', 0)).toBe('2026-05-01');
+  it('clamps a range that starts before the window', () => {
+    const r = rangeToPercent('2026-02-01', '2026-03-05', '2026-03-01', '2026-03-31');
+    expect(r.leftPct).toBe(0);
   });
 });

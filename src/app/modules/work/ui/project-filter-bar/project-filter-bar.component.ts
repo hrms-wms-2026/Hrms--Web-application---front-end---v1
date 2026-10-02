@@ -1,9 +1,10 @@
 import { Component, OnInit, computed, inject, output, signal } from '@angular/core';
-import { SelectComponent, SelectOption } from '../../../../shared/ui/select/select.component';
+import { WorkDropdownOption } from '../work-dropdown/work-dropdown.component';
 import { ProjectCategoryStore } from '../../state/project-category.store';
 import { AchievedFilter } from '../../state/project-list.store';
+import { TaskFilterBarComponent, TaskFilterFieldConfig } from '../task-filter-bar/task-filter-bar.component';
 
-const STATUS_OPTIONS: readonly SelectOption[] = [
+const STATUS_OPTIONS: readonly WorkDropdownOption[] = [
   { value: 'all', label: 'All statuses' },
   { value: 'active', label: 'Active' },
   { value: 'archived', label: 'Archived' }
@@ -12,75 +13,58 @@ const STATUS_OPTIONS: readonly SelectOption[] = [
 @Component({
   selector: 'app-project-filter-bar',
   standalone: true,
-  imports: [SelectComponent],
+  imports: [TaskFilterBarComponent],
   template: `
-    <div class="flex flex-wrap items-start justify-end gap-2">
-      <app-select
-        [options]="categoryOptions()"
-        [value]="selectedCategory() ?? 'all'"
-        ariaLabel="Project category filter"
-        [icon]="'category'"
-        (valueChange)="selectCategoryFromDropdown($event)"
-      />
-      <app-select
-        [options]="statusOptions"
-        [value]="selectedStatus()"
-        ariaLabel="Project status filter"
-        [icon]="'status'"
-        (valueChange)="selectStatusFromDropdown($event)"
-      />
-    </div>
+    <app-task-filter-bar
+      [fields]="filterFields()"
+      [values]="filterValues()"
+      (fieldChanged)="onFieldChanged($event)"
+    />
   `
 })
 export class ProjectFilterBarComponent implements OnInit {
   private readonly categoryStore = inject(ProjectCategoryStore);
 
   readonly statusOptions = STATUS_OPTIONS;
-  readonly categoryOptions = computed<SelectOption[]>(() => [
-    { value: 'all', label: 'All categories' },
-    ...this.categoryStore.categories().map((category) => ({ value: category.id, label: category.name }))
+  readonly categoryOptions = computed<WorkDropdownOption[]>(() =>
+    this.categoryStore.categories().map((category) => ({ value: category.id, label: category.name }))
+  );
+
+  readonly filterFields = computed<TaskFilterFieldConfig[]>(() => [
+    { key: 'category', label: 'Category', icon: 'category', kind: 'multi', options: this.categoryOptions() },
+    { key: 'status', label: 'Status', icon: 'status', kind: 'single', options: this.statusOptions, defaultValues: ['all'] }
   ]);
 
-  categoryChanged = output<string | null>();
+  categoriesChanged = output<string[]>();
   achievedFilterChanged = output<AchievedFilter>();
 
-  // Retained as state-compatible methods for existing consumers and tests.
-  categoryOpen = signal(false);
-  statusOpen = signal(false);
-  selectedCategory = signal<string | null>(null);
+  selectedCategories = signal<string[]>([]);
   selectedStatus = signal<string>('all');
+
+  readonly filterValues = computed<Record<string, string[]>>(() => ({
+    category: this.selectedCategories(),
+    status: [this.selectedStatus()]
+  }));
 
   ngOnInit(): void {
     this.categoryStore.loadCategories();
   }
 
-  toggleCategoryDropdown(): void {
-    this.categoryOpen.update((value) => !value);
-    if (this.categoryOpen()) this.statusOpen.set(false);
+  onFieldChanged(event: { key: string; values: string[] }): void {
+    if (event.key === 'category') {
+      this.selectCategories(event.values);
+    } else if (event.key === 'status') {
+      this.selectStatus(event.values[0] ?? 'all');
+    }
   }
 
-  toggleStatusDropdown(): void {
-    this.statusOpen.update((value) => !value);
-    if (this.statusOpen()) this.categoryOpen.set(false);
-  }
-
-  selectCategoryFromDropdown(value: string): void {
-    this.selectCategory(value === 'all' ? null : value);
-  }
-
-  selectStatusFromDropdown(value: string): void {
-    this.selectStatus(value);
-  }
-
-  selectCategory(value: string | null): void {
-    this.selectedCategory.set(value);
-    this.categoryOpen.set(false);
-    this.categoryChanged.emit(value);
+  selectCategories(values: string[]): void {
+    this.selectedCategories.set(values);
+    this.categoriesChanged.emit(values);
   }
 
   selectStatus(value: string): void {
     this.selectedStatus.set(value);
-    this.statusOpen.set(false);
     this.achievedFilterChanged.emit(value as AchievedFilter);
   }
 }

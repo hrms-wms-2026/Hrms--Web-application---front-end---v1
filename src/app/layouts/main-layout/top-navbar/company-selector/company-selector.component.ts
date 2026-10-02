@@ -1,6 +1,9 @@
-import { ChangeDetectionStrategy, Component, computed, inject, OnInit, signal } from '@angular/core';
+import { ChangeDetectionStrategy, Component, computed, effect, inject, signal } from '@angular/core';
+import { AuthStore } from '../../../../core/auth/state/auth.store';
 import { PermissionService } from '../../../../core/auth/state/permission.service';
 import { NotificationService } from '../../../../core/services/notification.service';
+import { TrayPresenceStore } from '../../../../core/tray-presence/state/tray-presence.store';
+import { tenantWorkspaceReady } from '../../../../core/tray-presence/utils/tenant-workspace-ready';
 import { LegalEntityStore } from '../../../../modules/organization/state/legal-entity.store';
 import { CreateLegalEntityRequest } from '../../../../modules/organization/models/legal-entity.model';
 import { CreateCompanyModalComponent } from '../../../../modules/organization/ui/create-company-modal/create-company-modal.component';
@@ -14,10 +17,12 @@ import { PopoverComponent } from '../../../../shared/ui/popover/popover.componen
   styleUrl: './company-selector.component.css',
   changeDetection: ChangeDetectionStrategy.OnPush
 })
-export class CompanySelectorComponent implements OnInit {
+export class CompanySelectorComponent {
   readonly store = inject(LegalEntityStore);
   private readonly permissionService = inject(PermissionService);
   private readonly notificationService = inject(NotificationService);
+  private readonly trayPresence = inject(TrayPresenceStore);
+  private readonly authStore = inject(AuthStore);
 
   readonly isOpen = signal(false);
   readonly showCreateModal = signal(false);
@@ -31,6 +36,9 @@ export class CompanySelectorComponent implements OnInit {
     if (this.selectedCompany()) {
       return this.selectedCompany()!.name;
     }
+    if (!tenantWorkspaceReady(this.authStore, this.permissionService, this.trayPresence)) {
+      return 'Select Company';
+    }
     if (this.store.loading()) {
       return 'Loading companies...';
     }
@@ -43,10 +51,14 @@ export class CompanySelectorComponent implements OnInit {
     return 'Select Company';
   });
 
-  ngOnInit(): void {
-    if (!this.store.loaded() && !this.store.loading()) {
-      this.store.loadCompanies();
-    }
+  constructor() {
+    effect(() => {
+      if (!tenantWorkspaceReady(this.authStore, this.permissionService, this.trayPresence))
+        return;
+      if (!this.store.loaded() && !this.store.loading()) {
+        this.store.loadCompanies();
+      }
+    });
   }
 
   toggle(): void {

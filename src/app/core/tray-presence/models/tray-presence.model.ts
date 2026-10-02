@@ -1,5 +1,6 @@
 export type TrayPresencePhase =
   | 'checking'
+  | 'needs-code'
   | 'code-loading'
   | 'waiting'
   | 'connected'

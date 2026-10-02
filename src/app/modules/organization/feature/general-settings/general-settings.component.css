@@ -34,59 +34,76 @@
   border-bottom: none !important;
 }
 
-/* ── Form ─────────────────────────────────────────────────────── */
+/* ── Form & Section Rows (Non-Card Layout) ─────────────────────────── */
 .gs-form {
   display: flex;
   flex-direction: column;
-  gap: 1rem;
 }
 
-/* ── Section card ───────────────────────────────────────────── */
+.gs-sections-container,
 .gs-card-container {
   display: flex;
   flex-direction: column;
-  gap: 1.5rem;
-  padding: 1.5rem 1.75rem;
-  border: 1px solid color-mix(in srgb, var(--color-border) 60%, transparent);
-  border-radius: 12px;
-  background: var(--color-surface);
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.02);
+  padding: 0.25rem 0 3rem;
+  width: 100%;
 }
 
-.gs-section-block {
+.gs-section-row {
+  display: grid;
+  grid-template-columns: 280px minmax(0, 1fr);
+  gap: 3rem;
+  padding: 2.25rem 0;
+  border-bottom: 1px solid var(--color-border);
+}
+
+.gs-section-row:first-child {
+  padding-top: 0.5rem;
+}
+
+.gs-section-row:last-child {
+  border-bottom: none;
+  padding-bottom: 3.5rem;
+}
+
+.gs-section-info {
   display: flex;
   flex-direction: column;
-  gap: 1rem;
+  gap: 0.35rem;
 }
 
 .gs-section__title {
   margin: 0;
-  font-size: 0.9375rem;
-  font-weight: 600;
-  letter-spacing: -0.01em;
+  font-size: 1.05rem;
+  font-weight: 700;
+  letter-spacing: -0.015em;
   color: var(--color-text-primary);
-}
-
-/* ── Identity & Logo row ─────────────────────────────────────── */
-.gs-identity-row {
+  line-height: 1.35;
   display: flex;
-  align-items: flex-start;
-  gap: 1.5rem;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 0.5rem;
 }
 
-.gs-identity-fields {
-  flex: 1;
+.gs-section__description {
+  margin: 0;
+  font-size: 0.84rem;
+  color: var(--color-text-secondary);
+  line-height: 1.5;
+}
+
+.gs-section-content {
+  display: flex;
+  flex-direction: column;
+  gap: 1.25rem;
   min-width: 0;
 }
 
-/* ── Logo upload area ─────────────────────────────────────────── */
-.gs-logo-upload-block {
+/* ── Logo Row ─────────────────────────────────────────────── */
+.gs-logo-row {
   display: flex;
-  flex-direction: column;
   align-items: center;
-  gap: 0.625rem;
-  flex-shrink: 0;
-  margin-top: 1.25rem;
+  gap: 1.25rem;
+  margin-bottom: 0.25rem;
 }
 
 .gs-logo-preview {
@@ -96,23 +113,10 @@
   flex-shrink: 0;
 }
 
-.gs-logo-info {
+.gs-logo-meta {
   display: flex;
   flex-direction: column;
   gap: 0.375rem;
-}
-
-.gs-logo-info__title {
-  margin: 0;
-  font-size: 0.875rem;
-  font-weight: 600;
-  color: var(--color-text-primary);
-}
-
-.gs-logo-info__hint {
-  margin: 0;
-  font-size: 0.75rem;
-  color: var(--color-text-secondary);
 }
 
 .gs-logo-actions {
@@ -125,16 +129,23 @@
   position: relative;
   display: inline-flex;
   align-items: center;
+  justify-content: center;
   gap: 0.375rem;
-  margin-top: 0.25rem;
-  padding: 0.375rem 0.875rem;
-  border-radius: var(--radius-content);
+  padding: 0.375rem 0.75rem;
+  border-radius: 6px;
   border: 1px solid var(--color-border);
-  background: var(--color-surface-secondary);
+  background: var(--color-surface);
   color: var(--color-text-primary);
-  font-size: 0.8125rem;
+  font-size: 0.75rem;
   font-weight: 500;
   cursor: pointer;
+  transition: background-color 150ms ease, border-color 150ms ease;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.03);
+}
+
+.gs-logo-btn:hover:not(.gs-logo-btn--busy) {
+  background: var(--color-surface-secondary);
+  border-color: color-mix(in srgb, var(--color-border) 80%, black);
 }
 
 .gs-logo-btn--busy {
@@ -154,127 +165,97 @@
 }
 
 .gs-logo-remove-btn {
-  margin-top: 0.25rem;
-  padding: 0.375rem 0.875rem;
-  border-radius: var(--radius-content);
-  border: 1px solid var(--color-border);
-  background: transparent;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0.375rem 0.625rem;
+  border-radius: 6px;
+  border: 1px solid color-mix(in srgb, var(--color-danger) 25%, transparent);
+  background: var(--color-danger-subtle);
   color: var(--color-danger-text);
-  font-size: 0.8125rem;
+  font-size: 0.75rem;
   font-weight: 500;
   cursor: pointer;
+  transition: filter 150ms ease;
 }
 
-/* ── Dense field grid ───────────────────────────────────────── */
+.gs-logo-remove-btn:hover:not(:disabled) {
+  filter: brightness(0.96);
+}
+
+.gs-logo-hint {
+  font-size: 0.6875rem;
+  color: var(--color-text-secondary);
+}
+
+/* ── Field grid ─────────────────────────────────────────────── */
 .gs-field-grid {
   display: grid;
-  gap: 0.75rem 1rem;
+  gap: 1.25rem 1.5rem;
 }
 
 .gs-field-grid--2 {
-  grid-template-columns: repeat(2, 1fr);
+  grid-template-columns: repeat(2, minmax(0, 1fr));
 }
 
 .gs-field-grid--3 {
-  grid-template-columns: repeat(3, 1fr);
+  grid-template-columns: repeat(3, minmax(0, 1fr));
 }
 
-/* ── Responsive ────────────────────────────────────────────── */
-@media (max-width: 1024px) {
-  .gs-field-grid--3 {
-    grid-template-columns: repeat(2, 1fr);
-  }
-}
-
-@media (max-width: 768px) {
-  .gs-identity-row {
-    flex-direction: column;
-    align-items: flex-start;
-    gap: 1rem;
-  }
-
-  .gs-field-grid--2,
-  .gs-field-grid--3 {
-    grid-template-columns: 1fr;
-  }
-
-  .gs-sticky-save {
-    position: relative;
-    bottom: auto;
-    margin-left: 0;
-    margin-right: 0;
-    margin-bottom: 0;
-    padding: 1rem 0 2rem 0;
-    box-shadow: none;
-    background: transparent;
-  }
-}
-
-@media (max-width: 640px) {
-  .gs-sticky-save {
-    flex-direction: column;
-    align-items: stretch;
-    gap: 0.5rem;
-    padding: 0.625rem 0 2rem 0;
-  }
-
-  .gs-sticky-save__hint {
-    font-size: 0.7rem;
-  }
-}
-
-/* ── Fieldset ─────────────────────────────────────────────────── */
+/* ── Fieldset & Weekdays ──────────────────────────────────────── */
 .gs-fieldset {
   border: none;
   padding: 0;
   margin: 0;
   display: flex;
   flex-direction: column;
-  gap: 0.625rem;
-}
-
-.gs-fieldset--span-2 {
-  grid-column: span 2;
-}
-
-@media (max-width: 1024px) {
-  .gs-fieldset--span-2 {
-    grid-column: span 1;
-  }
+  gap: 0.25rem;
 }
 
 .gs-fieldset__legend {
   font-size: 0.75rem;
-  font-weight: 600;
-  text-transform: uppercase;
-  letter-spacing: 0.03em;
+  font-weight: 500;
   color: var(--color-text-secondary);
   padding: 0;
   margin-bottom: 0.25rem;
 }
 
-/* ── Weekday chips ────────────────────────────────────────────── */
 .gs-weekdays {
   display: flex;
   align-items: center;
-  gap: 0.375rem;
-  flex-wrap: wrap;
+  gap: 2px;
+  padding: 3px;
+  background: var(--color-surface-secondary);
+  border: 1px solid var(--color-border);
+  border-radius: 8px;
+  width: 100%;
+  box-sizing: border-box;
+  min-height: 36px;
 }
 
 .gs-weekday-chip {
+  flex: 1;
+  min-width: 0;
   display: flex;
   align-items: center;
   justify-content: center;
-  padding: 0.35rem 0.65rem;
+  height: 28px;
+  padding: 0 0.15rem;
   border-radius: 6px;
-  border: 1px solid transparent;
-  background: var(--color-surface-secondary);
-  font-size: 0.78125rem;
+  border: none;
+  background: transparent;
+  font-size: 0.75rem;
   font-weight: 500;
   color: var(--color-text-secondary);
   cursor: pointer;
   user-select: none;
-  transition: background 150ms ease, color 150ms ease;
+  white-space: nowrap;
+  transition: background-color 150ms ease, color 150ms ease, box-shadow 150ms ease;
+}
+
+.gs-weekday-chip:hover:not(.gs-weekday-chip--selected) {
+  background: color-mix(in srgb, var(--color-border) 40%, transparent);
+  color: var(--color-text-primary);
 }
 
 .gs-weekday-chip input[type='checkbox'] {
@@ -286,8 +267,30 @@
 }
 
 .gs-weekday-chip--selected {
-  background: #2563eb;
+  background: var(--color-primary, #2563eb);
   color: #ffffff;
+  font-weight: 600;
+  box-shadow: 0 1px 2px rgba(37, 99, 235, 0.25);
+}
+
+/* ── Work hours grid & Summary badge ──────────────────────────── */
+.gs-work-hours-title-summary {
+  display: inline-flex;
+  align-items: center;
+  font-size: 0.75rem;
+  font-weight: 500;
+  color: var(--color-accent, #2563eb);
+  background: color-mix(in srgb, var(--color-accent, #2563eb) 10%, transparent);
+  padding: 0.125rem 0.5rem;
+  border-radius: 9999px;
+  margin-left: 0.5rem;
+}
+
+.gs-work-hours-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 1.25rem;
+  align-items: flex-start;
 }
 
 /* ── Field error ──────────────────────────────────────────────── */
@@ -307,13 +310,15 @@
   margin-top: 1.5rem;
   display: flex;
   align-items: center;
-  justify-content: flex-end;
+  justify-content: space-between;
   gap: 1rem;
-  padding: 0.75rem 2rem;
-  background: var(--color-surface);
+  padding: 0.875rem 2rem;
+  background: color-mix(in srgb, var(--color-surface) 95%, transparent);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
   border-top: 1px solid var(--color-border);
   z-index: 10;
-  box-shadow: 0 -4px 16px rgba(0, 0, 0, 0.06);
+  box-shadow: 0 -4px 16px rgba(0, 0, 0, 0.04);
 }
 
 .gs-sticky-save__hint {
@@ -327,14 +332,71 @@
 
 /* ── Skeleton ─────────────────────────────────────────────────── */
 .skeleton-block {
-  height: 12rem;
-  border-radius: var(--radius-content);
-  background: var(--color-surface-secondary);
+  height: 20rem;
+  border-radius: var(--radius-content, 12px);
+  border: 1px solid var(--color-border);
+  background: linear-gradient(
+    90deg,
+    var(--color-surface-secondary) 25%,
+    color-mix(in srgb, var(--color-surface-secondary) 60%, white) 50%,
+    var(--color-surface-secondary) 75%
+  );
+  background-size: 200% 100%;
+  animation: gs-shimmer 1.5s infinite;
+  width: 100%;
 }
 
-/* ── Work hours section hint ──────────────────────────────────── */
-.gs-work-hours-hint {
-  margin: 0.375rem 0 0;
-  font-size: 0.75rem;
-  color: var(--color-text-secondary);
+@keyframes gs-shimmer {
+  0% { background-position: -200% 0; }
+  100% { background-position: 200% 0; }
+}
+
+/* ── Responsive ────────────────────────────────────────────── */
+@media (max-width: 1023px) {
+  .gs-field-grid--3,
+  .gs-work-hours-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+@media (max-width: 860px) {
+  .gs-section-row {
+    grid-template-columns: 1fr;
+    gap: 1rem;
+    padding: 1.5rem 0;
+  }
+}
+
+@media (max-width: 768px) {
+  .gs-field-grid--2,
+  .gs-field-grid--3,
+  .gs-work-hours-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .gs-sticky-save {
+    position: relative;
+    bottom: auto;
+    margin-left: 0;
+    margin-right: 0;
+    margin-bottom: 0;
+    padding: 1rem 0 2rem 0;
+    box-shadow: none;
+    background: transparent;
+    backdrop-filter: none;
+    -webkit-backdrop-filter: none;
+  }
+}
+
+@media (max-width: 640px) {
+  .gs-sticky-save {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 0.75rem;
+    padding: 0.625rem 0 2rem 0;
+  }
+
+  .gs-sticky-save__hint {
+    font-size: 0.7rem;
+  }
 }

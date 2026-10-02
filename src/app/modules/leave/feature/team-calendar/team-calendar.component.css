@@ -1,0 +1,24 @@
+.tc-nav {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.15rem;
+  padding: 0.2rem;
+  border: 1px solid var(--color-border);
+  border-radius: 999px;
+  background: var(--color-surface-secondary);
+}
+.tc-nav button {
+  min-width: 2.2rem;
+  border: 0;
+  border-radius: 999px;
+  background: transparent;
+  padding: 0.4rem 0.7rem;
+  color: var(--color-text-secondary);
+  font: inherit;
+  font-size: 0.82rem;
+  font-weight: 650;
+  cursor: pointer;
+}
+.tc-nav__current { min-width: 8.5rem; color: var(--color-text-primary); }
+.tc-nav button:hover { background: var(--color-surface); color: var(--color-text-primary); }
+.to-table-card { padding: 1rem; }

@@ -1,0 +1,647 @@
+:host {
+  display: block;
+}
+
+.today-timeline {
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+}
+
+.today-timeline-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+}
+
+.today-timeline-header h3 {
+  margin: 0;
+  font-size: 0.6875rem;
+  font-weight: 600;
+  color: var(--color-text-secondary);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.today-timeline-count-badge {
+  font-size: 0.6875rem;
+  font-weight: 600;
+  color: var(--color-text-secondary);
+  background: var(--color-surface-secondary);
+  border: 1px solid var(--color-border);
+  padding: 0.1rem 0.45rem;
+  border-radius: 9999px;
+}
+
+.today-timeline-empty {
+  margin: 0;
+  font-size: 0.82rem;
+  color: var(--color-text-secondary);
+}
+
+.today-timeline-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.today-timeline-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 0.5rem 0;
+  font-size: 0.85rem;
+  border-bottom: 1px solid color-mix(in srgb, var(--color-border) 60%, transparent);
+}
+
+.today-timeline-item:last-child {
+  border-bottom: none;
+}
+
+.today-timeline-item__label {
+  color: var(--color-text-primary);
+  font-weight: 500;
+}
+
+.today-timeline-item__time {
+  color: var(--color-text-secondary);
+  font-variant-numeric: tabular-nums;
+}
+
+.today-timeline-item--now .today-timeline-item__label {
+  font-weight: 700;
+}
+
+.today-timeline-item--now .today-timeline-item__time {
+  color: var(--color-accent);
+  font-weight: 700;
+}
+
+/* Link-style More button */
+.today-timeline-footer {
+  margin-top: 0.25rem;
+  padding-top: 0.4rem;
+  border-top: 1px dashed color-mix(in srgb, var(--color-border) 70%, transparent);
+}
+
+.today-timeline-more-btn {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0.35rem 0.2rem;
+  background: none;
+  border: none;
+  font-size: 0.78rem;
+  font-weight: 600;
+  color: var(--color-accent);
+  cursor: pointer;
+  border-radius: 0.25rem;
+  transition: color 0.15s ease, background 0.15s ease;
+}
+
+.today-timeline-more-btn:hover {
+  background: color-mix(in srgb, var(--color-accent) 8%, transparent);
+  text-decoration: underline;
+}
+
+.today-timeline-more-btn--subtle {
+  justify-content: flex-end;
+}
+
+.more-link-action {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+}
+
+/* Modal Backdrop matching Add Employee popup */
+.today-modal-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 1050;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background-color: rgba(15, 23, 42, 0.5);
+  backdrop-filter: blur(4px);
+  padding: 1rem;
+  animation: todayModalFadeIn 150ms ease-out;
+}
+
+/* Modal Dialog matching Add Employee popup */
+.today-modal {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  max-width: 680px;
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: 8px;
+  box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.12), 0 8px 10px -6px rgba(0, 0, 0, 0.08);
+  overflow: hidden;
+  animation: todayModalPop 180ms cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+/* Modal Header matching Add Employee header */
+.today-modal-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 1.125rem 1.5rem 0.875rem;
+  border-bottom: 1px solid var(--color-border);
+  background: var(--color-surface);
+  flex-shrink: 0;
+}
+
+.today-modal-header-left {
+  display: flex;
+  flex-direction: column;
+  gap: 0.125rem;
+}
+
+.today-modal-title {
+  font-size: 1.125rem;
+  font-weight: 600;
+  color: var(--color-text-primary);
+  margin: 0;
+  line-height: 1.3;
+}
+
+.today-modal-subtitle {
+  font-size: 0.8125rem;
+  color: var(--color-text-secondary);
+  margin: 0.125rem 0 0;
+  display: flex;
+  align-items: center;
+  gap: 0.375rem;
+}
+
+.status-badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 0.1rem 0.45rem;
+  border-radius: 9999px;
+  font-size: 0.72rem;
+  font-weight: 600;
+  background: color-mix(in srgb, var(--color-accent) 12%, transparent);
+  color: var(--color-accent);
+  border: 1px solid color-mix(in srgb, var(--color-accent) 25%, transparent);
+}
+
+.today-modal-close-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 1.75rem;
+  height: 1.75rem;
+  border-radius: 6px;
+  border: none;
+  background: transparent;
+  color: var(--color-text-secondary);
+  cursor: pointer;
+  transition: background-color 120ms ease, color 120ms ease;
+  margin-top: -0.125rem;
+}
+
+.today-modal-close-btn:hover {
+  background: var(--color-surface-secondary);
+  color: var(--color-text-primary);
+}
+
+/* Modal Body: 2-Column Balanced Layout */
+.today-modal-body {
+  display: grid;
+  grid-template-columns: 220px 1fr;
+  gap: 1rem;
+  padding: 1rem 1.5rem;
+  align-items: start;
+}
+
+@media (max-width: 640px) {
+  .today-modal-body {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* Left Column: Donut Chart + Ratio Bar + Compact Metrics (Zero Dead Space, Clean White, No Heavy Borders) */
+.today-modal-left {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: flex-start;
+  gap: 0.75rem;
+  padding: 1rem;
+  background: var(--color-surface);
+  border: 1px solid color-mix(in srgb, var(--color-border) 35%, transparent);
+  border-radius: 8px;
+}
+
+.circle-chart-container {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  width: 100%;
+}
+
+.circle-chart-svg-wrap {
+  width: 150px;
+  height: 150px;
+  position: relative;
+}
+
+.circle-chart-svg {
+  width: 100%;
+  height: 100%;
+  overflow: visible;
+}
+
+.circle-chart-text-worked {
+  font-size: 1.15rem;
+  font-weight: 700;
+  fill: var(--color-text-primary);
+  dominant-baseline: middle;
+}
+
+.circle-chart-text-percent {
+  font-size: 0.72rem;
+  font-weight: 600;
+  fill: var(--color-accent);
+  dominant-baseline: middle;
+}
+
+.circle-chart-text-goal {
+  font-size: 0.65rem;
+  font-weight: 500;
+  fill: var(--color-text-secondary);
+  dominant-baseline: middle;
+}
+
+/* Proportional Ratio Bar */
+.ratio-progress-bar {
+  width: 100%;
+  height: 6px;
+  border-radius: 9999px;
+  background: #f1f5f9;
+  overflow: hidden;
+  display: flex;
+}
+
+.ratio-bar-segment {
+  height: 100%;
+  transition: width 0.3s ease;
+}
+
+.ratio-bar-segment--worked {
+  background: linear-gradient(90deg, #4f46e5, #7c3aed);
+}
+
+.ratio-bar-segment--break {
+  background: linear-gradient(90deg, #f59e0b, #fbbf24);
+}
+
+/* Compact Metrics List directly under the chart */
+.metrics-compact-stack {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  margin-top: 0.25rem;
+  padding-top: 0.5rem;
+  border-top: 1px solid color-mix(in srgb, var(--color-border) 30%, transparent);
+}
+
+.metric-compact-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0.35rem 0.25rem;
+  background: transparent;
+  border: none;
+}
+
+.metric-compact-info {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+}
+
+.metric-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+.metric-dot--worked {
+  background: #4f46e5;
+}
+
+.metric-dot--break {
+  background: #f59e0b;
+}
+
+.metric-dot--remaining {
+  background: color-mix(in srgb, var(--color-text-secondary) 50%, transparent);
+}
+
+.metric-compact-name {
+  font-size: 0.72rem;
+  font-weight: 600;
+  color: var(--color-text-secondary);
+}
+
+.metric-compact-values {
+  display: flex;
+  align-items: baseline;
+  gap: 0.25rem;
+  font-size: 0.78rem;
+  color: var(--color-text-primary);
+}
+
+.metric-compact-sub {
+  font-size: 0.68rem;
+  color: var(--color-text-secondary);
+}
+
+/* Right Column: Activity Stepper */
+.today-modal-right {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  padding: 1rem;
+  background: var(--color-surface);
+  border: 1px solid color-mix(in srgb, var(--color-border) 35%, transparent);
+  border-radius: 8px;
+  min-height: 0;
+}
+
+.modal-timeline-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding-bottom: 0.375rem;
+  border-bottom: 1px solid color-mix(in srgb, var(--color-border) 35%, transparent);
+}
+
+.modal-timeline-heading h4 {
+  margin: 0;
+  font-size: 0.75rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--color-text-secondary);
+}
+
+.modal-timeline-count {
+  font-size: 0.7rem;
+  font-weight: 600;
+  color: var(--color-text-secondary);
+  background: var(--color-surface-secondary);
+  border: 1px solid color-mix(in srgb, var(--color-border) 40%, transparent);
+  padding: 0.1rem 0.4rem;
+  border-radius: 9999px;
+}
+
+/* Stepper without outer modal scrollbar */
+.modal-stepper {
+  display: flex;
+  flex-direction: column;
+  max-height: 295px;
+  overflow-y: auto;
+  scrollbar-width: thin;
+  scrollbar-color: rgba(148, 163, 184, 0.35) transparent;
+  padding-right: 0.25rem;
+}
+
+.modal-stepper::-webkit-scrollbar {
+  width: 5px;
+}
+
+.modal-stepper::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.modal-stepper::-webkit-scrollbar-thumb {
+  background: rgba(148, 163, 184, 0.35);
+  border-radius: 9999px;
+}
+
+.modal-stepper-item {
+  display: grid;
+  grid-template-columns: 24px 1fr;
+  gap: 0.65rem;
+  position: relative;
+  padding-bottom: 0.65rem;
+}
+
+.modal-stepper-item--last {
+  padding-bottom: 0;
+}
+
+.modal-stepper-track {
+  position: absolute;
+  left: 11px;
+  top: 22px;
+  bottom: 0;
+  width: 2px;
+  background: color-mix(in srgb, var(--color-border) 45%, transparent);
+  z-index: 0;
+}
+
+.modal-stepper-node {
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1;
+  border: 2px solid var(--color-surface);
+  background: var(--color-surface-secondary);
+  color: var(--color-text-secondary);
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
+}
+
+.modal-stepper-node svg {
+  width: 12px;
+  height: 12px;
+}
+
+.modal-stepper-node--clock-in {
+  background: #ecfdf5;
+  color: #059669;
+  border-color: #a7f3d0;
+}
+
+.modal-stepper-node--break-start,
+.modal-stepper-node--break-end {
+  background: #fffbeb;
+  color: #d97706;
+  border-color: #fde68a;
+}
+
+.modal-stepper-node--clock-out {
+  background: #fef2f2;
+  color: #dc2626;
+  border-color: #fecaca;
+}
+
+.modal-stepper-node--now {
+  background: #f5f3ff;
+  color: #7c3aed;
+  border-color: #ddd6fe;
+}
+
+.modal-stepper-body {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 0.75rem;
+  padding: 0.1rem 0;
+  background: transparent;
+  border: none;
+}
+
+.modal-stepper-left-col {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 0.2rem;
+  min-width: 0;
+}
+
+.modal-stepper-title {
+  font-size: 0.8125rem;
+  font-weight: 600;
+  color: var(--color-text-primary);
+  line-height: 1.25;
+}
+
+.modal-stepper-right-col {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 0.1rem;
+  flex-shrink: 0;
+}
+
+.modal-stepper-time {
+  font-size: 0.78rem;
+  font-weight: 500;
+  color: var(--color-text-primary);
+  font-variant-numeric: tabular-nums;
+  line-height: 1.25;
+}
+
+.modal-stepper-source {
+  font-size: 0.6875rem;
+  font-weight: 500;
+  color: var(--color-text-secondary);
+  line-height: 1.2;
+}
+
+.modal-stepper-badges {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 0.25rem;
+}
+
+.modal-badge {
+  font-size: 0.65rem;
+  font-weight: 500;
+  padding: 0.05rem 0.35rem;
+  border-radius: 9999px;
+  line-height: 1.2;
+}
+
+.modal-badge--duration {
+  background: #fef3c7;
+  color: #92400e;
+}
+
+.modal-badge--live {
+  background: #ede9fe;
+  color: #6d28d9;
+  font-weight: 600;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+}
+
+.live-pulse-anim,
+.live-dot-pulse {
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background: #7c3aed;
+  display: inline-block;
+  animation: pulse-dot 1.5s infinite ease-in-out;
+}
+
+@keyframes pulse-dot {
+  0% {
+    transform: scale(0.8);
+    opacity: 0.6;
+  }
+  50% {
+    transform: scale(1.3);
+    opacity: 1;
+  }
+  100% {
+    transform: scale(0.8);
+    opacity: 0.6;
+  }
+}
+
+/* Modal Footer matching Add Employee wizard */
+.today-modal-footer {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  padding: 0.875rem 1.5rem;
+  border-top: 1px solid var(--color-border);
+  background: var(--color-surface);
+  flex-shrink: 0;
+}
+
+.today-modal-footer .modal-close-btn {
+  padding: 0.45rem 1.1rem;
+  font-size: 0.8125rem;
+  font-weight: 600;
+  border-radius: 6px;
+  border: 1px solid var(--color-border);
+  background: var(--color-surface);
+  color: var(--color-text-primary);
+  cursor: pointer;
+  transition: background-color 120ms ease, border-color 120ms ease;
+}
+
+.today-modal-footer .modal-close-btn:hover {
+  background: var(--color-surface-secondary);
+  border-color: color-mix(in srgb, var(--color-border) 80%, var(--color-accent));
+}
+
+@keyframes todayModalFadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes todayModalPop {
+  from {
+    opacity: 0;
+    transform: scale(0.97) translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1) translateY(0);
+  }
+}
+

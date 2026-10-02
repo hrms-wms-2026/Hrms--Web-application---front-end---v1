@@ -38,7 +38,7 @@ export interface AddEmployeeFormValue {
   employmentType: string;
   startDate: string;
   employeeNumber: string;
-  workModeId: number | null;
+  workModeId: string | null;
 }
 
 export interface AddEmployeeWizardState {
@@ -411,10 +411,10 @@ export const AddEmployeeWizardStore = signalStore(
         void this.loadDepartmentsForCompany(companyId);
       },
 
-      async loadWorkModes(): Promise<void> {
+      async loadWorkModes(legalEntityId: string): Promise<void> {
         patchState(store, { loadingWorkModes: true, workModesError: null });
         try {
-          const modes = await firstValueFrom(peopleApi.getWorkModes());
+          const modes = await firstValueFrom(peopleApi.getWorkModes(legalEntityId));
           patchState(store, { workModes: modes, loadingWorkModes: false });
         } catch (err: unknown) {
           patchState(store, {
@@ -766,62 +766,80 @@ export const AddEmployeeWizardStore = signalStore(
         patchState(store, { step });
       },
 
-      async saveDraft(lastSavedStep: WizardStep): Promise<OnboardingDraftResponse | null> {
+      /**
+       * `partial` is the user-facing Save draft: only a company is required and blank fields are sent as
+       * null. Finalize (and anything else calling without it) keeps every original pre-check.
+       */
+      async saveDraft(lastSavedStep: WizardStep, options: { partial?: boolean } = {}): Promise<OnboardingDraftResponse | null> {
+        const partial = options.partial ?? false;
         if (store.saving()) {
           return null;
         }
 
         const form = store.formValue();
-        if (!form.workModeId || form.workModeId <= 0) {
-          patchState(store, { saveError: 'Work mode is required.' });
+        if (!store.companyId()) {
+          patchState(store, { saveError: 'Select a company before saving a draft.' });
           return null;
         }
 
-        const positionIssue = getPositionSelectionIssue(store.positionId());
-        if (positionIssue) {
-          const message = getPositionIssueMessage(positionIssue);
-          patchState(store, {
-            saveError: message,
-            positionValidationMessage: message
-          });
-          if (positionIssue !== 'required') {
-            clearChecklistSelectionState(message, null);
+        if (!partial) {
+          if (!form.workModeId) {
+            patchState(store, { saveError: 'Work mode is required.' });
+            return null;
           }
-          return null;
+
+          const positionIssue = getPositionSelectionIssue(store.positionId());
+          if (positionIssue) {
+            const message = getPositionIssueMessage(positionIssue);
+            patchState(store, {
+              saveError: message,
+              positionValidationMessage: message
+            });
+            if (positionIssue !== 'required') {
+              clearChecklistSelectionState(message, null);
+            }
+            return null;
+          }
         }
 
         const selectedTemplateId = store.selectedTemplateId();
         let editedTasksJson: string | null = null;
         if (selectedTemplateId) {
-          if (store.loadingSelectedTemplateDetail() || store.draftTasksSourceTemplateId() !== selectedTemplateId) {
+          const checklistReady = !store.loadingSelectedTemplateDetail() && store.draftTasksSourceTemplateId() === selectedTemplateId;
+          if (!partial && !checklistReady) {
             patchState(store, { saveError: 'Please wait for the checklist to finish loading before saving.' });
             return null;
           }
-          const validationErrors = validateDraftTasks(store.draftTasks());
-          if (validationErrors.length > 0) {
-            patchState(store, { saveError: validationErrors[0] });
-            return null;
+          if (checklistReady) {
+            const validationErrors = validateDraftTasks(store.draftTasks());
+            if (validationErrors.length > 0) {
+              if (!partial) {
+                patchState(store, { saveError: validationErrors[0] });
+                return null;
+              }
+            } else {
+              editedTasksJson = serializeDraftTasksToEditedTasksJson(store.draftTasks(), form.startDate);
+            }
           }
-          editedTasksJson = serializeDraftTasksToEditedTasksJson(store.draftTasks(), form.startDate);
         }
 
-        if (store.needsReportsToPick() && !store.selectedReportsToEmployeeId()) {
+        if (!partial && store.needsReportsToPick() && !store.selectedReportsToEmployeeId()) {
           patchState(store, { saveError: 'Select who this employee reports to before continuing.' });
           return null;
         }
 
         const payload: SaveOnboardingDraftPayload = {
           draftId: store.draftId() ?? undefined,
-          firstName: form.firstName,
-          lastName: form.lastName,
-          workEmail: form.workEmail,
+          firstName: form.firstName.trim() || null,
+          lastName: form.lastName.trim() || null,
+          workEmail: form.workEmail.trim() || null,
           legalEntityId: store.companyId() ?? '',
           departmentId: store.departmentId(),
           positionId: store.positionId(),
-          employmentType: form.employmentType,
-          startDate: form.startDate,
+          employmentType: form.employmentType || null,
+          startDate: form.startDate || null,
           employeeNumber: form.employeeNumber || null,
-          workModeId: form.workModeId,
+          workModeId: form.workModeId || null,
           selectedTemplateId,
           editedTasksJson,
           lastSavedStep,
@@ -862,7 +880,7 @@ export const AddEmployeeWizardStore = signalStore(
           // stamping draftTasksSourceTemplateId here up front is what makes seedDraftTasksIfNeeded
           // treat that later detail load as a no-op instead of clobbering the restored edits.
           const parsedTasks = draft.editedTasksJson
-            ? parseEditedTasksJsonToDraftTasks(draft.editedTasksJson, draft.startDate)
+            ? parseEditedTasksJsonToDraftTasks(draft.editedTasksJson, draft.startDate ?? '')
             : null;
 
           patchState(store, {
@@ -885,11 +903,11 @@ export const AddEmployeeWizardStore = signalStore(
             lastSaveStatus: draft.status,
             lastSaveReason: draft.draftReason,
             formValue: {
-              firstName: draft.firstName,
-              lastName: draft.lastName,
-              workEmail: draft.workEmail,
-              employmentType: draft.employmentType,
-              startDate: draft.startDate,
+              firstName: draft.firstName ?? '',
+              lastName: draft.lastName ?? '',
+              workEmail: draft.workEmail ?? '',
+              employmentType: draft.employmentType ?? '',
+              startDate: draft.startDate ?? '',
               employeeNumber: draft.employeeNumber ?? '',
               workModeId: draft.workModeId
             }

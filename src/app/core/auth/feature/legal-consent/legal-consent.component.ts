@@ -1,14 +1,13 @@
 import { Component, OnInit, inject } from '@angular/core';
 import { AuthStore } from '../../state/auth.store';
-import { ButtonComponent } from '../../../../shared/ui/button/button.component';
-import { CardComponent } from '../../../../shared/ui/card/card.component';
 import { buildRootUrl, isTenantHostname } from '../../utils/tenant-redirect';
 
 @Component({
   selector: 'app-legal-consent',
   standalone: true,
-  imports: [ButtonComponent, CardComponent],
-  templateUrl: './legal-consent.component.html'
+  imports: [],
+  templateUrl: './legal-consent.component.html',
+  styleUrl: './legal-consent.component.css'
 })
 export class LegalConsentComponent implements OnInit {
   store = inject(AuthStore);

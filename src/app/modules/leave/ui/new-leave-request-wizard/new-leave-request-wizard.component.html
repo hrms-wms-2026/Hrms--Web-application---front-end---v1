@@ -1,0 +1,103 @@
+<app-modal [open]="open" title="New Leave Request" (closed)="onClose()">
+  <div class="nlw-body">
+    <p class="nlw-step">Step {{ step() }} of 5 · {{ stepLabel() }}</p>
+    @if (onBehalf && step() === 1) {
+      <button type="button" class="nlw-picker-trigger" (click)="pickerOpen.set(true)">{{ employeeId() ? 'Employee selected' : 'Choose employee' }}</button>
+      <app-employee-picker [open]="pickerOpen()" (selected)="onEmployeePicked($event)" (closed)="pickerOpen.set(false)" />
+    }
+
+    @if (step() === 1) {
+      <label class="nlw-field">
+        <span>Leave Type</span>
+        <select data-testid="leave-type-select" [value]="draft().leaveTypeId" (change)="onLeaveTypeChange($any($event.target).value)">
+          <option value="">Select a leave type</option>
+          @for (type of activeLeaveTypes(); track type.id) {
+            <option [value]="type.id" [class.nlw-zero-balance]="remainingHoursFor(type.id) === 0">
+              {{ type.name }}@if (remainingHoursFor(type.id) !== null) { - {{ remainingHoursFor(type.id) }} hours remaining}
+            </option>
+          }
+        </select>
+      </label>
+    }
+
+    @if (step() === 2) {
+      @if (workWindowMissing()) {
+        <p class="nlw-error" data-testid="work-window-required">Set work start and end in General Settings first.</p>
+      }
+      <app-date-picker label="From date" [value]="draft().startDate" (valueChange)="draft.update(d => ({...d, startDate: $event}))" />
+      <app-time-picker label="From time" [value]="draft().startTime || workStartTime || ''" (valueChange)="draft.update(d => ({...d, startTime: $event}))" />
+      <app-date-picker label="To date" [value]="draft().endDate" (valueChange)="draft.update(d => ({...d, endDate: $event}))" />
+      <app-time-picker label="To time" [value]="draft().endTime || workEndTime || ''" (valueChange)="draft.update(d => ({...d, endTime: $event}))" />
+    }
+
+    @if (step() === 3) {
+      @if (previewing) {
+        <p class="nlw-muted">Calculating total and checking policy warnings...</p>
+      } @else if (previewError) {
+        <p class="nlw-error">{{ previewError }}</p>
+      } @else if (previewResult) {
+        <p class="nlw-total">Total leave hours: <strong>{{ formatHours(previewResult.totalHours) }}</strong></p>
+        @if (previewResult.noticePeriodMissed) {
+          <p class="nlw-warning">This request does not meet the minimum notice period. Your manager will be informed.</p>
+        }
+        @for (warning of previewResult.conflictSnapshot.warnings; track warning.code) {
+          <p class="nlw-warning">{{ warning.message }}</p>
+        }
+        @if (previewResult.conflictSnapshot.calendarConflicts.length > 0) {
+          <details class="nlw-conflicts">
+            <summary>{{ previewResult.conflictSnapshot.calendarConflicts.length }} calendar conflict(s) - does not block submission</summary>
+            @for (conflict of previewResult.conflictSnapshot.calendarConflicts; track conflict.title) {
+              <p>{{ conflict.title }} ({{ conflict.source }})</p>
+            }
+          </details>
+        }
+      }
+    }
+
+    @if (step() === 4) {
+      <label class="nlw-field">
+        <span>Reason</span>
+        <textarea rows="3" [value]="draft().reason ?? ''" (input)="draft.update(d => ({...d, reason: ($any($event.target).value || null)}))"></textarea>
+      </label>
+      @if (selectedLeaveType()?.requiresDocument) {
+        <p class="nlw-muted" data-testid="document-note">
+          A supporting document is required when this leave is {{ selectedLeaveType()?.documentRequiredAfterDays ?? 1 }} days or longer.
+        </p>
+        <label class="nlw-field">
+          <span>Supporting document</span>
+          <input type="file" data-testid="document-input" accept=".pdf,.png,.jpg,.jpeg,.doc,.docx,application/pdf,image/png,image/jpeg" [disabled]="uploadingDocument" (change)="onDocumentPicked($event)" />
+        </label>
+        @if (uploadingDocument) { <p class="nlw-muted">Uploading…</p> }
+        @if (documentUploadError) { <p class="nlw-error">{{ documentUploadError }}</p> }
+        @for (doc of uploadedDocuments; track doc.id) {
+          <p class="nlw-file">
+            {{ doc.originalFileName }}
+            <button type="button" class="nlw-secondary" (click)="documentRemoved.emit(doc.id)">Remove</button>
+          </p>
+        }
+      }
+    }
+
+    @if (step() === 5) {
+      <div class="nlw-review" data-testid="request-review">
+        <span>Type</span><strong>{{ selectedLeaveTypeName() }}</strong>
+        <span>From</span><strong>{{ draft().startDate }} {{ draft().startTime || workStartTime }}</strong>
+        <span>To</span><strong>{{ draft().endDate }} {{ draft().endTime || workEndTime }}</strong>
+        @if (previewResult) {
+          <span>Total hours</span><strong>{{ formatHours(previewResult.totalHours) }}</strong>
+          <span>Balance</span><strong>{{ formatHours(previewResult.balanceImpact.currentRemainingHours) }} → {{ formatHours(previewResult.balanceImpact.remainingAfterSubmitHours) }}</strong>
+        }
+      </div>
+      @if (submitError) { <p class="nlw-error">{{ submitError }}</p> }
+    }
+
+    <div class="nlw-actions">
+      @if (step() > 1) { <button type="button" class="nlw-secondary" (click)="onBack()">Back</button> }
+      @if (step() < 5) {
+        <button type="button" class="nlw-primary" [disabled]="!canLeaveStep(step())" (click)="onNext()">Continue</button>
+      } @else {
+        <button type="button" class="nlw-primary" [disabled]="submitting || !previewResult" (click)="onSubmit()">{{ submitting ? 'Submitting...' : 'Submit' }}</button>
+      }
+    </div>
+  </div>
+</app-modal>

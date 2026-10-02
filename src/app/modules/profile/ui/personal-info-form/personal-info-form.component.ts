@@ -1,7 +1,8 @@
-import { ChangeDetectionStrategy, Component, OnChanges, input, output } from '@angular/core';
+import { ChangeDetectionStrategy, Component, OnChanges, computed, inject, input, output } from '@angular/core';
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { PersonalInformation, UpdatePersonalInformationRequest } from '../../models/profile.model';
 import { ProfileValidators } from '../../utils/profile-validators';
+import { FileApiService } from '../../../../shared/data-access/file-api.service';
 import { InputComponent } from '../../../../shared/ui/input/input.component';
 import { SelectComponent, SelectOption } from '../../../../shared/ui/select/select.component';
 import { ButtonComponent } from '../../../../shared/ui/button/button.component';
@@ -23,6 +24,13 @@ export class PersonalInfoFormComponent implements OnChanges {
   readonly saveError = input<string | null>(null);
   readonly save = output<UpdatePersonalInformationRequest>();
   readonly avatarSelected = output<File>();
+
+  private readonly fileApi = inject(FileApiService);
+
+  readonly avatarUrl = computed(() => {
+    const fileId = this.personalInformation().avatarFileId;
+    return fileId ? this.fileApi.getFileUrl(fileId) : null;
+  });
 
   readonly genderOptions: readonly SelectOption[] = [
     { value: '', label: 'Prefer not to say' },

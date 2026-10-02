@@ -1,5 +1,6 @@
 import { Routes } from '@angular/router';
 import { permissionGuard } from '../../core/guards/permission.guard';
+import { unsavedChangesGuard } from '../../core/guards/unsaved-changes.guard';
 
 export const PEOPLE_ROUTES: Routes = [
   {
@@ -9,22 +10,22 @@ export const PEOPLE_ROUTES: Routes = [
   },
   {
     path: 'employees',
+    canDeactivate: [unsavedChangesGuard],
     children: [
       {
         path: '',
         loadComponent: () =>
           import('./feature/employee-list/employee-list.component').then((m) => m.EmployeeListComponent),
         canActivate: [permissionGuard],
+        canDeactivate: [unsavedChangesGuard],
         data: { title: 'Employees', permissions: ['employees:read'] }
       },
       {
         path: 'new',
-        loadComponent: () =>
-          import('./feature/add-employee-wizard/add-employee-wizard.component').then(
-            (m) => m.AddEmployeeWizardComponent
-          ),
-        canActivate: [permissionGuard],
-        data: { title: 'Add Employee', permissions: ['employees:write'] }
+        redirectTo: (redirectData) => {
+          const draftId = redirectData.queryParams['draftId'];
+          return draftId ? `/people/employees?draftId=${draftId}` : '/people/employees?addEmployee=true';
+        }
       },
       {
         path: ':id',
@@ -63,21 +64,13 @@ export const PEOPLE_ROUTES: Routes = [
       },
       {
         path: 'new',
-        loadComponent: () =>
-          import('./feature/checklist-builder/checklist-builder.component').then(
-            (m) => m.ChecklistBuilderComponent
-          ),
-        canActivate: [permissionGuard],
-        data: { title: 'Create Checklist', permissions: ['employees:write'] }
+        redirectTo: () => '/people/checklists?create=true',
+        pathMatch: 'full'
       },
       {
         path: ':id/edit',
-        loadComponent: () =>
-          import('./feature/checklist-builder/checklist-builder.component').then(
-            (m) => m.ChecklistBuilderComponent
-          ),
-        canActivate: [permissionGuard],
-        data: { title: 'Edit Checklist', permissions: ['employees:write'] }
+        redirectTo: (route) => `/people/checklists?edit=${route.params['id']}`,
+        pathMatch: 'full'
       }
     ]
   },

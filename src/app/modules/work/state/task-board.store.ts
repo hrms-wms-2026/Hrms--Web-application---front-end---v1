@@ -4,16 +4,18 @@ import { firstValueFrom } from 'rxjs';
 import { TaskApiService } from '../data-access/task-api.service';
 import { toTaskStatusColumn, toWorkTask } from '../utils/task.mapper';
 import { TaskStatusColumn, WorkTask } from '../models/task.model';
-import { CreateTaskRequestDto, EditTaskRequestDto, InsufficientAllocationErrorDto } from '../models/dto/task.dto';
+import { CreateSubtaskRequestDto, CreateTaskRequestDto, EditTaskRequestDto, InsufficientAllocationErrorDto } from '../models/dto/task.dto';
+import { PendingApprovalDto, isPendingApproval } from '../models/dto/work-approval.dto';
 
 interface TaskBoardState {
   readonly statuses: readonly TaskStatusColumn[];
   readonly tasks: readonly WorkTask[];
+  readonly subtasksByParentId: Readonly<Record<string, readonly WorkTask[]>>;
   readonly loading: boolean;
   readonly error: string | null;
 }
 
-const initialState: TaskBoardState = { statuses: [], tasks: [], loading: false, error: null };
+const initialState: TaskBoardState = { statuses: [], tasks: [], subtasksByParentId: {}, loading: false, error: null };
 
 function extractError(err: any, fallback: string): string {
   return err?.error?.detail || err?.error?.message || err?.message || fallback;
@@ -50,7 +52,11 @@ export const TaskBoardStore = signalStore(
   withMethods((store, api = inject(TaskApiService)) => ({
     async loadBoard(scopeId: string, projectId?: string): Promise<void> {
       const targetProjectId = projectId ?? scopeId;
-      patchState(store, { loading: true, error: null });
+      // Only the very first load should block the board with a spinner. A reload()
+      // triggered by an edit/drag/status change re-fetches in the background so the
+      // already-rendered columns don't flash away and get rebuilt from scratch.
+      const isInitialLoad = store.statuses().length === 0 && store.tasks().length === 0;
+      patchState(store, { loading: isInitialLoad, error: null });
       try {
         const [statusDtos, taskDtos] = await Promise.all([
           firstValueFrom(api.getStatuses(targetProjectId)),
@@ -69,10 +75,12 @@ export const TaskBoardStore = signalStore(
     async createTask(
       objectiveId: string,
       request: CreateTaskRequestDto
-    ): Promise<WorkTask | InsufficientAllocationErrorDto | null> {
+    ): Promise<WorkTask | InsufficientAllocationErrorDto | PendingApprovalDto | null> {
       patchState(store, { error: null });
       try {
         const dto = await firstValueFrom(api.createTask(objectiveId, request));
+        // 202: sent for approval - there is no task yet, so nothing goes into the list.
+        if (isPendingApproval(dto)) return dto;
         const task = toWorkTask(dto);
         patchState(store, { tasks: [...store.tasks(), task] });
         return task;
@@ -87,12 +95,24 @@ export const TaskBoardStore = signalStore(
       }
     },
 
-    async editTask(taskId: string, request: EditTaskRequestDto): Promise<boolean> {
+    /** true = edited, 'pending' = sent for approval (task unchanged for now), false = failed. */
+    async editTask(taskId: string, request: EditTaskRequestDto): Promise<boolean | 'pending'> {
       patchState(store, { error: null });
       try {
         const dto = await firstValueFrom(api.editTask(taskId, request));
+        if (isPendingApproval(dto)) return 'pending';
         const updated = toWorkTask(dto);
         patchState(store, { tasks: store.tasks().map((t) => (t.id === taskId ? updated : t)) });
+        if (updated.parentTaskId) {
+          const parentId = updated.parentTaskId;
+          const current = store.subtasksByParentId()[parentId] ?? [];
+          patchState(store, {
+            subtasksByParentId: {
+              ...store.subtasksByParentId(),
+              [parentId]: current.map((s) => (s.id === taskId ? updated : s))
+            }
+          });
+        }
         return true;
       } catch (err) {
         patchState(store, { error: extractError(err, 'Failed to update the task.') });
@@ -110,6 +130,32 @@ export const TaskBoardStore = signalStore(
         await firstValueFrom(api.moveTaskStatus(taskId, newStatusId));
       } catch (err) {
         patchState(store, { tasks: previous, error: extractError(err, 'Failed to move the task.') });
+      }
+    },
+
+    async loadSubtasks(parentTaskId: string): Promise<void> {
+      try {
+        const dtos = await firstValueFrom(api.getSubtasks(parentTaskId));
+        patchState(store, { subtasksByParentId: { ...store.subtasksByParentId(), [parentTaskId]: dtos.map(toWorkTask) } });
+      } catch (err) {
+        patchState(store, { error: extractError(err, 'Failed to load subtasks.') });
+      }
+    },
+
+    async createSubtask(parentTaskId: string, request: CreateSubtaskRequestDto): Promise<WorkTask | null> {
+      patchState(store, { error: null });
+      try {
+        const dto = await firstValueFrom(api.createSubtask(parentTaskId, request));
+        const subtask = toWorkTask(dto);
+        const existing = store.subtasksByParentId()[parentTaskId] ?? [];
+        patchState(store, {
+          subtasksByParentId: { ...store.subtasksByParentId(), [parentTaskId]: [...existing, subtask] },
+          tasks: store.tasks().map((t) => (t.id === parentTaskId ? { ...t, subtaskTotalCount: t.subtaskTotalCount + 1 } : t))
+        });
+        return subtask;
+      } catch (err) {
+        patchState(store, { error: extractError(err, 'Failed to create the subtask.') });
+        return null;
       }
     }
   }))

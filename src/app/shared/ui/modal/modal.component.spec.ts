@@ -96,4 +96,47 @@ describe('ModalComponent', () => {
     expect(dialog.classList.contains('max-w-5xl')).toBe(true);
     expect(dialog.classList.contains('max-w-md')).toBe(false);
   });
+
+  it('constrains height with internal scroll for lg, xl, and 2xl, but not md', async () => {
+    @Component({
+      standalone: true,
+      imports: [ModalComponent],
+      template: `
+        <app-modal [open]="true" size="md"><p>md</p></app-modal>
+        <app-modal [open]="true" size="lg"><p>lg</p></app-modal>
+        <app-modal [open]="true" size="xl"><p>xl</p></app-modal>
+        <app-modal [open]="true" size="2xl"><p>2xl</p></app-modal>
+      `
+    })
+    class AllSizesHostComponent {}
+
+    await TestBed.configureTestingModule({ imports: [AllSizesHostComponent] }).compileComponents();
+    const fixture = TestBed.createComponent(AllSizesHostComponent);
+    fixture.detectChanges();
+
+    const dialogs = fixture.nativeElement.querySelectorAll('[role="dialog"]') as NodeListOf<HTMLElement>;
+    expect(dialogs.length).toBe(4);
+    const [md, lg, xl, xxl] = Array.from(dialogs);
+    expect(md.classList.contains('modal-dialog--constrained')).toBe(false);
+    expect(lg.classList.contains('modal-dialog--constrained')).toBe(true);
+    expect(xl.classList.contains('modal-dialog--constrained')).toBe(true);
+    expect(xxl.classList.contains('modal-dialog--constrained')).toBe(true);
+  });
+
+  it('allows overriding maxWidth with customMaxWidth', async () => {
+    @Component({
+      standalone: true,
+      imports: [ModalComponent],
+      template: `<app-modal [open]="true" size="lg" customMaxWidth="max-w-3xl"><p>wide</p></app-modal>`
+    })
+    class CustomWidthHostComponent {}
+
+    await TestBed.configureTestingModule({ imports: [CustomWidthHostComponent] }).compileComponents();
+    const fixture = TestBed.createComponent(CustomWidthHostComponent);
+    fixture.detectChanges();
+
+    const dialog = fixture.nativeElement.querySelector('[role="dialog"]') as HTMLElement;
+    expect(dialog.classList.contains('max-w-3xl')).toBe(true);
+    expect(dialog.classList.contains('max-w-xl')).toBe(false);
+  });
 });

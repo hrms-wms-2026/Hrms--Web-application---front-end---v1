@@ -9,7 +9,7 @@ export type ModalSize = 'md' | 'lg' | 'xl' | '2xl';
   template: `
     @if (open()) {
       <div class="fixed inset-0 z-[1200] flex items-center justify-center p-4">
-        <div class="absolute inset-0 bg-black/50" (click)="onBackdropClick()"></div>
+        <div class="ui-fade-in absolute inset-0 bg-black/50" (click)="onBackdropClick()"></div>
         <div
           #dialog
           [class]="dialogClass()"
@@ -25,11 +25,14 @@ export type ModalSize = 'md' | 'lg' | 'xl' | '2xl';
             }
             <button
               type="button"
-              class="text-[var(--color-text-secondary)] transition-colors hover:text-[var(--color-text-primary)]"
+              class="flex h-7 w-7 items-center justify-center rounded-lg text-[var(--color-text-secondary)] transition-colors hover:bg-[var(--color-border)]/20 hover:text-[var(--color-text-primary)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-accent)]"
               aria-label="Close"
               (click)="closed.emit()"
             >
-              &#x2715;
+              <svg class="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                <line x1="18" y1="6" x2="6" y2="18"></line>
+                <line x1="6" y1="6" x2="18" y2="18"></line>
+              </svg>
             </button>
           </div>
           <ng-content />
@@ -38,9 +41,9 @@ export type ModalSize = 'md' | 'lg' | 'xl' | '2xl';
     }
   `,
   styles: `
-    .modal-dialog--xl {
+    .modal-dialog--constrained {
       max-height: 85vh;
-      overflow: hidden;
+      overflow-y: auto;
     }
   `
 })
@@ -48,26 +51,39 @@ export class ModalComponent {
   open = input(false);
   title = input<string>('');
   size = input<ModalSize>('md');
+  customMaxWidth = input<string>('');
+  panelClass = input<string>('');
   closeOnBackdropClick = input(true);
   closed = output<void>();
 
   readonly dialogClass = computed(() => {
     const sizeMap: Record<ModalSize, string> = {
-      md: 'relative z-10 w-full max-w-md rounded-xl bg-[var(--color-surface)] p-6 shadow-lg outline-none',
-      lg: 'relative z-10 w-full max-w-xl rounded-xl bg-[var(--color-surface)] p-6 shadow-lg outline-none',
-      xl: 'relative z-10 w-full max-w-5xl rounded-xl bg-[var(--color-surface)] p-8 shadow-lg outline-none modal-dialog--xl',
-      '2xl': 'relative z-10 w-full max-w-6xl rounded-xl bg-[var(--color-surface)] p-8 shadow-lg outline-none modal-dialog--xl',
+      md: 'ui-pop-in relative z-10 w-full max-w-md rounded-xl bg-[var(--color-surface)] p-6 shadow-lg outline-none',
+      lg: 'ui-pop-in relative z-10 w-full max-w-xl rounded-xl bg-[var(--color-surface)] p-6 shadow-lg outline-none modal-dialog--constrained',
+      xl: 'ui-pop-in relative z-10 w-full max-w-5xl rounded-xl bg-[var(--color-surface)] p-8 shadow-lg outline-none modal-dialog--constrained',
+      '2xl': 'ui-pop-in relative z-10 w-full max-w-6xl rounded-xl bg-[var(--color-surface)] p-8 shadow-lg outline-none modal-dialog--constrained',
     };
-    return sizeMap[this.size()];
+    let cls = sizeMap[this.size()];
+    const custom = this.customMaxWidth().trim();
+    if (custom) {
+      cls = cls.replace(/max-w-[a-z0-9]+/, custom);
+    }
+    const extra = this.panelClass().trim();
+    return extra ? `${cls} ${extra}` : cls;
   });
 
   private readonly dialogRef = viewChild<ElementRef<HTMLElement>>('dialog');
   readonly titleId = nextUniqueId('app-modal-title');
+  private previouslyFocused: HTMLElement | null = null;
 
   constructor() {
     effect(() => {
       if (this.open()) {
+        this.previouslyFocused = document.activeElement as HTMLElement;
         this.dialogRef()?.nativeElement.focus();
+      } else if (this.previouslyFocused) {
+        this.previouslyFocused.focus();
+        this.previouslyFocused = null;
       }
     });
   }

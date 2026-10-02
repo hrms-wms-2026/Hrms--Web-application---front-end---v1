@@ -1,0 +1,62 @@
+.lad-body { display: flex; flex-direction: column; gap: 1rem; max-height: 70vh; overflow-y: auto; }
+.lad-header h3 { margin: 0; color: var(--color-text-primary); font-size: 1rem; }
+.lad-header p { margin: 0.15rem 0 0; color: var(--color-text-secondary); font-size: 0.85rem; }
+.lad-muted { color: var(--color-text-secondary); font-size: 0.82rem; }
+.lad-section h4 {
+  margin: 0 0 0.35rem;
+  color: var(--color-text-secondary);
+  font-size: 0.68rem;
+  font-weight: 750;
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
+}
+.lad-section p { margin: 0.2rem 0; color: var(--color-text-primary); font-size: 0.85rem; }
+.lad-approvers { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 0.3rem; color: var(--color-text-primary); font-size: 0.84rem; }
+.lad-warning { border-radius: 8px; padding: 0.45rem 0.6rem; background: var(--color-warning-subtle); color: var(--color-warning-text); font-size: 0.8rem; }
+.lad-new {
+  display: inline-block;
+  margin-right: 0.35rem;
+  border-radius: 999px;
+  padding: 0.05rem 0.4rem;
+  background: var(--color-accent);
+  color: var(--color-accent-contrast);
+  font-size: 0.62rem;
+  font-weight: 750;
+  letter-spacing: 0.04em;
+}
+.lad-info-message { border-radius: 8px; padding: 0.45rem 0.6rem; background: var(--color-surface-secondary); color: var(--color-text-primary); font-size: 0.82rem; }
+.lad-error { color: var(--color-danger); font-size: 0.82rem; }
+.lad-actions { display: flex; flex-direction: column; gap: 0.6rem; border-top: 1px solid var(--color-border); padding-top: 0.8rem; }
+.lad-actions > div:first-child { display: flex; flex-wrap: wrap; gap: 0.5rem; }
+.lad-action-panel { display: flex; flex-direction: column; gap: 0.5rem; }
+.lad-action-panel textarea {
+  width: 100%;
+  border: 1px solid var(--color-border);
+  border-radius: 8px;
+  padding: 0.45rem 0.6rem;
+  background: var(--color-surface);
+  color: var(--color-text-primary);
+  font: inherit;
+  font-size: 0.84rem;
+}
+.lad-action-buttons { display: flex; justify-content: flex-end; gap: 0.5rem; }
+.lad-primary {
+  border: 0;
+  border-radius: 8px;
+  padding: 0.5rem 1rem;
+  background: var(--color-accent);
+  color: var(--color-accent-contrast);
+  font-size: 0.82rem;
+  font-weight: 650;
+  cursor: pointer;
+}
+.lad-primary:disabled { opacity: 0.5; cursor: not-allowed; }
+.lad-secondary {
+  border: 1px solid var(--color-border);
+  border-radius: 8px;
+  padding: 0.5rem 1rem;
+  background: transparent;
+  color: var(--color-text-primary);
+  font-size: 0.82rem;
+  cursor: pointer;
+}

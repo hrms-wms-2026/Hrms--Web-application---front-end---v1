@@ -1,0 +1,53 @@
+<div class="attendance-overview-page">
+  <header class="attendance-overview-header">
+    <app-breadcrumb-header parentLabel="Attendance" currentLabel="Overview" icon="time-attendance" />
+    <div class="attendance-overview-header-actions">
+      @if (canShowTeamLink()) {
+        <div class="attendance-view-toggle" role="group" aria-label="Attendance view">
+          <span class="attendance-view-toggle__option attendance-view-toggle__option--active" aria-current="page">MY</span>
+          <a
+            class="attendance-view-toggle__option"
+            routerLink="/attendance/time-tracking"
+            [queryParams]="{ view: 'team' }"
+            data-testid="overview-team-toggle"
+          >TEAM</a>
+        </div>
+      }
+    </div>
+  </header>
+
+  @if (today(); as today) {
+    <div class="attendance-overview-greeting">
+      <div>
+        <p class="attendance-overview-greeting__eyebrow">{{ greeting() }}</p>
+        <h1 class="attendance-overview-greeting__date">{{ fullDateLabel(today.workDate) }}</h1>
+      </div>
+      <span
+        class="status-pill"
+        [class.status-pill--active]="today.attendanceStatus === 'working' || today.attendanceStatus === 'clocked_in'"
+        [class.status-pill--break]="today.attendanceStatus === 'on_break'"
+      >
+        <span class="status-pill__dot"></span>
+        {{ statusLabel(today.attendanceStatus, today.attendanceStatusLabel) }}
+      </span>
+    </div>
+  }
+
+  <app-attendance-status-card [showHeader]="false" />
+
+  <app-attendance-trend-card />
+
+  <div class="attendance-overview-grid">
+    <app-attendance-monthly-health-card />
+    <app-attendance-requests-summary-card />
+  </div>
+
+  <nav class="attendance-overview-quick-links" aria-label="Quick links">
+    <a routerLink="/attendance/time-tracking" data-testid="quick-link-time-tracking">View time tracking</a>
+    <a routerLink="/attendance/time-tracking" [queryParams]="{ openCorrection: 'today' }" data-testid="quick-link-request-correction">Request correction</a>
+    <a routerLink="/attendance/time-tracking" data-testid="quick-link-schedule">View schedule</a>
+    @if (canShowTeamLink()) {
+      <a routerLink="/attendance/time-tracking" [queryParams]="{ view: 'team' }" data-testid="quick-link-team">View team attendance</a>
+    }
+  </nav>
+</div>

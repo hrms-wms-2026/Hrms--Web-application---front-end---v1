@@ -1,87 +1,97 @@
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { signal } from '@angular/core';
+import { of } from 'rxjs';
 import { vi } from 'vitest';
 import { SprintFormComponent } from './sprint-form.component';
 import { SprintListStore } from '../../state/sprint-list.store';
+import { TaskApiService } from '../../data-access/task-api.service';
 import { Sprint } from '../../models/sprint.model';
 
 describe('SprintFormComponent', () => {
   let fixture: ComponentFixture<SprintFormComponent>;
-  let storeStub: { error: ReturnType<typeof signal>; create: ReturnType<typeof vi.fn>; edit: ReturnType<typeof vi.fn> };
-
+  let storeStub: any;
+  const taskApi = {
+    getBySprintId: vi.fn().mockReturnValue(of([{ id: 't1', objectiveId: 'o1', sprintId: 'sp-1' }])),
+    getTasks: vi.fn().mockReturnValue(of([]))
+  };
   const sprint: Sprint = {
-    id: 'sp-1', objectiveId: 'obj-1', name: 'Sprint One',
-    startDate: new Date('2026-09-01T00:00:00.000Z'),
-    endDate: new Date('2026-09-14T00:00:00.000Z'), status: 'active', completedAt: null, achievedAt: null
+    id: 'sp-1', projectId: 'p-1', name: 'Sprint One', goal: null, startDate: null, endDate: null,
+    status: 'draft', completedAt: null, achievedAt: null, canManage: true
   };
 
-  function setup(overrides: Record<string, unknown> = {}): void {
+  function setup(inputs: Record<string, unknown> = {}): void {
     storeStub = {
       error: signal(null),
       create: vi.fn().mockResolvedValue(true),
-      edit: vi.fn().mockResolvedValue(true)
+      edit: vi.fn().mockResolvedValue(true),
+      setTasks: vi.fn().mockResolvedValue(true)
     };
     TestBed.configureTestingModule({
       imports: [SprintFormComponent],
-      providers: [{ provide: SprintListStore, useValue: storeStub }]
+      providers: [
+        { provide: SprintListStore, useValue: storeStub },
+        { provide: TaskApiService, useValue: taskApi }
+      ]
     });
     fixture = TestBed.createComponent(SprintFormComponent);
     fixture.componentRef.setInput('open', true);
-    fixture.componentRef.setInput('objectiveId', 'obj-1');
-    for (const [key, value] of Object.entries(overrides)) fixture.componentRef.setInput(key, value);
+    fixture.componentRef.setInput('projectId', 'p-1');
+    fixture.componentRef.setInput('modules', [
+      { objectiveId: 'o1', title: 'Design', isEffectiveOwner: true },
+      { objectiveId: 'o2', title: 'Build', isEffectiveOwner: false }
+    ]);
+    for (const [k, v] of Object.entries(inputs)) fixture.componentRef.setInput(k, v);
     fixture.detectChanges();
   }
 
-  it('renders create mode with module options and emits created after store create', async () => {
-    setup({ modules: [
-      { objectiveId: 'obj-1', title: 'Module One', isOwner: true },
-      { objectiveId: 'obj-2', title: 'Module Two', isOwner: false }
-    ] });
-    const component = fixture.componentInstance as any;
-    component.selectedObjectiveId.set('obj-1');
-    component.name.set('Sprint X');
-    component.startDate.set('2026-09-01');
-    component.endDate.set('2026-09-14');
+  it('create sends name, goal and picked task ids at project level', async () => {
+    setup();
+    const c = fixture.componentInstance as any;
+    c.name.set('Sprint X');
+    c.goal.set('Ship it');
+    c.selectedTaskIds.set(new Set(['t1', 't2']));
     const created = vi.fn();
-    component.created.subscribe(created);
+    c.created.subscribe(created);
 
-    await component.submit();
+    await c.submit();
 
-    expect(storeStub.create).toHaveBeenCalledWith('obj-1', { name: 'Sprint X', startDate: '2026-09-01', endDate: '2026-09-14' }, false);
-    expect(created).toHaveBeenCalledTimes(1);
+    expect(storeStub.create).toHaveBeenCalledWith('p-1', { name: 'Sprint X', goal: 'Ship it', taskIds: ['t1', 't2'] });
+    expect(created).toHaveBeenCalled();
   });
 
-  it('requires a module in create mode when a module list is provided', async () => {
-    setup({ modules: [{ objectiveId: 'obj-1', title: 'Module One', isOwner: true }] });
-    const component = fixture.componentInstance as any;
-    component.name.set('Sprint X');
-    await component.submit();
+  it('only modules the user effectively owns are pickable', () => {
+    setup();
+    const c = fixture.componentInstance as any;
+    expect([...c.allowedObjectiveIds()]).toEqual(['o1']);
+  });
+
+  it('requires a name', async () => {
+    setup();
+    await (fixture.componentInstance as any).submit();
 
     expect(storeStub.create).not.toHaveBeenCalled();
-    expect(component.moduleError()).toContain('Select a module');
+    expect((fixture.componentInstance as any).nameError()).toContain('required');
   });
 
-  it('renders edit mode without a module picker and emits saved with the edit payload', async () => {
+  it('edit sends only the add/remove diff', async () => {
     setup({ mode: 'edit', sprint });
-    const component = fixture.componentInstance as any;
-    component.name.set('Sprint One Renamed');
-    const saved = vi.fn();
-    component.saved.subscribe(saved);
-    fixture.detectChanges();
+    await fixture.whenStable();
+    const c = fixture.componentInstance as any;
+    expect([...c.selectedTaskIds()]).toEqual(['t1']);
 
-    expect(fixture.nativeElement.querySelector('app-select')).toBeNull();
-    await component.submit();
+    c.selectedTaskIds.set(new Set(['t9']));
+    await c.submit();
 
-    expect(storeStub.edit).toHaveBeenCalledWith('sp-1', { name: 'Sprint One Renamed', startDate: '2026-09-01', endDate: '2026-09-14' }, 'obj-1', false);
-    expect(saved).toHaveBeenCalledTimes(1);
+    expect(storeStub.edit).toHaveBeenCalled();
+    expect(storeStub.setTasks).toHaveBeenCalledWith('sp-1', { addTaskIds: ['t9'], removeTaskIds: ['t1'] }, 'p-1');
   });
 
-  it('re-seeds edit fields when a different sprint arrives while open', () => {
+  it('edit with unchanged tasks skips setTasks', async () => {
     setup({ mode: 'edit', sprint });
-    const other = { ...sprint, id: 'sp-2', name: 'Sprint Two' };
-    fixture.componentRef.setInput('sprint', other);
-    fixture.detectChanges();
+    await fixture.whenStable();
 
-    expect((fixture.componentInstance as any).name()).toBe('Sprint Two');
+    await (fixture.componentInstance as any).submit();
+
+    expect(storeStub.setTasks).not.toHaveBeenCalled();
   });
 });

@@ -1,3 +1,5 @@
+import { TaskStatusCategory } from '../task.model';
+
 export interface TaskStatusDto {
   id: string;
   name: string;
@@ -6,6 +8,30 @@ export interface TaskStatusDto {
   approverId: string | null;
   marksTaskComplete: boolean;
   visibility: 'public' | 'private';
+  category: TaskStatusCategory;
+  color: string;
+}
+
+export interface TaskAttachmentDto {
+  fileId: string;
+  fileName: string;
+  fileSizeBytes: number;
+  contentType: string;
+}
+
+export interface TaskAssigneeIdentityDto {
+  employeeId: string;
+  name: string;
+  avatarFileId?: string | null;
+  /** Temporary compatibility fallback for older API deployments. */
+  avatarUrl?: string | null;
+}
+
+export interface PendingUploadDto {
+  fileId: string;
+  originalFileName: string;
+  fileSizeBytes: number;
+  contentType: string;
 }
 
 export interface WorkTaskDto {
@@ -27,7 +53,16 @@ export interface WorkTaskDto {
   openClockSessionEmployeeId: string | null;
   openClockSessionClockInAt: string | null;
   totalLoggedMinutes: number;
-
+  activeEventId?: string | null;
+  activeEventName?: string | null;
+  attachments?: TaskAttachmentDto[];
+  assignees?: TaskAssigneeIdentityDto[];
+  parentTaskId?: string | null;
+  subtaskTotalCount?: number;
+  subtaskCompletedCount?: number;
+  subtaskAssigneeEmployeeIds?: string[];
+  createdAt: string;
+  hasPendingApproval?: boolean;
 }
 
 export interface CreateTaskRequestDto {
@@ -39,6 +74,16 @@ export interface CreateTaskRequestDto {
   estimatedHours?: number;
   storyPoints?: number;
   sprintId: string | null;
+  attachmentFileIds?: string[];
+}
+
+export interface CreateSubtaskRequestDto {
+  title: string;
+  priority?: WorkTaskDto['priority'];
+  dueDate?: string;
+  assigneeEmployeeId?: string;
+  objectiveId?: string;
+  categoryId?: string;
 }
 
 export interface EditTaskRequestDto {
@@ -47,9 +92,26 @@ export interface EditTaskRequestDto {
   priority: WorkTaskDto['priority'];
   dueDate?: string;
   estimatedHours?: number;
-    storyPoints?: number;
+  storyPoints?: number;
   progressPercent?: number;
   reason?: string;
+  sprintId?: string | null;
+  attachmentFileIds?: string[];
+  categoryId?: string;
+  objectiveId?: string;
+}
+
+export interface DuplicateTaskRequestDto {
+  destinationObjectiveId: string;
+  title: string;
+  copyAttachments: boolean;
+  copyAssignees: boolean;
+  copyComments: boolean;
+  copyDueDate: boolean;
+}
+
+export interface ConvertTaskToSubtaskRequestDto {
+  newParentTaskId: string;
 }
 
 export interface PushTaskRequestDto {
@@ -71,7 +133,8 @@ export interface CreateTaskStatusRequestDto {
   name: string;
   displayOrder: number;
   visibility: 'public' | 'private';
-  marksTaskComplete: boolean;
+  category: TaskStatusCategory;
+  color: string;
   requiresApproval: boolean;
   approverId?: string;
 }
@@ -82,4 +145,10 @@ export interface EditTaskStatusRequestDto {
   requiresApproval: boolean;
   approverId?: string;
   visibility: 'public' | 'private';
+  category: TaskStatusCategory;
+  color: string;
+}
+
+export interface ClockInResponseDto {
+  movedToStatus: { id: string; name: string; color: string } | null;
 }

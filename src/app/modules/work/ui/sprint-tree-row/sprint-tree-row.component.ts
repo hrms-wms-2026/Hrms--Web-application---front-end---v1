@@ -1,12 +1,15 @@
 import { Component, input, output } from '@angular/core';
 import { MilestoneTreeNode } from '../../models/milestone.model';
+import { MonitorAlertDto } from '../../models/dto/monitor.dto';
+import { TreeAlertMarkComponent } from '../tree-alert-mark/tree-alert-mark.component';
 
 @Component({
   selector: 'app-sprint-tree-row',
   standalone: true,
+  imports: [TreeAlertMarkComponent],
   template: `
     <div
-      class="grid grid-cols-[1fr_112px_40px_88px_140px] items-center gap-3 rounded-md px-2 py-1.5 cursor-pointer {{ selected() ? 'bg-[var(--color-accent)]' : 'hover:bg-[var(--color-surface-secondary)]' }}"
+      class="grid grid-cols-[1fr_112px_40px_88px_140px] items-center gap-3 rounded-md px-2 py-1.5 cursor-pointer tree-row {{ selected() ? 'bg-[var(--color-accent)]' : '' }}"
       data-testid="tree-row"
       (click)="selectedRow.emit(node())"
     >
@@ -33,6 +36,7 @@ import { MilestoneTreeNode } from '../../models/milestone.model';
           <path d="M8 14l2 2 4-4" />
         </svg>
         <span data-testid="title-text" class="min-w-0 truncate text-sm {{ selected() ? 'text-white' : 'text-[var(--color-text-primary)]' }}">{{ node().title }}</span>
+        <app-tree-alert-mark [alerts]="alerts()" />
         @if (node().status; as status) {
           <span data-testid="status-badge" class="shrink-0 rounded-full px-2 py-0.5 text-xs font-medium {{ selected() ? 'bg-white/15 text-white' : 'bg-[var(--color-surface-secondary)] text-[var(--color-text-secondary)]' }}">{{ status }}</span>
         }
@@ -54,11 +58,11 @@ import { MilestoneTreeNode } from '../../models/milestone.model';
       </span>
 
       <span data-testid="owner-cell"></span>
-      <span class="text-xs {{ selected() ? 'text-white' : 'text-[var(--color-text-secondary)]' }}" data-testid="due-date-cell">{{ node().endDate }}</span>
+      <span class="text-xs {{ selected() ? 'text-white' : 'text-[var(--color-text-secondary)]' }}" data-testid="due-date-cell">{{ node().endDate || 'No dates set' }}</span>
 
       <span class="flex items-center justify-end gap-px" data-testid="row-actions">
         @if (node().isOwner) {
-          <button type="button" class="{{ iconClass() }}" data-testid="create-task-button" aria-label="Create task" (click)="emit($event, createTaskRequested)">
+          <button type="button" class="{{ iconClass() }}" data-testid="create-task-button" aria-label="Create work item" (click)="emit($event, createTaskRequested)">
             <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" aria-hidden="true">
               <line x1="12" y1="5" x2="12" y2="19" />
               <line x1="5" y1="12" x2="19" y2="12" />
@@ -82,6 +86,13 @@ import { MilestoneTreeNode } from '../../models/milestone.model';
               <path d="M20 6L9 17l-5-5" />
             </svg>
           </button>
+          @if (node().status === 'complete' || node().status === 'achieved') {
+            <button type="button" class="{{ iconClass() }}" data-testid="delete-sprint-button" aria-label="Delete sprint" (click)="emit($event, deleteSprintRequested)">
+              <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                <path d="M4 7h16M10 11v6M14 11v6M6 7l1 13h10l1-13M9 7V4h6v3" />
+              </svg>
+            </button>
+          }
         }
       </span>
     </div>
@@ -91,6 +102,8 @@ export class SprintTreeRowComponent {
   node = input.required<MilestoneTreeNode>();
   selected = input(false);
   depth = input(0);
+  /** Open project-monitor alerts on this row's module/sprint/task (red mark). */
+  alerts = input<readonly MonitorAlertDto[]>([]);
   showChevron = input(false);
   expanded = input(false);
 
@@ -101,6 +114,8 @@ export class SprintTreeRowComponent {
   editRequested = output<MilestoneTreeNode>();
   achieveSprintRequested = output<MilestoneTreeNode>();
   completeSprintRequested = output<MilestoneTreeNode>();
+  /** Only offered for a complete or achieved sprint. */
+  deleteSprintRequested = output<MilestoneTreeNode>();
 
   iconClass(): string {
     return this.selected()

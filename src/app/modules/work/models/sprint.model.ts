@@ -1,12 +1,14 @@
-export type SprintStatus = 'future' | 'active' | 'complete' | 'incomplete' | 'achieved';
+export type SprintStatus = 'draft' | 'active' | 'complete' | 'achieved';
 
 export interface Sprint {
   id: string;
-  objectiveId: string;
+  projectId: string;
   name: string;
-  startDate: Date;
-  endDate: Date;
+  goal: string | null;
+  startDate: Date | null;
+  endDate: Date | null;
   status: SprintStatus;
   completedAt: Date | null;
   achievedAt: Date | null;
+  canManage: boolean;
 }

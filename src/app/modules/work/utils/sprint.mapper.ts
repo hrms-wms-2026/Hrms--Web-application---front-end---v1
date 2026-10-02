@@ -4,12 +4,14 @@ import { SprintDto } from '../models/dto/sprint.dto';
 export function toSprint(dto: SprintDto): Sprint {
   return {
     id: dto.id,
-    objectiveId: dto.objectiveId,
+    projectId: dto.projectId,
     name: dto.name,
-    startDate: new Date(dto.startDate),
-    endDate: new Date(dto.endDate),
+    goal: dto.goal,
+    startDate: dto.startDate ? new Date(dto.startDate) : null,
+    endDate: dto.endDate ? new Date(dto.endDate) : null,
     status: dto.status,
     completedAt: dto.completedAt ? new Date(dto.completedAt) : null,
-    achievedAt: dto.achievedAt ? new Date(dto.achievedAt) : null
+    achievedAt: dto.achievedAt ? new Date(dto.achievedAt) : null,
+    canManage: dto.canManage
   };
 }

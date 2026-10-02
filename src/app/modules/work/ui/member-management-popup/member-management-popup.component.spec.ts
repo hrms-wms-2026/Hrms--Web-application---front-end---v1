@@ -1,9 +1,7 @@
 import { ComponentFixture, TestBed } from '@angular/core/testing';
-import { of } from 'rxjs';
 import { vi } from 'vitest';
 import { MemberManagementPopupComponent } from './member-management-popup.component';
-import { EmployeeDirectoryStore } from '../../state/employee-directory.store';
-import { PeopleApiService } from '../../../people/data-access/people-api.service';
+import { FileApiService } from '../../../../shared/data-access/file-api.service';
 
 describe('MemberManagementPopupComponent', () => {
   let fixture: ComponentFixture<MemberManagementPopupComponent>;
@@ -11,10 +9,7 @@ describe('MemberManagementPopupComponent', () => {
   beforeEach(() => {
     TestBed.configureTestingModule({
       imports: [MemberManagementPopupComponent],
-      providers: [
-        { provide: EmployeeDirectoryStore, useValue: { get: () => ({ name: 'Objective Member' }), ensureLoaded: vi.fn() } },
-        { provide: PeopleApiService, useValue: { listEmployees: vi.fn().mockReturnValue(of({ items: [] })) } }
-      ]
+      providers: [{ provide: FileApiService, useValue: { getFileUrl: (id: string) => `https://api.test/files/${id}` } }]
     });
     fixture = TestBed.createComponent(MemberManagementPopupComponent);
     fixture.componentRef.setInput('open', true);
@@ -22,7 +17,7 @@ describe('MemberManagementPopupComponent', () => {
 
   it('renders project members and routes the add picker selection', () => {
     fixture.componentRef.setInput('scope', 'project');
-    fixture.componentRef.setInput('projectMembers', [{ id: 'u1', name: 'Project Member' }]);
+    fixture.componentRef.setInput('projectMembers', [{ id: 'u1', name: 'Project Member', avatarFileId: null }]);
     fixture.componentRef.setInput('canManage', true);
     fixture.detectChanges();
 
@@ -52,11 +47,29 @@ describe('MemberManagementPopupComponent', () => {
     expect(fixture.nativeElement.textContent).not.toContain('Choose a person');
   });
 
+  it('reopening the popup lands back on the member list, not wherever the add/transfer picker was left open', () => {
+    fixture.componentRef.setInput('scope', 'objective');
+    fixture.componentRef.setInput('objectiveMembers', []);
+    fixture.componentRef.setInput('canManage', true);
+    fixture.detectChanges();
+    (fixture.componentInstance as any).pickerOpen.set('member');
+    fixture.detectChanges();
+    expect(fixture.nativeElement.querySelector('[data-testid="employee-picker-search"]')).not.toBeNull();
+
+    fixture.componentRef.setInput('open', false);
+    fixture.detectChanges();
+    fixture.componentRef.setInput('open', true);
+    fixture.detectChanges();
+
+    expect(fixture.nativeElement.querySelector('[data-testid="employee-picker-search"]')).toBeNull();
+    expect(fixture.nativeElement.querySelector('[data-testid="add-member-button"]')).not.toBeNull();
+  });
+
   it('renders objective badges and routes remove and transfer actions', () => {
     fixture.componentRef.setInput('scope', 'objective');
     fixture.componentRef.setInput('objectiveMembers', [
-      { employeeId: 'e1', isHead: true, pending: false },
-      { employeeId: 'e2', isHead: false, pending: true }
+      { employeeId: 'e1', name: 'Employee One', avatarFileId: null, isHead: true, pending: false },
+      { employeeId: 'e2', name: 'Employee Two', avatarFileId: null, isHead: false, pending: true }
     ]);
     fixture.componentRef.setInput('canManage', true);
     fixture.detectChanges();
@@ -74,5 +87,82 @@ describe('MemberManagementPopupComponent', () => {
 
     expect(removeRequested).toHaveBeenCalledWith('e2');
     expect(transferRequested).toHaveBeenCalledWith('e3');
+  });
+
+  it('renders the member avatar image when an objective member has an avatarFileId', () => {
+    fixture.componentRef.setInput('scope', 'objective');
+    fixture.componentRef.setInput('objectiveMembers', [
+      { employeeId: 'e1', name: 'Employee One', avatarFileId: 'file-e1', isHead: false, pending: false }
+    ]);
+    fixture.detectChanges();
+
+    const img = fixture.nativeElement.querySelector('.avatar__image') as HTMLImageElement;
+    expect(img).toBeTruthy();
+    expect(img.src).toBe('https://api.test/files/file-e1');
+  });
+
+  it('renders each objective member\'s name straight from the DTO, not a coverage-scoped directory lookup', () => {
+    fixture.componentRef.setInput('scope', 'objective');
+    fixture.componentRef.setInput('objectiveMembers', [
+      { employeeId: 'e1', name: 'Arun Kumar', isHead: true, pending: false },
+      { employeeId: 'e2', name: null, isHead: false, pending: false }
+    ]);
+    fixture.detectChanges();
+
+    expect(fixture.nativeElement.textContent).toContain('Arun Kumar');
+    expect(fixture.nativeElement.textContent).toContain('Unknown employee');
+  });
+
+  it('shows the objective name in the modal title when provided, and falls back to "Members" otherwise', () => {
+    fixture.componentRef.setInput('scope', 'objective');
+    fixture.componentRef.setInput('objectiveMembers', []);
+    fixture.componentRef.setInput('objectiveName', 'Backend Revamp');
+    fixture.detectChanges();
+
+    expect(fixture.nativeElement.textContent).toContain('Members — Backend Revamp');
+
+    fixture.componentRef.setInput('objectiveName', null);
+    fixture.detectChanges();
+
+    expect(fixture.nativeElement.querySelector('h2')?.textContent?.trim()).toBe('Members');
+  });
+
+  it('shows Accept/Decline for my own pending invitation instead of the manager Cancel button', () => {
+    fixture.componentRef.setInput('scope', 'objective');
+    fixture.componentRef.setInput('objectiveMembers', [
+      { employeeId: 'e1', isHead: true, pending: false },
+      { employeeId: 'me', isHead: false, pending: true, invitationId: 'inv-1' }
+    ]);
+    fixture.componentRef.setInput('currentEmployeeId', 'me');
+    fixture.componentRef.setInput('canManage', false);
+    fixture.detectChanges();
+
+    expect(fixture.nativeElement.querySelector('[data-testid="accept-invitation-button"]')).not.toBeNull();
+    expect(fixture.nativeElement.querySelector('[data-testid="decline-invitation-button"]')).not.toBeNull();
+    expect(fixture.nativeElement.querySelector('[data-testid="remove-button"]')).toBeNull();
+
+    const acceptRequested = vi.fn();
+    const declineRequested = vi.fn();
+    fixture.componentInstance.invitationAcceptRequested.subscribe(acceptRequested);
+    fixture.componentInstance.invitationDeclineRequested.subscribe(declineRequested);
+
+    fixture.nativeElement.querySelector('[data-testid="accept-invitation-button"]').click();
+    fixture.nativeElement.querySelector('[data-testid="decline-invitation-button"]').click();
+
+    expect(acceptRequested).toHaveBeenCalledWith('inv-1');
+    expect(declineRequested).toHaveBeenCalledWith('inv-1');
+  });
+
+  it('still shows Cancel (not Accept/Decline) for a pending invitation you sent to someone else', () => {
+    fixture.componentRef.setInput('scope', 'objective');
+    fixture.componentRef.setInput('objectiveMembers', [
+      { employeeId: 'e2', isHead: false, pending: true, invitationId: 'inv-2' }
+    ]);
+    fixture.componentRef.setInput('currentEmployeeId', 'me');
+    fixture.componentRef.setInput('canManage', true);
+    fixture.detectChanges();
+
+    expect(fixture.nativeElement.querySelector('[data-testid="remove-button"]')).not.toBeNull();
+    expect(fixture.nativeElement.querySelector('[data-testid="accept-invitation-button"]')).toBeNull();
   });
 });

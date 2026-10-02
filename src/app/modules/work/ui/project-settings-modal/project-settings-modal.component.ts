@@ -1,7 +1,8 @@
 import { Component, OnInit, effect, inject, input, output, signal } from '@angular/core';
 import { ModalComponent } from '../../../../shared/ui/modal/modal.component';
 import { InputComponent } from '../../../../shared/ui/input/input.component';
-import { SelectComponent, SelectOption } from '../../../../shared/ui/select/select.component';
+import { DatePickerComponent } from '../../../../shared/ui/date-picker/date-picker.component';
+import { WorkDropdownComponent, WorkDropdownOption } from '../work-dropdown/work-dropdown.component';
 import { ButtonComponent } from '../../../../shared/ui/button/button.component';
 import { ProjectCategoryStore } from '../../state/project-category.store';
 import { validateProjectForm, ProjectFormFields } from '../../utils/project-form.validator';
@@ -10,16 +11,16 @@ import { EditProjectPayload, ProjectDetail } from '../../models/project.model';
 @Component({
   selector: 'app-project-settings-modal',
   standalone: true,
-  imports: [ModalComponent, InputComponent, SelectComponent, ButtonComponent],
+  imports: [ModalComponent, InputComponent, DatePickerComponent, WorkDropdownComponent, ButtonComponent],
   template: `
     <app-modal [open]="open()" title="Project settings" (closed)="closed.emit()">
       <div class="flex flex-col gap-3">
         <span data-testid="name-field">
-          <app-input label="Name" [value]="name()" [error]="errors()['name'] ?? ''" (valueChange)="name.set($event)" />
+          <app-input label="Name" [value]="name()" [error]="errors()['name']" (valueChange)="name.set($event)" />
         </span>
 
         <span data-testid="category-field">
-          <app-select label="Category" placeholder="Select a category" [options]="categoryOptions()" [value]="categoryId()" [error]="errors()['categoryId'] ?? ''" (valueChange)="categoryId.set($event)" />
+          <app-work-dropdown fieldLabel="Category" accessibleLabel="Project category" placeholder="Select a category" [options]="categoryOptions()" [selected]="categoryId()" [error]="errors()['categoryId']" leadingIcon="category" [fullWidth]="true" (selectionChanged)="categoryId.set($event)" />
         </span>
 
         <span data-testid="description-field">
@@ -27,15 +28,15 @@ import { EditProjectPayload, ProjectDetail } from '../../models/project.model';
         </span>
 
         <span data-testid="start-date-field">
-          <app-input label="Start date" type="date" [value]="startDate()" [error]="errors()['startDate'] ?? ''" (valueChange)="startDate.set($event)" />
+          <app-date-picker label="Start date" [value]="startDate()" [error]="errors()['startDate']" (valueChange)="startDate.set($event)" />
         </span>
 
         <span data-testid="target-date-field">
-          <app-input label="Target date" type="date" [value]="targetDate()" [error]="errors()['targetDate'] ?? ''" (valueChange)="targetDate.set($event)" />
+          <app-date-picker label="Target date" [value]="targetDate()" [error]="errors()['targetDate']" (valueChange)="targetDate.set($event)" />
         </span>
 
         <span data-testid="allocated-hours-field">
-          <app-input label="Allocated hours" type="number" [value]="allocatedHoursDisplay()" [error]="errors()['allocatedHours'] ?? ''" (valueChange)="onAllocatedHoursChange($event)" />
+          <app-input label="Allocated hours" type="number" [value]="allocatedHoursDisplay()" [error]="errors()['allocatedHours']" (valueChange)="onAllocatedHoursChange($event)" />
         </span>
 
         <span data-testid="color-field">
@@ -51,7 +52,7 @@ import { EditProjectPayload, ProjectDetail } from '../../models/project.model';
           <p class="text-sm text-[var(--color-danger-text)]" role="alert">{{ errorMessage() }}</p>
         }
 
-        <div class="mt-2 flex justify-end gap-2">
+        <div class="project-settings-modal__actions mt-2 flex justify-end gap-2">
           <span data-testid="cancel-button">
             <app-button variant="secondary" [disabled]="submitting()" (pressed)="closed.emit()">Cancel</app-button>
           </span>
@@ -61,7 +62,17 @@ import { EditProjectPayload, ProjectDetail } from '../../models/project.model';
         </div>
       </div>
     </app-modal>
-  `
+  `,
+  styles: [`
+    .project-settings-modal__actions ::ng-deep app-button > button {
+      width: auto;
+      height: 30px;
+      padding: 0 12px;
+      border-radius: 8px;
+      font-size: 13px;
+      font-weight: 500;
+    }
+  `]
 })
 export class ProjectSettingsModalComponent implements OnInit {
   private readonly categoryStore = inject(ProjectCategoryStore);
@@ -114,7 +125,7 @@ export class ProjectSettingsModalComponent implements OnInit {
     this.categoryStore.loadCategories();
   }
 
-  categoryOptions(): SelectOption[] {
+  categoryOptions(): WorkDropdownOption[] {
     return this.categoryStore.categories().map((c) => ({ value: c.id, label: c.name }));
   }
 

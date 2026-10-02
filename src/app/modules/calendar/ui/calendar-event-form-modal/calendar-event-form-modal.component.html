@@ -1,4 +1,4 @@
-<app-modal [open]="open" [title]="isEdit ? 'Edit event' : 'New event'" size="lg" (closed)="attemptClose()">
+<app-modal [open]="open" [title]="isEdit ? 'Edit event' : 'New event'" size="xl" (closed)="attemptClose()">
   <!-- No (ngSubmit)/type="submit" here on purpose: a recurring occurrence needs an explicit
        this-event/all-events choice, so every save action is a type="button" click handler below
        rather than the form's native submit event (which would bypass that choice on Enter). -->
@@ -10,112 +10,306 @@
       <app-input placeholder="Add a description (optional)" [value]="form.controls.description.value ?? ''" (valueChange)="setDescription($event)" />
     </div>
 
-    <!-- When -->
-    <div class="flex flex-col gap-3 border-t border-[var(--color-border)] py-4">
-      <div class="flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wide text-[var(--color-text-secondary)]">
-        <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-          <circle cx="12" cy="12" r="9" />
-          <path d="M12 7v5l3 3" />
-        </svg>
-        When
-      </div>
-
-      <div class="grid grid-cols-2 gap-3">
-        <app-date-picker label="Start date" [value]="form.controls.startDate.value ?? ''" (valueChange)="setStartDate($event)" />
-        <input type="time" formControlName="startTime" class="mt-5 rounded-md border border-[var(--color-border)] bg-[var(--color-surface)] px-2.5 py-1.5 text-sm" />
-        <app-date-picker label="End date" [value]="form.controls.endDate.value ?? ''" (valueChange)="setEndDate($event)" />
-        <input type="time" formControlName="endTime" class="mt-5 rounded-md border border-[var(--color-border)] bg-[var(--color-surface)] px-2.5 py-1.5 text-sm" />
-      </div>
-
-      <span class="text-xs text-[var(--color-text-secondary)]">Times shown in {{ myTimezone }}</span>
-
-      <div class="flex items-center justify-between">
-        <span class="text-sm text-[var(--color-text-primary)]">All day</span>
-        <button
-          type="button"
-          role="switch"
-          [attr.aria-checked]="form.controls.isAllDay.value"
-          (click)="toggleAllDay()"
-          class="relative inline-flex h-5 w-9 shrink-0 items-center rounded-full transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-focus-ring)]"
-          [style.background-color]="form.controls.isAllDay.value ? 'var(--color-accent)' : 'var(--color-border)'"
-        >
-          <span
-            class="inline-block h-4 w-4 rounded-full bg-white transition-transform"
-            [style.transform]="form.controls.isAllDay.value ? 'translateX(18px)' : 'translateX(2px)'"
-          ></span>
-        </button>
-      </div>
-    </div>
-
-    <!-- Where -->
-    <div class="flex flex-col gap-3 border-t border-[var(--color-border)] py-4">
-      <div class="flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wide text-[var(--color-text-secondary)]">
-        <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-          <path d="M12 21s7-6.5 7-11.5A7 7 0 0 0 5 9.5C5 14.5 12 21 12 21z" />
-          <circle cx="12" cy="9.5" r="2.5" />
-        </svg>
-        Where
-      </div>
-      <app-input placeholder="Location" [value]="form.controls.location.value ?? ''" (valueChange)="setLocation($event)" />
-      <app-input placeholder="Meeting link" [value]="form.controls.meetingLink.value ?? ''" (valueChange)="setMeetingLink($event)" />
-    </div>
-
-    <!-- Repeat -->
-    <div class="flex flex-col gap-3 border-t border-[var(--color-border)] py-4">
-      <div class="flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wide text-[var(--color-text-secondary)]">
-        <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-          <path d="M17 2l4 4-4 4" />
-          <path d="M3 11V9a4 4 0 0 1 4-4h14" />
-          <path d="M7 22l-4-4 4-4" />
-          <path d="M21 13v2a4 4 0 0 1-4 4H3" />
-        </svg>
-        Repeat
-      </div>
-      <app-select [options]="recurrenceOptions" [value]="form.controls.recurrenceFrequency.value ?? 'none'" (valueChange)="setRecurrenceFrequency($event)" />
-
-      @if (form.controls.recurrenceFrequency.value !== 'none') {
-        <div class="flex flex-col gap-3 border-l-2 border-[var(--color-border)] pl-3">
-          <div class="flex items-center gap-3 text-sm">
-            <label class="flex items-center gap-1.5">
-              <input type="radio" formControlName="recurrenceEndMode" value="never" />
-              Never ends
-            </label>
-            <label class="flex items-center gap-1.5">
-              <input type="radio" formControlName="recurrenceEndMode" value="until" />
-              Ends on
-            </label>
+    <div class="grid grid-cols-2 gap-x-8 border-t border-[var(--color-border)] pt-4">
+      <div class="flex flex-col">
+        <!-- When -->
+        <div class="flex flex-col gap-3 pb-4">
+          <div class="flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wide text-[var(--color-text-secondary)]">
+            <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+              <circle cx="12" cy="12" r="9" />
+              <path d="M12 7v5l3 3" />
+            </svg>
+            When
           </div>
-          @if (form.controls.recurrenceEndMode.value === 'until') {
-            <app-date-picker
-              data-testid="calendar-form-recurrence-until"
-              label="Ends on"
-              [value]="form.controls.recurrenceUntilDate.value ?? ''"
-              (valueChange)="setRecurrenceUntilDate($event)"
+
+          <div class="grid grid-cols-2 gap-3">
+            <app-date-picker label="Start date" [value]="form.controls.startDate.value ?? ''" (valueChange)="setStartDate($event)" />
+            <input type="time" data-testid="calendar-form-start-time" [value]="form.controls.startTime.value ?? ''" (input)="setStartTime($any($event.target).value)" class="mt-5 rounded-md border border-[var(--color-border)] bg-[var(--color-surface)] px-2.5 py-1.5 text-sm" />
+            <app-date-picker label="End date" [value]="form.controls.endDate.value ?? ''" (valueChange)="setEndDate($event)" />
+            <input type="time" data-testid="calendar-form-end-time" [value]="form.controls.endTime.value ?? ''" (input)="setEndTime($any($event.target).value)" class="mt-5 rounded-md border border-[var(--color-border)] bg-[var(--color-surface)] px-2.5 py-1.5 text-sm" />
+          </div>
+
+          <label class="flex flex-col gap-1">
+            <span class="text-xs text-[var(--color-text-secondary)]">Times entered in</span>
+            <app-select
+              data-testid="calendar-form-timezone"
+              ariaLabel="Timezone for the times entered above"
+              [options]="timezoneOptions()"
+              [value]="currentTimezone()"
+              (valueChange)="setTimezone($event)"
             />
+          </label>
+
+          <div class="flex items-center justify-between">
+            <span class="text-sm text-[var(--color-text-primary)]">All day</span>
+            <button
+              type="button"
+              role="switch"
+              [attr.aria-checked]="form.controls.isAllDay.value"
+              (click)="toggleAllDay()"
+              class="relative inline-flex h-5 w-9 shrink-0 items-center rounded-full transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-focus-ring)]"
+              [style.background-color]="form.controls.isAllDay.value ? 'var(--color-accent)' : 'var(--color-border)'"
+            >
+              <span
+                class="inline-block h-4 w-4 rounded-full bg-white transition-transform"
+                [style.transform]="form.controls.isAllDay.value ? 'translateX(18px)' : 'translateX(2px)'"
+              ></span>
+            </button>
+          </div>
+        </div>
+
+        <!-- Where -->
+        <div class="flex flex-col gap-3 border-t border-[var(--color-border)] py-4">
+          <div class="flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wide text-[var(--color-text-secondary)]">
+            <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+              <path d="M12 21s7-6.5 7-11.5A7 7 0 0 0 5 9.5C5 14.5 12 21 12 21z" />
+              <circle cx="12" cy="9.5" r="2.5" />
+            </svg>
+            Where
+          </div>
+          <app-input placeholder="Location" [value]="form.controls.location.value ?? ''" (valueChange)="setLocation($event)" />
+
+          @if (isAutoGeneratedMeetingLink()) {
+            <div class="flex items-center justify-between rounded-md border border-[var(--color-border)] bg-[var(--color-surface)] px-2.5 py-1.5 text-xs" data-testid="calendar-form-teams-meeting-attached">
+              <a [href]="form.controls.meetingLink.value" target="_blank" rel="noopener" class="truncate text-[var(--color-accent)]">
+                {{ form.controls.meetingLink.value }}
+              </a>
+              <button
+                type="button"
+                class="ml-2 inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-md text-[var(--color-text-secondary)] hover:bg-[var(--color-surface-secondary)] hover:text-[var(--color-accent)]"
+                data-testid="calendar-form-copy-meeting-link"
+                [attr.data-state]="linkCopyState()"
+                [attr.aria-label]="linkCopyState() === 'copied' ? 'Link copied' : linkCopyState() === 'failed' ? 'Could not copy the link' : 'Copy meeting link'"
+                [title]="linkCopyState() === 'copied' ? 'Copied' : linkCopyState() === 'failed' ? 'Could not copy' : 'Copy link'"
+                (click)="copyMeetingLink()"
+              >
+                @if (linkCopyState() === 'copied') {
+                  <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="text-green-600" aria-hidden="true">
+                    <path d="M20 6 9 17l-5-5" />
+                  </svg>
+                } @else {
+                  <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                    <rect x="9" y="9" width="13" height="13" rx="2" />
+                    <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1" />
+                  </svg>
+                }
+              </button>
+              <button
+                type="button"
+                class="ml-1 inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-md text-[var(--color-text-secondary)] hover:bg-[var(--color-surface-secondary)] hover:text-red-600 disabled:opacity-50"
+                [disabled]="meetingActionSaving"
+                aria-label="Remove meeting"
+                title="Remove meeting"
+                (click)="onRemoveMeeting()"
+                data-testid="calendar-form-remove-meeting"
+              >
+                <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                  <path d="M3 6h18" />
+                  <path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" />
+                  <path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6" />
+                  <path d="M10 11v6M14 11v6" />
+                </svg>
+              </button>
+            </div>
+          } @else {
+            <app-input placeholder="Meeting link" [value]="form.controls.meetingLink.value ?? ''" (valueChange)="setMeetingLink($event)" />
+            @if (form.controls.meetingLink.invalid && form.controls.meetingLink.dirty) {
+              <p class="-mt-2 text-xs text-red-600" data-testid="calendar-form-meeting-link-error">
+                Enter a full link starting with http:// or https://
+              </p>
+            }
+            @if (isEdit) {
+              @if (hasTeamsCapableConnection) {
+                <button
+                  type="button"
+                  class="-mt-1 self-start text-xs font-medium text-[var(--color-accent)] hover:underline disabled:opacity-50"
+                  [disabled]="meetingActionSaving"
+                  (click)="onAddMeeting('microsoft_teams')"
+                  data-testid="calendar-form-add-teams-meeting"
+                >
+                  + Add Teams meeting
+                </button>
+              }
+              @if (hasZoomCapableConnection) {
+                <button
+                  type="button"
+                  class="-mt-1 self-start text-xs font-medium text-[var(--color-accent)] hover:underline disabled:opacity-50"
+                  [disabled]="meetingActionSaving"
+                  (click)="onAddMeeting('zoom')"
+                  data-testid="calendar-form-add-zoom-meeting"
+                >
+                  + Add Zoom meeting
+                </button>
+              }
+              @if (!hasTeamsCapableConnection && !hasZoomCapableConnection) {
+                <a routerLink="/settings/calendar-connections" class="-mt-1 text-xs text-[var(--color-text-secondary)] hover:underline" data-testid="calendar-form-connect-microsoft-prompt">
+                  Connect Microsoft or Zoom to add a meeting
+                </a>
+              }
+            } @else {
+              @if (pendingMeetingProvider() === null) {
+                @if (hasTeamsCapableConnection) {
+                  <button
+                    type="button"
+                    class="-mt-1 self-start text-xs font-medium text-[var(--color-accent)] hover:underline"
+                    (click)="selectPendingMeeting('microsoft_teams')"
+                    data-testid="calendar-form-add-teams-meeting"
+                  >
+                    + Add Teams meeting
+                  </button>
+                }
+                @if (hasZoomCapableConnection) {
+                  <button
+                    type="button"
+                    class="-mt-1 self-start text-xs font-medium text-[var(--color-accent)] hover:underline"
+                    (click)="selectPendingMeeting('zoom')"
+                    data-testid="calendar-form-add-zoom-meeting"
+                  >
+                    + Add Zoom meeting
+                  </button>
+                }
+                @if (!hasTeamsCapableConnection && !hasZoomCapableConnection) {
+                  <a routerLink="/settings/calendar-connections" class="-mt-1 text-xs text-[var(--color-text-secondary)] hover:underline" data-testid="calendar-form-connect-microsoft-prompt">
+                    Connect Microsoft or Zoom to add a meeting
+                  </a>
+                }
+              } @else {
+                <div class="flex items-center justify-between rounded-md border border-[var(--color-border)] bg-[var(--color-surface)] px-2.5 py-1.5 text-xs" data-testid="calendar-form-pending-meeting">
+                  <span>{{ pendingMeetingProvider() === 'zoom' ? 'Zoom' : 'Teams' }} meeting will be created when you save</span>
+                  <button
+                    type="button"
+                    class="ml-2 shrink-0 text-[var(--color-text-secondary)] hover:text-red-600"
+                    (click)="clearPendingMeeting()"
+                    data-testid="calendar-form-remove-pending-meeting"
+                  >
+                    Remove
+                  </button>
+                </div>
+              }
+            }
           }
         </div>
-      }
-    </div>
 
-    <!-- Who -->
-    <div class="flex flex-col gap-3 border-t border-[var(--color-border)] py-4">
-      <div class="flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wide text-[var(--color-text-secondary)]">
-        <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-          <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" />
-          <circle cx="9" cy="7" r="4" />
-          <path d="M23 21v-2a4 4 0 0 0-3-3.87" />
-          <path d="M16 3.13a4 4 0 0 1 0 7.75" />
-        </svg>
-        Who
+        @if (isEdit && isAutoGeneratedMeetingLink() && hasEventEnded()) {
+          <div class="flex flex-col gap-2 border-t border-[var(--color-border)] py-4" data-testid="calendar-form-attendance-section">
+            <div class="flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wide text-[var(--color-text-secondary)]">
+              <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" />
+                <circle cx="9" cy="7" r="4" />
+                <path d="M23 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75" />
+              </svg>
+              Attendance
+            </div>
+            <app-calendar-event-attendance [eventId]="event!.id" />
+          </div>
+        }
       </div>
 
-      @if (!isEdit) {
-        <div class="flex items-center justify-between">
-          <span class="text-sm text-[var(--color-text-secondary)]">
-            {{ participantIds().length === 0 ? 'No participants yet' : participantIds().length + ' participant(s)' }}
-          </span>
-          <app-button type="button" variant="secondary" (click)="openParticipantPicker()">Add participants</app-button>
+      <div class="flex flex-col border-l border-[var(--color-border)] pl-8">
+        <!-- Repeat -->
+        <div class="flex flex-col gap-3 pb-4">
+          <div class="flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wide text-[var(--color-text-secondary)]">
+            <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+              <path d="M17 2l4 4-4 4" />
+              <path d="M3 11V9a4 4 0 0 1 4-4h14" />
+              <path d="M7 22l-4-4 4-4" />
+              <path d="M21 13v2a4 4 0 0 1-4 4H3" />
+            </svg>
+            Repeat
+          </div>
+          <app-calendar-select
+            data-testid="calendar-form-repeat"
+            ariaLabel="Repeat"
+            [options]="recurrenceOptions"
+            [value]="form.controls.recurrenceFrequency.value ?? 'none'"
+            (valueChange)="setRecurrenceFrequency($event)"
+          />
+
+          @if (form.controls.recurrenceFrequency.value !== 'none') {
+            <div class="flex flex-col gap-3 border-l-2 border-[var(--color-border)] pl-3">
+              <div class="flex items-center gap-3 text-sm">
+                <label class="flex items-center gap-1.5">
+                  <input type="radio" formControlName="recurrenceEndMode" value="never" />
+                  Never ends
+                </label>
+                <label class="flex items-center gap-1.5">
+                  <input type="radio" formControlName="recurrenceEndMode" value="until" />
+                  Ends on
+                </label>
+              </div>
+              @if (form.controls.recurrenceEndMode.value === 'until') {
+                <app-date-picker
+                  data-testid="calendar-form-recurrence-until"
+                  label="Ends on"
+                  [value]="form.controls.recurrenceUntilDate.value ?? ''"
+                  (valueChange)="setRecurrenceUntilDate($event)"
+                />
+              }
+            </div>
+          }
         </div>
+
+        <!-- Who -->
+        <div class="flex flex-col gap-3 border-t border-[var(--color-border)] py-4">
+          <div class="flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wide text-[var(--color-text-secondary)]">
+            <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+              <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" />
+              <circle cx="9" cy="7" r="4" />
+              <path d="M23 21v-2a4 4 0 0 0-3-3.87" />
+              <path d="M16 3.13a4 4 0 0 1 0 7.75" />
+            </svg>
+            Who
+          </div>
+
+          @if (organizerRow(); as organizer) {
+            <div class="flex items-center gap-2.5" data-testid="calendar-form-organizer">
+              <span style="--color-profile-bg: var(--color-accent-subtle); --color-text-primary: var(--color-accent);">
+                <app-avatar [userName]="organizer.name" size="sm" />
+              </span>
+              <span class="flex-1 truncate text-sm text-[var(--color-text-primary)]">{{ organizer.isYou ? 'You' : organizer.name }}</span>
+              <span class="rounded-full bg-[var(--color-surface-secondary)] px-2 py-0.5 text-xs font-medium text-[var(--color-text-secondary)]">Organizer</span>
+            </div>
+          }
+
+          @if (!isEdit) {
+        @if (participants().length === 0 && guestEmails().length === 0) {
+          <span class="text-sm text-[var(--color-text-secondary)]">No participants yet</span>
+        } @else {
+          <div class="flex flex-col gap-2" data-testid="calendar-form-participant-list">
+            @for (participant of participants(); track participant.id) {
+              <div class="flex items-center gap-2.5" data-testid="calendar-form-participant-row">
+                <span style="--color-profile-bg: var(--color-accent-subtle); --color-text-primary: var(--color-accent);">
+                  <app-avatar [userName]="participant.name" size="sm" />
+                </span>
+                <span class="flex-1 truncate text-sm text-[var(--color-text-primary)]">{{ participant.name || 'Unknown' }}</span>
+                <button
+                  type="button"
+                  data-testid="calendar-form-participant-remove"
+                  class="text-lg leading-none text-[var(--color-text-secondary)] hover:text-red-600"
+                  [attr.aria-label]="'Remove ' + (participant.name || 'participant')"
+                  (click)="removeParticipant(participant.id)"
+                >&times;</button>
+              </div>
+            }
+            @for (guest of guestEmails(); track guest) {
+              <div class="flex items-center gap-2.5" data-testid="calendar-form-guest-row">
+                <span style="--color-profile-bg: var(--color-surface-secondary); --color-text-primary: var(--color-text-secondary);">
+                  <app-avatar [userName]="guest" size="sm" />
+                </span>
+                <span class="flex-1 truncate text-sm text-[var(--color-text-primary)]">{{ guest }}</span>
+                <span class="rounded-full bg-[var(--color-surface-secondary)] px-2 py-0.5 text-xs font-medium text-[var(--color-text-secondary)]">Guest</span>
+                <button
+                  type="button"
+                  data-testid="calendar-form-guest-remove"
+                  class="text-lg leading-none text-[var(--color-text-secondary)] hover:text-red-600"
+                  [attr.aria-label]="'Remove ' + guest"
+                  (click)="removeGuest(guest)"
+                >&times;</button>
+              </div>
+            }
+          </div>
+        }
+        <ng-container *ngTemplateOutlet="participantPickerTpl" />
 
         @if (conflicts.length > 0) {
           <div class="flex flex-col gap-1.5 rounded-md bg-[var(--color-warning-subtle)] p-2.5 text-xs text-[var(--color-warning-text)]" role="alert">
@@ -126,11 +320,37 @@
                   <path d="M12 9v4" />
                   <path d="M12 17h.01" />
                 </svg>
-                <span>{{ conflict.employeeName }} is busy at this time ({{ conflict.conflictingEventTitle }}).</span>
+                <span>{{ conflict.employeeName }} is busy {{ formatOverlap(conflict.overlapStart, conflict.overlapEnd) }} ({{ conflict.conflictingEventTitle }}).</span>
               </div>
             }
           </div>
         }
+      } @else if (canManageParticipants()) {
+        <ng-container *ngTemplateOutlet="participantPickerTpl" />
+      }
+
+
+      @if (isEdit && event?.guests?.length) {
+        <div class="flex flex-col gap-2">
+          @for (guest of event!.guests!; track guest.email) {
+            <div class="flex items-center gap-2.5" data-testid="calendar-form-existing-guest">
+              <span style="--color-profile-bg: var(--color-surface-secondary); --color-text-primary: var(--color-text-secondary);">
+                <app-avatar [userName]="guest.email" size="sm" />
+              </span>
+              <span class="flex-1 truncate text-sm text-[var(--color-text-primary)]">{{ guest.email }}</span>
+              <span class="rounded-full bg-[var(--color-surface-secondary)] px-2 py-0.5 text-xs font-medium text-[var(--color-text-secondary)]">Guest</span>
+              @if (canManageParticipants()) {
+                <button
+                  type="button"
+                  data-testid="calendar-form-existing-guest-remove"
+                  class="text-lg leading-none text-[var(--color-text-secondary)] hover:text-red-600"
+                  [attr.aria-label]="'Remove ' + guest.email"
+                  (click)="onRemoveExistingGuest(guest.email)"
+                >&times;</button>
+              }
+            </div>
+          }
+        </div>
       }
 
       @if (isEdit && event?.participants?.length) {
@@ -150,23 +370,83 @@
                 [class.bg-red-100]="participant.responseStatus === 'rejected'"
                 [class.text-red-700]="participant.responseStatus === 'rejected'"
               >{{ participant.responseStatus }}</span>
+              @if (canManageParticipants()) {
+                <button
+                  type="button"
+                  data-testid="calendar-form-existing-participant-remove"
+                  class="text-lg leading-none text-[var(--color-text-secondary)] hover:text-red-600"
+                  [attr.aria-label]="'Remove ' + participant.employeeName"
+                  (click)="onRemoveExistingParticipant(participant.employeeId)"
+                >&times;</button>
+              }
             </div>
           }
         </div>
 
         @if (viewerParticipant(); as vp) {
-          <div class="flex items-center justify-between gap-2 rounded-md border border-[var(--color-border)] p-2">
-            <span class="text-sm">Your response: <strong>{{ vp.responseStatus }}</strong></span>
-            <div class="flex gap-2">
-              <app-button type="button" variant="secondary" data-testid="calendar-form-decline" (click)="onRespond('Rejected')">Decline</app-button>
-              <app-button type="button" data-testid="calendar-form-accept" (click)="onRespond('Accepted')">Accept</app-button>
+          <div class="flex flex-col gap-2 rounded-md border border-[var(--color-border)] p-2">
+            <div class="flex items-center justify-between gap-2">
+              <span class="text-sm">Your response: <strong>{{ vp.responseStatus }}</strong></span>
+              <div class="flex gap-2">
+                <app-button type="button" variant="secondary" data-testid="calendar-form-decline" (click)="onRespond('Rejected')">Decline</app-button>
+                <app-button type="button" data-testid="calendar-form-accept" (click)="onRespond('Accepted')">Accept</app-button>
+                <app-button type="button" variant="secondary" data-testid="calendar-form-more" (click)="toggleMoreMenu()">More</app-button>
+              </div>
             </div>
+
+            @if (moreMenuOpen()) {
+              <div class="flex flex-col gap-2 rounded-md border border-[var(--color-border)] p-2">
+                <button type="button" class="text-left text-sm" data-testid="calendar-form-request-resolution" (click)="openResolutionPrompt()">Request conflict resolution</button>
+                @if (eligibleNominees.length > 0) {
+                  <button type="button" class="text-left text-sm" data-testid="calendar-form-nominate" (click)="openNomineePicker()">Nominate replacement</button>
+                }
+              </div>
+            }
+
+            @if (resolutionReasonPromptOpen()) {
+              <div class="flex flex-col gap-2 rounded-md border border-[var(--color-border)] p-2">
+                <textarea
+                  data-testid="calendar-form-resolution-reason"
+                  placeholder="Why do you need help resolving this conflict?"
+                  class="rounded-md border border-[var(--color-border)] bg-[var(--color-surface)] px-2.5 py-1.5 text-sm"
+                  rows="2"
+                  [value]="reasonText()"
+                  (input)="setReasonText($any($event.target).value)"
+                ></textarea>
+                <div class="flex justify-end gap-2">
+                  <app-button type="button" variant="secondary" (click)="cancelResolutionPrompt()">Cancel</app-button>
+                  <app-button type="button" data-testid="calendar-form-submit-resolution" [disabled]="!reasonText().trim()" (click)="submitResolutionRequest()">Submit</app-button>
+                </div>
+              </div>
+            }
+
+            @if (nomineePickerOpen()) {
+              <div class="flex flex-col gap-2 rounded-md border border-[var(--color-border)] p-2">
+                <select
+                  data-testid="calendar-form-nominee-select"
+                  class="rounded-md border border-[var(--color-border)] bg-[var(--color-surface)] px-2.5 py-1.5 text-sm"
+                  [value]="selectedNomineeId()"
+                  (change)="setSelectedNomineeId($any($event.target).value)"
+                >
+                  @for (nominee of eligibleNominees; track nominee.employeeId) {
+                    <option [value]="nominee.employeeId">{{ nominee.employeeName }}</option>
+                  }
+                </select>
+                <div class="flex justify-end gap-2">
+                  <app-button type="button" variant="secondary" (click)="cancelNomineePicker()">Cancel</app-button>
+                  <app-button type="button" data-testid="calendar-form-submit-nominate" [disabled]="!selectedNomineeId()" (click)="submitNomineeNomination()">Submit</app-button>
+                </div>
+              </div>
+            }
           </div>
         }
       }
+        </div>
+      </div>
     </div>
 
     <!-- Footer -->
+
     <div class="-mx-6 -mb-6 rounded-b-xl border-t border-[var(--color-border)] bg-[var(--color-surface-secondary)] px-6 py-4">
       @if (isEdit && event?.isRecurringOccurrence) {
         <div class="flex flex-wrap items-center justify-between gap-2">
@@ -197,12 +477,6 @@
   </form>
 </app-modal>
 
-<app-calendar-participant-picker
-  [open]="participantPickerOpen()"
-  [selectedIds]="participantIds()"
-  (selectedIdsChange)="onParticipantIdsChange($event)"
-  (closed)="participantPickerOpen.set(false)"
-/>
 
 <app-confirm-modal
   [open]="discardConfirmOpen()"
@@ -213,3 +487,29 @@
   (confirmed)="confirmDiscard()"
   (cancelled)="cancelDiscard()"
 />
+
+<ng-template #participantPickerTpl>
+  <div #pickerWrap class="flex flex-col gap-2" (keydown.escape)="onParticipantPickerEscape($event)">
+    <div class="flex items-center justify-end">
+      <app-button
+        type="button"
+        variant="secondary"
+        [attr.data-testid]="isEdit ? 'calendar-form-add-participants-edit' : 'calendar-form-add-participants'"
+        [attr.aria-expanded]="participantPickerOpen()"
+        (click)="toggleParticipantPicker()"
+      >Add participants</app-button>
+    </div>
+    @if (participantPickerOpen()) {
+      <div data-testid="calendar-participant-dropdown" class="rounded-lg border border-[var(--color-border)] bg-[var(--color-surface)] p-2">
+        <app-calendar-participant-picker
+          [open]="participantPickerOpen()"
+          [selectedIds]="participantIds()"
+          [guestEmails]="guestEmails()"
+          (selectedIdsChange)="onParticipantIdsChange($event)"
+          (selectedPeopleChange)="onParticipantPeopleChange($event)"
+          (guestEmailsChange)="onGuestEmailsChange($event)"
+        />
+      </div>
+    }
+  </div>
+</ng-template>

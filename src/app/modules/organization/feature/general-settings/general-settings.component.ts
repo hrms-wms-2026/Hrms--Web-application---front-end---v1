@@ -13,6 +13,8 @@ import { LegalEntityApiService } from '../../data-access/legal-entity-api.servic
 import { LegalEntityGeneralSettings, UpdateLegalEntityGeneralSettingsRequest } from '../../models/legal-entity.model';
 import { GeneralSettingsStore } from '../../state/general-settings.store';
 import { LegalEntityStore } from '../../state/legal-entity.store';
+import { OfficeLocationChange, OfficeLocationPickerComponent } from './office-location-picker/office-location-picker.component';
+import { TimePickerComponent } from '../../../../shared/ui/time-picker/time-picker.component';
 import {
   COUNTRY_CODE_OPTIONS,
   CURRENCY_CODE_OPTIONS,
@@ -26,7 +28,14 @@ import {
   TIMEZONE_OPTIONS,
   WEEKDAY_OPTIONS
 } from '../../utils/general-settings-options';
-import { absoluteUrlValidator, nonEmptyArrayValidator, oneOfValidator, workTimePairValidator } from '../../utils/general-settings-validators';
+import {
+  absoluteUrlValidator,
+  nonEmptyArrayValidator,
+  officeLocationValidator,
+  oneOfValidator,
+  workTimePairValidator
+} from '../../utils/general-settings-validators';
+import { computeWorkDayHours, isOvernightWorkWindow } from '../../utils/work-day-hours';
 
 /**
  * Settings -> General Settings page for the currently selected Legal Entity.
@@ -46,7 +55,9 @@ import { absoluteUrlValidator, nonEmptyArrayValidator, oneOfValidator, workTimeP
     EmptyStateComponent,
     ErrorStateComponent,
     InputComponent,
-    SelectComponent
+    SelectComponent,
+    TimePickerComponent,
+    OfficeLocationPickerComponent
   ],
   templateUrl: './general-settings.component.html',
   styleUrl: './general-settings.component.css',
@@ -99,7 +110,7 @@ export class GeneralSettingsComponent {
     // Phase 1 supports English only - locked, not user-editable (CreateLegalEntityCommandHandler.cs
     // always sets DefaultLanguage = "en-US" for new legal entities).
     defaultLanguage: [{ value: 'en-US', disabled: true }, [Validators.required, Validators.maxLength(10)]],
-    dateFormat: ['', [Validators.required, Validators.maxLength(20)]],
+    dateFormat: ['DD/MM/YYYY', [Validators.required, Validators.maxLength(20)]],
     timeFormat: ['24h' as '12h' | '24h', [Validators.required, oneOfValidator(['12h', '24h'])]],
     status: ['active' as 'active' | 'inactive', [Validators.required, oneOfValidator(['active', 'inactive'])]],
     // Work hours — optional pair, validated as a group (both-or-neither, start < end).
@@ -107,8 +118,14 @@ export class GeneralSettingsComponent {
     workEndTime: ['', [Validators.pattern(/^([01]\d|2[0-3]):[0-5]\d$/)]],
     // Break duration — optional, independent of work start/end time. Blank allowed;
     // non-negative whole-minute values only (the pattern rejects decimals/negatives).
-    breakDurationMinutes: ['', [Validators.pattern(/^\d+$/)]]
-  }, { validators: [workTimePairValidator()] });
+    breakDurationMinutes: ['', [Validators.pattern(/^\d+$/)]],
+    // Office location for the on-site work-location warning — optional, all-or-nothing
+    // (officeLocationValidator). officeLatitude/officeLongitude are set by the map picker, never
+    // typed directly. The geofence radius lives on Clock-in Policy (Allowed distance), not here.
+    officeAddress: ['', [Validators.maxLength(500)]],
+    officeLatitude: this.fb.control<number | null>(null),
+    officeLongitude: this.fb.control<number | null>(null)
+  }, { validators: [workTimePairValidator(), officeLocationValidator()] });
 
   constructor() {
     // Reload (or clear) whenever the selected company changes - never patch across companies.
@@ -134,6 +151,24 @@ export class GeneralSettingsComponent {
     });
   }
 
+  onOfficeLocationChange(change: OfficeLocationChange): void {
+    this.form.patchValue({
+      officeAddress: change.address,
+      officeLatitude: change.latitude,
+      officeLongitude: change.longitude
+    });
+    this.form.controls.officeAddress.markAsDirty();
+    this.form.controls.officeLatitude.markAsDirty();
+    this.form.controls.officeLongitude.markAsDirty();
+  }
+
+  onOfficeLocationCleared(): void {
+    this.form.patchValue({ officeAddress: '', officeLatitude: null, officeLongitude: null });
+    this.form.controls.officeAddress.markAsDirty();
+    this.form.controls.officeLatitude.markAsDirty();
+    this.form.controls.officeLongitude.markAsDirty();
+  }
+
   isDaySelected(day: number): boolean {
     return this.form.controls.standardWorkingDays.value.includes(day);
   }
@@ -143,6 +178,23 @@ export class GeneralSettingsComponent {
     const next = checked ? [...current, day] : current.filter((d) => d !== day);
     this.form.controls.standardWorkingDays.setValue(next);
     this.form.controls.standardWorkingDays.markAsDirty();
+  }
+
+  getWorkingHoursSummary(): string | null {
+    const hours = computeWorkDayHours(
+      this.form.controls.workStartTime.value,
+      this.form.controls.workEndTime.value,
+      this.form.controls.breakDurationMinutes.value
+    );
+    if (hours === null || hours <= 0) return null;
+    return `${hours.toFixed(1)} working hours / day · this is 1 leave day`;
+  }
+
+  isOvernightWindow(): boolean {
+    const start = this.form.controls.workStartTime.value;
+    const end = this.form.controls.workEndTime.value;
+    if (!start || !end) return false;
+    return isOvernightWorkWindow(start, end);
   }
 
   async onSubmit(): Promise<void> {
@@ -242,12 +294,15 @@ export class GeneralSettingsComponent {
       firstDayOfWeek: 1,
       standardWorkingDays: [] as number[],
       defaultLanguage: 'en-US',
-      dateFormat: '',
+      dateFormat: 'DD/MM/YYYY',
       timeFormat: '24h' as const,
       status: 'active' as const,
       workStartTime: '',
       workEndTime: '',
-      breakDurationMinutes: ''
+      breakDurationMinutes: '',
+      officeAddress: '',
+      officeLatitude: null as number | null,
+      officeLongitude: null as number | null
     };
   }
 
@@ -267,13 +322,16 @@ export class GeneralSettingsComponent {
       financialYearStartMonth: settings.financialYearStartMonth,
       firstDayOfWeek: settings.firstDayOfWeek,
       standardWorkingDays: [...settings.standardWorkingDays],
-      defaultLanguage: settings.defaultLanguage,
-      dateFormat: settings.dateFormat,
-      timeFormat: settings.timeFormat,
+      defaultLanguage: settings.defaultLanguage || 'en-US',
+      dateFormat: settings.dateFormat || 'DD/MM/YYYY',
+      timeFormat: settings.timeFormat || '24h',
       status: settings.status,
       workStartTime: settings.workStartTime ?? '',
       workEndTime: settings.workEndTime ?? '',
-      breakDurationMinutes: settings.breakDurationMinutes != null ? String(settings.breakDurationMinutes) : ''
+      breakDurationMinutes: settings.breakDurationMinutes != null ? String(settings.breakDurationMinutes) : '',
+      officeAddress: settings.officeAddress ?? '',
+      officeLatitude: settings.officeLatitude,
+      officeLongitude: settings.officeLongitude
     };
   }
 
@@ -296,13 +354,16 @@ export class GeneralSettingsComponent {
       financialYearStartMonth: v.financialYearStartMonth,
       firstDayOfWeek: v.firstDayOfWeek,
       standardWorkingDays: v.standardWorkingDays,
-      defaultLanguage: v.defaultLanguage,
-      dateFormat: v.dateFormat,
-      timeFormat: v.timeFormat,
+      defaultLanguage: v.defaultLanguage || 'en-US',
+      dateFormat: v.dateFormat || 'DD/MM/YYYY',
+      timeFormat: v.timeFormat || '24h',
       status: v.status,
       workStartTime: v.workStartTime.trim() !== '' ? v.workStartTime : null,
       workEndTime: v.workEndTime.trim() !== '' ? v.workEndTime : null,
-      breakDurationMinutes: v.breakDurationMinutes.trim() !== '' ? Number(v.breakDurationMinutes) : null
+      breakDurationMinutes: v.breakDurationMinutes.trim() !== '' ? Number(v.breakDurationMinutes) : null,
+      officeAddress: nullIfBlank(v.officeAddress),
+      officeLatitude: v.officeLatitude,
+      officeLongitude: v.officeLongitude
     };
   }
 }

@@ -6,6 +6,10 @@ export type ButtonSize = 'sm' | 'md';
 @Component({
   selector: 'app-button',
   standalone: true,
+  host: {
+    class: 'inline-block align-middle',
+    '[class.w-full]': 'fullWidth()'
+  },
   template: `
     <button
       [type]="type()"
@@ -14,7 +18,7 @@ export type ButtonSize = 'sm' | 'md';
       (click)="pressed.emit($event)"
     >
       @if (loading()) {
-        <span class="mr-2 inline-block h-4 w-4 animate-spin rounded-full border-2 border-[var(--color-accent-contrast)]/40 border-t-[var(--color-accent-contrast)]"></span>
+        <span class="mr-1.5 inline-block h-3.5 w-3.5 animate-spin rounded-full border-2 border-current/40 border-t-current"></span>
       }
       <ng-content />
     </button>
@@ -24,16 +28,18 @@ export class ButtonComponent {
   variant = input<ButtonVariant>('primary');
   size = input<ButtonSize>('md');
   type = input<'button' | 'submit'>('button');
+  fullWidth = input(false);
   disabled = input(false);
   loading = input(false);
   pressed = output<MouseEvent>();
 
   classes(): string {
     const base =
-      'inline-flex w-full items-center justify-center rounded-md font-medium transition-colors disabled:cursor-not-allowed disabled:opacity-60 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-focus-ring)]';
+      'inline-flex items-center justify-center rounded-lg font-medium transition-colors disabled:cursor-not-allowed disabled:opacity-60 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-focus-ring)]';
+    const width = this.fullWidth() ? 'w-full' : 'w-auto';
     const sizes: Record<ButtonSize, string> = {
-      md: 'px-4 py-2 text-sm',
-      sm: 'px-2.5 py-1.5 text-xs'
+      md: 'h-[30px] px-3 text-[13px] leading-none',
+      sm: 'h-[26px] px-2.5 text-xs leading-none'
     };
     const variants: Record<ButtonVariant, string> = {
       primary: 'bg-[var(--color-accent)] text-[var(--color-accent-contrast)] hover:bg-[var(--color-accent-hover)]',
@@ -42,6 +48,6 @@ export class ButtonComponent {
       danger:
         'bg-[#dc2626] text-white hover:bg-[#b91c1c]'
     };
-    return `${base} ${sizes[this.size()]} ${variants[this.variant()]}`;
+    return `${base} ${width} ${sizes[this.size()]} ${variants[this.variant()]}`;
   }
 }

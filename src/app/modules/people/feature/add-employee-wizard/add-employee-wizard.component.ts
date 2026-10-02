@@ -1,22 +1,24 @@
-import { ChangeDetectionStrategy, Component, computed, effect, inject, OnDestroy, signal } from '@angular/core';
+import { ChangeDetectionStrategy, Component, DestroyRef, computed, effect, inject, input, OnDestroy, output, signal } from '@angular/core';
 import { FormBuilder, Validators } from '@angular/forms';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { Subject, Subscription, catchError, debounceTime, distinctUntilChanged, firstValueFrom, map, of, switchMap } from 'rxjs';
 import { NotificationService } from '../../../../core/services/notification.service';
 import { HasPermissionDirective } from '../../../../shared/directives/has-permission.directive';
-import { BreadcrumbHeaderComponent } from '../../../../shared/ui/breadcrumb-header/breadcrumb-header.component';
 import { ButtonComponent } from '../../../../shared/ui/button/button.component';
 import { DatePickerComponent } from '../../../../shared/ui/date-picker/date-picker.component';
 import { EmptyStateComponent } from '../../../../shared/ui/empty-state/empty-state.component';
 import { InputComponent } from '../../../../shared/ui/input/input.component';
 import { LoaderComponent } from '../../../../shared/ui/loader/loader.component';
-import { SelectComponent, SelectOption } from '../../../../shared/ui/select/select.component';
+import { CustomSelectComponent } from '../../../../shared/ui/custom-select/custom-select.component';
+import { SelectOption } from '../../../../shared/ui/select/select.component';
 import { LegalEntityStore } from '../../../organization/state/legal-entity.store';
 import { PeopleApiService } from '../../data-access/people-api.service';
 import { AddEmployeeWizardStore } from '../../state/add-employee-wizard.store';
 import { ReportsToPickerComponent } from '../../ui/reports-to-picker/reports-to-picker.component';
 import { DRAFT_REASON_LABELS, WizardStep } from '../../models/onboarding-draft.model';
 import { ChecklistTemplateMatchLevel, ChecklistTemplateType, DraftChecklistTask } from '../../models/checklist-template.model';
+import { UnsavedChangesService, DirtyFormHandle } from '../../../../shared/services/unsaved-changes.service';
+import { DraftsStore } from '../../../../shared/state/drafts.store';
 import { isTerminalDraft } from '../../utils/draft-status.utils';
 import { validateDraftTaskFields, validateDraftTasks } from '../../utils/draft-checklist-task.utils';
 import {
@@ -42,7 +44,7 @@ const TEMPLATE_TYPE_LABELS: Record<ChecklistTemplateType, string> = {
 const EMPLOYMENT_TYPE_OPTIONS: readonly SelectOption[] = [
   { value: 'full_time', label: 'Full-time' },
   { value: 'part_time', label: 'Part-time' },
-  { value: 'contractor', label: 'Contractor' },
+  { value: 'contract', label: 'Contract' },
   { value: 'intern', label: 'Intern' }
 ];
 
@@ -60,13 +62,12 @@ const STEP_LABELS: Record<WizardStep, string> = {
   imports: [
     HasPermissionDirective,
     RouterLink,
-    BreadcrumbHeaderComponent,
     ButtonComponent,
     DatePickerComponent,
     EmptyStateComponent,
     InputComponent,
     LoaderComponent,
-    SelectComponent,
+    CustomSelectComponent,
     ReportsToPickerComponent
   ],
   templateUrl: './add-employee-wizard.component.html',
@@ -79,9 +80,49 @@ export class AddEmployeeWizardComponent implements OnDestroy {
   private readonly router = inject(Router);
   private readonly notificationService = inject(NotificationService);
   private readonly peopleApi = inject(PeopleApiService);
+  private readonly unsaved = inject(UnsavedChangesService);
+  private readonly draftsStore = inject(DraftsStore);
+  private readonly destroyRef = inject(DestroyRef);
 
   readonly store = inject(AddEmployeeWizardStore);
   readonly legalEntityStore = inject(LegalEntityStore);
+
+  readonly isModal = input<boolean>(true);
+  readonly initialDraftId = input<string | null>(null);
+  readonly closed = output<void>();
+  readonly saved = output<{ finalized: boolean; draftId?: string }>();
+
+  private baseline: string | null = null;
+
+  private snapshot(): string {
+    return JSON.stringify([
+      this.form.getRawValue(),
+      this.store.companyId(),
+      this.store.departmentId(),
+      this.store.positionId(),
+      this.store.selectedTemplateId(),
+      this.store.selectedReportsToEmployeeId()
+    ]);
+  }
+
+  private markClean(): void {
+    this.baseline = this.snapshot();
+  }
+
+  private readonly guardHandle: DirtyFormHandle = {
+    isDirty: () => this.baseline !== null && this.snapshot() !== this.baseline,
+    canSaveDraft: () => !!this.store.companyId(),
+    saveDraft: async () => {
+      const res = await this.store.saveDraft(this.store.step(), { partial: true });
+      if (res) {
+        this.markClean();
+        void this.draftsStore.load();
+        return true;
+      }
+      return false;
+    },
+    discard: () => {}
+  };
 
   readonly employmentTypeOptions = EMPLOYMENT_TYPE_OPTIONS;
   readonly stepOrder = STEP_ORDER;
@@ -131,8 +172,8 @@ export class AddEmployeeWizardComponent implements OnDestroy {
   /** True once a resumed draft turns out to be terminal - the backend rejects any further save/finalize call against it. */
   readonly resumedDraftIsFinalized = computed(() => isTerminalDraft(this.store.lastSaveStatus(), this.store.lastSaveReason()));
 
-  readonly workModeOptions = computed<readonly SelectOption[]>(() =>
-    this.store.workModes().map((wm) => ({ value: String(wm.id), label: wm.label }))
+  readonly workModeOptions = computed<readonly { value: string; label: string }[]>(() =>
+    this.store.workModes().map((wm) => ({ value: wm.id, label: wm.label }))
   );
 
   readonly selectedWorkModeLabel = computed(() => {
@@ -284,12 +325,12 @@ export class AddEmployeeWizardComponent implements OnDestroy {
   });
 
   constructor() {
-    const draftId = this.route.snapshot.queryParamMap.get('draftId');
+    const routeDraftId = this.route.snapshot.queryParamMap.get('draftId');
 
     // The store is providedIn: 'root' and survives route navigation, so a fresh "+ Add Employee"
     // visit (no draftId) must clear out whatever an earlier finalized/in-progress draft left
     // behind - otherwise stale finalizeResult/lastSaveReason/draftId leak into the new wizard.
-    if (!draftId) {
+    if (!routeDraftId && !this.initialDraftId()) {
       this.store.reset();
       this.lastSuggestedEmployeeNumber = null;
       this.employeeNumberSuggestionRequestKey = null;
@@ -297,7 +338,12 @@ export class AddEmployeeWizardComponent implements OnDestroy {
       this.employeeNumberGenerateError.set(null);
     }
 
-    void this.store.loadWorkModes();
+    effect(() => {
+      const companyId = this.store.companyId();
+      if (companyId) {
+        void this.store.loadWorkModes(companyId);
+      }
+    });
 
     this.availabilitySub = this.employeeNumberEdits$
       .pipe(
@@ -335,17 +381,20 @@ export class AddEmployeeWizardComponent implements OnDestroy {
     // resumeExistingDraft() below sets the wizard's companyId from the draft's own
     // legalEntityId, which must not be clobbered by whatever company happens to be selected now.
     effect(() => {
-      if (draftId) {
+      if (routeDraftId || this.initialDraftId()) {
         return;
       }
       const company = this.legalEntityStore.selectedLegalEntity();
       if (company && this.store.companyId() !== company.id) {
         this.store.setCompany(company.id);
+        if (!this.form.dirty) {
+          this.markClean();
+        }
       }
     });
 
     effect(() => {
-      if (draftId) {
+      if (routeDraftId || this.initialDraftId()) {
         return;
       }
       const companyId = this.store.companyId();
@@ -361,8 +410,15 @@ export class AddEmployeeWizardComponent implements OnDestroy {
       }
     });
 
-    if (draftId) {
-      void this.resumeExistingDraft(draftId);
+    effect(() => {
+      const inputDraftId = this.initialDraftId();
+      if (inputDraftId && inputDraftId !== this.store.draftId()) {
+        void this.resumeExistingDraft(inputDraftId);
+      }
+    });
+
+    if (routeDraftId) {
+      void this.resumeExistingDraft(routeDraftId);
     }
 
     this.form.valueChanges.subscribe((value) => {
@@ -373,9 +429,13 @@ export class AddEmployeeWizardComponent implements OnDestroy {
         employmentType: value.employmentType ?? '',
         startDate: value.startDate ?? '',
         employeeNumber: value.employeeNumber ?? '',
-        workModeId: value.workModeId ? Number(value.workModeId) : null
+        workModeId: value.workModeId || null
       });
     });
+
+    this.markClean();
+    const unregisterGuard = this.unsaved.register(this.guardHandle);
+    this.destroyRef.onDestroy(() => unregisterGuard());
   }
 
   ngOnDestroy(): void {
@@ -399,7 +459,7 @@ export class AddEmployeeWizardComponent implements OnDestroy {
       employmentType: formValue.employmentType,
       startDate: formValue.startDate,
       employeeNumber: formValue.employeeNumber,
-      workModeId: formValue.workModeId ? String(formValue.workModeId) : ''
+      workModeId: formValue.workModeId ?? ''
     });
     this.lastSuggestedEmployeeNumber = null;
     if (formValue.employeeNumber) {
@@ -410,6 +470,7 @@ export class AddEmployeeWizardComponent implements OnDestroy {
       this.employeeNumberSuggestionRequestKey = null;
       await this.maybeSuggestEmployeeNumber(this.store.companyId()!);
     }
+    this.markClean();
   }
 
   onEmployeeNumberChange(value: string): void {
@@ -453,6 +514,9 @@ export class AddEmployeeWizardComponent implements OnDestroy {
       this.lastSuggestedEmployeeNumber = suggestion.employeeNumber;
       this.form.controls.employeeNumber.setValue(suggestion.employeeNumber);
       this.employeeNumberAvailability.set('available');
+      if (!this.form.dirty) {
+        this.markClean();
+      }
     } catch {
       if (!normalizeEmployeeNumber(this.form.controls.employeeNumber.value)) {
         this.employeeNumberGenerateError.set(EMPLOYEE_NUMBER_GENERATE_FAILED_MESSAGE);
@@ -472,6 +536,13 @@ export class AddEmployeeWizardComponent implements OnDestroy {
 
   onWorkModeChange(workModeIdStr: string): void {
     this.form.controls.workModeId.setValue(workModeIdStr);
+  }
+
+  retryLoadWorkModes(): void {
+    const companyId = this.store.companyId();
+    if (companyId) {
+      void this.store.loadWorkModes(companyId);
+    }
   }
 
   onDepartmentChange(departmentId: string): void {
@@ -796,17 +867,13 @@ export class AddEmployeeWizardComponent implements OnDestroy {
     if (this.store.saving()) {
       return;
     }
-    this.submitAttempted.set(true);
-    if (!this.validateSelectedPosition() || this.form.invalid || this.hasBlockingReportsToPick() || this.hasBlockingEmployeeNumber()) {
-      return;
-    }
-    if (this.store.selectedTemplateId()) {
-      this.taskSubmitAttempted.set(true);
-    }
 
-    const result = await this.store.saveDraft(this.store.step());
+    const result = await this.store.saveDraft(this.store.step(), { partial: true });
     if (result) {
       this.notificationService.success('Draft saved.');
+      this.saved.emit({ finalized: false, draftId: result.id });
+      this.markClean();
+      void this.draftsStore.load();
     } else {
       this.notificationService.error(this.store.saveError() ?? 'Something went wrong while saving the employee.');
     }
@@ -842,32 +909,66 @@ export class AddEmployeeWizardComponent implements OnDestroy {
     if (response) {
       if (response.invitationQueued && !response.positionApprovalPending) {
         this.notificationService.success('Employee onboarding invitation was queued.');
-        // Navigate first, then reset - this component (and its company-selection effect) is
-        // still live until navigation completes, and reset() nulling companyId would otherwise
-        // make that effect re-fire setCompany()/loadDepartmentsForCompany() on a component
-        // that's mid-teardown.
+        this.saved.emit({ finalized: true, draftId });
+        this.closed.emit();
+        void this.draftsStore.load();
         await this.router.navigate(['/people/employees']);
         this.store.reset();
       } else if (response.positionApprovalPending) {
         this.notificationService.info('Position approval was requested before the invitation can be sent.');
-        this.router.navigate(['/people/employees']);
+        this.saved.emit({ finalized: true, draftId });
+        this.closed.emit();
+        void this.draftsStore.load();
+        await this.router.navigate(['/people/employees']);
+        this.store.reset();
       } else if (response.status === 'waiting_for_seat' || response.draftReason === 'waiting_for_seat') {
         this.notificationService.info('No seat is available. The draft was saved for follow-up.');
+        this.saved.emit({ finalized: false, draftId });
+        void this.draftsStore.load();
       } else if (response.draftReason === 'seat_configuration_required') {
         this.notificationService.warning('Seat policy is not configured. The draft was saved, but invitation cannot be sent yet.');
+        this.saved.emit({ finalized: false, draftId });
+        void this.draftsStore.load();
       } else if (response.draftReason === 'position_approval_rejected') {
         this.notificationService.error('Position approval was rejected.');
       } else {
         this.notificationService.success('Employee onboarding draft updated.');
-        this.router.navigate(['/people/employees']);
+        this.saved.emit({ finalized: true, draftId });
+        this.closed.emit();
+        void this.draftsStore.load();
+        await this.router.navigate(['/people/employees']);
+        this.store.reset();
       }
     } else {
       this.notificationService.error(this.store.finalizeError() ?? 'Failed to finalize employee.');
     }
   }
 
-  onCancel(): void {
-    this.router.navigate(['/people/employees']);
+  async onCancel(): Promise<void> {
+    if (!(await this.unsaved.requestClose(this.guardHandle))) return;
+    this.closed.emit();
+    if (!this.isModal()) {
+      void this.router.navigate(['/people/employees']);
+    }
+  }
+
+  canJumpToStep(targetIndex: number): boolean {
+    return targetIndex < this.stepIndex();
+  }
+
+  jumpToStep(targetIndex: number): void {
+    if (this.canJumpToStep(targetIndex)) {
+      const targetStep = this.stepOrder[targetIndex];
+      if (targetStep) {
+        this.store.goToStep(targetStep);
+      }
+    }
+  }
+
+  onBackdropClick(event: MouseEvent): void {
+    if ((event.target as HTMLElement)?.classList.contains('add-emp-modal-backdrop')) {
+      this.onCancel();
+    }
   }
 
   draftReasonLabel(reason: string): string {

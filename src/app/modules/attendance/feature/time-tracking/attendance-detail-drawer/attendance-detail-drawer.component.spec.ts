@@ -36,7 +36,17 @@ const detail: AttendanceDayDetail = {
     activityScore: 91,
     dataCoveragePercentage: 95,
     topApps: [{ appName: 'VS Code', totalSeconds: 3600, category: 'productive' }]
-  }
+  },
+  checkIns: [
+    {
+      id: 'checkin-1',
+      checkedInAt: '2026-08-27T04:01:00Z',
+      latitude: 6.9271,
+      longitude: 79.8612,
+      locationAccuracy: 12.5,
+      locationAddress: 'Colombo Office'
+    }
+  ]
 };
 
 interface DrawerStoreMock {
@@ -44,6 +54,7 @@ interface DrawerStoreMock {
   dayDetailLoading: ReturnType<typeof signal<boolean>>;
   dayDetailError: ReturnType<typeof signal<string | null>>;
   loadDayDetail: ReturnType<typeof vi.fn>;
+  refreshDayDetail: ReturnType<typeof vi.fn>;
   clearDayDetail: ReturnType<typeof vi.fn>;
 }
 
@@ -62,6 +73,7 @@ describe('AttendanceDetailDrawerComponent', () => {
       dayDetailLoading: signal(options.loading ?? false),
       dayDetailError: signal(options.error ?? null),
       loadDayDetail: vi.fn(() => Promise.resolve()),
+      refreshDayDetail: vi.fn(() => Promise.resolve()),
       clearDayDetail: vi.fn()
     };
 
@@ -91,6 +103,20 @@ describe('AttendanceDetailDrawerComponent', () => {
     expect(store.loadDayDetail).not.toHaveBeenCalled();
   });
 
+  it('shows Working beside the date when the shift is still active', async () => {
+    const { fixture } = await setup({
+      data: {
+        ...detail,
+        summary: { ...detail.summary, status: 'active', statusLabel: 'Working', clockOutAt: null }
+      }
+    });
+    const pill = (fixture.nativeElement as HTMLElement).querySelector('.drawer-date-row .status-pill');
+
+    expect(pill?.classList.contains('status-pill--active')).toBe(true);
+    expect(pill?.textContent).toContain('Working');
+    expect((fixture.nativeElement as HTMLElement).querySelector('.summary-tile--status')).toBeNull();
+  });
+
   it('renders the loading state', async () => {
     const { fixture } = await setup({ loading: true });
     expect((fixture.nativeElement as HTMLElement).querySelector('[aria-busy="true"]')).toBeTruthy();
@@ -112,7 +138,7 @@ describe('AttendanceDetailDrawerComponent', () => {
     expect(text).toContain('Basic attendance summary is shown above. Detailed timeline and activity are unavailable.');
   });
 
-  it('renders summary, timeline, and daily activity sections when data loads', async () => {
+  it('renders summary, timeline, daily activity, and check-in location sections when data loads', async () => {
     const { fixture } = await setup({ data: detail });
     const text = (fixture.nativeElement as HTMLElement).textContent ?? '';
     expect(text).toContain('Summary');
@@ -120,12 +146,54 @@ describe('AttendanceDetailDrawerComponent', () => {
     expect(text).toContain('Daily activity');
     expect(text).toContain('Clocked in');
     expect(text).toContain('Clocked out');
-    expect(text).toContain('productive');
+    expect(text).toContain('VS Code');
+    expect(text).toContain('Apps used');
+    expect(text).toContain('No idle-time screenshots for this day.');
+    expect(text).toContain('1h');
+    expect(text).not.toContain('Active time');
+    expect(text).toContain('Activity score');
+    expect(text).toContain('91');
+    expect(text).toContain('/ 100');
+    expect(text).toContain('Location check-ins');
+    expect(text).toContain('Colombo Office');
+  });
+
+  it('shows Allow, Skip, and No response for idle activity checks', async () => {
+    const { fixture } = await setup({
+      data: {
+        ...detail,
+        activityChecks: [
+          { id: 'allow', promptedAt: '2026-08-27T04:15:00Z', outcome: 'captured', url: 'https://files.example/shot.jpg' },
+          { id: 'skip', promptedAt: '2026-08-27T05:15:00Z', outcome: 'declined', url: null },
+          { id: 'miss', promptedAt: '2026-08-27T06:15:00Z', outcome: 'timed_out', url: null }
+        ]
+      }
+    });
+    const root = fixture.nativeElement as HTMLElement;
+    const text = root.textContent ?? '';
+
+    expect(text).toContain('Allow');
+    expect(text).toContain('Skip');
+    expect(text).toContain('Nothing done');
+    expect(text).not.toContain('No activity checks for this day.');
+    expect(root.querySelector('img')?.getAttribute('src')).toBe('https://files.example/shot.jpg');
   });
 
   it('renders a friendly empty state when daily activity is null', async () => {
     const { fixture } = await setup({ data: { ...detail, dailyActivity: null } });
-    expect((fixture.nativeElement as HTMLElement).textContent).toContain('No activity data recorded for this day.');
+    expect((fixture.nativeElement as HTMLElement).textContent).toContain('No idle-time screenshots for this day.');
+  });
+
+  it('renders a friendly empty state when there are no check-ins', async () => {
+    const { fixture } = await setup({ data: { ...detail, checkIns: [] } });
+    expect((fixture.nativeElement as HTMLElement).textContent).toContain('No check-in locations recorded for this day.');
+  });
+
+  it('falls back to coordinates when a check-in has no resolved address', async () => {
+    const { fixture } = await setup({
+      data: { ...detail, checkIns: [{ ...detail.checkIns[0], locationAddress: null }] }
+    });
+    expect((fixture.nativeElement as HTMLElement).textContent).toContain('6.92710, 79.86120 (±13 m)');
   });
 
   it('emits closed when the close button is clicked', async () => {

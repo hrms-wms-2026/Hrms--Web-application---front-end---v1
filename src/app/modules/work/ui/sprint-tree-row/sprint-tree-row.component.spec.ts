@@ -49,4 +49,23 @@ describe('SprintTreeRowComponent', () => {
     setup({ ...sprint, status: 'active' });
     expect(fixture.nativeElement.querySelector('[data-testid="status-badge"]')?.textContent).toContain('active');
   });
+
+  it('shows "No dates set" for a draft sprint with no end date', () => {
+    setup({ ...sprint, endDate: null });
+    expect(fixture.nativeElement.textContent).toContain('No dates set');
+  });
+  it('shows "Delete sprint" only for complete or achieved sprints and emits deleteSprintRequested', () => {
+    setup(sprint);
+    expect(fixture.nativeElement.querySelector('[data-testid="delete-sprint-button"]')).toBeNull();
+
+    for (const status of ['complete', 'achieved']) {
+      setup({ ...sprint, status });
+      const emitted: MilestoneTreeNode[] = [];
+      fixture.componentInstance.deleteSprintRequested.subscribe((n) => emitted.push(n));
+      const button = fixture.nativeElement.querySelector('[data-testid="delete-sprint-button"]') as HTMLButtonElement;
+      expect(button).not.toBeNull();
+      button.click();
+      expect(emitted.map((n) => n.id)).toEqual(['spr-1']);
+    }
+  });
 });

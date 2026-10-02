@@ -1,11 +1,17 @@
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { ObjectiveTimelineBarComponent } from './objective-timeline-bar.component';
-import { ProjectCalendarItemDto } from '../../models/dto/calendar.dto';
+import { ProjectCalendarEventLinkDto, ProjectCalendarModuleDto } from '../../models/dto/calendar.dto';
 
-const item = (overrides: Partial<ProjectCalendarItemDto> = {}): ProjectCalendarItemDto => ({
+const link = (overrides: Partial<ProjectCalendarEventLinkDto> = {}): ProjectCalendarEventLinkDto => ({
+  eventId: 'e1', eventName: 'Release', eventColor: '#123456',
+  eventStartDate: '2026-01-01', eventEndDate: '2026-01-31',
+  membership: 'whole', tasksInEventCount: 3, taskTotalCount: 3, ...overrides
+});
+
+const item = (overrides: Partial<ProjectCalendarModuleDto> = {}): ProjectCalendarModuleDto => ({
   objectiveId: 'o1', projectId: 'p1', parentObjectiveId: null, title: 'Design',
   startDate: '2026-01-10', endDate: '2026-01-12', isActive: true, isAchieved: false,
-  canEdit: true, calendarEventId: null, calendarEventColor: null, ...overrides
+  canEdit: true, events: [], ...overrides
 });
 
 describe('ObjectiveTimelineBarComponent', () => {
@@ -20,13 +26,26 @@ describe('ObjectiveTimelineBarComponent', () => {
     fixture.detectChanges();
   });
 
-  it('uses event color, accent color, and distinct achieved color by precedence', () => {
-    expect(fixture.componentInstance.barColor()).toBe('var(--color-accent)');
-    fixture.componentRef.setInput('item', item({ calendarEventColor: '#123456' }));
-    expect(fixture.componentInstance.barColor()).toBe('#123456');
-    fixture.componentRef.setInput('item', item({ canEdit: false, calendarEventColor: '#123456' }));
+  it('paints a module in no event neutral grey', () => {
     expect(fixture.componentInstance.barColor()).toBe('#94A3B8');
-    fixture.componentRef.setInput('item', item({ canEdit: true, isAchieved: true }));
+  });
+
+  it('paints a whole-member module in its event colour', () => {
+    fixture.componentRef.setInput('item', item({ events: [link({ eventColor: '#AA1122', membership: 'whole' })] }));
+    expect(fixture.componentInstance.barColor()).toBe('#AA1122');
+    expect(fixture.componentInstance.partialBadge()).toBeNull();
+  });
+
+  it('paints a partial module in the event colour and shows an N/M badge', () => {
+    fixture.componentRef.setInput('item', item({
+      events: [link({ eventColor: '#00AA55', membership: 'partial', tasksInEventCount: 2, taskTotalCount: 5 })]
+    }));
+    expect(fixture.componentInstance.barColor()).toBe('#00AA55');
+    expect(fixture.componentInstance.partialBadge()).toBe('2/5');
+  });
+
+  it('uses a distinct achieved colour regardless of event links', () => {
+    fixture.componentRef.setInput('item', item({ isAchieved: true, events: [link()] }));
     expect(fixture.componentInstance.barColor()).toBe('#64748B');
   });
 
@@ -45,9 +64,6 @@ describe('ObjectiveTimelineBarComponent', () => {
   });
 
   it('moves the rendered bar live during a drag, before pointerup commits it', () => {
-    // Regression test: left()/width() used to be computed but never bound in the
-    // template, so the bar sat still during a drag and only jumped to its new spot
-    // after drop. This asserts the DOM itself reflects the live preview mid-drag.
     const bar = fixture.nativeElement.querySelector('[data-testid="timeline-bar-o1"]') as HTMLElement;
     expect(bar.style.left).toBe('90px');
     expect(bar.style.width).toBe('30px');

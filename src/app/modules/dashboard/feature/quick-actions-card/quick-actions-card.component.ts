@@ -1,12 +1,11 @@
 import { ChangeDetectionStrategy, Component, OnInit, computed, inject } from '@angular/core';
 import { RouterLink } from '@angular/router';
-import { CardComponent } from '../../../../shared/ui/card/card.component';
 import { TimeTrackingStore } from '../../../attendance/state/time-tracking.store';
 
 @Component({
   selector: 'app-quick-actions-card',
   standalone: true,
-  imports: [CardComponent, RouterLink],
+  imports: [RouterLink],
   templateUrl: './quick-actions-card.component.html',
   changeDetection: ChangeDetectionStrategy.OnPush
 })

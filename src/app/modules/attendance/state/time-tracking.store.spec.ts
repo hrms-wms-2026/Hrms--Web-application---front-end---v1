@@ -77,7 +77,8 @@ const dayDetail: AttendanceDayDetail = {
     canCorrect: false
   },
   timelineEvents: [],
-  dailyActivity: null
+  dailyActivity: null,
+  checkIns: []
 };
 
 const workAreaRequest: WorkAreaChangeRequestResponse = {
@@ -103,8 +104,10 @@ describe('TimeTrackingStore', () => {
   let api: {
     getToday: ReturnType<typeof vi.fn>;
     getMyHistory: ReturnType<typeof vi.fn>;
+    getMyMonthlySummary: ReturnType<typeof vi.fn>;
         getCoveredHistory: ReturnType<typeof vi.fn>;
     getDayDetail: ReturnType<typeof vi.fn>;
+    getEmployeeDailyReport: ReturnType<typeof vi.fn>;
     getMyCorrections: ReturnType<typeof vi.fn>;
     getApprovalInbox: ReturnType<typeof vi.fn>;
     previewWorkAreaChange: ReturnType<typeof vi.fn>;
@@ -127,8 +130,10 @@ describe('TimeTrackingStore', () => {
     api = {
       getToday: vi.fn(() => of(today)),
       getMyHistory: vi.fn(() => of({ items: [], pageNumber: 1, pageSize: 20, totalCount: 0 })),
+      getMyMonthlySummary: vi.fn(() => of({ workingDays: 20, daysPresent: 18, lateArrivals: 2, earlyDepartures: 1, missingClockOuts: 0 })),
             getCoveredHistory: vi.fn(() => of({ items: [], pageNumber: 1, pageSize: 20, totalCount: 0 })),
       getDayDetail: vi.fn(() => of(dayDetail)),
+      getEmployeeDailyReport: vi.fn(() => of({ employeeId: 'employee-1', date: '2026-08-22', screenshots: [] })),
       getMyCorrections: vi.fn(() => of({ items: [], pageNumber: 1, pageSize: 20, totalCount: 0 })),
       getApprovalInbox: vi.fn(() => of([])),
       previewWorkAreaChange: vi.fn(() => of({ date: '2026-08-22', timezone: 'Asia/Colombo', currentExpectedWorkArea: 'onsite', requestedWorkArea: 'remote', reason: 'Client meeting', receiver: { employeeId: 'approver-1', userId: 'user-1', displayName: 'Approver', positionName: 'Manager' } })),
@@ -254,6 +259,28 @@ describe('TimeTrackingStore', () => {
     expect(notifications.success).not.toHaveBeenCalled();
   });
 
+  it('shows the raw conflict detail when clock-out is blocked by an open task session, even though it contains words the machine-value filter would normally strip', async () => {
+    // Task titles are free text and can easily contain words toSafeErrorMessage's isMachineValue
+    // filter treats as "technical" (e.g. "Update", which matches its raw-SQL-keyword check) -
+    // this message must reach the user unfiltered, bypassing that generic safety net entirely.
+    const detail = "Task 'Update API docs' is still running. Push it before clocking out for the day.";
+    api.clockOut.mockReturnValue(throwError(() => ({ status: 409, error: { detail } })));
+
+    await store.clockOut();
+
+    expect(store.todayError()).toBe(detail);
+    expect(notifications.error).toHaveBeenCalledWith(detail);
+  });
+
+  it('falls back to the sanitized message for a clock-out conflict that is not the open-task-session guard', async () => {
+    api.clockOut.mockReturnValue(throwError(() => ({ status: 409, error: { detail: 'open_break_must_be_ended_before_clock_out' } })));
+
+    await store.clockOut();
+
+    expect(errors.toSafeMessage).toHaveBeenCalled();
+    expect(store.todayError()).toBe('A friendly attendance error.');
+  });
+
   it('shows a friendly covered-history message for a 403 response', async () => {
     api.getCoveredHistory.mockReturnValue(throwError(() => ({ status: 403 })));
 
@@ -271,6 +298,20 @@ describe('TimeTrackingStore', () => {
     expect(api.getMyHistory).toHaveBeenCalledWith('2026-08-17', '2026-08-23', 3, 20);
     expect(store.historyPage()).toBe(3);
     expect(store.historyTotalCount()).toBe(61);
+  });
+
+  it('loadMonthlySummary patches monthlySummary on success', async () => {
+    api.getMyMonthlySummary.mockReturnValue(of({
+      workingDays: 20, daysPresent: 18, lateArrivals: 2, earlyDepartures: 1, missingClockOuts: 0
+    }));
+
+    await store.loadMonthlySummary({ from: '2026-08-01', to: '2026-08-31' });
+
+    expect(store.monthlySummary()).toEqual({
+      workingDays: 20, daysPresent: 18, lateArrivals: 2, earlyDepartures: 1, missingClockOuts: 0
+    });
+    expect(store.monthlySummaryLoading()).toBe(false);
+    expect(store.monthlySummaryError()).toBeNull();
   });
 
   it('loadMyCorrections defaults to page 1 and stores the paged totals', async () => {
@@ -412,9 +453,63 @@ describe('TimeTrackingStore', () => {
     await store.loadDayDetail('employee-1', '2026-08-22');
 
     expect(api.getDayDetail).toHaveBeenCalledWith('employee-1', '2026-08-22');
-    expect(store.dayDetail()).toEqual(dayDetail);
+    expect(api.getEmployeeDailyReport).toHaveBeenCalledWith('employee-1', '2026-08-22');
+    expect(store.dayDetail()).toEqual({ ...dayDetail, screenshots: [] });
     expect(store.dayDetailLoading()).toBe(false);
     expect(store.dayDetailError()).toBeNull();
+  });
+
+  it('attaches daily-report screenshots and ignores a forbidden report', async () => {
+    const shot = {
+      id: 'shot-1',
+      capturedAt: '2026-08-22T04:15:00Z',
+      evidenceType: 'screenshot',
+      triggerType: 'periodic',
+      url: 'https://files.example/shot.jpg'
+    };
+    api.getEmployeeDailyReport.mockReturnValueOnce(of({ employeeId: 'employee-1', date: '2026-08-22', screenshots: [shot] }));
+
+    await store.loadDayDetail('employee-1', '2026-08-22');
+    expect(store.dayDetail()?.screenshots).toEqual([shot]);
+
+    api.getEmployeeDailyReport.mockReturnValueOnce(throwError(() => ({ status: 403 })));
+    await store.loadDayDetail('employee-1', '2026-08-22');
+    expect(store.dayDetailError()).toBeNull();
+    expect(store.dayDetail()?.screenshots).toEqual([]);
+  });
+
+  it('refreshDayDetail replaces screenshots without clearing the open detail when the next call fails', async () => {
+    const shot = {
+      id: 'shot-1',
+      capturedAt: '2026-08-22T04:15:00Z',
+      evidenceType: 'screenshot',
+      triggerType: 'periodic',
+      url: 'https://r2.example/shot.jpg'
+    };
+    api.getDayDetail.mockReturnValueOnce(of({ ...dayDetail, screenshots: [shot] }));
+    await store.loadDayDetail('employee-1', '2026-08-22');
+
+    api.getDayDetail.mockReturnValueOnce(throwError(() => new Error('network error')));
+    await store.refreshDayDetail('employee-1', '2026-08-22');
+
+    expect(store.dayDetail()?.screenshots).toEqual([shot]);
+    expect(store.dayDetailError()).toBeNull();
+  });
+
+  it('keeps signed screenshots from history-detail and does not call the HR daily report', async () => {
+    const shot = {
+      id: 'shot-1',
+      capturedAt: '2026-08-22T04:15:00Z',
+      evidenceType: 'screenshot',
+      triggerType: 'periodic',
+      url: 'https://r2.example/shot.jpg'
+    };
+    api.getDayDetail.mockReturnValueOnce(of({ ...dayDetail, screenshots: [shot] }));
+
+    await store.loadDayDetail('employee-1', '2026-08-22');
+
+    expect(api.getEmployeeDailyReport).not.toHaveBeenCalled();
+    expect(store.dayDetail()?.screenshots).toEqual([shot]);
   });
 
   it('clears any previous day detail before loading a new one', async () => {
@@ -450,6 +545,29 @@ describe('TimeTrackingStore', () => {
     expect(store.dayDetail()).toBeNull();
     expect(store.dayDetailLoading()).toBe(false);
     expect(store.dayDetailError()).toBeNull();
+  });
+
+  it('loadTodayTimeline patches todayTimelineEvents independently of dayDetail', async () => {
+    api.getDayDetail.mockReturnValue(of({
+      summary: dayDetail.summary,
+      timelineEvents: [{ eventType: 'ClockIn', timestamp: '2026-09-08T04:00:00Z', source: 'web' }],
+      dailyActivity: null,
+      checkIns: []
+    }));
+
+    await store.loadTodayTimeline('employee-1', '2026-09-08');
+
+    expect(store.todayTimelineEvents()).toHaveLength(1);
+    expect(store.dayDetail()).toBeNull();
+  });
+
+  it('treats a 404 from loadTodayTimeline as an empty day, not an error', async () => {
+    api.getDayDetail.mockReturnValue(throwError(() => ({ status: 404 })));
+
+    await store.loadTodayTimeline('employee-1', '2026-09-09');
+
+    expect(store.todayTimelineEvents()).toEqual([]);
+    expect(store.todayTimelineError()).toBeNull();
   });
 
 });

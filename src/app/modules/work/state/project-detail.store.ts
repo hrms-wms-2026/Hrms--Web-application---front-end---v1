@@ -9,7 +9,9 @@ import { buildObjectiveForest, findTreeNode, isLeafObjective, removeTreeNode, to
 import { toTaskStatusColumn } from '../utils/task.mapper';
 import { ProjectDetail } from '../models/project.model';
 import { Milestone, MilestoneTreeNode, ObjectiveDetail } from '../models/milestone.model';
-import { EditObjectiveRequestDto, CreateObjectiveRequestDto } from '../models/dto/milestone.dto';
+import { EditObjectiveRequestDto, CreateObjectiveRequestDto, ObjectiveAssetDto } from '../models/dto/milestone.dto';
+import { CompleteSprintRequestDto } from '../models/dto/sprint.dto';
+import { isPendingApproval } from '../models/dto/work-approval.dto';
 import { ObjectiveMemberItemDto, ObjectiveInvitationDto } from '../models/dto/objective-invitation.dto';
 
 interface ProjectDetailState {
@@ -26,7 +28,6 @@ interface ProjectDetailState {
   readonly objectiveMembers: readonly ObjectiveMemberItemDto[];
   readonly objectiveMembersLoading: boolean;
   readonly objectiveMembersError: string | null;
-  readonly myInvitations: readonly ObjectiveInvitationDto[];
   /** Union of every member across every module the caller can reach in this project (deduped
    *  by employeeId) - the assignee source for task-create flows everywhere (Tree/Board/Backlog),
    *  rather than whichever specific module a create-task click happened to be scoped to. Not
@@ -42,7 +43,6 @@ const initialState: ProjectDetailState = {
   selectedSubtree: null, subtreeLoading: false, subtreeError: null,
   milestoneActionError: null,
   objectiveMembers: [], objectiveMembersLoading: false, objectiveMembersError: null,
-  myInvitations: [],
   projectMembers: [], projectMembersLoading: false
 };
 
@@ -182,15 +182,41 @@ export const ProjectDetailStore = signalStore(
       }
     },
 
-    async createSubModule(payload: CreateObjectiveRequestDto): Promise<{ success: boolean }> {
+    async createSubModule(payload: CreateObjectiveRequestDto): Promise<{ success: boolean; objectiveId?: string }> {
       try {
-        await firstValueFrom(api.createObjective(payload));
+        const created = await firstValueFrom(api.createObjective(payload));
         patchState(store, { milestoneActionError: null });
-        return { success: true };
+        return { success: true, objectiveId: created.id };
       } catch (err) {
         patchState(store, { milestoneActionError: extractError(err, 'Failed to create sub-module.') });
         return { success: false };
       }
+    },
+
+    async uploadMilestoneAsset(objectiveId: string, file: File): Promise<{ success: boolean; asset?: ObjectiveAssetDto }> {
+      try {
+        const asset = await firstValueFrom(api.uploadObjectiveAsset(objectiveId, file));
+        patchState(store, { milestoneActionError: null });
+        return { success: true, asset };
+      } catch (err) {
+        patchState(store, { milestoneActionError: extractError(err, 'Failed to upload file.') });
+        return { success: false };
+      }
+    },
+
+    async deleteMilestoneAsset(objectiveId: string, assetId: string): Promise<{ success: boolean }> {
+      try {
+        await firstValueFrom(api.deleteObjectiveAsset(objectiveId, assetId));
+        patchState(store, { milestoneActionError: null });
+        return { success: true };
+      } catch (err) {
+        patchState(store, { milestoneActionError: extractError(err, 'Failed to delete file.') });
+        return { success: false };
+      }
+    },
+
+    setMilestoneActionError(message: string | null): void {
+      patchState(store, { milestoneActionError: message });
     },
 
     async loadObjectiveMembers(objectiveId: string): Promise<void> {
@@ -203,25 +229,28 @@ export const ProjectDetailStore = signalStore(
       }
     },
 
-    async addObjectiveMember(objectiveId: string, employeeId: string): Promise<{ success: boolean; alreadyMember: boolean }> {
+    async addObjectiveMember(objectiveId: string, employeeId: string): Promise<{ success: boolean; alreadyMember: boolean; applied: boolean; pending: boolean }> {
       try {
         const res = await firstValueFrom(memberApi.addMember(objectiveId, employeeId));
         patchState(store, { milestoneActionError: null });
-        return { success: true, alreadyMember: res.body!.alreadyMember };
+        const body = res.body!;
+        return { success: true, alreadyMember: body.alreadyMember, applied: body.applied, pending: !body.alreadyMember && !body.applied };
       } catch (err) {
         patchState(store, { milestoneActionError: extractError(err, 'Failed to add member.') });
-        return { success: false, alreadyMember: false };
+        return { success: false, alreadyMember: false, applied: false, pending: false };
       }
     },
 
-    async removeObjectiveMember(objectiveId: string, employeeId: string): Promise<{ success: boolean }> {
+    async removeObjectiveMember(objectiveId: string, employeeId: string): Promise<{ success: boolean; applied: boolean; pending: boolean }> {
       try {
-        await firstValueFrom(memberApi.removeMember(objectiveId, employeeId));
+        const res = await firstValueFrom(memberApi.removeMember(objectiveId, employeeId));
         patchState(store, { milestoneActionError: null });
-        return { success: true };
+        // 204 = applied (ASP.NET drops a 204's body); 202 = sent for approval.
+        const applied = res.status === 204 || !!res.body?.applied;
+        return { success: true, applied, pending: !applied };
       } catch (err) {
         patchState(store, { milestoneActionError: extractError(err, 'Failed to remove member.') });
-        return { success: false };
+        return { success: false, applied: false, pending: false };
       }
     },
 
@@ -229,41 +258,15 @@ export const ProjectDetailStore = signalStore(
       try {
         const res = await firstValueFrom(memberApi.transferHead(objectiveId, newHeadEmployeeId));
         patchState(store, { milestoneActionError: null });
-        return { success: true, applied: res.body!.applied, viaInvitation: res.body!.pendingInvitation !== null };
+        // 204 = applied (ASP.NET drops a 204's body); 202 = leader invitation or sent for approval.
+        return {
+          success: true,
+          applied: res.status === 204 || !!res.body?.applied,
+          viaInvitation: !!res.body?.pendingInvitation
+        };
       } catch (err) {
         patchState(store, { milestoneActionError: extractError(err, 'Failed to transfer leadership.') });
         return { success: false, applied: false, viaInvitation: false };
-      }
-    },
-
-    async loadMyInvitations(): Promise<void> {
-      try {
-        const dtos = await firstValueFrom(memberApi.getMyInvitations());
-        patchState(store, { myInvitations: dtos });
-      } catch (err) {
-        patchState(store, { milestoneActionError: extractError(err, 'Failed to load invitations.') });
-      }
-    },
-
-    async acceptInvitation(invitationId: string): Promise<{ success: boolean }> {
-      try {
-        await firstValueFrom(memberApi.acceptInvitation(invitationId));
-        patchState(store, { myInvitations: store.myInvitations().filter((i) => i.id !== invitationId), milestoneActionError: null });
-        return { success: true };
-      } catch (err) {
-        patchState(store, { milestoneActionError: extractError(err, 'Failed to accept invitation.') });
-        return { success: false };
-      }
-    },
-
-    async rejectInvitation(invitationId: string): Promise<{ success: boolean }> {
-      try {
-        await firstValueFrom(memberApi.rejectInvitation(invitationId));
-        patchState(store, { myInvitations: store.myInvitations().filter((i) => i.id !== invitationId), milestoneActionError: null });
-        return { success: true };
-      } catch (err) {
-        patchState(store, { milestoneActionError: extractError(err, 'Failed to reject invitation.') });
-        return { success: false };
       }
     },
 
@@ -334,9 +337,13 @@ export const ProjectDetailStore = signalStore(
         if (!current) return;
         const sprint = findTreeNode(current, sprintId);
         if (!sprint) return;
-        const children = tasks.map((task) =>
-          toTaskTreeNode(task, sprint, (sprint.statusNames ?? {})[task.statusId] ?? task.statusId)
-        );
+        // Sprints are project-level (may hold tasks from several modules); under a module's tree
+        // node only that module's tasks belong.
+        const children = tasks
+          .filter((task) => !sprint.parentObjectiveId || task.objectiveId === sprint.parentObjectiveId)
+          .map((task) =>
+            toTaskTreeNode(task, sprint, (sprint.statusNames ?? {})[task.statusId] ?? task.statusId)
+          );
         patchState(store, {
           selectedSubtree: updateTreeNode(current, sprintId, (node) => ({
             ...node,
@@ -353,9 +360,14 @@ export const ProjectDetailStore = signalStore(
       }
     },
 
-    async achieveSprint(sprintId: string): Promise<{ success: boolean }> {
+    /** pending = sent for approval; the tree node is left as it is until the request is approved. */
+    async achieveSprint(sprintId: string): Promise<{ success: boolean; pending?: boolean }> {
       try {
         const dto = await firstValueFrom(sprintApi.achieve(sprintId));
+        if (isPendingApproval(dto)) {
+          patchState(store, { milestoneActionError: null });
+          return { success: true, pending: true };
+        }
         const tree = store.selectedSubtree();
         if (tree) {
           patchState(store, {
@@ -377,9 +389,14 @@ export const ProjectDetailStore = signalStore(
       }
     },
 
-    async completeSprint(sprintId: string): Promise<{ success: boolean }> {
+    /** pending = sent for approval; the tree node is left as it is until the request is approved. */
+    async completeSprint(sprintId: string, request: CompleteSprintRequestDto): Promise<{ success: boolean; pending?: boolean }> {
       try {
-        const dto = await firstValueFrom(sprintApi.complete(sprintId));
+        const dto = await firstValueFrom(sprintApi.complete(sprintId, request));
+        if (isPendingApproval(dto)) {
+          patchState(store, { milestoneActionError: null });
+          return { success: true, pending: true };
+        }
         const tree = store.selectedSubtree();
         if (tree) {
           patchState(store, {
@@ -401,9 +418,38 @@ export const ProjectDetailStore = signalStore(
       }
     },
 
-    async deleteTask(taskId: string): Promise<{ success: boolean }> {
+    /** Deletes a complete or achieved sprint: its node leaves the tree and the module is reloaded so the
+     *  sprint's tasks reappear in the backlog. pending = sent for approval; nothing changes yet. */
+    async deleteSprint(sprintId: string): Promise<{ success: boolean; pending?: boolean }> {
       try {
-        await firstValueFrom(taskApi.deleteTask(taskId));
+        const res = await firstValueFrom(sprintApi.delete(sprintId));
+        if (isPendingApproval(res)) {
+          patchState(store, { milestoneActionError: null });
+          return { success: true, pending: true };
+        }
+        const tree = store.selectedSubtree();
+        const parentObjectiveId = tree ? findTreeNode(tree, sprintId)?.parentObjectiveId : undefined;
+        if (tree) {
+          patchState(store, { selectedSubtree: removeTreeNode(tree, sprintId), milestoneActionError: null });
+        }
+        if (parentObjectiveId) {
+          await this.loadSprintsAndTasksForLeaf(parentObjectiveId, { force: true });
+        }
+        return { success: true };
+      } catch (err) {
+        patchState(store, { milestoneActionError: extractError(err, 'Failed to delete the sprint.') });
+        return { success: false };
+      }
+    },
+
+    /** pendingApproval = the deletion was sent for approval; the task stays until it is approved. */
+    async deleteTask(taskId: string): Promise<{ success: boolean; pendingApproval?: boolean }> {
+      try {
+        const res = await firstValueFrom(taskApi.deleteTask(taskId));
+        if (isPendingApproval(res)) {
+          patchState(store, { milestoneActionError: null });
+          return { success: true, pendingApproval: true };
+        }
         const tree = store.selectedSubtree();
         if (tree) {
           patchState(store, {

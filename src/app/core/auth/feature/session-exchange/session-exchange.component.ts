@@ -31,7 +31,12 @@ export class SessionExchangeComponent implements OnInit {
 
     try {
       await this.store.exchangeSession(code);
-      this.router.navigate(['/dashboard']);
+      const returnUrl = this.route.snapshot.queryParamMap.get('returnUrl');
+      if (returnUrl) {
+        await this.router.navigateByUrl(returnUrl);
+      } else {
+        this.router.navigate(['/dashboard']);
+      }
     } catch {
       this.failed.set(true);
     }

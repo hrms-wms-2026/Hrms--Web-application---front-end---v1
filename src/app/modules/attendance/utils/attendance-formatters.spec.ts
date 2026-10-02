@@ -1,9 +1,12 @@
 import { describe, expect, it } from 'vitest';
 import {
+  formatClockTime,
   formatDate,
   formatDateTime,
   formatMinutes,
   formatWorkAreaDate,
+  fullDateLabel,
+  greetingForTime,
   sourceLabel,
   statusLabel,
   timelineEventLabel,
@@ -29,6 +32,12 @@ describe('attendance-formatters', () => {
     expect(formatDateTime(null)).toBe('—');
   });
 
+  it('formatClockTime renders a 12-hour clock in the given timezone', () => {
+    const expected = new Intl.DateTimeFormat(undefined, { hour: 'numeric', minute: '2-digit', hour12: true, timeZone: 'UTC' }).format(new Date('2026-08-27T10:00:00Z'));
+    expect(formatClockTime('2026-08-27T10:00:00Z', 'UTC')).toBe(expected);
+    expect(formatClockTime(null)).toBe('—');
+  });
+
   it('formatMinutes renders hours and minutes', () => {
     expect(formatMinutes(90)).toBe('1h 30m');
     expect(formatMinutes(45)).toBe('45m');
@@ -49,6 +58,9 @@ describe('attendance-formatters', () => {
   it('statusLabel prefers the backend label when present, otherwise humanizes the code', () => {
     expect(statusLabel('clocked_in', 'Custom label')).toBe('Custom label');
     expect(statusLabel('clocked_in')).toBe('Clocked in');
+    expect(statusLabel('over_break', 'Over break allowance')).toBe('Over break');
+    expect(statusLabel('over_break_allowance')).toBe('Over break');
+    expect(statusLabel('over_break')).toBe('Over break');
   });
 
   it('timelineEventLabel maps each known event type', () => {
@@ -62,5 +74,19 @@ describe('attendance-formatters', () => {
     const expected = new Intl.DateTimeFormat(undefined, { year: 'numeric', month: 'short', day: 'numeric', timeZone: 'UTC' }).format(new Date(Date.UTC(2026, 7, 27, 12)));
     expect(formatWorkAreaDate('2026-08-27', 'UTC')).toBe(expected);
     expect(formatWorkAreaDate('not-a-date', 'UTC')).toBe('Date unavailable');
+  });
+
+  it('fullDateLabel renders weekday, month, day, and year in UTC', () => {
+    const expected = new Intl.DateTimeFormat(undefined, { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric', timeZone: 'UTC' }).format(new Date(Date.UTC(2026, 8, 8, 12)));
+    expect(fullDateLabel('2026-09-08')).toBe(expected);
+    expect(fullDateLabel('not-a-date')).toBe('Date unavailable');
+  });
+
+  it('greetingForTime picks a greeting from the company-local hour, not the browser hour', () => {
+    expect(greetingForTime(new Date('2026-09-08T02:00:00Z'), 'UTC')).toBe('Good morning');
+    expect(greetingForTime(new Date('2026-09-08T14:00:00Z'), 'UTC')).toBe('Good afternoon');
+    expect(greetingForTime(new Date('2026-09-08T20:00:00Z'), 'UTC')).toBe('Good evening');
+    // 02:00 UTC is 07:30 in Asia/Colombo (UTC+5:30) - still morning there, not the UTC hour.
+    expect(greetingForTime(new Date('2026-09-08T02:00:00Z'), 'Asia/Colombo')).toBe('Good morning');
   });
 });

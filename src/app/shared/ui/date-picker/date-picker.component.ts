@@ -1,5 +1,7 @@
-import { ChangeDetectionStrategy, Component, ElementRef, HostListener, computed, inject, input, output, signal } from '@angular/core';
+import { ChangeDetectionStrategy, Component, ElementRef, computed, effect, inject, input, output, signal, untracked } from '@angular/core';
+import { ConnectionPositionPair, OverlayModule } from '@angular/cdk/overlay';
 import { nextUniqueId } from '../../utils/unique-id';
+import { getTaskDueDateInfo, TaskDueDateInfo } from '../../utils/date-format.util';
 
 export interface CalendarDay {
   year: number;
@@ -8,6 +10,7 @@ export interface CalendarDay {
   isCurrentMonth: boolean;
   isToday: boolean;
   isSelected: boolean;
+  isDisabled: boolean;
   formattedDate: string;
 }
 
@@ -17,6 +20,20 @@ const MONTH_NAMES = [
 ];
 
 const WEEKDAY_NAMES = ['Su', 'Mo', 'Tu', 'We', 'Th', 'Fr', 'Sa'];
+
+const POSITIONS_DOWN: ConnectionPositionPair[] = [
+  { originX: 'start', originY: 'bottom', overlayX: 'start', overlayY: 'top', offsetY: 6 },
+  { originX: 'end', originY: 'bottom', overlayX: 'end', overlayY: 'top', offsetY: 6 },
+  { originX: 'start', originY: 'top', overlayX: 'start', overlayY: 'bottom', offsetY: -6 },
+  { originX: 'end', originY: 'top', overlayX: 'end', overlayY: 'bottom', offsetY: -6 }
+];
+
+const POSITIONS_UP: ConnectionPositionPair[] = [
+  { originX: 'start', originY: 'top', overlayX: 'start', overlayY: 'bottom', offsetY: -6 },
+  { originX: 'end', originY: 'top', overlayX: 'end', overlayY: 'bottom', offsetY: -6 },
+  { originX: 'start', originY: 'bottom', overlayX: 'start', overlayY: 'top', offsetY: 6 },
+  { originX: 'end', originY: 'bottom', overlayX: 'end', overlayY: 'top', offsetY: 6 }
+];
 
 function formatYYYYMMDD(year: number, monthZeroBased: number, date: number): string {
   const m = String(monthZeroBased + 1).padStart(2, '0');
@@ -34,6 +51,7 @@ function parseYYYYMMDD(str: string): { year: number; month: number; date: number
 @Component({
   selector: 'app-date-picker',
   standalone: true,
+  imports: [OverlayModule],
   templateUrl: './date-picker.component.html',
   styleUrl: './date-picker.component.css',
   changeDetection: ChangeDetectionStrategy.OnPush
@@ -46,16 +64,30 @@ export class DatePickerComponent {
   readonlyInput = input(true);
   error = input<string>('');
   hint = input<string>('');
+  variant = input<'input' | 'chip'>('input');
+  isCompleted = input(false);
+  chipClass = input<string>('');
+  btnTestId = input<string>('task-card-due-date-btn');
+  inputTestId = input<string>('');
+  ariaLabel = input<string>('');
+  name = input<string>('');
+  minDate = input<string>('');
+  emptyLabel = input<string>('');
+  showQuickPresets = input(true);
+  showClear = input(true);
 
   valueChange = output<string>();
   blurred = output<void>();
+
+  readonly openUpward = signal(false);
+  readonly popoverPositions = computed(() => (this.openUpward() ? POSITIONS_UP : POSITIONS_DOWN));
+  readonly dueDateInfo = computed(() => getTaskDueDateInfo(this.value(), this.isCompleted()));
 
   readonly inputId = nextUniqueId('app-date-picker');
   readonly errorId = computed(() => `${this.inputId}-error`);
   readonly hintId = computed(() => `${this.inputId}-hint`);
 
   readonly isOpen = signal(false);
-  readonly openUpward = signal(false);
 
   private readonly today = new Date();
   readonly todayFormatted = formatYYYYMMDD(this.today.getFullYear(), this.today.getMonth(), this.today.getDate());
@@ -74,6 +106,7 @@ export class DatePickerComponent {
   readonly calendarDays = computed<CalendarDay[]>(() => {
     const year = this.viewYear();
     const month = this.viewMonth();
+    const min = this.minDate();
     const selectedStr = this.parsedSelected()
       ? formatYYYYMMDD(this.parsedSelected()!.year, this.parsedSelected()!.month, this.parsedSelected()!.date)
       : '';
@@ -98,6 +131,7 @@ export class DatePickerComponent {
         isCurrentMonth: false,
         isToday: formatted === this.todayFormatted,
         isSelected: formatted === selectedStr,
+        isDisabled: !!min && formatted < min,
         formattedDate: formatted
       });
     }
@@ -112,6 +146,7 @@ export class DatePickerComponent {
         isCurrentMonth: true,
         isToday: formatted === this.todayFormatted,
         isSelected: formatted === selectedStr,
+        isDisabled: !!min && formatted < min,
         formattedDate: formatted
       });
     }
@@ -129,6 +164,7 @@ export class DatePickerComponent {
         isCurrentMonth: false,
         isToday: formatted === this.todayFormatted,
         isSelected: formatted === selectedStr,
+        isDisabled: !!min && formatted < min,
         formattedDate: formatted
       });
     }
@@ -138,12 +174,38 @@ export class DatePickerComponent {
 
   private readonly elementRef = inject(ElementRef<HTMLElement>);
 
-  togglePopover(): void {
+  constructor() {
+    effect(() => {
+      const parsed = this.parsedSelected();
+      if (parsed) {
+        untracked(() => {
+          this.viewYear.set(parsed.year);
+          this.viewMonth.set(parsed.month);
+        });
+      }
+    });
+  }
+
+  private lastWheelTime = 0;
+  private readonly WHEEL_THROTTLE_MS = 200;
+
+  togglePopover(event?: MouseEvent): void {
+    if (event) {
+      event.stopPropagation();
+    }
     if (this.disabled()) return;
     const nextState = !this.isOpen();
     if (nextState) {
-      this.checkDirection();
       this.syncViewToSelectedOrToday();
+
+      // Check available space below vs above to decide whether to open upward
+      if (typeof window !== 'undefined') {
+        const rect = this.elementRef.nativeElement.getBoundingClientRect();
+        const spaceBelow = window.innerHeight - rect.bottom;
+        const spaceAbove = rect.top;
+        // Calendar popover is ~340px tall. If space below is not enough and space above is greater, open upward!
+        this.openUpward.set(spaceBelow < 350 && spaceAbove > spaceBelow);
+      }
     }
     this.isOpen.set(nextState);
     if (!nextState) {
@@ -151,10 +213,27 @@ export class DatePickerComponent {
     }
   }
 
-  private checkDirection(): void {
-    const rect = this.elementRef.nativeElement.getBoundingClientRect();
-    const spaceBelow = window.innerHeight - rect.bottom;
-    this.openUpward.set(spaceBelow < 220);
+
+
+  onWheel(event: WheelEvent): void {
+    event.preventDefault();
+    event.stopPropagation();
+
+    const now = Date.now();
+    if (now - this.lastWheelTime < this.WHEEL_THROTTLE_MS) {
+      return;
+    }
+
+    if (Math.abs(event.deltaY) < 5) {
+      return;
+    }
+
+    this.lastWheelTime = now;
+    if (event.deltaY > 0) {
+      this.nextMonth();
+    } else if (event.deltaY < 0) {
+      this.prevMonth();
+    }
   }
 
   closePopover(): void {
@@ -182,23 +261,29 @@ export class DatePickerComponent {
     }
   }
 
+  setQuickDate(preset: 'today' | 'tomorrow' | 'nextWeek'): void {
+    const d = new Date();
+    if (preset === 'tomorrow') {
+      d.setDate(d.getDate() + 1);
+    } else if (preset === 'nextWeek') {
+      d.setDate(d.getDate() + 7);
+    }
+    const val = formatYYYYMMDD(d.getFullYear(), d.getMonth(), d.getDate());
+    this.valueChange.emit(val);
+    this.closePopover();
+  }
+
   goToToday(): void {
-    const y = this.today.getFullYear();
-    const m = this.today.getMonth();
-    this.viewYear.set(y);
-    this.viewMonth.set(m);
-    this.selectDay({
-      year: y,
-      month: m,
-      date: this.today.getDate(),
-      isCurrentMonth: true,
-      isToday: true,
-      isSelected: true,
-      formattedDate: this.todayFormatted
-    });
+    this.setQuickDate('today');
+  }
+
+  clearDate(): void {
+    this.valueChange.emit('');
+    this.closePopover();
   }
 
   selectDay(day: CalendarDay): void {
+    if (day.isDisabled) return;
     this.valueChange.emit(day.formattedDate);
     this.closePopover();
   }
@@ -221,19 +306,6 @@ export class DatePickerComponent {
     } else {
       this.viewYear.set(this.today.getFullYear());
       this.viewMonth.set(this.today.getMonth());
-    }
-  }
-
-  @HostListener('document:keydown.escape')
-  onEscape(): void {
-    this.closePopover();
-  }
-
-  @HostListener('document:click', ['$event'])
-  onDocumentClick(event: MouseEvent): void {
-    if (!this.isOpen()) return;
-    if (!this.elementRef.nativeElement.contains(event.target as Node)) {
-      this.closePopover();
     }
   }
 }

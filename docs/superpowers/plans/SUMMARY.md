@@ -4,6 +4,7 @@ Layout and rules: see `../rules/FILE_CREATION_RULES.md`.
 
 | Plan / Report | Status | Location | Date |
 |---|---|---|---|
+| Time Off remaining gaps | pending | `next/2026-09-10-time-off-remaining-gaps.md` | 2026-09-10 |
 | Core Auth: Login + Legal Consent Gate | finished | `finished/2026-07-28/2026-07-28-core-auth-login-legal-consent.md` | 2026-07-28 |
 | Dashboard Skeleton Redesign | finished | `finished/2026-07-30/2026-07-30-dashboard-skeleton-redesign.md` | 2026-07-30 |
 | Frontend Auth HTTPS + Tenant-Subdomain Redirect Fix Report | finished | `finished/2026-08-03/FRONTEND_AUTH_HTTPS_TENANT_REDIRECT_FIX_REPORT.md` | 2026-08-03 (inferred from git history) |
@@ -33,5 +34,10 @@ Layout and rules: see `../rules/FILE_CREATION_RULES.md`.
 | Work Management — Tree UI Bug Fixes (4 items, single file) | pending | `next/2026-08-21-work-management-tree-ui-bug-fixes.md` | 2026-08-21 |
 | Leave Management — full 9-phase frontend build; Phases 1-2 (Leave Types, Leave Policies) written in full; Time Off uses People-style inner sidebar with only built pages shown | pending | `next/2026-08-21-leave-management/` | 2026-08-21 |
 | Attendance History Redesign — trimmed history row, shared detail drawer, side-by-side My requests, list/panel extraction (2 parts) | pending | `next/2026-08-27-attendance-history-redesign-frontend/` | 2026-08-27 |
+| Task Subtasks (Frontend) | finished (all 5 tasks) | `finished/2026-09-21/2026-09-21-task-subtasks-frontend.md` | 2026-09-21 |
+| Centralized File Upload — Phase 0 Avatar URL Fix (4 tasks) | implemented (3/4 automated tasks; manual browser check skipped by user decision) | `next/2026-09-22-centralized-file-upload-phase0-avatar-fix-frontend.md` | 2026-09-22 |
+| Employee Detail — Tabbed Redesign (5 phases; shell/header/tabs) | Phases 1-2 implemented, Phases 3-5 pending | `next/2026-09-30-employee-detail-tabs.md` | 2026-09-30 |
+| Employee Detail — Work & Activity tab (7 real-data cards, no mocks; 7 tasks) | pending | `next/2026-09-30-employee-work-activity-tab.md` | 2026-09-30 |
+| Employee Overview — Ranked Signals, Month Bounds, Compare Month (3 parts) | pending | `next/2026-09-30-employee-overview-signals-frontend/` | 2026-09-30 |
 
 **Note on "finished" here:** all of the above are implementation reports or already-executed plans as of the 2026-08-06 restructure — cross-checked against `src/app/` (auth, dashboard-home, organization/general-settings are all present in code). None were currently in-progress/pending at restructure time except the Project Management context file.

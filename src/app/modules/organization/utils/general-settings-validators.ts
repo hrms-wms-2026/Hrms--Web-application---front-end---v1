@@ -1,4 +1,5 @@
 import { AbstractControl, ValidationErrors, ValidatorFn } from '@angular/forms';
+import { computeWorkDayHours } from './work-day-hours';
 
 /** Angular's built-in Validators.required treats [] as truthy (non-empty array
  * always passes) - this closes that gap for standardWorkingDays. */
@@ -44,8 +45,8 @@ export function oneOfValidator(allowed: readonly string[]): ValidatorFn {
  * Mirrors the backend's UpdateLegalEntityGeneralSettingsCommandValidator:
  *   - Both blank/null → valid (no schedule set).
  *   - Exactly one blank → { workTimePair: 'both_required' }.
- *   - Both set and start >= end (HH:mm string comparison, same-day only) →
- *     { workTimePair: 'start_not_before_end' }.
+ *   - Both set is valid including overnight (end <= start means next calendar day).
+ *   - Break covering the whole shift → { workTimePair: 'break_covers_shift' }.
  *
  * Applied to the FormGroup, not individual controls. Read errors via
  * `form.errors?.['workTimePair']`.
@@ -63,10 +64,30 @@ export function workTimePairValidator(): ValidatorFn {
     if (hasStart !== hasEnd) {
       return { workTimePair: 'both_required' };
     }
-    // Both provided — enforce start < end (strict same-day HH:mm comparison).
-    if (start >= end) {
-      return { workTimePair: 'start_not_before_end' };
+    const hours = computeWorkDayHours(start, end, group.get('breakDurationMinutes')?.value);
+    if (hours !== null && hours <= 0) {
+      return { workTimePair: 'break_covers_shift' };
     }
     return null;
+  };
+}
+
+/**
+ * Group-level validator for officeLatitude / officeLongitude.
+ *
+ * Mirrors the backend's office-location check constraint: both set together, or both
+ * blank/null. officeAddress is a display label only and not part of this rule. The
+ * geofence radius lives on Clock-in Policy (AllowedRadiusMeters), not here. Applied to
+ * the FormGroup - read via `form.errors?.['officeLocation']`.
+ */
+export function officeLocationValidator(): ValidatorFn {
+  return (group: AbstractControl): ValidationErrors | null => {
+    const latitude = group.get('officeLatitude')?.value as number | null;
+    const longitude = group.get('officeLongitude')?.value as number | null;
+
+    const allAbsent = latitude == null && longitude == null;
+    const allPresent = latitude != null && longitude != null;
+
+    return allAbsent || allPresent ? null : { officeLocation: true };
   };
 }

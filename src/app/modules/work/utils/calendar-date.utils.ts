@@ -24,9 +24,21 @@ export function calendarRange(startDate: string, endDate: string): string[] {
   return Array.from({ length: days }, (_, index) => addCalendarDays(startDate, index));
 }
 
-/** Adds whole calendar months to a YYYY-MM-DD date, handling year rollover. */
-export function addCalendarMonths(value: string, months: number): string {
-  const date = parseCalendarDate(value);
-  date.setUTCMonth(date.getUTCMonth() + months);
-  return formatCalendarDate(date);
+/**
+ * Position of an inclusive date range as left/width percentages within a window.
+ * Clamped to [0, 100]. Used for the coloured "in event" sub-segment on a module bar.
+ */
+export function rangeToPercent(
+  start: string,
+  end: string,
+  windowStart: string,
+  windowEnd: string
+): { leftPct: number; widthPct: number } {
+  const total = calendarDayDifference(windowStart, windowEnd) + 1;
+  if (total <= 0) return { leftPct: 0, widthPct: 0 };
+  const rawLeft = (calendarDayDifference(windowStart, start) / total) * 100;
+  const rawWidth = ((calendarDayDifference(start, end) + 1) / total) * 100;
+  const leftPct = Math.min(100, Math.max(0, rawLeft));
+  const widthPct = Math.min(100 - leftPct, Math.max(0, rawWidth));
+  return { leftPct, widthPct };
 }

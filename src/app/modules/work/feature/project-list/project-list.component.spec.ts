@@ -3,7 +3,6 @@ import { provideRouter, Router } from '@angular/router';
 import { vi } from 'vitest';
 import { ProjectListComponent } from './project-list.component';
 import { ProjectListStore } from '../../state/project-list.store';
-import { ProjectDetailStore } from '../../state/project-detail.store';
 import { ProjectCategoryStore } from '../../state/project-category.store';
 import { EmployeeDirectoryStore } from '../../state/employee-directory.store';
 import { PeopleApiService } from '../../../people/data-access/people-api.service';
@@ -13,7 +12,6 @@ import { Project } from '../../models/project.model';
 describe('ProjectListComponent', () => {
   let fixture: ComponentFixture<ProjectListComponent>;
   let storeStub: any;
-  let detailStoreStub: any;
   let router: Router;
 
   const project: Project = {
@@ -40,18 +38,10 @@ describe('ProjectListComponent', () => {
       getProjectDetail: vi.fn().mockResolvedValue(null)
     };
 
-    detailStoreStub = {
-      myInvitations: () => [],
-      loadMyInvitations: vi.fn().mockResolvedValue(undefined),
-      acceptInvitation: vi.fn().mockResolvedValue({ success: true }),
-      rejectInvitation: vi.fn().mockResolvedValue({ success: true })
-    };
-
     await TestBed.configureTestingModule({
       imports: [ProjectListComponent],
       providers: [
         { provide: ProjectListStore, useValue: storeStub },
-        { provide: ProjectDetailStore, useValue: detailStoreStub },
         { provide: ProjectCategoryStore, useValue: { categories: () => [], loadCategories: vi.fn().mockResolvedValue(undefined) } },
         { provide: EmployeeDirectoryStore, useValue: { get: () => undefined, ensureLoaded: vi.fn().mockResolvedValue(undefined) } },
         { provide: PeopleApiService, useValue: { listEmployees: () => of({ items: [{ id: 'e2', fullName: 'Grace Hopper', email: 'g@x.com', departmentName: 'Eng' }], totalCount: 1, page: 1, pageSize: 20 }) } },
@@ -69,12 +59,54 @@ describe('ProjectListComponent', () => {
     expect(storeStub.loadProjects).toHaveBeenCalled();
   });
 
-  it('renders a list row per project and auto-selects the first into the explanation card', () => {
+  it('renders list view by default as the base view', () => {
+    fixture.detectChanges();
+    expect(fixture.componentInstance.viewMode()).toBe('list');
+    expect(fixture.nativeElement.querySelector('[data-testid="project-list"]')).not.toBeNull();
+    expect(fixture.nativeElement.textContent).toContain('Website Revamp');
+  });
+
+  it('cycles viewMode sequentially (list -> card -> table -> list) on button click and persists to localStorage', () => {
+    fixture.detectChanges();
+    expect(fixture.componentInstance.viewMode()).toBe('list');
+
+    const cycleBtn: HTMLButtonElement | null = fixture.nativeElement.querySelector('[data-testid="work-view-cycle-btn"]');
+    expect(cycleBtn).toBeTruthy();
+
+    // 1st click: list -> card
+    cycleBtn!.click();
+    fixture.detectChanges();
+    expect(fixture.componentInstance.viewMode()).toBe('card');
+    expect(localStorage.getItem('projects_view_mode')).toBe('card');
+
+    // 2nd click: card -> table
+    cycleBtn!.click();
+    fixture.detectChanges();
+    expect(fixture.componentInstance.viewMode()).toBe('table');
+    expect(localStorage.getItem('projects_view_mode')).toBe('table');
+
+    // 3rd click: table -> list
+    cycleBtn!.click();
+    fixture.detectChanges();
+    expect(fixture.componentInstance.viewMode()).toBe('list');
+    expect(localStorage.getItem('projects_view_mode')).toBe('list');
+
+    localStorage.removeItem('projects_view_mode');
+  });
+
+  it('renders a list row per project and auto-selects the first into the explanation card in list view', () => {
+    fixture.componentInstance.setViewMode('list');
     fixture.detectChanges();
     expect(fixture.nativeElement.querySelector('app-project-card')).toBeNull();
     expect(fixture.nativeElement.querySelectorAll('[data-testid="project-list-row"]').length).toBe(1);
     expect(fixture.nativeElement.querySelector('[data-testid="project-explanation-card"]')).not.toBeNull();
     expect(fixture.nativeElement.textContent).toContain('Website Revamp');
+  });
+
+  it('renders project cards in card view', () => {
+    fixture.componentInstance.setViewMode('card');
+    fixture.detectChanges();
+    expect(fixture.nativeElement.querySelector('app-project-card')).not.toBeNull();
   });
 
   it('renders the Work / Projects breadcrumb header', () => {
@@ -119,7 +151,17 @@ describe('ProjectListComponent', () => {
     expect(fixture.nativeElement.textContent).toContain('Mobile App');
   });
 
+  it('navigates into the project detail screen when an already selected project is clicked again', () => {
+    fixture.detectChanges();
+    expect(fixture.componentInstance.selectedProject()?.id).toBe('p1');
+
+    fixture.componentInstance.onSelectProject(project);
+
+    expect(router.navigate).toHaveBeenCalledWith(['/work', 'p1']);
+  });
+
   it('opens the members popup for a lead and invites the picked employee', async () => {
+    fixture.componentInstance.setViewMode('list');
     fixture.detectChanges();
     expect(fixture.nativeElement.querySelector('[data-testid="member-button"]')).not.toBeNull();
 
@@ -239,31 +281,10 @@ describe('ProjectListComponent', () => {
 
   it('forwards category and achieved filter changes to the store', () => {
     fixture.detectChanges();
-    fixture.componentInstance.onCategoryFilterChanged('cat1');
-    expect(storeStub.setCategoryFilter).toHaveBeenCalledWith('cat1');
+    fixture.componentInstance.onCategoryFilterChanged(['cat1', 'cat2']);
+    expect(storeStub.setCategoryFilter).toHaveBeenCalledWith(['cat1', 'cat2']);
     fixture.componentInstance.onAchievedFilterChanged('archived');
     expect(storeStub.setAchievedFilter).toHaveBeenCalledWith('archived');
   });
 
-  it('loads my invitations on init', () => {
-    fixture.detectChanges();
-    expect(detailStoreStub.loadMyInvitations).toHaveBeenCalled();
-  });
-
-  it('accepts an invitation then reloads invitations and the project list', async () => {
-    fixture.detectChanges();
-    await fixture.componentInstance.onAcceptInvitation('i1');
-
-    expect(detailStoreStub.acceptInvitation).toHaveBeenCalledWith('i1');
-    expect(detailStoreStub.loadMyInvitations).toHaveBeenCalledTimes(2);
-    expect(storeStub.loadProjects).toHaveBeenCalledTimes(2);
-  });
-
-  it('rejects an invitation then reloads the invitation list', async () => {
-    fixture.detectChanges();
-    await fixture.componentInstance.onRejectInvitation('i1');
-
-    expect(detailStoreStub.rejectInvitation).toHaveBeenCalledWith('i1');
-    expect(detailStoreStub.loadMyInvitations).toHaveBeenCalledTimes(2);
-  });
 });

@@ -36,4 +36,34 @@ describe('ProjectCategoryStore', () => {
     expect(store.loaded()).toBe(true);
     expect(store.error()).toBe('Not Found');
   });
+
+  it('creates a category and appends it to the sorted list', async () => {
+    const dtos: ProjectCategoryDto[] = [{ id: 'cat1', name: 'Backend' }];
+    const created: ProjectCategoryDto = { id: 'cat2', name: 'Analytics' };
+    const store = setup({
+      list: () => of(dtos),
+      create: () => of(created)
+    } as Partial<ProjectCategoryApiService>);
+
+    await store.loadCategories();
+    const result = await store.createCategory('Analytics');
+
+    expect(result).toEqual({ id: 'cat2', name: 'Analytics' });
+    expect(store.categories()).toEqual([
+      { id: 'cat2', name: 'Analytics' },
+      { id: 'cat1', name: 'Backend' }
+    ]);
+  });
+
+  it('propagates errors from creating a category without mutating state', async () => {
+    const store = setup({
+      list: () => of([]),
+      create: () => throwError(() => ({ error: { detail: 'Duplicate name' } }))
+    } as Partial<ProjectCategoryApiService>);
+
+    await store.loadCategories();
+    await expect(store.createCategory('Backend')).rejects.toBeTruthy();
+
+    expect(store.categories()).toEqual([]);
+  });
 });

@@ -38,21 +38,6 @@ describe('ClockInPolicyStore', () => {
     scope: { type: 'full_company', departmentIds: [], positionIds: [], employeeIds: [] },
     effectiveFrom: '2026-08-21',
     effectiveTo: null,
-    locationVerificationRequired: false,
-    allowedRadiusMeters: null,
-    workAreaRules: {
-      onsite: { biometricEnabled: true, webEnabled: false, trayEnabled: false, photoRequired: false },
-      remote: { biometricEnabled: false, webEnabled: true, trayEnabled: true, photoRequired: true },
-      hybrid: {
-        biometricEnabled: false,
-        webEnabled: true,
-        trayEnabled: true,
-        photoRequired: true,
-        locationCheckRequired: false,
-        sourceRule: 'employee_choice'
-      },
-      field: { biometricEnabled: false, webEnabled: true, trayEnabled: true, photoRequirement: 'required' }
-    },
     correctionRequiresApproval: true,
     notificationRecipientResolver: 'management_coverage_owner',
     lateDeductionRules: [

@@ -8,7 +8,7 @@ import { ObjectiveMemberApiService } from '../data-access/objective-member-api.s
 import { SprintApiService } from '../data-access/sprint-api.service';
 import { TaskApiService } from '../data-access/task-api.service';
 import { ProjectDetailDto } from '../models/dto/project.dto';
-import { MyProjectMilestoneDto, ObjectiveDetailDto, CreateObjectiveRequestDto, AddObjectiveMemberOutcomeDto, TransferObjectiveHeadOutcomeDto } from '../models/dto/milestone.dto';
+import { MyProjectMilestoneDto, ObjectiveDetailDto, CreateObjectiveRequestDto, AddObjectiveMemberOutcomeDto, RemoveObjectiveMemberOutcomeDto, TransferObjectiveHeadOutcomeDto, ObjectiveAssetDto } from '../models/dto/milestone.dto';
 import { ObjectiveTreeItemDto } from '../models/dto/objective-tree.dto';
 import { ObjectiveInvitationDto } from '../models/dto/objective-invitation.dto';
 import { SprintDto } from '../models/dto/sprint.dto';
@@ -84,7 +84,7 @@ describe('ProjectDetailStore', () => {
       ownerId: 'u1', ownerName: 'Jane', reportingManagerId: null, reportingManagerName: null,
       startDate: '2026-08-01', endDate: '2026-12-01', allocatedHours: 40, completedHours: 0,
       objectiveIsActive: true, isAchieved: false, achievedAt: null, membershipIsActive: true, membershipRemovedAt: null,
-      isOwner: false
+      isOwner: false, isEffectiveOwner: false
     }];
     const store = setup({ getMyMilestones: () => of(milestones) } as Partial<ProjectApiService>);
     await store.loadMyMilestones('p1');
@@ -205,7 +205,7 @@ describe('ProjectDetailStore', () => {
       startDate: '2026-01-15', endDate: '2026-03-01', allocatedHours: 20
     });
 
-    expect(result).toEqual({ success: true });
+    expect(result).toEqual({ success: true, objectiveId: 'o3' });
     expect(store.milestoneActionError()).toBeNull();
   });
 
@@ -223,6 +223,60 @@ describe('ProjectDetailStore', () => {
     expect(store.milestoneActionError()).toBe('date range exceeds parent');
   });
 
+  it('uploadMilestoneAsset returns success:true with the uploaded asset on success', async () => {
+    const asset: ObjectiveAssetDto = {
+      id: 'a1', fileName: 'plan.pdf', sizeBytes: 2048, contentType: 'application/pdf',
+      uploadedAt: '2026-09-02T00:00:00Z', downloadUrl: 'https://signed.example/plan.pdf'
+    };
+    const store = setup({ uploadObjectiveAsset: () => of(asset) } as Partial<ProjectApiService>);
+
+    const result = await store.uploadMilestoneAsset('o1', new File(['x'], 'plan.pdf'));
+
+    expect(result).toEqual({ success: true, asset });
+    expect(store.milestoneActionError()).toBeNull();
+  });
+
+  it('uploadMilestoneAsset returns success:false and sets milestoneActionError on failure', async () => {
+    const store = setup({
+      uploadObjectiveAsset: () => throwError(() => ({ error: { detail: 'file too large' } }))
+    } as Partial<ProjectApiService>);
+
+    const result = await store.uploadMilestoneAsset('o1', new File(['x'], 'huge.zip'));
+
+    expect(result).toEqual({ success: false });
+    expect(store.milestoneActionError()).toBe('file too large');
+  });
+
+  it('deleteMilestoneAsset returns success:true and clears milestoneActionError on success', async () => {
+    const store = setup({ deleteObjectiveAsset: () => of(undefined) } as Partial<ProjectApiService>);
+
+    const result = await store.deleteMilestoneAsset('o1', 'a1');
+
+    expect(result).toEqual({ success: true });
+    expect(store.milestoneActionError()).toBeNull();
+  });
+
+  it('deleteMilestoneAsset returns success:false and sets milestoneActionError on failure', async () => {
+    const store = setup({
+      deleteObjectiveAsset: () => throwError(() => ({ error: { detail: 'asset not found' } }))
+    } as Partial<ProjectApiService>);
+
+    const result = await store.deleteMilestoneAsset('o1', 'a1');
+
+    expect(result).toEqual({ success: false });
+    expect(store.milestoneActionError()).toBe('asset not found');
+  });
+
+  it('setMilestoneActionError sets and clears the error message directly', () => {
+    const store = setup();
+
+    store.setMilestoneActionError('3 file(s) failed to upload.');
+    expect(store.milestoneActionError()).toBe('3 file(s) failed to upload.');
+
+    store.setMilestoneActionError(null);
+    expect(store.milestoneActionError()).toBeNull();
+  });
+
   it('loadObjectiveMembers populates objectiveMembers on success', async () => {
     const memberApi = { getMembers: vi.fn().mockReturnValue(of({ items: [{ employeeId: 'e1', isHead: true, pending: false, inviteType: null, invitationId: null, sinceOrInvitedAt: '2026-01-01' }] })) };
     const store = createStoreWithMemberApi(memberApi);
@@ -234,25 +288,52 @@ describe('ProjectDetailStore', () => {
   });
 
   it('addObjectiveMember reports pending:false when already an active member (204)', async () => {
-    const memberApi = { addMember: vi.fn().mockReturnValue(of(new HttpResponse<AddObjectiveMemberOutcomeDto>({ body: { alreadyMember: true, invitation: null }, status: 204 }))) };
+    const memberApi = { addMember: vi.fn().mockReturnValue(of(new HttpResponse<AddObjectiveMemberOutcomeDto>({ body: { applied: true, alreadyMember: true, approvalRequestId: null, invitation: null }, status: 204 }))) };
     const store = createStoreWithMemberApi(memberApi);
 
     const result = await store.addObjectiveMember('o1', 'e2');
 
-    expect(result).toEqual({ success: true, alreadyMember: true });
+    expect(result).toEqual({ success: true, alreadyMember: true, applied: true, pending: false });
   });
 
-  it('addObjectiveMember reports pending:true (invitation created) on 202', async () => {
-    const memberApi = { addMember: vi.fn().mockReturnValue(of(new HttpResponse<AddObjectiveMemberOutcomeDto>({ body: { alreadyMember: false, invitation: { id: 'i1' } as ObjectiveInvitationDto }, status: 202 }))) };
+  it('addObjectiveMember reports pending:false (invitation created) when applied immediately on 202', async () => {
+    const memberApi = { addMember: vi.fn().mockReturnValue(of(new HttpResponse<AddObjectiveMemberOutcomeDto>({ body: { applied: true, alreadyMember: false, approvalRequestId: null, invitation: { id: 'i1' } as ObjectiveInvitationDto }, status: 202 }))) };
     const store = createStoreWithMemberApi(memberApi);
 
     const result = await store.addObjectiveMember('o1', 'e2');
 
-    expect(result).toEqual({ success: true, alreadyMember: false });
+    expect(result).toEqual({ success: true, alreadyMember: false, applied: true, pending: false });
+  });
+
+  it('addObjectiveMember reports pending:true (sent for approval) on a 202 with approvalRequestId', async () => {
+    const memberApi = { addMember: vi.fn().mockReturnValue(of(new HttpResponse<AddObjectiveMemberOutcomeDto>({ body: { applied: false, alreadyMember: false, approvalRequestId: 'ar-4', invitation: null }, status: 202 }))) };
+    const store = createStoreWithMemberApi(memberApi);
+
+    const result = await store.addObjectiveMember('o1', 'e2');
+
+    expect(result).toEqual({ success: true, alreadyMember: false, applied: false, pending: true });
+  });
+
+  it('removeObjectiveMember reports pending:false when applied immediately (204)', async () => {
+    const memberApi = { removeMember: vi.fn().mockReturnValue(of(new HttpResponse<RemoveObjectiveMemberOutcomeDto>({ body: null, status: 204 }))) };
+    const store = createStoreWithMemberApi(memberApi);
+
+    const result = await store.removeObjectiveMember('o1', 'e2');
+
+    expect(result).toEqual({ success: true, applied: true, pending: false });
+  });
+
+  it('removeObjectiveMember reports pending:true (sent for approval) on a 202 with approvalRequestId', async () => {
+    const memberApi = { removeMember: vi.fn().mockReturnValue(of(new HttpResponse<RemoveObjectiveMemberOutcomeDto>({ body: { applied: false, approvalRequestId: 'ar-5' }, status: 202 }))) };
+    const store = createStoreWithMemberApi(memberApi);
+
+    const result = await store.removeObjectiveMember('o1', 'e2');
+
+    expect(result).toEqual({ success: true, applied: false, pending: true });
   });
 
   it('transferObjectiveHead reports applied:false with a pendingInvitation on 202', async () => {
-    const memberApi = { transferHead: vi.fn().mockReturnValue(of(new HttpResponse<TransferObjectiveHeadOutcomeDto>({ body: { applied: false, pendingChangeRequest: null, pendingInvitation: { id: 'i2' } as ObjectiveInvitationDto }, status: 202 }))) };
+    const memberApi = { transferHead: vi.fn().mockReturnValue(of(new HttpResponse<TransferObjectiveHeadOutcomeDto>({ body: { applied: false, approvalRequestId: null, pendingInvitation: { id: 'i2' } as ObjectiveInvitationDto }, status: 202 }))) };
     const store = createStoreWithMemberApi(memberApi);
 
     const result = await store.transferObjectiveHead('o1', 'e3');
@@ -260,40 +341,36 @@ describe('ProjectDetailStore', () => {
     expect(result).toEqual({ success: true, applied: false, viaInvitation: true });
   });
 
-  it('loadMyInvitations populates myInvitations', async () => {
-    const memberApi = { getMyInvitations: vi.fn().mockReturnValue(of([{ id: 'i1' } as ObjectiveInvitationDto])) };
+  it('transferObjectiveHead reports applied:true on 204 (ASP.NET drops the body of a 204)', async () => {
+    const memberApi = { transferHead: vi.fn().mockReturnValue(of(new HttpResponse<TransferObjectiveHeadOutcomeDto>({ body: null, status: 204 }))) };
     const store = createStoreWithMemberApi(memberApi);
 
-    await store.loadMyInvitations();
+    const result = await store.transferObjectiveHead('o1', 'e3');
 
-    expect(store.myInvitations()).toEqual([{ id: 'i1' }]);
+    expect(result).toEqual({ success: true, applied: true, viaInvitation: false });
   });
 
-  it('acceptInvitation returns success:true and clears the accepted invitation from myInvitations', async () => {
-    const memberApi = {
-      getMyInvitations: vi.fn().mockReturnValue(of([{ id: 'i1' } as ObjectiveInvitationDto])),
-      acceptInvitation: vi.fn().mockReturnValue(of(new HttpResponse<void>({ status: 204 })))
-    };
+  it('transferObjectiveHead reports applied:false (sent for approval) on a 202 with approvalRequestId', async () => {
+    const memberApi = { transferHead: vi.fn().mockReturnValue(of(new HttpResponse<TransferObjectiveHeadOutcomeDto>({ body: { applied: false, approvalRequestId: 'ar-3', pendingInvitation: null }, status: 202 }))) };
     const store = createStoreWithMemberApi(memberApi);
-    await store.loadMyInvitations();
 
-    const result = await store.acceptInvitation('i1');
+    const result = await store.transferObjectiveHead('o1', 'e3');
 
-    expect(result).toEqual({ success: true });
-    expect(store.myInvitations()).toEqual([]);
+    expect(result).toEqual({ success: true, applied: false, viaInvitation: false });
   });
 
   describe('loadSprintsAndTasksForLeaf', () => {
 
     const sprintDto: SprintDto = {
-      id: 'spr-1', objectiveId: 'o1', name: 'Sprint 1', startDate: '2026-08-01', endDate: '2026-08-14',
-      status: 'active', completedAt: null, achievedAt: null
+      id: 'spr-1', projectId: 'p1', name: 'Sprint 1', goal: null, startDate: '2026-08-01', endDate: '2026-08-14',
+      status: 'active', completedAt: null, achievedAt: null, canManage: true
     };
 
     const directTask: WorkTaskDto = {
       id: 't-direct', objectiveId: 'o1', shortId: 'WEB-1', title: 'Direct task', description: null,
       categoryId: 'task', statusId: 'st-1', priority: 'medium', storyPoints: null,
-      dueDate: null, estimatedHours: 3, completedHours: 0, progressPercent: 0, sprintId: null, assigneeEmployeeIds: [], openClockSessionEmployeeId: null, openClockSessionClockInAt: null, totalLoggedMinutes: 0
+      dueDate: null, estimatedHours: 3, completedHours: 0, progressPercent: 0, sprintId: null, assigneeEmployeeIds: [], openClockSessionEmployeeId: null, openClockSessionClockInAt: null, totalLoggedMinutes: 0,
+      createdAt: '2026-01-01T00:00:00Z'
     };
 
     const sprintTask: WorkTaskDto = {
@@ -302,7 +379,7 @@ describe('ProjectDetailStore', () => {
 
     const statuses: TaskStatusDto[] = [{
       id: 'st-1', name: 'To Do', displayOrder: 0, requiresApproval: false, approverId: null,
-      marksTaskComplete: false, visibility: 'public'
+      marksTaskComplete: false, category: 'active', color: '#2563EB', visibility: 'public'
     }];
 
     it('fetches sprints, tasks, and statuses once and nests sprint plus direct-task children', async () => {
@@ -403,19 +480,20 @@ describe('ProjectDetailStore', () => {
   describe('loadTasksForSprint', () => {
 
     const sprintDto: SprintDto = {
-      id: 'spr-1', objectiveId: 'o1', name: 'Sprint 1', startDate: '2026-08-01', endDate: '2026-08-14',
-      status: 'active', completedAt: null, achievedAt: null
+      id: 'spr-1', projectId: 'p1', name: 'Sprint 1', goal: null, startDate: '2026-08-01', endDate: '2026-08-14',
+      status: 'active', completedAt: null, achievedAt: null, canManage: true
     };
 
     const sprintTask: WorkTaskDto = {
       id: 't-sprint', objectiveId: 'o1', shortId: 'WEB-2', title: 'Sprint task', description: null,
       categoryId: 'task', statusId: 'st-1', priority: 'medium', storyPoints: null,
-      dueDate: null, estimatedHours: 3, completedHours: 0, progressPercent: 0, sprintId: 'spr-1', assigneeEmployeeIds: [], openClockSessionEmployeeId: null, openClockSessionClockInAt: null, totalLoggedMinutes: 0
+      dueDate: null, estimatedHours: 3, completedHours: 0, progressPercent: 0, sprintId: 'spr-1', assigneeEmployeeIds: [], openClockSessionEmployeeId: null, openClockSessionClockInAt: null, totalLoggedMinutes: 0,
+      createdAt: '2026-01-01T00:00:00Z'
     };
 
     const statuses: TaskStatusDto[] = [{
       id: 'st-1', name: 'To Do', displayOrder: 0, requiresApproval: false, approverId: null,
-      marksTaskComplete: false, visibility: 'public'
+      marksTaskComplete: false, category: 'active', color: '#2563EB', visibility: 'public'
     }];
 
     async function loadLeafWithSprint(
@@ -483,18 +561,32 @@ describe('ProjectDetailStore', () => {
       expect(getBySprintId).toHaveBeenCalledTimes(2);
       expect(store.selectedSubtree()?.children[0].sprintTaskLoadState).toBe('loaded');
     });
+
+    it('only nests tasks belonging to the leaf module under its sprint node', async () => {
+      const otherModuleTask: WorkTaskDto = {
+        ...sprintTask, id: 't-other-module', objectiveId: 'o2', shortId: 'WEB-3', title: 'Other module task'
+      };
+      const getBySprintId = vi.fn().mockReturnValue(of([sprintTask, otherModuleTask]));
+      const { store } = await loadLeafWithSprint(getBySprintId);
+
+      await store.loadTasksForSprint('spr-1');
+
+      const sprintNode = store.selectedSubtree()?.children.find((c) => c.id === 'spr-1');
+      expect(sprintNode?.children).toHaveLength(1);
+      expect(sprintNode?.children[0].id).toBe('t-sprint');
+    });
   });
 
   describe('achieveSprint and completeSprint', () => {
     it('patches the sprint node after a successful achieve', async () => {
       const achieved: SprintDto = { ...{
-        id: 'spr-1', objectiveId: 'o1', name: 'Sprint 1', startDate: '2026-08-01', endDate: '2026-08-14',
-        status: 'achieved' as const, completedAt: null, achievedAt: '2026-08-21'
+        id: 'spr-1', projectId: 'p1', name: 'Sprint 1', goal: null, startDate: '2026-08-01', endDate: '2026-08-14',
+        status: 'achieved' as const, completedAt: null, achievedAt: '2026-08-21', canManage: true
       } };
       const sprintApi = {
         getByObjective: vi.fn().mockReturnValue(of([{
-          id: 'spr-1', objectiveId: 'o1', name: 'Sprint 1', startDate: '2026-08-01', endDate: '2026-08-14',
-          status: 'active' as const, completedAt: null, achievedAt: null
+          id: 'spr-1', projectId: 'p1', name: 'Sprint 1', goal: null, startDate: '2026-08-01', endDate: '2026-08-14',
+          status: 'active' as const, completedAt: null, achievedAt: null, canManage: true
         }])),
         achieve: vi.fn().mockReturnValue(of(achieved))
       };
@@ -502,7 +594,7 @@ describe('ProjectDetailStore', () => {
         getTasks: vi.fn().mockReturnValue(of([])),
         getStatuses: vi.fn().mockReturnValue(of([{
           id: 'st-1', name: 'To Do', displayOrder: 0, requiresApproval: false, approverId: null,
-          marksTaskComplete: false, visibility: 'public'
+          marksTaskComplete: false, category: 'active', color: '#2563EB', visibility: 'public'
         }]))
       };
       const store = setup({ getProjectTree: () => of(leafTree) }, sprintApi, taskApi);
@@ -519,13 +611,13 @@ describe('ProjectDetailStore', () => {
 
     it('patches the sprint node after a successful complete', async () => {
       const completed: SprintDto = {
-        id: 'spr-1', objectiveId: 'o1', name: 'Sprint 1', startDate: '2026-08-01', endDate: '2026-08-14',
-        status: 'complete', completedAt: '2026-08-21', achievedAt: null
+        id: 'spr-1', projectId: 'p1', name: 'Sprint 1', goal: null, startDate: '2026-08-01', endDate: '2026-08-14',
+        status: 'complete', completedAt: '2026-08-21', achievedAt: null, canManage: true
       };
       const sprintApi = {
         getByObjective: vi.fn().mockReturnValue(of([{
-          id: 'spr-1', objectiveId: 'o1', name: 'Sprint 1', startDate: '2026-08-01', endDate: '2026-08-14',
-          status: 'active' as const, completedAt: null, achievedAt: null
+          id: 'spr-1', projectId: 'p1', name: 'Sprint 1', goal: null, startDate: '2026-08-01', endDate: '2026-08-14',
+          status: 'active' as const, completedAt: null, achievedAt: null, canManage: true
         }])),
         complete: vi.fn().mockReturnValue(of(completed))
       };
@@ -533,17 +625,18 @@ describe('ProjectDetailStore', () => {
         getTasks: vi.fn().mockReturnValue(of([])),
         getStatuses: vi.fn().mockReturnValue(of([{
           id: 'st-1', name: 'To Do', displayOrder: 0, requiresApproval: false, approverId: null,
-          marksTaskComplete: false, visibility: 'public'
+          marksTaskComplete: false, category: 'active', color: '#2563EB', visibility: 'public'
         }]))
       };
       const store = setup({ getProjectTree: () => of(leafTree) }, sprintApi, taskApi);
       await store.loadProjectTree('p1');
       await store.loadSprintsAndTasksForLeaf('o1');
 
-      const result = await store.completeSprint('spr-1');
+      const result = await store.completeSprint('spr-1', { disposition: 'backlog' });
 
       expect(result.success).toBe(true);
       expect(store.selectedSubtree()?.children[0].status).toBe('complete');
+      expect(sprintApi.complete).toHaveBeenCalledWith('spr-1', { disposition: 'backlog' });
     });
 
     it('sets milestoneActionError when achieveSprint fails', async () => {
@@ -552,18 +645,69 @@ describe('ProjectDetailStore', () => {
       expect(result.success).toBe(false);
       expect(store.milestoneActionError()).toBe('blocked');
     });
+
+    const activeSprintList = () => of([{
+      id: 'spr-1', projectId: 'p1', name: 'Sprint 1', goal: null, startDate: '2026-08-01', endDate: '2026-08-14',
+      status: 'active' as const, completedAt: null, achievedAt: null, canManage: true
+    }]);
+    const statusApi = () => ({
+      getTasks: vi.fn().mockReturnValue(of([])),
+      getStatuses: vi.fn().mockReturnValue(of([{
+        id: 'st-1', name: 'To Do', displayOrder: 0, requiresApproval: false, approverId: null,
+        marksTaskComplete: false, category: 'active', color: '#2563EB', visibility: 'public'
+      }]))
+    });
+
+    it('achieveSprint pending returns {success:true, pending:true} and leaves the tree node unchanged', async () => {
+      const sprintApi = { getByObjective: vi.fn().mockReturnValue(activeSprintList()), achieve: vi.fn().mockReturnValue(of({ approvalRequestId: 'ar-1' })) };
+      const store = setup({ getProjectTree: () => of(leafTree) }, sprintApi, statusApi());
+      await store.loadProjectTree('p1');
+      await store.loadSprintsAndTasksForLeaf('o1');
+
+      const result = await store.achieveSprint('spr-1');
+
+      expect(result).toEqual({ success: true, pending: true });
+      expect(store.selectedSubtree()?.children[0].status).toBe('active');
+    });
+
+    it('deleteSprint applied removes the sprint node and reloads the leaf (its tasks return to the backlog)', async () => {
+      const getByObjective = vi.fn().mockReturnValueOnce(activeSprintList()).mockReturnValue(of([]));
+      const sprintApi = { getByObjective, delete: vi.fn().mockReturnValue(of(null)) };
+      const store = setup({ getProjectTree: () => of(leafTree) }, sprintApi, statusApi());
+      await store.loadProjectTree('p1');
+      await store.loadSprintsAndTasksForLeaf('o1');
+
+      const result = await store.deleteSprint('spr-1');
+
+      expect(result).toEqual({ success: true });
+      expect(sprintApi.delete).toHaveBeenCalledWith('spr-1');
+      expect(getByObjective).toHaveBeenCalledTimes(2);
+      expect(store.selectedSubtree()?.children.some((c) => c.id === 'spr-1')).toBe(false);
+    });
+
+    it('deleteSprint pending returns {success:true, pending:true} and keeps the node', async () => {
+      const sprintApi = { getByObjective: vi.fn().mockReturnValue(activeSprintList()), delete: vi.fn().mockReturnValue(of({ approvalRequestId: 'ar-2' })) };
+      const store = setup({ getProjectTree: () => of(leafTree) }, sprintApi, statusApi());
+      await store.loadProjectTree('p1');
+      await store.loadSprintsAndTasksForLeaf('o1');
+
+      const result = await store.deleteSprint('spr-1');
+
+      expect(result).toEqual({ success: true, pending: true });
+      expect(store.selectedSubtree()?.children.some((c) => c.id === 'spr-1')).toBe(true);
+    });
   });
 
   it('deleteTask removes the node from the tree on success', async () => {
     const sprintApi = { getByObjective: vi.fn().mockReturnValue(of([{
-      id: 'spr-1', objectiveId: 'o1', name: 'Sprint 1', startDate: '2026-08-01', endDate: '2026-08-14',
-      status: 'active' as const, completedAt: null, achievedAt: null
+      id: 'spr-1', projectId: 'p1', name: 'Sprint 1', goal: null, startDate: '2026-08-01', endDate: '2026-08-14',
+      status: 'active' as const, completedAt: null, achievedAt: null, canManage: true
     }])) };
     const taskApi = {
       getTasks: vi.fn().mockReturnValue(of([])),
       getStatuses: vi.fn().mockReturnValue(of([{
         id: 'st-1', name: 'To Do', displayOrder: 0, requiresApproval: false, approverId: null,
-        marksTaskComplete: false, visibility: 'public'
+        marksTaskComplete: false, category: 'active', color: '#2563EB', visibility: 'public'
       }])),
       getBySprintId: vi.fn().mockReturnValue(of([{
         id: 't-sprint', objectiveId: 'o1', shortId: 'WEB-2', title: 'Sprint task', description: null,
@@ -606,7 +750,7 @@ describe('ProjectDetailStore', () => {
       ownerId: 'u1', ownerName: 'Jane', reportingManagerId: null, reportingManagerName: null,
       startDate: '2026-08-01', endDate: '2026-12-01', allocatedHours: 40, completedHours: 0,
       objectiveIsActive: true, isAchieved: false, achievedAt: null, membershipIsActive: true, membershipRemovedAt: null,
-      isOwner: true
+      isOwner: true, isEffectiveOwner: true
     }];
 
     function setupWithBoth(getMembers: ReturnType<typeof vi.fn>) {

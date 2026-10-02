@@ -3,6 +3,20 @@ import { permissionGuard } from '../../core/guards/permission.guard';
 
 export const ATTENDANCE_ROUTES: Routes = [
   {
+    path: 'overview',
+    canActivate: [permissionGuard],
+    data: {
+      title: 'Overview',
+      permissions: ['attendance:read-own', 'attendance:write-own', 'attendance:read', 'attendance:approve'],
+      modules: ['time_attendance']
+    },
+    loadComponent: () =>
+      import('./feature/overview/overview.component').then(
+        (module) => module.OverviewComponent
+      )
+  },
+
+  {
     path: 'monitoring',
     canActivate: [permissionGuard],
     data: {
@@ -30,6 +44,41 @@ export const ATTENDANCE_ROUTES: Routes = [
       )
   },
   {
+    // Same component as 'time-tracking' - Requests has no standalone page yet (its
+    // correction/work-area draft-form state still lives on TimeTrackingComponent itself, see
+    // docs/superpowers/plans/2026-09-08-attendance-overview-redesign.md, "Deferred"). This
+    // route exists only so the "Requests" nav item has a URL distinct from "Time Tracking" -
+    // reusing that exact path made both sidebar entries highlight together (routerLinkActive
+    // compares each link's own target against the current URL, so two links pointing at the
+    // identical string both light up regardless of `exact`).
+    path: 'time-tracking/requests',
+    canActivate: [permissionGuard],
+    data: {
+      title: 'Requests',
+      permissions: ['attendance:read-own', 'attendance:write-own', 'attendance:read', 'attendance:approve'],
+      modules: ['time_attendance']
+    },
+    loadComponent: () =>
+      import('./feature/time-tracking/time-tracking.component').then(
+        (module) => module.TimeTrackingComponent
+      )
+  },
+  {
+    // Reporting managers (attendance:approve) and HR (employees:write) - the backend narrows the
+    // list to the employees each caller covers via IEmployeeAuthorityResolver.
+    path: 'alerts',
+    canActivate: [permissionGuard],
+    data: {
+      title: 'Alerts',
+      permissions: ['attendance:approve', 'employees:write', 'exceptions:view'],
+      modules: ['time_attendance']
+    },
+    loadComponent: () =>
+      import('./feature/exception-alerts/exception-alerts.component').then(
+        (module) => module.ExceptionAlertsComponent
+      )
+  },
+  {
     path: 'corrections/approvals',
     canActivate: [permissionGuard],
     data: { title: 'Attendance correction approvals', permissions: ['attendance:approve'], modules: ['time_attendance'], approvalType: 'corrections' },
@@ -50,6 +99,6 @@ export const ATTENDANCE_ROUTES: Routes = [
   {
     path: '',
     pathMatch: 'full',
-    redirectTo: 'time-tracking'
+    redirectTo: 'overview'
   }
 ];

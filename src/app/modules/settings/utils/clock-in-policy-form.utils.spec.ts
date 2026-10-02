@@ -24,21 +24,6 @@ describe('clock-in-policy-form.utils', () => {
     },
     effectiveFrom: '2026-08-21',
     effectiveTo: '2026-12-31',
-    locationVerificationRequired: true,
-    allowedRadiusMeters: 100,
-    workAreaRules: {
-      onsite: { biometricEnabled: true, webEnabled: false, trayEnabled: false, photoRequired: false },
-      remote: { biometricEnabled: false, webEnabled: true, trayEnabled: true, photoRequired: true },
-      hybrid: {
-        biometricEnabled: false,
-        webEnabled: true,
-        trayEnabled: true,
-        photoRequired: true,
-        locationCheckRequired: true,
-        sourceRule: 'onsite'
-      },
-      field: { biometricEnabled: false, webEnabled: true, trayEnabled: true, photoRequirement: 'optional' }
-    },
     correctionRequiresApproval: false,
     notificationRecipientResolver: 'management_coverage_owner',
     lateDeductionRules: [
@@ -51,28 +36,20 @@ describe('clock-in-policy-form.utils', () => {
     updatedAt: '2026-08-21T00:00:00Z'
   };
 
-  it('defaults create values including Hybrid employee_choice and today local date', () => {
+  it('defaults create values including today local date and empty late rules', () => {
     const now = new Date(2026, 7, 21);
     const model = createDefaultClockInPolicyFormModel(now);
     expect(model.effectiveFrom).toBe(todayLocalIsoDate(now));
     expect(model.name).toBe('Default clock-in policy');
     expect(model.effectiveTo).toBe('');
-    expect(model.workAreaRules.hybrid.sourceRule).toBe('employee_choice');
-    expect(model.workAreaRules.hybrid.locationCheckRequired).toBe(false);
-    expect(model.allowedDistanceMeters).toBe('');
-    expect(model.workAreaRules.field.photoRequirement).toBe('required');
     expect(model.lateDeductionRules).toEqual([]);
   });
 
-  it('maps form model from policy and preserves name/dates while normalizing work areas', () => {
+  it('maps form model from policy and preserves name/dates', () => {
     const model = formModelFromPolicy(detail);
     expect(model.name).toBe('Existing company policy');
     expect(model.effectiveFrom).toBe('2026-08-21');
     expect(model.effectiveTo).toBe('2026-12-31');
-    expect(model.allowedDistanceMeters).toBe('100');
-    expect(model.workAreaRules.hybrid.locationCheckRequired).toBe(true);
-    expect(model.workAreaRules.hybrid.sourceRule).toBe('employee_choice');
-    expect(model.workAreaRules.field.photoRequirement).toBe('off');
     // Default LATE_DEDUCTION_RULES_EDITABLE is false — do not load rows into form
     expect(LATE_DEDUCTION_RULES_EDITABLE).toBe(false);
     expect(model.lateDeductionRules).toEqual([]);
@@ -102,28 +79,9 @@ describe('clock-in-policy-form.utils', () => {
     expect(model.effectiveTo).toBe('');
   });
 
-  it('requires allowed distance only when Hybrid location check is enabled', () => {
+  it('valid with no late rules when late-rule editing is disabled', () => {
     const base = createDefaultClockInPolicyFormModel();
-    expect(
-      validateClockInPolicyForm({
-        ...base,
-        workAreaRules: {
-          ...base.workAreaRules,
-          hybrid: { ...base.workAreaRules.hybrid, locationCheckRequired: false }
-        },
-        allowedDistanceMeters: ''
-      }).valid
-    ).toBe(true);
-    expect(
-      validateClockInPolicyForm({
-        ...base,
-        workAreaRules: {
-          ...base.workAreaRules,
-          hybrid: { ...base.workAreaRules.hybrid, locationCheckRequired: true }
-        },
-        allowedDistanceMeters: ''
-      }).errors['allowedDistanceMeters']
-    ).toBeTruthy();
+    expect(validateClockInPolicyForm(base).valid).toBe(true);
   });
 
   it('skips late-rule validation when editing is disabled', () => {
@@ -179,23 +137,13 @@ describe('clock-in-policy-form.utils', () => {
     ]);
   });
 
-  it('create payload maps Hybrid location check off to locationVerificationRequired false', () => {
+  it('create payload does not include work-mode/location fields', () => {
     const now = new Date(2026, 7, 21);
     const model = createDefaultClockInPolicyFormModel(now);
-    model.workAreaRules = {
-      ...model.workAreaRules,
-      field: {
-        ...model.workAreaRules.field,
-        photoRequirement: 'off'
-      }
-    };
     const payload = toUpsertRequest(model, null, now, false);
     expect(payload.name).toBe('Default clock-in policy');
     expect(payload.effectiveFrom).toBe(todayLocalIsoDate(now));
     expect(payload.effectiveTo).toBeNull();
-    expect(payload.workAreaRules.hybrid.locationCheckRequired).toBe(false);
-    expect(payload.locationVerificationRequired).toBe(false);
-    expect(payload.allowedRadiusMeters).toBeNull();
     expect(payload.lateDeductionRules).toEqual([]);
     expect(payload.scope).toEqual({
       type: 'full_company',
@@ -206,17 +154,15 @@ describe('clock-in-policy-form.utils', () => {
     expect(payload.isActive).toBe(true);
     expect(payload.correctionRequiresApproval).toBe(true);
     expect(payload.notificationRecipientResolver).toBe('management_coverage_owner');
-    expect(payload.workAreaRules.hybrid.sourceRule).toBe('employee_choice');
+    expect(payload).not.toHaveProperty('workAreaRules');
+    expect(payload).not.toHaveProperty('locationVerificationRequired');
+    expect(payload).not.toHaveProperty('allowedRadiusMeters');
     expect(JSON.stringify(payload).toLowerCase()).not.toContain('either');
   });
 
   it('when late rules disabled, update preserves existing backend rules', () => {
     const model = formModelFromPolicy(detail, undefined, false);
-    model.allowedDistanceMeters = '75';
     const payload = toUpsertRequest(model, detail.lateDeductionRules, undefined, false);
-    expect(payload.workAreaRules.hybrid.locationCheckRequired).toBe(true);
-    expect(payload.locationVerificationRequired).toBe(true);
-    expect(payload.allowedRadiusMeters).toBe(75);
     expect(payload.name).toBe('Existing company policy');
     expect(payload.lateDeductionRules).toEqual([
       { lateArrivalMinute: 15, multiplier: 0.5, timeOffTypeId: 'tot-1' },
@@ -234,21 +180,6 @@ describe('clock-in-policy-form.utils', () => {
     expect(payload.lateDeductionRules).toEqual([
       { lateArrivalMinute: 10, multiplier: 0.25, timeOffTypeId: 'tot-new' }
     ]);
-  });
-
-  it('maps Field photo checkbox checked→required and unchecked→off', () => {
-    const model = createDefaultClockInPolicyFormModel();
-    model.workAreaRules = {
-      ...model.workAreaRules,
-      field: { ...model.workAreaRules.field, photoRequirement: 'required' }
-    };
-    expect(toUpsertRequest(model).workAreaRules.field.photoRequirement).toBe('required');
-
-    model.workAreaRules = {
-      ...model.workAreaRules,
-      field: { ...model.workAreaRules.field, photoRequirement: 'off' }
-    };
-    expect(toUpsertRequest(model).workAreaRules.field.photoRequirement).toBe('off');
   });
 
   it('exposes disabled message constant without forbidden placeholder wording', () => {

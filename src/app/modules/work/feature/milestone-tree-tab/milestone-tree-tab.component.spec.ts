@@ -1,3 +1,4 @@
+import { NotificationService } from '../../../../core/services/notification.service';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { ActivatedRoute, Router } from '@angular/router';
 import { of } from 'rxjs';
@@ -8,12 +9,16 @@ import { PeopleApiService } from '../../../people/data-access/people-api.service
 import { SprintListStore } from '../../state/sprint-list.store';
 import { TaskBoardStore } from '../../state/task-board.store';
 import { TaskApiService } from '../../data-access/task-api.service';
+import { WorkApprovalsApiService } from '../../data-access/work-approvals-api.service';
+import { EmployeeDirectoryStore } from '../../state/employee-directory.store';
 
 describe('MilestoneTreeTabComponent', () => {
   let fixture: ComponentFixture<MilestoneTreeTabComponent>;
   let storeStub: any;
   let routeStub: any;
   let routerStub: { navigate: ReturnType<typeof vi.fn> };
+  let approvalsApiStub: { acceptObjectiveInvitation: ReturnType<typeof vi.fn>; rejectObjectiveInvitation: ReturnType<typeof vi.fn> };
+  let directoryStub: { ensureLoaded: ReturnType<typeof vi.fn>; get: ReturnType<typeof vi.fn> };
 
   const child: MilestoneTreeNode = {
     id: 'o2', title: 'Child', description: null, startDate: '2026-01-10', endDate: '2026-02-01',
@@ -39,18 +44,27 @@ describe('MilestoneTreeTabComponent', () => {
     ownerName: 'Arun Kumar', isOwner: true, children: [child, sibling, inactiveSibling]
   };
 
-  function setup(milestoneId: string | null): void {
+  function setup(milestoneId: string | null, queryParams: Record<string, string> = {}): void {
     const paramGet = (key: string) => {
       if (key === 'milestoneId') return milestoneId;
       if (key === 'id') return 'p1';
       return null;
     };
+    const queryParamGet = (key: string) => queryParams[key] ?? null;
     routeStub = {
       paramMap: of({ get: paramGet }),
-      snapshot: { paramMap: { get: paramGet } },
+      snapshot: { paramMap: { get: paramGet }, queryParamMap: { get: queryParamGet } },
       parent: null
     };
     routerStub = { navigate: vi.fn().mockResolvedValue(true) };
+    approvalsApiStub = {
+      acceptObjectiveInvitation: vi.fn().mockReturnValue(of(undefined)),
+      rejectObjectiveInvitation: vi.fn().mockReturnValue(of(undefined))
+    };
+    directoryStub = {
+      ensureLoaded: vi.fn().mockResolvedValue(undefined),
+      get: vi.fn().mockReturnValue(undefined)
+    };
 
     TestBed.configureTestingModule({
       imports: [MilestoneTreeTabComponent],
@@ -60,7 +74,9 @@ describe('MilestoneTreeTabComponent', () => {
         { provide: PeopleApiService, useValue: { listEmployees: vi.fn().mockReturnValue(of({ items: [], totalCount: 0, page: 1, pageSize: 20 })) } },
         { provide: SprintListStore, useValue: { error: () => null, create: vi.fn(), edit: vi.fn() } },
         { provide: TaskBoardStore, useValue: { error: () => null, createTask: vi.fn(), statuses: () => [] } },
-        { provide: TaskApiService, useValue: {} },
+        { provide: TaskApiService, useValue: { getStatuses: vi.fn().mockReturnValue(of([])), getCategories: vi.fn().mockReturnValue(of([])) } },
+        { provide: WorkApprovalsApiService, useValue: approvalsApiStub },
+        { provide: EmployeeDirectoryStore, useValue: directoryStub },
         { provide: Router, useValue: routerStub }
       ]
     }).compileComponents();
@@ -81,17 +97,22 @@ describe('MilestoneTreeTabComponent', () => {
       achieveSprint: vi.fn().mockResolvedValue({ success: true }),
       completeSprint: vi.fn().mockResolvedValue({ success: true }),
       deleteTask: vi.fn().mockResolvedValue({ success: true }),
+      deleteSprint: vi.fn().mockResolvedValue({ success: true }),
       getMilestoneDetail: vi.fn().mockResolvedValue(null),
-      editMilestone: vi.fn().mockResolvedValue({ success: true, pending: false }),
+      editMilestone: vi.fn().mockResolvedValue({ success: true, pending: true }),
       achieveMilestone: vi.fn().mockResolvedValue({ success: true, pending: false }),
       unachieveMilestone: vi.fn().mockResolvedValue({ success: true, pending: false }),
-      createSubModule: vi.fn().mockResolvedValue({ success: true }),
+      createSubModule: vi.fn().mockResolvedValue({ success: true, objectiveId: 'o1' }),
+      uploadMilestoneAsset: vi.fn().mockResolvedValue({ success: true }),
+      setMilestoneActionError: vi.fn(),
       loadObjectiveMembers: vi.fn().mockResolvedValue(undefined),
-      addObjectiveMember: vi.fn().mockResolvedValue({ success: true, alreadyMember: false }),
-      removeObjectiveMember: vi.fn().mockResolvedValue({ success: true }),
+      addObjectiveMember: vi.fn().mockResolvedValue({ success: true, alreadyMember: false, applied: true, pending: false }),
+      removeObjectiveMember: vi.fn().mockResolvedValue({ success: true, applied: true, pending: false }),
       transferObjectiveHead: vi.fn().mockResolvedValue({ success: true, applied: false, viaInvitation: true }),
       objectiveMembers: () => [],
-      objectiveMembersLoading: () => false
+      objectiveMembersLoading: () => false,
+      loadProjectMembers: vi.fn().mockResolvedValue(undefined),
+      projectMembers: () => [{ employeeId: 'e1', name: 'Arun Kumar' }, { employeeId: 'e2', name: 'Diya' }]
     };
   });
 
@@ -101,189 +122,208 @@ describe('MilestoneTreeTabComponent', () => {
     expect(storeStub.loadProjectTree).toHaveBeenCalledWith('p1');
   });
 
-  it('defaults the module filter to the routed milestone id', async () => {
+  it('pre-warms the employee directory with project members so task-assignee avatars resolve without the coverage-scoped lookup', async () => {
     setup('o1');
     fixture.detectChanges();
     await fixture.whenStable();
-    fixture.detectChanges();
-    expect(fixture.componentInstance.selectedModuleFilter()).toBe('o1');
-    const select = fixture.nativeElement.querySelector('[data-testid="module-filter-dropdown"] select') as HTMLSelectElement;
-    expect(select.value).toBe('o1');
-    expect(select.options[1].textContent).toContain('Root');
+    await Promise.resolve();
+    await Promise.resolve();
+
+    expect(storeStub.loadProjectMembers).toHaveBeenCalledWith('p1');
+    expect(directoryStub.ensureLoaded).toHaveBeenCalledWith(['e1', 'e2']);
   });
 
-  it('prunes the rendered tree on filter change without refetching', () => {
-    setup('o1');
+  it('keeps sibling branches visible and highlights the routed node when a member lands on their own non-root module', async () => {
+    setup('o2');
     fixture.detectChanges();
-    const titles = () =>
+    await fixture.whenStable();
+    fixture.detectChanges();
+
+    const rendered = fixture.componentInstance.renderedTree();
+    const ids = (node: MilestoneTreeNode): string[] => [node.id, ...node.children.flatMap(ids)];
+    expect(ids(rendered!)).toEqual(expect.arrayContaining(['o1', 'o2', 'o3']));
+    expect(fixture.componentInstance.selectedNode()?.id).toBe('o2');
+  });
+
+  describe('highlight filter + expand all', () => {
+    const grandchild: MilestoneTreeNode = {
+      id: 'g1', title: 'Grandchild', description: null, startDate: '2026-01-12', endDate: '2026-01-20',
+      progress: 0, allocatedHours: 0, completedHours: 0, isActive: true, isAchieved: false,
+      ownerName: null, ownerId: 'e9', isOwner: true, children: [], kind: 'objective'
+    };
+    const deepTree: MilestoneTreeNode = {
+      ...tree,
+      children: [{ ...child, ownerId: 'e2', kind: 'objective', children: [grandchild] }, sibling, inactiveSibling]
+    };
+
+    const titles = (): string[] =>
       Array.from(fixture.nativeElement.querySelectorAll('[data-testid="title-text"]') as NodeListOf<HTMLElement>)
-        .map((el) => el.textContent?.trim());
-    expect(titles()).toContain('Other');
-    expect(storeStub.loadProjectTree).toHaveBeenCalledTimes(1);
+        .map((el) => el.textContent?.trim() ?? '');
+    const highlightedTitles = (): string[] =>
+      Array.from(fixture.nativeElement.querySelectorAll('[data-highlighted] [data-testid="title-text"]') as NodeListOf<HTMLElement>)
+        .map((el) => el.textContent?.trim() ?? '');
 
-    fixture.componentInstance.onModuleFilterChanged('o2');
-    fixture.detectChanges();
-
-    expect(titles()).toContain('Child');
-    expect(titles()).not.toContain('Other');
-    expect(storeStub.loadProjectTree).toHaveBeenCalledTimes(1);
-  });
-
-  describe('activity filter', () => {
-    it('defaults selectedActivityFilter to all and leaves moduleFilterOptions/renderedTree provably unchanged', () => {
+    it('replaces the old prune dropdowns with the highlight filter bar and an expand-all toggle', () => {
       setup('o1');
       fixture.detectChanges();
-
-      expect(fixture.componentInstance.selectedActivityFilter()).toBe('all');
-      expect(fixture.componentInstance.moduleFilterOptions().map((o) => o.id)).toEqual(['o1', 'o2', 'o3', 'o4']);
-      expect(fixture.componentInstance.renderedTree()).toEqual(tree);
+      expect(fixture.nativeElement.querySelector('[data-testid="module-filter-dropdown"]')).toBeNull();
+      expect(fixture.nativeElement.querySelector('[data-testid="module-activity-filter-dropdown"]')).toBeNull();
+      expect(fixture.nativeElement.querySelector('app-task-filter-bar')).not.toBeNull();
+      expect(fixture.nativeElement.querySelector('[data-testid="expand-all-toggle"]')).not.toBeNull();
     });
 
-    it('includes isActive on each moduleFilterOptions entry', () => {
+    it('offers every approved highlight field', () => {
       setup('o1');
       fixture.detectChanges();
-
-      expect(fixture.componentInstance.moduleFilterOptions()).toEqual([
-        { id: 'o1', title: 'Root', isActive: true },
-        { id: 'o2', title: 'Child', isActive: true },
-        { id: 'o3', title: 'Other', isActive: true },
-        { id: 'o4', title: 'Retired Module', isActive: false }
+      expect(fixture.componentInstance.filterFields().map((f) => f.key)).toEqual([
+        'module', 'owner', 'activeStatus', 'dueDate', 'duration', 'itemType',
+        'sprint', 'taskStatus', 'priority', 'category', 'progress'
       ]);
     });
 
-    it('excludes the inactive module from moduleFilterOptions when the filter is active', () => {
+    it('never prunes: a filter keeps every row rendered and only marks the matches', () => {
       setup('o1');
       fixture.detectChanges();
-
-      fixture.componentInstance.onActivityFilterChanged('active');
+      fixture.componentInstance.onFilterFieldChanged({ key: 'activeStatus', values: ['inactive'] });
       fixture.detectChanges();
 
-      const ids = fixture.componentInstance.moduleFilterOptions().map((o) => o.id);
-      expect(ids).not.toContain('o4');
-      expect(ids).toEqual(['o1', 'o2', 'o3']);
+      expect(titles()).toEqual(expect.arrayContaining(['Root', 'Child', 'Other', 'Retired Module']));
+      expect(highlightedTitles()).toEqual(['Retired Module']);
+      expect(fixture.nativeElement.querySelector('[data-testid="highlight-match-count"]').textContent.trim()).toBe('1 match');
     });
 
-    it('includes the inactive module in moduleFilterOptions when the filter is inactive', () => {
+    it('clears all highlighting when the filter is removed', () => {
       setup('o1');
       fixture.detectChanges();
-
-      fixture.componentInstance.onActivityFilterChanged('inactive');
+      fixture.componentInstance.onFilterFieldChanged({ key: 'activeStatus', values: ['inactive'] });
+      fixture.componentInstance.onFilterFieldChanged({ key: 'activeStatus', values: [] });
       fixture.detectChanges();
-
-      expect(fixture.componentInstance.moduleFilterOptions().map((o) => o.id)).toContain('o4');
+      expect(highlightedTitles()).toEqual([]);
+      expect(fixture.nativeElement.querySelector('[data-testid="highlight-match-count"]')).toBeNull();
     });
 
-    it('includes the inactive module in moduleFilterOptions when the filter is all', () => {
+    it('paints matched rows with the chosen highlight color', () => {
       setup('o1');
       fixture.detectChanges();
-
-      fixture.componentInstance.onActivityFilterChanged('all');
+      fixture.componentInstance.onFilterFieldChanged({ key: 'activeStatus', values: ['inactive'] });
+      fixture.componentInstance.onHighlightColorChanged('#ef4444');
       fixture.detectChanges();
-
-      expect(fixture.componentInstance.moduleFilterOptions().map((o) => o.id)).toContain('o4');
+      const row = fixture.nativeElement.querySelector('[data-highlighted]') as HTMLElement;
+      expect(row.style.getPropertyValue('--tree-highlight')).toBe('#ef4444');
     });
 
-    it('prunes renderedTree to only inactive modules when inactive is selected', () => {
+    it('searches module, sprint and task titles through the shared search input, highlighting (never hiding) matches', () => {
+      storeStub.selectedSubtree = () => deepTree;
       setup('o1');
       fixture.detectChanges();
+      const input = fixture.nativeElement.querySelector('[data-testid="tree-search"] input') as HTMLInputElement;
+      expect(input.type).toBe('search');
 
-      fixture.componentInstance.onActivityFilterChanged('inactive');
+      storeStub.loadSprintsAndTasksForLeaf.mockClear();
+      input.value = 'grand';
+      input.dispatchEvent(new Event('input'));
       fixture.detectChanges();
 
-      const rendered = fixture.componentInstance.renderedTree();
-      expect(rendered?.id).toBe('o1');
-      expect(rendered?.children.map((c) => c.id)).toEqual(['o4']);
+      expect(titles()).toEqual(expect.arrayContaining(['Root', 'Child', 'Other', 'Grandchild']));
+      expect(highlightedTitles()).toEqual(['Grandchild']);
+      expect(storeStub.loadSprintsAndTasksForLeaf).toHaveBeenCalled();
     });
 
-    it('prunes renderedTree to only active modules when active is selected', () => {
+    it('uses a border glow on hover instead of the gray background, tinted with the highlight color on matches', () => {
       setup('o1');
       fixture.detectChanges();
-
-      fixture.componentInstance.onActivityFilterChanged('active');
+      fixture.componentInstance.onFilterFieldChanged({ key: 'activeStatus', values: ['inactive'] });
+      fixture.componentInstance.onHighlightColorChanged('#22c55e');
       fixture.detectChanges();
-
-      const rendered = fixture.componentInstance.renderedTree();
-      expect(rendered?.id).toBe('o1');
-      expect(rendered?.children.map((c) => c.id)).toEqual(['o2', 'o3']);
+      const rows = Array.from(fixture.nativeElement.querySelectorAll('[data-testid="tree-row"]') as NodeListOf<HTMLElement>);
+      expect(rows.every((row) => row.classList.contains('tree-row'))).toBe(true);
+      expect(rows.some((row) => row.className.includes('hover:bg-'))).toBe(false);
+      const highlighted = fixture.nativeElement.querySelector('[data-highlighted]') as HTMLElement;
+      expect(highlighted.style.getPropertyValue('--tree-row-glow')).toBe('#22c55e');
     });
 
-    it('wires the activity filter select to selectedActivityFilter and onActivityFilterChanged', async () => {
+    it('labels the first column "Module"', () => {
       setup('o1');
       fixture.detectChanges();
-      await fixture.whenStable();
-      fixture.detectChanges();
-
-      const select = fixture.nativeElement.querySelector('[data-testid="module-activity-filter-dropdown"] select') as HTMLSelectElement;
-      expect(select.value).toBe('all');
-      expect(select.options[0].textContent).toContain('All');
-
-      select.value = 'inactive';
-      select.dispatchEvent(new Event('change'));
-      fixture.detectChanges();
-
-      expect(fixture.componentInstance.selectedActivityFilter()).toBe('inactive');
+      expect(fixture.nativeElement.querySelector('[data-testid="tree-column-header"]').textContent).toContain('Module');
+      expect(fixture.nativeElement.querySelector('[data-testid="tree-column-header"]').textContent).not.toContain('Work item');
     });
 
-    it('resets selectedModuleFilter to all when the activity filter evicts the currently selected module', () => {
+    it('counts every highlighted row, including a shared sprint rendered under two modules', () => {
+      const sharedTask = (): MilestoneTreeNode => ({
+        ...child, id: 't1', title: 'Shared Task', kind: 'task', children: [],
+        taskSource: { id: 't1', priority: 'high', statusId: 's', categoryId: 'c', dueDate: null, assigneeEmployeeIds: [] } as any
+      });
+      const sharedSprint = (): MilestoneTreeNode => ({
+        ...child, id: 'sp1', title: 'Shared Sprint', kind: 'sprint', sprintTaskLoadState: 'loaded', children: [sharedTask()]
+      });
+      storeStub.selectedSubtree = () => ({
+        ...tree,
+        children: [
+          { ...child, kind: 'objective', sprintTaskLoadState: 'loaded', children: [sharedSprint()] },
+          { ...sibling, kind: 'objective', sprintTaskLoadState: 'loaded', children: [sharedSprint()] }
+        ]
+      });
       setup('o1');
       fixture.detectChanges();
 
-      // o2 ("Child") is active with no inactive descendants, so it disappears from the
-      // inactive-filtered option list entirely.
-      fixture.componentInstance.onModuleFilterChanged('o2');
-      fixture.detectChanges();
-      expect(fixture.componentInstance.selectedModuleFilter()).toBe('o2');
-
-      fixture.componentInstance.onActivityFilterChanged('inactive');
+      fixture.componentInstance.onFilterFieldChanged({ key: 'priority', values: ['high'] });
       fixture.detectChanges();
 
-      expect(fixture.componentInstance.selectedModuleFilter()).toBe('all');
-      const rendered = fixture.componentInstance.renderedTree();
-      expect(rendered?.children.map((c) => c.id)).toEqual(['o4']);
+      expect(highlightedTitles()).toEqual(['Shared Task', 'Shared Task']);
+      expect(fixture.nativeElement.querySelector('[data-testid="highlight-match-count"]').textContent.trim()).toBe('2 matches');
     });
 
-    it('keeps selectedModuleFilter unchanged when the newly selected activity filter still includes the selected module', () => {
+    it('loads every leaf module\'s sprints and tasks once a filter is active, so task-level fields can match', () => {
       setup('o1');
       fixture.detectChanges();
+      storeStub.loadSprintsAndTasksForLeaf.mockClear();
+      fixture.componentInstance.onFilterFieldChanged({ key: 'priority', values: ['high'] });
+      const loaded = storeStub.loadSprintsAndTasksForLeaf.mock.calls.map((call: unknown[]) => call[0]).sort();
+      expect(loaded).toEqual(['o2', 'o3', 'o4']);
+    });
 
-      fixture.componentInstance.onModuleFilterChanged('o2');
+    it('auto-expands the ancestors of a match hidden in a collapsed branch', () => {
+      storeStub.selectedSubtree = () => deepTree;
+      setup('o1');
       fixture.detectChanges();
+      expect(titles()).not.toContain('Grandchild');
 
-      fixture.componentInstance.onActivityFilterChanged('active');
+      fixture.componentInstance.onFilterFieldChanged({ key: 'owner', values: ['e9'] });
       fixture.detectChanges();
+      expect(titles()).toContain('Grandchild');
+      expect(highlightedTitles()).toEqual(['Grandchild']);
+    });
 
-      expect(fixture.componentInstance.selectedModuleFilter()).toBe('o2');
+    it('expand all opens every branch and loads the whole tree; clicking again collapses it', async () => {
+      storeStub.selectedSubtree = () => deepTree;
+      setup('o1');
+      fixture.detectChanges();
+      storeStub.loadSprintsAndTasksForLeaf.mockClear();
+      const toggle = () => fixture.nativeElement.querySelector('[data-testid="expand-all-toggle"]') as HTMLButtonElement;
+      expect(toggle().textContent).toContain('Expand all');
+
+      toggle().click();
+      fixture.detectChanges();
+      expect(titles()).toContain('Grandchild');
+      expect(storeStub.loadSprintsAndTasksForLeaf).toHaveBeenCalled();
+      expect(toggle().textContent).toContain('Collapse all');
+
+      toggle().click();
+      fixture.detectChanges();
+      // The root stays open so the first level remains visible.
+      expect(titles()).not.toContain('Grandchild');
+      expect(titles()).toEqual(expect.arrayContaining(['Root', 'Child']));
     });
   });
 
-  describe('moduleFilterOptions ancestor independence (Finding 3)', () => {
-    const inactiveGrandchild: MilestoneTreeNode = {
-      id: 'g1', title: 'Inactive Grandchild', description: null, startDate: '2026-01-10', endDate: '2026-02-01',
-      progress: 0, allocatedHours: 0, completedHours: 0, isActive: false, isAchieved: false,
-      ownerName: null, isOwner: true, children: [], kind: 'objective'
-    };
-    const activeRootWithInactiveDescendant: MilestoneTreeNode = {
-      id: 'r1', title: 'Active Root', description: null, startDate: '2026-01-01', endDate: '2026-12-01',
-      progress: 0, allocatedHours: 0, completedHours: 0, isActive: true, isAchieved: false,
-      ownerName: null, isOwner: true, children: [inactiveGrandchild], kind: 'objective'
-    };
+  it('always shows achieved modules in the tree', () => {
+    const achieved: MilestoneTreeNode = { ...sibling, id: 'o5', title: 'Shipped Module', isAchieved: true };
+    storeStub.selectedSubtree = () => ({ ...tree, children: [child, achieved] });
+    setup('o1');
+    fixture.detectChanges();
 
-    it('excludes an active ancestor from moduleFilterOptions under the inactive filter, even though it would remain visible in the tree for path preservation', () => {
-      setup('r1');
-      storeStub.selectedSubtree = () => activeRootWithInactiveDescendant;
-      fixture.detectChanges();
-
-      fixture.componentInstance.onActivityFilterChanged('inactive');
-      fixture.detectChanges();
-
-      const ids = fixture.componentInstance.moduleFilterOptions().map((o) => o.id);
-      expect(ids).toEqual(['g1']);
-      expect(ids).not.toContain('r1');
-
-      // Meanwhile renderedTree legitimately keeps the active root visible as a path-preserving ancestor.
-      const rendered = fixture.componentInstance.renderedTree();
-      expect(rendered?.id).toBe('r1');
-    });
+    expect(fixture.nativeElement.textContent).toContain('Shipped Module');
   });
 
   it('renders the root tree node', () => {
@@ -343,13 +383,92 @@ describe('MilestoneTreeTabComponent', () => {
     fixture.componentInstance.createModalParentId.set('o1');
     fixture.componentInstance.createModalOpen.set(true);
     await fixture.componentInstance.onCreateModalCreated({
-      parentObjectiveId: 'o1', title: 'Design Phase', description: null,
-      startDate: '2026-01-15', endDate: '2026-03-01', allocatedHours: 20
+      payload: { parentObjectiveId: 'o1', title: 'Design Phase', description: null, startDate: '2026-01-15', endDate: '2026-03-01', allocatedHours: 20 },
+      assetFiles: []
     });
 
     expect(storeStub.createSubModule).toHaveBeenCalled();
+    expect(storeStub.uploadMilestoneAsset).not.toHaveBeenCalled();
     expect(fixture.componentInstance.createModalOpen()).toBe(false);
     expect(storeStub.loadProjectTree).toHaveBeenCalledTimes(2);
+  });
+
+  it('uploads each staged asset file to the newly created objective before closing the modal', async () => {
+    setup('o1');
+    fixture.detectChanges();
+    const fileA = new File(['a'], 'plan.pdf');
+    const fileB = new File(['b'], 'notes.docx');
+
+    await fixture.componentInstance.onCreateModalCreated({
+      payload: { parentObjectiveId: 'o1', title: 'Design Phase', description: null, startDate: '2026-01-15', endDate: '2026-03-01', allocatedHours: 20 },
+      assetFiles: [fileA, fileB]
+    });
+
+    expect(storeStub.uploadMilestoneAsset).toHaveBeenCalledWith('o1', fileA);
+    expect(storeStub.uploadMilestoneAsset).toHaveBeenCalledWith('o1', fileB);
+    expect(fixture.componentInstance.createModalOpen()).toBe(false);
+  });
+
+  it('surfaces a retry-via-Module-settings message in a non-modal banner when some staged files fail to upload, after the create modal has closed', async () => {
+    setup('o1');
+    fixture.detectChanges();
+    storeStub.uploadMilestoneAsset = vi.fn()
+      .mockResolvedValueOnce({ success: true })
+      .mockResolvedValueOnce({ success: false });
+
+    await fixture.componentInstance.onCreateModalCreated({
+      payload: { parentObjectiveId: 'o1', title: 'Design Phase', description: null, startDate: '2026-01-15', endDate: '2026-03-01', allocatedHours: 20 },
+      assetFiles: [new File(['a'], 'ok.pdf'), new File(['b'], 'bad.exe')]
+    });
+    fixture.detectChanges();
+
+    // The store's modal-scoped error must NOT be used here — the create modal is already
+    // closed by this point, so setMilestoneActionError would render nowhere.
+    expect(storeStub.setMilestoneActionError).not.toHaveBeenCalled();
+    expect(fixture.componentInstance.createModalOpen()).toBe(false);
+
+    const banner = fixture.nativeElement.querySelector('[data-testid="create-asset-warning"]') as HTMLElement;
+    expect(banner).toBeTruthy();
+    expect(banner.textContent).toContain(
+      '"Design Phase" was created, but 1 file(s) failed to upload — open Module settings on it to retry.'
+    );
+  });
+
+  it('dismisses the create-asset warning banner when its close button is clicked', async () => {
+    setup('o1');
+    fixture.detectChanges();
+    storeStub.uploadMilestoneAsset = vi.fn().mockResolvedValueOnce({ success: false });
+
+    await fixture.componentInstance.onCreateModalCreated({
+      payload: { parentObjectiveId: 'o1', title: 'Design Phase', description: null, startDate: '2026-01-15', endDate: '2026-03-01', allocatedHours: 20 },
+      assetFiles: [new File(['a'], 'bad.exe')]
+    });
+    fixture.detectChanges();
+    expect(fixture.nativeElement.querySelector('[data-testid="create-asset-warning"]')).toBeTruthy();
+
+    (fixture.nativeElement.querySelector('[data-testid="dismiss-create-asset-warning"]') as HTMLElement).click();
+    fixture.detectChanges();
+
+    expect(fixture.nativeElement.querySelector('[data-testid="create-asset-warning"]')).toBeFalsy();
+  });
+
+  it('does not leak a stale create-asset warning into a freshly opened create dialog', async () => {
+    setup('o1');
+    fixture.detectChanges();
+    storeStub.uploadMilestoneAsset = vi.fn().mockResolvedValueOnce({ success: false });
+
+    await fixture.componentInstance.onCreateModalCreated({
+      payload: { parentObjectiveId: 'o1', title: 'Design Phase', description: null, startDate: '2026-01-15', endDate: '2026-03-01', allocatedHours: 20 },
+      assetFiles: [new File(['a'], 'bad.exe')]
+    });
+    fixture.detectChanges();
+    expect(fixture.nativeElement.querySelector('[data-testid="create-asset-warning"]')).toBeTruthy();
+
+    fixture.componentInstance.onCreateSubRequested(tree);
+    fixture.detectChanges();
+
+    expect(fixture.componentInstance.createModalOpen()).toBe(true);
+    expect(fixture.nativeElement.querySelector('[data-testid="create-asset-warning"]')).toBeFalsy();
   });
 
   it('opens the settings modal and fetches full detail when Edit is requested', async () => {
@@ -366,6 +485,42 @@ describe('MilestoneTreeTabComponent', () => {
     expect(fixture.componentInstance.settingsOpen()).toBe(true);
     expect(storeStub.getMilestoneDetail).toHaveBeenCalledWith('o1');
     expect((fixture.componentInstance.settingsInitialValue() as any)?.description).toBe('Full scope');
+  });
+
+  it('shows a pending-approval notice when an edit is submitted for approval', async () => {
+    setup('o1');
+    fixture.detectChanges();
+    const rows = fixture.nativeElement.querySelectorAll('[data-testid="tree-row"]');
+    (rows[0] as HTMLElement).click();
+    fixture.detectChanges();
+
+    await fixture.componentInstance.onSettingsSaved({
+      fields: { title: 'Root', description: '', startDate: '2026-01-01', endDate: '2026-12-01', allocatedHours: 40 },
+      achievedChanged: false,
+      achieved: false
+    });
+    fixture.detectChanges();
+
+    expect(fixture.componentInstance.editPendingNotice()).toContain('pending approval');
+    expect(fixture.nativeElement.querySelector('[data-testid="edit-pending-notice"]')).not.toBeNull();
+  });
+
+  it('does not show a pending-approval notice when the edit applied immediately', async () => {
+    storeStub.editMilestone = vi.fn().mockResolvedValue({ success: true, pending: false });
+    setup('o1');
+    fixture.detectChanges();
+    const rows = fixture.nativeElement.querySelectorAll('[data-testid="tree-row"]');
+    (rows[0] as HTMLElement).click();
+    fixture.detectChanges();
+
+    await fixture.componentInstance.onSettingsSaved({
+      fields: { title: 'Root', description: '', startDate: '2026-01-01', endDate: '2026-12-01', allocatedHours: 40 },
+      achievedChanged: false,
+      achieved: false
+    });
+    fixture.detectChanges();
+
+    expect(fixture.componentInstance.editPendingNotice()).toBeNull();
   });
 
   it('opens the members popup when a row requests it', () => {
@@ -417,6 +572,47 @@ describe('MilestoneTreeTabComponent', () => {
     expect(storeStub.removeObjectiveMember).toHaveBeenCalledWith('o1', 'e9');
   });
 
+  it('a member add sent for approval shows "Member add sent for approval."', async () => {
+    setup('o1');
+    fixture.detectChanges();
+    const rows = fixture.nativeElement.querySelectorAll('[data-testid="tree-row"]');
+    (rows[0] as HTMLElement).click();
+    fixture.detectChanges();
+    storeStub.addObjectiveMember.mockResolvedValue({ success: true, alreadyMember: false, applied: false, pending: true });
+    const info = vi.spyOn(TestBed.inject(NotificationService), 'info');
+
+    await fixture.componentInstance.onAddMemberRequested('e9');
+
+    expect(info).toHaveBeenCalledWith('Member add sent for approval.');
+  });
+
+  it('does not show a toast when a member add is applied immediately', async () => {
+    setup('o1');
+    fixture.detectChanges();
+    const rows = fixture.nativeElement.querySelectorAll('[data-testid="tree-row"]');
+    (rows[0] as HTMLElement).click();
+    fixture.detectChanges();
+    const info = vi.spyOn(TestBed.inject(NotificationService), 'info');
+
+    await fixture.componentInstance.onAddMemberRequested('e9');
+
+    expect(info).not.toHaveBeenCalled();
+  });
+
+  it('a member removal sent for approval shows "Member removal sent for approval."', async () => {
+    setup('o1');
+    fixture.detectChanges();
+    const rows = fixture.nativeElement.querySelectorAll('[data-testid="tree-row"]');
+    (rows[0] as HTMLElement).click();
+    fixture.detectChanges();
+    storeStub.removeObjectiveMember.mockResolvedValue({ success: true, applied: false, pending: true });
+    const info = vi.spyOn(TestBed.inject(NotificationService), 'info');
+
+    await fixture.componentInstance.onRemoveMemberRequested('e9');
+
+    expect(info).toHaveBeenCalledWith('Member removal sent for approval.');
+  });
+
   it('calls store.transferObjectiveHead when the popup requests a leader transfer', async () => {
     setup('o1');
     fixture.detectChanges();
@@ -427,6 +623,55 @@ describe('MilestoneTreeTabComponent', () => {
     await fixture.componentInstance.onTransferRequested('e9');
 
     expect(storeStub.transferObjectiveHead).toHaveBeenCalledWith('o1', 'e9');
+  });
+
+  it('calls acceptObjectiveInvitation and reloads members when the popup accepts my invitation', async () => {
+    setup('o1');
+    fixture.detectChanges();
+    const rows = fixture.nativeElement.querySelectorAll('[data-testid="tree-row"]');
+    (rows[0] as HTMLElement).click();
+    fixture.detectChanges();
+
+    await fixture.componentInstance.onInvitationAcceptRequested('inv-1');
+
+    expect(approvalsApiStub.acceptObjectiveInvitation).toHaveBeenCalledWith('inv-1');
+    expect(storeStub.loadObjectiveMembers).toHaveBeenCalledWith('o1');
+  });
+
+  it('calls rejectObjectiveInvitation and reloads members when the popup declines my invitation', async () => {
+    setup('o1');
+    fixture.detectChanges();
+    const rows = fixture.nativeElement.querySelectorAll('[data-testid="tree-row"]');
+    (rows[0] as HTMLElement).click();
+    fixture.detectChanges();
+
+    await fixture.componentInstance.onInvitationDeclineRequested('inv-1');
+
+    expect(approvalsApiStub.rejectObjectiveInvitation).toHaveBeenCalledWith('inv-1');
+    expect(storeStub.loadObjectiveMembers).toHaveBeenCalledWith('o1');
+  });
+
+  it('auto-opens the members popup when the route carries ?openMembers=1 (deep link from a notification)', async () => {
+    setup('o1', { openMembers: '1' });
+    fixture.detectChanges();
+    await fixture.whenStable();
+    await Promise.resolve();
+    await Promise.resolve();
+    fixture.detectChanges();
+
+    expect(fixture.componentInstance.membersPopupOpen()).toBe(true);
+    expect(storeStub.loadObjectiveMembers).toHaveBeenCalledWith('o1');
+  });
+
+  it('does not auto-open the members popup when ?openMembers is absent', async () => {
+    setup('o1');
+    fixture.detectChanges();
+    await fixture.whenStable();
+    await Promise.resolve();
+    await Promise.resolve();
+    fixture.detectChanges();
+
+    expect(fixture.componentInstance.membersPopupOpen()).toBe(false);
   });
 
   it('opens the members popup from a row without relying on prior selection', () => {
@@ -471,7 +716,7 @@ describe('MilestoneTreeTabComponent', () => {
     expect(storeStub.loadSprintsAndTasksForLeaf).toHaveBeenCalledWith('o2', { force: true });
   });
 
-  it('navigates to the create-task page scoped to one sprint from a sprint row', () => {
+  it('opens the task modal in create mode scoped to one sprint from a sprint row', () => {
     setup('o1');
     fixture.detectChanges();
     const sprint: MilestoneTreeNode = {
@@ -480,10 +725,10 @@ describe('MilestoneTreeTabComponent', () => {
 
     fixture.componentInstance.onCreateTaskRequested(sprint);
 
-    expect(routerStub.navigate).toHaveBeenCalledWith(
-      ['/work', 'p1', 'task', 'new'],
-      { queryParams: { module: 'o1', sprint: 'spr-1', sprintRequired: 'true' } }
-    );
+    expect(fixture.componentInstance.taskModalOpen()).toBe(true);
+    expect(fixture.componentInstance.taskModalMode()).toBe('create');
+    expect(fixture.componentInstance.taskModalPrefillModule()).toBe('o1');
+    expect(fixture.componentInstance.taskModalPrefillSprint()).toBe('spr-1');
   });
 
   it('opens the settings modal with fetched detail when an objective row is edited', async () => {
@@ -527,16 +772,21 @@ describe('MilestoneTreeTabComponent', () => {
         id: 't1', objectiveId: 'o1', shortId: 'WEB-9', title: 'Do it', description: null,
         categoryId: 'task', statusId: 'st-1', priority: 'medium', storyPoints: null,
         dueDate: null, estimatedHours: 3, completedHours: 0, progressPercent: 0,
-        sprintId: 'spr-1', assigneeEmployeeIds: [], openClockSessionEmployeeId: null, openClockSessionClockInAt: null, totalLoggedMinutes: 0
+        sprintId: 'spr-1', assigneeEmployeeIds: [], openClockSessionEmployeeId: null, openClockSessionClockInAt: null, totalLoggedMinutes: 0,
+        attachments: [], assignees: [],
+        parentTaskId: null, subtaskTotalCount: 0, subtaskCompletedCount: 0, subtaskAssigneeEmployeeIds: [],
+        createdAt: new Date('2026-01-01T00:00:00Z'), hasPendingApproval: false
       }
     };
 
     await fixture.componentInstance.onEditRequested(task);
 
-    expect(routerStub.navigate).toHaveBeenCalledWith(['/work', 'p1', 'task', 't1']);
+    expect(fixture.componentInstance.taskModalOpen()).toBe(true);
+    expect(fixture.componentInstance.taskModalMode()).toBe('edit');
+    expect(fixture.componentInstance.taskModalTaskId()).toBe('t1');
   });
 
-  it('navigates to the task detail page when a task node View is requested', () => {
+  it('opens the task modal in edit mode when a task node View is requested', () => {
     setup('o1');
     fixture.detectChanges();
     const task = {
@@ -546,7 +796,9 @@ describe('MilestoneTreeTabComponent', () => {
 
     fixture.componentInstance.onViewRequested(task);
 
-    expect(routerStub.navigate).toHaveBeenCalledWith(['/work', 'p1', 'task', 't1']);
+    expect(fixture.componentInstance.taskModalOpen()).toBe(true);
+    expect(fixture.componentInstance.taskModalMode()).toBe('edit');
+    expect(fixture.componentInstance.taskModalTaskId()).toBe('t1');
   });
 
   it('shows the explanation panel for the selected tree node', async () => {
@@ -581,14 +833,75 @@ describe('MilestoneTreeTabComponent', () => {
     expect(storeStub.unachieveMilestone).toHaveBeenCalledWith('o1');
   });
 
-  it('forwards sprint achieve and complete to the store', async () => {
+  it('forwards sprint achieve to the store', async () => {
     setup('o1');
     fixture.detectChanges();
     const sprint: MilestoneTreeNode = { ...child, id: 'spr-1', kind: 'sprint' };
     await fixture.componentInstance.onAchieveSprintRequested(sprint);
-    await fixture.componentInstance.onCompleteSprintRequested(sprint);
     expect(storeStub.achieveSprint).toHaveBeenCalledWith('spr-1');
-    expect(storeStub.completeSprint).toHaveBeenCalledWith('spr-1');
+  });
+
+  it('deleting a sprint uses the shared confirm, titled for a sprint, and calls store.deleteSprint (not deleteTask)', async () => {
+    setup('o1');
+    fixture.detectChanges();
+    const sprint: MilestoneTreeNode = { ...child, id: 'spr-1', kind: 'sprint', status: 'complete' };
+
+    fixture.componentInstance.onDeleteRequested(sprint);
+    fixture.detectChanges();
+    expect((fixture.componentInstance as any).deletingSprint()).toBe(true);
+    await fixture.componentInstance.onDeleteConfirmed();
+
+    expect(storeStub.deleteSprint).toHaveBeenCalledWith('spr-1');
+    expect(storeStub.deleteTask).not.toHaveBeenCalled();
+    expect(fixture.componentInstance.deleteConfirmOpen()).toBe(false);
+  });
+
+  it('a sprint deletion sent for approval shows "Sprint deletion sent for approval."', async () => {
+    setup('o1');
+    fixture.detectChanges();
+    storeStub.deleteSprint.mockResolvedValue({ success: true, pending: true });
+    const info = vi.spyOn(TestBed.inject(NotificationService), 'info');
+
+    fixture.componentInstance.onDeleteRequested({ ...child, id: 'spr-1', kind: 'sprint', status: 'achieved' });
+    await fixture.componentInstance.onDeleteConfirmed();
+
+    expect(info).toHaveBeenCalledWith('Sprint deletion sent for approval.');
+  });
+
+  it('opens the complete-sprint dialog instead of completing directly, so a disposition is always confirmed', () => {
+    setup('o1');
+    fixture.detectChanges();
+    const sprint: MilestoneTreeNode = { ...child, id: 'spr-1', kind: 'sprint' };
+
+    fixture.componentInstance.onCompleteSprintRequested(sprint);
+    fixture.detectChanges();
+
+    expect(storeStub.completeSprint).not.toHaveBeenCalled();
+    expect(fixture.componentInstance.completingSprintNode()?.id).toBe('spr-1');
+    expect(fixture.nativeElement.querySelector('app-sprint-complete-dialog')).not.toBeNull();
+  });
+
+  it('closes the complete-sprint dialog on cancel', () => {
+    setup('o1');
+    fixture.detectChanges();
+    const sprint: MilestoneTreeNode = { ...child, id: 'spr-1', kind: 'sprint' };
+
+    fixture.componentInstance.onCompleteSprintRequested(sprint);
+    fixture.componentInstance.onSprintCompleteDialogClosed();
+
+    expect(fixture.componentInstance.completingSprintNode()).toBeNull();
+  });
+
+  it('closes the complete-sprint dialog and refreshes the tree once completion succeeds', async () => {
+    setup('o1');
+    fixture.detectChanges();
+    const sprint: MilestoneTreeNode = { ...child, id: 'spr-1', kind: 'sprint' };
+    fixture.componentInstance.onCompleteSprintRequested(sprint);
+
+    await fixture.componentInstance.onSprintCompleteDialogCompleted();
+
+    expect(fixture.componentInstance.completingSprintNode()).toBeNull();
+    expect(storeStub.loadProjectTree).toHaveBeenCalledTimes(2);
   });
 
   it('opens a confirmation dialog then deletes the task on confirm', async () => {
@@ -615,14 +928,54 @@ describe('MilestoneTreeTabComponent', () => {
     expect(fixture.componentInstance.deleteConfirmOpen()).toBe(false);
   });
 
-  it('navigates to the create-task page with just the module from a module row', () => {
+  describe('sprint form binding stability (Finding 1)', () => {
+    const sprintNode: MilestoneTreeNode = {
+      ...child, id: 'spr-1', title: 'Sprint 1', kind: 'sprint', parentObjectiveId: 'o1',
+      isOwner: true, children: [], startDate: '2026-08-01', endDate: '2026-08-14', status: 'active'
+    };
+
+    it('keeps editSprintModel/editSprintModules referentially stable across repeated change-detection passes', async () => {
+      setup('o1');
+      fixture.detectChanges();
+
+      await fixture.componentInstance.onEditRequested(sprintNode);
+      fixture.detectChanges();
+
+      const modelA = fixture.componentInstance.editSprintModel();
+      const modulesA = fixture.componentInstance.editSprintModules();
+      fixture.detectChanges();
+      fixture.detectChanges();
+      const modelB = fixture.componentInstance.editSprintModel();
+      const modulesB = fixture.componentInstance.editSprintModules();
+
+      expect(modelB).toBe(modelA);
+      expect(modulesB).toBe(modulesA);
+    });
+
+    it('keeps createSprintModules referentially stable across repeated change-detection passes', () => {
+      setup('o1');
+      fixture.detectChanges();
+
+      fixture.componentInstance.onCreateSprintRequested(tree);
+      fixture.detectChanges();
+
+      const modulesA = fixture.componentInstance.createSprintModules();
+      fixture.detectChanges();
+      fixture.detectChanges();
+      const modulesB = fixture.componentInstance.createSprintModules();
+
+      expect(modulesB).toBe(modulesA);
+    });
+  });
+
+  it('opens the task modal in create mode with just the module from a module row', () => {
     setup('o1');
     fixture.detectChanges();
     fixture.componentInstance.onCreateTaskRequested(tree);
 
-    expect(routerStub.navigate).toHaveBeenCalledWith(
-      ['/work', 'p1', 'task', 'new'],
-      { queryParams: { module: 'o1' } }
-    );
+    expect(fixture.componentInstance.taskModalOpen()).toBe(true);
+    expect(fixture.componentInstance.taskModalMode()).toBe('create');
+    expect(fixture.componentInstance.taskModalPrefillModule()).toBe('o1');
+    expect(fixture.componentInstance.taskModalPrefillSprint()).toBe('');
   });
 });

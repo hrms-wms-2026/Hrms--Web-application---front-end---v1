@@ -1,11 +1,14 @@
 import { provideHttpClient } from '@angular/common/http';
 import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
+import { signal } from '@angular/core';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { ActivatedRoute, convertToParamMap, provideRouter, Router } from '@angular/router';
 import { vi } from 'vitest';
 import { environment } from '../../../../../environments/environment';
 import { PermissionService } from '../../../../core/auth/state/permission.service';
 import { NotificationService } from '../../../../core/services/notification.service';
+import { UnsavedChangesService } from '../../../../shared/services/unsaved-changes.service';
+import { DraftsStore } from '../../../../shared/state/drafts.store';
 import { LegalEntityStore } from '../../../organization/state/legal-entity.store';
 import { AddEmployeeWizardStore } from '../../state/add-employee-wizard.store';
 import { AddEmployeeWizardComponent } from './add-employee-wizard.component';
@@ -52,7 +55,7 @@ describe('AddEmployeeWizardComponent', () => {
     options: { departments?: readonly typeof engineeringDepartment[] } = {}
   ): Promise<void> {
     TestBed.resetTestingModule();
-    notificationService = { success: () => {}, error: () => {}, info: () => {}, warning: () => {} };
+    notificationService = { success: vi.fn(), error: vi.fn(), info: vi.fn(), warning: vi.fn() };
 
     await TestBed.configureTestingModule({
       imports: [AddEmployeeWizardComponent],
@@ -62,6 +65,10 @@ describe('AddEmployeeWizardComponent', () => {
         provideRouter([{ path: '**', component: AddEmployeeWizardComponent }]),
         { provide: PermissionService, useValue: { hasPermission: () => true, hasAnyPermission: () => true } },
         { provide: NotificationService, useValue: notificationService },
+        {
+          provide: DraftsStore,
+          useValue: { load: vi.fn().mockResolvedValue(undefined), chips: signal([]) }
+        },
         {
           provide: ActivatedRoute,
           useValue: { snapshot: { queryParamMap: convertToParamMap(queryParams) } }
@@ -79,10 +86,15 @@ describe('AddEmployeeWizardComponent', () => {
     fixture = TestBed.createComponent(AddEmployeeWizardComponent);
     fixture.detectChanges();
 
-    httpMock.expectOne(`${environment.apiUrl}/work-modes`).flush([{ id: 1, code: 'on_site', label: 'On-Site' }]);
-    await fixture.whenStable();
-
     if (!queryParams['draftId']) {
+      // Only fires immediately when there's no draft to resume - resuming a draft sets companyId
+      // from the draft's own legalEntityId, so work modes load once that resolves (see
+      // flushWorkModesRequest, called by draftId-resume tests after they flush the draft GET).
+      httpMock
+        .expectOne((r) => r.url === `${environment.apiUrl}/work-modes` && r.params.get('legalEntityId') === 'le-1')
+        .flush([{ id: '1', label: 'On-Site' }]);
+      await fixture.whenStable();
+
       httpMock.expectOne((r) => r.url.includes('/departments')).flush({
         items: options.departments ?? [],
         page: 1,
@@ -112,6 +124,18 @@ describe('AddEmployeeWizardComponent', () => {
     });
     await fixture.whenStable();
     fixture.detectChanges();
+  }
+
+  /**
+   * Work modes load once companyId is set. On the non-draft path that happens immediately
+   * (see setupWithCompany); when resuming a draft, companyId is only set from the draft's own
+   * legalEntityId after the draft GET resolves, so draftId-resume tests call this themselves
+   * right after flushing that request.
+   */
+  function flushWorkModesRequest(): void {
+    httpMock
+      .expectOne((r) => r.url === `${environment.apiUrl}/work-modes` && r.params.get('legalEntityId') === 'le-1')
+      .flush([{ id: '1', label: 'On-Site' }]);
   }
 
   function flushEmployeeNumberSuggestionRequests(sequence = 1): void {
@@ -147,6 +171,10 @@ describe('AddEmployeeWizardComponent', () => {
         provideRouter([]),
         { provide: PermissionService, useValue: { hasPermission: () => true, hasAnyPermission: () => true } },
         { provide: NotificationService, useValue: notificationService },
+        {
+          provide: DraftsStore,
+          useValue: { load: vi.fn().mockResolvedValue(undefined), chips: signal([]) }
+        },
         { provide: ActivatedRoute, useValue: { snapshot: { queryParamMap: convertToParamMap({}) } } }
       ]
     }).compileComponents();
@@ -154,7 +182,6 @@ describe('AddEmployeeWizardComponent', () => {
     httpMock = TestBed.inject(HttpTestingController);
     fixture = TestBed.createComponent(AddEmployeeWizardComponent);
     fixture.detectChanges();
-    httpMock.expectOne(`${environment.apiUrl}/work-modes`).flush([]);
 
     expect(fixture.nativeElement.textContent).toContain('No company selected');
     expect(fixture.nativeElement.querySelector('form')).toBeNull();
@@ -220,7 +247,7 @@ describe('AddEmployeeWizardComponent', () => {
     expect(fixture.nativeElement.textContent).toContain('First name is required.');
   });
 
-  it('blocks continue, save draft, and finalize when the selected position has no vacancy', async () => {
+  it('blocks continue and finalize when the selected position has no vacancy', async () => {
     await setupWithCompany({}, { departments: [engineeringDepartment] });
     await flushPositionsForDepartment([openPosition, fullPosition]);
 
@@ -241,9 +268,6 @@ describe('AddEmployeeWizardComponent', () => {
     fixture.detectChanges();
     expect(fixture.componentInstance.store.step()).toBe('employee_details');
     expect(fixture.nativeElement.textContent).toContain('The selected position no longer has a vacancy. Choose another position.');
-
-    await fixture.componentInstance.onSaveDraft();
-    httpMock.expectNone(`${environment.apiUrl}/onboarding/drafts`);
 
     fixture.componentInstance.store.goToStep('review_and_submit');
     fixture.detectChanges();
@@ -297,7 +321,7 @@ describe('AddEmployeeWizardComponent', () => {
       employmentType: 'full_time',
       startDate: '2026-08-10',
       employeeNumber: null,
-      workModeId: 1,
+      workModeId: '1',
       selectedTemplateId: null,
       editedTasksJson: null,
       status: 'waiting_for_seat',
@@ -344,7 +368,7 @@ describe('AddEmployeeWizardComponent', () => {
     expect(fixture.componentInstance.form.controls.workEmail.valid).toBe(false);
   });
 
-  it('save draft does not call API when work mode is missing', async () => {
+  it('blocks continue when work mode is missing', async () => {
     await setupWithCompany();
     fixture.componentInstance.form.patchValue({
       firstName: 'Ada',
@@ -357,9 +381,11 @@ describe('AddEmployeeWizardComponent', () => {
       workModeId: ''
     });
 
-    await fixture.componentInstance.onSaveDraft();
+    fixture.componentInstance.goToNextStep();
+    fixture.detectChanges();
 
-    httpMock.expectNone(`${environment.apiUrl}/onboarding/drafts`);
+    expect(fixture.componentInstance.store.step()).toBe('employee_details');
+    expect(fixture.componentInstance.form.controls.workModeId.valid).toBe(false);
   });
 
   it('review step no longer claims finalization is unavailable in this version of the product', async () => {
@@ -401,7 +427,7 @@ describe('AddEmployeeWizardComponent', () => {
       employmentType: 'full_time',
       startDate: '2026-08-10',
       employeeNumber: null,
-      workModeId: 1,
+      workModeId: '1',
       selectedTemplateId: null,
       editedTasksJson: null,
       status: 'draft',
@@ -659,7 +685,7 @@ describe('AddEmployeeWizardComponent', () => {
       employmentType: 'full_time',
       startDate: '2026-08-10',
       employeeNumber: 'ACME-0001',
-      workModeId: 1,
+      workModeId: '1',
       selectedTemplateId: null,
       editedTasksJson: null,
       status: 'draft',
@@ -682,6 +708,7 @@ describe('AddEmployeeWizardComponent', () => {
     httpMock.expectOne((r) => r.url.includes('/onboarding/checklist-templates/matches')).flush([]);
     await fixture.whenStable();
     await Promise.resolve();
+    flushWorkModesRequest();
     flushEmployeeNumberSuggestionRequests();
 
     fixture.componentInstance.form.patchValue({
@@ -733,7 +760,7 @@ describe('AddEmployeeWizardComponent', () => {
       employmentType: 'full_time',
       startDate: '2026-08-20',
       employeeNumber: 'ET231',
-      workModeId: 1,
+      workModeId: '1',
       workModeLabel: 'On-Site',
       selectedTemplateId: null,
       editedTasksJson: null,
@@ -760,6 +787,7 @@ describe('AddEmployeeWizardComponent', () => {
     await Promise.resolve();
     httpMock.expectOne((r) => r.url.includes('/onboarding/checklist-templates/matches')).flush([]);
     await fixture.whenStable();
+    flushWorkModesRequest();
     flushEmployeeNumberSuggestionRequests();
     fixture.detectChanges();
 
@@ -783,6 +811,10 @@ describe('AddEmployeeWizardComponent', () => {
         provideRouter([{ path: '**', component: AddEmployeeWizardComponent }]),
         { provide: PermissionService, useValue: { hasPermission: () => true, hasAnyPermission: () => true } },
         { provide: NotificationService, useValue: notificationService },
+        {
+          provide: DraftsStore,
+          useValue: { load: vi.fn().mockResolvedValue(undefined), chips: signal([]) }
+        },
         { provide: ActivatedRoute, useValue: { snapshot: { queryParamMap: convertToParamMap({}) } } }
       ]
     }).compileComponents();
@@ -809,7 +841,6 @@ describe('AddEmployeeWizardComponent', () => {
 
     fixture = TestBed.createComponent(AddEmployeeWizardComponent);
     fixture.detectChanges();
-    httpMock.expectOne(`${environment.apiUrl}/work-modes`).flush([]);
 
     expect(store.finalizeResult()).toBeNull();
     expect(store.lastSaveReason()).toBeNull();
@@ -830,7 +861,7 @@ describe('AddEmployeeWizardComponent', () => {
       employmentType: 'full_time',
       startDate: '2026-08-10',
       employeeNumber: 'ACME-0001',
-      workModeId: 1,
+      workModeId: '1',
       selectedTemplateId: null,
       editedTasksJson: null,
       status: 'finalized',
@@ -851,6 +882,7 @@ describe('AddEmployeeWizardComponent', () => {
     await Promise.resolve();
     httpMock.expectOne((r) => r.url.includes('/onboarding/checklist-templates/matches')).flush([]);
     await fixture.whenStable();
+    flushWorkModesRequest();
     flushEmployeeNumberSuggestionRequests();
     fixture.detectChanges();
 
@@ -914,7 +946,7 @@ describe('AddEmployeeWizardComponent', () => {
       employmentType: 'full_time',
       startDate: '2026-08-10',
       employeeNumber: null,
-      workModeId: 1,
+      workModeId: '1',
       selectedTemplateId: null,
       editedTasksJson: null,
       status: 'draft',
@@ -1218,7 +1250,7 @@ describe('AddEmployeeWizardComponent', () => {
     httpMock.expectNone(`${environment.apiUrl}/people/checklist-templates/tmpl-1`);
   });
 
-  it('blocks save when a reports-to pick is needed but not made', async () => {
+  it('blocks continue when a reports-to pick is needed but not made', async () => {
     await setupWithCompany();
     fixture.componentInstance.form.patchValue({
       firstName: 'Ada',
@@ -1241,10 +1273,10 @@ describe('AddEmployeeWizardComponent', () => {
     await setPositionPromise;
     fixture.detectChanges();
 
-    await fixture.componentInstance.onSaveDraft();
-
-    httpMock.expectNone(`${environment.apiUrl}/onboarding/drafts`);
+    fixture.componentInstance.goToNextStep();
     fixture.detectChanges();
+
+    expect(fixture.componentInstance.store.step()).toBe('employee_details');
     expect(fixture.nativeElement.textContent).toContain('Select who this employee reports to');
   });
 
@@ -1325,12 +1357,12 @@ describe('AddEmployeeWizardComponent', () => {
     expect(fixture.nativeElement.textContent).toContain('Jane Smith');
   });
 
-  it('blocks Save Draft until an another-person task has a selected person', async () => {
+  it('blocks continue until an another-person task has a selected person', async () => {
     await advanceToChecklistStepWithOneMatch();
-    await fixture.componentInstance.onSaveDraft();
+    fixture.componentInstance.goToNextStep();
     fixture.detectChanges();
 
-    httpMock.expectNone(`${environment.apiUrl}/onboarding/drafts`);
+    expect(fixture.componentInstance.store.step()).toBe('checklist_template');
     expect(fixture.nativeElement.textContent).toContain('Select a position.');
   });
 
@@ -1422,7 +1454,7 @@ describe('AddEmployeeWizardComponent', () => {
       employmentType: 'full_time',
       startDate: '2026-08-20',
       employeeNumber: 'ACME-0042',
-      workModeId: 1,
+      workModeId: '1',
       selectedTemplateId: null,
       editedTasksJson: null,
       status: 'draft',
@@ -1434,5 +1466,113 @@ describe('AddEmployeeWizardComponent', () => {
     });
     await savePromise;
     flushEmployeeNumberAvailabilityRequests();
+  });
+
+  it('Save draft works with only a company and a first name', async () => {
+    await setupWithCompany();
+    fixture.componentInstance.form.patchValue({ firstName: 'Jane' });
+    fixture.detectChanges();
+
+    const savePromise = fixture.componentInstance.onSaveDraft();
+    const saveReq = httpMock.expectOne(`${environment.apiUrl}/onboarding/drafts`);
+    expect(saveReq.request.method).toBe('POST');
+    expect(saveReq.request.body).toEqual(
+      expect.objectContaining({
+        legalEntityId: 'le-1',
+        firstName: 'Jane',
+        lastName: null,
+        workEmail: null,
+        employmentType: null,
+        startDate: null,
+        workModeId: null,
+        editedTasksJson: null
+      })
+    );
+    saveReq.flush({
+      id: 'draft-partial-1',
+      legalEntityId: 'le-1',
+      firstName: 'Jane',
+      status: 'draft',
+      draftReason: 'saved_manually',
+      lastSavedStep: 'employee_details'
+    });
+    await savePromise;
+    expect(notificationService.success).toHaveBeenCalledWith('Draft saved.');
+  });
+
+  it('Save draft without a company shows a message and does not call the API', async () => {
+    TestBed.resetTestingModule();
+    notificationService = { success: vi.fn(), error: vi.fn(), info: vi.fn(), warning: vi.fn() };
+
+    await TestBed.configureTestingModule({
+      imports: [AddEmployeeWizardComponent],
+      providers: [
+        provideHttpClient(),
+        provideHttpClientTesting(),
+        provideRouter([{ path: '**', component: AddEmployeeWizardComponent }]),
+        { provide: PermissionService, useValue: { hasPermission: () => true, hasAnyPermission: () => true } },
+        { provide: NotificationService, useValue: notificationService },
+        {
+          provide: DraftsStore,
+          useValue: { load: vi.fn().mockResolvedValue(undefined), chips: signal([]) }
+        },
+        {
+          provide: ActivatedRoute,
+          useValue: { snapshot: { queryParamMap: convertToParamMap({}) } }
+        }
+      ]
+    }).compileComponents();
+
+    httpMock = TestBed.inject(HttpTestingController);
+    legalEntityStore = TestBed.inject(LegalEntityStore);
+
+    const loadPromise = legalEntityStore.loadCompanies();
+    httpMock.expectOne(`${environment.apiUrl}/session/companies`).flush([]);
+    await loadPromise;
+
+    fixture = TestBed.createComponent(AddEmployeeWizardComponent);
+    fixture.detectChanges();
+    await fixture.whenStable();
+
+    await fixture.componentInstance.onSaveDraft();
+    httpMock.expectNone(`${environment.apiUrl}/onboarding/drafts`);
+    expect(notificationService.error).toHaveBeenCalledWith('Select a company before saving a draft.');
+  });
+
+  it('closing with changes asks through the guard; Keep editing keeps it open', async () => {
+    await setupWithCompany();
+    const router = TestBed.inject(Router);
+    vi.spyOn(router, 'navigate').mockResolvedValue(true);
+    const unsaved = TestBed.inject(UnsavedChangesService);
+    const closedSpy = vi.fn();
+    fixture.componentInstance.closed.subscribe(closedSpy);
+
+    fixture.componentInstance.form.patchValue({ firstName: 'Jane' });
+    fixture.componentInstance.form.markAsDirty();
+
+    const cancelPromise = fixture.componentInstance.onCancel();
+    expect(unsaved.prompt()).not.toBeNull();
+    unsaved.choose('keep');
+    await cancelPromise;
+    await fixture.whenStable();
+
+    expect(closedSpy).not.toHaveBeenCalled();
+    expect(router.navigate).not.toHaveBeenCalled();
+  });
+
+  it('closing an untouched wizard closes immediately', async () => {
+    await setupWithCompany();
+    const router = TestBed.inject(Router);
+    vi.spyOn(router, 'navigate').mockResolvedValue(true);
+    const unsaved = TestBed.inject(UnsavedChangesService);
+    const closedSpy = vi.fn();
+    fixture.componentInstance.closed.subscribe(closedSpy);
+
+    await fixture.componentInstance.onCancel();
+    await fixture.whenStable();
+
+    expect(unsaved.prompt()).toBeNull();
+    expect(closedSpy).toHaveBeenCalled();
+    expect(router.navigate).not.toHaveBeenCalled();
   });
 });

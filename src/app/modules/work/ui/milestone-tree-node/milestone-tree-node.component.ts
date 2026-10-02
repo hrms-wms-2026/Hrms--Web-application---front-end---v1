@@ -1,9 +1,17 @@
-import { Component, OnInit, input, output, signal } from '@angular/core';
+import { Component, OnInit, computed, effect, inject, input, output, signal, untracked } from '@angular/core';
 import { MilestoneTreeNode } from '../../models/milestone.model';
 import { isLeafObjective } from '../../utils/project.mapper';
+import { treeNodeKey } from '../../utils/tree-highlight.utils';
 import { ModuleTreeRowComponent } from '../module-tree-row/module-tree-row.component';
 import { SprintTreeRowComponent } from '../sprint-tree-row/sprint-tree-row.component';
 import { TaskTreeRowComponent } from '../task-tree-row/task-tree-row.component';
+import { ProjectMonitorStore } from '../../state/project-monitor.store';
+
+export type TreeExpandCommand =
+  | { seq: number; mode: 'all' | 'none' }
+  | { seq: number; mode: 'keys'; keys: ReadonlySet<string> };
+
+const NO_KEYS: ReadonlySet<string> = new Set();
 
 @Component({
   selector: 'app-milestone-tree-node',
@@ -11,10 +19,18 @@ import { TaskTreeRowComponent } from '../task-tree-row/task-tree-row.component';
   imports: [MilestoneTreeNodeComponent, ModuleTreeRowComponent, SprintTreeRowComponent, TaskTreeRowComponent],
   template: `
     <div>
+      <div
+        class="rounded-md"
+        [class.tree-highlight]="isHighlighted()"
+        [attr.data-highlighted]="isHighlighted() || null"
+        [style.--tree-highlight]="isHighlighted() ? highlightColor() : null"
+        [style.--tree-row-glow]="isHighlighted() ? highlightColor() : null"
+      >
       @if ((node().kind ?? 'objective') === 'objective') {
         <app-module-tree-row
           [node]="node()"
-          [selected]="isSelected()"
+          [selected]="isSelected()"
+          [alerts]="monitor.alertsFor(node().id)"
           [depth]="depth()"
           [showChevron]="showChevron()"
           [expanded]="expanded()"
@@ -31,7 +47,8 @@ import { TaskTreeRowComponent } from '../task-tree-row/task-tree-row.component';
       } @else if (node().kind === 'sprint') {
         <app-sprint-tree-row
           [node]="node()"
-          [selected]="isSelected()"
+          [selected]="isSelected()"
+          [alerts]="monitor.alertsFor(node().id)"
           [depth]="depth()"
           [showChevron]="showChevron()"
           [expanded]="expanded()"
@@ -42,11 +59,13 @@ import { TaskTreeRowComponent } from '../task-tree-row/task-tree-row.component';
           (editRequested)="editRequested.emit($event)"
           (achieveSprintRequested)="achieveSprintRequested.emit($event)"
           (completeSprintRequested)="completeSprintRequested.emit($event)"
+          (deleteSprintRequested)="deleteSprintRequested.emit($event)"
         />
       } @else {
         <app-task-tree-row
           [node]="node()"
-          [selected]="isSelected()"
+          [selected]="isSelected()"
+          [alerts]="monitor.alertsFor(node().id)"
           [depth]="depth()"
           (selectedRow)="selected.emit($event)"
           (viewRequested)="viewRequested.emit($event)"
@@ -54,6 +73,7 @@ import { TaskTreeRowComponent } from '../task-tree-row/task-tree-row.component';
           (deleteRequested)="deleteRequested.emit($event)"
         />
       }
+      </div>
 
       @if (node().children.length > 0 && expanded()) {
         <div class="flex flex-col gap-0.5">
@@ -63,6 +83,10 @@ import { TaskTreeRowComponent } from '../task-tree-row/task-tree-row.component';
               [selectedId]="selectedId()"
               [expandedByDefault]="false"
               [depth]="depth() + 1"
+              [parentKey]="nodeKey()"
+              [highlightedKeys]="highlightedKeys()"
+              [highlightColor]="highlightColor()"
+              [expandCommand]="expandCommand()"
               (selected)="selected.emit($event)"
               (createRequested)="createRequested.emit($event)"
               (expandLeafRequested)="expandLeafRequested.emit($event)"
@@ -74,19 +98,33 @@ import { TaskTreeRowComponent } from '../task-tree-row/task-tree-row.component';
               (achieveRequested)="achieveRequested.emit($event)"
               (achieveSprintRequested)="achieveSprintRequested.emit($event)"
               (completeSprintRequested)="completeSprintRequested.emit($event)"
+              (deleteSprintRequested)="deleteSprintRequested.emit($event)"
               (deleteRequested)="deleteRequested.emit($event)"
             />
           }
         </div>
       }
     </div>
-  `
+  `,
+  styles: [`
+    .tree-highlight {
+      background: color-mix(in srgb, var(--tree-highlight) 20%, transparent);
+    }
+  `]
 })
 export class MilestoneTreeNodeComponent implements OnInit {
+  protected readonly monitor = inject(ProjectMonitorStore);
   node = input.required<MilestoneTreeNode>();
   selectedId = input<string | null>(null);
   expandedByDefault = input(true);
   depth = input(0);
+  /** Ancestry path of this row (see treeNodeKey); the root passes nothing. */
+  parentKey = input('');
+  highlightedKeys = input<ReadonlySet<string>>(NO_KEYS);
+  readonly nodeKey = computed(() => treeNodeKey(this.parentKey(), this.node().id));
+  highlightColor = input<string | null>(null);
+  /** Tree-wide expand/collapse broadcast; each new seq is applied once, and newly created nodes apply the latest on init. */
+  expandCommand = input<TreeExpandCommand | null>(null);
   selected = output<MilestoneTreeNode>();
   createRequested = output<MilestoneTreeNode>();
   expandLeafRequested = output<MilestoneTreeNode>();
@@ -98,12 +136,38 @@ export class MilestoneTreeNodeComponent implements OnInit {
   achieveRequested = output<MilestoneTreeNode>();
   achieveSprintRequested = output<MilestoneTreeNode>();
   completeSprintRequested = output<MilestoneTreeNode>();
+  deleteSprintRequested = output<MilestoneTreeNode>();
   deleteRequested = output<MilestoneTreeNode>();
 
   expanded = signal(true);
+  private appliedCommandSeq: number | null = null;
+
+  constructor() {
+    effect(() => {
+      const command = this.expandCommand();
+      untracked(() => this.applyExpandCommand(command));
+    });
+  }
 
   ngOnInit(): void {
     this.expanded.set(this.expandedByDefault());
+    this.appliedCommandSeq = null;
+    this.applyExpandCommand(this.expandCommand());
+  }
+
+  private applyExpandCommand(command: TreeExpandCommand | null): void {
+    if (!command || command.seq === this.appliedCommandSeq) return;
+    this.appliedCommandSeq = command.seq;
+    switch (command.mode) {
+      case 'all': this.expanded.set(true); break;
+      // The root stays open on collapse-all so the first level is still visible.
+      case 'none': this.expanded.set(this.depth() === 0); break;
+      case 'keys': if (command.keys.has(this.nodeKey())) this.expanded.set(true); break;
+    }
+  }
+
+  isHighlighted(): boolean {
+    return this.highlightColor() !== null && this.highlightedKeys().has(this.nodeKey());
   }
 
   isSelected(): boolean {

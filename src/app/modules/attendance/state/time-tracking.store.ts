@@ -17,7 +17,10 @@ import {
 import {
   AttendanceDayDetail,
   AttendanceHistoryRow,
+  AttendanceMonthlySummaryResponse,
   AttendanceTodayResponse,
+  DayScreenshot,
+  TimelineEvent,
   TimeTrackingRange
 } from '../models/time-tracking.model';
 import {
@@ -37,6 +40,8 @@ export const TIME_TRACKING_LOAD_ERROR = 'Could not load your attendance today. T
 export const TIME_TRACKING_HISTORY_ERROR = 'Could not load attendance history. Try again.';
 export const TIME_TRACKING_COVERED_HISTORY_ERROR = 'Could not load team attendance. Try again.';
 export const TIME_TRACKING_DAY_DETAIL_ERROR = 'Could not load attendance details. Try again.';
+export const TIME_TRACKING_MONTHLY_SUMMARY_ERROR = 'Could not load your attendance summary. Try again.';
+export const TIME_TRACKING_TODAY_TIMELINE_ERROR = 'Could not load today’s activity. Try again.';
 export const TIME_TRACKING_COVERED_FORBIDDEN_ERROR = 'You do not have access to view team attendance.';
 export const CORRECTIONS_LOAD_ERROR = 'Could not load your correction requests. Try again.';
 export const CORRECTIONS_APPROVAL_LOAD_ERROR = 'Could not load attendance correction approvals. Try again.';
@@ -64,6 +69,9 @@ interface TimeTrackingState {
   readonly historyPage: number;
   readonly historyPageSize: number;
   readonly historyTotalCount: number;
+  readonly monthlySummary: AttendanceMonthlySummaryResponse | null;
+  readonly monthlySummaryLoading: boolean;
+  readonly monthlySummaryError: string | null;
   readonly coveredHistory: readonly AttendanceHistoryRow[];
   readonly coveredHistoryLoading: boolean;
   readonly coveredHistoryError: string | null;
@@ -75,6 +83,9 @@ interface TimeTrackingState {
   readonly dayDetail: AttendanceDayDetail | null;
   readonly dayDetailLoading: boolean;
   readonly dayDetailError: string | null;
+  readonly todayTimelineEvents: readonly TimelineEvent[];
+  readonly todayTimelineLoading: boolean;
+  readonly todayTimelineError: string | null;
   readonly myCorrections: readonly AttendanceCorrectionListItem[];
   readonly myCorrectionsLoading: boolean;
   readonly myCorrectionsError: string | null;
@@ -129,6 +140,9 @@ const initialState: TimeTrackingState = {
   historyPage: 1,
   historyPageSize: DEFAULT_PAGE_SIZE,
   historyTotalCount: 0,
+  monthlySummary: null,
+  monthlySummaryLoading: false,
+  monthlySummaryError: null,
   coveredHistory: [],
   coveredHistoryLoading: false,
   coveredHistoryError: null,
@@ -140,6 +154,9 @@ const initialState: TimeTrackingState = {
   dayDetail: null,
   dayDetailLoading: false,
   dayDetailError: null,
+  todayTimelineEvents: [],
+  todayTimelineLoading: false,
+  todayTimelineError: null,
   myCorrections: [],
   myCorrectionsLoading: false,
   myCorrectionsError: null,
@@ -182,6 +199,19 @@ const initialState: TimeTrackingState = {
   workAreaApprovalFilters: { pageNumber: 1, pageSize: DEFAULT_PAGE_SIZE }
 };
 
+async function loadDayScreenshots(
+  api: TimeTrackingApiService,
+  employeeId: string,
+  workDate: string
+): Promise<DayScreenshot[]> {
+  try {
+    const report = await firstValueFrom(api.getEmployeeDailyReport(employeeId, workDate));
+    return report.screenshots ?? [];
+  } catch {
+    return [];
+  }
+}
+
 export const TimeTrackingStore = signalStore(
   { providedIn: 'root' },
   withState<TimeTrackingState>(initialState),
@@ -190,7 +220,8 @@ export const TimeTrackingStore = signalStore(
       action: TimeTrackingAction,
       operation: () => Observable<AttendanceTodayResponse>,
       successMessage: string,
-      failureFallback: string
+      failureFallback: string,
+      businessMessage?: (error: unknown, fallback: string) => string
     ): Promise<void> => {
       if (store.actionLoading()) return;
       patchState(store, { actionLoading: true, activeAction: action, todayError: null });
@@ -199,7 +230,8 @@ export const TimeTrackingStore = signalStore(
         patchState(store, { today, actionLoading: false, activeAction: null, todayError: null });
         notifications.success(successMessage);
       } catch (error) {
-        const safeMessage = errors.toSafeMessage(error, failureFallback);
+        const fallback = errors.toSafeMessage(error, failureFallback);
+        const safeMessage = businessMessage ? businessMessage(error, fallback) : fallback;
         patchState(store, { actionLoading: false, activeAction: null, todayError: safeMessage });
         notifications.error(safeMessage);
       }
@@ -292,6 +324,17 @@ export const TimeTrackingStore = signalStore(
         }
       },
 
+      async loadMonthlySummary(range: TimeTrackingRange): Promise<void> {
+        if (store.monthlySummaryLoading()) return;
+        patchState(store, { monthlySummaryLoading: true, monthlySummaryError: null });
+        try {
+          const monthlySummary = await firstValueFrom(api.getMyMonthlySummary(range.from, range.to));
+          patchState(store, { monthlySummary, monthlySummaryLoading: false, monthlySummaryError: null });
+        } catch (error) {
+          patchState(store, { monthlySummaryLoading: false, monthlySummaryError: errors.toSafeMessage(error, TIME_TRACKING_MONTHLY_SUMMARY_ERROR) });
+        }
+      },
+
       async loadCoveredHistory(range: TimeTrackingRange, employeeId?: string, page = 1): Promise<void> {
         if (store.coveredHistoryLoading()) return;
         const selectedEmployeeId = employeeId?.trim() || null;
@@ -316,14 +359,45 @@ export const TimeTrackingStore = signalStore(
         patchState(store, { dayDetailLoading: true, dayDetailError: null, dayDetail: null });
         try {
           const detail = await firstValueFrom(api.getDayDetail(employeeId, workDate));
-          patchState(store, { dayDetail: detail, dayDetailLoading: false, dayDetailError: null });
+          // history-detail now returns signed Cloudflare links for the viewer's own day.
+          // Older servers omit the field; only then fall back to the HR daily-report call.
+          const screenshots = detail.screenshots ?? await loadDayScreenshots(api, employeeId, workDate);
+          patchState(store, { dayDetail: { ...detail, screenshots }, dayDetailLoading: false, dayDetailError: null });
         } catch (error) {
           patchState(store, { dayDetailLoading: false, dayDetailError: errors.toSafeMessage(error, TIME_TRACKING_DAY_DETAIL_ERROR) });
         }
       },
 
+      async refreshDayDetail(employeeId: string, workDate: string): Promise<void> {
+        try {
+          const detail = await firstValueFrom(api.getDayDetail(employeeId, workDate));
+          const screenshots = detail.screenshots ?? await loadDayScreenshots(api, employeeId, workDate);
+          patchState(store, { dayDetail: { ...detail, screenshots }, dayDetailError: null });
+        } catch {
+          // A later screenshot arrived after the panel opened. Keep the detail already on screen.
+        }
+      },
+
       clearDayDetail(): void {
         patchState(store, { dayDetail: null, dayDetailLoading: false, dayDetailError: null });
+      },
+
+      async loadTodayTimeline(employeeId: string, workDate: string): Promise<void> {
+        if (store.todayTimelineLoading()) return;
+        patchState(store, { todayTimelineLoading: true, todayTimelineError: null });
+        try {
+          const detail = await firstValueFrom(api.getDayDetail(employeeId, workDate));
+          patchState(store, { todayTimelineEvents: detail.timelineEvents, todayTimelineLoading: false, todayTimelineError: null });
+        } catch (error) {
+          if (errorStatus(error) === 404) {
+            // No AttendanceRecord exists yet for today (before the first clock-in of the
+            // day) - that is a legitimate empty state, not a failure, so it must not surface
+            // the backend's raw "No attendance record was found for this date." text.
+            patchState(store, { todayTimelineEvents: [], todayTimelineLoading: false, todayTimelineError: null });
+            return;
+          }
+          patchState(store, { todayTimelineLoading: false, todayTimelineError: errors.toSafeMessage(error, TIME_TRACKING_TODAY_TIMELINE_ERROR) });
+        }
       },
 
       async loadMyCorrections(page = 1): Promise<void> {
@@ -529,11 +603,30 @@ export const TimeTrackingStore = signalStore(
         return runAction('endBreak', () => api.endBreak(), 'Break ended.', 'Could not end your break. Try again.');
       },
       clockOut(): Promise<void> {
-        return runAction('clockOut', () => api.clockOut(), 'Clocked out.', 'Could not clock out. Try again.');
+        return runAction(
+          'clockOut',
+          () => api.clockOut(),
+          'Clocked out.',
+          'Could not clock out. Try again.',
+          clockOutBusinessMessage
+        );
       }
     };
   })
 );
+
+function clockOutBusinessMessage(error: unknown, fallback: string): string {
+  // The open-task-session conflict message is backend-authored and names the running task(s) by
+  // title, which is free text that can trip toSafeErrorMessage's generic isMachineValue filter
+  // (e.g. a task titled "Update API docs" matches its raw-SQL-keyword check). Detected by this
+  // stable marker phrase, the raw detail is shown as-is rather than routed through that filter.
+  const status = errorStatus(error);
+  const detail = errorDetail(error);
+  if (status === 409 && detail && detail.includes('before clocking out for the day')) {
+    return detail;
+  }
+  return fallback;
+}
 
 function workAreaBusinessMessage(error: unknown, fallback: string): string {
   const status = errorStatus(error);

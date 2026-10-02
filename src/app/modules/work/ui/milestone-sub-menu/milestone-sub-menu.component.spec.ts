@@ -16,11 +16,11 @@ describe('MilestoneSubMenuComponent', () => {
     fixture.detectChanges();
   });
 
-    it('renders all six base tabs in order for non-owners', () => {
+    it('renders all five base tabs in order for non-owners', () => {
 
     const labels = Array.from(fixture.nativeElement.querySelectorAll('[data-testid="sub-menu-tab"]'))
       .map((el) => (el as HTMLElement).textContent?.trim() ?? '');
-        expect(labels).toEqual(['Tree', 'Board', 'Backlog', 'My Task', 'Approvals', 'Calendar']);
+        expect(labels).toEqual(['Tree', 'Board', 'Backlog', 'Approvals', 'Calendar']);
 
   });
 
@@ -29,13 +29,13 @@ describe('MilestoneSubMenuComponent', () => {
     fixture.detectChanges();
     const labels = Array.from(fixture.nativeElement.querySelectorAll('[data-testid="sub-menu-tab"]'))
       .map((el) => (el as HTMLElement).textContent?.trim() ?? '');
-        expect(labels).toEqual(['Tree', 'Board', 'Backlog', 'My Task', 'Approvals', 'Calendar', 'Settings']);
+        expect(labels).toEqual(['Tree', 'Board', 'Backlog', 'Approvals', 'Calendar', 'Settings']);
 
   });
 
   it('renders an icon inside every tab link', () => {
     const icons = fixture.nativeElement.querySelectorAll('[data-testid="sub-menu-tab"] svg');
-        expect(icons.length).toBe(6);
+        expect(icons.length).toBe(5);
 
   });
 
@@ -46,11 +46,8 @@ describe('MilestoneSubMenuComponent', () => {
       '/milestones/o1/tree',
       '/board',
       '/backlog',
-            '/my-task',
-      '/milestones/o1/approvals',
-
-            '/calendar'
-
+      '/approvals',
+      '/calendar'
     ]);
   });
 
@@ -60,5 +57,18 @@ describe('MilestoneSubMenuComponent', () => {
     const links = fixture.nativeElement.querySelectorAll('[data-testid="sub-menu-tab"]');
     const settingsHref = (links[links.length - 1] as HTMLAnchorElement).getAttribute('href');
     expect(settingsHref).toBe('/settings');
+  });
+
+  it('shows a red indicator on Approvals only when received approvals are pending', () => {
+    expect(fixture.nativeElement.querySelector('[data-testid="approvals-pending-indicator"]')).toBeNull();
+
+    fixture.componentRef.setInput('pendingApprovalCount', 2);
+    fixture.detectChanges();
+
+    const indicator = fixture.nativeElement.querySelector('[data-testid="approvals-pending-indicator"]');
+    const approvalsLink = Array.from(fixture.nativeElement.querySelectorAll('[data-testid="sub-menu-tab"]'))
+      .find((element: any) => element.textContent.includes('Approvals')) as HTMLAnchorElement;
+    expect(indicator).not.toBeNull();
+    expect(approvalsLink.getAttribute('aria-label')).toBe('Approvals, 2 pending');
   });
 });

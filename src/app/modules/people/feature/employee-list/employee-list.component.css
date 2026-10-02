@@ -1,8 +1,20 @@
+:host {
+  display: block;
+  min-height: 100%;
+  background: var(--color-surface);
+}
+
 .emp-page-header {
-  margin-top: -1.25rem;
-  margin-bottom: 0.75rem;
-  padding-bottom: 0.625rem;
+  position: sticky;
+  top: -1.75rem;
+  z-index: 100;
+  margin-top: -1.75rem;
+  margin-left: -2rem;
+  margin-right: -2rem;
+  padding: 1.125rem 2rem 0.75rem 2rem;
+  background: var(--color-surface);
   border-bottom: 1px solid var(--color-border);
+  margin-bottom: 1rem;
 }
 
 .emp-header-row {
@@ -11,12 +23,10 @@
   justify-content: space-between;
   gap: 0.75rem;
   width: 100%;
-  height: 36px;
   min-height: 36px;
-  flex-wrap: wrap;
 }
 
-.emp-header-row app-breadcrumb-header {
+.emp-header-breadcrumb {
   display: inline-flex;
   align-items: center;
   flex-shrink: 0;
@@ -36,7 +46,13 @@
   align-items: center;
   gap: 0.75rem;
   margin-left: auto;
-  flex-wrap: wrap;
+}
+
+.emp-header-actions,
+.emp-controls-right {
+  display: flex;
+  align-items: center;
+  flex-shrink: 0;
 }
 
 .emp-search-container {
@@ -178,44 +194,107 @@
   display: flex;
   flex-direction: column;
   gap: 1rem;
+  min-width: 0;
+  max-width: 100%;
 }
 
-.emp-pagination {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  margin-top: 0.875rem;
-  font-size: 0.8125rem;
-  color: var(--color-text-secondary);
-}
-
-.emp-pagination-info {
-  font-weight: 500;
-}
-
-.emp-pagination-buttons {
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-}
+.emp-pager { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 10px; }
+.emp-pager__range { font-size: 13px; color: var(--color-text-secondary); }
+.emp-pager__controls { display: flex; align-items: center; gap: 4px; }
+.emp-pager__btn { min-width: 32px; height: 32px; padding: 0 8px; border: 1px solid transparent; border-radius: 7px; background: transparent; color: var(--color-text-primary); font: inherit; font-size: 13px; cursor: pointer; }
+.emp-pager__btn:hover:not(:disabled) { background: var(--color-surface-secondary); }
+.emp-pager__btn:disabled { opacity: .4; cursor: not-allowed; }
+.emp-pager__btn--active { border-color: var(--color-accent); color: var(--color-accent); font-weight: 600; }
+.emp-pager__size { margin-left: 8px; padding: 5px 8px; border: 1px solid var(--color-border); border-radius: 7px; background: var(--color-surface); color: var(--color-text-primary); font: inherit; font-size: 13px; }
 
 .no-underline {
   text-decoration: none;
 }
 
 @media (max-width: 768px) {
-  .emp-controls-bar {
+  .emp-page-header {
+    top: -1rem;
+    margin-top: -1rem;
+    margin-left: -1rem;
+    margin-right: -1rem;
+    padding-left: 1rem;
+    padding-right: 1rem;
+    margin-bottom: 0.75rem;
+  }
+
+  .emp-header-row {
+    display: grid;
+    grid-template-columns: 1fr auto;
+    grid-template-areas:
+      "breadcrumb actions"
+      "controls controls";
+    row-gap: 0.75rem;
+    column-gap: 0.5rem;
+    align-items: center;
+  }
+
+  .emp-header-breadcrumb {
+    grid-area: breadcrumb;
+    min-width: 0;
+  }
+
+  .emp-header-actions {
+    grid-area: actions;
+    justify-self: end;
+  }
+
+  .emp-controls {
+    grid-area: controls;
+    margin-left: 0;
+    width: 100%;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+  }
+
+  .emp-search-container {
+    flex: 0 0 auto;
+  }
+
+  .emp-controls--search-open .emp-search-container {
+    flex: 1 1 auto;
+    min-width: 0;
+  }
+
+  .emp-search-expandable {
+    width: 100%;
+    animation: empSearchExpandMobile 0.15s ease-out;
+  }
+
+  .emp-search-input {
+    width: 100%;
+    max-width: 100%;
+    box-sizing: border-box;
+  }
+
+  .emp-pager {
     flex-direction: column;
     align-items: stretch;
+    gap: 0.75rem;
   }
 
-  .emp-search-wrap {
-    max-width: 100%;
+  .emp-pager__range {
+    font-size: 0.75rem;
+    text-align: center;
   }
 
-  .emp-controls-right {
-    margin-left: 0;
-    justify-content: space-between;
+  .emp-pager__controls {
+    justify-content: center;
     flex-wrap: wrap;
+    gap: 0.25rem;
+  }
+}
+
+@keyframes empSearchExpandMobile {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
   }
 }

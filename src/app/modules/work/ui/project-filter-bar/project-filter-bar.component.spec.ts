@@ -10,7 +10,7 @@ describe('ProjectFilterBarComponent', () => {
     loadCategoriesSpy = vi.fn().mockResolvedValue(undefined);
     TestBed.configureTestingModule({
       imports: [ProjectFilterBarComponent],
-      providers: [{ provide: ProjectCategoryStore, useValue: { categories: () => [{ id: 'cat1', name: 'Backend' }], loadCategories: loadCategoriesSpy } }]
+      providers: [{ provide: ProjectCategoryStore, useValue: { categories: () => [{ id: 'cat1', name: 'Backend' }, { id: 'cat2', name: 'Frontend' }], loadCategories: loadCategoriesSpy } }]
     });
     fixture = TestBed.createComponent(ProjectFilterBarComponent);
   });
@@ -20,35 +20,44 @@ describe('ProjectFilterBarComponent', () => {
     expect(loadCategoriesSpy).toHaveBeenCalled();
   });
 
-  it('emits categoryChanged when a category option is selected', async () => {
+  it('emits the selected category ids as an array', () => {
     fixture.detectChanges();
-    let emitted: string | null | undefined;
-    fixture.componentInstance.categoryChanged.subscribe((v: string | null) => (emitted = v));
+    let emitted: string[] | undefined;
+    fixture.componentInstance.categoriesChanged.subscribe((v) => (emitted = v));
 
-    // Open category dropdown
-    fixture.componentInstance.toggleCategoryDropdown();
-    fixture.detectChanges();
+    fixture.componentInstance.selectCategories(['cat1', 'cat2']);
 
-    // Select 'cat1'
-    fixture.componentInstance.selectCategory('cat1');
-    fixture.detectChanges();
-
-    expect(emitted).toBe('cat1');
+    expect(emitted).toEqual(['cat1', 'cat2']);
   });
 
-  it('emits achievedFilterChanged when a status option is selected', async () => {
+  it('emits achievedFilterChanged when a status option is selected', () => {
     fixture.detectChanges();
     let emitted: string | undefined;
     fixture.componentInstance.achievedFilterChanged.subscribe((v: string) => (emitted = v));
 
-    // Open status dropdown
-    fixture.componentInstance.toggleStatusDropdown();
-    fixture.detectChanges();
-
-    // Select 'archived'
     fixture.componentInstance.selectStatus('archived');
-    fixture.detectChanges();
 
     expect(emitted).toBe('archived');
+  });
+
+  it('handles fieldChanged for category and status correctly', () => {
+    fixture.detectChanges();
+    let catEmitted: string[] | undefined;
+    let statusEmitted: string | undefined;
+
+    fixture.componentInstance.categoriesChanged.subscribe((v) => (catEmitted = v));
+    fixture.componentInstance.achievedFilterChanged.subscribe((v: string) => (statusEmitted = v));
+
+    fixture.componentInstance.onFieldChanged({ key: 'category', values: ['cat1'] });
+    expect(catEmitted).toEqual(['cat1']);
+    expect(fixture.componentInstance.selectedCategories()).toEqual(['cat1']);
+
+    fixture.componentInstance.onFieldChanged({ key: 'status', values: ['active'] });
+    expect(statusEmitted).toBe('active');
+    expect(fixture.componentInstance.selectedStatus()).toBe('active');
+
+    fixture.componentInstance.onFieldChanged({ key: 'status', values: [] });
+    expect(statusEmitted).toBe('all');
+    expect(fixture.componentInstance.selectedStatus()).toBe('all');
   });
 });

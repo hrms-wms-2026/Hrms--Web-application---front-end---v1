@@ -2,8 +2,11 @@ import { TestBed } from '@angular/core/testing';
 import { Router } from '@angular/router';
 import { of } from 'rxjs';
 import { vi } from 'vitest';
+import { AuthStore } from '../../../../core/auth/state/auth.store';
+import { PermissionService } from '../../../../core/auth/state/permission.service';
 import { NotificationBellComponent } from './notification-bell.component';
 import { NotificationsStore } from '../../../../core/state/notifications.store';
+import { TrayPresenceStore } from '../../../../core/tray-presence/state/tray-presence.store';
 import { TaskApiService } from '../../../../modules/work/data-access/task-api.service';
 
 describe('NotificationBellComponent', () => {
@@ -23,7 +26,8 @@ describe('NotificationBellComponent', () => {
       providers: [
         { provide: NotificationsStore, useValue: storeStub },
         { provide: Router, useValue: { navigate } },
-        { provide: TaskApiService, useValue: { getNotificationNavigation: vi.fn() } }
+        { provide: TaskApiService, useValue: { getNotificationNavigation: vi.fn() } },
+        { provide: AuthStore, useValue: { authenticated: () => true, activeModules: () => [] } }
       ]
     });
 
@@ -40,6 +44,35 @@ describe('NotificationBellComponent', () => {
 
     expect(storeStub.loadMine).toHaveBeenCalled();
     expect(fixture.nativeElement.querySelector('[data-testid="notification-dropdown"]')).toBeTruthy();
+  });
+
+  it('does not poll unread count while the tray activation gate is blocking', async () => {
+    const storeStub = {
+      unreadCount: () => 0,
+      items: () => [],
+      refreshUnreadCount: vi.fn().mockResolvedValue(undefined),
+      loadMine: vi.fn().mockResolvedValue(undefined),
+      markRead: vi.fn().mockResolvedValue(undefined),
+      markAllRead: vi.fn().mockResolvedValue(undefined)
+    };
+
+    TestBed.configureTestingModule({
+      imports: [NotificationBellComponent],
+      providers: [
+        { provide: NotificationsStore, useValue: storeStub },
+        { provide: Router, useValue: { navigate: vi.fn() } },
+        { provide: TaskApiService, useValue: { getNotificationNavigation: vi.fn() } },
+        { provide: AuthStore, useValue: { authenticated: () => true, activeModules: () => [] } },
+        { provide: PermissionService, useValue: { hasModule: (m: string) => m === 'activity_monitoring' } },
+        { provide: TrayPresenceStore, useValue: { canRenderProtectedContent: () => false } }
+      ]
+    });
+
+    const fixture = TestBed.createComponent(NotificationBellComponent);
+    fixture.detectChanges();
+    await fixture.whenStable();
+
+    expect(storeStub.refreshUnreadCount).not.toHaveBeenCalled();
   });
 
   it('marks item read and navigates to Board for task_creation_request', async () => {
@@ -72,7 +105,8 @@ describe('NotificationBellComponent', () => {
       providers: [
         { provide: NotificationsStore, useValue: storeStub },
         { provide: Router, useValue: { navigate } },
-        { provide: TaskApiService, useValue: { getNotificationNavigation } }
+        { provide: TaskApiService, useValue: { getNotificationNavigation } },
+        { provide: AuthStore, useValue: { authenticated: () => true, activeModules: () => [] } }
       ]
     });
 
@@ -88,7 +122,7 @@ describe('NotificationBellComponent', () => {
     expect(storeStub.markRead).toHaveBeenCalledWith('n1');
     expect(getNotificationNavigation).toHaveBeenCalledWith('task_creation_request', 'r1');
     expect(navigate).toHaveBeenCalledWith(
-      ['/work', 'p1', 'milestones', 'o1', 'board'],
+      ['/work', 'p1', 'board'],
       { queryParams: { highlightTaskId: 't1' } }
     );
   });
@@ -123,7 +157,8 @@ describe('NotificationBellComponent', () => {
       providers: [
         { provide: NotificationsStore, useValue: storeStub },
         { provide: Router, useValue: { navigate } },
-        { provide: TaskApiService, useValue: { getNotificationNavigation } }
+        { provide: TaskApiService, useValue: { getNotificationNavigation } },
+        { provide: AuthStore, useValue: { authenticated: () => true, activeModules: () => [] } }
       ]
     });
 
@@ -135,7 +170,7 @@ describe('NotificationBellComponent', () => {
     fixture.nativeElement.querySelector('.notification-dropdown__item').click();
     await fixture.whenStable();
 
-    expect(navigate).toHaveBeenCalledWith(['/work', 'p1', 'milestones', 'o1', 'approvals'], {});
+    expect(navigate).toHaveBeenCalledWith(['/work', 'p1', 'approvals'], {});
   });
 
   it('navigates an attendance correction approval notification to the approval inbox with its request id', async () => {
@@ -151,7 +186,8 @@ describe('NotificationBellComponent', () => {
     const navigate = vi.fn().mockResolvedValue(true);
     TestBed.configureTestingModule({ imports: [NotificationBellComponent], providers: [
       { provide: NotificationsStore, useValue: storeStub }, { provide: Router, useValue: { navigate } },
-      { provide: TaskApiService, useValue: { getNotificationNavigation: vi.fn() } }
+      { provide: TaskApiService, useValue: { getNotificationNavigation: vi.fn() } },
+        { provide: AuthStore, useValue: { authenticated: () => true, activeModules: () => [] } }
     ] });
     const fixture = TestBed.createComponent(NotificationBellComponent);
     fixture.detectChanges();
@@ -178,7 +214,8 @@ describe('NotificationBellComponent', () => {
     const navigate = vi.fn().mockResolvedValue(true);
     TestBed.configureTestingModule({ imports: [NotificationBellComponent], providers: [
       { provide: NotificationsStore, useValue: storeStub }, { provide: Router, useValue: { navigate } },
-      { provide: TaskApiService, useValue: { getNotificationNavigation: vi.fn() } }
+      { provide: TaskApiService, useValue: { getNotificationNavigation: vi.fn() } },
+        { provide: AuthStore, useValue: { authenticated: () => true, activeModules: () => [] } }
     ] });
     const fixture = TestBed.createComponent(NotificationBellComponent);
     fixture.detectChanges();
@@ -205,7 +242,8 @@ describe('NotificationBellComponent', () => {
     const navigate = vi.fn().mockResolvedValue(true);
     TestBed.configureTestingModule({ imports: [NotificationBellComponent], providers: [
       { provide: NotificationsStore, useValue: storeStub }, { provide: Router, useValue: { navigate } },
-      { provide: TaskApiService, useValue: { getNotificationNavigation: vi.fn() } }
+      { provide: TaskApiService, useValue: { getNotificationNavigation: vi.fn() } },
+        { provide: AuthStore, useValue: { authenticated: () => true, activeModules: () => [] } }
     ] });
     const fixture = TestBed.createComponent(NotificationBellComponent);
     fixture.detectChanges();

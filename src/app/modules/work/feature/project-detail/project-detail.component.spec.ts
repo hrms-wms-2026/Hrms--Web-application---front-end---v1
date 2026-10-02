@@ -5,6 +5,7 @@ import { ProjectDetailComponent } from './project-detail.component';
 import { ProjectDetailStore } from '../../state/project-detail.store';
 import { ProjectDetail } from '../../models/project.model';
 import { Milestone } from '../../models/milestone.model';
+import { WorkApprovalsStore } from '../../state/work-approvals.store';
 
 describe('ProjectDetailComponent', () => {
   let fixture: ComponentFixture<ProjectDetailComponent>;
@@ -12,6 +13,7 @@ describe('ProjectDetailComponent', () => {
   let routerStub: any;
   let routeStub: any;
   let routerEvents: Subject<unknown>;
+  let approvalsStoreStub: any;
 
   const project: ProjectDetail = {
     id: 'p1', name: 'Website Revamp', identifier: 'WEB', categoryId: 'cat1', leadId: 'u1',
@@ -26,7 +28,7 @@ describe('ProjectDetailComponent', () => {
     ownerId: 'u1', ownerName: 'Jane Doe', reportingManagerId: null, reportingManagerName: null,
     startDate: '2026-08-01', endDate: '2026-12-01', allocatedHours: 40, completedHours: 0,
     objectiveIsActive: true, isAchieved: false, achievedAt: null, membershipIsActive: true, membershipRemovedAt: null,
-    isOwner: true
+    isOwner: true, isEffectiveOwner: true
   };
 
   const milestone2: Milestone = { ...milestone, objectiveId: 'o2', title: 'Second', isDefault: false };
@@ -47,6 +49,7 @@ describe('ProjectDetailComponent', () => {
       imports: [ProjectDetailComponent],
       providers: [
         { provide: ProjectDetailStore, useValue: storeStub },
+        { provide: WorkApprovalsStore, useValue: approvalsStoreStub },
         { provide: ActivatedRoute, useValue: routeStub },
         { provide: Router, useValue: routerStub }
       ]
@@ -56,6 +59,10 @@ describe('ProjectDetailComponent', () => {
   }
 
   beforeEach(() => {
+    approvalsStoreStub = {
+      pendingCount: () => 0,
+      loadAll: vi.fn().mockResolvedValue(undefined)
+    };
     storeStub = {
       project: () => project,
       projectLoading: () => false,
@@ -79,6 +86,7 @@ describe('ProjectDetailComponent', () => {
     await fixture.whenStable();
     expect(storeStub.loadProject).toHaveBeenCalledWith('p1');
     expect(storeStub.loadMyMilestones).toHaveBeenCalledWith('p1');
+    expect(approvalsStoreStub.loadAll).toHaveBeenCalledWith('p1');
   });
 
   it('renders the project name without the Modules carousel', async () => {
@@ -127,6 +135,24 @@ describe('ProjectDetailComponent', () => {
     fixture.detectChanges();
     expect(fixture.nativeElement.querySelector('app-milestone-sub-menu')).not.toBeNull();
     expect(fixture.nativeElement.querySelector('router-outlet')).not.toBeNull();
+  });
+
+  it('shows the Approvals indicator with the store pending count (the feed is already project-scoped)', () => {
+    approvalsStoreStub.pendingCount = () => 2;
+    setup('o1');
+    fixture.detectChanges();
+
+    const indicator = fixture.nativeElement.querySelector('[data-testid="approvals-pending-indicator"]');
+    const approvalsLink = Array.from(fixture.nativeElement.querySelectorAll('[data-testid="sub-menu-tab"]'))
+      .find((element: any) => element.textContent.includes('Approvals')) as HTMLAnchorElement;
+    expect(indicator).not.toBeNull();
+    expect(approvalsLink.getAttribute('aria-label')).toBe('Approvals, 2 pending');
+  });
+
+  it('hides the Approvals indicator when nothing waits on the caller', () => {
+    setup('o1');
+    fixture.detectChanges();
+    expect(fixture.nativeElement.querySelector('[data-testid="approvals-pending-indicator"]')).toBeNull();
   });
 
   it('reflects the active milestone id from the route on init, and updates it on NavigationEnd', () => {

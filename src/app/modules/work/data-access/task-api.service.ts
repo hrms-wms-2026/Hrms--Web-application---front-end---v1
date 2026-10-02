@@ -3,25 +3,29 @@ import { Injectable, inject } from '@angular/core';
 import { Observable } from 'rxjs';
 import { environment } from '../../../../environments/environment';
 import {
+  CreateSubtaskRequestDto,
   CreateTaskRequestDto,
   CreateTaskStatusRequestDto,
+  ClockInResponseDto,
+    ConvertTaskToSubtaskRequestDto,
+    DuplicateTaskRequestDto,
     EditTaskRequestDto,
   EditTaskStatusRequestDto,
+  PendingUploadDto,
   PushTaskRequestDto,
   TaskStatusDto,
   WorkTaskDto
-
 } from '../models/dto/task.dto';
+import { BulkTaskActionResponse, TaskStatusCategory, WorkTask } from '../models/task.model';
 import {
   CreateTaskCategoryRequestDto,
   EditTaskCategoryRequestDto,
   TaskCategoryDto
 } from '../models/dto/task-category.dto';
-import {
-  CreateTaskEditRequestDto,
-  TaskEditRequestDto
-} from '../models/dto/task-edit-request.dto';
+import { PendingApprovalDto } from '../models/dto/work-approval.dto';
 import { TaskHistoryEntryDto } from '../models/dto/task-history.dto';
+
+export type PendingUploadPurpose = 'task_attachment' | 'task_description_image' | 'comment_attachment' | 'comment_description_image';
 
 @Injectable({ providedIn: 'root' })
 export class TaskApiService {
@@ -56,12 +60,6 @@ export class TaskApiService {
     return this.http.get<WorkTaskDto>(`${this.baseUrl}/tasks/${taskId}`);
   }
 
-  getMyTasks(projectId: string, sprintId?: string): Observable<WorkTaskDto[]> {
-    let params = new HttpParams();
-    if (sprintId) params = params.set('sprintId', sprintId);
-    return this.http.get<WorkTaskDto[]>(`${this.baseUrl}/projects/${projectId}/my-tasks`, { params });
-  }
-
   getTaskHistory(taskId: string): Observable<TaskHistoryEntryDto[]> {
     return this.http.get<TaskHistoryEntryDto[]>(`${this.baseUrl}/tasks/${taskId}/history`);
   }
@@ -74,20 +72,39 @@ export class TaskApiService {
     return this.http.get<WorkTaskDto[]>(`${this.baseUrl}/sprints/${sprintId}/tasks`);
   }
 
-  createTask(objectiveId: string, request: CreateTaskRequestDto): Observable<WorkTaskDto> {
-    return this.http.post<WorkTaskDto>(`${this.baseUrl}/objectives/${objectiveId}/tasks`, request);
+  /** 201 = created (WorkTaskDto); 202 = sent for approval (PendingApprovalDto). */
+  createTask(objectiveId: string, request: CreateTaskRequestDto): Observable<WorkTaskDto | PendingApprovalDto> {
+    return this.http.post<WorkTaskDto | PendingApprovalDto>(`${this.baseUrl}/objectives/${objectiveId}/tasks`, request);
   }
 
-  deleteTask(taskId: string): Observable<void> {
-    return this.http.delete<void>(`${this.baseUrl}/tasks/${taskId}`);
+  createSubtask(parentTaskId: string, request: CreateSubtaskRequestDto): Observable<WorkTaskDto> {
+    return this.http.post<WorkTaskDto>(`${this.baseUrl}/tasks/${parentTaskId}/subtasks`, request);
   }
 
-  editTask(taskId: string, request: EditTaskRequestDto): Observable<WorkTaskDto> {
-    return this.http.patch<WorkTaskDto>(`${this.baseUrl}/tasks/${taskId}`, request);
+  getSubtasks(parentTaskId: string): Observable<WorkTaskDto[]> {
+    return this.http.get<WorkTaskDto[]>(`${this.baseUrl}/tasks/${parentTaskId}/subtasks`);
   }
 
-  clockIn(taskId: string): Observable<void> {
-    return this.http.post<void>(`${this.baseUrl}/tasks/${taskId}/clock-in`, {});
+  /** 204 = deleted (null body); 202 = sent for approval (PendingApprovalDto). */
+  deleteTask(taskId: string): Observable<PendingApprovalDto | null> {
+    return this.http.delete<PendingApprovalDto | null>(`${this.baseUrl}/tasks/${taskId}`);
+  }
+
+  duplicateTask(taskId: string, request: DuplicateTaskRequestDto): Observable<WorkTaskDto> {
+    return this.http.post<WorkTaskDto>(`${this.baseUrl}/tasks/${taskId}/duplicate`, request);
+  }
+
+  convertToSubtask(taskId: string, request: ConvertTaskToSubtaskRequestDto): Observable<WorkTaskDto> {
+    return this.http.post<WorkTaskDto>(`${this.baseUrl}/tasks/${taskId}/convert-to-subtask`, request);
+  }
+
+  /** 200 = edited (WorkTaskDto); 202 = sent for approval (PendingApprovalDto). */
+  editTask(taskId: string, request: EditTaskRequestDto): Observable<WorkTaskDto | PendingApprovalDto> {
+    return this.http.patch<WorkTaskDto | PendingApprovalDto>(`${this.baseUrl}/tasks/${taskId}`, request);
+  }
+
+  clockIn(taskId: string): Observable<ClockInResponseDto> {
+    return this.http.post<ClockInResponseDto>(`${this.baseUrl}/tasks/${taskId}/clock-in`, {});
   }
 
   push(taskId: string, request: PushTaskRequestDto): Observable<WorkTaskDto> {
@@ -114,44 +131,44 @@ export class TaskApiService {
     return this.http.delete<void>(`${this.baseUrl}/tasks/${taskId}/assignments/${employeeId}`);
   }
 
-  createTaskCreationRequest(objectiveId: string, request: CreateTaskRequestDto): Observable<unknown> {
-    return this.http.post(`${this.baseUrl}/objectives/${objectiveId}/task-creation-requests`, request);
+  bulkMoveStatus(taskIds: string[], newStatusId: string): Observable<BulkTaskActionResponse> {
+    return this.http.post<BulkTaskActionResponse>(`${this.baseUrl}/tasks/bulk/status`, { taskIds, newStatusId });
+  }
+
+  bulkAssign(taskIds: string[], employeeId: string): Observable<BulkTaskActionResponse> {
+    return this.http.post<BulkTaskActionResponse>(`${this.baseUrl}/tasks/bulk/assign`, { taskIds, employeeId });
+  }
+
+  bulkSetPriority(taskIds: string[], priority: WorkTask['priority']): Observable<BulkTaskActionResponse> {
+    return this.http.post<BulkTaskActionResponse>(`${this.baseUrl}/tasks/bulk/priority`, { taskIds, priority });
+  }
+
+  bulkSetDueDate(taskIds: string[], dueDate: string | null): Observable<BulkTaskActionResponse> {
+    return this.http.post<BulkTaskActionResponse>(`${this.baseUrl}/tasks/bulk/due-date`, { taskIds, dueDate });
+  }
+
+  bulkConvertToSubtask(taskIds: string[], newParentTaskId: string): Observable<BulkTaskActionResponse> {
+    return this.http.post<BulkTaskActionResponse>(`${this.baseUrl}/tasks/bulk/convert-to-subtask`, { taskIds, newParentTaskId });
+  }
+
+  bulkDelete(taskIds: string[]): Observable<BulkTaskActionResponse> {
+    return this.http.post<BulkTaskActionResponse>(`${this.baseUrl}/tasks/bulk/delete`, { taskIds });
   }
 
   getNotificationNavigation(
     relatedEntityType: string,
     relatedEntityId: string
-  ): Observable<{ projectId: string; objectiveId: string; taskId: string | null; targetTab: 'board' | 'approvals' }> {
+  ): Observable<{ projectId: string; objectiveId: string; taskId: string | null; targetTab: 'board' | 'approvals' | 'tree' }> {
     const params = new HttpParams()
       .set('relatedEntityType', relatedEntityType)
       .set('relatedEntityId', relatedEntityId);
-    return this.http.get<{ projectId: string; objectiveId: string; taskId: string | null; targetTab: 'board' | 'approvals' }>(
+    return this.http.get<{ projectId: string; objectiveId: string; taskId: string | null; targetTab: 'board' | 'approvals' | 'tree' }>(
       `${this.baseUrl}/notification-navigation`,
       { params }
     );
   }
 
-  createTaskEditRequest(taskId: string, request: CreateTaskEditRequestDto): Observable<TaskEditRequestDto> {
-    return this.http.post<TaskEditRequestDto>(`${this.baseUrl}/tasks/${taskId}/edit-requests`, request);
-  }
-
-  approveTaskEditRequest(id: string): Observable<WorkTaskDto> {
-    return this.http.post<WorkTaskDto>(`${this.baseUrl}/task-edit-requests/${id}/approve`, {});
-  }
-
-  rejectTaskEditRequest(id: string, comment: string): Observable<void> {
-    return this.http.post<void>(`${this.baseUrl}/task-edit-requests/${id}/reject`, { comment });
-  }
-
-  cancelTaskEditRequest(id: string): Observable<void> {
-    return this.http.post<void>(`${this.baseUrl}/task-edit-requests/${id}/cancel`, {});
-  }
-
-  getMyTaskEditRequests(): Observable<TaskEditRequestDto[]> {
-    return this.http.get<TaskEditRequestDto[]>(`${this.baseUrl}/task-edit-requests/mine`);
-  }
-
-  reorderTaskStatuses(projectId: string, updates: { statusId: string; displayOrder: number; visibility: string; marksTaskComplete: boolean }[]): Observable<TaskStatusDto[]> {
+  reorderTaskStatuses(projectId: string, updates: { statusId: string; displayOrder: number; visibility: string; category: TaskStatusCategory; color: string }[]): Observable<TaskStatusDto[]> {
     return this.http.post<TaskStatusDto[]>(`${this.baseUrl}/projects/${projectId}/task-statuses/reorder`, { updates });
   }
 
@@ -173,5 +190,24 @@ export class TaskApiService {
 
   reorderTaskCategories(projectId: string, updates: { categoryId: string; displayOrder: number }[]): Observable<TaskCategoryDto[]> {
     return this.http.post<TaskCategoryDto[]>(`${this.baseUrl}/projects/${projectId}/task-categories/reorder`, { updates });
+  }
+
+  uploadPendingFile(file: File, purpose: PendingUploadPurpose): Observable<PendingUploadDto> {
+    const formData = new FormData();
+    formData.set('purpose', purpose);
+    formData.set('file', file);
+    return this.http.post<PendingUploadDto>(`${this.baseUrl}/tasks/pending-uploads`, formData);
+  }
+
+  deletePendingFile(fileId: string): Observable<void> {
+    return this.http.delete<void>(`${this.baseUrl}/tasks/pending-uploads/${fileId}`);
+  }
+
+  downloadFile(fileId: string): Observable<Blob> {
+    return this.http.get(`${this.baseUrl}/tasks/files/${fileId}`, { responseType: 'blob' });
+  }
+
+  getFileUrl(fileId: string): string {
+    return `${this.baseUrl}/tasks/files/${fileId}`;
   }
 }

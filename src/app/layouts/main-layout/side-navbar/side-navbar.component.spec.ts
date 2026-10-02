@@ -8,6 +8,7 @@ import { AuthStore } from '../../../core/auth/state/auth.store';
 import { environment } from '../../../../environments/environment';
 import { LegalEntityApiService } from '../../../modules/organization/data-access/legal-entity-api.service';
 import { LegalEntityStore } from '../../../modules/organization/state/legal-entity.store';
+import { NavigationStateService } from '../nav/navigation-state.service';
 
 @Component({ standalone: true, template: '' })
 class BlankComponent {}
@@ -32,8 +33,21 @@ describe('SideNavbarComponent', () => {
     expect(labels).toEqual(['Home']);
   });
 
-  it('shows People/Calendar/Time Off/Attendance when their modules and self-service access are active', () => {
+  it('shows Calendar/Time Off/Attendance when their modules and self-service access are active, but not People without an employees permission', () => {
+    // Regression: "People" used to show from core_hr alone, because its "Employees" child had
+    // no permission gate of its own - self-service attendance/leave access is not an employees
+    // permission, and the real /people route guard requires employees:read or employees:write,
+    // so People must stay hidden for this user even though core_hr is active.
     const fixture = setup(['attendance:read-own', 'leave:read-own'], ['core_hr', 'calendar', 'leave', 'time_attendance']);
+    const labels = Array.from(fixture.nativeElement.querySelectorAll('.nav-rail-item span')).map((el) => (el as HTMLElement).textContent);
+    expect(labels).toEqual(['Home', 'Calendar', 'Time Off', 'Attendance']);
+  });
+
+  it('shows People once the user also holds employees:read, alongside self-service access', () => {
+    const fixture = setup(
+      ['attendance:read-own', 'leave:read-own', 'employees:read'],
+      ['core_hr', 'calendar', 'leave', 'time_attendance']
+    );
     const labels = Array.from(fixture.nativeElement.querySelectorAll('.nav-rail-item span')).map((el) => (el as HTMLElement).textContent);
     expect(labels).toEqual(['Home', 'People', 'Calendar', 'Time Off', 'Attendance']);
   });
@@ -64,7 +78,7 @@ describe('SideNavbarComponent', () => {
 
   it('renders all 8 sidebar items in canonical order for a tenant owner with every Phase 1 module and org/roles permissions', () => {
     const fixture = setup(
-      ['org:read', 'roles:manage', 'projects:access', 'attendance:read', 'leave:read-own'],
+      ['org:read', 'roles:manage', 'attendance:read', 'leave:read-own'],
       ['worksync_foundation', 'core_hr', 'calendar', 'leave', 'time_attendance', 'org_structure']
     );
     const labels = Array.from(fixture.nativeElement.querySelectorAll('.nav-rail-item span')).map((el) => (el as HTMLElement).textContent);
@@ -188,5 +202,33 @@ describe('SideNavbarComponent', () => {
 
     const img: HTMLImageElement = fixture.nativeElement.querySelector('.company-logo-tile__img');
     expect(img.src).toBe(expectedUrl);
+  });
+
+  it('renders expand button when active section has children and sub-sidebar is collapsed, and expands on click', async () => {
+    localStorage.clear();
+    const fixture = setup(['attendance:read-own', 'attendance:write-own', 'attendance:read', 'attendance:approve'], ['time_attendance']);
+    const router = TestBed.inject(Router);
+    const navState = TestBed.inject(NavigationStateService);
+
+    await router.navigateByUrl('/attendance/overview');
+    fixture.detectChanges();
+
+    // Initially not collapsed
+    expect(fixture.nativeElement.querySelector('.nav-rail__expand-btn')).toBeNull();
+
+    // Collapse sub-sidebar
+    navState.collapseSubSidebar();
+    fixture.detectChanges();
+
+    const expandBtn = fixture.nativeElement.querySelector('.nav-rail__expand-btn') as HTMLButtonElement;
+    expect(expandBtn).toBeTruthy();
+    expect(expandBtn.getAttribute('aria-label')).toBe('Open sidebar');
+
+    // Click expand
+    expandBtn.click();
+    fixture.detectChanges();
+
+    expect(navState.isSubSidebarCollapsed()).toBe(false);
+    expect(fixture.nativeElement.querySelector('.nav-rail__expand-btn')).toBeNull();
   });
 });

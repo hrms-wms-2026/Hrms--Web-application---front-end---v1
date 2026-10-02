@@ -2,7 +2,9 @@ import { inject } from '@angular/core';
 import { patchState, signalStore, withMethods, withState } from '@ngrx/signals';
 import { firstValueFrom } from 'rxjs';
 import { PeopleApiService } from '../../people/data-access/people-api.service';
+import { EmployeeIdentityResponse } from '../../people/models/employee.model';
 import { EmployeeSummary, buildInitials } from '../models/employee-summary.model';
+import { FileApiService } from '../../../shared/data-access/file-api.service';
 
 interface EmployeeDirectoryState {
   readonly byId: Readonly<Record<string, EmployeeSummary>>;
@@ -13,12 +15,25 @@ const initialState: EmployeeDirectoryState = { byId: {} };
 export const EmployeeDirectoryStore = signalStore(
   { providedIn: 'root' },
   withState<EmployeeDirectoryState>(initialState),
-  withMethods((store, peopleApi = inject(PeopleApiService)) => {
+  withMethods((store, peopleApi = inject(PeopleApiService), fileApi = inject(FileApiService)) => {
     const inFlight = new Map<string, Promise<void>>();
+    const toSummary = (identity: EmployeeIdentityResponse): EmployeeSummary => ({
+      id: identity.id,
+      name: identity.name,
+      initials: buildInitials(identity.name),
+      avatarUrl: identity.avatarFileId ? fileApi.getFileUrl(identity.avatarFileId) : null
+    });
 
     return {
       get(employeeId: string): EmployeeSummary | undefined {
         return store.byId()[employeeId];
+      },
+
+      /** Seeds identities already returned by another endpoint, avoiding duplicate identity requests. */
+      seed(identities: readonly EmployeeIdentityResponse[]): void {
+        if (identities.length === 0) return;
+        const additions = Object.fromEntries(identities.map((identity) => [identity.id, toSummary(identity)]));
+        patchState(store, { byId: { ...store.byId(), ...additions } });
       },
 
       async ensureLoaded(employeeIds: readonly string[]): Promise<void> {
@@ -35,20 +50,23 @@ export const EmployeeDirectoryStore = signalStore(
         }
 
         const fetchPromise = (async () => {
+          // GET /employees/{id}/identity - name + avatar only, gated on nothing beyond
+          // authentication (unlike the full employees:read-gated GET /employees/{id}), since
+          // resolving who owns/is assigned to something is universal display data, not an HR
+          // record. Still caught defensively: a genuinely-deleted employeeId 404s.
           const fetched = await Promise.all(
-            missing.map((id) => firstValueFrom(peopleApi.getEmployee(id)).catch(() => null))
+            missing.map((id) => firstValueFrom(peopleApi.getEmployeeIdentity(id)).catch(() => null))
           );
 
           const additions: Record<string, EmployeeSummary> = {};
-          fetched.forEach((employee, index) => {
+          fetched.forEach((identity, index) => {
             const id = missing[index]!;
-            // A failed lookup (403 from the management-coverage-scoped GET /employees/{id} is the
-            // common case - most task assignees are outside the viewer's coverage, not a real
-            // error) is cached as an unresolved placeholder too, not left "missing" - otherwise
-            // every fresh mount that needs this id (a new row, a new card) retries the same
-            // doomed request forever, since there is no negative cache without this.
-            additions[id] = employee
-              ? { id: employee.id, name: employee.fullName, initials: buildInitials(employee.fullName), avatarUrl: null }
+            // A failed lookup (404, employee no longer exists) is cached as an unresolved
+            // placeholder too, not left "missing" - otherwise every fresh mount that needs this
+            // id (a new row, a new card) retries the same doomed request forever, since there is
+            // no negative cache without this.
+            additions[id] = identity
+              ? toSummary(identity)
               : { id, name: 'Unknown employee', initials: '?', avatarUrl: null };
           });
 

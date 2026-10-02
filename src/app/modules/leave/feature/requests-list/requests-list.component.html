@@ -1,0 +1,56 @@
+<section class="to-page">
+  <header class="to-header">
+    <div>
+      <p class="to-kicker">TIME OFF</p>
+      <h1 class="to-title">All Requests</h1>
+      <p class="to-subtitle">Every leave request across the organization.</p>
+    </div>
+  </header>
+  <div class="to-tabs" role="tablist" aria-label="Request status">
+    <button type="button" class="to-tab" [class.to-tab--active]="statusFilter() === ''" (click)="setStatusFilter(undefined)">All</button>
+    <button type="button" class="to-tab" [class.to-tab--active]="statusFilter() === 'pending'" (click)="setStatusFilter('pending')">Pending</button>
+    <button type="button" class="to-tab" [class.to-tab--active]="statusFilter() === 'approved'" (click)="setStatusFilter('approved')">Approved</button>
+    <button type="button" class="to-tab" [class.to-tab--active]="statusFilter() === 'rejected'" (click)="setStatusFilter('rejected')">Rejected</button>
+  </div>
+  <div class="to-toolbar">
+    <app-select [options]="leaveTypeOptions()" [value]="store.allFilter().leaveTypeId ?? ''" (valueChange)="onLeaveTypeFilterChange($event)" />
+    <app-date-picker placeholder="From" [value]="store.allFilter().fromDate ?? ''" (valueChange)="onFromDateChange($event)" />
+    <app-date-picker placeholder="To" [value]="store.allFilter().toDate ?? ''" (valueChange)="onToDateChange($event)" />
+  </div>
+  @if (store.allLoading()) {
+    <div class="to-loading" aria-busy="true"><span></span><span></span><span></span></div>
+  } @else if (store.allError()) {
+    <app-error-state [message]="store.allError()!" [retryable]="true" (retry)="store.loadAll()" />
+  } @else if (store.all().length === 0) {
+    <div class="to-empty">
+      <app-empty-state title="No leave requests found" description="No requests match the current filters." />
+    </div>
+  } @else {
+    <div class="to-table-card">
+      <app-leave-request-all-table [rows]="store.all()" (rowClicked)="onRowClicked($event)" (cancelRequested)="onCancelRequested($event)" />
+    </div>
+  }
+</section>
+
+<app-leave-approval-detail-sheet
+  [open]="detailOpen()"
+  [detail]="store.detail()"
+  [canApprove]="canApprove()"
+  [deciding]="store.deciding()"
+  [decideError]="store.decideError()"
+  (closed)="closeDetail()"
+/>
+
+<app-leave-cancel-confirm-dialog
+  [open]="cancelTarget() !== null"
+  [leaveTypeName]="cancelTarget()?.leaveTypeName ?? ''"
+  [startAt]="cancelTarget()?.startAt ?? ''"
+  [endAt]="cancelTarget()?.endAt ?? ''"
+  [totalHours]="cancelTarget()?.totalHours ?? 0"
+  [status]="cancelTarget()?.status ?? ''"
+  [requireReason]="true"
+  [cancelling]="store.cancelling()"
+  [cancelError]="store.cancelDialogError()"
+  (confirmed)="onConfirmCancel($event)"
+  (closed)="closeCancelDialog()"
+/>

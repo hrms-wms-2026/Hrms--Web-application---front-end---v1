@@ -86,13 +86,14 @@ describe('workTimePairValidator', () => {
     expect(group.errors).toEqual({ workTimePair: 'both_required' });
   });
 
-  it('returns start_not_before_end when start === end', () => {
-    const group = makeGroup('09:00', '09:00');
-    expect(group.errors).toEqual({ workTimePair: 'start_not_before_end' });
+  it('is valid for overnight 22:00-06:00', () => {
+    const group = makeGroup('22:00', '06:00');
+    expect(group.valid).toBe(true);
+    expect(group.errors).toBeNull();
   });
 
-  it('returns start_not_before_end when start is after end', () => {
-    const group = makeGroup('18:00', '09:00');
-    expect(group.errors).toEqual({ workTimePair: 'start_not_before_end' });
+  it('is valid when start equals end (24h overnight window)', () => {
+    const group = makeGroup('09:00', '09:00');
+    expect(group.valid).toBe(true);
   });
 });

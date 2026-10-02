@@ -37,3 +37,6 @@ All 2026-08-06 dates inferred from git history except the one plan file that alr
 
 ## 2026-08-21/
 - `2026-08-20-work-management-project-page-redesign/` (3 parts: `part-1-list-and-explanation.md`, `part-2-create-wizard.md`, `part-3-project-members.md`) — Projects list rows + explanation panel (replacing the card grid), 4-step create wizard (Category → Details → optional Members → Preview, no release date, independent Banner upload), project-level member invite via `POST /work/projects/{id}/members`. Design: `specs/finished/2026-08-21/2026-08-20-work-management-project-page-redesign-design.md`. Companion to the backend repo's same-named plan. All 3 parts shipped, 394/394 Work module tests green. User completed a full manual browser test 2026-08-21 and confirmed it's clean ("perfect, OK").
+
+## 2026-09-21/
+- `2026-09-21-task-subtasks-frontend.md` — Task detail panel Subtasks section (add/list/assign/due date/priority), Board card + Backlog row progress badge (completed/total) and lazy expandable nested subtasks, WorkTask model/DTO/mapper updates, and TaskBoardStore lazy loading. Design: `specs/finished/2026-09-21/2026-09-21-task-subtasks-design.md`. Companion backend: `HRMS-Backend-v1/docs/superpowers/plans/finished/2026-09-21/2026-09-21-task-subtasks-backend.md`. All 5 tasks executed 2026-09-21, full suite green (2,601/2,601 tests across 321 test files).

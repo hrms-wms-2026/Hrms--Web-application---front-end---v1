@@ -1,5 +1,6 @@
-import { TaskStatusDto, WorkTaskDto } from '../models/dto/task.dto';
+import { EditTaskRequestDto, TaskStatusDto, WorkTaskDto } from '../models/dto/task.dto';
 import { TaskStatusColumn, WorkTask } from '../models/task.model';
+import { buildFileUrl } from '../../../shared/data-access/file-api.service';
 
 export function toTaskStatusColumn(dto: TaskStatusDto): TaskStatusColumn {
   return {
@@ -7,8 +8,11 @@ export function toTaskStatusColumn(dto: TaskStatusDto): TaskStatusColumn {
     name: dto.name,
     displayOrder: dto.displayOrder,
     requiresApproval: dto.requiresApproval,
+    approverId: dto.approverId,
     marksTaskComplete: dto.marksTaskComplete,
-    visibility: dto.visibility
+    visibility: dto.visibility,
+    category: dto.category,
+    color: dto.color
   };
 }
 
@@ -31,7 +35,41 @@ export function toWorkTask(dto: WorkTaskDto): WorkTask {
         assigneeEmployeeIds: dto.assigneeEmployeeIds ?? [],
     openClockSessionEmployeeId: dto.openClockSessionEmployeeId,
     openClockSessionClockInAt: dto.openClockSessionClockInAt ? new Date(dto.openClockSessionClockInAt) : null,
-    totalLoggedMinutes: dto.totalLoggedMinutes
+    totalLoggedMinutes: dto.totalLoggedMinutes,
+    activeEventId: dto.activeEventId ?? null,
+    activeEventName: dto.activeEventName ?? null,
+    attachments: (dto.attachments ?? []).map((a) => ({ fileId: a.fileId, name: a.fileName, sizeBytes: a.fileSizeBytes })),
+    assignees: (dto.assignees ?? []).map((a) => ({
+      employeeId: a.employeeId,
+      name: a.name,
+      avatarUrl: a.avatarFileId ? buildFileUrl(a.avatarFileId) : (a.avatarUrl ?? null)
+    })),
+    parentTaskId: dto.parentTaskId ?? null,
+    subtaskTotalCount: dto.subtaskTotalCount ?? 0,
+    subtaskCompletedCount: dto.subtaskCompletedCount ?? 0,
+    subtaskAssigneeEmployeeIds: dto.subtaskAssigneeEmployeeIds ?? [],
+    createdAt: new Date(dto.createdAt),
+    hasPendingApproval: dto.hasPendingApproval ?? false
+  };
+}
 
+/**
+ * EditTaskRequestDto is a full-record replace, not a sparse patch - the backend resets any
+ * omitted optional field (title/priority are required; attachmentFileIds omitted clears every
+ * attachment). Build the request from the task's current values so a caller only needs to
+ * specify what it's actually changing (e.g. sprintId) without risking data loss on the rest.
+ */
+export function toEditTaskRequest(task: WorkTask, overrides: Partial<EditTaskRequestDto> = {}): EditTaskRequestDto {
+  return {
+    title: task.title,
+    description: task.description || undefined,
+    priority: task.priority,
+    dueDate: task.dueDate ? task.dueDate.toISOString().slice(0, 10) : undefined,
+    estimatedHours: task.estimatedHours ?? undefined,
+    storyPoints: task.storyPoints ?? undefined,
+    progressPercent: task.progressPercent,
+    sprintId: task.sprintId,
+    attachmentFileIds: task.attachments.map((a) => a.fileId),
+    ...overrides
   };
 }

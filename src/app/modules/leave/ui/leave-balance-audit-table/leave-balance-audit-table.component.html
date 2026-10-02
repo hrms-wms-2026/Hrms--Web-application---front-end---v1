@@ -1,0 +1,22 @@
+<table class="lba-table">
+  <caption class="sr-only">Leave balance audit</caption>
+  <thead>
+    <tr><th>Employee</th><th>Type</th><th>Change</th><th>Hours</th><th>Balance After</th><th>Reason</th><th>Date</th></tr>
+  </thead>
+  <tbody>
+    @for (row of rows; track row.id) {
+      <tr data-testid="audit-row">
+        <td>{{ row.employeeName }} <span class="lba-muted">{{ row.employeeNumber }}</span></td>
+        <td>{{ row.leaveTypeName }}</td>
+        <td><span class="lba-change-type" [class]="'lba-change-' + row.changeType">{{ changeTypeLabel(row.changeType) }}</span></td>
+        <td data-testid="audit-days-changed" [class.lba-positive]="row.hoursChanged >= 0" [class.lba-negative]="row.hoursChanged < 0">{{ signedDays(row.hoursChanged) }}</td>
+        <td>{{ row.balanceAfter }}</td>
+        <td>{{ row.reason ?? '-' }}</td>
+        <td>{{ row.createdAt | slice:0:10 }}</td>
+      </tr>
+    }
+  </tbody>
+</table>
+@if (hasMore) {
+  <button type="button" data-testid="load-more" class="lba-load-more" [disabled]="loading" (click)="loadMoreRequested.emit()">{{ loading ? 'Loading...' : 'Load more' }}</button>
+}

@@ -8,6 +8,9 @@ import { TrayActivationGateComponent } from '../../core/tray-presence/feature/tr
 import { TrayPresenceStore } from '../../core/tray-presence/state/tray-presence.store';
 import { NavigationStateService } from './nav/navigation-state.service';
 import { MainLayoutComponent } from './main-layout.component';
+import { ProfileStore } from '@modules/profile/state/profile.store';
+import { FileApiService } from '../../shared/data-access/file-api.service';
+import { MyProfile } from '@modules/profile/models/profile.model';
 
 @Component({ selector: 'app-side-navbar', standalone: true, template: '' })
 class SideNavbarStubComponent {}
@@ -15,7 +18,12 @@ class SideNavbarStubComponent {}
 @Component({ selector: 'app-top-navbar', standalone: true, template: '' })
 class TopNavbarStubComponent {
   readonly email = input('');
+  readonly avatarUrl = input<string | null>(null);
+  readonly userName = input<string | null>(null);
 }
+
+const emptyProfileStoreStub = { profile: signal<MyProfile | null>(null), loadProfile: vi.fn() };
+const fileApiStub = { getFileUrl: (fileId: string) => `https://api.test/files/${fileId}` };
 
 @Component({ selector: 'app-sub-sidebar', standalone: true, template: '' })
 class SubSidebarStubComponent {
@@ -28,6 +36,15 @@ class ToastHostStubComponent {}
 
 @Component({ selector: 'app-mobile-bottom-nav', standalone: true, template: '' })
 class MobileBottomNavStubComponent {}
+
+@Component({ selector: 'app-drafts-bar', standalone: true, template: '' })
+class DraftsBarStubComponent {}
+
+@Component({ selector: 'app-draft-modal-host', standalone: true, template: '' })
+class DraftModalHostStubComponent {}
+
+@Component({ selector: 'app-unsaved-changes-dialog', standalone: true, template: '' })
+class UnsavedChangesDialogStubComponent {}
 
 @Component({ selector: 'app-locked-workspace-preview', standalone: true, template: '' })
 class LockedWorkspacePreviewStubComponent {}
@@ -78,13 +95,15 @@ describe('MainLayoutComponent tray activation gate', () => {
           useValue: {
             email: signal('buddy@example.test'),
             logout: vi.fn(),
-            activeModules: signal(['monitoring'])
+            activeModules: signal(['activity_monitoring'])
           }
         },
         {
           provide: NavigationStateService,
-          useValue: { activeChildren: signal([]), activeItem: signal(null) }
-        }
+          useValue: { activeChildren: signal([]), activeItem: signal(null), hasVisibleSubSidebar: signal(false), hasSubSidebar: signal(false) }
+        },
+        { provide: ProfileStore, useValue: emptyProfileStoreStub },
+        { provide: FileApiService, useValue: fileApiStub }
       ]
     });
     TestBed.overrideComponent(MainLayoutComponent, {
@@ -96,6 +115,9 @@ describe('MainLayoutComponent tray activation gate', () => {
           SubSidebarStubComponent,
           ToastHostStubComponent,
           MobileBottomNavStubComponent,
+          DraftsBarStubComponent,
+          DraftModalHostStubComponent,
+          UnsavedChangesDialogStubComponent,
           TrayActivationGateComponent,
           LockedWorkspacePreviewStubComponent
         ]
@@ -164,8 +186,10 @@ describe('MainLayoutComponent tray activation gate when monitoring module is not
         },
         {
           provide: NavigationStateService,
-          useValue: { activeChildren: signal([]), activeItem: signal(null) }
-        }
+          useValue: { activeChildren: signal([]), activeItem: signal(null), hasVisibleSubSidebar: signal(false), hasSubSidebar: signal(false) }
+        },
+        { provide: ProfileStore, useValue: emptyProfileStoreStub },
+        { provide: FileApiService, useValue: fileApiStub }
       ]
     });
     TestBed.overrideComponent(MainLayoutComponent, {
@@ -177,6 +201,9 @@ describe('MainLayoutComponent tray activation gate when monitoring module is not
           SubSidebarStubComponent,
           ToastHostStubComponent,
           MobileBottomNavStubComponent,
+          DraftsBarStubComponent,
+          DraftModalHostStubComponent,
+          UnsavedChangesDialogStubComponent,
           TrayActivationGateComponent,
           LockedWorkspacePreviewStubComponent
         ]

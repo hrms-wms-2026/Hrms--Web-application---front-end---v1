@@ -7,6 +7,7 @@ export interface LabelDto {
 export interface ProjectMemberAvatarDto {
   userId: string;
   displayName: string;
+  avatarFileId: string | null;
 }
 
 export interface ProjectListItemDto {

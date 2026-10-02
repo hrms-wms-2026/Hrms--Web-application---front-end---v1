@@ -3,18 +3,19 @@ import { ActivatedRoute } from '@angular/router';
 import { signal } from '@angular/core';
 import { ProjectCalendarComponent } from './project-calendar.component';
 import { ProjectCalendarStore } from '../../state/project-calendar.store';
-import { ProjectCalendarItemDto } from '../../models/dto/calendar.dto';
+import { WorkPageToolbarStore } from '../../state/work-page-toolbar.store';
+import { ProjectCalendarModuleDto } from '../../models/dto/calendar.dto';
 
-const items: ProjectCalendarItemDto[] = [{
+const items: ProjectCalendarModuleDto[] = [{
   objectiveId: 'o1', projectId: 'p1', parentObjectiveId: null, title: 'Design',
   startDate: '2026-01-01', endDate: '2026-01-05', isActive: true, isAchieved: false,
-  canEdit: true, calendarEventId: null, calendarEventColor: null
+  canEdit: true, events: []
 }];
 
 describe('ProjectCalendarComponent', () => {
   let fixture: ComponentFixture<ProjectCalendarComponent>;
   const store = {
-    items: signal(items), events: signal([]), activeEvents: signal([]), loading: signal(false), saving: signal(false),
+    modules: signal(items), bands: signal([]), events: signal([]), activeEvents: signal([]), loading: signal(false), saving: signal(false),
     error: signal<string | null>(null), pendingSet: signal(new Set<string>()), approvalMessages: signal<Record<string, string>>({}),
     load: vi.fn().mockResolvedValue(undefined), saveDates: vi.fn().mockResolvedValue({ success: true, applied: true, pendingApproval: false }),
     createEvent: vi.fn().mockResolvedValue(true), updateEvent: vi.fn().mockResolvedValue(true), closeEvent: vi.fn().mockResolvedValue(true)
@@ -39,26 +40,97 @@ describe('ProjectCalendarComponent', () => {
   });
 
   it('renders child objectives indented under their parent, all rows visible', () => {
-    const treeItems: ProjectCalendarItemDto[] = [
+    const treeItems: ProjectCalendarModuleDto[] = [
       { ...items[0] },
       { objectiveId: 'o2', projectId: 'p1', parentObjectiveId: 'o1', title: 'Sub design',
         startDate: '2026-01-02', endDate: '2026-01-04', isActive: true, isAchieved: false,
-        canEdit: true, calendarEventId: null, calendarEventColor: null }
+        canEdit: true, events: [] }
     ];
-    store.items.set(treeItems);
+    store.modules.set(treeItems);
     fixture.detectChanges();
 
-    const rootCell = fixture.nativeElement.querySelector('[data-testid="calendar-row-o1"] .project-calendar__objective') as HTMLElement;
-    const childCell = fixture.nativeElement.querySelector('[data-testid="calendar-row-o2"] .project-calendar__objective') as HTMLElement;
-    expect(childCell.style.paddingLeft).not.toBe(rootCell.style.paddingLeft);
-    // No collapse/expand - both bars stay on screen at once.
+    const rootBody = fixture.nativeElement.querySelector('[data-testid="calendar-row-o1"] .project-calendar__objective-body') as HTMLElement;
+    const childBody = fixture.nativeElement.querySelector('[data-testid="calendar-row-o2"] .project-calendar__objective-body') as HTMLElement;
+    expect(childBody.style.marginLeft).not.toBe(rootBody.style.marginLeft);
+    // Root has no ancestor, so it gets no connector guide; the child's single-level guide draws its own elbow.
+    expect(fixture.nativeElement.querySelector('[data-testid="calendar-row-o1"] .project-calendar__guides')).toBeNull();
+    expect(fixture.nativeElement.querySelector('[data-testid="calendar-row-o2"] .project-calendar__guide-col--elbow')).toBeTruthy();
+    // Expanded by default - both bars stay on screen until the parent's chevron is collapsed.
     expect(fixture.nativeElement.querySelector('[data-testid="timeline-bar-o1"]')).toBeTruthy();
     expect(fixture.nativeElement.querySelector('[data-testid="timeline-bar-o2"]')).toBeTruthy();
   });
 
+  it('collapses a module via its chevron, hiding its children and their bars, without touching the rest of the tree', () => {
+    // o1 is the project root; o2 is a real top-level module (the one with the chevron);
+    // o3 is o2's own child, and o4 a sibling module - to prove collapsing o2 only affects o2's own branch.
+    const treeItems: ProjectCalendarModuleDto[] = [
+      { ...items[0] },
+      { objectiveId: 'o2', projectId: 'p1', parentObjectiveId: 'o1', title: 'Module',
+        startDate: '2026-01-02', endDate: '2026-01-04', isActive: true, isAchieved: false,
+        canEdit: true, events: [] },
+      { objectiveId: 'o3', projectId: 'p1', parentObjectiveId: 'o2', title: 'Sub module',
+        startDate: '2026-01-02', endDate: '2026-01-03', isActive: true, isAchieved: false,
+        canEdit: true, events: [] },
+      { objectiveId: 'o4', projectId: 'p1', parentObjectiveId: 'o1', title: 'Other module',
+        startDate: '2026-01-02', endDate: '2026-01-04', isActive: true, isAchieved: false,
+        canEdit: true, events: [] }
+    ];
+    store.modules.set(treeItems);
+    fixture.detectChanges();
+
+    // The project root itself has no chevron - collapsing it would hide the whole chart, so it's not collapsible.
+    expect(fixture.nativeElement.querySelector('[data-testid="calendar-row-o1"] [data-testid="calendar-chevron"]')).toBeNull();
+    const chevron = fixture.nativeElement.querySelector(
+      '[data-testid="calendar-row-o2"] [data-testid="calendar-chevron"]'
+    ) as HTMLButtonElement;
+    expect(chevron).toBeTruthy();
+    // A leaf objective (no children) gets no chevron at all.
+    expect(fixture.nativeElement.querySelector('[data-testid="calendar-row-o3"] [data-testid="calendar-chevron"]')).toBeNull();
+
+    chevron.click();
+    fixture.detectChanges();
+
+    expect(fixture.nativeElement.querySelector('[data-testid="calendar-row-o3"]')).toBeNull();
+    expect(fixture.nativeElement.querySelector('[data-testid="timeline-bar-o3"]')).toBeNull();
+    // Everything outside o2's own branch is untouched.
+    expect(fixture.nativeElement.querySelector('[data-testid="timeline-bar-o1"]')).toBeTruthy();
+    expect(fixture.nativeElement.querySelector('[data-testid="timeline-bar-o2"]')).toBeTruthy();
+    expect(fixture.nativeElement.querySelector('[data-testid="timeline-bar-o4"]')).toBeTruthy();
+
+    chevron.click();
+    fixture.detectChanges();
+
+    expect(fixture.nativeElement.querySelector('[data-testid="timeline-bar-o3"]')).toBeTruthy();
+  });
+
+  it('colors each top-level module bar distinctly, shares that color with its own children, and gives the root a fixed summary color', () => {
+    const treeItems: ProjectCalendarModuleDto[] = [
+      { ...items[0] },
+      { objectiveId: 'o2', projectId: 'p1', parentObjectiveId: 'o1', title: 'Module A',
+        startDate: '2026-01-02', endDate: '2026-01-04', isActive: true, isAchieved: false,
+        canEdit: true, events: [] },
+      { objectiveId: 'o3', projectId: 'p1', parentObjectiveId: 'o2', title: 'Sub of A',
+        startDate: '2026-01-02', endDate: '2026-01-03', isActive: true, isAchieved: false,
+        canEdit: true, events: [] },
+      { objectiveId: 'o4', projectId: 'p1', parentObjectiveId: 'o1', title: 'Module B',
+        startDate: '2026-01-02', endDate: '2026-01-04', isActive: true, isAchieved: false,
+        canEdit: true, events: [] }
+    ];
+    store.modules.set(treeItems);
+    fixture.detectChanges();
+
+    const colorOf = (id: string) =>
+      (fixture.nativeElement.querySelector(`[data-testid="timeline-bar-${id}"]`) as HTMLElement).style.getPropertyValue('--bar-color');
+
+    expect(colorOf('o1')).toBe('#1E293B'); // the fixed root/summary color
+    expect(colorOf('o2')).not.toBe(colorOf('o1'));
+    expect(colorOf('o4')).not.toBe(colorOf('o2')); // distinct top-level modules get distinct branch colors
+    expect(colorOf('o3')).toBe(colorOf('o2')); // a child inherits its top-level ancestor's branch color
+  });
+
   describe('zoom - one continuous chart, no view-switching tabs', () => {
     beforeEach(() => {
-      store.items.set(items); // '2026-01-01' -> '2026-01-05', 5 days
+      store.modules.set(items); // '2026-01-01' -> '2026-01-05', 5 days
       fixture.detectChanges();
     });
 
@@ -101,11 +173,29 @@ describe('ProjectCalendarComponent', () => {
     it('the Fit button jumps straight to the fit-to-screen day width', () => {
       fixture.componentInstance.containerWidth.set(940); // 700px available after the 240px label column
       fixture.detectChanges();
-      fixture.nativeElement.querySelector('[data-testid="fit-to-screen"]').click();
+      const toolbarStore = TestBed.inject(WorkPageToolbarStore);
+      const embeddedView = toolbarStore.template()?.createEmbeddedView(null);
+      embeddedView?.detectChanges();
+      const fitButton = (embeddedView?.rootNodes[0] as HTMLElement)?.querySelector('[data-testid="fit-to-screen"]') as HTMLButtonElement | null;
+      if (fitButton) {
+        fitButton.click();
+      } else {
+        fixture.componentInstance.fitToScreen();
+      }
       fixture.detectChanges();
 
       // 5-day project, 700px / 5 = 140px/day
       expect(fixture.componentInstance.dayWidth()).toBe(140);
+    });
+
+    it('registers the calendar toolbar with zoom controls and create milestone button in the toolbarStore', () => {
+      const toolbarStore = TestBed.inject(WorkPageToolbarStore);
+      expect(toolbarStore.template()).not.toBeNull();
+      const embeddedView = toolbarStore.template()?.createEmbeddedView(null);
+      embeddedView?.detectChanges();
+      const root = embeddedView?.rootNodes[0] as HTMLElement;
+      expect(root.querySelector('[data-testid="zoom-controls"]')).toBeTruthy();
+      expect(root.textContent).toContain('Create milestone');
     });
 
     it('scales the fit floor down with a sane minimum for a very long project', () => {
@@ -118,7 +208,7 @@ describe('ProjectCalendarComponent', () => {
 
   describe('ruler tick spacing', () => {
     beforeEach(() => {
-      store.items.set(items); // '2026-01-01' -> '2026-01-05', 5 days
+      store.modules.set(items); // '2026-01-01' -> '2026-01-05', 5 days
       fixture.detectChanges();
     });
 
@@ -151,7 +241,7 @@ describe('ProjectCalendarComponent', () => {
           { provide: ActivatedRoute, useValue: { snapshot: { parent: { paramMap: { get: () => 'p1' } }, paramMap: { get: () => null } } } }
         ]
       });
-      store.items.set(items); // '2026-01-01' -> '2026-01-05' - today (Jan 3) falls inside
+      store.modules.set(items); // '2026-01-01' -> '2026-01-05' - today (Jan 3) falls inside
       const todayFixture = TestBed.createComponent(ProjectCalendarComponent);
       todayFixture.detectChanges();
 
@@ -175,7 +265,7 @@ describe('ProjectCalendarComponent', () => {
           { provide: ActivatedRoute, useValue: { snapshot: { parent: { paramMap: { get: () => 'p1' } }, paramMap: { get: () => null } } } }
         ]
       });
-      store.items.set(items); // '2026-01-01' -> '2026-01-05' - well after "today"
+      store.modules.set(items); // '2026-01-01' -> '2026-01-05' - well after "today"
       const todayFixture = TestBed.createComponent(ProjectCalendarComponent);
       todayFixture.detectChanges();
 

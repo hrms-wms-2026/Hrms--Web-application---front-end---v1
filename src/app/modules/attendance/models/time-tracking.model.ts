@@ -50,6 +50,7 @@ export interface AttendanceTodayResponse {
   attentionSeverity?: string | null;
   breakOverageMinutes?: number;
   isOverBreakAllowance?: boolean;
+  attentionWorkDate?: string | null;
 }
 
 export interface AttendanceHistoryEmployee {
@@ -83,6 +84,17 @@ export interface AttendanceHistoryRow {
   attentionSeverity?: string | null;
   breakOverageMinutes?: number;
   isOverBreakAllowance?: boolean;
+  scheduledStartTime?: string | null;
+  scheduledEndTime?: string | null;
+  requiredWorkMinutes?: number | null;
+}
+
+export interface AttendanceMonthlySummaryResponse {
+  workingDays: number;
+  daysPresent: number;
+  lateArrivals: number;
+  earlyDepartures: number;
+  missingClockOuts: number;
 }
 
 export interface TimelineEvent {
@@ -107,10 +119,44 @@ export interface ActivityDailySummary {
   topApps: ActivityAppUsage[];
 }
 
+export interface CheckInLocation {
+  id: string;
+  checkedInAt: string;
+  latitude: number | null;
+  longitude: number | null;
+  locationAccuracy: number | null;
+  locationAddress: string | null;
+}
+
+/** One captured frame from GET /api/v1/monitoring/daily-report. */
+export interface DayScreenshot {
+  id: string;
+  capturedAt: string;
+  evidenceType: string;
+  triggerType: string;
+  url: string | null;
+}
+
+export interface EmployeeDailyReport {
+  employeeId: string;
+  date: string;
+  screenshots: DayScreenshot[];
+}
+
+export interface ActivityCheck {
+  id: string;
+  promptedAt: string;
+  outcome: string;
+  url: string | null;
+}
+
 export interface AttendanceDayDetail {
   summary: AttendanceHistoryRow;
   timelineEvents: TimelineEvent[];
   dailyActivity: ActivityDailySummary | null;
+  checkIns: CheckInLocation[];
+  screenshots?: DayScreenshot[];
+  activityChecks?: ActivityCheck[];
 }
 
 export interface ClockInRequest {

@@ -18,6 +18,7 @@ export interface MyProjectMilestoneDto {
   membershipIsActive: boolean;
   membershipRemovedAt: string | null;
   isOwner: boolean;
+  isEffectiveOwner: boolean;
 }
 
 export interface ObjectiveDetailDto {
@@ -44,6 +45,7 @@ export interface ObjectiveDetailDto {
   achievedAt: string | null;
   createdAt: string;
   updatedAt: string | null;
+  assets?: ObjectiveAssetDto[];
 }
 
 export interface ObjectiveSubtreeNodeDto extends ObjectiveDetailDto {
@@ -53,6 +55,15 @@ export interface ObjectiveSubtreeNodeDto extends ObjectiveDetailDto {
 export interface ObjectiveSubtreeResponseDto {
   parentObjective: ObjectiveDetailDto | null;
   objective: ObjectiveSubtreeNodeDto;
+}
+
+export interface ObjectiveAssetDto {
+  id: string;
+  fileName: string;
+  sizeBytes: number;
+  contentType: string;
+  uploadedAt: string;
+  downloadUrl: string;
 }
 
 export interface CreateObjectiveMemberInvitationRequestDto {
@@ -72,13 +83,23 @@ export interface CreateObjectiveRequestDto {
 }
 
 export interface AddObjectiveMemberOutcomeDto {
+  applied: boolean;
   alreadyMember: boolean;
+  /** Set when the add was sent for approval instead of applied. */
+  approvalRequestId?: string | null;
   invitation: import('./objective-invitation.dto').ObjectiveInvitationDto | null;
+}
+
+export interface RemoveObjectiveMemberOutcomeDto {
+  applied: boolean;
+  /** Set when the remove was sent for approval instead of applied. */
+  approvalRequestId?: string | null;
 }
 
 export interface TransferObjectiveHeadOutcomeDto {
   applied: boolean;
-  pendingChangeRequest: unknown | null;
+  /** Set when the transfer was sent for approval instead of applied. */
+  approvalRequestId?: string | null;
   pendingInvitation: import('./objective-invitation.dto').ObjectiveInvitationDto | null;
 }
 
