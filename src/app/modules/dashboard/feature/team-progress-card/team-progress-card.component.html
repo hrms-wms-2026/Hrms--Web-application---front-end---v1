@@ -40,42 +40,84 @@
         }
       </div>
 
-      <ul class="mb-4 flex flex-col gap-2" data-testid="team-progress-projects">
+      <ul class="mb-4 grid grid-cols-1 gap-x-6 gap-y-3.5 md:grid-cols-2" data-testid="team-progress-projects">
         @for (project of data.projects; track project.projectId) {
-          <li>
-            <div class="mb-1 flex items-center justify-between">
-              <span class="truncate text-xs font-medium text-slate-700">{{ project.projectName }}</span>
-              <span class="text-[11px] text-slate-400">{{ project.totals.completed }}/{{ project.totals.total }}</span>
-            </div>
-            <app-progress-bar [progress]="projectCompletionPercent(project)" />
+          @if (project.modules.length > 0) {
             @for (module of project.modules; track module.objectiveId) {
-              <button
-                type="button"
-                class="mt-1 block w-full truncate text-left text-[11px] text-[var(--color-accent)] hover:underline"
-                (click)="openModule(project.projectId, module.objectiveId)"
-              >
-                {{ module.title }}
-              </button>
+              <li class="flex flex-col gap-1.5 min-w-0">
+                <div class="flex items-center justify-between gap-2">
+                  <button
+                    type="button"
+                    class="truncate text-xs font-semibold text-slate-800 hover:text-[var(--color-accent)] hover:underline text-left cursor-pointer"
+                    (click)="openModule(project.projectId, module.objectiveId)"
+                  >
+                    {{ module.title }}
+                    @if (project.projectName && project.projectName !== module.title) {
+                      <span class="font-normal text-slate-400 text-[11px]"> · {{ project.projectName }}</span>
+                    }
+                  </button>
+                  <div class="flex items-center gap-2 shrink-0">
+                    @if (module.totals.overdue > 0) {
+                      <span class="text-[10px] font-semibold text-[var(--color-danger)] tabular-nums">
+                        {{ module.totals.overdue }} overdue
+                      </span>
+                    }
+                    <span class="text-[11px] font-medium text-slate-500 tabular-nums">
+                      {{ module.totals.completed }}/{{ module.totals.total }}
+                    </span>
+                  </div>
+                </div>
+                <div class="flex h-1.5 w-full overflow-hidden rounded-full bg-slate-100" role="progressbar" [attr.aria-valuenow]="moduleCompletionPercent(module)" aria-valuemin="0" aria-valuemax="100">
+                  @for (seg of totalsSegments(module.totals); track seg.key) {
+                    <span [class]="seg.cssClass + ' h-full'" [style.width.%]="seg.percent"></span>
+                  }
+                </div>
+              </li>
             }
-          </li>
+          } @else {
+            <li class="flex flex-col gap-1.5 min-w-0">
+              <div class="flex items-center justify-between gap-2">
+                <span class="truncate text-xs font-semibold text-slate-800">
+                  {{ project.projectName }}
+                </span>
+                <div class="flex items-center gap-2 shrink-0">
+                  @if (project.totals.overdue > 0) {
+                    <span class="text-[10px] font-semibold text-[var(--color-danger)] tabular-nums">
+                      {{ project.totals.overdue }} overdue
+                    </span>
+                  }
+                  <span class="text-[11px] font-medium text-slate-500 tabular-nums">
+                    {{ project.totals.completed }}/{{ project.totals.total }}
+                  </span>
+                </div>
+              </div>
+              <div class="flex h-1.5 w-full overflow-hidden rounded-full bg-slate-100" role="progressbar" [attr.aria-valuenow]="projectCompletionPercent(project)" aria-valuemin="0" aria-valuemax="100">
+                @for (seg of totalsSegments(project.totals); track seg.key) {
+                  <span [class]="seg.cssClass + ' h-full'" [style.width.%]="seg.percent"></span>
+                }
+              </div>
+            </li>
+          }
         }
       </ul>
 
       @if (data.overdueTasks.length > 0) {
-        <div>
-          <h3 class="mb-2 text-xs font-semibold uppercase tracking-wide text-slate-400">
+        <div class="border-t border-slate-100 pt-3.5">
+          <h3 class="mb-2 text-[11px] font-medium uppercase tracking-wider text-slate-500">
             Overdue tasks ({{ data.overdueTotal }})
           </h3>
-          <ul class="flex flex-col gap-1" data-testid="team-progress-overdue">
+          <ul class="grid grid-cols-1 gap-1 md:grid-cols-2" data-testid="team-progress-overdue">
             @for (task of data.overdueTasks; track task.taskId) {
               <li>
                 <button
                   type="button"
-                  class="flex w-full items-center justify-between rounded-lg px-2 py-1.5 text-left hover:bg-slate-50"
+                  class="group flex w-full items-center justify-between rounded-lg px-2.5 py-1.5 text-left transition-colors duration-150 hover:bg-slate-50 cursor-pointer"
                   (click)="openOverdueTask(task)"
                 >
-                  <span class="min-w-0 flex-1 truncate text-xs text-slate-700">{{ task.title }}</span>
-                  <span class="shrink-0 text-[11px] font-semibold text-[var(--color-danger)]">
+                  <span class="min-w-0 flex-1 truncate text-xs font-medium text-slate-700 group-hover:text-blue-600">
+                    {{ task.title }}
+                  </span>
+                  <span class="shrink-0 text-[11px] font-semibold text-[var(--color-danger)] tabular-nums">
                     {{ task.daysOverdue }}d overdue
                   </span>
                 </button>

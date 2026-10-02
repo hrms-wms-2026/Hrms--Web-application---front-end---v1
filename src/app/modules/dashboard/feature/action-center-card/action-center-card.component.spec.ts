@@ -311,9 +311,9 @@ describe('ActionCenterCardComponent', () => {
       expect(fixture.nativeElement.textContent).not.toContain('Work you lead');
     });
 
-    it('reads the combined subtitle when both apply', async () => {
+    it('omits the subtitle when both apply to avoid duplicating the section subtitle', async () => {
       const { fixture } = await setup({ caps: capabilities({ canReviewPeopleApprovals: true, leadsWork: true }) });
-      expect(fixture.nativeElement.textContent).toContain('People you manage and work you lead');
+      expect(fixture.nativeElement.textContent).not.toContain('People you manage and work you lead');
     });
   });
 

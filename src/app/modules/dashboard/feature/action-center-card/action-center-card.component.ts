@@ -80,13 +80,14 @@ export class ActionCenterCardComponent implements OnInit {
 
   protected readonly showRail = computed(() => actionCenterRailVisible(this.capabilitiesStore.capabilities()));
 
-  protected readonly subtitle = computed(() => {
+  protected readonly subtitle = computed<string | null>(() => {
     const caps = this.capabilitiesStore.capabilities();
     const hasPeople = !!caps && (caps.canReviewPeopleApprovals || caps.canReviewExceptions);
     const hasWork = !!caps && (caps.hasWorkApprovals || caps.leadsWork);
-    if (hasPeople && hasWork) return 'People you manage and work you lead';
+    if (hasPeople && hasWork) return null;
     if (hasPeople) return 'People you manage';
-    return 'Work you lead';
+    if (hasWork) return 'Work you lead';
+    return null;
   });
 
   // --- Rail ---

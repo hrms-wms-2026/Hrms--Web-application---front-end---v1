@@ -2,9 +2,8 @@ import { ChangeDetectionStrategy, Component, DestroyRef, OnInit, computed, injec
 import { Router } from '@angular/router';
 import { EmptyStateComponent } from '../../../../shared/ui/empty-state/empty-state.component';
 import { ErrorStateComponent } from '../../../../shared/ui/error-state/error-state.component';
-import { ProgressBarComponent } from '../../../../shared/ui/progress-bar/progress-bar.component';
 import { MyTeamLedProgressStore } from '../../state/my-team-led-progress.store';
-import { LedOverdueTask, LedProjectProgress, LedWorkTotals } from '../../models/my-team-led-progress.model';
+import { LedModuleProgress, LedOverdueTask, LedProjectProgress, LedWorkTotals } from '../../models/my-team-led-progress.model';
 
 type TotalsSegmentKey = 'completed' | 'inProgress' | 'notStarted' | 'overdue';
 
@@ -13,7 +12,7 @@ const REFRESH_INTERVAL_MS = 60_000;
 @Component({
   selector: 'app-team-progress-card',
   standalone: true,
-  imports: [EmptyStateComponent, ErrorStateComponent, ProgressBarComponent],
+  imports: [EmptyStateComponent, ErrorStateComponent],
   templateUrl: './team-progress-card.component.html',
   styleUrl: './team-progress-card.component.css',
   changeDetection: ChangeDetectionStrategy.OnPush
@@ -77,8 +76,22 @@ export class TeamProgressCardComponent implements OnInit {
     void this.store.load();
   }
 
+  totalsSegments(totals: LedWorkTotals | undefined | null): { key: 'completed' | 'inProgress' | 'notStarted'; percent: number; count: number; cssClass: string }[] {
+    if (!totals || totals.total === 0) return [];
+    const segments: { key: 'completed' | 'inProgress' | 'notStarted'; percent: number; count: number; cssClass: string }[] = [
+      { key: 'completed', count: totals.completed, percent: (totals.completed / totals.total) * 100, cssClass: 'team-progress-segment--completed' },
+      { key: 'inProgress', count: totals.inProgress, percent: (totals.inProgress / totals.total) * 100, cssClass: 'team-progress-segment--in-progress' },
+      { key: 'notStarted', count: totals.notStarted, percent: (totals.notStarted / totals.total) * 100, cssClass: 'team-progress-segment--not-started' }
+    ];
+    return segments.filter((s) => s.count > 0);
+  }
+
   projectCompletionPercent(project: LedProjectProgress): number {
     return completionPercent(project.totals);
+  }
+
+  moduleCompletionPercent(module: LedModuleProgress): number {
+    return completionPercent(module.totals);
   }
 
   openModule(projectId: string, objectiveId: string): void {

@@ -44,6 +44,9 @@ export class MyTeamSectionComponent implements OnInit {
     const visible = new Set(this.visibleKeys());
     return this.allowedKeys().filter((key) => !visible.has(key));
   });
+  protected readonly teamProgressFullWidth = computed(() => {
+    return this.visibleKeys().length !== 2;
+  });
 
   ngOnInit(): void {
     void this.capabilitiesStore.ensureLoaded();

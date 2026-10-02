@@ -145,4 +145,25 @@ describe('MyTeamSectionComponent', () => {
     const empTwo = await setup(capabilities({ isAvailable: true, canViewPeopleStatus: true, leadsWork: true }), 'emp-2');
     expect(empTwo.nativeElement.querySelector('app-team-status-card')).toBeTruthy();
   });
+
+  it('spans Team Progress full-width on desktop when all 3 widgets are visible', async () => {
+    const fixture = await setup(capabilities({ isAvailable: true, canViewPeopleStatus: true, canReviewPeopleApprovals: true, leadsWork: true }));
+    const progressCard = fixture.nativeElement.querySelector('app-team-progress-card');
+    expect(progressCard?.classList.contains('xl:col-span-2')).toBe(true);
+  });
+
+  it('packs Team Progress into a single column when only 2 widgets are visible', async () => {
+    const fixture = await setup(capabilities({ isAvailable: true, canViewPeopleStatus: false, leadsWork: true }));
+    const progressCard = fixture.nativeElement.querySelector('app-team-progress-card');
+    expect(progressCard?.classList.contains('xl:col-span-2')).toBe(false);
+  });
+
+  it('preserves a saved custom order without overriding or resetting preferences', async () => {
+    localStorage.setItem('onexso.my_team_widget_order', JSON.stringify(['actionCenter', 'teamProgress', 'teamStatus']));
+    const fixture = await setup(capabilities({ isAvailable: true, canViewPeopleStatus: true, canReviewPeopleApprovals: true, leadsWork: true }));
+    const widgetHost = fixture.nativeElement.querySelector('[data-testid="my-team-widgets"]');
+    const childTags = Array.from(widgetHost.children).map((el: any) => el.tagName.toLowerCase());
+    expect(childTags).toEqual(['app-action-center-card', 'app-team-progress-card', 'app-team-status-card']);
+    expect(localStorage.getItem('onexso.my_team_widget_order')).toBe(JSON.stringify(['actionCenter', 'teamProgress', 'teamStatus']));
+  });
 });
