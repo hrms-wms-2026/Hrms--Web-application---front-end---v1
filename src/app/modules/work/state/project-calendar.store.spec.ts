@@ -1,10 +1,10 @@
 import { TestBed } from '@angular/core/testing';
 import { HttpResponse } from '@angular/common/http';
-import { of } from 'rxjs';
+import { Subject, of, throwError } from 'rxjs';
 import { CalendarApiService } from '../data-access/calendar-api.service';
 import { ProjectApiService } from '../data-access/project-api.service';
 import { ProjectCalendarStore } from './project-calendar.store';
-import { ProjectCalendarDto } from '../models/dto/calendar.dto';
+import { CalendarEventTaskSummaryDto, ProjectCalendarDto } from '../models/dto/calendar.dto';
 
 const payload: ProjectCalendarDto = {
   modules: [
@@ -82,5 +82,104 @@ describe('ProjectCalendarStore', () => {
     expect(store.modules()[0].startDate).toBe('2026-01-10');
     expect(store.pendingSet().has('o1')).toBe(true);
     expect(store.approvalMessages()['o1']).toContain('Design');
+  });
+
+  it('loadEventDetail fetches, stores, and returns the full event detail including real taskIds', async () => {
+    const store = configure(
+      { getProjectCalendar: () => of(payload), getEvent: () => of({
+        id: 'e1', projectId: 'p1', name: 'R1', color: '#2563EB', status: 'active',
+        startDate: '2026-10-01', endDate: '2026-10-31', description: 'desc', objectiveIds: ['o1'],
+        taskIds: ['t1', 't2'], createdByName: 'Priya'
+      }) } as any,
+      { editObjective: () => of(new HttpResponse({ status: 200, body: payload.modules[0] })) }
+    );
+
+    const result = await store.loadEventDetail('e1');
+
+    expect(store.eventDetail()?.taskIds).toEqual(['t1', 't2']);
+    expect(result?.taskIds).toEqual(['t1', 't2']);
+  });
+
+  it('loadEventDetail returns null on failure, even if a previous successful fetch for the same id is still in state', async () => {
+    const getEvent = vi.fn(() => of({
+      id: 'e1', projectId: 'p1', name: 'R1', color: '#2563EB', status: 'active',
+      startDate: '2026-10-01', endDate: '2026-10-31', objectiveIds: [], taskIds: ['t1']
+    }));
+    const store = configure(
+      { getProjectCalendar: () => of(payload), getEvent } as any,
+      { editObjective: () => of(new HttpResponse({ status: 200, body: payload.modules[0] })) }
+    );
+    await store.loadEventDetail('e1'); // first, successful fetch
+    getEvent.mockReturnValue(throwError(() => new Error('network error')));
+
+    const result = await store.loadEventDetail('e1'); // refresh of the same id fails
+
+    expect(result).toBeNull();
+    expect(store.eventDetail()?.id).toBe('e1'); // stale detail stays displayed - caller must check the RETURN value, not re-read state, to know this fetch failed
+  });
+
+  it('loadEventTasks fetches and stores the milestone task list', async () => {
+    const task: CalendarEventTaskSummaryDto = {
+      id: 't1', shortId: 'T-1', title: 'Build thing', statusId: 's1', marksTaskComplete: false,
+      statusCategory: 'active', progressPercent: 40, objectiveId: 'o1', objectiveTitle: 'Module A'
+    };
+    const store = configure(
+      { getProjectCalendar: () => of(payload), getEventTasks: () => of([task]) } as any,
+      { editObjective: () => of(new HttpResponse({ status: 200, body: payload.modules[0] })) }
+    );
+
+    await store.loadEventTasks('e1');
+
+    expect(store.eventTasks().length).toBe(1);
+  });
+
+  it('loadEventActivity fetches and stores the activity log', async () => {
+    const store = configure(
+      { getProjectCalendar: () => of(payload), getEventActivity: () => of([{
+        id: 'a1', action: 'created', performedById: 'emp1', performedByName: 'Priya',
+        performedAt: '2026-10-01T00:00:00Z', detailsJson: '{}'
+      }]) } as any,
+      { editObjective: () => of(new HttpResponse({ status: 200, body: payload.modules[0] })) }
+    );
+
+    await store.loadEventActivity('e1');
+
+    expect(store.eventActivity().length).toBe(1);
+  });
+
+  it('opening a second milestone before the first one\'s tasks resolve discards the stale response', async () => {
+    const firstCall = new Subject<CalendarEventTaskSummaryDto[]>();
+    const secondCall = new Subject<CalendarEventTaskSummaryDto[]>();
+    const getEventTasks = vi.fn()
+      .mockReturnValueOnce(firstCall.asObservable())
+      .mockReturnValueOnce(secondCall.asObservable());
+    const store = configure(
+      { getProjectCalendar: () => of(payload), getEventTasks } as any,
+      { editObjective: () => of(new HttpResponse({ status: 200, body: payload.modules[0] })) }
+    );
+
+    const firstLoad = store.loadEventTasks('e1'); // starts, not yet resolved
+    const secondLoad = store.loadEventTasks('e2'); // starts before e1 resolves
+    secondCall.next([{ id: 't2', shortId: 'T-2', title: 'B', statusId: 's1', marksTaskComplete: false, statusCategory: 'active', progressPercent: 0, objectiveId: 'o2', objectiveTitle: 'M2' }]);
+    secondCall.complete();
+    await secondLoad;
+    firstCall.next([{ id: 't1', shortId: 'T-1', title: 'A', statusId: 's1', marksTaskComplete: false, statusCategory: 'active', progressPercent: 0, objectiveId: 'o1', objectiveTitle: 'M1' }]); // arrives late
+    firstCall.complete();
+    await firstLoad;
+
+    expect(store.eventTasks().map((t) => t.id)).toEqual(['t2']); // e1's late response never overwrote e2's
+  });
+
+  it('clearEventPanel resets detail, tasks and activity', () => {
+    const store = configure(
+      { getProjectCalendar: () => of(payload) } as any,
+      { editObjective: () => of(new HttpResponse({ status: 200, body: payload.modules[0] })) }
+    );
+
+    store.clearEventPanel();
+
+    expect(store.eventDetail()).toBeNull();
+    expect(store.eventTasks()).toEqual([]);
+    expect(store.eventActivity()).toEqual([]);
   });
 });
