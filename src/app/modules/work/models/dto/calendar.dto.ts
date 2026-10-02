@@ -87,6 +87,7 @@ export interface CreateCalendarEventRequestDto {
   endDate: string;
   objectiveIds: string[];
   taskIds: string[];
+  description?: string;
 }
 
 export interface UpdateCalendarEventRequestDto {
@@ -96,6 +97,7 @@ export interface UpdateCalendarEventRequestDto {
   endDate?: string;
   objectiveIds?: string[];
   taskIds?: string[];
+  description?: string;
 }
 
 /** Module-bar drag still edits the Objective's own dates - unchanged. */
