@@ -335,6 +335,46 @@ describe('ProjectCalendarComponent', () => {
     });
   });
 
+  describe('List/Timeline toggle', () => {
+    const link = (eventId: string) => ({ eventId, eventName: 'R1', eventColor: '#2563EB', eventStartDate: '2026-01-01', eventEndDate: '2026-01-05', membership: 'whole' as const, tasksInEventCount: 1, taskTotalCount: 1 });
+    const mod = (id: string, parent: string | null): ProjectCalendarModuleDto => ({
+      ...items[0], objectiveId: id, parentObjectiveId: parent, title: id, events: [link('e1')]
+    });
+
+    const switchToList = () => {
+      const view = TestBed.inject(WorkPageToolbarStore).template()!.createEmbeddedView(null);
+      view.detectChanges();
+      ((view.rootNodes[0] as HTMLElement).querySelector('[data-testid="view-toggle-list"]') as HTMLButtonElement).click();
+      fixture.detectChanges();
+    };
+
+    it('defaults to timeline view and shows the Gantt grid', () => {
+      expect((fixture.nativeElement.querySelector('[data-testid="project-calendar-timeline"]') as HTMLElement).hidden).toBe(false);
+      expect(fixture.nativeElement.querySelector('[data-testid="project-calendar-list"]')).toBeFalsy();
+    });
+
+    it('List mode shows a row per active milestone with its linked module count, counting collapsed modules too', () => {
+      // o2 is collapsed behind o1's chevron-less root; o1 root, o2 child, o3 grandchild -> all three link e1
+      store.modules.set([mod('o1', null), mod('o2', 'o1'), mod('o3', 'o2')]);
+      store.activeEvents.set([band]);
+      fixture.componentInstance.collapsedIds.set(new Set(['o2']));
+      fixture.detectChanges();
+      switchToList();
+      expect((fixture.nativeElement.querySelector('[data-testid="project-calendar-timeline"]') as HTMLElement).hidden).toBe(true);
+      expect(fixture.componentInstance.milestoneListRows()[0].moduleCount).toBe(3);
+      expect(fixture.nativeElement.querySelector('[data-testid="milestone-list-row"]').closest('tr').textContent).toContain('3');
+    });
+
+    it('clicking a List row opens the milestone panel, same as the legend entry', () => {
+      store.modules.set([mod('o1', null)]);
+      store.activeEvents.set([band]);
+      fixture.detectChanges();
+      switchToList();
+      (fixture.nativeElement.querySelector('[data-testid="milestone-list-row"]').closest('tr') as HTMLElement).click();
+      expect(fixture.componentInstance.panelEventId()).toBe('e1');
+    });
+  });
+
   describe('ruler tick spacing', () => {
     beforeEach(() => {
       store.modules.set(items); // '2026-01-01' -> '2026-01-05', 5 days

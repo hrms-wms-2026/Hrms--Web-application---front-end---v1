@@ -1,3 +1,4 @@
+import { NgTemplateOutlet } from '@angular/common';
 import { AfterViewInit, Component, ElementRef, OnDestroy, OnInit, TemplateRef, computed, inject, signal, viewChild } from '@angular/core';
 import { ActivatedRoute } from '@angular/router';
 import { CalendarEventLegendComponent } from '../../ui/calendar-event-legend/calendar-event-legend.component';
@@ -17,15 +18,21 @@ import { MilestoneTreeNode } from '../../models/milestone.model';
 import { MilestoneExplanationPanelComponent } from '../../ui/milestone-explanation-panel/milestone-explanation-panel.component';
 import { ProjectCalendarStore } from '../../state/project-calendar.store';
 import { ProjectMonitorStore } from '../../state/project-monitor.store';
+import { DataTableCellDirective, DataTableColumn, DataTableComponent } from '../../../../shared/ui/data-table/data-table.component';
+import { deriveMilestoneStatus, MilestoneStatus } from '../../utils/milestone-status.utils';
 import { addCalendarDays, calendarDayDifference, calendarRange, parseCalendarDate } from '../../utils/calendar-date.utils';
 import { buildCalendarTreeOrder } from '../../utils/calendar-tree.utils';
+
+const MILESTONE_STATUS_LABEL: Record<MilestoneStatus, string> = {
+  upcoming: 'Upcoming', on_track: 'On Track', at_risk: 'At Risk', completed: 'Completed'
+};
 
 interface MilestoneMarker { objectiveId: string; eventId: string; name: string; startDate: string; endDate: string; left: number; color: string; }
 
 @Component({
   selector: 'app-project-calendar',
   standalone: true,
-  imports: [ObjectiveTimelineBarComponent, ModuleTreeRowComponent, CalendarEventModalComponent, CalendarEventLegendComponent, MilestoneExplanationPanelComponent, ButtonComponent],
+  imports: [NgTemplateOutlet, ObjectiveTimelineBarComponent, ModuleTreeRowComponent, CalendarEventModalComponent, CalendarEventLegendComponent, MilestoneExplanationPanelComponent, DataTableComponent, DataTableCellDirective, ButtonComponent],
   template: `
     <ng-template #toolbarTpl>
       <div class="project-calendar__toolbar">
@@ -33,6 +40,10 @@ interface MilestoneMarker { objectiveId: string; eventId: string; name: string; 
           <button type="button" class="project-calendar__month-step" aria-label="Previous month" (click)="scrollMonth(-1)">‹</button>
           <span data-testid="calendar-month-label">{{ currentMonthLabel() }}</span>
           <button type="button" class="project-calendar__month-step" aria-label="Next month" (click)="scrollMonth(1)">›</button>
+        </div>
+        <div class="project-calendar__view-toggle" role="tablist" aria-label="View mode">
+          <button type="button" role="tab" data-testid="view-toggle-timeline" [attr.aria-selected]="viewMode() === 'timeline'" (click)="viewMode.set('timeline')">Timeline</button>
+          <button type="button" role="tab" data-testid="view-toggle-list" [attr.aria-selected]="viewMode() === 'list'" (click)="viewMode.set('list')">List</button>
         </div>
         <div class="project-calendar__zoom" data-testid="zoom-controls">
           <button type="button" class="project-calendar__zoom-step" aria-label="Zoom out" [disabled]="isAtMinZoom()" (click)="zoomOut()">
@@ -53,6 +64,26 @@ interface MilestoneMarker { objectiveId: string; eventId: string; name: string; 
       </div>
     </ng-template>
 
+    <ng-template #panelTpl>
+      @if (panelEventId(); as eventId) {
+        @if (store.eventDetail(); as detail) {
+          @if (detail.id === eventId) {
+            <app-milestone-explanation-panel
+              [event]="detail"
+              [modules]="store.modules()"
+              [tasks]="store.eventTasks()"
+              [activity]="store.eventActivity()"
+              [hasOpenAlert]="hasOpenAlertForEvent(eventId)"
+              (tabActivated)="onPanelTabActivated(eventId, $event)"
+              (editRequested)="openEditEvent($event)"
+              (closeRequested)="closeEvent($event)"
+              (dismissed)="closeMilestonePanel()"
+            />
+          }
+        }
+      }
+    </ng-template>
+
     <section class="project-calendar" data-testid="project-calendar">
 
       @if (store.error()) {
@@ -63,7 +94,7 @@ interface MilestoneMarker { objectiveId: string; eventId: string; name: string; 
       } @else if (!store.modules().length) {
         <div class="project-calendar__empty">No objectives are available for this project.</div>
       } @else {
-        <div class="project-calendar__layout" [class.project-calendar__layout--panel-open]="panelEventId()">
+        <div class="project-calendar__layout" data-testid="project-calendar-timeline" [hidden]="viewMode() !== 'timeline'" [class.project-calendar__layout--panel-open]="panelEventId()">
           <div class="project-calendar__timeline-scroll" #scrollContainer (scroll)="onTimelineScroll($event)">
             <div class="project-calendar__timeline" [style.minWidth.px]="timelineWidth() + LABEL_WIDTH">
               <div class="project-calendar__grid project-calendar__grid--header" [style.gridTemplateColumns]="LABEL_WIDTH + 'px ' + timelineWidth() + 'px'">
@@ -130,26 +161,31 @@ interface MilestoneMarker { objectiveId: string; eventId: string; name: string; 
             </div>
           </div>
           <div class="project-calendar__side">
-            @if (panelEventId(); as eventId) {
-              @if (store.eventDetail(); as detail) {
-                @if (detail.id === eventId) {
-                  <app-milestone-explanation-panel
-                    [event]="detail"
-                    [modules]="store.modules()"
-                    [tasks]="store.eventTasks()"
-                    [activity]="store.eventActivity()"
-                    [hasOpenAlert]="hasOpenAlertForEvent(eventId)"
-                    (tabActivated)="onPanelTabActivated(eventId, $event)"
-                    (editRequested)="openEditEvent($event)"
-                    (closeRequested)="closeEvent($event)"
-                    (dismissed)="closeMilestonePanel()"
-                  />
-                }
-              }
-            }
+            <ng-container *ngTemplateOutlet="panelTpl" />
             <app-calendar-event-legend [events]="store.activeEvents()" (select)="openMilestonePanel($event)" (edit)="openEditEvent($event)" (close)="closeEvent($event)" />
           </div>
         </div>
+        @if (viewMode() === 'list') {
+          <div class="project-calendar__list-layout" data-testid="project-calendar-list" [class.project-calendar__list-layout--panel-open]="panelEventId()">
+            <app-data-table
+              [columns]="milestoneListColumns"
+              [rows]="milestoneListRows()"
+              [trackBy]="trackMilestoneRow"
+              emptyMessage="No active milestones yet."
+              (rowClicked)="openMilestonePanel($event.eventId)"
+            >
+              <ng-template appDataTableCell="name" let-row>
+                <span data-testid="milestone-list-row" class="flex items-center gap-2">
+                  <span class="h-2 w-2 shrink-0 rounded-full" [style.background]="row.color"></span>{{ row.name }}
+                </span>
+              </ng-template>
+              <ng-template appDataTableCell="status" let-row>{{ row.status }}</ng-template>
+              <ng-template appDataTableCell="endDate" let-row>{{ row.endDate }}</ng-template>
+              <ng-template appDataTableCell="moduleCount" let-row>{{ row.moduleCount }}</ng-template>
+            </app-data-table>
+            <ng-container *ngTemplateOutlet="panelTpl" />
+          </div>
+        }
       }
     </section>
 
@@ -183,6 +219,12 @@ interface MilestoneMarker { objectiveId: string; eventId: string; name: string; 
     .project-calendar__empty { border: 1px dashed var(--color-border); border-radius: 11px; padding: 42px 20px; color: var(--color-text-secondary); font-size: 13px; text-align: center; }
     .project-calendar__layout { display: grid; min-width: 0; grid-template-columns: minmax(0, 1fr) 220px; align-items: start; gap: 14px; }
     .project-calendar__layout--panel-open { grid-template-columns: minmax(0, 1fr) 340px; }
+    .project-calendar__layout[hidden] { display: none; }
+    .project-calendar__list-layout { display: grid; min-width: 0; grid-template-columns: minmax(0, 1fr); align-items: start; gap: 14px; }
+    .project-calendar__list-layout--panel-open { grid-template-columns: minmax(0, 1fr) 340px; }
+    .project-calendar__view-toggle { display: flex; height: 30px; align-items: center; gap: 2px; border: 1px solid var(--color-border); border-radius: 8px; padding: 0 3px; background: var(--color-surface); box-sizing: border-box; }
+    .project-calendar__view-toggle button { height: 22px; border: 0; border-radius: 6px; padding: 0 9px; background: transparent; color: var(--color-text-secondary); font: inherit; font-size: 11px; font-weight: 600; cursor: pointer; }
+    .project-calendar__view-toggle button[aria-selected='true'] { background: var(--color-surface-secondary); color: var(--color-text-primary); }
     .project-calendar__side { display: flex; min-width: 0; flex-direction: column; gap: 14px; }
     .project-calendar__timeline-scroll { min-width: 0; overflow-x: auto; border: 1px solid var(--color-border); border-radius: 11px; background: var(--color-surface); }
     .project-calendar__timeline { position: relative; min-height: 100%; }
@@ -289,6 +331,37 @@ export class ProjectCalendarComponent implements OnInit, AfterViewInit, OnDestro
       }
     }
     return markers;
+  });
+  readonly viewMode = signal<'timeline' | 'list'>('timeline');
+  readonly milestoneListColumns: DataTableColumn[] = [
+    { key: 'name', label: 'Milestone', width: '40%' },
+    { key: 'status', label: 'Status' },
+    { key: 'endDate', label: 'Target Date' },
+    { key: 'moduleCount', label: 'Modules' }
+  ];
+  readonly trackMilestoneRow = (row: { eventId: string }): string => row.eventId;
+  // Counted from ALL modules (not rows()), so collapsing the Gantt tree never changes a milestone's count;
+  // at-risk is derived per event from the modules it is actually linked to.
+  readonly milestoneListRows = computed(() => {
+    const objectiveIdsByEvent = new Map<string, string[]>();
+    for (const module of this.store.modules()) {
+      for (const link of module.events ?? []) {
+        const list = objectiveIdsByEvent.get(link.eventId);
+        if (list) list.push(module.objectiveId); else objectiveIdsByEvent.set(link.eventId, [module.objectiveId]);
+      }
+    }
+    return this.store.activeEvents().map((band) => {
+      const linkedObjectiveIds = objectiveIdsByEvent.get(band.eventId) ?? [];
+      const hasOpenAlert = linkedObjectiveIds.some((id) => this.monitor.alertsFor(id).some((a) => !a.inAchievedModule));
+      return {
+        eventId: band.eventId,
+        name: band.name,
+        color: band.color,
+        status: MILESTONE_STATUS_LABEL[deriveMilestoneStatus({ status: 'active', startDate: band.startDate, endDate: band.endDate }, this.today, hasOpenAlert)],
+        endDate: band.endDate,
+        moduleCount: linkedObjectiveIds.length
+      };
+    });
   });
   readonly scrollLeft = signal(0);
   /** The label column scrolls inside the same container, so the day at the left edge of the date
