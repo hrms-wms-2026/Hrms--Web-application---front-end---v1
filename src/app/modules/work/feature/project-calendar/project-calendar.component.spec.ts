@@ -103,7 +103,7 @@ describe('ProjectCalendarComponent', () => {
     expect(fixture.nativeElement.querySelector('[data-testid="timeline-bar-o3"]')).toBeTruthy();
   });
 
-  it('colors each top-level module bar distinctly, shares that color with its own children, and gives the root a fixed summary color', () => {
+  it('gives the root a fixed summary color and every other bar the neutral gray default (no per-branch bar tint - coverage color now lives on fill segments)', () => {
     const treeItems: ProjectCalendarModuleDto[] = [
       { ...items[0] },
       { objectiveId: 'o2', projectId: 'p1', parentObjectiveId: 'o1', title: 'Module A',
@@ -123,9 +123,35 @@ describe('ProjectCalendarComponent', () => {
       (fixture.nativeElement.querySelector(`[data-testid="timeline-bar-${id}"]`) as HTMLElement).style.getPropertyValue('--bar-color');
 
     expect(colorOf('o1')).toBe('#1E293B'); // the fixed root/summary color
-    expect(colorOf('o2')).not.toBe(colorOf('o1'));
-    expect(colorOf('o4')).not.toBe(colorOf('o2')); // distinct top-level modules get distinct branch colors
-    expect(colorOf('o3')).toBe(colorOf('o2')); // a child inherits its top-level ancestor's branch color
+    expect(colorOf('o2')).toBe('#94A3B8');
+    expect(colorOf('o4')).toBe('#94A3B8');
+    expect(colorOf('o3')).toBe('#94A3B8');
+  });
+
+  it('shows no full-width milestone band overlay', () => {
+    const treeItems: ProjectCalendarModuleDto[] = [
+      { ...items[0], events: [{ eventId: 'e1', eventName: 'R1', eventColor: '#2563EB', eventStartDate: '2026-01-01', eventEndDate: '2026-01-05', membership: 'whole', tasksInEventCount: 1, taskTotalCount: 1 }] }
+    ];
+    store.modules.set(treeItems);
+    fixture.detectChanges();
+    expect(fixture.nativeElement.querySelector('.project-calendar__band')).toBeNull();
+  });
+
+  it('renders a diamond marker on a row linked to a milestone, at the link end date', () => {
+    const treeItems: ProjectCalendarModuleDto[] = [
+      { ...items[0], events: [{ eventId: 'e1', eventName: 'R1', eventColor: '#2563EB', eventStartDate: '2026-01-01', eventEndDate: '2026-01-05', membership: 'whole', tasksInEventCount: 1, taskTotalCount: 1 }] }
+    ];
+    store.modules.set(treeItems);
+    fixture.detectChanges();
+    const marker = fixture.nativeElement.querySelector('[data-testid="calendar-milestone-marker"]');
+    expect(marker).toBeTruthy();
+    expect(marker.title).toContain('R1');
+  });
+
+  it('rows with no event link render no diamond marker', () => {
+    store.modules.set(items);
+    fixture.detectChanges();
+    expect(fixture.nativeElement.querySelectorAll('[data-testid="calendar-milestone-marker"]').length).toBe(0);
   });
 
   describe('zoom - one continuous chart, no view-switching tabs', () => {

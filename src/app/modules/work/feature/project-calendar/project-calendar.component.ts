@@ -12,13 +12,15 @@ import {
   UpdateCalendarEventRequestDto
 } from '../../models/dto/calendar.dto';
 import { ProjectCalendarStore } from '../../state/project-calendar.store';
-import { addCalendarDays, calendarDayDifference, calendarRange, parseCalendarDate, rangeToPercent } from '../../utils/calendar-date.utils';
+import { addCalendarDays, calendarDayDifference, calendarRange, parseCalendarDate } from '../../utils/calendar-date.utils';
 import { buildCalendarTreeOrder } from '../../utils/calendar-tree.utils';
 
 // Auto-assigned per-branch bar colors, same spirit as the calendar's own per-event
 // colors (calendar-event-modal) - distinct, muted hues that read well with white bar
 // text, cycling if there are more top-level modules than swatches.
 const BRANCH_PALETTE = ['#2563EB', '#0D9488', '#C026D3', '#EA580C', '#4F46E5', '#059669', '#DB2777', '#0891B2'];
+
+interface MilestoneMarker { objectiveId: string; eventId: string; name: string; startDate: string; endDate: string; left: number; color: string; }
 
 @Component({
   selector: 'app-project-calendar',
@@ -67,23 +69,6 @@ const BRANCH_PALETTE = ['#2563EB', '#0D9488', '#C026D3', '#EA580C', '#4F46E5', '
                   }
                 </div>
               </div>
-              @if (bandRects().length) {
-                <div class="project-calendar__bands" [style.left.px]="LABEL_WIDTH" [style.width.px]="timelineWidth()">
-                  @for (band of bandRects(); track band.eventId) {
-                    <div
-                      class="project-calendar__band"
-                      data-testid="calendar-event-band"
-                      [style.left]="band.leftPct + '%'"
-                      [style.width]="band.widthPct + '%'"
-                      [style.backgroundColor]="band.tint"
-                      [style.borderColor]="band.color"
-                      [title]="band.name + '  ' + band.startDate + ' → ' + band.endDate"
-                    >
-                      <span class="project-calendar__band-label" [style.color]="band.color">{{ band.name }}</span>
-                    </div>
-                  }
-                </div>
-              }
               @for (row of rows(); track row.item.objectiveId) {
                 <div class="project-calendar__grid project-calendar__grid--row" [style.gridTemplateColumns]="LABEL_WIDTH + 'px ' + timelineWidth() + 'px'" [attr.data-testid]="'calendar-row-' + row.item.objectiveId">
                   <div class="project-calendar__objective">
@@ -131,10 +116,18 @@ const BRANCH_PALETTE = ['#2563EB', '#0D9488', '#C026D3', '#EA580C', '#4F46E5', '
                       [saving]="store.saving()"
                       [pendingApproval]="store.pendingSet().has(row.item.objectiveId)"
                       [approvalMessage]="store.approvalMessages()[row.item.objectiveId] || 'Needs approval before this date change can be applied.'"
-                      [branchColor]="branchColors().get(row.branchRootId) ?? null"
                       [isRoot]="row.depth === 0"
                       (dateChange)="saveDates($event)"
                     />
+                    @for (marker of markersForRow(row.item.objectiveId); track marker.eventId) {
+                      <span
+                        class="project-calendar__milestone-marker"
+                        data-testid="calendar-milestone-marker"
+                        [style.left.px]="marker.left"
+                        [style.background]="marker.color"
+                        [title]="marker.name + '  ' + marker.startDate + ' → ' + marker.endDate"
+                      ></span>
+                    }
                   </div>
                 </div>
               }
@@ -178,9 +171,7 @@ const BRANCH_PALETTE = ['#2563EB', '#0D9488', '#C026D3', '#EA580C', '#4F46E5', '
     .project-calendar__layout { display: grid; min-width: 0; grid-template-columns: minmax(0, 1fr) 220px; align-items: start; gap: 14px; }
     .project-calendar__timeline-scroll { min-width: 0; overflow-x: auto; border: 1px solid var(--color-border); border-radius: 11px; background: var(--color-surface); }
     .project-calendar__timeline { position: relative; min-height: 100%; }
-    .project-calendar__bands { position: absolute; top: 54px; bottom: 0; z-index: 1; pointer-events: none; }
-    .project-calendar__band { position: absolute; top: 0; bottom: 0; border-left: 1.5px solid; border-right: 1.5px solid; border-radius: 4px; }
-    .project-calendar__band-label { position: absolute; top: 2px; left: 6px; font-size: 10px; font-weight: 600; white-space: nowrap; }
+    .project-calendar__milestone-marker { position: absolute; top: 50%; z-index: 4; width: 9px; height: 9px; transform: translate(-50%, -50%) rotate(45deg); border-radius: 2px; box-shadow: 0 0 0 1.5px var(--color-surface); }
     .project-calendar__today-line { position: absolute; top: 0; bottom: 0; width: 2px; background: var(--color-danger); z-index: 5; pointer-events: none; }
     .project-calendar__today-label { position: absolute; top: -17px; left: 50%; transform: translateX(-50%); border-radius: 4px; background: var(--color-danger); padding: 1px 5px; color: #fff; font-size: 9px; font-weight: 700; letter-spacing: .03em; text-transform: uppercase; white-space: nowrap; }
     .project-calendar__grid { display: grid; }
@@ -289,22 +280,22 @@ export class ProjectCalendarComponent implements OnInit, AfterViewInit, OnDestro
     }
     return map;
   });
-  readonly bandRects = computed(() => {
-    const windowStart = this.timelineStart();
-    const windowEnd = this.timelineEnd();
-    return this.store.bands().map((band) => {
-      const { leftPct, widthPct } = rangeToPercent(band.startDate, band.endDate, windowStart, windowEnd);
-      return {
-        eventId: band.eventId,
-        name: band.name,
-        color: band.color,
-        tint: `color-mix(in srgb, ${band.color} 12%, transparent)`,
-        startDate: band.startDate,
-        endDate: band.endDate,
-        leftPct,
-        widthPct
-      };
-    });
+  readonly milestoneMarkers = computed<MilestoneMarker[]>(() => {
+    const markers: MilestoneMarker[] = [];
+    for (const row of this.rows()) {
+      for (const link of row.item.events ?? []) {
+        markers.push({
+          objectiveId: row.item.objectiveId,
+          eventId: link.eventId,
+          name: link.eventName,
+          startDate: link.eventStartDate,
+          endDate: link.eventEndDate,
+          left: this.dayIndex(link.eventEndDate) * this.dayWidth(),
+          color: link.eventColor
+        });
+      }
+    }
+    return markers;
   });
   readonly todayVisible = computed(() => this.today >= this.timelineStart() && this.today <= this.timelineEnd());
   readonly todayOffset = computed(() => this.dayIndex(this.today) * this.dayWidth());
@@ -365,6 +356,10 @@ export class ProjectCalendarComponent implements OnInit, AfterViewInit, OnDestro
   gridBackground(): string {
     const width = this.dayWidth();
     return `repeating-linear-gradient(to right, transparent 0, transparent ${width - 1}px, var(--color-border) ${width - 1}px, var(--color-border) ${width}px)`;
+  }
+
+  markersForRow(objectiveId: string): MilestoneMarker[] {
+    return this.milestoneMarkers().filter((m) => m.objectiveId === objectiveId);
   }
 
   isCollapsed(objectiveId: string): boolean {

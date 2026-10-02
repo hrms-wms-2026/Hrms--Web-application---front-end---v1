@@ -106,8 +106,6 @@ export class ObjectiveTimelineBarComponent {
   readonly saving = input(false);
   readonly pendingApproval = input(false);
   readonly approvalMessage = input('Needs approval before this date change can be applied.');
-  /** The color shared by this row's whole branch (its top-level module), used when no event overrides it. */
-  readonly branchColor = input<string | null>(null);
   /** The single project-root row gets a fixed "summary bar" color instead of a branch color. */
   readonly isRoot = input(false);
   readonly dateChange = output<CalendarDateChange>();
