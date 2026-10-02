@@ -50,27 +50,24 @@ const BASELINE_PALETTES: Record<string, KpiPalette> = {
   standalone: true,
   imports: [DeltaBadgeComponent],
   template: `
-    <div
-      class="grid rounded-2xl border border-slate-200/80 bg-white shadow-xs sm:grid-cols-2 xl:grid-cols-4"
-      data-testid="kpi-strip"
-    >
+    <div class="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-4" data-testid="kpi-strip">
       @for (card of cards(); track card.key; let i = $index) {
         @let tone = palette(card);
         <div
           data-testid="kpi-card"
-          class="kpi-cell flex items-center gap-3 rounded-2xl px-4 py-3 transition-colors"
+          class="kpi-card flex items-center gap-3 rounded-xl border border-slate-200/80 bg-white px-3.5 py-3 shadow-xs transition-colors"
           [attr.role]="card.tone === 'baseline' ? null : 'button'"
           [attr.tabindex]="card.tone === 'baseline' ? null : 0"
-          [class.kpi-cell--clickable]="card.tone !== 'baseline'"
+          [class.kpi-card--clickable]="card.tone !== 'baseline'"
           (click)="select(card)"
           (keydown.enter)="select(card)"
         >
           <span
             data-testid="kpi-icon"
-            [class]="'flex h-10 w-10 shrink-0 items-center justify-center rounded-xl ' + tone.tile"
+            [class]="'flex h-9 w-9 shrink-0 items-center justify-center rounded-full ' + tone.tile"
             aria-hidden="true"
           >
-            <svg class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <svg class="h-[1.125rem] w-[1.125rem]" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
               @switch (icon(card)) {
                 @case ('check') { <circle cx="12" cy="12" r="9"></circle><path d="m8 12 3 3 5-6"></path> }
                 @case ('alert') { <circle cx="12" cy="12" r="9"></circle><path d="M12 7.5v5.5M12 16.5h.01"></path> }
@@ -85,34 +82,25 @@ const BASELINE_PALETTES: Record<string, KpiPalette> = {
           </span>
 
           <div class="min-w-0 flex-1">
-            <div class="flex items-baseline gap-1.5">
-              <span [class]="'text-xl font-bold leading-none tracking-tight ' + tone.value" data-testid="kpi-value">
+            <p class="truncate text-[11px] font-medium text-slate-500">{{ card.label }}</p>
+            <div class="flex items-baseline gap-1">
+              <span [class]="'text-sm font-bold ' + tone.value" data-testid="kpi-value">
                 {{ card.value }}{{ card.suffix }}
               </span>
               @if (card.denominator !== null) {
-                <span class="text-sm font-medium text-slate-400">/{{ card.denominator }}</span>
+                <span class="text-xs font-medium text-slate-400">/{{ card.denominator }}</span>
               }
               <app-delta-badge class="ml-auto" [delta]="deltas()[i] ?? null" [against]="against()" />
             </div>
-            <p class="mt-1 truncate text-xs font-medium text-slate-700">{{ card.label }}</p>
-            <p [class]="'truncate text-xs ' + tone.detail" [title]="card.detail">{{ card.detail }}</p>
+            <p [class]="'truncate text-[11px] ' + tone.detail" [title]="card.detail">{{ card.detail }}</p>
           </div>
         </div>
       }
     </div>
   `,
-  // Hairline dividers between cells: vertical on wide screens, horizontal when the strip stacks.
   styles: [`
-    .kpi-cell { position: relative; }
-    .kpi-cell--clickable { cursor: pointer; }
-    .kpi-cell--clickable:hover { background: rgb(248 250 252); }
-    .kpi-cell + .kpi-cell::before {
-      content: ''; position: absolute; background: rgb(226 232 240);
-      left: 1rem; right: 1rem; top: 0; height: 1px;
-    }
-    @media (min-width: 1280px) {
-      .kpi-cell + .kpi-cell::before { left: 0; right: auto; top: 0.875rem; bottom: 0.875rem; width: 1px; height: auto; }
-    }
+    .kpi-card--clickable { cursor: pointer; }
+    .kpi-card--clickable:hover { background: rgb(248 250 252); border-color: rgb(203 213 225); }
   `],
   changeDetection: ChangeDetectionStrategy.OnPush
 })

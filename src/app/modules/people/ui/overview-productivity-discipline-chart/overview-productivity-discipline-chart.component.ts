@@ -16,7 +16,8 @@ export interface WeeklyBarGroup {
   readonly label: string;
   readonly periodLabel: string;
   readonly disciplinePercent: number | null;
-  readonly productivityPercent: number;
+  /** Null when no tasks fall in the period: there is no delivery to measure, so no bar - never 100%. */
+  readonly productivityPercent: number | null;
   readonly disciplineDetails: string;
   readonly productivityDetails: string;
 }
@@ -38,7 +39,8 @@ function buildChartData(raw: ChartSources | null) {
   const attendedDays = att?.present ?? 0;
   const lateClockIns = disc?.lateClockIns ?? att?.late ?? 0;
   const onTimeDays = Math.max(0, attendedDays - lateClockIns);
-  const punctualityRate = attendedDays > 0 ? Math.min(100, Math.round((onTimeDays / attendedDays) * 100)) : 100;
+  // Nothing attended means nothing to judge: no rate rather than a made-up 100%.
+  const punctualityRate = attendedDays > 0 ? Math.min(100, Math.round((onTimeDays / attendedDays) * 100)) : null;
   const tasksAssigned = wrk?.assigned ?? del?.tasksAssigned ?? 0;
   const tasksCompleted = wrk?.completed ?? del?.tasksCompleted ?? 0;
   const completionRate = wrk?.completionRatePercent ?? (tasksAssigned > 0 ? Math.round((tasksCompleted / tasksAssigned) * 100) : 0);
@@ -70,11 +72,13 @@ function buildChartData(raw: ChartSources | null) {
       label: range.label,
       periodLabel: range.periodLabel,
       disciplinePercent,
-      productivityPercent: tasksAssigned > 0 ? completionRate : 100,
+      productivityPercent: tasksAssigned > 0 ? completionRate : null,
       disciplineDetails: eligibleDays.length > 0
         ? `${attendedInWeek}/${eligibleDays.length} scheduled days attended`
         : 'No scheduled employment days',
-      productivityDetails: `${tasksCompleted}/${tasksAssigned} tasks completed (${onTimeDeliveryRate}% on-time)`
+      productivityDetails: tasksAssigned > 0
+        ? `${tasksCompleted}/${tasksAssigned} tasks completed (${onTimeDeliveryRate}% on-time)`
+        : 'No tasks in this period'
     };
   });
 
@@ -86,7 +90,13 @@ function buildChartData(raw: ChartSources | null) {
     completionRate,
     onTimeDeliveryRate,
     weeklyGroups,
-    summaryLine: `${attendedDays} days attended (${punctualityRate}% punctuality) · ${tasksCompleted} of ${tasksAssigned} tasks completed (${completionRate}% delivery rate)`
+    hasTasks: tasksAssigned > 0,
+    summaryLine:
+      `${attendedDays} days attended` + (punctualityRate === null ? '' : ` (${punctualityRate}% punctuality)`) +
+      ' · ' +
+      (tasksAssigned > 0
+        ? `${tasksCompleted} of ${tasksAssigned} tasks completed (${completionRate}% delivery rate)`
+        : 'no tasks in this period')
   };
 }
 
@@ -100,8 +110,8 @@ function buildChartData(raw: ChartSources | null) {
     <div class="sr-only">
       <span>Productivity & Attendance Discipline</span>
       @if (data(); as d) {
-        <span data-testid="discipline-score">{{ d.punctualityRate }}%</span>
-        <span data-testid="productivity-score">{{ d.completionRate }}%</span>
+        <span data-testid="discipline-score">{{ d.punctualityRate === null ? 'n/a' : d.punctualityRate + '%' }}</span>
+        <span data-testid="productivity-score">{{ d.hasTasks ? d.completionRate + '%' : 'n/a' }}</span>
         <span data-testid="correlation-insight">{{ d.summaryLine }}</span>
       }
     </div>
@@ -168,6 +178,13 @@ function buildChartData(raw: ChartSources | null) {
               <!-- 80% Target Reference Line -->
               <div class="pointer-events-none absolute left-0 right-0 top-[20%] z-20 border-t border-dashed border-slate-400"></div>
 
+              @if (!d.hasTasks) {
+                <!-- Inside the plot (not the legend) so the header stays on one line. -->
+                <p data-testid="productivity-no-tasks-note" class="pointer-events-none absolute inset-x-0 top-[38%] z-30 text-center text-xs text-slate-400">
+                  No tasks this period, so there is no work productivity to show.
+                </p>
+              }
+
               <!-- Bars Container -->
               <div class="relative z-10 flex h-full items-end justify-around border-b border-slate-200">
               @if (compareData()) {
@@ -199,13 +216,17 @@ function buildChartData(raw: ChartSources | null) {
                       ></div>
                     </div>
 
-                    <!-- Productivity Bar (Blue) -->
-                    <div class="w-6 sm:w-7 flex flex-col items-center justify-end h-full">
-                      <div
-                        class="w-full rounded-t-sm bg-blue-600 transition-all duration-300 hover:brightness-110"
-                        [style.height.%]="group.productivityPercent"
-                        [style.minHeight.px]="group.productivityPercent > 0 ? 6 : 0"
-                      ></div>
+                    <!-- Productivity Bar (Blue); no tasks = an empty dashed slot, not a full bar -->
+                    <div class="w-6 sm:w-7 flex flex-col items-center justify-end h-full" [title]="group.productivityDetails">
+                      @if (group.productivityPercent !== null) {
+                        <div
+                          class="w-full rounded-t-sm bg-blue-600 transition-all duration-300 hover:brightness-110"
+                          [style.height.%]="group.productivityPercent"
+                          [style.minHeight.px]="group.productivityPercent > 0 ? 6 : 0"
+                        ></div>
+                      } @else {
+                        <div data-testid="productivity-no-tasks" class="h-2 w-full rounded-t-sm border border-dashed border-slate-300"></div>
+                      }
                     </div>
                   </div>
                 </div>
@@ -289,10 +310,12 @@ export class OverviewProductivityDisciplineChartComponent {
   get compareSvgPoints(): { x: number; y: number }[] {
     const data = this.compareData();
     if (!data) return [];
-    return data.weeklyGroups.map((group, index) => ({
-      x: index * 25 + 16.5,
-      y: 100 - Math.max(0, Math.min(100, group.productivityPercent))
-    }));
+    // Weeks without tasks have no delivery value, so they are left off the comparison line.
+    return data.weeklyGroups.flatMap((group, index) =>
+      group.productivityPercent === null
+        ? []
+        : [{ x: index * 25 + 16.5, y: 100 - Math.max(0, Math.min(100, group.productivityPercent)) }]
+    );
   }
 
   get compareSvgPolylinePoints(): string {
