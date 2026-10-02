@@ -178,6 +178,79 @@ describe('PeopleApiService', () => {
     req.flush({});
   });
 
+  it('getOverviewUpcoming sends days and limit, defaulting to 14 and 10', () => {
+    service.getOverviewUpcoming('emp-1').subscribe();
+    const byDefault = httpMock.expectOne(overviewUrl('upcoming'));
+    expect(byDefault.request.method).toBe('GET');
+    expect(byDefault.request.params.get('days')).toBe('14');
+    expect(byDefault.request.params.get('limit')).toBe('10');
+    byDefault.flush({});
+
+    service.getOverviewUpcoming('emp-1', 30, 3).subscribe();
+    const custom = httpMock.expectOne(overviewUrl('upcoming'));
+    expect(custom.request.params.get('days')).toBe('30');
+    expect(custom.request.params.get('limit')).toBe('3');
+    custom.flush({});
+  });
+
+  it('getOverviewChecklists GETs overview/checklists with no parameters', () => {
+    service.getOverviewChecklists('emp-1').subscribe();
+
+    const req = httpMock.expectOne(overviewUrl('checklists'));
+    expect(req.request.params.keys()).toEqual([]);
+    req.flush({});
+  });
+
+  it('getOverviewHistory sends limit, defaulting to 10', () => {
+    service.getOverviewHistory('emp-1').subscribe();
+    const byDefault = httpMock.expectOne(overviewUrl('history'));
+    expect(byDefault.request.params.get('limit')).toBe('10');
+    byDefault.flush({});
+
+    service.getOverviewHistory('emp-1', 25).subscribe();
+    const custom = httpMock.expectOne(overviewUrl('history'));
+    expect(custom.request.params.get('limit')).toBe('25');
+    custom.flush({});
+  });
+
+  it('getOverviewRecentActivity sends limit, and before only when given', () => {
+    service.getOverviewRecentActivity('emp-1').subscribe();
+    const first = httpMock.expectOne(overviewUrl('recent-activity'));
+    expect(first.request.params.get('limit')).toBe('20');
+    expect(first.request.params.has('before')).toBe(false);
+    first.flush({});
+
+    service.getOverviewRecentActivity('emp-1', '2026-09-20T00:00:00+00:00', 5).subscribe();
+    const older = httpMock.expectOne(overviewUrl('recent-activity'));
+    expect(older.request.params.get('before')).toBe('2026-09-20T00:00:00+00:00');
+    // A literal '+' would reach ASP.NET as a space; the cursor's offset must be percent-encoded.
+    expect(older.request.urlWithParams).toContain('before=2026-09-20T00:00:00%2B00:00');
+    expect(older.request.params.get('limit')).toBe('5');
+    older.flush({});
+
+    service.getOverviewRecentActivity('emp-1', null).subscribe();
+    expect(httpMock.expectOne(overviewUrl('recent-activity')).request.params.has('before')).toBe(false);
+  });
+
+  it('getOverviewSignals GETs /employees/{id}/overview/signals with the period', () => {
+    service.getOverviewSignals('emp-1', '2026-09-01', '2026-09-30').subscribe();
+
+    const req = httpMock.expectOne((r) => r.url.endsWith('/employees/emp-1/overview/signals'));
+    expect(req.request.params.get('from')).toBe('2026-09-01');
+    expect(req.request.params.get('to')).toBe('2026-09-30');
+    req.flush({ from: '2026-09-01', to: '2026-09-30', signals: [] });
+  });
+
+  it('getOverviewSignalItems GETs /employees/{id}/overview/signals/{key}/items with the period', () => {
+    service.getOverviewSignalItems('emp-1', 'over_break', '2026-09-01', '2026-09-30').subscribe();
+
+    const req = httpMock.expectOne((r) => r.url.endsWith('/employees/emp-1/overview/signals/over_break/items'));
+    expect(req.request.method).toBe('GET');
+    expect(req.request.params.get('from')).toBe('2026-09-01');
+    expect(req.request.params.get('to')).toBe('2026-09-30');
+    req.flush({ key: 'over_break', total: 0, timezone: null, items: [] });
+  });
+
   it('fetches work modes from /work-modes for a legal entity', () => {
     service.getWorkModes('le-1').subscribe((modes) => {
       expect(modes.length).toBe(1);

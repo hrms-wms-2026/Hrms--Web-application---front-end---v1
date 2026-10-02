@@ -1,4 +1,3 @@
-import { DatePipe } from '@angular/common';
 import { ChangeDetectionStrategy, Component, computed, inject, signal } from '@angular/core';
 import { ActivatedRoute, Router } from '@angular/router';
 import { toSafeErrorMessage } from '../../../../core/services/error-handler.service';
@@ -10,17 +9,22 @@ import { ErrorStateComponent } from '../../../../shared/ui/error-state/error-sta
 import { LoaderComponent } from '../../../../shared/ui/loader/loader.component';
 import { BreadcrumbHeaderComponent } from '../../../../shared/ui/breadcrumb-header/breadcrumb-header.component';
 import { PopoverComponent } from '../../../../shared/ui/popover/popover.component';
+import { AvatarComponent } from '../../../../shared/ui/avatar/avatar.component';
+import { EmployeeDirectoryStore } from '../../../work/state/employee-directory.store';
 import { PeopleApiService } from '../../data-access/people-api.service';
 import { EmployeeDetailResponse, UpdateEmployeeJobDetailsRequest } from '../../models/employee.model';
 import { ChangePositionModalComponent } from '../../ui/change-position-modal/change-position-modal.component';
 import { PositionHistoryEntryResponse } from '../../models/position-history.model';
+import { EmployeePeriodStore } from '../../state/employee-period.store';
 import { OffboardingWizardStore } from '../../state/offboarding-wizard.store';
+import { EmployeePeriodControlsComponent } from '../../ui/employee-period-controls/employee-period-controls.component';
 import {
   attendanceWarningLabel,
   attendanceAttentionLabel,
   attendanceStatusLabel,
   attendanceSeverityClass,
-  breakOverageLabel
+  breakOverageLabel,
+  formatTenure
 } from '../../utils/employee-view.utils';
 import { EmployeeEmploymentTabComponent } from './employment-tab.component';
 import { EmployeePersonalTabComponent } from './personal-tab.component';
@@ -29,18 +33,18 @@ import { EmployeeOverviewTabComponent } from './overview-tab.component';
 type DetailTab = 'overview' | 'employment' | 'personal';
 
 /**
- * Employee detail page shell backed by GET /api/v1/employees/{id}/detail: header (identity, key
- * facts, Transfer/Promote/Offboarding actions, resend-invitation), today's attendance strip, and
+ * Employee detail page shell backed by GET /api/v1/employees/{id}/detail: header (identity,
+ * Transfer/Promote/Offboarding actions, resend-invitation), today's attendance strip, and
  * three tabs - Overview (per-widget attendance/discipline/time-off), Employment (job details,
- * Work Network, history) and Personal
+ * Work Network, job journey; mounted on first visit) and Personal
  * (personal info, emergency contacts, payroll when the server includes it).
  */
 @Component({
   selector: 'app-employee-detail',
   standalone: true,
   imports: [
-    DatePipe,
     BreadcrumbHeaderComponent,
+    AvatarComponent,
     ButtonComponent,
     ErrorStateComponent,
     LoaderComponent,
@@ -48,8 +52,11 @@ type DetailTab = 'overview' | 'employment' | 'personal';
     PopoverComponent,
     EmployeeEmploymentTabComponent,
     EmployeePersonalTabComponent,
-    EmployeeOverviewTabComponent
+    EmployeeOverviewTabComponent,
+    EmployeePeriodControlsComponent
   ],
+  // The Overview month lives here so its controls can sit in the profile header beside the tabs.
+  providers: [EmployeePeriodStore],
   template: `
     @if (loading()) {
       <app-loader label="Loading employee…" />
@@ -65,52 +72,92 @@ type DetailTab = 'overview' | 'employment' | 'personal';
         />
       </header>
 
-      <!-- Header card: identity, key facts, actions -->
-      <div class="rounded-2xl border border-[var(--color-border)] bg-[var(--color-surface)] p-6 mb-4">
+      <!-- Header: identity, live attendance status, actions -->
+      <div class="rounded-2xl bg-[var(--color-surface)] px-6 pt-6 pb-3" data-testid="employee-profile-header">
         <div class="flex flex-col xl:flex-row xl:items-start justify-between gap-6">
-          <div class="flex items-center gap-5 min-w-0">
-            <div class="relative flex-shrink-0">
-              <div class="w-16 h-16 rounded-full bg-blue-100 text-blue-700 flex items-center justify-center font-bold text-xl shadow-inner border border-blue-200">
-                {{ getInitials(employee.personalInformation.firstName, employee.personalInformation.lastName) }}
+          
+          <!-- Identity and live attendance status -->
+          <div class="min-w-0" data-testid="employee-profile-content">
+            <div class="flex min-w-0 items-start gap-4 sm:gap-5" data-testid="employee-identity">
+              <div class="relative flex-shrink-0">
+                <app-avatar
+                  class="employee-detail-avatar"
+                  data-testid="employee-avatar"
+                  [avatarUrl]="employeeAvatarUrl()"
+                  [userName]="employee.personalInformation.firstName + ' ' + employee.personalInformation.lastName"
+                  [email]="employee.personalInformation.email"
+                  size="xl"
+                  shape="circle"
+                />
+                <span
+                  class="absolute bottom-0 right-0 h-5 w-5 rounded-full border-2 border-white"
+                  [class.bg-green-500]="employee.jobInformation.status.toLowerCase() === 'active'"
+                  [class.bg-red-500]="employee.jobInformation.status.toLowerCase() !== 'active'"
+                ></span>
               </div>
-              <span class="absolute bottom-0 right-0 w-4 h-4 rounded-full border-2 border-white"
-                    [class.bg-green-500]="employee.jobInformation.status.toLowerCase() === 'active'"
-                    [class.bg-red-500]="employee.jobInformation.status.toLowerCase() === 'inactive'"></span>
-            </div>
 
-            <div class="min-w-0">
-              <div class="flex items-center gap-3 flex-wrap">
-                <h1 class="text-2xl font-bold text-[var(--color-text-primary)]">
-                  {{ employee.personalInformation.firstName }} {{ employee.personalInformation.lastName }}
-                </h1>
-                <span class="inline-flex items-center font-mono text-xs font-semibold px-2.5 py-0.5 rounded-full bg-[var(--color-surface-secondary)] text-[var(--color-text-secondary)] border border-[var(--color-border)]">
-                  {{ employee.jobInformation.employeeNumber }}
-                </span>
+              <div class="min-w-0">
+                <div class="flex flex-wrap items-center gap-3" data-testid="employee-primary-row">
+                  <div class="min-w-0" data-testid="employee-primary-details">
+                    <h1
+                      class="text-2xl font-bold text-[var(--color-text-primary)]"
+                      data-testid="employee-name"
+                    >
+                      {{ employee.personalInformation.firstName }} {{ employee.personalInformation.lastName }}
+                    </h1>
+                  </div>
+
+                  @if (employee.attendanceSummary) {
+                    <div
+                      class="inline-flex max-w-full flex-shrink-0 items-center gap-2 rounded-xl px-2.5 py-1"
+                      [class]="todayStatusClass(employee)"
+                      data-testid="employee-attendance-status"
+                    >
+                      <span class="h-2 w-2 flex-shrink-0 rounded-full" [class]="todayStatusDotClass(employee)"></span>
+                      <div class="min-w-0">
+                        <div class="flex flex-wrap items-center gap-x-2 gap-y-0.5 text-sm">
+                        @if (employee.attendanceSummary.showNotClockedInWarning && attendanceWarningLabel(employee); as warningLabel) {
+                            <span class="font-semibold">{{ warningLabel }}</span>
+                        } @else {
+                          <span class="font-semibold">{{ attendanceStatusLabel(employee) || 'Not specified' }}</span>
+                          @if (attendanceAttentionLabel(employee); as attentionLabel) {
+                            <span class="text-xs" [class]="severityBadgeClass(employee)">{{ attentionLabel }}</span>
+                          }
+                        }
+                        @if (breakOverageLabel(employee); as breakLabel) {
+                            <span class="font-medium">{{ breakLabel }}</span>
+                        }
+                        </div>
+                      </div>
+                    </div>
+                  }
+                </div>
+
+                <p
+                  class="mt-1 break-all text-sm text-[var(--color-text-secondary)]"
+                  data-testid="employee-email"
+                >
+                  {{ employee.personalInformation.email }}
+                </p>
+
+                <div
+                  class="mt-3 flex flex-wrap items-center gap-x-2 gap-y-1 text-sm"
+                  data-testid="employee-role-context"
+                >
+                  <span class="font-semibold text-[var(--color-text-primary)]">
+                    {{ employee.jobInformation.positionName || 'Unassigned Position' }}
+                  </span>
+                  <span class="h-1 w-1 rounded-full bg-[var(--color-text-secondary)] opacity-60" aria-hidden="true"></span>
+                  <span class="text-[var(--color-text-secondary)]">
+                    {{ employee.jobInformation.departmentName || 'No department' }}
+                  </span>
+                </div>
               </div>
-              <p class="text-base font-medium text-[var(--color-text-primary)] mt-1">
-                {{ employee.jobInformation.positionName || 'Unassigned Position' }}
-              </p>
-              <p class="text-sm text-[var(--color-text-secondary)] mt-0.5 flex items-center gap-2 flex-wrap">
-                <span>{{ employee.jobInformation.departmentName || 'No department' }}</span>
-                <span>•</span>
-                <span>{{ employee.jobInformation.legalEntityName || 'Company' }}</span>
-              </p>
-              <p class="text-sm text-[var(--color-text-secondary)] mt-0.5">{{ employee.personalInformation.email }}</p>
             </div>
           </div>
 
-          <dl class="grid grid-cols-[auto_1fr] gap-x-6 gap-y-2 text-sm xl:mx-6" data-testid="employee-key-facts">
-            <dt class="text-[var(--color-text-secondary)]">Reporting Manager</dt>
-            <dd class="font-medium text-[var(--color-text-primary)]">{{ employee.jobInformation.reportingManagerName || 'Unassigned' }}</dd>
-            <dt class="text-[var(--color-text-secondary)]">Employment Type</dt>
-            <dd class="font-medium text-[var(--color-text-primary)]">{{ employee.jobInformation.employmentTypeLabel }}</dd>
-            <dt class="text-[var(--color-text-secondary)]">Work Mode</dt>
-            <dd class="font-medium text-[var(--color-text-primary)]">{{ employee.jobInformation.workModeLabel || '—' }}</dd>
-            <dt class="text-[var(--color-text-secondary)]">Hire Date</dt>
-            <dd class="font-medium text-[var(--color-text-primary)]">{{ employee.jobInformation.hireDate | date: 'dd MMM yyyy' }}</dd>
-          </dl>
-
-          <div class="flex items-center gap-3 xl:self-start">
+          <!-- Actions -->
+          <div class="flex items-center gap-2 xl:self-start">
             @if ((canChangePosition() || canOffboard()) && !isOwnRecord() && employee.jobInformation.legalEntityId && !isReadOnly() && employee.invitationStatus !== 'pending' && employee.invitationStatus !== 'expired') {
               <app-popover [open]="changePositionMenuOpen()" ariaLabel="Change position actions" align="right" (closed)="changePositionMenuOpen.set(false)">
                 <app-button popover-trigger data-testid="change-position-trigger" (pressed)="changePositionMenuOpen.set(!changePositionMenuOpen())">
@@ -128,6 +175,20 @@ type DetailTab = 'overview' | 'employment' | 'personal';
                   }
                 </div>
               </app-popover>
+
+              <!-- Overflow Menu Button (⋮) -->
+              <button
+                type="button"
+                class="p-2 rounded-lg border border-[var(--color-border)] hover:bg-[var(--color-surface-secondary)] text-[var(--color-text-secondary)] hover:text-[var(--color-text-primary)] transition-colors cursor-pointer"
+                title="More actions"
+                (click)="changePositionMenuOpen.set(!changePositionMenuOpen())"
+              >
+                <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                  <circle cx="12" cy="12" r="1"></circle>
+                  <circle cx="12" cy="5" r="1"></circle>
+                  <circle cx="12" cy="19" r="1"></circle>
+                </svg>
+              </button>
             }
             @if (employee.invitationStatus === 'expired') {
               <app-button variant="secondary" [loading]="resending()" [disabled]="resending()" (pressed)="resendInvitation(employee.id)">
@@ -138,32 +199,8 @@ type DetailTab = 'overview' | 'employment' | 'personal';
         </div>
       </div>
 
-      @if (employee.attendanceSummary) {
-        <div class="rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] p-4 mb-4">
-          <span class="text-xs font-medium text-[var(--color-text-secondary)] block mb-1">Attendance today</span>
-          @if (employee.attendanceSummary.showNotClockedInWarning && attendanceWarningLabel(employee); as warningLabel) {
-            <span class="inline-flex items-center gap-1.5 text-sm font-semibold text-red-600">
-              <span class="w-2 h-2 rounded-full bg-red-500"></span>
-              {{ warningLabel }}
-            </span>
-          } @else {
-            <span class="text-sm font-semibold text-[var(--color-text-primary)] block truncate">
-              {{ attendanceStatusLabel(employee) || 'Not specified' }}
-            </span>
-            @if (attendanceAttentionLabel(employee); as attentionLabel) {
-              <span class="mt-1 inline-block text-xs font-medium px-2 py-0.5 rounded-full" [class]="severityBadgeClass(employee)">
-                {{ attentionLabel }}
-              </span>
-            }
-          }
-          @if (breakOverageLabel(employee); as breakLabel) {
-            <span class="mt-1 block text-xs font-medium text-red-600">{{ breakLabel }}</span>
-          }
-        </div>
-      }
-
       <!-- Navigation Tabs -->
-      <div class="border-b border-[var(--color-border)] mb-4">
+      <div class="mb-6 flex flex-wrap items-end justify-between gap-x-4 gap-y-2 border-b border-[var(--color-border)]">
         <nav class="flex gap-2" aria-label="Employee Detail Sections">
           @for (tab of tabs; track tab.id) {
             <button
@@ -174,25 +211,36 @@ type DetailTab = 'overview' | 'employment' | 'personal';
               [class.font-semibold]="activeTab() === tab.id"
               [class.border-transparent]="activeTab() !== tab.id"
               [class.text-[var(--color-text-secondary)]]="activeTab() !== tab.id"
-              (click)="activeTab.set(tab.id)"
+              (click)="selectTab(tab.id)"
             >
               {{ tab.label }}
             </button>
           }
         </nav>
+        @if (activeTab() === 'overview') {
+          <app-employee-period-controls class="mb-1.5" />
+        }
       </div>
 
       @if (activeTab() === 'overview') {
-        <app-employee-overview-tab [employeeId]="employee.id" />
+        <app-employee-overview-tab
+          [employeeId]="employee.id"
+          [hireDate]="employee.jobInformation.hireDate"
+          [terminationDate]="employee.jobInformation.terminationDate ?? null"
+        />
       }
-      <app-employee-employment-tab
-        [hidden]="activeTab() !== 'employment'"
-        [employee]="employee"
-        [jobJourney]="jobJourney()"
-        [canEdit]="canChangePosition() && !isReadOnly()"
-        [saving]="savingJobDetails()"
-        (save)="onJobDetailsSave($event)"
-      />
+      <!-- Mounted on first visit only (then kept alive), so its Work Network and journey calls wait for the tab -->
+      @if (employmentVisited()) {
+        <app-employee-employment-tab
+          [hidden]="activeTab() !== 'employment'"
+          [class.hidden]="activeTab() !== 'employment'"
+          [employee]="employee"
+          [jobJourney]="jobJourney()"
+          [canEdit]="canChangePosition() && !isReadOnly()"
+          [saving]="savingJobDetails()"
+          (save)="onJobDetailsSave($event)"
+        />
+      }
       @if (activeTab() === 'personal') {
         <app-employee-personal-tab [employee]="employee" />
       }
@@ -213,10 +261,16 @@ type DetailTab = 'overview' | 'employment' | 'personal';
   `,
   styles: [`
     .emp-detail-header {
-      margin-top: -1.25rem;
-      margin-bottom: 1.25rem;
-      padding-bottom: 0.625rem;
-      border-bottom: 1px solid var(--color-border);
+      position: sticky;
+      top: -1.75rem;
+      z-index: 50;
+      background: var(--color-surface);
+    }
+
+    :host ::ng-deep app-avatar.employee-detail-avatar .avatar--xl {
+      width: 5rem;
+      height: 5rem;
+      font-size: 1.5rem;
     }
 
     .change-position-menu {
@@ -262,6 +316,7 @@ export class EmployeeDetailComponent {
   private readonly permissionService = inject(PermissionService);
   private readonly authStore = inject(AuthStore);
   private readonly offboardingStore = inject(OffboardingWizardStore);
+  private readonly employeeDirectory = inject(EmployeeDirectoryStore);
 
   readonly employee = signal<EmployeeDetailResponse | null>(null);
   readonly loading = signal(false);
@@ -277,27 +332,27 @@ export class EmployeeDetailComponent {
     { id: 'personal', label: 'Personal' }
   ];
   readonly activeTab = signal<DetailTab>('overview');
+  readonly employmentVisited = signal(false);
   readonly jobJourney = signal<readonly PositionHistoryEntryResponse[]>([]);
 
   readonly attendanceWarningLabel = attendanceWarningLabel;
   readonly attendanceAttentionLabel = attendanceAttentionLabel;
   readonly attendanceStatusLabel = attendanceStatusLabel;
   readonly breakOverageLabel = breakOverageLabel;
+  readonly formatTenure = formatTenure;
 
   readonly canChangePosition = computed(() => this.permissionService.hasPermission('employees:write'));
   readonly canOffboard = computed(() => this.permissionService.hasPermission('employees:offboard'));
   readonly isOwnRecord = computed(() => this.employee()?.id === this.authStore.employeeId());
   readonly offboardingStatus = computed(() => this.offboardingStore.record()?.status ?? null);
   readonly isReadOnly = computed(() => this.offboardingStatus() === 'completed');
+  readonly employeeAvatarUrl = computed(() => {
+    const employeeId = this.employee()?.id;
+    return employeeId ? this.employeeDirectory.get(employeeId)?.avatarUrl ?? null : null;
+  });
 
   constructor() {
     this.load();
-  }
-
-  getInitials(firstName?: string, lastName?: string): string {
-    const f = firstName?.trim().charAt(0) || '';
-    const l = lastName?.trim().charAt(0) || '';
-    return (f + l).toUpperCase() || 'EM';
   }
 
   load(): void {
@@ -308,6 +363,7 @@ export class EmployeeDetailComponent {
 
     this.loading.set(true);
     this.error.set(null);
+    void this.employeeDirectory.ensureLoaded([id]);
     this.api.getEmployeeDetail(id).subscribe({
       next: (employee) => {
         this.employee.set(employee);
@@ -318,11 +374,24 @@ export class EmployeeDetailComponent {
         this.error.set(toSafeErrorMessage(err, 'The employee or selected organization record could not be found.'));
       }
     });
+    if (this.employmentVisited()) this.loadJobJourney(id);
+    void this.offboardingStore.loadOffboarding(id);
+  }
+
+  selectTab(tab: DetailTab): void {
+    this.activeTab.set(tab);
+    if (tab === 'employment' && !this.employmentVisited()) {
+      this.employmentVisited.set(true);
+      const id = this.employee()?.id;
+      if (id) this.loadJobJourney(id);
+    }
+  }
+
+  private loadJobJourney(id: string): void {
     this.api.getJobJourney(id).subscribe({
       next: (entries) => this.jobJourney.set(entries),
       error: () => this.jobJourney.set([])
     });
-    void this.offboardingStore.loadOffboarding(id);
   }
 
   onJobDetailsSave(payload: UpdateEmployeeJobDetailsRequest): void {
@@ -385,5 +454,53 @@ export class EmployeeDetailComponent {
     if (severity === 'emp-attention--critical') return 'bg-red-50 text-red-700';
     if (severity === 'emp-attention--warning') return 'bg-amber-50 text-amber-700';
     return 'bg-[var(--color-surface-secondary)] text-[var(--color-text-secondary)]';
+  }
+
+  todayStatusClass(employee: EmployeeDetailResponse): string {
+    const status = employee.attendanceSummary?.attendanceStatus?.toLowerCase() || '';
+    const label = attendanceStatusLabel(employee)?.toLowerCase() || '';
+    if (employee.attendanceSummary?.showNotClockedInWarning || status === 'not_clocked_in' || label.includes('not clocked in')) {
+      return 'bg-rose-50 text-rose-800';
+    }
+    if (status === 'present' || status === 'working' || label.includes('present') || label.includes('clocked in') || label.includes('working')) {
+      return 'bg-emerald-50 text-emerald-800';
+    }
+    if (status === 'late' || label.includes('late')) {
+      return 'bg-amber-50 text-amber-800';
+    }
+    if (status === 'on_break' || label.includes('break')) {
+      return 'bg-sky-50 text-sky-800';
+    }
+    if (status === 'on_leave' || label.includes('leave')) {
+      return 'bg-purple-50 text-purple-800';
+    }
+    if (status === 'missing_clock_out' || status === 'absent' || label.includes('missing') || label.includes('absent')) {
+      return 'bg-rose-50 text-rose-800';
+    }
+    return 'bg-[var(--color-surface-secondary)] text-[var(--color-text-primary)]';
+  }
+
+  todayStatusDotClass(employee: EmployeeDetailResponse): string {
+    const status = employee.attendanceSummary?.attendanceStatus?.toLowerCase() || '';
+    const label = attendanceStatusLabel(employee)?.toLowerCase() || '';
+    if (employee.attendanceSummary?.showNotClockedInWarning || status === 'not_clocked_in' || label.includes('not clocked in')) {
+      return 'bg-rose-500';
+    }
+    if (status === 'present' || status === 'working' || label.includes('present') || label.includes('clocked in') || label.includes('working')) {
+      return 'bg-emerald-500';
+    }
+    if (status === 'late' || label.includes('late')) {
+      return 'bg-amber-500';
+    }
+    if (status === 'on_break' || label.includes('break')) {
+      return 'bg-sky-500';
+    }
+    if (status === 'on_leave' || label.includes('leave')) {
+      return 'bg-purple-500';
+    }
+    if (status === 'missing_clock_out' || status === 'absent' || label.includes('missing') || label.includes('absent')) {
+      return 'bg-rose-500';
+    }
+    return 'bg-[var(--color-text-secondary)]';
   }
 }

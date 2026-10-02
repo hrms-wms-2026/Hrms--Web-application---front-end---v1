@@ -101,4 +101,52 @@ describe('createWidgetLoader', () => {
 
     expect(subject.observed).toBe(false);
   });
+
+  it('records when the backend last answered', () => {
+    const subject = new Subject<string>();
+    const { fixture, host } = setup(() => subject.asObservable());
+    fixture.detectChanges();
+    expect(host.loader.loadedAt()).toBeNull();
+
+    subject.next('hello');
+
+    expect(host.loader.loadedAt()).toBeInstanceOf(Date);
+  });
+
+  it('refresh() keeps the current data on screen while refetching, then swaps it in', () => {
+    let subject = new Subject<string>();
+    const { fixture, host } = setup(() => subject.asObservable());
+    fixture.detectChanges();
+    subject.next('old');
+    const first = host.loader.loadedAt();
+
+    subject = new Subject<string>();
+    host.loader.refresh();
+    fixture.detectChanges();
+
+    expect(host.loader.data()).toBe('old');
+    expect(host.loader.state()).toBe('ready');
+    expect(host.loader.refreshing()).toBe(true);
+
+    subject.next('new');
+    expect(host.loader.data()).toBe('new');
+    expect(host.loader.refreshing()).toBe(false);
+    expect(host.loader.loadedAt()!.getTime()).toBeGreaterThanOrEqual(first!.getTime());
+  });
+
+  it('a failed refresh keeps the old data instead of showing the error state', () => {
+    let subject = new Subject<string>();
+    const { fixture, host } = setup(() => subject.asObservable());
+    fixture.detectChanges();
+    subject.next('old');
+
+    subject = new Subject<string>();
+    host.loader.refresh();
+    fixture.detectChanges();
+    subject.error(new HttpErrorResponse({ status: 500 }));
+
+    expect(host.loader.data()).toBe('old');
+    expect(host.loader.state()).toBe('ready');
+    expect(host.loader.refreshing()).toBe(false);
+  });
 });

@@ -37,6 +37,11 @@ describe('WidgetCardComponent', () => {
     expect(setup('ready').nativeElement.textContent).toContain('Work Network');
   });
 
+  it('does not leave the title as a native hover tooltip on the host', () => {
+    const host = setup('ready').nativeElement.querySelector('app-widget-card') as HTMLElement;
+    expect(host.hasAttribute('title')).toBe(false);
+  });
+
   it('projects content when ready', () => {
     const f = setup('ready');
     expect(q(f, 'projected')).toBeTruthy();

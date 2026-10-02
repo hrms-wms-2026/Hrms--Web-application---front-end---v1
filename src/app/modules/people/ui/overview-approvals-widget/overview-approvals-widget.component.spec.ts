@@ -121,4 +121,17 @@ describe('OverviewApprovalsWidgetComponent', () => {
     const forbidden = setup(vi.fn().mockReturnValue(throwError(() => new HttpErrorResponse({ status: 403 }))));
     expect(forbidden.el.querySelector('[data-testid="widget-forbidden"]')).toBeTruthy();
   });
+
+  it('shows a neutral pending delta against the picked compare month', () => {
+    const compare = { ...response, from: '2026-08-01', to: '2026-08-31', pending: 1 };
+    const get = vi.fn((_id: string, from: string) => of(from === '2026-08-01' ? compare : response));
+    const { fixture, store, el } = setup(get);
+
+    store.setCompareMonth('2026-08');
+    fixture.detectChanges();
+
+    const delta = el.querySelector('[data-testid="delta"]')!;
+    expect(delta.textContent).toContain('▲ +1');
+    expect(delta.classList.contains('delta--neutral')).toBe(true);
+  });
 });

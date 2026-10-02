@@ -25,6 +25,7 @@ import { Delta } from '../../utils/employee-overview.utils';
 })
 export class DeltaBadgeComponent {
   readonly delta = input<Delta | null>(null);
+  readonly against = input<string | null>(null);
 
   readonly arrow = computed(() => {
     const d = this.delta();
@@ -35,6 +36,7 @@ export class DeltaBadgeComponent {
     const d = this.delta();
     if (!d) return null;
     const word = d.direction === 'up' ? 'Up' : d.direction === 'down' ? 'Down' : 'No change';
-    return d.direction === 'flat' ? 'No change versus the previous period' : `${word} ${d.text} versus the previous period`;
+    const against = this.against() ?? 'the previous period';
+    return d.direction === 'flat' ? `No change versus ${against}` : `${word} ${d.text} versus ${against}`;
   });
 }
