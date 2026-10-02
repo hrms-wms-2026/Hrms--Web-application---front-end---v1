@@ -121,4 +121,33 @@ describe('ModuleTreeRowComponent', () => {
     setup({ ...owned, isAchieved: true });
     expect(fixture.nativeElement.querySelector('[data-testid="achieved-badge"]')?.textContent).toContain('Achieved');
   });
+
+  it('compact mode renders only title, chevron and folder icon - no progress, owner or actions columns', () => {
+    fixture = TestBed.createComponent(ModuleTreeRowComponent);
+    fixture.componentRef.setInput('compact', true);
+    fixture.componentRef.setInput('node', owned);
+    fixture.detectChanges();
+    expect(fixture.nativeElement.querySelector('[data-testid="title-text"]')).toBeTruthy();
+    expect(fixture.nativeElement.querySelector('[data-testid="progress-cell"]')).toBeNull();
+    expect(fixture.nativeElement.querySelector('[data-testid="owner-cell"]')).toBeNull();
+    expect(fixture.nativeElement.querySelector('[data-testid="row-actions"]')).toBeNull();
+  });
+
+  it('non-compact mode (default) is unchanged - still renders progress, owner and actions columns', () => {
+    setup(owned);
+    expect(fixture.nativeElement.querySelector('[data-testid="progress-cell"]')).toBeTruthy();
+  });
+
+  it('compact mode shows the given progressLabel text, or nothing when null', () => {
+    fixture = TestBed.createComponent(ModuleTreeRowComponent);
+    fixture.componentRef.setInput('compact', true);
+    fixture.componentRef.setInput('node', owned);
+    fixture.componentRef.setInput('progressLabel', '40%');
+    fixture.detectChanges();
+    expect(fixture.nativeElement.querySelector('[data-testid="compact-progress-label"]').textContent).toContain('40%');
+
+    fixture.componentRef.setInput('progressLabel', null);
+    fixture.detectChanges();
+    expect(fixture.nativeElement.querySelector('[data-testid="compact-progress-label"]')).toBeNull();
+  });
 });
