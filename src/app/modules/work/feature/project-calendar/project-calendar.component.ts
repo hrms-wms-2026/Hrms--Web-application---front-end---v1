@@ -3,29 +3,27 @@ import { ActivatedRoute } from '@angular/router';
 import { CalendarEventLegendComponent } from '../../ui/calendar-event-legend/calendar-event-legend.component';
 import { CalendarEventModalComponent } from '../../ui/calendar-event-modal/calendar-event-modal.component';
 import { ObjectiveTimelineBarComponent } from '../../ui/objective-timeline-bar/objective-timeline-bar.component';
+import { ModuleTreeRowComponent } from '../../ui/module-tree-row/module-tree-row.component';
 import { ButtonComponent } from '../../../../shared/ui/button/button.component';
 import { WorkPageToolbarStore } from '../../state/work-page-toolbar.store';
 import {
   CalendarDateChange,
   CalendarEventDto,
   CreateCalendarEventRequestDto,
+  ProjectCalendarModuleDto,
   UpdateCalendarEventRequestDto
 } from '../../models/dto/calendar.dto';
+import { MilestoneTreeNode } from '../../models/milestone.model';
 import { ProjectCalendarStore } from '../../state/project-calendar.store';
 import { addCalendarDays, calendarDayDifference, calendarRange, parseCalendarDate } from '../../utils/calendar-date.utils';
 import { buildCalendarTreeOrder } from '../../utils/calendar-tree.utils';
-
-// Auto-assigned per-branch bar colors, same spirit as the calendar's own per-event
-// colors (calendar-event-modal) - distinct, muted hues that read well with white bar
-// text, cycling if there are more top-level modules than swatches.
-const BRANCH_PALETTE = ['#2563EB', '#0D9488', '#C026D3', '#EA580C', '#4F46E5', '#059669', '#DB2777', '#0891B2'];
 
 interface MilestoneMarker { objectiveId: string; eventId: string; name: string; startDate: string; endDate: string; left: number; color: string; }
 
 @Component({
   selector: 'app-project-calendar',
   standalone: true,
-  imports: [ObjectiveTimelineBarComponent, CalendarEventModalComponent, CalendarEventLegendComponent, ButtonComponent],
+  imports: [ObjectiveTimelineBarComponent, ModuleTreeRowComponent, CalendarEventModalComponent, CalendarEventLegendComponent, ButtonComponent],
   template: `
     <ng-template #toolbarTpl>
       <div class="project-calendar__toolbar">
@@ -81,29 +79,15 @@ interface MilestoneMarker { objectiveId: string; eventId: string; name: string; 
                       </div>
                     }
                     <div class="project-calendar__objective-body" [style.marginLeft.px]="row.depth * 18">
-                      <div class="project-calendar__objective-title" [title]="row.item.title">
-                        @if (row.hasChildren && row.depth > 0) {
-                          <button
-                            type="button"
-                            class="project-calendar__chevron"
-                            [style.transform]="isCollapsed(row.item.objectiveId) ? 'rotate(0deg)' : 'rotate(90deg)'"
-                            [attr.aria-label]="isCollapsed(row.item.objectiveId) ? 'Expand' : 'Collapse'"
-                            data-testid="calendar-chevron"
-                            (click)="toggleCollapsed(row.item.objectiveId, $event)"
-                          >
-                            <svg viewBox="0 0 24 24" aria-hidden="true"><polyline points="9 18 15 12 9 6" /></svg>
-                          </button>
-                        } @else {
-                          <span class="project-calendar__chevron-spacer"></span>
-                        }
-                        @if (row.depth === 0) {
-                          <svg class="project-calendar__folder-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M3.5 6.5h6l2 2h9v9a2 2 0 0 1-2 2h-15a2 2 0 0 1-2-2v-9a2 2 0 0 1 2-2Z" /><path d="M2.5 9h18" /></svg>
-                        } @else {
-                          <span class="project-calendar__branch-dot" [style.background]="branchColors().get(row.branchRootId)" aria-hidden="true"></span>
-                        }
-                        <span>{{ row.item.title }}</span>
-                      </div>
-                      <div class="project-calendar__objective-dates">{{ formatDateRange(row.item.startDate, row.item.endDate) }}</div>
+                      <app-module-tree-row
+                        [compact]="true"
+                        [node]="toTreeNode(row.item)"
+                        [progressLabel]="progressLabelFor(row.item)"
+                        [depth]="row.depth"
+                        [showChevron]="row.hasChildren && row.depth > 0"
+                        [expanded]="!isCollapsed(row.item.objectiveId)"
+                        (chevronClicked)="toggleCollapsed(row.item.objectiveId, $event)"
+                      />
                     </div>
                   </div>
                   <div class="project-calendar__track" [style.width.px]="timelineWidth()">
@@ -184,24 +168,14 @@ interface MilestoneMarker { objectiveId: string; eventId: string; name: string; 
     .project-calendar__label-header { display: flex; align-items: center; padding: 0 14px; color: var(--color-text-secondary); font-size: 11px; font-weight: 600; letter-spacing: .05em; text-transform: uppercase; }
     .project-calendar__date-header { position: relative; overflow: hidden; border-left: 1px solid var(--color-border); background: var(--color-surface-secondary); }
     .project-calendar__date-marker { position: absolute; top: 0; bottom: 0; display: flex; overflow: hidden; align-items: center; padding-left: 8px; border-left: 1px solid color-mix(in srgb, var(--color-border) 85%, transparent); color: var(--color-text-secondary); font-size: 10px; font-weight: 600; white-space: nowrap; text-overflow: ellipsis; }
-    .project-calendar__objective { position: relative; min-width: 0; overflow: hidden; padding: 9px 10px 8px 12px; }
+    .project-calendar__objective { position: relative; display: flex; align-items: center; min-width: 0; overflow: hidden; padding: 9px 10px 8px 12px; }
     .project-calendar__guides { position: absolute; left: 12px; top: 0; bottom: 0; display: flex; pointer-events: none; }
     .project-calendar__guide-col { position: relative; flex: 0 0 18px; width: 18px; }
     .project-calendar__guide-col--through::before { content: ''; position: absolute; left: 8px; top: 0; bottom: 0; width: 2px; background: color-mix(in srgb, var(--color-text-secondary) 45%, transparent); border-radius: 1px; }
     .project-calendar__guide-col--elbow::before { content: ''; position: absolute; left: 8px; top: 0; height: 50%; width: 2px; background: color-mix(in srgb, var(--color-text-secondary) 45%, transparent); border-radius: 1px; }
     .project-calendar__guide-col--elbow.project-calendar__guide-col--elbow-through::before { height: 100%; }
     .project-calendar__guide-col--elbow::after { content: ''; position: absolute; left: 8px; top: 50%; width: 11px; height: 2px; background: color-mix(in srgb, var(--color-text-secondary) 45%, transparent); border-radius: 1px; }
-    .project-calendar__objective-body { min-width: 0; }
-    .project-calendar__objective-title { display: flex; min-width: 0; align-items: center; gap: 6px; overflow: hidden; font-size: 13px; font-weight: 600; line-height: 1.35; }
-    .project-calendar__objective-title span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-    .project-calendar__chevron, .project-calendar__chevron-spacer { flex: 0 0 auto; width: 16px; height: 16px; }
-    .project-calendar__chevron { display: flex; align-items: center; justify-content: center; border: 0; padding: 0; background: transparent; color: var(--color-text-secondary); cursor: pointer; transition: transform 140ms ease, color 140ms ease; }
-    .project-calendar__chevron:hover { color: var(--color-text-primary); }
-    .project-calendar__chevron:focus-visible { outline: 2px solid var(--color-focus-ring); outline-offset: 1px; }
-    .project-calendar__chevron svg { width: 12px; height: 12px; fill: none; stroke: currentColor; stroke-width: 2.5; stroke-linecap: round; stroke-linejoin: round; }
-    .project-calendar__folder-icon { width: 16px; height: 16px; flex: 0 0 auto; fill: color-mix(in srgb, var(--color-accent) 12%, var(--color-surface)); stroke: var(--color-accent); stroke-width: 1.7; stroke-linecap: round; stroke-linejoin: round; }
-    .project-calendar__branch-dot { width: 9px; height: 9px; flex: 0 0 auto; border-radius: 999px; }
-    .project-calendar__objective-dates { margin: 4px 0 0 22px; color: var(--color-text-secondary); font-size: 11px; white-space: nowrap; }
+    .project-calendar__objective-body { min-width: 0; flex: 1; }
     .project-calendar__track { position: relative; min-width: 0; overflow: hidden; border-left: 1px solid var(--color-border); }
     .project-calendar__grid-background { position: absolute; inset: 0; opacity: .5; }
     @media (max-width: 900px) { .project-calendar__layout { grid-template-columns: minmax(0, 1fr); } }
@@ -266,20 +240,6 @@ export class ProjectCalendarComponent implements OnInit, AfterViewInit, OnDestro
   // high zoom clip with an ellipsis instead of visually overlapping their neighbor.
   readonly markerBoxWidth = computed(() => Math.max(1, this.markerStep() * this.dayWidth()));
   readonly rows = computed(() => buildCalendarTreeOrder(this.store.modules(), this.collapsedIds()));
-  // Assigns each top-level module (and everything nested under it) a stable color from
-  // BRANCH_PALETTE, in the order branches first appear - so bars read as one colored
-  // family per branch instead of one flat gray, matching the connector-line grouping.
-  // The project-root row is excluded - it gets its own fixed summary color instead.
-  readonly branchColors = computed(() => {
-    const map = new Map<string, string>();
-    let next = 0;
-    for (const row of this.rows()) {
-      if (row.depth === 0 || map.has(row.branchRootId)) continue;
-      map.set(row.branchRootId, BRANCH_PALETTE[next % BRANCH_PALETTE.length]);
-      next++;
-    }
-    return map;
-  });
   readonly milestoneMarkers = computed<MilestoneMarker[]>(() => {
     const markers: MilestoneMarker[] = [];
     for (const row of this.rows()) {
@@ -349,8 +309,30 @@ export class ProjectCalendarComponent implements OnInit, AfterViewInit, OnDestro
     return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric', timeZone: 'UTC' });
   }
 
-  formatDateRange(start: string, end: string): string {
-    return `${start} → ${end}`;
+  toTreeNode(item: ProjectCalendarModuleDto): MilestoneTreeNode {
+    return {
+      id: item.objectiveId,
+      title: item.title,
+      description: item.description ?? null,
+      startDate: item.startDate,
+      endDate: item.endDate,
+      progress: item.progressPercent ?? 0,
+      allocatedHours: item.allocatedHours ?? 0,
+      completedHours: 0,
+      isActive: item.isActive,
+      isAchieved: item.isAchieved,
+      ownerName: null,
+      isOwner: false,
+      children: [],
+      kind: 'objective'
+    };
+  }
+
+  /** Review Focus: a subtree with zero tasks must read as "-", never "0%" - progressPercent is
+   *  null in exactly that case (Task A3), so this is the only place that distinction survives;
+   *  toTreeNode()'s `progress` field above is a plain number and can't carry it. */
+  progressLabelFor(item: ProjectCalendarModuleDto): string | null {
+    return item.progressPercent == null ? '—' : `${item.progressPercent}%`;
   }
 
   gridBackground(): string {

@@ -39,6 +39,13 @@ describe('ProjectCalendarComponent', () => {
     expect(fixture.nativeElement.textContent).toContain('Design');
   });
 
+  it('renders each objective label via the shared compact tree row, not bespoke markup', () => {
+    fixture.detectChanges();
+    const row = fixture.nativeElement.querySelector('[data-testid="tree-row"]');
+    expect(row).toBeTruthy();
+    expect(fixture.nativeElement.querySelector('[data-testid="folder-icon"]')).toBeTruthy();
+  });
+
   it('renders child objectives indented under their parent, all rows visible', () => {
     const treeItems: ProjectCalendarModuleDto[] = [
       { ...items[0] },
@@ -79,13 +86,13 @@ describe('ProjectCalendarComponent', () => {
     fixture.detectChanges();
 
     // The project root itself has no chevron - collapsing it would hide the whole chart, so it's not collapsible.
-    expect(fixture.nativeElement.querySelector('[data-testid="calendar-row-o1"] [data-testid="calendar-chevron"]')).toBeNull();
+    expect(fixture.nativeElement.querySelector('[data-testid="calendar-row-o1"] [data-testid="chevron"]')).toBeNull();
     const chevron = fixture.nativeElement.querySelector(
-      '[data-testid="calendar-row-o2"] [data-testid="calendar-chevron"]'
+      '[data-testid="calendar-row-o2"] [data-testid="chevron"]'
     ) as HTMLButtonElement;
     expect(chevron).toBeTruthy();
     // A leaf objective (no children) gets no chevron at all.
-    expect(fixture.nativeElement.querySelector('[data-testid="calendar-row-o3"] [data-testid="calendar-chevron"]')).toBeNull();
+    expect(fixture.nativeElement.querySelector('[data-testid="calendar-row-o3"] [data-testid="chevron"]')).toBeNull();
 
     chevron.click();
     fixture.detectChanges();
