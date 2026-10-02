@@ -93,6 +93,25 @@ describe('ApprovalExplanationCardComponent', () => {
     expect(q('approval-card-requested')).toBeNull();
   });
 
+  it('a longtext field (e.g. Description) gets an editable textarea too', () => {
+    const withDescription = [...fields, { key: 'Description', label: 'Description', kind: 'longtext' as const, current: null, requested: 'Driver soak harness notes', applied: null, changed: true, editable: true }];
+    render(detail({ fields: withDescription, requestedPayloadJson: '{"Title":"A","Description":"Driver soak harness notes"}' }));
+
+    const textarea = q('approval-edit-Description') as HTMLTextAreaElement;
+    expect(textarea).not.toBeNull();
+    expect(textarea.tagName).toBe('TEXTAREA');
+    expect(textarea.value).toBe('Driver soak harness notes');
+
+    textarea.value = 'Updated notes';
+    textarea.dispatchEvent(new Event('input'));
+    fixture.detectChanges();
+
+    const emitted: (string | undefined)[] = [];
+    fixture.componentInstance.approve.subscribe((v: string | undefined) => emitted.push(v));
+    q('approval-card-approve')?.click();
+    expect(JSON.parse(emitted[0]!)).toEqual({ Title: 'A', Description: 'Updated notes' });
+  });
+
   it('once decided the Requested value is read-only and shows what was applied', () => {
     render(detail({ canEditPayload: false, fields: fields.map((f) => ({ ...f, editable: false })) }));
     expect(q('approval-edit-Title')).toBeNull();

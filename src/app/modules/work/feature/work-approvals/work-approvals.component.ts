@@ -1,4 +1,4 @@
-import { AfterViewInit, Component, computed, effect, inject, OnDestroy, signal, TemplateRef, viewChild } from '@angular/core';
+import { AfterViewInit, Component, computed, effect, ElementRef, HostListener, inject, OnDestroy, signal, TemplateRef, viewChild } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { ActivatedRoute, Router } from '@angular/router';
 import { firstValueFrom } from 'rxjs';
@@ -14,20 +14,44 @@ import { ButtonComponent } from '../../../../shared/ui/button/button.component';
 import { WorkDropdownComponent, WorkDropdownOption } from '../../ui/work-dropdown/work-dropdown.component';
 import { TaskFilterBarComponent } from '../../ui/task-filter-bar/task-filter-bar.component';
 import { TaskFormModalComponent } from '../../ui/task-form-modal/task-form-modal.component';
-import { ApprovalTableComponent } from '../../ui/approval-table/approval-table.component';
+import { DatePipe } from '@angular/common';
+import { AvatarComponent } from '../../../../shared/ui/avatar/avatar.component';
+import { DropdownMenuComponent, MenuItem } from '../../../../shared/ui/dropdown-menu/dropdown-menu.component';
+import { DataTableCellDirective, DataTableColumn, DataTableComponent } from '../../../../shared/ui/data-table/data-table.component';
+import { ApprovalTypeIconComponent } from '../../ui/approval-type-icon/approval-type-icon.component';
 import { ApprovalExplanationCardComponent } from '../../ui/approval-explanation-card/approval-explanation-card.component';
 import { ApprovalFeedItemDto } from '../../models/dto/approval-feed.dto';
-import { ApprovalFilterValues, buildApprovalFilterFields, matchesApprovalFilters } from '../../utils/approval-feed.util';
+import {
+  APPROVAL_TYPE_META,
+  ApprovalFilterValues,
+  approvalMenuItems,
+  approvalSubtitle,
+  approvalTitle,
+  approvalTypeKey,
+  buildApprovalFilterFields,
+  matchesApprovalFilters,
+  statusLabel,
+  statusTone
+} from '../../utils/approval-feed.util';
 
 const DEFAULT_FILTERS: ApprovalFilterValues = { direction: ['all'], requestedOn: ['any'] };
+
+const APPROVAL_COLUMNS: readonly DataTableColumn[] = [
+  { key: 'title', label: 'Title' },
+  { key: 'type', label: 'Type', width: '150px' },
+  { key: 'requestedBy', label: 'Requested by', width: '30%' },
+  { key: 'status', label: 'Status', width: '112px' },
+  { key: 'actions', label: 'Actions', width: '52px', interactive: true, align: 'end', hideLabel: true }
+];
 
 /** One list of every request the caller sent or received in this project, with an explanation card for the selected row. */
 @Component({
   selector: 'app-work-approvals',
   standalone: true,
   imports: [
-    TaskFilterBarComponent, ApprovalTableComponent, ApprovalExplanationCardComponent, TaskFormModalComponent,
-    ModalComponent, InputComponent, WorkDropdownComponent, ButtonComponent
+    DatePipe, TaskFilterBarComponent, DataTableComponent, DataTableCellDirective, AvatarComponent, DropdownMenuComponent,
+    ApprovalTypeIconComponent, ApprovalExplanationCardComponent, TaskFormModalComponent, ModalComponent, InputComponent,
+    WorkDropdownComponent, ButtonComponent
   ],
   template: `
     <ng-template #toolbarTpl>
@@ -54,23 +78,68 @@ const DEFAULT_FILTERS: ApprovalFilterValues = { direction: ['all'], requestedOn:
             <button type="button" (click)="retry()">Try again</button>
           </div>
         } @else {
-          <app-approval-table
-            [items]="visible()"
-            [selectedId]="store.selectedId()"
-            [busyId]="busyId()"
+          <app-data-table
+            data-testid="approval-table"
+            [columns]="columns"
+            [rows]="visible()"
+            [trackBy]="trackItem"
+            [rowTestId]="rowTestId"
+            [activeRowId]="store.selectedId()"
+            [busyRowId]="busyId()"
+            [rowFocusable]="true"
             [emptyMessage]="store.items().length === 0 ? 'No approval requests in this project yet.' : 'No requests match these filters.'"
-            (rowSelected)="onSelect($event)"
-            (quickApprove)="onQuickApprove($event)"
-            (cancelRequest)="onCancel($event)"
-            (openTarget)="onOpenTarget($event)"
-            (copyLink)="onCopyLink($event)"
-          />
+            (rowClicked)="onSelect($event)"
+          >
+            <ng-template appDataTableCell="title" let-item>
+              <div class="work-approvals__title-cell">
+                <app-approval-type-icon [icon]="meta(item).icon" [tone]="meta(item).tone" />
+                <div class="work-approvals__title-text">
+                  <span class="work-approvals__title">
+                    <span class="work-approvals__ellipsis">{{ title(item) }}</span>
+                    @if (item.commentCount > 0) {
+                      <span class="work-approvals__comments" data-testid="approval-row-comments" [attr.aria-label]="item.commentCount + ' comments'">
+                        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M21 12a8 8 0 0 1-11.6 7.1L4 20l1-4.6A8 8 0 1 1 21 12Z" /></svg>
+                        {{ item.commentCount }}
+                      </span>
+                    }
+                  </span>
+                  <span class="work-approvals__secondary work-approvals__ellipsis">{{ subtitle(item) }}</span>
+                </div>
+              </div>
+            </ng-template>
+
+            <ng-template appDataTableCell="type" let-item>
+              <span [class]="'work-approvals__pill work-approvals__pill--' + meta(item).tone">{{ meta(item).label }}</span>
+            </ng-template>
+
+            <ng-template appDataTableCell="requestedBy" let-item>
+              <span class="work-approvals__person">
+                <app-avatar [userName]="item.requestedByName" size="sm" />
+                <span class="work-approvals__person-text">
+                  <span class="work-approvals__ellipsis">{{ item.requestedByName }}</span>
+                  <span class="work-approvals__secondary work-approvals__ellipsis">{{ item.createdAt | date: 'MMM d, y · h:mm a' }}</span>
+                </span>
+              </span>
+            </ng-template>
+
+            <ng-template appDataTableCell="status" let-item>
+              <span data-testid="approval-status" [class]="'work-approvals__pill work-approvals__pill--' + tone(item)">{{ status(item) }}</span>
+            </ng-template>
+
+            <ng-template appDataTableCell="actions" let-item>
+              <app-dropdown-menu [items]="menuFor(item)" ariaLabel="Request actions" (selected)="onRowMenu(item, $event)">
+                <button menu-trigger type="button" class="work-approvals__kebab" data-testid="approval-row-menu" aria-label="Request actions">
+                  <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12h.01M12 12h.01M19 12h.01" /></svg>
+                </button>
+              </app-dropdown-menu>
+            </ng-template>
+          </app-data-table>
         }
       </div>
 
       @if (store.selectedId() !== null) {
         <div class="work-approvals__scrim" aria-hidden="true" (click)="closeCard()"></div>
-        <div class="work-approvals__card">
+        <div #cardEl class="work-approvals__card" [style.--approvals-card-height]="cardHeight()">
           <app-approval-explanation-card
             [detail]="store.detail()"
             [loading]="store.detailLoading()"
@@ -147,11 +216,12 @@ const DEFAULT_FILTERS: ApprovalFilterValues = { direction: ['all'], requestedOn:
   `,
   styles: [`
     :host { display: block; }
-    /* Same split as the Tree tab: list + a 24rem explanation card. */
-    .work-approvals { display: grid; grid-template-columns: minmax(0, 1fr); align-items: start; gap: 16px; width: 100%; margin: 0 auto; padding: 8px 20px 28px; }
+    /* Same split and outer spacing as the Tree tab: list + a 24rem explanation card, no extra page padding. */
+    .work-approvals { display: grid; grid-template-columns: minmax(0, 1fr); align-items: start; gap: 16px; width: 100%; }
     .work-approvals--with-card { grid-template-columns: minmax(0, 1fr) 24rem; }
     .work-approvals__main { display: flex; min-width: 0; flex-direction: column; gap: 16px; }
-    .work-approvals__card { position: sticky; top: 16px; align-self: start; min-width: 0; }
+    /* The card runs to the bottom of the viewport (height measured in the class) so its actions sit at the bottom edge. */
+    .work-approvals__card { position: sticky; top: 16px; align-self: start; min-width: 0; height: var(--approvals-card-height, calc((100vh - 220px) * 0.9)); min-height: 420px; }
     .work-approvals__scrim { display: none; }
     .work-approvals__state { display: flex; align-items: center; gap: 8px; margin: 0; padding: 24px 0; color: var(--color-text-secondary); font-size: 13px; }
     .work-approvals__state--error { color: var(--color-danger); }
@@ -164,10 +234,22 @@ const DEFAULT_FILTERS: ApprovalFilterValues = { direction: ['all'], requestedOn:
     @media (max-width: 1023px) {
       .work-approvals--with-card { grid-template-columns: minmax(0, 1fr); }
       .work-approvals__scrim { position: fixed; inset: 0; z-index: 1000; display: block; background: color-mix(in srgb, var(--color-text-primary) 35%, transparent); }
-      .work-approvals__card { position: fixed; top: 0; right: 0; bottom: 0; z-index: 1001; width: min(24rem, 100vw); padding: 8px; }
-      .work-approvals__card app-approval-explanation-card ::ng-deep .approval-card { max-height: calc(100vh - 16px); }
+      .work-approvals__card { position: fixed; top: 0; right: 0; bottom: 0; z-index: 1001; width: min(24rem, 100vw); height: auto; min-height: 0; padding: 8px; }
     }
-    @media (max-width: 680px) { .work-approvals { padding-inline: 12px; } }
+    .work-approvals__title-cell { display: flex; align-items: center; gap: 11px; min-width: 0; }
+    .work-approvals__title-text, .work-approvals__person-text { display: flex; min-width: 0; flex-direction: column; }
+    .work-approvals__title { display: flex; min-width: 0; align-items: center; gap: 8px; font-weight: 600; }
+    .work-approvals__ellipsis { display: block; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .work-approvals__secondary { color: var(--color-text-secondary); font-size: 12px; }
+    .work-approvals__comments { display: inline-flex; flex: 0 0 auto; align-items: center; gap: 3px; color: var(--color-text-secondary); font-size: 11px; font-weight: 600; }
+    .work-approvals__comments svg { width: 13px; height: 13px; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linejoin: round; }
+    .work-approvals__person { display: flex; min-width: 0; align-items: center; gap: 8px; }
+    .work-approvals__person app-avatar { flex: 0 0 auto; }
+    .work-approvals__pill { --tone: var(--color-accent); display: inline-block; max-width: 100%; overflow: hidden; padding: 3px 10px; border-radius: 999px; background: color-mix(in srgb, var(--tone) 12%, transparent); color: var(--tone); font-size: 12px; font-weight: 600; text-overflow: ellipsis; white-space: nowrap; }
+    .work-approvals__pill--neutral { --tone: var(--color-text-secondary); }
+    .work-approvals__kebab { display: inline-flex; width: 30px; height: 30px; align-items: center; justify-content: center; border: 0; border-radius: 8px; background: transparent; color: var(--color-text-secondary); cursor: pointer; }
+    .work-approvals__kebab:hover { background: var(--color-surface-secondary); color: var(--color-text-primary); }
+    .work-approvals__kebab svg { width: 18px; height: 18px; fill: none; stroke: currentColor; stroke-width: 2.4; stroke-linecap: round; stroke-linejoin: round; }
   `]
 })
 export class WorkApprovalsComponent implements AfterViewInit, OnDestroy {
@@ -180,6 +262,13 @@ export class WorkApprovalsComponent implements AfterViewInit, OnDestroy {
   private readonly toolbarStore = inject(WorkPageToolbarStore);
   private readonly toolbarTpl = viewChild.required<TemplateRef<unknown>>('toolbarTpl');
   protected readonly projectId = signal('');
+  private readonly cardEl = viewChild<ElementRef<HTMLElement>>('cardEl');
+  /** Viewport height left below the card's top edge, so the card ends near the bottom of the screen. */
+  protected readonly cardHeight = signal<string | null>(null);
+
+  protected readonly columns = APPROVAL_COLUMNS;
+  protected readonly trackItem = (item: ApprovalFeedItemDto): string => item.source + ':' + item.id;
+  protected readonly rowTestId = (): string => 'approval-row';
 
   protected readonly filterValues = signal<ApprovalFilterValues>(DEFAULT_FILTERS);
   protected readonly filterFields = computed(() => buildApprovalFilterFields(this.store.items()));
@@ -218,6 +307,11 @@ export class WorkApprovalsComponent implements AfterViewInit, OnDestroy {
       this.onProjectChanged(this.route.snapshot?.paramMap?.get('id') ?? '');
     }
 
+    // The card mounts once a row is selected - size it then.
+    effect(() => {
+      if (this.cardEl()) queueMicrotask(() => this.measureCard());
+    });
+
     // Once the feed has loaded: open ?request=<id> if given, otherwise keep a row selected -
     // the first visible one by default, or when a filter hides the selected row.
     effect(() => {
@@ -241,6 +335,32 @@ export class WorkApprovalsComponent implements AfterViewInit, OnDestroy {
 
   ngAfterViewInit(): void {
     this.toolbarStore.setTemplate(this.toolbarTpl());
+  }
+
+  @HostListener('window:resize')
+  protected measureCard(): void {
+    const el = this.cardEl()?.nativeElement;
+    if (!el || typeof window === 'undefined') return;
+    const top = el.getBoundingClientRect().top + window.scrollY;
+    // Space left below the card (16px breathing room, mirroring the sticky top offset), minus 10%.
+    this.cardHeight.set(`${Math.max(420, Math.round((window.innerHeight - top - 16) * 0.9))}px`);
+  }
+
+  protected meta(item: ApprovalFeedItemDto) { return APPROVAL_TYPE_META[approvalTypeKey(item.actionType)]; }
+  protected title(item: ApprovalFeedItemDto): string { return approvalTitle(item); }
+  protected subtitle(item: ApprovalFeedItemDto): string { return approvalSubtitle(item); }
+  protected status(item: ApprovalFeedItemDto): string { return statusLabel(item); }
+  protected tone(item: ApprovalFeedItemDto): string { return statusTone(item); }
+  protected menuFor(item: ApprovalFeedItemDto): MenuItem[] { return approvalMenuItems(item); }
+
+  onRowMenu(item: ApprovalFeedItemDto, id: string): void {
+    switch (id) {
+      case 'view': this.onSelect(item); break;
+      case 'approve': void this.onQuickApprove(item); break;
+      case 'open': this.onOpenTarget(item); break;
+      case 'cancel': void this.onCancel(item); break;
+      case 'copy': void this.onCopyLink(item); break;
+    }
   }
 
   ngOnDestroy(): void {

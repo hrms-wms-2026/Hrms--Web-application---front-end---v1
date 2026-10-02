@@ -62,6 +62,7 @@ export interface WorkTaskDto {
   subtaskCompletedCount?: number;
   subtaskAssigneeEmployeeIds?: string[];
   createdAt: string;
+  hasPendingApproval?: boolean;
 }
 
 export interface CreateTaskRequestDto {

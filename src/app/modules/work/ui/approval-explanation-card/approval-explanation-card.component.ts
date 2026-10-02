@@ -5,6 +5,7 @@ import { DatePickerComponent } from '../../../../shared/ui/date-picker/date-pick
 import { WorkDropdownComponent, WorkDropdownOption } from '../work-dropdown/work-dropdown.component';
 import { ApprovalCommentsComponent } from '../approval-comments/approval-comments.component';
 import { ApprovalRejectDialogComponent } from '../approval-reject-dialog/approval-reject-dialog.component';
+import { ApprovalTypeIconComponent } from '../approval-type-icon/approval-type-icon.component';
 import { ApprovalCommentDto, ApprovalDetailDto, ApprovalFieldDto } from '../../models/dto/approval-feed.dto';
 import {
   APPROVAL_TYPE_META,
@@ -69,6 +70,24 @@ export function buildTimeline(detail: ApprovalDetailDto): ApprovalTimelineEntry[
   return entries;
 }
 
+/** 24x24 stroke icons for the card's section labels and detail rows. */
+const CARD_ICONS: Record<string, readonly string[]> = {
+  info: ['M12 21a9 9 0 1 0 0-18 9 9 0 0 0 0 18Z', 'M12 11v5', 'M12 8h.01'],
+  module: ['M4 5h7v6H4z', 'M13 5h7v6h-7z', 'M4 13h7v6H4z', 'M13 13h7v6h-7z'],
+  project: ['M4 8h16v11a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V8Z', 'M9 8V5a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v3', 'M4 13h16'],
+  user: ['M19 20a7 7 0 0 0-14 0', 'M12 12a4 4 0 1 0 0-8 4 4 0 0 0 0 8Z'],
+  approver: ['M15 20a6 6 0 0 0-12 0', 'M9 12a4 4 0 1 0 0-8 4 4 0 0 0 0 8Z', 'm16 11 2 2 4-4'],
+  userPlus: ['M15 20a6 6 0 0 0-12 0', 'M9 12a4 4 0 1 0 0-8 4 4 0 0 0 0 8Z', 'M19 8v6', 'M16 11h6'],
+  calendar: ['M5 5h14a1 1 0 0 1 1 1v13a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V6a1 1 0 0 1 1-1Z', 'M8 3v4', 'M16 3v4', 'M4 10h16'],
+  calendarCheck: ['M5 5h14a1 1 0 0 1 1 1v13a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V6a1 1 0 0 1 1-1Z', 'M8 3v4', 'M16 3v4', 'M4 10h16', 'm9 15 2 2 4-4'],
+  message: ['M21 12a8 8 0 0 1-11.6 7.1L4 20l1-4.6A8 8 0 1 1 21 12Z'],
+  badge: ['M12 3 4 7v5c0 4.4 3.4 8.3 8 9 4.6-.7 8-4.6 8-9V7l-8-4Z'],
+  send: ['M22 2 11 13', 'M22 2 15 22l-4-9-9-4 20-7Z'],
+  clock: ['M12 21a9 9 0 1 0 0-18 9 9 0 0 0 0 18Z', 'M12 7v5l3 2'],
+  edit: ['M4 20h4L19 9l-4-4L4 16v4Z', 'm13.5 6.5 4 4'],
+  activity: ['M3 12h4l3-8 4 16 3-8h4']
+};
+
 const PRIORITY_OPTIONS: readonly WorkDropdownOption[] = [
   { value: 'low', label: 'Low' }, { value: 'medium', label: 'Medium' },
   { value: 'high', label: 'High' }, { value: 'critical', label: 'Critical' }
@@ -78,7 +97,7 @@ const PRIORITY_OPTIONS: readonly WorkDropdownOption[] = [
 @Component({
   selector: 'app-approval-explanation-card',
   standalone: true,
-  imports: [DatePipe, AvatarComponent, DatePickerComponent, WorkDropdownComponent, ApprovalCommentsComponent, ApprovalRejectDialogComponent],
+  imports: [DatePipe, AvatarComponent, DatePickerComponent, WorkDropdownComponent, ApprovalCommentsComponent, ApprovalRejectDialogComponent, ApprovalTypeIconComponent],
   host: { class: 'block h-full min-w-0' },
   template: `
     <aside class="approval-card" data-testid="approval-card" aria-label="Request details">
@@ -90,16 +109,16 @@ const PRIORITY_OPTIONS: readonly WorkDropdownOption[] = [
         @let d = detail()!;
         @let item = d.item;
         <div class="approval-card__scroll flex flex-col gap-5">
-          <!-- Header: same pattern as the Tree tab's explanation panel. -->
-          <div class="flex items-start justify-between gap-3 border-b border-[var(--color-border)] pb-4">
-            <div class="min-w-0">
-              <div class="mb-2 flex items-center gap-2">
-                <span class="h-2 w-2 shrink-0 rounded-full bg-[var(--color-accent)]" aria-hidden="true"></span>
-                <span class="truncate text-[11px] font-bold uppercase tracking-wider text-[var(--color-text-secondary)]">{{ meta().label }} Request</span>
-              </div>
-              <h2 class="text-base font-bold leading-tight text-[var(--color-text-primary)]">{{ title() }}</h2>
-              <p class="mt-1 break-words text-xs text-[var(--color-text-secondary)]">{{ subtitle() }}</p>
-              <span data-testid="approval-card-status" [class]="'approval-pill mt-2 approval-pill--' + statusToneValue()">{{ statusText() }}</span>
+          <!-- Header: type tile + title, status, close (drawer only). -->
+          <div class="approval-card__header">
+            <app-approval-type-icon class="approval-card__type-tile" [icon]="meta().icon" [tone]="meta().tone" />
+            <div class="min-w-0 flex-1">
+              <div class="approval-card__eyebrow">{{ meta().label }} Request</div>
+              <h2 class="approval-card__title">{{ title() }}</h2>
+              <p class="approval-card__subtitle">{{ subtitle() }}</p>
+              <span data-testid="approval-card-status" [class]="'approval-pill mt-2 approval-pill--' + statusToneValue()">
+                <span class="approval-pill__dot" aria-hidden="true"></span>{{ statusText() }}
+              </span>
             </div>
             <button type="button" class="approval-card__close" data-testid="approval-card-close" aria-label="Close details" (click)="closed.emit()">
               <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M18 6 6 18" /></svg>
@@ -109,25 +128,46 @@ const PRIORITY_OPTIONS: readonly WorkDropdownOption[] = [
           @if (error()) { <p class="approval-card__error" role="alert" data-testid="approval-card-error">{{ error() }}</p> }
 
           <section>
-            <div class="approval-card__label">Details</div>
+            <div class="approval-card__label">
+              <svg viewBox="0 0 24 24" aria-hidden="true">@for (p of icon('info'); track $index) { <path [attr.d]="p" /> }</svg>
+              Details
+            </div>
             <div class="approval-card__box">
-              <div class="approval-card__row"><span>Module</span><span class="approval-card__value">{{ item.moduleTitle ?? '—' }}</span></div>
-              <div class="approval-card__row"><span>Project</span><span class="approval-card__value">{{ item.projectName }}</span></div>
               <div class="approval-card__row">
-                <span>Requested by</span>
+                <span class="approval-card__key"><span class="approval-card__key-icon"><svg viewBox="0 0 24 24" aria-hidden="true">@for (p of icon('module'); track $index) { <path [attr.d]="p" /> }</svg></span>Module</span>
+                <span class="approval-card__value">{{ item.moduleTitle ?? '—' }}</span>
+              </div>
+              <div class="approval-card__row">
+                <span class="approval-card__key"><span class="approval-card__key-icon"><svg viewBox="0 0 24 24" aria-hidden="true">@for (p of icon('project'); track $index) { <path [attr.d]="p" /> }</svg></span>Project</span>
+                <span class="approval-card__value">{{ item.projectName }}</span>
+              </div>
+              <div class="approval-card__row">
+                <span class="approval-card__key"><span class="approval-card__key-icon"><svg viewBox="0 0 24 24" aria-hidden="true">@for (p of icon('user'); track $index) { <path [attr.d]="p" /> }</svg></span>Requested by</span>
                 <span class="approval-card__value approval-card__person"><app-avatar [userName]="item.requestedByName" size="xs" /><span class="truncate">{{ item.requestedByName }}</span></span>
               </div>
-              <div class="approval-card__row"><span>Requested on</span><span class="approval-card__value">{{ item.createdAt | date: 'MMM d, y h:mm a' }}</span></div>
               <div class="approval-card__row">
-                <span>{{ item.source === 'invitation' ? 'Invitee' : 'Approver' }}</span>
+                <span class="approval-card__key"><span class="approval-card__key-icon"><svg viewBox="0 0 24 24" aria-hidden="true">@for (p of icon('calendar'); track $index) { <path [attr.d]="p" /> }</svg></span>Requested on</span>
+                <span class="approval-card__value">{{ item.createdAt | date: 'MMM d, y h:mm a' }}</span>
+              </div>
+              <div class="approval-card__row">
+                <span class="approval-card__key"><span class="approval-card__key-icon"><svg viewBox="0 0 24 24" aria-hidden="true">@for (p of icon('approver'); track $index) { <path [attr.d]="p" /> }</svg></span>{{ item.source === 'invitation' ? 'Invitee' : 'Approver' }}</span>
                 <span class="approval-card__value approval-card__person"><app-avatar [userName]="item.approverName" size="xs" /><span class="truncate">{{ item.approverName }}</span></span>
               </div>
               @if (item.decidedAt) {
-                <div class="approval-card__row"><span>Decided by</span><span class="approval-card__value">{{ item.decidedByName ?? item.approverName }}</span></div>
-                <div class="approval-card__row"><span>Decided on</span><span class="approval-card__value">{{ item.decidedAt | date: 'MMM d, y h:mm a' }}</span></div>
+                <div class="approval-card__row">
+                  <span class="approval-card__key"><span class="approval-card__key-icon"><svg viewBox="0 0 24 24" aria-hidden="true">@for (p of icon('approver'); track $index) { <path [attr.d]="p" /> }</svg></span>Decided by</span>
+                  <span class="approval-card__value">{{ item.decidedByName ?? item.approverName }}</span>
+                </div>
+                <div class="approval-card__row">
+                  <span class="approval-card__key"><span class="approval-card__key-icon"><svg viewBox="0 0 24 24" aria-hidden="true">@for (p of icon('calendarCheck'); track $index) { <path [attr.d]="p" /> }</svg></span>Decided on</span>
+                  <span class="approval-card__value">{{ item.decidedAt | date: 'MMM d, y h:mm a' }}</span>
+                </div>
               }
               @if (item.decisionComment) {
-                <div class="approval-card__row approval-card__row--stacked"><span>Reason</span><span class="approval-card__value" data-testid="approval-card-decision-reason">{{ item.decisionComment }}</span></div>
+                <div class="approval-card__row approval-card__row--stacked">
+                  <span class="approval-card__key"><span class="approval-card__key-icon"><svg viewBox="0 0 24 24" aria-hidden="true">@for (p of icon('message'); track $index) { <path [attr.d]="p" /> }</svg></span>Reason</span>
+                  <span class="approval-card__value" data-testid="approval-card-decision-reason">{{ item.decisionComment }}</span>
+                </div>
               }
             </div>
             @if (canOpenTarget()) {
@@ -140,23 +180,41 @@ const PRIORITY_OPTIONS: readonly WorkDropdownOption[] = [
 
           @if (d.invitation; as inv) {
             <section data-testid="approval-card-invitation">
-              <div class="approval-card__label">Invitation</div>
+              <div class="approval-card__label">
+                <svg viewBox="0 0 24 24" aria-hidden="true">@for (p of icon('userPlus'); track $index) { <path [attr.d]="p" /> }</svg>
+                Invitation
+              </div>
               <div class="approval-card__box">
                 <div class="approval-card__row">
-                  <span>Invitee</span>
+                  <span class="approval-card__key"><span class="approval-card__key-icon"><svg viewBox="0 0 24 24" aria-hidden="true">@for (p of icon('user'); track $index) { <path [attr.d]="p" /> }</svg></span>Invitee</span>
                   <span class="approval-card__value approval-card__person"><app-avatar [userName]="inv.inviteeName" size="xs" /><span class="truncate">{{ inv.inviteeName }}</span></span>
                 </div>
-                <div class="approval-card__row"><span>Invited as</span><span class="approval-card__value capitalize">{{ inv.inviteType }}</span></div>
-                <div class="approval-card__row"><span>Module</span><span class="approval-card__value">{{ inv.moduleTitle }}</span></div>
-                <div class="approval-card__row"><span>Invited by</span><span class="approval-card__value">{{ inv.invitedByName }}</span></div>
-                <div class="approval-card__row"><span>Expires</span><span class="approval-card__value">{{ inv.expiresAt ? (inv.expiresAt | date: 'MMM d, y') : 'Never' }}</span></div>
+                <div class="approval-card__row">
+                  <span class="approval-card__key"><span class="approval-card__key-icon"><svg viewBox="0 0 24 24" aria-hidden="true">@for (p of icon('badge'); track $index) { <path [attr.d]="p" /> }</svg></span>Invited as</span>
+                  <span class="approval-card__value capitalize">{{ inv.inviteType }}</span>
+                </div>
+                <div class="approval-card__row">
+                  <span class="approval-card__key"><span class="approval-card__key-icon"><svg viewBox="0 0 24 24" aria-hidden="true">@for (p of icon('module'); track $index) { <path [attr.d]="p" /> }</svg></span>Module</span>
+                  <span class="approval-card__value">{{ inv.moduleTitle }}</span>
+                </div>
+                <div class="approval-card__row">
+                  <span class="approval-card__key"><span class="approval-card__key-icon"><svg viewBox="0 0 24 24" aria-hidden="true">@for (p of icon('send'); track $index) { <path [attr.d]="p" /> }</svg></span>Invited by</span>
+                  <span class="approval-card__value">{{ inv.invitedByName }}</span>
+                </div>
+                <div class="approval-card__row">
+                  <span class="approval-card__key"><span class="approval-card__key-icon"><svg viewBox="0 0 24 24" aria-hidden="true">@for (p of icon('clock'); track $index) { <path [attr.d]="p" /> }</svg></span>Expires</span>
+                  <span class="approval-card__value">{{ inv.expiresAt ? (inv.expiresAt | date: 'MMM d, y') : 'Never' }}</span>
+                </div>
               </div>
             </section>
           }
 
           @if (d.fields.length > 0) {
             <section>
-              <div class="approval-card__label">Changes</div>
+              <div class="approval-card__label">
+                <svg viewBox="0 0 24 24" aria-hidden="true">@for (p of icon('edit'); track $index) { <path [attr.d]="p" /> }</svg>
+                Changes
+              </div>
               @if (d.currentAllocatedHours !== null && allocationField(); as f) {
                 <div class="mb-2 grid grid-cols-2 gap-2" data-testid="approval-card-allocation">
                   <div class="approval-card__stat"><div class="approval-card__stat-value">{{ d.currentAllocatedHours }}h</div><div class="approval-card__stat-label">Current allocation</div></div>
@@ -181,6 +239,10 @@ const PRIORITY_OPTIONS: readonly WorkDropdownOption[] = [
                           @case ('priority') {
                             <app-work-dropdown size="sm" [fullWidth]="true" [options]="priorityOptions" [selected]="editValue(f)" [accessibleLabel]="f.label"
                               [testId]="'approval-edit-' + f.key" (selectionChanged)="setEdit(f.key, $event)" />
+                          }
+                          @case ('longtext') {
+                            <textarea class="approval-card__input approval-card__textarea" [attr.data-testid]="'approval-edit-' + f.key" [attr.aria-label]="f.label"
+                              rows="3" [value]="editValue(f)" (input)="setEdit(f.key, $any($event.target).value)"></textarea>
                           }
                           @default {
                             <span class="approval-card__input-wrap">
@@ -210,13 +272,19 @@ const PRIORITY_OPTIONS: readonly WorkDropdownOption[] = [
 
           @if (d.note) {
             <section>
-              <div class="approval-card__label">Reason / note</div>
+              <div class="approval-card__label">
+                <svg viewBox="0 0 24 24" aria-hidden="true">@for (p of icon('message'); track $index) { <path [attr.d]="p" /> }</svg>
+                Reason / note
+              </div>
               <p class="approval-card__note" data-testid="approval-card-note">{{ d.note }}</p>
             </section>
           }
 
           <section>
-            <div class="approval-card__label">Activity</div>
+            <div class="approval-card__label">
+                <svg viewBox="0 0 24 24" aria-hidden="true">@for (p of icon('activity'); track $index) { <path [attr.d]="p" /> }</svg>
+                Activity
+              </div>
             <ol class="approval-card__timeline" data-testid="approval-card-timeline">
               @for (entry of timeline(); track $index) {
                 <li [class]="'approval-card__event approval-card__event--' + entry.icon">
@@ -266,9 +334,14 @@ const PRIORITY_OPTIONS: readonly WorkDropdownOption[] = [
     </aside>
   `,
   styles: [`
-    /* Same shell as app-card (Tree tab explanation panel), but a fixed height so the actions stay at the bottom. */
-    .approval-card { position: relative; display: flex; height: calc(100vh - 310px); min-height: 420px; overflow: hidden; flex-direction: column; border: 1px solid var(--color-border); border-radius: 12px; background: var(--color-surface); color: var(--color-text-primary); box-shadow: 0 1px 2px rgb(0 0 0 / .05); }
+    /* Same shell as app-card (Tree tab explanation panel); fills its container (sized by the page) so the actions stay at the bottom. */
+    .approval-card { position: relative; display: flex; height: 100%; overflow: hidden; flex-direction: column; border: 1px solid var(--color-border); border-radius: 12px; background: var(--color-surface); color: var(--color-text-primary); box-shadow: 0 1px 2px rgb(0 0 0 / .05); }
     .approval-card__scroll { flex: 1; min-height: 0; overflow-x: hidden; overflow-y: auto; padding: 20px; }
+    .approval-card__header { display: flex; align-items: flex-start; gap: 12px; padding-bottom: 16px; border-bottom: 1px solid var(--color-border); }
+    .approval-card__type-tile { width: 40px; height: 40px; border-radius: 11px; }
+    .approval-card__eyebrow { margin-bottom: 3px; color: var(--color-text-secondary); font-size: 11px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; }
+    .approval-card__title { margin: 0; color: var(--color-text-primary); font-size: 16px; font-weight: 700; line-height: 1.3; overflow-wrap: anywhere; }
+    .approval-card__subtitle { margin: 3px 0 0; color: var(--color-text-secondary); font-size: 12px; overflow-wrap: anywhere; }
     .approval-card__close { display: inline-flex; flex: 0 0 auto; width: 28px; height: 28px; align-items: center; justify-content: center; border: 0; border-radius: 8px; background: transparent; color: var(--color-text-secondary); cursor: pointer; }
     .approval-card__close:hover { background: var(--color-surface-secondary); color: var(--color-text-primary); }
     /* Beside the list the card is always open; closing only makes sense for the narrow-screen drawer. */
@@ -276,12 +349,15 @@ const PRIORITY_OPTIONS: readonly WorkDropdownOption[] = [
     .approval-card__close svg, .approval-card__link svg { width: 16px; height: 16px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
     .approval-card__muted { margin: 0; padding: 24px 20px; color: var(--color-text-secondary); font-size: 13px; }
     .approval-card__error { margin: 0; padding: 8px 10px; border-radius: 8px; background: color-mix(in srgb, var(--color-danger) 8%, transparent); color: var(--color-danger); font-size: 12px; }
-    .approval-card__label { margin-bottom: 8px; color: var(--color-text-secondary); font-size: 11px; font-weight: 700; letter-spacing: .05em; text-transform: uppercase; }
+    .approval-card__label { display: flex; align-items: center; gap: 6px; margin-bottom: 8px; color: var(--color-text-secondary); font-size: 11px; font-weight: 700; letter-spacing: .05em; text-transform: uppercase; }
+    .approval-card__label svg { width: 14px; height: 14px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+    .approval-card__key { display: inline-flex; flex: 0 0 auto; align-items: center; gap: 8px; color: var(--color-text-secondary); font-weight: 500; }
+    .approval-card__key-icon { display: inline-flex; width: 24px; height: 24px; flex: 0 0 auto; align-items: center; justify-content: center; border-radius: 7px; background: color-mix(in srgb, var(--color-accent) 10%, var(--color-surface)); color: var(--color-accent); }
+    .approval-card__key-icon svg { width: 13px; height: 13px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
     .approval-card__was { margin-top: 2px; color: var(--color-text-secondary); font-size: 10px; overflow-wrap: anywhere; }
-    .approval-card__box { display: flex; flex-direction: column; padding: 4px 12px; border: 1px solid var(--color-border); border-radius: 12px; background: color-mix(in srgb, var(--color-surface-secondary) 30%, transparent); font-size: 12px; }
+    .approval-card__box { display: flex; flex-direction: column; padding: 2px 12px; border: 1px solid var(--color-border); border-radius: 12px; background: var(--color-surface); font-size: 12px; box-shadow: 0 1px 2px rgb(0 0 0 / .04); }
     .approval-card__row { display: flex; min-width: 0; align-items: center; justify-content: space-between; gap: 12px; padding: 8px 0; border-bottom: 1px solid color-mix(in srgb, var(--color-border) 50%, transparent); }
     .approval-card__row:last-child { border-bottom: 0; }
-    .approval-card__row > span:first-child { flex: 0 0 auto; color: var(--color-text-secondary); font-weight: 500; }
     .approval-card__row--stacked { flex-direction: column; align-items: stretch; gap: 4px; }
     .approval-card__value { min-width: 0; overflow: hidden; color: var(--color-text-primary); font-weight: 600; text-align: right; text-overflow: ellipsis; white-space: nowrap; }
     .approval-card__row--stacked .approval-card__value { text-align: left; white-space: normal; overflow-wrap: anywhere; font-weight: 500; }
@@ -307,6 +383,8 @@ const PRIORITY_OPTIONS: readonly WorkDropdownOption[] = [
     .approval-card__input-wrap { display: flex; height: 32px; min-width: 0; align-items: center; width: 100%; border: 1px solid var(--color-border); border-radius: 8px; background: var(--color-surface); }
     .approval-card__input-wrap:focus-within { border-color: var(--color-accent); box-shadow: 0 0 0 3px color-mix(in srgb, var(--color-accent) 18%, transparent); }
     .approval-card__input { width: 100%; min-width: 0; padding: 6px 8px; border: 0; background: transparent; color: var(--color-text-primary); font: inherit; font-size: 12px; outline: none; }
+    .approval-card__textarea { height: auto; min-height: 64px; border: 1px solid var(--color-border); border-radius: 8px; background: var(--color-surface); resize: vertical; }
+    .approval-card__textarea:focus { border-color: var(--color-accent); box-shadow: 0 0 0 3px color-mix(in srgb, var(--color-accent) 18%, transparent); }
     .approval-card__suffix { padding-right: 8px; color: var(--color-text-secondary); font-size: 12px; }
     .approval-card__field-error { display: block; margin-top: 3px; color: var(--color-danger); font-size: 11px; }
     .approval-card__note { margin: 0; padding: 10px 12px; border: 1px solid var(--color-border); border-radius: 12px; background: color-mix(in srgb, var(--color-surface-secondary) 30%, transparent); color: var(--color-text-secondary); font-size: 12px; line-height: 1.6; white-space: pre-wrap; overflow-wrap: anywhere; }
@@ -318,7 +396,8 @@ const PRIORITY_OPTIONS: readonly WorkDropdownOption[] = [
     .approval-card__event time { grid-column: 2; color: var(--color-text-secondary); font-size: 11px; }
     .approval-card__footer { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; padding: 14px 20px; border-top: 1px solid var(--color-border); background: var(--color-surface); }
     .approval-card__footer button:disabled { opacity: .55; cursor: default; }
-    .approval-pill { --tone: var(--color-accent); display: inline-flex; padding: 3px 10px; border-radius: 999px; background: color-mix(in srgb, var(--tone) 12%, transparent); color: var(--tone); font-size: 12px; font-weight: 500; white-space: nowrap; }
+    .approval-pill { --tone: var(--color-accent); display: inline-flex; align-items: center; gap: 6px; padding: 3px 10px; border-radius: 999px; background: color-mix(in srgb, var(--tone) 12%, transparent); color: var(--tone); font-size: 12px; font-weight: 500; white-space: nowrap; }
+    .approval-pill__dot { width: 6px; height: 6px; border-radius: 999px; background: currentColor; }
     .approval-pill--neutral { --tone: var(--color-text-secondary); background: var(--color-surface-secondary); }
   `]
 })
@@ -381,6 +460,10 @@ export class ApprovalExplanationCardComponent {
       this.fieldErrors.set({});
       this.rejectOpen.set(false);
     });
+  }
+
+  protected icon(name: string): readonly string[] {
+    return CARD_ICONS[name] ?? [];
   }
 
   protected editValue(field: ApprovalFieldDto): string {

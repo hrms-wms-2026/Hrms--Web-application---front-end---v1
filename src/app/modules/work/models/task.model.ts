@@ -52,6 +52,7 @@ export interface WorkTask {
   subtaskCompletedCount: number;
   subtaskAssigneeEmployeeIds: string[];
   createdAt: Date;
+  hasPendingApproval: boolean;
 }
 import { BulkResultSummary } from '../../../shared/ui/bulk-action-result-modal/bulk-action-result-modal.component';
 

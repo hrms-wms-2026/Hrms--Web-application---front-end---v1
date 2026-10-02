@@ -1,5 +1,6 @@
 import {
   APPROVAL_TYPE_META,
+  approvalMenuItems,
   approvalSubtitle,
   approvalTitle,
   approvalTypeKey,
@@ -71,5 +72,24 @@ describe('approval-feed.util', () => {
     expect(fields.map((f) => f.key)).toEqual(['direction', 'type', 'status', 'module', 'requestedBy', 'requestedOn']);
     expect(fields.find((f) => f.key === 'module')!.options).toEqual([{ value: 'm1', label: 'M1' }]);
     expect(fields.find((f) => f.key === 'type')!.options).toEqual([{ value: 'task_update', label: 'Task Update' }]);
+  });
+});
+
+describe('approvalMenuItems', () => {
+  it('offers Approve for a decidable row and never Reject', () => {
+    const menu = approvalMenuItems(base);
+    expect(menu.map((m) => m.id)).toEqual(['view', 'approve', 'open', 'copy']);
+    expect(menu.some((m) => m.id === 'reject' || /reject|decline/i.test(m.label))).toBe(false);
+
+    const sent = approvalMenuItems({ ...base, canDecide: false, canCancel: true, direction: 'sent' });
+    expect(sent.map((m) => m.label)).toEqual(['View details', 'Open task', 'Cancel request', 'Copy link']);
+
+    const decided = approvalMenuItems({ ...base, status: 'approved', targetType: 'project', targetId: null });
+    expect(decided.map((m) => m.id)).toEqual(['view', 'copy']);
+  });
+
+  it('an invitation row offers Accept and Open module', () => {
+    const menu = approvalMenuItems({ ...base, source: 'invitation', actionType: 'module.invitation', targetType: 'module' });
+    expect(menu.map((m) => m.label)).toEqual(['View details', 'Accept', 'Open module', 'Copy link']);
   });
 });

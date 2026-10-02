@@ -775,7 +775,7 @@ describe('MilestoneTreeTabComponent', () => {
         sprintId: 'spr-1', assigneeEmployeeIds: [], openClockSessionEmployeeId: null, openClockSessionClockInAt: null, totalLoggedMinutes: 0,
         attachments: [], assignees: [],
         parentTaskId: null, subtaskTotalCount: 0, subtaskCompletedCount: 0, subtaskAssigneeEmployeeIds: [],
-        createdAt: new Date('2026-01-01T00:00:00Z')
+        createdAt: new Date('2026-01-01T00:00:00Z'), hasPendingApproval: false
       }
     };
 

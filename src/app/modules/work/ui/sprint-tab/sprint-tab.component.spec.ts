@@ -250,7 +250,7 @@ describe('SprintTabComponent', () => {
       estimatedHours: 1, completedHours: 0, progressPercent: 0, sprintId: baseSprint.id,
       assigneeEmployeeIds: [], openClockSessionEmployeeId: null, openClockSessionClockInAt: null,
       totalLoggedMinutes: 0, attachments: [], assignees: [], parentTaskId: null,
-      subtaskTotalCount: 0, subtaskCompletedCount: 0, subtaskAssigneeEmployeeIds: [], createdAt: new Date()
+      subtaskTotalCount: 0, subtaskCompletedCount: 0, subtaskAssigneeEmployeeIds: [], createdAt: new Date(), hasPendingApproval: false
     };
     setup({ tasks: [task], objectiveOwners: { o1: true }, expanded: true });
     fixture.componentRef.setInput('selectable', true);

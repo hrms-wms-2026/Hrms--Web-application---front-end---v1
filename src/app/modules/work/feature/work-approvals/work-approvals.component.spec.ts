@@ -6,7 +6,7 @@ import { of, throwError } from 'rxjs';
 import { vi } from 'vitest';
 import { WorkApprovalsComponent } from './work-approvals.component';
 import { WorkDropdownComponent } from '../../ui/work-dropdown/work-dropdown.component';
-import { ApprovalTableComponent } from '../../ui/approval-table/approval-table.component';
+import { DataTableComponent } from '../../../../shared/ui/data-table/data-table.component';
 import { ApprovalExplanationCardComponent } from '../../ui/approval-explanation-card/approval-explanation-card.component';
 import { TaskFilterBarComponent } from '../../ui/task-filter-bar/task-filter-bar.component';
 import { WorkApprovalsStore } from '../../state/work-approvals.store';
@@ -101,8 +101,8 @@ describe('WorkApprovalsComponent', () => {
     fixture.detectChanges();
   }
 
-  const table = () => fixture.debugElement.query(By.directive(ApprovalTableComponent)).componentInstance as ApprovalTableComponent;
-  const tableIds = () => table().items().map((i) => i.id);
+  const table = () => fixture.debugElement.query(By.directive(DataTableComponent)).componentInstance as DataTableComponent<ApprovalFeedItemDto>;
+  const tableIds = () => table().rows().map((i) => i.id);
 
   it('registers the toolbar template and relies on the shell-loaded feed', async () => {
     setup();
@@ -144,7 +144,7 @@ describe('WorkApprovalsComponent', () => {
 
   it('selecting a row loads the detail, sets ?request= and shows the card', () => {
     setup();
-    table().rowSelected.emit(received);
+    table().rowClicked.emit(received);
     fixture.detectChanges();
 
     expect(store.select).toHaveBeenCalledWith(received);
@@ -162,7 +162,7 @@ describe('WorkApprovalsComponent', () => {
 
   it('selects the first visible request again when a filter hides the selected one', () => {
     setup();
-    table().rowSelected.emit(decided);
+    table().rowClicked.emit(decided);
     fixture.detectChanges();
     (fixture.componentInstance as any).onFilterChanged({ key: 'status', values: ['pending'] });
     fixture.detectChanges();
@@ -177,7 +177,7 @@ describe('WorkApprovalsComponent', () => {
 
   it('quick approve calls store.approve without an edited payload and toasts', async () => {
     setup();
-    table().quickApprove.emit(received);
+    fixture.componentInstance.onRowMenu(received, 'approve');
     await fixture.whenStable();
     expect(store.approve).toHaveBeenCalledWith(received);
     expect(notifications.success).toHaveBeenCalledWith('Approved');
@@ -185,7 +185,7 @@ describe('WorkApprovalsComponent', () => {
 
   it("the card's reject with no reason calls store.reject(item, undefined)", () => {
     setup();
-    table().rowSelected.emit(received);
+    table().rowClicked.emit(received);
     fixture.detectChanges();
     const card = fixture.debugElement.query(By.directive(ApprovalExplanationCardComponent)).componentInstance as ApprovalExplanationCardComponent;
 
@@ -198,7 +198,7 @@ describe('WorkApprovalsComponent', () => {
 
   it('closing the card clears the selection and the query param', () => {
     setup();
-    table().rowSelected.emit(received);
+    table().rowClicked.emit(received);
     fixture.detectChanges();
     (fixture.debugElement.query(By.directive(ApprovalExplanationCardComponent)).componentInstance as ApprovalExplanationCardComponent).closed.emit();
     fixture.detectChanges();
@@ -209,7 +209,7 @@ describe('WorkApprovalsComponent', () => {
 
   it('opening a module target navigates to its tree', () => {
     setup();
-    table().openTarget.emit(feedItem({ targetType: 'module', targetId: 'obj-9' }));
+    fixture.componentInstance.onRowMenu(feedItem({ targetType: 'module', targetId: 'obj-9' }), 'open');
     expect(router.navigate).toHaveBeenCalledWith(['/work', 'project-1', 'milestones', 'obj-9', 'tree']);
   });
 

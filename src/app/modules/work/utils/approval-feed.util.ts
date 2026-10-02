@@ -1,6 +1,7 @@
 import { WorkDropdownOption } from '../ui/work-dropdown/work-dropdown.component';
 import { TaskFilterFieldConfig } from '../ui/task-filter-bar/task-filter-bar.component';
 import { ApprovalFeedItemDto } from '../models/dto/approval-feed.dto';
+import { MenuItem } from '../../../shared/ui/dropdown-menu/dropdown-menu.component';
 
 export type ApprovalTypeKey =
   | 'task_creation' | 'task_update' | 'task_deletion' | 'allocation' | 'module_update'
@@ -113,4 +114,20 @@ export function buildApprovalFilterFields(items: readonly ApprovalFeedItemDto[])
     { key: 'requestedOn', label: 'Requested on', icon: 'calendar', kind: 'single', defaultValues: ['any'],
       options: [{ value: 'any', label: 'Any time' }, { value: '7', label: 'Last 7 days' }, { value: '30', label: 'Last 30 days' }, { value: '90', label: 'Last 90 days' }] }
   ];
+}
+
+export type ApprovalRowAction = 'view' | 'approve' | 'open' | 'cancel' | 'copy';
+
+/** The row's 3-dot quick actions. Never 'reject' - rejecting always goes through the card's reminder dialog. */
+export function approvalMenuItems(item: ApprovalFeedItemDto): MenuItem[] {
+  const items: MenuItem[] = [{ id: 'view', label: 'View details' }];
+  if (item.status === 'pending' && item.canDecide) {
+    items.push({ id: 'approve', label: item.source === 'invitation' ? 'Accept' : 'Approve' });
+  }
+  if (item.targetId && (item.targetType === 'task' || item.targetType === 'module')) {
+    items.push({ id: 'open', label: item.targetType === 'task' ? 'Open task' : 'Open module' });
+  }
+  if (item.status === 'pending' && item.canCancel) items.push({ id: 'cancel', label: 'Cancel request' });
+  items.push({ id: 'copy', label: 'Copy link' });
+  return items;
 }

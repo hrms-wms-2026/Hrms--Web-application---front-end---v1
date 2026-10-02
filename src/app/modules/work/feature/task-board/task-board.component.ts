@@ -438,6 +438,7 @@ export class TaskBoardComponent implements OnInit, AfterViewChecked, AfterViewIn
     objectiveId: string;
     categoryId: string;
     sprintId?: string | null;
+    storyPoints?: number;
     resolve: (ok: boolean) => void;
   }): Promise<void> {
     const request: CreateTaskRequestDto = {
@@ -445,7 +446,8 @@ export class TaskBoardComponent implements OnInit, AfterViewChecked, AfterViewIn
       categoryId: event.categoryId,
       priority: event.priority,
       dueDate: event.dueDate || undefined,
-      sprintId: event.sprintId ?? null
+      sprintId: event.sprintId ?? null,
+      storyPoints: event.storyPoints
     };
 
     try {

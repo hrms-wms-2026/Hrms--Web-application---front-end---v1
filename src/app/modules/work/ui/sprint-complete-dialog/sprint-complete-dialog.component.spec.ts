@@ -43,7 +43,7 @@ describe('SprintCompleteDialogComponent', () => {
       subtaskTotalCount: 0,
       subtaskCompletedCount: 0,
       subtaskAssigneeEmployeeIds: [],
-      createdAt: new Date('2026-01-01T00:00:00Z'),
+      createdAt: new Date('2026-01-01T00:00:00Z'), hasPendingApproval: false,
       ...overrides
     };
   }

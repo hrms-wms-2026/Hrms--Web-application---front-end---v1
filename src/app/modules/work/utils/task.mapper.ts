@@ -48,7 +48,8 @@ export function toWorkTask(dto: WorkTaskDto): WorkTask {
     subtaskTotalCount: dto.subtaskTotalCount ?? 0,
     subtaskCompletedCount: dto.subtaskCompletedCount ?? 0,
     subtaskAssigneeEmployeeIds: dto.subtaskAssigneeEmployeeIds ?? [],
-    createdAt: new Date(dto.createdAt)
+    createdAt: new Date(dto.createdAt),
+    hasPendingApproval: dto.hasPendingApproval ?? false
   };
 }
 
