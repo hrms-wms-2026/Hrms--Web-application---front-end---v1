@@ -44,10 +44,10 @@ describe('OverviewTimeOffWidgetComponent', () => {
     expect(get).toHaveBeenCalledWith('emp-1');
   });
 
-  it('keeps the widget at its natural height instead of filling the overview column', () => {
+  it('fills its row so it lines up with the Approvals card beside it', () => {
     const { el } = setup(vi.fn().mockReturnValue(of(response)));
 
-    expect(el.classList.contains('h-full')).toBe(false);
+    expect(el.classList.contains('h-full')).toBe(true);
   });
 
   it('lists each balance as remaining hours out of entitled', () => {
@@ -57,7 +57,7 @@ describe('OverviewTimeOffWidgetComponent', () => {
     expect(rows).toHaveLength(2);
     expect(rows[0].textContent).toContain('Annual leave');
     expect(rows[0].textContent).toContain('96 h');
-    expect(rows[0].textContent).toContain('of 96 h');
+    expect(rows[0].textContent).toContain('/ 96 h');
   });
 
   it('marks an overdrawn balance', () => {
@@ -68,52 +68,32 @@ describe('OverviewTimeOffWidgetComponent', () => {
     expect(rows[0].textContent).not.toContain('overdrawn');
   });
 
-  it('shows the next approved leave with its dates, type and hours', () => {
-    const { el } = setup(vi.fn().mockReturnValue(of(response)));
-    const next = el.querySelector('[data-testid="next-leave"]')!.textContent!;
-
-    expect(next).toContain('Sep 23 – 25');
-    expect(next).toContain('Annual leave');
-    expect(next).toContain('24 h');
-  });
-
-  it('falls back to "Leave" when the type name is unknown, and hides the next-leave block when none', () => {
-    const noName = setup(vi.fn().mockReturnValue(of({ ...response, nextLeave: { ...response.nextLeave!, leaveTypeName: null } })));
-    expect(noName.el.querySelector('[data-testid="next-leave"]')!.textContent).toContain('Leave');
-
-    TestBed.resetTestingModule();
-    const none = setup(vi.fn().mockReturnValue(of({ ...response, nextLeave: null })));
-    expect(none.el.querySelector('[data-testid="next-leave"]')).toBeFalsy();
-  });
-
-  it('shows the empty state when there are no balances and no upcoming leave', () => {
-    const { el } = setup(vi.fn().mockReturnValue(of({ year: 2026, balances: [], nextLeave: null })));
+  it('shows the empty state when there are no balances, even with an upcoming leave (Upcoming shows that)', () => {
+    const { el } = setup(vi.fn().mockReturnValue(of({ ...response, balances: [] })));
 
     expect(el.querySelector('[data-testid="widget-empty"]')).toBeTruthy();
   });
 
-  it('does not refetch when the month changes', () => {
+  it('does not refetch when the month changes and makes no attendance call of its own', () => {
     const get = vi.fn().mockReturnValue(of(response));
-    const { fixture, store } = setup(get);
+    const getAttendance = vi.fn().mockReturnValue(of(attendance));
+    const { fixture, store, el } = setup(get, getAttendance);
 
     store.setMonth('2026-05');
     fixture.detectChanges();
 
     expect(get).toHaveBeenCalledTimes(1);
+    expect(getAttendance).not.toHaveBeenCalled();
+    expect(el.querySelector('[data-testid="next-leave"]')).toBeFalsy();
   });
 
-  it('shows monthly leave and a neutral delta against the picked compare month', () => {
-    const compare = { ...attendance, from: '2026-08-01', to: '2026-08-31', leaveDays: 1 };
-    const getAttendance = vi.fn((_id: string, from: string) => of(from === '2026-08-01' ? compare : attendance));
-    const { fixture, store, el } = setup(vi.fn().mockReturnValue(of(response)), getAttendance);
+  it('fills an overdrawn bar in full and others by the share remaining', () => {
+    const { el } = setup(vi.fn().mockReturnValue(of(response)));
+    const bars = el.querySelectorAll('[role="progressbar"]');
 
-    store.setCompareMonth('2026-08');
-    fixture.detectChanges();
-
-    expect(el.querySelector('[data-testid="month-leave"]')!.textContent).toContain('Leave in Sep 2026: 3 days');
-    const delta = el.querySelector('[data-testid="month-leave"] [data-testid="delta"]')!;
-    expect(delta.textContent).toContain('▲ +2');
-    expect(delta.classList.contains('delta--neutral')).toBe(true);
+    expect(bars[0].getAttribute('aria-valuenow')).toBe('100');
+    expect(bars[1].getAttribute('aria-valuenow')).toBe('100');
+    expect((bars[1].firstElementChild as HTMLElement).className).toContain('bg-rose-500');
   });
 
   it('shows the no-access state on 403', () => {

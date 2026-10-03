@@ -15,7 +15,9 @@ import { PeopleApiService } from '../../data-access/people-api.service';
 import { EmployeeDetailResponse, UpdateEmployeeJobDetailsRequest } from '../../models/employee.model';
 import { ChangePositionModalComponent } from '../../ui/change-position-modal/change-position-modal.component';
 import { PositionHistoryEntryResponse } from '../../models/position-history.model';
+import { EmployeePeriodStore } from '../../state/employee-period.store';
 import { OffboardingWizardStore } from '../../state/offboarding-wizard.store';
+import { EmployeePeriodControlsComponent } from '../../ui/employee-period-controls/employee-period-controls.component';
 import {
   attendanceWarningLabel,
   attendanceAttentionLabel,
@@ -34,7 +36,7 @@ type DetailTab = 'overview' | 'employment' | 'personal';
  * Employee detail page shell backed by GET /api/v1/employees/{id}/detail: header (identity,
  * Transfer/Promote/Offboarding actions, resend-invitation), today's attendance strip, and
  * three tabs - Overview (per-widget attendance/discipline/time-off), Employment (job details,
- * Work Network, history) and Personal
+ * Work Network, job journey; mounted on first visit) and Personal
  * (personal info, emergency contacts, payroll when the server includes it).
  */
 @Component({
@@ -50,8 +52,11 @@ type DetailTab = 'overview' | 'employment' | 'personal';
     PopoverComponent,
     EmployeeEmploymentTabComponent,
     EmployeePersonalTabComponent,
-    EmployeeOverviewTabComponent
+    EmployeeOverviewTabComponent,
+    EmployeePeriodControlsComponent
   ],
+  // The Overview month lives here so its controls can sit in the profile header beside the tabs.
+  providers: [EmployeePeriodStore],
   template: `
     @if (loading()) {
       <app-loader label="Loading employee…" />
@@ -68,7 +73,7 @@ type DetailTab = 'overview' | 'employment' | 'personal';
       </header>
 
       <!-- Header: identity, live attendance status, actions -->
-      <div class="rounded-2xl bg-[var(--color-surface)] p-6 mb-4" data-testid="employee-profile-header">
+      <div class="rounded-2xl bg-[var(--color-surface)] px-6 pt-6 pb-3" data-testid="employee-profile-header">
         <div class="flex flex-col xl:flex-row xl:items-start justify-between gap-6">
           
           <!-- Identity and live attendance status -->
@@ -92,33 +97,25 @@ type DetailTab = 'overview' | 'employment' | 'personal';
               </div>
 
               <div class="min-w-0">
-                <div class="flex flex-wrap items-center gap-x-5 gap-y-3" data-testid="employee-primary-row">
-                  <div class="min-w-0 max-w-full" data-testid="employee-primary-details">
+                <div class="flex flex-wrap items-center gap-3" data-testid="employee-primary-row">
+                  <div class="min-w-0" data-testid="employee-primary-details">
                     <h1
                       class="text-2xl font-bold text-[var(--color-text-primary)]"
                       data-testid="employee-name"
                     >
                       {{ employee.personalInformation.firstName }} {{ employee.personalInformation.lastName }}
                     </h1>
-
-                    <p
-                      class="mt-0.5 break-all text-sm text-[var(--color-text-secondary)]"
-                      data-testid="employee-email"
-                    >
-                      {{ employee.personalInformation.email }}
-                    </p>
                   </div>
 
                   @if (employee.attendanceSummary) {
                     <div
-                      class="inline-flex max-w-full flex-shrink-0 items-start gap-3 rounded-xl px-3 py-2.5"
+                      class="inline-flex max-w-full flex-shrink-0 items-center gap-2 rounded-xl px-2.5 py-1"
                       [class]="todayStatusClass(employee)"
                       data-testid="employee-attendance-status"
                     >
-                      <span class="mt-1.5 h-2.5 w-2.5 flex-shrink-0 rounded-full" [class]="todayStatusDotClass(employee)"></span>
+                      <span class="h-2 w-2 flex-shrink-0 rounded-full" [class]="todayStatusDotClass(employee)"></span>
                       <div class="min-w-0">
-                        <span class="block text-[11px] font-semibold uppercase tracking-wider opacity-70">Attendance today</span>
-                        <div class="mt-0.5 flex flex-wrap items-center gap-x-2 gap-y-0.5 text-sm">
+                        <div class="flex flex-wrap items-center gap-x-2 gap-y-0.5 text-sm">
                         @if (employee.attendanceSummary.showNotClockedInWarning && attendanceWarningLabel(employee); as warningLabel) {
                             <span class="font-semibold">{{ warningLabel }}</span>
                         } @else {
@@ -136,8 +133,15 @@ type DetailTab = 'overview' | 'employment' | 'personal';
                   }
                 </div>
 
+                <p
+                  class="-mt-0.5 break-all text-sm text-[var(--color-text-secondary)]"
+                  data-testid="employee-email"
+                >
+                  {{ employee.personalInformation.email }}
+                </p>
+
                 <div
-                  class="mt-3 flex flex-wrap items-center gap-x-2 gap-y-1 text-sm"
+                  class="mt-1 flex flex-wrap items-center gap-x-2 gap-y-1 text-sm"
                   data-testid="employee-role-context"
                 >
                   <span class="font-semibold text-[var(--color-text-primary)]">
@@ -196,7 +200,7 @@ type DetailTab = 'overview' | 'employment' | 'personal';
       </div>
 
       <!-- Navigation Tabs -->
-      <div class="border-b border-[var(--color-border)] mb-4">
+      <div class="mb-6 flex flex-wrap items-end justify-between gap-x-4 gap-y-2 border-b border-[var(--color-border)]">
         <nav class="flex gap-2" aria-label="Employee Detail Sections">
           @for (tab of tabs; track tab.id) {
             <button
@@ -207,12 +211,15 @@ type DetailTab = 'overview' | 'employment' | 'personal';
               [class.font-semibold]="activeTab() === tab.id"
               [class.border-transparent]="activeTab() !== tab.id"
               [class.text-[var(--color-text-secondary)]]="activeTab() !== tab.id"
-              (click)="activeTab.set(tab.id)"
+              (click)="selectTab(tab.id)"
             >
               {{ tab.label }}
             </button>
           }
         </nav>
+        @if (activeTab() === 'overview') {
+          <app-employee-period-controls class="mb-1.5" />
+        }
       </div>
 
       @if (activeTab() === 'overview') {
@@ -222,15 +229,21 @@ type DetailTab = 'overview' | 'employment' | 'personal';
           [terminationDate]="employee.jobInformation.terminationDate ?? null"
         />
       }
-      <app-employee-employment-tab
-        [hidden]="activeTab() !== 'employment'"
-        [class.hidden]="activeTab() !== 'employment'"
-        [employee]="employee"
-        [jobJourney]="jobJourney()"
-        [canEdit]="canChangePosition() && !isReadOnly()"
-        [saving]="savingJobDetails()"
-        (save)="onJobDetailsSave($event)"
-      />
+      <!-- Mounted on first visit only (then kept alive), so its Work Network and journey calls wait for the tab -->
+      @if (employmentVisited()) {
+        <app-employee-employment-tab
+          [hidden]="activeTab() !== 'employment'"
+          [class.hidden]="activeTab() !== 'employment'"
+          [employee]="employee"
+          [jobJourney]="jobJourney()"
+          [jobJourneyLoadedAt]="jobJourneyLoadedAt()"
+          [jobJourneyRefreshing]="jobJourneyRefreshing()"
+          (refreshJobJourney)="refreshJobJourney()"
+          [canEdit]="canChangePosition() && !isReadOnly()"
+          [saving]="savingJobDetails()"
+          (save)="onJobDetailsSave($event)"
+        />
+      }
       @if (activeTab() === 'personal') {
         <app-employee-personal-tab [employee]="employee" />
       }
@@ -322,7 +335,10 @@ export class EmployeeDetailComponent {
     { id: 'personal', label: 'Personal' }
   ];
   readonly activeTab = signal<DetailTab>('overview');
+  readonly employmentVisited = signal(false);
   readonly jobJourney = signal<readonly PositionHistoryEntryResponse[]>([]);
+  readonly jobJourneyLoadedAt = signal<Date | null>(null);
+  readonly jobJourneyRefreshing = signal(false);
 
   readonly attendanceWarningLabel = attendanceWarningLabel;
   readonly attendanceAttentionLabel = attendanceAttentionLabel;
@@ -363,11 +379,38 @@ export class EmployeeDetailComponent {
         this.error.set(toSafeErrorMessage(err, 'The employee or selected organization record could not be found.'));
       }
     });
-    this.api.getJobJourney(id).subscribe({
-      next: (entries) => this.jobJourney.set(entries),
-      error: () => this.jobJourney.set([])
-    });
+    if (this.employmentVisited()) this.loadJobJourney(id);
     void this.offboardingStore.loadOffboarding(id);
+  }
+
+  selectTab(tab: DetailTab): void {
+    this.activeTab.set(tab);
+    if (tab === 'employment' && !this.employmentVisited()) {
+      this.employmentVisited.set(true);
+      const id = this.employee()?.id;
+      if (id) this.loadJobJourney(id);
+    }
+  }
+
+  refreshJobJourney(): void {
+    const id = this.employee()?.id;
+    if (id) this.loadJobJourney(id, true);
+  }
+
+  /** A quiet refresh keeps the current entries on screen if the reload fails. */
+  private loadJobJourney(id: string, quiet = false): void {
+    if (quiet) this.jobJourneyRefreshing.set(true);
+    this.api.getJobJourney(id).subscribe({
+      next: (entries) => {
+        this.jobJourney.set(entries);
+        this.jobJourneyLoadedAt.set(new Date());
+        this.jobJourneyRefreshing.set(false);
+      },
+      error: () => {
+        if (!quiet) this.jobJourney.set([]);
+        this.jobJourneyRefreshing.set(false);
+      }
+    });
   }
 
   onJobDetailsSave(payload: UpdateEmployeeJobDetailsRequest): void {

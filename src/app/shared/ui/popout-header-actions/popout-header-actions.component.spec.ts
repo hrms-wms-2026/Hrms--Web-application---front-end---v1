@@ -1,0 +1,67 @@
+import { TestBed } from '@angular/core/testing';
+import { PopoutHeaderActionsComponent, formatRefreshedAgo, latestDate } from './popout-header-actions.component';
+
+describe('formatRefreshedAgo', () => {
+  const now = new Date('2026-10-01T12:00:00Z');
+
+  it('says just now under a minute, then minutes, then hours', () => {
+    expect(formatRefreshedAgo(new Date('2026-10-01T11:59:30Z'), now)).toBe('just now');
+    expect(formatRefreshedAgo(new Date('2026-10-01T11:55:00Z'), now)).toBe('5 min ago');
+    expect(formatRefreshedAgo(new Date('2026-10-01T09:00:00Z'), now)).toBe('3 h ago');
+  });
+
+  it('never goes negative for a time just after now', () => {
+    expect(formatRefreshedAgo(new Date('2026-10-01T12:00:05Z'), now)).toBe('just now');
+  });
+});
+
+describe('latestDate', () => {
+  it('returns the newest date, or null when none', () => {
+    const a = new Date('2026-10-01T10:00:00Z');
+    const b = new Date('2026-10-01T11:00:00Z');
+    expect(latestDate(a, null, b)).toBe(b);
+    expect(latestDate(null, undefined)).toBeNull();
+  });
+});
+
+describe('PopoutHeaderActionsComponent', () => {
+  function setup(refreshedAt: Date | null, refreshing = false) {
+    TestBed.configureTestingModule({ imports: [PopoutHeaderActionsComponent] });
+    const fixture = TestBed.createComponent(PopoutHeaderActionsComponent);
+    fixture.componentRef.setInput('refreshedAt', refreshedAt);
+    fixture.componentRef.setInput('refreshing', refreshing);
+    fixture.detectChanges();
+    return { fixture, el: fixture.nativeElement as HTMLElement };
+  }
+
+  it('shows when the data was last loaded, a refresh and a close button', () => {
+    const { el } = setup(new Date());
+
+    expect(el.querySelector('[data-testid="refreshed-label"]')!.textContent).toContain('Refreshed just now');
+    expect(el.querySelector('[data-testid="popout-refresh"]')).toBeTruthy();
+    expect(el.querySelector('[data-testid="popout-close"]')).toBeTruthy();
+  });
+
+  it('hides the label until data has loaded', () => {
+    const { el } = setup(null);
+
+    expect(el.querySelector('[data-testid="refreshed-label"]')).toBeNull();
+  });
+
+  it('emits refresh and closed, and disables refresh while one is running', () => {
+    const { fixture, el } = setup(new Date());
+    const refresh = vi.fn();
+    const closed = vi.fn();
+    fixture.componentInstance.refresh.subscribe(refresh);
+    fixture.componentInstance.closed.subscribe(closed);
+
+    (el.querySelector('[data-testid="popout-refresh"]') as HTMLButtonElement).click();
+    (el.querySelector('[data-testid="popout-close"]') as HTMLButtonElement).click();
+    expect(refresh).toHaveBeenCalledTimes(1);
+    expect(closed).toHaveBeenCalledTimes(1);
+
+    fixture.componentRef.setInput('refreshing', true);
+    fixture.detectChanges();
+    expect((el.querySelector('[data-testid="popout-refresh"]') as HTMLButtonElement).disabled).toBe(true);
+  });
+});

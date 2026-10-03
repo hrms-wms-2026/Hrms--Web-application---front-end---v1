@@ -1,20 +1,36 @@
-import { ChangeDetectionStrategy, Component, computed, inject, input, signal } from '@angular/core';
-import { map } from 'rxjs';
+import { ChangeDetectionStrategy, Component, inject, input, signal } from '@angular/core';
 import { WidgetCardComponent } from '../../../../shared/ui/widget-card/widget-card.component';
 import { createWidgetLoader } from '../../../../shared/ui/widget-card/widget-loader';
 import { PeopleApiService } from '../../data-access/people-api.service';
 import { EmployeeTimeOffBalance } from '../../models/employee-overview.model';
-import { EmployeePeriodStore } from '../../state/employee-period.store';
-import { formatHours, formatLeaveRange } from '../../utils/employee-overview.utils';
-import { createCompareLoader, deltaIf } from '../../utils/overview-compare';
-import { DeltaBadgeComponent } from '../delta-badge/delta-badge.component';
+import { formatHours } from '../../utils/employee-overview.utils';
 
-/** Year-based: intentionally independent of the month period, so it never refetches on a month change. */
+interface BalanceTone {
+  readonly tile: string;
+  readonly bar: string;
+}
+
+/** Cycled per balance so neighbouring leave types never share a colour. */
+const TONES: readonly BalanceTone[] = [
+  { tile: 'bg-emerald-50 text-emerald-600', bar: 'bg-emerald-500' },
+  { tile: 'bg-blue-50 text-blue-600', bar: 'bg-blue-600' },
+  { tile: 'bg-violet-50 text-violet-600', bar: 'bg-violet-500' },
+  { tile: 'bg-amber-50 text-amber-600', bar: 'bg-amber-500' },
+  { tile: 'bg-cyan-50 text-cyan-600', bar: 'bg-cyan-500' },
+  { tile: 'bg-pink-50 text-pink-600', bar: 'bg-pink-500' }
+];
+const OVERDRAWN: BalanceTone = { tile: 'bg-rose-50 text-rose-600', bar: 'bg-rose-500' };
+
+/**
+ * Year-based remaining balance per leave type: intentionally independent of the month period, so
+ * it never refetches on a month change. Month leave days live on the Attendance card and the next
+ * approved leave on Upcoming, so neither is repeated here.
+ */
 @Component({
   selector: 'app-overview-time-off-widget',
   standalone: true,
-  imports: [WidgetCardComponent, DeltaBadgeComponent],
-  host: { class: 'block' },
+  imports: [WidgetCardComponent],
+  host: { class: 'block h-full' },
   template: `
     <app-widget-card
       title="Time Off Balance"
@@ -24,68 +40,55 @@ import { DeltaBadgeComponent } from '../delta-badge/delta-badge.component';
       (retry)="loader.reload()"
     >
       @if (loader.data(); as d) {
-        @if (d.balances.length > 3) {
-          <button
-            widget-actions
-            type="button"
-            class="text-xs font-semibold text-blue-600 hover:text-blue-700 hover:underline cursor-pointer"
-            (click)="toggleShowAll()"
-          >
-            {{ showAll() ? 'Show less' : 'See all (' + d.balances.length + ')' }}
-          </button>
-        }
-
-        <div class="flex-1 flex flex-col justify-between">
-          @if (monthLeave.data() !== null) {
-            <p class="flex items-center gap-2 text-xs text-slate-500" data-testid="month-leave">
-              Leave in {{ period.label() }}: {{ monthLeave.data() }} {{ monthLeave.data() === 1 ? 'day' : 'days' }}
-              <app-delta-badge [delta]="leaveDelta()" [against]="period.compareLabel()" />
-            </p>
+        <div widget-actions class="flex items-center gap-3">
+          @if (d.balances.length > 3) {
+            <button
+              type="button"
+              class="text-xs font-semibold text-blue-600 hover:text-blue-700 hover:underline cursor-pointer"
+              (click)="toggleShowAll()"
+            >
+              {{ showAll() ? 'Show less' : 'See all (' + d.balances.length + ')' }}
+            </button>
+          } @else {
+            <span class="text-xs text-slate-500">Available balance</span>
           }
-          <!-- 3 Circular Balance Rings (Shows 3 normally, all if expanded) -->
-          <div class="grid grid-cols-3 gap-2 py-3">
-            @for (b of displayedBalances(d.balances); track b.leaveTypeId; let idx = $index) {
-              <div class="flex flex-col items-center text-center" data-testid="balance-row">
-                <div class="relative w-20 h-20 my-1">
-                  <svg viewBox="0 0 36 36" class="w-20 h-20 -rotate-90">
-                    <circle cx="18" cy="18" r="14.5" fill="none" class="stroke-slate-100" stroke-width="3" />
-                    <circle
-                      cx="18"
-                      cy="18"
-                      r="14.5"
-                      fill="none"
-                      [attr.stroke]="getRingStroke(b, idx)"
-                      stroke-width="3"
-                      stroke-linecap="round"
-                      stroke-dasharray="91.1 91.1"
-                      [attr.stroke-dashoffset]="getRingDashoffset(b)"
-                      class="transition-all duration-500"
-                    />
-                  </svg>
-                  <div class="absolute inset-0 flex flex-col items-center justify-center pointer-events-none px-1">
-                    <span class="text-base font-bold text-slate-900 leading-tight">
-                      @if (b.isNegative) { {{ hours(-b.remainingHours) }} overdrawn } @else { {{ hours(b.remainingHours) }} }
-                    </span>
-                    <span class="text-[10px] text-slate-400 mt-0.5">of {{ hours(b.entitledHours) }}</span>
-                  </div>
-                </div>
-                <span class="text-xs font-bold text-slate-800 mt-2 block truncate max-w-full" [title]="b.leaveTypeName">
-                  {{ b.leaveTypeName }}
-                </span>
-              </div>
-            }
-          </div>
+        </div>
+      }
 
-          @if (d.nextLeave; as next) {
-            <div class="mt-4 rounded-xl bg-slate-50 border border-slate-100 p-3 text-sm flex items-center justify-between" data-testid="next-leave">
-              <div>
-                <p class="text-[11px] uppercase tracking-wider font-semibold text-slate-400">Next Leave Scheduled</p>
-                <p class="font-bold text-slate-900 mt-0.5">{{ range(next.startDate, next.endDate) }}</p>
-                <p class="text-xs text-slate-500">{{ next.leaveTypeName || 'Leave' }} · {{ hours(next.totalHours) }}</p>
+      @if (loader.data(); as d) {
+        <div class="grid gap-3 sm:grid-cols-3">
+          @for (b of displayedBalances(d.balances); track b.leaveTypeId; let idx = $index) {
+            @let tone = toneFor(b, idx);
+            <div class="rounded-xl border border-slate-100 bg-slate-50/60 p-3.5" data-testid="balance-row">
+              <div class="flex items-center gap-3">
+                <span class="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg" [class]="tone.tile" aria-hidden="true">
+                  <svg class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <rect x="3.5" y="5" width="17" height="15.5" rx="2"></rect>
+                    <path d="M16 3v4M8 3v4M3.5 10h17M8 14h.01M12 14h.01M16 14h.01M8 17h.01M12 17h.01"></path>
+                  </svg>
+                </span>
+                <div class="min-w-0">
+                  <p class="truncate text-xs font-semibold text-slate-700" [title]="b.leaveTypeName">{{ b.leaveTypeName }}</p>
+                  <p class="mt-0.5 whitespace-nowrap">
+                    @if (b.isNegative) {
+                      <span class="text-lg font-bold text-rose-600">{{ hours(-b.remainingHours) }} overdrawn</span>
+                    } @else {
+                      <span class="text-lg font-bold text-slate-900">{{ hours(b.remainingHours) }}</span>
+                    }
+                    <span class="text-xs text-slate-400"> / {{ hours(b.entitledHours) }}</span>
+                  </p>
+                </div>
               </div>
-              <span class="px-2.5 py-1 rounded-full text-xs font-semibold bg-blue-50 text-blue-700 border border-blue-200">
-                Approved
-              </span>
+              <div
+                class="mt-3 h-2 overflow-hidden rounded-full bg-slate-200/70"
+                role="progressbar"
+                [attr.aria-valuemin]="0"
+                [attr.aria-valuemax]="100"
+                [attr.aria-valuenow]="remainingPercent(b)"
+                [attr.aria-label]="b.leaveTypeName + ' remaining'"
+              >
+                <div class="h-full rounded-full transition-all duration-500" [class]="tone.bar" [style.width.%]="remainingPercent(b)"></div>
+              </div>
             </div>
           }
         </div>
@@ -96,26 +99,15 @@ import { DeltaBadgeComponent } from '../delta-badge/delta-badge.component';
 })
 export class OverviewTimeOffWidgetComponent {
   private readonly api = inject(PeopleApiService);
-  readonly period = inject(EmployeePeriodStore);
 
   readonly employeeId = input.required<string>();
   readonly showAll = signal(false);
 
   readonly loader = createWidgetLoader(() => this.api.getOverviewTimeOff(this.employeeId()), {
-    isEmpty: (v) => v.balances.length === 0 && v.nextLeave === null
+    isEmpty: (v) => v.balances.length === 0
   });
-  readonly monthLeave = createWidgetLoader(() =>
-    this.api.getOverviewAttendance(this.employeeId(), this.period.from(), this.period.to()).pipe(map((r) => r.leaveDays))
-  );
-  readonly compareLoader = createCompareLoader(this.period, (from, to) =>
-    this.api.getOverviewAttendance(this.employeeId(), from, to).pipe(map((r) => r.leaveDays))
-  );
-  readonly leaveDelta = computed(() =>
-    deltaIf(this.period.isComparing(), this.monthLeave.data(), this.compareLoader.data(), 'neutral')
-  );
 
   hours = formatHours;
-  range = formatLeaveRange;
 
   displayedBalances(balances: readonly EmployeeTimeOffBalance[]): readonly EmployeeTimeOffBalance[] {
     return this.showAll() ? balances : balances.slice(0, 3);
@@ -125,16 +117,14 @@ export class OverviewTimeOffWidgetComponent {
     this.showAll.update((v) => !v);
   }
 
-  getRingStroke(b: EmployeeTimeOffBalance, index: number): string {
-    if (b.isNegative) return '#e11d48'; // rose-600
-    const colors = ['#059669', '#2563eb', '#8b5cf6', '#f59e0b', '#06b6d4', '#ec4899'];
-    return colors[index % colors.length];
+  toneFor(b: EmployeeTimeOffBalance, index: number): BalanceTone {
+    return b.isNegative ? OVERDRAWN : TONES[index % TONES.length];
   }
 
-  getRingDashoffset(b: EmployeeTimeOffBalance): number {
-    const circumference = 91.1; // 2 * PI * 14.5
-    if (b.isNegative || b.entitledHours <= 0) return 0;
-    const ratio = Math.max(0, Math.min(1, b.remainingHours / b.entitledHours));
-    return circumference * (1 - ratio);
+  /** An overdrawn balance fills the bar in red; otherwise the bar is the share still available. */
+  remainingPercent(b: EmployeeTimeOffBalance): number {
+    if (b.isNegative) return 100;
+    if (b.entitledHours <= 0) return 0;
+    return Math.round(Math.max(0, Math.min(1, b.remainingHours / b.entitledHours)) * 100);
   }
 }

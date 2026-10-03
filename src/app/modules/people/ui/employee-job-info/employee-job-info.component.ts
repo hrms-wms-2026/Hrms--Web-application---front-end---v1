@@ -28,18 +28,28 @@ const EMPLOYMENT_TYPE_OPTIONS: readonly SelectOption[] = [
   selector: 'app-employee-job-info',
   standalone: true,
   imports: [ReactiveFormsModule, InputComponent, ButtonComponent, CustomSelectComponent],
+  host: { class: 'block h-full' },
   template: `
-    <div>
-      <div class="flex items-center justify-between pb-3 mb-4 border-b border-[var(--color-border)]">
-        <h3 class="text-sm font-semibold text-[var(--color-text-primary)]">
-          Job & Organizational Details
-        </h3>
+    <section class="flex h-full flex-col rounded-xl border border-slate-200/80 bg-white p-4 shadow-xs" data-testid="current-assignment-card">
+      <header class="mb-3 flex items-start justify-between gap-3">
+        <div class="flex items-center gap-2.5">
+          <span class="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-blue-50 text-blue-600" aria-hidden="true">
+            <svg class="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+              <rect x="3" y="7" width="18" height="13" rx="2"></rect>
+              <path d="M8 7V5a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2M3 13h18"></path>
+            </svg>
+          </span>
+          <div>
+            <h2 class="text-sm font-bold text-slate-900">Current Assignment</h2>
+            <p class="text-[11px] text-slate-500">Current role and organizational details</p>
+          </div>
+        </div>
         @if (canEdit() && !isEditing()) {
           <app-button data-testid="edit-job-details" variant="secondary" size="sm" (pressed)="startEdit()">
             Edit
           </app-button>
         }
-      </div>
+      </header>
 
       @if (isEditing()) {
         <form [formGroup]="form" (ngSubmit)="onSubmit()" class="space-y-4">
@@ -78,79 +88,48 @@ const EMPLOYMENT_TYPE_OPTIONS: readonly SelectOption[] = [
           </div>
         </form>
       } @else {
-        <dl class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-6 text-sm">
-          <div>
-            <dt class="text-xs font-medium text-[var(--color-text-secondary)] mb-1">Employee Number</dt>
-            <dd class="font-semibold text-[var(--color-text-primary)] font-mono text-xs bg-[var(--color-surface-secondary)] px-2.5 py-1 rounded-md inline-block">
-              {{ jobInformation().employeeNumber }}
-            </dd>
-          </div>
-
-          <div>
-            <dt class="text-xs font-medium text-[var(--color-text-secondary)] mb-1">Position</dt>
-            <dd class="font-semibold text-[var(--color-text-primary)]">
-              {{ jobInformation().positionName || 'Unassigned' }}
-            </dd>
-          </div>
-
-          <div>
-            <dt class="text-xs font-medium text-[var(--color-text-secondary)] mb-1">Department</dt>
-            <dd class="font-semibold text-[var(--color-text-primary)]">
-              {{ jobInformation().departmentName || 'Unassigned' }}
-            </dd>
-          </div>
-
-          <div>
-            <dt class="text-xs font-medium text-[var(--color-text-secondary)] mb-1">Company</dt>
-            <dd class="font-semibold text-[var(--color-text-primary)]">
-              {{ jobInformation().legalEntityName || '—' }}
-            </dd>
-          </div>
-
-          <div>
-            <dt class="text-xs font-medium text-[var(--color-text-secondary)] mb-1">Employment Type</dt>
-            <dd class="font-semibold text-[var(--color-text-primary)]">
-              {{ jobInformation().employmentTypeLabel }}
-            </dd>
-          </div>
-
-          <div>
-            <dt class="text-xs font-medium text-[var(--color-text-secondary)] mb-1">Status</dt>
-            <dd class="inline-flex items-center gap-1.5 font-semibold text-xs capitalize px-2.5 py-1 rounded-full"
-                [class.bg-green-100]="jobInformation().status.toLowerCase() === 'active'"
-                [class.text-green-800]="jobInformation().status.toLowerCase() === 'active'"
-                [class.bg-red-100]="jobInformation().status.toLowerCase() === 'inactive'"
-                [class.text-red-800]="jobInformation().status.toLowerCase() === 'inactive'">
-              <span class="w-1.5 h-1.5 rounded-full"
-                    [class.bg-green-600]="jobInformation().status.toLowerCase() === 'active'"
-                    [class.bg-red-600]="jobInformation().status.toLowerCase() === 'inactive'"></span>
-              {{ jobInformation().status }}
-            </dd>
-          </div>
-
-          <div>
-            <dt class="text-xs font-medium text-[var(--color-text-secondary)] mb-1">Reporting Manager</dt>
-            <dd class="font-semibold text-[var(--color-text-primary)]">
-              {{ jobInformation().reportingManagerName || 'Unassigned' }}
-            </dd>
-          </div>
-
-          <div>
-            <dt class="text-xs font-medium text-[var(--color-text-secondary)] mb-1">Work Mode</dt>
-            <dd class="font-semibold text-[var(--color-text-primary)]">
-              {{ jobInformation().workModeLabel || '—' }}
-            </dd>
-          </div>
-
-          <div>
-            <dt class="text-xs font-medium text-[var(--color-text-secondary)] mb-1">Hire Date</dt>
-            <dd class="font-semibold text-[var(--color-text-primary)]">
-              {{ jobInformation().hireDate }}
-            </dd>
-          </div>
-        </dl>
+        <div class="grid flex-1 grid-cols-1 gap-x-6 gap-y-2.5 text-[13px] md:grid-cols-2 md:divide-x md:divide-slate-100">
+          <dl class="space-y-2.5">
+            <div class="grid grid-cols-[8rem_1fr] items-baseline gap-2 leading-5">
+              <dt class="text-slate-500">Employee Number</dt>
+              <dd><span class="inline-block rounded-md bg-slate-100 px-1.5 py-0.5 font-mono text-[11px] font-semibold text-slate-900">{{ jobInformation().employeeNumber }}</span></dd>
+            </div>
+            <div class="grid grid-cols-[8rem_1fr] items-baseline gap-2 leading-5">
+              <dt class="text-slate-500">Position</dt>
+              <dd class="font-medium text-slate-900">{{ jobInformation().positionName || 'Unassigned' }}</dd>
+            </div>
+            <div class="grid grid-cols-[8rem_1fr] items-baseline gap-2 leading-5">
+              <dt class="text-slate-500">Department</dt>
+              <dd class="font-medium text-slate-900">{{ jobInformation().departmentName || 'Unassigned' }}</dd>
+            </div>
+            <div class="grid grid-cols-[8rem_1fr] items-baseline gap-2 leading-5">
+              <dt class="text-slate-500">Company</dt>
+              <dd class="font-medium text-slate-900">{{ jobInformation().legalEntityName || '—' }}</dd>
+            </div>
+          </dl>
+          <dl class="space-y-2.5 md:pl-6">
+            <div class="grid grid-cols-[8rem_1fr] items-baseline gap-2 leading-5">
+              <dt class="text-slate-500">Reporting Manager</dt>
+              <dd class="font-medium" [class.text-blue-600]="!!jobInformation().reportingManagerName" [class.text-slate-900]="!jobInformation().reportingManagerName">
+                {{ jobInformation().reportingManagerName || 'Unassigned' }}
+              </dd>
+            </div>
+            <div class="grid grid-cols-[8rem_1fr] items-baseline gap-2 leading-5">
+              <dt class="text-slate-500">Employment Type</dt>
+              <dd class="font-medium text-slate-900">{{ jobInformation().employmentTypeLabel }}</dd>
+            </div>
+            <div class="grid grid-cols-[8rem_1fr] items-baseline gap-2 leading-5">
+              <dt class="text-slate-500">Work Mode</dt>
+              <dd class="font-medium text-slate-900">{{ jobInformation().workModeLabel || '—' }}</dd>
+            </div>
+            <div class="grid grid-cols-[8rem_1fr] items-baseline gap-2 leading-5">
+              <dt class="text-slate-500">Hire Date</dt>
+              <dd class="font-medium text-slate-900">{{ jobInformation().hireDate }}</dd>
+            </div>
+          </dl>
+        </div>
       }
-    </div>
+    </section>
   `,
   changeDetection: ChangeDetectionStrategy.OnPush
 })

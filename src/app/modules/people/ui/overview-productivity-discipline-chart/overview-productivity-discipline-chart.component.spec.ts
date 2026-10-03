@@ -5,7 +5,7 @@ import { EmployeePeriodStore } from '../../state/employee-period.store';
 import { OverviewProductivityDisciplineChartComponent } from './overview-productivity-discipline-chart.component';
 
 describe('OverviewProductivityDisciplineChartComponent', () => {
-  function setup(days: readonly { date: string; status: string }[] = []) {
+  function setup(days: readonly { date: string; status: string }[] = [], noTasks = false) {
     const api = {
       getOverviewAttendance: vi.fn().mockReturnValue(
         of({
@@ -36,23 +36,23 @@ describe('OverviewProductivityDisciplineChartComponent', () => {
         of({
           from: '2026-09-01',
           to: '2026-09-30',
-          assigned: 10,
-          completed: 8,
-          inProgress: 2,
+          assigned: noTasks ? 0 : 10,
+          completed: noTasks ? 0 : 8,
+          inProgress: noTasks ? 0 : 2,
           overdue: 0,
           notStarted: 0,
-          completionRatePercent: 80,
-          onTimeRatePercent: 85
+          completionRatePercent: noTasks ? 0 : 80,
+          onTimeRatePercent: noTasks ? null : 85
         })
       ),
       getOverviewDelivery: vi.fn().mockReturnValue(
         of({
           from: '2026-09-01',
           to: '2026-09-30',
-          tasksAssigned: 10,
-          tasksCompleted: 8,
-          onTimeCompleted: 7,
-          completedWithDueDate: 8,
+          tasksAssigned: noTasks ? 0 : 10,
+          tasksCompleted: noTasks ? 0 : 8,
+          onTimeCompleted: noTasks ? 0 : 7,
+          completedWithDueDate: noTasks ? 0 : 8,
           storyPointsAssigned: 20,
           storyPointsCompleted: 16,
           previous: null
@@ -86,6 +86,16 @@ describe('OverviewProductivityDisciplineChartComponent', () => {
     expect(el.querySelector('[data-testid="correlation-insight"]')).toBeTruthy();
   });
 
+  it('keeps the percentage grid inside the bar plot and the week labels outside it', () => {
+    const { el } = setup();
+    const plot = el.querySelector('[data-testid="weekly-chart-plot"]')!;
+
+    expect(plot.querySelector('[data-testid="chart-grid-100"]')).toBeTruthy();
+    expect(plot.querySelector('[data-testid="chart-grid-0"]')).toBeTruthy();
+    expect(plot.querySelector('[data-testid="chart-x-labels"]')).toBeNull();
+    expect(el.querySelector('[data-testid="chart-x-labels"]')).toBeTruthy();
+  });
+
   it('calls all required APIs to construct correlation', () => {
     const { api } = setup();
 
@@ -117,5 +127,23 @@ describe('OverviewProductivityDisciplineChartComponent', () => {
     expect(el.textContent).toContain('Aug 2026');
     expect(api.getOverviewAttendance).toHaveBeenCalledWith('emp-1', '2026-08-01', '2026-08-31');
     expect(api.getOverviewWork).toHaveBeenCalledWith('emp-1', '2026-08-01', '2026-08-31');
+  });
+
+  it('draws no delivery bar (never 100%) for a month with no tasks, and says so', () => {
+    const { el } = setup([], true);
+
+    const blueBars = el.querySelectorAll('.bg-blue-600.rounded-t-sm');
+    expect(blueBars).toHaveLength(0);
+    expect(el.querySelectorAll('[data-testid="productivity-no-tasks"]')).toHaveLength(4);
+    expect(el.querySelector('[data-testid="productivity-no-tasks-note"]')?.textContent).toContain('No tasks this period');
+    expect(el.querySelector('[data-testid="productivity-score"]')?.textContent).toBe('n/a');
+    expect(el.querySelector('[data-testid="correlation-insight"]')?.textContent).toContain('no tasks in this period');
+  });
+
+  it('still draws the delivery bars when there are tasks', () => {
+    const { el } = setup();
+    expect(el.querySelectorAll('[data-testid="productivity-no-tasks"]')).toHaveLength(0);
+    expect(el.querySelector('[data-testid="productivity-no-tasks-note"]')).toBeNull();
+    expect(el.querySelectorAll('.bg-blue-600.rounded-t-sm')).toHaveLength(4);
   });
 });

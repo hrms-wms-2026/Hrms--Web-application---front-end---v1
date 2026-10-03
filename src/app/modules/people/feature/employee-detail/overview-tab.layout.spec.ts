@@ -1,6 +1,8 @@
 import { TestBed } from '@angular/core/testing';
 import { of } from 'rxjs';
+import { ProjectDetailStore } from '../../../work/state/project-detail.store';
 import { PeopleApiService } from '../../data-access/people-api.service';
+import { EmployeePeriodStore } from '../../state/employee-period.store';
 import { EmployeeOverviewTabComponent } from './overview-tab.component';
 
 describe('EmployeeOverviewTabComponent layout', () => {
@@ -13,11 +15,24 @@ describe('EmployeeOverviewTabComponent layout', () => {
       getOverviewDelivery: vi.fn().mockReturnValue(of({ from: '', to: '', tasksAssigned: 0, tasksCompleted: 0, onTimeCompleted: 0, completedWithDueDate: 0, storyPointsAssigned: 0, storyPointsCompleted: 0, previous: null })),
       getOverviewActivity: vi.fn().mockReturnValue(of({ from: '', to: '', activityMonitoringEnabled: true, activeMinutes: 0, idleMinutes: 0, meetingMinutes: 0, daysWithData: 0, previous: null })),
       getOverviewApprovals: vi.fn().mockReturnValue(of({ from: '', to: '', pending: 0, approved: 0, rejected: 0, total: 0, items: [] })),
-      getOverviewSignals: vi.fn().mockReturnValue(of({ from: '', to: '', signals: [] }))
+      getOverviewSignals: vi.fn().mockReturnValue(of({ from: '', to: '', signals: [] })),
+      getOverviewSignalItems: vi.fn(() => of({ key: '', total: 0, timezone: null, items: [] })),
+      getOverviewAttendanceDays: vi.fn().mockReturnValue(of({ from: '', to: '', timezone: 'UTC', days: [] })),
+      getOverviewWorkTasks: vi.fn().mockReturnValue(of({ from: '', to: '', items: [] })),
+      getOverviewUpcoming: vi.fn().mockReturnValue(of({ from: '', to: '', items: [] })),
+      getOverviewChecklists: vi.fn().mockReturnValue(of({ groups: [] })),
+      getOverviewHistory: vi.fn().mockReturnValue(of({ events: [] })),
+      getOverviewRecentActivity: vi.fn().mockReturnValue(of({ items: [], nextBefore: null, isPartial: true }))
     };
     TestBed.configureTestingModule({
       imports: [EmployeeOverviewTabComponent],
-      providers: [{ provide: PeopleApiService, useValue: api }]
+      providers: [
+        EmployeePeriodStore,
+        { provide: PeopleApiService, useValue: api },
+        { provide: ProjectDetailStore, useValue: {
+          loadProject: vi.fn(), loadMyMilestones: vi.fn(), projectError: vi.fn(() => null)
+        } }
+      ]
     });
     const fixture = TestBed.createComponent(EmployeeOverviewTabComponent);
     fixture.componentRef.setInput('employeeId', 'emp-1');
@@ -26,31 +41,28 @@ describe('EmployeeOverviewTabComponent layout', () => {
     return { fixture, api, el: fixture.nativeElement as HTMLElement };
   }
 
-  it('renders the period picker and all widgets including productivity discipline chart', () => {
+  it('renders all widgets including productivity discipline chart', () => {
     const { el } = setup();
 
     for (const tag of [
-      'app-employee-period-picker',
       'app-overview-productivity-discipline-chart',
       'app-overview-attendance-widget',
       'app-overview-time-off-widget',
       'app-overview-work-widget',
       'app-overview-approvals-widget',
-      'app-overview-activity-widget',
-      'app-overview-discipline-widget',
       'app-overview-delivery-widget'
     ]) {
       expect(el.querySelector(tag), tag).toBeTruthy();
     }
   });
 
-  it('groups Activity, Discipline and Delivery under the Productivity & Work Insights heading', () => {
+  it('keeps Delivery under the Productivity & Work Insights heading and removes Discipline', () => {
     const { el } = setup();
     const section = el.querySelector('section[aria-labelledby="insights-heading"]')!;
 
     expect(section.querySelector('#insights-heading')!.textContent).toContain('Productivity & Work Insights');
-    expect(section.querySelector('app-overview-activity-widget')).toBeTruthy();
-    expect(section.querySelector('app-overview-discipline-widget')).toBeTruthy();
+    expect(section.querySelector('app-overview-activity-widget')).toBeNull();
+    expect(section.querySelector('app-overview-discipline-widget')).toBeNull();
     expect(section.querySelector('app-overview-delivery-widget')).toBeTruthy();
     expect(section.querySelector('app-overview-attendance-widget')).toBeNull();
   });
@@ -60,17 +72,21 @@ describe('EmployeeOverviewTabComponent layout', () => {
 
     expect(api.getOverviewWork).toHaveBeenCalledWith('emp-1', expect.any(String), expect.any(String));
     expect(api.getOverviewApprovals).toHaveBeenCalledWith('emp-1', expect.any(String), expect.any(String));
-    expect(api.getOverviewActivity).toHaveBeenCalledWith('emp-1', expect.any(String), expect.any(String), false);
     expect(api.getOverviewDelivery).toHaveBeenCalledWith('emp-1', expect.any(String), expect.any(String), false);
   });
 
-  it('renders the compare-month picker after clicking Compare', () => {
-    const { fixture, el } = setup();
-    const compareButton = [...el.querySelectorAll('button')].find((button) => button.textContent?.includes('Compare'))!;
+  it('orders the rows: KPI strip, chart + side, operations, Time Off + Approvals, then Checklists + Recent Activity', () => {
+    const { el } = setup();
+    const order = [
+      'app-overview-kpi-strip',
+      'app-overview-productivity-discipline-chart',
+      '[data-testid="overview-operations"]',
+      '[data-testid="overview-balances"]',
+      '[data-testid="overview-lifetime"]'
+    ].map((selector) => el.querySelector(selector)!);
 
-    compareButton.click();
-    fixture.detectChanges();
-
-    expect(el.querySelector('app-employee-compare-picker')).toBeTruthy();
+    for (let i = 1; i < order.length; i++) {
+      expect(order[i - 1].compareDocumentPosition(order[i]) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    }
   });
 });

@@ -17,7 +17,10 @@ export type WidgetState = 'loading' | 'ready' | 'empty' | 'error' | 'forbidden';
       [attr.aria-busy]="state() === 'loading'"
     >
       <header class="mb-3 flex items-center justify-between gap-3">
-        <h2 class="text-base font-semibold text-[var(--color-text-primary)]">{{ title() }}</h2>
+        <h2
+          class="text-base font-semibold text-[var(--color-text-primary)]"
+          [class.whitespace-nowrap]="nowrapTitle()"
+        >{{ title() }}</h2>
         <ng-content select="[widget-actions]" />
       </header>
 
@@ -52,6 +55,7 @@ export type WidgetState = 'loading' | 'ready' | 'empty' | 'error' | 'forbidden';
 })
 export class WidgetCardComponent {
   readonly title = input.required<string>();
+  readonly nowrapTitle = input(false);
   readonly state = input<WidgetState>('ready');
   readonly errorMessage = input('Something went wrong loading this section.');
   readonly emptyMessage = input('Nothing to show yet.');

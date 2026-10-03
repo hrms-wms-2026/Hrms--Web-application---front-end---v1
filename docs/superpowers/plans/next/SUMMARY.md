@@ -42,3 +42,7 @@ Pending plans and raw not-yet-brainstormed future-feature context. Stays flat �
   status text/icon overlap (root cause not yet confirmed, needs repro first), Module filter missing an
   Active/Inactive/All dimension (confirmed real gap in `collectObjectiveOptions` — no code reads
   `isActive` at all today).
+- `2026-09-30-employee-work-activity-tab.md` — status: pending, not started. Adds the Work & Activity tab to the employee detail page (in-place `DetailTab`, same widget-card/`EmployeePeriodStore` pattern as Overview): Work summary, Needs attention, Delivery health, Recorded activity, Recent tasks, Application usage, Work pattern. No mock data. 7 tasks. Depends on `HRMS-Backend-v1` Plans 3A, 3B, 4A (`2026-09-30-employee-work-activity-tasks-backend.md`) and 4B (`2026-09-30-employee-work-activity-monitoring-backend.md`).
+- `2026-09-30-employee-detail-tabs.md` — status: Phases 1-2 implemented (tabbed shell, profile header, read-only Employment/Personal parity,
+  routed tabs, `EmployeeDetailStore`, period filter); Phases 2-5 pending. Phase 3 needs new employee-scoped
+  backend aggregates, and Phase 5 (Attendance tab) is blocked on a design.
