@@ -3,75 +3,60 @@ import { By } from '@angular/platform-browser';
 import { vi } from 'vitest';
 import { ApprovalRequestRowComponent } from './approval-request-row.component';
 import { ApprovalItem } from '../../models/approval.model';
-import { AllocationRequestDto, ObjectiveEditRequestDto } from '../../models/dto/allocation-request.dto';
-import { TaskEditRequestDto } from '../../models/dto/task-edit-request.dto';
+import { toApprovalItem } from '../../utils/approval.mapper';
+import { WorkApprovalRequestDto } from '../../models/dto/work-approval.dto';
+
+function engineModuleRequest(overrides: Partial<WorkApprovalRequestDto>): WorkApprovalRequestDto {
+  return {
+    id: 'r1', projectId: 'project-1', actionType: 'module.edit', targetType: 'module', targetId: 'objective-1',
+    targetTitle: 'Hardware integration', status: 'pending', requestedByEmployeeId: 'employee-1', requestedByName: 'Nimal Perera',
+    approverEmployeeId: 'employee-2', approverName: 'Owner', payloadJson: '{}', decisionComment: null,
+    createdAt: '2026-08-27T00:00:00Z', decidedAt: null, ...overrides
+  };
+}
 
 function allocationItem(requestedAdditionalHours = 20): ApprovalItem {
-  const raw: AllocationRequestDto = {
-    id: 'allocation-1',
-    objectiveId: 'objective-1',
-    requestType: 'extend_allocation',
-    status: 'pending',
-    payload: { requestedAdditionalHours, reason: 'Need more capacity' },
-    createdAt: '2026-08-27T00:00:00Z'
-  };
-  return {
-    id: raw.id,
-    kind: 'allocation_extend',
-    objectiveId: raw.objectiveId,
-    title: `+${requestedAdditionalHours}h requested`,
-    description: raw.payload.reason,
-    requestedByName: null,
-    createdAt: raw.createdAt,
-    raw
-  };
+  return toApprovalItem(engineModuleRequest({
+    id: 'allocation-1', actionType: 'module.allocation_extend', currentAllocatedHours: 24,
+    payloadJson: JSON.stringify({ requestedAdditionalHours, reason: 'Need more capacity' })
+  }));
 }
 
 function objectiveEditItem(): ApprovalItem {
-  const raw: ObjectiveEditRequestDto = {
-    id: 'edit-1',
-    objectiveId: 'objective-1',
-    requestType: 'edit',
-    status: 'pending',
-    payload: { title: 'Requested Title', description: 'Requested desc', startDate: '2026-01-10', endDate: '2026-02-10', allocatedHours: 15 },
-    createdAt: '2026-08-27T00:00:00Z'
-  };
-  return {
-    id: raw.id,
-    kind: 'objective_edit',
-    objectiveId: raw.objectiveId,
-    title: `Edit: ${raw.payload.title}`,
-    description: `Objective ${raw.objectiveId}`,
-    requestedByName: null,
-    createdAt: raw.createdAt,
-    raw
-  };
+  return toApprovalItem(engineModuleRequest({
+    id: 'edit-1', actionType: 'module.edit',
+    payloadJson: JSON.stringify({ title: 'Requested Title', description: 'Requested desc', startDate: '2026-01-10', endDate: '2026-02-10', allocatedHours: 15 })
+  }));
 }
 
 function taskEditItem(): ApprovalItem {
-  const raw: TaskEditRequestDto = {
+  const raw: WorkApprovalRequestDto = {
     id: 'edit-req-1',
-    taskId: 'task-1',
-    objectiveId: 'objective-1',
+    projectId: 'project-1',
+    actionType: 'task.edit',
+    targetType: 'task',
+    targetId: 'task-1',
+    targetTitle: 'Portal Dashboard And Monitoring — Kickoff',
     status: 'pending',
-    payload: {
-      title: 'Portal Dashboard And Monitoring — Kickoff',
-      description: null,
-      priority: 'medium',
-      dueDate: null,
-      estimatedHours: 75,
-      storyPoints: null
-    },
+    requestedByEmployeeId: 'employee-1',
     requestedByName: 'Abitha Devendran',
-    createdAt: '2026-09-18T00:00:00Z'
+    approverEmployeeId: 'employee-2',
+    approverName: 'Owner',
+    payloadJson: '{"Title":"Portal Dashboard And Monitoring — Kickoff","EstimatedHours":75}',
+    decisionComment: null,
+    createdAt: '2026-09-18T00:00:00Z',
+    decidedAt: null
   };
   return {
     id: raw.id,
-    kind: 'task_edit',
-    objectiveId: raw.objectiveId,
-    title: `Edit: ${raw.payload.title}`,
-    description: `Requested by ${raw.requestedByName}`,
+    kind: 'work_approval',
+    objectiveId: '',
+    title: `Edit task: ${raw.targetTitle}`,
+    description: '',
     requestedByName: raw.requestedByName,
+    targetTitle: raw.targetTitle,
+    targetType: 'task',
+    targetId: raw.targetId,
     createdAt: raw.createdAt,
     raw
   };
@@ -92,6 +77,14 @@ describe('ApprovalRequestRowComponent', () => {
 
     expect(input).not.toBeNull();
     expect(input.value).toBe('20');
+  });
+
+  it('shows the requester, affected module, and allocation impact', () => {
+    expect(fixture.nativeElement.textContent).toContain('Nimal Perera');
+    expect(fixture.nativeElement.textContent).toContain('Hardware integration');
+    expect(fixture.nativeElement.querySelector('[data-testid="allocation-current-hours"]').textContent)
+      .toContain('Current 24h');
+    expect(fixture.nativeElement.textContent).not.toContain('44h');
   });
 
   it('emits the edited allocation amount when approving', () => {
@@ -170,7 +163,7 @@ describe('ApprovalRequestRowComponent', () => {
     });
   });
 
-  describe('task_edit', () => {
+  describe('work_approval (task edit)', () => {
     beforeEach(() => {
       fixture.componentRef.setInput('item', taskEditItem());
       fixture.detectChanges();
@@ -185,7 +178,16 @@ describe('ApprovalRequestRowComponent', () => {
       expect(approved).toHaveBeenCalledWith(undefined);
     });
 
-    it('requires a comment before emitting rejected, matching RejectTaskEditRequestCommandValidator', () => {
+    it('offers the task details action and emits the selected request', () => {
+      const viewRequested = vi.fn();
+      fixture.componentInstance.viewRequested.subscribe(viewRequested);
+
+      (fixture.nativeElement.querySelector('[data-testid="view-approval-target"]') as HTMLButtonElement).click();
+
+      expect(viewRequested).toHaveBeenCalledWith(expect.objectContaining({ targetId: 'task-1' }));
+    });
+
+    it('requires a comment before emitting rejected, as task requests always did', () => {
       const rejected = vi.fn();
       fixture.componentInstance.rejected.subscribe(rejected);
       const rejectButton = fixture.nativeElement.querySelector('app-button[variant="secondary"] button') as HTMLButtonElement;

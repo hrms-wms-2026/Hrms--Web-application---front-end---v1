@@ -9,47 +9,54 @@ import { ErrorStateComponent } from '../../../../shared/ui/error-state/error-sta
 import { LoaderComponent } from '../../../../shared/ui/loader/loader.component';
 import { BreadcrumbHeaderComponent } from '../../../../shared/ui/breadcrumb-header/breadcrumb-header.component';
 import { PopoverComponent } from '../../../../shared/ui/popover/popover.component';
+import { AvatarComponent } from '../../../../shared/ui/avatar/avatar.component';
+import { EmployeeDirectoryStore } from '../../../work/state/employee-directory.store';
 import { PeopleApiService } from '../../data-access/people-api.service';
-import { EmployeeDetailAddress, EmployeeDetailResponse, UpdateEmployeeJobDetailsRequest } from '../../models/employee.model';
-import { EmployeeJobInfoComponent } from '../../ui/employee-job-info/employee-job-info.component';
-import { EmployeePersonalInfoComponent } from '../../ui/employee-personal-info/employee-personal-info.component';
-import { EmployeeEmergencyContactsComponent } from '../../ui/employee-emergency-contacts/employee-emergency-contacts.component';
-import { EmployeePayrollComponent } from '../../ui/employee-payroll/employee-payroll.component';
+import { EmployeeDetailResponse, UpdateEmployeeJobDetailsRequest } from '../../models/employee.model';
 import { ChangePositionModalComponent } from '../../ui/change-position-modal/change-position-modal.component';
-import { EmployeeJobJourneyComponent } from '../../ui/employee-job-journey/employee-job-journey.component';
 import { PositionHistoryEntryResponse } from '../../models/position-history.model';
+import { EmployeePeriodStore } from '../../state/employee-period.store';
 import { OffboardingWizardStore } from '../../state/offboarding-wizard.store';
+import { EmployeePeriodControlsComponent } from '../../ui/employee-period-controls/employee-period-controls.component';
 import {
   attendanceWarningLabel,
   attendanceAttentionLabel,
   attendanceStatusLabel,
   attendanceSeverityClass,
-  breakOverageLabel
+  breakOverageLabel,
+  formatTenure
 } from '../../utils/employee-view.utils';
+import { EmployeeEmploymentTabComponent } from './employment-tab.component';
+import { EmployeePersonalTabComponent } from './personal-tab.component';
+import { EmployeeOverviewTabComponent } from './overview-tab.component';
+
+type DetailTab = 'overview' | 'employment' | 'personal';
 
 /**
- * Full section-by-section employee detail view backed by GET /api/v1/employees/{id}/detail.
- * Composes the Task 2 presentational sections (Job Information, Personal Information,
- * Emergency Contacts, Payroll & Statutory) and offers a Change Position action that opens
- * the Task 4 modal. Also preserves the resend-invitation flow for employees whose onboarding
- * invitation expired before they accepted it.
+ * Employee detail page shell backed by GET /api/v1/employees/{id}/detail: header (identity,
+ * Transfer/Promote/Offboarding actions, resend-invitation), today's attendance strip, and
+ * three tabs - Overview (per-widget attendance/discipline/time-off), Employment (job details,
+ * Work Network, job journey; mounted on first visit) and Personal
+ * (personal info, emergency contacts, payroll when the server includes it).
  */
 @Component({
   selector: 'app-employee-detail',
   standalone: true,
   imports: [
     BreadcrumbHeaderComponent,
+    AvatarComponent,
     ButtonComponent,
     ErrorStateComponent,
     LoaderComponent,
-    EmployeeJobInfoComponent,
-    EmployeePersonalInfoComponent,
-    EmployeeEmergencyContactsComponent,
-    EmployeePayrollComponent,
     ChangePositionModalComponent,
     PopoverComponent,
-    EmployeeJobJourneyComponent
+    EmployeeEmploymentTabComponent,
+    EmployeePersonalTabComponent,
+    EmployeeOverviewTabComponent,
+    EmployeePeriodControlsComponent
   ],
+  // The Overview month lives here so its controls can sit in the profile header beside the tabs.
+  providers: [EmployeePeriodStore],
   template: `
     @if (loading()) {
       <app-loader label="Loading employee…" />
@@ -65,52 +72,123 @@ import {
         />
       </header>
 
-      <!-- Hero Profile Banner -->
-      <div class="rounded-2xl border border-[var(--color-border)] bg-[var(--color-surface)] p-6 mb-6">
-        <div class="flex flex-col md:flex-row md:items-center justify-between gap-6">
-          <div class="flex items-center gap-5">
-            <div class="relative flex-shrink-0">
-              <div class="w-16 h-16 rounded-full bg-blue-100 text-blue-700 flex items-center justify-center font-bold text-xl shadow-inner border border-blue-200">
-                {{ getInitials(employee.personalInformation.firstName, employee.personalInformation.lastName) }}
+      <!-- Header: identity, live attendance status, actions -->
+      <div class="rounded-2xl bg-[var(--color-surface)] px-6 pt-6 pb-3" data-testid="employee-profile-header">
+        <div class="flex flex-col xl:flex-row xl:items-start justify-between gap-6">
+          
+          <!-- Identity and live attendance status -->
+          <div class="min-w-0" data-testid="employee-profile-content">
+            <div class="flex min-w-0 items-start gap-4 sm:gap-5" data-testid="employee-identity">
+              <div class="relative flex-shrink-0">
+                <app-avatar
+                  class="employee-detail-avatar"
+                  data-testid="employee-avatar"
+                  [avatarUrl]="employeeAvatarUrl()"
+                  [userName]="employee.personalInformation.firstName + ' ' + employee.personalInformation.lastName"
+                  [email]="employee.personalInformation.email"
+                  size="xl"
+                  shape="circle"
+                />
+                <span
+                  class="absolute bottom-0 right-0 h-5 w-5 rounded-full border-2 border-white"
+                  [class.bg-green-500]="employee.jobInformation.status.toLowerCase() === 'active'"
+                  [class.bg-red-500]="employee.jobInformation.status.toLowerCase() !== 'active'"
+                ></span>
               </div>
-              <span class="absolute bottom-0 right-0 w-4 h-4 rounded-full border-2 border-white"
-                    [class.bg-green-500]="employee.jobInformation.status.toLowerCase() === 'active'"
-                    [class.bg-red-500]="employee.jobInformation.status.toLowerCase() === 'inactive'"></span>
-            </div>
 
-            <div>
-              <div class="flex items-center gap-3 flex-wrap">
-                <h1 class="text-2xl font-bold text-[var(--color-text-primary)]">
-                  {{ employee.personalInformation.firstName }} {{ employee.personalInformation.lastName }}
-                </h1>
-                <span class="inline-flex items-center font-mono text-xs font-semibold px-2.5 py-0.5 rounded-full bg-[var(--color-surface-secondary)] text-[var(--color-text-secondary)] border border-[var(--color-border)]">
-                  {{ employee.jobInformation.employeeNumber }}
-                </span>
+              <div class="min-w-0">
+                <div class="flex flex-wrap items-center gap-3" data-testid="employee-primary-row">
+                  <div class="min-w-0" data-testid="employee-primary-details">
+                    <h1
+                      class="text-2xl font-bold text-[var(--color-text-primary)]"
+                      data-testid="employee-name"
+                    >
+                      {{ employee.personalInformation.firstName }} {{ employee.personalInformation.lastName }}
+                    </h1>
+                  </div>
+
+                  @if (employee.attendanceSummary) {
+                    <div
+                      class="inline-flex max-w-full flex-shrink-0 items-center gap-2 rounded-xl px-2.5 py-1"
+                      [class]="todayStatusClass(employee)"
+                      data-testid="employee-attendance-status"
+                    >
+                      <span class="h-2 w-2 flex-shrink-0 rounded-full" [class]="todayStatusDotClass(employee)"></span>
+                      <div class="min-w-0">
+                        <div class="flex flex-wrap items-center gap-x-2 gap-y-0.5 text-sm">
+                        @if (employee.attendanceSummary.showNotClockedInWarning && attendanceWarningLabel(employee); as warningLabel) {
+                            <span class="font-semibold">{{ warningLabel }}</span>
+                        } @else {
+                          <span class="font-semibold">{{ attendanceStatusLabel(employee) || 'Not specified' }}</span>
+                          @if (attendanceAttentionLabel(employee); as attentionLabel) {
+                            <span class="text-xs" [class]="severityBadgeClass(employee)">{{ attentionLabel }}</span>
+                          }
+                        }
+                        @if (breakOverageLabel(employee); as breakLabel) {
+                            <span class="font-medium">{{ breakLabel }}</span>
+                        }
+                        </div>
+                      </div>
+                    </div>
+                  }
+                </div>
+
+                <p
+                  class="-mt-0.5 break-all text-sm text-[var(--color-text-secondary)]"
+                  data-testid="employee-email"
+                >
+                  {{ employee.personalInformation.email }}
+                </p>
+
+                <div
+                  class="mt-1 flex flex-wrap items-center gap-x-2 gap-y-1 text-sm"
+                  data-testid="employee-role-context"
+                >
+                  <span class="font-semibold text-[var(--color-text-primary)]">
+                    {{ employee.jobInformation.positionName || 'Unassigned Position' }}
+                  </span>
+                  <span class="h-1 w-1 rounded-full bg-[var(--color-text-secondary)] opacity-60" aria-hidden="true"></span>
+                  <span class="text-[var(--color-text-secondary)]">
+                    {{ employee.jobInformation.departmentName || 'No department' }}
+                  </span>
+                </div>
               </div>
-              <p class="text-sm text-[var(--color-text-secondary)] mt-1 flex items-center gap-2 flex-wrap">
-                <span>{{ employee.personalInformation.email }}</span>
-                <span>•</span>
-                <span class="font-medium text-[var(--color-text-primary)]">{{ employee.jobInformation.positionName || 'Unassigned Position' }}</span>
-                <span>•</span>
-                <span>{{ employee.jobInformation.legalEntityName || 'Company' }}</span>
-              </p>
             </div>
           </div>
 
-          <div class="flex items-center gap-3">
-            @if (canChangePosition() && !isOwnRecord() && employee.jobInformation.legalEntityId && !isReadOnly() && employee.invitationStatus !== 'pending' && employee.invitationStatus !== 'expired') {
+          <!-- Actions -->
+          <div class="flex items-center gap-2 xl:self-start">
+            @if ((canChangePosition() || canOffboard()) && !isOwnRecord() && employee.jobInformation.legalEntityId && !isReadOnly() && employee.invitationStatus !== 'pending' && employee.invitationStatus !== 'expired') {
               <app-popover [open]="changePositionMenuOpen()" ariaLabel="Change position actions" align="right" (closed)="changePositionMenuOpen.set(false)">
                 <app-button popover-trigger data-testid="change-position-trigger" (pressed)="changePositionMenuOpen.set(!changePositionMenuOpen())">
-                  Transfer / Promote
+                  {{ canChangePosition() ? 'Transfer / Promote' : 'Offboarding' }}
                 </app-button>
                 <div popover-panel class="change-position-menu">
-                  <button type="button" class="profile-action-btn" (click)="openChangePosition('Promotion')">Promotion</button>
-                  <button type="button" class="profile-action-btn" (click)="openChangePosition('Transfer')">Transfer</button>
-                  <button type="button" class="profile-action-btn" data-testid="offboarding-menu-item" (click)="navigateToOffboarding(employee.id)">
-                    {{ offboardingStatus() && offboardingStatus() !== 'cancelled' ? (isReadOnly() ? 'View Offboarding' : 'Continue Offboarding') : 'Offboarding' }}
-                  </button>
+                  @if (canChangePosition()) {
+                    <button type="button" class="profile-action-btn" (click)="openChangePosition('Promotion')">Promotion</button>
+                    <button type="button" class="profile-action-btn" (click)="openChangePosition('Transfer')">Transfer</button>
+                  }
+                  @if (canOffboard()) {
+                    <button type="button" class="profile-action-btn" data-testid="offboarding-menu-item" (click)="navigateToOffboarding(employee.id)">
+                      {{ offboardingStatus() && offboardingStatus() !== 'cancelled' ? (isReadOnly() ? 'View Offboarding' : 'Continue Offboarding') : 'Offboarding' }}
+                    </button>
+                  }
                 </div>
               </app-popover>
+
+              <!-- Overflow Menu Button (⋮) -->
+              <button
+                type="button"
+                class="p-2 rounded-lg border border-[var(--color-border)] hover:bg-[var(--color-surface-secondary)] text-[var(--color-text-secondary)] hover:text-[var(--color-text-primary)] transition-colors cursor-pointer"
+                title="More actions"
+                (click)="changePositionMenuOpen.set(!changePositionMenuOpen())"
+              >
+                <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                  <circle cx="12" cy="12" r="1"></circle>
+                  <circle cx="12" cy="5" r="1"></circle>
+                  <circle cx="12" cy="19" r="1"></circle>
+                </svg>
+              </button>
             }
             @if (employee.invitationStatus === 'expired') {
               <app-button variant="secondary" [loading]="resending()" [disabled]="resending()" (pressed)="resendInvitation(employee.id)">
@@ -121,128 +199,53 @@ import {
         </div>
       </div>
 
-      <!-- Non-Duplicate Insights Metric Cards Grid -->
-      <div class="grid grid-cols-2 sm:grid-cols-4 gap-4 mb-6">
-        <div class="rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] p-4">
-          <span class="text-xs font-medium text-[var(--color-text-secondary)] block mb-1">Tenure</span>
-          <span class="text-sm font-semibold text-[var(--color-text-primary)] block">
-            {{ calculateTenure(employee.jobInformation.hireDate) }}
-          </span>
-        </div>
-
-        <div class="rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] p-4">
-          <span class="text-xs font-medium text-[var(--color-text-secondary)] block mb-1">Reporting Manager</span>
-          <span class="text-sm font-semibold text-[var(--color-text-primary)] block truncate">
-            {{ employee.jobInformation.reportingManagerName || 'Unassigned' }}
-          </span>
-        </div>
-
-        <div class="rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] p-4">
-          <span class="text-xs font-medium text-[var(--color-text-secondary)] block mb-1">Primary Location</span>
-          <span class="text-sm font-semibold text-[var(--color-text-primary)] block truncate">
-            {{ getPrimaryLocation(employee.personalInformation.addresses) }}
-          </span>
-        </div>
-
-        @if (employee.attendanceSummary) {
-          <div class="rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] p-4">
-            <span class="text-xs font-medium text-[var(--color-text-secondary)] block mb-1">Attendance today</span>
-            @if (employee.attendanceSummary.showNotClockedInWarning && attendanceWarningLabel(employee); as warningLabel) {
-              <span class="inline-flex items-center gap-1.5 text-sm font-semibold text-red-600">
-                <span class="w-2 h-2 rounded-full bg-red-500"></span>
-                {{ warningLabel }}
-              </span>
-            } @else {
-              <span class="text-sm font-semibold text-[var(--color-text-primary)] block truncate">
-                {{ attendanceStatusLabel(employee) || 'Not specified' }}
-              </span>
-              @if (attendanceAttentionLabel(employee); as attentionLabel) {
-                <span class="mt-1 inline-block text-xs font-medium px-2 py-0.5 rounded-full" [class]="severityBadgeClass(employee)">
-                  {{ attentionLabel }}
-                </span>
-              }
-            }
-            @if (breakOverageLabel(employee); as breakLabel) {
-              <span class="mt-1 block text-xs font-medium text-red-600">{{ breakLabel }}</span>
-            }
-          </div>
-        }
-      </div>
-
       <!-- Navigation Tabs -->
-      <div class="border-b border-[var(--color-border)] mb-6">
+      <div class="mb-6 flex flex-wrap items-end justify-between gap-x-4 gap-y-2 border-b border-[var(--color-border)]">
         <nav class="flex gap-2" aria-label="Employee Detail Sections">
-          <button
-            type="button"
-            class="px-4 py-2.5 text-sm font-medium border-b-2 transition-colors -mb-px whitespace-nowrap cursor-pointer"
-            [class.border-[var(--color-accent)]]="activeTab() === 'job'"
-            [class.text-[var(--color-accent)]]="activeTab() === 'job'"
-            [class.font-semibold]="activeTab() === 'job'"
-            [class.border-transparent]="activeTab() !== 'job'"
-            [class.text-[var(--color-text-secondary)]]="activeTab() !== 'job'"
-            (click)="activeTab.set('job')"
-          >
-            Job Information
-          </button>
-          <button
-            type="button"
-            class="px-4 py-2.5 text-sm font-medium border-b-2 transition-colors -mb-px whitespace-nowrap cursor-pointer"
-            [class.border-[var(--color-accent)]]="activeTab() === 'personal'"
-            [class.text-[var(--color-accent)]]="activeTab() === 'personal'"
-            [class.font-semibold]="activeTab() === 'personal'"
-            [class.border-transparent]="activeTab() !== 'personal'"
-            [class.text-[var(--color-text-secondary)]]="activeTab() !== 'personal'"
-            (click)="activeTab.set('personal')"
-          >
-            Personal Information
-          </button>
-          <button
-            type="button"
-            class="px-4 py-2.5 text-sm font-medium border-b-2 transition-colors -mb-px whitespace-nowrap cursor-pointer"
-            [class.border-[var(--color-accent)]]="activeTab() === 'emergency'"
-            [class.text-[var(--color-accent)]]="activeTab() === 'emergency'"
-            [class.font-semibold]="activeTab() === 'emergency'"
-            [class.border-transparent]="activeTab() !== 'emergency'"
-            [class.text-[var(--color-text-secondary)]]="activeTab() !== 'emergency'"
-            (click)="activeTab.set('emergency')"
-          >
-            Emergency Contacts
-          </button>
-          @if (employee.payroll) {
+          @for (tab of tabs; track tab.id) {
             <button
               type="button"
               class="px-4 py-2.5 text-sm font-medium border-b-2 transition-colors -mb-px whitespace-nowrap cursor-pointer"
-              [class.border-[var(--color-accent)]]="activeTab() === 'payroll'"
-              [class.text-[var(--color-accent)]]="activeTab() === 'payroll'"
-              [class.font-semibold]="activeTab() === 'payroll'"
-              [class.border-transparent]="activeTab() !== 'payroll'"
-              [class.text-[var(--color-text-secondary)]]="activeTab() !== 'payroll'"
-              (click)="activeTab.set('payroll')"
+              [class.border-[var(--color-accent)]]="activeTab() === tab.id"
+              [class.text-[var(--color-accent)]]="activeTab() === tab.id"
+              [class.font-semibold]="activeTab() === tab.id"
+              [class.border-transparent]="activeTab() !== tab.id"
+              [class.text-[var(--color-text-secondary)]]="activeTab() !== tab.id"
+              (click)="selectTab(tab.id)"
             >
-              Payroll & Statutory
+              {{ tab.label }}
             </button>
           }
         </nav>
+        @if (activeTab() === 'overview') {
+          <app-employee-period-controls class="mb-1.5" />
+        }
       </div>
 
-      <!-- Tab Content Section -->
-      @if (activeTab() === 'job') {
-        <div class="rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] p-6 space-y-6">
-          <app-employee-job-info
-            [jobInformation]="employee.jobInformation"
-            [employeeId]="employee.id"
-            [canEdit]="canChangePosition() && !isReadOnly()"
-            [saving]="savingJobDetails()"
-            (save)="onJobDetailsSave($event)"
-          />
-          <app-employee-job-journey [entries]="jobJourney()" />
-        </div>
-      } @else if (activeTab() === 'personal') {
-        <app-employee-personal-info [personalInformation]="employee.personalInformation" />
-      } @else if (activeTab() === 'emergency') {
-        <app-employee-emergency-contacts [emergencyContacts]="employee.emergencyContacts" />
-      } @else if (activeTab() === 'payroll' && employee.payroll; as payroll) {
-        <app-employee-payroll [payroll]="payroll" />
+      @if (activeTab() === 'overview') {
+        <app-employee-overview-tab
+          [employeeId]="employee.id"
+          [hireDate]="employee.jobInformation.hireDate"
+          [terminationDate]="employee.jobInformation.terminationDate ?? null"
+        />
+      }
+      <!-- Mounted on first visit only (then kept alive), so its Work Network and journey calls wait for the tab -->
+      @if (employmentVisited()) {
+        <app-employee-employment-tab
+          [hidden]="activeTab() !== 'employment'"
+          [class.hidden]="activeTab() !== 'employment'"
+          [employee]="employee"
+          [jobJourney]="jobJourney()"
+          [jobJourneyLoadedAt]="jobJourneyLoadedAt()"
+          [jobJourneyRefreshing]="jobJourneyRefreshing()"
+          (refreshJobJourney)="refreshJobJourney()"
+          [canEdit]="canChangePosition() && !isReadOnly()"
+          [saving]="savingJobDetails()"
+          (save)="onJobDetailsSave($event)"
+        />
+      }
+      @if (activeTab() === 'personal') {
+        <app-employee-personal-tab [employee]="employee" />
       }
 
       @if (employee.jobInformation.legalEntityId; as legalEntityId) {
@@ -261,10 +264,16 @@ import {
   `,
   styles: [`
     .emp-detail-header {
-      margin-top: -1.25rem;
-      margin-bottom: 1.25rem;
-      padding-bottom: 0.625rem;
-      border-bottom: 1px solid var(--color-border);
+      position: sticky;
+      top: -1.75rem;
+      z-index: 50;
+      background: var(--color-surface);
+    }
+
+    :host ::ng-deep app-avatar.employee-detail-avatar .avatar--xl {
+      width: 5rem;
+      height: 5rem;
+      font-size: 1.5rem;
     }
 
     .change-position-menu {
@@ -310,6 +319,7 @@ export class EmployeeDetailComponent {
   private readonly permissionService = inject(PermissionService);
   private readonly authStore = inject(AuthStore);
   private readonly offboardingStore = inject(OffboardingWizardStore);
+  private readonly employeeDirectory = inject(EmployeeDirectoryStore);
 
   readonly employee = signal<EmployeeDetailResponse | null>(null);
   readonly loading = signal(false);
@@ -319,27 +329,35 @@ export class EmployeeDetailComponent {
   readonly changePositionMenuOpen = signal(false);
   readonly changePositionOpen = signal(false);
   readonly changePositionReason = signal<'Promotion' | 'Transfer'>('Promotion');
-  readonly activeTab = signal<'job' | 'personal' | 'emergency' | 'payroll'>('job');
+  readonly tabs: readonly { readonly id: DetailTab; readonly label: string }[] = [
+    { id: 'overview', label: 'Overview' },
+    { id: 'employment', label: 'Employment' },
+    { id: 'personal', label: 'Personal' }
+  ];
+  readonly activeTab = signal<DetailTab>('overview');
+  readonly employmentVisited = signal(false);
   readonly jobJourney = signal<readonly PositionHistoryEntryResponse[]>([]);
+  readonly jobJourneyLoadedAt = signal<Date | null>(null);
+  readonly jobJourneyRefreshing = signal(false);
 
   readonly attendanceWarningLabel = attendanceWarningLabel;
   readonly attendanceAttentionLabel = attendanceAttentionLabel;
   readonly attendanceStatusLabel = attendanceStatusLabel;
   readonly breakOverageLabel = breakOverageLabel;
+  readonly formatTenure = formatTenure;
 
   readonly canChangePosition = computed(() => this.permissionService.hasPermission('employees:write'));
+  readonly canOffboard = computed(() => this.permissionService.hasPermission('employees:offboard'));
   readonly isOwnRecord = computed(() => this.employee()?.id === this.authStore.employeeId());
   readonly offboardingStatus = computed(() => this.offboardingStore.record()?.status ?? null);
   readonly isReadOnly = computed(() => this.offboardingStatus() === 'completed');
+  readonly employeeAvatarUrl = computed(() => {
+    const employeeId = this.employee()?.id;
+    return employeeId ? this.employeeDirectory.get(employeeId)?.avatarUrl ?? null : null;
+  });
 
   constructor() {
     this.load();
-  }
-
-  getInitials(firstName?: string, lastName?: string): string {
-    const f = firstName?.trim().charAt(0) || '';
-    const l = lastName?.trim().charAt(0) || '';
-    return (f + l).toUpperCase() || 'EM';
   }
 
   load(): void {
@@ -350,6 +368,7 @@ export class EmployeeDetailComponent {
 
     this.loading.set(true);
     this.error.set(null);
+    void this.employeeDirectory.ensureLoaded([id]);
     this.api.getEmployeeDetail(id).subscribe({
       next: (employee) => {
         this.employee.set(employee);
@@ -360,11 +379,38 @@ export class EmployeeDetailComponent {
         this.error.set(toSafeErrorMessage(err, 'The employee or selected organization record could not be found.'));
       }
     });
-    this.api.getJobJourney(id).subscribe({
-      next: (entries) => this.jobJourney.set(entries),
-      error: () => this.jobJourney.set([])
-    });
+    if (this.employmentVisited()) this.loadJobJourney(id);
     void this.offboardingStore.loadOffboarding(id);
+  }
+
+  selectTab(tab: DetailTab): void {
+    this.activeTab.set(tab);
+    if (tab === 'employment' && !this.employmentVisited()) {
+      this.employmentVisited.set(true);
+      const id = this.employee()?.id;
+      if (id) this.loadJobJourney(id);
+    }
+  }
+
+  refreshJobJourney(): void {
+    const id = this.employee()?.id;
+    if (id) this.loadJobJourney(id, true);
+  }
+
+  /** A quiet refresh keeps the current entries on screen if the reload fails. */
+  private loadJobJourney(id: string, quiet = false): void {
+    if (quiet) this.jobJourneyRefreshing.set(true);
+    this.api.getJobJourney(id).subscribe({
+      next: (entries) => {
+        this.jobJourney.set(entries);
+        this.jobJourneyLoadedAt.set(new Date());
+        this.jobJourneyRefreshing.set(false);
+      },
+      error: () => {
+        if (!quiet) this.jobJourney.set([]);
+        this.jobJourneyRefreshing.set(false);
+      }
+    });
   }
 
   onJobDetailsSave(payload: UpdateEmployeeJobDetailsRequest): void {
@@ -422,54 +468,6 @@ export class EmployeeDetailComponent {
     this.load();
   }
 
-  calculateTenure(hireDateStr?: string): string {
-    if (!hireDateStr) return '—';
-    const hireDate = new Date(hireDateStr);
-    if (isNaN(hireDate.getTime())) return '—';
-
-    const now = new Date();
-    let years = now.getFullYear() - hireDate.getFullYear();
-    let months = now.getMonth() - hireDate.getMonth();
-
-    if (months < 0) {
-      years -= 1;
-      months += 12;
-    }
-
-    if (years <= 0 && months <= 0) {
-      return 'New Joiner';
-    }
-
-    const yearPart = years > 0 ? `${years} yr${years > 1 ? 's' : ''}` : '';
-    const monthPart = months > 0 ? `${months} mo${months > 1 ? 's' : ''}` : '';
-
-    if (yearPart && monthPart) return `${yearPart} ${monthPart}`;
-    return yearPart || monthPart || 'New Joiner';
-  }
-
-  getPrimaryLocation(addresses?: readonly EmployeeDetailAddress[]): string {
-    if (!addresses || addresses.length === 0) return 'Not specified';
-    const primary = addresses.find(a => a.isPrimary) || addresses[0];
-    if (!primary || !primary.addressJson) return 'Not specified';
-
-    try {
-      const parsed: unknown = JSON.parse(primary.addressJson);
-      if (parsed && typeof parsed === 'object') {
-        const p = parsed as Record<string, unknown>;
-        const city = p['city'] || p['town'];
-        const country = p['country'] || p['countryCode'];
-        if (city && country) return `${city}, ${country}`;
-        if (city) return String(city);
-        if (country) return String(country);
-        const firstVal = Object.values(p).find(v => typeof v === 'string' && v.trim().length > 0);
-        if (firstVal) return String(firstVal);
-      }
-    } catch {
-      return primary.addressJson.substring(0, 30);
-    }
-    return 'Not specified';
-  }
-
   severityBadgeClass(employee: EmployeeDetailResponse): string {
     const severity = attendanceSeverityClass(employee);
     if (severity === 'emp-attention--critical') return 'bg-red-50 text-red-700';
@@ -477,4 +475,51 @@ export class EmployeeDetailComponent {
     return 'bg-[var(--color-surface-secondary)] text-[var(--color-text-secondary)]';
   }
 
+  todayStatusClass(employee: EmployeeDetailResponse): string {
+    const status = employee.attendanceSummary?.attendanceStatus?.toLowerCase() || '';
+    const label = attendanceStatusLabel(employee)?.toLowerCase() || '';
+    if (employee.attendanceSummary?.showNotClockedInWarning || status === 'not_clocked_in' || label.includes('not clocked in')) {
+      return 'bg-rose-50 text-rose-800';
+    }
+    if (status === 'present' || status === 'working' || label.includes('present') || label.includes('clocked in') || label.includes('working')) {
+      return 'bg-emerald-50 text-emerald-800';
+    }
+    if (status === 'late' || label.includes('late')) {
+      return 'bg-amber-50 text-amber-800';
+    }
+    if (status === 'on_break' || label.includes('break')) {
+      return 'bg-sky-50 text-sky-800';
+    }
+    if (status === 'on_leave' || label.includes('leave')) {
+      return 'bg-purple-50 text-purple-800';
+    }
+    if (status === 'missing_clock_out' || status === 'absent' || label.includes('missing') || label.includes('absent')) {
+      return 'bg-rose-50 text-rose-800';
+    }
+    return 'bg-[var(--color-surface-secondary)] text-[var(--color-text-primary)]';
+  }
+
+  todayStatusDotClass(employee: EmployeeDetailResponse): string {
+    const status = employee.attendanceSummary?.attendanceStatus?.toLowerCase() || '';
+    const label = attendanceStatusLabel(employee)?.toLowerCase() || '';
+    if (employee.attendanceSummary?.showNotClockedInWarning || status === 'not_clocked_in' || label.includes('not clocked in')) {
+      return 'bg-rose-500';
+    }
+    if (status === 'present' || status === 'working' || label.includes('present') || label.includes('clocked in') || label.includes('working')) {
+      return 'bg-emerald-500';
+    }
+    if (status === 'late' || label.includes('late')) {
+      return 'bg-amber-500';
+    }
+    if (status === 'on_break' || label.includes('break')) {
+      return 'bg-sky-500';
+    }
+    if (status === 'on_leave' || label.includes('leave')) {
+      return 'bg-purple-500';
+    }
+    if (status === 'missing_clock_out' || status === 'absent' || label.includes('missing') || label.includes('absent')) {
+      return 'bg-rose-500';
+    }
+    return 'bg-[var(--color-text-secondary)]';
+  }
 }

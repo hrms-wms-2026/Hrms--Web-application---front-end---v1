@@ -1,2 +1,20 @@
-/* Quiet Operations Desk: adjustment is intentionally plain until a material warning needs attention. */
-.eam-body{display:flex;flex-direction:column;gap:.8rem;min-width:320px}.eam-subject{margin:0;color:#718096;font-size:.78rem}.eam-field{display:flex;flex-direction:column;gap:.32rem;color:#536274;font-size:.75rem;font-weight:650}.eam-field input,.eam-field textarea{border:1px solid #dbe2ec;border-radius:6px;padding:.5rem .6rem;font:inherit;font-size:.8rem}.eam-two{display:grid;grid-template-columns:1fr 1fr;gap:.7rem}.eam-primary,.eam-secondary,.eam-danger{border-radius:6px;padding:.55rem .85rem;font-size:.78rem;font-weight:700}.eam-primary{border:1px solid #1e5eff;background:#1e5eff;color:#fff}.eam-secondary{border:1px solid #dbe2ec;background:#fff;color:#536274}.eam-danger{border:1px solid #c0362c;background:#c0362c;color:#fff}.eam-error{margin:0;color:#a3271d;font-size:.78rem}.eam-warning{margin:0;border-radius:6px;background:#fef3e2;padding:.6rem .7rem;color:#8a5a12;font-size:.78rem}.eam-actions{display:flex;justify-content:flex-end;gap:.5rem}
+.eam-body { display: flex; flex-direction: column; gap: 0.8rem; min-width: 320px; }
+.eam-subject { margin: 0; color: var(--color-text-secondary); font-size: 0.78rem; }
+.eam-field { display: flex; flex-direction: column; gap: 0.32rem; color: var(--color-text-secondary); font-size: 0.75rem; font-weight: 650; }
+.eam-field input, .eam-field textarea {
+  border: 1px solid var(--color-border);
+  border-radius: 8px;
+  padding: 0.5rem 0.6rem;
+  background: var(--color-surface);
+  color: var(--color-text-primary);
+  font: inherit;
+  font-size: 0.8rem;
+}
+.eam-two { display: grid; grid-template-columns: 1fr 1fr; gap: 0.7rem; }
+.eam-primary, .eam-secondary, .eam-danger { border-radius: 8px; padding: 0.55rem 0.85rem; font-size: 0.78rem; font-weight: 700; cursor: pointer; }
+.eam-primary { border: 0; background: var(--color-accent); color: var(--color-accent-contrast); }
+.eam-secondary { border: 1px solid var(--color-border); background: var(--color-surface); color: var(--color-text-primary); }
+.eam-danger { border: 0; background: var(--color-danger); color: var(--color-text-inverse); }
+.eam-error { margin: 0; color: var(--color-danger); font-size: 0.78rem; }
+.eam-warning { margin: 0; border-radius: 8px; padding: 0.6rem 0.7rem; background: var(--color-warning-subtle); color: var(--color-warning-text); font-size: 0.78rem; }
+.eam-actions { display: flex; justify-content: flex-end; gap: 0.5rem; }

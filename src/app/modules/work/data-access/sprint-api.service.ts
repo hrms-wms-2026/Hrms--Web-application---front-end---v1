@@ -3,8 +3,10 @@ import { Injectable, inject } from '@angular/core';
 import { Observable } from 'rxjs';
 import { environment } from '../../../../environments/environment';
 import {
-  CompleteSprintRequestDto, CreateSprintRequestDto, EditSprintRequestDto, SprintDto, StartSprintRequestDto
+  CompleteSprintRequestDto, CreateSprintRequestDto, EditSprintRequestDto, SetSprintTasksRequestDto,
+  SprintActivityDto, SprintDto, StartSprintRequestDto
 } from '../models/dto/sprint.dto';
+import { PendingApprovalDto } from '../models/dto/work-approval.dto';
 
 @Injectable({ providedIn: 'root' })
 export class SprintApiService {
@@ -20,23 +22,37 @@ export class SprintApiService {
     return this.http.get<SprintDto[]>(`${this.baseUrl}/projects/${projectId}/sprints`);
   }
 
-  create(objectiveId: string, request: CreateSprintRequestDto): Observable<SprintDto> {
-    return this.http.post<SprintDto>(`${this.baseUrl}/objectives/${objectiveId}/sprints`, request);
+  /** 201 = created; 202 = sent for approval (every mutating sprint call below: 200 applied / 202 pending). */
+  create(projectId: string, request: CreateSprintRequestDto): Observable<SprintDto | PendingApprovalDto> {
+    return this.http.post<SprintDto | PendingApprovalDto>(`${this.baseUrl}/projects/${projectId}/sprints`, request);
   }
 
-  start(sprintId: string, request: StartSprintRequestDto): Observable<SprintDto> {
-    return this.http.post<SprintDto>(`${this.baseUrl}/sprints/${sprintId}/start`, request);
+  setTasks(sprintId: string, request: SetSprintTasksRequestDto): Observable<SprintDto> {
+    return this.http.put<SprintDto>(`${this.baseUrl}/sprints/${sprintId}/tasks`, request);
   }
 
-  edit(sprintId: string, request: EditSprintRequestDto): Observable<SprintDto> {
-    return this.http.patch<SprintDto>(`${this.baseUrl}/sprints/${sprintId}`, request);
+  getActivity(sprintId: string): Observable<SprintActivityDto[]> {
+    return this.http.get<SprintActivityDto[]>(`${this.baseUrl}/sprints/${sprintId}/activity`);
   }
 
-  complete(sprintId: string, request: CompleteSprintRequestDto): Observable<SprintDto> {
-    return this.http.post<SprintDto>(`${this.baseUrl}/sprints/${sprintId}/complete`, request);
+  start(sprintId: string, request: StartSprintRequestDto): Observable<SprintDto | PendingApprovalDto> {
+    return this.http.post<SprintDto | PendingApprovalDto>(`${this.baseUrl}/sprints/${sprintId}/start`, request);
   }
 
-  achieve(sprintId: string): Observable<SprintDto> {
-    return this.http.post<SprintDto>(`${this.baseUrl}/sprints/${sprintId}/achieve`, {});
+  edit(sprintId: string, request: EditSprintRequestDto): Observable<SprintDto | PendingApprovalDto> {
+    return this.http.patch<SprintDto | PendingApprovalDto>(`${this.baseUrl}/sprints/${sprintId}`, request);
+  }
+
+  complete(sprintId: string, request: CompleteSprintRequestDto): Observable<SprintDto | PendingApprovalDto> {
+    return this.http.post<SprintDto | PendingApprovalDto>(`${this.baseUrl}/sprints/${sprintId}/complete`, request);
+  }
+
+  achieve(sprintId: string): Observable<SprintDto | PendingApprovalDto> {
+    return this.http.post<SprintDto | PendingApprovalDto>(`${this.baseUrl}/sprints/${sprintId}/achieve`, {});
+  }
+
+  /** Only a complete or achieved sprint. 204 = deleted (null body); 202 = sent for approval. */
+  delete(sprintId: string): Observable<PendingApprovalDto | null> {
+    return this.http.delete<PendingApprovalDto | null>(`${this.baseUrl}/sprints/${sprintId}`);
   }
 }

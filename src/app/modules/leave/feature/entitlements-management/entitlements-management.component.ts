@@ -7,6 +7,8 @@ import { NotificationService } from '../../../../core/services/notification.serv
 import { ButtonComponent } from '../../../../shared/ui/button/button.component';
 import { EmptyStateComponent } from '../../../../shared/ui/empty-state/empty-state.component';
 import { ErrorStateComponent } from '../../../../shared/ui/error-state/error-state.component';
+import { InputComponent } from '../../../../shared/ui/input/input.component';
+import { SelectComponent, SelectOption } from '../../../../shared/ui/select/select.component';
 import { LegalEntityApiService } from '../../../organization/data-access/legal-entity-api.service';
 import { LegalEntityListItem } from '../../../organization/models/legal-entity.model';
 import { LeaveEntitlementApiService } from '../../data-access/leave-entitlement-api.service';
@@ -16,7 +18,7 @@ import { LeaveTypeStore } from '../../state/leave-type.store';
 import { LeaveRequestStore } from '../../state/leave-request.store';
 import { LeaveBalanceAuditStore } from '../../state/leave-balance-audit.store';
 import { AdjustEntitlementRequest, CreateManualEntitlementRequest, GenerateEntitlementsRequest, LeaveEntitlementResponse, RecalculateEntitlementRequest } from '../../models/leave-entitlement.model';
-import { SubmitLeaveRequestOnBehalfRequest, SubmitLeaveRequestRequest } from '../../models/leave-request.model';
+import { LeaveUploadedDocument, SubmitLeaveRequestOnBehalfRequest, SubmitLeaveRequestRequest } from '../../models/leave-request.model';
 import { LeaveEntitlementListTableComponent } from '../../ui/leave-entitlement-list-table/leave-entitlement-list-table.component';
 import { LeaveEntitlementGenerateModalComponent } from '../../ui/leave-entitlement-generate-modal/leave-entitlement-generate-modal.component';
 import { LeaveEntitlementManualFormModalComponent } from '../../ui/leave-entitlement-manual-form-modal/leave-entitlement-manual-form-modal.component';
@@ -24,15 +26,16 @@ import { LeaveEntitlementAdjustModalComponent } from '../../ui/leave-entitlement
 import { LeaveBalanceListTableComponent } from '../../ui/leave-balance-list-table/leave-balance-list-table.component';
 import { LeaveBalanceAuditTableComponent } from '../../ui/leave-balance-audit-table/leave-balance-audit-table.component';
 import { NewLeaveRequestWizardComponent } from '../../ui/new-leave-request-wizard/new-leave-request-wizard.component';
+import { balancesToCsv, downloadCsv } from '../../utils/leave-balance-csv';
 
 type Tab = 'entitlements' | 'all-balances' | 'audit';
 
 @Component({
   selector: 'app-entitlements-management',
   standalone: true,
-  imports: [CommonModule, ButtonComponent, EmptyStateComponent, ErrorStateComponent, LeaveEntitlementListTableComponent, LeaveEntitlementGenerateModalComponent, LeaveEntitlementManualFormModalComponent, LeaveEntitlementAdjustModalComponent, LeaveBalanceListTableComponent, LeaveBalanceAuditTableComponent, NewLeaveRequestWizardComponent],
+  imports: [CommonModule, ButtonComponent, EmptyStateComponent, ErrorStateComponent, InputComponent, SelectComponent, LeaveEntitlementListTableComponent, LeaveEntitlementGenerateModalComponent, LeaveEntitlementManualFormModalComponent, LeaveEntitlementAdjustModalComponent, LeaveBalanceListTableComponent, LeaveBalanceAuditTableComponent, NewLeaveRequestWizardComponent],
   templateUrl: './entitlements-management.component.html',
-  styleUrl: './entitlements-management.component.css',
+  styleUrls: ['../../ui/time-off-chrome.css', './entitlements-management.component.css'],
   changeDetection: ChangeDetectionStrategy.OnPush
 })
 export class EntitlementsManagementComponent {
@@ -54,6 +57,10 @@ export class EntitlementsManagementComponent {
   readonly adjustTarget = signal<LeaveEntitlementResponse | null>(null);
   readonly adjustNeedsConfirmation = signal(false);
   readonly requestWizardOpen = signal(false);
+  readonly uploadedDocuments = signal<LeaveUploadedDocument[]>([]);
+  readonly yearOptions: SelectOption[] = yearOptions();
+  readonly selectedYear = computed(() => String(this.entitlementStore.year()));
+  readonly entitlementSummary = computed(() => summarizeEntitlements(this.entitlementStore.items()));
   private allBalancesLoaded = false;
   private auditLoaded = false;
 
@@ -71,6 +78,24 @@ export class EntitlementsManagementComponent {
     }
   }
 
+  onYearChange(year: string): void {
+    this.entitlementStore.setYear(Number(year));
+    if (this.activeTab() === 'all-balances') void this.balanceStore.loadAll(Number(year));
+  }
+
+  onSearchChange(search: string): void {
+    this.entitlementStore.setFilters({ ...this.entitlementStore.filters(), search: search || undefined });
+  }
+
+  onSearchInput(event: Event): void {
+    const search = (event.target as HTMLInputElement).value;
+    this.entitlementStore.setFilters({ ...this.entitlementStore.filters(), search: search || undefined });
+  }
+
+  formatHours(value: number): string {
+    return value.toFixed(2);
+  }
+
   selectTab(tab: Tab): void {
     this.activeTab.set(tab);
     if (tab === 'all-balances' && !this.allBalancesLoaded) {
@@ -81,6 +106,12 @@ export class EntitlementsManagementComponent {
       this.auditLoaded = true;
       void this.auditStore.load();
     }
+  }
+
+  onExportAllBalances(): void {
+    const rows = this.balanceStore.all();
+    if (rows.length === 0) return;
+    downloadCsv(balancesToCsv(rows), `leave-balances-all-${this.entitlementStore.year()}.csv`);
   }
 
   async onExportAudit(): Promise<void> {
@@ -176,8 +207,18 @@ export class EntitlementsManagementComponent {
     }
   }
 
-  openRequestWizard(): void { this.requestWizardOpen.set(true); }
-  closeRequestWizard(): void { this.requestWizardOpen.set(false); this.requestStore.clearPreview(); }
+  openRequestWizard(): void {
+    this.requestWizardOpen.set(true);
+    void this.balanceStore.loadWorkWindow();
+  }
+  closeRequestWizard(): void { this.requestWizardOpen.set(false); this.uploadedDocuments.set([]); this.requestStore.clearPreview(); }
+  async onDocumentSelected(file: File): Promise<void> {
+    const uploaded = await this.requestStore.uploadDocument(file);
+    if (uploaded) this.uploadedDocuments.update((docs) => [...docs, uploaded]);
+  }
+  onDocumentRemoved(id: string): void {
+    this.uploadedDocuments.update((docs) => docs.filter((doc) => doc.id !== id));
+  }
   onRequestPreview(payload: SubmitLeaveRequestRequest): void { void this.requestStore.preview(payload); }
 
   async onRequestSubmit(payload: SubmitLeaveRequestRequest | SubmitLeaveRequestOnBehalfRequest): Promise<void> {
@@ -189,4 +230,24 @@ export class EntitlementsManagementComponent {
       this.notificationService.error(this.requestStore.submitError() ?? 'Failed to submit the request.');
     }
   }
+}
+
+function yearOptions(): SelectOption[] {
+  const current = new Date().getFullYear();
+  return [current - 1, current, current + 1].map((year) => ({ value: String(year), label: String(year) }));
+}
+
+function summarizeEntitlements(items: readonly LeaveEntitlementResponse[]): {
+  lines: number;
+  employees: number;
+  remaining: number;
+  overUtilized: number;
+} {
+  const employees = new Set(items.map((item) => item.employeeId));
+  return {
+    lines: items.length,
+    employees: employees.size,
+    remaining: items.reduce((sum, item) => sum + item.remainingHours, 0),
+    overUtilized: items.filter((item) => item.isOverUtilized || item.remainingHours < 0).length
+  };
 }

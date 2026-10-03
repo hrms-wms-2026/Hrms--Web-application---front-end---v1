@@ -1,7 +1,12 @@
 :host {
   display: block;
+  position: fixed;
+  inset: 0;
+  width: 100%;
   height: 100vh;
+  height: 100dvh;
   max-height: 100vh;
+  max-height: 100dvh;
   overflow: hidden;
 }
 
@@ -24,6 +29,7 @@
 }
 
 .main-layout {
+  --nav-rail-width: 5.25rem;
   display: grid;
   grid-template-columns: auto minmax(0, 1fr);
   grid-template-rows: auto minmax(0, 1fr);
@@ -67,51 +73,45 @@
   min-height: 0;
   height: calc(100% - 0.5rem);
   margin: 0 0.5rem 0.5rem 0.25rem;
-  padding: 1.75rem 2rem;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
   outline: none;
   background: var(--color-surface);
   border: 1px solid var(--color-border);
-  border-radius: 0 0 16px 0;
-  overflow-y: auto;
+  border-radius: 0 0 16px 16px;
+  overflow: hidden;
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.03);
-  scrollbar-width: thin;
-  scrollbar-color: rgba(148, 163, 184, 0.35) transparent;
 }
 
-.main-content::-webkit-scrollbar {
-  width: 5px;
-  height: 5px;
+.main-content__viewport {
+  flex: 1 1 0%;
+  min-height: 0;
+  min-width: 0;
+  height: 100%;
+  padding: 1.75rem 2rem;
+  overflow-y: auto;
+  scrollbar-width: none;
+  -ms-overflow-style: none;
 }
 
-.main-content::-webkit-scrollbar-button {
+.main-content__viewport::-webkit-scrollbar {
   display: none;
   width: 0;
   height: 0;
 }
 
-.main-content::-webkit-scrollbar-track {
-  background: transparent;
-}
-
-.main-content::-webkit-scrollbar-thumb {
-  background: rgba(148, 163, 184, 0.35);
-  border-radius: 9999px;
-}
-
-.main-content::-webkit-scrollbar-thumb:hover {
-  background: rgba(148, 163, 184, 0.6);
-}
-
 .main-layout--has-sub-sidebar .main-content {
   margin-left: 0;
+  border-radius: 0 0 16px 0;
 }
 
-.main-content:has(app-position-management) {
+.main-content:has(app-position-management) .main-content__viewport {
   overflow: hidden;
 }
 
-.main-content:has(app-tray-activation-gate),
-.main-content--gated {
+.main-content:has(app-tray-activation-gate) .main-content__viewport,
+.main-content--gated .main-content__viewport {
   position: relative;
   overflow: hidden !important;
   padding: 0 !important;
@@ -143,7 +143,7 @@
   justify-content: center;
 }
 
-.main-content > * {
+.main-content__viewport > * {
   display: block;
 }
 
@@ -156,7 +156,7 @@
   position: fixed;
   bottom: 1.5rem;
   right: 1.5rem;
-  z-index: 1100;
+  z-index: 2000;
 }
 
 .global-dialog-container {
@@ -178,6 +178,7 @@
 
 @media (max-width: 768px) {
   .main-layout {
+    --nav-rail-width: 0px;
     display: flex;
     flex-direction: column;
     height: 100vh;
@@ -204,7 +205,12 @@
     margin: 0;
     border-radius: 0;
     border: none;
-    padding: 1rem 1rem 5.5rem 1rem;
+    height: auto;
+    overflow: hidden;
+  }
+
+  .main-content__viewport {
+    padding: 1rem 1rem calc(5.5rem + var(--bottom-tray-offset, 0px)) 1rem;
     height: auto;
     overflow-y: auto;
   }

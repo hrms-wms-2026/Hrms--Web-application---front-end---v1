@@ -11,6 +11,7 @@ import { ProjectDetail } from '../models/project.model';
 import { Milestone, MilestoneTreeNode, ObjectiveDetail } from '../models/milestone.model';
 import { EditObjectiveRequestDto, CreateObjectiveRequestDto, ObjectiveAssetDto } from '../models/dto/milestone.dto';
 import { CompleteSprintRequestDto } from '../models/dto/sprint.dto';
+import { isPendingApproval } from '../models/dto/work-approval.dto';
 import { ObjectiveMemberItemDto, ObjectiveInvitationDto } from '../models/dto/objective-invitation.dto';
 
 interface ProjectDetailState {
@@ -254,7 +255,12 @@ export const ProjectDetailStore = signalStore(
       try {
         const res = await firstValueFrom(memberApi.transferHead(objectiveId, newHeadEmployeeId));
         patchState(store, { milestoneActionError: null });
-        return { success: true, applied: res.body!.applied, viaInvitation: res.body!.pendingInvitation !== null };
+        // 204 = applied (ASP.NET drops a 204's body); 202 = leader invitation or sent for approval.
+        return {
+          success: true,
+          applied: res.status === 204 || !!res.body?.applied,
+          viaInvitation: !!res.body?.pendingInvitation
+        };
       } catch (err) {
         patchState(store, { milestoneActionError: extractError(err, 'Failed to transfer leadership.') });
         return { success: false, applied: false, viaInvitation: false };
@@ -328,9 +334,13 @@ export const ProjectDetailStore = signalStore(
         if (!current) return;
         const sprint = findTreeNode(current, sprintId);
         if (!sprint) return;
-        const children = tasks.map((task) =>
-          toTaskTreeNode(task, sprint, (sprint.statusNames ?? {})[task.statusId] ?? task.statusId)
-        );
+        // Sprints are project-level (may hold tasks from several modules); under a module's tree
+        // node only that module's tasks belong.
+        const children = tasks
+          .filter((task) => !sprint.parentObjectiveId || task.objectiveId === sprint.parentObjectiveId)
+          .map((task) =>
+            toTaskTreeNode(task, sprint, (sprint.statusNames ?? {})[task.statusId] ?? task.statusId)
+          );
         patchState(store, {
           selectedSubtree: updateTreeNode(current, sprintId, (node) => ({
             ...node,
@@ -347,9 +357,14 @@ export const ProjectDetailStore = signalStore(
       }
     },
 
-    async achieveSprint(sprintId: string): Promise<{ success: boolean }> {
+    /** pending = sent for approval; the tree node is left as it is until the request is approved. */
+    async achieveSprint(sprintId: string): Promise<{ success: boolean; pending?: boolean }> {
       try {
         const dto = await firstValueFrom(sprintApi.achieve(sprintId));
+        if (isPendingApproval(dto)) {
+          patchState(store, { milestoneActionError: null });
+          return { success: true, pending: true };
+        }
         const tree = store.selectedSubtree();
         if (tree) {
           patchState(store, {
@@ -371,9 +386,14 @@ export const ProjectDetailStore = signalStore(
       }
     },
 
-    async completeSprint(sprintId: string, request: CompleteSprintRequestDto): Promise<{ success: boolean }> {
+    /** pending = sent for approval; the tree node is left as it is until the request is approved. */
+    async completeSprint(sprintId: string, request: CompleteSprintRequestDto): Promise<{ success: boolean; pending?: boolean }> {
       try {
         const dto = await firstValueFrom(sprintApi.complete(sprintId, request));
+        if (isPendingApproval(dto)) {
+          patchState(store, { milestoneActionError: null });
+          return { success: true, pending: true };
+        }
         const tree = store.selectedSubtree();
         if (tree) {
           patchState(store, {
@@ -395,9 +415,38 @@ export const ProjectDetailStore = signalStore(
       }
     },
 
-    async deleteTask(taskId: string): Promise<{ success: boolean }> {
+    /** Deletes a complete or achieved sprint: its node leaves the tree and the module is reloaded so the
+     *  sprint's tasks reappear in the backlog. pending = sent for approval; nothing changes yet. */
+    async deleteSprint(sprintId: string): Promise<{ success: boolean; pending?: boolean }> {
       try {
-        await firstValueFrom(taskApi.deleteTask(taskId));
+        const res = await firstValueFrom(sprintApi.delete(sprintId));
+        if (isPendingApproval(res)) {
+          patchState(store, { milestoneActionError: null });
+          return { success: true, pending: true };
+        }
+        const tree = store.selectedSubtree();
+        const parentObjectiveId = tree ? findTreeNode(tree, sprintId)?.parentObjectiveId : undefined;
+        if (tree) {
+          patchState(store, { selectedSubtree: removeTreeNode(tree, sprintId), milestoneActionError: null });
+        }
+        if (parentObjectiveId) {
+          await this.loadSprintsAndTasksForLeaf(parentObjectiveId, { force: true });
+        }
+        return { success: true };
+      } catch (err) {
+        patchState(store, { milestoneActionError: extractError(err, 'Failed to delete the sprint.') });
+        return { success: false };
+      }
+    },
+
+    /** pendingApproval = the deletion was sent for approval; the task stays until it is approved. */
+    async deleteTask(taskId: string): Promise<{ success: boolean; pendingApproval?: boolean }> {
+      try {
+        const res = await firstValueFrom(taskApi.deleteTask(taskId));
+        if (isPendingApproval(res)) {
+          patchState(store, { milestoneActionError: null });
+          return { success: true, pendingApproval: true };
+        }
         const tree = store.selectedSubtree();
         if (tree) {
           patchState(store, {

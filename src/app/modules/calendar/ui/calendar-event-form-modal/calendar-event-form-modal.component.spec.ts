@@ -3,6 +3,7 @@ import { provideRouter } from '@angular/router';
 import { of } from 'rxjs';
 import { vi } from 'vitest';
 import { AuthStore } from '../../../../core/auth/state/auth.store';
+import { UnsavedChangesService } from '../../../../shared/services/unsaved-changes.service';
 import { CalendarEventApiService } from '../../data-access/calendar-event-api.service';
 import { PeopleApiService } from '../../../people/data-access/people-api.service';
 import { CalendarEventResponse } from '../../models/calendar-event.model';
@@ -438,48 +439,60 @@ describe('CalendarEventFormModalComponent', () => {
     expect(fixture.nativeElement.textContent).toContain('Asia/Colombo');
   });
 
-  it('emits cancel immediately when the form is not dirty', () => {
+  const flush = () => new Promise<void>((resolve) => setTimeout(resolve));
+
+  it('emits cancel immediately when the form is not dirty', async () => {
     const spy = vi.fn();
     fixture.componentInstance.cancel.subscribe(spy);
     fixture.componentInstance.attemptClose();
+    await flush();
     expect(spy).toHaveBeenCalledTimes(1);
   });
 
-  it('shows a discard-confirmation instead of emitting cancel when the form is dirty', () => {
+  it('asks through the shared dialog instead of emitting cancel when the form is dirty', async () => {
     fixture.componentInstance.setTitle('Something typed');
     const spy = vi.fn();
     fixture.componentInstance.cancel.subscribe(spy);
 
     fixture.componentInstance.attemptClose();
+    await flush();
 
+    const unsaved = TestBed.inject(UnsavedChangesService);
     expect(spy).not.toHaveBeenCalled();
-    expect(fixture.componentInstance.discardConfirmOpen()).toBe(true);
+    expect(unsaved.prompt()).toEqual({ canSaveDraft: false, saving: false, error: null });
+    unsaved.choose('keep');
+    await flush();
+    expect(spy).not.toHaveBeenCalled();
   });
 
-  it('emits cancel after the discard is confirmed', () => {
+  it('emits cancel after the discard is chosen', async () => {
     fixture.componentInstance.setTitle('Something typed');
-    fixture.componentInstance.attemptClose();
-
     const spy = vi.fn();
     fixture.componentInstance.cancel.subscribe(spy);
-    fixture.componentInstance.confirmDiscard();
+
+    fixture.componentInstance.attemptClose();
+    TestBed.inject(UnsavedChangesService).choose('discard');
+    await flush();
 
     expect(spy).toHaveBeenCalledTimes(1);
-    expect(fixture.componentInstance.discardConfirmOpen()).toBe(false);
+    expect(TestBed.inject(UnsavedChangesService).prompt()).toBeNull();
   });
 
-  it('treats a non-empty participant selection as dirty even with an untouched form', () => {
+  it('treats a non-empty participant selection as dirty even with an untouched form', async () => {
     fixture.componentInstance.onParticipantIdsChange(['emp-1']);
     const spy = vi.fn();
     fixture.componentInstance.cancel.subscribe(spy);
 
     fixture.componentInstance.attemptClose();
+    await flush();
 
     expect(spy).not.toHaveBeenCalled();
-    expect(fixture.componentInstance.discardConfirmOpen()).toBe(true);
+    expect(TestBed.inject(UnsavedChangesService).prompt()).not.toBeNull();
+    TestBed.inject(UnsavedChangesService).choose('keep');
+    await flush();
   });
 
-  it('starts pristine again when reopened after a previous dirty session, even without destroying the component', () => {
+  it('starts pristine again when reopened after a previous dirty session, even without destroying the component', async () => {
     fixture.componentInstance.setTitle('Something typed');
     fixture.componentInstance.onParticipantIdsChange(['emp-1']);
 
@@ -493,9 +506,10 @@ describe('CalendarEventFormModalComponent', () => {
     const spy = vi.fn();
     fixture.componentInstance.cancel.subscribe(spy);
     fixture.componentInstance.attemptClose();
+    await flush();
 
     expect(spy).toHaveBeenCalledTimes(1);
-    expect(fixture.componentInstance.discardConfirmOpen()).toBe(false);
+    expect(TestBed.inject(UnsavedChangesService).prompt()).toBeNull();
   });
 
   it('opens a new event with an empty form after a previous event was edited', () => {

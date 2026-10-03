@@ -1,0 +1,28 @@
+<app-modal [open]="open" title="Cover my approvals" (closed)="onClose()">
+  <div class="ladm-body">
+    <p class="ladm-help">While you are away, this person can approve leave in your queue.</p>
+    @if (delegates.length > 0) {
+      <ul class="ladm-list">
+        @for (row of delegates; track row.id) {
+          <li>
+            <span>{{ row.delegateName }} · {{ row.startDate }} – {{ row.endDate }}</span>
+            <button type="button" class="ladm-remove" [attr.aria-label]="'Remove cover for ' + row.delegateName" (click)="remove.emit(row.id)">Remove</button>
+          </li>
+        }
+      </ul>
+    }
+    <button type="button" class="ladm-picker" aria-label="Choose who covers you" (click)="pickerOpen.set(true)">
+      {{ delegateEmployeeId() ? 'Person selected' : 'Choose who covers you' }}
+    </button>
+    <app-employee-picker [open]="pickerOpen()" (selected)="onEmployeePicked($event)" (closed)="pickerOpen.set(false)" />
+    <app-date-picker label="From" [value]="startDate()" (valueChange)="startDate.set($event)" />
+    <app-date-picker label="To" [value]="endDate()" (valueChange)="endDate.set($event)" />
+    @if (actionError) { <p class="ladm-error">{{ actionError }}</p> }
+    <div class="ladm-actions">
+      <button type="button" class="ladm-secondary" (click)="onClose()">Close</button>
+      <button type="button" class="ladm-primary" data-testid="save-delegate" [disabled]="saving || !delegateEmployeeId() || !startDate() || !endDate()" (click)="onSubmit()">
+        {{ saving ? 'Saving…' : 'Save cover' }}
+      </button>
+    </div>
+  </div>
+</app-modal>

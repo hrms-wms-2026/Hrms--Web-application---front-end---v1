@@ -9,7 +9,7 @@ export type ModalSize = 'md' | 'lg' | 'xl' | '2xl';
   template: `
     @if (open()) {
       <div class="fixed inset-0 z-[1200] flex items-center justify-center p-4">
-        <div class="absolute inset-0 bg-black/50" (click)="onBackdropClick()"></div>
+        <div class="ui-fade-in absolute inset-0 bg-black/50" (click)="onBackdropClick()"></div>
         <div
           #dialog
           [class]="dialogClass()"
@@ -25,11 +25,14 @@ export type ModalSize = 'md' | 'lg' | 'xl' | '2xl';
             }
             <button
               type="button"
-              class="text-[var(--color-text-secondary)] transition-colors hover:text-[var(--color-text-primary)]"
+              class="flex h-7 w-7 items-center justify-center rounded-lg text-[var(--color-text-secondary)] transition-colors hover:bg-[var(--color-border)]/20 hover:text-[var(--color-text-primary)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-accent)]"
               aria-label="Close"
               (click)="closed.emit()"
             >
-              &#x2715;
+              <svg class="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                <line x1="18" y1="6" x2="6" y2="18"></line>
+                <line x1="6" y1="6" x2="18" y2="18"></line>
+              </svg>
             </button>
           </div>
           <ng-content />
@@ -55,10 +58,10 @@ export class ModalComponent {
 
   readonly dialogClass = computed(() => {
     const sizeMap: Record<ModalSize, string> = {
-      md: 'relative z-10 w-full max-w-md rounded-xl bg-[var(--color-surface)] p-6 shadow-lg outline-none',
-      lg: 'relative z-10 w-full max-w-xl rounded-xl bg-[var(--color-surface)] p-6 shadow-lg outline-none modal-dialog--constrained',
-      xl: 'relative z-10 w-full max-w-5xl rounded-xl bg-[var(--color-surface)] p-8 shadow-lg outline-none modal-dialog--constrained',
-      '2xl': 'relative z-10 w-full max-w-6xl rounded-xl bg-[var(--color-surface)] p-8 shadow-lg outline-none modal-dialog--constrained',
+      md: 'ui-pop-in relative z-10 w-full max-w-md rounded-xl bg-[var(--color-surface)] p-6 shadow-lg outline-none',
+      lg: 'ui-pop-in relative z-10 w-full max-w-xl rounded-xl bg-[var(--color-surface)] p-6 shadow-lg outline-none modal-dialog--constrained',
+      xl: 'ui-pop-in relative z-10 w-full max-w-5xl rounded-xl bg-[var(--color-surface)] p-8 shadow-lg outline-none modal-dialog--constrained',
+      '2xl': 'ui-pop-in relative z-10 w-full max-w-6xl rounded-xl bg-[var(--color-surface)] p-8 shadow-lg outline-none modal-dialog--constrained',
     };
     let cls = sizeMap[this.size()];
     const custom = this.customMaxWidth().trim();

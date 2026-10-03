@@ -42,7 +42,20 @@ export interface EmployeeListItemResponse {
   readonly invitationStatus?: string | null;
   readonly invitationExpiresAt?: string | null;
   readonly attendanceSummary?: EmployeeListAttendanceSummaryResponse | null;
+  readonly workModeLabel?: string | null;
   readonly avatarFileId?: string | null;
+}
+
+/**
+ * Matches backend EmployeeIdentityResponse DTO (GET /api/v1/employees/{id}/identity) - name and
+ * avatar only, deliberately gated on nothing beyond authentication (unlike EmployeeListItemResponse
+ * above, which requires employees:read). Use this for resolving any employee's display identity
+ * elsewhere in the app (project owner, task assignee, ...), never the full employees:read record.
+ */
+export interface EmployeeIdentityResponse {
+  readonly id: string;
+  readonly name: string;
+  readonly avatarFileId: string | null;
 }
 
 export interface ResendInvitationResponse {
@@ -65,6 +78,62 @@ export interface EmployeeListParams {
   /** Exclude on-leave/suspended/offboarding/terminated/resigned employees - for picker-style
    * callers (e.g. calendar participants) where only someone who could actually attend belongs. */
   activeOnly?: boolean;
+  positionId?: string;
+  employmentType?: readonly string[];
+  managerId?: string;
+  sortBy?: EmployeeSortKey;
+  sortDir?: SortDirection;
+}
+
+export type EmployeeSortKey = 'name' | 'employeeNumber' | 'position' | 'department' | 'employmentType' | 'manager';
+export type SortDirection = 'asc' | 'desc';
+
+export type BulkEmployeeActionOutcome = 'succeeded' | 'pendingApproval' | 'failed';
+
+export interface BulkEmployeeActionItem {
+  readonly employeeId: string;
+  readonly outcome: BulkEmployeeActionOutcome;
+  readonly reason: string | null;
+}
+
+export interface BulkEmployeeActionResponse {
+  readonly items: readonly BulkEmployeeActionItem[];
+  readonly succeeded: number;
+  readonly pendingApproval: number;
+  readonly failed: number;
+}
+
+export function toEmployeeBulkSummary(response: BulkEmployeeActionResponse): BulkResultSummary {
+  return {
+    ...response,
+    items: response.items.map((item) => ({
+      id: item.employeeId,
+      outcome: item.outcome,
+      reason: item.reason
+    }))
+  };
+}
+
+export interface BulkChangePositionPayload {
+  readonly employeeIds: readonly string[];
+  readonly positionId: string;
+  readonly effectiveFrom: string;
+  readonly changeReason: 'Promotion' | 'Transfer';
+  readonly reportsToEmployeeId: string | null;
+}
+
+export interface BulkChangeEmploymentTypePayload {
+  readonly employeeIds: readonly string[];
+  readonly employmentTypeCode: string;
+}
+
+export interface BulkStartOffboardingPayload {
+  readonly employeeIds: readonly string[];
+  readonly reason: string;
+  readonly lastWorkingDate: string;
+  readonly knowledgeRiskLevel: string;
+  readonly rehireEligibility: string | null;
+  readonly notes: string | null;
 }
 
 export interface EmployeeDetailResponse {
@@ -90,10 +159,13 @@ export interface EmployeeDetailJobInformation {
   readonly employmentTypeLabel: string;
   readonly status: string;
   readonly hireDate: string;
+  readonly terminationDate?: string | null;
   readonly probationEndDate: string | null;
   readonly workModeLabel: string | null;
   readonly employmentTypeCode: string;
   readonly workModeId: string | null;
+  /** Absent on an API built before the field was added. */
+  readonly reportingManagerId?: string | null;
 }
 
 export interface EmployeeDetailPersonalInformation {
@@ -146,3 +218,5 @@ export interface UpdateEmployeeJobDetailsRequest {
   readonly employmentTypeCode: string;
   readonly workModeId: string | null;
 }
+import { BulkResultSummary } from '../../../shared/ui/bulk-action-result-modal/bulk-action-result-modal.component';
+

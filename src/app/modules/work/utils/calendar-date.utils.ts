@@ -24,25 +24,6 @@ export function calendarRange(startDate: string, endDate: string): string[] {
   return Array.from({ length: days }, (_, index) => addCalendarDays(startDate, index));
 }
 
-/** Adds whole calendar months to a YYYY-MM-DD date, handling year rollover. */
-export function addCalendarMonths(value: string, months: number): string {
-  const date = parseCalendarDate(value);
-  date.setUTCMonth(date.getUTCMonth() + months);
-  return formatCalendarDate(date);
-}
-
-/** The overlap of two inclusive YYYY-MM-DD date ranges, or null when they don't touch. */
-export function intersectRanges(
-  aStart: string,
-  aEnd: string,
-  bStart: string,
-  bEnd: string
-): { start: string; end: string } | null {
-  const start = aStart > bStart ? aStart : bStart;
-  const end = aEnd < bEnd ? aEnd : bEnd;
-  return start <= end ? { start, end } : null;
-}
-
 /**
  * Position of an inclusive date range as left/width percentages within a window.
  * Clamped to [0, 100]. Used for the coloured "in event" sub-segment on a module bar.

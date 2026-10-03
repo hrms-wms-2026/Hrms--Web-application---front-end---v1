@@ -3,9 +3,14 @@ import { Injectable, inject } from '@angular/core';
 import { Observable } from 'rxjs';
 import { environment } from '../../../../environments/environment';
 import {
+  BulkChangeEmploymentTypePayload,
+  BulkChangePositionPayload,
+  BulkEmployeeActionResponse,
+  BulkStartOffboardingPayload,
   ChangePositionPayload,
   ChangePositionResponse,
   EmployeeDetailResponse,
+  EmployeeIdentityResponse,
   EmployeeListItemResponse,
   EmployeeListPageResponse,
   EmployeeListParams,
@@ -15,6 +20,24 @@ import {
 import { PendingAccessGrantRequestResponse } from '../models/access-grant-request.model';
 import { ChecklistAssignee } from '../models/checklist-template.model';
 import { PositionHistoryEntryResponse } from '../models/position-history.model';
+import { EmployeeWorkGraphResponse } from '../models/work-graph.model';
+import {
+  EmployeeActivityOverviewResponse,
+  EmployeeApprovalActivityResponse,
+  EmployeeAttendanceDaysResponse,
+  EmployeeAttendanceDisciplineResponse,
+  EmployeeAttendanceOverviewResponse,
+  EmployeeChecklistOverviewResponse,
+  EmployeeDeliveryResponse,
+  EmployeeHistoryResponse,
+  EmployeeOverviewSignalsResponse,
+  EmployeeRecentActivityResponse,
+  EmployeeSignalItemsResponse,
+  EmployeeTimeOffResponse,
+  EmployeeUpcomingResponse,
+  EmployeeWorkOverviewResponse,
+  EmployeeWorkTasksResponse
+} from '../models/employee-overview.model';
 import {
   ApproveAccessGrantRequestResponse,
   DraftListPageResponse,
@@ -55,6 +78,11 @@ export class PeopleApiService {
 
   getEmployee(id: string): Observable<EmployeeListItemResponse> {
     return this.http.get<EmployeeListItemResponse>(`${environment.apiUrl}/employees/${id}`);
+  }
+
+  /** Name + avatar only, for any employee in the tenant - no employees:read required. */
+  getEmployeeIdentity(id: string): Observable<EmployeeIdentityResponse> {
+    return this.http.get<EmployeeIdentityResponse>(`${environment.apiUrl}/employees/${id}/identity`);
   }
 
   resendInvitation(id: string): Observable<ResendInvitationResponse> {
@@ -102,6 +130,11 @@ export class PeopleApiService {
     }
 
     return this.http.post<OnboardingDraftResponse>(`${environment.apiUrl}/onboarding/drafts`, body, { headers });
+  }
+
+  /** Discards a draft (server marks it cancelled); idempotent. */
+  cancelDraft(id: string): Observable<void> {
+    return this.http.delete<void>(`${environment.apiUrl}/onboarding/drafts/${id}`);
   }
 
   finalizeDraft(id: string): Observable<FinalizeOnboardingDraftResponse> {
@@ -154,6 +187,150 @@ export class PeopleApiService {
     );
   }
 
+  getWorkGraph(employeeId: string): Observable<EmployeeWorkGraphResponse> {
+    return this.http.get<EmployeeWorkGraphResponse>(
+      `${environment.apiUrl}/employees/${employeeId}/work-graph`
+    );
+  }
+
+  getOverviewAttendance(employeeId: string, from: string, to: string): Observable<EmployeeAttendanceOverviewResponse> {
+    return this.http.get<EmployeeAttendanceOverviewResponse>(
+      `${environment.apiUrl}/employees/${employeeId}/overview/attendance`,
+      { params: new HttpParams().set('from', from).set('to', to) }
+    );
+  }
+
+  getOverviewAttendanceDiscipline(
+    employeeId: string,
+    from: string,
+    to: string,
+    comparePrevious = false
+  ): Observable<EmployeeAttendanceDisciplineResponse> {
+    return this.http.get<EmployeeAttendanceDisciplineResponse>(
+      `${environment.apiUrl}/employees/${employeeId}/overview/attendance-discipline`,
+      { params: this.periodParams(from, to, comparePrevious) }
+    );
+  }
+
+  getOverviewWork(employeeId: string, from: string, to: string): Observable<EmployeeWorkOverviewResponse> {
+    return this.http.get<EmployeeWorkOverviewResponse>(
+      `${environment.apiUrl}/employees/${employeeId}/overview/work`,
+      { params: this.periodParams(from, to, false) }
+    );
+  }
+
+  /** Every day of the period up to today with clock times, hours and breaks (newest first). */
+  getOverviewAttendanceDays(employeeId: string, from: string, to: string): Observable<EmployeeAttendanceDaysResponse> {
+    return this.http.get<EmployeeAttendanceDaysResponse>(
+      `${environment.apiUrl}/employees/${employeeId}/overview/attendance/days`,
+      { params: this.periodParams(from, to, false) }
+    );
+  }
+
+  /** Every task behind the Work card for the period, grouped and ordered by the API. */
+  getOverviewWorkTasks(employeeId: string, from: string, to: string): Observable<EmployeeWorkTasksResponse> {
+    return this.http.get<EmployeeWorkTasksResponse>(
+      `${environment.apiUrl}/employees/${employeeId}/overview/work/tasks`,
+      { params: this.periodParams(from, to, false) }
+    );
+  }
+
+  getOverviewDelivery(
+    employeeId: string,
+    from: string,
+    to: string,
+    comparePrevious = false
+  ): Observable<EmployeeDeliveryResponse> {
+    return this.http.get<EmployeeDeliveryResponse>(
+      `${environment.apiUrl}/employees/${employeeId}/overview/delivery`,
+      { params: this.periodParams(from, to, comparePrevious) }
+    );
+  }
+
+  getOverviewActivity(
+    employeeId: string,
+    from: string,
+    to: string,
+    comparePrevious = false
+  ): Observable<EmployeeActivityOverviewResponse> {
+    return this.http.get<EmployeeActivityOverviewResponse>(
+      `${environment.apiUrl}/employees/${employeeId}/overview/activity`,
+      { params: this.periodParams(from, to, comparePrevious) }
+    );
+  }
+
+  getOverviewApprovals(employeeId: string, from: string, to: string): Observable<EmployeeApprovalActivityResponse> {
+    return this.http.get<EmployeeApprovalActivityResponse>(
+      `${environment.apiUrl}/employees/${employeeId}/overview/approvals`,
+      { params: this.periodParams(from, to, false) }
+    );
+  }
+
+  getOverviewSignals(employeeId: string, from: string, to: string): Observable<EmployeeOverviewSignalsResponse> {
+    return this.http.get<EmployeeOverviewSignalsResponse>(
+      `${environment.apiUrl}/employees/${employeeId}/overview/signals`,
+      { params: new HttpParams().set('from', from).set('to', to) }
+    );
+  }
+
+  getOverviewSignalItems(
+    employeeId: string,
+    key: string,
+    from: string,
+    to: string
+  ): Observable<EmployeeSignalItemsResponse> {
+    return this.http.get<EmployeeSignalItemsResponse>(
+      `${environment.apiUrl}/employees/${employeeId}/overview/signals/${encodeURIComponent(key)}/items`,
+      { params: new HttpParams().set('from', from).set('to', to) }
+    );
+  }
+
+  getOverviewUpcoming(employeeId: string, days = 14, limit = 10): Observable<EmployeeUpcomingResponse> {
+    return this.http.get<EmployeeUpcomingResponse>(
+      `${environment.apiUrl}/employees/${employeeId}/overview/upcoming`,
+      { params: new HttpParams().set('days', String(days)).set('limit', String(limit)) }
+    );
+  }
+
+  getOverviewChecklists(employeeId: string): Observable<EmployeeChecklistOverviewResponse> {
+    return this.http.get<EmployeeChecklistOverviewResponse>(
+      `${environment.apiUrl}/employees/${employeeId}/overview/checklists`
+    );
+  }
+
+  getOverviewHistory(employeeId: string, limit = 10): Observable<EmployeeHistoryResponse> {
+    return this.http.get<EmployeeHistoryResponse>(
+      `${environment.apiUrl}/employees/${employeeId}/overview/history`,
+      { params: new HttpParams().set('limit', String(limit)) }
+    );
+  }
+
+  getOverviewRecentActivity(
+    employeeId: string,
+    before?: string | null,
+    limit = 20
+  ): Observable<EmployeeRecentActivityResponse> {
+    let params = new HttpParams().set('limit', String(limit));
+    if (before) {
+      params = params.set('before', before);
+    }
+    return this.http.get<EmployeeRecentActivityResponse>(
+      `${environment.apiUrl}/employees/${employeeId}/overview/recent-activity`,
+      { params }
+    );
+  }
+
+  getOverviewTimeOff(employeeId: string, year?: number): Observable<EmployeeTimeOffResponse> {
+    let params = new HttpParams();
+    if (year !== undefined) {
+      params = params.set('year', String(year));
+    }
+    return this.http.get<EmployeeTimeOffResponse>(
+      `${environment.apiUrl}/employees/${employeeId}/overview/time-off`,
+      { params }
+    );
+  }
+
   getActiveHolders(legalEntityId: string, positionId: string): Observable<readonly ActiveHolder[]> {
     return this.http.get<readonly ActiveHolder[]>(
       `${environment.apiUrl}/org/legal-entities/${legalEntityId}/positions/${positionId}/active-holders`
@@ -173,13 +350,37 @@ export class PeopleApiService {
     });
   }
 
+  bulkChangePosition(payload: BulkChangePositionPayload): Observable<BulkEmployeeActionResponse> {
+    return this.http.post<BulkEmployeeActionResponse>(`${environment.apiUrl}/employees/bulk/change-position`, payload);
+  }
+
+  bulkChangeEmploymentType(payload: BulkChangeEmploymentTypePayload): Observable<BulkEmployeeActionResponse> {
+    return this.http.post<BulkEmployeeActionResponse>(`${environment.apiUrl}/employees/bulk/employment-type`, payload);
+  }
+
+  bulkStartOffboarding(payload: BulkStartOffboardingPayload): Observable<BulkEmployeeActionResponse> {
+    return this.http.post<BulkEmployeeActionResponse>(`${environment.apiUrl}/employees/bulk/offboarding/start`, payload);
+  }
+
   private toHttpParams(params: object): HttpParams {
     let httpParams = new HttpParams();
-    for (const [key, value] of Object.entries(params as Record<string, string | number | boolean | undefined>)) {
-      if (value !== undefined && value !== null && value !== '') {
-        httpParams = httpParams.set(key, value);
+    for (const [key, value] of Object.entries(params as Record<string, unknown>)) {
+      if (value === undefined || value === null || value === '') {
+        continue;
       }
+      if (Array.isArray(value)) {
+        for (const item of value) {
+          httpParams = httpParams.append(key, String(item));
+        }
+        continue;
+      }
+      httpParams = httpParams.set(key, String(value));
     }
     return httpParams;
+  }
+
+  private periodParams(from: string, to: string, comparePrevious: boolean): HttpParams {
+    const params = new HttpParams().set('from', from).set('to', to);
+    return comparePrevious ? params.set('compare', 'previous') : params;
   }
 }

@@ -1,2 +1,27 @@
-/* Quiet Operations Desk: a compact, high-contrast ledger with a single exception color. */
-:host{display:block}.lbt-wrap{overflow:auto;border:1px solid var(--color-border,#e4e8ee);border-radius:8px;background:#fff}.lbt-table{width:100%;min-width:840px;border-collapse:collapse;font-size:.79rem}.lbt-table th{text-align:left;padding:.68rem .75rem;background:#f7f9fc;color:var(--color-text-secondary,#64748b);font-weight:750;font-size:.65rem;text-transform:uppercase;letter-spacing:.07em;border-bottom:1px solid var(--color-border,#e4e8ee);white-space:nowrap}.lbt-table td{padding:.72rem .75rem;color:var(--color-text-primary,#18202d);border-bottom:1px solid #edf0f4;white-space:nowrap}.lbt-table tbody tr:last-child td{border-bottom:0}.lbt-table tbody tr:hover{background:#f9fbff}.lbt-table strong{font-weight:650}.lbt-muted{display:block;margin-top:.15rem;color:var(--color-text-secondary,#64748b);font-size:.68rem}.lbt-negative{color:#c0362c;font-weight:750}
+:host { display: block; }
+.lbt-wrap { overflow: auto; }
+.lbt-table { width: 100%; min-width: 840px; border-collapse: collapse; font-size: 0.79rem; }
+.lbt-table th {
+  text-align: left;
+  padding: 0.68rem 0.75rem;
+  background: var(--color-surface-secondary);
+  color: var(--color-text-secondary);
+  font-weight: 750;
+  font-size: 0.65rem;
+  text-transform: uppercase;
+  letter-spacing: 0.07em;
+  border-bottom: 1px solid var(--color-border);
+  white-space: nowrap;
+}
+.lbt-table td {
+  padding: 0.72rem 0.75rem;
+  color: var(--color-text-primary);
+  border-bottom: 1px solid var(--color-border);
+  white-space: nowrap;
+}
+.lbt-table tbody tr:last-child td { border-bottom: 0; }
+.lbt-table tbody tr:hover { background: var(--color-surface-secondary); }
+.lbt-table strong { font-weight: 650; }
+.lbt-muted { display: block; margin-top: 0.15rem; color: var(--color-text-secondary); font-size: 0.68rem; }
+.lbt-negative { color: var(--color-danger); font-weight: 750; }
+.sr-only { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0, 0, 0, 0); }

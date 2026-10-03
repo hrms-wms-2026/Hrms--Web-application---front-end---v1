@@ -1,4 +1,5 @@
-import { EmployeeListAttendanceSummaryResponse } from '../models/employee.model';
+import { EmployeeDetailAddress, EmployeeListAttendanceSummaryResponse } from '../models/employee.model';
+import { getInitials } from '../../../shared/utils/avatar.utils';
 
 /** Anything carrying an attendance summary - list rows and the full employee detail read alike. */
 export interface HasAttendanceSummary {
@@ -6,12 +7,7 @@ export interface HasAttendanceSummary {
 }
 
 export function avatarInitials(name: string): string {
-  if (!name) return 'E';
-  const parts = name.trim().split(/\s+/);
-  if (parts.length >= 2) {
-    return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
-  }
-  return name.slice(0, 2).toUpperCase();
+  return getInitials(name) || 'E';
 }
 
 export function isOverBreak(employee: HasAttendanceSummary): boolean {
@@ -73,4 +69,46 @@ export function breakOverageLabel(employee: HasAttendanceSummary): string | null
   }
   if (typeof overageMinutes !== 'number' || overageMinutes <= 0) return null;
   return `Break exceeded by ${overageMinutes} min`;
+}
+
+export function formatTenure(hireDate: string | null | undefined, now: Date = new Date()): string {
+  if (!hireDate) return '—';
+  const hired = new Date(hireDate);
+  if (isNaN(hired.getTime())) return '—';
+
+  let years = now.getFullYear() - hired.getFullYear();
+  let months = now.getMonth() - hired.getMonth();
+  if (months < 0) {
+    years -= 1;
+    months += 12;
+  }
+  if (years <= 0 && months <= 0) return 'New Joiner';
+
+  const yearPart = years > 0 ? `${years} yr${years > 1 ? 's' : ''}` : '';
+  const monthPart = months > 0 ? `${months} mo${months > 1 ? 's' : ''}` : '';
+  if (yearPart && monthPart) return `${yearPart} ${monthPart}`;
+  return yearPart || monthPart || 'New Joiner';
+}
+
+export function primaryLocationLabel(addresses: readonly EmployeeDetailAddress[] | undefined): string {
+  if (!addresses || addresses.length === 0) return 'Not specified';
+  const primary = addresses.find((a) => a.isPrimary) || addresses[0];
+  if (!primary || !primary.addressJson) return 'Not specified';
+
+  try {
+    const parsed: unknown = JSON.parse(primary.addressJson);
+    if (parsed && typeof parsed === 'object') {
+      const p = parsed as Record<string, unknown>;
+      const city = p['city'] || p['town'];
+      const country = p['country'] || p['countryCode'];
+      if (city && country) return `${city}, ${country}`;
+      if (city) return String(city);
+      if (country) return String(country);
+      const firstVal = Object.values(p).find((v) => typeof v === 'string' && v.trim().length > 0);
+      if (firstVal) return String(firstVal);
+    }
+  } catch {
+    return primary.addressJson.substring(0, 30);
+  }
+  return 'Not specified';
 }

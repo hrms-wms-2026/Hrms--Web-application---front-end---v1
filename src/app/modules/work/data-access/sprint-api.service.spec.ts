@@ -25,12 +25,27 @@ describe('SprintApiService', () => {
     req.flush([]);
   });
 
-  it('create posts to the sprints endpoint', () => {
-    service.create('obj-1', { name: 'Sprint 1', goal: 'Ship it' }).subscribe();
-    const req = httpMock.expectOne(`${environment.apiUrl}/work/objectives/obj-1/sprints`);
+  it('create posts to the project sprints endpoint', () => {
+    service.create('p-1', { name: 'Sprint 1', goal: 'Ship it' }).subscribe();
+    const req = httpMock.expectOne(`${environment.apiUrl}/work/projects/p-1/sprints`);
     expect(req.request.method).toBe('POST');
     expect(req.request.body).toEqual({ name: 'Sprint 1', goal: 'Ship it' });
     req.flush({});
+  });
+
+  it('setTasks puts the add/remove task ids to the sprint tasks endpoint', () => {
+    service.setTasks('sp-1', { addTaskIds: ['t1'], removeTaskIds: ['t2'] }).subscribe();
+    const req = httpMock.expectOne(`${environment.apiUrl}/work/sprints/sp-1/tasks`);
+    expect(req.request.method).toBe('PUT');
+    expect(req.request.body).toEqual({ addTaskIds: ['t1'], removeTaskIds: ['t2'] });
+    req.flush({});
+  });
+
+  it('getActivity requests the sprint activity endpoint', () => {
+    service.getActivity('sp-1').subscribe();
+    const req = httpMock.expectOne(`${environment.apiUrl}/work/sprints/sp-1/activity`);
+    expect(req.request.method).toBe('GET');
+    req.flush([]);
   });
 
   it('start posts dates and goal to the start endpoint', () => {
@@ -46,5 +61,18 @@ describe('SprintApiService', () => {
     expect(req.request.method).toBe('POST');
     expect(req.request.body).toEqual({ disposition: 'backlog' });
     req.flush({});
+  });
+  it('delete DELETEs /work/sprints/sp-1', () => {
+    service.delete('sp-1').subscribe((res) => expect(res).toBeNull());
+    const req = httpMock.expectOne(`${environment.apiUrl}/work/sprints/sp-1`);
+    expect(req.request.method).toBe('DELETE');
+    req.flush(null, { status: 204, statusText: 'No Content' });
+  });
+
+  it('edit returns PendingApprovalDto on 202', () => {
+    service.edit('sp-1', { name: 'Renamed', goal: null }).subscribe((res) => expect(res).toEqual({ approvalRequestId: 'ar-1' }));
+    const req = httpMock.expectOne(`${environment.apiUrl}/work/sprints/sp-1`);
+    expect(req.request.method).toBe('PATCH');
+    req.flush({ approvalRequestId: 'ar-1' }, { status: 202, statusText: 'Accepted' });
   });
 });

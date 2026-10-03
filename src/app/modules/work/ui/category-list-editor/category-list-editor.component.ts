@@ -16,36 +16,78 @@ interface DraftRow {
   standalone: true,
   imports: [ModalComponent, CdkDropList, CdkDrag, CdkDragHandle, ButtonComponent],
   template: `
-    <app-modal [open]="open()" title="Edit task categories" (closed)="closed.emit()">
+    <app-modal [open]="open()" title="Edit task categories" (closed)="closed.emit()" customMaxWidth="max-w-md">
       <div class="category-list__toolbar">
         @if (addingNew()) {
-          <input
-            class="category-list__new-input"
-            placeholder="Category name"
-            [value]="newCategoryName()"
-            (input)="newCategoryName.set($any($event.target).value)"
-            (keydown.enter)="confirmAdd()"
-          />
-          <app-button variant="primary" [loading]="adding()" (pressed)="confirmAdd()">Add</app-button>
-          <app-button variant="secondary" [disabled]="adding()" (pressed)="cancelAdd()">Cancel</app-button>
+          <div class="category-list__add-form">
+            <input
+              class="category-list__new-input"
+              placeholder="Category name"
+              [value]="newCategoryName()"
+              (input)="newCategoryName.set($any($event.target).value)"
+              (keydown.enter)="confirmAdd()"
+              (keydown.escape)="cancelAdd()"
+              autofocus
+            />
+            <div class="category-list__add-buttons">
+              <app-button variant="primary" [loading]="adding()" (pressed)="confirmAdd()">Add</app-button>
+              <app-button variant="secondary" [disabled]="adding()" (pressed)="cancelAdd()">Cancel</app-button>
+            </div>
+          </div>
         } @else {
-          <button type="button" class="category-list__add-icon" aria-label="Add category" (click)="addingNew.set(true)">+</button>
+          <button type="button" class="category-list__add-icon" aria-label="Add category" title="Add category" (click)="addingNew.set(true)">
+            <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+              <line x1="12" y1="5" x2="12" y2="19" />
+              <line x1="5" y1="12" x2="19" y2="12" />
+            </svg>
+            <span>Add category</span>
+          </button>
         }
       </div>
 
       <div cdkDropList (cdkDropListDropped)="onDrop($event)" class="category-list__list">
         @for (row of rows(); track row.id) {
           <div cdkDrag class="category-list__row">
-            <span class="category-list__drag-handle" cdkDragHandle>⠿</span>
+            <span class="category-list__drag-handle" cdkDragHandle aria-hidden="true" title="Drag to reorder">
+              <svg viewBox="0 0 24 24" width="15" height="15" fill="currentColor" stroke="none" aria-hidden="true">
+                <circle cx="9" cy="6" r="1.5" />
+                <circle cx="9" cy="12" r="1.5" />
+                <circle cx="9" cy="18" r="1.5" />
+                <circle cx="15" cy="6" r="1.5" />
+                <circle cx="15" cy="12" r="1.5" />
+                <circle cx="15" cy="18" r="1.5" />
+              </svg>
+            </span>
             <span class="category-list__name">{{ row.name }}</span>
-            <button type="button" class="category-list__edit-icon" aria-label="Rename category" (click)="openRename(row)">Edit</button>
-            <button type="button" class="category-list__delete-icon" aria-label="Delete category" (click)="deleteRow(row.id)">Delete</button>
+            <div class="category-list__row-actions">
+              <button type="button" class="category-list__edit-icon" aria-label="Rename category" title="Rename" (click)="openRename(row)">
+                <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                  <path d="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z" />
+                </svg>
+                <span>Edit</span>
+              </button>
+              <button type="button" class="category-list__delete-icon" aria-label="Delete category" title="Delete" (click)="deleteRow(row.id)">
+                <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                  <path d="M3 6h18" />
+                  <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6" />
+                  <path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" />
+                </svg>
+                <span>Delete</span>
+              </button>
+            </div>
           </div>
         }
       </div>
 
       @if (errorMessage()) {
-        <p class="category-list__error" role="alert">{{ errorMessage() }}</p>
+        <p class="category-list__error" role="alert">
+          <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <circle cx="12" cy="12" r="10" />
+            <line x1="12" y1="8" x2="12" y2="12" />
+            <line x1="12" y1="16" x2="12.01" y2="16" />
+          </svg>
+          <span>{{ errorMessage() }}</span>
+        </p>
       }
 
       <div class="category-list__actions">
@@ -54,36 +96,184 @@ interface DraftRow {
       </div>
     </app-modal>
 
-    <app-modal [open]="editingId() !== null" title="Rename task category" (closed)="cancelRename()">
-      <input
-        class="category-list__rename-input"
-        aria-label="Category name"
-        [value]="editingName()"
-        (input)="editingName.set($any($event.target).value)"
-        (keydown.enter)="confirmRename()"
-      />
-      @if (renameError()) {
-        <p class="category-list__error" role="alert">{{ renameError() }}</p>
-      }
-      <div class="category-list__actions">
-        <app-button variant="secondary" (pressed)="cancelRename()">Cancel</app-button>
-        <app-button variant="primary" [loading]="renaming()" (pressed)="confirmRename()">Save</app-button>
+    <app-modal [open]="editingId() !== null" title="Rename task category" (closed)="cancelRename()" customMaxWidth="max-w-sm">
+      <div class="category-list__rename-container">
+        <input
+          class="category-list__rename-input"
+          aria-label="Category name"
+          [value]="editingName()"
+          (input)="editingName.set($any($event.target).value)"
+          (keydown.enter)="confirmRename()"
+          autofocus
+        />
+        @if (renameError()) {
+          <p class="category-list__error" role="alert">
+            <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+              <circle cx="12" cy="12" r="10" />
+              <line x1="12" y1="8" x2="12" y2="12" />
+              <line x1="12" y1="16" x2="12.01" y2="16" />
+            </svg>
+            <span>{{ renameError() }}</span>
+          </p>
+        }
+        <div class="category-list__actions">
+          <app-button variant="secondary" (pressed)="cancelRename()">Cancel</app-button>
+          <app-button variant="primary" [loading]="renaming()" (pressed)="confirmRename()">Save</app-button>
+        </div>
       </div>
     </app-modal>
   `,
   styles: [`
-    .category-list__toolbar { display: flex; justify-content: flex-end; align-items: center; gap: 8px; margin-bottom: 8px; }
-    .category-list__add-icon { width: 28px; height: 28px; border-radius: 999px; border: 1px solid var(--color-border); background: var(--color-surface); color: var(--color-text-primary); cursor: pointer; font-size: 16px; line-height: 1; }
-    .category-list__new-input, .category-list__rename-input { width: 100%; border: 1px solid var(--color-border); border-radius: 8px; padding: 8px 10px; background: var(--color-surface); color: var(--color-text-primary); }
+    .category-list__toolbar { display: flex; justify-content: flex-end; align-items: center; margin-bottom: 12px; }
+    .category-list__add-form { display: flex; width: 100%; align-items: center; gap: 8px; }
+    .category-list__add-buttons { display: flex; align-items: center; gap: 6px; flex-shrink: 0; }
+    .category-list__add-icon {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 5px 12px;
+      border-radius: 6px;
+      border: 1px solid var(--color-border);
+      background: var(--color-surface);
+      color: var(--color-text-primary);
+      cursor: pointer;
+      font-size: 12.5px;
+      font-weight: 500;
+      transition: all 120ms ease;
+    }
+    .category-list__add-icon:hover {
+      background: color-mix(in srgb, var(--color-border) 25%, transparent);
+      border-color: color-mix(in srgb, var(--color-border) 50%, var(--color-accent, #2563eb));
+    }
+    .category-list__new-input, .category-list__rename-input {
+      width: 100%;
+      border: 1px solid var(--color-border);
+      border-radius: 6px;
+      padding: 7px 10px;
+      background: var(--color-surface);
+      color: var(--color-text-primary);
+      font-size: 13px;
+      outline: none;
+      transition: border-color 120ms ease, box-shadow 120ms ease;
+    }
+    .category-list__new-input:focus, .category-list__rename-input:focus {
+      border-color: var(--color-accent, #2563eb);
+      box-shadow: 0 0 0 1px var(--color-accent, #2563eb);
+    }
     .category-list__new-input { flex: 1; }
-    .category-list__list { display: flex; flex-direction: column; gap: 4px; margin-bottom: 12px; }
-    .category-list__row { display: flex; align-items: center; gap: 12px; padding: 8px 10px; border: 1px solid var(--color-border); border-radius: 8px; background: var(--color-surface); }
-    .category-list__drag-handle { cursor: grab; color: var(--color-text-secondary); }
-    .category-list__name { flex: 1; font-size: 13px; color: var(--color-text-primary); }
-    .category-list__edit-icon, .category-list__delete-icon { background: none; border: none; cursor: pointer; font-size: 12px; color: var(--color-text-secondary); }
-    .category-list__edit-icon:hover, .category-list__delete-icon:hover { color: var(--color-text-primary); }
-    .category-list__error { color: var(--color-danger-text); font-size: 12px; margin-bottom: 8px; }
-    .category-list__actions { display: flex; justify-content: flex-end; gap: 8px; margin-top: 12px; }
+    .category-list__rename-container { display: flex; flex-direction: column; gap: 10px; }
+    .category-list__list { display: flex; flex-direction: column; gap: 6px; margin-bottom: 16px; min-height: 28px; }
+    .category-list__row {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 7px 10px;
+      border: 1px solid var(--color-border);
+      border-radius: 8px;
+      background: var(--color-surface);
+      box-shadow: 0 1px 2px rgba(15, 23, 42, 0.03);
+      transition: border-color 120ms ease, box-shadow 120ms ease;
+    }
+    .category-list__row:hover {
+      border-color: color-mix(in srgb, var(--color-border) 60%, var(--color-accent, #2563eb));
+    }
+    .category-list__drag-handle {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: grab;
+      color: var(--color-text-secondary);
+      opacity: 0.6;
+      transition: opacity 120ms ease, color 120ms ease;
+      flex-shrink: 0;
+      padding: 2px;
+    }
+    .category-list__drag-handle:hover {
+      opacity: 1;
+      color: var(--color-text-primary);
+    }
+    .category-list__drag-handle:active {
+      cursor: grabbing;
+    }
+    .category-list__name {
+      flex: 1;
+      min-width: 0;
+      font-size: 13.5px;
+      font-weight: 500;
+      color: var(--color-text-primary);
+    }
+    .category-list__row-actions {
+      display: flex;
+      align-items: center;
+      gap: 4px;
+      flex-shrink: 0;
+    }
+    .category-list__edit-icon, .category-list__delete-icon {
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      padding: 4px 8px;
+      border-radius: 5px;
+      border: none;
+      background: transparent;
+      cursor: pointer;
+      font-size: 12px;
+      font-weight: 500;
+      color: var(--color-text-secondary);
+      transition: all 120ms ease;
+    }
+    .category-list__edit-icon:hover {
+      color: var(--color-text-primary);
+      background: color-mix(in srgb, var(--color-border) 25%, transparent);
+    }
+    .category-list__delete-icon:hover {
+      color: var(--color-danger-text, #ef4444);
+      background: color-mix(in srgb, #ef4444 10%, transparent);
+    }
+    .category-list__error {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      color: var(--color-danger-text, #ef4444);
+      background: color-mix(in srgb, var(--color-danger-text, #ef4444) 10%, transparent);
+      border: 1px solid color-mix(in srgb, var(--color-danger-text, #ef4444) 25%, transparent);
+      border-radius: 6px;
+      padding: 6px 10px;
+      font-size: 12px;
+      margin-bottom: 10px;
+    }
+    .category-list__actions {
+      display: flex;
+      justify-content: flex-end;
+      gap: 8px;
+      margin-top: 16px;
+      padding-top: 12px;
+      border-top: 1px solid var(--color-border);
+    }
+    .cdk-drag-preview {
+      box-sizing: border-box;
+      border-radius: 8px;
+      box-shadow: 0 14px 28px -4px rgba(0, 0, 0, 0.18), 0 6px 10px -2px rgba(0, 0, 0, 0.1);
+      background: var(--color-surface);
+      border: 1px solid var(--color-border);
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 7px 10px;
+      z-index: 1300;
+    }
+    .cdk-drag-placeholder {
+      opacity: 0.35;
+      border: 1.5px dashed var(--color-accent, #2563eb);
+      background: color-mix(in srgb, var(--color-accent, #2563eb) 6%, transparent);
+      border-radius: 8px;
+    }
+    .cdk-drag-animating {
+      transition: transform 180ms cubic-bezier(0, 0, 0.2, 1);
+    }
+    .category-list__list.cdk-drop-list-dragging .category-list__row:not(.cdk-drag-placeholder) {
+      transition: transform 180ms cubic-bezier(0, 0, 0.2, 1);
+    }
   `]
 })
 export class CategoryListEditorComponent {

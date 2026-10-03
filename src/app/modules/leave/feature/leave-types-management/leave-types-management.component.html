@@ -1,20 +1,50 @@
-<section class="ltm-page">
-  <header class="ltm-header">
-    <div><p class="ltm-kicker">TIME OFF / ADMINISTRATION</p><h1>Leave Types</h1><p class="ltm-subtitle">Configure the requestable categories and default rules for your workforce.</p></div>
-    @if (hasManageAccess()) { <app-button (click)="openCreateModal()">+ New leave type</app-button> }
+<section class="to-page">
+  <header class="to-header">
+    <div>
+      <p class="to-kicker">TIME OFF</p>
+      <h1 class="to-title">Leave Types</h1>
+      <p class="to-subtitle">Categories employees can request, with default rules.</p>
+    </div>
+    <div class="to-header-actions">
+      @if (hasManageAccess()) {
+        <app-button (click)="openCreateModal()">+ New leave type</app-button>
+      }
+    </div>
   </header>
-  <div class="ltm-toolbar"><p><strong>{{ store.items().length }}</strong> {{ store.includeInactive() ? 'configured records' : 'active leave types' }}</p><label class="ltm-filter"><input type="checkbox" [checked]="store.includeInactive()" (change)="store.setIncludeInactive($any($event.target).checked)" /> Show inactive</label></div>
+  <div class="to-toolbar">
+    <label class="to-filter">
+      <input type="checkbox" [checked]="store.includeInactive()" (change)="store.setIncludeInactive($any($event.target).checked)" />
+      Show inactive
+    </label>
+  </div>
   @if (store.loading()) {
-    <div class="ltm-loading" aria-busy="true"><span></span><span></span><span></span></div>
+    <div class="to-loading" aria-busy="true"><span></span><span></span><span></span></div>
   } @else if (store.loadError()) {
     <app-error-state [message]="store.loadError()!" [retryable]="true" (retry)="store.load()" />
   } @else if (store.items().length === 0) {
-    <app-empty-state title="No leave types configured" description="Create your first leave type to define what employees can request." />
+    <div class="to-empty">
+      <app-empty-state title="No leave types yet" description="Create the first category so employees can request time off.">
+        @if (hasManageAccess()) {
+          <app-button (click)="openCreateModal()">+ New leave type</app-button>
+        }
+      </app-empty-state>
+    </div>
   } @else {
-    <app-leave-type-list-table [leaveTypes]="store.items()" [canManage]="hasManageAccess()" (editLeaveType)="openEditModal($event)" (deactivateLeaveType)="onDeactivateRequest($event)" />
+    <section class="to-metrics" aria-label="Leave type totals">
+      <article class="to-metric"><p class="to-metric__label">Types</p><p class="to-metric__value">{{ typeSummary().total }}</p></article>
+      <article class="to-metric"><p class="to-metric__label">Active</p><p class="to-metric__value">{{ typeSummary().active }}</p></article>
+      <article class="to-metric"><p class="to-metric__label">Paid</p><p class="to-metric__value">{{ typeSummary().paid }}</p></article>
+    </section>
+    <div class="to-table-card">
+      <app-leave-type-list-table [leaveTypes]="store.items()" [canManage]="hasManageAccess()" (editLeaveType)="openEditModal($event)" (deactivateLeaveType)="onDeactivateRequest($event)" />
+    </div>
   }
 </section>
 @if (formModalOpen()) { <app-leave-type-form-modal [leaveType]="editingType()" [loading]="store.saving()" (save)="onSave($event)" (cancel)="closeFormModal()" /> }
-@if (pendingDeactivateType()) {
-  <div class="ltm-confirm-backdrop" (click)="cancelDeactivate()"><section class="ltm-confirm-modal" (click)="$event.stopPropagation()" role="dialog" aria-modal="true" aria-label="Confirm leave type deactivation"><p class="ltm-confirm-kicker">ACTION REQUIRES CONFIRMATION</p><h2>Deactivate {{ pendingDeactivateType()!.name }}?</h2><p>There are pending requests using this leave type. Continuing will automatically cancel those requests.</p><div class="ltm-confirm-footer"><app-button variant="secondary" (click)="cancelDeactivate()">Keep active</app-button><app-button [loading]="store.saving()" (click)="onConfirmDeactivate()">Deactivate anyway</app-button></div></section></div>
-}
+<app-modal [open]="pendingDeactivateType() !== null" [title]="'Deactivate ' + (pendingDeactivateType()?.name ?? '') + '?'" (closed)="cancelDeactivate()">
+  <p>Pending requests that use this type will be cancelled.</p>
+  <div class="to-modal-actions">
+    <app-button variant="secondary" (click)="cancelDeactivate()">Keep active</app-button>
+    <app-button [loading]="store.saving()" (click)="onConfirmDeactivate()">Deactivate anyway</app-button>
+  </div>
+</app-modal>

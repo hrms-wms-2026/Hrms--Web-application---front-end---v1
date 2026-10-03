@@ -26,7 +26,8 @@ describe('TreeExplanationPanelComponent', () => {
       dueDate: null, estimatedHours: 3, completedHours: 0, progressPercent: 0,
       sprintId: 'spr-1', assigneeEmployeeIds: ['e1'], openClockSessionEmployeeId: null, openClockSessionClockInAt: null, totalLoggedMinutes: 0,
       attachments: [], assignees: [],
-      parentTaskId: null, subtaskTotalCount: 0, subtaskCompletedCount: 0, subtaskAssigneeEmployeeIds: []
+      parentTaskId: null, subtaskTotalCount: 0, subtaskCompletedCount: 0, subtaskAssigneeEmployeeIds: [],
+      createdAt: new Date('2026-01-01T00:00:00Z')
     }
   };
 
@@ -35,13 +36,41 @@ describe('TreeExplanationPanelComponent', () => {
     TestBed.configureTestingModule({
       imports: [TreeExplanationPanelComponent],
       providers: [
-        { provide: PeopleApiService, useValue: { getEmployee: vi.fn().mockReturnValue(of({ id: 'e1', fullName: 'Ada Lovelace' })) } }
+        { provide: PeopleApiService, useValue: { getEmployeeIdentity: vi.fn().mockReturnValue(of({ id: 'e1', name: 'Ada Lovelace', avatarFileId: null })) } }
       ]
     });
     fixture = TestBed.createComponent(TreeExplanationPanelComponent);
     fixture.componentRef.setInput('node', node);
     fixture.detectChanges();
   }
+
+  it('explains each monitor alert on the node inside the card', () => {
+    setup(objective);
+    expect(fixture.nativeElement.querySelector('[data-testid="panel-alerts"]')).toBeNull();
+
+    fixture.componentRef.setInput('alerts', [{
+      id: 'a1', targetType: 'module', targetId: 'o1', targetTitle: 'Design', ruleCode: 'module_overload',
+      subjectEmployeeId: null, message: 'Allocated 200h exceeds capacity of 24h.', firstDetectedAt: '2026-09-29T00:00:00Z'
+    }]);
+    fixture.detectChanges();
+
+    const messages = fixture.nativeElement.querySelectorAll('[data-testid="panel-alert-message"]');
+    expect(messages.length).toBe(1);
+    expect(messages[0].textContent).toContain('Allocated 200h exceeds capacity of 24h.');
+    expect(fixture.nativeElement.querySelector('[data-testid="panel-alerts-muted"]')).toBeNull();
+  });
+
+  it('fades an achieved module\'s alerts and says no action is needed', () => {
+    setup({ ...objective, isAchieved: true });
+    fixture.componentRef.setInput('alerts', [{
+      id: 'a1', targetType: 'module', targetId: 'o1', targetTitle: 'Design', ruleCode: 'module_over_capacity',
+      subjectEmployeeId: null, message: 'Over capacity.', firstDetectedAt: '2026-09-29T00:00:00Z', inAchievedModule: true
+    }]);
+    fixture.detectChanges();
+
+    expect(fixture.nativeElement.querySelector('[data-testid="panel-alerts"]').classList).toContain('opacity-50');
+    expect(fixture.nativeElement.querySelector('[data-testid="panel-alerts-muted"]')).not.toBeNull();
+  });
 
   it('renders objective fields and hides actions when the caller is not the owner', () => {
     setup({ ...objective, isOwner: false });
@@ -78,5 +107,18 @@ describe('TreeExplanationPanelComponent', () => {
     expect(fixture.nativeElement.querySelector('[data-testid="panel-assignee"]')).not.toBeNull();
     setup({ ...task, isOwner: true });
     expect(fixture.nativeElement.querySelector('[data-testid="panel-delete"]')).not.toBeNull();
+  });
+  it('shows "Delete sprint" only for complete or achieved sprints and emits deleteSprintRequested', () => {
+    setup(sprint);
+    expect(fixture.nativeElement.querySelector('[data-testid="panel-delete-sprint"]')).toBeNull();
+
+    setup({ ...sprint, status: 'complete' });
+    const emitted: MilestoneTreeNode[] = [];
+    fixture.componentInstance.deleteSprintRequested.subscribe((n) => emitted.push(n));
+    (fixture.nativeElement.querySelector('[data-testid="panel-delete-sprint"]') as HTMLButtonElement).click();
+    expect(emitted.map((n) => n.id)).toEqual(['spr-1']);
+
+    setup({ ...sprint, status: 'achieved' });
+    expect(fixture.nativeElement.querySelector('[data-testid="panel-delete-sprint"]')).not.toBeNull();
   });
 });

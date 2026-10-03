@@ -2,6 +2,7 @@ import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { of } from 'rxjs';
 import { CalendarEventModalComponent } from './calendar-event-modal.component';
 import { TaskApiService } from '../../data-access/task-api.service';
+import { SprintApiService } from '../../data-access/sprint-api.service';
 import { ProjectCalendarModuleDto } from '../../models/dto/calendar.dto';
 
 const modules: ProjectCalendarModuleDto[] = [
@@ -21,7 +22,10 @@ describe('CalendarEventModalComponent', () => {
   beforeEach(() => {
     TestBed.configureTestingModule({
       imports: [CalendarEventModalComponent],
-      providers: [{ provide: TaskApiService, useValue: { getTasks: () => of([]) } }]
+      providers: [
+        { provide: TaskApiService, useValue: { getTasks: () => of([]), getBySprintId: () => of([]) } },
+        { provide: SprintApiService, useValue: { getByProject: () => of([]) } }
+      ]
     });
     fixture = TestBed.createComponent(CalendarEventModalComponent);
     fixture.componentRef.setInput('modules', modules);
@@ -72,5 +76,21 @@ describe('CalendarEventModalComponent', () => {
     fixture.componentInstance.submit();
     expect(emitted).toBe(false);
     expect(fixture.componentInstance.error()).toContain('at least one module or task');
+  });
+
+  it('keeps the task selection when switching between Tree and Sprint view', () => {
+    const c = fixture.componentInstance;
+    c.selectedTaskIds.set(new Set(['t1']));
+    c.view.set('sprint');
+    fixture.detectChanges();
+    c.view.set('tree');
+    fixture.detectChanges();
+    expect([...c.selectedTaskIds()]).toEqual(['t1']);
+  });
+
+  it('shows the Sprint view list when switched', () => {
+    fixture.nativeElement.querySelector('[data-testid="view-sprint"]').click();
+    fixture.detectChanges();
+    expect(fixture.nativeElement.querySelector('app-sprint-task-picker')).not.toBeNull();
   });
 });

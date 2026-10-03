@@ -65,8 +65,190 @@ describe('PeopleApiService', () => {
     httpMock = TestBed.inject(HttpTestingController);
   });
 
+  it('sends repeated employmentType params for the list filter', () => {
+    service.listEmployees({ employmentType: ['full_time', 'intern'], sortBy: 'name', sortDir: 'desc' }).subscribe();
+    const req = httpMock.expectOne((r) => r.url.endsWith('/employees'));
+    expect(req.request.params.getAll('employmentType')).toEqual(['full_time', 'intern']);
+    expect(req.request.params.get('sortDir')).toBe('desc');
+    req.flush({ items: [], totalCount: 0, page: 1, pageSize: 25 });
+  });
+
+  it('posts bulk actions to the bulk endpoints', () => {
+    service.bulkChangeEmploymentType({ employeeIds: ['a'], employmentTypeCode: 'contract' }).subscribe();
+    httpMock.expectOne((r) => r.method === 'POST' && r.url.endsWith('/employees/bulk/employment-type')).flush({ items: [], succeeded: 0, pendingApproval: 0, failed: 0 });
+    service.bulkStartOffboarding({ employeeIds: ['a'], reason: 'resignation', lastWorkingDate: '2026-10-31', knowledgeRiskLevel: 'medium', rehireEligibility: null, notes: null }).subscribe();
+    httpMock.expectOne((r) => r.method === 'POST' && r.url.endsWith('/employees/bulk/offboarding/start')).flush({ items: [], succeeded: 0, pendingApproval: 0, failed: 0 });
+    service.bulkChangePosition({ employeeIds: ['a'], positionId: 'p', effectiveFrom: '2026-10-01', changeReason: 'Transfer', reportsToEmployeeId: null }).subscribe();
+    httpMock.expectOne((r) => r.method === 'POST' && r.url.endsWith('/employees/bulk/change-position')).flush({ items: [], succeeded: 0, pendingApproval: 0, failed: 0 });
+  });
+
   afterEach(() => {
     httpMock.verify();
+  });
+
+  it('getWorkGraph GETs /employees/{id}/work-graph', () => {
+    const response = { nodes: [], links: [], hiddenTaskCount: 0 };
+    let received: unknown;
+
+    service.getWorkGraph('emp-1').subscribe((r) => (received = r));
+
+    const req = httpMock.expectOne(`${environment.apiUrl}/employees/emp-1/work-graph`);
+    expect(req.request.method).toBe('GET');
+    req.flush(response);
+    expect(received).toEqual(response);
+  });
+
+  it('getOverviewAttendance GETs /employees/{id}/overview/attendance with from and to', () => {
+    let received: unknown;
+    service.getOverviewAttendance('emp-1', '2026-09-01', '2026-09-30').subscribe((r) => (received = r));
+
+    const req = httpMock.expectOne(
+      (r) => r.url === `${environment.apiUrl}/employees/emp-1/overview/attendance`
+    );
+    expect(req.request.method).toBe('GET');
+    expect(req.request.params.get('from')).toBe('2026-09-01');
+    expect(req.request.params.get('to')).toBe('2026-09-30');
+    req.flush({ days: [] });
+    expect(received).toEqual({ days: [] });
+  });
+
+  it('getOverviewAttendanceDiscipline GETs /employees/{id}/overview/attendance-discipline with from and to', () => {
+    service.getOverviewAttendanceDiscipline('emp-1', '2026-09-01', '2026-09-30').subscribe();
+
+    const req = httpMock.expectOne(
+      (r) => r.url === `${environment.apiUrl}/employees/emp-1/overview/attendance-discipline`
+    );
+    expect(req.request.params.get('from')).toBe('2026-09-01');
+    expect(req.request.params.get('to')).toBe('2026-09-30');
+    req.flush({});
+  });
+
+  it('getOverviewTimeOff GETs /employees/{id}/overview/time-off and sends year only when given', () => {
+    service.getOverviewTimeOff('emp-1').subscribe();
+    const noYear = httpMock.expectOne((r) => r.url === `${environment.apiUrl}/employees/emp-1/overview/time-off`);
+    expect(noYear.request.params.has('year')).toBe(false);
+    noYear.flush({});
+
+    service.getOverviewTimeOff('emp-1', 2025).subscribe();
+    const withYear = httpMock.expectOne((r) => r.url === `${environment.apiUrl}/employees/emp-1/overview/time-off`);
+    expect(withYear.request.params.get('year')).toBe('2025');
+    withYear.flush({});
+  });
+
+  const overviewUrl = (path: string) => (r: { url: string }) =>
+    r.url === `${environment.apiUrl}/employees/emp-1/overview/${path}`;
+
+  it('getOverviewWork GETs overview/work with from and to only', () => {
+    service.getOverviewWork('emp-1', '2026-09-01', '2026-09-30').subscribe();
+
+    const req = httpMock.expectOne(overviewUrl('work'));
+    expect(req.request.params.get('from')).toBe('2026-09-01');
+    expect(req.request.params.get('to')).toBe('2026-09-30');
+    expect(req.request.params.has('compare')).toBe(false);
+    req.flush({});
+  });
+
+  it.each([
+    ['getOverviewDelivery', 'delivery'],
+    ['getOverviewActivity', 'activity'],
+    ['getOverviewAttendanceDiscipline', 'attendance-discipline']
+  ] as const)('%s sends compare=previous only when asked', (method, path) => {
+    const call = (compare?: boolean) =>
+      (service[method] as (id: string, from: string, to: string, compare?: boolean) => any)
+        .call(service, 'emp-1', '2026-09-01', '2026-09-30', compare);
+
+    call().subscribe();
+    const off = httpMock.expectOne(overviewUrl(path));
+    expect(off.request.params.has('compare')).toBe(false);
+    off.flush({});
+
+    call(true).subscribe();
+    const on = httpMock.expectOne(overviewUrl(path));
+    expect(on.request.params.get('compare')).toBe('previous');
+    expect(on.request.params.get('from')).toBe('2026-09-01');
+    on.flush({});
+  });
+
+  it('getOverviewApprovals GETs overview/approvals with from and to', () => {
+    service.getOverviewApprovals('emp-1', '2026-09-01', '2026-09-30').subscribe();
+
+    const req = httpMock.expectOne(overviewUrl('approvals'));
+    expect(req.request.method).toBe('GET');
+    expect(req.request.params.get('from')).toBe('2026-09-01');
+    req.flush({});
+  });
+
+  it('getOverviewUpcoming sends days and limit, defaulting to 14 and 10', () => {
+    service.getOverviewUpcoming('emp-1').subscribe();
+    const byDefault = httpMock.expectOne(overviewUrl('upcoming'));
+    expect(byDefault.request.method).toBe('GET');
+    expect(byDefault.request.params.get('days')).toBe('14');
+    expect(byDefault.request.params.get('limit')).toBe('10');
+    byDefault.flush({});
+
+    service.getOverviewUpcoming('emp-1', 30, 3).subscribe();
+    const custom = httpMock.expectOne(overviewUrl('upcoming'));
+    expect(custom.request.params.get('days')).toBe('30');
+    expect(custom.request.params.get('limit')).toBe('3');
+    custom.flush({});
+  });
+
+  it('getOverviewChecklists GETs overview/checklists with no parameters', () => {
+    service.getOverviewChecklists('emp-1').subscribe();
+
+    const req = httpMock.expectOne(overviewUrl('checklists'));
+    expect(req.request.params.keys()).toEqual([]);
+    req.flush({});
+  });
+
+  it('getOverviewHistory sends limit, defaulting to 10', () => {
+    service.getOverviewHistory('emp-1').subscribe();
+    const byDefault = httpMock.expectOne(overviewUrl('history'));
+    expect(byDefault.request.params.get('limit')).toBe('10');
+    byDefault.flush({});
+
+    service.getOverviewHistory('emp-1', 25).subscribe();
+    const custom = httpMock.expectOne(overviewUrl('history'));
+    expect(custom.request.params.get('limit')).toBe('25');
+    custom.flush({});
+  });
+
+  it('getOverviewRecentActivity sends limit, and before only when given', () => {
+    service.getOverviewRecentActivity('emp-1').subscribe();
+    const first = httpMock.expectOne(overviewUrl('recent-activity'));
+    expect(first.request.params.get('limit')).toBe('20');
+    expect(first.request.params.has('before')).toBe(false);
+    first.flush({});
+
+    service.getOverviewRecentActivity('emp-1', '2026-09-20T00:00:00+00:00', 5).subscribe();
+    const older = httpMock.expectOne(overviewUrl('recent-activity'));
+    expect(older.request.params.get('before')).toBe('2026-09-20T00:00:00+00:00');
+    // A literal '+' would reach ASP.NET as a space; the cursor's offset must be percent-encoded.
+    expect(older.request.urlWithParams).toContain('before=2026-09-20T00:00:00%2B00:00');
+    expect(older.request.params.get('limit')).toBe('5');
+    older.flush({});
+
+    service.getOverviewRecentActivity('emp-1', null).subscribe();
+    expect(httpMock.expectOne(overviewUrl('recent-activity')).request.params.has('before')).toBe(false);
+  });
+
+  it('getOverviewSignals GETs /employees/{id}/overview/signals with the period', () => {
+    service.getOverviewSignals('emp-1', '2026-09-01', '2026-09-30').subscribe();
+
+    const req = httpMock.expectOne((r) => r.url.endsWith('/employees/emp-1/overview/signals'));
+    expect(req.request.params.get('from')).toBe('2026-09-01');
+    expect(req.request.params.get('to')).toBe('2026-09-30');
+    req.flush({ from: '2026-09-01', to: '2026-09-30', signals: [] });
+  });
+
+  it('getOverviewSignalItems GETs /employees/{id}/overview/signals/{key}/items with the period', () => {
+    service.getOverviewSignalItems('emp-1', 'over_break', '2026-09-01', '2026-09-30').subscribe();
+
+    const req = httpMock.expectOne((r) => r.url.endsWith('/employees/emp-1/overview/signals/over_break/items'));
+    expect(req.request.method).toBe('GET');
+    expect(req.request.params.get('from')).toBe('2026-09-01');
+    expect(req.request.params.get('to')).toBe('2026-09-30');
+    req.flush({ key: 'over_break', total: 0, timezone: null, items: [] });
   });
 
   it('fetches work modes from /work-modes for a legal entity', () => {
@@ -169,6 +351,17 @@ describe('PeopleApiService', () => {
     req.flush(mockEmployee);
   });
 
+  it('fetches an employee identity (name + avatar only) by id', () => {
+    const identity = { id: 'emp-1', name: 'Ada Lovelace', avatarFileId: null };
+    service.getEmployeeIdentity('emp-1').subscribe((result) => {
+      expect(result).toEqual(identity);
+    });
+
+    const req = httpMock.expectOne(`${environment.apiUrl}/employees/emp-1/identity`);
+    expect(req.request.method).toBe('GET');
+    req.flush(identity);
+  });
+
   it('lists onboarding drafts', () => {
     service.listDrafts({ page: 1, pageSize: 25 }).subscribe();
 
@@ -177,6 +370,22 @@ describe('PeopleApiService', () => {
     );
     expect(req.request.method).toBe('GET');
     req.flush({ items: [], totalCount: 0, page: 1, pageSize: 25 });
+  });
+
+  it('lists only my open drafts when mine is set', () => {
+    service.listDrafts({ mine: true, page: 1, pageSize: 50 }).subscribe();
+
+    const req = httpMock.expectOne((r) => r.url === `${environment.apiUrl}/onboarding/drafts` && r.params.get('mine') === 'true');
+    expect(req.request.method).toBe('GET');
+    req.flush({ items: [], totalCount: 0, page: 1, pageSize: 50 });
+  });
+
+  it('cancels a draft with DELETE', () => {
+    service.cancelDraft('draft-9').subscribe();
+
+    const req = httpMock.expectOne(`${environment.apiUrl}/onboarding/drafts/draft-9`);
+    expect(req.request.method).toBe('DELETE');
+    req.flush(null);
   });
 
   it('fetches a single draft by id', () => {

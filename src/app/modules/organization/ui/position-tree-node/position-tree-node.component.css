@@ -39,6 +39,12 @@
   transform: scale(1.02);
 }
 
+.ptn-node-card--highlight {
+  border: 2px solid var(--color-sidebar-active-bg, #2563eb);
+  background: color-mix(in srgb, var(--color-sidebar-active-bg, #2563eb) 7%, var(--color-surface));
+  box-shadow: 0 6px 16px rgba(37, 99, 235, 0.15);
+}
+
 .ptn-node-card--inactive {
   opacity: 0.65;
   background: color-mix(in srgb, var(--color-surface-secondary) 50%, transparent);

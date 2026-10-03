@@ -292,7 +292,16 @@
         <form class="work-area-form" (ngSubmit)="previewOrSubmitWorkAreaChange()" novalidate>
           @if (!workAreaReviewReady()) {
             <p class="form-intro">Choose a date and destination. The backend will confirm the planned work area and the person who receives the request.</p>
-            <label class="form-field"><span>Date <b aria-hidden="true">*</b></span><input type="date" [value]="workAreaDate()" (input)="workAreaDate.set($any($event.target).value); resetWorkAreaReview()" [min]="store.today()?.workDate || null" name="workAreaDate" required /><small class="field-error">{{ workAreaFieldErrors()['date'] || '' }}</small></label>
+            <div class="form-field">
+              <app-date-picker
+                label="Date *"
+                name="workAreaDate"
+                [value]="workAreaDate()"
+                [minDate]="store.today()?.workDate || ''"
+                [error]="workAreaFieldErrors()['date'] || ''"
+                (valueChange)="workAreaDate.set($event); resetWorkAreaReview()"
+              />
+            </div>
             <fieldset class="form-field"><legend>Requested work area <b aria-hidden="true">*</b></legend><div class="work-area-options">@for (option of workAreaOptions; track option.value) { <label class="work-area-option"><input type="radio" name="requestedWorkArea" [value]="option.value" [checked]="workAreaRequestedArea() === option.value" (change)="workAreaRequestedArea.set(option.value); resetWorkAreaReview()" />{{ option.label }}</label> }</div><small class="field-error">{{ workAreaFieldErrors()['requestedWorkArea'] || '' }}</small></fieldset>
             <label class="form-field"><span>Reason <b aria-hidden="true">*</b></span><textarea rows="4" [ngModel]="workAreaReason()" (ngModelChange)="workAreaReason.set($event); resetWorkAreaReview()" name="workAreaReason" required></textarea><small class="field-error">{{ workAreaFieldErrors()['reason'] || '' }}</small></label>
           } @else if (store.workAreaPreview(); as preview) {
@@ -311,7 +320,15 @@
     @if (canViewCoveredEmployees()) {
       <section class="history-card" aria-label="Team attendance">
         <div class="section-heading section-heading--stacked-mobile">
-          <div><p class="eyebrow">Attendance oversight</p><h2 id="covered-history-heading">Team attendance</h2></div>
+          <div>
+            <p class="eyebrow">Attendance oversight</p><h2 id="covered-history-heading">Team attendance</h2>
+            @if (deepLinkEmployeeId()) {
+              <p class="access-note" data-testid="employee-filter-note">
+                Showing one employee only ·
+                <button type="button" class="text-action" data-testid="clear-employee-filter" (click)="clearEmployeeFilter()">Show everyone</button>
+              </p>
+            }
+          </div>
           <div>
             <span class="access-note">Visible coverage records</span>
             <div class="range-controls" aria-label="Team attendance date range">

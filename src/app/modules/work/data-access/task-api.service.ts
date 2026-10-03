@@ -7,6 +7,8 @@ import {
   CreateTaskRequestDto,
   CreateTaskStatusRequestDto,
   ClockInResponseDto,
+    ConvertTaskToSubtaskRequestDto,
+    DuplicateTaskRequestDto,
     EditTaskRequestDto,
   EditTaskStatusRequestDto,
   PendingUploadDto,
@@ -14,16 +16,13 @@ import {
   TaskStatusDto,
   WorkTaskDto
 } from '../models/dto/task.dto';
-import { TaskStatusCategory } from '../models/task.model';
+import { BulkTaskActionResponse, TaskStatusCategory, WorkTask } from '../models/task.model';
 import {
   CreateTaskCategoryRequestDto,
   EditTaskCategoryRequestDto,
   TaskCategoryDto
 } from '../models/dto/task-category.dto';
-import {
-  CreateTaskEditRequestDto,
-  TaskEditRequestDto
-} from '../models/dto/task-edit-request.dto';
+import { PendingApprovalDto } from '../models/dto/work-approval.dto';
 import { TaskHistoryEntryDto } from '../models/dto/task-history.dto';
 
 export type PendingUploadPurpose = 'task_attachment' | 'task_description_image' | 'comment_attachment' | 'comment_description_image';
@@ -73,8 +72,9 @@ export class TaskApiService {
     return this.http.get<WorkTaskDto[]>(`${this.baseUrl}/sprints/${sprintId}/tasks`);
   }
 
-  createTask(objectiveId: string, request: CreateTaskRequestDto): Observable<WorkTaskDto> {
-    return this.http.post<WorkTaskDto>(`${this.baseUrl}/objectives/${objectiveId}/tasks`, request);
+  /** 201 = created (WorkTaskDto); 202 = sent for approval (PendingApprovalDto). */
+  createTask(objectiveId: string, request: CreateTaskRequestDto): Observable<WorkTaskDto | PendingApprovalDto> {
+    return this.http.post<WorkTaskDto | PendingApprovalDto>(`${this.baseUrl}/objectives/${objectiveId}/tasks`, request);
   }
 
   createSubtask(parentTaskId: string, request: CreateSubtaskRequestDto): Observable<WorkTaskDto> {
@@ -85,12 +85,22 @@ export class TaskApiService {
     return this.http.get<WorkTaskDto[]>(`${this.baseUrl}/tasks/${parentTaskId}/subtasks`);
   }
 
-  deleteTask(taskId: string): Observable<void> {
-    return this.http.delete<void>(`${this.baseUrl}/tasks/${taskId}`);
+  /** 204 = deleted (null body); 202 = sent for approval (PendingApprovalDto). */
+  deleteTask(taskId: string): Observable<PendingApprovalDto | null> {
+    return this.http.delete<PendingApprovalDto | null>(`${this.baseUrl}/tasks/${taskId}`);
   }
 
-  editTask(taskId: string, request: EditTaskRequestDto): Observable<WorkTaskDto> {
-    return this.http.patch<WorkTaskDto>(`${this.baseUrl}/tasks/${taskId}`, request);
+  duplicateTask(taskId: string, request: DuplicateTaskRequestDto): Observable<WorkTaskDto> {
+    return this.http.post<WorkTaskDto>(`${this.baseUrl}/tasks/${taskId}/duplicate`, request);
+  }
+
+  convertToSubtask(taskId: string, request: ConvertTaskToSubtaskRequestDto): Observable<WorkTaskDto> {
+    return this.http.post<WorkTaskDto>(`${this.baseUrl}/tasks/${taskId}/convert-to-subtask`, request);
+  }
+
+  /** 200 = edited (WorkTaskDto); 202 = sent for approval (PendingApprovalDto). */
+  editTask(taskId: string, request: EditTaskRequestDto): Observable<WorkTaskDto | PendingApprovalDto> {
+    return this.http.patch<WorkTaskDto | PendingApprovalDto>(`${this.baseUrl}/tasks/${taskId}`, request);
   }
 
   clockIn(taskId: string): Observable<ClockInResponseDto> {
@@ -121,8 +131,28 @@ export class TaskApiService {
     return this.http.delete<void>(`${this.baseUrl}/tasks/${taskId}/assignments/${employeeId}`);
   }
 
-  createTaskCreationRequest(objectiveId: string, request: CreateTaskRequestDto): Observable<unknown> {
-    return this.http.post(`${this.baseUrl}/objectives/${objectiveId}/task-creation-requests`, request);
+  bulkMoveStatus(taskIds: string[], newStatusId: string): Observable<BulkTaskActionResponse> {
+    return this.http.post<BulkTaskActionResponse>(`${this.baseUrl}/tasks/bulk/status`, { taskIds, newStatusId });
+  }
+
+  bulkAssign(taskIds: string[], employeeId: string): Observable<BulkTaskActionResponse> {
+    return this.http.post<BulkTaskActionResponse>(`${this.baseUrl}/tasks/bulk/assign`, { taskIds, employeeId });
+  }
+
+  bulkSetPriority(taskIds: string[], priority: WorkTask['priority']): Observable<BulkTaskActionResponse> {
+    return this.http.post<BulkTaskActionResponse>(`${this.baseUrl}/tasks/bulk/priority`, { taskIds, priority });
+  }
+
+  bulkSetDueDate(taskIds: string[], dueDate: string | null): Observable<BulkTaskActionResponse> {
+    return this.http.post<BulkTaskActionResponse>(`${this.baseUrl}/tasks/bulk/due-date`, { taskIds, dueDate });
+  }
+
+  bulkConvertToSubtask(taskIds: string[], newParentTaskId: string): Observable<BulkTaskActionResponse> {
+    return this.http.post<BulkTaskActionResponse>(`${this.baseUrl}/tasks/bulk/convert-to-subtask`, { taskIds, newParentTaskId });
+  }
+
+  bulkDelete(taskIds: string[]): Observable<BulkTaskActionResponse> {
+    return this.http.post<BulkTaskActionResponse>(`${this.baseUrl}/tasks/bulk/delete`, { taskIds });
   }
 
   getNotificationNavigation(
@@ -136,26 +166,6 @@ export class TaskApiService {
       `${this.baseUrl}/notification-navigation`,
       { params }
     );
-  }
-
-  createTaskEditRequest(taskId: string, request: CreateTaskEditRequestDto): Observable<TaskEditRequestDto> {
-    return this.http.post<TaskEditRequestDto>(`${this.baseUrl}/tasks/${taskId}/edit-requests`, request);
-  }
-
-  approveTaskEditRequest(id: string): Observable<WorkTaskDto> {
-    return this.http.post<WorkTaskDto>(`${this.baseUrl}/task-edit-requests/${id}/approve`, {});
-  }
-
-  rejectTaskEditRequest(id: string, comment: string): Observable<void> {
-    return this.http.post<void>(`${this.baseUrl}/task-edit-requests/${id}/reject`, { comment });
-  }
-
-  cancelTaskEditRequest(id: string): Observable<void> {
-    return this.http.post<void>(`${this.baseUrl}/task-edit-requests/${id}/cancel`, {});
-  }
-
-  getMyTaskEditRequests(): Observable<TaskEditRequestDto[]> {
-    return this.http.get<TaskEditRequestDto[]>(`${this.baseUrl}/task-edit-requests/mine`);
   }
 
   reorderTaskStatuses(projectId: string, updates: { statusId: string; displayOrder: number; visibility: string; category: TaskStatusCategory; color: string }[]): Observable<TaskStatusDto[]> {
@@ -191,6 +201,10 @@ export class TaskApiService {
 
   deletePendingFile(fileId: string): Observable<void> {
     return this.http.delete<void>(`${this.baseUrl}/tasks/pending-uploads/${fileId}`);
+  }
+
+  downloadFile(fileId: string): Observable<Blob> {
+    return this.http.get(`${this.baseUrl}/tasks/files/${fileId}`, { responseType: 'blob' });
   }
 
   getFileUrl(fileId: string): string {

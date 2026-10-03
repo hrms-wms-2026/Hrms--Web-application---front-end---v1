@@ -25,13 +25,13 @@ describe('PendingApprovalsComponent', () => {
   it('opens the detail sheet when a row is clicked', () => {
     fixture.detectChanges();
     httpMock.expectOne((r) => r.url === `${environment.apiUrl}/leave/requests/pending-approvals`).flush([
-      { requestId: 'req-1', employeeId: 'emp-1', employeeName: 'Anu Raman', leaveTypeId: 'type-1', leaveTypeName: 'Annual Leave', leaveTypeCode: 'ANNUAL', startDate: '2026-09-10', endDate: '2026-09-12', totalDays: 3, paidDays: 3, unpaidDays: 0, status: 'pending', submittedAt: '2026-08-25T00:00:00Z' }
+      { requestId: 'req-1', employeeId: 'emp-1', employeeName: 'Anu Raman', leaveTypeId: 'type-1', leaveTypeName: 'Annual Leave', leaveTypeCode: 'ANNUAL', startAt: '2026-09-10', endAt: '2026-09-12', totalHours: 3, paidHours: 3, unpaidHours: 0, status: 'pending', submittedAt: '2026-08-25T00:00:00Z' }
     ]);
     httpMock.expectOne((r) => r.url === `${environment.apiUrl}/leave/types`).flush([]);
     fixture.componentInstance.onRowClicked('req-1');
     expect(fixture.componentInstance.detailOpen()).toBe(true);
     httpMock.expectOne((r) => r.url === `${environment.apiUrl}/leave/requests/req-1/approval`).flush({
-      requestId: 'req-1', employeeId: 'emp-1', employeeName: 'Anu Raman', leaveTypeId: 'type-1', leaveTypeName: 'Annual Leave', leaveTypeCode: 'ANNUAL', startDate: '2026-09-10', endDate: '2026-09-12', totalDays: 3, paidDays: 3, unpaidDays: 0, status: 'pending', reason: null, approvers: [], infoMessages: [], submissionConflictSnapshotJson: null, currentWarnings: [], remainingDays: 17
+      requestId: 'req-1', employeeId: 'emp-1', employeeName: 'Anu Raman', leaveTypeId: 'type-1', leaveTypeName: 'Annual Leave', leaveTypeCode: 'ANNUAL', startAt: '2026-09-10', endAt: '2026-09-12', totalHours: 3, paidHours: 3, unpaidHours: 0, status: 'pending', reason: null, approvers: [], infoMessages: [], submissionConflictSnapshotJson: null, currentWarnings: [], remainingHours: 17
     });
   });
 
@@ -47,5 +47,43 @@ describe('PendingApprovalsComponent', () => {
     httpMock.expectOne((r) => r.url === `${environment.apiUrl}/leave/requests/pending-approvals`).flush([]);
     await bulking;
     expect(fixture.componentInstance.selectedIds().size).toBe(0);
+  });
+
+  it('clears selection after a bulk reject completes', async () => {
+    fixture.detectChanges();
+    httpMock.expectOne((r) => r.url === `${environment.apiUrl}/leave/requests/pending-approvals`).flush([]);
+    httpMock.expectOne((r) => r.url === `${environment.apiUrl}/leave/types`).flush([]);
+    fixture.componentInstance.onSelectionChanged(new Set(['req-1']));
+    fixture.componentInstance.bulkRejectReason.set('Coverage too low');
+    const rejecting = fixture.componentInstance.onBulkReject();
+    httpMock.expectOne((r) => r.url === `${environment.apiUrl}/leave/requests/bulk-reject`).flush({ items: [], successCount: 1, failureCount: 0 });
+    await Promise.resolve();
+    httpMock.expectOne((r) => r.url === `${environment.apiUrl}/leave/requests/pending-approvals`).flush([]);
+    await rejecting;
+    expect(fixture.componentInstance.selectedIds().size).toBe(0);
+  });
+
+  it('loads cover periods when Cover my approvals is opened', () => {
+    fixture.detectChanges();
+    httpMock.expectOne((r) => r.url === `${environment.apiUrl}/leave/requests/pending-approvals`).flush([]);
+    httpMock.expectOne((r) => r.url === `${environment.apiUrl}/leave/types`).flush([]);
+    fixture.componentInstance.openCover();
+    expect(fixture.componentInstance.coverOpen()).toBe(true);
+    httpMock.expectOne((r) => r.url === `${environment.apiUrl}/leave/approval-delegates`).flush([]);
+  });
+
+  it('saves a cover period then reloads the list', async () => {
+    fixture.detectChanges();
+    httpMock.expectOne((r) => r.url === `${environment.apiUrl}/leave/requests/pending-approvals`).flush([]);
+    httpMock.expectOne((r) => r.url === `${environment.apiUrl}/leave/types`).flush([]);
+    const saving = fixture.componentInstance.onSaveCover({
+      delegateEmployeeId: 'emp-2', startDate: '2026-09-01', endDate: '2026-09-10'
+    });
+    httpMock.expectOne((r) => r.url === `${environment.apiUrl}/leave/approval-delegates` && r.method === 'POST').flush({
+      id: 'd1', delegateEmployeeId: 'emp-2', delegateName: 'Sam Lee', startDate: '2026-09-01', endDate: '2026-09-10'
+    });
+    await Promise.resolve();
+    httpMock.expectOne((r) => r.url === `${environment.apiUrl}/leave/approval-delegates` && r.method === 'GET').flush([]);
+    await saving;
   });
 });

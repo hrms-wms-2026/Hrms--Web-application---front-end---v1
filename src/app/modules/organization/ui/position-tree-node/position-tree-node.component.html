@@ -4,6 +4,7 @@
   <div
     class="ptn-node-card"
     [class.ptn-node-card--inactive]="!node.isActive"
+    [class.ptn-node-card--highlight]="highlightPositionId === node.id"
     [class.ptn-node-card--dragover]="isDragOver()"
     [class.ptn-node-card--template-dragover]="isTemplateDragOver()"
     [attr.draggable]="canManage && node.isActive ? 'true' : null"
@@ -160,6 +161,7 @@
             [canManage]="canManage"
             [canConfigureAccess]="canConfigureAccess"
             [departmentNameMap]="departmentNameMap"
+            [highlightPositionId]="highlightPositionId"
             (addSubPosition)="addSubPosition.emit($event)"
             (editPosition)="editPosition.emit($event)"
             (viewAccess)="viewAccess.emit($event)"

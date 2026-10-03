@@ -37,6 +37,9 @@ describe('EntitlementsManagementComponent', () => {
     fixture.detectChanges();
     (fixture.nativeElement.querySelector('[data-testid="new-request-on-behalf-button"]') as HTMLButtonElement).click();
     fixture.detectChanges();
+    httpMock.expectOne((r) => r.url === `${environment.apiUrl}/leave/balances/work-window`).flush({
+      workStartTime: '09:00', workEndTime: '18:00', breakDurationMinutes: 60, timezone: 'UTC'
+    });
     expect(fixture.componentInstance.requestWizardOpen()).toBe(true);
   });
 });

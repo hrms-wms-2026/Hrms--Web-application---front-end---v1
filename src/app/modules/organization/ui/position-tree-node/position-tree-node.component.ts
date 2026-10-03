@@ -30,6 +30,8 @@ export class PositionTreeNodeComponent {
   @Input() canConfigureAccess = false;
   @Input() departmentNameMap: Record<string, string> = {};
   @Input() isRoot = false;
+  /** Read-only views (e.g. an employee's reporting structure) mark one position as "this one". */
+  @Input() highlightPositionId: string | null = null;
 
   @Output() addSubPosition = new EventEmitter<PositionTreeNodeResponse>();
   @Output() editPosition = new EventEmitter<PositionTreeNodeResponse>();
