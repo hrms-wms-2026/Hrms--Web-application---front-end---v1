@@ -106,8 +106,8 @@ describe('MilestoneTreeTabComponent', () => {
       uploadMilestoneAsset: vi.fn().mockResolvedValue({ success: true }),
       setMilestoneActionError: vi.fn(),
       loadObjectiveMembers: vi.fn().mockResolvedValue(undefined),
-      addObjectiveMember: vi.fn().mockResolvedValue({ success: true, alreadyMember: false }),
-      removeObjectiveMember: vi.fn().mockResolvedValue({ success: true }),
+      addObjectiveMember: vi.fn().mockResolvedValue({ success: true, alreadyMember: false, applied: true, pending: false }),
+      removeObjectiveMember: vi.fn().mockResolvedValue({ success: true, applied: true, pending: false }),
       transferObjectiveHead: vi.fn().mockResolvedValue({ success: true, applied: false, viaInvitation: true }),
       objectiveMembers: () => [],
       objectiveMembersLoading: () => false,
@@ -572,6 +572,47 @@ describe('MilestoneTreeTabComponent', () => {
     expect(storeStub.removeObjectiveMember).toHaveBeenCalledWith('o1', 'e9');
   });
 
+  it('a member add sent for approval shows "Member add sent for approval."', async () => {
+    setup('o1');
+    fixture.detectChanges();
+    const rows = fixture.nativeElement.querySelectorAll('[data-testid="tree-row"]');
+    (rows[0] as HTMLElement).click();
+    fixture.detectChanges();
+    storeStub.addObjectiveMember.mockResolvedValue({ success: true, alreadyMember: false, applied: false, pending: true });
+    const info = vi.spyOn(TestBed.inject(NotificationService), 'info');
+
+    await fixture.componentInstance.onAddMemberRequested('e9');
+
+    expect(info).toHaveBeenCalledWith('Member add sent for approval.');
+  });
+
+  it('does not show a toast when a member add is applied immediately', async () => {
+    setup('o1');
+    fixture.detectChanges();
+    const rows = fixture.nativeElement.querySelectorAll('[data-testid="tree-row"]');
+    (rows[0] as HTMLElement).click();
+    fixture.detectChanges();
+    const info = vi.spyOn(TestBed.inject(NotificationService), 'info');
+
+    await fixture.componentInstance.onAddMemberRequested('e9');
+
+    expect(info).not.toHaveBeenCalled();
+  });
+
+  it('a member removal sent for approval shows "Member removal sent for approval."', async () => {
+    setup('o1');
+    fixture.detectChanges();
+    const rows = fixture.nativeElement.querySelectorAll('[data-testid="tree-row"]');
+    (rows[0] as HTMLElement).click();
+    fixture.detectChanges();
+    storeStub.removeObjectiveMember.mockResolvedValue({ success: true, applied: false, pending: true });
+    const info = vi.spyOn(TestBed.inject(NotificationService), 'info');
+
+    await fixture.componentInstance.onRemoveMemberRequested('e9');
+
+    expect(info).toHaveBeenCalledWith('Member removal sent for approval.');
+  });
+
   it('calls store.transferObjectiveHead when the popup requests a leader transfer', async () => {
     setup('o1');
     fixture.detectChanges();
@@ -734,7 +775,7 @@ describe('MilestoneTreeTabComponent', () => {
         sprintId: 'spr-1', assigneeEmployeeIds: [], openClockSessionEmployeeId: null, openClockSessionClockInAt: null, totalLoggedMinutes: 0,
         attachments: [], assignees: [],
         parentTaskId: null, subtaskTotalCount: 0, subtaskCompletedCount: 0, subtaskAssigneeEmployeeIds: [],
-        createdAt: new Date('2026-01-01T00:00:00Z')
+        createdAt: new Date('2026-01-01T00:00:00Z'), hasPendingApproval: false
       }
     };
 

@@ -7,7 +7,7 @@ import { ProjectApiService } from '../data-access/project-api.service';
 import { ProjectListItemDto, PagedResultDto } from '../models/dto/project.dto';
 import { AddObjectiveMemberOutcomeDto } from '../models/dto/milestone.dto';
 
-function memberAccepted(body: AddObjectiveMemberOutcomeDto = { alreadyMember: false, invitation: null }) {
+function memberAccepted(body: AddObjectiveMemberOutcomeDto = { applied: true, alreadyMember: false, invitation: null }) {
   return of(new HttpResponse({ status: 202, body }));
 }
 

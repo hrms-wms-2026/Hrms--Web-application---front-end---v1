@@ -3,7 +3,9 @@ import { Injectable, inject } from '@angular/core';
 import { Observable } from 'rxjs';
 import { environment } from '../../../../environments/environment';
 import {
+  CalendarEventActivityEntryDto,
   CalendarEventDto,
+  CalendarEventTaskSummaryDto,
   CreateCalendarEventRequestDto,
   ProjectCalendarDto,
   UpdateCalendarEventRequestDto
@@ -29,5 +31,17 @@ export class CalendarApiService {
 
   closeEvent(id: string): Observable<void> {
     return this.http.post<void>(`${this.eventsBase}/${id}/close`, {});
+  }
+
+  getEvent(id: string): Observable<CalendarEventDto> {
+    return this.http.get<CalendarEventDto>(`${this.eventsBase}/${id}`);
+  }
+
+  getEventTasks(id: string): Observable<CalendarEventTaskSummaryDto[]> {
+    return this.http.get<CalendarEventTaskSummaryDto[]>(`${this.eventsBase}/${id}/tasks`);
+  }
+
+  getEventActivity(id: string): Observable<CalendarEventActivityEntryDto[]> {
+    return this.http.get<CalendarEventActivityEntryDto[]>(`${this.eventsBase}/${id}/activity`);
   }
 }

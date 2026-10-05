@@ -40,7 +40,7 @@ describe('TaskCardComponent', () => {
     assigneeEmployeeIds: ['emp-1', 'emp-2'], openClockSessionEmployeeId: null, openClockSessionClockInAt: null, totalLoggedMinutes: 0,
     attachments: [], assignees: [],
     parentTaskId: null, subtaskTotalCount: 0, subtaskCompletedCount: 0, subtaskAssigneeEmployeeIds: [],
-    createdAt: new Date('2026-01-01T00:00:00Z')
+    createdAt: new Date('2026-01-01T00:00:00Z'), hasPendingApproval: false
   };
 
   const assignableMembers = [
@@ -91,6 +91,14 @@ describe('TaskCardComponent', () => {
     fixture.componentRef.setInput('assignableMembers', overrides.assignableMembers ?? assignableMembers);
     fixture.detectChanges();
   }
+
+  it('shows a pending-approval badge when the task has an open request, and hides it otherwise', () => {
+    setup({ task: { ...task, hasPendingApproval: true } });
+    expect(fixture.nativeElement.querySelector('[data-testid="task-card-pending-approval"]')).not.toBeNull();
+
+    setup({ task: { ...task, hasPendingApproval: false } });
+    expect(fixture.nativeElement.querySelector('[data-testid="task-card-pending-approval"]')).toBeNull();
+  });
 
   it('renders one avatar per assignee instead of a name', () => {
     setup();

@@ -618,14 +618,16 @@ export class MilestoneTreeTabComponent {
   async onAddMemberRequested(employeeId: string): Promise<void> {
     const node = this.selectedNode();
     if (!node) return;
-    await this.store.addObjectiveMember(node.id, employeeId);
+    const result = await this.store.addObjectiveMember(node.id, employeeId);
+    if (result.pending) this.notificationService.info('Member add sent for approval.');
     await this.store.loadObjectiveMembers(node.id);
   }
 
   async onRemoveMemberRequested(employeeId: string): Promise<void> {
     const node = this.selectedNode();
     if (!node) return;
-    await this.store.removeObjectiveMember(node.id, employeeId);
+    const result = await this.store.removeObjectiveMember(node.id, employeeId);
+    if (result.pending) this.notificationService.info('Member removal sent for approval.');
     await this.store.loadObjectiveMembers(node.id);
   }
 
