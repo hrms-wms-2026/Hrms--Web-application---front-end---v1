@@ -1,5 +1,4 @@
 import { ChangeDetectionStrategy, Component, computed, inject, input } from '@angular/core';
-import { MetricStatComponent } from '../../../../shared/ui/metric-stat/metric-stat.component';
 import { WidgetCardComponent } from '../../../../shared/ui/widget-card/widget-card.component';
 import { createWidgetLoader } from '../../../../shared/ui/widget-card/widget-loader';
 import { PeopleApiService } from '../../data-access/people-api.service';
@@ -17,7 +16,7 @@ import { WorkActivityBarChartComponent } from '../work-activity-bar-chart/work-a
 @Component({
   selector: 'app-recorded-activity-widget',
   standalone: true,
-  imports: [WidgetCardComponent, MetricStatComponent, WorkActivityBarChartComponent],
+  imports: [WidgetCardComponent, WorkActivityBarChartComponent],
   template: `
     <app-widget-card
       title="Recorded Activity"
@@ -26,29 +25,43 @@ import { WorkActivityBarChartComponent } from '../work-activity-bar-chart/work-a
       errorMessage="Could not load recorded activity."
       (retry)="activity.reload()"
     >
-      <p class="-mt-2 mb-4 text-sm text-[var(--color-text-secondary)]">Based on device activity for the selected period</p>
-
-      @if (activity.data(); as a) {
-        <div class="flex flex-wrap gap-x-8 gap-y-4">
-          <app-metric-stat icon="monitor" tone="green" [value]="duration(a.activeMinutes)" label="Active time" />
-          <app-metric-stat icon="clock" tone="amber" [value]="duration(a.idleMinutes)" label="Idle time" />
-          <app-metric-stat icon="users" tone="violet" [value]="duration(a.meetingMinutes)" label="Meeting time" />
-          @if (byHour.state() === 'ready' && byHour.data(); as h) {
-            <app-metric-stat icon="clock" tone="blue" [value]="clock(h.lastActivityAt, h.timezone)" label="Last activity" />
-          }
-        </div>
-      }
-
       @if (byHour.state() === 'ready' && byHour.data(); as h) {
-        <div class="mt-5 border-t border-[var(--color-border)] pt-3">
-          <p class="mb-2 text-xs font-medium text-[var(--color-text-secondary)]">Activity by time of day</p>
-          <app-work-activity-bar-chart [bars]="bars()" ariaLabel="Active minutes by hour of day" />
-        </div>
-      } @else if (byHour.state() === 'error') {
-        <p class="mt-5 border-t border-[var(--color-border)] pt-3 text-xs text-[var(--color-text-secondary)]">
-          Could not load activity by time of day.
-        </p>
+        <span widget-actions class="whitespace-nowrap text-[11px] text-slate-500">
+          Last activity <span class="font-semibold text-slate-800">{{ clock(h.lastActivityAt, h.timezone) }}</span>
+        </span>
       }
+
+      <div class="flex flex-1 flex-col">
+        <p class="-mt-1 mb-3 text-xs text-slate-500">Based on device activity for the selected period</p>
+
+        @if (activity.data(); as a) {
+          <div class="grid grid-cols-3 gap-2">
+            <div class="min-w-0 rounded-xl bg-emerald-50 p-3">
+              <p class="truncate text-xs font-medium text-emerald-700">Active time</p>
+              <p class="mt-1 truncate text-base font-bold text-slate-900">{{ duration(a.activeMinutes) }}</p>
+            </div>
+            <div class="min-w-0 rounded-xl bg-amber-50 p-3">
+              <p class="truncate text-xs font-medium text-amber-700">Idle time</p>
+              <p class="mt-1 truncate text-base font-bold text-slate-900">{{ duration(a.idleMinutes) }}</p>
+            </div>
+            <div class="min-w-0 rounded-xl bg-violet-50 p-3">
+              <p class="truncate text-xs font-medium text-violet-700">Meeting time</p>
+              <p class="mt-1 truncate text-base font-bold text-slate-900">{{ duration(a.meetingMinutes) }}</p>
+            </div>
+          </div>
+        }
+
+        @if (byHour.state() === 'ready' && byHour.data()) {
+          <div class="mt-auto pt-4">
+            <p class="mb-2 text-xs font-medium text-slate-500">Activity by time of day</p>
+            <app-work-activity-bar-chart [bars]="bars()" [formatTick]="tick" ariaLabel="Active minutes by hour of day" />
+          </div>
+        } @else if (byHour.state() === 'error') {
+          <p class="mt-4 border-t border-slate-100 pt-3 text-xs text-slate-500">
+            Could not load activity by time of day.
+          </p>
+        }
+      </div>
     </app-widget-card>
   `,
   changeDetection: ChangeDetectionStrategy.OnPush
@@ -73,6 +86,13 @@ export class RecordedActivityWidgetComponent {
   });
 
   duration = formatDurationCompact;
+
+  /** Short y-axis label for a minute count: '2h', '1h 30m', '45m'. */
+  tick(minutes: number): string {
+    const h = Math.floor(minutes / 60);
+    const m = Math.round(minutes % 60);
+    return h === 0 ? `${m}m` : m === 0 ? `${h}h` : `${h}h${m}m`;
+  }
 
   clock(iso: string | null, timeZone: string): string {
     return formatClock(iso, timeZone);

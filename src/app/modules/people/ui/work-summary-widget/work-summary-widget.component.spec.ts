@@ -42,19 +42,21 @@ describe('WorkSummaryWidgetComponent', () => {
     return { fixture, store, el: fixture.nativeElement as HTMLElement };
   }
 
-  it('shows assigned, completed, in progress, overdue and story points', () => {
+  it('shows completed of assigned, in progress, overdue and story points as KPI cards', () => {
     const { el } = setup(vi.fn().mockReturnValue(of(work)), vi.fn().mockReturnValue(of(delivery)));
 
     expect(el.textContent).toContain('24');
-    expect(el.textContent).toContain('Assigned');
+    expect(el.textContent).toContain('24 assigned');
     expect(el.textContent).toContain('18');
-    expect(el.textContent).toContain('Completed');
+    expect(el.textContent).toContain('Tasks completed');
     expect(el.textContent).toContain('5');
-    expect(el.textContent).toContain('In Progress');
+    expect(el.textContent).toContain('In progress');
     expect(el.textContent).toContain('1');
-    expect(el.textContent).toContain('Overdue');
-    expect(el.textContent).toContain('34 / 42');
-    expect(el.textContent).toContain('Story Points');
+    expect(el.textContent).toContain('Overdue tasks');
+    expect(el.textContent).toContain('/42');
+    expect(el.querySelectorAll('[data-testid="kpi-card"]').length).toBe(4);
+    expect(el.querySelector('[data-testid="kpi-card"][role="button"]')).toBeNull();
+    expect(el.textContent).toContain('Story points');
   });
 
   it('requests both endpoints without comparison for the selected month', () => {
@@ -66,13 +68,13 @@ describe('WorkSummaryWidgetComponent', () => {
     expect(getOverviewDelivery).toHaveBeenCalledWith('emp-1', '2026-09-01', '2026-09-30', false);
   });
 
-  it('shows the four work stats without waiting on the delivery endpoint', () => {
+  it('shows the work cards without waiting on the delivery endpoint', () => {
     const { el } = setup(vi.fn().mockReturnValue(of(work)), vi.fn().mockReturnValue(NEVER));
 
     expect(el.querySelector('[data-testid="widget-loading"]')).toBeNull();
     expect(el.textContent).toContain('24');
-    expect(el.textContent).toContain('Assigned');
-    expect(el.textContent).not.toContain('Story Points');
+    expect(el.textContent).toContain('24 assigned');
+    expect(el.textContent).not.toContain('Story points');
   });
 
   it('shows the no-access state when the work endpoint is forbidden', () => {
@@ -91,7 +93,20 @@ describe('WorkSummaryWidgetComponent', () => {
     );
 
     expect(el.querySelector('[data-testid="widget-forbidden"]')).toBeNull();
-    expect(el.textContent).toContain('Assigned');
-    expect(el.textContent).not.toContain('Story Points');
+    expect(el.textContent).toContain('24 assigned');
+    expect(el.textContent).not.toContain('Story points');
+  });
+
+  it('shows each card change against the comparison month when Compare is on', () => {
+    const getOverviewWork = vi.fn().mockImplementation((_id: string, from: string) =>
+      of(from === '2026-08-01' ? { ...work, completed: 10 } : work)
+    );
+    const { fixture, store, el } = setup(getOverviewWork, vi.fn().mockReturnValue(of(delivery)));
+
+    store.setCompareMonth('2026-08');
+    fixture.detectChanges();
+
+    expect(getOverviewWork).toHaveBeenCalledWith('emp-1', '2026-08-01', '2026-08-31');
+    expect(el.querySelector('app-delta-badge')?.textContent).toContain('8');
   });
 });

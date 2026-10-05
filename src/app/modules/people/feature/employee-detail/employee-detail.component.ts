@@ -58,7 +58,7 @@ type DetailTab = 'overview' | 'employment' | 'work-activity' | 'personal';
     EmployeeWorkActivityTabComponent,
     EmployeePeriodControlsComponent
   ],
-  // The Overview month lives here so its controls can sit in the profile header beside the tabs.
+  // The Overview / Work & Activity month lives here so its controls can sit in the profile header beside the tabs.
   providers: [EmployeePeriodStore],
   template: `
     @if (loading()) {
@@ -220,7 +220,7 @@ type DetailTab = 'overview' | 'employment' | 'work-activity' | 'personal';
             </button>
           }
         </nav>
-        @if (activeTab() === 'overview') {
+        @if (activeTab() === 'overview' || activeTab() === 'work-activity') {
           <app-employee-period-controls class="mb-1.5" />
         }
       </div>
@@ -248,7 +248,11 @@ type DetailTab = 'overview' | 'employment' | 'work-activity' | 'personal';
         />
       }
       @if (activeTab() === 'work-activity') {
-        <app-employee-work-activity-tab [employeeId]="employee.id" />
+        <app-employee-work-activity-tab
+          [employeeId]="employee.id"
+          [hireDate]="employee.jobInformation.hireDate"
+          [terminationDate]="employee.jobInformation.terminationDate ?? null"
+        />
       }
       @if (activeTab() === 'personal') {
         <app-employee-personal-tab [employee]="employee" />

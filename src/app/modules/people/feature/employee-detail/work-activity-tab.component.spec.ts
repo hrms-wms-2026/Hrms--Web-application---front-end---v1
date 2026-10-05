@@ -2,6 +2,7 @@ import { TestBed } from '@angular/core/testing';
 import { provideRouter } from '@angular/router';
 import { of } from 'rxjs';
 import { PeopleApiService } from '../../data-access/people-api.service';
+import { EmployeePeriodStore } from '../../state/employee-period.store';
 import { EmployeeWorkActivityTabComponent } from './work-activity-tab.component';
 
 describe('EmployeeWorkActivityTabComponent', () => {
@@ -32,19 +33,23 @@ describe('EmployeeWorkActivityTabComponent', () => {
     };
     TestBed.configureTestingModule({
       imports: [EmployeeWorkActivityTabComponent],
-      providers: [provideRouter([]), { provide: PeopleApiService, useValue: api }]
+      providers: [provideRouter([]), { provide: PeopleApiService, useValue: api }, EmployeePeriodStore]
     });
     const fixture = TestBed.createComponent(EmployeeWorkActivityTabComponent);
     fixture.componentRef.setInput('employeeId', 'emp-1');
+    fixture.componentRef.setInput('hireDate', '2025-01-15');
     fixture.detectChanges();
-    return { fixture, api, el: fixture.nativeElement as HTMLElement };
+    return { fixture, api, store: TestBed.inject(EmployeePeriodStore), el: fixture.nativeElement as HTMLElement };
   }
 
-  it('renders the period picker and all cards', () => {
+  it('renders every card in the Overview-style rows, with no period picker of its own', () => {
     const { el } = setup();
 
+    expect(el.querySelector('app-employee-period-picker')).toBeNull();
+    expect(el.querySelector('[data-testid="work-activity-delivery"] app-delivery-health-widget')).toBeTruthy();
+    expect(el.querySelector('[data-testid="work-activity-delivery"] app-needs-attention-widget')).toBeTruthy();
+    expect(el.querySelector('[data-testid="work-activity-device"] app-recorded-activity-widget')).toBeTruthy();
     for (const selector of [
-      'app-employee-period-picker',
       'app-work-summary-widget',
       'app-needs-attention-widget',
       'app-delivery-health-widget',
@@ -57,11 +62,16 @@ describe('EmployeeWorkActivityTabComponent', () => {
     }
   });
 
-  it('changing the month reloads the period cards but not the "now" cards', () => {
-    const { fixture, api } = setup();
-    const picker = fixture.debugElement.query((d) => d.name === 'app-employee-period-picker').componentInstance;
+  it('sets the month bounds from the hire date', () => {
+    const { store } = setup();
 
-    picker.onChange('2026-05');
+    expect(store.minMonth()).toBe('2025-01');
+  });
+
+  it('changing the shared month reloads the period cards but not the "now" cards', () => {
+    const { fixture, api, store } = setup();
+
+    store.setMonth('2026-05');
     fixture.detectChanges();
 
     expect(api.getOverviewWork).toHaveBeenLastCalledWith('emp-1', '2026-05-01', '2026-05-31');

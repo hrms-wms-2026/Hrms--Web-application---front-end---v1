@@ -45,7 +45,7 @@ describe('DeliveryHealthWidgetComponent', () => {
     const fixture = TestBed.createComponent(DeliveryHealthWidgetComponent);
     fixture.componentRef.setInput('employeeId', 'emp-1');
     fixture.detectChanges();
-    return { fixture, api, el: fixture.nativeElement as HTMLElement };
+    return { fixture, api, store, el: fixture.nativeElement as HTMLElement };
   }
 
   it('shows completion rate, on-time rate, task and story point counts, and the monthly trend', () => {
@@ -81,5 +81,21 @@ describe('DeliveryHealthWidgetComponent', () => {
     expect(api.getOverviewWork).toHaveBeenCalledWith('emp-1', '2026-09-01', '2026-09-30');
     expect(api.getOverviewDelivery).toHaveBeenCalledWith('emp-1', '2026-09-01', '2026-09-30', false);
     expect(api.getWorkActivityDeliveryTrend).toHaveBeenCalledWith('emp-1', '2026-09-30');
+  });
+
+  it('shows the rate changes against the comparison month when Compare is on', () => {
+    const { fixture, api, store, el } = setup();
+    api.getOverviewWork.mockImplementation((_id: string, from: string) =>
+      of(from === '2026-08-01' ? { ...work, completionRatePercent: 70, onTimeRatePercent: 90 } : work)
+    );
+
+    expect(el.querySelector('[data-testid="delta"]')).toBeNull();
+    store.setCompareMonth('2026-08');
+    fixture.detectChanges();
+
+    const deltas = [...el.querySelectorAll('[data-testid="delta"]')].map((d) => d.textContent);
+    expect(deltas[0]).toContain('+5%');
+    expect(deltas[1]).toContain('-1%');
+    expect(el.textContent).toContain('Comparing with');
   });
 });

@@ -263,13 +263,17 @@ describe('EmployeeDetailComponent', () => {
     expect(apiStub.getJobJourney).toHaveBeenCalledTimes(1);
   });
 
-  it('shows the month and Compare controls in the header only on the Overview tab', () => {
+  it('shows the month and Compare controls in the header only on the Overview and Work & Activity tabs', () => {
     const { fixture } = setup(detailFixture);
     fixture.detectChanges();
     const el = fixture.nativeElement as HTMLElement;
 
     expect(el.querySelector('app-employee-period-controls button[title="Previous month"]')).toBeTruthy();
     expect([...el.querySelectorAll('app-employee-period-controls button')].some((b) => b.textContent?.includes('Compare'))).toBe(true);
+
+    fixture.componentInstance.selectTab('work-activity');
+    fixture.detectChanges();
+    expect(el.querySelector('app-employee-period-controls button[title="Previous month"]')).toBeTruthy();
 
     fixture.componentInstance.selectTab('personal');
     fixture.detectChanges();
