@@ -94,6 +94,14 @@ describe('WorkApprovalsApiService', () => {
     req.flush({});
   });
 
+  it('revertWorkApproval POSTs to approvals/{id}/revert', () => {
+    service.revertWorkApproval('r1').subscribe();
+    const req = httpMock.expectOne(`${environment.apiUrl}/work/approvals/r1/revert`);
+    expect(req.request.method).toBe('POST');
+    expect(req.request.body).toEqual({});
+    req.flush({});
+  });
+
   it('createAllocationRequest POSTs to allocation-requests and passes a 202 approvalRequestId through', () => {
     service.createAllocationRequest('obj-1', { requestedAdditionalHours: 5, reason: 'Scope grew' })
       .subscribe((res) => expect(res).toEqual({ approvalRequestId: 'ar-1' }));
