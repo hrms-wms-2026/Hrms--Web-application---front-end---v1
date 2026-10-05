@@ -1,6 +1,6 @@
 import { signal } from '@angular/core';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
-import { provideRouter } from '@angular/router';
+import { provideRouter, Router } from '@angular/router';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { PermissionService } from '../../../../core/auth/state/permission.service';
 import { AttendanceCorrectionResponse } from '../../models/attendance-correction.model';
@@ -324,6 +324,24 @@ describe('TimeTrackingComponent', () => {
     expect(store.loadCoveredHistory).toHaveBeenCalled();
     expect(store.loadApprovalInbox).not.toHaveBeenCalled();
     expect(store.loadWorkAreaApprovalInbox).not.toHaveBeenCalled();
+  });
+
+  it('narrows Team attendance to the employee and range from the profile deep link, and can clear the filter', async () => {
+    const { fixture, store } = await setup({ canViewCoveredEmployees: true }, true, [], [], [], {}, ['attendance:read']);
+    const router = TestBed.inject(Router);
+
+    await router.navigateByUrl('/?view=team&employeeId=emp-9&from=2026-09-01&to=2026-09-30');
+    fixture.detectChanges();
+
+    expect(store.loadCoveredHistory).toHaveBeenLastCalledWith({ from: '2026-09-01', to: '2026-09-30' }, 'emp-9');
+    expect(fixture.nativeElement.querySelector('[data-testid="employee-filter-note"]')).toBeTruthy();
+
+    (fixture.nativeElement.querySelector('[data-testid="clear-employee-filter"]') as HTMLButtonElement).click();
+    await fixture.whenStable();
+    fixture.detectChanges();
+
+    expect(store.loadCoveredHistory).toHaveBeenLastCalledWith(expect.any(Object), undefined);
+    expect(fixture.nativeElement.querySelector('[data-testid="employee-filter-note"]')).toBeNull();
   });
 
   it('places the MY/TEAM switcher in the breadcrumb header beside the request action', async () => {

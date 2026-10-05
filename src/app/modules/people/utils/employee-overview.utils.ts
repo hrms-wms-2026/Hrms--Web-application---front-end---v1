@@ -1,4 +1,4 @@
-import { AttendanceDayStatus } from '../models/employee-overview.model';
+import { AttendanceDayStatus, EmployeeUpcomingItem } from '../models/employee-overview.model';
 
 const MONTH_NAMES = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'] as const;
 
@@ -19,6 +19,24 @@ export function monthBounds(month: string): { from: string; to: string } {
 export function monthLabel(month: string): string {
   const [year, monthNumber] = month.split('-').map(Number);
   return `${MONTH_NAMES[monthNumber - 1]} ${year}`;
+}
+
+export function monthKeyOf(isoDate: string): string {
+  return isoDate.slice(0, 7);
+}
+
+export function shiftMonth(month: string, delta: number): string {
+  const [year, monthNumber] = month.split('-').map(Number);
+  return currentMonthKey(new Date(year, monthNumber - 1 + delta, 1));
+}
+
+/** Inclusive, newest first. */
+export function monthsBetween(min: string, max: string): readonly { value: string; label: string }[] {
+  const months: { value: string; label: string }[] = [];
+  for (let month = max; month >= min; month = shiftMonth(month, -1)) {
+    months.push({ value: month, label: monthLabel(month) });
+  }
+  return months;
 }
 
 /** Newest first, starting at the month containing `now`. */
@@ -100,4 +118,60 @@ export function computeDelta(
 export function formatShortDate(iso: string): string {
   const [, month, day] = iso.slice(0, 10).split('-').map(Number);
   return `${MONTH_NAMES[month - 1]} ${day}`;
+}
+
+/** 24-hour 'HH:mm' in the given time zone (default: the viewer's local zone). */
+export function formatEventTime(iso: string, timeZone?: string): string {
+  return new Date(iso).toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit', hourCycle: 'h23', timeZone });
+}
+
+/** 'YYYY-MM-DD' of an instant in the given time zone ('en-CA' formats dates as ISO). */
+function zonedDateKey(iso: string | Date, timeZone?: string): string {
+  return new Date(iso).toLocaleDateString('en-CA', { timeZone });
+}
+
+/** Date tile + time line for an upcoming item: 'SEP' / 30 / '18:00' (or 'All day', or the range for multi-day). */
+export interface UpcomingDateBlock {
+  readonly month: string;
+  readonly day: number;
+  readonly time: string;
+}
+
+export function upcomingDateBlock(item: EmployeeUpcomingItem, timeZone?: string): UpcomingDateBlock {
+  let day: string;
+  let time: string;
+  if (item.isAllDay) {
+    day = item.start.slice(0, 10);
+    const endDay = item.end ? item.end.slice(0, 10) : day;
+    time = day === endDay ? 'All day' : formatLeaveRange(day, endDay);
+  } else {
+    day = zonedDateKey(item.start, timeZone);
+    time = formatEventTime(item.start, timeZone);
+  }
+  const [, month, dayOfMonth] = day.split('-').map(Number);
+  return { month: MONTH_NAMES[month - 1].toUpperCase(), day: dayOfMonth, time };
+}
+
+/** 'Today, 14:41' / 'Yesterday, 18:12' / 'Sep 16, 16:32', deciding the day in the given zone. */
+export function formatActivityWhen(iso: string, now: Date, timeZone?: string): string {
+  const day = zonedDateKey(iso, timeZone);
+  const today = zonedDateKey(now, timeZone);
+  const yesterdayDate = new Date(`${today}T00:00:00Z`);
+  yesterdayDate.setUTCDate(yesterdayDate.getUTCDate() - 1);
+  const yesterday = yesterdayDate.toISOString().slice(0, 10);
+
+  const time = formatEventTime(iso, timeZone);
+  if (day === today) return `Today, ${time}`;
+  if (day === yesterday) return `Yesterday, ${time}`;
+  return `${formatShortDate(day)}, ${time}`;
+}
+
+/** 'Sep 10, 2026' from an ISO date (string parts, no Date parsing). */
+export function formatDateWithYear(isoDate: string): string {
+  return `${formatShortDate(isoDate)}, ${isoDate.slice(0, 4)}`;
+}
+
+export function progressPercent(part: number, whole: number): number {
+  if (whole <= 0) return 0;
+  return Math.max(0, Math.min(100, (part / whole) * 100));
 }

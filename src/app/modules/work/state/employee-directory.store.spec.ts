@@ -40,6 +40,14 @@ describe('EmployeeDirectoryStore', () => {
     expect(store.get('emp-1')?.avatarUrl).toBe('https://api.test/files/file-1');
   });
 
+  it('seed reuses an identity already returned by another endpoint without fetching it again', async () => {
+    store.seed([{ ...identity, avatarFileId: 'file-cached' }]);
+    await store.ensureLoaded(['emp-1']);
+
+    expect(store.get('emp-1')?.avatarUrl).toBe('https://api.test/files/file-cached');
+    expect(getEmployeeIdentitySpy).not.toHaveBeenCalled();
+  });
+
   it('ensureLoaded does not re-fetch an already-cached id', async () => {
     await store.ensureLoaded(['emp-1']);
     await store.ensureLoaded(['emp-1']);

@@ -8,9 +8,18 @@ import {
   formatMinutes,
   formatShortDate,
   monthBounds,
+  monthKeyOf,
   monthLabel,
-  recentMonths
+  monthsBetween,
+  recentMonths,
+  shiftMonth,
+  formatActivityWhen,
+  formatDateWithYear,
+  formatEventTime,
+  upcomingDateBlock,
+  progressPercent
 } from './employee-overview.utils';
+import { EmployeeUpcomingItem } from '../models/employee-overview.model';
 
 describe('employee-overview.utils', () => {
   it('currentMonthKey zero-pads the month', () => {
@@ -104,5 +113,86 @@ describe('formatShortDate', () => {
     expect(formatShortDate('2026-09-12')).toBe('Sep 12');
     expect(formatShortDate('2026-09-01T23:30:00+00:00')).toBe('Sep 1');
     expect(formatShortDate('2026-12-31T00:00:00Z')).toBe('Dec 31');
+  });
+});
+
+describe('month range helpers', () => {
+  it('monthKeyOf takes the YYYY-MM prefix', () => expect(monthKeyOf('2024-02-01')).toBe('2024-02'));
+
+  it('shiftMonth crosses year boundaries', () => {
+    expect(shiftMonth('2026-01', -1)).toBe('2025-12');
+    expect(shiftMonth('2025-12', 1)).toBe('2026-01');
+  });
+
+  it('monthsBetween is inclusive and newest first', () => {
+    expect(monthsBetween('2026-07', '2026-09').map((m) => m.value)).toEqual(['2026-09', '2026-08', '2026-07']);
+  });
+
+  it('monthsBetween is empty when inverted', () => expect(monthsBetween('2026-10', '2026-09')).toEqual([]));
+});
+
+describe('formatEventTime', () => {
+  it('formats a 24-hour time in the given time zone', () => {
+    expect(formatEventTime('2026-09-30T09:05:00+00:00', 'UTC')).toBe('09:05');
+    expect(formatEventTime('2026-09-30T09:05:00+00:00', 'Asia/Colombo')).toBe('14:35');
+  });
+});
+
+describe('upcomingDateBlock', () => {
+  const item = (over: Partial<EmployeeUpcomingItem>): EmployeeUpcomingItem => ({
+    kind: 'calendar', title: 't', start: '2026-09-30T09:00:00+00:00', end: '2026-09-30T10:00:00+00:00', isAllDay: false, detail: null, ...over
+  });
+
+  it('gives the date tile and start time for a timed event, in the given zone', () => {
+    expect(upcomingDateBlock(item({}), 'UTC')).toEqual({ month: 'SEP', day: 30, time: '09:00' });
+  });
+
+  it('takes the date tile from the zoned day, not the UTC date', () => {
+    expect(upcomingDateBlock(item({ start: '2026-09-30T20:00:00+00:00' }), 'Asia/Colombo')).toEqual({ month: 'OCT', day: 1, time: '01:30' });
+  });
+
+  it('says All day for a one-day all-day item, by UTC date parts', () => {
+    expect(upcomingDateBlock(item({ kind: 'release', isAllDay: true, start: '2026-10-01T00:00:00+00:00', end: null }))).toEqual({ month: 'OCT', day: 1, time: 'All day' });
+    expect(upcomingDateBlock(item({ kind: 'leave', isAllDay: true, start: '2026-09-23T00:00:00+00:00', end: '2026-09-23T23:59:59+00:00' })).time).toBe('All day');
+  });
+
+  it('shows the range for multi-day leave', () => {
+    expect(upcomingDateBlock(item({ kind: 'leave', isAllDay: true, start: '2026-09-23T00:00:00+00:00', end: '2026-09-25T23:59:59+00:00' })).time).toBe('Sep 23 – 25');
+    expect(upcomingDateBlock(item({ kind: 'leave', isAllDay: true, start: '2026-09-30T00:00:00+00:00', end: '2026-10-02T23:59:59+00:00' })).time).toBe('Sep 30 – Oct 2');
+  });
+});
+
+describe('formatActivityWhen', () => {
+  const now = new Date('2026-09-30T12:00:00Z');
+
+  it('says Today and Yesterday, then falls back to the date', () => {
+    expect(formatActivityWhen('2026-09-30T08:41:00+00:00', now, 'UTC')).toBe('Today, 08:41');
+    expect(formatActivityWhen('2026-09-29T18:12:00+00:00', now, 'UTC')).toBe('Yesterday, 18:12');
+    expect(formatActivityWhen('2026-09-16T16:32:00+00:00', now, 'UTC')).toBe('Sep 16, 16:32');
+  });
+
+  it('decides today/yesterday in the given time zone', () => {
+    // 20:00Z on the 29th is already the 30th in Colombo (UTC+5:30).
+    expect(formatActivityWhen('2026-09-29T20:00:00+00:00', now, 'Asia/Colombo')).toBe('Today, 01:30');
+  });
+
+  it('handles month boundaries when working out yesterday', () => {
+    expect(formatActivityWhen('2026-09-30T23:00:00+00:00', new Date('2026-10-01T05:00:00Z'), 'UTC')).toBe('Yesterday, 23:00');
+  });
+});
+
+describe('formatDateWithYear', () => {
+  it('formats a date with its year from string parts', () => {
+    expect(formatDateWithYear('2026-09-10')).toBe('Sep 10, 2026');
+    expect(formatDateWithYear('2024-02-01')).toBe('Feb 1, 2024');
+  });
+});
+
+describe('progressPercent', () => {
+  it('returns 0 for an empty whole and clamps to 0..100', () => {
+    expect(progressPercent(0, 0)).toBe(0);
+    expect(progressPercent(1, 4)).toBe(25);
+    expect(progressPercent(5, 4)).toBe(100);
+    expect(progressPercent(-1, 4)).toBe(0);
   });
 });

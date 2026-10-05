@@ -88,10 +88,6 @@
               (click)="goToEmployeesPage(n)">{{ n }}</button>
           }
           <button type="button" class="emp-pager__btn" aria-label="Next page" [disabled]="listState().page >= totalPages()" (click)="goToEmployeesPage(listState().page + 1)">›</button>
-          <select class="emp-pager__size" data-testid="employee-page-size" aria-label="Rows per page"
-            [value]="listState().pageSize" (change)="onPageSizeChange($any($event.target).value)">
-            @for (size of pageSizes; track size) { <option [value]="size">{{ size }} / page</option> }
-          </select>
         </div>
       </nav>
     }

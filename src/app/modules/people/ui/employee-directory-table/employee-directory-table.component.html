@@ -47,7 +47,13 @@
                         [attr.role]="attendanceWarningLabel(employee) !== null ? 'img' : null"
                         [attr.tabindex]="attendanceWarningLabel(employee) !== null ? 0 : null"
                         [attr.aria-label]="attendanceWarningLabel(employee)">
-                        <app-avatar class="emp-avatar" [userName]="employee.fullName" size="md" shape="circle" />
+                        <app-avatar
+                          class="emp-avatar"
+                          [avatarUrl]="directory.get(employee.id)?.avatarUrl ?? null"
+                          [userName]="employee.fullName"
+                          size="md"
+                          shape="circle"
+                        />
                         @if (attendanceWarningLabel(employee); as warningLabel) {
                           <span class="emp-attendance-warning-tooltip" role="tooltip">{{ warningLabel }}</span>
                         }
@@ -70,7 +76,12 @@
                   @case ('reportingManager') {
                     @if (employee.reportingManagerName) {
                       <span class="edt__manager">
-                        <app-avatar [userName]="employee.reportingManagerName" size="xs" shape="circle" />
+                        <app-avatar
+                          [avatarUrl]="employee.reportingManagerId ? directory.get(employee.reportingManagerId)?.avatarUrl ?? null : null"
+                          [userName]="employee.reportingManagerName"
+                          size="xs"
+                          shape="circle"
+                        />
                         {{ employee.reportingManagerName }}
                       </span>
                     } @else { — }

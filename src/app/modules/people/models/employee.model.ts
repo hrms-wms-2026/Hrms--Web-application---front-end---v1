@@ -159,10 +159,13 @@ export interface EmployeeDetailJobInformation {
   readonly employmentTypeLabel: string;
   readonly status: string;
   readonly hireDate: string;
+  readonly terminationDate?: string | null;
   readonly probationEndDate: string | null;
   readonly workModeLabel: string | null;
   readonly employmentTypeCode: string;
   readonly workModeId: string | null;
+  /** Absent on an API built before the field was added. */
+  readonly reportingManagerId?: string | null;
 }
 
 export interface EmployeeDetailPersonalInformation {

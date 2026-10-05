@@ -101,6 +101,14 @@ export class TimeTrackingComponent implements OnInit {
   });
 
   readonly deepLinkRequestId = computed(() => this.queryParams().get('requestId'));
+  /** Set by the employee profile's "View attendance" link to narrow Team attendance to one person. */
+  readonly deepLinkEmployeeId = computed(() => this.queryParams().get('employeeId')?.trim() || null);
+  private readonly deepLinkRange = computed<TimeTrackingRange | null>(() => {
+    const from = this.queryParams().get('from');
+    const to = this.queryParams().get('to');
+    const isDate = (value: string | null): value is string => !!value && /^\d{4}-\d{2}-\d{2}$/.test(value);
+    return isDate(from) && isDate(to) && from <= to ? { from, to } : null;
+  });
   readonly approvalBadgeCorrections = computed(() => this.store.approvalInbox().length);
   readonly approvalBadgeWorkArea = computed(() => this.store.workAreaApprovalInboxTotalCount());
   readonly approvalBadgeLocation = computed(() => this.locationChangeStore.approvalInboxTotalCount());
@@ -165,11 +173,12 @@ export class TimeTrackingComponent implements OnInit {
       }
 
       if (this.canViewCoveredEmployees()) {
-        const range = untracked(() => this.store.selectedHistoryRange()) ?? this.currentWeekRange;
-        const key = `${range.from}:${range.to}`;
+        const employeeId = this.deepLinkEmployeeId();
+        const range = this.deepLinkRange() ?? untracked(() => this.store.selectedHistoryRange()) ?? this.currentWeekRange;
+        const key = `${range.from}:${range.to}:${employeeId ?? ''}`;
         if (this.teamAttendanceRangeKey !== key) {
           this.teamAttendanceRangeKey = key;
-          void this.store.loadCoveredHistory(range);
+          void this.store.loadCoveredHistory(range, employeeId ?? undefined);
         }
       } else {
         this.teamAttendanceRangeKey = null;
@@ -199,7 +208,7 @@ export class TimeTrackingComponent implements OnInit {
   }
 
   ngOnInit(): void {
-    const range = this.currentWeekRange;
+    const range = this.deepLinkRange() ?? this.currentWeekRange;
     this.historyFrom.set(range.from);
     this.historyTo.set(range.to);
     if (this.hasSelfServiceAccess() || this.hasCoveredAccess()) {
@@ -266,7 +275,7 @@ export class TimeTrackingComponent implements OnInit {
   private loadForCurrentView(range: TimeTrackingRange): void {
     if (this.viewMode() === 'team') {
       if (this.canViewCoveredEmployees()) {
-        void this.store.loadCoveredHistory(range);
+        void this.store.loadCoveredHistory(range, this.deepLinkEmployeeId() ?? undefined);
       }
       return;
     }
@@ -282,7 +291,16 @@ export class TimeTrackingComponent implements OnInit {
     this.navigateState({ view: 'team', type: this.hasApproveAccess() ? this.approvalType() : null, requestId: null });
   }
 
-  selectApprovalType(type: 'corrections' | 'work-area' | 'location' | 'device-change'): void {
+  /** Drops the profile deep-link's employee filter, keeping whatever range is currently picked. */
+  clearEmployeeFilter(): void {
+    void this.router.navigate([], {
+      relativeTo: this.route,
+      queryParams: { employeeId: null, from: this.historyFrom() || null, to: this.historyTo() || null },
+      queryParamsHandling: 'merge'
+    });
+  }
+
+  selectApprovalType(type:'corrections' | 'work-area' | 'location' | 'device-change'): void {
     this.navigateState({ view: 'team', type, requestId: null });
   }
 

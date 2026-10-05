@@ -320,7 +320,15 @@
     @if (canViewCoveredEmployees()) {
       <section class="history-card" aria-label="Team attendance">
         <div class="section-heading section-heading--stacked-mobile">
-          <div><p class="eyebrow">Attendance oversight</p><h2 id="covered-history-heading">Team attendance</h2></div>
+          <div>
+            <p class="eyebrow">Attendance oversight</p><h2 id="covered-history-heading">Team attendance</h2>
+            @if (deepLinkEmployeeId()) {
+              <p class="access-note" data-testid="employee-filter-note">
+                Showing one employee only ·
+                <button type="button" class="text-action" data-testid="clear-employee-filter" (click)="clearEmployeeFilter()">Show everyone</button>
+              </p>
+            }
+          </div>
           <div>
             <span class="access-note">Visible coverage records</span>
             <div class="range-controls" aria-label="Team attendance date range">

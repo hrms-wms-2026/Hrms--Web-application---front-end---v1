@@ -11,6 +11,7 @@ import { PermissionService } from '../../../../core/auth/state/permission.servic
 import { AuthStore } from '../../../../core/auth/state/auth.store';
 import { OffboardingApiService } from '../../data-access/offboarding-api.service';
 import { WorkModeStore } from '../../../settings/state/work-mode.store';
+import { EmployeeDirectoryStore } from '../../../work/state/employee-directory.store';
 
 describe('EmployeeDetailComponent', () => {
   const detailFixture: EmployeeDetailResponse = {
@@ -61,6 +62,7 @@ describe('EmployeeDetailComponent', () => {
       changePosition: vi.fn().mockReturnValue(of({ pendingApproval: false })),
       getJobJourney: vi.fn().mockReturnValue(of([])),
       getWorkGraph: vi.fn().mockReturnValue(of({ nodes: [], links: [], hiddenTaskCount: 0 })),
+      listEmployees: vi.fn().mockReturnValue(of({ items: [], totalCount: 0, page: 1, pageSize: 3 })),
       getOverviewAttendance: vi.fn().mockReturnValue(
         of({ from: '2026-09-01', to: '2026-09-30', workingDays: 0, present: 0, late: 0, missingClockOuts: 0, leaveDays: 0, days: [] })
       ),
@@ -92,6 +94,13 @@ describe('EmployeeDetailComponent', () => {
       getWorkActivityWorkPattern: vi.fn().mockReturnValue(
         of({ from: '', to: '', activityMonitoringEnabled: false, focusBlocks: 0, topApp: null, topAppMinutes: 0, longestIdle: null })
       ),
+      getOverviewSignals: vi.fn().mockReturnValue(of({ from: '', to: '', signals: [] })),
+      getOverviewAttendanceDays: vi.fn().mockReturnValue(of({ from: '', to: '', timezone: 'UTC', days: [] })),
+      getOverviewWorkTasks: vi.fn().mockReturnValue(of({ from: '', to: '', items: [] })),
+      getOverviewUpcoming: vi.fn().mockReturnValue(of({ from: '', to: '', items: [] })),
+      getOverviewChecklists: vi.fn().mockReturnValue(of({ groups: [] })),
+      getOverviewHistory: vi.fn().mockReturnValue(of({ events: [] })),
+      getOverviewRecentActivity: vi.fn().mockReturnValue(of({ items: [], nextBefore: null, isPartial: true })),
       ...apiOverrides
     };
     const notificationsStub = { success: vi.fn(), error: vi.fn() };
@@ -116,6 +125,13 @@ describe('EmployeeDetailComponent', () => {
       update: vi.fn() as any,
       deactivate: vi.fn() as any
     };
+    const employeeDirectoryStub = {
+      get: vi.fn((id: string) => id === employee.id
+        ? { id, name: `${employee.personalInformation.firstName} ${employee.personalInformation.lastName}`, initials: 'AL', avatarUrl: 'https://api.test/files/avatar-1' }
+        : undefined),
+      ensureLoaded: vi.fn().mockResolvedValue(undefined),
+      seed: vi.fn()
+    };
 
     TestBed.configureTestingModule({
       imports: [EmployeeDetailComponent],
@@ -128,12 +144,13 @@ describe('EmployeeDetailComponent', () => {
         { provide: AuthStore, useValue: { employeeId: () => currentEmployeeId } },
         { provide: ActivatedRoute, useValue: { snapshot: { paramMap: { get: () => 'emp-1' } } } },
         { provide: OffboardingApiService, useValue: { getOffboarding: () => of(null) } },
-        { provide: WorkModeStore, useValue: workModeStoreStub }
+        { provide: WorkModeStore, useValue: workModeStoreStub },
+        { provide: EmployeeDirectoryStore, useValue: employeeDirectoryStub }
       ]
     });
 
     const fixture = TestBed.createComponent(EmployeeDetailComponent);
-    return { fixture, apiStub, notificationsStub };
+    return { fixture, apiStub, notificationsStub, employeeDirectoryStub };
   }
 
   it('shows the loader while the employee is loading', () => {
@@ -173,17 +190,17 @@ describe('EmployeeDetailComponent', () => {
 
     expect(fixture.componentInstance.activeTab()).toBe('overview');
     expect(el.querySelector('app-employee-overview-tab')).toBeTruthy();
-    // Employment stays mounted (hidden) so the Work Network is not reloaded on tab switches.
-    expect(el.querySelector('app-employee-employment-tab')?.hasAttribute('hidden')).toBe(true);
+    // Employment is not mounted until it is first opened.
+    expect(el.querySelector('app-employee-employment-tab')).toBeFalsy();
     expect(el.querySelector('app-employee-personal-tab')).toBeFalsy();
 
-    fixture.componentInstance.activeTab.set('employment');
+    fixture.componentInstance.selectTab('employment');
     fixture.detectChanges();
     expect(el.querySelector('app-employee-employment-tab')?.hasAttribute('hidden')).toBe(false);
     expect(el.querySelector('app-employee-job-info')).toBeTruthy();
     expect(el.querySelector('app-employee-overview-tab')).toBeFalsy();
 
-    fixture.componentInstance.activeTab.set('personal');
+    fixture.componentInstance.selectTab('personal');
     fixture.detectChanges();
     expect(el.querySelector('app-employee-personal-tab')).toBeTruthy();
     expect(el.querySelector('app-employee-personal-info')).toBeTruthy();
@@ -217,17 +234,46 @@ describe('EmployeeDetailComponent', () => {
     expect(apiStub.getWorkActivityNeedsAttention).toHaveBeenCalledWith('emp-1');
   });
 
-  it('does not reload the work graph when switching to Personal and back to Employment', () => {
+  it('waits for the Employment tab before loading the job journey and work graph', () => {
     const { fixture, apiStub } = setup(detailFixture);
     fixture.detectChanges();
-    expect(apiStub.getWorkGraph).toHaveBeenCalledTimes(1);
 
-    fixture.componentInstance.activeTab.set('personal');
+    expect(apiStub.getJobJourney).not.toHaveBeenCalled();
+    expect(apiStub.getWorkGraph).not.toHaveBeenCalled();
+
+    fixture.componentInstance.selectTab('employment');
     fixture.detectChanges();
-    fixture.componentInstance.activeTab.set('employment');
+
+    expect(apiStub.getJobJourney).toHaveBeenCalledTimes(1);
+    expect(apiStub.getWorkGraph).toHaveBeenCalledTimes(1);
+  });
+
+  it('does not reload the work graph or journey when switching to Personal and back to Employment', () => {
+    const { fixture, apiStub } = setup(detailFixture);
+    fixture.detectChanges();
+    fixture.componentInstance.selectTab('employment');
+    fixture.detectChanges();
+
+    fixture.componentInstance.selectTab('personal');
+    fixture.detectChanges();
+    fixture.componentInstance.selectTab('employment');
     fixture.detectChanges();
 
     expect(apiStub.getWorkGraph).toHaveBeenCalledTimes(1);
+    expect(apiStub.getJobJourney).toHaveBeenCalledTimes(1);
+  });
+
+  it('shows the month and Compare controls in the header only on the Overview tab', () => {
+    const { fixture } = setup(detailFixture);
+    fixture.detectChanges();
+    const el = fixture.nativeElement as HTMLElement;
+
+    expect(el.querySelector('app-employee-period-controls button[title="Previous month"]')).toBeTruthy();
+    expect([...el.querySelectorAll('app-employee-period-controls button')].some((b) => b.textContent?.includes('Compare'))).toBe(true);
+
+    fixture.componentInstance.selectTab('personal');
+    fixture.detectChanges();
+    expect(el.querySelector('app-employee-period-controls')).toBeFalsy();
   });
 
   it('switches tabs when a tab button is clicked', () => {
@@ -266,15 +312,81 @@ describe('EmployeeDetailComponent', () => {
     expect(fixture.nativeElement.querySelector('app-employee-payroll')).toBeFalsy();
   });
 
-  it('shows the key facts (manager, employment type, work mode, hire date) in the header', () => {
+  it('removes the marked metadata and outer border from the profile header', () => {
     const { fixture } = setup(detailFixture);
     fixture.detectChanges();
 
-    const facts = (fixture.nativeElement.querySelector('[data-testid="employee-key-facts"]') as HTMLElement).textContent as string;
-    expect(facts).toContain('Grace Hopper');
-    expect(facts).toContain('Full time');
-    expect(facts).toContain('Remote');
-    expect(facts).toContain('15 Jan 2024');
+    const header = fixture.nativeElement.querySelector('[data-testid="employee-profile-header"]') as HTMLElement;
+    expect(header.classList.contains('border')).toBe(false);
+    expect(header.textContent).not.toContain('E-001');
+    expect(header.textContent).not.toContain('Acme Corp');
+    expect(header.querySelector('[data-testid="employee-key-facts"]')).toBeNull();
+  });
+
+  it('renders the cached employee photo and requests a cache fill for deep links', () => {
+    const { fixture, employeeDirectoryStub } = setup(detailFixture);
+    fixture.detectChanges();
+
+    const image = fixture.nativeElement.querySelector('[data-testid="employee-profile-header"] app-avatar img') as HTMLImageElement;
+    const avatar = fixture.nativeElement.querySelector('[data-testid="employee-avatar"]') as HTMLElement;
+    expect(image.src).toBe('https://api.test/files/avatar-1');
+    expect(avatar.classList.contains('employee-detail-avatar')).toBe(true);
+    expect(employeeDirectoryStub.ensureLoaded).toHaveBeenCalledWith(['emp-1']);
+  });
+
+  it('orders identity details as name, email, then side-by-side position and department', () => {
+    const { fixture } = setup(detailFixture);
+    fixture.detectChanges();
+
+    const name = fixture.nativeElement.querySelector('[data-testid="employee-name"]') as HTMLElement;
+    const email = fixture.nativeElement.querySelector('[data-testid="employee-email"]') as HTMLElement;
+    const roleContext = fixture.nativeElement.querySelector('[data-testid="employee-role-context"]') as HTMLElement;
+
+    expect(name.compareDocumentPosition(email) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    expect(email.compareDocumentPosition(roleContext) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    expect(roleContext.classList.contains('flex')).toBe(true);
+    expect(roleContext.textContent).toContain('Software Engineer');
+    expect(roleContext.textContent).toContain('Engineering');
+  });
+
+  it('places attendance status directly after the name and before email without using the role width', () => {
+    const { fixture } = setup({
+      ...detailFixture,
+      attendanceSummary: {
+        showNotClockedInWarning: true,
+        shouldHaveClockedIn: true,
+        hasClockedInToday: false,
+        workDate: '2026-08-15',
+        timezone: 'UTC',
+        scheduledStartTime: '09:00',
+        warningLabel: 'Still has not clocked in',
+        attendanceStatus: 'not_clocked_in',
+        attendanceStatusLabel: 'Not clocked in',
+        attentionType: 'not_clocked_in',
+        attentionSeverity: 'critical',
+        attentionLabel: 'Still has not clocked in'
+      }
+    });
+    fixture.detectChanges();
+
+    const primaryRow = fixture.nativeElement.querySelector('[data-testid="employee-primary-row"]') as HTMLElement;
+    const primaryDetails = fixture.nativeElement.querySelector('[data-testid="employee-primary-details"]') as HTMLElement;
+    const name = fixture.nativeElement.querySelector('[data-testid="employee-name"]') as HTMLElement;
+    const email = fixture.nativeElement.querySelector('[data-testid="employee-email"]') as HTMLElement;
+    const status = fixture.nativeElement.querySelector('[data-testid="employee-attendance-status"]') as HTMLElement;
+    const roleContext = fixture.nativeElement.querySelector('[data-testid="employee-role-context"]') as HTMLElement;
+
+    expect(primaryDetails.parentElement).toBe(primaryRow);
+    expect(status.parentElement).toBe(primaryRow);
+    expect(name.compareDocumentPosition(status) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    expect(status.compareDocumentPosition(email) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    expect(email.compareDocumentPosition(roleContext) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    expect(primaryRow.classList.contains('flex-wrap')).toBe(true);
+    expect(status.classList.contains('flex-shrink-0')).toBe(true);
+    expect(status.classList.contains('border')).toBe(false);
+    expect(status.classList.contains('bg-rose-50')).toBe(true);
+    expect(status.textContent).not.toContain('Attendance today');
+    expect(status.textContent).toContain('Still has not clocked in');
   });
 
   it('shows a Transfer / Promote button and opens the modal when the employee has a legal entity', () => {
@@ -507,14 +619,14 @@ describe('EmployeeDetailComponent', () => {
     expect(fixture.nativeElement.textContent).not.toContain('Back to Employees');
   });
 
-  it('omits the Attendance today card when the response has no attendance summary (caller lacks attendance:read)', () => {
+  it('omits the attendance status when the response has no attendance summary (caller lacks attendance:read)', () => {
     const { fixture } = setup({ ...detailFixture, attendanceSummary: null });
     fixture.detectChanges();
 
-    expect(fixture.nativeElement.textContent).not.toContain('Attendance today');
+    expect(fixture.nativeElement.querySelector('[data-testid="employee-attendance-status"]')).toBeNull();
   });
 
-  it('shows the not-clocked-in warning in the Attendance today card', () => {
+  it('shows the not-clocked-in warning without an Attendance today label', () => {
     const { fixture } = setup({
       ...detailFixture,
       attendanceSummary: {
@@ -535,11 +647,11 @@ describe('EmployeeDetailComponent', () => {
     fixture.detectChanges();
 
     const text = fixture.nativeElement.textContent as string;
-    expect(text).toContain('Attendance today');
+    expect(text).not.toContain('Attendance today');
     expect(text).toContain('Still has not clocked in');
   });
 
-  it('shows the status label and break-overage marker in the Attendance today card', () => {
+  it('shows the status label and break-overage marker in the attendance status', () => {
     const { fixture } = setup({
       ...detailFixture,
       attendanceSummary: {
