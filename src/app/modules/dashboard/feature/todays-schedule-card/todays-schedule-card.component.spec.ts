@@ -103,4 +103,50 @@ describe('TodaysScheduleCardComponent', () => {
     const link: HTMLAnchorElement = fixture.nativeElement.querySelector('[data-testid="todays-schedule-view-link"]');
     expect(link.getAttribute('href')).toBe('/calendar');
   });
+
+  it('renders Start Meeting button when user is the organizer of the next event with a meeting link', async () => {
+    const now = new Date();
+    const soon = new Date(now.getTime() + 30 * 60_000).toISOString();
+    const { fixture } = await setup({
+      events: [
+        event({
+          id: 'zoom-1',
+          title: 'Design Sync',
+          startDate: soon,
+          endDate: soon,
+          meetingLink: 'https://us05web.zoom.us/j/81793600600',
+          isOrganizer: true
+        })
+      ]
+    });
+
+    const btn: HTMLAnchorElement = fixture.nativeElement.querySelector('[data-testid="todays-schedule-next-meeting-btn"]');
+    expect(btn).not.toBeNull();
+    expect(btn.textContent).toContain('Start Meeting');
+    expect(btn.getAttribute('href')).toBe('https://us05web.zoom.us/j/81793600600');
+    expect(fixture.nativeElement.textContent).toContain('Zoom');
+  });
+
+  it('renders Join Meeting button when user is a participant of the next event with a meeting link', async () => {
+    const now = new Date();
+    const soon = new Date(now.getTime() + 30 * 60_000).toISOString();
+    const { fixture } = await setup({
+      events: [
+        event({
+          id: 'teams-1',
+          title: 'Sprint Planning',
+          startDate: soon,
+          endDate: soon,
+          meetingLink: 'https://teams.microsoft.com/l/meetup-join/123',
+          isOrganizer: false
+        })
+      ]
+    });
+
+    const btn: HTMLAnchorElement = fixture.nativeElement.querySelector('[data-testid="todays-schedule-next-meeting-btn"]');
+    expect(btn).not.toBeNull();
+    expect(btn.textContent).toContain('Join Meeting');
+    expect(btn.getAttribute('href')).toBe('https://teams.microsoft.com/l/meetup-join/123');
+    expect(fixture.nativeElement.textContent).toContain('Teams');
+  });
 });
