@@ -131,7 +131,14 @@ export class NotificationBellComponent implements OnDestroy {
   toggle(): void {
     const next = !this.isOpen();
     this.isOpen.set(next);
-    if (next) void this.store.loadMine();
+    if (next) void this.openAndClear();
+  }
+
+  // Opening the panel is the "I've seen these" signal - clear the unread badge
+  // right away instead of waiting for a separate "Mark all read" click.
+  private async openAndClear(): Promise<void> {
+    await this.store.loadMine();
+    await this.store.markAllRead();
   }
 
   close(): void {

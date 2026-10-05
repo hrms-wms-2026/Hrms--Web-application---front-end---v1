@@ -487,12 +487,13 @@ describe('MilestoneTreeTabComponent', () => {
     expect((fixture.componentInstance.settingsInitialValue() as any)?.description).toBe('Full scope');
   });
 
-  it('shows a pending-approval notice when an edit is submitted for approval', async () => {
+  it('shows a "Request submitted." toast when an edit is submitted for approval', async () => {
     setup('o1');
     fixture.detectChanges();
     const rows = fixture.nativeElement.querySelectorAll('[data-testid="tree-row"]');
     (rows[0] as HTMLElement).click();
     fixture.detectChanges();
+    const info = vi.spyOn(TestBed.inject(NotificationService), 'info');
 
     await fixture.componentInstance.onSettingsSaved({
       fields: { title: 'Root', description: '', startDate: '2026-01-01', endDate: '2026-12-01', allocatedHours: 40 },
@@ -501,17 +502,17 @@ describe('MilestoneTreeTabComponent', () => {
     });
     fixture.detectChanges();
 
-    expect(fixture.componentInstance.editPendingNotice()).toContain('pending approval');
-    expect(fixture.nativeElement.querySelector('[data-testid="edit-pending-notice"]')).not.toBeNull();
+    expect(info).toHaveBeenCalledWith('Request submitted.');
   });
 
-  it('does not show a pending-approval notice when the edit applied immediately', async () => {
+  it('does not show a toast when the edit applied immediately', async () => {
     storeStub.editMilestone = vi.fn().mockResolvedValue({ success: true, pending: false });
     setup('o1');
     fixture.detectChanges();
     const rows = fixture.nativeElement.querySelectorAll('[data-testid="tree-row"]');
     (rows[0] as HTMLElement).click();
     fixture.detectChanges();
+    const info = vi.spyOn(TestBed.inject(NotificationService), 'info');
 
     await fixture.componentInstance.onSettingsSaved({
       fields: { title: 'Root', description: '', startDate: '2026-01-01', endDate: '2026-12-01', allocatedHours: 40 },
@@ -520,7 +521,7 @@ describe('MilestoneTreeTabComponent', () => {
     });
     fixture.detectChanges();
 
-    expect(fixture.componentInstance.editPendingNotice()).toBeNull();
+    expect(info).not.toHaveBeenCalled();
   });
 
   it('opens the members popup when a row requests it', () => {

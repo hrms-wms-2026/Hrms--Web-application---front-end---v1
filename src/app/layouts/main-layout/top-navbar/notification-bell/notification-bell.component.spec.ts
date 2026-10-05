@@ -47,6 +47,75 @@ describe('NotificationBellComponent', () => {
     expect(fixture.nativeElement.querySelector('[data-testid="notification-dropdown"]')).toBeTruthy();
   });
 
+  it('marks all notifications read as soon as the panel is opened', async () => {
+    const storeStub = {
+      unreadCount: () => 3,
+      items: () => [],
+      refreshUnreadCount: vi.fn().mockResolvedValue(undefined),
+      loadMine: vi.fn().mockResolvedValue(undefined),
+      markRead: vi.fn().mockResolvedValue(undefined),
+      markAllRead: vi.fn().mockResolvedValue(undefined)
+    };
+
+    TestBed.configureTestingModule({
+      imports: [NotificationBellComponent],
+      providers: [
+        { provide: NotificationsStore, useValue: storeStub },
+        { provide: Router, useValue: { navigate: vi.fn() } },
+        { provide: TaskApiService, useValue: { getNotificationNavigation: vi.fn() } },
+        { provide: AuthStore, useValue: { authenticated: () => true, activeModules: () => [] } }
+      ]
+    });
+
+    const fixture = TestBed.createComponent(NotificationBellComponent);
+    fixture.detectChanges();
+    await fixture.whenStable();
+    expect(storeStub.markAllRead).not.toHaveBeenCalled();
+
+    fixture.nativeElement.querySelector('[data-testid="notification-bell"]').click();
+    fixture.detectChanges();
+    await fixture.whenStable();
+
+    expect(storeStub.markAllRead).toHaveBeenCalled();
+  });
+
+  it('does not mark notifications read when the bell is toggled closed', async () => {
+    const storeStub = {
+      unreadCount: () => 3,
+      items: () => [],
+      refreshUnreadCount: vi.fn().mockResolvedValue(undefined),
+      loadMine: vi.fn().mockResolvedValue(undefined),
+      markRead: vi.fn().mockResolvedValue(undefined),
+      markAllRead: vi.fn().mockResolvedValue(undefined)
+    };
+
+    TestBed.configureTestingModule({
+      imports: [NotificationBellComponent],
+      providers: [
+        { provide: NotificationsStore, useValue: storeStub },
+        { provide: Router, useValue: { navigate: vi.fn() } },
+        { provide: TaskApiService, useValue: { getNotificationNavigation: vi.fn() } },
+        { provide: AuthStore, useValue: { authenticated: () => true, activeModules: () => [] } }
+      ]
+    });
+
+    const fixture = TestBed.createComponent(NotificationBellComponent);
+    fixture.detectChanges();
+    await fixture.whenStable();
+
+    const bell = fixture.nativeElement.querySelector('[data-testid="notification-bell"]');
+    bell.click();
+    fixture.detectChanges();
+    await fixture.whenStable();
+    storeStub.markAllRead.mockClear();
+
+    bell.click();
+    fixture.detectChanges();
+    await fixture.whenStable();
+
+    expect(storeStub.markAllRead).not.toHaveBeenCalled();
+  });
+
   it('does not poll unread count while the tray activation gate is blocking', async () => {
     const storeStub = {
       unreadCount: () => 0,

@@ -596,6 +596,7 @@ export class TaskCommentsComponent implements OnInit {
 
   async submitComment(payload: { content: string; attachmentFileIds: string[] }): Promise<void> {
     await firstValueFrom(this.commentApi.postComment(this.taskId(), payload));
+    this.notificationService.success('Comment posted.');
     await this.reload();
   }
 
@@ -628,6 +629,7 @@ export class TaskCommentsComponent implements OnInit {
 
   async submitReply(parentCommentId: string, payload: { content: string; attachmentFileIds: string[] }): Promise<void> {
     await firstValueFrom(this.commentApi.postReply(parentCommentId, payload));
+    this.notificationService.success('Comment posted.');
     this.replyingToId.set(null);
     await this.reload();
   }
