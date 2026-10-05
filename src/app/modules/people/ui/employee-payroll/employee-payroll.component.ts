@@ -1,5 +1,6 @@
-import { ChangeDetectionStrategy, Component, input } from '@angular/core';
-import { EmployeeDetailPayroll } from '../../models/employee.model';
+import { ChangeDetectionStrategy, Component, computed, inject, input, signal } from '@angular/core';
+import { PeopleApiService } from '../../data-access/people-api.service';
+import { EmployeeBankDetailsRevealResponse, EmployeeDetailPayroll } from '../../models/employee.model';
 
 /** Styled like the Employment tab's cards: icon header, compact label/value rows, a real empty state. */
 @Component({
@@ -37,12 +38,50 @@ import { EmployeeDetailPayroll } from '../../models/employee.model';
           </div>
           <div class="grid grid-cols-[8rem_1fr] items-baseline gap-2 leading-5">
             <dt class="text-slate-500">Account Number</dt>
-            <dd><span class="inline-block rounded-md bg-slate-100 px-1.5 py-0.5 font-mono text-[11px] font-semibold text-slate-900">{{ payroll().maskedAccountNumber || '—' }}</span></dd>
+            <dd class="flex min-w-0 flex-wrap items-center gap-2">
+              <span class="inline-block rounded-md bg-slate-100 px-1.5 py-0.5 font-mono text-[11px] font-semibold text-slate-900" data-testid="account-number">
+                {{ revealed()?.accountNumber || payroll().maskedAccountNumber || '—' }}
+              </span>
+              @if (revealed()) {
+                <button type="button" class="text-[11px] font-semibold text-blue-600 hover:text-blue-700" data-testid="hide-bank-details" (click)="hide()">
+                  Hide
+                </button>
+              } @else {
+                <button
+                  type="button"
+                  class="text-[11px] font-semibold text-blue-600 hover:text-blue-700 disabled:cursor-not-allowed disabled:text-slate-400"
+                  data-testid="reveal-bank-details"
+                  [disabled]="revealing()"
+                  (click)="reveal()"
+                >
+                  {{ revealing() ? 'Revealing…' : 'Reveal' }}
+                </button>
+              }
+            </dd>
           </div>
           <div class="grid grid-cols-[8rem_1fr] items-baseline gap-2 leading-5">
             <dt class="text-slate-500">Account Type</dt>
             <dd class="font-medium capitalize text-slate-900">{{ payroll().accountType || '—' }}</dd>
           </div>
+          @if (revealed(); as details) {
+            <div class="grid grid-cols-[8rem_1fr] items-baseline gap-2 leading-5">
+              <dt class="text-slate-500">Account Holder</dt>
+              <dd class="font-medium text-slate-900">{{ details.accountHolderName || '—' }}</dd>
+            </div>
+            <div class="grid grid-cols-[8rem_1fr] items-baseline gap-2 leading-5">
+              <dt class="text-slate-500">Branch</dt>
+              <dd class="font-medium text-slate-900">{{ details.branchName || '—' }}</dd>
+            </div>
+            @if (details.routingNumber) {
+              <div class="grid grid-cols-[8rem_1fr] items-baseline gap-2 leading-5">
+                <dt class="text-slate-500">Routing Number</dt>
+                <dd class="font-mono text-[11px] font-semibold text-slate-900">{{ details.routingNumber }}</dd>
+              </div>
+            }
+          }
+          @if (revealError()) {
+            <p class="text-[11px] font-medium text-red-600" role="alert">{{ revealError() }}</p>
+          }
         </dl>
       }
     </section>
@@ -50,5 +89,56 @@ import { EmployeeDetailPayroll } from '../../models/employee.model';
   changeDetection: ChangeDetectionStrategy.OnPush
 })
 export class EmployeePayrollComponent {
+  private readonly api = inject(PeopleApiService);
+  private readonly revealState = signal<{
+    employeeId: string;
+    status: 'loading' | 'success' | 'error';
+    details: EmployeeBankDetailsRevealResponse | null;
+    error: string | null;
+  } | null>(null);
+
+  readonly employeeId = input.required<string>();
   readonly payroll = input.required<EmployeeDetailPayroll>();
+  readonly revealing = computed(() => {
+    const state = this.revealState();
+    return state?.employeeId === this.employeeId() && state.status === 'loading';
+  });
+  readonly revealed = computed(() => {
+    const state = this.revealState();
+    return state?.employeeId === this.employeeId() && state.status === 'success'
+      ? state.details
+      : null;
+  });
+  readonly revealError = computed(() => {
+    const state = this.revealState();
+    return state?.employeeId === this.employeeId() && state.status === 'error'
+      ? state.error
+      : null;
+  });
+
+  reveal(): void {
+    if (this.revealing() || this.revealed()) return;
+
+    const employeeId = this.employeeId();
+    this.revealState.set({ employeeId, status: 'loading', details: null, error: null });
+    this.api.revealEmployeeBankDetails(employeeId).subscribe({
+      next: details => {
+        if (this.employeeId() !== employeeId) return;
+        this.revealState.set({ employeeId, status: 'success', details, error: null });
+      },
+      error: () => {
+        if (this.employeeId() !== employeeId) return;
+        this.revealState.set({
+          employeeId,
+          status: 'error',
+          details: null,
+          error: 'Could not reveal bank details. Please try again.'
+        });
+      }
+    });
+  }
+
+  hide(): void {
+    this.revealState.set(null);
+  }
 }

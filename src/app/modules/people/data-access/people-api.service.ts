@@ -9,6 +9,7 @@ import {
   BulkStartOffboardingPayload,
   ChangePositionPayload,
   ChangePositionResponse,
+  EmployeeBankDetailsRevealResponse,
   EmployeeDetailResponse,
   EmployeeIdentityResponse,
   EmployeeListItemResponse,
@@ -103,6 +104,13 @@ export class PeopleApiService {
 
   getEmployeeDetail(id: string): Observable<EmployeeDetailResponse> {
     return this.http.get<EmployeeDetailResponse>(`${environment.apiUrl}/employees/${id}/detail`);
+  }
+
+  revealEmployeeBankDetails(id: string): Observable<EmployeeBankDetailsRevealResponse> {
+    return this.http.post<EmployeeBankDetailsRevealResponse>(
+      `${environment.apiUrl}/employees/${id}/bank-details/reveal`,
+      {}
+    );
   }
 
   changePosition(id: string, payload: ChangePositionPayload): Observable<ChangePositionResponse> {

@@ -293,6 +293,22 @@ export interface EmployeeChecklistGroup {
   readonly completed: number;
   readonly bypassed: number;
   readonly total: number;
+  readonly tasks?: readonly EmployeeChecklistTaskOverviewItem[] | null;
+}
+
+export interface EmployeeChecklistTaskOverviewItem {
+  readonly id: string;
+  readonly title: string;
+  readonly assignedToEmployeeId: string;
+  readonly assigneeName: string;
+  readonly dueDate: string;
+  readonly status: string;
+  readonly completedAt: string | null;
+  readonly completedBy: string | null;
+  readonly workTaskId: string | null;
+  readonly workTaskShortId: string | null;
+  readonly workProjectId: string | null;
+  readonly canOpenTask: boolean;
 }
 
 export interface EmployeeChecklistOverviewResponse {

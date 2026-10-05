@@ -82,6 +82,26 @@ describe('PeopleApiService', () => {
     httpMock.expectOne((r) => r.method === 'POST' && r.url.endsWith('/employees/bulk/change-position')).flush({ items: [], succeeded: 0, pendingApproval: 0, failed: 0 });
   });
 
+  it('revealEmployeeBankDetails POSTs to the audited reveal endpoint', () => {
+    const response = {
+      bankName: 'Commercial Bank',
+      branchName: 'Colombo',
+      accountHolderName: 'Ada Lovelace',
+      accountNumber: '1234567890',
+      accountType: 'Savings',
+      routingNumber: '7010'
+    };
+    let received: unknown;
+
+    service.revealEmployeeBankDetails('emp-1').subscribe(value => (received = value));
+
+    const req = httpMock.expectOne(`${environment.apiUrl}/employees/emp-1/bank-details/reveal`);
+    expect(req.request.method).toBe('POST');
+    expect(req.request.body).toEqual({});
+    req.flush(response);
+    expect(received).toEqual(response);
+  });
+
   afterEach(() => {
     httpMock.verify();
   });
