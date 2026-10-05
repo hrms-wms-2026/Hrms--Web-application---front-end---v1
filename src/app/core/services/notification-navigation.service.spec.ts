@@ -65,4 +65,24 @@ describe('NotificationNavigationService', () => {
     expect(router.navigate).toHaveBeenCalledWith(['/attendance/alerts'], { queryParams: { alertId: 'alert-7' } });
     expect(taskApi.getNotificationNavigation).not.toHaveBeenCalled();
   });
+
+  it('opens my attendance history when a correction decision notice is clicked (not an approval request, so isNavigable is false)', async () => {
+    const service = TestBed.inject(NotificationNavigationService);
+
+    await service.navigate({
+      relatedEntityType: 'attendance_correction', relatedEntityId: 'corr-1', isNavigable: false, destinationKey: null
+    } as NotificationItem);
+
+    expect(router.navigate).toHaveBeenCalledWith(['/attendance/time-tracking']);
+  });
+
+  it('opens my attendance history when a work-area decision notice is clicked', async () => {
+    const service = TestBed.inject(NotificationNavigationService);
+
+    await service.navigate({
+      relatedEntityType: 'work_area_change_request', relatedEntityId: 'wa-1', isNavigable: false, destinationKey: null
+    } as NotificationItem);
+
+    expect(router.navigate).toHaveBeenCalledWith(['/attendance/time-tracking']);
+  });
 });

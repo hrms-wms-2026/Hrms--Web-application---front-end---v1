@@ -229,7 +229,7 @@ describe('NotificationBellComponent', () => {
     );
   });
 
-  it('does not navigate non-navigable requester correction notifications', async () => {
+  it('opens my attendance history for a non-navigable requester correction notification', async () => {
     const item = {
       id: 'n4', templateCode: 'attendance_correction_request_decided', title: 'Correction updated', body: 'Your request was reviewed',
       relatedEntityType: 'attendance_correction', relatedEntityId: 'c1', isRead: false, readAt: null, createdAt: new Date(),
@@ -251,6 +251,6 @@ describe('NotificationBellComponent', () => {
     fixture.detectChanges();
     fixture.nativeElement.querySelector('.notification-dropdown__item').click();
     await fixture.whenStable();
-    expect(navigate).not.toHaveBeenCalled();
+    expect(navigate).toHaveBeenCalledWith(['/attendance/time-tracking']);
   });
 });
