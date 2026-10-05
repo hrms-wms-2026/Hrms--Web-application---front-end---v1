@@ -164,6 +164,8 @@ export interface EmployeeDetailJobInformation {
   readonly workModeLabel: string | null;
   readonly employmentTypeCode: string;
   readonly workModeId: string | null;
+  /** Absent on an API built before the field was added. */
+  readonly reportingManagerId?: string | null;
 }
 
 export interface EmployeeDetailPersonalInformation {

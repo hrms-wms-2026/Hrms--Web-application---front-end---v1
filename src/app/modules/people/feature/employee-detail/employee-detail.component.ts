@@ -134,14 +134,14 @@ type DetailTab = 'overview' | 'employment' | 'personal';
                 </div>
 
                 <p
-                  class="mt-1 break-all text-sm text-[var(--color-text-secondary)]"
+                  class="-mt-0.5 break-all text-sm text-[var(--color-text-secondary)]"
                   data-testid="employee-email"
                 >
                   {{ employee.personalInformation.email }}
                 </p>
 
                 <div
-                  class="mt-3 flex flex-wrap items-center gap-x-2 gap-y-1 text-sm"
+                  class="mt-1 flex flex-wrap items-center gap-x-2 gap-y-1 text-sm"
                   data-testid="employee-role-context"
                 >
                   <span class="font-semibold text-[var(--color-text-primary)]">
@@ -236,6 +236,9 @@ type DetailTab = 'overview' | 'employment' | 'personal';
           [class.hidden]="activeTab() !== 'employment'"
           [employee]="employee"
           [jobJourney]="jobJourney()"
+          [jobJourneyLoadedAt]="jobJourneyLoadedAt()"
+          [jobJourneyRefreshing]="jobJourneyRefreshing()"
+          (refreshJobJourney)="refreshJobJourney()"
           [canEdit]="canChangePosition() && !isReadOnly()"
           [saving]="savingJobDetails()"
           (save)="onJobDetailsSave($event)"
@@ -334,6 +337,8 @@ export class EmployeeDetailComponent {
   readonly activeTab = signal<DetailTab>('overview');
   readonly employmentVisited = signal(false);
   readonly jobJourney = signal<readonly PositionHistoryEntryResponse[]>([]);
+  readonly jobJourneyLoadedAt = signal<Date | null>(null);
+  readonly jobJourneyRefreshing = signal(false);
 
   readonly attendanceWarningLabel = attendanceWarningLabel;
   readonly attendanceAttentionLabel = attendanceAttentionLabel;
@@ -387,10 +392,24 @@ export class EmployeeDetailComponent {
     }
   }
 
-  private loadJobJourney(id: string): void {
+  refreshJobJourney(): void {
+    const id = this.employee()?.id;
+    if (id) this.loadJobJourney(id, true);
+  }
+
+  /** A quiet refresh keeps the current entries on screen if the reload fails. */
+  private loadJobJourney(id: string, quiet = false): void {
+    if (quiet) this.jobJourneyRefreshing.set(true);
     this.api.getJobJourney(id).subscribe({
-      next: (entries) => this.jobJourney.set(entries),
-      error: () => this.jobJourney.set([])
+      next: (entries) => {
+        this.jobJourney.set(entries);
+        this.jobJourneyLoadedAt.set(new Date());
+        this.jobJourneyRefreshing.set(false);
+      },
+      error: () => {
+        if (!quiet) this.jobJourney.set([]);
+        this.jobJourneyRefreshing.set(false);
+      }
     });
   }
 
