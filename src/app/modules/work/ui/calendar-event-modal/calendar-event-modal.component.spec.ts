@@ -60,7 +60,7 @@ describe('CalendarEventModalComponent', () => {
 
     expect(payload).toEqual({
       name: 'Release', color: '#ABCDEF', startDate: '2026-03-01', endDate: '2026-03-31',
-      objectiveIds: ['o1'], taskIds: ['t7', 't8']
+      objectiveIds: ['o1'], taskIds: ['t7', 't8'], description: ''
     });
   });
 
@@ -92,5 +92,34 @@ describe('CalendarEventModalComponent', () => {
     fixture.nativeElement.querySelector('[data-testid="view-sprint"]').click();
     fixture.detectChanges();
     expect(fixture.nativeElement.querySelector('app-sprint-task-picker')).not.toBeNull();
+  });
+
+  it('includes the typed description in the save payload', () => {
+    const c = fixture.componentInstance;
+    c.name.set('Release 1');
+    c.color.set('#2563EB');
+    c.startDate.set('2026-10-01');
+    c.endDate.set('2026-10-31');
+    c.selectedObjectiveIds.set(new Set(['o1']));
+    fixture.detectChanges();
+    const textarea: HTMLTextAreaElement = fixture.nativeElement.querySelector('[data-testid="event-description"]');
+    textarea.value = 'Covers the Q3 release scope.';
+    textarea.dispatchEvent(new Event('input'));
+    fixture.detectChanges();
+
+    let saved: any;
+    c.save.subscribe((payload: any) => (saved = payload));
+    fixture.nativeElement.querySelector('[data-testid="event-save"]').click();
+
+    expect(saved.description).toBe('Covers the Q3 release scope.');
+  });
+
+  it('pre-fills the description textarea when editing an existing event', () => {
+    fixture.componentRef.setInput('event', {
+      id: 'e1', projectId: 'p1', name: 'R1', color: '#2563EB', status: 'active',
+      startDate: '2026-10-01', endDate: '2026-10-31', description: 'Existing text.', objectiveIds: [], taskIds: []
+    });
+    fixture.detectChanges();
+    expect(fixture.nativeElement.querySelector('[data-testid="event-description"]').value).toBe('Existing text.');
   });
 });

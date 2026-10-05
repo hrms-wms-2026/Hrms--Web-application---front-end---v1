@@ -3,7 +3,7 @@ import { Delta } from '../../utils/employee-overview.utils';
 import { KpiCard, KpiTone } from '../../utils/overview-kpi-cards';
 import { DeltaBadgeComponent } from '../delta-badge/delta-badge.component';
 
-type KpiIcon = 'check' | 'alert' | 'calendar' | 'target' | 'clock' | 'pin' | 'inbox' | 'activity';
+type KpiIcon = 'check' | 'alert' | 'calendar' | 'target' | 'clock' | 'pin' | 'inbox' | 'activity' | 'layers' | 'progress';
 
 /** Colours for one card: tinted icon tile, value and detail line. */
 interface KpiPalette {
@@ -28,7 +28,9 @@ const ICONS: Record<string, KpiIcon> = {
   location_violations: 'pin',
   pending_approvals: 'inbox',
   idle_activity_alerts: 'activity',
-  monitoring_exceptions: 'activity'
+  monitoring_exceptions: 'activity',
+  tasks_in_progress: 'progress',
+  story_points: 'layers'
 };
 
 const TONE_PALETTES: Record<KpiTone, KpiPalette> = {
@@ -42,7 +44,9 @@ const TONE_PALETTES: Record<KpiTone, KpiPalette> = {
 const BASELINE_PALETTES: Record<string, KpiPalette> = {
   days_attended: { tile: 'bg-blue-50 text-blue-600', value: 'text-blue-600', detail: 'text-blue-600' },
   on_time_delivery: { tile: 'bg-violet-50 text-violet-600', value: 'text-slate-900', detail: 'text-emerald-600' },
-  leave_days: { tile: 'bg-sky-50 text-sky-600', value: 'text-sky-600', detail: 'text-slate-500' }
+  leave_days: { tile: 'bg-sky-50 text-sky-600', value: 'text-sky-600', detail: 'text-slate-500' },
+  tasks_in_progress: { tile: 'bg-blue-50 text-blue-600', value: 'text-blue-600', detail: 'text-slate-500' },
+  story_points: { tile: 'bg-violet-50 text-violet-600', value: 'text-violet-600', detail: 'text-slate-500' }
 };
 
 @Component({
@@ -56,9 +60,9 @@ const BASELINE_PALETTES: Record<string, KpiPalette> = {
         <div
           data-testid="kpi-card"
           class="kpi-card flex items-center gap-3 rounded-xl border border-slate-200/80 bg-white px-3.5 py-3 shadow-xs transition-colors"
-          [attr.role]="card.tone === 'baseline' ? null : 'button'"
-          [attr.tabindex]="card.tone === 'baseline' ? null : 0"
-          [class.kpi-card--clickable]="card.tone !== 'baseline'"
+          [attr.role]="clickable(card) ? 'button' : null"
+          [attr.tabindex]="clickable(card) ? 0 : null"
+          [class.kpi-card--clickable]="clickable(card)"
           (click)="select(card)"
           (keydown.enter)="select(card)"
         >
@@ -76,6 +80,8 @@ const BASELINE_PALETTES: Record<string, KpiPalette> = {
                 @case ('pin') { <path d="M12 21s-7-6.2-7-11.5a7 7 0 0 1 14 0C19 14.8 12 21 12 21z"></path><circle cx="12" cy="9.5" r="2.5"></circle> }
                 @case ('inbox') { <path d="M22 12h-6l-2 3h-4l-2-3H2"></path><path d="M5.45 5.11 2 12v6a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-6l-3.45-6.89A2 2 0 0 0 16.76 4H7.24a2 2 0 0 0-1.79 1.11z"></path> }
                 @case ('activity') { <path d="M22 12h-4l-3 9L9 3l-3 9H2"></path> }
+                @case ('layers') { <path d="m12 3 9 5-9 5-9-5 9-5z"></path><path d="m3 13 9 5 9-5"></path> }
+                @case ('progress') { <path d="M21 12a9 9 0 1 1-6.2-8.56"></path><path d="M12 7v5l3 2"></path> }
                 @default { <circle cx="12" cy="12" r="9"></circle><path d="M12 7v5l3 2"></path> }
               }
             </svg>
@@ -108,10 +114,16 @@ export class OverviewKpiStripComponent {
   readonly cards = input.required<readonly KpiCard[]>();
   readonly deltas = input<readonly (Delta | null)[]>([]);
   readonly against = input<string | null>(null);
+  /** False renders every card as a plain read-out (nothing to drill into), whatever its tone. */
+  readonly interactive = input(true);
   readonly cardSelected = output<string>();
 
+  clickable(card: KpiCard): boolean {
+    return this.interactive() && card.tone !== 'baseline';
+  }
+
   select(card: KpiCard): void {
-    if (card.tone !== 'baseline') this.cardSelected.emit(card.key);
+    if (this.clickable(card)) this.cardSelected.emit(card.key);
   }
 
   palette(card: KpiCard): KpiPalette {

@@ -60,10 +60,7 @@ describe('ProjectDetailComponent', () => {
 
   beforeEach(() => {
     approvalsStoreStub = {
-      workApprovals: () => [],
-      allocationRequests: () => [],
-      objectiveChangeRequests: () => [],
-      objectiveInvitations: () => [],
+      pendingCount: () => 0,
       loadAll: vi.fn().mockResolvedValue(undefined)
     };
     storeStub = {
@@ -140,11 +137,8 @@ describe('ProjectDetailComponent', () => {
     expect(fixture.nativeElement.querySelector('router-outlet')).not.toBeNull();
   });
 
-  it('shows the Approvals indicator only for received requests in the current project', () => {
-    approvalsStoreStub.allocationRequests = () => [
-      { id: 'in-project', objectiveId: 'o1' },
-      { id: 'other-project', objectiveId: 'other-objective' }
-    ];
+  it('shows the Approvals indicator with the store pending count (the feed is already project-scoped)', () => {
+    approvalsStoreStub.pendingCount = () => 2;
     setup('o1');
     fixture.detectChanges();
 
@@ -152,21 +146,13 @@ describe('ProjectDetailComponent', () => {
     const approvalsLink = Array.from(fixture.nativeElement.querySelectorAll('[data-testid="sub-menu-tab"]'))
       .find((element: any) => element.textContent.includes('Approvals')) as HTMLAnchorElement;
     expect(indicator).not.toBeNull();
-    expect(approvalsLink.getAttribute('aria-label')).toBe('Approvals, 1 pending');
+    expect(approvalsLink.getAttribute('aria-label')).toBe('Approvals, 2 pending');
   });
 
-  it('counts an invitation to a module the invitee is not a member of yet in the Approvals indicator', () => {
-    // 'invited-module' is not in milestones(): the invitee only becomes a member after accepting.
-    approvalsStoreStub.objectiveInvitations = () => [
-      { id: 'inv-1', objectiveId: 'invited-module', raw: { projectId: 'p1' } },
-      { id: 'inv-2', objectiveId: 'other-objective', raw: { projectId: 'other-project' } }
-    ];
+  it('hides the Approvals indicator when nothing waits on the caller', () => {
     setup('o1');
     fixture.detectChanges();
-
-    const approvalsLink = Array.from(fixture.nativeElement.querySelectorAll('[data-testid="sub-menu-tab"]'))
-      .find((element: any) => element.textContent.includes('Approvals')) as HTMLAnchorElement;
-    expect(approvalsLink.getAttribute('aria-label')).toBe('Approvals, 1 pending');
+    expect(fixture.nativeElement.querySelector('[data-testid="approvals-pending-indicator"]')).toBeNull();
   });
 
   it('reflects the active milestone id from the route on init, and updates it on NavigationEnd', () => {

@@ -1,4 +1,4 @@
-import { Component, computed, inject, input, output, signal } from '@angular/core';
+import { Component, computed, effect, inject, input, output, signal } from '@angular/core';
 import { ModalComponent } from '../../../../shared/ui/modal/modal.component';
 import { ButtonComponent } from '../../../../shared/ui/button/button.component';
 import { AvatarComponent } from '../../../../shared/ui/avatar/avatar.component';
@@ -130,6 +130,13 @@ export class MemberManagementPopupComponent {
     const name = this.objectiveName();
     return name ? `Members — ${name}` : 'Members';
   });
+
+  constructor() {
+    // Always land back on the member list, not wherever the picker was left when last closed.
+    effect(() => {
+      if (this.open()) this.pickerOpen.set(null);
+    });
+  }
 
   onEmployeePicked(employeeId: string): void {
     const mode = this.pickerOpen();

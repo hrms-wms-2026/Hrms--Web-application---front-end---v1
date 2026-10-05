@@ -2196,7 +2196,8 @@ export class TaskFormModalComponent {
         subtaskTotalCount: 0,
         subtaskCompletedCount: 0,
         subtaskAssigneeEmployeeIds: ds.assigneeEmployeeId ? [ds.assigneeEmployeeId] : [],
-        createdAt: new Date()
+        createdAt: new Date(),
+        hasPendingApproval: false
       }));
     }
     return this.subtasks();

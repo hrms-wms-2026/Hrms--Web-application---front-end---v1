@@ -29,14 +29,16 @@ import {
 import { EmployeeEmploymentTabComponent } from './employment-tab.component';
 import { EmployeePersonalTabComponent } from './personal-tab.component';
 import { EmployeeOverviewTabComponent } from './overview-tab.component';
+import { EmployeeWorkActivityTabComponent } from './work-activity-tab.component';
 
-type DetailTab = 'overview' | 'employment' | 'personal';
+type DetailTab = 'overview' | 'employment' | 'work-activity' | 'personal';
 
 /**
- * Employee detail page shell backed by GET /api/v1/employees/{id}/detail: header (identity,
- * Transfer/Promote/Offboarding actions, resend-invitation), today's attendance strip, and
- * three tabs - Overview (per-widget attendance/discipline/time-off), Employment (job details,
- * Work Network, job journey; mounted on first visit) and Personal
+ * Employee detail page shell backed by GET /api/v1/employees/{id}/detail: header (identity, key
+ * facts, Transfer/Promote/Offboarding actions, resend-invitation), today's attendance strip, and
+ * four tabs - Overview (per-widget attendance/discipline/time-off), Employment (job details,
+ * Work Network, job journey; mounted on first visit), Work & Activity (task summary,
+ * needs-attention, delivery, recorded activity, application usage, work pattern) and Personal
  * (personal info, emergency contacts, payroll when the server includes it).
  */
 @Component({
@@ -53,9 +55,10 @@ type DetailTab = 'overview' | 'employment' | 'personal';
     EmployeeEmploymentTabComponent,
     EmployeePersonalTabComponent,
     EmployeeOverviewTabComponent,
+    EmployeeWorkActivityTabComponent,
     EmployeePeriodControlsComponent
   ],
-  // The Overview month lives here so its controls can sit in the profile header beside the tabs.
+  // The Overview / Work & Activity month lives here so its controls can sit in the profile header beside the tabs.
   providers: [EmployeePeriodStore],
   template: `
     @if (loading()) {
@@ -217,7 +220,7 @@ type DetailTab = 'overview' | 'employment' | 'personal';
             </button>
           }
         </nav>
-        @if (activeTab() === 'overview') {
+        @if (activeTab() === 'overview' || activeTab() === 'work-activity') {
           <app-employee-period-controls class="mb-1.5" />
         }
       </div>
@@ -242,6 +245,13 @@ type DetailTab = 'overview' | 'employment' | 'personal';
           [canEdit]="canChangePosition() && !isReadOnly()"
           [saving]="savingJobDetails()"
           (save)="onJobDetailsSave($event)"
+        />
+      }
+      @if (activeTab() === 'work-activity') {
+        <app-employee-work-activity-tab
+          [employeeId]="employee.id"
+          [hireDate]="employee.jobInformation.hireDate"
+          [terminationDate]="employee.jobInformation.terminationDate ?? null"
         />
       }
       @if (activeTab() === 'personal') {
@@ -332,6 +342,7 @@ export class EmployeeDetailComponent {
   readonly tabs: readonly { readonly id: DetailTab; readonly label: string }[] = [
     { id: 'overview', label: 'Overview' },
     { id: 'employment', label: 'Employment' },
+    { id: 'work-activity', label: 'Work & Activity' },
     { id: 'personal', label: 'Personal' }
   ];
   readonly activeTab = signal<DetailTab>('overview');

@@ -10,8 +10,23 @@ import { NotificationService } from '../../../../core/services/notification.serv
 import { toEditTaskRequest } from '../../utils/task.mapper';
 import { AvatarComponent } from '../../../../shared/ui/avatar/avatar.component';
 import { DatePickerComponent } from '../../../../shared/ui/date-picker/date-picker.component';
+import { DataTableCellDirective, DataTableColumn, DataTableComponent, DataTableRowAfterDirective } from '../../../../shared/ui/data-table/data-table.component';
 
 type SortKey = 'title' | 'statusId' | 'dueDate' | 'estimatedHours';
+
+const TASK_TABLE_COLUMNS: readonly DataTableColumn[] = [
+  { key: 'module', label: 'Module', width: '16%' },
+  { key: 'title', label: 'Title', width: '28%', sortable: true },
+  { key: 'assignee', label: 'Assignee', width: '8%' },
+  { key: 'status', label: 'Status', width: '11%', sortable: true, interactive: true },
+  { key: 'priority', label: 'Priority', width: '9%', interactive: true },
+  { key: 'due', label: 'Due', width: '10%', sortable: true, interactive: true },
+  { key: 'hours', label: 'Est. hours', width: '8%', sortable: true },
+  { key: 'tracked', label: 'Tracked', width: '7%', interactive: true }
+];
+
+/** Header column key -> the WorkTask field it sorts by. */
+const SORT_KEYS: Record<string, SortKey> = { title: 'title', status: 'statusId', due: 'dueDate', hours: 'estimatedHours' };
 
 const TABLE_POPOVER_POSITIONS: ConnectionPositionPair[] = [
   { originX: 'start', originY: 'bottom', overlayX: 'start', overlayY: 'top', offsetY: 6 },
@@ -21,279 +36,213 @@ const TABLE_POPOVER_POSITIONS: ConnectionPositionPair[] = [
 @Component({
   selector: 'app-task-table',
   standalone: true,
-  imports: [OverlayModule, TaskClockWidgetComponent, AvatarComponent, DatePickerComponent],
+  imports: [OverlayModule, TaskClockWidgetComponent, AvatarComponent, DatePickerComponent, DataTableComponent, DataTableCellDirective, DataTableRowAfterDirective],
   template: `
-    <div class="task-table__scroll">
-    <table class="task-table">
-      <colgroup>
-        @if (selectable()) { <col class="task-table__col-select" /> }
-        <col class="task-table__col-module" />
-        <col class="task-table__col-title" />
-        <col class="task-table__col-assignee" />
-        <col class="task-table__col-status" />
-        <col class="task-table__col-priority" />
-        <col class="task-table__col-due" />
-        <col class="task-table__col-hours" />
-        <col class="task-table__col-tracked" />
-      </colgroup>
-      <thead>
-        <tr>
-          @if (selectable()) {
-            <th class="task-table__select-cell">
-              <input
-                type="checkbox"
-                data-testid="task-table-select-all"
-                [checked]="allSelected()"
-                [indeterminate]="someSelected()"
-                (click)="$event.stopPropagation()"
-                (change)="onSelectAllChanged($event)"
-              />
-            </th>
+    <app-data-table
+      minWidth="986px"
+      [columns]="columns"
+      [rows]="sortedTasks()"
+      [trackBy]="trackTask"
+      [rowTestId]="rowTestId"
+      [selectable]="selectable()"
+      [selectedIds]="selectedIds()"
+      [isRowSelectable]="isRowSelectableFn"
+      selectAllTestId="task-table-select-all"
+      [selectTestId]="selectTestId"
+      (rowClicked)="viewed.emit($event)"
+      (sortRequested)="onSortRequested($event)"
+      (rowSelectionChanged)="selectionChanged.emit({ taskId: $event.row.id, selected: $event.selected })"
+      (selectAllChanged)="selectAllChanged.emit({ taskIds: selectableTaskIds(), selected: $event })"
+    >
+      <ng-template appDataTableCell="module" let-task>
+        <span [title]="moduleName(task.objectiveId)">{{ moduleName(task.objectiveId) }}</span>
+      </ng-template>
+
+      <ng-template appDataTableCell="title" let-task>
+        <div class="task-table__title-cell">
+          <span class="task-table__title-text" [title]="task.title">{{ task.title }}</span>
+          @if (categoryName(task.categoryId); as catName) {
+            <span class="task-table__title-tag">{{ catName }}</span>
           }
-          <th>Module</th>
-          <th (click)="toggleSort('title')">Title</th>
-          <th>Assignee</th>
-          <th (click)="toggleSort('statusId')">Status</th>
-          <th>Priority</th>
-          <th (click)="toggleSort('dueDate')">Due</th>
-          <th (click)="toggleSort('estimatedHours')">Est. hours</th>
-          <th>Tracked</th>
-        </tr>
-      </thead>
-      <tbody>
-        @for (task of sortedTasks(); track task.id) {
-          <tr class="task-table__row-card" [attr.data-testid]="'task-row-' + task.id" [class.task-table__row--selected]="isSelected(task.id)" (click)="viewed.emit(task)">
-            @if (selectable()) {
-              <td class="task-table__select-cell" (click)="$event.stopPropagation()">
-                @if (isRowSelectable(task)) {
-                  <input
-                    type="checkbox"
-                    [attr.data-testid]="'task-select-' + task.id"
-                    [checked]="isSelected(task.id)"
-                    (change)="onRowSelectChanged(task.id, $event)"
-                  />
-                }
-              </td>
+        </div>
+      </ng-template>
+
+      <ng-template appDataTableCell="assignee" let-task>
+        @if (task.assignees.length > 0) {
+          <div class="task-table__assignee" [title]="assigneeNames(task)">
+            <app-avatar [avatarUrl]="task.assignees[0].avatarUrl" [userName]="task.assignees[0].name" size="sm" />
+            @if (task.assignees.length > 1) {
+              <span class="task-table__assignee-more">+{{ task.assignees.length - 1 }}</span>
             }
-            <td [title]="moduleName(task.objectiveId)">{{ moduleName(task.objectiveId) }}</td>
-            <td>
-              <div class="task-table__title-cell">
-                <span class="task-table__title-text" [title]="task.title">{{ task.title }}</span>
-                @if (categoryName(task.categoryId); as catName) {
-                  <span class="task-table__title-tag">{{ catName }}</span>
+          </div>
+        } @else {
+          <span class="task-table__assignee-empty">—</span>
+        }
+      </ng-template>
+
+      <ng-template appDataTableCell="status" let-task>
+        @if (statuses().length > 0) {
+          <button
+            type="button"
+            class="task-table__status-btn"
+            [style.background]="statusBgTint(task.statusId)"
+            [style.color]="statusColor(task.statusId)"
+            [attr.data-testid]="'task-status-btn-' + task.id"
+            cdkOverlayOrigin
+            #statusOrigin="cdkOverlayOrigin"
+            [attr.aria-expanded]="isStatusPopoverOpen(task.id)"
+            title="Change status"
+            (click)="toggleStatusPopover(task, $event)"
+          >
+            <span class="task-table__status-dot" [style.background]="statusColor(task.statusId)"></span>
+            <span>{{ statusName(task.statusId) }}</span>
+          </button>
+
+          <ng-template
+            cdkConnectedOverlay
+            [cdkConnectedOverlayOrigin]="statusOrigin"
+            [cdkConnectedOverlayOpen]="isStatusPopoverOpen(task.id)"
+            [cdkConnectedOverlayPositions]="popoverPositions"
+            [cdkConnectedOverlayHasBackdrop]="true"
+            cdkConnectedOverlayBackdropClass="cdk-overlay-transparent-backdrop"
+            (backdropClick)="closePopovers()"
+            (detach)="closePopovers()"
+          >
+            <div class="task-table__popover" role="dialog" aria-label="Change status" (click)="$event.stopPropagation()">
+              <div class="task-table__popover-title">Status</div>
+              <div class="task-table__popover-list">
+                @for (opt of availableStatuses(task); track opt.id) {
+                  <button
+                    type="button"
+                    class="task-table__popover-option"
+                    [class.task-table__popover-option--selected]="task.statusId === opt.id"
+                    (click)="selectStatus(task, opt.id)"
+                  >
+                    <span class="task-table__status-dot" [style.background]="opt.color"></span>
+                    <span>{{ opt.name }}</span>
+                    @if (task.statusId === opt.id) {
+                      <svg class="task-table__popover-check" viewBox="0 0 24 24" aria-hidden="true"><polyline points="20 6 9 17 4 12" /></svg>
+                    }
+                  </button>
                 }
               </div>
-            </td>
-            <td>
-              @if (task.assignees.length > 0) {
-                <div class="task-table__assignee" [title]="assigneeNames(task)">
-                  <app-avatar [avatarUrl]="task.assignees[0].avatarUrl" [userName]="task.assignees[0].name" size="sm" />
-                  @if (task.assignees.length > 1) {
-                    <span class="task-table__assignee-more">+{{ task.assignees.length - 1 }}</span>
-                  }
-                </div>
-              } @else {
-                <span class="task-table__assignee-empty">—</span>
-              }
-            </td>
-            <td class="task-table__status-cell" (click)="$event.stopPropagation()">
-              @if (statuses().length > 0) {
+            </div>
+          </ng-template>
+        } @else {
+          {{ statusName(task.statusId) }}
+        }
+      </ng-template>
+
+      <ng-template appDataTableCell="priority" let-task>
+        <button
+          type="button"
+          class="task-table__priority-btn"
+          [attr.data-priority]="task.priority"
+          [attr.data-testid]="'task-priority-btn-' + task.id"
+          cdkOverlayOrigin
+          #priorityOrigin="cdkOverlayOrigin"
+          [attr.aria-expanded]="isPriorityPopoverOpen(task.id)"
+          title="Change priority"
+          (click)="togglePriorityPopover(task, $event)"
+        >
+          <svg class="task-table__priority-icon" [attr.data-priority]="task.priority" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 19V5M5 12l7-7 7 7" /></svg>
+          <span>{{ task.priority }}</span>
+        </button>
+
+        <ng-template
+          cdkConnectedOverlay
+          [cdkConnectedOverlayOrigin]="priorityOrigin"
+          [cdkConnectedOverlayOpen]="isPriorityPopoverOpen(task.id)"
+          [cdkConnectedOverlayPositions]="popoverPositions"
+          [cdkConnectedOverlayHasBackdrop]="true"
+          cdkConnectedOverlayBackdropClass="cdk-overlay-transparent-backdrop"
+          (backdropClick)="closePopovers()"
+          (detach)="closePopovers()"
+        >
+          <div class="task-table__popover task-table__priority-popover" role="dialog" aria-label="Change priority" (click)="$event.stopPropagation()">
+            <div class="task-table__popover-title">Priority</div>
+            <div class="task-table__popover-list">
+              @for (opt of priorityOptions; track opt.value) {
                 <button
                   type="button"
-                  class="task-table__status-btn"
-                  [style.background]="statusBgTint(task.statusId)"
-                  [style.color]="statusColor(task.statusId)"
-                  [attr.data-testid]="'task-status-btn-' + task.id"
-                  cdkOverlayOrigin
-                  #statusOrigin="cdkOverlayOrigin"
-                  [attr.aria-expanded]="isStatusPopoverOpen(task.id)"
-                  title="Change status"
-                  (click)="toggleStatusPopover(task, $event)"
+                  class="task-table__popover-option"
+                  [class.task-table__popover-option--selected]="task.priority === opt.value"
+                  (click)="selectPriority(task, opt.value)"
                 >
-                  <span class="task-table__status-dot" [style.background]="statusColor(task.statusId)"></span>
-                  <span>{{ statusName(task.statusId) }}</span>
+                  <svg class="task-table__priority-icon" [attr.data-priority]="opt.value" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 19V5M5 12l7-7 7 7" /></svg>
+                  <span>{{ opt.label }}</span>
+                  @if (task.priority === opt.value) {
+                    <svg class="task-table__popover-check" viewBox="0 0 24 24" aria-hidden="true"><polyline points="20 6 9 17 4 12" /></svg>
+                  }
                 </button>
-
-                <ng-template
-                  cdkConnectedOverlay
-                  [cdkConnectedOverlayOrigin]="statusOrigin"
-                  [cdkConnectedOverlayOpen]="isStatusPopoverOpen(task.id)"
-                  [cdkConnectedOverlayPositions]="popoverPositions"
-                  [cdkConnectedOverlayHasBackdrop]="true"
-                  cdkConnectedOverlayBackdropClass="cdk-overlay-transparent-backdrop"
-                  (backdropClick)="closePopovers()"
-                  (detach)="closePopovers()"
-                >
-                  <div class="task-table__popover" role="dialog" aria-label="Change status" (click)="$event.stopPropagation()">
-                    <div class="task-table__popover-title">Status</div>
-                    <div class="task-table__popover-list">
-                      @for (opt of availableStatuses(task); track opt.id) {
-                        <button
-                          type="button"
-                          class="task-table__popover-option"
-                          [class.task-table__popover-option--selected]="task.statusId === opt.id"
-                          (click)="selectStatus(task, opt.id)"
-                        >
-                          <span class="task-table__status-dot" [style.background]="opt.color"></span>
-                          <span>{{ opt.name }}</span>
-                          @if (task.statusId === opt.id) {
-                            <svg class="task-table__popover-check" viewBox="0 0 24 24" aria-hidden="true"><polyline points="20 6 9 17 4 12" /></svg>
-                          }
-                        </button>
-                      }
-                    </div>
-                  </div>
-                </ng-template>
-              } @else {
-                {{ statusName(task.statusId) }}
               }
-            </td>
-            <td (click)="$event.stopPropagation()">
+            </div>
+          </div>
+        </ng-template>
+      </ng-template>
+
+      <ng-template appDataTableCell="due" let-task>
+        <app-date-picker
+          variant="chip"
+          [btnTestId]="'task-due-date-btn-' + task.id"
+          chipClass="task-table__due-date-btn"
+          emptyLabel="—"
+          [value]="dueDateIso(task)"
+          [isCompleted]="isTaskCompleted(task)"
+          (valueChange)="onDateChange(task, $event)"
+        />
+      </ng-template>
+
+      <ng-template appDataTableCell="hours" let-task>{{ task.estimatedHours ?? '—' }}</ng-template>
+
+      <ng-template appDataTableCell="tracked" let-task>
+        @if (isAssignee(task)) {
+          <app-task-clock-widget
+            [task]="task"
+            [isAssignee]="isAssignee(task)"
+            [compact]="true"
+            [hasOpenSessionMine]="hasOpenSessionMine(task)"
+            [hasOpenSessionOtherEmployee]="hasOpenSessionOtherEmployee(task)"
+            (clockedIn)="taskChanged.emit()"
+            (pushed)="taskChanged.emit()"
+          />
+        } @else {
+          <span class="task-table__tracked">{{ trackedLabel(task) }}</span>
+        }
+      </ng-template>
+
+      <ng-template appDataTableRowAfter let-task let-colspan="colspan">
+        @if (task.subtaskTotalCount > 0) {
+          <tr class="task-table__subtask-toggle-row">
+            <td [attr.colspan]="colspan">
               <button
                 type="button"
-                class="task-table__priority-btn"
-                [attr.data-priority]="task.priority"
-                [attr.data-testid]="'task-priority-btn-' + task.id"
-                cdkOverlayOrigin
-                #priorityOrigin="cdkOverlayOrigin"
-                [attr.aria-expanded]="isPriorityPopoverOpen(task.id)"
-                title="Change priority"
-                (click)="togglePriorityPopover(task, $event)"
+                class="task-table__subtask-toggle"
+                [attr.data-testid]="'task-row-' + task.id + '-subtask-toggle'"
+                [attr.aria-expanded]="isExpanded(task.id)"
+                (click)="toggleSubtasks(task.id, $event)"
               >
-                <svg class="task-table__priority-icon" [attr.data-priority]="task.priority" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 19V5M5 12l7-7 7 7" /></svg>
-                <span>{{ task.priority }}</span>
+                <svg class="task-table__subtask-chevron" [class.task-table__subtask-chevron--open]="isExpanded(task.id)" viewBox="0 0 24 24" aria-hidden="true"><polyline points="6 9 12 15 18 9" /></svg>
+                <span>{{ task.subtaskCompletedCount }}/{{ task.subtaskTotalCount }} subtasks</span>
               </button>
-
-              <ng-template
-                cdkConnectedOverlay
-                [cdkConnectedOverlayOrigin]="priorityOrigin"
-                [cdkConnectedOverlayOpen]="isPriorityPopoverOpen(task.id)"
-                [cdkConnectedOverlayPositions]="popoverPositions"
-                [cdkConnectedOverlayHasBackdrop]="true"
-                cdkConnectedOverlayBackdropClass="cdk-overlay-transparent-backdrop"
-                (backdropClick)="closePopovers()"
-                (detach)="closePopovers()"
-              >
-                <div class="task-table__popover task-table__priority-popover" role="dialog" aria-label="Change priority" (click)="$event.stopPropagation()">
-                  <div class="task-table__popover-title">Priority</div>
-                  <div class="task-table__popover-list">
-                    @for (opt of priorityOptions; track opt.value) {
-                      <button
-                        type="button"
-                        class="task-table__popover-option"
-                        [class.task-table__popover-option--selected]="task.priority === opt.value"
-                        (click)="selectPriority(task, opt.value)"
-                      >
-                        <svg class="task-table__priority-icon" [attr.data-priority]="opt.value" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 19V5M5 12l7-7 7 7" /></svg>
-                        <span>{{ opt.label }}</span>
-                        @if (task.priority === opt.value) {
-                          <svg class="task-table__popover-check" viewBox="0 0 24 24" aria-hidden="true"><polyline points="20 6 9 17 4 12" /></svg>
-                        }
-                      </button>
-                    }
-                  </div>
-                </div>
-              </ng-template>
-            </td>
-            <td (click)="$event.stopPropagation()">
-              <app-date-picker
-                variant="chip"
-                [btnTestId]="'task-due-date-btn-' + task.id"
-                chipClass="task-table__due-date-btn"
-                emptyLabel="—"
-                [value]="dueDateIso(task)"
-                [isCompleted]="isTaskCompleted(task)"
-                (valueChange)="onDateChange(task, $event)"
-              />
-            </td>
-            <td>{{ task.estimatedHours ?? '—' }}</td>
-            <td class="task-table__tracked-cell" (click)="$event.stopPropagation()">
-              @if (isAssignee(task)) {
-                <app-task-clock-widget
-                  [task]="task"
-                  [isAssignee]="isAssignee(task)"
-                  [compact]="true"
-                  [hasOpenSessionMine]="hasOpenSessionMine(task)"
-                  [hasOpenSessionOtherEmployee]="hasOpenSessionOtherEmployee(task)"
-                  (clockedIn)="taskChanged.emit()"
-                  (pushed)="taskChanged.emit()"
-                />
-              } @else {
-                <span class="task-table__tracked">{{ trackedLabel(task) }}</span>
-              }
             </td>
           </tr>
-          @if (task.subtaskTotalCount > 0) {
-            <tr class="task-table__subtask-toggle-row">
-              <td [attr.colspan]="selectable() ? 9 : 8">
-                <button
-                  type="button"
-                  class="task-table__subtask-toggle"
-                  [attr.data-testid]="'task-row-' + task.id + '-subtask-toggle'"
-                  [attr.aria-expanded]="isExpanded(task.id)"
-                  (click)="toggleSubtasks(task.id, $event)"
-                >
-                  <svg class="task-table__subtask-chevron" [class.task-table__subtask-chevron--open]="isExpanded(task.id)" viewBox="0 0 24 24" aria-hidden="true"><polyline points="6 9 12 15 18 9" /></svg>
-                  <span>{{ task.subtaskCompletedCount }}/{{ task.subtaskTotalCount }} subtasks</span>
-                </button>
-              </td>
-            </tr>
-            @if (isExpanded(task.id)) {
-              @for (subtask of subtasksFor(task.id); track subtask.id) {
-                <tr [attr.data-testid]="'task-row-' + subtask.id" class="task-table__subtask-row" (click)="viewed.emit(subtask)">
-                  <td [attr.colspan]="selectable() ? 9 : 8" class="task-table__subtask-cell">
-                    <span class="task-table__subtask-title">{{ subtask.title }}</span>
-                    <span class="task-table__subtask-status">{{ statusName(subtask.statusId) }}</span>
-                  </td>
-                </tr>
-              }
+          @if (isExpanded(task.id)) {
+            @for (subtask of subtasksFor(task.id); track subtask.id) {
+              <tr [attr.data-testid]="'task-row-' + subtask.id" class="task-table__subtask-row" (click)="viewed.emit(subtask)">
+                <td [attr.colspan]="colspan" class="task-table__subtask-cell">
+                  <span class="task-table__subtask-title">{{ subtask.title }}</span>
+                  <span class="task-table__subtask-status">{{ statusName(subtask.statusId) }}</span>
+                </td>
+              </tr>
             }
           }
         }
-      </tbody>
-    </table>
-    </div>
+      </ng-template>
+    </app-data-table>
   `,
   styles: [`
-    .task-table__scroll { overflow-x: auto; border-radius: 12px; background: var(--color-surface-secondary); padding: 2px 4px 6px; }
-    .task-table { width: 100%; min-width: 986px; table-layout: fixed; border-collapse: separate; border-spacing: 0 5px; color: var(--color-text-primary); }
-    .task-table__col-select { width: 3%; }
-    .task-table__col-module { width: 16%; }
-    .task-table__col-title { width: 28%; }
-    .task-table__col-assignee { width: 8%; }
-    .task-table__col-status { width: 11%; }
-    .task-table__col-priority { width: 9%; }
-    .task-table__col-due { width: 10%; }
-    .task-table__col-hours { width: 8%; }
-    .task-table__col-tracked { width: 7%; }
-    .task-table th, .task-table td { text-align: left; white-space: nowrap; vertical-align: middle; }
-    .task-table th:not(.task-table__select-cell) { overflow: hidden; text-overflow: ellipsis; }
-    /* Ellipsis-truncate plain-text cells only - the Status and Tracked columns host popups
-       (dropdown menu / clock push panel) that would get clipped by an overflow:hidden ancestor. */
-    .task-table td:not(.task-table__select-cell) { overflow: hidden; text-overflow: ellipsis; }
-    .task-table td.task-table__status-cell, .task-table td.task-table__tracked-cell { overflow: visible; text-overflow: clip; }
-    .task-table thead tr { background: var(--color-surface-secondary); }
-    .task-table th { padding: 13px 16px; cursor: pointer; color: var(--color-text-secondary); font-size: 12px; font-weight: 600; text-transform: uppercase; letter-spacing: .04em; transition: color 160ms ease; }
-    .task-table th:hover { color: var(--color-accent); }
-    .task-table thead th:first-child { border-top-left-radius: 8px; }
-    .task-table thead th:last-child { border-top-right-radius: 8px; }
-    .task-table tbody tr { cursor: pointer; }
-    .task-table td { padding: 7px 14px; font-size: 13px; }
-
-    /* Card-style rows: each data row renders as its own rounded, bordered card floating on the
-       table's tinted background, separated by the table's own vertical border-spacing rather than
-       horizontal rule lines. Cells share top/bottom borders but only the outer cells get left/right
-       borders + corner radii, so adjacent columns read as one seamless card, not boxed cells. */
-    .task-table__row-card td {
-      background: var(--color-surface);
-      border-top: 1px solid var(--color-border);
-      border-bottom: 1px solid var(--color-border);
-      transition: background-color 150ms ease, border-color 150ms ease;
-    }
-    .task-table__row-card td:first-child { border-left: 1px solid var(--color-border); border-top-left-radius: 8px; border-bottom-left-radius: 8px; }
-    .task-table__row-card td:last-child { border-right: 1px solid var(--color-border); border-top-right-radius: 8px; border-bottom-right-radius: 8px; }
-    .task-table__row-card:hover td { border-color: color-mix(in srgb, var(--color-accent) 22%, var(--color-border)); }
-    .task-table__row-card.task-table__row--selected td { background: color-mix(in srgb, var(--color-accent) 7%, var(--color-surface)); border-color: color-mix(in srgb, var(--color-accent) 38%, var(--color-border)); }
+    /* Table shell (card rows, header, checkbox column) comes from shared app-data-table; only cell content is styled here. */
     .task-table__subtask-toggle-row td { padding: 4px 14px 4px 34px; }
     .task-table__subtask-toggle { display: inline-flex; align-items: center; gap: 5px; border: 0; background: transparent; padding: 0; color: var(--color-text-secondary); font-size: 11px; font-weight: 600; cursor: pointer; }
     .task-table__subtask-chevron { width: 12px; height: 12px; stroke: currentColor; fill: none; stroke-width: 2; transition: transform 120ms ease; }
@@ -404,8 +353,6 @@ const TABLE_POPOVER_POSITIONS: ConnectionPositionPair[] = [
       margin-left: auto;
       flex-shrink: 0;
     }
-    .task-table__select-cell { width: 1%; white-space: nowrap; }
-    .task-table__select-cell input[type="checkbox"] { width: 15px; height: 15px; cursor: pointer; accent-color: var(--color-accent); }
   `]
 })
 export class TaskTableComponent {
@@ -414,6 +361,11 @@ export class TaskTableComponent {
   private readonly notificationService = inject(NotificationService);
 
   protected readonly popoverPositions = TABLE_POPOVER_POSITIONS;
+  protected readonly columns = TASK_TABLE_COLUMNS;
+  protected readonly trackTask = (task: WorkTask): string => task.id;
+  protected readonly rowTestId = (task: WorkTask): string => 'task-row-' + task.id;
+  protected readonly selectTestId = (task: WorkTask): string => 'task-select-' + task.id;
+  protected readonly isRowSelectableFn = (task: WorkTask): boolean => this.isRowSelectable(task);
   protected readonly priorityOptions = [
     { value: 'critical', label: 'Critical' },
     { value: 'high', label: 'High' },
@@ -544,10 +496,6 @@ export class TaskTableComponent {
     this.expandedTaskIds.set(next);
   }
 
-  isSelected(taskId: string): boolean {
-    return this.selectedIds().has(taskId);
-  }
-
   // Moving a task requires owning its module (the same gate task-form-modal uses to route
   // between a direct edit and a request-for-approval) - a row for a module the caller doesn't
   // own gets no checkbox at all, rather than letting selection attempt a move that would fail.
@@ -557,24 +505,13 @@ export class TaskTableComponent {
 
   protected readonly selectableTasks = computed(() => this.tasks().filter((t) => this.isRowSelectable(t)));
 
-  protected readonly allSelected = computed(() => {
-    const tasks = this.selectableTasks();
-    return tasks.length > 0 && tasks.every((t) => this.selectedIds().has(t.id));
-  });
-
-  protected readonly someSelected = computed(() => {
-    const tasks = this.selectableTasks();
-    const selected = this.selectedIds();
-    return tasks.some((t) => selected.has(t.id)) && !this.allSelected();
-  });
-
-  onRowSelectChanged(taskId: string, event: Event): void {
-    this.selectionChanged.emit({ taskId, selected: (event.target as HTMLInputElement).checked });
+  protected selectableTaskIds(): string[] {
+    return this.selectableTasks().map((t) => t.id);
   }
 
-  onSelectAllChanged(event: Event): void {
-    const selected = (event.target as HTMLInputElement).checked;
-    this.selectAllChanged.emit({ taskIds: this.selectableTasks().map((t) => t.id), selected });
+  protected onSortRequested(columnKey: string): void {
+    const key = SORT_KEYS[columnKey];
+    if (key) this.toggleSort(key);
   }
 
   isAssignee(task: WorkTask): boolean {

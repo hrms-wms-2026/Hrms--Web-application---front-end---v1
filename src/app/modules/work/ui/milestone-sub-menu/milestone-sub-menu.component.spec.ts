@@ -20,7 +20,7 @@ describe('MilestoneSubMenuComponent', () => {
 
     const labels = Array.from(fixture.nativeElement.querySelectorAll('[data-testid="sub-menu-tab"]'))
       .map((el) => (el as HTMLElement).textContent?.trim() ?? '');
-        expect(labels).toEqual(['Tree', 'Board', 'Backlog', 'Approvals', 'Calendar']);
+        expect(labels).toEqual(['Tree', 'Board', 'Backlog', 'Approvals', 'Milestones']);
 
   });
 
@@ -29,7 +29,7 @@ describe('MilestoneSubMenuComponent', () => {
     fixture.detectChanges();
     const labels = Array.from(fixture.nativeElement.querySelectorAll('[data-testid="sub-menu-tab"]'))
       .map((el) => (el as HTMLElement).textContent?.trim() ?? '');
-        expect(labels).toEqual(['Tree', 'Board', 'Backlog', 'Approvals', 'Calendar', 'Settings']);
+        expect(labels).toEqual(['Tree', 'Board', 'Backlog', 'Approvals', 'Milestones', 'Settings']);
 
   });
 

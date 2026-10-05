@@ -52,6 +52,16 @@ import { toggleModuleLive } from '../../utils/module-task-selection';
           </span>
         </label>
 
+        <label class="mb-4 block text-sm text-[var(--color-text-secondary)]">Description
+          <textarea
+            class="mt-1 w-full rounded-md border border-[var(--color-border)] bg-transparent px-3 py-2 text-[var(--color-text-primary)]"
+            rows="3" maxlength="2000"
+            [value]="description()"
+            (input)="description.set($any($event.target).value)"
+            data-testid="event-description"
+          ></textarea>
+        </label>
+
         <div class="mb-4 max-h-72 overflow-y-auto rounded-md border border-[var(--color-border)] p-2">
           <div class="mb-2 inline-flex rounded-md border border-[var(--color-border)] p-0.5 text-xs" role="tablist" aria-label="Pick tasks by">
             <button type="button" role="tab" data-testid="view-tree" [attr.aria-selected]="view() === 'tree'"
@@ -100,6 +110,7 @@ export class CalendarEventModalComponent {
   readonly color = signal('#2563EB');
   readonly startDate = signal('');
   readonly endDate = signal('');
+  readonly description = signal('');
   readonly selectedObjectiveIds = signal<Set<string>>(new Set());
   readonly selectedTaskIds = signal<Set<string>>(new Set());
   readonly error = signal<string | null>(null);
@@ -121,6 +132,7 @@ export class CalendarEventModalComponent {
       this.color.set(event?.color ?? '#2563EB');
       this.startDate.set(event?.startDate ?? '');
       this.endDate.set(event?.endDate ?? '');
+      this.description.set(event?.description ?? '');
       this.selectedObjectiveIds.set(new Set(event?.objectiveIds ?? []));
       this.selectedTaskIds.set(new Set(event?.taskIds ?? []));
       this.error.set(null);
@@ -145,7 +157,8 @@ export class CalendarEventModalComponent {
       startDate: this.startDate(),
       endDate: this.endDate(),
       objectiveIds: [...this.selectedObjectiveIds()],
-      taskIds: [...this.selectedTaskIds()]
+      taskIds: [...this.selectedTaskIds()],
+      description: this.description().trim()
     });
   }
 }

@@ -8,7 +8,7 @@ import { ObjectiveMemberApiService } from '../data-access/objective-member-api.s
 import { SprintApiService } from '../data-access/sprint-api.service';
 import { TaskApiService } from '../data-access/task-api.service';
 import { ProjectDetailDto } from '../models/dto/project.dto';
-import { MyProjectMilestoneDto, ObjectiveDetailDto, CreateObjectiveRequestDto, AddObjectiveMemberOutcomeDto, TransferObjectiveHeadOutcomeDto, ObjectiveAssetDto } from '../models/dto/milestone.dto';
+import { MyProjectMilestoneDto, ObjectiveDetailDto, CreateObjectiveRequestDto, AddObjectiveMemberOutcomeDto, RemoveObjectiveMemberOutcomeDto, TransferObjectiveHeadOutcomeDto, ObjectiveAssetDto } from '../models/dto/milestone.dto';
 import { ObjectiveTreeItemDto } from '../models/dto/objective-tree.dto';
 import { ObjectiveInvitationDto } from '../models/dto/objective-invitation.dto';
 import { SprintDto } from '../models/dto/sprint.dto';
@@ -288,21 +288,48 @@ describe('ProjectDetailStore', () => {
   });
 
   it('addObjectiveMember reports pending:false when already an active member (204)', async () => {
-    const memberApi = { addMember: vi.fn().mockReturnValue(of(new HttpResponse<AddObjectiveMemberOutcomeDto>({ body: { alreadyMember: true, invitation: null }, status: 204 }))) };
+    const memberApi = { addMember: vi.fn().mockReturnValue(of(new HttpResponse<AddObjectiveMemberOutcomeDto>({ body: { applied: true, alreadyMember: true, approvalRequestId: null, invitation: null }, status: 204 }))) };
     const store = createStoreWithMemberApi(memberApi);
 
     const result = await store.addObjectiveMember('o1', 'e2');
 
-    expect(result).toEqual({ success: true, alreadyMember: true });
+    expect(result).toEqual({ success: true, alreadyMember: true, applied: true, pending: false });
   });
 
-  it('addObjectiveMember reports pending:true (invitation created) on 202', async () => {
-    const memberApi = { addMember: vi.fn().mockReturnValue(of(new HttpResponse<AddObjectiveMemberOutcomeDto>({ body: { alreadyMember: false, invitation: { id: 'i1' } as ObjectiveInvitationDto }, status: 202 }))) };
+  it('addObjectiveMember reports pending:false (invitation created) when applied immediately on 202', async () => {
+    const memberApi = { addMember: vi.fn().mockReturnValue(of(new HttpResponse<AddObjectiveMemberOutcomeDto>({ body: { applied: true, alreadyMember: false, approvalRequestId: null, invitation: { id: 'i1' } as ObjectiveInvitationDto }, status: 202 }))) };
     const store = createStoreWithMemberApi(memberApi);
 
     const result = await store.addObjectiveMember('o1', 'e2');
 
-    expect(result).toEqual({ success: true, alreadyMember: false });
+    expect(result).toEqual({ success: true, alreadyMember: false, applied: true, pending: false });
+  });
+
+  it('addObjectiveMember reports pending:true (sent for approval) on a 202 with approvalRequestId', async () => {
+    const memberApi = { addMember: vi.fn().mockReturnValue(of(new HttpResponse<AddObjectiveMemberOutcomeDto>({ body: { applied: false, alreadyMember: false, approvalRequestId: 'ar-4', invitation: null }, status: 202 }))) };
+    const store = createStoreWithMemberApi(memberApi);
+
+    const result = await store.addObjectiveMember('o1', 'e2');
+
+    expect(result).toEqual({ success: true, alreadyMember: false, applied: false, pending: true });
+  });
+
+  it('removeObjectiveMember reports pending:false when applied immediately (204)', async () => {
+    const memberApi = { removeMember: vi.fn().mockReturnValue(of(new HttpResponse<RemoveObjectiveMemberOutcomeDto>({ body: null, status: 204 }))) };
+    const store = createStoreWithMemberApi(memberApi);
+
+    const result = await store.removeObjectiveMember('o1', 'e2');
+
+    expect(result).toEqual({ success: true, applied: true, pending: false });
+  });
+
+  it('removeObjectiveMember reports pending:true (sent for approval) on a 202 with approvalRequestId', async () => {
+    const memberApi = { removeMember: vi.fn().mockReturnValue(of(new HttpResponse<RemoveObjectiveMemberOutcomeDto>({ body: { applied: false, approvalRequestId: 'ar-5' }, status: 202 }))) };
+    const store = createStoreWithMemberApi(memberApi);
+
+    const result = await store.removeObjectiveMember('o1', 'e2');
+
+    expect(result).toEqual({ success: true, applied: false, pending: true });
   });
 
   it('transferObjectiveHead reports applied:false with a pendingInvitation on 202', async () => {

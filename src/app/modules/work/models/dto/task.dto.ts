@@ -64,6 +64,7 @@ export interface WorkTaskDto {
   createdAt: string;
   taskKind?: 'standard' | 'employee_checklist';
   visibilityScope?: 'module' | 'assignees';
+  hasPendingApproval?: boolean;
 }
 
 export interface CreateTaskRequestDto {

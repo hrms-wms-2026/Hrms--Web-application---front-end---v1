@@ -34,6 +34,12 @@ export interface TaskCardAssignableMember {
       <div class="task-card" [attr.data-testid]="'task-card-' + task().id" (click)="viewed.emit(task())">
         <div class="task-card__header">
           <span class="task-card__short-id">{{ task().shortId }}</span>
+          @if (task().hasPendingApproval) {
+            <span class="task-card__pending-badge" data-testid="task-card-pending-approval" title="Awaiting approval">
+              <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 21a9 9 0 1 0 0-18 9 9 0 0 0 0 18Z" /><path d="M12 7v5l3 2" /></svg>
+              Pending
+            </span>
+          }
         </div>
         <p class="task-card__title">
           <span class="task-card__title-text" [title]="task().title">{{ task().title }}</span>
@@ -289,6 +295,15 @@ export interface TaskCardAssignableMember {
       gap: 8px;
     }
     .task-card__short-id { font-size: 11px; color: var(--color-text-secondary); }
+    .task-card__pending-badge {
+      display: inline-flex; flex: 0 0 auto; align-items: center; gap: 3px;
+      padding: 2px 7px; border-radius: 999px;
+      background: color-mix(in srgb, var(--color-warning, #d97706) 14%, transparent);
+      color: var(--color-warning, #b45309);
+      font-size: 10px; font-weight: 650; text-transform: uppercase; letter-spacing: .03em;
+      white-space: nowrap;
+    }
+    .task-card__pending-badge svg { width: 11px; height: 11px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
     .task-card__title { min-width: 0; margin: 5px 0 7px; font-size: 13px; font-weight: 500; color: var(--color-text-primary); line-height: 1.4; }
     .task-card__title-text { display: block; min-width: 0; max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
     .task-card__meta { display: flex; align-items: center; gap: 6px; font-size: 11.5px; color: var(--color-text-secondary); }

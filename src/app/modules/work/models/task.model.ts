@@ -54,6 +54,7 @@ export interface WorkTask {
   createdAt: Date;
   taskKind?: 'standard' | 'employee_checklist';
   visibilityScope?: 'module' | 'assignees';
+  hasPendingApproval: boolean;
 }
 import { BulkResultSummary } from '../../../shared/ui/bulk-action-result-modal/bulk-action-result-modal.component';
 

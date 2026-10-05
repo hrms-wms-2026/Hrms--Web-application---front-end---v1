@@ -6,7 +6,9 @@ import { ProjectApiService } from '../data-access/project-api.service';
 import {
   CalendarDateChange,
   CalendarDateSaveResult,
+  CalendarEventActivityEntryDto,
   CalendarEventDto,
+  CalendarEventTaskSummaryDto,
   CreateCalendarEventRequestDto,
   ProjectCalendarEventBandDto,
   ProjectCalendarModuleDto,
@@ -24,6 +26,9 @@ interface ProjectCalendarState {
   readonly error: string | null;
   readonly pendingObjectiveIds: readonly string[];
   readonly approvalMessages: Readonly<Record<string, string>>;
+  readonly eventDetail: CalendarEventDto | null;
+  readonly eventTasks: readonly CalendarEventTaskSummaryDto[];
+  readonly eventActivity: readonly CalendarEventActivityEntryDto[];
 }
 
 const initialState: ProjectCalendarState = {
@@ -35,7 +40,10 @@ const initialState: ProjectCalendarState = {
   saving: false,
   error: null,
   pendingObjectiveIds: [],
-  approvalMessages: {}
+  approvalMessages: {},
+  eventDetail: null,
+  eventTasks: [],
+  eventActivity: []
 };
 
 function extractError(err: any, fallback: string): string {
@@ -91,7 +99,18 @@ export const ProjectCalendarStore = signalStore(
       }
     }
 
-    return {
+    let eventDetailVersion = 0;
+    let eventTasksVersion = 0;
+    let eventActivityVersion = 0;
+
+    function refreshOpenPanel(id: string): void {
+      if (store.eventDetail()?.id !== id) return;
+      void methods.loadEventDetail(id);
+      void methods.loadEventTasks(id);
+      void methods.loadEventActivity(id);
+    }
+
+    const methods = {
       load,
 
       async saveDates(change: CalendarDateChange): Promise<CalendarDateSaveResult> {
@@ -165,6 +184,7 @@ export const ProjectCalendarStore = signalStore(
         try {
           await firstValueFrom(calendarApi.updateEvent(id, payload));
           if (projectId) await load(projectId);
+          refreshOpenPanel(id);
           return true;
         } catch (err) {
           patchState(store, { error: extractError(err, 'Failed to update the calendar milestone.') });
@@ -173,7 +193,7 @@ export const ProjectCalendarStore = signalStore(
       },
 
       saveEventDates(eventId: string, startDate: string, endDate: string): Promise<boolean> {
-        return this.updateEvent(eventId, { startDate, endDate });
+        return methods.updateEvent(eventId, { startDate, endDate });
       },
 
       async closeEvent(id: string): Promise<boolean> {
@@ -181,12 +201,56 @@ export const ProjectCalendarStore = signalStore(
         try {
           await firstValueFrom(calendarApi.closeEvent(id));
           if (projectId) await load(projectId);
+          refreshOpenPanel(id);
           return true;
         } catch (err) {
           patchState(store, { error: extractError(err, 'Failed to close the calendar milestone.') });
           return false;
         }
+      },
+
+      /** Returns the fetched detail (null on failure/supersession) so callers like openEditEvent act on
+       *  THIS fetch's outcome - on a failed refresh, state still holds the old matching-id detail. */
+      async loadEventDetail(id: string): Promise<CalendarEventDto | null> {
+        const version = ++eventDetailVersion;
+        // Clear only when switching milestones, so silent refreshes don't flash the open panel empty.
+        if (store.eventDetail()?.id !== id) patchState(store, { eventDetail: null });
+        try {
+          const detail = await firstValueFrom(calendarApi.getEvent(id));
+          if (version !== eventDetailVersion) return null;
+          patchState(store, { eventDetail: detail });
+          return detail;
+        } catch (err) {
+          if (version === eventDetailVersion) patchState(store, { error: extractError(err, 'Failed to load the milestone.') });
+          return null;
+        }
+      },
+
+      async loadEventTasks(id: string): Promise<void> {
+        const version = ++eventTasksVersion;
+        try {
+          const tasks = await firstValueFrom(calendarApi.getEventTasks(id));
+          if (version === eventTasksVersion) patchState(store, { eventTasks: tasks });
+        } catch (err) {
+          if (version === eventTasksVersion) patchState(store, { error: extractError(err, 'Failed to load the milestone tasks.') });
+        }
+      },
+
+      async loadEventActivity(id: string): Promise<void> {
+        const version = ++eventActivityVersion;
+        try {
+          const activity = await firstValueFrom(calendarApi.getEventActivity(id));
+          if (version === eventActivityVersion) patchState(store, { eventActivity: activity });
+        } catch (err) {
+          if (version === eventActivityVersion) patchState(store, { error: extractError(err, 'Failed to load the milestone activity.') });
+        }
+      },
+
+      clearEventPanel(): void {
+        eventDetailVersion++; eventTasksVersion++; eventActivityVersion++;
+        patchState(store, { eventDetail: null, eventTasks: [], eventActivity: [] });
       }
     };
+    return methods;
   })
 );

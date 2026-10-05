@@ -15,7 +15,7 @@ const task: WorkTask = {
   assigneeEmployeeIds: ['e1'], openClockSessionEmployeeId: null, openClockSessionClockInAt: null, totalLoggedMinutes: 0,
   attachments: [], assignees: [],
   parentTaskId: null, subtaskTotalCount: 0, subtaskCompletedCount: 0, subtaskAssigneeEmployeeIds: [],
-  createdAt: new Date('2026-01-01T00:00:00Z')
+  createdAt: new Date('2026-01-01T00:00:00Z'), hasPendingApproval: false
 };
 
 const status: TaskStatusColumn = {
@@ -109,6 +109,32 @@ describe('TaskBoardColumnComponent', () => {
       categoryId: 'c1'
     }));
     expect(fixture.componentInstance.quickTitle()).toBe('');
+  });
+
+  it('includes story points in the emitted payload, and clears the field after a successful save', async () => {
+    fixture.componentRef.setInput('modules', [{ objectiveId: 'o1', title: 'Milestone 1', isOwner: true }]);
+    fixture.componentRef.setInput('categories', [{ id: 'c1', name: 'General', displayOrder: 1, isDefault: true }]);
+    fixture.detectChanges();
+
+    fixture.componentInstance.openQuickCreate();
+    const emitSpy = vi.fn();
+    fixture.componentInstance.quickTaskCreated.subscribe((e) => {
+      emitSpy(e);
+      e.resolve(true);
+    });
+
+    fixture.componentInstance.quickTitle.set('With points');
+    fixture.componentInstance.setPriority('high');
+    fixture.componentInstance.setStoryPoints('5');
+    fixture.detectChanges();
+
+    const pointsInput = fixture.debugElement.query(By.css('[data-testid="quick-task-story-points-input"]'));
+    expect(pointsInput.nativeElement.value).toBe('5');
+
+    await fixture.componentInstance.submitQuickTask();
+
+    expect(emitSpy).toHaveBeenCalledWith(expect.objectContaining({ storyPoints: 5 }));
+    expect(fixture.componentInstance.quickStoryPoints()).toBeNull();
   });
 
   it('closes quick task card on escape', () => {

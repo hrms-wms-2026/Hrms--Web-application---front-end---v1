@@ -50,7 +50,8 @@ export function toWorkTask(dto: WorkTaskDto): WorkTask {
     subtaskAssigneeEmployeeIds: dto.subtaskAssigneeEmployeeIds ?? [],
     createdAt: new Date(dto.createdAt),
     taskKind: dto.taskKind ?? 'standard',
-    visibilityScope: dto.visibilityScope ?? 'module'
+    visibilityScope: dto.visibilityScope ?? 'module',
+    hasPendingApproval: dto.hasPendingApproval ?? false
   };
 }
 
