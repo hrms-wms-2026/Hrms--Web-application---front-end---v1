@@ -13,7 +13,8 @@ export function toProject(dto: ProjectListItemDto): Project {
     leadId: dto.leadId, startDate: dto.startDate, targetDate: dto.targetDate, color: dto.color,
     isActive: dto.isActive, allocatedHours: dto.allocatedHours, completedHours: dto.completedHours,
     isLead: dto.isLead, isAchieved: dto.isAchieved, achievedAt: dto.achievedAt, updatedAt: dto.updatedAt,
-    logoFileId: dto.logoFileId, labels: dto.labels, members: dto.members, memberCount: dto.memberCount
+    logoFileId: dto.logoFileId, labels: dto.labels, members: dto.members, memberCount: dto.memberCount,
+    systemPurpose: dto.systemPurpose ?? null
   };
 }
 
@@ -24,7 +25,8 @@ export function toProjectDetail(dto: ProjectDetailDto): ProjectDetail {
     isActive: dto.isActive, allocatedHours: dto.allocatedHours, completedHours: dto.completedHours,
     isLead: dto.isLead, isAchieved: dto.isAchieved, achievedAt: dto.achievedAt, logoFileId: dto.logoFileId,
     actualHours: dto.actualHours, createdAt: dto.createdAt, updatedAt: dto.updatedAt,
-    labels: dto.labels, members: dto.members, memberCount: dto.memberCount
+    labels: dto.labels, members: dto.members, memberCount: dto.memberCount,
+    systemPurpose: dto.systemPurpose ?? null
   };
 }
 

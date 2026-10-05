@@ -100,6 +100,20 @@ describe('TaskCardComponent', () => {
     expect(text).not.toContain('emp-1');
   });
 
+  it('ellipsizes a long unbroken task title inside the card', () => {
+    const longTitle = 'w'.repeat(200);
+    setup({ task: { ...task, title: longTitle } });
+
+    const title: HTMLElement = fixture.nativeElement.querySelector('.task-card__title-text');
+    const styles = getComputedStyle(title);
+
+    expect(title.textContent).toBe(longTitle);
+    expect(title.getAttribute('title')).toBe(longTitle);
+    expect(styles.overflow).toBe('hidden');
+    expect(styles.textOverflow).toBe('ellipsis');
+    expect(styles.whiteSpace).toBe('nowrap');
+  });
+
   it('prefers the coverage-free project-member name over the management-coverage-scoped directory lookup, so it shows real initials instead of "Unknown employee"', () => {
     setup(); // both emp-1 and emp-2 are known assignable project members
     const avatars = fixture.debugElement.queryAll(By.directive(AvatarComponent));

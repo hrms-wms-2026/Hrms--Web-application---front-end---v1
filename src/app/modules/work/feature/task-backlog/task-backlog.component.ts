@@ -54,10 +54,10 @@ const BULK_POPOVER_POSITIONS: ConnectionPositionPair[] = [
           (selectionChanged)="setAssigneeFilter($event)"
         />
         <app-task-filter-bar [fields]="filterFields()" [values]="filterValues()" (fieldChanged)="onFilterFieldChanged($event)" />
-        @if (modules().length > 0) {
+        @if (modules().length > 0 && !isOfficeProject()) {
           <app-button variant="secondary" (pressed)="openCreateTask()">Create work item</app-button>
         }
-        @if (modules().length > 0) {
+        @if (modules().length > 0 && !isOfficeProject()) {
           <app-button variant="primary" (pressed)="createSprintOpen.set(true)">Create Sprint</app-button>
         }
       </div>
@@ -383,6 +383,7 @@ export class TaskBacklogComponent implements OnInit, AfterViewInit, OnDestroy {
   protected readonly bulkResult = signal<{ title: string; summary: BulkResultSummary } | null>(null);
   protected readonly deleteConfirmOpen = signal(false);
   protected readonly projectId = signal('');
+  protected readonly isOfficeProject = computed(() => this.projectStore.project()?.systemPurpose === 'office');
   protected readonly expandedSprintId = signal<string | null>(null);
   protected readonly assignableMembers = signal<{ employeeId: string; name: string; avatarUrl: string | null }[]>([]);
   // Everyone on the project, unscoped by which milestones the viewer can reach - the roster

@@ -202,6 +202,15 @@ export interface EmployeeDetailPayroll {
   readonly accountType: string | null;
 }
 
+export interface EmployeeBankDetailsRevealResponse {
+  readonly bankName: string;
+  readonly branchName: string;
+  readonly accountHolderName: string;
+  readonly accountNumber: string;
+  readonly accountType: string;
+  readonly routingNumber: string | null;
+}
+
 export interface ChangePositionPayload {
   readonly positionId: string;
   readonly effectiveFrom: string;

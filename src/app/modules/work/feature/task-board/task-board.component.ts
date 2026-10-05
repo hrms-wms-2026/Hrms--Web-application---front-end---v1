@@ -42,7 +42,7 @@ import { NotificationService } from '../../../../core/services/notification.serv
           (selectionChanged)="setAssigneeFilter($event)"
         />
         <app-task-filter-bar [fields]="filterFields()" [values]="filterValues()" (fieldChanged)="onFilterFieldChanged($event)" />
-        @if (modules().length > 0) {
+        @if (modules().length > 0 && !isOfficeProject()) {
           <app-button variant="primary" (pressed)="goToCreate()">Create work item</app-button>
         }
       </div>
@@ -67,7 +67,7 @@ import { NotificationService } from '../../../../core/services/notification.serv
             [defaultObjectiveId]="modalPrefillModuleId()"
             [defaultSprintId]="modalPrefillSprintId()"
             [projectId]="projectId()"
-            [isProjectMember]="isProjectMember()"
+            [isProjectMember]="isProjectMember() && !isOfficeProject()"
             (taskDropped)="onTaskDropped($event)"
             (taskViewed)="onTaskViewed($event)"
             (taskChanged)="reload()"
@@ -123,6 +123,7 @@ export class TaskBoardComponent implements OnInit, AfterViewChecked, AfterViewIn
   private readonly toolbarTpl = viewChild.required<TemplateRef<unknown>>('toolbarTpl');
 
   protected readonly projectId = signal('');
+  protected readonly isOfficeProject = computed(() => this.projectStore.project()?.systemPurpose === 'office');
   protected readonly sprints = signal<Sprint[]>([]);
   protected readonly categories = signal<TaskCategoryColumn[]>([]);
   protected readonly rawAssignableMembers = signal<TaskAssigneeAvatarMember[]>([]);
