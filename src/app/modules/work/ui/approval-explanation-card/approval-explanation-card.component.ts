@@ -1,6 +1,7 @@
 import { DatePipe } from '@angular/common';
-import { Component, computed, effect, input, output, signal } from '@angular/core';
+import { Component, DestroyRef, computed, effect, inject, input, output, signal } from '@angular/core';
 import { AvatarComponent } from '../../../../shared/ui/avatar/avatar.component';
+import { ConfirmModalComponent } from '../../../../shared/ui/confirm-modal/confirm-modal.component';
 import { DatePickerComponent } from '../../../../shared/ui/date-picker/date-picker.component';
 import { WorkDropdownComponent, WorkDropdownOption } from '../work-dropdown/work-dropdown.component';
 import { ApprovalCommentsComponent } from '../approval-comments/approval-comments.component';
@@ -97,7 +98,7 @@ const PRIORITY_OPTIONS: readonly WorkDropdownOption[] = [
 @Component({
   selector: 'app-approval-explanation-card',
   standalone: true,
-  imports: [DatePipe, AvatarComponent, DatePickerComponent, WorkDropdownComponent, ApprovalCommentsComponent, ApprovalRejectDialogComponent, ApprovalTypeIconComponent],
+  imports: [DatePipe, AvatarComponent, ConfirmModalComponent, DatePickerComponent, WorkDropdownComponent, ApprovalCommentsComponent, ApprovalRejectDialogComponent, ApprovalTypeIconComponent],
   host: { class: 'block h-full min-w-0' },
   template: `
     <aside class="approval-card" data-testid="approval-card" aria-label="Request details">
@@ -304,7 +305,7 @@ const PRIORITY_OPTIONS: readonly WorkDropdownOption[] = [
           </section>
         </div>
 
-        @if (item.canDecide || item.canCancel) {
+        @if (item.canDecide || item.canCancel || canRevertValue()) {
           <footer class="approval-card__footer" data-testid="approval-card-footer">
             @if (item.canDecide) {
               <button type="button" [class]="secondaryBtn" data-testid="approval-card-reject" [disabled]="busy()" (click)="rejectOpen.set(true)">
@@ -315,9 +316,13 @@ const PRIORITY_OPTIONS: readonly WorkDropdownOption[] = [
                 <svg class="h-4 w-4 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m5 12 5 5L20 7" /></svg>
                 <span>{{ isInvitation() ? 'Accept' : 'Approve' }}</span>
               </button>
-            } @else {
+            } @else if (item.canCancel) {
               <button type="button" [class]="secondaryBtn + ' col-span-2'" data-testid="approval-card-cancel" [disabled]="busy()" (click)="cancelRequest.emit()">
                 <span>Cancel request</span>
+              </button>
+            } @else if (canRevertValue()) {
+              <button type="button" [class]="secondaryBtn + ' col-span-2'" data-testid="approval-card-revert" [disabled]="busy()" (click)="revertOpen.set(true)">
+                <span>Revert decision · {{ revertCountdownLabel() }}</span>
               </button>
             }
           </footer>
@@ -329,6 +334,16 @@ const PRIORITY_OPTIONS: readonly WorkDropdownOption[] = [
           [confirmLabel]="isInvitation() ? 'Decline' : 'Reject'"
           (confirmed)="onRejectConfirmed($event)"
           (closed)="rejectOpen.set(false)"
+        />
+
+        <app-confirm-modal
+          [open]="revertOpen()"
+          title="Revert this decision?"
+          [message]="revertConfirmMessage()"
+          confirmLabel="Revert"
+          data-testid="approval-revert-confirm-modal"
+          (confirmed)="onRevertConfirmed()"
+          (cancelled)="revertOpen.set(false)"
         />
       }
     </aside>
@@ -413,14 +428,20 @@ export class ApprovalExplanationCardComponent {
   approve = output<string | undefined>();
   reject = output<string | null>();
   cancelRequest = output<void>();
+  revert = output<void>();
   openTarget = output<void>();
   addComment = output<string>();
   replyComment = output<{ parentId: string; content: string }>();
   editComment = output<{ id: string; content: string }>();
 
+  private readonly destroyRef = inject(DestroyRef);
+  private tickTimer: ReturnType<typeof setInterval> | null = null;
+  private readonly now = signal(Date.now());
+
   protected readonly edits = signal<Record<string, string>>({});
   protected readonly fieldErrors = signal<Record<string, string>>({});
   protected readonly rejectOpen = signal(false);
+  protected readonly revertOpen = signal(false);
   protected readonly priorityOptions = PRIORITY_OPTIONS;
   // Same button styles as the Tree tab explanation panel.
   protected readonly primaryBtn = 'inline-flex w-full items-center justify-center gap-2 rounded-lg bg-[var(--color-accent)] px-3 py-2.5 text-center text-sm font-medium text-[var(--color-accent-contrast)] shadow-sm transition-[filter,transform] hover:brightness-95 active:translate-y-px focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-focus-ring)]';
@@ -435,6 +456,27 @@ export class ApprovalExplanationCardComponent {
   protected readonly statusText = computed(() => this.item() ? statusLabel(this.item()!) : '');
   protected readonly statusToneValue = computed(() => this.item() ? statusTone(this.item()!) : 'neutral');
   protected readonly timeline = computed(() => this.detail() ? buildTimeline(this.detail()!) : []);
+  /** Re-evaluates every second (via `now`) so the Revert button hides itself the moment the
+   * 30-minute window passes, without requiring a page refresh. */
+  protected readonly canRevertValue = computed(() => {
+    const d = this.detail();
+    if (!d?.canRevert || !d.revertableUntil) return false;
+    return new Date(d.revertableUntil).getTime() > this.now();
+  });
+  protected readonly revertCountdownLabel = computed(() => {
+    const until = this.detail()?.revertableUntil;
+    if (!until) return '';
+    const msLeft = Math.max(0, new Date(until).getTime() - this.now());
+    const totalSeconds = Math.floor(msLeft / 1000);
+    const minutes = Math.floor(totalSeconds / 60);
+    const seconds = totalSeconds % 60;
+    return `${minutes}:${seconds.toString().padStart(2, '0')}`;
+  });
+  protected readonly revertConfirmMessage = computed(() => {
+    const item = this.item();
+    const decisionWord = item?.status === 'rejected' ? 'Rejecting' : 'Approving';
+    return `${decisionWord} this request will be undone and it will reopen for a new decision.`;
+  });
   protected readonly canOpenTarget = computed(() => {
     const item = this.item();
     return !!item?.targetId && (item.targetType === 'task' || item.targetType === 'module');
@@ -459,6 +501,12 @@ export class ApprovalExplanationCardComponent {
       this.edits.set({});
       this.fieldErrors.set({});
       this.rejectOpen.set(false);
+      this.revertOpen.set(false);
+    });
+
+    this.tickTimer = setInterval(() => this.now.set(Date.now()), 1000);
+    this.destroyRef.onDestroy(() => {
+      if (this.tickTimer !== null) clearInterval(this.tickTimer);
     });
   }
 
@@ -518,5 +566,10 @@ export class ApprovalExplanationCardComponent {
   protected onRejectConfirmed(reason: string | null): void {
     this.rejectOpen.set(false);
     this.reject.emit(reason);
+  }
+
+  protected onRevertConfirmed(): void {
+    this.revertOpen.set(false);
+    this.revert.emit();
   }
 }

@@ -151,6 +151,7 @@ const APPROVAL_COLUMNS: readonly DataTableColumn[] = [
             (approve)="onCardApprove($event)"
             (reject)="onCardReject($event)"
             (cancelRequest)="onCardCancel()"
+            (revert)="onCardRevert()"
             (openTarget)="onCardOpenTarget()"
             (addComment)="store.addComment($event)"
             (replyComment)="store.reply($event.parentId, $event.content)"
@@ -462,6 +463,11 @@ export class WorkApprovalsComponent implements AfterViewInit, OnDestroy {
   protected onCardCancel(): void {
     const item = this.store.detail()?.item;
     if (item) void this.store.cancel(item);
+  }
+
+  protected onCardRevert(): void {
+    const item = this.store.detail()?.item;
+    if (item) void this.store.revert(item);
   }
 
   protected onCardOpenTarget(): void {

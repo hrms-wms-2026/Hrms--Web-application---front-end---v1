@@ -18,7 +18,7 @@ function feedItem(overrides: Partial<ApprovalFeedItemDto> = {}): ApprovalFeedIte
 function detailFor(item: ApprovalFeedItemDto): ApprovalDetailDto {
   return {
     item, requestedPayloadJson: '{}', appliedPayloadJson: null, fields: [], canEditPayload: false,
-    note: null, currentAllocatedHours: null, invitation: null
+    note: null, currentAllocatedHours: null, invitation: null, canRevert: false, revertableUntil: null
   };
 }
 
@@ -42,6 +42,7 @@ describe('WorkApprovalsStore', () => {
       approveWorkApproval: vi.fn().mockReturnValue(of({})),
       rejectWorkApproval: vi.fn().mockReturnValue(of({})),
       cancelWorkApproval: vi.fn().mockReturnValue(of({})),
+      revertWorkApproval: vi.fn().mockReturnValue(of({})),
       acceptObjectiveInvitation: vi.fn().mockReturnValue(of(null)),
       rejectObjectiveInvitation: vi.fn().mockReturnValue(of(null))
     };
@@ -131,6 +132,20 @@ describe('WorkApprovalsStore', () => {
   it('cancel calls the cancel endpoint', async () => {
     await store.cancel(feedItem({ direction: 'sent', canCancel: true }));
     expect(api['cancelWorkApproval']).toHaveBeenCalledWith('r1');
+  });
+
+  it('revert calls the revert endpoint, then reloads and re-selects the row', async () => {
+    const item = feedItem({ status: 'approved', canDecide: false });
+    api['getApprovalFeed'].mockReturnValue(of([item]));
+    await store.loadAll('p1');
+    await store.select(item);
+
+    const reverted = feedItem({ status: 'pending' });
+    api['getApprovalFeed'].mockReturnValue(of([reverted]));
+    await store.revert(item);
+
+    expect(api['revertWorkApproval']).toHaveBeenCalledWith('r1');
+    expect(store.items().find((i: ApprovalFeedItemDto) => i.id === 'r1')?.status).toBe('pending');
   });
 
   it('addComment posts on the selected subject, reloads comments and bumps the count', async () => {

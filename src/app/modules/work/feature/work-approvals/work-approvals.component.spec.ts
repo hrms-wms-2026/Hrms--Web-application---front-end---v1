@@ -56,12 +56,13 @@ describe('WorkApprovalsComponent', () => {
         selectedId.set(item?.id ?? null);
         detail.set(item ? {
           item, requestedPayloadJson: '{}', appliedPayloadJson: null, fields: [], canEditPayload: false,
-          note: null, currentAllocatedHours: null, invitation: null
+          note: null, currentAllocatedHours: null, invitation: null, canRevert: false, revertableUntil: null
         } : null);
       }),
       approve: vi.fn().mockResolvedValue(true),
       reject: vi.fn().mockResolvedValue(true),
       cancel: vi.fn().mockResolvedValue(true),
+      revert: vi.fn().mockResolvedValue(true),
       addComment: vi.fn(), reply: vi.fn(), editComment: vi.fn()
     };
     approvalsApi = { createAllocationRequest: options.createAllocationRequest ?? vi.fn().mockReturnValue(of({})) };
