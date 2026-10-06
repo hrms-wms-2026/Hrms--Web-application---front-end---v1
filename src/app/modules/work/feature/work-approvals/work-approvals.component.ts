@@ -39,7 +39,8 @@ const DEFAULT_FILTERS: ApprovalFilterValues = { direction: ['all'], requestedOn:
 const APPROVAL_COLUMNS: readonly DataTableColumn[] = [
   { key: 'title', label: 'Title' },
   { key: 'type', label: 'Type', width: '150px' },
-  { key: 'requestedBy', label: 'Requested by', width: '30%' },
+  { key: 'requestedBy', label: 'Requested by', width: '20%' },
+  { key: 'requestedTo', label: 'Requested to', width: '20%' },
   { key: 'status', label: 'Status', width: '112px' },
   { key: 'actions', label: 'Actions', width: '52px', interactive: true, align: 'end', hideLabel: true }
 ];
@@ -118,6 +119,15 @@ const APPROVAL_COLUMNS: readonly DataTableColumn[] = [
                 <span class="work-approvals__person-text">
                   <span class="work-approvals__ellipsis">{{ item.requestedByName }}</span>
                   <span class="work-approvals__secondary work-approvals__ellipsis">{{ item.createdAt | date: 'MMM d, y · h:mm a' }}</span>
+                </span>
+              </span>
+            </ng-template>
+
+            <ng-template appDataTableCell="requestedTo" let-item>
+              <span class="work-approvals__person">
+                <app-avatar [userName]="item.approverName" size="sm" />
+                <span class="work-approvals__person-text">
+                  <span class="work-approvals__ellipsis">{{ item.approverName }}</span>
                 </span>
               </span>
             </ng-template>

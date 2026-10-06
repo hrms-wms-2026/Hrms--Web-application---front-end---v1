@@ -305,7 +305,7 @@ const PRIORITY_OPTIONS: readonly WorkDropdownOption[] = [
           </section>
         </div>
 
-        @if (item.canDecide || item.canCancel || canRevertValue()) {
+        @if (item.canDecide || canCancelValue() || canRevertValue()) {
           <footer class="approval-card__footer" data-testid="approval-card-footer">
             @if (item.canDecide) {
               <button type="button" [class]="secondaryBtn" data-testid="approval-card-reject" [disabled]="busy()" (click)="rejectOpen.set(true)">
@@ -316,9 +316,9 @@ const PRIORITY_OPTIONS: readonly WorkDropdownOption[] = [
                 <svg class="h-4 w-4 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m5 12 5 5L20 7" /></svg>
                 <span>{{ isInvitation() ? 'Accept' : 'Approve' }}</span>
               </button>
-            } @else if (item.canCancel) {
+            } @else if (canCancelValue()) {
               <button type="button" [class]="secondaryBtn + ' col-span-2'" data-testid="approval-card-cancel" [disabled]="busy()" (click)="cancelRequest.emit()">
-                <span>Cancel request</span>
+                <span>Cancel request · {{ cancelCountdownLabel() }}</span>
               </button>
             } @else if (canRevertValue()) {
               <button type="button" [class]="secondaryBtn + ' col-span-2'" data-testid="approval-card-revert" [disabled]="busy()" (click)="revertOpen.set(true)">
@@ -476,6 +476,29 @@ export class ApprovalExplanationCardComponent {
     const item = this.item();
     const decisionWord = item?.status === 'rejected' ? 'Rejecting' : 'Approving';
     return `${decisionWord} this request will be undone and it will reopen for a new decision.`;
+  });
+  /** canCancel already reflects the 30-minute window server-side, but that flag is only as fresh as
+   * the last fetch - re-derive liveness from createdAt + the same window every tick (via `now`) so the
+   * button hides itself the moment it expires, the same way canRevertValue does for Revert. */
+  private readonly cancelableUntil = computed(() => {
+    const item = this.item();
+    if (!item) return null;
+    return new Date(item.createdAt).getTime() + 30 * 60 * 1000;
+  });
+  protected readonly canCancelValue = computed(() => {
+    const item = this.item();
+    if (!item?.canCancel) return false;
+    const until = this.cancelableUntil();
+    return until !== null && until > this.now();
+  });
+  protected readonly cancelCountdownLabel = computed(() => {
+    const until = this.cancelableUntil();
+    if (until === null) return '';
+    const msLeft = Math.max(0, until - this.now());
+    const totalSeconds = Math.floor(msLeft / 1000);
+    const minutes = Math.floor(totalSeconds / 60);
+    const seconds = totalSeconds % 60;
+    return `${minutes}:${seconds.toString().padStart(2, '0')}`;
   });
   protected readonly canOpenTarget = computed(() => {
     const item = this.item();

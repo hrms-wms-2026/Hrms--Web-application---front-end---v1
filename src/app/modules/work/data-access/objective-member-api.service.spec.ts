@@ -76,6 +76,14 @@ describe('ObjectiveMemberApiService', () => {
     req.flush(null, { status: 204, statusText: 'No Content' });
   });
 
+  it('cancels an invitation', () => {
+    service.cancelInvitation('i1').subscribe();
+
+    const req = httpMock.expectOne(`${base}/invitations/i1/cancel`);
+    expect(req.request.method).toBe('POST');
+    req.flush(null, { status: 204, statusText: 'No Content' });
+  });
+
   it('transfers head and returns the outcome with response status', () => {
     const outcome: TransferObjectiveHeadOutcomeDto = { applied: false, approvalRequestId: null, pendingInvitation: { id: 'i2' } as ObjectiveInvitationDto };
     service.transferHead('o1', 'e2').subscribe((res) => {

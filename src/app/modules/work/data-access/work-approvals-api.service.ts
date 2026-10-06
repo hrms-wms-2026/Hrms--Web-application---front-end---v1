@@ -77,4 +77,8 @@ export class WorkApprovalsApiService {
   rejectObjectiveInvitation(id: string): Observable<unknown> {
     return this.memberApi.rejectInvitation(id);
   }
+
+  cancelObjectiveInvitation(id: string): Observable<unknown> {
+    return this.memberApi.cancelInvitation(id);
+  }
 }

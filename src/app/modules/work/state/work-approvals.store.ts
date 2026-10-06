@@ -159,7 +159,9 @@ export const WorkApprovalsStore = signalStore(
       },
 
       cancel(item: ApprovalFeedItemDto): Promise<boolean> {
-        return decide(item, () => firstValueFrom(api.cancelWorkApproval(item.id)), 'Failed to cancel the request.');
+        return decide(item, () => item.source === 'invitation'
+          ? firstValueFrom(api.cancelObjectiveInvitation(item.id))
+          : firstValueFrom(api.cancelWorkApproval(item.id)), 'Failed to cancel the request.');
       },
 
       revert(item: ApprovalFeedItemDto): Promise<boolean> {

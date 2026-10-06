@@ -44,7 +44,8 @@ describe('WorkApprovalsStore', () => {
       cancelWorkApproval: vi.fn().mockReturnValue(of({})),
       revertWorkApproval: vi.fn().mockReturnValue(of({})),
       acceptObjectiveInvitation: vi.fn().mockReturnValue(of(null)),
-      rejectObjectiveInvitation: vi.fn().mockReturnValue(of(null))
+      rejectObjectiveInvitation: vi.fn().mockReturnValue(of(null)),
+      cancelObjectiveInvitation: vi.fn().mockReturnValue(of(null))
     };
     TestBed.configureTestingModule({ providers: [{ provide: WorkApprovalsApiService, useValue: api }] });
     store = TestBed.inject(WorkApprovalsStore);
@@ -132,6 +133,12 @@ describe('WorkApprovalsStore', () => {
   it('cancel calls the cancel endpoint', async () => {
     await store.cancel(feedItem({ direction: 'sent', canCancel: true }));
     expect(api['cancelWorkApproval']).toHaveBeenCalledWith('r1');
+  });
+
+  it('cancel on an invitation withdraws it instead', async () => {
+    await store.cancel(feedItem({ id: 'i1', source: 'invitation', direction: 'sent', canCancel: true }));
+    expect(api['cancelObjectiveInvitation']).toHaveBeenCalledWith('i1');
+    expect(api['cancelWorkApproval']).not.toHaveBeenCalled();
   });
 
   it('revert calls the revert endpoint, then reloads and re-selects the row', async () => {

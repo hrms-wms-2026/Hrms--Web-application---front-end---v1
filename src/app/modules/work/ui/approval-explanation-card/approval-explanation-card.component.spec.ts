@@ -172,15 +172,28 @@ describe('ApprovalExplanationCardComponent', () => {
     expect(q('approval-reject-dialog')).toBeNull();
   });
 
-  it("a requester's pending row shows only Cancel request", () => {
-    render(detail({ canEditPayload: false }, { direction: 'sent', canDecide: false, canCancel: true }));
+  it("a requester's pending row shows only Cancel request, with a live countdown", () => {
+    render(detail({ canEditPayload: false }, {
+      direction: 'sent', canDecide: false, canCancel: true, createdAt: new Date().toISOString()
+    }));
     let cancelled = false;
     fixture.componentInstance.cancelRequest.subscribe(() => (cancelled = true));
 
     expect(q('approval-card-approve')).toBeNull();
     expect(q('approval-card-reject')).toBeNull();
+    expect(q('approval-card-cancel')!.textContent).toMatch(/Cancel request · (29:5\d|30:00)/);
     q('approval-card-cancel')!.click();
     expect(cancelled).toBe(true);
+  });
+
+  it('a cancellable row past the 30-minute window shows no footer', () => {
+    render(detail({ canEditPayload: false }, {
+      direction: 'sent', canDecide: false, canCancel: true,
+      createdAt: new Date(Date.now() - 31 * 60 * 1000).toISOString()
+    }));
+
+    expect(q('approval-card-cancel')).toBeNull();
+    expect(q('approval-card-footer')).toBeNull();
   });
 
   it('a decided row has no footer', () => {
