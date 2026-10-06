@@ -21,7 +21,8 @@ const fields: ApprovalFieldDto[] = [
 function detail(overrides: Partial<ApprovalDetailDto> = {}, item: Partial<ApprovalFeedItemDto> = {}): ApprovalDetailDto {
   return {
     item: feedItem(item), requestedPayloadJson: '{"Title":"A","Priority":"high","EstimatedHours":6}', appliedPayloadJson: null,
-    fields, canEditPayload: true, note: 'client asked', currentAllocatedHours: null, invitation: null, ...overrides
+    fields, canEditPayload: true, note: 'client asked', currentAllocatedHours: null, invitation: null,
+    canRevert: false, revertableUntil: null, ...overrides
   };
 }
 
@@ -171,15 +172,28 @@ describe('ApprovalExplanationCardComponent', () => {
     expect(q('approval-reject-dialog')).toBeNull();
   });
 
-  it("a requester's pending row shows only Cancel request", () => {
-    render(detail({ canEditPayload: false }, { direction: 'sent', canDecide: false, canCancel: true }));
+  it("a requester's pending row shows only Cancel request, with a live countdown", () => {
+    render(detail({ canEditPayload: false }, {
+      direction: 'sent', canDecide: false, canCancel: true, createdAt: new Date().toISOString()
+    }));
     let cancelled = false;
     fixture.componentInstance.cancelRequest.subscribe(() => (cancelled = true));
 
     expect(q('approval-card-approve')).toBeNull();
     expect(q('approval-card-reject')).toBeNull();
+    expect(q('approval-card-cancel')!.textContent).toMatch(/Cancel request · (29:5\d|30:00)/);
     q('approval-card-cancel')!.click();
     expect(cancelled).toBe(true);
+  });
+
+  it('a cancellable row past the 30-minute window shows no footer', () => {
+    render(detail({ canEditPayload: false }, {
+      direction: 'sent', canDecide: false, canCancel: true,
+      createdAt: new Date(Date.now() - 31 * 60 * 1000).toISOString()
+    }));
+
+    expect(q('approval-card-cancel')).toBeNull();
+    expect(q('approval-card-footer')).toBeNull();
   });
 
   it('a decided row has no footer', () => {
@@ -224,5 +238,37 @@ describe('ApprovalExplanationCardComponent', () => {
     fixture.componentInstance.closed.subscribe(() => (closed = true));
     q('approval-card-close')!.click();
     expect(closed).toBe(true);
+  });
+
+  it('shows a Revert button only when the decided request has canRevert true', () => {
+    const revertableUntil = new Date(Date.now() + 10 * 60 * 1000).toISOString();
+    render(detail({ canEditPayload: false, canRevert: true, revertableUntil }, { status: 'approved', canDecide: false }));
+    expect(q('approval-card-revert')).not.toBeNull();
+
+    render(detail({ canEditPayload: false, canRevert: false, revertableUntil: null }, { status: 'approved', canDecide: false }));
+    expect(q('approval-card-revert')).toBeNull();
+  });
+
+  it('the Revert button hides once revertableUntil has passed', () => {
+    const revertableUntil = new Date(Date.now() - 1000).toISOString();
+    render(detail({ canEditPayload: false, canRevert: true, revertableUntil }, { status: 'approved', canDecide: false }));
+    expect(q('approval-card-revert')).toBeNull();
+  });
+
+  it('clicking Revert asks for confirmation before emitting', () => {
+    const revertableUntil = new Date(Date.now() + 10 * 60 * 1000).toISOString();
+    render(detail({ canEditPayload: false, canRevert: true, revertableUntil }, { status: 'approved', canDecide: false }));
+    let reverted = false;
+    fixture.componentInstance.revert.subscribe(() => (reverted = true));
+
+    q('approval-card-revert')!.click();
+    fixture.detectChanges();
+    expect(reverted).toBe(false);
+    const dialog = el.querySelector('[role="dialog"]');
+    expect(dialog).not.toBeNull();
+
+    const buttons = dialog!.querySelectorAll('button');
+    buttons[buttons.length - 1].click();
+    expect(reverted).toBe(true);
   });
 });

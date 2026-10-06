@@ -55,6 +55,10 @@ export class WorkApprovalsApiService {
     return this.http.post<WorkApprovalRequestDto>(`${this.workBase}/approvals/${id}/cancel`, {});
   }
 
+  revertWorkApproval(id: string): Observable<WorkApprovalRequestDto> {
+    return this.http.post<WorkApprovalRequestDto>(`${this.workBase}/approvals/${id}/revert`, {});
+  }
+
   /** 200 = hours added (null body; the caller is the parent's owner or above); 202 = sent for approval. */
   createAllocationRequest(
     objectiveId: string,
@@ -72,5 +76,9 @@ export class WorkApprovalsApiService {
 
   rejectObjectiveInvitation(id: string): Observable<unknown> {
     return this.memberApi.rejectInvitation(id);
+  }
+
+  cancelObjectiveInvitation(id: string): Observable<unknown> {
+    return this.memberApi.cancelInvitation(id);
   }
 }

@@ -60,6 +60,9 @@ export interface ApprovalDetailDto {
   note: string | null;
   currentAllocatedHours: number | null;
   invitation: ApprovalInvitationDto | null;
+  /** True only for the viewer who decided this request, only while approved/rejected, only within revertableUntil. Always false for an invitation row. */
+  canRevert: boolean;
+  revertableUntil: string | null;
 }
 
 export interface ApprovalCommentDto {

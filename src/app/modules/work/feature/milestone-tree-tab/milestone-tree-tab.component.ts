@@ -161,10 +161,6 @@ export class MilestoneTreeTabComponent {
   // warn about partial asset-upload failures, so this renders inline in the tab itself
   // rather than inside any modal (which would already be closed by then).
   createAssetWarning = signal<string | null>(null);
-  // Every edit now always requires the Reporting Manager's approval (no more immediate-apply
-  // shortcut) - without this, the settings modal would just close with no visible change, which
-  // reads as "nothing happened" rather than "submitted for approval".
-  editPendingNotice = signal<string | null>(null);
 
   membersPopupOpen = signal(false);
 
@@ -325,11 +321,7 @@ export class MilestoneTreeTabComponent {
     this.createAssetWarning.set(null);
   }
 
-  dismissEditPendingNotice(): void {
-    this.editPendingNotice.set(null);
-  }
-
-  onExpandLeafRequested(node: MilestoneTreeNode): void {
+onExpandLeafRequested(node: MilestoneTreeNode): void {
     if (isLeafObjective(node)) {
       void this.store.loadSprintsAndTasksForLeaf(node.id);
     } else if (node.kind === 'sprint') {
@@ -526,7 +518,7 @@ export class MilestoneTreeTabComponent {
       return;
     }
     if (editResult.pending) {
-      this.editPendingNotice.set(`Edit submitted for "${node.title}" — pending approval from the Reporting Manager.`);
+      this.notificationService.info('Request submitted.');
     }
 
     if (event.achievedChanged && event.achieved) {

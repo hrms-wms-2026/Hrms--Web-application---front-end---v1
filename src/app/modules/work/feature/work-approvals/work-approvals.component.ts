@@ -39,7 +39,8 @@ const DEFAULT_FILTERS: ApprovalFilterValues = { direction: ['all'], requestedOn:
 const APPROVAL_COLUMNS: readonly DataTableColumn[] = [
   { key: 'title', label: 'Title' },
   { key: 'type', label: 'Type', width: '150px' },
-  { key: 'requestedBy', label: 'Requested by', width: '30%' },
+  { key: 'requestedBy', label: 'Requested by', width: '20%' },
+  { key: 'requestedTo', label: 'Requested to', width: '20%' },
   { key: 'status', label: 'Status', width: '112px' },
   { key: 'actions', label: 'Actions', width: '52px', interactive: true, align: 'end', hideLabel: true }
 ];
@@ -85,6 +86,7 @@ const APPROVAL_COLUMNS: readonly DataTableColumn[] = [
             [trackBy]="trackItem"
             [rowTestId]="rowTestId"
             [activeRowId]="store.selectedId()"
+            [activeRowAppearance]="'solid'"
             [busyRowId]="busyId()"
             [rowFocusable]="true"
             [emptyMessage]="store.items().length === 0 ? 'No approval requests in this project yet.' : 'No requests match these filters.'"
@@ -122,6 +124,15 @@ const APPROVAL_COLUMNS: readonly DataTableColumn[] = [
               </span>
             </ng-template>
 
+            <ng-template appDataTableCell="requestedTo" let-item>
+              <span class="work-approvals__person">
+                <app-avatar [userName]="item.approverName" size="sm" />
+                <span class="work-approvals__person-text">
+                  <span class="work-approvals__ellipsis">{{ item.approverName }}</span>
+                </span>
+              </span>
+            </ng-template>
+
             <ng-template appDataTableCell="status" let-item>
               <span data-testid="approval-status" [class]="'work-approvals__pill work-approvals__pill--' + tone(item)">{{ status(item) }}</span>
             </ng-template>
@@ -151,6 +162,7 @@ const APPROVAL_COLUMNS: readonly DataTableColumn[] = [
             (approve)="onCardApprove($event)"
             (reject)="onCardReject($event)"
             (cancelRequest)="onCardCancel()"
+            (revert)="onCardRevert()"
             (openTarget)="onCardOpenTarget()"
             (addComment)="store.addComment($event)"
             (replyComment)="store.reply($event.parentId, $event.content)"
@@ -250,6 +262,14 @@ const APPROVAL_COLUMNS: readonly DataTableColumn[] = [
     .work-approvals__kebab { display: inline-flex; width: 30px; height: 30px; align-items: center; justify-content: center; border: 0; border-radius: 8px; background: transparent; color: var(--color-text-secondary); cursor: pointer; }
     .work-approvals__kebab:hover { background: var(--color-surface-secondary); color: var(--color-text-primary); }
     .work-approvals__kebab svg { width: 18px; height: 18px; fill: none; stroke: currentColor; stroke-width: 2.4; stroke-linecap: round; stroke-linejoin: round; }
+
+    /* Selected row (Tree-tab style, solid accent fill): the title/name text already goes white by
+       inheriting from the row's own color - these are the cells that set their own color and would
+       otherwise stay dark-on-accent and unreadable. */
+    :host ::ng-deep tr.data-table__row--active-solid .work-approvals__secondary { color: color-mix(in srgb, var(--color-accent-contrast, #fff) 80%, transparent); }
+    :host ::ng-deep tr.data-table__row--active-solid .work-approvals__pill { background: color-mix(in srgb, var(--color-accent-contrast, #fff) 20%, transparent); color: var(--color-accent-contrast, #fff); }
+    :host ::ng-deep tr.data-table__row--active-solid .work-approvals__kebab { color: var(--color-accent-contrast, #fff); }
+    :host ::ng-deep tr.data-table__row--active-solid .work-approvals__kebab:hover { background: color-mix(in srgb, var(--color-accent-contrast, #fff) 18%, transparent); color: var(--color-accent-contrast, #fff); }
   `]
 })
 export class WorkApprovalsComponent implements AfterViewInit, OnDestroy {
@@ -462,6 +482,11 @@ export class WorkApprovalsComponent implements AfterViewInit, OnDestroy {
   protected onCardCancel(): void {
     const item = this.store.detail()?.item;
     if (item) void this.store.cancel(item);
+  }
+
+  protected onCardRevert(): void {
+    const item = this.store.detail()?.item;
+    if (item) void this.store.revert(item);
   }
 
   protected onCardOpenTarget(): void {

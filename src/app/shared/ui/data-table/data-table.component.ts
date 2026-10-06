@@ -85,6 +85,7 @@ export class DataTableRowAfterDirective {
               <tr
                 class="data-table__row"
                 [class.data-table__row--active]="isHighlighted(id)"
+                [class.data-table__row--active-solid]="isHighlighted(id) && activeRowAppearance() === 'solid'"
                 [class.data-table__row--busy]="id === busyRowId()"
                 [attr.data-testid]="rowTestId()?.(row) ?? null"
                 [attr.data-id]="id"
@@ -152,6 +153,8 @@ export class DataTableRowAfterDirective {
     .data-table__row:hover td { border-color: color-mix(in srgb, var(--color-accent) 22%, var(--color-border)); }
     .data-table__row:focus-visible { outline: 2px solid var(--color-focus-ring, var(--color-accent)); outline-offset: -2px; }
     .data-table__row--active td { background: color-mix(in srgb, var(--color-accent) 7%, var(--color-surface)); border-color: color-mix(in srgb, var(--color-accent) 38%, var(--color-border)); }
+    /* Matches the Tree tab's selected-row look (ModuleTreeRowComponent): solid accent fill, white text. Opt in per table via activeRowAppearance="solid" - the default tint above stays for other tables (e.g. Backlog). */
+    .data-table__row--active-solid td { background: var(--color-accent); border-color: var(--color-accent); color: var(--color-accent-contrast, #fff); }
     .data-table__row--busy { opacity: .6; }
     .data-table__select-cell { width: 36px; }
     .data-table__select-cell input[type="checkbox"] { width: 15px; height: 15px; cursor: pointer; accent-color: var(--color-accent); }
@@ -172,6 +175,9 @@ export class DataTableComponent<T> {
   readonly emptyMessage = input('');
   /** The single "open" row (e.g. the one shown in a side panel). */
   readonly activeRowId = input<string | null>(null);
+  /** 'tint' (default): a faint accent wash, text colour unchanged. 'solid': a solid accent fill with
+   * white text, matching the Tree tab's selected-row style. */
+  readonly activeRowAppearance = input<'tint' | 'solid'>('tint');
   readonly busyRowId = input<string | null>(null);
   /** Rows are keyboard-focusable and Enter clicks them. */
   readonly rowFocusable = input(false);
