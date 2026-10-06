@@ -7,7 +7,16 @@ import { NotificationItem } from '../../../../../core/services/notification-api.
  * the same relatedEntityType) stays click-to-navigate only. */
 const ACTIONABLE_TEMPLATE_CODE = 'work_approval_requested';
 
+/** Project/module invitation notifications ("you've been invited") can be accepted or
+ * declined right from the bell too - work_project_member_accepted (sent after someone
+ * else already accepted) is deliberately excluded, there's nothing left to decide. */
+const INVITATION_TEMPLATE_CODES = new Set(['work_project_member_invited', 'work_objective_invitation_created']);
+
 export type NotificationDecisionState = 'approved' | 'rejected' | 'error';
+
+export function isInvitationNotification(item: NotificationItem): boolean {
+  return INVITATION_TEMPLATE_CODES.has(item.templateCode);
+}
 
 @Component({
   selector: 'app-notification-dropdown',
@@ -45,7 +54,7 @@ export type NotificationDecisionState = 'approved' | 'rejected' | 'error';
                       [class.notification-dropdown__decision--error]="decision === 'error'"
                       data-testid="notification-decision"
                     >
-                      {{ decision === 'approved' ? 'Approved' : decision === 'rejected' ? 'Rejected' : 'Already handled' }}
+                      {{ decisionLabel(item, decision) }}
                     </span>
                   } @else {
                     <div class="notification-dropdown__actions">
@@ -56,7 +65,7 @@ export type NotificationDecisionState = 'approved' | 'rejected' | 'error';
                         [disabled]="isPending(item.id)"
                         (click)="approveClicked.emit(item)"
                       >
-                        Approve
+                        {{ isInvitation(item) ? 'Accept' : 'Approve' }}
                       </button>
                       <button
                         type="button"
@@ -65,7 +74,7 @@ export type NotificationDecisionState = 'approved' | 'rejected' | 'error';
                         [disabled]="isPending(item.id)"
                         (click)="rejectClicked.emit(item)"
                       >
-                        Reject
+                        {{ isInvitation(item) ? 'Decline' : 'Reject' }}
                       </button>
                     </div>
                   }
@@ -194,7 +203,11 @@ export class NotificationDropdownComponent {
   markAllRead = output<void>();
 
   isActionable(item: NotificationItem): boolean {
-    return item.templateCode === ACTIONABLE_TEMPLATE_CODE;
+    return item.templateCode === ACTIONABLE_TEMPLATE_CODE || isInvitationNotification(item);
+  }
+
+  isInvitation(item: NotificationItem): boolean {
+    return isInvitationNotification(item);
   }
 
   isPending(id: string): boolean {
@@ -203,5 +216,11 @@ export class NotificationDropdownComponent {
 
   decisionState(id: string): NotificationDecisionState | undefined {
     return this.decisions().get(id);
+  }
+
+  decisionLabel(item: NotificationItem, decision: NotificationDecisionState): string {
+    if (decision === 'error') return 'Already handled';
+    if (isInvitationNotification(item)) return decision === 'approved' ? 'Accepted' : 'Declined';
+    return decision === 'approved' ? 'Approved' : 'Rejected';
   }
 }

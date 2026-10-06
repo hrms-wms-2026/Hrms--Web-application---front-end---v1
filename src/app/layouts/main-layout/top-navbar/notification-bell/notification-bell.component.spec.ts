@@ -498,4 +498,139 @@ describe('NotificationBellComponent', () => {
 
     expect(approveWorkApproval).toHaveBeenCalledTimes(1);
   });
+
+  it('shows Accept/Decline (not Approve/Reject) for a project invitation notification', async () => {
+    const item = {
+      id: 'n11', templateCode: 'work_project_member_invited', title: 'Invited', body: 'Join the project',
+      relatedEntityType: 'project_member_invitation', relatedEntityId: 'inv-11', isRead: false, readAt: null, createdAt: new Date()
+    };
+    const storeStub = {
+      unreadCount: () => 1, items: () => [item],
+      refreshUnreadCount: vi.fn().mockResolvedValue(undefined), loadMine: vi.fn().mockResolvedValue(undefined),
+      markRead: vi.fn().mockResolvedValue(undefined), markAllRead: vi.fn().mockResolvedValue(undefined)
+    };
+    TestBed.configureTestingModule({ imports: [NotificationBellComponent], providers: [
+      { provide: NotificationsStore, useValue: storeStub },
+      { provide: Router, useValue: { navigate: vi.fn() } },
+      { provide: TaskApiService, useValue: { getNotificationNavigation: vi.fn() } },
+      { provide: AuthStore, useValue: { authenticated: () => true, activeModules: () => [] } },
+      {
+        provide: WorkApprovalsApiService,
+        useValue: { acceptObjectiveInvitation: vi.fn(), rejectObjectiveInvitation: vi.fn() }
+      }
+    ] });
+    const fixture = TestBed.createComponent(NotificationBellComponent);
+    fixture.detectChanges();
+    fixture.nativeElement.querySelector('[data-testid="notification-bell"]').click();
+    fixture.detectChanges();
+    await fixture.whenStable();
+
+    expect(fixture.nativeElement.querySelector('[data-testid="notification-approve"]').textContent.trim()).toBe('Accept');
+    expect(fixture.nativeElement.querySelector('[data-testid="notification-reject"]').textContent.trim()).toBe('Decline');
+  });
+
+  it('accepts a module/objective invitation from the bell', async () => {
+    const item = {
+      id: 'n12', templateCode: 'work_objective_invitation_created', title: 'Invited to milestone', body: 'Join as member',
+      relatedEntityType: 'project_member_invitation', relatedEntityId: 'inv-12', isRead: false, readAt: null, createdAt: new Date()
+    };
+    const storeStub = {
+      unreadCount: () => 1, items: () => [item],
+      refreshUnreadCount: vi.fn().mockResolvedValue(undefined), loadMine: vi.fn().mockResolvedValue(undefined),
+      markRead: vi.fn().mockResolvedValue(undefined), markAllRead: vi.fn().mockResolvedValue(undefined)
+    };
+    const acceptObjectiveInvitation = vi.fn().mockReturnValue(of(undefined));
+    const navigate = vi.fn().mockResolvedValue(true);
+    TestBed.configureTestingModule({ imports: [NotificationBellComponent], providers: [
+      { provide: NotificationsStore, useValue: storeStub },
+      { provide: Router, useValue: { navigate } },
+      { provide: TaskApiService, useValue: { getNotificationNavigation: vi.fn() } },
+      { provide: AuthStore, useValue: { authenticated: () => true, activeModules: () => [] } },
+      {
+        provide: WorkApprovalsApiService,
+        useValue: { acceptObjectiveInvitation, rejectObjectiveInvitation: vi.fn() }
+      }
+    ] });
+    const fixture = TestBed.createComponent(NotificationBellComponent);
+    fixture.detectChanges();
+    fixture.nativeElement.querySelector('[data-testid="notification-bell"]').click();
+    fixture.detectChanges();
+    await fixture.whenStable();
+
+    fixture.nativeElement.querySelector('[data-testid="notification-approve"]').click();
+    fixture.detectChanges();
+    await fixture.whenStable();
+    fixture.detectChanges();
+
+    expect(acceptObjectiveInvitation).toHaveBeenCalledWith('inv-12');
+    expect(storeStub.markRead).toHaveBeenCalledWith('n12');
+    expect(navigate).not.toHaveBeenCalled();
+    expect(fixture.nativeElement.querySelector('[data-testid="notification-decision"]').textContent.trim()).toBe('Accepted');
+  });
+
+  it('declines a module/objective invitation from the bell', async () => {
+    const item = {
+      id: 'n13', templateCode: 'work_project_member_invited', title: 'Invited', body: 'Join the project',
+      relatedEntityType: 'project_member_invitation', relatedEntityId: 'inv-13', isRead: false, readAt: null, createdAt: new Date()
+    };
+    const storeStub = {
+      unreadCount: () => 1, items: () => [item],
+      refreshUnreadCount: vi.fn().mockResolvedValue(undefined), loadMine: vi.fn().mockResolvedValue(undefined),
+      markRead: vi.fn().mockResolvedValue(undefined), markAllRead: vi.fn().mockResolvedValue(undefined)
+    };
+    const rejectObjectiveInvitation = vi.fn().mockReturnValue(of(undefined));
+    TestBed.configureTestingModule({ imports: [NotificationBellComponent], providers: [
+      { provide: NotificationsStore, useValue: storeStub },
+      { provide: Router, useValue: { navigate: vi.fn() } },
+      { provide: TaskApiService, useValue: { getNotificationNavigation: vi.fn() } },
+      { provide: AuthStore, useValue: { authenticated: () => true, activeModules: () => [] } },
+      {
+        provide: WorkApprovalsApiService,
+        useValue: { acceptObjectiveInvitation: vi.fn(), rejectObjectiveInvitation }
+      }
+    ] });
+    const fixture = TestBed.createComponent(NotificationBellComponent);
+    fixture.detectChanges();
+    fixture.nativeElement.querySelector('[data-testid="notification-bell"]').click();
+    fixture.detectChanges();
+    await fixture.whenStable();
+
+    fixture.nativeElement.querySelector('[data-testid="notification-reject"]').click();
+    fixture.detectChanges();
+    await fixture.whenStable();
+    fixture.detectChanges();
+
+    expect(rejectObjectiveInvitation).toHaveBeenCalledWith('inv-13');
+    expect(fixture.nativeElement.querySelector('[data-testid="notification-decision"]').textContent.trim()).toBe('Declined');
+  });
+
+  it('does not show Accept/Decline for a work_project_member_accepted confirmation notification', async () => {
+    const item = {
+      id: 'n14', templateCode: 'work_project_member_accepted', title: 'Invitation accepted', body: 'They joined',
+      relatedEntityType: 'project_member_invitation', relatedEntityId: 'inv-14', isRead: false, readAt: null, createdAt: new Date()
+    };
+    const storeStub = {
+      unreadCount: () => 1, items: () => [item],
+      refreshUnreadCount: vi.fn().mockResolvedValue(undefined), loadMine: vi.fn().mockResolvedValue(undefined),
+      markRead: vi.fn().mockResolvedValue(undefined), markAllRead: vi.fn().mockResolvedValue(undefined)
+    };
+    TestBed.configureTestingModule({ imports: [NotificationBellComponent], providers: [
+      { provide: NotificationsStore, useValue: storeStub },
+      { provide: Router, useValue: { navigate: vi.fn() } },
+      { provide: TaskApiService, useValue: { getNotificationNavigation: vi.fn() } },
+      { provide: AuthStore, useValue: { authenticated: () => true, activeModules: () => [] } },
+      {
+        provide: WorkApprovalsApiService,
+        useValue: { acceptObjectiveInvitation: vi.fn(), rejectObjectiveInvitation: vi.fn() }
+      }
+    ] });
+    const fixture = TestBed.createComponent(NotificationBellComponent);
+    fixture.detectChanges();
+    fixture.nativeElement.querySelector('[data-testid="notification-bell"]').click();
+    fixture.detectChanges();
+    await fixture.whenStable();
+
+    expect(fixture.nativeElement.querySelector('[data-testid="notification-approve"]')).toBeFalsy();
+    expect(fixture.nativeElement.querySelector('[data-testid="notification-reject"]')).toBeFalsy();
+  });
 });

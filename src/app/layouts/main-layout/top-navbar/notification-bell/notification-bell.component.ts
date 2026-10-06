@@ -1,5 +1,5 @@
 import { Component, OnDestroy, effect, inject, signal, untracked } from '@angular/core';
-import { firstValueFrom } from 'rxjs';
+import { Observable, firstValueFrom } from 'rxjs';
 import { AuthStore } from '../../../../core/auth/state/auth.store';
 import { PermissionService } from '../../../../core/auth/state/permission.service';
 import { NotificationsStore } from '../../../../core/state/notifications.store';
@@ -11,7 +11,8 @@ import { PopoverComponent } from '../../../../shared/ui/popover/popover.componen
 import { WorkApprovalsApiService } from '../../../../modules/work/data-access/work-approvals-api.service';
 import {
   NotificationDecisionState,
-  NotificationDropdownComponent
+  NotificationDropdownComponent,
+  isInvitationNotification
 } from './notification-dropdown/notification-dropdown.component';
 
 @Component({
@@ -156,16 +157,22 @@ export class NotificationBellComponent implements OnDestroy {
   }
 
   async onApprove(item: NotificationItem): Promise<void> {
-    await this.decide(item, () => this.workApprovalsApi.approveWorkApproval(item.relatedEntityId!), 'approved');
+    const call = isInvitationNotification(item)
+      ? () => this.workApprovalsApi.acceptObjectiveInvitation(item.relatedEntityId!)
+      : () => this.workApprovalsApi.approveWorkApproval(item.relatedEntityId!);
+    await this.decide(item, call, 'approved');
   }
 
   async onReject(item: NotificationItem): Promise<void> {
-    await this.decide(item, () => this.workApprovalsApi.rejectWorkApproval(item.relatedEntityId!), 'rejected');
+    const call = isInvitationNotification(item)
+      ? () => this.workApprovalsApi.rejectObjectiveInvitation(item.relatedEntityId!)
+      : () => this.workApprovalsApi.rejectWorkApproval(item.relatedEntityId!);
+    await this.decide(item, call, 'rejected');
   }
 
   private async decide(
     item: NotificationItem,
-    call: () => ReturnType<WorkApprovalsApiService['approveWorkApproval']>,
+    call: () => Observable<unknown>,
     successState: NotificationDecisionState
   ): Promise<void> {
     if (!item.relatedEntityId || this.pendingDecisionIds().has(item.id)) return;
