@@ -28,7 +28,11 @@ import { EmployeePersonalInfoComponent } from '../../ui/employee-personal-info/e
           [emergencyContacts]="employee().emergencyContacts"
         />
         @if (employee().payroll; as payroll) {
-          <app-employee-payroll class="xl:col-span-2" [payroll]="payroll" />
+          <app-employee-payroll
+            class="xl:col-span-2"
+            [employeeId]="employee().id"
+            [payroll]="payroll"
+          />
         }
       </div>
     </div>

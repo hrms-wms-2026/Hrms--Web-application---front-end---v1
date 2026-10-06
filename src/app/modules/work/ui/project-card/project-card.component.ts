@@ -57,7 +57,7 @@ const EXPANDED_AVATAR_LIMIT = 20;
         </span>
 
         <div class="absolute right-2.5 top-2.5 z-10 flex items-center justify-end">
-          @if (project().isLead) {
+          @if (project().isLead && project().systemPurpose !== 'office') {
             <span data-testid="settings-button">
               <button
                 type="button"

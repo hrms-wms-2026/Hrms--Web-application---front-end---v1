@@ -53,14 +53,14 @@ export class MyTasksCardComponent implements OnInit {
     });
   }
 
-  // Same board + highlightTaskId deep-link the notification bell uses to point at one
-  // task - there is no standalone task-detail route to link to any more.
+  // Task details live in the board modal, so taskId navigates to the board and opens
+  // the selected task rather than only scrolling to its card.
   protected taskLink(task: MyTaskItem): string[] {
     return ['/work', task.projectId, 'board'];
   }
 
-  protected taskQueryParams(task: MyTaskItem): { highlightTaskId: string } {
-    return { highlightTaskId: task.taskId };
+  protected taskQueryParams(task: MyTaskItem): { taskId: string } {
+    return { taskId: task.taskId };
   }
 
   protected dueDateLabel(dueDate: string): string {

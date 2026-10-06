@@ -13,13 +13,13 @@ describe('project.mapper', () => {
       id: 'p1', name: 'Website Revamp', identifier: 'WEB', categoryId: 'cat1', description: null, leadId: 'u1',
       startDate: '2026-08-01', targetDate: '2026-12-01', color: '#2563EB', isActive: true,
       allocatedHours: 40, completedHours: 0, isLead: true, isAchieved: false, achievedAt: null,
-      updatedAt: null, logoFileId: null, labels: [], members: [], memberCount: 0
+      updatedAt: null, logoFileId: null, labels: [], members: [], memberCount: 0, systemPurpose: null
     };
     expect(toProject(dto)).toEqual({
       id: 'p1', name: 'Website Revamp', identifier: 'WEB', categoryId: 'cat1', description: null, leadId: 'u1',
       startDate: '2026-08-01', targetDate: '2026-12-01', color: '#2563EB', isActive: true,
       allocatedHours: 40, completedHours: 0, isLead: true, isAchieved: false, achievedAt: null,
-      updatedAt: null, logoFileId: null, labels: [], members: [], memberCount: 0
+      updatedAt: null, logoFileId: null, labels: [], members: [], memberCount: 0, systemPurpose: null
     });
   });
 

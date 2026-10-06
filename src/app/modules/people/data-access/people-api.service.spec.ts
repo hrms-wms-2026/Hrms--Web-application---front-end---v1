@@ -82,6 +82,26 @@ describe('PeopleApiService', () => {
     httpMock.expectOne((r) => r.method === 'POST' && r.url.endsWith('/employees/bulk/change-position')).flush({ items: [], succeeded: 0, pendingApproval: 0, failed: 0 });
   });
 
+  it('revealEmployeeBankDetails POSTs to the audited reveal endpoint', () => {
+    const response = {
+      bankName: 'Commercial Bank',
+      branchName: 'Colombo',
+      accountHolderName: 'Ada Lovelace',
+      accountNumber: '1234567890',
+      accountType: 'Savings',
+      routingNumber: '7010'
+    };
+    let received: unknown;
+
+    service.revealEmployeeBankDetails('emp-1').subscribe(value => (received = value));
+
+    const req = httpMock.expectOne(`${environment.apiUrl}/employees/emp-1/bank-details/reveal`);
+    expect(req.request.method).toBe('POST');
+    expect(req.request.body).toEqual({});
+    req.flush(response);
+    expect(received).toEqual(response);
+  });
+
   afterEach(() => {
     httpMock.verify();
   });
@@ -176,6 +196,41 @@ describe('PeopleApiService', () => {
     expect(req.request.method).toBe('GET');
     expect(req.request.params.get('from')).toBe('2026-09-01');
     req.flush({});
+  });
+
+  const workActivityUrl = (path: string) => (r: { url: string }) =>
+    r.url === `${environment.apiUrl}/employees/emp-1/work-activity/${path}`;
+
+  it.each([
+    ['getWorkActivityByHour', 'activity-by-hour'],
+    ['getWorkActivityAppUsage', 'app-usage'],
+    ['getWorkActivityWorkPattern', 'work-pattern']
+  ] as const)('%s sends the month as from/to', (method, path) => {
+    (service[method] as (id: string, from: string, to: string) => { subscribe(): void })
+      .call(service, 'emp-1', '2026-09-01', '2026-09-30')
+      .subscribe();
+
+    const req = httpMock.expectOne(workActivityUrl(path));
+    expect(req.request.method).toBe('GET');
+    expect(req.request.params.get('from')).toBe('2026-09-01');
+    expect(req.request.params.get('to')).toBe('2026-09-30');
+    req.flush({});
+  });
+
+  it('getWorkActivityNeedsAttention and getWorkActivityRecentTasks take no period', () => {
+    service.getWorkActivityNeedsAttention('emp-1').subscribe();
+    service.getWorkActivityRecentTasks('emp-1').subscribe();
+
+    httpMock.expectOne(workActivityUrl('needs-attention')).flush({ asOf: '2026-09-15', totalCount: 0, items: [] });
+    httpMock.expectOne(workActivityUrl('recent-tasks')).flush({ items: [] });
+  });
+
+  it('getWorkActivityDeliveryTrend GETs work-activity/delivery-trend with to only', () => {
+    service.getWorkActivityDeliveryTrend('emp-1', '2026-09-30').subscribe();
+
+    const req = httpMock.expectOne(workActivityUrl('delivery-trend'));
+    expect(req.request.params.get('to')).toBe('2026-09-30');
+    req.flush({ months: [] });
   });
 
   it('getOverviewUpcoming sends days and limit, defaulting to 14 and 10', () => {

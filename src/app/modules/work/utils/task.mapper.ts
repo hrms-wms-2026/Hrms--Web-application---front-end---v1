@@ -49,6 +49,8 @@ export function toWorkTask(dto: WorkTaskDto): WorkTask {
     subtaskCompletedCount: dto.subtaskCompletedCount ?? 0,
     subtaskAssigneeEmployeeIds: dto.subtaskAssigneeEmployeeIds ?? [],
     createdAt: new Date(dto.createdAt),
+    taskKind: dto.taskKind ?? 'standard',
+    visibilityScope: dto.visibilityScope ?? 'module',
     hasPendingApproval: dto.hasPendingApproval ?? false
   };
 }

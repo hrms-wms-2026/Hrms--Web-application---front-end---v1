@@ -42,7 +42,7 @@ export interface TaskCardAssignableMember {
           }
         </div>
         <p class="task-card__title">
-          <span>{{ task().title }}</span>
+          <span class="task-card__title-text" [title]="task().title">{{ task().title }}</span>
         </p>
 
         <div class="task-card__meta">
@@ -86,6 +86,7 @@ export interface TaskCardAssignableMember {
               <app-task-assignee-dropdown
                 [members]="assignableMembers()"
                 [selectedId]="task().assigneeEmployeeIds[0]"
+                [allowUnassigned]="task().taskKind !== 'employee_checklist'"
                 (selected)="selectAssignee($event)"
                 (closed)="assigneePopoverOpen.set(false)"
               />
@@ -208,7 +209,7 @@ export interface TaskCardAssignableMember {
                 </div>
               }
               <p class="task-card__title">
-                <span>{{ subtask.title }}</span>
+                <span class="task-card__title-text" [title]="subtask.title">{{ subtask.title }}</span>
               </p>
               <div class="task-card__meta">
                 @if (subtask.assigneeEmployeeIds.length > 0) {
@@ -269,8 +270,11 @@ export interface TaskCardAssignableMember {
   styles: [`
     :host {
       display: block;
+      min-width: 0;
     }
     .task-card {
+      min-width: 0;
+      max-width: 100%;
       background: var(--color-surface);
       border: 1px solid var(--color-border);
       border-radius: 12px;
@@ -300,7 +304,8 @@ export interface TaskCardAssignableMember {
       white-space: nowrap;
     }
     .task-card__pending-badge svg { width: 11px; height: 11px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
-    .task-card__title { margin: 5px 0 7px; font-size: 13px; font-weight: 500; color: var(--color-text-primary); line-height: 1.4; }
+    .task-card__title { min-width: 0; margin: 5px 0 7px; font-size: 13px; font-weight: 500; color: var(--color-text-primary); line-height: 1.4; }
+    .task-card__title-text { display: block; min-width: 0; max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
     .task-card__meta { display: flex; align-items: center; gap: 6px; font-size: 11.5px; color: var(--color-text-secondary); }
     .task-card__meta-btn {
       display: inline-flex;
@@ -839,6 +844,11 @@ export class TaskCardComponent {
       return;
     }
     try {
+      if (this.task().taskKind === 'employee_checklist') {
+        if (employeeId) await firstValueFrom(this.taskApi.assignTask(taskId, employeeId));
+        this.taskChanged.emit();
+        return;
+      }
       for (const previousId of current) {
         await firstValueFrom(this.taskApi.unassignTask(taskId, previousId));
       }
