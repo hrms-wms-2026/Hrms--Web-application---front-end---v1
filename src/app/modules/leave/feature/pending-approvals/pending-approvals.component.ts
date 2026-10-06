@@ -31,6 +31,8 @@ export class PendingApprovalsComponent {
   readonly store = inject(LeaveApprovalStore);
   readonly leaveTypeStore = inject(LeaveTypeStore);
   readonly canApprove = () => this.permissionService.hasPermission('leave:approve');
+  /** Approve/Reject only when the backend says it is still this approver's turn (e.g. not under in_order). */
+  readonly canDecide = computed(() => this.store.detail()?.canDecide === true && this.canApprove());
   readonly leaveTypeOptions = computed<SelectOption[]>(() => [
     { value: '', label: 'All leave types' },
     ...this.leaveTypeStore.items().map((type) => ({ value: type.id, label: type.name }))

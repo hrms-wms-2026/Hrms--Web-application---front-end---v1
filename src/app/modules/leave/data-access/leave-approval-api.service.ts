@@ -41,6 +41,11 @@ export class LeaveApprovalApiService {
     return this.http.get<LeaveApprovalDetailResponse>(`${environment.apiUrl}/leave/requests/${requestId}/approval`);
   }
 
+  /** HR's read-only view (leave:read) of any request, used by the All Requests ledger. */
+  getLedgerDetail(requestId: string): Observable<LeaveApprovalDetailResponse> {
+    return this.http.get<LeaveApprovalDetailResponse>(`${environment.apiUrl}/leave/requests/${requestId}/detail`);
+  }
+
   approve(requestId: string, payload: ApproveLeaveRequestRequest): Observable<LeaveApprovalDecisionResponse> {
     return this.http.post<LeaveApprovalDecisionResponse>(`${environment.apiUrl}/leave/requests/${requestId}/approve`, payload);
   }

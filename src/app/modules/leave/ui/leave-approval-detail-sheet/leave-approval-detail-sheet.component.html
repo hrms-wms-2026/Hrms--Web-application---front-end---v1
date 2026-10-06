@@ -1,5 +1,9 @@
 <app-modal [open]="open" size="xl" title="Leave Request Detail" (closed)="onClose()">
-  @if (detail) {
+  @if (loadError) {
+    <p class="lad-error" data-testid="detail-load-error">{{ loadError }}</p>
+  } @else if (loading && !detail) {
+    <p class="lad-muted">Loading...</p>
+  } @else if (detail) {
     <div class="lad-body">
       <header class="lad-header">
         <h3>{{ detail.employeeName }}</h3>

@@ -46,9 +46,11 @@
 <app-leave-approval-detail-sheet
   [open]="detailOpen()"
   [detail]="store.detail()"
-  [canApprove]="canApprove()"
+  [canApprove]="canDecide()"
   [deciding]="store.deciding()"
   [decideError]="store.decideError()"
+  [loading]="store.detailLoading()"
+  [loadError]="store.detailError()"
   (decisionRequested)="onDecision($event)"
   (closed)="closeDetail()"
 />

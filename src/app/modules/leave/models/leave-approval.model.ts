@@ -35,6 +35,7 @@ export interface LeaveRequestAllListItemResponse {
   totalHours: number;
   status: 'pending' | 'approved' | 'rejected' | 'cancelled' | 'information_requested';
   submittedAt: string;
+  approverNames: string[];
 }
 
 export interface LeaveApprovalApproverResponse {
@@ -72,6 +73,8 @@ export interface LeaveApprovalDetailResponse {
   submissionConflictSnapshotJson: string | null;
   currentWarnings: LeaveApprovalWarningResponse[];
   remainingHours: number;
+  /** True only when the caller is the approver whose turn it is on a still-open request. */
+  canDecide: boolean;
 }
 
 export interface LeaveApprovalDecisionResponse {

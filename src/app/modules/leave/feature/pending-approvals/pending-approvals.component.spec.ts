@@ -31,8 +31,22 @@ describe('PendingApprovalsComponent', () => {
     fixture.componentInstance.onRowClicked('req-1');
     expect(fixture.componentInstance.detailOpen()).toBe(true);
     httpMock.expectOne((r) => r.url === `${environment.apiUrl}/leave/requests/req-1/approval`).flush({
-      requestId: 'req-1', employeeId: 'emp-1', employeeName: 'Anu Raman', leaveTypeId: 'type-1', leaveTypeName: 'Annual Leave', leaveTypeCode: 'ANNUAL', startAt: '2026-09-10', endAt: '2026-09-12', totalHours: 3, paidHours: 3, unpaidHours: 0, status: 'pending', reason: null, approvers: [], infoMessages: [], submissionConflictSnapshotJson: null, currentWarnings: [], remainingHours: 17
+      requestId: 'req-1', employeeId: 'emp-1', employeeName: 'Anu Raman', leaveTypeId: 'type-1', leaveTypeName: 'Annual Leave', leaveTypeCode: 'ANNUAL', startAt: '2026-09-10', endAt: '2026-09-12', totalHours: 3, paidHours: 3, unpaidHours: 0, status: 'pending', reason: null, approvers: [], infoMessages: [], submissionConflictSnapshotJson: null, currentWarnings: [], remainingHours: 17, canDecide: true
     });
+  });
+
+  it('shows the load error in the detail sheet instead of a blank modal', async () => {
+    fixture.detectChanges();
+    httpMock.expectOne((r) => r.url === `${environment.apiUrl}/leave/requests/pending-approvals`).flush([]);
+    httpMock.expectOne((r) => r.url === `${environment.apiUrl}/leave/types`).flush([]);
+    fixture.componentInstance.onRowClicked('req-1');
+    httpMock.expectOne(`${environment.apiUrl}/leave/requests/req-1/approval`).flush(
+      { detail: 'You are not an approver for this request.' }, { status: 403, statusText: 'Forbidden' });
+    await fixture.whenStable();
+    fixture.detectChanges();
+    expect(fixture.componentInstance.store.detailError()).toBeTruthy();
+    expect(fixture.componentInstance.canDecide()).toBe(false);
+    expect(document.querySelector('[data-testid="detail-load-error"]')).not.toBeNull();
   });
 
   it('clears selection after a bulk approve completes', async () => {

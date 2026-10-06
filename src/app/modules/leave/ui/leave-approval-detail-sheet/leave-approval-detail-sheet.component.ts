@@ -25,6 +25,8 @@ export class LeaveApprovalDetailSheetComponent {
   @Input({ required: true }) canApprove = false;
   @Input() deciding = false;
   @Input() decideError: string | null = null;
+  @Input() loading = false;
+  @Input() loadError: string | null = null;
   @Output() decisionRequested = new EventEmitter<LeaveApprovalDecisionRequest>();
   @Output() closed = new EventEmitter<void>();
 

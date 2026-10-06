@@ -15,7 +15,8 @@ describe('LeaveApprovalDetailSheetComponent', () => {
     infoMessages: [],
     submissionConflictSnapshotJson: JSON.stringify({ warnings: [], calendarConflicts: [], teamAbsencePercent: null }),
     currentWarnings: [{ code: 'blackout_period', message: 'Overlaps a configured blackout period.' }],
-    remainingHours: 17
+    remainingHours: 17,
+    canDecide: true
   };
 
   beforeEach(async () => {

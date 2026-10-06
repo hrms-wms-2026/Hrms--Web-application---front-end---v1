@@ -79,7 +79,15 @@ export const AuthStore = signalStore(
           loading: false
         });
       } catch (err) {
-        patchState(store, { loading: false, error: extractErrorMessage(err, 'Invalid email or password.') });
+        // status 0 = the request never reached the API (network/TLS/CORS), so the credentials
+        // were never checked - same convention as exchange() below.
+        const isUnreachable = err instanceof HttpErrorResponse && err.status === 0;
+        patchState(store, {
+          loading: false,
+          error: isUnreachable
+            ? 'Could not reach the server. Check your connection or local HTTPS certificate and try again.'
+            : extractErrorMessage(err, 'Invalid email or password.')
+        });
         throw err;
       }
     },

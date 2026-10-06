@@ -64,6 +64,7 @@ export class NewLeaveRequestWizardComponent {
   readonly steps = ['Leave type', 'From / To', 'Total & warnings', 'Reason', 'Review'];
   readonly activeLeaveTypes = computed(() => (this.leaveTypes as LeaveTypeResponse[]).filter((type) => type.isActive));
   readonly workWindowMissing = computed(() => !this.workStartTime || !this.workEndTime);
+  readonly reasonMaxLength = 2000;
 
   ngOnInit(): void {
     if (!this.initialStartDate && !this.initialEndDate) return;
@@ -100,10 +101,46 @@ export class NewLeaveRequestWizardComponent {
     this.pickerOpen.set(false);
   }
 
+  /** Why Continue is disabled on the From/To step, so the user isn't left guessing. */
+  dateRangeHint(): string | null {
+    const d = this.draft();
+    if (this.workWindowMissing()) return null;
+    if (!d.startDate) return 'Choose the date your leave starts.';
+    if (!d.endDate) return 'Choose the date your leave ends.';
+    if (d.endDate < d.startDate) return 'The end date must be on or after the start date.';
+    const payload = this.toSubmitPayload();
+    if (!payload) return 'Choose valid start and end times.';
+    if (payload.endAt <= payload.startAt) return 'The end must be after the start.';
+    return null;
+  }
+
+  onStartDateChange(startDate: string): void {
+    // Most leave is a single day or a forward range: keep To in step so it's never left behind.
+    this.draft.update((d) => ({ ...d, startDate, endDate: !d.endDate || d.endDate < startDate ? startDate : d.endDate }));
+  }
+
+  approverNames(): string[] {
+    return (this.previewResult?.approvers ?? [])
+      .slice()
+      .sort((a, b) => a.sequenceOrder - b.sequenceOrder)
+      .map((a) => a.approverName)
+      .filter((name) => !!name);
+  }
+
+  formatDay(date: string): string {
+    if (!date) return '';
+    const [year, month, day] = date.split('-').map(Number);
+    const weekday = new Date(year, month - 1, day).toLocaleDateString('en-US', { weekday: 'short' });
+    return `${date} (${weekday})`;
+  }
+
   canLeaveStep(step: number): boolean {
     const d = this.draft();
     if (step === 1) return this.onBehalf ? this.employeeId() !== null && !!d.leaveTypeId : !!d.leaveTypeId;
-    if (step === 2) return this.toSubmitPayload() !== null;
+    if (step === 2) return this.toSubmitPayload() !== null && this.dateRangeHint() === null;
+    // Submit needs a successful preview, so don't let a blocking preview error lead the user
+    // through steps 4-5 to a Submit button that can never be enabled.
+    if (step === 3) return !this.previewing && !this.previewError && this.previewResult !== null;
     return true;
   }
 
