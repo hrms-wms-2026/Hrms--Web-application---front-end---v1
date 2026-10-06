@@ -29,8 +29,10 @@ describe('NeedsAttentionWidgetComponent', () => {
     const fixture = TestBed.createComponent(NeedsAttentionWidgetComponent);
     fixture.componentRef.setInput('employeeId', 'emp-1');
     fixture.detectChanges();
-    return { el: fixture.nativeElement as HTMLElement, get };
+    return { fixture, el: fixture.nativeElement as HTMLElement, get };
   }
+
+  const many = (n: number) => Array.from({ length: n }, (_, i) => ({ ...item, taskId: `t-${i}`, title: `Task ${i}` }));
 
   it('lists tasks with their issue, status, points and a board link', () => {
     const { el, get } = setup({ asOf: '2026-09-15', totalCount: 1, items: [item] });
@@ -41,15 +43,28 @@ describe('NeedsAttentionWidgetComponent', () => {
     expect(row.textContent).toContain('Watercraft Platform');
     expect(row.textContent).toContain('2 days overdue');
     expect(row.textContent).toContain('In Progress');
-    expect(row.textContent).toContain('5');
-    const link = row.querySelector('a')!;
-    expect(link.getAttribute('href')).toContain('/work/p-1/board');
-    expect(link.getAttribute('href')).toContain('highlightTaskId=t-1');
+    expect(row.textContent).toContain('WEB-1');
+    expect(row.getAttribute('href')).toContain('/work/p-1/board');
+    expect(row.getAttribute('href')).toContain('highlightTaskId=t-1');
   });
 
-  it('shows how many more there are beyond the first five', () => {
-    const { el } = setup({ asOf: '2026-09-15', totalCount: 8, items: [item] });
-    expect(el.textContent).toContain('+7 more');
+  it('shows three rows, and View all expands to every item', () => {
+    const { fixture, el } = setup({ asOf: '2026-09-15', totalCount: 8, items: many(8) });
+    expect(el.querySelectorAll('[data-testid="attention-row"]').length).toBe(3);
+
+    const toggle = el.querySelector<HTMLButtonElement>('[data-testid="attention-toggle"]')!;
+    expect(toggle.textContent).toContain('View all');
+    toggle.click();
+    fixture.detectChanges();
+
+    expect(el.querySelectorAll('[data-testid="attention-row"]').length).toBe(8);
+    expect(toggle.textContent).toContain('Show less');
+  });
+
+  it('always offers View all, even when every item already fits', () => {
+    const { el } = setup({ asOf: '2026-09-15', totalCount: 3, items: many(3) });
+    expect(el.querySelectorAll('[data-testid="attention-row"]').length).toBe(3);
+    expect(el.querySelector('[data-testid="attention-toggle"]')!.textContent).toContain('View all');
   });
 
   it('shows the empty state when nothing needs attention', () => {
