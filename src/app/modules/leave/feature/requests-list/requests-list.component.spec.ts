@@ -38,7 +38,7 @@ describe('RequestsListComponent', () => {
     httpMock.expectOne(`${environment.apiUrl}/leave/requests/req-1/detail`).flush({
       requestId: 'req-1', employeeId: 'emp-1', employeeName: 'Anu Raman', leaveTypeId: 'type-1', leaveTypeName: 'Annual Leave', leaveTypeCode: 'ANNUAL',
       startAt: '2026-09-10', endAt: '2026-09-12', totalHours: 3, paidHours: 3, unpaidHours: 0, status: 'pending', reason: null,
-      approvers: [], infoMessages: [], submissionConflictSnapshotJson: null, currentWarnings: [], remainingHours: 17, canDecide: false
+      approvers: [], infoMessages: [], submissionConflictSnapshotJson: null, currentWarnings: [], remainingHours: 17, canDecide: false, forwardTo: null, canChangeDecision: false
     });
     await fixture.whenStable();
     expect(fixture.componentInstance.store.detail()?.requestId).toBe('req-1');

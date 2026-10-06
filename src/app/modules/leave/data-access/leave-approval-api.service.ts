@@ -6,11 +6,15 @@ import {
   ApproveLeaveRequestRequest,
   BulkApproveLeaveRequestsRequest,
   BulkRejectLeaveRequestsRequest,
+  ChangeLeaveDecisionRequest,
   CreateLeaveApprovalDelegateRequest,
+  ForwardLeaveRequestRequest,
   LeaveApprovalBulkResultResponse,
   LeaveApprovalDelegateResponse,
   LeaveApprovalDecisionResponse,
   LeaveApprovalDetailResponse,
+  LeaveApprovalHistoryFilter,
+  LeaveApprovalHistoryItemResponse,
   LeaveApprovalListFilter,
   LeavePendingApprovalListItemResponse,
   LeaveRequestAllListFilter,
@@ -56,6 +60,21 @@ export class LeaveApprovalApiService {
 
   requestInfo(requestId: string, payload: RequestLeaveInformationRequest): Observable<LeaveApprovalDecisionResponse> {
     return this.http.post<LeaveApprovalDecisionResponse>(`${environment.apiUrl}/leave/requests/${requestId}/request-info`, payload);
+  }
+
+  forward(requestId: string, payload: ForwardLeaveRequestRequest): Observable<LeaveApprovalDecisionResponse> {
+    return this.http.post<LeaveApprovalDecisionResponse>(`${environment.apiUrl}/leave/requests/${requestId}/forward`, payload);
+  }
+
+  changeDecision(requestId: string, payload: ChangeLeaveDecisionRequest): Observable<LeaveApprovalDecisionResponse> {
+    return this.http.post<LeaveApprovalDecisionResponse>(`${environment.apiUrl}/leave/requests/${requestId}/change-decision`, payload);
+  }
+
+  listHistory(filter: LeaveApprovalHistoryFilter): Observable<LeaveApprovalHistoryItemResponse[]> {
+    let params = new HttpParams();
+    if (filter.fromDate) params = params.set('fromDate', filter.fromDate);
+    if (filter.toDate) params = params.set('toDate', filter.toDate);
+    return this.http.get<LeaveApprovalHistoryItemResponse[]>(`${environment.apiUrl}/leave/requests/approval-history`, { params });
   }
 
   respondInfo(requestId: string, payload: RespondLeaveInformationRequest): Observable<LeaveApprovalDecisionResponse> {

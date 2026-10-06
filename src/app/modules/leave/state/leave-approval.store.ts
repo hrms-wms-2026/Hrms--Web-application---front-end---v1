@@ -7,11 +7,15 @@ import {
   ApproveLeaveRequestRequest,
   BulkApproveLeaveRequestsRequest,
   BulkRejectLeaveRequestsRequest,
+  ChangeLeaveDecisionRequest,
   CreateLeaveApprovalDelegateRequest,
+  ForwardLeaveRequestRequest,
   LeaveApprovalBulkResultResponse,
   LeaveApprovalDecisionResponse,
   LeaveApprovalDelegateResponse,
   LeaveApprovalDetailResponse,
+  LeaveApprovalHistoryFilter,
+  LeaveApprovalHistoryItemResponse,
   LeaveApprovalListFilter,
   LeavePendingApprovalListItemResponse,
   LeaveRequestAllListFilter,
@@ -31,6 +35,10 @@ export interface LeaveApprovalState {
   readonly allLoading: boolean;
   readonly allError: string | null;
   readonly allFilter: LeaveRequestAllListFilter;
+  readonly history: readonly LeaveApprovalHistoryItemResponse[];
+  readonly historyLoading: boolean;
+  readonly historyError: string | null;
+  readonly historyFilter: LeaveApprovalHistoryFilter;
   readonly detail: LeaveApprovalDetailResponse | null;
   readonly detailLoading: boolean;
   readonly detailError: string | null;
@@ -53,6 +61,10 @@ const initialState: LeaveApprovalState = {
   allLoading: false,
   allError: null,
   allFilter: {},
+  history: [],
+  historyLoading: false,
+  historyError: null,
+  historyFilter: {},
   detail: null,
   detailLoading: false,
   detailError: null,
@@ -81,6 +93,19 @@ export const LeaveApprovalStore = signalStore(
         patchState(store, { pending, pendingLoading: false });
       } catch (err) {
         patchState(store, { pendingLoading: false, pendingError: toSafeErrorMessage(err, 'Failed to load pending approvals.') });
+      }
+    },
+    setHistoryFilter(filter: LeaveApprovalHistoryFilter): void {
+      patchState(store, { historyFilter: filter });
+      void this.loadHistory();
+    },
+    async loadHistory(): Promise<void> {
+      patchState(store, { historyLoading: true, historyError: null });
+      try {
+        const history = await firstValueFrom(api.listHistory(store.historyFilter()));
+        patchState(store, { history, historyLoading: false });
+      } catch (err) {
+        patchState(store, { historyLoading: false, historyError: toSafeErrorMessage(err, 'Failed to load your approval history.') });
       }
     },
     setAllFilter(filter: LeaveRequestAllListFilter): void {
@@ -116,6 +141,12 @@ export const LeaveApprovalStore = signalStore(
     },
     async requestInfo(requestId: string, payload: RequestLeaveInformationRequest): Promise<LeaveApprovalDecisionResponse | null> {
       return this.decide(() => api.requestInfo(requestId, payload), requestId);
+    },
+    async changeDecision(requestId: string, payload: ChangeLeaveDecisionRequest): Promise<LeaveApprovalDecisionResponse | null> {
+      return this.decide(() => api.changeDecision(requestId, payload), requestId);
+    },
+    async forward(requestId: string, payload: ForwardLeaveRequestRequest): Promise<LeaveApprovalDecisionResponse | null> {
+      return this.decide(() => api.forward(requestId, payload), requestId);
     },
     async respondInfo(requestId: string, payload: RespondLeaveInformationRequest): Promise<LeaveApprovalDecisionResponse | null> {
       patchState(store, { deciding: true, decideError: null });

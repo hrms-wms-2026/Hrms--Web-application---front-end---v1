@@ -42,7 +42,7 @@ export interface LeaveApprovalApproverResponse {
   approverEmployeeId: string;
   approverName: string;
   sequenceOrder: number;
-  status: 'pending' | 'approved' | 'rejected' | 'skipped' | 'information_requested';
+  status: 'pending' | 'approved' | 'rejected' | 'skipped' | 'information_requested' | 'forwarded';
   comment: string | null;
   delegatedFromApproverId: string | null;
   decidedAt: string | null;
@@ -75,6 +75,44 @@ export interface LeaveApprovalDetailResponse {
   remainingHours: number;
   /** True only when the caller is the approver whose turn it is on a still-open request. */
   canDecide: boolean;
+  /** Who "Send to my manager" hands the request to; null when the caller can't forward it. */
+  forwardTo: LeaveApprovalForwardTargetResponse | null;
+  /** True when the caller made this approve/reject decision and the leave hasn't started yet. */
+  canChangeDecision: boolean;
+}
+
+export interface LeaveApprovalForwardTargetResponse {
+  employeeId: string;
+  name: string;
+}
+
+/** One request the current approver already acted on (Pending Approvals > History). */
+export interface LeaveApprovalHistoryItemResponse {
+  requestId: string;
+  employeeId: string;
+  employeeName: string;
+  leaveTypeName: string;
+  startAt: string;
+  endAt: string;
+  totalHours: number;
+  myAction: 'approved' | 'rejected' | 'forwarded' | 'information_requested';
+  actedAt: string;
+  myComment: string | null;
+  requestStatus: 'pending' | 'approved' | 'rejected' | 'cancelled' | 'information_requested';
+}
+
+export interface ChangeLeaveDecisionRequest {
+  decision: 'approve' | 'reject';
+  comment: string | null;
+}
+
+export interface ForwardLeaveRequestRequest {
+  note: string | null;
+}
+
+export interface LeaveApprovalHistoryFilter {
+  fromDate?: string;
+  toDate?: string;
 }
 
 export interface LeaveApprovalDecisionResponse {
