@@ -122,9 +122,8 @@ describe('TodaysScheduleCardComponent', () => {
 
     const btn: HTMLAnchorElement = fixture.nativeElement.querySelector('[data-testid="todays-schedule-next-meeting-btn"]');
     expect(btn).not.toBeNull();
-    expect(btn.textContent).toContain('Start Meeting');
+    expect(btn.textContent).toContain('Start Zoom Meeting');
     expect(btn.getAttribute('href')).toBe('https://us05web.zoom.us/j/81793600600');
-    expect(fixture.nativeElement.textContent).toContain('Zoom');
   });
 
   it('renders Join Meeting button when user is a participant of the next event with a meeting link', async () => {
@@ -145,8 +144,7 @@ describe('TodaysScheduleCardComponent', () => {
 
     const btn: HTMLAnchorElement = fixture.nativeElement.querySelector('[data-testid="todays-schedule-next-meeting-btn"]');
     expect(btn).not.toBeNull();
-    expect(btn.textContent).toContain('Join Meeting');
+    expect(btn.textContent).toContain('Join Teams Meeting');
     expect(btn.getAttribute('href')).toBe('https://teams.microsoft.com/l/meetup-join/123');
-    expect(fixture.nativeElement.textContent).toContain('Teams');
   });
 });
