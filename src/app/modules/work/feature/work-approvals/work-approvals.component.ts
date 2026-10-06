@@ -86,6 +86,7 @@ const APPROVAL_COLUMNS: readonly DataTableColumn[] = [
             [trackBy]="trackItem"
             [rowTestId]="rowTestId"
             [activeRowId]="store.selectedId()"
+            [activeRowAppearance]="'solid'"
             [busyRowId]="busyId()"
             [rowFocusable]="true"
             [emptyMessage]="store.items().length === 0 ? 'No approval requests in this project yet.' : 'No requests match these filters.'"
@@ -261,6 +262,14 @@ const APPROVAL_COLUMNS: readonly DataTableColumn[] = [
     .work-approvals__kebab { display: inline-flex; width: 30px; height: 30px; align-items: center; justify-content: center; border: 0; border-radius: 8px; background: transparent; color: var(--color-text-secondary); cursor: pointer; }
     .work-approvals__kebab:hover { background: var(--color-surface-secondary); color: var(--color-text-primary); }
     .work-approvals__kebab svg { width: 18px; height: 18px; fill: none; stroke: currentColor; stroke-width: 2.4; stroke-linecap: round; stroke-linejoin: round; }
+
+    /* Selected row (Tree-tab style, solid accent fill): the title/name text already goes white by
+       inheriting from the row's own color - these are the cells that set their own color and would
+       otherwise stay dark-on-accent and unreadable. */
+    :host ::ng-deep tr.data-table__row--active-solid .work-approvals__secondary { color: color-mix(in srgb, var(--color-accent-contrast, #fff) 80%, transparent); }
+    :host ::ng-deep tr.data-table__row--active-solid .work-approvals__pill { background: color-mix(in srgb, var(--color-accent-contrast, #fff) 20%, transparent); color: var(--color-accent-contrast, #fff); }
+    :host ::ng-deep tr.data-table__row--active-solid .work-approvals__kebab { color: var(--color-accent-contrast, #fff); }
+    :host ::ng-deep tr.data-table__row--active-solid .work-approvals__kebab:hover { background: color-mix(in srgb, var(--color-accent-contrast, #fff) 18%, transparent); color: var(--color-accent-contrast, #fff); }
   `]
 })
 export class WorkApprovalsComponent implements AfterViewInit, OnDestroy {
