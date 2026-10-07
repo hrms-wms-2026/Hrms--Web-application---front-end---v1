@@ -1,5 +1,7 @@
-import { ChangeDetectionStrategy, Component, inject, input } from '@angular/core';
+import { ChangeDetectionStrategy, Component, computed, inject, input, signal } from '@angular/core';
 import { RouterLink } from '@angular/router';
+import { PopoutHeaderActionsComponent } from '../../../../shared/ui/popout-header-actions/popout-header-actions.component';
+import { PopoutPanelComponent } from '../../../../shared/ui/popout-panel/popout-panel.component';
 import { WidgetCardComponent } from '../../../../shared/ui/widget-card/widget-card.component';
 import { createWidgetLoader } from '../../../../shared/ui/widget-card/widget-loader';
 import { PeopleApiService } from '../../data-access/people-api.service';
@@ -9,19 +11,37 @@ import { priorityLabel } from '../../utils/employee-work-activity.utils';
 @Component({
   selector: 'app-recent-tasks-widget',
   standalone: true,
-  imports: [WidgetCardComponent, RouterLink],
+  imports: [WidgetCardComponent, RouterLink, PopoutPanelComponent, PopoutHeaderActionsComponent],
   template: `
+    <app-popout-panel class="block h-full" [open]="expanded()" label="Today's Tasks" (closed)="expanded.set(false)">
     <app-widget-card
-      title="Recent Tasks"
+      class="group"
+      title="Today's Tasks"
+      [class.cursor-pointer]="canExpand() && !expanded()"
       [state]="loader.state()"
-      emptyMessage="No tasks assigned yet."
+      emptyMessage="No tasks for today."
       errorMessage="Could not load recent tasks."
       (retry)="loader.reload()"
+      (click)="expand()"
     >
+      @if (loader.data()) {
+        <div widget-actions class="flex items-center gap-2">
+          <app-popout-header-actions
+            [refreshedAt]="loader.loadedAt()"
+            [refreshing]="loader.refreshing()"
+            [expanded]="expanded()"
+            [canExpand]="canExpand()"
+            [revealOnHover]="!expanded()"
+            (refresh)="loader.refresh()"
+            (expand)="expand()"
+            (closed)="expanded.set(false)"
+          />
+        </div>
+      }
       @if (loader.data(); as d) {
-        <p class="-mt-1 mb-3 text-xs text-slate-500">Latest tasks assigned to this employee</p>
+        <p class="-mt-1 mb-3 text-xs text-slate-500">Tasks due today or updated today</p>
         <ul class="space-y-2">
-          @for (t of d.items; track t.taskId) {
+          @for (t of expanded() ? d.items : d.items.slice(0, previewCount); track t.taskId) {
             <li>
               <a
                 data-testid="recent-row"
@@ -53,6 +73,9 @@ import { priorityLabel } from '../../utils/employee-work-activity.utils';
                     <span class="truncate">{{ t.statusName }}</span>
                   </span>
                   <span class="rounded-md bg-violet-50 px-2 py-0.5 text-[11px] font-semibold text-violet-700">{{ t.storyPoints ?? '—' }} SP</span>
+                  @if (t.updatedToday) {
+                    <span data-testid="recent-updated-today" class="rounded-md bg-sky-50 px-2 py-0.5 text-[11px] font-semibold text-sky-700">Updated today</span>
+                  }
                   <span class="min-w-24 text-right text-xs text-slate-500">{{ due(t.dueDate) }}</span>
                   <svg class="hidden h-4 w-4 text-slate-400 sm:block" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="9 18 15 12 9 6"></polyline></svg>
                 </div>
@@ -60,8 +83,22 @@ import { priorityLabel } from '../../utils/employee-work-activity.utils';
             </li>
           }
         </ul>
+        @if (canExpand()) {
+          <div class="mt-3 flex justify-end border-t border-slate-100 pt-3">
+            <button
+              type="button"
+              data-testid="recent-view-all"
+              class="cursor-pointer text-xs font-semibold text-blue-600 hover:text-blue-700 hover:underline"
+              [attr.aria-expanded]="expanded()"
+              (click)="onToggleClick($event)"
+            >
+              {{ expanded() ? 'Show less' : 'View all' }}
+            </button>
+          </div>
+        }
       }
     </app-widget-card>
+    </app-popout-panel>
   `,
   changeDetection: ChangeDetectionStrategy.OnPush
 })
@@ -75,6 +112,21 @@ export class RecentTasksWidgetComponent {
   });
 
   readonly priority = priorityLabel;
+
+  /** Rows on the compact card; "View all" (or a click on the card) pops the full list out over the page. */
+  readonly previewCount = 3;
+  readonly expanded = signal(false);
+  readonly canExpand = computed(() => (this.loader.data()?.items.length ?? 0) > this.previewCount);
+
+  expand(): void {
+    if (!this.expanded() && this.canExpand()) this.expanded.set(true);
+  }
+
+  onToggleClick(event: Event): void {
+    event.stopPropagation();
+    if (this.expanded()) this.expanded.set(false);
+    else this.expand();
+  }
 
   due(dueDate: string | null): string {
     return dueDate ? `Due ${formatShortDate(dueDate)}` : 'No due date';

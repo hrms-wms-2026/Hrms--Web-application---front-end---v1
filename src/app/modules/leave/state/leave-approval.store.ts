@@ -7,11 +7,15 @@ import {
   ApproveLeaveRequestRequest,
   BulkApproveLeaveRequestsRequest,
   BulkRejectLeaveRequestsRequest,
+  ChangeLeaveDecisionRequest,
   CreateLeaveApprovalDelegateRequest,
+  ForwardLeaveRequestRequest,
   LeaveApprovalBulkResultResponse,
   LeaveApprovalDecisionResponse,
   LeaveApprovalDelegateResponse,
   LeaveApprovalDetailResponse,
+  LeaveApprovalHistoryFilter,
+  LeaveApprovalHistoryItemResponse,
   LeaveApprovalListFilter,
   LeavePendingApprovalListItemResponse,
   LeaveRequestAllListFilter,
@@ -31,9 +35,14 @@ export interface LeaveApprovalState {
   readonly allLoading: boolean;
   readonly allError: string | null;
   readonly allFilter: LeaveRequestAllListFilter;
+  readonly history: readonly LeaveApprovalHistoryItemResponse[];
+  readonly historyLoading: boolean;
+  readonly historyError: string | null;
+  readonly historyFilter: LeaveApprovalHistoryFilter;
   readonly detail: LeaveApprovalDetailResponse | null;
   readonly detailLoading: boolean;
   readonly detailError: string | null;
+  readonly detailSource: 'approval' | 'ledger';
   readonly deciding: boolean;
   readonly decideError: string | null;
   readonly cancelling: boolean;
@@ -52,9 +61,14 @@ const initialState: LeaveApprovalState = {
   allLoading: false,
   allError: null,
   allFilter: {},
+  history: [],
+  historyLoading: false,
+  historyError: null,
+  historyFilter: {},
   detail: null,
   detailLoading: false,
   detailError: null,
+  detailSource: 'approval',
   deciding: false,
   decideError: null,
   cancelling: false,
@@ -81,6 +95,19 @@ export const LeaveApprovalStore = signalStore(
         patchState(store, { pendingLoading: false, pendingError: toSafeErrorMessage(err, 'Failed to load pending approvals.') });
       }
     },
+    setHistoryFilter(filter: LeaveApprovalHistoryFilter): void {
+      patchState(store, { historyFilter: filter });
+      void this.loadHistory();
+    },
+    async loadHistory(): Promise<void> {
+      patchState(store, { historyLoading: true, historyError: null });
+      try {
+        const history = await firstValueFrom(api.listHistory(store.historyFilter()));
+        patchState(store, { history, historyLoading: false });
+      } catch (err) {
+        patchState(store, { historyLoading: false, historyError: toSafeErrorMessage(err, 'Failed to load your approval history.') });
+      }
+    },
     setAllFilter(filter: LeaveRequestAllListFilter): void {
       patchState(store, { allFilter: filter });
       void this.loadAll();
@@ -94,10 +121,10 @@ export const LeaveApprovalStore = signalStore(
         patchState(store, { allLoading: false, allError: toSafeErrorMessage(err, 'Failed to load requests.') });
       }
     },
-    async loadDetail(requestId: string): Promise<void> {
-      patchState(store, { detailLoading: true, detailError: null });
+    async loadDetail(requestId: string, source: 'approval' | 'ledger' = 'approval'): Promise<void> {
+      patchState(store, { detailLoading: true, detailError: null, detailSource: source });
       try {
-        const detail = await firstValueFrom(api.getDetail(requestId));
+        const detail = await firstValueFrom(source === 'ledger' ? api.getLedgerDetail(requestId) : api.getDetail(requestId));
         patchState(store, { detail, detailLoading: false });
       } catch (err) {
         patchState(store, { detailLoading: false, detailError: toSafeErrorMessage(err, 'Failed to load this request.') });
@@ -114,6 +141,12 @@ export const LeaveApprovalStore = signalStore(
     },
     async requestInfo(requestId: string, payload: RequestLeaveInformationRequest): Promise<LeaveApprovalDecisionResponse | null> {
       return this.decide(() => api.requestInfo(requestId, payload), requestId);
+    },
+    async changeDecision(requestId: string, payload: ChangeLeaveDecisionRequest): Promise<LeaveApprovalDecisionResponse | null> {
+      return this.decide(() => api.changeDecision(requestId, payload), requestId);
+    },
+    async forward(requestId: string, payload: ForwardLeaveRequestRequest): Promise<LeaveApprovalDecisionResponse | null> {
+      return this.decide(() => api.forward(requestId, payload), requestId);
     },
     async respondInfo(requestId: string, payload: RespondLeaveInformationRequest): Promise<LeaveApprovalDecisionResponse | null> {
       patchState(store, { deciding: true, decideError: null });
@@ -134,8 +167,10 @@ export const LeaveApprovalStore = signalStore(
       try {
         const result = await firstValueFrom(call());
         patchState(store, { deciding: false });
-        await this.loadDetail(requestId);
-        await this.loadPending();
+        const source = store.detailSource();
+        await this.loadDetail(requestId, source);
+        if (source === 'ledger') await this.loadAll();
+        else await this.loadPending();
         return result;
       } catch (err) {
         patchState(store, { deciding: false, decideError: toSafeErrorMessage(err, 'Failed to record your decision.') });

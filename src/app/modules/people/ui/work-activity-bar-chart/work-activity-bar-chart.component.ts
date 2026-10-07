@@ -66,7 +66,11 @@ export class WorkActivityBarChartComponent {
   /** Formats the y-axis tick values (e.g. minutes as '1h'). */
   readonly formatTick = input<(value: number) => string>((value) => String(value));
 
-  private readonly max = computed(() => Math.max(0, ...this.bars().map((b) => b.value)));
+  /**
+   * The axis top: the largest bar rounded up to an even number, so the middle grid line is a whole
+   * value (a max of 1 would otherwise label the middle line "1" too, reading 1 / 1 / 0).
+   */
+  private readonly max = computed(() => Math.ceil(Math.max(0, ...this.bars().map((b) => b.value)) / 2) * 2);
 
   readonly scaled = computed(() => {
     const max = this.max();
@@ -79,7 +83,7 @@ export class WorkActivityBarChartComponent {
     const fmt = this.formatTick();
     return [
       { top: 0, label: max === 0 ? '' : fmt(max) },
-      { top: 50, label: max === 0 ? '' : fmt(Math.round(max / 2)) },
+      { top: 50, label: max === 0 ? '' : fmt(max / 2) },
       { top: 100, label: fmt(0) }
     ];
   });

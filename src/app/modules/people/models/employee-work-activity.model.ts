@@ -36,6 +36,8 @@ export interface EmployeeWorkTaskItem {
   readonly storyPoints: number | null;
   readonly dueDate: string | null;
   readonly progressPercent: number;
+  /** Created or changed during the employee's local today - why a task not due today is listed. */
+  readonly updatedToday: boolean;
 }
 
 export interface EmployeeRecentTasksResponse {

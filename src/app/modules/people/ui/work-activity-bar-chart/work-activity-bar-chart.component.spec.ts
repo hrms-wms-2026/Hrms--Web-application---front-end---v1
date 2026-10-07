@@ -24,6 +24,14 @@ describe('WorkActivityBarChartComponent', () => {
     expect(el.textContent).toContain('Aug');
   });
 
+  it('rounds an odd max up so the axis never repeats a label', () => {
+    const el = render([{ label: 'Sep', value: 1 }]);
+    const labels = Array.from(el.querySelectorAll('span.absolute')).map((s) => s.textContent!.trim());
+
+    expect(labels).toEqual(['2', '1', '0']);
+    expect(el.querySelector<HTMLElement>('[data-testid="bar"]')!.style.height).toBe('50%');
+  });
+
   it('draws flat bars when every value is zero', () => {
     const el = render([{ label: 'Aug', value: 0 }]);
     expect(el.querySelector<HTMLElement>('[data-testid="bar"]')!.style.height).toBe('0%');

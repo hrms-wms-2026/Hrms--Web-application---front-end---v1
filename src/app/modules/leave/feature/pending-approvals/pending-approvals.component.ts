@@ -14,13 +14,14 @@ import { LeaveApprovalStore } from '../../state/leave-approval.store';
 import { LeaveTypeStore } from '../../state/leave-type.store';
 import { LeavePendingApprovalsTableComponent } from '../../ui/leave-pending-approvals-table/leave-pending-approvals-table.component';
 import { CreateLeaveApprovalDelegateRequest } from '../../models/leave-approval.model';
-import { LeaveApprovalDecisionRequest, LeaveApprovalDetailSheetComponent } from '../../ui/leave-approval-detail-sheet/leave-approval-detail-sheet.component';
+import { decisionMessage, LeaveApprovalDecisionRequest, LeaveApprovalDetailSheetComponent } from '../../ui/leave-approval-detail-sheet/leave-approval-detail-sheet.component';
 import { LeaveApprovalDelegateModalComponent } from '../../ui/leave-approval-delegate-modal/leave-approval-delegate-modal.component';
+import { LeaveApprovalHistoryTableComponent } from '../../ui/leave-approval-history-table/leave-approval-history-table.component';
 
 @Component({
   selector: 'app-pending-approvals',
   standalone: true,
-  imports: [CommonModule, ButtonComponent, DatePickerComponent, EmptyStateComponent, ErrorStateComponent, InputComponent, ModalComponent, SelectComponent, LeavePendingApprovalsTableComponent, LeaveApprovalDetailSheetComponent, LeaveApprovalDelegateModalComponent],
+  imports: [CommonModule, ButtonComponent, DatePickerComponent, EmptyStateComponent, ErrorStateComponent, InputComponent, ModalComponent, SelectComponent, LeavePendingApprovalsTableComponent, LeaveApprovalDetailSheetComponent, LeaveApprovalDelegateModalComponent, LeaveApprovalHistoryTableComponent],
   templateUrl: './pending-approvals.component.html',
   styleUrls: ['../../ui/time-off-chrome.css', './pending-approvals.component.css'],
   changeDetection: ChangeDetectionStrategy.OnPush
@@ -31,11 +32,14 @@ export class PendingApprovalsComponent {
   readonly store = inject(LeaveApprovalStore);
   readonly leaveTypeStore = inject(LeaveTypeStore);
   readonly canApprove = () => this.permissionService.hasPermission('leave:approve');
+  /** Approve/Reject only when the backend says it is still this approver's turn (e.g. not under in_order). */
+  readonly canDecide = computed(() => this.store.detail()?.canDecide === true && this.canApprove());
   readonly leaveTypeOptions = computed<SelectOption[]>(() => [
     { value: '', label: 'All leave types' },
     ...this.leaveTypeStore.items().map((type) => ({ value: type.id, label: type.name }))
   ]);
 
+  readonly tab = signal<'waiting' | 'history'>('waiting');
   readonly detailOpen = signal(false);
   readonly selectedIds = signal<Set<string>>(new Set());
   readonly bulkRejectOpen = signal(false);
@@ -46,6 +50,20 @@ export class PendingApprovalsComponent {
   constructor() {
     void this.store.loadPending();
     void this.leaveTypeStore.load();
+  }
+
+  setTab(tab: 'waiting' | 'history'): void {
+    this.tab.set(tab);
+    // Reload on every visit: decisions made on the Waiting tab change the history.
+    if (tab === 'history') void this.store.loadHistory();
+  }
+
+  onHistoryFromChange(fromDate: string): void {
+    this.store.setHistoryFilter({ ...this.store.historyFilter(), fromDate: fromDate || undefined });
+  }
+
+  onHistoryToChange(toDate: string): void {
+    this.store.setHistoryFilter({ ...this.store.historyFilter(), toDate: toDate || undefined });
   }
 
   openCover(): void {
@@ -108,17 +126,20 @@ export class PendingApprovalsComponent {
   async onDecision(event: LeaveApprovalDecisionRequest): Promise<void> {
     const requestId = this.store.detail()?.requestId;
     if (!requestId) return;
+    const forwardToName = this.store.detail()?.forwardTo?.name ?? 'your manager';
 
     let result;
     if (event.kind === 'approve') result = await this.store.approve(requestId, { comment: event.comment });
     else if (event.kind === 'reject') result = await this.store.reject(requestId, { reason: event.reason });
+    else if (event.kind === 'forward') result = await this.store.forward(requestId, { note: event.note });
+    else if (event.kind === 'change-to-reject') result = await this.store.changeDecision(requestId, { decision: 'reject', comment: event.reason });
+    else if (event.kind === 'change-to-approve') result = await this.store.changeDecision(requestId, { decision: 'approve', comment: event.comment });
     else result = await this.store.requestInfo(requestId, { question: event.question });
 
     if (result) {
-      this.notificationService.success(
-        event.kind === 'approve' ? 'Request approved.' : event.kind === 'reject' ? 'Request rejected.' : 'Information requested from the employee.'
-      );
+      this.notificationService.success(decisionMessage(event, forwardToName));
       this.closeDetail();
+      if (this.tab() === 'history') void this.store.loadHistory();
     } else {
       this.notificationService.error(this.store.decideError() ?? 'Failed to record your decision.');
     }

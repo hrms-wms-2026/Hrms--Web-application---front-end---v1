@@ -1,5 +1,10 @@
 <app-modal [open]="open" title="New Leave Request" (closed)="onClose()">
   <div class="nlw-body">
+    <div class="nlw-stepper" aria-hidden="true">
+      @for (label of steps; track label; let i = $index) {
+        <span class="nlw-stepper-bar" [class.nlw-stepper-bar--done]="i < step()"></span>
+      }
+    </div>
     <p class="nlw-step">Step {{ step() }} of 5 · {{ stepLabel() }}</p>
     @if (onBehalf && step() === 1) {
       <button type="button" class="nlw-picker-trigger" (click)="pickerOpen.set(true)">{{ employeeId() ? 'Employee selected' : 'Choose employee' }}</button>
@@ -18,16 +23,25 @@
           }
         </select>
       </label>
+      @if (draft().leaveTypeId && remainingHoursFor(draft().leaveTypeId) !== null) {
+        <p class="nlw-hint" data-testid="type-balance">You have <strong>{{ formatHours(remainingHoursFor(draft().leaveTypeId)!) }}</strong> hours of {{ selectedLeaveTypeName() }} left.</p>
+      }
     }
 
     @if (step() === 2) {
       @if (workWindowMissing()) {
         <p class="nlw-error" data-testid="work-window-required">Set work start and end in General Settings first.</p>
       }
-      <app-date-picker label="From date" [value]="draft().startDate" (valueChange)="draft.update(d => ({...d, startDate: $event}))" />
+      @if (workStartTime && workEndTime) {
+        <p class="nlw-hint">Your working day is {{ workStartTime }} – {{ workEndTime }}. Leave the times as they are for full days.</p>
+      }
+      <app-date-picker label="From date" [value]="draft().startDate" (valueChange)="onStartDateChange($event)" />
       <app-time-picker label="From time" [value]="draft().startTime || workStartTime || ''" (valueChange)="draft.update(d => ({...d, startTime: $event}))" />
       <app-date-picker label="To date" [value]="draft().endDate" (valueChange)="draft.update(d => ({...d, endDate: $event}))" />
       <app-time-picker label="To time" [value]="draft().endTime || workEndTime || ''" (valueChange)="draft.update(d => ({...d, endTime: $event}))" />
+      @if (dateRangeHint(); as hint) {
+        <p class="nlw-muted" data-testid="date-range-hint">{{ hint }}</p>
+      }
     }
 
     @if (step() === 3) {
@@ -36,7 +50,23 @@
       } @else if (previewError) {
         <p class="nlw-error">{{ previewError }}</p>
       } @else if (previewResult) {
-        <p class="nlw-total">Total leave hours: <strong>{{ formatHours(previewResult.totalHours) }}</strong></p>
+        <div class="nlw-summary" data-testid="preview-summary">
+          <div class="nlw-summary-item">
+            <span>Total hours</span>
+            <strong>{{ formatHours(previewResult.totalHours) }}</strong>
+          </div>
+          <div class="nlw-summary-item">
+            <span>Paid / unpaid</span>
+            <strong>{{ formatHours(previewResult.paidHours) }} / {{ formatHours(previewResult.unpaidHours) }}</strong>
+          </div>
+          <div class="nlw-summary-item">
+            <span>Balance after</span>
+            <strong>{{ formatHours(previewResult.balanceImpact.remainingAfterSubmitHours) }}</strong>
+          </div>
+        </div>
+        @if (!previewResult.noticePeriodMissed && previewResult.conflictSnapshot.warnings.length === 0 && previewResult.conflictSnapshot.calendarConflicts.length === 0) {
+          <p class="nlw-ok" data-testid="no-warnings">No policy warnings or calendar conflicts.</p>
+        }
         @if (previewResult.noticePeriodMissed) {
           <p class="nlw-warning">This request does not meet the minimum notice period. Your manager will be informed.</p>
         }
@@ -56,8 +86,9 @@
 
     @if (step() === 4) {
       <label class="nlw-field">
-        <span>Reason</span>
-        <textarea rows="3" [value]="draft().reason ?? ''" (input)="draft.update(d => ({...d, reason: ($any($event.target).value || null)}))"></textarea>
+        <span>Reason <em class="nlw-optional">(optional)</em></span>
+        <textarea rows="3" [attr.maxlength]="reasonMaxLength" placeholder="e.g. Family function, medical appointment..." [value]="draft().reason ?? ''" (input)="draft.update(d => ({...d, reason: ($any($event.target).value || null)}))"></textarea>
+        <small class="nlw-counter">{{ (draft().reason ?? '').length }} / {{ reasonMaxLength }}</small>
       </label>
       @if (selectedLeaveType()?.requiresDocument) {
         <p class="nlw-muted" data-testid="document-note">
@@ -81,13 +112,20 @@
     @if (step() === 5) {
       <div class="nlw-review" data-testid="request-review">
         <span>Type</span><strong>{{ selectedLeaveTypeName() }}</strong>
-        <span>From</span><strong>{{ draft().startDate }} {{ draft().startTime || workStartTime }}</strong>
-        <span>To</span><strong>{{ draft().endDate }} {{ draft().endTime || workEndTime }}</strong>
+        <span>From</span><strong>{{ formatDay(draft().startDate) }} · {{ draft().startTime || workStartTime }}</strong>
+        <span>To</span><strong>{{ formatDay(draft().endDate) }} · {{ draft().endTime || workEndTime }}</strong>
         @if (previewResult) {
           <span>Total hours</span><strong>{{ formatHours(previewResult.totalHours) }}</strong>
           <span>Balance</span><strong>{{ formatHours(previewResult.balanceImpact.currentRemainingHours) }} → {{ formatHours(previewResult.balanceImpact.remainingAfterSubmitHours) }}</strong>
         }
+        <span>Reason</span><strong class="nlw-review-reason">{{ draft().reason || '—' }}</strong>
+        @if (approverNames().length > 0) {
+          <span>Approver</span><strong data-testid="review-approver">{{ approverNames().join(', ') }}</strong>
+        }
       </div>
+      @if (previewResult?.noticePeriodMissed || (previewResult?.conflictSnapshot?.warnings?.length ?? 0) > 0) {
+        <p class="nlw-warning">This request has warnings — check step 3 before submitting.</p>
+      }
       @if (submitError) { <p class="nlw-error">{{ submitError }}</p> }
     }
 

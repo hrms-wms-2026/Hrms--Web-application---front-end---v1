@@ -9,9 +9,9 @@ import { DeltaBadgeComponent } from '../delta-badge/delta-badge.component';
 import { WorkActivityBarChartComponent } from '../work-activity-bar-chart/work-activity-bar-chart.component';
 
 /**
- * Completion/on-time rates from getOverviewWork, task and story-point counts from
+ * Completion rate from getOverviewWork, task and story-point counts from
  * getOverviewDelivery, and the 6-month trend from getWorkActivityDeliveryTrend - three independent
- * loaders. The card's own loading/error/empty state follows `work` alone (the two rate figures
+ * loaders. The card's own loading/error/empty state follows `work` alone (the completion rate
  * every reader of this card wants); the counts row and the trend chart render only once their own
  * loader is ready, so a failure on either doesn't blank the whole card.
  */
@@ -43,19 +43,12 @@ import { WorkActivityBarChartComponent } from '../work-activity-bar-chart/work-a
         <div class="flex flex-1 flex-col">
           <p class="-mt-1 mb-4 text-xs text-slate-500">Task completion and delivery performance</p>
 
-          <div class="grid grid-cols-2 gap-x-6 gap-y-3 sm:grid-cols-4 sm:divide-x sm:divide-slate-100">
+          <div class="grid grid-cols-2 gap-x-6 gap-y-3 sm:grid-cols-3 sm:divide-x sm:divide-slate-100">
             <div>
               <p class="text-xs text-slate-500">Completion rate</p>
               <p class="mt-0.5 flex items-center gap-2 text-lg font-bold text-emerald-600">
                 <span data-testid="delivery-health-completion-rate">{{ w.completionRatePercent }}%</span>
                 <app-delta-badge [delta]="completionDelta()" [against]="period.compareLabel()" />
-              </p>
-            </div>
-            <div class="sm:pl-6">
-              <p class="text-xs text-slate-500">On-time completion</p>
-              <p class="mt-0.5 flex items-center gap-2 text-lg font-bold text-blue-600">
-                <span data-testid="delivery-health-ontime-rate">{{ w.onTimeRatePercent === null ? '—' : w.onTimeRatePercent + '%' }}</span>
-                <app-delta-badge [delta]="onTimeDelta()" [against]="period.compareLabel()" />
               </p>
             </div>
             @if (delivery.state() === 'ready' && delivery.data(); as d) {
@@ -103,16 +96,10 @@ export class DeliveryHealthWidgetComponent {
 
   readonly compareWork = createCompareLoader(this.period, (from, to) => this.api.getOverviewWork(this.employeeId(), from, to));
 
-  /** Rate changes against the header's comparison month (null when Compare is off). */
+  /** Completion-rate change against the header's comparison month (null when Compare is off). */
   readonly completionDelta = computed(() =>
     deltaIf(this.period.isComparing(), this.work.data()?.completionRatePercent, this.compareWork.data()?.completionRatePercent, 'higher-better', percent)
   );
-
-  readonly onTimeDelta = computed(() => {
-    const current = this.work.data()?.onTimeRatePercent ?? null;
-    const previous = this.compareWork.data()?.onTimeRatePercent ?? null;
-    return current === null ? null : deltaIf(this.period.isComparing(), current, previous, 'higher-better', percent);
-  });
 
   readonly bars = computed(() => (this.trend.data()?.months ?? []).map((m) => ({ label: shortMonth(m.month), value: m.completed })));
 }

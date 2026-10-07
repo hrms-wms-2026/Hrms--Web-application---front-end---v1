@@ -128,7 +128,7 @@ export interface EmployeeWorkTasksResponse {
   readonly items: readonly EmployeeWorkTaskItem[];
 }
 
-/** Mirrors HRMS-Backend-v1 EmployeeWorkOverviewResponse. onTimeRatePercent is null when no completed task has both dates. */
+/** Mirrors HRMS-Backend-v1 EmployeeWorkOverviewResponse. onTimeRatePercent = on-time completed / (completed with a due date + overdue open tasks); null when no task has reached its due date. */
 export interface EmployeeWorkOverviewResponse {
   readonly from: string;
   readonly to: string;

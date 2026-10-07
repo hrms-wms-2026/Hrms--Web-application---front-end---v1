@@ -16,8 +16,31 @@ describe('RecentTasksWidgetComponent', () => {
     const fixture = TestBed.createComponent(RecentTasksWidgetComponent);
     fixture.componentRef.setInput('employeeId', 'emp-1');
     fixture.detectChanges();
-    return fixture.nativeElement as HTMLElement;
+    return fixture;
   }
+
+  const task = (i: number) => ({
+    taskId: `t-${i}`,
+    shortId: null,
+    title: `Task ${i}`,
+    projectId: 'p-1',
+    projectName: 'P',
+    statusName: 'To Do',
+    statusColor: null,
+    priority: 'low',
+    storyPoints: null,
+    dueDate: null,
+    progressPercent: 0,
+    updatedToday: false
+  });
+
+  it('tags tasks changed today with "Updated today"', () => {
+    const el = setup([{ ...task(1), updatedToday: true }, task(2)]).nativeElement as HTMLElement;
+    const rows = el.querySelectorAll('[data-testid="recent-row"]');
+
+    expect(rows[0].querySelector('[data-testid="recent-updated-today"]')!.textContent).toContain('Updated today');
+    expect(rows[1].querySelector('[data-testid="recent-updated-today"]')).toBeNull();
+  });
 
   it('shows task, project, status, priority, due and points', () => {
     const el = setup([
@@ -34,7 +57,7 @@ describe('RecentTasksWidgetComponent', () => {
         dueDate: '2026-09-16',
         progressPercent: 40
       }
-    ]);
+    ]).nativeElement as HTMLElement;
 
     const row = el.querySelector('[data-testid="recent-row"]')!.textContent!;
     expect(row).toContain('UI refinement');
@@ -45,7 +68,32 @@ describe('RecentTasksWidgetComponent', () => {
     expect(row).toContain('5');
   });
 
+  it('shows 3 rows, then View all pops out the rest and Show less collapses', () => {
+    const fixture = setup(Array.from({ length: 8 }, (_, i) => task(i)));
+    const el = fixture.nativeElement as HTMLElement;
+    const rows = () => el.querySelectorAll('[data-testid="recent-row"]').length;
+    const btn = () => el.querySelector<HTMLButtonElement>('[data-testid="recent-view-all"]')!;
+
+    expect(rows()).toBe(3);
+    expect(btn().textContent).toContain('View all');
+
+    btn().click();
+    fixture.detectChanges();
+    expect(rows()).toBe(8);
+    expect(btn().textContent).toContain('Show less');
+
+    btn().click();
+    fixture.detectChanges();
+    expect(rows()).toBe(3);
+  });
+
+  it('hides View all when there are 3 or fewer tasks', () => {
+    const el = setup(Array.from({ length: 3 }, (_, i) => task(i))).nativeElement as HTMLElement;
+    expect(el.querySelectorAll('[data-testid="recent-row"]').length).toBe(3);
+    expect(el.querySelector('[data-testid="recent-view-all"]')).toBeNull();
+  });
+
   it('shows the empty state with no tasks', () => {
-    expect(setup([]).querySelector('[data-testid="widget-empty"]')).toBeTruthy();
+    expect((setup([]).nativeElement as HTMLElement).querySelector('[data-testid="widget-empty"]')).toBeTruthy();
   });
 });
