@@ -31,6 +31,7 @@ export interface Project {
   labels: ProjectLabel[];
   members: ProjectMemberAvatar[];
   memberCount: number;
+  systemPurpose?: string | null;
 }
 
 export interface ProjectDetail extends Project {

@@ -713,13 +713,15 @@ describe('TaskBoardComponent', () => {
       assigneeId: 'emp-1',
       objectiveId: 'milestone-1',
       categoryId: 'cat-1',
+      storyPoints: 8,
       resolve: resolveSpy
     });
 
     expect(createTask).toHaveBeenCalledWith('milestone-1', expect.objectContaining({
       title: 'Quick Task 1',
       priority: 'high',
-      categoryId: 'cat-1'
+      categoryId: 'cat-1',
+      storyPoints: 8
     }));
     expect(taskApiStub.assignTask).toHaveBeenCalledWith('t-new', 'emp-1');
     expect(taskApiStub.moveTaskStatus).toHaveBeenCalledWith('t-new', 's-custom');

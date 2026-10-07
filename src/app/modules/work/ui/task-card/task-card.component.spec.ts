@@ -40,7 +40,7 @@ describe('TaskCardComponent', () => {
     assigneeEmployeeIds: ['emp-1', 'emp-2'], openClockSessionEmployeeId: null, openClockSessionClockInAt: null, totalLoggedMinutes: 0,
     attachments: [], assignees: [],
     parentTaskId: null, subtaskTotalCount: 0, subtaskCompletedCount: 0, subtaskAssigneeEmployeeIds: [],
-    createdAt: new Date('2026-01-01T00:00:00Z')
+    createdAt: new Date('2026-01-01T00:00:00Z'), hasPendingApproval: false
   };
 
   const assignableMembers = [
@@ -92,12 +92,34 @@ describe('TaskCardComponent', () => {
     fixture.detectChanges();
   }
 
+  it('shows a pending-approval badge when the task has an open request, and hides it otherwise', () => {
+    setup({ task: { ...task, hasPendingApproval: true } });
+    expect(fixture.nativeElement.querySelector('[data-testid="task-card-pending-approval"]')).not.toBeNull();
+
+    setup({ task: { ...task, hasPendingApproval: false } });
+    expect(fixture.nativeElement.querySelector('[data-testid="task-card-pending-approval"]')).toBeNull();
+  });
+
   it('renders one avatar per assignee instead of a name', () => {
     setup();
     const avatars = fixture.debugElement.queryAll(By.directive(AvatarComponent));
     expect(avatars.length).toBe(2);
     const text = fixture.nativeElement.querySelector('.task-card__meta').textContent as string;
     expect(text).not.toContain('emp-1');
+  });
+
+  it('ellipsizes a long unbroken task title inside the card', () => {
+    const longTitle = 'w'.repeat(200);
+    setup({ task: { ...task, title: longTitle } });
+
+    const title: HTMLElement = fixture.nativeElement.querySelector('.task-card__title-text');
+    const styles = getComputedStyle(title);
+
+    expect(title.textContent).toBe(longTitle);
+    expect(title.getAttribute('title')).toBe(longTitle);
+    expect(styles.overflow).toBe('hidden');
+    expect(styles.textOverflow).toBe('ellipsis');
+    expect(styles.whiteSpace).toBe('nowrap');
   });
 
   it('prefers the coverage-free project-member name over the management-coverage-scoped directory lookup, so it shows real initials instead of "Unknown employee"', () => {

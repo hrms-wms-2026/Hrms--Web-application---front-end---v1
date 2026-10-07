@@ -62,6 +62,9 @@ export interface WorkTaskDto {
   subtaskCompletedCount?: number;
   subtaskAssigneeEmployeeIds?: string[];
   createdAt: string;
+  taskKind?: 'standard' | 'employee_checklist';
+  visibilityScope?: 'module' | 'assignees';
+  hasPendingApproval?: boolean;
 }
 
 export interface CreateTaskRequestDto {

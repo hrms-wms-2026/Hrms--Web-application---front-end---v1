@@ -19,7 +19,7 @@ describe('LeaveApprovalStore', () => {
     requestId: 'req-1', employeeId: 'emp-1', employeeName: 'Anu Raman', leaveTypeId: 'type-1',
     leaveTypeName: 'Annual Leave', leaveTypeCode: 'ANNUAL', startAt: '2026-09-10', endAt: '2026-09-12',
     totalHours: 3, paidHours: 3, unpaidHours: 0, status: 'pending', reason: 'Trip',
-    approvers: [], infoMessages: [], submissionConflictSnapshotJson: null, currentWarnings: [], remainingHours: 17
+    approvers: [], infoMessages: [], submissionConflictSnapshotJson: null, currentWarnings: [], remainingHours: 17, canDecide: true, forwardTo: null, canChangeDecision: false
   };
 
   beforeEach(() => {

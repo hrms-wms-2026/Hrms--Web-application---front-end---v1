@@ -99,6 +99,11 @@ describe('toWorkTask', () => {
     expect(mapped).toBeInstanceOf(Date);
     expect(mapped.toISOString()).toBe('2026-08-26T10:30:00.000Z');
   });
+
+  it('maps hasPendingApproval through, defaulting to false when absent', () => {
+    expect(toWorkTask(baseDto).hasPendingApproval).toBe(false);
+    expect(toWorkTask({ ...baseDto, hasPendingApproval: true }).hasPendingApproval).toBe(true);
+  });
 });
 
 describe('toEditTaskRequest', () => {
@@ -110,7 +115,7 @@ describe('toEditTaskRequest', () => {
     openClockSessionClockInAt: null, totalLoggedMinutes: 0,
     attachments: [{ fileId: 'f1', name: 'a.pdf', sizeBytes: 100 }], assignees: [],
     parentTaskId: null, subtaskTotalCount: 0, subtaskCompletedCount: 0, subtaskAssigneeEmployeeIds: [],
-    createdAt: new Date('2026-01-01T00:00:00Z')
+    createdAt: new Date('2026-01-01T00:00:00Z'), hasPendingApproval: false
   };
 
   it('reproduces every current field so nothing is silently cleared', () => {

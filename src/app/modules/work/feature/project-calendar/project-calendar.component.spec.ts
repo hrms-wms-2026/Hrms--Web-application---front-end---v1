@@ -4,7 +4,8 @@ import { signal } from '@angular/core';
 import { ProjectCalendarComponent } from './project-calendar.component';
 import { ProjectCalendarStore } from '../../state/project-calendar.store';
 import { WorkPageToolbarStore } from '../../state/work-page-toolbar.store';
-import { ProjectCalendarModuleDto } from '../../models/dto/calendar.dto';
+import { CalendarEventDto, ProjectCalendarEventBandDto, ProjectCalendarModuleDto } from '../../models/dto/calendar.dto';
+import { ProjectMonitorStore } from '../../state/project-monitor.store';
 
 const items: ProjectCalendarModuleDto[] = [{
   objectiveId: 'o1', projectId: 'p1', parentObjectiveId: null, title: 'Design',
@@ -14,18 +15,32 @@ const items: ProjectCalendarModuleDto[] = [{
 
 describe('ProjectCalendarComponent', () => {
   let fixture: ComponentFixture<ProjectCalendarComponent>;
-  const store = {
-    modules: signal(items), bands: signal([]), events: signal([]), activeEvents: signal([]), loading: signal(false), saving: signal(false),
-    error: signal<string | null>(null), pendingSet: signal(new Set<string>()), approvalMessages: signal<Record<string, string>>({}),
-    load: vi.fn().mockResolvedValue(undefined), saveDates: vi.fn().mockResolvedValue({ success: true, applied: true, pendingApproval: false }),
-    createEvent: vi.fn().mockResolvedValue(true), updateEvent: vi.fn().mockResolvedValue(true), closeEvent: vi.fn().mockResolvedValue(true)
+  const band: ProjectCalendarEventBandDto = { eventId: 'e1', name: 'R1', color: '#2563EB', startDate: '2026-01-01', endDate: '2026-01-05', canEdit: true };
+  const detail: CalendarEventDto = {
+    id: 'e1', projectId: 'p1', name: 'R1', color: '#2563EB', status: 'active', startDate: '2026-01-01', endDate: '2026-01-05',
+    objectiveIds: ['o1'], taskIds: ['t1', 't2']
   };
+  const store = {
+    modules: signal(items), bands: signal([]), events: signal([]), activeEvents: signal<ProjectCalendarEventBandDto[]>([]), loading: signal(false), saving: signal(false),
+    error: signal<string | null>(null), pendingSet: signal(new Set<string>()), approvalMessages: signal<Record<string, string>>({}),
+    eventDetail: signal<CalendarEventDto | null>(null), eventTasks: signal([]), eventActivity: signal([]),
+    load: vi.fn().mockResolvedValue(undefined), saveDates: vi.fn().mockResolvedValue({ success: true, applied: true, pendingApproval: false }),
+    createEvent: vi.fn().mockResolvedValue(true), updateEvent: vi.fn().mockResolvedValue(true), closeEvent: vi.fn().mockResolvedValue(true),
+    loadEventDetail: vi.fn(), loadEventTasks: vi.fn().mockResolvedValue(undefined), loadEventActivity: vi.fn().mockResolvedValue(undefined),
+    clearEventPanel: vi.fn()
+  };
+  const monitor = { load: vi.fn().mockResolvedValue(undefined), alertsFor: vi.fn().mockReturnValue([]) };
 
   beforeEach(() => {
+    store.activeEvents.set([]);
+    store.eventDetail.set(null);
+    store.loadEventDetail.mockReset().mockImplementation(async () => { store.eventDetail.set(detail); return detail; });
+    monitor.alertsFor.mockReturnValue([]);
     TestBed.configureTestingModule({
       imports: [ProjectCalendarComponent],
       providers: [
         { provide: ProjectCalendarStore, useValue: store },
+        { provide: ProjectMonitorStore, useValue: monitor },
         { provide: ActivatedRoute, useValue: { snapshot: { parent: { paramMap: { get: () => 'p1' } }, paramMap: { get: () => null } } } }
       ]
     });
@@ -37,6 +52,60 @@ describe('ProjectCalendarComponent', () => {
     expect(store.load).toHaveBeenCalledWith('p1');
     expect(fixture.nativeElement.querySelector('[data-testid="timeline-bar-o1"]')).toBeTruthy();
     expect(fixture.nativeElement.textContent).toContain('Design');
+  });
+
+  describe('milestone panel and edit', () => {
+    beforeEach(() => {
+      store.activeEvents.set([band]);
+      fixture.detectChanges();
+    });
+
+    it('clicking a milestone opens the explanation panel and fetches its detail', async () => {
+      fixture.nativeElement.querySelector('.calendar-event').click();
+      await fixture.whenStable();
+      fixture.detectChanges();
+      expect(store.loadEventDetail).toHaveBeenCalledWith('e1');
+      expect(fixture.nativeElement.querySelector('[data-testid="milestone-explanation-panel"]')).toBeTruthy();
+    });
+
+    it('Edit fetches the real event detail (actual taskIds) before opening the modal, instead of reusing the zero-taskIds band stub', async () => {
+      fixture.nativeElement.querySelector('.calendar-event__action').click();
+      await fixture.whenStable();
+      fixture.detectChanges();
+      expect(fixture.componentInstance.editingEvent()?.taskIds).toEqual(['t1', 't2']);
+      expect(fixture.componentInstance.modalOpen()).toBe(true);
+    });
+
+    it('Edit does NOT open the modal if the detail fetch fails - a blank modal would save as Create and wipe links', async () => {
+      store.loadEventDetail.mockImplementation(async () => null);
+      fixture.nativeElement.querySelector('.calendar-event__action').click();
+      await fixture.whenStable();
+      fixture.detectChanges();
+      expect(fixture.componentInstance.modalOpen()).toBe(false);
+    });
+
+    it('does not derive at-risk from alerts on an achieved module', () => {
+      store.eventDetail.set(detail);
+      monitor.alertsFor.mockReturnValue([{ id: 'a1', inAchievedModule: true }]);
+      expect(fixture.componentInstance.hasOpenAlertForEvent('e1')).toBe(false);
+      monitor.alertsFor.mockReturnValue([{ id: 'a2', inAchievedModule: false }]);
+      expect(fixture.componentInstance.hasOpenAlertForEvent('e1')).toBe(true);
+    });
+
+    it('closing the open milestone also closes its panel', async () => {
+      fixture.nativeElement.querySelector('.calendar-event').click();
+      await fixture.whenStable();
+      await fixture.componentInstance.closeEvent('e1');
+      expect(fixture.componentInstance.panelEventId()).toBeNull();
+      expect(store.clearEventPanel).toHaveBeenCalled();
+    });
+  });
+
+  it('renders each objective label via the shared compact tree row, not bespoke markup', () => {
+    fixture.detectChanges();
+    const row = fixture.nativeElement.querySelector('[data-testid="tree-row"]');
+    expect(row).toBeTruthy();
+    expect(fixture.nativeElement.querySelector('[data-testid="folder-icon"]')).toBeTruthy();
   });
 
   it('renders child objectives indented under their parent, all rows visible', () => {
@@ -79,13 +148,13 @@ describe('ProjectCalendarComponent', () => {
     fixture.detectChanges();
 
     // The project root itself has no chevron - collapsing it would hide the whole chart, so it's not collapsible.
-    expect(fixture.nativeElement.querySelector('[data-testid="calendar-row-o1"] [data-testid="calendar-chevron"]')).toBeNull();
+    expect(fixture.nativeElement.querySelector('[data-testid="calendar-row-o1"] [data-testid="chevron"]')).toBeNull();
     const chevron = fixture.nativeElement.querySelector(
-      '[data-testid="calendar-row-o2"] [data-testid="calendar-chevron"]'
+      '[data-testid="calendar-row-o2"] [data-testid="chevron"]'
     ) as HTMLButtonElement;
     expect(chevron).toBeTruthy();
     // A leaf objective (no children) gets no chevron at all.
-    expect(fixture.nativeElement.querySelector('[data-testid="calendar-row-o3"] [data-testid="calendar-chevron"]')).toBeNull();
+    expect(fixture.nativeElement.querySelector('[data-testid="calendar-row-o3"] [data-testid="chevron"]')).toBeNull();
 
     chevron.click();
     fixture.detectChanges();
@@ -103,7 +172,7 @@ describe('ProjectCalendarComponent', () => {
     expect(fixture.nativeElement.querySelector('[data-testid="timeline-bar-o3"]')).toBeTruthy();
   });
 
-  it('colors each top-level module bar distinctly, shares that color with its own children, and gives the root a fixed summary color', () => {
+  it('gives the root a fixed summary color and every other bar the neutral gray default (no per-branch bar tint - coverage color now lives on fill segments)', () => {
     const treeItems: ProjectCalendarModuleDto[] = [
       { ...items[0] },
       { objectiveId: 'o2', projectId: 'p1', parentObjectiveId: 'o1', title: 'Module A',
@@ -123,9 +192,35 @@ describe('ProjectCalendarComponent', () => {
       (fixture.nativeElement.querySelector(`[data-testid="timeline-bar-${id}"]`) as HTMLElement).style.getPropertyValue('--bar-color');
 
     expect(colorOf('o1')).toBe('#1E293B'); // the fixed root/summary color
-    expect(colorOf('o2')).not.toBe(colorOf('o1'));
-    expect(colorOf('o4')).not.toBe(colorOf('o2')); // distinct top-level modules get distinct branch colors
-    expect(colorOf('o3')).toBe(colorOf('o2')); // a child inherits its top-level ancestor's branch color
+    expect(colorOf('o2')).toBe('#94A3B8');
+    expect(colorOf('o4')).toBe('#94A3B8');
+    expect(colorOf('o3')).toBe('#94A3B8');
+  });
+
+  it('shows no full-width milestone band overlay', () => {
+    const treeItems: ProjectCalendarModuleDto[] = [
+      { ...items[0], events: [{ eventId: 'e1', eventName: 'R1', eventColor: '#2563EB', eventStartDate: '2026-01-01', eventEndDate: '2026-01-05', membership: 'whole', tasksInEventCount: 1, taskTotalCount: 1 }] }
+    ];
+    store.modules.set(treeItems);
+    fixture.detectChanges();
+    expect(fixture.nativeElement.querySelector('.project-calendar__band')).toBeNull();
+  });
+
+  it('renders a diamond marker on a row linked to a milestone, at the link end date', () => {
+    const treeItems: ProjectCalendarModuleDto[] = [
+      { ...items[0], events: [{ eventId: 'e1', eventName: 'R1', eventColor: '#2563EB', eventStartDate: '2026-01-01', eventEndDate: '2026-01-05', membership: 'whole', tasksInEventCount: 1, taskTotalCount: 1 }] }
+    ];
+    store.modules.set(treeItems);
+    fixture.detectChanges();
+    const marker = fixture.nativeElement.querySelector('[data-testid="calendar-milestone-marker"]');
+    expect(marker).toBeTruthy();
+    expect(marker.title).toContain('R1');
+  });
+
+  it('rows with no event link render no diamond marker', () => {
+    store.modules.set(items);
+    fixture.detectChanges();
+    expect(fixture.nativeElement.querySelectorAll('[data-testid="calendar-milestone-marker"]').length).toBe(0);
   });
 
   describe('zoom - one continuous chart, no view-switching tabs', () => {
@@ -171,7 +266,7 @@ describe('ProjectCalendarComponent', () => {
     });
 
     it('the Fit button jumps straight to the fit-to-screen day width', () => {
-      fixture.componentInstance.containerWidth.set(940); // 700px available after the 240px label column
+      fixture.componentInstance.containerWidth.set(1020); // 500px available after the 320px label column and 200px trailing label space
       fixture.detectChanges();
       const toolbarStore = TestBed.inject(WorkPageToolbarStore);
       const embeddedView = toolbarStore.template()?.createEmbeddedView(null);
@@ -184,18 +279,18 @@ describe('ProjectCalendarComponent', () => {
       }
       fixture.detectChanges();
 
-      // 5-day project, 700px / 5 = 140px/day
-      expect(fixture.componentInstance.dayWidth()).toBe(140);
+      // 5-day project, 500px / 5 = 100px/day
+      expect(fixture.componentInstance.dayWidth()).toBe(100);
     });
 
-    it('registers the calendar toolbar with zoom controls and create milestone button in the toolbarStore', () => {
+    it('registers the Add Milestone button in the toolbarStore and renders zoom controls in the page footer', () => {
       const toolbarStore = TestBed.inject(WorkPageToolbarStore);
       expect(toolbarStore.template()).not.toBeNull();
       const embeddedView = toolbarStore.template()?.createEmbeddedView(null);
       embeddedView?.detectChanges();
       const root = embeddedView?.rootNodes[0] as HTMLElement;
-      expect(root.querySelector('[data-testid="zoom-controls"]')).toBeTruthy();
-      expect(root.textContent).toContain('Create milestone');
+      expect(root.textContent).toContain('Add Milestone');
+      expect(fixture.nativeElement.querySelector('[data-testid="zoom-controls"]')).toBeTruthy();
     });
 
     it('scales the fit floor down with a sane minimum for a very long project', () => {
@@ -203,6 +298,71 @@ describe('ProjectCalendarComponent', () => {
       fixture.componentInstance.fitToScreen();
       fixture.detectChanges();
       expect(fixture.componentInstance.dayWidth()).toBe(3);
+    });
+  });
+
+  describe('month navigation', () => {
+    beforeEach(() => {
+      store.modules.set(items); // starts 2026-01-01
+      fixture.detectChanges();
+    });
+
+    it('shows the project date range beside the month arrows', () => {
+      const label = fixture.nativeElement.querySelector('[data-testid="calendar-range-label"]');
+      expect(label?.textContent?.trim()).toBe('Jan 2026 – Jan 2026');
+    });
+
+    it('granularity select changes the zoom preset', () => {
+      fixture.componentInstance.setGranularity('week');
+      expect(fixture.componentInstance.zoomDayWidth()).toBe(48);
+    });
+
+    it('scrollMonth scrolls the timeline container by ~30 days of width, forward or back', () => {
+      const el = fixture.nativeElement.querySelector('.project-calendar__timeline-scroll') as HTMLElement;
+      const scrollBy = vi.fn();
+      (el as any).scrollBy = scrollBy;
+      fixture.componentInstance.scrollMonth(1);
+      expect(scrollBy).toHaveBeenCalledWith(expect.objectContaining({ left: 30 * fixture.componentInstance.dayWidth() }));
+      fixture.componentInstance.scrollMonth(-1);
+      expect(scrollBy).toHaveBeenLastCalledWith(expect.objectContaining({ left: -30 * fixture.componentInstance.dayWidth() }));
+    });
+  });
+
+  describe('List/Timeline toggle', () => {
+    const link = (eventId: string) => ({ eventId, eventName: 'R1', eventColor: '#2563EB', eventStartDate: '2026-01-01', eventEndDate: '2026-01-05', membership: 'whole' as const, tasksInEventCount: 1, taskTotalCount: 1 });
+    const mod = (id: string, parent: string | null): ProjectCalendarModuleDto => ({
+      ...items[0], objectiveId: id, parentObjectiveId: parent, title: id, events: [link('e1')]
+    });
+
+    const switchToList = () => {
+      (fixture.nativeElement.querySelector('[data-testid="view-toggle-list"]') as HTMLButtonElement).click();
+      fixture.detectChanges();
+    };
+
+    it('defaults to timeline view and shows the Gantt grid', () => {
+      expect((fixture.nativeElement.querySelector('[data-testid="project-calendar-timeline"]') as HTMLElement).hidden).toBe(false);
+      expect(fixture.nativeElement.querySelector('[data-testid="project-calendar-list"]')).toBeFalsy();
+    });
+
+    it('List mode shows a row per active milestone with its linked module count, counting collapsed modules too', () => {
+      // o2 is collapsed behind o1's chevron-less root; o1 root, o2 child, o3 grandchild -> all three link e1
+      store.modules.set([mod('o1', null), mod('o2', 'o1'), mod('o3', 'o2')]);
+      store.activeEvents.set([band]);
+      fixture.componentInstance.collapsedIds.set(new Set(['o2']));
+      fixture.detectChanges();
+      switchToList();
+      expect((fixture.nativeElement.querySelector('[data-testid="project-calendar-timeline"]') as HTMLElement).hidden).toBe(true);
+      expect(fixture.componentInstance.milestoneListRows()[0].moduleCount).toBe(3);
+      expect(fixture.nativeElement.querySelector('[data-testid="milestone-list-row"]').closest('tr').textContent).toContain('3');
+    });
+
+    it('clicking a List row opens the milestone panel, same as the legend entry', () => {
+      store.modules.set([mod('o1', null)]);
+      store.activeEvents.set([band]);
+      fixture.detectChanges();
+      switchToList();
+      (fixture.nativeElement.querySelector('[data-testid="milestone-list-row"]').closest('tr') as HTMLElement).click();
+      expect(fixture.componentInstance.panelEventId()).toBe('e1');
     });
   });
 
@@ -238,6 +398,7 @@ describe('ProjectCalendarComponent', () => {
         imports: [ProjectCalendarComponent],
         providers: [
           { provide: ProjectCalendarStore, useValue: store },
+          { provide: ProjectMonitorStore, useValue: monitor },
           { provide: ActivatedRoute, useValue: { snapshot: { parent: { paramMap: { get: () => 'p1' } }, paramMap: { get: () => null } } } }
         ]
       });
@@ -262,6 +423,7 @@ describe('ProjectCalendarComponent', () => {
         imports: [ProjectCalendarComponent],
         providers: [
           { provide: ProjectCalendarStore, useValue: store },
+          { provide: ProjectMonitorStore, useValue: monitor },
           { provide: ActivatedRoute, useValue: { snapshot: { parent: { paramMap: { get: () => 'p1' } }, paramMap: { get: () => null } } } }
         ]
       });

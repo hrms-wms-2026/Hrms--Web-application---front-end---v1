@@ -83,8 +83,17 @@ export interface CreateObjectiveRequestDto {
 }
 
 export interface AddObjectiveMemberOutcomeDto {
+  applied: boolean;
   alreadyMember: boolean;
+  /** Set when the add was sent for approval instead of applied. */
+  approvalRequestId?: string | null;
   invitation: import('./objective-invitation.dto').ObjectiveInvitationDto | null;
+}
+
+export interface RemoveObjectiveMemberOutcomeDto {
+  applied: boolean;
+  /** Set when the remove was sent for approval instead of applied. */
+  approvalRequestId?: string | null;
 }
 
 export interface TransferObjectiveHeadOutcomeDto {

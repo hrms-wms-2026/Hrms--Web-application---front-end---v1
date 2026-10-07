@@ -17,6 +17,7 @@ export interface QuickTaskCreatedEvent {
   objectiveId: string;
   categoryId: string;
   sprintId?: string | null;
+  storyPoints?: number;
   resolve: (ok: boolean) => void;
 }
 
@@ -340,7 +341,25 @@ export interface QuickTaskCreatedEvent {
               }
             </div>
 
-            <!-- 4. Module Chip (if >1 module available) -->
+            <!-- 4. Story points chip -->
+            <div class="quick-task-chip-anchor">
+              <div class="quick-task-chip quick-task-chip--input" [class.quick-task-chip--active]="quickStoryPoints() != null">
+                <svg class="quick-task-chip__svg" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="10" /><circle cx="12" cy="12" r="6" /><circle cx="12" cy="12" r="2" /></svg>
+                <input
+                  type="number"
+                  min="0"
+                  step="1"
+                  class="quick-task-chip__input"
+                  placeholder="Points"
+                  data-testid="quick-task-story-points-input"
+                  [value]="quickStoryPoints() ?? ''"
+                  (click)="$event.stopPropagation()"
+                  (input)="setStoryPoints($any($event.target).value)"
+                />
+              </div>
+            </div>
+
+            <!-- 5. Module Chip (if >1 module available) -->
             @if (modules().length > 1) {
               <div class="quick-task-chip-anchor">
                 <button
@@ -995,6 +1014,22 @@ export interface QuickTaskCreatedEvent {
       text-overflow: ellipsis;
       white-space: nowrap;
     }
+    .quick-task-chip--input {
+      cursor: text;
+    }
+    .quick-task-chip__input {
+      width: 48px;
+      border: 0;
+      background: transparent;
+      color: inherit;
+      font: inherit;
+      padding: 0;
+      outline: none;
+    }
+    .quick-task-chip__input::-webkit-outer-spin-button,
+    .quick-task-chip__input::-webkit-inner-spin-button {
+      margin: 0;
+    }
     .quick-task-card__error {
       margin: 6px 0 0;
       font-size: 11.5px;
@@ -1201,6 +1236,7 @@ export class TaskBoardColumnComponent {
   quickDueDate = signal('');
   quickPriority = signal<WorkTask['priority']>('medium');
   priorityUserChosen = signal(false);
+  quickStoryPoints = signal<number | null>(null);
   selectedModuleId = signal('');
   submitting = signal(false);
   errorMessage = signal<string | null>(null);
@@ -1384,6 +1420,7 @@ export class TaskBoardColumnComponent {
     this.quickDueDate.set('');
     this.quickPriority.set('medium');
     this.priorityUserChosen.set(false);
+    this.quickStoryPoints.set(null);
   }
 
   onEscape(): void {
@@ -1418,6 +1455,10 @@ export class TaskBoardColumnComponent {
     this.quickPriority.set(val);
     this.priorityUserChosen.set(true);
     this.activePopover.set(null);
+  }
+
+  setStoryPoints(val: string): void {
+    this.quickStoryPoints.set(val === '' ? null : Number(val));
   }
 
   async submitQuickTask(): Promise<void> {
@@ -1455,6 +1496,7 @@ export class TaskBoardColumnComponent {
         objectiveId: objId,
         categoryId: catId,
         sprintId: this.defaultSprintId() || null,
+        storyPoints: this.quickStoryPoints() ?? undefined,
         resolve
       });
     });
@@ -1465,6 +1507,7 @@ export class TaskBoardColumnComponent {
       this.quickTitle.set('');
       this.quickAssigneeId.set('');
       this.quickDueDate.set('');
+      this.quickStoryPoints.set(null);
       this.quickPriority.set('medium');
       this.priorityUserChosen.set(false);
       setTimeout(() => {

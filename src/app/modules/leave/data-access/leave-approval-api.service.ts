@@ -6,11 +6,15 @@ import {
   ApproveLeaveRequestRequest,
   BulkApproveLeaveRequestsRequest,
   BulkRejectLeaveRequestsRequest,
+  ChangeLeaveDecisionRequest,
   CreateLeaveApprovalDelegateRequest,
+  ForwardLeaveRequestRequest,
   LeaveApprovalBulkResultResponse,
   LeaveApprovalDelegateResponse,
   LeaveApprovalDecisionResponse,
   LeaveApprovalDetailResponse,
+  LeaveApprovalHistoryFilter,
+  LeaveApprovalHistoryItemResponse,
   LeaveApprovalListFilter,
   LeavePendingApprovalListItemResponse,
   LeaveRequestAllListFilter,
@@ -41,6 +45,11 @@ export class LeaveApprovalApiService {
     return this.http.get<LeaveApprovalDetailResponse>(`${environment.apiUrl}/leave/requests/${requestId}/approval`);
   }
 
+  /** HR's read-only view (leave:read) of any request, used by the All Requests ledger. */
+  getLedgerDetail(requestId: string): Observable<LeaveApprovalDetailResponse> {
+    return this.http.get<LeaveApprovalDetailResponse>(`${environment.apiUrl}/leave/requests/${requestId}/detail`);
+  }
+
   approve(requestId: string, payload: ApproveLeaveRequestRequest): Observable<LeaveApprovalDecisionResponse> {
     return this.http.post<LeaveApprovalDecisionResponse>(`${environment.apiUrl}/leave/requests/${requestId}/approve`, payload);
   }
@@ -51,6 +60,21 @@ export class LeaveApprovalApiService {
 
   requestInfo(requestId: string, payload: RequestLeaveInformationRequest): Observable<LeaveApprovalDecisionResponse> {
     return this.http.post<LeaveApprovalDecisionResponse>(`${environment.apiUrl}/leave/requests/${requestId}/request-info`, payload);
+  }
+
+  forward(requestId: string, payload: ForwardLeaveRequestRequest): Observable<LeaveApprovalDecisionResponse> {
+    return this.http.post<LeaveApprovalDecisionResponse>(`${environment.apiUrl}/leave/requests/${requestId}/forward`, payload);
+  }
+
+  changeDecision(requestId: string, payload: ChangeLeaveDecisionRequest): Observable<LeaveApprovalDecisionResponse> {
+    return this.http.post<LeaveApprovalDecisionResponse>(`${environment.apiUrl}/leave/requests/${requestId}/change-decision`, payload);
+  }
+
+  listHistory(filter: LeaveApprovalHistoryFilter): Observable<LeaveApprovalHistoryItemResponse[]> {
+    let params = new HttpParams();
+    if (filter.fromDate) params = params.set('fromDate', filter.fromDate);
+    if (filter.toDate) params = params.set('toDate', filter.toDate);
+    return this.http.get<LeaveApprovalHistoryItemResponse[]>(`${environment.apiUrl}/leave/requests/approval-history`, { params });
   }
 
   respondInfo(requestId: string, payload: RespondLeaveInformationRequest): Observable<LeaveApprovalDecisionResponse> {

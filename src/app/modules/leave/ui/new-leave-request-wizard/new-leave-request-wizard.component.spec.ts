@@ -2,6 +2,7 @@ import { provideHttpClient } from '@angular/common/http';
 import { provideHttpClientTesting } from '@angular/common/http/testing';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { LeaveBalanceResponse } from '../../models/leave-balance.model';
+import { LeaveRequestResponse } from '../../models/leave-request.model';
 import { LeaveTypeResponse } from '../../models/leave-type.model';
 import { NewLeaveRequestWizardComponent } from './new-leave-request-wizard.component';
 
@@ -78,6 +79,29 @@ describe('NewLeaveRequestWizardComponent', () => {
     expect(fixture.nativeElement.querySelector('[data-testid="work-window-required"]')?.textContent).toContain('Set work start and end in General Settings first.');
   });
 
+  it('disables Continue on step 3 when the preview returned an error', () => {
+    fixture.componentRef.setInput('previewError', 'No approver found in your reporting line. Please contact HR');
+    fixture.componentInstance.step.set(3);
+    fixture.detectChanges();
+    expect(fixture.componentInstance.canLeaveStep(3)).toBe(false);
+    const continueButton = Array.from(fixture.nativeElement.querySelectorAll('button') as NodeListOf<HTMLButtonElement>)
+      .find((b) => b.textContent?.trim() === 'Continue');
+    expect(continueButton?.disabled).toBe(true);
+  });
+
+  it('disables Continue on step 3 while the preview is still calculating', () => {
+    fixture.componentRef.setInput('previewing', true);
+    fixture.componentInstance.step.set(3);
+    fixture.detectChanges();
+    expect(fixture.componentInstance.canLeaveStep(3)).toBe(false);
+  });
+
+  it('allows Continue on step 3 once a preview result is available', () => {
+    fixture.componentRef.setInput('previewResult', { totalHours: 8 } as LeaveRequestResponse);
+    fixture.componentInstance.step.set(3);
+    expect(fixture.componentInstance.canLeaveStep(3)).toBe(true);
+  });
+
   it('requires an employee to be picked in on-behalf mode before advancing', () => {
     fixture.componentRef.setInput('onBehalf', true);
     fixture.detectChanges();
@@ -148,5 +172,35 @@ describe('NewLeaveRequestWizardComponent', () => {
     const note = fixture.nativeElement.querySelector('[data-testid="document-note"]') as HTMLElement;
     expect(note.textContent).toContain('3');
     expect(fixture.nativeElement.querySelector('[data-testid="document-input"]')).toBeTruthy();
+  });
+
+  it('moves the To date along with the From date and explains why Continue is disabled', () => {
+    fixture.detectChanges();
+    fixture.componentInstance.draft.update((d) => ({ ...d, leaveTypeId: 'type-1' }));
+    fixture.componentInstance.step.set(2);
+    expect(fixture.componentInstance.dateRangeHint()).toBe('Choose the date your leave starts.');
+    fixture.componentInstance.onStartDateChange('2026-10-07');
+    expect(fixture.componentInstance.draft().endDate).toBe('2026-10-07');
+    expect(fixture.componentInstance.canLeaveStep(2)).toBe(true);
+    fixture.componentInstance.draft.update((d) => ({ ...d, endDate: '2026-10-05' }));
+    expect(fixture.componentInstance.dateRangeHint()).toBe('The end date must be on or after the start date.');
+    expect(fixture.componentInstance.canLeaveStep(2)).toBe(false);
+  });
+
+  it('shows the reason and the approver on the review step', () => {
+    fixture.componentRef.setInput('previewResult', {
+      totalHours: 16, paidHours: 16, unpaidHours: 0, noticePeriodMissed: false,
+      balanceImpact: { currentRemainingHours: 40, pendingAfterSubmitHours: 16, remainingAfterSubmitHours: 24 },
+      approvers: [{ approverEmployeeId: 'emp-9', approverName: 'Mathusanth Kumaran', sequenceOrder: 1, status: 'pending', delegatedFromApproverId: null }],
+      conflictSnapshot: { warnings: [], calendarConflicts: [], teamAbsencePercent: null }
+    } as unknown as LeaveRequestResponse);
+    fixture.detectChanges();
+    fixture.componentInstance.draft.update((d) => ({ ...d, leaveTypeId: 'type-1', startDate: '2026-10-07', endDate: '2026-10-08', reason: 'Family function' }));
+    fixture.componentInstance.step.set(5);
+    fixture.detectChanges();
+    const review = fixture.nativeElement.querySelector('[data-testid="request-review"]') as HTMLElement;
+    expect(review.textContent).toContain('Family function');
+    expect(review.textContent).toContain('2026-10-07 (Wed)');
+    expect((fixture.nativeElement.querySelector('[data-testid="review-approver"]') as HTMLElement).textContent).toContain('Mathusanth Kumaran');
   });
 });

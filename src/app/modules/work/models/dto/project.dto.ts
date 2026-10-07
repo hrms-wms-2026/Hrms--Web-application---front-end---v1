@@ -31,6 +31,7 @@ export interface ProjectListItemDto {
   labels: LabelDto[];
   members: ProjectMemberAvatarDto[];
   memberCount: number;
+  systemPurpose?: string | null;
 }
 
 export interface PagedResultDto<T> {
@@ -66,6 +67,7 @@ export interface ProjectDetailDto {
   labels: LabelDto[];
   members: ProjectMemberAvatarDto[];
   memberCount: number;
+  systemPurpose?: string | null;
 }
 
 export interface CreateProjectResponseDto {

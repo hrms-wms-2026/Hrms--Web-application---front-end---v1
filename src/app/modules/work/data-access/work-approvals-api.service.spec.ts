@@ -32,21 +32,42 @@ describe('WorkApprovalsApiService', () => {
 
   afterEach(() => httpMock.verify());
 
-  it('getApprovalHistory fetches project-scoped sent and received history', () => {
-    service.getApprovalHistory('project-1').subscribe((res) => expect(res).toEqual([]));
-
-    const req = httpMock.expectOne(`${environment.apiUrl}/work/projects/project-1/approval-history`);
+  it('getApprovalFeed GETs the project approval feed', () => {
+    service.getApprovalFeed('p1').subscribe((res) => expect(res).toEqual([]));
+    const req = httpMock.expectOne(`${environment.apiUrl}/work/projects/p1/approval-feed`);
     expect(req.request.method).toBe('GET');
     req.flush([]);
   });
 
-  it('getProjectApprovals GETs /work/projects/p1/approvals?scope=inbox', () => {
-    service.getProjectApprovals('p1').subscribe((res) => expect(res).toEqual([]));
+  it('getApprovalDetail passes the source', () => {
+    service.getApprovalDetail('r1', 'invitation').subscribe();
+    const req = httpMock.expectOne((r) => r.url === `${environment.apiUrl}/work/approvals/r1`);
+    expect(req.request.params.get('source')).toBe('invitation');
+    req.flush({});
+  });
 
-    const req = httpMock.expectOne((r) => r.url === `${environment.apiUrl}/work/projects/p1/approvals`);
-    expect(req.request.method).toBe('GET');
-    expect(req.request.params.get('scope')).toBe('inbox');
-    req.flush([]);
+  it('comment endpoints: list, create, reply, edit', () => {
+    service.getApprovalComments('approval', 'r1').subscribe();
+    const list = httpMock.expectOne((r) => r.url === `${environment.apiUrl}/work/approval-comments`);
+    expect(list.request.params.get('subjectType')).toBe('approval');
+    expect(list.request.params.get('subjectId')).toBe('r1');
+    list.flush([]);
+
+    service.createApprovalComment('invitation', 'i1', 'hi').subscribe();
+    const create = httpMock.expectOne(`${environment.apiUrl}/work/approval-comments`);
+    expect(create.request.method).toBe('POST');
+    expect(create.request.body).toEqual({ subjectType: 'invitation', subjectId: 'i1', content: 'hi' });
+    create.flush({});
+
+    service.replyApprovalComment('c1', 'yes').subscribe();
+    const reply = httpMock.expectOne(`${environment.apiUrl}/work/approval-comments/c1/replies`);
+    expect(reply.request.body).toEqual({ content: 'yes' });
+    reply.flush({});
+
+    service.editApprovalComment('c1', 'edited').subscribe();
+    const edit = httpMock.expectOne(`${environment.apiUrl}/work/approval-comments/c1`);
+    expect(edit.request.method).toBe('PATCH');
+    edit.flush({});
   });
 
   it('approveWorkApproval POSTs editedPayloadJson + comment', () => {
@@ -68,6 +89,14 @@ describe('WorkApprovalsApiService', () => {
   it('cancelWorkApproval POSTs to approvals/{id}/cancel', () => {
     service.cancelWorkApproval('r1').subscribe();
     const req = httpMock.expectOne(`${environment.apiUrl}/work/approvals/r1/cancel`);
+    expect(req.request.method).toBe('POST');
+    expect(req.request.body).toEqual({});
+    req.flush({});
+  });
+
+  it('revertWorkApproval POSTs to approvals/{id}/revert', () => {
+    service.revertWorkApproval('r1').subscribe();
+    const req = httpMock.expectOne(`${environment.apiUrl}/work/approvals/r1/revert`);
     expect(req.request.method).toBe('POST');
     expect(req.request.body).toEqual({});
     req.flush({});

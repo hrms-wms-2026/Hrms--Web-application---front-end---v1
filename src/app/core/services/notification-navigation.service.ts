@@ -49,6 +49,14 @@ export class NotificationNavigationService {
       return;
     }
 
+    // The backend only marks the *_request_created notice (sent to the approver) as navigable -
+    // the *_request_decided/_cancelled notice sent back to the requester has isNavigable: false
+    // but still carries this relatedEntityType, so it otherwise falls through and does nothing.
+    if (type === 'attendance_correction' || type === 'work_area_change_request') {
+      await this.router.navigate(['/attendance/time-tracking']);
+      return;
+    }
+
     if (!type || !id || !WORK_RELATED_TYPES.has(type)) {
       return;
     }

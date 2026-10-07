@@ -1,0 +1,28 @@
+<table class="lra-table">
+  <caption class="sr-only">Your approval history</caption>
+  <thead>
+    <tr><th>Name</th><th>Type</th><th>From</th><th>To</th><th>Hours</th><th>My action</th><th>When</th><th>Request status</th></tr>
+  </thead>
+  <tbody>
+    @for (row of rows; track row.requestId) {
+      <tr data-testid="history-row" (click)="rowClicked.emit(row.requestId)">
+        <td>
+          <div class="lra-person">
+            <span class="lra-avatar" aria-hidden="true">{{ initials(row.employeeName) }}</span>
+            <span>{{ row.employeeName }}</span>
+          </div>
+        </td>
+        <td>{{ row.leaveTypeName }}</td>
+        <td>{{ row.startAt | date:'yyyy-MM-dd HH:mm' }}</td>
+        <td>{{ row.endAt | date:'yyyy-MM-dd HH:mm' }}</td>
+        <td>{{ row.totalHours.toFixed(2) }}</td>
+        <td>
+          <span class="lah-action" [class]="'lah-action lah-action-' + row.myAction" data-testid="history-action">{{ actionLabel(row.myAction) }}</span>
+          @if (row.myComment) { <span class="lah-comment" [title]="row.myComment">{{ row.myComment }}</span> }
+        </td>
+        <td>{{ row.actedAt | date:'yyyy-MM-dd HH:mm' }}</td>
+        <td><span class="lra-status" [class]="'lra-status lra-status-' + row.requestStatus">{{ statusLabel(row.requestStatus) }}</span></td>
+      </tr>
+    }
+  </tbody>
+</table>

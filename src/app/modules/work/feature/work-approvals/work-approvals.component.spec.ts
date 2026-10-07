@@ -1,73 +1,100 @@
+import { signal } from '@angular/core';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { By } from '@angular/platform-browser';
-import { ActivatedRoute } from '@angular/router';
+import { ActivatedRoute, Router } from '@angular/router';
 import { of, throwError } from 'rxjs';
 import { vi } from 'vitest';
 import { WorkApprovalsComponent } from './work-approvals.component';
 import { WorkDropdownComponent } from '../../ui/work-dropdown/work-dropdown.component';
+import { DataTableComponent } from '../../../../shared/ui/data-table/data-table.component';
+import { ApprovalExplanationCardComponent } from '../../ui/approval-explanation-card/approval-explanation-card.component';
+import { TaskFilterBarComponent } from '../../ui/task-filter-bar/task-filter-bar.component';
 import { WorkApprovalsStore } from '../../state/work-approvals.store';
+import { WorkPageToolbarStore } from '../../state/work-page-toolbar.store';
 import { WorkApprovalsApiService } from '../../data-access/work-approvals-api.service';
 import { ProjectApiService } from '../../data-access/project-api.service';
-import { TaskStatusChangeRequestApiService } from '../../data-access/task-status-change-request-api.service';
-import { ApprovalItem } from '../../models/approval.model';
-import { WorkApprovalRequestDto } from '../../models/dto/work-approval.dto';
+import { NotificationService } from '../../../../core/services/notification.service';
+import { ApprovalDetailDto, ApprovalFeedItemDto } from '../../models/dto/approval-feed.dto';
+import { sortFeed } from '../../utils/approval-feed.util';
 
-function engineRaw(overrides: Partial<WorkApprovalRequestDto> = {}): WorkApprovalRequestDto {
+function feedItem(overrides: Partial<ApprovalFeedItemDto> = {}): ApprovalFeedItemDto {
   return {
-    id: 'r1', projectId: 'project-1', actionType: 'module.allocation_extend', targetType: 'module', targetId: 'obj-1',
-    targetTitle: 'Module One', status: 'pending', requestedByEmployeeId: 'e1', requestedByName: 'Sam Lee',
-    approverEmployeeId: 'e2', approverName: 'Owner', payloadJson: '{}', decisionComment: null,
-    createdAt: '2026-09-28T00:00:00Z', decidedAt: null, ...overrides
+    id: 'r1', source: 'engine', actionType: 'task.edit', targetType: 'task', targetId: 't1', targetTitle: 'Audit',
+    moduleId: 'm1', moduleTitle: 'Payments', projectName: 'Apollo', status: 'pending', direction: 'received',
+    requestedById: 'e1', requestedByName: 'Bala', approverId: 'e2', approverName: 'Anu', decidedById: null,
+    decidedByName: null, decisionComment: null, createdAt: '2026-09-29T10:24:00Z', decidedAt: null,
+    canDecide: true, canCancel: false, commentCount: 0, summary: null, ...overrides
   };
 }
 
 describe('WorkApprovalsComponent', () => {
   let fixture: ComponentFixture<WorkApprovalsComponent>;
-  let storeStub: any;
+  let store: any;
   let approvalsApi: any;
   let projectApi: any;
+  let router: any;
+  let toolbar: any;
+  let notifications: any;
 
-  function setup(
-    createAllocationRequest = vi.fn().mockReturnValue(of({})),
-    getApprovalHistory = vi.fn().mockReturnValue(of([])),
-    workApprovals: ApprovalItem[] = [],
-    allocationRequests: ApprovalItem[] = [],
-    objectiveChangeRequests: ApprovalItem[] = [],
-    objectiveInvitations: ApprovalItem[] = []
-  ): void {
-    storeStub = {
+  const received = feedItem({ id: 'received-1' });
+  const sent = feedItem({ id: 'sent-1', direction: 'sent', canDecide: false, canCancel: true, createdAt: '2026-09-30T08:00:00Z' });
+  const decided = feedItem({ id: 'decided-1', status: 'approved', canDecide: false, createdAt: '2026-09-30T09:00:00Z' });
+
+  function setup(options: {
+    items?: ApprovalFeedItemDto[]; query?: Record<string, string>; createAllocationRequest?: any; storeProjectId?: string
+  } = {}): void {
+    const items = signal(sortFeed(options.items ?? [decided, received, sent]));
+    const detail = signal<ApprovalDetailDto | null>(null);
+    const selectedId = signal<string | null>(null);
+    store = {
+      items, detail, selectedId,
+      loading: signal(false), error: signal<string | null>(null), projectId: signal(options.storeProjectId ?? 'project-1'),
+      detailLoading: signal(false), detailError: signal<string | null>(null),
+      comments: signal([]), commentsLoading: signal(false), busy: signal(false),
       loadAll: vi.fn().mockResolvedValue(undefined),
-      loading: () => false,
-      error: () => null,
-      pendingCount: () => 0,
-      workApprovals: () => workApprovals,
-      allocationRequests: () => allocationRequests,
-      objectiveChangeRequests: () => objectiveChangeRequests,
-      objectiveInvitations: () => objectiveInvitations,
+      select: vi.fn().mockImplementation(async (item: ApprovalFeedItemDto | null) => {
+        selectedId.set(item?.id ?? null);
+        detail.set(item ? {
+          item, requestedPayloadJson: '{}', appliedPayloadJson: null, fields: [], canEditPayload: false,
+          note: null, currentAllocatedHours: null, invitation: null, canRevert: false, revertableUntil: null
+        } : null);
+      }),
       approve: vi.fn().mockResolvedValue(true),
-      reject: vi.fn().mockResolvedValue(true)
+      reject: vi.fn().mockResolvedValue(true),
+      cancel: vi.fn().mockResolvedValue(true),
+      revert: vi.fn().mockResolvedValue(true),
+      addComment: vi.fn(), reply: vi.fn(), editComment: vi.fn()
     };
-    approvalsApi = { createAllocationRequest, getApprovalHistory };
+    approvalsApi = { createAllocationRequest: options.createAllocationRequest ?? vi.fn().mockReturnValue(of({})) };
     projectApi = {
       getMyMilestones: vi.fn().mockReturnValue(of([
         { objectiveId: 'obj-1', title: 'Module One', isOwner: true },
         { objectiveId: 'obj-2', title: 'Module Two', isOwner: false }
       ]))
     };
+    router = { navigate: vi.fn().mockResolvedValue(true) };
+    toolbar = { setTemplate: vi.fn() };
+    notifications = { success: vi.fn(), error: vi.fn(), info: vi.fn() };
+    const query = options.query ?? {};
 
     TestBed.configureTestingModule({
       imports: [WorkApprovalsComponent],
       providers: [
-        { provide: WorkApprovalsStore, useValue: storeStub },
+        { provide: WorkApprovalsStore, useValue: store },
         { provide: WorkApprovalsApiService, useValue: approvalsApi },
         { provide: ProjectApiService, useValue: projectApi },
-        {
-          provide: TaskStatusChangeRequestApiService,
-          useValue: { getForProject: vi.fn().mockReturnValue(of({ canEditDirectly: false, canRequest: false, requests: [] })) }
-        },
+        { provide: WorkPageToolbarStore, useValue: toolbar },
+        { provide: NotificationService, useValue: notifications },
+        { provide: Router, useValue: router },
         {
           provide: ActivatedRoute,
-          useValue: { snapshot: { paramMap: { get: (key: string) => key === 'id' ? 'project-1' : null } }, parent: null }
+          useValue: {
+            snapshot: {
+              paramMap: { get: (key: string) => key === 'id' ? 'project-1' : null },
+              queryParamMap: { get: (key: string) => query[key] ?? null }
+            },
+            parent: null
+          }
         }
       ]
     });
@@ -75,59 +102,121 @@ describe('WorkApprovalsComponent', () => {
     fixture.detectChanges();
   }
 
-  it('renders one Task Requests section from workApprovals; no Task Creation/Task Edit sections', async () => {
-    const item: ApprovalItem = {
-      id: 'w1', kind: 'work_approval', objectiveId: '', title: 'Edit task: Fix login', description: '',
-      requestedByName: 'Sam Lee', targetTitle: 'Fix login', targetType: 'task', targetId: 't-1',
-      createdAt: '2026-09-28T00:00:00Z',
-      raw: {
-        id: 'w1', projectId: 'project-1', actionType: 'task.edit', targetType: 'task', targetId: 't-1',
-        targetTitle: 'Fix login', status: 'pending', requestedByEmployeeId: 'e1', requestedByName: 'Sam Lee',
-        approverEmployeeId: 'e2', approverName: 'Owner', payloadJson: '{}', decisionComment: null,
-        createdAt: '2026-09-28T00:00:00Z', decidedAt: null
-      }
-    };
-    setup(undefined, undefined, [item]);
-    await fixture.whenStable();
-    fixture.detectChanges();
+  const table = () => fixture.debugElement.query(By.directive(DataTableComponent)).componentInstance as DataTableComponent<ApprovalFeedItemDto>;
+  const tableIds = () => table().rows().map((i) => i.id);
 
-    const headings = Array.from(fixture.nativeElement.querySelectorAll('h2') as NodeListOf<HTMLElement>)
-      .map((h) => h.textContent?.trim() ?? '');
-    expect(headings.some((h) => h.startsWith('Task Requests') && h.includes('1'))).toBe(true);
-    expect(headings.some((h) => h.includes('Task Creation') || h.includes('Task Edit'))).toBe(false);
-  }, 15000); // this component renders slowly when the whole suite runs in parallel
-
-  it('shows an invitation to a module the invitee is not a member of yet, and hides other projects\' invitations', async () => {
-    const invitation = (id: string, projectId: string, objectiveId: string): ApprovalItem => ({
-      id, kind: 'objective_invitation', objectiveId, title: 'Invited as member', description: '',
-      requestedByName: null, targetType: 'module', targetId: objectiveId, createdAt: '2026-09-28T00:00:00Z',
-      raw: {
-        id, projectId, objectiveId, invitedEmployeeId: 'me', inviteType: 'member', status: 'pending',
-        invitedById: 'e2', decidedAt: null, createdAt: '2026-09-28T00:00:00Z'
-      }
-    });
-    // obj-9 is not in getMyMilestones: the invitee only becomes a member after accepting.
-    setup(undefined, undefined, [], [], [], [
-      invitation('inv-1', 'project-1', 'obj-9'),
-      invitation('inv-2', 'other-project', 'obj-7')
-    ]);
-    await fixture.whenStable();
-    fixture.detectChanges();
-
-    const headings = Array.from(fixture.nativeElement.querySelectorAll('h2') as NodeListOf<HTMLElement>)
-      .map((h) => h.textContent?.trim() ?? '');
-    const invitationHeading = headings.find((h) => h.startsWith('Objective Invitations'));
-    expect(invitationHeading).toBeDefined();
-    expect(invitationHeading).toContain('1');
-    expect(fixture.nativeElement.querySelector('[data-testid="approvals-empty-state"]')).toBeNull();
-  }, 15000);
-
-  it('uses the approval queue loaded by the project shell and loads current project modules', async () => {
+  it('registers the toolbar template and relies on the shell-loaded feed', async () => {
     setup();
     await fixture.whenStable();
-
-    expect(storeStub.loadAll).not.toHaveBeenCalled();
+    expect(toolbar.setTemplate).toHaveBeenCalledWith(expect.anything());
+    expect(store.loadAll).not.toHaveBeenCalled();
     expect(projectApi.getMyMilestones).toHaveBeenCalledWith('project-1');
+    // No page heading: the sub-menu tab already names the page.
+    expect(fixture.nativeElement.querySelector('h1')).toBeNull();
+  });
+
+  it('loads the feed itself when the store holds another project', () => {
+    setup({ storeProjectId: 'other-project' });
+    expect(store.loadAll).toHaveBeenCalledWith('project-1');
+  });
+
+  it('passes the sorted, filtered items to the table', () => {
+    setup();
+    expect(tableIds()).toEqual(['sent-1', 'received-1', 'decided-1']);
+  });
+
+  it('the Requests filter "sent" hides received rows', () => {
+    setup();
+    const filterBar = fixture.debugElement.query(By.directive(TaskFilterBarComponent));
+    // The filter bar lives in the toolbar template, so drive the page handler directly when it is not rendered here.
+    if (filterBar) {
+      (filterBar.componentInstance as TaskFilterBarComponent).fieldChanged.emit({ key: 'direction', values: ['sent'] });
+    } else {
+      (fixture.componentInstance as any).onFilterChanged({ key: 'direction', values: ['sent'] });
+    }
+    fixture.detectChanges();
+    expect(tableIds()).toEqual(['sent-1']);
+
+    (fixture.componentInstance as any).onFilterChanged({ key: 'status', values: ['approved'] });
+    (fixture.componentInstance as any).onFilterChanged({ key: 'direction', values: ['all'] });
+    fixture.detectChanges();
+    expect(tableIds()).toEqual(['decided-1']);
+  });
+
+  it('selecting a row loads the detail, sets ?request= and shows the card', () => {
+    setup();
+    table().rowClicked.emit(received);
+    fixture.detectChanges();
+
+    expect(store.select).toHaveBeenCalledWith(received);
+    expect(router.navigate).toHaveBeenCalledWith([], expect.objectContaining({
+      queryParams: { request: 'received-1', tab: null }, queryParamsHandling: 'merge', replaceUrl: true
+    }));
+    expect(fixture.debugElement.query(By.directive(ApprovalExplanationCardComponent))).not.toBeNull();
+  });
+
+  it('selects the first visible request by default', () => {
+    setup();
+    expect(store.select).toHaveBeenLastCalledWith(sent);
+    expect(fixture.debugElement.query(By.directive(ApprovalExplanationCardComponent))).not.toBeNull();
+  });
+
+  it('selects the first visible request again when a filter hides the selected one', () => {
+    setup();
+    table().rowClicked.emit(decided);
+    fixture.detectChanges();
+    (fixture.componentInstance as any).onFilterChanged({ key: 'status', values: ['pending'] });
+    fixture.detectChanges();
+    expect(store.select).toHaveBeenLastCalledWith(sent);
+  });
+
+  it('?request=<id> on load selects that item', () => {
+    setup({ query: { request: 'decided-1' } });
+    fixture.detectChanges();
+    expect(store.select).toHaveBeenCalledWith(decided);
+  });
+
+  it('quick approve calls store.approve without an edited payload and toasts', async () => {
+    setup();
+    fixture.componentInstance.onRowMenu(received, 'approve');
+    await fixture.whenStable();
+    expect(store.approve).toHaveBeenCalledWith(received);
+    expect(notifications.success).toHaveBeenCalledWith('Approved');
+  });
+
+  it("the card's reject with no reason calls store.reject(item, undefined)", () => {
+    setup();
+    table().rowClicked.emit(received);
+    fixture.detectChanges();
+    const card = fixture.debugElement.query(By.directive(ApprovalExplanationCardComponent)).componentInstance as ApprovalExplanationCardComponent;
+
+    card.reject.emit(null);
+    expect(store.reject).toHaveBeenCalledWith(received, undefined);
+
+    card.approve.emit('{"Title":"B"}');
+    expect(store.approve).toHaveBeenCalledWith(received, '{"Title":"B"}');
+  });
+
+  it('closing the card clears the selection and the query param', () => {
+    setup();
+    table().rowClicked.emit(received);
+    fixture.detectChanges();
+    (fixture.debugElement.query(By.directive(ApprovalExplanationCardComponent)).componentInstance as ApprovalExplanationCardComponent).closed.emit();
+    fixture.detectChanges();
+
+    expect(store.select).toHaveBeenLastCalledWith(null);
+    expect(router.navigate).toHaveBeenLastCalledWith([], expect.objectContaining({ queryParams: { request: null, tab: null } }));
+  });
+
+  it('opening a module target navigates to its tree', () => {
+    setup();
+    fixture.componentInstance.onRowMenu(feedItem({ targetType: 'module', targetId: 'obj-9' }), 'open');
+    expect(router.navigate).toHaveBeenCalledWith(['/work', 'project-1', 'milestones', 'obj-9', 'tree']);
+  });
+
+  it('shows the project-empty message when there are no requests at all', () => {
+    setup({ items: [] });
+    expect(fixture.nativeElement.textContent).toContain('No approval requests in this project yet.');
   });
 
   it('opens the Create Approval modal with the loaded module options', async () => {
@@ -137,65 +226,23 @@ describe('WorkApprovalsComponent', () => {
     fixture.detectChanges();
 
     expect(fixture.nativeElement.querySelector('[data-testid="create-approval-modal"]')).not.toBeNull();
-    const dropdown = fixture.debugElement.query(By.directive(WorkDropdownComponent)).componentInstance as WorkDropdownComponent;
+    const dropdown = fixture.debugElement.queryAll(By.directive(WorkDropdownComponent))
+      .map((d) => d.componentInstance as WorkDropdownComponent)
+      .find((d) => d.fieldLabel() === 'Module')!;
     expect(dropdown.options().map((option) => option.label)).toEqual(['Module One', 'Module Two']);
-    const trigger = fixture.nativeElement.querySelector('[data-testid="create-approval-modal"] .work-dropdown__trigger');
-    expect(trigger.textContent).toContain('Select a module');
   });
 
-  it('shows Requests and History tabs; History lists this project\'s approval history inline', async () => {
+  it('validates the create form', async () => {
     setup();
     await fixture.whenStable();
-    fixture.detectChanges();
+    const component = fixture.componentInstance as any;
+    component.openCreateApproval();
+    await component.submitCreateApproval();
 
-    const tabs = Array.from(fixture.nativeElement.querySelectorAll('[role="tab"]') as NodeListOf<HTMLButtonElement>);
-    expect(tabs.map((tab) => tab.textContent?.trim())).toEqual(['Requests', 'History']);
-    expect(fixture.nativeElement.querySelector('[data-testid="approval-history-list"]')).toBeNull();
-
-    tabs[1].click();
-    fixture.detectChanges();
-
-    // History reuses the list already loaded for "My Pending Requests" - no second request.
-    expect(fixture.nativeElement.querySelector('[data-testid="approval-history-list"]')).not.toBeNull();
-    expect(approvalsApi.getApprovalHistory).toHaveBeenCalledTimes(1);
-    expect(approvalsApi.getApprovalHistory).toHaveBeenCalledWith('project-1');
-  }, 15000);
-
-  it('lists sprint requests in their own Sprint Requests section, not under Task Requests', async () => {
-    const sprintItem: ApprovalItem = {
-      id: 's1', kind: 'work_approval', objectiveId: '', title: 'Start sprint: Sprint 4', description: 'Start sprint',
-      requestedByName: 'Sam Lee', targetTitle: 'Sprint 4', targetType: 'request', targetId: 'sp-4',
-      createdAt: '2026-09-28T00:00:00Z',
-      raw: engineRaw({ id: 's1', actionType: 'sprint.start', targetType: 'sprint', targetId: 'sp-4', targetTitle: 'Sprint 4' })
-    };
-    setup(undefined, undefined, [sprintItem]);
-    await fixture.whenStable();
-    fixture.detectChanges();
-
-    const headings = Array.from(fixture.nativeElement.querySelectorAll('h2') as NodeListOf<HTMLElement>)
-      .map((h) => h.textContent?.trim() ?? '');
-    expect(headings.some((h) => h.startsWith('Sprint Requests') && h.includes('1'))).toBe(true);
-    expect(headings.some((h) => h.startsWith('Task Requests'))).toBe(false);
-  }, 15000);
-
-  it('shows requests sent by the user that are still awaiting approval on the main page', async () => {
-    const getApprovalHistory = vi.fn().mockReturnValue(of([{
-      id: 'allocation-1', objectiveId: 'obj-1', kind: 'allocation_extend', status: 'pending',
-      direction: 'sent', subjectTitle: 'Module One', detail: '12 additional hours - Delivery work',
-      requestedById: 'employee-1', requestedByName: 'Alex Silva', approverId: 'employee-2',
-      approverName: 'Priya Nair', decidedById: null, decidedByName: null, decisionComment: null,
-      createdAt: '2026-09-25T08:00:00Z', decidedAt: null
-    }]));
-    setup(vi.fn().mockReturnValue(of({})), getApprovalHistory);
-    await fixture.whenStable();
-    fixture.detectChanges();
-
-    const row = fixture.nativeElement.querySelector('[data-testid="sent-pending-request-allocation-1"]');
-    expect(row).not.toBeNull();
-    expect(row.textContent).toContain('Module One');
-    expect(row.textContent).toContain('Priya Nair');
-    expect(row.textContent).toContain('Pending');
-    expect(fixture.nativeElement.querySelector('[data-testid="approvals-empty-state"]')).toBeNull();
+    expect(component.createErrors()).toEqual({
+      module: 'Select a module.', hours: 'Hours must be greater than zero.', reason: 'Reason is required.'
+    });
+    expect(approvalsApi.createAllocationRequest).not.toHaveBeenCalled();
   });
 
   it('submits a create allocation request and reloads approvals on success', async () => {
@@ -213,15 +260,12 @@ describe('WorkApprovalsComponent', () => {
       requestedAdditionalHours: 12,
       reason: 'Need more delivery capacity'
     });
-    expect(storeStub.loadAll).toHaveBeenCalledWith('project-1');
+    expect(store.loadAll).toHaveBeenCalledWith('project-1');
     expect(component.createOpen()).toBe(false);
   });
 
   it('shows an alert when creating an allocation request fails', async () => {
-    const create = vi.fn().mockReturnValue(
-      throwError(() => ({ error: { detail: 'A change request is already pending.' } }))
-    );
-    setup(create);
+    setup({ createAllocationRequest: vi.fn().mockReturnValue(throwError(() => ({ error: { detail: 'A change request is already pending.' } }))) });
     await fixture.whenStable();
     const component = fixture.componentInstance as any;
     component.openCreateApproval();
@@ -232,80 +276,6 @@ describe('WorkApprovalsComponent', () => {
     await component.submitCreateApproval();
     fixture.detectChanges();
 
-    expect(fixture.nativeElement.querySelector('[role="alert"]')?.textContent).toContain('already pending');
+    expect(fixture.nativeElement.querySelector('[data-testid="create-approval-modal"] [role="alert"]')?.textContent).toContain('already pending');
   });
-
-  it('prefills the same create modal from the request-more-allocation action', async () => {
-    setup();
-    await fixture.whenStable();
-    const item: ApprovalItem = {
-      id: 'allocation-1',
-      kind: 'allocation_extend',
-      objectiveId: 'obj-1',
-      title: '+20h requested',
-      description: 'Need more',
-      requestedByName: null,
-      createdAt: '2026-08-27T00:00:00Z',
-      engine: true,
-      raw: { ...engineRaw({ id: 'allocation-1' }), payload: { requestedAdditionalHours: 20, reason: 'Need more' } }
-    };
-
-    fixture.componentInstance.onRequestOwnAllocation(item);
-    fixture.detectChanges();
-
-    expect((fixture.componentInstance as any).createOpen()).toBe(true);
-    expect((fixture.componentInstance as any).createModuleId()).toBe('obj-1');
-  });
-});
-
-describe('WorkApprovalsComponent (module requests from the engine inbox)', () => {
-  it('allocation and objective-change sections render from the store lists by kind, with no module scoping', async () => {
-    const allocation: ApprovalItem = {
-      id: 'a1', kind: 'allocation_extend', objectiveId: 'obj-9', title: '+8h requested', description: 'Need more',
-      requestedByName: 'Sam Lee', targetTitle: 'Other Module', targetType: 'module', targetId: 'obj-9',
-      createdAt: '2026-09-28T00:00:00Z', engine: true,
-      raw: { ...engineRaw({ id: 'a1', targetId: 'obj-9' }), payload: { requestedAdditionalHours: 8, reason: 'Need more' } }
-    };
-    const achieve: ApprovalItem = {
-      id: 'c1', kind: 'objective_change', objectiveId: 'obj-9', title: 'Achieve module: Other Module', description: 'Achieve module',
-      requestedByName: 'Sam Lee', targetTitle: 'Other Module', targetType: 'module', targetId: 'obj-9',
-      createdAt: '2026-09-28T00:00:00Z', engine: true,
-      raw: engineRaw({ id: 'c1', actionType: 'module.achieve', targetId: 'obj-9' })
-    };
-    TestBed.configureTestingModule({
-      imports: [WorkApprovalsComponent],
-      providers: [
-        {
-          provide: WorkApprovalsStore,
-          useValue: {
-            loadAll: vi.fn().mockResolvedValue(undefined), loading: () => false, error: () => null, pendingCount: () => 2,
-            workApprovals: () => [], allocationRequests: () => [allocation], objectiveChangeRequests: () => [achieve],
-            objectiveInvitations: () => [], approve: vi.fn(), reject: vi.fn()
-          }
-        },
-        { provide: WorkApprovalsApiService, useValue: { createAllocationRequest: vi.fn(), getApprovalHistory: vi.fn().mockReturnValue(of([])) } },
-        // obj-9 is not in the caller's own milestone list: engine items must still show.
-        { provide: ProjectApiService, useValue: { getMyMilestones: vi.fn().mockReturnValue(of([{ objectiveId: 'obj-1', title: 'Module One' }])) } },
-        {
-          provide: TaskStatusChangeRequestApiService,
-          useValue: { getForProject: vi.fn().mockReturnValue(of({ canEditDirectly: false, canRequest: false, requests: [] })) }
-        },
-        {
-          provide: ActivatedRoute,
-          useValue: { snapshot: { paramMap: { get: (key: string) => key === 'id' ? 'project-1' : null } }, parent: null }
-        }
-      ]
-    });
-    const fixture = TestBed.createComponent(WorkApprovalsComponent);
-    fixture.detectChanges();
-    await fixture.whenStable();
-    fixture.detectChanges();
-
-    const headings = Array.from(fixture.nativeElement.querySelectorAll('h2') as NodeListOf<HTMLElement>)
-      .map((h) => h.textContent?.trim() ?? '');
-    expect(headings.some((h) => h.startsWith('Allocation Requests') && h.includes('1'))).toBe(true);
-    expect(headings.some((h) => h.startsWith('Objective Change Requests') && h.includes('1'))).toBe(true);
-    expect(fixture.nativeElement.textContent).toContain('Other Module');
-    expect(fixture.nativeElement.textContent).toContain('Achieve module');
-  }, 15000);
 });

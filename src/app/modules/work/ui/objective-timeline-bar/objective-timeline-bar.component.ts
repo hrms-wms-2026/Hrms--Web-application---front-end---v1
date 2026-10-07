@@ -9,6 +9,8 @@ interface DragState {
   endDate: string;
 }
 
+interface FillSegment { color: string; leftPct: number; widthPct: number; }
+
 @Component({
   selector: 'app-objective-timeline-bar',
   standalone: true,
@@ -27,6 +29,21 @@ interface DragState {
       [attr.data-testid]="'timeline-bar-' + item().objectiveId"
       (pointerdown)="startDrag($event, 'move')"
     >
+      <div
+        class="timeline-bar__progress"
+        data-testid="timeline-bar-progress"
+        [style.width.%]="progressWidth()"
+        [style.--bar-progress-color]="progressColor()"
+      ></div>
+      @for (segment of fillSegments(); track segment.color + segment.leftPct) {
+        <div
+          class="timeline-bar__fill"
+          data-testid="timeline-bar-fill-segment"
+          [style.left.%]="segment.leftPct"
+          [style.width.%]="segment.widthPct"
+          [style.backgroundColor]="segment.color"
+        ></div>
+      }
       @if (!disabled()) {
         <button type="button" class="timeline-bar__resize timeline-bar__resize--start" aria-label="Resize start" (pointerdown)="startDrag($event, 'start')"></button>
         <button type="button" class="timeline-bar__resize timeline-bar__resize--end" aria-label="Resize end" (pointerdown)="startDrag($event, 'end')"></button>
@@ -54,9 +71,9 @@ interface DragState {
     /* A light "pill" bar tinted by --bar-color, close to the GitHub Projects roadmap look -
        the color lives on the border/dot/text instead of filling the whole bar solid. */
     .timeline-bar {
-      position: absolute; top: 20px; height: 30px; min-width: 30px; overflow: hidden;
-      border: 1.5px solid var(--bar-color); border-radius: 999px;
-      background: color-mix(in srgb, var(--bar-color) 10%, var(--color-surface));
+      position: absolute; top: 50%; height: 16px; min-width: 16px; margin-top: -8px; overflow: hidden;
+      border: 0; border-radius: 999px;
+      background: color-mix(in srgb, var(--bar-color) 22%, var(--color-surface));
       color: var(--color-text-primary);
       box-shadow: 0 1px 2px rgb(15 23 42 / .05);
       transition: left 180ms ease, width 180ms ease, opacity 160ms ease, box-shadow 140ms ease;
@@ -68,7 +85,13 @@ interface DragState {
     .timeline-bar--readonly { cursor: not-allowed; }
     /* The single project-root bar reads as a bold summary capsule, not another branch pill. */
     .timeline-bar--root { background: var(--bar-color); color: #fff; border-color: var(--bar-color); }
-    .timeline-bar__content { display: flex; height: 100%; min-width: 0; align-items: center; gap: 7px; padding: 0 12px; font-size: 12px; font-weight: 600; }
+    .timeline-bar__fill { position: absolute; top: 0; bottom: 0; z-index: 0; opacity: .35; }
+    .timeline-bar__progress { position: absolute; top: 0; bottom: 0; left: 0; z-index: 0; border-radius: 999px; background: var(--bar-progress-color, var(--color-accent)); }
+    .timeline-bar__title, .timeline-bar__dot { display: none; }
+    .timeline-bar--root { background: color-mix(in srgb, var(--bar-color) 35%, var(--color-surface)); }
+    .timeline-bar--root .timeline-bar__progress { background: var(--bar-color); }
+    .timeline-bar__content { padding: 0 8px; }
+    .timeline-bar__content { position: relative; z-index: 1; display: flex; height: 100%; min-width: 0; align-items: center; gap: 7px; padding: 0 12px; font-size: 12px; font-weight: 600; }
     .timeline-bar__title { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
     .timeline-bar__dot { width: 8px; height: 8px; flex: 0 0 auto; border-radius: 999px; background: var(--bar-color); }
     .timeline-bar--root .timeline-bar__dot { background: #fff; }
@@ -94,8 +117,6 @@ export class ObjectiveTimelineBarComponent {
   readonly saving = input(false);
   readonly pendingApproval = input(false);
   readonly approvalMessage = input('Needs approval before this date change can be applied.');
-  /** The color shared by this row's whole branch (its top-level module), used when no event overrides it. */
-  readonly branchColor = input<string | null>(null);
   /** The single project-root row gets a fixed "summary bar" color instead of a branch color. */
   readonly isRoot = input(false);
   readonly dateChange = output<CalendarDateChange>();
@@ -105,25 +126,47 @@ export class ObjectiveTimelineBarComponent {
 
   readonly disabled = () => !this.item().canEdit || this.item().isAchieved;
 
-  /** The event whose colour paints this bar: a whole-module link wins, else the first partial link. */
-  private readonly primaryEventLink = computed(() => {
+  private static readonly NEUTRAL_GRAY = '#94A3B8';
+
+  /** Stacked colored segments for this bar's event links (Design §4): a whole link is always
+   *  100% in its own color; otherwise each partial link gets a left-to-right segment sized to
+   *  its own task coverage, clamped so segments never sum past 100%. */
+  readonly fillSegments = computed<FillSegment[]>(() => {
     const links = this.item().events ?? [];
-    return links.find((l) => l.membership === 'whole') ?? links[0] ?? null;
+    const whole = links.find((l) => l.membership === 'whole');
+    if (whole) return [{ color: whole.eventColor, leftPct: 0, widthPct: 100 }];
+    const segments: FillSegment[] = [];
+    let cursor = 0;
+    for (const link of links) {
+      if (cursor >= 100) break;
+      const pct = link.taskTotalCount > 0 ? (link.tasksInEventCount / link.taskTotalCount) * 100 : 0;
+      const width = Math.min(pct, 100 - cursor);
+      if (width <= 0) continue;
+      segments.push({ color: link.eventColor, leftPct: cursor, widthPct: width });
+      cursor += width;
+    }
+    return segments;
+  });
+
+  /** Darker "done" portion of the bar, from the subtree task-completion rollup (null/no tasks = none). */
+  readonly progressWidth = computed(() => Math.max(0, Math.min(100, this.item().progressPercent ?? 0)));
+  readonly progressColor = computed(() => {
+    const whole = (this.item().events ?? []).find((l) => l.membership === 'whole');
+    return whole?.eventColor ?? (this.item().events ?? [])[0]?.eventColor ?? null;
   });
 
   readonly barColor = () => {
     if (this.item().isAchieved) return '#64748B';
-    const link = this.primaryEventLink();
-    if (link) return link.eventColor;
     if (this.isRoot()) return '#1E293B';
-    return this.branchColor() ?? '#94A3B8';
+    return ObjectiveTimelineBarComponent.NEUTRAL_GRAY;
   };
 
-  /** "N/M" when this module is only partly in its (single) event, else null. */
+  /** "N/M" when the bar has exactly one partial link, else null - kept for a text fallback
+   *  alongside the visual fill, same spot it rendered in before. */
   readonly partialBadge = computed(() => {
-    const link = this.primaryEventLink();
-    if (!link || link.membership !== 'partial') return null;
-    return `${link.tasksInEventCount}/${link.taskTotalCount}`;
+    const links = this.item().events ?? [];
+    if (links.length !== 1 || links[0].membership !== 'partial') return null;
+    return `${links[0].tasksInEventCount}/${links[0].taskTotalCount}`;
   });
 
   left(): number {

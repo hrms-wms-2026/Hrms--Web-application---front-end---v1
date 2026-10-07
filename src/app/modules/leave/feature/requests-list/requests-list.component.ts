@@ -13,7 +13,7 @@ import { CancelLeaveRequestRequest } from '../../models/leave-request.model';
 import { LeaveRequestAllListItemResponse } from '../../models/leave-approval.model';
 import { LeaveCancelConfirmDialogComponent } from '../../ui/leave-cancel-confirm-dialog/leave-cancel-confirm-dialog.component';
 import { LeaveRequestAllTableComponent } from '../../ui/leave-request-all-table/leave-request-all-table.component';
-import { LeaveApprovalDetailSheetComponent } from '../../ui/leave-approval-detail-sheet/leave-approval-detail-sheet.component';
+import { decisionMessage, LeaveApprovalDecisionRequest, LeaveApprovalDetailSheetComponent } from '../../ui/leave-approval-detail-sheet/leave-approval-detail-sheet.component';
 
 @Component({
   selector: 'app-requests-list',
@@ -28,7 +28,9 @@ export class RequestsListComponent {
   private readonly notificationService = inject(NotificationService);
   readonly store = inject(LeaveApprovalStore);
   readonly leaveTypeStore = inject(LeaveTypeStore);
-  readonly canApprove = () => this.permissionService.hasPermission('leave:approve');
+  /** The ledger is org-wide, so the viewer is often not this request's approver: only offer
+   *  Approve/Reject when the backend says it is the viewer's turn. */
+  readonly canDecide = computed(() => this.store.detail()?.canDecide === true && this.permissionService.hasPermission('leave:approve'));
   readonly detailOpen = signal(false);
   readonly cancelTarget = signal<LeaveRequestAllListItemResponse | null>(null);
   readonly statusFilter = computed(() => this.store.allFilter().status ?? '');
@@ -60,12 +62,33 @@ export class RequestsListComponent {
 
   onRowClicked(requestId: string): void {
     this.detailOpen.set(true);
-    void this.store.loadDetail(requestId);
+    void this.store.loadDetail(requestId, 'ledger');
   }
 
   closeDetail(): void {
     this.detailOpen.set(false);
     this.store.clearDetail();
+  }
+
+  async onDecision(event: LeaveApprovalDecisionRequest): Promise<void> {
+    const requestId = this.store.detail()?.requestId;
+    if (!requestId) return;
+    const forwardToName = this.store.detail()?.forwardTo?.name ?? 'your manager';
+
+    let result;
+    if (event.kind === 'approve') result = await this.store.approve(requestId, { comment: event.comment });
+    else if (event.kind === 'reject') result = await this.store.reject(requestId, { reason: event.reason });
+    else if (event.kind === 'forward') result = await this.store.forward(requestId, { note: event.note });
+    else if (event.kind === 'change-to-reject') result = await this.store.changeDecision(requestId, { decision: 'reject', comment: event.reason });
+    else if (event.kind === 'change-to-approve') result = await this.store.changeDecision(requestId, { decision: 'approve', comment: event.comment });
+    else result = await this.store.requestInfo(requestId, { question: event.question });
+
+    if (result) {
+      this.notificationService.success(decisionMessage(event, forwardToName));
+      this.closeDetail();
+    } else {
+      this.notificationService.error(this.store.decideError() ?? 'Failed to record your decision.');
+    }
   }
 
   onCancelRequested(row: LeaveRequestAllListItemResponse): void {

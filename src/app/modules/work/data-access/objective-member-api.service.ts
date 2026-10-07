@@ -3,7 +3,7 @@ import { Injectable, inject } from '@angular/core';
 import { Observable } from 'rxjs';
 import { environment } from '../../../../environments/environment';
 import { ObjectiveMemberListDto, ObjectiveInvitationDto } from '../models/dto/objective-invitation.dto';
-import { AddObjectiveMemberOutcomeDto, TransferObjectiveHeadOutcomeDto } from '../models/dto/milestone.dto';
+import { AddObjectiveMemberOutcomeDto, RemoveObjectiveMemberOutcomeDto, TransferObjectiveHeadOutcomeDto } from '../models/dto/milestone.dto';
 
 @Injectable({ providedIn: 'root' })
 export class ObjectiveMemberApiService {
@@ -19,8 +19,8 @@ export class ObjectiveMemberApiService {
       `${this.base}/${objectiveId}/members`, { employeeId }, { observe: 'response' });
   }
 
-  removeMember(objectiveId: string, employeeId: string): Observable<HttpResponse<void>> {
-    return this.http.delete<void>(`${this.base}/${objectiveId}/members/${employeeId}`, { observe: 'response' });
+  removeMember(objectiveId: string, employeeId: string): Observable<HttpResponse<RemoveObjectiveMemberOutcomeDto>> {
+    return this.http.delete<RemoveObjectiveMemberOutcomeDto>(`${this.base}/${objectiveId}/members/${employeeId}`, { observe: 'response' });
   }
 
   getMyInvitations(): Observable<ObjectiveInvitationDto[]> {
@@ -33,6 +33,10 @@ export class ObjectiveMemberApiService {
 
   rejectInvitation(invitationId: string): Observable<HttpResponse<void>> {
     return this.http.post<void>(`${this.base}/invitations/${invitationId}/reject`, {}, { observe: 'response' });
+  }
+
+  cancelInvitation(invitationId: string): Observable<HttpResponse<void>> {
+    return this.http.post<void>(`${this.base}/invitations/${invitationId}/cancel`, {}, { observe: 'response' });
   }
 
   transferHead(objectiveId: string, newHeadEmployeeId: string): Observable<HttpResponse<TransferObjectiveHeadOutcomeDto>> {

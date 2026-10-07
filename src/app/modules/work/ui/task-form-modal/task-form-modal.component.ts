@@ -196,6 +196,7 @@ export type TaskFormMode = 'create' | 'edit';
                   <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><line x1="8.59" y1="13.51" x2="15.42" y2="17.49"/><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"/></svg>
                   <span>Share</span>
                 </button>
+                @if (headerTask.taskKind !== 'employee_checklist') {
                 <div class="tfm-chip-anchor">
                   <button
                     type="button"
@@ -229,6 +230,7 @@ export type TaskFormMode = 'create' | 'edit';
                     </div>
                   }
                 </div>
+                }
                 <button type="button" class="tfm__x" aria-label="Close" (click)="onCancel()">
                   <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M18 6 6 18" /></svg>
                 </button>
@@ -346,6 +348,7 @@ export type TaskFormMode = 'create' | 'edit';
                         <app-task-assignee-dropdown
                           [members]="assignableMembers()"
                           [selectedId]="assigneeEmployeeId()"
+                          [allowUnassigned]="task()?.taskKind !== 'employee_checklist'"
                           (selected)="assigneeEmployeeId.set($event ?? ''); activePopover.set(null)"
                           (closed)="activePopover.set(null)"
                         />
@@ -832,6 +835,7 @@ export type TaskFormMode = 'create' | 'edit';
                               <app-task-assignee-dropdown
                                 [members]="assignableMembers()"
                                 [selectedId]="assigneeEmployeeId()"
+                                [allowUnassigned]="task()?.taskKind !== 'employee_checklist'"
                                 (selected)="assigneeEmployeeId.set($event ?? ''); activePopover.set(null)"
                                 (closed)="activePopover.set(null)"
                               />
@@ -1018,7 +1022,7 @@ export type TaskFormMode = 'create' | 'edit';
 
                 <!-- Quick Actions List (Add subtask when 0 subtasks, Attach File when empty) -->
                 <div class="tfm-actions-list">
-                  @if (currentEffectiveMode() === 'edit' && task() && !task()?.parentTaskId && displayedSubtasks().length === 0 && !addingSubtask()) {
+                  @if (currentEffectiveMode() === 'edit' && task() && task()?.taskKind !== 'employee_checklist' && !task()?.parentTaskId && displayedSubtasks().length === 0 && !addingSubtask()) {
                     <button
                       type="button"
                       class="tfm-action-row"
@@ -2192,7 +2196,8 @@ export class TaskFormModalComponent {
         subtaskTotalCount: 0,
         subtaskCompletedCount: 0,
         subtaskAssigneeEmployeeIds: ds.assigneeEmployeeId ? [ds.assigneeEmployeeId] : [],
-        createdAt: new Date()
+        createdAt: new Date(),
+        hasPendingApproval: false
       }));
     }
     return this.subtasks();
@@ -3524,6 +3529,10 @@ export class TaskFormModalComponent {
     const previous = this.originalAssigneeId();
     if (next === previous) return;
     const taskId = this.currentTaskId();
+    if (this.task()?.taskKind === 'employee_checklist') {
+      if (next) await firstValueFrom(this.taskApi.assignTask(taskId, next));
+      return;
+    }
     if (previous) await firstValueFrom(this.taskApi.unassignTask(taskId, previous));
     if (next) await firstValueFrom(this.taskApi.assignTask(taskId, next));
   }

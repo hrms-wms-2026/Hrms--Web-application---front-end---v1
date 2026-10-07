@@ -81,6 +81,16 @@ describe('AuthStore', () => {
     expect(store.loading()).toBe(false);
   });
 
+  it('says the server is unreachable, not that the password is wrong, when login never reaches the API', async () => {
+    const networkError = new HttpErrorResponse({ status: 0, statusText: 'Unknown Error' });
+    const store = setup({ login: () => throwError(() => networkError) } as Partial<AuthApiService>);
+
+    await expect(store.login({ email: 'a@b.com', password: 'secret' })).rejects.toBeTruthy();
+
+    expect(store.error()).toBe('Could not reach the server. Check your connection or local HTTPS certificate and try again.');
+    expect(store.loading()).toBe(false);
+  });
+
   it('populates state after accepting legal documents', async () => {
     const store = setup({ acceptLegalDocuments: () => of(authenticatedDto) } as Partial<AuthApiService>);
 

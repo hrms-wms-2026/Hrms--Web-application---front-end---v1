@@ -7,7 +7,7 @@ import { ProjectApiService } from '../data-access/project-api.service';
 import { ProjectListItemDto, PagedResultDto } from '../models/dto/project.dto';
 import { AddObjectiveMemberOutcomeDto } from '../models/dto/milestone.dto';
 
-function memberAccepted(body: AddObjectiveMemberOutcomeDto = { alreadyMember: false, invitation: null }) {
+function memberAccepted(body: AddObjectiveMemberOutcomeDto = { applied: true, alreadyMember: false, invitation: null }) {
   return of(new HttpResponse({ status: 202, body }));
 }
 
@@ -16,7 +16,7 @@ describe('ProjectListStore', () => {
     id: 'p1', name: 'Website Revamp', identifier: 'WEB', categoryId: 'cat1', description: null, leadId: 'u1',
     startDate: '2026-08-01', targetDate: '2026-12-01', color: null, isActive: true,
     allocatedHours: 40, completedHours: 0, isLead: true, isAchieved: false, achievedAt: null, updatedAt: null,
-    logoFileId: null, labels: [], members: [], memberCount: 0
+    logoFileId: null, labels: [], members: [], memberCount: 0, systemPurpose: null
   };
   const page: PagedResultDto<ProjectListItemDto> = {
     items: [dto], pageNumber: 1, pageSize: 20, totalCount: 1, totalPages: 1, hasNext: false, hasPrevious: false
@@ -34,7 +34,7 @@ describe('ProjectListStore', () => {
       id: 'p1', name: 'Website Revamp', identifier: 'WEB', categoryId: 'cat1', description: null, leadId: 'u1',
       startDate: '2026-08-01', targetDate: '2026-12-01', color: null, isActive: true,
       allocatedHours: 40, completedHours: 0, isLead: true, isAchieved: false, achievedAt: null, updatedAt: null,
-      logoFileId: null, labels: [], members: [], memberCount: 0
+      logoFileId: null, labels: [], members: [], memberCount: 0, systemPurpose: null
     }]);
     expect(store.totalCount()).toBe(1);
     expect(store.loading()).toBe(false);
