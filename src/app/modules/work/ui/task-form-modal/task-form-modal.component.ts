@@ -52,7 +52,7 @@ export type TaskFormMode = 'create' | 'edit';
       <div class="tfm-scrim" (click)="onBackdrop()">
         <div
           #tfm
-          class="tfm"
+          class="tfm ui-scroll-open"
           [class.tfm--create]="currentEffectiveMode() === 'create'"
           role="dialog"
           aria-modal="true"
@@ -62,9 +62,10 @@ export type TaskFormMode = 'create' | 'edit';
           (keydown.escape)="onEscape()"
         >
 
-          <header class="tfm__head" [class.tfm__head--doc]="currentEffectiveMode() === 'edit'">
+          <header class="tfm__head" [class.ui-popup-header]="currentEffectiveMode() === 'create'" [class.tfm__head--doc]="currentEffectiveMode() === 'edit'">
             @if (currentEffectiveMode() === 'create') {
-              <div class="tfm__title">
+              <div class="tfm__title tfm__title--with-icon">
+                <span class="ui-popup-icon" data-icon="layers" aria-hidden="true"></span>
                 <h2>Create work item</h2>
               </div>
             } @else if (task(); as t) {
@@ -1139,12 +1140,26 @@ export type TaskFormMode = 'create' | 'edit';
 
                     <!-- Comments component: always mounted for test compatibility and state retention, visible on Comments & All tabs -->
                     <div [hidden]="activityTab() !== 'comments' && activityTab() !== 'all'">
-                      <app-task-comments [taskId]="tid" [projectId]="projectId()" [sortOrder]="activitySortOrder()" />
+                      <app-task-comments [taskId]="tid" [projectId]="projectId()" [sortOrder]="activitySortOrder()" (countChange)="commentCount.set($event)" />
                     </div>
 
-                    @if (activityTab() === 'history' || activityTab() === 'all') {
+                    @if (activityEmptyState(); as empty) {
+                      <div class="tfm-activity-empty" data-testid="activity-empty-state">
+                        <svg class="tfm-activity-empty__icon" viewBox="0 0 40 32" width="40" height="32" fill="none" aria-hidden="true">
+                          <path d="M4 4.5A3.5 3.5 0 0 1 7.5 1h17A3.5 3.5 0 0 1 28 4.5v10a3.5 3.5 0 0 1-3.5 3.5H13l-5.5 4.5V18H7.5A3.5 3.5 0 0 1 4 14.5z" fill="var(--color-surface)" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round" />
+                          <circle cx="11" cy="9.5" r="1.3" fill="currentColor" />
+                          <circle cx="16" cy="9.5" r="1.3" fill="currentColor" />
+                          <circle cx="21" cy="9.5" r="1.3" fill="currentColor" />
+                          <path d="M31 9h1.5A3.5 3.5 0 0 1 36 12.5v8a3.5 3.5 0 0 1-3.5 3.5H32v4l-4.5-4H20a3.5 3.5 0 0 1-3.5-3.5V21" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round" opacity="0.55" />
+                        </svg>
+                        <p class="tfm-activity-empty__title">{{ empty.title }}</p>
+                        <p class="tfm-activity-empty__text">{{ empty.text }}</p>
+                      </div>
+                    }
+
+                    @if ((activityTab() === 'history' || activityTab() === 'all') && sortedHistoryEntries().length > 0) {
                       <div class="tfm-activity-feed-wrap">
-                        @if (activityTab() === 'all') {
+                        @if (activityTab() === 'all' && (commentCount() ?? 0) > 0) {
                           <div class="tfm-activity-feed-divider">
                             <span>History & Changes</span>
                           </div>
@@ -1153,13 +1168,9 @@ export type TaskFormMode = 'create' | 'edit';
                       </div>
                     }
 
-                    @if (activityTab() === 'work_log') {
+                    @if (activityTab() === 'work_log' && workLogEntries().length > 0) {
                       <div class="tfm-activity-feed-wrap">
-                        @if (workLogEntries().length === 0) {
-                          <p class="tfm-activity-empty">No work logged yet</p>
-                        } @else {
-                          <app-task-history-feed [entries]="workLogEntries()" (reasonSaved)="reloadHistory()" />
-                        }
+                        <app-task-history-feed [entries]="workLogEntries()" (reasonSaved)="reloadHistory()" />
                       </div>
                     }
                   </div>
@@ -1732,11 +1743,13 @@ export type TaskFormMode = 'create' | 'edit';
     .tfm-scrim { position: fixed; inset: 0; z-index: 1200; display: flex; align-items: flex-start; justify-content: center; padding: 40px 24px; background: rgba(0,0,0,.5); overflow-y: auto; }
     .tfm { display: flex; flex-direction: column; width: 100%; max-width: 1180px; max-height: calc(100vh - 80px); border-radius: 8px; border: 1px solid var(--color-border); background: var(--color-surface); box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.12), 0 8px 10px -6px rgba(0, 0, 0, 0.08); overflow: hidden; }
     .tfm--create { max-width: 820px; max-height: none; overflow: visible; }
-    .tfm__head { display: flex; align-items: flex-start; justify-content: space-between; gap: 16px; padding: 18px 30px 16px; border-bottom: 1px solid var(--color-border); }
-    .tfm__head--doc { align-items: center; padding: 14px 30px; }
-    .tfm--create .tfm__head { border-top-left-radius: 8px; border-top-right-radius: 8px; }
+    .tfm__head { display: flex; align-items: flex-start; justify-content: space-between; gap: 16px; padding: 18px 30px 16px; }
+    .tfm__head--doc { align-items: center; padding: 14px 30px; border-bottom: 1px solid var(--color-border); }
+    .tfm--create .tfm__head { align-items: center; border-top-left-radius: 8px; border-top-right-radius: 8px; }
     .tfm__title { display: flex; flex-direction: column; gap: 3px; }
     .tfm__title h2 { margin: 0; font-size: 19px; font-weight: 700; letter-spacing: -.02em; color: var(--color-text-primary); }
+    .tfm__title--with-icon { flex-direction: row; align-items: center; gap: 0; }
+    .tfm__title--with-icon h2 { font-size: 22px; }
     .tfm__title p { margin: 0; font-size: 13px; color: var(--color-text-secondary); }
     .tfm-breadcrumbs { display: flex; align-items: center; gap: 8px; font-size: 13px; color: var(--color-text-secondary); font-weight: 500; }
     .tfm-breadcrumb-proj { color: var(--color-text-secondary); }
@@ -1846,24 +1859,24 @@ export type TaskFormMode = 'create' | 'edit';
 
     /* Unified Activity Hub */
     .tfm-activity-section { margin-top: 24px; padding-top: 18px; border-top: 1px solid var(--color-border); }
-    .tfm-activity-header { display: flex; flex-direction: column; gap: 12px; margin-bottom: 16px; }
+    .tfm-activity-header { display: flex; flex-direction: column; gap: 6px; margin-bottom: 16px; }
     .tfm-activity-title { margin: 0; font-size: 17px; font-weight: 700; color: var(--color-text-primary); letter-spacing: -0.01em; }
-    .tfm-activity-controls { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
-    .tfm-activity-tabs { display: inline-flex; align-items: center; border: 1px solid var(--color-border); border-radius: 6px; padding: 2px; background: var(--color-surface); gap: 2px; }
-    .tfm-activity-tab { border: 1px solid transparent; background: transparent; padding: 5px 12px; font-size: 13px; font-weight: 500; color: var(--color-text-secondary); border-radius: 4px; cursor: pointer; transition: all 120ms ease; line-height: 1.3; font-family: inherit; }
-    .tfm-activity-tab:hover { color: var(--color-text-primary); background: var(--color-surface-secondary); }
-    .tfm-activity-tab--active {
-      border-color: var(--color-accent);
-      color: var(--color-accent);
-      background: var(--color-accent-subtle, color-mix(in srgb, var(--color-accent) 14%, var(--color-surface)));
-      font-weight: 600;
-    }
-    .tfm-activity-sort-btn { display: inline-flex; align-items: center; justify-content: center; width: 30px; height: 30px; border: 1px solid transparent; background: transparent; color: var(--color-text-secondary); border-radius: 6px; cursor: pointer; transition: background 120ms ease, color 120ms ease; }
+    .tfm-activity-controls { display: flex; align-items: flex-end; justify-content: space-between; gap: 12px; border-bottom: 1px solid var(--color-border); }
+    .tfm-activity-tabs { display: inline-flex; align-items: flex-end; gap: 4px; }
+    .tfm-activity-tab { position: relative; border: 0; background: transparent; padding: 8px 14px 9px; font-size: 13.5px; font-weight: 500; color: var(--color-text-secondary); cursor: pointer; transition: color 120ms ease; line-height: 1.3; font-family: inherit; }
+    .tfm-activity-tab::after { content: ''; position: absolute; left: 0; right: 0; bottom: -1px; height: 2px; border-radius: 2px 2px 0 0; background: transparent; transition: background 120ms ease; }
+    .tfm-activity-tab:hover { color: var(--color-text-primary); }
+    .tfm-activity-tab--active { color: var(--color-accent); font-weight: 600; }
+    .tfm-activity-tab--active::after { background: var(--color-accent); }
+    .tfm-activity-sort-btn { display: inline-flex; align-items: center; justify-content: center; width: 30px; height: 30px; margin-bottom: 4px; border: 1px solid transparent; background: transparent; color: var(--color-text-secondary); border-radius: 6px; cursor: pointer; transition: background 120ms ease, color 120ms ease; }
     .tfm-activity-sort-btn:hover { background: var(--color-surface-secondary); color: var(--color-text-primary); }
     .tfm-activity-feed-wrap { margin-top: 12px; }
     .tfm-activity-feed-divider { display: flex; align-items: center; margin: 20px 0 10px; font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; color: var(--color-text-secondary); }
     .tfm-activity-feed-divider::after { content: ''; flex: 1; height: 1px; background: var(--color-border); margin-left: 10px; }
-    .tfm-activity-empty { margin: 0; padding: 16px; border: 1px dashed var(--color-border); border-radius: 8px; font-size: 13px; color: var(--color-text-secondary); text-align: center; }
+    .tfm-activity-empty { display: flex; flex-direction: column; align-items: center; gap: 4px; padding: 4px 16px 20px; text-align: center; }
+    .tfm-activity-empty__icon { color: var(--color-accent); margin-bottom: 6px; }
+    .tfm-activity-empty__title { margin: 0; font-size: 14px; font-weight: 600; color: var(--color-text-primary); }
+    .tfm-activity-empty__text { margin: 0; max-width: 280px; font-size: 13px; line-height: 1.5; color: var(--color-text-secondary); }
     .tfm-actions-list { display: flex; flex-direction: column; gap: 2px; }
     .tfm-action-row {
       display: flex;
@@ -2344,6 +2357,25 @@ export class TaskFormModalComponent {
   showComments = signal(true);
   activityTab = signal<'all' | 'comments' | 'history' | 'work_log'>('comments');
   activitySortOrder = signal<'desc' | 'asc'>('desc');
+  /** Reported by app-task-comments; null until its first load so the empty state doesn't flash. */
+  commentCount = signal<number | null>(null);
+
+  activityEmptyState = computed<{ title: string; text: string } | null>(() => {
+    const comments = this.commentCount();
+    const history = this.sortedHistoryEntries().length;
+    switch (this.activityTab()) {
+      case 'all':
+        return comments === 0 && history === 0
+          ? { title: 'No activity yet', text: 'Comments, status changes and work logs will appear here.' }
+          : null;
+      case 'comments':
+        return comments === 0 ? { title: 'No comments yet', text: 'Start the conversation — comments on this task will appear here.' } : null;
+      case 'history':
+        return history === 0 ? { title: 'No history yet', text: 'Status changes and edits to this task will appear here.' } : null;
+      case 'work_log':
+        return this.workLogEntries().length === 0 ? { title: 'No work logged yet', text: 'Time clocked against this task will appear here.' } : null;
+    }
+  });
 
   setActivityTab(tab: 'all' | 'comments' | 'history' | 'work_log'): void {
     this.activityTab.set(tab);

@@ -196,6 +196,25 @@ describe('EmployeeListComponent', () => {
     expect(fixture.nativeElement.textContent).toContain('Add Employee');
   });
 
+  it('does not re-fetch the employee list when only the Add Employee / draft query params change', async () => {
+    // no employees:write, so the wizard itself stays closed - this is only about the list's reload trigger
+    await setup(false);
+    flushEmployeesAndDrafts();
+    await fixture.whenStable();
+    fixture.detectChanges();
+    const listRequests = () => httpMock.match((r) => r.method === 'GET' && /\/employees$/.test(r.url));
+
+    queryParams.next(convertToParamMap({ addEmployee: 'true' }));
+    await fixture.whenStable();
+    queryParams.next(convertToParamMap({}));
+    await fixture.whenStable();
+    expect(listRequests().length).toBe(0);
+
+    queryParams.next(convertToParamMap({ search: 'ada' }));
+    await fixture.whenStable();
+    expect(listRequests().length).toBe(1);
+  });
+
   it('synchronizes the search query param to the URL after debounce', async () => {
     vi.useFakeTimers();
     try {

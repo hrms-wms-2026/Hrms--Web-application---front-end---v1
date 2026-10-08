@@ -1,8 +1,9 @@
 <div class="pcm-backdrop" (click)="close.emit()">
-  <div class="pcm-modal" (click)="$event.stopPropagation()" role="dialog" aria-modal="true">
+  <div class="pcm-modal ui-scroll-open" (click)="$event.stopPropagation()" role="dialog" aria-modal="true">
 
     <!-- Header -->
-    <div class="pcm-header">
+    <div class="pcm-header ui-popup-header">
+      <span class="ui-popup-icon" data-icon="briefcase" aria-hidden="true"></span>
       <div>
         <div class="pcm-title-row">
           <h2 class="pcm-title">Management Coverage</h2>

@@ -21,6 +21,7 @@ const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <div class="flex flex-col gap-1.5 select-none">
+      @if (searchText() === null) {
       <div class="flex items-center gap-1.5 border-b border-[var(--color-border)] px-1.5 py-1">
         <svg viewBox="0 0 24 24" aria-hidden="true" class="h-3.5 w-3.5 shrink-0 fill-none stroke-[var(--color-text-secondary)]" stroke-width="2">
           <circle cx="11" cy="11" r="8" />
@@ -35,6 +36,7 @@ const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
           (input)="onInput($any($event.target).value)"
         />
       </div>
+      }
 
       <div class="flex max-h-64 flex-col gap-0.5 overflow-y-auto">
         @for (guest of guests(); track guest) {
@@ -104,6 +106,9 @@ export class PeoplePickerComponent {
   allowGuests = input(false);
   placeholder = input('Search people...');
   emptyText = input('No matching people');
+  /** When set, the parent owns the search box (e.g. a search field it renders itself): the built-in
+   * search bar is hidden and this text drives the guest-invite match. The parent still runs the search. */
+  searchText = input<string | null>(null);
 
   searchChange = output<string>();
   toggled = output<string>();
@@ -111,10 +116,11 @@ export class PeoplePickerComponent {
   guestToggled = output<string>();
 
   protected readonly query = signal('');
+  private readonly effectiveQuery = computed(() => this.searchText() ?? this.query());
 
   protected readonly inviteCandidate = computed(() => {
     if (!this.allowGuests()) return null;
-    const email = this.query().trim().toLowerCase();
+    const email = this.effectiveQuery().trim().toLowerCase();
     if (!EMAIL_PATTERN.test(email)) return null;
     if (this.guests().includes(email)) return null;
     if (this.options().some((person) => person.email?.toLowerCase() === email)) return null;

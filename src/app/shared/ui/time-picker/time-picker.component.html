@@ -3,7 +3,7 @@
     <label [for]="inputId" class="tp-label">{{ label() }}</label>
   }
 
-  <div class="tp-input-wrapper" (click)="togglePopover()">
+  <div class="tp-input-wrapper" cdkOverlayOrigin #overlayOrigin="cdkOverlayOrigin" (click)="togglePopover()">
     <input
       [id]="inputId"
       type="text"
@@ -55,7 +55,19 @@
     <span [id]="hintId()" class="tp-hint-text">{{ hint() }}</span>
   }
 
-  @if (isOpen()) {
+  <!-- Rendered in a CDK overlay so the popover isn't clipped by scrolling/overflow ancestors such as modals. -->
+  <ng-template
+    cdkConnectedOverlay
+    [cdkConnectedOverlayOrigin]="overlayOrigin"
+    [cdkConnectedOverlayOpen]="isOpen()"
+    [cdkConnectedOverlayPositions]="popoverPositions()"
+    [cdkConnectedOverlayPush]="true"
+    [cdkConnectedOverlayViewportMargin]="8"
+    [cdkConnectedOverlayHasBackdrop]="true"
+    cdkConnectedOverlayBackdropClass="cdk-overlay-transparent-backdrop"
+    (backdropClick)="closePopover()"
+    (detach)="closePopover()"
+  >
     <div class="tp-popover" [class.tp-popover--up]="openUpward()" role="dialog" aria-label="Time picker">
       <!-- Quick Presets -->
       <div class="tp-presets">
@@ -155,5 +167,5 @@
         </div>
       </div>
     </div>
-  }
+  </ng-template>
 </div>

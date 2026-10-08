@@ -1,8 +1,9 @@
 <div class="pfm-backdrop" (click)="cancel.emit()">
-  <div class="pfm-modal" (click)="$event.stopPropagation()" role="dialog" aria-modal="true">
+  <div class="pfm-modal ui-scroll-open" (click)="$event.stopPropagation()" role="dialog" aria-modal="true">
     
     <!-- Header -->
-    <div class="pfm-header">
+    <div class="pfm-header ui-popup-header">
+      <span class="ui-popup-icon" data-icon="briefcase" aria-hidden="true"></span>
       <div>
         <h2 class="pfm-title">{{ isEdit ? 'Edit position' : 'Create position' }}</h2>
         <p class="pfm-subtitle">

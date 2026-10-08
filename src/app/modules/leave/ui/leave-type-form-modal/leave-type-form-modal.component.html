@@ -1,6 +1,7 @@
 <div class="ltfm-backdrop" (click)="cancel.emit()">
-  <section class="ltfm-modal" (click)="$event.stopPropagation()" role="dialog" aria-modal="true" [attr.aria-label]="isEdit ? 'Edit leave type' : 'Create leave type'">
-    <header class="ltfm-header">
+  <section class="ltfm-modal ui-scroll-open" (click)="$event.stopPropagation()" role="dialog" aria-modal="true" [attr.aria-label]="isEdit ? 'Edit leave type' : 'Create leave type'">
+    <header class="ltfm-header ui-popup-header">
+      <span class="ui-popup-icon" data-icon="sun" aria-hidden="true"></span>
       <div>
         <p class="ltfm-kicker">TIME OFF</p>
         <h2>{{ isEdit ? 'Edit leave type' : 'Create leave type' }}</h2>

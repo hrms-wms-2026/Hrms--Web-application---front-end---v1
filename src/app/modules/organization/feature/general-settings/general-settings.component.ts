@@ -9,6 +9,7 @@ import { EmptyStateComponent } from '../../../../shared/ui/empty-state/empty-sta
 import { ErrorStateComponent } from '../../../../shared/ui/error-state/error-state.component';
 import { InputComponent } from '../../../../shared/ui/input/input.component';
 import { SelectComponent } from '../../../../shared/ui/select/select.component';
+import { ListboxSelectComponent } from '../../../../shared/ui/listbox-select/listbox-select.component';
 import { LegalEntityApiService } from '../../data-access/legal-entity-api.service';
 import { LegalEntityGeneralSettings, UpdateLegalEntityGeneralSettingsRequest } from '../../models/legal-entity.model';
 import { GeneralSettingsStore } from '../../state/general-settings.store';
@@ -56,6 +57,7 @@ import { computeWorkDayHours, isOvernightWorkWindow } from '../../utils/work-day
     ErrorStateComponent,
     InputComponent,
     SelectComponent,
+    ListboxSelectComponent,
     TimePickerComponent,
     OfficeLocationPickerComponent
   ],

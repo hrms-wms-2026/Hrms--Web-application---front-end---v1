@@ -24,7 +24,7 @@ const STEP_ITEMS = [
     @if (open()) {
       <div class="proj-modal-backdrop" (click)="closed.emit()">
         <div
-          class="proj-modal"
+          class="proj-modal ui-scroll-open"
           role="dialog"
           aria-modal="true"
           aria-labelledby="proj-modal-title"
@@ -33,8 +33,9 @@ const STEP_ITEMS = [
           tabindex="-1"
         >
           <!-- Header -->
-          <div class="proj-modal-header">
+          <div class="proj-modal-header ui-popup-header">
             <div class="proj-modal-header-top">
+              <span class="ui-popup-icon" data-icon="folder" aria-hidden="true"></span>
               <div>
                 <h2 id="proj-modal-title" class="proj-modal-title">Create New Project</h2>
                 <p class="proj-modal-subtitle">Follow the steps below to set up your project.</p>
@@ -373,7 +374,6 @@ const STEP_ITEMS = [
       align-items: center;
       justify-content: center;
       background-color: rgba(15, 23, 42, 0.5);
-      backdrop-filter: blur(4px);
       padding: 1rem;
       overflow-y: auto;
       animation: projFadeIn 150ms ease-out;
@@ -390,17 +390,13 @@ const STEP_ITEMS = [
       border-radius: 10px;
       box-shadow: 0 20px 25px -5px rgba(0,0,0,0.12), 0 8px 10px -6px rgba(0,0,0,0.08);
       overflow: visible;
-      animation: projModalPop 180ms cubic-bezier(0.16, 1, 0.3, 1);
       outline: none;
     }
 
     .proj-modal-header {
       display: flex;
       flex-direction: column;
-      padding: 1.125rem 1.5rem 0.875rem;
-      border-bottom: 1px solid var(--color-border);
-      background: var(--color-surface);
-      border-radius: 10px 10px 0 0;
+      padding: 1.125rem 1.5rem 1.125rem;
       flex-shrink: 0;
     }
 
@@ -673,10 +669,6 @@ const STEP_ITEMS = [
     @keyframes projFadeIn {
       from { opacity: 0; }
       to { opacity: 1; }
-    }
-    @keyframes projModalPop {
-      from { opacity: 0; transform: scale(0.97) translateY(8px); }
-      to { opacity: 1; transform: scale(1) translateY(0); }
     }
   `
 })
