@@ -38,7 +38,7 @@
     <div class="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-blue-100 bg-blue-50/60 px-4 py-3" data-testid="dashboard-edit-bar">
       <div>
         <h2 class="text-sm font-bold text-slate-800">Customize your dashboard</h2>
-        <p class="text-xs text-slate-500">Drag a card to any column. Full-width cards move between the top and the bottom.</p>
+        <p class="text-xs text-slate-500">Drag any card anywhere - into a column, or into the full-width rows at the top and bottom.</p>
       </div>
       <div class="flex items-center gap-2">
         <button type="button" class="dashboard-edit-btn" data-testid="dashboard-reset" (click)="layout.reset()">Reset</button>
@@ -48,10 +48,10 @@
     </div>
 
     <div class="grid grid-cols-1 items-start gap-3 xl:grid-cols-[minmax(0,1fr)_18rem]">
-      <div class="flex flex-col gap-3">
+      <div class="flex flex-col gap-3" cdkDropListGroup>
         <ng-container *ngTemplateOutlet="band; context: { $implicit: 'top', keys: layout.resolved().top, title: 'Full width - top' }" />
 
-        <div class="grid grid-cols-1 gap-3 md:grid-cols-3" cdkDropListGroup data-testid="dashboard-edit-columns">
+        <div class="grid grid-cols-1 gap-3 md:grid-cols-3" data-testid="dashboard-edit-columns">
           @for (zone of columnZones; track zone; let i = $index) {
             <div
               class="dashboard-drop-zone"
@@ -86,22 +86,21 @@
       cdkDropList
       [id]="'dashboard-band-' + zone"
       [cdkDropListData]="zone"
-      [cdkDropListConnectedTo]="zone === 'top' ? ['dashboard-band-bottom'] : ['dashboard-band-top']"
       (cdkDropListDropped)="onDrop($event)"
       [attr.data-testid]="'dashboard-edit-' + zone"
     >
       @for (key of keys; track key) {
         <ng-container *ngTemplateOutlet="tile; context: { $implicit: key }" />
       } @empty {
-        <p class="dashboard-drop-hint">Drop a full-width card here</p>
+        <p class="dashboard-drop-hint">Drop a card here to make it full width</p>
       }
     </div>
   </div>
 </ng-template>
 
 <ng-template #tile let-key>
-  <div class="dashboard-tile" cdkDrag [cdkDragData]="key" [attr.data-testid]="'dashboard-tile-' + key">
-    <span class="dashboard-tile__grip" cdkDragHandle [attr.aria-label]="'Drag ' + label(key)" title="Drag to move">⋮⋮</span>
+  <div class="dashboard-tile" cdkDrag [cdkDragData]="key" [attr.data-testid]="'dashboard-tile-' + key" [attr.aria-label]="'Drag ' + label(key)" title="Drag to move">
+    <span class="dashboard-tile__grip" aria-hidden="true">⋮⋮</span>
     <span class="min-w-0 flex-1 truncate text-sm font-semibold text-slate-800">{{ label(key) }}</span>
     @if (isTeam(key)) {
       <span class="rounded-md bg-violet-50 px-1.5 py-0.5 text-[10px] font-bold text-violet-700">My Team</span>

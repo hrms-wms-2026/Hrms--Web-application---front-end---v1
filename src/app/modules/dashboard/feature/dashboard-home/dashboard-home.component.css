@@ -84,6 +84,7 @@
 }
 
 .dashboard-tile {
+  cursor: grab;
   display: flex;
   align-items: center;
   gap: 8px;
@@ -94,8 +95,15 @@
   box-shadow: 0 1px 2px rgb(15 23 42 / 0.05);
 }
 
+.dashboard-tile:hover {
+  border-color: #93c5fd;
+}
+
+.dashboard-tile:active {
+  cursor: grabbing;
+}
+
 .dashboard-tile__grip {
-  cursor: grab;
   padding: 2px 4px;
   color: #94a3b8;
   font-size: 14px;

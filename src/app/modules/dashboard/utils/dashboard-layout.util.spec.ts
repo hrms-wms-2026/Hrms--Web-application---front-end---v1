@@ -4,7 +4,6 @@ import {
   DEFAULT_DASHBOARD_LAYOUT,
   DashboardCardKey,
   DashboardLayout,
-  migrateFromMyTeamPreference,
   moveDashboardCard,
   resolveDashboardLayout,
   sanitizeDashboardLayout,
@@ -13,14 +12,28 @@ import {
 } from './dashboard-layout.util';
 
 const ALL = new Set<DashboardCardKey>(ALL_DASHBOARD_CARD_KEYS);
+/** A layout with every card ticked and My Team heading the columns, for the move / step rules. */
+const LAYOUT: DashboardLayout = {
+  version: 1,
+  top: [],
+  columns: [
+    ['teamStatus', 'todayAtAGlance', 'todaysSchedule'],
+    ['actionCenter', 'myTasks', 'notifications'],
+    ['teamProgress', 'quickActions', 'wellbeing']
+  ],
+  bottom: ['workPattern'],
+  hidden: []
+};
 const allKeys = (layout: DashboardLayout): DashboardCardKey[] =>
   [...layout.top, ...layout.columns.flat(), ...layout.bottom].sort();
 
 describe('default layout', () => {
-  it('puts My Team on top: KPI tiles, then a team card heading each column', () => {
-    expect(DEFAULT_DASHBOARD_LAYOUT.top).toEqual(['teamKpis']);
-    expect(DEFAULT_DASHBOARD_LAYOUT.columns.map((c) => c[0])).toEqual(['teamStatus', 'actionCenter', 'teamProgress']);
-    expect(DEFAULT_DASHBOARD_LAYOUT.bottom).toEqual(['workPattern']);
+  it("shows Good morning, Today's Schedule, Action Center, My Tasks, Quick Actions, Team Progress and Work Pattern", () => {
+    const shown = resolveDashboardLayout(DEFAULT_DASHBOARD_LAYOUT, ALL);
+    expect(shown.top).toEqual([]);
+    expect(shown.columns).toEqual([['todayAtAGlance', 'todaysSchedule'], ['actionCenter', 'myTasks'], ['quickActions', 'teamProgress']]);
+    expect(shown.bottom).toEqual(['workPattern']);
+    expect(DEFAULT_DASHBOARD_LAYOUT.hidden).toEqual(['teamStatus', 'notifications', 'wellbeing']);
     expect(allKeys(DEFAULT_DASHBOARD_LAYOUT)).toEqual([...ALL_DASHBOARD_CARD_KEYS].sort());
   });
 });
@@ -32,7 +45,7 @@ describe('sanitizeDashboardLayout', () => {
     expect(sanitizeDashboardLayout('nope')).toBe(DEFAULT_DASHBOARD_LAYOUT);
   });
 
-  it('drops unknown keys and duplicates, fixes wrong-width placements, and re-homes missing cards', () => {
+  it('drops unknown keys and duplicates, keeps cards wherever they were put, and re-homes missing ones', () => {
     const layout = sanitizeDashboardLayout({
       version: 1,
       top: ['myTasks', 'bogus'],
@@ -40,30 +53,19 @@ describe('sanitizeDashboardLayout', () => {
       bottom: [],
       hidden: ['notifications', 'notifications', 'bogus']
     });
-    expect(layout.columns[0]).toContain('myTasks');
-    expect(layout.columns[0].indexOf('wellbeing')).toBeGreaterThanOrEqual(0);
-    expect(layout.columns[1]).toEqual(expect.arrayContaining(['notifications']));
+    expect(layout.top).toEqual(['myTasks']);
+    expect(layout.columns[0]).toEqual(['todayAtAGlance', 'todaysSchedule', 'workPattern', 'wellbeing', 'teamStatus']);
     expect(layout.columns[1]).not.toContain('wellbeing');
-    expect(layout.bottom).toContain('workPattern');
-    expect(layout.top).toEqual(['teamKpis']);
+    expect(layout.bottom).not.toContain('workPattern');
     expect(layout.hidden).toEqual(['notifications']);
-    expect(allKeys(layout)).toEqual([...ALL_DASHBOARD_CARD_KEYS].sort());
-  });
-});
-
-describe('migrateFromMyTeamPreference', () => {
-  it('heads the columns with the old visible order and keeps old hidden team cards hidden', () => {
-    const layout = migrateFromMyTeamPreference(['actionCenter', 'teamProgress']);
-    expect(layout.columns.map((c) => c[0])).toEqual(['actionCenter', 'teamProgress', 'teamStatus']);
-    expect(layout.hidden).toEqual(['teamStatus']);
     expect(allKeys(layout)).toEqual([...ALL_DASHBOARD_CARD_KEYS].sort());
   });
 });
 
 describe('resolveDashboardLayout', () => {
   it('shows only ticked cards the viewer is allowed, without touching the stored layout', () => {
-    const layout = toggleDashboardCard(DEFAULT_DASHBOARD_LAYOUT, 'wellbeing');
-    const dayOnly = new Set(ALL_DASHBOARD_CARD_KEYS.filter((k) => !['teamKpis', 'teamStatus', 'actionCenter', 'teamProgress'].includes(k)));
+    const layout = toggleDashboardCard(LAYOUT, 'wellbeing');
+    const dayOnly = new Set(ALL_DASHBOARD_CARD_KEYS.filter((k) => !['teamStatus', 'actionCenter', 'teamProgress'].includes(k)));
     const resolved = resolveDashboardLayout(layout, dayOnly);
     expect(resolved.top).toEqual([]);
     expect(resolved.columns).toEqual([['todayAtAGlance', 'todaysSchedule'], ['myTasks', 'notifications'], ['quickActions']]);
@@ -74,57 +76,67 @@ describe('resolveDashboardLayout', () => {
 
 describe('toggleDashboardCard', () => {
   it('unticks and re-ticks a card in its old place', () => {
-    const off = toggleDashboardCard(DEFAULT_DASHBOARD_LAYOUT, 'myTasks');
+    const off = toggleDashboardCard(LAYOUT, 'myTasks');
     expect(off.hidden).toEqual(['myTasks']);
     const on = toggleDashboardCard(off, 'myTasks');
     expect(on.hidden).toEqual([]);
-    expect(on.columns[1]).toEqual(DEFAULT_DASHBOARD_LAYOUT.columns[1]);
+    expect(on.columns[1]).toEqual(LAYOUT.columns[1]);
   });
 });
 
 describe('moveDashboardCard', () => {
   it('moves a card into another column at the dropped position', () => {
-    const moved = moveDashboardCard(DEFAULT_DASHBOARD_LAYOUT, 'wellbeing', 'col0', 1);
+    const moved = moveDashboardCard(LAYOUT, 'wellbeing', 'col0', 1);
     expect(moved.columns[0]).toEqual(['teamStatus', 'wellbeing', 'todayAtAGlance', 'todaysSchedule']);
     expect(moved.columns[2]).toEqual(['teamProgress', 'quickActions']);
   });
 
   it('reorders within a column', () => {
-    const moved = moveDashboardCard(DEFAULT_DASHBOARD_LAYOUT, 'teamStatus', 'col0', 2);
+    const moved = moveDashboardCard(LAYOUT, 'teamStatus', 'col0', 2);
     expect(moved.columns[0]).toEqual(['todayAtAGlance', 'todaysSchedule', 'teamStatus']);
   });
 
   it('counts the drop position among visible cards only, keeping invisible ones in place', () => {
     const notTeam = (k: DashboardCardKey) => k !== 'teamStatus';
-    const moved = moveDashboardCard(DEFAULT_DASHBOARD_LAYOUT, 'myTasks', 'col0', 0, notTeam);
+    const moved = moveDashboardCard(LAYOUT, 'myTasks', 'col0', 0, notTeam);
     expect(moved.columns[0]).toEqual(['teamStatus', 'myTasks', 'todayAtAGlance', 'todaysSchedule']);
   });
 
-  it('never puts a full-width card in a column, or a column card in a band', () => {
-    expect(moveDashboardCard(DEFAULT_DASHBOARD_LAYOUT, 'workPattern', 'col1', 0)).toBe(DEFAULT_DASHBOARD_LAYOUT);
-    expect(moveDashboardCard(DEFAULT_DASHBOARD_LAYOUT, 'myTasks', 'top', 0)).toBe(DEFAULT_DASHBOARD_LAYOUT);
-    expect(moveDashboardCard(DEFAULT_DASHBOARD_LAYOUT, 'workPattern', 'top', 0).top).toEqual(['workPattern', 'teamKpis']);
+  it('puts any card anywhere: a full-width card into a column, a column card into a full-width row', () => {
+    const intoColumn = moveDashboardCard(LAYOUT, 'workPattern', 'col1', 0);
+    expect(intoColumn.columns[1][0]).toBe('workPattern');
+    expect(intoColumn.bottom).toEqual([]);
+    const intoRow = moveDashboardCard(LAYOUT, 'myTasks', 'top', 0);
+    expect(intoRow.top).toEqual(['myTasks']);
+    expect(intoRow.columns[1]).not.toContain('myTasks');
+    expect(moveDashboardCard(LAYOUT, 'workPattern', 'top', 0).top).toEqual(['workPattern']);
   });
 });
 
 describe('stepDashboardCard', () => {
   it('moves up and down within a column', () => {
-    const down = stepDashboardCard(DEFAULT_DASHBOARD_LAYOUT, 'teamStatus', 1);
+    const down = stepDashboardCard(LAYOUT, 'teamStatus', 1);
     expect(down.columns[0]).toEqual(['todayAtAGlance', 'teamStatus', 'todaysSchedule']);
-    expect(stepDashboardCard(down, 'teamStatus', -1).columns[0]).toEqual(DEFAULT_DASHBOARD_LAYOUT.columns[0]);
+    expect(stepDashboardCard(down, 'teamStatus', -1).columns[0]).toEqual(LAYOUT.columns[0]);
   });
 
   it('crosses into the neighbouring column at the ends, as the stacked phone layout reads', () => {
-    const up = stepDashboardCard(DEFAULT_DASHBOARD_LAYOUT, 'actionCenter', -1);
+    const up = stepDashboardCard(LAYOUT, 'actionCenter', -1);
     expect(up.columns[0]).toEqual(['teamStatus', 'todayAtAGlance', 'todaysSchedule', 'actionCenter']);
-    const down = stepDashboardCard(DEFAULT_DASHBOARD_LAYOUT, 'notifications', 1);
+    const down = stepDashboardCard(LAYOUT, 'notifications', 1);
     expect(down.columns[2][0]).toBe('notifications');
-    expect(stepDashboardCard(DEFAULT_DASHBOARD_LAYOUT, 'teamStatus', -1)).toBe(DEFAULT_DASHBOARD_LAYOUT);
+    expect(stepDashboardCard(LAYOUT, 'teamStatus', -1).top).toEqual(['teamStatus']);
   });
 
-  it('moves full-width cards between the top and bottom bands only', () => {
-    const down = stepDashboardCard(DEFAULT_DASHBOARD_LAYOUT, 'teamKpis', 1);
-    expect(down.top).toEqual([]);
-    expect(down.bottom).toEqual(['teamKpis', 'workPattern']);
+  it('walks every zone in one sequence: top row, columns 1-3, bottom row', () => {
+    const up = stepDashboardCard(LAYOUT, 'teamStatus', -1);
+    expect(up.top).toEqual(['teamStatus']);
+    const back = stepDashboardCard(up, 'teamStatus', 1);
+    expect(back.top).toEqual([]);
+    expect(back.columns[0][0]).toBe('teamStatus');
+    const intoBottom = stepDashboardCard(LAYOUT, 'wellbeing', 1);
+    expect(intoBottom.bottom).toEqual(['wellbeing', 'workPattern']);
+    expect(stepDashboardCard(LAYOUT, 'workPattern', 1)).toBe(LAYOUT);
+    expect(stepDashboardCard(up, 'teamStatus', -1)).toBe(up);
   });
 });

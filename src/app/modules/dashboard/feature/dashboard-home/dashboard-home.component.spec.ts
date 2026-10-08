@@ -27,6 +27,8 @@ const TEAM_CAPS: MyTeamCapabilitiesResponse = {
   hasWorkApprovals: false, leadsWork: true, canViewLiveActivity: false, legalEntityId: 'le-1'
 };
 const EMPTY_TODAY = { workDate: '2026-10-08', timezone: 'UTC', legalEntityId: 'le-1', summary: { total: 0, working: 0, onBreak: 0, clockedOut: 0, late: 0, absent: 0, notStarted: 0, onLeave: 0, notScheduled: 0, needsAttention: 0 }, members: [], totalMembers: 0 };
+// No employee record in the AuthStore stub, so the layout is saved under the login email.
+const LAYOUT_KEY = 'onexso.dashboard_layout:arjun.kumar@onevo.dev';
 const EMPTY_LED = { totals: { total: 0, completed: 0, inProgress: 0, notStarted: 0, overdue: 0 }, projects: [], overdueTasks: [], overdueTotal: 0 };
 
 describe('DashboardHomeComponent', () => {
@@ -100,7 +102,7 @@ describe('DashboardHomeComponent', () => {
     expect(text).not.toContain('Sign out');
   });
 
-  it('renders the greeting, Today at a Glance, Quick Actions, My Tasks, Notifications, Today\'s Schedule, Work Pattern, and Wellbeing cards', async () => {
+  it('renders the greeting, Today\'s Schedule, My Tasks, Quick Actions and Work Pattern by default - not Notifications or Wellbeing', async () => {
     const fixture = await setup();
 
     const text = fixture.nativeElement.textContent as string;
@@ -108,10 +110,10 @@ describe('DashboardHomeComponent', () => {
     expect(text).toContain('Activity Timeline');
     expect(text).toContain('Quick Actions');
     expect(text).toContain('My Tasks');
-    expect(text).toContain('Notifications');
     expect(text).toContain('Today\'s Schedule');
     expect(text).toContain('Work Pattern');
-    expect(text).toContain('Wellbeing');
+    expect(fixture.nativeElement.querySelector('app-dashboard-notifications-card')).toBeNull();
+    expect(fixture.nativeElement.querySelector('app-wellbeing-carousel-card')).toBeNull();
   });
 
   const q = (fixture: { nativeElement: HTMLElement }, testId: string): HTMLElement | null =>
@@ -124,27 +126,26 @@ describe('DashboardHomeComponent', () => {
   };
 
   describe('layout', () => {
-    it('puts My Team on top for a manager: KPI tiles, then a team card heading each column', async () => {
+    it('shows a manager the default layout: Team Status, Notifications and Wellbeing left off, no KPI tiles', async () => {
       const fixture = await setup(TEAM_CAPS);
-      expect(q(fixture, 'dashboard-band-top-teamKpis')).toBeTruthy();
-      expect(columnTags(fixture, 'col0')).toEqual(['app-team-status-card', 'app-today-at-a-glance-card', 'app-todays-schedule-card']);
-      expect(columnTags(fixture, 'col1')).toEqual(['app-action-center-card', 'app-my-tasks-card', 'app-dashboard-notifications-card']);
-      expect(columnTags(fixture, 'col2')).toEqual(['app-team-progress-card', 'app-quick-actions-card', 'app-wellbeing-carousel-card']);
+      expect(fixture.nativeElement.querySelector('app-team-kpi-strip')).toBeNull();
+      expect(columnTags(fixture, 'col0')).toEqual(['app-today-at-a-glance-card', 'app-todays-schedule-card']);
+      expect(columnTags(fixture, 'col1')).toEqual(['app-action-center-card', 'app-my-tasks-card']);
+      expect(columnTags(fixture, 'col2')).toEqual(['app-quick-actions-card', 'app-team-progress-card']);
       expect(q(fixture, 'dashboard-band-bottom-workPattern')).toBeTruthy();
-      expect(fixture.nativeElement.querySelector('#my-team-widget-teamStatus')).toBeTruthy();
+      expect(fixture.nativeElement.querySelector('#my-team-widget-teamStatus')).toBeNull();
     });
 
-    it('shows no My Team cards or KPI tiles to a viewer without My Team (AC-1)', async () => {
+    it('shows no My Team cards to a viewer without My Team (AC-1)', async () => {
       const fixture = await setup({ ...TEAM_CAPS, isAvailable: false });
-      expect(q(fixture, 'dashboard-band-top-teamKpis')).toBeNull();
       expect(fixture.nativeElement.querySelector('app-team-status-card, app-action-center-card, app-team-progress-card')).toBeNull();
       expect(columnTags(fixture, 'col0')).toEqual(['app-today-at-a-glance-card', 'app-todays-schedule-card']);
     });
 
     it('renders a saved layout', async () => {
-      localStorage.setItem('onexso.dashboard_layout', JSON.stringify({
+      localStorage.setItem(LAYOUT_KEY, JSON.stringify({
         version: 1,
-        top: ['teamKpis'],
+        top: [],
         columns: [
           ['myTasks', 'teamStatus', 'todayAtAGlance'],
           ['wellbeing', 'actionCenter', 'todaysSchedule'],
@@ -166,7 +167,9 @@ describe('DashboardHomeComponent', () => {
       click(fixture, 'dashboard-customize');
       expect(q(fixture, 'dashboard-edit-bar')).toBeTruthy();
       expect(q(fixture, 'customize-panel')).toBeTruthy();
-      expect(q(fixture, 'dashboard-tile-teamStatus')).toBeTruthy();
+      expect(q(fixture, 'dashboard-tile-actionCenter')).toBeTruthy();
+      expect(q(fixture, 'dashboard-tile-teamStatus')).toBeNull();
+      expect((q(fixture, 'customize-toggle-teamStatus') as HTMLInputElement).checked).toBe(false);
       expect(fixture.nativeElement.querySelector('app-my-tasks-card')).toBeNull();
       expect(q(fixture, 'customize-group-team')).toBeTruthy();
     });
@@ -181,11 +184,11 @@ describe('DashboardHomeComponent', () => {
     it('unticks a card and saves the change on Done', async () => {
       const fixture = await setup(TEAM_CAPS);
       click(fixture, 'dashboard-customize');
-      click(fixture, 'customize-toggle-wellbeing');
-      expect(q(fixture, 'dashboard-tile-wellbeing')).toBeNull();
+      click(fixture, 'customize-toggle-quickActions');
+      expect(q(fixture, 'dashboard-tile-quickActions')).toBeNull();
       click(fixture, 'dashboard-done');
-      expect(fixture.nativeElement.querySelector('app-wellbeing-carousel-card')).toBeNull();
-      expect(JSON.parse(localStorage.getItem('onexso.dashboard_layout')!).hidden).toEqual(['wellbeing']);
+      expect(fixture.nativeElement.querySelector('app-quick-actions-card')).toBeNull();
+      expect(JSON.parse(localStorage.getItem(LAYOUT_KEY)!).hidden).toContain('quickActions');
     });
 
     it('removes a card from its tile and brings it back from the list', async () => {
@@ -202,16 +205,16 @@ describe('DashboardHomeComponent', () => {
       const fixture = await setup(TEAM_CAPS);
       click(fixture, 'dashboard-customize');
       const layout = TestBed.inject(DashboardLayoutService);
-      layout.drop('wellbeing', 'col0', 0);
+      layout.drop('quickActions', 'col0', 0);
       fixture.detectChanges();
-      expect(q(fixture, 'dashboard-edit-col0')!.querySelector('[data-testid^="dashboard-tile-"]')!.getAttribute('data-testid')).toBe('dashboard-tile-wellbeing');
+      expect(q(fixture, 'dashboard-edit-col0')!.querySelector('[data-testid^="dashboard-tile-"]')!.getAttribute('data-testid')).toBe('dashboard-tile-quickActions');
 
       click(fixture, 'customize-up-actionCenter');
       const col0Tiles = Array.from(q(fixture, 'dashboard-edit-col0')!.querySelectorAll('.dashboard-tile')).map((t) => t.getAttribute('data-testid'));
       expect(col0Tiles.at(-1)).toBe('dashboard-tile-actionCenter');
 
       click(fixture, 'dashboard-done');
-      expect(columnTags(fixture, 'col0')[0]).toBe('app-wellbeing-carousel-card');
+      expect(columnTags(fixture, 'col0')[0]).toBe('app-quick-actions-card');
     });
 
     it('drops the draft on Cancel and on Esc', async () => {
@@ -227,19 +230,18 @@ describe('DashboardHomeComponent', () => {
       fixture.detectChanges();
       expect(q(fixture, 'dashboard-edit-bar')).toBeNull();
       expect(fixture.nativeElement.querySelector('app-my-tasks-card')).toBeTruthy();
-      expect(localStorage.getItem('onexso.dashboard_layout')).toBeNull();
+      expect(localStorage.getItem(LAYOUT_KEY)).toBeNull();
     });
 
     it('Reset puts the default back, saved on Done', async () => {
-      localStorage.setItem('onexso.dashboard_layout', JSON.stringify({
-        version: 1, top: [], columns: [['myTasks'], ['wellbeing'], ['quickActions']], bottom: ['workPattern', 'teamKpis'], hidden: ['todayAtAGlance']
+      localStorage.setItem(LAYOUT_KEY, JSON.stringify({
+        version: 1, top: [], columns: [['myTasks'], ['wellbeing'], ['quickActions']], bottom: ['workPattern'], hidden: ['todayAtAGlance']
       }));
       const fixture = await setup(TEAM_CAPS);
       click(fixture, 'dashboard-customize');
       click(fixture, 'dashboard-reset');
       click(fixture, 'dashboard-done');
-      expect(columnTags(fixture, 'col0')[0]).toBe('app-team-status-card');
-      expect(q(fixture, 'dashboard-band-top-teamKpis')).toBeTruthy();
+      expect(columnTags(fixture, 'col0')).toEqual(['app-today-at-a-glance-card', 'app-todays-schedule-card']);
     });
   });
 });

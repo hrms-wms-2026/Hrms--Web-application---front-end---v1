@@ -1,4 +1,4 @@
-import { CdkDrag, CdkDragDrop, CdkDragHandle, CdkDropList, CdkDropListGroup } from '@angular/cdk/drag-drop';
+import { CdkDrag, CdkDragDrop, CdkDropList, CdkDropListGroup } from '@angular/cdk/drag-drop';
 import { NgTemplateOutlet } from '@angular/common';
 import { ChangeDetectionStrategy, Component, OnDestroy, OnInit, inject } from '@angular/core';
 import { DashboardLayoutService } from '../../state/dashboard-layout.service';
@@ -10,14 +10,13 @@ import { DashboardCustomizePanelComponent } from '../dashboard-customize-panel/d
 /**
  * Employee dashboard content area for the authenticated dashboard route - a customizable layout.
  *
- * Default (DEFAULT_DASHBOARD_LAYOUT): My Team on top - the KPI tiles full-width, then Team Status /
- * Action Center / Team Progress heading the three columns - then the My Day cards (Today at a
- * Glance + Today's Schedule, My Tasks + Notifications, Quick Actions + Wellbeing), then Work
- * Pattern full-width. The My Team cards exist only for viewers with My Team capabilities (My Team
- * spec §5, AC-1).
+ * Default (DEFAULT_DASHBOARD_LAYOUT): Good morning + Today's Schedule, Action Center + My Tasks,
+ * Quick Actions + Team Progress, then Work Pattern full-width; Team Status, Notifications and
+ * Wellbeing start unticked. The My Team cards exist only for viewers with My Team capabilities
+ * (My Team spec §5, AC-1).
  *
  * "Customize" (top right) switches to edit mode: every card becomes a small tile that can be
- * dragged into any column (full-width cards between the top and bottom bands), and the side list
+ * dragged anywhere - any column, or the full-width rows at the top and bottom - and the side list
  * ticks cards on or off. Done saves the layout per employee in this browser; Cancel / Esc drops it.
  * Attendance Trend and Task Progress live on the My Insights page; Activity Timeline has its own.
  */
@@ -25,7 +24,7 @@ import { DashboardCustomizePanelComponent } from '../dashboard-customize-panel/d
   selector: 'app-dashboard-home',
   standalone: true,
   host: { class: 'block', '(document:keydown.escape)': 'onEscape()' },
-  imports: [NgTemplateOutlet, CdkDropListGroup, CdkDropList, CdkDrag, CdkDragHandle, DashboardCardComponent, DashboardCustomizePanelComponent],
+  imports: [NgTemplateOutlet, CdkDropListGroup, CdkDropList, CdkDrag, DashboardCardComponent, DashboardCustomizePanelComponent],
   templateUrl: './dashboard-home.component.html',
   styleUrl: './dashboard-home.component.css',
   changeDetection: ChangeDetectionStrategy.OnPush

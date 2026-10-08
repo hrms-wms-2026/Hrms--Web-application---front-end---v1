@@ -1,11 +1,9 @@
-import { ChangeDetectionStrategy, Component, inject, input } from '@angular/core';
-import { DashboardLayoutService } from '../../state/dashboard-layout.service';
+import { ChangeDetectionStrategy, Component, input } from '@angular/core';
 import { DashboardCardKey } from '../../utils/dashboard-layout.util';
 import { ActionCenterCardComponent } from '../action-center-card/action-center-card.component';
 import { DashboardNotificationsCardComponent } from '../dashboard-notifications-card/dashboard-notifications-card.component';
 import { MyTasksCardComponent } from '../my-tasks-card/my-tasks-card.component';
 import { QuickActionsCardComponent } from '../quick-actions-card/quick-actions-card.component';
-import { TeamKpiStripComponent } from '../team-kpi-strip/team-kpi-strip.component';
 import { TeamProgressCardComponent } from '../team-progress-card/team-progress-card.component';
 import { TeamStatusCardComponent } from '../team-status-card/team-status-card.component';
 import { TodayAtAGlanceCardComponent } from '../today-at-a-glance-card/today-at-a-glance-card.component';
@@ -14,8 +12,7 @@ import { WellbeingCarouselCardComponent } from '../wellbeing-carousel-card/wellb
 import { WorkPatternCardComponent } from '../work-pattern-card/work-pattern-card.component';
 
 /** Renders one dashboard card by its layout key. Only cards in the layout are created, so an
- * unticked card never loads its data. The team cards keep their `my-team-widget-*` ids - the KPI
- * tiles scroll to them. */
+ * unticked card never loads its data. */
 @Component({
   selector: 'app-dashboard-card',
   standalone: true,
@@ -27,7 +24,6 @@ import { WorkPatternCardComponent } from '../work-pattern-card/work-pattern-card
     QuickActionsCardComponent,
     WellbeingCarouselCardComponent,
     WorkPatternCardComponent,
-    TeamKpiStripComponent,
     TeamStatusCardComponent,
     ActionCenterCardComponent,
     TeamProgressCardComponent
@@ -41,7 +37,6 @@ import { WorkPatternCardComponent } from '../work-pattern-card/work-pattern-card
       @case ('quickActions') { <app-quick-actions-card /> }
       @case ('wellbeing') { <app-wellbeing-carousel-card /> }
       @case ('workPattern') { <app-work-pattern-card /> }
-      @case ('teamKpis') { <app-team-kpi-strip [visibleWidgets]="layout.visibleTeamKeys()" /> }
       @case ('teamStatus') { <app-team-status-card id="my-team-widget-teamStatus" class="block scroll-mt-4" /> }
       @case ('actionCenter') { <app-action-center-card id="my-team-widget-actionCenter" class="block scroll-mt-4" /> }
       @case ('teamProgress') { <app-team-progress-card id="my-team-widget-teamProgress" class="block scroll-mt-4" /> }
@@ -52,5 +47,4 @@ import { WorkPatternCardComponent } from '../work-pattern-card/work-pattern-card
 })
 export class DashboardCardComponent {
   readonly key = input.required<DashboardCardKey>();
-  protected readonly layout = inject(DashboardLayoutService);
 }

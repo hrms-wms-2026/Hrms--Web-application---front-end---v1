@@ -46,7 +46,14 @@ export class MyTeamDeepLinkService {
         nav.targetTab === 'board' || nav.targetTab === 'approvals'
           ? ['/work', nav.projectId, nav.targetTab]
           : ['/work', nav.projectId, 'milestones', nav.objectiveId, nav.targetTab];
-      const extras = nav.targetTab === 'board' && nav.taskId ? { queryParams: { highlightTaskId: nav.taskId } } : {};
+      // The Approvals page opens one request's detail from ?request=<id> (the work approval request
+      // id the dashboard item carries); the board highlights a task.
+      const extras =
+        nav.targetTab === 'board' && nav.taskId
+          ? { queryParams: { highlightTaskId: nav.taskId } }
+          : nav.targetTab === 'approvals'
+            ? { queryParams: { request: relatedEntityId } }
+            : {};
       await this.router.navigate(commands, extras);
     } catch {
       await this.router.navigate(['/work']);

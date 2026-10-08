@@ -1,6 +1,4 @@
-import { MyTeamWidgetKey } from '../models/my-team-widget-key.model';
-
-/** Cards that sit in one of the three columns. */
+/** Cards that sit in a column by default. */
 export type ColumnCardKey =
   | 'teamStatus'
   | 'actionCenter'
@@ -12,18 +10,18 @@ export type ColumnCardKey =
   | 'quickActions'
   | 'wellbeing';
 
-/** Cards that always span the full width - they move between the top and bottom bands only. */
-export type FullCardKey = 'teamKpis' | 'workPattern';
+/** Cards that span the full width by default. Any card can be moved into any zone. */
+export type FullCardKey = 'workPattern';
 
 export type DashboardCardKey = ColumnCardKey | FullCardKey;
 
 export interface DashboardLayout {
   readonly version: 1;
   /** Full-width band above the columns. */
-  readonly top: readonly FullCardKey[];
-  readonly columns: readonly [readonly ColumnCardKey[], readonly ColumnCardKey[], readonly ColumnCardKey[]];
+  readonly top: readonly DashboardCardKey[];
+  readonly columns: readonly [readonly DashboardCardKey[], readonly DashboardCardKey[], readonly DashboardCardKey[]];
   /** Full-width band below the columns. */
-  readonly bottom: readonly FullCardKey[];
+  readonly bottom: readonly DashboardCardKey[];
   /** Unticked cards. They keep their place in the layout, so re-ticking puts them back there. */
   readonly hidden: readonly DashboardCardKey[];
 }
@@ -33,11 +31,11 @@ export type DashboardZoneId = 'top' | 'col0' | 'col1' | 'col2' | 'bottom';
 export interface DashboardCardMeta {
   readonly label: string;
   readonly group: 'team' | 'day';
+  /** Where the card sits in the default layout - not a restriction. */
   readonly width: 'column' | 'full';
 }
 
 export const DASHBOARD_CARD_META: Readonly<Record<DashboardCardKey, DashboardCardMeta>> = {
-  teamKpis: { label: 'Team KPI tiles', group: 'team', width: 'full' },
   teamStatus: { label: 'Team Status', group: 'team', width: 'column' },
   actionCenter: { label: 'Action Center', group: 'team', width: 'column' },
   teamProgress: { label: 'Team Progress', group: 'team', width: 'column' },
@@ -53,51 +51,39 @@ export const DASHBOARD_CARD_META: Readonly<Record<DashboardCardKey, DashboardCar
 /** Display order of the Customize list. */
 export const ALL_DASHBOARD_CARD_KEYS = Object.keys(DASHBOARD_CARD_META) as DashboardCardKey[];
 
-/** My Team on top: the KPI tiles, then Team Status / Action Center / Team Progress heading the
- * three columns, then the My Day cards, then Work Pattern. */
+/** What a viewer sees before they ever customize: Good morning + Today's Schedule, Action Center +
+ * My Tasks, Quick Actions + Team Progress, then Work Pattern full-width. Team Status,
+ * Notifications and Wellbeing start unticked - in the Customize list, ready to switch on. */
 export const DEFAULT_DASHBOARD_LAYOUT: DashboardLayout = {
   version: 1,
-  top: ['teamKpis'],
+  top: [],
   columns: [
-    ['teamStatus', 'todayAtAGlance', 'todaysSchedule'],
+    ['todayAtAGlance', 'todaysSchedule', 'teamStatus'],
     ['actionCenter', 'myTasks', 'notifications'],
-    ['teamProgress', 'quickActions', 'wellbeing']
+    ['quickActions', 'teamProgress', 'wellbeing']
   ],
   bottom: ['workPattern'],
-  hidden: []
+  hidden: ['teamStatus', 'notifications', 'wellbeing']
 };
-
-const TEAM_COLUMN_KEYS: readonly MyTeamWidgetKey[] = ['teamStatus', 'actionCenter', 'teamProgress'];
 
 function isCardKey(value: unknown): value is DashboardCardKey {
   return typeof value === 'string' && value in DASHBOARD_CARD_META;
 }
 
-function isColumnKey(key: DashboardCardKey): key is ColumnCardKey {
-  return DASHBOARD_CARD_META[key].width === 'column';
-}
-
-function isFullKey(key: DashboardCardKey): key is FullCardKey {
-  return DASHBOARD_CARD_META[key].width === 'full';
-}
-
 /** Where a card sits in the default layout, used to re-home cards a saved layout doesn't have. */
 function defaultZoneOf(key: DashboardCardKey): { zone: DashboardZoneId; index: number } {
-  if (DEFAULT_DASHBOARD_LAYOUT.top.includes(key as FullCardKey)) {
-    return { zone: 'top', index: DEFAULT_DASHBOARD_LAYOUT.top.indexOf(key as FullCardKey) };
-  }
+  if (DEFAULT_DASHBOARD_LAYOUT.top.includes(key)) return { zone: 'top', index: DEFAULT_DASHBOARD_LAYOUT.top.indexOf(key) };
   for (let c = 0; c < 3; c++) {
-    const index = DEFAULT_DASHBOARD_LAYOUT.columns[c].indexOf(key as ColumnCardKey);
+    const index = DEFAULT_DASHBOARD_LAYOUT.columns[c].indexOf(key);
     if (index !== -1) return { zone: `col${c}` as DashboardZoneId, index };
   }
-  return { zone: 'bottom', index: DEFAULT_DASHBOARD_LAYOUT.bottom.indexOf(key as FullCardKey) };
+  return { zone: 'bottom', index: DEFAULT_DASHBOARD_LAYOUT.bottom.indexOf(key) };
 }
 
 /**
  * Turns anything read from storage into a valid layout: unknown keys and duplicates are dropped,
- * a full-width card found in a column goes to the bottom band (and a column card found in a band
- * goes to the first column), and every card the saved layout lacks - a card added in a later
- * release - is placed where the default layout has it. Bad shapes fall back to the default.
+ * and every card the saved layout lacks - a card added in a later release - is placed where the
+ * default layout has it. Any card may sit in any zone. Bad shapes fall back to the default.
  */
 export function sanitizeDashboardLayout(raw: unknown): DashboardLayout {
   if (!raw || typeof raw !== 'object' || (raw as { version?: unknown }).version !== 1) return DEFAULT_DASHBOARD_LAYOUT;
@@ -110,27 +96,16 @@ export function sanitizeDashboardLayout(raw: unknown): DashboardLayout {
       return true;
     });
 
-  const top: FullCardKey[] = [];
-  const bottom: FullCardKey[] = [];
-  const columns: ColumnCardKey[][] = [[], [], []];
-  const strayColumn: ColumnCardKey[] = [];
-
-  for (const key of take(input['top'])) (isFullKey(key) ? top : strayColumn).push(key as never);
+  const top = take(input['top']);
   const rawColumns = Array.isArray(input['columns']) ? input['columns'] : [];
-  for (let c = 0; c < 3; c++) {
-    for (const key of take(rawColumns[c])) {
-      if (isColumnKey(key)) columns[c].push(key);
-      else bottom.push(key);
-    }
-  }
-  for (const key of take(input['bottom'])) (isFullKey(key) ? bottom : strayColumn).push(key as never);
-  columns[0].push(...strayColumn);
+  const columns: DashboardCardKey[][] = [take(rawColumns[0]), take(rawColumns[1]), take(rawColumns[2])];
+  const bottom = take(input['bottom']);
 
   for (const key of ALL_DASHBOARD_CARD_KEYS) {
     if (seen.has(key)) continue;
     const { zone, index } = defaultZoneOf(key);
     const list = zone === 'top' ? top : zone === 'bottom' ? bottom : columns[Number(zone.slice(3))];
-    (list as DashboardCardKey[]).splice(Math.min(index, list.length), 0, key);
+    list.splice(Math.min(index, list.length), 0, key);
   }
 
   const hidden = (Array.isArray(input['hidden']) ? input['hidden'] : []).filter(
@@ -139,32 +114,10 @@ export function sanitizeDashboardLayout(raw: unknown): DashboardLayout {
   return { version: 1, top, columns: [columns[0], columns[1], columns[2]], bottom, hidden };
 }
 
-/**
- * First visit after this release: carries over the old My Team Customize choice. Its visible
- * order heads the three columns (1st, 2nd, 3rd), and its hidden team cards stay hidden.
- */
-export function migrateFromMyTeamPreference(visibleTeamOrder: readonly MyTeamWidgetKey[]): DashboardLayout {
-  const order = visibleTeamOrder.filter((key) => TEAM_COLUMN_KEYS.includes(key));
-  const hiddenTeam = TEAM_COLUMN_KEYS.filter((key) => !order.includes(key));
-  const placed = [...order, ...hiddenTeam];
-  const dayColumns = DEFAULT_DASHBOARD_LAYOUT.columns.map((column) =>
-    column.filter((key) => !TEAM_COLUMN_KEYS.includes(key as MyTeamWidgetKey))
-  );
-  return {
-    ...DEFAULT_DASHBOARD_LAYOUT,
-    columns: [
-      [placed[0], ...dayColumns[0]],
-      [placed[1], ...dayColumns[1]],
-      [placed[2], ...dayColumns[2]]
-    ],
-    hidden: hiddenTeam
-  };
-}
-
 export interface ResolvedDashboardLayout {
-  readonly top: FullCardKey[];
-  readonly columns: [ColumnCardKey[], ColumnCardKey[], ColumnCardKey[]];
-  readonly bottom: FullCardKey[];
+  readonly top: DashboardCardKey[];
+  readonly columns: [DashboardCardKey[], DashboardCardKey[], DashboardCardKey[]];
+  readonly bottom: DashboardCardKey[];
 }
 
 /** What this viewer actually sees: ticked cards they are allowed, in layout order. Never written
@@ -175,7 +128,7 @@ export function resolveDashboardLayout(
   includeHidden = false
 ): ResolvedDashboardLayout {
   const hidden = new Set(layout.hidden);
-  const keep = <K extends DashboardCardKey>(keys: readonly K[]): K[] =>
+  const keep = (keys: readonly DashboardCardKey[]): DashboardCardKey[] =>
     keys.filter((key) => allowed.has(key) && (includeHidden || !hidden.has(key)));
   return {
     top: keep(layout.top),
@@ -196,10 +149,10 @@ function zoneList(layout: DashboardLayout, zone: DashboardZoneId): readonly Dash
 }
 
 function withZone(layout: DashboardLayout, zone: DashboardZoneId, list: DashboardCardKey[]): DashboardLayout {
-  if (zone === 'top') return { ...layout, top: list as FullCardKey[] };
-  if (zone === 'bottom') return { ...layout, bottom: list as FullCardKey[] };
-  const columns = [...layout.columns] as ColumnCardKey[][];
-  columns[Number(zone.slice(3))] = list as ColumnCardKey[];
+  if (zone === 'top') return { ...layout, top: list };
+  if (zone === 'bottom') return { ...layout, bottom: list };
+  const columns = [...layout.columns];
+  columns[Number(zone.slice(3))] = list;
   return { ...layout, columns: [columns[0], columns[1], columns[2]] };
 }
 
@@ -212,10 +165,9 @@ export function findDashboardCard(layout: DashboardLayout, key: DashboardCardKey
 }
 
 /**
- * Moves a card to a zone and position. `toIndex` counts only the cards `visible` for the viewer
+ * Moves a card to any zone and position. `toIndex` counts only the cards `visible` for the viewer
  * (what they dragged among); the card lands right before the visible card at that position, so
- * cards the viewer can't see keep their places. A full-width card can't enter a column or the
- * reverse - such a move is ignored.
+ * cards the viewer can't see keep their places.
  */
 export function moveDashboardCard(
   layout: DashboardLayout,
@@ -224,8 +176,6 @@ export function moveDashboardCard(
   toIndex: number,
   visible: (key: DashboardCardKey) => boolean = () => true
 ): DashboardLayout {
-  const targetIsBand = toZone === 'top' || toZone === 'bottom';
-  if (targetIsBand !== isFullKey(key)) return layout;
   const from = findDashboardCard(layout, key);
   if (!from) return layout;
 
@@ -240,10 +190,9 @@ export function moveDashboardCard(
 }
 
 /**
- * ↑ / ↓ for keyboard and phones, over what the viewer sees. Column cards move through the three
- * columns as one sequence (↑ on the first card of a column sends it to the end of the previous
- * column - on phones the columns stack, so this matches the screen). Full-width cards move within
- * and between the top and bottom bands.
+ * ↑ / ↓ for keyboard and phones, over what the viewer sees. Every zone is one sequence - top band,
+ * column 1, column 2, column 3, bottom band - so ↑ on the first card of a zone sends it to the end
+ * of the previous zone (on phones the columns stack, so this matches the screen).
  */
 export function stepDashboardCard(
   layout: DashboardLayout,
@@ -253,7 +202,7 @@ export function stepDashboardCard(
 ): DashboardLayout {
   const from = findDashboardCard(layout, key);
   if (!from) return layout;
-  const zones: DashboardZoneId[] = isFullKey(key) ? ['top', 'bottom'] : ['col0', 'col1', 'col2'];
+  const zones: DashboardZoneId[] = ['top', 'col0', 'col1', 'col2', 'bottom'];
   const zoneIndex = zones.indexOf(from.zone);
   const shown = zoneList(layout, from.zone).filter((k) => k === key || visible(k));
   const position = shown.indexOf(key);

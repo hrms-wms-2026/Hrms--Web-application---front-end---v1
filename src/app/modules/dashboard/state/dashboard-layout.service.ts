@@ -1,6 +1,5 @@
 import { Injectable, computed, inject, linkedSignal, signal } from '@angular/core';
 import { AuthStore } from '../../../core/auth/state/auth.store';
-import { MyTeamWidgetKey } from '../models/my-team-widget-key.model';
 import {
   ALL_DASHBOARD_CARD_KEYS,
   DASHBOARD_CARD_META,
@@ -8,22 +7,21 @@ import {
   DashboardCardKey,
   DashboardLayout,
   DashboardZoneId,
-  migrateFromMyTeamPreference,
   moveDashboardCard,
   resolveDashboardLayout,
   sanitizeDashboardLayout,
   stepDashboardCard,
   toggleDashboardCard
 } from '../utils/dashboard-layout.util';
-import { loadMyTeamWidgetPreference } from '../utils/my-team-widget-preference.util';
 import { allowedWidgetKeys } from '../utils/my-team-widget-visibility.util';
 import { MyTeamCapabilitiesStore } from './my-team-capabilities.store';
 
 const STORAGE_KEY_PREFIX = 'onexso.dashboard_layout';
-const LEGACY_MY_TEAM_KEY_PREFIX = 'onexso.my_team_widget_order';
 
-function scoped(prefix: string, employeeId: string | null): string {
-  return employeeId ? `${prefix}:${employeeId}` : prefix;
+/** Per-viewer storage key, or null while the viewer is unknown - never a shared unscoped key, so
+ * one person's layout can't leak into another's first visit. */
+function storageKey(viewerId: string | null): string | null {
+  return viewerId ? `${STORAGE_KEY_PREFIX}:${viewerId}` : null;
 }
 
 function readStorage(key: string): string | null {
@@ -42,28 +40,23 @@ function writeStorage(key: string, value: string): void {
   }
 }
 
-/** The saved layout for one employee: the dashboard layout if there is one, otherwise their old My
- * Team Customize choice carried over (only if they ever saved one), otherwise the default. */
-export function loadDashboardLayout(employeeId: string | null): DashboardLayout {
-  const raw = readStorage(scoped(STORAGE_KEY_PREFIX, employeeId));
-  if (raw) {
-    try {
-      return sanitizeDashboardLayout(JSON.parse(raw));
-    } catch {
-      return DEFAULT_DASHBOARD_LAYOUT;
-    }
+/** The viewer's saved layout if they ever pressed Done in Customize; otherwise - first login,
+ * nothing customized - the full default layout with every allowed card shown. */
+export function loadDashboardLayout(viewerId: string | null): DashboardLayout {
+  const key = storageKey(viewerId);
+  const raw = key ? readStorage(key) : null;
+  if (!raw) return DEFAULT_DASHBOARD_LAYOUT;
+  try {
+    return sanitizeDashboardLayout(JSON.parse(raw));
+  } catch {
+    return DEFAULT_DASHBOARD_LAYOUT;
   }
-  if (readStorage(scoped(LEGACY_MY_TEAM_KEY_PREFIX, employeeId)) !== null) {
-    return migrateFromMyTeamPreference(loadMyTeamWidgetPreference(employeeId));
-  }
-  return DEFAULT_DASHBOARD_LAYOUT;
 }
 
-export function saveDashboardLayout(layout: DashboardLayout, employeeId: string | null): void {
-  writeStorage(scoped(STORAGE_KEY_PREFIX, employeeId), JSON.stringify(layout));
+export function saveDashboardLayout(layout: DashboardLayout, viewerId: string | null): void {
+  const key = storageKey(viewerId);
+  if (key) writeStorage(key, JSON.stringify(layout));
 }
-
-const TEAM_KEYS: readonly DashboardCardKey[] = ['teamKpis', 'teamStatus', 'actionCenter', 'teamProgress'];
 
 /**
  * The dashboard's card layout - what is shown, where - saved per employee in this browser.
@@ -76,9 +69,10 @@ export class DashboardLayoutService {
   private readonly capabilitiesStore = inject(MyTeamCapabilitiesStore);
   private readonly authStore = inject(AuthStore);
 
-  private readonly employeeId = computed(() => this.authStore.employeeId() ?? null);
-  /** Re-reads storage whenever the signed-in employee changes. */
-  private readonly saved = linkedSignal(() => loadDashboardLayout(this.employeeId()));
+  /** Who the layout belongs to: the employee, or the login email for a user with no employee record. */
+  private readonly viewerId = computed(() => this.authStore.employeeId() ?? this.authStore.email() ?? null);
+  /** Re-reads storage whenever the signed-in viewer changes. */
+  private readonly saved = linkedSignal(() => loadDashboardLayout(this.viewerId()));
 
   readonly editing = signal(false);
   private readonly draft = signal<DashboardLayout>(DEFAULT_DASHBOARD_LAYOUT);
@@ -87,12 +81,12 @@ export class DashboardLayoutService {
   readonly ready = computed(() => this.capabilitiesStore.loaded());
 
   /** Cards this viewer may have at all: every My Day card, plus the My Team cards their
-   * capabilities allow (the KPI tiles whenever any team card is allowed). */
+   * capabilities allow. */
   readonly allowed = computed<ReadonlySet<DashboardCardKey>>(() => {
     const caps = this.capabilitiesStore.capabilities();
     const team = caps?.isAvailable ? allowedWidgetKeys(caps) : [];
     const keys = ALL_DASHBOARD_CARD_KEYS.filter((key) => DASHBOARD_CARD_META[key].group === 'day');
-    if (team.length > 0) keys.push('teamKpis', ...(team as DashboardCardKey[]));
+    keys.push(...(team as DashboardCardKey[]));
     return new Set(keys);
   });
 
@@ -100,11 +94,6 @@ export class DashboardLayoutService {
   readonly layout = computed(() => (this.editing() ? this.draft() : this.saved()));
   readonly resolved = computed(() => resolveDashboardLayout(this.layout(), this.allowed()));
   readonly hidden = computed(() => new Set(this.layout().hidden));
-
-  /** Team cards on screen, in column order - drives which KPI tiles show. */
-  readonly visibleTeamKeys = computed<MyTeamWidgetKey[]>(() =>
-    this.resolved().columns.flat().filter((key): key is MyTeamWidgetKey => TEAM_KEYS.includes(key))
-  );
 
   /** The Customize list: the viewer's allowed cards, grouped. */
   readonly customizeGroups = computed(() => {
@@ -130,7 +119,7 @@ export class DashboardLayoutService {
     if (!this.editing()) return;
     const next = this.draft();
     this.saved.set(next);
-    saveDashboardLayout(next, this.employeeId());
+    saveDashboardLayout(next, this.viewerId());
     this.editing.set(false);
   }
 
