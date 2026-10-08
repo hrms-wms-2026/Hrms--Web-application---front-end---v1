@@ -728,6 +728,22 @@ describe('AddEmployeeWizardComponent', () => {
     const finPromise = fixture.componentInstance.onFinalize();
 
     httpMock.expectNone((req) => req.url === `${environment.apiUrl}/onboarding/drafts` && req.method === 'POST');
+    // The current form (incl. a start date edited after the last save) is flushed to the existing
+    // draft before finalize, since the backend validates the persisted draft.
+    const saveReq = httpMock.expectOne(`${environment.apiUrl}/onboarding/drafts/draft-existing`);
+    expect(saveReq.request.method).toBe('PUT');
+    expect(saveReq.request.body.startDate).toBe('2026-08-10');
+    saveReq.flush({
+      id: 'draft-existing',
+      status: 'draft',
+      draftReason: 'saved_manually',
+      lastSavedStep: 'review_and_submit',
+      version: '2'
+    });
+    await Promise.resolve();
+    await Promise.resolve();
+    await fixture.whenStable();
+
     const finReq = httpMock.expectOne(`${environment.apiUrl}/onboarding/drafts/draft-existing/finalize`);
     expect(finReq.request.method).toBe('POST');
     finReq.flush({

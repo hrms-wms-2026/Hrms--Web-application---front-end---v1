@@ -891,19 +891,16 @@ export class AddEmployeeWizardComponent implements OnDestroy {
       this.taskSubmitAttempted.set(true);
     }
 
-    let draftId = this.store.draftId();
-    // A checklist selection must always be flushed via saveDraft() first, even when a draftId
-    // already exists (a resumed draft) - otherwise task edits made on this screen this session
-    // (or a freshly-made selection) would never reach selectedTemplateId/editedTasksJson on the
-    // backend before finalize reads them.
-    if (!draftId || this.store.selectedTemplateId()) {
-      const saved = await this.store.saveDraft(this.store.step());
-      if (!saved) {
-        this.notificationService.error(this.store.saveError() ?? 'Failed to save draft before finalization.');
-        return;
-      }
-      draftId = saved.id;
+    // Always flush the form via saveDraft() first, even when a draftId already exists (a resumed
+    // or previously saved draft): finalize validates the persisted draft, so any field edited since
+    // the last save (e.g. a start date added after "Save Draft") or checklist task edits would
+    // otherwise be missing on the backend and finalize fails with a stale-data error.
+    const saved = await this.store.saveDraft(this.store.step());
+    if (!saved) {
+      this.notificationService.error(this.store.saveError() ?? 'Failed to save draft before finalization.');
+      return;
     }
+    const draftId = saved.id;
 
     const response = await this.store.finalizeDraft(draftId);
     if (response) {

@@ -1,4 +1,4 @@
-import { Component, HostListener, computed, inject, input, signal, OnInit } from '@angular/core';
+import { Component, HostListener, computed, inject, input, output, signal, OnInit } from '@angular/core';
 import { DatePipe, NgTemplateOutlet } from '@angular/common';
 import { ConnectionPositionPair, OverlayModule } from '@angular/cdk/overlay';
 import { firstValueFrom } from 'rxjs';
@@ -25,16 +25,14 @@ import { buildTaskDeepLink, copyTextToClipboard } from '../../utils/task-deep-li
           placeholder="Add a comment..."
           submitLabel="Save"
           [showCancel]="true"
-          [showQuickChips]="true"
+          [collapsible]="true"
           [showProTip]="true"
           (submitted)="submitComment($event)"
         />
       </div>
     </div>
 
-    @if (comments().length === 0) {
-      <p class="tc-empty">No comments yet</p>
-    } @else {
+    @if (comments().length > 0) {
       <ul class="tc-list">
         @for (comment of sortedComments(); track comment.id) {
           <li class="tc-item">
@@ -287,10 +285,9 @@ import { buildTaskDeepLink, copyTextToClipboard } from '../../utils/task-deep-li
     </ng-template>
   `,
   styles: [`
-    .tc-composer-row { display: flex; align-items: flex-start; gap: 12px; margin-bottom: 24px; }
+    .tc-composer-row { display: flex; align-items: flex-start; gap: 12px; margin-bottom: 20px; }
     .tc-current-user-avatar { flex-shrink: 0; margin-top: 2px; }
     .tc-composer-wrap { flex: 1; min-width: 0; }
-    .tc-empty { color: var(--color-text-secondary); font-size: 13.5px; text-align: center; padding: 24px 16px; border: 1px dashed var(--color-border); border-radius: 8px; }
     .tc-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 14px; }
     .tc-item { display: flex; flex-direction: column; gap: 8px; }
 
@@ -550,6 +547,8 @@ export class TaskCommentsComponent implements OnInit {
   taskId = input.required<string>();
   projectId = input<string>('');
   sortOrder = input<'desc' | 'asc'>('desc');
+  /** Emits the top-level comment count after every load so the host can render its own empty state. */
+  countChange = output<number>();
   protected readonly linkedCommentId = signal<string | null>(null);
 
   comments = signal<TaskCommentDto[]>([]);
@@ -588,6 +587,7 @@ export class TaskCommentsComponent implements OnInit {
 
   private async reload(): Promise<void> {
     this.comments.set(await firstValueFrom(this.commentApi.getComments(this.taskId())));
+    this.countChange.emit(this.comments().length);
   }
 
   canModify(comment: TaskCommentDto): boolean {

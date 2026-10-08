@@ -69,15 +69,15 @@ describe('CommentComposerComponent', () => {
     expect(component.attachedFiles()).toEqual([]);
   });
 
-  it('renders quick suggestion chips when showQuickChips is true and expands on selection', () => {
-    fixture.componentRef.setInput('showQuickChips', true);
+  it('renders a collapsed box without quick-comment chips and expands on click', () => {
+    fixture.componentRef.setInput('collapsible', true);
     fixture.detectChanges();
 
-    const chips = fixture.nativeElement.querySelectorAll('.cc-quick-chip');
-    expect(chips.length).toBe(4);
-    expect(fixture.nativeElement.textContent).toContain('Looks good!');
+    expect(fixture.nativeElement.querySelector('.cc-quick-chip')).toBeNull();
+    const box = fixture.nativeElement.querySelector('.cc-collapsed-box') as HTMLElement;
+    expect(box).toBeTruthy();
 
-    component.selectQuickChip('🎉 Looks good!', new MouseEvent('click'));
+    box.click();
     expect(component.isExpanded()).toBe(true);
   });
 
@@ -123,7 +123,7 @@ describe('CommentComposerComponent', () => {
   });
 
   it('expands editor when M is pressed on window and showProTip is true', () => {
-    fixture.componentRef.setInput('showQuickChips', true);
+    fixture.componentRef.setInput('collapsible', true);
     fixture.componentRef.setInput('showProTip', true);
     fixture.detectChanges();
 

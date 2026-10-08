@@ -50,7 +50,8 @@
     <!-- Right: Add Button -->
     <div class="emp-header-actions">
       @if (canAddEmployee()) {
-        <a routerLink="/people/employees/new" class="no-underline" (click)="$event.preventDefault(); openAddEmployeeModal()">
+        <!-- plain href, not routerLink: routerLink navigates even after preventDefault(), which re-fetched the list -->
+        <a href="/people/employees/new" class="no-underline" (click)="onAddEmployeeClick($event)">
           <app-button variant="primary">+ Add Employee</app-button>
         </a>
       }

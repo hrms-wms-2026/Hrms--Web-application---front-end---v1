@@ -9,22 +9,9 @@ import { RichTextEditorComponent } from '../rich-text-editor/rich-text-editor.co
   standalone: true,
   imports: [TaskAttachmentListComponent, RichTextEditorComponent],
   template: `
-    @if (showQuickChips() && !isExpanded()) {
+    @if (collapsible() && !isExpanded()) {
       <div class="cc-collapsed-box" (click)="expand()" role="button" tabindex="0" (keydown.enter)="expand()" (keydown.space)="expand()" aria-label="Add a comment">
         <div class="cc-collapsed-placeholder">{{ placeholder() }}</div>
-        <div class="cc-quick-chips">
-          @for (chip of quickChips; track chip.text) {
-            <button type="button" class="cc-quick-chip" (click)="selectQuickChip(chip.text, $event)">
-              <span class="cc-chip-emoji">{{ chip.emoji }}</span>
-              <span class="cc-chip-text">{{ chip.label }}</span>
-            </button>
-          }
-          <button type="button" class="cc-quick-chip-more" aria-label="More suggestions" (click)="$event.stopPropagation(); expand()">
-            <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-              <polyline points="9 18 15 12 9 6"></polyline>
-            </svg>
-          </button>
-        </div>
       </div>
       @if (showProTip()) {
         <div class="cc-protip">Pro tip: press <kbd class="cc-kbd">M</kbd> to comment</div>
@@ -74,56 +61,7 @@ import { RichTextEditorComponent } from '../rich-text-editor/rich-text-editor.co
     .cc-collapsed-placeholder {
       color: var(--color-text-secondary);
       font-size: 14px;
-      margin-bottom: 12px;
       user-select: none;
-    }
-    .cc-quick-chips {
-      display: flex;
-      align-items: center;
-      gap: 8px;
-      flex-wrap: wrap;
-    }
-    .cc-quick-chip {
-      display: inline-flex;
-      align-items: center;
-      gap: 6px;
-      padding: 5px 10px;
-      border: 1px solid var(--color-border);
-      background: var(--color-surface);
-      border-radius: 6px;
-      font-size: 12.5px;
-      font-weight: 500;
-      color: var(--color-text-primary);
-      cursor: pointer;
-      transition: background 0.15s ease, border-color 0.15s ease;
-    }
-    .cc-quick-chip:hover {
-      background: var(--color-surface-secondary);
-      border-color: color-mix(in srgb, var(--color-accent) 40%, var(--color-border));
-    }
-    .cc-chip-emoji {
-      font-size: 13px;
-      line-height: 1;
-    }
-    .cc-chip-text {
-      line-height: 1.2;
-    }
-    .cc-quick-chip-more {
-      display: inline-flex;
-      align-items: center;
-      justify-content: center;
-      width: 26px;
-      height: 26px;
-      border: 1px solid var(--color-border);
-      background: var(--color-surface);
-      border-radius: 6px;
-      color: var(--color-text-secondary);
-      cursor: pointer;
-      transition: background 0.15s ease;
-    }
-    .cc-quick-chip-more:hover {
-      background: var(--color-surface-secondary);
-      color: var(--color-text-primary);
     }
     .cc-protip {
       margin-top: 8px;
@@ -159,19 +97,13 @@ export class CommentComposerComponent {
   private readonly taskApi = inject(TaskApiService);
   private readonly editor = viewChild<RichTextEditorComponent>('editor');
 
-  readonly quickChips = [
-    { emoji: '🎉', label: 'Looks good!', text: '🎉 Looks good!' },
-    { emoji: '👏', label: 'Need help?', text: '👏 Need help?' },
-    { emoji: '⛔', label: 'This is blocked...', text: '⛔ This is blocked...' },
-    { emoji: '🔍', label: 'Can you clarify...?', text: '🔍 Can you clarify...?' }
-  ];
-
   initialContent = input<string>('');
   initialAttachments = input<AttachmentPill[]>([]);
   placeholder = input<string>('Write a comment...');
   submitLabel = input<string>('Comment');
   showCancel = input<boolean>(false);
-  showQuickChips = input<boolean>(false);
+  /** Starts as a one-line placeholder box that expands into the editor on click. */
+  collapsible = input<boolean>(false);
   showProTip = input<boolean>(false);
 
   submitted = output<{ content: string; attachmentFileIds: string[] }>();
@@ -213,18 +145,6 @@ export class CommentComposerComponent {
     setTimeout(() => this.editor()?.focus(), 0);
   }
 
-  selectQuickChip(text: string, event: Event): void {
-    event.stopPropagation();
-    this.isExpanded.set(true);
-    setTimeout(() => {
-      const editor = this.editor();
-      if (!editor) return;
-      editor.setHtml(text + ' ');
-      this.editorHtml.set(text + ' ');
-      editor.focus();
-    }, 0);
-  }
-
   @HostListener('window:keydown', ['$event'])
   onGlobalKeydown(e: KeyboardEvent): void {
     if (!this.showProTip()) return;
@@ -243,13 +163,13 @@ export class CommentComposerComponent {
     if (this.isEditorEmpty()) return;
     this.submitted.emit({ content: this.editorHtml(), attachmentFileIds: this.attachedFiles().map(f => f.fileId) });
     this.resetEditor();
-    if (this.showQuickChips()) {
+    if (this.collapsible()) {
       this.isExpanded.set(false);
     }
   }
 
   cancel(): void {
-    if (this.showQuickChips()) {
+    if (this.collapsible()) {
       this.resetEditor();
       this.isExpanded.set(false);
     }

@@ -9,6 +9,7 @@ import {
   output,
   signal
 } from '@angular/core';
+import { ConnectionPositionPair, OverlayModule } from '@angular/cdk/overlay';
 import { nextUniqueId } from '../../utils/unique-id';
 
 export interface TimePreset {
@@ -74,9 +75,24 @@ export function formatDisplayTime(hour24: number, minute: number, is12Hour: bool
   return `${String(hour24).padStart(2, '0')}:${m}`;
 }
 
+const POSITIONS_DOWN: ConnectionPositionPair[] = [
+  { originX: 'start', originY: 'bottom', overlayX: 'start', overlayY: 'top', offsetY: 4 },
+  { originX: 'end', originY: 'bottom', overlayX: 'end', overlayY: 'top', offsetY: 4 },
+  { originX: 'start', originY: 'top', overlayX: 'start', overlayY: 'bottom', offsetY: -4 },
+  { originX: 'end', originY: 'top', overlayX: 'end', overlayY: 'bottom', offsetY: -4 }
+];
+
+const POSITIONS_UP: ConnectionPositionPair[] = [
+  { originX: 'start', originY: 'top', overlayX: 'start', overlayY: 'bottom', offsetY: -4 },
+  { originX: 'end', originY: 'top', overlayX: 'end', overlayY: 'bottom', offsetY: -4 },
+  { originX: 'start', originY: 'bottom', overlayX: 'start', overlayY: 'top', offsetY: 4 },
+  { originX: 'end', originY: 'bottom', overlayX: 'end', overlayY: 'top', offsetY: 4 }
+];
+
 @Component({
   selector: 'app-time-picker',
   standalone: true,
+  imports: [OverlayModule],
   templateUrl: './time-picker.component.html',
   styleUrl: './time-picker.component.css',
   changeDetection: ChangeDetectionStrategy.OnPush
@@ -101,6 +117,7 @@ export class TimePickerComponent {
 
   readonly isOpen = signal(false);
   readonly openUpward = signal(false);
+  readonly popoverPositions = computed(() => (this.openUpward() ? POSITIONS_UP : POSITIONS_DOWN));
 
   readonly presets = DEFAULT_PRESETS;
 
@@ -246,21 +263,11 @@ export class TimePickerComponent {
   private checkDirection(): void {
     const rect = this.elementRef.nativeElement.getBoundingClientRect();
     const spaceBelow = window.innerHeight - rect.bottom;
-    this.openUpward.set(spaceBelow < 280);
+    this.openUpward.set(spaceBelow < 260);
   }
 
   @HostListener('document:keydown.escape')
   onEscape(): void {
     this.closePopover();
-  }
-
-  @HostListener('document:click', ['$event'])
-  onDocumentClick(event: MouseEvent): void {
-    if (!this.isOpen()) {
-      return;
-    }
-    if (!this.elementRef.nativeElement.contains(event.target as Node)) {
-      this.closePopover();
-    }
   }
 }

@@ -3,6 +3,7 @@ import { CommonModule } from '@angular/common';
 import { CalendarEventResponse } from '../../models/calendar-event.model';
 import { PositionedEvent, layoutDayEvents } from '../../utils/calendar-hour-grid.util';
 import { dateOnlyInTimezone, localPartsToUtcIso, utcIsoToLocalParts } from '../../../../shared/utils/timezone.util';
+import { gmtOffsetLabel } from '../../../../shared/utils/timezone-label.util';
 
 interface DayColumnViewModel {
   readonly date: string;
@@ -53,16 +54,7 @@ export class CalendarHourGridComponent {
 
   /** "GMT+05:30"-style offset for the shown timezone, rendered in the top-left corner
    * cell. Reads `now()` so a DST transition re-derives it. Falls back to the raw id. */
-  readonly tzLabel = computed(() => {
-    const tz = this.timezone();
-    try {
-      const parts = new Intl.DateTimeFormat('en-US', { timeZone: tz, timeZoneName: 'longOffset' })
-        .formatToParts(new Date(this.now()));
-      return parts.find((p) => p.type === 'timeZoneName')?.value ?? tz;
-    } catch {
-      return tz;
-    }
-  });
+  readonly tzLabel = computed(() => gmtOffsetLabel(this.timezone(), new Date(this.now())));
 
   private dragDate: string | null = null;
   private dragColumnEl: HTMLElement | null = null;

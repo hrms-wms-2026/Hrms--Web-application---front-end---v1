@@ -105,7 +105,8 @@
                 [value]="form.controls.currencyCode.value"
                 (valueChange)="form.controls.currencyCode.setValue($event); form.controls.currencyCode.markAsTouched()"
                 [error]="form.controls.currencyCode.touched && form.controls.currencyCode.invalid ? 'Required.' : ''" />
-              <app-select label="Time zone" [options]="TIMEZONE_OPTIONS" placeholder="Select a timezone"
+              <app-listbox-select label="Time zone" [options]="TIMEZONE_OPTIONS" placeholder="Select a timezone"
+                [searchable]="true" searchPlaceholder="Search timezones"
                 [value]="form.controls.timezone.value"
                 (valueChange)="form.controls.timezone.setValue($event); form.controls.timezone.markAsTouched()"
                 [error]="form.controls.timezone.touched && form.controls.timezone.invalid ? 'Required.' : ''" />
