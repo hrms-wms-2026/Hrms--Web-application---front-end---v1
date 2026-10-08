@@ -19,7 +19,7 @@
 
     @if (pickerOpen()) {
       <div class="rounded-xl border border-slate-200 bg-slate-50 p-3" data-testid="my-team-picker">
-        <p class="mb-2 text-xs font-semibold text-slate-500">Shown, drag to reorder</p>
+        <p class="mb-2 text-xs font-semibold text-slate-500">Shown - drag to choose which column each card fills</p>
         <div cdkDropList class="mb-3 flex flex-col gap-1" (cdkDropListDropped)="onDrop($event)">
           @for (key of visibleKeys(); track key) {
             <div cdkDrag class="flex items-center gap-2 rounded-lg bg-white px-2 py-1.5 text-sm">
@@ -56,26 +56,6 @@
       </div>
     }
 
-    <div
-      class="my-team-grid grid grid-cols-1 items-start gap-3 xl:grid-cols-2 xl:grid-flow-row-dense"
-      data-testid="my-team-widgets"
-    >
-      @for (key of visibleKeys(); track key) {
-        @switch (key) {
-          @case ('teamStatus') {
-            <app-team-status-card class="block" />
-          }
-          @case ('actionCenter') {
-            <app-action-center-card class="block" />
-          }
-          @case ('teamProgress') {
-            <app-team-progress-card
-              class="block"
-              [class.xl:col-span-2]="teamProgressFullWidth()"
-            />
-          }
-        }
-      }
-    </div>
+    <app-team-kpi-strip [visibleWidgets]="visibleKeys()" />
   </div>
 }

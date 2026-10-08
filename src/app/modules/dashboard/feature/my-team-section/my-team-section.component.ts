@@ -1,18 +1,15 @@
-import { CdkDrag, CdkDragDrop, CdkDragHandle, CdkDropList, moveItemInArray } from '@angular/cdk/drag-drop';
-import { ChangeDetectionStrategy, Component, OnInit, computed, inject, signal } from '@angular/core';
-import { AuthStore } from '../../../../core/auth/state/auth.store';
-import { MyTeamCapabilitiesStore } from '../../state/my-team-capabilities.store';
-import { ActionCenterCardComponent } from '../action-center-card/action-center-card.component';
-import { TeamProgressCardComponent } from '../team-progress-card/team-progress-card.component';
-import { TeamStatusCardComponent } from '../team-status-card/team-status-card.component';
+import { CdkDrag, CdkDragDrop, CdkDragHandle, CdkDropList } from '@angular/cdk/drag-drop';
+import { ChangeDetectionStrategy, Component, OnInit, inject, signal } from '@angular/core';
 import { MY_TEAM_WIDGET_LABEL, MyTeamWidgetKey } from '../../models/my-team-widget-key.model';
-import { allowedWidgetKeys, resolveVisibleWidgets } from '../../utils/my-team-widget-visibility.util';
-import { loadMyTeamWidgetPreference, saveMyTeamWidgetPreference } from '../../utils/my-team-widget-preference.util';
+import { MyTeamCapabilitiesStore } from '../../state/my-team-capabilities.store';
+import { MyTeamWidgetPreferenceService } from '../../state/my-team-widget-preference.service';
+import { TeamKpiStripComponent } from '../team-kpi-strip/team-kpi-strip.component';
 
-/** The "My Team" section appended below My Day on the one merged /dashboard page (My Team spec
- * §5) - not a route, not a tab. Renders nothing at all - no heading, no empty state - unless
- * capabilities.isAvailable is true (AC-1); each widget inside is independently capability-gated
- * via allowedWidgetKeys (§14 "widget-level, not page-level, visibility").</summary> */
+/** The "My Team" header of the merged /dashboard page (My Team spec §5) - not a route, not a tab:
+ * the section heading, the Customize picker and the KPI strip. The widgets themselves render in
+ * the My Day columns (app-my-team-slot), filling the space under each column in the viewer's
+ * order. Renders nothing at all - no heading, no empty state - unless capabilities.isAvailable is
+ * true (AC-1); each widget is independently capability-gated via allowedWidgetKeys (§14). */
 @Component({
   selector: 'app-my-team-section',
   standalone: true,
@@ -20,9 +17,7 @@ import { loadMyTeamWidgetPreference, saveMyTeamWidgetPreference } from '../../ut
     CdkDropList,
     CdkDrag,
     CdkDragHandle,
-    TeamStatusCardComponent,
-    ActionCenterCardComponent,
-    TeamProgressCardComponent
+    TeamKpiStripComponent
   ],
   templateUrl: './my-team-section.component.html',
   styleUrl: './my-team-section.component.css',
@@ -30,23 +25,14 @@ import { loadMyTeamWidgetPreference, saveMyTeamWidgetPreference } from '../../ut
 })
 export class MyTeamSectionComponent implements OnInit {
   protected readonly capabilitiesStore = inject(MyTeamCapabilitiesStore);
-  private readonly authStore = inject(AuthStore);
+  private readonly preference = inject(MyTeamWidgetPreferenceService);
 
   protected readonly widgetLabel = MY_TEAM_WIDGET_LABEL;
   protected readonly pickerOpen = signal(false);
-  private readonly storedPreference = signal<MyTeamWidgetKey[]>(loadMyTeamWidgetPreference(this.authStore.employeeId()));
 
-  protected readonly allowedKeys = computed(() => allowedWidgetKeys(this.capabilitiesStore.capabilities()));
-  protected readonly visibleKeys = computed(() =>
-    resolveVisibleWidgets(this.capabilitiesStore.capabilities(), this.storedPreference())
-  );
-  protected readonly hiddenAllowedKeys = computed(() => {
-    const visible = new Set(this.visibleKeys());
-    return this.allowedKeys().filter((key) => !visible.has(key));
-  });
-  protected readonly teamProgressFullWidth = computed(() => {
-    return this.visibleKeys().length !== 2;
-  });
+  protected readonly allowedKeys = this.preference.allowedKeys;
+  protected readonly visibleKeys = this.preference.visibleKeys;
+  protected readonly hiddenAllowedKeys = this.preference.hiddenAllowedKeys;
 
   ngOnInit(): void {
     void this.capabilitiesStore.ensureLoaded();
@@ -57,16 +43,10 @@ export class MyTeamSectionComponent implements OnInit {
   }
 
   toggleWidget(key: MyTeamWidgetKey): void {
-    const current = this.visibleKeys();
-    const next = current.includes(key) ? current.filter((k) => k !== key) : [...current, key];
-    this.storedPreference.set(next);
-    saveMyTeamWidgetPreference(next, this.authStore.employeeId());
+    this.preference.toggle(key);
   }
 
   onDrop(event: CdkDragDrop<MyTeamWidgetKey[]>): void {
-    const next = [...this.visibleKeys()];
-    moveItemInArray(next, event.previousIndex, event.currentIndex);
-    this.storedPreference.set(next);
-    saveMyTeamWidgetPreference(next, this.authStore.employeeId());
+    this.preference.move(event.previousIndex, event.currentIndex);
   }
 }

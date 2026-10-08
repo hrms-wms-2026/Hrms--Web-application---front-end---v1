@@ -4,12 +4,17 @@ import { PriorityActionItem } from '../models/priority-action-item.model';
 
 const GROUP_LIMIT = 5;
 
+/** Whole days waited, floored - the one rule shared by the caption, its urgency tone and the KPI
+ * strip's "Oldest Nd", so they can never disagree. */
+export function wholeDaysSince(iso: string, now: Date): number {
+  return Math.max(0, Math.floor((now.getTime() - new Date(iso).getTime()) / 86_400_000));
+}
+
 function formatAge(iso: string, now: Date): string {
-  const diffMinutes = Math.max(0, (now.getTime() - new Date(iso).getTime()) / 60_000);
-  const diffHours = diffMinutes / 60;
+  const diffHours = Math.max(0, (now.getTime() - new Date(iso).getTime()) / 3_600_000);
   if (diffHours < 1) return '<1h ago';
   if (diffHours < 24) return `${Math.round(diffHours)}h ago`;
-  return `${Math.round(diffHours / 24)}d ago`;
+  return `${wholeDaysSince(iso, now)}d ago`;
 }
 
 function toPriorityItem(item: ActionItem, group: PriorityActionItem['group'], domain: 'people' | 'work', now: Date): PriorityActionItem {
@@ -21,6 +26,7 @@ function toPriorityItem(item: ActionItem, group: PriorityActionItem['group'], do
     title: item.title,
     subjectName: item.subjectName,
     captionLabel: formatAge(item.createdAt, now),
+    ageDays: wholeDaysSince(item.createdAt, now),
     link: item.link,
     overdueTask: null
   };
@@ -35,6 +41,7 @@ function toOverdueItem(task: LedOverdueTask): PriorityActionItem {
     title: task.title,
     subjectName: task.assignees.map((a) => a.displayName).join(', ') || null,
     captionLabel: `${task.daysOverdue}d overdue`,
+    ageDays: task.daysOverdue,
     link: null,
     overdueTask: { projectId: task.projectId, objectiveId: task.objectiveId, taskId: task.taskId }
   };

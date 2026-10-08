@@ -8,12 +8,15 @@ interface MyTeamLedProgressState {
   readonly data: LedWorkProgressResponse | null;
   readonly loading: boolean;
   readonly error: string | null;
+  /** When the backend last answered successfully - drives the card's "Refreshed ..." label. */
+  readonly loadedAt: Date | null;
 }
 
 const initialState: MyTeamLedProgressState = {
   data: null,
   loading: false,
-  error: null
+  error: null,
+  loadedAt: null
 };
 
 function extractError(err: any, fallback: string): string {
@@ -28,7 +31,7 @@ export const MyTeamLedProgressStore = signalStore(
       patchState(store, { loading: true, error: null });
       try {
         const data = await firstValueFrom(api.getLedProgress());
-        patchState(store, { data, loading: false });
+        patchState(store, { data, loading: false, loadedAt: new Date() });
       } catch (err) {
         patchState(store, { error: extractError(err, 'Failed to load team progress.'), loading: false });
       }

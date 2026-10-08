@@ -65,6 +65,57 @@ describe('TeamProgressCardComponent', () => {
     expect(fixture.nativeElement.textContent).toContain('No open tasks in the modules you lead');
   });
 
+  it('lists modules at-risk first: most overdue, then least complete', async () => {
+    const totals = (total: number, completed: number, overdue: number) => ({
+      total, completed, inProgress: 0, notStarted: total - completed, overdue
+    });
+    const fixture = await setup({
+      totals: totals(30, 12, 3),
+      projects: [{
+        projectId: 'p1', projectName: 'Platform', identifier: 'PL', totals: totals(30, 12, 3),
+        modules: [
+          { objectiveId: 'healthy', title: 'Healthy', isRootModule: false, endDate: '2026-12-01', totals: totals(10, 9, 0) },
+          { objectiveId: 'slow', title: 'Slow', isRootModule: false, endDate: '2026-12-01', totals: totals(10, 1, 0) },
+          { objectiveId: 'late', title: 'Late', isRootModule: false, endDate: '2026-12-01', totals: totals(10, 2, 3) }
+        ]
+      }],
+      overdueTasks: [], overdueTotal: 3
+    });
+    expect(fixture.nativeElement.querySelector('[data-testid="team-progress-legend-overdue"]').textContent.trim()).toBe('3');
+    expect(fixture.nativeElement.querySelector('[data-testid="team-progress-at-risk"]').textContent.trim()).toBe('1');
+    expect(fixture.nativeElement.querySelector('[data-testid="team-progress-toggle"]').textContent.trim()).toBe('View all (3)');
+
+    const el = openAll(fixture);
+    const titles = Array.from(
+      el.querySelectorAll('[data-testid="team-progress-projects"] li button p:first-child') as NodeListOf<HTMLElement>
+    ).map((p) => p.textContent!.trim());
+    expect(titles).toEqual(['Late', 'Slow', 'Healthy']);
+  });
+
+  it('names the assignees on each overdue task', async () => {
+    const fixture = await setup({
+      totals: { total: 1, completed: 0, inProgress: 0, notStarted: 1, overdue: 1 },
+      projects: [{
+        projectId: 'p1', projectName: 'Platform', identifier: 'PL',
+        totals: { total: 1, completed: 0, inProgress: 0, notStarted: 1, overdue: 1 }, modules: []
+      }],
+      overdueTasks: [{
+        taskId: 't1', shortId: 'PL-1', title: 'Ship it', projectId: 'p1', objectiveId: 'o1', dueDate: '2026-10-01',
+        daysOverdue: 6, assignees: [{ employeeId: 'e1', displayName: 'Kajaa Tharan' }]
+      }],
+      overdueTotal: 1
+    });
+    expect(openAll(fixture).querySelector('[data-testid="team-progress-overdue"]')!.textContent).toContain('Kajaa Tharan');
+  });
+
+  /** Opens the pop-out (module breakdown + overdue tasks) via the card's "View all". */
+  function openAll(fixture: ComponentFixture<TeamProgressCardComponent>): HTMLElement {
+    const el: HTMLElement = fixture.nativeElement;
+    (el.querySelector('[data-testid="team-progress-toggle"]') as HTMLButtonElement).click();
+    fixture.detectChanges();
+    return el;
+  }
+
   it('shows the error state with retry on failure', async () => {
     const fixture = await setup('error');
     expect(fixture.nativeElement.textContent).toContain("Couldn't load team progress");
@@ -84,8 +135,9 @@ describe('TeamProgressCardComponent', () => {
       }],
       overdueTotal: 1
     });
-    const text = fixture.nativeElement.textContent as string;
-    expect(text).toContain('6');
+    expect(fixture.nativeElement.querySelector('[data-testid="team-progress-total"]').textContent).toContain('6');
+    expect(fixture.nativeElement.querySelector('[data-testid="team-progress-completion"]').textContent.trim()).toBe('33%');
+    const text = openAll(fixture).textContent as string;
     expect(text).toContain('Core Platform');
     expect(text).toContain('Payments');
     expect(text).toContain('Fix login bug');
@@ -102,7 +154,7 @@ describe('TeamProgressCardComponent', () => {
       }],
       overdueTasks: [], overdueTotal: 0
     });
-    const moduleButton: HTMLButtonElement = fixture.nativeElement.querySelector('[data-testid="team-progress-projects"] button');
+    const moduleButton: HTMLButtonElement = openAll(fixture).querySelector('[data-testid="team-progress-projects"] button')!;
     moduleButton.click();
     expect(navigate).toHaveBeenCalledWith(['/work', 'p1', 'milestones', 'o1', 'tree']);
   });
@@ -120,7 +172,7 @@ describe('TeamProgressCardComponent', () => {
       }],
       overdueTotal: 1
     });
-    const taskButton: HTMLButtonElement = fixture.nativeElement.querySelector('[data-testid="team-progress-overdue"] button');
+    const taskButton: HTMLButtonElement = openAll(fixture).querySelector('[data-testid="team-progress-overdue"] button')!;
     taskButton.click();
     expect(navigate).toHaveBeenCalledWith(['/work', 'p1', 'milestones', 'o1', 'board'], {
       queryParams: { highlightTaskId: 't1' }

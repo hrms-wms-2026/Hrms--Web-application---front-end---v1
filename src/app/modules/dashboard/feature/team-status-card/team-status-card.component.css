@@ -48,6 +48,10 @@
   background: var(--color-danger);
 }
 
+.team-status-dot--late {
+  background: var(--color-warning);
+}
+
 .team-status-dot--on-leave {
   background: #7c3aed;
 }
@@ -56,15 +60,57 @@
   background: #94a3b8;
 }
 
-.team-status-attention-dot {
-  display: inline-block;
-  width: 5px;
-  height: 5px;
+
+.team-status-filter {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
   border-radius: 999px;
-  background: var(--color-warning);
-  flex-shrink: 0;
+  border: 1px solid #e2e8f0;
+  background: #ffffff;
+  color: #475569;
+  padding: 3px 9px;
+  font-size: 11px;
+  line-height: 1.35;
+  cursor: pointer;
+  transition: background-color 0.15s ease, border-color 0.15s ease, color 0.15s ease;
 }
 
-.team-status-attention-dot--critical {
-  background: var(--color-danger);
+.team-status-filter:hover:not(:disabled) {
+  background: #f8fafc;
+  border-color: #cbd5e1;
+  color: #1e293b;
+}
+
+.team-status-filter:disabled {
+  cursor: default;
+  opacity: 0.5;
+}
+
+.team-status-filter--active {
+  border-color: #bfdbfe;
+  background: #eff6ff;
+  color: #1e3a8a;
+}
+
+.team-strip-segment {
+  min-width: 3px;
+  height: 100%;
+  border-radius: 2px;
+}
+
+.team-strip-segment--present {
+  background: #16a34a;
+}
+
+.team-strip-segment--absent {
+  background: #f43f5e;
+}
+
+.team-strip-segment--on_leave {
+  background: #3b82f6;
+}
+
+.team-strip-segment--not_started {
+  background: var(--color-border, #e2e8f0);
 }

@@ -1,14 +1,18 @@
+import { Component } from '@angular/core';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { Router } from '@angular/router';
 import { of } from 'rxjs';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { AuthStore } from '../../../../core/auth/state/auth.store';
+import { NotificationService } from '../../../../core/services/notification.service';
+import { ActionCenterDecisionService } from '../../data-access/action-center-decision.service';
 import { MyTeamActionItemsApiService } from '../../data-access/my-team-action-items-api.service';
 import { MyTeamCapabilitiesApiService } from '../../data-access/my-team-capabilities-api.service';
 import { MyTeamDeepLinkService } from '../../data-access/my-team-deep-link.service';
 import { MyTeamLedProgressApiService } from '../../data-access/my-team-led-progress-api.service';
 import { MyTeamTodayApiService } from '../../data-access/my-team-today-api.service';
 import { MyTeamCapabilitiesResponse } from '../../models/my-team-capabilities.model';
+import { MyTeamSlotComponent } from '../my-team-slot/my-team-slot.component';
 import { MyTeamSectionComponent } from './my-team-section.component';
 
 const EMPTY_TODAY = { workDate: '2026-09-30', timezone: 'UTC', legalEntityId: 'le-1', summary: { total: 0, working: 0, onBreak: 0, clockedOut: 0, late: 0, absent: 0, notStarted: 0, onLeave: 0, notScheduled: 0, needsAttention: 0 }, members: [], totalMembers: 0 };
@@ -24,6 +28,22 @@ function capabilities(overrides: Partial<MyTeamCapabilitiesResponse> = {}): MyTe
   };
 }
 
+/** The dashboard's arrangement: the section (heading, Customize, KPI strip) plus the three
+ * column slots the widgets render in. */
+@Component({
+  standalone: true,
+  imports: [MyTeamSectionComponent, MyTeamSlotComponent],
+  template: `
+    <app-my-team-section />
+    <div data-testid="dashboard-columns">
+      <div data-testid="column-0"><app-my-team-slot [slot]="0" /></div>
+      <div data-testid="column-1"><app-my-team-slot [slot]="1" /></div>
+      <div data-testid="column-2"><app-my-team-slot [slot]="2" /></div>
+    </div>
+  `
+})
+class DashboardLikeHostComponent {}
+
 describe('MyTeamSectionComponent', () => {
   beforeEach(() => localStorage.clear());
   afterEach(() => {
@@ -34,10 +54,10 @@ describe('MyTeamSectionComponent', () => {
   async function setup(
     caps: MyTeamCapabilitiesResponse | null,
     employeeId: string | null = null
-  ): Promise<ComponentFixture<MyTeamSectionComponent>> {
+  ): Promise<ComponentFixture<DashboardLikeHostComponent>> {
     TestBed.resetTestingModule();
     await TestBed.configureTestingModule({
-      imports: [MyTeamSectionComponent],
+      imports: [DashboardLikeHostComponent],
       providers: [
         { provide: MyTeamCapabilitiesApiService, useValue: { getCapabilities: () => of(caps ?? capabilities({ isAvailable: false })) } },
         { provide: MyTeamTodayApiService, useValue: { getTeamToday: () => of(EMPTY_TODAY) } },
@@ -45,11 +65,13 @@ describe('MyTeamSectionComponent', () => {
         { provide: MyTeamLedProgressApiService, useValue: { getLedProgress: () => of(EMPTY_LED_PROGRESS) } },
         { provide: Router, useValue: { navigate: vi.fn() } },
         { provide: MyTeamDeepLinkService, useValue: { navigate: vi.fn() } },
+        { provide: ActionCenterDecisionService, useValue: { decide: vi.fn() } },
+        { provide: NotificationService, useValue: { success: vi.fn(), error: vi.fn() } },
         { provide: AuthStore, useValue: { employeeId: () => employeeId } }
       ]
     }).compileComponents();
 
-    const fixture = TestBed.createComponent(MyTeamSectionComponent);
+    const fixture = TestBed.createComponent(DashboardLikeHostComponent);
     fixture.detectChanges();
     await fixture.whenStable();
     fixture.detectChanges();
@@ -86,7 +108,7 @@ describe('MyTeamSectionComponent', () => {
     expect(fixture.nativeElement.querySelector('[data-testid="my-team-picker"]')).toBeTruthy();
   });
 
-  function findRowButton(fixture: ComponentFixture<MyTeamSectionComponent>, rowText: string, action: 'Hide' | 'Show'): HTMLButtonElement {
+  function findRowButton(fixture: ComponentFixture<DashboardLikeHostComponent>, rowText: string, action: 'Hide' | 'Show'): HTMLButtonElement {
     const rows: HTMLElement[] = Array.from(fixture.nativeElement.querySelectorAll('[data-testid="my-team-picker"] > div > div'));
     const row = rows.find((r) => r.textContent?.includes(rowText));
     const button = row?.querySelector('button') as HTMLButtonElement | undefined;
@@ -146,24 +168,34 @@ describe('MyTeamSectionComponent', () => {
     expect(empTwo.nativeElement.querySelector('app-team-status-card')).toBeTruthy();
   });
 
-  it('spans Team Progress full-width on desktop when all 3 widgets are visible', async () => {
+  it('fills the three dashboard columns with the widgets, one each, in order', async () => {
     const fixture = await setup(capabilities({ isAvailable: true, canViewPeopleStatus: true, canReviewPeopleApprovals: true, leadsWork: true }));
-    const progressCard = fixture.nativeElement.querySelector('app-team-progress-card');
-    expect(progressCard?.classList.contains('xl:col-span-2')).toBe(true);
+    const el: HTMLElement = fixture.nativeElement;
+    expect(el.querySelector('[data-testid="column-0"] app-team-status-card')).toBeTruthy();
+    expect(el.querySelector('[data-testid="column-1"] app-action-center-card')).toBeTruthy();
+    expect(el.querySelector('[data-testid="column-2"] app-team-progress-card')).toBeTruthy();
+    expect(el.querySelector('[data-testid="my-team-section"] app-team-status-card')).toBeNull();
   });
 
-  it('packs Team Progress into a single column when only 2 widgets are visible', async () => {
-    const fixture = await setup(capabilities({ isAvailable: true, canViewPeopleStatus: false, leadsWork: true }));
-    const progressCard = fixture.nativeElement.querySelector('app-team-progress-card');
-    expect(progressCard?.classList.contains('xl:col-span-2')).toBe(false);
+  it('leaves a column empty when its widget is hidden, and moves cards when the order changes', async () => {
+    const fixture = await setup(capabilities({ isAvailable: true, canViewPeopleStatus: true, canReviewPeopleApprovals: true, leadsWork: true }));
+    const el: HTMLElement = fixture.nativeElement;
+    el.querySelector<HTMLButtonElement>('[data-testid="my-team-customize-toggle"]')!.click();
+    fixture.detectChanges();
+    findRowButton(fixture, 'Team Status', 'Hide').click();
+    fixture.detectChanges();
+    expect(el.querySelector('[data-testid="column-0"] app-action-center-card')).toBeTruthy();
+    expect(el.querySelector('[data-testid="column-1"] app-team-progress-card')).toBeTruthy();
+    expect(el.querySelector('[data-testid="column-2"]')!.children[0].children.length).toBe(0);
   });
 
   it('preserves a saved custom order without overriding or resetting preferences', async () => {
     localStorage.setItem('onexso.my_team_widget_order', JSON.stringify(['actionCenter', 'teamProgress', 'teamStatus']));
     const fixture = await setup(capabilities({ isAvailable: true, canViewPeopleStatus: true, canReviewPeopleApprovals: true, leadsWork: true }));
-    const widgetHost = fixture.nativeElement.querySelector('[data-testid="my-team-widgets"]');
-    const childTags = Array.from(widgetHost.children).map((el: any) => el.tagName.toLowerCase());
-    expect(childTags).toEqual(['app-action-center-card', 'app-team-progress-card', 'app-team-status-card']);
+    const columnTags = [0, 1, 2].map(
+      (i) => fixture.nativeElement.querySelector(`[data-testid="column-${i}"] app-my-team-slot`)?.firstElementChild?.tagName.toLowerCase()
+    );
+    expect(columnTags).toEqual(['app-action-center-card', 'app-team-progress-card', 'app-team-status-card']);
     expect(localStorage.getItem('onexso.my_team_widget_order')).toBe(JSON.stringify(['actionCenter', 'teamProgress', 'teamStatus']));
   });
 });

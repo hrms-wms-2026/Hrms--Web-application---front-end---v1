@@ -1,150 +1,209 @@
-<section class="rounded-2xl border border-slate-200/80 bg-white p-5 shadow-xs" data-testid="action-center-card">
-  <div class="mb-4 flex items-start justify-between gap-3">
-    <div class="flex flex-col gap-0.5">
-      <h2 class="text-sm font-semibold tracking-tight text-slate-900">Action Center</h2>
-      @if (subtitle(); as sub) {
-        <p class="text-xs font-normal leading-normal text-slate-500">{{ sub }}</p>
-      }
-    </div>
-  </div>
-
-  @if (showRail()) {
-    <div class="mb-4 border-b border-slate-100 pb-4" data-testid="action-center-rail">
-      @if (store.loading() && !store.data()) {
-        <div class="flex flex-col gap-2" data-testid="action-center-rail-skeleton">
-          @for (i of [1, 2, 3]; track i) {
-            <div class="h-8 animate-pulse rounded-lg bg-slate-100"></div>
+<app-popout-panel
+  class="block h-full"
+  [open]="showAll()"
+  label="Action Center"
+  expandedWidth="64rem"
+  [growLeft]="true"
+  expandedMaxHeight="min(85vh, 56rem)"
+  (closed)="collapse()"
+>
+  <section
+    class="group flex h-full flex-col rounded-2xl border border-[#fef08a] bg-[#fefce8] p-5"
+    [class.cursor-pointer]="!showAll() && canExpand()"
+    data-testid="action-center-card"
+    (click)="expand()"
+  >
+    <div class="mb-3 flex items-center justify-between gap-3">
+      <div class="flex min-w-0 items-center gap-2">
+        <span class="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-amber-100 font-bold text-amber-700" aria-hidden="true">!</span>
+        <div class="min-w-0">
+          <h2 class="text-base font-semibold text-slate-900">Action Center</h2>
+          @if (subtitle(); as sub) {
+            <p class="text-xs text-slate-500">{{ sub }}</p>
           }
         </div>
-      } @else if (store.error() && !store.data()) {
-        <app-error-state message="Couldn't load the category rail." [retryable]="true" (retry)="retry()" />
-      } @else {
-        <div class="flex flex-col gap-3.5">
-          @if (peopleRail().visibleCategories.length > 0 || peopleRail().collapsedCount > 0) {
-            <div data-testid="action-center-rail-people">
-              <p class="mb-1.5 text-[11px] font-medium uppercase tracking-wider text-slate-500">People I manage</p>
-              <div class="flex flex-wrap gap-1.5">
-                @for (category of peopleRail().visibleCategories; track category.sourceKey) {
-                  <button
-                    type="button"
-                    class="action-center-chip"
-                    [class.action-center-chip--pending]="category.pendingCount > 0 && category.status !== 'unavailable'"
-                    [class.action-center-chip--unavailable]="category.status === 'unavailable'"
-                    (click)="openCategory(category)"
-                  >
-                    @if (exceptionSeverityDot(category); as severity) {
-                      <span class="approvals-severity-dot" [class.approvals-severity-dot--critical]="severity === 'critical'"></span>
-                    }
-                    {{ sourceLabel(category) }}
-                    @if (category.status === 'unavailable') {
-                      <span>— couldn't load</span>
-                    } @else {
-                      <span class="action-center-chip-count">{{ category.pendingCount }}</span>
-                    }
-                  </button>
-                }
-                @if (peopleRail().collapsedCount > 0) {
-                  <button type="button" class="action-center-chip action-center-chip--summary" (click)="toggleRailExpanded('people')">
-                    +{{ peopleRail().collapsedCount }} all clear
-                  </button>
-                }
-              </div>
-            </div>
-          }
-          @if (workRail().visibleCategories.length > 0 || workRail().collapsedCount > 0) {
-            <div data-testid="action-center-rail-work">
-              <p class="mb-1.5 text-[11px] font-medium uppercase tracking-wider text-slate-500">Work I lead</p>
-              <div class="flex flex-wrap gap-1.5">
-                @for (category of workRail().visibleCategories; track category.sourceKey) {
-                  <button
-                    type="button"
-                    class="action-center-chip"
-                    [class.action-center-chip--pending]="category.pendingCount > 0 && category.status !== 'unavailable'"
-                    [class.action-center-chip--unavailable]="category.status === 'unavailable'"
-                    (click)="openCategory(category)"
-                  >
-                    {{ sourceLabel(category) }}
-                    @if (category.status === 'unavailable') {
-                      <span>— couldn't load</span>
-                    } @else {
-                      <span class="action-center-chip-count">{{ category.pendingCount }}</span>
-                    }
-                  </button>
-                }
-                @if (workRail().collapsedCount > 0) {
-                  <button type="button" class="action-center-chip action-center-chip--summary" (click)="toggleRailExpanded('work')">
-                    +{{ workRail().collapsedCount }} all clear
-                  </button>
-                }
-              </div>
-            </div>
-          }
-        </div>
-      }
+      </div>
+      <app-popout-header-actions
+        style="--popout-actions-bg: #fefce8"
+        [refreshedAt]="store.loadedAt()"
+        [refreshing]="refreshing()"
+        [expanded]="showAll()"
+        [canExpand]="canExpand()"
+        [revealOnHover]="!showAll()"
+        (refresh)="retry()"
+        (expand)="expand()"
+        (closed)="collapse()"
+      />
     </div>
-  }
 
-  @if (siblingsLoading()) {
-    <div class="flex flex-col gap-2" data-testid="action-center-queue-skeleton">
-      @for (i of [1, 2, 3]; track i) {
-        <div class="h-9 animate-pulse rounded-lg bg-slate-100"></div>
-      }
-    </div>
-  } @else if (siblingsErrored()) {
-    <app-error-state message="Couldn't load priority actions." [retryable]="true" (retry)="retry()" />
-  } @else if (items().length === 0) {
-    <app-empty-state title="You're all caught up" />
-  } @else {
-    <p class="mb-1.5 text-[11px] font-medium uppercase tracking-wider text-slate-500">Needs attention</p>
-    <ul class="flex flex-col gap-0.5" data-testid="action-center-queue">
-      @for (item of visibleQueueItems(); track item.group + ':' + item.sourceKey + ':' + item.entityId) {
-        <li>
+    @if (loading()) {
+      <div class="flex flex-col gap-2" data-testid="action-center-skeleton">
+        @for (i of [1, 2, 3, 4]; track i) {
+          <div class="h-10 animate-pulse rounded-lg bg-amber-100/70"></div>
+        }
+      </div>
+    } @else if (errored()) {
+      <app-error-state message="Couldn't load your approvals." [retryable]="true" (retry)="retry()" />
+    } @else {
+      <div class="mb-2 flex flex-wrap gap-1.5" role="group" aria-label="Filter" data-testid="action-center-filters">
+        @for (chip of chips(); track chip.key) {
           <button
             type="button"
-            class="group flex w-full items-center gap-2.5 rounded-lg px-2.5 py-1.5 text-left transition-colors duration-150 hover:bg-slate-50 cursor-pointer"
-            (click)="openQueueItem(item)"
+            class="inbox-chip"
+            [class.inbox-chip--active]="filter() === chip.key"
+            [attr.aria-pressed]="filter() === chip.key"
+            [attr.data-testid]="'action-center-filter-' + chip.key"
+            (click)="setFilter(chip.key, $event)"
           >
-            <span class="priority-action-dot" [ngClass]="dotClass(item)"></span>
-            <span class="min-w-0 flex-1 truncate text-xs">
-              <span class="font-semibold text-slate-800 transition-colors group-hover:text-blue-600">{{ item.title }}</span>
-              @if (item.subjectName) {
-                <span class="font-normal text-slate-400"> · {{ item.subjectName }}</span>
-              }
-            </span>
-            <span class="shrink-0 text-right text-[11px] font-medium text-slate-400 tabular-nums">{{ item.captionLabel }}</span>
-            <svg
-              class="h-3.5 w-3.5 shrink-0 text-slate-300 transition-all duration-150 group-hover:translate-x-0.5 group-hover:text-slate-500"
-              fill="none"
-              viewBox="0 0 24 24"
-              stroke="currentColor"
-              stroke-width="2"
-              aria-hidden="true"
-            >
-              <path stroke-linecap="round" stroke-linejoin="round" d="M9 5l7 7-7 7" />
-            </svg>
+            {{ chip.label }}
+            <span class="inbox-chip__count">{{ chip.count }}</span>
           </button>
-        </li>
-      }
-    </ul>
+        }
+      </div>
 
-    @if (hiddenQueueItemCount() > 0 && !queueExpanded()) {
-      <button
-        type="button"
-        class="mt-2.5 w-full text-center text-xs font-semibold text-[var(--color-accent)] hover:underline"
-        data-testid="action-center-show-more"
-        (click)="toggleQueueExpanded()"
-      >
-        Show {{ hiddenQueueItemCount() }} more priority items
-      </button>
-    } @else if (queueExpanded() && items().length > 5) {
-      <button
-        type="button"
-        class="mt-2.5 w-full text-center text-xs font-semibold text-[var(--color-accent)] hover:underline"
-        data-testid="action-center-show-less"
-        (click)="toggleQueueExpanded()"
-      >
-        Show less
-      </button>
+      @if (unavailableCount() > 0) {
+        <p class="mb-2 text-[11px] text-rose-600" data-testid="action-center-partial">
+          Some items couldn't be loaded - the counts may be higher.
+          <button type="button" class="font-semibold underline cursor-pointer" (click)="$event.stopPropagation(); retry()">Retry</button>
+        </p>
+      }
+
+      @if (filtered().length === 0) {
+        <p class="py-3 text-sm text-slate-600" data-testid="action-center-all-clear">
+          <span class="text-emerald-600" aria-hidden="true">✓</span>
+          {{ filter() === 'all' ? "You're all caught up" : 'Nothing here right now' }}
+        </p>
+      } @else {
+        <ul class="divide-y divide-amber-200/70" data-testid="action-center-inbox">
+          @for (item of visibleRows(); track item.key) {
+            <li class="py-2.5" data-testid="action-center-inbox-row" (click)="$event.stopPropagation()">
+              <div class="flex items-center gap-3">
+                <span [class]="'inbox-tag shrink-0 ' + tagClass(item)" data-testid="action-center-inbox-tag">{{ item.tag }}</span>
+                <button
+                  type="button"
+                  class="group/row min-w-0 flex-1 text-left cursor-pointer"
+                  data-testid="action-center-inbox-open"
+                  [attr.aria-label]="'Open ' + item.tag + ' request: ' + item.title"
+                  (click)="openItem(item, $event)"
+                >
+                  <span class="block truncate text-xs font-semibold text-slate-900 group-hover/row:text-blue-600">{{ item.title }}</span>
+                  @if (item.subject) {
+                    <span class="block truncate text-[11px] text-slate-500">{{ item.subject }}</span>
+                  }
+                </button>
+                <span [class]="'shrink-0 text-[11px] tabular-nums ' + ageClass(item)">{{ item.ageLabel }}</span>
+
+                <span class="flex shrink-0 items-center gap-1.5">
+                  @if (canDecide(item)) {
+                    <button
+                      type="button"
+                      class="inbox-btn inbox-btn--approve"
+                      [class.inbox-btn--active]="form()?.key === item.key && form()?.mode === 'approve'"
+                      [disabled]="busyKey() === item.key"
+                      [attr.aria-label]="'Approve ' + item.title"
+                      title="Approve"
+                      data-testid="action-center-approve"
+                      (click)="startDecision(item, 'approve', $event)"
+                    >
+                      <svg class="h-3.5 w-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m5 12 5 5 9-10"></path></svg>
+                      @if (showAll()) { <span>Approve</span> }
+                    </button>
+                    <button
+                      type="button"
+                      class="inbox-btn inbox-btn--reject"
+                      [class.inbox-btn--active]="form()?.key === item.key && form()?.mode === 'reject'"
+                      [disabled]="busyKey() === item.key"
+                      [attr.aria-label]="'Reject ' + item.title"
+                      title="Reject"
+                      data-testid="action-center-reject"
+                      (click)="startDecision(item, 'reject', $event)"
+                    >
+                      <svg class="h-3.5 w-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M18 6 6 18M6 6l12 12"></path></svg>
+                    </button>
+                  }
+                  <button
+                    type="button"
+                    class="inbox-btn inbox-btn--open"
+                    [attr.aria-label]="'Open ' + item.title"
+                    title="Open details"
+                    data-testid="action-center-arrow"
+                    (click)="openItem(item, $event)"
+                  >
+                    <svg class="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="9 18 15 12 9 6"></polyline></svg>
+                  </button>
+                </span>
+              </div>
+
+              @if (rowErrors()[item.key]; as rowError) {
+                <p class="mt-2 rounded-lg bg-rose-50 px-3 py-1.5 text-[11px] text-rose-700" role="alert" data-testid="action-center-row-error">{{ rowError }}</p>
+              }
+
+              @if (form()?.key === item.key) {
+                <div
+                  [class]="'mt-2 rounded-xl border bg-white p-3 ' + (form()?.mode === 'reject' ? 'border-rose-200' : 'border-emerald-200')"
+                  data-testid="action-center-decision-form"
+                >
+                  <label class="mb-1 block text-[11px] font-semibold text-slate-600" [attr.for]="'ac-comment-' + item.key">{{ formLabel(item) }}</label>
+                  <textarea
+                    [id]="'ac-comment-' + item.key"
+                    class="w-full resize-none rounded-lg border border-slate-200 px-2.5 py-1.5 text-xs text-slate-800 focus:border-blue-400 focus:outline-none"
+                    rows="2"
+                    [attr.maxlength]="commentMax"
+                    [value]="comment()"
+                    (input)="comment.set($any($event.target).value)"
+                    data-testid="action-center-decision-comment"
+                  ></textarea>
+                  @if (formError()) {
+                    <p class="mt-1 text-[11px] text-rose-600" data-testid="action-center-decision-validation">{{ formError() }}</p>
+                  }
+                  <div class="mt-2 flex justify-end gap-2">
+                    <button type="button" class="rounded-lg px-3 py-1.5 text-xs font-semibold text-slate-600 hover:bg-slate-100 cursor-pointer" [disabled]="busyKey() === item.key" (click)="cancelDecision($event)">Cancel</button>
+                    <button
+                      type="button"
+                      [class]="'rounded-lg px-3.5 py-1.5 text-xs font-semibold text-white shadow-xs cursor-pointer disabled:opacity-60 ' + (form()?.mode === 'reject' ? 'bg-rose-600 hover:bg-rose-700' : 'bg-emerald-600 hover:bg-emerald-700')"
+                      [disabled]="busyKey() === item.key"
+                      data-testid="action-center-decision-confirm"
+                      (click)="confirmDecision(item, $event)"
+                    >
+                      {{ busyKey() === item.key ? 'Saving…' : form()?.mode === 'reject' ? 'Reject request' : 'Approve request' }}
+                    </button>
+                  </div>
+                </div>
+              }
+            </li>
+          }
+        </ul>
+
+        @if (showAll() && notLoadedCount() > 0) {
+          <p class="mt-2 text-center text-[11px] text-slate-500" data-testid="action-center-not-loaded">
+            Showing the oldest {{ inbox().length }} of {{ counts().all }}. Open a request's page for the rest.
+          </p>
+        }
+
+        @if (!showAll() && hiddenCount() > 0) {
+          <div class="mt-auto flex justify-end border-t border-amber-200/70 pt-3">
+            <button
+              type="button"
+              class="text-xs font-semibold text-blue-600 hover:text-blue-700 hover:underline cursor-pointer"
+              data-testid="action-center-show-more"
+              (click)="onToggleClick($event)"
+            >
+              View all ({{ filtered().length }})
+            </button>
+          </div>
+        } @else if (showAll()) {
+          <div class="flex justify-end border-t border-amber-200/70 pt-3">
+            <button
+              type="button"
+              class="text-xs font-semibold text-blue-600 hover:text-blue-700 hover:underline cursor-pointer"
+              data-testid="action-center-show-less"
+              (click)="onToggleClick($event)"
+            >
+              Show less
+            </button>
+          </div>
+        }
+      }
     }
-  }
-</section>
+  </section>
+</app-popout-panel>

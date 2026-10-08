@@ -13,3 +13,29 @@
 .team-progress-segment--overdue {
   background: var(--color-danger);
 }
+
+/* Popped out: pie + legend + rates share one row, so the module list starts higher. */
+.progress-layout--wide {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  column-gap: 2.5rem;
+}
+
+.progress-layout--wide > section {
+  grid-column: 1 / -1;
+}
+
+.progress-layout--wide [data-testid='team-progress-legend'] {
+  max-width: 20rem;
+}
+
+.progress-layout--wide .progress-rates {
+  border-top: 0;
+  padding-top: 0;
+  padding-left: 2.5rem;
+  border-left: 1px solid rgb(241 245 249);
+  column-gap: 2.5rem;
+  align-self: stretch;
+  align-items: center;
+}
