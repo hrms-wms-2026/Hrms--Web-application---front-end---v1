@@ -56,3 +56,22 @@
   gap: 1rem;
   padding-bottom: 1.5rem;
 }
+
+.pt-section {
+  display: flex;
+  flex-direction: column;
+}
+
+.pt-section + .pt-section {
+  margin-top: 0.75rem;
+  padding-top: 1.75rem;
+  border-top: 1px solid var(--color-border);
+}
+
+.pt-section__title {
+  margin: 0 0 1rem;
+  font-size: 1.0625rem;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+  color: var(--color-text-primary);
+}

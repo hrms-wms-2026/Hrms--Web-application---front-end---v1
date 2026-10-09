@@ -18,11 +18,12 @@ const STEP_ITEMS = [
 
 @Component({
   selector: 'app-project-form-modal',
+  host: { '[animate.leave]': "open() ? 'ui-popup-leave' : ''" },
   standalone: true,
   imports: [InputComponent, ButtonComponent, DateRangePickerComponent, EmployeePickerComponent, ColorSwatchPickerComponent],
   template: `
     @if (open()) {
-      <div class="proj-modal-backdrop" (click)="closed.emit()">
+      <div class="proj-modal-backdrop" animate.leave="ui-popup-leave" (click)="closed.emit()">
         <div
           class="proj-modal ui-scroll-open"
           role="dialog"

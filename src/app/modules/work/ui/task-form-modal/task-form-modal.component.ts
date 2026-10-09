@@ -45,11 +45,12 @@ export type TaskFormMode = 'create' | 'edit';
 
 @Component({
   selector: 'app-task-form-modal',
+  host: { '[animate.leave]': "open() ? 'ui-popup-leave' : ''" },
   standalone: true,
   imports: [NgTemplateOutlet, ButtonComponent, DatePickerComponent, TaskHistoryFeedComponent, TaskClockWidgetComponent, TaskAttachmentListComponent, RichTextEditorComponent, AvatarComponent, TaskCommentsComponent, ConfirmModalComponent, TaskDuplicateDialogComponent, TaskConvertToSubtaskDialogComponent, TaskAssigneeDropdownComponent, MonitorWarningCalloutComponent],
   template: `
     @if (open()) {
-      <div class="tfm-scrim" (click)="onBackdrop()">
+      <div class="tfm-scrim" animate.leave="ui-popup-leave" (click)="onBackdrop()">
         <div
           #tfm
           class="tfm ui-scroll-open"

@@ -1,5 +1,5 @@
 @if (open()) {
-  <div class="tfm-scrim" (click)="onBackdrop($event)">
+  <div class="tfm-scrim" animate.leave="ui-popup-leave" (click)="onBackdrop($event)">
     <div
       class="tfm tfm--create ui-scroll-open"
       role="dialog"

@@ -15,6 +15,7 @@ export interface DepartmentFormValue {
 
 @Component({
   selector: 'app-department-form-modal',
+  host: { 'animate.leave': 'ui-popup-leave' },
   standalone: true,
   imports: [CommonModule, ReactiveFormsModule, ButtonComponent, InputComponent, SelectComponent],
   templateUrl: './department-form-modal.component.html',

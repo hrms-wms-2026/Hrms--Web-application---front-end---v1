@@ -8,6 +8,7 @@ import { SelectComponent } from '../../../../shared/ui/select/select.component';
 
 @Component({
   selector: 'app-position-access-modal',
+  host: { 'animate.leave': 'ui-popup-leave' },
   standalone: true,
   imports: [CommonModule, ReactiveFormsModule, ButtonComponent, SelectComponent],
   templateUrl: './position-access-modal.component.html',

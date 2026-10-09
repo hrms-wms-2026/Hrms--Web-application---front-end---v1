@@ -5,7 +5,7 @@ export type ModalSize = 'md' | 'lg' | 'xl' | '2xl';
 
 /** Glyphs available for the header icon tile (styled by .ui-popup-icon in styles.css). */
 export type PopupIcon =
-  | 'calendar' | 'user-plus' | 'users' | 'clock' | 'sun' | 'shield' | 'building' | 'trash'
+  | 'calendar' | 'user' | 'user-plus' | 'users' | 'clock' | 'sun' | 'shield' | 'building' | 'trash'
   | 'archive' | 'alert' | 'layers' | 'flag' | 'folder' | 'map-pin' | 'device' | 'message'
   | 'save' | 'settings' | 'checklist' | 'hierarchy' | 'briefcase' | 'edit' | 'info';
 
@@ -36,10 +36,11 @@ const TITLE_ICON_RULES: ReadonlyArray<readonly [RegExp, PopupIcon]> = [
 
 @Component({
   selector: 'app-modal',
+  host: { '[animate.leave]': "open() ? 'ui-popup-leave' : ''" },
   standalone: true,
   template: `
     @if (open()) {
-      <div class="fixed inset-0 z-[1200] flex items-center justify-center p-4">
+      <div class="fixed inset-0 z-[1200] flex items-center justify-center p-4" animate.leave="ui-popup-leave">
         <div [class]="dimBackdrop() ? 'ui-fade-in absolute inset-0 bg-black/50' : 'absolute inset-0'" (click)="onBackdropClick()"></div>
         <div
           #dialog

@@ -1,4 +1,4 @@
-import { ChangeDetectionStrategy, Component, OnInit, inject, input, signal } from '@angular/core';
+import { ChangeDetectionStrategy, Component, OnInit, inject, input, output, signal, viewChild } from '@angular/core';
 import { toDataURL } from 'qrcode';
 import { ProfileStore } from '../../state/profile.store';
 import { PersonalInfoFormComponent } from '../../ui/personal-info-form/personal-info-form.component';
@@ -7,6 +7,7 @@ import { EmergencyContactsPanelComponent } from '../../ui/emergency-contacts-pan
 import { DependentsPanelComponent } from '../../ui/dependents-panel/dependents-panel.component';
 import { PayrollPanelComponent } from '../../ui/payroll-panel/payroll-panel.component';
 import { SecurityPanelComponent } from '../../ui/security-panel/security-panel.component';
+import { ButtonComponent } from '../../../../shared/ui/button/button.component';
 import { ProfileSubTabId } from '../../models/profile-subtab.model';
 import {
   UpdateBankDetailsRequest,
@@ -24,7 +25,8 @@ import {
     EmergencyContactsPanelComponent,
     DependentsPanelComponent,
     PayrollPanelComponent,
-    SecurityPanelComponent
+    SecurityPanelComponent,
+    ButtonComponent
   ],
   templateUrl: './profile-tab.component.html',
   styleUrl: './profile-tab.component.css',
@@ -34,6 +36,10 @@ export class ProfileTabComponent implements OnInit {
   readonly store = inject(ProfileStore);
 
   readonly activeSubTab = input<ProfileSubTabId>('personal');
+  readonly cancelled = output<void>();
+
+  private readonly contactsPanel = viewChild<EmergencyContactsPanelComponent>('contactsPanel');
+  private readonly dependentsPanel = viewChild<DependentsPanelComponent>('dependentsPanel');
   readonly qrCodeImage = signal<string | null>(null);
   readonly qrCodeSecret = signal<string | null>(null);
 
@@ -59,6 +65,14 @@ export class ProfileTabComponent implements OnInit {
 
   onAddDependent(payload: UpsertDependentRequest): void {
     this.store.addDependent(payload);
+  }
+
+  /** Footer save on the Emergency tab: adds whatever is typed into either add-form; closes when both are empty. */
+  onSaveEmergency(): void {
+    const results = [this.contactsPanel()?.submitIfFilled(), this.dependentsPanel()?.submitIfFilled()];
+    if (results.every((r) => r === 'empty' || r === undefined)) {
+      this.cancelled.emit();
+    }
   }
 
   onRemoveDependent(id: string): void {
