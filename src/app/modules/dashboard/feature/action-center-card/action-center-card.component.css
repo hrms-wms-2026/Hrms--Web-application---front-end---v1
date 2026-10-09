@@ -1,0 +1,141 @@
+.inbox-tag {
+  display: inline-flex;
+  min-width: 4.75rem;
+  justify-content: center;
+  border-radius: 6px;
+  padding: 2px 6px;
+  font-size: 10px;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+/* Row actions: Approve is the primary (solid green), Reject a quiet outline, the arrow opens. */
+.inbox-btn {
+  display: inline-flex;
+  height: 28px;
+  min-width: 28px;
+  flex-shrink: 0;
+  align-items: center;
+  justify-content: center;
+  gap: 5px;
+  border-radius: 8px;
+  border: 1px solid transparent;
+  padding: 0 7px;
+  font-size: 11px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background-color 0.15s ease, border-color 0.15s ease, color 0.15s ease, transform 0.15s ease;
+}
+
+.inbox-btn:disabled {
+  cursor: default;
+  opacity: 0.6;
+}
+
+.inbox-btn:focus-visible {
+  outline: 2px solid #3b82f6;
+  outline-offset: 2px;
+}
+
+.inbox-btn--approve {
+  background: #059669;
+  color: #ffffff;
+  box-shadow: 0 1px 2px rgb(5 150 105 / 0.25);
+}
+
+.inbox-btn--approve:hover:not(:disabled),
+.inbox-btn--approve.inbox-btn--active {
+  background: #047857;
+}
+
+.inbox-btn--reject {
+  border-color: #fecdd3;
+  background: #ffffff;
+  color: #e11d48;
+}
+
+.inbox-btn--reject:hover:not(:disabled),
+.inbox-btn--reject.inbox-btn--active {
+  border-color: #fda4af;
+  background: #fff1f2;
+}
+
+.inbox-btn--open {
+  border-color: #e2e8f0;
+  background: #ffffff;
+  color: #475569;
+}
+
+.inbox-btn--open:hover {
+  border-color: #bfdbfe;
+  background: #eff6ff;
+  color: #1d4ed8;
+  transform: translateX(2px);
+}
+
+.group\/row:focus-visible {
+  outline: 2px solid #3b82f6;
+  outline-offset: 2px;
+  border-radius: 8px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .inbox-btn {
+    transition: none;
+  }
+
+  .inbox-btn--open:hover {
+    transform: none;
+  }
+}
+
+.inbox-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  border-radius: 999px;
+  border: 1px solid #fde68a;
+  background: #ffffff;
+  color: #475569;
+  padding: 3px 10px;
+  font-size: 11px;
+  font-weight: 600;
+  line-height: 1.35;
+  cursor: pointer;
+  transition: background-color 0.15s ease, border-color 0.15s ease, color 0.15s ease;
+}
+
+.inbox-chip:hover {
+  border-color: #fcd34d;
+  color: #1e293b;
+}
+
+.inbox-chip--active {
+  border-color: #bfdbfe;
+  background: #eff6ff;
+  color: #1e3a8a;
+}
+
+.inbox-chip:focus-visible {
+  outline: 2px solid #3b82f6;
+  outline-offset: 2px;
+}
+
+.inbox-chip__count {
+  display: inline-flex;
+  min-width: 18px;
+  height: 18px;
+  align-items: center;
+  justify-content: center;
+  border-radius: 999px;
+  background: #e2e8f0;
+  color: #475569;
+  padding: 0 5px;
+  font-size: 10px;
+  font-weight: 700;
+}
+
+.inbox-chip--active .inbox-chip__count {
+  background: #2563eb;
+  color: #ffffff;
+}

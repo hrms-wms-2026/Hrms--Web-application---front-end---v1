@@ -1,6 +1,7 @@
 import { provideHttpClient } from '@angular/common/http';
 import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
+import { ActivatedRoute, convertToParamMap } from '@angular/router';
 import { environment } from '../../../../../environments/environment';
 import { PendingApprovalsComponent } from './pending-approvals.component';
 
@@ -8,10 +9,22 @@ describe('PendingApprovalsComponent', () => {
   let fixture: ComponentFixture<PendingApprovalsComponent>;
   let httpMock: HttpTestingController;
 
-  beforeEach(async () => {
-    await TestBed.configureTestingModule({ imports: [PendingApprovalsComponent], providers: [provideHttpClient(), provideHttpClientTesting()] }).compileComponents();
+  async function setup(queryParams: Record<string, string> = {}): Promise<void> {
+    TestBed.resetTestingModule();
+    await TestBed.configureTestingModule({
+      imports: [PendingApprovalsComponent],
+      providers: [
+        provideHttpClient(),
+        provideHttpClientTesting(),
+        { provide: ActivatedRoute, useValue: { snapshot: { queryParamMap: convertToParamMap(queryParams) } } }
+      ]
+    }).compileComponents();
     httpMock = TestBed.inject(HttpTestingController);
     fixture = TestBed.createComponent(PendingApprovalsComponent);
+  }
+
+  beforeEach(async () => {
+    await setup();
   });
 
   afterEach(() => httpMock.verify());
@@ -33,6 +46,24 @@ describe('PendingApprovalsComponent', () => {
     httpMock.expectOne((r) => r.url === `${environment.apiUrl}/leave/requests/req-1/approval`).flush({
       requestId: 'req-1', employeeId: 'emp-1', employeeName: 'Anu Raman', leaveTypeId: 'type-1', leaveTypeName: 'Annual Leave', leaveTypeCode: 'ANNUAL', startAt: '2026-09-10', endAt: '2026-09-12', totalHours: 3, paidHours: 3, unpaidHours: 0, status: 'pending', reason: null, approvers: [], infoMessages: [], submissionConflictSnapshotJson: null, currentWarnings: [], remainingHours: 17, canDecide: true, forwardTo: null, canChangeDecision: false
     });
+  });
+
+  it('auto-opens the detail sheet from a requestId deep-link query param', async () => {
+    await setup({ requestId: 'req-9' });
+    fixture.detectChanges();
+    httpMock.expectOne((r) => r.url === `${environment.apiUrl}/leave/requests/pending-approvals`).flush([]);
+    httpMock.expectOne((r) => r.url === `${environment.apiUrl}/leave/types`).flush([]);
+    expect(fixture.componentInstance.detailOpen()).toBe(true);
+    httpMock.expectOne((r) => r.url === `${environment.apiUrl}/leave/requests/req-9/approval`).flush({
+      requestId: 'req-9', employeeId: 'emp-1', employeeName: 'Anu Raman', leaveTypeId: 'type-1', leaveTypeName: 'Annual Leave', leaveTypeCode: 'ANNUAL', startAt: '2026-09-10', endAt: '2026-09-12', totalHours: 3, paidHours: 3, unpaidHours: 0, status: 'pending', reason: null, approvers: [], infoMessages: [], submissionConflictSnapshotJson: null, currentWarnings: [], remainingHours: 17
+    });
+  });
+
+  it('does not open the detail sheet when there is no requestId query param', () => {
+    fixture.detectChanges();
+    httpMock.expectOne((r) => r.url === `${environment.apiUrl}/leave/requests/pending-approvals`).flush([]);
+    httpMock.expectOne((r) => r.url === `${environment.apiUrl}/leave/types`).flush([]);
+    expect(fixture.componentInstance.detailOpen()).toBe(false);
   });
 
   it('shows the load error in the detail sheet instead of a blank modal', async () => {

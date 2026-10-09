@@ -1,0 +1,117 @@
+<div class="dashboard-home flex flex-col gap-3">
+  @if (!layout.editing()) {
+    <div class="flex justify-end" data-testid="dashboard-toolbar">
+      <button
+        type="button"
+        class="dashboard-customize-btn"
+        [disabled]="!layout.ready()"
+        data-testid="dashboard-customize"
+        (click)="layout.startEditing()"
+      >
+        <svg class="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+          <rect x="3" y="3" width="7" height="7" rx="1.5"></rect><rect x="14" y="3" width="7" height="7" rx="1.5"></rect>
+          <rect x="3" y="14" width="7" height="7" rx="1.5"></rect><rect x="14" y="14" width="7" height="7" rx="1.5"></rect>
+        </svg>
+        Customize
+      </button>
+    </div>
+
+    @for (key of layout.resolved().top; track key) {
+      <div [attr.data-testid]="'dashboard-band-top-' + key"><app-dashboard-card [key]="key" /></div>
+    }
+
+    <div class="grid grid-cols-1 gap-3 xl:grid-cols-3 xl:items-start" data-testid="dashboard-primary-row">
+      @for (zone of columnZones; track zone) {
+        <div class="flex flex-col gap-3" [attr.data-testid]="'dashboard-column-' + zone">
+          @for (key of columnKeys(zone); track key) {
+            <app-dashboard-card [key]="key" />
+          }
+        </div>
+      }
+    </div>
+
+    @for (key of layout.resolved().bottom; track key) {
+      <div [attr.data-testid]="'dashboard-band-bottom-' + key"><app-dashboard-card [key]="key" /></div>
+    }
+  } @else {
+    <!-- Customize mode: tiles instead of live cards, so nothing reloads or polls while moving. -->
+    <div class="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-blue-100 bg-blue-50/60 px-4 py-3" data-testid="dashboard-edit-bar">
+      <div>
+        <h2 class="text-sm font-bold text-slate-800">Customize your dashboard</h2>
+        <p class="text-xs text-slate-500">Drag any card anywhere - into a column, or into the full-width rows at the top and bottom.</p>
+      </div>
+      <div class="flex items-center gap-2">
+        <button type="button" class="dashboard-edit-btn" data-testid="dashboard-reset" (click)="layout.reset()">Reset</button>
+        <button type="button" class="dashboard-edit-btn" data-testid="dashboard-cancel" (click)="layout.cancel()">Cancel</button>
+        <button type="button" class="dashboard-edit-btn dashboard-edit-btn--primary" data-testid="dashboard-done" (click)="layout.done()">Done</button>
+      </div>
+    </div>
+
+    <div class="grid grid-cols-1 items-start gap-3 xl:grid-cols-[minmax(0,1fr)_18rem]">
+      <div class="flex flex-col gap-3" cdkDropListGroup>
+        <ng-container *ngTemplateOutlet="band; context: { $implicit: 'top', keys: layout.resolved().top, title: 'Full width - top' }" />
+
+        <div class="grid grid-cols-1 gap-3 md:grid-cols-3" data-testid="dashboard-edit-columns">
+          @for (zone of columnZones; track zone; let i = $index) {
+            <div
+              class="dashboard-drop-zone"
+              cdkDropList
+              [cdkDropListData]="zone"
+              (cdkDropListDropped)="onDrop($event)"
+              [attr.data-testid]="'dashboard-edit-' + zone"
+              [attr.aria-label]="'Column ' + (i + 1)"
+            >
+              @for (key of columnKeys(zone); track key) {
+                <ng-container *ngTemplateOutlet="tile; context: { $implicit: key }" />
+              } @empty {
+                <p class="dashboard-drop-hint">Drop here</p>
+              }
+            </div>
+          }
+        </div>
+
+        <ng-container *ngTemplateOutlet="band; context: { $implicit: 'bottom', keys: layout.resolved().bottom, title: 'Full width - bottom' }" />
+      </div>
+
+      <app-dashboard-customize-panel class="xl:sticky xl:top-3" />
+    </div>
+  }
+</div>
+
+<ng-template #band let-zone let-keys="keys" let-title="title">
+  <div>
+    <p class="mb-1 text-[11px] font-medium uppercase tracking-wider text-slate-500">{{ title }}</p>
+    <div
+      class="dashboard-drop-zone dashboard-drop-zone--band"
+      cdkDropList
+      [id]="'dashboard-band-' + zone"
+      [cdkDropListData]="zone"
+      (cdkDropListDropped)="onDrop($event)"
+      [attr.data-testid]="'dashboard-edit-' + zone"
+    >
+      @for (key of keys; track key) {
+        <ng-container *ngTemplateOutlet="tile; context: { $implicit: key }" />
+      } @empty {
+        <p class="dashboard-drop-hint">Drop a card here to make it full width</p>
+      }
+    </div>
+  </div>
+</ng-template>
+
+<ng-template #tile let-key>
+  <div class="dashboard-tile" cdkDrag [cdkDragData]="key" [attr.data-testid]="'dashboard-tile-' + key" [attr.aria-label]="'Drag ' + label(key)" title="Drag to move">
+    <span class="dashboard-tile__grip" aria-hidden="true">⋮⋮</span>
+    <span class="min-w-0 flex-1 truncate text-sm font-semibold text-slate-800">{{ label(key) }}</span>
+    @if (isTeam(key)) {
+      <span class="rounded-md bg-violet-50 px-1.5 py-0.5 text-[10px] font-bold text-violet-700">My Team</span>
+    }
+    <button
+      type="button"
+      class="dashboard-tile__remove"
+      [attr.aria-label]="'Remove ' + label(key)"
+      title="Remove from dashboard"
+      [attr.data-testid]="'dashboard-tile-remove-' + key"
+      (click)="layout.toggle(key)"
+    >✕</button>
+  </div>
+</ng-template>

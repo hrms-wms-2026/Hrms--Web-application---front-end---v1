@@ -1,6 +1,7 @@
 import { ChangeDetectionStrategy, Component, OnInit, computed, inject, signal } from '@angular/core';
 import { RouterLink } from '@angular/router';
 import { dateOnlyInTimezone, localPartsToUtcIso } from '../../../../shared/utils/timezone.util';
+import { AuthStore } from '../../../../core/auth/state/auth.store';
 import { CalendarEventApiService } from '../../../calendar/data-access/calendar-event-api.service';
 import { CalendarEventResponse } from '../../../calendar/models/calendar-event.model';
 
@@ -21,6 +22,7 @@ const FALLBACK_DOT_COLORS: readonly string[] = [
 })
 export class TodaysScheduleCardComponent implements OnInit {
   private readonly api = inject(CalendarEventApiService);
+  private readonly authStore = inject(AuthStore, { optional: true });
 
   private readonly rawEvents = signal<readonly CalendarEventResponse[]>([]);
   protected readonly loading = signal(true);
@@ -48,6 +50,55 @@ export class TodaysScheduleCardComponent implements OnInit {
       next: ({ timezone }) => this.loadTodaysEvents(timezone),
       error: () => this.loadTodaysEvents('UTC')
     });
+  }
+
+  protected isOrganizer(event: CalendarEventResponse): boolean {
+    if (typeof event.isOrganizer === 'boolean') {
+      return event.isOrganizer;
+    }
+    const myId = this.authStore?.employeeId?.();
+    return !!(myId && event.createdById === myId);
+  }
+
+  protected getMeetingLink(event: CalendarEventResponse): string | null {
+    if (event.meetingLink && event.meetingLink.trim()) {
+      const link = event.meetingLink.trim();
+      return link.startsWith('http') ? link : `https://${link}`;
+    }
+    if (event.location && (event.location.startsWith('http://') || event.location.startsWith('https://'))) {
+      return event.location.trim();
+    }
+    return null;
+  }
+
+  protected getMeetingPlatform(event: CalendarEventResponse): 'zoom' | 'teams' | 'meet' | 'video' {
+    const raw = `${event.meetingLink || ''} ${event.location || ''}`.toLowerCase();
+    if (raw.includes('zoom')) return 'zoom';
+    if (raw.includes('teams') || raw.includes('microsoft')) return 'teams';
+    if (raw.includes('meet.google') || raw.includes('google meet')) return 'meet';
+    return 'video';
+  }
+
+  protected getMeetingPlatformLabel(event: CalendarEventResponse): string {
+    const platform = this.getMeetingPlatform(event);
+    switch (platform) {
+      case 'zoom': return 'Zoom';
+      case 'teams': return 'Teams';
+      case 'meet': return 'Google Meet';
+      default: return 'Video Call';
+    }
+  }
+
+  protected getPhysicalLocation(event: CalendarEventResponse): string | null {
+    if (!event.location) return null;
+    const loc = event.location.trim();
+    if (loc.startsWith('http://') || loc.startsWith('https://')) return null;
+    // If location is just 'zoom' or 'teams' and we already have a meeting link, don't duplicate
+    const lower = loc.toLowerCase();
+    if ((lower === 'zoom' || lower === 'teams' || lower === 'google meet') && this.getMeetingLink(event)) {
+      return null;
+    }
+    return loc;
   }
 
   protected timeLabel(event: CalendarEventResponse): string {

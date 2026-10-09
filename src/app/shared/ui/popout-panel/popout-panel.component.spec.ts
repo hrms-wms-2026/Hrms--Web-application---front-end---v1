@@ -25,6 +25,15 @@ class WideHostComponent {
   readonly open = signal(false);
 }
 
+@Component({
+  standalone: true,
+  imports: [PopoutPanelComponent],
+  template: `<app-popout-panel [open]="open()" expandedWidth="60rem" [growLeft]="true" (closed)="open.set(false)"><p>rows</p></app-popout-panel>`
+})
+class GrowLeftHostComponent {
+  readonly open = signal(false);
+}
+
 describe('PopoutPanelComponent', () => {
   function setup() {
     TestBed.configureTestingModule({ imports: [HostComponent] });
@@ -92,6 +101,32 @@ describe('PopoutPanelComponent', () => {
     fixture.detectChanges();
     expect(panel.classList.contains('popout-panel--wide')).toBe(false);
     expect(popout.panelWidth()).toBeNull();
+  });
+
+  it('with growLeft, sizes against the room left of the card and shifts left by any right-edge overflow', async () => {
+    TestBed.configureTestingModule({ imports: [GrowLeftHostComponent] });
+    const fixture = TestBed.createComponent(GrowLeftHostComponent);
+    fixture.detectChanges();
+    const root = fixture.nativeElement as HTMLElement;
+    const host = root.querySelector('app-popout-panel') as HTMLElement;
+    const panel = root.querySelector('[data-testid="popout-panel"]') as HTMLElement;
+    const popout = fixture.debugElement.query((d) => d.name === 'app-popout-panel').componentInstance as PopoutPanelComponent;
+    const viewport = document.documentElement.clientWidth;
+    // A card in the last column: its right edge sits at the viewport's 24px gutter.
+    host.getBoundingClientRect = () => ({ left: viewport - 424, right: viewport - 24 } as DOMRect);
+    panel.getBoundingClientRect = () => ({ left: viewport - 424, right: viewport - 424 + 960 } as DOMRect);
+
+    fixture.componentInstance.open.set(true);
+    fixture.detectChanges();
+    await fixture.whenStable();
+    expect(popout.panelWidth()).toContain(`${viewport - 24}px`);
+    expect(popout.panelWidth()).not.toContain('100vw');
+    expect(popout.leftShift()).toBe(560);
+    expect(panel.style.left).toBe('-560px');
+
+    fixture.componentInstance.open.set(false);
+    fixture.detectChanges();
+    expect(popout.leftShift()).toBe(0);
   });
 
   it('keeps the dim visual only, so the page underneath still scrolls', () => {
