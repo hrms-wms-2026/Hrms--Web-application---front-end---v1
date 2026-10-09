@@ -58,6 +58,7 @@ const STEP_LABELS: Record<WizardStep, string> = {
 
 @Component({
   selector: 'app-add-employee-wizard',
+  host: { '[animate.leave]': "isModal() ? 'ui-popup-leave' : ''" },
   standalone: true,
   imports: [
     HasPermissionDirective,

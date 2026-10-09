@@ -3,70 +3,79 @@
     <div class="pf-error-banner" role="alert">{{ saveError() }}</div>
   }
 
-  <section class="pf-section">
-    <h3 class="pf-section__title">Profile photo</h3>
-    <div class="pf-avatar-row">
-      <app-avatar
-        [avatarUrl]="avatarUrl()"
-        [userName]="displayName()"
-        [email]="personalInformation().email"
-        size="lg"
-      />
-      <label class="pf-upload-btn">
-        Change photo
-        <input type="file" accept="image/*" (change)="onAvatarFileSelected($event)" />
-      </label>
-    </div>
-  </section>
+  <div class="pif-columns">
+    <section class="pf-section pif-photo-section">
+      <h3 class="pf-section__title">Profile photo</h3>
+      <div class="pf-avatar-row">
+        <div class="pif-avatar-wrap">
+          <app-avatar
+            class="pif-avatar"
+            [avatarUrl]="avatarUrl()"
+            [userName]="displayName()"
+            [email]="personalInformation().email"
+            size="xl"
+          />
+          <label class="pif-avatar-edit" title="Change photo">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+              <path d="M12 20h9"/>
+              <path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4Z"/>
+            </svg>
+            <input type="file" accept="image/*" aria-label="Change photo" (change)="onAvatarFileSelected($event)" />
+          </label>
+        </div>
+      </div>
+    </section>
 
-  <section class="pf-section">
-    <h3 class="pf-section__title">Basic details</h3>
-    <div class="pf-field-grid pf-field-grid--2">
-      <app-input
-        label="First name"
-        [value]="form.controls.firstName.value"
-        (valueChange)="form.controls.firstName.setValue($event)"
-        (blurred)="form.controls.firstName.markAsTouched()"
-        [error]="form.controls.firstName.touched && form.controls.firstName.invalid ? 'First name is required.' : ''"
-      />
-      <app-input
-        label="Last name"
-        [value]="form.controls.lastName.value"
-        (valueChange)="form.controls.lastName.setValue($event)"
-        (blurred)="form.controls.lastName.markAsTouched()"
-        [error]="form.controls.lastName.touched && form.controls.lastName.invalid ? 'Last name is required.' : ''"
-      />
-      <app-input
-        label="Mobile number"
-        type="tel"
-        [value]="form.controls.phone.value"
-        (valueChange)="form.controls.phone.setValue($event)"
-        [error]="!isPhoneValid() ? 'Please enter a valid phone number.' : ''"
-      />
-      <app-date-picker
-        label="Date of birth"
-        placeholder="YYYY-MM-DD"
-        [value]="form.controls.dateOfBirth.value || ''"
-        (valueChange)="form.controls.dateOfBirth.setValue($event)"
-      />
-      <app-select
-        label="Gender"
-        placeholder="Prefer not to say"
-        [options]="genderOptions"
-        [value]="form.controls.gender.value"
-        (valueChange)="form.controls.gender.setValue($event)"
-      />
-      <app-select
-        label="Display timezone"
-        placeholder="Select a timezone"
-        [options]="timezoneOptions"
-        [value]="form.controls.displayTimezone.value"
-        (valueChange)="form.controls.displayTimezone.setValue($event)"
-      />
-    </div>
-  </section>
+    <section class="pf-section">
+      <h3 class="pf-section__title">Basic details</h3>
+      <div class="pf-field-grid pf-field-grid--2">
+        <app-input
+          label="First name"
+          [value]="form.controls.firstName.value"
+          (valueChange)="form.controls.firstName.setValue($event)"
+          (blurred)="form.controls.firstName.markAsTouched()"
+          [error]="form.controls.firstName.touched && form.controls.firstName.invalid ? 'First name is required.' : ''"
+        />
+        <app-input
+          label="Last name"
+          [value]="form.controls.lastName.value"
+          (valueChange)="form.controls.lastName.setValue($event)"
+          (blurred)="form.controls.lastName.markAsTouched()"
+          [error]="form.controls.lastName.touched && form.controls.lastName.invalid ? 'Last name is required.' : ''"
+        />
+        <app-input
+          label="Mobile number"
+          type="tel"
+          [value]="form.controls.phone.value"
+          (valueChange)="form.controls.phone.setValue($event)"
+          [error]="!isPhoneValid() ? 'Please enter a valid phone number.' : ''"
+        />
+        <app-date-picker
+          label="Date of birth"
+          placeholder="YYYY-MM-DD"
+          [value]="form.controls.dateOfBirth.value || ''"
+          (valueChange)="form.controls.dateOfBirth.setValue($event)"
+        />
+        <app-select
+          label="Gender"
+          placeholder="Prefer not to say"
+          [options]="genderOptions"
+          [value]="form.controls.gender.value"
+          (valueChange)="form.controls.gender.setValue($event)"
+        />
+        <app-select
+          label="Display timezone"
+          placeholder="Select a timezone"
+          [options]="timezoneOptions"
+          [value]="form.controls.displayTimezone.value"
+          (valueChange)="form.controls.displayTimezone.setValue($event)"
+        />
+      </div>
+    </section>
+  </div>
 
-  <div class="pf-actions">
+  <div class="preferences-footer">
+    <app-button variant="secondary" (pressed)="cancelled.emit()">Cancel</app-button>
     <app-button type="submit" [loading]="saving()" [disabled]="saving()">
       {{ saving() ? 'Saving…' : 'Save changes' }}
     </app-button>

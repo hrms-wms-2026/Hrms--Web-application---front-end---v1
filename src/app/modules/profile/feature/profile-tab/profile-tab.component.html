@@ -14,27 +14,34 @@
         [saveError]="store.saveError()"
         (save)="onSavePersonalInformation($event)"
         (avatarSelected)="onAvatarSelected($event)"
+        (cancelled)="cancelled.emit()"
       />
     }
     @if (activeSubTab() === 'emergency') {
-      <section class="pf-section">
-        <h3 class="pf-section__title">Emergency contacts</h3>
+      <section class="pt-section">
+        <h3 class="pt-section__title">Emergency contacts</h3>
         <app-emergency-contacts-panel
+          #contactsPanel
           [contacts]="profile.emergencyContacts"
           [saving]="store.saving()"
           (add)="onAddEmergencyContact($event)"
           (remove)="onRemoveEmergencyContact($event)"
         />
       </section>
-      <section class="pf-section">
-        <h3 class="pf-section__title">Dependents</h3>
+      <section class="pt-section">
+        <h3 class="pt-section__title">Dependents</h3>
         <app-dependents-panel
+          #dependentsPanel
           [dependents]="profile.dependents"
           [saving]="store.saving()"
           (add)="onAddDependent($event)"
           (remove)="onRemoveDependent($event)"
         />
       </section>
+      <div class="preferences-footer">
+        <app-button variant="secondary" (pressed)="cancelled.emit()">Cancel</app-button>
+        <app-button [disabled]="store.saving()" (pressed)="onSaveEmergency()">Save changes</app-button>
+      </div>
     }
     @if (activeSubTab() === 'job') {
       <app-job-info-panel [jobInformation]="profile.jobInformation" />

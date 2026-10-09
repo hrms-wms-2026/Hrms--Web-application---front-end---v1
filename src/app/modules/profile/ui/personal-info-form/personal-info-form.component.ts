@@ -24,6 +24,7 @@ export class PersonalInfoFormComponent implements OnChanges {
   readonly saveError = input<string | null>(null);
   readonly save = output<UpdatePersonalInformationRequest>();
   readonly avatarSelected = output<File>();
+  readonly cancelled = output<void>();
 
   private readonly fileApi = inject(FileApiService);
 

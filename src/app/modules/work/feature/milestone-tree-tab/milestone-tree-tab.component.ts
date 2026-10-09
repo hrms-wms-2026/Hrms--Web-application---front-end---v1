@@ -1,4 +1,4 @@
-import { Component, computed, effect, inject, signal, untracked } from '@angular/core';
+import { AfterViewInit, Component, OnDestroy, TemplateRef, computed, effect, inject, signal, untracked, viewChild } from '@angular/core';
 import { CurrentEmployeeStore } from '../../state/current-employee.store';
 
 import { ActivatedRoute } from '@angular/router';
@@ -19,7 +19,6 @@ import { WorkApprovalsApiService } from '../../data-access/work-approvals-api.se
 import { EmployeeDirectoryStore } from '../../state/employee-directory.store';
 import { SprintCompleteDialogComponent } from '../../ui/sprint-complete-dialog/sprint-complete-dialog.component';
 import { LoaderComponent } from '../../../../shared/ui/loader/loader.component';
-import { InputComponent } from '../../../../shared/ui/input/input.component';
 import { ErrorStateComponent } from '../../../../shared/ui/error-state/error-state.component';
 import { EmptyStateComponent } from '../../../../shared/ui/empty-state/empty-state.component';
 import { ConfirmModalComponent } from '../../../../shared/ui/confirm-modal/confirm-modal.component';
@@ -29,6 +28,10 @@ import { findTreeNode, isLeafObjective, collectObjectiveOptions } from '../../ut
 import { Sprint, SprintStatus } from '../../models/sprint.model';
 import { NotificationService } from '../../../../core/services/notification.service';
 import { ProjectMonitorStore } from '../../state/project-monitor.store';
+import { WorkPageToolbarStore } from '../../state/work-page-toolbar.store';
+import { ButtonComponent } from '../../../../shared/ui/button/button.component';
+import { TaskAssigneeAvatarFilterComponent, TaskAssigneeAvatarMember } from '../../ui/task-assignee-avatar-filter/task-assignee-avatar-filter.component';
+import { FileApiService } from '../../../../shared/data-access/file-api.service';
 
 const ACTIVE_STATUS_OPTIONS: readonly WorkDropdownOption[] = [
   { value: 'active', label: 'Active' },
@@ -69,13 +72,14 @@ const PROGRESS_OPTIONS: readonly WorkDropdownOption[] = [
   selector: 'app-milestone-tree-tab',
   standalone: true,
   imports: [
-    MilestoneTreeNodeComponent, TaskFilterBarComponent, InputComponent, TreeExplanationPanelComponent, SubModuleFormComponent,
+    MilestoneTreeNodeComponent, TaskFilterBarComponent, TreeExplanationPanelComponent, SubModuleFormComponent,
     MemberManagementPopupComponent, SprintFormComponent, SprintCompleteDialogComponent, TaskFormModalComponent,
-    LoaderComponent, ErrorStateComponent, EmptyStateComponent, ConfirmModalComponent
+    LoaderComponent, ErrorStateComponent, EmptyStateComponent, ConfirmModalComponent, ButtonComponent,
+    TaskAssigneeAvatarFilterComponent
   ],
   templateUrl: './milestone-tree-tab.component.html'
 })
-export class MilestoneTreeTabComponent {
+export class MilestoneTreeTabComponent implements AfterViewInit, OnDestroy {
   readonly store = inject(ProjectDetailStore);
     private readonly route = inject(ActivatedRoute);
   protected readonly currentEmployee = inject(CurrentEmployeeStore);
@@ -83,7 +87,10 @@ export class MilestoneTreeTabComponent {
   private readonly directory = inject(EmployeeDirectoryStore);
   private readonly taskApi = inject(TaskApiService);
   private readonly notificationService = inject(NotificationService);
+  private readonly fileApi = inject(FileApiService, { optional: true });
   protected readonly monitor = inject(ProjectMonitorStore);
+  private readonly toolbarStore = inject(WorkPageToolbarStore);
+  private readonly toolbarTpl = viewChild.required<TemplateRef<unknown>>('toolbarTpl');
 
   readonly taskModalOpen = signal(false);
   readonly taskModalMode = signal<'create' | 'edit'>('create');
@@ -95,12 +102,20 @@ export class MilestoneTreeTabComponent {
   private currentProjectId = '';
   protected readonly projectId = signal('');
   protected readonly assignableMembers = signal<{ employeeId: string; name: string }[]>([]);
+  protected readonly projectRosterMembers = computed<TaskAssigneeAvatarMember[]>(() =>
+    (this.store.project()?.members ?? []).map((member) => ({
+      employeeId: member.userId,
+      name: member.displayName,
+      avatarUrl: member.avatarFileId ? this.fileApi?.getFileUrl(member.avatarFileId) ?? null : null
+    }))
+  );
   private loadedProjectId: string | null = null;
   private loadedMembersForProjectId: string | null = null;
 
   // Highlight mode: every member always sees the FULL tree - filters never prune, they only
   // tint the matching rows (and auto-expand the branches that contain them).
   readonly filterValues = signal<Record<string, string[]>>({});
+  readonly ownerFilter = computed(() => this.filterValues()['owner'] ?? []);
   readonly highlightColor = signal<string>(HIGHLIGHT_SWATCHES[0]);
   readonly allExpanded = signal(false);
   readonly expandCommand = signal<TreeExpandCommand | null>(null);
@@ -132,6 +147,7 @@ export class MilestoneTreeTabComponent {
   });
 
   readonly searchTerm = signal('');
+  readonly searchExpanded = signal(false);
   // Search is just one more highlight criterion (title contains), ANDed with the filter bar.
   private readonly highlightValues = computed(() => ({ ...this.filterValues(), search: [this.searchTerm()] }));
   readonly highlightActive = computed(() => hasActiveHighlight(this.highlightValues()));
@@ -141,6 +157,7 @@ export class MilestoneTreeTabComponent {
     return computeTreeHighlight(tree, this.highlightValues(), new Date());
   });
   readonly matchCount = computed(() => this.highlight().matchedKeys.size);
+  readonly canCreateModule = computed(() => this.renderedTree()?.isOwner ?? false);
 
   selectedNodeId = signal<string | null>(null);
   selectedNode = computed<MilestoneTreeNode | null>(() => {
@@ -208,6 +225,14 @@ export class MilestoneTreeTabComponent {
     });
   }
 
+  ngAfterViewInit(): void {
+    this.toolbarStore.setTemplate(this.toolbarTpl());
+  }
+
+  ngOnDestroy(): void {
+    this.toolbarStore.setTemplate(null);
+  }
+
   private async loadAssignableMembers(projectId: string): Promise<void> {
     try {
       await this.store.loadProjectMembers(projectId);
@@ -232,6 +257,15 @@ export class MilestoneTreeTabComponent {
     // Sprints/tasks are lazy-loaded per leaf; task-level fields (status, priority, assignee...)
     // can only match what's loaded, so an active filter pulls the whole tree in once.
     if (this.highlightActive()) void this.loadWholeTree();
+  }
+
+  setOwnerFilter(employeeIds: string[]): void {
+    this.onFilterFieldChanged({ key: 'owner', values: employeeIds });
+  }
+
+  toggleSearch(): void {
+    this.searchExpanded.update((expanded) => !expanded);
+    if (!this.searchExpanded()) this.onSearchChanged('');
   }
 
   onSearchChanged(term: string): void {
@@ -315,6 +349,12 @@ export class MilestoneTreeTabComponent {
     // Clear any leftover warning from a previous create flow so it can't leak onto
     // this unrelated dialog.
     this.createAssetWarning.set(null);
+  }
+
+  onCreateModuleRequested(): void {
+    const root = this.renderedTree();
+    if (!root?.isOwner) return;
+    this.onCreateSubRequested(root);
   }
 
   dismissCreateAssetWarning(): void {

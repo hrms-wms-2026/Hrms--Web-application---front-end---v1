@@ -47,6 +47,27 @@ const BULK_POPOVER_POSITIONS: ConnectionPositionPair[] = [
   template: `
     <ng-template #toolbarTpl>
       <div class="task-backlog__toolbar">
+        @if (searchExpanded()) {
+          <div class="relative flex h-[30px] w-80 items-center" data-testid="backlog-search">
+            <svg class="pointer-events-none absolute left-2.5 text-[var(--color-text-secondary)]" viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+              <circle cx="11" cy="11" r="8" /><path d="m21 21-4.35-4.35" />
+            </svg>
+            <input autofocus type="search" placeholder="Search work items…" [value]="searchTerm()"
+              (input)="onSearchChanged($any($event.target).value)"
+              class="h-[30px] w-full rounded-lg border border-[var(--color-border)] bg-[var(--color-surface)] pl-8 pr-8 text-[13px] text-[var(--color-text-primary)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-focus-ring)]" />
+            <button type="button" data-testid="backlog-search-close" aria-label="Close search" title="Close search"
+              class="absolute right-1.5 inline-flex h-5 w-5 items-center justify-center rounded text-base leading-none text-[var(--color-text-secondary)] hover:bg-[var(--color-surface-secondary)] hover:text-[var(--color-text-primary)]"
+              (click)="toggleSearch()">&times;</button>
+          </div>
+        } @else {
+          <button type="button" data-testid="backlog-search-toggle" aria-label="Search backlog" title="Search backlog"
+            class="inline-flex h-[30px] w-[30px] items-center justify-center rounded-lg border border-[var(--color-border)] bg-[var(--color-surface)] text-[var(--color-text-secondary)] transition-colors hover:border-[var(--color-accent)] hover:text-[var(--color-text-primary)]"
+            (click)="toggleSearch()">
+            <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true">
+              <circle cx="11" cy="11" r="8" /><path d="m21 21-4.35-4.35" />
+            </svg>
+          </button>
+        }
         <app-task-assignee-avatar-filter
           [members]="projectRosterMembers()"
           [currentEmployeeId]="currentEmployee.id()"
@@ -402,6 +423,8 @@ export class TaskBacklogComponent implements OnInit, AfterViewInit, OnDestroy {
   protected readonly assigneeFilter = signal<string[]>([]);
   protected readonly statusFilter = signal<string[]>([]);
   protected readonly priorityFilter = signal<string[]>([]);
+  protected readonly searchTerm = signal('');
+  protected readonly searchExpanded = signal(false);
   protected readonly categories = signal<TaskCategoryColumn[]>([]);
   protected readonly sprintStatusOptions: readonly WorkDropdownOption[] = [
     { value: 'all', label: 'All sprint statuses' },
@@ -601,12 +624,14 @@ export class TaskBacklogComponent implements OnInit, AfterViewInit, OnDestroy {
     const categories = this.categoryFilter();
     const statuses = this.statusFilter();
     const priorities = this.priorityFilter();
+    const search = this.searchTerm().trim().toLowerCase();
     return this.store.tasks().filter((task) =>
       (objectives.length === 0 || objectives.includes(task.objectiveId)) &&
       (categories.length === 0 || categories.includes(task.categoryId)) &&
       (assignees.length === 0 || task.assigneeEmployeeIds.some((id) => assignees.includes(id))) &&
       (statuses.length === 0 || statuses.includes(task.statusId)) &&
-      (priorities.length === 0 || priorities.includes(task.priority))
+      (priorities.length === 0 || priorities.includes(task.priority)) &&
+      (!search || task.title.toLowerCase().includes(search) || task.shortId.toLowerCase().includes(search))
     );
   }
 
@@ -788,6 +813,16 @@ export class TaskBacklogComponent implements OnInit, AfterViewInit, OnDestroy {
   protected setCategoryFilter(ids: string[]): void { this.categoryFilter.set(ids); }
   protected setAssigneeFilter(ids: string[]): void { this.clearSelection(); this.assigneeFilter.set(ids); }
   protected setSprintStatusFilter(value: string): void { this.sprintStatusFilter.set(value as 'all' | SprintStatus); }
+
+  protected onSearchChanged(term: string): void {
+    this.clearSelection();
+    this.searchTerm.set(term);
+  }
+
+  protected toggleSearch(): void {
+    this.searchExpanded.update((expanded) => !expanded);
+    if (!this.searchExpanded()) this.onSearchChanged('');
+  }
 
   protected onFilterFieldChanged(event: { key: string; values: string[] }): void {
     this.clearSelection();

@@ -197,11 +197,48 @@ html.dark .greeting-card-bg {
   transform-origin: top center;
 }
 
+/* Closing counterpart of the scroll opening: the panel rolls back up into its top edge while the
+ * backdrop fades. Angular adds .ui-popup-leave through `animate.leave` (on a popup's @if wrapper or
+ * its component host) and keeps the element in the DOM until the wrapper's own animation ends, so the
+ * wrapper carries the fade and the panel inside it carries the roll-up, both 240ms.
+ * !important: popup panels/backdrops often declare their own (scoped, more specific) animation. */
+@keyframes uiScrollClose {
+  0% { opacity: 1; transform: translateY(0); clip-path: inset(0 0 0 0 round 12px); }
+  70% { opacity: 1; }
+  100% { opacity: 0; transform: translateY(-8px); clip-path: inset(0 0 100% 0 round 12px); }
+}
+
+@keyframes uiPopOut {
+  from { opacity: 1; transform: translateY(0) scale(1); }
+  to { opacity: 0; transform: translateY(6px) scale(0.96); }
+}
+
+@keyframes uiPopupLeave {
+  0%, 45% { opacity: 1; }
+  100% { opacity: 0; }
+}
+
+.ui-popup-leave {
+  animation: uiPopupLeave 240ms ease-in forwards !important;
+  pointer-events: none;
+}
+
+.ui-popup-leave .ui-scroll-open {
+  animation: uiScrollClose 240ms cubic-bezier(0.4, 0, 1, 1) forwards !important;
+}
+
+.ui-popup-leave .ui-pop-in {
+  animation: uiPopOut 200ms ease-in forwards !important;
+}
+
 @media (prefers-reduced-motion: reduce) {
   .ui-pop-in,
   .ui-scroll-open,
-  .ui-fade-in {
-    animation: none;
+  .ui-fade-in,
+  .ui-popup-leave,
+  .ui-popup-leave .ui-scroll-open,
+  .ui-popup-leave .ui-pop-in {
+    animation: none !important;
   }
 }
 
@@ -311,6 +348,57 @@ html.dark .greeting-card-bg {
   box-shadow: 0 4px 10px -8px color-mix(in srgb, var(--color-accent) 18%, transparent);
 }
 
+/* Pinned popup action bar (Cancel / Save) that spans the whole dialog width along its bottom edge.
+   Rendered by a form deep inside app-preferences-modal; it anchors to the modal dialog (the nearest
+   positioned ancestor), and the dialog body is shortened so the popup fits without a scrollbar.
+   Global because the parent layout rules use :has() across component boundaries. */
+.preferences-footer {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 2;
+  display: flex;
+  justify-content: flex-end;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 1rem var(--popup-pad, 2rem);
+  border-top: 1px solid var(--color-border);
+  background: var(--color-surface);
+}
+.preferences-footer app-button button {
+  height: 2.5rem;
+  min-width: 6rem;
+  padding: 0 1.25rem;
+  font-size: 0.875rem;
+}
+/* The preferences dialog (Profile / Appearance) never scrolls as a whole: it is a flex column whose
+   header keeps its size while the body shrinks to fit 85vh and scrolls internally if ever needed.
+   With a .preferences-footer the bottom padding also reserves room for the pinned action bar.
+   Selectors are deliberately more specific than the components' scoped rules, which load later. */
+[role="dialog"][aria-modal]:has(> .preferences-container) {
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+[role="dialog"][aria-modal]:has(> .preferences-container) > * {
+  flex-shrink: 0;
+}
+[role="dialog"][aria-modal]:has(> .preferences-container) > .preferences-container {
+  flex: 0 1 auto;
+  height: 620px;
+  min-height: 0;
+}
+[role="dialog"][aria-modal]:has(.preferences-footer) {
+  padding-bottom: 5.5rem;
+}
+[role="dialog"][aria-modal]:has(.preferences-footer) > .preferences-container {
+  height: 540px;
+}
+[role="dialog"][aria-modal] .preferences-content:has(.preferences-footer) {
+  padding-bottom: 0.5rem;
+}
+
 /* Popup header icon tile (white rounded square with an accent-coloured glyph). CSS-only so any
    template can use it without imports: <span class="ui-popup-icon" data-icon="calendar" aria-hidden="true"></span>.
    Inside a .ui-popup-header it sits left of the title, which then takes the free space before the close button.
@@ -347,6 +435,7 @@ html.dark .greeting-card-bg {
   min-width: 0;
 }
 .ui-popup-icon[data-icon="calendar"] { --popup-icon: url("data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 24 24%22 fill=%22none%22 stroke=%22black%22 stroke-width=%222%22 stroke-linecap=%22round%22 stroke-linejoin=%22round%22%3E%3Crect x=%223%22 y=%224%22 width=%2218%22 height=%2218%22 rx=%222%22/%3E%3Cpath d=%22M16 2v4M8 2v4M3 10h18%22/%3E%3C/svg%3E"); }
+.ui-popup-icon[data-icon="user"] { --popup-icon: url("data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 24 24%22 fill=%22none%22 stroke=%22black%22 stroke-width=%222%22 stroke-linecap=%22round%22 stroke-linejoin=%22round%22%3E%3Cpath d=%22M20 21a8 8 0 1 0-16 0%22/%3E%3Ccircle cx=%2212%22 cy=%227%22 r=%224%22/%3E%3C/svg%3E"); }
 .ui-popup-icon[data-icon="user-plus"] { --popup-icon: url("data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 24 24%22 fill=%22none%22 stroke=%22black%22 stroke-width=%222%22 stroke-linecap=%22round%22 stroke-linejoin=%22round%22%3E%3Cpath d=%22M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2%22/%3E%3Ccircle cx=%229%22 cy=%227%22 r=%224%22/%3E%3Cpath d=%22M19 8v6M22 11h-6%22/%3E%3C/svg%3E"); }
 .ui-popup-icon[data-icon="users"] { --popup-icon: url("data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 24 24%22 fill=%22none%22 stroke=%22black%22 stroke-width=%222%22 stroke-linecap=%22round%22 stroke-linejoin=%22round%22%3E%3Cpath d=%22M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2%22/%3E%3Ccircle cx=%229%22 cy=%227%22 r=%224%22/%3E%3Cpath d=%22M22 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75%22/%3E%3C/svg%3E"); }
 .ui-popup-icon[data-icon="clock"] { --popup-icon: url("data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 24 24%22 fill=%22none%22 stroke=%22black%22 stroke-width=%222%22 stroke-linecap=%22round%22 stroke-linejoin=%22round%22%3E%3Ccircle cx=%2212%22 cy=%2212%22 r=%2210%22/%3E%3Cpath d=%22M12 6v6l4 2%22/%3E%3C/svg%3E"); }

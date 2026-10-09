@@ -35,6 +35,27 @@ import { NotificationService } from '../../../../core/services/notification.serv
   template: `
     <ng-template #toolbarTpl>
       <div class="task-board__toolbar">
+        @if (searchExpanded()) {
+          <div class="relative flex h-[30px] w-80 items-center" data-testid="board-search">
+            <svg class="pointer-events-none absolute left-2.5 text-[var(--color-text-secondary)]" viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+              <circle cx="11" cy="11" r="8" /><path d="m21 21-4.35-4.35" />
+            </svg>
+            <input autofocus type="search" placeholder="Search work items…" [value]="searchTerm()"
+              (input)="onSearchChanged($any($event.target).value)"
+              class="h-[30px] w-full rounded-lg border border-[var(--color-border)] bg-[var(--color-surface)] pl-8 pr-8 text-[13px] text-[var(--color-text-primary)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-focus-ring)]" />
+            <button type="button" data-testid="board-search-close" aria-label="Close search" title="Close search"
+              class="absolute right-1.5 inline-flex h-5 w-5 items-center justify-center rounded text-base leading-none text-[var(--color-text-secondary)] hover:bg-[var(--color-surface-secondary)] hover:text-[var(--color-text-primary)]"
+              (click)="toggleSearch()">&times;</button>
+          </div>
+        } @else {
+          <button type="button" data-testid="board-search-toggle" aria-label="Search board" title="Search board"
+            class="inline-flex h-[30px] w-[30px] items-center justify-center rounded-lg border border-[var(--color-border)] bg-[var(--color-surface)] text-[var(--color-text-secondary)] transition-colors hover:border-[var(--color-accent)] hover:text-[var(--color-text-primary)]"
+            (click)="toggleSearch()">
+            <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true">
+              <circle cx="11" cy="11" r="8" /><path d="m21 21-4.35-4.35" />
+            </svg>
+          </button>
+        }
         <app-task-assignee-avatar-filter
           [members]="projectRosterMembers()"
           [currentEmployeeId]="currentEmployee.id()"
@@ -177,6 +198,8 @@ export class TaskBoardComponent implements OnInit, AfterViewChecked, AfterViewIn
   protected readonly assigneeFilter = signal<string[]>([]);
   protected readonly statusFilter = signal<string[]>([]);
   protected readonly priorityFilter = signal<string[]>([]);
+  protected readonly searchTerm = signal('');
+  protected readonly searchExpanded = signal(false);
   protected readonly boardStructureEditorOpen = signal(false);
   private highlightTaskId: string | null = null;
   private didScrollToHighlight = false;
@@ -272,6 +295,13 @@ export class TaskBoardComponent implements OnInit, AfterViewChecked, AfterViewIn
   protected setCategoryFilter(ids: string[]): void { this.categoryFilter.set(ids); }
   protected setAssigneeFilter(ids: string[]): void { this.assigneeFilter.set(ids); }
 
+  protected onSearchChanged(term: string): void { this.searchTerm.set(term); }
+
+  protected toggleSearch(): void {
+    this.searchExpanded.update((expanded) => !expanded);
+    if (!this.searchExpanded()) this.searchTerm.set('');
+  }
+
   protected onFilterFieldChanged(event: { key: string; values: string[] }): void {
     switch (event.key) {
       case 'module': this.setObjectiveFilter(event.values); break;
@@ -355,7 +385,11 @@ export class TaskBoardComponent implements OnInit, AfterViewChecked, AfterViewIn
     const statusMatches = statuses.length === 0 || statuses.includes(task.statusId);
     const priorities = this.priorityFilter();
     const priorityMatches = priorities.length === 0 || priorities.includes(task.priority);
-    return objectiveMatches && sprintMatches && categoryMatches && assigneeMatches && statusMatches && priorityMatches;
+    const search = this.searchTerm().trim().toLowerCase();
+    const searchMatches = !search
+      || task.title.toLowerCase().includes(search)
+      || task.shortId.toLowerCase().includes(search);
+    return objectiveMatches && sprintMatches && categoryMatches && assigneeMatches && statusMatches && priorityMatches && searchMatches;
   }
 
   private async loadSprints(projectId: string): Promise<void> {

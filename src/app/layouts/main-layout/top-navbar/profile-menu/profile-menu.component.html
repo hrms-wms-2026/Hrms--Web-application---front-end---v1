@@ -77,6 +77,8 @@
 <app-preferences-modal
   [open]="isPreferencesOpen()"
   [title]="preferencesTitle()"
+  [icon]="preferencesIcon()"
+  [subtitle]="preferencesSubtitle()"
   [tabs]="activePreferenceTabs()"
   [activeTabId]="currentActiveSidebarTabId()"
   (activeTabIdChange)="onSidebarTabIdChange($event)"
@@ -88,7 +90,7 @@
   }
   @if (activeMode() === 'profile') {
     @defer (when isPreferencesOpen() && activeMode() === 'profile') {
-      <app-profile-tab [activeSubTab]="activeProfileSubTab()" />
+      <app-profile-tab [activeSubTab]="activeProfileSubTab()" (cancelled)="closePreferences()" />
     } @placeholder {
       <div class="skeleton-rows" aria-busy="true" aria-label="Loading profile"></div>
     }

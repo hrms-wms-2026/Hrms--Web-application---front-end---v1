@@ -12,6 +12,7 @@ import { toggleModuleLive } from '../../utils/module-task-selection';
 
 @Component({
   selector: 'app-calendar-event-modal',
+  host: { 'animate.leave': 'ui-popup-leave' },
   standalone: true,
   imports: [DatePickerComponent, ModuleTaskPickerComponent, SprintTaskPickerComponent],
   template: `

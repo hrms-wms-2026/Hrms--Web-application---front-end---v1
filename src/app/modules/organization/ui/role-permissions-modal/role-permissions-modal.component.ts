@@ -5,6 +5,7 @@ import { ButtonComponent } from '../../../../shared/ui/button/button.component';
 
 @Component({
   selector: 'app-role-permissions-modal',
+  host: { 'animate.leave': 'ui-popup-leave' },
   standalone: true,
   imports: [CommonModule, ButtonComponent],
   templateUrl: './role-permissions-modal.component.html',

@@ -13,6 +13,7 @@ export interface RoleFormSubmitValue {
 
 @Component({
   selector: 'app-role-form-modal',
+  host: { 'animate.leave': 'ui-popup-leave' },
   standalone: true,
   imports: [CommonModule, ReactiveFormsModule, ButtonComponent, InputComponent],
   templateUrl: './role-form-modal.component.html',

@@ -52,6 +52,18 @@ export class DependentsPanelComponent {
     this.addForm.reset({ relationship: 'child' });
   }
 
+  /** Footer "Save changes": adds a half-typed dependent (relationship alone has a default, so it doesn't count). */
+  submitIfFilled(): 'empty' | 'submitted' | 'invalid' {
+    const { name, dateOfBirth, phone } = this.addForm.getRawValue();
+    if (![name, dateOfBirth, phone].some((v) => (v ?? '').trim())) return 'empty';
+    if (this.addForm.invalid) {
+      this.addForm.markAllAsTouched();
+      return 'invalid';
+    }
+    this.onSubmitAdd();
+    return 'submitted';
+  }
+
   onRemove(id: string): void {
     this.remove.emit(id);
   }

@@ -1,9 +1,10 @@
-import { Component, ElementRef, OnDestroy, OnInit, input, output, signal, viewChild } from '@angular/core';
+import { Component, ElementRef, OnDestroy, OnInit, computed, inject, input, output, signal, viewChild } from '@angular/core';
 import { MilestoneTreeNode } from '../../models/milestone.model';
 import { MonitorAlertDto } from '../../models/dto/monitor.dto';
 import { TreeAlertMarkComponent } from '../tree-alert-mark/tree-alert-mark.component';
 import { isLeafObjective } from '../../utils/project.mapper';
 import { AvatarComponent } from '../../../../shared/ui/avatar/avatar.component';
+import { EmployeeDirectoryStore } from '../../state/employee-directory.store';
 
 @Component({
   selector: 'app-module-tree-row',
@@ -63,7 +64,7 @@ import { AvatarComponent } from '../../../../shared/ui/avatar/avatar.component';
           class="inline-flex shrink-0"
           style="--color-profile-bg: var(--color-accent); --color-profile-text: #ffffff; --color-border: #ffffff;"
         >
-          <app-avatar [userName]="node().ownerName" size="sm" />
+          <app-avatar [avatarUrl]="ownerIdentity()?.avatarUrl" [userName]="ownerIdentity()?.name ?? node().ownerName" size="sm" />
         </span>
 
         <span class="text-xs {{ selected() ? 'text-white' : 'text-[var(--color-text-secondary)]' }}" data-testid="due-date-cell">{{ node().endDate }}</span>
@@ -153,6 +154,7 @@ import { AvatarComponent } from '../../../../shared/ui/avatar/avatar.component';
   `
 })
 export class ModuleTreeRowComponent implements OnInit, OnDestroy {
+  private readonly employeeDirectory = inject(EmployeeDirectoryStore);
   node = input.required<MilestoneTreeNode>();
   selected = input(false);
   depth = input(0);
@@ -165,6 +167,10 @@ export class ModuleTreeRowComponent implements OnInit, OnDestroy {
    *  `progress` is a non-nullable number with no "no data" state. */
   progressLabel = input<string | null>(null);
   actionsOpen = signal(false);
+  protected readonly ownerIdentity = computed(() => {
+    const ownerId = this.node().ownerId;
+    return ownerId ? this.employeeDirectory.get(ownerId) : undefined;
+  });
 
   selectedRow = output<MilestoneTreeNode>();
   chevronClicked = output<Event>();
