@@ -53,7 +53,7 @@ export class WorkPatternCardComponent implements OnInit {
 
   private readonly focusMinutes = computed(() => sumBy(this.rawDays(), (d) => d.focusMinutes));
   private readonly meetingMinutes = computed(() => sumBy(this.rawDays(), (d) => d.meetingMinutes));
-  private readonly adminMinutes = computed(() => sumBy(this.rawDays(), (d) => d.adminMinutes));
+  private readonly otherActiveMinutes = computed(() => sumBy(this.rawDays(), (d) => d.otherActiveMinutes));
   private readonly idleMinutes = computed(() => sumBy(this.rawDays(), (d) => d.idleMinutes));
 
   protected readonly weeklyWorkedMinutes = computed(() =>
@@ -64,15 +64,17 @@ export class WorkPatternCardComponent implements OnInit {
   // once we know there's genuinely nothing to report (has attendance history loaded, all zero).
   protected readonly hasActivity = computed(() => this.weeklyWorkedMinutes() > 0);
 
-  protected readonly productiveMinutes = computed(
-    () => this.focusMinutes() + this.meetingMinutes() + this.adminMinutes()
-  );
+  // The backend's own productiveMinutes (from WorkPatternWindowClassifier) is app-category-aware -
+  // only Meeting time plus Focus/OtherActive time spent in a "Productive"-classified app counts.
+  // Summing focus+meeting+otherActive here would double back to the old "all non-idle time is
+  // productive" definition the backend deliberately moved away from.
+  protected readonly productiveMinutes = computed(() => sumBy(this.rawDays(), (d) => d.productiveMinutes));
 
   protected readonly weeklyWorkedLabel = computed(() => formatHours(this.weeklyWorkedMinutes()));
   protected readonly productiveLabel = computed(() => formatHours(this.productiveMinutes()));
   protected readonly focusLabel = computed(() => formatHours(this.focusMinutes()));
   protected readonly meetingLabel = computed(() => formatHours(this.meetingMinutes()));
-  protected readonly adminLabel = computed(() => formatHours(this.adminMinutes()));
+  protected readonly adminLabel = computed(() => formatHours(this.otherActiveMinutes()));
   protected readonly idleLabel = computed(() => formatHours(this.idleMinutes()));
 
   // Same denominator as the segment bar below - weekly worked minutes, not the monitoring total.
@@ -107,7 +109,7 @@ export class WorkPatternCardComponent implements OnInit {
     const raw: { type: WorkPatternSegmentType; minutes: number }[] = [
       { type: 'focus', minutes: this.focusMinutes() },
       { type: 'meeting', minutes: this.meetingMinutes() },
-      { type: 'admin', minutes: this.adminMinutes() },
+      { type: 'admin', minutes: this.otherActiveMinutes() },
       { type: 'idle', minutes: this.idleMinutes() }
     ];
     const total = raw.reduce((sum, s) => sum + s.minutes, 0);

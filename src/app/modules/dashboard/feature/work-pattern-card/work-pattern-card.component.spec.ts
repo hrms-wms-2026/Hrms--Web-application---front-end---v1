@@ -12,10 +12,11 @@ function day(
   date: string,
   focusMinutes: number,
   meetingMinutes: number,
-  adminMinutes: number,
-  idleMinutes: number
+  otherActiveMinutes: number,
+  idleMinutes: number,
+  productiveMinutes: number = focusMinutes + meetingMinutes + otherActiveMinutes
 ): WorkPatternDay {
-  return { date, focusMinutes, meetingMinutes, adminMinutes, idleMinutes };
+  return { date, focusMinutes, meetingMinutes, otherActiveMinutes, idleMinutes, productiveMinutes };
 }
 
 function historyRow(totalWorkedMinutes: number): AttendanceHistoryRow {

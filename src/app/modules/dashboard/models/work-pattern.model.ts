@@ -2,8 +2,9 @@ export interface WorkPatternDay {
   date: string;
   focusMinutes: number;
   meetingMinutes: number;
-  adminMinutes: number;
+  otherActiveMinutes: number;
   idleMinutes: number;
+  productiveMinutes: number;
 }
 
 export interface WorkPatternResponse {
