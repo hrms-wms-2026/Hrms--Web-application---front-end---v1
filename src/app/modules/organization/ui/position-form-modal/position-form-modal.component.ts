@@ -44,6 +44,7 @@ function integerValidator(control: AbstractControl): ValidationErrors | null {
 
 @Component({
   selector: 'app-position-form-modal',
+  host: { 'animate.leave': 'ui-popup-leave' },
   standalone: true,
   imports: [CommonModule, ReactiveFormsModule, ButtonComponent, InputComponent, SelectComponent],
   templateUrl: './position-form-modal.component.html',

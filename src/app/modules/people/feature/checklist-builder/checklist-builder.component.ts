@@ -87,6 +87,7 @@ export interface ChecklistTaskFormValue {
 
 @Component({
   selector: 'app-checklist-builder',
+  host: { '[animate.leave]': "open() ? 'ui-popup-leave' : ''" },
   standalone: true,
   imports: [
     ReactiveFormsModule,

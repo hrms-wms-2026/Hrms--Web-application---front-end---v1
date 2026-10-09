@@ -1,5 +1,5 @@
 import { ChangeDetectionStrategy, Component, computed, input, output } from '@angular/core';
-import { ModalComponent, ModalSize } from '../modal/modal.component';
+import { ModalComponent, ModalSize, PopupIcon } from '../modal/modal.component';
 import { TabsComponent, TabOption } from '../tabs/tabs.component';
 import { PreferenceSubTab } from './preference-subtab.model';
 
@@ -25,7 +25,7 @@ const TAB_ICON_PATHS: Record<NonNullable<PreferenceTab['icon']>, string> = {
   standalone: true,
   imports: [ModalComponent, TabsComponent],
   template: `
-    <app-modal [open]="open()" [title]="title()" [size]="size()" (closed)="closed.emit()">
+    <app-modal [open]="open()" [title]="title()" [icon]="icon()" [subtitle]="subtitle()" [size]="size()" (closed)="closed.emit()">
       <div class="preferences-container" [class.preferences-container--no-sidebar]="tabs().length === 0">
         @if (tabs().length > 0) {
           <nav class="preferences-sidebar" aria-label="Preferences categories">
@@ -90,6 +90,8 @@ const TAB_ICON_PATHS: Record<NonNullable<PreferenceTab['icon']>, string> = {
 export class PreferencesModalComponent {
   readonly open = input(false);
   readonly title = input<string>('Preferences');
+  readonly icon = input<PopupIcon | ''>('');
+  readonly subtitle = input<string>('');
   readonly tabs = input<readonly PreferenceTab[]>([]);
   readonly activeTabId = input<string>('');
   readonly subTabs = input<readonly PreferenceSubTab[]>([]);

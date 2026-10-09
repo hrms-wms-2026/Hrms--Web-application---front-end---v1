@@ -12,6 +12,7 @@ import { createEmptyLeavePolicyFormDraft, validateLeavePolicyFormDraft } from '.
 
 @Component({
   selector: 'app-leave-policy-form-wizard',
+  host: { 'animate.leave': 'ui-popup-leave' },
   standalone: true,
   imports: [CommonModule, FormsModule, EmptyStateComponent, ProgressBarComponent, DatePickerComponent],
   templateUrl: './leave-policy-form-wizard.component.html',

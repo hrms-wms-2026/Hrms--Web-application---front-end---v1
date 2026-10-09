@@ -269,10 +269,10 @@ describe('TaskBoardComponent', () => {
       completedHours: 0, progressPercent: 0, sprintId: null, openClockSessionEmployeeId: null,
       openClockSessionClockInAt: null, totalLoggedMinutes: 0, subtaskAssigneeEmployeeIds: [] as string[]
     };
-    const t1 = { ...base, id: 't1', assigneeEmployeeIds: ['emp-a'] };
-    const t2 = { ...base, id: 't2', assigneeEmployeeIds: ['emp-b'] };
-    const t3 = { ...base, id: 't3', assigneeEmployeeIds: [] };
-    const t4 = { ...base, id: 't4', assigneeEmployeeIds: [], subtaskAssigneeEmployeeIds: ['emp-a'] };
+    const t1 = { ...base, id: 't1', shortId: 'PRJ-1', title: 'Alpha task', assigneeEmployeeIds: ['emp-a'] };
+    const t2 = { ...base, id: 't2', shortId: 'PRJ-2', title: 'Beta task', assigneeEmployeeIds: ['emp-b'] };
+    const t3 = { ...base, id: 't3', shortId: 'PRJ-3', title: 'Gamma task', assigneeEmployeeIds: [] };
+    const t4 = { ...base, id: 't4', shortId: 'PRJ-4', title: 'Delta task', assigneeEmployeeIds: [], subtaskAssigneeEmployeeIds: ['emp-a'] };
     const storeStub = {
       loadBoard: vi.fn().mockResolvedValue(undefined),
       columnsWithTasks: () => [{ status, tasks: [t1, t2, t3, t4] }],
@@ -303,6 +303,7 @@ describe('TaskBoardComponent', () => {
 
     const instance = fixture.componentInstance as unknown as {
       setAssigneeFilter: (ids: string[]) => void;
+      onSearchChanged: (term: string) => void;
       columnsWithTasks: () => { tasks: { id: string }[] }[];
     };
 
@@ -315,6 +316,12 @@ describe('TaskBoardComponent', () => {
     instance.setAssigneeFilter([]);
     fixture.detectChanges();
     expect(instance.columnsWithTasks().flatMap((c) => c.tasks.map((t) => t.id))).toEqual(['t1', 't2', 't3', 't4']);
+
+    instance.onSearchChanged('beta');
+    expect(instance.columnsWithTasks().flatMap((c) => c.tasks.map((t) => t.id))).toEqual(['t2']);
+
+    instance.onSearchChanged('prj-4');
+    expect(instance.columnsWithTasks().flatMap((c) => c.tasks.map((t) => t.id))).toEqual(['t4']);
   });
 
   it('sprint filter "Individual task" shows only tasks with no sprint assigned', async () => {

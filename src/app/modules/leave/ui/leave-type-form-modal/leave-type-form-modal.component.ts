@@ -7,7 +7,7 @@ import { InputComponent } from '../../../../shared/ui/input/input.component';
 import { SelectComponent } from '../../../../shared/ui/select/select.component';
 import { CreateLeaveTypeRequest, LeaveTypeResponse } from '../../models/leave-type.model';
 export type LeaveTypeFormValue = CreateLeaveTypeRequest;
-@Component({ selector: 'app-leave-type-form-modal', standalone: true, imports: [CommonModule, ReactiveFormsModule, ButtonComponent, InputComponent, SelectComponent], templateUrl: './leave-type-form-modal.component.html', styleUrl: './leave-type-form-modal.component.css', changeDetection: ChangeDetectionStrategy.OnPush })
+@Component({ selector: 'app-leave-type-form-modal', host: { 'animate.leave': 'ui-popup-leave' }, standalone: true, imports: [CommonModule, ReactiveFormsModule, ButtonComponent, InputComponent, SelectComponent], templateUrl: './leave-type-form-modal.component.html', styleUrl: './leave-type-form-modal.component.css', changeDetection: ChangeDetectionStrategy.OnPush })
 export class LeaveTypeFormModalComponent implements OnInit {
   private readonly fb = inject(FormBuilder);
   @Input() leaveType: LeaveTypeResponse | null = null;

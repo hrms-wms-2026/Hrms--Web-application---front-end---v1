@@ -47,7 +47,7 @@ const MAX_PREVIEW_NODES = 8;
 
     @if (expanded()) {
       <!-- stopPropagation: a card around the preview may open the graph on click; closing must not reopen it -->
-      <div class="wg-overlay" data-testid="work-network-overlay" (pointerdown)="onBackdropPointerDown($event)" (click)="$event.stopPropagation()">
+      <div class="wg-overlay" animate.leave="ui-popup-leave" data-testid="work-network-overlay" (pointerdown)="onBackdropPointerDown($event)" (click)="$event.stopPropagation()">
         <section
           #dialog
           class="wg-dialog ui-scroll-open"

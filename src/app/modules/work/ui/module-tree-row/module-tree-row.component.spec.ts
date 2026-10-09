@@ -1,9 +1,23 @@
 import { ComponentFixture, TestBed } from '@angular/core/testing';
+import { vi } from 'vitest';
 import { ModuleTreeRowComponent } from './module-tree-row.component';
 import { MilestoneTreeNode } from '../../models/milestone.model';
+import { EmployeeDirectoryStore } from '../../state/employee-directory.store';
 
 describe('ModuleTreeRowComponent', () => {
   let fixture: ComponentFixture<ModuleTreeRowComponent>;
+  const directoryStub = {
+    get: vi.fn((employeeId: string) => employeeId === 'owner-1'
+      ? { id: 'owner-1', name: 'Arun Cached', initials: 'AC', avatarUrl: '/cached/owner-1' }
+      : undefined)
+  };
+
+  beforeEach(() => {
+    TestBed.configureTestingModule({
+      imports: [ModuleTreeRowComponent],
+      providers: [{ provide: EmployeeDirectoryStore, useValue: directoryStub }]
+    });
+  });
 
   const child: MilestoneTreeNode = {
     id: 'o2', title: 'Child', description: null, startDate: '2026-01-20', endDate: '2026-02-01',
@@ -136,6 +150,15 @@ describe('ModuleTreeRowComponent', () => {
   it('non-compact mode (default) is unchanged - still renders progress, owner and actions columns', () => {
     setup(owned);
     expect(fixture.nativeElement.querySelector('[data-testid="progress-cell"]')).toBeTruthy();
+  });
+
+  it('renders the owner image and name from the preloaded employee directory cache', () => {
+    setup({ ...owned, ownerId: 'owner-1' });
+
+    const image = fixture.nativeElement.querySelector('[data-testid="owner-cell"] img') as HTMLImageElement;
+    expect(image).not.toBeNull();
+    expect(image.getAttribute('src')).toBe('/cached/owner-1');
+    expect(image.getAttribute('alt')).toBe("Arun Cached's avatar");
   });
 
   it('compact mode shows the given progressLabel text, or nothing when null', () => {

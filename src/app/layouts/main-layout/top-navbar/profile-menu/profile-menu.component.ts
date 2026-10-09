@@ -4,7 +4,7 @@ import { AuthStore } from '../../../../core/auth/state/auth.store';
 import { NotificationService } from '../../../../core/services/notification.service';
 import { PopoverComponent } from '../../../../shared/ui/popover/popover.component';
 import { AvatarComponent } from '../../../../shared/ui/avatar/avatar.component';
-import { ModalComponent, ModalSize } from '../../../../shared/ui/modal/modal.component';
+import { ModalComponent, ModalSize, PopupIcon } from '../../../../shared/ui/modal/modal.component';
 import { PreferencesModalComponent, PreferenceTab } from '../../../../shared/ui/preferences-modal/preferences-modal.component';
 import { AppearancePanelComponent } from '../../../../shared/ui/appearance-panel/appearance-panel.component';
 import { ProfileTabComponent } from '@modules/profile/feature/profile-tab/profile-tab.component';
@@ -35,11 +35,11 @@ export class ProfileMenuComponent {
   readonly activeTabId = computed(() => this.activeMode());
 
   readonly profilePreferenceTabs: readonly PreferenceTab[] = [
-    { id: 'personal', label: 'Personal Information', icon: 'user' },
-    { id: 'emergency', label: 'Emergency Contact & Dependents', icon: 'user-check' },
-    { id: 'job', label: 'Job Information', icon: 'briefcase' },
-    { id: 'payroll', label: 'Payroll & Statutory', icon: 'credit-card' },
-    { id: 'security', label: 'Security Settings', icon: 'shield' }
+    { id: 'personal', label: 'Personal information', icon: 'user' },
+    { id: 'emergency', label: 'Emergency contact', icon: 'user-check' },
+    { id: 'job', label: 'Job information', icon: 'briefcase' },
+    { id: 'payroll', label: 'Payroll & statutory', icon: 'credit-card' },
+    { id: 'security', label: 'Security settings', icon: 'shield' }
   ];
 
   readonly appearancePreferenceTabs: readonly PreferenceTab[] = [
@@ -64,6 +64,12 @@ export class ProfileMenuComponent {
   readonly preferencesTitle = computed(() => {
     return this.activeMode() === 'profile' ? 'Profile' : 'Appearance';
   });
+
+  readonly preferencesIcon = computed<PopupIcon | ''>(() => (this.activeMode() === 'profile' ? 'user' : ''));
+
+  readonly preferencesSubtitle = computed(() =>
+    this.activeMode() === 'profile' ? 'Manage your personal and employment information.' : ''
+  );
 
   readonly profileSubTabs = PROFILE_SUB_TABS;
 

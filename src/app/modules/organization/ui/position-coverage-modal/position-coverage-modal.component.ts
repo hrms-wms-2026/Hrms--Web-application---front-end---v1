@@ -26,6 +26,7 @@ export interface TargetOccupancyRequest {
 
 @Component({
   selector: 'app-position-coverage-modal',
+  host: { 'animate.leave': 'ui-popup-leave' },
   standalone: true,
   imports: [CommonModule, ReactiveFormsModule, ButtonComponent, SelectComponent],
   templateUrl: './position-coverage-modal.component.html',

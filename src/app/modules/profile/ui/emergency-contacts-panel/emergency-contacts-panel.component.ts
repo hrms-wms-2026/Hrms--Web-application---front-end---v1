@@ -43,6 +43,18 @@ export class EmergencyContactsPanelComponent {
     this.addForm.reset();
   }
 
+  /** Footer "Save changes": adds a half-typed contact. Returns false when the form is filled but invalid. */
+  submitIfFilled(): 'empty' | 'submitted' | 'invalid' {
+    const { name, relationship, phone, email } = this.addForm.getRawValue();
+    if (![name, relationship, phone, email].some((v) => v.trim())) return 'empty';
+    if (this.addForm.invalid) {
+      this.addForm.markAllAsTouched();
+      return 'invalid';
+    }
+    this.onSubmitAdd();
+    return 'submitted';
+  }
+
   onRemove(id: string): void {
     this.remove.emit(id);
   }

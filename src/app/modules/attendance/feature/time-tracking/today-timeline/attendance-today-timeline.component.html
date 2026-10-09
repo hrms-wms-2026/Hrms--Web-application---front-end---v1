@@ -50,7 +50,7 @@
 </section>
 
 @if (isModalOpen()) {
-  <div class="today-modal-backdrop" (click)="closeModal()">
+  <div class="today-modal-backdrop" animate.leave="ui-popup-leave" (click)="closeModal()">
     <div
       class="today-modal ui-scroll-open"
       (click)="$event.stopPropagation()"
