@@ -50,7 +50,7 @@ const MAX_PREVIEW_NODES = 8;
       <div class="wg-overlay" data-testid="work-network-overlay" (pointerdown)="onBackdropPointerDown($event)" (click)="$event.stopPropagation()">
         <section
           #dialog
-          class="wg-dialog"
+          class="wg-dialog ui-scroll-open"
           role="dialog"
           aria-modal="true"
           aria-labelledby="work-network-dialog-title"

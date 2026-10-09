@@ -69,15 +69,62 @@ describe('CalendarParticipantPickerComponent', () => {
     expect(spy).toHaveBeenCalledWith([]);
   });
 
-  it('excludes the current user from the results - you cannot add yourself as a participant of your own event', () => {
+  it('lists the current user first as "(You)" so they can add themselves, but never pre-selects them', () => {
     const withSelf = [
       ...employees,
       { id: 'emp-me', fullName: 'Current User', email: 'me@example.com', departmentName: 'Engineering' }
     ];
     setup(withSelf, 'emp-me');
 
-    expect(rows().length).toBe(2);
-    expect(fixture.nativeElement.textContent).not.toContain('Current User');
+    expect(rows().length).toBe(3);
+    expect(rows()[0].textContent).toContain('Current User (You)');
+    expect(rows()[0].getAttribute('aria-pressed')).toBe('false');
+
+    const spy = vi.fn();
+    fixture.componentInstance.selectedPeopleChange.subscribe(spy);
+    rows()[0].click();
+    expect(spy).toHaveBeenCalledWith([{ id: 'emp-1', name: 'Ada Lovelace' }, { id: 'emp-me', name: 'Current User' }]);
+  });
+
+  it('still offers the current user first when they are not on the first page of results', () => {
+    const me = { id: 'emp-me', fullName: 'Current User', email: 'me@example.com', departmentName: 'Engineering' };
+    const listEmployees = vi.fn((req: { search: string }) =>
+      of(req.search === 'me@example.com'
+        ? { items: [me], totalCount: 1, page: 1, pageSize: 5 }
+        : { items: employees, totalCount: 2, page: 1, pageSize: 20 }));
+    TestBed.configureTestingModule({
+      imports: [CalendarParticipantPickerComponent],
+      providers: [
+        { provide: PeopleApiService, useValue: { listEmployees } },
+        { provide: AuthStore, useValue: { employeeId: () => 'emp-me', email: () => 'me@example.com' } }
+      ]
+    });
+    fixture = TestBed.createComponent(CalendarParticipantPickerComponent);
+    fixture.componentRef.setInput('open', true);
+    fixture.detectChanges();
+
+    expect(rows().length).toBe(3);
+    expect(rows()[0].textContent).toContain('Current User (You)');
+  });
+
+  it('recognises the current user by login email when the session has no employee id', () => {
+    const withSelf = [
+      ...employees,
+      { id: 'emp-me', fullName: 'Current User', email: 'Me@Example.com', departmentName: 'Engineering' }
+    ];
+    peopleApi = { listEmployees: vi.fn().mockReturnValue(of({ items: withSelf, totalCount: 3, page: 1, pageSize: 20 })) };
+    TestBed.configureTestingModule({
+      imports: [CalendarParticipantPickerComponent],
+      providers: [
+        { provide: PeopleApiService, useValue: peopleApi },
+        { provide: AuthStore, useValue: { employeeId: () => null, email: () => 'me@example.com' } }
+      ]
+    });
+    fixture = TestBed.createComponent(CalendarParticipantPickerComponent);
+    fixture.componentRef.setInput('open', true);
+    fixture.detectChanges();
+
+    expect(rows()[0].textContent).toContain('Current User (You)');
   });
 
   it('still shows every result when the current employee id is unknown', () => {

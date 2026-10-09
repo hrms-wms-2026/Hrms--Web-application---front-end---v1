@@ -1,4 +1,4 @@
-import { Component, OnInit, computed, inject, input } from '@angular/core';
+import { Component, computed, effect, inject, input, untracked } from '@angular/core';
 import { AvatarComponent } from '../../../../shared/ui/avatar/avatar.component';
 import { EmployeeDirectoryStore } from '../../state/employee-directory.store';
 
@@ -21,7 +21,7 @@ import { EmployeeDirectoryStore } from '../../state/employee-directory.store';
     </div>
   `
 })
-export class EmployeeAvatarComponent implements OnInit {
+export class EmployeeAvatarComponent {
   private readonly directory = inject(EmployeeDirectoryStore);
 
   employeeId = input.required<string>();
@@ -30,7 +30,12 @@ export class EmployeeAvatarComponent implements OnInit {
 
   protected readonly summary = computed(() => this.directory.get(this.employeeId()));
 
-  ngOnInit(): void {
-    void this.directory.ensureLoaded([this.employeeId()]);
+  constructor() {
+    // Re-resolve whenever the id changes, not just on init: callers often bind an id that is
+    // still empty on first render (e.g. the current user's id arriving from /me) and fills in later.
+    effect(() => {
+      const id = this.employeeId();
+      if (id) untracked(() => void this.directory.ensureLoaded([id]));
+    });
   }
 }

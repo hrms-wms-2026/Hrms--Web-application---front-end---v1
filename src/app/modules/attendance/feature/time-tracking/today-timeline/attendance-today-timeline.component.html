@@ -52,7 +52,7 @@
 @if (isModalOpen()) {
   <div class="today-modal-backdrop" (click)="closeModal()">
     <div
-      class="today-modal"
+      class="today-modal ui-scroll-open"
       (click)="$event.stopPropagation()"
       role="dialog"
       aria-modal="true"
@@ -61,7 +61,8 @@
       tabindex="-1"
     >
       <!-- Modal Header matching Add Employee wizard -->
-      <div class="today-modal-header">
+      <div class="today-modal-header ui-popup-header">
+        <span class="ui-popup-icon" data-icon="clock" aria-hidden="true"></span>
         <div class="today-modal-header-left">
           <h2 id="today-modal-title" class="today-modal-title">Today's Activity & Time Distribution</h2>
           <p class="today-modal-subtitle">

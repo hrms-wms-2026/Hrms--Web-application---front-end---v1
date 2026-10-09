@@ -1,8 +1,9 @@
 <div class="ram-backdrop" (click)="cancel.emit()">
-  <div class="ram-modal" (click)="$event.stopPropagation()" role="dialog" aria-modal="true">
+  <div class="ram-modal ui-scroll-open" (click)="$event.stopPropagation()" role="dialog" aria-modal="true">
     
     <!-- Header -->
-    <div class="ram-header">
+    <div class="ram-header ui-popup-header">
+      <span class="ui-popup-icon" data-icon="archive" aria-hidden="true"></span>
       <div class="ram-title-row">
         <div class="ram-icon-wrap">
           <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">

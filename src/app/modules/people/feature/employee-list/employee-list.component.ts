@@ -1,6 +1,6 @@
 import { ChangeDetectionStrategy, Component, DestroyRef, computed, effect, inject, signal, untracked } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
-import { RouterLink, ActivatedRoute, Router } from '@angular/router';
+import { ActivatedRoute, Router } from '@angular/router';
 import { AuthStore } from '../../../../core/auth/state/auth.store';
 import { NotificationService } from '../../../../core/services/notification.service';
 import { PermissionService } from '../../../../core/auth/state/permission.service';
@@ -42,7 +42,6 @@ const TERMINAL_STATUSES = ['resigned', 'terminated'];
   selector: 'app-employee-list',
   standalone: true,
   imports: [
-    RouterLink,
     BreadcrumbHeaderComponent,
     ButtonComponent,
     ErrorStateComponent,
@@ -160,6 +159,7 @@ export class EmployeeListComponent {
   private searchDebounceHandle: ReturnType<typeof setTimeout> | null = null;
 
   readonly isAddEmployeeModalOpen = signal(false);
+  private lastLoadedListKey: string | null = null;
   readonly activeDraftId = signal<string | null>(null);
 
   constructor() {
@@ -174,7 +174,14 @@ export class EmployeeListComponent {
         this.lastSelectionScope = scope;
       }
       this.listState.set(state);
-      this.store.loadEmployees(toEmployeeListParams(state));
+      // Opening/closing Add Employee only toggles ?addEmployee / ?draftId - that must not re-fetch the
+      // list; re-load only when the filters, search, sort or page actually change.
+      const listParams = toEmployeeListParams(state);
+      const listKey = JSON.stringify(listParams);
+      if (listKey !== this.lastLoadedListKey) {
+        this.lastLoadedListKey = listKey;
+        this.store.loadEmployees(listParams);
+      }
       if ((params.get('addEmployee') === 'true' || params.has('draftId')) && this.canAddEmployee()) {
         this.activeDraftId.set(params.get('draftId'));
         this.isAddEmployeeModalOpen.set(true);
@@ -189,6 +196,13 @@ export class EmployeeListComponent {
         return next;
       }));
     });
+  }
+
+  /** Plain click opens the modal in place; Ctrl/Cmd/Shift/middle-click keeps the link's open-in-new-tab behaviour. */
+  onAddEmployeeClick(event: MouseEvent): void {
+    if (event.button !== 0 || event.ctrlKey || event.metaKey || event.shiftKey || event.altKey) return;
+    event.preventDefault();
+    this.openAddEmployeeModal();
   }
 
   openAddEmployeeModal(draftId?: string): void {

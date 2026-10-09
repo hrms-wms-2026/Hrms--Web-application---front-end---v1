@@ -16,8 +16,9 @@ import { toggleModuleLive } from '../../utils/module-task-selection';
   imports: [DatePickerComponent, ModuleTaskPickerComponent, SprintTaskPickerComponent],
   template: `
     <div class="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4" role="presentation" (click)="cancel.emit()">
-      <section class="w-full max-w-lg rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] p-5 shadow-xl" role="dialog" aria-modal="true" aria-labelledby="calendar-event-title" (click)="$event.stopPropagation()">
-        <div class="mb-4 flex items-center justify-between">
+      <section class="ui-scroll-open w-full max-w-lg rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] p-5 shadow-xl" role="dialog" aria-modal="true" aria-labelledby="calendar-event-title" (click)="$event.stopPropagation()">
+        <div class="ui-popup-header -mx-5 -mt-5 mb-4 flex items-center justify-between [--popup-pad:1.25rem]">
+          <span class="ui-popup-icon" data-icon="flag" aria-hidden="true"></span>
           <h2 id="calendar-event-title" class="text-lg font-semibold text-[var(--color-text-primary)]">{{ event() ? 'Edit milestone' : 'Create milestone' }}</h2>
           <button type="button" class="text-[var(--color-text-secondary)]" aria-label="Close" (click)="cancel.emit()">×</button>
         </div>

@@ -58,6 +58,15 @@ describe('MyTeamDeepLinkService', () => {
     expect(navigate).toHaveBeenCalledWith(['/work', 'p1', 'board'], { queryParams: { highlightTaskId: 't99' } });
   });
 
+  it("opens the exact request's detail on the Approvals page for a work approval request", async () => {
+    const { service, navigate, getNotificationNavigation } = setup();
+    getNotificationNavigation.mockReturnValue(
+      of({ projectId: 'p1', objectiveId: 'o1', taskId: null, targetTab: 'approvals' })
+    );
+    await service.navigate({ kind: 'work.request', params: { relatedEntityType: 'work_approval_request', relatedEntityId: 'req-7' } });
+    expect(navigate).toHaveBeenCalledWith(['/work', 'p1', 'approvals'], { queryParams: { request: 'req-7' } });
+  });
+
   it('falls back to /work when the notification-navigation lookup fails', async () => {
     const { service, navigate, getNotificationNavigation } = setup();
     getNotificationNavigation.mockReturnValue(throwError(() => new Error('not found')));
