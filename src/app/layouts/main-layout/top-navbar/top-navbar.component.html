@@ -11,6 +11,21 @@
 </div>
 
 <div class="top-navbar__right">
+  @if (toolbar.action(); as action) {
+    <button
+      type="button"
+      class="top-navbar__customize-btn"
+      [disabled]="action.disabled()"
+      data-testid="dashboard-customize"
+      (click)="action.onClick()"
+    >
+      <svg class="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+        <rect x="3" y="3" width="7" height="7" rx="1.5"></rect><rect x="14" y="3" width="7" height="7" rx="1.5"></rect>
+        <rect x="3" y="14" width="7" height="7" rx="1.5"></rect><rect x="14" y="14" width="7" height="7" rx="1.5"></rect>
+      </svg>
+      {{ action.label }}
+    </button>
+  }
   <app-notification-bell />
   <app-profile-menu [avatarUrl]="avatarUrl()" [userName]="userName()" [email]="email()" />
 </div>

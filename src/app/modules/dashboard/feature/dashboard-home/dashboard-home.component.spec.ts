@@ -18,6 +18,7 @@ import { MyTeamDeepLinkService } from '../../data-access/my-team-deep-link.servi
 import { MyTeamLedProgressApiService } from '../../data-access/my-team-led-progress-api.service';
 import { MyTeamTodayApiService } from '../../data-access/my-team-today-api.service';
 import { MyTeamCapabilitiesResponse } from '../../models/my-team-capabilities.model';
+import { PageToolbarService } from '../../../../shared/state/page-toolbar.service';
 import { DashboardLayoutService } from '../../state/dashboard-layout.service';
 import { MyTeamCapabilitiesStore } from '../../state/my-team-capabilities.store';
 import { DashboardHomeComponent } from './dashboard-home.component';
@@ -120,8 +121,14 @@ describe('DashboardHomeComponent', () => {
     fixture.nativeElement.querySelector(`[data-testid="${testId}"]`);
   const columnTags = (fixture: { nativeElement: HTMLElement }, zone: string): string[] =>
     Array.from(q(fixture, `dashboard-column-${zone}`)!.querySelectorAll(':scope > app-dashboard-card > *')).map((el) => el.tagName.toLowerCase());
+  // "Customize" now renders in the top navbar (outside this component), so it's not in `fixture`'s
+  // DOM - trigger it the way the navbar button would, via the shared PageToolbarService action.
   const click = (fixture: { nativeElement: HTMLElement; detectChanges: () => void }, testId: string): void => {
-    q(fixture, testId)!.click();
+    if (testId === 'dashboard-customize') {
+      TestBed.inject(PageToolbarService).action()?.onClick();
+    } else {
+      q(fixture, testId)!.click();
+    }
     fixture.detectChanges();
   };
 

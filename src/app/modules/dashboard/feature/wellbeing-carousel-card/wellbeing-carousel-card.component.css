@@ -1,0 +1,5 @@
+/* A playful, rounded typeface for this card only - keeps the rest of the dashboard on the
+   app's normal font. Loaded in index.html alongside the app's other Google Fonts. */
+:host {
+  font-family: 'Baloo 2', 'Plus Jakarta Sans', sans-serif;
+}

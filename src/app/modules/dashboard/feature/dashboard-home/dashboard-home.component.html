@@ -1,21 +1,5 @@
 <div class="dashboard-home flex flex-col gap-3">
   @if (!layout.editing()) {
-    <div class="flex justify-end" data-testid="dashboard-toolbar">
-      <button
-        type="button"
-        class="dashboard-customize-btn"
-        [disabled]="!layout.ready()"
-        data-testid="dashboard-customize"
-        (click)="layout.startEditing()"
-      >
-        <svg class="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-          <rect x="3" y="3" width="7" height="7" rx="1.5"></rect><rect x="14" y="3" width="7" height="7" rx="1.5"></rect>
-          <rect x="3" y="14" width="7" height="7" rx="1.5"></rect><rect x="14" y="14" width="7" height="7" rx="1.5"></rect>
-        </svg>
-        Customize
-      </button>
-    </div>
-
     @for (key of layout.resolved().top; track key) {
       <div [attr.data-testid]="'dashboard-band-top-' + key"><app-dashboard-card [key]="key" /></div>
     }

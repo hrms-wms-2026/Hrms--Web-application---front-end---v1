@@ -147,7 +147,7 @@ export function inboxAgeClass(item: InboxItem): string {
 }
 
 const TAG_CLASS: Record<InboxKind, string> = {
-  approval: 'bg-blue-50 text-blue-700',
+  approval: 'bg-slate-100 text-slate-700',
   exception: 'bg-amber-100 text-amber-800',
   overdue: 'bg-red-50 text-red-700'
 };

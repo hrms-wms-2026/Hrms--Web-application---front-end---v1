@@ -8,7 +8,7 @@
   (closed)="collapse()"
 >
   <section
-    class="group flex h-full flex-col rounded-2xl border border-[#fef08a] bg-[#fefce8] p-5"
+    class="group flex h-full flex-col rounded-2xl border border-[#fef08a] bg-gradient-to-b from-amber-100 via-amber-50/70 to-[#fefce8] p-5"
     [class.cursor-pointer]="!showAll() && canExpand()"
     data-testid="action-center-card"
     (click)="expand()"
@@ -106,7 +106,6 @@
                       (click)="startDecision(item, 'approve', $event)"
                     >
                       <svg class="h-3.5 w-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m5 12 5 5 9-10"></path></svg>
-                      @if (showAll()) { <span>Approve</span> }
                     </button>
                     <button
                       type="button"
@@ -184,7 +183,7 @@
           <div class="mt-auto flex justify-end border-t border-amber-200/70 pt-3">
             <button
               type="button"
-              class="text-xs font-semibold text-blue-600 hover:text-blue-700 hover:underline cursor-pointer"
+              class="text-xs font-semibold text-slate-600 hover:text-slate-900 hover:underline cursor-pointer"
               data-testid="action-center-show-more"
               (click)="onToggleClick($event)"
             >
@@ -195,7 +194,7 @@
           <div class="flex justify-end border-t border-amber-200/70 pt-3">
             <button
               type="button"
-              class="text-xs font-semibold text-blue-600 hover:text-blue-700 hover:underline cursor-pointer"
+              class="text-xs font-semibold text-slate-600 hover:text-slate-900 hover:underline cursor-pointer"
               data-testid="action-center-show-less"
               (click)="onToggleClick($event)"
             >

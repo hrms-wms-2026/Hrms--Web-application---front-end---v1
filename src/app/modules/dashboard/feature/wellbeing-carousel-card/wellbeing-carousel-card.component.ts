@@ -24,20 +24,6 @@ const ILLUSTRATIONS: Partial<Record<WellbeingCardKind, string>> = {
   stretch: '/assets/wellbeing/stretch.png'
 };
 
-/** The 5 illustration PNGs share a roughly-square canvas, but the character fills very
- * different proportions of it (a wide desk scene leaves lots of transparent margin vs. a
- * full-bleed meditating pose) - object-cover alone still leaves some characters looking
- * much smaller than others. These per-kind scale/position values zoom in on the actual
- * figure so all 5 read at a similar visual size inside the fixed illustration box. Tuned
- * by eye against the actual assets in src/assets/wellbeing/ - re-tune if those PNGs change. */
-const ILLUSTRATION_TRANSFORM: Record<WellbeingCardKind, { scale: number; position: string }> = {
-  reminder: { scale: 1.05, position: 'center' },
-  hydration: { scale: 1.15, position: 'top' },
-  posture: { scale: 1.7, position: 'left center' },
-  'eye-rest': { scale: 1.5, position: '30% center' },
-  stretch: { scale: 1.05, position: 'top center' }
-};
-
 const WELLBEING_TIPS: readonly WellbeingCard[] = [
   { kind: 'hydration', title: 'Stay hydrated', description: 'Drink a glass of water — dehydration is a common cause of afternoon fatigue.' },
   { kind: 'posture', title: 'Check your posture', description: 'Sit up straight and relax your shoulders. Good posture reduces strain over a long day.' },
@@ -50,6 +36,7 @@ const WELLBEING_TIPS: readonly WellbeingCard[] = [
   standalone: true,
   imports: [],
   templateUrl: './wellbeing-carousel-card.component.html',
+  styleUrl: './wellbeing-carousel-card.component.css',
   changeDetection: ChangeDetectionStrategy.OnPush
 })
 export class WellbeingCarouselCardComponent implements OnInit, OnDestroy {
@@ -144,14 +131,6 @@ export class WellbeingCarouselCardComponent implements OnInit, OnDestroy {
 
   protected illustrationFor(kind: WellbeingCardKind): string | null {
     return ILLUSTRATIONS[kind] ?? null;
-  }
-
-  protected illustrationScale(kind: WellbeingCardKind): number {
-    return ILLUSTRATION_TRANSFORM[kind].scale;
-  }
-
-  protected illustrationPosition(kind: WellbeingCardKind): string {
-    return ILLUSTRATION_TRANSFORM[kind].position;
   }
 
   protected startBreak(): void {

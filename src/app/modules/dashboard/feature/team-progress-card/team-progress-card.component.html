@@ -37,9 +37,10 @@
         [class.progress-layout--wide]="showAll()"
         data-testid="team-progress-layout"
       >
-        <div class="flex items-center gap-5">
-          <div class="flex shrink-0 flex-col items-center">
-            <svg viewBox="0 0 72 72" class="h-28 w-28" role="img" aria-label="Task distribution pie chart">
+        <div class="grid grid-cols-5 items-stretch gap-4">
+          <!-- Pie chart: 3/5. -->
+          <div class="col-span-3 flex flex-col items-center justify-center gap-2">
+            <svg viewBox="0 0 72 72" class="h-36 w-36 sm:h-40 sm:w-40" role="img" aria-label="Task distribution pie chart">
               @for (slice of pieSlices(); track slice.key) {
                 @if (slice.isFull) {
                   <circle data-testid="pie-slice" cx="36" cy="36" r="34" [attr.fill]="slice.color" stroke="#ffffff" stroke-width="1.5">
@@ -62,22 +63,28 @@
                 <circle cx="36" cy="36" r="34" fill="#f1f5f9" stroke="#e2e8f0" stroke-width="1" />
               }
             </svg>
-            <p class="mt-2 text-xs text-slate-500" data-testid="team-progress-total">
+            <p class="text-xs text-slate-500" data-testid="team-progress-total">
               <span class="font-bold text-slate-900 tabular-nums">{{ data.totals.total }}</span> tasks
             </p>
           </div>
 
-          <dl class="grid max-w-xs flex-1 grid-cols-[minmax(0,1fr)_auto] items-center gap-x-6 gap-y-2.5 text-sm" data-testid="team-progress-legend">
-            <dt class="flex items-center gap-2 whitespace-nowrap text-slate-600"><span class="h-2.5 w-2.5 rounded-full bg-emerald-500"></span>Completed</dt>
+          <!-- Legend: 2/5. A two-column grid (label, number) keeps the numbers in a straight
+          column no matter how long each label is or how many digits a count has; labels can wrap
+          instead of overflowing into the number column when the panel is narrow. -->
+          <dl
+            class="col-span-2 grid grid-cols-[minmax(0,1fr)_auto] content-center items-center gap-x-3 gap-y-3 text-sm"
+            data-testid="team-progress-legend"
+          >
+            <dt class="flex items-center gap-2 font-medium text-slate-600"><span class="h-2.5 w-2.5 shrink-0 rounded-full bg-emerald-500"></span>Completed</dt>
             <dd class="text-right font-bold tabular-nums text-slate-900">{{ data.totals.completed }}</dd>
 
-            <dt class="flex items-center gap-2 whitespace-nowrap text-slate-600"><span class="h-2.5 w-2.5 rounded-full bg-blue-500"></span>In progress</dt>
+            <dt class="flex items-center gap-2 font-medium text-slate-600"><span class="h-2.5 w-2.5 shrink-0 rounded-full bg-blue-500"></span>In progress</dt>
             <dd class="text-right font-bold tabular-nums text-slate-900">{{ data.totals.inProgress }}</dd>
 
-            <dt class="flex items-center gap-2 whitespace-nowrap text-slate-600"><span class="h-2.5 w-2.5 rounded-full bg-slate-300"></span>Not started</dt>
+            <dt class="flex items-center gap-2 font-medium text-slate-600"><span class="h-2.5 w-2.5 shrink-0 rounded-full bg-slate-300"></span>Not started</dt>
             <dd class="text-right font-bold tabular-nums text-slate-900">{{ data.totals.notStarted }}</dd>
 
-            <dt class="flex items-center gap-2 whitespace-nowrap text-slate-600"><span class="h-2.5 w-2.5 rounded-full bg-rose-500"></span>Overdue</dt>
+            <dt class="flex items-center gap-2 font-medium text-slate-600"><span class="h-2.5 w-2.5 shrink-0 rounded-full bg-rose-500"></span>Overdue</dt>
             <dd class="text-right font-bold tabular-nums text-rose-600" data-testid="team-progress-legend-overdue">{{ data.totals.overdue }}</dd>
           </dl>
         </div>

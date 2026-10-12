@@ -1,6 +1,7 @@
 import { CdkDrag, CdkDragDrop, CdkDropList, CdkDropListGroup } from '@angular/cdk/drag-drop';
 import { NgTemplateOutlet } from '@angular/common';
-import { ChangeDetectionStrategy, Component, OnDestroy, OnInit, inject } from '@angular/core';
+import { ChangeDetectionStrategy, Component, OnDestroy, OnInit, effect, inject } from '@angular/core';
+import { PageToolbarService } from '../../../../shared/state/page-toolbar.service';
 import { DashboardLayoutService } from '../../state/dashboard-layout.service';
 import { MyTeamCapabilitiesStore } from '../../state/my-team-capabilities.store';
 import { DASHBOARD_CARD_META, DashboardCardKey, DashboardZoneId } from '../../utils/dashboard-layout.util';
@@ -32,16 +33,30 @@ import { DashboardCustomizePanelComponent } from '../dashboard-customize-panel/d
 export class DashboardHomeComponent implements OnInit, OnDestroy {
   protected readonly layout = inject(DashboardLayoutService);
   private readonly capabilitiesStore = inject(MyTeamCapabilitiesStore);
+  private readonly pageToolbar = inject(PageToolbarService);
 
   protected readonly columnZones: readonly DashboardZoneId[] = ['col0', 'col1', 'col2'];
+
+  constructor() {
+    // "Customize" lives in the top navbar while this page is open - hidden again once editing starts,
+    // since the edit bar's own Done/Cancel/Reset take over at that point.
+    effect(() => {
+      if (this.layout.editing()) {
+        this.pageToolbar.clear();
+      } else {
+        this.pageToolbar.set({ label: 'Customize', disabled: () => !this.layout.ready(), onClick: () => this.layout.startEditing() });
+      }
+    });
+  }
 
   ngOnInit(): void {
     void this.capabilitiesStore.ensureLoaded();
   }
 
-  /** Leaving the page mid-edit drops the draft. */
+  /** Leaving the page mid-edit drops the draft; either way, the navbar button goes with it. */
   ngOnDestroy(): void {
     this.layout.cancel();
+    this.pageToolbar.clear();
   }
 
   label(key: DashboardCardKey): string {

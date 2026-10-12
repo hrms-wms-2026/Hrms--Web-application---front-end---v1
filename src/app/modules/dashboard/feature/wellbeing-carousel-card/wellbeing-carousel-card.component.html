@@ -2,12 +2,8 @@
   @if (activeCard(); as card) {
     <div class="flex flex-col justify-between h-full" data-testid="wellbeing-card" [attr.data-card-kind]="card.kind">
       <div>
-        <!-- Header with navigation arrows -->
-        <div class="mb-3 flex items-center justify-between">
-          <h2 class="flex items-center gap-1.5 text-sm font-bold text-slate-800">
-            <span class="text-xs text-rose-500">❤️</span>
-            Wellbeing
-          </h2>
+        <!-- Navigation arrows -->
+        <div class="mb-3 flex items-center justify-end">
           <div class="flex items-center gap-1">
             <button
               type="button"
@@ -32,25 +28,18 @@
           </div>
         </div>
 
-        <!-- Wellbeing Content Card -->
-        <div class="my-2 flex items-center gap-3.5 rounded-2xl border border-blue-100 bg-[#f4f9ff] p-4">
+        <!-- Wellbeing Content -->
+        <div class="my-2">
           <div
-            class="flex flex-1 items-center gap-3.5 transition-opacity duration-300 ease-out"
+            class="flex items-center gap-3.5 transition-opacity duration-300 ease-out"
             [class.opacity-0]="!contentVisible()"
             [class.opacity-100]="contentVisible()"
             data-testid="wellbeing-content"
           >
             @if (illustrationFor(card.kind); as illustrationSrc) {
-              <!-- Water Glass Graphic Container / Illustration -->
-              <div class="h-14 w-14 shrink-0 overflow-hidden rounded-xl border border-blue-200/60 bg-blue-100/70 p-1 shadow-inner flex items-center justify-center">
-                <img
-                  [src]="illustrationSrc"
-                  alt=""
-                  class="h-full w-full rounded-lg object-cover"
-                  [style.object-position]="illustrationPosition(card.kind)"
-                  [style.transform]="'scale(' + illustrationScale(card.kind) + ')'"
-                  data-testid="wellbeing-illustration"
-                />
+              <!-- Illustration: object-contain so the whole character always shows, never cropped -->
+              <div class="h-24 w-24 shrink-0 overflow-hidden rounded-xl">
+                <img [src]="illustrationSrc" alt="" class="h-full w-full object-contain" data-testid="wellbeing-illustration" />
               </div>
 
               <!-- Recommendation Text -->
