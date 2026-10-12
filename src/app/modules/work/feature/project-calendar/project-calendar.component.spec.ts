@@ -55,13 +55,16 @@ describe('ProjectCalendarComponent', () => {
   });
 
   describe('milestone panel and edit', () => {
+    // The side legend is gone - milestones now open via the on-timeline marker, or (for
+    // an event with no module link yet, like this fixture's) via the List view's table row.
     beforeEach(() => {
       store.activeEvents.set([band]);
+      fixture.componentInstance.viewMode.set('list');
       fixture.detectChanges();
     });
 
     it('clicking a milestone opens the explanation panel and fetches its detail', async () => {
-      fixture.nativeElement.querySelector('.calendar-event').click();
+      fixture.nativeElement.querySelector('.data-table__row').click();
       await fixture.whenStable();
       fixture.detectChanges();
       expect(store.loadEventDetail).toHaveBeenCalledWith('e1');
@@ -69,18 +72,16 @@ describe('ProjectCalendarComponent', () => {
     });
 
     it('Edit fetches the real event detail (actual taskIds) before opening the modal, instead of reusing the zero-taskIds band stub', async () => {
-      fixture.nativeElement.querySelector('.calendar-event__action').click();
-      await fixture.whenStable();
-      fixture.detectChanges();
+      // openEditEvent is reached both from the explanation panel's own Edit button and from the
+      // List view's row action - exercising it directly keeps the test independent of which entry point is wired up.
+      await fixture.componentInstance.openEditEvent('e1');
       expect(fixture.componentInstance.editingEvent()?.taskIds).toEqual(['t1', 't2']);
       expect(fixture.componentInstance.modalOpen()).toBe(true);
     });
 
     it('Edit does NOT open the modal if the detail fetch fails - a blank modal would save as Create and wipe links', async () => {
       store.loadEventDetail.mockImplementation(async () => null);
-      fixture.nativeElement.querySelector('.calendar-event__action').click();
-      await fixture.whenStable();
-      fixture.detectChanges();
+      await fixture.componentInstance.openEditEvent('e1');
       expect(fixture.componentInstance.modalOpen()).toBe(false);
     });
 
@@ -93,7 +94,7 @@ describe('ProjectCalendarComponent', () => {
     });
 
     it('closing the open milestone also closes its panel', async () => {
-      fixture.nativeElement.querySelector('.calendar-event').click();
+      fixture.nativeElement.querySelector('.data-table__row').click();
       await fixture.whenStable();
       await fixture.componentInstance.closeEvent('e1');
       expect(fixture.componentInstance.panelEventId()).toBeNull();
@@ -121,9 +122,6 @@ describe('ProjectCalendarComponent', () => {
     const rootBody = fixture.nativeElement.querySelector('[data-testid="calendar-row-o1"] .project-calendar__objective-body') as HTMLElement;
     const childBody = fixture.nativeElement.querySelector('[data-testid="calendar-row-o2"] .project-calendar__objective-body') as HTMLElement;
     expect(childBody.style.marginLeft).not.toBe(rootBody.style.marginLeft);
-    // Root has no ancestor, so it gets no connector guide; the child's single-level guide draws its own elbow.
-    expect(fixture.nativeElement.querySelector('[data-testid="calendar-row-o1"] .project-calendar__guides')).toBeNull();
-    expect(fixture.nativeElement.querySelector('[data-testid="calendar-row-o2"] .project-calendar__guide-col--elbow')).toBeTruthy();
     // Expanded by default - both bars stay on screen until the parent's chevron is collapsed.
     expect(fixture.nativeElement.querySelector('[data-testid="timeline-bar-o1"]')).toBeTruthy();
     expect(fixture.nativeElement.querySelector('[data-testid="timeline-bar-o2"]')).toBeTruthy();

@@ -4,7 +4,10 @@ export interface TaskStatusDto {
   id: string;
   name: string;
   displayOrder: number;
+  /** Dead field, round-tripped for backward compatibility only - not consumed anywhere in this
+   * app (WM-01, HRMS-Backend-v1/docs/superpowers/plans/next/2026-10-12-pre-uat-audit-wm-sec-findings.md). */
   requiresApproval: boolean;
+  /** See requiresApproval - same dead-field status. */
   approverId: string | null;
   marksTaskComplete: boolean;
   visibility: 'public' | 'private';

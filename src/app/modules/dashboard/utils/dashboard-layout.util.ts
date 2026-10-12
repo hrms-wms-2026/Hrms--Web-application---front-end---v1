@@ -60,7 +60,7 @@ export const DEFAULT_DASHBOARD_LAYOUT: DashboardLayout = {
   columns: [
     ['todayAtAGlance', 'todaysSchedule', 'teamStatus'],
     ['actionCenter', 'myTasks', 'notifications'],
-    ['quickActions', 'teamProgress', 'wellbeing']
+    ['wellbeing', 'quickActions', 'teamProgress']
   ],
   bottom: ['workPattern'],
   hidden: ['teamStatus', 'notifications', 'wellbeing']

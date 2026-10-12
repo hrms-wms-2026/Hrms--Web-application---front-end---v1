@@ -1,7 +1,6 @@
 import { NgTemplateOutlet } from '@angular/common';
 import { AfterViewInit, Component, ElementRef, OnDestroy, OnInit, TemplateRef, computed, inject, signal, viewChild } from '@angular/core';
 import { ActivatedRoute } from '@angular/router';
-import { CalendarEventLegendComponent } from '../../ui/calendar-event-legend/calendar-event-legend.component';
 import { CalendarEventModalComponent } from '../../ui/calendar-event-modal/calendar-event-modal.component';
 import { ObjectiveTimelineBarComponent } from '../../ui/objective-timeline-bar/objective-timeline-bar.component';
 import { ModuleTreeRowComponent } from '../../ui/module-tree-row/module-tree-row.component';
@@ -32,7 +31,7 @@ interface MilestoneMarker { objectiveId: string; eventId: string; name: string; 
 @Component({
   selector: 'app-project-calendar',
   standalone: true,
-  imports: [NgTemplateOutlet, ObjectiveTimelineBarComponent, ModuleTreeRowComponent, CalendarEventModalComponent, CalendarEventLegendComponent, MilestoneExplanationPanelComponent, DataTableComponent, DataTableCellDirective, ButtonComponent],
+  imports: [NgTemplateOutlet, ObjectiveTimelineBarComponent, ModuleTreeRowComponent, CalendarEventModalComponent, MilestoneExplanationPanelComponent, DataTableComponent, DataTableCellDirective, ButtonComponent],
   template: `
     <ng-template #toolbarTpl>
       <div class="project-calendar__toolbar">
@@ -68,15 +67,6 @@ interface MilestoneMarker { objectiveId: string; eventId: string; name: string; 
 
     <section class="project-calendar" data-testid="project-calendar">
       <header class="project-calendar__page-header">
-        <div class="project-calendar__title-wrap">
-          <span class="project-calendar__title-icon" aria-hidden="true">
-            <svg viewBox="0 0 24 24"><path d="M6 3v18" /><path d="M6 4h11l-2.5 4L17 12H6" /></svg>
-          </span>
-          <div>
-            <h1 class="project-calendar__title">Milestones</h1>
-            <p class="project-calendar__subtitle">Track key delivery points and releases for this project</p>
-          </div>
-        </div>
         <div class="project-calendar__controls">
           <div class="project-calendar__view-toggle" role="tablist" aria-label="View mode">
             <button type="button" role="tab" data-testid="view-toggle-list" [attr.aria-selected]="viewMode() === 'list'" (click)="viewMode.set('list')">List</button>
@@ -118,14 +108,6 @@ interface MilestoneMarker { objectiveId: string; eventId: string; name: string; 
               @for (row of rows(); track row.item.objectiveId) {
                 <div class="project-calendar__grid project-calendar__grid--row" [style.gridTemplateColumns]="LABEL_WIDTH + 'px ' + trackWidth() + 'px'" [attr.data-testid]="'calendar-row-' + row.item.objectiveId">
                   <div class="project-calendar__objective">
-                    @if (row.depth > 0) {
-                      <div class="project-calendar__guides" [style.width.px]="row.depth * 18">
-                        @for (continues of row.ancestorLines; track $index) {
-                          <span class="project-calendar__guide-col" [class.project-calendar__guide-col--through]="continues"></span>
-                        }
-                        <span class="project-calendar__guide-col project-calendar__guide-col--elbow" [class.project-calendar__guide-col--elbow-through]="!row.isLast"></span>
-                      </div>
-                    }
                     <div class="project-calendar__objective-body" [style.marginLeft.px]="row.depth * 18">
                       <app-module-tree-row
                         [compact]="true"
@@ -192,12 +174,11 @@ interface MilestoneMarker { objectiveId: string; eventId: string; name: string; 
             </div>
           </footer>
           </div>
-          <div class="project-calendar__side">
-            <ng-container *ngTemplateOutlet="panelTpl" />
-            @if (!panelEventId()) {
-              <app-calendar-event-legend [events]="store.activeEvents()" (select)="openMilestonePanel($event)" (edit)="openEditEvent($event)" (close)="closeEvent($event)" />
-            }
-          </div>
+          @if (panelEventId()) {
+            <div class="project-calendar__side">
+              <ng-container *ngTemplateOutlet="panelTpl" />
+            </div>
+          }
         </div>
         @if (viewMode() === 'list') {
           <div class="project-calendar__list-layout" data-testid="project-calendar-list" [class.project-calendar__list-layout--panel-open]="panelEventId()">
@@ -251,7 +232,7 @@ interface MilestoneMarker { objectiveId: string; eventId: string; name: string; 
     .project-calendar__zoom-fit:focus-visible { outline: 2px solid var(--color-focus-ring); outline-offset: 2px; }
     .project-calendar__error { border: 1px solid color-mix(in srgb, var(--color-danger) 30%, transparent); border-radius: 9px; padding: 11px 13px; background: color-mix(in srgb, var(--color-danger) 8%, var(--color-surface)); color: var(--color-danger); font-size: 13px; }
     .project-calendar__empty { border: 1px dashed var(--color-border); border-radius: 11px; padding: 42px 20px; color: var(--color-text-secondary); font-size: 13px; text-align: center; }
-    .project-calendar__layout { display: grid; min-width: 0; grid-template-columns: minmax(0, 1fr) 220px; align-items: start; gap: 14px; }
+    .project-calendar__layout { display: grid; min-width: 0; grid-template-columns: minmax(0, 1fr); align-items: start; gap: 14px; }
     .project-calendar__layout--panel-open { grid-template-columns: minmax(0, 1fr) 360px; }
     .project-calendar__layout[hidden] { display: none; }
     .project-calendar__list-layout { display: grid; min-width: 0; grid-template-columns: minmax(0, 1fr); align-items: start; gap: 14px; }
@@ -273,25 +254,14 @@ interface MilestoneMarker { objectiveId: string; eventId: string; name: string; 
     @keyframes project-calendar-row-in { from { opacity: 0; transform: translateY(-6px); } to { opacity: 1; transform: translateY(0); } }
     @media (prefers-reduced-motion: reduce) { .project-calendar__grid--row { animation: none; } }
     .project-calendar__label-header { display: flex; align-items: center; padding: 0 14px; color: var(--color-text-secondary); font-size: 11px; font-weight: 600; letter-spacing: .05em; text-transform: uppercase; }
-    .project-calendar__date-header { position: relative; overflow: hidden; border-left: 1px solid var(--color-border); background: var(--color-surface-secondary); }
+    .project-calendar__date-header { position: relative; overflow: hidden; background: var(--color-surface-secondary); }
     .project-calendar__date-marker { position: absolute; top: 0; bottom: 0; display: flex; overflow: hidden; align-items: center; padding-left: 8px; border-left: 1px solid color-mix(in srgb, var(--color-border) 85%, transparent); color: var(--color-text-secondary); font-size: 10px; font-weight: 600; white-space: nowrap; text-overflow: ellipsis; }
     .project-calendar__objective { position: relative; display: flex; align-items: center; min-width: 0; overflow: hidden; padding: 9px 10px 8px 12px; }
-    .project-calendar__guides { position: absolute; left: 12px; top: 0; bottom: 0; display: flex; pointer-events: none; }
-    .project-calendar__guide-col { position: relative; flex: 0 0 18px; width: 18px; }
-    .project-calendar__guide-col--through::before { content: ''; position: absolute; left: 8px; top: 0; bottom: 0; width: 2px; background: color-mix(in srgb, var(--color-text-secondary) 45%, transparent); border-radius: 1px; }
-    .project-calendar__guide-col--elbow::before { content: ''; position: absolute; left: 8px; top: 0; height: 50%; width: 2px; background: color-mix(in srgb, var(--color-text-secondary) 45%, transparent); border-radius: 1px; }
-    .project-calendar__guide-col--elbow.project-calendar__guide-col--elbow-through::before { height: 100%; }
-    .project-calendar__guide-col--elbow::after { content: ''; position: absolute; left: 8px; top: 50%; width: 11px; height: 2px; background: color-mix(in srgb, var(--color-text-secondary) 45%, transparent); border-radius: 1px; }
     .project-calendar__objective-body { min-width: 0; flex: 1; }
-    .project-calendar__track { position: relative; min-width: 0; overflow: hidden; border-left: 1px solid var(--color-border); }
+    .project-calendar__track { position: relative; min-width: 0; overflow: hidden; }
     .project-calendar__grid-background { position: absolute; inset: 0; opacity: .5; }
     @media (max-width: 900px) { .project-calendar__layout { grid-template-columns: minmax(0, 1fr); } }
-    .project-calendar__page-header { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 14px; }
-    .project-calendar__title-wrap { display: flex; align-items: center; gap: 12px; }
-    .project-calendar__title-icon { display: inline-flex; width: 38px; height: 38px; align-items: center; justify-content: center; border-radius: 10px; background: color-mix(in srgb, var(--color-accent) 10%, var(--color-surface)); color: var(--color-accent); }
-    .project-calendar__title-icon svg { width: 22px; height: 22px; fill: none; stroke: currentColor; stroke-width: 1.7; stroke-linecap: round; stroke-linejoin: round; }
-    .project-calendar__title { margin: 0; color: var(--color-text-primary); font-size: 18px; font-weight: 700; line-height: 1.2; }
-    .project-calendar__subtitle { margin: 2px 0 0; color: var(--color-text-secondary); font-size: 11px; }
+    .project-calendar__page-header { display: flex; flex-wrap: wrap; align-items: center; justify-content: flex-end; gap: 12px; margin-bottom: 14px; }
     .project-calendar__controls { display: flex; align-items: center; gap: 10px; }
     .project-calendar__granularity { height: 32px; border: 1px solid var(--color-border); border-radius: 8px; padding: 0 10px; background: var(--color-surface); color: var(--color-text-primary); font: inherit; font-size: 12px; cursor: pointer; }
     .project-calendar__main { min-width: 0; display: flex; flex-direction: column; gap: 12px; }
