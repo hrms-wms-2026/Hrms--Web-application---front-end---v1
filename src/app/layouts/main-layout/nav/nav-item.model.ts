@@ -1,6 +1,7 @@
 export type NavIconName =
   | 'home'
   | 'work'
+  | 'inbox'
   | 'people'
   | 'calendar'
   | 'time-off'

@@ -110,34 +110,19 @@ describe('InboxRealtimeService', () => {
     expect(changed).toHaveBeenCalledWith({ item: { source: 'work', kind: 'approval', id: 'a1' } });
   });
 
-  it('joins and leaves conversation groups through the hub', async () => {
+  it('emits reconnected$ after an automatic reconnect so stores can refetch what they missed', async () => {
     await connect();
-
-    await service.joinConversation('c1');
-    await service.leaveConversation('c1');
-
-    expect(hub.state.connection!.invoke).toHaveBeenCalledWith('JoinConversation', 'c1');
-    expect(hub.state.connection!.invoke).toHaveBeenCalledWith('LeaveConversation', 'c1');
-  });
-
-  it('remembers a join requested before the connection is up and sends it on connect', async () => {
-    await service.joinConversation('c9');
-    expect(hub.state.connection).toBeNull();
-
-    await connect();
-
-    expect(hub.state.connection!.invoke).toHaveBeenCalledWith('JoinConversation', 'c9');
-  });
-
-  it('re-joins open conversations after an automatic reconnect', async () => {
-    await connect();
-    await service.joinConversation('c1');
-    hub.state.connection!.invoke.mockClear();
+    const reconnected = vi.fn();
+    service.reconnected$.subscribe(reconnected);
 
     hub.state.reconnected!();
-    await Promise.resolve();
 
-    expect(hub.state.connection!.invoke).toHaveBeenCalledWith('JoinConversation', 'c1');
+    expect(reconnected).toHaveBeenCalledTimes(1);
+  });
+
+  it('never invokes hub methods: the server addresses the user group itself', async () => {
+    await connect();
+    expect(hub.state.connection!.invoke).not.toHaveBeenCalled();
   });
 
   it('stops the connection when the workspace becomes unavailable (sign-out)', async () => {

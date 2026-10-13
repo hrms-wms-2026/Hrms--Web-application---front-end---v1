@@ -3,6 +3,9 @@ import { NavItem } from './nav-item.model';
 export const NAV_ITEMS: readonly NavItem[] = [
   { id: 'home', label: 'Home', icon: 'home', path: '/dashboard' },
   { id: 'work', label: 'Work', icon: 'work', path: '/work', requiredModules: ['worksync_foundation', 'projects', 'objectives_milestones', 'tasks', 'boards', 'planning_sprints'] },
+  // Requests and alerts across modules. Work is its only source today, so it shares Work's gate;
+  // add a module here when another source (Leave, HR) plugs into the inbox router.
+  { id: 'inbox', label: 'Inbox', icon: 'inbox', path: '/inbox', requiredModules: ['worksync_foundation', 'projects', 'objectives_milestones', 'tasks', 'boards', 'planning_sprints'] },
   {
     id: 'people', label: 'People', icon: 'people', path: '/people', requiredModules: ['core_hr'],
     children: [

@@ -11,7 +11,7 @@ export interface RealtimeConversationMessage {
   conversationId: string;
   authorEmployeeId: string | null;
   authorName: string | null;
-  authorAvatarUrl: string | null;
+  authorAvatarFileId: string | null;
   kind: 'text' | 'system';
   bodyHtml: string;
   systemEventJson: string | null;
@@ -22,10 +22,10 @@ export interface RealtimeConversationMessage {
 export interface RealtimeConversationParticipant {
   employeeId: string;
   name: string;
-  avatarUrl: string | null;
+  avatarFileId: string | null;
   joinReason: 'base' | 'added';
   addedByEmployeeId: string | null;
-  addedAt: string;
+  addedAt: string | null;
 }
 
 export interface MessageCreatedEvent {
