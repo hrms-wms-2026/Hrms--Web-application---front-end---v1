@@ -8,7 +8,7 @@ import { WorkApprovalsComponent } from './work-approvals.component';
 import { WorkDropdownComponent } from '../../ui/work-dropdown/work-dropdown.component';
 import { DataTableComponent } from '../../../../shared/ui/data-table/data-table.component';
 import { ApprovalExplanationCardComponent } from '../../ui/approval-explanation-card/approval-explanation-card.component';
-import { TaskFilterBarComponent } from '../../ui/task-filter-bar/task-filter-bar.component';
+import { FilterBarComponent } from '../../../../shared/ui/filter-bar/filter-bar.component';
 import { WorkApprovalsStore } from '../../state/work-approvals.store';
 import { WorkPageToolbarStore } from '../../state/work-page-toolbar.store';
 import { WorkApprovalsApiService } from '../../data-access/work-approvals-api.service';
@@ -127,10 +127,10 @@ describe('WorkApprovalsComponent', () => {
 
   it('the Requests filter "sent" hides received rows', () => {
     setup();
-    const filterBar = fixture.debugElement.query(By.directive(TaskFilterBarComponent));
+    const filterBar = fixture.debugElement.query(By.directive(FilterBarComponent));
     // The filter bar lives in the toolbar template, so drive the page handler directly when it is not rendered here.
     if (filterBar) {
-      (filterBar.componentInstance as TaskFilterBarComponent).fieldChanged.emit({ key: 'direction', values: ['sent'] });
+      (filterBar.componentInstance as FilterBarComponent).fieldChanged.emit({ key: 'direction', values: ['sent'] });
     } else {
       (fixture.componentInstance as any).onFilterChanged({ key: 'direction', values: ['sent'] });
     }

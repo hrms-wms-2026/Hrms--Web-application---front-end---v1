@@ -31,7 +31,7 @@
       [selected]="ownerFilter()"
       (selectionChanged)="setOwnerFilter($event)"
     />
-    <app-task-filter-bar [fields]="filterFields()" [values]="filterValues()" [highlightColor]="highlightColor()"
+    <app-filter-bar [fields]="filterFields()" [values]="filterValues()" [highlightColor]="highlightColor()"
       panelAlign="right" (fieldChanged)="onFilterFieldChanged($event)"
       (highlightColorChanged)="onHighlightColorChanged($event)" />
     <button type="button" data-testid="expand-all-toggle" [attr.aria-pressed]="allExpanded()"

@@ -4,7 +4,7 @@ import { of } from 'rxjs';
 import { vi } from 'vitest';
 import { CommentComposerComponent } from './comment-composer.component';
 import { By } from '@angular/platform-browser';
-import { TaskApiService } from '../../data-access/task-api.service';
+import { TaskApiService } from '../../../modules/work/data-access/task-api.service';
 import { RichTextEditorComponent } from '../rich-text-editor/rich-text-editor.component';
 
 describe('CommentComposerComponent', () => {
@@ -37,7 +37,63 @@ describe('CommentComposerComponent', () => {
 
     component.submit();
 
-    expect(submitted).toHaveBeenCalledWith({ content: '<p>hello</p>', attachmentFileIds: ['f1'] });
+    expect(submitted).toHaveBeenCalledWith({ content: '<p>hello</p>', attachmentFileIds: ['f1'], mentions: [] });
+  });
+
+  it('includes the mentioned employee ids in the submitted payload and resets them afterwards', () => {
+    const submitted = vi.fn();
+    component.submitted.subscribe(submitted);
+    component.editorHtml.set('<p>hi</p>');
+    component.mentions.set(['e1', 'e2']);
+
+    component.submit();
+
+    expect(submitted).toHaveBeenCalledWith({ content: '<p>hi</p>', attachmentFileIds: [], mentions: ['e1', 'e2'] });
+    expect(component.mentions()).toEqual([]);
+  });
+
+  it('hides the attachment list and the editor attach command when attachments is false', () => {
+    fixture.componentRef.setInput('attachments', false);
+    fixture.detectChanges();
+
+    expect(fixture.nativeElement.querySelector('app-task-attachment-list')).toBeNull();
+    const editor = fixture.debugElement.query(By.directive(RichTextEditorComponent)).componentInstance as RichTextEditorComponent;
+    expect(editor.allSlashCommands().some((c) => c.id === 'attach')).toBe(false);
+  });
+
+  it('passes mention and slash inputs to the editor and re-emits its outputs', () => {
+    const people = [{ id: 'e1', name: 'Priya Raj' }];
+    const actions = [{ id: 'approve', label: 'Approve', category: 'ACTIONS' }];
+    fixture.componentRef.setInput('mentionCandidates', people);
+    fixture.componentRef.setInput('allowAddAndTag', true);
+    fixture.componentRef.setInput('extraSlashCommands', actions);
+    fixture.detectChanges();
+    const editor = fixture.debugElement.query(By.directive(RichTextEditorComponent)).componentInstance as RichTextEditorComponent;
+    const slash = vi.fn();
+    const addAndTag = vi.fn();
+    component.slashCommand.subscribe(slash);
+    component.addAndTag.subscribe(addAndTag);
+
+    expect(editor.mentionCandidates()).toEqual(people);
+    expect(editor.allowAddAndTag()).toBe(true);
+    expect(editor.extraSlashCommands()).toEqual(actions);
+
+    editor.slashCommand.emit('approve');
+    editor.addAndTag.emit({ id: 'e9', name: 'New Person' });
+    editor.mentionsChange.emit(['e1']);
+
+    expect(slash).toHaveBeenCalledWith('approve');
+    expect(addAndTag).toHaveBeenCalledWith({ id: 'e9', name: 'New Person' });
+    expect(component.mentions()).toEqual(['e1']);
+  });
+
+  it('insertMention forwards to the editor', () => {
+    const editor = fixture.debugElement.query(By.directive(RichTextEditorComponent)).componentInstance as RichTextEditorComponent;
+    const spy = vi.spyOn(editor, 'insertMention');
+
+    component.insertMention({ id: 'e9', name: 'New Person' });
+
+    expect(spy).toHaveBeenCalledWith({ id: 'e9', name: 'New Person' });
   });
 
   it('does not emit submitted when the editor is empty', () => {

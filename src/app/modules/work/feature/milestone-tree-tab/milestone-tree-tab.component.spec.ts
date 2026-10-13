@@ -166,7 +166,7 @@ describe('MilestoneTreeTabComponent', () => {
     expect(memberFilter).not.toBeNull();
     expect(searchToggle.compareDocumentPosition(memberFilter) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
     expect(memberFilter.querySelector('img')?.getAttribute('src')).toBe('/cached/avatar-1');
-    expect(toolbar.host.querySelector('app-task-filter-bar')).not.toBeNull();
+    expect(toolbar.host.querySelector('app-filter-bar')).not.toBeNull();
     expect(toolbar.host.querySelector('[data-testid="expand-all-toggle"]')).not.toBeNull();
 
     (memberFilter.querySelector('.taaf__avatar') as HTMLButtonElement).click();
@@ -233,7 +233,7 @@ describe('MilestoneTreeTabComponent', () => {
       const toolbar = renderToolbar();
       expect(fixture.nativeElement.querySelector('[data-testid="module-filter-dropdown"]')).toBeNull();
       expect(fixture.nativeElement.querySelector('[data-testid="module-activity-filter-dropdown"]')).toBeNull();
-      expect(toolbar.host.querySelector('app-task-filter-bar')).not.toBeNull();
+      expect(toolbar.host.querySelector('app-filter-bar')).not.toBeNull();
       expect(toolbar.host.querySelector('[data-testid="expand-all-toggle"]')).not.toBeNull();
       toolbar.view.destroy();
     });

@@ -12,7 +12,7 @@ import { ModalComponent } from '../../../../shared/ui/modal/modal.component';
 import { InputComponent } from '../../../../shared/ui/input/input.component';
 import { ButtonComponent } from '../../../../shared/ui/button/button.component';
 import { WorkDropdownComponent, WorkDropdownOption } from '../../ui/work-dropdown/work-dropdown.component';
-import { TaskFilterBarComponent } from '../../ui/task-filter-bar/task-filter-bar.component';
+import { FilterBarComponent } from '../../../../shared/ui/filter-bar/filter-bar.component';
 import { TaskFormModalComponent } from '../../ui/task-form-modal/task-form-modal.component';
 import { DatePipe } from '@angular/common';
 import { AvatarComponent } from '../../../../shared/ui/avatar/avatar.component';
@@ -50,14 +50,14 @@ const APPROVAL_COLUMNS: readonly DataTableColumn[] = [
   selector: 'app-work-approvals',
   standalone: true,
   imports: [
-    DatePipe, TaskFilterBarComponent, DataTableComponent, DataTableCellDirective, AvatarComponent, DropdownMenuComponent,
+    DatePipe, FilterBarComponent, DataTableComponent, DataTableCellDirective, AvatarComponent, DropdownMenuComponent,
     ApprovalTypeIconComponent, ApprovalExplanationCardComponent, TaskFormModalComponent, ModalComponent, InputComponent,
     WorkDropdownComponent, ButtonComponent
   ],
   template: `
     <ng-template #toolbarTpl>
       <div class="work-approvals__toolbar-actions">
-        <app-task-filter-bar
+        <app-filter-bar
           [fields]="filterFields()"
           [values]="filterValues()"
           (fieldChanged)="onFilterChanged($event)"

@@ -1,8 +1,8 @@
 import { Component, HostListener, inject, input, output, signal, viewChild } from '@angular/core';
-import { firstValueFrom } from 'rxjs';
-import { TaskApiService } from '../../data-access/task-api.service';
-import { TaskAttachmentListComponent, AttachmentPill } from '../task-attachment-list/task-attachment-list.component';
-import { RichTextEditorComponent } from '../rich-text-editor/rich-text-editor.component';
+import { Observable, firstValueFrom } from 'rxjs';
+import { TaskApiService } from '../../../modules/work/data-access/task-api.service';
+import { TaskAttachmentListComponent, AttachmentPill } from '../../../modules/work/ui/task-attachment-list/task-attachment-list.component';
+import { HostSlashCommand, MentionCandidate, RichTextEditorComponent } from '../rich-text-editor/rich-text-editor.component';
 
 @Component({
   selector: 'app-comment-composer',
@@ -26,12 +26,22 @@ import { RichTextEditorComponent } from '../rich-text-editor/rich-text-editor.co
           [placeholder]="placeholder() + ' Press / for commands'"
           ariaLabel="Comment"
           imageUploadPurpose="comment_description_image"
+          [allowAttachments]="attachments()"
+          [extraSlashCommands]="extraSlashCommands()"
+          [mentionCandidates]="mentionCandidates()"
+          [allowAddAndTag]="allowAddAndTag()"
+          [mentionSearch]="mentionSearch()"
           (htmlChange)="editorHtml.set($event)"
           (filesAttached)="onFilesSelected($event)"
           (uploadFailed)="uploadError.set($event)"
+          (mentionsChange)="mentions.set($event)"
+          (slashCommand)="slashCommand.emit($event)"
+          (addAndTag)="addAndTag.emit($event)"
         />
 
-        <app-task-attachment-list [files]="attachedFiles()" (fileSelected)="onFilesSelected($event)" (removed)="removeAttachedFile($event)" />
+        @if (attachments()) {
+          <app-task-attachment-list [files]="attachedFiles()" (fileSelected)="onFilesSelected($event)" (removed)="removeAttachedFile($event)" />
+        }
 
         @if (uploadError()) {
           <p class="cc-error" role="alert">{{ uploadError() }}</p>
@@ -105,12 +115,22 @@ export class CommentComposerComponent {
   /** Starts as a one-line placeholder box that expands into the editor on click. */
   collapsible = input<boolean>(false);
   showProTip = input<boolean>(false);
+  /** File attachments (attachment list + the "/attach" command). Chat turns them off. */
+  attachments = input<boolean>(true);
+  extraSlashCommands = input<readonly HostSlashCommand[]>([]);
+  /** People who can be @mentioned; null turns mentions off. */
+  mentionCandidates = input<readonly MentionCandidate[] | null>(null);
+  allowAddAndTag = input<boolean>(false);
+  mentionSearch = input<((query: string) => Observable<readonly MentionCandidate[]>) | null>(null);
 
-  submitted = output<{ content: string; attachmentFileIds: string[] }>();
+  submitted = output<{ content: string; attachmentFileIds: string[]; mentions: string[] }>();
   cancelled = output<void>();
+  slashCommand = output<string>();
+  addAndTag = output<MentionCandidate>();
 
   isExpanded = signal(false);
   editorHtml = signal('');
+  mentions = signal<string[]>([]);
   attachedFiles = signal<AttachmentPill[]>([]);
   uploadError = signal<string | null>(null);
 
@@ -161,7 +181,7 @@ export class CommentComposerComponent {
 
   submit(): void {
     if (this.isEditorEmpty()) return;
-    this.submitted.emit({ content: this.editorHtml(), attachmentFileIds: this.attachedFiles().map(f => f.fileId) });
+    this.submitted.emit({ content: this.editorHtml(), attachmentFileIds: this.attachedFiles().map(f => f.fileId), mentions: this.mentions() });
     this.resetEditor();
     if (this.collapsible()) {
       this.isExpanded.set(false);
@@ -176,8 +196,14 @@ export class CommentComposerComponent {
     this.cancelled.emit();
   }
 
+  /** Inserts a mention chip where the user typed "@..." (used after an add-and-tag completes). */
+  insertMention(person: MentionCandidate): void {
+    this.editor()?.insertMention(person);
+  }
+
   private resetEditor(): void {
     this.editorHtml.set('');
+    this.mentions.set([]);
     this.attachedFiles.set([]);
     this.editor()?.clear();
   }

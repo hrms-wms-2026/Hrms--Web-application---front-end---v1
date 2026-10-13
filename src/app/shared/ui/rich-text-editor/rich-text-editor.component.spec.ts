@@ -2,7 +2,7 @@ import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { of, throwError } from 'rxjs';
 import { vi } from 'vitest';
 import { RichTextEditorComponent } from './rich-text-editor.component';
-import { TaskApiService } from '../../data-access/task-api.service';
+import { TaskApiService } from '../../../modules/work/data-access/task-api.service';
 
 describe('RichTextEditorComponent', () => {
   let fixture: ComponentFixture<RichTextEditorComponent>;
@@ -732,5 +732,161 @@ describe('RichTextEditorComponent', () => {
     expect(menuEl.style.bottom).toBe('42px');
     expect(menuEl.style.top).toBe('auto');
     expect(menuEl.style.maxHeight).toBe('280px');
+  });
+
+  function placeCaret(html: string, offset: number): HTMLElement {
+    const editor = comp.contentEditor()!.nativeElement;
+    editor.innerHTML = html;
+    const text = editor.querySelector('div')!.firstChild!;
+    const range = document.createRange();
+    range.setStart(text, offset);
+    range.collapse(true);
+    const sel = window.getSelection()!;
+    sel.removeAllRanges();
+    sel.addRange(range);
+    return editor;
+  }
+
+  describe('host slash commands', () => {
+    const actions = [
+      { id: 'approve', label: 'Approve', category: 'ACTIONS', icon: '✓' },
+      { id: 'reject', label: 'Reject', category: 'ACTIONS', icon: '✕' }
+    ];
+
+    it('lists host commands ahead of the formatting commands', () => {
+      fixture.componentRef.setInput('extraSlashCommands', actions);
+      const ids = comp.allSlashCommands().map((c) => c.id);
+      expect(ids.slice(0, 2)).toEqual(['approve', 'reject']);
+      expect(ids).toContain('bold');
+    });
+
+    it('filters host commands by label', () => {
+      fixture.componentRef.setInput('extraSlashCommands', actions);
+      comp.slashQuery.set('appr');
+      expect(comp.filteredSlashCommands().map((c) => c.id)).toEqual(['approve']);
+    });
+
+    it('emits slashCommand for a host command, removes the "/" token and does not format the text', () => {
+      fixture.componentRef.setInput('extraSlashCommands', actions);
+      const execSpy = vi.fn().mockReturnValue(true);
+      (document as unknown as { execCommand: typeof execSpy }).execCommand = execSpy;
+      const picked: string[] = [];
+      comp.slashCommand.subscribe((id) => picked.push(id));
+      const editor = placeCaret('<div>hi /appr</div>', 8);
+
+      comp.executeSlashCommand('approve');
+
+      expect(picked).toEqual(['approve']);
+      expect(editor.textContent).toBe('hi ');
+      const formattingCalls = execSpy.mock.calls.filter(([cmd]) => cmd !== 'defaultParagraphSeparator');
+      expect(formattingCalls).toEqual([]);
+    });
+  });
+
+  describe('@mentions', () => {
+    const people = [
+      { id: 'e1', name: 'Priya Raj', avatarUrl: null },
+      { id: 'e2', name: 'Kajan Siva', avatarUrl: null }
+    ];
+
+    it('does not open the mention menu when mentions are not enabled', () => {
+      placeCaret('<div>@pr</div>', 3);
+      comp.onEditorInput();
+      expect(comp.showMentionMenu()).toBe(false);
+    });
+
+    it('opens the mention menu on "@" and filters participants by the typed query', () => {
+      fixture.componentRef.setInput('mentionCandidates', people);
+      placeCaret('<div>hey @pr</div>', 7);
+      comp.onEditorInput();
+
+      expect(comp.showMentionMenu()).toBe(true);
+      expect(comp.filteredMentionCandidates().map((p) => p.id)).toEqual(['e1']);
+    });
+
+    it('ignores an "@" that is part of a word (e.g. an email address)', () => {
+      fixture.componentRef.setInput('mentionCandidates', people);
+      placeCaret('<div>a@pr</div>', 4);
+      comp.onEditorInput();
+      expect(comp.showMentionMenu()).toBe(false);
+    });
+
+    it('picking a participant replaces the "@query" with a mention span and emits mentionsChange', () => {
+      fixture.componentRef.setInput('mentionCandidates', people);
+      const mentions: string[][] = [];
+      comp.mentionsChange.subscribe((ids) => mentions.push(ids));
+      const editor = placeCaret('<div>hey @pr</div>', 7);
+      comp.onEditorInput();
+
+      comp.pickMention(people[0]);
+
+      const span = editor.querySelector('span.mention') as HTMLElement;
+      expect(span).toBeTruthy();
+      expect(span.getAttribute('data-employee-id')).toBe('e1');
+      expect(span.getAttribute('contenteditable')).toBe('false');
+      expect(span.textContent).toBe('@Priya Raj');
+      expect(editor.textContent).not.toContain('@pr ');
+      expect(comp.showMentionMenu()).toBe(false);
+      expect(mentions.at(-1)).toEqual(['e1']);
+    });
+
+    it('Enter picks the highlighted mention instead of inserting a new line', () => {
+      fixture.componentRef.setInput('mentionCandidates', people);
+      const editor = placeCaret('<div>@ka</div>', 3);
+      comp.onEditorInput();
+      const event = new KeyboardEvent('keydown', { key: 'Enter', cancelable: true });
+
+      comp.onEditorKeydown(event);
+
+      expect(event.defaultPrevented).toBe(true);
+      expect(editor.querySelector('span.mention')?.getAttribute('data-employee-id')).toBe('e2');
+    });
+
+    it('mentionsChange drops an id once its span is deleted and de-duplicates repeats', () => {
+      fixture.componentRef.setInput('mentionCandidates', people);
+      const mentions: string[][] = [];
+      comp.mentionsChange.subscribe((ids) => mentions.push(ids));
+      const editor = comp.contentEditor()!.nativeElement;
+
+      editor.innerHTML = '<div><span class="mention" data-employee-id="e1">@Priya Raj</span> and <span class="mention" data-employee-id="e1">@Priya Raj</span></div>';
+      comp.onEditorInput();
+      expect(mentions.at(-1)).toEqual(['e1']);
+
+      editor.innerHTML = '<div>nobody</div>';
+      comp.onEditorInput();
+      expect(mentions.at(-1)).toEqual([]);
+    });
+
+    it('offers "add and tag" search results that are not participants and emits addAndTag', async () => {
+      fixture.componentRef.setInput('mentionCandidates', people);
+      fixture.componentRef.setInput('allowAddAndTag', true);
+      fixture.componentRef.setInput('mentionSearch', (q: string) =>
+        of([{ id: 'e1', name: 'Priya Raj', avatarUrl: null }, { id: 'e9', name: 'Priyanka New', avatarUrl: null }].filter((p) => p.name.toLowerCase().startsWith(q))));
+      const added: string[] = [];
+      comp.addAndTag.subscribe((c) => added.push(c.id));
+      placeCaret('<div>@pri</div>', 4);
+      comp.onEditorInput();
+      await fixture.whenStable();
+
+      expect(comp.addAndTagResults().map((p) => p.id)).toEqual(['e9']);
+
+      comp.pickAddAndTag(comp.addAndTagResults()[0]);
+      expect(added).toEqual(['e9']);
+    });
+
+    it('insertMention after add-and-tag places the span where the "@query" was typed', async () => {
+      fixture.componentRef.setInput('mentionCandidates', people);
+      fixture.componentRef.setInput('allowAddAndTag', true);
+      fixture.componentRef.setInput('mentionSearch', () => of([{ id: 'e9', name: 'Priyanka New', avatarUrl: null }]));
+      const editor = placeCaret('<div>hi @pri</div>', 7);
+      comp.onEditorInput();
+      await fixture.whenStable();
+      comp.pickAddAndTag(comp.addAndTagResults()[0]);
+
+      comp.insertMention({ id: 'e9', name: 'Priyanka New', avatarUrl: null });
+
+      expect(editor.querySelector('span.mention')?.getAttribute('data-employee-id')).toBe('e9');
+      expect(editor.textContent?.startsWith('hi @Priyanka New')).toBe(true);
+    });
   });
 });

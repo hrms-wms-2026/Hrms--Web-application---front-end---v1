@@ -1,15 +1,15 @@
 import { ComponentFixture, TestBed } from '@angular/core/testing';
-import { HIGHLIGHT_SWATCHES, TaskFilterBarComponent, TaskFilterFieldConfig } from './task-filter-bar.component';
+import { HIGHLIGHT_SWATCHES, FilterBarComponent, FilterFieldConfig } from './filter-bar.component';
 
-describe('TaskFilterBarComponent', () => {
-  let fixture: ComponentFixture<TaskFilterBarComponent>;
+describe('FilterBarComponent', () => {
+  let fixture: ComponentFixture<FilterBarComponent>;
 
-  const fields: TaskFilterFieldConfig[] = [
+  const fields: FilterFieldConfig[] = [
     { key: 'priority', label: 'Priority', icon: 'priority', kind: 'multi', options: [{ value: 'high', label: 'High' }] }
   ];
 
   function setup(inputs: Record<string, unknown> = {}): void {
-    fixture = TestBed.createComponent(TaskFilterBarComponent);
+    fixture = TestBed.createComponent(FilterBarComponent);
     fixture.componentRef.setInput('fields', fields);
     for (const [key, value] of Object.entries(inputs)) fixture.componentRef.setInput(key, value);
     fixture.detectChanges();

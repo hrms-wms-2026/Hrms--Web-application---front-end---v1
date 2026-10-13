@@ -7,7 +7,7 @@ import { firstValueFrom } from 'rxjs';
 import { ProjectDetailStore } from '../../state/project-detail.store';
 import { MilestoneTreeNodeComponent, TreeExpandCommand } from '../../ui/milestone-tree-node/milestone-tree-node.component';
 import { WorkDropdownOption } from '../../ui/work-dropdown/work-dropdown.component';
-import { HIGHLIGHT_SWATCHES, TaskFilterBarComponent, TaskFilterFieldConfig } from '../../ui/task-filter-bar/task-filter-bar.component';
+import { HIGHLIGHT_SWATCHES, FilterBarComponent, FilterFieldConfig } from '../../../../shared/ui/filter-bar/filter-bar.component';
 import { TaskApiService } from '../../data-access/task-api.service';
 import { collectNodes, computeTreeHighlight, hasActiveHighlight } from '../../utils/tree-highlight.utils';
 import { TaskFormModalComponent } from '../../ui/task-form-modal/task-form-modal.component';
@@ -72,7 +72,7 @@ const PROGRESS_OPTIONS: readonly WorkDropdownOption[] = [
   selector: 'app-milestone-tree-tab',
   standalone: true,
   imports: [
-    MilestoneTreeNodeComponent, TaskFilterBarComponent, TreeExplanationPanelComponent, SubModuleFormComponent,
+    MilestoneTreeNodeComponent, FilterBarComponent, TreeExplanationPanelComponent, SubModuleFormComponent,
     MemberManagementPopupComponent, SprintFormComponent, SprintCompleteDialogComponent, TaskFormModalComponent,
     LoaderComponent, ErrorStateComponent, EmptyStateComponent, ConfirmModalComponent, ButtonComponent,
     TaskAssigneeAvatarFilterComponent
@@ -125,7 +125,7 @@ export class MilestoneTreeTabComponent implements AfterViewInit, OnDestroy {
 
   renderedTree = computed(() => this.store.selectedSubtree());
 
-  readonly filterFields = computed<TaskFilterFieldConfig[]>(() => {
+  readonly filterFields = computed<FilterFieldConfig[]>(() => {
     const tree = this.store.selectedSubtree();
     const modules = tree ? collectObjectiveOptions(tree).map((o) => ({ value: o.id, label: o.title })) : [];
     const sprints = tree ? collectNodes(tree, (n) => n.kind === 'sprint').map((n) => ({ value: n.id, label: n.title })) : [];

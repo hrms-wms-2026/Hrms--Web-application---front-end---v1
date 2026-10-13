@@ -1,14 +1,39 @@
 import { Component, DestroyRef, ElementRef, computed, effect, inject, input, output, signal, untracked, viewChild } from '@angular/core';
-import { firstValueFrom } from 'rxjs';
-import { PendingUploadPurpose, TaskApiService } from '../../data-access/task-api.service';
-import { ColorSwatchPopoverComponent } from '../color-swatch-popover/color-swatch-popover.component';
+import { Observable, Subscription, firstValueFrom } from 'rxjs';
+import { PendingUploadPurpose, TaskApiService } from '../../../modules/work/data-access/task-api.service';
+import { ColorSwatchPopoverComponent } from '../../../modules/work/ui/color-swatch-popover/color-swatch-popover.component';
 
 export interface SlashCommandItem {
   id: string;
   label: string;
   description: string;
-  category: 'SUGGESTIONS' | 'TEXT' | 'MEDIA & EMBEDS';
+  category: string;
   keywords: string[];
+  /** Short glyph for host-supplied commands; built-in commands render their own icons. */
+  icon?: string;
+}
+
+/** A command the host adds to the "/" menu (e.g. an inbox item's actions). Picking it emits `slashCommand`. */
+export interface HostSlashCommand {
+  id: string;
+  label: string;
+  category: string;
+  icon?: string;
+  description?: string;
+}
+
+/** A person who can be @mentioned. */
+export interface MentionCandidate {
+  id: string;
+  name: string;
+  avatarUrl?: string | null;
+}
+
+interface MentionTriggerContext {
+  query: string;
+  range: Range;
+  textNode: Node;
+  atOffset: number;
 }
 
 export const ALL_SLASH_COMMANDS: SlashCommandItem[] = [
@@ -334,6 +359,7 @@ export interface SlashMenuCoords {
                               @case ('attach') {
                                 <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m21.44 11.05-9.19 9.19a6 6 0 0 1-8.49-8.49l8.57-8.57A4 4 0 1 1 18 8.84l-8.59 8.57a2 2 0 0 1-2.83-2.83l8.49-8.48" /></svg>
                               }
+                              @default { <span aria-hidden="true">{{ cmd.icon ?? '/' }}</span> }
                             }
                           </div>
                           <div class="tfm-slash-text">
@@ -367,6 +393,57 @@ export interface SlashMenuCoords {
                     (mousedown)="$event.preventDefault()"
                   >
                     <span class="tfm-slash-empty-text">No matching commands</span>
+                  </div>
+                }
+
+                @if (showMentionMenu()) {
+                  <div
+                    class="tfm-slash-menu tfm-mention-menu"
+                    role="listbox"
+                    aria-label="Mention someone"
+                    [class.tfm-slash-menu--upward]="mentionMenuCoords()?.openUpward"
+                    [style.top]="mentionMenuCoords()?.top !== null && mentionMenuCoords()?.top !== undefined ? (mentionMenuCoords()!.top + 'px') : 'auto'"
+                    [style.bottom]="mentionMenuCoords()?.bottom !== null && mentionMenuCoords()?.bottom !== undefined ? (mentionMenuCoords()!.bottom + 'px') : 'auto'"
+                    [style.left.px]="mentionMenuCoords()?.left ?? 12"
+                    [style.max-height.px]="mentionMenuCoords()?.maxHeight ?? 310"
+                    (mousedown)="$event.preventDefault()"
+                  >
+                    @if (mentionMenuItems().length === 0) {
+                      <span class="tfm-slash-empty-text">No matching people</span>
+                    }
+                    <div class="tfm-slash-menu__list">
+                      @for (item of mentionMenuItems(); track item.person.id + item.addAndTag; let idx = $index) {
+                        @if (idx === 0 && !item.addAndTag) {
+                          <div class="tfm-slash-group-label">In this conversation</div>
+                        }
+                        @if (item.addAndTag && (idx === 0 || !mentionMenuItems()[idx - 1].addAndTag)) {
+                          <div class="tfm-slash-group-label">Add and tag</div>
+                        }
+                        <button
+                          type="button"
+                          role="option"
+                          class="tfm-slash-item"
+                          [attr.aria-selected]="mentionSelectedIndex() === idx"
+                          [class.tfm-slash-item--active]="mentionSelectedIndex() === idx"
+                          (mouseenter)="mentionSelectedIndex.set(idx)"
+                          (click)="item.addAndTag ? pickAddAndTag(item.person) : pickMention(item.person)"
+                        >
+                          <div class="tfm-slash-icon tfm-mention-avatar">
+                            @if (item.person.avatarUrl) {
+                              <img [src]="item.person.avatarUrl" alt="" />
+                            } @else {
+                              <span aria-hidden="true">{{ item.person.name.charAt(0).toUpperCase() }}</span>
+                            }
+                          </div>
+                          <div class="tfm-slash-text">
+                            <span class="tfm-slash-name">{{ item.person.name }}</span>
+                            @if (item.addAndTag) {
+                              <span class="tfm-slash-desc">Adds them to the conversation</span>
+                            }
+                          </div>
+                        </button>
+                      }
+                    </div>
                   </div>
                 }
               </div>
@@ -414,6 +491,9 @@ export interface SlashMenuCoords {
     .tfm-editor__content ::ng-deep p, .tfm-editor__content ::ng-deep div { font-size: 14px; line-height: 1.6; }
     .tfm-editor__content ::ng-deep strong, .tfm-editor__content ::ng-deep b { font-weight: 700 !important; font-size: inherit; }
     .tfm-editor__content ::ng-deep em, .tfm-editor__content ::ng-deep i { font-style: italic; }
+    .tfm-editor__content ::ng-deep .mention { display: inline; padding: 0 3px; border-radius: 4px; background: color-mix(in srgb, var(--color-accent) 12%, transparent); color: var(--color-accent); font-weight: 600; white-space: nowrap; }
+    .tfm-mention-avatar { border-radius: 50%; overflow: hidden; }
+    .tfm-mention-avatar img { width: 100%; height: 100%; object-fit: cover; }
     .tfm-editor__content ::ng-deep u { text-decoration: underline; }
     .tfm-editor__content ::ng-deep h3, ::ng-deep .tfm-preview-h2 { margin: 8px 0 4px; font-size: 15px; font-weight: 700; color: var(--color-text-primary); }
     .tfm-editor__content ::ng-deep hr, ::ng-deep .tfm-preview-hr { border: 0; height: 1px; background: var(--color-border); margin: 12px 0; }
@@ -536,6 +616,21 @@ export class RichTextEditorComponent {
   filesAttached = output<File[]>();
   uploadFailed = output<string>();
 
+  /** Extra "/" commands supplied by the host; listed before the formatting commands. */
+  extraSlashCommands = input<readonly HostSlashCommand[]>([]);
+  /** Emits the id of a host slash command the user picked. */
+  slashCommand = output<string>();
+
+  /** People who can be @mentioned. null (default) turns @mentions off. */
+  mentionCandidates = input<readonly MentionCandidate[] | null>(null);
+  /** Also offer people outside mentionCandidates (found via mentionSearch) as "add and tag". */
+  allowAddAndTag = input<boolean>(false);
+  mentionSearch = input<((query: string) => Observable<readonly MentionCandidate[]>) | null>(null);
+  /** Emits the distinct employee ids mentioned in the content whenever that set changes. */
+  mentionsChange = output<string[]>();
+  /** Emits a non-candidate the user chose to add and tag; the host adds them, then calls insertMention. */
+  addAndTag = output<MentionCandidate>();
+
   readonly contentEditor = viewChild<ElementRef<HTMLDivElement>>('contentEditor');
   readonly imageFileInput = viewChild<ElementRef<HTMLInputElement>>('imageFileInput');
   readonly attachmentFileInput = viewChild<ElementRef<HTMLInputElement>>('attachmentFileInput');
@@ -563,13 +658,41 @@ export class RichTextEditorComponent {
     { name: 'Pink', hex: '#ffd6e8' }, { name: 'Grey', hex: '#e9ecef' }
   ];
 
-  readonly allSlashCommands = computed(() =>
-    this.allowAttachments() ? ALL_SLASH_COMMANDS : ALL_SLASH_COMMANDS.filter((cmd) => cmd.id !== 'attach')
-  );
+  private readonly hostSlashCommandIds = computed(() => new Set(this.extraSlashCommands().map((cmd) => cmd.id)));
+  readonly allSlashCommands = computed<SlashCommandItem[]>(() => {
+    const host = this.extraSlashCommands().map((cmd) => ({
+      id: cmd.id,
+      label: cmd.label,
+      description: cmd.description ?? '',
+      category: cmd.category,
+      keywords: [cmd.id],
+      icon: cmd.icon
+    }));
+    const builtIn = this.allowAttachments() ? ALL_SLASH_COMMANDS : ALL_SLASH_COMMANDS.filter((cmd) => cmd.id !== 'attach');
+    return [...host, ...builtIn];
+  });
   showSlashMenu = signal(false);
   slashQuery = signal('');
   slashSelectedIndex = signal(0);
   slashMenuCoords = signal<SlashMenuCoords | null>(null);
+
+  showMentionMenu = signal(false);
+  mentionQuery = signal('');
+  mentionSelectedIndex = signal(0);
+  mentionMenuCoords = signal<SlashMenuCoords | null>(null);
+  addAndTagResults = signal<readonly MentionCandidate[]>([]);
+  readonly filteredMentionCandidates = computed(() => {
+    const q = this.mentionQuery().toLowerCase();
+    return (this.mentionCandidates() ?? []).filter((p) => p.name.toLowerCase().includes(q));
+  });
+  /** Participants first, then "add and tag" search results: the order keyboard navigation follows. */
+  readonly mentionMenuItems = computed(() => [
+    ...this.filteredMentionCandidates().map((person) => ({ person, addAndTag: false })),
+    ...this.addAndTagResults().map((person) => ({ person, addAndTag: true }))
+  ]);
+  private pendingMention: MentionTriggerContext | null = null;
+  private mentionSearchSub: Subscription | null = null;
+  private lastMentionIds: string[] = [];
 
   activeFormats = signal<{
     bold: boolean;
@@ -651,6 +774,7 @@ export class RichTextEditorComponent {
     destroyRef.onDestroy(() => {
       document.removeEventListener('mousedown', onOutsidePress, true);
       window.removeEventListener('scroll', onScroll, true);
+      this.mentionSearchSub?.unsubscribe();
     });
   }
 
@@ -702,6 +826,7 @@ export class RichTextEditorComponent {
     this.showTextColorPopover.set(false);
     this.showHighlightPopover.set(false);
     this.closeSlashMenu();
+    this.closeMentionMenu();
   }
 
   onAttachmentFileInputChange(event: Event): void {
@@ -1607,6 +1732,10 @@ export class RichTextEditorComponent {
     if (!this.restoringHistory) this.recordHistory(html);
     this.htmlChange.emit(html);
     this.checkSlashMenuTrigger();
+    if (this.mentionCandidates() !== null) {
+      this.emitMentionsIfChanged(el);
+      this.checkMentionTrigger();
+    }
   }
 
   private isElementVisuallyEmpty(el: HTMLElement): boolean {
@@ -1702,6 +1831,10 @@ export class RichTextEditorComponent {
         this.redo();
         return;
       }
+    }
+
+    if (this.showMentionMenu() && this.handleMentionMenuKey(event)) {
+      return;
     }
 
     if (this.showSlashMenu()) {
@@ -2159,8 +2292,18 @@ export class RichTextEditorComponent {
   }
 
   updateSlashMenuPosition(range: Range): void {
+    const coords = this.computeMenuCoords(range);
+    if (coords === 'hidden') {
+      this.closeSlashMenu();
+    } else if (coords) {
+      this.slashMenuCoords.set(coords);
+    }
+  }
+
+  /** Popover placement under (or above) the caret; 'hidden' when the caret is scrolled out of view. */
+  private computeMenuCoords(range: Range): SlashMenuCoords | 'hidden' | null {
     const editorEl = this.contentEditor()?.nativeElement;
-    if (!editorEl) return;
+    if (!editorEl) return null;
 
     try {
       const containerEl = (editorEl.closest('.tfm-editor') as HTMLElement) || editorEl;
@@ -2181,8 +2324,7 @@ export class RichTextEditorComponent {
       // If caret is scrolled outside the visible content area of the editor, close slash menu
       if (editorEl.scrollHeight > editorEl.clientHeight) {
         if (rangeRect.bottom < editorRect.top || rangeRect.top > editorRect.bottom) {
-          this.closeSlashMenu();
-          return;
+          return 'hidden';
         }
       }
 
@@ -2234,21 +2376,9 @@ export class RichTextEditorComponent {
         left = maxLeft;
       }
 
-      this.slashMenuCoords.set({
-        top,
-        bottom,
-        left,
-        openUpward,
-        maxHeight
-      });
+      return { top, bottom, left, openUpward, maxHeight };
     } catch {
-      this.slashMenuCoords.set({
-        top: 36,
-        bottom: null,
-        left: 12,
-        openUpward: false,
-        maxHeight: 310
-      });
+      return { top: 36, bottom: null, left: 12, openUpward: false, maxHeight: 310 };
     }
   }
 
@@ -2293,6 +2423,146 @@ export class RichTextEditorComponent {
     this.slashSelectedIndex.set(0);
   }
 
+  /** Same rules as the "/" trigger: "@" at the start or after whitespace, no whitespace in the query. */
+  private getMentionTriggerContext(): MentionTriggerContext | null {
+    const el = this.contentEditor()?.nativeElement;
+    const sel = window.getSelection();
+    if (!el || !sel || sel.rangeCount === 0 || !sel.isCollapsed) return null;
+    const anchorNode = sel.anchorNode;
+    if (!anchorNode || !el.contains(anchorNode) || anchorNode.nodeType !== Node.TEXT_NODE) return null;
+
+    const textBeforeCursor = (anchorNode.textContent ?? '').slice(0, sel.anchorOffset);
+    const atOffset = textBeforeCursor.lastIndexOf('@');
+    if (atOffset === -1) return null;
+    if (atOffset > 0 && !/\s/.test(textBeforeCursor[atOffset - 1])) return null;
+    const query = textBeforeCursor.slice(atOffset + 1);
+    if (/\s/.test(query)) return null;
+
+    return { query, range: sel.getRangeAt(0), textNode: anchorNode, atOffset };
+  }
+
+  private checkMentionTrigger(): void {
+    const ctx = this.getMentionTriggerContext();
+    if (!ctx) {
+      if (this.showMentionMenu()) this.closeMentionMenu();
+      return;
+    }
+    this.pendingMention = ctx;
+    this.mentionQuery.set(ctx.query);
+    this.mentionSelectedIndex.set(0);
+    const coords = this.computeMenuCoords(ctx.range);
+    if (coords === 'hidden') {
+      this.closeMentionMenu();
+      return;
+    }
+    if (coords) this.mentionMenuCoords.set(coords);
+    this.showMentionMenu.set(true);
+    this.searchAddAndTag(ctx.query);
+  }
+
+  private searchAddAndTag(query: string): void {
+    this.mentionSearchSub?.unsubscribe();
+    this.mentionSearchSub = null;
+    const search = this.mentionSearch();
+    if (!this.allowAddAndTag() || !search || !query) {
+      this.addAndTagResults.set([]);
+      return;
+    }
+    this.mentionSearchSub = search(query).subscribe({
+      next: (results) => {
+        const participantIds = new Set((this.mentionCandidates() ?? []).map((p) => p.id));
+        this.addAndTagResults.set(results.filter((p) => !participantIds.has(p.id)));
+      },
+      error: () => this.addAndTagResults.set([])
+    });
+  }
+
+  private handleMentionMenuKey(event: KeyboardEvent): boolean {
+    const items = this.mentionMenuItems();
+    if (event.key === 'Escape') {
+      event.preventDefault();
+      event.stopPropagation();
+      this.closeMentionMenu();
+      return true;
+    }
+    if (items.length === 0) return false;
+    if (event.key === 'ArrowDown' || event.key === 'ArrowUp') {
+      event.preventDefault();
+      const step = event.key === 'ArrowDown' ? 1 : -1;
+      this.mentionSelectedIndex.update((idx) => (idx + step + items.length) % items.length);
+      return true;
+    }
+    if (event.key === 'Enter' || event.key === 'Tab') {
+      event.preventDefault();
+      const selected = items[this.mentionSelectedIndex()] ?? items[0];
+      if (selected.addAndTag) this.pickAddAndTag(selected.person);
+      else this.pickMention(selected.person);
+      return true;
+    }
+    return false;
+  }
+
+  closeMentionMenu(): void {
+    this.showMentionMenu.set(false);
+    this.mentionQuery.set('');
+    this.mentionSelectedIndex.set(0);
+    this.addAndTagResults.set([]);
+    this.mentionSearchSub?.unsubscribe();
+    this.mentionSearchSub = null;
+  }
+
+  pickMention(person: MentionCandidate): void {
+    this.insertMention(person);
+  }
+
+  /** Hands a non-participant to the host; the "@query" stays put until the host calls insertMention. */
+  pickAddAndTag(person: MentionCandidate): void {
+    this.closeMentionMenu();
+    this.addAndTag.emit(person);
+  }
+
+  /** Replaces the pending "@query" with a mention chip for `person`. */
+  insertMention(person: MentionCandidate): void {
+    const ctx = this.pendingMention;
+    const el = this.contentEditor()?.nativeElement;
+    this.pendingMention = null;
+    this.closeMentionMenu();
+    if (!ctx || !el || !el.contains(ctx.textNode)) return;
+
+    const text = ctx.textNode.textContent ?? '';
+    const before = text.slice(0, ctx.atOffset);
+    const after = text.slice(ctx.atOffset + 1 + ctx.query.length);
+    ctx.textNode.textContent = before;
+
+    const chip = document.createElement('span');
+    chip.className = 'mention';
+    chip.setAttribute('data-employee-id', person.id);
+    chip.setAttribute('contenteditable', 'false');
+    chip.textContent = `@${person.name}`;
+    const trailing = document.createTextNode(` ${after}`);
+    const parent = ctx.textNode.parentNode!;
+    parent.insertBefore(trailing, ctx.textNode.nextSibling);
+    parent.insertBefore(chip, trailing);
+
+    const caret = document.createRange();
+    caret.setStart(trailing, 1);
+    caret.collapse(true);
+    const sel = window.getSelection();
+    sel?.removeAllRanges();
+    sel?.addRange(caret);
+    el.focus();
+    this.onEditorInput();
+  }
+
+  private emitMentionsIfChanged(el: HTMLElement): void {
+    const ids = [...new Set(
+      Array.from(el.querySelectorAll('span.mention[data-employee-id]')).map((node) => node.getAttribute('data-employee-id')!)
+    )];
+    if (ids.length === this.lastMentionIds.length && ids.every((id, i) => id === this.lastMentionIds[i])) return;
+    this.lastMentionIds = ids;
+    this.mentionsChange.emit(ids);
+  }
+
   scrollActiveSlashItemIntoView(): void {
     setTimeout(() => {
       const activeEl = this.host.nativeElement.querySelector('.tfm-slash-item--active') as HTMLElement | null;
@@ -2308,6 +2578,12 @@ export class RichTextEditorComponent {
 
     const el = this.contentEditor()?.nativeElement;
     if (el) el.focus();
+
+    if (this.hostSlashCommandIds().has(cmdId)) {
+      this.onEditorInput();
+      this.slashCommand.emit(cmdId);
+      return;
+    }
 
     switch (cmdId) {
       case 'bold':

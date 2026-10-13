@@ -1,5 +1,5 @@
 import { WorkDropdownOption } from '../ui/work-dropdown/work-dropdown.component';
-import { TaskFilterFieldConfig } from '../ui/task-filter-bar/task-filter-bar.component';
+import { FilterFieldConfig } from '../../../shared/ui/filter-bar/filter-bar.component';
 import { ApprovalFeedItemDto } from '../models/dto/approval-feed.dto';
 import { MenuItem } from '../../../shared/ui/dropdown-menu/dropdown-menu.component';
 
@@ -99,7 +99,7 @@ function distinct(items: readonly ApprovalFeedItemDto[], key: (i: ApprovalFeedIt
   return [...map].map(([value, label]) => ({ value, label })).sort((a, b) => a.label.localeCompare(b.label));
 }
 
-export function buildApprovalFilterFields(items: readonly ApprovalFeedItemDto[]): TaskFilterFieldConfig[] {
+export function buildApprovalFilterFields(items: readonly ApprovalFeedItemDto[]): FilterFieldConfig[] {
   const typeKeys = [...new Set(items.map((i) => approvalTypeKey(i.actionType)))];
   return [
     { key: 'direction', label: 'Requests', icon: 'type', kind: 'single', defaultValues: ['all'],
