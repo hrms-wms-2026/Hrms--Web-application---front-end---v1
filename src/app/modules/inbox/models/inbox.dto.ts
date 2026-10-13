@@ -143,6 +143,13 @@ export interface InboxActionResultDto {
 export type ConversationMessageDto = RealtimeConversationMessage;
 export type ConversationParticipantDto = RealtimeConversationParticipant;
 
+/** A colleague who can be added to a conversation (GET conversations/people). */
+export interface ConversationPersonDto {
+  employeeId: string;
+  name: string;
+  avatarFileId: string | null;
+}
+
 export interface ConversationDto {
   id: string;
   source: string;

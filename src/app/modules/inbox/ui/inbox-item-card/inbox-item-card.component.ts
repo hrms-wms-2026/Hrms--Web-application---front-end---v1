@@ -1,4 +1,4 @@
-import { DatePipe, KeyValuePipe } from '@angular/common';
+import { DatePipe, KeyValuePipe, NgTemplateOutlet } from '@angular/common';
 import { Component, computed, effect, input, output, signal } from '@angular/core';
 import { AvatarComponent } from '../../../../shared/ui/avatar/avatar.component';
 import { ConfirmModalComponent } from '../../../../shared/ui/confirm-modal/confirm-modal.component';
@@ -22,14 +22,24 @@ const NAVIGATION_ACTIONS = new Set(['open_target']);
 @Component({
   selector: 'app-inbox-item-card',
   standalone: true,
-  imports: [DatePipe, KeyValuePipe, AvatarComponent, ConfirmModalComponent, InboxChangeSetComponent, InboxCommentDialogComponent, InboxStepsComponent, InboxTypeIconComponent],
+  imports: [DatePipe, KeyValuePipe, NgTemplateOutlet, AvatarComponent, ConfirmModalComponent, InboxChangeSetComponent, InboxCommentDialogComponent, InboxStepsComponent, InboxTypeIconComponent],
   host: { class: 'block h-full min-w-0' },
   template: `
+    <ng-template #conversation><ng-content select="[inboxConversation]" /></ng-template>
     <aside class="card" data-testid="inbox-card" aria-label="Item details">
       @if (loading() && !detail()) {
         <p class="card__muted">Loading…</p>
       } @else if (!detail()) {
-        @if (error()) { <p class="card__error m-4" role="alert">{{ error() }}</p> }
+        <div class="card__scroll">
+          <div class="card__header card__header--bare">
+            <button type="button" class="card__close" data-testid="inbox-card-close" aria-label="Close details" (click)="closed.emit()">
+              <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M18 6 6 18" /></svg>
+            </button>
+          </div>
+          @if (error()) { <p class="card__error" role="alert">{{ error() }}</p> }
+          <!-- The conversation has its own access check, so it is still offered without the detail. -->
+          @if (!loading()) { <ng-container [ngTemplateOutlet]="conversation" /> }
+        </div>
       } @else {
         @let d = detail()!;
         @let item = d.item;
@@ -102,7 +112,7 @@ const NAVIGATION_ACTIONS = new Set(['open_target']);
             </section>
           }
 
-          <ng-content select="[inboxConversation]" />
+          <ng-container [ngTemplateOutlet]="conversation" />
         </div>
 
         @if (actionError()) {
@@ -139,6 +149,7 @@ const NAVIGATION_ACTIONS = new Set(['open_target']);
     .card { position: relative; display: flex; height: 100%; overflow: hidden; flex-direction: column; border: 1px solid var(--color-border); border-radius: 12px; background: var(--color-surface); color: var(--color-text-primary); box-shadow: 0 1px 2px rgb(0 0 0 / .05); }
     .card__scroll { display: flex; flex: 1; min-height: 0; flex-direction: column; gap: 20px; overflow-x: hidden; overflow-y: auto; padding: 20px; }
     .card__header { display: flex; align-items: flex-start; gap: 12px; padding-bottom: 16px; border-bottom: 1px solid var(--color-border); }
+    .card__header--bare { justify-content: flex-end; padding-bottom: 0; border-bottom: 0; }
     .card__type-tile { width: 40px; height: 40px; border-radius: 11px; }
     .card__heading { min-width: 0; flex: 1; }
     .card__eyebrow { margin-bottom: 3px; color: var(--color-text-secondary); font-size: 11px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; }

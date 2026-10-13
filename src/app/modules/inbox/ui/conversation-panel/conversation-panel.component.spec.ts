@@ -1,5 +1,5 @@
 import { TestBed } from '@angular/core/testing';
-import { Subject, of } from 'rxjs';
+import { Subject, of, throwError } from 'rxjs';
 import { vi } from 'vitest';
 import { By } from '@angular/platform-browser';
 import { AuthStore } from '../../../../core/auth/state/auth.store';
@@ -7,10 +7,10 @@ import { InboxRealtimeService } from '../../../../core/realtime/inbox-realtime.s
 import { MessageCreatedEvent } from '../../../../core/realtime/inbox-realtime.models';
 import { CommentComposerComponent } from '../../../../shared/ui/comment-composer/comment-composer.component';
 import { TaskApiService } from '../../../work/data-access/task-api.service';
-import { PeopleApiService } from '../../../people/data-access/people-api.service';
 import { ConversationsApiService } from '../../data-access/conversations-api.service';
 import { ConversationDto, ConversationMessageDto } from '../../models/inbox.dto';
 import { ConversationPanelComponent, decorateMentions } from './conversation-panel.component';
+import { InboxStore } from '../../state/inbox.store';
 
 const ME = 'e1';
 const REF = { source: 'work', kind: 'approval', id: 'a1' };
@@ -49,7 +49,8 @@ describe('ConversationPanelComponent', () => {
       messages: vi.fn(() => of({ items: [message('m0', '2026-10-11T09:00:00Z')], hasMore: false })),
       post: vi.fn((_: string, html: string) => of(message('m9', '2026-10-13T10:00:00Z', { authorEmployeeId: ME, bodyHtml: html }))),
       addParticipants: vi.fn((_: string, ids: string[]) => of(ids.map((id) => ({ employeeId: id, name: 'New', avatarFileId: null, joinReason: 'added', addedByEmployeeId: ME, addedAt: null })))),
-      markRead: vi.fn(() => of(undefined))
+      markRead: vi.fn(() => of(undefined)),
+      searchPeople: vi.fn(() => of([{ employeeId: 'e7', name: 'Chen Li', avatarFileId: null }, { employeeId: 'e2', name: 'Anu', avatarFileId: null }]))
     };
     created = new Subject();
     TestBed.configureTestingModule({
@@ -58,7 +59,7 @@ describe('ConversationPanelComponent', () => {
         { provide: ConversationsApiService, useValue: api },
         { provide: InboxRealtimeService, useValue: { messageCreated$: created.asObservable(), participantAdded$: new Subject(), reconnected$: new Subject() } },
         { provide: AuthStore, useValue: { employeeId: () => ME } },
-        { provide: PeopleApiService, useValue: { listEmployees: vi.fn(() => of({ items: [{ id: 'e7', fullName: 'Chen Li' }, { id: 'e2', fullName: 'Anu' }] })) } },
+        { provide: InboxStore, useValue: { loadCounts: vi.fn(() => Promise.resolve()) } },
         { provide: TaskApiService, useValue: { uploadPendingFile: vi.fn(), deletePendingFile: vi.fn(), getFileUrl: vi.fn() } }
       ]
     });
@@ -146,6 +147,39 @@ describe('ConversationPanelComponent', () => {
     await panel.confirmAdd();
 
     expect(api['addParticipants']).toHaveBeenCalledWith('c1', ['e7']);
+  });
+
+  it('finds people to add through the conversation people lookup, leaving out current members', async () => {
+    const { fixture, el } = await render();
+    (el.querySelector('[data-testid="conversation-add-member"]') as HTMLButtonElement).click();
+    fixture.detectChanges();
+    const panel = fixture.componentInstance as unknown as {
+      candidateOptions(): { id: string; name: string }[];
+      mentionSearch(q: string): import('rxjs').Observable<readonly { id: string; name: string }[]>;
+    };
+
+    expect(api['searchPeople']).toHaveBeenCalledWith('');
+    expect(panel.candidateOptions().map((o) => o.id)).toEqual(['e7']);
+    let found: readonly { id: string; name: string }[] = [];
+    panel.mentionSearch('ch').subscribe((r) => (found = r));
+    expect(api['searchPeople']).toHaveBeenCalledWith('ch');
+    expect(found.map((p) => p.id)).toEqual(['e7', 'e2']);
+  });
+
+  it('keeps the add panel usable when the people lookup fails', async () => {
+    api['searchPeople'].mockReturnValue(throwError(() => new Error('boom')));
+    const { fixture, el } = await render();
+    (el.querySelector('[data-testid="conversation-add-member"]') as HTMLButtonElement).click();
+    fixture.detectChanges();
+    const panel = fixture.componentInstance as unknown as {
+      candidateOptions(): unknown[];
+      mentionSearch(q: string): import('rxjs').Observable<readonly unknown[]>;
+    };
+
+    expect(panel.candidateOptions()).toEqual([]);
+    let found: readonly unknown[] | null = null;
+    panel.mentionSearch('x').subscribe((r) => (found = r));
+    expect(found).toEqual([]);
   });
 
   it('loads older messages', async () => {

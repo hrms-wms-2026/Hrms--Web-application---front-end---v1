@@ -10,6 +10,8 @@ import { tenantWorkspaceReady } from '../tray-presence/utils/tenant-workspace-re
 import { InboxChangedEvent, MessageCreatedEvent, ParticipantAddedEvent } from './inbox-realtime.models';
 
 const CSRF_COOKIE_NAMES = ['onevo_csrf', 'onevo_legal_csrf'];
+/** Waits before each new connection attempt once the built-in auto-reconnect has given up (or a start failed). */
+const RETRY_DELAYS_MS = [2_000, 5_000, 10_000, 30_000];
 
 export type InboxHubConnectionFactory = (url: string, options: IHttpConnectionOptions) => HubConnection;
 
@@ -28,23 +30,9 @@ export const INBOX_HUB_CONNECTION_FACTORY = new InjectionToken<InboxHubConnectio
  * cookie like every other API call; the negotiate POST carries the CSRF header the API requires.
  * Connects only while the tenant workspace is ready (same gate as the notification bell). The hub puts
  * each connection in the user's own group and addresses every event to its recipients, so there is
- * nothing to join; after a reconnect, `reconnectedimport { DOCUMENT } from '@angular/common';
-import { DestroyRef, Injectable, effect, inject, signal, untracked } from '@angular/core';
-import { HubConnection, HubConnectionBuilder, LogLevel } from '@microsoft/signalr';
-import { Observable, Subject } from 'rxjs';
-import { environment } from '../../../environments/environment';
-import { AuthStore } from '../auth/state/auth.store';
-import { PermissionService } from '../auth/state/permission.service';
-import { TrayPresenceStore } from '../tray-presence/state/tray-presence.store';
-import { tenantWorkspaceReady } from '../tray-presence/utils/tenant-workspace-ready';
-import { InboxChangedEvent, MessageCreatedEvent, ParticipantAddedEvent } from './inbox-realtime.models';
-
-const CSRF_COOKIE_NAMES = ['onevo_csrf', 'onevo_legal_csrf'];
-
-/**
- * Live inbox + conversation events over SignalR (/hubs/inbox). Authenticates with the tenant session
- * cookie like every other API call; the negotiate POST carries the CSRF header the API requires.
- lets stores refetch what they may have missed.
+ * nothing to join. When the connection is lost for good, a fresh one (with a fresh CSRF header) is built
+ * with backoff while the workspace stays ready; after any reconnect, `reconnected$` lets stores refetch
+ * what they may have missed.
  */
 @Injectable({ providedIn: 'root' })
 export class InboxRealtimeService {
@@ -55,6 +43,9 @@ export class InboxRealtimeService {
   private readonly createConnection = inject(INBOX_HUB_CONNECTION_FACTORY);
 
   private connection: HubConnection | null = null;
+  private wanted = false;
+  private retryTimer: ReturnType<typeof setTimeout> | null = null;
+  private attempt = 0;
 
   private readonly messageCreated = new Subject<MessageCreatedEvent>();
   private readonly participantAdded = new Subject<ParticipantAddedEvent>();
@@ -71,34 +62,62 @@ export class InboxRealtimeService {
     effect(() => {
       const ready = tenantWorkspaceReady(this.authStore, this.permissionService, this.trayPresence);
       untracked(() => {
-        if (ready) void this.start();
-        else this.stop();
+        if (ready) {
+          this.wanted = true;
+          void this.start();
+        } else {
+          this.stop();
+        }
       });
     });
     inject(DestroyRef).onDestroy(() => this.stop());
   }
 
   private async start(): Promise<void> {
-    if (this.connection) return;
+    if (this.connection || !this.wanted) return;
+    const recovering = this.attempt > 0;
     const connection = this.createConnection(this.hubUrl(), { withCredentials: true, headers: this.csrfHeaders() });
     connection.on('messageCreated', (event: MessageCreatedEvent) => this.messageCreated.next(event));
     connection.on('participantAdded', (event: ParticipantAddedEvent) => this.participantAdded.next(event));
     connection.on('inboxChanged', (event: InboxChangedEvent) => this.inboxChanged.next(event));
     connection.onreconnected(() => this.reconnected.next());
+    connection.onclose(() => this.lost(connection));
     this.connection = connection;
 
     try {
       await connection.start();
     } catch {
-      // Realtime is an enhancement: the inbox still works over HTTP, so a failed connect is not fatal.
-      if (this.connection === connection) this.connection = null;
+      // Realtime is an enhancement: the inbox still works over HTTP, so a failed connect only schedules a retry.
+      this.lost(connection);
       return;
     }
     if (this.connection !== connection) return;
+    this.attempt = 0;
     this.connected.set(true);
+    if (recovering) this.reconnected.next();
+  }
+
+  /** The connection closed (auto-reconnect gave up) or never started: try again later with a new one. */
+  private lost(connection: HubConnection): void {
+    if (this.connection !== connection) return;
+    this.connection = null;
+    this.connected.set(false);
+    if (!this.wanted || this.retryTimer) return;
+    const delay = RETRY_DELAYS_MS[Math.min(this.attempt, RETRY_DELAYS_MS.length - 1)];
+    this.attempt++;
+    this.retryTimer = setTimeout(() => {
+      this.retryTimer = null;
+      void this.start();
+    }, delay);
   }
 
   private stop(): void {
+    this.wanted = false;
+    this.attempt = 0;
+    if (this.retryTimer) {
+      clearTimeout(this.retryTimer);
+      this.retryTimer = null;
+    }
     const connection = this.connection;
     this.connection = null;
     this.connected.set(false);

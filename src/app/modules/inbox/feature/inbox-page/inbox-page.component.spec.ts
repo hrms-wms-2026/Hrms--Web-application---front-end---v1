@@ -193,6 +193,15 @@ describe('InboxPageComponent', () => {
     expect(api['runAction']).toHaveBeenCalledWith({ source: 'work', kind: 'approval', id: 'a1' }, 'approve', {});
   });
 
+  it('still shows the conversation when the item detail cannot be loaded', async () => {
+    api['detail'].mockReturnValue(throwError(() => ({ status: 404 })));
+    params.next(convertToParamMap({ source: 'work', kind: 'approval', id: 'a1' }));
+    const { el } = await render();
+
+    expect(el.querySelector('[data-testid="inbox-card"] [data-testid="conversation-panel"]')).not.toBeNull();
+    expect(conversations['open']).toHaveBeenCalledWith({ source: 'work', kind: 'approval', id: 'a1' });
+  });
+
   it('opens the item target with its query params', async () => {
     params.next(convertToParamMap({ source: 'work', kind: 'approval', id: 'a1' }));
     const { el } = await render();

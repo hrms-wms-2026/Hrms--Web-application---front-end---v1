@@ -162,19 +162,23 @@ export const InboxStore = signalStore(
   }),
   withHooks((store, realtime = inject(InboxRealtimeService), auth = inject(AuthStore),
     permissions = inject(PermissionService), tray = inject(TrayPresenceStore)) => {
-    let subscription: Subscription | null = null;
+    const subscription = new Subscription();
     return {
       onInit(): void {
         // The rail badge needs counts as soon as the workspace is usable, before the Inbox is opened.
         effect(() => {
           if (tenantWorkspaceReady(auth, permissions, tray)) untracked(() => void store.loadCounts());
         });
-        subscription = merge(realtime.inboxChanged$.pipe(map(() => undefined)), realtime.reconnected$)
+        subscription.add(merge(realtime.inboxChanged$.pipe(map(() => undefined)), realtime.reconnected$)
           .pipe(debounceTime(REALTIME_DEBOUNCE_MS))
-          .subscribe(() => void store.refresh());
+          .subscribe(() => void store.refresh()));
+        // A chat message only changes the unread count, not the list.
+        subscription.add(realtime.messageCreated$
+          .pipe(debounceTime(REALTIME_DEBOUNCE_MS))
+          .subscribe(() => void store.loadCounts()));
       },
       onDestroy(): void {
-        subscription?.unsubscribe();
+        subscription.unsubscribe();
       }
     };
   })

@@ -73,4 +73,14 @@ describe('Inbox data-access', () => {
     expect(http.expectOne(`${base}/conversations/c1/participants`).request.body).toEqual({ employeeIds: ['e2'] });
     expect(http.expectOne(`${base}/conversations/c1/read`).request.method).toBe('POST');
   });
+
+  it('searches colleagues to add through the conversation people lookup', () => {
+    let result: unknown;
+    conversations.searchPeople('pri').subscribe((r) => (result = r));
+
+    const req = http.expectOne((r) => r.url === `${base}/conversations/people` && r.method === 'GET');
+    expect(req.request.params.get('search')).toBe('pri');
+    req.flush([{ employeeId: 'e3', name: 'Priya', avatarFileId: null }]);
+    expect(result).toEqual([{ employeeId: 'e3', name: 'Priya', avatarFileId: null }]);
+  });
 });

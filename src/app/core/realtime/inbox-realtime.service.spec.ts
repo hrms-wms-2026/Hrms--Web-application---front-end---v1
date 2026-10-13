@@ -13,18 +13,22 @@ type Fn = ReturnType<typeof vi.fn>;
 const hub = {
   handlers: new Map<string, Handler>(),
   reconnected: null as (() => void) | null,
+  closed: null as ((error?: Error) => void) | null,
+  created: 0,
   options: null as Record<string, unknown> | null,
   url: '',
-  connection: null as { on: Fn; onreconnected: Fn; start: Fn; stop: Fn; invoke: Fn } | null,
+  connection: null as { on: Fn; onreconnected: Fn; onclose: Fn; start: Fn; stop: Fn; invoke: Fn } | null,
   failStart: false
 };
 
 function fakeFactory(url: string, options: Record<string, unknown>) {
   hub.url = url;
   hub.options = options;
+  hub.created++;
   const connection = {
     on: vi.fn((name: string, handler: Handler) => hub.handlers.set(name, handler)),
     onreconnected: vi.fn((cb: () => void) => { hub.reconnected = cb; }),
+    onclose: vi.fn((cb: (error?: Error) => void) => { hub.closed = cb; }),
     start: vi.fn(() => (hub.failStart ? Promise.reject(new Error('offline')) : Promise.resolve())),
     stop: vi.fn(() => Promise.resolve()),
     invoke: vi.fn(() => Promise.resolve())
@@ -57,6 +61,8 @@ describe('InboxRealtimeService', () => {
     hub.connection = null;
     hub.options = null;
     hub.failStart = false;
+    hub.created = 0;
+    hub.closed = null;
     authenticated.set(false);
     setup();
   });
@@ -134,4 +140,50 @@ describe('InboxRealtimeService', () => {
     expect(service.connected()).toBe(false);
   });
 
+  describe('after the connection is lost', () => {
+    beforeEach(() => vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout'] }));
+    afterEach(() => vi.useRealTimers());
+
+    it('reconnects with a fresh connection (fresh CSRF header) once auto-reconnect gives up, then emits reconnected$', async () => {
+      await connect();
+      const first = hub.connection!;
+      const reconnected = vi.fn();
+      service.reconnected$.subscribe(reconnected);
+
+      fakeDocument.cookie = 'onevo_csrf=tok2';
+      hub.closed!(new Error('gone'));
+      expect(service.connected()).toBe(false);
+      await vi.advanceTimersByTimeAsync(2000);
+
+      expect(hub.created).toBe(2);
+      expect(hub.connection).not.toBe(first);
+      expect(hub.options).toMatchObject({ headers: { 'X-CSRF-Token': 'tok2' } });
+      expect(service.connected()).toBe(true);
+      expect(reconnected).toHaveBeenCalledTimes(1);
+    });
+
+    it('keeps retrying a failed start with backoff while the workspace stays ready', async () => {
+      hub.failStart = true;
+      await connect();
+      expect(hub.created).toBe(1);
+
+      await vi.advanceTimersByTimeAsync(2000);
+      expect(hub.created).toBe(2);
+      hub.failStart = false;
+      await vi.advanceTimersByTimeAsync(5000);
+      expect(hub.created).toBe(3);
+      expect(service.connected()).toBe(true);
+    });
+
+    it('does not reconnect after sign-out', async () => {
+      await connect();
+      authenticated.set(false);
+      TestBed.tick();
+      hub.closed!();
+      await vi.advanceTimersByTimeAsync(60_000);
+
+      expect(hub.created).toBe(1);
+      expect(service.connected()).toBe(false);
+    });
+  });
 });

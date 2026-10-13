@@ -181,11 +181,12 @@ const QUERY_KEYS = new Set(['project', 'source', 'type', 'status', 'requestedBy'
               (action)="onCardAction($event)"
               (openTarget)="openTarget($event)"
             >
-              @if (store.detail(); as detail) {
+              <!-- Shown even when the detail fails: the chat has its own access check and error. -->
+              @if (!store.detailLoading() || store.detail()) {
                 <app-conversation-panel
                   inboxConversation
                   [itemRef]="store.selectedRef()!"
-                  [actions]="detail.item.availableActions"
+                  [actions]="store.detail()?.item?.availableActions ?? []"
                   (action)="card.runAction($event)"
                 />
               }

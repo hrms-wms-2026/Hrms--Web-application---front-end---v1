@@ -6,6 +6,7 @@ import { MessageCreatedEvent, ParticipantAddedEvent } from '../../../core/realti
 import { ConversationsApiService } from '../data-access/conversations-api.service';
 import { ConversationDto, ConversationMessageDto, ConversationParticipantDto } from '../models/inbox.dto';
 import { ConversationStore } from './conversation.store';
+import { InboxStore } from './inbox.store';
 
 const REF = { source: 'work', kind: 'approval', id: 'a1' };
 
@@ -35,6 +36,7 @@ describe('ConversationStore', () => {
   let added: Subject<ParticipantAddedEvent>;
   let reconnected: Subject<void>;
   let store: InstanceType<typeof ConversationStore>;
+  let inbox: { loadCounts: ReturnType<typeof vi.fn> };
 
   beforeEach(() => {
     api = {
@@ -47,9 +49,11 @@ describe('ConversationStore', () => {
     created = new Subject();
     added = new Subject();
     reconnected = new Subject();
+    inbox = { loadCounts: vi.fn(() => Promise.resolve()) };
     TestBed.configureTestingModule({
       providers: [
         ConversationStore,
+        { provide: InboxStore, useValue: inbox },
         { provide: ConversationsApiService, useValue: api },
         {
           provide: InboxRealtimeService,
@@ -70,6 +74,15 @@ describe('ConversationStore', () => {
     expect(store.hasMore()).toBe(true);
     expect(store.unreadFromId()).toBe('m3');
     expect(api['markRead']).toHaveBeenCalledWith('c1');
+  });
+
+  it('refreshes the inbox counts once the conversation is marked read, but not when that fails', async () => {
+    await store.open(REF);
+    expect(inbox.loadCounts).toHaveBeenCalledTimes(1);
+
+    api['markRead'].mockReturnValue(throwError(() => new Error('offline')));
+    await store.markRead();
+    expect(inbox.loadCounts).toHaveBeenCalledTimes(1);
   });
 
   it('surfaces an open error', async () => {

@@ -7,6 +7,7 @@ import {
   ConversationMessageDto,
   ConversationMessagesPageDto,
   ConversationParticipantDto,
+  ConversationPersonDto,
   InboxItemRef
 } from '../models/inbox.dto';
 
@@ -32,6 +33,11 @@ export class ConversationsApiService {
 
   addParticipants(conversationId: string, employeeIds: string[]): Observable<ConversationParticipantDto[]> {
     return this.http.post<ConversationParticipantDto[]>(`${this.base}/${conversationId}/participants`, { employeeIds });
+  }
+
+  /** Active colleagues to add or tag, by name (tenant-wide; name and avatar only). */
+  searchPeople(search: string): Observable<ConversationPersonDto[]> {
+    return this.http.get<ConversationPersonDto[]>(`${this.base}/people`, { params: new HttpParams().set('search', search) });
   }
 
   markRead(conversationId: string): Observable<void> {

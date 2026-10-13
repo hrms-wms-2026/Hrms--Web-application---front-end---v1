@@ -4,6 +4,7 @@ import { Subscription, firstValueFrom, merge } from 'rxjs';
 import { InboxRealtimeService } from '../../../core/realtime/inbox-realtime.service';
 import { ConversationsApiService } from '../data-access/conversations-api.service';
 import { ConversationMessageDto, ConversationParticipantDto, InboxItemRef } from '../models/inbox.dto';
+import { InboxStore } from './inbox.store';
 
 interface ConversationState {
   readonly ref: InboxItemRef | null;
@@ -56,7 +57,7 @@ export const ConversationStore = signalStore(
     }),
     participantIds: computed(() => store.participants().map((p) => p.employeeId))
   })),
-  withMethods((store, api = inject(ConversationsApiService)) => {
+  withMethods((store, api = inject(ConversationsApiService), inbox = inject(InboxStore)) => {
     let openRequest = 0;
 
     function appendMessages(incoming: readonly ConversationMessageDto[]): void {
@@ -78,7 +79,10 @@ export const ConversationStore = signalStore(
         await firstValueFrom(api.markRead(id));
       } catch {
         // Read state is best-effort; the next open marks it again.
+        return;
       }
+      // The rail badge counts unread messages.
+      void inbox.loadCounts();
     }
 
     async function open(ref: InboxItemRef): Promise<void> {

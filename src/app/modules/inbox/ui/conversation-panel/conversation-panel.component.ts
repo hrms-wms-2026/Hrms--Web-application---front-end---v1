@@ -2,14 +2,14 @@ import { DatePipe } from '@angular/common';
 import {
   AfterViewChecked, ChangeDetectionStrategy, Component, ElementRef, computed, effect, inject, input, output, signal, untracked, viewChild
 } from '@angular/core';
-import { Observable, map } from 'rxjs';
+import { Observable, catchError, map, of } from 'rxjs';
 import { AuthStore } from '../../../../core/auth/state/auth.store';
 import { buildFileUrl } from '../../../../shared/data-access/file-api.service';
 import { AvatarComponent } from '../../../../shared/ui/avatar/avatar.component';
 import { CommentComposerComponent } from '../../../../shared/ui/comment-composer/comment-composer.component';
 import { PeoplePickerComponent, PeoplePickerOption } from '../../../../shared/ui/people-picker/people-picker.component';
 import { HostSlashCommand, MentionCandidate } from '../../../../shared/ui/rich-text-editor/rich-text-editor.component';
-import { PeopleApiService } from '../../../people/data-access/people-api.service';
+import { ConversationsApiService } from '../../data-access/conversations-api.service';
 import { ConversationMessageDto, InboxActionDto, InboxItemRef } from '../../models/inbox.dto';
 import { ConversationStore } from '../../state/conversation.store';
 
@@ -179,7 +179,7 @@ interface DayGroup {
 export class ConversationPanelComponent implements AfterViewChecked {
   protected readonly store = inject(ConversationStore);
   private readonly auth = inject(AuthStore);
-  private readonly people = inject(PeopleApiService);
+  private readonly conversations = inject(ConversationsApiService);
 
   /** The inbox item whose conversation this is. */
   itemRef = input.required<InboxItemRef>();
@@ -235,10 +235,12 @@ export class ConversationPanelComponent implements AfterViewChecked {
     return groups;
   });
 
-  /** For add-and-tag in the composer: people who are not participants yet. */
+  /** For add-and-tag in the composer: any active colleague (the tenant-wide conversation lookup, not the
+   *  permission-scoped People directory). A failed lookup just offers nobody. */
   protected readonly mentionSearch = (query: string): Observable<readonly MentionCandidate[]> =>
-    this.people.listEmployees({ search: query, page: 1, pageSize: 8, activeOnly: true })
-      .pipe(map((page) => page.items.map((e) => ({ id: e.id, name: e.fullName }))));
+    this.conversations.searchPeople(query).pipe(
+      map((people) => people.map((p) => ({ id: p.employeeId, name: p.name, avatarUrl: this.avatarUrl(p.avatarFileId) }))),
+      catchError(() => of([])));
 
   constructor() {
     effect(() => {
@@ -309,8 +311,8 @@ export class ConversationPanelComponent implements AfterViewChecked {
   }
 
   protected searchPeople(search: string): void {
-    this.people.listEmployees({ search, page: 1, pageSize: 20, activeOnly: true })
-      .subscribe((page) => this.searchResults.set(page.items.map((e) => ({ id: e.id, name: e.fullName }))));
+    this.conversations.searchPeople(search).pipe(catchError(() => of([])))
+      .subscribe((people) => this.searchResults.set(people.map((p) => ({ id: p.employeeId, name: p.name }))));
   }
 
   protected toggleCandidate(id: string): void {

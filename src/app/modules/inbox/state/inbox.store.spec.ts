@@ -28,6 +28,7 @@ describe('InboxStore', () => {
   let api: Record<string, ReturnType<typeof vi.fn>>;
   let inboxChanged: Subject<InboxChangedEvent>;
   let reconnected: Subject<void>;
+  let messageCreated: Subject<unknown>;
   let store: InstanceType<typeof InboxStore>;
   const authenticated = signal(false);
 
@@ -42,10 +43,11 @@ describe('InboxStore', () => {
     };
     inboxChanged = new Subject();
     reconnected = new Subject();
+    messageCreated = new Subject();
     TestBed.configureTestingModule({
       providers: [
         { provide: InboxApiService, useValue: api },
-        { provide: InboxRealtimeService, useValue: { inboxChanged$: inboxChanged.asObservable(), reconnected$: reconnected.asObservable() } },
+        { provide: InboxRealtimeService, useValue: { inboxChanged$: inboxChanged.asObservable(), reconnected$: reconnected.asObservable(), messageCreated$: messageCreated.asObservable() } },
         { provide: AuthStore, useValue: { authenticated } },
         { provide: PermissionService, useValue: { hasModule: () => false } },
         { provide: TrayPresenceStore, useValue: { canRenderProtectedContent: () => true } }
@@ -171,6 +173,19 @@ describe('InboxStore', () => {
 
   it('only refreshes counts on a realtime change while the inbox list has never been opened', async () => {
     inboxChanged.next({ item: { source: 'work', kind: 'approval', id: 'a1' } });
+    await vi.advanceTimersByTimeAsync(500);
+
+    expect(api['counts']).toHaveBeenCalledTimes(1);
+    expect(api['list']).not.toHaveBeenCalled();
+  });
+
+  it('refreshes only the counts (debounced) when a chat message arrives, so the unread badge follows', async () => {
+    await store.load();
+    api['list'].mockClear();
+    api['counts'].mockClear();
+
+    messageCreated.next({ conversationId: 'c1', message: {} });
+    messageCreated.next({ conversationId: 'c1', message: {} });
     await vi.advanceTimersByTimeAsync(500);
 
     expect(api['counts']).toHaveBeenCalledTimes(1);
