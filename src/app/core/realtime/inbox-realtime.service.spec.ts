@@ -5,44 +5,33 @@ import { vi } from 'vitest';
 import { AuthStore } from '../auth/state/auth.store';
 import { PermissionService } from '../auth/state/permission.service';
 import { TrayPresenceStore } from '../tray-presence/state/tray-presence.store';
+import { INBOX_HUB_CONNECTION_FACTORY, InboxRealtimeService } from './inbox-realtime.service';
 
 type Handler = (...args: unknown[]) => void;
+type Fn = ReturnType<typeof vi.fn>;
 
-const hub = vi.hoisted(() => {
-  type Fn = ReturnType<typeof vi.fn>;
-  const state = {
-    handlers: new Map<string, Handler>(),
-    reconnected: null as (() => void) | null,
-    options: null as Record<string, unknown> | null,
-    url: '',
-    connection: null as { on: Fn; onreconnected: Fn; start: Fn; stop: Fn; invoke: Fn } | null
+const hub = {
+  handlers: new Map<string, Handler>(),
+  reconnected: null as (() => void) | null,
+  options: null as Record<string, unknown> | null,
+  url: '',
+  connection: null as { on: Fn; onreconnected: Fn; start: Fn; stop: Fn; invoke: Fn } | null,
+  failStart: false
+};
+
+function fakeFactory(url: string, options: Record<string, unknown>) {
+  hub.url = url;
+  hub.options = options;
+  const connection = {
+    on: vi.fn((name: string, handler: Handler) => hub.handlers.set(name, handler)),
+    onreconnected: vi.fn((cb: () => void) => { hub.reconnected = cb; }),
+    start: vi.fn(() => (hub.failStart ? Promise.reject(new Error('offline')) : Promise.resolve())),
+    stop: vi.fn(() => Promise.resolve()),
+    invoke: vi.fn(() => Promise.resolve())
   };
-  function makeConnection() {
-    const connection = {
-      on: vi.fn((name: string, handler: Handler) => state.handlers.set(name, handler)),
-      onreconnected: vi.fn((cb: () => void) => { state.reconnected = cb; }),
-      start: vi.fn(() => Promise.resolve()),
-      stop: vi.fn(() => Promise.resolve()),
-      invoke: vi.fn(() => Promise.resolve())
-    };
-    state.connection = connection;
-    return connection;
-  }
-  class HubConnectionBuilder {
-    withUrl(url: string, options: Record<string, unknown>) { state.url = url; state.options = options; return this; }
-    withAutomaticReconnect() { return this; }
-    configureLogging() { return this; }
-    build() { return makeConnection(); }
-  }
-  return { state, HubConnectionBuilder };
-});
-
-vi.mock('@microsoft/signalr', () => ({
-  HubConnectionBuilder: hub.HubConnectionBuilder,
-  LogLevel: { Warning: 3 }
-}));
-
-import { InboxRealtimeService } from './inbox-realtime.service';
+  hub.connection = connection;
+  return connection;
+}
 
 describe('InboxRealtimeService', () => {
   const authenticated = signal(false);
@@ -56,16 +45,18 @@ describe('InboxRealtimeService', () => {
         { provide: AuthStore, useValue: { authenticated } },
         { provide: PermissionService, useValue: { hasModule: () => false } },
         { provide: TrayPresenceStore, useValue: { canRenderProtectedContent: () => true } },
-        { provide: DOCUMENT, useValue: fakeDocument }
+        { provide: DOCUMENT, useValue: fakeDocument },
+        { provide: INBOX_HUB_CONNECTION_FACTORY, useValue: fakeFactory }
       ]
     });
     service = TestBed.inject(InboxRealtimeService);
   }
 
   beforeEach(() => {
-    hub.state.handlers.clear();
-    hub.state.connection = null;
-    hub.state.options = null;
+    hub.handlers.clear();
+    hub.connection = null;
+    hub.options = null;
+    hub.failStart = false;
     authenticated.set(false);
     setup();
   });
@@ -79,16 +70,16 @@ describe('InboxRealtimeService', () => {
 
   it('does not connect until the tenant workspace is ready', () => {
     TestBed.tick();
-    expect(hub.state.connection).toBeNull();
+    expect(hub.connection).toBeNull();
   });
 
   it('connects to /hubs/inbox with cookies and the CSRF header once the workspace is ready', async () => {
     await connect();
 
-    expect(hub.state.url).toMatch(/\/hubs\/inbox$/);
-    expect(hub.state.url).not.toContain('/api/v1');
-    expect(hub.state.options).toMatchObject({ withCredentials: true, headers: { 'X-CSRF-Token': 'tok+1' } });
-    expect(hub.state.connection!.start).toHaveBeenCalled();
+    expect(hub.url).toMatch(/\/hubs\/inbox$/);
+    expect(hub.url).not.toContain('/api/v1');
+    expect(hub.options).toMatchObject({ withCredentials: true, headers: { 'X-CSRF-Token': 'tok+1' } });
+    expect(hub.connection!.start).toHaveBeenCalled();
     expect(service.connected()).toBe(true);
   });
 
@@ -101,9 +92,9 @@ describe('InboxRealtimeService', () => {
     service.participantAdded$.subscribe(added);
     service.inboxChanged$.subscribe(changed);
 
-    hub.state.handlers.get('messageCreated')!({ conversationId: 'c1', message: { id: 'm1' } });
-    hub.state.handlers.get('participantAdded')!({ conversationId: 'c1', participant: { employeeId: 'e1' } });
-    hub.state.handlers.get('inboxChanged')!({ item: { source: 'work', kind: 'approval', id: 'a1' } });
+    hub.handlers.get('messageCreated')!({ conversationId: 'c1', message: { id: 'm1' } });
+    hub.handlers.get('participantAdded')!({ conversationId: 'c1', participant: { employeeId: 'e1' } });
+    hub.handlers.get('inboxChanged')!({ item: { source: 'work', kind: 'approval', id: 'a1' } });
 
     expect(created).toHaveBeenCalledWith({ conversationId: 'c1', message: { id: 'm1' } });
     expect(added).toHaveBeenCalledWith({ conversationId: 'c1', participant: { employeeId: 'e1' } });
@@ -115,19 +106,19 @@ describe('InboxRealtimeService', () => {
     const reconnected = vi.fn();
     service.reconnected$.subscribe(reconnected);
 
-    hub.state.reconnected!();
+    hub.reconnected!();
 
     expect(reconnected).toHaveBeenCalledTimes(1);
   });
 
   it('never invokes hub methods: the server addresses the user group itself', async () => {
     await connect();
-    expect(hub.state.connection!.invoke).not.toHaveBeenCalled();
+    expect(hub.connection!.invoke).not.toHaveBeenCalled();
   });
 
   it('stops the connection when the workspace becomes unavailable (sign-out)', async () => {
     await connect();
-    const connection = hub.state.connection!;
+    const connection = hub.connection!;
 
     authenticated.set(false);
     TestBed.tick();
@@ -137,18 +128,10 @@ describe('InboxRealtimeService', () => {
   });
 
   it('a failed start leaves the service disconnected without throwing', async () => {
-    const original = hub.HubConnectionBuilder.prototype.build;
-    hub.HubConnectionBuilder.prototype.build = function () {
-      const c = original.call(this);
-      c.start.mockImplementation(() => Promise.reject(new Error('offline')));
-      return c;
-    };
-    try {
-      await connect();
-      await Promise.resolve();
-      expect(service.connected()).toBe(false);
-    } finally {
-      hub.HubConnectionBuilder.prototype.build = original;
-    }
+    hub.failStart = true;
+    await connect();
+    await Promise.resolve();
+    expect(service.connected()).toBe(false);
   });
+
 });

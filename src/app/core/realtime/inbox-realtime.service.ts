@@ -1,6 +1,6 @@
 import { DOCUMENT } from '@angular/common';
-import { DestroyRef, Injectable, effect, inject, signal, untracked } from '@angular/core';
-import { HubConnection, HubConnectionBuilder, LogLevel } from '@microsoft/signalr';
+import { DestroyRef, Injectable, InjectionToken, effect, inject, signal, untracked } from '@angular/core';
+import { HubConnection, HubConnectionBuilder, IHttpConnectionOptions, LogLevel } from '@microsoft/signalr';
 import { Observable, Subject } from 'rxjs';
 import { environment } from '../../../environments/environment';
 import { AuthStore } from '../auth/state/auth.store';
@@ -10,6 +10,18 @@ import { tenantWorkspaceReady } from '../tray-presence/utils/tenant-workspace-re
 import { InboxChangedEvent, MessageCreatedEvent, ParticipantAddedEvent } from './inbox-realtime.models';
 
 const CSRF_COOKIE_NAMES = ['onevo_csrf', 'onevo_legal_csrf'];
+
+export type InboxHubConnectionFactory = (url: string, options: IHttpConnectionOptions) => HubConnection;
+
+/** Builds the hub connection (auto-reconnect, warnings only). A token so tests can supply a fake connection. */
+export const INBOX_HUB_CONNECTION_FACTORY = new InjectionToken<InboxHubConnectionFactory>('INBOX_HUB_CONNECTION_FACTORY', {
+  providedIn: 'root',
+  factory: () => (url, options) => new HubConnectionBuilder()
+    .withUrl(url, options)
+    .withAutomaticReconnect()
+    .configureLogging(LogLevel.Warning)
+    .build()
+});
 
 /**
  * Live inbox + conversation events over SignalR (/hubs/inbox). Authenticates with the tenant session
@@ -40,6 +52,7 @@ export class InboxRealtimeService {
   private readonly permissionService = inject(PermissionService);
   private readonly trayPresence = inject(TrayPresenceStore);
   private readonly document = inject(DOCUMENT);
+  private readonly createConnection = inject(INBOX_HUB_CONNECTION_FACTORY);
 
   private connection: HubConnection | null = null;
 
@@ -67,11 +80,7 @@ export class InboxRealtimeService {
 
   private async start(): Promise<void> {
     if (this.connection) return;
-    const connection = new HubConnectionBuilder()
-      .withUrl(this.hubUrl(), { withCredentials: true, headers: this.csrfHeaders() })
-      .withAutomaticReconnect()
-      .configureLogging(LogLevel.Warning)
-      .build();
+    const connection = this.createConnection(this.hubUrl(), { withCredentials: true, headers: this.csrfHeaders() });
     connection.on('messageCreated', (event: MessageCreatedEvent) => this.messageCreated.next(event));
     connection.on('participantAdded', (event: ParticipantAddedEvent) => this.participantAdded.next(event));
     connection.on('inboxChanged', (event: InboxChangedEvent) => this.inboxChanged.next(event));
