@@ -149,7 +149,7 @@
 
 @if (completingSprintNode(); as node) {
 <app-sprint-complete-dialog [open]="true"
-  [sprint]="{ id: node.id, projectId: projectId(), name: node.title, goal: null, startDate: null, endDate: null, status: 'active', completedAt: null, achievedAt: null, canManage: node.isOwner ?? false }"
+  [sprint]="{ id: node.id, projectId: projectId(), name: node.title, goal: null, startDate: null, endDate: null, status: 'active', completedAt: null, achievedAt: null, canManage: node.isOwner }"
   [tasks]="[]" [otherSprints]="[]" [projectId]="projectId()"
   (completed)="onSprintCompleteDialogCompleted()" (cancelled)="onSprintCompleteDialogClosed()" />
 }

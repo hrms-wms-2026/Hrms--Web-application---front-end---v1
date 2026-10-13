@@ -69,7 +69,7 @@ export class SprintTaskPickerComponent {
 
   readonly sprints = signal<SprintDto[]>([]);
   readonly expanded = signal<Set<string>>(new Set());
-  readonly sprintTasks = signal<Record<string, PickerTask[]>>({});
+  readonly sprintTasks = signal<Record<string, PickerTask[] | undefined>>({});
 
   private loadedForProjectId: string | null = null;
 

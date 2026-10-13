@@ -59,7 +59,7 @@ export class ModuleTaskPickerComponent {
   readonly modules = input.required<readonly PickerModule[]>();
   readonly moduleMode = input<'live' | 'bulk'>('live');
   readonly allowedObjectiveIds = input<ReadonlySet<string> | null>(null);
-  readonly sprintNames = input<Record<string, string>>({});
+  readonly sprintNames = input<Record<string, string | undefined>>({});
   readonly frozenSprintIds = input<ReadonlySet<string>>(new Set());
   readonly currentSprintId = input<string | null>(null);
   readonly selectedTaskIds = input<ReadonlySet<string>>(new Set());
@@ -69,7 +69,7 @@ export class ModuleTaskPickerComponent {
   readonly selectedObjectiveIdsChange = output<Set<string>>();
 
   readonly expanded = signal<Set<string>>(new Set());
-  readonly moduleTasks = signal<Record<string, PickerTask[]>>({});
+  readonly moduleTasks = signal<Record<string, PickerTask[] | undefined>>({});
 
   isModuleAllowed = (objectiveId: string): boolean => {
     const allowed = this.allowedObjectiveIds();

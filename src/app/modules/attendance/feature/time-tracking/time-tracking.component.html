@@ -308,7 +308,7 @@
             <div class="review-panel"><p>Review the details before sending this request.</p><dl class="review-summary"><div><dt>Date</dt><dd>{{ formatWorkAreaDate(preview.date, preview.timezone) }}</dd></div><div><dt>Current planned work area</dt><dd>{{ workAreaLabel(preview.currentExpectedWorkArea) }}</dd></div><div><dt>Requested work area</dt><dd>{{ workAreaLabel(preview.requestedWorkArea) }}</dd></div><div><dt>Reason</dt><dd>{{ preview.reason }}</dd></div><div><dt>Sent to</dt><dd>{{ preview.receiver.displayName }}@if (preview.receiver.positionName) {, {{ preview.receiver.positionName }}}</dd></div></dl><button type="button" class="text-action" (click)="resetWorkAreaReview()">Edit request</button></div>
           }
           @if (workAreaFormMessage()) { <p class="work-area-form-message" role="status">{{ workAreaFormMessage() }}</p> }
-          <div class="modal-actions"><app-button type="button" variant="secondary" (pressed)="closeWorkAreaChange()">Cancel</app-button><app-button type="submit" [loading]="!!(store.workAreaPreviewLoading?.() || store.workAreaActionLoading?.())" [disabled]="!!(store.workAreaPreviewLoading?.() || store.workAreaActionLoading?.())">{{ workAreaReviewReady() ? 'Send request' : 'Review request' }}</app-button></div>
+          <div class="modal-actions"><app-button type="button" variant="secondary" (pressed)="closeWorkAreaChange()">Cancel</app-button><app-button type="submit" [loading]="!!(store.workAreaPreviewLoading() || store.workAreaActionLoading())" [disabled]="!!(store.workAreaPreviewLoading() || store.workAreaActionLoading())">{{ workAreaReviewReady() ? 'Send request' : 'Review request' }}</app-button></div>
         </form>
       </app-modal>
     }
