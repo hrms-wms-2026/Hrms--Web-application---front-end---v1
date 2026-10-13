@@ -115,7 +115,7 @@
       (createRequested)="onCreateSubRequested($event)" (createSprintRequested)="onCreateSprintRequested($event)"
       (createTaskRequested)="onCreateTaskRequested($event)" (achieveSprintRequested)="onAchieveSprintRequested($event)"
       (completeSprintRequested)="onCompleteSprintRequested($event)" (deleteRequested)="onDeleteRequested($event)"
-      (deleteSprintRequested)="onDeleteRequested($event)" />
+      (deleteSprintRequested)="onDeleteRequested($event)" (allocationRequested)="onAllocationRequested($event)" />
     } @else {
     <app-empty-state title="No selection" description="Select a module, sprint, or task to see its details" />
     }
@@ -171,4 +171,12 @@
   (saved)="onTaskModalDone()"
   (changed)="onTaskModalChanged()"
   (closed)="onTaskModalClosed()"
+/>
+
+<app-allocation-request-modal
+  [open]="allocationNode() !== null"
+  [moduleId]="allocationNode()?.id ?? ''"
+  [moduleTitle]="allocationNode()?.title ?? ''"
+  (closed)="allocationNode.set(null)"
+  (submitted)="onAllocationSubmitted()"
 />

@@ -450,6 +450,24 @@ describe('MilestoneTreeTabComponent', () => {
     expect(fixture.componentInstance.createModalParentId()).toBe('o1');
   });
 
+  it('"Request more hours" in the panel opens the allocation request for that module; sending it reloads the tree', async () => {
+    setup('o1');
+    fixture.detectChanges();
+
+    (fixture.nativeElement.querySelector('[data-testid="panel-request-hours"]') as HTMLButtonElement).click();
+    fixture.detectChanges();
+
+    expect(fixture.componentInstance.allocationNode()?.id).toBe('o1');
+    expect(fixture.nativeElement.querySelector('[data-testid="allocation-request-modal"]')).not.toBeNull();
+
+    const loadsBefore = storeStub.loadProjectTree.mock.calls.length;
+    await fixture.componentInstance.onAllocationSubmitted();
+    fixture.detectChanges();
+
+    expect(fixture.componentInstance.allocationNode()).toBeNull();
+    expect(storeStub.loadProjectTree.mock.calls.length).toBe(loadsBefore + 1);
+  });
+
   it('reloads the tree and closes the modal after a successful create', async () => {
     setup('o1');
     fixture.detectChanges();

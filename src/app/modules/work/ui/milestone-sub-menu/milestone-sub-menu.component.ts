@@ -13,7 +13,6 @@ const BASE_TABS: SubMenuTab[] = [
   { label: 'Tree', segment: 'tree' },
   { label: 'Board', segment: 'board', projectLevel: true },
   { label: 'Backlog', segment: 'backlog', projectLevel: true },
-  { label: 'Approvals', segment: 'approvals', projectLevel: true },
   { label: 'Milestones', segment: 'calendar', projectLevel: true }
 
 
@@ -32,9 +31,7 @@ const SETTINGS_TAB: SubMenuTab = { label: 'Settings', segment: 'settings', proje
           <a
             [routerLink]="tab.projectLevel ? [tab.segment] : ['milestones', milestoneId(), tab.segment]"
             routerLinkActive="active-tab"
-            [attr.aria-label]="tab.segment === 'approvals' && pendingApprovalCount() > 0
-              ? 'Approvals, ' + pendingApprovalCount() + ' pending'
-              : tab.label"
+            [attr.aria-label]="tab.label"
             class="sub-menu-tab flex items-center gap-1.5 px-3 py-2 text-sm text-[var(--color-text-secondary)] transition-colors hover:text-[var(--color-text-primary)]"
             data-testid="sub-menu-tab"
           >
@@ -53,10 +50,6 @@ const SETTINGS_TAB: SubMenuTab = { label: 'Settings', segment: 'settings', proje
                 @case ('backlog') {
                   <path d="M4 6h16M4 12h16M4 18h10" />
                 }
-                @case ('approvals') {
-                  <circle cx="12" cy="12" r="9" />
-                  <path d="M8 12l2.5 2.5L16 9" />
-                }
                 @case ('calendar') {
                   <rect x="3" y="4" width="18" height="16" rx="2" />
                   <path d="M3 10h18" />
@@ -69,14 +62,6 @@ const SETTINGS_TAB: SubMenuTab = { label: 'Settings', segment: 'settings', proje
               }
             </svg>
             {{ tab.label }}
-            @if (tab.segment === 'approvals' && pendingApprovalCount() > 0) {
-              <span
-                class="approvals-pending-dot"
-                data-testid="approvals-pending-indicator"
-                [attr.title]="pendingApprovalCount() + ' pending approval' + (pendingApprovalCount() === 1 ? '' : 's')"
-                aria-hidden="true"
-              ></span>
-            }
           </a>
         }
       </nav>
@@ -103,13 +88,6 @@ const SETTINGS_TAB: SubMenuTab = { label: 'Settings', segment: 'settings', proje
         font-weight: 600;
         color: var(--color-text-primary);
       }
-      .approvals-pending-dot {
-        width: 7px;
-        height: 7px;
-        flex: 0 0 7px;
-        border-radius: 999px;
-        background: var(--color-danger, #dc2626);
-      }
     `
   ]
 })
@@ -117,7 +95,6 @@ export class MilestoneSubMenuComponent {
   milestoneId = input.required<string>();
   milestoneTitle = input.required<string>();
   isOwner = input(false);
-  pendingApprovalCount = input(0);
 
   readonly tabs = computed(() => (this.isOwner() ? [...BASE_TABS, SETTINGS_TAB] : BASE_TABS));
 }

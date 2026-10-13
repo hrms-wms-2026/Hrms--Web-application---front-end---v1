@@ -197,7 +197,7 @@ describe('NotificationBellComponent', () => {
     );
   });
 
-  it('navigates to Approvals for objective_change_request', async () => {
+  it('sends an objective_change_request that resolves to the old Approvals tab to the Inbox', async () => {
     const item = {
       id: 'n2',
       templateCode: 'x',
@@ -240,7 +240,7 @@ describe('NotificationBellComponent', () => {
     fixture.nativeElement.querySelector('.notification-dropdown__item').click();
     await fixture.whenStable();
 
-    expect(navigate).toHaveBeenCalledWith(['/work', 'p1', 'approvals'], {});
+    expect(navigate).toHaveBeenCalledWith(['/inbox']);
   });
 
   it('navigates an attendance correction approval notification to the approval inbox with its request id', async () => {

@@ -12,6 +12,7 @@ import { TaskApiService } from '../../data-access/task-api.service';
 import { collectNodes, computeTreeHighlight, hasActiveHighlight } from '../../utils/tree-highlight.utils';
 import { TaskFormModalComponent } from '../../ui/task-form-modal/task-form-modal.component';
 import { TreeExplanationPanelComponent } from '../../ui/tree-explanation-panel/tree-explanation-panel.component';
+import { AllocationRequestModalComponent } from '../../ui/allocation-request-modal/allocation-request-modal.component';
 import { SubModuleFormComponent } from '../../ui/sub-module-form/sub-module-form.component';
 import { MemberManagementPopupComponent } from '../../ui/member-management-popup/member-management-popup.component';
 import { SprintFormComponent, SprintFormModuleOption } from '../../ui/sprint-form/sprint-form.component';
@@ -75,7 +76,7 @@ const PROGRESS_OPTIONS: readonly WorkDropdownOption[] = [
     MilestoneTreeNodeComponent, FilterBarComponent, TreeExplanationPanelComponent, SubModuleFormComponent,
     MemberManagementPopupComponent, SprintFormComponent, SprintCompleteDialogComponent, TaskFormModalComponent,
     LoaderComponent, ErrorStateComponent, EmptyStateComponent, ConfirmModalComponent, ButtonComponent,
-    TaskAssigneeAvatarFilterComponent
+    TaskAssigneeAvatarFilterComponent, AllocationRequestModalComponent
   ],
   templateUrl: './milestone-tree-tab.component.html'
 })
@@ -92,6 +93,8 @@ export class MilestoneTreeTabComponent implements AfterViewInit, OnDestroy {
   private readonly toolbarStore = inject(WorkPageToolbarStore);
   private readonly toolbarTpl = viewChild.required<TemplateRef<unknown>>('toolbarTpl');
 
+  /** The module "Request more hours" was opened for (null = closed). */
+  readonly allocationNode = signal<MilestoneTreeNode | null>(null);
   readonly taskModalOpen = signal(false);
   readonly taskModalMode = signal<'create' | 'edit'>('create');
   readonly taskModalTaskId = signal('');
@@ -632,6 +635,16 @@ onExpandLeafRequested(node: MilestoneTreeNode): void {
   onDeleteCancelled(): void {
     this.deleteConfirmOpen.set(false);
     this.pendingDeleteNode.set(null);
+  }
+
+  onAllocationRequested(node: MilestoneTreeNode): void {
+    this.allocationNode.set(node);
+  }
+
+  async onAllocationSubmitted(): Promise<void> {
+    this.allocationNode.set(null);
+    this.notificationService.success('Request sent');
+    await this.loadTree({ force: true });
   }
 
   onMembersRequested(node?: MilestoneTreeNode): void {

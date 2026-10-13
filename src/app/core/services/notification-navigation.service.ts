@@ -9,15 +9,21 @@ const WORK_RELATED_TYPES = new Set([
   'task',
   'task_creation_request',
   'task_edit_request',
-  'work_approval_request',
   'objective_change_request',
   'allocation_extend',
-  'project_member_invitation',
   'task_status_change_request',
   // The approval engine's direct-change notices point at the module or sprint itself.
   'module',
   'sprint'
 ]);
+
+/** Work requests, invitations and monitor alerts live in the Inbox: type → the item's inbox kind. */
+const INBOX_WORK_KINDS: Record<string, string> = {
+  work_approval_request: 'approval',
+  project_member_invitation: 'invitation',
+  monitor_alert: 'monitor_alert'
+};
+const INBOX_TYPE_PREFIX = 'inbox:';
 
 /** Where a notification click should take the viewer - shared by the top-navbar bell dropdown
  * and the dashboard Notifications card so both navigate identically. */
@@ -44,6 +50,18 @@ export class NotificationNavigationService {
     const type = item.relatedEntityType;
     const id = item.relatedEntityId;
 
+    // Conversation notices (mentions, added to a chat) carry "inbox:{source}:{kind}".
+    if (type?.startsWith(INBOX_TYPE_PREFIX) && id) {
+      const [source, kind] = type.slice(INBOX_TYPE_PREFIX.length).split(':');
+      if (source && kind) await this.router.navigate(['/inbox', source, kind, id]);
+      return;
+    }
+
+    if (type && id && INBOX_WORK_KINDS[type]) {
+      await this.router.navigate(['/inbox', 'work', INBOX_WORK_KINDS[type], id]);
+      return;
+    }
+
     if (type === EXCEPTION_ALERT_ENTITY_TYPE && id) {
       await this.router.navigate(['/attendance/alerts'], { queryParams: { alertId: id } });
       return;
@@ -63,19 +81,18 @@ export class NotificationNavigationService {
 
     try {
       const nav = await firstValueFrom(this.taskApi.getNotificationNavigation(type, id));
-      // 'board' and 'approvals' are project-level siblings of 'milestones/:milestoneId'
-      // (/work/:id/board, /work/:id/approvals) - only 'tree' actually lives under
-      // milestones/:objectiveId.
+      // Approvals moved to the Inbox; any older request type still answered with 'approvals' goes there.
+      if (nav.targetTab === 'approvals') {
+        await this.router.navigate(['/inbox']);
+        return;
+      }
+      // 'board' is a project-level sibling of 'milestones/:milestoneId' (/work/:id/board) - only
+      // 'tree' actually lives under milestones/:objectiveId.
       const commands =
-        nav.targetTab === 'board' || nav.targetTab === 'approvals'
+        nav.targetTab === 'board'
           ? ['/work', nav.projectId, nav.targetTab]
           : ['/work', nav.projectId, 'milestones', nav.objectiveId, nav.targetTab];
-      const extras =
-        nav.targetTab === 'board' && nav.taskId
-          ? { queryParams: { highlightTaskId: nav.taskId } }
-          : nav.targetTab === 'tree' && type === 'project_member_invitation'
-            ? { queryParams: { openMembers: '1' } }
-            : {};
+      const extras = nav.targetTab === 'board' && nav.taskId ? { queryParams: { highlightTaskId: nav.taskId } } : {};
       await this.router.navigate(commands, extras);
     } catch {
       await this.router.navigate(['/work']);
