@@ -631,6 +631,10 @@ export class RichTextEditorComponent {
   /** Emits a non-candidate the user chose to add and tag; the host adds them, then calls insertMention. */
   addAndTag = output<MentionCandidate>();
 
+  /** Chat-style input: Enter asks the host to submit (Shift+Enter still adds a line). */
+  submitOnEnter = input<boolean>(false);
+  submitRequested = output<void>();
+
   readonly contentEditor = viewChild<ElementRef<HTMLDivElement>>('contentEditor');
   readonly imageFileInput = viewChild<ElementRef<HTMLInputElement>>('imageFileInput');
   readonly attachmentFileInput = viewChild<ElementRef<HTMLInputElement>>('attachmentFileInput');
@@ -1874,6 +1878,11 @@ export class RichTextEditorComponent {
     }
 
     if (event.key === 'Enter' && !event.shiftKey) {
+      if (this.submitOnEnter() && !event.isComposing) {
+        event.preventDefault();
+        this.submitRequested.emit();
+        return;
+      }
       if (this.handleEnterKey(event)) {
         return;
       }

@@ -12,6 +12,7 @@ import { PageHeaderComponent } from '../../../../shared/ui/page-header/page-head
 import { TabOption, TabsComponent } from '../../../../shared/ui/tabs/tabs.component';
 import { InboxCategory, InboxDirection, InboxItemDto, InboxItemRef, InboxQuery, InboxTargetDto, sameRef } from '../../models/inbox.dto';
 import { InboxStore } from '../../state/inbox.store';
+import { ConversationPanelComponent } from '../../ui/conversation-panel/conversation-panel.component';
 import { InboxCardAction, InboxItemCardComponent } from '../../ui/inbox-item-card/inbox-item-card.component';
 import { InboxTypeIconComponent } from '../../ui/inbox-type-icon/inbox-type-icon.component';
 import {
@@ -52,7 +53,7 @@ const QUERY_KEYS = new Set(['project', 'source', 'type', 'status', 'requestedBy'
   standalone: true,
   imports: [
     DatePipe, AvatarComponent, DataTableComponent, DataTableCellDirective, DropdownMenuComponent, FilterBarComponent,
-    PageHeaderComponent, TabsComponent, InboxItemCardComponent, InboxTypeIconComponent
+    PageHeaderComponent, TabsComponent, ConversationPanelComponent, InboxItemCardComponent, InboxTypeIconComponent
   ],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
@@ -179,7 +180,16 @@ const QUERY_KEYS = new Set(['project', 'source', 'type', 'status', 'requestedBy'
               (closed)="close()"
               (action)="onCardAction($event)"
               (openTarget)="openTarget($event)"
-            ></app-inbox-item-card>
+            >
+              @if (store.detail(); as detail) {
+                <app-conversation-panel
+                  inboxConversation
+                  [itemRef]="store.selectedRef()!"
+                  [actions]="detail.item.availableActions"
+                  (action)="card.runAction($event)"
+                />
+              }
+            </app-inbox-item-card>
           </div>
         }
       </div>

@@ -747,6 +747,37 @@ describe('RichTextEditorComponent', () => {
     return editor;
   }
 
+  describe('submit on Enter', () => {
+    it('emits submitRequested on Enter (not Shift+Enter) when enabled', () => {
+      fixture.componentRef.setInput('submitOnEnter', true);
+      const submits: number[] = [];
+      comp.submitRequested.subscribe(() => submits.push(1));
+      placeCaret('<div>hello</div>', 5);
+
+      const enter = new KeyboardEvent('keydown', { key: 'Enter', cancelable: true });
+      comp.onEditorKeydown(enter);
+      comp.onEditorKeydown(new KeyboardEvent('keydown', { key: 'Enter', shiftKey: true, cancelable: true }));
+
+      expect(enter.defaultPrevented).toBe(true);
+      expect(submits).toHaveLength(1);
+    });
+
+    it('does not submit while a menu is open or when disabled', () => {
+      const submits: number[] = [];
+      comp.submitRequested.subscribe(() => submits.push(1));
+      placeCaret('<div>hello</div>', 5);
+      comp.onEditorKeydown(new KeyboardEvent('keydown', { key: 'Enter', cancelable: true }));
+
+      fixture.componentRef.setInput('submitOnEnter', true);
+      fixture.componentRef.setInput('extraSlashCommands', [{ id: 'approve', label: 'Approve', category: 'ACTIONS' }]);
+      comp.showSlashMenu.set(true);
+      comp.slashQuery.set('appr');
+      comp.onEditorKeydown(new KeyboardEvent('keydown', { key: 'Enter', cancelable: true }));
+
+      expect(submits).toHaveLength(0);
+    });
+  });
+
   describe('host slash commands', () => {
     const actions = [
       { id: 'approve', label: 'Approve', category: 'ACTIONS', icon: '✓' },

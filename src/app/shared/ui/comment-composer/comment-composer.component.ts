@@ -31,6 +31,8 @@ import { HostSlashCommand, MentionCandidate, RichTextEditorComponent } from '../
           [mentionCandidates]="mentionCandidates()"
           [allowAddAndTag]="allowAddAndTag()"
           [mentionSearch]="mentionSearch()"
+          [submitOnEnter]="enterToSend()"
+          (submitRequested)="submit()"
           (htmlChange)="editorHtml.set($event)"
           (filesAttached)="onFilesSelected($event)"
           (uploadFailed)="uploadError.set($event)"
@@ -122,6 +124,8 @@ export class CommentComposerComponent {
   mentionCandidates = input<readonly MentionCandidate[] | null>(null);
   allowAddAndTag = input<boolean>(false);
   mentionSearch = input<((query: string) => Observable<readonly MentionCandidate[]>) | null>(null);
+  /** Enter sends, Shift+Enter adds a line (chat). */
+  enterToSend = input<boolean>(false);
 
   submitted = output<{ content: string; attachmentFileIds: string[]; mentions: string[] }>();
   cancelled = output<void>();

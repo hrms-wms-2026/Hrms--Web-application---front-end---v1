@@ -12,6 +12,9 @@ import { InboxApiService } from '../../data-access/inbox-api.service';
 import { InboxItemDto } from '../../models/inbox.dto';
 import { InboxStore } from '../../state/inbox.store';
 import { InboxPageComponent } from './inbox-page.component';
+import { ConversationsApiService } from '../../data-access/conversations-api.service';
+import { PeopleApiService } from '../../../people/data-access/people-api.service';
+import { TaskApiService } from '../../../work/data-access/task-api.service';
 
 function item(id: string, extra: Partial<InboxItemDto> = {}): InboxItemDto {
   return {
@@ -27,6 +30,7 @@ describe('InboxPageComponent', () => {
   let params: BehaviorSubject<ParamMap>;
   let router: { navigate: ReturnType<typeof vi.fn> };
   let notifications: { success: ReturnType<typeof vi.fn>; error: ReturnType<typeof vi.fn> };
+  let conversations: Record<string, ReturnType<typeof vi.fn>>;
 
   beforeEach(() => {
     vi.useFakeTimers();
@@ -43,11 +47,19 @@ describe('InboxPageComponent', () => {
     params = new BehaviorSubject(convertToParamMap({}));
     router = { navigate: vi.fn(() => Promise.resolve(true)) };
     notifications = { success: vi.fn(), error: vi.fn() };
+    conversations = {
+      open: vi.fn(() => of({ id: 'c1', source: 'work', kind: 'approval', subjectId: 'a1', title: 't', projectId: 'p1', participants: [], messages: [], hasMoreMessages: false, lastReadAt: null })),
+      markRead: vi.fn(() => of(undefined)),
+      messages: vi.fn(), post: vi.fn(), addParticipants: vi.fn()
+    };
     TestBed.configureTestingModule({
       imports: [InboxPageComponent],
       providers: [
         { provide: InboxApiService, useValue: api },
-        { provide: InboxRealtimeService, useValue: { inboxChanged$: new Subject(), reconnected$: new Subject() } },
+        { provide: InboxRealtimeService, useValue: { inboxChanged$: new Subject(), reconnected$: new Subject(), messageCreated$: new Subject(), participantAdded$: new Subject() } },
+        { provide: ConversationsApiService, useValue: conversations },
+        { provide: PeopleApiService, useValue: { listEmployees: vi.fn(() => of({ items: [] })) } },
+        { provide: TaskApiService, useValue: { uploadPendingFile: vi.fn(), deletePendingFile: vi.fn(), getFileUrl: vi.fn() } },
         { provide: AuthStore, useValue: { authenticated: signal(false) } },
         { provide: PermissionService, useValue: { hasModule: () => false } },
         { provide: TrayPresenceStore, useValue: { canRenderProtectedContent: () => true } },
@@ -165,6 +177,20 @@ describe('InboxPageComponent', () => {
     await vi.advanceTimersByTimeAsync(0);
 
     expect(notifications.error).toHaveBeenCalledWith('Only the approver can decide.');
+  });
+
+  it('shows the item conversation inside the card; a "/" action runs like its button', async () => {
+    params.next(convertToParamMap({ source: 'work', kind: 'approval', id: 'a1' }));
+    const { fixture, el } = await render();
+
+    expect(el.querySelector('[data-testid="inbox-card"] [data-testid="conversation-panel"]')).not.toBeNull();
+    expect(conversations['open']).toHaveBeenCalledWith({ source: 'work', kind: 'approval', id: 'a1' });
+
+    const panel = fixture.debugElement.query((d) => d.name === 'app-conversation-panel').componentInstance;
+    panel.action.emit('approve');
+    await vi.advanceTimersByTimeAsync(0);
+
+    expect(api['runAction']).toHaveBeenCalledWith({ source: 'work', kind: 'approval', id: 'a1' }, 'approve', {});
   });
 
   it('opens the item target with its query params', async () => {

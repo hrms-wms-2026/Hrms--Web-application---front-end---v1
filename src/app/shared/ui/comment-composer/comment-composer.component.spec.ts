@@ -87,6 +87,20 @@ describe('CommentComposerComponent', () => {
     expect(component.mentions()).toEqual(['e1']);
   });
 
+  it('submits when the editor asks to (Enter to send)', () => {
+    fixture.componentRef.setInput('enterToSend', true);
+    fixture.detectChanges();
+    const editor = fixture.debugElement.query(By.directive(RichTextEditorComponent)).componentInstance as RichTextEditorComponent;
+    const submitted = vi.fn();
+    component.submitted.subscribe(submitted);
+    component.editorHtml.set('<p>hi</p>');
+
+    expect(editor.submitOnEnter()).toBe(true);
+    editor.submitRequested.emit();
+
+    expect(submitted).toHaveBeenCalledTimes(1);
+  });
+
   it('insertMention forwards to the editor', () => {
     const editor = fixture.debugElement.query(By.directive(RichTextEditorComponent)).componentInstance as RichTextEditorComponent;
     const spy = vi.spyOn(editor, 'insertMention');
