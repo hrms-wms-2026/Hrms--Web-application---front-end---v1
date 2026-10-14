@@ -9,6 +9,7 @@ import { TaskCategoryColumn } from '../../models/task-category.model';
 interface DraftRow {
   id: string;
   name: string;
+  isSystem: boolean;
 }
 
 @Component({
@@ -60,20 +61,30 @@ interface DraftRow {
             </span>
             <span class="category-list__name">{{ row.name }}</span>
             <div class="category-list__row-actions">
-              <button type="button" class="category-list__edit-icon" aria-label="Rename category" title="Rename" (click)="openRename(row)">
-                <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-                  <path d="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z" />
-                </svg>
-                <span>Edit</span>
-              </button>
-              <button type="button" class="category-list__delete-icon" aria-label="Delete category" title="Delete" (click)="deleteRow(row.id)">
-                <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-                  <path d="M3 6h18" />
-                  <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6" />
-                  <path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" />
-                </svg>
-                <span>Delete</span>
-              </button>
+              @if (row.isSystem) {
+                <span class="category-list__system-badge" title="System category: can't be renamed or deleted." aria-label="System category: can't be renamed or deleted.">
+                  <svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                    <rect x="4" y="11" width="16" height="10" rx="2" />
+                    <path d="M8 11V7a4 4 0 0 1 8 0v4" />
+                  </svg>
+                  <span>System</span>
+                </span>
+              } @else {
+                <button type="button" class="category-list__edit-icon" aria-label="Rename category" title="Rename" (click)="openRename(row)">
+                  <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                    <path d="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z" />
+                  </svg>
+                  <span>Edit</span>
+                </button>
+                <button type="button" class="category-list__delete-icon" aria-label="Delete category" title="Delete" (click)="deleteRow(row.id)">
+                  <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                    <path d="M3 6h18" />
+                    <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6" />
+                    <path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" />
+                  </svg>
+                  <span>Delete</span>
+                </button>
+              }
             </div>
           </div>
         }
@@ -230,6 +241,17 @@ interface DraftRow {
       color: var(--color-danger-text, #ef4444);
       background: color-mix(in srgb, #ef4444 10%, transparent);
     }
+    .category-list__system-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      padding: 3px 8px;
+      border-radius: 999px;
+      font-size: 11.5px;
+      font-weight: 500;
+      color: var(--color-text-secondary);
+      background: color-mix(in srgb, var(--color-border) 30%, transparent);
+    }
     .category-list__error {
       display: flex;
       align-items: center;
@@ -302,7 +324,7 @@ export class CategoryListEditorComponent {
         this.rows.set(
           [...this.categories()]
             .sort((a, b) => a.displayOrder - b.displayOrder)
-            .map((category) => ({ id: category.id, name: category.name }))
+            .map((category) => ({ id: category.id, name: category.name, isSystem: category.isSystem ?? false }))
         );
         this.errorMessage.set(null);
       } else {
@@ -334,7 +356,7 @@ export class CategoryListEditorComponent {
         name,
         displayOrder: this.rows().length
       }));
-      this.rows.set([...this.rows(), { id: created.id, name: created.name }]);
+      this.rows.set([...this.rows(), { id: created.id, name: created.name, isSystem: created.isSystem ?? false }]);
       this.cancelAdd();
       this.saved.emit();
     } catch (err: unknown) {
@@ -345,6 +367,7 @@ export class CategoryListEditorComponent {
   }
 
   openRename(row: DraftRow): void {
+    if (row.isSystem) return;
     this.editingId.set(row.id);
     this.editingName.set(row.name);
     this.renameError.set(null);
@@ -379,6 +402,7 @@ export class CategoryListEditorComponent {
   }
 
   async deleteRow(id: string): Promise<void> {
+    if (this.rows().find((row) => row.id === id)?.isSystem) return;
     this.errorMessage.set(null);
     try {
       await firstValueFrom(this.taskApi.deleteCategory(id));
