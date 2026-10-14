@@ -234,6 +234,7 @@ export class CalendarPageComponent {
         const created = await this.store.createEvent(submission.create);
         ok = !!created;
         if (created && submission.meetingProvider) {
+          // A failed link keeps the event; the store's actionError explains what happened (P1-5).
           await this.store.createMeeting(created.id, submission.meetingProvider);
         }
         if (created) await this.reloadEvents();
@@ -245,6 +246,12 @@ export class CalendarPageComponent {
     } finally {
       this.submitting.set(false);
     }
+  }
+
+  async onMeetingStatusChanged(): Promise<void> {
+    const editing = this.editingEvent();
+    await this.reloadEvents();
+    if (editing) this.editingEvent.set(this.store.events().find((e) => e.id === editing.id) ?? null);
   }
 
   /** The create/update responses carry no participants, organizer or conflict flags, so the saved event is re-read from the server. */

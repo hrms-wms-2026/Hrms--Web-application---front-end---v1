@@ -4,6 +4,7 @@ import { firstValueFrom } from 'rxjs';
 import { toSafeErrorMessage } from '../../../core/services/error-handler.service';
 import { CalendarConnectionApiService } from '../../settings/data-access/calendar-connection-api.service';
 import { CalendarEventApiService } from '../data-access/calendar-event-api.service';
+import { meetingErrorMessage } from '../utils/meeting-error-message';
 import {
   CalendarConflict, CalendarEventParticipant, CalendarEventResponse, CreateCalendarEventRequest,
   EditRecurringOccurrenceRequest, EligibleNominee, MeetingProvider, RespondToCalendarEventStatus,
@@ -181,7 +182,7 @@ export const CalendarEventStore = signalStore(
         });
         return true;
       } catch (err) {
-        patchState(store, { meetingActionSaving: false, actionError: toSafeErrorMessage(err, 'Failed to add the meeting.') });
+        patchState(store, { meetingActionSaving: false, actionError: meetingErrorMessage(err, provider) });
         return false;
       }
     },

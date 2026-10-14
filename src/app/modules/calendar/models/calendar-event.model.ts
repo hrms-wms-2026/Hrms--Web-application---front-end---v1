@@ -133,6 +133,15 @@ export interface CalendarConflictsResponse {
 /** Matches backend ONEVO.Domain.Features.Calendar.Entities.CalendarEventMeetingProviders. */
 export type MeetingProvider = 'microsoft_teams' | 'zoom';
 
+export type EventMeetingStatus = 'none' | 'active' | 'cancelled' | 'failed' | 'provisioning' | 'provisioning_unknown' | 'unresolved';
+
+export interface EventMeetingStatusResponse {
+  status: EventMeetingStatus;
+  provider: MeetingProvider | null;
+  joinUrl: string | null;
+  failureReason: string | null;
+}
+
 export interface CreateEventMeetingResponse {
   joinUrl: string;
 }

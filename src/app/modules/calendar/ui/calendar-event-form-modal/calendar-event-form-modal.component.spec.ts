@@ -21,7 +21,7 @@ describe('CalendarEventFormModalComponent', () => {
         { provide: AuthStore, useValue: { employeeId: () => currentEmployeeId, email: () => 'nadesh@dapi.test' } },
         // Only the nested CalendarEventAttendanceComponent (rendered when the Attendance section
         // shows) actually calls this - stubbed here so those tests don't need real HTTP infra.
-        { provide: CalendarEventApiService, useValue: { getMeetingAttendance: vi.fn().mockReturnValue(of({ available: false, attendees: [] })) } },
+        { provide: CalendarEventApiService, useValue: { getMeetingAttendance: vi.fn().mockReturnValue(of({ available: false, attendees: [] })), getMeeting: vi.fn().mockReturnValue(of({ status: 'none', provider: null, joinUrl: null, failureReason: null })) } },
         { provide: PeopleApiService, useValue: { listEmployees: vi.fn().mockReturnValue(of({ items: [], totalCount: 0, page: 1, pageSize: 20 })) } },
         provideRouter([])
       ]

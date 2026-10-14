@@ -19,6 +19,7 @@ import {
 } from '../../models/calendar-event.model';
 import { RecurrenceEndMode, RecurrenceFrequency, buildRecurrenceRule } from '../../utils/recurrence-rule.util';
 import { CalendarEventAttendanceComponent } from '../calendar-event-attendance/calendar-event-attendance.component';
+import { CalendarEventMeetingStatusComponent } from '../calendar-event-meeting-status/calendar-event-meeting-status.component';
 import { CalendarParticipantPickerComponent } from '../calendar-participant-picker/calendar-participant-picker.component';
 import { ListboxSelectComponent } from '../../../../shared/ui/listbox-select/listbox-select.component';
 import { timezoneDisplayLabel } from '../../../../shared/utils/timezone-label.util';
@@ -107,7 +108,7 @@ interface AddedPerson {
   imports: [
     CommonModule, ReactiveFormsModule, RouterLink, ButtonComponent,
     ModalComponent, DatePickerComponent, DateRangePickerComponent, TimePickerComponent, AvatarComponent, AvatarStackComponent, ConfirmModalComponent, CalendarParticipantPickerComponent,
-    ListboxSelectComponent, CalendarEventAttendanceComponent
+    ListboxSelectComponent, CalendarEventAttendanceComponent, CalendarEventMeetingStatusComponent
   ],
   templateUrl: './calendar-event-form-modal.component.html',
   styles: [`
@@ -181,6 +182,7 @@ export class CalendarEventFormModalComponent implements OnChanges, OnDestroy {
   @Output() loadEligibleNominees = new EventEmitter<void>();
   @Output() addMeeting = new EventEmitter<MeetingProvider>();
   @Output() removeMeeting = new EventEmitter<void>();
+  @Output() meetingStatusChanged = new EventEmitter<void>();
   @Output() addParticipantsToEvent = new EventEmitter<readonly string[]>();
   @Output() removeExistingParticipant = new EventEmitter<string>();
   @Output() addGuestsToEvent = new EventEmitter<readonly string[]>();
