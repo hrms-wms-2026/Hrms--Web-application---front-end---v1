@@ -11,7 +11,7 @@ import { meetingErrorMessage } from '../../utils/meeting-error-message';
   standalone: true,
   template: `
     @if (state(); as s) {
-      @if (s.status === 'provisioning_unknown' || s.status === 'unresolved' || s.status === 'failed') {
+      @if (s.status === 'provisioning' || s.status === 'provisioning_unknown' || s.status === 'unresolved' || s.status === 'failed') {
         <div data-testid="calendar-meeting-status" class="rounded-md border border-[var(--color-border)] p-2 text-xs" role="status">
           @switch (s.status) {
             @case ('provisioning_unknown') {
@@ -28,6 +28,9 @@ import { meetingErrorMessage } from '../../utils/meeting-error-message';
               <button type="button" data-testid="calendar-meeting-confirm-cleanup" class="mt-2 text-[var(--color-accent)]" [disabled]="busy()" (click)="confirmCleanup()">
                 I've deleted it
               </button>
+            }
+            @case ('provisioning') {
+              <p>A {{ name() }} link is being created. This can take up to a minute.</p>
             }
             @case ('failed') {
               <p>The {{ name() }} link couldn't be created. You can add a meeting again.</p>

@@ -47,4 +47,10 @@ describe('CalendarEventMeetingStatusComponent', () => {
     const { fixture } = setup('failed', 'microsoft_teams');
     expect(fixture.nativeElement.textContent).toContain("couldn't be created");
   });
+
+
+  it('says the link is still being created while a request owns it', () => {
+    const { fixture } = setup('provisioning', 'microsoft_teams');
+    expect(fixture.nativeElement.textContent).toContain('Microsoft Teams link is being created');
+  });
 });
