@@ -145,7 +145,10 @@ export interface MeetingAttendeeResponse {
   durationSeconds: number | null;
 }
 
+export type MeetingAttendanceSyncStatus = 'none' | 'pending' | 'synced' | 'attendance_unavailable' | 'sync_failed';
+
 export interface MeetingAttendanceResponse {
   available: boolean;
   attendees: readonly MeetingAttendeeResponse[];
+  syncStatus?: MeetingAttendanceSyncStatus;
 }
