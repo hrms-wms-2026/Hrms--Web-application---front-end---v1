@@ -1,12 +1,5 @@
 <section class="evidence" aria-label="Alert evidence">
-  @if (loading()) {
-    <div class="evidence-skeleton" aria-busy="true" aria-label="Loading evidence"></div>
-  } @else if (error()) {
-    <div class="evidence-error" role="alert">
-      <p>{{ error() }}</p>
-      <app-button type="button" variant="secondary" size="sm" (pressed)="load()">Try again</app-button>
-    </div>
-  } @else if (evidence(); as ev) {
+  @if (safe(); as ev) {
     @if (!hasAnything(ev)) {
       <p class="evidence-empty">No attendance or identity records were found for {{ formatDate(ev.workDate) }}.</p>
     } @else {

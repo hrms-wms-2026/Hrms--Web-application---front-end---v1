@@ -128,15 +128,8 @@ describe('canAccessNavItem', () => {
         'time-attendance-overview',
         'time-attendance-tracking',
         'time-attendance-requests',
-        'time-attendance-alerts',
         'time-attendance-monitoring'
       ]);
-      const alerts = children.find((child) => child.id === 'time-attendance-alerts')!;
-      expect(alerts.path).toBe('/attendance/alerts');
-      // Reporting managers and HR both work the alerts queue; a plain employee does not.
-      expect(canAccessNavItem(alerts, checker(['attendance:approve'], ['time_attendance']))).toBe(true);
-      expect(canAccessNavItem(alerts, checker(['employees:write'], ['time_attendance']))).toBe(true);
-      expect(canAccessNavItem(alerts, checker(['attendance:read-own'], ['time_attendance']))).toBe(false);
       const monitoring = children.find((child) => child.id === 'time-attendance-monitoring')!;
       expect(monitoring.label).toBe('Monitoring');
       expect(monitoring.path).toBe('/attendance/monitoring');

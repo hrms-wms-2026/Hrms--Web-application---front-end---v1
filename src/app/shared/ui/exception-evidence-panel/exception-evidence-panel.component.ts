@@ -1,8 +1,4 @@
-import { ChangeDetectionStrategy, Component, OnInit, inject, input, signal } from '@angular/core';
-import { firstValueFrom } from 'rxjs';
-import { toSafeErrorMessage } from '../../../../../core/services/error-handler.service';
-import { ButtonComponent } from '../../../../../shared/ui/button/button.component';
-import { ExceptionAlertsApiService } from '../../../data-access/exception-alerts-api.service';
+import { ChangeDetectionStrategy, Component, computed, effect, input, signal } from '@angular/core';
 import {
   DeviceActivityEvidence,
   DeviceActivityState,
@@ -10,49 +6,51 @@ import {
   PatternMeasure,
   faceOutcomeLabel,
   faceReasonLabel
-} from '../../../models/exception-alert.model';
+} from '../../models/exception-evidence.model';
 
 /**
- * Flow 09 "validate the issue": the day's clock-in/out and, for identity cases, the photo that
- * raised the case, that day's face checks and check-in scans. Fetches on every open - the photo
- * URL is signed for a few minutes only - so the state lives here, not in the store.
+ * Flow 09 "validate the issue": the day's clock-in/out and, for identity cases, the photo that raised the case, that
+ * day's face checks and check-in scans, device activity and the multi-day pattern. Presentational: the host loads the
+ * evidence (the Inbox exception renderer passes the item's evidence) - the photo URL is signed for a few minutes, so
+ * an expired link asks the reviewer to reopen the item.
  */
 @Component({
   selector: 'app-exception-evidence-panel',
   standalone: true,
-  imports: [ButtonComponent],
   templateUrl: './exception-evidence-panel.component.html',
   styleUrl: './exception-evidence-panel.component.css',
   changeDetection: ChangeDetectionStrategy.OnPush
 })
-export class ExceptionEvidencePanelComponent implements OnInit {
-  private readonly api = inject(ExceptionAlertsApiService);
+export class ExceptionEvidencePanelComponent {
+  readonly evidence = input<ExceptionEvidenceResponse | null>(null);
 
-  readonly alertId = input.required<string>();
+  /** The evidence with any section the server left out (monitoring-only data for some viewers) read as empty. */
+  readonly safe = computed<ExceptionEvidenceResponse | null>(() => {
+    const ev = this.evidence();
+    if (!ev) return null;
+    return {
+      ...ev,
+      attendance: ev.attendance ?? null,
+      identity: ev.identity ? { ...ev.identity, reasons: ev.identity.reasons ?? [] } : null,
+      faceChecks: ev.faceChecks ?? [],
+      checkInScans: ev.checkInScans ?? [],
+      deviceActivity: ev.deviceActivity ? { ...ev.deviceActivity, segments: ev.deviceActivity.segments ?? [] } : null,
+      pattern: ev.pattern ? { ...ev.pattern, days: ev.pattern.days ?? [], measures: ev.pattern.measures ?? [] } : null,
+      activityHidden: !!ev.activityHidden
+    };
+  });
 
-  readonly loading = signal(true);
-  readonly error = signal<string | null>(null);
-  readonly evidence = signal<ExceptionEvidenceResponse | null>(null);
   readonly photoFailed = signal(false);
 
   readonly reasonLabel = faceReasonLabel;
   readonly outcomeLabel = faceOutcomeLabel;
 
-  ngOnInit(): void {
-    void this.load();
-  }
-
-  async load(): Promise<void> {
-    this.loading.set(true);
-    this.error.set(null);
-    this.photoFailed.set(false);
-    try {
-      this.evidence.set(await firstValueFrom(this.api.evidence(this.alertId())));
-    } catch (error) {
-      this.error.set(toSafeErrorMessage(error, 'Could not load the evidence for this alert.'));
-    } finally {
-      this.loading.set(false);
-    }
+  constructor() {
+    // A different case starts with a fresh photo.
+    effect(() => {
+      this.evidence();
+      this.photoFailed.set(false);
+    });
   }
 
   hasAnything(evidence: ExceptionEvidenceResponse): boolean {

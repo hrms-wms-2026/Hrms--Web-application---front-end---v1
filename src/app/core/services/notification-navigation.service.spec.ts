@@ -75,7 +75,7 @@ describe('NotificationNavigationService', () => {
       relatedEntityType: 'monitoring_exception', relatedEntityId: 'alert-7', isNavigable: false
     } as NotificationItem);
 
-    expect(router.navigate).toHaveBeenCalledWith(['/attendance/alerts'], { queryParams: { alertId: 'alert-7' } });
+    expect(router.navigate).toHaveBeenCalledWith(['/inbox', 'monitoring', 'exception_case', 'alert-7']);
     expect(taskApi.getNotificationNavigation).not.toHaveBeenCalled();
   });
 

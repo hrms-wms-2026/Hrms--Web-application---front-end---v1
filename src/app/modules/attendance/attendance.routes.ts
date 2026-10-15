@@ -85,20 +85,16 @@ export const ATTENDANCE_ROUTES: Routes = [
         (module) => module.TimeTrackingComponent
       )
   },
+  // Exception cases are reviewed in the Inbox now; the old Alerts page (and its ?alertId= links) land there.
   {
-    // Reporting managers (attendance:approve) and HR (employees:write) - the backend narrows the
-    // list to the employees each caller covers via IEmployeeAuthorityResolver.
     path: 'alerts',
-    canActivate: [permissionGuard],
-    data: {
-      title: 'Alerts',
-      permissions: ['attendance:approve', 'employees:write', 'exceptions:view'],
-      modules: ['time_attendance']
-    },
-    loadComponent: () =>
-      import('./feature/exception-alerts/exception-alerts.component').then(
-        (module) => module.ExceptionAlertsComponent
-      )
+    redirectTo: ({ queryParams }) => {
+      const router = inject(Router);
+      const alertId = queryParams['alertId'];
+      return alertId
+        ? router.createUrlTree(['/inbox', 'monitoring', 'exception_case', alertId])
+        : router.createUrlTree(['/inbox'], { queryParams: { source: 'monitoring', tab: 'alerts' } });
+    }
   },
   { path: 'corrections/approvals', redirectTo: legacyApprovalsRedirect('correction') },
   { path: 'work-area-change-requests/approvals', redirectTo: legacyApprovalsRedirect('work_mode_change') },

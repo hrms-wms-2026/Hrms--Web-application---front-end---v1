@@ -1,42 +1,6 @@
-/** Matches the backend ExceptionType enum names (serialized as strings). */
+/** Exception case evidence and labels, shared by the Inbox exception renderer and anything else that shows a case.
+ *  ExceptionType names match the backend enum (serialized as strings). */
 export type ExceptionAlertType = 'SustainedLowActivity' | 'AttendanceIrregularity' | 'UnusualActivityPattern' | 'IdentityAnomaly';
-
-/** Matches the backend ExceptionStatus enum names (serialized as strings). */
-export type ExceptionAlertStatus = 'Open' | 'Acknowledged' | 'Resolved' | 'Escalated';
-
-/** ExceptionDto from GET /api/v1/monitoring/exceptions. */
-export interface ExceptionAlertResponse {
-  readonly id: string;
-  readonly employeeId: string;
-  readonly employeeName: string;
-  readonly type: ExceptionAlertType;
-  readonly status: ExceptionAlertStatus;
-  readonly title: string;
-  readonly description: string;
-  readonly detectedAt: string;
-  readonly acknowledgedAt: string | null;
-  readonly resolvedAt: string | null;
-  readonly escalatedAt: string | null;
-  readonly resolutionNote: string | null;
-}
-
-/** PagedResult<ExceptionDto> - the backend's paged shape, no envelope. */
-export interface ExceptionAlertPage {
-  readonly items: readonly ExceptionAlertResponse[];
-  readonly pageNumber: number;
-  readonly pageSize: number;
-  readonly totalCount: number;
-}
-
-export interface ExceptionAlertQuery {
-  readonly status?: ExceptionAlertStatus | null;
-  readonly type?: ExceptionAlertType | null;
-  readonly page?: number;
-  readonly pageSize?: number;
-}
-
-export type ExceptionAlertAction = 'acknowledge' | 'resolve' | 'escalate';
-
 /** Notification relatedEntityType the backend stamps on exception alerts. */
 export const EXCEPTION_ALERT_ENTITY_TYPE = 'monitoring_exception';
 
@@ -184,25 +148,4 @@ const FACE_OUTCOME_LABELS: Record<string, string> = {
 export function faceOutcomeLabel(value: string | null): string {
   if (!value) return '—';
   return FACE_OUTCOME_LABELS[value.toLowerCase()] ?? value.replace(/_/g, ' ');
-}
-
-export const EXCEPTION_ALERT_STATUS_LABELS: Record<ExceptionAlertStatus, string> = {
-  Open: 'Open',
-  Acknowledged: 'Acknowledged',
-  Resolved: 'Resolved',
-  Escalated: 'Escalated to HR'
-};
-
-/** Only an open case - acknowledging an escalated one would pull it back out of HR's queue, so
- * the backend refuses that (409). */
-export function canAcknowledge(alert: ExceptionAlertResponse): boolean {
-  return alert.status === 'Open';
-}
-
-export function canResolve(alert: ExceptionAlertResponse): boolean {
-  return alert.status !== 'Resolved';
-}
-
-export function canEscalate(alert: ExceptionAlertResponse): boolean {
-  return alert.status === 'Open' || alert.status === 'Acknowledged';
 }

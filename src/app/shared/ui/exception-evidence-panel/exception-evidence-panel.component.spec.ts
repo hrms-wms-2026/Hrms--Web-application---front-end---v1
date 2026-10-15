@@ -1,9 +1,7 @@
-import { HttpErrorResponse } from '@angular/common/http';
 import { TestBed } from '@angular/core/testing';
-import { of, throwError } from 'rxjs';
+import { Observable, of } from 'rxjs';
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { ExceptionAlertsApiService } from '../../../data-access/exception-alerts-api.service';
-import { ExceptionEvidenceResponse } from '../../../models/exception-alert.model';
+import { ExceptionEvidenceResponse } from '../../models/exception-evidence.model';
 import { ExceptionEvidencePanelComponent } from './exception-evidence-panel.component';
 
 const identityEvidence: ExceptionEvidenceResponse = {
@@ -64,24 +62,22 @@ const lowActivityEvidence: ExceptionEvidenceResponse = {
 describe('ExceptionEvidencePanelComponent', () => {
   afterEach(() => TestBed.resetTestingModule());
 
-  async function setup(response: () => ReturnType<ExceptionAlertsApiService['evidence']>) {
-    const api = { evidence: vi.fn(response) };
-    await TestBed.configureTestingModule({
-      imports: [ExceptionEvidencePanelComponent],
-      providers: [{ provide: ExceptionAlertsApiService, useValue: api }]
-    }).compileComponents();
+  /** The host passes the evidence it loaded (the Inbox detail's evidence payload). */
+  async function setup(response: () => Observable<ExceptionEvidenceResponse>) {
+    let evidence: ExceptionEvidenceResponse | null = null;
+    response().subscribe((value) => (evidence = value));
+    await TestBed.configureTestingModule({ imports: [ExceptionEvidencePanelComponent] }).compileComponents();
     const fixture = TestBed.createComponent(ExceptionEvidencePanelComponent);
-    fixture.componentRef.setInput('alertId', 'a1');
+    fixture.componentRef.setInput('evidence', evidence);
     fixture.detectChanges();
     await fixture.whenStable();
     fixture.detectChanges();
-    return { fixture, api, el: fixture.nativeElement as HTMLElement };
+    return { fixture, el: fixture.nativeElement as HTMLElement };
   }
 
   it('shows the triggering photo, readable reasons, the day\'s face checks and check-in scans', async () => {
-    const { el, api } = await setup(() => of(identityEvidence));
+    const { el } = await setup(() => of(identityEvidence));
 
-    expect(api.evidence).toHaveBeenCalledWith('a1');
     const img = el.querySelector('img') as HTMLImageElement;
     expect(img.src).toBe('https://signed/photo.jpg');
     expect(el.textContent).toContain('Clock-in/out face check failed and was let through');
@@ -187,19 +183,11 @@ describe('ExceptionEvidencePanelComponent', () => {
     expect(el.textContent).toContain('No attendance or identity records were found');
   });
 
-  it('shows the error and retries', async () => {
-    let fail = true;
-    const { fixture, el, api } = await setup(() =>
-      fail ? throwError(() => new HttpErrorResponse({ status: 500 })) : of(identityEvidence));
+  it('does not crash when the server left sections out (monitoring-only data)', async () => {
+    const stripped = { ...identityEvidence, faceChecks: undefined, checkInScans: undefined, pattern: null, deviceActivity: null, activityHidden: true } as unknown as ExceptionEvidenceResponse;
+    const { el } = await setup(() => of(stripped));
 
-    expect(el.querySelector('[role="alert"]')).not.toBeNull();
-
-    fail = false;
-    (el.querySelector('[role="alert"] button') as HTMLButtonElement).click();
-    await fixture.whenStable();
-    fixture.detectChanges();
-
-    expect(api.evidence).toHaveBeenCalledTimes(2);
     expect(el.querySelector('img')).not.toBeNull();
+    expect(el.querySelectorAll('[data-testid="evidence-face-checks"] li')).toHaveLength(0);
   });
 });

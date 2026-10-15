@@ -6,6 +6,7 @@ import {
   LocationChangeRendererComponent,
   WorkModeChangeRendererComponent
 } from './attendance-renderers';
+import { ExceptionEvidenceRendererComponent } from './exception-evidence-renderer.component';
 import { LeaveRequestRendererComponent } from './leave-request-renderer.component';
 
 /**
@@ -25,7 +26,8 @@ export const DEFAULT_INBOX_DETAIL_RENDERERS: Record<string, Type<unknown>> = {
   'work-mode-change': WorkModeChangeRendererComponent,
   'location-change': LocationChangeRendererComponent,
   'device-change': DeviceChangeRendererComponent,
-  'attendance-alert': AttendanceAlertRendererComponent
+  'attendance-alert': AttendanceAlertRendererComponent,
+  'exception-evidence': ExceptionEvidenceRendererComponent
 };
 
 @Injectable({ providedIn: 'root' })

@@ -88,6 +88,11 @@ describe('ATTENDANCE_ROUTES', () => {
       expect(redirectOf('work-area-change-requests/approvals', { requestId: 'w1' })).toBe('/inbox/attendance/work_mode_change/w1');
     });
 
+    it('redirects the old Alerts page to monitoring cases in the Inbox, or the one case for ?alertId=', () => {
+      expect(redirectOf('alerts', {})).toBe('/inbox?source=monitoring&tab=alerts');
+      expect(redirectOf('alerts', { alertId: 'x1' })).toBe('/inbox/monitoring/exception_case/x1');
+    });
+
     it('sends the old Time Tracking team approvals view to the Inbox, and leaves every other view alone', () => {
       expect(timeTracking().canActivate?.[0]).toBe(attendanceApprovalsDeepLinkGuard);
       expect(url(guard({ view: 'team', type: 'corrections' }))).toBe('/inbox?source=attendance&kind=correction');

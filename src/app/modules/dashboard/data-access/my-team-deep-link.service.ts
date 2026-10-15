@@ -27,9 +27,7 @@ export class MyTeamDeepLinkService {
         return;
 
       case 'monitoring.exception':
-        await this.router.navigate(['/attendance/alerts'], {
-          queryParams: { alertId: link.params['alertId'] }
-        });
+        await this.router.navigate(['/inbox', 'monitoring', 'exception_case', link.params['alertId']]);
         return;
 
       case 'work.request':

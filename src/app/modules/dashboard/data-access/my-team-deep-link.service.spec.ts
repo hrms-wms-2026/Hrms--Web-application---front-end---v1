@@ -33,10 +33,10 @@ describe('MyTeamDeepLinkService', () => {
     expect(navigate).toHaveBeenNthCalledWith(2, ['/inbox', 'attendance', 'work_mode_change', 'r3']);
   });
 
-  it('routes monitoring.exception to the alerts screen', async () => {
+  it('routes monitoring.exception to the case in the Inbox', async () => {
     const { service, navigate } = setup();
     await service.navigate({ kind: 'monitoring.exception', params: { alertId: 'a1' } });
-    expect(navigate).toHaveBeenCalledWith(['/attendance/alerts'], { queryParams: { alertId: 'a1' } });
+    expect(navigate).toHaveBeenCalledWith(['/inbox', 'monitoring', 'exception_case', 'a1']);
   });
 
   it('resolves work.request via notification-navigation and routes to the tree tab', async () => {

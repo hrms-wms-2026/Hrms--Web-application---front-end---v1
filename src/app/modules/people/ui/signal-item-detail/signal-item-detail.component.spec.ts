@@ -1,8 +1,8 @@
 import { Component, input, output } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
+import { Router } from '@angular/router';
 import { of } from 'rxjs';
 import { AttendanceDetailDrawerComponent } from '../../../attendance/feature/time-tracking/attendance-detail-drawer/attendance-detail-drawer.component';
-import { ExceptionEvidencePanelComponent } from '../../../attendance/feature/exception-alerts/exception-evidence-panel/exception-evidence-panel.component';
 import { TaskFormModalComponent } from '../../../work/ui/task-form-modal/task-form-modal.component';
 import { ProjectDetailStore } from '../../../work/state/project-detail.store';
 import { PeopleApiService } from '../../data-access/people-api.service';
@@ -13,8 +13,6 @@ import { SignalItemDetailComponent } from './signal-item-detail.component';
 
 @Component({ selector: 'app-attendance-detail-drawer', standalone: true, template: '' })
 class DrawerStub { selection = input<unknown>(null); displayTimezone = input('UTC'); fallbackSummary = input<unknown>(null); closed = output<void>(); }
-@Component({ selector: 'app-exception-evidence-panel', standalone: true, template: '' })
-class EvidenceStub { alertId = input.required<string>(); }
 @Component({ selector: 'app-task-form-modal', standalone: true, template: '' })
 class TaskModalStub { open = input(false); mode = input('create'); projectId = input.required<string>(); taskId = input(''); closed = output<void>(); saved = output<void>(); }
 
@@ -33,8 +31,8 @@ describe('SignalItemDetailComponent', () => {
       providers: [EmployeePeriodStore, SignalDrilldownStore, { provide: PeopleApiService, useValue: { getOverviewSignalItems } },
         { provide: ProjectDetailStore, useValue: project }]
     }).overrideComponent(SignalItemDetailComponent, {
-      remove: { imports: [AttendanceDetailDrawerComponent, ExceptionEvidencePanelComponent, TaskFormModalComponent] },
-      add: { imports: [DrawerStub, EvidenceStub, TaskModalStub] }
+      remove: { imports: [AttendanceDetailDrawerComponent, TaskFormModalComponent] },
+      add: { imports: [DrawerStub, TaskModalStub] }
     });
     TestBed.inject(EmployeePeriodStore).setMonth('2026-09');
     const store = TestBed.inject(SignalDrilldownStore);
@@ -67,10 +65,13 @@ describe('SignalItemDetailComponent', () => {
     expect(drawer.selection()).toEqual({ employeeId: 'emp-1', workDate: '2026-09-05' });
   });
 
-  it('shows exception evidence in a modal for an exception case', async () => {
-    const { fixture } = await setup(item({ kind: 'exception_case', id: 'x-1' }));
-    const evidence = fixture.debugElement.query((d) => d.componentInstance instanceof EvidenceStub).componentInstance as EvidenceStub;
-    expect(evidence.alertId()).toBe('x-1');
+  it('opens an exception case in the Inbox, where it is reviewed', async () => {
+    const navigate = vi.spyOn(Router.prototype, 'navigate').mockResolvedValue(true);
+    const { store } = await setup(item({ kind: 'exception_case', id: 'x-1' }));
+
+    expect(navigate).toHaveBeenCalledWith(['/inbox', 'monitoring', 'exception_case', 'x-1']);
+    expect(store.selected()).toBeNull();
+    navigate.mockRestore();
   });
 
   it('loads the project then opens the task modal in edit mode', async () => {

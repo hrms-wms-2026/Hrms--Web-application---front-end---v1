@@ -32,7 +32,9 @@ export function signalFullListUrl(key: string, employeeId: string, from: string,
   if (ATTENDANCE_KEYS.has(key)) {
     return withQuery('/attendance/time-tracking', { view: 'team', employeeId, from, to });
   }
-  if (key === 'idle_activity_alerts' || key === 'monitoring_exceptions') return '/attendance/alerts';
+  // Alerts and exception cases are reviewed in the Inbox, filtered to this employee.
+  if (key === 'idle_activity_alerts') return withQuery('/inbox', { tab: 'alerts', employee: employeeId });
+  if (key === 'monitoring_exceptions') return withQuery('/inbox', { source: 'monitoring', tab: 'alerts', employee: employeeId });
   if (key === 'overdue_tasks') return '/work';
   return null;
 }

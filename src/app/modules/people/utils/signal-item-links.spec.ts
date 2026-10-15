@@ -26,9 +26,9 @@ describe('signal item links', () => {
       .toBe('/attendance/time-tracking?view=team&employeeId=emp-1&from=2026-09-01&to=2026-09-30');
   });
 
-  it('routes monitoring keys to Alerts, overdue tasks to Work, and has no list for approvals', () => {
-    expect(signalFullListUrl('idle_activity_alerts', 'emp-1', 'a', 'b')).toBe('/attendance/alerts');
-    expect(signalFullListUrl('monitoring_exceptions', 'emp-1', 'a', 'b')).toBe('/attendance/alerts');
+  it('routes alert keys to the alerts about that employee in the Inbox, overdue tasks to Work, and has no list for approvals', () => {
+    expect(signalFullListUrl('idle_activity_alerts', 'emp-1', 'a', 'b')).toBe('/inbox?tab=alerts&employee=emp-1');
+    expect(signalFullListUrl('monitoring_exceptions', 'emp-1', 'a', 'b')).toBe('/inbox?source=monitoring&tab=alerts&employee=emp-1');
     expect(signalFullListUrl('overdue_tasks', 'emp-1', 'a', 'b')).toBe('/work');
     expect(signalFullListUrl('pending_approvals', 'emp-1', 'a', 'b')).toBeNull();
   });
