@@ -43,6 +43,8 @@ export interface PositionListItemResponse {
   readonly remainingAssignedCount?: number;
   /** When true, changing into this position requires an access-grant approval. */
   readonly requiresApproval?: boolean;
+  /** Seats held by pending onboarding invites (not occupants yet, but no longer free). */
+  readonly reservedCount?: number;
 }
 
 export interface PositionTreeNodeResponse {
@@ -238,3 +240,56 @@ export interface PositionTemplatePreset {
   readonly departmentMessage?: string | null;
 }
 
+/**
+ * One card of the Positions "People" view (backend PositionPeopleChartNodeResponse): a person
+ * holding a position, or a vacant position. Ids are "e:{employeeId}" / "p:{positionId}".
+ */
+export interface PositionPeopleChartNode {
+  readonly id: string;
+  readonly parentId: string | null;
+  readonly kind: 'person' | 'vacant';
+  readonly positionId: string;
+  readonly positionName: string;
+  readonly departmentName: string | null;
+  readonly employeeId: string | null;
+  readonly firstName: string | null;
+  readonly lastName: string | null;
+  readonly avatarFileId: string | null;
+  /** "position" | "default" (several holders above, none picked) | "custom" (one-off manager) */
+  readonly reportingLine: 'position' | 'default' | 'custom' | null;
+  readonly maxOccupancy: number;
+  readonly holderCount: number;
+  /** Invited, hasn't accepted yet (planned seat) - shown, but never anyone's manager. */
+  readonly isPending?: boolean;
+  readonly workEmail?: string | null;
+}
+
+export interface PeopleChartTreeNode extends PositionPeopleChartNode {
+  readonly children: readonly PeopleChartTreeNode[];
+}
+
+export interface ReportingLineMoveRequest {
+  readonly selectedEmployeeIds: readonly string[];
+  readonly newManagerEmployeeId: string;
+  readonly reason?: string | null;
+}
+
+export interface ReportingLineMovePerson {
+  readonly employeeId: string;
+  readonly name: string;
+  readonly positionName: string;
+}
+
+export interface ReportingLineMoveChange {
+  readonly employee: ReportingLineMovePerson;
+  readonly currentManager: ReportingLineMovePerson | null;
+  readonly newManager: ReportingLineMovePerson;
+}
+
+export interface ReportingLineMoveImpact {
+  readonly selectedCount: number;
+  readonly directRelationshipsChanged: number;
+  readonly preservedRelationships: number;
+  readonly totalEmployeesAffected: number;
+  readonly changes: readonly ReportingLineMoveChange[];
+}

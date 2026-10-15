@@ -9,6 +9,12 @@ export interface ReparentPositionEvent {
   newReportsToPositionId: string | null;
 }
 
+/** Card size and tree accessors for laying positions out with app-tidy-tree. */
+export const POSITION_CARD_WIDTH = 270;
+export const POSITION_CARD_HEIGHT = 98;
+export const positionChildren = (node: PositionTreeNodeResponse): readonly PositionTreeNodeResponse[] => node.children ?? [];
+export const positionKey = (node: PositionTreeNodeResponse): string => node.id;
+
 export interface TemplateDropOnPositionEvent {
   templatePosition: PositionTemplatePackPositionResponse;
   packName: string;
@@ -32,7 +38,6 @@ export class PositionTreeNodeComponent {
   @Input() isRoot = false;
   /** Read-only views (e.g. an employee's reporting structure) mark one position as "this one". */
   @Input() highlightPositionId: string | null = null;
-
   @Output() addSubPosition = new EventEmitter<PositionTreeNodeResponse>();
   @Output() editPosition = new EventEmitter<PositionTreeNodeResponse>();
   @Output() viewAccess = new EventEmitter<PositionTreeNodeResponse>();

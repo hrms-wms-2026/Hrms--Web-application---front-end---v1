@@ -155,6 +155,25 @@ describe('AddEmployeeWizardComponent', () => {
     }
   }
 
+  /** Identity → Reporting → Work setup → Checklist via the footer's Continue button, flushing
+   *  the clock-in defaults load Work setup triggers for its pre-selected work mode. */
+  async function continueToChecklist(): Promise<void> {
+    const clickContinue = (): void => {
+      const buttons: HTMLButtonElement[] = Array.from(fixture.nativeElement.querySelectorAll('button'));
+      buttons.find((b) => b.textContent?.includes('Continue'))?.click();
+      fixture.detectChanges();
+    };
+    clickContinue(); // -> reporting
+    clickContinue(); // -> work_setup
+    await fixture.whenStable();
+    for (const req of httpMock.match((r) => r.url.includes('/onboarding/drafts/clock-in-defaults'))) {
+      req.flush({ photoRequired: false, locationCapture: false });
+    }
+    await fixture.whenStable();
+    fixture.detectChanges();
+    clickContinue(); // -> checklist_template
+  }
+
   afterEach(() => {
     flushEmployeeNumberSuggestionRequests();
     flushEmployeeNumberAvailabilityRequests();
@@ -213,7 +232,7 @@ describe('AddEmployeeWizardComponent', () => {
 
   it('renders work mode and employment type options as visible selectable chips', async () => {
     await setupWithCompany();
-    const chips: HTMLButtonElement[] = Array.from(fixture.nativeElement.querySelectorAll('.work-mode-chip'));
+    const chips: HTMLButtonElement[] = Array.from(fixture.nativeElement.querySelectorAll('.aw-chip'));
     expect(chips.length).toBeGreaterThan(0);
 
     const fullTimeChip = chips.find((c) => c.textContent?.includes('Full-time'));
@@ -223,7 +242,7 @@ describe('AddEmployeeWizardComponent', () => {
     fixture.detectChanges();
 
     expect(fixture.componentInstance.form.controls.employmentType.value).toBe('full_time');
-    expect(fullTimeChip?.classList).toContain('work-mode-chip--active');
+    expect(fullTimeChip?.classList).toContain('aw-chip--active');
   });
 
   it('does not render a manager or job title field anywhere in the form', async () => {
@@ -368,7 +387,55 @@ describe('AddEmployeeWizardComponent', () => {
     expect(fixture.componentInstance.form.controls.workEmail.valid).toBe(false);
   });
 
-  it('blocks continue when work mode is missing', async () => {
+  it('uploads a profile photo as employee_avatar and sends its file id with the draft', async () => {
+    await setupWithCompany();
+    URL.createObjectURL = vi.fn(() => 'blob:preview');
+    URL.revokeObjectURL = vi.fn();
+
+    const file = new File([new Uint8Array(10)], 'maya.png', { type: 'image/png' });
+    const uploadPromise = fixture.componentInstance.onAvatarSelected({ target: { files: [file], value: '' } } as unknown as Event);
+    const uploadReq = httpMock.expectOne(`${environment.apiUrl}/files`);
+    expect((uploadReq.request.body as FormData).get('purpose')).toBe('employee_avatar');
+    uploadReq.flush({ fileId: 'file-avatar-1', originalFileName: 'maya.png', fileSizeBytes: 10, contentType: 'image/png' });
+    await uploadPromise;
+    fixture.detectChanges();
+
+    expect(fixture.componentInstance.store.avatarFileId()).toBe('file-avatar-1');
+    expect((fixture.nativeElement.querySelector('.aw-photo__circle img') as HTMLImageElement).src).toContain('blob:preview');
+
+    const savePromise = fixture.componentInstance.onSaveDraft();
+    const saveReq = httpMock.expectOne(`${environment.apiUrl}/onboarding/drafts`);
+    expect(saveReq.request.body.avatarFileId).toBe('file-avatar-1');
+    saveReq.flush({ detail: 'nope' }, { status: 500, statusText: 'Server Error' });
+    await savePromise;
+  });
+
+  it('shows employee-number availability as an in-field tick or cross instead of text', async () => {
+    await setupWithCompany();
+    fixture.detectChanges();
+
+    const status = () => fixture.nativeElement.querySelector('#aw-employee-number-status') as HTMLElement;
+    expect(status().classList).toContain('aw-ctl__status--ok');
+    expect(fixture.nativeElement.textContent).not.toContain('Available');
+
+    fixture.componentInstance.employeeNumberAvailability.set('unavailable');
+    fixture.detectChanges();
+    expect(status().classList).toContain('aw-ctl__status--bad');
+    expect(status().getAttribute('title')).toContain('already in use');
+  });
+
+  it('rejects a profile photo over 5MB without uploading it', async () => {
+    await setupWithCompany();
+    const big = new File([new Uint8Array(5 * 1024 * 1024 + 1)], 'big.jpg', { type: 'image/jpeg' });
+
+    await fixture.componentInstance.onAvatarSelected({ target: { files: [big], value: '' } } as unknown as Event);
+    fixture.detectChanges();
+
+    httpMock.expectNone(`${environment.apiUrl}/files`);
+    expect(fixture.nativeElement.textContent).toContain('The photo must be 5MB or smaller.');
+  });
+
+  it('moves work mode to the Work setup step and pre-selects the first mode there', async () => {
     await setupWithCompany();
     fixture.componentInstance.form.patchValue({
       firstName: 'Ada',
@@ -381,11 +448,51 @@ describe('AddEmployeeWizardComponent', () => {
       workModeId: ''
     });
 
+    // Identity no longer validates work mode.
     fixture.componentInstance.goToNextStep();
     fixture.detectChanges();
+    expect(fixture.componentInstance.store.step()).toBe('reporting');
 
-    expect(fixture.componentInstance.store.step()).toBe('employee_details');
-    expect(fixture.componentInstance.form.controls.workModeId.valid).toBe(false);
+    fixture.componentInstance.goToNextStep();
+    fixture.detectChanges();
+    expect(fixture.componentInstance.store.step()).toBe('work_setup');
+    expect(fixture.componentInstance.form.controls.workModeId.value).toBe('1');
+
+    const defaultsReq = httpMock.expectOne(
+      (r) => r.url.endsWith('/onboarding/drafts/clock-in-defaults') && r.params.get('workModeId') === '1'
+    );
+    defaultsReq.flush({ photoRequired: true, locationCapture: true });
+    await fixture.whenStable();
+    fixture.detectChanges();
+
+    expect(fixture.componentInstance.store.effectivePhotoRequired()).toBe(true);
+    expect(fixture.nativeElement.textContent).toContain('Clock-in evidence');
+  });
+
+  it('toggling clock-in evidence on Work setup is saved as a per-employee override only', async () => {
+    await setupWithCompany();
+    fixture.componentInstance.store.goToStep('work_setup');
+    fixture.detectChanges();
+    httpMock
+      .expectOne((r) => r.url.endsWith('/onboarding/drafts/clock-in-defaults'))
+      .flush({ photoRequired: true, locationCapture: false });
+    await fixture.whenStable();
+    fixture.detectChanges();
+
+    const photoSwitch = fixture.nativeElement.querySelector('button[aria-label="Require a camera photo at clock-in"]') as HTMLButtonElement;
+    photoSwitch.click();
+    fixture.detectChanges();
+
+    expect(fixture.componentInstance.store.photoRequiredOverride()).toBe(false);
+    expect(fixture.componentInstance.store.locationCaptureOverride()).toBeNull();
+    expect(fixture.nativeElement.textContent).toContain('Changed for this employee');
+
+    const savePromise = fixture.componentInstance.onSaveDraft();
+    const saveReq = httpMock.expectOne(`${environment.apiUrl}/onboarding/drafts`);
+    expect(saveReq.request.body.photoRequiredOverride).toBe(false);
+    expect(saveReq.request.body.locationCaptureOverride).toBeNull();
+    saveReq.flush({ detail: 'nope' }, { status: 500, statusText: 'Server Error' });
+    await savePromise;
   });
 
   it('review step no longer claims finalization is unavailable in this version of the product', async () => {
@@ -471,10 +578,7 @@ describe('AddEmployeeWizardComponent', () => {
     });
     fixture.detectChanges();
 
-    const continueButtons: HTMLButtonElement[] = Array.from(fixture.nativeElement.querySelectorAll('button'));
-    const continueButton = continueButtons.find((b) => b.textContent?.includes('Continue'));
-    continueButton?.click();
-    fixture.detectChanges();
+    await continueToChecklist();
 
     expect(fixture.componentInstance.store.step()).toBe('checklist_template');
 
@@ -503,10 +607,7 @@ describe('AddEmployeeWizardComponent', () => {
     });
     fixture.detectChanges();
 
-    const continueButtons: HTMLButtonElement[] = Array.from(fixture.nativeElement.querySelectorAll('button'));
-    const continueButton = continueButtons.find((b) => b.textContent?.includes('Continue'));
-    continueButton?.click();
-    fixture.detectChanges();
+    await continueToChecklist();
 
     httpMock.expectOne((r) => r.url.includes('/onboarding/checklist-templates/matches')).flush([]);
     await fixture.whenStable();
@@ -529,10 +630,7 @@ describe('AddEmployeeWizardComponent', () => {
     });
     fixture.detectChanges();
 
-    const continueButtons: HTMLButtonElement[] = Array.from(fixture.nativeElement.querySelectorAll('button'));
-    const continueButton = continueButtons.find((b) => b.textContent?.includes('Continue'));
-    continueButton?.click();
-    fixture.detectChanges();
+    await continueToChecklist();
 
     httpMock.expectOne((r) => r.url.includes('/onboarding/checklist-templates/matches')).flush([
       { id: 'tmpl-1', name: 'Company Default Onboarding', matchLevel: 'company', departmentId: null, positionId: null },
@@ -580,8 +678,8 @@ describe('AddEmployeeWizardComponent', () => {
       workModeId: '1'
     });
     await fixture.componentInstance.store.setPosition('pos-open', null);
-    fixture.componentInstance.goToNextStep();
     fixture.detectChanges();
+    await continueToChecklist();
 
     httpMock.expectOne((r) => r.url.includes('/onboarding/checklist-templates/matches')).flush([
       { id: 'tmpl-1', name: 'Engineering Onboarding', matchLevel: 'position', departmentId: 'dept-1', positionId: 'pos-open' }
@@ -635,7 +733,7 @@ describe('AddEmployeeWizardComponent', () => {
     expect(fixture.componentInstance.store.positionValidationMessage()).toBe(
       'The selected position no longer has a vacancy. Choose another position.'
     );
-    fixture.componentInstance.goToPreviousStep();
+    fixture.componentInstance.jumpToStep(0);
     fixture.detectChanges();
     expect(fixture.nativeElement.textContent).toContain('The selected position no longer has a vacancy. Choose another position.');
   });
@@ -654,10 +752,7 @@ describe('AddEmployeeWizardComponent', () => {
     });
     fixture.detectChanges();
 
-    const continueButtons: HTMLButtonElement[] = Array.from(fixture.nativeElement.querySelectorAll('button'));
-    const continueButton = continueButtons.find((b) => b.textContent?.includes('Continue'));
-    continueButton?.click();
-    fixture.detectChanges();
+    await continueToChecklist();
 
     httpMock.expectOne((r) => r.url.includes('/onboarding/checklist-templates/matches')).flush([
       { id: 'tmpl-1', name: 'Company Default Onboarding', matchLevel: 'company', departmentId: null, positionId: null }
@@ -669,6 +764,76 @@ describe('AddEmployeeWizardComponent', () => {
 
     httpMock.expectNone((r) => r.url.includes('/onboarding/checklist-templates/matches'));
     httpMock.expectNone(`${environment.apiUrl}/people/checklist-templates/tmpl-1`);
+  });
+
+  it('resuming a draft saved on Work setup keeps its work mode and overrides instead of the default', async () => {
+    await setupWithCompany({ draftId: 'draft-work-setup' });
+
+    httpMock.expectOne(`${environment.apiUrl}/onboarding/drafts/draft-work-setup`).flush({
+      id: 'draft-work-setup',
+      firstName: 'Ada',
+      lastName: 'Lovelace',
+      workEmail: 'ada@test.dev',
+      legalEntityId: 'le-1',
+      departmentId: 'dept-1',
+      positionId: 'pos-1',
+      employmentType: 'full_time',
+      startDate: '2026-08-10',
+      employeeNumber: 'ACME-0001',
+      workModeId: '2',
+      selectedTemplateId: null,
+      editedTasksJson: null,
+      status: 'draft',
+      draftReason: 'saved_manually',
+      lastSavedStep: 'work_setup',
+      startedById: 'user-1',
+      reportsToEmployeeId: null,
+      photoRequiredOverride: false,
+      locationCaptureOverride: null,
+      version: '1'
+    });
+    await fixture.whenStable();
+
+    // Work modes arrive before the rest of the resume chain - the Work setup default must not
+    // grab mode 1 while the form is still empty.
+    fixture.detectChanges();
+    httpMock
+      .expectOne((r) => r.url === `${environment.apiUrl}/work-modes` && r.params.get('legalEntityId') === 'le-1')
+      .flush([{ id: '1', label: 'Office' }, { id: '2', label: 'Remote', selfRegistersLocation: true }]);
+    fixture.detectChanges();
+    httpMock.expectNone((r) => r.url.endsWith('/onboarding/drafts/clock-in-defaults'));
+
+    httpMock.expectOne((r) => r.url.includes('/departments')).flush({ items: [], page: 1, pageSize: 25, totalCount: 0, totalPages: 0 });
+    await fixture.whenStable();
+    await Promise.resolve();
+    await Promise.resolve();
+    httpMock.expectOne((r) => r.url.includes('/positions')).flush({ items: [], page: 1, pageSize: 25, totalCount: 0, totalPages: 0 });
+    await fixture.whenStable();
+    await Promise.resolve();
+    await Promise.resolve();
+    httpMock.expectOne((r) => r.url.includes('/onboarding/checklist-templates/matches')).flush([]);
+    for (let i = 0; i < 5; i++) {
+      await fixture.whenStable();
+      await Promise.resolve();
+    }
+    flushEmployeeNumberSuggestionRequests();
+    await fixture.whenStable();
+    fixture.detectChanges();
+
+    expect(fixture.componentInstance.store.step()).toBe('work_setup');
+    expect(fixture.componentInstance.form.controls.workModeId.value).toBe('2');
+    // The rest of the draft survives the mid-resume change detection too.
+    expect(fixture.componentInstance.form.controls.firstName.value).toBe('Ada');
+    expect(fixture.componentInstance.store.formValue().workEmail).toBe('ada@test.dev');
+    httpMock
+      .expectOne((r) => r.url.endsWith('/onboarding/drafts/clock-in-defaults') && r.params.get('workModeId') === '2')
+      .flush({ photoRequired: true, locationCapture: true });
+    await fixture.whenStable();
+    fixture.detectChanges();
+
+    expect(fixture.componentInstance.store.photoRequiredOverride()).toBe(false);
+    expect(fixture.componentInstance.store.effectivePhotoRequired()).toBe(false);
+    expect(fixture.componentInstance.store.effectiveLocationCapture()).toBe(true);
   });
 
   it('finalize existing draft calls finalize endpoint directly', async () => {
@@ -1012,10 +1177,7 @@ describe('AddEmployeeWizardComponent', () => {
     });
     fixture.detectChanges();
 
-    const continueButtons: HTMLButtonElement[] = Array.from(fixture.nativeElement.querySelectorAll('button'));
-    const continueButton = continueButtons.find((b) => b.textContent?.includes('Continue'));
-    continueButton?.click();
-    fixture.detectChanges();
+    await continueToChecklist();
 
     httpMock.expectOne((r) => r.url.includes('/onboarding/checklist-templates/matches')).flush([
       { id: 'tmpl-1', name: 'Engineering Onboarding', matchLevel: 'department', departmentId: 'dept-1', positionId: null }
@@ -1286,14 +1448,95 @@ describe('AddEmployeeWizardComponent', () => {
       { employeeId: 'a', firstName: 'A', lastName: 'One', workEmail: 'a@acme.test', avatarFileId: null },
       { employeeId: 'b', firstName: 'B', lastName: 'Two', workEmail: 'b@acme.test', avatarFileId: null }
     ]);
+    await Promise.resolve();
+    httpMock.expectOne((r) => r.url.endsWith('/onboarding/drafts/reporting-chain')).flush([]);
     await setPositionPromise;
     fixture.detectChanges();
 
+    // The first holder is the default; clear it to simulate no pick at all.
+    expect(fixture.componentInstance.store.selectedReportsToEmployeeId()).toBe('a');
+    fixture.componentInstance.goToNextStep();
+    fixture.detectChanges();
+    expect(fixture.componentInstance.store.step()).toBe('reporting');
+
+    fixture.componentInstance.store.setReportsToEmployeeId(null);
+    fixture.detectChanges();
     fixture.componentInstance.goToNextStep();
     fixture.detectChanges();
 
-    expect(fixture.componentInstance.store.step()).toBe('employee_details');
+    expect(fixture.componentInstance.store.step()).toBe('reporting');
     expect(fixture.nativeElement.textContent).toContain('Select who this employee reports to');
+  });
+
+  it('shows the chosen manager chain and the new employee in the Reporting preview', async () => {
+    await setupWithCompany();
+    fixture.componentInstance.form.patchValue({ firstName: 'Maya', lastName: 'Chen' });
+    const setPositionPromise = fixture.componentInstance.store.setPosition('pos-1', 'reports-to-pos');
+    httpMock
+      .expectOne(`${environment.apiUrl}/org/legal-entities/le-1/positions/reports-to-pos/active-holders`)
+      .flush([
+        { employeeId: 'a', firstName: 'Amira', lastName: 'Khan', workEmail: 'a@acme.test', avatarFileId: null },
+        { employeeId: 'b', firstName: 'Ben', lastName: 'Two', workEmail: 'b@acme.test', avatarFileId: null }
+      ]);
+    await Promise.resolve();
+    httpMock.expectOne((r) => r.url.endsWith('/onboarding/drafts/reporting-chain')).flush([
+      { employeeId: 'ceo', firstName: 'Taylor', lastName: 'Reed', positionName: 'CEO', departmentName: null },
+      { employeeId: 'a', firstName: 'Amira', lastName: 'Khan', positionName: 'Team Leader', departmentName: 'Engineering' }
+    ]);
+    await setPositionPromise;
+    fixture.componentInstance.store.goToStep('reporting');
+    fixture.detectChanges();
+
+    const line = fixture.nativeElement.querySelector('.aw-line') as HTMLElement;
+    expect(line.textContent).toContain('Taylor Reed');
+    expect(line.textContent).toContain('Amira Khan');
+    expect(line.textContent).toContain('Selected manager');
+    expect(line.textContent).toContain('Maya Chen');
+    expect(line.textContent).toContain('New employee');
+    expect(fixture.nativeElement.textContent).toContain('Default');
+  });
+
+  it('lets HR pick a one-off manager from another line via search, and says so in the preview', async () => {
+    await setupWithCompany();
+    const setPositionPromise = fixture.componentInstance.store.setPosition('pos-1', 'reports-to-pos');
+    httpMock
+      .expectOne(`${environment.apiUrl}/org/legal-entities/le-1/positions/reports-to-pos/active-holders`)
+      .flush([
+        { employeeId: 'a', firstName: 'Amira', lastName: 'Khan', workEmail: 'a@acme.test', avatarFileId: null },
+        { employeeId: 'b', firstName: 'Ben', lastName: 'Two', workEmail: 'b@acme.test', avatarFileId: null }
+      ]);
+    await Promise.resolve();
+    httpMock.expectOne((r) => r.url.endsWith('/onboarding/drafts/reporting-chain')).flush([]);
+    await setPositionPromise;
+    fixture.componentInstance.store.goToStep('reporting');
+    fixture.detectChanges();
+
+    const searchPromise = fixture.componentInstance.store.searchManagers('team lead');
+    httpMock
+      .expectOne((r) => r.url.endsWith('/onboarding/drafts/manager-candidates') && r.params.get('search') === 'team lead')
+      .flush([
+        { employeeId: 'x', firstName: 'Anjana', lastName: 'Selvakumar', positionId: 'pos-tl', positionName: 'Team Lead', departmentName: 'Event Ticketing' }
+      ]);
+    await searchPromise;
+    fixture.componentInstance.managerSearch.set('team lead');
+    fixture.detectChanges();
+
+    const row = Array.from(fixture.nativeElement.querySelectorAll('.aw-mgr__row') as NodeListOf<HTMLButtonElement>)
+      .find((b) => b.textContent?.includes('Anjana Selvakumar'))!;
+    row.click();
+    httpMock
+      .expectOne((r) => r.url.endsWith('/onboarding/drafts/reporting-chain') && r.params.get('managerEmployeeId') === 'x')
+      .flush([
+        { employeeId: 'root', firstName: 'Event', lastName: 'Manager', positionName: 'Manager', departmentName: 'Event Ticketing', kind: 'person' },
+        { employeeId: 'x', firstName: 'Anjana', lastName: 'Selvakumar', positionName: 'Team Lead', departmentName: 'Event Ticketing', kind: 'person', reportingLine: 'custom' }
+      ]);
+    await fixture.whenStable();
+    fixture.detectChanges();
+
+    expect(fixture.componentInstance.store.selectedReportsToEmployeeId()).toBe('x');
+    expect(fixture.componentInstance.isOutsideHierarchy()).toBe(true);
+    expect(fixture.nativeElement.textContent).toContain('outside the position hierarchy');
+    expect(fixture.nativeElement.textContent).toContain('Anjana Selvakumar (Team Lead, Event Ticketing)');
   });
 
   it('shows a position selector for another-person tasks and loads people after a position is chosen', async () => {

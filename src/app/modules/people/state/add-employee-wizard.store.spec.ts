@@ -700,10 +700,74 @@ describe('AddEmployeeWizardStore', () => {
       { employeeId: 'a', firstName: 'A', lastName: 'One', workEmail: 'a@acme.test', avatarFileId: null },
       { employeeId: 'b', firstName: 'B', lastName: 'Two', workEmail: 'b@acme.test', avatarFileId: null }
     ]);
+    await Promise.resolve();
+    httpMock
+      .expectOne((r) => r.url.endsWith('/onboarding/drafts/reporting-chain') && r.params.get('managerEmployeeId') === 'a')
+      .flush([]);
     await setPositionPromise;
 
     expect(store.needsReportsToPick()).toBe(true);
     expect(store.activeHolders().length).toBe(2);
+    // Several holders: the first one is pre-selected as the default manager, still changeable.
+    expect(store.selectedReportsToEmployeeId()).toBe('a');
+    expect(store.effectiveManagerId()).toBe('a');
+  });
+
+  it('changing the reports-to pick reloads the reporting chain for the new manager', async () => {
+    store.setCompany('le-1');
+    httpMock.expectOne((r) => r.url.includes('/departments')).flush({ items: [], page: 1, pageSize: 25, totalCount: 0, totalPages: 0 });
+    await Promise.resolve();
+
+    const setPositionPromise = store.setPosition('position-1', 'reports-to-position-1');
+    httpMock
+      .expectOne(`${environment.apiUrl}/org/legal-entities/le-1/positions/reports-to-position-1/active-holders`)
+      .flush([
+        { employeeId: 'a', firstName: 'A', lastName: 'One', workEmail: 'a@acme.test', avatarFileId: null },
+        { employeeId: 'b', firstName: 'B', lastName: 'Two', workEmail: 'b@acme.test', avatarFileId: null }
+      ]);
+    await Promise.resolve();
+    httpMock.expectOne((r) => r.url.endsWith('/onboarding/drafts/reporting-chain')).flush([]);
+    await setPositionPromise;
+
+    store.setReportsToEmployeeId('b');
+    const chainReq = httpMock.expectOne(
+      (r) => r.url.endsWith('/onboarding/drafts/reporting-chain') && r.params.get('managerEmployeeId') === 'b'
+    );
+    chainReq.flush([
+      { employeeId: 'ceo', firstName: 'Taylor', lastName: 'Reed', positionName: 'CEO', departmentName: null },
+      { employeeId: 'b', firstName: 'B', lastName: 'Two', positionName: 'Team Lead', departmentName: 'Eng' }
+    ]);
+    await Promise.resolve();
+
+    expect(store.reportingChain().map((n) => n.employeeId)).toEqual(['ceo', 'b']);
+  });
+
+  it('clock-in overrides stay null unless changed away from the inherited default', async () => {
+    store.setCompany('le-1');
+    httpMock.expectOne((r) => r.url.includes('/departments')).flush({ items: [], page: 1, pageSize: 25, totalCount: 0, totalPages: 0 });
+    await Promise.resolve();
+
+    const loadPromise = store.loadClockInDefaults('wm-1');
+    httpMock
+      .expectOne((r) => r.url.endsWith('/onboarding/drafts/clock-in-defaults') && r.params.get('workModeId') === 'wm-1')
+      .flush({ photoRequired: true, locationCapture: false });
+    await loadPromise;
+
+    store.setPhotoRequiredOverride(true);
+    expect(store.photoRequiredOverride()).toBeNull();
+
+    store.setPhotoRequiredOverride(false);
+    expect(store.photoRequiredOverride()).toBe(false);
+    expect(store.effectivePhotoRequired()).toBe(false);
+
+    store.setLocationCaptureOverride(true);
+    expect(store.locationCaptureOverride()).toBe(true);
+    expect(store.effectiveLocationCapture()).toBe(true);
+
+    store.clearClockInOverrides();
+    expect(store.photoRequiredOverride()).toBeNull();
+    expect(store.locationCaptureOverride()).toBeNull();
+    expect(store.effectivePhotoRequired()).toBe(true);
   });
 
   it('needsReportsToPick is false when the target position has a single holder', async () => {
@@ -716,8 +780,20 @@ describe('AddEmployeeWizardStore', () => {
       `${environment.apiUrl}/org/legal-entities/le-1/positions/reports-to-position-1/active-holders`
     );
     req.flush([{ employeeId: 'a', firstName: 'A', lastName: 'One', workEmail: 'a@acme.test', avatarFileId: null }]);
+    await Promise.resolve();
+    httpMock.expectOne((r) => r.url.endsWith('/onboarding/drafts/reporting-chain')).flush([]);
     await setPositionPromise;
 
     expect(store.needsReportsToPick()).toBe(false);
+    // A single holder is the manager implicitly - nothing is sent as an explicit pick.
+    expect(store.selectedReportsToEmployeeId()).toBeNull();
+    expect(store.effectiveManagerId()).toBe('a');
+
+    // Clicking that only holder still stores no explicit pick, so the line keeps following the
+    // position (a later replacement in the role becomes the manager automatically).
+    store.setReportsToEmployeeId('a');
+    httpMock.expectOne((r) => r.url.endsWith('/onboarding/drafts/reporting-chain')).flush([]);
+    expect(store.selectedReportsToEmployeeId()).toBeNull();
+    expect(store.effectiveManagerId()).toBe('a');
   });
 });

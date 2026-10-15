@@ -3,17 +3,18 @@ import { EmployeeDetailResponse } from '../../models/employee.model';
 import { EmployeeEmergencyContactsComponent } from '../../ui/employee-emergency-contacts/employee-emergency-contacts.component';
 import { EmployeePayrollComponent } from '../../ui/employee-payroll/employee-payroll.component';
 import { EmployeePersonalInfoComponent } from '../../ui/employee-personal-info/employee-personal-info.component';
+import { EmployeeDocumentsComponent } from '../../ui/employee-documents/employee-documents.component';
 
 /**
  * Personal tab, laid out like the Employment tab (no KPI strip - there is nothing to count here):
- * Personal Information + Addresses, then Emergency Contacts + Payroll. Payroll renders only when
- * the server included it (employees:read:sensitive is enforced there); without it, Emergency
- * Contacts takes the whole row.
+ * Personal Information + Addresses, then Emergency Contacts + Payroll, then the employee's
+ * uploaded Documents (read-only). Payroll renders only when the server included it
+ * (employees:read:sensitive is enforced there); without it, Emergency Contacts takes the whole row.
  */
 @Component({
   selector: 'app-employee-personal-tab',
   standalone: true,
-  imports: [EmployeePersonalInfoComponent, EmployeeEmergencyContactsComponent, EmployeePayrollComponent],
+  imports: [EmployeePersonalInfoComponent, EmployeeEmergencyContactsComponent, EmployeePayrollComponent, EmployeeDocumentsComponent],
   template: `
     <div class="space-y-3">
       <!-- The personal-info component renders two cards straight into this grid (3/5 + 2/5). -->
@@ -35,6 +36,8 @@ import { EmployeePersonalInfoComponent } from '../../ui/employee-personal-info/e
           />
         }
       </div>
+
+      <app-employee-documents [employeeId]="employee().id" />
     </div>
   `,
   changeDetection: ChangeDetectionStrategy.OnPush

@@ -73,6 +73,17 @@
                       </div>
                     </div>
                   }
+                  @case ('position') {
+                    @if (employee.positionName) {
+                      {{ employee.positionName }}
+                      @if (employee.positionPending) {
+                        <span
+                          class="ml-1 inline-flex rounded-full border border-amber-300 bg-amber-50 px-1.5 py-px text-[10px] font-semibold text-amber-700"
+                          title="Seat reserved - becomes active once they accept the invitation."
+                        >Invited</span>
+                      }
+                    } @else { — }
+                  }
                   @case ('reportingManager') {
                     @if (employee.reportingManagerName) {
                       <span class="edt__manager">

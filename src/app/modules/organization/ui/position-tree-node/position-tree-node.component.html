@@ -62,6 +62,7 @@
           </span>
         }
       </div>
+
     </div>
 
     <!-- 3-Dot Action Menu (Top Right) -->
@@ -139,40 +140,5 @@
     </div>
   }
 
-  <!-- Children Hierarchy Trees -->
-  @if (node.children && node.children.length > 0) {
-    <!-- Downward Line from parent -->
-    <div class="ptn-line-down"></div>
-
-    <div class="ptn-children-row" [class.ptn-children-row--single]="node.children.length === 1">
-      @for (child of node.children; track child.id; let first = $first; let last = $last) {
-        <div
-          class="ptn-child-wrapper"
-          [class.ptn-child-wrapper--first]="first"
-          [class.ptn-child-wrapper--last]="last"
-          [class.ptn-child-wrapper--single]="node.children.length === 1"
-        >
-          <!-- Top Line to connector -->
-          <div class="ptn-line-top"></div>
-
-          <app-position-tree-node
-            [node]="child"
-            [level]="level + 1"
-            [canManage]="canManage"
-            [canConfigureAccess]="canConfigureAccess"
-            [departmentNameMap]="departmentNameMap"
-            [highlightPositionId]="highlightPositionId"
-            (addSubPosition)="addSubPosition.emit($event)"
-            (editPosition)="editPosition.emit($event)"
-            (viewAccess)="viewAccess.emit($event)"
-            (viewCoverage)="viewCoverage.emit($event)"
-            (archivePosition)="archivePosition.emit($event)"
-            (reparentPosition)="reparentPosition.emit($event)"
-            (templateDropped)="templateDropped.emit($event)"
-          />
-        </div>
-      }
-    </div>
-  }
-
+  <!-- Children are placed by app-tidy-tree, which also draws the connectors. -->
 </div>
