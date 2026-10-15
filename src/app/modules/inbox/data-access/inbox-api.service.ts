@@ -5,7 +5,11 @@ import { environment } from '../../../../environments/environment';
 import {
   InboxActionBody,
   InboxActionResultDto,
+  InboxBulkRequestDto,
+  InboxBulkResultDto,
   InboxCountsDto,
+  InboxHistoryPageDto,
+  InboxHistoryQuery,
   InboxFilterFieldDto,
   InboxItemDetailDto,
   InboxItemRef,
@@ -41,6 +45,22 @@ export class InboxApiService {
 
   runAction(ref: InboxItemRef, action: string, body: InboxActionBody = {}): Observable<InboxActionResultDto> {
     return this.http.post<InboxActionResultDto>(`${this.base}/${itemPath(ref)}/actions/${encodeURIComponent(action)}`, body);
+  }
+
+  /** The History tab: decisions the caller took, newest first. */
+  history(query: InboxHistoryQuery): Observable<InboxHistoryPageDto> {
+    let params = new HttpParams();
+    for (const key of ['from', 'to', 'source', 'kind'] as const) {
+      const value = query[key];
+      if (value) params = params.set(key, value);
+    }
+    if (query.page) params = params.set('page', String(query.page));
+    if (query.pageSize) params = params.set('pageSize', String(query.pageSize));
+    return this.http.get<InboxHistoryPageDto>(`${this.base}/history`, { params });
+  }
+
+  bulk(request: InboxBulkRequestDto): Observable<InboxBulkResultDto> {
+    return this.http.post<InboxBulkResultDto>(`${this.base}/bulk`, request);
   }
 }
 

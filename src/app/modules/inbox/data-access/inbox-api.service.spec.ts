@@ -34,6 +34,26 @@ describe('Inbox data-access', () => {
     req.flush({ items: [], total: 0, page: 2, pageSize: 10 });
   });
 
+  it('reads the kinds, pages the history with its filters, and posts a bulk action', () => {
+    inbox.kinds().subscribe();
+    http.expectOne(`${base}/inbox/kinds`).flush([]);
+
+    inbox.history({ source: 'leave', from: '2026-10-01T00:00:00.000Z', page: 2, pageSize: 10 }).subscribe();
+    const history = http.expectOne((r) => r.url === `${base}/inbox/history`);
+    expect(history.request.params.get('source')).toBe('leave');
+    expect(history.request.params.get('from')).toBe('2026-10-01T00:00:00.000Z');
+    expect(history.request.params.get('kind')).toBeNull();
+    expect(history.request.params.get('page')).toBe('2');
+    history.flush({ items: [], total: 0, page: 2, pageSize: 10 });
+
+    const body = { action: 'approve', items: [{ source: 'leave', kind: 'request', id: 'l1' }], comment: null, outcome: null };
+    inbox.bulk(body).subscribe();
+    const bulk = http.expectOne(`${base}/inbox/bulk`);
+    expect(bulk.request.method).toBe('POST');
+    expect(bulk.request.body).toEqual(body);
+    bulk.flush({ succeeded: [], failed: [] });
+  });
+
   it('omits empty filters', () => {
     inbox.list({ category: [], search: '  ', from: null }).subscribe();
     const req = http.expectOne((r) => r.url === `${base}/inbox`);

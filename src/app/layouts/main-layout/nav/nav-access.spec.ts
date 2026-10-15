@@ -10,6 +10,12 @@ function checker(permissions: string[], modules: string[]): NavAccessChecker {
 }
 
 describe('canAccessNavItem', () => {
+  it('shows the Inbox to every employee, with no module or permission gate', () => {
+    const inbox = NAV_ITEMS.find((i) => i.id === 'inbox')!;
+    expect(inbox.requiredModules).toBeUndefined();
+    expect(canAccessNavItem(inbox, checker([], []))).toBe(true);
+  });
+
   it('is always visible for a leaf item with no gates (Home)', () => {
     const item: NavItem = { id: 'home', label: 'Home', path: '/dashboard' };
     expect(canAccessNavItem(item, checker([], []))).toBe(true);

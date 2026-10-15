@@ -35,7 +35,7 @@ describe('SideNavbarComponent', () => {
   it('always shows Home for an authenticated user with no other modules/permissions', () => {
     const fixture = setup([], []);
     const labels = Array.from(fixture.nativeElement.querySelectorAll('.nav-rail-item span')).map((el) => (el as HTMLElement).textContent);
-    expect(labels).toEqual(['Home']);
+    expect(labels).toEqual(['Home', 'Inbox']);
   });
 
   it('shows Calendar/Time Off/Attendance when their modules and self-service access are active, but not People without an employees permission', () => {
@@ -45,7 +45,7 @@ describe('SideNavbarComponent', () => {
     // so People must stay hidden for this user even though core_hr is active.
     const fixture = setup(['attendance:read-own', 'leave:read-own'], ['core_hr', 'calendar', 'leave', 'time_attendance']);
     const labels = Array.from(fixture.nativeElement.querySelectorAll('.nav-rail-item span')).map((el) => (el as HTMLElement).textContent);
-    expect(labels).toEqual(['Home', 'Calendar', 'Time Off', 'Attendance']);
+    expect(labels).toEqual(['Home', 'Inbox', 'Calendar', 'Time Off', 'Attendance']);
   });
 
   it('shows People once the user also holds employees:read, alongside self-service access', () => {
@@ -54,7 +54,7 @@ describe('SideNavbarComponent', () => {
       ['core_hr', 'calendar', 'leave', 'time_attendance']
     );
     const labels = Array.from(fixture.nativeElement.querySelectorAll('.nav-rail-item span')).map((el) => (el as HTMLElement).textContent);
-    expect(labels).toEqual(['Home', 'People', 'Calendar', 'Time Off', 'Attendance']);
+    expect(labels).toEqual(['Home', 'Inbox', 'People', 'Calendar', 'Time Off', 'Attendance']);
   });
 
   it('hides Organization when org_structure is active but the user lacks org:read', () => {

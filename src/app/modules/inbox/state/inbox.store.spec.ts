@@ -208,4 +208,61 @@ describe('InboxStore', () => {
     await store.loadFilters();
     expect(store.filterFields().map((f) => f.key)).toEqual(['project']);
   });
+
+  describe('History and bulk (FS2)', () => {
+    const entry = {
+      journalId: 'j1', source: 'leave', kind: 'request', itemId: 'l1', action: 'approve', actionLabel: 'Approved',
+      decidedAt: '2026-10-15T10:00:00Z', comment: null, isReverted: false, canRevert: true, revertableUntil: '2026-10-15T10:30:00Z',
+      title: 'Annual leave - Pat', item: null
+    };
+
+    beforeEach(() => {
+      api['history'] = vi.fn(() => of({ items: [entry], total: 1, page: 1, pageSize: 25 }));
+      api['bulk'] = vi.fn(() => of({ succeeded: [{ source: 'leave', kind: 'request', id: 'l1' }], failed: [] }));
+    });
+
+    it('loads the history page and keeps its error', async () => {
+      await store.loadHistory({ source: 'leave' });
+
+      expect(api['history']).toHaveBeenCalledWith({ source: 'leave', page: 1, pageSize: 25 });
+      expect(store.history()).toEqual([entry]);
+      expect(store.historyTotal()).toBe(1);
+
+      api['history'].mockReturnValueOnce(throwError(() => ({ error: { detail: 'History is down.' } })));
+      await store.loadHistory();
+      expect(store.historyError()).toBe('History is down.');
+    });
+
+    it('undoing from History reverts the item, then reloads History, the list and counts', async () => {
+      await store.loadHistory();
+      api['history'].mockClear();
+      api['counts'].mockClear();
+
+      const ok = await store.revertFromHistory(entry);
+
+      expect(ok).toBe(true);
+      expect(api['runAction']).toHaveBeenCalledWith({ source: 'leave', kind: 'request', id: 'l1' }, 'revert', {});
+      expect(api['history']).toHaveBeenCalledTimes(1);
+      expect(api['counts']).toHaveBeenCalledTimes(1);
+    });
+
+    it('runs a bulk action, returns the per-item result and refreshes', async () => {
+      const refs = [{ source: 'leave', kind: 'request', id: 'l1' }, { source: 'attendance', kind: 'correction', id: 'c1' }];
+      api['bulk'].mockReturnValueOnce(of({ succeeded: [refs[0]], failed: [{ ref: refs[1], message: 'Already decided.' }] }));
+      api['counts'].mockClear();
+
+      const result = await store.runBulk({ action: 'reject', items: refs, comment: 'No cover' });
+
+      expect(api['bulk']).toHaveBeenCalledWith({ action: 'reject', items: refs, comment: 'No cover' });
+      expect(result?.failed).toEqual([{ ref: refs[1], message: 'Already decided.' }]);
+      expect(api['counts']).toHaveBeenCalledTimes(1);
+    });
+
+    it('a bulk call that fails outright reports null and keeps the error', async () => {
+      api['bulk'].mockReturnValueOnce(throwError(() => ({ error: { detail: 'Not allowed.' } })));
+
+      expect(await store.runBulk({ action: 'approve', items: [] })).toBeNull();
+      expect(store.actionError()).toBe('Not allowed.');
+    });
+  });
 });

@@ -175,6 +175,52 @@ export interface InboxActionBody {
   leaveTypeId?: string | null;
 }
 
+/** One History row: a decision the caller took. `item` is null when the caller can no longer see the item. */
+export interface InboxHistoryEntryDto {
+  journalId: string;
+  source: string;
+  kind: string;
+  itemId: string;
+  action: string;
+  actionLabel: string;
+  decidedAt: string;
+  comment: string | null;
+  isReverted: boolean;
+  canRevert: boolean;
+  revertableUntil: string | null;
+  title: string;
+  item: InboxItemDto | null;
+}
+
+export interface InboxHistoryPageDto {
+  items: InboxHistoryEntryDto[];
+  total: number;
+  page: number;
+  pageSize: number;
+}
+
+export interface InboxHistoryQuery {
+  from?: string | null;
+  to?: string | null;
+  source?: string | null;
+  kind?: string | null;
+  page?: number;
+  pageSize?: number;
+}
+
+/** POST /inbox/bulk: one action over many items (kinds with the Bulk capability). */
+export interface InboxBulkRequestDto {
+  action: string;
+  items: InboxItemRef[];
+  comment?: string | null;
+  outcome?: string | null;
+}
+
+export interface InboxBulkResultDto {
+  succeeded: InboxItemRef[];
+  failed: { ref: InboxItemRef; message: string }[];
+}
+
 export interface InboxActionResultDto {
   affectedEmployeeIds: string[];
   message: string | null;

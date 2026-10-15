@@ -76,7 +76,6 @@ export const routes: Routes = [
       {
         path: 'inbox',
         canActivate: [permissionGuard],
-        data: { modules: ['worksync_foundation', 'projects', 'objectives_milestones', 'tasks', 'boards', 'planning_sprints'] },
         loadChildren: () => import('./modules/inbox/inbox.routes').then((module) => module.INBOX_ROUTES)
       },
       {

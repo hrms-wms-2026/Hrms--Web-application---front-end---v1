@@ -9,7 +9,11 @@ import { InboxRealtimeService } from '../../../core/realtime/inbox-realtime.serv
 import { InboxApiService } from '../data-access/inbox-api.service';
 import {
   InboxActionBody,
+  InboxBulkRequestDto,
+  InboxBulkResultDto,
   InboxCountsDto,
+  InboxHistoryEntryDto,
+  InboxHistoryQuery,
   InboxFilterFieldDto,
   InboxItemDetailDto,
   InboxItemDto,
@@ -40,6 +44,11 @@ interface InboxState {
   readonly actionError: string | null;
   /** actionError is a 422 validation message about the edited values (shown above the edit form). */
   readonly actionErrorInline: boolean;
+  readonly history: readonly InboxHistoryEntryDto[];
+  readonly historyTotal: number;
+  readonly historyQuery: InboxHistoryQuery;
+  readonly historyLoading: boolean;
+  readonly historyError: string | null;
 }
 
 const initialState: InboxState = {
@@ -57,7 +66,12 @@ const initialState: InboxState = {
   detailError: null,
   busy: false,
   actionError: null,
-  actionErrorInline: false
+  actionErrorInline: false,
+  history: [],
+  historyTotal: 0,
+  historyQuery: { page: 1, pageSize: INBOX_PAGE_SIZE },
+  historyLoading: false,
+  historyError: null
 };
 
 function extractError(err: any, fallback: string): string {
@@ -111,6 +125,16 @@ export const InboxStore = signalStore(
       }
     }
 
+    async function loadHistoryPage(query: InboxHistoryQuery): Promise<void> {
+      patchState(store, { historyQuery: query, historyLoading: true, historyError: null });
+      try {
+        const page = await firstValueFrom(api.history(query));
+        patchState(store, { history: page.items, historyTotal: page.total, historyLoading: false });
+      } catch (err) {
+        patchState(store, { historyLoading: false, historyError: extractError(err, 'Could not load your history.') });
+      }
+    }
+
     async function refresh(): Promise<void> {
       const tasks: Promise<void>[] = [loadCounts()];
       if (store.listLoaded()) tasks.push(load());
@@ -149,6 +173,36 @@ export const InboxStore = signalStore(
         await loadDetail(ref);
       },
       /** Runs an item action; true on success. On failure the message stays in actionError. */
+      /** The History tab; `query` (filters/page) is merged into the current one, page 1 unless given. */
+      async loadHistory(query: Partial<InboxHistoryQuery> = {}): Promise<void> {
+        await loadHistoryPage({ ...store.historyQuery(), page: 1, ...query });
+      },
+      /** Undo a decision from History (inside its revert window); reloads History, the list and counts. */
+      async revertFromHistory(entry: InboxHistoryEntryDto): Promise<boolean> {
+        patchState(store, { busy: true, actionError: null, actionErrorInline: false });
+        try {
+          await firstValueFrom(api.runAction({ source: entry.source, kind: entry.kind, id: entry.itemId }, 'revert', {}));
+          patchState(store, { busy: false });
+          await Promise.all([loadHistoryPage(store.historyQuery()), refresh()]);
+          return true;
+        } catch (err) {
+          patchState(store, { busy: false, actionError: extractError(err, 'The decision could not be undone.') });
+          return false;
+        }
+      },
+      /** One action over many items; null when the whole call failed (the error stays in actionError). */
+      async runBulk(request: InboxBulkRequestDto): Promise<InboxBulkResultDto | null> {
+        patchState(store, { busy: true, actionError: null, actionErrorInline: false });
+        try {
+          const result = await firstValueFrom(api.bulk(request));
+          patchState(store, { busy: false });
+          await refresh();
+          return result;
+        } catch (err) {
+          patchState(store, { busy: false, actionError: extractError(err, 'The bulk action failed.') });
+          return null;
+        }
+      },
       async runAction(ref: InboxItemRef, action: string, body: InboxActionBody = {}): Promise<boolean> {
         patchState(store, { busy: true, actionError: null, actionErrorInline: false });
         try {

@@ -9,6 +9,7 @@ import { TrayPresenceStore } from '../../../../core/tray-presence/state/tray-pre
 import { InboxRealtimeService } from '../../../../core/realtime/inbox-realtime.service';
 import { NotificationService } from '../../../../core/services/notification.service';
 import { InboxApiService } from '../../data-access/inbox-api.service';
+import { ApprovalDelegatesApiService } from '../../data-access/approval-delegates-api.service';
 import { InboxItemDto } from '../../models/inbox.dto';
 import { InboxStore } from '../../state/inbox.store';
 import { InboxPageComponent } from './inbox-page.component';
@@ -62,7 +63,8 @@ describe('InboxPageComponent', () => {
         { provide: PeopleApiService, useValue: { listEmployees: vi.fn(() => of({ items: [] })) } },
         { provide: TaskApiService, useValue: { uploadPendingFile: vi.fn(), deletePendingFile: vi.fn(), getFileUrl: vi.fn() } },
         { provide: AuthStore, useValue: { authenticated: signal(false) } },
-        { provide: PermissionService, useValue: { hasModule: () => false } },
+        { provide: PermissionService, useValue: { hasModule: () => false, hasPermission: () => false } },
+        { provide: ApprovalDelegatesApiService, useValue: { list: vi.fn(() => of([])), create: vi.fn(), remove: vi.fn() } },
         { provide: TrayPresenceStore, useValue: { canRenderProtectedContent: () => true } },
         { provide: ActivatedRoute, useValue: { paramMap: params.asObservable() } },
         { provide: Router, useValue: router },
@@ -142,7 +144,7 @@ describe('InboxPageComponent', () => {
     const { fixture, el, store } = await render();
 
     (el.querySelector('[data-testid="inbox-row"]') as HTMLElement).click();
-    expect(router.navigate).toHaveBeenCalledWith(['/inbox', 'work', 'approval', 'a1']);
+    expect(router.navigate).toHaveBeenCalledWith(['/inbox', 'work', 'approval', 'a1'], { queryParamsHandling: 'preserve' });
 
     params.next(convertToParamMap({ source: 'work', kind: 'approval', id: 'a1' }));
     await vi.advanceTimersByTimeAsync(0);
