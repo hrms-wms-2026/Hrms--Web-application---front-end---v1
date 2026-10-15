@@ -13,14 +13,14 @@ describe('CustomSelectComponent', () => {
 
     const trigger = fixture.nativeElement.querySelector('.custom-select__trigger') as HTMLButtonElement;
     expect(trigger.textContent).toContain('Select department');
-    expect(fixture.nativeElement.querySelector('.custom-select__menu')).toBeNull();
+    expect(document.querySelector('.custom-select__menu')).toBeNull();
 
     trigger.click();
     fixture.detectChanges();
 
-    const menu = fixture.nativeElement.querySelector('.custom-select__menu');
+    const menu = document.querySelector('.custom-select__menu');
     expect(menu).not.toBeNull();
-    const options = fixture.nativeElement.querySelectorAll('.custom-select__option');
+    const options = document.querySelectorAll('.custom-select__option');
     expect(options.length).toBe(2);
   });
 
@@ -39,12 +39,12 @@ describe('CustomSelectComponent', () => {
     trigger.click();
     fixture.detectChanges();
 
-    const optionButtons = fixture.nativeElement.querySelectorAll('.custom-select__option') as NodeListOf<HTMLButtonElement>;
+    const optionButtons = document.querySelectorAll('.custom-select__option') as NodeListOf<HTMLButtonElement>;
     optionButtons[1].click();
     fixture.detectChanges();
 
     expect(selectedValue).toBe('d2');
-    expect(fixture.nativeElement.querySelector('.custom-select__menu')).toBeNull();
+    expect(document.querySelector('.custom-select__menu')).toBeNull();
   });
 
   it('renders disabled options with badge and prevents selection', () => {
@@ -62,12 +62,12 @@ describe('CustomSelectComponent', () => {
     trigger.click();
     fixture.detectChanges();
 
-    const badges = fixture.nativeElement.querySelectorAll('.custom-select__option-badge');
+    const badges = document.querySelectorAll('.custom-select__option-badge');
     expect(badges.length).toBe(2);
     expect(badges[0].textContent).toContain('2 open');
     expect(badges[1].textContent).toContain('No vacancy');
 
-    const optionButtons = fixture.nativeElement.querySelectorAll('.custom-select__option') as NodeListOf<HTMLButtonElement>;
+    const optionButtons = document.querySelectorAll('.custom-select__option') as NodeListOf<HTMLButtonElement>;
     expect(optionButtons[1].disabled).toBe(true);
 
     optionButtons[1].click();
@@ -89,7 +89,7 @@ describe('CustomSelectComponent', () => {
     trigger.click();
     fixture.detectChanges();
 
-    const searchInput = fixture.nativeElement.querySelector('.custom-select__search-input') as HTMLInputElement;
+    const searchInput = document.querySelector('.custom-select__search-input') as HTMLInputElement;
     expect(searchInput).not.toBeNull();
     expect(searchInput.placeholder).toBe('Search...');
 
@@ -98,7 +98,7 @@ describe('CustomSelectComponent', () => {
     searchInput.dispatchEvent(new Event('input'));
     fixture.detectChanges();
 
-    let options = fixture.nativeElement.querySelectorAll('.custom-select__option');
+    let options = document.querySelectorAll('.custom-select__option');
     expect(options.length).toBe(1);
     expect(options[0].textContent).toContain('Engineering');
 
@@ -107,18 +107,18 @@ describe('CustomSelectComponent', () => {
     searchInput.dispatchEvent(new Event('input'));
     fixture.detectChanges();
 
-    options = fixture.nativeElement.querySelectorAll('.custom-select__option');
+    options = document.querySelectorAll('.custom-select__option');
     expect(options.length).toBe(0);
-    const emptyMsg = fixture.nativeElement.querySelector('.custom-select__empty');
-    expect(emptyMsg.textContent).toContain('No matches found');
+    const emptyMsg = document.querySelector('.custom-select__empty');
+    expect(emptyMsg!.textContent).toContain('No matches found');
 
     // Click clear button
-    const clearBtn = fixture.nativeElement.querySelector('.custom-select__search-clear') as HTMLButtonElement;
+    const clearBtn = document.querySelector('.custom-select__search-clear') as HTMLButtonElement;
     expect(clearBtn).not.toBeNull();
     clearBtn.click();
     fixture.detectChanges();
 
-    options = fixture.nativeElement.querySelectorAll('.custom-select__option');
+    options = document.querySelectorAll('.custom-select__option');
     expect(options.length).toBe(3);
   });
 });

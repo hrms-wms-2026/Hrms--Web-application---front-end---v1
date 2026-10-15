@@ -15,8 +15,9 @@
   background: var(--color-surface);
   border: 1px solid color-mix(in srgb, var(--color-border) 70%, transparent);
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
+  /* Fixed size: app-tidy-tree lays the chart out with these (POSITION_CARD_WIDTH / _HEIGHT). */
   width: 270px;
-  min-height: 84px;
+  height: 98px;
   position: relative;
   transition: transform 150ms ease, border-color 150ms ease, box-shadow 150ms ease;
   user-select: none;
@@ -61,7 +62,6 @@
 .ptn-drag-handle:active {
   cursor: grabbing;
 }
-
 
 /* Position Details */
 .ptn-details {
@@ -264,7 +264,13 @@
 
 /* Drop target box placeholder (dotted box from ORG-POS-01) */
 .ptn-drop-target-box {
-  margin-top: 0.5rem;
+  /* Floats under the card (over the connector gap) instead of pushing the chart down. */
+  position: absolute;
+  top: calc(100% + 0.5rem);
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 20;
+  pointer-events: none;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -285,82 +291,3 @@
   color: var(--color-accent);
 }
 
-/* ── Org Chart Connector Lines ──────────────────────────────── */
-.ptn-line-down {
-  width: 2px;
-  height: 24px;
-  background: #3b82f6;
-}
-
-.ptn-children-row {
-  display: flex;
-  align-items: flex-start;
-  justify-content: center;
-  position: relative;
-}
-
-.ptn-child-wrapper {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  position: relative;
-  padding: 0 1rem;
-}
-
-/* Top Line for Each Child */
-.ptn-line-top {
-  width: 2px;
-  height: 24px;
-  background: #3b82f6;
-  position: relative;
-}
-
-/* Horizontal Connector Line Across Children */
-.ptn-child-wrapper::before {
-  content: '';
-  position: absolute;
-  top: 0;
-  height: 2px;
-  background: #3b82f6;
-  width: 100%;
-}
-
-.ptn-child-wrapper--first::before {
-  width: 50%;
-  left: 50%;
-}
-
-.ptn-child-wrapper--last::before {
-  width: 50%;
-  left: 0;
-}
-
-.ptn-child-wrapper--single::before {
-  display: none;
-}
-
-/* ── Responsive Tree Diagram ────────────────────────────────── */
-@media (max-width: 900px) {
-  .ptn-children-row {
-    flex-direction: column;
-    align-items: center;
-    gap: 1rem;
-  }
-
-  .ptn-child-wrapper {
-    padding: 0;
-  }
-
-  .ptn-child-wrapper::before {
-    display: none;
-  }
-
-  .ptn-line-top {
-    height: 16px;
-  }
-
-  .ptn-node-card {
-    width: 100%;
-    max-width: 320px;
-  }
-}

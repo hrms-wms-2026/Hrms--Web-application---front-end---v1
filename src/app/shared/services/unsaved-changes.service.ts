@@ -5,6 +5,8 @@ export interface DirtyFormHandle {
   canSaveDraft(): boolean;
   saveDraft(): Promise<boolean>;
   discard(): void;
+  /** Why the last saveDraft() failed (e.g. the server's validation message), shown in the dialog. */
+  saveDraftError?(): string | null;
 }
 
 export type UnsavedChoice = 'discard' | 'keep' | 'save';
@@ -68,7 +70,9 @@ export class UnsavedChangesService {
         this.promptState.set(null);
         return true;
       }
-      this.promptState.update((p) => (p ? { ...p, saving: false, error: SAVE_FAILED } : p));
+      const reason = handle.saveDraftError?.()?.trim();
+      const error = reason ? `Could not save the draft: ${reason}` : SAVE_FAILED;
+      this.promptState.update((p) => (p ? { ...p, saving: false, error } : p));
     }
   }
 

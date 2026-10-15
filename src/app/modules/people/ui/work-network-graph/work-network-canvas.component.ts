@@ -1,5 +1,6 @@
 import { ChangeDetectionStrategy, Component, ElementRef, OnDestroy, computed, effect, input, output, signal, viewChild } from '@angular/core';
 import { Simulation } from 'd3-force';
+import { CanvasGridComponent } from '../../../../shared/ui/canvas-grid/canvas-grid.component';
 import { EmployeeWorkGraphResponse, WorkGraphNode } from '../../models/work-graph.model';
 import { GraphLayout, GraphLink, GraphNode, createWorkGraphSimulation, layoutWorkGraph, nodeClass } from './work-graph-layout';
 
@@ -20,7 +21,11 @@ const MAX_ZOOM = 3;
 @Component({
   selector: 'app-work-network-canvas',
   standalone: true,
+  imports: [CanvasGridComponent],
   template: `
+    @if (interactive()) {
+      <app-canvas-grid />
+    }
     <svg
       #svg
       class="wgc-svg"
@@ -38,14 +43,6 @@ const MAX_ZOOM = 3;
       (pointerleave)="endGesture()"
       (wheel)="onWheel($event)"
     >
-      <defs>
-        <pattern id="work-graph-dot-grid" width="22" height="22" patternUnits="userSpaceOnUse">
-          <circle cx="1" cy="1" r="1" class="wgc-grid-dot" />
-        </pattern>
-      </defs>
-      @if (interactive()) {
-        <rect class="wgc-grid" x="-5000" y="-5000" width="10000" height="10000" />
-      }
       <g [attr.transform]="cameraTransform()">
         @for (link of links(); track linkKey(link)) {
           <line
@@ -92,13 +89,11 @@ const MAX_ZOOM = 3;
     </svg>
   `,
   styles: [`
-    :host { display: block; width: 100%; height: 100%; min-height: 0; }
+    :host { position: relative; isolation: isolate; display: block; width: 100%; height: 100%; min-height: 0; }
     .wgc-svg { display: block; width: 100%; height: 100%; min-height: 360px; touch-action: none; user-select: none; }
     .wgc-svg--compact { min-height: 0; height: 220px; pointer-events: none; }
     .wgc-svg--interactive { cursor: grab; }
     .wgc-svg--interactive:active { cursor: grabbing; }
-    .wgc-grid { fill: url(#work-graph-dot-grid); }
-    .wgc-grid-dot { fill: color-mix(in srgb, var(--color-text-secondary) 24%, transparent); }
     .wg-link { stroke: var(--color-border); stroke-width: 1.5; transition: opacity 120ms; }
     .wgc-svg--animated .wg-link { stroke-width: 1.25; }
     .wg-link--dim { opacity: 0.12; }
@@ -285,8 +280,7 @@ export class WorkNetworkCanvasComponent implements OnDestroy {
   }
 
   startPan(event: PointerEvent): void {
-    const target = event.target as Element;
-    if (!this.interactive() || (event.target !== event.currentTarget && !target.classList.contains('wgc-grid'))) return;
+    if (!this.interactive() || event.target !== event.currentTarget) return;
     (event.currentTarget as Element).setPointerCapture?.(event.pointerId);
     this.gesture = {
       kind: 'pan',

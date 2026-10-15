@@ -14,7 +14,10 @@ import {
   PositionPageResponse,
   PositionResponse,
   PositionTemplatePackListResponse,
+  PositionPeopleChartNode,
   PositionTreeNodeResponse,
+  ReportingLineMoveImpact,
+  ReportingLineMoveRequest,
   SetPositionAccessRequest,
   UpdateCoverageRecordRequest,
   UpdatePositionRequest
@@ -59,6 +62,33 @@ export class PositionApiService {
     return this.http.get<readonly PositionTreeNodeResponse[]>(
       `${environment.apiUrl}/org/legal-entities/${legalEntityId}/positions/tree`,
       { params }
+    );
+  }
+
+  /** One card per position holder under who they actually report to, plus vacant positions. */
+  getPeopleChart(legalEntityId: string): Observable<readonly PositionPeopleChartNode[]> {
+    return this.http.get<readonly PositionPeopleChartNode[]>(
+      `${environment.apiUrl}/org/legal-entities/${legalEntityId}/positions/people-chart`
+    );
+  }
+
+  previewReportingLineMove(
+    legalEntityId: string,
+    payload: ReportingLineMoveRequest
+  ): Observable<ReportingLineMoveImpact> {
+    return this.http.post<ReportingLineMoveImpact>(
+      `${environment.apiUrl}/org/legal-entities/${legalEntityId}/positions/people-chart/reporting-line/preview`,
+      payload
+    );
+  }
+
+  moveReportingLines(
+    legalEntityId: string,
+    payload: ReportingLineMoveRequest
+  ): Observable<ReportingLineMoveImpact> {
+    return this.http.post<ReportingLineMoveImpact>(
+      `${environment.apiUrl}/org/legal-entities/${legalEntityId}/positions/people-chart/reporting-line/move`,
+      payload
     );
   }
 

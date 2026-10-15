@@ -1,3 +1,4 @@
+import { provideRouter } from '@angular/router';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { provideHttpClient } from '@angular/common/http';
 import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
@@ -11,7 +12,7 @@ import { PositionStore } from '../../state/position.store';
 import { DepartmentStore } from '../../state/department.store';
 import { RoleStore } from '../../state/role.store';
 import { PositionFormSubmitValue } from '../../ui/position-form-modal/position-form-modal.component';
-import { PositionTreeNodeResponse } from '../../models/position.model';
+import { PeopleChartTreeNode, PositionTreeNodeResponse } from '../../models/position.model';
 import { environment } from '../../../../../environments/environment';
 
 describe('PositionManagementComponent - System Access Flow', () => {
@@ -63,7 +64,8 @@ describe('PositionManagementComponent - System Access Flow', () => {
         DepartmentStore,
         RoleStore,
         provideHttpClient(),
-        provideHttpClientTesting()
+        provideHttpClientTesting(),
+        provideRouter([])
       ]
     }).compileComponents();
 
@@ -84,6 +86,150 @@ describe('PositionManagementComponent - System Access Flow', () => {
 
     return fixture;
   }
+
+  it('People view shows one card per holder under who they report to without redundant exception labels', async () => {
+    const fixture = await setup(['org:read']);
+    const comp = fixture.componentInstance;
+
+    comp.setChartMode('people');
+    fixture.detectChanges();
+    const chartNodes = [
+      { id: 'e:head', parentId: null, kind: 'person', positionId: 'p-head', positionName: 'Head', departmentName: 'Ops', employeeId: 'head', firstName: 'Hana', lastName: 'Head', avatarFileId: null, reportingLine: null, maxOccupancy: 1, holderCount: 1 },
+      { id: 'e:amira', parentId: 'e:head', kind: 'person', positionId: 'p-lead', positionName: 'Team Lead', departmentName: 'Eng', employeeId: 'amira', firstName: 'Amira', lastName: 'Khan', avatarFileId: null, reportingLine: 'position', maxOccupancy: 3, holderCount: 2 },
+      { id: 'e:ben', parentId: 'e:head', kind: 'person', positionId: 'p-lead', positionName: 'Team Lead', departmentName: 'Eng', employeeId: 'ben', firstName: 'Ben', lastName: 'Lee', avatarFileId: null, reportingLine: 'position', maxOccupancy: 3, holderCount: 2 },
+      { id: 'e:ola', parentId: 'e:ben', kind: 'person', positionId: 'p-eng', positionName: 'Engineer', departmentName: 'Eng', employeeId: 'ola', firstName: 'Ola', lastName: 'OneOff', avatarFileId: null, reportingLine: 'custom', maxOccupancy: 5, holderCount: 1 },
+      { id: 'p:designer', parentId: 'e:amira', kind: 'vacant', positionId: 'p-designer', positionName: 'Designer', departmentName: 'Eng', employeeId: null, firstName: null, lastName: null, avatarFileId: null, reportingLine: 'default', maxOccupancy: 1, holderCount: 0 }
+    ];
+    httpMock.expectOne(`${environment.apiUrl}/org/legal-entities/le-123/positions/people-chart`).flush(chartNodes);
+    await fixture.whenStable();
+    fixture.detectChanges();
+
+    const cards = Array.from(fixture.nativeElement.querySelectorAll('.pcn-card') as NodeListOf<HTMLElement>);
+    // Team Lead's two holders are two separate cards, not one position card.
+    expect(cards.map((c) => c.textContent?.trim())).toEqual(expect.arrayContaining([
+      expect.stringContaining('Amira Khan'), expect.stringContaining('Ben Lee')
+    ]));
+    expect(comp.peopleTree()[0].children.map((c) => c.id)).toEqual(['e:amira', 'e:ben']);
+    expect(comp.peopleTree()[0].children[1].children[0].id).toBe('e:ola');
+    expect(fixture.nativeElement.querySelector('.pcn-card--custom')).not.toBeNull();
+    expect(fixture.nativeElement.querySelector('.pcn-card--custom')?.textContent).not.toContain('One-off');
+    expect(fixture.nativeElement.querySelector('.pcn-card--vacant')?.textContent).toContain('Vacant');
+    // No "N in role" noise on the cards any more.
+    expect(fixture.nativeElement.textContent).not.toContain('in role');
+  });
+
+  it('checking a lead checks their whole team; unticking one report leaves them staying behind', async () => {
+    const fixture = await setup(['org:read', 'org:manage']);
+    const comp = fixture.componentInstance;
+    const nodes = [
+      { id: 'e:lead', parentId: null, kind: 'person', positionId: 'p-lead', positionName: 'Team Lead', departmentName: 'Eng', employeeId: 'lead', firstName: 'Amira', lastName: 'Khan', avatarFileId: null, reportingLine: null, maxOccupancy: 1, holderCount: 1 },
+      { id: 'e:nina', parentId: 'e:lead', kind: 'person', positionId: 'p-eng', positionName: 'Engineer', departmentName: 'Eng', employeeId: 'nina', firstName: 'Nina', lastName: 'Shah', avatarFileId: null, reportingLine: 'position', maxOccupancy: 3, holderCount: 2 },
+      { id: 'e:owen', parentId: 'e:lead', kind: 'person', positionId: 'p-eng', positionName: 'Engineer', departmentName: 'Eng', employeeId: 'owen', firstName: 'Owen', lastName: 'Lee', avatarFileId: null, reportingLine: 'position', maxOccupancy: 3, holderCount: 2 },
+      // A vacant seat breaks the person-to-person line: Vic is not part of Amira's team.
+      { id: 'p:vacant', parentId: 'e:lead', kind: 'vacant', positionId: 'p-x', positionName: 'Designer', departmentName: 'Eng', employeeId: null, firstName: null, lastName: null, avatarFileId: null, reportingLine: 'default', maxOccupancy: 1, holderCount: 0 },
+      { id: 'e:vic', parentId: 'p:vacant', kind: 'person', positionId: 'p-y', positionName: 'Intern', departmentName: 'Eng', employeeId: 'vic', firstName: 'Vic', lastName: 'Lo', avatarFileId: null, reportingLine: 'default', maxOccupancy: 1, holderCount: 1 }
+    ] as const;
+    comp.peopleNodes.set(nodes);
+
+    const lead = comp.peopleTree()[0];
+    const owen = lead.children.find((c) => c.employeeId === 'owen')!;
+    comp.onPeopleSelected({ node: lead, ctrlKey: false, metaKey: false, shiftKey: false, fromCheckbox: true });
+
+    expect([...comp.selectedPeopleIds()].sort()).toEqual(['lead', 'nina', 'owen']);
+    expect(comp.stayingPeopleIds().size).toBe(0);
+
+    // Untick Owen: only the checked people move, Owen stays.
+    comp.onPeopleSelected({ node: owen, ctrlKey: false, metaKey: false, shiftKey: false, fromCheckbox: true });
+    expect([...comp.selectedPeopleIds()].sort()).toEqual(['lead', 'nina']);
+    expect([...comp.stayingPeopleIds()]).toEqual(['owen']);
+    expect([...comp.affectedPeopleIds()].sort()).toEqual(['lead', 'nina', 'owen']);
+
+    // Unticking the lead unticks everyone under them too.
+    comp.onPeopleSelected({ node: lead, ctrlKey: false, metaKey: false, shiftKey: false, fromCheckbox: true });
+    expect(comp.selectedPeopleIds().size).toBe(0);
+  });
+
+  it('a plain card click starts a new selection with the team; dragging an unchecked lead takes the team', async () => {
+    const fixture = await setup(['org:read', 'org:manage']);
+    const comp = fixture.componentInstance;
+    comp.peopleNodes.set([
+      { id: 'e:lead', parentId: null, kind: 'person', positionId: 'p-lead', positionName: 'Lead', departmentName: 'Eng', employeeId: 'lead', firstName: 'Amira', lastName: 'Khan', avatarFileId: null, reportingLine: null, maxOccupancy: 1, holderCount: 1 },
+      { id: 'e:member', parentId: 'e:lead', kind: 'person', positionId: 'p-member', positionName: 'Engineer', departmentName: 'Eng', employeeId: 'member', firstName: 'Owen', lastName: 'Lee', avatarFileId: null, reportingLine: 'position', maxOccupancy: 1, holderCount: 1 },
+      { id: 'e:solo', parentId: null, kind: 'person', positionId: 'p-solo', positionName: 'Director', departmentName: 'Eng', employeeId: 'solo', firstName: 'David', lastName: 'Stone', avatarFileId: null, reportingLine: null, maxOccupancy: 1, holderCount: 1 }
+    ]);
+    const lead = comp.peopleTree().find((n) => n.employeeId === 'lead')!;
+    const solo = comp.peopleTree().find((n) => n.employeeId === 'solo')!;
+
+    comp.onPeopleSelected({ node: solo, ctrlKey: false, metaKey: false, shiftKey: false });
+    comp.onPeopleSelected({ node: lead, ctrlKey: false, metaKey: false, shiftKey: false });
+    expect([...comp.selectedPeopleIds()].sort()).toEqual(['lead', 'member']);
+
+    comp.clearPeopleSelection();
+    comp.onPeopleDragStarted({ node: lead, event: { preventDefault: () => {}, dataTransfer: null } as unknown as DragEvent });
+    expect([...comp.selectedPeopleIds()].sort()).toEqual(['lead', 'member']);
+  });
+
+  it('previews a multi-selection before allowing the reporting move', async () => {
+    const fixture = await setup(['org:read', 'org:manage']);
+    const comp = fixture.componentInstance;
+    const lead = {
+      id: 'e:lead', parentId: null, kind: 'person', positionId: 'p-lead', positionName: 'Team Lead', departmentName: 'Eng', employeeId: 'lead', firstName: 'Amira', lastName: 'Khan', avatarFileId: 'lead-avatar', reportingLine: null, maxOccupancy: 1, holderCount: 1, children: []
+    } as PeopleChartTreeNode;
+    const manager = {
+      id: 'e:manager', parentId: null, kind: 'person', positionId: 'p-manager', positionName: 'Director', departmentName: 'Eng', employeeId: 'manager', firstName: 'David', lastName: 'Stone', avatarFileId: null, reportingLine: null, maxOccupancy: 1, holderCount: 1, children: []
+    } as PeopleChartTreeNode;
+    comp.peopleNodes.set([lead, manager]);
+    comp.onPeopleSelected({ node: lead, ctrlKey: false, metaKey: false, shiftKey: false });
+
+    comp.onReportingManagerChosen(manager);
+    const preview = httpMock.expectOne(
+      `${environment.apiUrl}/org/legal-entities/le-123/positions/people-chart/reporting-line/preview`
+    );
+    expect(preview.request.method).toBe('POST');
+    expect(preview.request.body).toEqual({ selectedEmployeeIds: ['lead'], newManagerEmployeeId: 'manager' });
+    preview.flush({
+      selectedCount: 1,
+      directRelationshipsChanged: 1,
+      preservedRelationships: 2,
+      totalEmployeesAffected: 3,
+      changes: [{
+        employee: { employeeId: 'lead', name: 'Amira Khan', positionName: 'Team Lead' },
+        currentManager: null,
+        newManager: { employeeId: 'manager', name: 'David Stone', positionName: 'Director' }
+      }]
+    });
+    await fixture.whenStable();
+    fixture.detectChanges();
+
+    expect(comp.reportingMovePreview()?.directRelationshipsChanged).toBe(1);
+    expect(comp.reportingMoveRequest()?.newManagerEmployeeId).toBe('manager');
+    const avatar = fixture.nativeElement.querySelector('.rlm-avatar img') as HTMLImageElement | null;
+    expect(avatar?.src).toContain(`${environment.apiUrl}/files/lead-avatar`);
+    expect(fixture.nativeElement.querySelectorAll('.rlm-summary > span:not(.rlm-summary__divider)').length).toBe(3);
+  });
+
+  it('unticking a middle manager leaves them staying while their checked report still moves', async () => {
+    const fixture = await setup(['org:read', 'org:manage']);
+    const comp = fixture.componentInstance;
+    comp.peopleNodes.set([
+      { id: 'e:lead', parentId: null, kind: 'person', positionId: 'p-lead', positionName: 'Lead', departmentName: 'Eng', employeeId: 'lead', firstName: 'Amira', lastName: 'Khan', avatarFileId: null, reportingLine: null, maxOccupancy: 1, holderCount: 1 },
+      { id: 'e:supervisor', parentId: 'e:lead', kind: 'person', positionId: 'p-supervisor', positionName: 'Supervisor', departmentName: 'Eng', employeeId: 'supervisor', firstName: 'Nina', lastName: 'Shah', avatarFileId: null, reportingLine: 'position', maxOccupancy: 1, holderCount: 1 },
+      { id: 'e:member', parentId: 'e:supervisor', kind: 'person', positionId: 'p-member', positionName: 'Engineer', departmentName: 'Eng', employeeId: 'member', firstName: 'Owen', lastName: 'Lee', avatarFileId: null, reportingLine: 'position', maxOccupancy: 1, holderCount: 1 }
+    ]);
+    const lead = comp.peopleTree()[0];
+    const member = lead.children[0].children[0];
+
+    const supervisor = lead.children[0];
+
+    comp.onPeopleSelected({ node: lead, ctrlKey: false, metaKey: false, shiftKey: false, fromCheckbox: true });
+    // Unticking the supervisor unticks the member too; ticking the member back re-adds just them.
+    comp.onPeopleSelected({ node: supervisor, ctrlKey: false, metaKey: false, shiftKey: false, fromCheckbox: true });
+    comp.onPeopleSelected({ node: member, ctrlKey: false, metaKey: false, shiftKey: false, fromCheckbox: true });
+
+    expect([...comp.selectedPeopleIds()].sort()).toEqual(['lead', 'member']);
+    expect([...comp.stayingPeopleIds()]).toEqual(['supervisor']);
+    expect([...comp.affectedPeopleIds()].sort()).toEqual(['lead', 'member', 'supervisor']);
+  });
 
   it('checks permissions: org:manage + roles:read enables system access role loading and controls', async () => {
     const fixture = await setup(['org:read', 'org:manage', 'roles:read']);
@@ -878,7 +1024,7 @@ describe('PositionManagementComponent - System Access Flow', () => {
       expect(comp.treeZoom()).toBe(0.7);
     });
 
-    it('binds the wheel handler on the tree canvas and the +/- buttons update the displayed zoom', async () => {
+    it('binds the wheel handler on the tree canvas and the minimap +/- buttons change the zoom', async () => {
       const fixture = await setup(['org:read', 'org:manage']);
       const comp = fixture.componentInstance;
       vi.spyOn(positionStore, 'treeData').mockReturnValue([mockTreeNode]);
@@ -895,18 +1041,45 @@ describe('PositionManagementComponent - System Access Flow', () => {
       comp.resetZoom();
       fixture.detectChanges();
 
-      const zoomInBtn: HTMLButtonElement = fixture.nativeElement.querySelectorAll('.pm-zoom-btn')[1];
+      const minimap: HTMLElement = fixture.nativeElement.querySelector('.pm-tree-container app-canvas-minimap');
+      expect(minimap).not.toBeNull();
+
+      const zoomInBtn: HTMLButtonElement = minimap.querySelector('button[aria-label="Zoom in"]')!;
       zoomInBtn.click();
       fixture.detectChanges();
       expect(comp.treeZoom()).toBe(0.8);
 
-      const zoomOutBtn: HTMLButtonElement = fixture.nativeElement.querySelectorAll('.pm-zoom-btn')[0];
+      const zoomOutBtn: HTMLButtonElement = minimap.querySelector('button[aria-label="Zoom out"]')!;
       zoomOutBtn.click();
       fixture.detectChanges();
       expect(comp.treeZoom()).toBe(0.7);
+    });
 
-      const resetBtn: HTMLButtonElement = fixture.nativeElement.querySelector('.pm-zoom-reset');
-      expect(resetBtn.textContent?.trim()).toBe('70%');
+    it('renders the shared dot grid behind the hierarchy canvas', async () => {
+      const fixture = await setup(['org:read', 'org:manage']);
+      vi.spyOn(positionStore, 'treeData').mockReturnValue([mockTreeNode]);
+      fixture.detectChanges();
+
+      expect(fixture.nativeElement.querySelector('.pm-tree-container > app-canvas-grid')).not.toBeNull();
+    });
+
+    it('minimap navigation pans so the clicked world point lands in the canvas centre', async () => {
+      const fixture = await setup(['org:read', 'org:manage']);
+      const comp = fixture.componentInstance;
+      // Canvas 1000x600, wrapper at (32, 80), 936 wide - origin x = 468.
+      (comp as unknown as { canvasLayout: { set(v: object): void } }).canvasLayout.set({
+        width: 1000, height: 600, left: 32, top: 80, wrapperWidth: 936
+      });
+
+      comp.centerTreeOn({ x: 468, y: 200 });
+
+      // x: 500 - 32 - 468 - 0.7 * 0 = 0; y: 300 - 80 - 0.7 * 200 = 80
+      expect(comp.treePanX()).toBeCloseTo(0);
+      expect(comp.treePanY()).toBeCloseTo(80);
+      // The viewport rectangle is centred on the same point.
+      const v = comp.miniViewport()!;
+      expect(v.x + v.width / 2).toBeCloseTo(468);
+      expect(v.y + v.height / 2).toBeCloseTo(200);
     });
   });
 

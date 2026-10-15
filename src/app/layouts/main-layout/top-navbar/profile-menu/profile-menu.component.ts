@@ -38,6 +38,7 @@ export class ProfileMenuComponent {
     { id: 'personal', label: 'Personal information', icon: 'user' },
     { id: 'emergency', label: 'Emergency contact', icon: 'user-check' },
     { id: 'job', label: 'Job information', icon: 'briefcase' },
+    { id: 'documents', label: 'My documents', icon: 'folder' },
     { id: 'payroll', label: 'Payroll & statutory', icon: 'credit-card' },
     { id: 'security', label: 'Security settings', icon: 'shield' }
   ];

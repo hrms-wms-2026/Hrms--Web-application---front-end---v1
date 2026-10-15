@@ -136,7 +136,7 @@
               <button
                 type="button"
                 class="shot-thumb"
-                [class.shot-thumb--skip]="check.outcome === 'declined'"
+                [class.shot-thumb--skip]="check.outcome === 'declined' || check.outcome === 'not_working'"
                 [class.shot-thumb--missed]="check.outcome === 'timed_out' || check.outcome === 'activity_resumed'"
                 [disabled]="!check.url"
                 (click)="check.url && openCheck(check.url)"
@@ -151,7 +151,7 @@
             }
           </div>
         } @else {
-          <p class="empty-copy">No idle-time screenshots for this day.</p>
+          <p class="empty-copy">No activity checks for this day.</p>
         }
 
         @if (topApps().length > 0) {

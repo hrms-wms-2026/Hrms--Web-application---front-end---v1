@@ -58,6 +58,9 @@ import {
   OnboardingDraftResponse,
   RejectAccessGrantRequestRequest,
   RejectAccessGrantRequestResponse,
+  ClockInDefaults,
+  ManagerCandidate,
+  ReportingChainNode,
   SaveOnboardingDraftPayload,
   WorkModeOption
 } from '../models/onboarding-draft.model';
@@ -391,6 +394,31 @@ export class PeopleApiService {
     return this.http.get<readonly ActiveHolder[]>(
       `${environment.apiUrl}/org/legal-entities/${legalEntityId}/positions/${positionId}/active-holders`
     );
+  }
+
+  /** The chosen manager's reporting chain, organisation root first and the manager last. */
+  getReportingChain(managerEmployeeId: string): Observable<readonly ReportingChainNode[]> {
+    return this.http.get<readonly ReportingChainNode[]>(`${environment.apiUrl}/onboarding/drafts/reporting-chain`, {
+      params: new HttpParams().set('managerEmployeeId', managerEmployeeId)
+    });
+  }
+
+  /** Company-wide search (name, position, department) for a one-off reporting manager. */
+  searchManagerCandidates(legalEntityId: string, search: string): Observable<readonly ManagerCandidate[]> {
+    return this.http.get<readonly ManagerCandidate[]>(`${environment.apiUrl}/onboarding/drafts/manager-candidates`, {
+      params: new HttpParams().set('legalEntityId', legalEntityId).set('search', search)
+    });
+  }
+
+  getClockInDefaults(params: {
+    legalEntityId: string;
+    workModeId: string;
+    positionId?: string | null;
+    departmentId?: string | null;
+  }): Observable<ClockInDefaults> {
+    return this.http.get<ClockInDefaults>(`${environment.apiUrl}/onboarding/drafts/clock-in-defaults`, {
+      params: this.toHttpParams(params)
+    });
   }
 
   getChecklistAssigneePositions(legalEntityId: string): Observable<readonly { id: string; name: string }[]> {

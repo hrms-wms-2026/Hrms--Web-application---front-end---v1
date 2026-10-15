@@ -4,7 +4,7 @@ import { ButtonComponent } from '../../../../shared/ui/button/button.component';
 import { ModalComponent } from '../../../../shared/ui/modal/modal.component';
 import { SelectComponent } from '../../../../shared/ui/select/select.component';
 import { PeopleApiService } from '../../data-access/people-api.service';
-import { EMPLOYMENT_TYPE_OPTIONS } from '../../models/employment-type-options';
+import { SELECTABLE_EMPLOYMENT_TYPE_OPTIONS } from '../../models/employment-type-options';
 import { BulkEmployeeActionResponse } from '../../models/employee.model';
 
 @Component({
@@ -34,7 +34,7 @@ export class BulkEmploymentTypeModalComponent {
   readonly closed = output<void>();
   readonly completed = output<BulkEmployeeActionResponse>();
 
-  readonly options = [...EMPLOYMENT_TYPE_OPTIONS];
+  readonly options = [...SELECTABLE_EMPLOYMENT_TYPE_OPTIONS];
   readonly code = signal('');
   readonly submitting = signal(false);
   readonly error = signal<string | null>(null);

@@ -1,8 +1,10 @@
-import { ChangeDetectionStrategy, Component, DestroyRef, computed, effect, inject, input, OnDestroy, output, signal } from '@angular/core';
+import { ChangeDetectionStrategy, Component, DestroyRef, computed, effect, inject, input, OnDestroy, output, signal, untracked } from '@angular/core';
 import { FormBuilder, Validators } from '@angular/forms';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { Subject, Subscription, catchError, debounceTime, distinctUntilChanged, firstValueFrom, map, of, switchMap } from 'rxjs';
 import { NotificationService } from '../../../../core/services/notification.service';
+import { toSafeErrorMessage } from '../../../../core/services/error-handler.service';
+import { FileApiService, buildFileUrl } from '../../../../shared/data-access/file-api.service';
 import { HasPermissionDirective } from '../../../../shared/directives/has-permission.directive';
 import { ButtonComponent } from '../../../../shared/ui/button/button.component';
 import { DatePickerComponent } from '../../../../shared/ui/date-picker/date-picker.component';
@@ -14,8 +16,8 @@ import { SelectOption } from '../../../../shared/ui/select/select.component';
 import { LegalEntityStore } from '../../../organization/state/legal-entity.store';
 import { PeopleApiService } from '../../data-access/people-api.service';
 import { AddEmployeeWizardStore } from '../../state/add-employee-wizard.store';
-import { ReportsToPickerComponent } from '../../ui/reports-to-picker/reports-to-picker.component';
-import { DRAFT_REASON_LABELS, WizardStep } from '../../models/onboarding-draft.model';
+import { EMPLOYMENT_TYPE_OPTIONS as ALL_EMPLOYMENT_TYPE_OPTIONS, SELECTABLE_EMPLOYMENT_TYPE_OPTIONS } from '../../models/employment-type-options';
+import { DRAFT_REASON_LABELS, ReportingChainNode, WizardStep, WorkModeOption } from '../../models/onboarding-draft.model';
 import { ChecklistTemplateMatchLevel, ChecklistTemplateType, DraftChecklistTask } from '../../models/checklist-template.model';
 import { UnsavedChangesService, DirtyFormHandle } from '../../../../shared/services/unsaved-changes.service';
 import { DraftsStore } from '../../../../shared/state/drafts.store';
@@ -41,20 +43,29 @@ const TEMPLATE_TYPE_LABELS: Record<ChecklistTemplateType, string> = {
   offboarding: 'Offboarding'
 };
 
-const EMPLOYMENT_TYPE_OPTIONS: readonly SelectOption[] = [
-  { value: 'full_time', label: 'Full-time' },
-  { value: 'part_time', label: 'Part-time' },
-  { value: 'contract', label: 'Contract' },
-  { value: 'intern', label: 'Intern' }
-];
+const EMPLOYMENT_TYPE_OPTIONS: readonly SelectOption[] = SELECTABLE_EMPLOYMENT_TYPE_OPTIONS;
 
-const STEP_ORDER: readonly WizardStep[] = ['employee_details', 'checklist_template', 'review_and_submit'];
+const STEP_ORDER: readonly WizardStep[] = ['employee_details', 'reporting', 'work_setup', 'checklist_template', 'review_and_submit'];
 const STEP_LABELS: Record<WizardStep, string> = {
-  employee_details: 'Employee details',
-  checklist_template: 'Checklist template',
+  employee_details: 'Identity',
+  reporting: 'Reporting',
+  work_setup: 'Work setup',
+  checklist_template: 'Checklist',
   checklist_review: 'Checklist review',
-  review_and_submit: 'Review & Submit'
+  review_and_submit: 'Review'
 };
+
+/** Identity-step controls - workModeId belongs to the Work setup step and is validated there. */
+const IDENTITY_CONTROLS = [
+  'firstName',
+  'lastName',
+  'workEmail',
+  'departmentId',
+  'positionId',
+  'employmentType',
+  'startDate',
+  'employeeNumber'
+] as const;
 
 @Component({
   selector: 'app-add-employee-wizard',
@@ -68,8 +79,7 @@ const STEP_LABELS: Record<WizardStep, string> = {
     EmptyStateComponent,
     InputComponent,
     LoaderComponent,
-    CustomSelectComponent,
-    ReportsToPickerComponent
+    CustomSelectComponent
   ],
   templateUrl: './add-employee-wizard.component.html',
   styleUrl: './add-employee-wizard.component.css',
@@ -84,6 +94,7 @@ export class AddEmployeeWizardComponent implements OnDestroy {
   private readonly unsaved = inject(UnsavedChangesService);
   private readonly draftsStore = inject(DraftsStore);
   private readonly destroyRef = inject(DestroyRef);
+  private readonly fileApi = inject(FileApiService);
 
   readonly store = inject(AddEmployeeWizardStore);
   readonly legalEntityStore = inject(LegalEntityStore);
@@ -102,12 +113,17 @@ export class AddEmployeeWizardComponent implements OnDestroy {
       this.store.departmentId(),
       this.store.positionId(),
       this.store.selectedTemplateId(),
-      this.store.selectedReportsToEmployeeId()
+      this.store.selectedReportsToEmployeeId(),
+      this.store.photoRequiredOverride(),
+      this.store.locationCaptureOverride(),
+      this.store.avatarFileId()
     ]);
   }
 
   private markClean(): void {
     this.baseline = this.snapshot();
+    // Whatever photo is on the form now is saved (or is the starting state) - no longer ours to delete.
+    this.sessionAvatarUploads?.clear();
   }
 
   private readonly guardHandle: DirtyFormHandle = {
@@ -122,13 +138,41 @@ export class AddEmployeeWizardComponent implements OnDestroy {
       }
       return false;
     },
-    discard: () => {}
+    discard: () => {
+      for (const fileId of this.sessionAvatarUploads) {
+        this.fileApi.delete(fileId).subscribe({ error: () => undefined });
+      }
+      this.sessionAvatarUploads.clear();
+    },
+    saveDraftError: () => this.store.saveError()
   };
 
   readonly employmentTypeOptions = EMPLOYMENT_TYPE_OPTIONS;
   readonly stepOrder = STEP_ORDER;
   readonly stepLabels = STEP_LABELS;
   readonly submitAttempted = signal(false);
+  readonly reportingAttempted = signal(false);
+  readonly workSetupAttempted = signal(false);
+  readonly managerSearch = signal('');
+  private readonly resumeInFlight = signal(false);
+
+  /** Profile photo (Identity step). */
+  readonly avatarUploading = signal(false);
+  readonly avatarError = signal<string | null>(null);
+  /** Object URL of a photo picked in this session - shown instantly, no round trip. */
+  private readonly localAvatarUrl = signal<string | null>(null);
+  /** An unlinked upload is only readable by whoever uploaded it, so another HR user resuming
+   *  the draft gets a 404 - fall back to a "Photo attached" placeholder instead of a broken image. */
+  private readonly avatarPreviewFailed = signal(false);
+  /** Files uploaded by this wizard session and not yet saved - safe to delete when replaced. */
+  private readonly sessionAvatarUploads = new Set<string>();
+
+  readonly avatarPreviewUrl = computed(() => {
+    const local = this.localAvatarUrl();
+    if (local) return local;
+    const fileId = this.store.avatarFileId();
+    return fileId && !this.avatarPreviewFailed() ? buildFileUrl(fileId) : null;
+  });
   /** Mirrors submitAttempted, but scoped to the checklist task editor - set on the first blocked
    *  Continue/Save Draft attempt while a checklist is selected, so per-row errors only appear
    *  after the user has tried to move on, not while they're still filling tasks in. */
@@ -209,7 +253,8 @@ export class AddEmployeeWizardComponent implements OnDestroy {
   readonly selectedEmploymentTypeLabel = computed(() => {
     const val = this.form.controls.employmentType.value || this.store.formValue().employmentType;
     if (!val) return '—';
-    const opt = this.employmentTypeOptions.find((o) => o.value === val);
+    // Full list, so a draft saved before "Intern" was retired still shows a readable label.
+    const opt = ALL_EMPLOYMENT_TYPE_OPTIONS.find((o) => o.value === val);
     return opt ? opt.label : val;
   });
 
@@ -273,6 +318,42 @@ export class AddEmployeeWizardComponent implements OnDestroy {
     return '';
   });
 
+  /** In-field availability marker for the employee number (replaces the old "Available" text). */
+  readonly employeeNumberStatus = computed<'ok' | 'bad' | 'checking' | null>(() => {
+    switch (this.employeeNumberAvailability()) {
+      case 'available':
+        return 'ok';
+      case 'unavailable':
+      case 'invalid':
+        return 'bad';
+      case 'checking':
+        return 'checking';
+      default:
+        return null;
+    }
+  });
+
+  readonly employeeNumberStatusLabel = computed(() => {
+    switch (this.employeeNumberAvailability()) {
+      case 'available':
+        return 'Employee number is available';
+      case 'unavailable':
+        return EMPLOYEE_NUMBER_IN_USE_MESSAGE;
+      case 'invalid':
+        return EMPLOYEE_NUMBER_INVALID_FORMAT_MESSAGE;
+      case 'checking':
+        return 'Checking availability…';
+      default:
+        return null;
+    }
+  });
+
+  /** Text under the field: only once Continue was pressed (the icon covers live feedback), or a
+   *  failed auto-suggestion, which the icon can't express. */
+  readonly employeeNumberInlineError = computed(() =>
+    this.submitAttempted() ? this.employeeNumberFieldError() : (this.employeeNumberGenerateError() ?? '')
+  );
+
   readonly employeeInitials = computed(() => {
     const fn = this.reviewFirstName();
     const ln = this.reviewLastName();
@@ -281,20 +362,77 @@ export class AddEmployeeWizardComponent implements OnDestroy {
     return (f + l) || 'E';
   });
 
-  readonly selectedReportingManagerName = computed(() => {
-    const selectedId = this.store.selectedReportsToEmployeeId();
-    if (selectedId) {
-      const match = this.store.activeHolders().find((holder) => holder.employeeId === selectedId);
-      if (match) {
-        return `${match.firstName} ${match.lastName}`;
-      }
-    }
-    return this.store.savedReportingManagerName() ?? '—';
-  });
+  readonly selectedReportingManagerName = computed(() =>
+    this.selectedManagerSummary()?.name ?? this.store.savedReportingManagerName() ?? '—'
+  );
 
   readonly selectedReportingManagerPositionName = computed(() =>
-    this.store.savedReportingManagerPositionName() ?? '—'
+    this.selectedManagerSummary()?.positionName ??
+    this.reportsToPositionName() ??
+    this.store.savedReportingManagerPositionName() ??
+    '—'
   );
+
+  /** The picked manager is not a holder of the position above - a one-off line for this employee. */
+  readonly isOutsideHierarchy = computed(() => {
+    const managerId = this.store.selectedReportsToEmployeeId();
+    return !!managerId
+      && !this.store.loadingActiveHolders()
+      && !this.store.activeHolders().some((h) => h.employeeId === managerId);
+  });
+
+  /** Card for a one-off manager: from the search pick, or (resumed draft) the preview's manager node. */
+  readonly customManagerCard = computed(() => {
+    if (!this.isOutsideHierarchy()) return null;
+    const custom = this.store.customManager();
+    if (custom) return custom;
+    const managerId = this.store.selectedReportsToEmployeeId();
+    const node = this.store.reportingChain().at(-1);
+    return node && node.employeeId === managerId
+      ? { employeeId: node.employeeId!, firstName: node.firstName ?? '', lastName: node.lastName ?? '', positionName: node.positionName ?? '', departmentName: node.departmentName }
+      : null;
+  });
+
+  /** Name + "Position, Department" of whoever the employee will report to, from any source. */
+  readonly selectedManagerSummary = computed<{ name: string; positionName: string | null; meta: string } | null>(() => {
+    const managerId = this.store.effectiveManagerId();
+    if (!managerId) return null;
+    const holder = this.store.activeHolders().find((h) => h.employeeId === managerId);
+    if (holder) {
+      const positionName = this.reportsToPositionName();
+      return { name: `${holder.firstName} ${holder.lastName}`, positionName, meta: this.joinMeta(positionName, holder.departmentName, ', ') };
+    }
+    const custom = this.customManagerCard();
+    if (custom) {
+      return {
+        name: `${custom.firstName} ${custom.lastName}`,
+        positionName: custom.positionName,
+        meta: this.joinMeta(custom.positionName, custom.departmentName, ', ')
+      };
+    }
+    return null;
+  });
+
+  /** Search hits that aren't already offered as a recommended manager. */
+  readonly otherCandidates = computed(() => {
+    const holderIds = new Set(this.store.activeHolders().map((h) => h.employeeId));
+    return this.store.managerCandidates().filter((c) => !holderIds.has(c.employeeId));
+  });
+
+  readonly managerSearchHits = computed(() => this.otherCandidates().map((c) => c.employeeId));
+
+  private readonly selectedPositionItem = computed(() => {
+    const positionId = this.form.controls.positionId.value || this.store.positionId();
+    return this.store.positionItems().find((p) => p.id === positionId) ?? null;
+  });
+
+  /** The position the new employee's position reports to (null = organisation root). */
+  readonly reportsToPositionId = computed(() => this.selectedPositionItem()?.reportsToPositionId ?? null);
+
+  readonly reportsToPositionName = computed(() =>
+    this.selectedPositionItem()?.reportsToPositionName ?? this.store.savedReportingManagerPositionName() ?? null
+  );
+
   readonly newEmployeeDisplayName = computed(() => {
     const firstName = (this.form.controls.firstName.value || this.store.formValue().firstName || '').trim();
     const lastName = (this.form.controls.lastName.value || this.store.formValue().lastName || '').trim();
@@ -411,6 +549,29 @@ export class AddEmployeeWizardComponent implements OnDestroy {
       }
     });
 
+    // Work setup needs a selected work mode: pre-select the first one (the backend orders them
+    // by DisplayOrder) the moment both the step and the mode list are ready. Never overwrites
+    // an existing choice, so a resumed draft keeps its saved mode.
+    effect(() => {
+      // While a draft is resuming, the form is only patched once the whole resume chain finishes -
+      // don't mistake that gap for "no choice". Tracked, so this re-runs when the resume settles.
+      if (this.resumeInFlight() || this.store.step() !== 'work_setup' || this.store.workModes().length === 0) {
+        return;
+      }
+      const firstModeId = this.store.workModes()[0].id;
+      untracked(() => {
+        const chosen = this.form.controls.workModeId.value || this.store.formValue().workModeId;
+        if (!chosen) {
+          const wasClean = !this.guardHandle.isDirty();
+          this.form.controls.workModeId.setValue(firstModeId);
+          if (wasClean) {
+            this.markClean();
+          }
+        }
+        void this.store.loadClockInDefaults(this.form.controls.workModeId.value || chosen);
+      });
+    });
+
     effect(() => {
       const inputDraftId = this.initialDraftId();
       if (inputDraftId && inputDraftId !== this.store.draftId()) {
@@ -423,15 +584,11 @@ export class AddEmployeeWizardComponent implements OnDestroy {
     }
 
     this.form.valueChanges.subscribe((value) => {
-      this.store.updateFormValue({
-        firstName: value.firstName ?? '',
-        lastName: value.lastName ?? '',
-        workEmail: value.workEmail ?? '',
-        employmentType: value.employmentType ?? '',
-        startDate: value.startDate ?? '',
-        employeeNumber: value.employeeNumber ?? '',
-        workModeId: value.workModeId || null
-      });
+      // Mid-resume the store holds the draft and the still-empty form must not overwrite it
+      // (e.g. the positionId sync effect emits the whole form); synced once the resume settles.
+      if (!this.resumeInFlight()) {
+        this.syncFormToStore(value);
+      }
     });
 
     this.markClean();
@@ -439,16 +596,107 @@ export class AddEmployeeWizardComponent implements OnDestroy {
     this.destroyRef.onDestroy(() => unregisterGuard());
   }
 
+  async onAvatarSelected(event: Event): Promise<void> {
+    const inputEl = event.target as HTMLInputElement;
+    const file = inputEl.files?.[0];
+    inputEl.value = '';
+    if (!file) return;
+
+    this.avatarError.set(null);
+    if (!['image/png', 'image/jpeg', 'image/webp'].includes(file.type)) {
+      this.avatarError.set('Use a JPG, PNG or WEBP image.');
+      return;
+    }
+    if (file.size > 5 * 1024 * 1024) {
+      this.avatarError.set('The photo must be 5MB or smaller.');
+      return;
+    }
+
+    this.avatarUploading.set(true);
+    try {
+      const uploaded = await firstValueFrom(this.fileApi.upload(file, 'employee_avatar'));
+      const previous = this.store.avatarFileId();
+      this.sessionAvatarUploads.add(uploaded.fileId);
+      this.store.setAvatarFileId(uploaded.fileId);
+      this.setLocalAvatarUrl(URL.createObjectURL(file));
+      this.discardSessionUpload(previous);
+    } catch (err: unknown) {
+      this.avatarError.set(toSafeErrorMessage(err, 'The photo could not be uploaded. Try again.'));
+    } finally {
+      this.avatarUploading.set(false);
+    }
+  }
+
+  removeAvatar(): void {
+    const previous = this.store.avatarFileId();
+    this.store.setAvatarFileId(null);
+    this.setLocalAvatarUrl(null);
+    this.avatarError.set(null);
+    this.discardSessionUpload(previous);
+  }
+
+  onAvatarPreviewError(): void {
+    if (!this.localAvatarUrl()) {
+      this.avatarPreviewFailed.set(true);
+    }
+  }
+
+  private setLocalAvatarUrl(url: string | null): void {
+    const old = this.localAvatarUrl();
+    if (old) URL.revokeObjectURL(old);
+    this.localAvatarUrl.set(url);
+    this.avatarPreviewFailed.set(false);
+  }
+
+  /** Deletes a replaced/removed photo only if this session uploaded it - a photo already saved on
+   *  the draft stays, since the user may still cancel without saving. */
+  private discardSessionUpload(fileId: string | null): void {
+    if (!fileId || !this.sessionAvatarUploads.has(fileId)) return;
+    this.sessionAvatarUploads.delete(fileId);
+    this.fileApi.delete(fileId).subscribe({ error: () => undefined });
+  }
+
   ngOnDestroy(): void {
+    this.setLocalAvatarUrl(null);
+    if (this.managerSearchTimer) clearTimeout(this.managerSearchTimer);
     this.availabilitySub?.unsubscribe();
     this.employeeNumberEdits$.complete();
   }
 
   private async resumeExistingDraft(draftId: string): Promise<void> {
+    this.resumeInFlight.set(true);
+    try {
+      await this.resumeExistingDraftCore(draftId);
+    } finally {
+      this.resumeInFlight.set(false);
+    }
+    if (!this.store.resumeError()) {
+      this.syncFormToStore(this.form.getRawValue());
+      this.markClean();
+    }
+  }
+
+  private syncFormToStore(value: Partial<ReturnType<typeof this.form.getRawValue>>): void {
+    this.store.updateFormValue({
+      firstName: value.firstName ?? '',
+      lastName: value.lastName ?? '',
+      workEmail: value.workEmail ?? '',
+      employmentType: value.employmentType ?? '',
+      startDate: value.startDate ?? '',
+      employeeNumber: value.employeeNumber ?? '',
+      workModeId: value.workModeId || null
+    });
+  }
+
+  private async resumeExistingDraftCore(draftId: string): Promise<void> {
     await this.store.resumeDraft(draftId);
     if (this.store.resumeError()) {
       this.notificationService.error(this.store.resumeError()!);
       return;
+    }
+    if (!this.stepOrder.includes(this.store.step())) {
+      // Drafts saved by the older 3-step wizard (or the retired checklist_review step).
+      this.store.goToStep('employee_details');
     }
     const formValue = this.store.formValue();
     this.form.patchValue({
@@ -536,7 +784,52 @@ export class AddEmployeeWizardComponent implements OnDestroy {
   }
 
   onWorkModeChange(workModeIdStr: string): void {
+    if (this.form.controls.workModeId.value === workModeIdStr) {
+      return;
+    }
     this.form.controls.workModeId.setValue(workModeIdStr);
+    // Overrides were relative to the previous mode's defaults - start fresh from the new mode.
+    this.store.clearClockInOverrides();
+    void this.store.loadClockInDefaults(workModeIdStr);
+  }
+
+  workModeKind(mode: WorkModeOption): 'daily' | 'self' | 'office' {
+    if (mode.allowsDailyLocationChoice) return 'daily';
+    if (mode.selfRegistersLocation) return 'self';
+    return 'office';
+  }
+
+  workModeDescription(mode: WorkModeOption): string {
+    switch (this.workModeKind(mode)) {
+      case 'daily':
+        return 'Chooses office, home or elsewhere each day';
+      case 'self':
+        return 'Works from their own registered location';
+      default:
+        return 'Works from the company office';
+    }
+  }
+
+  initialsOf(firstName: string | null | undefined, lastName: string | null | undefined): string {
+    const f = (firstName ?? '').trim().charAt(0).toUpperCase();
+    const l = (lastName ?? '').trim().charAt(0).toUpperCase();
+    return f + l || '?';
+  }
+
+  joinMeta(a: string | null | undefined, b: string | null | undefined, separator = ' · '): string {
+    return [a, b].filter((part) => !!part && part.trim()).join(separator);
+  }
+
+  private managerSearchTimer: ReturnType<typeof setTimeout> | null = null;
+
+  onManagerSearch(term: string): void {
+    this.managerSearch.set(term);
+    if (this.managerSearchTimer) clearTimeout(this.managerSearchTimer);
+    this.managerSearchTimer = setTimeout(() => void this.store.searchManagers(term), 250);
+  }
+
+  chainNodeMeta(node: ReportingChainNode): string {
+    return [node.positionName || 'No position', node.departmentName].filter(Boolean).join(' · ');
   }
 
   retryLoadWorkModes(): void {
@@ -791,6 +1084,10 @@ export class AddEmployeeWizardComponent implements OnDestroy {
     return this.store.needsReportsToPick() && !this.store.selectedReportsToEmployeeId();
   }
 
+  private hasIdentityErrors(): boolean {
+    return IDENTITY_CONTROLS.some((name) => this.form.controls[name].invalid);
+  }
+
   /** Gates Continue/Save Draft/Finalize: true when a checklist is selected and its draft-local
    *  tasks currently fail validation (mirrors the store's own saveDraft() check). */
   private hasBlockingTaskErrors(): boolean {
@@ -836,13 +1133,26 @@ export class AddEmployeeWizardComponent implements OnDestroy {
   }
 
   goToNextStep(): void {
-    if (this.stepIndex() === 0) {
+    const step = this.store.step();
+    if (step === 'employee_details') {
       this.submitAttempted.set(true);
-      if (!this.validateSelectedPosition() || this.form.invalid || this.hasBlockingReportsToPick() || this.hasBlockingEmployeeNumber()) {
+      if (!this.validateSelectedPosition() || this.hasIdentityErrors() || this.hasBlockingEmployeeNumber()) {
         return;
       }
     }
-    if (this.store.step() === 'checklist_template' && this.store.selectedTemplateId()) {
+    if (step === 'reporting') {
+      this.reportingAttempted.set(true);
+      if (this.store.loadingActiveHolders() || this.hasBlockingReportsToPick()) {
+        return;
+      }
+    }
+    if (step === 'work_setup') {
+      this.workSetupAttempted.set(true);
+      if (this.form.controls.workModeId.invalid) {
+        return;
+      }
+    }
+    if (step === 'checklist_template' && this.store.selectedTemplateId()) {
       this.taskSubmitAttempted.set(true);
       if (this.hasBlockingTaskErrors()) {
         return;
@@ -885,7 +1195,18 @@ export class AddEmployeeWizardComponent implements OnDestroy {
       return;
     }
     this.submitAttempted.set(true);
-    if (!this.validateSelectedPosition() || this.form.invalid || this.hasBlockingReportsToPick() || this.hasBlockingEmployeeNumber()) {
+    this.reportingAttempted.set(true);
+    this.workSetupAttempted.set(true);
+    if (!this.validateSelectedPosition() || this.hasIdentityErrors() || this.hasBlockingEmployeeNumber()) {
+      this.store.goToStep('employee_details');
+      return;
+    }
+    if (this.hasBlockingReportsToPick()) {
+      this.store.goToStep('reporting');
+      return;
+    }
+    if (this.form.controls.workModeId.invalid) {
+      this.store.goToStep('work_setup');
       return;
     }
     if (this.store.selectedTemplateId()) {

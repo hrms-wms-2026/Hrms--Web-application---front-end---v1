@@ -1,4 +1,5 @@
 import { Component, OnDestroy, OnInit, computed, inject, signal } from '@angular/core';
+import { SELECTABLE_EMPLOYMENT_TYPE_OPTIONS } from '../../models/employment-type-options';
 import { RouterLink } from '@angular/router';
 import { firstValueFrom } from 'rxjs';
 import { PermissionService } from '../../../../core/auth/state/permission.service';
@@ -28,12 +29,7 @@ import {
 
 export type BulkOnboardingStep = 'upload' | 'map-columns' | 'validate' | 'review' | 'finalize';
 
-const EMPLOYMENT_TYPE_OPTIONS: readonly SelectOption[] = [
-  { value: 'full_time', label: 'Full-time' },
-  { value: 'part_time', label: 'Part-time' },
-  { value: 'contract', label: 'Contract' },
-  { value: 'intern', label: 'Intern' }
-];
+const EMPLOYMENT_TYPE_OPTIONS: readonly SelectOption[] = SELECTABLE_EMPLOYMENT_TYPE_OPTIONS;
 
 const REQUIRED_MAPPING_FIELDS = new Set<BulkOnboardingSystemField>(['workEmail', 'startDate']);
 
