@@ -169,6 +169,9 @@ const NAVIGATION_ACTIONS = new Set(['open_target']);
           [confirmLabel]="dialog()?.action?.label ?? 'Resolve'"
           [outcomes]="outcomes()"
           [leaveTypes]="leaveTypes()"
+          [leaveHint]="leaveTypes().length > 0
+            ? 'The balance, notice and other leave rules are checked when the leave is created; it is approved straight away.'
+            : 'This employee has no leave type to convert to this year.'"
           (confirmed)="onOutcomeConfirmed($event)"
           (closed)="dialog.set(null)"
         />

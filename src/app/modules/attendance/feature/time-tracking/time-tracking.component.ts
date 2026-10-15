@@ -1,19 +1,13 @@
 import { ChangeDetectionStrategy, Component, computed, effect, inject, OnInit, signal, untracked } from '@angular/core';
 import { toSignal } from '@angular/core/rxjs-interop';
 import { FormsModule } from '@angular/forms';
-import { ActivatedRoute, Router } from '@angular/router';
+import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { ModalComponent } from '../../../../shared/ui/modal/modal.component';
 import { AttendanceDetailDrawerComponent, AttendanceDetailSelection } from './attendance-detail-drawer/attendance-detail-drawer.component';
 import { AttendanceStatusCardComponent } from '../status-card/attendance-status-card.component';
 import { AttendanceTodayTimelineComponent } from './today-timeline/attendance-today-timeline.component';
 import { AttendanceHistoryListComponent } from './attendance-history-list/attendance-history-list.component';
 import { MyRequestsPanelComponent } from './my-requests-panel/my-requests-panel.component';
-import { CorrectionApprovalsComponent } from '../correction-approvals/correction-approvals.component';
-import { WorkAreaApprovalsComponent } from '../work-area-approvals/work-area-approvals.component';
-import { LocationChangeApprovalsComponent } from '../location-change-approvals/location-change-approvals.component';
-import { LocationChangeRequestsStore } from '../../state/location-change-requests.store';
-import { DeviceChangeApprovalsComponent } from '../device-change-approvals/device-change-approvals.component';
-import { DeviceChangeRequestsStore } from '../../state/device-change-requests.store';
 import { NotificationService } from '../../../../core/services/notification.service';
 import {
   AttendanceCorrectionBreakRequest,
@@ -56,15 +50,13 @@ type AttendanceViewMode = 'my' | 'team';
 @Component({
   selector: 'app-time-tracking',
   standalone: true,
-  imports: [AttendanceCorrectionModalComponent, AttendanceDetailDrawerComponent, AttendanceHistoryListComponent, AttendanceStatusCardComponent, AttendanceTodayTimelineComponent, BreadcrumbHeaderComponent, ButtonComponent, CorrectionApprovalsComponent, DatePickerComponent, DateRangePickerComponent, FormsModule, ModalComponent, MyRequestsPanelComponent, PopoverComponent, WorkAreaApprovalsComponent, LocationChangeApprovalsComponent, DeviceChangeApprovalsComponent],
+  imports: [AttendanceCorrectionModalComponent, AttendanceDetailDrawerComponent, AttendanceHistoryListComponent, AttendanceStatusCardComponent, AttendanceTodayTimelineComponent, BreadcrumbHeaderComponent, ButtonComponent, DatePickerComponent, DateRangePickerComponent, FormsModule, ModalComponent, MyRequestsPanelComponent, PopoverComponent, RouterLink],
   templateUrl: './time-tracking.component.html',
   styleUrl: './time-tracking.component.css',
   changeDetection: ChangeDetectionStrategy.OnPush
 })
 export class TimeTrackingComponent implements OnInit {
   readonly store = inject(TimeTrackingStore);
-  readonly locationChangeStore = inject(LocationChangeRequestsStore);
-  readonly deviceChangeStore = inject(DeviceChangeRequestsStore);
   private readonly permissionService = inject(PermissionService);
   private readonly notifications = inject(NotificationService);
   private readonly route = inject(ActivatedRoute);
@@ -95,11 +87,6 @@ export class TimeTrackingComponent implements OnInit {
     return 'my';
   });
 
-  readonly approvalType = computed<'corrections' | 'work-area' | 'location' | 'device-change'>(() => {
-    const requested = this.queryParams().get('type');
-    return requested === 'work-area' || requested === 'location' || requested === 'device-change' ? requested : 'corrections';
-  });
-
   readonly deepLinkRequestId = computed(() => this.queryParams().get('requestId'));
   /** Set by the employee profile's "View attendance" link to narrow Team attendance to one person. */
   readonly deepLinkEmployeeId = computed(() => this.queryParams().get('employeeId')?.trim() || null);
@@ -109,10 +96,6 @@ export class TimeTrackingComponent implements OnInit {
     const isDate = (value: string | null): value is string => !!value && /^\d{4}-\d{2}-\d{2}$/.test(value);
     return isDate(from) && isDate(to) && from <= to ? { from, to } : null;
   });
-  readonly approvalBadgeCorrections = computed(() => this.store.approvalInbox().length);
-  readonly approvalBadgeWorkArea = computed(() => this.store.workAreaApprovalInboxTotalCount());
-  readonly approvalBadgeLocation = computed(() => this.locationChangeStore.approvalInboxTotalCount());
-  readonly approvalBadgeDeviceChange = computed(() => this.deviceChangeStore.approvalInboxTotalCount());
 
   readonly historyFrom = signal('');
   readonly historyTo = signal('');
@@ -150,25 +133,18 @@ export class TimeTrackingComponent implements OnInit {
   readonly correctionTypeOptions = CORRECTION_TYPE_OPTIONS;
 
   /**
-   * Per-activation dedupe keys for the team-loading effect below. These are plain
-   * component fields (never signals), read and written only inside that effect, so the
-   * effect's decision to fetch never depends on anything the fetch itself writes back to
-   * the store - that reactive read-your-own-write shape is what caused a runaway
-   * covered-history request loop before this guard was added. Each key resets only when
-   * Team view is no longer active, so at most one request is issued per distinct
-   * range/type activation, no matter how many unrelated signal changes cause this effect
-   * to re-run. Team attendance and Approvals load independently of each other - both are
-   * shown together (see the template), never behind a toggle - but only the active
-   * approval type (corrections vs work-area) loads within Approvals.
+   * Per-activation dedupe key for the team-loading effect below. A plain component field (never a signal), read and
+   * written only inside that effect, so the effect's decision to fetch never depends on anything the fetch itself
+   * writes back to the store - that reactive read-your-own-write shape is what caused a runaway covered-history
+   * request loop before this guard was added. It resets only when Team view is no longer active, so at most one
+   * request is issued per distinct range activation. Attendance requests are reviewed in the Inbox, not here.
    */
   private teamAttendanceRangeKey: string | null = null;
-  private attemptedApprovalType: 'corrections' | 'work-area' | 'location' | 'device-change' | null = null;
 
   constructor() {
     effect(() => {
       if (this.viewMode() !== 'team') {
         this.teamAttendanceRangeKey = null;
-        this.attemptedApprovalType = null;
         return;
       }
 
@@ -182,27 +158,6 @@ export class TimeTrackingComponent implements OnInit {
         }
       } else {
         this.teamAttendanceRangeKey = null;
-      }
-
-      if (this.hasApproveAccess()) {
-        const type = this.approvalType();
-        if (this.attemptedApprovalType !== type) {
-          this.attemptedApprovalType = type;
-          if (type === 'corrections' && !this.store.approvalInboxLoaded()) {
-            void this.store.loadApprovalInbox();
-          }
-          if (type === 'work-area' && !this.store.workAreaApprovalInboxLoaded()) {
-            void this.store.loadWorkAreaApprovalInbox({ status: 'pending', pageNumber: 1 });
-          }
-          if (type === 'location' && !this.locationChangeStore.approvalInboxLoaded()) {
-            void this.locationChangeStore.loadApprovalInbox(1);
-          }
-          if (type === 'device-change' && !this.deviceChangeStore.approvalInboxLoaded()) {
-            void this.deviceChangeStore.loadApprovalInbox(1);
-          }
-        }
-      } else {
-        this.attemptedApprovalType = null;
       }
     });
   }
@@ -288,7 +243,7 @@ export class TimeTrackingComponent implements OnInit {
       this.navigateState({ view: null, type: null, requestId: null });
       return;
     }
-    this.navigateState({ view: 'team', type: this.hasApproveAccess() ? this.approvalType() : null, requestId: null });
+    this.navigateState({ view: 'team', type: null, requestId: null });
   }
 
   /** Drops the profile deep-link's employee filter, keeping whatever range is currently picked. */
@@ -298,10 +253,6 @@ export class TimeTrackingComponent implements OnInit {
       queryParams: { employeeId: null, from: this.historyFrom() || null, to: this.historyTo() || null },
       queryParamsHandling: 'merge'
     });
-  }
-
-  selectApprovalType(type:'corrections' | 'work-area' | 'location' | 'device-change'): void {
-    this.navigateState({ view: 'team', type, requestId: null });
   }
 
   private navigateState(params: { view: string | null; type: string | null; requestId: string | null }): void {

@@ -5,22 +5,25 @@ const ATTENDANCE_KEYS = new Set([
   'short_hours_days', 'off_schedule_work', 'location_violations'
 ]);
 
-const TIME_TRACKING_APPROVAL_TYPES: Record<string, string> = {
-  attendance_correction: 'corrections',
-  work_area_change: 'work-area',
-  location_change: 'location'
+/** Attendance approval kinds and their Inbox kinds (attendance requests are reviewed in the Inbox). */
+const ATTENDANCE_INBOX_KINDS: Record<string, string> = {
+  attendance_correction: 'correction',
+  work_area_change: 'work_mode_change',
+  location_change: 'location_change',
+  device_change: 'device_change'
 };
 
 function withQuery(path: string, params: Record<string, string>): string {
   return `${path}?${new URLSearchParams(params).toString()}`;
 }
 
-/** Where a pending approval is reviewed. Work approvals go to the project list. */
+/** Where a pending approval is reviewed: leave and attendance requests open in the Inbox; work approvals go to the
+ *  project list. */
 export function approvalReviewUrl(item: EmployeeSignalItem): string {
   const kind = item.approvalKind ?? '';
   if (kind === 'leave') return `/inbox/leave/request/${item.id}`;
-  const type = TIME_TRACKING_APPROVAL_TYPES[kind];
-  if (type) return withQuery('/attendance/time-tracking', { view: 'team', type, requestId: item.id });
+  const inboxKind = ATTENDANCE_INBOX_KINDS[kind];
+  if (inboxKind) return `/inbox/attendance/${inboxKind}/${item.id}`;
   return '/work';
 }
 

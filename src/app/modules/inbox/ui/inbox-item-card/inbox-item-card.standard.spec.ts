@@ -65,6 +65,7 @@ describe('InboxItemCardComponent (FS1 standard)', () => {
     click('inbox-outcome-convert_to_leave');
     const select = q('inbox-outcome-leave-type') as HTMLSelectElement;
     expect(Array.from(select.options).map((o) => o.value)).toEqual(['', 'lt1']);
+    expect(q('inbox-outcome-leave-hint')?.textContent).toContain('balance');
     select.value = 'lt1';
     select.dispatchEvent(new Event('change'));
     fixture.detectChanges();

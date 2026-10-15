@@ -1,7 +1,7 @@
 import { DatePipe } from '@angular/common';
 import { ChangeDetectionStrategy, Component, computed, input } from '@angular/core';
 import { InboxItemDetailDto } from '../models/inbox.dto';
-import { RENDERER_STYLES, pick } from './renderer.util';
+import { pick } from './renderer.util';
 
 interface Warning { message: string }
 interface CalendarConflict { title: string; startsAt: string | null; endsAt: string | null }
@@ -53,7 +53,7 @@ interface CalendarConflict { title: string; startsAt: string | null; endsAt: str
       }
     </div>
   `,
-  styles: [RENDERER_STYLES]
+  styleUrl: './renderers.css'
 })
 export class LeaveRequestRendererComponent {
   extra = input<Record<string, unknown> | null>(null);

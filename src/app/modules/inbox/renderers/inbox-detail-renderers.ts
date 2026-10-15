@@ -1,4 +1,11 @@
 import { Injectable, InjectionToken, Type, inject } from '@angular/core';
+import {
+  AttendanceAlertRendererComponent,
+  AttendanceCorrectionRendererComponent,
+  DeviceChangeRendererComponent,
+  LocationChangeRendererComponent,
+  WorkModeChangeRendererComponent
+} from './attendance-renderers';
 import { LeaveRequestRendererComponent } from './leave-request-renderer.component';
 
 /**
@@ -13,7 +20,12 @@ export const INBOX_DETAIL_RENDERERS = new InjectionToken<Record<string, Type<unk
 });
 
 export const DEFAULT_INBOX_DETAIL_RENDERERS: Record<string, Type<unknown>> = {
-  'leave-request': LeaveRequestRendererComponent
+  'leave-request': LeaveRequestRendererComponent,
+  'attendance-correction': AttendanceCorrectionRendererComponent,
+  'work-mode-change': WorkModeChangeRendererComponent,
+  'location-change': LocationChangeRendererComponent,
+  'device-change': DeviceChangeRendererComponent,
+  'attendance-alert': AttendanceAlertRendererComponent
 };
 
 @Injectable({ providedIn: 'root' })

@@ -10,9 +10,10 @@ const item = (over: Partial<EmployeeSignalItem>): EmployeeSignalItem => ({
 describe('signal item links', () => {
   it.each([
     ['leave', '/inbox/leave/request/r-1'],
-    ['attendance_correction', '/attendance/time-tracking?view=team&type=corrections&requestId=r-1'],
-    ['work_area_change', '/attendance/time-tracking?view=team&type=work-area&requestId=r-1'],
-    ['location_change', '/attendance/time-tracking?view=team&type=location&requestId=r-1'],
+    ['attendance_correction', '/inbox/attendance/correction/r-1'],
+    ['work_area_change', '/inbox/attendance/work_mode_change/r-1'],
+    ['location_change', '/inbox/attendance/location_change/r-1'],
+    ['device_change', '/inbox/attendance/device_change/r-1'],
     ['task_edit', '/work']
   ])('routes a %s approval to its inbox', (approvalKind, url) => {
     expect(approvalReviewUrl(item({ approvalKind }))).toBe(url);

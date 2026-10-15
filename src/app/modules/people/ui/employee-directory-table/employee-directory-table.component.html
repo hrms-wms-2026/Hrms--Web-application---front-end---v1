@@ -70,6 +70,11 @@
                         @if (breakOverageLabel(employee); as breakLabel) {
                           <span class="emp-break-overage-marker emp-attention--critical" [attr.title]="breakLabel">{{ breakLabel }}</span>
                         }
+                        @if (employee.attendanceSummary?.openAlertCount; as alertCount) {
+                          <button type="button" class="emp-open-alerts" data-testid="employee-open-alerts" (click)="openAlerts(employee, $event)">
+                            {{ alertCount }} open {{ alertCount === 1 ? 'alert' : 'alerts' }}
+                          </button>
+                        }
                       </div>
                     </div>
                   }

@@ -25,12 +25,12 @@ describe('MyTeamDeepLinkService', () => {
     expect(navigate).toHaveBeenCalledWith(['/inbox', 'leave', 'request', 'r1']);
   });
 
-  it('routes attendance.approval with its type param', async () => {
+  it('routes attendance.approval to the request in the Inbox by its type', async () => {
     const { service, navigate } = setup();
     await service.navigate({ kind: 'attendance.approval', params: { type: 'corrections', requestId: 'r2' } });
-    expect(navigate).toHaveBeenCalledWith(['/attendance/time-tracking'], {
-      queryParams: { view: 'team', type: 'corrections', requestId: 'r2' }
-    });
+    await service.navigate({ kind: 'attendance.approval', params: { type: 'work-area', requestId: 'r3' } });
+    expect(navigate).toHaveBeenNthCalledWith(1, ['/inbox', 'attendance', 'correction', 'r2']);
+    expect(navigate).toHaveBeenNthCalledWith(2, ['/inbox', 'attendance', 'work_mode_change', 'r3']);
   });
 
   it('routes monitoring.exception to the alerts screen', async () => {

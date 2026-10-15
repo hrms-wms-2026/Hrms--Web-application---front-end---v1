@@ -1,5 +1,7 @@
+import { TestBed } from '@angular/core/testing';
+import { Router, UrlTree, convertToParamMap, provideRouter } from '@angular/router';
 import { permissionGuard } from '../../core/guards/permission.guard';
-import { ATTENDANCE_ROUTES } from './attendance.routes';
+import { ATTENDANCE_ROUTES, attendanceApprovalsDeepLinkGuard } from './attendance.routes';
 
 describe('ATTENDANCE_ROUTES', () => {
     const monitoring = () => ATTENDANCE_ROUTES.find((route) => route.path === 'monitoring')!;
@@ -58,42 +60,42 @@ describe('ATTENDANCE_ROUTES', () => {
     expect(route.loadComponent).toBeTypeOf('function');
   });
 
-  it('routes correction approvals through the legacy redirect with time_attendance and attendance:approve only', () => {
-    const route = approvals();
-
-    expect(route.canActivate).toContain(permissionGuard);
-    expect(route.data?.['modules']).toEqual(['time_attendance']);
-    expect(route.data?.['permissions']).toEqual(['attendance:approve']);
-    expect(route.data?.['approvalType']).toBe('corrections');
-    expect(route.data?.['roles']).toBeUndefined();
-    expect(route.loadComponent).toBeTypeOf('function');
-  });
-
-  it('routes Work Area approvals through the legacy redirect with time_attendance and attendance:approve only', () => {
-    const route = workAreaApprovals();
-
-    expect(route.canActivate).toContain(permissionGuard);
-    expect(route.data?.['modules']).toEqual(['time_attendance']);
-    expect(route.data?.['permissions']).toEqual(['attendance:approve']);
-    expect(route.data?.['approvalType']).toBe('work-area');
-    expect(route.data?.['roles']).toBeUndefined();
-    expect(route.loadComponent).toBeTypeOf('function');
-  });
-
   it('keeps the protected destination lazy-loaded and does not bypass it through redirects', () => {
     const route = timeTracking();
     const monitoringRoute = monitoring();
-    const approvalRoute = approvals();
-    const workAreaRoute = workAreaApprovals();
     const root = ATTENDANCE_ROUTES.find((candidate) => candidate.path === '');
 
     expect(route.loadComponent).toBeTypeOf('function');
     expect(monitoringRoute.loadComponent).toBeTypeOf('function');
-    expect(approvalRoute.loadComponent).toBeTypeOf('function');
     expect(root?.redirectTo).toBe('overview');
     expect(root?.pathMatch).toBe('full');
-    for (const candidate of [route, monitoringRoute, approvalRoute, workAreaRoute]) {
+    for (const candidate of [route, monitoringRoute]) {
       expect(candidate.canActivate?.includes(permissionGuard)).toBe(true);
     }
+  });
+
+  describe('approver screens moved to the Inbox (FA)', () => {
+    beforeEach(() => TestBed.configureTestingModule({ providers: [provideRouter([])] }));
+    const url = (tree: unknown) => TestBed.inject(Router).serializeUrl(tree as UrlTree);
+    const redirectOf = (path: string, queryParams: Record<string, string>) => TestBed.runInInjectionContext(() =>
+      url((ATTENDANCE_ROUTES.find((r) => r.path === path)!.redirectTo as (r: unknown) => UrlTree)({ queryParams, params: {}, data: {}, url: [], fragment: null })));
+    const guard = (queryParams: Record<string, string>) => TestBed.runInInjectionContext(() =>
+      attendanceApprovalsDeepLinkGuard({ queryParamMap: convertToParamMap(queryParams) } as never, {} as never));
+
+    it('redirects the legacy correction and work-area approval URLs to the Inbox list or the one request', () => {
+      expect(redirectOf('corrections/approvals', {})).toBe('/inbox?source=attendance&kind=correction');
+      expect(redirectOf('corrections/approvals', { requestId: 'c1' })).toBe('/inbox/attendance/correction/c1');
+      expect(redirectOf('work-area-change-requests/approvals', { requestId: 'w1' })).toBe('/inbox/attendance/work_mode_change/w1');
+    });
+
+    it('sends the old Time Tracking team approvals view to the Inbox, and leaves every other view alone', () => {
+      expect(timeTracking().canActivate?.[0]).toBe(attendanceApprovalsDeepLinkGuard);
+      expect(url(guard({ view: 'team', type: 'corrections' }))).toBe('/inbox?source=attendance&kind=correction');
+      expect(url(guard({ view: 'team', type: 'location', requestId: 'l1' }))).toBe('/inbox/attendance/location_change/l1');
+      expect(url(guard({ view: 'team', type: 'device-change', requestId: 'd1' }))).toBe('/inbox/attendance/device_change/d1');
+      expect(url(guard({ view: 'team', type: 'work-area' }))).toBe('/inbox?source=attendance&kind=work_mode_change');
+      expect(guard({ view: 'team', employeeId: 'e1' })).toBe(true);
+      expect(guard({})).toBe(true);
+    });
   });
 });

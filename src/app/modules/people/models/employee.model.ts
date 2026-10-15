@@ -18,6 +18,8 @@ export interface EmployeeListAttendanceSummaryResponse {
   readonly attentionSeverity?: string | null;
   readonly attentionLabel?: string | null;
   readonly breakUsedMinutes?: number;
+  /** Open attendance alerts awaiting review (Inbox), for the "N open alerts" chip. */
+  readonly openAlertCount?: number;
   readonly breakAllowanceMinutes?: number | null;
   readonly breakOverageMinutes?: number;
   readonly isOverBreakAllowance?: boolean;

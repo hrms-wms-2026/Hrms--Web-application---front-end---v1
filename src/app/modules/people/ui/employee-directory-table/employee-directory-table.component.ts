@@ -90,6 +90,12 @@ export class EmployeeDirectoryTableComponent {
     void this.router.navigate(['/people/employees', employee.id]);
   }
 
+  /** The employee's open attendance alerts, reviewed in the Inbox. */
+  protected openAlerts(employee: EmployeeListItemResponse, event: Event): void {
+    event.stopPropagation();
+    void this.router.navigate(['/inbox'], { queryParams: { tab: 'alerts', employee: employee.id } });
+  }
+
   protected onRowSelect(id: string, event: Event): void {
     this.selectionChanged.emit({ id, selected: (event.target as HTMLInputElement).checked });
   }
