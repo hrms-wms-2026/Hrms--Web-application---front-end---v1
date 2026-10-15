@@ -57,7 +57,7 @@ describe('ConversationPanelComponent', () => {
       imports: [ConversationPanelComponent],
       providers: [
         { provide: ConversationsApiService, useValue: api },
-        { provide: InboxRealtimeService, useValue: { messageCreated$: created.asObservable(), participantAdded$: new Subject(), reconnected$: new Subject() } },
+        { provide: InboxRealtimeService, useValue: { messageCreated$: created.asObservable(), participantAdded$: new Subject(), reconnected$: new Subject(), messageUpdated$: new Subject(), messageDeleted$: new Subject(), participantRemoved$: new Subject() } },
         { provide: AuthStore, useValue: { employeeId: () => ME } },
         { provide: InboxStore, useValue: { loadCounts: vi.fn(() => Promise.resolve()) } },
         { provide: TaskApiService, useValue: { uploadPendingFile: vi.fn(), deletePendingFile: vi.fn(), getFileUrl: vi.fn() } }
@@ -107,7 +107,7 @@ describe('ConversationPanelComponent', () => {
     composer.submitted.emit({ content: '<p>hi</p>', attachmentFileIds: [], mentions: ['e2'] });
     await fixture.whenStable();
 
-    expect(api['post']).toHaveBeenCalledWith('c1', '<p>hi</p>', ['e2']);
+    expect(api['post']).toHaveBeenCalledWith('c1', '<p>hi</p>', ['e2'], [], null);
   });
 
   it('offers the item actions and /add in the composer slash menu', async () => {

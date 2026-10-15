@@ -1,6 +1,6 @@
 import { TestBed } from '@angular/core/testing';
 import { ComponentFixture } from '@angular/core/testing';
-import { of } from 'rxjs';
+import { of, throwError } from 'rxjs';
 import { vi } from 'vitest';
 import { CommentComposerComponent } from './comment-composer.component';
 import { By } from '@angular/platform-browser';
@@ -200,5 +200,41 @@ describe('CommentComposerComponent', () => {
     expect(component.isExpanded()).toBe(false);
     window.dispatchEvent(new KeyboardEvent('keydown', { key: 'm' }));
     expect(component.isExpanded()).toBe(true);
+  });
+
+  describe('with a host uploader (chat attachments)', () => {
+    const file = (name: string, size: number) => new File([new Uint8Array(size)], name, { type: 'application/pdf' });
+    let upload: ReturnType<typeof vi.fn>;
+
+    beforeEach(() => {
+      upload = vi.fn((f: File) => of({ fileId: `id-${f.name}`, originalFileName: f.name, fileSizeBytes: f.size }));
+      fixture.componentRef.setInput('uploader', { upload, maxFiles: 2, maxBytes: 100 });
+      fixture.detectChanges();
+    });
+
+    it('uploads through the host instead of task pending uploads, and removing does not delete a task file', async () => {
+      await component.onFilesSelected([file('a.pdf', 10)]);
+      component.removeAttachedFile('id-a.pdf');
+
+      expect(upload).toHaveBeenCalledTimes(1);
+      expect(taskApi.uploadPendingFile).not.toHaveBeenCalled();
+      expect(taskApi.deletePendingFile).not.toHaveBeenCalled();
+      expect(component.attachedFiles()).toEqual([]);
+    });
+
+    it('refuses a file over the size limit and files over the count limit, inline', async () => {
+      await component.onFilesSelected([file('big.pdf', 101)]);
+      expect(component.uploadError()).toBe('"big.pdf" is larger than the limit.');
+
+      await component.onFilesSelected([file('a.pdf', 1), file('b.pdf', 1), file('c.pdf', 1)]);
+      expect(upload).toHaveBeenCalledTimes(2);
+      expect(component.uploadError()).toBe('You can attach up to 2 files.');
+    });
+
+    it('shows the server reason when an upload is refused (e.g. the file type)', async () => {
+      upload.mockReturnValueOnce(throwError(() => ({ error: { detail: 'This file type is not allowed.' } })));
+      await component.onFilesSelected([file('x.exe', 1)]);
+      expect(component.uploadError()).toBe('This file type is not allowed.');
+    });
   });
 });

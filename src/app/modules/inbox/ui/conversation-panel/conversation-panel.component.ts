@@ -4,16 +4,32 @@ import {
 } from '@angular/core';
 import { Observable, catchError, map, of } from 'rxjs';
 import { AuthStore } from '../../../../core/auth/state/auth.store';
-import { buildFileUrl } from '../../../../shared/data-access/file-api.service';
+import { FileApiService, buildFileUrl } from '../../../../shared/data-access/file-api.service';
 import { AvatarComponent } from '../../../../shared/ui/avatar/avatar.component';
-import { CommentComposerComponent } from '../../../../shared/ui/comment-composer/comment-composer.component';
+import { CommentComposerComponent, ComposerUploader } from '../../../../shared/ui/comment-composer/comment-composer.component';
 import { PeoplePickerComponent, PeoplePickerOption } from '../../../../shared/ui/people-picker/people-picker.component';
 import { HostSlashCommand, MentionCandidate } from '../../../../shared/ui/rich-text-editor/rich-text-editor.component';
 import { ConversationsApiService } from '../../data-access/conversations-api.service';
-import { ConversationMessageDto, InboxActionDto, InboxItemRef } from '../../models/inbox.dto';
+import { InboxApiService } from '../../data-access/inbox-api.service';
+import { ConversationMessageDto, ConversationParticipantDto, InboxActionDto, InboxItemRef } from '../../models/inbox.dto';
 import { ConversationStore } from '../../state/conversation.store';
 
 const ADD_COMMAND = 'add';
+const CONVERSATION_ATTACHMENT = 'conversation_attachment';
+const MAX_ATTACHMENTS = 5;
+const MAX_ATTACHMENT_BYTES = 25 * 1024 * 1024;
+const TAG_LABELS: Record<string, string> = {
+  info_request: 'Info requested', info_response: 'Info provided', justification: 'Justification'
+};
+
+function saveBlob(blob: Blob, fileName: string): void {
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement('a');
+  link.href = url;
+  link.download = fileName;
+  link.click();
+  setTimeout(() => URL.revokeObjectURL(url), 0);
+}
 
 /** Adds `mention--me` to the current user's mention chips so they stand out (the HTML is still rendered
  *  through Angular's sanitizer, which keeps the class). */
@@ -50,17 +66,51 @@ interface DayGroup {
     <section class="conv" data-testid="conversation-panel" aria-label="Conversation">
       <header class="conv__header">
         <div class="conv__label">Conversation</div>
-        <div class="conv__members" data-testid="conversation-members" [attr.title]="membersTooltip()">
+        <button type="button" class="conv__members" data-testid="conversation-members" [attr.title]="membersTooltip()"
+          [attr.aria-expanded]="membersOpen()" aria-label="People in this conversation" (click)="membersOpen.set(!membersOpen())">
           @for (p of visibleMembers(); track p.employeeId) {
             <app-avatar class="conv__member" [userName]="p.name" [avatarUrl]="avatarUrl(p.avatarFileId)" size="xs" />
           }
           @if (extraMembers() > 0) { <span class="conv__more">+{{ extraMembers() }}</span> }
-        </div>
-        <button type="button" class="conv__add-btn" data-testid="conversation-add-member" (click)="toggleAdd()">
-          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M15 20a6 6 0 0 0-12 0" /><path d="M9 12a4 4 0 1 0 0-8 4 4 0 0 0 0 8Z" /><path d="M19 8v6M16 11h6" /></svg>
-          Add
         </button>
+        @if (canExport()) {
+          <button type="button" class="conv__add-btn" data-testid="conversation-export" [disabled]="exporting()" (click)="exportBundle()">Export</button>
+        }
+        @if (!store.removed()) {
+          <button type="button" class="conv__add-btn" data-testid="conversation-add-member" (click)="toggleAdd()">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M15 20a6 6 0 0 0-12 0" /><path d="M9 12a4 4 0 1 0 0-8 4 4 0 0 0 0 8Z" /><path d="M19 8v6M16 11h6" /></svg>
+            Add
+          </button>
+        }
       </header>
+
+      @if (membersOpen()) {
+        <div class="conv__people" data-testid="conversation-people" role="list">
+          @for (p of store.participants(); track p.employeeId) {
+            <div class="conv__person" role="listitem" data-testid="conversation-participant" [attr.data-employee-id]="p.employeeId">
+              <app-avatar [userName]="p.name" [avatarUrl]="avatarUrl(p.avatarFileId)" size="xs" />
+              <span class="conv__person-name">{{ p.name }}{{ p.employeeId === me() ? ' (you)' : '' }}</span>
+              <span class="conv__role" data-testid="participant-role">{{ role(p) }}</span>
+              @if (canRemove(p)) {
+                <button type="button" class="conv__link" [attr.data-testid]="'participant-remove-' + p.employeeId"
+                  [attr.aria-label]="'Remove ' + p.name" (click)="remove(p.employeeId)">Remove</button>
+              }
+            </div>
+          }
+          @if (canLeave()) {
+            @if (leaveConfirm()) {
+              <div class="conv__person conv__person--confirm">
+                <span>Leave this conversation? You will stop seeing it.</span>
+                <button type="button" class="conv__link" (click)="leaveConfirm.set(false)">Cancel</button>
+                <button type="button" class="conv__link conv__link--danger" data-testid="conversation-leave-confirm" (click)="leave()">Leave</button>
+              </div>
+            } @else {
+              <button type="button" class="conv__link conv__link--danger" data-testid="conversation-leave" (click)="leaveConfirm.set(true)">Leave conversation</button>
+            }
+          }
+        </div>
+      }
+      @if (exportError()) { <p class="conv__error" role="alert">{{ exportError() }}</p> }
 
       @if (addOpen()) {
         <div class="conv__add" data-testid="conversation-add-panel">
@@ -105,15 +155,50 @@ interface DayGroup {
                 <span [innerHTML]="m.bodyHtml"></span> · <time>{{ m.createdAt | date: 'h:mm a' }}</time>
               </div>
             } @else {
-              <div class="msg" [class.msg--own]="m.authorEmployeeId === me()" [attr.data-message-id]="m.id">
+              <div class="msg" [class.msg--own]="m.authorEmployeeId === me()" [class.msg--justification]="m.tag === 'justification' && !m.isDeleted"
+                [attr.data-message-id]="m.id">
                 @if (m.authorEmployeeId !== me()) {
                   <app-avatar class="msg__avatar" [userName]="m.authorName" [avatarUrl]="avatarUrl(m.authorAvatarFileId)" size="xs" />
                 }
                 <div class="msg__bubble">
                   @if (m.authorEmployeeId !== me()) { <div class="msg__author">{{ m.authorName }}</div> }
-                  <div class="msg__body" [innerHTML]="body(m)"></div>
-                  <time class="msg__time">{{ m.createdAt | date: 'h:mm a' }}</time>
+                  @if (m.tag && !m.isDeleted) { <div class="msg__tag" data-testid="message-tag">{{ tagLabel(m.tag) }}</div> }
+                  @if (m.isDeleted) {
+                    <div class="msg__body msg__body--deleted">Message deleted</div>
+                  } @else if (editingId() === m.id) {
+                    <app-comment-composer
+                      [attr.data-testid]="'message-editor-' + m.id"
+                      [initialContent]="m.bodyHtml"
+                      [attachments]="false"
+                      [collapsible]="false"
+                      [showCancel]="true"
+                      submitLabel="Save"
+                      [enterToSend]="true"
+                      [mentionCandidates]="mentionCandidates()"
+                      (submitted)="saveEdit(m.id, $event)"
+                      (cancelled)="editingId.set(null)"
+                    />
+                  } @else {
+                    <div class="msg__body" [innerHTML]="body(m)"></div>
+                  }
+                  @if (!m.isDeleted && m.attachments?.length) {
+                    <div class="msg__files">
+                      @for (a of m.attachments; track a.id) {
+                        <button type="button" class="msg__file" [attr.data-testid]="'attachment-' + a.id" (click)="download(a.id, a.fileName)">
+                          {{ a.fileName }} <span class="msg__file-size">{{ size(a.sizeBytes) }}</span>
+                        </button>
+                      }
+                    </div>
+                  }
+                  <time class="msg__time">{{ m.createdAt | date: 'h:mm a' }}@if (m.editedAt && !m.isDeleted) { <span> (edited)</span> }</time>
                 </div>
+                @if (m.authorEmployeeId === me() && !m.isDeleted && !store.removed() && editingId() !== m.id) {
+                  <div class="msg__menu" data-testid="message-menu">
+                    <button type="button" class="conv__link" [attr.data-testid]="'message-edit-' + m.id" aria-label="Edit message" (click)="editingId.set(m.id)">Edit</button>
+                    <button type="button" class="conv__link conv__link--danger" [attr.data-testid]="'message-delete-' + m.id" aria-label="Delete message"
+                      (click)="deleteMessage(m.id)">Delete</button>
+                  </div>
+                }
               </div>
             }
           }
@@ -122,22 +207,34 @@ interface DayGroup {
 
       @if (store.sendError()) { <p class="conv__error" role="alert" data-testid="conversation-send-error">{{ store.sendError() }}</p> }
 
-      <app-comment-composer
-        #composer
-        class="conv__composer"
-        [collapsible]="false"
-        submitLabel="Send"
-        placeholder="Write a message, @ to mention."
-        [attachments]="false"
-        [enterToSend]="true"
-        [mentionCandidates]="mentionCandidates()"
-        [allowAddAndTag]="true"
-        [mentionSearch]="mentionSearch"
-        [extraSlashCommands]="slashCommands()"
-        (submitted)="send($event.content, $event.mentions)"
-        (slashCommand)="onSlashCommand($event)"
-        (addAndTag)="addAndTag($event)"
-      />
+      @if (store.removed()) {
+        <p class="conv__muted conv__removed" role="status" data-testid="conversation-removed">You were removed from this conversation.</p>
+      } @else {
+        @if (isSubject()) {
+          <label class="conv__justify">
+            <input type="checkbox" data-testid="conversation-justification" [checked]="justification()"
+              (change)="justification.set($any($event.target).checked)" />
+            Mark as justification
+          </label>
+        }
+        <app-comment-composer
+          #composer
+          class="conv__composer"
+          [collapsible]="false"
+          submitLabel="Send"
+          placeholder="Write a message, @ to mention."
+          [attachments]="true"
+          [uploader]="uploader"
+          [enterToSend]="true"
+          [mentionCandidates]="mentionCandidates()"
+          [allowAddAndTag]="true"
+          [mentionSearch]="mentionSearch"
+          [extraSlashCommands]="slashCommands()"
+          (submitted)="send($event.content, $event.mentions, $event.attachmentFileIds)"
+          (slashCommand)="onSlashCommand($event)"
+          (addAndTag)="addAndTag($event)"
+        />
+      }
     </section>
   `,
   styles: [`
@@ -174,6 +271,27 @@ interface DayGroup {
     .msg__body ::ng-deep .mention { padding: 0 3px; border-radius: 4px; background: color-mix(in srgb, var(--color-accent) 12%, transparent); color: var(--color-accent); font-weight: 600; }
     .msg__body ::ng-deep .mention--me { background: var(--color-accent); color: var(--color-accent-contrast, #fff); }
     .msg__time { display: block; margin-top: 2px; color: var(--color-text-secondary); font-size: 10px; text-align: right; }
+    .conv__members { padding: 0; border: 0; background: none; cursor: pointer; }
+    .conv__people { display: flex; flex-direction: column; gap: 2px; padding: 8px; border: 1px solid var(--color-border); border-radius: 10px; }
+    .conv__person { display: flex; align-items: center; gap: 8px; padding: 4px 2px; font-size: 12px; }
+    .conv__person--confirm { flex-wrap: wrap; color: var(--color-text-secondary); }
+    .conv__person-name { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .conv__role { padding: 1px 8px; border-radius: 999px; background: var(--color-surface-secondary); color: var(--color-text-secondary); font-size: 11px; font-weight: 600; }
+    .conv__link { padding: 0; border: 0; background: none; color: var(--color-accent); font: inherit; font-size: 12px; font-weight: 600; cursor: pointer; }
+    .conv__link--danger { color: var(--color-danger); }
+    .conv__link:focus-visible, .conv__members:focus-visible { outline: 2px solid var(--color-focus-ring); outline-offset: 2px; }
+    .conv__removed { padding: 8px; border: 1px dashed var(--color-border); border-radius: 8px; }
+    .conv__justify { display: inline-flex; align-items: center; gap: 6px; color: var(--color-text-secondary); font-size: 12px; }
+    .msg { position: relative; }
+    .msg__menu { display: flex; gap: 8px; align-self: center; opacity: 0; transition: opacity .1s; }
+    .msg:hover .msg__menu, .msg:focus-within .msg__menu { opacity: 1; }
+    .msg__body--deleted { color: var(--color-text-secondary); font-style: italic; }
+    .msg__tag { margin-bottom: 2px; color: var(--color-accent); font-size: 10px; font-weight: 700; letter-spacing: .04em; text-transform: uppercase; }
+    .msg--justification .msg__bubble { border: 1px solid color-mix(in srgb, var(--color-warning, #d97706) 55%, transparent); background: color-mix(in srgb, var(--color-warning, #d97706) 10%, var(--color-surface)); }
+    .msg--justification .msg__tag { color: var(--color-warning, #d97706); }
+    .msg__files { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 4px; }
+    .msg__file { padding: 2px 8px; border: 1px solid var(--color-border); border-radius: 999px; background: var(--color-surface); color: var(--color-text-primary); font: inherit; font-size: 11px; cursor: pointer; }
+    .msg__file-size { color: var(--color-text-secondary); }
   `]
 })
 export class ConversationPanelComponent implements AfterViewChecked {
@@ -187,6 +305,37 @@ export class ConversationPanelComponent implements AfterViewChecked {
   actions = input<readonly InboxActionDto[]>([]);
   /** A "/" action was picked: the host runs it exactly like its action-bar button. */
   action = output<string>();
+  /** The item's requester (InboxItem.requestedBy), for the role badge. */
+  requesterId = input<string | null>(null);
+
+  private readonly files = inject(FileApiService);
+  private readonly inboxApi = inject(InboxApiService);
+
+  /** Chat attachments upload as conversation_attachment: at most 5 per message, 25 MB each. */
+  protected readonly uploader: ComposerUploader = {
+    upload: (file: File) => this.files.upload(file, CONVERSATION_ATTACHMENT).pipe(
+      map((f) => ({ fileId: f.fileId, originalFileName: f.originalFileName, fileSizeBytes: f.fileSizeBytes }))),
+    maxFiles: MAX_ATTACHMENTS,
+    maxBytes: MAX_ATTACHMENT_BYTES
+  };
+  protected readonly membersOpen = signal(false);
+  protected readonly leaveConfirm = signal(false);
+  protected readonly editingId = signal<string | null>(null);
+  protected readonly justification = signal(false);
+  protected readonly exporting = signal(false);
+  protected readonly exportError = signal<string | null>(null);
+
+  private readonly myRow = computed(() => this.store.participants().find((p) => p.employeeId === this.me()) ?? null);
+  protected readonly isSubject = computed(() => !!this.me() && this.me() === this.store.subjectEmployeeId());
+  protected readonly canLeave = computed(() => this.myRow()?.joinReason === 'added');
+  /** Deciders (base members who are neither the subject nor the requester) and viewers (e.g. HR after an escalation);
+   *  the server checks again and refuses anyone else. */
+  protected readonly canExport = computed(() => {
+    const row = this.myRow();
+    if (!row) return false;
+    if (row.joinReason === 'viewer') return true;
+    return row.joinReason === 'base' && row.employeeId !== this.store.subjectEmployeeId() && row.employeeId !== this.requesterId();
+  });
 
   private readonly scroller = viewChild<ElementRef<HTMLElement>>('scroller');
   private readonly composer = viewChild<CommentComposerComponent>('composer');
@@ -286,9 +435,75 @@ export class ConversationPanelComponent implements AfterViewChecked {
     return fileId ? buildFileUrl(fileId) : null;
   }
 
-  protected async send(html: string, mentions: string[]): Promise<void> {
+  protected async send(html: string, mentions: string[], attachmentFileIds: string[] = []): Promise<void> {
     this.stickToBottom = true;
-    await this.store.send(html, mentions);
+    const tag = this.isSubject() && this.justification() ? 'justification' : null;
+    if (await this.store.send(html, mentions, attachmentFileIds, tag)) this.justification.set(false);
+  }
+
+  protected role(p: ConversationParticipantDto): string {
+    if (p.joinReason === 'viewer') return 'Viewer';
+    if (p.joinReason === 'added') return 'Added';
+    if (p.employeeId === this.store.subjectEmployeeId()) return 'Subject';
+    if (p.employeeId === this.requesterId()) return 'Requester';
+    return 'Approver';
+  }
+
+  /** Added members can be removed by any base member and by whoever added them. */
+  protected canRemove(p: ConversationParticipantDto): boolean {
+    if (p.joinReason !== 'added' || p.employeeId === this.me() || this.store.removed()) return false;
+    return this.myRow()?.joinReason === 'base' || p.addedByEmployeeId === this.me();
+  }
+
+  protected async remove(employeeId: string): Promise<void> {
+    await this.store.removeParticipant(employeeId);
+  }
+
+  protected async leave(): Promise<void> {
+    this.leaveConfirm.set(false);
+    if (await this.store.leave()) this.membersOpen.set(false);
+  }
+
+  protected tagLabel(tag: string): string {
+    return TAG_LABELS[tag] ?? tag;
+  }
+
+  protected async saveEdit(messageId: string, event: { content: string; mentions: string[] }): Promise<void> {
+    if (await this.store.editMessage(messageId, event.content, event.mentions)) this.editingId.set(null);
+  }
+
+  protected async deleteMessage(messageId: string): Promise<void> {
+    await this.store.deleteMessage(messageId);
+  }
+
+  protected size(bytes: number): string {
+    return bytes >= 1_048_576 ? `${(bytes / 1_048_576).toFixed(1)} MB` : `${Math.max(1, Math.round(bytes / 1024))} KB`;
+  }
+
+  /** Attachments download through the authenticated endpoint and are saved from a blob (never a raw URL). */
+  protected download(attachmentId: string, fileName: string): void {
+    const conversationId = this.store.conversationId();
+    if (!conversationId) return;
+    this.conversations.attachment(conversationId, attachmentId).subscribe({
+      next: (blob) => saveBlob(blob, fileName),
+      error: () => this.store.markSendError('You can no longer download this file.')
+    });
+  }
+
+  protected exportBundle(): void {
+    this.exporting.set(true);
+    this.exportError.set(null);
+    const ref = this.itemRef();
+    this.inboxApi.exportItem(ref).subscribe({
+      next: (blob) => {
+        this.exporting.set(false);
+        saveBlob(blob, `inbox-${ref.source}-${ref.kind}-${ref.id}.html`);
+      },
+      error: () => {
+        this.exporting.set(false);
+        this.exportError.set('You cannot export this conversation.');
+      }
+    });
   }
 
   protected onSlashCommand(id: string): void {

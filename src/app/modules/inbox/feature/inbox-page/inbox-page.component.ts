@@ -295,6 +295,7 @@ function withCount(label: string, n: number): string {
                   inboxConversation
                   [itemRef]="store.selectedRef()!"
                   [actions]="store.detail()?.item?.availableActions ?? []"
+                  [requesterId]="store.detail()?.item?.requestedBy?.id ?? null"
                   (action)="card.runAction($event)"
                 />
               }

@@ -58,11 +58,11 @@ describe('InboxPageComponent', () => {
       imports: [InboxPageComponent],
       providers: [
         { provide: InboxApiService, useValue: api },
-        { provide: InboxRealtimeService, useValue: { inboxChanged$: new Subject(), reconnected$: new Subject(), messageCreated$: new Subject(), participantAdded$: new Subject() } },
+        { provide: InboxRealtimeService, useValue: { inboxChanged$: new Subject(), reconnected$: new Subject(), messageCreated$: new Subject(), participantAdded$: new Subject(), messageUpdated$: new Subject(), messageDeleted$: new Subject(), participantRemoved$: new Subject() } },
         { provide: ConversationsApiService, useValue: conversations },
         { provide: PeopleApiService, useValue: { listEmployees: vi.fn(() => of({ items: [] })) } },
         { provide: TaskApiService, useValue: { uploadPendingFile: vi.fn(), deletePendingFile: vi.fn(), getFileUrl: vi.fn() } },
-        { provide: AuthStore, useValue: { authenticated: signal(false) } },
+        { provide: AuthStore, useValue: { authenticated: signal(false), employeeId: signal('e1') } },
         { provide: PermissionService, useValue: { hasModule: () => false, hasPermission: () => false } },
         { provide: ApprovalDelegatesApiService, useValue: { list: vi.fn(() => of([])), create: vi.fn(), remove: vi.fn() } },
         { provide: TrayPresenceStore, useValue: { canRenderProtectedContent: () => true } },

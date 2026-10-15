@@ -94,6 +94,27 @@ describe('Inbox data-access', () => {
     expect(http.expectOne(`${base}/conversations/c1/read`).request.method).toBe('POST');
   });
 
+  it('conversation v2: posts with attachments and a tag, edits, deletes, removes, leaves, downloads, exports', () => {
+    conversations.post('c1', '<p>see</p>', [], ['f1'], 'justification').subscribe();
+    conversations.edit('c1', 'm1', '<p>fixed</p>', ['e2']).subscribe();
+    conversations.deleteMessage('c1', 'm1').subscribe();
+    conversations.removeParticipant('c1', 'e9').subscribe();
+    conversations.leave('c1').subscribe();
+    conversations.attachment('c1', 'a1').subscribe();
+    inbox.exportItem({ source: 'leave', kind: 'request', id: 'l1' }).subscribe();
+
+    expect(http.expectOne((r) => r.url === `${base}/conversations/c1/messages` && r.method === 'POST').request.body)
+      .toEqual({ bodyHtml: '<p>see</p>', mentionEmployeeIds: [], attachmentFileIds: ['f1'], tag: 'justification' });
+    const edit = http.expectOne((r) => r.url === `${base}/conversations/c1/messages/m1` && r.method === 'PUT');
+    expect(edit.request.method).toBe('PUT');
+    expect(edit.request.body).toEqual({ bodyHtml: '<p>fixed</p>', mentionEmployeeIds: ['e2'] });
+    expect(http.expectOne((r) => r.url === `${base}/conversations/c1/messages/m1` && r.method === 'DELETE')).toBeTruthy();
+    expect(http.expectOne(`${base}/conversations/c1/participants/e9`).request.method).toBe('DELETE');
+    expect(http.expectOne(`${base}/conversations/c1/leave`).request.method).toBe('POST');
+    expect(http.expectOne(`${base}/conversations/c1/attachments/a1`).request.responseType).toBe('blob');
+    expect(http.expectOne(`${base}/inbox/leave/request/l1/export`).request.responseType).toBe('blob');
+  });
+
   it('searches colleagues to add through the conversation people lookup', () => {
     let result: unknown;
     conversations.searchPeople('pri').subscribe((r) => (result = r));

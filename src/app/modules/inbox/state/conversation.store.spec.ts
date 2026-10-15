@@ -2,7 +2,11 @@ import { TestBed } from '@angular/core/testing';
 import { Subject, of, throwError } from 'rxjs';
 import { vi } from 'vitest';
 import { InboxRealtimeService } from '../../../core/realtime/inbox-realtime.service';
-import { MessageCreatedEvent, ParticipantAddedEvent } from '../../../core/realtime/inbox-realtime.models';
+import {
+  MessageCreatedEvent, MessageDeletedEvent, MessageUpdatedEvent, ParticipantAddedEvent, ParticipantRemovedEvent
+} from '../../../core/realtime/inbox-realtime.models';
+import { AuthStore } from '../../../core/auth/state/auth.store';
+import { signal } from '@angular/core';
 import { ConversationsApiService } from '../data-access/conversations-api.service';
 import { ConversationDto, ConversationMessageDto, ConversationParticipantDto } from '../models/inbox.dto';
 import { ConversationStore } from './conversation.store';
@@ -35,6 +39,9 @@ describe('ConversationStore', () => {
   let created: Subject<MessageCreatedEvent>;
   let added: Subject<ParticipantAddedEvent>;
   let reconnected: Subject<void>;
+  let updated: Subject<MessageUpdatedEvent>;
+  let deleted: Subject<MessageDeletedEvent>;
+  let removed: Subject<ParticipantRemovedEvent>;
   let store: InstanceType<typeof ConversationStore>;
   let inbox: { loadCounts: ReturnType<typeof vi.fn> };
 
@@ -49,15 +56,22 @@ describe('ConversationStore', () => {
     created = new Subject();
     added = new Subject();
     reconnected = new Subject();
+    updated = new Subject();
+    deleted = new Subject();
+    removed = new Subject();
     inbox = { loadCounts: vi.fn(() => Promise.resolve()) };
     TestBed.configureTestingModule({
       providers: [
         ConversationStore,
         { provide: InboxStore, useValue: inbox },
+        { provide: AuthStore, useValue: { employeeId: signal('me') } },
         { provide: ConversationsApiService, useValue: api },
         {
           provide: InboxRealtimeService,
-          useValue: { messageCreated$: created.asObservable(), participantAdded$: added.asObservable(), reconnected$: reconnected.asObservable() }
+          useValue: {
+            messageCreated$: created.asObservable(), participantAdded$: added.asObservable(), reconnected$: reconnected.asObservable(),
+            messageUpdated$: updated.asObservable(), messageDeleted$: deleted.asObservable(), participantRemoved$: removed.asObservable()
+          }
         }
       ]
     });
@@ -107,7 +121,7 @@ describe('ConversationStore', () => {
     created.next({ conversationId: 'c1', message: message('m9', '2026-10-13T09:09:00Z') });
 
     expect(ok).toBe(true);
-    expect(api['post']).toHaveBeenCalledWith('c1', '<p>hi</p>', ['e2']);
+    expect(api['post']).toHaveBeenCalledWith('c1', '<p>hi</p>', ['e2'], [], null);
     expect(store.messages().filter((m) => m.id === 'm9')).toHaveLength(1);
   });
 
@@ -139,6 +153,67 @@ describe('ConversationStore', () => {
 
     expect(result.map((p) => p.employeeId)).toEqual(['e3']);
     expect(store.participants().map((p) => p.employeeId)).toEqual(['e1', 'e2', 'e3', 'e4']);
+  });
+
+  describe('conversation v2 (FS3)', () => {
+    beforeEach(() => {
+      api['edit'] = vi.fn((_: string, id: string, html: string) => of(message(id, '2026-10-13T09:02:00Z', { bodyHtml: html, editedAt: '2026-10-13T10:00:00Z' })));
+      api['deleteMessage'] = vi.fn(() => of(undefined));
+      api['removeParticipant'] = vi.fn(() => of(undefined));
+      api['leave'] = vi.fn(() => of(undefined));
+    });
+
+    it('keeps the subject employee and sends attachments and the justification tag', async () => {
+      api['open'].mockReturnValueOnce(of(conversation({ subjectEmployeeId: 'e1' })));
+      await store.open(REF);
+
+      await store.send('<p>doc</p>', [], ['f1'], 'justification');
+
+      expect(store.subjectEmployeeId()).toBe('e1');
+      expect(api['post']).toHaveBeenCalledWith('c1', '<p>doc</p>', [], ['f1'], 'justification');
+    });
+
+    it('edits and deletes a message in place; a failure keeps the message and reports', async () => {
+      await store.open(REF);
+
+      expect(await store.editMessage('m2', '<p>fixed</p>', [])).toBe(true);
+      expect(store.messages().find((m) => m.id === 'm2')).toMatchObject({ bodyHtml: '<p>fixed</p>', editedAt: '2026-10-13T10:00:00Z' });
+
+      expect(await store.deleteMessage('m3')).toBe(true);
+      expect(store.messages().find((m) => m.id === 'm3')).toMatchObject({ isDeleted: true, bodyHtml: '', attachments: [] });
+
+      api['deleteMessage'].mockReturnValueOnce(throwError(() => ({ error: { detail: 'Only the author can delete.' } })));
+      expect(await store.deleteMessage('m2')).toBe(false);
+      expect(store.sendError()).toBe('Only the author can delete.');
+    });
+
+    it('removes an added member, and leaving marks the caller removed', async () => {
+      api['open'].mockReturnValue(of(conversation({ participants: [participant('e1'), participant('me', 'added'), participant('e7', 'added')] })));
+      await store.open(REF);
+
+      expect(await store.removeParticipant('e7')).toBe(true);
+      expect(store.participantIds()).toEqual(['e1', 'me']);
+
+      expect(await store.leave()).toBe(true);
+      expect(api['leave']).toHaveBeenCalledWith('c1');
+      expect(store.removed()).toBe(true);
+    });
+
+    it('follows live edits, deletions and removals of this conversation only', async () => {
+      await store.open(REF);
+
+      updated.next({ conversationId: 'c1', message: message('m2', '2026-10-13T09:02:00Z', { bodyHtml: '<p>live</p>', editedAt: '2026-10-13T10:00:00Z' }) });
+      updated.next({ conversationId: 'other', message: message('m3', '2026-10-13T09:03:00Z', { bodyHtml: '<p>no</p>' }) });
+      deleted.next({ conversationId: 'c1', messageId: 'm3' });
+      removed.next({ conversationId: 'c1', employeeId: 'e2' });
+
+      expect(store.messages().map((m) => [m.id, m.bodyHtml, !!m.isDeleted])).toEqual([['m2', '<p>live</p>', false], ['m3', '', true]]);
+      expect(store.participantIds()).toEqual(['e1']);
+      expect(store.removed()).toBe(false);
+
+      removed.next({ conversationId: 'c1', employeeId: 'me' });
+      expect(store.removed()).toBe(true);
+    });
   });
 
   it('reloads after a reconnect and stops listening once closed', async () => {

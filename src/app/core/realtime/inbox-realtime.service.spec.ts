@@ -107,6 +107,24 @@ describe('InboxRealtimeService', () => {
     expect(changed).toHaveBeenCalledWith({ item: { source: 'work', kind: 'approval', id: 'a1' } });
   });
 
+  it('re-emits the conversation v2 events: message edited, message deleted, participant removed', async () => {
+    await connect();
+    const updated = vi.fn();
+    const deleted = vi.fn();
+    const removed = vi.fn();
+    service.messageUpdated$.subscribe(updated);
+    service.messageDeleted$.subscribe(deleted);
+    service.participantRemoved$.subscribe(removed);
+
+    hub.handlers.get('messageUpdated')!({ conversationId: 'c1', message: { id: 'm1' } });
+    hub.handlers.get('messageDeleted')!({ conversationId: 'c1', messageId: 'm1' });
+    hub.handlers.get('participantRemoved')!({ conversationId: 'c1', employeeId: 'e1' });
+
+    expect(updated).toHaveBeenCalledWith({ conversationId: 'c1', message: { id: 'm1' } });
+    expect(deleted).toHaveBeenCalledWith({ conversationId: 'c1', messageId: 'm1' });
+    expect(removed).toHaveBeenCalledWith({ conversationId: 'c1', employeeId: 'e1' });
+  });
+
   it('emits reconnected$ after an automatic reconnect so stores can refetch what they missed', async () => {
     await connect();
     const reconnected = vi.fn();

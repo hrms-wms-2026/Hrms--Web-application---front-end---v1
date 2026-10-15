@@ -59,6 +59,11 @@ export class InboxApiService {
     return this.http.get<InboxHistoryPageDto>(`${this.base}/history`, { params });
   }
 
+  /** The investigation bundle (HTML) - deciders and HR only. */
+  exportItem(ref: InboxItemRef): Observable<Blob> {
+    return this.http.get(`${this.base}/${itemPath(ref)}/export`, { responseType: 'blob' });
+  }
+
   bulk(request: InboxBulkRequestDto): Observable<InboxBulkResultDto> {
     return this.http.post<InboxBulkResultDto>(`${this.base}/bulk`, request);
   }

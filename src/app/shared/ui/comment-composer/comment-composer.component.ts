@@ -4,6 +4,13 @@ import { TaskApiService } from '../../../modules/work/data-access/task-api.servi
 import { TaskAttachmentListComponent, AttachmentPill } from '../../../modules/work/ui/task-attachment-list/task-attachment-list.component';
 import { HostSlashCommand, MentionCandidate, RichTextEditorComponent } from '../rich-text-editor/rich-text-editor.component';
 
+/** A host's own upload for composer attachments (e.g. chat files), with optional count and size limits. */
+export interface ComposerUploader {
+  upload(file: File): Observable<{ fileId: string; originalFileName: string; fileSizeBytes: number }>;
+  maxFiles?: number;
+  maxBytes?: number;
+}
+
 @Component({
   selector: 'app-comment-composer',
   standalone: true,
@@ -126,6 +133,8 @@ export class CommentComposerComponent {
   mentionSearch = input<((query: string) => Observable<readonly MentionCandidate[]>) | null>(null);
   /** Enter sends, Shift+Enter adds a line (chat). */
   enterToSend = input<boolean>(false);
+  /** Uploads attachments the host's way (e.g. chat files) instead of task pending uploads, with its limits. */
+  uploader = input<ComposerUploader | null>(null);
 
   submitted = output<{ content: string; attachmentFileIds: string[]; mentions: string[] }>();
   cancelled = output<void>();
@@ -149,6 +158,11 @@ export class CommentComposerComponent {
   }
 
   async onFilesSelected(files: FileList | File[]): Promise<void> {
+    const uploader = this.uploader();
+    if (uploader) {
+      await this.uploadWithHost(uploader, Array.from(files));
+      return;
+    }
     for (const file of Array.from(files)) {
       try {
         const uploaded = await firstValueFrom(this.taskApi.uploadPendingFile(file, 'comment_attachment'));
@@ -161,7 +175,29 @@ export class CommentComposerComponent {
 
   removeAttachedFile(fileId: string): void {
     this.attachedFiles.update(current => current.filter(f => f.fileId !== fileId));
-    firstValueFrom(this.taskApi.deletePendingFile(fileId)).catch(() => {});
+    // Host uploads are only linked when the message is sent; there is no pending task file to delete.
+    if (!this.uploader()) firstValueFrom(this.taskApi.deletePendingFile(fileId)).catch(() => {});
+  }
+
+  private async uploadWithHost(uploader: ComposerUploader, files: File[]): Promise<void> {
+    this.uploadError.set(null);
+    for (const file of files) {
+      if (uploader.maxFiles !== undefined && this.attachedFiles().length >= uploader.maxFiles) {
+        this.uploadError.set(`You can attach up to ${uploader.maxFiles} files.`);
+        return;
+      }
+      if (uploader.maxBytes !== undefined && file.size > uploader.maxBytes) {
+        this.uploadError.set(`"${file.name}" is larger than the limit.`);
+        continue;
+      }
+      try {
+        const uploaded = await firstValueFrom(uploader.upload(file));
+        this.attachedFiles.update(current => [...current, { fileId: uploaded.fileId, name: uploaded.originalFileName, sizeBytes: uploaded.fileSizeBytes }]);
+      } catch (err) {
+        const e = err as { error?: { detail?: string; message?: string } };
+        this.uploadError.set(e?.error?.detail || e?.error?.message || `Could not attach "${file.name}". Try again.`);
+      }
+    }
   }
 
   expand(): void {

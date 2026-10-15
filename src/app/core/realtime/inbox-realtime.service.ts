@@ -7,7 +7,14 @@ import { AuthStore } from '../auth/state/auth.store';
 import { PermissionService } from '../auth/state/permission.service';
 import { TrayPresenceStore } from '../tray-presence/state/tray-presence.store';
 import { tenantWorkspaceReady } from '../tray-presence/utils/tenant-workspace-ready';
-import { InboxChangedEvent, MessageCreatedEvent, ParticipantAddedEvent } from './inbox-realtime.models';
+import {
+  InboxChangedEvent,
+  MessageCreatedEvent,
+  MessageDeletedEvent,
+  MessageUpdatedEvent,
+  ParticipantAddedEvent,
+  ParticipantRemovedEvent
+} from './inbox-realtime.models';
 
 const CSRF_COOKIE_NAMES = ['onevo_csrf', 'onevo_legal_csrf'];
 /** Waits before each new connection attempt once the built-in auto-reconnect has given up (or a start failed). */
@@ -50,11 +57,17 @@ export class InboxRealtimeService {
   private readonly messageCreated = new Subject<MessageCreatedEvent>();
   private readonly participantAdded = new Subject<ParticipantAddedEvent>();
   private readonly inboxChanged = new Subject<InboxChangedEvent>();
+  private readonly messageUpdated = new Subject<MessageUpdatedEvent>();
+  private readonly messageDeleted = new Subject<MessageDeletedEvent>();
+  private readonly participantRemoved = new Subject<ParticipantRemovedEvent>();
   private readonly reconnected = new Subject<void>();
 
   readonly messageCreated$: Observable<MessageCreatedEvent> = this.messageCreated.asObservable();
   readonly participantAdded$: Observable<ParticipantAddedEvent> = this.participantAdded.asObservable();
   readonly inboxChanged$: Observable<InboxChangedEvent> = this.inboxChanged.asObservable();
+  readonly messageUpdated$: Observable<MessageUpdatedEvent> = this.messageUpdated.asObservable();
+  readonly messageDeleted$: Observable<MessageDeletedEvent> = this.messageDeleted.asObservable();
+  readonly participantRemoved$: Observable<ParticipantRemovedEvent> = this.participantRemoved.asObservable();
   readonly reconnected$: Observable<void> = this.reconnected.asObservable();
   readonly connected = signal(false);
 
@@ -80,6 +93,9 @@ export class InboxRealtimeService {
     connection.on('messageCreated', (event: MessageCreatedEvent) => this.messageCreated.next(event));
     connection.on('participantAdded', (event: ParticipantAddedEvent) => this.participantAdded.next(event));
     connection.on('inboxChanged', (event: InboxChangedEvent) => this.inboxChanged.next(event));
+    connection.on('messageUpdated', (event: MessageUpdatedEvent) => this.messageUpdated.next(event));
+    connection.on('messageDeleted', (event: MessageDeletedEvent) => this.messageDeleted.next(event));
+    connection.on('participantRemoved', (event: ParticipantRemovedEvent) => this.participantRemoved.next(event));
     connection.onreconnected(() => this.reconnected.next());
     connection.onclose(() => this.lost(connection));
     this.connection = connection;

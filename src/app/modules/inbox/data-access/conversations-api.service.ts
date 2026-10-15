@@ -27,8 +27,38 @@ export class ConversationsApiService {
     return this.http.get<ConversationMessagesPageDto>(`${this.base}/${conversationId}/messages`, { params });
   }
 
-  post(conversationId: string, bodyHtml: string, mentionEmployeeIds: string[]): Observable<ConversationMessageDto> {
-    return this.http.post<ConversationMessageDto>(`${this.base}/${conversationId}/messages`, { bodyHtml, mentionEmployeeIds });
+  /** `attachmentFileIds`: files uploaded with purpose conversation_attachment (max 5); `tag`: "justification" (subject only). */
+  post(
+    conversationId: string, bodyHtml: string, mentionEmployeeIds: string[], attachmentFileIds: string[] = [], tag: string | null = null
+  ): Observable<ConversationMessageDto> {
+    const body: Record<string, unknown> = { bodyHtml, mentionEmployeeIds };
+    if (attachmentFileIds.length > 0) body['attachmentFileIds'] = attachmentFileIds;
+    if (tag) body['tag'] = tag;
+    return this.http.post<ConversationMessageDto>(`${this.base}/${conversationId}/messages`, body);
+  }
+
+  /** The author edits their message; the original stays in the audit and the export. */
+  edit(conversationId: string, messageId: string, bodyHtml: string, mentionEmployeeIds: string[]): Observable<ConversationMessageDto> {
+    return this.http.put<ConversationMessageDto>(`${this.base}/${conversationId}/messages/${messageId}`, { bodyHtml, mentionEmployeeIds });
+  }
+
+  deleteMessage(conversationId: string, messageId: string): Observable<void> {
+    return this.http.delete<void>(`${this.base}/${conversationId}/messages/${messageId}`);
+  }
+
+  /** Removes an added member (base members and whoever added them may). */
+  removeParticipant(conversationId: string, employeeId: string): Observable<void> {
+    return this.http.delete<void>(`${this.base}/${conversationId}/participants/${employeeId}`);
+  }
+
+  /** An added member leaves the conversation. */
+  leave(conversationId: string): Observable<void> {
+    return this.http.post<void>(`${this.base}/${conversationId}/leave`, {});
+  }
+
+  /** Downloads an attachment through the authenticated endpoint (never a raw storage URL). */
+  attachment(conversationId: string, attachmentId: string): Observable<Blob> {
+    return this.http.get(`${this.base}/${conversationId}/attachments/${attachmentId}`, { responseType: 'blob' });
   }
 
   addParticipants(conversationId: string, employeeIds: string[]): Observable<ConversationParticipantDto[]> {

@@ -68,7 +68,7 @@ describe('InboxPageComponent (FS2)', () => {
       imports: [InboxPageComponent],
       providers: [
         { provide: InboxApiService, useValue: api },
-        { provide: InboxRealtimeService, useValue: { inboxChanged$: new Subject(), reconnected$: new Subject(), messageCreated$: new Subject(), participantAdded$: new Subject() } },
+        { provide: InboxRealtimeService, useValue: { inboxChanged$: new Subject(), reconnected$: new Subject(), messageCreated$: new Subject(), participantAdded$: new Subject(), messageUpdated$: new Subject(), messageDeleted$: new Subject(), participantRemoved$: new Subject() } },
         { provide: ConversationsApiService, useValue: { searchPeople: vi.fn(() => of([])) } },
         { provide: ApprovalDelegatesApiService, useValue: { list: vi.fn(() => of([])), create: vi.fn(), remove: vi.fn() } },
         { provide: PeopleApiService, useValue: { listEmployees: vi.fn(() => of({ items: [] })) } },

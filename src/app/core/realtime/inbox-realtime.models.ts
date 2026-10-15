@@ -17,15 +17,44 @@ export interface RealtimeConversationMessage {
   systemEventJson: string | null;
   mentionEmployeeIds: string[];
   createdAt: string;
+  /** null | "info_request" | "info_response" | "justification". */
+  tag?: string | null;
+  editedAt?: string | null;
+  /** A deleted message keeps its place with an empty body ("Message deleted"). */
+  isDeleted?: boolean;
+  attachments?: RealtimeConversationAttachment[] | null;
+}
+
+export interface RealtimeConversationAttachment {
+  id: string;
+  fileName: string;
+  contentType: string;
+  sizeBytes: number;
 }
 
 export interface RealtimeConversationParticipant {
   employeeId: string;
   name: string;
   avatarFileId: string | null;
-  joinReason: 'base' | 'added';
+  /** base = the item's own people; added = brought in by a member; viewer = an escalation target (reads only). */
+  joinReason: 'base' | 'added' | 'viewer';
   addedByEmployeeId: string | null;
   addedAt: string | null;
+}
+
+export interface MessageUpdatedEvent {
+  conversationId: string;
+  message: RealtimeConversationMessage;
+}
+
+export interface MessageDeletedEvent {
+  conversationId: string;
+  messageId: string;
+}
+
+export interface ParticipantRemovedEvent {
+  conversationId: string;
+  employeeId: string;
 }
 
 export interface MessageCreatedEvent {

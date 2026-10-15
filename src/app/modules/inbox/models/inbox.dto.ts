@@ -249,6 +249,8 @@ export interface ConversationDto {
   messages: ConversationMessageDto[];
   hasMoreMessages: boolean;
   lastReadAt: string | null;
+  /** The employee an alert/case is about - only they may tag a justification. */
+  subjectEmployeeId?: string | null;
 }
 
 export interface ConversationMessagesPageDto {

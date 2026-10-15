@@ -1,6 +1,7 @@
 import { computed, inject } from '@angular/core';
 import { patchState, signalStore, withComputed, withHooks, withMethods, withState } from '@ngrx/signals';
 import { Subscription, firstValueFrom, merge } from 'rxjs';
+import { AuthStore } from '../../../core/auth/state/auth.store';
 import { InboxRealtimeService } from '../../../core/realtime/inbox-realtime.service';
 import { ConversationsApiService } from '../data-access/conversations-api.service';
 import { ConversationMessageDto, ConversationParticipantDto, InboxItemRef } from '../models/inbox.dto';
@@ -15,6 +16,10 @@ interface ConversationState {
   readonly hasMore: boolean;
   /** The read marker as it was when the chat was opened - drives the "unread" divider. */
   readonly openedLastReadAt: string | null;
+  /** The employee an alert/case is about (may tag a justification). */
+  readonly subjectEmployeeId: string | null;
+  /** The caller was removed from (or left) this conversation: the panel stops sending. */
+  readonly removed: boolean;
   readonly loading: boolean;
   readonly olderLoading: boolean;
   readonly error: string | null;
@@ -30,6 +35,8 @@ const initialState: ConversationState = {
   messages: [],
   hasMore: false,
   openedLastReadAt: null,
+  subjectEmployeeId: null,
+  removed: false,
   loading: false,
   olderLoading: false,
   error: null,
@@ -43,6 +50,11 @@ function extractError(err: any, fallback: string): string {
 
 function byTime(a: ConversationMessageDto, b: ConversationMessageDto): number {
   return a.createdAt.localeCompare(b.createdAt) || a.id.localeCompare(b.id);
+}
+
+/** A deleted message keeps its place as a "Message deleted" placeholder. */
+function asDeleted(message: ConversationMessageDto): ConversationMessageDto {
+  return { ...message, isDeleted: true, bodyHtml: '', attachments: [], mentionEmployeeIds: [] };
 }
 
 /** One item's group chat. Provide it per conversation panel (not root): each panel owns its own chat. */
@@ -66,10 +78,23 @@ export const ConversationStore = signalStore(
       if (fresh.length) patchState(store, { messages: [...store.messages(), ...fresh].sort(byTime) });
     }
 
+    function replaceMessage(message: ConversationMessageDto): void {
+      if (store.messages().some((m) => m.id === message.id))
+        patchState(store, { messages: store.messages().map((m) => (m.id === message.id ? message : m)) });
+    }
+
+    function markDeleted(messageId: string): void {
+      patchState(store, { messages: store.messages().map((m) => (m.id === messageId ? asDeleted(m) : m)) });
+    }
+
     function addParticipantRows(incoming: readonly ConversationParticipantDto[]): void {
       const known = new Set(store.participantIds());
       const fresh = incoming.filter((p) => !known.has(p.employeeId));
       if (fresh.length) patchState(store, { participants: [...store.participants(), ...fresh] });
+    }
+
+    function dropParticipant(employeeId: string): void {
+      patchState(store, { participants: store.participants().filter((p) => p.employeeId !== employeeId) });
     }
 
     async function markRead(): Promise<void> {
@@ -99,6 +124,8 @@ export const ConversationStore = signalStore(
           messages: [...conversation.messages].sort(byTime),
           hasMore: conversation.hasMoreMessages,
           openedLastReadAt: sameItem ? store.openedLastReadAt() : conversation.lastReadAt,
+          subjectEmployeeId: conversation.subjectEmployeeId ?? null,
+          removed: false,
           loading: false
         });
         await markRead();
@@ -107,11 +134,28 @@ export const ConversationStore = signalStore(
       }
     }
 
+    /** Runs a call against the open conversation; false (with sendError) when it fails. */
+    async function run(call: (conversationId: string) => Promise<void>, fallback: string): Promise<boolean> {
+      const id = store.conversationId();
+      if (!id) return false;
+      patchState(store, { sendError: null });
+      try {
+        await call(id);
+        return true;
+      } catch (err) {
+        patchState(store, { sendError: extractError(err, fallback) });
+        return false;
+      }
+    }
+
     return {
       open,
       markRead,
       appendMessages,
+      replaceMessage,
+      markDeleted,
       addParticipantRows,
+      dropParticipant,
       async loadOlder(): Promise<void> {
         const id = store.conversationId();
         const oldest = store.messages()[0];
@@ -126,12 +170,14 @@ export const ConversationStore = signalStore(
         }
       },
       /** True when posted. Mentions must be participant ids (add-and-tag adds them first). */
-      async send(bodyHtml: string, mentionEmployeeIds: readonly string[]): Promise<boolean> {
+      async send(
+        bodyHtml: string, mentionEmployeeIds: readonly string[], attachmentFileIds: readonly string[] = [], tag: string | null = null
+      ): Promise<boolean> {
         const id = store.conversationId();
-        if (!id) return false;
+        if (!id || store.removed()) return false;
         patchState(store, { sending: true, sendError: null });
         try {
-          const message = await firstValueFrom(api.post(id, bodyHtml, [...mentionEmployeeIds]));
+          const message = await firstValueFrom(api.post(id, bodyHtml, [...mentionEmployeeIds], [...attachmentFileIds], tag));
           appendMessages([message]);
           patchState(store, { sending: false });
           return true;
@@ -139,6 +185,35 @@ export const ConversationStore = signalStore(
           patchState(store, { sending: false, sendError: extractError(err, 'Could not send the message.') });
           return false;
         }
+      },
+      editMessage(messageId: string, bodyHtml: string, mentionEmployeeIds: readonly string[]): Promise<boolean> {
+        return run(async (id) => replaceMessage(await firstValueFrom(api.edit(id, messageId, bodyHtml, [...mentionEmployeeIds]))),
+          'Could not edit the message.');
+      },
+      deleteMessage(messageId: string): Promise<boolean> {
+        return run(async (id) => {
+          await firstValueFrom(api.deleteMessage(id, messageId));
+          markDeleted(messageId);
+        }, 'Could not delete the message.');
+      },
+      removeParticipant(employeeId: string): Promise<boolean> {
+        return run(async (id) => {
+          await firstValueFrom(api.removeParticipant(id, employeeId));
+          dropParticipant(employeeId);
+        }, 'Could not remove them from the conversation.');
+      },
+      /** The caller (an added member) leaves; the panel then stops sending. */
+      leave(): Promise<boolean> {
+        return run(async (id) => {
+          await firstValueFrom(api.leave(id));
+          patchState(store, { removed: true });
+        }, 'Could not leave the conversation.');
+      },
+      markSendError(message: string): void {
+        patchState(store, { sendError: message });
+      },
+      setRemoved(): void {
+        patchState(store, { removed: true });
       },
       async addParticipants(employeeIds: readonly string[]): Promise<ConversationParticipantDto[]> {
         const id = store.conversationId();
@@ -158,19 +233,31 @@ export const ConversationStore = signalStore(
       }
     };
   }),
-  withHooks((store, realtime = inject(InboxRealtimeService)) => {
+  withHooks((store, realtime = inject(InboxRealtimeService), auth = inject(AuthStore, { optional: true })) => {
     let subscription: Subscription | null = null;
+    const mine = (conversationId: string) => !!conversationId && conversationId === store.conversationId();
     return {
       onInit(): void {
         subscription = new Subscription();
         subscription.add(realtime.messageCreated$.subscribe((event) => {
-          if (event.conversationId !== store.conversationId()) return;
+          if (!mine(event.conversationId)) return;
           const before = store.messages().length;
           store.appendMessages([event.message]);
           if (store.messages().length > before) void store.markRead();
         }));
         subscription.add(realtime.participantAdded$.subscribe((event) => {
-          if (event.conversationId === store.conversationId()) store.addParticipantRows([event.participant]);
+          if (mine(event.conversationId)) store.addParticipantRows([event.participant]);
+        }));
+        subscription.add(realtime.messageUpdated$.subscribe((event) => {
+          if (mine(event.conversationId)) store.replaceMessage(event.message);
+        }));
+        subscription.add(realtime.messageDeleted$.subscribe((event) => {
+          if (mine(event.conversationId)) store.markDeleted(event.messageId);
+        }));
+        subscription.add(realtime.participantRemoved$.subscribe((event) => {
+          if (!mine(event.conversationId)) return;
+          store.dropParticipant(event.employeeId);
+          if (event.employeeId === auth?.employeeId?.()) store.setRemoved();
         }));
         subscription.add(merge(realtime.reconnected$).subscribe(() => {
           const ref = store.ref();
