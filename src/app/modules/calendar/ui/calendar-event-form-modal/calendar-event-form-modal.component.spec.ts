@@ -934,11 +934,11 @@ describe('CalendarEventFormModalComponent', () => {
     expect(fixture.nativeElement.querySelector('[data-testid="calendar-form-attendance-section"]')).toBeNull();
   });
 
-  it('hides the Attendance section for a past event with no meeting attached', () => {
+  it('shows the Attendance section for a past event with no meeting attached too - it may still have raised incidents', () => {
     fixture.componentRef.setInput('event', { ...editingEvent, endDate: '2020-01-01T10:00:00Z' });
     fixture.detectChanges();
 
-    expect(fixture.nativeElement.querySelector('[data-testid="calendar-form-attendance-section"]')).toBeNull();
+    expect(fixture.nativeElement.querySelector('[data-testid="calendar-form-attendance-section"]')).not.toBeNull();
   });
 
   it('clears a stale picker selection from a previous session when the modal reopens for a different event', () => {

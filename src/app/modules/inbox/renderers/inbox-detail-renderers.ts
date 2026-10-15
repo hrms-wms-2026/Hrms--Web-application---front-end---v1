@@ -8,6 +8,7 @@ import {
 } from './attendance-renderers';
 import { ExceptionEvidenceRendererComponent } from './exception-evidence-renderer.component';
 import { LeaveRequestRendererComponent } from './leave-request-renderer.component';
+import { MeetingExceptionRendererComponent } from './meeting-exception-renderer.component';
 
 /**
  * Detail renderers, keyed by the kind descriptor's `detailRenderer`. A renderer is a standalone component with
@@ -27,7 +28,8 @@ export const DEFAULT_INBOX_DETAIL_RENDERERS: Record<string, Type<unknown>> = {
   'location-change': LocationChangeRendererComponent,
   'device-change': DeviceChangeRendererComponent,
   'attendance-alert': AttendanceAlertRendererComponent,
-  'exception-evidence': ExceptionEvidenceRendererComponent
+  'exception-evidence': ExceptionEvidenceRendererComponent,
+  'meeting-exception-evidence': MeetingExceptionRendererComponent
 };
 
 @Injectable({ providedIn: 'root' })

@@ -33,6 +33,12 @@ describe('MyTeamDeepLinkService', () => {
     expect(navigate).toHaveBeenNthCalledWith(2, ['/inbox', 'attendance', 'work_mode_change', 'r3']);
   });
 
+  it('routes calendar.meeting_exception to the calendar case in the Inbox', async () => {
+    const { service, navigate } = setup();
+    await service.navigate({ kind: 'calendar.meeting_exception', params: { exceptionId: 'm1' } });
+    expect(navigate).toHaveBeenCalledWith(['/inbox', 'calendar', 'meeting_exception', 'm1']);
+  });
+
   it('routes monitoring.exception to the case in the Inbox', async () => {
     const { service, navigate } = setup();
     await service.navigate({ kind: 'monitoring.exception', params: { alertId: 'a1' } });

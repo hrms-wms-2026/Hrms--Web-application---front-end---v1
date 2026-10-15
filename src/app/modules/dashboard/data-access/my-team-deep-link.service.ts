@@ -26,6 +26,10 @@ export class MyTeamDeepLinkService {
         await this.router.navigate(['/inbox', 'attendance', ATTENDANCE_INBOX_KINDS[link.params['type']] ?? 'correction', link.params['requestId']]);
         return;
 
+      case 'calendar.meeting_exception':
+        await this.router.navigate(['/inbox', 'calendar', 'meeting_exception', link.params['exceptionId']]);
+        return;
+
       case 'monitoring.exception':
         await this.router.navigate(['/inbox', 'monitoring', 'exception_case', link.params['alertId']]);
         return;

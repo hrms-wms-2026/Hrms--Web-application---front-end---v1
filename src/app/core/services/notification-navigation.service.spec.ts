@@ -68,7 +68,26 @@ describe('NotificationNavigationService', () => {
 
   afterEach(() => TestBed.resetTestingModule());
 
-  it('opens the attendance alerts page on the alert from an exception notification', async () => {
+  it('opens an approver\'s attendance correction or work-mode request in the Inbox', async () => {
+    const service = TestBed.inject(NotificationNavigationService);
+
+    await service.navigate({ isNavigable: true, destinationKey: 'attendance_correction_approval', attendanceCorrectionId: 'c1' } as NotificationItem);
+    await service.navigate({ isNavigable: true, destinationKey: 'work_area_change_approval', workAreaChangeRequestId: 'w1' } as NotificationItem);
+
+    expect(router.navigate).toHaveBeenNthCalledWith(1, ['/inbox', 'attendance', 'correction', 'c1']);
+    expect(router.navigate).toHaveBeenNthCalledWith(2, ['/inbox', 'attendance', 'work_mode_change', 'w1']);
+  });
+
+  it.each(['calendar_connection_reauth_required', 'calendar_connection_sync_conflict', 'calendar_connection_failed'])(
+    'a %s notice opens Settings > Calendar Sync', async (templateCode) => {
+      const service = TestBed.inject(NotificationNavigationService);
+
+      await service.navigate({ templateCode, relatedEntityType: 'calendar_event', relatedEntityId: null } as NotificationItem);
+
+      expect(router.navigate).toHaveBeenCalledWith(['/settings/calendar-connections']);
+    });
+
+  it('opens the exception case in the Inbox from an exception notification', async () => {
     const service = TestBed.inject(NotificationNavigationService);
 
     await service.navigate({

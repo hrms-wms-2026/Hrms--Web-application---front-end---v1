@@ -33,17 +33,20 @@ export class NotificationNavigationService {
   private readonly taskApi = inject(TaskApiService);
 
   async navigate(item: NotificationItem): Promise<void> {
+    // Approvers review attendance requests in the Inbox.
     if (item.isNavigable && item.destinationKey === 'attendance_correction_approval' && item.attendanceCorrectionId) {
-      await this.router.navigate(['/attendance/time-tracking'], {
-        queryParams: { view: 'team', type: 'corrections', requestId: item.attendanceCorrectionId }
-      });
+      await this.router.navigate(['/inbox', 'attendance', 'correction', item.attendanceCorrectionId]);
       return;
     }
 
     if (item.isNavigable && item.destinationKey === 'work_area_change_approval' && item.workAreaChangeRequestId) {
-      await this.router.navigate(['/attendance/time-tracking'], {
-        queryParams: { view: 'team', type: 'work-area', requestId: item.workAreaChangeRequestId }
-      });
+      await this.router.navigate(['/inbox', 'attendance', 'work_mode_change', item.workAreaChangeRequestId]);
+      return;
+    }
+
+    // Calendar integration health (re-authorize, sync conflict, failed connection) is fixed in Settings > Calendar Sync.
+    if (item.templateCode?.startsWith('calendar_connection_')) {
+      await this.router.navigate(['/settings/calendar-connections']);
       return;
     }
 

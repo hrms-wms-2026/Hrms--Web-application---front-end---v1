@@ -1,6 +1,7 @@
 import { ActionItem, TeamActionItemsResponse } from '../models/my-team-action-items.model';
 import { LedOverdueTask, LedWorkProgressResponse } from '../models/my-team-led-progress.model';
 import { PriorityActionItem } from '../models/priority-action-item.model';
+import { isExceptionSource } from './exception-sources.util';
 
 const GROUP_LIMIT = 5;
 
@@ -57,22 +58,22 @@ export function buildPriorityActions(
   callerEmployeeId: string | null = null
 ): PriorityActionItem[] {
   const sources = actionItems?.sources ?? [];
-  const exceptionSource = sources.find((s) => s.sourceKey === 'monitoring.exception' && s.status === 'ok');
+  const exceptionItems = sources.filter((s) => isExceptionSource(s.sourceKey) && s.status === 'ok').flatMap((s) => s.topItems);
 
-  const escalated = (exceptionSource?.topItems ?? [])
+  const escalated = exceptionItems
     .filter((item) => item.exceptionStatus === 'Escalated')
     .sort((a, b) => a.createdAt.localeCompare(b.createdAt))
     .slice(0, GROUP_LIMIT)
     .map((item) => toPriorityItem(item, 'escalated_exception', 'people', now));
 
-  const open = (exceptionSource?.topItems ?? [])
+  const open = exceptionItems
     .filter((item) => item.exceptionStatus === 'Open')
     .sort((a, b) => a.createdAt.localeCompare(b.createdAt))
     .slice(0, GROUP_LIMIT)
     .map((item) => toPriorityItem(item, 'open_exception', 'people', now));
 
   const approvals = sources
-    .filter((s) => s.sourceKey !== 'monitoring.exception' && s.status === 'ok')
+    .filter((s) => !isExceptionSource(s.sourceKey) && s.status === 'ok')
     .flatMap((s) => s.topItems.map((item) => ({ item, domain: s.domain })))
     .sort((a, b) => {
       const byDate = a.item.createdAt.localeCompare(b.item.createdAt);

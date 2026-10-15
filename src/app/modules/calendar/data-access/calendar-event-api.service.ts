@@ -57,8 +57,10 @@ export class CalendarEventApiService {
     return this.http.get<{ timezone: string }>(`${this.baseUrl}/my-timezone`);
   }
 
-  createMeeting(eventId: string, provider: MeetingProvider): Observable<CreateEventMeetingResponse> {
-    return this.http.post<CreateEventMeetingResponse>(`${this.baseUrl}/${eventId}/meeting`, { provider });
+  /** `invitesHeldBack`: the event was just created with this meeting pending - its invites wait for the link, and go out
+   *  without it if the link cannot be created. */
+  createMeeting(eventId: string, provider: MeetingProvider, invitesHeldBack = false): Observable<CreateEventMeetingResponse> {
+    return this.http.post<CreateEventMeetingResponse>(`${this.baseUrl}/${eventId}/meeting`, invitesHeldBack ? { provider, invitesHeldBack } : { provider });
   }
 
   removeMeeting(eventId: string): Observable<void> {
