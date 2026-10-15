@@ -1,5 +1,5 @@
 import { TestBed } from '@angular/core/testing';
-import { Subject, of } from 'rxjs';
+import { Subject, of, throwError } from 'rxjs';
 import { vi } from 'vitest';
 import { AuthStore } from '../../../../core/auth/state/auth.store';
 import { InboxRealtimeService } from '../../../../core/realtime/inbox-realtime.service';
@@ -217,6 +217,31 @@ describe('ConversationPanelComponent (FS3)', () => {
     await settle();
     expect(inboxApi.exportItem).toHaveBeenCalledWith(REF);
     click.mockRestore();
+  });
+
+  it('uploads chat attachments as conversation_attachment, at most 5 and 25 MB each', async () => {
+    const files = TestBed.inject(FileApiService) as unknown as { upload: ReturnType<typeof vi.fn> };
+    files.upload.mockReturnValue(of({ fileId: 'f1', originalFileName: 'a.pdf', fileSizeBytes: 10, contentType: 'application/pdf' }));
+    const { fixture } = await render();
+    const uploader = (fixture.componentInstance as unknown as { uploader: { upload(f: File): ReturnType<typeof of>; maxFiles: number; maxBytes: number } }).uploader;
+    const file = new File(['x'], 'a.pdf');
+
+    let uploaded: unknown;
+    uploader.upload(file).subscribe((v) => (uploaded = v));
+
+    expect(files.upload).toHaveBeenCalledWith(file, 'conversation_attachment');
+    expect(uploaded).toEqual({ fileId: 'f1', originalFileName: 'a.pdf', fileSizeBytes: 10 });
+    expect([uploader.maxFiles, uploader.maxBytes]).toEqual([5, 25 * 1024 * 1024]);
+  });
+
+  it('says so when the server refuses the export', async () => {
+    inboxApi.exportItem.mockReturnValueOnce(throwError(() => ({ status: 403 })));
+    const { q, settle, el } = await render();
+
+    q('conversation-export')!.click();
+    await settle();
+
+    expect(el.textContent).toContain('You cannot export this conversation.');
   });
 
   it('the subject sees no export button', async () => {

@@ -214,6 +214,47 @@ describe('InboxPageComponent (FS2)', () => {
     expect((await render()).q('inbox-delegate')).toBeNull();
   });
 
+  it('bulk reject asks for the reason once and sends it with every item', async () => {
+    const { fixture, el, settle } = await render();
+    const page = fixture.componentInstance as unknown as { onRowSelection(e: { row: InboxItemDto; selected: boolean }): void };
+    page.onRowSelection({ row: item('l1'), selected: true });
+    page.onRowSelection({ row: item('l2'), selected: true });
+    await settle();
+
+    (Array.from(el.querySelectorAll('app-bulk-action-bar button')).find((b) => b.textContent?.includes('Reject')) as HTMLButtonElement).click();
+    await settle();
+    const reason = document.querySelector('[data-testid="inbox-comment-reason"]') as HTMLTextAreaElement;
+    reason.value = 'No cover that week';
+    reason.dispatchEvent(new Event('input'));
+    await settle();
+    ((document.querySelector('[data-testid="inbox-comment-confirm"]') as HTMLElement).querySelector('button') as HTMLButtonElement).click();
+    await settle();
+
+    expect(api['bulk']).toHaveBeenCalledWith(expect.objectContaining({ action: 'reject', comment: 'No cover that week', outcome: null }));
+  });
+
+  it('bulk resolve offers only the outcomes the alerts share and sends the chosen one', async () => {
+    const resolve = (outcomes: string) => ({ key: 'resolve', label: 'Resolve', tone: 'primary' as const, needsComment: false, needsPayload: true, meta: { outcomes } });
+    const a1 = item('a1', { source: 'attendance', kind: 'alert', category: 'alert', availableActions: [resolve('excused,confirmed,convert_to_leave')] });
+    const a2 = item('a2', { source: 'attendance', kind: 'alert', category: 'alert', availableActions: [resolve('excused,confirmed')] });
+    api['list'].mockReturnValue(of({ items: [a1, a2], total: 2, page: 1, pageSize: 25 }));
+    const { fixture, el, settle } = await render();
+    const page = fixture.componentInstance as unknown as { onRowSelection(e: { row: InboxItemDto; selected: boolean }): void };
+    page.onRowSelection({ row: a1, selected: true });
+    page.onRowSelection({ row: a2, selected: true });
+    await settle();
+
+    (Array.from(el.querySelectorAll('app-bulk-action-bar button')).find((b) => b.textContent?.includes('Resolve')) as HTMLButtonElement).click();
+    await settle();
+    expect(document.querySelector('[data-testid="inbox-outcome-convert_to_leave"]')).toBeNull();
+    (document.querySelector('[data-testid="inbox-outcome-excused"]') as HTMLButtonElement).click();
+    await settle();
+    ((document.querySelector('[data-testid="inbox-outcome-confirm"]') as HTMLElement).querySelector('button') as HTMLButtonElement).click();
+    await settle();
+
+    expect(api['bulk']).toHaveBeenCalledWith(expect.objectContaining({ action: 'resolve', outcome: 'excused' }));
+  });
+
   it('opens the delegate modal for a leave approver', async () => {
     permissions = ['leave:approve'];
     const { q, settle } = await render();
