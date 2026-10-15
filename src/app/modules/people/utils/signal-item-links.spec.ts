@@ -9,7 +9,7 @@ const item = (over: Partial<EmployeeSignalItem>): EmployeeSignalItem => ({
 
 describe('signal item links', () => {
   it.each([
-    ['leave', '/time-off/team-approvals'],
+    ['leave', '/inbox/leave/request/r-1'],
     ['attendance_correction', '/attendance/time-tracking?view=team&type=corrections&requestId=r-1'],
     ['work_area_change', '/attendance/time-tracking?view=team&type=work-area&requestId=r-1'],
     ['location_change', '/attendance/time-tracking?view=team&type=location&requestId=r-1'],

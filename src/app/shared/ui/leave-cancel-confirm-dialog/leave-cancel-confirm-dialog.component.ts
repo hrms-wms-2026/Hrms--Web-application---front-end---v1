@@ -1,8 +1,13 @@
 import { ChangeDetectionStrategy, Component, EventEmitter, Input, Output, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { ModalComponent } from '../../../../shared/ui/modal/modal.component';
-import { DatePickerComponent } from '../../../../shared/ui/date-picker/date-picker.component';
-import { CancelLeaveRequestRequest } from '../../models/leave-request.model';
+import { ModalComponent } from '../modal/modal.component';
+import { DatePickerComponent } from '../date-picker/date-picker.component';
+/** What the cancel dialog returns: same shape as the Leave API's CancelLeaveRequestRequest (effectiveDate = partial cancel). */
+export interface LeaveCancelChoice {
+  reason: string | null;
+  effectiveDate: string | null;
+  expectedVersion: string | null;
+}
 
 @Component({
   selector: 'app-leave-cancel-confirm-dialog',
@@ -22,7 +27,7 @@ export class LeaveCancelConfirmDialogComponent {
   @Input({ required: true }) requireReason = false;
   @Input() cancelling = false;
   @Input() cancelError: string | null = null;
-  @Output() confirmed = new EventEmitter<CancelLeaveRequestRequest>();
+  @Output() confirmed = new EventEmitter<LeaveCancelChoice>();
   @Output() closed = new EventEmitter<void>();
 
   readonly reason = signal('');

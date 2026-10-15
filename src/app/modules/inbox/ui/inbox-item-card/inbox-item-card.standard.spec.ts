@@ -161,4 +161,42 @@ describe('InboxItemCardComponent (FS1 standard)', () => {
     const fallback = render(withExtra, { descriptor: { ...descriptor, detailRenderer: 'unknown' } }).el;
     expect(fallback.querySelector('[data-testid="inbox-card-explanation"]')).not.toBeNull();
   });
+
+  // ---- FL: leave ---------------------------------------------------------------------------------
+
+  const leaveRange = [
+    { field: 'startAt', label: 'From', before: null, after: '2026-10-20T09:00:00Z', kind: 'datetime', editable: false, applied: null },
+    { field: 'endAt', label: 'To', before: null, after: '2026-10-21T17:00:00Z', kind: 'datetime', editable: false, applied: null },
+    { field: 'total_hours', label: 'Total', before: null, after: '16', kind: 'hours', editable: false, applied: null }
+  ];
+
+  it('change decision asks approve or reject and sends it as the decision', () => {
+    const change = { key: 'change_decision', label: 'Change decision', tone: 'neutral' as const, needsComment: true, needsPayload: true };
+    const { fixture, q, click, actions } = render(detail({ changeSet: leaveRange }, { source: 'leave', kind: 'request', status: 'approved', isPending: false, availableActions: [change] }));
+
+    click('inbox-action-change_decision');
+    expect(q('inbox-outcome-approve')).not.toBeNull();
+    click('inbox-outcome-reject');
+    const note = q('inbox-outcome-note') as HTMLTextAreaElement;
+    note.value = 'Cover fell through';
+    note.dispatchEvent(new Event('input'));
+    fixture.detectChanges();
+    click('inbox-outcome-confirm');
+
+    expect(actions).toEqual([{ key: 'change_decision', body: { decision: 'reject', comment: 'Cover fell through' } }]);
+  });
+
+  it('cancelling a leave with a date range uses the full/partial leave cancel dialog', () => {
+    const cancel = { key: 'cancel', label: 'Cancel request', tone: 'danger' as const, needsComment: true, needsPayload: false };
+    const { fixture, actions } = render(detail({ changeSet: leaveRange }, { source: 'leave', kind: 'request', title: 'Annual leave - Pat', availableActions: [cancel] }));
+
+    (fixture.nativeElement.querySelector('[data-testid="inbox-action-cancel"]') as HTMLButtonElement).click();
+    fixture.detectChanges();
+    expect(document.body.textContent).toContain('Are you sure you want to cancel this leave request?');
+    expect(document.querySelector('[data-testid="inbox-comment-dialog"]')).toBeNull();
+
+    (fixture.componentInstance as unknown as { onLeaveCancel(c: { reason: string | null; effectiveDate: string | null; expectedVersion: null }): void })
+      .onLeaveCancel({ reason: 'Plans changed', effectiveDate: '2026-10-21', expectedVersion: null });
+    expect(actions).toEqual([{ key: 'cancel', body: { comment: 'Plans changed', effectiveDate: '2026-10-21' } }]);
+  });
 });

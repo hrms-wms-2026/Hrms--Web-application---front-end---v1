@@ -171,6 +171,10 @@ export interface InboxActionBody {
   editedPayloadJson?: string | null;
   /** "resolve": excused | confirmed | convert_to_leave. */
   outcome?: string | null;
+  /** "change_decision" (leave): approve | reject. */
+  decision?: string | null;
+  /** "cancel" (leave, partial): the first day that is given back. */
+  effectiveDate?: string | null;
   /** "resolve" with convert_to_leave. */
   leaveTypeId?: string | null;
 }

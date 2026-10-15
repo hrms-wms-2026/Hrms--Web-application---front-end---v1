@@ -14,9 +14,7 @@ export class MyTeamDeepLinkService {
   async navigate(link: ActionItemLink): Promise<void> {
     switch (link.kind) {
       case 'leave.approval':
-        await this.router.navigate(['/time-off/team-approvals'], {
-          queryParams: { requestId: link.params['requestId'] }
-        });
+        await this.router.navigate(['/inbox', 'leave', 'request', link.params['requestId']]);
         return;
 
       case 'attendance.approval':

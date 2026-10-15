@@ -19,10 +19,10 @@ describe('MyTeamDeepLinkService', () => {
     return { service: TestBed.inject(MyTeamDeepLinkService), navigate, getNotificationNavigation };
   }
 
-  it('routes leave.approval to the team approvals screen', async () => {
+  it('routes leave.approval to the leave request in the Inbox', async () => {
     const { service, navigate } = setup();
     await service.navigate({ kind: 'leave.approval', params: { requestId: 'r1' } });
-    expect(navigate).toHaveBeenCalledWith(['/time-off/team-approvals'], { queryParams: { requestId: 'r1' } });
+    expect(navigate).toHaveBeenCalledWith(['/inbox', 'leave', 'request', 'r1']);
   });
 
   it('routes attendance.approval with its type param', async () => {

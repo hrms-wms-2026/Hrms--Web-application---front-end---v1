@@ -12,11 +12,15 @@ export interface InboxOutcomeChoice {
 
 export const CONVERT_TO_LEAVE = 'convert_to_leave';
 
-const OUTCOME_LABELS: Record<string, string> = { excused: 'Excused', confirmed: 'Confirmed', [CONVERT_TO_LEAVE]: 'Convert to leave' };
+const OUTCOME_LABELS: Record<string, string> = {
+  excused: 'Excused', confirmed: 'Confirmed', [CONVERT_TO_LEAVE]: 'Convert to leave', approve: 'Approve', reject: 'Reject'
+};
 const OUTCOME_HINTS: Record<string, string> = {
   excused: 'Not held against the employee - it no longer counts.',
   confirmed: 'It stands and keeps counting.',
-  [CONVERT_TO_LEAVE]: 'Records an approved leave for the day instead.'
+  [CONVERT_TO_LEAVE]: 'Records an approved leave for the day instead.',
+  approve: 'The request is approved again.',
+  reject: 'The request is rejected; a reason is required.'
 };
 
 /** "Resolve": pick one of the action's outcomes (Meta "outcomes"); convert-to-leave also needs a leave type. */

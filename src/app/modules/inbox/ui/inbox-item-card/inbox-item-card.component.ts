@@ -2,6 +2,7 @@ import { DatePipe, KeyValuePipe, NgComponentOutlet, NgTemplateOutlet } from '@an
 import { Component, computed, effect, inject, input, output, signal } from '@angular/core';
 import { AvatarComponent } from '../../../../shared/ui/avatar/avatar.component';
 import { ConfirmModalComponent } from '../../../../shared/ui/confirm-modal/confirm-modal.component';
+import { LeaveCancelChoice, LeaveCancelConfirmDialogComponent } from '../../../../shared/ui/leave-cancel-confirm-dialog/leave-cancel-confirm-dialog.component';
 import {
   InboxActionBody,
   InboxActionDto,
@@ -39,7 +40,7 @@ const NAVIGATION_ACTIONS = new Set(['open_target']);
   imports: [
     DatePipe, KeyValuePipe, NgComponentOutlet, NgTemplateOutlet, AvatarComponent, ConfirmModalComponent, InboxChangeSetComponent,
     InboxCommentDialogComponent, InboxEscalateDialogComponent, InboxForwardDialogComponent, InboxOutcomeDialogComponent,
-    InboxRevertBannerComponent, InboxStepsComponent, InboxTypeIconComponent
+    InboxRevertBannerComponent, InboxStepsComponent, InboxTypeIconComponent, LeaveCancelConfirmDialogComponent
   ],
   host: { class: 'block h-full min-w-0' },
   template: `
@@ -171,6 +172,20 @@ const NAVIGATION_ACTIONS = new Set(['open_target']);
           (confirmed)="onOutcomeConfirmed($event)"
           (closed)="dialog.set(null)"
         />
+        @if (dialog()?.kind === 'leave-cancel' && leaveRange(); as range) {
+          <app-leave-cancel-confirm-dialog
+            [open]="true"
+            [leaveTypeName]="title()"
+            [startAt]="range.start"
+            [endAt]="range.end"
+            [totalHours]="range.hours"
+            [status]="d.item.status"
+            [requireReason]="dialog()?.action?.needsComment ?? false"
+            [cancelling]="busy()"
+            (confirmed)="onLeaveCancel($event)"
+            (closed)="dialog.set(null)"
+          />
+        }
         <app-inbox-escalate-dialog
           [open]="dialog()?.kind === 'escalate'"
           [escalateTo]="dialog()?.action?.meta?.['escalateTo'] ?? null"
@@ -255,9 +270,9 @@ export class InboxItemCardComponent {
   protected readonly editErrors = signal<Record<string, string>>({});
   protected readonly commentAction = signal<InboxActionDto | null>(null);
   protected readonly revertOpen = signal(false);
-  protected readonly dialog = signal<{ kind: 'outcome' | 'escalate' | 'forward'; action: InboxActionDto } | null>(null);
+  protected readonly dialog = signal<{ kind: 'outcome' | 'escalate' | 'forward' | 'leave-cancel'; action: InboxActionDto } | null>(null);
 
-  private readonly item = computed(() => this.detail()?.item ?? null);
+  protected readonly item = computed(() => this.detail()?.item ?? null);
   protected readonly alert = computed(() => !!this.item() && isAlert(this.item()!));
   protected readonly meta = computed(() => this.item()
     ? inboxTypeMeta(this.item()!, this.descriptor())
@@ -286,8 +301,17 @@ export class InboxItemCardComponent {
   });
   protected readonly renderer = computed(() => this.renderers.resolve(this.descriptor()?.detailRenderer));
   protected readonly extra = computed(() => parseExtra(this.detail()?.extraJson));
-  protected readonly outcomes = computed(() =>
-    (this.dialog()?.action.meta?.['outcomes'] ?? '').split(',').map((o) => o.trim()).filter(Boolean));
+  protected readonly outcomes = computed(() => this.dialog()?.action.key === 'change_decision'
+    ? ['approve', 'reject']
+    : (this.dialog()?.action.meta?.['outcomes'] ?? '').split(',').map((o) => o.trim()).filter(Boolean));
+  /** A leave-style date range on the item (startAt/endAt rows): its cancel uses the full/partial leave dialog. */
+  protected readonly leaveRange = computed(() => {
+    const rows = this.detail()?.changeSet ?? [];
+    const start = rows.find((c) => c.field === 'startAt')?.after;
+    const end = rows.find((c) => c.field === 'endAt')?.after;
+    if (!start || !end) return null;
+    return { start, end, hours: Number(rows.find((c) => c.field === 'total_hours')?.after ?? 0) || 0 };
+  });
   /** Convert-to-leave choices: the change set's "leaveTypeId" select row. */
   protected readonly leaveTypes = computed(() =>
     this.detail()?.changeSet.find((c) => c.field === 'leaveTypeId')?.options ?? []);
@@ -311,8 +335,12 @@ export class InboxItemCardComponent {
   }
 
   protected onAction(action: InboxActionDto): void {
-    if (action.key === 'resolve' && action.meta?.['outcomes']) {
+    if ((action.key === 'resolve' && action.meta?.['outcomes']) || action.key === 'change_decision') {
       this.dialog.set({ kind: 'outcome', action });
+      return;
+    }
+    if (action.key === 'cancel' && this.leaveRange()) {
+      this.dialog.set({ kind: 'leave-cancel', action });
       return;
     }
     if (action.key === 'escalate') {
@@ -352,7 +380,16 @@ export class InboxItemCardComponent {
   protected onOutcomeConfirmed(choice: InboxOutcomeChoice): void {
     const action = this.dialog()?.action;
     this.dialog.set(null);
-    if (action) this.action.emit({ key: action.key, body: { outcome: choice.outcome, comment: choice.comment, leaveTypeId: choice.leaveTypeId } });
+    if (!action) return;
+    if (action.key === 'change_decision') this.action.emit({ key: action.key, body: { decision: choice.outcome, comment: choice.comment } });
+    else this.action.emit({ key: action.key, body: { outcome: choice.outcome, comment: choice.comment, leaveTypeId: choice.leaveTypeId } });
+  }
+
+  /** Leave cancel (full, or partial from an effective date when the leave has started). */
+  protected onLeaveCancel(choice: LeaveCancelChoice): void {
+    const action = this.dialog()?.action;
+    this.dialog.set(null);
+    if (action) this.action.emit({ key: action.key, body: { comment: choice.reason, effectiveDate: choice.effectiveDate } });
   }
 
   /** Escalate / forward: the dialog's note is the action comment. */

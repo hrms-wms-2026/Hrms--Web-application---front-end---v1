@@ -1,10 +1,18 @@
+import { TestBed } from '@angular/core/testing';
+import { Router, UrlTree, provideRouter } from '@angular/router';
 import { LEAVE_ROUTES } from './leave.routes';
 describe('LEAVE_ROUTES', () => { it('has Balances as the permission-protected index route', () => { const index = LEAVE_ROUTES[0].children?.find((route) => route.path === ''); expect(index?.data?.['title']).toBe('Balances'); expect(index?.data?.['permissions']).toEqual(['leave:read-own', 'leave:read-team']); }); it('keeps /team as a leave:read-team redirect into the combined Balances page', () => { const team = LEAVE_ROUTES[0].children?.find((route) => route.path === 'team'); expect(team?.data?.['permissions']).toEqual(['leave:read-team']); }); it('has an Entitlements route for HR leave readers and managers', () => { const route = LEAVE_ROUTES[0].children?.find((child) => child.path === 'entitlements'); expect(route?.data?.['permissions']).toEqual(['leave:read', 'leave:manage']); }); it('retains Leave Types and Leave Policies', () => { const children = LEAVE_ROUTES[0].children ?? []; expect(children.some((route) => route.path === 'types')).toBe(true); expect(children.some((route) => route.path === 'policies')).toBe(true); });
 
-  it('has a pending-approvals child route requiring leave:approve', () => {
-    const shell = LEAVE_ROUTES[0];
-    const pending = shell.children?.find((r) => r.path === 'team-approvals');
-    expect(pending?.data?.['permissions']).toEqual(['leave:approve']);
+  it('redirects the old team approvals screen into the Inbox (the item itself for ?requestId=)', () => {
+    TestBed.configureTestingModule({ providers: [provideRouter([])] });
+    const route = LEAVE_ROUTES[0].children?.find((r) => r.path === 'team-approvals');
+    const router = TestBed.inject(Router);
+    const redirect = (queryParams: Record<string, string>) => TestBed.runInInjectionContext(() =>
+      router.serializeUrl((route!.redirectTo as (r: unknown) => UrlTree)({ queryParams, params: {}, data: {}, url: [], fragment: null })));
+
+    expect(route?.loadComponent).toBeUndefined();
+    expect(redirect({})).toBe('/inbox?source=leave&tab=requests');
+    expect(redirect({ requestId: 'r1' })).toBe('/inbox/leave/request/r1');
   });
 
   it('has an all child route requiring leave:read', () => {

@@ -18,7 +18,7 @@ function withQuery(path: string, params: Record<string, string>): string {
 /** Where a pending approval is reviewed. Work approvals go to the project list. */
 export function approvalReviewUrl(item: EmployeeSignalItem): string {
   const kind = item.approvalKind ?? '';
-  if (kind === 'leave') return '/time-off/team-approvals';
+  if (kind === 'leave') return `/inbox/leave/request/${item.id}`;
   const type = TIME_TRACKING_APPROVAL_TYPES[kind];
   if (type) return withQuery('/attendance/time-tracking', { view: 'team', type, requestId: item.id });
   return '/work';

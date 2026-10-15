@@ -1,4 +1,5 @@
 import { Injectable, InjectionToken, Type, inject } from '@angular/core';
+import { LeaveRequestRendererComponent } from './leave-request-renderer.component';
 
 /**
  * Detail renderers, keyed by the kind descriptor's `detailRenderer`. A renderer is a standalone component with
@@ -11,7 +12,9 @@ export const INBOX_DETAIL_RENDERERS = new InjectionToken<Record<string, Type<unk
   factory: () => DEFAULT_INBOX_DETAIL_RENDERERS
 });
 
-export const DEFAULT_INBOX_DETAIL_RENDERERS: Record<string, Type<unknown>> = {};
+export const DEFAULT_INBOX_DETAIL_RENDERERS: Record<string, Type<unknown>> = {
+  'leave-request': LeaveRequestRendererComponent
+};
 
 @Injectable({ providedIn: 'root' })
 export class InboxDetailRendererRegistry {
