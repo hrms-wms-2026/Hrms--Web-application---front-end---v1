@@ -1,6 +1,6 @@
 import { FilterFieldConfig, FilterFieldIcon } from '../../../shared/ui/filter-bar/filter-bar.component';
 import { MenuItem } from '../../../shared/ui/dropdown-menu/dropdown-menu.component';
-import { InboxFilterFieldDto, InboxItemDto } from '../models/inbox.dto';
+import { InboxFilterFieldDto, InboxItemDto, InboxKindDescriptorDto } from '../models/inbox.dto';
 
 export type InboxTone = 'accent' | 'success' | 'warning' | 'danger' | 'neutral';
 
@@ -62,29 +62,49 @@ export function isAlert(item: InboxItemDto): boolean {
   return item.category === 'alert';
 }
 
-export function inboxTypeMeta(item: InboxItemDto): InboxTypeMeta {
-  if (isAlert(item)) return { label: 'Alert', tone: item.severity === 'high' ? 'danger' : 'warning', icon: 'alert' };
-  return REQUEST_TYPE_META[requestTypeKey(item.actionType)];
+/** Work Management items are titled by their action type (the item title is the target's name); every other
+ *  source sends a ready title. */
+export function isWorkActionType(item: InboxItemDto): boolean {
+  return isAlert(item) ? item.actionType.startsWith('monitor.') : requestTypeKey(item.actionType) !== 'other';
+}
+
+function humanize(value: string): string {
+  const words = value.replace(/([a-z])([A-Z])/g, '$1 $2').replace(/_/g, ' ').toLowerCase();
+  return words.charAt(0).toUpperCase() + words.slice(1);
+}
+
+/** `descriptor` (the kind registry) names kinds that are not Work Management action types. */
+export function inboxTypeMeta(item: InboxItemDto, descriptor?: InboxKindDescriptorDto | null): InboxTypeMeta {
+  if (isAlert(item)) {
+    const tone: InboxTone = item.severity === 'high' || item.severity === 'critical' ? 'danger' : 'warning';
+    return { label: isWorkActionType(item) ? 'Alert' : descriptor?.label ?? 'Alert', tone, icon: 'alert' };
+  }
+  const key = requestTypeKey(item.actionType);
+  if (key !== 'other') return REQUEST_TYPE_META[key];
+  return { ...REQUEST_TYPE_META['other'], label: descriptor?.label ?? REQUEST_TYPE_META['other'].label };
 }
 
 export function inboxTitle(item: InboxItemDto): string {
+  if (!isWorkActionType(item)) return item.title || (isAlert(item) ? 'Alert' : 'Request');
   if (isAlert(item)) return ALERT_TITLES[item.actionType] ?? 'Project alert';
   return ACTION_TITLES[item.actionType] ?? 'Request';
 }
 
 export function inboxSubtitle(item: InboxItemDto): string {
+  if (!isWorkActionType(item)) return item.subtitle ?? '';
   return item.subtitle ? `${item.title} · ${item.subtitle}` : item.title;
 }
 
 export function inboxStatusLabel(item: InboxItemDto): string {
-  if (isAlert(item)) return item.status === 'open' ? 'Open' : 'Resolved';
+  const work = isWorkActionType(item);
+  if (isAlert(item)) return item.status === 'open' ? 'Open' : work ? 'Resolved' : humanize(item.status);
   const invitation = item.kind === 'invitation';
   switch (item.status) {
     case 'pending': return 'Pending';
     case 'approved': return invitation ? 'Accepted' : 'Approved';
     case 'rejected': return invitation ? 'Declined' : 'Rejected';
     case 'cancelled': return 'Cancelled';
-    default: return invitation ? 'Expired' : 'Outdated';
+    default: return !work ? humanize(item.status) : invitation ? 'Expired' : 'Outdated';
   }
 }
 

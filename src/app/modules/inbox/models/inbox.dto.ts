@@ -24,6 +24,8 @@ export interface InboxActionDto {
   tone: InboxActionTone;
   needsComment: boolean;
   needsPayload: boolean;
+  /** Per-action extras for the dialogs: "revertableUntil" (ISO), "outcomes" (comma list), "forwardTo", "escalateTo". */
+  meta?: Record<string, string> | null;
 }
 
 export interface InboxItemDto {
@@ -67,6 +69,8 @@ export interface InboxChangeDto {
   kind: string;
   editable: boolean;
   applied: string | null;
+  /** The choices of a "select" (or "employee") row. */
+  options?: InboxFilterOptionDto[] | null;
 }
 
 export interface InboxTargetDto {
@@ -84,6 +88,8 @@ export interface InboxItemDetailDto {
   explanationDetails: Record<string, string> | null;
   target: InboxTargetDto | null;
   editablePayloadJson: string | null;
+  /** The payload of the kind's detail renderer (descriptor `detailRenderer`); null for the default view. */
+  extraJson?: string | null;
 }
 
 export interface InboxFilterOptionDto {
@@ -109,6 +115,38 @@ export interface InboxCountsDto {
   pendingReceived: number;
   unreadMessages: number;
   openAlerts: number;
+  /** What needs the caller per source / per "source:kind" (the tab badges). */
+  bySource?: Record<string, number> | null;
+  byKind?: Record<string, number> | null;
+}
+
+/** InboxCapabilities flags (backend enum, serialized as a number). */
+export const InboxCapability = {
+  Chat: 1,
+  EditBeforeApprove: 2,
+  Revert: 4,
+  Bulk: 8,
+  Escalate: 16,
+  Resolve: 32,
+  Cancel: 64,
+  Forward: 128,
+  RequestInfo: 256,
+  SubjectParticipates: 512
+} as const;
+export type InboxCapabilityFlag = (typeof InboxCapability)[keyof typeof InboxCapability];
+
+/** One (source, kind) the inbox knows (GET /inbox/kinds). */
+export interface InboxKindDescriptorDto {
+  source: string;
+  kind: string;
+  label: string;
+  category: InboxCategory;
+  capabilities: number;
+  detailRenderer: string | null;
+}
+
+export function hasCapability(descriptor: InboxKindDescriptorDto | null | undefined, flag: InboxCapabilityFlag): boolean {
+  return !!descriptor && (descriptor.capabilities & flag) === flag;
 }
 
 /** Query-string filters of GET /inbox. `facets` are source-specific ("module" → ids). */
@@ -131,6 +169,10 @@ export interface InboxQuery {
 export interface InboxActionBody {
   comment?: string | null;
   editedPayloadJson?: string | null;
+  /** "resolve": excused | confirmed | convert_to_leave. */
+  outcome?: string | null;
+  /** "resolve" with convert_to_leave. */
+  leaveTypeId?: string | null;
 }
 
 export interface InboxActionResultDto {

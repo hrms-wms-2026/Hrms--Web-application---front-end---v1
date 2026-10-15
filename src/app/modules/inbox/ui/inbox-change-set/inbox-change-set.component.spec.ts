@@ -59,3 +59,102 @@ describe('edit-before-approve helpers', () => {
     expect(validateEdits(CHANGES, { estimatedHours: '2', title: 'x' })).toEqual({});
   });
 });
+
+describe('InboxChangeSetComponent field kinds (FS1)', () => {
+  const KINDS: InboxChangeDto[] = [
+    { field: 'startAt', label: 'From', before: null, after: '2026-10-13T09:00:00.000Z', kind: 'datetime', editable: true, applied: null },
+    { field: 'shiftStart', label: 'Shift start', before: '08:00', after: '09:00', kind: 'time', editable: true, applied: null },
+    { field: 'workModeId', label: 'Work mode', before: 'Office', after: 'wm2', kind: 'select', editable: true, applied: null,
+      options: [{ value: 'wm1', label: 'Office' }, { value: 'wm2', label: 'Remote' }] },
+    { field: 'assigneeId', label: 'Assignee', before: null, after: 'e1', kind: 'employee', editable: true, applied: null,
+      options: [{ value: 'e1', label: 'Anu' }, { value: 'e2', label: 'Bala' }] },
+    { field: 'breaks', label: 'Breaks', before: null, kind: 'breaks', editable: true, applied: null,
+      after: '[{"BreakStart":"2026-10-13T12:00:00Z","BreakEnd":"2026-10-13T12:30:00Z","BreakType":"lunch"}]' }
+  ];
+
+  function render(changes = KINDS) {
+    TestBed.configureTestingModule({ imports: [InboxChangeSetComponent] });
+    const fixture = TestBed.createComponent(InboxChangeSetComponent);
+    fixture.componentRef.setInput('changes', changes);
+    fixture.componentRef.setInput('editable', true);
+    fixture.detectChanges();
+    const edits: Record<string, string>[] = [];
+    fixture.componentInstance.editsChange.subscribe((e) => edits.push(e));
+    const el = fixture.nativeElement as HTMLElement;
+    const q = <T extends HTMLElement>(id: string) => el.querySelector(`[data-testid="${id}"]`) as T;
+    const set = (target: HTMLInputElement | HTMLSelectElement, value: string) => {
+      target.value = value;
+      target.dispatchEvent(new Event(target instanceof HTMLSelectElement ? 'change' : 'input'));
+      fixture.detectChanges();
+    };
+    return { fixture, el, q, set, edits };
+  }
+
+  it('edits a datetime in local time and sends it as an ISO instant', () => {
+    const { q, set, edits } = render();
+    const input = q<HTMLInputElement>('inbox-edit-startAt');
+
+    expect(input.type).toBe('datetime-local');
+    set(input, '2026-10-14T10:30');
+
+    expect(edits.at(-1)).toEqual({ startAt: new Date('2026-10-14T10:30').toISOString() });
+  });
+
+  it('edits a time with a time input', () => {
+    const { q, set, edits } = render();
+    const input = q<HTMLInputElement>('inbox-edit-shiftStart');
+
+    expect(input.type).toBe('time');
+    set(input, '09:30');
+    expect(edits.at(-1)).toEqual({ shiftStart: '09:30' });
+  });
+
+  it('a select or employee row offers its options and shows the chosen label read-only', () => {
+    const { q, set, edits } = render();
+    const select = q<HTMLSelectElement>('inbox-edit-workModeId');
+
+    expect(Array.from(select.options).map((o) => o.textContent?.trim())).toEqual(['Office', 'Remote']);
+    set(select, 'wm1');
+    expect(edits.at(-1)).toEqual({ workModeId: 'wm1' });
+    expect(Array.from(q<HTMLSelectElement>('inbox-edit-assigneeId').options).map((o) => o.value)).toEqual(['e1', 'e2']);
+
+    TestBed.resetTestingModule();
+    const readOnly = render(KINDS.map((c) => ({ ...c, editable: false }))).el;
+    expect(readOnly.querySelector('[data-field="workModeId"]')?.textContent).toContain('Remote');
+    expect(readOnly.querySelector('[data-field="assigneeId"]')?.textContent).toContain('Anu');
+  });
+
+  it('breaks are edited as a list: change, add and remove rows', () => {
+    const { q, set, edits, fixture } = render();
+
+    expect(q('inbox-edit-breaks').querySelectorAll('[data-testid="inbox-break-row"]')).toHaveLength(1);
+    set(q<HTMLInputElement>('inbox-break-end-0'), '2026-10-13T13:00');
+    (q<HTMLButtonElement>('inbox-break-add')).click();
+    fixture.detectChanges();
+    expect(JSON.parse(edits.at(-1)!['breaks'])).toHaveLength(2);
+    (q<HTMLButtonElement>('inbox-break-remove-1')).click();
+    fixture.detectChanges();
+
+    const breaks = JSON.parse(edits.at(-1)!['breaks']);
+    expect(breaks).toEqual([{ breakStart: '2026-10-13T12:00:00Z', breakEnd: new Date('2026-10-13T13:00').toISOString(), breakType: 'lunch' }]);
+  });
+});
+
+describe('edit-before-approve helpers (FS1 kinds)', () => {
+  const BREAKS: InboxChangeDto = { field: 'breaks', label: 'Breaks', before: null, after: '[]', kind: 'breaks', editable: true, applied: null };
+  const FROM: InboxChangeDto = { field: 'startAt', label: 'From', before: null, after: '2026-10-13T09:00:00Z', kind: 'datetime', editable: true, applied: null };
+
+  it('sends breaks as a JSON array, not a string', () => {
+    const edited = buildEditedPayload('{"clockInAt":null,"breaks":null}', [BREAKS],
+      { breaks: '[{"breakStart":"2026-10-13T12:00:00.000Z","breakEnd":"2026-10-13T12:30:00.000Z","breakType":"lunch"}]' });
+    expect(JSON.parse(edited!).breaks).toEqual([{ breakStart: '2026-10-13T12:00:00.000Z', breakEnd: '2026-10-13T12:30:00.000Z', breakType: 'lunch' }]);
+  });
+
+  it('rejects a break that ends before it starts, a break without times, and an invalid datetime', () => {
+    expect(validateEdits([BREAKS], { breaks: '[{"breakStart":"2026-10-13T13:00:00Z","breakEnd":"2026-10-13T12:00:00Z","breakType":"lunch"}]' }))
+      .toEqual({ breaks: 'Each break must end after it starts.' });
+    expect(validateEdits([BREAKS], { breaks: '[{"breakStart":"","breakEnd":"","breakType":"lunch"}]' }))
+      .toEqual({ breaks: 'Each break needs a start and an end.' });
+    expect(validateEdits([FROM], { startAt: 'not a date' })).toEqual({ startAt: 'Enter a valid date and time.' });
+  });
+});

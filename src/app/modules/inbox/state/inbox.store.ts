@@ -38,6 +38,8 @@ interface InboxState {
   /** An action is in flight. */
   readonly busy: boolean;
   readonly actionError: string | null;
+  /** actionError is a 422 validation message about the edited values (shown above the edit form). */
+  readonly actionErrorInline: boolean;
 }
 
 const initialState: InboxState = {
@@ -54,7 +56,8 @@ const initialState: InboxState = {
   detailLoading: false,
   detailError: null,
   busy: false,
-  actionError: null
+  actionError: null,
+  actionErrorInline: false
 };
 
 function extractError(err: any, fallback: string): string {
@@ -136,7 +139,7 @@ export const InboxStore = signalStore(
         await load();
       },
       async select(ref: InboxItemRef | null): Promise<void> {
-        patchState(store, { selectedRef: ref, actionError: null });
+        patchState(store, { selectedRef: ref, actionError: null, actionErrorInline: false });
         if (!ref) {
           detailRequest++;
           patchState(store, { detail: null, detailLoading: false, detailError: null });
@@ -147,14 +150,14 @@ export const InboxStore = signalStore(
       },
       /** Runs an item action; true on success. On failure the message stays in actionError. */
       async runAction(ref: InboxItemRef, action: string, body: InboxActionBody = {}): Promise<boolean> {
-        patchState(store, { busy: true, actionError: null });
+        patchState(store, { busy: true, actionError: null, actionErrorInline: false });
         try {
           await firstValueFrom(api.runAction(ref, action, body));
           patchState(store, { busy: false });
           await refresh();
           return true;
         } catch (err) {
-          patchState(store, { busy: false, actionError: extractError(err, 'The action failed.') });
+          patchState(store, { busy: false, actionError: extractError(err, 'The action failed.'), actionErrorInline: (err as { status?: number })?.status === 422 });
           return false;
         }
       }

@@ -11,6 +11,7 @@ import { FilterBarComponent } from '../../../../shared/ui/filter-bar/filter-bar.
 import { PageHeaderComponent } from '../../../../shared/ui/page-header/page-header.component';
 import { TabOption, TabsComponent } from '../../../../shared/ui/tabs/tabs.component';
 import { InboxCategory, InboxDirection, InboxItemDto, InboxItemRef, InboxQuery, InboxTargetDto, sameRef } from '../../models/inbox.dto';
+import { InboxKindsStore } from '../../state/inbox-kinds.store';
 import { InboxStore } from '../../state/inbox.store';
 import { ConversationPanelComponent } from '../../ui/conversation-panel/conversation-panel.component';
 import { InboxCardAction, InboxItemCardComponent } from '../../ui/inbox-item-card/inbox-item-card.component';
@@ -177,6 +178,8 @@ const QUERY_KEYS = new Set(['project', 'source', 'type', 'status', 'requestedBy'
               [error]="store.detailError()"
               [busy]="store.busy()"
               [actionError]="store.actionError()"
+              [actionErrorInline]="store.actionErrorInline()"
+              [descriptor]="store.detail() ? kinds.descriptor(store.detail()!.item.source, store.detail()!.item.kind) : null"
               (closed)="close()"
               (action)="onCardAction($event)"
               (openTarget)="openTarget($event)"
@@ -250,6 +253,7 @@ const QUERY_KEYS = new Set(['project', 'source', 'type', 'status', 'requestedBy'
 })
 export class InboxPageComponent implements OnInit {
   protected readonly store = inject(InboxStore);
+  protected readonly kinds = inject(InboxKindsStore);
   private readonly route = inject(ActivatedRoute);
   private readonly router = inject(Router);
   private readonly notifications = inject(NotificationService);
@@ -284,6 +288,7 @@ export class InboxPageComponent implements OnInit {
     void this.store.load();
     void this.store.loadFilters();
     void this.store.loadCounts();
+    void this.kinds.ensureLoaded();
 
     this.searchChanges.pipe(debounceTime(300), takeUntilDestroyed(this.destroyRef))
       .subscribe((search) => void this.store.applyFilter({ search }));
@@ -303,7 +308,7 @@ export class InboxPageComponent implements OnInit {
     return { source: item.source, kind: item.kind, id: item.id };
   }
 
-  protected meta(item: InboxItemDto) { return inboxTypeMeta(item); }
+  protected meta(item: InboxItemDto) { return inboxTypeMeta(item, this.kinds.descriptor(item.source, item.kind)); }
   protected title(item: InboxItemDto): string { return inboxTitle(item); }
   protected subtitle(item: InboxItemDto): string { return inboxSubtitle(item); }
   protected status(item: InboxItemDto): string { return inboxStatusLabel(item); }

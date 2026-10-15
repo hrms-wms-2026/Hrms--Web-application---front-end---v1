@@ -1,11 +1,24 @@
-import { DatePipe, KeyValuePipe, NgTemplateOutlet } from '@angular/common';
-import { Component, computed, effect, input, output, signal } from '@angular/core';
+import { DatePipe, KeyValuePipe, NgComponentOutlet, NgTemplateOutlet } from '@angular/common';
+import { Component, computed, effect, inject, input, output, signal } from '@angular/core';
 import { AvatarComponent } from '../../../../shared/ui/avatar/avatar.component';
 import { ConfirmModalComponent } from '../../../../shared/ui/confirm-modal/confirm-modal.component';
-import { InboxActionBody, InboxActionDto, InboxItemDetailDto, InboxTargetDto } from '../../models/inbox.dto';
-import { inboxStatusLabel, inboxStatusTone, inboxSubtitle, inboxTitle, inboxTypeMeta, isAlert } from '../../utils/inbox-item.util';
+import {
+  InboxActionBody,
+  InboxActionDto,
+  InboxCapability,
+  InboxItemDetailDto,
+  InboxKindDescriptorDto,
+  InboxTargetDto,
+  hasCapability
+} from '../../models/inbox.dto';
+import { InboxDetailRendererRegistry, parseExtra } from '../../renderers/inbox-detail-renderers';
+import { inboxStatusLabel, inboxStatusTone, inboxSubtitle, inboxTitle, inboxTypeMeta, isAlert, isWorkActionType } from '../../utils/inbox-item.util';
+import { InboxEscalateDialogComponent } from '../inbox-action-dialogs/inbox-escalate-dialog.component';
+import { InboxForwardDialogComponent } from '../inbox-action-dialogs/inbox-forward-dialog.component';
+import { InboxOutcomeChoice, InboxOutcomeDialogComponent } from '../inbox-action-dialogs/inbox-outcome-dialog.component';
 import { InboxChangeSetComponent, buildEditedPayload, validateEdits } from '../inbox-change-set/inbox-change-set.component';
 import { InboxCommentDialogComponent } from '../inbox-comment-dialog/inbox-comment-dialog.component';
+import { InboxRevertBannerComponent } from '../inbox-revert-banner/inbox-revert-banner.component';
 import { InboxStepsComponent } from '../inbox-steps/inbox-steps.component';
 import { InboxTypeIconComponent } from '../inbox-type-icon/inbox-type-icon.component';
 
@@ -17,12 +30,17 @@ export interface InboxCardAction {
 /** "Open" is navigation, not a server action - it is the card's target link. */
 const NAVIGATION_ACTIONS = new Set(['open_target']);
 
-/** The detail card of one inbox item: header, request steps, explanation (summary + change set, or the
- *  alert message), the action bar, and a slot for the item's conversation. */
+/** The detail card of one inbox item: header, request steps, explanation (the kind's detail renderer, or the
+ *  summary + change set / alert message), the action bar, and a slot for the item's conversation. Built only from
+ *  the item's AvailableActions and the kind descriptor; each action key opens its standard dialog. */
 @Component({
   selector: 'app-inbox-item-card',
   standalone: true,
-  imports: [DatePipe, KeyValuePipe, NgTemplateOutlet, AvatarComponent, ConfirmModalComponent, InboxChangeSetComponent, InboxCommentDialogComponent, InboxStepsComponent, InboxTypeIconComponent],
+  imports: [
+    DatePipe, KeyValuePipe, NgComponentOutlet, NgTemplateOutlet, AvatarComponent, ConfirmModalComponent, InboxChangeSetComponent,
+    InboxCommentDialogComponent, InboxEscalateDialogComponent, InboxForwardDialogComponent, InboxOutcomeDialogComponent,
+    InboxRevertBannerComponent, InboxStepsComponent, InboxTypeIconComponent
+  ],
   host: { class: 'block h-full min-w-0' },
   template: `
     <ng-template #conversation><ng-content select="[inboxConversation]" /></ng-template>
@@ -47,7 +65,7 @@ const NAVIGATION_ACTIONS = new Set(['open_target']);
           <div class="card__header">
             <app-inbox-type-icon class="card__type-tile" [icon]="meta().icon" [tone]="meta().tone" />
             <div class="card__heading">
-              <div class="card__eyebrow">{{ meta().label }}{{ alert() ? '' : ' Request' }}</div>
+              <div class="card__eyebrow">{{ eyebrow() }}</div>
               <h2 class="card__title" data-testid="inbox-card-title">{{ title() }}</h2>
               <p class="card__subtitle">{{ subtitle() }}</p>
               <span data-testid="inbox-card-status" [class]="'card__pill card__pill--' + statusTone()">
@@ -60,6 +78,9 @@ const NAVIGATION_ACTIONS = new Set(['open_target']);
           </div>
 
           @if (error()) { <p class="card__error" role="alert">{{ error() }}</p> }
+          @if (revertUntil(); as until) {
+            <app-inbox-revert-banner [until]="until" [busy]="busy()" (undo)="revertOpen.set(true)" />
+          }
 
           <section class="card__section">
             <div class="card__label">Details</div>
@@ -91,7 +112,11 @@ const NAVIGATION_ACTIONS = new Set(['open_target']);
             <app-inbox-steps [steps]="d.steps" />
           </section>
 
-          @if (d.explanation || d.explanationDetails) {
+          @if (renderer(); as r) {
+            <section class="card__section" data-testid="inbox-card-renderer">
+              <ng-container *ngComponentOutlet="r; inputs: { extra: extra(), detail: d }" />
+            </section>
+          } @else if (d.explanation || d.explanationDetails) {
             <section class="card__section">
               <div class="card__label">{{ alert() ? 'What happened' : 'Reason / note' }}</div>
               @if (d.explanation) { <p class="card__note" data-testid="inbox-card-explanation">{{ d.explanation }}</p> }
@@ -105,6 +130,9 @@ const NAVIGATION_ACTIONS = new Set(['open_target']);
             </section>
           }
 
+          @if (actionError() && actionErrorInline()) {
+            <p class="card__error" role="alert" data-testid="inbox-card-inline-error">{{ actionError() }}</p>
+          }
           @if (d.changeSet.length > 0) {
             <section class="card__section">
               <div class="card__label">Changes</div>
@@ -115,7 +143,7 @@ const NAVIGATION_ACTIONS = new Set(['open_target']);
           <ng-container [ngTemplateOutlet]="conversation" />
         </div>
 
-        @if (actionError()) {
+        @if (actionError() && !actionErrorInline()) {
           <p class="card__error card__error--footer" role="alert" data-testid="inbox-card-action-error">{{ actionError() }}</p>
         }
         @if (actions().length > 0) {
@@ -133,6 +161,27 @@ const NAVIGATION_ACTIONS = new Set(['open_target']);
           [confirmLabel]="commentAction()?.label ?? ''"
           (confirmed)="onCommentConfirmed($event)"
           (closed)="commentAction.set(null)"
+        />
+        <app-inbox-outcome-dialog
+          [open]="dialog()?.kind === 'outcome'"
+          [title]="(dialog()?.action?.label ?? 'Resolve')"
+          [confirmLabel]="dialog()?.action?.label ?? 'Resolve'"
+          [outcomes]="outcomes()"
+          [leaveTypes]="leaveTypes()"
+          (confirmed)="onOutcomeConfirmed($event)"
+          (closed)="dialog.set(null)"
+        />
+        <app-inbox-escalate-dialog
+          [open]="dialog()?.kind === 'escalate'"
+          [escalateTo]="dialog()?.action?.meta?.['escalateTo'] ?? null"
+          (confirmed)="onDialogComment($event)"
+          (closed)="dialog.set(null)"
+        />
+        <app-inbox-forward-dialog
+          [open]="dialog()?.kind === 'forward'"
+          [recipient]="dialog()?.action?.meta?.['forwardTo'] ?? 'your manager'"
+          (confirmed)="onDialogComment($event)"
+          (closed)="dialog.set(null)"
         />
         <app-confirm-modal
           [open]="revertOpen()"
@@ -191,29 +240,57 @@ export class InboxItemCardComponent {
   error = input<string | null>(null);
   busy = input(false);
   actionError = input<string | null>(null);
+  /** The action error is a validation message about the edited values (422): shown above the form. */
+  actionErrorInline = input(false);
+  /** The item's kind from the registry (GET /inbox/kinds); null while unknown. */
+  descriptor = input<InboxKindDescriptorDto | null>(null);
 
   closed = output<void>();
   action = output<InboxCardAction>();
   openTarget = output<InboxTargetDto>();
 
+  private readonly renderers = inject(InboxDetailRendererRegistry);
+
   protected readonly edits = signal<Record<string, string>>({});
   protected readonly editErrors = signal<Record<string, string>>({});
   protected readonly commentAction = signal<InboxActionDto | null>(null);
   protected readonly revertOpen = signal(false);
+  protected readonly dialog = signal<{ kind: 'outcome' | 'escalate' | 'forward'; action: InboxActionDto } | null>(null);
 
   private readonly item = computed(() => this.detail()?.item ?? null);
   protected readonly alert = computed(() => !!this.item() && isAlert(this.item()!));
-  protected readonly meta = computed(() => this.item() ? inboxTypeMeta(this.item()!) : { label: '', tone: 'neutral' as const, icon: 'task' });
+  protected readonly meta = computed(() => this.item()
+    ? inboxTypeMeta(this.item()!, this.descriptor())
+    : { label: '', tone: 'neutral' as const, icon: 'task' });
+  /** WM request types read "Task Update Request"; registry labels ("Leave request") are used as they are. */
+  protected readonly eyebrow = computed(() => {
+    const item = this.item();
+    return item && !this.alert() && isWorkActionType(item) ? `${this.meta().label} Request` : this.meta().label;
+  });
   protected readonly title = computed(() => this.item() ? inboxTitle(this.item()!) : '');
   protected readonly subtitle = computed(() => this.item() ? inboxSubtitle(this.item()!) : '');
   protected readonly statusText = computed(() => this.item() ? inboxStatusLabel(this.item()!) : '');
   protected readonly statusTone = computed(() => this.item() ? inboxStatusTone(this.item()!) : 'neutral');
+  /** The revert window's end when the item offers a timed undo (shown as the banner, not a button). */
+  protected readonly revertUntil = computed(() =>
+    this.item()?.availableActions.find((a) => a.key === 'revert')?.meta?.['revertableUntil'] ?? null);
   /** Actions shown as buttons; danger/neutral first, the primary one last (right). */
   readonly actions = computed(() => (this.item()?.availableActions ?? [])
-    .filter((a) => !NAVIGATION_ACTIONS.has(a.key))
+    .filter((a) => !NAVIGATION_ACTIONS.has(a.key) && !(a.key === 'revert' && this.revertUntil()))
     .sort((a, b) => Number(a.tone === 'primary') - Number(b.tone === 'primary')));
-  protected readonly canEdit = computed(() =>
-    !!this.detail()?.editablePayloadJson && this.actions().some((a) => a.key === 'approve'));
+  /** Edit-before-approve: an approve action, editable rows, and a kind that takes edits (payload or capability). */
+  protected readonly canEdit = computed(() => {
+    const d = this.detail();
+    return !!d && this.actions().some((a) => a.key === 'approve') && d.changeSet.some((c) => c.editable)
+      && (!!d.editablePayloadJson || hasCapability(this.descriptor(), InboxCapability.EditBeforeApprove));
+  });
+  protected readonly renderer = computed(() => this.renderers.resolve(this.descriptor()?.detailRenderer));
+  protected readonly extra = computed(() => parseExtra(this.detail()?.extraJson));
+  protected readonly outcomes = computed(() =>
+    (this.dialog()?.action.meta?.['outcomes'] ?? '').split(',').map((o) => o.trim()).filter(Boolean));
+  /** Convert-to-leave choices: the change set's "leaveTypeId" select row. */
+  protected readonly leaveTypes = computed(() =>
+    this.detail()?.changeSet.find((c) => c.field === 'leaveTypeId')?.options ?? []);
 
   constructor() {
     // A different item starts with no edits and no open dialog.
@@ -223,6 +300,7 @@ export class InboxItemCardComponent {
       this.editErrors.set({});
       this.commentAction.set(null);
       this.revertOpen.set(false);
+      this.dialog.set(null);
     });
   }
 
@@ -233,6 +311,18 @@ export class InboxItemCardComponent {
   }
 
   protected onAction(action: InboxActionDto): void {
+    if (action.key === 'resolve' && action.meta?.['outcomes']) {
+      this.dialog.set({ kind: 'outcome', action });
+      return;
+    }
+    if (action.key === 'escalate') {
+      this.dialog.set({ kind: 'escalate', action });
+      return;
+    }
+    if (action.key === 'forward') {
+      this.dialog.set({ kind: 'forward', action });
+      return;
+    }
     if (action.needsComment) {
       this.commentAction.set(action);
       return;
@@ -256,6 +346,19 @@ export class InboxItemCardComponent {
   protected onCommentConfirmed(comment: string | null): void {
     const action = this.commentAction();
     this.commentAction.set(null);
+    if (action) this.action.emit({ key: action.key, body: { comment } });
+  }
+
+  protected onOutcomeConfirmed(choice: InboxOutcomeChoice): void {
+    const action = this.dialog()?.action;
+    this.dialog.set(null);
+    if (action) this.action.emit({ key: action.key, body: { outcome: choice.outcome, comment: choice.comment, leaveTypeId: choice.leaveTypeId } });
+  }
+
+  /** Escalate / forward: the dialog's note is the action comment. */
+  protected onDialogComment(comment: string | null): void {
+    const action = this.dialog()?.action;
+    this.dialog.set(null);
     if (action) this.action.emit({ key: action.key, body: { comment } });
   }
 

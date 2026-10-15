@@ -153,6 +153,18 @@ describe('InboxStore', () => {
 
     expect(ok).toBe(false);
     expect(store.actionError()).toBe('Only the approver can decide.');
+    expect(store.actionErrorInline()).toBe(false);
+  });
+
+  it('marks a 422 refusal as a validation message about the edits, cleared by the next action', async () => {
+    api['runAction'].mockReturnValueOnce(throwError(() => ({ status: 422, error: { detail: 'Overlaps another leave.' } })));
+    const ref = { source: 'leave', kind: 'request', id: 'l1' };
+
+    await store.runAction(ref, 'approve');
+    expect(store.actionErrorInline()).toBe(true);
+
+    await store.runAction(ref, 'approve');
+    expect((store.actionError(), store.actionErrorInline())).toBe(false);
   });
 
   it('refreshes (debounced 500 ms) when the hub says the inbox changed, or after a reconnect', async () => {

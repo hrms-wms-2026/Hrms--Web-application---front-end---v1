@@ -9,6 +9,7 @@ import {
   InboxFilterFieldDto,
   InboxItemDetailDto,
   InboxItemRef,
+  InboxKindDescriptorDto,
   InboxPageDto,
   InboxQuery
 } from '../models/inbox.dto';
@@ -24,6 +25,10 @@ export class InboxApiService {
 
   filters(): Observable<InboxFilterFieldDto[]> {
     return this.http.get<InboxFilterFieldDto[]>(`${this.base}/filters`);
+  }
+
+  kinds(): Observable<InboxKindDescriptorDto[]> {
+    return this.http.get<InboxKindDescriptorDto[]>(`${this.base}/kinds`);
   }
 
   counts(): Observable<InboxCountsDto> {

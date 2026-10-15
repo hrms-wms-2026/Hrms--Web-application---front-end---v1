@@ -23,7 +23,7 @@ describe('inbox item util', () => {
     expect(inboxTitle(item())).toBe('Update task details');
     expect(inboxTitle(item({ kind: 'invitation', actionType: 'module.invitation' }))).toBe('Add member to module');
     expect(inboxTitle(item({ category: 'alert', kind: 'monitor_alert', actionType: 'monitor.task_overdue' }))).toBe('Task past its due date');
-    expect(inboxTitle(item({ actionType: 'leave.request' }))).toBe('Request');
+    expect(inboxTitle(item({ source: 'leave', kind: 'request', actionType: 'leave.request' }))).toBe('Audit events');
   });
 
   it('subtitles with the target and its summary', () => {
@@ -77,5 +77,31 @@ describe('inbox item util', () => {
       ['project', 'category', 'multi'], ['module', 'module', 'multi'], ['odd', 'type', 'single'], ['requestedOn', 'calendar', 'single']
     ]);
     expect(result.find((f) => f.key === 'requestedOn')?.defaultValues).toEqual(['any']);
+  });
+});
+
+describe('inbox item util for non-WM kinds (FS1)', () => {
+  const leave = item({ source: 'leave', kind: 'request', actionType: 'annual', title: 'Annual leave - Pat Doe', subtitle: '13 Oct – 15 Oct' });
+  const descriptor = { source: 'leave', kind: 'request', label: 'Leave request', category: 'request' as const, capabilities: 0, detailRenderer: null };
+
+  it('titles by the item itself and labels by the kind descriptor', () => {
+    expect(inboxTitle(leave)).toBe('Annual leave - Pat Doe');
+    expect(inboxSubtitle(leave)).toBe('13 Oct – 15 Oct');
+    expect(inboxTypeMeta(leave, descriptor).label).toBe('Leave request');
+    expect(inboxTypeMeta(leave).label).toBe('Request');
+  });
+
+  it('alerts of other sources keep the alert look but their own title', () => {
+    const alert = item({ source: 'attendance', kind: 'alert', category: 'alert', actionType: 'late_clock_ins', title: 'Late clock-in - Pat', severity: 'warning' });
+    expect(inboxTitle(alert)).toBe('Late clock-in - Pat');
+    expect(inboxTypeMeta(alert, { ...descriptor, source: 'attendance', kind: 'alert', label: 'Attendance alert', category: 'alert' }))
+      .toEqual({ label: 'Attendance alert', tone: 'warning', icon: 'alert' });
+  });
+
+  it('humanizes statuses it has no label for instead of calling them outdated', () => {
+    expect(inboxStatusLabel({ ...leave, status: 'info_requested' })).toBe('Info requested');
+    expect(inboxStatusLabel({ ...leave, status: 'approved' })).toBe('Approved');
+    expect(inboxStatusLabel({ ...leave, category: 'alert', status: 'excused' })).toBe('Excused');
+    expect(inboxStatusLabel({ ...leave, category: 'alert', status: 'acknowledged' })).toBe('Acknowledged');
   });
 });

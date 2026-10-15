@@ -42,7 +42,8 @@ describe('InboxPageComponent', () => {
       ])),
       counts: vi.fn(() => of({ pendingReceived: 1, unreadMessages: 2, openAlerts: 1 })),
       detail: vi.fn(() => of({ item: item('a1', { availableActions: [{ key: 'approve', label: 'Approve', tone: 'primary', needsComment: false, needsPayload: false }] }), steps: [], summary: null, changeSet: [], explanation: null, explanationDetails: null, target: { route: ['/work', 'p1', 'board'], label: 'Open task', queryParams: { taskId: 't1' } }, editablePayloadJson: null })),
-      runAction: vi.fn(() => of({ affectedEmployeeIds: [], message: null }))
+      runAction: vi.fn(() => of({ affectedEmployeeIds: [], message: null })),
+      kinds: vi.fn(() => of([]))
     };
     params = new BehaviorSubject(convertToParamMap({}));
     router = { navigate: vi.fn(() => Promise.resolve(true)) };
